@@ -151,11 +151,8 @@ impl<T: IsInstanceType> InstanceStore<T> {
         let mut instances = self.instances.write().unwrap();
 
         if instances.len() >= MAX_STORED_INSTANCES {
-            let err_msg = format!(
-                "Too many {} references created. Max ID limit reached.",
-                T::get_instance_type()
-            );
-            log_e!("{}", err_msg);
+            log_e!("Too many {} references created. Max ID limit reached.",
+                T::get_instance_type());
             return -1;
         }
 

@@ -102,19 +102,38 @@ impl StatsigUserBuilder {
         self
     }
 
-    pub fn custom(mut self, custom: Option<HashMap<String, String>>) -> Self {
+    // todo: support HashMap<String, String | Number | Boolean | Array<String>>
+    pub fn custom_from_str_map(mut self, custom: Option<HashMap<String, String>>) -> Self {
         if let Some(custom) = custom {
             self.custom = Some(convert_str_map_to_dyn_values(custom));
         }
         self
     }
 
-    pub fn private_attributes(
+    pub fn custom(mut self, custom: Option<HashMap<String, DynamicValue>>) -> Self {
+        if let Some(custom) = custom {
+            self.custom = Some(custom);
+        }
+        self
+    }
+
+    // todo: support HashMap<String, String | Number | Boolean | Array<String>>
+    pub fn private_attributes_from_str_map(
         mut self,
         private_attributes: Option<HashMap<String, String>>,
     ) -> Self {
         if let Some(private_attributes) = private_attributes {
             self.private_attributes = Some(convert_str_map_to_dyn_values(private_attributes));
+        }
+        self
+    }
+
+    pub fn private_attributes(
+        mut self,
+        private_attributes: Option<HashMap<String, DynamicValue>>,
+    ) -> Self {
+        if let Some(private_attributes) = private_attributes {
+            self.private_attributes = Some(private_attributes);
         }
         self
     }

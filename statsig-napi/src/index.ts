@@ -71,8 +71,8 @@ export class StatsigUser {
       country,
       locale,
       appVersion,
-      custom,
-      privateAttributes,
+      JSON.stringify(custom),
+      JSON.stringify(privateAttributes),
     );
   }
 }

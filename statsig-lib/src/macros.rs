@@ -29,18 +29,7 @@ macro_rules! unwrap_or_noop {
     };
 }
 
-#[macro_export]
-macro_rules! read_lock_or_return {
-    ($lock:expr, $ret_val:expr) => {
-        match $lock.read() {
-            Ok(data) => data,
-            Err(e) => {
-                $crate::log_e!("Warning: Failed to acquire read lock on RwLock, {}", e);
-                return $ret_val;
-            }
-        }
-    };
-}
+
 
 #[macro_export]
 macro_rules! read_lock_or_else {

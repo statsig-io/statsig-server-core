@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use statsig::{Statsig, StatsigOptions, StatsigUser};
+use statsig::{dyn_value, Statsig, StatsigOptions, StatsigUser, DynamicValue};
 use statsig::statsig_user::StatsigUserBuilder;
 use crate::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::mock_specs_adapter::MockSpecsAdapter;
@@ -119,6 +119,25 @@ async fn test_app_version() {
 
     let gate = statsig.get_feature_gate(&user, gate_name);
     assert!(!gate.value);
+
+    statsig.shutdown().await.unwrap();
+}
+
+
+#[tokio::test]
+async fn test_custom_number_value_passes() {
+    let statsig = setup(None).await;
+
+    let user =
+        StatsigUserBuilder::new_with_user_id("a_user".to_string())
+            .custom(Some(HashMap::from([
+                ("level".to_string(), dyn_value!(9))
+            ]))).build();
+
+    let gate_name = "test_any_with_number_value";
+
+    let gate = statsig.get_feature_gate(&user, gate_name);
+    assert!(gate.value);
 
     statsig.shutdown().await.unwrap();
 }
