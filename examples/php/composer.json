@@ -1,0 +1,24 @@
+{
+  "name": "statsig/statsig-ffi-example",
+  "type": "project",
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../../statsig-ffi/bindings/php"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Statsig\\StatsigFFIExample\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Daniel",
+      "email": "95646168+daniel-statsig@users.noreply.github.com"
+    }
+  ],
+  "require": {
+    "statsig/statsig-ffi": "@dev"
+  }
+}

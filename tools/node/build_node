@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# Force Exit on Errors
+set -e
+
+BOLD_TXT=$(tput bold 2>/dev/null || echo "")
+NORMAL_TXT=$(tput sgr0 2>/dev/null || echo "")
+
+# Get the directory of the script
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+SRC_DIR="$SCRIPT_DIR/../../statsig-napi"
+DST_DIR="$SCRIPT_DIR/../../build/node"
+EXTRA_ARGS="${@:1}"
+
+ensure_empty_dir() {
+    echo -e "${BOLD_TXT}-- Ensure Empty Build Dir --${NORMAL_TXT}"
+    $SCRIPT_DIR/../ensure_empty_dir "$DST_DIR"
+
+}
+
+run_napi_build() {
+    echo -e "\n${BOLD_TXT}-- Napi Build --${NORMAL_TXT}"
+
+    cd "$SRC_DIR"
+
+    echo "Using"
+    echo " - napi-cli: $(npm list @napi-rs/cli --depth=0 | grep -o '@napi-rs/cli@[0-9.]*-[a-z.0-9]*' | sed 's/.*@//')"
+    echo ""
+
+    echo "Extra Args"
+    echo " - '$EXTRA_ARGS'"
+    echo ""
+
+    echo -e "Building...\n"
+
+    npx napi build --platform --release \
+    --js bindings.js --dts bindings.d.ts --output-dir ./src --strip \
+    $EXTRA_ARGS
+}
+
+gen_js_files() {
+    cd "$SRC_DIR"
+
+    echo -e "\n${BOLD_TXT}-- Codemod --${NORMAL_TXT}"
+
+    echo "Using"
+    echo " - $(npx jscodeshift --version)"
+    echo ""
+
+    npx jscodeshift --fail-on-error -t codemod/custom-error-message.js src/bindings.js
+
+    echo -e "\n${BOLD_TXT}-- Prettify --${NORMAL_TXT}"
+
+    echo "Using"
+    echo " - Prettier: $(npx prettier --version)"
+    echo " - Typescript: $(npx tsc --version)"
+    echo ""
+
+    npx prettier src/bindings.d.ts --write
+    npx prettier src/bindings.js --write 
+
+    npx tsc
+}
+
+copy_to_build_dir() {
+    echo -e "\n${BOLD_TXT}-- Copy to Build Directory --${NORMAL_TXT}"
+
+    cp "$SRC_DIR/package.json" "$SRC_DIR/dist"
+    cp "$SRC_DIR/src/bindings.d.ts" "$SRC_DIR/dist/lib"
+    cp "$SRC_DIR/src/bindings.js" "$SRC_DIR/dist/lib"
+    cp "$SRC_DIR/src"/*.node "$SRC_DIR/dist/lib"
+
+    cp -r "$SRC_DIR/dist"/* "$DST_DIR"
+
+    echo "Copied to $DST_DIR"
+}
+
+
+ensure_empty_dir
+run_napi_build 
+gen_js_files
+copy_to_build_dir

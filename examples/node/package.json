@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "scripts": {
+    "start": "node example.js"
+  },
+  "dependencies": {
+    "statsig-napi": "file:../../build/node"
+  }
+}

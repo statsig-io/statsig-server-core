@@ -1,0 +1,35 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/shared_constants"
+
+# Function to print the usage of the script
+print_usage() {
+  echo "Usage: $0 <directory>"
+  exit 1
+}
+
+# Check if the user provided exactly one argument
+if [ "$#" -ne 1 ]; then
+  print_usage
+fi
+
+# Assign the argument to a variable
+DIR=$1
+
+echo "Path: $DIR"
+
+# Check if the directory does not exist
+if [ ! -d "$DIR" ]; then
+  mkdir -p "$DIR"
+  echo -e "${GREEN}Directory created${NC}"
+  exit 0;
+fi
+
+# Check if the directory is not empty
+if [ "$(ls -A "$DIR")" ]; then
+  rm -rf "$DIR"/*
+  echo -e "${GREEN}Directory is now empty${NC}"
+else
+  echo -e "${GREEN}Directory is already empty${NC}"
+fi

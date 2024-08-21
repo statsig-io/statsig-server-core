@@ -1,0 +1,12 @@
+.DS_Store
+.idea
+target/
+build/
+node_modules
+bin
+obj
+
+### Composer ###
+composer.phar
+**/vendor/**
+statsig-lib/tests/statsig_dcs.json

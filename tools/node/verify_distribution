@@ -1,0 +1,36 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../shared_constants"
+
+echo -e "${BOLD_TXT}-- Verifying NPM Package Files --${NORMAL_TXT}"
+
+files=(
+    "package.json"
+    "npm/darwin-arm64/sigstat-napi.darwin-arm64.node"
+    "npm/darwin-x64/sigstat-napi.darwin-x64.node"
+    "npm/win32-x64-msvc/sigstat-napi.win32-x64-msvc.node"
+    "npm/linux-x64-gnu/sigstat-napi.linux-x64-gnu.node"
+    "npm/linux-arm64-musl/sigstat-napi.linux-arm64-musl.node"
+    "npm/win32-arm64-msvc/sigstat-napi.win32-arm64-msvc.node"
+    "npm/linux-arm64-gnu/sigstat-napi.linux-arm64-gnu.node"
+    # "npm/win32-ia32-msvc/sigstat-napi.win32-ia32-msvc.node"
+    "npm/linux-x64-musl/sigstat-napi.linux-x64-musl.node"
+    "npm/linux-arm-gnueabihf/sigstat-napi.linux-arm-gnueabihf.node"
+)
+
+missing=0
+
+for file in "${files[@]}"; do
+    if [ ! -f "build/node/$file" ]; then
+        echo -e "${RED}ERROR:${NC} $file doesn't exist"
+        missing=1
+    fi
+done
+
+if [ $missing -eq 1 ]; then
+    exit 1
+else
+    echo -e "${GREEN}All required files found.${NC}"
+    exit 0;
+fi

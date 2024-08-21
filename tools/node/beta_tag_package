@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Force Exit on Errors
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../shared_constants"
+
+echo -e "${BOLD_TXT}-- Apply NPM Package Beta Tag --${NORMAL_TXT}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PACKAGE_JSON="$SCRIPT_DIR/../../build/node/package.json"
+
+# Get the last commit hash
+COMMIT_HASH=$(git rev-parse --short HEAD)
+
+# Read the current version from package.json
+CURRENT_VERSION=$(jq -r '.version' $PACKAGE_JSON)
+
+# Check if the version already contains "-beta"
+if [[ $CURRENT_VERSION == *"-beta."* ]]; then
+  # Replace everything after the last '-' with the commit hash
+  NEW_VERSION=$(echo $CURRENT_VERSION | sed -E "s/-beta\.[a-zA-Z0-9]+/-beta.$COMMIT_HASH/")
+else
+  # Append "-beta.COMMIT_HASH" to the version
+  NEW_VERSION="${CURRENT_VERSION}-beta.${COMMIT_HASH}"
+fi
+
+# Update the version in package.json
+jq --arg new_version "$NEW_VERSION" '.version = $new_version' $PACKAGE_JSON > temp.json && mv temp.json $PACKAGE_JSON
+
+echo -e "${GREEN}Updated version to $NEW_VERSION${NC}"

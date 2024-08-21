@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = ["statsig-lib", "statsig-ffi", "statsig-napi", "statsig-grpc"]
+
+[profile.release]
+lto = true
+strip = "symbols"

@@ -1,0 +1,33 @@
+#!/bin/bash
+
+cargo build --release
+
+# Get the directory of the script
+SCRIPT_DIR=$(dirname "$0")
+DST_DIR="$SCRIPT_DIR/../build/ruby"
+SRC_DIR="$SCRIPT_DIR/../statsig-ffi/bindings/ruby"
+LIB_DIR="$SCRIPT_DIR/../target/release"
+
+# Check if the destination directory exists
+if [ ! -d "$DST_DIR" ]; then
+  mkdir -p "$DST_DIR"
+else
+  # If the destination directory exists, clear it out
+  if [ "$(ls -A $DST_DIR)" ]; then
+    rm -rf "$DST_DIR"/*
+  fi
+fi
+
+# Copy Ruby scripts
+cp "$SRC_DIR/statsig_ffi.rb" "$DST_DIR/statsig_ffi.rb"
+cp "$SRC_DIR/statsig.rb" "$DST_DIR/statsig.rb"
+
+# Copy library
+cp "$LIB_DIR/libstatsig_ffi.dylib" "$DST_DIR/libstatsig_ffi.dylib"
+
+
+# Check the status of the previous command
+if [ $? -ne 0 ]; then
+    echo "Ruby build script failed"
+    exit 1
+fi

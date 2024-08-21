@@ -1,0 +1,31 @@
+#!/bin/bash
+
+cargo build --release
+
+# Get the directory of the script
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+SRC_DIR="$SCRIPT_DIR/../statsig-ffi/bindings/python"
+DST_DIR="$SCRIPT_DIR/../build/python"
+
+# Ensure empty build dir
+$SCRIPT_DIR/ensure_empty_dir "$DST_DIR"
+$SCRIPT_DIR/ensure_empty_dir "$DST_DIR/sigstat"
+
+# Copy required Python scripts
+cp "$SRC_DIR/statsig.py" "$DST_DIR/sigstat/statsig.py"
+cp "$SRC_DIR/setup.py" "$DST_DIR/setup.py"
+
+# Run the Python build script
+cd "$SCRIPT_DIR/../statsig-ffi/bindings/python"
+python3 build_ffi.py
+
+# Run setup script
+cd "$DST_DIR"
+python3 setup.py sdist
+#python3 setup.py install
+
+# Check the status of the previous command
+if [ $? -ne 0 ]; then
+    echo "Python build script failed"
+    exit 1
+fi

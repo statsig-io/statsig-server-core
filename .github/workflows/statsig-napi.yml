@@ -1,0 +1,217 @@
+name: Statsig Node Api
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  action-info:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print GitHub Event JSON
+        run: |
+          echo "-- Loading JSON from $GITHUB_EVENT_PATH --"
+          cat $GITHUB_EVENT_PATH
+
+      - name: Print Env
+        run: printenv
+
+      - name: Print GitHub Context
+        run: |
+          echo "Printing GitHub context"
+          echo '${{ toJson(github) }}' | jq .
+
+  build:
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          # -- Linux --
+
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            extras: --use-napi-cross --features vendored_openssl
+
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            extras: --use-napi-cross --features vendored_openssl
+
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            extras: --use-napi-cross --features vendored_openssl
+
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            extras: --cross-compile --features vendored_openssl
+
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            extras: --cross-compile --features vendored_openssl
+
+          # -- Windows --
+
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+
+          # - os: windows-latest
+          #   target: i686-pc-windows-msvc
+          #   node_arch: x86
+
+          # -- MacOS --
+
+          - os: macos-latest
+            target: x86_64-apple-darwin
+
+          - os: macos-latest
+            target: aarch64-apple-darwin
+
+    runs-on: ${{ matrix.config.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          architecture: ${{ matrix.config.node_arch || '' }}
+
+      - name: Install Rust Tools
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.config.target }}
+
+      - name: "[Windows-i686] Set Supported Architectures"
+        if: matrix.config.target == 'i686-pc-windows-msvc'
+        run: yarn config set supportedArchitectures.cpu "ia32"
+
+      - name: "[Linux-Musl] Add Zig Compiler"
+        if: ${{ contains(matrix.config.target, 'musl') }}
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: "[MacOS-Arm] Configure C/C++ Compiler"
+        if: matrix.config.target == 'aarch64-apple-darwin'
+        run: ./tools/node/macos_arm_fixes
+
+      - name: Install Dependencies
+        run: yarn install --immutable --mode=skip-build
+        working-directory: statsig-napi
+
+      - name: Cache Cargo Build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo
+            ~/.napi-rs
+            ~/statsig-napi/.cargo
+            ~/statsig-napi/.napi-rs
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build Napi
+        shell: bash
+        run: |
+          ./tools/node/build_node \
+          --target ${{ matrix.config.target }} \
+          ${{ matrix.config.extras }}
+
+      - name: List Files in src/
+        run: ls ${{ github.workspace }}/statsig-napi/src
+
+      - name: Upload Node Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.config.target }}
+          path: statsig-napi/src/sigstat-napi.*.node
+          if-no-files-found: error
+
+      - name: "[MacOS-Arm] Upload JS Files"
+        # We only need these files from one of the builds
+        if: matrix.config.target == 'aarch64-apple-darwin'
+        uses: actions/upload-artifact@v4
+        with:
+          name: js-lib-files
+          path: |
+            statsig-napi/dist/lib/*.js
+            statsig-napi/dist/lib/*.ts
+            statsig-napi/dist/package.json
+          if-no-files-found: error
+
+  publish:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: yarn install
+        working-directory: statsig-napi
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: statsig-napi/artifacts
+
+      - name: List Relevant Files
+        run: |
+          ls -al ${{ github.workspace }}/statsig-napi
+          ls -al ${{ github.workspace }}/statsig-napi/npm
+          ls -al ${{ github.workspace }}/statsig-napi/artifacts
+          ls -al ${{ github.workspace }}/statsig-napi/artifacts/bindings-armv7-unknown-linux-gnueabihf
+
+      - name: Move Artifacts
+        run: yarn artifacts
+        working-directory: statsig-napi
+
+      - name: Copy Files to /build
+        run: |
+          mkdir -p build/node/npm
+          cp -r statsig-napi/npm/* build/node/npm
+          cp -r statsig-napi/artifacts/js-lib-files/* build/node
+          cp statsig-napi/yarn.lock build/node/yarn.lock
+          cp statsig-napi/.npmignore build/node/.npmignore
+
+      - name: List Relevant Files
+        run: |
+          ls -al ${{ github.workspace }}/build/node
+          ls -al ${{ github.workspace }}/build/node/npm
+          ls -al ${{ github.workspace }}/build/node/npm/linux-arm64-musl
+          ls -al ${{ github.workspace }}/build/node/npm/linux-arm64-gnu
+          ls -al ${{ github.workspace }}/build/node/npm/linux-x64-musl
+          ls -al ${{ github.workspace }}/build/node/npm/linux-arm-gnueabihf
+
+      - name: Ensure Required Binaries Exist
+        run: ./tools/node/verify_distribution
+
+      - name: Sync Package Version
+        run: |
+          ./tools/node/beta_tag_package
+          ./tools/node/sync_version
+
+      - name: Publish to NPM
+        if: ${{ github.ref_name == 'main' }}
+        run: |
+          yarn install
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+          npm publish --tag beta --access public
+        working-directory: build/node
+        env:
+          GITHUB_TOKEN: ${{ secrets.STATSIG_CORE_SERVER_SDK_PAT }}
+          NPM_TOKEN: ${{ secrets.SIGSTAT_PUBLISH_NPM }}

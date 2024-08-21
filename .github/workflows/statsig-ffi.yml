@@ -1,0 +1,144 @@
+name: Statsig FFI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          # - armv7-unknown-linux-gnueabihf
+          # - aarch64-unknown-linux-gnu
+          # - x86_64-unknown-freebsd
+          # - aarch64-unknown-linux-musl
+          # - x86_64-unknown-linux-musl
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Cargo Build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Rust Targets
+        run: |
+          rustup target add ${{ matrix.target }}
+
+      - name: Build
+        run: |
+          cargo build -p statsig-ffi --target ${{ matrix.target }} --features vendored_openssl
+          cargo build -p statsig-ffi --target ${{ matrix.target }} --features vendored_openssl --release
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: statsig-ffi-${{ matrix.target }}
+          path: |
+            target/**/release/libstatsig_ffi.so
+            target/**/debug/libstatsig_ffi.so
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-pc-windows-msvc
+          - aarch64-pc-windows-msvc
+          - i686-pc-windows-msvc
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Cargo Build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Rust Targets
+        run: |
+          rustup target add ${{ matrix.target }}
+
+      - name: Build
+        run: |
+          cargo build -p statsig-ffi --target ${{ matrix.target }}
+          cargo build -p statsig-ffi --target ${{ matrix.target }} --release
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: statsig-ffi-${{ matrix.target }}
+          path: |
+            target/**/release/statsig_ffi.dll
+            target/**/debug/statsig_ffi.dll
+            target/**/debug/statsig_ffi.pdb
+          if-no-files-found: error
+
+  build-macos:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-apple-darwin
+          - x86_64-apple-darwin
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Cargo Build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Rust Targets
+        run: |
+          rustup target add ${{ matrix.target }}
+
+      - name: Build
+        run: |
+          cargo build -p statsig-ffi --target=${{ matrix.target }}
+          cargo build -p statsig-ffi --target=${{ matrix.target }} --release
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: statsig-ffi-${{ matrix.target }}
+          path: |
+            target/**/release/libstatsig_ffi.dylib
+            target/**/debug/libstatsig_ffi.dylib
+          if-no-files-found: error

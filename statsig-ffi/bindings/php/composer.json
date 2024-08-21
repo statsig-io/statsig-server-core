@@ -1,0 +1,11 @@
+{
+    "name": "statsig/statsig-ffi",
+    "type": "library",
+    "license": "ISC",
+    "autoload": {
+        "psr-4": {
+            "Statsig\\StatsigFFI\\": "src/"
+        }
+    },
+    "require": {}
+}

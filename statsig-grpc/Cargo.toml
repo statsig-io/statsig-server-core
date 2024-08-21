@@ -1,0 +1,17 @@
+[package]
+name = "statsig-grpc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+statsig = { path = "../statsig-lib" }
+tokio = {version = "1.39.1", features = ["full"]}
+async-trait = "0.1.81"
+tonic = "0.12.1"
+prost = "0.13.1"
+tonic-build = "0.12.1"
+log = "0.4.22"
+chrono = "0.4.38"
+
+[build-dependencies]
+tonic-build = "0.12.1"

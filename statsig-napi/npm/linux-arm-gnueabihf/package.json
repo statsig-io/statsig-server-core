@@ -1,0 +1,18 @@
+{
+  "name": "@sigstat/sigstat-napi-linux-arm-gnueabihf",
+  "version": "0.0.1-beta.13",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm"
+  ],
+  "main": "sigstat-napi.linux-arm-gnueabihf.node",
+  "files": [
+    "sigstat-napi.linux-arm-gnueabihf.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  }
+}

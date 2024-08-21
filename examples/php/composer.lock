@@ -1,0 +1,42 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "db7d0b1a84a61116f80dbda57602edd6",
+    "packages": [
+        {
+            "name": "statsig/statsig-ffi",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../../statsig-ffi/bindings/php",
+                "reference": "df6b9f47f3d6e9c6db24b84ba9ba8537d9c6aa12"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Statsig\\StatsigFFI\\": "src/"
+                }
+            },
+            "license": [
+                "ISC"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {
+        "statsig/statsig-ffi": 20
+    },
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": [],
+    "platform-dev": [],
+    "plugin-api-version": "2.6.0"
+}

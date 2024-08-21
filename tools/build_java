@@ -1,0 +1,24 @@
+#!/bin/bash
+
+cargo build --release
+
+# Get the directory of the script
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+DST_DIR="$SCRIPT_DIR/../build/java"
+SRC_DIR="$SCRIPT_DIR/../statsig-ffi/bindings/java"
+LIB_DIR="$SCRIPT_DIR/../target/release"
+
+# Check if the destination directory exists
+$SCRIPT_DIR/ensure_empty_dir "$DST_DIR"
+
+# Copy all Java files from SRC_DIR to DST_DIR
+cp -r "$SRC_DIR"/* "$DST_DIR/"
+
+# Copy library
+cp "$LIB_DIR/libstatsig_ffi.dylib" "$DST_DIR/libstatsig_ffi.dylib"
+
+# Check the status of the previous command
+if [ $? -ne 0 ]; then
+    echo "Java build script failed"
+    exit 1
+fi

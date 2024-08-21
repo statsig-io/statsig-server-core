@@ -1,0 +1,40 @@
+use crate::evaluation::evaluation_details::EvaluationDetails;
+use crate::event_logging::exposure_utils::{get_metadata_with_details, make_exposure_key};
+use crate::event_logging::statsig_exposure::StatsigExposure;
+use crate::event_logging::statsig_event::StatsigEvent;
+use crate::event_logging::statsig_event_internal::StatsigEventInternal;
+use crate::statsig_user_internal::StatsigUserInternal;
+use crate::evaluation::evaluation_types::SecondaryExposure;
+
+pub const GATE_EXPOSURE_EVENT_NAME: &str = "statsig::gate_exposure";
+
+pub struct GateExposure {
+    pub user: StatsigUserInternal,
+    pub gate_name: String,
+    pub value: bool,
+    pub rule_id: Option<String>,
+    pub secondary_exposures: Option<Vec<SecondaryExposure>>,
+    pub evaluation_details: EvaluationDetails,
+}
+
+impl StatsigExposure for GateExposure {
+    fn make_dedupe_key(&self) -> String {
+        // todo: fill exposure key
+        make_exposure_key(&self.user.user_data, &self.gate_name, None)
+    }
+
+    fn to_internal_event(self) -> StatsigEventInternal {
+        let mut metadata = get_metadata_with_details(self.evaluation_details);
+        metadata.insert("gate".into(), self.gate_name);
+        metadata.insert("gateValue".into(), self.value.to_string());
+        metadata.insert("ruleID".into(), self.rule_id.unwrap_or_default());
+
+        let event = StatsigEvent {
+            event_name: GATE_EXPOSURE_EVENT_NAME.into(),
+            value: None,
+            metadata: Some(metadata),
+        };
+
+        StatsigEventInternal::new(self.user, event, self.secondary_exposures)
+    }
+}

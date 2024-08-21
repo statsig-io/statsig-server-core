@@ -1,0 +1,335 @@
+{
+  "dynamic_configs": {},
+  "feature_gates": {
+    "many_rules": {
+      "type": "feature_gate",
+      "salt": "123123123-f8f8-46f5-a759-8bcbae120831",
+      "enabled": true,
+      "defaultValue": false,
+      "rules": [
+        {
+          "name": "asdfbcvnfdghjkrtuk",
+          "groupName": "local",
+          "passPercentage": 100,
+          "conditions": [
+            "15160374"
+          ],
+          "returnValue": true,
+          "id": "asdfbcvnfdghjkrtuk",
+          "salt": "715687c2-4bda-4ea1-aae1-923b1b28fde1",
+          "idType": "hubID"
+        },
+        {
+          "name": "asdfasfqw45jncmv",
+          "groupName": "backend-configspec",
+          "passPercentage": 0,
+          "conditions": [
+            "1379272732",
+            "2006135342"
+          ],
+          "returnValue": true,
+          "id": "asdfasfqw45jncmv",
+          "salt": "mvcnbmcvnmbcvnm-bbdc-40be-aff4-9611b48a5102",
+          "idType": "hubID"
+        },
+        {
+          "name": "asdfasdfqwerbnbvbmnm",
+          "groupName": "console (non-prod)",
+          "passPercentage": 0,
+          "conditions": [
+            "2306218170",
+            "2264806269"
+          ],
+          "returnValue": true,
+          "id": "asdfasdfqwerbnbvbmnm",
+          "salt": "sdfmnvm-bfbb-4f99-8276-61b5adba4864",
+          "idType": "hubID"
+        },
+        {
+          "name": "asdfasdf",
+          "groupName": "console (prod)",
+          "passPercentage": 0,
+          "conditions": [
+            "958339273",
+            "2264806269"
+          ],
+          "returnValue": true,
+          "id": "asdfasdf",
+          "salt": "12dffdffd-cba8-4d5d-9540-893872e57445",
+          "idType": "hubID"
+        },
+        {
+          "name": "asdfasdf:0.00:2",
+          "groupName": "remove users",
+          "passPercentage": 0,
+          "conditions": [
+            "1753120057"
+          ],
+          "returnValue": true,
+          "id": "zxcvzxcv:0.00:2",
+          "salt": "dfasdfasdf-30fd-496b-b60b-asdf",
+          "idType": "hubID"
+        },
+        {
+          "name": "asdfqwerfasdf",
+          "groupName": "d jobs",
+          "passPercentage": 0,
+          "conditions": [
+            "3512878162"
+          ],
+          "returnValue": true,
+          "id": "sdf2134123",
+          "salt": "asdvzxbfasdf-9feb-4afc-88f3-c3194912653d",
+          "idType": "hubID"
+        },
+        {
+          "name": "123asdvasdfgasf",
+          "groupName": "non prod",
+          "passPercentage": 100,
+          "conditions": [
+            "310088567",
+            "492515622"
+          ],
+          "returnValue": true,
+          "id": "a2fassdvcawe432",
+          "salt": "17f67d26-15a8-4eea-b3b0-e9d0d41b59a9",
+          "idType": "hubID"
+        },
+        {
+          "name": "asdf1q234sdfzxcvgh:100.00:12",
+          "groupName": "us-west",
+          "passPercentage": 100,
+          "conditions": [
+            "3841902233"
+          ],
+          "returnValue": true,
+          "id": "zxcvqwert:100.00:12",
+          "salt": "vxcvxcvqwf-eb1b-4add-90b2-7ab6edf75de7",
+          "idType": "hubID"
+        },
+        {
+          "name": "asdfqwert:50.00:8",
+          "groupName": "us-east (5 replicas + 1 primary)",
+          "passPercentage": 50,
+          "conditions": [
+            "3994978791"
+          ],
+          "returnValue": true,
+          "id": "zxvvxzvcx:50.00:8",
+          "salt": "123123123-0d7c-45e3-b3cc-edea593446ec",
+          "idType": "hubID"
+        },
+        {
+          "name": "asdfasdfadfs:50.00:9",
+          "groupName": "prod",
+          "passPercentage": 50,
+          "conditions": [
+            "492515622"
+          ],
+          "returnValue": true,
+          "id": "adfsadfsadfs:50.00:9",
+          "salt": "adfsadfs-8dbf-4c5c-a802-4bbc84950130",
+          "idType": "hubID"
+        }
+      ],
+      "idType": "hubID",
+      "entity": "feature_gate",
+      "targetAppIDs": [
+        "8asdfFDSFasfj789790"
+      ]
+    },
+    "public_dev_only": {
+      "type": "feature_gate",
+      "salt": "asdfwer-bf3e-4508-bafe-89b50cf31d7f",
+      "enabled": true,
+      "defaultValue": false,
+      "rules": [
+        {
+          "name": "asdfasdrqwrasfgcvxb11:100.00:2",
+          "groupName": "dev",
+          "passPercentage": 100,
+          "conditions": [
+            "2845540553",
+            "1828919350"
+          ],
+          "returnValue": true,
+          "id": "asdfasdrqwrasfgcvxb11:100.00:2",
+          "salt": "78e55519-f2db-4fe2-9482-12313312231",
+          "idType": "userID"
+        }
+      ],
+      "idType": "userID",
+      "entity": "feature_gate",
+      "targetAppIDs": [
+        "8asdfFDSFasfj789790"
+      ]
+    }
+  },
+  "experiment_to_layer": {},
+  "layer_configs": {},
+  "has_updates": true,
+  "time": 1723061643057,
+  "company_id": "DSF123DFDH13431",
+  "condition_map": {
+    "2845540553": {
+      "type": "environment_field",
+      "targetValue": [
+        "development"
+      ],
+      "operator": "any",
+      "field": "tier",
+      "additionalValues": {},
+      "idType": "userID"
+    },
+    "1828919350": {
+      "type": "public",
+      "targetValue": null,
+      "operator": null,
+      "field": null,
+      "additionalValues": {},
+      "idType": "userID"
+    },
+    "15160374": {
+      "type": "unit_id",
+      "targetValue": [
+        "my-computer-local"
+      ],
+      "operator": "any",
+      "field": "hubID",
+      "additionalValues": {
+        "custom_id": "hubID"
+      },
+      "idType": "hubID"
+    },
+    "310088567": {
+      "type": "environment_field",
+      "targetValue": [
+        "development",
+        "latest",
+        "staging"
+      ],
+      "operator": "any",
+      "field": "tier",
+      "additionalValues": {},
+      "idType": "hubID"
+    },
+    "492515622": {
+      "type": "public",
+      "targetValue": null,
+      "operator": null,
+      "field": null,
+      "additionalValues": {},
+      "idType": "hubID"
+    },
+    "958339273": {
+      "type": "environment_field",
+      "targetValue": [
+        "production"
+      ],
+      "operator": "any",
+      "field": "tier",
+      "additionalValues": {},
+      "idType": "hubID"
+    },
+    "1379272732": {
+      "type": "environment_field",
+      "targetValue": [
+        "latest",
+        "staging",
+        "development",
+        "production"
+      ],
+      "operator": "any",
+      "field": "tier",
+      "additionalValues": {},
+      "idType": "hubID"
+    },
+    "1753120057": {
+      "type": "user_field",
+      "targetValue": [
+        "backend",
+        "backend-console-api",
+        "intern"
+      ],
+      "operator": "any",
+      "field": "service",
+      "additionalValues": {
+        "custom_field": "service"
+      },
+      "idType": "hubID"
+    },
+    "2006135342": {
+      "type": "user_field",
+      "targetValue": [
+        "backend-configspec"
+      ],
+      "operator": "any",
+      "field": "service",
+      "additionalValues": {
+        "custom_field": "service"
+      },
+      "idType": "hubID"
+    },
+    "2264806269": {
+      "type": "unit_id",
+      "targetValue": "console*",
+      "operator": "str_matches",
+      "field": "hubID",
+      "additionalValues": {
+        "custom_id": "hubID"
+      },
+      "idType": "hubID"
+    },
+    "2306218170": {
+      "type": "environment_field",
+      "targetValue": [
+        "latest",
+        "staging"
+      ],
+      "operator": "any",
+      "field": "tier",
+      "additionalValues": {},
+      "idType": "hubID"
+    },
+    "3512878162": {
+      "type": "unit_id",
+      "targetValue": [
+        "d-run-"
+      ],
+      "operator": "str_contains_any",
+      "field": "hubID",
+      "additionalValues": {
+        "custom_id": "hubID"
+      },
+      "idType": "hubID"
+    },
+    "3841902233": {
+      "type": "user_field",
+      "targetValue": [
+        "some-west"
+      ],
+      "operator": "any",
+      "field": "region",
+      "additionalValues": {
+        "custom_field": "region"
+      },
+      "idType": "hubID"
+    },
+    "3994978791": {
+      "type": "user_field",
+      "targetValue": [
+        "some-use"
+      ],
+      "operator": "any",
+      "field": "region",
+      "additionalValues": {
+        "custom_field": "region"
+      },
+      "idType": "hubID"
+    }
+  },
+  "response_format": "dcs-v2",
+  "sdk_keys_to_app_ids": {},
+  "id_lists": {},
+  "diagnostics": {}
+}

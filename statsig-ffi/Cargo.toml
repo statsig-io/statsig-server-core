@@ -1,0 +1,28 @@
+[package]
+name = "statsig_ffi"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+statsig = { path = "../statsig-lib" }
+serde_json = "1.0.120"
+tokio = "1.39.1"
+lazy_static = "1.5.0"
+log = "0.4.22"
+jni = "0.21.1"
+
+
+[build-dependencies]
+csbindgen = "1.9.2"
+cbindgen = "0.26.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[[test]]
+name = "tests"
+path = "tests/main.rs"
+
+[features]
+default = []
+vendored_openssl = ["statsig/vendored_openssl"]

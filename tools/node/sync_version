@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Get the directory of the current script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BUILD_DIR="$SCRIPT_DIR/../../build/node"
+
+# File to read the version from
+VERSION_FILE="$BUILD_DIR/package.json"
+SEARCH_DIR="$BUILD_DIR/npm"
+
+if [ ! -f "$VERSION_FILE" ]; then
+  echo "Version file $VERSION_FILE not found."
+  exit 1
+fi
+
+# Read the version from the VERSION_FILE
+VERSION=$(jq -r '.version' "$VERSION_FILE")
+
+if [ -z "$VERSION" ]; then
+  echo "Could not read version from $VERSION_FILE."
+  exit 1
+fi
+
+echo "Updating target versions to: $VERSION"
+
+# Function to update the version in package.json using jq
+update_version() {
+  local file=$1
+  local package_name=$(jq -r '.name' "$file")
+  
+  if [[ "$package_name" == @sigstat/sigstat-napi* ]]; then
+    echo "Updating version in: $file"
+    jq --arg new_version "$VERSION" '.version = $new_version' "$file" > tmp.$$.json && mv tmp.$$.json "$file"
+  fi
+}
+
+export -f update_version
+export VERSION
+
+# Find all package.json files and update version if the name matches
+find "$SEARCH_DIR" -name "package.json" -exec bash -c 'update_version "$0"' {} \;
+
+echo "Update complete."

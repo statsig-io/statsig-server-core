@@ -1,0 +1,15 @@
+{
+  "name": "@sigstat/sigstat-napi-darwin-universal",
+  "version": "0.0.1-beta.13",
+  "os": [
+    "darwin"
+  ],
+  "main": "sigstat-napi.darwin-universal.node",
+  "files": [
+    "sigstat-napi.darwin-universal.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  }
+}
