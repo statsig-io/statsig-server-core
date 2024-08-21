@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 
 public class Statsig implements AutoCloseable {
-    private final long statsigRef;
+    private final int statsigRef;
     private final ByteBuffer buffer;
     private final Gson gson;
 
@@ -18,9 +18,9 @@ public class Statsig implements AutoCloseable {
      * multiple instances. However, these should be maintained throughout the application's lifecycle, rather than
      * being created for each request or thread.
      *
-     * @param sdkKey secret key to connect to Statsig Service
+     * @param sdkKey  secret key to connect to Statsig Service
      * @param options a customized instance of StatsigOptions that configures the behavior of the
-     *            Statsig instance.
+     *                Statsig instance.
      */
     public Statsig(String sdkKey, StatsigOptions options) {
         int estimatedSize = 1024 * 1024 * 5;
@@ -29,7 +29,7 @@ public class Statsig implements AutoCloseable {
         this.gson = new Gson();
     }
 
-    public long getRef() {
+    public int getRef() {
         return statsigRef;
     }
 

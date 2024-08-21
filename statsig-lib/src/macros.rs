@@ -1,3 +1,4 @@
+
 #[macro_export]
 macro_rules! unwrap_or_return {
     ($res: expr, $code: expr) => {
@@ -34,7 +35,7 @@ macro_rules! read_lock_or_return {
         match $lock.read() {
             Ok(data) => data,
             Err(e) => {
-                eprintln!("Warning: Failed to acquire read lock on RwLock, {}", e);
+                $crate::log_e!("Warning: Failed to acquire read lock on RwLock, {}", e);
                 return $ret_val;
             }
         }
@@ -47,7 +48,7 @@ macro_rules! read_lock_or_else {
         match $lock.read() {
             Ok(data) => data,
             Err(e) => {
-                eprintln!("Warning: Failed to acquire read lock on RwLock {}", e);
+                $crate::log_e!("Warning: Failed to acquire read lock on RwLock {}", e);
                 $else_block
             }
         }

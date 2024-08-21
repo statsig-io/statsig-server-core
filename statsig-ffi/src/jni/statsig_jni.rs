@@ -1,21 +1,19 @@
-use std::ptr::null;
+use jni::sys::{jboolean, jclass, jint, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
-use jni::sys::{jboolean, jclass, jlong, JNI_FALSE, JNI_TRUE, jobject, jstring};
-use lazy_static::lazy_static;
-use crate::statsig_c::statsig_check_gate;
 
-use std::sync::{Arc, Mutex};
 use jni::objects::{JClass, JObject, JString};
-use statsig::{log_d, log_e, Statsig, StatsigOptions, StatsigUser};
-use crate::instance_manager::{InstanceManager, OPTIONS_INSTANCES, STATSIG_INSTANCES, USER_INSTANCES};
+use statsig::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES, USER_INSTANCES};
+use statsig::{
+    get_instance_or_else, get_instance_or_noop, get_instance_or_return, log_d, log_e, Statsig,
+};
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
     mut env: JNIEnv,
     _class: JClass,
     sdk_key: JString,
-    options_ref: jlong,
-) -> jlong {
+    options_ref: jint,
+) -> jint {
     // StatsigOptions::new(); // temp: enable logging
 
     let sdk_key: String = match env.get_string(&sdk_key) {
@@ -38,24 +36,21 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRelease(
     _env: JNIEnv,
     _class: JClass,
-    id: jlong,
+    id: jint,
 ) {
     STATSIG_INSTANCES.release(id);
 }
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
-    mut env: JNIEnv,
+    env: JNIEnv,
     _class: JClass,
-    statsig_ref: jlong,
+    statsig_ref: jint,
     callback: JObject,
 ) {
     log_d!("Statsig Init {}", statsig_ref);
 
-    let statsig = match STATSIG_INSTANCES.get(statsig_ref) {
-        Some(s) => s,
-        None => return,
-    };
+    let statsig = get_instance_or_noop!(STATSIG_INSTANCES, statsig_ref);
 
     if callback.is_null() {
         log_e!("Callback is null");
@@ -70,7 +65,9 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
         }
     };
 
-    let global_callback = env.new_global_ref(callback).expect("Failed to create global ref");
+    let global_callback = env
+        .new_global_ref(callback)
+        .expect("Failed to create global ref");
 
     statsig.initialize_with_callback(move || {
         let mut env = vm.attach_current_thread().unwrap();
@@ -84,20 +81,15 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetClientInitResponse(
-    mut env: JNIEnv,
+    env: JNIEnv,
     _class: JClass,
-    statsig_ref: jlong,
-    statsig_user_ref: jlong
+    statsig_ref: jint,
+    user_ref: jint,
 ) -> jstring {
-    let statsig = match STATSIG_INSTANCES.get(statsig_ref) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
-    };
-
-    let user = match USER_INSTANCES.get(statsig_user_ref) {
-        Some(u) => u,
-        None => return std::ptr::null_mut(),
-    };
+    let statsig = get_instance_or_else!(STATSIG_INSTANCES, statsig_ref, {
+        return std::ptr::null_mut();
+    });
+    let user = get_instance_or_else!(USER_INSTANCES, user_ref, { return std::ptr::null_mut() });
 
     let response = statsig.get_client_init_response(user.as_ref());
 
@@ -116,21 +108,18 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetClientInitResponse(
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigShutdown(
     mut env: JNIEnv,
     _class: JClass,
-    statsig_ref: jlong,
+    statsig_ref: jint,
     callback: JObject,
 ) {
     log_d!("Statsig Shutdown {}", statsig_ref);
 
-    let statsig = match STATSIG_INSTANCES.get(statsig_ref) {
-        Some(s) => s,
-        None => return,
-    };
+    let statsig = get_instance_or_noop!(STATSIG_INSTANCES, statsig_ref);
 
     if callback.is_null() {
         log_e!("Callback is null");
         return;
     }
-    
+
     let _ = statsig.shutdown();
     let _ = env.call_method(callback, "run", "()V", &[]);
 }
@@ -138,20 +127,13 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigShutdown(
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCheckGate(
     mut env: JNIEnv,
-    class: jclass,
-    statsig_ref: jlong,
-    user_ref: jlong,
+    _class: jclass,
+    statsig_ref: jint,
+    user_ref: jint,
     gate_name: JString,
 ) -> jboolean {
-    let statsig = match STATSIG_INSTANCES.get(statsig_ref) {
-        Some(s) => s,
-        None => return JNI_FALSE,
-    };
-
-    let user = match USER_INSTANCES.get(user_ref) {
-        Some(u) => u,
-        None => return JNI_FALSE,
-    };
+    let statsig = get_instance_or_return!(STATSIG_INSTANCES, statsig_ref, JNI_FALSE);
+    let user = get_instance_or_return!(USER_INSTANCES, user_ref, JNI_FALSE);
 
     let gate_name: String = match env.get_string(&gate_name) {
         Ok(s) => s.into(),
@@ -160,6 +142,6 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCheckGate(
 
     match statsig.check_gate(user.as_ref(), &gate_name) {
         true => JNI_TRUE,
-        false => JNI_FALSE
+        false => JNI_FALSE,
     }
 }

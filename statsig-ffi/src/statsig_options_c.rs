@@ -1,5 +1,4 @@
-use statsig::statsig_options::StatsigOptionsBuilder;
-use statsig::StatsigOptions;
+use statsig::{log_d, log_w, StatsigOptions};
 
 #[repr(C)]
 pub struct StatsigOptionsRef {
@@ -9,7 +8,7 @@ pub struct StatsigOptionsRef {
 impl StatsigOptionsRef {
     pub fn to_internal(&self) -> Option<&StatsigOptions> {
         if self.pointer == 0 {
-            println!("Failed to fetch StatsigOptions. Reference has been released");
+            log_w!("Failed to fetch StatsigOptions. Reference has been released");
             return None;
         }
 
@@ -21,7 +20,7 @@ impl StatsigOptionsRef {
 pub extern "C" fn statsig_options_create() -> StatsigOptionsRef {
     let instance = Box::new(StatsigOptions::new() );
     let pointer = Box::into_raw(instance) as usize;
-    println!("Created StatsigOptions {}", pointer);
+    log_d!("Created StatsigOptions {}", pointer);
 
     StatsigOptionsRef {
         pointer,
@@ -31,13 +30,13 @@ pub extern "C" fn statsig_options_create() -> StatsigOptionsRef {
 #[no_mangle]
 pub extern "C" fn statsig_options_release(options_ref: *mut StatsigOptionsRef) {
     let ref_obj = unsafe { &mut *options_ref };
-    println!("Releasing StatsigOptions {}", ref_obj.pointer);
+    log_d!("Releasing StatsigOptions {}", ref_obj.pointer);
 
     if ref_obj.pointer != 0 {
         unsafe { drop(Box::from_raw(ref_obj.pointer as *mut StatsigOptions)) };
         ref_obj.pointer = 0;
-        println!("StatsigOptions released.");
+        log_d!("StatsigOptions released.");
     } else {
-        println!("Warn: StatsigOptions already released.");
+        log_w!("StatsigOptions already released.");
     }
 }

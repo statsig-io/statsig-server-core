@@ -1,7 +1,7 @@
 package com.statsig;
 
 public class StatsigOptions implements AutoCloseable {
-    private final long ref;
+    private final int ref;
 
     private StatsigOptions(Builder builder) {
         this.ref = StatsigJNI.statsigOptionsCreate(
@@ -14,7 +14,7 @@ public class StatsigOptions implements AutoCloseable {
         );
     }
 
-    public long getRef() {
+    public int getRef() {
         return ref;
     }
 

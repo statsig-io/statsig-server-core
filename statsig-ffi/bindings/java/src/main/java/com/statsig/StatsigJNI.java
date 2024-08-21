@@ -21,17 +21,17 @@ public class StatsigJNI {
     /**
      * Statsig
      */
-    public static native long statsigCreate(String sdkKey, long optionsRef);
-    public static native void statsigRelease(long statsigRef);
-    public static native void statsigInitialize(long statsigRef, Runnable callback);
-    public static native void statsigShutdown(long statsigRef, Runnable callback);
-    public static native boolean statsigCheckGate(long statsigRef, long userRef, String gateName);
-    public static native String statsigGetClientInitResponse(long statsigRef, long userRef);
+    public static native int statsigCreate(String sdkKey, int optionsRef);
+    public static native void statsigRelease(int statsigRef);
+    public static native void statsigInitialize(int statsigRef, Runnable callback);
+    public static native void statsigShutdown(int statsigRef, Runnable callback);
+    public static native boolean statsigCheckGate(int statsigRef, int userRef, String gateName);
+    public static native String statsigGetClientInitResponse(int statsigRef, int userRef);
 
     /**
      * StatsigUser
      */
-    public static native long statsigUserCreate(
+    public static native int statsigUserCreate(
             String userId,
             String customIdsJson,
             String email,
@@ -43,12 +43,12 @@ public class StatsigJNI {
             String customJson,
             String privateAttributesJson
     );
-    public static native void statsigUserRelease(long userRef);
+    public static native void statsigUserRelease(int userRef);
 
     /**
      * StatsigOptions
      */
-    public static native long statsigOptionsCreate(
+    public static native int statsigOptionsCreate(
             String specsUrl,
             String logEventUrl,
             long specsSyncIntervalMs,
@@ -56,5 +56,5 @@ public class StatsigJNI {
             long eventLoggingMaxQueueSize,
             String environment
     );
-    public static native void statsigOptionsRelease(long optionsRef);
+    public static native void statsigOptionsRelease(int optionsRef);
 }

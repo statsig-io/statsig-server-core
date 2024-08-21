@@ -1,7 +1,7 @@
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::spec_types::{Condition, Rule, Spec};
-use crate::{dyn_value, unwrap_or_noop, unwrap_or_return};
+use crate::{dyn_value, log_e, unwrap_or_noop, unwrap_or_return};
 use chrono::{Duration, Utc};
 use lazy_static::lazy_static;
 use crate::evaluation::evaluation_types::SecondaryExposure;
@@ -169,7 +169,7 @@ fn evaluate_nested_gate<'a>(
     let gate_name = match target_value.string_value.as_ref() {
         Some(name) => name,
         None => {
-            println!("Invalid target_value for condition {}", condition_type);
+            log_e!("Invalid target_value for condition {}", condition_type);
             ctx.result.unsupported = true;
             return;
         }

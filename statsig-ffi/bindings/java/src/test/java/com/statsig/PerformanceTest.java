@@ -16,7 +16,7 @@ public class PerformanceTest {
         long startTime = System.nanoTime();
         String result = null;
 
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             String currUser = "user_" + i;
             try (StatsigUser user = new StatsigUser(currUser, "weihao@statsig.com")) {
                 try {

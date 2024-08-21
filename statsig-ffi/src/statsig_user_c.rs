@@ -1,4 +1,4 @@
-use statsig::{StatsigUser};
+use statsig::{log_d, log_w, StatsigUser};
 use std::os::raw::c_char;
 use statsig::statsig_user::StatsigUserBuilder;
 use crate::ffi_utils::{c_char_to_string, parse_json_to_map};
@@ -11,7 +11,7 @@ pub struct StatsigUserRef {
 impl StatsigUserRef {
     pub fn to_internal(&self) -> Option<&StatsigUser> {
         if self.pointer == 0 {
-            println!("Failed to fetch StatsigUser. Reference has been released");
+            log_w!("Failed to fetch StatsigUser. Reference has been released");
             return None;
         }
 
@@ -73,13 +73,13 @@ pub extern "C" fn statsig_user_create(
 #[no_mangle]
 pub extern "C" fn statsig_user_release(user_ref: *mut StatsigUserRef) {
     let ref_obj = unsafe { &mut *user_ref };
-    // println!("Releasing StatsigUser {}", ref_obj.pointer);
+    log_d!("Releasing StatsigUser {}", ref_obj.pointer);
 
     if ref_obj.pointer != 0 {
         unsafe { drop(Box::from_raw(ref_obj.pointer as *mut StatsigUser)) };
         ref_obj.pointer = 0;
-        // println!("StatsigUser released.");
+        log_d!("StatsigUser released.");
     } else {
-        println!("Warn: StatsigUser already released.");
+        log_w!("StatsigUser already released.");
     }
 }

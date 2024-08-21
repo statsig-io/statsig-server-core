@@ -5,7 +5,7 @@ import com.google.gson.Gson;
 import java.util.Map;
 
 public class StatsigUser implements AutoCloseable {
-    private long ref;
+    private int ref;
 
     // Just to make test easier
     public StatsigUser(String userId, String email) {
@@ -52,12 +52,12 @@ public class StatsigUser implements AutoCloseable {
     public void close() {
 
         if (ref != 0) {
-StatsigJNI.statsigUserRelease(this.ref);
+            StatsigJNI.statsigUserRelease(this.ref);
             this.ref = 0;
         }
     }
 
-    public long getRef() {
+    public int getRef() {
         return ref;
     }
 }

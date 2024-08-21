@@ -1,7 +1,7 @@
 use std::os::raw::c_char;
 use std::slice;
 use serde_json::json;
-use statsig::Statsig;
+use statsig::{log_d, log_w, Statsig};
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::statsig_options_c::StatsigOptionsRef;
 use crate::statsig_user_c::StatsigUserRef;
@@ -14,7 +14,7 @@ pub struct StatsigRef {
 impl StatsigRef {
     pub fn to_internal(&self) -> Option<&Statsig> {
         if self.pointer == 0 {
-            println!("Failed to fetch Statsig. Reference has been released");
+            log_w!("Failed to fetch Statsig. Reference has been released");
             return None;
         }
 
@@ -34,7 +34,7 @@ pub extern "C" fn statsig_create(
     let inst = Statsig::new(&sdk_key, None);
     let pointer = Box::into_raw(Box::new(inst)) as usize;
 
-    println!("Created Statsig {}", pointer);
+    log_d!("Created Statsig {}", pointer);
     StatsigRef {
         pointer,
     }
@@ -43,14 +43,14 @@ pub extern "C" fn statsig_create(
 #[no_mangle]
 pub extern "C" fn statsig_release(statsig_ref: *mut StatsigRef) {
     let ref_obj = unsafe { &mut *statsig_ref };
-    println!("Releasing Statsig {}", ref_obj.pointer);
+    log_d!("Releasing Statsig {}", ref_obj.pointer);
 
     if ref_obj.pointer != 0 {
         unsafe { drop(Box::from_raw(ref_obj.pointer as *mut Statsig)) };
         ref_obj.pointer = 0;
-        println!("Statsig released.");
+        log_d!("Statsig released.");
     } else {
-        println!("Warn: Statsig already released.");
+        log_w!("Statsig already released.");
     }
 }
 
@@ -59,7 +59,7 @@ pub extern "C" fn statsig_initialize(
     statsig_ref: StatsigRef,
     callback: extern "C" fn(),
 ) {
-    println!("Statsig Init {}", statsig_ref.pointer);
+    log_d!("Statsig Init {}", statsig_ref.pointer);
     let statsig = statsig_ref.to_internal().unwrap();
 
     statsig.initialize_with_callback(move || {
