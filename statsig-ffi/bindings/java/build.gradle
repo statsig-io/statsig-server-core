@@ -10,7 +10,8 @@ java {
 }
 
 tasks.withType(Test).configureEach {
-    jvmArgs = ['-Djava.library.path=/Users/weihaoding/Documents/statsig-singularity/target/release']
+//    jvmArgs = ['-Djava.library.path=/Users/weihaoding/Documents/statsig-singularity/target/release']
+    jvmArgs = ['-Djava.library.path=/Users/danielloomb/Projects/kong/bridges/core-napi-bridge/sdk/target/debug']
 }
 
 repositories {
