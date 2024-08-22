@@ -182,7 +182,35 @@ mod exposure_tests {
         assert_eq!(one["gate"], "global_holdout");
         assert_eq!(one["ruleID"], "3QoA4ncNdVGBaMt3N1KYjz:0.50:1");
         assert_eq!(one["gateValue"], "false");
+    }
 
+    #[tokio::test]
+    async fn test_get_layer_with_holdouts() {
+        let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
+        let specs_adapter = create_bootrapped_specs_adapter();
+        let user = StatsigUser::with_user_id("user-in-layer-holdout-4".into());
+
+        let statsig = create_statsig(&specs_adapter, &logging_adapter);
+        statsig.initialize().await.unwrap();
+
+        let layer = statsig.get_layer(&user, "test_layer_in_holdout");
+        layer.get_string("layer_val");
+
+        sleep(Duration::from_millis(1)).await;
+        statsig.flush_events().await;
+
+        let event = logging_adapter.force_get_first_event().await;
+        let secondary_expo = enforce_array(&event["secondaryExposures"]);
+
+        let one = enforce_object(&secondary_expo[0]);
+        assert_eq!(one["gate"], "global_holdout");
+        assert_eq!(one["ruleID"], "3QoA4ncNdVGBaMt3N1KYjz:0.50:1");
+        assert_eq!(one["gateValue"], "false");
+
+        let two = enforce_object(&secondary_expo[1]);
+        assert_eq!(two["gate"], "layer_holdout");
+        assert_eq!(two["ruleID"], "2bAVp6R3C85vCYrR6be36n:10.00:5");
+        assert_eq!(two["gateValue"], "true");
     }
 
     fn create_bootrapped_specs_adapter() -> Arc<MockSpecsAdapter> {

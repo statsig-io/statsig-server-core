@@ -29,6 +29,7 @@ impl Evaluator {
             }
 
             if evaluate_config_delegate(ctx, rule) {
+                ctx.finalize_evaluation();
                 return;
             }
 
@@ -42,20 +43,20 @@ impl Evaluator {
                 ctx.result.json_value = Some(&spec.default_value);
             }
 
-            ctx.result.finalize_secondary_exposures();
             ctx.result.rule_id = Some(&rule.id);
             ctx.result.group_name = rule.group_name.as_ref();
             ctx.result.is_experiment_group = rule.is_experiment_group.unwrap_or(false);
+            ctx.finalize_evaluation();
             return;
         }
 
-        ctx.result.finalize_secondary_exposures();
         ctx.result.bool_value = spec.default_value.string_value == "true";
         ctx.result.json_value = Some(&spec.default_value);
         ctx.result.rule_id = match spec.enabled {
             true => Some(&DEFAULT_RULE),
             false => Some(&DISABLED_RULE),
         };
+        ctx.finalize_evaluation();
     }
 }
 
@@ -189,6 +190,7 @@ fn evaluate_nested_gate<'a>(
         .feature_gates
         .get(gate_name.as_str()));
 
+    ctx.increment_nesting();
     Evaluator::evaluate(ctx, spec);
 
     if ctx.result.unsupported {
@@ -220,6 +222,7 @@ fn evaluate_config_delegate<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) 
 
     ctx.result.undelegated_secondary_exposures = Some(ctx.result.secondary_exposures.clone());
 
+    ctx.increment_nesting();
     Evaluator::evaluate(ctx, delegate_spec);
 
     ctx.result.explicit_parameters = delegate_spec.explicit_parameters.as_ref();
