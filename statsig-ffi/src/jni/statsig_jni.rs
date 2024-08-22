@@ -3,6 +3,8 @@ use jni::sys::{jboolean, jclass, jint, jstring, JNI_FALSE, JNI_TRUE, jlong, jobj
 use jni::JNIEnv;
 
 use jni::objects::{JClass, JMap, JObject, JString};
+use serde::Deserialize;
+
 use statsig::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES, USER_INSTANCES};
 use statsig::{
     get_instance_or_else, get_instance_or_noop, get_instance_or_return, log_d, log_e, Statsig,
@@ -280,7 +282,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEvent(
     user_ref: jint,
     event_name: JString,
     value: JString,
-    metadata: JMap,
+    metadata: JObject,
 ) {
     let statsig = get_instance_or_noop!(STATSIG_INSTANCES, statsig_ref);
     let user = get_instance_or_noop!(USER_INSTANCES, user_ref);
