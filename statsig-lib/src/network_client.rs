@@ -75,6 +75,7 @@ impl NetworkClient {
                 request_args.query_params,
                 json!(request_args.body)
             );
+
             match request.send().await {
                 Ok(response) => {
                     log_i!(

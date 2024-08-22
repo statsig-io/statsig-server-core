@@ -73,7 +73,7 @@ impl EventLoggingAdapter for StatsigEventLoggingAdapter {
     async fn log_events(
         &self,
         payload: HashMap<String, Value>,
-        _event_count: usize,
+        event_count: usize,
     ) -> Result<bool, String> {
         let opt_context = match self.context.read() {
             Ok(c) => c.clone(),
@@ -84,7 +84,7 @@ impl EventLoggingAdapter for StatsigEventLoggingAdapter {
             Some(c) => c,
             None => return Err("Logging adapter not setup".to_string()),
         };
-        log_d!("Logging Events - {}", json!(payload).to_string());
+        log_d!("Logging Events ({}) - {}", event_count, json!(payload).to_string());
 
         let response = context
             .network

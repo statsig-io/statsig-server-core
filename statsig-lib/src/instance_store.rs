@@ -50,7 +50,6 @@ pub enum InstanceType {
     Statsig = 1,
     StatsigOptions = 2,
     StatsigUser = 3,
-    // Add more types as needed, up to 64
 }
 
 impl Display for InstanceType {
@@ -117,7 +116,7 @@ impl IdGenerator {
         loop {
             let current = self.counter.fetch_add(1, Ordering::Relaxed);
 
-            // Wrap around if we exceed the max value for 26 bits
+            // Wrap around if we exceed the max value
             let id = if current > MAX_ID_VALUE {
                 log_w!("Counter Reset");
                 self.counter.store(0, Ordering::Relaxed);

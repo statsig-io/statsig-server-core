@@ -32,6 +32,12 @@ pub struct DynamicConfig {
     pub(crate) __evaluation: Option<DynamicConfigEvaluation>,
 }
 
+impl DynamicConfig {
+    pub fn get_f64(&self, param_name: &str) -> Option<f64> {
+        self.value.get(param_name)?.float_value.clone()
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Experiment {
     pub name: String,

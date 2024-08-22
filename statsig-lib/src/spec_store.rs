@@ -65,7 +65,8 @@ impl SpecStore {
                 }
 
                 log_d!(
-                    "SpecStore - Full Update [gates({}), configs({}), layers({})]",
+                    "SpecStore - Full Update - {} - [gates({}), configs({}), layers({})]",
+                    full.time,
                     full.feature_gates.len(),
                     full.dynamic_configs.len(),
                     full.layer_configs.len(),

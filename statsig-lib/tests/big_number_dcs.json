@@ -1,0 +1,28 @@
+{
+  "dynamic_configs": {
+    "big_number": {
+      "type": "dynamic_config",
+      "salt": "d3cf0a17-42dd-45cb-affe-00a7ac89a545",
+      "enabled": true,
+      "defaultValue": {
+        "foo": 1e+21,
+        "bar": 1e+60,
+        "boo": 99,
+        "bbb": 1e+55,
+        "rar": 9999999999,
+        "f64": 0.9999999999999991
+      },
+      "rules": [],
+      "idType": "userID",
+      "entity": "dynamic_config"
+    }
+  },
+  "feature_gates": {},
+  "experiment_to_layer": {},
+  "layer_configs": {},
+  "has_updates": true,
+  "time": 1724303781428,
+  "company_id": "5NprLGRxV3W28hreG51Z7n",
+  "condition_map": {},
+  "response_format": "dcs-v2"
+}
