@@ -10,6 +10,7 @@ tokio = "1.39.1"
 lazy_static = "1.5.0"
 log = "0.4.22"
 jni = "0.21.1"
+serde = { version = "1.0.204", features = ["derive"] }
 
 
 [build-dependencies]

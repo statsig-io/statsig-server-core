@@ -1,5 +1,7 @@
 package com.statsig;
 
+import java.util.Map;
+
 public class StatsigJNI {
     private static boolean libraryLoaded;
 
@@ -26,6 +28,10 @@ public class StatsigJNI {
     public static native void statsigInitialize(int statsigRef, Runnable callback);
     public static native void statsigShutdown(int statsigRef, Runnable callback);
     public static native boolean statsigCheckGate(int statsigRef, int userRef, String gateName);
+    public static native String statsigGetFeatureGate(int statsigRef, int userRef, String gateName);
+    public static native String statsigGetLayer(int statsigRef, int userRef, String layerName);
+    public static native String statsigGetExperiment(int statsigRef, int userRef, String experimentName);
+    public static native String statsigGetDynamicConfig(int statsigRef, int userRef, String configName);
     public static native String statsigGetClientInitResponse(int statsigRef, int userRef);
 
     /**

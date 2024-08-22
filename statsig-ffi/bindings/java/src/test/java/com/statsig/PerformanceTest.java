@@ -2,10 +2,13 @@ package com.statsig;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-public class PerformanceTest {
+import static org.junit.jupiter.api.Assertions.fail;
 
+public class PerformanceTest {
     @Test
     public void test() throws ExecutionException, InterruptedException {
         StatsigOptions options = new StatsigOptions.Builder().build();
