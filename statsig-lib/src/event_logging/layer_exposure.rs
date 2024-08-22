@@ -18,8 +18,13 @@ pub struct LayerExposure {
 
 impl StatsigExposure for LayerExposure {
     fn make_dedupe_key(&self) -> String {
-        // todo: fill exposure key
-        make_exposure_key(&self.user.user_data, &self.layer_name, None)
+        let rule_id = match &self.evaluation {
+            Some(eval) => Some(&eval.base.base.rule_id),
+            None => None,
+        };
+
+        // todo: Node dedupes on all metadata values. Important?
+        make_exposure_key(&self.user.user_data, &self.layer_name, rule_id, Some(vec![self.parameter_name.clone()]))
     }
 
     fn to_internal_event(self) -> StatsigEventInternal {

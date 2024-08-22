@@ -62,8 +62,16 @@ impl From<i64> for DynamicValue {
     fn from(value: i64) -> Self {
         DynamicValue {
             int_value: Some(value),
+            string_value: Some(value.to_string()),
+            lowercase_string_value: Some(value.to_string()),
             ..Self::default()
         }
+    }
+}
+
+impl From<i32> for DynamicValue {
+    fn from(value: i32) -> Self {
+        Self::from(value as i64)
     }
 }
 
@@ -84,6 +92,8 @@ impl From<JsonValue> for DynamicValue {
             JsonValue::Number(n) => DynamicValue {
                 float_value: n.as_f64(),
                 int_value: n.as_i64(),
+                string_value: Some(json_value.to_string()),
+                lowercase_string_value: Some(json_value.to_string()),
                 json_value,
                 ..DynamicValue::new()
             },
