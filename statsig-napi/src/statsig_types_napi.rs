@@ -25,6 +25,7 @@ pub struct ExperimentNapi {
   #[napi(js_name = "ruleID")]
   pub rule_id: String,
   pub id_type: String,
+  pub group_name: Option<String>,
 }
 
 #[napi(object)]
@@ -33,7 +34,9 @@ pub struct LayerNapi {
   #[napi(js_name = "ruleID")]
   pub rule_id: String,
   pub id_type: String,
+  pub group_name: Option<String>,
 
   #[napi(js_name = "__jsonValue")]
   pub __json_value: String,
+  pub __json_user: String
 }

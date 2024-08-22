@@ -17,6 +17,21 @@ pub struct EvaluatorResult<'a> {
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
 }
 
+impl<'a> EvaluatorResult<'a> {
+    pub fn finalize_secondary_exposures(&mut self) {
+        if self.secondary_exposures.is_empty() {
+            return
+        }
+
+        if self.undelegated_secondary_exposures.is_some() {
+            // this shouldn't happen
+            return;
+        }
+
+        self.undelegated_secondary_exposures = Some(self.secondary_exposures.clone())
+    }
+}
+
 pub fn result_to_gate_eval(
     gate_name: &str,
     spec: &Spec,

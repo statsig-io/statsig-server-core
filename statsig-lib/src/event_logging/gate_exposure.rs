@@ -19,8 +19,7 @@ pub struct GateExposure {
 
 impl StatsigExposure for GateExposure {
     fn make_dedupe_key(&self) -> String {
-        // todo: fill exposure key
-        make_exposure_key(&self.user.user_data, &self.gate_name, None)
+        make_exposure_key(&self.user.user_data, &self.gate_name, self.rule_id.as_ref(), None)
     }
 
     fn to_internal_event(self) -> StatsigEventInternal {

@@ -1,7 +1,10 @@
 import {
+  AutoReleasingStatsigOptionsRef,
+  AutoReleasingStatsigRef,
+  AutoReleasingStatsigUserRef,
   consoleLoggerInit,
-  DynamicConfigNapi as DynamicConfig,
-  ExperimentNapi as Experiment,
+  DynamicConfigNapi,
+  ExperimentNapi,
   FeatureGateNapi as FeatureGate,
   LayerNapi,
   statsigCheckGate,
@@ -19,8 +22,32 @@ import {
   statsigUserCreate,
 } from './bindings';
 
+// prettier-ignore
+export type TypedReturn<T = unknown> = 
+    T extends string ? string
+  : T extends number ? number
+  : T extends boolean ? boolean
+  : T extends Array<unknown> ? Array<unknown>
+  : T extends object ? object
+  : unknown;
+
+export type TypedGet = <T = unknown>(
+  key: string,
+  fallback?: T,
+) => TypedReturn<T>;
+
+export type DynamicConfig = DynamicConfigNapi & {
+  readonly value: Record<string, unknown>;
+  readonly get: TypedGet;
+};
+
+export type Experiment = ExperimentNapi & {
+  readonly value: Record<string, unknown>;
+  readonly get: TypedGet;
+};
+
 export type Layer = LayerNapi & {
-  get: <T>(param: string, fallback: T) => T | null;
+  readonly get: TypedGet;
 };
 
 export enum LogLevel {
@@ -32,7 +59,7 @@ export enum LogLevel {
 }
 
 export class StatsigOptions {
-  readonly __ref: number;
+  readonly __ref: AutoReleasingStatsigOptionsRef;
 
   readonly outputLoggerLevel: LogLevel = LogLevel.Debug;
 
@@ -48,7 +75,7 @@ export class StatsigOptions {
 }
 
 export class StatsigUser {
-  readonly __ref: number;
+  readonly __ref: AutoReleasingStatsigUserRef;
 
   constructor(
     userID: string,
@@ -78,21 +105,22 @@ export class StatsigUser {
 }
 
 export class Statsig {
-  readonly __ref: number;
+  readonly __ref: AutoReleasingStatsigRef;
 
   constructor(sdkKey: string, options?: StatsigOptions) {
-    console.log('options', options);
     _initializeConsoleLogger(options?.outputLoggerLevel);
 
-    this.__ref = statsigCreate(sdkKey, options?.__ref);
+    this.__ref = statsigCreate(sdkKey, options?.__ref.value);
+    console.log('Created', this.__ref.value);
   }
 
   initialize(): Promise<void> {
-    return statsigInitialize(this.__ref);
+    console.log('initialize', this.__ref.value);
+    return statsigInitialize(this.__ref.value);
   }
 
   shutdown(): Promise<void> {
-    return statsigShutdown(this.__ref);
+    return statsigShutdown(this.__ref.value);
   }
 
   logEvent(
@@ -102,8 +130,8 @@ export class Statsig {
     metadata?: Record<string, string> | undefined | null,
   ): void {
     statsigLogStringValueEvent(
-      this.__ref,
-      user.__ref,
+      this.__ref.value,
+      user.__ref.value,
       eventName,
       value,
       metadata,
@@ -111,37 +139,65 @@ export class Statsig {
   }
 
   checkGate(user: StatsigUser, gateName: string): boolean {
-    return statsigCheckGate(this.__ref, user.__ref, gateName);
+    return statsigCheckGate(this.__ref.value, user.__ref.value, gateName);
   }
 
   getFeatureGate(user: StatsigUser, gateName: string): FeatureGate {
-    return statsigGetFeatureGate(this.__ref, user.__ref, gateName);
+    return statsigGetFeatureGate(this.__ref.value, user.__ref.value, gateName);
   }
 
   getDynamicConfig(
     user: StatsigUser,
     dynamicConfigName: string,
   ): DynamicConfig {
-    return statsigGetDynamicConfig(this.__ref, user.__ref, dynamicConfigName);
+    const dynamicConfig = statsigGetDynamicConfig(
+      this.__ref.value,
+      user.__ref.value,
+      dynamicConfigName,
+    );
+
+    const value = JSON.parse(dynamicConfig.jsonValue);
+    return {
+      ...dynamicConfig,
+      value,
+      get: _makeTypedGet(value),
+    };
   }
 
   getExperiment(user: StatsigUser, experimentName: string): Experiment {
-    return statsigGetExperiment(this.__ref, user.__ref, experimentName);
+    const experiment = statsigGetExperiment(
+      this.__ref.value,
+      user.__ref.value,
+      experimentName,
+    );
+
+    const value = JSON.parse(experiment.jsonValue);
+    return {
+      ...experiment,
+      value,
+      get: _makeTypedGet(value),
+    };
   }
 
   getLayer(user: StatsigUser, layerName: string): Layer {
-    const layer = statsigGetLayer(this.__ref, user.__ref, layerName);
+    const layerJson = statsigGetLayer(
+      this.__ref.value,
+      user.__ref.value,
+      layerName,
+    );
+
+    const layer = JSON.parse(layerJson);
+    const value = layer['__value'];
     return {
       ...layer,
-      get: (_param, _fallback) => {
-        // statsigLogLayerParamExposure(this.__ref, )
-        return null; //todo
-      },
+      get: _makeTypedGet(value, (param: string) => {
+        statsigLogLayerParamExposure(this.__ref.value, layerJson, param);
+      }),
     };
   }
 
   getClientInitializeResponse(user: StatsigUser): string {
-    return statsigGetClientInitResponse(this.__ref, user.__ref);
+    return statsigGetClientInitResponse(this.__ref.value, user.__ref.value);
   }
 }
 
@@ -157,4 +213,29 @@ function _initializeConsoleLogger(level: LogLevel | undefined) {
   if (errMessage != null && level != LogLevel.None) {
     console.warn(errMessage);
   }
+}
+
+function _isTypeMatch<T>(a: unknown, b: unknown): a is T {
+  const typeOf = (x: unknown) => (Array.isArray(x) ? 'array' : typeof x);
+  return typeOf(a) === typeOf(b);
+}
+
+function _makeTypedGet(
+  value: Record<string, unknown>,
+  exposeFunc?: (param: string) => void,
+): TypedGet {
+  return <T = unknown>(param: string, fallback?: T) => {
+    const found = value?.[param] ?? null;
+
+    if (found == null) {
+      return (fallback ?? null) as TypedReturn<T>;
+    }
+
+    if (fallback != null && !_isTypeMatch(found, fallback)) {
+      return (fallback ?? null) as TypedReturn<T>;
+    }
+
+    exposeFunc?.(param);
+    return found as TypedReturn<T>;
+  };
 }

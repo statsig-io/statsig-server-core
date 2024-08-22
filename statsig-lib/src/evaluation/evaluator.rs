@@ -42,12 +42,14 @@ impl Evaluator {
                 ctx.result.json_value = Some(&spec.default_value);
             }
 
+            ctx.result.finalize_secondary_exposures();
             ctx.result.rule_id = Some(&rule.id);
             ctx.result.group_name = rule.group_name.as_ref();
             ctx.result.is_experiment_group = rule.is_experiment_group.unwrap_or(false);
             return;
         }
 
+        ctx.result.finalize_secondary_exposures();
         ctx.result.bool_value = spec.default_value.string_value == "true";
         ctx.result.json_value = Some(&spec.default_value);
         ctx.result.rule_id = match spec.enabled {
@@ -56,6 +58,8 @@ impl Evaluator {
         };
     }
 }
+
+
 
 fn evaluate_rule<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) {
     let mut all_conditions_pass = true;
@@ -133,7 +137,8 @@ fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Conditi
 
         // version comparison
         "version_gt" | "version_gte" | "version_lt" | "version_lte" | "version_eq"
-        | "version_neq" => compare_versions(value, target_value, operator),
+        | "version_neq" =>
+            compare_versions(value, target_value, operator),
 
         // string/array comparison
         "any"
@@ -141,14 +146,17 @@ fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Conditi
         | "str_starts_with_any"
         | "str_ends_with_any"
         | "str_contains_any"
-        | "str_contains_none" => compare_strings_in_array(value, target_value, operator, true),
+        | "str_contains_none" =>
+            compare_strings_in_array(value, target_value, operator, true),
         "any_case_sensitive" | "none_case_sensitive" => {
             compare_strings_in_array(value, target_value, operator, false)
         }
-        "str_matches" => compare_str_with_regex(value, target_value),
+        "str_matches" =>
+            compare_str_with_regex(value, target_value),
 
         // time comparison
-        "before" | "after" | "on" => compare_time(value, target_value, operator).unwrap_or(false),
+        "before" | "after" | "on" =>
+            compare_time(value, target_value, operator).unwrap_or(false),
 
         // strict equals
         "eq" => value == target_value,
@@ -210,9 +218,10 @@ fn evaluate_config_delegate<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) 
         false
     );
 
+    ctx.result.undelegated_secondary_exposures = Some(ctx.result.secondary_exposures.clone());
+
     Evaluator::evaluate(ctx, delegate_spec);
 
-    ctx.result.undelegated_secondary_exposures = Some(ctx.result.secondary_exposures.clone());
     ctx.result.explicit_parameters = delegate_spec.explicit_parameters.as_ref();
     ctx.result.config_delegate = rule.config_delegate.as_ref();
 
@@ -341,7 +350,12 @@ fn compare_strings_in_array(
     let result = {
         if op == "any" || op == "none" {
             if let Some(dict) = &target_value.object_value {
-                return dict.contains_key(value_str);
+                let contains = dict.contains_key(value_str);
+                return if op == "none" {
+                    !contains
+                } else {
+                    contains
+                }
             }
         }
 

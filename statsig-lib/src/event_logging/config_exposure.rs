@@ -17,8 +17,11 @@ pub struct ConfigExposure {
 
 impl StatsigExposure for ConfigExposure {
     fn make_dedupe_key(&self) -> String {
-        // todo: fill exposure key
-        make_exposure_key(&self.user.user_data, &self.config_name, None)
+        let rule_id = match &self.evaluation {
+            Some(eval) => Some(&eval.rule_id),
+            None => None,
+        };
+        make_exposure_key(&self.user.user_data, &self.config_name, rule_id, None)
     }
 
     fn to_internal_event(self) -> StatsigEventInternal {

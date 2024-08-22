@@ -371,6 +371,11 @@ if (!nativeBinding) {
   throw new Error(message);
 }
 
+module.exports.AutoReleasingStatsigOptionsRef =
+  nativeBinding.AutoReleasingStatsigOptionsRef;
+module.exports.AutoReleasingStatsigRef = nativeBinding.AutoReleasingStatsigRef;
+module.exports.AutoReleasingStatsigUserRef =
+  nativeBinding.AutoReleasingStatsigUserRef;
 module.exports.consoleLoggerInit = nativeBinding.consoleLoggerInit;
 module.exports.LogLevel = nativeBinding.LogLevel;
 module.exports.statsigCheckGate = nativeBinding.statsigCheckGate;
@@ -388,8 +393,5 @@ module.exports.statsigLogLayerParamExposure =
 module.exports.statsigLogStringValueEvent =
   nativeBinding.statsigLogStringValueEvent;
 module.exports.statsigOptionsCreate = nativeBinding.statsigOptionsCreate;
-module.exports.statsigOptionsRelease = nativeBinding.statsigOptionsRelease;
-module.exports.statsigRelease = nativeBinding.statsigRelease;
 module.exports.statsigShutdown = nativeBinding.statsigShutdown;
 module.exports.statsigUserCreate = nativeBinding.statsigUserCreate;
-module.exports.statsigUserRelease = nativeBinding.statsigUserRelease;

@@ -1,4 +1,4 @@
-use crate::dyn_value;
+use crate::{dyn_value};
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::{
@@ -8,6 +8,8 @@ use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_internal::StatsigUserInternal;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::sync::Weak;
+use crate::event_logging::event_logger::EventLogger;
 
 pub fn make_feature_gate(
     name: &str,
@@ -95,6 +97,7 @@ pub fn make_layer(
     name: &str,
     evaluation: Option<LayerEvaluation>,
     details: EvaluationDetails,
+    event_logger_ptr: Option<Weak<EventLogger>>
 ) -> Layer {
     let (value, rule_id, id_type) = match &evaluation {
         Some(e) => (
@@ -114,6 +117,7 @@ pub fn make_layer(
         __value: value,
         __evaluation: evaluation,
         __user: user.clone(),
+        __event_logger_ptr: event_logger_ptr
     }
 }
 

@@ -1,25 +1,39 @@
 use std::collections::HashMap;
-
+use napi::bindgen_prelude::ObjectFinalize;
+use napi::Env;
 use napi_derive::napi;
 use serde_json::json;
 use statsig::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES, USER_INSTANCES};
 use statsig::{get_instance_or_else, get_instance_or_noop, get_instance_or_return, Statsig};
 
-use crate::statsig_types_napi::{DynamicConfigNapi, ExperimentNapi, FeatureGateNapi, LayerNapi};
+use crate::statsig_types_napi::{DynamicConfigNapi, ExperimentNapi, FeatureGateNapi};
 
-#[napi]
-pub fn statsig_create(sdk_key: String, options_ref: Option<i32>) -> i32 {
-  let options = OPTIONS_INSTANCES.optional_get(options_ref);
-  let statsig = Statsig::new(&sdk_key, options);
-  STATSIG_INSTANCES.add(statsig)
+#[napi(custom_finalize)]
+pub struct AutoReleasingStatsigRef {
+  pub value: i32,
 }
 
-#[napi]
-pub fn statsig_release(statsig_ref: i32) {
-  let statsig = get_instance_or_noop!(STATSIG_INSTANCES, statsig_ref);
-  let _ = statsig.shutdown();
 
-  STATSIG_INSTANCES.release(statsig_ref)
+impl ObjectFinalize for AutoReleasingStatsigRef {
+  fn finalize(self, _env: Env) -> napi::Result<()> {
+    if let Some(statsig) = STATSIG_INSTANCES.get(self.value) {
+      let _ = statsig.shutdown();
+      STATSIG_INSTANCES.release(self.value);
+    }
+
+    Ok(())
+  }
+}
+
+
+#[napi]
+pub fn statsig_create(sdk_key: String, options_ref: Option<i32>) -> AutoReleasingStatsigRef {
+  let options = OPTIONS_INSTANCES.optional_get(options_ref);
+  let statsig = Statsig::new(&sdk_key, options);
+
+  AutoReleasingStatsigRef {
+    value: STATSIG_INSTANCES.add(statsig)
+  }
 }
 
 #[napi]
@@ -134,28 +148,23 @@ pub fn statsig_get_experiment(
     name: experiment_name,
     rule_id: experiment.rule_id,
     id_type: experiment.id_type,
+    group_name: experiment.group_name,
     json_value: json!(experiment.value).to_string(),
   }
 }
 
 #[napi]
-pub fn statsig_get_layer(statsig_ref: i32, user_ref: i32, layer_name: String) -> LayerNapi {
+pub fn statsig_get_layer(statsig_ref: i32, user_ref: i32, layer_name: String) -> String {
   let statsig = get_instance_or_else!(STATSIG_INSTANCES, statsig_ref, {
-    return create_empty_layer(layer_name);
+    return create_empty_layer_json(layer_name);
   });
 
   let user = get_instance_or_else!(USER_INSTANCES, user_ref, {
-    return create_empty_layer(layer_name);
+    return create_empty_layer_json(layer_name);
   });
 
   let layer = statsig.get_layer(&user, &layer_name);
-
-  LayerNapi {
-    name: layer_name,
-    rule_id: layer.rule_id,
-    id_type: layer.id_type,
-    __json_value: String::from("{}"),
-  }
+  json!(layer).to_string()
 }
 
 #[napi]
@@ -206,15 +215,11 @@ fn create_empty_experiment(name: String) -> ExperimentNapi {
     name,
     rule_id: String::new(),
     id_type: String::new(),
+    group_name: None,
     json_value: String::from("{}"),
   }
 }
 
-fn create_empty_layer(name: String) -> LayerNapi {
-  LayerNapi {
-    name,
-    rule_id: String::new(),
-    id_type: String::new(),
-    __json_value: String::from("{}"),
-  }
+fn create_empty_layer_json(name: String) -> String {
+  format!("\"name\": \"{}\"", name)
 }

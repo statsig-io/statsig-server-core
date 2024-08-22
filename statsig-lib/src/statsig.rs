@@ -151,7 +151,7 @@ impl Statsig {
     }
 
     pub fn get_context(&self) -> (String, Arc<StatsigOptions>) {
-        return (self.sdk_key.clone(), self.options.clone());
+        (self.sdk_key.clone(), self.options.clone())
     }
 
     pub fn get_current_values(&self) -> Option<SpecStoreData> {
@@ -397,6 +397,7 @@ impl Statsig {
                 layer_name,
                 None,
                 EvaluationDetails::unrecognized_no_data(),
+                None,
             );
         });
 
@@ -408,11 +409,13 @@ impl Statsig {
                 Evaluator::evaluate(&mut context, spec);
 
                 let evaluation = result_to_layer_eval(layer_name, spec, &mut context.result);
+                let event_logger_ptr = Arc::downgrade(&self.event_logger);
                 make_layer(
                     user_internal,
                     layer_name,
                     Some(evaluation),
                     EvaluationDetails::recognized(&data),
+                    Some(event_logger_ptr)
                 )
             }
             None => make_layer(
@@ -420,6 +423,7 @@ impl Statsig {
                 layer_name,
                 None,
                 EvaluationDetails::unrecognized(&data),
+                None
             ),
         }
     }

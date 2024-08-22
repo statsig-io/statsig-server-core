@@ -1,5 +1,4 @@
 use crate::evaluation::evaluation_details::EvaluationDetails;
-use crate::evaluation::evaluation_types::BaseEvaluation;
 use crate::StatsigUser;
 use std::collections::HashMap;
 
@@ -24,7 +23,8 @@ pub(crate) fn get_metadata_with_details(
 pub(crate) fn make_exposure_key(
     user: &StatsigUser,
     spec_name: &String,
-    base_evaluation: Option<&BaseEvaluation>,
+    rule_id: Option<&String>,
+    additional_values: Option<Vec<String>>
 ) -> String {
     let empty_str = "".to_string();
 
@@ -43,10 +43,11 @@ pub(crate) fn make_exposure_key(
         custom_ids = values.join("|");
     }
 
-    let mut rule_id = &empty_str;
-    if let Some(eval) = base_evaluation {
-        rule_id = &eval.rule_id;
-    }
+    let rid = rule_id.unwrap_or(&empty_str);
+    let additional = match additional_values {
+        Some(additional_values) => additional_values.join("|"),
+        None => String::new()
+    };
 
-    format!("{}|{}|{}|{}", spec_name, rule_id, user_id, custom_ids)
+    format!("{}|{}|{}|{}|{}", spec_name, rid, user_id, custom_ids, additional)
 }

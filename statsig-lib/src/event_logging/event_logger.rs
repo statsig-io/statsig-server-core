@@ -156,6 +156,7 @@ impl EventLogger {
     }
 }
 
+
 fn validate_queued_event_payload(
     payload: QueuedEventPayload,
     previous_exposure_info: &Mutex<PreviousExposureInfo>,
@@ -205,7 +206,7 @@ fn validate_exposure_event<T: StatsigExposure>(
 }
 
 impl BackgroundTask for EventLogger {
-    fn run(&self) -> Pin<Box<dyn Future<Output = ()> + Send>> {
+    fn run(&self) -> Pin<Box<dyn Future<Output=()> + Send>> {
         let queue = self.event_queue.clone();
         let adapter = self.event_logging_adapter.clone();
         let prev_expos = self.previous_exposure_info.clone();

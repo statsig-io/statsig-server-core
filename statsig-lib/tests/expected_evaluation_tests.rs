@@ -141,3 +141,22 @@ async fn test_custom_number_value_passes() {
 
     statsig.shutdown().await.unwrap();
 }
+
+
+#[tokio::test]
+async fn test_experiment_gets_layer_assignment() {
+    let statsig = setup(None).await;
+
+    let user =
+        StatsigUserBuilder::new_with_user_id("user-not-in-layer-holdout".to_string())
+            .build();
+
+    let experiment_name = "targeted_exp_in_layer_with_holdout";
+
+    let experiment = statsig.get_experiment(&user, experiment_name);
+    assert_eq!(experiment.rule_id, "layerAssignment");
+
+    statsig.shutdown().await.unwrap();
+}
+
+
