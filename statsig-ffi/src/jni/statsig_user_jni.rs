@@ -46,8 +46,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigUserCreate(
         .country(country)
         .locale(locale)
         .app_version(app_version)
-        .custom(custom)
-        .private_attributes(private_attributes);
+        .custom_from_str_map(custom)
+        .private_attributes_from_str_map(private_attributes);
 
     let user = builder.build();
     let id = USER_INSTANCES.add(user);

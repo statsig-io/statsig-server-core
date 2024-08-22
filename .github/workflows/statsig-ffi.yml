@@ -45,8 +45,8 @@ jobs:
 
       - name: Build
         run: |
-          cargo build -p statsig-ffi --target ${{ matrix.target }} --features vendored_openssl
-          cargo build -p statsig-ffi --target ${{ matrix.target }} --features vendored_openssl --release
+          cargo build -p statsig_ffi --target ${{ matrix.target }} --features vendored_openssl
+          cargo build -p statsig_ffi --target ${{ matrix.target }} --features vendored_openssl --release
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -88,8 +88,8 @@ jobs:
 
       - name: Build
         run: |
-          cargo build -p statsig-ffi --target ${{ matrix.target }}
-          cargo build -p statsig-ffi --target ${{ matrix.target }} --release
+          cargo build -p statsig_ffi --target ${{ matrix.target }}
+          cargo build -p statsig_ffi --target ${{ matrix.target }} --release
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -131,8 +131,8 @@ jobs:
 
       - name: Build
         run: |
-          cargo build -p statsig-ffi --target=${{ matrix.target }}
-          cargo build -p statsig-ffi --target=${{ matrix.target }} --release
+          cargo build -p statsig_ffi --target=${{ matrix.target }}
+          cargo build -p statsig_ffi --target=${{ matrix.target }} --release
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

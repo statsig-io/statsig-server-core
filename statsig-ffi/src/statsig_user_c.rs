@@ -60,8 +60,8 @@ pub extern "C" fn statsig_user_create(
         .country(country)
         .locale(locale)
         .app_version(app_version)
-        .custom(custom)
-        .private_attributes(private_attributes);
+        .custom_from_str_map(custom)
+        .private_attributes_from_str_map(private_attributes);
 
     // Build the StatsigUser and convert it to a raw pointer
     let user = builder.build();
