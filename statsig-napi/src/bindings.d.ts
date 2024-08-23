@@ -122,14 +122,17 @@ export declare function statsigLogStringValueEvent(
 export declare function statsigOptionsCreate(
   environment?: string | undefined | null,
   specsUrl?: string | undefined | null,
+  specsSyncIntervalMs?: number | undefined | null,
   logEventUrl?: string | undefined | null,
+  eventLoggingMaxQueueSize?: number | undefined | null,
+  eventLoggingFlushIntervalMs?: number | undefined | null,
 ): AutoReleasingStatsigOptionsRef;
 
 export declare function statsigShutdown(statsigRef: number): Promise<void>;
 
 export declare function statsigUserCreate(
   userId?: string | undefined | null,
-  customIds?: Record<string, string> | undefined | null,
+  customIdsJson?: string | undefined | null,
   email?: string | undefined | null,
   ip?: string | undefined | null,
   userAgent?: string | undefined | null,

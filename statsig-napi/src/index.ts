@@ -67,10 +67,20 @@ export class StatsigOptions {
     outputLoggerLevel?: LogLevel,
     environment?: string | undefined | null,
     specsUrl?: string | undefined | null,
+    specsSyncIntervalMs?: number | undefined | null,
     logEventUrl?: string | undefined | null,
+    eventLoggingMaxQueueSize?: number | undefined | null,
+    eventLoggingFlushIntervalMs?: number | undefined | null,
   ) {
     this.outputLoggerLevel = outputLoggerLevel ?? LogLevel.Error;
-    this.__ref = statsigOptionsCreate(environment, specsUrl, logEventUrl);
+    this.__ref = statsigOptionsCreate(
+      environment,
+      specsUrl,
+      specsSyncIntervalMs,
+      logEventUrl,
+      eventLoggingMaxQueueSize,
+      eventLoggingFlushIntervalMs,
+    );
   }
 }
 
@@ -91,7 +101,7 @@ export class StatsigUser {
   ) {
     this.__ref = statsigUserCreate(
       userID,
-      customIDs,
+      JSON.stringify(customIDs),
       email,
       ip,
       userAgent,
@@ -199,17 +209,23 @@ export class Statsig {
   }
 }
 
+// intentionally spaced for formatting
+const DEBUG = ' DEBUG ';
+const _INFO = '  INFO ';
+const _WARN = '  WARN ';
+const ERROR = ' ERROR ';
+
 function _initializeConsoleLogger(level: LogLevel | undefined) {
   const initError = consoleLoggerInit(
     (level ?? LogLevel.Error) as any,
-    (_, msg) => console.log('\x1b[32m%s\x1b[0m', ' DEBUG ', msg), // Green text for DEBUG
-    (_, msg) => console.info('\x1b[34m%s\x1b[0m', ' INFO ', msg), // Blue text for INFO
-    (_, msg) => console.warn('\x1b[33m%s\x1b[0m', ' WARN ', msg), // Yellow text for WARN
-    (_, msg) => console.error('\x1b[31m%s\x1b[0m', ' ERROR ', msg), // Red text for ERROR
+    (_, msg) => console.log('\x1b[32m%s\x1b[0m', DEBUG, msg), // Green text for DEBUG
+    (_, msg) => console.info('\x1b[34m%s\x1b[0m', _INFO, msg), // Blue text for INFO
+    (_, msg) => console.warn('\x1b[33m%s\x1b[0m', _WARN, msg), // Yellow text for WARN
+    (_, msg) => console.error('\x1b[31m%s\x1b[0m', ERROR, msg), // Red text for ERROR
   );
 
   if (initError != null && level != LogLevel.None) {
-    console.warn('\x1b[33m%s\x1b[0m', 'WARN:', `[Statsig]: ${initError}`);
+    console.warn('\x1b[33m%s\x1b[0m', _WARN, `[Statsig]: ${initError}`);
   }
 }
 

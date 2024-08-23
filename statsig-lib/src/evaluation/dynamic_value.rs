@@ -26,8 +26,13 @@ pub struct DynamicValue {
 
 impl From<String> for DynamicValue {
     fn from(value: String) -> Self {
+        let json_value = json!(value);
+        let float_value = value.parse().ok();
+        let int_value = value.parse().ok();
         DynamicValue {
-            json_value: json!(value),
+            float_value,
+            int_value,
+            json_value,
             lowercase_string_value: Some(value.to_lowercase()),
             string_value: Some(value),
             ..Self::default()
@@ -37,12 +42,7 @@ impl From<String> for DynamicValue {
 
 impl From<&str> for DynamicValue {
     fn from(value: &str) -> Self {
-        DynamicValue {
-            json_value: json!(value),
-            lowercase_string_value: Some(value.to_lowercase()),
-            string_value: Some(value.to_string()),
-            ..Self::default()
-        }
+        DynamicValue::from(value.to_string())
     }
 }
 
@@ -62,6 +62,7 @@ impl From<i64> for DynamicValue {
     fn from(value: i64) -> Self {
         DynamicValue {
             int_value: Some(value),
+            float_value: Some(value as f64),
             string_value: Some(value.to_string()),
             lowercase_string_value: Some(value.to_string()),
             ..Self::default()

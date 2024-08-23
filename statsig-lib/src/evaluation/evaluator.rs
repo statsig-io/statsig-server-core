@@ -1,10 +1,14 @@
+use crate::evaluation::comparisons::{
+    compare_numbers, compare_str_with_regex, compare_strings_in_array, compare_time,
+    compare_versions,
+};
 use crate::evaluation::dynamic_value::DynamicValue;
+use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::spec_types::{Condition, Rule, Spec};
 use crate::{dyn_value, log_e, unwrap_or_noop, unwrap_or_return};
-use chrono::{Duration, Utc};
+use chrono::Utc;
 use lazy_static::lazy_static;
-use crate::evaluation::evaluation_types::SecondaryExposure;
 
 pub struct Evaluator;
 
@@ -59,8 +63,6 @@ impl Evaluator {
         ctx.finalize_evaluation();
     }
 }
-
-
 
 fn evaluate_rule<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) {
     let mut all_conditions_pass = true;
@@ -120,7 +122,7 @@ fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Conditi
             return;
         }
     }
-        .unwrap_or(&EMPTY_DYNAMIC_VALUE);
+    .unwrap_or(&EMPTY_DYNAMIC_VALUE);
 
     // println!("Eval Condition {}, {:?}", condition_type, value);
 
@@ -133,31 +135,27 @@ fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Conditi
     };
 
     ctx.result.bool_value = match operator as &str {
-        // numerical comparison
+        // numerical comparisons
         "gt" | "gte" | "lt" | "lte" => compare_numbers(value, target_value, operator),
 
-        // version comparison
+        // version comparisons
         "version_gt" | "version_gte" | "version_lt" | "version_lte" | "version_eq"
-        | "version_neq" =>
-            compare_versions(value, target_value, operator),
+        | "version_neq" => compare_versions(value, target_value, operator),
 
-        // string/array comparison
+        // string/array comparisons
         "any"
         | "none"
         | "str_starts_with_any"
         | "str_ends_with_any"
         | "str_contains_any"
-        | "str_contains_none" =>
-            compare_strings_in_array(value, target_value, operator, true),
+        | "str_contains_none" => compare_strings_in_array(value, target_value, operator, true),
         "any_case_sensitive" | "none_case_sensitive" => {
             compare_strings_in_array(value, target_value, operator, false)
         }
-        "str_matches" =>
-            compare_str_with_regex(value, target_value),
+        "str_matches" => compare_str_with_regex(value, target_value),
 
-        // time comparison
-        "before" | "after" | "on" =>
-            compare_time(value, target_value, operator).unwrap_or(false),
+        // time comparisons
+        "before" | "after" | "on" => compare_time(value, target_value, operator),
 
         // strict equals
         "eq" => value == target_value,
@@ -275,145 +273,4 @@ fn get_hash_for_user_bucket(ctx: &mut EvaluatorContext, condition: &Condition) -
     let input = format!("{}.{}", salt, unit_id);
     let hash = ctx.sha_hasher.compute_hash(&input).unwrap_or(1);
     dyn_value!(hash % 1000)
-}
-
-fn compare_numbers(left: &DynamicValue, right: &DynamicValue, op: &str) -> bool {
-    let left_num = unwrap_or_return!(left.float_value, false);
-    let right_num = unwrap_or_return!(right.float_value, false);
-
-    match op {
-        "gt" => left_num > right_num,
-        "gte" => left_num >= right_num,
-        "lt" => left_num < right_num,
-        "lte" => left_num <= right_num,
-        _ => false,
-    }
-}
-
-fn compare_versions(left: &DynamicValue, right: &DynamicValue, op: &str) -> bool {
-    let left_str = unwrap_or_return!(&left.string_value, false);
-    let right_str = unwrap_or_return!(&right.string_value, false);
-
-    fn comparison(left_str: &str, right_str: &str) -> i32 {
-        let left_version = left_str.split('-').next().unwrap_or("");
-        let right_version = right_str.split('-').next().unwrap_or("");
-
-        let mut left_parts = left_version.split('.');
-        let mut right_parts = right_version.split('.');
-
-        loop {
-            let opt_left_num = left_parts
-                .next()
-                .and_then(|s| s.parse::<i32>().ok());
-            let opt_right_num = right_parts
-                .next()
-                .and_then(|s| s.parse::<i32>().ok());
-
-            // If both iterators are exhausted, we break the loop
-            if opt_left_num.is_none() && opt_right_num.is_none() {
-                break;
-            }
-
-            let left_num = opt_left_num.unwrap_or_default();
-            let right_num = opt_right_num.unwrap_or_default();
-
-            if left_num < right_num {
-                return -1;
-            }
-
-            if left_num > right_num {
-                return 1;
-            }
-        }
-
-        0
-    }
-
-    let result = comparison(left_str, right_str);
-    match op {
-        "version_gt" => result > 0,
-        "version_gte" => result >= 0,
-        "version_lt" => result < 0,
-        "version_lte" => result <= 0,
-        "version_eq" => result == 0,
-        "version_neq" => result != 0,
-        _ => false,
-    }
-}
-
-fn compare_strings_in_array(
-    value: &DynamicValue,
-    target_value: &DynamicValue,
-    op: &str,
-    ignore_case: bool,
-) -> bool {
-    let value_str = value.string_value.as_ref().unwrap_or(&EMPTY_STR);
-    let lowered_value_str = value.lowercase_string_value.as_ref().unwrap_or(&EMPTY_STR);
-
-    let result = {
-        if op == "any" || op == "none" {
-            if let Some(dict) = &target_value.object_value {
-                let contains = dict.contains_key(value_str);
-                return if op == "none" {
-                    !contains
-                } else {
-                    contains
-                }
-            }
-        }
-
-        let array = unwrap_or_return!(&target_value.array_value, false);
-
-        array.iter().any(|current| {
-            let (curr_str, curr_lower_str) =
-                match (&current.string_value, &current.lowercase_string_value) {
-                    (Some(s), Some(ls)) => (s, ls),
-                    _ => return false,
-                };
-            let left = if ignore_case {
-                lowered_value_str
-            } else {
-                value_str
-            };
-            let right = if ignore_case {
-                curr_lower_str
-            } else {
-                curr_str
-            };
-
-            match op {
-                "any" | "none" | "any_case_sensitive" | "none_case_sensitive" => left.eq(right),
-                "str_starts_with_any" => left.starts_with(right),
-                "str_ends_with_any" => left.ends_with(right),
-                "str_contains_any" | "str_contains_none" => left.contains(right),
-                _ => false,
-            }
-        })
-    };
-
-    if op == "none" || op == "none_case_sensitive" || op == "str_contains_none" {
-        return !result;
-    }
-    result
-}
-
-fn compare_str_with_regex(value: &DynamicValue, regex_value: &DynamicValue) -> bool {
-    let value_str = unwrap_or_return!(&value.string_value, false);
-    let regex = unwrap_or_return!(&regex_value.regex_value, false);
-    regex.is_match(value_str)
-}
-
-fn compare_time(left: &DynamicValue, right: &DynamicValue, op: &str) -> Option<bool> {
-    let left_num = left.int_value?;
-    let right_num = right.int_value?;
-
-    match op {
-        "before" => Some(left_num < right_num),
-        "after" => Some(left_num > right_num),
-        "on" => Some(
-            Duration::milliseconds(left_num).num_days()
-                == Duration::milliseconds(right_num).num_days(),
-        ),
-        _ => None,
-    }
 }

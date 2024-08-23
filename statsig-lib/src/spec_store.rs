@@ -27,7 +27,7 @@ impl SpecsUpdateListener for SpecStore {
                 source: data.source.clone(),
             },
             Err(e) => {
-                log_e!("Failed to acquire read lock - {}", e);
+                log_e!("Failed to acquire read lock: {}", e);
                 SpecsInfo {
                     lcut: None,
                     source: SpecsSource::Error,
@@ -65,7 +65,7 @@ impl SpecStore {
                 }
 
                 log_d!(
-                    "SpecStore - Full Update - {} - [gates({}), configs({}), layers({})]",
+                    "SpecStore Full Update: {} - [gates({}), configs({}), layers({})]",
                     full.time,
                     full.feature_gates.len(),
                     full.dynamic_configs.len(),
@@ -88,7 +88,7 @@ impl SpecStore {
         };
 
         if let Ok(mut mut_values) = self.data.write() {
-            if mut_values.values.time > 0 && mut_values.values.time >= dcs.time {
+            if mut_values.values.time > 0 && mut_values.values.time > dcs.time {
                 log_d!(
                     "SpecStore - Received values for {}, but currently has values for {}. Ignoring values.",
                     dcs.time,

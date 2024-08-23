@@ -84,7 +84,7 @@ impl EventLoggingAdapter for StatsigEventLoggingAdapter {
             Some(c) => c,
             None => return Err("Logging adapter not setup".to_string()),
         };
-        log_d!("Logging Events ({}) - {}", event_count, json!(payload).to_string());
+        log_d!("Logging Events ({}): {}", event_count, json!(payload).to_string());
 
         let response = context
             .network

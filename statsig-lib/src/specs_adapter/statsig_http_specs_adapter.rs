@@ -82,7 +82,7 @@ impl StatsigHttpSpecsAdapter {
             };
 
             if let Err(e) = strong_self.manually_sync_specs(lcut).await {
-                log_e!("Background specs sync failed -{}", e);
+                log_e!("Background specs sync failed: {}", e);
             }
         }
     }

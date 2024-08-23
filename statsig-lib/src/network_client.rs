@@ -79,7 +79,7 @@ impl NetworkClient {
             match request.send().await {
                 Ok(response) => {
                     log_i!(
-                        "Request Ok ({}) - {}",
+                        "Request Ok ({}): {}",
                         response.status().as_u16(),
                         request_args.url
                     );

@@ -1,6 +1,6 @@
 use log::{debug, info, warn, error, Level};
 
-const MAX_CHARS: usize = 200;
+const MAX_CHARS: usize = 300;
 const TRUNCATED_SUFFIX: &str = "...[TRUNCATED]";
 
 pub fn log_message(level: Level, msg: String) {
@@ -17,10 +17,10 @@ pub fn log_message(level: Level, msg: String) {
     }
 
     match level {
-        Level::Debug => debug!("[Statsig]: {}" ,truncated_msg),
-        Level::Info => info!("[Statsig]: {}", truncated_msg),
-        Level::Warn => warn!("[Statsig]: {}", truncated_msg),
-        Level::Error => error!("[Statsig]: {}", truncated_msg),
+        Level::Debug => debug!("[Statsig] {}" ,truncated_msg),
+        Level::Info => info!("[Statsig] {}", truncated_msg),
+        Level::Warn => warn!("[Statsig] {}", truncated_msg),
+        Level::Error => error!("[Statsig] {}", truncated_msg),
         _ => {},
     }
 }

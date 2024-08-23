@@ -182,7 +182,7 @@ fn validate_exposure_event<T: StatsigExposure>(
     let mut previous_exposure_info = match previous_exposure_info.lock() {
         Ok(guard) => guard,
         Err(e) => {
-            log_e!("Failed to lock mutex - {}", e);
+            log_e!("Failed to lock mutex: {}", e);
             return Some(exposure.to_internal_event());
         }
     };

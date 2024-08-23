@@ -1,0 +1,10 @@
+pub(crate) use compare_time::compare_time;
+pub(crate) use compare_versions::compare_versions;
+pub(crate) use compare_numbers::compare_numbers;
+pub(crate) use compare_str_with_regex::compare_str_with_regex;
+pub(crate) use compare_strings_in_array::compare_strings_in_array;
+mod compare_versions;
+mod compare_numbers;
+mod compare_str_with_regex;
+mod compare_strings_in_array;
+mod compare_time;
