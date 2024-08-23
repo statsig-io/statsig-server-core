@@ -1,0 +1,11 @@
+FROM messense/cargo-xwin:latest
+ 
+WORKDIR /app 
+
+RUN cargo new --lib temp-lib
+RUN cd temp-lib && cargo xwin build --target aarch64-pc-windows-msvc
+RUN rm -rf temp-lib
+
+ENV COMMAND="echo 'Error: No Command'"
+
+CMD ["sh", "-c", "$COMMAND"]

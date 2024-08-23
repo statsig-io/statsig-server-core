@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    PLATFORM=$NAME
+else
+    PLATFORM=$(uname -s)
+fi
+
+ARCH=$(uname -m)
+
+echo "Platform: $PLATFORM"
+echo "Architecture: $ARCH"

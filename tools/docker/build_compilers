@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Force Exit on Errors
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../shared_constants"
+
+build_docker_image() {
+    local tag=$1
+    local dockerfile=$2
+
+    echo -e "\n${BOLD_TXT}-- Building $tag --${NORMAL_TXT}"
+
+    docker build . -t "$tag" -f "$SCRIPT_DIR/$dockerfile"
+
+    echo -e "${GREEN}Built $tag Successfully${NC}"
+}
+
+
+build_docker_image "statsig/compiler-cross" "Dockerfile.cross"
+build_docker_image "statsig/compiler-zigbuild" "Dockerfile.zigbuild"
+build_docker_image "statsig/compiler-xwin" "Dockerfile.xwin"
+build_docker_image "statsig/compiler-aws" "Dockerfile.aws"
+
+
+echo -e "\n${GREEN}-- All Docker Compilers Built --${NC}"
