@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-statsig = { path = "../statsig-lib" }
+sigstat = { path = "../statsig-lib" }
 tokio = {version = "1.39.1", features = ["full"]}
 async-trait = "0.1.81"
 tonic = "0.12.1"

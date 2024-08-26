@@ -1,7 +1,9 @@
 [package]
-name = "statsig"
-version = "0.1.0"
+name = "sigstat"
+version = "0.0.1"
 edition = "2021"
+license = "ISC"
+description = "Core Statsig SDK written in Rust. For usage in multi-user server environments."
 
 [dependencies]
 tokio = {version = "1.39.1", features = ["full"]}
