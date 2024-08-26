@@ -1,4 +1,4 @@
-use crate::{log_d, unwrap_or_return, DynamicValue};
+use crate::{unwrap_or_return, DynamicValue};
 
 pub(crate) fn compare_versions(left: &DynamicValue, right: &DynamicValue, op: &str) -> bool {
     let left_str = unwrap_or_return!(&left.string_value, false);

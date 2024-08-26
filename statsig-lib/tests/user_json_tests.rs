@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod user_json_tests {
-    use statsig::StatsigUser;
+    use sigstat::StatsigUser;
     use std::collections::HashMap;
     use serde_json::json;
 

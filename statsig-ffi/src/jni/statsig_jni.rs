@@ -5,8 +5,8 @@ use jni::JNIEnv;
 use jni::objects::{JClass, JMap, JObject, JString};
 use serde::Deserialize;
 
-use statsig::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES, USER_INSTANCES};
-use statsig::{
+use sigstat::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES, USER_INSTANCES};
+use sigstat::{
     get_instance_or_else, get_instance_or_noop, get_instance_or_return, log_d, log_e, Statsig,
 };
 use crate::jni::jni_utils::{jni_to_rust_hashmap, serialize_to_json_string};

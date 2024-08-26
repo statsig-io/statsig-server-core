@@ -7,7 +7,7 @@ mod exposure_tests {
     use mock_specs_adapter::MockSpecsAdapter;
     use mock_event_logging_adapter::MockEventLoggingAdapter;
 
-    use statsig::{Statsig, StatsigOptions, StatsigUser};
+    use sigstat::{Statsig, StatsigOptions, StatsigUser};
     use std::sync::Arc;
     use std::time::Duration;
     use tokio::time::sleep;

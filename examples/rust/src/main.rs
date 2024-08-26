@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
-use statsig::{LogLevel, Statsig, StatsigOptions, StatsigUser};
+use sigstat::{LogLevel, Statsig, StatsigOptions, StatsigUser};
 
 #[tokio::main]
 async fn main() {

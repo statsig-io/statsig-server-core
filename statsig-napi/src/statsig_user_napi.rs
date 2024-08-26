@@ -1,5 +1,5 @@
 use napi_derive::napi;
-use statsig::{instance_store::USER_INSTANCES, log_w, statsig_user::StatsigUserBuilder, DynamicValue};
+use sigstat::{instance_store::USER_INSTANCES, log_w, statsig_user::StatsigUserBuilder, DynamicValue};
 use std::collections::HashMap;
 use napi::bindgen_prelude::ObjectFinalize;
 use napi::Env;

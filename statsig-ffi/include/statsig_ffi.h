@@ -7,6 +7,10 @@ typedef int StatsigUser;
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef struct StatsigRef {
+  uintptr_t pointer;
+} StatsigRef;
+
 typedef struct StatsigOptionsRef {
   uintptr_t pointer;
 } StatsigOptionsRef;
@@ -14,31 +18,6 @@ typedef struct StatsigOptionsRef {
 typedef struct StatsigUserRef {
   uintptr_t pointer;
 } StatsigUserRef;
-
-typedef struct StatsigRef {
-  uintptr_t pointer;
-} StatsigRef;
-
-typedef struct Pot {
-  uintptr_t pointer;
-} Pot;
-
-struct StatsigOptionsRef statsig_options_create(void);
-
-void statsig_options_release(struct StatsigOptionsRef *options_ref);
-
-struct StatsigUserRef statsig_user_create(const char *user_id,
-                                          const char *custom_ids_json,
-                                          const char *email,
-                                          const char *ip,
-                                          const char *user_agent,
-                                          const char *country,
-                                          const char *locale,
-                                          const char *app_version,
-                                          const char *custom_json,
-                                          const char *private_attributes_json);
-
-void statsig_user_release(struct StatsigUserRef *user_ref);
 
 struct StatsigRef statsig_create(const char *sdk_key, struct StatsigOptionsRef options_ref);
 
@@ -62,8 +41,19 @@ uintptr_t statsig_get_client_init_response_buffer(struct StatsigRef statsig_ref,
                                                   char *buffer,
                                                   uintptr_t buffer_size);
 
-struct Pot test_create(void);
+struct StatsigOptionsRef statsig_options_create(void);
 
-void test_mut_star(struct Pot *pot);
+void statsig_options_release(struct StatsigOptionsRef *options_ref);
 
-void test_value(struct Pot pot);
+struct StatsigUserRef statsig_user_create(const char *user_id,
+                                          const char *custom_ids_json,
+                                          const char *email,
+                                          const char *ip,
+                                          const char *user_agent,
+                                          const char *country,
+                                          const char *locale,
+                                          const char *app_version,
+                                          const char *custom_json,
+                                          const char *private_attributes_json);
+
+void statsig_user_release(struct StatsigUserRef *user_ref);

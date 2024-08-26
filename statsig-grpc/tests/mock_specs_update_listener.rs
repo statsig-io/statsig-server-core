@@ -1,5 +1,5 @@
 use std::sync::Mutex;
-use statsig::{SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener};
+use sigstat::{SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener};
 
 #[derive(Default)]
 pub struct MockListener {

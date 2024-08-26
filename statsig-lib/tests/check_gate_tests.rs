@@ -4,7 +4,7 @@ mod check_gate_tests {
     use super::*;
     use mock_specs_adapter::MockSpecsAdapter;
     use lazy_static::lazy_static;
-    use statsig::{dyn_value, DynamicValue, Statsig, StatsigOptions, StatsigUser};
+    use sigstat::{dyn_value, DynamicValue, Statsig, StatsigOptions, StatsigUser};
     use std::collections::HashMap;
     use std::sync::Arc;
     use std::time::Instant;

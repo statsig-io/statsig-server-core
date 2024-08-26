@@ -3,6 +3,36 @@ use log::{debug, info, warn, error, Level};
 const MAX_CHARS: usize = 300;
 const TRUNCATED_SUFFIX: &str = "...[TRUNCATED]";
 
+#[derive(Clone)]
+pub enum LogLevel {
+    Debug,
+    Info,
+    Warn,
+    Error
+}
+
+impl LogLevel {
+    fn to_third_party_level(self) -> Level {
+        match self {
+            LogLevel::Debug => Level::Debug,
+            LogLevel::Info => Level::Info,
+            LogLevel::Warn => Level::Warn,
+            LogLevel::Error => Level::Error,
+        }
+    }
+}
+
+pub fn initialize_simple_output_logger(level: &Option<LogLevel>) {
+    let level = level.as_ref().unwrap_or(&LogLevel::Warn).clone().to_third_party_level();
+
+    match simple_logger::init_with_level(level) {
+        Ok(_) => {},
+        Err(_) => {
+            log::set_max_level(level.to_level_filter());
+        }
+    }
+}
+
 pub fn log_message(level: Level, msg: String) {
     let truncated_msg;
     if msg.chars().count() > MAX_CHARS {

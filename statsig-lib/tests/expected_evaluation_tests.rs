@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use statsig::{dyn_value, Statsig, StatsigOptions, StatsigUser, DynamicValue};
-use statsig::statsig_user::StatsigUserBuilder;
+use sigstat::{dyn_value, Statsig, StatsigOptions, StatsigUser, DynamicValue};
+use sigstat::statsig_user::StatsigUserBuilder;
 use crate::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::mock_specs_adapter::MockSpecsAdapter;
 

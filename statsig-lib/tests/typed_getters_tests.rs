@@ -2,7 +2,7 @@ mod mock_specs_adapter;
 mod mock_event_logging_adapter;
 mod test_utils;
 
-use statsig::{Statsig, StatsigOptions, StatsigUser};
+use sigstat::{Statsig, StatsigOptions, StatsigUser};
 use std::sync::Arc;
 use serde_json::json;
 use crate::mock_event_logging_adapter::MockEventLoggingAdapter;

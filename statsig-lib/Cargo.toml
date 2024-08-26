@@ -19,6 +19,10 @@ openssl = {version = "0.10.66", features = ["vendored"], optional = true}
 log = "0.4.22"
 simple_logger = "5.0.0"
 lazy_static = "1.5.0"
+futures = "0.3.30"
+
+[dev-dependencies]
+mockito = "1.5.0"
 
 [features]
 default = []

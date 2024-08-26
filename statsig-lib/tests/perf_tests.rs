@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 use serde_json::json;
-use statsig::{InitializeResponse, Statsig, StatsigOptions, StatsigUser};
+use sigstat::{InitializeResponse, Statsig, StatsigOptions, StatsigUser};
 use crate::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::mock_specs_adapter::MockSpecsAdapter;
 

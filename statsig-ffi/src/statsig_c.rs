@@ -1,10 +1,10 @@
-use std::os::raw::c_char;
-use std::slice;
-use serde_json::json;
-use statsig::{log_d, log_w, Statsig};
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::statsig_options_c::StatsigOptionsRef;
 use crate::statsig_user_c::StatsigUserRef;
+use serde_json::json;
+use sigstat::{log_d, log_w, Statsig};
+use std::os::raw::c_char;
+use std::slice;
 
 #[repr(C)]
 pub struct StatsigRef {
@@ -22,7 +22,6 @@ impl StatsigRef {
     }
 }
 
-
 #[no_mangle]
 pub extern "C" fn statsig_create(
     sdk_key: *const c_char,
@@ -35,9 +34,7 @@ pub extern "C" fn statsig_create(
     let pointer = Box::into_raw(Box::new(inst)) as usize;
 
     log_d!("Created Statsig {}", pointer);
-    StatsigRef {
-        pointer,
-    }
+    StatsigRef { pointer }
 }
 
 #[no_mangle]
@@ -55,10 +52,7 @@ pub extern "C" fn statsig_release(statsig_ref: *mut StatsigRef) {
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_initialize(
-    statsig_ref: StatsigRef,
-    callback: extern "C" fn(),
-) {
+pub extern "C" fn statsig_initialize(statsig_ref: StatsigRef, callback: extern "C" fn()) {
     log_d!("Statsig Init {}", statsig_ref.pointer);
     let statsig = statsig_ref.to_internal().unwrap();
 
@@ -68,9 +62,7 @@ pub extern "C" fn statsig_initialize(
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_get_current_values(
-    statsig_ref: StatsigRef,
-) -> *const c_char {
+pub extern "C" fn statsig_get_current_values(statsig_ref: StatsigRef) -> *const c_char {
     //todo: handle unwrap
     let statsig = statsig_ref.to_internal().unwrap();
 
@@ -79,12 +71,8 @@ pub extern "C" fn statsig_get_current_values(
     string_to_c_char(data)
 }
 
-
 #[no_mangle]
-pub extern "C" fn statsig_check_gate(
-    statsig_ptr: i64,
-    user_ptr: i64
-) -> bool {
+pub extern "C" fn statsig_check_gate(statsig_ptr: i64, user_ptr: i64) -> bool {
     return false;
 }
 

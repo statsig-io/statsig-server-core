@@ -3,7 +3,7 @@ use jni::errors::Error;
 use jni::JNIEnv;
 use jni::objects::{JMap, JObject, JString};
 use jni::sys::jobject;
-use statsig::log_e;
+use sigstat::log_e;
 
 pub fn jstring_to_string(env: &mut JNIEnv, input: JString) -> Option<String> {
     match env.get_string(&input) {

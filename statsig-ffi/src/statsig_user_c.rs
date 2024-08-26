@@ -1,6 +1,6 @@
-use statsig::{log_d, log_w, StatsigUser};
+use sigstat::{log_d, log_w, StatsigUser};
 use std::os::raw::c_char;
-use statsig::statsig_user::StatsigUserBuilder;
+use sigstat::statsig_user::StatsigUserBuilder;
 use crate::ffi_utils::{c_char_to_string, parse_json_to_map};
 
 #[repr(C)]

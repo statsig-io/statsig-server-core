@@ -1,17 +1,19 @@
+use crate::statsig_grpc_specs_adapter::statsig_forward_proxy::config_spec_request::ApiVersion;
+use crate::statsig_grpc_specs_adapter::statsig_forward_proxy::ConfigSpecResponse;
 use async_trait::async_trait;
-use statsig::{log_d, log_e, log_w, SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr};
+use chrono::Utc;
+use sigstat::{
+    log_d, log_e, log_w, SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr,
+};
 use statsig_forward_proxy::statsig_forward_proxy_client::StatsigForwardProxyClient;
 use statsig_forward_proxy::ConfigSpecRequest;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 use tokio::runtime::Handle;
-use tokio::sync::{Notify};
+use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 use tonic::codegen::tokio_stream::StreamExt;
 use tonic::transport::Channel;
-use crate::statsig_grpc_specs_adapter::statsig_forward_proxy::ConfigSpecResponse;
-use crate::statsig_grpc_specs_adapter::statsig_forward_proxy::config_spec_request::ApiVersion;
-use chrono::Utc;
 
 pub mod statsig_forward_proxy {
     tonic::include_proto!("statsig_forward_proxy");
@@ -23,7 +25,7 @@ pub struct StatsigGrpcSpecAdapter {
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
     shutdown_notify: Arc<Notify>,
     task_handle: Mutex<Option<JoinHandle<()>>>,
-    grpc_client: Mutex<Option<StatsigForwardProxyClient<Channel>>>
+    grpc_client: Mutex<Option<StatsigForwardProxyClient<Channel>>>,
 }
 
 #[async_trait]
@@ -35,7 +37,10 @@ impl SpecsAdapter for StatsigGrpcSpecAdapter {
     ) -> Result<(), StatsigErr> {
         self.setup_grpc_client().await?;
         self.set_listener(listener)?;
-        let handle = self.clone().spawn_grpc_streaming_thread(runtime_handle).await?;
+        let handle = self
+            .clone()
+            .spawn_grpc_streaming_thread(runtime_handle)
+            .await?;
         self.set_task_handle(handle)
     }
 
@@ -43,8 +48,10 @@ impl SpecsAdapter for StatsigGrpcSpecAdapter {
         let request = create_config_spec_request(&self.sdk_key, current_store_lcut);
 
         let mut client = self.get_grpc_client()?;
-        let response = client.get_config_spec(request)
-            .await.map_err(|e| StatsigErr::CustomError(format!("gRPC get_config_spec failed - {}", e)))?
+        let response = client
+            .get_config_spec(request)
+            .await
+            .map_err(|e| StatsigErr::CustomError(format!("gRPC get_config_spec failed - {}", e)))?
             .into_inner();
 
         self.send_spec_update_to_listener(response.spec)?;
@@ -58,16 +65,24 @@ impl SpecsAdapter for StatsigGrpcSpecAdapter {
         let task_handle = {
             match self.task_handle.lock() {
                 Ok(mut guard) => guard.take(),
-                Err(_) => return Err(StatsigErr::CustomError("Failed to acquire lock to running task".to_string())),
+                Err(_) => {
+                    return Err(StatsigErr::CustomError(
+                        "Failed to acquire lock to running task".to_string(),
+                    ))
+                }
             }
         };
 
         if let Some(handle) = task_handle {
             if tokio::time::timeout(timeout, handle).await.is_err() {
-                return Err(StatsigErr::CustomError("Failed to gracefully shutdown StatsigGrpcSpecsAdapter.".to_string()));
+                return Err(StatsigErr::CustomError(
+                    "Failed to gracefully shutdown StatsigGrpcSpecsAdapter.".to_string(),
+                ));
             }
         } else {
-            return Err(StatsigErr::CustomError("No running task to shut down".to_string()));
+            return Err(StatsigErr::CustomError(
+                "No running task to shut down".to_string(),
+            ));
         }
 
         Ok(())
@@ -82,7 +97,7 @@ impl StatsigGrpcSpecAdapter {
             listener: RwLock::new(None),
             shutdown_notify: Arc::new(Notify::new()),
             task_handle: Mutex::new(None),
-            grpc_client: Mutex::new(None)
+            grpc_client: Mutex::new(None),
         }
     }
 
@@ -90,12 +105,13 @@ impl StatsigGrpcSpecAdapter {
         let channel = Channel::from_shared(self.proxy_api.clone())
             .map_err(|e| StatsigErr::CustomError(format!("Failed to create gRPC channel: {}", e)))?
             .connect_timeout(Duration::from_secs(5))
-            .connect().await
+            .connect()
+            .await
             .map_err(|e| StatsigErr::CustomError(format!("gRPC failed to connect: {}", e)))?;
 
         match self.grpc_client.lock() {
             Ok(mut lock) => Ok(*lock = Some(StatsigForwardProxyClient::new(channel))),
-            Err(_) => Err(StatsigErr::SpecsAdapterLockFailure)
+            Err(_) => Err(StatsigErr::SpecsAdapterLockFailure),
         }
     }
 
@@ -103,9 +119,11 @@ impl StatsigGrpcSpecAdapter {
         match self.grpc_client.lock() {
             Ok(lock) => match &*lock {
                 Some(client) => Ok(client.clone()),
-                None => Err(StatsigErr::CustomError("No gRPC client found".to_string()))
+                None => Err(StatsigErr::CustomError("No gRPC client found".to_string())),
             },
-            Err(_) => Err(StatsigErr::CustomError("Failed to acquire gRPC client lock".to_string()))
+            Err(_) => Err(StatsigErr::CustomError(
+                "Failed to acquire gRPC client lock".to_string(),
+            )),
         }
     }
 
@@ -134,22 +152,29 @@ impl StatsigGrpcSpecAdapter {
         }))
     }
 
-    fn set_listener(&self, listener: Arc<dyn SpecsUpdateListener + Send + Sync>) -> Result<(), StatsigErr> {
+    fn set_listener(
+        &self,
+        listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
+    ) -> Result<(), StatsigErr> {
         match self.listener.write() {
             Ok(mut mut_listener) => Ok(*mut_listener = Some(listener)),
-            Err(_) => Err(StatsigErr::SpecsListenerLockFailure)
+            Err(_) => Err(StatsigErr::SpecsListenerLockFailure),
         }
     }
 
     async fn start_grpc_stream(
         self: Arc<Self>,
-        client: &mut StatsigForwardProxyClient<Channel>
+        client: &mut StatsigForwardProxyClient<Channel>,
     ) -> Result<(), StatsigErr> {
         let lcut = self.get_current_store_lcut();
         let request = create_config_spec_request(&self.sdk_key, lcut);
 
-        let mut stream = client.stream_config_spec(request)
-            .await.map_err(|e| StatsigErr::CustomError(format!("gRPC stream_config_spec failed - {}", e)))?
+        let mut stream = client
+            .stream_config_spec(request)
+            .await
+            .map_err(|e| {
+                StatsigErr::CustomError(format!("gRPC stream_config_spec failed - {}", e))
+            })?
             .into_inner();
 
         while let Some(config_spec_result) = stream.next().await {
@@ -183,7 +208,9 @@ impl StatsigGrpcSpecAdapter {
     }
 
     fn send_spec_update_to_listener(&self, data: String) -> Result<(), StatsigErr> {
-        let listener = self.listener.read()
+        let listener = self
+            .listener
+            .read()
             .map_err(|_| StatsigErr::BackgroundTaskLockFailure)?;
 
         match listener.as_ref() {
@@ -197,7 +224,7 @@ impl StatsigGrpcSpecAdapter {
 
                 Ok(())
             }
-            None => Err(StatsigErr::SpecsListenerNotSet)
+            None => Err(StatsigErr::SpecsListenerNotSet),
         }
     }
 

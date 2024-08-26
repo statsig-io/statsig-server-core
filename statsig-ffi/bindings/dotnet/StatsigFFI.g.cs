@@ -56,15 +56,6 @@ namespace StatsigServer
         [DllImport(__DllName, EntryPoint = "statsig_get_client_init_response_buffer", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern nuint statsig_get_client_init_response_buffer(StatsigRef statsig_ref, StatsigUserRef user_ref, byte* buffer, nuint buffer_size);
 
-        [DllImport(__DllName, EntryPoint = "test_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern Pot test_create();
-
-        [DllImport(__DllName, EntryPoint = "test_mut_star", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void test_mut_star(Pot* pot);
-
-        [DllImport(__DllName, EntryPoint = "test_value", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void test_value(Pot pot);
-
 
     }
 
@@ -82,12 +73,6 @@ namespace StatsigServer
 
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct StatsigRef
-    {
-        public nuint pointer;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct Pot
     {
         public nuint pointer;
     }

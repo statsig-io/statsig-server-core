@@ -1,7 +1,7 @@
 use napi::bindgen_prelude::ObjectFinalize;
 use napi::Env;
 use napi_derive::napi;
-use statsig::{instance_store::OPTIONS_INSTANCES, StatsigOptions};
+use sigstat::{instance_store::OPTIONS_INSTANCES, StatsigOptions};
 
 #[napi(custom_finalize)]
 pub struct AutoReleasingStatsigOptionsRef {

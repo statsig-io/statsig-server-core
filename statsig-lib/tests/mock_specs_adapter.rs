@@ -5,7 +5,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use chrono::Utc;
 use tokio::runtime::{Handle};
-use statsig::{SpecsAdapter, SpecsUpdateListener, SpecsUpdate, SpecsSource, StatsigErr};
+use sigstat::{SpecsAdapter, SpecsUpdateListener, SpecsUpdate, SpecsSource, StatsigErr};
 
 pub struct MockSpecsAdapter {
     json_data_path: String,

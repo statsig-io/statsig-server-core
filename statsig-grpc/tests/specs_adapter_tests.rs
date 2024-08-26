@@ -1,18 +1,22 @@
-mod mock_specs_update_listener;
 mod mock_forward_proxy;
+mod mock_specs_update_listener;
 mod test_utils;
 
 #[cfg(test)]
 pub mod specs_adapter_tests {
-    use std::sync::Arc;
-    use tokio::runtime::Handle;
-    use statsig::{SpecsAdapter, SpecsSource};
-    use statsig_grpc::*;
     use crate::mock_forward_proxy::{MockForwardProxy, MockForwardProxyVerification};
     use crate::mock_specs_update_listener::MockListener;
     use crate::test_utils::wait_one_ms;
+    use sigstat::{SpecsAdapter, SpecsSource};
+    use statsig_grpc::*;
+    use std::sync::Arc;
+    use tokio::runtime::Handle;
 
-    async fn setup() -> (Arc<MockForwardProxyVerification>, Arc<MockListener>, Arc<StatsigGrpcSpecAdapter>) {
+    async fn setup() -> (
+        Arc<MockForwardProxyVerification>,
+        Arc<MockListener>,
+        Arc<StatsigGrpcSpecAdapter>,
+    ) {
         let mock_proxy = MockForwardProxy::spawn().await;
         let adapter = Arc::new(StatsigGrpcSpecAdapter::new(
             "secret-key",
@@ -20,7 +24,11 @@ pub mod specs_adapter_tests {
         ));
         let mock_listener = Arc::new(MockListener::default());
         let handle = Handle::current();
-        adapter.clone().start(&handle, mock_listener.clone()).await.unwrap();
+        adapter
+            .clone()
+            .start(&handle, mock_listener.clone())
+            .await
+            .unwrap();
 
         wait_one_ms().await;
 
@@ -38,17 +46,29 @@ pub mod specs_adapter_tests {
 
         adapter.manually_sync_specs(None).await.unwrap();
 
-        let received_update = mock_listener.received_update.lock().unwrap().take().unwrap();
+        let received_update = mock_listener
+            .received_update
+            .lock()
+            .unwrap()
+            .take()
+            .unwrap();
         assert_eq!(received_update.data, "manual");
         assert_eq!(received_update.source, SpecsSource::Network);
 
-        mock_proxy.send_stream_update(Ok(ConfigSpecResponse {
-            spec: "bg_sync".to_string(),
-            last_updated: 123,
-        })).await;
+        mock_proxy
+            .send_stream_update(Ok(ConfigSpecResponse {
+                spec: "bg_sync".to_string(),
+                last_updated: 123,
+            }))
+            .await;
         wait_one_ms().await;
 
-        let received_update = mock_listener.received_update.lock().unwrap().take().unwrap();
+        let received_update = mock_listener
+            .received_update
+            .lock()
+            .unwrap()
+            .take()
+            .unwrap();
         assert_eq!(received_update.data, "bg_sync");
         assert_eq!(received_update.source, SpecsSource::Network);
     }

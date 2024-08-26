@@ -2,9 +2,9 @@ use crate::jni::jni_utils::jstring_to_string;
 use jni::objects::{JClass, JString};
 use jni::sys::{jint, jlong};
 use jni::JNIEnv;
-use statsig::instance_store::OPTIONS_INSTANCES;
-use statsig::log_d;
-use statsig::statsig_options::StatsigOptionsBuilder;
+use sigstat::instance_store::OPTIONS_INSTANCES;
+use sigstat::log_d;
+use sigstat::statsig_options::StatsigOptionsBuilder;
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(

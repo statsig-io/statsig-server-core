@@ -1,4 +1,4 @@
-use statsig::{log_d, log_w, StatsigOptions};
+use sigstat::{log_d, log_w, StatsigOptions};
 
 #[repr(C)]
 pub struct StatsigOptionsRef {

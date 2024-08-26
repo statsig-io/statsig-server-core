@@ -3,9 +3,9 @@ use crate::jni::jni_utils::jstring_to_string;
 use jni::objects::{JClass, JString};
 use jni::sys::jint;
 use jni::JNIEnv;
-use statsig::instance_store::USER_INSTANCES;
-use statsig::log_d;
-use statsig::statsig_user::StatsigUserBuilder;
+use sigstat::instance_store::USER_INSTANCES;
+use sigstat::log_d;
+use sigstat::statsig_user::StatsigUserBuilder;
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigUserCreate(

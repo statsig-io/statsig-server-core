@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use async_trait::async_trait;
 use serde_json::{Map, Value};
 use tokio::sync::Mutex;
-use statsig::{EventLoggingAdapter, StatsigOptions};
+use sigstat::{EventLoggingAdapter, StatsigOptions};
 
 pub struct MockEventLoggingAdapter {
     pub logged_event_count: AtomicUsize,

@@ -37,6 +37,7 @@ use std::time::Duration;
 use tokio::runtime::{Builder, Handle, Runtime};
 use tokio::try_join;
 use crate::evaluation::evaluation_types::SecondaryExposure;
+use crate::output_logger::initialize_simple_output_logger;
 
 pub struct Statsig {
     sdk_key: String,
@@ -56,6 +57,8 @@ impl Statsig {
         let spec_store = Arc::new(SpecStore::new());
         let options = options.unwrap_or_default();
 
+        initialize_simple_output_logger(&options.output_log_level);
+
         let specs_adapter = initialize_specs_adapter(sdk_key, &options);
 
         let event_logging_adapter = initialize_event_logging_adapter(sdk_key, &options);
@@ -72,7 +75,7 @@ impl Statsig {
 
         Statsig {
             sdk_key: sdk_key.to_string(),
-            options: options,
+            options,
             gcir_formatter: Arc::new(ClientInitResponseFormatter::new(&spec_store)),
             event_logger: Arc::new(event_logger),
             sha_hasher: MemoSha256::new(),
@@ -91,6 +94,10 @@ impl Statsig {
             .clone()
             .start(&self.runtime_handle, self.spec_store.clone())
             .await?;
+
+        if let Some(id_lists_adapter) = &self.options.id_lists_adapter {
+            id_lists_adapter.clone().start(&self.runtime_handle).await?;
+        }
 
         let info = self.spec_store.get_current_specs_info();
         let is_uninitialized = info.source == SpecsSource::Uninitialized;
@@ -180,6 +187,7 @@ impl Statsig {
 
     pub fn check_gate(&self, user: &StatsigUser, gate_name: &str) -> bool {
         log_d!("Check Gate {}", gate_name);
+
         let user_internal = StatsigUserInternal::new(user, &self.statsig_environment);
         let (value, rule_id, secondary_exposures, details) =
             self.check_gate_impl(&user_internal, gate_name);

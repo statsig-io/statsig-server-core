@@ -9,7 +9,9 @@ fn run_c_bindgen() {
     println!("crate_dir {}", crate_dir);
 
     let mut config: cbindgen::Config = Default::default();
-    config.header = Some("typedef int Statsig;\ntypedef int StatsigOptions;\ntypedef int StatsigUser;".to_string());
+    config.header = Some(
+        "typedef int Statsig;\ntypedef int StatsigOptions;\ntypedef int StatsigUser;".to_string(),
+    );
     config.language = cbindgen::Language::C;
     cbindgen::Builder::new()
         .with_crate(crate_dir)
@@ -25,11 +27,12 @@ fn run_csharp_bindgen() {
         .input_extern_file("./src/statsig_options_c.rs")
         .input_extern_file("./src/statsig_user_c.rs")
         .input_extern_file("./src/statsig_c.rs")
-        .input_extern_file("./src/testing_c.rs")
         .csharp_use_function_pointer(false)
         .csharp_class_name("StatsigFFI")
         .csharp_namespace("StatsigServer")
-        .csharp_dll_name("/Users/danielloomb/Projects/statsig-server-core/target/release/libstatsig_ffi.dylib")
+        .csharp_dll_name(
+            "/Users/danielloomb/Projects/statsig-server-core/target/release/libstatsig_ffi.dylib",
+        )
         .generate_csharp_file("./bindings/dotnet/StatsigFFI.g.cs")
         .unwrap();
 }

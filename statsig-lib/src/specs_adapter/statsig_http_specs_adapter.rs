@@ -71,7 +71,7 @@ impl StatsigHttpSpecsAdapter {
         }
     }
 
-    async fn run_background_sync(weak_self: &Weak<StatsigHttpSpecsAdapter>) {
+    async fn run_background_sync(weak_self: &Weak<Self>) {
         if let Some(strong_self) = weak_self.upgrade() {
             let lcut = match strong_self.listener.read() {
                 Ok(lock) => match lock.as_ref() {

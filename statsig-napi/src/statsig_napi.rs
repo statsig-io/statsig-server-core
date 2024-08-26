@@ -3,8 +3,8 @@ use napi::bindgen_prelude::ObjectFinalize;
 use napi::Env;
 use napi_derive::napi;
 use serde_json::json;
-use statsig::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES, USER_INSTANCES};
-use statsig::{get_instance_or_else, get_instance_or_noop, get_instance_or_return, Statsig};
+use sigstat::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES, USER_INSTANCES};
+use sigstat::{get_instance_or_else, get_instance_or_noop, get_instance_or_return, Statsig};
 
 use crate::statsig_types_napi::{DynamicConfigNapi, ExperimentNapi, FeatureGateNapi};
 
