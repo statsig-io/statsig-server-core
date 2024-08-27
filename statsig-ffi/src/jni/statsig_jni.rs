@@ -1,15 +1,15 @@
-use std::collections::HashMap;
-use jni::sys::{jboolean, jclass, jint, jstring, JNI_FALSE, JNI_TRUE, jlong, jobject};
+use jni::sys::{jboolean, jclass, jint, jlong, jobject, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
+use std::collections::HashMap;
 
 use jni::objects::{JClass, JMap, JObject, JString};
 use serde::Deserialize;
 
+use crate::jni::jni_utils::{jni_to_rust_hashmap, serialize_to_json_string};
 use sigstat::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES, USER_INSTANCES};
 use sigstat::{
     get_instance_or_else, get_instance_or_noop, get_instance_or_return, log_d, log_e, Statsig,
 };
-use crate::jni::jni_utils::{jni_to_rust_hashmap, serialize_to_json_string};
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
@@ -292,7 +292,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEvent(
         Err(_) => return,
     };
 
-    let value= if value.is_null() {
+    let value = if value.is_null() {
         None
     } else {
         match env.get_string(&value) {
@@ -301,17 +301,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEvent(
         }
     };
 
-    let metadata= match jni_to_rust_hashmap(env, metadata) {
+    let metadata = match jni_to_rust_hashmap(env, metadata) {
         Ok(map) => Some(map),
         Err(_) => None,
     };
 
-    statsig.log_event(
-        user.as_ref(),
-        &event_name,
-        value,
-        metadata,
-    );
+    statsig.log_event(user.as_ref(), &event_name, value, metadata);
 }
 
 #[no_mangle]

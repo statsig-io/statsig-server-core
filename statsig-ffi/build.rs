@@ -1,7 +1,8 @@
 use std::env;
 fn main() {
     run_c_bindgen();
-    run_csharp_bindgen()
+    run_csharp_bindgen();
+    run_python_build();
 }
 
 fn run_c_bindgen() {
@@ -35,4 +36,8 @@ fn run_csharp_bindgen() {
         )
         .generate_csharp_file("./bindings/dotnet/StatsigFFI.g.cs")
         .unwrap();
+}
+
+fn run_python_build() {
+    
 }

@@ -2,7 +2,6 @@ import sys
 import os
 from time import perf_counter
 
-# Add the directory containing _simple to the Python path
 build_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../build/python/sigstat'))
 sys.path.insert(0, build_path)
 
