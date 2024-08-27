@@ -210,7 +210,9 @@ jobs:
         run: |
           yarn install
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+          set -e
           npm publish --tag beta --access public
+          echo $?
         working-directory: build/node
         env:
           GITHUB_TOKEN: ${{ secrets.STATSIG_CORE_SERVER_SDK_PAT }}
