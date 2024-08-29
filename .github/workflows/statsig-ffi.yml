@@ -33,7 +33,7 @@ jobs:
             runner: ubuntu-latest
 
     runs-on: ${{ matrix.config.runner }}
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
