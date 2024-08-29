@@ -1,0 +1,21 @@
+{
+  "name": "Test Experiment",
+  "rule_id": "rule-123",
+  "value": {
+    "key1": "value1",
+    "key2": 2
+  },
+  "group_name": "test-group",
+  "secondary_exposures": [
+    {
+      "gate": "global_holdout",
+      "gateValue": "false",
+      "ruleID": "3QoA4ncNdVGBaMt3N1KYjz:0.50:12"
+    },
+    {
+      "gate": "exp_holdout",
+      "gateValue": "false",
+      "ruleID": "1rEqLOpCROaRafv7ubGgax111"
+    }
+  ]
+}

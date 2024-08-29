@@ -50,14 +50,13 @@ public class StatsigUser implements AutoCloseable {
 
     @Override
     public void close() {
-
         if (ref != 0) {
             StatsigJNI.statsigUserRelease(this.ref);
             this.ref = 0;
         }
     }
 
-    public int getRef() {
+    int getRef() {
         return ref;
     }
 }

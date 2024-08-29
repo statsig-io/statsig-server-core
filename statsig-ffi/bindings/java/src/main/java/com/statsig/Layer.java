@@ -7,25 +7,28 @@ import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 import com.statsig.internal.GsonUtil;
 
-public class Experiment {
-    public final String name;
+public class Layer {
+    public String name;
     @SerializedName("rule_id")
-    public final String ruleID;
-    public final Map<String, JsonElement> value;
+    public String ruleID;
     @SerializedName("group_name")
-    public final String groupName;
+    public String groupName;
+    public Map<String, JsonElement> value;
+    @SerializedName("allocated_experiment_name")
+    public String allocatedExperimentName;
     @SerializedName("details")
-    public final EvaluationDetails evaluationDetails;
+    public EvaluationDetails evaluationDetails;
     @Expose(serialize = false, deserialize = false)
     String rawJson;
 
-    Experiment(String name, Map<String, JsonElement> value, String ruleID, String groupName,
-                      EvaluationDetails evaluationDetails) {
+    Layer(String name, String ruleID, String groupName, Map<String, JsonElement> value,
+                 String allocatedExperimentName, EvaluationDetails evaluationDetails) {
         this.name = name;
-        this.value = value;
         this.ruleID = ruleID;
         this.groupName = groupName;
+        this.value = value;
         this.evaluationDetails = evaluationDetails;
+        this.allocatedExperimentName = allocatedExperimentName;
     }
 
     public String getRawJson() {

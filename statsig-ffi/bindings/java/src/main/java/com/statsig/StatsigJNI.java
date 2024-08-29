@@ -11,7 +11,7 @@ public class StatsigJNI {
 
     static {
         try {
-            System.setProperty("java.library.path", "lib/native");
+            System.setProperty("java.library.path", "lib/");
             System.loadLibrary("statsig_ffi");
             libraryLoaded = true;
         } catch (UnsatisfiedLinkError e) {
@@ -33,6 +33,8 @@ public class StatsigJNI {
     public static native String statsigGetExperiment(int statsigRef, int userRef, String experimentName);
     public static native String statsigGetDynamicConfig(int statsigRef, int userRef, String configName);
     public static native String statsigGetClientInitResponse(int statsigRef, int userRef);
+    public static native void statsigLogEvent(int statsigRef, int userRef, String eventName, String value, Map<String, String> metadata);
+    public static native void statsigFlushEvents(int statsigRef, Runnable callback);
 
     /**
      * StatsigUser

@@ -14,7 +14,7 @@ public class StatsigOptions implements AutoCloseable {
         );
     }
 
-    public int getRef() {
+    int getRef() {
         return ref;
     }
 
