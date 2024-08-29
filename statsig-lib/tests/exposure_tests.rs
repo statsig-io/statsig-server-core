@@ -32,6 +32,35 @@ mod exposure_tests {
     }
 
     #[tokio::test]
+    async fn test_gate_exposures_formatting() {
+        let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
+        let specs_adapter = create_bootrapped_specs_adapter();
+        let user = StatsigUser::with_user_id("a_user_id".into());
+
+        let statsig = create_statsig(&specs_adapter, &logging_adapter);
+        statsig.initialize().await.unwrap();
+
+        let _ = statsig.check_gate(&user, "test_50_50");
+        sleep(Duration::from_millis(1)).await;
+        statsig.flush_events().await;
+
+        let received = logging_adapter.force_get_received_payloads().await;
+
+        let statsig_meta = enforce_object(&received["statsigMetadata"]);
+        assert_eq!(statsig_meta["sdkType"], "statsig-server-core");
+        assert!(statsig_meta["sdkVersion"].as_str().is_some());
+
+        let exposure = logging_adapter.force_get_first_event().await;
+        assert_eq!(exposure["eventName"], "statsig::gate_exposure");
+
+        let sec_expos = enforce_array(&exposure["secondaryExposures"]);
+        let holdout_exposure = enforce_object(&sec_expos[0]);
+        assert_eq!(holdout_exposure["gate"], "global_holdout");
+        assert_eq!(holdout_exposure["gateValue"], "false");
+        assert_eq!(holdout_exposure["ruleID"], "3QoA4ncNdVGBaMt3N1KYjz:0.50:1");
+    }
+
+    #[tokio::test]
     async fn test_gate_exposures_uninitialized() {
         let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
         let specs_adapter = create_bootrapped_specs_adapter();
