@@ -1,0 +1,31 @@
+FROM rust:1.71-slim
+
+RUN dpkg --add-architecture amd64
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    libssl-dev:amd64 \
+    gcc-x86-64-linux-gnu \
+    g++-x86-64-linux-gnu \
+    protobuf-compiler \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+ENV CARGO_TERM_COLOR=always
+ENV TARGET="x86_64-unknown-linux-gnu"
+ENV EXTRAS=""
+ENV PKG_CONFIG_ALLOW_CROSS=1
+
+ENV CC_x86_64_unknown_linux_gnu=x86_64-linux-gnu-gcc
+ENV CXX_x86_64_unknown_linux_gnu=x86_64-linux-gnu-g++
+ENV AR_x86_64_unknown_linux_gnu=x86_64-linux-gnu-ar
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
+
+RUN rustup target add $TARGET
+
+RUN /usr/bin/ldd --version | head -n 1
+RUN openssl version
+
+CMD cargo build --target $TARGET $EXTRAS

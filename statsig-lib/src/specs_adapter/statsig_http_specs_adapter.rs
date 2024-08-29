@@ -42,7 +42,10 @@ impl StatsigHttpSpecsAdapter {
         }
     }
 
-    fn schedule_background_sync(self: Arc<Self>, runtime_handle: &Handle) -> Result<(), StatsigErr> {
+    fn schedule_background_sync(
+        self: Arc<Self>,
+        runtime_handle: &Handle,
+    ) -> Result<(), StatsigErr> {
         let weak_self = Arc::downgrade(&self);
 
         let interval_duration = self.sync_interval_duration;
@@ -184,7 +187,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
 fn construct_specs_url(sdk_key: &str, options: &StatsigOptions) -> String {
     let base = match &options.specs_url {
         Some(u) => u,
-        _ => &DEFAULT_SPECS_URL.to_string(),
+        _ => DEFAULT_SPECS_URL,
     };
 
     format!("{}/{}.json", base, sdk_key)

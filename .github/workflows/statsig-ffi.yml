@@ -12,18 +12,20 @@ env:
 
 jobs:
   build-linux:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          # - armv7-unknown-linux-gnueabihf
-          # - aarch64-unknown-linux-gnu
-          # - x86_64-unknown-freebsd
-          # - aarch64-unknown-linux-musl
-          # - x86_64-unknown-linux-musl
+        config:
+          - target: amazonlinux2-arm64
+            platform: linux/arm64
+            runner: statsig-ubuntu-arm64
+
+          - target: amazonlinux2-x86_64
+            platform: linux/amd64
+            runner: ubuntu-latest
+
+    runs-on: ${{ matrix.config.runner }}
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -36,22 +38,73 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install Rust Targets
+      - name: "Login to Docker Hub"
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: "Compute Dockerfile Hash"
+        id: compute_hash
         run: |
-          rustup target add ${{ matrix.target }}
+          md5hash=$(md5sum tools/docker/Dockerfile.${{ matrix.config.target }} | awk '{ print $1 }')
+          echo "md5hash: $md5hash"
+          imagetag="statsig/core-sdk-compiler:${{ matrix.config.target }}-$md5hash"
+          echo "IMAGE_TAG=$imagetag" >> $GITHUB_ENV
+          echo "IMAGE_TAG: $imagetag"
+
+      - name: "Check if Docker Image Exists"
+        id: check_image
+        run: |
+          echo "Looking for Docker image: ${{ env.IMAGE_TAG }}"
+          if docker manifest inspect $IMAGE_TAG > /dev/null 2>&1; then
+            echo "Image exists."
+            echo "NEEDS_BUILD=false" >> $GITHUB_ENV
+          else
+            echo "Image does not exist."
+            echo "NEEDS_BUILD=true" >> $GITHUB_ENV
+          fi
+
+      # [Build] If DockerHub does not contain our image --------------------------------
+
+      - name: "[Build] Setup QEMU"
+        if: env.NEEDS_BUILD == 'true'
+        uses: docker/setup-qemu-action@v3
+
+      - name: "[Build] Setup Docker Build Requirements"
+        if: env.NEEDS_BUILD == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: "[Build] Build Docker Image"
+        if: env.NEEDS_BUILD == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          platforms: ${{ matrix.config.platform }}
+          file: tools/docker/Dockerfile.${{ matrix.config.target }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_TAG }}
+            statsig/core-sdk-compiler:${{ matrix.config.target }}-latest
+
+      # [Build] end --------------------------------
+
+      - name: "Load Docker Image"
+        run: |
+          docker pull --platform ${{ matrix.config.platform }} ${{ env.IMAGE_TAG }}
+          docker tag ${{ env.IMAGE_TAG }} statsig/core-sdk-compiler:${{ matrix.config.target }}
 
       - name: Build
+        shell: 'script --return --quiet --log-out /dev/null --command "bash -e {0}"'
         run: |
-          cargo build -p statsig_ffi --target ${{ matrix.target }} --features vendored_openssl
-          cargo build -p statsig_ffi --target ${{ matrix.target }} --features vendored_openssl --release
+          ./tools/docker/build_${{ matrix.config.target }}.sh
+          ./tools/docker/build_${{ matrix.config.target }}.sh --release-mode
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: statsig-ffi-${{ matrix.target }}
+          name: statsig-ffi-${{ matrix.config.target }}
           path: |
             target/**/release/libstatsig_ffi.so
             target/**/debug/libstatsig_ffi.so

@@ -1,18 +1,18 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock, Weak};
-use std::time::Duration;
+use crate::id_lists_adapter::id_lists_adapter::IdListsAdapter;
+use crate::id_lists_adapter::{IdListEntry, IdListsResponse};
+use crate::network_client::{NetworkClient, RequestArgs};
+use crate::{log_e, StatsigErr, StatsigOptions};
 use async_trait::async_trait;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use serde_json::from_str;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, RwLock, Weak};
+use std::time::Duration;
 use tokio::runtime::Handle;
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 use tokio::time::{interval_at, Instant};
-use crate::id_lists_adapter::id_lists_adapter::IdListsAdapter;
-use crate::network_client::{NetworkClient, RequestArgs};
-use crate::{log_e, StatsigErr, StatsigOptions};
-use crate::id_lists_adapter::{IdListEntry, IdListsResponse};
 
 const DEFAULT_ID_LIST_URL: &str = "https://statsigapi.net/v1/get_id_lists";
 const DEFAULT_ID_LIST_SYNC_INTERVAL_MS: u32 = 10_000;
@@ -28,14 +28,10 @@ pub struct StatsigHttpIdListsAdapter {
 }
 
 impl StatsigHttpIdListsAdapter {
-    pub fn new(
-        _sdk_key: &str,
-        options: &StatsigOptions,
-        network_client: NetworkClient,
-    ) -> Self {
+    pub fn new(_sdk_key: &str, options: &StatsigOptions, network_client: NetworkClient) -> Self {
         let id_lists_url = match &options.id_lists_url {
             Some(url) => url,
-            None => DEFAULT_ID_LIST_URL
+            None => DEFAULT_ID_LIST_URL,
         };
 
         Self {
@@ -53,18 +49,22 @@ impl StatsigHttpIdListsAdapter {
         }
     }
 
-    fn schedule_background_sync(self: Arc<Self>, runtime_handle: &Handle) -> Result<(), StatsigErr> {
+    fn schedule_background_sync(
+        self: Arc<Self>,
+        runtime_handle: &Handle,
+    ) -> Result<(), StatsigErr> {
         let weak_self = Arc::downgrade(&self);
 
         let interval_duration = self.sync_interval_duration;
         let shutdown_notify = Arc::clone(&self.shutdown_notify);
 
         {
-            let mut handle_lock = self.runtime_handle.write()
+            let mut handle_lock = self
+                .runtime_handle
+                .write()
                 .map_err(|_| StatsigErr::IdListsAdapterRuntimeHandleLockFailure)?;
             *handle_lock = Some(runtime_handle.clone());
         }
-
 
         let handle = runtime_handle.spawn(async move {
             let mut interval = interval_at(Instant::now() + interval_duration, interval_duration);
@@ -132,7 +132,9 @@ impl StatsigHttpIdListsAdapter {
         url: String,
         mut entry: IdListEntry,
     ) -> Result<JoinHandle<Result<(), StatsigErr>>, StatsigErr> {
-        let handle = self.runtime_handle.read()
+        let handle = self
+            .runtime_handle
+            .read()
             .ok()
             .and_then(|lock| lock.as_ref().cloned())
             .ok_or(StatsigErr::BackgroundTaskLockFailure)?;
@@ -143,15 +145,19 @@ impl StatsigHttpIdListsAdapter {
         Ok(handle.spawn(async move {
             match (weak_network.upgrade(), weak_id_lists.upgrade()) {
                 (Some(strong_network), Some(strong_id_lists)) => {
-                    let headers = Some(HashMap::from([
-                        ("Range".into(), format!("bytes={}-", list_size))
-                    ]));
+                    let headers = Some(HashMap::from([(
+                        "Range".into(),
+                        format!("bytes={}-", list_size),
+                    )]));
 
-                    let response = match strong_network.get(RequestArgs {
-                        url,
-                        headers,
-                        ..RequestArgs::new()
-                    }).await {
+                    let response = match strong_network
+                        .get(RequestArgs {
+                            url,
+                            headers,
+                            ..RequestArgs::new()
+                        })
+                        .await
+                    {
                         Some(res) => res,
                         None => return Err(StatsigErr::IdListsAdapterNetworkFailure),
                     };
@@ -170,28 +176,31 @@ impl StatsigHttpIdListsAdapter {
                         match op {
                             Some('+') => {
                                 entry.loaded_ids.insert(id.to_string());
-                            },
+                            }
                             Some('-') => {
                                 entry.loaded_ids.remove(id);
-                            },
-                            _ => continue
+                            }
+                            _ => continue,
                         }
                     }
 
                     Self::upsert_id_list_entry(strong_id_lists, &entry)
                 }
-                _ => Err(StatsigErr::CustomError("".to_string()))
+                _ => Err(StatsigErr::CustomError("".to_string())),
             }
         }))
     }
 
-    fn upsert_id_list_entry(id_lists: Arc<RwLock<HashMap<String, IdListEntry>>>, entry: &IdListEntry) -> Result<(), StatsigErr> {
+    fn upsert_id_list_entry(
+        id_lists: Arc<RwLock<HashMap<String, IdListEntry>>>,
+        entry: &IdListEntry,
+    ) -> Result<(), StatsigErr> {
         match id_lists.write() {
             Ok(mut lists) => {
                 lists.insert(entry.name.clone(), entry.clone());
                 Ok(())
-            },
-            Err(_e) => Err(StatsigErr::IdListsAdapterFailedToInsertIdList)
+            }
+            Err(_e) => Err(StatsigErr::IdListsAdapterFailedToInsertIdList),
         }
     }
 }
@@ -210,7 +219,8 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
 
         for (_, new_entry) in response {
             let existing_entry = {
-                self.id_lists.read()
+                self.id_lists
+                    .read()
                     .ok()
                     .and_then(|lists| lists.get(&new_entry.name).cloned())
                     .unwrap_or_else(|| {
@@ -228,7 +238,7 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
 
             let (new_url, new_file_id) = match (&new_entry.url, &new_entry.file_id) {
                 (Some(u), Some(i)) => (u, i),
-                _ => continue
+                _ => continue,
             };
 
             if Some(new_file_id) != existing_entry.file_id.as_ref() {
@@ -242,7 +252,7 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
 
             match self.fetch_individual_id_list_entry_from_network(new_url.clone(), new_entry) {
                 Ok(handle) => jobs.push(handle),
-                Err(e) => log_e!("Failed to sync individual ID List {}", e)
+                Err(e) => log_e!("Failed to sync individual ID List {}", e),
             };
         }
 
@@ -266,7 +276,7 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
         match self.id_lists.read() {
             Ok(id_lists) => match id_lists.get(list_name) {
                 Some(list) => list.loaded_ids.contains(id),
-                None => false
+                None => false,
             },
             Err(_) => {
                 log_e!("Failed to get read lock for id list {}", list_name);
@@ -309,34 +319,45 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use crate::memo_sha_256::MemoSha256;
+
+    use super::*;
     use mockito::Server;
     use std::fs;
-    use super::*;
+    use std::path::PathBuf;
 
     #[tokio::test]
     async fn test_background_sync() {
         let mut server = Server::new_async().await;
         let url = server.url();
 
-        let id_lists_response_path = PathBuf::from(format!("{}/tests/get_id_lists.json", env!("CARGO_MANIFEST_DIR")));
+        let id_lists_response_path = PathBuf::from(format!(
+            "{}/tests/get_id_lists.json",
+            env!("CARGO_MANIFEST_DIR")
+        ));
         let id_lists_response = fs::read_to_string(id_lists_response_path)
-            .unwrap().replace("URL_REPLACE", &format!("{}/id_lists", url));
+            .unwrap()
+            .replace("URL_REPLACE", &format!("{}/id_lists", url));
 
-        let mock = server.mock("POST", "/get_id_lists")
+        let mock = server
+            .mock("POST", "/get_id_lists")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(id_lists_response)
             .create();
 
-        let company_ids_response_path = PathBuf::from(format!("{}/tests/company_id_list", env!("CARGO_MANIFEST_DIR")));
+        let company_ids_response_path = PathBuf::from(format!(
+            "{}/tests/company_id_list",
+            env!("CARGO_MANIFEST_DIR")
+        ));
         let company_ids_response = fs::read_to_string(company_ids_response_path)
-            .unwrap().replace("URL_REPLACE", &format!("{}/id_lists", url));
+            .unwrap()
+            .replace("URL_REPLACE", &format!("{}/id_lists", url));
 
-        let individual_list_mock = server.mock("GET", "/id_lists/company_id_list")
+        let individual_list_mock = server
+            .mock("GET", "/id_lists/company_id_list")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(company_ids_response)
@@ -364,5 +385,3 @@ mod tests {
         assert!(result)
     }
 }
-
-

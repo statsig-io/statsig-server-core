@@ -5,6 +5,7 @@ use sha2::digest::Output;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::Mutex;
+use core::mem::size_of;
 
 const MAX_CACHE_ENTRIES: usize = 10000;
 

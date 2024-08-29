@@ -1,0 +1,29 @@
+FROM multiarch/qemu-user-static:x86_64-aarch64 as multiarch-aarch64
+
+FROM --platform=arm64 amazonlinux:2023 as amazonlinux-2023-arm64v8-base
+
+COPY --from=multiarch-aarch64 /usr/bin/qemu-aarch64-static /usr/bin/qemu-aarch64-static
+
+RUN yum -y update && \
+    yum install -y rpm-build ca-certificates gcc gcc-c++ cmake make bash \
+    wget unzip systemd-devel wget flex bison \
+    cyrus-sasl-lib cyrus-sasl-devel openssl openssl-libs openssl-devel \
+    postgresql-devel postgresql-libs \
+    cmake3 libyaml-devel zlib-devel && \
+    yum clean all
+
+WORKDIR /app
+
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+
+ENV PATH="/root/.cargo/bin:${PATH}"
+ENV CARGO_TERM_COLOR=always
+ENV TARGET="aarch64-unknown-linux-gnu"
+ENV EXTRAS=""
+
+RUN rustup target add $TARGET
+
+RUN /usr/bin/ldd --version | head -n 1
+RUN openssl version
+
+CMD cargo build --target $TARGET $EXTRAS

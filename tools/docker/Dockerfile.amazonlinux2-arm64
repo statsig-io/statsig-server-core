@@ -1,0 +1,23 @@
+FROM arm64v8/amazonlinux:2 AS amazonlinux2-arm64
+
+RUN yum update -y \
+    && yum install -y \
+        gcc \
+        openssl-devel \
+        protobuf \
+        protobuf-compiler \
+    && yum clean all
+
+WORKDIR /app
+
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+ENV TARGET=aarch64-unknown-linux-gnu
+RUN rustup target add $TARGET
+
+ENV CARGO_TERM_COLOR=always
+ENV EXTRAS=""
+ENV CARGO_TARGET_DIR=/app/target/amazonlinux2
+
+CMD ["sh", "-c", "cargo build --target ${TARGET} ${EXTRAS}"]
