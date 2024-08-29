@@ -40,7 +40,7 @@ pub fn statsig_user_create(
         match deserialize_as_str_map(&custom_ids_json) {
             Ok(parsed_custom) => custom_ids = Some(parsed_custom),
             Err(_) => {
-                log_w!("Invalid type passed to 'CustomIDs'. Expected Record<string, string>");
+                log_w!("Invalid type passed to 'CustomIDs'. Expected Record<string, string>. Received {}", custom_ids_json);
                 return AutoReleasingStatsigUserRef::err();
             }
         }
@@ -58,7 +58,7 @@ pub fn statsig_user_create(
         match from_str::<HashMap<String, DynamicValue>>(&custom_json) {
             Ok(parsed_custom) => custom = Some(parsed_custom),
             Err(_) => {
-                log_w!("Invalid type passed to 'Custom'. Expected Record<string, string | boolean | number>");
+                log_w!("Invalid type passed to 'Custom'. Expected Record<string, string | boolean | number>. Received {}", custom_json);
                 return AutoReleasingStatsigUserRef::err();
             }
         }
@@ -69,7 +69,7 @@ pub fn statsig_user_create(
         match from_str::<HashMap<String, DynamicValue>>(&private_attributes_json) {
             Ok(parsed_private_attributes) => private_attributes = Some(parsed_private_attributes),
             Err(_) => {
-                log_w!("Invalid type passed to 'PrivateAttributes'. Expected Record<string, string | boolean | number>");
+                log_w!("Invalid type passed to 'PrivateAttributes'. Expected Record<string, string | boolean | number>. Received {}", private_attributes_json);
                 return AutoReleasingStatsigUserRef::err();
             }
         }
