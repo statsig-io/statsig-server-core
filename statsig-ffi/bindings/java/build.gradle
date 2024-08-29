@@ -9,10 +9,6 @@ java {
     sourceCompatibility = '1.8'
 }
 
-tasks.withType(Test).configureEach {
-    jvmArgs = ['-Djava.library.path=/Users/weihaoding/Documents/private-statsig-server-core/target/release']
-}
-
 repositories {
     mavenCentral()
 }

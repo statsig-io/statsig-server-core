@@ -80,6 +80,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
         if result.is_err() {
             log_e!("Failed to call callback");
         }
+
+        drop(global_callback);
     });
 }
 

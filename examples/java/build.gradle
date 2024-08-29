@@ -17,7 +17,7 @@ java {
 
 tasks.withType(JavaExec).configureEach {
     // Replace with the actual path to your native library
-    jvmArgs = ['-Djava.library.path=/Users/danielloomb/Projects/kong/bridges/core-napi-bridge/sdk/target/release']
+    jvmArgs = ['-Djava.library.path=/Users/danielloomb/Projects/kong/bridges/core-napi-bridge/sdk/examples/java/lib/native']
 }
 
 
@@ -34,7 +34,7 @@ shadowJar {
     mergeServiceFiles()  // Handle service files correctly in JARs
 
     from('lib/native') {
-        into 'native'
+        into 'lib'
     }
 
     manifest {
