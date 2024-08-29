@@ -1,4 +1,4 @@
-FROM amazonlinux:2 AS amazonlinux2-x86_64
+FROM --platform=arm64 amazonlinux:2023 AS amazonlinux2023-arm64
 
 RUN yum update -y \
     && yum install -y \
@@ -13,11 +13,11 @@ WORKDIR /app
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-ENV TARGET=x86_64-unknown-linux-gnu
+ENV TARGET=aarch64-unknown-linux-gnu
 RUN rustup target add $TARGET
 
 ENV CARGO_TERM_COLOR=always
 ENV EXTRAS=""
-ENV CARGO_TARGET_DIR=/app/target/amazonlinux2
+ENV CARGO_TARGET_DIR=/app/target/amazonlinux2023
 
 CMD ["sh", "-c", "cargo build --target ${TARGET} ${EXTRAS}"]

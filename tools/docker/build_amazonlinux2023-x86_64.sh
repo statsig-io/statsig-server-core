@@ -1,6 +1,6 @@
 #!/bin/bash
 
-IMAGE="amazonlinux2-x86_64"
+IMAGE="amazonlinux2023-x86_64"
 PLATFORM="linux/amd64"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

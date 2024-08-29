@@ -19,8 +19,16 @@ jobs:
           - target: amazonlinux2-arm64
             platform: linux/arm64
             runner: statsig-ubuntu-arm64
+          
+          - target: amazonlinux2023-arm64
+            platform: linux/arm64
+            runner: statsig-ubuntu-arm64
 
           - target: amazonlinux2-x86_64
+            platform: linux/amd64
+            runner: ubuntu-latest
+
+          - target: amazonlinux2023-x86_64
             platform: linux/amd64
             runner: ubuntu-latest
 
