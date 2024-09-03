@@ -11,7 +11,7 @@ public class StatsigJNI {
 
     static {
         try {
-            System.setProperty("java.library.path", "lib");
+            System.setProperty("java.library.path", "native");
             System.loadLibrary("statsig_ffi");
             libraryLoaded = true;
         } catch (UnsatisfiedLinkError e) {

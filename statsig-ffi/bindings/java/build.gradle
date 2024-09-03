@@ -1,9 +1,11 @@
 plugins {
     id 'java'
+    id 'maven-publish'
+    id 'signing'
 }
 
-group 'com.statsig'
-version '1.0-SNAPSHOT'
+// group 'com.statsig'
+// version '1.0-SNAPSHOT'
 
 java {
     sourceCompatibility = '1.8'
@@ -13,17 +15,123 @@ repositories {
     mavenCentral()
 }
 
+def nativeLibsDir = file('src/main/native')
+
+//task jarWindows(type: Jar) {
+//    archiveClassifier.set('windows-x86_64')
+//    from(nativeLibsDir) {
+//        into('native/windows-x86_64')
+//    }
+//    from sourceSets.main.output
+//}
+//
+//task jarLinux(type: Jar) {
+//    archiveClassifier.set('linux-x86_64')
+//    from(nativeLibsDir) {
+//        into('native/windows-x86_64')
+//    }
+//    from sourceSets.main.output
+//}
+
+task jarMacOs(type: Jar) {
+    archiveClassifier.set('macos-x86_64')
+    from(file('src/main/native/macos-x86_64')) {
+        into('native/macos-x86_64')
+    }
+    from sourceSets.main.output
+}
+
+task sourcesJar(type: Jar) {
+    archiveClassifier.set('sources')
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar) {
+    archiveClassifier.set('javadoc')
+    from javadoc
+}
+
 dependencies {
-    implementation 'net.java.dev.jna:jna:5.8.0' // JNA library
     implementation 'com.google.code.gson:gson:2.10.1'
-
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
-
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
 }
 
 test {
     useJUnitPlatform()
+}
+
+publishing {
+    publications {
+//        create('mavenWindows', MavenPublication) {
+//            artifact jarWindows
+//            groupId = 'com.statsig'
+//            artifactId = "serversdk-test-windows"
+//            version = '0.0.1-beta'
+//        }
+//        create('mavenLinux', MavenPublication) {
+//            artifact jarLinux
+//            groupId = 'com.statsig'
+//            artifactId = "serversdk-test-linux"
+//            version = '0.0.1-beta'
+//        }
+        create('mavenMacOs', MavenPublication) {
+            artifact jarMacOs
+            artifact sourcesJar // Sources JAR
+            artifact javadocJar // JavaDoc JAR
+            groupId = 'com.statsig'
+            artifactId = "serversdk-test"
+            version = '0.26.0-beta'
+
+            pom {
+                name.set("Statsig Server SDK for macOS")
+                description.set("A Server SDK for macOS platform")
+                url.set("https://github.com/statsig-io/java-server-sdk") // TODO need to change to real repo url
+
+                licenses {
+                    license {
+                        name.set("ISC License (ISC)")
+                        url.set("https://github.com/statsig-io/java-server-sdk/blob/main/LICENSE")
+                        distribution.set("repo")
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set("statsig")
+                        name.set("statsig")
+                        url.set("https://github.com/statsig-io/")
+                        email.set("support@statsig.com")
+                    }
+                }
+
+                scm {
+                    connection.set("scm:git:https://github.com/statsig/statsig-sdk.git")
+                    developerConnection.set("scm:git:ssh://git@github.com:statsig/statsig-sdk.git")
+                    url.set("https://github.com/statsig/statsig-sdk")
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            name = 'mavenCentral'
+            url = uri('https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/')
+            credentials {
+                username = "" // System.getenv('ORG_GRADLE_PROJECT_mavenCentralUsername')
+                password = "" // System.getenv('ORG_GRADLE_PROJECT_mavenCentralPassword')
+            }
+        }
+    }
+}
+
+signing {
+    def signingKeyId = ""
+    def signingKey = ""
+    def signingPassword = ""
+    useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
+    sign publishing.publications['mavenMacOs']
 }
 
 //
