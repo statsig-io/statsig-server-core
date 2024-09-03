@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'maven-publish'
     id 'signing'
+    // id 'checkstyle'
 }
 
 // group 'com.statsig'
@@ -16,6 +17,10 @@ repositories {
 }
 
 def nativeLibsDir = file('src/main/native')
+
+tasks.withType(JavaExec).configureEach {
+    jvmArgs = ['-Djava.library.path=/Users/weihaoding/Documents/private-statsig-server-core/statsig-ffi/bindings/java/src/main/native/macos-x86_64']
+}
 
 //task jarWindows(type: Jar) {
 //    archiveClassifier.set('windows-x86_64')
@@ -134,9 +139,8 @@ signing {
     sign publishing.publications['mavenMacOs']
 }
 
-//
 //checkstyle {
 //    toolVersion = "9.2"
 //    configFile = rootProject.file("config/checkstyle.xml")
-//    ignoreFailures = true // change to false
+//    ignoreFailures = true // TODO we need change to false in the future
 //}
