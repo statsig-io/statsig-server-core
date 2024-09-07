@@ -592,7 +592,7 @@ mod tests {
         assert_eq!(gates.len(), 64);
 
         let configs = response.dynamic_configs;
-        assert_eq!(configs.len(), 61);
+        assert_eq!(configs.len(), 62);
 
         let value = match configs.values().next() {
             Some(v) => match v {
