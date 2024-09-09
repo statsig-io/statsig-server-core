@@ -4,6 +4,7 @@ use sigstat::{
     log_d, log_e, log_w, SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr,
 };
 use std::sync::{Arc, Mutex, RwLock};
+use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::Duration;
 use tokio::runtime::Handle;
 use tokio::sync::Notify;
@@ -24,6 +25,7 @@ pub struct StatsigGrpcSpecAdapter {
     shutdown_notify: Arc<Notify>,
     task_handle: Mutex<Option<JoinHandle<()>>>,
     grpc_client: StatsigGrpcClient,
+    retry_attempts: AtomicU16,
 }
 
 #[async_trait]
@@ -83,7 +85,8 @@ impl StatsigGrpcSpecAdapter {
             shutdown_notify: Arc::new(Notify::new()),
             task_handle: Mutex::new(None),
             grpc_client: StatsigGrpcClient::new(sdk_key, proxy_api),
-            backoff_interval_ms: backoff_interval_ms.unwrap_or(DEFAULT_BACKOFF_INTERVAL_MS)
+            backoff_interval_ms: backoff_interval_ms.unwrap_or(DEFAULT_BACKOFF_INTERVAL_MS),
+            retry_attempts: AtomicU16::new(0)
         }
     }
 
@@ -105,17 +108,15 @@ impl StatsigGrpcSpecAdapter {
     }
 
     async fn run_retryable_grpc_stream(&self) -> Result<(), StatsigErr> {
-        let mut retries = 0;
-
         loop {
             tokio::select! {
                 result = self.handle_grpc_request_stream() => {
                     if let Err(err) = result {
-                        if retries > RETRY_LIMIT {
+                        let retries = self.retry_attempts.fetch_add(1, Ordering::SeqCst) as u64;
+                        if retries >= RETRY_LIMIT {
                            log_e!("gRPC stream failure: {:?}", err);
                            break;
                         }
-                        retries += 1;
 
                         self.grpc_client.reset_client();
 
@@ -123,8 +124,6 @@ impl StatsigGrpcSpecAdapter {
 
                         log_w!("gRPC stream failure ({}). Will wait {} ms and retry. Error: {:?}", retries, backoff, err);
                         tokio::time::sleep(Duration::from_millis(backoff)).await;
-                    } else {
-                        retries = 0;
                     }
                 },
                 _ = self.shutdown_notify.notified() => {
@@ -144,6 +143,7 @@ impl StatsigGrpcSpecAdapter {
         while let Some(config_spec_result) = stream.next().await {
             match config_spec_result {
                 Ok(config_spec) => {
+                    self.retry_attempts.store(0, Ordering::SeqCst);
                     let _ = self.send_spec_update_to_listener(config_spec.spec);
                 }
                 Err(e) => {
