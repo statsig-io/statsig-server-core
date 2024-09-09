@@ -5,55 +5,28 @@ plugins {
     // id 'checkstyle'
 }
 
-// group 'com.statsig'
-// version '1.0-SNAPSHOT'
+ group 'com.statsig'
+ version '0.28.0' // this is still for testing purpose for now, so the version is just .. tes0
+
+def expectedTasks = [
+    'java-coreJar',
+    'aarch64-apple-darwinJar',
+    'aarch64-pc-windows-msvcJar',
+    'amazonlinux2-arm64Jar',
+    'amazonlinux2-x86_64Jar',
+    'amazonlinux2023-arm64Jar',
+    'amazonlinux2023-x86_64Jar',
+    'i686-pc-windows-msvcJar',
+    'x86_64-apple-darwinJar',
+    'x86_64-pc-windows-msvcJar'
+]
 
 java {
-    sourceCompatibility = '1.8'
+    sourceCompatibility = '11'
 }
 
 repositories {
     mavenCentral()
-}
-
-def nativeLibsDir = file('src/main/native')
-
-tasks.withType(JavaExec).configureEach {
-    jvmArgs = ['-Djava.library.path=/Users/weihaoding/Documents/private-statsig-server-core/statsig-ffi/bindings/java/src/main/native/macos-x86_64']
-}
-
-//task jarWindows(type: Jar) {
-//    archiveClassifier.set('windows-x86_64')
-//    from(nativeLibsDir) {
-//        into('native/windows-x86_64')
-//    }
-//    from sourceSets.main.output
-//}
-//
-//task jarLinux(type: Jar) {
-//    archiveClassifier.set('linux-x86_64')
-//    from(nativeLibsDir) {
-//        into('native/windows-x86_64')
-//    }
-//    from sourceSets.main.output
-//}
-
-task jarMacOs(type: Jar) {
-    archiveClassifier.set('macos-x86_64')
-    from(file('src/main/native/macos-x86_64')) {
-        into('native/macos-x86_64')
-    }
-    from sourceSets.main.output
-}
-
-task sourcesJar(type: Jar) {
-    archiveClassifier.set('sources')
-    from sourceSets.main.allSource
-}
-
-task javadocJar(type: Jar) {
-    archiveClassifier.set('javadoc')
-    from javadoc
 }
 
 dependencies {
@@ -66,27 +39,108 @@ test {
     useJUnitPlatform()
 }
 
+if (!project.ext.has('artifactTasks')) {
+    project.ext.artifactTasks = []
+}
+
+tasks.register('sourcesJar', Jar) {
+    archiveClassifier.set('sources')
+    from sourceSets.main.allSource
+}
+
+tasks.register('javadocJar', Jar) {
+    dependsOn tasks.javadoc
+    archiveClassifier.set('javadoc')
+    from tasks.javadoc.destinationDir
+}
+
+ext.createStatsigJar = { String nameParam, String classifierParam ->
+    String taskName = nameParam + "Jar"
+
+    tasks.register(taskName, Jar) {
+        archiveBaseName.set(nameParam)
+        from sourceSets.main.output
+
+        def nativeLib = null
+        if (classifierParam) {
+            switch (classifierParam) {
+                case ~/.*macos.*/:
+                    nativeLib = "libstatsig_ffi.dylib"
+                    break
+                case ~/.*windows.*/:
+                    nativeLib = "libstatsig_ffi.dll"
+                    break
+                case ~/.*linux.*/:
+                    nativeLib = "libstatsig_ffi.so"
+                    break
+                default:
+                    nativeLib = null
+            }
+        }
+
+        // Include native library if needed
+        if (nativeLib) {
+            from("src/main/resources/native") {
+                into("native/")
+            }
+            include nativeLib
+        }
+
+        if (nameParam == "java-core") {
+            include 'com/statsig/**'
+        }
+
+        if (classifierParam != null) {
+            archiveClassifier.set(classifierParam)
+        }
+
+        project.ext.artifactTasks.add([taskName: taskName, classifier: classifierParam])
+    }
+}
+
+createStatsigJar('java-core', null)
+createStatsigJar('aarch64-apple-darwin', 'macos-aarch64')
+createStatsigJar('x86_64-apple-darwin', 'macos-x86_64')
+createStatsigJar('aarch64-pc-windows-msvc', 'windows-aarch64')
+createStatsigJar('i686-pc-windows-msvc', 'windows-i686')
+createStatsigJar('x86_64-pc-windows-msvc', 'windows-x86_64')
+createStatsigJar('amazonlinux2-arm64', 'amazonlinux2-arm64')
+createStatsigJar('amazonlinux2-x86_64', 'amazonlinux2-x86_64')
+createStatsigJar('amazonlinux2023-arm64', 'amazonlinux2023-arm64')
+createStatsigJar('amazonlinux2023-x86_64', 'amazonlinux2023-x86_64')
+
+tasks.register('validateTasks') {
+    doLast {
+        def missingTasks = expectedTasks.findAll { taskName ->
+            !project.tasks.findByName(taskName)
+        }
+        if (!missingTasks.isEmpty()) {
+            throw new GradleException("The following expected tasks were not registered: ${missingTasks.join(', ')}")
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith("publish") }.all { publishTask ->
+    publishTask.dependsOn validateTasks
+}
+
 publishing {
     publications {
-//        create('mavenWindows', MavenPublication) {
-//            artifact jarWindows
-//            groupId = 'com.statsig'
-//            artifactId = "serversdk-test-windows"
-//            version = '0.0.1-beta'
-//        }
-//        create('mavenLinux', MavenPublication) {
-//            artifact jarLinux
-//            groupId = 'com.statsig'
-//            artifactId = "serversdk-test-linux"
-//            version = '0.0.1-beta'
-//        }
-        create('mavenMacOs', MavenPublication) {
-            artifact jarMacOs
-            artifact sourcesJar // Sources JAR
-            artifact javadocJar // JavaDoc JAR
-            groupId = 'com.statsig'
-            artifactId = "serversdk-test"
-            version = '0.26.0-beta'
+        create('mavenJava', MavenPublication) {
+            artifactId = 'serversdk-test'
+
+            project.ext.artifactTasks.each { taskEntry ->
+                def taskName = taskEntry.taskName
+                def classifier = taskEntry.classifier
+                try {
+                    def task = tasks.named(taskName).get()
+                    artifact(task)
+                } catch (Exception e) {
+                    println "Error: Failed to add artifact task: ${taskName} - ${e.message}"
+                }
+            }
+            artifact sourcesJar
+            artifact javadocJar
 
             pom {
                 name.set("Statsig Server SDK for macOS")
@@ -136,7 +190,7 @@ signing {
     def signingKey = ""
     def signingPassword = ""
     useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
-    sign publishing.publications['mavenMacOs']
+    sign publishing.publications['mavenJava']
 }
 
 //checkstyle {

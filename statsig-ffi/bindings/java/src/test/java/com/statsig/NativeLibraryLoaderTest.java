@@ -1,17 +1,12 @@
 package com.statsig;
 
-public class NativeLibraryLoaderTest {
-    static {
-        System.setProperty("java.library.path", "/Users/weihaoding/Documents/statsig-singularity/target/release");
-        try {
-            System.loadLibrary("statsig_ffi");
-            System.out.println("Library loaded successfully.");
-        } catch (UnsatisfiedLinkError e) {
-            System.err.println("Failed to load library: " + e.getMessage());
-        }
-    }
+import org.junit.jupiter.api.Test;
 
-    public static void main(String[] args) {
-        System.out.println("Library test class executed.");
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class NativeLibraryLoaderTest {
+    @Test
+    public void testLoadNativeLibrary() {
+        assertTrue(StatsigJNI.isLibraryLoaded());
     }
 }
