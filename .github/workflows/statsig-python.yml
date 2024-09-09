@@ -35,13 +35,7 @@ jobs:
 
       - name: Increment Version
         if: ${{ github.event_name == 'pull_request' }}
-        run: |
-          poetry version prerelease
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
-          git add pyproject.toml
-          git commit -m "Bump version to $(poetry version -s) [skip ci]"
-          git push
+        run: poetry version prerelease
 
       - name: Build Package
         run: poetry build
