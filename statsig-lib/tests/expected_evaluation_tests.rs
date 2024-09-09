@@ -1,15 +1,15 @@
+mod utils;
+
 use std::collections::HashMap;
 use std::sync::Arc;
 use sigstat::{dyn_value, Statsig, StatsigOptions, StatsigUser, DynamicValue};
 use sigstat::statsig_user::StatsigUserBuilder;
-use crate::mock_event_logging_adapter::MockEventLoggingAdapter;
-use crate::mock_specs_adapter::MockSpecsAdapter;
+use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
+use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 
-mod mock_specs_adapter;
-mod mock_event_logging_adapter;
 async fn setup(environment: Option<String>) -> Statsig {
     let mut options = StatsigOptions::new();
-    options.specs_adapter = Some(Arc::new(MockSpecsAdapter::with_data("tests/eval_proj_dcs.json")));
+    options.specs_adapter = Some(Arc::new(MockSpecsAdapter::with_data("tests/data/eval_proj_dcs.json")));
     options.event_logging_adapter = Some(Arc::new(MockEventLoggingAdapter::new()));
     options.environment = environment;
 
