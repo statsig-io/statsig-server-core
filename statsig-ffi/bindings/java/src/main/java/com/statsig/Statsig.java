@@ -46,10 +46,9 @@ public class Statsig implements AutoCloseable {
         return StatsigJNI.statsigCheckGate(statsigRef, user.getRef(), gateName);
     }
 
-    public String getExperiment(StatsigUser user, String experimentName) {
+    public Experiment getExperiment(StatsigUser user, String experimentName) {
         String experJson = StatsigJNI.statsigGetExperiment(statsigRef, user.getRef(), experimentName);
-        return experJson;
-        //return gson.fromJson(experJson, Experiment.class);
+        return gson.fromJson(experJson, Experiment.class);
     }
 
     public DynamicConfig getDynamicConfig(StatsigUser user, String configName) {
