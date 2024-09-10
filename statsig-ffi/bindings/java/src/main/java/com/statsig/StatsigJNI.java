@@ -4,10 +4,11 @@ import java.io.*;
 import java.net.URL;
 import java.util.Map;
 
-public class StatsigJNI {
+class StatsigJNI {
     private static final boolean libraryLoaded;
+    private static final String logContext = "com.statsig.StatsigJNI";
 
-    public static boolean isLibraryLoaded() {
+    static boolean isLibraryLoaded() {
         return libraryLoaded;
     }
 
@@ -15,12 +16,12 @@ public class StatsigJNI {
         String osName = System.getProperty("os.name").toLowerCase();
         String osArch = System.getProperty("os.arch").toLowerCase();
 
-        StatsigLogger.logInfo("Detected OS: " + osName + " Arch: " + osArch);
+        OutputLogger.logInfo(logContext, "Detected OS: " + osName + " Arch: " + osArch);
 
         libraryLoaded = loadNativeLibrary(osName, osArch);
 
         if (!libraryLoaded) {
-            StatsigLogger.logNativeLibraryError(osName, osArch);
+            logNativeLibraryError(osName, osArch);
         }
     }
 
@@ -29,25 +30,36 @@ public class StatsigJNI {
             URL resource = findLibraryResource(osName, osArch);
 
             if (resource == null) {
-                StatsigLogger.logError("Unable to find native library resource for OS: " + osName + " Arch: " + osArch);
+                OutputLogger.logError(
+                        logContext,
+                        "Unable to find native library resource for OS: " + osName + " Arch: " + osArch
+                );
                 return false;
             }
 
-            StatsigLogger.logInfo("Loading native library: " + resource);
+            OutputLogger.logInfo(
+                    logContext,
+                    "Loading native library: " + resource
+            );
             String libPath = writeLibToTempFile(resource);
 
             if (libPath == null) {
                 return false;
             }
 
-            StatsigLogger.logInfo("Loaded native library: " + libPath);
+            OutputLogger.logInfo(
+                    logContext,
+                    "Loaded native library: " + libPath
+            );
             System.load(libPath);
 
             return true;
         } catch (UnsatisfiedLinkError e) {
-            StatsigLogger.logError(String.format("Error: Native library not found for the specific OS and architecture. " +
-            "Operating System: %s, Architecture: %s. Please ensure that the necessary dependencies have been added to your project configuration.\n",
-                    osName, osArch));
+            OutputLogger.logError(
+                    logContext,
+                    String.format("Error: Native library not found for the specific OS and architecture. " +
+                                    "Operating System: %s, Architecture: %s. Please ensure that the necessary dependencies have been added to your project configuration.\n",
+                            osName, osArch));
             return false;
         }
     }
@@ -57,7 +69,7 @@ public class StatsigJNI {
             InputStream stream = resource.openStream();
 
             if (stream == null) {
-                StatsigLogger.logError("Unable to open stream for resource: " + resource);
+                OutputLogger.logError(logContext,"Unable to open stream for resource: " + resource);
                 return null;
             }
 
@@ -72,10 +84,10 @@ public class StatsigJNI {
                 }
             }
 
-            StatsigLogger.logInfo("Successfully created a temporary file for the native library at: " + temp.getAbsolutePath());
+            OutputLogger.logInfo(logContext,"Successfully created a temporary file for the native library at: " + temp.getAbsolutePath());
             return temp.getAbsolutePath();
         } catch (IOException e) {
-            StatsigLogger.logError("I/O Error while writing the library to a temporary file: " + e.getMessage());
+            OutputLogger.logError(logContext,"I/O Error while writing the library to a temporary file: " + e.getMessage());
             return null;
         }
     }
@@ -101,20 +113,75 @@ public class StatsigJNI {
         return resource;
     }
 
+    private static void logNativeLibraryError(String osName, String osArch) {
+        StringBuilder message = new StringBuilder();
+
+        message.append("To resolve this issue, ensure that the correct native library is available for your platform.\n");
+
+        String normalizedOsName = osName.toLowerCase().replace(" ", "");
+
+        if (normalizedOsName.contains("macos")) {
+            if (osArch.contains("aarch64")) {
+                message.append("For macOS with ARM64 architecture, add the following dependency to your build.gradle file:\n");
+                message.append("  implementation 'com.statsig:serversdk-test:<version>:macos-aarch64'\n");
+            } else if (osArch.contains("x86_64")) {
+                message.append("For macOS with x86_64 architecture, add the following dependency to your build.gradle file:\n");
+                message.append("  implementation 'com.statsig:serversdk-test:<version>:macos-x86_64'\n");
+            }
+        } else if (normalizedOsName.contains("linux")) {
+            if (osArch.contains("arm64")) {
+                message.append("For Linux with ARM64 architecture, add one of the following dependencies to your build.gradle file:\n");
+                message.append("  implementation 'com.statsig:serversdk-test:<version>:amazonlinux2-arm64'\n");
+                message.append("  implementation 'com.statsig:serversdk-test:<version>:amazonlinux2023-arm64'\n");
+            } else if (osArch.contains("x86_64")) {
+                message.append("For Linux with x86_64 architecture, add one of the following dependencies to your build.gradle file:\n");
+                message.append("  implementation 'com.statsig:serversdk-test:<version>:amazonlinux2-x86_64'\n");
+                message.append("  implementation 'com.statsig:serversdk-test:<version>:amazonlinux2023-x86_64'\n");
+            }
+        } else if (normalizedOsName.contains("win")) {
+            if (osArch.contains("aarch64")) {
+                message.append("For Windows with ARM64 architecture, add the following dependency to your build.gradle file:\n");
+                message.append("  implementation 'com.statsig:serversdk-test:<version>:windows-aarch64'\n");
+            } else if (osArch.contains("i686")) {
+                message.append("For Windows with i686 architecture, add the following dependency to your build.gradle file:\n");
+                message.append("  implementation 'com.statsig:serversdk-test:<version>:windows-i686'\n");
+            } else if (osArch.contains("x86_64")) {
+                message.append("For Windows with x86_64 architecture, add the following dependency to your build.gradle file:\n");
+                message.append("  implementation 'com.statsig:serversdk-test:<version>:windows-x86_64'\n");
+            }
+        } else {
+            message.append(String.format("Warning: Unsupported or unknown operating system '%s'. Please check your environment.\n", osName));
+        }
+        message.append("If you continue to experience issues, refer to the official documentation or contact support.\n");
+
+        OutputLogger.logError(logContext, message.toString());
+    }
+
     /**
      * Statsig
      */
     public static native int statsigCreate(String sdkKey, int optionsRef);
+
     public static native void statsigRelease(int statsigRef);
+
     public static native void statsigInitialize(int statsigRef, Runnable callback);
+
     public static native void statsigShutdown(int statsigRef, Runnable callback);
+
     public static native boolean statsigCheckGate(int statsigRef, int userRef, String gateName);
+
     public static native String statsigGetFeatureGate(int statsigRef, int userRef, String gateName);
+
     public static native String statsigGetLayer(int statsigRef, int userRef, String layerName);
+
     public static native String statsigGetExperiment(int statsigRef, int userRef, String experimentName);
+
     public static native String statsigGetDynamicConfig(int statsigRef, int userRef, String configName);
+
     public static native String statsigGetClientInitResponse(int statsigRef, int userRef);
+
     public static native void statsigLogEvent(int statsigRef, int userRef, String eventName, String value, Map<String, String> metadata);
+
     public static native void statsigFlushEvents(int statsigRef, Runnable callback);
 
     /**
@@ -132,6 +199,7 @@ public class StatsigJNI {
             String customJson,
             String privateAttributesJson
     );
+
     public static native void statsigUserRelease(int userRef);
 
     /**
@@ -143,7 +211,9 @@ public class StatsigJNI {
             long specsSyncIntervalMs,
             long eventLoggingFlushIntervalMs,
             long eventLoggingMaxQueueSize,
-            String environment
+            String environment,
+            long outputLoggerLevel
     );
+
     public static native void statsigOptionsRelease(int optionsRef);
 }

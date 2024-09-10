@@ -108,6 +108,14 @@ impl StatsigOptionsBuilder {
         self
     }
 
+    pub fn output_log_level(mut self, output_log_level: Option<u32>) -> Self {
+        if let Some(level) = output_log_level {
+            self.inner.output_log_level = LogLevel::from_int(level);
+
+        }
+        self
+    }
+
     pub fn build(self) -> StatsigOptions {
         self.inner
     }

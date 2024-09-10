@@ -12,6 +12,18 @@ pub enum LogLevel {
 }
 
 impl LogLevel {
+    pub fn from_int(level: u32) -> Option<LogLevel> {
+        let result = match level {
+            1 => LogLevel::Debug,
+            2 => LogLevel::Info,
+            3 => LogLevel::Warn,
+            4 => LogLevel::Error,
+            _ => return None
+        };
+
+        Some(result)
+    }
+
     fn to_third_party_level(self) -> Level {
         match self {
             LogLevel::Debug => Level::Debug,

@@ -16,6 +16,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     event_logging_flush_interval_ms: jlong,
     event_logging_max_queue_size: jlong,
     environment: JString,
+    output_logger_level: jint
 ) -> jint {
     let specs_url = jstring_to_string(&mut env, specs_url);
     let log_event_url = jstring_to_string(&mut env, log_event_url);
@@ -47,7 +48,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .specs_sync_interval_ms(specs_sync_interval_ms)
         .event_logging_flush_interval_ms(event_logging_flush_interval_ms)
         .event_logging_max_queue_size(event_logging_max_queue_size)
-        .environment(environment);
+        .environment(environment)
+        .output_log_level(Some(output_logger_level as u32));
 
     let options = builder.build();
     let id = OPTIONS_INSTANCES.add(options);

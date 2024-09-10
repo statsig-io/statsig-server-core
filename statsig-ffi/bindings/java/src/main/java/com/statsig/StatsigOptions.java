@@ -10,7 +10,8 @@ public class StatsigOptions implements AutoCloseable {
                 builder.specsSyncIntervalMs,
                 builder.eventLoggingFlushIntervalMs,
                 builder.eventLoggingMaxQueueSize,
-                builder.environment
+                builder.environment,
+                builder.outputLoggerLevel.getValue()
         );
     }
 
@@ -32,6 +33,12 @@ public class StatsigOptions implements AutoCloseable {
         private long eventLoggingFlushIntervalMs;
         private long eventLoggingMaxQueueSize;
         private String environment;
+        private OutputLogger.LogLevel outputLoggerLevel = OutputLogger.LogLevel.WARN;
+
+        public Builder setOutputLoggerLevel(OutputLogger.LogLevel level) {
+            this.outputLoggerLevel = level;
+            return this;
+        }
 
         public Builder setSpecsUrl(String specsUrl) {
             this.specsUrl = specsUrl;
