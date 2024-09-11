@@ -1,4 +1,4 @@
-use crate::{log_e, log_i};
+use crate::{log_e, log_i, log_w};
 use reqwest::header::HeaderName;
 use reqwest::{
     header::{HeaderMap, HeaderValue},
@@ -76,6 +76,8 @@ impl NetworkClient {
                 json!(request_args.body)
             );
 
+            let mut error_message = "Unknown Error".to_string();
+
             match request.send().await {
                 Ok(response) => {
                     log_i!(
@@ -93,17 +95,21 @@ impl NetworkClient {
                     }
                 }
                 Err(e) => {
-                    log_e!("Request Err - {}", e);
+                    error_message = Self::get_error_message(e);
                 }
             }
 
             if attempt >= request_args.retries {
+                log_e!("Network error, retries exhausted: {}", error_message);
                 return None;
             }
 
-            let backoff_ms = 2_u64.pow(attempt) * 100;
-            tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
             attempt += 1;
+            let backoff_ms = 2_u64.pow(attempt) * 100;
+
+            log_w!("Network error ({}), will retry after ({})ms...\n{}", attempt, backoff_ms, error_message);
+
+            tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
         }
     }
 
@@ -130,5 +136,19 @@ impl NetworkClient {
         }
 
         request
+    }
+
+    fn get_error_message(error: reqwest::Error) -> String {
+        let mut error_message = error.to_string();
+
+        if let Some(url_error) = error.url() {
+            error_message.push_str(&format!(". URL: {}", url_error));
+        }
+
+        if let Some(status_error) = error.status() {
+            error_message.push_str(&format!(". Status: {}", status_error));
+        }
+
+        error_message
     }
 }
