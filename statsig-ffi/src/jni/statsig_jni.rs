@@ -250,6 +250,32 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFeatureGate(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogLayerParamExposure(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+    layer_json: JString,
+    parameter_name: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
+
+    let layer_json: String = match env.get_string(&layer_json) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    let parameter_name: String = match env.get_string(&parameter_name) {
+        Ok(s) => s.into(),
+        Err(_) => {
+            log_e!("Failed to convert parameter_name to Rust string");
+            return;
+        }
+    };
+
+    statsig.log_layer_param_exposure(layer_json, parameter_name);
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEvent(
     mut env: JNIEnv,
     _class: JClass,

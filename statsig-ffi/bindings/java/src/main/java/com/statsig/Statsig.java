@@ -58,7 +58,12 @@ public class Statsig implements AutoCloseable {
 
     public Layer getLayer(StatsigUser user, String layerName) {
         String layerJson = StatsigJNI.statsigGetLayer(ref, user.getRef(), layerName);
-        return gson.fromJson(layerJson, Layer.class);
+        Layer layer = gson.fromJson(layerJson, Layer.class);
+        if (layer != null) {
+            // Set the Statsig reference in the Layer instance
+            layer.setStatsigInstance(this);
+        }
+        return layer;
     }
 
     public FeatureGate getFeatureGate(StatsigUser user, String gateName) {
@@ -96,6 +101,10 @@ public class Statsig implements AutoCloseable {
         StatsigJNI.statsigShutdown(ref, callback);
         this.close();
         return future;
+    }
+
+    void logLayerParamExposure(String layerJson, String param) {
+        StatsigJNI.statsigLogLayerParamExposure(ref, layerJson, param);
     }
 
     @Override

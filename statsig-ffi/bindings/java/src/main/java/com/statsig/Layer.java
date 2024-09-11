@@ -20,6 +20,7 @@ public class Layer {
     public EvaluationDetails evaluationDetails;
     @Expose(serialize = false, deserialize = false)
     String rawJson;
+    private Statsig statsigInstance;
 
     Layer(String name, String ruleID, String groupName, Map<String, JsonElement> value,
                  String allocatedExperimentName, EvaluationDetails evaluationDetails) {
@@ -39,31 +40,48 @@ public class Layer {
         this.rawJson = rawJson;
     }
 
+    void setStatsigInstance(Statsig statsigInstance) {
+        this.statsigInstance = statsigInstance;
+    }
+
     public String getString(String key, String defaultValue) {
+        logLayerExposure(key);
         return GsonUtil.getString(value, key, defaultValue);
     }
 
     public boolean getBoolean(String key, boolean defaultValue) {
+        logLayerExposure(key);
         return GsonUtil.getBoolean(value, key, defaultValue);
     }
 
     public double getDouble(String key, double defaultValue) {
+        logLayerExposure(key);
         return GsonUtil.getDouble(value, key, defaultValue);
     }
 
     public int getInt(String key, int defaultValue) {
+        logLayerExposure(key);
         return GsonUtil.getInt(value, key, defaultValue);
     }
 
     public long getLong(String key, long defaultValue) {
+        logLayerExposure(key);
         return GsonUtil.getLong(value, key, defaultValue);
     }
 
     public Object[] getArray(String key, Object[] defaultValue) {
+        logLayerExposure(key);
         return GsonUtil.getArray(value, key, defaultValue);
     }
 
     public Map<String, Object> getMap(String key, Map<String, Object> defaultValue) {
+        logLayerExposure(key);
         return GsonUtil.getMap(value, key, defaultValue);
+    }
+
+    private void logLayerExposure(String key) {
+        if (statsigInstance != null && rawJson != null) {
+            statsigInstance.logLayerParamExposure(rawJson, key);
+        }
     }
 }

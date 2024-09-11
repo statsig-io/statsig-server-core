@@ -53,6 +53,8 @@ class StatsigJNI {
 
     public static native void statsigFlushEvents(String statsigRef, Runnable callback);
 
+    public static native void statsigLogLayerParamExposure(String statsigRef, String layerJson, String param);
+
     /**
      * StatsigUser
      */
