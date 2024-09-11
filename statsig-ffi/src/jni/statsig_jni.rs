@@ -27,10 +27,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
 
     let options_inst_id = jstring_to_string(&mut env, options_ref);
 
-    let options = match OPTIONS_INSTANCES.optional_get(options_inst_id) {
-        Some(opt) => Some(opt),
-        None => None,
-    };
+    let options = OPTIONS_INSTANCES.optional_get(options_inst_id.as_ref());
 
     let inst = Statsig::new(&sdk_key, options);
 

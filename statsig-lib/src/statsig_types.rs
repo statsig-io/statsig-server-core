@@ -34,7 +34,7 @@ pub struct DynamicConfig {
 
 impl DynamicConfig {
     pub fn get_f64(&self, param_name: &str) -> Option<f64> {
-        self.value.get(param_name)?.float_value.clone()
+        self.value.get(param_name)?.float_value
     }
 }
 
@@ -76,7 +76,7 @@ impl Layer {
     }
 
     pub fn get_f64(&self, param_name: &str) -> Option<f64> {
-        let value = self.__value.get(param_name)?.float_value.clone();
+        let value = self.__value.get(param_name)?.float_value;
 
         self.log_param_exposure(param_name);
 

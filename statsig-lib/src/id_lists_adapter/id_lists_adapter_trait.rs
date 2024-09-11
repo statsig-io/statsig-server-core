@@ -1,10 +1,10 @@
+use crate::StatsigErr;
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use tokio::runtime::Handle;
-use crate::{StatsigErr};
 
 pub type IdListsResponse = HashMap<String, IdListEntry>;
 
@@ -21,16 +21,12 @@ pub struct IdListEntry {
     pub creation_time: i64,
 
     #[serde(skip)]
-    pub loaded_ids: HashSet<String>
+    pub loaded_ids: HashSet<String>,
 }
-
 
 #[async_trait]
 pub trait IdListsAdapter: Send + Sync {
-    async fn start(
-        self: Arc<Self>,
-        runtime_handle: &Handle
-    ) -> Result<(), StatsigErr>;
+    async fn start(self: Arc<Self>, runtime_handle: &Handle) -> Result<(), StatsigErr>;
 
     async fn sync_id_lists(&self) -> Result<(), StatsigErr>;
 

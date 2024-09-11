@@ -192,7 +192,7 @@ impl StatsigGrpcSpecAdapter {
     }
 
     fn get_current_store_lcut(&self) -> Option<u64> {
-        if let Some(listener) = self.listener.read().ok() {
+        if let Ok(listener) = self.listener.read() {
             if let Some(listener) = listener.as_ref() {
                 return listener.get_current_specs_info().lcut;
             }

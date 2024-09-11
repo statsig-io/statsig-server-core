@@ -28,12 +28,12 @@ impl ObjectFinalize for AutoReleasingStatsigRef {
 
 #[napi]
 pub fn statsig_create(sdk_key: String, options_ref: Option<String>) -> AutoReleasingStatsigRef {
-  let options = OPTIONS_INSTANCES.optional_get(options_ref);
+  let options = OPTIONS_INSTANCES.optional_get(options_ref.as_ref());
   let statsig = Statsig::new(&sdk_key, options);
 
   let ref_id = STATSIG_INSTANCES.add(statsig).unwrap_or_else(|| {
     log_e!("Failed to create Statsig instance");
-    return "".to_string()
+    "".to_string()
   });
 
   AutoReleasingStatsigRef {
@@ -57,10 +57,7 @@ pub async fn statsig_shutdown(statsig_ref: String) {
 pub fn statsig_get_current_values(statsig_ref: String) -> Option<String> {
   let statsig = get_instance_or_return!(STATSIG_INSTANCES, &statsig_ref, None);
 
-  match statsig.get_current_values() {
-    Some(d) => Some(json!(d).to_string()),
-    _ => None,
-  }
+  statsig.get_current_values().map(|d| json!(d).to_string())
 }
 
 #[napi]

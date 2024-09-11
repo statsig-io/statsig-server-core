@@ -126,7 +126,7 @@ pub fn jni_to_rust_hashmap(
             Ok(s) => s.into(),
             Err(e) => {
                 log_e!("Failed to convert key to string: {:?}", e);
-                return Err(e.into());
+                return Err(e);
             }
         };
 
@@ -134,7 +134,7 @@ pub fn jni_to_rust_hashmap(
             Ok(s) => s.into(),
             Err(e) => {
                 log_e!("Failed to convert value to string: {:?}", e);
-                return Err(e.into());
+                return Err(e);
             }
         };
         rust_map.insert(key_str, value_str);

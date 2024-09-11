@@ -1,6 +1,5 @@
 use crate::network_client::{NetworkClient, RequestArgs};
-use crate::specs_adapter::specs_adapter::{SpecsAdapter, SpecsUpdate};
-use crate::specs_adapter::SpecsUpdateListener;
+use crate::specs_adapter::{SpecsUpdateListener, SpecsAdapter, SpecsUpdate};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_options::StatsigOptions;
 use crate::{log_e, SpecsSource};
@@ -112,10 +111,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
             }
         }
 
-        let query_params = match current_store_lcut {
-            Some(lcut) => Some(HashMap::from([("sinceTime".into(), lcut.to_string())])),
-            None => None,
-        };
+        let query_params = current_store_lcut.map(|lcut| HashMap::from([("sinceTime".into(), lcut.to_string())]));
 
         let res = self
             .network
@@ -143,7 +139,10 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
 
         match &self.listener.read() {
             Ok(lock) => match lock.as_ref() {
-                Some(listener) => Ok(listener.did_receive_specs_update(update)),
+                Some(listener) => {
+                    listener.did_receive_specs_update(update);
+                    Ok(())
+                },
                 None => Err(StatsigErr::SpecsListenerNotSet),
             },
             Err(_) => return Err(StatsigErr::SpecsListenerNotSet),

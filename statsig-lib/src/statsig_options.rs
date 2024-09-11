@@ -1,6 +1,6 @@
 use crate::SpecsAdapter;
 use std::sync::Arc;
-use crate::event_logging_adapter::event_logging_adapter::EventLoggingAdapter;
+use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::id_lists_adapter::IdListsAdapter;
 use crate::output_logger::LogLevel;
 

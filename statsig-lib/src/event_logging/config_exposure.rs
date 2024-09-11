@@ -17,10 +17,7 @@ pub struct ConfigExposure {
 
 impl StatsigExposure for ConfigExposure {
     fn make_dedupe_key(&self) -> String {
-        let rule_id = match &self.evaluation {
-            Some(eval) => Some(&eval.rule_id),
-            None => None,
-        };
+        let rule_id = self.evaluation.as_ref().map(|eval| &eval.rule_id);
         make_exposure_key(&self.user.user_data, &self.config_name, rule_id, None)
     }
 

@@ -1,5 +1,4 @@
-use crate::id_lists_adapter::id_lists_adapter::IdListsAdapter;
-use crate::id_lists_adapter::{IdListEntry, IdListsResponse};
+use crate::id_lists_adapter::{IdListEntry, IdListsAdapter, IdListsResponse};
 use crate::network_client::{NetworkClient, RequestArgs};
 use crate::{log_e, StatsigErr, StatsigOptions};
 use async_trait::async_trait;

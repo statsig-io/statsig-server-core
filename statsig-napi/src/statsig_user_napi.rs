@@ -95,7 +95,7 @@ pub fn statsig_user_create(
     .private_attributes(private_attributes);
 
   let ref_id = USER_INSTANCES.add(builder.build()).unwrap_or_else(|| {
-    return "".to_string();
+    "".to_string()
   });
 
   AutoReleasingStatsigUserRef { ref_id }

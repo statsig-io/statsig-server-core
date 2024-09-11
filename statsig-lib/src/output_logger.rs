@@ -1,4 +1,4 @@
-use log::{debug, info, warn, error, Level};
+use log::{debug, error, info, warn, Level};
 
 const MAX_CHARS: usize = 300;
 const TRUNCATED_SUFFIX: &str = "...[TRUNCATED]";
@@ -8,7 +8,7 @@ pub enum LogLevel {
     Debug,
     Info,
     Warn,
-    Error
+    Error,
 }
 
 impl LogLevel {
@@ -18,13 +18,13 @@ impl LogLevel {
             2 => LogLevel::Info,
             3 => LogLevel::Warn,
             4 => LogLevel::Error,
-            _ => return None
+            _ => return None,
         };
 
         Some(result)
     }
 
-    fn to_third_party_level(self) -> Level {
+    fn to_third_party_level(&self) -> Level {
         match self {
             LogLevel::Debug => Level::Debug,
             LogLevel::Info => Level::Info,
@@ -35,10 +35,14 @@ impl LogLevel {
 }
 
 pub fn initialize_simple_output_logger(level: &Option<LogLevel>) {
-    let level = level.as_ref().unwrap_or(&LogLevel::Warn).clone().to_third_party_level();
+    let level = level
+        .as_ref()
+        .unwrap_or(&LogLevel::Warn)
+        .clone()
+        .to_third_party_level();
 
     match simple_logger::init_with_level(level) {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(_) => {
             log::set_max_level(level.to_level_filter());
         }
@@ -46,24 +50,23 @@ pub fn initialize_simple_output_logger(level: &Option<LogLevel>) {
 }
 
 pub fn log_message(level: Level, msg: String) {
-    let truncated_msg;
-    if msg.chars().count() > MAX_CHARS {
+    let truncated_msg = if msg.chars().count() > MAX_CHARS {
         let visible_chars = MAX_CHARS.saturating_sub(TRUNCATED_SUFFIX.len());
-        truncated_msg = format!(
+        format!(
             "{}{}",
             msg.chars().take(visible_chars).collect::<String>(),
             TRUNCATED_SUFFIX
-        );
+        )
     } else {
-        truncated_msg = msg;
-    }
+        msg
+    };
 
     match level {
-        Level::Debug => debug!("[Statsig] {}" ,truncated_msg),
+        Level::Debug => debug!("[Statsig] {}", truncated_msg),
         Level::Info => info!("[Statsig] {}", truncated_msg),
         Level::Warn => warn!("[Statsig] {}", truncated_msg),
         Level::Error => error!("[Statsig] {}", truncated_msg),
-        _ => {},
+        _ => {}
     }
 }
 

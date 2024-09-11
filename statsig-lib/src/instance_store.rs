@@ -63,7 +63,7 @@ impl Display for InstanceType {
 }
 
 impl InstanceType {
-    fn to_prefix_value(self) -> String {
+    fn to_prefix_value(&self) -> String {
         match self {
             InstanceType::Statsig => "stsg".to_string(),
             InstanceType::StatsigOptions => "opts".to_string(),
@@ -106,6 +106,12 @@ impl IsInstanceType for StatsigUser {
 
 pub struct InstanceStore<T: IsInstanceType> {
     instances: RwLock<HashMap<String, Arc<T>>>,
+}
+
+impl<T: IsInstanceType> Default for InstanceStore<T> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<T: IsInstanceType> InstanceStore<T> {
@@ -154,16 +160,16 @@ impl<T: IsInstanceType> InstanceStore<T> {
         }
     }
 
-    pub fn optional_get(&self, id: Option<String>) -> Option<Arc<T>> {
+    pub fn optional_get(&self, id: Option<&String>) -> Option<Arc<T>> {
         match id {
-            Some(id) => self.get(&id),
+            Some(id) => self.get(id),
             None => None,
         }
     }
 
-    pub fn get(&self, id: &String) -> Option<Arc<T>> {
+    pub fn get(&self, id: &str) -> Option<Arc<T>> {
         // todo: avoid unwrap
-        match InstanceType::from_id(&id) {
+        match InstanceType::from_id(id) {
             Some(prefix) if prefix == T::get_instance_type() => {
                 self.instances.read().unwrap().get(id).cloned()
             }

@@ -15,7 +15,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex, RwLock};
 use tokio::runtime::Handle;
 use tokio::time::Duration;
-use crate::event_logging_adapter::event_logging_adapter::EventLoggingAdapter;
+use crate::event_logging_adapter::EventLoggingAdapter;
 
 const DEFAULT_FLUSH_INTERVAL_MS: u32 = 60_000;
 const DEFAULT_QUEUE_SIZE: u32 = 500;

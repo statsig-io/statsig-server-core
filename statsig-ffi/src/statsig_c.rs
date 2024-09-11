@@ -73,7 +73,7 @@ pub extern "C" fn statsig_get_current_values(statsig_ref: StatsigRef) -> *const 
 
 #[no_mangle]
 pub extern "C" fn statsig_check_gate(statsig_ptr: i64, user_ptr: i64) -> bool {
-    return false;
+    false
 }
 
 #[no_mangle]

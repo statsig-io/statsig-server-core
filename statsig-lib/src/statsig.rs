@@ -13,7 +13,7 @@ use crate::event_logging::gate_exposure::GateExposure;
 use crate::event_logging::layer_exposure::LayerExposure;
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::make_custom_event;
-use crate::event_logging_adapter::event_logging_adapter::EventLoggingAdapter;
+use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::event_logging_adapter::statsig_event_logging_adapter::StatsigEventLoggingAdapter;
 use crate::initialize_response::InitializeResponse;
 use crate::memo_sha_256::MemoSha256;
@@ -442,10 +442,7 @@ impl Statsig {
         gate_name: &str,
         gate: &FeatureGate,
     ) {
-        let secondary_exposures = match &gate.__evaluation {
-            Some(eval) => Some(&eval.base.secondary_exposures),
-            None => None,
-        };
+        let secondary_exposures = gate.__evaluation.as_ref().map(|eval| &eval.base.secondary_exposures);
 
         self.event_logger
             .enqueue(QueuedEventPayload::GateExposure(GateExposure {

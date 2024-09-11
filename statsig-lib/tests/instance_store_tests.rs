@@ -88,7 +88,7 @@ fn test_concurrent_access() {
                 for _ in 0..1000 {
                     let id = USER_INSTANCES.add(USER.clone()).unwrap();
 
-                    assert!(USER_INSTANCES.get(id.clone()).is_some());
+                    assert!(USER_INSTANCES.get(&id).is_some());
 
                     USER_INSTANCES.release(id);
                 }
@@ -109,8 +109,8 @@ fn test_invalid_id_handling() {
 
     let inst_id = USER_INSTANCES.add(USER.clone());
 
-    assert!(USER_INSTANCES.get("invalid_id".to_string()).is_none());
-    assert!(STATSIG_INSTANCES.get(inst_id.unwrap()).is_none());
+    assert!(USER_INSTANCES.get("invalid_id").is_none());
+    assert!(STATSIG_INSTANCES.get(inst_id.unwrap().as_ref()).is_none());
 
     USER_INSTANCES.release("invalid_id".to_string()); // Should not panic
 }
@@ -120,7 +120,7 @@ fn test_optional_get() {
     let _lock = get_test_lock();
 
     let inst_id = USER_INSTANCES.add(USER.clone());
-    assert!(USER_INSTANCES.optional_get(inst_id.clone()).is_some());
+    assert!(USER_INSTANCES.optional_get(inst_id.as_ref()).is_some());
     assert!(USER_INSTANCES.optional_get(None).is_none());
 }
 
@@ -132,17 +132,17 @@ fn test_correct_instance_type_handling() {
     let statsig_id = STATSIG_INSTANCES.add(Statsig::new("", None)).unwrap();
     let options_id = OPTIONS_INSTANCES.add(StatsigOptions::new()).unwrap();
 
-    assert!(USER_INSTANCES.get(user_id.clone()).is_some());
-    assert!(USER_INSTANCES.get(statsig_id.clone()).is_none());
-    assert!(USER_INSTANCES.get(options_id.clone()).is_none());
+    assert!(USER_INSTANCES.get(&user_id).is_some());
+    assert!(USER_INSTANCES.get(&statsig_id).is_none());
+    assert!(USER_INSTANCES.get(&options_id).is_none());
 
-    assert!(STATSIG_INSTANCES.get(statsig_id.clone()).is_some());
-    assert!(STATSIG_INSTANCES.get(user_id.clone()).is_none());
-    assert!(STATSIG_INSTANCES.get(options_id.clone()).is_none());
+    assert!(STATSIG_INSTANCES.get(&statsig_id).is_some());
+    assert!(STATSIG_INSTANCES.get(&user_id).is_none());
+    assert!(STATSIG_INSTANCES.get(&options_id).is_none());
 
-    assert!(OPTIONS_INSTANCES.get(options_id.clone()).is_some());
-    assert!(OPTIONS_INSTANCES.get(user_id.clone()).is_none());
-    assert!(OPTIONS_INSTANCES.get(statsig_id.clone()).is_none());
+    assert!(OPTIONS_INSTANCES.get(&options_id).is_some());
+    assert!(OPTIONS_INSTANCES.get(&user_id).is_none());
+    assert!(OPTIONS_INSTANCES.get(&statsig_id).is_none());
 
     USER_INSTANCES.release(user_id);
     STATSIG_INSTANCES.release(statsig_id);

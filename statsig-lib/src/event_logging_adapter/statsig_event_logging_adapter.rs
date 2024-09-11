@@ -7,7 +7,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use crate::event_logging_adapter::event_logging_adapter::EventLoggingAdapter;
+use crate::event_logging_adapter::EventLoggingAdapter;
 
 const DEFAULT_LOG_EVENT_URL: &str = "https://prodregistryv2.org/v1/log_event";
 

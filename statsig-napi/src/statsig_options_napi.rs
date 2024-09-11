@@ -37,7 +37,7 @@ pub fn statsig_options_create(
         ..StatsigOptions::new()
     }).unwrap_or_else(|| {
         log_e!("Failed to create StatsigOptions");
-        return "".to_string()
+        "".to_string()
     });
 
     AutoReleasingStatsigOptionsRef {

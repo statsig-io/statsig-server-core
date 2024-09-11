@@ -37,6 +37,12 @@ impl SpecsUpdateListener for SpecStore {
     }
 }
 
+impl Default for SpecStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SpecStore {
     pub fn new() -> SpecStore {
         SpecStore {
