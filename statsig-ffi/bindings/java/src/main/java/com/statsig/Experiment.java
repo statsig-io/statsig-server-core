@@ -11,6 +11,7 @@ public class Experiment {
     public final String name;
     @SerializedName("rule_id")
     public final String ruleID;
+    @SerializedName("value")
     public final Map<String, JsonElement> value;
     @SerializedName("group_name")
     public final String groupName;

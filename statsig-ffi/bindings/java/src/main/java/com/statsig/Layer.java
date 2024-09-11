@@ -13,6 +13,7 @@ public class Layer {
     public String ruleID;
     @SerializedName("group_name")
     public String groupName;
+    @SerializedName("__value")
     public Map<String, JsonElement> value;
     @SerializedName("allocated_experiment_name")
     public String allocatedExperimentName;
