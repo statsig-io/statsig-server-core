@@ -1,31 +1,33 @@
-use jni::sys::{jboolean, jclass, jint, jlong, jobject, jstring, JNI_FALSE, JNI_TRUE};
+use crate::jni::jni_utils::jstring_to_string;
+use crate::{get_instance_or_else_jni, get_instance_or_noop_jni, get_instance_or_return_jni};
+use jni::sys::{jboolean, jclass, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
-use std::collections::HashMap;
 
-use jni::objects::{JClass, JMap, JObject, JString};
-use serde::Deserialize;
+use jni::objects::{JClass, JObject, JString};
 
-use crate::jni::jni_utils::{jni_to_rust_hashmap, serialize_to_json_string};
+use crate::jni::jni_utils::jni_to_rust_hashmap;
 use sigstat::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES, USER_INSTANCES};
-use sigstat::{
-    get_instance_or_else, get_instance_or_noop, get_instance_or_return, log_d, log_e, Statsig,
-};
+use sigstat::{log_e, Statsig};
+
+use super::jni_utils::serialize_json_to_jstring;
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
     mut env: JNIEnv,
     _class: JClass,
     sdk_key: JString,
-    options_ref: jint,
-) -> jint {
+    options_ref: JString,
+) -> jstring {
     // StatsigOptions::new(); // temp: enable logging
 
     let sdk_key: String = match env.get_string(&sdk_key) {
         Ok(s) => s.into(),
-        Err(_) => return -1,
+        Err(_) => return std::ptr::null_mut(),
     };
 
-    let options = match OPTIONS_INSTANCES.get(options_ref) {
+    let options_inst_id = jstring_to_string(&mut env, options_ref);
+
+    let options = match OPTIONS_INSTANCES.optional_get(options_inst_id) {
         Some(opt) => Some(opt),
         None => None,
     };
@@ -33,28 +35,34 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
     let inst = Statsig::new(&sdk_key, options);
 
     let id = STATSIG_INSTANCES.add(inst);
-    id
+    match id {
+        Some(id) => match env.new_string(id) {
+            Ok(java_str) => java_str.into_raw(),
+            Err(_) => std::ptr::null_mut(),
+        },
+        None => std::ptr::null_mut(),
+    }
 }
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRelease(
-    _env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
-    id: jint,
+    statsig_ref: JString,
 ) {
-    STATSIG_INSTANCES.release(id);
+    if let Some(id) = jstring_to_string(&mut env, statsig_ref) {
+        STATSIG_INSTANCES.release(id);
+    }
 }
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
-    statsig_ref: jint,
+    statsig_ref: JString,
     callback: JObject,
 ) {
-    log_d!("Statsig Init {}", statsig_ref);
-
-    let statsig = get_instance_or_noop!(STATSIG_INSTANCES, statsig_ref);
+    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
 
     if callback.is_null() {
         log_e!("Callback is null");
@@ -87,39 +95,32 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetClientInitResponse(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
-    statsig_ref: jint,
-    user_ref: jint,
+    statsig_ref: JString,
+    user_ref: JString,
 ) -> jstring {
-    let statsig = get_instance_or_else!(STATSIG_INSTANCES, statsig_ref, {
+    let statsig = get_instance_or_else_jni!(STATSIG_INSTANCES, &mut env, statsig_ref, {
         return std::ptr::null_mut();
     });
-    let user = get_instance_or_else!(USER_INSTANCES, user_ref, { return std::ptr::null_mut() });
+
+    let user = get_instance_or_else_jni!(USER_INSTANCES, &mut env, user_ref, {
+        return std::ptr::null_mut();
+    });
 
     let response = statsig.get_client_init_response(user.as_ref());
 
-    let response_str = match serialize_to_json_string(&response) {
-        Some(json_str) => json_str,
-        None => return std::ptr::null_mut(),
-    };
-
-    match env.new_string(response_str) {
-        Ok(java_str) => java_str.into_raw(),
-        Err(_) => std::ptr::null_mut(),
-    }
+    serialize_json_to_jstring(&mut env, &response)
 }
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigShutdown(
     mut env: JNIEnv,
     _class: JClass,
-    statsig_ref: jint,
+    statsig_ref: JString,
     callback: JObject,
 ) {
-    log_d!("Statsig Shutdown {}", statsig_ref);
-
-    let statsig = get_instance_or_noop!(STATSIG_INSTANCES, statsig_ref);
+    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
 
     if callback.is_null() {
         log_e!("Callback is null");
@@ -134,12 +135,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigShutdown(
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCheckGate(
     mut env: JNIEnv,
     _class: jclass,
-    statsig_ref: jint,
-    user_ref: jint,
+    statsig_ref: JString,
+    user_ref: JString,
     gate_name: JString,
 ) -> jboolean {
-    let statsig = get_instance_or_return!(STATSIG_INSTANCES, statsig_ref, JNI_FALSE);
-    let user = get_instance_or_return!(USER_INSTANCES, user_ref, JNI_FALSE);
+    let statsig = get_instance_or_return_jni!(STATSIG_INSTANCES, &mut env, statsig_ref, JNI_FALSE);
+    let user = get_instance_or_return_jni!(USER_INSTANCES, &mut env, user_ref, JNI_FALSE);
 
     let gate_name: String = match env.get_string(&gate_name) {
         Ok(s) => s.into(),
@@ -156,14 +157,16 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCheckGate(
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperiment(
     mut env: JNIEnv,
     _class: jclass,
-    statsig_ref: jint,
-    user_ref: jint,
+    statsig_ref: JString,
+    user_ref: JString,
     exper_name: JString,
 ) -> jstring {
-    let statsig = get_instance_or_else!(STATSIG_INSTANCES, statsig_ref, {
+    let statsig = get_instance_or_else_jni!(STATSIG_INSTANCES, &mut env, statsig_ref, {
         return std::ptr::null_mut();
     });
-    let user = get_instance_or_else!(USER_INSTANCES, user_ref, { return std::ptr::null_mut() });
+    let user = get_instance_or_else_jni!(USER_INSTANCES, &mut env, user_ref, {
+        return std::ptr::null_mut();
+    });
 
     let exper_name: String = match env.get_string(&exper_name) {
         Ok(s) => s.into(),
@@ -172,29 +175,23 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperiment(
 
     let result = statsig.get_experiment(user.as_ref(), &exper_name);
 
-    let result_str = match serialize_to_json_string(&result) {
-        Some(json_str) => json_str,
-        None => return std::ptr::null_mut(),
-    };
-
-    match env.new_string(result_str) {
-        Ok(java_str) => java_str.into_raw(),
-        Err(_) => std::ptr::null_mut(),
-    }
+    serialize_json_to_jstring(&mut env, &result)
 }
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetLayer(
     mut env: JNIEnv,
     _class: jclass,
-    statsig_ref: jint,
-    user_ref: jint,
+    statsig_ref: JString,
+    user_ref: JString,
     layer_name: JString,
 ) -> jstring {
-    let statsig = get_instance_or_else!(STATSIG_INSTANCES, statsig_ref, {
+    let statsig = get_instance_or_else_jni!(STATSIG_INSTANCES, &mut env, statsig_ref, {
         return std::ptr::null_mut();
     });
-    let user = get_instance_or_else!(USER_INSTANCES, user_ref, { return std::ptr::null_mut() });
+    let user = get_instance_or_else_jni!(USER_INSTANCES, &mut env, user_ref, {
+        return std::ptr::null_mut();
+    });
 
     let layer_name: String = match env.get_string(&layer_name) {
         Ok(s) => s.into(),
@@ -203,29 +200,23 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetLayer(
 
     let result = statsig.get_layer(user.as_ref(), &layer_name);
 
-    let result_str = match serialize_to_json_string(&result) {
-        Some(json_str) => json_str,
-        None => return std::ptr::null_mut(),
-    };
-
-    match env.new_string(result_str) {
-        Ok(java_str) => java_str.into_raw(),
-        Err(_) => std::ptr::null_mut(),
-    }
+    serialize_json_to_jstring(&mut env, &result)
 }
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetDynamicConfig(
     mut env: JNIEnv,
     _class: jclass,
-    statsig_ref: jint,
-    user_ref: jint,
+    statsig_ref: JString,
+    user_ref: JString,
     config_name: JString,
 ) -> jstring {
-    let statsig = get_instance_or_else!(STATSIG_INSTANCES, statsig_ref, {
+    let statsig = get_instance_or_else_jni!(STATSIG_INSTANCES, &mut env, statsig_ref, {
         return std::ptr::null_mut();
     });
-    let user = get_instance_or_else!(USER_INSTANCES, user_ref, { return std::ptr::null_mut() });
+    let user = get_instance_or_else_jni!(USER_INSTANCES, &mut env, user_ref, {
+        return std::ptr::null_mut();
+    });
 
     let config_name: String = match env.get_string(&config_name) {
         Ok(s) => s.into(),
@@ -234,29 +225,23 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetDynamicConfig(
 
     let result = statsig.get_dynamic_config(user.as_ref(), &config_name);
 
-    let result_str = match serialize_to_json_string(&result) {
-        Some(json_str) => json_str,
-        None => return std::ptr::null_mut(),
-    };
-
-    match env.new_string(result_str) {
-        Ok(java_str) => java_str.into_raw(),
-        Err(_) => std::ptr::null_mut(),
-    }
+    serialize_json_to_jstring(&mut env, &result)
 }
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFeatureGate(
     mut env: JNIEnv,
     _class: jclass,
-    statsig_ref: jint,
-    user_ref: jint,
+    statsig_ref: JString,
+    user_ref: JString,
     gate_name: JString,
 ) -> jstring {
-    let statsig = get_instance_or_else!(STATSIG_INSTANCES, statsig_ref, {
+    let statsig = get_instance_or_else_jni!(STATSIG_INSTANCES, &mut env, statsig_ref, {
         return std::ptr::null_mut();
     });
-    let user = get_instance_or_else!(USER_INSTANCES, user_ref, { return std::ptr::null_mut() });
+    let user = get_instance_or_else_jni!(USER_INSTANCES, &mut env, user_ref, {
+        return std::ptr::null_mut();
+    });
 
     let gate_name: String = match env.get_string(&gate_name) {
         Ok(s) => s.into(),
@@ -264,30 +249,21 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFeatureGate(
     };
 
     let result = statsig.get_feature_gate(user.as_ref(), &gate_name);
-
-    let result_str = match serialize_to_json_string(&result) {
-        Some(json_str) => json_str,
-        None => return std::ptr::null_mut(),
-    };
-
-    match env.new_string(result_str) {
-        Ok(java_str) => java_str.into_raw(),
-        Err(_) => std::ptr::null_mut(),
-    }
+    serialize_json_to_jstring(&mut env, &result)
 }
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEvent(
     mut env: JNIEnv,
     _class: JClass,
-    statsig_ref: jint,
-    user_ref: jint,
+    statsig_ref: JString,
+    user_ref: JString,
     event_name: JString,
     value: JString,
     metadata: JObject,
 ) {
-    let statsig = get_instance_or_noop!(STATSIG_INSTANCES, statsig_ref);
-    let user = get_instance_or_noop!(USER_INSTANCES, user_ref);
+    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
+    let user = get_instance_or_noop_jni!(USER_INSTANCES, &mut env, user_ref);
 
     let event_name: String = match env.get_string(&event_name) {
         Ok(s) => s.into(),
@@ -315,10 +291,10 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEvent(
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
     mut env: JNIEnv,
     _class: JClass,
-    statsig_ref: jint,
+    statsig_ref: JString,
     callback: JObject,
 ) {
-    let statsig = get_instance_or_noop!(STATSIG_INSTANCES, statsig_ref);
+    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
 
     if callback.is_null() {
         log_e!("Callback is null");

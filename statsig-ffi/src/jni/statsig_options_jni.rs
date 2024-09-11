@@ -1,9 +1,9 @@
-use crate::jni::jni_utils::jstring_to_string;
+use crate::jni::jni_utils::{jstring_to_string, string_to_jstring};
 use jni::objects::{JClass, JString};
-use jni::sys::{jint, jlong};
+use jni::sys::{jint, jlong, jstring};
 use jni::JNIEnv;
 use sigstat::instance_store::OPTIONS_INSTANCES;
-use sigstat::log_d;
+use sigstat::{log_d, log_e};
 use sigstat::statsig_options::StatsigOptionsBuilder;
 
 #[no_mangle]
@@ -16,8 +16,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     event_logging_flush_interval_ms: jlong,
     event_logging_max_queue_size: jlong,
     environment: JString,
-    output_logger_level: jint
-) -> jint {
+    output_logger_level: jint,
+) -> jstring {
     let specs_url = jstring_to_string(&mut env, specs_url);
     let log_event_url = jstring_to_string(&mut env, log_event_url);
     let environment = jstring_to_string(&mut env, environment);
@@ -53,15 +53,25 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
 
     let options = builder.build();
     let id = OPTIONS_INSTANCES.add(options);
-    log_d!("Created StatsigOptions {}", id);
-    id
+    match id {
+        Some(id) => {
+            log_d!("Created StatsigOptions with ID {}", id);
+            string_to_jstring(&mut env, id.to_string())
+        }
+        None => {
+            log_e!("Failed to create StatsigOptions");
+            std::ptr::null_mut()
+        }
+    }
 }
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsRelease(
-    _env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
-    options_ref: jint,
+    options_ref: JString,
 ) {
-    OPTIONS_INSTANCES.release(options_ref);
+    if let Some(id) = jstring_to_string(&mut env, options_ref) {
+        OPTIONS_INSTANCES.release(id);
+    }
 }

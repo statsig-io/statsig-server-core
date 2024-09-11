@@ -5,7 +5,7 @@ import com.google.gson.Gson;
 import java.util.Map;
 
 public class StatsigUser implements AutoCloseable {
-    private int ref;
+    private volatile String ref;
 
     // Just to make test easier
     public StatsigUser(String userId, String email) {
@@ -49,14 +49,14 @@ public class StatsigUser implements AutoCloseable {
     }
 
     @Override
-    public void close() {
-        if (ref != 0) {
+    public synchronized void close() {
+        if (ref != null) {
             StatsigJNI.statsigUserRelease(this.ref);
-            this.ref = 0;
+            this.ref = null;
         }
     }
 
-    int getRef() {
+    String getRef() {
         return ref;
     }
 }

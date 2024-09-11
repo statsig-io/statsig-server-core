@@ -1,11 +1,11 @@
 use crate::ffi_utils::parse_json_to_map;
-use crate::jni::jni_utils::jstring_to_string;
+use crate::jni::jni_utils::{jstring_to_string, string_to_jstring};
 use jni::objects::{JClass, JString};
-use jni::sys::jint;
+use jni::sys::jstring;
 use jni::JNIEnv;
 use sigstat::instance_store::USER_INSTANCES;
-use sigstat::log_d;
 use sigstat::statsig_user::StatsigUserBuilder;
+use sigstat::{log_d, log_e};
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigUserCreate(
@@ -21,7 +21,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigUserCreate(
     app_version: JString,
     custom_json: JString,
     private_attributes_json: JString,
-) -> jint {
+) -> jstring {
     let user_id = jstring_to_string(&mut env, user_id);
     let custom_ids = parse_json_to_map(jstring_to_string(&mut env, custom_ids_json));
     let email = jstring_to_string(&mut env, email);
@@ -51,15 +51,25 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigUserCreate(
 
     let user = builder.build();
     let id = USER_INSTANCES.add(user);
-    log_d!("Created StatsigUser {}", id);
-    id
+    match id {
+        Some(id) => {
+            log_d!("Created StatsigUser {}", id);
+            string_to_jstring(&mut env, id.to_string())
+        }
+        None => {
+            log_e!("Failed to create StatsigUser");
+            std::ptr::null_mut()
+        }
+    }
 }
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigUserRelease(
-    _env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
-    user_ref: jint,
+    user_ref: JString,
 ) {
-    USER_INSTANCES.release(user_ref);
+    if let Some(id) = jstring_to_string(&mut env, user_ref) {
+        USER_INSTANCES.release(id);
+    }
 }

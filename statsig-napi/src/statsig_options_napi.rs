@@ -1,16 +1,16 @@
 use napi::bindgen_prelude::ObjectFinalize;
 use napi::Env;
 use napi_derive::napi;
-use sigstat::{instance_store::OPTIONS_INSTANCES, StatsigOptions};
+use sigstat::{instance_store::OPTIONS_INSTANCES, log_e, StatsigOptions};
 
 #[napi(custom_finalize)]
 pub struct AutoReleasingStatsigOptionsRef {
-    pub value: i32,
+    pub ref_id: String,
 }
 
 impl ObjectFinalize for AutoReleasingStatsigOptionsRef {
     fn finalize(self, _env: Env) -> napi::Result<()> {
-        OPTIONS_INSTANCES.release(self.value);
+        OPTIONS_INSTANCES.release(self.ref_id);
         Ok(())
     }
 }
@@ -27,15 +27,20 @@ pub fn statsig_options_create(
     // pub specs_adapter: Option<Arc<dyn SpecsAdapter>>,
     // pub event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,
 
+    let ref_id = OPTIONS_INSTANCES.add(StatsigOptions {
+        environment,
+        specs_url,
+        specs_sync_interval_ms,
+        log_event_url,
+        event_logging_max_queue_size,
+        event_logging_flush_interval_ms,
+        ..StatsigOptions::new()
+    }).unwrap_or_else(|| {
+        log_e!("Failed to create StatsigOptions");
+        return "".to_string()
+    });
+
     AutoReleasingStatsigOptionsRef {
-        value: OPTIONS_INSTANCES.add(StatsigOptions {
-            environment,
-            specs_url,
-            specs_sync_interval_ms,
-            log_event_url,
-            event_logging_max_queue_size,
-            event_logging_flush_interval_ms,
-            ..StatsigOptions::new()
-        })
+        ref_id
     }
 }

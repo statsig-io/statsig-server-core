@@ -334,7 +334,7 @@ mod tests {
         let url = server.url();
 
         let id_lists_response_path = PathBuf::from(format!(
-            "{}/tests/get_id_lists.json",
+            "{}/tests/data/get_id_lists.json",
             env!("CARGO_MANIFEST_DIR")
         ));
         let id_lists_response = fs::read_to_string(id_lists_response_path)
@@ -349,7 +349,7 @@ mod tests {
             .create();
 
         let company_ids_response_path = PathBuf::from(format!(
-            "{}/tests/company_id_list",
+            "{}/tests/data/company_id_list",
             env!("CARGO_MANIFEST_DIR")
         ));
         let company_ids_response = fs::read_to_string(company_ids_response_path)

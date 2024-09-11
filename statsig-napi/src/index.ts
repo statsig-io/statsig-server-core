@@ -120,15 +120,15 @@ export class Statsig {
   constructor(sdkKey: string, options?: StatsigOptions) {
     _initializeConsoleLogger(options?.outputLoggerLevel);
 
-    this.__ref = statsigCreate(sdkKey, options?.__ref.value);
+    this.__ref = statsigCreate(sdkKey, options?.__ref.refId);
   }
 
   initialize(): Promise<void> {
-    return statsigInitialize(this.__ref.value);
+    return statsigInitialize(this.__ref.refId);
   }
 
   shutdown(): Promise<void> {
-    return statsigShutdown(this.__ref.value);
+    return statsigShutdown(this.__ref.refId);
   }
 
   logEvent(
@@ -138,8 +138,8 @@ export class Statsig {
     metadata?: Record<string, string> | undefined | null,
   ): void {
     statsigLogStringValueEvent(
-      this.__ref.value,
-      user.__ref.value,
+      this.__ref.refId,
+      user.__ref.refId,
       eventName,
       value,
       metadata,
@@ -147,11 +147,11 @@ export class Statsig {
   }
 
   checkGate(user: StatsigUser, gateName: string): boolean {
-    return statsigCheckGate(this.__ref.value, user.__ref.value, gateName);
+    return statsigCheckGate(this.__ref.refId, user.__ref.refId, gateName);
   }
 
   getFeatureGate(user: StatsigUser, gateName: string): FeatureGate {
-    return statsigGetFeatureGate(this.__ref.value, user.__ref.value, gateName);
+    return statsigGetFeatureGate(this.__ref.refId, user.__ref.refId, gateName);
   }
 
   getDynamicConfig(
@@ -159,8 +159,8 @@ export class Statsig {
     dynamicConfigName: string,
   ): DynamicConfig {
     const dynamicConfig = statsigGetDynamicConfig(
-      this.__ref.value,
-      user.__ref.value,
+      this.__ref.refId,
+      user.__ref.refId,
       dynamicConfigName,
     );
 
@@ -174,8 +174,8 @@ export class Statsig {
 
   getExperiment(user: StatsigUser, experimentName: string): Experiment {
     const experiment = statsigGetExperiment(
-      this.__ref.value,
-      user.__ref.value,
+      this.__ref.refId,
+      user.__ref.refId,
       experimentName,
     );
 
@@ -189,8 +189,8 @@ export class Statsig {
 
   getLayer(user: StatsigUser, layerName: string): Layer {
     const layerJson = statsigGetLayer(
-      this.__ref.value,
-      user.__ref.value,
+      this.__ref.refId,
+      user.__ref.refId,
       layerName,
     );
 
@@ -199,13 +199,13 @@ export class Statsig {
     return {
       ...layer,
       get: _makeTypedGet(value, (param: string) => {
-        statsigLogLayerParamExposure(this.__ref.value, layerJson, param);
+        statsigLogLayerParamExposure(this.__ref.refId, layerJson, param);
       }),
     };
   }
 
   getClientInitializeResponse(user: StatsigUser): string {
-    return statsigGetClientInitResponse(this.__ref.value, user.__ref.value);
+    return statsigGetClientInitResponse(this.__ref.refId, user.__ref.refId);
   }
 }
 

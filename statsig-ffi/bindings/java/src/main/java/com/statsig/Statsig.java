@@ -9,7 +9,7 @@ import java.util.concurrent.CompletableFuture;
 public class Statsig implements AutoCloseable {
     private static final Gson gson = GsonUtil.getGson();
 
-    private final int statsigRef;
+    private volatile String ref;
 
     /**
      * Instantiates a new Statsig instance that connects to Statsig Service.
@@ -24,11 +24,11 @@ public class Statsig implements AutoCloseable {
      *                Statsig instance.
      */
     public Statsig(String sdkKey, StatsigOptions options) {
-        this.statsigRef = StatsigJNI.statsigCreate(sdkKey, options.getRef());
+        this.ref = StatsigJNI.statsigCreate(sdkKey, options.getRef());
     }
 
-    public int getRef() {
-        return statsigRef;
+    public String getRef() {
+        return ref;
     }
 
     public CompletableFuture<Void> initialize() {
@@ -38,38 +38,38 @@ public class Statsig implements AutoCloseable {
             future.complete(null);
         };
 
-        StatsigJNI.statsigInitialize(statsigRef, callback);
+        StatsigJNI.statsigInitialize(ref, callback);
         return future;
     }
 
     public boolean checkGate(StatsigUser user, String gateName) {
-        return StatsigJNI.statsigCheckGate(statsigRef, user.getRef(), gateName);
+        return StatsigJNI.statsigCheckGate(ref, user.getRef(), gateName);
     }
 
     public Experiment getExperiment(StatsigUser user, String experimentName) {
-        String experJson = StatsigJNI.statsigGetExperiment(statsigRef, user.getRef(), experimentName);
+        String experJson = StatsigJNI.statsigGetExperiment(ref, user.getRef(), experimentName);
         return gson.fromJson(experJson, Experiment.class);
     }
 
     public DynamicConfig getDynamicConfig(StatsigUser user, String configName) {
-        String configJson = StatsigJNI.statsigGetDynamicConfig(statsigRef, user.getRef(), configName);
+        String configJson = StatsigJNI.statsigGetDynamicConfig(ref, user.getRef(), configName);
         return gson.fromJson(configJson, DynamicConfig.class);
     }
 
     public Layer getLayer(StatsigUser user, String layerName) {
-        String layerJson = StatsigJNI.statsigGetLayer(statsigRef, user.getRef(), layerName);
+        String layerJson = StatsigJNI.statsigGetLayer(ref, user.getRef(), layerName);
         return gson.fromJson(layerJson, Layer.class);
     }
 
     public FeatureGate getFeatureGate(StatsigUser user, String gateName) {
-        String gateJson = StatsigJNI.statsigGetFeatureGate(statsigRef, user.getRef(), gateName);
+        String gateJson = StatsigJNI.statsigGetFeatureGate(ref, user.getRef(), gateName);
         FeatureGate featureGate = gson.fromJson(gateJson, FeatureGate.class);
         featureGate.setRawJson(gateJson);
         return featureGate;
     }
 
     public void logEvent(StatsigUser user, String eventName, String value, Map<String, String> metadata) {
-        StatsigJNI.statsigLogEvent(statsigRef, user.getRef(), eventName, value, metadata);
+        StatsigJNI.statsigLogEvent(ref, user.getRef(), eventName, value, metadata);
     }
 
     public CompletableFuture<Void> flushEvents() {
@@ -78,12 +78,12 @@ public class Statsig implements AutoCloseable {
             future.complete(null);
         };
 
-        StatsigJNI.statsigFlushEvents(statsigRef, callback);
+        StatsigJNI.statsigFlushEvents(ref, callback);
         return future;
     }
 
     public String getClientInitializeResponse(StatsigUser user) {
-        return StatsigJNI.statsigGetClientInitResponse(statsigRef, user.getRef());
+        return StatsigJNI.statsigGetClientInitResponse(ref, user.getRef());
     }
 
     public CompletableFuture<Void> shutdown() {
@@ -93,15 +93,16 @@ public class Statsig implements AutoCloseable {
             future.complete(null);
         };
 
-        StatsigJNI.statsigShutdown(statsigRef, callback);
+        StatsigJNI.statsigShutdown(ref, callback);
         this.close();
         return future;
     }
 
     @Override
-    public void close() {
-        if (statsigRef != 0) {
-            StatsigJNI.statsigRelease(statsigRef);
+    public synchronized void close() {
+        if (ref != null) {
+            StatsigJNI.statsigRelease(ref);
+            this.ref = null;
         }
     }
 }
