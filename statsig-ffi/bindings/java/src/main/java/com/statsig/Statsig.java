@@ -48,12 +48,20 @@ public class Statsig implements AutoCloseable {
 
     public Experiment getExperiment(StatsigUser user, String experimentName) {
         String experJson = StatsigJNI.statsigGetExperiment(ref, user.getRef(), experimentName);
-        return gson.fromJson(experJson, Experiment.class);
+        Experiment experiment = gson.fromJson(experJson, Experiment.class);
+        if (experiment != null) {
+            experiment.setRawJson(experJson);
+        }
+        return experiment;
     }
 
     public DynamicConfig getDynamicConfig(StatsigUser user, String configName) {
         String configJson = StatsigJNI.statsigGetDynamicConfig(ref, user.getRef(), configName);
-        return gson.fromJson(configJson, DynamicConfig.class);
+        DynamicConfig dynamicConfig = gson.fromJson(configJson, DynamicConfig.class);
+        if (dynamicConfig != null) {
+            dynamicConfig.setRawJson(configJson);
+        }
+        return dynamicConfig;
     }
 
     public Layer getLayer(StatsigUser user, String layerName) {
@@ -62,6 +70,7 @@ public class Statsig implements AutoCloseable {
         if (layer != null) {
             // Set the Statsig reference in the Layer instance
             layer.setStatsigInstance(this);
+            layer.setRawJson(layerJson);
         }
         return layer;
     }
