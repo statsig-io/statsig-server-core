@@ -21,6 +21,6 @@ public class Main {
 
         System.out.println("test_public: " + check);
 
-        statsig.flushEvents().get();
+        statsig.shutdown().get();
     }
 }

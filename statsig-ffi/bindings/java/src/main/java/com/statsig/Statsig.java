@@ -5,11 +5,16 @@ import com.statsig.internal.GsonUtil;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ScheduledExecutorService;
 
 public class Statsig implements AutoCloseable {
     private static final Gson gson = GsonUtil.getGson();
 
     private volatile String ref;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
 
     /**
      * Instantiates a new Statsig instance that connects to Statsig Service.
@@ -39,6 +44,21 @@ public class Statsig implements AutoCloseable {
         };
 
         StatsigJNI.statsigInitialize(ref, callback);
+        return future;
+    }
+
+    public CompletableFuture<Void> shutdown() {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        Runnable callback = () -> {
+            scheduler.execute(() -> {
+                StatsigJNI.statsigFinalizeShutdown(ref);
+                future.complete(null);
+                scheduler.shutdown();
+            });
+        };
+
+        StatsigJNI.statsigSequencedShutdownPrepare(ref, callback);
+
         return future;
     }
 
@@ -98,18 +118,6 @@ public class Statsig implements AutoCloseable {
 
     public String getClientInitializeResponse(StatsigUser user) {
         return StatsigJNI.statsigGetClientInitResponse(ref, user.getRef());
-    }
-
-    public CompletableFuture<Void> shutdown() {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        Runnable callback = () -> {
-            // Complete the future when the native operation is done
-            future.complete(null);
-        };
-
-        StatsigJNI.statsigShutdown(ref, callback);
-        this.close();
-        return future;
     }
 
     void logLayerParamExposure(String layerJson, String param) {

@@ -1,6 +1,7 @@
 use crate::client_init_response_formatter::ClientInitResponseFormatter;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
+use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator::Evaluator;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::evaluator_result::{
@@ -13,10 +14,11 @@ use crate::event_logging::gate_exposure::GateExposure;
 use crate::event_logging::layer_exposure::LayerExposure;
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::make_custom_event;
-use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::event_logging_adapter::statsig_event_logging_adapter::StatsigEventLoggingAdapter;
+use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::initialize_response::InitializeResponse;
 use crate::memo_sha_256::MemoSha256;
+use crate::output_logger::initialize_simple_output_logger;
 use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::specs_adapter::statsig_http_specs_adapter::StatsigHttpSpecsAdapter;
 use crate::statsig_err::StatsigErr;
@@ -36,8 +38,6 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::runtime::{Builder, Handle, Runtime};
 use tokio::try_join;
-use crate::evaluation::evaluation_types::SecondaryExposure;
-use crate::output_logger::initialize_simple_output_logger;
 
 pub struct Statsig {
     sdk_key: String,
@@ -148,13 +148,44 @@ impl Statsig {
             self.specs_adapter.shutdown(timeout)
         )?;
 
+        self.finalize_shutdown();
+        Ok(())
+    }
+
+    pub fn sequenced_shutdown_prepare<F>(&self, callback: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let event_logger = self.event_logger.clone();
+        let specs_adapter = self.specs_adapter.clone();
+
+        self.runtime_handle.spawn(async move {
+            let timeout = Duration::from_millis(1000);
+
+            let result = try_join!(
+                event_logger.shutdown(timeout),
+                specs_adapter.shutdown(timeout)
+            );
+
+            match result {
+                Ok(_) => {
+                    log_d!("Shutdown successfully");
+                    callback();
+                }
+                Err(e) => {
+                    log_e!("Shutdown failed: {:?}", e);
+                    callback();
+                }
+            }
+        });
+    }
+
+    pub fn finalize_shutdown(&self) {
         if let Ok(mut lock) = self.runtime.lock() {
             if let Some(runtime) = lock.take() {
                 runtime.shutdown_timeout(Duration::from_secs(1))
             }
         }
-
-        Ok(())
     }
 
     pub fn get_context(&self) -> (String, Arc<StatsigOptions>) {
@@ -267,6 +298,20 @@ impl Statsig {
 
     pub async fn flush_events(&self) {
         self.event_logger.flush_blocking().await
+    }
+
+    pub fn flush_events_with_callback<F>(&self, callback: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let cloned_event_logger = self.event_logger.clone();
+        let runtime_handle = self.runtime_handle.clone();
+
+        runtime_handle.spawn(async move {
+            let _ = cloned_event_logger.flush_blocking().await;
+
+            callback();
+        });
     }
 
     // ---------––
@@ -423,7 +468,7 @@ impl Statsig {
                     layer_name,
                     Some(evaluation),
                     EvaluationDetails::recognized(&data),
-                    Some(event_logger_ptr)
+                    Some(event_logger_ptr),
                 )
             }
             None => make_layer(
@@ -431,7 +476,7 @@ impl Statsig {
                 layer_name,
                 None,
                 EvaluationDetails::unrecognized(&data),
-                None
+                None,
             ),
         }
     }
@@ -442,7 +487,10 @@ impl Statsig {
         gate_name: &str,
         gate: &FeatureGate,
     ) {
-        let secondary_exposures = gate.__evaluation.as_ref().map(|eval| &eval.base.secondary_exposures);
+        let secondary_exposures = gate
+            .__evaluation
+            .as_ref()
+            .map(|eval| &eval.base.secondary_exposures);
 
         self.event_logger
             .enqueue(QueuedEventPayload::GateExposure(GateExposure {

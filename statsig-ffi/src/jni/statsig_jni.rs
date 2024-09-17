@@ -3,9 +3,8 @@ use crate::{get_instance_or_else_jni, get_instance_or_noop_jni, get_instance_or_
 use jni::sys::{jboolean, jclass, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 
-use jni::objects::{JClass, JObject, JString};
-
 use crate::jni::jni_utils::jni_to_rust_hashmap;
+use jni::objects::{JClass, JObject, JString};
 use sigstat::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES, USER_INSTANCES};
 use sigstat::{log_e, Statsig};
 
@@ -91,6 +90,54 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigSequencedShutdownPrepare(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+    callback: JObject,
+) {
+    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
+
+    if callback.is_null() {
+        log_e!("Callback is null");
+        return;
+    }
+
+    let vm = match env.get_java_vm() {
+        Ok(vm) => vm,
+        Err(_) => {
+            log_e!("Failed to get Java VM");
+            return;
+        }
+    };
+
+    let global_callback = env
+        .new_global_ref(callback)
+        .expect("Failed to create global ref");
+
+    statsig.sequenced_shutdown_prepare(move || {
+        let mut env = vm.attach_current_thread().unwrap();
+
+        let result = env.call_method(global_callback.as_obj(), "run", "()V", &[]);
+        if result.is_err() {
+            log_e!("Failed to call callback");
+        }
+
+        drop(global_callback);
+    });
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFinalizeShutdown(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
+    statsig.finalize_shutdown();
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetClientInitResponse(
     mut env: JNIEnv,
     _class: JClass,
@@ -108,24 +155,6 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetClientInitResponse(
     let response = statsig.get_client_init_response(user.as_ref());
 
     serialize_json_to_jstring(&mut env, &response)
-}
-
-#[no_mangle]
-pub extern "system" fn Java_com_statsig_StatsigJNI_statsigShutdown(
-    mut env: JNIEnv,
-    _class: JClass,
-    statsig_ref: JString,
-    callback: JObject,
-) {
-    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
-
-    if callback.is_null() {
-        log_e!("Callback is null");
-        return;
-    }
-
-    let _ = statsig.shutdown();
-    let _ = env.call_method(callback, "run", "()V", &[]);
 }
 
 #[no_mangle]
@@ -324,6 +353,26 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
         return;
     }
 
-    let _ = statsig.flush_events();
-    let _ = env.call_method(callback, "run", "()V", &[]);
+    let vm = match env.get_java_vm() {
+        Ok(vm) => vm,
+        Err(_) => {
+            log_e!("Failed to get Java VM");
+            return;
+        }
+    };
+
+    let global_callback = env
+        .new_global_ref(callback)
+        .expect("Failed to create global ref");
+
+    statsig.flush_events_with_callback(move || {
+        let mut env = vm.attach_current_thread().unwrap();
+
+        let result = env.call_method(global_callback.as_obj(), "run", "()V", &[]);
+        if result.is_err() {
+            log_e!("Failed to call callback");
+        }
+
+        drop(global_callback);
+    });
 }
