@@ -1,4 +1,4 @@
-use crate::ffi_utils::parse_json_to_map;
+use crate::ffi_utils::{parse_json_to_map, parse_json_to_str_map};
 use crate::jni::jni_utils::{jstring_to_string, string_to_jstring};
 use jni::objects::{JClass, JString};
 use jni::sys::jstring;
@@ -23,7 +23,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigUserCreate(
     private_attributes_json: JString,
 ) -> jstring {
     let user_id = jstring_to_string(&mut env, user_id);
-    let custom_ids = parse_json_to_map(jstring_to_string(&mut env, custom_ids_json));
+    let custom_ids = parse_json_to_str_map(jstring_to_string(&mut env, custom_ids_json));
     let email = jstring_to_string(&mut env, email);
     let ip = jstring_to_string(&mut env, ip);
     let user_agent = jstring_to_string(&mut env, user_agent);
@@ -46,8 +46,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigUserCreate(
         .country(country)
         .locale(locale)
         .app_version(app_version)
-        .custom_from_str_map(custom)
-        .private_attributes_from_str_map(private_attributes);
+        .custom(custom)
+        .private_attributes(private_attributes);
 
     let user = builder.build();
     let id = USER_INSTANCES.add(user);

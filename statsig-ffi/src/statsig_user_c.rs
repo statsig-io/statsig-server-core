@@ -1,7 +1,7 @@
 use sigstat::{log_d, log_w, StatsigUser};
 use std::os::raw::c_char;
 use sigstat::statsig_user::StatsigUserBuilder;
-use crate::ffi_utils::{c_char_to_string, parse_json_to_map};
+use crate::ffi_utils::{c_char_to_string, parse_json_to_map, parse_json_to_str_map};
 
 #[repr(C)]
 pub struct StatsigUserRef {
@@ -35,7 +35,7 @@ pub extern "C" fn statsig_user_create(
 ) -> StatsigUserRef {
     // Convert C strings to Rust Options
     let user_id = c_char_to_string(user_id);
-    let custom_ids = parse_json_to_map(c_char_to_string(custom_ids_json));
+    let custom_ids = parse_json_to_str_map(c_char_to_string(custom_ids_json));
     let email = c_char_to_string(email);
     let ip = c_char_to_string(ip);
     let user_agent = c_char_to_string(user_agent);
@@ -60,8 +60,8 @@ pub extern "C" fn statsig_user_create(
         .country(country)
         .locale(locale)
         .app_version(app_version)
-        .custom_from_str_map(custom)
-        .private_attributes_from_str_map(private_attributes);
+        .custom(custom)
+        .private_attributes(private_attributes);
 
     // Build the StatsigUser and convert it to a raw pointer
     let user = builder.build();
