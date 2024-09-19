@@ -172,7 +172,7 @@ class StatsigJNI {
                 resource = cl.getResource("native/libstatsig_ffi.dylib");
             }
         } else if (osName.contains("linux")) {
-            if (osArch.equals("x86_64") || osArch.equals("arm64")) {
+            if (osArch.equals("x86_64") || osArch.equals("arm64") || osArch.equals("amd64")) {
                 resource = cl.getResource("native/libstatsig_ffi.so");
             }
         }
