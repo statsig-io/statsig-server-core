@@ -1,12 +1,12 @@
 plugins {
     id 'java'
     id 'maven-publish'
-    //id 'signing'
+    id 'signing'
     // id 'checkstyle'
 }
 
- group 'com.statsig'
- version '0.33.0' // this is still for testing purpose for now, so the version is just .. tes0
+group 'com.statsig'
+version '0.0.2' // WARN it's now up-to-date
 
 def expectedTasks = [
     'java-coreJar',
@@ -128,7 +128,7 @@ tasks.matching { it.name.startsWith("publish") }.all { publishTask ->
 publishing {
     publications {
         create('mavenJava', MavenPublication) {
-            artifactId = 'serversdk-test'
+            artifactId = 'javacore'
 
             project.ext.artifactTasks.each { taskEntry ->
                 def taskName = taskEntry.taskName
@@ -144,9 +144,9 @@ publishing {
             artifact javadocJar
 
             pom {
-                name.set("Statsig Server SDK")
-                description.set("A Server SDK for macOS platform")
-                url.set("https://github.com/statsig-io/java-server-sdk") // TODO need to change to real repo url
+                name.set("Statsig Java Core SDK")
+                description.set("A feature gating and a/b testing java library for statsig")
+                url.set("https://github.com/statsig-io") // TODO need to change to real repo url
 
                 licenses {
                     license {
@@ -186,13 +186,13 @@ publishing {
     }
 }
 
-//signing {
-//    def signingKeyId = ""
-//    def signingKey = ""
-//    def signingPassword = ""
-//    useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
-//    sign publishing.publications['mavenJava']
-//}
+signing {
+    def signingKeyId = ""
+    def signingKey = ""
+    def signingPassword = ""
+    useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
+    sign publishing.publications['mavenJava']
+}
 
 //checkstyle {
 //    toolVersion = "9.2"
