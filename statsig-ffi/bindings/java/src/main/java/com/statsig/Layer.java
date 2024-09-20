@@ -21,6 +21,7 @@ public class Layer {
     public EvaluationDetails evaluationDetails;
     @Expose(serialize = false, deserialize = false)
     String rawJson;
+
     private Statsig statsigInstance;
 
     Layer(String name, String ruleID, String groupName, Map<String, JsonElement> value,
@@ -31,6 +32,30 @@ public class Layer {
         this.value = value;
         this.evaluationDetails = evaluationDetails;
         this.allocatedExperimentName = allocatedExperimentName;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getRuleID() {
+        return ruleID;
+    }
+
+    public String getGroupName() {
+        return groupName;
+    }
+
+    public Map<String, JsonElement> getValue() {
+        return value;
+    }
+
+    public String getAllocatedExperimentName() {
+        return allocatedExperimentName;
+    }
+
+    public EvaluationDetails getEvaluationDetails() {
+        return evaluationDetails;
     }
 
     public String getRawJson() {

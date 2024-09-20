@@ -169,7 +169,7 @@ class StatsigJNI {
             }
         } else if (osName.contains("mac")) {
             if (osArch.equals("x86_64") || osArch.equals("amd64") || osArch.equals("aarch64")) {
-                resource = cl.getResource("native/libstatsig_ffi.dylib");
+                resource = cl.getResource("native/macos-arm64/libstatsig_ffi.dylib");
             }
         } else if (osName.contains("linux")) {
             if (osArch.equals("x86_64") || osArch.equals("arm64") || osArch.equals("amd64")) {
@@ -183,7 +183,8 @@ class StatsigJNI {
     private static void logNativeLibraryError(String osName, String osArch) {
         StringBuilder message = new StringBuilder("Ensure the correct native library is available for your platform.\n");
         String normalizedOsName = osName.toLowerCase().replace(" ", "");
-        String arch = osArch.contains("aarch64") ? "arm64" : osArch.contains("x86_64") ? "x86_64" : osArch;
+
+        String arch = normalizeArch(osArch);
     
         if (normalizedOsName.contains("macos")) {
             addDependency(message, "macOS", arch, "macos");
@@ -198,11 +199,25 @@ class StatsigJNI {
         message.append("For further assistance, refer to the documentation or contact support.");
         OutputLogger.logError(logContext, message.toString());
     }
+
+    private static String normalizeArch(String osArch) {
+        osArch = osArch.toLowerCase();
+
+        if (osArch.contains("aarch64") || osArch.contains("arm64")) {
+            return "arm64";
+        } else if (osArch.contains("x86_64") || osArch.contains("amd64")) {
+            return "x86_64";
+        } else if (osArch.contains("i686")) {
+            return "i686";
+        } else {
+            return osArch;
+        }
+    }
     
     private static void addDependency(StringBuilder message, String os, String arch, String... platforms) {
         message.append(String.format("For %s with %s architecture, add the following to build.gradle:\n", os, arch));
         for (String platform : platforms) {
-            message.append(String.format("  implementation 'com.statsig:serversdk-test:<version>:%s-%s'\n", platform, arch));
+            message.append(String.format("  implementation 'com.statsig:javacore:<version>:%s-%s'\n", platform, arch));
         }
     }
 

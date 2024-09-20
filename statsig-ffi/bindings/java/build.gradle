@@ -1,12 +1,12 @@
 plugins {
     id 'java'
     id 'maven-publish'
-    id 'signing'
+    //id 'signing'
     // id 'checkstyle'
 }
 
  group 'com.statsig'
- version '0.28.0' // this is still for testing purpose for now, so the version is just .. tes0
+ version '0.33.0' // this is still for testing purpose for now, so the version is just .. tes0
 
 def expectedTasks = [
     'java-coreJar',
@@ -27,6 +27,7 @@ java {
 
 repositories {
     mavenCentral()
+    mavenLocal()
 }
 
 dependencies {
@@ -80,7 +81,7 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
 
         // Include native library if needed
         if (nativeLib) {
-            from("src/main/resources/native") {
+            from("src/main/resources/native/${classifierParam}") {
                 into("native/")
             }
             include nativeLib
@@ -99,9 +100,9 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
 }
 
 createStatsigJar('java-core', null)
-createStatsigJar('aarch64-apple-darwin', 'macos-aarch64')
+createStatsigJar('aarch64-apple-darwin', 'macos-arm64')
 createStatsigJar('x86_64-apple-darwin', 'macos-x86_64')
-createStatsigJar('aarch64-pc-windows-msvc', 'windows-aarch64')
+createStatsigJar('aarch64-pc-windows-msvc', 'windows-arm64')
 createStatsigJar('i686-pc-windows-msvc', 'windows-i686')
 createStatsigJar('x86_64-pc-windows-msvc', 'windows-x86_64')
 createStatsigJar('amazonlinux2-arm64', 'amazonlinux2-arm64')
@@ -143,7 +144,7 @@ publishing {
             artifact javadocJar
 
             pom {
-                name.set("Statsig Server SDK for macOS")
+                name.set("Statsig Server SDK")
                 description.set("A Server SDK for macOS platform")
                 url.set("https://github.com/statsig-io/java-server-sdk") // TODO need to change to real repo url
 
@@ -185,13 +186,13 @@ publishing {
     }
 }
 
-signing {
-    def signingKeyId = ""
-    def signingKey = ""
-    def signingPassword = ""
-    useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
-    sign publishing.publications['mavenJava']
-}
+//signing {
+//    def signingKeyId = ""
+//    def signingKey = ""
+//    def signingPassword = ""
+//    useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
+//    sign publishing.publications['mavenJava']
+//}
 
 //checkstyle {
 //    toolVersion = "9.2"

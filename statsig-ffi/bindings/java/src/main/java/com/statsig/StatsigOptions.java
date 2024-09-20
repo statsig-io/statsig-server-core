@@ -1,6 +1,6 @@
 package com.statsig;
 
-public class StatsigOptions implements AutoCloseable {
+public class StatsigOptions {
     private volatile String ref;
 
     private StatsigOptions(Builder builder) {
@@ -13,18 +13,17 @@ public class StatsigOptions implements AutoCloseable {
                 builder.environment,
                 builder.outputLoggerLevel.getValue()
         );
+
+        ResourceCleaner.register(this, () -> {
+            if (ref != null) {
+                StatsigJNI.statsigOptionsRelease(ref);
+                ref = null;
+            }
+        });
     }
 
     String getRef() {
         return ref;
-    }
-
-    @Override
-    public synchronized void close() {
-        if (ref != null) {
-            StatsigJNI.statsigOptionsRelease(ref);
-            this.ref = null;
-        }
     }
 
     public static class Builder {

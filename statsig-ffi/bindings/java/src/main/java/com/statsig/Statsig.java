@@ -6,10 +6,9 @@ import com.statsig.internal.GsonUtil;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ScheduledExecutorService;
 
-public class Statsig implements AutoCloseable {
+public class Statsig {
     private static final Gson gson = GsonUtil.getGson();
 
     private volatile String ref;
@@ -30,6 +29,13 @@ public class Statsig implements AutoCloseable {
      */
     public Statsig(String sdkKey, StatsigOptions options) {
         this.ref = StatsigJNI.statsigCreate(sdkKey, options.getRef());
+
+        ResourceCleaner.register(this, () -> {
+            if (ref != null) {
+                StatsigJNI.statsigRelease(ref);
+                ref = null;
+            }
+        });
     }
 
     public String getRef() {
@@ -122,13 +128,5 @@ public class Statsig implements AutoCloseable {
 
     void logLayerParamExposure(String layerJson, String param) {
         StatsigJNI.statsigLogLayerParamExposure(ref, layerJson, param);
-    }
-
-    @Override
-    public synchronized void close() {
-        if (ref != null) {
-            StatsigJNI.statsigRelease(ref);
-            this.ref = null;
-        }
     }
 }

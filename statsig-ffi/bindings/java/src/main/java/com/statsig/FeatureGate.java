@@ -24,6 +24,22 @@ public class FeatureGate {
         this.evaluationDetails = evaluationDetails;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public boolean getValue() {
+        return value;
+    }
+
+    public String getRuleID() {
+        return ruleID;
+    }
+
+    public EvaluationDetails getEvaluationDetails() {
+        return evaluationDetails;
+    }
+
     public String getRawJson() {
         return rawJson;
     }

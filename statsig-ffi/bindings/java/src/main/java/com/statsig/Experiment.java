@@ -29,6 +29,26 @@ public class Experiment {
         this.evaluationDetails = evaluationDetails;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public String getRuleID() {
+        return ruleID;
+    }
+
+    public Map<String, JsonElement> getValue() {
+        return value;
+    }
+
+    public String getGroupName() {
+        return groupName;
+    }
+
+    public EvaluationDetails getEvaluationDetails() {
+        return evaluationDetails;
+    }
+
     public String getRawJson() {
         return rawJson;
     }

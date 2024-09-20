@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 
 import java.util.Map;
 
-public class StatsigUser implements AutoCloseable {
+public class StatsigUser {
     public String userID;
     public Map<String, String> customIDs;
     public String email;
@@ -17,11 +17,6 @@ public class StatsigUser implements AutoCloseable {
     public Map<String, Object> custom;
 
     private volatile String ref;
-
-    // Just to make test easier
-    public StatsigUser(String userId, String email) {
-        this(userId, null, email, null, null, null, null, null, null, null);
-    }
 
     public StatsigUser(
             String userId,
@@ -47,6 +42,104 @@ public class StatsigUser implements AutoCloseable {
         this.userAgent = userAgent;
 
         initializeRef();
+        ResourceCleaner.register(this, () -> {
+            if (ref != null) {
+                StatsigJNI.statsigUserRelease(ref);
+                ref = null;
+            }
+        });
+    }
+
+    public StatsigUser(String userId) {
+        this(userId, null, null, null, null, null, null, null, null, null);
+    }
+
+    public StatsigUser(Map<String, String> customIDs) {
+        this(null, customIDs, null, null, null, null, null, null, null, null);
+    }
+
+    public StatsigUser(String userId, String email) {
+        this(userId, null, email, null, null, null, null, null, null, null);
+    }
+
+    public String getUserID() {
+        return userID;
+    }
+
+    public void setUserID(String userID) {
+        this.userID = userID;
+    }
+
+    public Map<String, String> getCustomIDs() {
+        return customIDs;
+    }
+
+    public void setCustomIDs(Map<String, String> customIDs) {
+        this.customIDs = customIDs;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+
+    public String getLocale() {
+        return locale;
+    }
+
+    public void setLocale(String locale) {
+        this.locale = locale;
+    }
+
+    public String getAppVersion() {
+        return appVersion;
+    }
+
+    public void setAppVersion(String appVersion) {
+        this.appVersion = appVersion;
+    }
+
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    public void setUserAgent(String userAgent) {
+        this.userAgent = userAgent;
+    }
+
+    public String getCountry() {
+        return country;
+    }
+
+    public void setCountry(String country) {
+        this.country = country;
+    }
+
+    public Map<String, String> getPrivateAttributes() {
+        return privateAttributes;
+    }
+
+    public void setPrivateAttributes(Map<String, String> privateAttributes) {
+        this.privateAttributes = privateAttributes;
+    }
+
+    public Map<String, Object> getCustom() {
+        return custom;
+    }
+
+    public void setCustom(Map<String, Object> custom) {
+        this.custom = custom;
     }
 
     private void initializeRef() {
@@ -69,14 +162,6 @@ public class StatsigUser implements AutoCloseable {
                 customJson,
                 privateAttributesJson
         );
-    }
-
-    @Override
-    public synchronized void close() {
-        if (ref != null) {
-            StatsigJNI.statsigUserRelease(this.ref);
-            this.ref = null;
-        }
     }
 
     String getRef() {

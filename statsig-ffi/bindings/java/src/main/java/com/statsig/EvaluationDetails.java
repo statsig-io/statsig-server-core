@@ -4,8 +4,19 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class EvaluationDetails {
+    /**
+     * last config updated time
+     */
     public long lcut;
+
+    /**
+     * The time when we received this config
+     */
     public long receivedAt;
+
+    /**
+     * Evaluation reason
+     */
     public String reason;
 
     EvaluationDetails(long lcut, long receivedAt, String reason) {

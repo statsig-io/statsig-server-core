@@ -9,7 +9,7 @@ public class PerformanceTest {
     public void test() throws ExecutionException, InterruptedException {
         StatsigOptions options = new StatsigOptions.Builder().build();
 
-        Statsig statsig = new Statsig("secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW", options);
+        Statsig statsig = new Statsig("secret-key", options);
 
         statsig.initialize().get();
         long startTime = System.nanoTime();
@@ -17,14 +17,11 @@ public class PerformanceTest {
 
         for (int i = 0; i < 1000; i++) {
             String currUser = "user_" + i;
-            try (StatsigUser user = new StatsigUser(currUser, "weihao@statsig.com")) {
-                try {
-                    result = statsig.getClientInitializeResponse(user);
-                } catch (Exception e) {
-                    System.err.println("Error initializing client response for user " + currUser + ": " + e.getMessage());
-                }
+            StatsigUser user = new StatsigUser(currUser, "weihao@statsig.com");
+            try {
+                result = statsig.getClientInitializeResponse(user);
             } catch (Exception e) {
-                System.err.println("Error creating StatsigUser for user " + currUser + ": " + e.getMessage());
+                System.err.println("Error initializing client response for user " + currUser + ": " + e.getMessage());
             }
         }
 
@@ -40,7 +37,6 @@ public class PerformanceTest {
 
         System.out.println(elapsedTime / 1_000_000.0 + " ms"); // Convert nanoseconds to milliseconds
 
-        statsig.close();
-        options.close();
+        statsig.shutdown().get();
     }
 }
