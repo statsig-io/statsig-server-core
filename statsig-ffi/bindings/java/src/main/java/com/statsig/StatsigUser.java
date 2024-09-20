@@ -5,41 +5,30 @@ import com.google.gson.Gson;
 import java.util.Map;
 
 public class StatsigUser {
-    public String userID;
-    public Map<String, String> customIDs;
-    public String email;
-    public String ip;
-    public String locale;
-    public String appVersion;
-    public String userAgent;
-    public String country;
-    public Map<String, String> privateAttributes;
-    public Map<String, Object> custom;
+    private String userID;
+    private Map<String, String> customIDs;
+    private String email;
+    private String ip;
+    private String locale;
+    private String appVersion;
+    private String userAgent;
+    private String country;
+    private Map<String, String> privateAttributes;
+    private Map<String, Object> custom;
 
     private volatile String ref;
 
-    public StatsigUser(
-            String userId,
-            Map<String, String> customIDs,
-            String email,
-            String ip,
-            String userAgent,
-            String country,
-            String locale,
-            String appVersion,
-            Map<String, Object> custom,
-            Map<String, String> privateAttributes
-    ) {
-        this.userID = userId;
-        this.custom = custom;
-        this.email = email;
-        this.ip = ip;
-        this.locale = locale;
-        this.appVersion = appVersion;
-        this.customIDs = customIDs;
-        this.privateAttributes = privateAttributes;
-        this.country = country;
-        this.userAgent = userAgent;
+    private StatsigUser(Builder builder) {
+        this.userID = builder.userID;
+        this.customIDs = builder.customIDs;
+        this.email = builder.email;
+        this.ip = builder.ip;
+        this.locale = builder.locale;
+        this.appVersion = builder.appVersion;
+        this.userAgent = builder.userAgent;
+        this.country = builder.country;
+        this.privateAttributes = builder.privateAttributes;
+        this.custom = builder.custom;
 
         initializeRef();
         ResourceCleaner.register(this, () -> {
@@ -48,98 +37,6 @@ public class StatsigUser {
                 ref = null;
             }
         });
-    }
-
-    public StatsigUser(String userId) {
-        this(userId, null, null, null, null, null, null, null, null, null);
-    }
-
-    public StatsigUser(Map<String, String> customIDs) {
-        this(null, customIDs, null, null, null, null, null, null, null, null);
-    }
-
-    public StatsigUser(String userId, String email) {
-        this(userId, null, email, null, null, null, null, null, null, null);
-    }
-
-    public String getUserID() {
-        return userID;
-    }
-
-    public void setUserID(String userID) {
-        this.userID = userID;
-    }
-
-    public Map<String, String> getCustomIDs() {
-        return customIDs;
-    }
-
-    public void setCustomIDs(Map<String, String> customIDs) {
-        this.customIDs = customIDs;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getIp() {
-        return ip;
-    }
-
-    public void setIp(String ip) {
-        this.ip = ip;
-    }
-
-    public String getLocale() {
-        return locale;
-    }
-
-    public void setLocale(String locale) {
-        this.locale = locale;
-    }
-
-    public String getAppVersion() {
-        return appVersion;
-    }
-
-    public void setAppVersion(String appVersion) {
-        this.appVersion = appVersion;
-    }
-
-    public String getUserAgent() {
-        return userAgent;
-    }
-
-    public void setUserAgent(String userAgent) {
-        this.userAgent = userAgent;
-    }
-
-    public String getCountry() {
-        return country;
-    }
-
-    public void setCountry(String country) {
-        this.country = country;
-    }
-
-    public Map<String, String> getPrivateAttributes() {
-        return privateAttributes;
-    }
-
-    public void setPrivateAttributes(Map<String, String> privateAttributes) {
-        this.privateAttributes = privateAttributes;
-    }
-
-    public Map<String, Object> getCustom() {
-        return custom;
-    }
-
-    public void setCustom(Map<String, Object> custom) {
-        this.custom = custom;
     }
 
     private void initializeRef() {
@@ -164,7 +61,115 @@ public class StatsigUser {
         );
     }
 
+    public String getUserID() {
+        return userID;
+    }
+
+    public Map<String, String> getCustomIDs() {
+        return customIDs;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public String getLocale() {
+        return locale;
+    }
+
+    public String getAppVersion() {
+        return appVersion;
+    }
+
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    public String getCountry() {
+        return country;
+    }
+
+    public Map<String, String> getPrivateAttributes() {
+        return privateAttributes;
+    }
+
+    public Map<String, Object> getCustom() {
+        return custom;
+    }
+
     String getRef() {
         return ref;
+    }
+
+    // Builder Class
+    public static class Builder {
+        private String userID;
+        private Map<String, String> customIDs;
+        private String email;
+        private String ip;
+        private String locale;
+        private String appVersion;
+        private String userAgent;
+        private String country;
+        private Map<String, String> privateAttributes;
+        private Map<String, Object> custom;
+
+        public Builder setUserID(String userID) {
+            this.userID = userID;
+            return this;
+        }
+
+        public Builder setCustomIDs(Map<String, String> customIDs) {
+            this.customIDs = customIDs;
+            return this;
+        }
+
+        public Builder setEmail(String email) {
+            this.email = email;
+            return this;
+        }
+
+        public Builder setIp(String ip) {
+            this.ip = ip;
+            return this;
+        }
+
+        public Builder setLocale(String locale) {
+            this.locale = locale;
+            return this;
+        }
+
+        public Builder setAppVersion(String appVersion) {
+            this.appVersion = appVersion;
+            return this;
+        }
+
+        public Builder setUserAgent(String userAgent) {
+            this.userAgent = userAgent;
+            return this;
+        }
+
+        public Builder setCountry(String country) {
+            this.country = country;
+            return this;
+        }
+
+        public Builder setPrivateAttributes(Map<String, String> privateAttributes) {
+            this.privateAttributes = privateAttributes;
+            return this;
+        }
+
+        public Builder setCustom(Map<String, Object> custom) {
+            this.custom = custom;
+            return this;
+        }
+
+        public StatsigUser build() {
+            return new StatsigUser(this);
+        }
     }
 }

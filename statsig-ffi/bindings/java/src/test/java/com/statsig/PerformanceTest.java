@@ -17,7 +17,10 @@ public class PerformanceTest {
 
         for (int i = 0; i < 1000; i++) {
             String currUser = "user_" + i;
-            StatsigUser user = new StatsigUser(currUser, "weihao@statsig.com");
+            StatsigUser user = new StatsigUser.Builder()
+                    .setUserID(currUser)
+                    .setEmail("weihao@statsig.com")
+                    .build();
             try {
                 result = statsig.getClientInitializeResponse(user);
             } catch (Exception e) {
@@ -36,7 +39,6 @@ public class PerformanceTest {
         }
 
         System.out.println(elapsedTime / 1_000_000.0 + " ms"); // Convert nanoseconds to milliseconds
-
         statsig.shutdown().get();
     }
 }
