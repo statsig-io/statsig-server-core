@@ -169,7 +169,7 @@ class StatsigJNI {
             }
         } else if (osName.contains("mac")) {
             if (osArch.equals("x86_64") || osArch.equals("amd64") || osArch.equals("aarch64")) {
-                resource = cl.getResource("native/macos-arm64/libstatsig_ffi.dylib");
+                resource = cl.getResource("native/libstatsig_ffi.dylib");
             }
         } else if (osName.contains("linux")) {
             if (osArch.equals("x86_64") || osArch.equals("arm64") || osArch.equals("amd64")) {
