@@ -3,7 +3,7 @@
   "rule_id": "default",
   "id_type": "userID",
   "secondary_exposures": [],
-  "value": {
+  "__value": {
     "a_param": "foo",
     "another_param": 45.6
   },
