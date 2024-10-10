@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"time"
+	"os"
 
 	"statsig.com/sdk/statsig"
 )
@@ -14,7 +15,8 @@ func main() {
 	user := statsig.NewUser(name, email)
 	defer user.Destroy()
 
-	statsigInstance := statsig.NewStatsig(user, "secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW")
+	sdkKey := os.Getenv("test_api_key")
+	statsigInstance := statsig.NewStatsig(user, sdkKey)
 	defer statsigInstance.Destroy()
 
 	// gateName := "test_public"

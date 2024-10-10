@@ -596,8 +596,11 @@ fn create_runtime_if_required() -> (Option<Runtime>, Handle) {
 mod tests {
     use super::*;
     use crate::{evaluation::evaluation_types::AnyConfigEvaluation, StatsigHttpIdListsAdapter};
+    use std::env;
 
-    const SDK_KEY: &str = "secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW";
+    fn get_sdk_key() -> String {
+        env::var("test_api_key").expect("test_api_key environment variable not set")
+    }
 
     #[tokio::test]
     async fn test_check_gate() {
@@ -606,7 +609,7 @@ mod tests {
             ..StatsigUser::with_user_id("a-user".to_string())
         };
 
-        let statsig = Statsig::new(SDK_KEY, None);
+        let statsig = Statsig::new(&get_sdk_key(), None);
         statsig.initialize().await.unwrap();
 
         let gate_result = statsig.check_gate(&user, "test_50_50");
@@ -627,10 +630,10 @@ mod tests {
 
         let mut opts = StatsigOptions::new();
 
-        let adapter = Arc::new(StatsigHttpIdListsAdapter::new(SDK_KEY, &opts));
+        let adapter = Arc::new(StatsigHttpIdListsAdapter::new(&get_sdk_key(), &opts));
         opts.id_lists_adapter = Some(adapter);
 
-        let statsig = Statsig::new(SDK_KEY, Some(Arc::new(opts)));
+        let statsig = Statsig::new(&get_sdk_key(), Some(Arc::new(opts)));
         statsig.initialize().await.unwrap();
 
         let gate_result = statsig.check_gate(&user, "test_id_list");
@@ -645,7 +648,7 @@ mod tests {
             ..StatsigUser::with_user_id("a-user".to_string())
         };
 
-        let statsig = Statsig::new(SDK_KEY, None);
+        let statsig = Statsig::new(&get_sdk_key(), None);
         statsig.initialize().await.unwrap();
 
         let experiment = statsig.get_experiment(&user, "running_exp_in_unlayered_with_holdout");
@@ -664,7 +667,7 @@ mod tests {
             ..StatsigOptions::new()
         };
 
-        let statsig = Statsig::new(SDK_KEY, Some(Arc::new(opts)));
+        let statsig = Statsig::new(&get_sdk_key(), Some(Arc::new(opts)));
         statsig.initialize().await.unwrap();
 
         let response = statsig.get_client_init_response(&user);

@@ -11,7 +11,7 @@ user_id = "Dan"
 email = "daniel@statsig.com"
 
 user = User(user_id, email)
-statsig = Statsig("secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW")
+statsig = Statsig(os.environ['test_api_key'])
 
 gate_name = "test_public"
 

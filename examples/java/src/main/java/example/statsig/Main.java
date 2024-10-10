@@ -11,7 +11,8 @@ import java.util.concurrent.ExecutionException;
 public class Main {
     public static void main(String[] args) throws ExecutionException, InterruptedException {
         StatsigOptions options = new StatsigOptions.Builder().setOutputLoggerLevel(OutputLogger.LogLevel.DEBUG).build();
-        Statsig statsig = new Statsig("secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW", options);
+        String sdkKey = System.getenv("test_api_key");
+        Statsig statsig = new Statsig(sdkKey, options);
 
         statsig.initialize().get();
 

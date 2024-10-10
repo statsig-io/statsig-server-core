@@ -105,11 +105,17 @@ impl EventLoggingAdapter for StatsigEventLoggingAdapter {
     }
 }
 
+
+
 #[tokio::test]
 async fn test_event_logging() {
+    use std::env;
+
     let adapter = StatsigEventLoggingAdapter::new();
+    let sdk_key = env::var("test_api_key").expect("test_api_key environment variable not set");
+
     adapter.bind(
-        "secret-IiDuNzovZ5z9x75BEjyZ4Y2evYa94CJ9zNtDViKBVdv",
+        &sdk_key,
         &StatsigOptions::new(),
     );
 

@@ -31,7 +31,7 @@ int main() {
 
     CUser* user = create_user(name, email);
 
-    const char* sdk_key = "secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW";
+    const char* sdk_key = getenv("test_api_key");
     Statsig* statsig = initialize_statsig(sdk_key);
 
     const char* gate_name = "test_public";

@@ -1,7 +1,7 @@
 import { Statsig, StatsigOptions, StatsigUser } from "statsig-napi";
 
 const statsig = new Statsig(
-  "secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW",
+  process.env.test_api_key,
   {}
 );
 

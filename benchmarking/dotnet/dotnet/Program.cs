@@ -2,7 +2,8 @@
 using Statsig;
 using Statsig.Server;
 
-var statsig = await StatsigServer.Initialize("secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW");
+var secret = Environment.GetEnvironmentVariable("test_api_key");
+var statsig = await StatsigServer.Initialize(secret);
 
 var watch = Stopwatch.StartNew();
 

@@ -1,21 +1,7 @@
 ﻿using System.Diagnostics;
 using StatsigServer;
 
-// var statsig = await StatsigServer.Create("secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW");
-//
-// var watch = Stopwatch.StartNew();
-//
-// var result = "";
-// for (var i = 0; i < 1000; i++)
-// {
-//     var user = new User("user_" + i, "daniel@statsig.com");
-//     var exp = statsig.GetExperiment(user, "running_exp_in_unlayered_with_holdout");
-//     result = statsig.GetClientInitResponse(user);
-// }
-//
-// watch.Stop();
-//
-// statsig.Dispose();
+
 
 void Foo()
 {
@@ -33,7 +19,8 @@ Foo();
 async Task Bar()
 {
     var options = new StatsigOptions();
-    var statsig = new Statsig("secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW", options);
+    var sdkKey = Environment.GetEnvironmentVariable("test_api_key");
+    var statsig = new Statsig(sdkKey, options);
     await statsig.Initialize();
 
     var user = new StatsigUser("a-user", "daniel@statsig.com");

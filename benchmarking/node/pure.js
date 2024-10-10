@@ -5,7 +5,7 @@ const email = "daniel@statsig.com";
 
 const user = { userID: name, email };
 
-Statsig.initialize("secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW").then(
+Statsig.initialize(process.env.test_api_key).then(
   () => {
     const gate_name = "test_public";
 

@@ -5,7 +5,7 @@ name = "Dan Smith"
 email = "daniel@statsig.com"
 
 user = User.create(name, email)
-statsig = Statsig.for_user(user, "secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW")
+statsig = Statsig.for_user(user, ENV['test_api_key'])
 
 # gate_name = "example_gate"
 # result = statsig.check_gate(gate_name)

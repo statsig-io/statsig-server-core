@@ -106,7 +106,7 @@ function statsig_create(sdkKey, optionsRef) {
 }
 
 const statsig = statsig_create(
-  'secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW',
+  process.env.test_api_key,
   options,
 );
 console.log('[JS]: statsig_create', statsig);

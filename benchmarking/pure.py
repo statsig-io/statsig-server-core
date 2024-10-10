@@ -1,9 +1,10 @@
+import os
 
 from time import perf_counter
 from statsig import statsig, StatsigUser
 
-
-statsig.initialize("secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW")
+statsig_secret = os.environ.get('test_api_key')
+statsig.initialize(statsig_secret)
 
 user = StatsigUser("Dan")
 

@@ -5,7 +5,8 @@ use std::time::Instant;
 
 #[tokio::main]
 async fn main() {
-    Statsig::initialize("secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW").await;
+    let secret_key = env::var("test_api_key").expect("test_api_key must be set");
+    Statsig::initialize(secret_key).await;
 
     let start = Instant::now();
     let mut init_res = String::new();
