@@ -1,6 +1,6 @@
 pub use evaluation::dynamic_value::DynamicValue;
 pub use event_logging_adapter::EventLoggingAdapter;
-pub use id_lists_adapter::IdListsAdapter;
+pub use id_lists_adapter::{IdListsAdapter, StatsigHttpIdListsAdapter};
 pub use initialize_response::InitializeResponse;
 pub use instance_store::InstanceStore;
 pub use spec_store::SpecStore;

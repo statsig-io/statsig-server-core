@@ -1,36 +1,45 @@
 use crate::StatsigErr;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::runtime::Handle;
 
-pub type IdListsResponse = HashMap<String, IdListEntry>;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct IdListEntry {
+pub struct IdListMetadata {
     pub name: String,
-    pub url: Option<String>,
+    pub url: String,
 
     #[serde(rename = "fileID")]
     pub file_id: Option<String>,
 
     pub size: u64,
     pub creation_time: i64,
+}
 
-    #[serde(skip)]
-    pub loaded_ids: HashSet<String>,
+pub struct IdListUpdate {
+    pub raw_changeset: Option<String>,
+    pub new_metadata: IdListMetadata,
 }
 
 #[async_trait]
 pub trait IdListsAdapter: Send + Sync {
-    async fn start(self: Arc<Self>, runtime_handle: &Handle) -> Result<(), StatsigErr>;
-
-    async fn sync_id_lists(&self) -> Result<(), StatsigErr>;
-
-    fn does_list_contain_id(&self, list_name: &str, id: &str) -> bool;
+    async fn start(
+        self: Arc<Self>,
+        runtime_handle: &Handle,
+        listener: Arc<dyn IdListsUpdateListener + Send + Sync>,
+    ) -> Result<(), StatsigErr>;
 
     async fn shutdown(&self, timeout: Duration) -> Result<(), StatsigErr>;
+
+    async fn sync_id_lists(&self) -> Result<(), StatsigErr>;
+}
+
+pub trait IdListsUpdateListener: Send + Sync {
+    fn get_current_id_list_metadata(&self) -> HashMap<String, IdListMetadata>;
+
+    fn did_receive_id_list_updates(&self, updates: HashMap<String, IdListUpdate>);
 }

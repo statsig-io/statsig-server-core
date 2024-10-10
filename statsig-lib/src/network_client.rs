@@ -4,7 +4,7 @@ use reqwest::{
     header::{HeaderMap, HeaderValue},
     Client, Method,
 };
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
@@ -67,14 +67,7 @@ impl NetworkClient {
 
         loop {
             let request = self.build_request(method.clone(), request_args);
-            log_i!(
-                "Begin Request {} {:?} {:?} {:?} {:?}",
-                request_args.url,
-                request_args.headers,
-                self.headers,
-                request_args.query_params,
-                json!(request_args.body)
-            );
+            log_i!("Begin Request {:?}", request);
 
             let mut error_message = "Unknown Error".to_string();
 
@@ -107,7 +100,12 @@ impl NetworkClient {
             attempt += 1;
             let backoff_ms = 2_u64.pow(attempt) * 100;
 
-            log_w!("Network error ({}), will retry after ({})ms...\n{}", attempt, backoff_ms, error_message);
+            log_w!(
+                "Network error ({}), will retry after ({})ms...\n{}",
+                attempt,
+                backoff_ms,
+                error_message
+            );
 
             tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
         }

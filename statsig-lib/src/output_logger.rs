@@ -1,6 +1,6 @@
 use log::{debug, error, info, warn, Level};
 
-const MAX_CHARS: usize = 300;
+const MAX_CHARS: usize = 400;
 const TRUNCATED_SUFFIX: &str = "...[TRUNCATED]";
 
 #[derive(Clone)]

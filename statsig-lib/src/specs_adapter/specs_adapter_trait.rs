@@ -38,9 +38,9 @@ pub trait SpecsAdapter: Send + Sync {
         listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr>;
 
-    async fn manually_sync_specs(&self, current_store_lcut: Option<u64>) -> Result<(), StatsigErr>;
-
     async fn shutdown(&self, timeout: Duration) -> Result<(), StatsigErr>;
+
+    async fn manually_sync_specs(&self, current_store_lcut: Option<u64>) -> Result<(), StatsigErr>;
 }
 
 pub struct SpecsUpdate {

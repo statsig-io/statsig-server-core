@@ -1,11 +1,11 @@
+use async_trait::async_trait;
+use chrono::Utc;
+use sigstat::{SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use async_trait::async_trait;
-use chrono::Utc;
-use tokio::runtime::{Handle};
-use sigstat::{SpecsAdapter, SpecsUpdateListener, SpecsUpdate, SpecsSource, StatsigErr};
+use tokio::runtime::Handle;
 
 pub struct MockSpecsAdapter {
     json_data_path: String,
@@ -20,7 +20,7 @@ impl MockSpecsAdapter {
             json_data_path: path.to_string(),
             should_throw: false,
             delay_ms: None,
-            listener: RwLock::new(None)
+            listener: RwLock::new(None),
         }
     }
 
@@ -29,7 +29,7 @@ impl MockSpecsAdapter {
             json_data_path: "".to_string(),
             should_throw: true,
             delay_ms: None,
-            listener: RwLock::new(None)
+            listener: RwLock::new(None),
         }
     }
 
@@ -38,7 +38,7 @@ impl MockSpecsAdapter {
             json_data_path: path.to_string(),
             should_throw: false,
             delay_ms: Some(delay_ms),
-            listener: RwLock::new(None)
+            listener: RwLock::new(None),
         }
     }
 }
@@ -48,7 +48,7 @@ impl SpecsAdapter for MockSpecsAdapter {
     async fn start(
         self: Arc<Self>,
         _runtime_handle: &Handle,
-        listener: Arc<dyn SpecsUpdateListener + Send + Sync>
+        listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         if let Ok(mut mut_listener) = self.listener.write() {
             *mut_listener = Some(listener);
@@ -76,7 +76,13 @@ impl SpecsAdapter for MockSpecsAdapter {
             received_at: Utc::now().timestamp_millis() as u64,
         };
 
-        self.listener.write().as_ref().unwrap().as_ref().unwrap().did_receive_specs_update(update);
+        self.listener
+            .write()
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .did_receive_specs_update(update);
         Ok(())
     }
 

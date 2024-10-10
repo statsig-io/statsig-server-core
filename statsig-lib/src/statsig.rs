@@ -29,8 +29,8 @@ use crate::statsig_type_factories::{
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{
-    dyn_value, log_d, log_e, read_lock_or_else, SpecsAdapter, SpecsSource, SpecsUpdateListener,
-    StatsigUser,
+    dyn_value, log_d, log_e, read_lock_or_else, IdListsAdapter, SpecsAdapter, SpecsSource,
+    SpecsUpdateListener, StatsigUser,
 };
 use serde_json::json;
 use std::collections::HashMap;
@@ -44,6 +44,7 @@ pub struct Statsig {
     options: Arc<StatsigOptions>,
     event_logger: Arc<EventLogger>,
     specs_adapter: Arc<dyn SpecsAdapter>,
+    id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
     spec_store: Arc<SpecStore>,
     sha_hasher: MemoSha256,
     gcir_formatter: Arc<ClientInitResponseFormatter>,
@@ -60,7 +61,7 @@ impl Statsig {
         initialize_simple_output_logger(&options.output_log_level);
 
         let specs_adapter = initialize_specs_adapter(sdk_key, &options);
-
+        let id_lists_adapter = initialize_id_lists_adapter(&options);
         let event_logging_adapter = initialize_event_logging_adapter(sdk_key, &options);
 
         let (opt_runtime, runtime_handle) = create_runtime_if_required();
@@ -83,6 +84,7 @@ impl Statsig {
             runtime: Mutex::new(opt_runtime),
             spec_store,
             specs_adapter,
+            id_lists_adapter,
             runtime_handle,
         }
     }
@@ -95,14 +97,21 @@ impl Statsig {
             .start(&self.runtime_handle, self.spec_store.clone())
             .await?;
 
-        if let Some(id_lists_adapter) = &self.options.id_lists_adapter {
-            id_lists_adapter.clone().start(&self.runtime_handle).await?;
-        }
-
         let info = self.spec_store.get_current_specs_info();
         let is_uninitialized = info.source == SpecsSource::Uninitialized;
         if is_uninitialized {
             self.spec_store.set_source(SpecsSource::Loading);
+        }
+
+        if let Some(adapter) = &self.id_lists_adapter {
+            adapter
+                .clone()
+                .start(&self.runtime_handle, self.spec_store.clone())
+                .await?;
+
+            if let Err(e) = adapter.sync_id_lists().await {
+                log_e!("Failed to sync id lists: {}", e);
+            }
         }
 
         match self.specs_adapter.manually_sync_specs(info.lcut).await {
@@ -563,6 +572,10 @@ fn initialize_specs_adapter(sdk_key: &str, options: &StatsigOptions) -> Arc<dyn 
         .unwrap_or_else(|| Arc::new(StatsigHttpSpecsAdapter::new(sdk_key, options)))
 }
 
+fn initialize_id_lists_adapter(options: &StatsigOptions) -> Option<Arc<dyn IdListsAdapter>> {
+    options.id_lists_adapter.clone()
+}
+
 fn create_runtime_if_required() -> (Option<Runtime>, Handle) {
     if let Ok(handle) = Handle::try_current() {
         return (None, handle);
@@ -582,7 +595,7 @@ fn create_runtime_if_required() -> (Option<Runtime>, Handle) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::evaluation::evaluation_types::AnyConfigEvaluation;
+    use crate::{evaluation::evaluation_types::AnyConfigEvaluation, StatsigHttpIdListsAdapter};
 
     const SDK_KEY: &str = "secret-9IWfdzNwExEYHEW4YfOQcFZ4xreZyFkbOXHaNbPsMwW";
 
@@ -597,6 +610,30 @@ mod tests {
         statsig.initialize().await.unwrap();
 
         let gate_result = statsig.check_gate(&user, "test_50_50");
+
+        assert!(gate_result);
+    }
+
+    #[tokio::test]
+    async fn test_check_gate_id_list() {
+        let user = StatsigUser {
+            custom_ids: Some(HashMap::from([(
+                "companyID".to_string(),
+                dyn_value!("marcos_1"),
+            )])),
+            ..StatsigUser::with_user_id("marcos_1".to_string())
+        };
+
+
+        let mut opts = StatsigOptions::new();
+
+        let adapter = Arc::new(StatsigHttpIdListsAdapter::new(SDK_KEY, &opts));
+        opts.id_lists_adapter = Some(adapter);
+
+        let statsig = Statsig::new(SDK_KEY, Some(Arc::new(opts)));
+        statsig.initialize().await.unwrap();
+
+        let gate_result = statsig.check_gate(&user, "test_id_list");
 
         assert!(gate_result);
     }
@@ -634,7 +671,7 @@ mod tests {
         let _ = statsig.shutdown().await;
 
         let gates = response.feature_gates;
-        assert_eq!(gates.len(), 64);
+        assert_eq!(gates.len(), 65);
 
         let configs = response.dynamic_configs;
         assert_eq!(configs.len(), 62);

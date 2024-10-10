@@ -1,7 +1,9 @@
+use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
 use crate::spec_types::{SpecsResponse, SpecsResponseFull};
 use crate::{log_d, log_e, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener};
 use chrono::Utc;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 #[derive(Clone, Serialize)]
@@ -9,6 +11,8 @@ pub struct SpecStoreData {
     pub source: SpecsSource,
     pub time_received_at: Option<u64>,
     pub values: SpecsResponseFull,
+
+    pub id_lists: HashMap<String, IdList>,
 }
 
 pub struct SpecStore {
@@ -37,6 +41,52 @@ impl SpecsUpdateListener for SpecStore {
     }
 }
 
+impl IdListsUpdateListener for SpecStore {
+    fn get_current_id_list_metadata(
+        &self,
+    ) -> HashMap<String, crate::id_lists_adapter::IdListMetadata> {
+        match self.data.read() {
+            Ok(data) => data
+                .id_lists
+                .iter()
+                .map(|(key, list)| (key.clone(), list.metadata.clone()))
+                .collect(),
+            Err(e) => {
+                log_e!("Failed to acquire read lock: {}", e);
+                HashMap::new()
+            }
+        }
+    }
+
+    fn did_receive_id_list_updates(
+        &self,
+        updates: HashMap<String, crate::id_lists_adapter::IdListUpdate>,
+    ) {
+        let mut data = match self.data.write() {
+            Ok(data) => data,
+            Err(e) => {
+                log_e!("Failed to acquire write lock: {}", e);
+                return;
+            }
+        };
+
+        // delete any id_lists that are not in the updates
+        data.id_lists.retain(|name, _| updates.contains_key(name));
+
+        for (list_name, update) in updates {
+            if let Some(entry) = data.id_lists.get_mut(&list_name) {
+                // update existing
+                entry.apply_update(&update);
+            } else {
+                // add new
+                let mut list = IdList::new(update.new_metadata.clone());
+                list.apply_update(&update);
+                data.id_lists.insert(list_name, list);
+            }
+        }
+    }
+}
+
 impl Default for SpecStore {
     fn default() -> Self {
         Self::new()
@@ -50,6 +100,7 @@ impl SpecStore {
                 values: SpecsResponseFull::blank(),
                 time_received_at: None,
                 source: SpecsSource::Uninitialized,
+                id_lists: HashMap::new(),
             })),
         }
     }
@@ -103,11 +154,9 @@ impl SpecStore {
                 return;
             }
 
-            *mut_values = SpecStoreData {
-                values: *dcs,
-                time_received_at: Some(Utc::now().timestamp_millis() as u64),
-                source: values.source,
-            };
+            mut_values.values = *dcs;
+            mut_values.time_received_at = Some(Utc::now().timestamp_millis() as u64);
+            mut_values.source = values.source;
 
             log_d!("SpecStore - Updated ({:?})", mut_values.source);
         }

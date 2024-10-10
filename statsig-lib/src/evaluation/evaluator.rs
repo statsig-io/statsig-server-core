@@ -161,11 +161,40 @@ fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Conditi
         "eq" => value == target_value,
         "neq" => value != target_value,
 
+        // id_lists
+        "in_segment_list" | "not_in_segment_list" => {
+            evaluate_id_list(ctx, operator, target_value, value)
+        }
+
         _ => {
             ctx.result.unsupported = true;
             return;
         }
     }
+}
+
+fn evaluate_id_list<'a>(
+    ctx: &mut EvaluatorContext<'a>,
+    op: &str,
+    target_value: &DynamicValue,
+    value: &DynamicValue,
+) -> bool {
+    let list_name = unwrap_or_return!(&target_value.string_value, false);
+    let id_lists = &ctx.spec_store_data.id_lists;
+
+    let list = unwrap_or_return!(id_lists.get(list_name), false);
+
+    let value = unwrap_or_return!(&value.string_value, false);
+    let hashed = ctx.sha_hasher.hash_name(value);
+    let lookup_id: String = hashed.chars().take(8).collect();
+
+    let is_in_list = list.ids.contains(&lookup_id);
+
+    if op == "not_in_segment_list" {
+        return !is_in_list;
+    }
+
+    is_in_list
 }
 
 fn evaluate_nested_gate<'a>(
