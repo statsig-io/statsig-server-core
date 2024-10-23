@@ -63,8 +63,10 @@ pub extern "C" fn statsig_initialize(statsig_ref: StatsigRef, callback: extern "
 
 #[no_mangle]
 pub extern "C" fn statsig_get_current_values(statsig_ref: StatsigRef) -> *const c_char {
-    //todo: handle unwrap
-    let statsig = statsig_ref.to_internal().unwrap();
+    let statsig = match statsig_ref.to_internal() {
+        Some(s) => s,
+        None => return std::ptr::null(),
+    };
 
     let values = statsig.get_current_values();
     let data = json!(values).to_string();
@@ -72,8 +74,21 @@ pub extern "C" fn statsig_get_current_values(statsig_ref: StatsigRef) -> *const 
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_check_gate(statsig_ptr: i64, user_ptr: i64) -> bool {
-    false
+pub extern "C" fn statsig_check_gate(statsig_ref: StatsigRef, user_ref: StatsigUserRef, gate_name: *const c_char) -> bool {
+    let statsig = match statsig_ref.to_internal() {
+        Some(s) => s,
+        None => return false,
+    };
+
+    let user = match user_ref.to_internal() {
+        Some(u) => u,
+        None => return false,
+    };
+
+    let gate_name = c_char_to_string(gate_name).unwrap();
+
+    let bool_res = statsig.check_gate(user, &gate_name);
+    return bool_res;
 }
 
 #[no_mangle]
@@ -82,9 +97,14 @@ pub extern "C" fn statsig_get_experiment(
     user_ref: StatsigUserRef,
     experiment_name: *const c_char,
 ) -> *const c_char {
-    //todo: handle unwrap
-    let statsig = statsig_ref.to_internal().unwrap();
-    let user = user_ref.to_internal().unwrap();
+    let statsig = match statsig_ref.to_internal() {
+        Some(s) => s,
+        None => return std::ptr::null(),
+    };
+    let user = match user_ref.to_internal() {
+        Some(u) => u,
+        None => return std::ptr::null(),
+    };
     let experiment_name = c_char_to_string(experiment_name).unwrap();
 
     let result = json!(statsig.get_experiment(user, &experiment_name)).to_string();
@@ -96,9 +116,14 @@ pub extern "C" fn statsig_get_client_init_response(
     statsig_ref: StatsigRef,
     user_ref: StatsigUserRef,
 ) -> *const c_char {
-    //todo: handle unwrap
-    let statsig = statsig_ref.to_internal().unwrap();
-    let user = user_ref.to_internal().unwrap();
+    let statsig = match statsig_ref.to_internal() {
+        Some(s) => s,
+        None => return std::ptr::null(),
+    };
+    let user = match user_ref.to_internal() {
+        Some(u) => u,
+        None => return std::ptr::null(),
+    };
 
     let result = statsig.get_client_init_response(user);
     string_to_c_char(json!(result).to_string())

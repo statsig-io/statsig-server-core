@@ -45,7 +45,7 @@ namespace StatsigServer
 
         [DllImport(__DllName, EntryPoint = "statsig_check_gate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool statsig_check_gate(long statsig_ptr, long user_ptr);
+        internal static extern bool statsig_check_gate(StatsigRef statsig_ref, StatsigUserRef user_ref, byte* gate_name);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_experiment", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_experiment(StatsigRef statsig_ref, StatsigUserRef user_ref, byte* experiment_name);

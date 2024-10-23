@@ -27,7 +27,9 @@ void statsig_initialize(struct StatsigRef statsig_ref, void (*callback)(void));
 
 const char *statsig_get_current_values(struct StatsigRef statsig_ref);
 
-bool statsig_check_gate(int64_t statsig_ptr, int64_t user_ptr);
+bool statsig_check_gate(struct StatsigRef statsig_ref,
+                        struct StatsigUserRef user_ref,
+                        const char *gate_name);
 
 const char *statsig_get_experiment(struct StatsigRef statsig_ref,
                                    struct StatsigUserRef user_ref,
