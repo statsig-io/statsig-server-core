@@ -51,15 +51,12 @@ impl StatsigHttpIdListsAdapter {
     async fn fetch_id_list_manifests_from_network(&self) -> Result<IdListsResponse, StatsigErr> {
         let headers = HashMap::from([("Content-Length".into(), "0".to_string())]);
 
-        let response = self
-            .network
-            .post(RequestArgs {
-                url: self.id_lists_manifest_url.clone(),
-                retries: 2,
-                headers: Some(headers),
-                ..RequestArgs::new()
-            })
-            .await;
+        let response = self.network.post(RequestArgs {
+            url: self.id_lists_manifest_url.clone(),
+            retries: 2,
+            headers: Some(headers),
+            ..RequestArgs::new()
+        });
 
         let data = match response {
             Some(r) => r,
@@ -82,14 +79,11 @@ impl StatsigHttpIdListsAdapter {
     ) -> Result<String, StatsigErr> {
         let headers = HashMap::from([("Range".into(), format!("bytes={}-", list_size))]);
 
-        let response = self
-            .network
-            .get(RequestArgs {
-                url: list_url.to_string(),
-                headers: Some(headers),
-                ..RequestArgs::new()
-            })
-            .await;
+        let response = self.network.get(RequestArgs {
+            url: list_url.to_string(),
+            headers: Some(headers),
+            ..RequestArgs::new()
+        });
 
         let data = match response {
             Some(r) => r,
@@ -207,7 +201,10 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
             }
 
             let data = self
-                .fetch_individual_id_list_changes_from_network(&new_metadata.url, changeset.range_start)
+                .fetch_individual_id_list_changes_from_network(
+                    &new_metadata.url,
+                    changeset.range_start,
+                )
                 .await?;
 
             updates.insert(

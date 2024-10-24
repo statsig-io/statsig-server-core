@@ -120,8 +120,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
                 retries: 2,
                 query_params,
                 ..RequestArgs::new()
-            })
-            .await;
+            });
 
         let data = match res {
             Some(r) => r,

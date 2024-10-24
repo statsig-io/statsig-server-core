@@ -1,4 +1,4 @@
-use regex::Regex;
+use regex_lite::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value as JsonValue};
 use std::collections::HashMap;

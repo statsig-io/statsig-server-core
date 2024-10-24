@@ -93,8 +93,7 @@ impl EventLoggingAdapter for StatsigEventLoggingAdapter {
                 retries: 3,
                 body: Some(payload),
                 ..RequestArgs::new()
-            })
-            .await;
+            });
 
         let response_str = unwrap_or_return!(response, Err("No result from network".to_string()));
 
