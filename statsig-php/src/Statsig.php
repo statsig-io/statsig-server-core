@@ -1,18 +1,17 @@
 <?php
 
-namespace Statsig\StatsigFFI;
-
-use FFI;
-
+namespace Statsig;
 
 class Statsig
 {
     public $__ref = null;
 
-    public function __construct(string $sdk_key)
+    public function __construct(string $sdk_key, StatsigOptions $options = null)
     {
+        $options_ref = $options ? $options->__ref : (new StatsigOptions)->__ref;
+
         $ffi = StatsigFFI::get();
-        $this->__ref = $ffi->statsig_create($sdk_key, null);
+        $this->__ref = $ffi->statsig_create($sdk_key, $options_ref);
     }
 
     public function __destruct()
@@ -35,5 +34,3 @@ class Statsig
         return StatsigFFI::get()->statsig_get_client_init_response($this->__ref, $user->__ref);
     }
 }
-
-

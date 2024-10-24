@@ -17,10 +17,10 @@ namespace StatsigServer
 
 
         [DllImport(__DllName, EntryPoint = "statsig_options_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern StatsigOptionsRef statsig_options_create();
+        internal static extern byte* statsig_options_create();
 
         [DllImport(__DllName, EntryPoint = "statsig_options_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void statsig_options_release(StatsigOptionsRef* options_ref);
+        internal static extern void statsig_options_release(byte* options_ref);
 
         [DllImport(__DllName, EntryPoint = "statsig_user_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern StatsigUserRef statsig_user_create(byte* user_id, byte* custom_ids_json, byte* email, byte* ip, byte* user_agent, byte* country, byte* locale, byte* app_version, byte* custom_json, byte* private_attributes_json);

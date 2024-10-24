@@ -1,4 +1,8 @@
-use sigstat::{log_d, log_w, StatsigOptions};
+use std::os::raw::c_char;
+
+use sigstat::{instance_store::OPTIONS_INSTANCES, log_e, log_w, StatsigOptions};
+
+use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 
 #[repr(C)]
 pub struct StatsigOptionsRef {
@@ -17,26 +21,22 @@ impl StatsigOptionsRef {
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_options_create() -> StatsigOptionsRef {
-    let instance = Box::new(StatsigOptions::new() );
-    let pointer = Box::into_raw(instance) as usize;
-    log_d!("Created StatsigOptions {}", pointer);
+pub extern "C" fn statsig_options_create() -> *const c_char {
+    let ref_id = OPTIONS_INSTANCES
+        .add(StatsigOptions {
+            ..StatsigOptions::new()
+        })
+        .unwrap_or_else(|| {
+            log_e!("Failed to create StatsigOptions");
+            "".to_string()
+        });
 
-    StatsigOptionsRef {
-        pointer,
-    }
+    string_to_c_char(ref_id)
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_options_release(options_ref: *mut StatsigOptionsRef) {
-    let ref_obj = unsafe { &mut *options_ref };
-    log_d!("Releasing StatsigOptions {}", ref_obj.pointer);
-
-    if ref_obj.pointer != 0 {
-        unsafe { drop(Box::from_raw(ref_obj.pointer as *mut StatsigOptions)) };
-        ref_obj.pointer = 0;
-        log_d!("StatsigOptions released.");
-    } else {
-        log_w!("StatsigOptions already released.");
+pub extern "C" fn statsig_options_release(options_ref: *const c_char) {
+    if let Some(id) = c_char_to_string(options_ref) {
+        OPTIONS_INSTANCES.release(id);
     }
 }

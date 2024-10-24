@@ -1,6 +1,6 @@
 <?php
 
-namespace Statsig\StatsigFFI;
+namespace Statsig;
 
 use FFI;
 

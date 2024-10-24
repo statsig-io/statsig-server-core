@@ -43,9 +43,9 @@ uintptr_t statsig_get_client_init_response_buffer(struct StatsigRef statsig_ref,
                                                   char *buffer,
                                                   uintptr_t buffer_size);
 
-struct StatsigOptionsRef statsig_options_create(void);
+const char *statsig_options_create(void);
 
-void statsig_options_release(struct StatsigOptionsRef *options_ref);
+void statsig_options_release(const char *options_ref);
 
 struct StatsigUserRef statsig_user_create(const char *user_id,
                                           const char *custom_ids_json,
