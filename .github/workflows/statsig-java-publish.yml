@@ -1,4 +1,4 @@
-name: Publish Statsig Java SDK
+name: Statsig Java Publish
 
 on:
   workflow_dispatch:
@@ -12,8 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Get Workflow Run Info
-      id: workflow_info
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       with:
         script: |
           const run = await github.rest.actions.getWorkflowRun({
@@ -21,17 +20,18 @@ jobs:
             repo: context.repo.repo,
             run_id: ${{ github.event.inputs.workflow_run_id }}
           });
+
           console.log(`Workflow Run Name: ${run.data.name}`);
           console.log(`Workflow Run Status: ${run.data.status}`);
           console.log(`Workflow Run Conclusion: ${run.data.conclusion}`);
-          if (run.data.status === 'completed' && run.data.conclusion === 'success') {
-            return true;
+
+          if (run.data.status !== 'completed' || run.data.conclusion !== 'success') {
+            console.error(`StatsigFFI run must be completed and successful before publishing Java SDK`);
+            process.exit(1);
           }
-          return false;
 
     - name: Download Artifacts
-      if: steps.workflow_info.outputs.result == 'true'
-      uses: dawidd6/action-download-artifact@v2
+      uses: dawidd6/action-download-artifact@v6
       with:
         workflow: statsig-ffi.yml
         run_id: ${{ github.event.inputs.workflow_run_id }}
@@ -39,7 +39,6 @@ jobs:
         path: artifacts
 
     - name: List Artifacts
-      if: steps.workflow_info.outputs.result == 'true'
       run: |
         echo "Listing downloaded artifacts:"
         for artifact in artifacts/*; do

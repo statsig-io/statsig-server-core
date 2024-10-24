@@ -203,3 +203,24 @@ jobs:
             target/**/release/libstatsig_ffi.dylib
             target/**/debug/libstatsig_ffi.dylib
           if-no-files-found: error
+
+
+  trigger-java-publish:
+    if: ${{ github.ref_name == 'main' }}
+    needs: [build-linux, build-windows, build-macos] # depend on all builds
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Java Publish
+        if: github.event.repository.private
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'main',
+              workflow_id: 'statsig-java-publish.yml',
+              inputs: {
+                workflow_run_id: '${{ github.run_id }}'
+              }
+            })
