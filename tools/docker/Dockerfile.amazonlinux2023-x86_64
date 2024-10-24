@@ -1,3 +1,4 @@
+# https://docs.aws.amazon.com/linux/al2/ug/amzn1-amzn2-container.html
 FROM --platform=amd64 amazonlinux:2023 AS amazonlinux2023-x86_64
 
 RUN yum update -y \

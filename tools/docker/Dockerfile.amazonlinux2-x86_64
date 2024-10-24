@@ -1,3 +1,4 @@
+# https://docs.aws.amazon.com/linux/al2/ug/amzn1-amzn2-container.html
 FROM amazonlinux:2 AS amazonlinux2-x86_64
 
 RUN yum update -y \
