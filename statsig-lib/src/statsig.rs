@@ -597,6 +597,7 @@ mod tests {
     use super::*;
     use crate::{evaluation::evaluation_types::AnyConfigEvaluation, StatsigHttpIdListsAdapter};
     use std::env;
+    use crate::output_logger::LogLevel;
 
     fn get_sdk_key() -> String {
         env::var("test_api_key").expect("test_api_key environment variable not set")
@@ -664,6 +665,7 @@ mod tests {
             ..StatsigUser::with_user_id("a-user".to_string())
         };
         let opts = StatsigOptions {
+            output_log_level: Some(LogLevel::Debug),
             ..StatsigOptions::new()
         };
 

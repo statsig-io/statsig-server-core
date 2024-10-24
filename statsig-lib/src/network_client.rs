@@ -71,11 +71,15 @@ impl NetworkClient {
 
             let mut error_message = "Unknown Error".to_string();
 
+            let start_time = std::time::Instant::now(); // Start timing
+
             match request.send().await {
                 Ok(response) => {
+                    let duration = start_time.elapsed(); // Calculate elapsed time
                     log_i!(
-                        "Request Ok ({}): {}",
+                        "Request Ok ({}), took {}ms: {}",
                         response.status().as_u16(),
+                        duration.as_millis(),
                         request_args.url
                     );
 
