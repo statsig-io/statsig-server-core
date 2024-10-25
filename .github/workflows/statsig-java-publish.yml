@@ -54,6 +54,7 @@ jobs:
             echo "Artifact: $(basename "$artifact")"
             du -sh "$artifact"
           fi
+        done
 
     - name: Unzip and Move Release Artifacts
       if: steps.workflow_info.outputs.result == 'true'
@@ -80,11 +81,11 @@ jobs:
           mkdir -p "${dest_dir}"
 
           if [[ "$key" == *"apple-darwin"* ]]; then
-          mv "${src_path}/libstatsig_ffi.dylib" "${dest_dir}/"
+            mv "${src_path}/libstatsig_ffi.dylib" "${dest_dir}/"
           elif [[ "$key" == *"windows"* ]]; then
-          mv "${src_path}/libstatsig_ffi.dll" "${dest_dir}/"
+            mv "${src_path}/libstatsig_ffi.dll" "${dest_dir}/"
           else
-          mv "${src_path}/libstatsig_ffi.so" "${dest_dir}/"
+            mv "${src_path}/libstatsig_ffi.so" "${dest_dir}/"
           fi
         done
 
