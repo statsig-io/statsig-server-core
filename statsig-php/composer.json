@@ -1,5 +1,5 @@
 {
-    "name": "statsig/statsig-ffi",
+    "name": "sigstat/sigstat",
     "type": "library",
     "license": "ISC",
     "description": "Statsig PHP SDK",
