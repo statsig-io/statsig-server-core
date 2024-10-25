@@ -60,7 +60,6 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Unzip and Move Release Artifacts
-        if: steps.workflow_info.outputs.result == 'true'
         run: |
           echo "Moving necessary release files..."
           
@@ -101,9 +100,10 @@ jobs:
           java-version: '11'  # or '8' if using Java 8
           distribution: "adopt"
 
-      - name: Build with Gradle
-        working-directory: statsig-ffi/bindings/java
-        run: ./gradlew clean build -i
+#       NOT AT THIS MOMENT
+#      - name: Build with Gradle
+#        working-directory: statsig-ffi/bindings/java
+#        run: ./gradlew clean build -i
 
       - name: Publish to Maven
         working-directory: statsig-ffi/bindings/java
