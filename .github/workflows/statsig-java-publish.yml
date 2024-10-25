@@ -19,80 +19,89 @@ jobs:
       ORG_GRADLE_PROJECT_SIGNING_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_SIGNING_PASSWORD }}
 
     steps:
-    - name: Get Workflow Run Info
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const run = await github.rest.actions.getWorkflowRun({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            run_id: ${{ github.event.inputs.workflow_run_id }}
-          });
+      - name: Get Workflow Run Info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.event.inputs.workflow_run_id }}
+            });
+            
+            console.log(`Workflow Run Name: ${run.data.name}`);
+            console.log(`Workflow Run Status: ${run.data.status}`);
+            console.log(`Workflow Run Conclusion: ${run.data.conclusion}`);
+            
+            if (run.data.status !== 'completed' || run.data.conclusion !== 'success') {
+              console.error(`StatsigFFI run must be completed and successful before publishing Java SDK`);
+              process.exit(1);
+            }
 
-          console.log(`Workflow Run Name: ${run.data.name}`);
-          console.log(`Workflow Run Status: ${run.data.status}`);
-          console.log(`Workflow Run Conclusion: ${run.data.conclusion}`);
+      - name: Download Artifacts
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: statsig-ffi.yml
+          run_id: ${{ github.event.inputs.workflow_run_id }}
+          if_no_artifact_found: fail
+          path: artifacts
 
-          if (run.data.status !== 'completed' || run.data.conclusion !== 'success') {
-            console.error(`StatsigFFI run must be completed and successful before publishing Java SDK`);
-            process.exit(1);
-          }
+      - name: List Artifacts
+        run: |
+          echo "Listing downloaded artifacts:"
+          for artifact in artifacts/*; do
+            if [ -d "$artifact" ]; then
+              echo "Artifact: $(basename "$artifact")"
+              du -sh "$artifact"
+            fi
+          done
 
-    - name: Download Artifacts
-      uses: dawidd6/action-download-artifact@v6
-      with:
-        workflow: statsig-ffi.yml
-        run_id: ${{ github.event.inputs.workflow_run_id }}
-        if_no_artifact_found: fail
-        path: artifacts
-
-    - name: List Artifacts
-      run: |
-        echo "Listing downloaded artifacts:"
-        for artifact in artifacts/*; do
-          if [ -d "$artifact" ]; then
-            echo "Artifact: $(basename "$artifact")"
-            du -sh "$artifact"
-          fi
-        done
-
-    - name: Unzip and Move Release Artifacts
-      if: steps.workflow_info.outputs.result == 'true'
-      run: |
-        echo "Moving necessary release files..."
-        
-        declare -A target_dirs=(
-          ["statsig-ffi-x86_64-apple-darwin"]="macos-x86_64"
-          ["statsig-ffi-aarch64-apple-darwin"]="macos-arm64"
-          ["statsig-ffi-amazonlinux2-arm64"]="amazonlinux2-arm64"
-          ["statsig-ffi-amazonlinux2-x86_64"]="amazonlinux2-x86_64"
-          ["statsig-ffi-amazonlinux2023-arm64"]="amazonlinux2023-arm64"
-          ["statsig-ffi-amazonlinux2023-x86_64"]="amazonlinux2023-x86_64"
-          ["statsig-ffi-aarch64-pc-windows-msvc"]="windows-arm64"
-          ["statsig-ffi-x86_64-pc-windows-msvc"]="windows-x86_64"
-          ["statsig-ffi-i686-pc-windows-msvc"]="windows-i686"
-        )
-        
-        for key in "${!target_dirs[@]}"; do
-          src_path="artifacts/${key}/release"
+      - name: Unzip and Move Release Artifacts
+        if: steps.workflow_info.outputs.result == 'true'
+        run: |
+          echo "Moving necessary release files..."
           
-          dest_dir="statsig-ffi/bindings/java/src/main/resources/native/${target_dirs[$key]}"
+          declare -A target_dirs=(
+            ["statsig-ffi-x86_64-apple-darwin"]="macos-x86_64"
+            ["statsig-ffi-aarch64-apple-darwin"]="macos-arm64"
+            ["statsig-ffi-amazonlinux2-arm64"]="amazonlinux2-arm64"
+            ["statsig-ffi-amazonlinux2-x86_64"]="amazonlinux2-x86_64"
+            ["statsig-ffi-amazonlinux2023-arm64"]="amazonlinux2023-arm64"
+            ["statsig-ffi-amazonlinux2023-x86_64"]="amazonlinux2023-x86_64"
+            ["statsig-ffi-aarch64-pc-windows-msvc"]="windows-arm64"
+            ["statsig-ffi-x86_64-pc-windows-msvc"]="windows-x86_64"
+            ["statsig-ffi-i686-pc-windows-msvc"]="windows-i686"
+          )
           
-          mkdir -p "${dest_dir}"
+          for key in "${!target_dirs[@]}"; do
+            echo "Processing artifact for ${key}..."
+            src_path="artifacts/${key}/release"
+          
+            dest_dir="statsig-ffi/bindings/java/src/main/resources/native/${target_dirs[$key]}"
+            mkdir -p "${dest_dir}"
+          
+            if [[ "$key" == *"apple-darwin"* ]]; then
+              mv "${src_path}/libstatsig_ffi.dylib" "${dest_dir}/"
+              echo "Moved libstatsig_ffi.dylib to ${dest_dir}"
+            elif [[ "$key" == *"windows"* ]]; then
+              mv "${src_path}/libstatsig_ffi.dll" "${dest_dir}/"
+              echo "Moved libstatsig_ffi.dll to ${dest_dir}"
+            else
+              mv "${src_path}/libstatsig_ffi.so" "${dest_dir}/"
+              echo "Moved libstatsig_ffi.so to ${dest_dir}"
+            fi
+          done
 
-          if [[ "$key" == *"apple-darwin"* ]]; then
-            mv "${src_path}/libstatsig_ffi.dylib" "${dest_dir}/"
-          elif [[ "$key" == *"windows"* ]]; then
-            mv "${src_path}/libstatsig_ffi.dll" "${dest_dir}/"
-          else
-            mv "${src_path}/libstatsig_ffi.so" "${dest_dir}/"
-          fi
-        done
+      - name: Set up JDK 11
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'  # or '8' if using Java 8
+          distribution: "adopt"
 
-    - name: Publish to Maven
-      run: |
-        echo "Publishing the artifacts to Maven..."
-        
-        cd statsig-ffi/bindings/java
-        
-        ./gradlew publish
+      - name: Build with Gradle
+        working-directory: statsig-ffi/bindings/java
+        run: ./gradlew clean build -i
+
+      - name: Publish to Maven
+        working-directory: statsig-ffi/bindings/java
+        run: ./gradlew publish
