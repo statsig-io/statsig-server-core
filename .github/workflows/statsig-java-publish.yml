@@ -56,6 +56,9 @@ jobs:
             fi
           done
 
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Unzip and Move Release Artifacts
         if: steps.workflow_info.outputs.result == 'true'
         run: |
