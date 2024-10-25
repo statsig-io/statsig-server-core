@@ -19,6 +19,9 @@
         "donatj/mock-webserver": "^2.7.2"
     },
     "scripts": {
-        "test": "phpunit tests"
+        "test": "phpunit tests --testdox --colors=always",
+        "post-install-cmd": [
+            "php post-install.php"
+          ]
     }
 }

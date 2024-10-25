@@ -10,6 +10,7 @@ on:
 env:
   test_api_key: ${{ secrets.KONG_SERVER_SDK_KEY }}
   FORCE_COLOR: true
+  SKIP_STATSIG_POST_INSTALL: true
 
 jobs:
   test:
@@ -54,4 +55,4 @@ jobs:
       run: composer install --prefer-dist --no-progress
 
     - name: Run Tests
-      run: composer test -- --testdox --colors=always
+      run: composer test

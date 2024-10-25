@@ -1,3 +1,7 @@
+.DS_Store
+.idea/
+resources/
+
 # Created by https://www.toptal.com/developers/gitignore/api/phpunit,phpstorm,composer
 # Edit at https://www.toptal.com/developers/gitignore?templates=phpunit,phpstorm,composer
 
