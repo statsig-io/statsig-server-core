@@ -13,6 +13,7 @@ jobs:
     steps:
       - name: Get Workflow Run Info
         uses: actions/github-script@v7
+        id: workflow_run_info
         with:
           script: |
             const run = await github.rest.actions.getWorkflowRun({
@@ -21,14 +22,27 @@ jobs:
               run_id: ${{ github.event.inputs.workflow_run_id }}
             });
             
+            const commitSha = run.data.head_sha;
+
             console.log(`Workflow Run Name: ${run.data.name}`);
             console.log(`Workflow Run Status: ${run.data.status}`);
             console.log(`Workflow Run Conclusion: ${run.data.conclusion}`);
+            console.log(`Workflow Run SHA: ${commitSha}`);
             
             if (run.data.status !== 'completed' || run.data.conclusion !== 'success') {
               console.error(`StatsigFFI run must be completed and successful before publishing PHP SDK`);
               process.exit(1);
             }
+
+            return { commitSha };
+
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.KONG_APP_ID }}
+          private-key: ${{ secrets.SERVER_CORE_KONG_APP_PRIVATE_KEY }}
+          owner: statsig-io
+          repository: sigstat-php
 
       - name: Download Artifacts
         uses: dawidd6/action-download-artifact@v6
@@ -49,19 +63,18 @@ jobs:
           done
 
       - uses: actions/checkout@v4
-
-      - name: Setup Git
-        run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "<>"
+        with:
+          ref: ${{ steps.workflow_run_info.outputs.commitSha }}
 
       - name: Push to Packagist Repository
         run: |
           cd statsig-php
           git init
+          git config user.name "statsig-kong[bot]"
+          git config user.email "statsig-kong[bot]@users.noreply.github.com"
           git add .
           git commit -m "Update statsig-php (commit: ${{ github.sha }})"
-          git push --force https://${{ secrets.GITHUB_TOKEN }}@github.com/statsig-io/sigstat-php.git HEAD:main
+          git push https://oauth2:${{ steps.app-token.outputs.token }}@github.com/statsig-io/sigstat-php.git HEAD:main --force
 
 
  
