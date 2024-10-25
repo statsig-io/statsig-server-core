@@ -23,16 +23,13 @@ void statsig_initialize(const char *statsig_ref, void (*callback)(void));
 
 const char *statsig_get_current_values(struct StatsigRef statsig_ref);
 
-bool statsig_check_gate(struct StatsigRef statsig_ref,
-                        struct StatsigUserRef user_ref,
-                        const char *gate_name);
+bool statsig_check_gate(const char *statsig_ref, const char *user_ref, const char *gate_name);
 
 const char *statsig_get_experiment(struct StatsigRef statsig_ref,
                                    struct StatsigUserRef user_ref,
                                    const char *experiment_name);
 
-const char *statsig_get_client_init_response(struct StatsigRef statsig_ref,
-                                             struct StatsigUserRef user_ref);
+const char *statsig_get_client_init_response(const char *statsig_ref, const char *user_ref);
 
 uintptr_t statsig_get_client_init_response_buffer(struct StatsigRef statsig_ref,
                                                   struct StatsigUserRef user_ref,
@@ -43,15 +40,15 @@ const char *statsig_options_create(const char *specs_url);
 
 void statsig_options_release(const char *options_ref);
 
-struct StatsigUserRef statsig_user_create(const char *user_id,
-                                          const char *custom_ids_json,
-                                          const char *email,
-                                          const char *ip,
-                                          const char *user_agent,
-                                          const char *country,
-                                          const char *locale,
-                                          const char *app_version,
-                                          const char *custom_json,
-                                          const char *private_attributes_json);
+const char *statsig_user_create(const char *user_id,
+                                const char *custom_ids_json,
+                                const char *email,
+                                const char *ip,
+                                const char *user_agent,
+                                const char *country,
+                                const char *locale,
+                                const char *app_version,
+                                const char *custom_json,
+                                const char *private_attributes_json);
 
-void statsig_user_release(struct StatsigUserRef *user_ref);
+void statsig_user_release(const char *user_ref);

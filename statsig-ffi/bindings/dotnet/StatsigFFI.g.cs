@@ -23,10 +23,10 @@ namespace StatsigServer
         internal static extern void statsig_options_release(byte* options_ref);
 
         [DllImport(__DllName, EntryPoint = "statsig_user_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern StatsigUserRef statsig_user_create(byte* user_id, byte* custom_ids_json, byte* email, byte* ip, byte* user_agent, byte* country, byte* locale, byte* app_version, byte* custom_json, byte* private_attributes_json);
+        internal static extern byte* statsig_user_create(byte* user_id, byte* custom_ids_json, byte* email, byte* ip, byte* user_agent, byte* country, byte* locale, byte* app_version, byte* custom_json, byte* private_attributes_json);
 
         [DllImport(__DllName, EntryPoint = "statsig_user_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void statsig_user_release(StatsigUserRef* user_ref);
+        internal static extern void statsig_user_release(byte* user_ref);
 
         [DllImport(__DllName, EntryPoint = "statsig_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_create(byte* sdk_key, byte* options_ref);
@@ -45,13 +45,13 @@ namespace StatsigServer
 
         [DllImport(__DllName, EntryPoint = "statsig_check_gate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool statsig_check_gate(StatsigRef statsig_ref, StatsigUserRef user_ref, byte* gate_name);
+        internal static extern bool statsig_check_gate(byte* statsig_ref, byte* user_ref, byte* gate_name);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_experiment", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_experiment(StatsigRef statsig_ref, StatsigUserRef user_ref, byte* experiment_name);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_client_init_response", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_get_client_init_response(StatsigRef statsig_ref, StatsigUserRef user_ref);
+        internal static extern byte* statsig_get_client_init_response(byte* statsig_ref, byte* user_ref);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_client_init_response_buffer", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern nuint statsig_get_client_init_response_buffer(StatsigRef statsig_ref, StatsigUserRef user_ref, byte* buffer, nuint buffer_size);

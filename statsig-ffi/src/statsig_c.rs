@@ -1,8 +1,8 @@
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::statsig_user_c::StatsigUserRef;
 use serde_json::json;
-use sigstat::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES};
-use sigstat::{log_e, log_w, unwrap_or_noop, Statsig};
+use sigstat::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES, USER_INSTANCES};
+use sigstat::{log_e, log_w, unwrap_or_noop, unwrap_or_return, Statsig};
 use std::os::raw::c_char;
 use std::slice;
 
@@ -74,24 +74,19 @@ pub extern "C" fn statsig_get_current_values(statsig_ref: StatsigRef) -> *const 
 
 #[no_mangle]
 pub extern "C" fn statsig_check_gate(
-    statsig_ref: StatsigRef,
-    user_ref: StatsigUserRef,
+    statsig_ref: *const c_char,
+    user_ref: *const c_char,
     gate_name: *const c_char,
 ) -> bool {
-    let statsig = match statsig_ref.to_internal() {
-        Some(s) => s,
-        None => return false,
-    };
+    let statsig_ref = unwrap_or_return!(c_char_to_string(statsig_ref), false);
+    let statsig = unwrap_or_return!(STATSIG_INSTANCES.get(&statsig_ref), false);
 
-    let user = match user_ref.to_internal() {
-        Some(u) => u,
-        None => return false,
-    };
+    let user_ref = unwrap_or_return!(c_char_to_string(user_ref), false);
+    let user = unwrap_or_return!(USER_INSTANCES.get(&user_ref), false);
 
-    let gate_name = c_char_to_string(gate_name).unwrap();
+    let gate_name = unwrap_or_return!(c_char_to_string(gate_name), false);
 
-    let bool_res = statsig.check_gate(user, &gate_name);
-    return bool_res;
+    statsig.check_gate(&user, &gate_name)
 }
 
 #[no_mangle]
@@ -116,19 +111,16 @@ pub extern "C" fn statsig_get_experiment(
 
 #[no_mangle]
 pub extern "C" fn statsig_get_client_init_response(
-    statsig_ref: StatsigRef,
-    user_ref: StatsigUserRef,
+    statsig_ref: *const c_char,
+    user_ref: *const c_char,
 ) -> *const c_char {
-    let statsig = match statsig_ref.to_internal() {
-        Some(s) => s,
-        None => return std::ptr::null(),
-    };
-    let user = match user_ref.to_internal() {
-        Some(u) => u,
-        None => return std::ptr::null(),
-    };
+    let statsig_ref = unwrap_or_return!(c_char_to_string(statsig_ref), std::ptr::null());
+    let statsig = unwrap_or_return!(STATSIG_INSTANCES.get(&statsig_ref), std::ptr::null());
 
-    let result = statsig.get_client_init_response(user);
+    let user_ref = unwrap_or_return!(c_char_to_string(user_ref), std::ptr::null());
+    let user = unwrap_or_return!(USER_INSTANCES.get(&user_ref), std::ptr::null());
+
+    let result = statsig.get_client_init_response(&user);
     string_to_c_char(json!(result).to_string())
 }
 

@@ -8,14 +8,11 @@ class StatsigOptions
 
     public function __construct(
         $specs_url = null,
-    )
-    {
+    ) {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->statsig_options_create(
             $specs_url
         );
-
-        $a = 1;
     }
 
     public function __destruct()
