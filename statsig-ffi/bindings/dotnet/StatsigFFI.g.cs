@@ -17,7 +17,7 @@ namespace StatsigServer
 
 
         [DllImport(__DllName, EntryPoint = "statsig_options_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_options_create();
+        internal static extern byte* statsig_options_create(byte* specs_url);
 
         [DllImport(__DllName, EntryPoint = "statsig_options_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_options_release(byte* options_ref);
@@ -29,16 +29,16 @@ namespace StatsigServer
         internal static extern void statsig_user_release(StatsigUserRef* user_ref);
 
         [DllImport(__DllName, EntryPoint = "statsig_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern StatsigRef statsig_create(byte* sdk_key, StatsigOptionsRef options_ref);
+        internal static extern byte* statsig_create(byte* sdk_key, byte* options_ref);
 
         [DllImport(__DllName, EntryPoint = "statsig_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void statsig_release(StatsigRef* statsig_ref);
+        internal static extern void statsig_release(byte* statsig_ref);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void statsig_initialize_callback_delegate();
 
         [DllImport(__DllName, EntryPoint = "statsig_initialize", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void statsig_initialize(StatsigRef statsig_ref, statsig_initialize_callback_delegate callback);
+        internal static extern void statsig_initialize(byte* statsig_ref, statsig_initialize_callback_delegate callback);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_current_values", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_current_values(StatsigRef statsig_ref);
@@ -57,12 +57,6 @@ namespace StatsigServer
         internal static extern nuint statsig_get_client_init_response_buffer(StatsigRef statsig_ref, StatsigUserRef user_ref, byte* buffer, nuint buffer_size);
 
 
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct StatsigOptionsRef
-    {
-        public nuint pointer;
     }
 
     [StructLayout(LayoutKind.Sequential)]

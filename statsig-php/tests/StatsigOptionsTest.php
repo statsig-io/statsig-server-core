@@ -14,10 +14,8 @@ class StatsigOptionsTest extends TestCase
         $options = new StatsigOptions();
         $this->assertNotNull($options->__ref);
 
-        // Manually trigger destruct
         $options->__destruct();
 
         $this->assertNull($options->__ref);
-        $this->assertTrue(true);
     }
 }

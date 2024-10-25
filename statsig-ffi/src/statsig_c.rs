@@ -1,8 +1,8 @@
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
-use crate::statsig_options_c::StatsigOptionsRef;
 use crate::statsig_user_c::StatsigUserRef;
 use serde_json::json;
-use sigstat::{log_d, log_w, Statsig};
+use sigstat::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES};
+use sigstat::{log_e, log_w, unwrap_or_noop, Statsig};
 use std::os::raw::c_char;
 use std::slice;
 
@@ -25,36 +25,35 @@ impl StatsigRef {
 #[no_mangle]
 pub extern "C" fn statsig_create(
     sdk_key: *const c_char,
-    options_ref: StatsigOptionsRef,
-) -> StatsigRef {
+    options_ref: *const c_char,
+) -> *const c_char {
     let sdk_key = c_char_to_string(sdk_key).unwrap();
-    let options = options_ref.to_internal();
+    let options = match c_char_to_string(options_ref) {
+        Some(id) => OPTIONS_INSTANCES.optional_get(Some(&id)),
+        None => None,
+    };
 
-    let inst = Statsig::new(&sdk_key, None);
-    let pointer = Box::into_raw(Box::new(inst)) as usize;
+    let inst = Statsig::new(&sdk_key, options);
 
-    log_d!("Created Statsig {}", pointer);
-    StatsigRef { pointer }
+    let ref_id = STATSIG_INSTANCES.add(inst).unwrap_or_else(|| {
+        log_e!("Failed to create Statsig");
+        "".to_string()
+    });
+
+    string_to_c_char(ref_id)
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_release(statsig_ref: *mut StatsigRef) {
-    let ref_obj = unsafe { &mut *statsig_ref };
-    log_d!("Releasing Statsig {}", ref_obj.pointer);
-
-    if ref_obj.pointer != 0 {
-        unsafe { drop(Box::from_raw(ref_obj.pointer as *mut Statsig)) };
-        ref_obj.pointer = 0;
-        log_d!("Statsig released.");
-    } else {
-        log_w!("Statsig already released.");
+pub extern "C" fn statsig_release(statsig_ref: *const c_char) {
+    if let Some(id) = c_char_to_string(statsig_ref) {
+        STATSIG_INSTANCES.release(id);
     }
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_initialize(statsig_ref: StatsigRef, callback: extern "C" fn()) {
-    log_d!("Statsig Init {}", statsig_ref.pointer);
-    let statsig = statsig_ref.to_internal().unwrap();
+pub extern "C" fn statsig_initialize(statsig_ref: *const c_char, callback: extern "C" fn()) {
+    let ref_id = unwrap_or_noop!(c_char_to_string(statsig_ref));
+    let statsig = unwrap_or_noop!(STATSIG_INSTANCES.get(&ref_id));
 
     statsig.initialize_with_callback(move || {
         callback();
@@ -74,7 +73,11 @@ pub extern "C" fn statsig_get_current_values(statsig_ref: StatsigRef) -> *const 
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_check_gate(statsig_ref: StatsigRef, user_ref: StatsigUserRef, gate_name: *const c_char) -> bool {
+pub extern "C" fn statsig_check_gate(
+    statsig_ref: StatsigRef,
+    user_ref: StatsigUserRef,
+    gate_name: *const c_char,
+) -> bool {
     let statsig = match statsig_ref.to_internal() {
         Some(s) => s,
         None => return false,

@@ -1,29 +1,17 @@
 use std::os::raw::c_char;
 
-use sigstat::{instance_store::OPTIONS_INSTANCES, log_e, log_w, StatsigOptions};
-
+use sigstat::{instance_store::OPTIONS_INSTANCES, log_e, StatsigOptions};
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 
-#[repr(C)]
-pub struct StatsigOptionsRef {
-    pub pointer: usize,
-}
-
-impl StatsigOptionsRef {
-    pub fn to_internal(&self) -> Option<&StatsigOptions> {
-        if self.pointer == 0 {
-            log_w!("Failed to fetch StatsigOptions. Reference has been released");
-            return None;
-        }
-
-        Some(unsafe { &*(self.pointer as *mut StatsigOptions) })
-    }
-}
-
 #[no_mangle]
-pub extern "C" fn statsig_options_create() -> *const c_char {
+pub extern "C" fn statsig_options_create(
+    specs_url: *const c_char
+) -> *const c_char {
+    let specs_url = c_char_to_string(specs_url);
+
     let ref_id = OPTIONS_INSTANCES
         .add(StatsigOptions {
+            specs_url,
             ..StatsigOptions::new()
         })
         .unwrap_or_else(|| {

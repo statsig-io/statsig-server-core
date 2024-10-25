@@ -19,7 +19,6 @@ pub struct StatsigOptions {
     pub id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
     pub id_lists_sync_interval_ms: Option<u32>,
 
-
     pub output_log_level: Option<LogLevel>,
     pub environment: Option<String>,
 }

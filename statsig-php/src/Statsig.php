@@ -20,11 +20,11 @@ class Statsig
             return;
         }
 
-        StatsigFFI::get()->statsig_ref_release($this->__ref);
+        StatsigFFI::get()->statsig_release($this->__ref);
         $this->__ref = null;
     }
 
-    public function initialize($callback)
+    public function initialize($callback): void
     {
         StatsigFFI::get()->statsig_initialize($this->__ref, $callback);
     }

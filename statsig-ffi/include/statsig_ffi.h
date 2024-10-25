@@ -11,19 +11,15 @@ typedef struct StatsigRef {
   uintptr_t pointer;
 } StatsigRef;
 
-typedef struct StatsigOptionsRef {
-  uintptr_t pointer;
-} StatsigOptionsRef;
-
 typedef struct StatsigUserRef {
   uintptr_t pointer;
 } StatsigUserRef;
 
-struct StatsigRef statsig_create(const char *sdk_key, struct StatsigOptionsRef options_ref);
+const char *statsig_create(const char *sdk_key, const char *options_ref);
 
-void statsig_release(struct StatsigRef *statsig_ref);
+void statsig_release(const char *statsig_ref);
 
-void statsig_initialize(struct StatsigRef statsig_ref, void (*callback)(void));
+void statsig_initialize(const char *statsig_ref, void (*callback)(void));
 
 const char *statsig_get_current_values(struct StatsigRef statsig_ref);
 
@@ -43,7 +39,7 @@ uintptr_t statsig_get_client_init_response_buffer(struct StatsigRef statsig_ref,
                                                   char *buffer,
                                                   uintptr_t buffer_size);
 
-const char *statsig_options_create(void);
+const char *statsig_options_create(const char *specs_url);
 
 void statsig_options_release(const char *options_ref);
 
