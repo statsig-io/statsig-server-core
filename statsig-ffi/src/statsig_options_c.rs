@@ -5,13 +5,16 @@ use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 
 #[no_mangle]
 pub extern "C" fn statsig_options_create(
-    specs_url: *const c_char
+    specs_url: *const c_char,
+    log_event_url: *const c_char,
 ) -> *const c_char {
     let specs_url = c_char_to_string(specs_url);
+    let log_event_url = c_char_to_string(log_event_url);
 
     let ref_id = OPTIONS_INSTANCES
         .add(StatsigOptions {
             specs_url,
+            log_event_url,
             ..StatsigOptions::new()
         })
         .unwrap_or_else(|| {

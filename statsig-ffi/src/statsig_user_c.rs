@@ -1,6 +1,6 @@
-use sigstat::{log_d, log_e, log_w, StatsigUser};
+use sigstat::{log_e, log_w, StatsigUser};
 use std::os::raw::c_char;
-use sigstat::instance_store::{OPTIONS_INSTANCES, USER_INSTANCES};
+use sigstat::instance_store::{USER_INSTANCES};
 use sigstat::statsig_user::StatsigUserBuilder;
 use crate::ffi_utils::{c_char_to_string, parse_json_to_map, parse_json_to_str_map, string_to_c_char};
 

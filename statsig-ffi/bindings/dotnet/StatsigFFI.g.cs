@@ -17,7 +17,7 @@ namespace StatsigServer
 
 
         [DllImport(__DllName, EntryPoint = "statsig_options_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_options_create(byte* specs_url);
+        internal static extern byte* statsig_options_create(byte* specs_url, byte* log_event_url);
 
         [DllImport(__DllName, EntryPoint = "statsig_options_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_options_release(byte* options_ref);
@@ -40,6 +40,12 @@ namespace StatsigServer
         [DllImport(__DllName, EntryPoint = "statsig_initialize", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_initialize(byte* statsig_ref, statsig_initialize_callback_delegate callback);
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void statsig_flush_events_callback_delegate();
+
+        [DllImport(__DllName, EntryPoint = "statsig_flush_events", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void statsig_flush_events(byte* statsig_ref, statsig_flush_events_callback_delegate callback);
+
         [DllImport(__DllName, EntryPoint = "statsig_get_current_values", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_current_values(StatsigRef statsig_ref);
 
@@ -47,8 +53,20 @@ namespace StatsigServer
         [return: MarshalAs(UnmanagedType.U1)]
         internal static extern bool statsig_check_gate(byte* statsig_ref, byte* user_ref, byte* gate_name);
 
+        [DllImport(__DllName, EntryPoint = "statsig_get_feature_gate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_feature_gate(byte* statsig_ref, byte* user_ref, byte* gate_name);
+
+        [DllImport(__DllName, EntryPoint = "statsig_get_dynamic_config", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_dynamic_config(byte* statsig_ref, byte* user_ref, byte* config_name);
+
         [DllImport(__DllName, EntryPoint = "statsig_get_experiment", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_get_experiment(StatsigRef statsig_ref, StatsigUserRef user_ref, byte* experiment_name);
+        internal static extern byte* statsig_get_experiment(byte* statsig_ref, byte* user_ref, byte* experiment_name);
+
+        [DllImport(__DllName, EntryPoint = "statsig_get_layer", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_layer(byte* statsig_ref, byte* user_ref, byte* layer_name);
+
+        [DllImport(__DllName, EntryPoint = "statsig_log_layer_param_exposure", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void statsig_log_layer_param_exposure(byte* statsig_ref, byte* layer_json, byte* param_name);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_client_init_response", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_client_init_response(byte* statsig_ref, byte* user_ref);
