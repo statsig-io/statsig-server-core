@@ -114,8 +114,8 @@ jobs:
         with:
           name: statsig-ffi-${{ matrix.config.target }}
           path: |
-            target/**/release/libstatsig_ffi.so
-            target/**/debug/libstatsig_ffi.so
+            target/**/${{ matrix.target }}/release/libstatsig_ffi.so
+            target/**/${{ matrix.target }}/debug/libstatsig_ffi.so
           if-no-files-found: error
 
   build-windows:
@@ -157,9 +157,9 @@ jobs:
         with:
           name: statsig-ffi-${{ matrix.target }}
           path: |
-            target/**/release/statsig_ffi.dll
-            target/**/debug/statsig_ffi.dll
-            target/**/debug/statsig_ffi.pdb
+            target/**/${{ matrix.target }}/release/statsig_ffi.dll
+            target/**/${{ matrix.target }}/debug/statsig_ffi.dll
+            target/**/${{ matrix.target }}/debug/statsig_ffi.pdb
           if-no-files-found: error
 
   build-macos:
@@ -200,8 +200,8 @@ jobs:
         with:
           name: statsig-ffi-${{ matrix.target }}
           path: |
-            target/**/release/libstatsig_ffi.dylib
-            target/**/debug/libstatsig_ffi.dylib
+            target/**/${{ matrix.target }}/release/libstatsig_ffi.dylib
+            target/**/${{ matrix.target }}/debug/libstatsig_ffi.dylib
           if-no-files-found: error
 
 
@@ -210,7 +210,7 @@ jobs:
     needs: [build-linux, build-windows, build-macos] # depend on all builds
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Java Publish
+      - name: Trigger Publish Actions
         if: github.event.repository.private
         uses: actions/github-script@v6
         with:
