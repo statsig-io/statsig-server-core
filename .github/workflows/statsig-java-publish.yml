@@ -19,6 +19,9 @@ jobs:
       ORG_GRADLE_PROJECT_SIGNING_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_SIGNING_PASSWORD }}
 
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
       - name: Get Workflow Run Info
         uses: actions/github-script@v7
         with:
@@ -56,9 +59,6 @@ jobs:
             fi
           done
 
-      - name: Checkout code
-        uses: actions/checkout@v3
-
       - name: Unzip and Move Release Artifacts
         run: |
           echo "Moving necessary release files..."
@@ -78,20 +78,55 @@ jobs:
           )
           
           for key in "${!target_dirs[@]}"; do
+            echo "---------------------------------------------------"
             echo "Processing artifact for ${key}..."
             src_path="artifacts/${key}"
-          
-            # Check if it's a zip file and unzip if necessary
-            if [ -f "${src_path}.zip" ]; then
-              unzip -o "${src_path}.zip" -d "${src_path}"
+        
+            # Verify the existence of the source directory
+            if [ ! -d "${src_path}" ]; then
+            echo "Error: Source directory ${src_path} does not exist. Skipping this artifact."
+            continue
             fi
-          
-            dest_dir="$target_dir_prefix}/${target_dirs[$key]}"
-            mkdir -p "${dest_dir}"
-          
-            # Copy all files from the release folder, regardless of intermediate paths
-            find "${src_path}" -type f -path "*/release/*" -exec cp {} "${dest_dir}/" \;
-            echo "Copied files from ${src_path}/release to ${dest_dir}"
+        
+            echo "Source directory ${src_path} exists. Checking for zip file..."
+        
+            # Check if it's a zip file and unzip if necessary
+            zip_file="${src_path}.zip"
+            if [ -f "$zip_file" ]; then
+            echo "Unzipping ${zip_file} to ${src_path}..."
+            unzip -o "$zip_file" -d "$src_path"
+        
+            if [ $? -eq 0 ]; then
+            echo "Successfully unzipped ${zip_file}."
+            else
+            echo "Error: Failed to unzip ${zip_file}. Continuing to the next artifact."
+            continue
+            fi
+            else
+            echo "No zip file found for ${key}. Assuming files are already unzipped."
+            fi
+        
+            dest_dir="$target_dir_prefix/${target_dirs[$key]}"
+            echo "Creating destination directory: ${dest_dir}"
+            mkdir -p "$dest_dir"
+        
+            # Verify files in the release folder before copying
+            echo "Looking for files in ${src_path}/release to copy..."
+            if ! find "$src_path" -type f -path "*/release/*" | grep -q .; then
+            echo "Warning: No files found in ${src_path}/release. Skipping copy for ${key}."
+            continue
+            fi
+        
+            echo "Files found in ${src_path}/release. Starting copy process..."
+            # Copy all files from the release folder
+            find "$src_path" -type f -path "*/release/*" -exec cp {} "$dest_dir/" \;
+        
+            # Confirm copy success by listing the destination contents
+            echo "Contents of ${dest_dir} after copy:"
+            ls -lh "${dest_dir}"
+        
+            echo "Completed processing for ${key}."
+            echo "---------------------------------------------------"
           done
 
       - name: Set up JDK 11
@@ -100,10 +135,10 @@ jobs:
           java-version: '11'  # or '8' if using Java 8
           distribution: "adopt"
 
-#       NOT AT THIS MOMENT
-#      - name: Build with Gradle
-#        working-directory: statsig-ffi/bindings/java
-#        run: ./gradlew clean build -i
+      #       NOT AT THIS MOMENT
+      #      - name: Build with Gradle
+      #        working-directory: statsig-ffi/bindings/java
+      #        run: ./gradlew clean build -i
 
       - name: Publish to Maven
         working-directory: statsig-ffi/bindings/java
