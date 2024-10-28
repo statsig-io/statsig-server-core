@@ -63,6 +63,8 @@ jobs:
         run: |
           echo "Moving necessary release files..."
           
+          target_dir_prefix="statsig-ffi/bindings/java/src/main/resources/native"
+          
           declare -A target_dirs=(
             ["statsig-ffi-x86_64-apple-darwin"]="macos-x86_64"
             ["statsig-ffi-aarch64-apple-darwin"]="macos-arm64"
@@ -77,21 +79,14 @@ jobs:
           
           for key in "${!target_dirs[@]}"; do
             echo "Processing artifact for ${key}..."
-            src_path="artifacts/${key}/release"
+            src_path="artifacts/${key}"
           
-            dest_dir="statsig-ffi/bindings/java/src/main/resources/native/${target_dirs[$key]}"
+            dest_dir="$target_dir_prefix}/${target_dirs[$key]}"
             mkdir -p "${dest_dir}"
           
-            if [[ "$key" == *"apple-darwin"* ]]; then
-              mv "${src_path}/libstatsig_ffi.dylib" "${dest_dir}/"
-              echo "Moved libstatsig_ffi.dylib to ${dest_dir}"
-            elif [[ "$key" == *"windows"* ]]; then
-              mv "${src_path}/libstatsig_ffi.dll" "${dest_dir}/"
-              echo "Moved libstatsig_ffi.dll to ${dest_dir}"
-            else
-              mv "${src_path}/libstatsig_ffi.so" "${dest_dir}/"
-              echo "Moved libstatsig_ffi.so to ${dest_dir}"
-            fi
+            # Copy all files from the release folder, regardless of intermediate paths
+            find "${src_path}" -type f -path "*/release/*" -exec cp {} "${dest_dir}/" \;
+            echo "Copied files from ${src_path}/release to ${dest_dir}"
           done
 
       - name: Set up JDK 11
