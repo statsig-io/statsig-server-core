@@ -81,6 +81,11 @@ jobs:
             echo "Processing artifact for ${key}..."
             src_path="artifacts/${key}"
           
+            # Check if it's a zip file and unzip if necessary
+            if [ -f "${src_path}.zip" ]; then
+              unzip -o "${src_path}.zip" -d "${src_path}"
+            fi
+          
             dest_dir="$target_dir_prefix}/${target_dirs[$key]}"
             mkdir -p "${dest_dir}"
           
