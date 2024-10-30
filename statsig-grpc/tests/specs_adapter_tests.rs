@@ -4,15 +4,15 @@ mod test_utils;
 
 #[cfg(test)]
 pub mod specs_adapter_tests {
-    use crate::mock_forward_proxy::{MockForwardProxy};
+    use crate::mock_forward_proxy::MockForwardProxy;
     use crate::mock_specs_update_listener::MockListener;
     use crate::test_utils::wait_one_ms;
+    use sigstat::output_logger::{initialize_simple_output_logger, LogLevel};
     use sigstat::{SpecsAdapter, SpecsSource};
     use statsig_grpc::*;
     use std::sync::Arc;
     use std::time::Duration;
     use tokio::runtime::Handle;
-    use sigstat::output_logger::{initialize_simple_output_logger, LogLevel};
 
     async fn setup() -> (
         Arc<MockForwardProxy>,
@@ -40,11 +40,7 @@ pub mod specs_adapter_tests {
 
     #[tokio::test]
     async fn test_manual_syncing() {
-        let (
-            mock_proxy,
-            mock_listener,
-            adapter
-        ) = setup().await;
+        let (mock_proxy, mock_listener, adapter) = setup().await;
 
         *mock_proxy.stubbed_get_config_spec_response.lock().unwrap() = ConfigSpecResponse {
             spec: "manual-one".to_string(),
@@ -72,11 +68,7 @@ pub mod specs_adapter_tests {
 
     #[tokio::test]
     async fn test_bg_syncing() {
-        let (
-            mock_proxy,
-            mock_listener,
-            _adapter
-        ) = setup().await;
+        let (mock_proxy, mock_listener, _adapter) = setup().await;
 
         *mock_proxy.stubbed_get_config_spec_response.lock().unwrap() = ConfigSpecResponse {
             spec: "original".to_string(),
@@ -99,11 +91,7 @@ pub mod specs_adapter_tests {
 
     #[tokio::test]
     async fn test_shutting_down() {
-        let (
-            mock_proxy,
-            mock_listener,
-            adapter
-        ) = setup().await;
+        let (mock_proxy, mock_listener, adapter) = setup().await;
 
         adapter.shutdown(Duration::from_millis(1)).await.unwrap();
 
@@ -122,11 +110,7 @@ pub mod specs_adapter_tests {
 
     #[tokio::test]
     async fn test_reconnecting() {
-        let (
-            mock_proxy,
-            mock_listener,
-            _adapter
-        ) = setup().await;
+        let (mock_proxy, mock_listener, _adapter) = setup().await;
 
         mock_proxy
             .send_stream_update(Ok(ConfigSpecResponse {

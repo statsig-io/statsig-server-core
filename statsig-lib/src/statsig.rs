@@ -595,12 +595,12 @@ fn create_runtime_if_required() -> (Option<Runtime>, Handle) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{evaluation::evaluation_types::AnyConfigEvaluation, StatsigHttpIdListsAdapter};
+    use crate::{evaluation::evaluation_types::AnyConfigEvaluation, output_logger::LogLevel, StatsigHttpIdListsAdapter};
     use std::env;
-    use crate::output_logger::LogLevel;
-
     fn get_sdk_key() -> String {
-        env::var("test_api_key").expect("test_api_key environment variable not set")
+        let key = env::var("test_api_key").expect("test_api_key environment variable not set");
+        assert!(key.starts_with("secret-9IWf"));
+        key
     }
 
     #[tokio::test]
@@ -627,7 +627,6 @@ mod tests {
             )])),
             ..StatsigUser::with_user_id("marcos_1".to_string())
         };
-
 
         let mut opts = StatsigOptions::new();
 

@@ -1,9 +1,9 @@
+use sigstat::{SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::Notify;
 use tokio::time::error::Elapsed;
 use tokio::time::timeout;
-use sigstat::{SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener};
 
 #[derive(Default)]
 pub struct MockListener {
@@ -22,16 +22,11 @@ impl MockListener {
     }
 
     pub fn force_get_most_recent_update(&self) -> SpecsUpdate {
-        self.nullable_get_most_recent_update()
-            .unwrap()
+        self.nullable_get_most_recent_update().unwrap()
     }
 
     pub fn nullable_get_most_recent_update(&self) -> Option<SpecsUpdate> {
-        self
-            .received_update
-            .lock()
-            .unwrap()
-            .take()
+        self.received_update.lock().unwrap().take()
     }
 }
 impl SpecsUpdateListener for MockListener {
@@ -45,6 +40,9 @@ impl SpecsUpdateListener for MockListener {
     }
 
     fn get_current_specs_info(&self) -> SpecsInfo {
-        SpecsInfo { lcut: None, source: SpecsSource::NoValues }
+        SpecsInfo {
+            lcut: None,
+            source: SpecsSource::NoValues,
+        }
     }
 }

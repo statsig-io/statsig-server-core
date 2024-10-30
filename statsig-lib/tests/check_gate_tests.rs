@@ -1,25 +1,25 @@
 mod utils;
 
+use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use lazy_static::lazy_static;
 use sigstat::{dyn_value, DynamicValue, Statsig, StatsigOptions, StatsigUser};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
-use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 
 lazy_static! {
-        static ref USER: StatsigUser = StatsigUser {
-            custom: Some(HashMap::from([
-                ("flavor".to_string(), dyn_value!("chocolate")),
-                ("region".to_string(), dyn_value!("somewhere")),
-                ("service".to_string(), dyn_value!("some-service")),
-            ])),
-            ..StatsigUser::with_custom_ids(HashMap::from([(
-                "hubID".to_string(),
-                "some-service-123".to_string()
-            )]))
-        };
-    }
+    static ref USER: StatsigUser = StatsigUser {
+        custom: Some(HashMap::from([
+            ("flavor".to_string(), dyn_value!("chocolate")),
+            ("region".to_string(), dyn_value!("somewhere")),
+            ("service".to_string(), dyn_value!("some-service")),
+        ])),
+        ..StatsigUser::with_custom_ids(HashMap::from([(
+            "hubID".to_string(),
+            "some-service-123".to_string()
+        )]))
+    };
+}
 
 const SDK_KEY: &str = "secret-key";
 
@@ -31,9 +31,9 @@ async fn test_many_rule_perf() {
         SDK_KEY,
         Some(Arc::new(StatsigOptions {
             environment: Some("staging".to_string()),
-            specs_adapter: Some(Arc::new(
-                MockSpecsAdapter::with_data("tests/data/check_gate_perf_dcs.json")
-            )),
+            specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
+                "tests/data/check_gate_perf_dcs.json",
+            ))),
             ..StatsigOptions::new()
         })),
     );
@@ -61,9 +61,9 @@ async fn test_single_rule_env_perf() {
         SDK_KEY,
         Some(Arc::new(StatsigOptions {
             environment: Some("development".to_string()),
-            specs_adapter: Some(Arc::new(
-                MockSpecsAdapter::with_data("tests/data/check_gate_perf_dcs.json")
-            )),
+            specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
+                "tests/data/check_gate_perf_dcs.json",
+            ))),
             ..StatsigOptions::new()
         })),
     );
@@ -91,9 +91,9 @@ async fn test_no_gate_perf() {
         SDK_KEY,
         Some(Arc::new(StatsigOptions {
             environment: Some("development".to_string()),
-            specs_adapter: Some(Arc::new(
-                MockSpecsAdapter::with_data("tests/data/check_gate_perf_dcs.json")
-            )),
+            specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
+                "tests/data/check_gate_perf_dcs.json",
+            ))),
             ..StatsigOptions::new()
         })),
     );

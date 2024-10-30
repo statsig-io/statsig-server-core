@@ -2,8 +2,7 @@ use std::sync::{Mutex, MutexGuard};
 use std::thread;
 
 use lazy_static::lazy_static;
-use sigstat::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES};
-use sigstat::{instance_store::USER_INSTANCES, Statsig, StatsigOptions, StatsigUser};
+use sigstat::{instance_store::INST_STORE, Statsig, StatsigOptions, StatsigUser};
 use std::collections::HashSet;
 
 lazy_static! {
@@ -14,9 +13,7 @@ lazy_static! {
 fn get_test_lock() -> MutexGuard<'static, ()> {
     let guard = TEST_MUTEX.lock().unwrap();
 
-    USER_INSTANCES.release_all();
-    STATSIG_INSTANCES.release_all();
-    OPTIONS_INSTANCES.release_all();
+    INST_STORE.remove_all();
 
     guard
 }
@@ -25,15 +22,12 @@ fn get_test_lock() -> MutexGuard<'static, ()> {
 fn test_instance_id_prefix() {
     let _lock = get_test_lock();
 
-    assert!(USER_INSTANCES
-        .add(USER.clone())
-        .unwrap()
-        .starts_with("usr_"));
-    assert!(STATSIG_INSTANCES
+    assert!(INST_STORE.add(USER.clone()).unwrap().starts_with("usr_"));
+    assert!(INST_STORE
         .add(Statsig::new("", None))
         .unwrap()
         .starts_with("stsg_"));
-    assert!(OPTIONS_INSTANCES
+    assert!(INST_STORE
         .add(StatsigOptions::new())
         .unwrap()
         .starts_with("opts_"));
@@ -43,12 +37,12 @@ fn test_instance_id_prefix() {
 fn test_creation_limit() {
     let _lock = get_test_lock();
 
-    for _ in 0..100_000 {
-        let inst_id = USER_INSTANCES.add(USER.clone());
+    for _ in 0..400_000 {
+        let inst_id = INST_STORE.add(USER.clone());
         assert!(inst_id.is_some());
     }
 
-    let inst_id = USER_INSTANCES.add(USER.clone());
+    let inst_id = INST_STORE.add(USER.clone());
     assert!(inst_id.is_none());
 }
 
@@ -56,12 +50,12 @@ fn test_creation_limit() {
 fn test_removing_resets_limit() {
     let _lock = get_test_lock();
 
-    for _ in 0..100_000 {
-        let inst_id = USER_INSTANCES.add(USER.clone());
-        USER_INSTANCES.release(inst_id.unwrap());
+    for _ in 0..400_000 {
+        let inst_id = INST_STORE.add(USER.clone());
+        INST_STORE.remove(&inst_id.unwrap());
     }
 
-    let inst_id = USER_INSTANCES.add(USER.clone());
+    let inst_id = INST_STORE.add(USER.clone());
     assert!(inst_id.is_some());
 }
 
@@ -71,7 +65,7 @@ fn test_unique_id_generation() {
 
     let mut ids = HashSet::new();
     for _ in 0..1000 {
-        let id = USER_INSTANCES.add(USER.clone()).unwrap();
+        let id = INST_STORE.add(USER.clone()).unwrap();
         ids.insert(id.clone());
     }
 
@@ -86,11 +80,11 @@ fn test_concurrent_access() {
         .map(|_| {
             thread::spawn(|| {
                 for _ in 0..1000 {
-                    let id = USER_INSTANCES.add(USER.clone()).unwrap();
+                    let id = INST_STORE.add(USER.clone()).unwrap();
 
-                    assert!(USER_INSTANCES.get(&id).is_some());
+                    assert!(INST_STORE.get::<StatsigUser>(&id).is_some());
 
-                    USER_INSTANCES.release(id);
+                    INST_STORE.remove(&id);
                 }
             })
         })
@@ -100,51 +94,50 @@ fn test_concurrent_access() {
         thread.join().unwrap();
     }
 
-    assert!(USER_INSTANCES.add(USER.clone()).is_some());
+    assert!(INST_STORE.add(USER.clone()).is_some());
 }
 
 #[test]
 fn test_invalid_id_handling() {
     let _lock = get_test_lock();
 
-    let inst_id = USER_INSTANCES.add(USER.clone());
+    _ = INST_STORE.add(USER.clone());
 
-    assert!(USER_INSTANCES.get("invalid_id").is_none());
-    assert!(STATSIG_INSTANCES.get(inst_id.unwrap().as_ref()).is_none());
+    assert!(INST_STORE.get::<StatsigUser>("invalid_id").is_none());
 
-    USER_INSTANCES.release("invalid_id".to_string()); // Should not panic
+    INST_STORE.remove("invalid_id"); // Should not panic
 }
 
 #[test]
 fn test_optional_get() {
     let _lock = get_test_lock();
 
-    let inst_id = USER_INSTANCES.add(USER.clone());
-    assert!(USER_INSTANCES.optional_get(inst_id.as_ref()).is_some());
-    assert!(USER_INSTANCES.optional_get(None).is_none());
+    let inst_id = INST_STORE.add(USER.clone());
+    assert!(INST_STORE
+        .get_with_optional_id::<StatsigUser>(inst_id.as_ref())
+        .is_some());
+    assert!(INST_STORE
+        .get_with_optional_id::<StatsigUser>(None)
+        .is_none());
 }
 
 #[test]
 fn test_correct_instance_type_handling() {
     let _lock = get_test_lock();
 
-    let user_id = USER_INSTANCES.add(USER.clone()).unwrap();
-    let statsig_id = STATSIG_INSTANCES.add(Statsig::new("", None)).unwrap();
-    let options_id = OPTIONS_INSTANCES.add(StatsigOptions::new()).unwrap();
+    let user_id = INST_STORE.add(USER.clone()).unwrap();
+    let statsig_id = INST_STORE.add(Statsig::new("", None)).unwrap();
+    let options_id = INST_STORE.add(StatsigOptions::new()).unwrap();
 
-    assert!(USER_INSTANCES.get(&user_id).is_some());
-    assert!(USER_INSTANCES.get(&statsig_id).is_none());
-    assert!(USER_INSTANCES.get(&options_id).is_none());
+    assert!(INST_STORE.get::<StatsigUser>(&user_id).is_some());
+    assert!(INST_STORE.get::<Statsig>(&statsig_id).is_some());
+    assert!(INST_STORE.get::<StatsigOptions>(&options_id).is_some());
 
-    assert!(STATSIG_INSTANCES.get(&statsig_id).is_some());
-    assert!(STATSIG_INSTANCES.get(&user_id).is_none());
-    assert!(STATSIG_INSTANCES.get(&options_id).is_none());
+    INST_STORE.remove(&user_id);
+    INST_STORE.remove(&statsig_id);
+    INST_STORE.remove(&options_id);
 
-    assert!(OPTIONS_INSTANCES.get(&options_id).is_some());
-    assert!(OPTIONS_INSTANCES.get(&user_id).is_none());
-    assert!(OPTIONS_INSTANCES.get(&statsig_id).is_none());
-
-    USER_INSTANCES.release(user_id);
-    STATSIG_INSTANCES.release(statsig_id);
-    OPTIONS_INSTANCES.release(options_id);
+    assert!(INST_STORE.get::<StatsigUser>(&user_id).is_none());
+    assert!(INST_STORE.get::<Statsig>(&statsig_id).is_none());
+    assert!(INST_STORE.get::<StatsigOptions>(&options_id).is_none());
 }
