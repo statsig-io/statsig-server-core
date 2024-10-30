@@ -7,14 +7,6 @@ typedef int StatsigUser;
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef struct StatsigRef {
-  uintptr_t pointer;
-} StatsigRef;
-
-typedef struct StatsigUserRef {
-  uintptr_t pointer;
-} StatsigUserRef;
-
 const char *statsig_create(const char *sdk_key, const char *options_ref);
 
 void statsig_release(const char *statsig_ref);
@@ -23,7 +15,7 @@ void statsig_initialize(const char *statsig_ref, void (*callback)(void));
 
 void statsig_flush_events(const char *statsig_ref, void (*callback)(void));
 
-const char *statsig_get_current_values(struct StatsigRef statsig_ref);
+const char *statsig_get_current_values(const char *statsig_ref);
 
 bool statsig_check_gate(const char *statsig_ref, const char *user_ref, const char *gate_name);
 
@@ -48,11 +40,6 @@ void statsig_log_layer_param_exposure(const char *statsig_ref,
                                       const char *param_name);
 
 const char *statsig_get_client_init_response(const char *statsig_ref, const char *user_ref);
-
-uintptr_t statsig_get_client_init_response_buffer(struct StatsigRef statsig_ref,
-                                                  struct StatsigUserRef user_ref,
-                                                  char *buffer,
-                                                  uintptr_t buffer_size);
 
 const char *statsig_options_create(const char *specs_url, const char *log_event_url);
 

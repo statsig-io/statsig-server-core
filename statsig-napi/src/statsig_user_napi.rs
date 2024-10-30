@@ -3,9 +3,7 @@ use napi::bindgen_prelude::ObjectFinalize;
 use napi::Env;
 use napi_derive::napi;
 use serde_json::from_str;
-use sigstat::{
-  instance_store::USER_INSTANCES, log_w, statsig_user::StatsigUserBuilder, DynamicValue,
-};
+use sigstat::{instance_store::INST_STORE, log_w, statsig_user::StatsigUserBuilder, DynamicValue};
 use std::collections::HashMap;
 
 #[napi(custom_finalize)]
@@ -22,7 +20,7 @@ impl AutoReleasingStatsigUserRef {
 }
 impl ObjectFinalize for AutoReleasingStatsigUserRef {
   fn finalize(self, _env: Env) -> napi::Result<()> {
-    USER_INSTANCES.release(self.ref_id);
+    INST_STORE.remove(&self.ref_id);
     Ok(())
   }
 }
@@ -94,9 +92,9 @@ pub fn statsig_user_create(
     .custom(custom)
     .private_attributes(private_attributes);
 
-  let ref_id = USER_INSTANCES.add(builder.build()).unwrap_or_else(|| {
-    "".to_string()
-  });
+  let ref_id = INST_STORE
+    .add(builder.build())
+    .unwrap_or_else(|| "".to_string());
 
   AutoReleasingStatsigUserRef { ref_id }
 }

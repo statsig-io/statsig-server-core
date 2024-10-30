@@ -6,12 +6,9 @@ use std::collections::HashMap;
 
 #[macro_export]
 macro_rules! get_instance_or_noop_jni {
-    ($instances:ident, $env:expr, $ref:expr) => {
+    ($type:ty, $env:expr, $ref:expr) => {
         match jstring_to_string($env, $ref) {
-            Some(id) => match $instances.get(&id) {
-                Some(instance) => instance,
-                None => return,
-            },
+            Some(id) => sigstat::get_instance_or_noop!($type, &id),
             None => return,
         }
     };
@@ -19,12 +16,9 @@ macro_rules! get_instance_or_noop_jni {
 
 #[macro_export]
 macro_rules! get_instance_or_return_jni {
-    ($instances:ident, $env:expr, $ref:expr, $ret_value:expr) => {
+    ($type:ty, $env:expr, $ref:expr, $ret_value:expr) => {
         match jstring_to_string($env, $ref) {
-            Some(id) => match $instances.get(&id) {
-                Some(instance) => instance,
-                None => return $ret_value,
-            },
+            Some(id) => sigstat::get_instance_or_return!($type, &id, $ret_value),
             None => return $ret_value,
         }
     };
@@ -32,9 +26,9 @@ macro_rules! get_instance_or_return_jni {
 
 #[macro_export]
 macro_rules! get_instance_or_else_jni {
-    ($instances:ident, $env:expr, $ref:expr, $else:expr) => {
+    ($type:ty, $env:expr, $ref:expr, $else:expr) => {
         match jstring_to_string($env, $ref) {
-            Some(id) => match $instances.get(&id) {
+            Some(id) => match INST_STORE.get::<$type>(&id) {
                 Some(instance) => instance,
                 None => $else,
             },

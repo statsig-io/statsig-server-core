@@ -1,7 +1,7 @@
 use std::os::raw::c_char;
 
-use sigstat::{instance_store::OPTIONS_INSTANCES, log_e, StatsigOptions};
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
+use sigstat::{instance_store::INST_STORE, log_e, StatsigOptions};
 
 #[no_mangle]
 pub extern "C" fn statsig_options_create(
@@ -11,7 +11,7 @@ pub extern "C" fn statsig_options_create(
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
 
-    let ref_id = OPTIONS_INSTANCES
+    let ref_id = INST_STORE
         .add(StatsigOptions {
             specs_url,
             log_event_url,
@@ -28,6 +28,6 @@ pub extern "C" fn statsig_options_create(
 #[no_mangle]
 pub extern "C" fn statsig_options_release(options_ref: *const c_char) {
     if let Some(id) = c_char_to_string(options_ref) {
-        OPTIONS_INSTANCES.release(id);
+        INST_STORE.remove(&id);
     }
 }

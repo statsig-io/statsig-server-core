@@ -2,9 +2,7 @@ use crate::jni::jni_utils::{jstring_to_string, string_to_jstring};
 use jni::objects::{JClass, JString};
 use jni::sys::{jint, jlong, jstring};
 use jni::JNIEnv;
-use sigstat::instance_store::OPTIONS_INSTANCES;
-use sigstat::{log_d, log_e};
-use sigstat::statsig_options::StatsigOptionsBuilder;
+use sigstat::{instance_store::INST_STORE, log_d, log_e, statsig_options::StatsigOptionsBuilder};
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
@@ -52,7 +50,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .output_log_level(Some(output_logger_level as u32));
 
     let options = builder.build();
-    let id = OPTIONS_INSTANCES.add(options);
+    let id = INST_STORE.add(options);
     match id {
         Some(id) => {
             log_d!("Created StatsigOptions with ID {}", id);
@@ -72,6 +70,6 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsRelease(
     options_ref: JString,
 ) {
     if let Some(id) = jstring_to_string(&mut env, options_ref) {
-        OPTIONS_INSTANCES.release(id);
+        INST_STORE.remove(&id);
     }
 }

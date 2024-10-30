@@ -1,12 +1,11 @@
 use crate::jni::jni_utils::jstring_to_string;
-use crate::{get_instance_or_else_jni, get_instance_or_noop_jni, get_instance_or_return_jni};
+use crate::{get_instance_or_noop_jni, get_instance_or_return_jni};
 use jni::sys::{jboolean, jclass, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 
 use crate::jni::jni_utils::jni_to_rust_hashmap;
 use jni::objects::{JClass, JObject, JString};
-use sigstat::instance_store::{OPTIONS_INSTANCES, STATSIG_INSTANCES, USER_INSTANCES};
-use sigstat::{log_e, Statsig};
+use sigstat::{instance_store::INST_STORE, log_e, Statsig, StatsigOptions, StatsigUser};
 
 use super::jni_utils::serialize_json_to_jstring;
 
@@ -26,11 +25,11 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
 
     let options_inst_id = jstring_to_string(&mut env, options_ref);
 
-    let options = OPTIONS_INSTANCES.optional_get(options_inst_id.as_ref());
+    let options = INST_STORE.get_with_optional_id::<StatsigOptions>(options_inst_id.as_ref());
 
     let inst = Statsig::new(&sdk_key, options);
 
-    let id = STATSIG_INSTANCES.add(inst);
+    let id = INST_STORE.add(inst);
     match id {
         Some(id) => match env.new_string(id) {
             Ok(java_str) => java_str.into_raw(),
@@ -47,7 +46,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRelease(
     statsig_ref: JString,
 ) {
     if let Some(id) = jstring_to_string(&mut env, statsig_ref) {
-        STATSIG_INSTANCES.release(id);
+        INST_STORE.remove(&id);
     }
 }
 
@@ -58,7 +57,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
     statsig_ref: JString,
     callback: JObject,
 ) {
-    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
     if callback.is_null() {
         log_e!("Callback is null");
@@ -96,7 +95,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigSequencedShutdownPrepa
     statsig_ref: JString,
     callback: JObject,
 ) {
-    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
     if callback.is_null() {
         log_e!("Callback is null");
@@ -133,7 +132,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFinalizeShutdown(
     _class: JClass,
     statsig_ref: JString,
 ) {
-    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
     statsig.finalize_shutdown();
 }
 
@@ -144,13 +143,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetClientInitResponse(
     statsig_ref: JString,
     user_ref: JString,
 ) -> jstring {
-    let statsig = get_instance_or_else_jni!(STATSIG_INSTANCES, &mut env, statsig_ref, {
-        return std::ptr::null_mut();
-    });
-
-    let user = get_instance_or_else_jni!(USER_INSTANCES, &mut env, user_ref, {
-        return std::ptr::null_mut();
-    });
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+    let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
 
     let response = statsig.get_client_init_response(user.as_ref());
 
@@ -165,8 +159,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCheckGate(
     user_ref: JString,
     gate_name: JString,
 ) -> jboolean {
-    let statsig = get_instance_or_return_jni!(STATSIG_INSTANCES, &mut env, statsig_ref, JNI_FALSE);
-    let user = get_instance_or_return_jni!(USER_INSTANCES, &mut env, user_ref, JNI_FALSE);
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, JNI_FALSE);
+    let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, JNI_FALSE);
 
     let gate_name: String = match env.get_string(&gate_name) {
         Ok(s) => s.into(),
@@ -187,12 +181,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperiment(
     user_ref: JString,
     exper_name: JString,
 ) -> jstring {
-    let statsig = get_instance_or_else_jni!(STATSIG_INSTANCES, &mut env, statsig_ref, {
-        return std::ptr::null_mut();
-    });
-    let user = get_instance_or_else_jni!(USER_INSTANCES, &mut env, user_ref, {
-        return std::ptr::null_mut();
-    });
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+    let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
 
     let exper_name: String = match env.get_string(&exper_name) {
         Ok(s) => s.into(),
@@ -212,12 +202,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetLayer(
     user_ref: JString,
     layer_name: JString,
 ) -> jstring {
-    let statsig = get_instance_or_else_jni!(STATSIG_INSTANCES, &mut env, statsig_ref, {
-        return std::ptr::null_mut();
-    });
-    let user = get_instance_or_else_jni!(USER_INSTANCES, &mut env, user_ref, {
-        return std::ptr::null_mut();
-    });
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+    let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
 
     let layer_name: String = match env.get_string(&layer_name) {
         Ok(s) => s.into(),
@@ -237,12 +223,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetDynamicConfig(
     user_ref: JString,
     config_name: JString,
 ) -> jstring {
-    let statsig = get_instance_or_else_jni!(STATSIG_INSTANCES, &mut env, statsig_ref, {
-        return std::ptr::null_mut();
-    });
-    let user = get_instance_or_else_jni!(USER_INSTANCES, &mut env, user_ref, {
-        return std::ptr::null_mut();
-    });
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+    let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
 
     let config_name: String = match env.get_string(&config_name) {
         Ok(s) => s.into(),
@@ -262,12 +244,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFeatureGate(
     user_ref: JString,
     gate_name: JString,
 ) -> jstring {
-    let statsig = get_instance_or_else_jni!(STATSIG_INSTANCES, &mut env, statsig_ref, {
-        return std::ptr::null_mut();
-    });
-    let user = get_instance_or_else_jni!(USER_INSTANCES, &mut env, user_ref, {
-        return std::ptr::null_mut();
-    });
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+    let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
 
     let gate_name: String = match env.get_string(&gate_name) {
         Ok(s) => s.into(),
@@ -286,7 +264,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogLayerParamExposure(
     layer_json: JString,
     parameter_name: JString,
 ) {
-    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
     let layer_json: String = match env.get_string(&layer_json) {
         Ok(s) => s.into(),
@@ -314,8 +292,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEvent(
     value: JString,
     metadata: JObject,
 ) {
-    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
-    let user = get_instance_or_noop_jni!(USER_INSTANCES, &mut env, user_ref);
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+    let user = get_instance_or_noop_jni!(StatsigUser, &mut env, user_ref);
 
     let event_name: String = match env.get_string(&event_name) {
         Ok(s) => s.into(),
@@ -346,7 +324,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
     statsig_ref: JString,
     callback: JObject,
 ) {
-    let statsig = get_instance_or_noop_jni!(STATSIG_INSTANCES, &mut env, statsig_ref);
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
     if callback.is_null() {
         log_e!("Callback is null");

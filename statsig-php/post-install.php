@@ -3,7 +3,7 @@
 const OUTPUT_DIR = "resources";
 const VERSION = "0.0.1-beta.2";
 
-if (getenv('SKIP_STATSIG_POST_INSTALL') !== 'true') {
+if (getenv('SKIP_STATSIG_POST_INSTALL') === 'true') {
     exit(0);
 }
 

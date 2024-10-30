@@ -1,8 +1,28 @@
+use serde_json::Value;
+use sigstat::DynamicValue;
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
-use serde_json::Value;
-use sigstat::DynamicValue;
+
+#[macro_export]
+macro_rules! get_instance_or_noop_c {
+    ($type:ty, $ref:expr) => {
+        match c_char_to_string($ref) {
+            Some(id) => sigstat::get_instance_or_noop!($type, &id),
+            None => return,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! get_instance_or_return_c {
+    ($type:ty, $ref:expr, $ret_value:expr) => {
+        match c_char_to_string($ref) {
+            Some(id) => sigstat::get_instance_or_return!($type, &id, $ret_value),
+            None => return $ret_value,
+        }
+    };
+}
 
 pub fn c_char_to_string(c_str: *const c_char) -> Option<String> {
     if c_str.is_null() {
@@ -27,7 +47,8 @@ pub fn parse_json_to_map(json_str: Option<String>) -> Option<HashMap<String, Dyn
     if let Some(json_str) = json_str {
         match serde_json::from_str::<HashMap<String, Value>>(&json_str) {
             Ok(map) => {
-                let dynamic_map = map.into_iter()
+                let dynamic_map = map
+                    .into_iter()
                     .map(|(k, v)| (k, DynamicValue::from(v)))
                     .collect();
                 Some(dynamic_map)

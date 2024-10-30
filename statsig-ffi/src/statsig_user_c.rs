@@ -1,24 +1,10 @@
-use sigstat::{log_e, log_w, StatsigUser};
-use std::os::raw::c_char;
-use sigstat::instance_store::{USER_INSTANCES};
+use crate::ffi_utils::{
+    c_char_to_string, parse_json_to_map, parse_json_to_str_map, string_to_c_char,
+};
+use sigstat::instance_store::INST_STORE;
+use sigstat::log_e;
 use sigstat::statsig_user::StatsigUserBuilder;
-use crate::ffi_utils::{c_char_to_string, parse_json_to_map, parse_json_to_str_map, string_to_c_char};
-
-#[repr(C)]
-pub struct StatsigUserRef {
-    pub pointer: usize,
-}
-
-impl StatsigUserRef {
-    pub fn to_internal(&self) -> Option<&StatsigUser> {
-        if self.pointer == 0 {
-            log_w!("Failed to fetch StatsigUser. Reference has been released");
-            return None;
-        }
-
-        Some(unsafe { &*(self.pointer as *mut StatsigUser) })
-    }
-}
+use std::os::raw::c_char;
 
 #[no_mangle]
 pub extern "C" fn statsig_user_create(
@@ -47,10 +33,7 @@ pub extern "C" fn statsig_user_create(
 
     let mut builder = match custom_ids {
         Some(custom_ids) => StatsigUserBuilder::new_with_custom_ids(custom_ids).user_id(user_id),
-        None => {
-            StatsigUserBuilder::new_with_user_id(user_id.unwrap_or_default())
-                .custom_ids(None)
-        }
+        None => StatsigUserBuilder::new_with_user_id(user_id.unwrap_or_default()).custom_ids(None),
     };
 
     builder = builder
@@ -64,12 +47,10 @@ pub extern "C" fn statsig_user_create(
         .private_attributes(private_attributes);
 
     let user = builder.build();
-    let ref_id = USER_INSTANCES
-        .add(user)
-        .unwrap_or_else(|| {
-            log_e!("Failed to create StatsigOptions");
-            "".to_string()
-        });
+    let ref_id = INST_STORE.add(user).unwrap_or_else(|| {
+        log_e!("Failed to create StatsigOptions");
+        "".to_string()
+    });
 
     string_to_c_char(ref_id)
 }
@@ -77,6 +58,6 @@ pub extern "C" fn statsig_user_create(
 #[no_mangle]
 pub extern "C" fn statsig_user_release(user_ref: *const c_char) {
     if let Some(id) = c_char_to_string(user_ref) {
-        USER_INSTANCES.release(id);
+        INST_STORE.remove(&id);
     }
 }
