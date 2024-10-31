@@ -12,6 +12,10 @@ export declare class AutoReleasingStatsigUserRef {
   refId: string;
 }
 
+export interface ClientInitResponseOptions {
+  hashAlgorithm?: string;
+}
+
 export declare function consoleLoggerInit(
   logLevel: LogLevel,
   debugLog: (message?: any, ...optionalParams: any[]) => void,
@@ -73,6 +77,7 @@ export declare function statsigCreate(
 export declare function statsigGetClientInitResponse(
   statsigRef: string,
   userRef: string,
+  options?: ClientInitResponseOptions | undefined | null,
 ): string;
 
 export declare function statsigGetCurrentValues(

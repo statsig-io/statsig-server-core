@@ -1,13 +1,20 @@
 use crate::evaluation::dynamic_returnable::DynamicReturnable;
-use crate::evaluation::evaluation_types::{BaseEvaluation, DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation, SecondaryExposure};
+use crate::evaluation::evaluation_types::{
+    BaseEvaluation, DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation,
+    SecondaryExposure,
+};
 use crate::spec_types::Spec;
 use serde_json::Value;
+use std::collections::HashSet;
 
 #[derive(Default, Debug)]
 pub struct EvaluatorResult<'a> {
     pub bool_value: bool,
     pub unsupported: bool,
     pub is_experiment_group: bool,
+    pub is_experiment_active: bool,
+    pub is_in_layer: bool,
+    pub id_type: Option<&'a String>,
     pub json_value: Option<&'a DynamicReturnable>,
     pub rule_id: Option<&'a String>,
     pub group_name: Option<&'a String>,
@@ -17,13 +24,10 @@ pub struct EvaluatorResult<'a> {
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
 }
 
-pub fn result_to_gate_eval(
-    gate_name: &str,
-    spec: &Spec,
-    result: &mut EvaluatorResult,
-) -> GateEvaluation {
+pub fn result_to_gate_eval(gate_name: &str, result: &mut EvaluatorResult) -> GateEvaluation {
     GateEvaluation {
-        base: result_to_base_eval(gate_name, spec, result),
+        base: result_to_base_eval(gate_name, result),
+        id_type: result.id_type.cloned().unwrap_or_default(),
         value: result.bool_value,
     }
 }
@@ -33,29 +37,65 @@ pub fn result_to_experiment_eval(
     spec: &Spec,
     result: &mut EvaluatorResult,
 ) -> ExperimentEvaluation {
-    ExperimentEvaluation {
-        base: result_to_dynamic_config_eval(experiment_name, spec, result),
+    let mut value = Value::Null;
+    if let Some(v) = result.json_value {
+        value = v.value.clone();
+    }
 
+    let (id_type, is_device_based) = get_id_type_info(result.id_type);
+
+    let mut is_experiment_active = None;
+    let mut is_user_in_experiment = None;
+
+    if spec.entity == "experiment" {
+        is_experiment_active = Some(result.is_experiment_active);
+        is_user_in_experiment = Some(result.is_experiment_group);
+    }
+
+    ExperimentEvaluation {
+        base: result_to_base_eval(experiment_name, result),
+        id_type,
+        group: result.rule_id.cloned().unwrap_or_default(),
+        is_device_based,
+        value,
+        is_in_layer: result.is_in_layer,
         group_name: result.group_name.cloned(),
-        is_experiment_active: spec.is_active.unwrap_or(false),
-        is_user_in_experiment: result.is_experiment_group,
+        explicit_parameters: result.explicit_parameters.cloned(),
+        is_experiment_active,
+        is_user_in_experiment,
     }
 }
 
-pub fn result_to_layer_eval(
-    layer_name: &str,
-    spec: &Spec,
-    result: &mut EvaluatorResult,
-) -> LayerEvaluation {
+pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> LayerEvaluation {
     let mut undelegated_secondary_exposures = Vec::new();
+
     if let Some(u) = &mut result.undelegated_secondary_exposures {
         undelegated_secondary_exposures = std::mem::take(u);
     }
 
-    LayerEvaluation {
-        base: result_to_dynamic_config_eval(layer_name, spec, result),
+    let mut allocated_experiment_name = None;
+    let mut is_experiment_active = None;
+    let mut is_user_in_experiment = None;
 
-        allocated_experiment_name: result.config_delegate.cloned().unwrap_or_default(),
+    if let Some(config_delegate) = result.config_delegate {
+        if !config_delegate.is_empty() {
+            allocated_experiment_name = Some(config_delegate.clone());
+            is_experiment_active = Some(result.is_experiment_active);
+            is_user_in_experiment = Some(result.is_experiment_group);
+        }
+    }
+
+    let (_, is_device_based) = get_id_type_info(result.id_type);
+
+    LayerEvaluation {
+        base: result_to_base_eval(layer_name, result),
+        group: result.rule_id.cloned().unwrap_or_default(),
+        value: get_json_value(result),
+        is_device_based,
+        group_name: result.group_name.cloned(),
+        is_experiment_active,
+        is_user_in_experiment,
+        allocated_experiment_name,
         explicit_parameters: result.explicit_parameters.cloned().unwrap_or_default(),
         undelegated_secondary_exposures: Some(undelegated_secondary_exposures),
     }
@@ -63,7 +103,6 @@ pub fn result_to_layer_eval(
 
 pub fn result_to_dynamic_config_eval(
     dynamic_config_name: &str,
-    spec: &Spec,
     result: &mut EvaluatorResult,
 ) -> DynamicConfigEvaluation {
     let mut value = Value::Null;
@@ -71,25 +110,49 @@ pub fn result_to_dynamic_config_eval(
         value = v.value.clone();
     }
 
-    DynamicConfigEvaluation {
-        base: result_to_base_eval(dynamic_config_name, spec, result),
+    let (id_type, is_device_based) = get_id_type_info(result.id_type);
 
+    DynamicConfigEvaluation {
+        base: result_to_base_eval(dynamic_config_name, result),
+        id_type,
+        is_device_based,
         value,
-        group: result.group_name.cloned().unwrap_or_default(),
-        is_device_based: false,
+        group: result.rule_id.cloned().unwrap_or_default(),
     }
 }
 
-fn result_to_base_eval(
-    spec_name: &str,
-    spec: &Spec,
-    result: &mut EvaluatorResult,
-) -> BaseEvaluation {
-    let secondary_exposures = std::mem::take(&mut result.secondary_exposures);
+fn get_id_type_info(id_type: Option<&String>) -> (String, bool) {
+    let id_type = id_type.cloned().unwrap_or_default();
+    let is_device_based = id_type == "stableID" || id_type == "stableid";
+    (id_type, is_device_based)
+}
+
+fn get_json_value(result: &EvaluatorResult) -> Value {
+    result
+        .json_value
+        .map(|v| v.value.clone())
+        .unwrap_or(Value::Null)
+}
+
+fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEvaluation {
+    let mut exposures = Vec::new();
+    let mut seen = HashSet::new();
+
+    for exposure in result.secondary_exposures.iter() {
+        let key = format!(
+            "{}:{}:{}",
+            exposure.gate, exposure.gate_value, exposure.rule_id
+        );
+
+        if !seen.contains(&key) {
+            seen.insert(key);
+            exposures.push(exposure.clone());
+        }
+    }
+
     BaseEvaluation {
-        id_type: spec.id_type.clone(),
         name: spec_name.to_string(),
         rule_id: result.rule_id.cloned().unwrap_or_default(),
-        secondary_exposures,
+        secondary_exposures: exposures,
     }
 }

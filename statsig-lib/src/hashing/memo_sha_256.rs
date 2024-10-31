@@ -1,11 +1,11 @@
 use crate::log_e;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
+use core::mem::size_of;
 use sha2::digest::Output;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::Mutex;
-use core::mem::size_of;
 
 const MAX_CACHE_ENTRIES: usize = 10000;
 
@@ -57,7 +57,7 @@ impl MemoSha256 {
         }
     }
 
-    pub fn hash_name(&self, input: &String) -> String {
+    pub fn hash_string(&self, input: &String) -> String {
         let mut state = match self.inner.lock() {
             Ok(state) => state,
             Err(e) => {

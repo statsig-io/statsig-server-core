@@ -1587,6 +1587,7 @@ dependencies = [
 name = "sigstat"
 version = "0.0.1"
 dependencies = [
+ "assert-json-diff",
  "async-trait",
  "base64",
  "chrono",

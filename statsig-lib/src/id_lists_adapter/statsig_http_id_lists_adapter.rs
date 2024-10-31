@@ -275,7 +275,7 @@ fn get_request_headers(sdk_key: &str) -> HashMap<String, String> {
 #[cfg(test)]
 mod tests {
     use crate::id_lists_adapter::IdList;
-    use crate::memo_sha_256::MemoSha256;
+    use crate::hashing::Hashing;
 
     use super::*;
     use mockito::{Mock, Server, ServerGuard};
@@ -348,7 +348,7 @@ mod tests {
     }
 
     fn get_hashed_marcos() -> String {
-        let hashed = MemoSha256::new().hash_name(&"Marcos".to_string());
+        let hashed = Hashing::new().sha256(&"Marcos".to_string());
         return hashed.chars().take(8).collect();
     }
 

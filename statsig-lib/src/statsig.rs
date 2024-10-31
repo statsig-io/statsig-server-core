@@ -1,4 +1,6 @@
-use crate::client_init_response_formatter::ClientInitResponseFormatter;
+use crate::client_init_response_formatter::{
+    ClientInitResponseFormatter, ClientInitResponseOptions,
+};
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::SecondaryExposure;
@@ -16,8 +18,8 @@ use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::make_custom_event;
 use crate::event_logging_adapter::statsig_event_logging_adapter::StatsigEventLoggingAdapter;
 use crate::event_logging_adapter::EventLoggingAdapter;
+use crate::hashing::Hashing;
 use crate::initialize_response::InitializeResponse;
-use crate::memo_sha_256::MemoSha256;
 use crate::output_logger::initialize_simple_output_logger;
 use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::specs_adapter::statsig_http_specs_adapter::StatsigHttpSpecsAdapter;
@@ -46,7 +48,7 @@ pub struct Statsig {
     specs_adapter: Arc<dyn SpecsAdapter>,
     id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
     spec_store: Arc<SpecStore>,
-    sha_hasher: MemoSha256,
+    hashing: Hashing,
     gcir_formatter: Arc<ClientInitResponseFormatter>,
     statsig_environment: Option<HashMap<String, DynamicValue>>,
     runtime: Mutex<Option<Runtime>>,
@@ -79,7 +81,7 @@ impl Statsig {
             options,
             gcir_formatter: Arc::new(ClientInitResponseFormatter::new(&spec_store)),
             event_logger: Arc::new(event_logger),
-            sha_hasher: MemoSha256::new(),
+            hashing: Hashing::new(),
             statsig_environment: environment,
             runtime: Mutex::new(opt_runtime),
             spec_store,
@@ -282,8 +284,17 @@ impl Statsig {
     }
 
     pub fn get_client_init_response(&self, user: &StatsigUser) -> InitializeResponse {
+        self.get_client_init_response_with_options(user, self.gcir_formatter.get_default_options())
+    }
+
+    pub fn get_client_init_response_with_options(
+        &self,
+        user: &StatsigUser,
+        options: &ClientInitResponseOptions,
+    ) -> InitializeResponse {
         let user_internal = StatsigUserInternal::new(user, &self.statsig_environment);
-        self.gcir_formatter.get(user_internal, &self.sha_hasher)
+        self.gcir_formatter
+            .get(user_internal, &self.hashing, options)
     }
 
     pub fn log_layer_param_exposure(&self, layer_json: String, parameter_name: String) {
@@ -344,7 +355,7 @@ impl Statsig {
 
         match spec {
             Some(spec) => {
-                let mut context = EvaluatorContext::new(user_internal, &data, &self.sha_hasher);
+                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
                 Evaluator::evaluate(&mut context, spec);
 
                 (
@@ -370,10 +381,10 @@ impl Statsig {
 
         match spec {
             Some(spec) => {
-                let mut context = EvaluatorContext::new(user_internal, &data, &self.sha_hasher);
+                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
                 Evaluator::evaluate(&mut context, spec);
 
-                let evaluation = result_to_gate_eval(gate_name, spec, &mut context.result);
+                let evaluation = result_to_gate_eval(gate_name, &mut context.result);
                 make_feature_gate(
                     gate_name,
                     Some(evaluation),
@@ -401,11 +412,10 @@ impl Statsig {
 
         match spec {
             Some(spec) => {
-                let mut context = EvaluatorContext::new(user_internal, &data, &self.sha_hasher);
+                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
                 Evaluator::evaluate(&mut context, spec);
 
-                let evaluation =
-                    result_to_dynamic_config_eval(config_name, spec, &mut context.result);
+                let evaluation = result_to_dynamic_config_eval(config_name, &mut context.result);
                 make_dynamic_config(
                     config_name,
                     Some(evaluation),
@@ -433,11 +443,10 @@ impl Statsig {
 
         match spec {
             Some(spec) => {
-                let mut context = EvaluatorContext::new(user_internal, &data, &self.sha_hasher);
+                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
                 Evaluator::evaluate(&mut context, spec);
 
-                let evaluation =
-                    result_to_experiment_eval(experiment_name, spec, &mut context.result);
+                let evaluation = result_to_experiment_eval(experiment_name, spec, &mut context.result);
                 make_experiment(
                     experiment_name,
                     Some(evaluation),
@@ -467,10 +476,10 @@ impl Statsig {
 
         match spec {
             Some(spec) => {
-                let mut context = EvaluatorContext::new(user_internal, &data, &self.sha_hasher);
+                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
                 Evaluator::evaluate(&mut context, spec);
 
-                let evaluation = result_to_layer_eval(layer_name, spec, &mut context.result);
+                let evaluation = result_to_layer_eval(layer_name, &mut context.result);
                 let event_logger_ptr = Arc::downgrade(&self.event_logger);
                 make_layer(
                     user_internal,
@@ -541,7 +550,7 @@ impl Statsig {
         let base_eval = experiment
             .__evaluation
             .as_ref()
-            .map(|eval| eval.base.base.clone());
+            .map(|eval| eval.base.clone());
 
         self.event_logger
             .enqueue(QueuedEventPayload::ConfigExposure(ConfigExposure {
@@ -595,7 +604,10 @@ fn create_runtime_if_required() -> (Option<Runtime>, Handle) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{evaluation::evaluation_types::AnyConfigEvaluation, output_logger::LogLevel, StatsigHttpIdListsAdapter};
+    use crate::{
+        evaluation::evaluation_types::AnyConfigEvaluation, output_logger::LogLevel,
+        StatsigHttpIdListsAdapter,
+    };
     use std::env;
     fn get_sdk_key() -> String {
         let key = env::var("test_api_key").expect("test_api_key environment variable not set");
@@ -683,7 +695,7 @@ mod tests {
         let value = match configs.values().next() {
             Some(v) => match v {
                 AnyConfigEvaluation::DynamicConfig(config) => &config.value,
-                AnyConfigEvaluation::Experiment(exp) => &exp.base.value,
+                AnyConfigEvaluation::Experiment(exp) => &exp.value,
             },
             None => panic!("Should have values"),
         };

@@ -1,12 +1,12 @@
 use crate::evaluation::evaluator_result::EvaluatorResult;
-use crate::memo_sha_256::MemoSha256;
+use crate::hashing::Hashing;
 use crate::spec_store::SpecStoreData;
 use crate::statsig_user_internal::StatsigUserInternal;
 
 pub struct EvaluatorContext<'a> {
     pub user: &'a StatsigUserInternal,
     pub spec_store_data: &'a SpecStoreData,
-    pub sha_hasher: &'a MemoSha256,
+    pub hashing: &'a Hashing,
     pub result: EvaluatorResult<'a>,
     pub nested_count: u64,
 }
@@ -15,14 +15,14 @@ impl<'a> EvaluatorContext<'a> {
     pub fn new(
         user: &'a StatsigUserInternal,
         spec_store_data: &'a SpecStoreData,
-        sha_hasher: &'a MemoSha256,
+        hashing: &'a Hashing,
     ) -> Self {
         let result = EvaluatorResult::default();
 
         Self {
             user,
             spec_store_data,
-            sha_hasher,
+            hashing,
             result,
             nested_count: 0,
         }

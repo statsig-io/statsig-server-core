@@ -2,6 +2,7 @@ import {
   AutoReleasingStatsigOptionsRef,
   AutoReleasingStatsigRef,
   AutoReleasingStatsigUserRef,
+  ClientInitResponseOptions,
   consoleLoggerInit,
   DynamicConfigNapi,
   ExperimentNapi,
@@ -204,8 +205,15 @@ export class Statsig {
     };
   }
 
-  getClientInitializeResponse(user: StatsigUser): string {
-    return statsigGetClientInitResponse(this.__ref.refId, user.__ref.refId);
+  getClientInitializeResponse(
+    user: StatsigUser,
+    options?: ClientInitResponseOptions,
+  ): string {
+    return statsigGetClientInitResponse(
+      this.__ref.refId,
+      user.__ref.refId,
+      options,
+    );
   }
 }
 

@@ -18,7 +18,7 @@ pub struct LayerExposure {
 
 impl StatsigExposure for LayerExposure {
     fn make_dedupe_key(&self) -> String {
-        let rule_id = self.evaluation.as_ref().map(|eval| &eval.base.base.rule_id);
+        let rule_id = self.evaluation.as_ref().map(|eval| &eval.base.rule_id);
 
         // todo: Node dedupes on all metadata values. Important?
         make_exposure_key(&self.user.user_data, &self.layer_name, rule_id, Some(vec![self.parameter_name.clone()]))
@@ -36,27 +36,27 @@ impl StatsigExposure for LayerExposure {
                         .undelegated_secondary_exposures
                         .unwrap_or_else(Vec::new);
 
-                    let mut allocated_experiment = "".into();
+                    let mut allocated_experiment = None;
 
                     if is_explicit {
                         allocated_experiment = evaluation.allocated_experiment_name;
-                        secondary_exposures = evaluation.base.base.secondary_exposures;
+                        secondary_exposures = evaluation.base.secondary_exposures;
                     }
 
                     (
-                        evaluation.base.base.rule_id,
+                        evaluation.base.rule_id,
                         Some(secondary_exposures),
                         is_explicit,
                         allocated_experiment,
                     )
                 }
-                None => ("".into(), None, false, "".into()),
+                None => ("".into(), None, false, None),
             };
 
         let mut metadata = get_metadata_with_details(self.evaluation_details);
         metadata.insert("config".into(), self.layer_name);
         metadata.insert("ruleID".into(), rule_id);
-        metadata.insert("allocatedExperiment".into(), allocated_experiment);
+        metadata.insert("allocatedExperiment".into(), allocated_experiment.unwrap_or_default());
         metadata.insert("parameterName".into(), self.parameter_name);
         metadata.insert("isExplicitParameter".into(), is_explicit.to_string());
 

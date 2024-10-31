@@ -4,8 +4,8 @@ use napi_derive::napi;
 use serde_json::json;
 use sigstat::instance_store::INST_STORE;
 use sigstat::{
-  get_instance_or_else, get_instance_or_noop, get_instance_or_return, log_e, Statsig,
-  StatsigOptions, StatsigUser,
+  get_instance_or_else, get_instance_or_noop, get_instance_or_return, log_e,
+  ClientInitResponseOptions, HashAlgorithm, Statsig, StatsigOptions, StatsigUser,
 };
 use std::collections::HashMap;
 
@@ -179,8 +179,17 @@ pub fn statsig_log_layer_param_exposure(
   statsig.log_layer_param_exposure(layer_data, param_name)
 }
 
+#[napi(object, js_name = "ClientInitResponseOptions")]
+pub struct ClientInitResponseOptionsNapi {
+  pub hash_algorithm: Option<String>,
+}
+
 #[napi]
-pub fn statsig_get_client_init_response(statsig_ref: String, user_ref: String) -> String {
+pub fn statsig_get_client_init_response(
+  statsig_ref: String,
+  user_ref: String,
+  options: Option<ClientInitResponseOptionsNapi>,
+) -> String {
   let statsig = get_instance_or_else!(Statsig, &statsig_ref, {
     return String::from("{}");
   });
@@ -189,7 +198,13 @@ pub fn statsig_get_client_init_response(statsig_ref: String, user_ref: String) -
     return String::from("{}");
   });
 
-  let response = statsig.get_client_init_response(&user);
+  let options = convert_client_init_response_options(&options);
+
+  let response = match options.as_ref() {
+    Some(options) => statsig.get_client_init_response_with_options(&user, options),
+    None => statsig.get_client_init_response(&user),
+  };
+
   json!(response).to_string()
 }
 
@@ -227,4 +242,20 @@ fn create_empty_experiment(name: String) -> ExperimentNapi {
 
 fn create_empty_layer_json(name: String) -> String {
   format!("\"name\": \"{}\"", name)
+}
+
+fn convert_client_init_response_options(
+  options: &Option<ClientInitResponseOptionsNapi>,
+) -> Option<ClientInitResponseOptions> {
+  let options = match options {
+    Some(options) => options,
+    None => return None,
+  };
+
+  let hash_algorithm = options
+    .hash_algorithm
+    .as_ref()
+    .and_then(|s| HashAlgorithm::from_string(&s));
+
+  Some(ClientInitResponseOptions { hash_algorithm })
 }

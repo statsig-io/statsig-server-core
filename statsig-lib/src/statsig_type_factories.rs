@@ -17,7 +17,7 @@ pub fn make_feature_gate(
     details: EvaluationDetails,
 ) -> FeatureGate {
     let (value, rule_id, id_type) = match &evaluation {
-        Some(e) => (e.value, e.base.rule_id.clone(), e.base.id_type.clone()),
+        Some(e) => (e.value, e.base.rule_id.clone(), e.id_type.clone()),
         None => (false, "default".into(), "".into()),
     };
 
@@ -41,9 +41,9 @@ fn extract_from_experiment_evaluation(
 ) {
     match &evaluation {
         Some(e) => (
-            value_to_hashmap(&e.base.value),
-            e.base.base.rule_id.clone(),
-            e.base.base.id_type.clone(),
+            value_to_hashmap(&e.value),
+            e.base.rule_id.clone(),
+            e.id_type.clone(),
             e.group_name.clone(),
         ),
         None => (HashMap::new(), "default".into(), "".into(), None),
@@ -59,7 +59,7 @@ pub fn make_dynamic_config(
         Some(e) => (
             value_to_hashmap(&e.value),
             e.base.rule_id.clone(),
-            e.base.id_type.clone(),
+            e.id_type.clone(),
         ),
         None => (HashMap::new(), "default".into(), "".into()),
     };
@@ -99,19 +99,17 @@ pub fn make_layer(
     details: EvaluationDetails,
     event_logger_ptr: Option<Weak<EventLogger>>
 ) -> Layer {
-    let (value, rule_id, id_type) = match &evaluation {
+    let (value, rule_id) = match &evaluation {
         Some(e) => (
-            value_to_hashmap(&e.base.value),
-            e.base.base.rule_id.clone(),
-            e.base.base.id_type.clone(),
+            value_to_hashmap(&e.value),
+            e.base.rule_id.clone(),
         ),
-        None => (HashMap::new(), "default".into(), "".into()),
+        None => (HashMap::new(), "default".into()),
     };
 
     Layer {
         name: name.to_string(),
         rule_id,
-        id_type,
         details: details.clone(),
         group_name: None,
         __value: value,

@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+fn is_false(v: &bool) -> bool {
+    *v == false
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SecondaryExposure {
@@ -13,7 +17,6 @@ pub struct SecondaryExposure {
 pub struct BaseEvaluation {
     pub name: String,
     pub rule_id: String,
-    pub id_type: String,
     pub secondary_exposures: Vec<SecondaryExposure>,
 }
 
@@ -22,6 +25,7 @@ pub struct GateEvaluation {
     #[serde(flatten)]
     pub base: BaseEvaluation,
 
+    pub id_type: String,
     pub value: bool,
 }
 
@@ -30,7 +34,10 @@ pub struct DynamicConfigEvaluation {
     #[serde(flatten)]
     pub base: BaseEvaluation,
 
+    pub id_type: String,
     pub value: Value,
+
+    // The 'group' field is identical to 'rule_id'. See group_name instead.
     pub group: String,
     pub is_device_based: bool,
 }
@@ -38,11 +45,29 @@ pub struct DynamicConfigEvaluation {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ExperimentEvaluation {
     #[serde(flatten)]
-    pub base: DynamicConfigEvaluation,
+    pub base: BaseEvaluation,
 
+    pub id_type: String,
+    pub value: Value,
+
+    // The 'group' field is identical to 'rule_id'. See group_name instead.
+    pub group: String,
+    pub is_device_based: bool,
+
+    #[serde(skip_serializing_if = "is_false")]
+    pub is_in_layer: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub explicit_parameters: Option<Vec<String>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub group_name: Option<String>,
-    pub is_experiment_active: bool,
-    pub is_user_in_experiment: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_experiment_active: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_user_in_experiment: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -55,9 +80,25 @@ pub enum AnyConfigEvaluation {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct LayerEvaluation {
     #[serde(flatten)]
-    pub base: DynamicConfigEvaluation,
+    pub base: BaseEvaluation,
 
-    pub allocated_experiment_name: String,
+    pub value: Value,
+
+    // The 'group' field is identical to 'rule_id'. See group_name instead.
+    pub group: String,
+    pub is_device_based: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_name: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_experiment_active: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_user_in_experiment: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allocated_experiment_name: Option<String>,
     pub explicit_parameters: Vec<String>,
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
 }

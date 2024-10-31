@@ -21,6 +21,22 @@ lazy_static! {
 
 impl Evaluator {
     pub fn evaluate<'a>(ctx: &mut EvaluatorContext<'a>, spec: &'a Spec) {
+        if ctx.result.id_type.is_none() {
+            ctx.result.id_type = Some(&spec.id_type);
+        }
+
+        if let Some(is_active) = spec.is_active {
+            ctx.result.is_experiment_active = is_active;
+        }
+
+        if let Some(has_shared_params) = spec.has_shared_params {
+            ctx.result.is_in_layer = has_shared_params;
+        }
+
+        if let Some(explicit_params) = &spec.explicit_parameters {
+            ctx.result.explicit_parameters = Some(explicit_params);
+        }
+
         for rule in spec.rules.iter() {
             evaluate_rule(ctx, rule);
 
@@ -50,6 +66,7 @@ impl Evaluator {
             ctx.result.rule_id = Some(&rule.id);
             ctx.result.group_name = rule.group_name.as_ref();
             ctx.result.is_experiment_group = rule.is_experiment_group.unwrap_or(false);
+            ctx.result.is_experiment_active = spec.is_active.unwrap_or(false);
             ctx.finalize_evaluation();
             return;
         }
@@ -185,7 +202,7 @@ fn evaluate_id_list<'a>(
     let list = unwrap_or_return!(id_lists.get(list_name), false);
 
     let value = unwrap_or_return!(&value.string_value, false);
-    let hashed = ctx.sha_hasher.hash_name(value);
+    let hashed = ctx.hashing.sha256(value);
     let lookup_id: String = hashed.chars().take(8).collect();
 
     let is_in_list = list.ids.contains(&lookup_id);
@@ -276,7 +293,7 @@ fn evaluate_pass_percentage(ctx: &mut EvaluatorContext, rule: &Rule, spec_salt: 
         .as_ref()
         .unwrap_or(&EMPTY_STR);
     let input = format!("{}.{}.{}", spec_salt, rule_salt, unit_id);
-    match ctx.sha_hasher.compute_hash(&input) {
+    match ctx.hashing.evaluation_hash(&input) {
         Some(hash) => ((hash % 10000) as f64) < rule.pass_percentage * 100.0,
         None => false,
     }
@@ -300,6 +317,6 @@ fn get_hash_for_user_bucket(ctx: &mut EvaluatorContext, condition: &Condition) -
     }
 
     let input = format!("{}.{}", salt, unit_id);
-    let hash = ctx.sha_hasher.compute_hash(&input).unwrap_or(1);
+    let hash = ctx.hashing.evaluation_hash(&input).unwrap_or(1);
     dyn_value!(hash % 1000)
 }

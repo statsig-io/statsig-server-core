@@ -54,7 +54,7 @@ pub struct Experiment {
 pub struct Layer {
     pub name: String,
     pub rule_id: String,
-    pub id_type: String,
+
     pub group_name: Option<String>,
     pub details: EvaluationDetails,
 

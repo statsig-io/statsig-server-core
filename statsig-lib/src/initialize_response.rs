@@ -12,6 +12,10 @@ pub struct InitializeResponse {
     pub has_updates: bool,
     pub hash_used: String,
     pub user: StatsigUserInternal,
+
+    #[serde(rename = "sdkParams")]
+    pub sdk_params: HashMap<String, String>,
+    pub evaluated_keys: HashMap<String, String>,
 }
 
 impl InitializeResponse {
@@ -24,6 +28,8 @@ impl InitializeResponse {
             has_updates: false,
             hash_used: Default::default(),
             user,
+            sdk_params: Default::default(),
+            evaluated_keys: Default::default(),
         }
     }
 }
