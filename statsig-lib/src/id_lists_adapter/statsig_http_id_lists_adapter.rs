@@ -7,7 +7,6 @@ use serde_json::from_str;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock, Weak};
 use std::time::Duration;
-use std::vec;
 use tokio::runtime::Handle;
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
@@ -37,7 +36,9 @@ impl StatsigHttpIdListsAdapter {
                 .clone()
                 .unwrap_or_else(|| DEFAULT_ID_LISTS_MANIFEST_URL.to_string()),
             listener: RwLock::new(None),
-            network: NetworkClient::new(Some(get_request_headers(sdk_key))),
+            network: NetworkClient::new(Some(StatsigMetadata::get_constant_request_headers(
+                sdk_key,
+            ))),
             shutdown_notify: Arc::new(Notify::new()),
             sync_interval_duration: Duration::from_millis(
                 options
@@ -254,28 +255,10 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
     }
 }
 
-// todo: share across event_logging_adapter and here
-fn get_request_headers(sdk_key: &str) -> HashMap<String, String> {
-    let metadata = StatsigMetadata::new();
-    vec![
-        ("STATSIG-API-KEY".to_string(), sdk_key.to_string()),
-        (
-            "STATSIG-SDK-TYPE".to_string(),
-            metadata.sdk_type.to_string(),
-        ),
-        (
-            "STATSIG-SDK-VERSION".to_string(),
-            metadata.sdk_version.to_string(),
-        ),
-    ]
-    .into_iter()
-    .collect()
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::id_lists_adapter::IdList;
     use crate::hashing::Hashing;
+    use crate::id_lists_adapter::IdList;
 
     use super::*;
     use mockito::{Mock, Server, ServerGuard};

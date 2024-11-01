@@ -1,4 +1,5 @@
 use crate::{log_e, log_i, log_w};
+use chrono::Utc;
 use curl::easy::{Easy, List};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -15,6 +16,7 @@ pub struct RequestArgs {
     pub retries: u32,
     pub headers: Option<HashMap<String, String>>,
     pub query_params: Option<HashMap<String, String>>,
+    pub accept_gzip_response: bool,
 }
 
 impl RequestArgs {
@@ -25,6 +27,7 @@ impl RequestArgs {
             retries: 0,
             headers: None,
             query_params: None,
+            accept_gzip_response: false,
         }
     }
 }
@@ -142,11 +145,10 @@ impl NetworkClient {
         let start_time = std::time::Instant::now();
         {
             let mut transfer = easy.transfer();
-            if let Err(err) = transfer
-                .write_function(|data| {
-                    buffer.extend_from_slice(data);
-                    Ok(data.len())
-                }) {
+            if let Err(err) = transfer.write_function(|data| {
+                buffer.extend_from_slice(data);
+                Ok(data.len())
+            }) {
                 return SimpleResponse {
                     status_code: 0,
                     error: Some(err.to_string()),
@@ -195,6 +197,15 @@ impl NetworkClient {
         for (key, value) in &self.headers {
             headers.append(&format!("{}: {}", key, value))?;
         }
+
+        if request_args.accept_gzip_response {
+            easy.accept_encoding("gzip")?;
+        }
+
+        headers.append(&format!(
+            "statsig-client-time: {}",
+            Utc::now().timestamp_millis()
+        ))?;
 
         if *method == HttpMethod::POST {
             easy.post(true)?;

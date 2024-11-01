@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["statsig-lib", "statsig-ffi", "statsig-napi", "statsig-grpc", "statsig-pyo3"]
+members = ["statsig-lib", "statsig-ffi", "statsig-napi", "statsig-grpc", "statsig-pyo3", "examples/rust"]
 
 [profile.release]
 opt-level = "z"     # Optimize for size.

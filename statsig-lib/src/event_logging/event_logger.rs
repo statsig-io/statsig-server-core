@@ -1,9 +1,10 @@
-use crate::event_logging::statsig_event_internal::StatsigEventInternal;
 use crate::background_task::{BackgroundTask, BackgroundTaskRunner};
 use crate::event_logging::config_exposure::ConfigExposure;
 use crate::event_logging::gate_exposure::GateExposure;
 use crate::event_logging::layer_exposure::LayerExposure;
+use crate::event_logging::statsig_event_internal::StatsigEventInternal;
 use crate::event_logging::statsig_exposure::StatsigExposure;
+use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
 use crate::{log_e, StatsigOptions};
@@ -15,7 +16,6 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex, RwLock};
 use tokio::runtime::Handle;
 use tokio::time::Duration;
-use crate::event_logging_adapter::EventLoggingAdapter;
 
 const DEFAULT_FLUSH_INTERVAL_MS: u32 = 60_000;
 const DEFAULT_QUEUE_SIZE: u32 = 500;
@@ -149,13 +149,15 @@ impl EventLogger {
 
         let payload = HashMap::from([
             ("events".to_string(), json!(processed_events)),
-            ("statsigMetadata".to_string(), json!(StatsigMetadata::new())),
+            (
+                "statsigMetadata".to_string(),
+                StatsigMetadata::get_as_json(),
+            ),
         ]);
 
         let _ = event_logging_adapter.log_events(payload, event_count).await;
     }
 }
-
 
 fn validate_queued_event_payload(
     payload: QueuedEventPayload,
@@ -206,7 +208,7 @@ fn validate_exposure_event<T: StatsigExposure>(
 }
 
 impl BackgroundTask for EventLogger {
-    fn run(&self) -> Pin<Box<dyn Future<Output=()> + Send>> {
+    fn run(&self) -> Pin<Box<dyn Future<Output = ()> + Send>> {
         let queue = self.event_queue.clone();
         let adapter = self.event_logging_adapter.clone();
         let prev_expos = self.previous_exposure_info.clone();
@@ -219,13 +221,13 @@ impl BackgroundTask for EventLogger {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::evaluation::evaluation_details::EvaluationDetails;
+    use crate::event_logging::statsig_event::StatsigEvent;
     use crate::statsig_user_internal::StatsigUserInternal;
     use crate::StatsigUser;
-    use crate::evaluation::evaluation_details::EvaluationDetails;
     use async_trait::async_trait;
     use serde_json::Value;
     use std::sync::atomic::{AtomicU64, Ordering};
-    use crate::event_logging::statsig_event::StatsigEvent;
 
     fn enqueue_single(logger: &EventLogger, user_id: &str, event_name: &str) {
         let user_internal =

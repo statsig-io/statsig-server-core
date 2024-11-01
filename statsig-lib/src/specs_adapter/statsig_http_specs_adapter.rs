@@ -1,6 +1,7 @@
 use crate::network_client::{NetworkClient, RequestArgs};
-use crate::specs_adapter::{SpecsUpdateListener, SpecsAdapter, SpecsUpdate};
+use crate::specs_adapter::{SpecsAdapter, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
+use crate::statsig_metadata::StatsigMetadata;
 use crate::statsig_options::StatsigOptions;
 use crate::{log_e, SpecsSource};
 use async_trait::async_trait;
@@ -27,9 +28,11 @@ pub struct StatsigHttpSpecsAdapter {
 
 impl StatsigHttpSpecsAdapter {
     pub fn new(sdk_key: &str, options: &StatsigOptions) -> Self {
+        let headers = StatsigMetadata::get_constant_request_headers(sdk_key);
+
         Self {
             specs_url: construct_specs_url(sdk_key, options),
-            network: NetworkClient::new(None),
+            network: NetworkClient::new(Some(headers)),
             listener: RwLock::new(None),
             shutdown_notify: Arc::new(Notify::new()),
             task_handle: Mutex::new(None),
@@ -111,16 +114,17 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
             }
         }
 
-        let query_params = current_store_lcut.map(|lcut| HashMap::from([("sinceTime".into(), lcut.to_string())]));
+        let query_params =
+            current_store_lcut.map(|lcut| HashMap::from([("sinceTime".into(), lcut.to_string())]));
 
-        let res = self
-            .network
-            .get(RequestArgs {
-                url: self.specs_url.clone(),
-                retries: 2,
-                query_params,
-                ..RequestArgs::new()
-            });
+        let res = self.network.get(RequestArgs {
+            url: self.specs_url.clone(),
+            retries: 2,
+            query_params,
+            accept_gzip_response: true,
+            ..RequestArgs::new()
+        });
+
 
         let data = match res {
             Some(r) => r,
@@ -141,7 +145,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
                 Some(listener) => {
                     listener.did_receive_specs_update(update);
                     Ok(())
-                },
+                }
                 None => Err(StatsigErr::SpecsListenerNotSet),
             },
             Err(_) => return Err(StatsigErr::SpecsListenerNotSet),
