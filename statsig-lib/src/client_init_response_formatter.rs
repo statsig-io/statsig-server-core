@@ -9,7 +9,7 @@ use crate::hashing::{HashAlgorithm, Hashing};
 use crate::initialize_response::InitializeResponse;
 use crate::read_lock_or_else;
 use crate::spec_store::SpecStore;
-use crate::statsig_user_internal::StatsigUserInternal;
+use crate::statsig_user_internal::{StatsigUserInternal, StatsigUserLoggable};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -117,7 +117,7 @@ impl ClientInitResponseFormatter {
             time: data.values.time,
             has_updates: true,
             hash_used: hash_used.to_string(),
-            user: user_internal,
+            user: StatsigUserLoggable::new(user_internal),
             sdk_params: HashMap::new(),
             evaluated_keys,
         }

@@ -1,5 +1,5 @@
 use crate::evaluation::evaluation_types::{AnyConfigEvaluation, GateEvaluation, LayerEvaluation};
-use crate::statsig_user_internal::StatsigUserInternal;
+use crate::statsig_user_internal::{StatsigUserInternal, StatsigUserLoggable};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -11,7 +11,7 @@ pub struct InitializeResponse {
     pub time: u64,
     pub has_updates: bool,
     pub hash_used: String,
-    pub user: StatsigUserInternal,
+    pub user: StatsigUserLoggable,
 
     #[serde(rename = "sdkParams")]
     pub sdk_params: HashMap<String, String>,
@@ -27,7 +27,7 @@ impl InitializeResponse {
             time: 0,
             has_updates: false,
             hash_used: Default::default(),
-            user,
+            user: StatsigUserLoggable::new(user),
             sdk_params: Default::default(),
             evaluated_keys: Default::default(),
         }

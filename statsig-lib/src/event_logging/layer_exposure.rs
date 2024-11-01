@@ -42,7 +42,6 @@ impl StatsigExposure for LayerExposure {
                         allocated_experiment = evaluation.allocated_experiment_name;
                         secondary_exposures = evaluation.base.secondary_exposures;
                     }
-
                     (
                         evaluation.base.rule_id,
                         Some(secondary_exposures),

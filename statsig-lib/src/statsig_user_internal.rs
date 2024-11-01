@@ -107,3 +107,31 @@ impl StatsigUserInternal {
         env.get(&field.lowercased_value)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_loggable_strips_private_attributes() {
+        let mut private_attrs = HashMap::new();
+        private_attrs.insert("secret".to_string(), DynamicValue::from("sensitive_data"));
+
+        let user = StatsigUser {
+            private_attributes: Some(private_attrs),
+            ..StatsigUser::with_user_id("test_user".to_string())
+        };
+
+        let user_internal = StatsigUserInternal::new(&user, &None);
+        let loggable = StatsigUserLoggable::new(user_internal);
+
+        let deserialized: StatsigUserInternal = serde_json::from_value(loggable.value).unwrap();
+
+        assert!(deserialized.user_data.private_attributes.is_none());
+        assert_eq!(
+            deserialized.user_data.user_id,
+            Some(DynamicValue::from("test_user"))
+        );
+    }
+}
