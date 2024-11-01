@@ -23,7 +23,7 @@ jobs:
       - name: Print GitHub Context
         run: |
           echo "Printing GitHub context"
-          echo '${{ toJson(github) }}' | jq .
+          echo "${{ toJson(github) }}"
 
   build:
     timeout-minutes: 15
