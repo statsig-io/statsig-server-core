@@ -1,15 +1,12 @@
-use crate::statsig_grpc_client::statsig_forward_proxy::statsig_forward_proxy_client::StatsigForwardProxyClient;
+use crate::statsig_forward_proxy::config_spec_request::ApiVersion;
+use crate::statsig_forward_proxy::statsig_forward_proxy_client::StatsigForwardProxyClient;
 use crate::statsig_grpc_err::StatsigGrpcErr;
 use crate::{ConfigSpecRequest, ConfigSpecResponse};
-use statsig_forward_proxy::config_spec_request::ApiVersion;
 use std::sync::Mutex;
 use std::time::Duration;
 use tonic::transport::Channel;
 use tonic::Streaming;
 
-pub mod statsig_forward_proxy {
-    tonic::include_proto!("statsig_forward_proxy");
-}
 pub struct StatsigGrpcClient {
     sdk_key: String,
     proxy_api: String,
@@ -42,7 +39,7 @@ impl StatsigGrpcClient {
         client
             .get_config_spec(request)
             .await
-            .map_err(|e| {StatsigGrpcErr::ErrorGrpcStatus(e)})
+            .map_err(|e| StatsigGrpcErr::ErrorGrpcStatus(e))
             .map(|r| r.into_inner())
     }
 
@@ -60,9 +57,14 @@ impl StatsigGrpcClient {
             .map(|s| s.into_inner())
     }
 
-    async fn get_or_setup_grpc_client(&self) -> Result<StatsigForwardProxyClient<Channel>, StatsigGrpcErr> {
+    async fn get_or_setup_grpc_client(
+        &self,
+    ) -> Result<StatsigForwardProxyClient<Channel>, StatsigGrpcErr> {
         {
-            let lock = self.grpc_client.lock().map_err(|_| StatsigGrpcErr::FailedToGetLock)?;
+            let lock = self
+                .grpc_client
+                .lock()
+                .map_err(|_| StatsigGrpcErr::FailedToGetLock)?;
 
             if let Some(client) = lock.as_ref() {
                 return Ok(client.clone());
@@ -78,7 +80,10 @@ impl StatsigGrpcClient {
 
         let new_client = StatsigForwardProxyClient::new(channel);
 
-        let mut lock = self.grpc_client.lock().map_err(|_| StatsigGrpcErr::FailedToGetLock)?;
+        let mut lock = self
+            .grpc_client
+            .lock()
+            .map_err(|_| StatsigGrpcErr::FailedToGetLock)?;
 
         *lock = Some(new_client.clone());
         Ok(new_client)

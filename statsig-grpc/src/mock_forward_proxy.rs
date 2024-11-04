@@ -1,3 +1,6 @@
+use crate::{
+    ConfigSpecRequest, ConfigSpecResponse, StatsigForwardProxy, StatsigForwardProxyServer,
+};
 use lazy_static::lazy_static;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicI32, Ordering};
@@ -10,12 +13,6 @@ use tonic::codegen::tokio_stream::wrappers::ReceiverStream;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
-
-pub mod statsig_forward_proxy {
-    tonic::include_proto!("statsig_forward_proxy");
-}
-use statsig_forward_proxy::{ConfigSpecResponse, ConfigSpecRequest};
-use statsig_forward_proxy::statsig_forward_proxy_server::{StatsigForwardProxy, StatsigForwardProxyServer};
 lazy_static! {
     static ref PORT_ID: AtomicI32 = AtomicI32::new(50051);
 }
@@ -23,14 +20,15 @@ lazy_static! {
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mock_server = MockForwardProxy::spawn().await;
-    mock_server.send_stream_update(Ok(ConfigSpecResponse {
-        spec: "bg_sync".to_string(),
-        last_updated: 123,
-    })).await;
+    mock_server
+        .send_stream_update(Ok(ConfigSpecResponse {
+            spec: "bg_sync".to_string(),
+            last_updated: 123,
+        }))
+        .await;
 
     Ok(())
 }
-
 
 pub async fn wait_one_ms() {
     tokio::time::sleep(Duration::from_millis(1)).await;

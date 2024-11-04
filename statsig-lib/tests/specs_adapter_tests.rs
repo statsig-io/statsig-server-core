@@ -1,10 +1,12 @@
-#[cfg(test)]
-#[cfg(feature = "with_grpc")]
+#[cfg(all(test, feature = "with_grpc"))]
 pub mod specs_adapter_tests {
     use sigstat::output_logger::{initialize_simple_output_logger, LogLevel};
-    use sigstat::{AdapterType, SpecAdapterConfig, SpecsSource, SpecsInfo, SpecsUpdate, SpecsUpdateListener};
-    use sigstat::StatsigGrpcSpecAdapter;
     use sigstat::SpecsAdapter;
+    use sigstat::StatsigGrpcSpecAdapter;
+    use sigstat::{
+        AdapterType, SpecAdapterConfig, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener,
+    };
+    use sigstat_grpc::mock_forward_proxy::{wait_one_ms, MockForwardProxy};
     use sigstat_grpc::*;
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
@@ -12,7 +14,6 @@ pub mod specs_adapter_tests {
     use tokio::sync::Notify;
     use tokio::time::error::Elapsed;
     use tokio::time::timeout;
-    use sigstat_grpc::mock_forward_proxy::{wait_one_ms, MockForwardProxy};
 
     async fn setup() -> (
         Arc<MockForwardProxy>,
@@ -37,7 +38,7 @@ pub mod specs_adapter_tests {
     async fn test_shutting_down() {
         let (mock_proxy, mock_listener, adapter) = setup().await;
         mock_proxy
-            .send_stream_update(Ok(ConfigSpecResponse {
+            .send_stream_update(Ok(sigstat_grpc::ConfigSpecResponse {
                 spec: "bg_sync".to_string(),
                 last_updated: 123,
             }))
