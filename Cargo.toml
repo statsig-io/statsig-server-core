@@ -5,10 +5,22 @@ opt-level = "z"
 strip = true
 
 [workspace]
-members = ["statsig-lib", "statsig-ffi", "statsig-napi", "statsig-grpc", "statsig-pyo3", "examples/rust", "exec"]
+members = [
+    "statsig-lib",
+    "statsig-ffi",
+    "statsig-napi",
+    "statsig-grpc",
+    "statsig-pyo3",
+    "examples/rust",
+    "exec",
+]
 resolver = "2"
 
 [workspace.package]
 edition = "2021"
 license = "ISC"
 version = "0.0.1"
+homepage = "https://statsig.com/"
+authors = ["Statsig", "Daniel Loomb <daniel@statsig.com>"]
+readme = "README.md"
+repository = "https://github.com/statsig-io/statsig-server-core"
