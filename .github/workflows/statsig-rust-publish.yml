@@ -29,6 +29,7 @@ jobs:
         run: |
           git fetch
           git checkout ${{ steps.workflow_run_info.outputs.commit_sha }}
+          git submodule update --init --recursive
 
       - name: Cache Cargo Build
         uses: actions/cache@v4
@@ -45,6 +46,9 @@ jobs:
 
       - name: Apply Beta Tag
         run: cargo exec beta-tag-package
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
 
       - name: Check and Publish Statsig Grpc Package
         run: |
