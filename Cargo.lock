@@ -1974,6 +1974,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "simple_logger",
+ "statsig-grpc",
  "tokio",
  "uuid",
 ]
@@ -2044,7 +2045,6 @@ dependencies = [
  "lazy_static",
  "log",
  "prost",
- "sigstat",
  "tokio",
  "tonic",
  "tonic-build",

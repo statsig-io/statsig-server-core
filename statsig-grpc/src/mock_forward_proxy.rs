@@ -1,6 +1,5 @@
 use lazy_static::lazy_static;
-use sigstat::log_e;
-use statsig_grpc::{
+use crate::{
     ConfigSpecRequest, ConfigSpecResponse, StatsigForwardProxy, StatsigForwardProxyServer,
 };
 use std::net::SocketAddr;
@@ -62,7 +61,7 @@ impl MockForwardProxy {
         };
 
         if let Err(err) = sender.send(update).await {
-            log_e!("Failed to send update {}", err)
+            print!("Failed to send update {}", err)
         }
     }
 

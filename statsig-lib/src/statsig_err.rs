@@ -15,7 +15,9 @@ pub enum StatsigErr {
     IdListsAdapterNetworkFailure,
     IdListsAdapterParsingFailure(String),
     IdListsAdapterRuntimeHandleLockFailure,
-    IdListsAdapterFailedToInsertIdList
+    IdListsAdapterFailedToInsertIdList,
+
+    GrpcError(String),
 }
 
 impl Display for StatsigErr {
@@ -35,6 +37,8 @@ impl Display for StatsigErr {
             StatsigErr::IdListsAdapterParsingFailure(e) => write!(f, "IDLists Adapter failed to parse network response, {}", e),
             StatsigErr::IdListsAdapterRuntimeHandleLockFailure => write!(f, "IDLists Adapter failed to set Runtime Handle"),
             StatsigErr::IdListsAdapterFailedToInsertIdList => write!(f, "Failed to insert new Id List"),
+
+            StatsigErr::GrpcError(e) => write!(f, "{}", e)
         }
     }
 }

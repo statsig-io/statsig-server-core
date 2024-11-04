@@ -1,12 +1,15 @@
-use crate::statsig_grpc_specs_adapter::statsig_forward_proxy::config_spec_request::ApiVersion;
-use crate::statsig_grpc_specs_adapter::statsig_forward_proxy::statsig_forward_proxy_client::StatsigForwardProxyClient;
+use crate::statsig_grpc_client::statsig_forward_proxy::statsig_forward_proxy_client::StatsigForwardProxyClient;
+use crate::statsig_grpc_err::StatsigGrpcErr;
 use crate::{ConfigSpecRequest, ConfigSpecResponse};
-use sigstat::StatsigErr;
+use statsig_forward_proxy::config_spec_request::ApiVersion;
 use std::sync::Mutex;
 use std::time::Duration;
 use tonic::transport::Channel;
 use tonic::Streaming;
 
+pub mod statsig_forward_proxy {
+    tonic::include_proto!("statsig_forward_proxy");
+}
 pub struct StatsigGrpcClient {
     sdk_key: String,
     proxy_api: String,
@@ -22,7 +25,7 @@ impl StatsigGrpcClient {
         }
     }
 
-    pub async fn connect_client(&self) -> Result<(), StatsigErr> {
+    pub async fn connect_client(&self) -> Result<(), StatsigGrpcErr> {
         self.get_or_setup_grpc_client().await.map(|_| ())
     }
 
@@ -32,39 +35,34 @@ impl StatsigGrpcClient {
         }
     }
 
-    pub async fn get_specs(&self, lcut: Option<u64>) -> Result<ConfigSpecResponse, StatsigErr> {
+    pub async fn get_specs(&self, lcut: Option<u64>) -> Result<ConfigSpecResponse, StatsigGrpcErr> {
         let request = create_config_spec_request(&self.sdk_key, lcut);
         let mut client = self.get_or_setup_grpc_client().await?;
 
         client
             .get_config_spec(request)
             .await
-            .map_err(|e| StatsigErr::CustomError(format!("gRPC get_config_spec failed - {}", e)))
+            .map_err(|e| {StatsigGrpcErr::ErrorGrpcStatus(e)})
             .map(|r| r.into_inner())
     }
 
     pub async fn get_specs_stream(
         &self,
         lcut: Option<u64>,
-    ) -> Result<Streaming<ConfigSpecResponse>, StatsigErr> {
+    ) -> Result<Streaming<ConfigSpecResponse>, StatsigGrpcErr> {
         let request = create_config_spec_request(&self.sdk_key, lcut);
         let mut client = self.get_or_setup_grpc_client().await?;
 
         client
             .stream_config_spec(request)
             .await
-            .map_err(|e| StatsigErr::CustomError(format!("gRPC stream_config_spec failed - {}", e)))
+            .map_err(|e| StatsigGrpcErr::ErrorGrpcStatus(e))
             .map(|s| s.into_inner())
     }
 
-    async fn get_or_setup_grpc_client(
-        &self,
-    ) -> Result<StatsigForwardProxyClient<Channel>, StatsigErr> {
+    async fn get_or_setup_grpc_client(&self) -> Result<StatsigForwardProxyClient<Channel>, StatsigGrpcErr> {
         {
-            let lock = self
-                .grpc_client
-                .lock()
-                .map_err(|_| StatsigErr::SpecsAdapterLockFailure)?;
+            let lock = self.grpc_client.lock().map_err(|_| StatsigGrpcErr::FailedToGetLock)?;
 
             if let Some(client) = lock.as_ref() {
                 return Ok(client.clone());
@@ -72,18 +70,15 @@ impl StatsigGrpcClient {
         }
 
         let channel = Channel::from_shared(self.proxy_api.clone())
-            .map_err(|e| StatsigErr::CustomError(format!("Failed to create gRPC channel: {}", e)))?
+            .map_err(|e| StatsigGrpcErr::FailedToConnect(e.to_string()))?
             .connect_timeout(Duration::from_secs(5))
             .connect()
             .await
-            .map_err(|e| StatsigErr::CustomError(format!("gRPC failed to connect: {}", e)))?;
+            .map_err(|e| StatsigGrpcErr::FailedToConnect(e.to_string()))?;
 
         let new_client = StatsigForwardProxyClient::new(channel);
 
-        let mut lock = self
-            .grpc_client
-            .lock()
-            .map_err(|_| StatsigErr::SpecsAdapterLockFailure)?;
+        let mut lock = self.grpc_client.lock().map_err(|_| StatsigGrpcErr::FailedToGetLock)?;
 
         *lock = Some(new_client.clone());
         Ok(new_client)
