@@ -1,9 +1,14 @@
-[workspace]
-resolver = "2"
-members = ["statsig-lib", "statsig-ffi", "statsig-napi", "statsig-grpc", "statsig-pyo3", "examples/rust"]
-
 [profile.release]
-opt-level = "z"     # Optimize for size.
-lto = true          # Enable Link Time Optimization
-codegen-units = 1   # Reduce number of codegen units to increase optimizations.
-strip = true        # Automatically strip symbols from the binary.
+codegen-units = 1
+lto = true
+opt-level = "z"
+strip = true
+
+[workspace]
+members = ["statsig-lib", "statsig-ffi", "statsig-napi", "statsig-grpc", "statsig-pyo3", "examples/rust", "exec"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "ISC"
+version = "0.0.1"

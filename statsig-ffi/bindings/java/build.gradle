@@ -6,7 +6,7 @@ plugins {
 }
 
 group 'com.statsig'
-version '0.0.3' // WARN it's now up-to-date TODO auto bump
+version project.property("version")
 
 def expectedTasks = [
     'java-coreJar',

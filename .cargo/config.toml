@@ -1,0 +1,2 @@
+[alias]
+exec = "run --package exec --"
