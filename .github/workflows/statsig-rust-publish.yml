@@ -21,6 +21,8 @@ jobs:
       - name: Get Workflow Run Info
         id: workflow_run_info
         uses: ./.github/actions/verify-workflow-run-successful
+        with:
+          workflow_run_id: ${{ github.event.inputs.workflow_run_id }}
 
       - name: Checkout specific commit
         run: |
