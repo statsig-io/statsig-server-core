@@ -4,7 +4,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::Utc;
-use statsig_grpc::statsig_grpc_client::StatsigGrpcClient;
+use sigstat_grpc::statsig_grpc_client::StatsigGrpcClient;
 use std::cmp;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};

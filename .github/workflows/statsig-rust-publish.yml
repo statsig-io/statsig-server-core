@@ -9,6 +9,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
 jobs:
   publish:
@@ -45,12 +46,12 @@ jobs:
       - name: Apply Beta Tag
         run: cargo exec beta-tag-package
 
-      - name: Check Package
-        working-directory: ./statsig-lib
-        run: cargo package --allow-dirty
+      - name: Check and Publish Statsig Grpc Package
+        run: |
+          cargo package --allow-dirty --package sigstat-grpc
+          cargo publish --allow-dirty --package sigstat-grpc
 
-      - name: Publish to crates.io
-        working-directory: ./statsig-lib
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --allow-dirty
+      - name: Check and Publish Statsig Lib Package
+        run: |
+          cargo package --allow-dirty --package sigstat
+          cargo publish --allow-dirty --package sigstat

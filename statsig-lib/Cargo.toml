@@ -1,9 +1,9 @@
 [package]
 name = "sigstat"
-version = "0.0.1"
-edition = "2021"
-license = "ISC"
 description = "Core Statsig SDK written in Rust. For usage in multi-user server environments."
+edition.workspace = true
+license.workspace = true
+version.workspace = true
 
 [dependencies]
 tokio = { version = "1.39.1", features = ["full"] }
@@ -20,8 +20,8 @@ log = "0.4.22"
 simple_logger = "5.0.0"
 lazy_static = "1.5.0"
 futures = "0.3.30"
-uuid = {version = "1.10.0", features = ["v4", "fast-rng"]}
-statsig-grpc = {path = "../statsig-grpc", optional = true}
+uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
+sigstat-grpc = { path = "../statsig-grpc", optional = true }
 
 [dev-dependencies]
 mockito = "1.5.0"
@@ -30,4 +30,4 @@ assert-json-diff = "2.0.2"
 [features]
 default = []
 vendored_openssl = ["openssl"]
-with_grpc = ["statsig-grpc"]
+with_grpc = ["sigstat-grpc"]

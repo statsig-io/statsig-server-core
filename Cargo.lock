@@ -639,7 +639,7 @@ dependencies = [
 
 [[package]]
 name = "exec"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "clap 4.5.20",
  "colored",
@@ -1973,15 +1973,29 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "sigstat-grpc",
  "simple_logger",
- "statsig-grpc",
  "tokio",
  "uuid",
 ]
 
 [[package]]
-name = "sigstat_sigstat-napi"
-version = "0.0.0"
+name = "sigstat-grpc"
+version = "0.0.1"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "lazy_static",
+ "log",
+ "prost",
+ "tokio",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
+name = "sigstat-napi"
+version = "0.0.1"
 dependencies = [
  "lazy_static",
  "log",
@@ -2037,29 +2051,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "statsig-grpc"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "chrono",
- "lazy_static",
- "log",
- "prost",
- "tokio",
- "tonic",
- "tonic-build",
-]
-
-[[package]]
 name = "statsig-pyo3"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "pyo3",
 ]
 
 [[package]]
 name = "statsig_ffi"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "cbindgen",
  "csbindgen",

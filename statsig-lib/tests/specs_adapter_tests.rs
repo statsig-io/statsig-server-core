@@ -1,19 +1,18 @@
 #[cfg(test)]
 #[cfg(feature = "with_grpc")]
 pub mod specs_adapter_tests {
-    use mock_forward_proxy::wait_one_ms;
     use sigstat::output_logger::{initialize_simple_output_logger, LogLevel};
     use sigstat::{AdapterType, SpecAdapterConfig, SpecsSource, SpecsInfo, SpecsUpdate, SpecsUpdateListener};
     use sigstat::StatsigGrpcSpecAdapter;
     use sigstat::SpecsAdapter;
-    use statsig_grpc::mock_forward_proxy::MockForwardProxy;
-    use statsig_grpc::*;
+    use sigstat_grpc::*;
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
     use tokio::runtime::Handle;
     use tokio::sync::Notify;
     use tokio::time::error::Elapsed;
     use tokio::time::timeout;
+    use sigstat_grpc::mock_forward_proxy::{wait_one_ms, MockForwardProxy};
 
     async fn setup() -> (
         Arc<MockForwardProxy>,

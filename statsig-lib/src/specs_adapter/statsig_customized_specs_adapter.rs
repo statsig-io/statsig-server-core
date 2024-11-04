@@ -3,11 +3,14 @@ use std::{sync::Arc, time::Duration};
 use async_trait::async_trait;
 use crate::{StatsigErr, StatsigHttpSpecsAdapter};
 use tokio::runtime::Handle;
-use crate::{SpecsAdapter, SpecsUpdateListener, log_e, log_w};
+use crate::{SpecsAdapter, SpecsUpdateListener, log_w};
 use super::{SpecAdapterConfig, AdapterType};
 
 #[cfg(feature = "with_grpc")]
 use super::statsig_grpc_specs_adapter::StatsigGrpcSpecAdapter;
+
+#[cfg(not(feature = "with_grpc"))]
+use crate::{log_e};
 
 pub struct StatsigCustomizedSpecsAdapter {
     adapters: Vec<Arc<dyn SpecsAdapter>>,
@@ -51,8 +54,6 @@ impl StatsigCustomizedSpecsAdapter {
     log_e!("Trying to use grpc websocket adapter but with grpc feature is not enabled");
     None
   }
-    
-    
 }
 
 #[async_trait]
