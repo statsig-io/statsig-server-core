@@ -1,4 +1,5 @@
 import {
+  AdapterTypeNapi as AdapterType,
   AutoReleasingStatsigOptionsRef,
   AutoReleasingStatsigRef,
   AutoReleasingStatsigUserRef,
@@ -7,6 +8,7 @@ import {
   DynamicConfigNapi,
   ExperimentNapi,
   FeatureGateNapi as FeatureGate,
+  SpecAdapterConfigNapi as SpecAdapterConfig,
   LayerNapi,
   statsigCheckGate,
   statsigCreate,
@@ -72,6 +74,7 @@ export class StatsigOptions {
     logEventUrl?: string | undefined | null,
     eventLoggingMaxQueueSize?: number | undefined | null,
     eventLoggingFlushIntervalMs?: number | undefined | null,
+    specs_adapter_configs?: Array<SpecAdapterConfig> | undefined | null,
   ) {
     this.outputLoggerLevel = outputLoggerLevel ?? LogLevel.Error;
     this.__ref = statsigOptionsCreate(
@@ -81,9 +84,12 @@ export class StatsigOptions {
       logEventUrl,
       eventLoggingMaxQueueSize,
       eventLoggingFlushIntervalMs,
+      specs_adapter_configs
     );
   }
 }
+
+export {AdapterType, SpecAdapterConfig}
 
 export class StatsigUser {
   readonly __ref: AutoReleasingStatsigUserRef;
