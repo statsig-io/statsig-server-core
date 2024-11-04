@@ -12,7 +12,7 @@ namespace StatsigServer
 {
     internal static unsafe partial class StatsigFFI
     {
-        const string __DllName = "/Users/danielloomb/Projects/statsig-server-core/target/release/libstatsig_ffi.dylib";
+        const string __DllName = "/Users/weihaoding/Documents/private-statsig-server-core/target/release/libstatsig_ffi.dylib";
 
 
 
@@ -47,7 +47,7 @@ namespace StatsigServer
         internal static extern void statsig_flush_events(byte* statsig_ref, statsig_flush_events_callback_delegate callback);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_current_values", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_get_current_values(byte* statsig_ref);
+        internal static extern byte* statsig_get_current_values(StatsigRef statsig_ref);
 
         [DllImport(__DllName, EntryPoint = "statsig_check_gate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
@@ -71,7 +71,22 @@ namespace StatsigServer
         [DllImport(__DllName, EntryPoint = "statsig_get_client_init_response", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_client_init_response(byte* statsig_ref, byte* user_ref);
 
+        [DllImport(__DllName, EntryPoint = "statsig_get_client_init_response_buffer", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern nuint statsig_get_client_init_response_buffer(StatsigRef statsig_ref, StatsigUserRef user_ref, byte* buffer, nuint buffer_size);
 
+
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct StatsigUserRef
+    {
+        public nuint pointer;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct StatsigRef
+    {
+        public nuint pointer;
     }
 
 

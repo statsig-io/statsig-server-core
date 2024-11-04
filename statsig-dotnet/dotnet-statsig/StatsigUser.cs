@@ -5,9 +5,9 @@ namespace StatsigServer
 {
     public class StatsigUser : IDisposable
     {
-        private Ref _ref;
+        private unsafe byte* _ref;
 
-        internal Ref Reference => _ref;
+        internal unsafe byte* Reference => _ref;
 
         public StatsigUser(string userId, string email)
         {
@@ -18,7 +18,8 @@ namespace StatsigServer
                 fixed (byte* userIdPtr = userIdBytes)
                 fixed (byte* emailPtr = emailBytes)
                 {
-                    _ref = StatsigFFI.statsig_user_create(userIdPtr, emailPtr);
+                    _ref = StatsigFFI.statsig_user_create(userIdPtr, null, emailPtr
+                    , null, null, null, null, null, null, null);
                 }
             }
         }
@@ -38,18 +39,11 @@ namespace StatsigServer
         {
             unsafe
             {
-                if (_ref.pointer == 0)
+                if (_ref == null)
                 {
                     return;
                 }
-
-                fixed (Ref* pRef = &_ref)
-                {
-                    StatsigFFI.ref_release(pRef);
-                    Console.WriteLine("Just After" + _ref.pointer);
-                }
-
-                Console.WriteLine("After" + _ref.pointer);
+                StatsigFFI.statsig_user_release(_ref);
             }
         }
     }

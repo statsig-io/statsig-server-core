@@ -2,11 +2,21 @@ using System;
 
 namespace StatsigServer
 {
+    /// <summary>
+    /// Configuration options for the Statsig Server SDK
+    /// </summary>
     public class StatsigOptions : IDisposable
     {
-        private Ref _ref = StatsigFFI.statsig_options_create();
+        private unsafe byte* _ref;
+        internal unsafe byte* Reference => _ref;
 
-        internal Ref Reference => _ref;
+        public StatsigOptions()
+        {
+            unsafe
+            {
+                _ref = StatsigFFI.statsig_options_create(null, null);
+            }
+        }
 
         ~StatsigOptions()
         {
@@ -23,18 +33,13 @@ namespace StatsigServer
         {
             unsafe
             {
-                if (_ref.pointer == 0)
+                if (_ref == null)
                 {
                     return;
                 }
 
-                fixed (Ref* pRef = &_ref)
-                {
-                    StatsigFFI.ref_release(pRef);
-                    Console.WriteLine("Just After" + _ref.pointer);
-                }
-
-                Console.WriteLine("After" + _ref.pointer);
+                StatsigFFI.statsig_options_release(_ref);
+                _ref = null;
             }
         }
     }

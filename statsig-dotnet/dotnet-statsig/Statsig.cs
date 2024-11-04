@@ -6,8 +6,7 @@ namespace StatsigServer
 {
     public class Statsig : IDisposable
     {
-        private Ref _ref;
-        internal Ref Reference => _ref;
+        private unsafe byte* _statsigRef;
 
         public Statsig(string sdkKey, StatsigOptions options)
         {
@@ -16,7 +15,7 @@ namespace StatsigServer
             {
                 fixed (byte* sdkKeyPtr = sdkKeyBytes)
                 {
-                    _ref = StatsigFFI.statsig_create(sdkKeyPtr, options.Reference);
+                    _statsigRef = StatsigFFI.statsig_create(sdkKeyPtr, options.Reference);
                 }    
             }
             
@@ -30,11 +29,13 @@ namespace StatsigServer
         public Task Initialize()
         {
             var source = new TaskCompletionSource<bool>();
-            StatsigFFI.statsig_initialize(_ref, () =>
+            unsafe
             {
-                source.SetResult(true);
-            });
-
+                StatsigFFI.statsig_initialize(_statsigRef, () =>
+                {
+                    source.SetResult(true);
+                });
+            }
             return source.Task;
         }
 
@@ -45,10 +46,27 @@ namespace StatsigServer
             {
                 fixed (byte* gateNamePtr = gateNameBytes)
                 {
-                    return StatsigFFI.statsig_check_gate(_ref, user.Reference, gateNamePtr);
+                    return StatsigFFI.statsig_check_gate(_statsigRef, user.Reference, gateNamePtr);
                 }    
             }
-            
+        }
+
+        public string GetClientInitializeResponse(StatsigUser user)
+        {
+            unsafe
+            {
+                if (_statsigRef == null)
+                {
+                    Console.WriteLine("Failed to get statsig ref");
+                }
+
+                if (user.Reference == null)
+                {
+                    Console.WriteLine("Failed to get user reference");
+                }
+
+                return StatsigUtils.ReadStringFromPointer(StatsigFFI.statsig_get_client_init_response(_statsigRef, user.Reference));
+            }
         }
 
         public void Dispose()
@@ -61,18 +79,11 @@ namespace StatsigServer
         {
             unsafe
             {
-                if (_ref.pointer == 0)
+                if (_statsigRef == null)
                 {
                     return;
                 }
-
-                fixed (Ref* pRef = &_ref)
-                {
-                    StatsigFFI.ref_release(pRef);
-                    Console.WriteLine("Just After" + _ref.pointer);
-                }
-
-                Console.WriteLine("After" + _ref.pointer);
+                StatsigFFI.statsig_release(_statsigRef);
             }
         }
     }

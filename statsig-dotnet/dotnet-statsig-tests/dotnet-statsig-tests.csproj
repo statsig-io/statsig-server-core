@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <RootNamespace>dotnet_statsig_tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3" />
+    <PackageReference Include="coverlet.collector" Version="1.2.0" />
+    <PackageReference Include="Moq" Version="4.16.1" />
+    <PackageReference Include="WireMock.Net" Version="1.4.23" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\dotnet-statsig\statsig-dotnet.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Moq" />
+    <None Remove="WireMock.Net" />
+  </ItemGroup>
+  
+</Project>
