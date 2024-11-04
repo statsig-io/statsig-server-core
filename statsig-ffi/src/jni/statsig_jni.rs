@@ -1,4 +1,4 @@
-use crate::jni::jni_utils::jstring_to_string;
+use crate::jni::jni_utils::{convert_java_client_init_response_options_to_rust, jstring_to_string};
 use crate::{get_instance_or_noop_jni, get_instance_or_return_jni};
 use jni::sys::{jboolean, jclass, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
@@ -142,11 +142,17 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetClientInitResponse(
     _class: JClass,
     statsig_ref: JString,
     user_ref: JString,
+    init_response_option: JObject
 ) -> jstring {
     let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
     let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
 
-    let response = statsig.get_client_init_response(user.as_ref());
+    let options = convert_java_client_init_response_options_to_rust(&mut env, init_response_option);
+
+    let response = match options.as_ref() {
+        Some(options) => statsig.get_client_init_response_with_options(&user, options),
+        None => statsig.get_client_init_response(&user),
+    };
 
     serialize_json_to_jstring(&mut env, &response)
 }

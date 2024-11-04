@@ -1,7 +1,7 @@
 use jni::objects::{JObject, JString};
 use jni::sys::jstring;
 use jni::JNIEnv;
-use sigstat::log_e;
+use sigstat::{ClientInitResponseOptions, HashAlgorithm, log_e};
 use std::collections::HashMap;
 
 #[macro_export]
@@ -35,6 +35,30 @@ macro_rules! get_instance_or_else_jni {
             None => $else,
         }
     };
+}
+
+pub fn convert_java_client_init_response_options_to_rust(
+    env: &mut JNIEnv,
+    java_gcir_option: JObject) -> Option<ClientInitResponseOptions> {
+    if java_gcir_option.is_null() {
+        return None;
+    }
+
+    let hash_algo_field: JString = match env.get_field(java_gcir_option, "hashAlgoInternal", "Ljava/lang/String;") {
+        Ok(field) => field.l().unwrap().into(),
+        Err(_) => return None,
+    };
+
+    let hash_algo = if hash_algo_field.is_null() {
+        None
+    } else {
+        env.get_string(&hash_algo_field)
+            .ok()
+            .map(|java_str| java_str.into())
+    };
+
+    let hash_algo = hash_algo.and_then(|s| HashAlgorithm::from_string(&s));
+    Some(ClientInitResponseOptions { hash_algorithm: hash_algo })
 }
 
 pub fn jstring_to_string(env: &mut JNIEnv, input: JString) -> Option<String> {

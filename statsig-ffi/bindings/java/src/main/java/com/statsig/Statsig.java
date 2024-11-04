@@ -122,8 +122,8 @@ public class Statsig {
         return future;
     }
 
-    public String getClientInitializeResponse(StatsigUser user) {
-        return StatsigJNI.statsigGetClientInitResponse(ref, user.getRef());
+    public String getClientInitializeResponse(StatsigUser user, ClientInitResponseOptions options) {
+        return StatsigJNI.statsigGetClientInitResponse(ref, user.getRef(), options);
     }
 
     void logLayerParamExposure(String layerJson, String param) {

@@ -48,7 +48,7 @@ class StatsigJNI {
 
     public static native String statsigGetDynamicConfig(String statsigRef, String userRef, String configName);
 
-    public static native String statsigGetClientInitResponse(String statsigRef, String userRef);
+    public static native String statsigGetClientInitResponse(String statsigRef, String userRef, ClientInitResponseOptions options);
 
     public static native void statsigLogEvent(String statsigRef, String userRef, String eventName, String value,
             Map<String, String> metadata);
