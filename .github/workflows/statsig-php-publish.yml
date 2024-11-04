@@ -11,6 +11,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Get Workflow Run Info
         id: workflow_run_info
         uses: ./.github/actions/verify-workflow-run-successful
@@ -40,9 +42,10 @@ jobs:
             fi
           done
 
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.workflow_run_info.outputs.commit_sha }}
+      - name: Checkout specific commit
+        run: |
+          git fetch
+          git checkout ${{ steps.workflow_run_info.outputs.commit_sha }}
 
       - name: Push to Packagist Repository
         run: |
