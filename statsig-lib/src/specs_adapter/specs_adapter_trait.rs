@@ -40,7 +40,9 @@ pub trait SpecsAdapter: Send + Sync {
 
     async fn shutdown(&self, timeout: Duration) -> Result<(), StatsigErr>;
 
-    async fn manually_sync_specs(&self, current_store_lcut: Option<u64>) -> Result<(), StatsigErr>;
+    fn schedule_background_sync(self: Arc<Self>, runtime_handle: &Handle) -> Result<(), StatsigErr>;
+
+    fn get_type_name(&self) -> String;
 }
 
 pub struct SpecsUpdate {

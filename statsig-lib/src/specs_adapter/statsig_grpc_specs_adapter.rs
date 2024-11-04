@@ -1,12 +1,11 @@
 use crate::{
-    log_d, log_e, log_w, SpecsAdapter, SpecsSource, SpecsUpdate,
+    log_d, log_e, log_w, SpecAdapterConfig, SpecsAdapter, SpecsSource, SpecsUpdate,
     SpecsUpdateListener, StatsigErr,
 };
 use async_trait::async_trait;
 use chrono::Utc;
 use statsig_grpc::statsig_grpc_client::StatsigGrpcClient;
 use std::cmp;
-use std::fmt::format;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
@@ -60,6 +59,14 @@ impl SpecsAdapter for StatsigGrpcSpecAdapter {
         }
     }
 
+    fn schedule_background_sync(
+        self: Arc<Self>,
+        _runtime_handle: &Handle,
+    ) -> Result<(), StatsigErr> {
+        // It should be already started wtihin spawn_grpc_streaming_thread
+        Ok(())
+    }
+
     async fn shutdown(&self, timeout: Duration) -> Result<(), StatsigErr> {
         self.shutdown_notify.notify_one();
 
@@ -86,29 +93,25 @@ impl SpecsAdapter for StatsigGrpcSpecAdapter {
         Ok(())
     }
 
-    async fn manually_sync_specs(&self, current_store_lcut: Option<u64>) -> Result<(), StatsigErr> {
-        // This will be deleted in next pr
-        Ok(())
+    fn get_type_name(&self) -> String {
+        "StatsigGrpcSpecAdapter".to_string()
     }
 }
 
 impl StatsigGrpcSpecAdapter {
-    pub fn new(sdk_key: &str,
-        //  config: &SpecAdapterConfig
-        ) -> Self {
-        // Will be implement in next pr
+    pub fn new(sdk_key: &str, config: &SpecAdapterConfig) -> Self {
         Self {
             listener: RwLock::new(None),
             shutdown_notify: Arc::new(Notify::new()),
             task_handle: Mutex::new(None),
-            grpc_client: StatsigGrpcClient::new(sdk_key,"".to_string()),
+            grpc_client: StatsigGrpcClient::new(sdk_key, &config.specs_url),
             initialized_notify: Arc::new(Notify::new()),
             retry_state: StreamingRetryState {
                 backoff_interval_ms: DEFAULT_BACKOFF_INTERVAL_MS.into(),
                 retry_attempts: 0.into(),
                 is_retrying: false.into(),
             },
-            init_timeout: Duration::from_millis(3000), // In next pr
+            init_timeout: Duration::from_millis(config.init_timeout_ms),
         }
     }
 
@@ -195,8 +198,6 @@ impl StatsigGrpcSpecAdapter {
                 }
             }
         }
-
-        Ok(())
     }
 
     fn set_task_handle(&self, handle: JoinHandle<()>) -> Result<(), StatsigErr> {

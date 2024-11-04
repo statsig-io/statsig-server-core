@@ -1,14 +1,19 @@
-use crate::SpecsAdapter;
+use crate::{SpecAdapterConfig, SpecsAdapter};
 use std::sync::Arc;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::id_lists_adapter::IdListsAdapter;
 use crate::output_logger::LogLevel;
 
+pub const DEFAULT_INIT_TIMEOUT_MS: u64 = 3000;
 #[derive(Clone, Default)]
 pub struct StatsigOptions {
     pub specs_url: Option<String>,
     pub specs_adapter: Option<Arc<dyn SpecsAdapter>>,
     pub specs_sync_interval_ms: Option<u32>,
+    pub init_timeout_ms: Option<u64>,
+
+    // Specs to customized spec adapter, order matters, reflecting priority of trying
+    pub spec_adapters_config: Option<Vec<SpecAdapterConfig>>,
 
     pub log_event_url: Option<String>,
     pub event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,

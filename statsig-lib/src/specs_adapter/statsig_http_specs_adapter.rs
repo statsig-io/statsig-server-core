@@ -2,7 +2,6 @@ use crate::network_client::{NetworkClient, RequestArgs};
 use crate::specs_adapter::{SpecsAdapter, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::statsig_options::StatsigOptions;
 use crate::{log_e, SpecsSource};
 use async_trait::async_trait;
 use chrono::Utc;
@@ -14,7 +13,7 @@ use tokio::sync::Notify;
 use tokio::task;
 use tokio::time::{interval_at, Instant};
 
-const DEFAULT_SPECS_URL: &str = "https://assetsconfigcdn.org/v2/download_config_specs";
+pub const DEFAULT_SPECS_URL: &str = "https://assetsconfigcdn.org/v2/download_config_specs";
 const DEFAULT_SYNC_INTERVAL_MS: u32 = 10_000;
 
 pub struct StatsigHttpSpecsAdapter {
@@ -27,19 +26,17 @@ pub struct StatsigHttpSpecsAdapter {
 }
 
 impl StatsigHttpSpecsAdapter {
-    pub fn new(sdk_key: &str, options: &StatsigOptions) -> Self {
+    pub fn new(sdk_key: &str, specs_url: Option<&str>, _timeout: u64, sync_interval: Option<u32>) -> Self {
         let headers = StatsigMetadata::get_constant_request_headers(sdk_key);
 
         Self {
-            specs_url: construct_specs_url(sdk_key, options),
+            specs_url: construct_specs_url(sdk_key, specs_url),
             network: NetworkClient::new(Some(headers)),
             listener: RwLock::new(None),
             shutdown_notify: Arc::new(Notify::new()),
             task_handle: Mutex::new(None),
             sync_interval_duration: Duration::from_millis(
-                options
-                    .specs_sync_interval_ms
-                    .unwrap_or(DEFAULT_SYNC_INTERVAL_MS) as u64,
+                sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS) as u64
             ),
         }
     }
@@ -91,21 +88,6 @@ impl StatsigHttpSpecsAdapter {
             }
         }
     }
-}
-
-#[async_trait]
-impl SpecsAdapter for StatsigHttpSpecsAdapter {
-    async fn start(
-        self: Arc<Self>,
-        runtime_handle: &Handle,
-        listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
-    ) -> Result<(), StatsigErr> {
-        if let Ok(mut mut_listener) = self.listener.write() {
-            *mut_listener = Some(listener);
-        }
-
-        self.schedule_background_sync(runtime_handle)
-    }
 
     async fn manually_sync_specs(&self, current_store_lcut: Option<u64>) -> Result<(), StatsigErr> {
         if let Ok(lock) = self.listener.read() {
@@ -151,6 +133,25 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
             Err(_) => return Err(StatsigErr::SpecsListenerNotSet),
         }
     }
+}
+
+#[async_trait]
+impl SpecsAdapter for StatsigHttpSpecsAdapter {
+    async fn start(
+        self: Arc<Self>,
+        _runtime_handle: &Handle,
+        listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
+    ) -> Result<(), StatsigErr> {
+        let lcut = listener.get_current_specs_info().lcut;
+        if let Ok(mut mut_listener) = self.listener.write() {
+            *mut_listener = Some(listener);
+        }
+        self.manually_sync_specs(lcut).await
+    }
+
+    fn schedule_background_sync(self: Arc<Self>, runtime_handle: &Handle) -> Result<(), StatsigErr> {
+        self.schedule_background_sync(runtime_handle)
+    }
 
     async fn shutdown(&self, timeout: Duration) -> Result<(), StatsigErr> {
         self.shutdown_notify.notify_one();
@@ -184,10 +185,14 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
             }
         }
     }
+
+    fn get_type_name(&self) -> String {
+        "StatsigHttpSpecsAdapter".to_string()
+    }
 }
 
-fn construct_specs_url(sdk_key: &str, options: &StatsigOptions) -> String {
-    let base = match &options.specs_url {
+fn construct_specs_url(sdk_key: &str, spec_url: Option<&str>) -> String {
+    let base = match spec_url {
         Some(u) => u,
         _ => DEFAULT_SPECS_URL,
     };

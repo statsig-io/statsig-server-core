@@ -22,17 +22,17 @@ use crate::hashing::Hashing;
 use crate::initialize_response::InitializeResponse;
 use crate::output_logger::initialize_simple_output_logger;
 use crate::spec_store::{SpecStore, SpecStoreData};
+use crate::specs_adapter::statsig_customized_specs_adapter::StatsigCustomizedSpecsAdapter;
 use crate::specs_adapter::statsig_http_specs_adapter::StatsigHttpSpecsAdapter;
 use crate::statsig_err::StatsigErr;
-use crate::statsig_options::StatsigOptions;
+use crate::statsig_options::{StatsigOptions, DEFAULT_INIT_TIMEOUT_MS};
 use crate::statsig_type_factories::{
     make_dynamic_config, make_experiment, make_feature_gate, make_layer,
 };
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{
-    dyn_value, log_d, log_e, read_lock_or_else, IdListsAdapter, SpecsAdapter, SpecsSource,
-    SpecsUpdateListener, StatsigUser,
+    dyn_value, log_d, log_e, read_lock_or_else, IdListsAdapter, SpecsAdapter, SpecsSource, SpecsUpdateListener, StatsigUser
 };
 use serde_json::json;
 use std::collections::HashMap;
@@ -92,19 +92,24 @@ impl Statsig {
     }
 
     pub async fn initialize(&self) -> Result<(), StatsigErr> {
+        self.spec_store.set_source(SpecsSource::Loading);
         self.event_logger.clone().start_background_task();
 
-        self.specs_adapter
+        let init_res = match self
+            .specs_adapter
             .clone()
-            .start(&self.runtime_handle, self.spec_store.clone())
-            .await?;
-
-        let info = self.spec_store.get_current_specs_info();
-        let is_uninitialized = info.source == SpecsSource::Uninitialized;
-        if is_uninitialized {
-            self.spec_store.set_source(SpecsSource::Loading);
-        }
-
+            .start(
+                &self.runtime_handle,
+                self.spec_store.clone(),
+            )
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                self.spec_store.set_source(SpecsSource::NoValues);
+                Err(e)
+            }
+        };
         if let Some(adapter) = &self.id_lists_adapter {
             adapter
                 .clone()
@@ -115,16 +120,11 @@ impl Statsig {
                 log_e!("Failed to sync id lists: {}", e);
             }
         }
+        let _ = self.specs_adapter
+            .clone()
+            .schedule_background_sync(&self.runtime_handle);
 
-        match self.specs_adapter.manually_sync_specs(info.lcut).await {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                if is_uninitialized {
-                    self.spec_store.set_source(SpecsSource::NoValues);
-                }
-                Err(e)
-            }
-        }
+        init_res
     }
 
     pub fn initialize_with_callback<F>(&self, callback: F)
@@ -142,12 +142,15 @@ impl Statsig {
         let adapter = self.specs_adapter.clone();
         let handle = self.runtime_handle.clone();
         let store = self.spec_store.clone();
-
         self.runtime_handle.spawn(async move {
             // todo: return result to callback
-            let _ = adapter.clone().start(&handle, store).await;
+            let _ = adapter
+                .clone()
+                .start(
+                    &handle, store,
+                )
+                .await;
 
-            let _ = adapter.manually_sync_specs(info.lcut).await;
             callback();
         });
     }
@@ -575,10 +578,19 @@ fn initialize_event_logging_adapter(
 }
 
 fn initialize_specs_adapter(sdk_key: &str, options: &StatsigOptions) -> Arc<dyn SpecsAdapter> {
-    options
-        .specs_adapter
-        .clone()
-        .unwrap_or_else(|| Arc::new(StatsigHttpSpecsAdapter::new(sdk_key, options)))
+    if let Some(adapter) = options.specs_adapter.clone() {
+        return adapter
+    }
+    if let Some(adapter_config) = options.spec_adapters_config.clone() {
+        return Arc::new(StatsigCustomizedSpecsAdapter::new(sdk_key,adapter_config));
+    }
+    Arc::new(StatsigHttpSpecsAdapter::new(
+        sdk_key,
+        options
+            .specs_url.as_deref(),
+        DEFAULT_INIT_TIMEOUT_MS,
+        options.specs_sync_interval_ms,
+    ))
 }
 
 fn initialize_id_lists_adapter(options: &StatsigOptions) -> Option<Arc<dyn IdListsAdapter>> {

@@ -4,8 +4,10 @@ pub use id_lists_adapter::{IdListsAdapter, StatsigHttpIdListsAdapter};
 pub use initialize_response::InitializeResponse;
 pub use instance_store::InstanceStore;
 pub use spec_store::SpecStore;
-pub use specs_adapter::{SpecsAdapter, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener};
+pub use specs_adapter::{SpecsAdapter, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener, SpecAdapterConfig, AdapterType, DEFAULT_INIT_TIMEOUT_MS};
 pub use specs_adapter::statsig_http_specs_adapter::StatsigHttpSpecsAdapter;
+#[cfg(feature = "with_grpc")]
+pub use specs_adapter::statsig_grpc_specs_adapter::StatsigGrpcSpecAdapter;
 pub use statsig::Statsig;
 pub use statsig_err::StatsigErr;
 pub use statsig_options::StatsigOptions;

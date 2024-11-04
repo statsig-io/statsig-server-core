@@ -41,21 +41,6 @@ impl MockSpecsAdapter {
             listener: RwLock::new(None),
         }
     }
-}
-
-#[async_trait]
-impl SpecsAdapter for MockSpecsAdapter {
-    async fn start(
-        self: Arc<Self>,
-        _runtime_handle: &Handle,
-        listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
-    ) -> Result<(), StatsigErr> {
-        if let Ok(mut mut_listener) = self.listener.write() {
-            *mut_listener = Some(listener);
-        }
-
-        Ok(())
-    }
 
     async fn manually_sync_specs(&self, _current_lcut: Option<u64>) -> Result<(), StatsigErr> {
         if self.should_throw {
@@ -85,8 +70,32 @@ impl SpecsAdapter for MockSpecsAdapter {
             .did_receive_specs_update(update);
         Ok(())
     }
+}
+
+#[async_trait]
+impl SpecsAdapter for MockSpecsAdapter {
+    async fn start(
+        self: Arc<Self>,
+        _runtime_handle: &Handle,
+        listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
+    ) -> Result<(), StatsigErr> {
+        let lcut = listener.get_current_specs_info().lcut;
+        if let Ok(mut mut_listener) = self.listener.write() {
+            *mut_listener = Some(listener);
+        }
+        self.manually_sync_specs(lcut).await
+    }
+
+    fn schedule_background_sync(self: Arc<Self>,
+        _runtime_handle: &Handle,) -> Result<(), StatsigErr> {
+            Ok(())
+        }
 
     async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
         Ok(())
     }
+
+    fn get_type_name(&self) -> String { 
+        "MockSpecsAdapter".to_string()
+     }
 }
