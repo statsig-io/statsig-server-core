@@ -1,5 +1,6 @@
 [package]
 name = "sigstat-grpc"
+description = "Statsig with gRPC support."
 edition.workspace = true
 license.workspace = true
 version.workspace = true
