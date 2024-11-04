@@ -46,6 +46,9 @@ jobs:
       - name: Apply Beta Tag
         run: cargo exec beta-tag-package
 
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+
       - name: Check and Publish Statsig Grpc Package
         run: |
           cargo package --allow-dirty --package sigstat-grpc
