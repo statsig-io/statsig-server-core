@@ -1,6 +1,6 @@
 {
   "name": "@sigstat/sigstat-napi",
-  "version": "0.0.1-beta.c8b4048",
+  "version": "0.0.1-beta.b6b5ddd",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "napi": {

@@ -13,6 +13,13 @@ use tonic::codegen::tokio_stream::wrappers::ReceiverStream;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
+pub mod api {
+    tonic::include_proto!("statsig_forward_proxy");
+}
+
+use api::statsig_forward_proxy_server::{StatsigForwardProxy, StatsigForwardProxyServer};
+use api::{ConfigSpecRequest, ConfigSpecResponse};
+
 lazy_static! {
     static ref PORT_ID: AtomicI32 = AtomicI32::new(50051);
 }

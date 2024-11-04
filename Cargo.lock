@@ -639,12 +639,13 @@ dependencies = [
 
 [[package]]
 name = "exec"
-version = "0.0.1"
+version = "0.0.1-beta.b6b5ddd"
 dependencies = [
  "clap 4.5.20",
  "colored",
  "config",
  "ini",
+ "regex",
  "serde",
  "serde_json",
  "toml 0.8.19",
@@ -1757,9 +1758,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.10.5"
+version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b91213439dad192326a0d7c6ee3955910425f441d7038e0d6933b0aec5c4517f"
+checksum = "b544ef1b4eac5dc2db33ea63606ae9ffcfac26c1416a2806ae0bf5f56b201191"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1769,9 +1770,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.4.7"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38caf58cc5ef2fed281f89292ef23f6365465ed9a41b7a7754eb4e26496c92df"
+checksum = "368758f23274712b504848e9d5a6f010445cc8b87a7cdb4d7cbee666c1288da3"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1786,9 +1787,9 @@ checksum = "53a49587ad06b26609c52e423de037e7f57f20d53535d66e08c695f347df952a"
 
 [[package]]
 name = "regex-syntax"
-version = "0.8.4"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a66a03ae7c801facd77a29370b4faec201768915ac14a721ba36f20bc9c209b"
+checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
 name = "ron"
@@ -1957,7 +1958,7 @@ dependencies = [
 
 [[package]]
 name = "sigstat"
-version = "0.0.1"
+version = "0.0.1-beta.b6b5ddd"
 dependencies = [
  "assert-json-diff",
  "async-trait",
@@ -1981,7 +1982,7 @@ dependencies = [
 
 [[package]]
 name = "sigstat-grpc"
-version = "0.0.1"
+version = "0.0.1-beta.b6b5ddd"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1995,7 +1996,7 @@ dependencies = [
 
 [[package]]
 name = "sigstat-napi"
-version = "0.0.1"
+version = "0.0.1-beta.b6b5ddd"
 dependencies = [
  "lazy_static",
  "log",
@@ -2052,14 +2053,14 @@ dependencies = [
 
 [[package]]
 name = "statsig-pyo3"
-version = "0.0.1"
+version = "0.0.1-beta.b6b5ddd"
 dependencies = [
  "pyo3",
 ]
 
 [[package]]
 name = "statsig_ffi"
-version = "0.0.1"
+version = "0.0.1-beta.b6b5ddd"
 dependencies = [
  "cbindgen",
  "csbindgen",

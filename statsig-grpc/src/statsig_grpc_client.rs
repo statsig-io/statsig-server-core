@@ -1,7 +1,7 @@
 use crate::statsig_forward_proxy::config_spec_request::ApiVersion;
 use crate::statsig_forward_proxy::statsig_forward_proxy_client::StatsigForwardProxyClient;
+use crate::statsig_forward_proxy::{ConfigSpecRequest, ConfigSpecResponse};
 use crate::statsig_grpc_err::StatsigGrpcErr;
-use crate::{ConfigSpecRequest, ConfigSpecResponse};
 use std::sync::Mutex;
 use std::time::Duration;
 use tonic::transport::Channel;

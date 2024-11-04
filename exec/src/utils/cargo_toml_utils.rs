@@ -1,5 +1,7 @@
 use std::fmt::{self, Display};
 
+use regex::Regex;
+
 pub struct SemVer {
     pub major: u32,
     pub minor: u32,
@@ -49,7 +51,11 @@ impl Display for SemVer {
 }
 
 pub fn get_cargo_toml() -> toml::Value {
-    let contents = std::fs::read_to_string("Cargo.toml").expect("Failed to read Cargo.toml");
+    get_specific_cargo_toml("Cargo.toml")
+}
+
+pub fn get_specific_cargo_toml(path: &str) -> toml::Value {
+    let contents = std::fs::read_to_string(path).expect("Failed to read Cargo.toml");
     toml::from_str(&contents).expect("Failed to parse Cargo.toml")
 }
 
@@ -63,10 +69,13 @@ pub fn get_cargo_toml_version() -> SemVer {
 }
 
 pub fn write_version_to_cargo_toml(version: &SemVer) {
-    let mut cargo_toml = get_cargo_toml();
+    let path = "Cargo.toml";
+    let content = std::fs::read_to_string(path).expect("Failed to read Cargo.toml");
+    let re = Regex::new(r#"(?m)^version\s*=\s*"[^"]*""#).expect("Failed to create regex");
 
-    cargo_toml["workspace"]["package"]["version"] = toml::Value::String(version.to_string());
+    let new_content = re
+        .replace(&content, format!(r#"version = "{}""#, version))
+        .to_string();
 
-    let toml_string = toml::to_string(&cargo_toml).expect("Failed to serialize TOML");
-    std::fs::write("Cargo.toml", toml_string).expect("Failed to write to Cargo.toml");
+    std::fs::write(path, new_content).expect("Failed to write to Cargo.toml");
 }

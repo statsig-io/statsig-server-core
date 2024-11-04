@@ -1,12 +1,11 @@
 #[cfg(all(test, feature = "with_grpc"))]
 pub mod specs_adapter_tests {
+    use mock_forward_proxy::{api::ConfigSpecResponse, wait_one_ms, MockForwardProxy};
     use sigstat::output_logger::{initialize_simple_output_logger, LogLevel};
-    use sigstat::SpecsAdapter;
-    use sigstat::StatsigGrpcSpecAdapter;
     use sigstat::{
-        AdapterType, SpecAdapterConfig, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener,
+        AdapterType, SpecAdapterConfig, SpecsAdapter, SpecsInfo, SpecsSource, SpecsUpdate,
+        SpecsUpdateListener, StatsigGrpcSpecAdapter,
     };
-    use sigstat_grpc::mock_forward_proxy::{wait_one_ms, MockForwardProxy};
     use sigstat_grpc::*;
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
@@ -66,11 +65,13 @@ pub mod specs_adapter_tests {
                 last_updated: 123,
             }))
             .await;
+
         adapter
             .clone()
             .start(&Handle::current(), mock_listener.clone())
             .await
             .unwrap();
+
         mock_listener.wait_for_next_update().await.unwrap();
 
         mock_proxy.clone().restart().await;
