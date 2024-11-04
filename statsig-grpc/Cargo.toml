@@ -16,3 +16,7 @@ lazy_static = "1.5.0"
 
 [build-dependencies]
 tonic-build = "0.12.1"
+
+[[bin]]
+name = "mock_grpc_server"
+path = "src/mock_forward_proxy.rs"

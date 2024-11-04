@@ -12,6 +12,11 @@ export declare class AutoReleasingStatsigUserRef {
   refId: string;
 }
 
+export declare const enum AdapterTypeNapi {
+  NetworkHttp = 0,
+  NetworkGrpcWebsocket = 1,
+}
+
 export interface ClientInitResponseOptions {
   hashAlgorithm?: string;
 }
@@ -61,6 +66,12 @@ export declare const enum LogLevel {
   Warn = 2,
   Info = 3,
   Debug = 4,
+}
+
+export interface SpecAdapterConfigNapi {
+  adapterType: AdapterTypeNapi;
+  specsUrl: string;
+  initTimeoutMs: number;
 }
 
 export declare function statsigCheckGate(
@@ -131,6 +142,7 @@ export declare function statsigOptionsCreate(
   logEventUrl?: string | undefined | null,
   eventLoggingMaxQueueSize?: number | undefined | null,
   eventLoggingFlushIntervalMs?: number | undefined | null,
+  specAdaptersConfig?: Array<SpecAdapterConfigNapi> | undefined | null,
 ): AutoReleasingStatsigOptionsRef;
 
 export declare function statsigShutdown(statsigRef: string): Promise<void>;
