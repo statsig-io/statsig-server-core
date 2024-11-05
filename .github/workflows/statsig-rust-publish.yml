@@ -49,6 +49,8 @@ jobs:
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
+        with:
+            repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check and Publish Statsig Grpc Package
         run: |
