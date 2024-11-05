@@ -233,3 +233,8 @@ jobs:
               ...args,
               workflow_id: 'statsig-php-publish.yml'
             })
+
+            github.rest.actions.createWorkflowDispatch({
+              ...args,
+              workflow_id: 'statsig-rust-publish.yml'
+            })
