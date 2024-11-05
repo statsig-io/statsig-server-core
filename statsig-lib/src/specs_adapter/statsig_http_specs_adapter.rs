@@ -28,7 +28,7 @@ pub struct StatsigHttpSpecsAdapter {
 impl StatsigHttpSpecsAdapter {
     pub fn new(
         sdk_key: &str,
-        specs_url: Option<&str>,
+        specs_url: Option<&String>,
         _timeout: u64,
         sync_interval: Option<u32>,
     ) -> Self {
@@ -44,6 +44,19 @@ impl StatsigHttpSpecsAdapter {
                 sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS) as u64,
             ),
         }
+    }
+
+    pub fn fetch_specs_from_network(&self, current_store_lcut: Option<u64>) -> Option<String> {
+        let query_params =
+            current_store_lcut.map(|lcut| HashMap::from([("sinceTime".into(), lcut.to_string())]));
+
+        self.network.get(RequestArgs {
+            url: self.specs_url.clone(),
+            retries: 2,
+            query_params,
+            accept_gzip_response: true,
+            ..RequestArgs::new()
+        })
     }
 
     fn schedule_background_sync(
@@ -101,16 +114,7 @@ impl StatsigHttpSpecsAdapter {
             }
         }
 
-        let query_params =
-            current_store_lcut.map(|lcut| HashMap::from([("sinceTime".into(), lcut.to_string())]));
-
-        let res = self.network.get(RequestArgs {
-            url: self.specs_url.clone(),
-            retries: 2,
-            query_params,
-            accept_gzip_response: true,
-            ..RequestArgs::new()
-        });
+        let res = self.fetch_specs_from_network(current_store_lcut);
 
         let data = match res {
             Some(r) => r,
@@ -198,7 +202,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
     }
 }
 
-fn construct_specs_url(sdk_key: &str, spec_url: Option<&str>) -> String {
+fn construct_specs_url(sdk_key: &str, spec_url: Option<&String>) -> String {
     let base = match spec_url {
         Some(u) => u,
         _ => DEFAULT_SPECS_URL,

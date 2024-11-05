@@ -1,7 +1,3 @@
-/**
- * To demonstrate usage, requires u
- */
-
 import {
   SpecAdapterConfig,
   SpecsAdapterType,
@@ -28,12 +24,12 @@ test.before('setup', () => {
     {
       adapterType: SpecsAdapterType.NetworkGrpcWebsocket,
       specsUrl: GRPC_SERVER_ADDRESS,
-      initTimeout: 3000,
+      initTimeoutMs: 3000,
     },
     {
       adapterType: SpecsAdapterType.NetworkHttp,
       specsUrl: 'https://assetsconfigcdn.org/v2/download_config_specs',
-      initTimeout: 3000,
+      initTimeoutMs: 3000,
     },
   ];
   let statsigOptions = new StatsigOptions(

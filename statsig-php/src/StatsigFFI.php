@@ -7,6 +7,7 @@ use FFI;
 class StatsigFFI
 {
     private static ?FFI $ffi = null;
+
     public static function get(): FFI
     {
         if (self::$ffi !== null) {
@@ -38,11 +39,11 @@ class StatsigFFI
 
 
         if ($found_binary_path === null) {
-            throw new \Exception("Binary not found in $bin");
+            fwrite(STDERR, "Binary not found in $bin\n");
         }
 
         if ($found_header_path === null) {
-            throw new \Exception("Header file not found in $include_dir");
+            fwrite(STDERR, "Header file not found in $include_dir\n");
         }
 
         self::$ffi = FFI::cdef(

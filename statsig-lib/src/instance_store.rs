@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use uuid::Uuid;
 
-use crate::{log_d, log_e, log_w, Statsig, StatsigOptions, StatsigUser};
+use crate::{log_d, log_e, log_w, Statsig, StatsigHttpSpecsAdapter, StatsigOptions, StatsigUser};
 
 #[macro_export]
 macro_rules! get_instance_or_noop {
@@ -76,6 +76,7 @@ pub enum BoxedInstance {
     Statsig(Arc<Statsig>),
     StatsigOptions(Arc<StatsigOptions>),
     StatsigUser(Arc<StatsigUser>),
+    StatsigHttpSpecsAdapter(Arc<StatsigHttpSpecsAdapter>),
 }
 
 pub trait BoxableInstance {
@@ -89,6 +90,11 @@ pub trait BoxableInstance {
 impl_boxable_instance!(Statsig, Statsig, "stsg");
 impl_boxable_instance!(StatsigOptions, StatsigOptions, "opts");
 impl_boxable_instance!(StatsigUser, StatsigUser, "usr");
+impl_boxable_instance!(
+    StatsigHttpSpecsAdapter,
+    StatsigHttpSpecsAdapter,
+    "http_adpt"
+);
 
 pub struct InstanceStore {
     instances: RwLock<HashMap<String, BoxedInstance>>,

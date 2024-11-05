@@ -575,12 +575,14 @@ fn initialize_specs_adapter(sdk_key: &str, options: &StatsigOptions) -> Arc<dyn 
     if let Some(adapter) = options.specs_adapter.clone() {
         return adapter;
     }
+
     if let Some(adapter_config) = options.spec_adapters_config.clone() {
         return Arc::new(StatsigCustomizedSpecsAdapter::new(sdk_key, adapter_config));
     }
+
     Arc::new(StatsigHttpSpecsAdapter::new(
         sdk_key,
-        options.specs_url.as_deref(),
+        options.specs_url.as_ref(),
         DEFAULT_INIT_TIMEOUT_MS,
         options.specs_sync_interval_ms,
     ))

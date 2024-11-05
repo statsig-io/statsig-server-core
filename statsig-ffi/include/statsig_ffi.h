@@ -41,6 +41,13 @@ void statsig_log_layer_param_exposure(const char *statsig_ref,
 
 const char *statsig_get_client_init_response(const char *statsig_ref, const char *user_ref);
 
+const char *statsig_http_specs_adapter_create(const char *sdk_key, const char *options_ref);
+
+void statsig_http_specs_adapter_release(const char *specs_adapter_ref);
+
+const char *statsig_http_specs_adapter_fetch_specs_from_network(const char *specs_adapter_ref,
+                                                                uint64_t current_lcut);
+
 const char *statsig_options_create(const char *specs_url, const char *log_event_url);
 
 void statsig_options_release(const char *options_ref);
