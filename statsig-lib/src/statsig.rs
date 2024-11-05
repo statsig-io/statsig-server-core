@@ -1,3 +1,4 @@
+use crate::async_runtime::AsyncRuntime;
 use crate::client_init_response_formatter::{
     ClientInitResponseFormatter, ClientInitResponseOptions,
 };
@@ -36,9 +37,8 @@ use crate::{
 };
 use serde_json::json;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
-use tokio::runtime::{Builder, Handle, Runtime};
 use tokio::try_join;
 
 pub struct Statsig {
@@ -51,8 +51,7 @@ pub struct Statsig {
     hashing: Hashing,
     gcir_formatter: Arc<ClientInitResponseFormatter>,
     statsig_environment: Option<HashMap<String, DynamicValue>>,
-    runtime: Mutex<Option<Runtime>>,
-    runtime_handle: Handle,
+    async_runtime: Arc<AsyncRuntime>,
 }
 
 impl Statsig {
@@ -66,15 +65,17 @@ impl Statsig {
         let id_lists_adapter = initialize_id_lists_adapter(&options);
         let event_logging_adapter = initialize_event_logging_adapter(sdk_key, &options);
 
-        let (opt_runtime, runtime_handle) = create_runtime_if_required();
-
         let environment = options
             .environment
             .as_ref()
             .map(|env| HashMap::from([("tier".into(), dyn_value!(env.as_str()))]));
 
-        let event_logger =
-            EventLogger::new(event_logging_adapter.clone(), &options, &runtime_handle);
+        let async_runtime = AsyncRuntime::get_runtime();
+        let event_logger = EventLogger::new(
+            event_logging_adapter.clone(),
+            &options,
+            &async_runtime.runtime_handle,
+        );
 
         Statsig {
             sdk_key: sdk_key.to_string(),
@@ -83,11 +84,10 @@ impl Statsig {
             event_logger: Arc::new(event_logger),
             hashing: Hashing::new(),
             statsig_environment: environment,
-            runtime: Mutex::new(opt_runtime),
             spec_store,
             specs_adapter,
             id_lists_adapter,
-            runtime_handle,
+            async_runtime,
         }
     }
 
@@ -98,7 +98,7 @@ impl Statsig {
         let init_res = match self
             .specs_adapter
             .clone()
-            .start(&self.runtime_handle, self.spec_store.clone())
+            .start(&self.async_runtime.runtime_handle, self.spec_store.clone())
             .await
         {
             Ok(_) => Ok(()),
@@ -110,7 +110,7 @@ impl Statsig {
         if let Some(adapter) = &self.id_lists_adapter {
             adapter
                 .clone()
-                .start(&self.runtime_handle, self.spec_store.clone())
+                .start(&self.async_runtime.runtime_handle, self.spec_store.clone())
                 .await?;
 
             if let Err(e) = adapter.sync_id_lists().await {
@@ -120,7 +120,7 @@ impl Statsig {
         let _ = self
             .specs_adapter
             .clone()
-            .schedule_background_sync(&self.runtime_handle);
+            .schedule_background_sync(&self.async_runtime.runtime_handle);
 
         init_res
     }
@@ -138,9 +138,9 @@ impl Statsig {
         }
 
         let adapter = self.specs_adapter.clone();
-        let handle = self.runtime_handle.clone();
+        let handle = self.async_runtime.get_handle();
         let store = self.spec_store.clone();
-        self.runtime_handle.spawn(async move {
+        self.async_runtime.runtime_handle.spawn(async move {
             // todo: return result to callback
             let _ = adapter.clone().start(&handle, store).await;
 
@@ -166,7 +166,7 @@ impl Statsig {
         let event_logger = self.event_logger.clone();
         let specs_adapter = self.specs_adapter.clone();
 
-        self.runtime_handle.spawn(async move {
+        self.async_runtime.runtime_handle.spawn(async move {
             let timeout = Duration::from_millis(1000);
 
             let result = try_join!(
@@ -188,11 +188,7 @@ impl Statsig {
     }
 
     pub fn finalize_shutdown(&self) {
-        if let Ok(mut lock) = self.runtime.lock() {
-            if let Some(runtime) = lock.take() {
-                runtime.shutdown_timeout(Duration::from_secs(1))
-            }
-        }
+        self.async_runtime.shutdown();
     }
 
     pub fn get_context(&self) -> (String, Arc<StatsigOptions>) {
@@ -321,7 +317,7 @@ impl Statsig {
         F: FnOnce() + Send + 'static,
     {
         let cloned_event_logger = self.event_logger.clone();
-        let runtime_handle = self.runtime_handle.clone();
+        let runtime_handle = self.async_runtime.get_handle();
 
         runtime_handle.spawn(async move {
             let _ = cloned_event_logger.flush_blocking().await;
@@ -592,22 +588,6 @@ fn initialize_id_lists_adapter(options: &StatsigOptions) -> Option<Arc<dyn IdLis
     options.id_lists_adapter.clone()
 }
 
-fn create_runtime_if_required() -> (Option<Runtime>, Handle) {
-    if let Ok(handle) = Handle::try_current() {
-        return (None, handle);
-    }
-
-    let rt = Builder::new_multi_thread()
-        .worker_threads(3)
-        .thread_name("statsig")
-        .enable_all()
-        .build()
-        .expect("Failed to find or create a tokio Runtime");
-
-    let handle = rt.handle().clone();
-    (Some(rt), handle)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -694,7 +674,7 @@ mod tests {
         let _ = statsig.shutdown().await;
 
         let gates = response.feature_gates;
-        assert_eq!(gates.len(), 65);
+        assert_eq!(gates.len(), 69);
 
         let configs = response.dynamic_configs;
         assert_eq!(configs.len(), 62);

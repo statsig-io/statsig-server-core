@@ -23,6 +23,7 @@ pub mod output_logger;
 pub mod statsig_options;
 pub mod statsig_user;
 
+mod async_runtime;
 mod background_task;
 mod client_init_response_formatter;
 mod dcs_str;
