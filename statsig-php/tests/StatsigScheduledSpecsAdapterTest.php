@@ -16,6 +16,10 @@ class StatsigScheduledSpecsAdapterTest extends TestCase
     {
         parent::setUp();
 
+        if (file_exists("/tmp/specs.json")) {
+            unlink("/tmp/specs.json");
+        }
+
         $dir = dirname(__FILE__);
         $data = file_get_contents($dir . '/../../statsig-lib/tests/data/eval_proj_dcs.json');
 
@@ -25,12 +29,14 @@ class StatsigScheduledSpecsAdapterTest extends TestCase
 
     public function testCreateAndRelease()
     {
-        $adapter = new StatsigScheduledSpecsAdapter("secret-key");
-        $this->assertNotNull($adapter->__ref);
+        $adapter = new StatsigScheduledSpecsAdapter("/tmp/specs.json", "secret-key");
+        $this->assertNotNull($adapter->__http_ref);
+        $this->assertNotNull($adapter->__file_ref);
 
         $adapter->__destruct();
 
-        $this->assertNull($adapter->__ref);
+        $this->assertNull($adapter->__http_ref);
+        $this->assertNull($adapter->__file_ref);
     }
 
     public function testFetchingFromNetwork()
@@ -39,11 +45,11 @@ class StatsigScheduledSpecsAdapterTest extends TestCase
             $this->server->getUrl() . "/v2/download_config_specs",
             $this->server->getUrl() . "/v1/log_event"
         );
-        $adapter = new StatsigScheduledSpecsAdapter("secret-key", $options);
+        $adapter = new StatsigScheduledSpecsAdapter("/tmp/specs.json", "secret-key", $options);
 
-        $result = $adapter->fetch_specs_from_network();
+        $adapter->sync_specs_from_network();
 
-        $json = json_decode($result, true);
+        $json = json_decode(file_get_contents("/tmp/specs.json"), true);
 
         $this->assertArrayHasKey("dynamic_configs", $json);
         $this->assertArrayHasKey("layer_configs", $json);

@@ -10,6 +10,7 @@ pub enum StatsigErr {
     SpecsAdapterNetworkFailure,
     SpecsAdapterLockFailure,
     BackgroundTaskLockFailure,
+    SpecsLocalFileReadFailure(String),
 
     // ID Lists Adapter
     IdListsAdapterNetworkFailure,
@@ -27,18 +28,34 @@ impl Display for StatsigErr {
 
             // Specs
             StatsigErr::SpecsListenerNotSet => write!(f, "No SpecsUpdateListener found"),
-            StatsigErr::SpecsListenerLockFailure => write!(f, "Failed to acquire mutex lock for SpecsUpdateListener"),
+            StatsigErr::SpecsListenerLockFailure => {
+                write!(f, "Failed to acquire mutex lock for SpecsUpdateListener")
+            }
             StatsigErr::SpecsAdapterLockFailure => write!(f, "Failed to acquire lock"),
             StatsigErr::SpecsAdapterNetworkFailure => write!(f, "Specs adapter network failure"),
-            StatsigErr::BackgroundTaskLockFailure => write!(f, "Specs adapter failed to acquire background task mutex lock"),
+            StatsigErr::BackgroundTaskLockFailure => write!(
+                f,
+                "Specs adapter failed to acquire background task mutex lock"
+            ),
+            StatsigErr::SpecsLocalFileReadFailure(e) => {
+                write!(f, "Specs adapter failed to read local file, {}", e)
+            }
 
             // ID Lists
-            StatsigErr::IdListsAdapterNetworkFailure => write!(f, "IDLists Adapter network failure"),
-            StatsigErr::IdListsAdapterParsingFailure(e) => write!(f, "IDLists Adapter failed to parse network response, {}", e),
-            StatsigErr::IdListsAdapterRuntimeHandleLockFailure => write!(f, "IDLists Adapter failed to set Runtime Handle"),
-            StatsigErr::IdListsAdapterFailedToInsertIdList => write!(f, "Failed to insert new Id List"),
+            StatsigErr::IdListsAdapterNetworkFailure => {
+                write!(f, "IDLists Adapter network failure")
+            }
+            StatsigErr::IdListsAdapterParsingFailure(e) => {
+                write!(f, "IDLists Adapter failed to parse network response, {}", e)
+            }
+            StatsigErr::IdListsAdapterRuntimeHandleLockFailure => {
+                write!(f, "IDLists Adapter failed to set Runtime Handle")
+            }
+            StatsigErr::IdListsAdapterFailedToInsertIdList => {
+                write!(f, "Failed to insert new Id List")
+            }
 
-            StatsigErr::GrpcError(e) => write!(f, "{}", e)
+            StatsigErr::GrpcError(e) => write!(f, "{}", e),
         }
     }
 }

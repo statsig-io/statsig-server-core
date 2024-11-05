@@ -11,7 +11,7 @@ pub use specs_adapter::StatsigGrpcSpecsAdapter;
 pub use specs_adapter::{
     SpecAdapterConfig, SpecsAdapter, SpecsAdapterType, SpecsInfo, SpecsSource, SpecsUpdate,
     SpecsUpdateListener, StatsigBootstrapSpecsAdapter, StatsigHttpSpecsAdapter,
-    DEFAULT_INIT_TIMEOUT_MS,
+    StatsigLocalFileSpecsAdapter, DEFAULT_INIT_TIMEOUT_MS,
 };
 pub use statsig::Statsig;
 pub use statsig_err::StatsigErr;

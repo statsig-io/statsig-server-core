@@ -39,11 +39,11 @@ class StatsigFFI
 
 
         if ($found_binary_path === null) {
-            fwrite(STDERR, "Binary not found in $bin\n");
+            error_log("Binary not found in $bin\n");
         }
 
         if ($found_header_path === null) {
-            fwrite(STDERR, "Header file not found in $include_dir\n");
+            error_log("Header file not found in $include_dir\n");
         }
 
         self::$ffi = FFI::cdef(
