@@ -122,6 +122,11 @@ public class Statsig {
         return future;
     }
 
+    public String getClientInitializeResponse(StatsigUser user) {
+        // if no gcir option passed in, will default to djb2
+        return StatsigJNI.statsigGetClientInitResponse(ref, user.getRef(), null);
+    }
+
     public String getClientInitializeResponse(StatsigUser user, ClientInitResponseOptions options) {
         return StatsigJNI.statsigGetClientInitResponse(ref, user.getRef(), options);
     }

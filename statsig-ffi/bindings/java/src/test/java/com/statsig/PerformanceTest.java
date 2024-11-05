@@ -22,7 +22,7 @@ public class PerformanceTest {
                     .setEmail("weihao@statsig.com")
                     .build();
             try {
-                result = statsig.getClientInitializeResponse(user, new ClientInitResponseOptions(ClientInitResponseOptions.HashAlgo.NONE));
+                result = statsig.getClientInitializeResponse(user, new ClientInitResponseOptions(HashAlgo.NONE));
             } catch (Exception e) {
                 System.err.println("Error initializing client response for user " + currUser + ": " + e.getMessage());
             }

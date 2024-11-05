@@ -9,10 +9,6 @@ public class ClientInitResponseOptions {
         hashAlgoInternal = hashAlgo.convertToStr();
     }
 
-    public ClientInitResponseOptions() {
-        this.hashAlgo = HashAlgo.SHA256;
-    }
-
     public HashAlgo getHashAlgo() {
         return hashAlgo;
     }
