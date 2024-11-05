@@ -52,7 +52,9 @@ const char *statsig_local_file_specs_adapter_create(const char *file_path);
 
 void statsig_local_file_specs_adapter_release(const char *specs_adapter_ref);
 
-const char *statsig_options_create(const char *specs_url, const char *log_event_url);
+const char *statsig_options_create(const char *specs_url,
+                                   const char *log_event_url,
+                                   const char *specs_adapter_ref);
 
 void statsig_options_release(const char *options_ref);
 

@@ -1,20 +1,31 @@
-use std::os::raw::c_char;
+use std::{os::raw::c_char, sync::Arc};
 
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
-use sigstat::{instance_store::INST_STORE, log_e, StatsigOptions};
+use sigstat::{
+    instance_store::INST_STORE, log_e, SpecsAdapter, StatsigLocalFileSpecsAdapter, StatsigOptions,
+};
 
 #[no_mangle]
 pub extern "C" fn statsig_options_create(
     specs_url: *const c_char,
     log_event_url: *const c_char,
+    specs_adapter_ref: *const c_char,
 ) -> *const c_char {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
+
+    let specs_adapter: Option<Arc<dyn SpecsAdapter>> = match c_char_to_string(specs_adapter_ref) {
+        Some(specs_adapter_ref) => INST_STORE
+            .get::<StatsigLocalFileSpecsAdapter>(&specs_adapter_ref)
+            .map(|adapter| adapter as Arc<dyn SpecsAdapter>),
+        None => None,
+    };
 
     let ref_id = INST_STORE
         .add(StatsigOptions {
             specs_url,
             log_event_url,
+            specs_adapter,
             ..StatsigOptions::new()
         })
         .unwrap_or_else(|| {

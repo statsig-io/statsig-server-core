@@ -9,11 +9,13 @@ class StatsigOptions
     public function __construct(
         $specs_url = null,
         $log_event_url = null,
+        $specs_adapter = null,
     ) {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->statsig_options_create(
             $specs_url,
-            $log_event_url
+            $log_event_url,
+            $specs_adapter->__file_ref
         );
     }
 

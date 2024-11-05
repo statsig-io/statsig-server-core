@@ -66,9 +66,10 @@ class StatsigTest extends TestCase
             $callback_fired = true;
         });
 
-        $this->waitUntilTrue(function () use (&$callback_fired) {
+        TestHelpers::waitUntilTrue($this, function () use (&$callback_fired) {
             return $callback_fired;
         });
+
         return $statsig;
     }
 
@@ -81,47 +82,52 @@ class StatsigTest extends TestCase
         $this->assertEquals('/v2/download_config_specs/secret-key.json', $request['path']);
     }
 
-    public function testCheckGate() {
+    public function testCheckGate()
+    {
         $statsig = $this->getInitializedStatsig();
         $this->assertTrue($statsig->checkGate("test_public", $this->user));
     }
 
-    public function testGetFeatureGate() {
+    public function testGetFeatureGate()
+    {
         $statsig = $this->getInitializedStatsig();
 
         $gate = $statsig->getFeatureGate("test_50_50", $this->user);
         $this->assertTrue($gate->value);
     }
 
-    public function testGetDynamicConfig() {
+    public function testGetDynamicConfig()
+    {
         $statsig = $this->getInitializedStatsig();
 
         $config = $statsig->getDynamicConfig("test_email_config", $this->user);
         $this->assertEquals("everyone else", $config->get("header_text", "err"));
     }
 
-    public function testGetExperiment() {
+    public function testGetExperiment()
+    {
         $statsig = $this->getInitializedStatsig();
 
         $experiment = $statsig->getExperiment("exp_with_obj_and_array", $this->user);
         $this->assertEquals(["group" => "test"], $experiment->get("obj_param", ["fallback" => ""]));
     }
 
-    public function testGetLayer() {
+    public function testGetLayer()
+    {
         $statsig = $this->getInitializedStatsig();
 
         $layer = $statsig->getLayer("layer_with_many_params", $this->user);
         $this->assertEquals("layer", $layer->get("a_string", "err"));
     }
 
-    public function testExposureLogs() {
+    public function testExposureLogs()
+    {
         $statsig = $this->getInitializedStatsig();
 
         $statsig->getFeatureGate("test_50_50", $this->user);
         $statsig->getDynamicConfig("test_email_config", $this->user);
         $statsig->getExperiment("exp_with_obj_and_array", $this->user);
         $statsig->getLayer("layer_with_many_params", $this->user)->get("a_string", "");
-
 
         $this->waitUntilEventsFlushed($statsig);
 
@@ -144,18 +150,6 @@ class StatsigTest extends TestCase
         $this->assertCount(12, $result["layer_configs"]);
     }
 
-    protected function waitUntilTrue($callback, $timeout_secs = 1.0): void
-    {
-        $start = microtime(true);
-        while (!$callback() && microtime(true) - $start < $timeout_secs) {
-            usleep(10000); // Sleep for 10ms
-        }
-
-        if (!$callback()) {
-            $this->fail("Timed out waiting for callback");
-        }
-    }
-
     protected function waitUntilEventsFlushed(Statsig $statsig): void
     {
         $callback_fired = false;
@@ -163,7 +157,7 @@ class StatsigTest extends TestCase
             $callback_fired = true;
         });
 
-        $this->waitUntilTrue(function () use (&$callback_fired) {
+        TestHelpers::waitUntilTrue($this, function () use (&$callback_fired) {
             return $callback_fired;
         });
     }
