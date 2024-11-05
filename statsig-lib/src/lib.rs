@@ -1,19 +1,22 @@
+pub use client_init_response_formatter::ClientInitResponseOptions;
 pub use evaluation::dynamic_value::DynamicValue;
 pub use event_logging_adapter::EventLoggingAdapter;
+pub use hashing::HashAlgorithm;
 pub use id_lists_adapter::{IdListsAdapter, StatsigHttpIdListsAdapter};
 pub use initialize_response::InitializeResponse;
 pub use instance_store::InstanceStore;
 pub use spec_store::SpecStore;
-pub use specs_adapter::{SpecsAdapter, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener, SpecAdapterConfig, AdapterType, DEFAULT_INIT_TIMEOUT_MS};
-pub use specs_adapter::statsig_http_specs_adapter::StatsigHttpSpecsAdapter;
 #[cfg(feature = "with_grpc")]
-pub use specs_adapter::statsig_grpc_specs_adapter::StatsigGrpcSpecAdapter;
+pub use specs_adapter::StatsigGrpcSpecsAdapter;
+pub use specs_adapter::{
+    SpecAdapterConfig, SpecsAdapter, SpecsAdapterType, SpecsInfo, SpecsSource, SpecsUpdate,
+    SpecsUpdateListener, StatsigBootstrapSpecsAdapter, StatsigHttpSpecsAdapter,
+    DEFAULT_INIT_TIMEOUT_MS,
+};
 pub use statsig::Statsig;
 pub use statsig_err::StatsigErr;
 pub use statsig_options::StatsigOptions;
 pub use statsig_user::StatsigUser;
-pub use client_init_response_formatter::ClientInitResponseOptions;
-pub use hashing::HashAlgorithm;
 
 pub mod instance_store;
 pub mod output_logger;

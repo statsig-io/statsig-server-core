@@ -1,5 +1,5 @@
 import {
-  AdapterTypeNapi as AdapterType,
+  SpecsAdapterTypeNapi as SpecsAdapterType,
   AutoReleasingStatsigOptionsRef,
   AutoReleasingStatsigRef,
   AutoReleasingStatsigUserRef,
@@ -8,8 +8,8 @@ import {
   DynamicConfigNapi,
   ExperimentNapi,
   FeatureGateNapi as FeatureGate,
-  SpecAdapterConfigNapi as SpecAdapterConfig,
   LayerNapi,
+  SpecAdapterConfigNapi as SpecAdapterConfig,
   statsigCheckGate,
   statsigCreate,
   statsigGetClientInitResponse,
@@ -84,12 +84,12 @@ export class StatsigOptions {
       logEventUrl,
       eventLoggingMaxQueueSize,
       eventLoggingFlushIntervalMs,
-      specs_adapter_configs
+      specs_adapter_configs,
     );
   }
 }
 
-export {AdapterType, SpecAdapterConfig}
+export { SpecsAdapterType, SpecAdapterConfig };
 
 export class StatsigUser {
   readonly __ref: AutoReleasingStatsigUserRef;

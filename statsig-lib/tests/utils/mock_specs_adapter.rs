@@ -86,16 +86,18 @@ impl SpecsAdapter for MockSpecsAdapter {
         self.manually_sync_specs(lcut).await
     }
 
-    fn schedule_background_sync(self: Arc<Self>,
-        _runtime_handle: &Handle,) -> Result<(), StatsigErr> {
-            Ok(())
-        }
+    fn schedule_background_sync(
+        self: Arc<Self>,
+        _runtime_handle: &Handle,
+    ) -> Result<(), StatsigErr> {
+        Ok(())
+    }
 
     async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
         Ok(())
     }
 
-    fn get_type_name(&self) -> String { 
-        "MockSpecsAdapter".to_string()
-     }
+    fn get_type_name(&self) -> String {
+        stringify!(MockSpecsAdapter).to_string()
+    }
 }

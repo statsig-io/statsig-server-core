@@ -12,11 +12,6 @@ export declare class AutoReleasingStatsigUserRef {
   refId: string;
 }
 
-export declare const enum AdapterTypeNapi {
-  NetworkHttp = 0,
-  NetworkGrpcWebsocket = 1,
-}
-
 export interface ClientInitResponseOptions {
   hashAlgorithm?: string;
 }
@@ -69,9 +64,14 @@ export declare const enum LogLevel {
 }
 
 export interface SpecAdapterConfigNapi {
-  adapterType: AdapterTypeNapi;
+  adapterType: SpecsAdapterTypeNapi;
   specsUrl: string;
   initTimeoutMs: number;
+}
+
+export declare const enum SpecsAdapterTypeNapi {
+  NetworkHttp = 0,
+  NetworkGrpcWebsocket = 1,
 }
 
 export declare function statsigCheckGate(

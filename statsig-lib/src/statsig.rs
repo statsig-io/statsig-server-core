@@ -22,8 +22,7 @@ use crate::hashing::Hashing;
 use crate::initialize_response::InitializeResponse;
 use crate::output_logger::initialize_simple_output_logger;
 use crate::spec_store::{SpecStore, SpecStoreData};
-use crate::specs_adapter::statsig_customized_specs_adapter::StatsigCustomizedSpecsAdapter;
-use crate::specs_adapter::statsig_http_specs_adapter::StatsigHttpSpecsAdapter;
+use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_options::{StatsigOptions, DEFAULT_INIT_TIMEOUT_MS};
 use crate::statsig_type_factories::{
@@ -32,7 +31,8 @@ use crate::statsig_type_factories::{
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{
-    dyn_value, log_d, log_e, read_lock_or_else, IdListsAdapter, SpecsAdapter, SpecsSource, SpecsUpdateListener, StatsigUser
+    dyn_value, log_d, log_e, read_lock_or_else, IdListsAdapter, SpecsAdapter, SpecsSource,
+    SpecsUpdateListener, StatsigUser,
 };
 use serde_json::json;
 use std::collections::HashMap;
@@ -98,10 +98,7 @@ impl Statsig {
         let init_res = match self
             .specs_adapter
             .clone()
-            .start(
-                &self.runtime_handle,
-                self.spec_store.clone(),
-            )
+            .start(&self.runtime_handle, self.spec_store.clone())
             .await
         {
             Ok(_) => Ok(()),
@@ -120,7 +117,8 @@ impl Statsig {
                 log_e!("Failed to sync id lists: {}", e);
             }
         }
-        let _ = self.specs_adapter
+        let _ = self
+            .specs_adapter
             .clone()
             .schedule_background_sync(&self.runtime_handle);
 
@@ -144,12 +142,7 @@ impl Statsig {
         let store = self.spec_store.clone();
         self.runtime_handle.spawn(async move {
             // todo: return result to callback
-            let _ = adapter
-                .clone()
-                .start(
-                    &handle, store,
-                )
-                .await;
+            let _ = adapter.clone().start(&handle, store).await;
 
             callback();
         });
@@ -449,7 +442,8 @@ impl Statsig {
                 let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
                 Evaluator::evaluate(&mut context, spec);
 
-                let evaluation = result_to_experiment_eval(experiment_name, spec, &mut context.result);
+                let evaluation =
+                    result_to_experiment_eval(experiment_name, spec, &mut context.result);
                 make_experiment(
                     experiment_name,
                     Some(evaluation),
@@ -579,15 +573,14 @@ fn initialize_event_logging_adapter(
 
 fn initialize_specs_adapter(sdk_key: &str, options: &StatsigOptions) -> Arc<dyn SpecsAdapter> {
     if let Some(adapter) = options.specs_adapter.clone() {
-        return adapter
+        return adapter;
     }
     if let Some(adapter_config) = options.spec_adapters_config.clone() {
-        return Arc::new(StatsigCustomizedSpecsAdapter::new(sdk_key,adapter_config));
+        return Arc::new(StatsigCustomizedSpecsAdapter::new(sdk_key, adapter_config));
     }
     Arc::new(StatsigHttpSpecsAdapter::new(
         sdk_key,
-        options
-            .specs_url.as_deref(),
+        options.specs_url.as_deref(),
         DEFAULT_INIT_TIMEOUT_MS,
         options.specs_sync_interval_ms,
     ))

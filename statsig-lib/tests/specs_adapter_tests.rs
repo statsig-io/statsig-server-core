@@ -3,8 +3,8 @@ pub mod specs_adapter_tests {
     use mock_forward_proxy::{api::ConfigSpecResponse, wait_one_ms, MockForwardProxy};
     use sigstat::output_logger::{initialize_simple_output_logger, LogLevel};
     use sigstat::{
-        AdapterType, SpecAdapterConfig, SpecsAdapter, SpecsInfo, SpecsSource, SpecsUpdate,
-        SpecsUpdateListener, StatsigGrpcSpecAdapter,
+        SpecAdapterConfig, SpecsAdapter, SpecsAdapterType, SpecsInfo, SpecsSource, SpecsUpdate,
+        SpecsUpdateListener, StatsigGrpcSpecsAdapter,
     };
     use sigstat_grpc::*;
     use std::sync::{Arc, Mutex};
@@ -17,17 +17,17 @@ pub mod specs_adapter_tests {
     async fn setup() -> (
         Arc<MockForwardProxy>,
         Arc<MockListener>,
-        Arc<StatsigGrpcSpecAdapter>,
+        Arc<StatsigGrpcSpecsAdapter>,
     ) {
         initialize_simple_output_logger(&Some(LogLevel::Debug));
 
         let mock_proxy = MockForwardProxy::spawn().await;
         let config = SpecAdapterConfig {
-            adapter_type: AdapterType::NetworkGrpcWebsocket,
+            adapter_type: SpecsAdapterType::NetworkGrpcWebsocket,
             specs_url: format!("http://{}", mock_proxy.proxy_address),
             init_timeout_ms: 3000,
         };
-        let adapter = Arc::new(StatsigGrpcSpecAdapter::new("secret-key", &config));
+        let adapter = Arc::new(StatsigGrpcSpecsAdapter::new("secret-key", &config));
         let mock_listener = Arc::new(MockListener::default());
 
         (mock_proxy, mock_listener, adapter)
@@ -37,7 +37,7 @@ pub mod specs_adapter_tests {
     async fn test_shutting_down() {
         let (mock_proxy, mock_listener, adapter) = setup().await;
         mock_proxy
-            .send_stream_update(Ok(sigstat_grpc::ConfigSpecResponse {
+            .send_stream_update(Ok(ConfigSpecResponse {
                 spec: "bg_sync".to_string(),
                 last_updated: 123,
             }))

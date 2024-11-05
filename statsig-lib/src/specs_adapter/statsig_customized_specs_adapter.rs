@@ -1,16 +1,17 @@
 use std::{sync::Arc, time::Duration};
 
+use super::StatsigHttpSpecsAdapter;
+use super::{SpecsAdapterType, SpecAdapterConfig};
+use crate::StatsigErr;
+use crate::{log_w, SpecsAdapter, SpecsUpdateListener};
 use async_trait::async_trait;
-use crate::{StatsigErr, StatsigHttpSpecsAdapter};
 use tokio::runtime::Handle;
-use crate::{SpecsAdapter, SpecsUpdateListener, log_w};
-use super::{SpecAdapterConfig, AdapterType};
 
 #[cfg(feature = "with_grpc")]
-use super::statsig_grpc_specs_adapter::StatsigGrpcSpecAdapter;
+use super::statsig_grpc_specs_adapter::StatsigGrpcSpecsAdapter;
 
 #[cfg(not(feature = "with_grpc"))]
-use crate::{log_e};
+use crate::log_e;
 
 pub struct StatsigCustomizedSpecsAdapter {
     adapters: Vec<Arc<dyn SpecsAdapter>>,
@@ -21,12 +22,12 @@ impl StatsigCustomizedSpecsAdapter {
         let mut adapters: Vec<Arc<dyn SpecsAdapter>> = Vec::new();
         for (_, config) in configs.iter().enumerate() {
             match config.adapter_type {
-                AdapterType::NetworkGrpcWebsocket => {
-                    if let Some(adapter) = Self::create_grpc_adapter(sdk_key, config){
+                SpecsAdapterType::NetworkGrpcWebsocket => {
+                    if let Some(adapter) = Self::create_grpc_adapter(sdk_key, config) {
                         adapters.push(adapter);
                     }
                 }
-                AdapterType::NetworkHttp => {
+                SpecsAdapterType::NetworkHttp => {
                     // Since strategies is an order list, we will just use i
                     adapters.push(Arc::new(StatsigHttpSpecsAdapter::new(
                         sdk_key,
@@ -40,20 +41,23 @@ impl StatsigCustomizedSpecsAdapter {
 
         StatsigCustomizedSpecsAdapter { adapters }
     }
-  
-  #[cfg(feature = "with_grpc")]
-  fn create_grpc_adapter(sdk_key: &str,config: &SpecAdapterConfig) -> Option<Arc<dyn SpecsAdapter>> {
-    Some(Arc::new(StatsigGrpcSpecAdapter::new(
-                          sdk_key,
-                          config                        
-                      )))
-  }
-  
-  #[cfg(not(feature = "with_grpc"))]
-  fn create_grpc_adapter(_sdk_key: &str, _config: &SpecAdapterConfig) -> Option<Arc<dyn SpecsAdapter>> {
-    log_e!("Trying to use grpc websocket adapter but with grpc feature is not enabled");
-    None
-  }
+
+    #[cfg(feature = "with_grpc")]
+    fn create_grpc_adapter(
+        sdk_key: &str,
+        config: &SpecAdapterConfig,
+    ) -> Option<Arc<dyn SpecsAdapter>> {
+        Some(Arc::new(StatsigGrpcSpecsAdapter::new(sdk_key, config)))
+    }
+
+    #[cfg(not(feature = "with_grpc"))]
+    fn create_grpc_adapter(
+        _sdk_key: &str,
+        _config: &SpecAdapterConfig,
+    ) -> Option<Arc<dyn SpecsAdapter>> {
+        log_e!("Trying to use grpc websocket adapter but with grpc feature is not enabled");
+        None
+    }
 }
 
 #[async_trait]
@@ -73,7 +77,10 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
                     return Ok(());
                 }
                 _ => {
-                    log_w!("Failed to initialize from {} adapter", adapter.get_type_name());
+                    log_w!(
+                        "Failed to initialize from {} adapter",
+                        adapter.get_type_name()
+                    );
                     // Carry on
                 }
             }
@@ -81,7 +88,10 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
         return Err(StatsigErr::SpecsAdapterNetworkFailure);
     }
 
-    fn schedule_background_sync(self: Arc<Self>, runtime_handle: &Handle) -> Result<(), StatsigErr> {
+    fn schedule_background_sync(
+        self: Arc<Self>,
+        runtime_handle: &Handle,
+    ) -> Result<(), StatsigErr> {
         // TODO: we probably should have another option for config sync sources, but for now, we only have one
         self.adapters[0]
             .clone()
@@ -99,6 +109,6 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
     }
 
     fn get_type_name(&self) -> String {
-        "StatsigCustomizedSpecsAdapter".to_string()
+        stringify!(StatsigCustomizedSpecsAdapter).to_string()
     }
 }

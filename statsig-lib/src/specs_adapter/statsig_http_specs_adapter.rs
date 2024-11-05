@@ -26,7 +26,12 @@ pub struct StatsigHttpSpecsAdapter {
 }
 
 impl StatsigHttpSpecsAdapter {
-    pub fn new(sdk_key: &str, specs_url: Option<&str>, _timeout: u64, sync_interval: Option<u32>) -> Self {
+    pub fn new(
+        sdk_key: &str,
+        specs_url: Option<&str>,
+        _timeout: u64,
+        sync_interval: Option<u32>,
+    ) -> Self {
         let headers = StatsigMetadata::get_constant_request_headers(sdk_key);
 
         Self {
@@ -36,7 +41,7 @@ impl StatsigHttpSpecsAdapter {
             shutdown_notify: Arc::new(Notify::new()),
             task_handle: Mutex::new(None),
             sync_interval_duration: Duration::from_millis(
-                sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS) as u64
+                sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS) as u64,
             ),
         }
     }
@@ -107,7 +112,6 @@ impl StatsigHttpSpecsAdapter {
             ..RequestArgs::new()
         });
 
-
         let data = match res {
             Some(r) => r,
             None => {
@@ -149,7 +153,10 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
         self.manually_sync_specs(lcut).await
     }
 
-    fn schedule_background_sync(self: Arc<Self>, runtime_handle: &Handle) -> Result<(), StatsigErr> {
+    fn schedule_background_sync(
+        self: Arc<Self>,
+        runtime_handle: &Handle,
+    ) -> Result<(), StatsigErr> {
         self.schedule_background_sync(runtime_handle)
     }
 
@@ -187,7 +194,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
     }
 
     fn get_type_name(&self) -> String {
-        "StatsigHttpSpecsAdapter".to_string()
+        stringify!(StatsigHttpSpecsAdapter).to_string()
     }
 }
 

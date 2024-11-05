@@ -26,7 +26,7 @@ struct StreamingRetryState {
     is_retrying: AtomicBool,
 }
 
-pub struct StatsigGrpcSpecAdapter {
+pub struct StatsigGrpcSpecsAdapter {
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
     shutdown_notify: Arc<Notify>,
     initialized_notify: Arc<Notify>,
@@ -37,7 +37,7 @@ pub struct StatsigGrpcSpecAdapter {
 }
 
 #[async_trait]
-impl SpecsAdapter for StatsigGrpcSpecAdapter {
+impl SpecsAdapter for StatsigGrpcSpecsAdapter {
     async fn start(
         self: Arc<Self>,
         runtime_handle: &Handle,
@@ -94,11 +94,11 @@ impl SpecsAdapter for StatsigGrpcSpecAdapter {
     }
 
     fn get_type_name(&self) -> String {
-        "StatsigGrpcSpecAdapter".to_string()
+        stringify!(StatsigGrpcSpecsAdapter).to_string()
     }
 }
 
-impl StatsigGrpcSpecAdapter {
+impl StatsigGrpcSpecsAdapter {
     pub fn new(sdk_key: &str, config: &SpecAdapterConfig) -> Self {
         Self {
             listener: RwLock::new(None),
