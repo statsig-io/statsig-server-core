@@ -1,0 +1,29 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  CLICOLOR_FORCE: true
+  GITHUB_TOKEN: ${{ secrets.OCTO_TOKEN }}
+
+jobs:
+  work:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Create Beta Tag
+        run: |
+          cargo exec beta-tag-package
+          cargo exec create-gh-release --commit-sha ${{ github.sha }}
+          cargo exec attach-gh-assets --asset-path README.md

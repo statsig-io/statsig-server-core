@@ -5,11 +5,14 @@ license.workspace = true
 version.workspace = true
 
 [dependencies]
+bytes = "1.8.0"
 clap = { version = "4.5.20", features = ["derive"] }
 colored = "2.1.0"
-serde_json = { version = "1.0.132", features = ["preserve_order"] }
-toml = "0.8.19"
-ini = "1.3.0"
-serde = { version = "1.0.204", features = ["derive"] }
 config = "0.14.1"
+ini = "1.3.0"
+octocrab = "0.41.2"
 regex = "1.11.1"
+serde = { version = "1.0.204", features = ["derive"] }
+serde_json = { version = "1.0.132", features = ["preserve_order"] }
+tokio = { version = "1.41.0", features = ["full"] }
+toml = "0.8.19"

@@ -35,7 +35,7 @@ pub fn execute(
 }
 
 fn get_napi_version() -> String {
-    let napi_version = std::process::Command::new("npm")
+    let napi_version = std::process::Command::new(get_npm_command())
         .current_dir("statsig-napi")
         .args(["list", "@napi-rs/cli", "--depth=0"])
         .output()
@@ -93,7 +93,7 @@ fn run_napi_build(
         args.push("--release");
     }
 
-    let status = std::process::Command::new("npx")
+    let status = std::process::Command::new(get_npx_command())
         .current_dir("statsig-napi")
         .args(args)
         .status()
@@ -107,7 +107,7 @@ fn run_napi_build(
 fn add_custom_message_to_js() {
     print_title("🔧", "Generating JS Files", Color::Blue);
 
-    let status = std::process::Command::new("npx")
+    let status = std::process::Command::new(get_npx_command())
         .current_dir("statsig-napi")
         .args([
             "jscodeshift",
@@ -127,7 +127,7 @@ fn add_custom_message_to_js() {
 fn prettify_js_files() {
     print_title("✨", "Prettifying Files", Color::Blue);
 
-    let status = std::process::Command::new("npx")
+    let status = std::process::Command::new(get_npx_command())
         .current_dir("statsig-napi")
         .args(["prettier", "src/bindings.d.ts", "--write"])
         .status()
@@ -137,7 +137,7 @@ fn prettify_js_files() {
         panic!("prettier failed on bindings.d.ts");
     }
 
-    let status = std::process::Command::new("npx")
+    let status = std::process::Command::new(get_npx_command())
         .current_dir("statsig-napi")
         .args(["prettier", "src/bindings.js", "--write"])
         .status()
@@ -151,7 +151,7 @@ fn prettify_js_files() {
 fn run_typescript() {
     print_title("🔧", "Running Typescript", Color::Blue);
 
-    let status = std::process::Command::new("npx")
+    let status = std::process::Command::new(get_npx_command())
         .current_dir("statsig-napi")
         .args(["tsc"])
         .status()
@@ -162,4 +162,20 @@ fn run_typescript() {
     }
 
     println!("{}", "tsc succeeded".green());
+}
+
+fn get_npm_command() -> String {
+    if cfg!(target_os = "windows") {
+        "npm.cmd".to_string()
+    } else {
+        "npm".to_string()
+    }
+}
+
+fn get_npx_command() -> String {
+    if cfg!(target_os = "windows") {
+        "npx.cmd".to_string()
+    } else {
+        "npx".to_string()
+    }
 }

@@ -45,9 +45,18 @@ enum Commands {
         #[arg(long, required = false)]
         vendored_openssl: bool,
     },
+    CreateGhRelease {
+        #[arg(long, required = true)]
+        commit_sha: String,
+    },
+    AttachGhAssets {
+        #[arg(long, required = true)]
+        asset_path: String,
+    },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
@@ -72,5 +81,7 @@ fn main() {
             cross_compile,
             vendored_openssl,
         ),
+        Commands::CreateGhRelease { commit_sha } => create_gh_release::execute(commit_sha).await,
+        Commands::AttachGhAssets { asset_path } => attach_gh_assets::execute(asset_path).await,
     }
 }
