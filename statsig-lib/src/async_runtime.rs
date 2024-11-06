@@ -25,7 +25,7 @@ impl AsyncRuntime {
     pub fn shutdown(&self) {
         if let Ok(mut lock) = self.runtime.lock() {
             if let Some(runtime) = lock.take() {
-                runtime.shutdown_timeout(Duration::from_secs(1))
+                runtime.shutdown_timeout(Duration::from_secs(1));
             }
         }
     }
@@ -45,4 +45,10 @@ fn create_runtime_if_required() -> (Option<Runtime>, Handle) {
 
     let handle = rt.handle().clone();
     (Some(rt), handle)
+}
+
+impl Drop for AsyncRuntime {
+    fn drop(&mut self) {
+        self.shutdown();
+    }
 }

@@ -1,13 +1,13 @@
-use std::collections::HashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use async_trait::async_trait;
-use serde_json::{Map, Value};
+use serde_json::Value;
+use sigstat::{EventLoggingAdapter, LogEventPayload, LogEventRequest, StatsigErr};
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::Mutex;
-use sigstat::{EventLoggingAdapter, StatsigOptions};
 
 pub struct MockEventLoggingAdapter {
-    pub logged_event_count: AtomicUsize,
-    pub logged_payloads: Mutex<Vec<HashMap<String, Value>>>
+    pub logged_event_count: AtomicU64,
+    pub logged_payloads: Mutex<Vec<LogEventPayload>>,
 }
 
 impl Default for MockEventLoggingAdapter {
@@ -19,36 +19,34 @@ impl Default for MockEventLoggingAdapter {
 impl MockEventLoggingAdapter {
     pub fn new() -> Self {
         Self {
-            logged_event_count: AtomicUsize::new(0),
-            logged_payloads: Mutex::new(Vec::new())
+            logged_event_count: AtomicU64::new(0),
+            logged_payloads: Mutex::new(Vec::new()),
         }
     }
 
-    pub async fn force_get_first_event(&self) -> Map<String, Value> {
+    pub async fn force_get_first_event(&self) -> HashMap<String, Value> {
         let first_payload = self.force_get_received_payloads().await;
-        let events = first_payload.get("events").unwrap();
-        let event = events.get(0).cloned().unwrap().as_object().cloned().unwrap();
-        event
+        let event = first_payload.events.as_array().unwrap().first().unwrap();
+        let event_obj = event.as_object().unwrap();
+        event_obj
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
     }
 
-    pub async fn force_get_received_payloads(&self) -> HashMap<String, Value> {
+    pub async fn force_get_received_payloads(&self) -> LogEventPayload {
         self.logged_payloads.lock().await.first().unwrap().clone()
     }
 }
 
 #[async_trait]
 impl EventLoggingAdapter for MockEventLoggingAdapter {
-    fn bind(&self, _sdk_key: &str, _option: &StatsigOptions) {}
-
-    async fn log_events(
-        &self,
-        payload: HashMap<String, Value>,
-        event_count: usize
-    ) -> Result<bool, String> {
+    async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
         let mut payloads = self.logged_payloads.lock().await;
 
-        self.logged_event_count.fetch_add(event_count, Ordering::SeqCst);
-        payloads.push(payload.clone());
+        self.logged_event_count
+            .fetch_add(request.event_count, Ordering::SeqCst);
+        payloads.push(request.payload);
 
         Ok(true)
     }

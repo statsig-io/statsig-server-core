@@ -12,7 +12,7 @@ pub struct NetworkClient {
 
 pub struct RequestArgs {
     pub url: String,
-    pub body: Option<HashMap<String, Value>>,
+    pub body: Option<Value>,
     pub retries: u32,
     pub headers: Option<HashMap<String, String>>,
     pub query_params: Option<HashMap<String, String>>,

@@ -1,3 +1,6 @@
 pub use event_logging_adapter_trait::*;
+pub use statsig_http_event_logging_adapter::StatsigHttpEventLoggingAdapter;
+pub use statsig_local_file_event_logging_adapter::StatsigLocalFileEventLoggingAdapter;
 pub mod event_logging_adapter_trait;
-pub mod statsig_event_logging_adapter;
+pub mod statsig_http_event_logging_adapter;
+pub mod statsig_local_file_event_logging_adapter;

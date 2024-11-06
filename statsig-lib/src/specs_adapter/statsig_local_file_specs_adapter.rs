@@ -36,9 +36,9 @@ impl StatsigLocalFileSpecsAdapter {
                     });
                     Ok(())
                 }
-                None => Err(StatsigErr::SpecsListenerNotSet),
+                None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
-            Err(_) => return Err(StatsigErr::SpecsListenerNotSet),
+            Err(e) => return Err(StatsigErr::LockFailure(e.to_string())),
         }
     }
 }

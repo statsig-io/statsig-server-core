@@ -7,10 +7,10 @@ use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_e, StatsigOptions};
+use crate::{log_e, LogEventPayload, LogEventRequest, StatsigOptions};
 use chrono::Utc;
 use serde_json::json;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, RwLock};
@@ -145,17 +145,17 @@ impl EventLogger {
             return;
         }
 
-        let event_count = processed_events.len();
+        let event_count = processed_events.len() as u64;
 
-        let payload = HashMap::from([
-            ("events".to_string(), json!(processed_events)),
-            (
-                "statsigMetadata".to_string(),
-                StatsigMetadata::get_as_json(),
-            ),
-        ]);
+        let request = LogEventRequest {
+            payload: LogEventPayload {
+                events: json!(processed_events),
+                statsig_metadata: StatsigMetadata::get_as_json(),
+            },
+            event_count,
+        };
 
-        let _ = event_logging_adapter.log_events(payload, event_count).await;
+        let _ = event_logging_adapter.log_events(request).await;
     }
 }
 
@@ -226,7 +226,6 @@ mod tests {
     use crate::statsig_user_internal::StatsigUserInternal;
     use crate::StatsigUser;
     use async_trait::async_trait;
-    use serde_json::Value;
     use std::sync::atomic::{AtomicU64, Ordering};
 
     fn enqueue_single(logger: &EventLogger, user_id: &str, event_name: &str) {
@@ -337,7 +336,6 @@ mod tests {
     }
 
     struct MockAdapter {
-        pub bind_called_times: AtomicU64,
         pub log_events_called_times: AtomicU64,
         pub log_event_count: AtomicU64,
     }
@@ -345,7 +343,6 @@ mod tests {
     impl MockAdapter {
         fn new() -> Self {
             Self {
-                bind_called_times: AtomicU64::new(0),
                 log_events_called_times: AtomicU64::new(0),
                 log_event_count: AtomicU64::new(0),
             }
@@ -354,18 +351,10 @@ mod tests {
 
     #[async_trait]
     impl EventLoggingAdapter for MockAdapter {
-        fn bind(&self, _sdk_key: &str, _option: &StatsigOptions) {
-            self.bind_called_times.fetch_add(1, Ordering::SeqCst);
-        }
-
-        async fn log_events(
-            &self,
-            _payload: HashMap<String, Value>,
-            event_count: usize,
-        ) -> Result<bool, String> {
+        async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
             self.log_events_called_times.fetch_add(1, Ordering::SeqCst);
             self.log_event_count
-                .fetch_add(event_count as u64, Ordering::SeqCst);
+                .fetch_add(request.event_count, Ordering::SeqCst);
             Ok(true)
         }
     }

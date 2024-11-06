@@ -87,7 +87,7 @@ impl StatsigHttpSpecsAdapter {
                 *guard = Some(handle);
                 Ok(())
             }
-            Err(_) => Err(StatsigErr::BackgroundTaskLockFailure),
+            Err(e) => Err(StatsigErr::LockFailure(e.to_string())),
         }
     }
 
@@ -110,7 +110,7 @@ impl StatsigHttpSpecsAdapter {
     async fn manually_sync_specs(&self, current_store_lcut: Option<u64>) -> Result<(), StatsigErr> {
         if let Ok(lock) = self.listener.read() {
             if lock.is_none() {
-                return Err(StatsigErr::SpecsListenerNotSet);
+                return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()));
             }
         }
 
@@ -120,7 +120,9 @@ impl StatsigHttpSpecsAdapter {
             Some(r) => r,
             None => {
                 log_e!("No result from network");
-                return Err(StatsigErr::SpecsAdapterNetworkFailure);
+                return Err(StatsigErr::NetworkError(
+                    "No result from network".to_string(),
+                ));
             }
         };
 
@@ -136,9 +138,9 @@ impl StatsigHttpSpecsAdapter {
                     listener.did_receive_specs_update(update);
                     Ok(())
                 }
-                None => Err(StatsigErr::SpecsListenerNotSet),
+                None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
-            Err(_) => return Err(StatsigErr::SpecsListenerNotSet),
+            Err(e) => return Err(StatsigErr::LockFailure(e.to_string())),
         }
     }
 }

@@ -4,8 +4,8 @@ use std::sync::{Arc, RwLock};
 use uuid::Uuid;
 
 use crate::{
-    log_d, log_e, log_w, Statsig, StatsigHttpSpecsAdapter, StatsigLocalFileSpecsAdapter,
-    StatsigOptions, StatsigUser,
+    log_d, log_e, log_w, Statsig, StatsigHttpEventLoggingAdapter, StatsigHttpSpecsAdapter,
+    StatsigLocalFileEventLoggingAdapter, StatsigLocalFileSpecsAdapter, StatsigOptions, StatsigUser,
 };
 
 #[macro_export]
@@ -69,6 +69,14 @@ macro_rules! impl_boxable_instance {
     };
 }
 
+macro_rules! impl_all_instances {
+    ($(($type:ty, $variant:ident) => $prefix:expr),* $(,)?) => {
+        $(
+            impl_boxable_instance!($type, $variant, $prefix);
+        )*
+    }
+}
+
 lazy_static! {
     pub static ref INST_STORE: InstanceStore = InstanceStore::new();
 }
@@ -81,6 +89,8 @@ pub enum BoxedInstance {
     StatsigUser(Arc<StatsigUser>),
     StatsigHttpSpecsAdapter(Arc<StatsigHttpSpecsAdapter>),
     StatsigLocalFileSpecsAdapter(Arc<StatsigLocalFileSpecsAdapter>),
+    StatsigHttpEventLoggingAdapter(Arc<StatsigHttpEventLoggingAdapter>),
+    StatsigLocalFileEventLoggingAdapter(Arc<StatsigLocalFileEventLoggingAdapter>),
 }
 
 pub trait BoxableInstance {
@@ -91,19 +101,15 @@ pub trait BoxableInstance {
     fn get_prefix_value(&self) -> String;
 }
 
-impl_boxable_instance!(Statsig, Statsig, "stsg");
-impl_boxable_instance!(StatsigOptions, StatsigOptions, "opts");
-impl_boxable_instance!(StatsigUser, StatsigUser, "usr");
-impl_boxable_instance!(
-    StatsigHttpSpecsAdapter,
-    StatsigHttpSpecsAdapter,
-    "http_spcs"
-);
-impl_boxable_instance!(
-    StatsigLocalFileSpecsAdapter,
-    StatsigLocalFileSpecsAdapter,
-    "file_spcs"
-);
+impl_all_instances! {
+    (Statsig, Statsig) => "stsg",
+    (StatsigOptions, StatsigOptions) => "opts",
+    (StatsigUser, StatsigUser) => "usr",
+    (StatsigHttpSpecsAdapter, StatsigHttpSpecsAdapter) => "spc_http",
+    (StatsigLocalFileSpecsAdapter, StatsigLocalFileSpecsAdapter) => "spc_file",
+    (StatsigHttpEventLoggingAdapter, StatsigHttpEventLoggingAdapter) => "evt_http",
+    (StatsigLocalFileEventLoggingAdapter, StatsigLocalFileEventLoggingAdapter) => "evt_file",
+}
 
 pub struct InstanceStore {
     instances: RwLock<HashMap<String, BoxedInstance>>,

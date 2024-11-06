@@ -4,18 +4,20 @@ use std::fmt::{Display, Formatter};
 pub enum StatsigErr {
     CustomError(String),
 
+    LockFailure(String),
+
+    UnstartedAdapter(String),
+
+    NetworkError(String),
+
+    JsonParseError(String, String),
+
+    FileError(String),
+
     // Specs Adapter
-    SpecsListenerNotSet,
-    SpecsListenerLockFailure,
-    SpecsAdapterNetworkFailure,
-    SpecsAdapterLockFailure,
-    BackgroundTaskLockFailure,
     SpecsLocalFileReadFailure(String),
 
     // ID Lists Adapter
-    IdListsAdapterNetworkFailure,
-    IdListsAdapterParsingFailure(String),
-    IdListsAdapterRuntimeHandleLockFailure,
     IdListsAdapterFailedToInsertIdList,
 
     GrpcError(String),
@@ -26,31 +28,24 @@ impl Display for StatsigErr {
         match self {
             StatsigErr::CustomError(msg) => write!(f, "{}", msg),
 
-            // Specs
-            StatsigErr::SpecsListenerNotSet => write!(f, "No SpecsUpdateListener found"),
-            StatsigErr::SpecsListenerLockFailure => {
-                write!(f, "Failed to acquire mutex lock for SpecsUpdateListener")
+            StatsigErr::LockFailure(msg) => write!(f, "Failed to acquire lock: {}", msg),
+
+            StatsigErr::UnstartedAdapter(msg) => write!(f, "Adapter not started: {}", msg),
+
+            StatsigErr::NetworkError(msg) => write!(f, "Network error: {}", msg),
+
+            StatsigErr::JsonParseError(type_name, err_msg) => {
+                write!(f, "Failed to parse {} - {}", type_name, err_msg)
             }
-            StatsigErr::SpecsAdapterLockFailure => write!(f, "Failed to acquire lock"),
-            StatsigErr::SpecsAdapterNetworkFailure => write!(f, "Specs adapter network failure"),
-            StatsigErr::BackgroundTaskLockFailure => write!(
-                f,
-                "Specs adapter failed to acquire background task mutex lock"
-            ),
+
+            StatsigErr::FileError(msg) => write!(f, "File write error: {}", msg),
+
+            // Specs
             StatsigErr::SpecsLocalFileReadFailure(e) => {
                 write!(f, "Specs adapter failed to read local file, {}", e)
             }
 
             // ID Lists
-            StatsigErr::IdListsAdapterNetworkFailure => {
-                write!(f, "IDLists Adapter network failure")
-            }
-            StatsigErr::IdListsAdapterParsingFailure(e) => {
-                write!(f, "IDLists Adapter failed to parse network response, {}", e)
-            }
-            StatsigErr::IdListsAdapterRuntimeHandleLockFailure => {
-                write!(f, "IDLists Adapter failed to set Runtime Handle")
-            }
             StatsigErr::IdListsAdapterFailedToInsertIdList => {
                 write!(f, "Failed to insert new Id List")
             }

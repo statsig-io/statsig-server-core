@@ -31,12 +31,12 @@ class StatsigScheduledSpecsAdapterTest extends TestCase
     {
         $adapter = new StatsigScheduledSpecsAdapter("/tmp/specs.json", "secret-key");
         $this->assertNotNull($adapter->__http_ref);
-        $this->assertNotNull($adapter->__file_ref);
+        $this->assertNotNull($adapter->__ref);
 
         $adapter->__destruct();
 
         $this->assertNull($adapter->__http_ref);
-        $this->assertNull($adapter->__file_ref);
+        $this->assertNull($adapter->__ref);
     }
 
     public function testFetchingFromNetwork()

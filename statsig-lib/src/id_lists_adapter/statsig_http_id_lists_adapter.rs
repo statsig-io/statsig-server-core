@@ -63,13 +63,18 @@ impl StatsigHttpIdListsAdapter {
             Some(r) => r,
             None => {
                 log_e!("No id list result from network");
-                return Err(StatsigErr::IdListsAdapterNetworkFailure);
+                return Err(StatsigErr::NetworkError(
+                    "No result from network".to_string(),
+                ));
             }
         };
 
         match from_str::<IdListsResponse>(&data) {
             Ok(id_lists) => Ok(id_lists),
-            Err(e) => Err(StatsigErr::IdListsAdapterParsingFailure(e.to_string())),
+            Err(e) => Err(StatsigErr::JsonParseError(
+                stringify!(IdListsResponse).to_string(),
+                e.to_string(),
+            )),
         }
     }
 
@@ -90,7 +95,9 @@ impl StatsigHttpIdListsAdapter {
             Some(r) => r,
             None => {
                 log_e!("No id list result from network");
-                return Err(StatsigErr::IdListsAdapterNetworkFailure);
+                return Err(StatsigErr::NetworkError(
+                    "No result from network".to_string(),
+                ));
             }
         };
 
@@ -125,7 +132,7 @@ impl StatsigHttpIdListsAdapter {
                 *guard = Some(handle);
                 Ok(())
             }
-            Err(_) => Err(StatsigErr::BackgroundTaskLockFailure),
+            Err(e) => Err(StatsigErr::LockFailure(e.to_string())),
         }
     }
 

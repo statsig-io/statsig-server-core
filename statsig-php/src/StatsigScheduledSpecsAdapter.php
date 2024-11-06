@@ -6,7 +6,7 @@ class StatsigScheduledSpecsAdapter
 {
     public readonly string $file_path;
     public $__http_ref = null;
-    public $__file_ref = null;
+    public $__ref = null;
 
     public function __construct(string $file_path, string $sdk_key, StatsigOptions $options = null)
     {
@@ -15,7 +15,7 @@ class StatsigScheduledSpecsAdapter
         $options_ref = $options ? $options->__ref : (new StatsigOptions)->__ref;
 
         $this->__http_ref = StatsigFFI::get()->statsig_http_specs_adapter_create($sdk_key, $options_ref);
-        $this->__file_ref = StatsigFFI::get()->statsig_local_file_specs_adapter_create($file_path);
+        $this->__ref = StatsigFFI::get()->statsig_local_file_specs_adapter_create($file_path);
     }
 
     public function __destruct()
@@ -24,12 +24,12 @@ class StatsigScheduledSpecsAdapter
             StatsigFFI::get()->statsig_http_specs_adapter_release($this->__http_ref);
         }
 
-        if (!is_null($this->__file_ref)) {
-            StatsigFFI::get()->statsig_local_file_specs_adapter_release($this->__file_ref);
+        if (!is_null($this->__ref)) {
+            StatsigFFI::get()->statsig_local_file_specs_adapter_release($this->__ref);
         }
 
         $this->__http_ref = null;
-        $this->__file_ref = null;
+        $this->__ref = null;
     }
 
     public function sync_specs_from_network()

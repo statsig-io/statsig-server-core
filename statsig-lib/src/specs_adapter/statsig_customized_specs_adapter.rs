@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use super::StatsigHttpSpecsAdapter;
-use super::{SpecsAdapterType, SpecAdapterConfig};
+use super::{SpecAdapterConfig, SpecsAdapterType};
 use crate::StatsigErr;
 use crate::{log_w, SpecsAdapter, SpecsUpdateListener};
 use async_trait::async_trait;
@@ -85,7 +85,9 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
                 }
             }
         }
-        return Err(StatsigErr::SpecsAdapterNetworkFailure);
+        return Err(StatsigErr::NetworkError(
+            "Failed to start any adapters".to_string(),
+        ));
     }
 
     fn schedule_background_sync(

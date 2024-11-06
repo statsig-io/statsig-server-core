@@ -23,7 +23,7 @@ impl StatsigBootstrapSpecsAdapter {
     pub fn set_data(&self, data: String) -> Result<(), StatsigErr> {
         match self.data.write() {
             Ok(mut lock) => *lock = data.clone(),
-            Err(_) => return Err(StatsigErr::SpecsAdapterLockFailure),
+            Err(e) => return Err(StatsigErr::LockFailure(e.to_string())),
         };
 
         self.push_update()
@@ -32,7 +32,7 @@ impl StatsigBootstrapSpecsAdapter {
     fn push_update(&self) -> Result<(), StatsigErr> {
         let data = match self.data.read() {
             Ok(lock) => lock.clone(),
-            Err(_) => return Err(StatsigErr::SpecsAdapterLockFailure),
+            Err(e) => return Err(StatsigErr::LockFailure(e.to_string())),
         };
 
         match &self.listener.read() {
@@ -45,9 +45,9 @@ impl StatsigBootstrapSpecsAdapter {
                     });
                     Ok(())
                 }
-                None => Err(StatsigErr::SpecsListenerNotSet),
+                None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
-            Err(_) => return Err(StatsigErr::SpecsListenerNotSet),
+            Err(e) => return Err(StatsigErr::LockFailure(e.to_string())),
         }
     }
 }

@@ -15,7 +15,7 @@ class StatsigOptions
         $this->__ref = $ffi->statsig_options_create(
             $specs_url,
             $log_event_url,
-            $specs_adapter->__file_ref
+            is_null($specs_adapter) ? null : $specs_adapter->__ref
         );
     }
 

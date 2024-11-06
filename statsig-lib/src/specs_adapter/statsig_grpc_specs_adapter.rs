@@ -194,7 +194,9 @@ impl StatsigGrpcSpecsAdapter {
                 }
                 _ => {
                     log_e!("Error while receiving stream");
-                    return Err(StatsigErr::SpecsAdapterLockFailure);
+                    return Err(StatsigErr::NetworkError(
+                        "Error while receiving stream".to_string(),
+                    ));
                 }
             }
         }
@@ -204,7 +206,7 @@ impl StatsigGrpcSpecsAdapter {
         let mut guard = self
             .task_handle
             .lock()
-            .map_err(|_| StatsigErr::BackgroundTaskLockFailure)?;
+            .map_err(|e| StatsigErr::LockFailure(e.to_string()))?;
 
         *guard = Some(handle);
         Ok(())
@@ -217,7 +219,7 @@ impl StatsigGrpcSpecsAdapter {
         let mut mut_listener = self
             .listener
             .write()
-            .map_err(|_| StatsigErr::SpecsListenerLockFailure)?;
+            .map_err(|e| StatsigErr::LockFailure(e.to_string()))?;
 
         *mut_listener = Some(listener);
         Ok(())
@@ -227,7 +229,7 @@ impl StatsigGrpcSpecsAdapter {
         let listener = self
             .listener
             .read()
-            .map_err(|_| StatsigErr::BackgroundTaskLockFailure)?;
+            .map_err(|e| StatsigErr::LockFailure(e.to_string()))?;
 
         if let Some(listener) = listener.as_ref() {
             let update = SpecsUpdate {
@@ -238,7 +240,7 @@ impl StatsigGrpcSpecsAdapter {
             listener.did_receive_specs_update(update);
             Ok(())
         } else {
-            Err(StatsigErr::SpecsListenerNotSet)
+            Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()))
         }
     }
 

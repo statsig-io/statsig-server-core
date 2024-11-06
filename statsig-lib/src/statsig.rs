@@ -17,8 +17,8 @@ use crate::event_logging::gate_exposure::GateExposure;
 use crate::event_logging::layer_exposure::LayerExposure;
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::make_custom_event;
-use crate::event_logging_adapter::statsig_event_logging_adapter::StatsigEventLoggingAdapter;
 use crate::event_logging_adapter::EventLoggingAdapter;
+use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
 use crate::hashing::Hashing;
 use crate::initialize_response::InitializeResponse;
 use crate::output_logger::initialize_simple_output_logger;
@@ -559,11 +559,12 @@ fn initialize_event_logging_adapter(
     sdk_key: &str,
     options: &StatsigOptions,
 ) -> Arc<dyn EventLoggingAdapter> {
-    let adapter = options
-        .event_logging_adapter
-        .clone()
-        .unwrap_or_else(|| Arc::new(StatsigEventLoggingAdapter::new()));
-    adapter.bind(sdk_key, options);
+    let adapter = options.event_logging_adapter.clone().unwrap_or_else(|| {
+        Arc::new(StatsigHttpEventLoggingAdapter::new(
+            sdk_key,
+            options.log_event_url.as_ref(),
+        ))
+    });
     adapter
 }
 

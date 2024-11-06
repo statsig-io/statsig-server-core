@@ -20,6 +20,7 @@
     },
     "scripts": {
         "test": "phpunit tests --testdox --colors=always",
+        "test:verbose": "phpunit tests --testdox --colors=always --debug",
         "post-install-cmd": [
             "php post-install.php"
           ]

@@ -35,6 +35,7 @@ class StatsigAdapterUsageTest extends TestCase
             $this->server->getUrl() . "/v2/download_config_specs",
             $this->server->getUrl() . "/v1/log_event"
         );
+
         $adapter = new StatsigScheduledSpecsAdapter("/tmp/specs.json", "secret-key", $options);
         $adapter->sync_specs_from_network();
 
@@ -43,6 +44,7 @@ class StatsigAdapterUsageTest extends TestCase
             null,
             $adapter
         );
+
 
         $statsig = new Statsig("secret-key", $options);
         $statsig->initialize(function () use (&$callback_fired) {

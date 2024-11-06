@@ -1,12 +1,12 @@
 mod utils;
 
+use crate::utils::helpers::{enforce_array, enforce_object, enforce_string};
+use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
+use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use sigstat::{Statsig, StatsigOptions, StatsigUser};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
-use crate::utils::helpers::{enforce_array, enforce_object, enforce_string};
-use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
-use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 
 #[tokio::test]
 async fn test_gate_exposures_initialized() {
@@ -40,7 +40,7 @@ async fn test_gate_exposures_formatting() {
 
     let received = logging_adapter.force_get_received_payloads().await;
 
-    let statsig_meta = enforce_object(&received["statsigMetadata"]);
+    let statsig_meta = enforce_object(&received.statsig_metadata);
     assert_eq!(statsig_meta["sdkType"], "statsig-server-core");
     assert!(statsig_meta["sdkVersion"].as_str().is_some());
 
@@ -243,7 +243,10 @@ fn create_trowing_specs_adapter() -> Arc<MockSpecsAdapter> {
 }
 
 fn create_delayed_specs_adapter() -> Arc<MockSpecsAdapter> {
-    Arc::new(MockSpecsAdapter::delayed("tests/data/eval_proj_dcs.json", 100))
+    Arc::new(MockSpecsAdapter::delayed(
+        "tests/data/eval_proj_dcs.json",
+        100,
+    ))
 }
 
 fn create_statsig(
