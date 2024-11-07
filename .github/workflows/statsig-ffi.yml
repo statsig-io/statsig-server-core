@@ -50,6 +50,12 @@ jobs:
           dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: List Release Files
+        shell: bash
+        run: |
+          echo "Listing release files:"
+          find target -type f -path "target/**/${{ matrix.config.target }}/**/release/libstatsig_ffi.so" -ls
+
       - uses: actions/create-github-app-token@v1
         id: app-token
         with:
@@ -57,6 +63,11 @@ jobs:
           private-key: ${{ secrets.SERVER_CORE_KONG_APP_PRIVATE_KEY }}
           owner: statsig-io
 
+      - name: Make Target Directory Accessible
+        shell: bash
+        run: |
+          chmod -R 755 target/
+          
       - name: Upload Release Asset
         if: ${{ github.event_name == 'release' }}
         uses: ./.github/actions/upload-release-asset
