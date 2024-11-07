@@ -6,7 +6,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CLICOLOR_FORCE: true
-  GITHUB_TOKEN: ${{ secrets.OCTO_TOKEN }}
 
 jobs:
   work:
@@ -15,6 +14,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.KONG_APP_ID }}
+          private-key: ${{ secrets.SERVER_CORE_KONG_APP_PRIVATE_KEY }}
+          owner: statsig-io
+
+      - name: Set Octocrab Token
+        run: |
+          export OCTOCRAB_TOKEN=${{ steps.app-token.outputs.token }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
