@@ -11,6 +11,14 @@ pub fn execute() {
     let version = get_cargo_toml_version();
     println!("Current Version: {}", version.to_string().bold());
 
+    let statsig_metadata_version = get_statsig_metadata_version();
+    set_statsig_metadata_version(version.to_string());
+    println!(
+        "StatsigMetadata.sdk_version: {} -> {}",
+        statsig_metadata_version.bold().strikethrough(),
+        version.to_string().bold()
+    );
+
     let node_version = get_node_package_json_version();
     set_node_package_json_version(version.to_string());
     println!(
@@ -92,4 +100,23 @@ fn set_java_gradle_version(version: String) {
 
     std::fs::write("statsig-ffi/bindings/java/gradle.properties", content)
         .expect("Failed to write to gradle.properties");
+}
+
+fn get_statsig_metadata_version() -> String {
+    let path = "statsig-lib/src/statsig_metadata.rs";
+    let content = std::fs::read_to_string(path).expect("Failed to read statsig_metadata.rs");
+    let re = regex::Regex::new(r#"sdk_version: "([^"]+)""#).expect("Failed to create regex");
+    let captures = re.captures(&content).expect("Failed to capture version");
+    let version = captures.get(1).expect("Failed to get version").as_str();
+    version.to_string()
+}
+
+fn set_statsig_metadata_version(version: String) {
+    let path = "statsig-lib/src/statsig_metadata.rs";
+    let content = std::fs::read_to_string(path).expect("Failed to read statsig_metadata.rs");
+
+    let re = regex::Regex::new(r#"sdk_version: "([^"]+)""#).expect("Failed to create regex");
+    let updated = re.replace(&content, format!(r#"sdk_version: "{}""#, version));
+
+    std::fs::write(path, updated.to_string()).expect("Failed to write to statsig_metadata.rs");
 }
