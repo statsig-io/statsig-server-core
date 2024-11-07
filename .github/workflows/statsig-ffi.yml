@@ -50,12 +50,20 @@ jobs:
           dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.KONG_APP_ID }}
+          private-key: ${{ secrets.SERVER_CORE_KONG_APP_PRIVATE_KEY }}
+          owner: statsig-io
+
       - name: Upload Release Asset
         if: ${{ github.event_name == 'release' }}
         uses: ./.github/actions/upload-release-asset
         with:
           release_tag: ${{ github.event.release.tag_name }}
           asset_name: statsig-ffi-${{ matrix.config.target }}
+          git_token: ${{ steps.app-token.outputs.token }}
           patterns: >-
             target/**/release/libstatsig_ffi.so,
             target/**/debug/libstatsig_ffi.dylib
@@ -96,12 +104,20 @@ jobs:
         with:
           target: ${{ matrix.config.target }}
 
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.KONG_APP_ID }}
+          private-key: ${{ secrets.SERVER_CORE_KONG_APP_PRIVATE_KEY }}
+          owner: statsig-io
+
       - name: Upload Release Asset
         if: ${{ github.event_name == 'release' }}
         uses: ./.github/actions/upload-release-asset
         with:
           release_tag: ${{ github.event.release.tag_name }}
           asset_name: statsig-ffi-${{ matrix.config.target }}
+          git_token: ${{ steps.app-token.outputs.token }}
           patterns: >-
             target/**/${{ matrix.config.target }}/release/statsig_ffi.dll,
             target/**/${{ matrix.config.target }}/debug/statsig_ffi.dll,
