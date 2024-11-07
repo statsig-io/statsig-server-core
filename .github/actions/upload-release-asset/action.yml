@@ -35,5 +35,5 @@ runs:
       env:
         OCTOCRAB_TOKEN: ${{ steps.app-token.outputs.token }}
       run: |
-        cargo exec zip-files --pattern ${{ inputs.patterns }} --output "${{ inputs.asset_name }}.zip"
-        cargo exec attach-gh-assets --asset-path "${{ inputs.asset_name }}.zip" --release-tag ${{ inputs.release_id }} --repo-name ${{ github.event.repository.name }} 
+        cargo exec zip-files --pattern "${{ inputs.patterns }}" --output "${{ inputs.asset_name }}.zip"
+        cargo exec attach-gh-assets --asset-path "${{ inputs.asset_name }}.zip" --release-tag ${{ inputs.release_tag }} --repo-name ${{ github.event.repository.name }} 

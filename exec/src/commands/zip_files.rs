@@ -11,6 +11,10 @@ pub async fn execute(glob_pattern: &str, output_file: &str) {
     let files = get_files(glob_pattern);
     println!("Found count:{}", files.len());
 
+    if files.is_empty() {
+        panic!("No files found to zip");
+    }
+
     let zip_file = std::fs::File::create(output_file).expect("Failed to create zip file");
     let mut zip = zip::ZipWriter::new(zip_file);
 
@@ -56,8 +60,9 @@ fn get_files(glob_pattern: &str) -> Vec<Result<PathBuf, glob::GlobError>> {
     let mut files: Vec<_> = Vec::new();
 
     for pattern in patterns {
-        let globbed: Vec<Result<PathBuf, glob::GlobError>> =
-            glob::glob(pattern).expect("Failed to find files").collect();
+        let globbed: Vec<Result<PathBuf, glob::GlobError>> = glob::glob(pattern.trim())
+            .expect("Failed to find files")
+            .collect();
         files.extend(globbed);
     }
 
