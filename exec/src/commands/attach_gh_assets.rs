@@ -5,13 +5,13 @@ use bytes::Bytes;
 use colored::*;
 use octocrab::{models::repos::Release, repos::RepoHandler};
 
-pub async fn execute(asset_path: &str, repo_name: &str) {
+pub async fn execute(asset_path: &str, repo_name: &str, release_tag: &str) {
     print_title("🏷 ", "Attaching Asset to GitHub Release", Color::Yellow);
 
     let octo = get_octocrab().await;
     let repo = octo.repos("statsig-io", repo_name);
 
-    let release = get_release_by_version(&repo).await;
+    let release = get_release_by_tag(&repo, release_tag).await;
     let file_bytes = get_asset_bytes(asset_path);
     let file_name = Path::new(asset_path)
         .file_name()
@@ -21,13 +21,10 @@ pub async fn execute(asset_path: &str, repo_name: &str) {
     upload_asset(&repo, release, file_bytes, file_name).await;
 }
 
-async fn get_release_by_version(repo: &RepoHandler<'_>) -> Release {
-    let version = get_cargo_toml_version();
-    println!("Current Version: {}", version.to_string().bold());
-
+async fn get_release_by_tag(repo: &RepoHandler<'_>, release_tag: &str) -> Release {
     let release = repo
         .releases()
-        .get_by_tag(&version.to_string())
+        .get_by_tag(&release_tag)
         .await
         .expect("Unable to find release");
 

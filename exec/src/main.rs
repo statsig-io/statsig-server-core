@@ -58,6 +58,9 @@ enum Commands {
 
         #[arg(long, required = true)]
         repo_name: String,
+
+        #[arg(long, required = true)]
+        release_tag: String,
     },
     ZipFiles {
         #[arg(long, required = true)]
@@ -99,7 +102,8 @@ async fn main() {
         Commands::AttachGhAssets {
             asset_path,
             repo_name,
-        } => attach_gh_assets::execute(asset_path, repo_name).await,
+            release_tag,
+        } => attach_gh_assets::execute(asset_path, repo_name, release_tag).await,
         Commands::ZipFiles { pattern, output } => zip_files::execute(pattern, output).await,
     }
 }

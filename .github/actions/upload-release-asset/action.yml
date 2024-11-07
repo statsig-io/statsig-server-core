@@ -1,0 +1,39 @@
+name: Uploads a Release Asset
+description: Uploads a Release Asset
+
+inputs:
+  release_tag:
+    description: The git tag of the release to upload the asset to
+    required: true
+
+  patterns:
+    description: The patterns to upload
+    required: true
+
+  asset_name:
+    description: The name of the asset to upload
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Echo Inputs
+      shell: bash
+      run: |
+        echo "Release Tag: ${{ inputs.release_tag }}"
+        echo "Patterns: ${{ inputs.patterns }}"
+        echo "Asset Name: ${{ inputs.asset_name }}"
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache Cargo
+      uses: Swatinem/rust-cache@v2
+
+    - name: Upload Release Asset
+      shell: bash
+      env:
+        OCTOCRAB_TOKEN: ${{ steps.app-token.outputs.token }}
+      run: |
+        cargo exec zip-files --pattern ${{ inputs.patterns }} --output "${{ inputs.asset_name }}.zip"
+        cargo exec attach-gh-assets --asset-path "${{ inputs.asset_name }}.zip" --release-tag ${{ inputs.release_id }} --repo-name ${{ github.event.repository.name }} 
