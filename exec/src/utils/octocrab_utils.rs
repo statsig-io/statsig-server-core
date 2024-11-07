@@ -10,16 +10,13 @@ pub async fn get_octocrab() -> Octocrab {
         .build()
         .expect("Failed to create Octocrab instance");
 
-    match octo.current().user().await {
-        Ok(user) => {
-            println!("Successfully authenticated as: {}", user.login.bold());
-            user
-        }
-        Err(e) => {
-            eprintln!("Authentication error: {:#?}", e);
-            panic!("Failed to authenticate");
-        }
-    };
+    if let Ok(app) = octo.current().app().await {
+        println!("Successfully authenticated as: {}", app.name.bold());
+    } else if let Ok(user) = octo.current().user().await {
+        println!("Successfully authenticated as: {}", user.login.bold());
+    } else {
+        panic!("Failed to authenticate");
+    }
 
     return octo;
 }
