@@ -19,6 +19,6 @@ RUN rustup target add $TARGET
 
 ENV CARGO_TERM_COLOR=always
 ENV EXTRAS=""
-ENV CARGO_TARGET_DIR=/app/target/amazonlinux2
+ENV CARGO_TARGET_DIR=/app/target/amazonlinux2-arm64
 
 CMD ["sh", "-c", "cargo build --target ${TARGET} ${EXTRAS}"]

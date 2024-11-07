@@ -65,8 +65,8 @@ jobs:
           asset_name: statsig-ffi-${{ matrix.config.target }}
           git_token: ${{ steps.app-token.outputs.token }}
           patterns: >-
-            target/**/release/libstatsig_ffi.so,
-            target/**/debug/libstatsig_ffi.dylib
+            target/**/${{ matrix.config.target }}/**/release/libstatsig_ffi.so,
+            target/**/${{ matrix.config.target }}/**/debug/libstatsig_ffi.so
 
   build-mac-and-windows:
     strategy:
