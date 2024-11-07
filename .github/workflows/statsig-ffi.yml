@@ -57,6 +57,14 @@ jobs:
           private-key: ${{ secrets.SERVER_CORE_KONG_APP_PRIVATE_KEY }}
           owner: statsig-io
 
+      - name: Make Target Directory Accessible
+        run: sudo chown -R $(whoami) target/
+
+      - name: List Release Files
+        run: |
+          echo "Listing release files:"
+          find target -type f -path "target/**/libstatsig_ffi.so" -ls
+          
       - name: Upload Release Asset
         if: ${{ github.event_name == 'release' }}
         uses: ./.github/actions/upload-release-asset
