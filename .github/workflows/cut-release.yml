@@ -42,4 +42,4 @@ jobs:
           OCTOCRAB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           cargo exec bump-version --${{ inputs.kind }}
-          cargo exec create-gh-release --repo-name ${{ github.repository }}
+          cargo exec create-gh-release --repo-name ${{ github.event.repository.name }}

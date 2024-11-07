@@ -20,11 +20,6 @@ jobs:
       - name: Print Env
         run: printenv
 
-      - name: Print GitHub Context
-        run: |
-          echo "Printing GitHub context"
-          echo "${{ toJson(github) }}"
-
   build:
     timeout-minutes: 15
     strategy:
