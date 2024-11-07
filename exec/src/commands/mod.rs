@@ -4,3 +4,4 @@ pub mod build_node;
 pub mod bump_version;
 pub mod create_gh_release;
 pub mod sync_versions;
+pub mod zip_files;

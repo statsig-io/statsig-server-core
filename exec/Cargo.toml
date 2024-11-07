@@ -16,3 +16,6 @@ serde = { version = "1.0.204", features = ["derive"] }
 serde_json = { version = "1.0.132", features = ["preserve_order"] }
 tokio = { version = "1.41.0", features = ["full"] }
 toml = "0.8.19"
+glob = "0.3.1"
+zip = "2.2.0"
+git2 = "0.19.0"

@@ -1,7 +1,16 @@
-name: Release
+name: Cut Release
 
 on:
   workflow_dispatch:
+    inputs:
+      kind:
+        required: true
+        type: choice
+        options:
+        - beta
+        - patch
+        - minor
+        - major
 
 env:
   CARGO_TERM_COLOR: always
@@ -28,10 +37,9 @@ jobs:
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Create Beta Tag
+      - name: Cut Release
         env:
           OCTOCRAB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          cargo exec beta-tag-package
-          cargo exec create-gh-release --commit-sha ${{ github.sha }} --repo-name ${{ github.repository }}
-          cargo exec attach-gh-assets --asset-path README.md --repo-name ${{ github.repository }}
+          cargo exec bump-version --${{ inputs.kind }}
+          cargo exec create-gh-release --repo-name ${{ github.repository }}

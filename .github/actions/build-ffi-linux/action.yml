@@ -27,7 +27,7 @@ runs:
         echo "Target: ${{ inputs.target }}"
         echo "Platform: ${{ inputs.platform }}"
         echo "DockerHub Username: ${{ inputs.dockerhub_username }}"
-  
+
     - name: Cache Cargo
       uses: Swatinem/rust-cache@v2
 
@@ -96,12 +96,3 @@ runs:
         ./tools/docker/build_${{ inputs.target }}.sh --release-mode
         echo "Listing target directory contents:"
         find target -type f -name "*statsig_ffi*" -ls
-
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: 'statsig-ffi-${{ inputs.target }}'
-        path: |
-          target/**/release/libstatsig_ffi.so
-          target/**/debug/libstatsig_ffi.so
-        if-no-files-found: error

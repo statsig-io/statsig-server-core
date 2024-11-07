@@ -1,7 +1,7 @@
 use crate::utils::*;
 use colored::*;
 
-pub async fn execute(commit_sha: &str, repo_name: &str) {
+pub async fn execute(repo_name: &str) {
     print_title("🏷 ", "Creating GitHub Release", Color::Yellow);
 
     let version = get_cargo_toml_version().to_string();
@@ -28,10 +28,12 @@ pub async fn execute(commit_sha: &str, repo_name: &str) {
     let is_prerelease =
         version.contains("-beta") || version.contains("-rc") || version.contains("-alpha");
 
+    let branch_name = get_remote_branch_name_from_version();
+
     match repo
         .releases()
         .create(&version)
-        .target_commitish(commit_sha)
+        .target_commitish(&branch_name)
         .prerelease(is_prerelease)
         .send()
         .await

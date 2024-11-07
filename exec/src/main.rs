@@ -25,6 +25,9 @@ enum Commands {
         patch: bool,
 
         #[arg(long, required = false)]
+        beta: bool,
+
+        #[arg(long, required = false)]
         version: Option<String>,
     },
     BetaTagPackage,
@@ -47,9 +50,6 @@ enum Commands {
     },
     CreateGhRelease {
         #[arg(long, required = true)]
-        commit_sha: String,
-
-        #[arg(long, required = true)]
         repo_name: String,
     },
     AttachGhAssets {
@@ -58,6 +58,13 @@ enum Commands {
 
         #[arg(long, required = true)]
         repo_name: String,
+    },
+    ZipFiles {
+        #[arg(long, required = true)]
+        pattern: String,
+
+        #[arg(long, required = true)]
+        output: String,
     },
 }
 
@@ -70,8 +77,9 @@ async fn main() {
             major,
             minor,
             patch,
+            beta,
             version,
-        } => bump_version::execute(major, minor, patch, version),
+        } => bump_version::execute(major, minor, patch, beta, version),
         Commands::BetaTagPackage => beta_tag_package::execute(),
         Commands::SyncVersions => sync_versions::execute(),
         Commands::BuildNode {
@@ -87,13 +95,11 @@ async fn main() {
             cross_compile,
             vendored_openssl,
         ),
-        Commands::CreateGhRelease {
-            commit_sha,
-            repo_name,
-        } => create_gh_release::execute(commit_sha, repo_name).await,
+        Commands::CreateGhRelease { repo_name } => create_gh_release::execute(repo_name).await,
         Commands::AttachGhAssets {
             asset_path,
             repo_name,
         } => attach_gh_assets::execute(asset_path, repo_name).await,
+        Commands::ZipFiles { pattern, output } => zip_files::execute(pattern, output).await,
     }
 }
