@@ -43,3 +43,5 @@ jobs:
         run: |
           cargo exec bump-version --${{ inputs.kind }}
           cargo exec create-gh-release --repo-name ${{ github.event.repository.name }}
+          cargo exec push-php
+          cargo exec create-gh-release --repo-name sigstat-php

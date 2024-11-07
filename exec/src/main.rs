@@ -69,6 +69,7 @@ enum Commands {
         #[arg(long, required = true)]
         output: String,
     },
+    PushPhp,
 }
 
 #[tokio::main]
@@ -105,5 +106,6 @@ async fn main() {
             release_tag,
         } => attach_gh_assets::execute(asset_path, repo_name, release_tag).await,
         Commands::ZipFiles { pattern, output } => zip_files::execute(pattern, output).await,
+        Commands::PushPhp => push_php::execute().await,
     }
 }
