@@ -1,0 +1,107 @@
+name: 'Build Statsig FFI - Linux'
+description: 'Builds Statsig FFI libraries for specified targets'
+
+inputs:
+  target:
+    description: 'Target triple (e.g., amazonlinux2023-arm64)'
+    required: true
+  
+  platform:
+    description: 'Docker platform (e.g., linux/amd64)'
+    required: true
+  
+  dockerhub_username:
+    description: 'DockerHub username'
+    required: true
+  
+  dockerhub_token:
+    description: 'DockerHub token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Echo Inputs
+      shell: bash
+      run: |
+        echo "Target: ${{ inputs.target }}"
+        echo "Platform: ${{ inputs.platform }}"
+        echo "DockerHub Username: ${{ inputs.dockerhub_username }}"
+  
+    - name: Cache Cargo
+      uses: Swatinem/rust-cache@v2
+
+    - name: "Login to Docker Hub"
+      uses: docker/login-action@v3
+      with:
+        username: ${{ inputs.dockerhub_username }}
+        password: ${{ inputs.dockerhub_token }}
+
+    - name: "Compute Dockerfile Hash"
+      id: compute_hash
+      shell: bash
+      run: |
+        md5hash=$(md5sum tools/docker/Dockerfile.${{ inputs.target }} | awk '{ print $1 }')
+        echo "md5hash: $md5hash"
+        imagetag="statsig/core-sdk-compiler:${{ inputs.target }}-$md5hash"
+        echo "IMAGE_TAG=$imagetag" >> $GITHUB_ENV
+        echo "IMAGE_TAG: $imagetag"
+
+    - name: "Check if Docker Image Exists"
+      id: check_image
+      shell: bash
+      run: |
+        echo "Looking for Docker image: ${{ env.IMAGE_TAG }}"
+        if docker manifest inspect $IMAGE_TAG > /dev/null 2>&1; then
+          echo "Image exists."
+          echo "NEEDS_BUILD=false" >> $GITHUB_ENV
+        else
+          echo "Image does not exist."
+          echo "NEEDS_BUILD=true" >> $GITHUB_ENV
+        fi
+
+    # [Build] If DockerHub does not contain our image --------------------------------
+
+    - name: "[Build] Setup QEMU"
+      if: env.NEEDS_BUILD == 'true'
+      uses: docker/setup-qemu-action@v3
+
+    - name: "[Build] Setup Docker Build Requirements"
+      if: env.NEEDS_BUILD == 'true'
+      uses: docker/setup-buildx-action@v3
+
+    - name: "[Build] Build Docker Image"
+      if: env.NEEDS_BUILD == 'true'
+      uses: docker/build-push-action@v6
+      with:
+        platforms: ${{ inputs.platform }}
+        file: tools/docker/Dockerfile.${{ inputs.target }}
+        push: true
+        tags: |
+          ${{ env.IMAGE_TAG }}
+          statsig/core-sdk-compiler:${{ inputs.target }}-latest
+
+    # [Build] end --------------------------------
+
+    - name: "Load Docker Image"
+      shell: bash
+      run: |
+        docker pull --platform ${{ inputs.platform }} ${{ env.IMAGE_TAG }}
+        docker tag ${{ env.IMAGE_TAG }} statsig/core-sdk-compiler:${{ inputs.target }}
+
+    - name: Build
+      shell: 'script --return --quiet --log-out /dev/null --command "bash -e {0}"'
+      run: |
+        ./tools/docker/build_${{ inputs.target }}.sh
+        ./tools/docker/build_${{ inputs.target }}.sh --release-mode
+        echo "Listing target directory contents:"
+        find target -type f -name "*statsig_ffi*" -ls
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: 'statsig-ffi-${{ inputs.target }}'
+        path: |
+          target/**/release/libstatsig_ffi.so
+          target/**/debug/libstatsig_ffi.so
+        if-no-files-found: error

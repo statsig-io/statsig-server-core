@@ -19,7 +19,7 @@ jobs:
           - target: amazonlinux2-arm64
             platform: linux/arm64
             runner: statsig-ubuntu-arm64
-          
+
           - target: amazonlinux2023-arm64
             platform: linux/arm64
             runner: statsig-ubuntu-arm64
@@ -31,6 +31,7 @@ jobs:
           - target: amazonlinux2023-x86_64
             platform: linux/amd64
             runner: ubuntu-latest
+            always_build: true
 
     runs-on: ${{ matrix.config.runner }}
     timeout-minutes: 15
@@ -38,176 +39,54 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache Cargo Build
-        uses: actions/cache@v4
+      - name: Build Statsig FFI
+        if: ${{ github.ref_name == 'main' || matrix.config.always_build }}
+        uses: ./.github/actions/build-ffi-linux
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          target: ${{ matrix.config.target }}
+          platform: ${{ matrix.config.platform }}
+          dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: "Login to Docker Hub"
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Compute Dockerfile Hash"
-        id: compute_hash
-        run: |
-          md5hash=$(md5sum tools/docker/Dockerfile.${{ matrix.config.target }} | awk '{ print $1 }')
-          echo "md5hash: $md5hash"
-          imagetag="statsig/core-sdk-compiler:${{ matrix.config.target }}-$md5hash"
-          echo "IMAGE_TAG=$imagetag" >> $GITHUB_ENV
-          echo "IMAGE_TAG: $imagetag"
-
-      - name: "Check if Docker Image Exists"
-        id: check_image
-        run: |
-          echo "Looking for Docker image: ${{ env.IMAGE_TAG }}"
-          if docker manifest inspect $IMAGE_TAG > /dev/null 2>&1; then
-            echo "Image exists."
-            echo "NEEDS_BUILD=false" >> $GITHUB_ENV
-          else
-            echo "Image does not exist."
-            echo "NEEDS_BUILD=true" >> $GITHUB_ENV
-          fi
-
-      # [Build] If DockerHub does not contain our image --------------------------------
-
-      - name: "[Build] Setup QEMU"
-        if: env.NEEDS_BUILD == 'true'
-        uses: docker/setup-qemu-action@v3
-
-      - name: "[Build] Setup Docker Build Requirements"
-        if: env.NEEDS_BUILD == 'true'
-        uses: docker/setup-buildx-action@v3
-
-      - name: "[Build] Build Docker Image"
-        if: env.NEEDS_BUILD == 'true'
-        uses: docker/build-push-action@v6
-        with:
-          platforms: ${{ matrix.config.platform }}
-          file: tools/docker/Dockerfile.${{ matrix.config.target }}
-          push: true
-          tags: |
-            ${{ env.IMAGE_TAG }}
-            statsig/core-sdk-compiler:${{ matrix.config.target }}-latest
-
-      # [Build] end --------------------------------
-
-      - name: "Load Docker Image"
-        run: |
-          docker pull --platform ${{ matrix.config.platform }} ${{ env.IMAGE_TAG }}
-          docker tag ${{ env.IMAGE_TAG }} statsig/core-sdk-compiler:${{ matrix.config.target }}
-
-      - name: Build
-        shell: 'script --return --quiet --log-out /dev/null --command "bash -e {0}"'
-        run: |
-          ./tools/docker/build_${{ matrix.config.target }}.sh
-          ./tools/docker/build_${{ matrix.config.target }}.sh --release-mode
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: statsig-ffi-${{ matrix.config.target }}
-          path: |
-            target/**/${{ matrix.target }}/release/libstatsig_ffi.so
-            target/**/${{ matrix.target }}/debug/libstatsig_ffi.so
-          if-no-files-found: error
-
-  build-windows:
-    runs-on: windows-latest
-    timeout-minutes: 15
+  build-mac-and-windows:
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - x86_64-pc-windows-msvc
-          - aarch64-pc-windows-msvc
-          - i686-pc-windows-msvc
+        config:
+          # Windows builds
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+
+          - target: i686-pc-windows-msvc
+            os: windows-latest
+
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            always_build: true
+          
+          # macOS builds
+          - target: x86_64-apple-darwin
+            os: macos-latest
+
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            always_build: true
+
+    runs-on: ${{ matrix.config.os }}
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache Cargo Build
-        uses: actions/cache@v4
+      - name: Build Statsig FFI
+        if: ${{ github.ref_name == 'main' || matrix.config.always_build }}
+        uses: ./.github/actions/build-ffi-mac-and-windows
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Install Rust Targets
-        run: |
-          rustup target add ${{ matrix.target }}
-
-      - name: Build
-        run: |
-          cargo build -p statsig_ffi --target ${{ matrix.target }}
-          cargo build -p statsig_ffi --target ${{ matrix.target }} --release
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: statsig-ffi-${{ matrix.target }}
-          path: |
-            target/**/${{ matrix.target }}/release/statsig_ffi.dll
-            target/**/${{ matrix.target }}/debug/statsig_ffi.dll
-            target/**/${{ matrix.target }}/debug/statsig_ffi.pdb
-          if-no-files-found: error
-
-  build-macos:
-    runs-on: macos-latest
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - aarch64-apple-darwin
-          - x86_64-apple-darwin
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Cache Cargo Build
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Install Rust Targets
-        run: |
-          rustup target add ${{ matrix.target }}
-
-      - name: Build
-        run: |
-          cargo build -p statsig_ffi --target=${{ matrix.target }}
-          cargo build -p statsig_ffi --target=${{ matrix.target }} --release
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: statsig-ffi-${{ matrix.target }}
-          path: |
-            target/**/${{ matrix.target }}/release/libstatsig_ffi.dylib
-            target/**/${{ matrix.target }}/debug/libstatsig_ffi.dylib
-          if-no-files-found: error
-
+          target: ${{ matrix.config.target }}
 
   trigger-publish-actions:
     if: ${{ github.ref_name == 'main' }}
-    needs: [build-linux, build-windows, build-macos] # depend on all builds
+    needs: [build-linux, build-mac-and-windows] # depend on all builds
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Publish Actions

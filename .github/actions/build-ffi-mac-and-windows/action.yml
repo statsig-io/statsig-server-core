@@ -1,0 +1,44 @@
+name: Build Statsig FFI - macOS and Windows
+description: Builds Statsig FFI libraries for specified targets
+
+inputs:
+  target:
+    description: 'Target triple (e.g., aarch64-apple-darwin)'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Echo Inputs
+      shell: bash
+      run: |
+        echo "Target: ${{ inputs.target }}"
+
+    - name: Cache Cargo
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install Rust Targets
+      shell: bash
+      run: |
+        rustup target add ${{ inputs.target }}
+
+    - name: Build
+      shell: bash
+      run: |
+        cargo build -p statsig_ffi --target=${{ inputs.target }}
+        cargo build -p statsig_ffi --target=${{ inputs.target }} --release
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: 'statsig-ffi-${{ inputs.target }}'
+        path: |
+          # macOS
+          target/**/${{ inputs.target }}/release/libstatsig_ffi.dylib
+          target/**/${{ inputs.target }}/debug/libstatsig_ffi.dylib
+          
+          # Windows
+          target/**/${{ inputs.target }}/release/statsig_ffi.dll
+          target/**/${{ inputs.target }}/debug/statsig_ffi.dll
+          target/**/${{ inputs.target }}/debug/statsig_ffi.pdb
+        if-no-files-found: error

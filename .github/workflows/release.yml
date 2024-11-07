@@ -22,10 +22,6 @@ jobs:
           private-key: ${{ secrets.SERVER_CORE_KONG_APP_PRIVATE_KEY }}
           owner: statsig-io
 
-      - name: Set Octocrab Token
-        run: |
-          export OCTOCRAB_TOKEN=${{ steps.app-token.outputs.token }}
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -33,6 +29,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Create Beta Tag
+        env:
+          OCTOCRAB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           cargo exec beta-tag-package
           cargo exec create-gh-release --commit-sha ${{ github.sha }}
