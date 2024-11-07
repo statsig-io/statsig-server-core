@@ -5,11 +5,11 @@ use bytes::Bytes;
 use colored::*;
 use octocrab::{models::repos::Release, repos::RepoHandler};
 
-pub async fn execute(asset_path: &str) {
+pub async fn execute(asset_path: &str, repo_name: &str) {
     print_title("🏷 ", "Attaching Asset to GitHub Release", Color::Yellow);
 
     let octo = get_octocrab().await;
-    let repo = octo.repos("daniel-statsig", "gh-action-tester");
+    let repo = octo.repos("statsig-io", repo_name);
 
     let release = get_release_by_version(&repo).await;
     let file_bytes = get_asset_bytes(asset_path);

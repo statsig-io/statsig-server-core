@@ -33,5 +33,5 @@ jobs:
           OCTOCRAB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           cargo exec beta-tag-package
-          cargo exec create-gh-release --commit-sha ${{ github.sha }}
-          cargo exec attach-gh-assets --asset-path README.md
+          cargo exec create-gh-release --commit-sha ${{ github.sha }} --repo-name ${{ github.repository }}
+          cargo exec attach-gh-assets --asset-path README.md --repo-name ${{ github.repository }}

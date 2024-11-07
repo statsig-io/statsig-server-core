@@ -1,14 +1,14 @@
 use crate::utils::*;
 use colored::*;
 
-pub async fn execute(commit_sha: &str) {
+pub async fn execute(commit_sha: &str, repo_name: &str) {
     print_title("🏷 ", "Creating GitHub Release", Color::Yellow);
 
     let version = get_cargo_toml_version().to_string();
     println!("Current Version: {}", version.to_string().bold());
 
     let octo = get_octocrab().await;
-    let repo = octo.repos("daniel-statsig", "gh-action-tester");
+    let repo = octo.repos("statsig-io", repo_name);
 
     println!("\nChecking if tag {} exists...", version.to_string());
 

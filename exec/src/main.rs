@@ -48,10 +48,16 @@ enum Commands {
     CreateGhRelease {
         #[arg(long, required = true)]
         commit_sha: String,
+
+        #[arg(long, required = true)]
+        repo_name: String,
     },
     AttachGhAssets {
         #[arg(long, required = true)]
         asset_path: String,
+
+        #[arg(long, required = true)]
+        repo_name: String,
     },
 }
 
@@ -81,7 +87,13 @@ async fn main() {
             cross_compile,
             vendored_openssl,
         ),
-        Commands::CreateGhRelease { commit_sha } => create_gh_release::execute(commit_sha).await,
-        Commands::AttachGhAssets { asset_path } => attach_gh_assets::execute(asset_path).await,
+        Commands::CreateGhRelease {
+            commit_sha,
+            repo_name,
+        } => create_gh_release::execute(commit_sha, repo_name).await,
+        Commands::AttachGhAssets {
+            asset_path,
+            repo_name,
+        } => attach_gh_assets::execute(asset_path, repo_name).await,
     }
 }
