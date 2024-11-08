@@ -791,6 +791,7 @@ dependencies = [
  "git2",
  "glob",
  "ini",
+ "jsonwebtoken",
  "octocrab",
  "regex",
  "serde",
