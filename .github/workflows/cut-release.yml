@@ -32,7 +32,7 @@ jobs:
 
       - name: Cut Release
         env:
-          KONG_APP_PRIVATE_KEY: ${{ secrets.SERVER_CORE_KONG_APP_PRIVATE_KEY }}
+          KONG_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
         run: |
           cargo exec bump-version --${{ inputs.kind }}
           cargo exec create-gh-release --repo-name ${{ github.event.repository.name }}

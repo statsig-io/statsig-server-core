@@ -60,7 +60,7 @@ jobs:
         with:
           release_tag: ${{ github.event.release.tag_name }}
           asset_name: statsig-ffi-${{ matrix.config.target }}
-          app_private_key: ${{ secrets.SERVER_CORE_KONG_APP_PRIVATE_KEY }}
+          app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
           patterns: >-
             target/**/${{ matrix.config.target }}/**/release/libstatsig_ffi.so,
             target/**/${{ matrix.config.target }}/**/debug/libstatsig_ffi.so
@@ -107,7 +107,7 @@ jobs:
         with:
           release_tag: ${{ github.event.release.tag_name }}
           asset_name: statsig-ffi-${{ matrix.config.target }}
-          app_private_key: ${{ secrets.SERVER_CORE_KONG_APP_PRIVATE_KEY }}
+          app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
           patterns: >-
             target/**/${{ matrix.config.target }}/release/statsig_ffi.dll,
             target/**/${{ matrix.config.target }}/debug/statsig_ffi.dll,
