@@ -1,6 +1,6 @@
 use crate::utils::*;
 use colored::*;
-use git2::{Repository, Signature};
+use git2::Repository;
 
 pub async fn execute() {
     print_title("⬆️ ", "Pushing to PHP Repository", Color::Yellow);
@@ -12,7 +12,7 @@ pub async fn execute() {
     repo.set_head("refs/heads/main")
         .expect("Failed to set head");
 
-    let mut remote = repo
+    let remote = repo
         .remote("origin", "https://github.com/statsig-io/sigstat-php.git")
         .expect("Failed to add remote");
 
@@ -20,35 +20,6 @@ pub async fn execute() {
         "Added remote origin to statsig-php: {}",
         remote.url().expect("Failed to get remote url")
     );
-
-    let signature = Signature::now(
-        "statsig-kong[bot]",
-        "statsig-kong[bot]@users.noreply.github.com",
-    )
-    .expect("Failed to create signature");
-
-    let mut index = repo.index().expect("Failed to get index");
-    index
-        .add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)
-        .expect("Failed to add files to index");
-    index.write().expect("Failed to write index");
-
-    let tree_id = index.write_tree().expect("Failed to write tree");
-    let tree = repo.find_tree(tree_id).expect("Failed to find tree");
-
-    repo.commit(
-        Some("HEAD"),
-        &signature,
-        &signature,
-        "chore: update php sdk",
-        &tree,
-        &[],
-    )
-    .expect("Failed to commit changes");
-
-    remote
-        .fetch(&["refs/heads/main"], None, None)
-        .expect("Failed to fetch");
 
     commit_and_push_changes("./statsig-php", Some("origin".to_string()));
     delete_local_php_repo();
