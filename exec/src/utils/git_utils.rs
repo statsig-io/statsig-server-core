@@ -40,6 +40,7 @@ pub fn push_to_remote(working_dir: &str, remote: &str, local_branch: &str, upstr
         .current_dir(working_dir)
         .args(&[
             "push",
+            "-v",
             remote,
             format!("{}:{}", local_branch, upstream_branch).as_str(),
         ])
@@ -58,9 +59,17 @@ pub fn commit_and_push_changes(working_dir: &str, remote_name: Option<String>) {
 
     std::process::Command::new("git")
         .current_dir(working_dir)
+        .args(["add", "."])
+        .output()
+        .expect("Failed to add untracked files");
+
+    std::process::Command::new("git")
+        .current_dir(working_dir)
         .args(["commit", "-am", &commit_message])
         .output()
         .expect("Failed to commit changes");
+
+    print_git_log(working_dir);
 
     let branch_name = get_remote_branch_name_from_version();
 
@@ -77,4 +86,18 @@ pub fn commit_and_push_changes(working_dir: &str, remote_name: Option<String>) {
     push_to_remote(working_dir, &upstream, &local_branch, &branch_name);
 
     println!("Successfully pushed changes to branch");
+}
+
+fn print_git_log(working_dir: &str) {
+    println!("Git log:");
+    let output = std::process::Command::new("git")
+        .current_dir(working_dir)
+        .args(["log", "--oneline", "-n", "5"])
+        .output()
+        .expect("Failed to get git log");
+
+    println!(
+        "{}",
+        String::from_utf8(output.stdout).expect("Invalid UTF-8 in git log")
+    );
 }

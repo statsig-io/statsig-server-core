@@ -76,26 +76,26 @@ async fn check_branch_exists(repo_name: &str, branch_name: &str) -> bool {
 
     let mut attempts = 0;
     let max_attempts = 5;
-    let mut success = false;
 
     println!("\nChecking if branch {} exists...", branch_name);
     println!("Making requests to {}", branch_url);
 
-    while attempts < max_attempts && !success {
+    while attempts < max_attempts {
         attempts += 1;
         match reqwest::get(&branch_url).await {
             Ok(response) => {
                 let status = response.status().as_u16();
                 println!("└── Attempt {}: Status code: {}", attempts, status);
                 if status >= 200 && status < 300 {
-                    success = true;
+                    return true;
                 }
             }
             Err(e) => {
                 println!("└── Attempt {}: Failed to make request: {}", attempts, e);
             }
         }
-        if !success && attempts < max_attempts {
+
+        if attempts < max_attempts {
             tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
         }
     }
