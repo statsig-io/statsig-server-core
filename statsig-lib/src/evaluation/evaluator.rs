@@ -25,6 +25,12 @@ impl Evaluator {
             ctx.result.id_type = Some(&spec.id_type);
         }
 
+        if ctx.result.version.is_none() {
+            if let Some(version) = spec.version {
+                ctx.result.version = Some(version);
+            }
+        }
+
         if let Some(is_active) = spec.is_active {
             ctx.result.is_experiment_active = is_active;
         }
@@ -56,7 +62,7 @@ impl Evaluator {
             let did_pass = evaluate_pass_percentage(ctx, rule, &spec.salt);
 
             if did_pass {
-                ctx.result.bool_value = rule.return_value.string_value == "true";
+                ctx.result.bool_value = true;
                 ctx.result.json_value = Some(&rule.return_value);
             } else {
                 ctx.result.bool_value = spec.default_value.string_value == "true";

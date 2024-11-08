@@ -223,7 +223,7 @@ impl Statsig {
         log_d!("Check Gate {}", gate_name);
 
         let user_internal = StatsigUserInternal::new(user, &self.statsig_environment);
-        let (value, rule_id, secondary_exposures, details) =
+        let (value, rule_id, secondary_exposures, details, version) =
             self.check_gate_impl(&user_internal, gate_name);
 
         self.event_logger
@@ -234,6 +234,7 @@ impl Statsig {
                 rule_id,
                 secondary_exposures,
                 evaluation_details: details,
+                version,
             }));
 
         value
@@ -305,6 +306,7 @@ impl Statsig {
                 evaluation: layer.__evaluation,
                 layer_name: layer.name,
                 evaluation_details: layer.details,
+                version: layer.__version
             }));
     }
 
@@ -338,9 +340,10 @@ impl Statsig {
         Option<String>,
         Option<Vec<SecondaryExposure>>,
         EvaluationDetails,
+        Option<u32>,
     ) {
         let data = read_lock_or_else!(self.spec_store.data, {
-            return (false, None, None, EvaluationDetails::unrecognized_no_data());
+            return (false, None, None, EvaluationDetails::unrecognized_no_data(), None);
         });
 
         let spec = data.values.feature_gates.get(gate_name);
@@ -355,9 +358,10 @@ impl Statsig {
                     context.result.rule_id.cloned(),
                     Some(context.result.secondary_exposures),
                     EvaluationDetails::recognized(&data),
+                    context.result.version,
                 )
             }
-            None => (false, None, None, EvaluationDetails::unrecognized(&data)),
+            None => (false, None, None, EvaluationDetails::unrecognized(&data), None),
         }
     }
     fn get_feature_gate_impl(
@@ -366,7 +370,7 @@ impl Statsig {
         gate_name: &str,
     ) -> FeatureGate {
         let data = read_lock_or_else!(self.spec_store.data, {
-            return make_feature_gate(gate_name, None, EvaluationDetails::unrecognized_no_data());
+            return make_feature_gate(gate_name, None, EvaluationDetails::unrecognized_no_data(), None);
         });
 
         let spec = data.values.feature_gates.get(gate_name);
@@ -381,9 +385,10 @@ impl Statsig {
                     gate_name,
                     Some(evaluation),
                     EvaluationDetails::recognized(&data),
+                    context.result.version,
                 )
             }
-            None => make_feature_gate(gate_name, None, EvaluationDetails::unrecognized(&data)),
+            None => make_feature_gate(gate_name, None, EvaluationDetails::unrecognized(&data), None),
         }
     }
 
@@ -397,6 +402,7 @@ impl Statsig {
                 config_name,
                 None,
                 EvaluationDetails::unrecognized_no_data(),
+                None,
             );
         });
 
@@ -412,9 +418,10 @@ impl Statsig {
                     config_name,
                     Some(evaluation),
                     EvaluationDetails::recognized(&data),
+                    context.result.version,
                 )
             }
-            None => make_dynamic_config(config_name, None, EvaluationDetails::unrecognized(&data)),
+            None => make_dynamic_config(config_name, None, EvaluationDetails::unrecognized(&data), None),
         }
     }
 
@@ -428,6 +435,7 @@ impl Statsig {
                 experiment_name,
                 None,
                 EvaluationDetails::unrecognized_no_data(),
+                None,
             );
         });
 
@@ -444,12 +452,14 @@ impl Statsig {
                     experiment_name,
                     Some(evaluation),
                     EvaluationDetails::recognized(&data),
+                    context.result.version,
                 )
             }
             None => make_experiment(
                 experiment_name,
                 None,
                 EvaluationDetails::unrecognized(&data),
+                None,
             ),
         }
     }
@@ -461,6 +471,7 @@ impl Statsig {
                 layer_name,
                 None,
                 EvaluationDetails::unrecognized_no_data(),
+                None,
                 None,
             );
         });
@@ -480,6 +491,7 @@ impl Statsig {
                     Some(evaluation),
                     EvaluationDetails::recognized(&data),
                     Some(event_logger_ptr),
+                    context.result.version,
                 )
             }
             None => make_layer(
@@ -487,6 +499,7 @@ impl Statsig {
                 layer_name,
                 None,
                 EvaluationDetails::unrecognized(&data),
+                None,
                 None,
             ),
         }
@@ -511,6 +524,7 @@ impl Statsig {
                 rule_id: Some(gate.rule_id.clone()),
                 secondary_exposures: secondary_exposures.cloned(),
                 evaluation_details: gate.details.clone(),
+                version: gate.__version,
             }));
     }
 
@@ -531,6 +545,8 @@ impl Statsig {
                 evaluation: base_eval,
                 evaluation_details: dynamic_config.details.clone(),
                 config_name: dynamic_config_name.to_string(),
+                rule_passed: dynamic_config.__evaluation.as_ref().map(|eval| eval.passed),
+                version: dynamic_config.__version,
             }));
     }
 
@@ -551,6 +567,8 @@ impl Statsig {
                 evaluation: base_eval,
                 evaluation_details: experiment.details.clone(),
                 config_name: experiment_name.to_string(),
+                rule_passed: None,
+                version: experiment.__version,
             }));
     }
 }

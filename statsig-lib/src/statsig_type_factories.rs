@@ -15,6 +15,7 @@ pub fn make_feature_gate(
     name: &str,
     evaluation: Option<GateEvaluation>,
     details: EvaluationDetails,
+    version: Option<u32>,
 ) -> FeatureGate {
     let (value, rule_id, id_type) = match &evaluation {
         Some(e) => (e.value, e.base.rule_id.clone(), e.id_type.clone()),
@@ -28,6 +29,7 @@ pub fn make_feature_gate(
         value,
         details,
         __evaluation: evaluation,
+        __version: version,
     }
 }
 
@@ -54,6 +56,7 @@ pub fn make_dynamic_config(
     name: &str,
     evaluation: Option<DynamicConfigEvaluation>,
     details: EvaluationDetails,
+    version: Option<u32>,
 ) -> DynamicConfig {
     let (value, rule_id, id_type) = match &evaluation {
         Some(e) => (
@@ -71,6 +74,7 @@ pub fn make_dynamic_config(
         value,
         details,
         __evaluation: evaluation,
+        __version: version,
     }
 }
 
@@ -78,6 +82,7 @@ pub fn make_experiment(
     name: &str,
     evaluation: Option<ExperimentEvaluation>,
     details: EvaluationDetails,
+    version: Option<u32>,
 ) -> Experiment {
     let (value, rule_id, id_type, group_name) = extract_from_experiment_evaluation(&evaluation);
 
@@ -89,6 +94,7 @@ pub fn make_experiment(
         details: details.clone(),
         group_name,
         __evaluation: evaluation,
+        __version: version,
     }
 }
 
@@ -97,7 +103,8 @@ pub fn make_layer(
     name: &str,
     evaluation: Option<LayerEvaluation>,
     details: EvaluationDetails,
-    event_logger_ptr: Option<Weak<EventLogger>>
+    event_logger_ptr: Option<Weak<EventLogger>>,
+    version: Option<u32>,
 ) -> Layer {
     let (value, rule_id) = match &evaluation {
         Some(e) => (
@@ -115,7 +122,8 @@ pub fn make_layer(
         __value: value,
         __evaluation: evaluation,
         __user: user.clone(),
-        __event_logger_ptr: event_logger_ptr
+        __event_logger_ptr: event_logger_ptr,
+        __version: version,
     }
 }
 

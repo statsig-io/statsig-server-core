@@ -320,6 +320,7 @@ mod tests {
             rule_id: None,
             secondary_exposures: None,
             evaluation_details: eval_details.clone(),
+            version: None,
         }));
         logger.enqueue(QueuedEventPayload::GateExposure(GateExposure {
             user: user_internal,
@@ -328,6 +329,7 @@ mod tests {
             rule_id: None,
             secondary_exposures: None,
             evaluation_details: eval_details,
+            version: None,
         }));
 
         logger.shutdown(Duration::from_millis(100)).await.unwrap();

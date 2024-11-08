@@ -22,6 +22,7 @@ pub struct EvaluatorResult<'a> {
     pub config_delegate: Option<&'a String>,
     pub secondary_exposures: Vec<SecondaryExposure>,
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
+    pub version: Option<u32>,
 }
 
 pub fn result_to_gate_eval(gate_name: &str, result: &mut EvaluatorResult) -> GateEvaluation {
@@ -118,6 +119,7 @@ pub fn result_to_dynamic_config_eval(
         is_device_based,
         value,
         group: result.rule_id.cloned().unwrap_or_default(),
+        passed: result.bool_value,
     }
 }
 

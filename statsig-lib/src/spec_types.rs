@@ -18,6 +18,7 @@ pub struct Spec {
     pub entity: String,
     pub has_shared_params: Option<bool>,
     pub is_active: Option<bool>,
+    pub version: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

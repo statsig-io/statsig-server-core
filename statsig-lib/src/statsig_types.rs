@@ -19,6 +19,7 @@ pub struct FeatureGate {
     pub details: EvaluationDetails,
 
     pub(crate) __evaluation: Option<GateEvaluation>,
+    pub __version: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -30,6 +31,7 @@ pub struct DynamicConfig {
     pub details: EvaluationDetails,
 
     pub(crate) __evaluation: Option<DynamicConfigEvaluation>,
+    pub __version: Option<u32>,
 }
 
 impl DynamicConfig {
@@ -48,6 +50,7 @@ pub struct Experiment {
     pub details: EvaluationDetails,
 
     pub(crate) __evaluation: Option<ExperimentEvaluation>,
+    pub __version: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -61,6 +64,7 @@ pub struct Layer {
     pub __evaluation: Option<LayerEvaluation>,
     pub __value: HashMap<String, DynamicValue>,
     pub __user: StatsigUserInternal,
+    pub __version: Option<u32>,
 
     #[serde(skip_serializing, skip_deserializing)]
     pub __event_logger_ptr: Option<Weak<EventLogger>>,
@@ -91,6 +95,7 @@ impl Layer {
                 parameter_name: param_name.to_string(),
                 evaluation: self.__evaluation.clone(),
                 evaluation_details: self.details.clone(),
+                version: self.__version,
             }))
         }
 

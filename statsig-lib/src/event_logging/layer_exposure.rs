@@ -14,6 +14,7 @@ pub struct LayerExposure {
     pub parameter_name: String,
     pub evaluation: Option<LayerEvaluation>,
     pub evaluation_details: EvaluationDetails,
+    pub version: Option<u32>,
 }
 
 impl StatsigExposure for LayerExposure {
@@ -58,6 +59,9 @@ impl StatsigExposure for LayerExposure {
         metadata.insert("allocatedExperiment".into(), allocated_experiment.unwrap_or_default());
         metadata.insert("parameterName".into(), self.parameter_name);
         metadata.insert("isExplicitParameter".into(), is_explicit.to_string());
+        if let Some(version) = self.version {
+            metadata.insert("configVersion".into(), version.to_string());
+        }
 
         let event = StatsigEvent {
             event_name: LAYER_EXPOSURE_EVENT_NAME.into(),

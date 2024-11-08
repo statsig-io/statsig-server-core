@@ -13,6 +13,8 @@ pub struct ConfigExposure {
     pub config_name: String,
     pub evaluation: Option<BaseEvaluation>,
     pub evaluation_details: EvaluationDetails,
+    pub rule_passed: Option<bool>,
+    pub version: Option<u32>,
 }
 
 impl StatsigExposure for ConfigExposure {
@@ -30,6 +32,12 @@ impl StatsigExposure for ConfigExposure {
         let mut metadata = get_metadata_with_details(self.evaluation_details);
         metadata.insert("config".into(), self.config_name);
         metadata.insert("ruleID".into(), rule_id);
+        if let Some(version) = self.version {
+            metadata.insert("configVersion".into(), version.to_string());
+        }
+        if let Some(rule_passed) = self.rule_passed {
+            metadata.insert("rulePassed".into(), rule_passed.to_string());
+        }
 
         let event = StatsigEvent {
             event_name: CONFIG_EXPOSURE_EVENT_NAME.into(),

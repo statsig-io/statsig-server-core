@@ -40,6 +40,8 @@ pub struct DynamicConfigEvaluation {
     // The 'group' field is identical to 'rule_id'. See group_name instead.
     pub group: String,
     pub is_device_based: bool,
+
+    pub passed: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

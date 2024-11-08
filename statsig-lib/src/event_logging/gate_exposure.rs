@@ -15,6 +15,7 @@ pub struct GateExposure {
     pub rule_id: Option<String>,
     pub secondary_exposures: Option<Vec<SecondaryExposure>>,
     pub evaluation_details: EvaluationDetails,
+    pub version: Option<u32>,
 }
 
 impl StatsigExposure for GateExposure {
@@ -27,6 +28,9 @@ impl StatsigExposure for GateExposure {
         metadata.insert("gate".into(), self.gate_name);
         metadata.insert("gateValue".into(), self.value.to_string());
         metadata.insert("ruleID".into(), self.rule_id.unwrap_or_default());
+        if let Some(version) = self.version {
+            metadata.insert("configVersion".into(), version.to_string());
+        }
 
         let event = StatsigEvent {
             event_name: GATE_EXPOSURE_EVENT_NAME.into(),
