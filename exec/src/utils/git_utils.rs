@@ -56,8 +56,6 @@ pub fn commit_and_push_changes(working_dir: &str, remote_name: Option<String>) {
     let version = get_cargo_toml_version();
     let commit_message = format!("chore: bump version to {}", version.to_string());
 
-    println!("Committing changes with message: {}", commit_message.bold());
-
     std::process::Command::new("git")
         .current_dir(working_dir)
         .args(["commit", "-am", &commit_message])
@@ -65,13 +63,17 @@ pub fn commit_and_push_changes(working_dir: &str, remote_name: Option<String>) {
         .expect("Failed to commit changes");
 
     let branch_name = get_remote_branch_name_from_version();
-    println!("Pushing changes to branch: {}", branch_name.bold());
 
     let upstream =
         remote_name.unwrap_or_else(|| get_upstream_remote_from_current_branch(working_dir));
     let local_branch = get_local_branch_name(working_dir);
 
-    println!("Pushing to upstream: {}", upstream.bold());
+    println!("Pushing changes to remote repo");
+    println!("├── Commit: {}", commit_message.bold());
+    println!("├── Upstream: {}", upstream.bold());
+    println!("├── LocalBranch: {}", local_branch.bold());
+    println!("└── RemoteBranch: {}", branch_name.bold());
+
     push_to_remote(working_dir, &upstream, &local_branch, &branch_name);
 
     println!("Successfully pushed changes to branch");

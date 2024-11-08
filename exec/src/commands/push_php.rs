@@ -16,8 +16,16 @@ pub async fn execute() {
         .remote("origin", "https://github.com/statsig-io/sigstat-php.git")
         .expect("Failed to add remote");
 
-    let signature =
-        Signature::now("Statsig", "support@statsig.com").expect("Failed to create signature");
+    println!(
+        "Added remote origin to statsig-php: {}",
+        remote.url().expect("Failed to get remote url")
+    );
+
+    let signature = Signature::now(
+        "statsig-kong[bot]",
+        "statsig-kong[bot]@users.noreply.github.com",
+    )
+    .expect("Failed to create signature");
 
     let mut index = repo.index().expect("Failed to get index");
     index
