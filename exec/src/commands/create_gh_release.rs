@@ -41,6 +41,10 @@ pub async fn execute(repo_name: &str) {
     println!("├── Branch: {}", branch_name);
     println!("└── Prerelease: {}", is_prerelease);
 
+    if !check_branch_exists(repo_name, &branch_name).await {
+        panic!("Branch {} not found in {}", branch_name, repo_name);
+    }
+
     match repo
         .releases()
         .create(&version)
@@ -58,4 +62,43 @@ pub async fn execute(repo_name: &str) {
             panic!("Failed to create release");
         }
     };
+}
+
+async fn check_branch_exists(repo_name: &str, branch_name: &str) -> bool {
+    if repo_name.starts_with("private-") {
+        return true;
+    }
+
+    let branch_url = format!(
+        "https://github.com/statsig-io/{}/tree/{}",
+        repo_name, branch_name
+    );
+
+    let mut attempts = 0;
+    let max_attempts = 5;
+    let mut success = false;
+
+    println!("\nChecking if branch {} exists...", branch_name);
+    println!("Making requests to {}", branch_url);
+
+    while attempts < max_attempts && !success {
+        attempts += 1;
+        match reqwest::get(&branch_url).await {
+            Ok(response) => {
+                let status = response.status().as_u16();
+                println!("└── Attempt {}: Status code: {}", attempts, status);
+                if status >= 200 && status < 300 {
+                    success = true;
+                }
+            }
+            Err(e) => {
+                println!("└── Attempt {}: Failed to make request: {}", attempts, e);
+            }
+        }
+        if !success && attempts < max_attempts {
+            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+        }
+    }
+
+    false
 }
