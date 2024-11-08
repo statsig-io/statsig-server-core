@@ -14,8 +14,8 @@ inputs:
     description: The name of the asset to upload
     required: true
 
-  git_token:
-    description: The token to use to upload the asset
+  app_private_key:
+    description: The private key to use to authenticate as an app installation
     required: true
 
 runs:
@@ -37,7 +37,7 @@ runs:
     - name: Upload Release Asset
       shell: bash
       env:
-        OCTOCRAB_TOKEN: ${{ inputs.git_token }}
+        KONG_APP_PRIVATE_KEY: ${{ inputs.app_private_key }}
       run: |
         cargo exec zip-files --pattern "${{ inputs.patterns }}" --output "${{ inputs.asset_name }}.zip"
         cargo exec attach-gh-assets --asset-path "${{ inputs.asset_name }}.zip" --release-tag ${{ inputs.release_tag }} --repo-name ${{ github.event.repository.name }} 
