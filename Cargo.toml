@@ -12,7 +12,6 @@ members = [
     "statsig-grpc",
     "statsig-pyo3",
     "examples/rust",
-    "exec",
 ]
 resolver = "2"
 

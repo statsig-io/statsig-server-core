@@ -30,23 +30,23 @@ jobs:
 
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            extras: --use-napi-cross --vendored-openssl
+            extras: --use-napi-cross --features vendored_openssl
 
           - os: ubuntu-latest
             target: armv7-unknown-linux-gnueabihf
-            extras: --use-napi-cross --vendored-openssl
+            extras: --use-napi-cross --features vendored_openssl
 
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            extras: --use-napi-cross --vendored-openssl
+            extras: --use-napi-cross --features vendored_openssl
 
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl
-            extras: --cross-compile --vendored-openssl
+            extras: --cross-compile --features vendored_openssl
 
           - os: ubuntu-latest
             target: aarch64-unknown-linux-musl
-            extras: --cross-compile --vendored-openssl
+            extras: --cross-compile --features vendored_openssl
 
           # -- Windows --
 
@@ -124,7 +124,7 @@ jobs:
       - name: Build Napi
         shell: bash
         run: |
-          cargo exec build-node \
+          ./tools/node/build_node \
           --target ${{ matrix.config.target }} \
           ${{ matrix.config.extras }}
 

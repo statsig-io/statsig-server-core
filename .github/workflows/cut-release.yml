@@ -30,11 +30,26 @@ jobs:
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
 
+      - name: Install NPM Dependencies
+        shell: bash
+        run: cd cli && npm install
+
+      - name: Upload Release Asset
+        shell: bash
+        env:
+          GH_APP_ID: '229901'
+          GH_APP_INSTALLATION_ID: '36921303'
+          GH_APP_PRIVATE_KEY: ${{ inputs.app_private_key }}
+        run: |
+          ./run zip-files "${{ inputs.patterns }}" --output "${{ inputs.asset_name }}.zip"
+          ./run gh-attach-asset "${{ inputs.asset_name }}.zip" --repo ${{ inputs.repo }} 
+
       - name: Cut Release
         env:
           KONG_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
         run: |
-          cargo exec bump-version --${{ inputs.kind }}
-          cargo exec create-gh-release --repo-name ${{ github.event.repository.name }}
-          cargo exec push-php
-          cargo exec create-gh-release --repo-name sigstat-php
+          ./run bump-version --${{ inputs.kind }}
+          ./run gh-create-release "${{ github.event.repository.name }}"
+          ./run gh-push-php
+          ./run gh-create-release sigstat-php
+

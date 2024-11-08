@@ -1,0 +1,19 @@
+{
+    "extends": "ts-node/node16/tsconfig.json",
+    "ts-node": {
+      "transpileOnly": true,
+      "files": true,
+      "esm": true,
+      "compilerOptions": {
+        
+      }
+    },
+    "compilerOptions": {
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["src/*"]
+        },
+    }
+}

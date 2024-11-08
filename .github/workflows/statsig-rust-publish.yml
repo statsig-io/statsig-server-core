@@ -41,11 +41,11 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install NPM Dependencies
+        run: cd cli && npm install
 
       - name: Apply Beta Tag
-        run: cargo exec beta-tag-package
+        run: ./run bump-version --beta
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
