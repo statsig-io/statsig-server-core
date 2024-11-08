@@ -58,12 +58,10 @@ jobs:
         if: ${{ github.event_name == 'release' }}
         uses: ./.github/actions/upload-release-asset
         with:
-          release_tag: ${{ github.event.release.tag_name }}
+          repo: ${{ github.event.repository.name }}
           asset_name: statsig-ffi-${{ matrix.config.target }}
           app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
-          patterns: >-
-            target/**/${{ matrix.config.target }}/**/release/libstatsig_ffi.so,
-            target/**/${{ matrix.config.target }}/**/debug/libstatsig_ffi.so
+          pattern: target/**/${{ matrix.config.target }}/**/{release,debug}/libstatsig_ffi.so
 
   build-mac-and-windows:
     strategy:
@@ -105,12 +103,7 @@ jobs:
         if: ${{ github.event_name == 'release' }}
         uses: ./.github/actions/upload-release-asset
         with:
-          release_tag: ${{ github.event.release.tag_name }}
+          repo: ${{ github.event.repository.name }}
           asset_name: statsig-ffi-${{ matrix.config.target }}
           app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
-          patterns: >-
-            target/**/${{ matrix.config.target }}/release/statsig_ffi.dll,
-            target/**/${{ matrix.config.target }}/debug/statsig_ffi.dll,
-            target/**/${{ matrix.config.target }}/debug/statsig_ffi.pdb,
-            target/**/${{ matrix.config.target }}/release/libstatsig_ffi.dylib,
-            target/**/${{ matrix.config.target }}/debug/libstatsig_ffi.dylib
+          pattern: target/**/${{ matrix.config.target }}/{release,debug}/{statsig_ffi,libstatsig_ffi}.{dll,pdb,dylib}

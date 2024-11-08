@@ -1,7 +1,11 @@
 import chalk from 'chalk';
 
 export function printTitle(title: string) {
-  console.log(chalk.bold(chalk.blue(`\n-- ${title} --\n`)));
+  console.log(chalk.bold(chalk.blue(`\n-------- ${title} --------\n`)));
+}
+
+export function printConclusion(conclusion: string) {
+  console.log(chalk.bold(chalk.green(`\n-------- ${conclusion} --------\n`)));
 }
 
 export function printStepBegin(step: string) {
@@ -24,6 +28,7 @@ export function printStepEnd(step: string, kind?: 'success' | 'failure') {
 
 export const Log = {
   title: printTitle,
+  conclusion: printConclusion,
   stepBegin: printStepBegin,
   stepProgress: printStepProgress,
   stepEnd: printStepEnd,

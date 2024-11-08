@@ -18,7 +18,7 @@ resolver = "2"
 [workspace.package]
 edition = "2021"
 license = "ISC"
-version = "0.0.1-beta.9d9661a"
+version = "0.0.1-beta.102"
 homepage = "https://statsig.com/"
 authors = ["Statsig", "Daniel Loomb <daniel@statsig.com>"]
 readme = "README.md"

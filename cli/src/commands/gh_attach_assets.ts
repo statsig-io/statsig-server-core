@@ -50,7 +50,7 @@ export class GhAttachAssets extends Command {
     const release = await getReleaseByVersion(octokit, repo, version);
     if (!release) {
       Log.stepEnd('Release not found', 'failure');
-      return;
+      process.exit(1);
     }
     Log.stepEnd(`Release Found: ${release.html_url}`);
 
@@ -61,6 +61,7 @@ export class GhAttachAssets extends Command {
       release.id,
       name,
     );
+
     if (didDelete) {
       Log.stepEnd('Existing asset deleted');
     } else {
@@ -71,7 +72,7 @@ export class GhAttachAssets extends Command {
     const uploadUrl = release.upload_url;
     if (!uploadUrl) {
       Log.stepEnd('No upload URL found', 'failure');
-      return;
+      process.exit(1);
     }
 
     const { result, error } = await uploadReleaseAsset(
@@ -86,11 +87,11 @@ export class GhAttachAssets extends Command {
         error instanceof Error ? error.message : error ?? 'Unknown Error';
 
       Log.stepEnd(`Failed to upload asset: ${errMessage}`, 'failure');
-      return;
+      process.exit(1);
     }
 
     Log.stepEnd(`Asset uploaded: ${result.browser_download_url}`);
 
-    console.log('✅ Successfully uploaded asset');
+    Log.conclusion('Successfully Uploaded Asset');
   }
 }

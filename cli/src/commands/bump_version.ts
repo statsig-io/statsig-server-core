@@ -1,3 +1,4 @@
+import { BASE_DIR } from '@/utils/file_utils.js';
 import {
   commitAndPushChanges,
   getCurrentBranchName,
@@ -6,6 +7,7 @@ import {
 import { SemVer } from '@/utils/semver.js';
 import {
   Log,
+  printConclusion,
   printStepBegin,
   printStepEnd,
   printTitle,
@@ -73,6 +75,8 @@ export class BumpVersion extends Command {
     setRootVersion(version);
     printStepEnd(`Updated Version: ${version.toString()}`);
 
+    printConclusion('Succesfully Bumped Root Version');
+
     SyncVersion.sync();
 
     Log.title('Commit and Push Changes');
@@ -87,7 +91,7 @@ export class BumpVersion extends Command {
 
     Log.stepBegin('Committing changes');
     const { success, error } = await commitAndPushChanges(
-      '.',
+      BASE_DIR,
       `chore: bump version to ${version.toString()}`,
       remote,
       branch,
@@ -99,9 +103,11 @@ export class BumpVersion extends Command {
         error instanceof Error ? error.message : error ?? 'Unknown Error';
 
       Log.stepEnd(`Failed to commit changes: ${errMessage}`, 'failure');
-      return;
+      process.exit(1);
     }
 
     Log.stepEnd('Changes committed');
+
+    Log.conclusion('Successfully Committed and Pushed Changes');
   }
 }

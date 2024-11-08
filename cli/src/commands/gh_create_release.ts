@@ -6,7 +6,6 @@ import {
 } from '@/utils/octokit_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
-import chalk from 'chalk';
 import { Command } from 'commander';
 
 export class GhCreateRelease extends Command {
@@ -35,7 +34,7 @@ export class GhCreateRelease extends Command {
 
     if (release) {
       Log.stepEnd(`Release already exists: ${release.html_url}`, 'failure');
-      return;
+      process.exit(1);
     }
 
     Log.stepEnd(`Release ${version} does not exist`);
@@ -45,7 +44,7 @@ export class GhCreateRelease extends Command {
 
     if (!branch) {
       Log.stepEnd(`Branch ${version.toBranch()} does not exist`, 'failure');
-      return;
+      process.exit(1);
     }
 
     Log.stepEnd(`Branch ${branch.ref} exists`);
@@ -61,11 +60,11 @@ export class GhCreateRelease extends Command {
 
     if (!newRelease) {
       Log.stepEnd(`Failed to create release`, 'failure');
-      return;
+      process.exit(1);
     }
 
     Log.stepEnd(`Release created: ${newRelease.html_url}`);
 
-    console.log(`✅ ${chalk.green(`Successfully created release ${version}`)}`);
+    Log.conclusion(`Successfully Created Release ${version}`);
   }
 }
