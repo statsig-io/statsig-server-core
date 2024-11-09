@@ -18,6 +18,10 @@ inputs:
     description: 'Node architecture (e.g., x64)'
     required: false
 
+  include_js_files:
+    description: 'Include js files in the release'
+    required: false
+
 runs:
   using: composite
   steps:
@@ -73,4 +77,5 @@ runs:
       run: |
         ./run napi-build \
           --release \
+          ${{ !inputs.include_js_files && '--skip-js-optimizations' }} \
           --target ${{ inputs.target }} ${{ inputs.extras }}

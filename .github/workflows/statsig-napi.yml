@@ -72,6 +72,7 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             always_build: true
+            include_js_files: true
             
     runs-on: ${{ matrix.config.os }}
 
@@ -91,15 +92,25 @@ jobs:
           gh_token: ${{ secrets.GITHUB_TOKEN }}
           extras: ${{ matrix.config.extras }}
           node_arch: ${{ matrix.config.node_arch }}
+          include_js_files: ${{ matrix.config.include_js_files }}
 
-      - name: Upload Release Asset
+      - name: Attach Binary to Reelase
         if: ${{ github.event_name == 'release' }}
         uses: ./.github/actions/upload-release-asset
         with:
           repositories: ${{ github.event.repository.name }}
           asset_name: statsig-napi-${{ matrix.config.target }}
           app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
-          pattern: statsig-napi/src/sigstat-napi.*.node
+          pattern: statsig-napi/dist/lib/sigstat-napi.*.node
+
+      - name: Attach JsFiles to Release
+        if: ${{ github.event_name == 'release' && matrix.config.include_js_files }}
+        uses: ./.github/actions/upload-release-asset
+        with:
+          repositories: ${{ github.event.repository.name }}
+          asset_name: statsig-napi-js-files
+          app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
+          pattern: statsig-napi/dist/**/*.{json,js,d.ts}
 
   publish:
     name: Publish to NPM

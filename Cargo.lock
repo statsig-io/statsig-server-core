@@ -1593,7 +1593,7 @@ dependencies = [
 
 [[package]]
 name = "sigstat"
-version = "0.0.1-beta.113"
+version = "0.0.1-beta.114"
 dependencies = [
  "assert-json-diff",
  "async-trait",
@@ -1617,7 +1617,7 @@ dependencies = [
 
 [[package]]
 name = "sigstat-grpc"
-version = "0.0.1-beta.113"
+version = "0.0.1-beta.114"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1631,7 +1631,7 @@ dependencies = [
 
 [[package]]
 name = "sigstat-napi"
-version = "0.0.1-beta.113"
+version = "0.0.1-beta.114"
 dependencies = [
  "lazy_static",
  "log",
@@ -1688,14 +1688,14 @@ dependencies = [
 
 [[package]]
 name = "statsig-pyo3"
-version = "0.0.1-beta.113"
+version = "0.0.1-beta.114"
 dependencies = [
  "pyo3",
 ]
 
 [[package]]
 name = "statsig_ffi"
-version = "0.0.1-beta.113"
+version = "0.0.1-beta.114"
 dependencies = [
  "cbindgen",
  "csbindgen",

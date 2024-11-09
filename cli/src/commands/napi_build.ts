@@ -1,5 +1,6 @@
 import { BASE_DIR, ensureEmptyDir, getRootedPath } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
+import chalk from 'chalk';
 import { ExecSyncOptionsWithStringEncoding, execSync } from 'child_process';
 import { Command } from 'commander';
 
@@ -8,6 +9,7 @@ type Options = {
   useNapiCross?: boolean;
   useCrossCompile?: boolean;
   rebuildOpenssl?: boolean;
+  skipJsOptimizations?: boolean;
   target?: string;
 };
 
@@ -24,6 +26,7 @@ export class NapiBuild extends Command {
       '--target, <string>',
       'Which target to build for, eg x86_64-apple-darwin',
     );
+    this.option('--skip-js-optimizations', 'Skip JS optimizations');
 
     this.action(this.run.bind(this));
   }
@@ -36,6 +39,11 @@ export class NapiBuild extends Command {
     Log.stepProgress(`Use Napi Cross: ${options.useNapiCross ?? false}`);
     Log.stepProgress(`Cross Compile: ${options.useCrossCompile ?? false}`);
     Log.stepProgress(`Rebuild OpenSSL: ${options.rebuildOpenssl ?? false}`);
+    Log.stepProgress(
+      `Skip JS Optimizations: ${options.skipJsOptimizations ?? false}`,
+    );
+
+    ensureEmptyDir(getRootedPath('statsig-napi/dist/lib'));
 
     const isWindows = options.target?.includes('windows') === true;
     if (!isWindows) {
@@ -56,15 +64,25 @@ export class NapiBuild extends Command {
     runNapiBuild(options);
     Log.info('-- Napi Build Complete --');
 
-    Log.info('\n-- Running Codemod --');
-    genJsFiles();
-    Log.info('-- Codemod Complete --');
+    if (!options.skipJsOptimizations) {
+      Log.info('\n-- Running Codemod --');
+      genJsFiles();
+      Log.info('-- Codemod Complete --');
+    } else {
+      Log.info(
+        chalk.yellow('\nSkipping JS optimizations [--skip-js-optimizations]'),
+      );
+    }
 
     Log.stepBegin('\nCopying to Build Directory');
-    copyToBuildDir(buildDir);
+    copyToBuildDir(!options.skipJsOptimizations);
     Log.stepEnd('Copied files to: ' + buildDir);
 
     Log.conclusion('Successfully built statsig-napi');
+  }
+
+  static generateJsFiles() {
+    genJsFiles();
   }
 }
 
@@ -150,7 +168,7 @@ function genJsFiles() {
   execSync('npx tsc', opts);
 }
 
-function copyToBuildDir(buildDir: string) {
+function copyToBuildDir(copyJs: boolean) {
   const opts: ExecSyncOptionsWithStringEncoding = {
     cwd: getRootedPath('statsig-napi'),
     stdio: 'inherit',
@@ -158,9 +176,10 @@ function copyToBuildDir(buildDir: string) {
   };
 
   execSync('cp package.json dist', opts);
-  execSync('mv src/bindings.d.ts dist/lib', opts);
-  execSync('mv src/bindings.js dist/lib', opts);
-  execSync('cp src/*.node dist/lib', opts);
+  execSync('mv src/*.node dist/lib', opts);
 
-  execSync(`mv dist ${buildDir}`, opts);
+  if (copyJs) {
+    execSync('mv src/bindings.d.ts dist/lib', opts);
+    execSync('mv src/bindings.js dist/lib', opts);
+  }
 }

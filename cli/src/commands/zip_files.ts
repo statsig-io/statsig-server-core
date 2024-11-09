@@ -38,25 +38,28 @@ export class ZipFiles extends Command {
 
     Log.stepBegin('Finding files');
     const files = await getFilesMatchingPattern(pattern);
-    Log.stepEnd(`Files Found: ${files.length}`);
+    const paths = getStoragePaths(files);
+    if (paths.length === 0) {
+      Log.stepEnd('No files found matching pattern', 'failure');
+      process.exit(1);
+    }
+    files.forEach((file) => {
+      Log.stepProgress(`Found: ${file}`);
+    });
+
+    Log.stepEnd(`Files Found: ${paths.length}`);
 
     Log.stepBegin('Creating zip file');
     Log.stepProgress(`Output: ${options.output}`);
 
     const zip = new AdmZip();
 
-    for (const file of files) {
-      const fullPath = getRootedPath(file);
+    for (const { filePath, storagePath } of paths) {
+      const fullPath = getRootedPath(filePath);
       const contents = readFileSync(fullPath);
 
-      const parts = file.split('/');
-      let storageName = basename(file);
-      if (files.length > 1) {
-        storageName = parts.length > 2 ? parts.slice(-2).join('/') : file;
-      }
-
-      zip.addFile(storageName, contents);
-      Log.stepProgress(`Added File: ${storageName}`);
+      zip.addFile(storagePath, contents);
+      Log.stepProgress(`Added File: ${storagePath}`);
     }
 
     const zipFilename = options.output.endsWith('.zip')
@@ -80,4 +83,34 @@ async function getFilesMatchingPattern(pattern: string) {
     cwd: BASE_DIR,
   });
   return files;
+}
+
+function getStoragePaths(paths: string[]) {
+  if (paths.length === 0) {
+    return [];
+  }
+
+  if (paths.length === 1) {
+    return [{ filePath: paths[0], storagePath: basename(paths[0]) }];
+  }
+
+  const splitPaths = paths.map((path) => path.split('/').filter(Boolean));
+
+  const commonPrefix = [];
+  for (let i = 0; i < splitPaths[0].length; i++) {
+    const component = splitPaths[0][i];
+    if (splitPaths.every((path) => path[i] === component)) {
+      commonPrefix.push(component);
+    } else {
+      break;
+    }
+  }
+
+  return paths.map((path) => {
+    const strippedPath = path.split('/').slice(commonPrefix.length).join('/');
+    return {
+      filePath: path,
+      storagePath: `/${strippedPath}`,
+    };
+  });
 }
