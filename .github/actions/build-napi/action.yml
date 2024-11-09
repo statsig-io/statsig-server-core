@@ -68,9 +68,6 @@ runs:
       run: yarn install --immutable --mode=skip-build
       working-directory: statsig-napi
 
-    - name: Cache Cargo
-      uses: Swatinem/rust-cache@v2
-
     - name: Build Napi
       shell: bash
       run: |

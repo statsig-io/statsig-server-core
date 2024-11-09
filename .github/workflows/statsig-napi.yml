@@ -78,6 +78,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
       - name: Build Statsig Napi
         if: ${{ github.ref_name == 'main' || matrix.config.always_build || github.event_name == 'release' }}
         uses: ./.github/actions/build-napi
