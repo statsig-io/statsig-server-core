@@ -6,16 +6,17 @@ on:
       kind:
         required: true
         type: choice
+        description: The kind of release to cut
         options:
         - beta
         - patch
         - minor
         - major
 
-    specific_version:
-      required: false
-      description: (Optional) Specify your own version to bump to
-      type: string
+      specific_version:
+        required: false
+        description: "Optional - Specific Version (eg: 0.0.1-beta.420)"
+        type: string
 
 env:
   CARGO_TERM_COLOR: always
