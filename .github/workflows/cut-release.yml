@@ -12,6 +12,11 @@ on:
         - minor
         - major
 
+    specific_version:
+      required: false
+      description: (Optional) Specify your own version to bump to
+      type: string
+
 env:
   CARGO_TERM_COLOR: always
   FORCE_COLOR: true
@@ -34,7 +39,7 @@ jobs:
           GH_APP_INSTALLATION_ID: '36921303'
           GH_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
         run: |
-          ./run bump-version --${{ inputs.kind }}
+          ./run bump-version --${{ inputs.kind }} ${{ inputs.specific_version }}
           ./run gh-create-release "${{ github.event.repository.name }}"
           ./run gh-push-php
           ./run gh-create-release sigstat-php
