@@ -8,6 +8,7 @@ import AdmZip from 'adm-zip';
 import { Command } from 'commander';
 import { readFileSync } from 'fs';
 import { glob } from 'glob';
+import { basename } from 'path';
 
 type Options = {
   output: string;
@@ -49,7 +50,10 @@ export class ZipFiles extends Command {
       const contents = readFileSync(fullPath);
 
       const parts = file.split('/');
-      const storageName = parts.length > 2 ? parts.slice(-2).join('/') : file;
+      let storageName = basename(file);
+      if (files.length > 1) {
+        storageName = parts.length > 2 ? parts.slice(-2).join('/') : file;
+      }
 
       zip.addFile(storageName, contents);
       Log.stepProgress(`Added File: ${storageName}`);

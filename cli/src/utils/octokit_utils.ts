@@ -113,6 +113,7 @@ export async function deleteReleaseAssetWithName(
     repo,
     asset_id: existingAsset.id,
   });
+
   return true;
 }
 
@@ -163,4 +164,44 @@ export async function createReleaseForVersion(
   } catch {
     return null;
   }
+}
+
+export async function getAllAssetsForRelease(
+  octokit: Octokit,
+  repo: string,
+  releaseId: number,
+  prefix: string,
+) {
+  try {
+    const { data } = await octokit.rest.repos.listReleaseAssets({
+      owner: 'statsig-io',
+      repo,
+      release_id: releaseId,
+      per_page: 100,
+    });
+
+    const assets = data.filter((asset) => asset.name.startsWith(prefix));
+
+    return { assets, error: null };
+  } catch (error) {
+    return { error, assets: null };
+  }
+}
+
+export async function downloadReleaseAsset(
+  octokit: Octokit,
+  repo: string,
+  assetId: number,
+): Promise<ArrayBuffer> {
+  const file = await octokit.rest.repos.getReleaseAsset({
+    owner: 'statsig-io',
+    repo,
+    asset_id: assetId,
+    headers: {
+      Accept: 'application/octet-stream',
+    },
+  });
+
+  // the 'Accept' header means it returns a buffer
+  return file.data as unknown as ArrayBuffer;
 }

@@ -11,9 +11,9 @@ type Options = {
   target?: string;
 };
 
-export class BuildStatsigNapi extends Command {
+export class NapiBuild extends Command {
   constructor() {
-    super('build-statsig-napi');
+    super('napi-build');
 
     this.description('Builds the statsig-napi package');
     this.option('--release', 'Build in release mode');

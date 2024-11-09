@@ -71,6 +71,6 @@ runs:
     - name: Build Napi
       shell: bash
       run: |
-        ./run build-statsig-napi \
+        ./run napi-build \
           --release \
           --target ${{ inputs.target }} ${{ inputs.extras }}
