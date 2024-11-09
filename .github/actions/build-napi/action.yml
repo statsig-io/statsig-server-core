@@ -74,10 +74,3 @@ runs:
         ./run build-statsig-napi \
           --release \
           --target ${{ inputs.target }} ${{ inputs.extras }}
-
-    - name: Upload Node Binary
-      uses: actions/upload-artifact@v4
-      with:
-        name: output-${{ matrix.config.target }}
-        path: statsig-napi/src/sigstat-napi.*.node
-        if-no-files-found: error

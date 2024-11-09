@@ -6,6 +6,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  release:
+    types: [released, prereleased]
 
 jobs:
   action-info:
@@ -90,33 +92,27 @@ jobs:
           extras: ${{ matrix.config.extras }}
           node_arch: ${{ matrix.config.node_arch }}
 
-  list-artifacts:
-    name: List Artifacts
-    runs-on: ubuntu-latest
-    needs:
-      - build
-    steps:
-      - uses: actions/download-artifact@v4
+      - name: Upload Release Asset
+        if: ${{ github.event_name == 'release' }}
+        uses: ./.github/actions/upload-release-asset
         with:
-          path: statsig-napi/artifacts
-
-      - name: Relevant Files
-        run: |
-          ls -al ${{ github.workspace }}/statsig-napi
-          find ${{ github.workspace }}/statsig-napi -type f -name "*.node"  -not -path "*/node_modules/*"
+          repositories: ${{ github.event.repository.name }}
+          asset_name: statsig-napi-${{ matrix.config.target }}
+          app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
+          pattern: statsig-napi/src/sigstat-napi.*.node
 
   publish:
     name: Publish to NPM
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # need node 20+
     if: false
     needs:
       - build
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
+
+      - uses: actions/download-artifact@v4
         with:
-          node-version: 20
+          path: statsig-napi/artifacts
 
       - name: Install Dependencies
         run: yarn install
