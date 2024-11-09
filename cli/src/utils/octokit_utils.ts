@@ -6,21 +6,9 @@ import path from 'path';
 import { getFileSize } from './file_utils.js';
 import { SemVer } from './semver.js';
 
-const GITHUB_APP_ID = process.env.GH_APP_ID!;
-const GITHUB_INSTALLATION_ID = process.env.GH_APP_INSTALLATION_ID!;
-const GITHUB_APP_PRIVATE_KEY = process.env.GH_APP_PRIVATE_KEY!;
-
-if (!GITHUB_APP_ID) {
-  throw new Error('GITHUB_APP_ID is not set');
-}
-
-if (!GITHUB_INSTALLATION_ID) {
-  throw new Error('GITHUB_INSTALLATION_ID is not set');
-}
-
-if (!GITHUB_APP_PRIVATE_KEY) {
-  throw new Error('GITHUB_APP_PRIVATE_KEY is not set');
-}
+const GITHUB_APP_ID = process.env.GH_APP_ID;
+const GITHUB_INSTALLATION_ID = process.env.GH_APP_INSTALLATION_ID;
+const GITHUB_APP_PRIVATE_KEY = process.env.GH_APP_PRIVATE_KEY;
 
 type GhRelease = Awaited<
   ReturnType<Octokit['rest']['repos']['getReleaseByTag']>
@@ -37,6 +25,18 @@ export async function getOctokit() {
 }
 
 export async function getInstallationToken() {
+  if (!GITHUB_APP_ID) {
+    throw new Error('GITHUB_APP_ID is not set');
+  }
+
+  if (!GITHUB_INSTALLATION_ID) {
+    throw new Error('GITHUB_INSTALLATION_ID is not set');
+  }
+
+  if (!GITHUB_APP_PRIVATE_KEY) {
+    throw new Error('GITHUB_APP_PRIVATE_KEY is not set');
+  }
+
   const auth = createAppAuth({
     appId: GITHUB_APP_ID,
     privateKey: GITHUB_APP_PRIVATE_KEY,

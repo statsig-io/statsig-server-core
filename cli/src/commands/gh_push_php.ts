@@ -69,5 +69,7 @@ export class GhPushPhp extends Command {
     }
 
     Log.stepEnd('Changes committed');
+
+    Log.conclusion('Successfully pushed statsig-php to GitHub');
   }
 }

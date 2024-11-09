@@ -1,4 +1,4 @@
-import { statSync } from 'fs';
+import { existsSync, mkdirSync, rmSync, statSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -26,4 +26,12 @@ export function getHumanReadableSize(filepath: string) {
     return `${(bytes / 1024).toFixed(2)} KB`;
   }
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+export function ensureEmptyDir(dir: string) {
+  if (existsSync(dir)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  mkdirSync(dir, { recursive: true });
 }

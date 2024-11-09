@@ -1,3 +1,4 @@
+import { BuildStatsigNapi } from './build_statsig_napi.js';
 import { BumpVersion } from './bump_version.js';
 import { GhAttachAssets } from './gh_attach_assets.js';
 import { GhCreateRelease } from './gh_create_release.js';
@@ -12,4 +13,5 @@ export const Commands = [
   new GhCreateRelease(),
   new GhPushPhp(),
   new GhAttachAssets(),
+  new BuildStatsigNapi(),
 ];

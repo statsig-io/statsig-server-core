@@ -63,7 +63,7 @@ jobs:
           app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
           pattern: target/**/${{ matrix.config.target }}/**/{release,debug}/libstatsig_ffi.so
 
-  build-mac-and-windows:
+  build:
     strategy:
       fail-fast: false
       matrix:

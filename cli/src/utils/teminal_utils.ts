@@ -32,4 +32,5 @@ export const Log = {
   stepBegin: printStepBegin,
   stepProgress: printStepProgress,
   stepEnd: printStepEnd,
+  info: printStepBegin,
 };

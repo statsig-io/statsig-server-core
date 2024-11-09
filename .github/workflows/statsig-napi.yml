@@ -30,23 +30,24 @@ jobs:
 
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            extras: --use-napi-cross --features vendored_openssl
+            extras: --use-napi-cross --rebuild-openssl
+            always_build: true
 
           - os: ubuntu-latest
             target: armv7-unknown-linux-gnueabihf
-            extras: --use-napi-cross --features vendored_openssl
+            extras: --use-napi-cross --rebuild-openssl
 
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            extras: --use-napi-cross --features vendored_openssl
+            extras: --use-napi-cross --rebuild-openssl
 
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl
-            extras: --cross-compile --features vendored_openssl
+            extras: --use-cross-compile --rebuild-openssl
 
           - os: ubuntu-latest
             target: aarch64-unknown-linux-musl
-            extras: --cross-compile --features vendored_openssl
+            extras: --use-cross-compile --rebuild-openssl
 
           # -- Windows --
 
@@ -55,6 +56,7 @@ jobs:
 
           - os: windows-latest
             target: aarch64-pc-windows-msvc
+            always_build: true
 
           # - os: windows-latest
           #   target: i686-pc-windows-msvc
@@ -67,7 +69,8 @@ jobs:
 
           - os: macos-latest
             target: aarch64-apple-darwin
-
+            always_build: true
+            
     runs-on: ${{ matrix.config.os }}
 
     steps:
@@ -75,80 +78,29 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v3
+      - name: Build Statsig Napi
+        if: ${{ github.ref_name == 'main' || matrix.config.always_build || github.event_name == 'release' }}
+        uses: ./.github/actions/build-napi
         with:
-            repo-token: ${{ secrets.GITHUB_TOKEN }}
+          target: ${{ matrix.config.target }}
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          extras: ${{ matrix.config.extras }}
+          node_arch: ${{ matrix.config.node_arch }}
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+  list-artifacts:
+    name: List Artifacts
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    steps:
+      - uses: actions/download-artifact@v4
         with:
-          node-version: 20
-          architecture: ${{ matrix.config.node_arch || '' }}
+          path: statsig-napi/artifacts
 
-      - name: Install Rust Tools
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          targets: ${{ matrix.config.target }}
-
-      - name: "[Windows-i686] Set Supported Architectures"
-        if: matrix.config.target == 'i686-pc-windows-msvc'
-        run: yarn config set supportedArchitectures.cpu "ia32"
-
-      - name: "[Linux-Musl] Add Zig Compiler"
-        if: ${{ contains(matrix.config.target, 'musl') }}
-        uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: 0.13.0
-
-      - name: "[MacOS-Arm] Configure C/C++ Compiler"
-        if: matrix.config.target == 'aarch64-apple-darwin'
-        run: ./tools/node/macos_arm_fixes
-
-      - name: Install Dependencies
-        run: yarn install --immutable --mode=skip-build
-        working-directory: statsig-napi
-
-      - name: Cache Cargo Build
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo
-            ~/.napi-rs
-            ~/statsig-napi/.cargo
-            ~/statsig-napi/.napi-rs
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Build Napi
-        shell: bash
+      - name: Relevant Files
         run: |
-          ./tools/node/build_node \
-          --target ${{ matrix.config.target }} \
-          ${{ matrix.config.extras }}
-
-      - name: List Files in src/
-        run: ls ${{ github.workspace }}/statsig-napi/src
-
-      - name: Upload Node Binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: bindings-${{ matrix.config.target }}
-          path: statsig-napi/src/sigstat-napi.*.node
-          if-no-files-found: error
-
-      - name: "[MacOS-Arm] Upload JS Files"
-        # We only need these files from one of the builds
-        if: matrix.config.target == 'aarch64-apple-darwin'
-        uses: actions/upload-artifact@v4
-        with:
-          name: js-lib-files
-          path: |
-            statsig-napi/dist/lib/*.js
-            statsig-napi/dist/lib/*.ts
-            statsig-napi/dist/package.json
-          if-no-files-found: error
+          ls -al ${{ github.workspace }}/statsig-napi
+          find ${{ github.workspace }}/statsig-napi -type f -name "*.node"  -not -path "*/node_modules/*"
 
   publish:
     name: Publish to NPM
