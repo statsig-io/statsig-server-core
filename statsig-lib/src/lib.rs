@@ -17,6 +17,7 @@ pub mod instance_store;
 pub mod output_logger;
 pub mod statsig_options;
 pub mod statsig_user;
+pub mod statsig_types;
 
 mod async_runtime;
 mod background_task;
@@ -37,5 +38,4 @@ mod statsig;
 mod statsig_err;
 mod statsig_metadata;
 mod statsig_type_factories;
-mod statsig_types;
 mod statsig_user_internal;
