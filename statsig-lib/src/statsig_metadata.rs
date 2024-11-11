@@ -20,7 +20,7 @@ pub struct StatsigMetadata {
 impl StatsigMetadata {
     fn new() -> Self {
         Self {
-            sdk_version: "0.0.1-beta.113".to_string(),
+            sdk_version: "0.0.1-beta.118".to_string(),
             sdk_type: "statsig-server-core".to_string(),
             session_id: Uuid::new_v4().to_string(),
         }
