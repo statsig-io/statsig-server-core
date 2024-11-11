@@ -1,3 +1,4 @@
+import { BASE_DIR, ensureEmptyDir } from '@/utils/file_utils.js';
 import {
   downloadReleaseAsset,
   getAllAssetsForRelease,
@@ -7,7 +8,12 @@ import {
 import { Log } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
 import AdmZip from 'adm-zip';
+import { execSync } from 'child_process';
 import { Command } from 'commander';
+import { readFileSync, readdirSync, statSync } from 'fs';
+import { glob } from 'glob';
+
+const TEMP_DIR = '/tmp/statsig-napi-build';
 
 export class NapiPub extends Command {
   constructor() {
@@ -31,6 +37,8 @@ export class NapiPub extends Command {
 
     const version = getRootVersion();
     const octokit = await getOctokit();
+
+    ensureEmptyDir(TEMP_DIR);
 
     Log.stepBegin('Getting release');
     const release = await getReleaseByVersion(octokit, repo, version);
@@ -82,6 +90,17 @@ export class NapiPub extends Command {
     });
     Log.stepEnd('Unzipped files');
 
+    Log.stepBegin('Aligning Npm Packages');
+    (await moveNodeBinaries()).forEach(({ file, dir }) => {
+      Log.stepProgress(`Moved: ${file} -> ${dir}`);
+    });
+    moveRootNapiPackage();
+    Log.stepEnd('Aligned Npm Packages');
+
+    Log.stepBegin('Publishing Npm Packages');
+    await publishAllPackages();
+    Log.stepEnd('Published Npm Packages');
+
     Log.conclusion('Successfully published statsig-napi to NPM');
   }
 }
@@ -89,5 +108,62 @@ export class NapiPub extends Command {
 function unzip(buffer: ArrayBuffer) {
   const zip = new AdmZip(Buffer.from(buffer));
 
-  zip.extractAllTo('/tmp/statsig-napi-binaries', false, true);
+  zip.extractAllTo(TEMP_DIR, false, true);
+}
+
+function moveRootNapiPackage() {
+  ensureEmptyDir(`${TEMP_DIR}/npm/statsig-napi`);
+  execSync(`mv lib npm/statsig-napi/lib`, { cwd: TEMP_DIR });
+  execSync(`mv package.json npm/statsig-napi`, { cwd: TEMP_DIR });
+}
+
+async function moveNodeBinaries() {
+  execSync(`cp -r statsig-napi/npm ${TEMP_DIR}/npm`, { cwd: BASE_DIR });
+
+  const nodeBinaries = await getNodeBinaries();
+  const npmDirs = await getNpmDirectories();
+
+  const mapped: { file: string; dir: string }[] = [];
+  nodeBinaries.forEach((file) => {
+    const dir = npmDirs.findIndex((d) => file.includes(d));
+    if (dir !== -1) {
+      const dirName = npmDirs[dir];
+      execSync(`mv ${file} npm/${dirName}`, { cwd: TEMP_DIR });
+
+      npmDirs.splice(dir, 1);
+      mapped.push({ file, dir: dirName });
+    }
+  });
+
+  npmDirs.forEach((dir) => {
+    execSync(`rm -rf npm/${dir}`, { cwd: TEMP_DIR });
+  });
+
+  return mapped;
+}
+
+async function publishAllPackages() {
+  const npmDirs = await getNpmDirectories();
+
+  npmDirs.forEach((dir) => {
+    const packageJson = JSON.parse(
+      readFileSync(`${TEMP_DIR}/npm/${dir}/package.json`, 'utf8'),
+    );
+    Log.stepProgress(`Publishing: ${dir} ${packageJson.version}`);
+  });
+}
+
+async function getNpmDirectories() {
+  const dirs = readdirSync(`${TEMP_DIR}/npm`).filter(
+    (f) => f !== 'npm' && statSync(`${TEMP_DIR}/npm/${f}`).isDirectory(),
+  );
+  return dirs;
+}
+
+async function getNodeBinaries() {
+  const files = await glob('**/*.node', {
+    cwd: TEMP_DIR,
+    ignore: 'node_modules/**',
+  });
+  return files;
 }
