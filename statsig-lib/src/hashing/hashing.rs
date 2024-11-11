@@ -1,5 +1,4 @@
 use std::fmt::Display;
-
 use super::{djb2::djb2, memo_sha_256::MemoSha256};
 
 pub enum HashAlgorithm {

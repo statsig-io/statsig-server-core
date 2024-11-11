@@ -30,7 +30,7 @@ impl ClientInitResponseFormatter {
         Self {
             spec_store: spec_store.clone(),
             default_options: ClientInitResponseOptions {
-                hash_algorithm: Some(HashAlgorithm::Sha256),
+                hash_algorithm: Some(HashAlgorithm::Djb2),
             },
         }
     }
