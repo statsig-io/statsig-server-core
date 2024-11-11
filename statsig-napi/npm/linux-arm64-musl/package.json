@@ -1,6 +1,6 @@
 {
   "name": "@sigstat/sigstat-napi-linux-arm64-musl",
-  "version": "0.0.1-beta.119",
+  "version": "0.0.1-beta.124",
   "os": [
     "linux"
   ],

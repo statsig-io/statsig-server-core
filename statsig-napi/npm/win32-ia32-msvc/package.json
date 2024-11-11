@@ -1,6 +1,6 @@
 {
   "name": "@sigstat/sigstat-napi-win32-ia32-msvc",
-  "version": "0.0.1-beta.119",
+  "version": "0.0.1-beta.124",
   "os": [
     "win32"
   ],

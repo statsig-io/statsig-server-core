@@ -8,7 +8,7 @@ using System;
 using System.Runtime.InteropServices;
 
 
-namespace Statsig
+namespace StatsigServer
 {
     internal static unsafe partial class StatsigFFI
     {

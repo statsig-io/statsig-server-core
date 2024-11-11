@@ -58,6 +58,7 @@ export class GhPushPhp extends Command {
       remote,
       branch,
       version.toBranch(),
+      true /* shouldPushChanges */,
     );
 
     if (error || !success) {
