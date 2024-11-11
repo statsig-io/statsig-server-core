@@ -71,16 +71,66 @@ pub struct Layer {
 }
 
 impl Layer {
-    pub fn get_string(&self, param_name: &str) -> Option<String> {
-        let value = self.__value.get(param_name)?.string_value.clone();
+    pub fn get_string(&self, param_name: &str, fallback: String) -> String {
+        let value = match self.__value.get(param_name).and_then(|p| p.string_value.clone()) {
+            Some(p) => p,
+            None => return fallback,
+        };
 
         self.log_param_exposure(param_name);
 
         value
     }
 
-    pub fn get_f64(&self, param_name: &str) -> Option<f64> {
-        let value = self.__value.get(param_name)?.float_value;
+    pub fn get_f64(&self, param_name: &str, fallback: f64) -> f64 {
+        let value = match self.__value.get(param_name).and_then(|p| p.float_value.clone()) {
+            Some(p) => p,
+            None => return fallback,
+        };
+
+        self.log_param_exposure(param_name);
+
+        value
+    }
+
+    pub fn get_bool(&self, param_name: &str, fallback: bool) -> bool {
+        let value = match self.__value.get(param_name).and_then(|p| p.bool_value.clone()) {
+            Some(p) => p,
+            None => return fallback,
+        };
+
+        self.log_param_exposure(param_name);
+
+        value
+    }
+
+    pub fn get_i64(&self, param_name: &str, fallback: i64) -> i64 {
+        let value = match self.__value.get(param_name).and_then(|p| p.int_value.clone()) {
+            Some(p) => p,
+            None => return fallback,
+        };
+
+        self.log_param_exposure(param_name);
+
+        value
+    }
+
+    pub fn get_array(&self, param_name: &str, fallback: Vec<DynamicValue>) -> Vec<DynamicValue> {
+        let value = match self.__value.get(param_name).and_then(|p| p.array_value.clone()) {
+            Some(p) => p,
+            None => return fallback,
+        };
+
+        self.log_param_exposure(param_name);
+
+        value
+    }
+
+    pub fn get_object(&self, param_name: &str, fallback: HashMap<String, DynamicValue>) -> HashMap<String, DynamicValue> {
+        let value = match self.__value.get(param_name).and_then(|p| p.object_value.clone()) {
+            Some(p) => p,
+            None => return fallback,
+        };
 
         self.log_param_exposure(param_name);
 

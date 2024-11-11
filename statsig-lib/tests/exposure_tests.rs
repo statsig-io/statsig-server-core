@@ -191,7 +191,7 @@ async fn test_get_layer_copies_undelegated_exposures() {
     statsig.initialize().await.unwrap();
 
     let layer = statsig.get_layer(&user, "layer_in_global_holdout");
-    layer.get_string("shared_param");
+    layer.get_string("shared_param", "".to_string());
 
     sleep(Duration::from_millis(1)).await;
     statsig.flush_events().await;
@@ -215,7 +215,7 @@ async fn test_get_layer_with_holdouts() {
     statsig.initialize().await.unwrap();
 
     let layer = statsig.get_layer(&user, "test_layer_in_holdout");
-    layer.get_string("layer_val");
+    layer.get_string("layer_val", "".to_string());
 
     sleep(Duration::from_millis(1)).await;
     statsig.flush_events().await;

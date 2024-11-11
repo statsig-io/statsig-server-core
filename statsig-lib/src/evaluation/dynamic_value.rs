@@ -98,12 +98,7 @@ impl From<JsonValue> for DynamicValue {
                 json_value,
                 ..DynamicValue::new()
             },
-            JsonValue::String(s) => DynamicValue {
-                lowercase_string_value: Some(s.to_lowercase()),
-                string_value: Some(s),
-                json_value,
-                ..DynamicValue::new()
-            },
+            JsonValue::String(s) => DynamicValue::from(s),
             JsonValue::Array(arr) => DynamicValue {
                 array_value: Some(arr.into_iter().map(DynamicValue::from).collect()),
                 json_value,
