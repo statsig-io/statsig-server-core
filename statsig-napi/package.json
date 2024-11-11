@@ -22,7 +22,7 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@napi-rs/cli": "^3.0.0-alpha.62",
+    "@napi-rs/cli": "2.18.4",
     "ava": "^6.0.1",
     "jscodeshift": "^17.0.0",
     "prettier": "^3.3.3",
@@ -36,7 +36,7 @@
   },
   "scripts": {
     "artifacts": "napi artifacts",
-    "prepublishOnly": "napi prepublish --tagstyle npm --gh-release false",
+    "prepublishOnly": "napi prepublish --tagstyle npm --skip-gh-release",
     "test": "ava",
     "universal": "napi universal",
     "version": "napi version"
