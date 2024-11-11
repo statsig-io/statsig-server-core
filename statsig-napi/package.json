@@ -36,7 +36,6 @@
   },
   "scripts": {
     "artifacts": "napi artifacts",
-    "prepublishOnly": "napi prepublish --tagstyle npm --skip-gh-release",
     "test": "ava",
     "universal": "napi universal",
     "version": "napi version"

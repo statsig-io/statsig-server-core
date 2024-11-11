@@ -14,11 +14,11 @@ export function printStepBegin(step: string) {
 
 export function printStepProgress(step: string, kind?: 'success' | 'failure') {
   if (kind === 'success') {
-    console.log(chalk.green(`├── ${step}\n`));
+    console.log(chalk.green(`├── ${step}`));
   } else if (kind === 'failure') {
-    console.log(chalk.red(`├── ${step}\n`));
+    console.log(chalk.red(`├── ${step}`));
   } else {
-    console.log(chalk.white(`├── ${step}\n`));
+    console.log(chalk.white(`├── ${step}`));
   }
 }
 

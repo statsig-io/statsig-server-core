@@ -112,8 +112,8 @@ function runNapiBuild(options: Options) {
     '--platform',
     '--js bindings.js',
     '--dts bindings.d.ts',
+    '--output-dir ./src',
     '--strip',
-    './src',
   ];
 
   if (options.release) {

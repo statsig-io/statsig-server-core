@@ -13,7 +13,7 @@ use tokio::sync::Notify;
 use tokio::task;
 use tokio::time::{interval_at, Instant};
 
-pub const DEFAULT_SPECS_URL: &str = "https://assetsconfigcdn.org/v2/download_config_specs";
+pub const DEFAULT_SPECS_URL: &str = "https://api.statsigcdn.com/v2/download_config_specs";
 const DEFAULT_SYNC_INTERVAL_MS: u32 = 10_000;
 
 pub struct StatsigHttpSpecsAdapter {

@@ -28,7 +28,7 @@ test.before('setup', () => {
     },
     {
       adapterType: SpecsAdapterType.NetworkHttp,
-      specsUrl: 'https://assetsconfigcdn.org/v2/download_config_specs',
+      specsUrl: 'https://api.statsigcdn.com/v2/download_config_specs',
       initTimeoutMs: 3000,
     },
   ];

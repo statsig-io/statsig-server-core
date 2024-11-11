@@ -1,4 +1,5 @@
 import { BASE_DIR, ensureEmptyDir, getRootedPath } from '@/utils/file_utils.js';
+import { parseTriple } from '@/utils/napi_utils.js';
 import {
   downloadReleaseAsset,
   getAllAssetsForRelease,
@@ -10,7 +11,7 @@ import { getRootVersion } from '@/utils/toml_utils.js';
 import AdmZip from 'adm-zip';
 import { execSync } from 'child_process';
 import { Command } from 'commander';
-import { readFileSync, readdirSync, statSync } from 'fs';
+import { readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
 import { glob } from 'glob';
 
 const TEMP_DIR = '/tmp/statsig-napi-build';
@@ -103,6 +104,13 @@ export class NapiPub extends Command {
     moveRootNapiPackage();
     Log.stepEnd('Aligned Npm Packages');
 
+    Log.stepBegin('Syncing Napi Targets');
+    const packageJson = syncNapiTargets();
+    Log.stepProgress(
+      `Targets: ${JSON.stringify(packageJson.optionalDependencies, null, 2)}`,
+    );
+    Log.stepEnd('Synced Napi Targets');
+
     Log.stepBegin('Publishing Npm Packages');
     await publishAllPackages(options.production === true);
     Log.stepEnd('Published Npm Packages');
@@ -127,7 +135,7 @@ async function moveNodeBinaries() {
   execSync(`cp -r statsig-napi/npm ${TEMP_DIR}/npm`, { cwd: BASE_DIR });
 
   const nodeBinaries = await getNodeBinaries();
-  const npmDirs = await getNpmDirectories();
+  const npmDirs = getNpmDirectories();
 
   const mapped: { file: string; dir: string }[] = [];
   nodeBinaries.forEach((file) => {
@@ -149,7 +157,7 @@ async function moveNodeBinaries() {
 }
 
 async function publishAllPackages(isProduction: boolean) {
-  const npmDirs = await getNpmDirectories();
+  const npmDirs = getNpmDirectories();
 
   npmDirs.forEach((dir) => {
     const packageJson = JSON.parse(
@@ -161,15 +169,16 @@ async function publishAllPackages(isProduction: boolean) {
       Log.stepEnd(`Failed to publish: ${packageJson.name}`, 'failure');
       console.error('Error: ', err.message);
       process.exit(1);
+    } else {
+      Log.stepProgress(
+        `Published: ${packageJson.name} ${packageJson.version}`,
+        'success',
+      );
     }
-    Log.stepProgress(
-      `Published: ${packageJson.name} ${packageJson.version}`,
-      'success',
-    );
   });
 }
 
-async function getNpmDirectories() {
+function getNpmDirectories() {
   const dirs = readdirSync(`${TEMP_DIR}/npm`).filter(
     (f) => f !== 'npm' && statSync(`${TEMP_DIR}/npm/${f}`).isDirectory(),
   );
@@ -201,4 +210,45 @@ function publishPackage(dir: string, isProduction: boolean): Error | null {
   } catch (error) {
     return error as Error;
   }
+}
+
+function syncNapiTargets() {
+  const packageJson = JSON.parse(
+    readFileSync(`${TEMP_DIR}/npm/statsig-napi/package.json`, 'utf8'),
+  );
+
+  const optionalDependencies = { ...packageJson.optionalDependencies };
+
+  const npmDirs = getNpmDirectories().reduce(
+    (acc, dir) => {
+      acc[dir] = `${TEMP_DIR}/npm/${dir}`;
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
+
+  const targets = packageJson.napi.targets as string[];
+
+  targets.forEach((target) => {
+    const nativeInfo = parseTriple(target);
+
+    const dir = npmDirs[nativeInfo.platformArchABI];
+    if (!dir) {
+      throw new Error(`Target ${target} not found`);
+    }
+
+    const targetPackage = JSON.parse(
+      readFileSync(`${dir}/package.json`, 'utf8'),
+    );
+
+    optionalDependencies[targetPackage.name] = targetPackage.version;
+  });
+
+  packageJson.optionalDependencies = optionalDependencies;
+  writeFileSync(
+    `${TEMP_DIR}/npm/statsig-napi/package.json`,
+    JSON.stringify(packageJson, null, 2),
+  );
+
+  return packageJson;
 }
