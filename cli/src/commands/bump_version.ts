@@ -19,10 +19,11 @@ import { Command } from 'commander';
 import { SyncVersion } from './sync_version.js';
 
 type Options = {
-  major: boolean;
-  minor: boolean;
-  patch: boolean;
-  beta: boolean;
+  major?: boolean;
+  minor?: boolean;
+  patch?: boolean;
+  beta?: boolean;
+  doNotPush?: boolean;
 };
 
 export class BumpVersion extends Command {
@@ -35,7 +36,7 @@ export class BumpVersion extends Command {
     this.option('--minor', 'Bump the minor version');
     this.option('--patch', 'Bump the patch version');
     this.option('--beta', 'Bump the beta version');
-
+    this.option('--do-not-push', 'Do not push the changes to the remote');
     this.argument('[string]', 'The version to bump to');
 
     this.action(this.run.bind(this));
@@ -96,6 +97,7 @@ export class BumpVersion extends Command {
       remote,
       branch,
       remoteBranch,
+      options.doNotPush !== true /* shouldPushChanges */,
     );
 
     if (error || !success) {

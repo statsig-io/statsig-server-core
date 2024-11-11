@@ -19,6 +19,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+            repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+
       - name: Get Workflow Run Info
         id: workflow_run_info
         uses: ./.github/actions/verify-workflow-run-successful
@@ -45,12 +51,7 @@ jobs:
         run: cd cli && npm install
 
       - name: Apply Beta Tag
-        run: ./run bump-version --beta
-
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v3
-        with:
-            repo-token: ${{ secrets.GITHUB_TOKEN }}
+        run: ./run bump-version --beta --do-not-push
 
       - name: Check and Publish Statsig Grpc Package
         run: |

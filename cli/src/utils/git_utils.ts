@@ -53,6 +53,7 @@ export async function commitAndPushChanges(
   remote: string,
   localBranch: string,
   remoteBranch: string,
+  shouldPushChanges: boolean,
 ) {
   try {
     const git = simpleGit(repoPath);
@@ -72,7 +73,9 @@ export async function commitAndPushChanges(
       throw new Error('There are unstaged changes');
     }
 
-    await git.push(remote, `${localBranch}:${remoteBranch}`);
+    if (shouldPushChanges) {
+      await git.push(remote, `${localBranch}:${remoteBranch}`);
+    }
 
     return { success: true, error: null };
   } catch (error) {
