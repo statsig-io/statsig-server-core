@@ -2,9 +2,9 @@ using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace StatsigServer
+namespace Statsig
 {
-    internal class StatsigUtils
+    internal static class StatsigUtils
     {
         internal static unsafe string ReadStringFromPointer(byte* pointer)
          {

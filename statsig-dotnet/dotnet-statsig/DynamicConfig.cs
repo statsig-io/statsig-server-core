@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 
-namespace StatsigServer
+namespace Statsig
 {
     public class DynamicConfig : Experiment
     {

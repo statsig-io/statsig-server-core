@@ -1,6 +1,6 @@
 using System;
 
-namespace StatsigServer
+namespace Statsig
 {
     /// <summary>
     /// Configuration options for the Statsig Server SDK
@@ -14,7 +14,7 @@ namespace StatsigServer
         {
             unsafe
             {
-                _ref = StatsigFFI.statsig_options_create(null, null);
+                _ref = StatsigFFI.statsig_options_create(null, null, null);
             }
         }
 

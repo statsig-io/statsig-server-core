@@ -1,7 +1,7 @@
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 
-namespace StatsigServer
+namespace Statsig
 {
     public class FeatureGate
     {

@@ -1,9 +1,8 @@
 using Xunit;
-using StatsigServer;
 using System;
 using System.Threading.Tasks;
 
-namespace dotnet_statsig_tests {
+namespace Statsig.tests {
 
     public class BenchmarkTest {
         [Fact]

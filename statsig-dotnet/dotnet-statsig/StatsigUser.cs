@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 
-namespace StatsigServer
+namespace Statsig
 {
     public class StatsigUser : IDisposable
     {

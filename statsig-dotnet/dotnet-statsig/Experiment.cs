@@ -1,9 +1,8 @@
 using System.Collections.Generic;
-using System.Data;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace StatsigServer
+namespace Statsig
 {
     public class Experiment
     {
@@ -21,7 +20,10 @@ namespace StatsigServer
             GroupName = groupName;
             Details = details;
         }
+        
+        // empty constructor when deserializing objects
+        internal Experiment()
+        {
+        }
     }
-    
-    
 }

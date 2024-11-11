@@ -1,8 +1,9 @@
 using System;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
-namespace StatsigServer
+namespace Statsig
 {
     public class Statsig : IDisposable
     {
@@ -16,9 +17,8 @@ namespace StatsigServer
                 fixed (byte* sdkKeyPtr = sdkKeyBytes)
                 {
                     _statsigRef = StatsigFFI.statsig_create(sdkKeyPtr, options.Reference);
-                }    
+                }
             }
-            
         }
 
         ~Statsig()
@@ -51,6 +51,21 @@ namespace StatsigServer
             }
         }
 
+        public Experiment GetExperiment(StatsigUser user, string experimentName)
+        {
+            var experimentNameBytes = Encoding.UTF8.GetBytes(experimentName);
+            unsafe
+            {
+                fixed (byte* experimentNamePtr = experimentNameBytes)
+                {
+                    var jsonStringPtr =
+                        StatsigFFI.statsig_get_experiment(_statsigRef, user.Reference, experimentNamePtr);
+                    var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
+                    return JsonConvert.DeserializeObject<Experiment>(jsonString);
+                }
+            }
+        }
+        
         public string GetClientInitializeResponse(StatsigUser user)
         {
             unsafe

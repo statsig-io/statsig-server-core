@@ -1,0 +1,58 @@
+{
+  "__evaluation": {
+    "explicit_parameters": [
+      "a_string",
+      "a_number",
+      "an_array",
+      "another_number",
+      "another_bool"
+    ],
+    "group": "7kGqFczL8Ztc2vv3tWGmvO",
+    "group_name": "Test #2",
+    "id_type": "userID",
+    "is_device_based": false,
+    "is_experiment_active": true,
+    "is_in_layer": true,
+    "is_user_in_experiment": true,
+    "name": "experiment_with_many_params",
+    "rule_id": "7kGqFczL8Ztc2vv3tWGmvO",
+    "secondary_exposures": [],
+    "value": {
+      "a_bool": false,
+      "a_number": 3,
+      "a_string": "test_2",
+      "an_array": [
+        "test_2"
+      ],
+      "an_object": {
+        "value": "layer_default"
+      },
+      "another_bool": false,
+      "another_number": 3,
+      "another_string": "layer_default"
+    }
+  },
+  "details": {
+    "lcut": 1730849264112,
+    "reason": "Network:Recognized",
+    "received_at": 1730927332613
+  },
+  "group_name": "Test #2",
+  "id_type": "userID",
+  "name": "experiment_with_many_params",
+  "rule_id": "7kGqFczL8Ztc2vv3tWGmvO",
+  "value": {
+    "a_bool": false,
+    "a_number": 3,
+    "a_string": "test_2",
+    "an_array": [
+      "test_2"
+    ],
+    "an_object": {
+      "value": "layer_default"
+    },
+    "another_bool": false,
+    "another_number": 3,
+    "another_string": "layer_default"
+  }
+}
