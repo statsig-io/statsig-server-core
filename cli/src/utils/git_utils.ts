@@ -57,11 +57,13 @@ export async function commitAndPushChanges(
   try {
     const git = simpleGit(repoPath);
 
-    await git.addConfig('user.name', 'statsig-kong[bot]');
-    await git.addConfig(
-      'user.email',
-      'statsig-kong[bot]@users.noreply.github.com',
-    );
+    if (process.env['CI']) {
+      await git.addConfig('user.name', 'statsig-kong[bot]');
+      await git.addConfig(
+        'user.email',
+        'statsig-kong[bot]@users.noreply.github.com',
+      );
+    }
 
     await git.cwd(repoPath).add('.').commit(message);
 

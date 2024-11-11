@@ -2,6 +2,7 @@ import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
 import { Log, printTitle } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
 import chalk from 'chalk';
+import { execSync } from 'child_process';
 import { Command } from 'commander';
 import fs from 'fs';
 import { glob } from 'glob';
@@ -26,6 +27,11 @@ export class SyncVersion extends Command {
     updateNodePackageJsonVersions(version);
     updateJavaGradleVersion(version);
     updateStatsigGrpcDepVersion(version);
+
+    Log.stepBegin('Verifying Cargo Change');
+    execSync('cargo check', { cwd: BASE_DIR });
+    Log.stepEnd('Cargo Change Verified');
+
     Log.conclusion(`All Versions Updated to: ${version}`);
   }
 }
