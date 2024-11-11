@@ -1,6 +1,6 @@
 {
   "name": "@sigstat/sigstat-napi-android-arm64",
-  "version": "0.0.1-beta.118",
+  "version": "0.0.1-beta.119",
   "os": [
     "android"
   ],

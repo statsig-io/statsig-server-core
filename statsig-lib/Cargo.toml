@@ -23,7 +23,7 @@ simple_logger = "5.0.0"
 lazy_static = "1.5.0"
 futures = "0.3.30"
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
-sigstat-grpc = { path = "../statsig-grpc", version = "0.0.1-beta.118", optional = true }
+sigstat-grpc = { path = "../statsig-grpc", version = "0.0.1-beta.119", optional = true }
 
 [dev-dependencies]
 mockito = "1.5.0"
