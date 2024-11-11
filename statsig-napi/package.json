@@ -22,7 +22,7 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@napi-rs/cli": "2.18.4",
+    "@napi-rs/cli": "^3.0.0-alpha.62",
     "ava": "^6.0.1",
     "jscodeshift": "^17.0.0",
     "prettier": "^3.3.3",
