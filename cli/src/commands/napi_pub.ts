@@ -1,4 +1,4 @@
-import { BASE_DIR, ensureEmptyDir } from '@/utils/file_utils.js';
+import { BASE_DIR, ensureEmptyDir, getRootedPath } from '@/utils/file_utils.js';
 import {
   downloadReleaseAsset,
   getAllAssetsForRelease,
@@ -15,6 +15,10 @@ import { glob } from 'glob';
 
 const TEMP_DIR = '/tmp/statsig-napi-build';
 
+type Options = {
+  production?: boolean;
+};
+
 export class NapiPub extends Command {
   constructor() {
     super('napi-pub');
@@ -26,10 +30,12 @@ export class NapiPub extends Command {
       'The name of the repository, e.g. private-statsig-server-core',
     );
 
+    this.option('--production', 'Whether to publish a production version');
+
     this.action(this.run.bind(this));
   }
 
-  async run(repo: string) {
+  async run(repo: string, options: Options) {
     Log.title('Publishing statsig-napi to NPM');
 
     Log.stepBegin('Configuration');
@@ -98,7 +104,7 @@ export class NapiPub extends Command {
     Log.stepEnd('Aligned Npm Packages');
 
     Log.stepBegin('Publishing Npm Packages');
-    await publishAllPackages();
+    await publishAllPackages(options.production === true);
     Log.stepEnd('Published Npm Packages');
 
     Log.conclusion('Successfully published statsig-napi to NPM');
@@ -142,14 +148,24 @@ async function moveNodeBinaries() {
   return mapped;
 }
 
-async function publishAllPackages() {
+async function publishAllPackages(isProduction: boolean) {
   const npmDirs = await getNpmDirectories();
 
   npmDirs.forEach((dir) => {
     const packageJson = JSON.parse(
       readFileSync(`${TEMP_DIR}/npm/${dir}/package.json`, 'utf8'),
     );
-    Log.stepProgress(`Publishing: ${dir} ${packageJson.version}`);
+
+    const err = publishPackage(dir, isProduction);
+    if (err) {
+      Log.stepEnd(`Failed to publish: ${packageJson.name}`, 'failure');
+      console.error('Error: ', err.message);
+      process.exit(1);
+    }
+    Log.stepProgress(
+      `Published: ${packageJson.name} ${packageJson.version}`,
+      'success',
+    );
   });
 }
 
@@ -166,4 +182,23 @@ async function getNodeBinaries() {
     ignore: 'node_modules/**',
   });
   return files;
+}
+
+function publishPackage(dir: string, isProduction: boolean): Error | null {
+  const configPath = getRootedPath('.npmrc');
+  const publish = [
+    `npm publish`,
+    `--registry=https://registry.npmjs.org/`,
+    `--userconfig=${configPath}`,
+    `--access public`,
+    isProduction ? `` : '--tag beta',
+  ];
+
+  const command = publish.join(' ');
+  try {
+    execSync(command, { cwd: `${TEMP_DIR}/npm/${dir}` });
+    return null;
+  } catch (error) {
+    return error as Error;
+  }
 }

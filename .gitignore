@@ -5,6 +5,7 @@ build/
 node_modules
 bin
 obj
+.npmrc
 
 ### Composer ###
 composer.phar
