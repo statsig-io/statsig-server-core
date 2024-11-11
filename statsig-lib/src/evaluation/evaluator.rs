@@ -62,7 +62,7 @@ impl Evaluator {
             let did_pass = evaluate_pass_percentage(ctx, rule, &spec.salt);
 
             if did_pass {
-                ctx.result.bool_value = true;
+                ctx.result.bool_value = rule.return_value.string_value != "false";
                 ctx.result.json_value = Some(&rule.return_value);
             } else {
                 ctx.result.bool_value = spec.default_value.string_value == "true";
@@ -228,7 +228,7 @@ fn evaluate_nested_gate<'a>(
     let gate_name = match target_value.string_value.as_ref() {
         Some(name) => name,
         None => {
-            log_e!("Invalid target_value for condition {}", condition_type);
+            log_e!("Invalid target_value for condition {}, {:?}", condition_type, target_value);
             ctx.result.unsupported = true;
             return;
         }
