@@ -52,10 +52,12 @@ function ensure_bin_dir_exists()
 function download_binary($system_info)
 {
     $binary_map = [
-        "macos-aarch64" => "statsig-ffi-aarch64-apple-darwin-release.zip",
-        "linux-aarch64" => "statsig-ffi-aarch64-unknown-linux-gnu-release.zip",
-        "linux-x86_64" => "statsig-ffi-x86_64-unknown-linux-gnu-release.zip",
-        "windows-x86_64" => "statsig-ffi-x86_64-pc-win32-msvc-release.zip",
+        "macos-x86_64" => "statsig-ffi-x86_64-apple-darwin.zip",
+        "macos-aarch64" => "statsig-ffi-aarch64-apple-darwin.zip",
+        "linux-aarch64" => "statsig-ffi-aarch64-unknown-linux-gnu.zip",
+        "linux-x86_64" => "statsig-ffi-x86_64-unknown-linux-gnu.zip",
+        "windows-x86_64" => "statsig-ffi-x86_64-pc-windows-msvc.zip",
+        "windows-aarch64" => "statsig-ffi-aarch64-pc-windows-msvc.zip",
     ];
 
     $binary_file = $binary_map[$system_info[0] . "-" . $system_info[1]] ?? null;

@@ -55,7 +55,7 @@ jobs:
         if: ${{ github.event_name == 'release' }}
         run: sudo chown -R $(whoami) target/
 
-      - name: Upload Release Asset
+      - name: Upload Release Asset to Server Core
         if: ${{ github.event_name == 'release' }}
         uses: ./.github/actions/upload-release-asset
         with:
@@ -63,6 +63,15 @@ jobs:
           asset_name: statsig-ffi-${{ matrix.config.target }}
           app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
           pattern: target/**/${{ matrix.config.target }}/**/{release,debug}/libstatsig_ffi.so
+
+      - name: Upload Release Asset to PHP
+        if: ${{ github.event_name == 'release' }}
+        uses: ./.github/actions/upload-release-asset
+        with:
+          repositories: sigstat-php
+          asset_name: statsig-ffi-${{ matrix.config.target }}
+          app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
+          pattern: target/**/${{ matrix.config.target }}/**/release/libstatsig_ffi.so
 
   build:
     strategy:
@@ -101,11 +110,20 @@ jobs:
           target: ${{ matrix.config.target }}
           build_for_release: ${{ github.event_name == 'release' }}
 
-      - name: Upload Release Asset
+      - name: Upload Release Asset to Server Core
         if: ${{ github.event_name == 'release' }}
         uses: ./.github/actions/upload-release-asset
         with:
           asset_name: statsig-ffi-${{ matrix.config.target }}
           app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
           pattern: target/**/${{ matrix.config.target }}/{release,debug}/{statsig_ffi,libstatsig_ffi}.{dll,pdb,dylib}
-          repositories: ${{ github.event.repository.name }} sigstat-php
+          repositories: ${{ github.event.repository.name }}
+
+      - name: Upload Release Asset to PHP
+        if: ${{ github.event_name == 'release' }}
+        uses: ./.github/actions/upload-release-asset
+        with:
+          asset_name: statsig-ffi-${{ matrix.config.target }}
+          app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
+          pattern: target/**/${{ matrix.config.target }}/release/{statsig_ffi,libstatsig_ffi}.{dll,pdb,dylib}
+          repositories: sigstat-php
