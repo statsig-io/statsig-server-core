@@ -1,0 +1,39 @@
+name: Statsig Node Api Publish
+
+env:
+  NPM_TOKEN: ${{ secrets.SIGSTAT_PUBLISH_NPM }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_run_id:
+        description: 'The StatsigNapi workflow run that built the artifacts to publish'
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04 # need node 20+
+    timeout-minutes: 15
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get Workflow Run Info
+        id: workflow_run_info
+        uses: ./.github/actions/verify-workflow-run-successful
+        with:
+          workflow_run_id: ${{ github.event.inputs.workflow_run_id }}
+
+      - name: Checkout specific commit
+        run: |
+          git fetch
+          git checkout ${{ steps.workflow_run_info.outputs.commit_sha }}
+          git submodule update --init --recursive
+
+      - name: Install NPM Dependencies
+        run: cd cli && npm install
+
+      - name: Run Publish
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+          ./run napi-pub ${{ github.event.repository.name }}

@@ -114,71 +114,21 @@ jobs:
 
   publish:
     name: Publish to NPM
-    runs-on: ubuntu-24.04 # need node 20+
-    if: false
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'release' }}
     needs:
       - build
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
+      - name: Trigger NPM Publish
+        uses: actions/github-script@v6
         with:
-          path: statsig-napi/artifacts
-
-      - name: Install Dependencies
-        run: yarn install
-        working-directory: statsig-napi
-
-      - name: Download All Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: statsig-napi/artifacts
-
-      - name: List Relevant Files
-        run: |
-          ls -al ${{ github.workspace }}/statsig-napi
-          ls -al ${{ github.workspace }}/statsig-napi/npm
-          ls -al ${{ github.workspace }}/statsig-napi/artifacts
-          ls -al ${{ github.workspace }}/statsig-napi/artifacts/bindings-armv7-unknown-linux-gnueabihf
-
-      - name: Move Artifacts
-        run: yarn artifacts
-        working-directory: statsig-napi
-
-      - name: Copy Files to /build
-        run: |
-          mkdir -p build/node/npm
-          cp -r statsig-napi/npm/* build/node/npm
-          cp -r statsig-napi/artifacts/js-lib-files/* build/node
-          cp statsig-napi/yarn.lock build/node/yarn.lock
-          cp statsig-napi/.npmignore build/node/.npmignore
-
-      - name: List Relevant Files
-        run: |
-          ls -al ${{ github.workspace }}/build/node
-          ls -al ${{ github.workspace }}/build/node/npm
-          ls -al ${{ github.workspace }}/build/node/npm/linux-arm64-musl
-          ls -al ${{ github.workspace }}/build/node/npm/linux-arm64-gnu
-          ls -al ${{ github.workspace }}/build/node/npm/linux-x64-musl
-          ls -al ${{ github.workspace }}/build/node/npm/linux-arm-gnueabihf
-
-      - name: Ensure Required Binaries Exist
-        run: ./tools/node/verify_distribution
-
-      - name: Sync Package Version
-        run: |
-          ./tools/node/beta_tag_package
-          ./tools/node/sync_version
-
-      - name: Publish to NPM
-        if: ${{ github.ref_name == 'main' }}
-        run: |
-          yarn install
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-          set -e
-          npm publish --tag beta --access public
-          echo $?
-        working-directory: build/node
-        env:
-          GITHUB_TOKEN: ${{ secrets.STATSIG_CORE_SERVER_SDK_PAT }}
-          NPM_TOKEN: ${{ secrets.SIGSTAT_PUBLISH_NPM }}
+          script: |
+            github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'main',
+              workflow_id: 'statsig-napi-publish.yml',
+              inputs: {
+                workflow_run_id: '${{ github.run_id }}'
+              }
+            })

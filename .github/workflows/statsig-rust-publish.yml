@@ -2,10 +2,8 @@ name: Statsig Rust Publish
 
 on:
   workflow_dispatch:
-    inputs:
-      workflow_run_id:
-        description: 'The StatsigFFI workflow run that built the artifacts to publish'
-        required: true
+  release:
+    types: [released, prereleased]
 
 env:
   CARGO_TERM_COLOR: always
@@ -15,50 +13,25 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
         with:
             repo-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
 
-      - name: Get Workflow Run Info
-        id: workflow_run_info
-        uses: ./.github/actions/verify-workflow-run-successful
-        with:
-          workflow_run_id: ${{ github.event.inputs.workflow_run_id }}
-
-      - name: Checkout specific commit
-        run: |
-          git fetch
-          git checkout ${{ steps.workflow_run_info.outputs.commit_sha }}
-          git submodule update --init --recursive
-
-      - name: Cache Cargo Build
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Install NPM Dependencies
-        run: cd cli && npm install
-
-      - name: Apply Beta Tag
-        run: ./run bump-version --beta --do-not-push
-
-      - name: Check and Publish Statsig Grpc Package
-        run: |
-          cargo package --allow-dirty --package sigstat-grpc
-          cargo publish --allow-dirty --package sigstat-grpc
-
-      - name: Check and Publish Statsig Lib Package
+      - name: Package Statsig Lib and Grpc
         run: |
           cargo package --allow-dirty --package sigstat
+          cargo package --allow-dirty --package sigstat-grpc
+
+      - name: Publish Statsig Lib and Grpc
+        run: |
+          cargo publish --allow-dirty --package sigstat-grpc
           cargo publish --allow-dirty --package sigstat
