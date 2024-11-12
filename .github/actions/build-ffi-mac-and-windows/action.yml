@@ -6,6 +6,10 @@ inputs:
     description: 'Target triple (e.g., aarch64-apple-darwin)'
     required: true
 
+  build_for_release:
+    description: 'Build for release'
+    required: false
+
 runs:
   using: composite
   steps:
@@ -21,8 +25,13 @@ runs:
       shell: bash
       run: rustup target add ${{ inputs.target }}
 
-    - name: Build
+    - name: Build Debug
       shell: bash
       run: |
         cargo build -p statsig_ffi --target=${{ inputs.target }}
+
+    - name: Build Release
+      if: ${{ inputs.build_for_release == 'true' }}
+      shell: bash
+      run: |
         cargo build -p statsig_ffi --target=${{ inputs.target }} --release

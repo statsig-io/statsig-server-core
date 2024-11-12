@@ -18,6 +18,10 @@ inputs:
     description: 'DockerHub token'
     required: true
 
+  build_for_release:
+    description: 'Build for release'
+    required: false
+
 runs:
   using: 'composite'
   steps:
@@ -89,10 +93,19 @@ runs:
         docker pull --platform ${{ inputs.platform }} ${{ env.IMAGE_TAG }}
         docker tag ${{ env.IMAGE_TAG }} statsig/core-sdk-compiler:${{ inputs.target }}
 
-    - name: Build
+    - name: Build Debug
       shell: 'script --return --quiet --log-out /dev/null --command "bash -e {0}"'
       run: |
         ./tools/docker/build_${{ inputs.target }}.sh
+
+    - name: Build Release
+      if: ${{ inputs.build_for_release == 'true' }}
+      shell: 'script --return --quiet --log-out /dev/null --command "bash -e {0}"'
+      run: |
         ./tools/docker/build_${{ inputs.target }}.sh --release-mode
+
+    - name: List Directory Contents
+      shell: bash
+      run: |
         echo "Listing target directory contents:"
         find target -type f -name "*statsig_ffi*" -ls
