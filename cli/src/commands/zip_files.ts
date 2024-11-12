@@ -94,7 +94,8 @@ function getStoragePaths(paths: string[]) {
     return [{ filePath: paths[0], storagePath: basename(paths[0]) }];
   }
 
-  const splitPaths = paths.map((path) => path.split('/').filter(Boolean));
+  const separator = process.platform === 'win32' ? '\\' : '/';
+  const splitPaths = paths.map((path) => path.split(separator).filter(Boolean));
 
   const commonPrefix = [];
   for (let i = 0; i < splitPaths[0].length; i++) {
@@ -107,10 +108,13 @@ function getStoragePaths(paths: string[]) {
   }
 
   return paths.map((path) => {
-    const strippedPath = path.split('/').slice(commonPrefix.length).join('/');
+    const strippedPath = path
+      .split(separator)
+      .slice(commonPrefix.length)
+      .join(separator);
     return {
       filePath: path,
-      storagePath: `/${strippedPath}`,
+      storagePath: `${separator}${strippedPath}`,
     };
   });
 }
