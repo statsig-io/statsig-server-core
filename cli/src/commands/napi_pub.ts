@@ -1,16 +1,11 @@
-import {
-  BASE_DIR,
-  ensureEmptyDir,
-  getRootedPath,
-  unzip,
-} from '@/utils/file_utils.js';
+import { BASE_DIR, ensureEmptyDir, getRootedPath } from '@/utils/file_utils.js';
 import { parseTriple } from '@/utils/napi_utils.js';
+import { getOctokit } from '@/utils/octokit_utils.js';
 import {
-  downloadReleaseAsset,
-  getAllAssetsForRelease,
-  getOctokit,
-  getReleaseByVersion,
-} from '@/utils/octokit_utils.js';
+  downloadAndUnzipAssets,
+  getRelease,
+  getStatsigLibAssets,
+} from '@/utils/publish_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
 import { execSync } from 'child_process';
@@ -51,55 +46,15 @@ export class NapiPub extends Command {
 
     ensureEmptyDir(TEMP_DIR);
 
-    Log.stepBegin('Getting release');
-    const release = await getReleaseByVersion(octokit, repo, version);
-    if (!release) {
-      Log.stepEnd('Release not found', 'failure');
-      process.exit(1);
-    }
-    Log.stepEnd(`Release Found: ${release.html_url}`);
-
-    Log.stepBegin('Getting all assets for release');
-    const { assets, error } = await getAllAssetsForRelease(
+    const release = await getRelease(octokit, repo, version);
+    const assets = await getStatsigLibAssets(
       octokit,
       repo,
-      release.id,
+      release,
       'statsig-napi-',
     );
 
-    if (error || !assets) {
-      Log.stepEnd('Error getting assets', 'failure');
-      console.error(
-        error instanceof Error ? error.message : error ?? 'Unknown error',
-      );
-      process.exit(1);
-    }
-
-    if (assets.length === 0) {
-      Log.stepEnd('No assets found', 'failure');
-      process.exit(1);
-    }
-
-    assets.forEach((asset) => {
-      Log.stepProgress(`${asset.name}`);
-    });
-    Log.stepEnd(`Found ${assets.length} assets`);
-
-    Log.stepBegin('Downloading assets');
-    const files = await Promise.all(
-      assets.map(async (asset) => {
-        const buffer = await downloadReleaseAsset(octokit, repo, asset.id);
-        return { ...asset, buffer };
-      }),
-    );
-    Log.stepEnd(`Downloaded ${files.length} files`);
-
-    Log.stepBegin('Unzipping files');
-    files.forEach((file) => {
-      unzip(file.buffer, TEMP_DIR);
-      Log.stepProgress(`Completed: ${file.name}`);
-    });
-    Log.stepEnd('Unzipped files');
+    await downloadAndUnzipAssets(octokit, repo, assets, TEMP_DIR);
 
     Log.stepBegin('Aligning Npm Packages');
     (await moveNodeBinaries()).forEach(({ file, dir }) => {
