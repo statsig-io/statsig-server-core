@@ -10,9 +10,13 @@ const GITHUB_APP_ID = process.env.GH_APP_ID;
 const GITHUB_INSTALLATION_ID = process.env.GH_APP_INSTALLATION_ID;
 const GITHUB_APP_PRIVATE_KEY = process.env.GH_APP_PRIVATE_KEY;
 
-type GhRelease = Awaited<
+export type GhRelease = Awaited<
   ReturnType<Octokit['rest']['repos']['getReleaseByTag']>
 >['data'];
+
+export type GhAsset = Awaited<
+  ReturnType<Octokit['rest']['repos']['listReleaseAssets']>
+>['data'][number];
 
 type GhBranch = Awaited<ReturnType<Octokit['rest']['git']['getRef']>>['data'];
 

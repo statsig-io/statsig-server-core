@@ -1,3 +1,4 @@
+import AdmZip from 'adm-zip';
 import { existsSync, mkdirSync, rmSync, statSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -34,4 +35,10 @@ export function ensureEmptyDir(dir: string) {
   }
 
   mkdirSync(dir, { recursive: true });
+}
+
+export function unzip(buffer: ArrayBuffer, targetDir: string) {
+  const zip = new AdmZip(Buffer.from(buffer));
+
+  zip.extractAllTo(targetDir, false, true);
 }

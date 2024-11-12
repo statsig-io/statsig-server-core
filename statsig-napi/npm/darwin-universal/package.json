@@ -1,6 +1,6 @@
 {
   "name": "@sigstat/sigstat-napi-darwin-universal",
-  "version": "0.0.1-beta.124",
+  "version": "0.0.1-beta.126",
   "os": [
     "darwin"
   ],

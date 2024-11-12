@@ -1,4 +1,9 @@
-import { BASE_DIR, ensureEmptyDir, getRootedPath } from '@/utils/file_utils.js';
+import {
+  BASE_DIR,
+  ensureEmptyDir,
+  getRootedPath,
+  unzip,
+} from '@/utils/file_utils.js';
 import { parseTriple } from '@/utils/napi_utils.js';
 import {
   downloadReleaseAsset,
@@ -8,7 +13,6 @@ import {
 } from '@/utils/octokit_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
-import AdmZip from 'adm-zip';
 import { execSync } from 'child_process';
 import { Command } from 'commander';
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
@@ -92,7 +96,7 @@ export class NapiPub extends Command {
 
     Log.stepBegin('Unzipping files');
     files.forEach((file) => {
-      unzip(file.buffer);
+      unzip(file.buffer, TEMP_DIR);
       Log.stepProgress(`Completed: ${file.name}`);
     });
     Log.stepEnd('Unzipped files');
@@ -117,12 +121,6 @@ export class NapiPub extends Command {
 
     Log.conclusion('Successfully published statsig-napi to NPM');
   }
-}
-
-function unzip(buffer: ArrayBuffer) {
-  const zip = new AdmZip(Buffer.from(buffer));
-
-  zip.extractAllTo(TEMP_DIR, false, true);
 }
 
 function moveRootNapiPackage() {
