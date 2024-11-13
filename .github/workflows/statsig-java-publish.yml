@@ -37,9 +37,13 @@ jobs:
       - name: Download Release Assets
         run: |
           mkdir -p artifacts
-          for asset in $(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -s \
-              https://api.github.com/repos/${{ github.repository }}/releases/${{ steps.get_release.outputs.release_id }}/assets \
-              | jq -r '.[] | .id'); do
+          echo "Downloading release assets..."
+          response=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -s \
+              https://api.github.com/repos/${{ github.repository }}/releases/${{ steps.get_release.outputs.release_id }}/assets)
+          echo "API Response:"
+          echo "$response" | jq .
+
+          for asset in $(echo "$response" | jq -r '.[] | .id'); do
             asset_name=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               -s https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset | jq -r '.name')
             echo "Downloading $asset_name..."
@@ -47,7 +51,11 @@ jobs:
               -H "Accept: application/octet-stream" \
               "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset" \
               -o "artifacts/$asset_name"
+            echo "Downloaded $asset_name to artifacts/$asset_name"
           done
+
+          echo "Finished downloading assets. Contents of artifacts directory:"
+          ls -lh artifacts
 
       - name: List Artifacts
         run: |
@@ -80,30 +88,12 @@ jobs:
           for key in "${!target_dirs[@]}"; do
             echo "---------------------------------------------------"
             echo "Processing artifact for ${key}..."
-            src_path="artifacts/${key}"
+            zip_file="${key}.zip"
         
-            # Verify the existence of the source directory
-            if [ ! -d "${src_path}" ]; then
-            echo "Error: Source directory ${src_path} does not exist. Skipping this artifact."
-            continue
-            fi
-        
-            echo "Source directory ${src_path} exists. Checking for zip file..."
-        
-            # Check if it's a zip file and unzip if necessary
-            zip_file="${src_path}.zip"
-            if [ -f "$zip_file" ]; then
-            echo "Unzipping ${zip_file} to ${src_path}..."
-            unzip -o "$zip_file" -d "$src_path"
-        
-            if [ $? -eq 0 ]; then
-            echo "Successfully unzipped ${zip_file}."
-            else
-            echo "Error: Failed to unzip ${zip_file}. Continuing to the next artifact."
-            continue
-            fi
-            else
-            echo "No zip file found for ${key}. Assuming files are already unzipped."
+            # Verify the existence of the zip file in the root directory
+            if [ ! -f "${zip_file}" ]; then
+              echo "Error: Zip file ${zip_file} does not exist. Skipping this artifact."
+              continue
             fi
         
             dest_dir="$target_dir_prefix/${target_dirs[$key]}"
@@ -111,15 +101,15 @@ jobs:
             mkdir -p "$dest_dir"
         
             # Verify files in the release folder before copying
-            echo "Looking for files in ${src_path}/release to copy..."
-            if ! find "$src_path" -type f -path "*/release/*" | grep -q .; then
-            echo "Warning: No files found in ${src_path}/release. Skipping copy for ${key}."
-            continue
+            echo "Looking for files in ${key}/release to copy..."
+            if ! find "$key" -type f -path "*/release/*" | grep -q .; then
+              echo "Warning: No files found in ${key}/release. Skipping copy for ${key}."
+              continue
             fi
         
-            echo "Files found in ${src_path}/release. Starting copy process..."
+            echo "Files found in ${key}/release. Starting copy process..."
             # Copy all files from the release folder
-            find "$src_path" -type f -path "*/release/*" -exec cp {} "$dest_dir/" \;
+            find "$key" -type f -path "*/release/*" -exec cp {} "$dest_dir/" \;
         
             # Confirm copy success by listing the destination contents
             echo "Contents of ${dest_dir} after copy:"
