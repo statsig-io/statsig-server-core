@@ -34,8 +34,7 @@ jobs:
             });
             core.setOutput('release_id', release.data.id)
 
-      - name: Download Release Assets
-        working-directory: ${{ github.workspace }}
+      - name: Download Assets And Move Release Artifacts
         run: |
           mkdir -p artifacts
           echo "Downloading release assets..."
@@ -54,9 +53,7 @@ jobs:
           echo "Finished downloading assets. Contents of artifacts directory:"
           ls -lh artifacts
 
-      - name: List Artifacts
-        working-directory: ${{ github.workspace }}
-        run: |
+          echo "---------------------------------------------------"
           echo "Listing downloaded artifacts:"
           for artifact in artifacts/*; do
             if [ -d "$artifact" ]; then
@@ -65,9 +62,7 @@ jobs:
             fi
           done
 
-      - name: Unzip and Move Release Artifacts
-        working-directory: ${{ github.workspace }}
-        run: |
+          echo "---------------------------------------------------"
           echo "Moving necessary release files..."
           
           target_dir_prefix="statsig-ffi/bindings/java/src/main/resources/native"
