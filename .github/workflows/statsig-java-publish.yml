@@ -37,9 +37,9 @@ jobs:
       - name: Download Assets And Move Release Artifacts
         run: |
           mkdir -p artifacts
-          echo "Downloading release assets..."
-
-          for asset in $(echo "$response" | jq -r '.[] | .id'); do
+          for asset in $(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -s \
+              https://api.github.com/repos/${{ github.repository }}/releases/${{ steps.get_release.outputs.release_id }}/assets \
+              | jq -r '.[] | .id'); do
             asset_name=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               -s https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset | jq -r '.name')
             echo "Downloading $asset_name..."
@@ -47,7 +47,6 @@ jobs:
               -H "Accept: application/octet-stream" \
               "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset" \
               -o "artifacts/$asset_name"
-            echo "Downloaded $asset_name to artifacts/$asset_name"
           done
 
           echo "Finished downloading assets. Contents of artifacts directory:"
