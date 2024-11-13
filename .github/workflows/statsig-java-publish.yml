@@ -51,8 +51,9 @@ jobs:
 
           echo "Finished downloading assets. Contents of artifacts directory:"
           ls -lh artifacts
-
-          echo "---------------------------------------------------"
+      
+      - name: List Artifacts
+        run: |
           echo "Listing all contents in artifacts directory (including files):"
           for artifact in artifacts/*; do
             if [ -d "$artifact" ]; then
@@ -64,7 +65,8 @@ jobs:
             fi
           done
 
-          echo "---------------------------------------------------"
+      - name: Unzip and Move Release Artifacts
+        run: |
           echo "Moving necessary release files..."
           
           target_dir_prefix="statsig-ffi/bindings/java/src/main/resources/native"
@@ -86,12 +88,15 @@ jobs:
             echo "Processing artifact for ${key}..."
             zip_file="artifacts/${key}.zip"
         
-            # Verify the existence of the zip file in the root directory
+            # we MUST have all these files when we release
             if [ ! -f "${zip_file}" ]; then
-              echo "Error: Zip file ${zip_file} does not exist. Skipping this artifact."
-              continue
+              echo "Error: Zip file ${zip_file} does not exist. Failing task."
+              exit 1
             fi
-        
+
+            echo "Unzipping ${zip_file}..."
+            unzip "${zip_file}" -d "${key}" || { echo "Error: Failed to unzip ${zip_file}"; exit 1; }
+
             dest_dir="$target_dir_prefix/${target_dirs[$key]}"
             echo "Creating destination directory: ${dest_dir}"
             mkdir -p "$dest_dir"
