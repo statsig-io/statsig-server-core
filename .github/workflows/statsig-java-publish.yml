@@ -53,10 +53,13 @@ jobs:
           ls -lh artifacts
 
           echo "---------------------------------------------------"
-          echo "Listing downloaded artifacts:"
+          echo "Listing all contents in artifacts directory (including files):"
           for artifact in artifacts/*; do
             if [ -d "$artifact" ]; then
-              echo "Artifact: $(basename "$artifact")"
+              echo "Artifact Directory: $(basename "$artifact")"
+              du -sh "$artifact"
+            elif [ -f "$artifact" ]; then
+              echo "Artifact File: $(basename "$artifact")"
               du -sh "$artifact"
             fi
           done
@@ -81,7 +84,7 @@ jobs:
           for key in "${!target_dirs[@]}"; do
             echo "---------------------------------------------------"
             echo "Processing artifact for ${key}..."
-            zip_file="${key}.zip"
+            zip_file="artifacts/${key}.zip"
         
             # Verify the existence of the zip file in the root directory
             if [ ! -f "${zip_file}" ]; then
