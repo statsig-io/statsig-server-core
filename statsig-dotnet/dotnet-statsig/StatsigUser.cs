@@ -11,6 +11,7 @@ namespace Statsig
 
         public StatsigUser(string userId, string email)
         {
+            NativeLibraryLoader.EnsureLoaded();
             var userIdBytes = Encoding.UTF8.GetBytes(userId);
             var emailBytes = Encoding.UTF8.GetBytes(email);
             unsafe

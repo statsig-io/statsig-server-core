@@ -8,11 +8,11 @@ using System;
 using System.Runtime.InteropServices;
 
 
-namespace StatsigServer
+namespace Statsig
 {
     internal static unsafe partial class StatsigFFI
     {
-        const string __DllName = "/Users/weihaoding/Documents/private-statsig-server-core/target/release/libstatsig_ffi.dylib";
+        const string __DllName = "libstatsig_ffi";
 
 
 

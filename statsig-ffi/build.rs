@@ -30,10 +30,8 @@ fn run_csharp_bindgen() {
         .input_extern_file("./src/statsig_c.rs")
         .csharp_use_function_pointer(false)
         .csharp_class_name("StatsigFFI")
-        .csharp_namespace("StatsigServer")
-        .csharp_dll_name(
-            "/Users/weihaoding/Documents/private-statsig-server-core/target/release/libstatsig_ffi.dylib",
-        )
+        .csharp_namespace("Statsig")
+        .csharp_dll_name("libstatsig_ffi")
         .generate_csharp_file("../statsig-dotnet/dotnet-statsig/StatsigFFI.g.cs")
         .unwrap();
 }

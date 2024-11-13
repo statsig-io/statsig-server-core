@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -11,6 +12,9 @@ namespace Statsig
 
         public Statsig(string sdkKey, StatsigOptions options)
         {
+            Console.WriteLine($"Operating System: {RuntimeInformation.OSDescription}");
+            Console.WriteLine($"Architecture: {RuntimeInformation.OSArchitecture}");
+            NativeLibraryLoader.EnsureLoaded();
             var sdkKeyBytes = Encoding.UTF8.GetBytes(sdkKey);
             unsafe
             {

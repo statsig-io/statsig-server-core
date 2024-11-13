@@ -12,6 +12,7 @@ namespace Statsig
 
         public StatsigOptions()
         {
+            NativeLibraryLoader.EnsureLoaded();
             unsafe
             {
                 _ref = StatsigFFI.statsig_options_create(null, null, null);
