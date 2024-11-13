@@ -3,8 +3,8 @@ name: Statsig Java Publish
 on:
   workflow_dispatch:
     inputs:
-      workflow_run_id:
-        description: 'The StatsigFFI workflow run that built the artifacts to publish'
+      release_tag:
+        description: 'The tag of the release to download artifacts from'
         required: true
 
 env:
@@ -21,18 +21,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get Workflow Run Info
-        uses: ./.github/actions/verify-workflow-run-successful
+      - name: Get Release Info
+        id: get_release
+        uses: actions/github-script@v6
         with:
-          workflow_run_id: ${{ github.event.inputs.workflow_run_id }}
+          script: |
+            const tag = '${{ github.event.inputs.release_tag }}';
+            const release = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag
+            });
+            core.setOutput('release_id', release.data.id)
 
-      - name: Download Artifacts
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          workflow: statsig-ffi.yml
-          run_id: ${{ github.event.inputs.workflow_run_id }}
-          if_no_artifact_found: fail
-          path: artifacts
+      - name: Download Release Assets
+        run: |
+          mkdir -p artifacts
+          for asset in $(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -s \
+              https://api.github.com/repos/${{ github.repository }}/releases/${{ steps.get_release.outputs.release_id }}/assets \
+              | jq -r '.[] | .id'); do
+            asset_name=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -s https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset | jq -r '.name')
+            echo "Downloading $asset_name..."
+            curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/octet-stream" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset" \
+              -o "artifacts/$asset_name"
+          done
 
       - name: List Artifacts
         run: |
