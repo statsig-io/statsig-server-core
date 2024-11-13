@@ -35,13 +35,10 @@ jobs:
             core.setOutput('release_id', release.data.id)
 
       - name: Download Release Assets
+        working-directory: ${{ github.workspace }}
         run: |
           mkdir -p artifacts
           echo "Downloading release assets..."
-          response=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -s \
-              https://api.github.com/repos/${{ github.repository }}/releases/${{ steps.get_release.outputs.release_id }}/assets)
-          echo "API Response:"
-          echo "$response" | jq .
 
           for asset in $(echo "$response" | jq -r '.[] | .id'); do
             asset_name=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
@@ -58,6 +55,7 @@ jobs:
           ls -lh artifacts
 
       - name: List Artifacts
+        working-directory: ${{ github.workspace }}
         run: |
           echo "Listing downloaded artifacts:"
           for artifact in artifacts/*; do
@@ -68,6 +66,7 @@ jobs:
           done
 
       - name: Unzip and Move Release Artifacts
+        working-directory: ${{ github.workspace }}
         run: |
           echo "Moving necessary release files..."
           
