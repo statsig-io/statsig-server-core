@@ -230,7 +230,7 @@ mod tests {
 
     fn enqueue_single(logger: &EventLogger, user_id: &str, event_name: &str) {
         let user_internal =
-            StatsigUserInternal::new(&StatsigUser::with_user_id(user_id.to_string()), &None);
+            StatsigUserInternal::new(&StatsigUser::with_user_id(user_id.to_string()), None);
 
         let event = StatsigEventInternal::new(
             user_internal,
@@ -311,7 +311,7 @@ mod tests {
         enqueue_single(&logger, "a_user", "my_custom");
 
         let user_internal =
-            StatsigUserInternal::new(&StatsigUser::with_user_id("a_user".to_string()), &None);
+            StatsigUserInternal::new(&StatsigUser::with_user_id("a_user".to_string()), None);
         let eval_details = EvaluationDetails::unrecognized_no_data();
         logger.enqueue(QueuedEventPayload::GateExposure(GateExposure {
             user: user_internal.clone(),

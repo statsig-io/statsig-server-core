@@ -38,6 +38,7 @@ use crate::{
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
 use tokio::try_join;
 
@@ -51,6 +52,7 @@ pub struct Statsig {
     hashing: Hashing,
     gcir_formatter: Arc<ClientInitResponseFormatter>,
     statsig_environment: Option<HashMap<String, DynamicValue>>,
+    fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
     async_runtime: Arc<AsyncRuntime>,
 }
 
@@ -84,6 +86,7 @@ impl Statsig {
             event_logger: Arc::new(event_logger),
             hashing: Hashing::new(),
             statsig_environment: environment,
+            fallback_environment: Mutex::new(None),
             spec_store,
             specs_adapter,
             id_lists_adapter,
@@ -122,6 +125,8 @@ impl Statsig {
             .clone()
             .schedule_background_sync(&self.async_runtime.runtime_handle);
 
+        self.set_default_environment_from_server();
+
         init_res
     }
 
@@ -146,6 +151,7 @@ impl Statsig {
 
             callback();
         });
+        self.set_default_environment_from_server();
     }
 
     pub async fn shutdown(&self) -> Result<(), StatsigErr> {
@@ -206,7 +212,7 @@ impl Statsig {
         value: Option<String>,
         metadata: Option<HashMap<String, String>>,
     ) {
-        let user_internal = StatsigUserInternal::new(user, &self.statsig_environment);
+        let user_internal = self.internalize_user(user);
 
         self.event_logger
             .enqueue(QueuedEventPayload::CustomEvent(make_custom_event(
@@ -222,7 +228,7 @@ impl Statsig {
     pub fn check_gate(&self, user: &StatsigUser, gate_name: &str) -> bool {
         log_d!("Check Gate {}", gate_name);
 
-        let user_internal = StatsigUserInternal::new(user, &self.statsig_environment);
+        let user_internal = self.internalize_user(user);
         let (value, rule_id, secondary_exposures, details, version) =
             self.check_gate_impl(&user_internal, gate_name);
 
@@ -241,7 +247,7 @@ impl Statsig {
     }
 
     pub fn get_feature_gate(&self, user: &StatsigUser, gate_name: &str) -> FeatureGate {
-        let user_internal = StatsigUserInternal::new(user, &self.statsig_environment);
+        let user_internal = self.internalize_user(user);
         let gate = self.get_feature_gate_impl(&user_internal, gate_name);
 
         self.log_gate_exposure(user_internal, gate_name, &gate);
@@ -254,7 +260,7 @@ impl Statsig {
         user: &StatsigUser,
         dynamic_config_name: &str,
     ) -> DynamicConfig {
-        let user_internal = StatsigUserInternal::new(user, &self.statsig_environment);
+        let user_internal = self.internalize_user(user);
         let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
 
         self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &dynamic_config);
@@ -263,7 +269,7 @@ impl Statsig {
     }
 
     pub fn get_experiment(&self, user: &StatsigUser, experiment_name: &str) -> Experiment {
-        let user_internal = StatsigUserInternal::new(user, &self.statsig_environment);
+        let user_internal = self.internalize_user(user);
         let experiment = self.get_experiment_impl(&user_internal, experiment_name);
 
         self.log_experiment_exposure(user_internal, experiment_name, &experiment);
@@ -272,7 +278,7 @@ impl Statsig {
     }
 
     pub fn get_layer(&self, user: &StatsigUser, layer_name: &str) -> Layer {
-        let user_internal = StatsigUserInternal::new(user, &self.statsig_environment);
+        let user_internal = self.internalize_user(user);
         self.get_layer_impl(&user_internal, layer_name)
     }
 
@@ -285,7 +291,7 @@ impl Statsig {
         user: &StatsigUser,
         options: &ClientInitResponseOptions,
     ) -> InitializeResponse {
-        let user_internal = StatsigUserInternal::new(user, &self.statsig_environment);
+        let user_internal = self.internalize_user(user);
         self.gcir_formatter
             .get(user_internal, &self.hashing, options)
     }
@@ -364,6 +370,7 @@ impl Statsig {
             None => (false, None, None, EvaluationDetails::unrecognized(&data), None),
         }
     }
+
     fn get_feature_gate_impl(
         &self,
         user_internal: &StatsigUserInternal,
@@ -570,6 +577,38 @@ impl Statsig {
                 rule_passed: None,
                 version: experiment.__version,
             }));
+    }
+
+    fn internalize_user(&self, user: &StatsigUser) -> StatsigUserInternal {
+        return StatsigUserInternal::new(user, self.get_statsig_env());
+    }
+
+    fn get_statsig_env(&self) -> Option<HashMap<String, DynamicValue>> {
+        if let Some(env) = &self.statsig_environment {
+            return Some(env.clone());
+        }
+        
+        if let Ok(fallback_env) = self.fallback_environment.lock() {
+            if let Some(env) = &*fallback_env {
+                return Some(env.clone());
+            }
+        }
+
+        None
+    }
+
+    fn set_default_environment_from_server(&self) {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            return;
+        });
+
+        if let Some(default_env) = data.values.default_environment.as_ref() {
+            let env_map = HashMap::from([("tier".to_string(), dyn_value!(default_env.as_str()))]);
+
+            if let Ok(mut fallback_env) = self.fallback_environment.lock() {
+                *fallback_env = Some(env_map)
+            }
+        }
     }
 }
 

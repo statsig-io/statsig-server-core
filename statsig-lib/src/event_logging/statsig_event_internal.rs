@@ -69,7 +69,7 @@ mod statsig_event_internal_tests {
     use std::collections::HashMap;
 
     fn create_test_event() -> StatsigEventInternal {
-        let user = StatsigUserInternal::new(&StatsigUser::with_user_id("a-user".into()), &None);
+        let user = StatsigUserInternal::new(&StatsigUser::with_user_id("a-user".into()), None);
 
         make_custom_event(
             user,

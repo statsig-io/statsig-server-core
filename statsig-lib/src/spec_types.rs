@@ -57,6 +57,7 @@ pub struct SpecsResponseFull {
     pub experiment_to_layer: HashMap<String, String>,
     pub has_updates: bool,
     pub time: u64,
+    pub default_environment: Option<String>
 }
 
 #[derive(Deserialize)]

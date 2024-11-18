@@ -32,10 +32,10 @@ pub struct StatsigUserInternal {
 }
 
 impl StatsigUserInternal {
-    pub fn new(user: &StatsigUser, environment: &Option<HashMap<String, DynamicValue>>) -> Self {
+    pub fn new(user: &StatsigUser, environment: Option<HashMap<String, DynamicValue>>) -> Self {
         Self {
             user_data: user.clone(),
-            statsig_environment: environment.clone(),
+            statsig_environment: environment,
         }
     }
     pub fn get_unit_id(&self, id_type: &DynamicString) -> Option<&DynamicValue> {
@@ -123,7 +123,7 @@ mod tests {
             ..StatsigUser::with_user_id("test_user".to_string())
         };
 
-        let user_internal = StatsigUserInternal::new(&user, &None);
+        let user_internal = StatsigUserInternal::new(&user, None);
         let loggable = StatsigUserLoggable::new(user_internal);
 
         let deserialized: StatsigUserInternal = serde_json::from_value(loggable.value).unwrap();

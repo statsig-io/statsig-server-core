@@ -173,6 +173,7 @@ impl SpecsResponseFull {
             experiment_to_layer: Default::default(),
             has_updates: true,
             time: 0,
+            default_environment: None
         }
     }
 }
