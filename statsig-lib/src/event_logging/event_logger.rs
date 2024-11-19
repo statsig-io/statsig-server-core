@@ -19,6 +19,7 @@ use tokio::time::Duration;
 
 const DEFAULT_FLUSH_INTERVAL_MS: u32 = 60_000;
 const DEFAULT_QUEUE_SIZE: u32 = 500;
+const DEFAULT_DISABLE_ALL_LOGGING: bool = false;
 const DEDUPE_WINDOW_DURATION_MS: u64 = 60_000;
 const DEDUPE_MAX_KEYS: usize = 100000;
 
@@ -37,6 +38,7 @@ pub enum QueuedEventPayload {
 pub struct EventLogger {
     event_logging_adapter: Arc<dyn EventLoggingAdapter>,
     event_queue: Arc<RwLock<Vec<QueuedEventPayload>>>,
+    disable_all_logging: bool,
     max_queue_size: usize,
     background_flush_runner: BackgroundTaskRunner,
     previous_exposure_info: Arc<Mutex<PreviousExposureInfo>>,
@@ -57,6 +59,8 @@ impl EventLogger {
             .event_logging_max_queue_size
             .unwrap_or(DEFAULT_QUEUE_SIZE);
 
+        let disable_all_logging = options.disable_all_logging.unwrap_or(DEFAULT_DISABLE_ALL_LOGGING);
+
         let previous_exposure_info = Arc::new(Mutex::new(PreviousExposureInfo {
             exposures: HashSet::new(),
             last_reset: Utc::now().timestamp_millis() as u64,
@@ -65,6 +69,7 @@ impl EventLogger {
         Self {
             event_logging_adapter,
             event_queue: Arc::new(RwLock::new(vec![])),
+            disable_all_logging: disable_all_logging,
             max_queue_size: max_queue_size as usize,
             background_flush_runner: BackgroundTaskRunner::new(flush_interval_ms, runtime_handle),
             previous_exposure_info,
@@ -80,6 +85,9 @@ impl EventLogger {
     }
 
     pub fn enqueue(&self, payload: QueuedEventPayload) {
+        if self.disable_all_logging {
+            return;
+        }
         let mut should_flush = false;
         if let Ok(mut mut_events) = self.event_queue.write() {
             mut_events.push(payload);

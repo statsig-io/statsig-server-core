@@ -16,6 +16,7 @@ pub struct StatsigOptions {
     pub spec_adapters_config: Option<Vec<SpecAdapterConfig>>,
 
     pub log_event_url: Option<String>,
+    pub disable_all_logging: Option<bool>,
     pub event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,
     pub event_logging_flush_interval_ms: Option<u32>,
     pub event_logging_max_queue_size: Option<u32>,
@@ -70,6 +71,11 @@ impl StatsigOptionsBuilder {
 
     pub fn log_event_url(mut self, log_event_url: Option<String>) -> Self {
         self.inner.log_event_url = log_event_url;
+        self
+    }
+
+    pub fn disable_all_logging(mut self, disable_all_logging: Option<bool>) -> Self {
+        self.inner.disable_all_logging = disable_all_logging;
         self
     }
 
