@@ -1,6 +1,6 @@
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use sigstat::instance_store::INST_STORE;
-use sigstat::{log_e, unwrap_or_return, AsyncRuntime, LogEventRequest};
+use sigstat::{log_e, unwrap_or_return, LogEventRequest, StatsigRuntime};
 use sigstat::{StatsigHttpEventLoggingAdapter, StatsigOptions};
 use std::os::raw::c_char;
 use std::ptr::null;
@@ -72,8 +72,8 @@ pub extern "C" fn statsig_http_event_logging_adapter_send_events(
         Err(e) => return handle_error(&format!("Failed to parse request JSON: {}", e)),
     };
 
-    let async_runtime = AsyncRuntime::get_runtime();
-    async_runtime.runtime_handle.block_on(async move {
+    let statsig_rt = StatsigRuntime::get_runtime();
+    statsig_rt.runtime_handle.block_on(async move {
         match event_logging_adapter.send_events_over_http(request).await {
             Ok(_) => callback(true, null()),
             Err(e) => callback(false, string_to_c_char(e.to_string())),

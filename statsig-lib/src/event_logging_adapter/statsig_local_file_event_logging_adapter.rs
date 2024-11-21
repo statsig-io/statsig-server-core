@@ -1,5 +1,7 @@
-use crate::event_logging_adapter::EventLoggingAdapter;
-use crate::StatsigErr;
+use std::sync::Arc;
+
+use crate::{StatsigErr, StatsigRuntime};
+use crate::{event_logging_adapter::EventLoggingAdapter};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
@@ -39,6 +41,13 @@ impl StatsigLocalFileEventLoggingAdapter {
 
 #[async_trait]
 impl EventLoggingAdapter for StatsigLocalFileEventLoggingAdapter {
+    async fn start(
+        &self,
+        _statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
+        Ok(())
+    }
+
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
         let mut current_requests = self.get_current_requests()?;
 
@@ -55,5 +64,9 @@ impl EventLoggingAdapter for StatsigLocalFileEventLoggingAdapter {
         std::fs::write(&self.file_path, json).map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
         Ok(true)
+    }
+
+    async fn shutdown(&self) -> Result<(), StatsigErr> {
+        Ok(())
     }
 }

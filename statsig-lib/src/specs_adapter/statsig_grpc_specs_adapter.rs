@@ -1,6 +1,6 @@
 use crate::{
     log_d, log_e, log_w, SpecAdapterConfig, SpecsAdapter, SpecsSource, SpecsUpdate,
-    SpecsUpdateListener, StatsigErr,
+    SpecsUpdateListener, StatsigErr, StatsigRuntime,
 };
 use async_trait::async_trait;
 use chrono::Utc;
@@ -9,9 +9,7 @@ use std::cmp;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
-use tokio::runtime::Handle;
 use tokio::sync::Notify;
-use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
 // Todo make those configurable
@@ -30,7 +28,7 @@ pub struct StatsigGrpcSpecsAdapter {
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
     shutdown_notify: Arc<Notify>,
     initialized_notify: Arc<Notify>,
-    task_handle: Mutex<Option<JoinHandle<()>>>,
+    task_handle_id: Mutex<Option<tokio::task::Id>>,
     grpc_client: StatsigGrpcClient,
     retry_state: StreamingRetryState,
     init_timeout: Duration,
@@ -40,16 +38,17 @@ pub struct StatsigGrpcSpecsAdapter {
 impl SpecsAdapter for StatsigGrpcSpecsAdapter {
     async fn start(
         self: Arc<Self>,
-        runtime_handle: &Handle,
+        statsig_runtime: &Arc<StatsigRuntime>,
         listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         self.set_listener(listener)?;
-        let handle = self
+        let handle_id = self
             .clone()
-            .spawn_grpc_streaming_thread(runtime_handle)
+            .spawn_grpc_streaming_thread(statsig_runtime)
             .await
             .unwrap();
-        let _ = self.set_task_handle(handle);
+
+        self.set_task_handle_id(handle_id)?;
 
         match timeout(self.init_timeout, self.initialized_notify.notified()).await {
             Ok(_) => Ok(()),
@@ -61,32 +60,42 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
 
     fn schedule_background_sync(
         self: Arc<Self>,
-        _runtime_handle: &Handle,
+        _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
         // It should be already started wtihin spawn_grpc_streaming_thread
         Ok(())
     }
 
-    async fn shutdown(&self, timeout: Duration) -> Result<(), StatsigErr> {
+    async fn shutdown(
+        &self,
+        timeout: Duration,
+        statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
         self.shutdown_notify.notify_one();
 
-        let task_handle = self
-            .task_handle
+        let opt_handle_id = self
+            .task_handle_id
             .lock()
             .map_err(|_| {
                 StatsigErr::GrpcError("Failed to acquire lock to running task".to_string())
             })?
             .take();
 
-        if let Some(handle) = task_handle {
-            if tokio::time::timeout(timeout, handle).await.is_err() {
-                return Err(StatsigErr::GrpcError(
-                    "Failed to gracefully shutdown StatsigGrpcSpecsAdapter.".to_string(),
+        let handle_id = match opt_handle_id {
+            Some(handle_id) => handle_id,
+            None => {
+                return Err(StatsigErr::ThreadFailure(
+                    "No running task found".to_string(),
                 ));
             }
-        } else {
+        };
+
+        if tokio::time::timeout(timeout, statsig_runtime.await_join_handle(&handle_id))
+            .await
+            .is_err()
+        {
             return Err(StatsigErr::GrpcError(
-                "No running task to shut down".to_string(),
+                "Failed to gracefully shutdown StatsigGrpcSpecsAdapter.".to_string(),
             ));
         }
 
@@ -103,7 +112,7 @@ impl StatsigGrpcSpecsAdapter {
         Self {
             listener: RwLock::new(None),
             shutdown_notify: Arc::new(Notify::new()),
-            task_handle: Mutex::new(None),
+            task_handle_id: Mutex::new(None),
             grpc_client: StatsigGrpcClient::new(sdk_key, &config.specs_url),
             initialized_notify: Arc::new(Notify::new()),
             retry_state: StreamingRetryState {
@@ -117,11 +126,11 @@ impl StatsigGrpcSpecsAdapter {
 
     async fn spawn_grpc_streaming_thread(
         self: Arc<Self>,
-        runtime_handle: &Handle,
-    ) -> Result<JoinHandle<()>, StatsigErr> {
+        statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<tokio::task::Id, StatsigErr> {
         let weak_self = Arc::downgrade(&self);
 
-        Ok(runtime_handle.spawn(async move {
+        Ok(statsig_runtime.spawn("grpc_streaming", |_shutdown_notify| async move {
             if let Some(strong_self) = weak_self.upgrade() {
                 if let Err(e) = strong_self.run_retryable_grpc_stream().await {
                     log_e!("gRPC streaming thread failed: {}", e);
@@ -153,7 +162,6 @@ impl StatsigGrpcSpecsAdapter {
                         };
                         self.retry_state.backoff_interval_ms.store(new_backoff,Ordering::SeqCst);
                         self.retry_state.is_retrying.store(true, Ordering::SeqCst);
-                        println!("gRPC stream failure ({}). Will wait {} ms and retry. Error: {:?}", attempt, curr_backoff, err);
                         log_w!("gRPC stream failure ({}). Will wait {} ms and retry. Error: {:?}", attempt, curr_backoff, err);
                         tokio::time::sleep(Duration::from_millis(curr_backoff)).await;
                     }
@@ -202,13 +210,13 @@ impl StatsigGrpcSpecsAdapter {
         }
     }
 
-    fn set_task_handle(&self, handle: JoinHandle<()>) -> Result<(), StatsigErr> {
+    fn set_task_handle_id(&self, handle_id: tokio::task::Id) -> Result<(), StatsigErr> {
         let mut guard = self
-            .task_handle
+            .task_handle_id
             .lock()
             .map_err(|e| StatsigErr::LockFailure(e.to_string()))?;
 
-        *guard = Some(handle);
+        *guard = Some(handle_id);
         Ok(())
     }
 

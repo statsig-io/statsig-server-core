@@ -4,12 +4,11 @@ pub mod specs_adapter_tests {
     use sigstat::output_logger::{initialize_simple_output_logger, LogLevel};
     use sigstat::{
         SpecAdapterConfig, SpecsAdapter, SpecsAdapterType, SpecsInfo, SpecsSource, SpecsUpdate,
-        SpecsUpdateListener, StatsigGrpcSpecsAdapter,
+        SpecsUpdateListener, StatsigGrpcSpecsAdapter, StatsigRuntime,
     };
     use sigstat_grpc::*;
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
-    use tokio::runtime::Handle;
     use tokio::sync::Notify;
     use tokio::time::error::Elapsed;
     use tokio::time::timeout;
@@ -35,19 +34,26 @@ pub mod specs_adapter_tests {
 
     #[tokio::test]
     async fn test_shutting_down() {
+        let statsig_rt = StatsigRuntime::get_runtime();
         let (mock_proxy, mock_listener, adapter) = setup().await;
+
         mock_proxy
             .send_stream_update(Ok(ConfigSpecResponse {
                 spec: "bg_sync".to_string(),
                 last_updated: 123,
             }))
             .await;
+
         adapter
             .clone()
-            .start(&Handle::current(), mock_listener.clone())
+            .start(&statsig_rt, mock_listener.clone())
             .await
             .unwrap();
-        adapter.shutdown(Duration::from_millis(1)).await.unwrap();
+
+        adapter
+            .shutdown(Duration::from_millis(1), &statsig_rt)
+            .await
+            .unwrap();
 
         wait_one_ms().await;
 
@@ -57,6 +63,7 @@ pub mod specs_adapter_tests {
 
     #[tokio::test]
     async fn test_reconnecting() {
+        let statsig_rt = StatsigRuntime::get_runtime();
         let (mock_proxy, mock_listener, adapter) = setup().await;
 
         mock_proxy
@@ -68,7 +75,7 @@ pub mod specs_adapter_tests {
 
         adapter
             .clone()
-            .start(&Handle::current(), mock_listener.clone())
+            .start(&statsig_rt, mock_listener.clone())
             .await
             .unwrap();
 

@@ -1,16 +1,13 @@
 use crate::id_lists_adapter::{IdListUpdate, IdListsAdapter, IdListsUpdateListener};
-use crate::network_client::{NetworkClient, RequestArgs};
+use crate::networking::{NetworkClient, RequestArgs};
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_e, log_w, StatsigErr, StatsigOptions};
+use crate::{log_e, log_w, unwrap_or_return_with, StatsigErr, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
 use serde_json::from_str;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock, Weak};
+use std::sync::{Arc, RwLock, Weak};
 use std::time::Duration;
-use tokio::runtime::Handle;
-use tokio::sync::Notify;
-use tokio::task::JoinHandle;
-use tokio::time::{interval_at, Instant};
+use tokio::time::sleep;
 
 use super::IdListMetadata;
 
@@ -19,53 +16,57 @@ const DEFAULT_ID_LIST_SYNC_INTERVAL_MS: u32 = 10_000;
 
 type IdListsResponse = HashMap<String, IdListMetadata>;
 
-pub struct StatsigHttpIdListsAdapter {
-    id_lists_manifest_url: String,
-    listener: RwLock<Option<Arc<dyn IdListsUpdateListener>>>,
+struct AdapterContext {
     network: NetworkClient,
+    listener: Arc<dyn IdListsUpdateListener>,
+}
+
+pub struct StatsigHttpIdListsAdapter {
+    context: RwLock<Option<Arc<AdapterContext>>>,
+    sdk_key: String,
+    id_lists_manifest_url: String,
     sync_interval_duration: Duration,
-    shutdown_notify: Arc<Notify>,
-    task_handle: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl StatsigHttpIdListsAdapter {
     pub fn new(sdk_key: &str, options: &StatsigOptions) -> Self {
         Self {
+            context: RwLock::new(None),
+            sdk_key: sdk_key.to_string(),
             id_lists_manifest_url: options
                 .id_lists_url
                 .clone()
                 .unwrap_or_else(|| DEFAULT_ID_LISTS_MANIFEST_URL.to_string()),
-            listener: RwLock::new(None),
-            network: NetworkClient::new(Some(StatsigMetadata::get_constant_request_headers(
-                sdk_key,
-            ))),
-            shutdown_notify: Arc::new(Notify::new()),
             sync_interval_duration: Duration::from_millis(
                 options
                     .id_lists_sync_interval_ms
                     .unwrap_or(DEFAULT_ID_LIST_SYNC_INTERVAL_MS) as u64,
             ),
-            task_handle: Mutex::new(None),
         }
     }
 
-    async fn fetch_id_list_manifests_from_network(&self) -> Result<IdListsResponse, StatsigErr> {
+    async fn fetch_id_list_manifests_from_network(
+        &self,
+        context: &AdapterContext,
+    ) -> Result<IdListsResponse, StatsigErr> {
         let headers = HashMap::from([("Content-Length".into(), "0".to_string())]);
 
-        let response = self.network.post(RequestArgs {
-            url: self.id_lists_manifest_url.clone(),
-            retries: 2,
-            headers: Some(headers),
-            ..RequestArgs::new()
-        });
+        let response = context.network.post(
+            RequestArgs {
+                url: self.id_lists_manifest_url.clone(),
+                retries: 2,
+                headers: Some(headers),
+                ..RequestArgs::new()
+            },
+            None,
+        );
 
-        let data = match response {
+        let data = match response.await {
             Some(r) => r,
             None => {
-                log_e!("No id list result from network");
-                return Err(StatsigErr::NetworkError(
-                    "No result from network".to_string(),
-                ));
+                let msg = "No ID List results from network";
+                log_e!("{}", msg);
+                return Err(StatsigErr::NetworkError(msg.to_string()));
             }
         };
 
@@ -80,45 +81,39 @@ impl StatsigHttpIdListsAdapter {
 
     async fn fetch_individual_id_list_changes_from_network(
         &self,
+        context: &AdapterContext,
         list_url: &str,
         list_size: u64,
     ) -> Result<String, StatsigErr> {
         let headers = HashMap::from([("Range".into(), format!("bytes={}-", list_size))]);
 
-        let response = self.network.get(RequestArgs {
+        let response = context.network.get(RequestArgs {
             url: list_url.to_string(),
             headers: Some(headers),
             ..RequestArgs::new()
         });
 
-        let data = match response {
+        let data = match response.await {
             Some(r) => r,
             None => {
-                log_e!("No id list result from network");
-                return Err(StatsigErr::NetworkError(
-                    "No result from network".to_string(),
-                ));
+                let msg = "No ID List changes from network";
+                log_e!("{}", msg);
+                return Err(StatsigErr::NetworkError(msg.to_string()));
             }
         };
 
         Ok(data)
     }
 
-    fn schedule_background_sync(
-        self: Arc<Self>,
-        runtime_handle: &Handle,
-    ) -> Result<(), StatsigErr> {
+    fn schedule_background_sync(self: Arc<Self>, statsig_runtime: &Arc<StatsigRuntime>) {
         let weak_self = Arc::downgrade(&self);
+        let interval_duration = self.sync_interval_duration.clone();
 
-        let interval_duration = self.sync_interval_duration;
-        let shutdown_notify = Arc::clone(&self.shutdown_notify);
-
-        let handle = runtime_handle.spawn(async move {
-            let mut interval = interval_at(Instant::now() + interval_duration, interval_duration);
+        statsig_runtime.spawn("http_id_list_bg_sync", move |shutdown_notify| async move {
             loop {
                 tokio::select! {
-                    _ = interval.tick() => {
-                        Self::run_background_sync(&weak_self).await
+                    _ = sleep(interval_duration) => {
+                        Self::run_background_sync(&weak_self).await;
                     }
                     _ = shutdown_notify.notified() => {
                         break;
@@ -126,14 +121,6 @@ impl StatsigHttpIdListsAdapter {
                 }
             }
         });
-
-        match self.task_handle.lock() {
-            Ok(mut guard) => {
-                *guard = Some(handle);
-                Ok(())
-            }
-            Err(e) => Err(StatsigErr::LockFailure(e.to_string())),
-        }
     }
 
     async fn run_background_sync(weak_self: &Weak<Self>) {
@@ -144,6 +131,33 @@ impl StatsigHttpIdListsAdapter {
 
         if let Err(e) = strong_self.sync_id_lists().await {
             log_w!("IDList background sync failed {}", e);
+        }
+    }
+
+    fn get_context(&self) -> Option<Arc<AdapterContext>> {
+        match self.context.read() {
+            Ok(lock) => lock.as_ref().cloned(),
+            Err(e) => {
+                log_e!("Failed to acquire read lock on context: {}", e);
+                None
+            }
+        }
+    }
+
+    fn setup_context(
+        &self,
+        statsig_runtime: &Arc<StatsigRuntime>,
+        listener: Arc<dyn IdListsUpdateListener>,
+    ) {
+        let headers = StatsigMetadata::get_constant_request_headers(&self.sdk_key);
+        let context = Arc::new(AdapterContext {
+            network: NetworkClient::new(statsig_runtime, &self.sdk_key, Some(headers)),
+            listener,
+        });
+
+        match self.context.write() {
+            Ok(mut lock) => *lock = Some(context),
+            Err(e) => log_e!("Failed to acquire write lock on context: {}", e),
         }
     }
 }
@@ -158,42 +172,49 @@ struct IdListChangeSet {
 impl IdListsAdapter for StatsigHttpIdListsAdapter {
     async fn start(
         self: Arc<Self>,
-        runtime_handle: &Handle,
+        statsig_runtime: &Arc<StatsigRuntime>,
         listener: Arc<dyn IdListsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
-        if let Ok(mut mut_listener) = self.listener.write() {
-            *mut_listener = Some(listener);
-        }
+        self.setup_context(statsig_runtime, listener);
+        self.schedule_background_sync(statsig_runtime);
 
-        self.schedule_background_sync(runtime_handle)
+        Ok(())
+    }
+
+    async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
+        Ok(())
     }
 
     async fn sync_id_lists(&self) -> Result<(), StatsigErr> {
-        let manifest = self.fetch_id_list_manifests_from_network().await?;
+        let context = unwrap_or_return_with!(self.get_context(), || {
+            log_e!("No context found");
+            return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()));
+        });
+
+        let manifest = self.fetch_id_list_manifests_from_network(&context).await?;
 
         let mut changes = HashMap::new();
 
-        if let Some(listener) = self.listener.read().unwrap().as_ref() {
-            let metadata = listener.get_current_id_list_metadata();
+        let metadata = context.listener.get_current_id_list_metadata();
 
-            for (list_name, entry) in manifest {
-                let (requires_download, range_start) = match metadata.get(&list_name) {
-                    Some(current) => (entry.size > current.size, current.size),
-                    None => (true, 0),
-                };
+        for (list_name, entry) in manifest {
+            let (requires_download, range_start) = match metadata.get(&list_name) {
+                Some(current) => (entry.size > current.size, current.size),
+                None => (true, 0),
+            };
 
-                changes.insert(
-                    list_name.clone(),
-                    IdListChangeSet {
-                        new_metadata: entry,
-                        requires_download,
-                        range_start,
-                    },
-                );
-            }
+            changes.insert(
+                list_name.clone(),
+                IdListChangeSet {
+                    new_metadata: entry,
+                    requires_download,
+                    range_start,
+                },
+            );
         }
 
         let mut updates = HashMap::new();
+        // todo: map this into futures then run them in parallel
         for (list_name, changeset) in changes {
             let new_metadata = changeset.new_metadata;
 
@@ -210,6 +231,7 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
 
             let data = self
                 .fetch_individual_id_list_changes_from_network(
+                    &context,
                     &new_metadata.url,
                     changeset.range_start,
                 )
@@ -224,41 +246,9 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
             );
         }
 
-        if let Some(listener) = self.listener.read().unwrap().as_ref() {
-            listener.did_receive_id_list_updates(updates);
-        }
+        context.listener.did_receive_id_list_updates(updates);
 
         Ok(())
-    }
-
-    async fn shutdown(&self, timeout: Duration) -> Result<(), StatsigErr> {
-        self.shutdown_notify.notify_one();
-
-        let task_handle = match self.task_handle.lock() {
-            Ok(mut guard) => guard.take(),
-            Err(_) => {
-                return Err(StatsigErr::CustomError(
-                    "Failed to acquire lock to running task".to_string(),
-                ))
-            }
-        };
-
-        match task_handle {
-            None => Err(StatsigErr::CustomError(
-                "No running task to shut down".to_string(),
-            )),
-            Some(handle) => {
-                let shutdown_result = tokio::time::timeout(timeout, handle).await;
-
-                if shutdown_result.is_err() {
-                    return Err(StatsigErr::CustomError(
-                        "Failed to gracefully shutdown StatsigHttpIdListsAdapter.".to_string(),
-                    ));
-                }
-
-                Ok(())
-            }
-        }
     }
 }
 
@@ -268,6 +258,7 @@ mod tests {
     use crate::id_lists_adapter::IdList;
 
     use super::*;
+    // todo: update to use wiremock instead of mockito
     use mockito::{Mock, Server, ServerGuard};
     use std::fs;
     use std::path::PathBuf;
@@ -302,12 +293,21 @@ mod tests {
                     return false;
                 }
 
-                tokio::time::sleep(Duration::from_millis(10)).await;
+                sleep(Duration::from_millis(10)).await;
             }
         }
     }
 
     impl IdListsUpdateListener for TestIdListsUpdateListener {
+        fn get_current_id_list_metadata(&self) -> HashMap<String, IdListMetadata> {
+            self.id_lists
+                .read()
+                .unwrap()
+                .iter()
+                .map(|(key, list)| (key.clone(), list.metadata.clone()))
+                .collect()
+        }
+
         fn did_receive_id_list_updates(&self, updates: HashMap<String, IdListUpdate>) {
             let mut id_lists = self.id_lists.write().unwrap();
 
@@ -325,15 +325,6 @@ mod tests {
                     id_lists.insert(list_name.to_owned(), list);
                 }
             }
-        }
-
-        fn get_current_id_list_metadata(&self) -> HashMap<String, IdListMetadata> {
-            self.id_lists
-                .read()
-                .unwrap()
-                .iter()
-                .map(|(key, list)| (key.clone(), list.metadata.clone()))
-                .collect()
         }
     }
 
@@ -387,6 +378,7 @@ mod tests {
         ServerGuard,
         Arc<StatsigHttpIdListsAdapter>,
         Arc<TestIdListsUpdateListener>,
+        Arc<StatsigRuntime>,
     ) {
         let (server, _, _) = setup_mock_server().await;
 
@@ -401,19 +393,19 @@ mod tests {
             id_lists: RwLock::new(HashMap::new()),
         });
 
-        let handle = Handle::try_current().unwrap();
+        let statsig_rt = StatsigRuntime::get_runtime();
         adapter
             .clone()
-            .start(&handle, listener.clone())
+            .start(&statsig_rt, listener.clone())
             .await
             .unwrap();
 
-        (server, adapter, listener)
+        (server, adapter, listener, statsig_rt)
     }
 
     #[tokio::test]
     async fn test_syncing_new_id_lists() {
-        let (_server, adapter, listener) = setup(None).await;
+        let (_server, adapter, listener, _statsig_rt) = setup(None).await;
 
         adapter.sync_id_lists().await.unwrap();
 
@@ -423,7 +415,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_syncing_deleting_id_lists() {
-        let (mut server, adapter, listener) = setup(None).await;
+        let (mut server, adapter, listener, _statsig_rt) = setup(None).await;
 
         adapter.sync_id_lists().await.unwrap();
 
@@ -442,7 +434,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_bg_syncing() {
-        let (_server, _adapter, listener) = setup(Some(1)).await;
+        let (_server, _adapter, listener, _statsig_rt) = setup(Some(1)).await;
 
         let result = listener
             .does_list_contain_id_eventually(
@@ -456,9 +448,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_bg_sync_shutdown() {
-        let (_server, adapter, listener) = setup(Some(1)).await;
+        let (_server, adapter, listener, statsig_rt) = setup(Some(10)).await;
 
-        let _ = adapter.shutdown(Duration::from_millis(1000)).await;
+        statsig_rt.shutdown();
+        let _ = adapter.shutdown(Duration::from_millis(1)).await;
 
         let result = listener
             .does_list_contain_id_eventually(
@@ -468,7 +461,7 @@ mod tests {
             )
             .await;
 
-        assert!(result == false);
+        assert_eq!(false, result);
     }
 
     // todo:

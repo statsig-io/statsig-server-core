@@ -1,8 +1,8 @@
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::get_instance_or_return_c;
 use sigstat::instance_store::INST_STORE;
-use sigstat::StatsigOptions;
 use sigstat::{log_e, unwrap_or_return, StatsigHttpSpecsAdapter};
+use sigstat::{StatsigOptions, StatsigRuntime};
 use std::os::raw::c_char;
 use std::ptr::null;
 
@@ -23,7 +23,7 @@ pub extern "C" fn statsig_http_specs_adapter_create(
         }
     }
 
-    let adapter = StatsigHttpSpecsAdapter::new(&sdk_key, specs_url.as_ref(), 0, None);
+    let adapter = StatsigHttpSpecsAdapter::new(&sdk_key, specs_url.as_ref(), None);
 
     let ref_id = INST_STORE.add(adapter).unwrap_or_else(|| {
         log_e!("Failed to create StatsigHttpSpecsAdapter");
@@ -48,13 +48,15 @@ pub extern "C" fn statsig_http_specs_adapter_fetch_specs_from_network(
     let specs_adapter =
         get_instance_or_return_c!(StatsigHttpSpecsAdapter, specs_adapter_ref, null());
 
-    let result = match specs_adapter.fetch_specs_from_network(Some(current_lcut)) {
-        Some(data) => data,
-        None => {
-            log_e!("Failed to fetch specs from network");
-            return null();
-        }
-    };
+    let statsig_rt = StatsigRuntime::get_runtime();
+    let result: Option<String> = statsig_rt.runtime_handle.block_on(async move {
+        specs_adapter
+            .fetch_specs_from_network(Some(current_lcut))
+            .await
+    });
 
-    string_to_c_char(result)
+    match result {
+        Some(data) => string_to_c_char(data),
+        None => null(),
+    }
 }

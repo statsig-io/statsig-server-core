@@ -14,6 +14,8 @@ pub enum StatsigErr {
 
     FileError(String),
 
+    ThreadFailure(String),
+
     // Specs Adapter
     SpecsLocalFileReadFailure(String),
 
@@ -21,6 +23,12 @@ pub enum StatsigErr {
     IdListsAdapterFailedToInsertIdList,
 
     GrpcError(String),
+
+    ShutdownTimeout,
+
+    // Task Scheduler
+    ScheduleFailure(String),
+    ShutdownFailure,
 }
 
 impl Display for StatsigErr {
@@ -40,6 +48,8 @@ impl Display for StatsigErr {
 
             StatsigErr::FileError(msg) => write!(f, "File write error: {}", msg),
 
+            StatsigErr::ThreadFailure(msg) => write!(f, "Thread failure: {}", msg),
+
             // Specs
             StatsigErr::SpecsLocalFileReadFailure(e) => {
                 write!(f, "Specs adapter failed to read local file, {}", e)
@@ -51,6 +61,12 @@ impl Display for StatsigErr {
             }
 
             StatsigErr::GrpcError(e) => write!(f, "{}", e),
+
+            StatsigErr::ShutdownTimeout => write!(f, "Shutdown timed out"),
+
+            StatsigErr::ScheduleFailure(e) => write!(f, "Failed to schedule task: {}", e),
+
+            StatsigErr::ShutdownFailure => write!(f, "Failed to shutdown task scheduler"),
         }
     }
 }

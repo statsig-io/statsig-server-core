@@ -1,4 +1,3 @@
-use crate::async_runtime::AsyncRuntime;
 use crate::client_init_response_formatter::{
     ClientInitResponseFormatter, ClientInitResponseOptions,
 };
@@ -25,14 +24,15 @@ use crate::output_logger::initialize_simple_output_logger;
 use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
 use crate::statsig_err::StatsigErr;
-use crate::statsig_options::{StatsigOptions, DEFAULT_INIT_TIMEOUT_MS};
+use crate::statsig_options::StatsigOptions;
+use crate::statsig_runtime::StatsigRuntime;
 use crate::statsig_type_factories::{
     make_dynamic_config, make_experiment, make_feature_gate, make_layer,
 };
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{
-    dyn_value, log_d, log_e, read_lock_or_else, IdListsAdapter, SpecsAdapter, SpecsSource,
+    dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, SpecsAdapter, SpecsSource,
     SpecsUpdateListener, StatsigUser,
 };
 use serde_json::json;
@@ -47,17 +47,20 @@ pub struct Statsig {
     options: Arc<StatsigOptions>,
     event_logger: Arc<EventLogger>,
     specs_adapter: Arc<dyn SpecsAdapter>,
+    event_logging_adapter: Arc<dyn EventLoggingAdapter>,
     id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
     spec_store: Arc<SpecStore>,
     hashing: Hashing,
     gcir_formatter: Arc<ClientInitResponseFormatter>,
     statsig_environment: Option<HashMap<String, DynamicValue>>,
+    statsig_runtime: Arc<StatsigRuntime>,
     fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
-    async_runtime: Arc<AsyncRuntime>,
 }
 
 impl Statsig {
     pub fn new(sdk_key: &str, options: Option<Arc<StatsigOptions>>) -> Self {
+        let statsig_runtime = StatsigRuntime::get_runtime();
+
         let spec_store = Arc::new(SpecStore::new());
         let options = options.unwrap_or_default();
 
@@ -72,12 +75,8 @@ impl Statsig {
             .as_ref()
             .map(|env| HashMap::from([("tier".into(), dyn_value!(env.as_str()))]));
 
-        let async_runtime = AsyncRuntime::get_runtime();
-        let event_logger = EventLogger::new(
-            event_logging_adapter.clone(),
-            &options,
-            &async_runtime.runtime_handle,
-        );
+        let event_logger =
+            EventLogger::new(event_logging_adapter.clone(), &options, &statsig_runtime);
 
         Statsig {
             sdk_key: sdk_key.to_string(),
@@ -89,19 +88,22 @@ impl Statsig {
             fallback_environment: Mutex::new(None),
             spec_store,
             specs_adapter,
+            event_logging_adapter,
             id_lists_adapter,
-            async_runtime,
+            statsig_runtime,
         }
     }
 
     pub async fn initialize(&self) -> Result<(), StatsigErr> {
         self.spec_store.set_source(SpecsSource::Loading);
-        self.event_logger.clone().start_background_task();
+        self.event_logger
+            .clone()
+            .start_background_task(&self.statsig_runtime);
 
         let init_res = match self
             .specs_adapter
             .clone()
-            .start(&self.async_runtime.runtime_handle, self.spec_store.clone())
+            .start(&self.statsig_runtime, self.spec_store.clone())
             .await
         {
             Ok(_) => Ok(()),
@@ -110,20 +112,27 @@ impl Statsig {
                 Err(e)
             }
         };
+
         if let Some(adapter) = &self.id_lists_adapter {
             adapter
                 .clone()
-                .start(&self.async_runtime.runtime_handle, self.spec_store.clone())
+                .start(&self.statsig_runtime, self.spec_store.clone())
                 .await?;
 
             if let Err(e) = adapter.sync_id_lists().await {
                 log_e!("Failed to sync id lists: {}", e);
             }
         }
+
+        self.event_logging_adapter
+            .clone()
+            .start(&self.statsig_runtime)
+            .await?;
+
         let _ = self
             .specs_adapter
             .clone()
-            .schedule_background_sync(&self.async_runtime.runtime_handle);
+            .schedule_background_sync(&self.statsig_runtime);
 
         self.set_default_environment_from_server();
 
@@ -134,7 +143,9 @@ impl Statsig {
     where
         F: FnOnce() + Send + 'static,
     {
-        self.event_logger.clone().start_background_task();
+        self.event_logger
+            .clone()
+            .start_background_task(&self.statsig_runtime);
 
         let info = self.spec_store.get_current_specs_info();
         let is_uninitialized = info.source == SpecsSource::Uninitialized;
@@ -143,26 +154,51 @@ impl Statsig {
         }
 
         let adapter = self.specs_adapter.clone();
-        let handle = self.async_runtime.get_handle();
         let store = self.spec_store.clone();
-        self.async_runtime.runtime_handle.spawn(async move {
+        let runtime = self.statsig_runtime.clone();
+
+        self.statsig_runtime.spawn("init_with_cb", |_shutdown_notify| async move {
             // todo: return result to callback
-            let _ = adapter.clone().start(&handle, store).await;
+            let _ = adapter.clone().start(&runtime, store).await;
 
             callback();
         });
         self.set_default_environment_from_server();
     }
 
-    pub async fn shutdown(&self) -> Result<(), StatsigErr> {
-        let timeout = Duration::from_millis(1000);
-        try_join!(
-            self.event_logger.shutdown(timeout),
-            self.specs_adapter.shutdown(timeout)
-        )?;
+    pub async fn shutdown_with_timeout(&self, timeout: Duration) -> Result<(), StatsigErr> {
+        log_d!("Shutting down Statsig");
+
+        let final_result = tokio::select! {
+            _ = tokio::time::sleep(timeout) => {
+                log_w!("Statsig shutdown timed out.");
+                Err(StatsigErr::ShutdownTimeout)
+            }
+            sub_result = async {
+                try_join!(
+                    self.event_logger.shutdown(timeout),
+                    self.specs_adapter.shutdown(timeout, &self.statsig_runtime),
+                )
+            } => {
+                match sub_result {
+                    Ok(_) => {
+                        log_d!("All shutdown tasks completed successfully");
+                        Ok(())
+                    }
+                    Err(e) => {
+                        log_w!("Error during shutdown: {:?}", e);
+                        Err(e)
+                    }
+                }
+            }
+        };
 
         self.finalize_shutdown();
-        Ok(())
+        final_result
+    }
+
+    pub async fn shutdown(&self) -> Result<(), StatsigErr> {
+        self.shutdown_with_timeout(Duration::from_secs(3)).await
     }
 
     pub fn sequenced_shutdown_prepare<F>(&self, callback: F)
@@ -171,13 +207,14 @@ impl Statsig {
     {
         let event_logger = self.event_logger.clone();
         let specs_adapter = self.specs_adapter.clone();
+        let runtime: Arc<StatsigRuntime> = self.statsig_runtime.clone();
 
-        self.async_runtime.runtime_handle.spawn(async move {
+        self.statsig_runtime.spawn("sequenced_shutdown_prep", |_shutdown_notify| async move {
             let timeout = Duration::from_millis(1000);
 
             let result = try_join!(
                 event_logger.shutdown(timeout),
-                specs_adapter.shutdown(timeout)
+                specs_adapter.shutdown(timeout, &runtime)
             );
 
             match result {
@@ -194,13 +231,15 @@ impl Statsig {
     }
 
     pub fn finalize_shutdown(&self) {
-        self.async_runtime.shutdown();
+        self.statsig_runtime.shutdown();
     }
 
+    // todo: add type for Context
     pub fn get_context(&self) -> (String, Arc<StatsigOptions>) {
         (self.sdk_key.clone(), self.options.clone())
     }
 
+    // todo: merge into get_context
     pub fn get_current_values(&self) -> Option<SpecStoreData> {
         Some(self.spec_store.data.read().ok()?.clone())
     }
@@ -227,7 +266,6 @@ impl Statsig {
 
     pub fn check_gate(&self, user: &StatsigUser, gate_name: &str) -> bool {
         log_d!("Check Gate {}", gate_name);
-
         let user_internal = self.internalize_user(user);
         let (value, rule_id, secondary_exposures, details, version) =
             self.check_gate_impl(&user_internal, gate_name);
@@ -312,7 +350,7 @@ impl Statsig {
                 evaluation: layer.__evaluation,
                 layer_name: layer.name,
                 evaluation_details: layer.details,
-                version: layer.__version
+                version: layer.__version,
             }));
     }
 
@@ -325,9 +363,8 @@ impl Statsig {
         F: FnOnce() + Send + 'static,
     {
         let cloned_event_logger = self.event_logger.clone();
-        let runtime_handle = self.async_runtime.get_handle();
 
-        runtime_handle.spawn(async move {
+        self.statsig_runtime.spawn("flush_events_with_cb", |_shutdown_notify| async move {
             let _ = cloned_event_logger.flush_blocking().await;
 
             callback();
@@ -349,7 +386,13 @@ impl Statsig {
         Option<u32>,
     ) {
         let data = read_lock_or_else!(self.spec_store.data, {
-            return (false, None, None, EvaluationDetails::unrecognized_no_data(), None);
+            return (
+                false,
+                None,
+                None,
+                EvaluationDetails::unrecognized_no_data(),
+                None,
+            );
         });
 
         let spec = data.values.feature_gates.get(gate_name);
@@ -367,7 +410,13 @@ impl Statsig {
                     context.result.version,
                 )
             }
-            None => (false, None, None, EvaluationDetails::unrecognized(&data), None),
+            None => (
+                false,
+                None,
+                None,
+                EvaluationDetails::unrecognized(&data),
+                None,
+            ),
         }
     }
 
@@ -377,7 +426,12 @@ impl Statsig {
         gate_name: &str,
     ) -> FeatureGate {
         let data = read_lock_or_else!(self.spec_store.data, {
-            return make_feature_gate(gate_name, None, EvaluationDetails::unrecognized_no_data(), None);
+            return make_feature_gate(
+                gate_name,
+                None,
+                EvaluationDetails::unrecognized_no_data(),
+                None,
+            );
         });
 
         let spec = data.values.feature_gates.get(gate_name);
@@ -395,7 +449,12 @@ impl Statsig {
                     context.result.version,
                 )
             }
-            None => make_feature_gate(gate_name, None, EvaluationDetails::unrecognized(&data), None),
+            None => make_feature_gate(
+                gate_name,
+                None,
+                EvaluationDetails::unrecognized(&data),
+                None,
+            ),
         }
     }
 
@@ -428,7 +487,12 @@ impl Statsig {
                     context.result.version,
                 )
             }
-            None => make_dynamic_config(config_name, None, EvaluationDetails::unrecognized(&data), None),
+            None => make_dynamic_config(
+                config_name,
+                None,
+                EvaluationDetails::unrecognized(&data),
+                None,
+            ),
         }
     }
 
@@ -587,7 +651,7 @@ impl Statsig {
         if let Some(env) = &self.statsig_environment {
             return Some(env.clone());
         }
-        
+
         if let Ok(fallback_env) = self.fallback_environment.lock() {
             if let Some(env) = &*fallback_env {
                 return Some(env.clone());
@@ -637,7 +701,6 @@ fn initialize_specs_adapter(sdk_key: &str, options: &StatsigOptions) -> Arc<dyn 
     Arc::new(StatsigHttpSpecsAdapter::new(
         sdk_key,
         options.specs_url.as_ref(),
-        DEFAULT_INIT_TIMEOUT_MS,
         options.specs_sync_interval_ms,
     ))
 }

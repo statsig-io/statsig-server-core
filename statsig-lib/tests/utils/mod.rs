@@ -7,3 +7,5 @@ pub mod mock_event_logging_adapter;
 #[allow(dead_code)]
 pub mod helpers;
 
+#[allow(dead_code)]
+pub mod mock_scrapi;

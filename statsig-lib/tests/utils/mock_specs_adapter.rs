@@ -1,11 +1,12 @@
 use async_trait::async_trait;
 use chrono::Utc;
-use sigstat::{SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr};
+use sigstat::{
+    SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigRuntime,
+};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use tokio::runtime::Handle;
 
 pub struct MockSpecsAdapter {
     json_data_path: String,
@@ -76,7 +77,8 @@ impl MockSpecsAdapter {
 impl SpecsAdapter for MockSpecsAdapter {
     async fn start(
         self: Arc<Self>,
-        _runtime_handle: &Handle,
+        _statsig_runtime: &Arc<StatsigRuntime>,
+
         listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         let lcut = listener.get_current_specs_info().lcut;
@@ -88,12 +90,16 @@ impl SpecsAdapter for MockSpecsAdapter {
 
     fn schedule_background_sync(
         self: Arc<Self>,
-        _runtime_handle: &Handle,
+        _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
         Ok(())
     }
 
-    async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
+    async fn shutdown(
+        &self,
+        _timeout: Duration,
+        _statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
         Ok(())
     }
 

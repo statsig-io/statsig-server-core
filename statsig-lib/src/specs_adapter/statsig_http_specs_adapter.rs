@@ -1,128 +1,111 @@
-use crate::network_client::{NetworkClient, RequestArgs};
+use crate::networking::{NetworkClient, RequestArgs};
 use crate::specs_adapter::{SpecsAdapter, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_e, SpecsSource};
+use crate::{log_e, unwrap_or_return_with, SpecsSource, StatsigRuntime};
 use async_trait::async_trait;
 use chrono::Utc;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock, Weak};
+use std::sync::{Arc, RwLock, Weak};
 use std::time::Duration;
-use tokio::runtime::Handle;
-use tokio::sync::Notify;
-use tokio::task;
-use tokio::time::{interval_at, Instant};
+use tokio::time::sleep;
 
 pub const DEFAULT_SPECS_URL: &str = "https://api.statsigcdn.com/v2/download_config_specs";
 const DEFAULT_SYNC_INTERVAL_MS: u32 = 10_000;
 
-pub struct StatsigHttpSpecsAdapter {
-    specs_url: String,
+struct AdapterContext {
     network: NetworkClient,
-    listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
+    listener: Arc<dyn SpecsUpdateListener>,
+}
+
+pub struct StatsigHttpSpecsAdapter {
+    context: RwLock<Option<Arc<AdapterContext>>>,
+    specs_url: String,
     sync_interval_duration: Duration,
-    shutdown_notify: Arc<Notify>,
-    task_handle: Mutex<Option<task::JoinHandle<()>>>,
+    sdk_key: String,
 }
 
 impl StatsigHttpSpecsAdapter {
-    pub fn new(
-        sdk_key: &str,
-        specs_url: Option<&String>,
-        _timeout: u64,
-        sync_interval: Option<u32>,
-    ) -> Self {
-        let headers = StatsigMetadata::get_constant_request_headers(sdk_key);
-
+    pub fn new(sdk_key: &str, specs_url: Option<&String>, sync_interval: Option<u32>) -> Self {
         Self {
+            context: RwLock::new(None),
             specs_url: construct_specs_url(sdk_key, specs_url),
-            network: NetworkClient::new(Some(headers)),
-            listener: RwLock::new(None),
-            shutdown_notify: Arc::new(Notify::new()),
-            task_handle: Mutex::new(None),
             sync_interval_duration: Duration::from_millis(
                 sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS) as u64,
             ),
+            sdk_key: sdk_key.to_string(),
         }
     }
 
-    pub fn fetch_specs_from_network(&self, current_store_lcut: Option<u64>) -> Option<String> {
+    pub async fn fetch_specs_from_network(
+        &self,
+        current_store_lcut: Option<u64>,
+    ) -> Option<String> {
+        let context = unwrap_or_return_with!(self.get_context(), || {
+            log_e!("No context found");
+            return None;
+        });
+
+        self.fetch_specs_from_network_impl(&context, current_store_lcut)
+            .await
+    }
+
+    async fn fetch_specs_from_network_impl(
+        &self,
+        context: &AdapterContext,
+        current_store_lcut: Option<u64>,
+    ) -> Option<String> {
         let query_params =
             current_store_lcut.map(|lcut| HashMap::from([("sinceTime".into(), lcut.to_string())]));
 
-        self.network.get(RequestArgs {
-            url: self.specs_url.clone(),
-            retries: 2,
-            query_params,
-            accept_gzip_response: true,
-            ..RequestArgs::new()
-        })
-    }
-
-    fn schedule_background_sync(
-        self: Arc<Self>,
-        runtime_handle: &Handle,
-    ) -> Result<(), StatsigErr> {
-        let weak_self = Arc::downgrade(&self);
-
-        let interval_duration = self.sync_interval_duration;
-        let shutdown_notify = Arc::clone(&self.shutdown_notify);
-
-        let handle = runtime_handle.spawn(async move {
-            let mut interval = interval_at(Instant::now() + interval_duration, interval_duration);
-            loop {
-                tokio::select! {
-                    _ = interval.tick() => {
-                        Self::run_background_sync(&weak_self).await
-                    }
-                    _ = shutdown_notify.notified() => {
-                        break;
-                    }
-                }
-            }
-        });
-
-        match self.task_handle.lock() {
-            Ok(mut guard) => {
-                *guard = Some(handle);
-                Ok(())
-            }
-            Err(e) => Err(StatsigErr::LockFailure(e.to_string())),
-        }
+        context
+            .network
+            .get(RequestArgs {
+                url: self.specs_url.clone(),
+                retries: 2,
+                query_params,
+                accept_gzip_response: true,
+                ..RequestArgs::new()
+            })
+            .await
     }
 
     async fn run_background_sync(weak_self: &Weak<Self>) {
-        if let Some(strong_self) = weak_self.upgrade() {
-            let lcut = match strong_self.listener.read() {
-                Ok(lock) => match lock.as_ref() {
-                    Some(listener) => listener.get_current_specs_info().lcut,
-                    None => None,
-                },
-                Err(_) => None,
-            };
-
-            if let Err(e) = strong_self.manually_sync_specs(lcut).await {
-                log_e!("Background specs sync failed: {}", e);
+        let strong_self = match weak_self.upgrade() {
+            Some(s) => s,
+            None => {
+                log_e!("No strong reference found");
+                return;
             }
+        };
+
+        let context = unwrap_or_return_with!(strong_self.get_context(), || {
+            log_e!("No context found");
+            return;
+        });
+
+        let lcut = context.listener.get_current_specs_info().lcut;
+        if let Err(e) = strong_self.manually_sync_specs(lcut).await {
+            log_e!("Background specs sync failed: {}", e);
         }
     }
 
     async fn manually_sync_specs(&self, current_store_lcut: Option<u64>) -> Result<(), StatsigErr> {
-        if let Ok(lock) = self.listener.read() {
-            if lock.is_none() {
-                return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()));
-            }
-        }
+        let context = unwrap_or_return_with!(self.get_context(), || {
+            log_e!("No context found");
+            return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()));
+        });
 
-        let res = self.fetch_specs_from_network(current_store_lcut);
+        let res = self
+            .fetch_specs_from_network_impl(&context, current_store_lcut)
+            .await;
 
         let data = match res {
             Some(r) => r,
             None => {
-                log_e!("No result from network");
-                return Err(StatsigErr::NetworkError(
-                    "No result from network".to_string(),
-                ));
+                let msg = "No specs result from network";
+                log_e!("{}", msg);
+                return Err(StatsigErr::NetworkError(msg.to_string()));
             }
         };
 
@@ -132,15 +115,35 @@ impl StatsigHttpSpecsAdapter {
             received_at: Utc::now().timestamp_millis() as u64,
         };
 
-        match &self.listener.read() {
-            Ok(lock) => match lock.as_ref() {
-                Some(listener) => {
-                    listener.did_receive_specs_update(update);
-                    Ok(())
-                }
-                None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
-            },
-            Err(e) => return Err(StatsigErr::LockFailure(e.to_string())),
+        context.listener.did_receive_specs_update(update);
+
+        Ok(())
+    }
+
+    fn get_context(&self) -> Option<Arc<AdapterContext>> {
+        match self.context.read() {
+            Ok(lock) => lock.as_ref().cloned(),
+            Err(e) => {
+                log_e!("Failed to acquire read lock on context: {}", e);
+                return None;
+            }
+        }
+    }
+
+    fn setup_context(
+        &self,
+        statsig_runtime: &Arc<StatsigRuntime>,
+        listener: Arc<dyn SpecsUpdateListener>,
+    ) {
+        let headers = StatsigMetadata::get_constant_request_headers(&self.sdk_key);
+        let context = Arc::new(AdapterContext {
+            network: NetworkClient::new(statsig_runtime, &self.sdk_key, Some(headers)),
+            listener,
+        });
+
+        match self.context.write() {
+            Ok(mut lock) => *lock = Some(context),
+            Err(e) => log_e!("Failed to acquire write lock on context: {}", e),
         }
     }
 }
@@ -149,54 +152,43 @@ impl StatsigHttpSpecsAdapter {
 impl SpecsAdapter for StatsigHttpSpecsAdapter {
     async fn start(
         self: Arc<Self>,
-        _runtime_handle: &Handle,
+        statsig_runtime: &Arc<StatsigRuntime>,
         listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         let lcut = listener.get_current_specs_info().lcut;
-        if let Ok(mut mut_listener) = self.listener.write() {
-            *mut_listener = Some(listener);
-        }
+        self.setup_context(statsig_runtime, listener);
         self.manually_sync_specs(lcut).await
     }
 
     fn schedule_background_sync(
         self: Arc<Self>,
-        runtime_handle: &Handle,
+        statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        self.schedule_background_sync(runtime_handle)
+        let weak_self: Weak<StatsigHttpSpecsAdapter> = Arc::downgrade(&self);
+        let interval_duration = self.sync_interval_duration.clone();
+
+        statsig_runtime.spawn("http_specs_bg_sync", move |shutdown_notify| async move {
+            loop {
+                tokio::select! {
+                    _ = sleep(interval_duration) => {
+                        Self::run_background_sync(&weak_self).await;
+                    }
+                    _ = shutdown_notify.notified() => {
+                        break;
+                    }
+                }
+            }
+        });
+
+        Ok(())
     }
 
-    async fn shutdown(&self, timeout: Duration) -> Result<(), StatsigErr> {
-        self.shutdown_notify.notify_one();
-
-        let task_handle = {
-            match self.task_handle.lock() {
-                Ok(mut guard) => guard.take(),
-                Err(_) => {
-                    return Err(StatsigErr::CustomError(
-                        "Failed to acquire lock to running task".to_string(),
-                    ))
-                }
-            }
-        };
-
-        match task_handle {
-            None => Err(StatsigErr::CustomError(
-                "No running task to shut down".to_string(),
-            )),
-            Some(handle) => {
-                let shutdown_future = handle;
-                let shutdown_result = tokio::time::timeout(timeout, shutdown_future).await;
-
-                if shutdown_result.is_err() {
-                    return Err(StatsigErr::CustomError(
-                        "Failed to gracefully shutdown StatsigSpecsAdapter.".to_string(),
-                    ));
-                }
-
-                Ok(())
-            }
-        }
+    async fn shutdown(
+        &self,
+        _timeout: Duration,
+        _statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
+        Ok(())
     }
 
     fn get_type_name(&self) -> String {

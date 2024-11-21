@@ -1,11 +1,11 @@
 use crate::specs_adapter::{SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
+use crate::StatsigRuntime;
 use async_trait::async_trait;
 use chrono::Utc;
 
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use tokio::runtime::Handle;
 
 pub struct StatsigLocalFileSpecsAdapter {
     file_path: String,
@@ -47,7 +47,7 @@ impl StatsigLocalFileSpecsAdapter {
 impl SpecsAdapter for StatsigLocalFileSpecsAdapter {
     async fn start(
         self: Arc<Self>,
-        _runtime_handle: &Handle,
+        _statsig_runtime: &Arc<StatsigRuntime>,
         listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         if let Ok(mut mut_listener) = self.listener.write() {
@@ -57,13 +57,17 @@ impl SpecsAdapter for StatsigLocalFileSpecsAdapter {
         self.resync_from_file()
     }
 
-    async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
+    async fn shutdown(
+        &self,
+        _timeout: Duration,
+        _statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
         Ok(())
     }
 
     fn schedule_background_sync(
         self: Arc<Self>,
-        _runtime_handle: &Handle,
+        _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
         Ok(())
     }

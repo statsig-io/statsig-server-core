@@ -1,10 +1,19 @@
-
 #[macro_export]
 macro_rules! unwrap_or_return {
     ($res: expr, $code: expr) => {
         match $res {
             Some(v) => v,
             None => return $code,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! unwrap_or_return_with {
+    ($res: expr, $func:expr) => {
+        match $res {
+            Some(v) => v,
+            None => return $func(),
         }
     };
 }
@@ -20,6 +29,16 @@ macro_rules! unwrap_or_else {
 }
 
 #[macro_export]
+macro_rules! ok_or_return_with {
+    ($res:expr, $func:expr) => {
+        match $res {
+            Ok(v) => v,
+            Err(e) => return $func(e),
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! unwrap_or_noop {
     ($res: expr) => {
         match $res {
@@ -28,8 +47,6 @@ macro_rules! unwrap_or_noop {
         }
     };
 }
-
-
 
 #[macro_export]
 macro_rules! read_lock_or_else {

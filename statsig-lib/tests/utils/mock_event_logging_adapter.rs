@@ -1,8 +1,9 @@
 use async_trait::async_trait;
 use serde_json::Value;
-use sigstat::{EventLoggingAdapter, LogEventPayload, LogEventRequest, StatsigErr};
+use sigstat::{EventLoggingAdapter, LogEventPayload, LogEventRequest, StatsigErr, StatsigRuntime};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use tokio::sync::Mutex;
 
 pub struct MockEventLoggingAdapter {
@@ -41,6 +42,10 @@ impl MockEventLoggingAdapter {
 
 #[async_trait]
 impl EventLoggingAdapter for MockEventLoggingAdapter {
+    async fn start(&self, _statsig_runtime: &Arc<StatsigRuntime>) -> Result<(), StatsigErr> {
+        Ok(())
+    }
+
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
         let mut payloads = self.logged_payloads.lock().await;
 
@@ -49,5 +54,9 @@ impl EventLoggingAdapter for MockEventLoggingAdapter {
         payloads.push(request.payload);
 
         Ok(true)
+    }
+
+    async fn shutdown(&self) -> Result<(), StatsigErr> {
+        Ok(())
     }
 }

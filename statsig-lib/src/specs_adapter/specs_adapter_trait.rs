@@ -1,9 +1,9 @@
 use crate::statsig_err::StatsigErr;
+use crate::StatsigRuntime;
 use async_trait::async_trait;
 use serde::Serialize;
 use std::fmt;
 use std::sync::Arc;
-use tokio::runtime::Handle;
 use tokio::time::Duration;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -34,13 +34,20 @@ impl fmt::Display for SpecsSource {
 pub trait SpecsAdapter: Send + Sync {
     async fn start(
         self: Arc<Self>,
-        runtime_handle: &Handle,
+        statsig_runtime: &Arc<StatsigRuntime>,
         listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr>;
 
-    async fn shutdown(&self, timeout: Duration) -> Result<(), StatsigErr>;
+    async fn shutdown(
+        &self,
+        timeout: Duration,
+        statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr>;
 
-    fn schedule_background_sync(self: Arc<Self>, runtime_handle: &Handle) -> Result<(), StatsigErr>;
+    fn schedule_background_sync(
+        self: Arc<Self>,
+        statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr>;
 
     fn get_type_name(&self) -> String;
 }

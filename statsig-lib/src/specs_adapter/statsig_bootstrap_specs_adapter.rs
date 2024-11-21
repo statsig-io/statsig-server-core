@@ -1,12 +1,11 @@
 use crate::specs_adapter::{SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
+use crate::StatsigRuntime;
 use async_trait::async_trait;
 use chrono::Utc;
 
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use tokio::runtime::Handle;
-
 pub struct StatsigBootstrapSpecsAdapter {
     data: RwLock<String>,
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
@@ -56,7 +55,7 @@ impl StatsigBootstrapSpecsAdapter {
 impl SpecsAdapter for StatsigBootstrapSpecsAdapter {
     async fn start(
         self: Arc<Self>,
-        _runtime_handle: &Handle,
+        _statsig_runtime: &Arc<StatsigRuntime>,
         listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         if let Ok(mut mut_listener) = self.listener.write() {
@@ -66,13 +65,17 @@ impl SpecsAdapter for StatsigBootstrapSpecsAdapter {
         self.push_update()
     }
 
-    async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
+    async fn shutdown(
+        &self,
+        _timeout: Duration,
+        _statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
         Ok(())
     }
 
     fn schedule_background_sync(
         self: Arc<Self>,
-        _runtime_handle: &Handle,
+        _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
         Ok(())
     }
@@ -88,7 +91,6 @@ mod tests {
 
     use super::*;
     use std::sync::Arc;
-    use tokio::runtime::Runtime;
 
     struct TestListener {
         received_update: RwLock<Option<SpecsUpdate>>,
@@ -118,9 +120,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_manually_sync_specs() {
-        let rt = Runtime::new().unwrap();
+    #[tokio::test]
+    async fn test_manually_sync_specs() {
         let test_data = serde_json::json!({
             "feature_gates": {},
             "dynamic_configs": {},
@@ -131,7 +132,11 @@ mod tests {
         let adapter = Arc::new(StatsigBootstrapSpecsAdapter::new(test_data.clone()));
         let listener = Arc::new(TestListener::new());
 
-        rt.block_on(adapter.clone().start(&rt.handle(), listener.clone()))
+        let statsig_rt = StatsigRuntime::get_runtime();
+        adapter
+            .clone()
+            .start(&statsig_rt, listener.clone())
+            .await
             .unwrap();
 
         if let Ok(lock) = listener.clone().received_update.read() {
@@ -141,14 +146,17 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_set_data() {
-        let rt = Runtime::new().unwrap();
+    #[tokio::test]
+    async fn test_set_data() {
+        let statsig_rt = StatsigRuntime::get_runtime();
 
         let adapter = Arc::new(StatsigBootstrapSpecsAdapter::new("".to_string()));
 
         let listener = Arc::new(TestListener::new());
-        rt.block_on(adapter.clone().start(&rt.handle(), listener.clone()))
+        adapter
+            .clone()
+            .start(&statsig_rt, listener.clone())
+            .await
             .unwrap();
 
         let test_data = "{\"some\": \"value\"}".to_string();

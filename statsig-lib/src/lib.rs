@@ -1,4 +1,4 @@
-pub use async_runtime::AsyncRuntime;
+pub use statsig_runtime::StatsigRuntime;
 pub use client_init_response_formatter::ClientInitResponseOptions;
 pub use evaluation::dynamic_value::DynamicValue;
 pub use event_logging_adapter::*;
@@ -14,13 +14,13 @@ pub use statsig_options::StatsigOptions;
 pub use statsig_user::StatsigUser;
 
 pub mod instance_store;
+pub mod networking;
 pub mod output_logger;
 pub mod statsig_options;
-pub mod statsig_user;
 pub mod statsig_types;
+pub mod statsig_user;
 
-mod async_runtime;
-mod background_task;
+mod statsig_runtime;
 mod client_init_response_formatter;
 mod dcs_str;
 mod evaluation;
@@ -30,7 +30,6 @@ mod hashing;
 mod id_lists_adapter;
 mod initialize_response;
 mod macros;
-mod network_client;
 mod spec_store;
 mod spec_types;
 mod specs_adapter;

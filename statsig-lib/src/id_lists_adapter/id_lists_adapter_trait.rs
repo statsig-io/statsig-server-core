@@ -1,9 +1,8 @@
-use crate::StatsigErr;
+use crate::{StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::runtime::Handle;
 
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +28,7 @@ pub struct IdListUpdate {
 pub trait IdListsAdapter: Send + Sync {
     async fn start(
         self: Arc<Self>,
-        runtime_handle: &Handle,
+        statsig_runtime: &Arc<StatsigRuntime>,
         listener: Arc<dyn IdListsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr>;
 

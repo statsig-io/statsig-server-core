@@ -1,8 +1,9 @@
-use std::sync::Arc;
-use tokio::time::{sleep, Duration};
-use sigstat::{ Statsig, StatsigOptions, StatsigUser};
-use std::env;
 use sigstat::output_logger::LogLevel;
+use sigstat::{Statsig, StatsigOptions, StatsigUser};
+use std::env;
+use std::sync::Arc;
+use std::time::Instant;
+use tokio::time::{sleep, Duration};
 
 #[tokio::main]
 async fn main() {
@@ -15,6 +16,34 @@ async fn main() {
 
     let statsig = Statsig::new(&sdk_key, Some(opts));
     let _ = statsig.initialize().await;
+
+    let start = Instant::now();
+    for i in 0..5000 {
+        let user = StatsigUser::with_user_id(format!("test_user_{}", i));
+        let gate = statsig.check_gate(&user, "test_public");
+        assert_eq!(gate, true);
+    }
+
+    let duration = start.elapsed();
+    assert!(duration.as_millis() < 1000);
+    println!("check_gate: {:.2} ms", duration.as_millis());
+
+    // let _ = statsig
+    //     .shutdown_with_timeout(Duration::from_millis(100))
+    //     .await;
+    //
+    // // Print active threads to help debug what's keeping the process alive
+    // let thread_count = std::thread::available_parallelism().unwrap().get();
+    // println!("\nActive threads: {}", thread_count);
+    //
+    // let active_threads = std::thread::scope(|_| {
+    //     std::thread::current()
+    //         .name()
+    //         .unwrap_or("unnamed")
+    //         .to_string()
+    // });
+    // println!("Current thread: {}", active_threads);
+
     let user = StatsigUser::with_user_id("a-user".to_string());
     loop {
         let gate = statsig.check_gate(&user, "test_public");

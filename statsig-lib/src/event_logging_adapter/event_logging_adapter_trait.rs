@@ -1,4 +1,6 @@
-use crate::StatsigErr;
+use std::sync::Arc;
+
+use crate::{StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -19,7 +21,12 @@ pub struct LogEventRequest {
 
 #[async_trait]
 pub trait EventLoggingAdapter: Send + Sync {
+    async fn start(
+        &self,
+        statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr>;
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr>;
+    async fn shutdown(&self) -> Result<(), StatsigErr>;
 }
 
 #[cfg(test)]

@@ -1,4 +1,3 @@
-use crate::background_task::{BackgroundTask, BackgroundTaskRunner};
 use crate::event_logging::config_exposure::ConfigExposure;
 use crate::event_logging::gate_exposure::GateExposure;
 use crate::event_logging::layer_exposure::LayerExposure;
@@ -7,15 +6,15 @@ use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_e, LogEventPayload, LogEventRequest, StatsigOptions};
+use crate::{
+    log_d, log_e, log_w, LogEventPayload, LogEventRequest, StatsigOptions, StatsigRuntime,
+};
 use chrono::Utc;
 use serde_json::json;
 use std::collections::HashSet;
-use std::future::Future;
-use std::pin::Pin;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
-use tokio::runtime::Handle;
-use tokio::time::Duration;
+use tokio::time::{sleep, Duration};
 
 const DEFAULT_FLUSH_INTERVAL_MS: u32 = 60_000;
 const DEFAULT_QUEUE_SIZE: u32 = 500;
@@ -38,18 +37,19 @@ pub enum QueuedEventPayload {
 pub struct EventLogger {
     event_logging_adapter: Arc<dyn EventLoggingAdapter>,
     event_queue: Arc<RwLock<Vec<QueuedEventPayload>>>,
+    flush_interval_ms: u32,
     disable_all_logging: bool,
     max_queue_size: usize,
-    background_flush_runner: BackgroundTaskRunner,
     previous_exposure_info: Arc<Mutex<PreviousExposureInfo>>,
-    runtime_handle: Handle,
+    is_limit_flushing: Arc<AtomicBool>,
+    statsig_runtime: Arc<StatsigRuntime>,
 }
 
 impl EventLogger {
     pub fn new(
         event_logging_adapter: Arc<dyn EventLoggingAdapter>,
         options: &StatsigOptions,
-        runtime_handle: &Handle,
+        statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Self {
         let flush_interval_ms = options
             .event_logging_flush_interval_ms
@@ -59,7 +59,9 @@ impl EventLogger {
             .event_logging_max_queue_size
             .unwrap_or(DEFAULT_QUEUE_SIZE);
 
-        let disable_all_logging = options.disable_all_logging.unwrap_or(DEFAULT_DISABLE_ALL_LOGGING);
+        let disable_all_logging = options
+            .disable_all_logging
+            .unwrap_or(DEFAULT_DISABLE_ALL_LOGGING);
 
         let previous_exposure_info = Arc::new(Mutex::new(PreviousExposureInfo {
             exposures: HashSet::new(),
@@ -69,19 +71,40 @@ impl EventLogger {
         Self {
             event_logging_adapter,
             event_queue: Arc::new(RwLock::new(vec![])),
-            disable_all_logging: disable_all_logging,
+            flush_interval_ms,
+            disable_all_logging,
             max_queue_size: max_queue_size as usize,
-            background_flush_runner: BackgroundTaskRunner::new(flush_interval_ms, runtime_handle),
             previous_exposure_info,
-            runtime_handle: runtime_handle.clone(),
+            is_limit_flushing: Arc::new(AtomicBool::new(false)),
+            statsig_runtime: statsig_runtime.clone(),
         }
     }
 
-    pub fn start_background_task(self: Arc<Self>) {
+    pub fn start_background_task(self: Arc<Self>, statsig_runtime: &Arc<StatsigRuntime>) {
         let weak_inst = Arc::downgrade(&self);
-        if let Err(e) = self.background_flush_runner.start(weak_inst) {
-            log_e!("Failed to start background event log flushing. {}", e);
-        }
+        log_d!("Starting event logger background flush");
+        statsig_runtime.spawn("event_logger_bg_flush", move |shutdown_notify| async move {
+            log_d!("BG flush loop begin");
+
+            loop {
+                let strong_self = match weak_inst.upgrade() {
+                    Some(strong_self) => strong_self,
+                    None => {
+                        log_w!("failed to upgrade weak instance");
+                        break;
+                    }
+                };
+
+                tokio::select! {
+                    _ = sleep(Duration::from_millis(strong_self.flush_interval_ms as u64)) => {
+                        strong_self.flush_blocking().await;
+                    }
+                    _ = shutdown_notify.notified() => {
+                        break;
+                    }
+                }
+            }
+        });
     }
 
     pub fn enqueue(&self, payload: QueuedEventPayload) {
@@ -95,14 +118,15 @@ impl EventLogger {
             should_flush = length >= self.max_queue_size;
         };
 
-        if should_flush {
+        if should_flush && !self.is_limit_flushing.load(Ordering::Relaxed) {
+            log_d!("Flush limit reached. Flushing...");
+            self.is_limit_flushing.store(true, Ordering::Relaxed);
             self.flush();
         }
     }
 
-    pub async fn shutdown(&self, timeout: Duration) -> Result<(), StatsigErr> {
+    pub async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
         self.flush_blocking().await;
-        self.background_flush_runner.shutdown(timeout).await?;
         Ok(())
     }
 
@@ -110,10 +134,15 @@ impl EventLogger {
         let queue = self.event_queue.clone();
         let adapter = self.event_logging_adapter.clone();
         let prev_expos = self.previous_exposure_info.clone();
+        let is_limit_flushing = self.is_limit_flushing.clone();
 
-        self.runtime_handle.spawn(async move {
-            Self::flush_impl(adapter, queue, prev_expos).await;
-        });
+        self.statsig_runtime.spawn(
+            "event_logger_flush_and_forget",
+            |_shutdown_notify| async move {
+                is_limit_flushing.store(false, Ordering::Relaxed);
+                Self::flush_impl(adapter, queue, prev_expos).await;
+            },
+        );
     }
 
     pub async fn flush_blocking(&self) {
@@ -128,6 +157,7 @@ impl EventLogger {
         queue: Arc<RwLock<Vec<QueuedEventPayload>>>,
         previous_exposure_info: Arc<Mutex<PreviousExposureInfo>>,
     ) {
+        log_d!("Attempting to flush events");
         let count = match queue.read().ok() {
             Some(e) => e.len(),
             _ => return,
@@ -153,17 +183,30 @@ impl EventLogger {
             return;
         }
 
-        let event_count = processed_events.len() as u64;
+        let chunks = processed_events.chunks(1000);
 
-        let request = LogEventRequest {
-            payload: LogEventPayload {
-                events: json!(processed_events),
-                statsig_metadata: StatsigMetadata::get_as_json(),
-            },
-            event_count,
-        };
+        let futures: Vec<_> = chunks
+            .map(|chunk| {
+                let event_count = chunk.len() as u64;
+                let request = LogEventRequest {
+                    payload: LogEventPayload {
+                        events: json!(processed_events),
+                        statsig_metadata: StatsigMetadata::get_as_json(),
+                    },
+                    event_count,
+                };
 
-        let _ = event_logging_adapter.log_events(request).await;
+                log_d!("Preparing to flush {} events", event_count);
+                event_logging_adapter.log_events(request)
+            })
+            .collect();
+
+        let results = futures::future::join_all(futures).await;
+        for result in results {
+            if let Err(e) = result {
+                log_w!("Failed to flush events: {:?}", e);
+            }
+        }
     }
 }
 
@@ -215,22 +258,12 @@ fn validate_exposure_event<T: StatsigExposure>(
     Some(exposure.to_internal_event())
 }
 
-impl BackgroundTask for EventLogger {
-    fn run(&self) -> Pin<Box<dyn Future<Output = ()> + Send>> {
-        let queue = self.event_queue.clone();
-        let adapter = self.event_logging_adapter.clone();
-        let prev_expos = self.previous_exposure_info.clone();
-        Box::pin(async move {
-            Self::flush_impl(adapter, queue, prev_expos).await;
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::evaluation::evaluation_details::EvaluationDetails;
     use crate::event_logging::statsig_event::StatsigEvent;
+    use crate::output_logger::{initialize_simple_output_logger, LogLevel};
     use crate::statsig_user_internal::StatsigUserInternal;
     use crate::StatsigUser;
     use async_trait::async_trait;
@@ -255,11 +288,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_limit_flushing() {
+        initialize_simple_output_logger(&Some(LogLevel::Debug));
+
         let adapter = Arc::new(MockAdapter::new());
         let mut opts = StatsigOptions::new();
         opts.event_logging_max_queue_size = Some(1);
 
-        let logger = EventLogger::new(adapter.clone(), &opts, &Handle::try_current().unwrap());
+        let statsig_rt = StatsigRuntime::get_runtime();
+        let logger = Arc::new(EventLogger::new(adapter.clone(), &opts, &statsig_rt));
 
         for i in 1..10 {
             enqueue_single(&logger, format!("user_{}", i).as_str(), "my_event");
@@ -271,13 +307,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_shutdown_flush() {
+        initialize_simple_output_logger(&Some(LogLevel::Debug));
+
         let adapter = Arc::new(MockAdapter::new());
+        let statsig_rt = StatsigRuntime::get_runtime();
         let logger = Arc::new(EventLogger::new(
             adapter.clone(),
             &StatsigOptions::new(),
-            &Handle::try_current().unwrap(),
+            &statsig_rt,
         ));
-        logger.clone().start_background_task();
+        logger.clone().start_background_task(&statsig_rt);
 
         enqueue_single(&logger, "a_user", "my_event");
 
@@ -288,32 +327,34 @@ mod tests {
 
     #[tokio::test]
     async fn test_bg_flushing() {
+        initialize_simple_output_logger(&Some(LogLevel::Debug));
+
         let adapter = Arc::new(MockAdapter::new());
         let mut opts = StatsigOptions::new();
         opts.event_logging_flush_interval_ms = Some(1);
 
-        let logger = Arc::new(EventLogger::new(
-            adapter.clone(),
-            &opts,
-            &Handle::try_current().unwrap(),
-        ));
-        logger.clone().start_background_task();
+        let statsig_rt = StatsigRuntime::get_runtime();
+        let logger = Arc::new(EventLogger::new(adapter.clone(), &opts, &statsig_rt));
+        logger.clone().start_background_task(&statsig_rt);
         enqueue_single(&logger, "a_user", "my_event");
 
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(100)).await;
 
         assert_eq!(adapter.log_events_called_times.load(Ordering::SeqCst), 1);
     }
 
     #[tokio::test]
     async fn test_dedupe() {
+        initialize_simple_output_logger(&Some(LogLevel::Debug));
+
+        let statsig_rt = StatsigRuntime::get_runtime();
         let adapter = Arc::new(MockAdapter::new());
         let logger = Arc::new(EventLogger::new(
             adapter.clone(),
             &StatsigOptions::new(),
-            &Handle::try_current().unwrap(),
+            &statsig_rt,
         ));
-        logger.clone().start_background_task();
+        logger.clone().start_background_task(&statsig_rt);
 
         enqueue_single(&logger, "a_user", "my_custom");
         enqueue_single(&logger, "a_user", "my_custom");
@@ -361,11 +402,19 @@ mod tests {
 
     #[async_trait]
     impl EventLoggingAdapter for MockAdapter {
+        async fn start(&self, _statsig_runtime: &Arc<StatsigRuntime>) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
         async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
             self.log_events_called_times.fetch_add(1, Ordering::SeqCst);
             self.log_event_count
                 .fetch_add(request.event_count, Ordering::SeqCst);
             Ok(true)
+        }
+
+        async fn shutdown(&self) -> Result<(), StatsigErr> {
+            Ok(())
         }
     }
 }
