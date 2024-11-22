@@ -49,7 +49,9 @@ jobs:
           platform: ${{ matrix.config.platform }}
           dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
-          build_for_release: ${{ github.event_name == 'release' }}
+          app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
+          build_for_release: ${{ (github.ref_name == 'main' && matrix.config.always_build) || github.event_name == 'release' }}
+
 
       - name: Make Target Directory Accessible
         if: ${{ github.event_name == 'release' }}
@@ -108,7 +110,8 @@ jobs:
         uses: ./.github/actions/build-ffi-mac-and-windows
         with:
           target: ${{ matrix.config.target }}
-          build_for_release: ${{ github.event_name == 'release' }}
+          app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
+          build_for_release: ${{ (github.ref_name == 'main' && matrix.config.always_build) || github.event_name == 'release' }}
 
       - name: Upload Release Asset to Server Core
         if: ${{ github.event_name == 'release' }}
