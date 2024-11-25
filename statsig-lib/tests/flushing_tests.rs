@@ -115,7 +115,7 @@ async fn test_all_events_get_flushed() {
 
     assert_eventually_eq!(
         || mock_scrapi.get_logged_event_count(),
-        5000,
+        5001,
         Duration::from_secs(1)
     )
     .await;

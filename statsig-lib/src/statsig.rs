@@ -1,6 +1,7 @@
 use crate::client_init_response_formatter::{
     ClientInitResponseFormatter, ClientInitResponseOptions,
 };
+use crate::diagnostics::diagnostics::Diagnostics;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::SecondaryExposure;
@@ -55,6 +56,7 @@ pub struct Statsig {
     statsig_environment: Option<HashMap<String, DynamicValue>>,
     statsig_runtime: Arc<StatsigRuntime>,
     fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
+    diagnostics: Diagnostics,
 }
 
 impl Statsig {
@@ -76,13 +78,14 @@ impl Statsig {
             .map(|env| HashMap::from([("tier".into(), dyn_value!(env.as_str()))]));
 
         let event_logger =
-            EventLogger::new(event_logging_adapter.clone(), &options, &statsig_runtime);
+            Arc::new(EventLogger::new(event_logging_adapter.clone(), &options, &statsig_runtime));
+        let diagnostics = Diagnostics::new(event_logger.clone());
 
         Statsig {
             sdk_key: sdk_key.to_string(),
             options,
             gcir_formatter: Arc::new(ClientInitResponseFormatter::new(&spec_store)),
-            event_logger: Arc::new(event_logger),
+            event_logger,
             hashing: Hashing::new(),
             statsig_environment: environment,
             fallback_environment: Mutex::new(None),
@@ -90,15 +93,20 @@ impl Statsig {
             specs_adapter,
             event_logging_adapter,
             id_lists_adapter,
+            diagnostics,
             statsig_runtime,
         }
     }
 
     pub async fn initialize(&self) -> Result<(), StatsigErr> {
+        self.diagnostics.mark_init_overall_start();
         self.spec_store.set_source(SpecsSource::Loading);
         self.event_logger
             .clone()
             .start_background_task(&self.statsig_runtime);
+
+        let mut success = true;
+        let mut error_message: Option<String> = None;
 
         let init_res = match self
             .specs_adapter
@@ -109,6 +117,8 @@ impl Statsig {
             Ok(_) => Ok(()),
             Err(e) => {
                 self.spec_store.set_source(SpecsSource::NoValues);
+                success = false;
+                error_message = Some(format!("Failed to start specs adapter: {}", e));
                 Err(e)
             }
         };
@@ -121,6 +131,8 @@ impl Statsig {
 
             if let Err(e) = adapter.sync_id_lists().await {
                 log_e!("Failed to sync id lists: {}", e);
+                success = false;
+                error_message.get_or_insert_with(|| format!("Failed to sync ID lists: {}", e));
             }
         }
 
@@ -136,6 +148,8 @@ impl Statsig {
 
         self.set_default_environment_from_server();
 
+        self.diagnostics.mark_init_overall_end(success, error_message);
+        
         init_res
     }
 

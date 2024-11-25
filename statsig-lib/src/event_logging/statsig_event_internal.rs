@@ -3,6 +3,7 @@ use crate::event_logging::statsig_event::StatsigEvent;
 use crate::statsig_user_internal::{StatsigUserInternal, StatsigUserLoggable};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashSet;
 
 #[derive(Serialize, Deserialize)]
@@ -27,6 +28,17 @@ impl StatsigEventInternal {
             user: StatsigUserLoggable::new(user),
             time: Utc::now().timestamp_millis() as u64,
             secondary_exposures: secondary_exposure_keys_to_expos(secondary_exposures),
+        }
+    }
+
+    pub fn new_diagnostic_event(
+        event: StatsigEvent,
+    ) -> Self {
+        StatsigEventInternal {
+            event_data: event,
+            user: StatsigUserLoggable { value: Value::Null },
+            time: Utc::now().timestamp_millis() as u64,
+            secondary_exposures: None,
         }
     }
 }

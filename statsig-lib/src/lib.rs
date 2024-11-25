@@ -18,7 +18,9 @@ pub mod networking;
 pub mod output_logger;
 pub mod statsig_options;
 pub mod statsig_types;
+pub mod diagnostics;
 pub mod statsig_user;
+
 
 mod statsig_runtime;
 mod client_init_response_formatter;
