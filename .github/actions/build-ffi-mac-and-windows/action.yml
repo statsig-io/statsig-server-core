@@ -44,11 +44,20 @@ runs:
       run: |
         cargo build -p statsig_ffi --target=${{ inputs.target }} --release
 
-    - name: Report Size Changes
-      if: ${{ inputs.build_for_release == 'true' }}
-      shell: bash
+    - name: Persist Size Changes
+      if: ${{ inputs.build_for_release == 'true' && github.ref_name == 'main' }}
       env:
         GH_APP_ID: '229901'
         GH_APP_INSTALLATION_ID: '36921303'
         GH_APP_PRIVATE_KEY: ${{ inputs.app_private_key }}
-      run: ./run report-size ${{ inputs.target }}
+      shell: bash
+      run: ./run size-persist ${{ inputs.target }}
+
+    - name: Report Size Changes
+      if: ${{ inputs.build_for_release == 'true' && github.ref_name != 'main' }}
+      env:
+        GH_APP_ID: '229901'
+        GH_APP_INSTALLATION_ID: '36921303'
+        GH_APP_PRIVATE_KEY: ${{ inputs.app_private_key }}
+      shell: bash
+      run: ./run size-report ${{ inputs.target }}

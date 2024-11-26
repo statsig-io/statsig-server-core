@@ -5,7 +5,8 @@ import { GhPushPhp } from './gh_push_php.js';
 import { JavaPub } from './java_pub.js';
 import { NapiBuild } from './napi_build.js';
 import { NapiPub } from './napi_pub.js';
-import { ReportSize } from './report_size.js';
+import { SizePersist } from './size_persist.js';
+import { SizeReport } from './size_report.js';
 import { SyncVersion } from './sync_version.js';
 import { ZipFiles } from './zip_files.js';
 
@@ -17,7 +18,8 @@ export const Commands = [
   new JavaPub(),
   new NapiBuild(),
   new NapiPub(),
-  new ReportSize(),
+  new SizePersist(),
+  new SizeReport(),
   new SyncVersion(),
   new ZipFiles(),
 ];

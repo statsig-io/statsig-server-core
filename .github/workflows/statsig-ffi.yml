@@ -25,6 +25,7 @@ jobs:
           - target: amazonlinux2023-arm64
             platform: linux/arm64
             runner: statsig-ubuntu-arm64
+            always_build: true
 
           - target: amazonlinux2-x86_64
             platform: linux/amd64
@@ -33,7 +34,6 @@ jobs:
           - target: amazonlinux2023-x86_64
             platform: linux/amd64
             runner: ubuntu-latest
-            always_build: true
 
     runs-on: ${{ matrix.config.runner }}
     timeout-minutes: 15
@@ -50,7 +50,7 @@ jobs:
           dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
-          build_for_release: ${{ (github.ref_name == 'main' && matrix.config.always_build) || github.event_name == 'release' }}
+          build_for_release: ${{ matrix.config.always_build || github.event_name == 'release' }}
 
 
       - name: Make Target Directory Accessible
@@ -111,7 +111,7 @@ jobs:
         with:
           target: ${{ matrix.config.target }}
           app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
-          build_for_release: ${{ (github.ref_name == 'main' && matrix.config.always_build) || github.event_name == 'release' }}
+          build_for_release: ${{ matrix.config.always_build || github.event_name == 'release' }}
 
       - name: Upload Release Asset to Server Core
         if: ${{ github.event_name == 'release' }}
