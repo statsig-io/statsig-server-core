@@ -163,7 +163,7 @@ async fn test_layer_is_experiment_active() {
 
     let layer = statsig.get_layer(&user, layer_name);
     assert_eq!(layer.rule_id, "54QJztEPRLXK7ZCvXeY9q4");
-    assert_eq!(layer.group_name, None);
+    assert_eq!(layer.group_name, Some("Control".to_string()));
 
     statsig.shutdown().await.unwrap();
 }

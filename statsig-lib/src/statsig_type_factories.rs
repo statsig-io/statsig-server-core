@@ -106,19 +106,22 @@ pub fn make_layer(
     event_logger_ptr: Option<Weak<EventLogger>>,
     version: Option<u32>,
 ) -> Layer {
-    let (value, rule_id) = match &evaluation {
+    let (value, rule_id, group_name, allocated_experiment_name) = match &evaluation {
         Some(e) => (
             value_to_hashmap(&e.value),
             e.base.rule_id.clone(),
+            e.group_name.clone(),
+            e.allocated_experiment_name.clone(),
         ),
-        None => (HashMap::new(), "default".into()),
+        None => (HashMap::new(), "default".into(), None, None),
     };
 
     Layer {
         name: name.to_string(),
         rule_id,
         details: details.clone(),
-        group_name: None,
+        group_name,
+        allocated_experiment_name,
         __value: value,
         __evaluation: evaluation,
         __user: user.clone(),
