@@ -1,3 +1,4 @@
+use crate::evaluation::evaluator_result::EvaluatorResult;
 use crate::spec_store::SpecStoreData;
 use serde::{Deserialize, Serialize};
 use crate::SpecsSource;
@@ -11,11 +12,11 @@ pub struct EvaluationDetails {
 
 impl EvaluationDetails {
     pub fn unrecognized(spec_store_data: &SpecStoreData) -> Self {
-        Self::create_from_data(spec_store_data, "Unrecognized")
+        Self::create_from_data(spec_store_data, "Unrecognized", &EvaluatorResult::default())
     }
 
-    pub fn recognized(spec_store_data: &SpecStoreData) -> Self {
-        Self::create_from_data(spec_store_data, "Recognized")
+    pub fn recognized(spec_store_data: &SpecStoreData, eval_result: &EvaluatorResult) -> Self {
+        Self::create_from_data(spec_store_data, "Recognized", eval_result)
     }
 
     pub fn unrecognized_no_data() -> Self {
@@ -34,12 +35,20 @@ impl EvaluationDetails {
         }
     }
 
-    fn create_from_data(data: &SpecStoreData, sub_reason: &str) -> Self {
+    fn create_from_data(data: &SpecStoreData, sub_reason: &str, eval_result: &EvaluatorResult) -> Self {
         if data.source == SpecsSource::Uninitialized || data.source == SpecsSource::NoValues {
             return Self {
                 reason: data.source.to_string(),
                 lcut: None,
                 received_at: None,
+            };
+        }
+
+        if eval_result.unsupported {
+            return Self {
+                reason: format!("{}:Unsupported", data.source),
+                lcut: Some(data.values.time),
+                received_at: data.time_received_at,
             };
         }
 

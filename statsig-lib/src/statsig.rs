@@ -415,12 +415,12 @@ impl Statsig {
             Some(spec) => {
                 let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
                 Evaluator::evaluate(&mut context, spec);
-
+                let eval_details = EvaluationDetails::recognized(&data, &context.result);
                 (
                     context.result.bool_value,
                     context.result.rule_id.cloned(),
                     Some(context.result.secondary_exposures),
-                    EvaluationDetails::recognized(&data),
+                    eval_details,
                     context.result.version,
                 )
             }
@@ -459,7 +459,7 @@ impl Statsig {
                 make_feature_gate(
                     gate_name,
                     Some(evaluation),
-                    EvaluationDetails::recognized(&data),
+                    EvaluationDetails::recognized(&data, &context.result),
                     context.result.version,
                 )
             }
@@ -497,7 +497,7 @@ impl Statsig {
                 make_dynamic_config(
                     config_name,
                     Some(evaluation),
-                    EvaluationDetails::recognized(&data),
+                    EvaluationDetails::recognized(&data, &context.result),
                     context.result.version,
                 )
             }
@@ -536,7 +536,7 @@ impl Statsig {
                 make_experiment(
                     experiment_name,
                     Some(evaluation),
-                    EvaluationDetails::recognized(&data),
+                    EvaluationDetails::recognized(&data, &context.result),
                     context.result.version,
                 )
             }
@@ -574,7 +574,7 @@ impl Statsig {
                     user_internal,
                     layer_name,
                     Some(evaluation),
-                    EvaluationDetails::recognized(&data),
+                    EvaluationDetails::recognized(&data, &context.result),
                     Some(event_logger_ptr),
                     context.result.version,
                 )
