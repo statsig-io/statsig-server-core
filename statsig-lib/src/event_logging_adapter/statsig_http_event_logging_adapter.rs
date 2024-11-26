@@ -12,7 +12,7 @@ const DEFAULT_LOG_EVENT_URL: &str = "https://prodregistryv2.org/v1/log_event";
 
 #[derive(Deserialize)]
 struct LogEventResult {
-    success: bool,
+    success: Option<bool>,
 }
 
 pub struct StatsigHttpEventLoggingAdapter {
@@ -79,7 +79,7 @@ impl StatsigHttpEventLoggingAdapter {
             .ok_or(StatsigErr::NetworkError("Log event failure".into()))?;
 
         serde_json::from_str::<LogEventResult>(&response_str)
-            .map(|result| result.success)
+            .map(|result| result.success != Some(false))
             .map_err(|e| {
                 StatsigErr::JsonParseError(stringify!(LogEventResult).to_string(), e.to_string())
             })

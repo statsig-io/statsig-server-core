@@ -276,7 +276,7 @@ impl Curl {
                     let _ = entry.request.tx.send(Ok(response));
                 }
                 Err(e) => {
-                    log_e!("failed to send result: {:?}", e);
+                    log_e!("Failed to send request to {}: {:?}", entry.request.args.url,  e);
                     let _ = entry
                         .request
                         .tx
