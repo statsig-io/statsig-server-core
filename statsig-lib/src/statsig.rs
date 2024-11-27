@@ -34,7 +34,7 @@ use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{
     dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, SpecsAdapter, SpecsSource,
-    SpecsUpdateListener, StatsigUser,
+    StatsigUser,
 };
 use serde_json::json;
 use std::collections::HashMap;
@@ -155,34 +155,6 @@ impl Statsig {
             .mark_init_overall_end(success, error_message);
 
         init_res
-    }
-
-    pub fn initialize_with_callback<F>(&self, callback: F)
-    where
-        F: FnOnce() + Send + 'static,
-    {
-        self.event_logger
-            .clone()
-            .start_background_task(&self.statsig_runtime);
-
-        let info = self.spec_store.get_current_specs_info();
-        let is_uninitialized = info.source == SpecsSource::Uninitialized;
-        if is_uninitialized {
-            self.spec_store.set_source(SpecsSource::Loading);
-        }
-
-        let adapter = self.specs_adapter.clone();
-        let store = self.spec_store.clone();
-        let runtime = self.statsig_runtime.clone();
-
-        self.statsig_runtime
-            .spawn("init_with_cb", |_shutdown_notify| async move {
-                // todo: return result to callback
-                let _ = adapter.clone().start(&runtime, store).await;
-
-                callback();
-            });
-        self.set_default_environment_from_server();
     }
 
     pub async fn shutdown_with_timeout(&self, timeout: Duration) -> Result<(), StatsigErr> {
@@ -376,20 +348,6 @@ impl Statsig {
 
     pub async fn flush_events(&self) {
         self.event_logger.flush_blocking().await
-    }
-
-    pub fn flush_events_with_callback<F>(&self, callback: F)
-    where
-        F: FnOnce() + Send + 'static,
-    {
-        let cloned_event_logger = self.event_logger.clone();
-
-        self.statsig_runtime
-            .spawn("flush_events_with_cb", |_shutdown_notify| async move {
-                let _ = cloned_event_logger.flush_blocking().await;
-
-                callback();
-            });
     }
 
     // ---------––

@@ -6,8 +6,7 @@ use jni::JNIEnv;
 
 use crate::jni::jni_utils::jni_to_rust_hashmap;
 use jni::objects::{JClass, JObject, JString};
-use sigstat::{instance_store::INST_STORE, log_e, Statsig, StatsigOptions, StatsigUser};
-
+use sigstat::{instance_store::INST_STORE, log_e, Statsig, StatsigOptions, StatsigRuntime, StatsigUser};
 use super::jni_utils::serialize_json_to_jstring;
 
 #[no_mangle]
@@ -77,7 +76,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
         .new_global_ref(callback)
         .expect("Failed to create global ref");
 
-    statsig.initialize_with_callback(move || {
+    let statsig_rt = StatsigRuntime::get_runtime();
+    statsig_rt.runtime_handle.block_on(async move {
+        if let Err(e) = statsig.initialize().await {
+            log_e!("Failed to initialize statsig: {}", e);
+        }
+
         let mut env = vm.attach_current_thread().unwrap();
 
         let result = env.call_method(global_callback.as_obj(), "run", "()V", &[]);
@@ -350,7 +354,10 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
         .new_global_ref(callback)
         .expect("Failed to create global ref");
 
-    statsig.flush_events_with_callback(move || {
+    let statsig_rt = StatsigRuntime::get_runtime();
+    statsig_rt.runtime_handle.block_on(async move {
+        statsig.flush_events().await;
+
         let mut env = vm.attach_current_thread().unwrap();
 
         let result = env.call_method(global_callback.as_obj(), "run", "()V", &[]);

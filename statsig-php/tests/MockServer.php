@@ -5,11 +5,12 @@ namespace Statsig\Tests;
 use donatj\MockWebServer\MockWebServer;
 use donatj\MockWebServer\Response;
 use donatj\MockWebServer\Responses\NotFoundResponse;
+
 // donatj\MockWebServer docs: https://github.com/donatj/mock-webserver/blob/master/docs/docs.md
 
 class MockServer
 {
-    private $server;
+    private MockWebServer $server;
 
     public function __construct()
     {
@@ -19,17 +20,17 @@ class MockServer
         $this->server->start();
     }
 
-    public function stop()
+    public function stop(): void
     {
         $this->server->stop();
     }
 
-    public function getUrl()
+    public function getUrl(): string
     {
         return $this->server->getServerRoot();
     }
 
-    public function mock($path, $response, $options = [])
+    public function mock($path, $response, $options = []): void
     {
         $status = $options['status'] ?? 200;
 
@@ -43,7 +44,7 @@ class MockServer
         );
     }
 
-    public function getRequests()
+    public function getRequests(): array
     {
         $requests = [];
 

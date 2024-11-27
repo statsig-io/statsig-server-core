@@ -2,10 +2,7 @@ use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::{get_instance_or_noop_c, get_instance_or_return_c};
 use serde_json::json;
 use sigstat::instance_store::INST_STORE;
-use sigstat::{
-    get_instance_or_noop, log_e, unwrap_or_noop, unwrap_or_return, Statsig, StatsigOptions,
-    StatsigUser,
-};
+use sigstat::{get_instance_or_noop, log_e, unwrap_or_noop, unwrap_or_return, Statsig, StatsigOptions, StatsigRuntime, StatsigUser};
 use std::os::raw::c_char;
 use std::ptr::null;
 
@@ -40,7 +37,12 @@ pub extern "C" fn statsig_initialize(statsig_ref: *const c_char, callback: exter
     let statsig_ref = unwrap_or_noop!(c_char_to_string(statsig_ref));
     let statsig = get_instance_or_noop!(Statsig, &statsig_ref);
 
-    statsig.initialize_with_callback(move || {
+    let statsig_rt = StatsigRuntime::get_runtime();
+    statsig_rt.runtime_handle.block_on(async move {
+        if let Err(e) = statsig.initialize().await {
+            log_e!("Failed to initialize statsig: {}", e);
+        }
+
         callback();
     });
 }
@@ -50,7 +52,10 @@ pub extern "C" fn statsig_flush_events(statsig_ref: *const c_char, callback: ext
     let statsig_ref = unwrap_or_noop!(c_char_to_string(statsig_ref));
     let statsig = get_instance_or_noop!(Statsig, &statsig_ref);
 
-    statsig.flush_events_with_callback(move || {
+    let statsig_rt = StatsigRuntime::get_runtime();
+    statsig_rt.runtime_handle.block_on(async move {
+        statsig.flush_events().await;
+
         callback();
     });
 }
