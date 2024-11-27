@@ -20,3 +20,4 @@ jobs:
           stale-pr-label: 'stale'
           close-pr-label: 'closed-by-bot'
           exempt-pr-labels: 'no-bots' # PRs with this label will not be marked as stale or closed
+          ignore-updates: true
