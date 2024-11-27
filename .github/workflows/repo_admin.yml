@@ -1,0 +1,22 @@
+name: 'Repo Admin'
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 20 * * *' # Runs daily at 12 PM PST (20:00 UTC)
+
+jobs:
+  close-stale-prs:
+    runs-on: ubuntu-latest
+    if: github.event.repository.private
+    timeout-minutes: 5
+    steps:
+      - name: Close Stale Pull Requests
+        uses: actions/stale@v9
+        with:
+          stale-pr-message: 'This PR is reaching the 3 week mark with no activity. It will be closed in 1 week unless further action is taken. You can add the label "no-bots" to mark this as exempt.'
+          close-pr-message: 'This PR was closed because it saw no activity for 3 weeks.'
+          days-before-pr-stale: 14 # Mark PRs as stale after 18 days (3 weeks - 7 days)
+          days-before-pr-close: 7  # Close stale PRs after 7 additional days
+          stale-pr-label: 'stale'
+          close-pr-label: 'closed-by-bot'
+          exempt-pr-labels: 'no-bots' # PRs with this label will not be marked as stale or closed
