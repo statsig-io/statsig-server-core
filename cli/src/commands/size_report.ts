@@ -1,7 +1,4 @@
-import {
-  covertToHumanReadableSize,
-  getHumanReadableSize,
-} from '@/utils/file_utils.js';
+import { covertToHumanReadableSize } from '@/utils/file_utils.js';
 import { getOctokit } from '@/utils/octokit_utils.js';
 import {
   SizeComment,
@@ -12,7 +9,6 @@ import {
 import { Log } from '@/utils/teminal_utils.js';
 import { Command } from 'commander';
 import { Octokit } from 'octokit';
-import { parse } from 'path';
 
 const ONLY_REPORT_ON = [
   'statsig-ffi-aarch64-apple-darwin',
@@ -124,7 +120,9 @@ function createReportContent(
     if (key === `statsig-ffi-${target}`) {
       lines.push(getLineForTarget(target, comment, sizeInfo));
     } else if (ONLY_REPORT_ON.includes(key)) {
-      lines.push(`| ${comment.name} | ${comment.size} | - |`);
+      const size = covertToHumanReadableSize(comment.bytes, 'KB');
+
+      lines.push(`| ${comment.name} | ${size} | - |`);
     }
   });
 
