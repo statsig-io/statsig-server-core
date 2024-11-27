@@ -1,3 +1,7 @@
+import {
+  covertToHumanReadableSize,
+  getHumanReadableSize,
+} from '@/utils/file_utils.js';
 import { getOctokit } from '@/utils/octokit_utils.js';
 import {
   SizeComment,
@@ -8,6 +12,7 @@ import {
 import { Log } from '@/utils/teminal_utils.js';
 import { Command } from 'commander';
 import { Octokit } from 'octokit';
+import { parse } from 'path';
 
 const ONLY_REPORT_ON = [
   'statsig-ffi-aarch64-apple-darwin',
@@ -131,7 +136,10 @@ function getLineForTarget(
   comment: SizeComment,
   sizeInfo: SizeInfo,
 ) {
-  const size = `${comment.size} -> ${sizeInfo.size}`;
+  const beforeSize = covertToHumanReadableSize(comment.bytes, 'KB');
+  const afterSize = covertToHumanReadableSize(sizeInfo.bytes, 'KB');
+
+  const size = `${beforeSize} -> ${afterSize}`;
   const percent = ((sizeInfo.bytes - comment.bytes) / comment.bytes) * 100;
 
   let change = 'No Change';

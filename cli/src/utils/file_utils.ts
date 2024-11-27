@@ -17,16 +17,32 @@ export function getFileSize(filepath: string) {
   return stats.size;
 }
 
-export function getHumanReadableSize(filepath: string) {
+export function getHumanReadableSize(
+  filepath: string,
+  maxUnit: 'B' | 'KB' | 'MB' | 'GB' = 'GB',
+) {
   const bytes = getFileSize(filepath);
 
-  if (bytes < 1024) {
+  return covertToHumanReadableSize(bytes, maxUnit);
+}
+
+export function covertToHumanReadableSize(
+  bytes: number,
+  maxUnit: 'B' | 'KB' | 'MB' | 'GB' = 'GB',
+) {
+  if (bytes < 1024 || maxUnit === 'B') {
     return `${bytes} Bytes`;
   }
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(2)} KB`;
+
+  if (bytes < 1024 * 1024 || maxUnit === 'KB') {
+    return `${(bytes / 1024).toFixed(0)} KB`;
   }
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+
+  if (bytes < 1024 * 1024 * 1024 || maxUnit === 'MB') {
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
 export function ensureEmptyDir(dir: string) {
