@@ -35,7 +35,7 @@ impl StatsigRuntime {
         self.runtime_handle.clone()
     }
 
-    pub fn shutdown(&self) {
+    pub fn shutdown(&self, timeout: Duration) {
         let _ = self.shutdown_notify.notify_waiters();
 
         if let Ok(mut lock) = self.spawned_tasks.lock() {
@@ -46,9 +46,18 @@ impl StatsigRuntime {
 
         if let Ok(mut lock) = self.inner_runtime.lock() {
             if let Some(runtime) = lock.take() {
-                runtime.shutdown_timeout(Duration::from_secs(1));
+                log_d!("Shutting down Statsig runtime with timeout: {:?}", timeout);
+                if timeout.as_millis() > 0 {
+                    runtime.shutdown_timeout(timeout);
+                } else {
+                    runtime.shutdown_background();
+                }
             }
         }
+    }
+
+    pub fn shutdown_immediate(&self) {
+        self.shutdown(Duration::from_millis(0));
     }
 
     pub fn spawn<F, Fut>(&self, tag: &str, task: F) -> tokio::task::Id
@@ -147,6 +156,6 @@ fn create_runtime_if_required() -> (Option<Runtime>, Handle) {
 
 impl Drop for StatsigRuntime {
     fn drop(&mut self) {
-        self.shutdown();
+        self.shutdown(Duration::from_millis(100));
     }
 }

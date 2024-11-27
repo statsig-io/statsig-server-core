@@ -1,3 +1,4 @@
+use std::time::Duration;
 use crate::jni::jni_utils::{convert_java_client_init_response_options_to_rust, jstring_to_string};
 use crate::{get_instance_or_noop_jni, get_instance_or_return_jni};
 use jni::sys::{jboolean, jclass, jstring, JNI_FALSE, JNI_TRUE};
@@ -133,7 +134,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFinalizeShutdown(
     statsig_ref: JString,
 ) {
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
-    statsig.finalize_shutdown();
+    statsig.finalize_shutdown(Duration::from_millis(1000));
 }
 
 #[no_mangle]

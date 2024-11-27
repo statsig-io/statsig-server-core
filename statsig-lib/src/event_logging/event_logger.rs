@@ -163,45 +163,37 @@ impl EventLogger {
             _ => return,
         };
 
-        let mut opt_local_events = None;
-        if count != 0 {
-            if let Ok(mut lock) = queue.write() {
-                opt_local_events = Some(std::mem::take(&mut *lock));
-                drop(lock);
-            }
-        }
-
-        let processed_events: Vec<StatsigEventInternal> = match opt_local_events {
-            Some(local_events) => local_events
-                .into_iter()
-                .filter_map(|p| validate_queued_event_payload(p, &previous_exposure_info))
-                .collect(),
-            None => return,
-        };
-
-        if processed_events.is_empty() {
+        if count == 0 {
             return;
         }
 
-        let chunks = processed_events.chunks(1000);
+        let payloads = match queue.write() {
+            Ok(mut lock) => std::mem::take(&mut *lock),
+            _ => {
+                log_e!("Failed to lock event queue");
+                return;
+            }
+        };
 
-        let futures: Vec<_> = chunks
-            .map(|chunk| {
-                let event_count = chunk.len() as u64;
-                let request = LogEventRequest {
-                    payload: LogEventPayload {
-                        events: json!(processed_events),
-                        statsig_metadata: StatsigMetadata::get_as_json(),
-                    },
-                    event_count,
-                };
+        let validated_chunks = validate_and_chunk_events(payloads, previous_exposure_info).await;
 
-                log_d!("Preparing to flush {} events", event_count);
-                event_logging_adapter.log_events(request)
-            })
-            .collect();
+        if validated_chunks.is_empty() {
+            return;
+        }
 
-        let results = futures::future::join_all(futures).await;
+        let tasks = validated_chunks.iter().map(|chunk| {
+            let event_count = chunk.len() as u64;
+            let request = LogEventRequest {
+                payload: LogEventPayload {
+                    events: json!(chunk),
+                    statsig_metadata: StatsigMetadata::get_as_json(),
+                },
+                event_count,
+            };
+            event_logging_adapter.log_events(request)
+        });
+
+        let results = futures::future::join_all(tasks).await;
         for result in results {
             if let Err(e) = result {
                 log_w!("Failed to flush events: {:?}", e);
@@ -210,9 +202,42 @@ impl EventLogger {
     }
 }
 
+async fn validate_and_chunk_events(
+    payloads: Vec<QueuedEventPayload>,
+    previous_exposure_info: Arc<Mutex<PreviousExposureInfo>>,
+) -> Vec<Vec<StatsigEventInternal>> {
+    let mut previous_info = match previous_exposure_info.lock() {
+        Ok(lock) => lock,
+        Err(e) => {
+            log_e!("Failed to lock previous exposure mutex: {}", e);
+            return vec![];
+        }
+    };
+
+    let mut valid_events = vec![];
+    let mut chunk = vec![];
+
+    for payload in payloads {
+        if let Some(event) = validate_queued_event_payload(payload, &mut previous_info) {
+            chunk.push(event);
+        }
+
+        if chunk.len() >= 1000 {
+            valid_events.push(chunk);
+            chunk = vec![];
+        }
+    }
+
+    if !chunk.is_empty() {
+        valid_events.push(chunk);
+    }
+
+    valid_events
+}
+
 fn validate_queued_event_payload(
     payload: QueuedEventPayload,
-    previous_exposure_info: &Mutex<PreviousExposureInfo>,
+    previous_exposure_info: &mut PreviousExposureInfo,
 ) -> Option<StatsigEventInternal> {
     match payload {
         QueuedEventPayload::CustomEvent(e) => Some(e),
@@ -230,16 +255,8 @@ fn validate_queued_event_payload(
 
 fn validate_exposure_event<T: StatsigExposure>(
     exposure: T,
-    previous_exposure_info: &Mutex<PreviousExposureInfo>,
+    previous_exposure_info: &mut PreviousExposureInfo,
 ) -> Option<StatsigEventInternal> {
-    let mut previous_exposure_info = match previous_exposure_info.lock() {
-        Ok(guard) => guard,
-        Err(e) => {
-            log_e!("Failed to lock mutex: {}", e);
-            return Some(exposure.to_internal_event());
-        }
-    };
-
     let now = Utc::now().timestamp_millis() as u64;
     if now - previous_exposure_info.last_reset > DEDUPE_WINDOW_DURATION_MS
         || previous_exposure_info.exposures.len() > DEDUPE_MAX_KEYS
@@ -301,7 +318,7 @@ mod tests {
             enqueue_single(&logger, format!("user_{}", i).as_str(), "my_event");
         }
 
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(100)).await;
         assert_eq!(adapter.log_events_called_times.load(Ordering::SeqCst), 1);
     }
 

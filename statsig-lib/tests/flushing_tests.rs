@@ -68,14 +68,15 @@ async fn main() {
     assert!(overall_duration.as_millis() < 2000);
 }
 
+
 #[tokio::test]
 async fn test_no_flushing_on_main() {
-    let (_, statsig) = setup(2000 /* delay_ms */).await;
+    let (_, statsig) = setup(5000 /* delay_ms */).await;
 
     statsig.initialize().await.unwrap();
 
     let start = Instant::now();
-    for i in 0..5000 {
+    for i in 0..15000 {
         let user = StatsigUser::with_user_id(format!("test_user_{}", i));
         let gate = statsig.check_gate(&user, "test_public");
         assert_eq!(gate, true);

@@ -40,7 +40,7 @@ use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::try_join;
 
 pub struct Statsig {
@@ -186,11 +186,12 @@ impl Statsig {
     }
 
     pub async fn shutdown_with_timeout(&self, timeout: Duration) -> Result<(), StatsigErr> {
-        log_d!("Shutting down Statsig");
+        log_d!("Shutting down Statsig with timeout {}ms", timeout.as_millis());
 
+        let start = Instant::now();
         let final_result = tokio::select! {
             _ = tokio::time::sleep(timeout) => {
-                log_w!("Statsig shutdown timed out.");
+                log_w!("Statsig shutdown timed out. {}", start.elapsed().as_millis());
                 Err(StatsigErr::ShutdownTimeout)
             }
             sub_result = async {
@@ -201,7 +202,7 @@ impl Statsig {
             } => {
                 match sub_result {
                     Ok(_) => {
-                        log_d!("All shutdown tasks completed successfully");
+                        log_d!("All Statsig tasks shutdown successfully");
                         Ok(())
                     }
                     Err(e) => {
@@ -212,7 +213,7 @@ impl Statsig {
             }
         };
 
-        self.finalize_shutdown();
+        self.finalize_shutdown(timeout.saturating_sub(start.elapsed()));
         final_result
     }
 
@@ -250,8 +251,8 @@ impl Statsig {
             });
     }
 
-    pub fn finalize_shutdown(&self) {
-        self.statsig_runtime.shutdown();
+    pub fn finalize_shutdown(&self, timeout: Duration) {
+        self.statsig_runtime.shutdown(timeout);
     }
 
     // todo: add type for Context

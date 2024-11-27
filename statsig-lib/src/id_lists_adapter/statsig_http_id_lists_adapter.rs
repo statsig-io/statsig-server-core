@@ -452,7 +452,7 @@ mod tests {
     async fn test_bg_sync_shutdown() {
         let (_server, adapter, listener, statsig_rt) = setup(Some(10)).await;
 
-        statsig_rt.shutdown();
+        statsig_rt.shutdown_immediate();
         let _ = adapter.shutdown(Duration::from_millis(1)).await;
 
         let result = listener
