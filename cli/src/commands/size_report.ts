@@ -136,9 +136,9 @@ function getLineForTarget(
 
   let change = 'No Change';
   if (percent > 0) {
-    change = '${\\color{orangered}⬆️}$' + percent.toFixed(2) + '%';
+    change = '${\\color{orangered}⬆️}$ ' + percent.toFixed(2) + '%';
   } else if (percent < 0) {
-    change = '${\\color{limegreen}⬇️}$' + percent.toFixed(2) + '%';
+    change = '${\\color{limegreen}⬇️}$ ' + percent.toFixed(2) + '%';
   }
 
   return `| statsig-ffi-${target} | ${size} | ${change} |`;
