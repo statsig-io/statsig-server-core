@@ -38,6 +38,10 @@ dependencies {
 
 test {
     useJUnitPlatform()
+
+    testLogging {
+        events "passed"
+    }
 }
 
 if (!project.ext.has('artifactTasks')) {
