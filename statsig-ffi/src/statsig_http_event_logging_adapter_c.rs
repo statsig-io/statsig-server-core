@@ -10,7 +10,7 @@ pub extern "C" fn statsig_http_event_logging_adapter_create(
     sdk_key: *const c_char,
     options_ref: *const c_char,
 ) -> *const c_char {
-    let sdk_key = unwrap_or_return!(c_char_to_string(sdk_key), std::ptr::null());
+    let sdk_key = unwrap_or_return!(c_char_to_string(sdk_key), null());
 
     let options_ref = c_char_to_string(options_ref);
     let options = INST_STORE.get_with_optional_id::<StatsigOptions>(options_ref.as_ref());

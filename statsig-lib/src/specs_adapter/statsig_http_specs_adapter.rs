@@ -2,7 +2,7 @@ use crate::networking::{NetworkClient, RequestArgs};
 use crate::specs_adapter::{SpecsAdapter, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_e, unwrap_or_return_with, SpecsSource, StatsigRuntime};
+use crate::{log_e, SpecsSource, StatsigRuntime};
 use async_trait::async_trait;
 use chrono::Utc;
 use std::collections::HashMap;
@@ -13,27 +13,24 @@ use tokio::time::sleep;
 pub const DEFAULT_SPECS_URL: &str = "https://api.statsigcdn.com/v2/download_config_specs";
 const DEFAULT_SYNC_INTERVAL_MS: u32 = 10_000;
 
-struct AdapterContext {
-    network: NetworkClient,
-    listener: Arc<dyn SpecsUpdateListener>,
-}
-
 pub struct StatsigHttpSpecsAdapter {
-    context: RwLock<Option<Arc<AdapterContext>>>,
+    listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
+    network: NetworkClient,
     specs_url: String,
     sync_interval_duration: Duration,
-    sdk_key: String,
 }
 
 impl StatsigHttpSpecsAdapter {
     pub fn new(sdk_key: &str, specs_url: Option<&String>, sync_interval: Option<u32>) -> Self {
+        let headers = StatsigMetadata::get_constant_request_headers(sdk_key);
+
         Self {
-            context: RwLock::new(None),
+            listener: RwLock::new(None),
+            network: NetworkClient::new(sdk_key, Some(headers)),
             specs_url: construct_specs_url(sdk_key, specs_url),
             sync_interval_duration: Duration::from_millis(
                 sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS) as u64,
             ),
-            sdk_key: sdk_key.to_string(),
         }
     }
 
@@ -41,25 +38,10 @@ impl StatsigHttpSpecsAdapter {
         &self,
         current_store_lcut: Option<u64>,
     ) -> Option<String> {
-        let context = unwrap_or_return_with!(self.get_context(), || {
-            log_e!("No context found");
-            return None;
-        });
-
-        self.fetch_specs_from_network_impl(&context, current_store_lcut)
-            .await
-    }
-
-    async fn fetch_specs_from_network_impl(
-        &self,
-        context: &AdapterContext,
-        current_store_lcut: Option<u64>,
-    ) -> Option<String> {
         let query_params =
             current_store_lcut.map(|lcut| HashMap::from([("sinceTime".into(), lcut.to_string())]));
 
-        context
-            .network
+        self.network
             .get(RequestArgs {
                 url: self.specs_url.clone(),
                 retries: 2,
@@ -79,12 +61,14 @@ impl StatsigHttpSpecsAdapter {
             }
         };
 
-        let context = unwrap_or_return_with!(strong_self.get_context(), || {
-            log_e!("StatsigHttpSpecsAdapter - No context found");
-            return;
-        });
+        let lcut = match strong_self.listener.read() {
+            Ok(lock) => match lock.as_ref() {
+                Some(listener) => listener.get_current_specs_info().lcut,
+                None => None,
+            },
+            Err(_) => None,
+        };
 
-        let lcut = context.listener.get_current_specs_info().lcut;
         if let Err(e) = strong_self.manually_sync_specs(lcut).await {
             log_e!(
                 "StatsigHttpSpecsAdapter - Background specs sync failed: {}",
@@ -94,16 +78,15 @@ impl StatsigHttpSpecsAdapter {
     }
 
     async fn manually_sync_specs(&self, current_store_lcut: Option<u64>) -> Result<(), StatsigErr> {
-        let context = unwrap_or_return_with!(self.get_context(), || {
-            log_e!("StatsigHttpSpecsAdapter - No context found");
-            return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()));
-        });
+        if let Ok(lock) = self.listener.read() {
+            if lock.is_none() {
+                return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()));
+            }
+        }
 
-        let res = self
-            .fetch_specs_from_network_impl(&context, current_store_lcut)
-            .await;
+        let response = self.fetch_specs_from_network(current_store_lcut).await;
 
-        let data = match res {
+        let data = match response {
             Some(r) => r,
             None => {
                 let msg = "StatsigHttpSpecsAdapter - No specs result from network";
@@ -118,40 +101,30 @@ impl StatsigHttpSpecsAdapter {
             received_at: Utc::now().timestamp_millis() as u64,
         };
 
-        context.listener.did_receive_specs_update(update);
-
-        Ok(())
-    }
-
-    fn get_context(&self) -> Option<Arc<AdapterContext>> {
-        match self.context.read() {
-            Ok(lock) => lock.as_ref().cloned(),
+        match self.listener.read() {
+            Ok(lock) => match lock.as_ref() {
+                Some(listener) => {
+                    listener.did_receive_specs_update(update);
+                    Ok(())
+                }
+                None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
+            },
             Err(e) => {
                 log_e!(
-                    "StatsigHttpSpecsAdapter - Failed to acquire read lock on context: {}",
+                    "StatsigHttpSpecsAdapter - Failed to acquire read lock on listener: {}",
                     e
                 );
-                return None;
+                Err(StatsigErr::LockFailure(e.to_string()))
             }
         }
     }
 
-    fn setup_context(
-        &self,
-        statsig_runtime: &Arc<StatsigRuntime>,
-        listener: Arc<dyn SpecsUpdateListener>,
-    ) {
-        let headers = StatsigMetadata::get_constant_request_headers(&self.sdk_key);
-        let context = Arc::new(AdapterContext {
-            network: NetworkClient::new(statsig_runtime, &self.sdk_key, Some(headers)),
-            listener,
-        });
-
-        match self.context.write() {
-            Ok(mut lock) => *lock = Some(context),
+    fn set_listener(&self, listener: Arc<dyn SpecsUpdateListener>) {
+        match self.listener.write() {
+            Ok(mut lock) => *lock = Some(listener),
             Err(e) => {
                 log_e!(
-                    "StatsigHttpSpecsAdapter - Failed to acquire write lock on context: {}",
+                    "StatsigHttpSpecsAdapter - Failed to acquire write lock on listener: {}",
                     e
                 );
             }
@@ -163,11 +136,11 @@ impl StatsigHttpSpecsAdapter {
 impl SpecsAdapter for StatsigHttpSpecsAdapter {
     async fn start(
         self: Arc<Self>,
-        statsig_runtime: &Arc<StatsigRuntime>,
+        _statsig_runtime: &Arc<StatsigRuntime>,
         listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         let lcut = listener.get_current_specs_info().lcut;
-        self.setup_context(statsig_runtime, listener);
+        self.set_listener(listener);
         self.manually_sync_specs(lcut).await
     }
 

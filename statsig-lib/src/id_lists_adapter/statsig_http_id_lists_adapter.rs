@@ -1,7 +1,7 @@
 use crate::id_lists_adapter::{IdListUpdate, IdListsAdapter, IdListsUpdateListener};
 use crate::networking::{NetworkClient, RequestArgs};
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_e, log_w, unwrap_or_return_with, StatsigErr, StatsigOptions, StatsigRuntime};
+use crate::{log_e, log_w, StatsigErr, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
 use serde_json::from_str;
 use std::collections::HashMap;
@@ -16,55 +16,59 @@ const DEFAULT_ID_LIST_SYNC_INTERVAL_MS: u32 = 10_000;
 
 type IdListsResponse = HashMap<String, IdListMetadata>;
 
-struct AdapterContext {
-    network: NetworkClient,
-    listener: Arc<dyn IdListsUpdateListener>,
-}
-
 pub struct StatsigHttpIdListsAdapter {
-    context: RwLock<Option<Arc<AdapterContext>>>,
-    sdk_key: String,
     id_lists_manifest_url: String,
+    listener: RwLock<Option<Arc<dyn IdListsUpdateListener>>>,
+    network: NetworkClient,
     sync_interval_duration: Duration,
 }
 
 impl StatsigHttpIdListsAdapter {
     pub fn new(sdk_key: &str, options: &StatsigOptions) -> Self {
+        let id_lists_manifest_url = options
+            .id_lists_url
+            .clone()
+            .unwrap_or_else(|| DEFAULT_ID_LISTS_MANIFEST_URL.to_string());
+
+        let sync_interval_duration = Duration::from_millis(
+            options
+                .id_lists_sync_interval_ms
+                .unwrap_or(DEFAULT_ID_LIST_SYNC_INTERVAL_MS) as u64,
+        );
+
+        let network = NetworkClient::new(
+            sdk_key,
+            Some(StatsigMetadata::get_constant_request_headers(sdk_key)),
+        );
+
         Self {
-            context: RwLock::new(None),
-            sdk_key: sdk_key.to_string(),
-            id_lists_manifest_url: options
-                .id_lists_url
-                .clone()
-                .unwrap_or_else(|| DEFAULT_ID_LISTS_MANIFEST_URL.to_string()),
-            sync_interval_duration: Duration::from_millis(
-                options
-                    .id_lists_sync_interval_ms
-                    .unwrap_or(DEFAULT_ID_LIST_SYNC_INTERVAL_MS) as u64,
-            ),
+            id_lists_manifest_url,
+            listener: RwLock::new(None),
+            network,
+            sync_interval_duration,
         }
     }
 
-    async fn fetch_id_list_manifests_from_network(
-        &self,
-        context: &AdapterContext,
-    ) -> Result<IdListsResponse, StatsigErr> {
+    async fn fetch_id_list_manifests_from_network(&self) -> Result<IdListsResponse, StatsigErr> {
         let headers = HashMap::from([("Content-Length".into(), "0".to_string())]);
 
-        let response = context.network.post(
-            RequestArgs {
-                url: self.id_lists_manifest_url.clone(),
-                retries: 2,
-                headers: Some(headers),
-                ..RequestArgs::new()
-            },
-            None,
-        );
+        let response = self
+            .network
+            .post(
+                RequestArgs {
+                    url: self.id_lists_manifest_url.clone(),
+                    retries: 2,
+                    headers: Some(headers),
+                    ..RequestArgs::new()
+                },
+                None,
+            )
+            .await;
 
-        let data = match response.await {
+        let data = match response {
             Some(r) => r,
             None => {
-                let msg = "No ID List results from network";
+                let msg = "StatsigHttpIdListsAdapter - No ID List results from network";
                 log_e!("{}", msg);
                 return Err(StatsigErr::NetworkError(msg.to_string()));
             }
@@ -81,22 +85,24 @@ impl StatsigHttpIdListsAdapter {
 
     async fn fetch_individual_id_list_changes_from_network(
         &self,
-        context: &AdapterContext,
         list_url: &str,
         list_size: u64,
     ) -> Result<String, StatsigErr> {
         let headers = HashMap::from([("Range".into(), format!("bytes={}-", list_size))]);
 
-        let response = context.network.get(RequestArgs {
-            url: list_url.to_string(),
-            headers: Some(headers),
-            ..RequestArgs::new()
-        });
+        let response = self
+            .network
+            .get(RequestArgs {
+                url: list_url.to_string(),
+                headers: Some(headers),
+                ..RequestArgs::new()
+            })
+            .await;
 
-        let data = match response.await {
+        let data = match response {
             Some(r) => r,
             None => {
-                let msg = "No ID List changes from network";
+                let msg = "StatsigHttpIdListsAdapter - No ID List changes from network";
                 log_e!("{}", msg);
                 return Err(StatsigErr::NetworkError(msg.to_string()));
             }
@@ -130,36 +136,26 @@ impl StatsigHttpIdListsAdapter {
         };
 
         if let Err(e) = strong_self.sync_id_lists().await {
-            log_w!("IDList background sync failed {}", e);
+            log_w!("StatsigHttpIdListsAdapter - IDList background sync failed {}", e);
         }
     }
 
-    fn get_context(&self) -> Option<Arc<AdapterContext>> {
-        match self.context.read() {
-            Ok(lock) => lock.as_ref().cloned(),
+    fn set_listener(&self, listener: Arc<dyn IdListsUpdateListener>) {
+        match self.listener.write() {
+            Ok(mut lock) => *lock = Some(listener),
             Err(e) => {
-                log_e!("Failed to acquire read lock on context: {}", e);
-                None
+                log_e!(
+                    "StatsigHttpIdListsAdapter - Failed to acquire write lock on listener: {}",
+                    e
+                );
             }
         }
     }
 
-    fn setup_context(
-        &self,
-        statsig_runtime: &Arc<StatsigRuntime>,
-        listener: Arc<dyn IdListsUpdateListener>,
-    ) {
-        let headers = StatsigMetadata::get_constant_request_headers(&self.sdk_key);
-        let context = Arc::new(AdapterContext {
-            network: NetworkClient::new(statsig_runtime, &self.sdk_key, Some(headers)),
-            listener,
-        });
-
-        match self.context.write() {
-            Ok(mut lock) => *lock = Some(context),
-            Err(e) => {
-                log_e!("Failed to acquire write lock on context: {}", e);
-            }
+    fn get_current_id_list_metadata(&self) -> Result<HashMap<String, IdListMetadata>, StatsigErr> {
+        match self.listener.read() {
+            Ok(lock) => Ok(lock.as_ref().unwrap().get_current_id_list_metadata()),
+            Err(e) => Err(StatsigErr::LockFailure(e.to_string())),
         }
     }
 }
@@ -177,7 +173,7 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
         statsig_runtime: &Arc<StatsigRuntime>,
         listener: Arc<dyn IdListsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
-        self.setup_context(statsig_runtime, listener);
+        self.set_listener(listener);
         self.schedule_background_sync(statsig_runtime);
 
         Ok(())
@@ -188,16 +184,10 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
     }
 
     async fn sync_id_lists(&self) -> Result<(), StatsigErr> {
-        let context = unwrap_or_return_with!(self.get_context(), || {
-            log_e!("No context found");
-            return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()));
-        });
-
-        let manifest = self.fetch_id_list_manifests_from_network(&context).await?;
+        let manifest = self.fetch_id_list_manifests_from_network().await?;
+        let metadata = self.get_current_id_list_metadata()?;
 
         let mut changes = HashMap::new();
-
-        let metadata = context.listener.get_current_id_list_metadata();
 
         for (list_name, entry) in manifest {
             let (requires_download, range_start) = match metadata.get(&list_name) {
@@ -233,7 +223,6 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
 
             let data = self
                 .fetch_individual_id_list_changes_from_network(
-                    &context,
                     &new_metadata.url,
                     changeset.range_start,
                 )
@@ -248,9 +237,22 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
             );
         }
 
-        context.listener.did_receive_id_list_updates(updates);
-
-        Ok(())
+        match self.listener.read() {
+            Ok(lock) => match lock.as_ref() {
+                Some(listener) => {
+                    listener.did_receive_id_list_updates(updates);
+                    Ok(())
+                }
+                None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
+            },
+            Err(e) => {
+                log_e!(
+                    "StatsigHttpIdListsAdapter - Failed to acquire read lock on listener: {}",
+                    e
+                );
+                Err(StatsigErr::LockFailure(e.to_string()))
+            }
+        }
     }
 }
 

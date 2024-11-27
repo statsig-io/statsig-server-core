@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::{log_e, log_w, StatsigRuntime};
+use crate::{log_e, log_w};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -18,11 +18,7 @@ pub struct NetworkClient {
 }
 
 impl NetworkClient {
-    pub fn new(
-        _statsig_runtime: &Arc<StatsigRuntime>,
-        sdk_key: &str,
-        headers: Option<HashMap<String, String>>,
-    ) -> Self {
+    pub fn new(sdk_key: &str, headers: Option<HashMap<String, String>>) -> Self {
         NetworkClient {
             headers: headers.unwrap_or_default(),
             is_shutdown: Arc::new(AtomicBool::new(false)),
