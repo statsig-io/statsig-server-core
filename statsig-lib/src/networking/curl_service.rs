@@ -33,7 +33,7 @@ struct ActiveRequest {
 struct CurlContext {
     req_tx: mpsc::Sender<Request>,
     _abort_tx: Option<oneshot::Sender<()>>,
-    _handle: Arc<JoinHandle<()>>,
+    _handle: Option<Arc<JoinHandle<()>>>,
 }
 
 pub struct Curl {
@@ -117,28 +117,43 @@ impl Curl {
             context: Arc::new(CurlContext {
                 req_tx,
                 _abort_tx: Some(abort_tx),
-                _handle: Arc::new(handle),
+                _handle: handle.map(|h| Arc::new(h)),
             }),
         }
     }
 
-    fn create_run_loop() -> (JoinHandle<()>, oneshot::Sender<()>, mpsc::Sender<Request>) {
+    fn create_run_loop() -> (
+        Option<JoinHandle<()>>,
+        oneshot::Sender<()>,
+        mpsc::Sender<Request>,
+    ) {
         let (abort_tx, abort_rx) = oneshot::channel::<()>();
         let (req_tx, req_rx) = mpsc::channel::<Request>(MAX_QUEUED_REQUESTS);
 
-        let handle = thread::Builder::new()
+        let handle_result = thread::Builder::new()
             .name("curl-run-loop".to_string())
             .spawn(move || {
-                let rt = runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .unwrap();
+                let rt = match runtime::Builder::new_current_thread().enable_all().build() {
+                    Ok(rt) => rt,
+                    Err(e) => {
+                        log_e!("Failed to build cURL runtime: {:?}", e);
+                        return;
+                    }
+                };
 
                 rt.block_on(Self::run(abort_rx, req_rx));
-            })
-            .expect("Failed to spawn curl run loop");
+            });
 
-        log_d!("New cURL run loop created.");
+        let handle = match handle_result {
+            Ok(handle) => {
+                log_d!("New cURL run loop created.");
+                Some(handle)
+            }
+            Err(e) => {
+                log_e!("Failed to spawn cURL run loop: {:?}", e);
+                None
+            }
+        };
 
         (handle, abort_tx, req_tx)
     }
@@ -276,7 +291,11 @@ impl Curl {
                     let _ = entry.request.tx.send(Ok(response));
                 }
                 Err(e) => {
-                    log_e!("Failed to send request to {}: {:?}", entry.request.args.url,  e);
+                    log_e!(
+                        "Failed to send request to {}: {:?}",
+                        entry.request.args.url,
+                        e
+                    );
                     let _ = entry
                         .request
                         .tx
@@ -285,7 +304,10 @@ impl Curl {
                 }
             };
 
-            multi.remove2(entry.handle).unwrap();
+            if let Err(e) = multi.remove2(entry.handle) {
+                log_e!("Failed to remove request from multi: {:?}", e);
+            }
+
             log_d!("Request completed: {:?}", msg);
         });
     }
@@ -485,10 +507,11 @@ mod tests {
         let key = "sdk_key_6";
         let curl = Curl::get(key);
         let handle = curl.context._handle.clone();
-        assert!(!handle.is_finished());
+
+        assert!(!handle.as_ref().map_or(false, |h| h.is_finished()));
         drop(curl);
 
         tokio::time::sleep(Duration::from_millis(100)).await;
-        assert!(handle.is_finished());
+        assert!(handle.as_ref().map_or(false, |h| h.is_finished()));
     }
 }

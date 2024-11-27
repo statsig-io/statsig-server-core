@@ -157,7 +157,9 @@ impl StatsigHttpIdListsAdapter {
 
         match self.context.write() {
             Ok(mut lock) => *lock = Some(context),
-            Err(e) => log_e!("Failed to acquire write lock on context: {}", e),
+            Err(e) => {
+                log_e!("Failed to acquire write lock on context: {}", e);
+            }
         }
     }
 }

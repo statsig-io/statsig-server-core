@@ -77,8 +77,11 @@ impl Statsig {
             .as_ref()
             .map(|env| HashMap::from([("tier".into(), dyn_value!(env.as_str()))]));
 
-        let event_logger =
-            Arc::new(EventLogger::new(event_logging_adapter.clone(), &options, &statsig_runtime));
+        let event_logger = Arc::new(EventLogger::new(
+            event_logging_adapter.clone(),
+            &options,
+            &statsig_runtime,
+        ));
         let diagnostics = Diagnostics::new(event_logger.clone());
 
         Statsig {
@@ -148,8 +151,9 @@ impl Statsig {
 
         self.set_default_environment_from_server();
 
-        self.diagnostics.mark_init_overall_end(success, error_message);
-        
+        self.diagnostics
+            .mark_init_overall_end(success, error_message);
+
         init_res
     }
 
@@ -171,12 +175,13 @@ impl Statsig {
         let store = self.spec_store.clone();
         let runtime = self.statsig_runtime.clone();
 
-        self.statsig_runtime.spawn("init_with_cb", |_shutdown_notify| async move {
-            // todo: return result to callback
-            let _ = adapter.clone().start(&runtime, store).await;
+        self.statsig_runtime
+            .spawn("init_with_cb", |_shutdown_notify| async move {
+                // todo: return result to callback
+                let _ = adapter.clone().start(&runtime, store).await;
 
-            callback();
-        });
+                callback();
+            });
         self.set_default_environment_from_server();
     }
 
@@ -223,25 +228,26 @@ impl Statsig {
         let specs_adapter = self.specs_adapter.clone();
         let runtime: Arc<StatsigRuntime> = self.statsig_runtime.clone();
 
-        self.statsig_runtime.spawn("sequenced_shutdown_prep", |_shutdown_notify| async move {
-            let timeout = Duration::from_millis(1000);
+        self.statsig_runtime
+            .spawn("sequenced_shutdown_prep", |_shutdown_notify| async move {
+                let timeout = Duration::from_millis(1000);
 
-            let result = try_join!(
-                event_logger.shutdown(timeout),
-                specs_adapter.shutdown(timeout, &runtime)
-            );
+                let result = try_join!(
+                    event_logger.shutdown(timeout),
+                    specs_adapter.shutdown(timeout, &runtime)
+                );
 
-            match result {
-                Ok(_) => {
-                    log_d!("Shutdown successfully");
-                    callback();
+                match result {
+                    Ok(_) => {
+                        log_d!("Shutdown successfully");
+                        callback();
+                    }
+                    Err(e) => {
+                        log_e!("Shutdown failed: {:?}", e);
+                        callback();
+                    }
                 }
-                Err(e) => {
-                    log_e!("Shutdown failed: {:?}", e);
-                    callback();
-                }
-            }
-        });
+            });
     }
 
     pub fn finalize_shutdown(&self) {
@@ -279,7 +285,6 @@ impl Statsig {
     }
 
     pub fn check_gate(&self, user: &StatsigUser, gate_name: &str) -> bool {
-        log_d!("Check Gate {}", gate_name);
         let user_internal = self.internalize_user(user);
         let (value, rule_id, secondary_exposures, details, version) =
             self.check_gate_impl(&user_internal, gate_name);
@@ -378,11 +383,12 @@ impl Statsig {
     {
         let cloned_event_logger = self.event_logger.clone();
 
-        self.statsig_runtime.spawn("flush_events_with_cb", |_shutdown_notify| async move {
-            let _ = cloned_event_logger.flush_blocking().await;
+        self.statsig_runtime
+            .spawn("flush_events_with_cb", |_shutdown_notify| async move {
+                let _ = cloned_event_logger.flush_blocking().await;
 
-            callback();
-        });
+                callback();
+            });
     }
 
     // ---------––

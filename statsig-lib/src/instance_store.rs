@@ -122,16 +122,6 @@ impl InstanceStore {
         }
     }
 
-    pub fn adda(&self, boxable: impl BoxableInstance) -> Option<String> {
-        let id = boxable.get_prefix_value();
-        self.instances
-            .write()
-            .unwrap()
-            .insert(id.clone(), boxable.into_box());
-
-        Some(id)
-    }
-
     pub fn add(&self, boxable: impl BoxableInstance) -> Option<String> {
         let mut instances = self.instances.write().ok()?;
 

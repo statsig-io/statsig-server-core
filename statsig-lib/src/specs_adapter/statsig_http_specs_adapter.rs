@@ -74,25 +74,28 @@ impl StatsigHttpSpecsAdapter {
         let strong_self = match weak_self.upgrade() {
             Some(s) => s,
             None => {
-                log_e!("No strong reference found");
+                log_e!("StatsigHttpSpecsAdapter - No strong reference found");
                 return;
             }
         };
 
         let context = unwrap_or_return_with!(strong_self.get_context(), || {
-            log_e!("No context found");
+            log_e!("StatsigHttpSpecsAdapter - No context found");
             return;
         });
 
         let lcut = context.listener.get_current_specs_info().lcut;
         if let Err(e) = strong_self.manually_sync_specs(lcut).await {
-            log_e!("Background specs sync failed: {}", e);
+            log_e!(
+                "StatsigHttpSpecsAdapter - Background specs sync failed: {}",
+                e
+            );
         }
     }
 
     async fn manually_sync_specs(&self, current_store_lcut: Option<u64>) -> Result<(), StatsigErr> {
         let context = unwrap_or_return_with!(self.get_context(), || {
-            log_e!("No context found");
+            log_e!("StatsigHttpSpecsAdapter - No context found");
             return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()));
         });
 
@@ -103,7 +106,7 @@ impl StatsigHttpSpecsAdapter {
         let data = match res {
             Some(r) => r,
             None => {
-                let msg = "No specs result from network";
+                let msg = "StatsigHttpSpecsAdapter - No specs result from network";
                 log_e!("{}", msg);
                 return Err(StatsigErr::NetworkError(msg.to_string()));
             }
@@ -124,7 +127,10 @@ impl StatsigHttpSpecsAdapter {
         match self.context.read() {
             Ok(lock) => lock.as_ref().cloned(),
             Err(e) => {
-                log_e!("Failed to acquire read lock on context: {}", e);
+                log_e!(
+                    "StatsigHttpSpecsAdapter - Failed to acquire read lock on context: {}",
+                    e
+                );
                 return None;
             }
         }
@@ -143,7 +149,12 @@ impl StatsigHttpSpecsAdapter {
 
         match self.context.write() {
             Ok(mut lock) => *lock = Some(context),
-            Err(e) => log_e!("Failed to acquire write lock on context: {}", e),
+            Err(e) => {
+                log_e!(
+                    "StatsigHttpSpecsAdapter - Failed to acquire write lock on context: {}",
+                    e
+                );
+            }
         }
     }
 }
