@@ -11,16 +11,19 @@ use crate::{
 };
 use chrono::Utc;
 use serde_json::json;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use tokio::time::{sleep, Duration};
+
+use super::statsig_event::StatsigEvent;
 
 const DEFAULT_FLUSH_INTERVAL_MS: u32 = 60_000;
 const DEFAULT_QUEUE_SIZE: u32 = 500;
 const DEFAULT_DISABLE_ALL_LOGGING: bool = false;
 const DEDUPE_WINDOW_DURATION_MS: u64 = 60_000;
 const DEDUPE_MAX_KEYS: usize = 100000;
+const NON_EXPOSED_CHECKS_EVENT: &str = "statsig::non_exposed_checks";
 
 struct PreviousExposureInfo {
     exposures: HashSet<String>,
@@ -43,6 +46,7 @@ pub struct EventLogger {
     previous_exposure_info: Arc<Mutex<PreviousExposureInfo>>,
     is_limit_flushing: Arc<AtomicBool>,
     statsig_runtime: Arc<StatsigRuntime>,
+    non_exposed_checks: Arc<Mutex<HashMap<String, u64>>>,
 }
 
 impl EventLogger {
@@ -77,6 +81,7 @@ impl EventLogger {
             previous_exposure_info,
             is_limit_flushing: Arc::new(AtomicBool::new(false)),
             statsig_runtime: statsig_runtime.clone(),
+            non_exposed_checks: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -125,6 +130,17 @@ impl EventLogger {
         }
     }
 
+    pub fn increment_non_exposure_checks_count(&self, name: String) {
+        match self.non_exposed_checks.lock() {
+            Ok(mut map) => {
+                *map.entry(name).or_insert(0) += 1;
+            }
+            Err(e) => {
+                log_w!("Failed to increment non exposure checks' count {}", e);
+            }
+        }
+    }
+
     pub async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
         self.flush_blocking().await;
         Ok(())
@@ -135,12 +151,13 @@ impl EventLogger {
         let adapter = self.event_logging_adapter.clone();
         let prev_expos = self.previous_exposure_info.clone();
         let is_limit_flushing = self.is_limit_flushing.clone();
+        let non_exposed_checks = self.non_exposed_checks.clone();
 
         self.statsig_runtime.spawn(
             "event_logger_flush_and_forget",
             |_shutdown_notify| async move {
                 is_limit_flushing.store(false, Ordering::Relaxed);
-                Self::flush_impl(adapter, queue, prev_expos).await;
+                Self::flush_impl(adapter, queue, prev_expos, non_exposed_checks).await;
             },
         );
     }
@@ -149,15 +166,21 @@ impl EventLogger {
         let queue = self.event_queue.clone();
         let adapter = self.event_logging_adapter.clone();
         let prev_expos = self.previous_exposure_info.clone();
-        Self::flush_impl(adapter, queue, prev_expos).await;
+        let non_exposed_checks = self.non_exposed_checks.clone();
+
+        Self::flush_impl(adapter, queue, prev_expos, non_exposed_checks).await;
     }
 
     async fn flush_impl(
         event_logging_adapter: Arc<dyn EventLoggingAdapter>,
         queue: Arc<RwLock<Vec<QueuedEventPayload>>>,
         previous_exposure_info: Arc<Mutex<PreviousExposureInfo>>,
+        non_exposed_checks: Arc<Mutex<HashMap<String, u64>>>,
     ) {
         log_d!("Attempting to flush events");
+
+        append_non_exposed_event_and_reset(&queue, &non_exposed_checks);
+
         let count = match queue.read().ok() {
             Some(e) => e.len(),
             _ => return,
@@ -198,6 +221,53 @@ impl EventLogger {
             if let Err(e) = result {
                 log_w!("Failed to flush events: {:?}", e);
             }
+        }
+    }
+}
+
+fn append_non_exposed_event_and_reset(
+    queue: &Arc<RwLock<Vec<QueuedEventPayload>>>,
+    non_exposed_checks: &Arc<Mutex<HashMap<String, u64>>>,
+) {
+    let mut map = match non_exposed_checks.lock() {
+        Ok(lock) => lock,
+        Err(e) => {
+            log_d!("Failed to acquire lock on non exposed checks: {}", e);
+            return;
+        }
+    };
+
+    if map.is_empty() {
+        return;
+    }
+
+    let metadata = match serde_json::to_string(&*map) {
+        Ok(json) => {
+            let mut metadata_map = HashMap::new();
+            metadata_map.insert("checks".to_string(), json);
+            metadata_map
+        }
+        Err(e) => {
+            log_d!("Failed to serialize non_exposed_checks to JSON: {}", e);
+            return;
+        }
+    };
+
+    let event = StatsigEventInternal::new_non_exposed_checks_event(
+        StatsigEvent {
+            event_name: NON_EXPOSED_CHECKS_EVENT.to_string(),
+            value: None,
+            metadata: Some(metadata),
+        }
+    );
+
+    match queue.write() {
+        Ok(mut lock) => {
+            lock.push(QueuedEventPayload::CustomEvent(event));
+            map.clear();
+        }
+        Err(_) => {
+            log_d!("Failed to acquire write lock when pushing non exposed check events");
         }
     }
 }

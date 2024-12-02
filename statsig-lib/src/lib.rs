@@ -12,6 +12,7 @@ pub use statsig::Statsig;
 pub use statsig_err::StatsigErr;
 pub use statsig_options::StatsigOptions;
 pub use statsig_user::StatsigUser;
+pub use statsig_core_api_options::{GetDynamicConfigOptions, CheckGateOptions, GetExperimentOptions};
 
 pub mod instance_store;
 pub mod networking;
@@ -20,7 +21,7 @@ pub mod statsig_options;
 pub mod statsig_types;
 pub mod diagnostics;
 pub mod statsig_user;
-
+pub mod statsig_core_api_options;
 
 mod statsig_runtime;
 mod client_init_response_formatter;

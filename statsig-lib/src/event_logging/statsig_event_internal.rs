@@ -41,6 +41,17 @@ impl StatsigEventInternal {
             secondary_exposures: None,
         }
     }
+
+    pub fn new_non_exposed_checks_event(
+        event: StatsigEvent,
+    ) -> Self {
+        StatsigEventInternal {
+            event_data: event,
+            user: StatsigUserLoggable { value: Value::Null },
+            time: Utc::now().timestamp_millis() as u64,
+            secondary_exposures: None,
+        }
+    }
 }
 
 pub(crate) fn make_custom_event(

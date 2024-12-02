@@ -1,6 +1,6 @@
 mod utils;
 
-use sigstat::{output_logger::LogLevel, Statsig, StatsigOptions, StatsigUser};
+use sigstat::{output_logger::LogLevel, statsig_core_api_options::GetFeatureGateOptions, CheckGateOptions, GetDynamicConfigOptions, GetExperimentOptions, Statsig, StatsigOptions, StatsigUser};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -117,6 +117,36 @@ async fn test_all_events_get_flushed() {
     assert_eventually_eq!(
         || mock_scrapi.get_logged_event_count(),
         5001,
+        Duration::from_secs(1)
+    )
+    .await;
+
+    let duration = start.elapsed();
+    println!("shutdown: {:.2} ms", duration.as_millis());
+}
+
+#[tokio::test]
+async fn test_core_apis_exposure_logging_disabled() {
+    let (mock_scrapi, statsig) = setup(0 /* delay_ms */).await;
+
+    statsig.initialize().await.unwrap();
+    let user = StatsigUser::with_user_id("test_user".into());
+    
+    let _ = statsig.check_gate_with_options(&user, "test_public", CheckGateOptions { disable_exposure_logging: true });
+
+    let _ = statsig.get_feature_gate_with_options(&user, "test_public", GetFeatureGateOptions { disable_exposure_logging: true });
+    let _ = statsig.get_experiment_with_options(&user, "experiment_with_many_params", GetExperimentOptions { disable_exposure_logging: true });
+    let _ = statsig.get_dynamic_config_with_options(&user, "dynamic_config_name", GetDynamicConfigOptions { disable_exposure_logging: true });
+
+    let start = Instant::now();
+    statsig
+        .shutdown_with_timeout(Duration::from_millis(3000))
+        .await
+        .unwrap();
+
+    assert_eventually_eq!(
+        || mock_scrapi.get_logged_event_count(),
+        2, // TODO add the ability to filter non-diagnostic events, 2 = 1 diagnostic + 1 non exposed checks
         Duration::from_secs(1)
     )
     .await;

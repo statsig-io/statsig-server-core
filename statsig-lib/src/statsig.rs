@@ -22,6 +22,7 @@ use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
 use crate::hashing::Hashing;
 use crate::initialize_response::InitializeResponse;
 use crate::output_logger::initialize_simple_output_logger;
+use crate::statsig_core_api_options::{CheckGateOptions, GetDynamicConfigOptions, GetExperimentOptions, GetFeatureGateOptions};
 use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::spec_types::Spec;
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
@@ -261,10 +262,22 @@ impl Statsig {
             )));
     }
 
-    pub fn check_gate(&self, user: &StatsigUser, gate_name: &str) -> bool {
+    // ---------––
+    //   Core Apis
+    // ---------––
+
+    pub fn check_gate_with_options(&self, user: &StatsigUser, gate_name: &str, check_gate_options: CheckGateOptions) -> bool {
+        log_d!("Check Gate {}", gate_name);
+
         let user_internal = self.internalize_user(user);
-        let (value, rule_id, secondary_exposures, details, version) =
+        let (value, rule_id, secondary_exposures, details, version) = 
             self.check_gate_impl(&user_internal, gate_name);
+
+        if check_gate_options.disable_exposure_logging {
+            log_d!("Exposure logging is disabled for gate {}", gate_name);
+            self.event_logger.increment_non_exposure_checks_count(gate_name.to_string());
+            return value;
+        }
 
         self.event_logger
             .enqueue(QueuedEventPayload::GateExposure(GateExposure {
@@ -277,16 +290,51 @@ impl Statsig {
                 version,
             }));
 
-        value
+        value  
     }
 
-    pub fn get_feature_gate(&self, user: &StatsigUser, gate_name: &str) -> FeatureGate {
+    pub fn check_gate(&self, user: &StatsigUser, gate_name: &str) -> bool {
+        self.check_gate_with_options(user, gate_name, CheckGateOptions::default())
+    }
+
+    pub fn get_feature_gate_with_options(&self, user: &StatsigUser, gate_name: &str, get_feature_gate_options: GetFeatureGateOptions) -> FeatureGate {
+        log_d!("Get Feature Gate {}", gate_name);
+
         let user_internal = self.internalize_user(user);
         let gate = self.get_feature_gate_impl(&user_internal, gate_name);
+
+        if get_feature_gate_options.disable_exposure_logging {
+            log_d!("Exposure logging is disabled for gate {}", gate_name);
+            self.event_logger.increment_non_exposure_checks_count(gate_name.to_string());
+            return gate;
+        }
 
         self.log_gate_exposure(user_internal, gate_name, &gate);
 
         gate
+    }
+
+    pub fn get_feature_gate(&self, user: &StatsigUser, gate_name: &str) -> FeatureGate {
+        self.get_feature_gate_with_options(user, gate_name, GetFeatureGateOptions::default())
+    }
+
+    pub fn get_dynamic_config_with_options(
+        &self,
+        user: &StatsigUser,
+        dynamic_config_name: &str,
+        get_dynamic_config_options: GetDynamicConfigOptions,
+    ) -> DynamicConfig {
+        let user_internal = self.internalize_user(user);
+        let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
+
+        if get_dynamic_config_options.disable_exposure_logging {
+            log_d!("Exposure logging is disabled for dynamic_config {}", dynamic_config_name);
+            self.event_logger.increment_non_exposure_checks_count(dynamic_config_name.to_string());
+            return dynamic_config;
+        }
+        self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &dynamic_config);
+
+        dynamic_config
     }
 
     pub fn get_dynamic_config(
@@ -294,21 +342,25 @@ impl Statsig {
         user: &StatsigUser,
         dynamic_config_name: &str,
     ) -> DynamicConfig {
-        let user_internal = self.internalize_user(user);
-        let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
-
-        self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &dynamic_config);
-
-        dynamic_config
+        self.get_dynamic_config_with_options(user, dynamic_config_name, GetDynamicConfigOptions::default())
     }
 
-    pub fn get_experiment(&self, user: &StatsigUser, experiment_name: &str) -> Experiment {
+    pub fn get_experiment_with_options(&self, user: &StatsigUser, experiment_name: &str, get_experiment_options: GetExperimentOptions) -> Experiment {
         let user_internal = self.internalize_user(user);
         let experiment = self.get_experiment_impl(&user_internal, experiment_name);
 
+        if get_experiment_options.disable_exposure_logging {
+            log_d!("Exposure logging is disabled for experiment {}", experiment_name);
+            self.event_logger.increment_non_exposure_checks_count(experiment_name.to_string());
+            return experiment;
+        }
         self.log_experiment_exposure(user_internal, experiment_name, &experiment);
 
         experiment
+    }
+
+    pub fn get_experiment(&self, user: &StatsigUser, experiment_name: &str) -> Experiment {
+        self.get_experiment_with_options(user, experiment_name, GetExperimentOptions::default())
     }
 
     pub fn get_layer(&self, user: &StatsigUser, layer_name: &str) -> Layer {
