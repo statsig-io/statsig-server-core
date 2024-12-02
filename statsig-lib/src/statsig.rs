@@ -9,7 +9,7 @@ use crate::evaluation::evaluator::Evaluator;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::evaluator_result::{
     result_to_dynamic_config_eval, result_to_experiment_eval, result_to_gate_eval,
-    result_to_layer_eval,
+    result_to_layer_eval, EvaluatorResult,
 };
 use crate::event_logging::config_exposure::ConfigExposure;
 use crate::event_logging::event_logger::{EventLogger, QueuedEventPayload};
@@ -23,6 +23,7 @@ use crate::hashing::Hashing;
 use crate::initialize_response::InitializeResponse;
 use crate::output_logger::initialize_simple_output_logger;
 use crate::spec_store::{SpecStore, SpecStoreData};
+use crate::spec_types::Spec;
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_options::StatsigOptions;
@@ -158,7 +159,10 @@ impl Statsig {
     }
 
     pub async fn shutdown_with_timeout(&self, timeout: Duration) -> Result<(), StatsigErr> {
-        log_d!("Shutting down Statsig with timeout {}ms", timeout.as_millis());
+        log_d!(
+            "Shutting down Statsig with timeout {}ms",
+            timeout.as_millis()
+        );
 
         let start = Instant::now();
         let final_result = tokio::select! {
@@ -353,6 +357,32 @@ impl Statsig {
     // ---------––
     //   Private
     // ---------––
+
+    fn evaluate_spec<T>(
+        &self,
+        user_internal: &StatsigUserInternal,
+        get_spec: impl FnOnce(&SpecStoreData) -> Option<&Spec>,
+        make_empty_result: impl FnOnce(EvaluationDetails) -> T,
+        make_result: impl FnOnce(&Spec, EvaluatorResult, EvaluationDetails) -> T,
+    ) -> T {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            return make_empty_result(EvaluationDetails::unrecognized_no_data());
+        });
+
+        let spec = get_spec(&data);
+
+        match spec {
+            Some(spec) => {
+                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
+                Evaluator::evaluate(&mut context, spec);
+                let eval_details = EvaluationDetails::recognized(&data, &context.result);
+
+                make_result(spec, context.result, eval_details)
+            }
+            None => make_empty_result(EvaluationDetails::unrecognized(&data)),
+        }
+    }
+
     fn check_gate_impl(
         &self,
         user_internal: &StatsigUserInternal,
@@ -364,39 +394,20 @@ impl Statsig {
         EvaluationDetails,
         Option<u32>,
     ) {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            return (
-                false,
-                None,
-                None,
-                EvaluationDetails::unrecognized_no_data(),
-                None,
-            );
-        });
-
-        let spec = data.values.feature_gates.get(gate_name);
-
-        match spec {
-            Some(spec) => {
-                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
-                Evaluator::evaluate(&mut context, spec);
-                let eval_details = EvaluationDetails::recognized(&data, &context.result);
+        self.evaluate_spec(
+            user_internal,
+            |data| data.values.feature_gates.get(gate_name),
+            |eval_details| (false, None, None, eval_details, None),
+            |_spec, result, eval_details| {
                 (
-                    context.result.bool_value,
-                    context.result.rule_id.cloned(),
-                    Some(context.result.secondary_exposures),
+                    result.bool_value,
+                    result.rule_id.cloned(),
+                    Some(result.secondary_exposures),
                     eval_details,
-                    context.result.version,
+                    result.version,
                 )
-            }
-            None => (
-                false,
-                None,
-                None,
-                EvaluationDetails::unrecognized(&data),
-                None,
-            ),
-        }
+            },
+        )
     }
 
     fn get_feature_gate_impl(
@@ -404,37 +415,15 @@ impl Statsig {
         user_internal: &StatsigUserInternal,
         gate_name: &str,
     ) -> FeatureGate {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            return make_feature_gate(
-                gate_name,
-                None,
-                EvaluationDetails::unrecognized_no_data(),
-                None,
-            );
-        });
-
-        let spec = data.values.feature_gates.get(gate_name);
-
-        match spec {
-            Some(spec) => {
-                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
-                Evaluator::evaluate(&mut context, spec);
-
-                let evaluation = result_to_gate_eval(gate_name, &mut context.result);
-                make_feature_gate(
-                    gate_name,
-                    Some(evaluation),
-                    EvaluationDetails::recognized(&data, &context.result),
-                    context.result.version,
-                )
-            }
-            None => make_feature_gate(
-                gate_name,
-                None,
-                EvaluationDetails::unrecognized(&data),
-                None,
-            ),
-        }
+        self.evaluate_spec(
+            user_internal,
+            |data| data.values.feature_gates.get(gate_name),
+            |eval_details| make_feature_gate(gate_name, None, eval_details, None),
+            |_spec, mut result, eval_details| {
+                let evaluation = result_to_gate_eval(gate_name, &mut result);
+                make_feature_gate(gate_name, Some(evaluation), eval_details, result.version)
+            },
+        )
     }
 
     fn get_dynamic_config_impl(
@@ -442,37 +431,15 @@ impl Statsig {
         user_internal: &StatsigUserInternal,
         config_name: &str,
     ) -> DynamicConfig {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            return make_dynamic_config(
-                config_name,
-                None,
-                EvaluationDetails::unrecognized_no_data(),
-                None,
-            );
-        });
-
-        let spec = data.values.dynamic_configs.get(config_name);
-
-        match spec {
-            Some(spec) => {
-                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
-                Evaluator::evaluate(&mut context, spec);
-
-                let evaluation = result_to_dynamic_config_eval(config_name, &mut context.result);
-                make_dynamic_config(
-                    config_name,
-                    Some(evaluation),
-                    EvaluationDetails::recognized(&data, &context.result),
-                    context.result.version,
-                )
-            }
-            None => make_dynamic_config(
-                config_name,
-                None,
-                EvaluationDetails::unrecognized(&data),
-                None,
-            ),
-        }
+        self.evaluate_spec(
+            user_internal,
+            |data| data.values.dynamic_configs.get(config_name),
+            |eval_details| make_dynamic_config(config_name, None, eval_details, None),
+            |_spec, mut result, eval_details| {
+                let evaluation = result_to_dynamic_config_eval(config_name, &mut result);
+                make_dynamic_config(config_name, Some(evaluation), eval_details, result.version)
+            },
+        )
     }
 
     fn get_experiment_impl(
@@ -480,79 +447,41 @@ impl Statsig {
         user_internal: &StatsigUserInternal,
         experiment_name: &str,
     ) -> Experiment {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            return make_experiment(
-                experiment_name,
-                None,
-                EvaluationDetails::unrecognized_no_data(),
-                None,
-            );
-        });
-
-        let spec = data.values.dynamic_configs.get(experiment_name);
-
-        match spec {
-            Some(spec) => {
-                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
-                Evaluator::evaluate(&mut context, spec);
-
-                let evaluation =
-                    result_to_experiment_eval(experiment_name, spec, &mut context.result);
+        self.evaluate_spec(
+            user_internal,
+            |data| data.values.dynamic_configs.get(experiment_name),
+            |eval_details| make_experiment(experiment_name, None, eval_details, None),
+            |spec, mut result, eval_details| {
+                let evaluation = result_to_experiment_eval(experiment_name, spec, &mut result);
                 make_experiment(
                     experiment_name,
                     Some(evaluation),
-                    EvaluationDetails::recognized(&data, &context.result),
-                    context.result.version,
+                    eval_details,
+                    result.version,
                 )
-            }
-            None => make_experiment(
-                experiment_name,
-                None,
-                EvaluationDetails::unrecognized(&data),
-                None,
-            ),
-        }
+            },
+        )
     }
 
     fn get_layer_impl(&self, user_internal: &StatsigUserInternal, layer_name: &str) -> Layer {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            return make_layer(
-                user_internal,
-                layer_name,
-                None,
-                EvaluationDetails::unrecognized_no_data(),
-                None,
-                None,
-            );
-        });
-
-        let spec = data.values.layer_configs.get(layer_name);
-
-        match spec {
-            Some(spec) => {
-                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
-                Evaluator::evaluate(&mut context, spec);
-
-                let evaluation = result_to_layer_eval(layer_name, &mut context.result);
+        self.evaluate_spec(
+            user_internal,
+            |data| data.values.layer_configs.get(layer_name),
+            |eval_details| make_layer(user_internal, layer_name, None, eval_details, None, None),
+            |_spec, mut result, eval_details| {
+                let evaluation = result_to_layer_eval(layer_name, &mut result);
                 let event_logger_ptr = Arc::downgrade(&self.event_logger);
+
                 make_layer(
                     user_internal,
                     layer_name,
                     Some(evaluation),
-                    EvaluationDetails::recognized(&data, &context.result),
+                    eval_details,
                     Some(event_logger_ptr),
-                    context.result.version,
+                    result.version,
                 )
-            }
-            None => make_layer(
-                user_internal,
-                layer_name,
-                None,
-                EvaluationDetails::unrecognized(&data),
-                None,
-                None,
-            ),
-        }
+            },
+        )
     }
 
     fn log_gate_exposure(
