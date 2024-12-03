@@ -12,6 +12,8 @@ use super::statsig_grpc_specs_adapter::StatsigGrpcSpecsAdapter;
 #[cfg(not(feature = "with_grpc"))]
 use crate::log_e;
 
+const TAG: &str = stringify!(StatsigCustomizedSpecsAdapter);
+
 pub struct StatsigCustomizedSpecsAdapter {
     adapters: Vec<Arc<dyn SpecsAdapter>>,
 }
@@ -53,7 +55,7 @@ impl StatsigCustomizedSpecsAdapter {
         _sdk_key: &str,
         _config: &SpecAdapterConfig,
     ) -> Option<Arc<dyn SpecsAdapter>> {
-        log_e!("Trying to use grpc websocket adapter but with grpc feature is not enabled");
+        log_e!(TAG, "Trying to use grpc websocket adapter but with grpc feature is not enabled");
         None
     }
 }
@@ -76,6 +78,7 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
                 }
                 _ => {
                     log_w!(
+                        TAG,
                         "Failed to initialize from {} adapter",
                         adapter.get_type_name()
                     );

@@ -4,6 +4,8 @@ use jni::sys::{jint, jlong, jstring};
 use jni::JNIEnv;
 use sigstat::{instance_store::INST_STORE, log_d, log_e, statsig_options::StatsigOptionsBuilder};
 
+const TAG: &str = "StatsigOptionsJNI";
+
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     mut env: JNIEnv,
@@ -53,11 +55,11 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     let id = INST_STORE.add(options);
     match id {
         Some(id) => {
-            log_d!("Created StatsigOptions with ID {}", id);
+            log_d!(TAG, "Created StatsigOptions with ID {}", id);
             string_to_jstring(&mut env, id.to_string())
         }
         None => {
-            log_e!("Failed to create StatsigOptions");
+            log_e!(TAG, "Failed to create StatsigOptions");
             std::ptr::null_mut()
         }
     }

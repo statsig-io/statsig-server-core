@@ -15,6 +15,8 @@ pub struct SpecStoreData {
     pub id_lists: HashMap<String, IdList>,
 }
 
+const TAG: &str = stringify!(SpecStore);
+
 pub struct SpecStore {
     pub data: Arc<RwLock<SpecStoreData>>,
 }
@@ -31,7 +33,7 @@ impl SpecsUpdateListener for SpecStore {
                 source: data.source.clone(),
             },
             Err(e) => {
-                log_e!("Failed to acquire read lock: {}", e);
+                log_e!(TAG, "Failed to acquire read lock: {}", e);
                 SpecsInfo {
                     lcut: None,
                     source: SpecsSource::Error,
@@ -52,7 +54,7 @@ impl IdListsUpdateListener for SpecStore {
                 .map(|(key, list)| (key.clone(), list.metadata.clone()))
                 .collect(),
             Err(e) => {
-                log_e!("Failed to acquire read lock: {}", e);
+                log_e!(TAG, "Failed to acquire read lock: {}", e);
                 HashMap::new()
             }
         }
@@ -65,7 +67,7 @@ impl IdListsUpdateListener for SpecStore {
         let mut data = match self.data.write() {
             Ok(data) => data,
             Err(e) => {
-                log_e!("Failed to acquire write lock: {}", e);
+                log_e!(TAG, "Failed to acquire write lock: {}", e);
                 return;
             }
         };
@@ -108,7 +110,7 @@ impl SpecStore {
     pub fn set_source(&self, source: SpecsSource) {
         if let Ok(mut mut_values) = self.data.write() {
             mut_values.source = source;
-            log_d!("SpecStore - Source Changed ({:?})", mut_values.source);
+            log_d!(TAG, "SpecStore - Source Changed ({:?})", mut_values.source);
         }
     }
 
@@ -117,11 +119,12 @@ impl SpecStore {
         let dcs = match parsed {
             Ok(SpecsResponse::Full(full)) => {
                 if !full.has_updates {
-                    log_d!("SpecStore - No Updates");
+                    log_d!(TAG, "SpecStore - No Updates");
                     return;
                 }
 
                 log_d!(
+                    TAG,
                     "SpecStore Full Update: {} - [gates({}), configs({}), layers({})]",
                     full.time,
                     full.feature_gates.len(),
@@ -133,13 +136,13 @@ impl SpecStore {
             }
             Ok(SpecsResponse::NoUpdates(no_updates)) => {
                 if !no_updates.has_updates {
-                    log_d!("SpecStore - No Updates");
+                    log_d!(TAG, "SpecStore - No Updates");
                 }
                 return;
             }
             Err(e) => {
                 // todo: Handle bad parsing
-                log_e!("{:?}, {:?}", e, values.source);
+                log_e!(TAG, "{:?}, {:?}", e, values.source);
                 return;
             }
         };
@@ -147,7 +150,7 @@ impl SpecStore {
         if let Ok(mut mut_values) = self.data.write() {
             if mut_values.values.time > 0 && mut_values.values.time > dcs.time {
                 log_d!(
-                    "SpecStore - Received values for {}, but currently has values for {}. Ignoring values.",
+                    TAG, "SpecStore - Received values for {}, but currently has values for {}. Ignoring values.",
                     dcs.time,
                     mut_values.values.time
                 );
@@ -158,7 +161,7 @@ impl SpecStore {
             mut_values.time_received_at = Some(Utc::now().timestamp_millis() as u64);
             mut_values.source = values.source;
 
-            log_d!("SpecStore - Updated ({:?})", mut_values.source);
+            log_d!(TAG, "SpecStore - Updated ({:?})", mut_values.source);
         }
     }
 }
@@ -173,7 +176,7 @@ impl SpecsResponseFull {
             experiment_to_layer: Default::default(),
             has_updates: true,
             time: 0,
-            default_environment: None
+            default_environment: None,
         }
     }
 }

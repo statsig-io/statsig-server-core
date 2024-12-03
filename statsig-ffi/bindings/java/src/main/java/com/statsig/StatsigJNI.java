@@ -6,7 +6,7 @@ import java.util.Map;
 
 class StatsigJNI {
     private static final boolean libraryLoaded;
-    private static final String logContext = "com.statsig.StatsigJNI";
+    private static final String TAG = "StatsigJNI";
 
     static boolean isLibraryLoaded() {
         return libraryLoaded;
@@ -16,7 +16,7 @@ class StatsigJNI {
         String osName = System.getProperty("os.name").toLowerCase();
         String osArch = System.getProperty("os.arch").toLowerCase();
 
-        OutputLogger.logInfo(logContext, "Detected OS: " + osName + " Arch: " + osArch);
+        OutputLogger.logInfo(TAG, "Detected OS: " + osName + " Arch: " + osArch);
 
         libraryLoaded = loadNativeLibrary(osName, osArch);
 
@@ -99,13 +99,13 @@ class StatsigJNI {
 
             if (resource == null) {
                 OutputLogger.logError(
-                        logContext,
+                        TAG,
                         "Unable to find native library resource for OS: " + osName + " Arch: " + osArch);
                 return false;
             }
 
             OutputLogger.logInfo(
-                    logContext,
+                    TAG,
                     "Loading native library: " + resource);
             String libPath = writeLibToTempFile(resource);
 
@@ -114,14 +114,14 @@ class StatsigJNI {
             }
 
             OutputLogger.logInfo(
-                    logContext,
+                    TAG,
                     "Loaded native library: " + libPath);
             System.load(libPath);
 
             return true;
         } catch (UnsatisfiedLinkError e) {
             OutputLogger.logError(
-                    logContext,
+                    TAG,
                     String.format("Error: Native library not found for the specific OS and architecture. " +
                             "Operating System: %s, Architecture: %s. Please ensure that the necessary dependencies have been added to your project configuration.\n",
                             osName, osArch));
@@ -134,7 +134,7 @@ class StatsigJNI {
             InputStream stream = resource.openStream();
 
             if (stream == null) {
-                OutputLogger.logError(logContext, "Unable to open stream for resource: " + resource);
+                OutputLogger.logError(TAG, "Unable to open stream for resource: " + resource);
                 return null;
             }
 
@@ -149,11 +149,11 @@ class StatsigJNI {
                 }
             }
 
-            OutputLogger.logInfo(logContext,
+            OutputLogger.logInfo(TAG,
                     "Successfully created a temporary file for the native library at: " + temp.getAbsolutePath());
             return temp.getAbsolutePath();
         } catch (IOException e) {
-            OutputLogger.logError(logContext,
+            OutputLogger.logError(TAG,
                     "I/O Error while writing the library to a temporary file: " + e.getMessage());
             return null;
         }
@@ -197,7 +197,7 @@ class StatsigJNI {
         }
     
         message.append("For further assistance, refer to the documentation or contact support.");
-        OutputLogger.logError(logContext, message.toString());
+        OutputLogger.logError(TAG, message.toString());
     }
 
     private static String normalizeArch(String osArch) {

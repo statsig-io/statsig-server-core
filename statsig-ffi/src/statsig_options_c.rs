@@ -5,6 +5,8 @@ use sigstat::{
     instance_store::INST_STORE, log_e, SpecsAdapter, StatsigLocalFileSpecsAdapter, StatsigOptions,
 };
 
+const TAG: &str = "StatsigOptionsC";
+
 #[no_mangle]
 pub extern "C" fn statsig_options_create(
     specs_url: *const c_char,
@@ -29,7 +31,7 @@ pub extern "C" fn statsig_options_create(
             ..StatsigOptions::new()
         })
         .unwrap_or_else(|| {
-            log_e!("Failed to create StatsigOptions");
+            log_e!(TAG, "Failed to create StatsigOptions");
             "".to_string()
         });
 

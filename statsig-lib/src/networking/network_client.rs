@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::{log_e, log_w};
+use crate::{log_e, log_i, log_w};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -10,6 +10,8 @@ use super::{Curl, HttpMethod, RequestArgs};
 
 const RETRY_CODES: [u16; 8] = [408, 500, 502, 503, 504, 522, 524, 599];
 const SHUTDOWN_ERROR: &str = "Request was aborted because the client is shutting down";
+
+const TAG: &str = stringify!(NetworkClient);
 
 pub struct NetworkClient {
     headers: HashMap<String, String>,
@@ -39,7 +41,7 @@ impl NetworkClient {
             let post_body = match serde_json::to_string(body) {
                 Ok(b) => Some(b),
                 Err(e) => {
-                    log_e!("Failed to serialize body: {}", e);
+                    log_e!(TAG, "Failed to serialize body: {}", e);
                     return None;
                 }
             };
@@ -71,7 +73,7 @@ impl NetworkClient {
 
         loop {
             if is_shutdown.load(Ordering::SeqCst) {
-                log_w!("{}", SHUTDOWN_ERROR);
+                log_i!(TAG, "{}", SHUTDOWN_ERROR);
                 return None;
             }
 
@@ -88,12 +90,13 @@ impl NetworkClient {
                 .unwrap_or_else(|| get_error_message_for_status(status));
 
             if !RETRY_CODES.contains(&status) {
-                log_e!("NetworkClient Error: {} {}", status, error_message);
+                log_e!(TAG, "NetworkClient Error: {} {}", status, error_message);
                 return None;
             }
 
             if attempt >= request_args.retries {
                 log_e!(
+                    TAG,
                     "Network error, retries exhausted: {} {}",
                     status,
                     error_message
@@ -105,7 +108,7 @@ impl NetworkClient {
             let backoff_ms = 2_u64.pow(attempt) * 100;
 
             log_w!(
-                "Network request failed with status code {} (attempt {}), will retry after {}ms...\n{}",
+                TAG, "Network request failed with status code {} (attempt {}), will retry after {}ms...\n{}",
                 status,
                 attempt,
                 backoff_ms,

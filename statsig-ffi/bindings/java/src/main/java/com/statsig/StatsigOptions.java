@@ -37,6 +37,7 @@ public class StatsigOptions {
 
         public Builder setOutputLoggerLevel(OutputLogger.LogLevel level) {
             this.outputLoggerLevel = level;
+            OutputLogger.logLevel = level;
             return this;
         }
 

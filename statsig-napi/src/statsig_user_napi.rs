@@ -6,6 +6,8 @@ use serde_json::from_str;
 use sigstat::{instance_store::INST_STORE, log_w, statsig_user::StatsigUserBuilder, DynamicValue};
 use std::collections::HashMap;
 
+const TAG: &str = "StatsigUserNapi";
+
 #[napi(custom_finalize)]
 pub struct AutoReleasingStatsigUserRef {
   pub ref_id: String,
@@ -45,6 +47,7 @@ pub fn statsig_user_create(
       Ok(parsed_custom) => custom_ids = Some(parsed_custom),
       Err(_) => {
         log_w!(
+          TAG,
           "Invalid type passed to 'CustomIDs'. Expected Record<string, string>. Received {}",
           custom_ids_json
         );
@@ -65,7 +68,7 @@ pub fn statsig_user_create(
     match from_str::<HashMap<String, DynamicValue>>(&custom_json) {
       Ok(parsed_custom) => custom = Some(parsed_custom),
       Err(_) => {
-        log_w!("Invalid type passed to 'Custom'. Expected Record<string, string | boolean | number>. Received {}", custom_json);
+        log_w!(TAG, "Invalid type passed to 'Custom'. Expected Record<string, string | boolean | number>. Received {}", custom_json);
         return AutoReleasingStatsigUserRef::err();
       }
     }
@@ -76,7 +79,7 @@ pub fn statsig_user_create(
     match from_str::<HashMap<String, DynamicValue>>(&private_attributes_json) {
       Ok(parsed_private_attributes) => private_attributes = Some(parsed_private_attributes),
       Err(_) => {
-        log_w!("Invalid type passed to 'PrivateAttributes'. Expected Record<string, string | boolean | number>. Received {}", private_attributes_json);
+        log_w!(TAG, "Invalid type passed to 'PrivateAttributes'. Expected Record<string, string | boolean | number>. Received {}", private_attributes_json);
         return AutoReleasingStatsigUserRef::err();
       }
     }

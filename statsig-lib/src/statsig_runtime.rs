@@ -11,6 +11,8 @@ use crate::log_d;
 use crate::log_e;
 use crate::StatsigErr;
 
+const TAG: &str = stringify!(StatsigRuntime);
+
 pub struct StatsigRuntime {
     pub runtime_handle: Handle,
     inner_runtime: Mutex<Option<Runtime>>,
@@ -46,7 +48,11 @@ impl StatsigRuntime {
 
         if let Ok(mut lock) = self.inner_runtime.lock() {
             if let Some(runtime) = lock.take() {
-                log_d!("Shutting down Statsig runtime with timeout: {:?}", timeout);
+                log_d!(
+                    TAG,
+                    "Shutting down Statsig runtime with timeout: {:?}",
+                    timeout
+                );
                 if timeout.as_millis() > 0 {
                     runtime.shutdown_timeout(timeout);
                 } else {
@@ -66,10 +72,10 @@ impl StatsigRuntime {
         Fut: Future<Output = ()> + Send + 'static,
     {
         let tag = tag.to_string();
-        log_d!("Spawning task {}", tag);
+        log_d!(TAG, "Spawning task {}", tag);
         let shutdown_notify = self.shutdown_notify.clone();
         let handle = self.runtime_handle.spawn(async move {
-            log_d!("Executing task {}", tag);
+            log_d!(TAG, "Executing task {}", tag);
             task(shutdown_notify).await;
         });
 
@@ -101,6 +107,7 @@ impl StatsigRuntime {
             },
             Err(e) => {
                 log_e!(
+                    TAG,
                     "An error occurred while getting join handle with id: {}: {}",
                     handle_id,
                     e.to_string()
@@ -125,6 +132,7 @@ impl StatsigRuntime {
             }
             Err(e) => {
                 log_e!(
+                    TAG,
                     "An error occurred while inserting join handle: {}",
                     e.to_string()
                 );
@@ -137,7 +145,7 @@ impl StatsigRuntime {
 
 fn create_runtime_if_required() -> (Option<Runtime>, Handle) {
     if let Ok(handle) = Handle::try_current() {
-        log_d!("Existing tokio runtime found");
+        log_d!(TAG, "Existing tokio runtime found");
         return (None, handle);
     }
 
@@ -150,7 +158,7 @@ fn create_runtime_if_required() -> (Option<Runtime>, Handle) {
         .expect("Failed to find or create a tokio Runtime");
 
     let handle = rt.handle().clone();
-    log_d!("New tokio runtime created");
+    log_d!(TAG, "New tokio runtime created");
     (Some(rt), handle)
 }
 

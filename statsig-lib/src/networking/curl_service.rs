@@ -36,6 +36,8 @@ struct CurlContext {
     _handle: Option<Arc<JoinHandle<()>>>,
 }
 
+const TAG: &str = stringify!(Curl);
+
 pub struct Curl {
     sdk_key: String,
     context: Arc<CurlContext>,
@@ -58,7 +60,7 @@ impl Curl {
         let mut curl_map = match CURL.lock() {
             Ok(map) => map,
             Err(e) => {
-                log_e!("Failed to acquire lock on CURL: {}", e);
+                log_e!(TAG, "Failed to acquire lock on CURL: {}", e);
                 return Curl::new(sdk_key);
             }
         };
@@ -77,7 +79,7 @@ impl Curl {
     }
 
     pub async fn send(&self, method: &HttpMethod, request_args: &RequestArgs) -> Response {
-        log_d!("Sending request: {}", request_args.url);
+        log_d!(TAG, "Sending request: {}", request_args.url);
 
         let (response_tx, response_rx) = oneshot::channel();
         let request = Request {
@@ -98,7 +100,7 @@ impl Curl {
         }
 
         let result = response_rx.await.unwrap_or_else(|e| {
-            log_e!("Failed to receive response: {:?}", e);
+            log_e!(TAG, "Failed to receive response: {:?}", e);
             return Err(StatsigErr::NetworkError(e.to_string()));
         });
 
@@ -136,7 +138,7 @@ impl Curl {
                 let rt = match runtime::Builder::new_current_thread().enable_all().build() {
                     Ok(rt) => rt,
                     Err(e) => {
-                        log_e!("Failed to build cURL runtime: {:?}", e);
+                        log_e!(TAG, "Failed to build cURL runtime: {:?}", e);
                         return;
                     }
                 };
@@ -146,11 +148,11 @@ impl Curl {
 
         let handle = match handle_result {
             Ok(handle) => {
-                log_d!("New cURL run loop created.");
+                log_d!(TAG, "New cURL run loop created.");
                 Some(handle)
             }
             Err(e) => {
-                log_e!("Failed to spawn cURL run loop: {:?}", e);
+                log_e!(TAG, "Failed to spawn cURL run loop: {:?}", e);
                 None
             }
         };
@@ -175,7 +177,7 @@ impl Curl {
                     }
 
                     if let Err(e) = Self::add_request_for_processing(&multi, &mut active_reqs, &mut next_token, request) {
-                        log_e!("Failed to add request for processing: {:?}", e);
+                        log_e!(TAG, "Failed to add request for processing: {:?}", e);
                     }
                 }
             }
@@ -228,7 +230,7 @@ impl Curl {
                 )));
 
                 if let Err(e) = multi.remove2(entry.handle) {
-                    log_e!("Failed to remove request from multi: {:?}", e);
+                    log_e!(TAG, "Failed to remove request from multi: {:?}", e);
                 }
             }
         }
@@ -238,46 +240,47 @@ impl Curl {
         let perform = match multi.perform() {
             Ok(perform) => perform,
             Err(e) => {
-                log_e!("Failed to perform requests: {:?}", e);
+                log_e!(TAG, "Failed to perform requests: {:?}", e);
                 return;
             }
         };
 
         if perform == 0 {
-            log_d!("No requests performed");
+            log_d!(TAG, "No requests performed");
         }
 
         multi.messages(|msg| {
             let token = ok_or_return_with!(msg.token(), |e| {
-                log_e!("Failed to get token: {:?}", e);
+                log_e!(TAG, "Failed to get token: {:?}", e);
             });
 
             let mut entry = unwrap_or_return_with!(active.remove(&token), || {
-                log_e!("Token not found: {}", token);
+                log_e!(TAG, "Token not found: {}", token);
             });
 
             let result = unwrap_or_return_with!(msg.result_for2(&entry.handle), || {
-                log_e!("Failed to get result for token: {}", token);
+                log_e!(TAG, "Failed to get result for token: {}", token);
             });
 
             match result {
                 Ok(()) => {
                     let http_status = entry.handle.response_code().unwrap_or_else(|e| {
-                        log_e!("Failed to get HTTP status: {:?}", e);
+                        log_e!(TAG, "Failed to get HTTP status: {:?}", e);
                         return 0;
                     });
 
                     let res_buffer = entry.handle.get_mut().get_buffer();
 
                     log_d!(
-                        "R: Transfer succeeded (Status: {}) (Download length: {})",
+                        TAG,
+                        "Transfer succeeded (Status: {}) (Download length: {})",
                         http_status,
                         &res_buffer.len()
                     );
 
                     let data = String::from_utf8(res_buffer)
                         .map_err(|e| {
-                            log_e!("Failed to convert response to string: {:?}", e);
+                            log_e!(TAG, "Failed to convert response to string: {:?}", e);
                             return e;
                         })
                         .ok();
@@ -292,6 +295,7 @@ impl Curl {
                 }
                 Err(e) => {
                     log_e!(
+                        TAG,
                         "Failed to send request to {}: {:?}",
                         entry.request.args.url,
                         e
@@ -305,10 +309,10 @@ impl Curl {
             };
 
             if let Err(e) = multi.remove2(entry.handle) {
-                log_e!("Failed to remove request from multi: {:?}", e);
+                log_e!(TAG, "Failed to remove request from multi: {:?}", e);
             }
 
-            log_d!("Request completed: {:?}", msg);
+            log_d!(TAG, "Request completed: {}", entry.request.args.url);
         });
     }
 }

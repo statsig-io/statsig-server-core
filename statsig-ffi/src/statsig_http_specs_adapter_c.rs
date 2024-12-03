@@ -6,6 +6,8 @@ use sigstat::{StatsigOptions, StatsigRuntime};
 use std::os::raw::c_char;
 use std::ptr::null;
 
+const TAG: &str = "StatsigHttpSpecsAdapterC";
+
 #[no_mangle]
 pub extern "C" fn statsig_http_specs_adapter_create(
     sdk_key: *const c_char,
@@ -26,7 +28,7 @@ pub extern "C" fn statsig_http_specs_adapter_create(
     let adapter = StatsigHttpSpecsAdapter::new(&sdk_key, specs_url.as_ref(), None);
 
     let ref_id = INST_STORE.add(adapter).unwrap_or_else(|| {
-        log_e!("Failed to create StatsigHttpSpecsAdapter");
+        log_e!(TAG, "Failed to create StatsigHttpSpecsAdapter");
         "".to_string()
     });
 

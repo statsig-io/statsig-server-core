@@ -13,6 +13,7 @@ use tokio::time::sleep;
 pub const DEFAULT_SPECS_URL: &str = "https://api.statsigcdn.com/v2/download_config_specs";
 const DEFAULT_SYNC_INTERVAL_MS: u32 = 10_000;
 
+const TAG: &str = stringify!(StatsigHttpSpecsAdapter);
 pub struct StatsigHttpSpecsAdapter {
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
     network: NetworkClient,
@@ -56,7 +57,7 @@ impl StatsigHttpSpecsAdapter {
         let strong_self = match weak_self.upgrade() {
             Some(s) => s,
             None => {
-                log_e!("StatsigHttpSpecsAdapter - No strong reference found");
+                log_e!(TAG, "No strong reference found");
                 return;
             }
         };
@@ -70,10 +71,7 @@ impl StatsigHttpSpecsAdapter {
         };
 
         if let Err(e) = strong_self.manually_sync_specs(lcut).await {
-            log_e!(
-                "StatsigHttpSpecsAdapter - Background specs sync failed: {}",
-                e
-            );
+            log_e!(TAG, "Background specs sync failed: {}", e);
         }
     }
 
@@ -89,8 +87,8 @@ impl StatsigHttpSpecsAdapter {
         let data = match response {
             Some(r) => r,
             None => {
-                let msg = "StatsigHttpSpecsAdapter - No specs result from network";
-                log_e!("{}", msg);
+                let msg = "No specs result from network";
+                log_e!(TAG, "{}", msg);
                 return Err(StatsigErr::NetworkError(msg.to_string()));
             }
         };
@@ -110,10 +108,7 @@ impl StatsigHttpSpecsAdapter {
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
             Err(e) => {
-                log_e!(
-                    "StatsigHttpSpecsAdapter - Failed to acquire read lock on listener: {}",
-                    e
-                );
+                log_e!(TAG, "Failed to acquire read lock on listener: {}", e);
                 Err(StatsigErr::LockFailure(e.to_string()))
             }
         }
@@ -123,10 +118,7 @@ impl StatsigHttpSpecsAdapter {
         match self.listener.write() {
             Ok(mut lock) => *lock = Some(listener),
             Err(e) => {
-                log_e!(
-                    "StatsigHttpSpecsAdapter - Failed to acquire write lock on listener: {}",
-                    e
-                );
+                log_e!(TAG, "Failed to acquire write lock on listener: {}", e);
             }
         }
     }

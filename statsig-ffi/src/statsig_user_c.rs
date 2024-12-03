@@ -6,6 +6,8 @@ use sigstat::log_e;
 use sigstat::statsig_user::StatsigUserBuilder;
 use std::os::raw::c_char;
 
+const TAG: &str = "StatsigUserC";
+
 #[no_mangle]
 pub extern "C" fn statsig_user_create(
     user_id: *const c_char,
@@ -48,7 +50,7 @@ pub extern "C" fn statsig_user_create(
 
     let user = builder.build();
     let ref_id = INST_STORE.add(user).unwrap_or_else(|| {
-        log_e!("Failed to create StatsigOptions");
+        log_e!(TAG, "Failed to create StatsigOptions");
         "".to_string()
     });
 

@@ -1,7 +1,12 @@
-use crate::log_w;
-use crate::event_logging::{statsig_event::StatsigEvent, statsig_event_internal::StatsigEventInternal};
-use super::{diagnostics_utils::DiagnosticsUtils, marker::{ActionType, KeyType, Marker, StepType}};
+use super::{
+    diagnostics_utils::DiagnosticsUtils,
+    marker::{ActionType, KeyType, Marker, StepType},
+};
 use crate::event_logging::event_logger::{EventLogger, QueuedEventPayload};
+use crate::event_logging::{
+    statsig_event::StatsigEvent, statsig_event_internal::StatsigEventInternal,
+};
+use crate::log_w;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex};
@@ -21,6 +26,8 @@ impl fmt::Display for ContextType {
         }
     }
 }
+
+const TAG: &str = stringify!(Diagnostics);
 
 pub struct Diagnostics {
     marker_map: Mutex<HashMap<ContextType, Vec<Marker>>>,
@@ -67,8 +74,9 @@ impl Diagnostics {
     }
 
     pub fn mark_init_overall_end(&self, success: bool, error_message: Option<String>) {
-        let mut init_marker = Marker::new(KeyType::Overall, ActionType::End, Some(StepType::Process))
-            .with_is_success(success);
+        let mut init_marker =
+            Marker::new(KeyType::Overall, ActionType::End, Some(StepType::Process))
+                .with_is_success(success);
 
         if let Some(msg) = error_message {
             init_marker = init_marker.with_message(msg);
@@ -77,40 +85,34 @@ impl Diagnostics {
         self.enqueue_diagnostics_event(ContextType::Initialize);
     }
 
-    pub fn enqueue_diagnostics_event(
-        &self,
-        context_type: ContextType,
-    ) {
+    pub fn enqueue_diagnostics_event(&self, context_type: ContextType) {
         let markers = match self.get_markers(&context_type) {
             Some(m) => m,
             None => return,
         };
-    
+
         if markers.is_empty() {
             return;
         }
-    
-        let metadata = match DiagnosticsUtils::format_diagnostics_metadata(&context_type, &markers) {
+
+        let metadata = match DiagnosticsUtils::format_diagnostics_metadata(&context_type, &markers)
+        {
             Ok(data) => data,
             Err(err) => {
-                log_w!(
-                    "Failed to format diagnostics metadata: {}",
-                    err
-                );
+                log_w!(TAG, "Failed to format diagnostics metadata: {}", err);
                 return;
             }
         };
-    
-        let event = StatsigEventInternal::new_diagnostic_event(
-            StatsigEvent {
-                event_name: DIAGNOSTICS_EVENT.to_string(),
-                value: None,
-                metadata: Some(metadata),
-            },
-        );
-    
-        self.event_logger.enqueue(QueuedEventPayload::CustomEvent(event));
-    
+
+        let event = StatsigEventInternal::new_diagnostic_event(StatsigEvent {
+            event_name: DIAGNOSTICS_EVENT.to_string(),
+            value: None,
+            metadata: Some(metadata),
+        });
+
+        self.event_logger
+            .enqueue(QueuedEventPayload::CustomEvent(event));
+
         self.clear_markers(&context_type);
     }
 }

@@ -1,13 +1,17 @@
-use std::time::Duration;
 use crate::jni::jni_utils::{convert_java_client_init_response_options_to_rust, jstring_to_string};
 use crate::{get_instance_or_noop_jni, get_instance_or_return_jni};
 use jni::sys::{jboolean, jclass, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
+use std::time::Duration;
 
+use super::jni_utils::serialize_json_to_jstring;
 use crate::jni::jni_utils::jni_to_rust_hashmap;
 use jni::objects::{JClass, JObject, JString};
-use sigstat::{instance_store::INST_STORE, log_e, Statsig, StatsigOptions, StatsigRuntime, StatsigUser};
-use super::jni_utils::serialize_json_to_jstring;
+use sigstat::{
+    instance_store::INST_STORE, log_e, Statsig, StatsigOptions, StatsigRuntime, StatsigUser,
+};
+
+const TAG: &str = "StatsigJNI";
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
@@ -60,14 +64,14 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
     if callback.is_null() {
-        log_e!("Callback is null");
+        log_e!(TAG, "Callback is null");
         return;
     }
 
     let vm = match env.get_java_vm() {
         Ok(vm) => vm,
         Err(_) => {
-            log_e!("Failed to get Java VM");
+            log_e!(TAG, "Failed to get Java VM");
             return;
         }
     };
@@ -79,14 +83,14 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
     let statsig_rt = StatsigRuntime::get_runtime();
     statsig_rt.runtime_handle.block_on(async move {
         if let Err(e) = statsig.initialize().await {
-            log_e!("Failed to initialize statsig: {}", e);
+            log_e!(TAG, "Failed to initialize statsig: {}", e);
         }
 
         let mut env = vm.attach_current_thread().unwrap();
 
         let result = env.call_method(global_callback.as_obj(), "run", "()V", &[]);
         if result.is_err() {
-            log_e!("Failed to call callback");
+            log_e!(TAG, "Failed to call callback");
         }
 
         drop(global_callback);
@@ -103,14 +107,14 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigSequencedShutdownPrepa
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
     if callback.is_null() {
-        log_e!("Callback is null");
+        log_e!(TAG, "Callback is null");
         return;
     }
 
     let vm = match env.get_java_vm() {
         Ok(vm) => vm,
         Err(_) => {
-            log_e!("Failed to get Java VM");
+            log_e!(TAG, "Failed to get Java VM");
             return;
         }
     };
@@ -124,7 +128,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigSequencedShutdownPrepa
 
         let result = env.call_method(global_callback.as_obj(), "run", "()V", &[]);
         if result.is_err() {
-            log_e!("Failed to call callback");
+            log_e!(TAG, "Failed to call callback");
         }
 
         drop(global_callback);
@@ -147,7 +151,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetClientInitResponse(
     _class: JClass,
     statsig_ref: JString,
     user_ref: JString,
-    init_response_option: JObject
+    init_response_option: JObject,
 ) -> jstring {
     let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
     let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
@@ -285,7 +289,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogLayerParamExposure(
     let parameter_name: String = match env.get_string(&parameter_name) {
         Ok(s) => s.into(),
         Err(_) => {
-            log_e!("Failed to convert parameter_name to Rust string");
+            log_e!(TAG, "Failed to convert parameter_name to Rust string");
             return;
         }
     };
@@ -338,14 +342,14 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
     if callback.is_null() {
-        log_e!("Callback is null");
+        log_e!(TAG, "Callback is null");
         return;
     }
 
     let vm = match env.get_java_vm() {
         Ok(vm) => vm,
         Err(_) => {
-            log_e!("Failed to get Java VM");
+            log_e!(TAG, "Failed to get Java VM");
             return;
         }
     };
@@ -362,7 +366,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
 
         let result = env.call_method(global_callback.as_obj(), "run", "()V", &[]);
         if result.is_err() {
-            log_e!("Failed to call callback");
+            log_e!(TAG, "Failed to call callback");
         }
 
         drop(global_callback);

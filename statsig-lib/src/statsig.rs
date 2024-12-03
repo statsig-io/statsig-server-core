@@ -22,10 +22,12 @@ use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
 use crate::hashing::Hashing;
 use crate::initialize_response::InitializeResponse;
 use crate::output_logger::initialize_simple_output_logger;
-use crate::statsig_core_api_options::{CheckGateOptions, GetDynamicConfigOptions, GetExperimentOptions, GetFeatureGateOptions};
 use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::spec_types::Spec;
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
+use crate::statsig_core_api_options::{
+    CheckGateOptions, GetDynamicConfigOptions, GetExperimentOptions, GetFeatureGateOptions,
+};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_options::StatsigOptions;
 use crate::statsig_runtime::StatsigRuntime;
@@ -44,6 +46,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tokio::try_join;
+
+const TAG: &str = "Lib";
 
 pub struct Statsig {
     sdk_key: String,
@@ -135,7 +139,7 @@ impl Statsig {
                 .await?;
 
             if let Err(e) = adapter.sync_id_lists().await {
-                log_e!("Failed to sync id lists: {}", e);
+                log_e!(TAG, "Failed to sync id lists: {}", e);
                 success = false;
                 error_message.get_or_insert_with(|| format!("Failed to sync ID lists: {}", e));
             }
@@ -161,6 +165,7 @@ impl Statsig {
 
     pub async fn shutdown_with_timeout(&self, timeout: Duration) -> Result<(), StatsigErr> {
         log_d!(
+            TAG,
             "Shutting down Statsig with timeout {}ms",
             timeout.as_millis()
         );
@@ -168,7 +173,7 @@ impl Statsig {
         let start = Instant::now();
         let final_result = tokio::select! {
             _ = tokio::time::sleep(timeout) => {
-                log_w!("Statsig shutdown timed out. {}", start.elapsed().as_millis());
+                log_w!(TAG, "Statsig shutdown timed out. {}", start.elapsed().as_millis());
                 Err(StatsigErr::ShutdownTimeout)
             }
             sub_result = async {
@@ -179,11 +184,11 @@ impl Statsig {
             } => {
                 match sub_result {
                     Ok(_) => {
-                        log_d!("All Statsig tasks shutdown successfully");
+                        log_d!(TAG, "All Statsig tasks shutdown successfully");
                         Ok(())
                     }
                     Err(e) => {
-                        log_w!("Error during shutdown: {:?}", e);
+                        log_w!(TAG, "Error during shutdown: {:?}", e);
                         Err(e)
                     }
                 }
@@ -217,11 +222,11 @@ impl Statsig {
 
                 match result {
                     Ok(_) => {
-                        log_d!("Shutdown successfully");
+                        log_d!(TAG, "Shutdown successfully");
                         callback();
                     }
                     Err(e) => {
-                        log_e!("Shutdown failed: {:?}", e);
+                        log_e!(TAG, "Shutdown failed: {:?}", e);
                         callback();
                     }
                 }
@@ -266,16 +271,22 @@ impl Statsig {
     //   Core Apis
     // ---------––
 
-    pub fn check_gate_with_options(&self, user: &StatsigUser, gate_name: &str, check_gate_options: CheckGateOptions) -> bool {
-        log_d!("Check Gate {}", gate_name);
+    pub fn check_gate_with_options(
+        &self,
+        user: &StatsigUser,
+        gate_name: &str,
+        check_gate_options: CheckGateOptions,
+    ) -> bool {
+        log_d!(TAG, "Check Gate {}", gate_name);
 
         let user_internal = self.internalize_user(user);
-        let (value, rule_id, secondary_exposures, details, version) = 
+        let (value, rule_id, secondary_exposures, details, version) =
             self.check_gate_impl(&user_internal, gate_name);
 
         if check_gate_options.disable_exposure_logging {
-            log_d!("Exposure logging is disabled for gate {}", gate_name);
-            self.event_logger.increment_non_exposure_checks_count(gate_name.to_string());
+            log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
+            self.event_logger
+                .increment_non_exposure_checks_count(gate_name.to_string());
             return value;
         }
 
@@ -290,22 +301,28 @@ impl Statsig {
                 version,
             }));
 
-        value  
+        value
     }
 
     pub fn check_gate(&self, user: &StatsigUser, gate_name: &str) -> bool {
         self.check_gate_with_options(user, gate_name, CheckGateOptions::default())
     }
 
-    pub fn get_feature_gate_with_options(&self, user: &StatsigUser, gate_name: &str, get_feature_gate_options: GetFeatureGateOptions) -> FeatureGate {
-        log_d!("Get Feature Gate {}", gate_name);
+    pub fn get_feature_gate_with_options(
+        &self,
+        user: &StatsigUser,
+        gate_name: &str,
+        get_feature_gate_options: GetFeatureGateOptions,
+    ) -> FeatureGate {
+        log_d!(TAG, "Get Feature Gate {}", gate_name);
 
         let user_internal = self.internalize_user(user);
         let gate = self.get_feature_gate_impl(&user_internal, gate_name);
 
         if get_feature_gate_options.disable_exposure_logging {
-            log_d!("Exposure logging is disabled for gate {}", gate_name);
-            self.event_logger.increment_non_exposure_checks_count(gate_name.to_string());
+            log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
+            self.event_logger
+                .increment_non_exposure_checks_count(gate_name.to_string());
             return gate;
         }
 
@@ -328,8 +345,13 @@ impl Statsig {
         let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
 
         if get_dynamic_config_options.disable_exposure_logging {
-            log_d!("Exposure logging is disabled for dynamic_config {}", dynamic_config_name);
-            self.event_logger.increment_non_exposure_checks_count(dynamic_config_name.to_string());
+            log_d!(
+                TAG,
+                "Exposure logging is disabled for dynamic_config {}",
+                dynamic_config_name
+            );
+            self.event_logger
+                .increment_non_exposure_checks_count(dynamic_config_name.to_string());
             return dynamic_config;
         }
         self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &dynamic_config);
@@ -342,16 +364,30 @@ impl Statsig {
         user: &StatsigUser,
         dynamic_config_name: &str,
     ) -> DynamicConfig {
-        self.get_dynamic_config_with_options(user, dynamic_config_name, GetDynamicConfigOptions::default())
+        self.get_dynamic_config_with_options(
+            user,
+            dynamic_config_name,
+            GetDynamicConfigOptions::default(),
+        )
     }
 
-    pub fn get_experiment_with_options(&self, user: &StatsigUser, experiment_name: &str, get_experiment_options: GetExperimentOptions) -> Experiment {
+    pub fn get_experiment_with_options(
+        &self,
+        user: &StatsigUser,
+        experiment_name: &str,
+        get_experiment_options: GetExperimentOptions,
+    ) -> Experiment {
         let user_internal = self.internalize_user(user);
         let experiment = self.get_experiment_impl(&user_internal, experiment_name);
 
         if get_experiment_options.disable_exposure_logging {
-            log_d!("Exposure logging is disabled for experiment {}", experiment_name);
-            self.event_logger.increment_non_exposure_checks_count(experiment_name.to_string());
+            log_d!(
+                TAG,
+                "Exposure logging is disabled for experiment {}",
+                experiment_name
+            );
+            self.event_logger
+                .increment_non_exposure_checks_count(experiment_name.to_string());
             return experiment;
         }
         self.log_experiment_exposure(user_internal, experiment_name, &experiment);
@@ -386,7 +422,11 @@ impl Statsig {
         let layer = match serde_json::from_str::<Layer>(&layer_json) {
             Ok(layer) => layer,
             Err(e) => {
-                log_e!("Failed to parse Layer. Exposure will be dropped. {}", e);
+                log_e!(
+                    TAG,
+                    "Failed to parse Layer. Exposure will be dropped. {}",
+                    e
+                );
                 return;
             }
         };

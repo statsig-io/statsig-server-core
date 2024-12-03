@@ -6,6 +6,8 @@ use sigstat::{
   DEFAULT_INIT_TIMEOUT_MS,
 };
 
+const TAG: &str = "StatsigOptionsNapi";
+
 #[napi(custom_finalize)]
 pub struct AutoReleasingStatsigOptionsRef {
   pub ref_id: String,
@@ -44,7 +46,7 @@ pub fn statsig_options_create(
       ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {
-      log_e!("Failed to create StatsigOptions");
+      log_e!(TAG, "Failed to create StatsigOptions");
       "".to_string()
     });
 

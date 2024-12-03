@@ -15,6 +15,8 @@ struct LogEventResult {
     success: Option<bool>,
 }
 
+const TAG: &str = stringify!(StatsigHttpEventLoggingAdapter);
+
 pub struct StatsigHttpEventLoggingAdapter {
     log_event_url: String,
     network: NetworkClient,
@@ -41,7 +43,8 @@ impl StatsigHttpEventLoggingAdapter {
         request: LogEventRequest,
     ) -> Result<bool, StatsigErr> {
         log_d!(
-            "StatsigHttpEventLoggingAdapter - Logging Events ({}): {}",
+            TAG,
+            "Logging Events ({}): {}",
             &request.event_count,
             json!(&request.payload).to_string()
         );

@@ -10,6 +10,8 @@ use crate::{dyn_value, log_e, unwrap_or_noop, unwrap_or_return};
 use chrono::Utc;
 use lazy_static::lazy_static;
 
+const TAG: &str = stringify!(Evaluator);
+
 pub struct Evaluator;
 
 lazy_static! {
@@ -228,7 +230,12 @@ fn evaluate_nested_gate<'a>(
     let gate_name = match target_value.string_value.as_ref() {
         Some(name) => name,
         None => {
-            log_e!("Invalid target_value for condition {}, {:?}", condition_type, target_value);
+            log_e!(
+                TAG,
+                "Invalid target_value for condition {}, {:?}",
+                condition_type,
+                target_value
+            );
             ctx.result.unsupported = true;
             return;
         }

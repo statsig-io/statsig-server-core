@@ -39,24 +39,24 @@ public class OutputLogger {
 
     static LogLevel logLevel = LogLevel.WARN;
 
-    static void logError(String context, String message) {
-        logMessage(LogLevel.ERROR, context, message);
+    static void logError(String tag, String message) {
+        logMessage(LogLevel.ERROR, tag, message);
     }
 
-    static void logWarning(String context, String message) {
-        logMessage(LogLevel.WARN, context, message);
+    static void logWarning(String tag, String message) {
+        logMessage(LogLevel.WARN, tag, message);
     }
 
-    static void logInfo(String context, String message) {
-        logMessage(LogLevel.INFO, context, message);
+    static void logInfo(String tag, String message) {
+        logMessage(LogLevel.INFO, tag, message);
     }
 
-    static void logMessage(LogLevel level, String context, String message) {
+    static void logMessage(LogLevel level, String tag, String message) {
         if (level.getValue() < logLevel.getValue()) {
             return;
         }
 
         String timestamp = DateTimeFormatter.ISO_INSTANT.format(Instant.now().truncatedTo(ChronoUnit.MILLIS));
-        System.out.printf("%s %s [%s] [Statsig] %s%n", timestamp, level.getLevelString(), context, message);
+        System.out.printf("%s %s [com.statsig.OutputLogger] [Statsig.%s] %s%n", timestamp, level.getLevelString(), tag, message);
     }
 }

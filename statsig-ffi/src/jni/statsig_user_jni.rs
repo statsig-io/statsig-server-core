@@ -5,6 +5,8 @@ use jni::sys::jstring;
 use jni::JNIEnv;
 use sigstat::{instance_store::INST_STORE, log_d, log_e, statsig_user::StatsigUserBuilder};
 
+const TAG: &str = "StatsigUserJNI";
+
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigUserCreate(
     mut env: JNIEnv,
@@ -51,11 +53,11 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigUserCreate(
     let id = INST_STORE.add(user);
     match id {
         Some(id) => {
-            log_d!("Created StatsigUser {}", id);
+            log_d!(TAG, "Created StatsigUser {}", id);
             string_to_jstring(&mut env, id.to_string())
         }
         None => {
-            log_e!("Failed to create StatsigUser");
+            log_e!(TAG, "Failed to create StatsigUser");
             std::ptr::null_mut()
         }
     }

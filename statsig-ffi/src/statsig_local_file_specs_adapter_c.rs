@@ -3,6 +3,8 @@ use sigstat::instance_store::INST_STORE;
 use sigstat::{log_e, unwrap_or_return, StatsigLocalFileSpecsAdapter};
 use std::os::raw::c_char;
 
+const TAG: &str = "StatsigLocalFileSpecsAdapterC";
+
 #[no_mangle]
 pub extern "C" fn statsig_local_file_specs_adapter_create(
     file_path: *const c_char,
@@ -11,7 +13,7 @@ pub extern "C" fn statsig_local_file_specs_adapter_create(
     let adapter = StatsigLocalFileSpecsAdapter::new(file_path);
 
     let ref_id = INST_STORE.add(adapter).unwrap_or_else(|| {
-        log_e!("Failed to create StatsigLocalFileSpecsAdapter");
+        log_e!(TAG, "Failed to create StatsigLocalFileSpecsAdapter");
         "".to_string()
     });
 

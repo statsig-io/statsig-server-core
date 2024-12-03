@@ -8,6 +8,8 @@ use crate::{
     StatsigLocalFileEventLoggingAdapter, StatsigLocalFileSpecsAdapter, StatsigOptions, StatsigUser,
 };
 
+const TAG: &str = stringify!(InstanceStore);
+
 #[macro_export]
 macro_rules! get_instance_or_noop {
     ($type:ty, $ref:expr) => {
@@ -45,7 +47,7 @@ macro_rules! impl_boxable_instance {
                 if let BoxedInstance::$variant(inner) = boxed {
                     Some(inner.clone())
                 } else {
-                    log_e!("Invalid box type");
+                    log_e!(TAG, "Invalid box type");
                     None
                 }
             }
@@ -127,6 +129,7 @@ impl InstanceStore {
 
         if instances.len() >= MAX_STORED_INSTANCES {
             log_e!(
+                TAG,
                 "Too many {} references created. Max ID limit reached.",
                 boxable.get_display_value()
             );
@@ -141,7 +144,7 @@ impl InstanceStore {
 
             // Check for collisions
             if !instances.contains_key(&id) {
-                log_d!("Added {} {}", boxable.get_display_value(), &id);
+                log_d!(TAG, "Added {} {}", boxable.get_display_value(), &id);
                 instances.insert(id.clone(), boxable.into_box());
                 return Some(id);
             }
@@ -152,11 +155,11 @@ impl InstanceStore {
                     "Failed to generate a unique ID for {} after multiple attempts.",
                     boxable.get_display_value()
                 );
-                log_e!("{}", err_msg);
+                log_e!(TAG, "{}", err_msg);
                 return None;
             }
 
-            log_w!("Collision, retrying...");
+            log_w!(TAG, "Collision, retrying...");
         }
     }
 
@@ -164,7 +167,7 @@ impl InstanceStore {
         let instances = match self.instances.read().ok() {
             Some(instances) => instances,
             None => {
-                log_e!("Instance store is poisoned");
+                log_e!(TAG, "Instance store is poisoned");
                 return None;
             }
         };
@@ -173,6 +176,7 @@ impl InstanceStore {
             Some(inst) => inst,
             None => {
                 log_d!(
+                    TAG,
                     "{} instance not found for ID {}",
                     T::get_display_value_static(),
                     id
@@ -184,7 +188,11 @@ impl InstanceStore {
         match T::from_box(found) {
             Some(inst) => Some(inst),
             None => {
-                log_e!("Invalid box type for {}", T::get_display_value_static());
+                log_e!(
+                    TAG,
+                    "Invalid box type for {}",
+                    T::get_display_value_static()
+                );
                 None
             }
         }

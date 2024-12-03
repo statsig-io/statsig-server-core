@@ -53,10 +53,7 @@ macro_rules! read_lock_or_else {
     ($lock:expr, $else_block:block) => {
         match $lock.read() {
             Ok(data) => data,
-            Err(e) => {
-                $crate::log_e!("Warning: Failed to acquire read lock on RwLock {}", e);
-                $else_block
-            }
+            Err(_) => $else_block,
         }
     };
 }

@@ -1,8 +1,10 @@
 use jni::objects::{JObject, JString};
 use jni::sys::jstring;
 use jni::JNIEnv;
-use sigstat::{ClientInitResponseOptions, HashAlgorithm, log_e};
+use sigstat::{log_e, ClientInitResponseOptions, HashAlgorithm};
 use std::collections::HashMap;
+
+const TAG: &str = "JniUtils";
 
 #[macro_export]
 macro_rules! get_instance_or_noop_jni {
@@ -39,15 +41,17 @@ macro_rules! get_instance_or_else_jni {
 
 pub fn convert_java_client_init_response_options_to_rust(
     env: &mut JNIEnv,
-    java_gcir_option: JObject) -> Option<ClientInitResponseOptions> {
+    java_gcir_option: JObject,
+) -> Option<ClientInitResponseOptions> {
     if java_gcir_option.is_null() {
         return None;
     }
 
-    let hash_algo_field: JString = match env.get_field(java_gcir_option, "hashAlgoInternal", "Ljava/lang/String;") {
-        Ok(field) => field.l().unwrap().into(),
-        Err(_) => return None,
-    };
+    let hash_algo_field: JString =
+        match env.get_field(java_gcir_option, "hashAlgoInternal", "Ljava/lang/String;") {
+            Ok(field) => field.l().unwrap().into(),
+            Err(_) => return None,
+        };
 
     let hash_algo = if hash_algo_field.is_null() {
         None
@@ -58,7 +62,9 @@ pub fn convert_java_client_init_response_options_to_rust(
     };
 
     let hash_algo = hash_algo.and_then(|s| HashAlgorithm::from_string(&s));
-    Some(ClientInitResponseOptions { hash_algorithm: hash_algo })
+    Some(ClientInitResponseOptions {
+        hash_algorithm: hash_algo,
+    })
 }
 
 pub fn jstring_to_string(env: &mut JNIEnv, input: JString) -> Option<String> {
@@ -79,7 +85,7 @@ pub fn serialize_json_to_jstring<T: serde::Serialize>(env: &mut JNIEnv, value: &
     let result = match serde_json::to_string(value) {
         Ok(json_str) => Some(json_str),
         Err(_) => {
-            log_e!("Failed to serialize value to JSON string");
+            log_e!(TAG, "Failed to serialize value to JSON string");
             None
         }
     };
@@ -99,7 +105,7 @@ pub fn jni_to_rust_hashmap(
     let entry_set = match env.call_method(jmap, "entrySet", "()Ljava/util/Set;", &[]) {
         Ok(method) => method.l()?,
         Err(e) => {
-            log_e!("Failed to get entrySet");
+            log_e!(TAG, "Failed to get entrySet");
             return Err(e);
         }
     };
@@ -107,7 +113,7 @@ pub fn jni_to_rust_hashmap(
     let iterator = match env.call_method(entry_set, "iterator", "()Ljava/util/Iterator;", &[]) {
         Ok(method) => method.l()?,
         Err(e) => {
-            log_e!("Failed to call iterator method: {:?}", e);
+            log_e!(TAG, "Failed to call iterator method: {:?}", e);
             return Err(e);
         }
     };
@@ -119,7 +125,7 @@ pub fn jni_to_rust_hashmap(
         let entry = match env.call_method(&iterator, "next", "()Ljava/lang/Object;", &[]) {
             Ok(method) => method.l()?,
             Err(e) => {
-                log_e!("Failed to call next method: {:?}", e);
+                log_e!(TAG, "Failed to call next method: {:?}", e);
                 return Err(e);
             }
         };
@@ -127,7 +133,7 @@ pub fn jni_to_rust_hashmap(
         let key = match env.call_method(&entry, "getKey", "()Ljava/lang/Object;", &[]) {
             Ok(method) => method.l()?,
             Err(e) => {
-                log_e!("Failed to call getKey method: {:?}", e);
+                log_e!(TAG, "Failed to call getKey method: {:?}", e);
                 return Err(e);
             }
         };
@@ -135,7 +141,7 @@ pub fn jni_to_rust_hashmap(
         let value = match env.call_method(&entry, "getValue", "()Ljava/lang/Object;", &[]) {
             Ok(method) => method.l()?,
             Err(e) => {
-                log_e!("Failed to call getValue method: {:?}", e);
+                log_e!(TAG, "Failed to call getValue method: {:?}", e);
                 return Err(e);
             }
         };
@@ -143,7 +149,7 @@ pub fn jni_to_rust_hashmap(
         let key_str = match env.get_string(&JString::from(key)) {
             Ok(s) => s.into(),
             Err(e) => {
-                log_e!("Failed to convert key to string: {:?}", e);
+                log_e!(TAG, "Failed to convert key to string: {:?}", e);
                 return Err(e);
             }
         };
@@ -151,7 +157,7 @@ pub fn jni_to_rust_hashmap(
         let value_str = match env.get_string(&JString::from(value)) {
             Ok(s) => s.into(),
             Err(e) => {
-                log_e!("Failed to convert value to string: {:?}", e);
+                log_e!(TAG, "Failed to convert value to string: {:?}", e);
                 return Err(e);
             }
         };

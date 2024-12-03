@@ -16,7 +16,7 @@ public class Main {
 
         statsig.initialize().get();
 
-        StatsigUser user = new StatsigUser("a_user", "user@statsig.com");
+        StatsigUser user = new StatsigUser.Builder().setUserID("a_user").build();
 
         boolean check = statsig.checkGate(user, "test_public");
 

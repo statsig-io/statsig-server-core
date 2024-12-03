@@ -37,6 +37,7 @@ pub enum QueuedEventPayload {
     LayerExposure(LayerExposure),
 }
 
+const TAG: &str = stringify!(EventLogger);
 pub struct EventLogger {
     event_logging_adapter: Arc<dyn EventLoggingAdapter>,
     event_queue: Arc<RwLock<Vec<QueuedEventPayload>>>,
@@ -87,15 +88,15 @@ impl EventLogger {
 
     pub fn start_background_task(self: Arc<Self>, statsig_runtime: &Arc<StatsigRuntime>) {
         let weak_inst = Arc::downgrade(&self);
-        log_d!("Starting event logger background flush");
-        statsig_runtime.spawn("event_logger_bg_flush", move |shutdown_notify| async move {
-            log_d!("BG flush loop begin");
+        log_d!(TAG, "Starting event logger background flush");
+        statsig_runtime.spawn(TAG, move |shutdown_notify| async move {
+            log_d!(TAG, "BG flush loop begin");
 
             loop {
                 let strong_self = match weak_inst.upgrade() {
                     Some(strong_self) => strong_self,
                     None => {
-                        log_w!("failed to upgrade weak instance");
+                        log_w!(TAG, "failed to upgrade weak instance");
                         break;
                     }
                 };
@@ -124,7 +125,7 @@ impl EventLogger {
         };
 
         if should_flush && !self.is_limit_flushing.load(Ordering::Relaxed) {
-            log_d!("Flush limit reached. Flushing...");
+            log_d!(TAG, "Flush limit reached. Flushing...");
             self.is_limit_flushing.store(true, Ordering::Relaxed);
             self.flush();
         }
@@ -136,7 +137,7 @@ impl EventLogger {
                 *map.entry(name).or_insert(0) += 1;
             }
             Err(e) => {
-                log_w!("Failed to increment non exposure checks' count {}", e);
+                log_w!(TAG, "Failed to increment non exposure checks' count {}", e);
             }
         }
     }
@@ -177,7 +178,7 @@ impl EventLogger {
         previous_exposure_info: Arc<Mutex<PreviousExposureInfo>>,
         non_exposed_checks: Arc<Mutex<HashMap<String, u64>>>,
     ) {
-        log_d!("Attempting to flush events");
+        log_d!(TAG, "Attempting to flush events");
 
         append_non_exposed_event_and_reset(&queue, &non_exposed_checks);
 
@@ -193,7 +194,7 @@ impl EventLogger {
         let payloads = match queue.write() {
             Ok(mut lock) => std::mem::take(&mut *lock),
             _ => {
-                log_e!("Failed to lock event queue");
+                log_e!(TAG, "Failed to lock event queue");
                 return;
             }
         };
@@ -219,7 +220,7 @@ impl EventLogger {
         let results = futures::future::join_all(tasks).await;
         for result in results {
             if let Err(e) = result {
-                log_w!("Failed to flush events: {:?}", e);
+                log_w!(TAG, "Failed to flush events: {:?}", e);
             }
         }
     }
@@ -232,7 +233,7 @@ fn append_non_exposed_event_and_reset(
     let mut map = match non_exposed_checks.lock() {
         Ok(lock) => lock,
         Err(e) => {
-            log_d!("Failed to acquire lock on non exposed checks: {}", e);
+            log_d!(TAG, "Failed to acquire lock on non exposed checks: {}", e);
             return;
         }
     };
@@ -248,18 +249,16 @@ fn append_non_exposed_event_and_reset(
             metadata_map
         }
         Err(e) => {
-            log_d!("Failed to serialize non_exposed_checks to JSON: {}", e);
+            log_d!(TAG, "Failed to serialize non_exposed_checks to JSON: {}", e);
             return;
         }
     };
 
-    let event = StatsigEventInternal::new_non_exposed_checks_event(
-        StatsigEvent {
-            event_name: NON_EXPOSED_CHECKS_EVENT.to_string(),
-            value: None,
-            metadata: Some(metadata),
-        }
-    );
+    let event = StatsigEventInternal::new_non_exposed_checks_event(StatsigEvent {
+        event_name: NON_EXPOSED_CHECKS_EVENT.to_string(),
+        value: None,
+        metadata: Some(metadata),
+    });
 
     match queue.write() {
         Ok(mut lock) => {
@@ -267,7 +266,10 @@ fn append_non_exposed_event_and_reset(
             map.clear();
         }
         Err(_) => {
-            log_d!("Failed to acquire write lock when pushing non exposed check events");
+            log_d!(
+                TAG,
+                "Failed to acquire write lock when pushing non exposed check events"
+            );
         }
     }
 }
@@ -279,7 +281,7 @@ async fn validate_and_chunk_events(
     let mut previous_info = match previous_exposure_info.lock() {
         Ok(lock) => lock,
         Err(e) => {
-            log_e!("Failed to lock previous exposure mutex: {}", e);
+            log_e!(TAG, "Failed to lock previous exposure mutex: {}", e);
             return vec![];
         }
     };

@@ -5,6 +5,8 @@ use sigstat::{StatsigHttpEventLoggingAdapter, StatsigOptions};
 use std::os::raw::c_char;
 use std::ptr::null;
 
+const TAG: &str = "StatsigHttpEventLoggingAdapterC";
+
 #[no_mangle]
 pub extern "C" fn statsig_http_event_logging_adapter_create(
     sdk_key: *const c_char,
@@ -23,7 +25,7 @@ pub extern "C" fn statsig_http_event_logging_adapter_create(
     let adapter = StatsigHttpEventLoggingAdapter::new(&sdk_key, log_event_url.as_ref());
 
     let ref_id = INST_STORE.add(adapter).unwrap_or_else(|| {
-        log_e!("Failed to create StatsigHttpSpecsAdapter");
+        log_e!(TAG, "Failed to create StatsigHttpSpecsAdapter");
         "".to_string()
     });
 
@@ -46,7 +48,7 @@ pub extern "C" fn statsig_http_event_logging_adapter_send_events(
     callback: extern "C" fn(bool, *const c_char),
 ) {
     let handle_error = |msg: &str| {
-        log_e!("{}", msg);
+        log_e!(TAG, "{}", msg);
         callback(false, string_to_c_char(msg.to_string()));
         return;
     };

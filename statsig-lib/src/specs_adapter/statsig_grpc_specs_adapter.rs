@@ -24,6 +24,8 @@ struct StreamingRetryState {
     is_retrying: AtomicBool,
 }
 
+const TAG: &str = stringify!(StatsigGrpcSpecsAdapter);
+
 pub struct StatsigGrpcSpecsAdapter {
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
     shutdown_notify: Arc<Notify>,
@@ -130,15 +132,17 @@ impl StatsigGrpcSpecsAdapter {
     ) -> Result<tokio::task::Id, StatsigErr> {
         let weak_self = Arc::downgrade(&self);
 
-        Ok(statsig_runtime.spawn("grpc_streaming", |_shutdown_notify| async move {
-            if let Some(strong_self) = weak_self.upgrade() {
-                if let Err(e) = strong_self.run_retryable_grpc_stream().await {
-                    log_e!("gRPC streaming thread failed: {}", e);
+        Ok(
+            statsig_runtime.spawn("grpc_streaming", |_shutdown_notify| async move {
+                if let Some(strong_self) = weak_self.upgrade() {
+                    if let Err(e) = strong_self.run_retryable_grpc_stream().await {
+                        log_e!(TAG, "gRPC streaming thread failed: {}", e);
+                    }
+                } else {
+                    log_e!(TAG, "Failed to upgrade weak reference to strong reference");
                 }
-            } else {
-                log_e!("Failed to upgrade weak reference to strong reference");
-            }
-        }))
+            }),
+        )
     }
 
     async fn run_retryable_grpc_stream(&self) -> Result<(), StatsigErr> {
@@ -148,7 +152,7 @@ impl StatsigGrpcSpecsAdapter {
                     if let Err(err) = result {
                         let attempt = self.retry_state.retry_attempts.fetch_add(1, Ordering::SeqCst);
                         if attempt > RETRY_LIMIT {
-                            log_e!("gRPC stream failure: {:?}", err);
+                            log_e!(TAG, "gRPC stream failure: {:?}", err);
                            break;
                         }
                         self.grpc_client.reset_client();
@@ -162,12 +166,12 @@ impl StatsigGrpcSpecsAdapter {
                         };
                         self.retry_state.backoff_interval_ms.store(new_backoff,Ordering::SeqCst);
                         self.retry_state.is_retrying.store(true, Ordering::SeqCst);
-                        log_w!("gRPC stream failure ({}). Will wait {} ms and retry. Error: {:?}", attempt, curr_backoff, err);
+                        log_w!(TAG, "gRPC stream failure ({}). Will wait {} ms and retry. Error: {:?}", attempt, curr_backoff, err);
                         tokio::time::sleep(Duration::from_millis(curr_backoff)).await;
                     }
                 },
                 _ = self.shutdown_notify.notified() => {
-                    log_d!("Received shutdown signal, stopping stream listener.");
+                    log_d!(TAG, "Received shutdown signal, stopping stream listener.");
                     break;
                 }
             }
@@ -201,7 +205,7 @@ impl StatsigGrpcSpecsAdapter {
                     let _ = self.send_spec_update_to_listener(config_spec.spec);
                 }
                 _ => {
-                    log_e!("Error while receiving stream");
+                    log_e!(TAG, "Error while receiving stream");
                     return Err(StatsigErr::NetworkError(
                         "Error while receiving stream".to_string(),
                     ));
@@ -259,7 +263,7 @@ impl StatsigGrpcSpecsAdapter {
             }
         }
 
-        log_w!("Failed to get current lcut");
+        log_w!(TAG, "Failed to get current lcut");
         None
     }
 }

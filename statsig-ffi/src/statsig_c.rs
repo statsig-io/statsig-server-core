@@ -2,9 +2,14 @@ use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::{get_instance_or_noop_c, get_instance_or_return_c};
 use serde_json::json;
 use sigstat::instance_store::INST_STORE;
-use sigstat::{get_instance_or_noop, log_e, unwrap_or_noop, unwrap_or_return, Statsig, StatsigOptions, StatsigRuntime, StatsigUser};
+use sigstat::{
+    get_instance_or_noop, log_e, unwrap_or_noop, unwrap_or_return, Statsig, StatsigOptions,
+    StatsigRuntime, StatsigUser,
+};
 use std::os::raw::c_char;
 use std::ptr::null;
+
+const TAG: &str = "StatsigC";
 
 #[no_mangle]
 pub extern "C" fn statsig_create(
@@ -18,7 +23,7 @@ pub extern "C" fn statsig_create(
     let inst = Statsig::new(&sdk_key, options);
 
     let ref_id = INST_STORE.add(inst).unwrap_or_else(|| {
-        log_e!("Failed to create Statsig");
+        log_e!(TAG, "Failed to create Statsig");
         "".to_string()
     });
 
@@ -40,7 +45,7 @@ pub extern "C" fn statsig_initialize(statsig_ref: *const c_char, callback: exter
     let statsig_rt = StatsigRuntime::get_runtime();
     statsig_rt.runtime_handle.block_on(async move {
         if let Err(e) = statsig.initialize().await {
-            log_e!("Failed to initialize statsig: {}", e);
+            log_e!(TAG, "Failed to initialize statsig: {}", e);
         }
 
         callback();

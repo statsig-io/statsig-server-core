@@ -14,6 +14,7 @@ struct MemoState {
     user_hash_cache: HashMap<String, usize>,
 }
 
+const TAG: &str = stringify!(MemoSha256);
 pub struct MemoSha256 {
     inner: Mutex<MemoState>,
 }
@@ -32,7 +33,7 @@ impl MemoSha256 {
         let mut state = match self.inner.lock() {
             Ok(state) => state,
             Err(e) => {
-                log_e!("Failed to acquire lock for Sha256: {}", e);
+                log_e!(TAG, "Failed to acquire lock for Sha256: {}", e);
                 return None;
             }
         };
@@ -61,7 +62,7 @@ impl MemoSha256 {
         let mut state = match self.inner.lock() {
             Ok(state) => state,
             Err(e) => {
-                log_e!("Failed to acquire lock for Sha256: {:?}", e);
+                log_e!(TAG, "Failed to acquire lock for Sha256: {:?}", e);
                 return "STATSIG_HASH_ERROR".to_string();
             }
         };

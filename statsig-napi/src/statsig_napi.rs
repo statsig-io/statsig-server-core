@@ -11,6 +11,8 @@ use std::collections::HashMap;
 
 use crate::statsig_types_napi::{DynamicConfigNapi, ExperimentNapi, FeatureGateNapi};
 
+const TAG: &str = "StatsigNapi";
+
 #[napi(custom_finalize)]
 pub struct AutoReleasingStatsigRef {
   pub ref_id: String,
@@ -33,7 +35,7 @@ pub fn statsig_create(sdk_key: String, options_ref: Option<String>) -> AutoRelea
   let statsig = Statsig::new(&sdk_key, options);
 
   let ref_id = INST_STORE.add(statsig).unwrap_or_else(|| {
-    log_e!("Failed to create Statsig instance");
+    log_e!(TAG, "Failed to create Statsig instance");
     "".to_string()
   });
 

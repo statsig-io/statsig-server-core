@@ -16,6 +16,8 @@ const DEFAULT_ID_LIST_SYNC_INTERVAL_MS: u32 = 10_000;
 
 type IdListsResponse = HashMap<String, IdListMetadata>;
 
+const TAG: &str = stringify!(StatsigHttpIdListsAdapter);
+
 pub struct StatsigHttpIdListsAdapter {
     id_lists_manifest_url: String,
     listener: RwLock<Option<Arc<dyn IdListsUpdateListener>>>,
@@ -68,8 +70,8 @@ impl StatsigHttpIdListsAdapter {
         let data = match response {
             Some(r) => r,
             None => {
-                let msg = "StatsigHttpIdListsAdapter - No ID List results from network";
-                log_e!("{}", msg);
+                let msg = "No ID List results from network";
+                log_e!(TAG, "{}", msg);
                 return Err(StatsigErr::NetworkError(msg.to_string()));
             }
         };
@@ -102,8 +104,8 @@ impl StatsigHttpIdListsAdapter {
         let data = match response {
             Some(r) => r,
             None => {
-                let msg = "StatsigHttpIdListsAdapter - No ID List changes from network";
-                log_e!("{}", msg);
+                let msg = "No ID List changes from network";
+                log_e!(TAG, "{}", msg);
                 return Err(StatsigErr::NetworkError(msg.to_string()));
             }
         };
@@ -136,7 +138,7 @@ impl StatsigHttpIdListsAdapter {
         };
 
         if let Err(e) = strong_self.sync_id_lists().await {
-            log_w!("StatsigHttpIdListsAdapter - IDList background sync failed {}", e);
+            log_w!(TAG, "IDList background sync failed {}", e);
         }
     }
 
@@ -144,10 +146,7 @@ impl StatsigHttpIdListsAdapter {
         match self.listener.write() {
             Ok(mut lock) => *lock = Some(listener),
             Err(e) => {
-                log_e!(
-                    "StatsigHttpIdListsAdapter - Failed to acquire write lock on listener: {}",
-                    e
-                );
+                log_e!(TAG, "Failed to acquire write lock on listener: {}", e);
             }
         }
     }
@@ -246,10 +245,7 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
             Err(e) => {
-                log_e!(
-                    "StatsigHttpIdListsAdapter - Failed to acquire read lock on listener: {}",
-                    e
-                );
+                log_e!(TAG, "Failed to acquire read lock on listener: {}", e);
                 Err(StatsigErr::LockFailure(e.to_string()))
             }
         }
