@@ -32,7 +32,7 @@ pub struct Marker {
     action: ActionType,
     step: Option<StepType>,
     success: Option<bool>,
-    timestamp: Option<u64>,
+    timestamp: u64,
     status_code: Option<u16>,
     url: Option<String>,
     id_list_count: Option<u32>,
@@ -49,14 +49,15 @@ impl Marker {
     pub fn new(
         key: KeyType,
         action: ActionType,
-        step: Option<StepType>
+        step: Option<StepType>,
+        timestamp: u64,
     ) -> Self {
         Self {
             key,
             action,
             step,
             success: None,
-            timestamp: None,
+            timestamp,
             status_code: None,
             url: None,
             id_list_count: None,
@@ -98,25 +99,27 @@ mod tests {
 
     #[test]
     fn test_marker_new() {
-        let marker = Marker::new(KeyType::Initialize, ActionType::Start, Some(StepType::Process));
+        let timestamp: u64 = 1_640_995_200_000;
+        let marker = Marker::new(KeyType::Initialize, ActionType::Start, Some(StepType::Process), timestamp);
         
         assert_eq!(marker.key, KeyType::Initialize);
         assert_eq!(marker.action, ActionType::Start);
         assert_eq!(marker.step, Some(StepType::Process));
         assert_eq!(marker.success, None);
         assert_eq!(marker.status_code, None);
-        assert_eq!(marker.timestamp, None);
+        assert_eq!(marker.timestamp, timestamp);
     }
 
     #[test]
     fn test_marker_serialization() {
-        let marker = Marker::new(KeyType::Initialize, ActionType::Start, Some(StepType::Process))
+        let timestamp: u64 = 1_640_995_200_000;
+        let marker = Marker::new(KeyType::Initialize, ActionType::Start, Some(StepType::Process), timestamp)
             .with_is_success(true)
             .with_status_code(200)
             .with_attempt(1);
         
         let serialized = serde_json::to_string(&marker).expect("Failed to serialize Marker");
-        let expected_json = r#"{"key":"initialize","action":"start","step":"process","success":true,"timestamp":null,"statusCode":200,"url":null,"idListCount":null,"sdkRegion":null,"markerID":null,"attempt":1,"configName":null,"message":null,"error":null}"#;
+        let expected_json = r#"{"key":"initialize","action":"start","step":"process","success":true,"timestamp":1640995200000,"statusCode":200,"url":null,"idListCount":null,"sdkRegion":null,"markerID":null,"attempt":1,"configName":null,"message":null,"error":null}"#;
         
         assert_eq!(serialized, expected_json);
     }

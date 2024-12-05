@@ -31,10 +31,20 @@ mod tests {
 
     #[test]
     fn test_format_diagnostics_metadata_with_valid_markers() {
-        let start_marker = Marker::new(KeyType::Initialize, ActionType::Start, Some(StepType::Process))
-            .with_is_success(true);
-        let end_marker = Marker::new(KeyType::Initialize, ActionType::End, Some(StepType::Process))
-            .with_status_code(200);
+        let start_timestamp: u64 = 1_640_995_200_000; // 2022-01-01T00:00:00Z
+        let end_timestamp: u64 = 1_640_995_800_000; // 10 minutes later
+        
+        let start_marker = Marker::new(
+            KeyType::Initialize, 
+            ActionType::Start, 
+            Some(StepType::Process), 
+            start_timestamp).with_is_success(true);
+        
+        let end_marker = Marker::new(
+            KeyType::Initialize, 
+            ActionType::End, 
+            Some(StepType::Process), 
+            end_timestamp).with_status_code(200);
 
         let markers = vec![start_marker, end_marker];
         let context_type = ContextType::Initialize;
@@ -50,7 +60,7 @@ mod tests {
                 "action": "start",
                 "step": "process",
                 "success": true,
-                "timestamp": null,
+                "timestamp": start_timestamp,
                 "statusCode": null,
                 "url": null,
                 "idListCount": null,
@@ -66,7 +76,7 @@ mod tests {
                 "action": "end",
                 "step": "process",
                 "success": null,
-                "timestamp": null,
+                "timestamp": end_timestamp,
                 "statusCode": 200,
                 "url": null,
                 "idListCount": null,

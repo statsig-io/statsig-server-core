@@ -10,6 +10,7 @@ use crate::log_w;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex};
+use chrono::Utc;
 
 const MAX_MARKER_COUNT: usize = 50;
 const DIAGNOSTICS_EVENT: &str = "statsig::diagnostics";
@@ -69,14 +70,23 @@ impl Diagnostics {
     }
 
     pub fn mark_init_overall_start(&self) {
-        let init_marker = Marker::new(KeyType::Overall, ActionType::Start, Some(StepType::Process));
+        let init_marker = Marker::new(
+            KeyType::Overall, 
+            ActionType::Start, 
+            Some(StepType::Process), 
+            Utc::now().timestamp_millis() as u64
+        );
         self.add_marker(ContextType::Initialize, init_marker);
     }
 
     pub fn mark_init_overall_end(&self, success: bool, error_message: Option<String>) {
         let mut init_marker =
-            Marker::new(KeyType::Overall, ActionType::End, Some(StepType::Process))
-                .with_is_success(success);
+            Marker::new(
+                KeyType::Overall, 
+                ActionType::End, 
+                Some(StepType::Process), 
+                Utc::now().timestamp_millis() as u64
+            ).with_is_success(success);
 
         if let Some(msg) = error_message {
             init_marker = init_marker.with_message(msg);
