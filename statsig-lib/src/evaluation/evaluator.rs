@@ -141,6 +141,9 @@ fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Conditi
             temp_value = get_hash_for_user_bucket(ctx, condition);
             Some(&temp_value)
         }
+        "target_app" => {
+            *ctx.app_id
+        }
         "unit_id" => ctx.user.get_unit_id(&condition.id_type),
         _ => {
             ctx.result.unsupported = true;

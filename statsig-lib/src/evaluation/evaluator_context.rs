@@ -1,3 +1,4 @@
+use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluator_result::EvaluatorResult;
 use crate::hashing::Hashing;
 use crate::spec_store::SpecStoreData;
@@ -9,6 +10,7 @@ pub struct EvaluatorContext<'a> {
     pub hashing: &'a Hashing,
     pub result: EvaluatorResult<'a>,
     pub nested_count: u64,
+    pub app_id: &'a Option<&'a DynamicValue>,
 }
 
 impl<'a> EvaluatorContext<'a> {
@@ -16,6 +18,7 @@ impl<'a> EvaluatorContext<'a> {
         user: &'a StatsigUserInternal,
         spec_store_data: &'a SpecStoreData,
         hashing: &'a Hashing,
+        app_id: &'a Option<&'a DynamicValue>,
     ) -> Self {
         let result = EvaluatorResult::default();
 
@@ -23,6 +26,7 @@ impl<'a> EvaluatorContext<'a> {
             user,
             spec_store_data,
             hashing,
+            app_id,
             result,
             nested_count: 0,
         }

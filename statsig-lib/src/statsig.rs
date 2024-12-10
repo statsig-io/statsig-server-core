@@ -465,7 +465,8 @@ impl Statsig {
 
         match spec {
             Some(spec) => {
-                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing);
+                let app_id = data.values.app_id.as_ref();
+                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing, &app_id);
                 Evaluator::evaluate(&mut context, spec);
                 let eval_details = EvaluationDetails::recognized(&data, &context.result);
 

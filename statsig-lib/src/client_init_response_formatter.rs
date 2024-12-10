@@ -1,3 +1,4 @@
+use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_types::{AnyConfigEvaluation, SecondaryExposure};
 use crate::evaluation::evaluator::Evaluator;
 use crate::evaluation::evaluator_context::EvaluatorContext;
@@ -9,14 +10,16 @@ use crate::hashing::{HashAlgorithm, Hashing};
 use crate::initialize_response::InitializeResponse;
 use crate::read_lock_or_else;
 use crate::spec_store::SpecStore;
+use crate::spec_types::Spec;
 use crate::statsig_user_internal::{StatsigUserInternal, StatsigUserLoggable};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+#[derive(Default)]
 pub struct ClientInitResponseOptions {
     pub hash_algorithm: Option<HashAlgorithm>,
+    pub client_sdk_key: Option<String>,
     // todo: Support these options
-    // pub client_sdk_key: Option<String>,
     // pub include_local_overrides: bool,
 }
 
@@ -31,6 +34,7 @@ impl ClientInitResponseFormatter {
             spec_store: spec_store.clone(),
             default_options: ClientInitResponseOptions {
                 hash_algorithm: Some(HashAlgorithm::Djb2),
+                client_sdk_key: None,
             },
         }
     }
@@ -49,8 +53,19 @@ impl ClientInitResponseFormatter {
             return InitializeResponse::blank(user_internal);
         });
 
+        let mut app_id = data.values.app_id.as_ref();
+
+        if let Some(client_sdk_key) = &options.client_sdk_key {
+            if let Some(app_id_value) = &data.values.sdk_keys_to_app_ids {
+                app_id = app_id_value.get(client_sdk_key);
+            }
+            if let Some(app_id_value) = &data.values.hashed_sdk_keys_to_app_ids {
+                let hashed_key = &hashing.hash(&client_sdk_key, &HashAlgorithm::Djb2);
+                app_id = app_id_value.get(hashed_key);
+            }
+        }
         let mut feature_gates = HashMap::new();
-        let mut context = EvaluatorContext::new(&user_internal, &data, hashing);
+        let mut context = EvaluatorContext::new(&user_internal, &data, hashing, &app_id);
 
         let hash_used = options
             .hash_algorithm
@@ -59,6 +74,10 @@ impl ClientInitResponseFormatter {
 
         for (name, spec) in data.values.feature_gates.iter() {
             if spec.entity == "segment" || spec.entity == "holdout" {
+                continue;
+            }
+
+            if get_should_filter_config_for_app(spec, &app_id, &options.client_sdk_key) {
                 continue;
             }
 
@@ -74,6 +93,10 @@ impl ClientInitResponseFormatter {
 
         let mut dynamic_configs = HashMap::new();
         for (name, spec) in data.values.dynamic_configs.iter() {
+            if get_should_filter_config_for_app(spec, &app_id, &options.client_sdk_key) {
+                continue;
+            }
+
             context.reset_result();
             Evaluator::evaluate(&mut context, spec);
 
@@ -91,6 +114,10 @@ impl ClientInitResponseFormatter {
 
         let mut layer_configs = HashMap::new();
         for (name, spec) in &data.values.layer_configs {
+          if get_should_filter_config_for_app(spec, &app_id, &options.client_sdk_key) {
+                continue;
+            }
+
             context.reset_result();
             Evaluator::evaluate(&mut context, spec);
 
@@ -122,6 +149,38 @@ impl ClientInitResponseFormatter {
             evaluated_keys,
         }
     }
+}
+
+fn get_should_filter_config_for_app(
+    spec: &Spec,
+    app_id: &Option<&DynamicValue>,
+    client_sdk_key: &Option<String>,
+) -> bool {
+
+    let _client_sdk_key = match client_sdk_key {
+        Some(client_sdk_key) => client_sdk_key,
+        None => return false,
+    };
+
+    let app_id = match app_id {
+        Some(app_id) => app_id,
+        None => return false,
+    };
+
+    let string_app_id = match app_id.string_value.as_ref() {
+        Some(string_app_id) => string_app_id,
+        None => return false,
+    };
+
+    let target_app_ids = match &spec.target_app_ids {
+        Some(target_app_ids) => target_app_ids,
+        None => return true,
+    };
+
+    if !target_app_ids.contains(string_app_id) {
+        return true;
+    }
+    false
 }
 
 fn get_evaluated_keys(user_internal: &StatsigUserInternal) -> HashMap<String, String> {

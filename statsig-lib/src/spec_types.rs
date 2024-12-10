@@ -19,6 +19,8 @@ pub struct Spec {
     pub has_shared_params: Option<bool>,
     pub is_active: Option<bool>,
     pub version: Option<u32>,
+    #[serde(rename = "targetAppIDs")]
+    pub target_app_ids: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -57,7 +59,10 @@ pub struct SpecsResponseFull {
     pub experiment_to_layer: HashMap<String, String>,
     pub has_updates: bool,
     pub time: u64,
-    pub default_environment: Option<String>
+    pub default_environment: Option<String>,
+    pub app_id: Option<DynamicValue>,
+    pub sdk_keys_to_app_ids: Option<HashMap<String, DynamicValue>>,
+    pub hashed_sdk_keys_to_app_ids: Option<HashMap<String, DynamicValue>>,
 }
 
 #[derive(Deserialize)]

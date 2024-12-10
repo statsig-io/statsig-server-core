@@ -64,6 +64,7 @@ pub fn convert_java_client_init_response_options_to_rust(
     let hash_algo = hash_algo.and_then(|s| HashAlgorithm::from_string(&s));
     Some(ClientInitResponseOptions {
         hash_algorithm: hash_algo,
+        ..ClientInitResponseOptions::default()
     })
 }
 

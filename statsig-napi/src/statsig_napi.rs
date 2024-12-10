@@ -259,5 +259,5 @@ fn convert_client_init_response_options(
     .as_ref()
     .and_then(|s| HashAlgorithm::from_string(&s));
 
-  Some(ClientInitResponseOptions { hash_algorithm })
+  Some(ClientInitResponseOptions { hash_algorithm, ..ClientInitResponseOptions::default() })
 }

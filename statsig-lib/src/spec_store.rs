@@ -177,6 +177,9 @@ impl SpecsResponseFull {
             has_updates: true,
             time: 0,
             default_environment: None,
+            app_id: None,
+            sdk_keys_to_app_ids: None,
+            hashed_sdk_keys_to_app_ids: None,
         }
     }
 }
