@@ -1915,6 +1915,7 @@ version = "0.1.0"
 dependencies = [
  "pyo3",
  "pyo3-async-runtimes",
+ "serde_json",
  "sigstat",
  "tokio",
 ]

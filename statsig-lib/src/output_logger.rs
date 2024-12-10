@@ -49,7 +49,7 @@ pub fn initialize_simple_output_logger(level: &Option<LogLevel>) {
     }
 }
 
-pub fn log_message(tag: &str, level: Level, msg: String) {
+pub fn log_message(tag: &str, level: LogLevel, msg: String) {
     let truncated_msg = if msg.chars().count() > MAX_CHARS {
         let visible_chars = MAX_CHARS.saturating_sub(TRUNCATED_SUFFIX.len());
         format!(
@@ -61,7 +61,7 @@ pub fn log_message(tag: &str, level: Level, msg: String) {
         msg
     };
 
-    match level {
+    match level.to_third_party_level() {
         Level::Debug => debug!("[Statsig.{}] {}", tag, truncated_msg),
         Level::Info => info!("[Statsig.{}] {}", tag, truncated_msg),
         Level::Warn => warn!("[Statsig.{}] {}", tag, truncated_msg),
@@ -73,27 +73,27 @@ pub fn log_message(tag: &str, level: Level, msg: String) {
 #[macro_export]
 macro_rules! log_d {
   ($tag:expr, $($arg:tt)*) => {
-        $crate::output_logger::log_message($tag, log::Level::Debug, format!($($arg)*))
+        $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Debug, format!($($arg)*))
     }
 }
 
 #[macro_export]
 macro_rules! log_i {
   ($tag:expr, $($arg:tt)*) => {
-        $crate::output_logger::log_message($tag, log::Level::Info, format!($($arg)*))
+        $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Info, format!($($arg)*))
     }
 }
 
 #[macro_export]
 macro_rules! log_w {
   ($tag:expr, $($arg:tt)*) => {
-        $crate::output_logger::log_message($tag, log::Level::Warn, format!($($arg)*))
+        $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Warn, format!($($arg)*))
     }
 }
 
 #[macro_export]
 macro_rules! log_e {
   ($tag:expr, $($arg:tt)*) => {
-        $crate::output_logger::log_message($tag, log::Level::Error, format!($($arg)*))
+        $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Error, format!($($arg)*))
     }
 }

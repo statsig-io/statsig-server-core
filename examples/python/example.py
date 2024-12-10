@@ -25,13 +25,32 @@ pprint.pprint(
 )
 
 key = os.getenv("STATSIG_SECRET_KEY")
-statsig = sigstat_python_core.StatsigPy(key)
+statsig = sigstat_python_core.Statsig(key)
 
 result = statsig.initialize()
 
 print("initialize result", result)
 
-user = sigstat_python_core.StatsigUserPy("a-user")
+user = sigstat_python_core.StatsigUser("a-user")
 gate_result = statsig.check_gate("a_gate", user)
 
-print("gate_result", gate_result)
+print("check_gate_result", gate_result)
+
+gate_result = statsig.get_feature_gate("a_gate", user)
+print(
+    "Class of gate_result:",
+    gate_result.name,
+    gate_result.value,
+    gate_result.id_type,
+    gate_result.rule_id,
+)
+
+exp_result = statsig.get_experiment("another_experiment", user)
+print("exp_result:", exp_result.name, exp_result.group_name)
+print("exp_result str:", exp_result.get_string("a_string"))
+print("exp_result bool:", exp_result.get_bool("a_bool"))
+print("exp_result number:", exp_result.get_number("a_number"))
+
+
+gcir = statsig.get_client_init_response(user)
+print("gcir:", gcir[:300])

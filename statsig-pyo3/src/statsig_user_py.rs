@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use sigstat::StatsigUser;
 
-#[pyclass]
+#[pyclass(name="StatsigUser")]
 pub struct StatsigUserPy {
     pub inner: StatsigUser,
 }

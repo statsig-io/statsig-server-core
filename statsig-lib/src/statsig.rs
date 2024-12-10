@@ -163,7 +163,6 @@ impl Statsig {
         init_res
     }
 
-
     pub async fn shutdown_with_timeout(&self, timeout: Duration) -> Result<(), StatsigErr> {
         log_d!(
             TAG,
@@ -419,6 +418,14 @@ impl Statsig {
         let user_internal = self.internalize_user(user);
         self.gcir_formatter
             .get(user_internal, &self.hashing, options)
+    }
+
+    pub fn get_client_init_response_with_options_as_string(
+        &self,
+        user: &StatsigUser,
+        options: &ClientInitResponseOptions,
+    ) -> String {
+        json!(self.get_client_init_response_with_options(user, options)).to_string()
     }
 
     pub fn log_layer_param_exposure(&self, layer_json: String, parameter_name: String) {

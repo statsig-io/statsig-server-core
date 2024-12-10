@@ -127,9 +127,8 @@ impl ClientInitResponseFormatter {
             let mut evaluation = result_to_layer_eval(&hashed_name, &mut context.result);
 
             if let Some(allocated_experiment_name) = evaluation.allocated_experiment_name {
-                evaluation.allocated_experiment_name = Some(context
-                    .hashing
-                    .hash(&allocated_experiment_name, hash_used));
+                evaluation.allocated_experiment_name =
+                    Some(context.hashing.hash(&allocated_experiment_name, hash_used));
             }
 
             layer_configs.insert(hashed_name, evaluation);
