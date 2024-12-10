@@ -1,6 +1,6 @@
 use crate::evaluation::comparisons::{
     compare_numbers, compare_str_with_regex, compare_strings_in_array, compare_time,
-    compare_versions,
+    compare_versions, compare_arrays,
 };
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_types::SecondaryExposure;
@@ -193,6 +193,8 @@ fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Conditi
         "in_segment_list" | "not_in_segment_list" => {
             evaluate_id_list(ctx, operator, target_value, value)
         }
+
+        "array_contains_any" | "array_contains_none" | "array_contains_all" | "not_array_contains_all" => compare_arrays(value, target_value, operator),
 
         _ => {
             ctx.result.unsupported = true;
