@@ -12,7 +12,7 @@ pub use statsig::Statsig;
 pub use statsig_err::StatsigErr;
 pub use statsig_options::StatsigOptions;
 pub use statsig_user::StatsigUser;
-pub use statsig_core_api_options::{GetDynamicConfigOptions, CheckGateOptions, GetExperimentOptions};
+pub use statsig_core_api_options::{GetDynamicConfigOptions, CheckGateOptions, GetExperimentOptions, GetFeatureGateOptions, GetLayerOptions};
 
 pub mod instance_store;
 pub mod networking;

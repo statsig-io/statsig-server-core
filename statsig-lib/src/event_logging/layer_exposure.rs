@@ -15,6 +15,7 @@ pub struct LayerExposure {
     pub evaluation: Option<LayerEvaluation>,
     pub evaluation_details: EvaluationDetails,
     pub version: Option<u32>,
+    pub is_manual_exposure: bool,
 }
 
 impl StatsigExposure for LayerExposure {
@@ -61,6 +62,9 @@ impl StatsigExposure for LayerExposure {
         metadata.insert("isExplicitParameter".into(), is_explicit.to_string());
         if let Some(version) = self.version {
             metadata.insert("configVersion".into(), version.to_string());
+        }
+        if self.is_manual_exposure {
+            metadata.insert("isManualExposure".into(), "true".into());
         }
 
         let event = StatsigEvent {

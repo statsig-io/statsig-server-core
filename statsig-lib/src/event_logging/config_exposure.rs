@@ -15,6 +15,7 @@ pub struct ConfigExposure {
     pub evaluation_details: EvaluationDetails,
     pub rule_passed: Option<bool>,
     pub version: Option<u32>,
+    pub is_manual_exposure: bool,
 }
 
 impl StatsigExposure for ConfigExposure {
@@ -37,6 +38,9 @@ impl StatsigExposure for ConfigExposure {
         }
         if let Some(rule_passed) = self.rule_passed {
             metadata.insert("rulePassed".into(), rule_passed.to_string());
+        }
+        if self.is_manual_exposure {
+            metadata.insert("isManualExposure".into(), "true".into());
         }
 
         let event = StatsigEvent {

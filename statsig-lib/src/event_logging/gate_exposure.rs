@@ -16,6 +16,7 @@ pub struct GateExposure {
     pub secondary_exposures: Option<Vec<SecondaryExposure>>,
     pub evaluation_details: EvaluationDetails,
     pub version: Option<u32>,
+    pub is_manual_exposure: bool,
 }
 
 impl StatsigExposure for GateExposure {
@@ -28,6 +29,9 @@ impl StatsigExposure for GateExposure {
         metadata.insert("gate".into(), self.gate_name);
         metadata.insert("gateValue".into(), self.value.to_string());
         metadata.insert("ruleID".into(), self.rule_id.unwrap_or_default());
+        if self.is_manual_exposure {
+            metadata.insert("isManualExposure".into(), "true".into());
+        }
         if let Some(version) = self.version {
             metadata.insert("configVersion".into(), version.to_string());
         }

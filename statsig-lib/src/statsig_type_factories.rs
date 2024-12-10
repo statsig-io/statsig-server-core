@@ -105,6 +105,7 @@ pub fn make_layer(
     details: EvaluationDetails,
     event_logger_ptr: Option<Weak<EventLogger>>,
     version: Option<u32>,
+    disable_exposure: bool,
 ) -> Layer {
     let (value, rule_id, group_name, allocated_experiment_name) = match &evaluation {
         Some(e) => (
@@ -127,6 +128,7 @@ pub fn make_layer(
         __user: user.clone(),
         __event_logger_ptr: event_logger_ptr,
         __version: version,
+        __disable_exposure: disable_exposure,
     }
 }
 

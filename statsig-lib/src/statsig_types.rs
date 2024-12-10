@@ -66,6 +66,7 @@ pub struct Layer {
     pub __value: HashMap<String, DynamicValue>,
     pub __user: StatsigUserInternal,
     pub __version: Option<u32>,
+    pub __disable_exposure: bool,
 
     #[serde(skip_serializing, skip_deserializing)]
     pub __event_logger_ptr: Option<Weak<EventLogger>>,
@@ -139,6 +140,12 @@ impl Layer {
     }
 
     fn log_param_exposure(&self, param_name: &str) -> Option<()> {
+        if self.__disable_exposure {
+            if let Some(ptr) = &self.__event_logger_ptr {
+                ptr.upgrade()?.increment_non_exposure_checks_count(self.name.clone());
+            }
+            return None;
+        }
         if let Some(ptr) = &self.__event_logger_ptr {
             ptr.upgrade()?.enqueue(QueuedEventPayload::LayerExposure(LayerExposure {
                 user: self.__user.clone(),
@@ -147,6 +154,7 @@ impl Layer {
                 evaluation: self.__evaluation.clone(),
                 evaluation_details: self.details.clone(),
                 version: self.__version,
+                is_manual_exposure: false,
             }))
         }
 

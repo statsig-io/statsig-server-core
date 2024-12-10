@@ -467,6 +467,7 @@ mod tests {
             secondary_exposures: None,
             evaluation_details: eval_details.clone(),
             version: None,
+            is_manual_exposure: false,
         }));
         logger.enqueue(QueuedEventPayload::GateExposure(GateExposure {
             user: user_internal,
@@ -476,6 +477,7 @@ mod tests {
             secondary_exposures: None,
             evaluation_details: eval_details,
             version: None,
+            is_manual_exposure: false,
         }));
 
         logger.shutdown(Duration::from_millis(100)).await.unwrap();

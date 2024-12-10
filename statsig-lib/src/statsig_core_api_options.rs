@@ -17,3 +17,8 @@ pub struct GetExperimentOptions {
 pub struct GetDynamicConfigOptions {
     pub disable_exposure_logging: bool,
 }
+
+#[derive(Debug, Clone, Default)]
+pub struct GetLayerOptions {
+    pub disable_exposure_logging: bool,
+}
