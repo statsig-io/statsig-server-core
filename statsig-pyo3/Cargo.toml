@@ -1,12 +1,16 @@
 [package]
 name = "statsig-pyo3"
-edition.workspace = true
-license.workspace = true
-version.workspace = true
+version = "0.1.0"
+edition = "2021"
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "statsig_pyo3"
+name = "sigstat_python_core"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.22.0"
+sigstat = { path = "../statsig-lib" }
+pyo3 = { version = "0.23.1", features = ["abi3-py37"] }
+pyo3-async-runtimes = { version = "0.23.0", features = ["attributes", "tokio"] }
+tokio = "1.41.0"
+

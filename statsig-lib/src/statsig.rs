@@ -163,6 +163,7 @@ impl Statsig {
         init_res
     }
 
+
     pub async fn shutdown_with_timeout(&self, timeout: Duration) -> Result<(), StatsigErr> {
         log_d!(
             TAG,
@@ -289,6 +290,8 @@ impl Statsig {
                 .increment_non_exposure_checks_count(gate_name.to_string());
             return value;
         }
+
+        log_d!(TAG, "Gate Result: {} ({})", value, details.reason);
 
         self.event_logger
             .enqueue(QueuedEventPayload::GateExposure(GateExposure {
