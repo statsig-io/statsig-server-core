@@ -9,6 +9,7 @@ pub trait EventLoggingAdapter: Send + Sync {
     async fn start(&self, statsig_runtime: &Arc<StatsigRuntime>) -> Result<(), StatsigErr>;
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr>;
     async fn shutdown(&self) -> Result<(), StatsigErr>;
+    fn should_schedule_background_flush(&self) -> bool;
 }
 
 #[cfg(test)]

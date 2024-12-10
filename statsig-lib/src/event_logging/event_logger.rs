@@ -88,6 +88,13 @@ impl EventLogger {
     }
 
     pub fn start_background_task(self: Arc<Self>, statsig_runtime: &Arc<StatsigRuntime>) {
+        if !self
+            .event_logging_adapter
+            .should_schedule_background_flush()
+        {
+            return;
+        }
+
         let weak_inst = Arc::downgrade(&self);
         log_d!(TAG, "Starting event logger background flush");
         statsig_runtime.spawn(TAG, move |shutdown_notify| async move {
@@ -505,6 +512,10 @@ mod tests {
 
         async fn shutdown(&self) -> Result<(), StatsigErr> {
             Ok(())
+        }
+
+        fn should_schedule_background_flush(&self) -> bool {
+            true
         }
     }
 }

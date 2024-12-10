@@ -40,9 +40,7 @@ impl StatsigLocalFileSpecsAdapter {
         let data = match self.http_adapter.fetch_specs_from_network(lcut).await {
             Some(data) => data,
             None => {
-                return Err(StatsigErr::SpecsLocalFileReadFailure(
-                    "No data received".to_string(),
-                ))
+                return Err(StatsigErr::NetworkError("No data received".to_string()));
             }
         };
 
@@ -58,7 +56,9 @@ impl StatsigLocalFileSpecsAdapter {
     pub fn resync_from_file(&self) -> Result<(), StatsigErr> {
         let data = match std::fs::read_to_string(&self.file_path) {
             Ok(data) => data,
-            Err(e) => return Err(StatsigErr::SpecsLocalFileReadFailure(e.to_string())),
+            Err(e) => {
+                return Err(StatsigErr::FileError(e.to_string()));
+            }
         };
 
         match &self.listener.read() {
@@ -84,7 +84,9 @@ impl StatsigLocalFileSpecsAdapter {
 
         let data = match std::fs::read_to_string(&self.file_path) {
             Ok(data) => data,
-            Err(e) => return Err(StatsigErr::SpecsLocalFileReadFailure(e.to_string())),
+            Err(e) => {
+                return Err(StatsigErr::FileError(e.to_string()));
+            }
         };
 
         Ok(self.parse_specs_data_to_full_response(&data))

@@ -6,6 +6,7 @@ use sigstat::{
     get_instance_or_noop, log_e, unwrap_or_noop, unwrap_or_return, Statsig, StatsigOptions,
     StatsigRuntime, StatsigUser,
 };
+use std::collections::HashMap;
 use std::os::raw::c_char;
 use std::ptr::null;
 
@@ -72,6 +73,35 @@ pub extern "C" fn statsig_get_current_values(statsig_ref: *const c_char) -> *con
     let values = statsig.get_current_values();
     let data = json!(values).to_string();
     string_to_c_char(data)
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_log_event(
+    statsig_ref: *const c_char,
+    user_ref: *const c_char,
+    event_json: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+    let user = get_instance_or_noop_c!(StatsigUser, user_ref);
+    let event_json = unwrap_or_noop!(c_char_to_string(event_json));
+    let event = json!(event_json);
+
+    let event_name = unwrap_or_noop!(event.get("eventName").and_then(|n| n.as_str()));
+
+    let event_value = event
+        .get("value")
+        .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+    let event_metadata: Option<HashMap<String, String>> = event
+        .get("metadata")
+        .and_then(|m| m.as_object())
+        .map(|obj| {
+            obj.iter()
+                .map(|(k, v)| (k.to_string(), v.as_str().unwrap_or("").to_string()))
+                .collect()
+        });
+
+    statsig.log_event(&user, &event_name, event_value, event_metadata);
 }
 
 #[no_mangle]

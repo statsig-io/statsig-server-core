@@ -17,7 +17,7 @@ namespace Statsig
 
 
         [DllImport(__DllName, EntryPoint = "statsig_options_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_options_create(byte* specs_url, byte* log_event_url, byte* specs_adapter_ref);
+        internal static extern byte* statsig_options_create(byte* specs_url, byte* log_event_url, byte* specs_adapter_ref, byte* event_logging_adapter_ref);
 
         [DllImport(__DllName, EntryPoint = "statsig_options_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_options_release(byte* options_ref);
@@ -48,6 +48,9 @@ namespace Statsig
 
         [DllImport(__DllName, EntryPoint = "statsig_get_current_values", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_current_values(byte* statsig_ref);
+
+        [DllImport(__DllName, EntryPoint = "statsig_log_event", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void statsig_log_event(byte* statsig_ref, byte* user_ref, byte* event_json);
 
         [DllImport(__DllName, EntryPoint = "statsig_check_gate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]

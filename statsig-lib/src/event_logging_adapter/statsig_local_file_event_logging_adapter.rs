@@ -107,6 +107,10 @@ impl EventLoggingAdapter for StatsigLocalFileEventLoggingAdapter {
     async fn shutdown(&self) -> Result<(), StatsigErr> {
         Ok(())
     }
+
+    fn should_schedule_background_flush(&self) -> bool {
+        false
+    }
 }
 
 fn attempt_to_append_events(current: &mut PendingLogRequests, request: &LogEventRequest) -> bool {

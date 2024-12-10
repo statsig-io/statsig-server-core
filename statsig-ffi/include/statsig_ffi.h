@@ -17,6 +17,8 @@ void statsig_flush_events(const char *statsig_ref, void (*callback)(void));
 
 const char *statsig_get_current_values(const char *statsig_ref);
 
+void statsig_log_event(const char *statsig_ref, const char *user_ref, const char *event_json);
+
 bool statsig_check_gate(const char *statsig_ref, const char *user_ref, const char *gate_name);
 
 const char *statsig_get_feature_gate(const char *statsig_ref,
@@ -74,7 +76,8 @@ void statsig_local_file_specs_adapter_fetch_and_write_to_file(const char *specs_
 
 const char *statsig_options_create(const char *specs_url,
                                    const char *log_event_url,
-                                   const char *specs_adapter_ref);
+                                   const char *specs_adapter_ref,
+                                   const char *event_logging_adapter_ref);
 
 void statsig_options_release(const char *options_ref);
 

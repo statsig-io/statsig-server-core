@@ -82,4 +82,8 @@ impl EventLoggingAdapter for MockEventLoggingAdapter {
     async fn shutdown(&self) -> Result<(), StatsigErr> {
         Ok(())
     }
+
+    fn should_schedule_background_flush(&self) -> bool {
+        true
+    }
 }

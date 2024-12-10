@@ -6,6 +6,8 @@ use Statsig\EvaluationTypes\DynamicConfig;
 use Statsig\EvaluationTypes\Experiment;
 use Statsig\EvaluationTypes\FeatureGate;
 use Statsig\EvaluationTypes\Layer;
+use Statsig\StatsigEventData;
+
 
 class Statsig
 {
@@ -34,7 +36,8 @@ class Statsig
         StatsigFFI::get()->statsig_initialize($this->__ref, $callback);
     }
 
-    public function flushEvents($callback): void {
+    public function flushEvents($callback): void
+    {
         StatsigFFI::get()->statsig_flush_events($this->__ref, $callback);
     }
 
@@ -70,5 +73,13 @@ class Statsig
     public function getClientInitializeResponse(StatsigUser $user): string
     {
         return StatsigFFI::get()->statsig_get_client_init_response($this->__ref, $user->__ref);
+    }
+
+    public function logEvent(
+        StatsigEventData $event_data,
+        StatsigUser $user,
+    ): void {
+        $data = json_encode($event_data);
+        StatsigFFI::get()->statsig_log_event($this->__ref, $user->__ref, $data);
     }
 }

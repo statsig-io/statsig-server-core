@@ -16,9 +16,6 @@ pub enum StatsigErr {
 
     ThreadFailure(String),
 
-    // Specs Adapter
-    SpecsLocalFileReadFailure(String),
-
     // ID Lists Adapter
     IdListsAdapterFailedToInsertIdList,
 
@@ -49,11 +46,6 @@ impl Display for StatsigErr {
             StatsigErr::FileError(msg) => write!(f, "File write error: {}", msg),
 
             StatsigErr::ThreadFailure(msg) => write!(f, "Thread failure: {}", msg),
-
-            // Specs
-            StatsigErr::SpecsLocalFileReadFailure(e) => {
-                write!(f, "Specs adapter failed to read local file, {}", e)
-            }
 
             // ID Lists
             StatsigErr::IdListsAdapterFailedToInsertIdList => {
