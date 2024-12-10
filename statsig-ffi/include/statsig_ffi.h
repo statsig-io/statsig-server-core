@@ -56,13 +56,21 @@ void statsig_http_specs_adapter_release(const char *specs_adapter_ref);
 const char *statsig_http_specs_adapter_fetch_specs_from_network(const char *specs_adapter_ref,
                                                                 uint64_t current_lcut);
 
-const char *statsig_local_file_event_logging_adapter_create(const char *file_path);
+const char *statsig_local_file_event_logging_adapter_create(const char *sdk_key,
+                                                            const char *output_directory,
+                                                            const char *log_event_url);
 
 void statsig_local_file_event_logging_adapter_release(const char *event_logging_adapter_ref);
 
-const char *statsig_local_file_specs_adapter_create(const char *file_path);
+void statsig_local_file_event_logging_adapter_send_pending_events(const char *adapter_ref);
+
+const char *statsig_local_file_specs_adapter_create(const char *sdk_key,
+                                                    const char *output_directory,
+                                                    const char *specs_url);
 
 void statsig_local_file_specs_adapter_release(const char *specs_adapter_ref);
+
+void statsig_local_file_specs_adapter_fetch_and_write_to_file(const char *specs_adapter_ref);
 
 const char *statsig_options_create(const char *specs_url,
                                    const char *log_event_url,

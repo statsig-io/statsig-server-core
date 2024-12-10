@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Statsig\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Statsig\StatsigScheduledSpecsAdapter;
+use Statsig\StatsigLocalFileSpecsAdapter;
 use Statsig\StatsigOptions;
 use Statsig\Statsig;
 use Statsig\StatsigUser;
@@ -31,12 +31,11 @@ class StatsigAdapterUsageTest extends TestCase
 
     public function testScheduledSpecsAdapterUsage()
     {
-        $options = new StatsigOptions(
-            $this->server->getUrl() . "/v2/download_config_specs",
-            $this->server->getUrl() . "/v1/log_event"
+        $adapter = new StatsigLocalFileSpecsAdapter(
+            "secret-key",
+            "/tmp",
+            $this->server->getUrl() . "/v2/download_config_specs"
         );
-
-        $adapter = new StatsigScheduledSpecsAdapter("/tmp/specs.json", "secret-key", $options);
         $adapter->sync_specs_from_network();
 
         $options = new StatsigOptions(
@@ -44,7 +43,6 @@ class StatsigAdapterUsageTest extends TestCase
             null,
             $adapter
         );
-
 
         $statsig = new Statsig("secret-key", $options);
         $statsig->initialize(function () use (&$callback_fired) {

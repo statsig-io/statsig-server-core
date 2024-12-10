@@ -5,52 +5,54 @@ declare(strict_types=1);
 namespace Statsig\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Statsig\StatsigScheduledSpecsAdapter;
+use Statsig\StatsigLocalFileSpecsAdapter;
 use Statsig\StatsigOptions;
 
-class StatsigScheduledSpecsAdapterTest extends TestCase
+
+class StatsigLocalFileSpecsAdapterTest extends TestCase
 {
+    const SDK_KEY = "secret-php-specs-adapter";
+    const FILE_NAME = "2169430312_specs.json"; // djb2(SDK_KEY)_specs.json
+
+
     protected MockServer $server;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        if (file_exists("/tmp/specs.json")) {
-            unlink("/tmp/specs.json");
+        if (file_exists("/tmp/".self::FILE_NAME)) {
+            unlink("/tmp/".self::FILE_NAME);
         }
 
         $dir = dirname(__FILE__);
         $data = file_get_contents($dir . '/../../statsig-lib/tests/data/eval_proj_dcs.json');
 
         $this->server = new MockServer();
-        $this->server->mock('/v2/download_config_specs/secret-key.json', $data);
+        $this->server->mock('/v2/download_config_specs/'.self::SDK_KEY.'.json', $data);
     }
 
     public function testCreateAndRelease()
     {
-        $adapter = new StatsigScheduledSpecsAdapter("/tmp/specs.json", "secret-key");
-        $this->assertNotNull($adapter->__http_ref);
+        $adapter = new StatsigLocalFileSpecsAdapter(self::SDK_KEY, "/tmp");
         $this->assertNotNull($adapter->__ref);
 
         $adapter->__destruct();
 
-        $this->assertNull($adapter->__http_ref);
         $this->assertNull($adapter->__ref);
     }
 
     public function testFetchingFromNetwork()
     {
-        $options = new StatsigOptions(
-            $this->server->getUrl() . "/v2/download_config_specs",
-            $this->server->getUrl() . "/v1/log_event"
+        $adapter = new StatsigLocalFileSpecsAdapter(
+            self::SDK_KEY,
+            "/tmp",
+            $this->server->getUrl() . "/v2/download_config_specs"
         );
-        $adapter = new StatsigScheduledSpecsAdapter("/tmp/specs.json", "secret-key", $options);
 
         $adapter->sync_specs_from_network();
 
-        $json = json_decode(file_get_contents("/tmp/specs.json"), true);
-
+        $json = json_decode(file_get_contents("/tmp/".self::FILE_NAME), true);
         $this->assertArrayHasKey("dynamic_configs", $json);
         $this->assertArrayHasKey("layer_configs", $json);
         $this->assertArrayHasKey("feature_gates", $json);

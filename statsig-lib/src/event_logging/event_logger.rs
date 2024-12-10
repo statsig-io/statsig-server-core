@@ -7,8 +7,9 @@ use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
 use crate::{
-    log_d, log_e, log_w, LogEventPayload, LogEventRequest, StatsigOptions, StatsigRuntime,
+    log_d, log_e, log_w, StatsigOptions, StatsigRuntime,
 };
+use crate::log_event_payload::{LogEventPayload, LogEventRequest};
 use chrono::Utc;
 use serde_json::json;
 use std::collections::{HashMap, HashSet};

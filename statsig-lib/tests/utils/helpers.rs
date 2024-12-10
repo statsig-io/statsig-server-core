@@ -1,3 +1,5 @@
+use std::fs;
+use std::path::PathBuf;
 use serde_json::{Map, Value};
 
 pub fn enforce_array(value: &Value) -> Vec<Value> {
@@ -10,6 +12,12 @@ pub fn enforce_object(value: &Value) -> Map<String, Value> {
 
 pub fn enforce_string(value: &Value) -> String {
     value.as_str().unwrap().to_string()
+}
+
+pub fn load_contents(resource_file_name: &str) -> String {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push(format!("tests/data/{}", resource_file_name));
+    fs::read_to_string(path).expect("Unable to read resource file")
 }
 
 #[macro_export]

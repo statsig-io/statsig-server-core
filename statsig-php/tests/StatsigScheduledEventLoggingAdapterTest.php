@@ -5,19 +5,23 @@ declare(strict_types=1);
 namespace Statsig\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Statsig\StatsigScheduledEventLoggingAdapter;
+use Statsig\StatsigLocalFileEventLoggingAdapter;
 use Statsig\StatsigOptions;
+
 
 class StatsigScheduledEventLoggingAdapterTest extends TestCase
 {
+    const FILE_PATH = "/tmp/2454024434_events.json"; // djb2(SDK_KEY)_events.json
+    const SDK_KEY = "secret-php-local-events-test";
+
     protected MockServer $server;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        if (file_exists("/tmp/events.json")) {
-            unlink("/tmp/events.json");
+        if (file_exists(self::FILE_PATH)) {
+            unlink(self::FILE_PATH);
         }
 
         $this->server = new MockServer();
@@ -26,63 +30,52 @@ class StatsigScheduledEventLoggingAdapterTest extends TestCase
 
     public function testCreateAndRelease()
     {
-        $adapter = new StatsigScheduledEventLoggingAdapter("/tmp/events.json", "secret-key");
-        $this->assertNotNull($adapter->__http_ref);
+        $adapter = new StatsigLocalFileEventLoggingAdapter(self::SDK_KEY, "/tmp");
+        $this->assertNotNull($adapter->__ref);
 
         $adapter->__destruct();
 
-        $this->assertNull($adapter->__http_ref);
+        $this->assertNull($adapter->__ref);
     }
 
     public function testSendingEvents()
     {
-        $options = new StatsigOptions(
-            $this->server->getUrl() . "__unused__",
+        $request_json = json_encode([
+            "requests" => [
+                [
+                    "payload" => [
+                        "events" => [
+                            [
+                                "eventName" => "my_custom_event",
+                                "metadata" => null,
+                                "secondaryExposures" => null,
+                                "time" => 1730831508904,
+                                "user" => [
+                                    "statsigEnvironment" => null,
+                                    "userID" => "a-user",
+                                ],
+                                "value" => null,
+                            ],
+                        ],
+                        "statsigMetadata" => [
+                            "sdkType" => "statsig-server-core",
+                            "sdkVersion" => "0.0.1",
+                            "sessionId" => "1ff863ed-a9ab-4785-bb0e-1a7b0140c040",
+                        ],
+                    ],
+                    "eventCount" => 1,]
+            ]
+        ]);
+
+        file_put_contents(self::FILE_PATH, $request_json);
+
+        $adapter = new StatsigLocalFileEventLoggingAdapter(
+            self::SDK_KEY,
+            "/tmp",
             $this->server->getUrl() . "/v1/log_event"
         );
 
-        $file_path = "/tmp/events.json";
-        $request_json = json_encode([
-            "payload" => [
-                "events" => [
-                    [
-                        "eventName" => "my_custom_event",
-                        "metadata" => null,
-                        "secondaryExposures" => null,
-                        "time" => 1730831508904,
-                        "user" => [
-                            "statsigEnvironment" => null,
-                            "userID" => "a-user",
-                        ],
-                        "value" => null,
-                    ],
-                ],
-                "statsigMetadata" => [
-                    "sdkType" => "statsig-server-core",
-                    "sdkVersion" => "0.0.1",
-                    "sessionId" => "1ff863ed-a9ab-4785-bb0e-1a7b0140c040",
-                ],
-            ],
-            "eventCount" => 1,
-        ]);
-
-        file_put_contents($file_path, $request_json);
-
-        $adapter = new StatsigScheduledEventLoggingAdapter($file_path, "secret-key", $options);
-
-        $result = null;
-        $adapter->send_pending_events(function ($success, $err_msg) use (&$result) {
-            $result = [
-                'success' => $success,
-                'err_msg' => $err_msg,
-            ];
-        });
-
-        TestHelpers::waitUntilTrue($this, function () use (&$result) {
-            return !is_null($result);
-        });
-
-        $this->assertNull($result['err_msg']);
+        $adapter->send_pending_events();
 
         $request = $this->server->getRequests()[0];
         $this->assertEquals('/v1/log_event', $request['path']);

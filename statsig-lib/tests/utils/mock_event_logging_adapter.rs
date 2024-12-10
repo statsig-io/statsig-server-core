@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
-use sigstat::{EventLoggingAdapter, LogEventPayload, LogEventRequest, StatsigErr, StatsigRuntime};
+use sigstat::log_event_payload::{LogEventPayload, LogEventRequest};
+use sigstat::{EventLoggingAdapter, StatsigErr, StatsigRuntime};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -32,9 +33,7 @@ impl MockEventLoggingAdapter {
             .first()
             .expect("No non-diagnostic events found!");
 
-        let event_obj = first_event
-            .as_object()
-            .unwrap();
+        let event_obj = first_event.as_object().unwrap();
 
         event_obj
             .iter()

@@ -1,3 +1,4 @@
+pub use djb2::*;
 pub use hashing::*;
 
 mod djb2;

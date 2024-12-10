@@ -1,30 +1,12 @@
 use std::sync::Arc;
 
+use crate::log_event_payload::LogEventRequest;
 use crate::{StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LogEventPayload {
-    pub events: Value,
-    pub statsig_metadata: Value,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LogEventRequest {
-    pub payload: LogEventPayload,
-    pub event_count: u64,
-}
 
 #[async_trait]
 pub trait EventLoggingAdapter: Send + Sync {
-    async fn start(
-        &self,
-        statsig_runtime: &Arc<StatsigRuntime>,
-    ) -> Result<(), StatsigErr>;
+    async fn start(&self, statsig_runtime: &Arc<StatsigRuntime>) -> Result<(), StatsigErr>;
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr>;
     async fn shutdown(&self) -> Result<(), StatsigErr>;
 }
@@ -35,11 +17,10 @@ mod tests {
 
     use crate::event_logging::statsig_event::StatsigEvent;
     use crate::event_logging::statsig_event_internal::make_custom_event;
+    use crate::log_event_payload::{LogEventPayload, LogEventRequest};
+    use crate::statsig_metadata::StatsigMetadata;
     use crate::statsig_user_internal::StatsigUserInternal;
-    use crate::{
-        event_logging_adapter::LogEventPayload, statsig_metadata::StatsigMetadata, LogEventRequest,
-        StatsigUser,
-    };
+    use crate::StatsigUser;
 
     #[test]
     fn test_request_jsonify() {

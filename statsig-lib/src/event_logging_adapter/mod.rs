@@ -4,3 +4,4 @@ pub use statsig_local_file_event_logging_adapter::StatsigLocalFileEventLoggingAd
 pub mod event_logging_adapter_trait;
 pub mod statsig_http_event_logging_adapter;
 pub mod statsig_local_file_event_logging_adapter;
+pub mod log_event_payload;

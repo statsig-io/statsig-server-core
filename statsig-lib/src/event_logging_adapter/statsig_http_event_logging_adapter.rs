@@ -1,4 +1,5 @@
-use crate::event_logging_adapter::{EventLoggingAdapter, LogEventRequest};
+use crate::event_logging_adapter::EventLoggingAdapter;
+use crate::log_event_payload::LogEventRequest;
 use crate::networking::{NetworkClient, RequestArgs};
 use crate::statsig_metadata::StatsigMetadata;
 use crate::{log_d, StatsigErr, StatsigRuntime};
@@ -40,7 +41,7 @@ impl StatsigHttpEventLoggingAdapter {
 
     pub async fn send_events_over_http(
         &self,
-        request: LogEventRequest,
+        request: &LogEventRequest,
     ) -> Result<bool, StatsigErr> {
         log_d!(
             TAG,
@@ -84,7 +85,7 @@ impl EventLoggingAdapter for StatsigHttpEventLoggingAdapter {
     }
 
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
-        self.send_events_over_http(request).await
+        self.send_events_over_http(&request).await
     }
 
     async fn shutdown(&self) -> Result<(), StatsigErr> {
@@ -94,7 +95,7 @@ impl EventLoggingAdapter for StatsigHttpEventLoggingAdapter {
 
 #[tokio::test]
 async fn test_event_logging() {
-    use super::LogEventPayload;
+    use crate::log_event_payload::{LogEventPayload, LogEventRequest};
     use std::env;
 
     let sdk_key = env::var("test_api_key").expect("test_api_key environment variable not set");

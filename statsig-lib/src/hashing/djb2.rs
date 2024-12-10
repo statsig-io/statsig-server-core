@@ -1,4 +1,4 @@
-pub fn djb2(input: &String) -> String {
+pub fn djb2(input: &str) -> String {
     let mut hash: i64 = 0;
 
     for c in input.chars() {

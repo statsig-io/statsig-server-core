@@ -9,3 +9,6 @@ pub mod helpers;
 
 #[allow(dead_code)]
 pub mod mock_scrapi;
+
+#[allow(dead_code)]
+pub mod mock_specs_listener;
