@@ -1,12 +1,12 @@
 use crate::evaluation::comparisons::{
-    compare_numbers, compare_str_with_regex, compare_strings_in_array, compare_time,
-    compare_versions, compare_arrays,
+    compare_arrays, compare_numbers, compare_str_with_regex, compare_strings_in_array,
+    compare_time, compare_versions,
 };
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::spec_types::{Condition, Rule, Spec};
-use crate::{dyn_value, log_e, unwrap_or_noop, unwrap_or_return};
+use crate::{dyn_value, log_e, unwrap_or_return, StatsigErr};
 use chrono::Utc;
 use lazy_static::lazy_static;
 
@@ -22,7 +22,7 @@ lazy_static! {
 }
 
 impl Evaluator {
-    pub fn evaluate<'a>(ctx: &mut EvaluatorContext<'a>, spec: &'a Spec) {
+    pub fn evaluate<'a>(ctx: &mut EvaluatorContext<'a>, spec: &'a Spec) -> Result<(), StatsigErr> {
         if ctx.result.id_type.is_none() {
             ctx.result.id_type = Some(&spec.id_type);
         }
@@ -46,19 +46,19 @@ impl Evaluator {
         }
 
         for rule in spec.rules.iter() {
-            evaluate_rule(ctx, rule);
+            evaluate_rule(ctx, rule)?;
 
             if ctx.result.unsupported {
-                return;
+                return Ok(());
             }
 
             if !ctx.result.bool_value {
                 continue;
             }
 
-            if evaluate_config_delegate(ctx, rule) {
+            if evaluate_config_delegate(ctx, rule)? {
                 ctx.finalize_evaluation();
-                return;
+                return Ok(());
             }
 
             let did_pass = evaluate_pass_percentage(ctx, rule, &spec.salt);
@@ -76,7 +76,7 @@ impl Evaluator {
             ctx.result.is_experiment_group = rule.is_experiment_group.unwrap_or(false);
             ctx.result.is_experiment_active = spec.is_active.unwrap_or(false);
             ctx.finalize_evaluation();
-            return;
+            return Ok(());
         }
 
         ctx.result.bool_value = spec.default_value.string_value == "true";
@@ -86,10 +86,12 @@ impl Evaluator {
             false => Some(&DISABLED_RULE),
         };
         ctx.finalize_evaluation();
+
+        Ok(())
     }
 }
 
-fn evaluate_rule<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) {
+fn evaluate_rule<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) -> Result<(), StatsigErr> {
     let mut all_conditions_pass = true;
     // println!("--- Eval Rule {} ---", rule.id);
     for condition_hash in rule.conditions.iter() {
@@ -100,11 +102,11 @@ fn evaluate_rule<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) {
             None => {
                 // todo: log condition not found error
                 ctx.result.unsupported = true;
-                return;
+                return Ok(());
             }
         };
 
-        evaluate_condition(ctx, condition);
+        evaluate_condition(ctx, condition)?;
 
         if !ctx.result.bool_value {
             all_conditions_pass = false
@@ -112,9 +114,11 @@ fn evaluate_rule<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) {
     }
 
     ctx.result.bool_value = all_conditions_pass;
+
+    Ok(())
 }
 
-fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Condition) {
+fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Condition) -> Result<(), StatsigErr> {
     let temp_value;
     let target_value = condition
         .target_value
@@ -125,11 +129,11 @@ fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Conditi
     let value = match condition_type as &str {
         "public" => {
             ctx.result.bool_value = true;
-            return;
+            return Ok(());
         }
         "fail_gate" | "pass_gate" => {
-            evaluate_nested_gate(ctx, target_value, condition_type);
-            return;
+            evaluate_nested_gate(ctx, target_value, condition_type)?;
+            return Ok(());
         }
         "user_field" | "ua_based" | "ip_based" => ctx.user.get_user_value(&condition.field),
         "environment_field" => ctx.user.get_value_from_environment(&condition.field),
@@ -141,13 +145,11 @@ fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Conditi
             temp_value = get_hash_for_user_bucket(ctx, condition);
             Some(&temp_value)
         }
-        "target_app" => {
-            *ctx.app_id
-        }
+        "target_app" => *ctx.app_id,
         "unit_id" => ctx.user.get_unit_id(&condition.id_type),
         _ => {
             ctx.result.unsupported = true;
-            return;
+            return Ok(());
         }
     }
     .unwrap_or(&EMPTY_DYNAMIC_VALUE);
@@ -158,7 +160,7 @@ fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Conditi
         Some(operator) => operator,
         None => {
             ctx.result.unsupported = true;
-            return;
+            return Ok(());
         }
     };
 
@@ -194,13 +196,18 @@ fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Conditi
             evaluate_id_list(ctx, operator, target_value, value)
         }
 
-        "array_contains_any" | "array_contains_none" | "array_contains_all" | "not_array_contains_all" => compare_arrays(value, target_value, operator),
+        "array_contains_any"
+        | "array_contains_none"
+        | "array_contains_all"
+        | "not_array_contains_all" => compare_arrays(value, target_value, operator),
 
         _ => {
             ctx.result.unsupported = true;
-            return;
+            return Ok(());
         }
-    }
+    };
+
+    Ok(())
 }
 
 fn evaluate_id_list<'a>(
@@ -231,7 +238,7 @@ fn evaluate_nested_gate<'a>(
     ctx: &mut EvaluatorContext<'a>,
     target_value: &'a DynamicValue,
     condition_type: &'a String,
-) {
+) -> Result<(), StatsigErr> {
     let gate_name = match target_value.string_value.as_ref() {
         Some(name) => name,
         None => {
@@ -242,21 +249,23 @@ fn evaluate_nested_gate<'a>(
                 target_value
             );
             ctx.result.unsupported = true;
-            return;
+            return Ok(());
         }
     };
 
-    let spec = unwrap_or_noop!(ctx
-        .spec_store_data
-        .values
-        .feature_gates
-        .get(gate_name.as_str()));
+    let spec = unwrap_or_return!(
+        ctx.spec_store_data
+            .values
+            .feature_gates
+            .get(gate_name.as_str()),
+        Ok(())
+    );
 
-    ctx.increment_nesting();
-    Evaluator::evaluate(ctx, spec);
+    ctx.increment_nesting()?;
+    Evaluator::evaluate(ctx, spec)?;
 
     if ctx.result.unsupported {
-        return;
+        return Ok(());
     }
 
     if !&gate_name.starts_with("segment:") {
@@ -273,24 +282,25 @@ fn evaluate_nested_gate<'a>(
     if condition_type == "fail_gate" {
         ctx.result.bool_value = !ctx.result.bool_value
     }
+    Ok(())
 }
 
-fn evaluate_config_delegate<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) -> bool {
-    let delegate = unwrap_or_return!(&rule.config_delegate, false);
+fn evaluate_config_delegate<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) -> Result<bool, StatsigErr> {
+    let delegate = unwrap_or_return!(&rule.config_delegate, Ok(false));
     let delegate_spec = unwrap_or_return!(
         ctx.spec_store_data.values.dynamic_configs.get(delegate),
-        false
+        Ok(false)
     );
 
     ctx.result.undelegated_secondary_exposures = Some(ctx.result.secondary_exposures.clone());
 
-    ctx.increment_nesting();
-    Evaluator::evaluate(ctx, delegate_spec);
+    ctx.increment_nesting()?;
+    Evaluator::evaluate(ctx, delegate_spec)?;
 
     ctx.result.explicit_parameters = delegate_spec.explicit_parameters.as_ref();
     ctx.result.config_delegate = rule.config_delegate.as_ref();
 
-    true
+    Ok(true)
 }
 
 fn evaluate_pass_percentage(ctx: &mut EvaluatorContext, rule: &Rule, spec_salt: &String) -> bool {

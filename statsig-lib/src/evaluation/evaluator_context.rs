@@ -3,13 +3,17 @@ use crate::evaluation::evaluator_result::EvaluatorResult;
 use crate::hashing::Hashing;
 use crate::spec_store::SpecStoreData;
 use crate::statsig_user_internal::StatsigUserInternal;
+use crate::StatsigErr;
+use crate::StatsigErr::StackOverflowError;
+
+const MAX_RECURSIVE_DEPTH: u16 = 300;
 
 pub struct EvaluatorContext<'a> {
     pub user: &'a StatsigUserInternal,
     pub spec_store_data: &'a SpecStoreData,
     pub hashing: &'a Hashing,
     pub result: EvaluatorResult<'a>,
-    pub nested_count: u64,
+    pub nested_count: u16,
     pub app_id: &'a Option<&'a DynamicValue>,
 }
 
@@ -53,7 +57,13 @@ impl<'a> EvaluatorContext<'a> {
         self.result.undelegated_secondary_exposures = Some(self.result.secondary_exposures.clone())
     }
 
-    pub fn increment_nesting(&mut self) {
+    pub fn increment_nesting(&mut self) -> Result<(), StatsigErr> {
         self.nested_count += 1;
+
+        if self.nested_count > MAX_RECURSIVE_DEPTH {
+            return Err(StackOverflowError);
+        }
+
+        Ok(())
     }
 }

@@ -82,7 +82,9 @@ impl ClientInitResponseFormatter {
             }
 
             context.reset_result();
-            Evaluator::evaluate(&mut context, spec);
+            if let Err(_err) = Evaluator::evaluate(&mut context, spec) {
+                return InitializeResponse::blank(user_internal);
+            }
 
             let hashed_name = context.hashing.hash(name, hash_used);
             hash_secondary_exposures(&mut context.result, hashing, hash_used);
@@ -98,7 +100,9 @@ impl ClientInitResponseFormatter {
             }
 
             context.reset_result();
-            Evaluator::evaluate(&mut context, spec);
+            if let Err(_err) = Evaluator::evaluate(&mut context, spec) {
+                return InitializeResponse::blank(user_internal);
+            }
 
             let hashed_name = context.hashing.hash(name, hash_used);
             hash_secondary_exposures(&mut context.result, hashing, hash_used);
@@ -119,7 +123,9 @@ impl ClientInitResponseFormatter {
             }
 
             context.reset_result();
-            Evaluator::evaluate(&mut context, spec);
+            if let Err(_err) = Evaluator::evaluate(&mut context, spec) {
+                return InitializeResponse::blank(user_internal);
+            }
 
             let hashed_name = context.hashing.hash(name, hash_used);
             hash_secondary_exposures(&mut context.result, hashing, hash_used);

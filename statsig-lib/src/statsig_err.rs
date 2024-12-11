@@ -16,6 +16,8 @@ pub enum StatsigErr {
 
     ThreadFailure(String),
 
+    StackOverflowError,
+
     // DataStore
     DataStoreFailure(String),
     DataStoreSkipPoll,
@@ -50,6 +52,8 @@ impl Display for StatsigErr {
             StatsigErr::FileError(msg) => write!(f, "File write error: {}", msg),
 
             StatsigErr::ThreadFailure(msg) => write!(f, "Thread failure: {}", msg),
+
+            StatsigErr::StackOverflowError => write!(f, "Statsig Evaluation Depth Exceeded"),
 
             // ID Lists
             StatsigErr::IdListsAdapterFailedToInsertIdList => {

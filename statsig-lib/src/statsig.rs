@@ -26,7 +26,8 @@ use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::spec_types::Spec;
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
 use crate::statsig_core_api_options::{
-    CheckGateOptions, GetDynamicConfigOptions, GetExperimentOptions, GetFeatureGateOptions, GetLayerOptions,
+    CheckGateOptions, GetDynamicConfigOptions, GetExperimentOptions, GetFeatureGateOptions,
+    GetLayerOptions,
 };
 use crate::statsig_err::StatsigErr;
 use crate::statsig_options::StatsigOptions;
@@ -366,7 +367,12 @@ impl Statsig {
                 .increment_non_exposure_checks_count(dynamic_config_name.to_string());
             return dynamic_config;
         }
-        self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &dynamic_config, false);
+        self.log_dynamic_config_exposure(
+            user_internal,
+            dynamic_config_name,
+            &dynamic_config,
+            false,
+        );
 
         dynamic_config
     }
@@ -383,7 +389,11 @@ impl Statsig {
         )
     }
 
-    pub fn manually_log_dynamic_config_exposure(&self, user: &StatsigUser, dynamic_config_name: &str) {
+    pub fn manually_log_dynamic_config_exposure(
+        &self,
+        user: &StatsigUser,
+        dynamic_config_name: &str,
+    ) {
         let user_internal = self.internalize_user(user);
         let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
         self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &dynamic_config, true);
@@ -430,7 +440,11 @@ impl Statsig {
         get_layer_options: GetLayerOptions,
     ) -> Layer {
         let user_internal = self.internalize_user(user);
-        self.get_layer_impl(&user_internal, layer_name, get_layer_options.disable_exposure_logging)
+        self.get_layer_impl(
+            &user_internal,
+            layer_name,
+            get_layer_options.disable_exposure_logging,
+        )
     }
 
     pub fn get_layer(&self, user: &StatsigUser, layer_name: &str) -> Layer {
@@ -438,19 +452,24 @@ impl Statsig {
         self.get_layer_impl(&user_internal, layer_name, false)
     }
 
-    pub fn manually_log_layer_parameter_exposure(&self, user: &StatsigUser, layer_name: &str, parameter_name: String) {
+    pub fn manually_log_layer_parameter_exposure(
+        &self,
+        user: &StatsigUser,
+        layer_name: &str,
+        parameter_name: String,
+    ) {
         let user_internal = self.internalize_user(user);
         let layer = self.get_layer_impl(&user_internal, layer_name, false);
         self.event_logger
-        .enqueue(QueuedEventPayload::LayerExposure(LayerExposure {
-            user: layer.__user,
-            parameter_name,
-            evaluation: layer.__evaluation,
-            layer_name: layer.name,
-            evaluation_details: layer.details,
-            version: layer.__version,
-            is_manual_exposure: true,
-        }));
+            .enqueue(QueuedEventPayload::LayerExposure(LayerExposure {
+                user: layer.__user,
+                parameter_name,
+                evaluation: layer.__evaluation,
+                layer_name: layer.name,
+                evaluation_details: layer.details,
+                version: layer.__version,
+                is_manual_exposure: true,
+            }));
     }
 
     pub fn get_client_init_response(&self, user: &StatsigUser) -> InitializeResponse {
@@ -524,11 +543,15 @@ impl Statsig {
         match spec {
             Some(spec) => {
                 let app_id = data.values.app_id.as_ref();
-                let mut context = EvaluatorContext::new(user_internal, &data, &self.hashing, &app_id);
-                Evaluator::evaluate(&mut context, spec);
-                let eval_details = EvaluationDetails::recognized(&data, &context.result);
-
-                make_result(spec, context.result, eval_details)
+                let mut context =
+                    EvaluatorContext::new(user_internal, &data, &self.hashing, &app_id);
+                match Evaluator::evaluate(&mut context, spec) {
+                    Ok(_result) => {
+                        let eval_details = EvaluationDetails::recognized(&data, &context.result);
+                        make_result(spec, context.result, eval_details)
+                    }
+                    Err(e) => make_empty_result(EvaluationDetails::error(&e.to_string())),
+                }
             }
             None => make_empty_result(EvaluationDetails::unrecognized(&data)),
         }
@@ -614,11 +637,26 @@ impl Statsig {
         )
     }
 
-    fn get_layer_impl(&self, user_internal: &StatsigUserInternal, layer_name: &str, disable_exposure: bool) -> Layer {
+    fn get_layer_impl(
+        &self,
+        user_internal: &StatsigUserInternal,
+        layer_name: &str,
+        disable_exposure: bool,
+    ) -> Layer {
         self.evaluate_spec(
             user_internal,
             |data| data.values.layer_configs.get(layer_name),
-            |eval_details| make_layer(user_internal, layer_name, None, eval_details, None, None, disable_exposure),
+            |eval_details| {
+                make_layer(
+                    user_internal,
+                    layer_name,
+                    None,
+                    eval_details,
+                    None,
+                    None,
+                    disable_exposure,
+                )
+            },
             |_spec, mut result, eval_details| {
                 let evaluation = result_to_layer_eval(layer_name, &mut result);
                 let event_logger_ptr = Arc::downgrade(&self.event_logger);
