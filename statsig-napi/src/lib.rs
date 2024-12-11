@@ -9,3 +9,4 @@ mod statsig_options_napi;
 mod statsig_types_napi;
 mod statsig_user_napi;
 mod json_utils;
+mod data_store;

@@ -1,3 +1,4 @@
+use crate::data_store_interface::DataStoreTrait;
 use crate::{SpecAdapterConfig, SpecsAdapter};
 use std::sync::Arc;
 use crate::event_logging_adapter::EventLoggingAdapter;
@@ -11,6 +12,9 @@ pub struct StatsigOptions {
     pub specs_adapter: Option<Arc<dyn SpecsAdapter>>,
     pub specs_sync_interval_ms: Option<u32>,
     pub init_timeout_ms: Option<u64>,
+    
+    // External DataStore
+    pub data_store: Option<Arc<dyn DataStoreTrait>>,
 
     // Specs to customized spec adapter, order matters, reflecting priority of trying
     pub spec_adapters_config: Option<Vec<SpecAdapterConfig>>,

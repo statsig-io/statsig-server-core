@@ -9,6 +9,7 @@ pub use statsig_local_file_specs_adapter::StatsigLocalFileSpecsAdapter;
 
 mod statsig_bootstrap_specs_adapter;
 mod statsig_customized_specs_adapter;
+mod statsig_data_store_specs_adapter;
 #[cfg(feature = "with_grpc")]
 mod statsig_grpc_specs_adapter;
 mod statsig_http_specs_adapter;

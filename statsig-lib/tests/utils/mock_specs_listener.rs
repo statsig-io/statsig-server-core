@@ -1,5 +1,5 @@
 use sigstat::{ SpecsInfo, SpecsSource, SpecsUpdate,
-    SpecsUpdateListener,
+    SpecsUpdateListener, StatsigErr,
 };
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -32,13 +32,14 @@ impl MockSpecsListener {
     }
 }
 impl SpecsUpdateListener for MockSpecsListener {
-    fn did_receive_specs_update(&self, update: SpecsUpdate) {
+    fn did_receive_specs_update(&self, update: SpecsUpdate) -> Result<(), StatsigErr> {
         *self.received_update.lock().unwrap() = Some(update);
 
         let notify = self.next_update_notify.lock().unwrap().take();
         if let Some(notify) = notify {
             notify.notify_one();
         }
+        Ok(())
     }
 
     fn get_current_specs_info(&self) -> SpecsInfo {

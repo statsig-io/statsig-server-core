@@ -16,6 +16,10 @@ pub enum StatsigErr {
 
     ThreadFailure(String),
 
+    // DataStore
+    DataStoreFailure(String),
+    DataStoreSkipPoll,
+
     // ID Lists Adapter
     IdListsAdapterFailedToInsertIdList,
 
@@ -59,6 +63,8 @@ impl Display for StatsigErr {
             StatsigErr::ScheduleFailure(e) => write!(f, "Failed to schedule task: {}", e),
 
             StatsigErr::ShutdownFailure => write!(f, "Failed to shutdown task scheduler"),
+            StatsigErr::DataStoreFailure(message) => write!(f, "DataStore Error: {}", message),
+            StatsigErr::DataStoreSkipPoll => write!(f, "DataStore stops polling"),
         }
     }
 }

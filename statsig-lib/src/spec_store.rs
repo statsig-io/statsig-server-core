@@ -1,6 +1,7 @@
+use crate::data_store_interface::{get_data_adapter_dcs_key, DataStoreTrait};
 use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
 use crate::spec_types::{SpecsResponse, SpecsResponseFull};
-use crate::{log_d, log_e, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener};
+use crate::{log_d, log_e, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigRuntime};
 use chrono::Utc;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -18,11 +19,14 @@ pub struct SpecStoreData {
 const TAG: &str = stringify!(SpecStore);
 
 pub struct SpecStore {
+    pub hashed_sdk_key: String,
     pub data: Arc<RwLock<SpecStoreData>>,
+    pub data_store: Option<Arc<dyn DataStoreTrait>>,
+    pub statsig_runtime: Option<Arc<StatsigRuntime>>
 }
 
 impl SpecsUpdateListener for SpecStore {
-    fn did_receive_specs_update(&self, update: SpecsUpdate) {
+    fn did_receive_specs_update(&self, update: SpecsUpdate) -> Result<(), StatsigErr>{
         self.set_values(update)
     }
 
@@ -91,19 +95,22 @@ impl IdListsUpdateListener for SpecStore {
 
 impl Default for SpecStore {
     fn default() -> Self {
-        Self::new()
+        Self::new("", None, None)
     }
 }
 
 impl SpecStore {
-    pub fn new() -> SpecStore {
+    pub fn new(hashed_sdk_key: &str, data_store: Option<Arc<dyn DataStoreTrait>>, statsig_runtime: Option<Arc<StatsigRuntime>>) -> SpecStore {
         SpecStore {
+            hashed_sdk_key: hashed_sdk_key.to_string(),
             data: Arc::new(RwLock::new(SpecStoreData {
                 values: SpecsResponseFull::blank(),
                 time_received_at: None,
                 source: SpecsSource::Uninitialized,
                 id_lists: HashMap::new(),
             })),
+            data_store,
+            statsig_runtime
         }
     }
 
@@ -114,13 +121,13 @@ impl SpecStore {
         }
     }
 
-    pub fn set_values(&self, values: SpecsUpdate) {
+    pub fn set_values(&self, values: SpecsUpdate) -> Result<(), StatsigErr> {
         let parsed = serde_json::from_str::<SpecsResponse>(&values.data);
         let dcs = match parsed {
             Ok(SpecsResponse::Full(full)) => {
                 if !full.has_updates {
                     log_d!(TAG, "SpecStore - No Updates");
-                    return;
+                    return Ok(());
                 }
 
                 log_d!(
@@ -138,12 +145,12 @@ impl SpecStore {
                 if !no_updates.has_updates {
                     log_d!(TAG, "SpecStore - No Updates");
                 }
-                return;
+                return Ok(());
             }
             Err(e) => {
                 // todo: Handle bad parsing
                 log_e!(TAG, "{:?}, {:?}", e, values.source);
-                return;
+                return Err(StatsigErr::JsonParseError("config_spec".to_string(), e.to_string()));
             }
         };
 
@@ -154,15 +161,33 @@ impl SpecStore {
                     dcs.time,
                     mut_values.values.time
                 );
-                return;
+                return Ok(());
             }
-
+            let curr_time =Some(Utc::now().timestamp_millis() as u64);
             mut_values.values = *dcs;
-            mut_values.time_received_at = Some(Utc::now().timestamp_millis() as u64);
-            mut_values.source = values.source;
+            mut_values.time_received_at = curr_time;
+            mut_values.source = values.source.clone();
+            if self.data_store.is_some() && mut_values.source == SpecsSource::Network {
+                match self.data_store.clone() {
+                    Some(data_store) =>  {
+                        let hashed_key = self.hashed_sdk_key.clone();
+                        self.statsig_runtime.clone().map(
+                            |rt| {
+                                let copy = curr_time.clone();
+                                rt.spawn("update data adapter",     move |_|  async move {
+                                    let _ = data_store.set(&get_data_adapter_dcs_key(&hashed_key), &values.data, copy).await;
+                                })
+                            }
+                        );
+                    }
+                    None => {},
+                }
+            }
 
             log_d!(TAG, "SpecStore - Updated ({:?})", mut_values.source);
         }
+
+        Ok(())
     }
 }
 

@@ -1,10 +1,16 @@
-use napi::bindgen_prelude::ObjectFinalize;
+use std::sync::Arc;
+
+use napi::{bindgen_prelude::ObjectFinalize, JsObject};
 use napi::Env;
 use napi_derive::napi;
+use sigstat::data_store_interface::DataStoreTrait;
 use sigstat::{
   instance_store::INST_STORE, log_e, SpecAdapterConfig, SpecsAdapterType, StatsigOptions,
   DEFAULT_INIT_TIMEOUT_MS,
 };
+
+use crate::data_store::DataStore;
+
 
 const TAG: &str = "StatsigOptionsNapi";
 
@@ -23,6 +29,7 @@ impl ObjectFinalize for AutoReleasingStatsigOptionsRef {
 #[napi]
 pub fn statsig_options_create(
   environment: Option<String>,
+  data_store: Option<JsObject>,
   specs_url: Option<String>,
   specs_sync_interval_ms: Option<u32>,
   log_event_url: Option<String>,
@@ -30,11 +37,17 @@ pub fn statsig_options_create(
   event_logging_flush_interval_ms: Option<u32>,
   spec_adapters_config: Option<Vec<SpecAdapterConfigNapi>>,
 ) -> AutoReleasingStatsigOptionsRef {
+  let data_store: Option<Arc<dyn DataStoreTrait + 'static>> = if let Some(store_unwrapped) = data_store {
+      Some(Arc::new(DataStore::new(store_unwrapped)))
+  } else {
+    None
+  };
   // pub specs_adapter: Option<Arc<dyn SpecsAdapter>>,
   // pub event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,
   let spec_adapters_config: Option<Vec<SpecAdapterConfig>> = spec_adapters_config
     .map(|unwrapped| unwrapped.into_iter().map(|config| config.into()).collect());
-  let ref_id = INST_STORE
+
+    let ref_id = INST_STORE
     .add(StatsigOptions {
       environment,
       specs_url,
@@ -43,6 +56,7 @@ pub fn statsig_options_create(
       event_logging_max_queue_size,
       event_logging_flush_interval_ms,
       spec_adapters_config: spec_adapters_config,
+      data_store,
       ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {

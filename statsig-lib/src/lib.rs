@@ -22,6 +22,7 @@ pub mod statsig_types;
 pub mod diagnostics;
 pub mod statsig_user;
 pub mod statsig_core_api_options;
+pub mod data_store_interface;
 
 mod statsig_runtime;
 mod client_init_response_formatter;

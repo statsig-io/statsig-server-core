@@ -68,13 +68,16 @@ pub struct Statsig {
 impl Statsig {
     pub fn new(sdk_key: &str, options: Option<Arc<StatsigOptions>>) -> Self {
         let statsig_runtime = StatsigRuntime::get_runtime();
-
-        let spec_store = Arc::new(SpecStore::new());
         let options = options.unwrap_or_default();
-
+        let spec_store = Arc::new(SpecStore::new(
+            sdk_key,
+            options.data_store.clone(),
+            Some(statsig_runtime.clone()),
+        ));
+        let hashing = Hashing::new();
         initialize_simple_output_logger(&options.output_log_level);
 
-        let specs_adapter = initialize_specs_adapter(sdk_key, &options);
+        let specs_adapter = initialize_specs_adapter(sdk_key, &options, &hashing);
         let id_lists_adapter = initialize_id_lists_adapter(&options);
         let event_logging_adapter = initialize_event_logging_adapter(sdk_key, &options);
 
@@ -95,7 +98,7 @@ impl Statsig {
             options,
             gcir_formatter: Arc::new(ClientInitResponseFormatter::new(&spec_store)),
             event_logger,
-            hashing: Hashing::new(),
+            hashing,
             statsig_environment: environment,
             fallback_environment: Mutex::new(None),
             spec_store,
@@ -752,13 +755,29 @@ fn initialize_event_logging_adapter(
     adapter
 }
 
-fn initialize_specs_adapter(sdk_key: &str, options: &StatsigOptions) -> Arc<dyn SpecsAdapter> {
+fn initialize_specs_adapter(
+    sdk_key: &str,
+    options: &StatsigOptions,
+    hashing: &Hashing,
+) -> Arc<dyn SpecsAdapter> {
     if let Some(adapter) = options.specs_adapter.clone() {
         return adapter;
     }
 
     if let Some(adapter_config) = options.spec_adapters_config.clone() {
-        return Arc::new(StatsigCustomizedSpecsAdapter::new(sdk_key, adapter_config));
+        return Arc::new(StatsigCustomizedSpecsAdapter::new_from_config(
+            sdk_key,
+            adapter_config,
+        ));
+    }
+
+    if let Some(data_adapter) = options.data_store.clone() {
+        return Arc::new(StatsigCustomizedSpecsAdapter::new_from_data_store(
+            sdk_key,
+            data_adapter,
+            options,
+            hashing,
+        ));
     }
 
     Arc::new(StatsigHttpSpecsAdapter::new(
@@ -769,6 +788,7 @@ fn initialize_specs_adapter(sdk_key: &str, options: &StatsigOptions) -> Arc<dyn 
 }
 
 fn initialize_id_lists_adapter(options: &StatsigOptions) -> Option<Arc<dyn IdListsAdapter>> {
+    //
     options.id_lists_adapter.clone()
 }
 

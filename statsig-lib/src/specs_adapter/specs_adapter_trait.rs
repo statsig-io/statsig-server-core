@@ -14,6 +14,7 @@ pub enum SpecsSource {
     Loading,
     Network,
     Bootstrap,
+    DataAdapter,
 }
 
 impl fmt::Display for SpecsSource {
@@ -25,6 +26,7 @@ impl fmt::Display for SpecsSource {
             SpecsSource::Loading => "Loading",
             SpecsSource::Network => "Network",
             SpecsSource::Bootstrap => "Bootstrap",
+            SpecsSource::DataAdapter => "DataAdapter",
         };
         write!(f, "{}", s)
     }
@@ -64,7 +66,7 @@ pub struct SpecsInfo {
 }
 
 pub trait SpecsUpdateListener: Send + Sync {
-    fn did_receive_specs_update(&self, update: SpecsUpdate);
+    fn did_receive_specs_update(&self, update: SpecsUpdate) -> Result<(), StatsigErr>;
 
     fn get_current_specs_info(&self) -> SpecsInfo;
 }

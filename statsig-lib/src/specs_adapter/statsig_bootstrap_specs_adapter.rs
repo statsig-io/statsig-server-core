@@ -106,10 +106,11 @@ mod tests {
 
     #[async_trait]
     impl SpecsUpdateListener for TestListener {
-        fn did_receive_specs_update(&self, update: SpecsUpdate) {
+        fn did_receive_specs_update(&self, update: SpecsUpdate) -> Result<(), StatsigErr> {
             if let Ok(mut lock) = self.received_update.write() {
                 *lock = Some(update);
             }
+            Ok(())
         }
 
         fn get_current_specs_info(&self) -> SpecsInfo {

@@ -1,8 +1,11 @@
 use std::{sync::Arc, time::Duration};
 
+use super::statsig_data_store_specs_adapter::StatsigDataStoreSpecsAdapter;
 use super::StatsigHttpSpecsAdapter;
 use super::{SpecAdapterConfig, SpecsAdapterType};
-use crate::{log_w, SpecsAdapter, SpecsUpdateListener};
+use crate::data_store_interface::DataStoreTrait;
+use crate::hashing::Hashing;
+use crate::{log_w, SpecsAdapter, SpecsUpdateListener, StatsigOptions};
 use crate::{StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
 
@@ -19,7 +22,7 @@ pub struct StatsigCustomizedSpecsAdapter {
 }
 
 impl StatsigCustomizedSpecsAdapter {
-    pub fn new(sdk_key: &str, configs: Vec<SpecAdapterConfig>) -> Self {
+    pub fn new_from_config(sdk_key: &str, configs: Vec<SpecAdapterConfig>) -> Self {
         let mut adapters: Vec<Arc<dyn SpecsAdapter>> = Vec::new();
         for (_, config) in configs.iter().enumerate() {
             match config.adapter_type {
@@ -40,6 +43,19 @@ impl StatsigCustomizedSpecsAdapter {
         }
 
         StatsigCustomizedSpecsAdapter { adapters }
+    }
+
+    pub fn new_from_data_store(sdk_key: &str, data_store: Arc<dyn DataStoreTrait>, options: &StatsigOptions, hashing: &Hashing) -> Self {
+        let data_adapter_spec_adapter = StatsigDataStoreSpecsAdapter::new(sdk_key, data_store, hashing, options.specs_sync_interval_ms);
+        let http_adapter = StatsigHttpSpecsAdapter::new(
+            sdk_key,
+            options.specs_url.as_ref(),
+            options.specs_sync_interval_ms,
+        );
+        let adapters: Vec<Arc<dyn SpecsAdapter>> = vec![Arc::new(data_adapter_spec_adapter), Arc::new(http_adapter)];
+        StatsigCustomizedSpecsAdapter {
+            adapters
+        }
     }
 
     #[cfg(feature = "with_grpc")]
@@ -96,9 +112,17 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
         // TODO: we probably should have another option for config sync sources, but for now, we only have one
-        self.adapters[0]
-            .clone()
-            .schedule_background_sync(statsig_runtime)
+        for adapter in &self.adapters {
+            match adapter.to_owned().schedule_background_sync(statsig_runtime) {
+                Ok(_) => {
+                    return Ok(())
+                },
+                Err(_) => {
+                    // Carry on and try  next adapter
+                },
+            }
+        }
+        Ok(())
     }
 
     async fn shutdown(

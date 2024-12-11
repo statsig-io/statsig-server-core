@@ -11,7 +11,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 pub const DEFAULT_SPECS_URL: &str = "https://api.statsigcdn.com/v2/download_config_specs";
-const DEFAULT_SYNC_INTERVAL_MS: u32 = 10_000;
+pub const DEFAULT_SYNC_INTERVAL_MS: u32 = 10_000;
 
 const TAG: &str = stringify!(StatsigHttpSpecsAdapter);
 pub struct StatsigHttpSpecsAdapter {

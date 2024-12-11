@@ -25,10 +25,17 @@ import {
   statsigUserCreate,
 } from './bindings';
 
+import {
+  IDataStore,
+  getDataStoreKey,
+  DataStoreKeyPath,
+  AdapterResponse
+} from './IDataStore'
+
 // prettier-ignore
 export type TypedReturn<T = unknown> = 
     T extends string ? string
-  : T extends number ? number
+  : T extends number ? number 
   : T extends boolean ? boolean
   : T extends Array<unknown> ? Array<unknown>
   : T extends object ? object
@@ -53,7 +60,7 @@ export type Layer = LayerNapi & {
   readonly get: TypedGet;
 };
 
-export { SpecAdapterConfig };
+export { SpecAdapterConfig, IDataStore, getDataStoreKey };
 
 export enum LogLevel {
   None = 0,
@@ -81,11 +88,14 @@ export class StatsigOptions {
     logEventUrl?: string | undefined | null,
     eventLoggingMaxQueueSize?: number | undefined | null,
     eventLoggingFlushIntervalMs?: number | undefined | null,
+    data_store?: IDataStore | undefined | null,
     specs_adapter_configs?: Array<SpecAdapterConfig> | undefined | null,
   ) {
     this.outputLoggerLevel = outputLoggerLevel ?? LogLevel.Error;
+    const data_store_wrapped = data_store ? new WrappedDataStore(data_store) : undefined;
     this.__ref = statsigOptionsCreate(
       environment,
+      data_store_wrapped,
       specsUrl,
       specsSyncIntervalMs,
       logEventUrl,
@@ -271,4 +281,35 @@ function _makeTypedGet(
     exposeFunc?.(param);
     return found as TypedReturn<T>;
   };
+}
+
+class WrappedDataStore {
+  constructor(private client: IDataStore) {
+    this.initialize = this.initialize.bind(this)
+    this.get = this.get.bind(this)
+    this.set = this.set.bind(this)
+    this.shutdown = this.shutdown.bind(this)
+    this.supportsPollingUpdatesFor = this.supportsPollingUpdatesFor?.bind(this)
+  }
+
+  initialize(error: Error | undefined | null): Promise<void>  {
+    return this.client.initialize();
+  }
+
+  get(error: Error | undefined | null, key: string): Promise<AdapterResponse> {
+    return this.client.get(key)
+  }
+
+  set(error: Error | undefined | null, args: string): Promise<void> {
+    let parsedArgs = JSON.parse(args);
+    return this.client.set(parsedArgs.key, parsedArgs.value, parsedArgs.time);
+  }
+
+  shutdown(error: Error | undefined | null): Promise<void> {
+    return this.client.shutdown();
+  }
+
+  supportsPollingUpdatesFor(error: Error | undefined | null, args: String): boolean | undefined {
+    return this.client.supportsPollingUpdatesFor?.(args as DataStoreKeyPath)
+  }
 }
