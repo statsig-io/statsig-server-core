@@ -254,8 +254,7 @@ async fn test_layer_with_many_params() {
             "is_device_based": false,
             "explicit_parameters": [],
             "secondary_exposures": [],
-            "undelegated_secondary_exposures": [],
-            "id_type": "userID"
+            "undelegated_secondary_exposures": []
         })
     );
 }
@@ -282,8 +281,7 @@ async fn test_layer_with_no_exp() {
             "is_device_based": false,
             "explicit_parameters": [],
             "secondary_exposures": [],
-            "undelegated_secondary_exposures": [],
-            "id_type": "userID"
+            "undelegated_secondary_exposures": []
         })
     );
 }

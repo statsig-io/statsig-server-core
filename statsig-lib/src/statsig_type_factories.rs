@@ -107,15 +107,14 @@ pub fn make_layer(
     version: Option<u32>,
     disable_exposure: bool,
 ) -> Layer {
-    let (value, rule_id, group_name, allocated_experiment_name, id_type) = match &evaluation {
+    let (value, rule_id, group_name, allocated_experiment_name) = match &evaluation {
         Some(e) => (
             value_to_hashmap(&e.value),
             e.base.rule_id.clone(),
             e.group_name.clone(),
             e.allocated_experiment_name.clone(),
-            e.id_type.clone(),
         ),
-        None => (HashMap::new(), "default".into(), None, None, "".into()),
+        None => (HashMap::new(), "default".into(), None, None),
     };
 
     Layer {
@@ -124,7 +123,6 @@ pub fn make_layer(
         details: details.clone(),
         group_name,
         allocated_experiment_name,
-        id_type,
         __value: value,
         __evaluation: evaluation,
         __user: user.clone(),
