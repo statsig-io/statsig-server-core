@@ -10,6 +10,10 @@ pub enum StatsigErr {
 
     NetworkError(String),
 
+    SerializationError(String),
+
+    GzipError(String),
+
     JsonParseError(String, String),
 
     FileError(String),
@@ -44,6 +48,10 @@ impl Display for StatsigErr {
             StatsigErr::UnstartedAdapter(msg) => write!(f, "Adapter not started: {}", msg),
 
             StatsigErr::NetworkError(msg) => write!(f, "Network error: {}", msg),
+
+            StatsigErr::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
+
+            StatsigErr::GzipError(msg) => write!(f, "Gzip error: {}", msg),
 
             StatsigErr::JsonParseError(type_name, err_msg) => {
                 write!(f, "Failed to parse {} - {}", type_name, err_msg)

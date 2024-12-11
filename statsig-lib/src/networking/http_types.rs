@@ -2,11 +2,12 @@ use std::{
     collections::HashMap,
     sync::{atomic::AtomicBool, Arc},
 };
+use bytes::Bytes;
 
 #[derive(Clone)]
 pub struct RequestArgs {
     pub url: String,
-    pub body: Option<String>,
+    pub body: Option<Bytes>,
     pub retries: u32,
     pub headers: Option<HashMap<String, String>>,
     pub query_params: Option<HashMap<String, String>>,

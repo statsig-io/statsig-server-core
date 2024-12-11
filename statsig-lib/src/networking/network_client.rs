@@ -1,10 +1,9 @@
-use serde_json::Value;
-
 use crate::{log_e, log_i, log_w};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+use bytes::Bytes;
 
 use super::{Curl, HttpMethod, RequestArgs};
 
@@ -36,19 +35,8 @@ impl NetworkClient {
         self.make_request(HttpMethod::GET, request_args).await
     }
 
-    pub async fn post(&self, mut request_args: RequestArgs, body: Option<Value>) -> Option<String> {
-        if let Some(body) = &body {
-            let post_body = match serde_json::to_string(body) {
-                Ok(b) => Some(b),
-                Err(e) => {
-                    log_e!(TAG, "Failed to serialize body: {}", e);
-                    return None;
-                }
-            };
-
-            request_args.body = post_body;
-        }
-
+    pub async fn post(&self, mut request_args: RequestArgs, body: Option<Bytes>) -> Option<String> {
+        request_args.body = body;
         self.make_request(HttpMethod::POST, request_args).await
     }
 

@@ -345,7 +345,7 @@ fn construct_easy_request(
     ))?;
 
     if let Some(body) = &args.body {
-        easy.post_fields_copy(body.as_bytes())?;
+        easy.post_fields_copy(body)?;
         headers.append("Content-Type: application/json")?;
     }
 

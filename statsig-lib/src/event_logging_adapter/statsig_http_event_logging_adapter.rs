@@ -4,9 +4,11 @@ use crate::networking::{NetworkClient, RequestArgs};
 use crate::statsig_metadata::StatsigMetadata;
 use crate::{log_d, StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
+use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
+use std::io::Write;
 use std::sync::Arc;
 
 const DEFAULT_LOG_EVENT_URL: &str = "https://prodregistryv2.org/v1/log_event";
@@ -50,11 +52,31 @@ impl StatsigHttpEventLoggingAdapter {
             json!(&request.payload).to_string()
         );
 
-        let headers = HashMap::from([(
-            "statsig-event-count".to_string(),
-            request.event_count.to_string(),
-        )]);
+        // Set headers
+        let headers = HashMap::from([
+            (
+                "statsig-event-count".to_string(),
+                request.event_count.to_string(),
+            ),
+            ("Content-Encoding".to_owned(), "gzip".to_owned()),
+            ("Content-Type".to_owned(), "application/json".to_owned()),
+        ]);
 
+        // GZIP data before sending it
+        let bytes = serde_json::to_vec(&request.payload)
+            .map_err(|e| StatsigErr::SerializationError(e.to_string()))?;
+        let mut compressed = Vec::new();
+        {
+            let mut encoder = GzEncoder::new(&mut compressed, Compression::best());
+            encoder
+                .write_all(&bytes)
+                .map_err(|e| StatsigErr::GzipError(e.to_string()))?;
+            encoder
+                .finish()
+                .map_err(|e| StatsigErr::GzipError(e.to_string()))?;
+        }
+
+        // Make request
         let response_str = self
             .network
             .post(
@@ -65,7 +87,7 @@ impl StatsigHttpEventLoggingAdapter {
                     accept_gzip_response: true,
                     ..RequestArgs::new()
                 },
-                Some(json!(request.payload)),
+                Some(compressed.into()),
             )
             .await
             .ok_or(StatsigErr::NetworkError("Log event failure".into()))?;
