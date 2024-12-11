@@ -86,7 +86,7 @@ pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> L
         }
     }
 
-    let (_, is_device_based) = get_id_type_info(result.id_type);
+    let (id_type, is_device_based) = get_id_type_info(result.id_type);
 
     LayerEvaluation {
         base: result_to_base_eval(layer_name, result),
@@ -99,6 +99,7 @@ pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> L
         allocated_experiment_name,
         explicit_parameters: result.explicit_parameters.cloned().unwrap_or_default(),
         undelegated_secondary_exposures: Some(undelegated_secondary_exposures),
+        id_type,
     }
 }
 

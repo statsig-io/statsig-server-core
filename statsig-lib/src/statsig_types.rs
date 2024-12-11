@@ -61,6 +61,7 @@ pub struct Layer {
     pub group_name: Option<String>,
     pub details: EvaluationDetails,
     pub allocated_experiment_name: Option<String>,
+    pub id_type: String,
 
     pub __evaluation: Option<LayerEvaluation>,
     pub __value: HashMap<String, DynamicValue>,

@@ -85,6 +85,7 @@ pub struct LayerEvaluation {
     pub base: BaseEvaluation,
 
     pub value: Value,
+    pub id_type: String,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
     pub group: String,
