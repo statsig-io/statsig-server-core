@@ -21,6 +21,8 @@ use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
 use crate::hashing::Hashing;
 use crate::initialize_response::InitializeResponse;
+use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
+use crate::observability::ops_stats::OpsStatsForInstance;
 use crate::output_logger::initialize_simple_output_logger;
 use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::spec_types::Spec;
@@ -65,16 +67,21 @@ pub struct Statsig {
     statsig_environment: Option<HashMap<String, DynamicValue>>,
     fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
     diagnostics: Diagnostics,
+    ops_stats: Option<Arc<OpsStatsForInstance>>,
 }
 
 impl Statsig {
     pub fn new(sdk_key: &str, options: Option<Arc<StatsigOptions>>) -> Self {
         let statsig_runtime = StatsigRuntime::get_runtime();
         let options = options.unwrap_or_default();
+        
+        let ops_stats = setup_ops_stats(&options, statsig_runtime.clone());
+        
         let spec_store = Arc::new(SpecStore::new(
             sdk_key,
             options.data_store.clone(),
             Some(statsig_runtime.clone()),
+            ops_stats.clone()
         ));
         let hashing = Hashing::new();
         initialize_simple_output_logger(&options.output_log_level);
@@ -109,10 +116,12 @@ impl Statsig {
             id_lists_adapter,
             diagnostics,
             statsig_runtime,
+            ops_stats,
         }
     }
 
     pub async fn initialize(&self) -> Result<(), StatsigErr> {
+        let start_time = Instant::now();
         self.diagnostics.mark_init_overall_start();
         self.spec_store.set_source(SpecsSource::Loading);
         self.event_logger
@@ -161,10 +170,7 @@ impl Statsig {
             .schedule_background_sync(&self.statsig_runtime);
 
         self.set_default_environment_from_server();
-
-        self.diagnostics
-            .mark_init_overall_end(success, error_message);
-
+        self.log_init_finish(success, error_message, start_time);
         init_res
     }
 
@@ -799,6 +805,18 @@ impl Statsig {
             }
         }
     }
+    fn log_init_finish(&self, success:bool, error_message: Option<String>, start_time: Instant) {
+        self.ops_stats.clone().map(|ops| {
+            ops.log(ObservabilityEvent::new_event(
+                MetricType::Dist,
+                "initialization".to_string(),
+                start_time.elapsed().as_millis() as f64,
+                None,
+            ));
+        });
+        self.diagnostics
+            .mark_init_overall_end(success, error_message);
+    }
 }
 
 fn initialize_event_logging_adapter(
@@ -849,6 +867,22 @@ fn initialize_specs_adapter(
 fn initialize_id_lists_adapter(options: &StatsigOptions) -> Option<Arc<dyn IdListsAdapter>> {
     //
     options.id_lists_adapter.clone()
+}
+
+fn setup_ops_stats(
+    options: &StatsigOptions,
+    statsig_runtime: Arc<StatsigRuntime>,
+) -> Option<Arc<OpsStatsForInstance>> {
+    // TODO migrate output logger to use ops_stats
+    initialize_simple_output_logger(&options.output_log_level);
+    let ops_stat = OpsStatsForInstance::new();
+    let maybe_ob_client = options.observability_client.clone();
+    if let Some(ob_client) = maybe_ob_client {
+        ob_client.init();
+        ops_stat.subscribe(statsig_runtime, ob_client.to_ops_stats_event_observer());
+        return Some(Arc::new(ops_stat));
+    }
+    None
 }
 
 #[cfg(test)]

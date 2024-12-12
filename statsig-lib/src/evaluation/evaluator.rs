@@ -118,7 +118,10 @@ fn evaluate_rule<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) -> Result<(
     Ok(())
 }
 
-fn evaluate_condition<'a>(ctx: &mut EvaluatorContext<'a>, condition: &'a Condition) -> Result<(), StatsigErr> {
+fn evaluate_condition<'a>(
+    ctx: &mut EvaluatorContext<'a>,
+    condition: &'a Condition,
+) -> Result<(), StatsigErr> {
     let temp_value;
     let target_value = condition
         .target_value
@@ -285,7 +288,10 @@ fn evaluate_nested_gate<'a>(
     Ok(())
 }
 
-fn evaluate_config_delegate<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) -> Result<bool, StatsigErr> {
+fn evaluate_config_delegate<'a>(
+    ctx: &mut EvaluatorContext<'a>,
+    rule: &'a Rule,
+) -> Result<bool, StatsigErr> {
     let delegate = unwrap_or_return!(&rule.config_delegate, Ok(false));
     let delegate_spec = unwrap_or_return!(
         ctx.spec_store_data.values.dynamic_configs.get(delegate),

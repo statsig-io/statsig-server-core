@@ -79,6 +79,7 @@ export class StatsigOptions {
   readonly __ref: AutoReleasingStatsigOptionsRef;
 
   readonly outputLoggerLevel: LogLevel = LogLevel.Debug;
+  readonly ob_client: IObservabilityClient | undefined;
 
   constructor(
     outputLoggerLevel?: LogLevel,
@@ -90,9 +91,11 @@ export class StatsigOptions {
     eventLoggingFlushIntervalMs?: number | undefined | null,
     data_store?: IDataStore | undefined | null,
     specs_adapter_configs?: Array<SpecAdapterConfig> | undefined | null,
+    observabilityClient?: IObservabilityClient | undefined | null,
   ) {
     this.outputLoggerLevel = outputLoggerLevel ?? LogLevel.Error;
     const data_store_wrapped = data_store ? new WrappedDataStore(data_store) : undefined;
+    const wrapped_ob_cliet = observabilityClient != null ? new ObservabilityClientWrapped(observabilityClient): undefined;
     this.__ref = statsigOptionsCreate(
       environment,
       data_store_wrapped,
@@ -102,6 +105,7 @@ export class StatsigOptions {
       eventLoggingMaxQueueSize,
       eventLoggingFlushIntervalMs,
       specs_adapter_configs,
+      wrapped_ob_cliet,
     );
   }
 }
@@ -235,6 +239,53 @@ export class Statsig {
       user.__ref.refId,
       options,
     );
+  }
+}
+
+export interface IObservabilityClient {
+  init(): void;
+  increment(metricName: string, value: number, tags: Record<string, any>): void;
+  gauge(metricName: string, value: number, tags: Record<string, any>): void;
+  dist(metricName: string, value: number, tags: Record<string, any>): void;
+  should_enable_high_cardinality_for_this_tag?(tag: string): void;
+}
+
+/**
+ * Wrapper class to bridge arguments passed from rust side and interfaces
+ */
+class ObservabilityClientWrapped {
+  private client: IObservabilityClient
+  constructor(client: IObservabilityClient){
+    this.client = client;
+    // This is needed otherwise, instance context will be lost
+    this.init = this.init.bind(this);
+    this.increment = this.increment.bind(this);
+    this.gauge = this.gauge.bind(this);
+    this.dist = this.dist.bind(this);
+    this.should_enable_high_cardinality_for_this_tag = this.should_enable_high_cardinality_for_this_tag?.bind(this);
+  }
+
+  init(): void {
+    this.client.init();
+  }
+
+  increment(error: undefined | null | Error, args: string): void {
+    let parsedArgs = JSON.parse(args);
+    this.client.increment(parsedArgs.metric_name, parsedArgs.value, parsedArgs.tags);
+  }
+
+  gauge(error: undefined | null | Error, args: string): void {
+    let parsedArgs = JSON.parse(args);
+    this.client.gauge(parsedArgs.metric_name, parsedArgs.value, parsedArgs.tags);
+  }
+  
+  dist(error: undefined | null | Error, args: string): void {
+    let parsedArgs = JSON.parse(args);
+    this.client.dist(parsedArgs.metric_name, parsedArgs.value, parsedArgs.tags);
+  }
+
+  should_enable_high_cardinality_for_this_tag?(error: undefined | null | Error, tag: string): void {
+    this.client.should_enable_high_cardinality_for_this_tag?.(tag);
   }
 }
 

@@ -4,6 +4,8 @@ use napi::{bindgen_prelude::ObjectFinalize, JsObject};
 use napi::Env;
 use napi_derive::napi;
 use sigstat::data_store_interface::DataStoreTrait;
+use sigstat::IObservabilityClient;
+
 use sigstat::{
   instance_store::INST_STORE, log_e, SpecAdapterConfig, SpecsAdapterType, StatsigOptions,
   DEFAULT_INIT_TIMEOUT_MS,
@@ -13,6 +15,7 @@ use crate::data_store::DataStore;
 
 
 const TAG: &str = "StatsigOptionsNapi";
+use crate::observability_client::{self, ObservabilityClient};
 
 #[napi(custom_finalize)]
 pub struct AutoReleasingStatsigOptionsRef {
@@ -36,9 +39,15 @@ pub fn statsig_options_create(
   event_logging_max_queue_size: Option<u32>,
   event_logging_flush_interval_ms: Option<u32>,
   spec_adapters_config: Option<Vec<SpecAdapterConfigNapi>>,
+  observability_client: Option<JsObject>,
 ) -> AutoReleasingStatsigOptionsRef {
   let data_store: Option<Arc<dyn DataStoreTrait + 'static>> = if let Some(store_unwrapped) = data_store {
       Some(Arc::new(DataStore::new(store_unwrapped)))
+  } else {
+    None
+  };
+  let observability_client: Option<Arc<dyn IObservabilityClient>> = if let Some(ob) = observability_client {
+    Some(Arc::new(ObservabilityClient::new(ob)))
   } else {
     None
   };
@@ -57,6 +66,7 @@ pub fn statsig_options_create(
       event_logging_flush_interval_ms,
       spec_adapters_config: spec_adapters_config,
       data_store,
+      observability_client,
       ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {
