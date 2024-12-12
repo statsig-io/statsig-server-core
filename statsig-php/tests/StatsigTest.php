@@ -134,7 +134,9 @@ class StatsigTest extends TestCase
         $request = $this->server->getRequests()[1];
         $this->assertEquals('/v1/log_event', $request['path']);
 
-        $body = json_decode($request['body'], true);
+        $bytes = $request['body'];
+        $json = gzdecode($bytes);
+        $body = json_decode($json, true);
         $events = array_filter($body['events'], function ($event) {
             return $event['eventName'] !== "statsig::diagnostics";
         });

@@ -68,8 +68,7 @@ impl StatsigLocalFileSpecsAdapter {
                         data,
                         source: SpecsSource::Bootstrap,
                         received_at: Utc::now().timestamp_millis() as u64,
-                    });
-                    Ok(())
+                    })
                 }
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },

@@ -68,7 +68,8 @@ impl MockSpecsAdapter {
             .unwrap()
             .as_ref()
             .unwrap()
-            .did_receive_specs_update(update);
+            .did_receive_specs_update(update)?;
+
         Ok(())
     }
 }

@@ -41,12 +41,11 @@ impl StatsigBootstrapSpecsAdapter {
                         data,
                         source: SpecsSource::Bootstrap,
                         received_at: Utc::now().timestamp_millis() as u64,
-                    });
-                    Ok(())
+                    })
                 }
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
-            Err(e) => return Err(StatsigErr::LockFailure(e.to_string())),
+            Err(e) => Err(StatsigErr::LockFailure(e.to_string())),
         }
     }
 }

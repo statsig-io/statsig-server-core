@@ -4,7 +4,7 @@ use crate::networking::{NetworkClient, RequestArgs};
 use crate::statsig_metadata::StatsigMetadata;
 use crate::{log_d, StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
-use flate2::{read::GzDecoder, write::GzEncoder, Compression};
+use flate2::{write::GzEncoder, Compression};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;

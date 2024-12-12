@@ -102,8 +102,7 @@ impl StatsigHttpSpecsAdapter {
         match self.listener.read() {
             Ok(lock) => match lock.as_ref() {
                 Some(listener) => {
-                    listener.did_receive_specs_update(update);
-                    Ok(())
+                    listener.did_receive_specs_update(update)
                 }
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },

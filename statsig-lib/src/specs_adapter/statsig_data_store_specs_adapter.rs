@@ -137,7 +137,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
     async fn shutdown(
         &self,
         timeout: Duration,
-        statsig_runtime: &Arc<StatsigRuntime>,
+        _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
         time::timeout(timeout, async { self.data_adapter.shutdown().await })
             .await
