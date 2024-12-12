@@ -129,6 +129,7 @@ jobs:
               ref: 'main',
               workflow_id: 'statsig-napi-publish.yml',
               inputs: {
-                workflow_run_id: '${{ github.run_id }}'
+                workflow_run_id: '${{ github.run_id }}',
+                release_commit_sha: '${{ github.event.release.target_commitish }}',
               }
             })

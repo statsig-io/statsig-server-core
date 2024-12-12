@@ -12,6 +12,9 @@ on:
       workflow_run_id:
         description: 'The StatsigNapi workflow run that built the artifacts to publish'
         required: true
+      release_commit_sha:
+        description: 'The commit SHA of the Statsig release tag that contains all the artifacts to publish'
+        required: true
 
 jobs:
   publish:
@@ -22,7 +25,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Get Workflow Run Info
-        id: workflow_run_info
         uses: ./.github/actions/verify-workflow-run-successful
         with:
           workflow_run_id: ${{ github.event.inputs.workflow_run_id }}
@@ -30,7 +32,7 @@ jobs:
       - name: Checkout specific commit
         run: |
           git fetch
-          git checkout ${{ steps.workflow_run_info.outputs.commit_sha }}
+          git checkout ${{ github.event.inputs.release_commit_sha }}
           git submodule update --init --recursive
 
       - name: Install NPM Dependencies
