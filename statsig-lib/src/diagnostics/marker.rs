@@ -1,5 +1,5 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum KeyType {
@@ -28,30 +28,49 @@ pub enum ActionType {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Marker {
-    key: KeyType,
     action: ActionType,
-    step: Option<StepType>,
-    success: Option<bool>,
-    timestamp: u64,
-    status_code: Option<u16>,
-    url: Option<String>,
-    id_list_count: Option<u32>,
-    sdk_region: Option<String>,
-    #[serde(rename = "markerID")]
-    marker_id: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     attempt: Option<u16>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     config_name: Option<String>,
-    message: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<HashMap<String, String>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id_list_count: Option<u32>,
+
+    key: KeyType,
+
+    #[serde(rename = "markerID")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    marker_id: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    message: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sdk_region: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    status_code: Option<u16>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    step: Option<StepType>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    success: Option<bool>,
+
+    timestamp: u64,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    url: Option<String>,
 }
 
 impl Marker {
-    pub fn new(
-        key: KeyType,
-        action: ActionType,
-        step: Option<StepType>,
-        timestamp: u64,
-    ) -> Self {
+    pub fn new(key: KeyType, action: ActionType, step: Option<StepType>, timestamp: u64) -> Self {
         Self {
             key,
             action,
@@ -100,8 +119,13 @@ mod tests {
     #[test]
     fn test_marker_new() {
         let timestamp: u64 = 1_640_995_200_000;
-        let marker = Marker::new(KeyType::Initialize, ActionType::Start, Some(StepType::Process), timestamp);
-        
+        let marker = Marker::new(
+            KeyType::Initialize,
+            ActionType::Start,
+            Some(StepType::Process),
+            timestamp,
+        );
+
         assert_eq!(marker.key, KeyType::Initialize);
         assert_eq!(marker.action, ActionType::Start);
         assert_eq!(marker.step, Some(StepType::Process));
@@ -113,14 +137,19 @@ mod tests {
     #[test]
     fn test_marker_serialization() {
         let timestamp: u64 = 1_640_995_200_000;
-        let marker = Marker::new(KeyType::Initialize, ActionType::Start, Some(StepType::Process), timestamp)
-            .with_is_success(true)
-            .with_status_code(200)
-            .with_attempt(1);
-        
+        let marker = Marker::new(
+            KeyType::Initialize,
+            ActionType::Start,
+            Some(StepType::NetworkRequest),
+            timestamp,
+        )
+        .with_is_success(true)
+        .with_status_code(200)
+        .with_attempt(1);
+
         let serialized = serde_json::to_string(&marker).expect("Failed to serialize Marker");
-        let expected_json = r#"{"key":"initialize","action":"start","step":"process","success":true,"timestamp":1640995200000,"statusCode":200,"url":null,"idListCount":null,"sdkRegion":null,"markerID":null,"attempt":1,"configName":null,"message":null,"error":null}"#;
-        
+        let expected_json = r#"{"action":"start","attempt":1,"key":"initialize","statusCode":200,"step":"network_request","success":true,"timestamp":1640995200000}"#;
+
         assert_eq!(serialized, expected_json);
     }
 }
