@@ -51,6 +51,8 @@ use tokio::try_join;
 const TAG: &str = "Lib";
 
 pub struct Statsig {
+    pub statsig_runtime: Arc<StatsigRuntime>,
+
     sdk_key: String,
     options: Arc<StatsigOptions>,
     event_logger: Arc<EventLogger>,
@@ -61,7 +63,6 @@ pub struct Statsig {
     hashing: Hashing,
     gcir_formatter: Arc<ClientInitResponseFormatter>,
     statsig_environment: Option<HashMap<String, DynamicValue>>,
-    statsig_runtime: Arc<StatsigRuntime>,
     fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
     diagnostics: Diagnostics,
 }

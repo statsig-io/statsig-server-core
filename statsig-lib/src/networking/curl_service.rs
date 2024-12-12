@@ -257,6 +257,7 @@ impl Curl {
             let mut entry = unwrap_or_return_with!(active.remove(&token), || {
                 log_e!(TAG, "Token not found: {}", token);
             });
+            let url = &entry.request.args.url;
 
             let result = unwrap_or_return_with!(msg.result_for2(&entry.handle), || {
                 log_e!(TAG, "Failed to get result for token: {}", token);
@@ -273,14 +274,15 @@ impl Curl {
 
                     log_d!(
                         TAG,
-                        "Transfer succeeded (Status: {}) (Download length: {})",
+                        "Transfer succeeded (Status: {}) (Download length: {}) {}",
                         http_status,
-                        &res_buffer.len()
+                        &res_buffer.len(),
+                        url
                     );
 
                     let data = String::from_utf8(res_buffer)
                         .map_err(|e| {
-                            log_e!(TAG, "Failed to convert response to string: {:?}", e);
+                            log_e!(TAG, "Failed to convert response to string: {} {:?}", url, e);
                             return e;
                         })
                         .ok();
@@ -291,13 +293,15 @@ impl Curl {
                         error: None,
                     };
 
-                    let _ = entry.request.tx.send(Ok(response));
+                    if entry.request.tx.send(Ok(response)).is_err() {
+                        log_e!(TAG, "Failed to broadcast response: {}", url);
+                    }
                 }
                 Err(e) => {
                     log_e!(
                         TAG,
                         "Failed to send request to {}: {:?}",
-                        entry.request.args.url,
+                        url,
                         e
                     );
                     let _ = entry
@@ -312,7 +316,7 @@ impl Curl {
                 log_e!(TAG, "Failed to remove request from multi: {:?}", e);
             }
 
-            log_d!(TAG, "Request completed: {}", entry.request.args.url);
+            log_d!(TAG, "Request completed: {}", url);
         });
     }
 }

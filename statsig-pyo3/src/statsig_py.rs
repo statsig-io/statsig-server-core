@@ -1,9 +1,10 @@
+use crate::statsig_options_py::StatsigOptionsPy;
 use crate::{
     evaluation_types_py::{ExperimentPy, FeatureGatePy},
     statsig_user_py::StatsigUserPy,
 };
 use pyo3::prelude::*;
-use sigstat::{log_d, ClientInitResponseOptions, Statsig, StatsigRuntime};
+use sigstat::{log_e, ClientInitResponseOptions, Statsig};
 use std::sync::Arc;
 
 const TAG: &str = stringify!(StatsigPy);
@@ -24,26 +25,35 @@ pub struct StatsigPy {
 #[pymethods]
 impl StatsigPy {
     #[new]
-    pub fn new(sdk_key: &str) -> Self {
+    #[pyo3(signature = (sdk_key, options=None))]
+    pub fn new(sdk_key: &str, options: Option<&StatsigOptionsPy>) -> Self {
+        let mut local_opts = None;
+        if let Some(o) = options {
+            local_opts = Some(o.inner.clone());
+        }
+
         Self {
-            inner: Arc::new(Statsig::new(sdk_key, None)),
+            inner: Arc::new(Statsig::new(sdk_key, local_opts)),
         }
     }
 
-    pub fn initialize(&self) -> StatsigResultPy {
-        log_d!(TAG, "Initializing...");
-        let statsig_rt = StatsigRuntime::get_runtime();
-        let me = self.inner.clone();
-        let result = statsig_rt
-            .runtime_handle
-            .block_on(async move { me.initialize().await });
+    pub fn initialize(&self, py: Python) -> PyResult<PyObject> {
+        let threading = PyModule::import(py, "threading")?;
+        let completion_event = threading.call_method0("Event")?;
+        let event_clone: PyObject = completion_event.clone().into();
 
-        log_d!(TAG, "Initialization Done: {:?}", result);
+        let inst = self.inner.clone();
+        self.inner.statsig_runtime.runtime_handle.spawn(async move {
+            if let Err(e) = inst.initialize().await {
+                log_e!(TAG, "Failed to initialize Statsig: {}", e);
+            }
 
-        match result {
-            Ok(_) => StatsigResultPy::Ok,
-            Err(_) => StatsigResultPy::NoDice,
-        }
+            Python::with_gil(|py| {
+                event_clone.call_method0(py, "set").unwrap();
+            });
+        });
+
+        Ok(completion_event.into())
     }
 
     pub fn check_gate(&self, name: &str, user: &StatsigUserPy) -> bool {
