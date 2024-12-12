@@ -272,6 +272,26 @@ impl Statsig {
             )));
     }
 
+    pub fn log_event_with_number(
+        &self,
+        user: &StatsigUser,
+        event_name: &str,
+        value: Option<f64>,
+        metadata: Option<HashMap<String, String>>,
+    ) {
+        let user_internal = self.internalize_user(user);
+
+        self.event_logger
+            .enqueue(QueuedEventPayload::CustomEvent(make_custom_event(
+                user_internal,
+                StatsigEvent {
+                    event_name: event_name.to_string(),
+                    value: value.map(|v| json!(v)),
+                    metadata,
+                },
+            )));
+    }
+
     // ---------––
     //   Core Apis
     // ---------––
