@@ -1,46 +1,56 @@
+# This file generated and copied from statsig-pyo3
+# To update, see statsig-pyo3/.github/workflows/CI.yml
+
 name: Statsig Python
 
 on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - '*'
+  pull_request:
   workflow_dispatch:
-  # push:
-  #   branches: [main]
-  # pull_request:
-  #   branches: [main]
 
-env:
-  FORCE_COLOR: true
-  POETRY_PYPI_TOKEN_PYPI_TEST: ${{ secrets.SIGTAT_PYPI_TEST_TOKEN }}
+permissions:
+  contents: read
 
 jobs:
-  main:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./statsig-ffi/bindings/python
+  macos:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: macos-13
+            target: x86_64
+          - runner: macos-14
+            target: aarch64
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: 3.x
 
-      - name: Install Dependencies
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          working-directory: statsig-pyo3
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist
+          sccache: 'true'
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-${{ matrix.platform.target }}
+          path: statsig-pyo3/dist
+
+      - name: Test
         run: |
-          pip install poetry
-          poetry install --with=dev
+          cd statsig-pyo3
+          pip install pytest cachetools pytest_httpserver
+          pip install sigstat_python_core --no-index --find-links dist --force-reinstall -v
+          python3 -m pytest tests --capture=no -v
 
-      - name: Run Tests
-        run: poetry run pytest
-
-      - name: Increment Version
-        if: ${{ github.event_name == 'pull_request' }}
-        run: poetry version prerelease
-
-      - name: Build Package
-        run: poetry build
-
-      - name: Publish to TestPyPI
-        if: ${{ github.ref_name == 'main' }}
-        run: poetry publish --repository pypi-test
-          

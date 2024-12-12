@@ -3,6 +3,8 @@ from pytest_httpserver import HTTPServer
 import json
 from utils import get_test_data_resource
 from werkzeug import Response, Request
+import io
+import gzip, zlib
 
 
 def setup(httpserver: HTTPServer, logs):
@@ -14,7 +16,10 @@ def setup(httpserver: HTTPServer, logs):
     ).respond_with_json(json_data)
 
     def _on_log_event(req: Request):
-        logs.append(req.json)
+        data = req.get_data()
+        json_str = gzip.decompress(data)
+        req_json = json.loads(json_str)
+        logs.append(req_json)
         return Response('{"success": true}')
 
     httpserver.expect_request("/v1/log_event").respond_with_handler(_on_log_event)
