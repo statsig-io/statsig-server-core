@@ -53,12 +53,13 @@ fn get_requests_data() -> Vec<Value> {
         .unwrap()
         .as_array()
         .unwrap()
-        .into_iter()
+        .iter()
         .map(|x| x.to_owned())
         .collect()
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_writing_to_file() {
     let _lock = get_test_lock();
 
@@ -84,6 +85,7 @@ async fn test_writing_to_file() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_combining_requests() {
     let _lock = get_test_lock();
 
@@ -120,6 +122,7 @@ async fn test_combining_requests() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_combining_limits() {
     let _lock = get_test_lock();
 
@@ -155,6 +158,7 @@ async fn test_combining_limits() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_sending_events_over_network() {
     let _lock = get_test_lock();
 

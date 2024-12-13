@@ -101,7 +101,7 @@ impl Curl {
 
         let result = response_rx.await.unwrap_or_else(|e| {
             log_e!(TAG, "Failed to receive response: {:?}", e);
-            return Err(StatsigErr::NetworkError(e.to_string()));
+            Err(StatsigErr::NetworkError(e.to_string()))
         });
 
         result.unwrap_or_else(|e| Response {
@@ -119,7 +119,7 @@ impl Curl {
             context: Arc::new(CurlContext {
                 req_tx,
                 _abort_tx: Some(abort_tx),
-                _handle: handle.map(|h| Arc::new(h)),
+                _handle: handle.map(Arc::new),
             }),
         }
     }
@@ -194,7 +194,7 @@ impl Curl {
         request: Request,
     ) -> Result<(), StatsigErr> {
         let args = &request.args;
-        let easy = construct_easy_request(&request.method, &args)
+        let easy = construct_easy_request(&request.method, args)
             .map_err(|e| StatsigErr::NetworkError(e.to_string()))?;
 
         match multi.add2(easy) {
@@ -267,7 +267,7 @@ impl Curl {
                 Ok(()) => {
                     let http_status = entry.handle.response_code().unwrap_or_else(|e| {
                         log_e!(TAG, "Failed to get HTTP status: {:?}", e);
-                        return 0;
+                        0
                     });
 
                     let res_buffer = entry.handle.get_mut().get_buffer();
@@ -283,7 +283,7 @@ impl Curl {
                     let data = String::from_utf8(res_buffer)
                         .map_err(|e| {
                             log_e!(TAG, "Failed to convert response to string: {} {:?}", url, e);
-                            return e;
+                            e
                         })
                         .ok();
 

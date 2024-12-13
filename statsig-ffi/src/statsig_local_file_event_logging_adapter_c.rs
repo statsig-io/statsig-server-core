@@ -14,7 +14,7 @@ pub extern "C" fn statsig_local_file_event_logging_adapter_create(
 ) -> *const c_char {
     let sdk_key = unwrap_or_return!(c_char_to_string(sdk_key), std::ptr::null());
     let output_directory = unwrap_or_return!(c_char_to_string(output_directory), std::ptr::null());
-    let log_event_url = c_char_to_string(log_event_url).map(|u| Some(u)).unwrap_or_default();
+    let log_event_url = c_char_to_string(log_event_url).map(Some).unwrap_or_default();
 
     let adapter = StatsigLocalFileEventLoggingAdapter::new(&sdk_key, &output_directory, log_event_url);
 

@@ -7,7 +7,7 @@ use super::{SpecsSource, SpecsUpdate};
 use crate::data_store_interface::{
     get_data_adapter_key, CompressFormat, DataStoreTrait, RequestPath,
 };
-use crate::hashing::Hashing;
+use crate::hashing::HashUtil;
 use crate::{log_e, log_w, SpecsAdapter, SpecsUpdateListener};
 use crate::{StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
@@ -26,7 +26,7 @@ impl StatsigDataStoreSpecsAdapter {
     pub fn new(
         sdk_key: &str,
         data_adapter: Arc<dyn DataStoreTrait>,
-        hashing: &Hashing,
+        hashing: &HashUtil,
         sync_interval: Option<u32>,
     ) -> Self {
         let cache_key = get_data_adapter_key(
@@ -70,7 +70,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         let update = self.data_adapter.get(&self.cache_key).await?;
         match update.result {
             Some(data) => listener.did_receive_specs_update(SpecsUpdate {
-                data: data,
+                data,
                 source: SpecsSource::DataAdapter,
                 received_at: Utc::now().timestamp_millis() as u64,
             })?,
@@ -142,7 +142,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         time::timeout(timeout, async { self.data_adapter.shutdown().await })
             .await
             .map_err(|e| {
-                StatsigErr::DataStoreFailure(format!("Failed to shutdown: {}", e.to_string()))
+                StatsigErr::DataStoreFailure(format!("Failed to shutdown: {}", e))
             })?
     }
 

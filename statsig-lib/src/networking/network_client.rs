@@ -69,7 +69,7 @@ impl NetworkClient {
 
             let status = response.status_code;
 
-            if status >= 200 && status < 300 {
+            if (200..300).contains(&status) {
                 return response.data;
             }
 

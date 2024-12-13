@@ -38,7 +38,7 @@ impl StatsigRuntime {
     }
 
     pub fn shutdown(&self, timeout: Duration) {
-        let _ = self.shutdown_notify.notify_waiters();
+        self.shutdown_notify.notify_waiters();
 
         if let Ok(mut lock) = self.spawned_tasks.lock() {
             for (_, task) in lock.drain() {

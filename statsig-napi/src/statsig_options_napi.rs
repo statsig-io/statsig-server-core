@@ -29,6 +29,7 @@ impl ObjectFinalize for AutoReleasingStatsigOptionsRef {
 }
 
 #[napi]
+#[allow(clippy::too_many_arguments)] // todo: refactor this to use a builder pattern or config object
 pub fn statsig_options_create(
   environment: Option<String>,
   data_store: Option<JsObject>,
@@ -65,7 +66,7 @@ pub fn statsig_options_create(
       log_event_url,
       event_logging_max_queue_size,
       event_logging_flush_interval_ms,
-      spec_adapters_config: spec_adapters_config,
+      spec_adapters_config,
       data_store,
       observability_client,
       ..StatsigOptions::new()
@@ -84,12 +85,12 @@ pub struct SpecAdapterConfigNapi {
   pub init_timeout_ms: i64,
 }
 
-impl Into<SpecAdapterConfig> for SpecAdapterConfigNapi {
-  fn into(self) -> SpecAdapterConfig {
+impl From<SpecAdapterConfigNapi> for SpecAdapterConfig {
+  fn from(val: SpecAdapterConfigNapi) -> Self {
     SpecAdapterConfig {
-      adapter_type: self.adapter_type.into(),
-      specs_url: self.specs_url,
-      init_timeout_ms: u64::try_from(self.init_timeout_ms).unwrap_or(DEFAULT_INIT_TIMEOUT_MS),
+      adapter_type: val.adapter_type.into(),
+      specs_url: val.specs_url,
+      init_timeout_ms: u64::try_from(val.init_timeout_ms).unwrap_or(DEFAULT_INIT_TIMEOUT_MS),
     }
   }
 }
@@ -100,9 +101,9 @@ pub enum SpecsAdapterTypeNapi {
   NetworkGrpcWebsocket,
 }
 
-impl Into<SpecsAdapterType> for SpecsAdapterTypeNapi {
-  fn into(self) -> SpecsAdapterType {
-    match self {
+impl From<SpecsAdapterTypeNapi> for SpecsAdapterType {
+  fn from(val: SpecsAdapterTypeNapi) -> Self {
+    match val {
       SpecsAdapterTypeNapi::NetworkGrpcWebsocket => SpecsAdapterType::NetworkGrpcWebsocket,
       SpecsAdapterTypeNapi::NetworkHttp => SpecsAdapterType::NetworkHttp,
     }

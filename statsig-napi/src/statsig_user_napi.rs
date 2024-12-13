@@ -28,6 +28,7 @@ impl ObjectFinalize for AutoReleasingStatsigUserRef {
 }
 
 #[napi]
+#[allow(clippy::too_many_arguments)] // todo: refactor this to use a builder pattern or config object
 pub fn statsig_user_create(
   user_id: Option<String>,
   custom_ids_json: Option<String>,
@@ -95,9 +96,7 @@ pub fn statsig_user_create(
     .custom(custom)
     .private_attributes(private_attributes);
 
-  let ref_id = INST_STORE
-    .add(builder.build())
-    .unwrap_or_else(|| "".to_string());
+  let ref_id = INST_STORE.add(builder.build()).unwrap_or_default();
 
   AutoReleasingStatsigUserRef { ref_id }
 }

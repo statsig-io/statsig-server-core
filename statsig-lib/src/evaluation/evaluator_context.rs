@@ -1,6 +1,6 @@
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluator_result::EvaluatorResult;
-use crate::hashing::Hashing;
+use crate::hashing::HashUtil;
 use crate::spec_store::SpecStoreData;
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::StatsigErr;
@@ -11,7 +11,7 @@ const MAX_RECURSIVE_DEPTH: u16 = 300;
 pub struct EvaluatorContext<'a> {
     pub user: &'a StatsigUserInternal,
     pub spec_store_data: &'a SpecStoreData,
-    pub hashing: &'a Hashing,
+    pub hashing: &'a HashUtil,
     pub result: EvaluatorResult<'a>,
     pub nested_count: u16,
     pub app_id: &'a Option<&'a DynamicValue>,
@@ -21,7 +21,7 @@ impl<'a> EvaluatorContext<'a> {
     pub fn new(
         user: &'a StatsigUserInternal,
         spec_store_data: &'a SpecStoreData,
-        hashing: &'a Hashing,
+        hashing: &'a HashUtil,
         app_id: &'a Option<&'a DynamicValue>,
     ) -> Self {
         let result = EvaluatorResult::default();

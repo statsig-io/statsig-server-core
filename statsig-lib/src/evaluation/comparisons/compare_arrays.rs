@@ -37,9 +37,5 @@ pub(crate) fn compare_arrays(
             }
         }
     }
-    if op == "array_contains_any" || op == "not_array_contains_all" {
-        false
-    } else {
-        true
-    }
+    !(op == "array_contains_any" || op == "not_array_contains_all")
 }

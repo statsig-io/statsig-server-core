@@ -6,7 +6,7 @@ use crate::evaluation::evaluator_result::{
     result_to_dynamic_config_eval, result_to_experiment_eval, result_to_gate_eval,
     result_to_layer_eval, EvaluatorResult,
 };
-use crate::hashing::{HashAlgorithm, Hashing};
+use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::initialize_response::InitializeResponse;
 use crate::read_lock_or_else;
 use crate::spec_store::SpecStore;
@@ -46,7 +46,7 @@ impl ClientInitResponseFormatter {
     pub fn get(
         &self,
         user_internal: StatsigUserInternal,
-        hashing: &Hashing,
+        hashing: &HashUtil,
         options: &ClientInitResponseOptions,
     ) -> InitializeResponse {
         let data = read_lock_or_else!(self.spec_store.data, {
@@ -60,7 +60,7 @@ impl ClientInitResponseFormatter {
                 app_id = app_id_value.get(client_sdk_key);
             }
             if let Some(app_id_value) = &data.values.hashed_sdk_keys_to_app_ids {
-                let hashed_key = &hashing.hash(&client_sdk_key, &HashAlgorithm::Djb2);
+                let hashed_key = &hashing.hash(client_sdk_key, &HashAlgorithm::Djb2);
                 app_id = app_id_value.get(hashed_key);
             }
         }
@@ -118,7 +118,7 @@ impl ClientInitResponseFormatter {
 
         let mut layer_configs = HashMap::new();
         for (name, spec) in &data.values.layer_configs {
-          if get_should_filter_config_for_app(spec, &app_id, &options.client_sdk_key) {
+            if get_should_filter_config_for_app(spec, &app_id, &options.client_sdk_key) {
                 continue;
             }
 
@@ -161,7 +161,6 @@ fn get_should_filter_config_for_app(
     app_id: &Option<&DynamicValue>,
     client_sdk_key: &Option<String>,
 ) -> bool {
-
     let _client_sdk_key = match client_sdk_key {
         Some(client_sdk_key) => client_sdk_key,
         None => return false,
@@ -209,12 +208,12 @@ fn get_evaluated_keys(user_internal: &StatsigUserInternal) -> HashMap<String, St
 
 fn hash_secondary_exposures(
     result: &mut EvaluatorResult,
-    hashing: &Hashing,
+    hashing: &HashUtil,
     hash_algorithm: &HashAlgorithm,
 ) {
     fn loop_and_hash(
-        exposures: &Vec<SecondaryExposure>,
-        hashing: &Hashing,
+        exposures: &[SecondaryExposure],
+        hashing: &HashUtil,
         hash_algorithm: &HashAlgorithm,
     ) -> Vec<SecondaryExposure> {
         exposures

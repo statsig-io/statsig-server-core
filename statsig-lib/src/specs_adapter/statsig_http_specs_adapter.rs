@@ -140,7 +140,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
         let weak_self: Weak<StatsigHttpSpecsAdapter> = Arc::downgrade(&self);
-        let interval_duration = self.sync_interval_duration.clone();
+        let interval_duration = self.sync_interval_duration;
 
         statsig_runtime.spawn("http_specs_bg_sync", move |shutdown_notify| async move {
             loop {

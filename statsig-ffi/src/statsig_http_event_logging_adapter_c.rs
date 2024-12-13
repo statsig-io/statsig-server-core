@@ -51,7 +51,6 @@ pub extern "C" fn statsig_http_event_logging_adapter_send_events(
     let handle_error = |msg: &str| {
         log_e!(TAG, "{}", msg);
         callback(false, string_to_c_char(msg.to_string()));
-        return;
     };
 
     let event_logging_adapter_ref = match c_char_to_string(event_logging_adapter_ref) {

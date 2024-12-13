@@ -16,6 +16,12 @@ pub struct RequestArgs {
     pub is_shutdown: Option<Arc<AtomicBool>>,
 }
 
+impl Default for RequestArgs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RequestArgs {
     pub fn new() -> Self {
         RequestArgs {

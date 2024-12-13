@@ -13,14 +13,15 @@ use wiremock::{
     Mock, MockBuilder, MockServer, Request, ResponseTemplate,
 };
 
+#[allow(clippy::upper_case_acronyms)]
 pub enum Method {
     GET,
     POST,
 }
 
-impl Into<WiremockMethod> for Method {
-    fn into(self) -> WiremockMethod {
-        match self {
+impl From<Method> for WiremockMethod {
+    fn from(val: Method) -> Self {
+        match val {
             Method::GET => WiremockMethod::GET,
             Method::POST => WiremockMethod::POST,
         }
@@ -112,7 +113,7 @@ impl MockScrapi {
     }
 
     pub fn url_for_endpoint(&self, endpoint: Endpoint) -> String {
-        format!("{}{}", self.mock_server.uri(), endpoint.to_string())
+        format!("{}{}", self.mock_server.uri(), endpoint)
     }
 
     pub fn times_called_for_endpoint(&self, endpoint: Endpoint) -> u32 {

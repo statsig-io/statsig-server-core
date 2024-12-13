@@ -1,6 +1,6 @@
 pub use djb2::*;
-pub use hashing::*;
+pub use hash_util::*;
 
 mod djb2;
-mod hashing;
+mod hash_util;
 mod memo_sha_256;

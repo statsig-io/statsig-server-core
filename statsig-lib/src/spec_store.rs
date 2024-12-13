@@ -184,22 +184,23 @@ impl SpecStore {
             mut_values.time_received_at = curr_time;
             mut_values.source = values.source.clone();
             if self.data_store.is_some() && mut_values.source == SpecsSource::Network {
-                match self.data_store.clone() {
-                    Some(data_store) => {
-                        let hashed_key = self.hashed_sdk_key.clone();
-                        self.statsig_runtime.clone().map(|rt| {
-                            let copy = curr_time.clone();
-                            rt.spawn("update data adapter", move |_| async move {
-                                let _ = data_store
-                                    .set(&get_data_adapter_dcs_key(&hashed_key), &values.data, copy)
-                                    .await;
-                            })
-                        });
-                    }
-                    None => {}
+                if let Some(data_store) = self.data_store.clone() {
+                    let hashed_key = self.hashed_sdk_key.clone();
+                    self.statsig_runtime.clone().map(|rt| {
+                        let copy = curr_time;
+                        rt.spawn("update data adapter", move |_| async move {
+                            let _ = data_store
+                                .set(&get_data_adapter_dcs_key(&hashed_key), &values.data, copy)
+                                .await;
+                        })
+                    });
                 }
             }
-            self.log_processing_config(mut_values.values.time, mut_values.source.clone(), prev_source);
+            self.log_processing_config(
+                mut_values.values.time,
+                mut_values.source.clone(),
+                prev_source,
+            );
         }
 
         Ok(())
@@ -208,7 +209,8 @@ impl SpecStore {
     fn log_processing_config(&self, lcut: u64, source: SpecsSource, prev_source: SpecsSource) {
         let delay = Utc::now().timestamp_millis() as u64 - lcut;
         log_d!(TAG, "SpecStore - Updated ({:?})", source);
-        self.ops_stats.as_ref().map(|ops| {
+
+        if let Some(ops) = self.ops_stats.as_ref() {
             if prev_source != SpecsSource::Uninitialized && prev_source != SpecsSource::Loading {
                 ops.log(ObservabilityEvent::new_event(
                     MetricType::Dist,
@@ -217,19 +219,19 @@ impl SpecStore {
                     Some(HashMap::from([("source".to_string(), source.to_string())])),
                 ));
             }
-        });
+        }
     }
 
     fn log_no_update(&self, source: SpecsSource) {
         log_d!(TAG, "SpecStore - No Updates");
-        self.ops_stats.as_ref().map(|ops| {
+        if let Some(ops) = self.ops_stats.as_ref() {
             ops.log(ObservabilityEvent::new_event(
                 MetricType::Increment,
                 "config_no_update".to_string(),
                 1.0,
                 Some(HashMap::from([("source".to_string(), source.to_string())])),
             ));
-        });
+        }
     }
 }
 

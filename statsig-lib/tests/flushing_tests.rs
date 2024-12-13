@@ -49,7 +49,7 @@ async fn main() {
     for i in 0..10000 {
         let user = StatsigUser::with_user_id(format!("test_user_{}", i));
         let gate = statsig.check_gate(&user, "test_public");
-        assert_eq!(gate, true);
+        assert!(gate);
     }
 
     let duration = start.elapsed();
@@ -79,7 +79,7 @@ async fn test_no_flushing_on_main() {
     for i in 0..15000 {
         let user = StatsigUser::with_user_id(format!("test_user_{}", i));
         let gate = statsig.check_gate(&user, "test_public");
-        assert_eq!(gate, true);
+        assert!(gate);
     }
 
     let duration = start.elapsed();
@@ -104,7 +104,7 @@ async fn test_all_events_get_flushed() {
     for i in 0..5000 {
         let user = StatsigUser::with_user_id(format!("test_user_{}", i));
         let gate = statsig.check_gate(&user, "test_public");
-        assert_eq!(gate, true);
+        assert!(gate);
     }
 
     // sleep(Duration::from_millis(100)).await;

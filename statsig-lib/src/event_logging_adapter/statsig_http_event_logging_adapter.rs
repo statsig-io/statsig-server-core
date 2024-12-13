@@ -37,7 +37,7 @@ impl StatsigHttpEventLoggingAdapter {
 
         Self {
             log_event_url,
-            network: NetworkClient::new(&sdk_key, Some(headers)),
+            network: NetworkClient::new(sdk_key, Some(headers)),
         }
     }
 

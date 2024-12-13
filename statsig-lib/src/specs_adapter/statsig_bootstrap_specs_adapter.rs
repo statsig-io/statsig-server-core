@@ -36,13 +36,11 @@ impl StatsigBootstrapSpecsAdapter {
 
         match &self.listener.read() {
             Ok(lock) => match lock.as_ref() {
-                Some(listener) => {
-                    listener.did_receive_specs_update(SpecsUpdate {
-                        data,
-                        source: SpecsSource::Bootstrap,
-                        received_at: Utc::now().timestamp_millis() as u64,
-                    })
-                }
+                Some(listener) => listener.did_receive_specs_update(SpecsUpdate {
+                    data,
+                    source: SpecsSource::Bootstrap,
+                    received_at: Utc::now().timestamp_millis() as u64,
+                }),
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
             Err(e) => Err(StatsigErr::LockFailure(e.to_string())),
@@ -161,7 +159,7 @@ mod tests {
 
         let test_data = "{\"some\": \"value\"}".to_string();
         let result = adapter.set_data(test_data.clone());
-        assert_eq!(result.is_err(), false);
+        assert!(result.is_ok());
 
         if let Ok(lock) = listener.clone().received_update.read() {
             let update = lock.as_ref().unwrap();

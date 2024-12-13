@@ -117,6 +117,12 @@ pub struct InstanceStore {
     instances: RwLock<HashMap<String, BoxedInstance>>,
 }
 
+impl Default for InstanceStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InstanceStore {
     pub fn new() -> Self {
         Self {

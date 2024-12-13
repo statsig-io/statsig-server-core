@@ -37,6 +37,12 @@ pub struct OpsStatsForInstance {
 }
 
 // The class used to handle all observability events including diagnostics, error, event logging, and external metric sharing
+impl Default for OpsStatsForInstance {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OpsStatsForInstance {
     pub fn new() -> Self {
         let (tx, _) = broadcast::channel(1000);

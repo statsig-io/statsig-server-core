@@ -115,7 +115,7 @@ impl StatsigHttpIdListsAdapter {
 
     fn schedule_background_sync(self: Arc<Self>, statsig_runtime: &Arc<StatsigRuntime>) {
         let weak_self = Arc::downgrade(&self);
-        let interval_duration = self.sync_interval_duration.clone();
+        let interval_duration = self.sync_interval_duration;
 
         statsig_runtime.spawn("http_id_list_bg_sync", move |shutdown_notify| async move {
             loop {
@@ -254,7 +254,7 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
 
 #[cfg(test)]
 mod tests {
-    use crate::hashing::Hashing;
+    use crate::hashing::HashUtil;
     use crate::id_lists_adapter::IdList;
 
     use super::*;
@@ -329,8 +329,8 @@ mod tests {
     }
 
     fn get_hashed_marcos() -> String {
-        let hashed = Hashing::new().sha256(&"Marcos".to_string());
-        return hashed.chars().take(8).collect();
+        let hashed = HashUtil::new().sha256(&"Marcos".to_string());
+        hashed.chars().take(8).collect()
     }
 
     async fn setup_mock_server() -> (ServerGuard, Mock, Mock) {
@@ -429,7 +429,7 @@ mod tests {
         adapter.sync_id_lists().await.unwrap();
 
         let result = listener.does_list_contain_id("company_id_list", &get_hashed_marcos());
-        assert!(result == false);
+        assert!(!result);
     }
 
     #[tokio::test]
@@ -461,7 +461,7 @@ mod tests {
             )
             .await;
 
-        assert_eq!(false, result);
+        assert!(!result);
     }
 
     // todo:

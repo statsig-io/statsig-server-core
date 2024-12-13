@@ -1,6 +1,6 @@
 use super::{diagnostics::ContextType, marker::Marker};
-use std::collections::HashMap;
 use rand::Rng;
+use std::collections::HashMap;
 
 pub struct DiagnosticsUtils;
 
@@ -25,14 +25,14 @@ impl DiagnosticsUtils {
     pub fn should_sample(sample_rate: f64) -> bool {
         let mut rng = rand::thread_rng();
         let value: f64 = rng.gen::<f64>();
-        return value * 10000.0 < sample_rate;
+        value * 10000.0 < sample_rate
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::diagnostics::{
+    use crate::sdk_diagnostics::{
         diagnostics::ContextType,
         marker::{ActionType, KeyType, Marker, StepType},
     };

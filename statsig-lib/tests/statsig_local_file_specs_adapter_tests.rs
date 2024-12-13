@@ -1,13 +1,13 @@
 mod utils;
 
 use crate::utils::helpers::load_contents;
+use crate::utils::mock_specs_listener::MockSpecsListener;
+use lazy_static::lazy_static;
 use sigstat::{SpecsAdapter, SpecsSource, StatsigLocalFileSpecsAdapter, StatsigRuntime};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
-use lazy_static::lazy_static;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
-use crate::utils::mock_specs_listener::MockSpecsListener;
 
 const SDK_KEY: &str = "server-local-specs-test";
 const SPECS_FILE_PATH: &str = "/tmp/3099846163_specs.json"; // djb2(SDK_KEY)_specs.json
@@ -42,6 +42,7 @@ async fn setup() -> MockScrapi {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_statsig_local_file_specs_adapter() {
     let _lock = get_test_lock();
 
@@ -59,6 +60,7 @@ async fn test_statsig_local_file_specs_adapter() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_concurrent_access() {
     let _lock = get_test_lock();
 
@@ -81,6 +83,7 @@ async fn test_concurrent_access() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_sending_since_time() {
     let _lock = get_test_lock();
 
@@ -101,17 +104,26 @@ async fn test_sending_since_time() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_syncing_from_file() {
     let _lock = get_test_lock();
 
     let mock_scrapi = setup().await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
-    let adapter = Arc::new(StatsigLocalFileSpecsAdapter::new(SDK_KEY, "/tmp", Some(url)));
+    let adapter = Arc::new(StatsigLocalFileSpecsAdapter::new(
+        SDK_KEY,
+        "/tmp",
+        Some(url),
+    ));
     adapter.fetch_and_write_to_file().await.unwrap();
 
     let statsig_rt = StatsigRuntime::get_runtime();
     let listener = Arc::new(MockSpecsListener::default());
-    adapter.clone().start(&statsig_rt, listener.clone()).await.unwrap();
+    adapter
+        .clone()
+        .start(&statsig_rt, listener.clone())
+        .await
+        .unwrap();
 
     adapter.resync_from_file().unwrap();
 

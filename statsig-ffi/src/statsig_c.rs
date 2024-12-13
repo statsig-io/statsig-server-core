@@ -101,7 +101,7 @@ pub extern "C" fn statsig_log_event(
                 .collect()
         });
 
-    statsig.log_event(&user, &event_name, event_value, event_metadata);
+    statsig.log_event(&user, event_name, event_value, event_metadata);
 }
 
 #[no_mangle]

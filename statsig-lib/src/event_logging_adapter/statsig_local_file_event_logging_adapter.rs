@@ -66,9 +66,9 @@ impl StatsigLocalFileEventLoggingAdapter {
         let file_contents = std::fs::read_to_string(&self.file_path)
             .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
-        Ok(serde_json::from_str(&file_contents).map_err(|e| {
+        serde_json::from_str(&file_contents).map_err(|e| {
             StatsigErr::JsonParseError(stringify!(PendingLogRequests).to_string(), e.to_string())
-        })?)
+        })
     }
 
     fn get_and_clear_current_requests(&self) -> Result<PendingLogRequests, StatsigErr> {

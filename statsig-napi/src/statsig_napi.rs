@@ -8,6 +8,7 @@ use sigstat::{
   ClientInitResponseOptions, HashAlgorithm, Statsig, StatsigOptions, StatsigUser,
 };
 use std::collections::HashMap;
+use std::time::Duration;
 
 use crate::statsig_types_napi::{DynamicConfigNapi, ExperimentNapi, FeatureGateNapi};
 
@@ -21,7 +22,14 @@ pub struct AutoReleasingStatsigRef {
 impl ObjectFinalize for AutoReleasingStatsigRef {
   fn finalize(self, _env: Env) -> napi::Result<()> {
     if let Some(statsig) = INST_STORE.get::<Statsig>(&self.ref_id) {
-      let _ = statsig.shutdown();
+      let inst = statsig.clone();
+      let rt = statsig.statsig_runtime.clone();
+      rt.runtime_handle.spawn(async move {
+        if let Err(e) = inst.__shutdown_internal(Duration::from_secs(3)).await {
+          log_e!(TAG, "Failed to gracefully shutdown StatsigNapi: {}", e);
+        }
+      });
+
       INST_STORE.remove(&self.ref_id);
     }
 
@@ -257,7 +265,10 @@ fn convert_client_init_response_options(
   let hash_algorithm = options
     .hash_algorithm
     .as_ref()
-    .and_then(|s| HashAlgorithm::from_string(&s));
+    .and_then(|s| HashAlgorithm::from_string(s.as_str()));
 
-  Some(ClientInitResponseOptions { hash_algorithm, ..ClientInitResponseOptions::default() })
+  Some(ClientInitResponseOptions {
+    hash_algorithm,
+    ..ClientInitResponseOptions::default()
+  })
 }

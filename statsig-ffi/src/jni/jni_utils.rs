@@ -53,15 +53,9 @@ pub fn convert_java_client_init_response_options_to_rust(
             Err(_) => return None,
         };
 
-    let hash_algo = if hash_algo_field.is_null() {
-        None
-    } else {
-        env.get_string(&hash_algo_field)
-            .ok()
-            .map(|java_str| java_str.into())
-    };
+    let hash_algo = jstring_to_string(env, hash_algo_field);
 
-    let hash_algo = hash_algo.and_then(|s| HashAlgorithm::from_string(&s));
+    let hash_algo = hash_algo.and_then(|s| HashAlgorithm::from_string(s.as_str()));
     Some(ClientInitResponseOptions {
         hash_algorithm: hash_algo,
         ..ClientInitResponseOptions::default()

@@ -213,8 +213,8 @@ fn evaluate_condition<'a>(
     Ok(())
 }
 
-fn evaluate_id_list<'a>(
-    ctx: &mut EvaluatorContext<'a>,
+fn evaluate_id_list(
+    ctx: &mut EvaluatorContext<'_>,
     op: &str,
     target_value: &DynamicValue,
     value: &DynamicValue,

@@ -18,11 +18,11 @@ pub struct DataAdapterResponseNapi {
   pub time: Option<i64>,
 }
 
-impl Into<DataAdapterResponse> for DataAdapterResponseNapi {
-  fn into(self) -> DataAdapterResponse {
+impl From<DataAdapterResponseNapi> for DataAdapterResponse {
+  fn from(val: DataAdapterResponseNapi) -> Self {
     DataAdapterResponse {
-      result: self.result,
-      time: self.time.map(|time| time as u64),
+      result: val.result,
+      time: val.time.map(|time| time as u64),
     }
   }
 }

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 fn is_false(v: &bool) -> bool {
-    *v == false
+    !(*v)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

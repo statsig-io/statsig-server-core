@@ -51,56 +51,44 @@ impl ObservabilityClientNapi {
 
 impl ObservabilityClient for ObservabilityClientNapi {
   fn init(&self) {
-    match self.init_fn.clone() {
-      Some(func) => {
-        func.call(Ok(()), ThreadsafeFunctionCallMode::NonBlocking);
-      }
-      None => {}
+    if let Some(func) = self.init_fn.clone() {
+      func.call(Ok(()), ThreadsafeFunctionCallMode::NonBlocking);
     }
   }
 
   fn increment(&self, metric_name: String, value: f64, tags: Option<HashMap<String, String>>) {
-    match self.increment_fn.clone() {
-      Some(func) => {
-        let args = json!({
-            "metric_name": metric_name,
-            "value": value,
-            "tags": tags,
-        })
-        .to_string();
-        func.call(Ok(args), ThreadsafeFunctionCallMode::NonBlocking);
-      }
-      None => {}
+    if let Some(func) = self.increment_fn.clone() {
+      let args = json!({
+          "metric_name": metric_name,
+          "value": value,
+          "tags": tags,
+      })
+      .to_string();
+      func.call(Ok(args), ThreadsafeFunctionCallMode::NonBlocking);
     }
   }
 
   fn gauge(&self, metric_name: String, value: f64, tags: Option<HashMap<String, String>>) {
-    match self.gauge_fn.clone() {
-      Some(func) => {
-        let args = json!({
-            "metric_name": metric_name,
-            "value": value,
-            "tags": tags,
-        })
-        .to_string();
-        func.call(Ok(args), ThreadsafeFunctionCallMode::NonBlocking);
-      }
-      None => {}
+    if let Some(func) = self.gauge_fn.clone() {
+      let args = json!({
+          "metric_name": metric_name,
+          "value": value,
+          "tags": tags,
+      })
+      .to_string();
+      func.call(Ok(args), ThreadsafeFunctionCallMode::NonBlocking);
     }
   }
 
   fn dist(&self, metric_name: String, value: f64, tags: Option<HashMap<String, String>>) {
-    match self.dist_fn.clone() {
-      Some(func) => {
-        let args: String = json!({
-            "metric_name": metric_name,
-            "value": value,
-            "tags": tags,
-        })
-        .to_string();
-        func.call(Ok(args), ThreadsafeFunctionCallMode::NonBlocking);
-      }
-      None => {}
+    if let Some(func) = self.dist_fn.clone() {
+      let args: String = json!({
+          "metric_name": metric_name,
+          "value": value,
+          "tags": tags,
+      })
+      .to_string();
+      func.call(Ok(args), ThreadsafeFunctionCallMode::NonBlocking);
     }
   }
 

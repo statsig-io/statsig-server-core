@@ -1,5 +1,5 @@
-use std::fmt::Display;
 use super::{djb2::djb2, memo_sha_256::MemoSha256};
+use std::fmt::Display;
 
 pub enum HashAlgorithm {
     Djb2,
@@ -8,8 +8,8 @@ pub enum HashAlgorithm {
 }
 
 impl HashAlgorithm {
-    pub fn from_string(input: &String) -> Option<Self> {
-        match input.as_str() {
+    pub fn from_string(input: &str) -> Option<Self> {
+        match input {
             "sha256" => Some(HashAlgorithm::Sha256),
             "djb2" => Some(HashAlgorithm::Djb2),
             "none" => Some(HashAlgorithm::None),
@@ -28,11 +28,17 @@ impl Display for HashAlgorithm {
     }
 }
 
-pub struct Hashing {
+pub struct HashUtil {
     sha_hasher: MemoSha256,
 }
 
-impl Hashing {
+impl Default for HashUtil {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl HashUtil {
     pub fn new() -> Self {
         Self {
             sha_hasher: MemoSha256::new(),

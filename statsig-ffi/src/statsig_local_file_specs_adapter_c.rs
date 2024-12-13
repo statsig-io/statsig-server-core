@@ -14,7 +14,7 @@ pub extern "C" fn statsig_local_file_specs_adapter_create(
 ) -> *const c_char {
     let sdk_key = unwrap_or_return!(c_char_to_string(sdk_key), std::ptr::null());
     let output_directory = unwrap_or_return!(c_char_to_string(output_directory), std::ptr::null());
-    let specs_url = c_char_to_string(specs_url).map(|u| Some(u)).unwrap_or_default();
+    let specs_url = c_char_to_string(specs_url).map(Some).unwrap_or_default();
 
     let adapter = StatsigLocalFileSpecsAdapter::new(
         &sdk_key,

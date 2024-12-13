@@ -72,7 +72,7 @@ impl StatsigLocalFileSpecsAdapter {
                 }
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
-            Err(e) => return Err(StatsigErr::LockFailure(e.to_string())),
+            Err(e) => Err(StatsigErr::LockFailure(e.to_string())),
         }
     }
 
@@ -92,7 +92,7 @@ impl StatsigLocalFileSpecsAdapter {
     }
 
     fn parse_specs_data_to_full_response(&self, data: &str) -> Option<Box<SpecsResponseFull>> {
-        match serde_json::from_str::<SpecsResponse>(&data) {
+        match serde_json::from_str::<SpecsResponse>(data) {
             Ok(SpecsResponse::Full(full)) => Some(full),
             Ok(SpecsResponse::NoUpdates(_)) => None,
             Err(e) => {

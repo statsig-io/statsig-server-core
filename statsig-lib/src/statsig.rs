@@ -1,7 +1,6 @@
 use crate::client_init_response_formatter::{
     ClientInitResponseFormatter, ClientInitResponseOptions,
 };
-use crate::diagnostics::diagnostics::Diagnostics;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluator::Evaluator;
@@ -18,11 +17,12 @@ use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::make_custom_event;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
-use crate::hashing::Hashing;
+use crate::hashing::HashUtil;
 use crate::initialize_response::InitializeResponse;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::OpsStatsForInstance;
 use crate::output_logger::initialize_simple_output_logger;
+use crate::sdk_diagnostics::diagnostics::Diagnostics;
 use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::spec_types::Spec;
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
@@ -58,7 +58,7 @@ pub struct Statsig {
     event_logging_adapter: Arc<dyn EventLoggingAdapter>,
     id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
     spec_store: Arc<SpecStore>,
-    hashing: Hashing,
+    hashing: HashUtil,
     gcir_formatter: Arc<ClientInitResponseFormatter>,
     statsig_environment: Option<HashMap<String, DynamicValue>>,
     fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
@@ -80,7 +80,7 @@ impl Statsig {
             ops_stats.clone(),
         ));
 
-        let hashing = Hashing::new();
+        let hashing = HashUtil::new();
         initialize_simple_output_logger(&options.output_log_level);
 
         let specs_adapter = initialize_specs_adapter(sdk_key, &options, &hashing);
@@ -466,7 +466,11 @@ impl Statsig {
 
 impl Statsig {
     pub fn get_experiment(&self, user: &StatsigUser, experiment_name: &str) -> Experiment {
-        self.get_experiment_with_options(user, experiment_name, ExperimentEvaluationOptions::default())
+        self.get_experiment_with_options(
+            user,
+            experiment_name,
+            ExperimentEvaluationOptions::default(),
+        )
     }
 
     pub fn get_experiment_with_options(
@@ -739,7 +743,7 @@ impl Statsig {
     }
 
     fn internalize_user(&self, user: &StatsigUser) -> StatsigUserInternal {
-        return StatsigUserInternal::new(user, self.get_statsig_env());
+        StatsigUserInternal::new(user, self.get_statsig_env())
     }
 
     fn get_statsig_env(&self) -> Option<HashMap<String, DynamicValue>> {
@@ -771,14 +775,14 @@ impl Statsig {
     }
 
     fn log_init_finish(&self, success: bool, error_message: Option<String>, start_time: Instant) {
-        self.ops_stats.clone().map(|ops| {
+        if let Some(ops) = self.ops_stats.clone() {
             ops.log(ObservabilityEvent::new_event(
                 MetricType::Dist,
                 "initialization".to_string(),
                 start_time.elapsed().as_millis() as f64,
                 None,
             ));
-        });
+        }
 
         self.diagnostics
             .mark_init_overall_end(success, error_message);
@@ -801,7 +805,7 @@ fn initialize_event_logging_adapter(
 fn initialize_specs_adapter(
     sdk_key: &str,
     options: &StatsigOptions,
-    hashing: &Hashing,
+    hashing: &HashUtil,
 ) -> Arc<dyn SpecsAdapter> {
     if let Some(adapter) = options.specs_adapter.clone() {
         return adapter;

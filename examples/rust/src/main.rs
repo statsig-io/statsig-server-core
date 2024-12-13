@@ -21,7 +21,7 @@ async fn main() {
     for i in 0..5000 {
         let user = StatsigUser::with_user_id(format!("test_user_{}", i));
         let gate = statsig.check_gate(&user, "test_public");
-        assert_eq!(gate, true);
+        assert!(gate);
     }
 
     let duration = start.elapsed();
