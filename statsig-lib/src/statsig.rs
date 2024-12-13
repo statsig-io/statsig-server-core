@@ -984,6 +984,6 @@ mod tests {
             None => panic!("Should have values"),
         };
 
-        assert!(value.is_object());
+        assert!(!value.is_empty());
     }
 }

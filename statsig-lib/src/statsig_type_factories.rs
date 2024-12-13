@@ -1,5 +1,3 @@
-use crate::dyn_value;
-use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::{
     DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation,
@@ -36,14 +34,14 @@ pub fn make_feature_gate(
 fn extract_from_experiment_evaluation(
     evaluation: &Option<ExperimentEvaluation>,
 ) -> (
-    HashMap<String, DynamicValue>,
+    HashMap<String, Value>,
     String,
     String,
     Option<String>,
 ) {
     match &evaluation {
         Some(e) => (
-            value_to_hashmap(&e.value),
+            e.value.clone(),
             e.base.rule_id.clone(),
             e.id_type.clone(),
             e.group_name.clone(),
@@ -60,7 +58,7 @@ pub fn make_dynamic_config(
 ) -> DynamicConfig {
     let (value, rule_id, id_type) = match &evaluation {
         Some(e) => (
-            value_to_hashmap(&e.value),
+            e.value.clone(),
             e.base.rule_id.clone(),
             e.id_type.clone(),
         ),
@@ -109,7 +107,7 @@ pub fn make_layer(
 ) -> Layer {
     let (value, rule_id, group_name, allocated_experiment_name) = match &evaluation {
         Some(e) => (
-            value_to_hashmap(&e.value),
+            e.value.clone(),
             e.base.rule_id.clone(),
             e.group_name.clone(),
             e.allocated_experiment_name.clone(),
@@ -130,14 +128,4 @@ pub fn make_layer(
         __version: version,
         __disable_exposure: disable_exposure,
     }
-}
-
-fn value_to_hashmap(value: &Value) -> HashMap<String, DynamicValue> {
-    let mapped = value.as_object().map(|e| {
-        e.iter()
-            .map(|(k, v)| (k.clone(), dyn_value!(v.clone())))
-            .collect()
-    });
-
-    mapped.unwrap_or_default()
 }

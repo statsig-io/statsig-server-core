@@ -13,8 +13,10 @@ pub use statsig_err::StatsigErr;
 pub use statsig_options::StatsigOptions;
 pub use statsig_user::StatsigUser;
 pub use statsig_core_api_options::{GetDynamicConfigOptions, CheckGateOptions, GetExperimentOptions, GetFeatureGateOptions, GetLayerOptions};
-pub use crate::observability::observability_client_adapter::IObservabilityClient;
-pub use observability::ops_stats::IOpsStatsEventObserver;
+pub use observability::{
+    observability_client_adapter::IObservabilityClient,
+    ops_stats::IOpsStatsEventObserver
+};
 
 pub mod instance_store;
 pub mod networking;

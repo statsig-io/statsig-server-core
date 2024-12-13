@@ -4,8 +4,8 @@ use crate::evaluation::evaluation_types::{
     SecondaryExposure,
 };
 use crate::spec_types::Spec;
-use serde_json::Value;
-use std::collections::HashSet;
+use serde_json::{from_value, Value};
+use std::collections::{HashMap, HashSet};
 
 #[derive(Default, Debug)]
 pub struct EvaluatorResult<'a> {
@@ -38,11 +38,6 @@ pub fn result_to_experiment_eval(
     spec: &Spec,
     result: &mut EvaluatorResult,
 ) -> ExperimentEvaluation {
-    let mut value = Value::Null;
-    if let Some(v) = result.json_value {
-        value = v.value.clone();
-    }
-
     let (id_type, is_device_based) = get_id_type_info(result.id_type);
 
     let mut is_experiment_active = None;
@@ -58,7 +53,7 @@ pub fn result_to_experiment_eval(
         id_type,
         group: result.rule_id.cloned().unwrap_or_default(),
         is_device_based,
-        value,
+        value: get_json_value(result),
         is_in_layer: result.is_in_layer,
         group_name: result.group_name.cloned(),
         explicit_parameters: result.explicit_parameters.cloned(),
@@ -106,18 +101,13 @@ pub fn result_to_dynamic_config_eval(
     dynamic_config_name: &str,
     result: &mut EvaluatorResult,
 ) -> DynamicConfigEvaluation {
-    let mut value = Value::Null;
-    if let Some(v) = result.json_value {
-        value = v.value.clone();
-    }
-
     let (id_type, is_device_based) = get_id_type_info(result.id_type);
 
     DynamicConfigEvaluation {
         base: result_to_base_eval(dynamic_config_name, result),
         id_type,
         is_device_based,
-        value,
+        value: get_json_value(result),
         group: result.rule_id.cloned().unwrap_or_default(),
         passed: result.bool_value,
     }
@@ -129,11 +119,11 @@ fn get_id_type_info(id_type: Option<&String>) -> (String, bool) {
     (id_type, is_device_based)
 }
 
-fn get_json_value(result: &EvaluatorResult) -> Value {
+fn get_json_value(result: &EvaluatorResult) -> HashMap<String, Value> {
     result
         .json_value
-        .map(|v| v.value.clone())
-        .unwrap_or(Value::Null)
+        .map(|v| from_value(v.value.clone()).unwrap_or_default())
+        .unwrap_or_default()
 }
 
 fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEvaluation {

@@ -122,11 +122,11 @@ impl StatsigPy {
         let experiment = self.inner.get_experiment(&user.inner, name);
 
         ExperimentPy {
-            name: experiment.name,
-            value: experiment.value,
-            rule_id: experiment.rule_id,
-            id_type: experiment.id_type,
-            group_name: experiment.group_name,
+            name: experiment.name.clone(),
+            rule_id: experiment.rule_id.clone(),
+            id_type: experiment.id_type.clone(),
+            group_name: experiment.group_name.clone(),
+            inner: experiment
         }
     }
 

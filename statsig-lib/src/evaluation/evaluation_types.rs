@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -35,7 +36,7 @@ pub struct DynamicConfigEvaluation {
     pub base: BaseEvaluation,
 
     pub id_type: String,
-    pub value: Value,
+    pub value: HashMap<String, Value>,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
     pub group: String,
@@ -50,7 +51,7 @@ pub struct ExperimentEvaluation {
     pub base: BaseEvaluation,
 
     pub id_type: String,
-    pub value: Value,
+    pub value: HashMap<String, Value>,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
     pub group: String,
@@ -84,7 +85,7 @@ pub struct LayerEvaluation {
     #[serde(flatten)]
     pub base: BaseEvaluation,
 
-    pub value: Value,
+    pub value: HashMap<String, Value>,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
     pub group: String,
