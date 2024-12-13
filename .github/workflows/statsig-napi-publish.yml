@@ -40,5 +40,5 @@ jobs:
 
       - name: Run Publish
         run: |
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
           ./run napi-pub ${{ github.event.repository.name }}
