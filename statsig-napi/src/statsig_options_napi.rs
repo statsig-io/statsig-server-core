@@ -1,21 +1,20 @@
 use std::sync::Arc;
 
-use napi::{bindgen_prelude::ObjectFinalize, JsObject};
 use napi::Env;
+use napi::{bindgen_prelude::ObjectFinalize, JsObject};
 use napi_derive::napi;
 use sigstat::data_store_interface::DataStoreTrait;
-use sigstat::IObservabilityClient;
+use sigstat::ObservabilityClient;
 
 use sigstat::{
   instance_store::INST_STORE, log_e, SpecAdapterConfig, SpecsAdapterType, StatsigOptions,
   DEFAULT_INIT_TIMEOUT_MS,
 };
 
-use crate::data_store::DataStore;
-
+use crate::data_store_napi::DataStoreNapi;
+use crate::observability_client_napi::ObservabilityClientNapi;
 
 const TAG: &str = "StatsigOptionsNapi";
-use crate::observability_client::{self, ObservabilityClient};
 
 #[napi(custom_finalize)]
 pub struct AutoReleasingStatsigOptionsRef {
@@ -41,22 +40,24 @@ pub fn statsig_options_create(
   spec_adapters_config: Option<Vec<SpecAdapterConfigNapi>>,
   observability_client: Option<JsObject>,
 ) -> AutoReleasingStatsigOptionsRef {
-  let data_store: Option<Arc<dyn DataStoreTrait + 'static>> = if let Some(store_unwrapped) = data_store {
-      Some(Arc::new(DataStore::new(store_unwrapped)))
-  } else {
-    None
-  };
-  let observability_client: Option<Arc<dyn IObservabilityClient>> = if let Some(ob) = observability_client {
-    Some(Arc::new(ObservabilityClient::new(ob)))
-  } else {
-    None
-  };
-  // pub specs_adapter: Option<Arc<dyn SpecsAdapter>>,
-  // pub event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,
+  let data_store: Option<Arc<dyn DataStoreTrait + 'static>> =
+    if let Some(store_unwrapped) = data_store {
+      Some(Arc::new(DataStoreNapi::new(store_unwrapped)))
+    } else {
+      None
+    };
+
+  let observability_client: Option<Arc<dyn ObservabilityClient>> =
+    if let Some(ob) = observability_client {
+      Some(Arc::new(ObservabilityClientNapi::new(ob)))
+    } else {
+      None
+    };
+
   let spec_adapters_config: Option<Vec<SpecAdapterConfig>> = spec_adapters_config
     .map(|unwrapped| unwrapped.into_iter().map(|config| config.into()).collect());
 
-    let ref_id = INST_STORE
+  let ref_id = INST_STORE
     .add(StatsigOptions {
       environment,
       specs_url,

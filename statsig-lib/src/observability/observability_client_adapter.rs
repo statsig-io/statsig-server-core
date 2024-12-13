@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
 
-use crate::observability::ops_stats::IOpsStatsEventObserver;
+use crate::observability::ops_stats::OpsStatsEventObserver;
 
 use super::ops_stats::OpsStatsEvent;
 #[derive(Clone)]
@@ -35,16 +35,16 @@ impl ObservabilityEvent {
         })
     }
 }
-pub trait IObservabilityClient: Send + Sync + 'static + IOpsStatsEventObserver {
+pub trait ObservabilityClient: Send + Sync + 'static + OpsStatsEventObserver {
     fn init(&self);
     fn increment(&self, metric_name: String, value: f64, tags: Option<HashMap<String, String>>);
     fn gauge(&self, metric_name: String, value: f64, tags: Option<HashMap<String, String>>);
     fn dist(&self, metric_name: String, value: f64, tags: Option<HashMap<String, String>>);
-    fn to_ops_stats_event_observer(self: Arc<Self>) -> Arc<dyn IOpsStatsEventObserver>;
+    fn to_ops_stats_event_observer(self: Arc<Self>) -> Arc<dyn OpsStatsEventObserver>;
 }
 
 #[async_trait]
-impl<T: IObservabilityClient> IOpsStatsEventObserver for T {
+impl<T: ObservabilityClient> OpsStatsEventObserver for T {
     async fn handle_event(&self, event: OpsStatsEvent) {
         match event {
             OpsStatsEvent::ObservabilityEvent(data) => {

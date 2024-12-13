@@ -51,7 +51,9 @@ impl StatsigPy {
             }
 
             Python::with_gil(|py| {
-                event_clone.call_method0(py, "set").unwrap();
+                if let Err(e) = event_clone.call_method0(py, "set") {
+                    log_e!(TAG, "Failed to set event: {}", e);
+                }
             });
         });
 
@@ -66,7 +68,9 @@ impl StatsigPy {
             inst.flush_events().await;
 
             Python::with_gil(|py| {
-                event_clone.call_method0(py, "set").unwrap();
+                if let Err(e) = event_clone.call_method0(py, "set") {
+                    log_e!(TAG, "Failed to set event: {}", e);
+                }
             });
         });
 

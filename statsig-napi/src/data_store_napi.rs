@@ -27,7 +27,7 @@ impl Into<DataAdapterResponse> for DataAdapterResponseNapi {
   }
 }
 
-pub struct DataStore {
+pub struct DataStoreNapi {
   pub init_fn: Option<ThreadsafeFunction<()>>,
   pub get_fn: Option<ThreadsafeFunction<String>>,
   pub set_fn: Option<ThreadsafeFunction<String>>,
@@ -35,9 +35,9 @@ pub struct DataStore {
   pub support_polling_updates_for_fn: Option<ThreadsafeFunction<String>>,
 }
 
-impl DataStore {
+impl DataStoreNapi {
   pub fn new(interface: JsObject) -> Self {
-    DataStore {
+    DataStoreNapi {
       init_fn: Self::get_and_wrap::<()>(&interface, "initialize"),
       get_fn: Self::get_and_wrap::<String>(&interface, "get"),
       set_fn: Self::get_and_wrap::<String>(&interface, "set"),
@@ -87,7 +87,7 @@ impl DataStore {
 }
 
 #[async_trait]
-impl DataStoreTrait for DataStore {
+impl DataStoreTrait for DataStoreNapi {
   async fn initialize(&self) -> Result<(), StatsigErr> {
     match self.init_fn.clone() {
       Some(func) => {

@@ -1,5 +1,5 @@
 use crate::data_store_interface::DataStoreTrait;
-use crate::{IObservabilityClient, SpecAdapterConfig, SpecsAdapter};
+use crate::{ObservabilityClient, SpecAdapterConfig, SpecsAdapter};
 use std::sync::Arc;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::id_lists_adapter::IdListsAdapter;
@@ -32,7 +32,7 @@ pub struct StatsigOptions {
     pub environment: Option<String>,
 
     pub output_log_level: Option<LogLevel>,
-    pub observability_client: Option<Arc<dyn IObservabilityClient>>
+    pub observability_client: Option<Arc<dyn ObservabilityClient>>
 }
 
 impl StatsigOptions {

@@ -14,8 +14,8 @@ pub use statsig_options::StatsigOptions;
 pub use statsig_user::StatsigUser;
 pub use statsig_core_api_options::{DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions, LayerEvaluationOptions};
 pub use observability::{
-    observability_client_adapter::IObservabilityClient,
-    ops_stats::IOpsStatsEventObserver
+    observability_client_adapter::ObservabilityClient,
+    ops_stats::OpsStatsEventObserver
 };
 
 pub mod instance_store;

@@ -55,7 +55,7 @@ impl OpsStatsForInstance {
     pub fn subscribe(
         &self,
         runtime: Arc<StatsigRuntime>,
-        observer: Arc<dyn IOpsStatsEventObserver>,
+        observer: Arc<dyn OpsStatsEventObserver>,
     ) {
         let mut rx = self.sender.subscribe();
         let _ = runtime.spawn("listen_for", |_| async move {
@@ -67,7 +67,7 @@ impl OpsStatsForInstance {
 }
 
 #[async_trait]
-pub trait IOpsStatsEventObserver: Send + Sync + 'static {
+pub trait OpsStatsEventObserver: Send + Sync + 'static {
     async fn handle_event(&self, event: OpsStatsEvent);
     
 }

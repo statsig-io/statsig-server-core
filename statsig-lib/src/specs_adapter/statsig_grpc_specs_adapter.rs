@@ -249,8 +249,8 @@ impl StatsigGrpcSpecsAdapter {
                 source: SpecsSource::Network,
                 received_at: Utc::now().timestamp_millis() as u64,
             };
-            listener.did_receive_specs_update(update);
-            Ok(())
+
+            listener.did_receive_specs_update(update)
         } else {
             Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()))
         }
