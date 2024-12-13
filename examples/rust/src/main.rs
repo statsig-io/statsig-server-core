@@ -50,7 +50,11 @@ async fn main() {
         println!("Gate {:?}", gate);
 
         let exp = statsig.get_experiment(&user, "experiment_with_many_params");
-        println!("Experiment {:?} {:?}", exp.rule_id, exp.value.get("a_string").unwrap().string_value);
+        println!(
+            "Experiment {:?} {:?}",
+            exp.rule_id,
+            exp.value.get("a_string").unwrap().as_str()
+        );
 
         sleep(Duration::from_secs(10)).await;
     }

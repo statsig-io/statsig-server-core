@@ -4,7 +4,6 @@ use crate::client_init_response_formatter::{
 use crate::diagnostics::diagnostics::Diagnostics;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
-use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator::Evaluator;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::evaluator_result::{
@@ -27,10 +26,7 @@ use crate::output_logger::initialize_simple_output_logger;
 use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::spec_types::Spec;
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
-use crate::statsig_core_api_options::{
-    CheckGateOptions, GetDynamicConfigOptions, GetExperimentOptions, GetFeatureGateOptions,
-    GetLayerOptions,
-};
+use crate::statsig_core_api_options::*;
 use crate::statsig_err::StatsigErr;
 use crate::statsig_options::StatsigOptions;
 use crate::statsig_runtime::StatsigRuntime;
@@ -50,7 +46,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tokio::try_join;
 
-const TAG: &str = "Lib";
+const TAG: &str = stringify!(Statsig);
 
 pub struct Statsig {
     pub statsig_runtime: Arc<StatsigRuntime>,
@@ -74,15 +70,16 @@ impl Statsig {
     pub fn new(sdk_key: &str, options: Option<Arc<StatsigOptions>>) -> Self {
         let statsig_runtime = StatsigRuntime::get_runtime();
         let options = options.unwrap_or_default();
-        
+
         let ops_stats = setup_ops_stats(&options, statsig_runtime.clone());
-        
+
         let spec_store = Arc::new(SpecStore::new(
             sdk_key,
             options.data_store.clone(),
             Some(statsig_runtime.clone()),
-            ops_stats.clone()
+            ops_stats.clone(),
         ));
+
         let hashing = Hashing::new();
         initialize_simple_output_logger(&options.output_log_level);
 
@@ -307,229 +304,6 @@ impl Statsig {
             )));
     }
 
-    // ---------––
-    //   Core Apis
-    // ---------––
-
-    pub fn check_gate_with_options(
-        &self,
-        user: &StatsigUser,
-        gate_name: &str,
-        check_gate_options: CheckGateOptions,
-    ) -> bool {
-        log_d!(TAG, "Check Gate {}", gate_name);
-
-        let user_internal = self.internalize_user(user);
-        let (value, rule_id, secondary_exposures, details, version) =
-            self.check_gate_impl(&user_internal, gate_name);
-
-        if check_gate_options.disable_exposure_logging {
-            log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
-            self.event_logger
-                .increment_non_exposure_checks_count(gate_name.to_string());
-            return value;
-        }
-
-        log_d!(TAG, "Gate Result: {} ({})", value, details.reason);
-
-        self.event_logger
-            .enqueue(QueuedEventPayload::GateExposure(GateExposure {
-                user: user_internal,
-                gate_name: gate_name.to_string(),
-                value,
-                rule_id,
-                secondary_exposures,
-                evaluation_details: details,
-                version,
-                is_manual_exposure: false,
-            }));
-
-        value
-    }
-
-    pub fn check_gate(&self, user: &StatsigUser, gate_name: &str) -> bool {
-        self.check_gate_with_options(user, gate_name, CheckGateOptions::default())
-    }
-
-    pub fn get_feature_gate_with_options(
-        &self,
-        user: &StatsigUser,
-        gate_name: &str,
-        get_feature_gate_options: GetFeatureGateOptions,
-    ) -> FeatureGate {
-        log_d!(TAG, "Get Feature Gate {}", gate_name);
-
-        let user_internal = self.internalize_user(user);
-        let gate = self.get_feature_gate_impl(&user_internal, gate_name);
-
-        if get_feature_gate_options.disable_exposure_logging {
-            log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
-            self.event_logger
-                .increment_non_exposure_checks_count(gate_name.to_string());
-            return gate;
-        }
-
-        self.log_gate_exposure(user_internal, gate_name, &gate, false);
-
-        gate
-    }
-
-    pub fn get_feature_gate(&self, user: &StatsigUser, gate_name: &str) -> FeatureGate {
-        self.get_feature_gate_with_options(user, gate_name, GetFeatureGateOptions::default())
-    }
-
-    pub fn manually_log_gate_exposure(&self, user: &StatsigUser, gate_name: &str) {
-        let user_internal = self.internalize_user(user);
-        let gate = self.get_feature_gate_impl(&user_internal, gate_name);
-        self.log_gate_exposure(user_internal, gate_name, &gate, true);
-    }
-
-    pub fn get_dynamic_config_with_options(
-        &self,
-        user: &StatsigUser,
-        dynamic_config_name: &str,
-        get_dynamic_config_options: GetDynamicConfigOptions,
-    ) -> DynamicConfig {
-        let user_internal = self.internalize_user(user);
-        let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
-
-        if get_dynamic_config_options.disable_exposure_logging {
-            log_d!(
-                TAG,
-                "Exposure logging is disabled for dynamic_config {}",
-                dynamic_config_name
-            );
-            self.event_logger
-                .increment_non_exposure_checks_count(dynamic_config_name.to_string());
-            return dynamic_config;
-        }
-        self.log_dynamic_config_exposure(
-            user_internal,
-            dynamic_config_name,
-            &dynamic_config,
-            false,
-        );
-
-        dynamic_config
-    }
-
-    pub fn get_dynamic_config(
-        &self,
-        user: &StatsigUser,
-        dynamic_config_name: &str,
-    ) -> DynamicConfig {
-        self.get_dynamic_config_with_options(
-            user,
-            dynamic_config_name,
-            GetDynamicConfigOptions::default(),
-        )
-    }
-
-    pub fn manually_log_dynamic_config_exposure(
-        &self,
-        user: &StatsigUser,
-        dynamic_config_name: &str,
-    ) {
-        let user_internal = self.internalize_user(user);
-        let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
-        self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &dynamic_config, true);
-    }
-
-    pub fn get_experiment_with_options(
-        &self,
-        user: &StatsigUser,
-        experiment_name: &str,
-        get_experiment_options: GetExperimentOptions,
-    ) -> Experiment {
-        let user_internal = self.internalize_user(user);
-        let experiment = self.get_experiment_impl(&user_internal, experiment_name);
-
-        if get_experiment_options.disable_exposure_logging {
-            log_d!(
-                TAG,
-                "Exposure logging is disabled for experiment {}",
-                experiment_name
-            );
-            self.event_logger
-                .increment_non_exposure_checks_count(experiment_name.to_string());
-            return experiment;
-        }
-        self.log_experiment_exposure(user_internal, experiment_name, &experiment, false);
-
-        experiment
-    }
-
-    pub fn get_experiment(&self, user: &StatsigUser, experiment_name: &str) -> Experiment {
-        self.get_experiment_with_options(user, experiment_name, GetExperimentOptions::default())
-    }
-
-    pub fn manually_log_experiment_exposure(&self, user: &StatsigUser, experiment_name: &str) {
-        let user_internal = self.internalize_user(user);
-        let experiment = self.get_experiment_impl(&user_internal, experiment_name);
-        self.log_experiment_exposure(user_internal, experiment_name, &experiment, true);
-    }
-
-    pub fn get_layer_with_options(
-        &self,
-        user: &StatsigUser,
-        layer_name: &str,
-        get_layer_options: GetLayerOptions,
-    ) -> Layer {
-        let user_internal = self.internalize_user(user);
-        self.get_layer_impl(
-            &user_internal,
-            layer_name,
-            get_layer_options.disable_exposure_logging,
-        )
-    }
-
-    pub fn get_layer(&self, user: &StatsigUser, layer_name: &str) -> Layer {
-        let user_internal = self.internalize_user(user);
-        self.get_layer_impl(&user_internal, layer_name, false)
-    }
-
-    pub fn manually_log_layer_parameter_exposure(
-        &self,
-        user: &StatsigUser,
-        layer_name: &str,
-        parameter_name: String,
-    ) {
-        let user_internal = self.internalize_user(user);
-        let layer = self.get_layer_impl(&user_internal, layer_name, false);
-        self.event_logger
-            .enqueue(QueuedEventPayload::LayerExposure(LayerExposure {
-                user: layer.__user,
-                parameter_name,
-                evaluation: layer.__evaluation,
-                layer_name: layer.name,
-                evaluation_details: layer.details,
-                version: layer.__version,
-                is_manual_exposure: true,
-            }));
-    }
-
-    pub fn get_client_init_response(&self, user: &StatsigUser) -> InitializeResponse {
-        self.get_client_init_response_with_options(user, self.gcir_formatter.get_default_options())
-    }
-
-    pub fn get_client_init_response_with_options(
-        &self,
-        user: &StatsigUser,
-        options: &ClientInitResponseOptions,
-    ) -> InitializeResponse {
-        let user_internal = self.internalize_user(user);
-        self.gcir_formatter
-            .get(user_internal, &self.hashing, options)
-    }
-
-    pub fn get_client_init_response_with_options_as_string(
-        &self,
-        user: &StatsigUser,
-        options: &ClientInitResponseOptions,
-    ) -> String {
-        json!(self.get_client_init_response_with_options(user, options)).to_string()
-    }
-
     pub fn log_layer_param_exposure(&self, layer_json: String, parameter_name: String) {
         let layer = match serde_json::from_str::<Layer>(&layer_json) {
             Ok(layer) => layer,
@@ -559,10 +333,218 @@ impl Statsig {
         self.event_logger.flush_blocking().await
     }
 
-    // ---------––
-    //   Private
-    // ---------––
+    pub fn get_client_init_response(&self, user: &StatsigUser) -> InitializeResponse {
+        self.get_client_init_response_with_options(user, self.gcir_formatter.get_default_options())
+    }
 
+    pub fn get_client_init_response_with_options(
+        &self,
+        user: &StatsigUser,
+        options: &ClientInitResponseOptions,
+    ) -> InitializeResponse {
+        let user_internal = self.internalize_user(user);
+        self.gcir_formatter
+            .get(user_internal, &self.hashing, options)
+    }
+
+    pub fn get_client_init_response_with_options_as_string(
+        &self,
+        user: &StatsigUser,
+        options: &ClientInitResponseOptions,
+    ) -> String {
+        json!(self.get_client_init_response_with_options(user, options)).to_string()
+    }
+}
+
+// -------------------------
+//   Feature Gate Functions
+// -------------------------
+
+impl Statsig {
+    pub fn check_gate(&self, user: &StatsigUser, gate_name: &str) -> bool {
+        self.check_gate_with_options(user, gate_name, FeatureGateEvaluationOptions::default())
+    }
+
+    pub fn check_gate_with_options(
+        &self,
+        user: &StatsigUser,
+        gate_name: &str,
+        options: FeatureGateEvaluationOptions,
+    ) -> bool {
+        self.get_feature_gate_with_options(user, gate_name, options)
+            .value
+    }
+
+    pub fn get_feature_gate(&self, user: &StatsigUser, gate_name: &str) -> FeatureGate {
+        self.get_feature_gate_with_options(user, gate_name, FeatureGateEvaluationOptions::default())
+    }
+
+    pub fn get_feature_gate_with_options(
+        &self,
+        user: &StatsigUser,
+        gate_name: &str,
+        options: FeatureGateEvaluationOptions,
+    ) -> FeatureGate {
+        log_d!(TAG, "Get Feature Gate {}", gate_name);
+
+        let user_internal = self.internalize_user(user);
+
+        let gate = self.get_feature_gate_impl(&user_internal, gate_name);
+        if options.disable_exposure_logging {
+            log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
+            self.event_logger
+                .increment_non_exposure_checks_count(gate_name.to_string());
+        } else {
+            self.log_gate_exposure(user_internal, gate_name, &gate, false);
+        }
+
+        gate
+    }
+
+    pub fn manually_log_gate_exposure(&self, user: &StatsigUser, gate_name: &str) {
+        let user_internal = self.internalize_user(user);
+        let gate = self.get_feature_gate_impl(&user_internal, gate_name);
+        self.log_gate_exposure(user_internal, gate_name, &gate, true);
+    }
+}
+
+// -------------------------
+//   Dynamic Config Functions
+// -------------------------
+
+impl Statsig {
+    pub fn get_dynamic_config(
+        &self,
+        user: &StatsigUser,
+        dynamic_config_name: &str,
+    ) -> DynamicConfig {
+        self.get_dynamic_config_with_options(
+            user,
+            dynamic_config_name,
+            DynamicConfigEvaluationOptions::default(),
+        )
+    }
+
+    pub fn get_dynamic_config_with_options(
+        &self,
+        user: &StatsigUser,
+        dynamic_config_name: &str,
+        options: DynamicConfigEvaluationOptions,
+    ) -> DynamicConfig {
+        let user_internal = self.internalize_user(user);
+        let config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
+
+        if options.disable_exposure_logging {
+            log_d!(
+                TAG,
+                "Exposure logging is disabled for Dynamic Config {}",
+                dynamic_config_name
+            );
+            self.event_logger
+                .increment_non_exposure_checks_count(dynamic_config_name.to_string());
+        } else {
+            self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &config, false);
+        }
+
+        config
+    }
+
+    pub fn manually_log_dynamic_config_exposure(
+        &self,
+        user: &StatsigUser,
+        dynamic_config_name: &str,
+    ) {
+        let user_internal = self.internalize_user(user);
+        let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
+        self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &dynamic_config, true);
+    }
+}
+
+// -------------------------
+//   Experiment Functions
+// -------------------------
+
+impl Statsig {
+    pub fn get_experiment(&self, user: &StatsigUser, experiment_name: &str) -> Experiment {
+        self.get_experiment_with_options(user, experiment_name, ExperimentEvaluationOptions::default())
+    }
+
+    pub fn get_experiment_with_options(
+        &self,
+        user: &StatsigUser,
+        experiment_name: &str,
+        options: ExperimentEvaluationOptions,
+    ) -> Experiment {
+        let user_internal = self.internalize_user(user);
+        let experiment = self.get_experiment_impl(&user_internal, experiment_name);
+
+        if options.disable_exposure_logging {
+            log_d!(
+                TAG,
+                "Exposure logging is disabled for experiment {}",
+                experiment_name
+            );
+            self.event_logger
+                .increment_non_exposure_checks_count(experiment_name.to_string());
+        } else {
+            self.log_experiment_exposure(user_internal, experiment_name, &experiment, false);
+        }
+
+        experiment
+    }
+
+    pub fn manually_log_experiment_exposure(&self, user: &StatsigUser, experiment_name: &str) {
+        let user_internal = self.internalize_user(user);
+        let experiment = self.get_experiment_impl(&user_internal, experiment_name);
+        self.log_experiment_exposure(user_internal, experiment_name, &experiment, true);
+    }
+}
+
+// -------------------------
+//   Layer Functions
+// -------------------------
+
+impl Statsig {
+    pub fn get_layer(&self, user: &StatsigUser, layer_name: &str) -> Layer {
+        self.get_layer_with_options(user, layer_name, LayerEvaluationOptions::default())
+    }
+
+    pub fn get_layer_with_options(
+        &self,
+        user: &StatsigUser,
+        layer_name: &str,
+        options: LayerEvaluationOptions,
+    ) -> Layer {
+        let user_internal = self.internalize_user(user);
+        self.get_layer_impl(&user_internal, layer_name, options.disable_exposure_logging)
+    }
+
+    pub fn manually_log_layer_parameter_exposure(
+        &self,
+        user: &StatsigUser,
+        layer_name: &str,
+        parameter_name: String,
+    ) {
+        let user_internal = self.internalize_user(user);
+        let layer = self.get_layer_impl(&user_internal, layer_name, false);
+        self.event_logger
+            .enqueue(QueuedEventPayload::LayerExposure(LayerExposure {
+                user: layer.__user,
+                parameter_name,
+                evaluation: layer.__evaluation,
+                layer_name: layer.name,
+                evaluation_details: layer.details,
+                version: layer.__version,
+                is_manual_exposure: true,
+            }));
+    }
+}
+
+// -------------------------
+//   Private Functions
+// -------------------------
+
+impl Statsig {
     fn evaluate_spec<T>(
         &self,
         user_internal: &StatsigUserInternal,
@@ -591,33 +573,6 @@ impl Statsig {
             }
             None => make_empty_result(EvaluationDetails::unrecognized(&data)),
         }
-    }
-
-    fn check_gate_impl(
-        &self,
-        user_internal: &StatsigUserInternal,
-        gate_name: &str,
-    ) -> (
-        bool,
-        Option<String>,
-        Option<Vec<SecondaryExposure>>,
-        EvaluationDetails,
-        Option<u32>,
-    ) {
-        self.evaluate_spec(
-            user_internal,
-            |data| data.values.feature_gates.get(gate_name),
-            |eval_details| (false, None, None, eval_details, None),
-            |_spec, result, eval_details| {
-                (
-                    result.bool_value,
-                    result.rule_id.cloned(),
-                    Some(result.secondary_exposures),
-                    eval_details,
-                    result.version,
-                )
-            },
-        )
     }
 
     fn get_feature_gate_impl(
@@ -814,7 +769,8 @@ impl Statsig {
             }
         }
     }
-    fn log_init_finish(&self, success:bool, error_message: Option<String>, start_time: Instant) {
+
+    fn log_init_finish(&self, success: bool, error_message: Option<String>, start_time: Instant) {
         self.ops_stats.clone().map(|ops| {
             ops.log(ObservabilityEvent::new_event(
                 MetricType::Dist,
@@ -823,6 +779,7 @@ impl Statsig {
                 None,
             ));
         });
+
         self.diagnostics
             .mark_init_overall_end(success, error_message);
     }
@@ -897,12 +854,12 @@ fn setup_ops_stats(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::hashing::djb2;
     use crate::{
         evaluation::evaluation_types::AnyConfigEvaluation, output_logger::LogLevel,
         StatsigHttpIdListsAdapter,
     };
     use std::env;
-    use crate::hashing::djb2;
 
     fn get_sdk_key() -> String {
         let key = env::var("test_api_key").expect("test_api_key environment variable not set");

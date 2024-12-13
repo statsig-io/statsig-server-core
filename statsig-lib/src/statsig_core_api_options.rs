@@ -1,24 +1,19 @@
 #[derive(Debug, Clone, Default)]
-pub struct CheckGateOptions {
+pub struct FeatureGateEvaluationOptions {
     pub disable_exposure_logging: bool,
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct GetFeatureGateOptions {
+pub struct DynamicConfigEvaluationOptions {
     pub disable_exposure_logging: bool,
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct GetExperimentOptions {
+pub struct ExperimentEvaluationOptions {
     pub disable_exposure_logging: bool,
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct GetDynamicConfigOptions {
-    pub disable_exposure_logging: bool,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct GetLayerOptions {
+pub struct LayerEvaluationOptions {
     pub disable_exposure_logging: bool,
 }

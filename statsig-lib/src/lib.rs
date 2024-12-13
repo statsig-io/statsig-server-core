@@ -12,7 +12,7 @@ pub use statsig::Statsig;
 pub use statsig_err::StatsigErr;
 pub use statsig_options::StatsigOptions;
 pub use statsig_user::StatsigUser;
-pub use statsig_core_api_options::{GetDynamicConfigOptions, CheckGateOptions, GetExperimentOptions, GetFeatureGateOptions, GetLayerOptions};
+pub use statsig_core_api_options::{DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions, LayerEvaluationOptions};
 pub use observability::{
     observability_client_adapter::IObservabilityClient,
     ops_stats::IOpsStatsEventObserver

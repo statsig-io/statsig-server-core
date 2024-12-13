@@ -1,6 +1,6 @@
 mod utils;
 
-use sigstat::{output_logger::LogLevel, statsig_core_api_options::GetFeatureGateOptions, CheckGateOptions, GetDynamicConfigOptions, GetExperimentOptions, Statsig, StatsigOptions, StatsigUser};
+use sigstat::{output_logger::LogLevel, FeatureGateEvaluationOptions, DynamicConfigEvaluationOptions, Statsig, StatsigOptions, StatsigUser, ExperimentEvaluationOptions};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -132,11 +132,11 @@ async fn test_core_apis_exposure_logging_disabled() {
     statsig.initialize().await.unwrap();
     let user = StatsigUser::with_user_id("test_user".into());
     
-    let _ = statsig.check_gate_with_options(&user, "test_public", CheckGateOptions { disable_exposure_logging: true });
+    let _ = statsig.check_gate_with_options(&user, "test_public", FeatureGateEvaluationOptions { disable_exposure_logging: true });
 
-    let _ = statsig.get_feature_gate_with_options(&user, "test_public", GetFeatureGateOptions { disable_exposure_logging: true });
-    let _ = statsig.get_experiment_with_options(&user, "experiment_with_many_params", GetExperimentOptions { disable_exposure_logging: true });
-    let _ = statsig.get_dynamic_config_with_options(&user, "dynamic_config_name", GetDynamicConfigOptions { disable_exposure_logging: true });
+    let _ = statsig.get_feature_gate_with_options(&user, "test_public", FeatureGateEvaluationOptions { disable_exposure_logging: true });
+    let _ = statsig.get_experiment_with_options(&user, "experiment_with_many_params", ExperimentEvaluationOptions { disable_exposure_logging: true });
+    let _ = statsig.get_dynamic_config_with_options(&user, "dynamic_config_name", DynamicConfigEvaluationOptions { disable_exposure_logging: true });
 
     let start = Instant::now();
     statsig
