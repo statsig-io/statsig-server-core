@@ -1,5 +1,6 @@
 use super::{diagnostics::ContextType, marker::Marker};
 use std::collections::HashMap;
+use rand::Rng;
 
 pub struct DiagnosticsUtils;
 
@@ -19,6 +20,12 @@ impl DiagnosticsUtils {
             }
             Err(err) => Err(format!("Failed to serialize markers: {}", err)),
         }
+    }
+
+    pub fn should_sample(sample_rate: f64) -> bool {
+        let mut rng = rand::thread_rng();
+        let value: f64 = rng.gen::<f64>();
+        return value * 10000.0 < sample_rate;
     }
 }
 

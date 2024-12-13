@@ -2,7 +2,7 @@ use super::{
     diagnostics_utils::DiagnosticsUtils,
     marker::{ActionType, KeyType, Marker, StepType},
 };
-use crate::event_logging::event_logger::{EventLogger, QueuedEventPayload};
+use crate::{event_logging::event_logger::{EventLogger, QueuedEventPayload}, read_lock_or_else, SpecStore};
 use crate::event_logging::{
     statsig_event::StatsigEvent, statsig_event_internal::StatsigEventInternal,
 };
@@ -33,13 +33,15 @@ const TAG: &str = stringify!(Diagnostics);
 pub struct Diagnostics {
     marker_map: Mutex<HashMap<ContextType, Vec<Marker>>>,
     event_logger: Arc<EventLogger>,
+    spec_store: Arc<SpecStore>,
 }
 
 impl Diagnostics {
-    pub fn new(event_logger: Arc<EventLogger>) -> Self {
+    pub fn new(event_logger: Arc<EventLogger>, spec_store: Arc<SpecStore>) -> Self {
         Self {
             event_logger,
             marker_map: Mutex::new(HashMap::new()),
+            spec_store,
         }
     }
 
@@ -119,6 +121,22 @@ impl Diagnostics {
             value: None,
             metadata: Some(metadata),
         });
+
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_w!(TAG, "Failed to acquire read lock for diagnostics event");
+            return;
+        });
+
+        let diagnostics = &data.values.diagnostics;
+
+        if let Some(diagnostics) = diagnostics {
+            if let Some(sample_rate) = diagnostics.get(&context_type.to_string()) {
+                if !DiagnosticsUtils::should_sample(*sample_rate) {
+                    self.clear_markers(&context_type);
+                    return;
+                }
+            }
+        }
 
         self.event_logger
             .enqueue(QueuedEventPayload::CustomEvent(event));

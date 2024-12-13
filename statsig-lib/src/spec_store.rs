@@ -247,6 +247,7 @@ impl SpecsResponseFull {
             app_id: None,
             sdk_keys_to_app_ids: None,
             hashed_sdk_keys_to_app_ids: None,
+            diagnostics: None,
         }
     }
 }

@@ -100,7 +100,7 @@ impl Statsig {
             &options,
             &statsig_runtime,
         ));
-        let diagnostics = Diagnostics::new(event_logger.clone());
+        let diagnostics = Diagnostics::new(event_logger.clone(), spec_store.clone());
 
         Statsig {
             sdk_key: sdk_key.to_string(),
