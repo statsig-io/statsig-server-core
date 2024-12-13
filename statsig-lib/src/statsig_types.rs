@@ -36,40 +36,11 @@ pub struct DynamicConfig {
 }
 
 impl DynamicConfig {
-    pub fn get<T: DeserializeOwned>(&self, param_name: &str, fallback: T) -> T {
-        if !self.value.contains_key(param_name) {
-            return fallback;
+    pub fn get_opt<T: DeserializeOwned>(&self, param_name: &str) -> Option<T> {
+        match self.value.get(param_name) {
+            Some(value) => from_value(value.clone()).ok(),
+            None => None,
         }
-
-        if let Ok(value) = from_value(self.value[param_name].clone()) {
-            return value;
-        }
-
-        fallback
-    }
-
-    pub fn get_bool(&self, param_name: &str, fallback: bool) -> bool {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_f64(&self, param_name: &str, fallback: f64) -> f64 {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_i64(&self, param_name: &str, fallback: i64) -> i64 {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_string(&self, param_name: &str, fallback: String) -> String {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_array(&self, param_name: &str, fallback: Vec<Value>) -> Vec<Value> {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_object(&self, param_name: &str, fallback: HashMap<String, Value>) -> HashMap<String, Value> {
-        self.get(param_name, fallback)
     }
 }
 
@@ -87,40 +58,11 @@ pub struct Experiment {
 }
 
 impl Experiment {
-    pub fn get<T: DeserializeOwned>(&self, param_name: &str, fallback: T) -> T {
-        if !self.value.contains_key(param_name) {
-            return fallback;
+    pub fn get_opt<T: DeserializeOwned>(&self, param_name: &str) -> Option<T> {
+        match self.value.get(param_name) {
+            Some(value) => from_value(value.clone()).ok(),
+            None => None,
         }
-
-        if let Ok(value) = from_value(self.value[param_name].clone()) {
-            return value;
-        }
-
-        fallback
-    }
-
-    pub fn get_bool(&self, param_name: &str, fallback: bool) -> bool {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_f64(&self, param_name: &str, fallback: f64) -> f64 {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_i64(&self, param_name: &str, fallback: i64) -> i64 {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_string(&self, param_name: &str, fallback: String) -> String {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_array(&self, param_name: &str, fallback: Vec<Value>) -> Vec<Value> {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_object(&self, param_name: &str, fallback: HashMap<String, Value>) -> HashMap<String, Value> {
-        self.get(param_name, fallback)
     }
 }
 
@@ -144,41 +86,19 @@ pub struct Layer {
 }
 
 impl Layer {
-    pub fn get<T: DeserializeOwned>(&self, param_name: &str, fallback: T) -> T {
-        if !self.__value.contains_key(param_name) {
-            return fallback;
+    pub fn get_opt<T: DeserializeOwned>(&self, param_name: &str) -> Option<T> {
+        let value = match self.__value.get(param_name) {
+            Some(value) => value.clone(),
+            None => return None,
+        };
+
+        match from_value(value.clone()) {
+            Ok(value) => {
+                self.log_param_exposure(param_name);
+                Some(value)
+            }
+            Err(_) => None,
         }
-
-        if let Ok(value) = from_value(self.__value[param_name].clone()) {
-            self.log_param_exposure(param_name);
-            return value;
-        }
-
-        fallback
-    }
-
-    pub fn get_bool(&self, param_name: &str, fallback: bool) -> bool {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_f64(&self, param_name: &str, fallback: f64) -> f64 {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_i64(&self, param_name: &str, fallback: i64) -> i64 {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_string(&self, param_name: &str, fallback: String) -> String {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_array(&self, param_name: &str, fallback: Vec<Value>) -> Vec<Value> {
-        self.get(param_name, fallback)
-    }
-
-    pub fn get_object(&self, param_name: &str, fallback: HashMap<String, Value>) -> HashMap<String, Value> {
-        self.get(param_name, fallback)
     }
 
     fn log_param_exposure(&self, param_name: &str) -> Option<()> {
@@ -205,3 +125,45 @@ impl Layer {
         None
     }
 }
+
+macro_rules! impl_common_get_methods {
+    ($struct_name:ident) => {
+        impl $struct_name {
+            pub fn get<T: DeserializeOwned>(&self, param_name: &str, fallback: T) -> T {
+                self.get_opt(param_name).unwrap_or_else(|| fallback)
+            }
+
+            pub fn get_bool(&self, param_name: &str, fallback: bool) -> bool {
+                self.get(param_name, fallback)
+            }
+
+            pub fn get_f64(&self, param_name: &str, fallback: f64) -> f64 {
+                self.get(param_name, fallback)
+            }
+
+            pub fn get_i64(&self, param_name: &str, fallback: i64) -> i64 {
+                self.get(param_name, fallback)
+            }
+
+            pub fn get_string(&self, param_name: &str, fallback: String) -> String {
+                self.get(param_name, fallback)
+            }
+
+            pub fn get_array(&self, param_name: &str, fallback: Vec<Value>) -> Vec<Value> {
+                self.get(param_name, fallback)
+            }
+
+            pub fn get_object(
+                &self,
+                param_name: &str,
+                fallback: HashMap<String, Value>,
+            ) -> HashMap<String, Value> {
+                self.get(param_name, fallback)
+            }
+        }
+    };
+}
+
+impl_common_get_methods!(DynamicConfig);
+impl_common_get_methods!(Experiment);
+impl_common_get_methods!(Layer);

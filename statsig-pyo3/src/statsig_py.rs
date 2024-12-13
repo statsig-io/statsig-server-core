@@ -1,6 +1,7 @@
 use crate::statsig_options_py::StatsigOptionsPy;
+use crate::statsig_types_py::{DynamicConfigPy, LayerPy};
 use crate::{
-    evaluation_types_py::{ExperimentPy, FeatureGatePy},
+    statsig_types_py::{ExperimentPy, FeatureGatePy},
     statsig_user_py::StatsigUserPy,
 };
 use pyo3::prelude::*;
@@ -8,6 +9,7 @@ use pyo3::types::PyDict;
 use sigstat::{log_e, unwrap_or_return, ClientInitResponseOptions, Statsig};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 const TAG: &str = stringify!(StatsigPy);
 
@@ -40,9 +42,7 @@ impl StatsigPy {
     }
 
     pub fn initialize(&self, py: Python) -> PyResult<PyObject> {
-        let threading = PyModule::import(py, "threading")?;
-        let completion_event = threading.call_method0("Event")?;
-        let event_clone: PyObject = completion_event.clone().into();
+        let (completion_event, event_clone) = get_completion_event(py)?;
 
         let inst = self.inner.clone();
         self.inner.statsig_runtime.runtime_handle.spawn(async move {
@@ -55,13 +55,11 @@ impl StatsigPy {
             });
         });
 
-        Ok(completion_event.into())
+        Ok(completion_event)
     }
 
     pub fn flush_events(&self, py: Python) -> PyResult<PyObject> {
-        let threading = PyModule::import(py, "threading")?;
-        let completion_event = threading.call_method0("Event")?;
-        let event_clone: PyObject = completion_event.clone().into();
+        let (completion_event, event_clone) = get_completion_event(py)?;
 
         let inst = self.inner.clone();
         self.inner.statsig_runtime.runtime_handle.spawn(async move {
@@ -72,7 +70,25 @@ impl StatsigPy {
             });
         });
 
-        Ok(completion_event.into())
+        Ok(completion_event)
+    }
+
+    pub fn shutdown(&self, py: Python) -> PyResult<PyObject> {
+        let (completion_event, event_clone) = get_completion_event(py)?;
+
+        let inst = self.inner.clone();
+        let rt = self.inner.statsig_runtime.clone();
+        rt.runtime_handle.spawn(async move {
+            if let Err(e) = inst.__shutdown_internal(Duration::from_secs(3)).await {
+                log_e!(TAG, "Failed to gracefully shutdown StatsigPy: {}", e);
+            }
+
+            Python::with_gil(|py| {
+                event_clone.call_method0(py, "set").unwrap();
+            });
+        });
+
+        Ok(completion_event)
     }
 
     #[pyo3(signature = (user, event_name, value=None, metadata=None))]
@@ -118,6 +134,17 @@ impl StatsigPy {
         }
     }
 
+    pub fn get_dynamic_config(&self, name: &str, user: &StatsigUserPy) -> DynamicConfigPy {
+        let config = self.inner.get_dynamic_config(&user.inner, name);
+
+        DynamicConfigPy {
+            name: config.name.clone(),
+            rule_id: config.rule_id.clone(),
+            id_type: config.id_type.clone(),
+            inner: config,
+        }
+    }
+
     pub fn get_experiment(&self, name: &str, user: &StatsigUserPy) -> ExperimentPy {
         let experiment = self.inner.get_experiment(&user.inner, name);
 
@@ -126,7 +153,18 @@ impl StatsigPy {
             rule_id: experiment.rule_id.clone(),
             id_type: experiment.id_type.clone(),
             group_name: experiment.group_name.clone(),
-            inner: experiment
+            inner: experiment,
+        }
+    }
+
+    pub fn get_layer(&self, name: &str, user: &StatsigUserPy) -> LayerPy {
+        let layer = self.inner.get_layer(&user.inner, name);
+
+        LayerPy {
+            name: layer.name.clone(),
+            rule_id: layer.rule_id.clone(),
+            group_name: layer.group_name.clone(),
+            inner: layer,
         }
     }
 
@@ -135,6 +173,14 @@ impl StatsigPy {
         self.inner
             .get_client_init_response_with_options_as_string(&user.inner, &opts)
     }
+}
+
+fn get_completion_event(py: Python) -> PyResult<(PyObject, PyObject)> {
+    let threading = PyModule::import(py, "threading")?;
+    let event = threading.call_method0("Event")?;
+    let event_clone: PyObject = event.clone().into();
+
+    Ok((event.into(), event_clone))
 }
 
 fn convert_to_number(value: Option<&Bound<PyAny>>) -> Option<f64> {

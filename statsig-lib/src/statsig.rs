@@ -174,6 +174,9 @@ impl Statsig {
         init_res
     }
 
+    pub async fn shutdown(&self) -> Result<(), StatsigErr> {
+        self.shutdown_with_timeout(Duration::from_secs(3)).await
+    }
     pub async fn shutdown_with_timeout(&self, timeout: Duration) -> Result<(), StatsigErr> {
         log_d!(
             TAG,
@@ -182,7 +185,20 @@ impl Statsig {
         );
 
         let start = Instant::now();
-        let final_result = tokio::select! {
+        let final_result = self.__shutdown_internal(timeout).await;
+        self.finalize_shutdown(timeout.saturating_sub(start.elapsed()));
+        final_result
+    }
+
+    pub async fn __shutdown_internal(&self, timeout: Duration) -> Result<(), StatsigErr> {
+        log_d!(
+            TAG,
+            "Shutting down Statsig with timeout {}ms",
+            timeout.as_millis()
+        );
+
+        let start = Instant::now();
+        tokio::select! {
             _ = tokio::time::sleep(timeout) => {
                 log_w!(TAG, "Statsig shutdown timed out. {}", start.elapsed().as_millis());
                 Err(StatsigErr::ShutdownTimeout)
@@ -204,14 +220,7 @@ impl Statsig {
                     }
                 }
             }
-        };
-
-        self.finalize_shutdown(timeout.saturating_sub(start.elapsed()));
-        final_result
-    }
-
-    pub async fn shutdown(&self) -> Result<(), StatsigErr> {
-        self.shutdown_with_timeout(Duration::from_secs(3)).await
+        }
     }
 
     pub fn sequenced_shutdown_prepare<F>(&self, callback: F)
@@ -893,6 +902,8 @@ mod tests {
         StatsigHttpIdListsAdapter,
     };
     use std::env;
+    use crate::hashing::djb2;
+
     fn get_sdk_key() -> String {
         let key = env::var("test_api_key").expect("test_api_key environment variable not set");
         assert!(key.starts_with("secret-9IWf"));
@@ -973,10 +984,11 @@ mod tests {
         let gates = response.feature_gates;
         assert_eq!(gates.len(), 69);
 
-        let configs = response.dynamic_configs;
-        assert_eq!(configs.len(), 62);
+        let configs = response.dynamic_configs.len();
+        assert_eq!(configs, 62);
 
-        let value = match configs.values().next() {
+        let a_config_opt = response.dynamic_configs.get(&djb2("big_number"));
+        let a_config = match a_config_opt {
             Some(v) => match v {
                 AnyConfigEvaluation::DynamicConfig(config) => &config.value,
                 AnyConfigEvaluation::Experiment(exp) => &exp.value,
@@ -984,6 +996,6 @@ mod tests {
             None => panic!("Should have values"),
         };
 
-        assert!(!value.is_empty());
+        assert!(!a_config.is_empty());
     }
 }

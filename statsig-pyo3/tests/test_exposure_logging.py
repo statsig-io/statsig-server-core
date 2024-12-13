@@ -42,6 +42,19 @@ def get_non_diagnostic_events(logs):
     ]
 
 
+def test_shutdown_flushes(httpserver: HTTPServer):
+    logs = []
+    statsig = setup(httpserver, logs)
+
+    statsig.check_gate("test_public", StatsigUser("my_user"))
+
+    statsig.shutdown().wait()
+    events = get_non_diagnostic_events(logs)
+
+    assert len(events) == 1
+    assert events[0]["eventName"] == "statsig::gate_exposure"
+
+
 def test_gate_exposures(httpserver: HTTPServer):
     logs = []
     statsig = setup(httpserver, logs)
@@ -53,6 +66,28 @@ def test_gate_exposures(httpserver: HTTPServer):
 
     assert len(events) == 1
     assert events[0]["eventName"] == "statsig::gate_exposure"
+
+
+def test_layer_exposure(httpserver: HTTPServer):
+    logs = []
+    statsig = setup(httpserver, logs)
+
+    layer = statsig.get_layer("layer_with_many_params", StatsigUser("my_user"))
+    statsig.flush_events().wait()
+    events = get_non_diagnostic_events(logs)
+
+    assert len(logs) == 1
+    assert len(events) == 0
+
+    layer.get_string("a_string", "ERR")
+    statsig.flush_events().wait()
+
+    logs_drop_first = logs[1:]
+    events = get_non_diagnostic_events(logs_drop_first)
+
+    assert len(logs) == 2
+    assert len(events) == 1
+    assert events[0]["eventName"] == "statsig::layer_exposure"
 
 
 def test_custom_event(httpserver: HTTPServer):

@@ -37,6 +37,17 @@ def test_get_feature_gate(httpserver: HTTPServer):
     assert gate.id_type == "userID"
 
 
+def test_get_dynamic_config(httpserver: HTTPServer):
+    statsig = setup(httpserver)
+    config = statsig.get_dynamic_config("big_number", StatsigUser("my_user"))
+
+    assert config.get_float("foo", 1) == 1e21
+    assert config.get_integer("rar", 1) == 9999999999
+    assert config.name == "big_number"
+    assert config.rule_id == "default"
+    assert config.id_type == "userID"
+
+
 def test_get_experiment(httpserver: HTTPServer):
     statsig = setup(httpserver)
     experiment = statsig.get_experiment(
@@ -47,6 +58,16 @@ def test_get_experiment(httpserver: HTTPServer):
     assert experiment.name == "experiment_with_many_params"
     assert experiment.rule_id == "7kGqFczL8Ztc2vv3tWGmvO"
     assert experiment.id_type == "userID"
+    assert experiment.group_name == "Test #2"
+
+
+def test_get_layer(httpserver: HTTPServer):
+    statsig = setup(httpserver)
+    layer = statsig.get_layer("layer_with_many_params", StatsigUser("my_user"))
+
+    assert layer.get_string("a_string", "ERR") == "test_2"
+    assert layer.name == "layer_with_many_params"
+    assert layer.rule_id == "7kGqFczL8Ztc2vv3tWGmvO"
 
 
 def test_gcir(httpserver: HTTPServer):
