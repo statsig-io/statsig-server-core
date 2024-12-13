@@ -24,21 +24,14 @@ class FakeObClient implements IObservabilityClient  {
 }
 
 test('Usage Example',async (t) => {
-  const ob_client = new FakeObClient()
-  const user = new StatsigUser("test-user", {});
-  const statsigOptions = new StatsigOptions(
-    LogLevel.Debug,
-    'staging',
-    undefined, 
-    undefined, 
-    undefined, 
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    ob_client
-  )
+  const obClient = new FakeObClient()
+  const user = new StatsigUser({userID: "test-user", customIDs: {}});
+  const statsigOptions = new StatsigOptions({
+    outputLoggerLevel: LogLevel.Debug,
+    environment: 'staging',
+    observabilityClient: obClient
+  })
   const statsig = new Statsig("secret-key", statsigOptions);
   statsig.initialize();
-  t.is(ob_client.method_called.includes("dist"), true);
+  t.is(obClient.method_called.includes("dist"), true);
 })

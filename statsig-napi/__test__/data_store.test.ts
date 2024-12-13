@@ -46,18 +46,12 @@ class TestDataStore implements IDataStore {
 }
 test('Usage Example',async (t) => {
   const dataStore = new TestDataStore()
-  const user = new StatsigUser("test-user", {});
-  const statsigOptions = new StatsigOptions(
-    LogLevel.Debug,
-    'staging',
-    undefined, 
-    undefined, 
-    undefined, 
-    undefined,
-    undefined,
-    dataStore,
-    undefined
-  )
+  const user = new StatsigUser({userID: "test-user", customIDs: {}});
+  const statsigOptions = new StatsigOptions({
+    outputLoggerLevel: LogLevel.Debug,
+    environment: 'staging',
+    dataStore: dataStore
+  })
   const statsig = new Statsig("secret-key", statsigOptions);
   statsig.initialize();
   const gate = statsig.checkGate(user, "test_public");
