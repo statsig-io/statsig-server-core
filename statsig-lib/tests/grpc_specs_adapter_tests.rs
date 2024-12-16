@@ -23,7 +23,7 @@ pub mod specs_adapter_tests {
         let mock_proxy = MockForwardProxy::spawn().await;
         let config = SpecAdapterConfig {
             adapter_type: SpecsAdapterType::NetworkGrpcWebsocket,
-            specs_url: format!("http://{}", mock_proxy.proxy_address),
+            specs_url: Some(format!("http://{}", mock_proxy.proxy_address)),
             init_timeout_ms: 3000,
         };
         let adapter = Arc::new(StatsigGrpcSpecsAdapter::new("secret-key", &config));

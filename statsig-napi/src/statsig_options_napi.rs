@@ -81,7 +81,7 @@ pub fn statsig_options_create(
 #[napi(object)]
 pub struct SpecAdapterConfigNapi {
   pub adapter_type: SpecsAdapterTypeNapi,
-  pub specs_url: String,
+  pub specs_url: Option<String>,
   pub init_timeout_ms: i64,
 }
 
@@ -99,13 +99,15 @@ impl From<SpecAdapterConfigNapi> for SpecAdapterConfig {
 pub enum SpecsAdapterTypeNapi {
   NetworkHttp,
   NetworkGrpcWebsocket,
+  DataStore,
 }
 
 impl From<SpecsAdapterTypeNapi> for SpecsAdapterType {
-  fn from(val: SpecsAdapterTypeNapi) -> Self {
+  fn from(val: SpecsAdapterTypeNapi) -> SpecsAdapterType {
     match val {
       SpecsAdapterTypeNapi::NetworkGrpcWebsocket => SpecsAdapterType::NetworkGrpcWebsocket,
       SpecsAdapterTypeNapi::NetworkHttp => SpecsAdapterType::NetworkHttp,
+      SpecsAdapterTypeNapi::DataStore => SpecsAdapterType::DataStore,
     }
   }
 }

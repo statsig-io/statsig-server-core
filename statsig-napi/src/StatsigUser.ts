@@ -1,7 +1,5 @@
 import {
   AutoReleasingStatsigUserRef,
-  FeatureGateNapi as FeatureGate,
-  SpecAdapterConfigNapi as SpecAdapterConfig,
   statsigUserCreate,
 } from './bindings';
 

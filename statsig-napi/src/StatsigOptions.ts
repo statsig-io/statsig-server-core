@@ -1,7 +1,5 @@
 import {
-  SpecsAdapterTypeNapi as SpecsAdapterType,
   AutoReleasingStatsigOptionsRef,
-  FeatureGateNapi as FeatureGate,
   SpecAdapterConfigNapi as SpecAdapterConfig,
   statsigOptionsCreate,
 } from './bindings';

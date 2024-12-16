@@ -22,12 +22,14 @@ pub const DEFAULT_INIT_TIMEOUT_MS: u64 = 3000;
 #[derive(Debug, Clone)]
 pub struct SpecAdapterConfig {
     pub adapter_type: SpecsAdapterType,
-    pub specs_url: String,
     pub init_timeout_ms: u64,
+
+    pub specs_url: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub enum SpecsAdapterType {
     NetworkGrpcWebsocket,
     NetworkHttp,
+    DataStore,
 }

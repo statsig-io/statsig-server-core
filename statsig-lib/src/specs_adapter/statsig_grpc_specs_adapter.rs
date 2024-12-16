@@ -115,7 +115,7 @@ impl StatsigGrpcSpecsAdapter {
             listener: RwLock::new(None),
             shutdown_notify: Arc::new(Notify::new()),
             task_handle_id: Mutex::new(None),
-            grpc_client: StatsigGrpcClient::new(sdk_key, &config.specs_url),
+            grpc_client: StatsigGrpcClient::new(sdk_key, &config.specs_url.clone().unwrap_or("INVALID".to_owned())),
             initialized_notify: Arc::new(Notify::new()),
             retry_state: StreamingRetryState {
                 backoff_interval_ms: DEFAULT_BACKOFF_INTERVAL_MS.into(),

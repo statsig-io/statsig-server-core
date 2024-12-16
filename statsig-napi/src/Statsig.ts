@@ -3,7 +3,6 @@ import {
   AutoReleasingStatsigRef,
   ClientInitResponseOptions,
   FeatureGateNapi as FeatureGate,
-  SpecAdapterConfigNapi as SpecAdapterConfig,
   statsigCheckGate,
   statsigCreate,
   statsigGetClientInitResponse,

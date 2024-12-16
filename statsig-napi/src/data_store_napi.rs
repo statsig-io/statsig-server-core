@@ -163,9 +163,10 @@ impl DataStoreTrait for DataStoreNapi {
   async fn support_polling_updates_for(&self, key: RequestPath) -> bool {
     match self.support_polling_updates_for_fn.clone() {
       Some(func) => self
-        .call_and_await_on_response::<String, bool>(func, key.to_string())
+        .call_and_await_on_response::<String, Option<bool>>(func, key.to_string())
         .await
-        .unwrap_or(false),
+        .unwrap_or(Some(false))
+        .unwrap_or_default(),
       None => false,
     }
   }

@@ -815,6 +815,8 @@ fn initialize_specs_adapter(
         return Arc::new(StatsigCustomizedSpecsAdapter::new_from_config(
             sdk_key,
             adapter_config,
+            options, 
+            hashing
         ));
     }
 

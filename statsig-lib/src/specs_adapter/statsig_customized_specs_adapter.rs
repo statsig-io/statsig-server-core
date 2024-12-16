@@ -5,7 +5,7 @@ use super::StatsigHttpSpecsAdapter;
 use super::{SpecAdapterConfig, SpecsAdapterType};
 use crate::data_store_interface::DataStoreTrait;
 use crate::hashing::HashUtil;
-use crate::{log_w, SpecsAdapter, SpecsUpdateListener, StatsigOptions};
+use crate::{log_i, log_w, SpecsAdapter, SpecsUpdateListener, StatsigOptions};
 use crate::{StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
 
@@ -22,7 +22,12 @@ pub struct StatsigCustomizedSpecsAdapter {
 }
 
 impl StatsigCustomizedSpecsAdapter {
-    pub fn new_from_config(sdk_key: &str, configs: Vec<SpecAdapterConfig>) -> Self {
+    pub fn new_from_config(
+        sdk_key: &str,
+        configs: Vec<SpecAdapterConfig>,
+        options: &StatsigOptions,
+        hashing: &HashUtil,
+    ) -> Self {
         let mut adapters: Vec<Arc<dyn SpecsAdapter>> = Vec::new();
         for config in configs.iter() {
             match config.adapter_type {
@@ -35,11 +40,22 @@ impl StatsigCustomizedSpecsAdapter {
                     // Since strategies is an order list, we will just use i
                     adapters.push(Arc::new(StatsigHttpSpecsAdapter::new(
                         sdk_key,
-                        Some(&config.specs_url),
+                        config.specs_url.as_ref(),
                         false,
-                        None,
+                        options.specs_sync_interval_ms,
                     )))
                 }
+                SpecsAdapterType::DataStore => match options.data_store.clone() {
+                    Some(data_store) => {
+                        adapters.push(Arc::new(StatsigDataStoreSpecsAdapter::new(
+                            sdk_key,
+                            data_store,
+                            hashing,
+                            options.specs_sync_interval_ms,
+                        )));
+                    }
+                    None => log_w!(TAG, "Datastore is not present for syncing spec"),
+                },
             }
         }
 
@@ -131,6 +147,7 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
                 Ok(_) => return Ok(()),
                 Err(_) => {
                     // Carry on and try  next adapter
+                    log_i!(TAG, "Skipping schedule bg sync for {}", adapter.get_type_name())
                 }
             }
         }

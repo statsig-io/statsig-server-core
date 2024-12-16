@@ -1,8 +1,7 @@
 import {
-  SpecsAdapterTypeNapi as SpecsAdapterType,
+  SpecsAdapterTypeNapi as SpecAdapterType,
   DynamicConfigNapi,
   ExperimentNapi,
-  FeatureGateNapi as FeatureGate,
   LayerNapi,
   SpecAdapterConfigNapi as SpecAdapterConfig,
 } from './bindings';
@@ -28,10 +27,6 @@ export type Layer = LayerNapi & {
   readonly get: TypedGet;
 };
 
-export enum SpecAdapterType {
-  NetworkHttp = 0,
-  NetworkGrpcWebsocket = 1,
-}
 
-export { SpecAdapterConfig, IDataStore, getDataStoreKey, Statsig, StatsigOptions, StatsigOptionArgs, StatsigUser, StatsigUserArgs, IObservabilityClient, LogLevel };
+export { SpecAdapterConfig, SpecAdapterType, IDataStore, getDataStoreKey, Statsig, StatsigOptions, StatsigOptionArgs, StatsigUser, StatsigUserArgs, IObservabilityClient, LogLevel };
 
