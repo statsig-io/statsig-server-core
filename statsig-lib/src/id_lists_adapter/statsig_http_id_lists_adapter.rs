@@ -144,25 +144,6 @@ impl StatsigHttpIdListsAdapter {
             }
         }
     }
-
-    fn schedule_background_sync(self: Arc<Self>, statsig_runtime: &Arc<StatsigRuntime>) {
-        let weak_self = Arc::downgrade(&self);
-        let interval_duration = self.sync_interval_duration;
-
-        statsig_runtime.spawn("http_id_list_bg_sync", move |shutdown_notify| async move {
-            loop {
-                tokio::select! {
-                    _ = sleep(interval_duration) => {
-                        Self::run_background_sync(&weak_self).await;
-                    }
-                    _ = shutdown_notify.notified() => {
-                        break;
-                    }
-                }
-            }
-        });
-    }
-
     async fn run_background_sync(weak_self: &Weak<Self>) {
         let strong_self = match weak_self.upgrade() {
             Some(s) => s,
@@ -201,30 +182,6 @@ impl StatsigHttpIdListsAdapter {
             Ok(lock) => Ok(lock.as_ref().unwrap().get_current_id_list_metadata()),
             Err(e) => Err(StatsigErr::LockFailure(e.to_string())),
         }
-    }
-}
-
-struct IdListChangeSet {
-    new_metadata: IdListMetadata,
-    requires_download: bool,
-    range_start: u64,
-}
-
-#[async_trait]
-impl IdListsAdapter for StatsigHttpIdListsAdapter {
-    async fn start(
-        self: Arc<Self>,
-        statsig_runtime: &Arc<StatsigRuntime>,
-        listener: Arc<dyn IdListsUpdateListener + Send + Sync>,
-    ) -> Result<(), StatsigErr> {
-        self.set_listener(listener);
-        self.schedule_background_sync(statsig_runtime);
-
-        Ok(())
-    }
-
-    async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
-        Ok(())
     }
 
     async fn sync_id_lists(&self) -> Result<(), StatsigErr> {
@@ -294,6 +251,51 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
                 Err(StatsigErr::LockFailure(e.to_string()))
             }
         }
+    }
+}
+
+struct IdListChangeSet {
+    new_metadata: IdListMetadata,
+    requires_download: bool,
+    range_start: u64,
+}
+
+#[async_trait]
+impl IdListsAdapter for StatsigHttpIdListsAdapter {
+    async fn start(
+        self: Arc<Self>,
+        _statsig_runtime: &Arc<StatsigRuntime>,
+        listener: Arc<dyn IdListsUpdateListener + Send + Sync>,
+    ) -> Result<(), StatsigErr> {
+        self.set_listener(listener);
+        self.sync_id_lists().await?;
+        Ok(())
+    }
+
+    async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
+        Ok(())
+    }
+
+    fn schedule_background_sync(
+        self: Arc<Self>,
+        statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
+        let weak_self = Arc::downgrade(&self);
+        let interval_duration = self.sync_interval_duration;
+
+        statsig_runtime.spawn("http_id_list_bg_sync", move |shutdown_notify| async move {
+            loop {
+                tokio::select! {
+                    _ = sleep(interval_duration) => {
+                        Self::run_background_sync(&weak_self).await;
+                    }
+                    _ = shutdown_notify.notified() => {
+                        break;
+                    }
+                }
+            }
+        });
+        Ok(())
     }
 }
 
@@ -506,7 +508,7 @@ mod tests {
             )
             .await;
 
-        assert!(!result);
+        assert!(result);
     }
 
     // todo:

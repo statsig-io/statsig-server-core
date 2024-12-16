@@ -144,15 +144,20 @@ impl Statsig {
         };
 
         if let Some(adapter) = &self.id_lists_adapter {
-            adapter
+            match adapter
                 .clone()
                 .start(&self.statsig_runtime, self.spec_store.clone())
-                .await?;
-
-            if let Err(e) = adapter.sync_id_lists().await {
-                log_e!(TAG, "Failed to sync id lists: {}", e);
-                success = false;
-                error_message.get_or_insert_with(|| format!("Failed to sync ID lists: {}", e));
+                .await
+            {
+                Ok(_) => {},
+                Err(e) => {
+                    log_e!(TAG, "Failed to sync id lists: {}", e);
+                    success = false;
+                    error_message.get_or_insert_with(|| format!("Failed to sync ID lists: {}", e));
+                }
+            }
+            if let Err(e) = adapter.clone().schedule_background_sync(&self.statsig_runtime) {
+                log_w!(TAG, "Failed to schedule idlist background job {}", e)
             }
         }
 
