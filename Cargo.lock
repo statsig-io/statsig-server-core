@@ -1555,31 +1555,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pyo3-async-runtimes"
-version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "977dc837525cfd22919ba6a831413854beb7c99a256c03bf8624ad707e45810e"
-dependencies = [
- "futures",
- "once_cell",
- "pin-project-lite",
- "pyo3",
- "pyo3-async-runtimes-macros",
- "tokio",
-]
-
-[[package]]
-name = "pyo3-async-runtimes-macros"
-version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2df2884957d2476731f987673befac5d521dff10abb0a7cbe12015bc7702fe9"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.72",
-]
-
-[[package]]
 name = "pyo3-build-config"
 version = "0.23.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1952,10 +1927,8 @@ name = "statsig-pyo3"
 version = "0.1.0"
 dependencies = [
  "pyo3",
- "pyo3-async-runtimes",
  "serde_json",
  "sigstat",
- "tokio",
 ]
 
 [[package]]

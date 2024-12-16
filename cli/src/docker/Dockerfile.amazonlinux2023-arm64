@@ -1,0 +1,27 @@
+# https://docs.aws.amazon.com/linux/al2/ug/amzn1-amzn2-container.html
+FROM --platform=arm64 amazonlinux:2023 AS amazonlinux2023-arm64
+
+RUN yum update -y \
+    && yum install -y \
+        gcc \
+        openssl-devel \
+        protobuf \
+        protobuf-compiler \
+        python3 \
+        python3-pip \
+    && yum clean all
+
+WORKDIR /app
+
+RUN pip3 install maturin patchelf
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+ENV TARGET=aarch64-unknown-linux-gnu
+RUN rustup target add $TARGET
+
+ENV CARGO_TERM_COLOR=always
+ENV CARGO_TARGET_DIR=/app/target/amazonlinux2023-arm64
+
+ENTRYPOINT ["sh", "-c"]
