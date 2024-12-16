@@ -1,0 +1,52 @@
+name: Kong
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  test_api_key: ${{ secrets.KONG_SERVER_SDK_KEY }}
+  test_client_key: ${{ secrets.KONG_CLIENT_SDK_KEY }}
+  repo_pat: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
+  FORCE_COLOR: true
+
+jobs:
+  KONG:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: core-rust
+          # - target: core-napi 
+          # - target: core-java
+    steps:
+      - name: Get KONG
+        run: git clone https://oauth2:$repo_pat@github.com/statsig-io/kong.git .
+
+      - name: Install Deps
+        run: npm install
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Rust SDK
+        run: npm run kong -- setup ${{ matrix.target }} -v
+
+      - name: Build Bridge Image
+        run: npm run kong -- build ${{ matrix.target }} -v
+
+      - name: Run Tests [Non Rulesets]
+        run: npm run kong -- test ${{ matrix.target }} -r -x rulesets
+
+      - name: Run Tests [Rulesets Only]
+        run: npm run kong -- test ${{ matrix.target }} -r -f rulesets
