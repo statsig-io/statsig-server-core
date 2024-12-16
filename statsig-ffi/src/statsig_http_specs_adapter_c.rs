@@ -25,7 +25,7 @@ pub extern "C" fn statsig_http_specs_adapter_create(
         }
     }
 
-    let adapter = StatsigHttpSpecsAdapter::new(&sdk_key, specs_url.as_ref(), None);
+    let adapter = StatsigHttpSpecsAdapter::new(&sdk_key, specs_url.as_ref(), false, None);
 
     let ref_id = INST_STORE.add(adapter).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigHttpSpecsAdapter");

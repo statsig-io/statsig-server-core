@@ -60,12 +60,10 @@ impl StatsigHttpIdListsAdapter {
     }
 
     async fn fetch_id_list_manifests_from_network(&self) -> Result<IdListsResponse, StatsigErr> {
-        let headers = HashMap::from([("Content-Length".into(), "0".to_string())]);
-
         let request_args = RequestArgs {
             url: self.id_lists_manifest_url.clone(),
             retries: 2,
-            headers: Some(headers.clone()),
+            accept_gzip_response: true,
             ..RequestArgs::new()
         };
 

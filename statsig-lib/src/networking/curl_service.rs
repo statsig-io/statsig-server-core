@@ -79,7 +79,18 @@ impl Curl {
     }
 
     pub async fn send(&self, method: &HttpMethod, request_args: &RequestArgs) -> Response {
-        log_d!(TAG, "Sending request: {}", request_args.url);
+        let method_name = if method == &HttpMethod::POST {
+            "POST"
+        } else {
+            "GET"
+        };
+        log_d!(TAG, "Sending {} Request: {}", method_name, request_args.url);
+
+        if let Some(headers) = &request_args.headers {
+            for (key, value) in headers.iter() {
+                log_d!(TAG, "Header: {} = {}", key, value);
+            }
+        }
 
         let (response_tx, response_rx) = oneshot::channel();
         let request = Request {
@@ -298,12 +309,7 @@ impl Curl {
                     }
                 }
                 Err(e) => {
-                    log_e!(
-                        TAG,
-                        "Failed to send request to {}: {:?}",
-                        url,
-                        e
-                    );
+                    log_e!(TAG, "Failed to send request to {}: {:?}", url, e);
                     let _ = entry
                         .request
                         .tx
