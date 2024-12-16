@@ -90,7 +90,9 @@ impl StatsigHttpEventLoggingAdapter {
                 Some(compressed.into()),
             )
             .await
-            .ok_or(StatsigErr::NetworkError("Log event failure".into()))?;
+            .map_err(|_err| {
+                StatsigErr::NetworkError("Log event failure".into())
+            })?;
 
         serde_json::from_str::<LogEventResult>(&response_str)
             .map(|result| result.success != Some(false))

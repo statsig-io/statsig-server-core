@@ -1,5 +1,5 @@
 use crate::id_lists_adapter::{IdListUpdate, IdListsAdapter, IdListsUpdateListener};
-use crate::networking::{NetworkClient, RequestArgs};
+use crate::networking::{NetworkClient, NetworkError, RequestArgs};
 use crate::statsig_metadata::StatsigMetadata;
 use crate::{log_e, log_w, StatsigErr, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
@@ -20,6 +20,7 @@ const TAG: &str = stringify!(StatsigHttpIdListsAdapter);
 
 pub struct StatsigHttpIdListsAdapter {
     id_lists_manifest_url: String,
+    fallback_url: Option<String>,
     listener: RwLock<Option<Arc<dyn IdListsUpdateListener>>>,
     network: NetworkClient,
     sync_interval_duration: Duration,
@@ -31,6 +32,12 @@ impl StatsigHttpIdListsAdapter {
             .id_lists_url
             .clone()
             .unwrap_or_else(|| DEFAULT_ID_LISTS_MANIFEST_URL.to_string());
+
+        let fallback_url = if options.fallback_to_statsig_api.unwrap_or(false) && id_lists_manifest_url != DEFAULT_ID_LISTS_MANIFEST_URL {
+            Some(DEFAULT_ID_LISTS_MANIFEST_URL.to_string())
+        } else {
+            None
+        };
 
         let sync_interval_duration = Duration::from_millis(
             options
@@ -45,6 +52,7 @@ impl StatsigHttpIdListsAdapter {
 
         Self {
             id_lists_manifest_url,
+            fallback_url,
             listener: RwLock::new(None),
             network,
             sync_interval_duration,
@@ -54,35 +62,43 @@ impl StatsigHttpIdListsAdapter {
     async fn fetch_id_list_manifests_from_network(&self) -> Result<IdListsResponse, StatsigErr> {
         let headers = HashMap::from([("Content-Length".into(), "0".to_string())]);
 
-        let response = self
-            .network
-            .post(
-                RequestArgs {
-                    url: self.id_lists_manifest_url.clone(),
-                    retries: 2,
-                    headers: Some(headers),
-                    ..RequestArgs::new()
-                },
-                None,
-            )
-            .await;
-
-        let data = match response {
-            Some(r) => r,
-            None => {
-                let msg = "No ID List results from network";
-                log_e!(TAG, "{}", msg);
-                return Err(StatsigErr::NetworkError(msg.to_string()));
-            }
+        let request_args = RequestArgs {
+            url: self.id_lists_manifest_url.clone(),
+            retries: 2,
+            headers: Some(headers.clone()),
+            ..RequestArgs::new()
         };
 
-        match from_str::<IdListsResponse>(&data) {
-            Ok(id_lists) => Ok(id_lists),
-            Err(e) => Err(StatsigErr::JsonParseError(
-                stringify!(IdListsResponse).to_string(),
-                e.to_string(),
-            )),
+        let initial_err = match self.network.post(request_args.clone(), None).await {
+            Ok(response) => return self.parse_response(response),
+            Err(e) => e,
+        };
+
+        if initial_err != NetworkError::RetriesExhausted {
+            return Err(StatsigErr::NetworkError(format!(
+                "Initial request failed: {:?}",
+                initial_err
+            )));
         }
+
+        // attempt fallback
+        if let Some(fallback_url) = &self.fallback_url {
+            let fallback_err = match self.handle_fallback_request(fallback_url, request_args).await {
+                Ok(response) => return self.parse_response(response),
+                Err(e) => e,
+            };
+        
+            // TODO logging
+            return Err(StatsigErr::NetworkError(format!(
+                "Fallback request failed: {:?}, initial error: {:?}",
+                fallback_err, initial_err
+            )));
+        }
+        
+        Err(StatsigErr::NetworkError(format!(
+            "Initial request failed with error: {:?}",
+            initial_err
+        )))
     }
 
     async fn fetch_individual_id_list_changes_from_network(
@@ -92,25 +108,43 @@ impl StatsigHttpIdListsAdapter {
     ) -> Result<String, StatsigErr> {
         let headers = HashMap::from([("Range".into(), format!("bytes={}-", list_size))]);
 
-        let response = self
-            .network
-            .get(RequestArgs {
-                url: list_url.to_string(),
-                headers: Some(headers),
-                ..RequestArgs::new()
-            })
-            .await;
+        let response = self.network.get(RequestArgs {
+            url: list_url.to_string(),
+            headers: Some(headers),
+            ..RequestArgs::new()
+        }).await;
 
-        let data = match response {
-            Some(r) => r,
-            None => {
-                let msg = "No ID List changes from network";
-                log_e!(TAG, "{}", msg);
-                return Err(StatsigErr::NetworkError(msg.to_string()));
+        match response {
+            Ok(data) => {
+                if data.is_empty() {
+                    let msg = "No ID List changes from network".to_string();
+                    return Err(StatsigErr::NetworkError(msg));
+                }
+                Ok(data)
             }
-        };
+            Err(err) => {
+                let msg = format!("Failed to fetch ID List changes: {:?}", err);
+                Err(StatsigErr::NetworkError(msg))
+            }
+        }
+    }
 
-        Ok(data)
+    async fn handle_fallback_request(
+        &self,
+        fallback_url: &str,
+        mut request_args: RequestArgs,
+    ) -> Result<String, StatsigErr> {
+        request_args.url = fallback_url.to_owned();
+
+        // TODO add log
+
+        match self.network.post(request_args.clone(), None).await {
+            Ok(response) => Ok(response),
+            Err(e) => {
+                let msg = format!("Fallback request failed: {:?}", e);
+                Err(StatsigErr::NetworkError(msg))
+            }
+        }
     }
 
     fn schedule_background_sync(self: Arc<Self>, statsig_runtime: &Arc<StatsigRuntime>) {
@@ -142,9 +176,22 @@ impl StatsigHttpIdListsAdapter {
         }
     }
 
+    fn parse_response(&self, response: String) -> Result<IdListsResponse, StatsigErr> {
+        if response.is_empty() {
+            let msg = "No ID List results from network".to_string();
+            return Err(StatsigErr::NetworkError(msg));
+        }
+
+        from_str::<IdListsResponse>(&response).map_err(|parse_err| {
+            let msg = format!("Failed to parse JSON: {}", parse_err);
+            StatsigErr::JsonParseError(stringify!(IdListsResponse).to_string(), msg)
+        })
+    }
+
     fn set_listener(&self, listener: Arc<dyn IdListsUpdateListener>) {
         match self.listener.write() {
             Ok(mut lock) => *lock = Some(listener),
+
             Err(e) => {
                 log_e!(TAG, "Failed to acquire write lock on listener: {}", e);
             }

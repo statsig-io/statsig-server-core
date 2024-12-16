@@ -27,7 +27,7 @@ impl StatsigLocalFileSpecsAdapter {
         Self {
             file_path,
             listener: RwLock::new(None),
-            http_adapter: StatsigHttpSpecsAdapter::new(sdk_key, specs_url.as_ref(), None),
+            http_adapter: StatsigHttpSpecsAdapter::new(sdk_key, specs_url.as_ref(), false, None),
         }
     }
 

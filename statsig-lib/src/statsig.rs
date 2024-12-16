@@ -36,7 +36,7 @@ use crate::statsig_type_factories::{
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{
-    dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, SpecsAdapter, SpecsSource,
+    dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, StatsigHttpIdListsAdapter, SpecsAdapter, SpecsSource,
     StatsigUser,
 };
 use serde_json::json;
@@ -84,7 +84,7 @@ impl Statsig {
         initialize_simple_output_logger(&options.output_log_level);
 
         let specs_adapter = initialize_specs_adapter(sdk_key, &options, &hashing);
-        let id_lists_adapter = initialize_id_lists_adapter(&options);
+        let id_lists_adapter = initialize_id_lists_adapter(sdk_key, &options);
         let event_logging_adapter = initialize_event_logging_adapter(sdk_key, &options);
 
         let environment = options
@@ -830,13 +830,24 @@ fn initialize_specs_adapter(
     Arc::new(StatsigHttpSpecsAdapter::new(
         sdk_key,
         options.specs_url.as_ref(),
+        options.fallback_to_statsig_api.unwrap_or(false),
         options.specs_sync_interval_ms,
     ))
 }
 
-fn initialize_id_lists_adapter(options: &StatsigOptions) -> Option<Arc<dyn IdListsAdapter>> {
-    //
-    options.id_lists_adapter.clone()
+fn initialize_id_lists_adapter(sdk_key: &str, options: &StatsigOptions) -> Option<Arc<dyn IdListsAdapter>> {
+    if let Some(id_lists_adapter) = options.id_lists_adapter.clone() {
+        return Some(id_lists_adapter);
+    }
+
+    if options.enable_id_lists.unwrap_or(false) {
+        return Some(Arc::new(StatsigHttpIdListsAdapter::new(
+            sdk_key,
+            options,
+        )))
+    }
+
+    None
 }
 
 fn setup_ops_stats(

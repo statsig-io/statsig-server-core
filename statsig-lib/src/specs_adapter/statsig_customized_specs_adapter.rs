@@ -36,6 +36,7 @@ impl StatsigCustomizedSpecsAdapter {
                     adapters.push(Arc::new(StatsigHttpSpecsAdapter::new(
                         sdk_key,
                         Some(&config.specs_url),
+                        false,
                         None,
                     )))
                 }
@@ -60,6 +61,7 @@ impl StatsigCustomizedSpecsAdapter {
         let http_adapter = StatsigHttpSpecsAdapter::new(
             sdk_key,
             options.specs_url.as_ref(),
+            options.fallback_to_statsig_api.unwrap_or(false),
             options.specs_sync_interval_ms,
         );
         let adapters: Vec<Arc<dyn SpecsAdapter>> =

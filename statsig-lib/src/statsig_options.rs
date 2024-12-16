@@ -25,10 +25,12 @@ pub struct StatsigOptions {
     pub event_logging_flush_interval_ms: Option<u32>,
     pub event_logging_max_queue_size: Option<u32>,
 
+    pub enable_id_lists: Option<bool>,
     pub id_lists_url: Option<String>,
     pub id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
     pub id_lists_sync_interval_ms: Option<u32>,
 
+    pub fallback_to_statsig_api: Option<bool>,
     pub environment: Option<String>,
 
     pub output_log_level: Option<LogLevel>,
@@ -101,6 +103,11 @@ impl StatsigOptionsBuilder {
     }
 
     // ID Lists
+    
+    pub fn enable_id_lists(mut self, enable_id_lists: Option<bool>) -> Self {
+        self.inner.enable_id_lists = enable_id_lists;
+        self
+    }
 
     pub fn id_lists_url(mut self, id_lists_url: Option<String>) -> Self {
         self.inner.id_lists_url = id_lists_url;

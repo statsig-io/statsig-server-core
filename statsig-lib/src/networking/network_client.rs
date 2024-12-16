@@ -10,7 +10,15 @@ use super::{Curl, HttpMethod, RequestArgs};
 const RETRY_CODES: [u16; 8] = [408, 500, 502, 503, 504, 522, 524, 599];
 const SHUTDOWN_ERROR: &str = "Request was aborted because the client is shutting down";
 
+#[derive(PartialEq, Debug)]
+pub enum NetworkError {
+    ShutdownError,
+    RequestFailed,
+    RetriesExhausted,
+    SerializationError,
+}
 const TAG: &str = stringify!(NetworkClient);
+
 
 pub struct NetworkClient {
     headers: HashMap<String, String>,
@@ -31,11 +39,11 @@ impl NetworkClient {
         self.is_shutdown.store(true, Ordering::SeqCst);
     }
 
-    pub async fn get(&self, request_args: RequestArgs) -> Option<String> {
+    pub async fn get(&self, request_args: RequestArgs) -> Result<String, NetworkError> {
         self.make_request(HttpMethod::GET, request_args).await
     }
 
-    pub async fn post(&self, mut request_args: RequestArgs, body: Option<Bytes>) -> Option<String> {
+    pub async fn post(&self, mut request_args: RequestArgs, body: Option<Bytes>) -> Result<String, NetworkError> {    
         request_args.body = body;
         self.make_request(HttpMethod::POST, request_args).await
     }
@@ -44,7 +52,7 @@ impl NetworkClient {
         &self,
         method: HttpMethod,
         mut request_args: RequestArgs,
-    ) -> Option<String> {
+    ) -> Result<String, NetworkError> {
         let is_shutdown = if let Some(is_shutdown) = &request_args.is_shutdown {
             is_shutdown.clone()
         } else {
@@ -62,7 +70,7 @@ impl NetworkClient {
         loop {
             if is_shutdown.load(Ordering::SeqCst) {
                 log_i!(TAG, "{}", SHUTDOWN_ERROR);
-                return None;
+                return Err(NetworkError::ShutdownError);
             }
 
             let response = self.curl.send(&method, &request_args).await;
@@ -70,7 +78,9 @@ impl NetworkClient {
             let status = response.status_code;
 
             if (200..300).contains(&status) {
-                return response.data;
+                return response.data.ok_or({
+                    NetworkError::RequestFailed
+                });
             }
 
             let error_message = response
@@ -79,7 +89,7 @@ impl NetworkClient {
 
             if !RETRY_CODES.contains(&status) {
                 log_e!(TAG, "NetworkClient Error: {} {}", status, error_message);
-                return None;
+                return Err(NetworkError::RequestFailed);
             }
 
             if attempt >= request_args.retries {
@@ -89,7 +99,7 @@ impl NetworkClient {
                     status,
                     error_message
                 );
-                return None;
+                return Err(NetworkError::RetriesExhausted);
             }
 
             attempt += 1;

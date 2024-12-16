@@ -1,4 +1,4 @@
-use crate::networking::{NetworkClient, RequestArgs};
+use crate::networking::{NetworkClient, RequestArgs, NetworkError};
 use crate::specs_adapter::{SpecsAdapter, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
@@ -18,17 +18,25 @@ pub struct StatsigHttpSpecsAdapter {
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
     network: NetworkClient,
     specs_url: String,
+    fallback_url: Option<String>,
     sync_interval_duration: Duration,
 }
 
 impl StatsigHttpSpecsAdapter {
-    pub fn new(sdk_key: &str, specs_url: Option<&String>, sync_interval: Option<u32>) -> Self {
+    pub fn new(sdk_key: &str, specs_url: Option<&String>, fallback_to_statsig_api: bool, sync_interval: Option<u32>) -> Self {
+        let fallback_url = if fallback_to_statsig_api {
+            construct_fallback_specs_url(sdk_key, specs_url)
+        } else {
+            None
+        };
+
         let headers = StatsigMetadata::get_constant_request_headers(sdk_key);
 
         Self {
             listener: RwLock::new(None),
             network: NetworkClient::new(sdk_key, Some(headers)),
             specs_url: construct_specs_url(sdk_key, specs_url),
+            fallback_url,
             sync_interval_duration: Duration::from_millis(
                 sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS) as u64,
             ),
@@ -41,16 +49,41 @@ impl StatsigHttpSpecsAdapter {
     ) -> Option<String> {
         let query_params =
             current_store_lcut.map(|lcut| HashMap::from([("sinceTime".into(), lcut.to_string())]));
+        
+        let request_args = RequestArgs {
+            url: self.specs_url.clone(),
+            retries: 2,
+            query_params,
+            accept_gzip_response: true,
+            ..RequestArgs::new()
+        };
 
-        self.network
-            .get(RequestArgs {
-                url: self.specs_url.clone(),
-                retries: 2,
-                query_params,
-                accept_gzip_response: true,
-                ..RequestArgs::new()
-            })
-            .await
+        match self.network.get(request_args.clone()).await {
+            Ok(response) => Some(response),
+            Err(NetworkError::RetriesExhausted) => {
+                self.handle_fallback_request(request_args).await
+            }
+            Err(_) => None,
+        }
+    }
+
+    async fn handle_fallback_request(
+        &self,
+        mut request_args: RequestArgs, 
+    ) -> Option<String> {
+        let fallback_url = match &self.fallback_url {
+            Some(url) => url.clone(),
+            None => return None,
+        };
+
+        request_args.url = fallback_url;
+
+        // TODO logging
+
+        return match self.network.get(request_args).await {
+            Ok(response) => Some(response),
+            Err(_) => None,
+        }
     }
 
     async fn run_background_sync(weak_self: &Weak<Self>) {
@@ -178,4 +211,12 @@ fn construct_specs_url(sdk_key: &str, spec_url: Option<&String>) -> String {
     };
 
     format!("{}/{}.json", base, sdk_key)
+}
+
+// only fallback when the spec_url is not the DEFAULT_SPECS_URL
+fn construct_fallback_specs_url(sdk_key: &str, spec_url: Option<&String>) -> Option<String> {
+    match spec_url {
+        Some(u) if u != DEFAULT_SPECS_URL => Some(format!("{}/{}.json", u, sdk_key)),
+        _ => None,
+    }
 }
