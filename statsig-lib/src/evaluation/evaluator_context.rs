@@ -2,9 +2,11 @@ use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluator_result::EvaluatorResult;
 use crate::hashing::HashUtil;
 use crate::spec_store::SpecStoreData;
+use crate::statsig_core_api_options::AnyEvaluationOptions;
 use crate::statsig_user_internal::StatsigUserInternal;
-use crate::StatsigErr;
 use crate::StatsigErr::StackOverflowError;
+use crate::{OverrideAdapter, StatsigErr};
+use std::sync::Arc;
 
 const MAX_RECURSIVE_DEPTH: u16 = 300;
 
@@ -15,6 +17,8 @@ pub struct EvaluatorContext<'a> {
     pub result: EvaluatorResult<'a>,
     pub nested_count: u16,
     pub app_id: &'a Option<&'a DynamicValue>,
+    pub override_adapter: &'a Option<Arc<dyn OverrideAdapter>>,
+    pub evaluation_options: &'a Option<AnyEvaluationOptions>,
 }
 
 impl<'a> EvaluatorContext<'a> {
@@ -23,6 +27,8 @@ impl<'a> EvaluatorContext<'a> {
         spec_store_data: &'a SpecStoreData,
         hashing: &'a HashUtil,
         app_id: &'a Option<&'a DynamicValue>,
+        override_adapter: &'a Option<Arc<dyn OverrideAdapter>>,
+        evaluation_options: &'a Option<AnyEvaluationOptions>,
     ) -> Self {
         let result = EvaluatorResult::default();
 
@@ -32,6 +38,8 @@ impl<'a> EvaluatorContext<'a> {
             hashing,
             app_id,
             result,
+            override_adapter,
+            evaluation_options,
             nested_count: 0,
         }
     }

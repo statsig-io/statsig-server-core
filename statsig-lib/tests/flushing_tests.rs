@@ -1,6 +1,9 @@
 mod utils;
 
-use sigstat::{output_logger::LogLevel, FeatureGateEvaluationOptions, DynamicConfigEvaluationOptions, Statsig, StatsigOptions, StatsigUser, ExperimentEvaluationOptions};
+use sigstat::{
+    output_logger::LogLevel, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
+    FeatureGateEvaluationOptions, Statsig, StatsigOptions, StatsigUser,
+};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -68,7 +71,6 @@ async fn main() {
     assert!(overall_duration.as_millis() < 2000);
 }
 
-
 #[tokio::test]
 async fn test_no_flushing_on_main() {
     let (_, statsig) = setup(5000 /* delay_ms */).await;
@@ -131,12 +133,36 @@ async fn test_core_apis_exposure_logging_disabled() {
 
     statsig.initialize().await.unwrap();
     let user = StatsigUser::with_user_id("test_user".into());
-    
-    let _ = statsig.check_gate_with_options(&user, "test_public", FeatureGateEvaluationOptions { disable_exposure_logging: true });
 
-    let _ = statsig.get_feature_gate_with_options(&user, "test_public", FeatureGateEvaluationOptions { disable_exposure_logging: true });
-    let _ = statsig.get_experiment_with_options(&user, "experiment_with_many_params", ExperimentEvaluationOptions { disable_exposure_logging: true });
-    let _ = statsig.get_dynamic_config_with_options(&user, "dynamic_config_name", DynamicConfigEvaluationOptions { disable_exposure_logging: true });
+    let _ = statsig.check_gate_with_options(
+        &user,
+        "test_public",
+        FeatureGateEvaluationOptions {
+            disable_exposure_logging: true,
+        },
+    );
+
+    let _ = statsig.get_feature_gate_with_options(
+        &user,
+        "test_public",
+        FeatureGateEvaluationOptions {
+            disable_exposure_logging: true,
+        },
+    );
+    let _ = statsig.get_experiment_with_options(
+        &user,
+        "experiment_with_many_params",
+        ExperimentEvaluationOptions {
+            disable_exposure_logging: true,
+        },
+    );
+    let _ = statsig.get_dynamic_config_with_options(
+        &user,
+        "dynamic_config_name",
+        DynamicConfigEvaluationOptions {
+            disable_exposure_logging: true,
+        },
+    );
 
     let start = Instant::now();
     statsig

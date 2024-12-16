@@ -57,3 +57,18 @@ macro_rules! read_lock_or_else {
         }
     };
 }
+
+#[macro_export]
+macro_rules! read_lock_or_return {
+    ($tag: expr, $lock:expr, $code: expr) => {
+        match $lock.read() {
+            Ok(data) => data,
+            Err(e) => {
+                log_e!($tag, "Failed to read store: {}", e.to_string());
+                return $code;
+            },
+        }
+    };
+}
+
+

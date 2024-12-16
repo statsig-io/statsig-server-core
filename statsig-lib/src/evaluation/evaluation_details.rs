@@ -19,6 +19,17 @@ impl EvaluationDetails {
         Self::create_from_data(spec_store_data, "Recognized", eval_result)
     }
 
+    pub fn recognized_but_overridden(
+        spec_store_data: &SpecStoreData,
+        override_reason: &str
+    ) -> Self {
+        Self {
+            reason: format!("{}:Recognized", override_reason),
+            lcut: Some(spec_store_data.values.time),
+            received_at: spec_store_data.time_received_at,
+        }
+    }
+
     pub fn unrecognized_no_data() -> Self {
         Self {
             reason: SpecsSource::NoValues.to_string(),

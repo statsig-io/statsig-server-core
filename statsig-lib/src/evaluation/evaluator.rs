@@ -3,9 +3,11 @@ use crate::evaluation::comparisons::{
     compare_time, compare_versions,
 };
 use crate::evaluation::dynamic_value::DynamicValue;
+use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::spec_types::{Condition, Rule, Spec};
+use crate::statsig_core_api_options::AnyEvaluationOptions;
 use crate::{dyn_value, log_e, unwrap_or_return, StatsigErr};
 use chrono::Utc;
 use lazy_static::lazy_static;
@@ -22,7 +24,35 @@ lazy_static! {
 }
 
 impl Evaluator {
-    pub fn evaluate<'a>(ctx: &mut EvaluatorContext<'a>, spec: &'a Spec) -> Result<(), StatsigErr> {
+    pub fn evaluate_with_details<'a>(
+        ctx: &mut EvaluatorContext<'a>,
+        spec_name: &str,
+        spec: &'a Spec,
+    ) -> Result<EvaluationDetails, StatsigErr> {
+        Self::evaluate(ctx, spec_name, spec)?;
+
+        if let Some(reason) = ctx.result.override_reason {
+            return Ok(EvaluationDetails::recognized_but_overridden(
+                ctx.spec_store_data,
+                reason,
+            ));
+        }
+
+        Ok(EvaluationDetails::recognized(
+            ctx.spec_store_data,
+            &ctx.result,
+        ))
+    }
+
+    pub fn evaluate<'a>(
+        ctx: &mut EvaluatorContext<'a>,
+        spec_name: &str,
+        spec: &'a Spec,
+    ) -> Result<(), StatsigErr> {
+        if try_apply_override(ctx, spec_name) {
+            return Ok(());
+        }
+
         if ctx.result.id_type.is_none() {
             ctx.result.id_type = Some(&spec.id_type);
         }
@@ -65,10 +95,10 @@ impl Evaluator {
 
             if did_pass {
                 ctx.result.bool_value = rule.return_value.string_value != "false";
-                ctx.result.json_value = Some(&rule.return_value);
+                ctx.result.json_value = rule.return_value.json_value.clone();
             } else {
                 ctx.result.bool_value = spec.default_value.string_value == "true";
-                ctx.result.json_value = Some(&spec.default_value);
+                ctx.result.json_value = spec.default_value.json_value.clone();
             }
 
             ctx.result.rule_id = Some(&rule.id);
@@ -80,7 +110,7 @@ impl Evaluator {
         }
 
         ctx.result.bool_value = spec.default_value.string_value == "true";
-        ctx.result.json_value = Some(&spec.default_value);
+        ctx.result.json_value = spec.default_value.json_value.clone();
         ctx.result.rule_id = match spec.enabled {
             true => Some(&DEFAULT_RULE),
             false => Some(&DISABLED_RULE),
@@ -88,6 +118,29 @@ impl Evaluator {
         ctx.finalize_evaluation();
 
         Ok(())
+    }
+}
+
+fn try_apply_override(ctx: &mut EvaluatorContext, spec_name: &str) -> bool {
+    let adapter = match ctx.override_adapter {
+        Some(adapter) => adapter,
+        None => return false,
+    };
+
+    match ctx.evaluation_options {
+        Some(AnyEvaluationOptions::FeatureGateEvaluationOptions(options)) =>
+            adapter.get_gate_override(&ctx.user.user_data, spec_name, options, &mut ctx.result),
+
+        Some(AnyEvaluationOptions::DynamicConfigEvaluationOptions(options)) =>
+            adapter.get_dynamic_config_override(&ctx.user.user_data, spec_name, options, &mut ctx.result),
+
+        Some(AnyEvaluationOptions::ExperimentEvaluationOptions(options)) =>
+            adapter.get_experiment_override(&ctx.user.user_data, spec_name, options, &mut ctx.result),
+
+        Some(AnyEvaluationOptions::LayerEvaluationOptions(options)) => {
+            adapter.get_layer_override(&ctx.user.user_data, spec_name, options, &mut ctx.result)
+        }
+        _ => false,
     }
 }
 
@@ -265,7 +318,7 @@ fn evaluate_nested_gate<'a>(
     );
 
     ctx.increment_nesting()?;
-    Evaluator::evaluate(ctx, spec)?;
+    Evaluator::evaluate(ctx, gate_name, spec)?;
 
     if ctx.result.unsupported {
         return Ok(());
@@ -301,7 +354,7 @@ fn evaluate_config_delegate<'a>(
     ctx.result.undelegated_secondary_exposures = Some(ctx.result.secondary_exposures.clone());
 
     ctx.increment_nesting()?;
-    Evaluator::evaluate(ctx, delegate_spec)?;
+    Evaluator::evaluate(ctx, delegate, delegate_spec)?;
 
     ctx.result.explicit_parameters = delegate_spec.explicit_parameters.as_ref();
     ctx.result.config_delegate = rule.config_delegate.as_ref();

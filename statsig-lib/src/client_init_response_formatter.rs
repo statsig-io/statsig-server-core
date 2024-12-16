@@ -8,10 +8,10 @@ use crate::evaluation::evaluator_result::{
 };
 use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::initialize_response::InitializeResponse;
-use crate::read_lock_or_else;
 use crate::spec_store::SpecStore;
 use crate::spec_types::Spec;
 use crate::statsig_user_internal::{StatsigUserInternal, StatsigUserLoggable};
+use crate::{read_lock_or_else, OverrideAdapter};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -26,12 +26,17 @@ pub struct ClientInitResponseOptions {
 pub struct ClientInitResponseFormatter {
     spec_store: Arc<SpecStore>,
     default_options: ClientInitResponseOptions,
+    override_adapter: Option<Arc<dyn OverrideAdapter>>,
 }
 
 impl ClientInitResponseFormatter {
-    pub fn new(spec_store: &Arc<SpecStore>) -> Self {
+    pub fn new(
+        spec_store: &Arc<SpecStore>,
+        override_adapter: &Option<Arc<dyn OverrideAdapter>>,
+    ) -> Self {
         Self {
             spec_store: spec_store.clone(),
+            override_adapter: override_adapter.as_ref().map(Arc::clone),
             default_options: ClientInitResponseOptions {
                 hash_algorithm: Some(HashAlgorithm::Djb2),
                 client_sdk_key: None,
@@ -65,7 +70,14 @@ impl ClientInitResponseFormatter {
             }
         }
         let mut feature_gates = HashMap::new();
-        let mut context = EvaluatorContext::new(&user_internal, &data, hashing, &app_id);
+        let mut context = EvaluatorContext::new(
+            &user_internal,
+            &data,
+            hashing,
+            &app_id,
+            &self.override_adapter,
+            &None,
+        );
 
         let hash_used = options
             .hash_algorithm
@@ -82,7 +94,7 @@ impl ClientInitResponseFormatter {
             }
 
             context.reset_result();
-            if let Err(_err) = Evaluator::evaluate(&mut context, spec) {
+            if let Err(_err) = Evaluator::evaluate(&mut context, name, spec) {
                 return InitializeResponse::blank(user_internal);
             }
 
@@ -100,7 +112,7 @@ impl ClientInitResponseFormatter {
             }
 
             context.reset_result();
-            if let Err(_err) = Evaluator::evaluate(&mut context, spec) {
+            if let Err(_err) = Evaluator::evaluate(&mut context, name, spec) {
                 return InitializeResponse::blank(user_internal);
             }
 
@@ -123,7 +135,7 @@ impl ClientInitResponseFormatter {
             }
 
             context.reset_result();
-            if let Err(_err) = Evaluator::evaluate(&mut context, spec) {
+            if let Err(_err) = Evaluator::evaluate(&mut context, name, spec) {
                 return InitializeResponse::blank(user_internal);
             }
 

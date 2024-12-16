@@ -36,8 +36,8 @@ use crate::statsig_type_factories::{
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{
-    dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, StatsigHttpIdListsAdapter, SpecsAdapter, SpecsSource,
-    StatsigUser,
+    dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, OverrideAdapter,
+    SpecsAdapter, SpecsSource, StatsigHttpIdListsAdapter, StatsigUser,
 };
 use serde_json::json;
 use std::collections::HashMap;
@@ -57,6 +57,7 @@ pub struct Statsig {
     specs_adapter: Arc<dyn SpecsAdapter>,
     event_logging_adapter: Arc<dyn EventLoggingAdapter>,
     id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
+    override_adapter: Option<Arc<dyn OverrideAdapter>>,
     spec_store: Arc<SpecStore>,
     hashing: HashUtil,
     gcir_formatter: Arc<ClientInitResponseFormatter>,
@@ -86,6 +87,7 @@ impl Statsig {
         let specs_adapter = initialize_specs_adapter(sdk_key, &options, &hashing);
         let id_lists_adapter = initialize_id_lists_adapter(sdk_key, &options);
         let event_logging_adapter = initialize_event_logging_adapter(sdk_key, &options);
+        let override_adapter = options.override_adapter.as_ref().map(Arc::clone);
 
         let environment = options
             .environment
@@ -102,11 +104,15 @@ impl Statsig {
         Statsig {
             sdk_key: sdk_key.to_string(),
             options,
-            gcir_formatter: Arc::new(ClientInitResponseFormatter::new(&spec_store)),
+            gcir_formatter: Arc::new(ClientInitResponseFormatter::new(
+                &spec_store,
+                &override_adapter,
+            )),
             event_logger,
             hashing,
             statsig_environment: environment,
             fallback_environment: Mutex::new(None),
+            override_adapter,
             spec_store,
             specs_adapter,
             event_logging_adapter,
@@ -394,8 +400,10 @@ impl Statsig {
 
         let user_internal = self.internalize_user(user);
 
-        let gate = self.get_feature_gate_impl(&user_internal, gate_name);
-        if options.disable_exposure_logging {
+        let disable_exposure_logging = options.disable_exposure_logging;
+        let gate = self.get_feature_gate_impl(&user_internal, gate_name, options);
+
+        if disable_exposure_logging {
             log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
             self.event_logger
                 .increment_non_exposure_checks_count(gate_name.to_string());
@@ -408,7 +416,11 @@ impl Statsig {
 
     pub fn manually_log_gate_exposure(&self, user: &StatsigUser, gate_name: &str) {
         let user_internal = self.internalize_user(user);
-        let gate = self.get_feature_gate_impl(&user_internal, gate_name);
+        let gate = self.get_feature_gate_impl(
+            &user_internal,
+            gate_name,
+            FeatureGateEvaluationOptions::default(),
+        );
         self.log_gate_exposure(user_internal, gate_name, &gate, true);
     }
 }
@@ -437,9 +449,10 @@ impl Statsig {
         options: DynamicConfigEvaluationOptions,
     ) -> DynamicConfig {
         let user_internal = self.internalize_user(user);
-        let config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
+        let disable_exposure_logging = options.disable_exposure_logging;
+        let config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name, options);
 
-        if options.disable_exposure_logging {
+        if disable_exposure_logging {
             log_d!(
                 TAG,
                 "Exposure logging is disabled for Dynamic Config {}",
@@ -460,7 +473,11 @@ impl Statsig {
         dynamic_config_name: &str,
     ) {
         let user_internal = self.internalize_user(user);
-        let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
+        let dynamic_config = self.get_dynamic_config_impl(
+            &user_internal,
+            dynamic_config_name,
+            DynamicConfigEvaluationOptions::default(),
+        );
         self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &dynamic_config, true);
     }
 }
@@ -485,9 +502,10 @@ impl Statsig {
         options: ExperimentEvaluationOptions,
     ) -> Experiment {
         let user_internal = self.internalize_user(user);
-        let experiment = self.get_experiment_impl(&user_internal, experiment_name);
+        let disable_exposure_logging = options.disable_exposure_logging;
+        let experiment = self.get_experiment_impl(&user_internal, experiment_name, options);
 
-        if options.disable_exposure_logging {
+        if disable_exposure_logging {
             log_d!(
                 TAG,
                 "Exposure logging is disabled for experiment {}",
@@ -504,7 +522,11 @@ impl Statsig {
 
     pub fn manually_log_experiment_exposure(&self, user: &StatsigUser, experiment_name: &str) {
         let user_internal = self.internalize_user(user);
-        let experiment = self.get_experiment_impl(&user_internal, experiment_name);
+        let experiment = self.get_experiment_impl(
+            &user_internal,
+            experiment_name,
+            ExperimentEvaluationOptions::default(),
+        );
         self.log_experiment_exposure(user_internal, experiment_name, &experiment, true);
     }
 }
@@ -525,7 +547,7 @@ impl Statsig {
         options: LayerEvaluationOptions,
     ) -> Layer {
         let user_internal = self.internalize_user(user);
-        self.get_layer_impl(&user_internal, layer_name, options.disable_exposure_logging)
+        self.get_layer_impl(&user_internal, layer_name, options)
     }
 
     pub fn manually_log_layer_parameter_exposure(
@@ -535,7 +557,11 @@ impl Statsig {
         parameter_name: String,
     ) {
         let user_internal = self.internalize_user(user);
-        let layer = self.get_layer_impl(&user_internal, layer_name, false);
+        let layer = self.get_layer_impl(
+            &user_internal,
+            layer_name,
+            LayerEvaluationOptions::default(),
+        );
         self.event_logger
             .enqueue(QueuedEventPayload::LayerExposure(LayerExposure {
                 user: layer.__user,
@@ -557,9 +583,11 @@ impl Statsig {
     fn evaluate_spec<T>(
         &self,
         user_internal: &StatsigUserInternal,
+        spec_name: &str,
         get_spec: impl FnOnce(&SpecStoreData) -> Option<&Spec>,
         make_empty_result: impl FnOnce(EvaluationDetails) -> T,
         make_result: impl FnOnce(&Spec, EvaluatorResult, EvaluationDetails) -> T,
+        evaluation_options: Option<AnyEvaluationOptions>,
     ) -> T {
         let data = read_lock_or_else!(self.spec_store.data, {
             return make_empty_result(EvaluationDetails::unrecognized_no_data());
@@ -570,13 +598,17 @@ impl Statsig {
         match spec {
             Some(spec) => {
                 let app_id = data.values.app_id.as_ref();
-                let mut context =
-                    EvaluatorContext::new(user_internal, &data, &self.hashing, &app_id);
-                match Evaluator::evaluate(&mut context, spec) {
-                    Ok(_result) => {
-                        let eval_details = EvaluationDetails::recognized(&data, &context.result);
-                        make_result(spec, context.result, eval_details)
-                    }
+                let mut context = EvaluatorContext::new(
+                    user_internal,
+                    &data,
+                    &self.hashing,
+                    &app_id,
+                    &self.override_adapter,
+                    &evaluation_options,
+                );
+
+                match Evaluator::evaluate_with_details(&mut context, spec_name, spec) {
+                    Ok(eval_details) => make_result(spec, context.result, eval_details),
                     Err(e) => make_empty_result(EvaluationDetails::error(&e.to_string())),
                 }
             }
@@ -588,15 +620,20 @@ impl Statsig {
         &self,
         user_internal: &StatsigUserInternal,
         gate_name: &str,
+        evaluation_options: FeatureGateEvaluationOptions,
     ) -> FeatureGate {
         self.evaluate_spec(
             user_internal,
+            gate_name,
             |data| data.values.feature_gates.get(gate_name),
             |eval_details| make_feature_gate(gate_name, None, eval_details, None),
             |_spec, mut result, eval_details| {
                 let evaluation = result_to_gate_eval(gate_name, &mut result);
                 make_feature_gate(gate_name, Some(evaluation), eval_details, result.version)
             },
+            Some(AnyEvaluationOptions::FeatureGateEvaluationOptions(
+                evaluation_options,
+            )),
         )
     }
 
@@ -604,15 +641,20 @@ impl Statsig {
         &self,
         user_internal: &StatsigUserInternal,
         config_name: &str,
+        evaluation_options: DynamicConfigEvaluationOptions,
     ) -> DynamicConfig {
         self.evaluate_spec(
             user_internal,
+            config_name,
             |data| data.values.dynamic_configs.get(config_name),
             |eval_details| make_dynamic_config(config_name, None, eval_details, None),
             |_spec, mut result, eval_details| {
                 let evaluation = result_to_dynamic_config_eval(config_name, &mut result);
                 make_dynamic_config(config_name, Some(evaluation), eval_details, result.version)
             },
+            Some(AnyEvaluationOptions::DynamicConfigEvaluationOptions(
+                evaluation_options,
+            )),
         )
     }
 
@@ -620,9 +662,11 @@ impl Statsig {
         &self,
         user_internal: &StatsigUserInternal,
         experiment_name: &str,
+        evaluation_options: ExperimentEvaluationOptions,
     ) -> Experiment {
         self.evaluate_spec(
             user_internal,
+            experiment_name,
             |data| data.values.dynamic_configs.get(experiment_name),
             |eval_details| make_experiment(experiment_name, None, eval_details, None),
             |spec, mut result, eval_details| {
@@ -634,6 +678,9 @@ impl Statsig {
                     result.version,
                 )
             },
+            Some(AnyEvaluationOptions::ExperimentEvaluationOptions(
+                evaluation_options,
+            )),
         )
     }
 
@@ -641,10 +688,12 @@ impl Statsig {
         &self,
         user_internal: &StatsigUserInternal,
         layer_name: &str,
-        disable_exposure: bool,
+        evaluation_options: LayerEvaluationOptions,
     ) -> Layer {
+        let disable_exposure_logging = evaluation_options.disable_exposure_logging;
         self.evaluate_spec(
             user_internal,
+            layer_name,
             |data| data.values.layer_configs.get(layer_name),
             |eval_details| {
                 make_layer(
@@ -654,7 +703,7 @@ impl Statsig {
                     eval_details,
                     None,
                     None,
-                    disable_exposure,
+                    disable_exposure_logging,
                 )
             },
             |_spec, mut result, eval_details| {
@@ -668,9 +717,12 @@ impl Statsig {
                     eval_details,
                     Some(event_logger_ptr),
                     result.version,
-                    disable_exposure,
+                    disable_exposure_logging,
                 )
             },
+            Some(AnyEvaluationOptions::LayerEvaluationOptions(
+                evaluation_options,
+            )),
         )
     }
 
@@ -842,16 +894,16 @@ fn initialize_specs_adapter(
     ))
 }
 
-fn initialize_id_lists_adapter(sdk_key: &str, options: &StatsigOptions) -> Option<Arc<dyn IdListsAdapter>> {
+fn initialize_id_lists_adapter(
+    sdk_key: &str,
+    options: &StatsigOptions,
+) -> Option<Arc<dyn IdListsAdapter>> {
     if let Some(id_lists_adapter) = options.id_lists_adapter.clone() {
         return Some(id_lists_adapter);
     }
 
     if options.enable_id_lists.unwrap_or(false) {
-        return Some(Arc::new(StatsigHttpIdListsAdapter::new(
-            sdk_key,
-            options,
-        )))
+        return Some(Arc::new(StatsigHttpIdListsAdapter::new(sdk_key, options)));
     }
 
     None

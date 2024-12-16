@@ -1,10 +1,9 @@
-use crate::evaluation::dynamic_returnable::DynamicReturnable;
 use crate::evaluation::evaluation_types::{
     BaseEvaluation, DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation,
     SecondaryExposure,
 };
 use crate::spec_types::Spec;
-use serde_json::{from_value, Value};
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default, Debug)]
@@ -15,13 +14,14 @@ pub struct EvaluatorResult<'a> {
     pub is_experiment_active: bool,
     pub is_in_layer: bool,
     pub id_type: Option<&'a String>,
-    pub json_value: Option<&'a DynamicReturnable>,
+    pub json_value: Option<HashMap<String, Value>>,
     pub rule_id: Option<&'a String>,
     pub group_name: Option<&'a String>,
     pub explicit_parameters: Option<&'a Vec<String>>,
     pub config_delegate: Option<&'a String>,
     pub secondary_exposures: Vec<SecondaryExposure>,
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
+    pub override_reason: Option<&'a str>,
     pub version: Option<u32>,
 }
 
@@ -120,10 +120,7 @@ fn get_id_type_info(id_type: Option<&String>) -> (String, bool) {
 }
 
 fn get_json_value(result: &EvaluatorResult) -> HashMap<String, Value> {
-    result
-        .json_value
-        .map(|v| from_value(v.value.clone()).unwrap_or_default())
-        .unwrap_or_default()
+    result.json_value.clone().unwrap_or_default()
 }
 
 fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEvaluation {

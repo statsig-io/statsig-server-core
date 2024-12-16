@@ -8,6 +8,10 @@ pub use instance_store::InstanceStore;
 pub use observability::{
     observability_client_adapter::ObservabilityClient, ops_stats::OpsStatsEventObserver,
 };
+pub use override_adapter::{
+    override_adapter_trait::OverrideAdapter,
+    statsig_local_override_adapter::StatsigLocalOverrideAdapter,
+};
 pub use spec_store::SpecStore;
 pub use specs_adapter::*;
 pub use statsig::Statsig;
@@ -24,6 +28,7 @@ pub mod data_store_interface;
 pub mod instance_store;
 pub mod networking;
 pub mod output_logger;
+pub mod override_adapter;
 pub mod sdk_diagnostics;
 pub mod statsig_core_api_options;
 pub mod statsig_options;

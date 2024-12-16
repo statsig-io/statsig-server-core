@@ -1,9 +1,9 @@
 use crate::data_store_interface::DataStoreTrait;
-use crate::{ObservabilityClient, SpecAdapterConfig, SpecsAdapter};
-use std::sync::Arc;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::id_lists_adapter::IdListsAdapter;
 use crate::output_logger::LogLevel;
+use crate::{ObservabilityClient, OverrideAdapter, SpecAdapterConfig, SpecsAdapter};
+use std::sync::Arc;
 
 pub const DEFAULT_INIT_TIMEOUT_MS: u64 = 3000;
 #[derive(Clone, Default)]
@@ -12,7 +12,7 @@ pub struct StatsigOptions {
     pub specs_adapter: Option<Arc<dyn SpecsAdapter>>,
     pub specs_sync_interval_ms: Option<u32>,
     pub init_timeout_ms: Option<u64>,
-    
+
     // External DataStore
     pub data_store: Option<Arc<dyn DataStoreTrait>>,
 
@@ -30,11 +30,12 @@ pub struct StatsigOptions {
     pub id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
     pub id_lists_sync_interval_ms: Option<u32>,
 
+    pub override_adapter: Option<Arc<dyn OverrideAdapter>>,
     pub fallback_to_statsig_api: Option<bool>,
     pub environment: Option<String>,
 
     pub output_log_level: Option<LogLevel>,
-    pub observability_client: Option<Arc<dyn ObservabilityClient>>
+    pub observability_client: Option<Arc<dyn ObservabilityClient>>,
 }
 
 impl StatsigOptions {
@@ -87,23 +88,32 @@ impl StatsigOptionsBuilder {
         self
     }
 
-    pub fn event_logging_adapter(mut self, event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>) -> Self {
+    pub fn event_logging_adapter(
+        mut self,
+        event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,
+    ) -> Self {
         self.inner.event_logging_adapter = event_logging_adapter;
         self
     }
 
-    pub fn event_logging_flush_interval_ms(mut self, event_logging_flush_interval_ms: Option<u32>) -> Self {
+    pub fn event_logging_flush_interval_ms(
+        mut self,
+        event_logging_flush_interval_ms: Option<u32>,
+    ) -> Self {
         self.inner.event_logging_flush_interval_ms = event_logging_flush_interval_ms;
         self
     }
 
-    pub fn event_logging_max_queue_size(mut self, event_logging_max_queue_size: Option<u32>) -> Self {
+    pub fn event_logging_max_queue_size(
+        mut self,
+        event_logging_max_queue_size: Option<u32>,
+    ) -> Self {
         self.inner.event_logging_max_queue_size = event_logging_max_queue_size;
         self
     }
 
     // ID Lists
-    
+
     pub fn enable_id_lists(mut self, enable_id_lists: Option<bool>) -> Self {
         self.inner.enable_id_lists = enable_id_lists;
         self
@@ -134,7 +144,6 @@ impl StatsigOptionsBuilder {
     pub fn output_log_level(mut self, output_log_level: Option<u32>) -> Self {
         if let Some(level) = output_log_level {
             self.inner.output_log_level = LogLevel::from_int(level);
-
         }
         self
     }
