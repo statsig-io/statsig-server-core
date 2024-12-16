@@ -14,7 +14,10 @@ import {
   statsigLogLayerParamExposure,
   statsigLogStringValueEvent,
   statsigShutdown,
-  consoleLoggerInit
+  consoleLoggerInit,
+  statsigLogDynamicConfigExposure,
+  statsigLogExperimentExposure,
+  statsigLogGateExposure
 } from './bindings';
 import StatsigOptions, { LogLevel } from './StatsigOptions';
 import StatsigUser from './StatsigUser';
@@ -58,6 +61,10 @@ export class Statsig {
     return statsigGetFeatureGate(this.__ref.refId, user.__ref.refId, gateName);
   }
 
+  manuallyLogGateExposure(user: StatsigUser, gateName: string) {
+    statsigLogGateExposure(this.__ref.refId, user.__ref.refId, gateName)
+  }
+
   getDynamicConfig(
     user: StatsigUser,
     dynamicConfigName: string,
@@ -76,6 +83,10 @@ export class Statsig {
     };
   }
 
+  manuallyLogDynamicConfigExposure(user: StatsigUser, configName: string) {
+    statsigLogDynamicConfigExposure(this.__ref.refId, user.__ref.refId, configName)
+  }
+
   getExperiment(user: StatsigUser, experimentName: string): Experiment {
     const experiment = statsigGetExperiment(
       this.__ref.refId,
@@ -89,6 +100,10 @@ export class Statsig {
       value,
       get: _makeTypedGet(value),
     };
+  }
+
+  manuallyLogExperimentExposure(user: StatsigUser, gateName: string) {
+    statsigLogExperimentExposure(this.__ref.refId, user.__ref.refId, gateName)
   }
 
   getLayer(user: StatsigUser, layerName: string): Layer {

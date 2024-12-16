@@ -116,6 +116,20 @@ pub fn statsig_get_feature_gate(
 }
 
 #[napi]
+pub fn statsig_log_gate_exposure(statsig_ref: String, user_ref: String, gate_name: String) {
+  let statsig = get_instance_or_else!(Statsig, &statsig_ref, {
+    return;
+  });
+
+  let user = get_instance_or_else!(StatsigUser, &user_ref, {
+    return;
+  });
+
+  statsig.manually_log_gate_exposure(&user, &gate_name)
+}
+ 
+
+#[napi]
 pub fn statsig_get_dynamic_config(
   statsig_ref: String,
   user_ref: String,
@@ -140,6 +154,20 @@ pub fn statsig_get_dynamic_config(
 }
 
 #[napi]
+pub fn statsig_log_dynamic_config_exposure(statsig_ref: String, user_ref: String, config_name: String) {
+  let statsig = get_instance_or_else!(Statsig, &statsig_ref, {
+    return;
+  });
+
+  let user = get_instance_or_else!(StatsigUser, &user_ref, {
+    return;
+  });
+
+  statsig.manually_log_dynamic_config_exposure(&user, &config_name)
+}
+ 
+
+#[napi]
 pub fn statsig_get_experiment(
   statsig_ref: String,
   user_ref: String,
@@ -162,6 +190,19 @@ pub fn statsig_get_experiment(
     group_name: experiment.group_name,
     json_value: json!(experiment.value).to_string(),
   }
+}
+
+#[napi]
+pub fn statsig_log_experiment_exposure(statsig_ref: String, user_ref: String, experiment_name: String) {
+  let statsig = get_instance_or_else!(Statsig, &statsig_ref, {
+    return;
+  });
+
+  let user = get_instance_or_else!(StatsigUser, &user_ref, {
+    return;
+  });
+  
+  statsig.manually_log_experiment_exposure(&user, &experiment_name)
 }
 
 #[napi]
