@@ -152,7 +152,7 @@ impl StatsigGrpcSpecsAdapter {
                     if let Err(err) = result {
                         let attempt = self.retry_state.retry_attempts.fetch_add(1, Ordering::SeqCst);
                         if attempt > RETRY_LIMIT {
-                            log_e!(TAG, "gRPC stream failure: {:?}", err);
+                            log_e!(TAG, "gRPC stream failure, exhaust retry limit: {:?}", err);
                            break;
                         }
                         self.grpc_client.reset_client();
@@ -205,7 +205,7 @@ impl StatsigGrpcSpecsAdapter {
                     let _ = self.send_spec_update_to_listener(config_spec.spec);
                 }
                 _ => {
-                    log_e!(TAG, "Error while receiving stream");
+                    log_w!(TAG, "Error while receiving stream");
                     return Err(StatsigErr::NetworkError(
                         "Error while receiving stream".to_string(),
                     ));
