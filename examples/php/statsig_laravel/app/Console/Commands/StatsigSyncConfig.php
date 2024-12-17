@@ -29,7 +29,7 @@ class StatsigSyncConfig extends Command
     {
         Log::debug("Syncing Statsig configuration...");
 
-        $adapter = new StatsigLocalFileSpecsAdapter(env("STATSIG_SECRET_KEY"), "/tmp");
+        $adapter = new StatsigLocalFileSpecsAdapter(env("STATSIG_SECRET_KEY"), "/tmp", "https://api.statsigcdn.com/v2/download_config_specs");
         $adapter->sync_specs_from_network();
 
         Log::debug("Statsig configuration synced");

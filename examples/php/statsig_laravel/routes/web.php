@@ -21,7 +21,38 @@ Route::get('/statsig/list_experiments', function (Statsig $statsig) {
         $experiments[$name] = $statsig->getExperiment($name, $user);
     }
 
+    $statsig->flushEvents(function () {
+        //
+    });
+
     return response()->json($experiments);
+});
+
+Route::get('/statsig/get_layer', function (Statsig $statsig) {
+    $user_id = request()->query('user_id', null);
+    if ($user_id === null) {
+        return response()->json(["error" => "user_id is required"]);
+    }
+
+    $layer_name = request()->query('layer_name', null);
+    if ($layer_name === null) {
+        return response()->json(["error" => "layer_name is required"]);
+    }
+
+    $param_name = request()->query('param_name', null);
+    if ($param_name === null) {
+        return response()->json(["error" => "param_name is required"]);
+    }
+
+    $user = new StatsigUser($user_id);
+    $layer = $statsig->getLayer($layer_name, $user);
+    $value = $layer->get($param_name, null);
+
+    $statsig->flushEvents(function () {
+        //
+    });
+
+    return response()->json($value);
 });
 
 
