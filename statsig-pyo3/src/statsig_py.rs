@@ -6,7 +6,7 @@ use crate::{
 };
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use sigstat::{log_e, unwrap_or_return, ClientInitResponseOptions, Statsig};
+use sigstat::{log_e, unwrap_or_return, ClientInitResponseOptions, Statsig, HashAlgorithm};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -124,11 +124,11 @@ impl StatsigPy {
         Ok(())
     }
 
-    pub fn check_gate(&self, name: &str, user: &StatsigUserPy) -> bool {
+    pub fn check_gate(&self, user: &StatsigUserPy, name: &str) -> bool {
         self.inner.check_gate(&user.inner, name)
     }
 
-    pub fn get_feature_gate(&self, name: &str, user: &StatsigUserPy) -> FeatureGatePy {
+    pub fn get_feature_gate(&self, user: &StatsigUserPy, name: &str) -> FeatureGatePy {
         let gate = self.inner.get_feature_gate(&user.inner, name);
         FeatureGatePy {
             name: gate.name,
@@ -138,18 +138,19 @@ impl StatsigPy {
         }
     }
 
-    pub fn get_dynamic_config(&self, name: &str, user: &StatsigUserPy) -> DynamicConfigPy {
+    pub fn get_dynamic_config(&self, user: &StatsigUserPy, name: &str) -> DynamicConfigPy {
         let config = self.inner.get_dynamic_config(&user.inner, name);
 
         DynamicConfigPy {
             name: config.name.clone(),
             rule_id: config.rule_id.clone(),
             id_type: config.id_type.clone(),
+            value: serde_json::to_string(&config.value).unwrap(),
             inner: config,
         }
     }
 
-    pub fn get_experiment(&self, name: &str, user: &StatsigUserPy) -> ExperimentPy {
+    pub fn get_experiment(&self, user: &StatsigUserPy, name: &str) -> ExperimentPy {
         let experiment = self.inner.get_experiment(&user.inner, name);
 
         ExperimentPy {
@@ -157,23 +158,33 @@ impl StatsigPy {
             rule_id: experiment.rule_id.clone(),
             id_type: experiment.id_type.clone(),
             group_name: experiment.group_name.clone(),
+            value: serde_json::to_string(&experiment.value).unwrap(),
             inner: experiment,
         }
     }
 
-    pub fn get_layer(&self, name: &str, user: &StatsigUserPy) -> LayerPy {
+    pub fn get_layer(&self, user: &StatsigUserPy, name: &str) -> LayerPy {
         let layer = self.inner.get_layer(&user.inner, name);
 
         LayerPy {
             name: layer.name.clone(),
             rule_id: layer.rule_id.clone(),
             group_name: layer.group_name.clone(),
+            allocated_experiment_name: layer.allocated_experiment_name.clone(),
+            value: serde_json::to_string(&layer.__value).unwrap(),
             inner: layer,
         }
     }
 
-    pub fn get_client_init_response(&self, user: &StatsigUserPy) -> String {
-        let opts = ClientInitResponseOptions::default();
+    #[pyo3(signature = (user, hash=None))]
+    pub fn get_client_init_response(&self, user: &StatsigUserPy, hash: Option<&str>) -> String {
+        let mut opts = ClientInitResponseOptions::default();
+        if hash == Some("none") {
+            opts.hash_algorithm = Some(HashAlgorithm::None);
+        }
+        if hash == Some("sha256") {
+            opts.hash_algorithm = Some(HashAlgorithm::Sha256);
+        }
         self.inner
             .get_client_init_response_with_options_as_string(&user.inner, &opts)
     }

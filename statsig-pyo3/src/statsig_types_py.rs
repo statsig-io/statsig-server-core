@@ -28,6 +28,9 @@ pub struct DynamicConfigPy {
     #[pyo3(get)]
     pub id_type: String,
 
+    #[pyo3(get)]
+    pub value: String,
+
     pub inner: DynamicConfig,
 }
 
@@ -45,6 +48,9 @@ pub struct ExperimentPy {
     #[pyo3(get)]
     pub group_name: Option<String>,
 
+    #[pyo3(get)]
+    pub value: String,
+
     pub inner: Experiment,
 }
 
@@ -58,6 +64,12 @@ pub struct LayerPy {
 
     #[pyo3(get)]
     pub group_name: Option<String>,
+
+    #[pyo3(get)]
+    pub allocated_experiment_name: Option<String>,
+
+    #[pyo3(get)]
+    pub value: String,
 
     pub inner: Layer,
 }

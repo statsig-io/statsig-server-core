@@ -24,12 +24,12 @@ def setup(httpserver: HTTPServer):
 def test_check_gate(httpserver: HTTPServer):
     statsig = setup(httpserver)
 
-    assert statsig.check_gate("test_public", StatsigUser("a-user"))
+    assert statsig.check_gate(StatsigUser("a-user"), "test_public")
 
 
 def test_get_feature_gate(httpserver: HTTPServer):
     statsig = setup(httpserver)
-    gate = statsig.get_feature_gate("test_public", StatsigUser("a-user"))
+    gate = statsig.get_feature_gate(StatsigUser("a-user"), "test_public")
 
     assert gate.value
     assert gate.name == "test_public"
@@ -39,7 +39,7 @@ def test_get_feature_gate(httpserver: HTTPServer):
 
 def test_get_dynamic_config(httpserver: HTTPServer):
     statsig = setup(httpserver)
-    config = statsig.get_dynamic_config("big_number", StatsigUser("my_user"))
+    config = statsig.get_dynamic_config(StatsigUser("my_user"), "big_number")
 
     assert config.get_float("foo", 1) == 1e21
     assert config.get_integer("rar", 1) == 9999999999
@@ -51,7 +51,7 @@ def test_get_dynamic_config(httpserver: HTTPServer):
 def test_get_experiment(httpserver: HTTPServer):
     statsig = setup(httpserver)
     experiment = statsig.get_experiment(
-        "experiment_with_many_params", StatsigUser("my_user")
+        StatsigUser("my_user"), "experiment_with_many_params"
     )
 
     assert experiment.get_string("a_string", "ERR") == "test_2"
@@ -63,7 +63,7 @@ def test_get_experiment(httpserver: HTTPServer):
 
 def test_get_layer(httpserver: HTTPServer):
     statsig = setup(httpserver)
-    layer = statsig.get_layer("layer_with_many_params", StatsigUser("my_user"))
+    layer = statsig.get_layer(StatsigUser("my_user"), "layer_with_many_params")
 
     assert layer.get_string("a_string", "ERR") == "test_2"
     assert layer.name == "layer_with_many_params"

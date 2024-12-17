@@ -46,7 +46,7 @@ def test_shutdown_flushes(httpserver: HTTPServer):
     logs = []
     statsig = setup(httpserver, logs)
 
-    statsig.check_gate("test_public", StatsigUser("my_user"))
+    statsig.check_gate(StatsigUser("my_user"), "test_public")
 
     statsig.shutdown().wait()
     events = get_non_diagnostic_events(logs)
@@ -59,7 +59,7 @@ def test_gate_exposures(httpserver: HTTPServer):
     logs = []
     statsig = setup(httpserver, logs)
 
-    statsig.check_gate("test_public", StatsigUser("my_user"))
+    statsig.check_gate(StatsigUser("my_user"), "test_public")
 
     statsig.flush_events().wait()
     events = get_non_diagnostic_events(logs)
@@ -72,7 +72,7 @@ def test_layer_exposure(httpserver: HTTPServer):
     logs = []
     statsig = setup(httpserver, logs)
 
-    layer = statsig.get_layer("layer_with_many_params", StatsigUser("my_user"))
+    layer = statsig.get_layer(StatsigUser("my_user"), "layer_with_many_params")
     statsig.flush_events().wait()
     events = get_non_diagnostic_events(logs)
 
