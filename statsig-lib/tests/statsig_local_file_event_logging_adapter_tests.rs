@@ -7,8 +7,9 @@ use sigstat::{EventLoggingAdapter, StatsigLocalFileEventLoggingAdapter};
 use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 use flate2::read::GzDecoder;
+use futures::future::join_all;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
 const SDK_KEY: &str = "server-local-file-events-test";
@@ -236,4 +237,40 @@ async fn test_exposure_dedupe() {
     assert_eq!(mock_scrapi.get_logged_event_count(), 1);
     let reqs = mock_scrapi.get_requests_for_endpoint(Endpoint::LogEvent);
     assert_eq!(reqs.len(), 1);
+}
+
+#[tokio::test]
+#[allow(clippy::await_holding_lock)]
+async fn test_concurrent_usage() {
+    let _lock = get_test_lock();
+    let mock_scrapi = setup().await;
+
+    let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
+    let adapter = Arc::new(StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, "/tmp", Some(url)));
+
+    let mut task = vec![];
+    for _ in 0..10 {
+        let adapter_clone = adapter.clone();
+        task.push(tokio::task::spawn(async move {
+            adapter_clone
+                .log_events(LogEventRequest {
+                    payload: LogEventPayload {
+                        events: TEST_EVENTS_DATA.clone(),
+                        statsig_metadata: json!("{}"),
+                    },
+                    event_count: 1,
+                })
+                .await
+                .unwrap();
+        }));
+
+        let another_clone = adapter.clone();
+        task.push(tokio::task::spawn(async move {
+            another_clone.send_pending_events().await.unwrap();
+        }));
+    }
+
+    join_all(task).await;
+
+    assert_eq!(mock_scrapi.get_logged_event_count(), 10);
 }
