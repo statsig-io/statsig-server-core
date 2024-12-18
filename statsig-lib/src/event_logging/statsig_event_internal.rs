@@ -5,6 +5,9 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashSet;
+use crate::event_logging::config_exposure::CONFIG_EXPOSURE_EVENT_NAME;
+use crate::event_logging::gate_exposure::GATE_EXPOSURE_EVENT_NAME;
+use crate::event_logging::layer_exposure::LAYER_EXPOSURE_EVENT_NAME;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -51,6 +54,12 @@ impl StatsigEventInternal {
             time: Utc::now().timestamp_millis() as u64,
             secondary_exposures: None,
         }
+    }
+
+    pub fn is_exposure_event(&self) -> bool {
+        self.event_data.event_name == GATE_EXPOSURE_EVENT_NAME ||
+            self.event_data.event_name == CONFIG_EXPOSURE_EVENT_NAME ||
+            self.event_data.event_name == LAYER_EXPOSURE_EVENT_NAME
     }
 }
 

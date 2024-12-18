@@ -80,7 +80,7 @@ impl StatsigHttpSpecsAdapter {
 
         // TODO logging
 
-        return match self.network.get(request_args).await {
+        match self.network.get(request_args).await {
             Ok(response) => Some(response),
             Err(_) => None,
         }

@@ -40,32 +40,14 @@ class StatsigScheduledEventLoggingAdapterTest extends TestCase
 
     public function testSendingEvents()
     {
-        $request_json = json_encode([
-            "requests" => [
-                [
-                    "payload" => [
-                        "events" => [
-                            [
-                                "eventName" => "my_custom_event",
-                                "metadata" => null,
-                                "secondaryExposures" => null,
-                                "time" => 1730831508904,
-                                "user" => [
-                                    "statsigEnvironment" => null,
-                                    "userID" => "a-user",
-                                ],
-                                "value" => null,
-                            ],
-                        ],
-                        "statsigMetadata" => [
-                            "sdkType" => "statsig-server-core",
-                            "sdkVersion" => "0.0.1",
-                            "sessionId" => "1ff863ed-a9ab-4785-bb0e-1a7b0140c040",
-                        ],
-                    ],
-                    "eventCount" => 1,]
-            ]
-        ]);
+        $request_json = json_encode([[
+              "eventName" => "foo",
+              "metadata" => [ "key" => "value" ],
+              "secondaryExposures" => null,
+              "time" => 1734476293616,
+              "user" => ["statsigEnvironment" => null, "userID" => "a-user"],
+              "value" => "bar"
+        ]]);
 
         file_put_contents(self::FILE_PATH, $request_json);
 

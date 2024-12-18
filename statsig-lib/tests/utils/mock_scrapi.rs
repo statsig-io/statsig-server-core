@@ -6,7 +6,6 @@ use std::{
     },
     time::Duration,
 };
-
 use wiremock::{
     http::Method as WiremockMethod,
     matchers::{method, path, path_regex},
@@ -103,6 +102,7 @@ impl MockScrapi {
                         .unwrap()
                         .parse::<u64>()
                         .unwrap();
+
                     logged_events.fetch_add(count, Ordering::SeqCst);
                 }
 

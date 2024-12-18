@@ -1,13 +1,19 @@
+use std::collections::HashSet;
+use std::io::Write;
 use std::sync::Arc;
 
 use super::log_event_payload::LogEventRequest;
+use crate::event_logging::statsig_event_internal::StatsigEventInternal;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::hashing::djb2;
-use crate::{StatsigErr, StatsigHttpEventLoggingAdapter, StatsigRuntime};
+use crate::log_event_payload::LogEventPayload;
+use crate::statsig_metadata::StatsigMetadata;
+use crate::{log_e, StatsigErr, StatsigHttpEventLoggingAdapter, StatsigRuntime};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-const MAX_PENDING_REQUESTS: usize = 10;
+use serde_json::json;
 
+const TAG: &str = stringify!(StatsigLocalFileEventLoggingAdapter);
 #[derive(Serialize, Deserialize)]
 pub struct PendingLogRequests {
     requests: Vec<LogEventRequest>,
@@ -30,15 +36,51 @@ impl StatsigLocalFileEventLoggingAdapter {
     }
 
     pub async fn send_pending_events(&self) -> Result<(), StatsigErr> {
-        let current_requests = self.get_and_clear_current_requests()?;
+        let current_requests = match self.get_and_clear_current_requests()? {
+            Some(requests) => requests,
+            None => return Ok(()),
+        };
 
-        if current_requests.requests.is_empty() {
-            return Ok(());
+        let mut seen_exposures = HashSet::new();
+        let mut processed_events = vec![];
+
+        for line in current_requests.lines() {
+            let events: Vec<StatsigEventInternal> = match serde_json::from_str(line) {
+                Ok(events) => events,
+                Err(e) => {
+                    log_e!(TAG, "Failed to parse events in file: {}", e.to_string());
+                    continue
+                }
+            };
+
+            for event in events {
+                if !event.is_exposure_event() {
+                    processed_events.push(event);
+                    continue;
+                }
+
+                let key = create_merge_key(&event);
+                if seen_exposures.contains(&key) {
+                    continue;
+                }
+
+                seen_exposures.insert(key);
+                processed_events.push(event);
+            }
         }
 
-        let tasks = current_requests.requests.into_iter().map(|req| async {
-            let result = self.http_adapter.send_events_over_http(&req).await;
-            (req, result)
+        let chunks = processed_events.chunks(1000);
+        let tasks = chunks.map(|chunk| async move {
+            let request = LogEventRequest {
+                event_count: chunk.len() as u64,
+                payload: LogEventPayload {
+                    events: json!(chunk),
+                    statsig_metadata: StatsigMetadata::get_as_json(),
+                },
+            };
+
+            let result = self.http_adapter.send_events_over_http(&request).await;
+            (request, result)
         });
 
         let results = futures::future::join_all(tasks).await;
@@ -58,24 +100,40 @@ impl StatsigLocalFileEventLoggingAdapter {
         Ok(())
     }
 
-    fn get_current_requests(&self) -> Result<PendingLogRequests, StatsigErr> {
+    fn get_and_clear_current_requests(&self) -> Result<Option<String>, StatsigErr> {
         if !std::path::Path::new(&self.file_path).exists() {
-            return Ok(PendingLogRequests { requests: vec![] });
+            return Ok(None);
         }
 
         let file_contents = std::fs::read_to_string(&self.file_path)
             .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
-        serde_json::from_str(&file_contents).map_err(|e| {
-            StatsigErr::JsonParseError(stringify!(PendingLogRequests).to_string(), e.to_string())
-        })
+        std::fs::remove_file(&self.file_path).map_err(|e| StatsigErr::FileError(e.to_string()))?;
+        Ok(Some(file_contents))
+    }
+}
+
+fn create_merge_key(event: &StatsigEventInternal) -> String {
+    let mut metadata_string = String::new();
+    if let Some(metadata) = &event.event_data.metadata {
+        let mut entries: Vec<(String, String)> = metadata
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+
+        entries.sort_by(|a, b| a.0.cmp(&b.0));
+
+        metadata_string = entries
+            .into_iter()
+            .map(|(_, v)| v)
+            .collect::<Vec<String>>()
+            .join(",");
     }
 
-    fn get_and_clear_current_requests(&self) -> Result<PendingLogRequests, StatsigErr> {
-        let result = self.get_current_requests()?;
-        std::fs::remove_file(&self.file_path).map_err(|e| StatsigErr::FileError(e.to_string()))?;
-        Ok(result)
-    }
+    format!(
+        "{}|{}|{}",
+        event.event_data.event_name, event.user.value, metadata_string
+    )
 }
 
 #[async_trait]
@@ -85,21 +143,15 @@ impl EventLoggingAdapter for StatsigLocalFileEventLoggingAdapter {
     }
 
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
-        let mut current_requests = self.get_current_requests()?;
+        let json = request.payload.events.to_string();
 
-        if !attempt_to_append_events(&mut current_requests, &request) {
-            current_requests.requests.push(request);
-        }
-
-        while current_requests.requests.len() >= MAX_PENDING_REQUESTS {
-            current_requests.requests.remove(0);
-        }
-
-        let json = serde_json::to_string(&current_requests).map_err(|e| {
-            StatsigErr::JsonParseError(stringify!(PendingLogRequests).to_string(), e.to_string())
-        })?;
-
-        std::fs::write(&self.file_path, json).map_err(|e| StatsigErr::FileError(e.to_string()))?;
+        std::fs::OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(&self.file_path)
+            .map_err(|e| StatsigErr::FileError(e.to_string()))?
+            .write_all(format!("{}\n", json).as_bytes())
+            .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
         Ok(true)
     }
@@ -110,21 +162,5 @@ impl EventLoggingAdapter for StatsigLocalFileEventLoggingAdapter {
 
     fn should_schedule_background_flush(&self) -> bool {
         false
-    }
-}
-
-fn attempt_to_append_events(current: &mut PendingLogRequests, request: &LogEventRequest) -> bool {
-    let last = match current.requests.last_mut() {
-        Some(last) => last,
-        None => {
-            return false;
-        }
-    };
-
-    if last.event_count >= 500 {
-        false
-    } else {
-        last.merge(request);
-        true
     }
 }
