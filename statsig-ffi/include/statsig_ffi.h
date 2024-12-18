@@ -13,7 +13,11 @@ void statsig_release(const char *statsig_ref);
 
 void statsig_initialize(const char *statsig_ref, void (*callback)(void));
 
+void statsig_initialize_blocking(const char *statsig_ref);
+
 void statsig_flush_events(const char *statsig_ref, void (*callback)(void));
+
+void statsig_flush_events_blocking(const char *statsig_ref);
 
 const char *statsig_get_current_values(const char *statsig_ref);
 

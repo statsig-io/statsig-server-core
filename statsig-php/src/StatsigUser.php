@@ -7,20 +7,30 @@ class StatsigUser
 {
     public $__ref = null;
 
-    public function __construct(string $user_id, string $email = null)
-    {
+    public function __construct(
+        string $user_id,
+        array $custom_ids = [],
+        string $email = null,
+        string $ip = null,
+        string $user_agent = null,
+        string $country = null,
+        string $locale = null,
+        string $app_version = null,
+        array $custom = null,
+        array $private_attributes = null
+    ) {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->statsig_user_create(
             $user_id,
-            null, // custom_ids
+            json_encode($custom_ids),
             $email,
-            null, // ip
-            null, // user_agent
-            null, // country
-            null, // locale
-            null, // app_version
-            null, // custom_json
-            null, // private_attributes_json
+            $ip,
+            $user_agent,
+            $country,
+            $locale,
+            $app_version,
+            json_encode($custom),
+            json_encode($private_attributes),
         );
     }
 

@@ -50,7 +50,7 @@ class StatsigLocalFileSpecsAdapterTest extends TestCase
             $this->server->getUrl() . "/v2/download_config_specs"
         );
 
-        $adapter->sync_specs_from_network();
+        $adapter->syncSpecsFromNetwork();
 
         $json = json_decode(file_get_contents("/tmp/".self::FILE_NAME), true);
         $this->assertArrayHasKey("dynamic_configs", $json);

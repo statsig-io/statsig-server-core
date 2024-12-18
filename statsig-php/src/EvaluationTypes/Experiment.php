@@ -13,7 +13,8 @@ class Experiment extends BaseEvaluation
         $this->value = $result['value'] ?? [];
     }
 
-    public function get(string $param_name, $fallback) {
+    public function get(string $param_name, $fallback)
+    {
         return $this->getValueImpl($this->value, $param_name, $fallback, null);
     }
 }

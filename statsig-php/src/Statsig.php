@@ -27,18 +27,19 @@ class Statsig
             return;
         }
 
+        $this->flushEvents();
         StatsigFFI::get()->statsig_release($this->__ref);
         $this->__ref = null;
     }
 
-    public function initialize($callback): void
+    public function initialize(): void
     {
-        StatsigFFI::get()->statsig_initialize($this->__ref, $callback);
+        StatsigFFI::get()->statsig_initialize_blocking($this->__ref);
     }
 
-    public function flushEvents($callback): void
+    public function flushEvents(): void
     {
-        StatsigFFI::get()->statsig_flush_events($this->__ref, $callback);
+        StatsigFFI::get()->statsig_flush_events_blocking($this->__ref);
     }
 
     public function checkGate(string $name, StatsigUser $user): bool

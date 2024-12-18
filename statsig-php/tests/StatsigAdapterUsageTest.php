@@ -38,7 +38,7 @@ class StatsigAdapterUsageTest extends TestCase
             "/tmp",
             $this->server->getUrl() . "/v2/download_config_specs"
         );
-        $adapter->sync_specs_from_network();
+        $adapter->syncSpecsFromNetwork();
 
         $options = new StatsigOptions(
             null,
@@ -47,13 +47,7 @@ class StatsigAdapterUsageTest extends TestCase
         );
 
         $statsig = new Statsig("secret-key", $options);
-        $statsig->initialize(function () use (&$callback_fired) {
-            $callback_fired = true;
-        });
-
-        TestHelpers::waitUntilTrue($this, function () use (&$callback_fired) {
-            return $callback_fired;
-        });
+        $statsig->initialize();
 
         $user = new StatsigUser("a-user");
         $gate = $statsig->getFeatureGate("test_50_50", $user);
@@ -69,19 +63,13 @@ class StatsigAdapterUsageTest extends TestCase
             $this->server->getUrl() . "/v2/download_config_specs"
         );
 
-        $specs_adapter->sync_specs_from_network();
+        $specs_adapter->syncSpecsFromNetwork();
 
         $event_adapter = new StatsigLocalFileEventLoggingAdapter($sdk_key, "/tmp");
 
         $statsig = new Statsig($sdk_key, new StatsigOptions(null, null, $specs_adapter, $event_adapter));
 
-        $statsig->initialize(function () use (&$callback_fired) {
-            // $callback_fired = true;
-        });
-
-//        $statsig->flushEvents(function () use (&$callback_fired) {
-//            // $callback_fired = true;
-//        });
+        $statsig->initialize();
 
         $this->assertTrue(true);
     }

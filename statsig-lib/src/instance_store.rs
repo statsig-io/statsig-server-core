@@ -10,12 +10,17 @@ use crate::{
 
 const TAG: &str = stringify!(InstanceStore);
 
+
+
 #[macro_export]
 macro_rules! get_instance_or_noop {
     ($type:ty, $ref:expr) => {
         match INST_STORE.get::<$type>($ref) {
             Some(instance) => instance,
-            None => return,
+            None => {
+                $crate::log_w!(TAG, "{} Reference not found {}", stringify!($type), $ref);
+                return;
+            }
         }
     };
 }
@@ -25,7 +30,10 @@ macro_rules! get_instance_or_return {
     ($type:ty, $ref:expr, $return_val:expr) => {
         match INST_STORE.get::<$type>($ref) {
             Some(instance) => instance,
-            None => return $return_val,
+            None => {
+                $crate::log_w!(TAG, "{} Reference not found {}", stringify!($type), $ref);
+                return $return_val;
+            }
         }
     };
 }

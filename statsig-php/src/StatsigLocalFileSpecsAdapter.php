@@ -23,7 +23,7 @@ class StatsigLocalFileSpecsAdapter
         $this->__ref = null;
     }
 
-    public function sync_specs_from_network(): void
+    public function syncSpecsFromNetwork(): void
     {
         StatsigFFI::get()->statsig_local_file_specs_adapter_fetch_and_write_to_file($this->__ref);
     }

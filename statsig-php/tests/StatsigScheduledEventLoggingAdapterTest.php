@@ -57,7 +57,7 @@ class StatsigScheduledEventLoggingAdapterTest extends TestCase
             $this->server->getUrl() . "/v1/log_event"
         );
 
-        $adapter->send_pending_events();
+        $adapter->sendPendingEvents();
 
         $request = $this->server->getRequests()[0];
         $this->assertEquals('/v1/log_event', $request['path']);

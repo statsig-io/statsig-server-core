@@ -40,11 +40,17 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_initialize", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_initialize(byte* statsig_ref, statsig_initialize_callback_delegate callback);
 
+        [DllImport(__DllName, EntryPoint = "statsig_initialize_blocking", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void statsig_initialize_blocking(byte* statsig_ref);
+
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void statsig_flush_events_callback_delegate();
 
         [DllImport(__DllName, EntryPoint = "statsig_flush_events", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_flush_events(byte* statsig_ref, statsig_flush_events_callback_delegate callback);
+
+        [DllImport(__DllName, EntryPoint = "statsig_flush_events_blocking", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void statsig_flush_events_blocking(byte* statsig_ref);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_current_values", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_current_values(byte* statsig_ref);

@@ -13,6 +13,7 @@ use crate::log_event_payload::{LogEventPayload, LogEventRequest};
 use chrono::Utc;
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
+use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use tokio::time::{sleep, Duration};
@@ -36,6 +37,17 @@ pub enum QueuedEventPayload {
     GateExposure(GateExposure),
     ConfigExposure(ConfigExposure),
     LayerExposure(LayerExposure),
+}
+
+impl Display for QueuedEventPayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            QueuedEventPayload::CustomEvent(e) => write!(f, "CustomEvent: {}", e.event_data.event_name),
+            QueuedEventPayload::GateExposure(e) => write!(f, "GateExposure: {}", e.gate_name),
+            QueuedEventPayload::ConfigExposure(e) => write!(f, "ConfigExposure: {}", e.config_name),
+            QueuedEventPayload::LayerExposure(e) => write!(f, "LayerExposure: {}", e.layer_name),
+        }
+    }
 }
 
 const TAG: &str = stringify!(EventLogger);
@@ -123,8 +135,12 @@ impl EventLogger {
 
     pub fn enqueue(&self, payload: QueuedEventPayload) {
         if self.disable_all_logging {
+            log_d!(TAG, "Did not enqueue {} because all logging is disabled", payload);
             return;
         }
+
+        log_d!(TAG, "Enqueued {}", payload);
+
         let mut should_flush = false;
         if let Ok(mut mut_events) = self.event_queue.write() {
             mut_events.push(payload);

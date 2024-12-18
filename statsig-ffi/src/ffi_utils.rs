@@ -9,10 +9,14 @@ macro_rules! get_instance_or_noop_c {
     ($type:ty, $ref:expr) => {
         match c_char_to_string($ref) {
             Some(id) => sigstat::get_instance_or_noop!($type, &id),
-            None => return,
+            None => {
+                sigstat::log_w!(TAG, "Attempting to get {} with null reference", stringify!($type));
+                return
+            },
         }
     };
 }
+
 
 #[macro_export]
 macro_rules! get_instance_or_return_c {
@@ -23,6 +27,7 @@ macro_rules! get_instance_or_return_c {
         }
     };
 }
+
 
 pub fn c_char_to_string(c_str: *const c_char) -> Option<String> {
     if c_str.is_null() {

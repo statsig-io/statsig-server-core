@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::sync::Arc;
 
 use super::log_event_payload::LogEventRequest;
@@ -8,8 +8,9 @@ use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::hashing::djb2;
 use crate::log_event_payload::LogEventPayload;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_e, StatsigErr, StatsigHttpEventLoggingAdapter, StatsigRuntime};
+use crate::{log_d, log_e, StatsigErr, StatsigHttpEventLoggingAdapter, StatsigRuntime};
 use async_trait::async_trait;
+use file_guard::Lock;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -36,9 +37,13 @@ impl StatsigLocalFileEventLoggingAdapter {
     }
 
     pub async fn send_pending_events(&self) -> Result<(), StatsigErr> {
+        log_d!(TAG, "Sending pending events...");
         let current_requests = match self.get_and_clear_current_requests()? {
             Some(requests) => requests,
-            None => return Ok(()),
+            None => {
+                log_d!(TAG, "No events found");
+                return Ok(())
+            },
         };
 
         let mut seen_exposures = HashSet::new();
@@ -97,18 +102,35 @@ impl StatsigLocalFileEventLoggingAdapter {
             self.log_events(failed_requests.remove(0)).await?;
         }
 
+        log_d!(TAG, "All events sent");
+
         Ok(())
     }
 
     fn get_and_clear_current_requests(&self) -> Result<Option<String>, StatsigErr> {
-        if !std::path::Path::new(&self.file_path).exists() {
+        log_d!(TAG, "Retrieving pending events from {}", self.file_path);
+
+        let path = std::path::Path::new(&self.file_path);
+        if !path.exists() {
             return Ok(None);
         }
-
-        let file_contents = std::fs::read_to_string(&self.file_path)
+    
+        let mut file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&self.file_path)
+            .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+    
+        let mut lock = file_guard::lock(&mut file, Lock::Exclusive, 0, 1)
             .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
-        std::fs::remove_file(&self.file_path).map_err(|e| StatsigErr::FileError(e.to_string()))?;
+        let mut file_contents = String::new();
+        (*lock).read_to_string(&mut file_contents)
+            .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+    
+        // Truncate the file to clear its contents
+        (*lock).set_len(0).map_err(|e| StatsigErr::FileError(e.to_string()))?;
+    
         Ok(Some(file_contents))
     }
 }
@@ -145,12 +167,16 @@ impl EventLoggingAdapter for StatsigLocalFileEventLoggingAdapter {
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
         let json = request.payload.events.to_string();
 
-        std::fs::OpenOptions::new()
+        let mut file = std::fs::OpenOptions::new()
             .append(true)
             .create(true)
             .open(&self.file_path)
-            .map_err(|e| StatsigErr::FileError(e.to_string()))?
-            .write_all(format!("{}\n", json).as_bytes())
+            .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+
+        let mut lock = file_guard::lock(&mut file, Lock::Exclusive, 0, 1)
+            .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+
+        (*lock).write_all(format!("{}\n", json).as_bytes())
             .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
         Ok(true)

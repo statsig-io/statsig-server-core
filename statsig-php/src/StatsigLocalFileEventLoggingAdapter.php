@@ -27,7 +27,7 @@ class StatsigLocalFileEventLoggingAdapter
         $this->__ref = null;
     }
 
-    public function send_pending_events(): void
+    public function sendPendingEvents(): void
     {
         StatsigFFI::get()->statsig_local_file_event_logging_adapter_send_pending_events($this->__ref);
     }

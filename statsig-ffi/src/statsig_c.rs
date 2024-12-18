@@ -2,10 +2,7 @@ use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::{get_instance_or_noop_c, get_instance_or_return_c};
 use serde_json::json;
 use sigstat::instance_store::INST_STORE;
-use sigstat::{
-    get_instance_or_noop, log_e, unwrap_or_noop, unwrap_or_return, Statsig, StatsigOptions,
-    StatsigRuntime, StatsigUser,
-};
+use sigstat::{get_instance_or_noop, log_d, log_e, unwrap_or_noop, unwrap_or_return, Statsig, StatsigOptions, StatsigRuntime, StatsigUser};
 use std::collections::HashMap;
 use std::os::raw::c_char;
 use std::ptr::null;
@@ -44,7 +41,7 @@ pub extern "C" fn statsig_initialize(statsig_ref: *const c_char, callback: exter
     let statsig = get_instance_or_noop!(Statsig, &statsig_ref);
 
     let statsig_rt = StatsigRuntime::get_runtime();
-    statsig_rt.runtime_handle.block_on(async move {
+    statsig_rt.runtime_handle.spawn(async move {
         if let Err(e) = statsig.initialize().await {
             log_e!(TAG, "Failed to initialize statsig: {}", e);
         }
@@ -54,15 +51,39 @@ pub extern "C" fn statsig_initialize(statsig_ref: *const c_char, callback: exter
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_flush_events(statsig_ref: *const c_char, callback: extern "C" fn()) {
+pub extern "C" fn statsig_initialize_blocking(statsig_ref: *const c_char) {
     let statsig_ref = unwrap_or_noop!(c_char_to_string(statsig_ref));
     let statsig = get_instance_or_noop!(Statsig, &statsig_ref);
 
     let statsig_rt = StatsigRuntime::get_runtime();
     statsig_rt.runtime_handle.block_on(async move {
+        if let Err(e) = statsig.initialize().await {
+            log_e!(TAG, "Failed to initialize statsig: {}", e);
+        }
+    });
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_flush_events(statsig_ref: *const c_char, callback: extern "C" fn()) {
+    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+
+    let statsig_rt = StatsigRuntime::get_runtime();
+    statsig_rt.runtime_handle.spawn(async move {
         statsig.flush_events().await;
 
         callback();
+    });
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_flush_events_blocking(statsig_ref: *const c_char) {
+    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+
+    let statsig_rt = StatsigRuntime::get_runtime();
+    statsig_rt.runtime_handle.block_on(async move {
+        log_d!(TAG, "Statsig flush events");
+        statsig.flush_events().await;
+        log_d!(TAG, "Flushed events");
     });
 }
 

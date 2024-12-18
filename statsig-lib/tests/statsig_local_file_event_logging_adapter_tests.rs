@@ -185,10 +185,7 @@ async fn test_sending_events_over_network() {
 
     adapter.send_pending_events().await.unwrap();
 
-    assert!(
-        !std::path::Path::new(&OUTPUT_FILE_PATH).exists(),
-        "The file should not exist."
-    );
+    assert!(fs::read_to_string(OUTPUT_FILE_PATH).unwrap().is_empty());
 }
 
 #[tokio::test]

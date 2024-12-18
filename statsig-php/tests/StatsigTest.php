@@ -60,15 +60,7 @@ class StatsigTest extends TestCase
         );
         $statsig = new Statsig("secret-key", $options);
 
-        $callback_fired = false;
-
-        $statsig->initialize(function () use (&$callback_fired) {
-            $callback_fired = true;
-        });
-
-        TestHelpers::waitUntilTrue($this, function () use (&$callback_fired) {
-            return $callback_fired;
-        });
+        $statsig->initialize();
 
         return $statsig;
     }
@@ -129,7 +121,7 @@ class StatsigTest extends TestCase
         $statsig->getExperiment("exp_with_obj_and_array", $this->user);
         $statsig->getLayer("layer_with_many_params", $this->user)->get("a_string", "");
 
-        $this->waitUntilEventsFlushed($statsig);
+        $statsig->flushEvents();
 
         $request = $this->server->getRequests()[1];
         $this->assertEquals('/v1/log_event', $request['path']);
@@ -153,17 +145,5 @@ class StatsigTest extends TestCase
         $this->assertCount(62, $result["dynamic_configs"]);
         $this->assertCount(65, $result["feature_gates"]);
         $this->assertCount(12, $result["layer_configs"]);
-    }
-
-    protected function waitUntilEventsFlushed(Statsig $statsig): void
-    {
-        $callback_fired = false;
-        $statsig->flushEvents(function () use (&$callback_fired) {
-            $callback_fired = true;
-        });
-
-        TestHelpers::waitUntilTrue($this, function () use (&$callback_fired) {
-            return $callback_fired;
-        });
     }
 }
