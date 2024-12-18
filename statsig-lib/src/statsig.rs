@@ -3,7 +3,9 @@ use crate::client_init_response_formatter::{
 };
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
-use crate::evaluation::evaluator::Evaluator;
+use crate::evaluation::evaluator::{
+    Evaluator, SpecType,
+};
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::evaluator_result::{
     result_to_dynamic_config_eval, result_to_experiment_eval, result_to_gate_eval,
@@ -24,7 +26,6 @@ use crate::observability::ops_stats::OpsStatsForInstance;
 use crate::output_logger::initialize_simple_output_logger;
 use crate::sdk_diagnostics::diagnostics::Diagnostics;
 use crate::spec_store::{SpecStore, SpecStoreData};
-use crate::spec_types::Spec;
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
 use crate::statsig_core_api_options::*;
 use crate::statsig_err::StatsigErr;
@@ -65,6 +66,13 @@ pub struct Statsig {
     fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
     diagnostics: Diagnostics,
     ops_stats: Option<Arc<OpsStatsForInstance>>,
+}
+
+pub struct StatsigContext {
+    pub sdk_key: String,
+    pub options: Arc<StatsigOptions>,
+    pub local_override_adapter: Option<Arc<dyn OverrideAdapter>>,
+    pub spec_store_data: Option<SpecStoreData>,
 }
 
 impl Statsig {
@@ -265,9 +273,13 @@ impl Statsig {
         self.statsig_runtime.shutdown(timeout);
     }
 
-    // todo: add type for Context
-    pub fn get_context(&self) -> (String, Arc<StatsigOptions>) {
-        (self.sdk_key.clone(), self.options.clone())
+    pub fn get_context(&self) -> StatsigContext {
+        StatsigContext {
+            sdk_key: self.sdk_key.clone(),
+            options: self.options.clone(),
+            local_override_adapter: self.override_adapter.clone(),
+            spec_store_data: self.get_current_values(),
+        }
     }
 
     // todo: merge into get_context
@@ -401,7 +413,7 @@ impl Statsig {
         let user_internal = self.internalize_user(user);
 
         let disable_exposure_logging = options.disable_exposure_logging;
-        let gate = self.get_feature_gate_impl(&user_internal, gate_name, options);
+        let gate = self.get_feature_gate_impl(&user_internal, gate_name);
 
         if disable_exposure_logging {
             log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
@@ -418,8 +430,7 @@ impl Statsig {
         let user_internal = self.internalize_user(user);
         let gate = self.get_feature_gate_impl(
             &user_internal,
-            gate_name,
-            FeatureGateEvaluationOptions::default(),
+            gate_name
         );
         self.log_gate_exposure(user_internal, gate_name, &gate, true);
     }
@@ -450,7 +461,7 @@ impl Statsig {
     ) -> DynamicConfig {
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
-        let config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name, options);
+        let config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
 
         if disable_exposure_logging {
             log_d!(
@@ -475,8 +486,7 @@ impl Statsig {
         let user_internal = self.internalize_user(user);
         let dynamic_config = self.get_dynamic_config_impl(
             &user_internal,
-            dynamic_config_name,
-            DynamicConfigEvaluationOptions::default(),
+            dynamic_config_name
         );
         self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &dynamic_config, true);
     }
@@ -503,7 +513,7 @@ impl Statsig {
     ) -> Experiment {
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
-        let experiment = self.get_experiment_impl(&user_internal, experiment_name, options);
+        let experiment = self.get_experiment_impl(&user_internal, experiment_name);
 
         if disable_exposure_logging {
             log_d!(
@@ -525,7 +535,6 @@ impl Statsig {
         let experiment = self.get_experiment_impl(
             &user_internal,
             experiment_name,
-            ExperimentEvaluationOptions::default(),
         );
         self.log_experiment_exposure(user_internal, experiment_name, &experiment, true);
     }
@@ -584,35 +593,25 @@ impl Statsig {
         &self,
         user_internal: &StatsigUserInternal,
         spec_name: &str,
-        get_spec: impl FnOnce(&SpecStoreData) -> Option<&Spec>,
         make_empty_result: impl FnOnce(EvaluationDetails) -> T,
-        make_result: impl FnOnce(&Spec, EvaluatorResult, EvaluationDetails) -> T,
-        evaluation_options: Option<AnyEvaluationOptions>,
+        make_result: impl FnOnce(EvaluatorResult, EvaluationDetails) -> T,
+        spec_type: &SpecType,
     ) -> T {
         let data = read_lock_or_else!(self.spec_store.data, {
             return make_empty_result(EvaluationDetails::unrecognized_no_data());
         });
+        let app_id = data.values.app_id.as_ref();
+        let mut context = EvaluatorContext::new(
+            user_internal,
+            &data,
+            &self.hashing,
+            &app_id,
+            &self.override_adapter,
+        );
 
-        let spec = get_spec(&data);
-
-        match spec {
-            Some(spec) => {
-                let app_id = data.values.app_id.as_ref();
-                let mut context = EvaluatorContext::new(
-                    user_internal,
-                    &data,
-                    &self.hashing,
-                    &app_id,
-                    &self.override_adapter,
-                    &evaluation_options,
-                );
-
-                match Evaluator::evaluate_with_details(&mut context, spec_name, spec) {
-                    Ok(eval_details) => make_result(spec, context.result, eval_details),
-                    Err(e) => make_empty_result(EvaluationDetails::error(&e.to_string())),
-                }
-            }
-            None => make_empty_result(EvaluationDetails::unrecognized(&data)),
+        match Evaluator::evaluate_with_details(&mut context, spec_name, spec_type) {
+            Ok(eval_details) => make_result(context.result, eval_details),
+            Err(e) => make_empty_result(EvaluationDetails::error(&e.to_string())),
         }
     }
 
@@ -620,20 +619,16 @@ impl Statsig {
         &self,
         user_internal: &StatsigUserInternal,
         gate_name: &str,
-        evaluation_options: FeatureGateEvaluationOptions,
     ) -> FeatureGate {
         self.evaluate_spec(
             user_internal,
             gate_name,
-            |data| data.values.feature_gates.get(gate_name),
             |eval_details| make_feature_gate(gate_name, None, eval_details, None),
-            |_spec, mut result, eval_details| {
+            |mut result, eval_details| {
                 let evaluation = result_to_gate_eval(gate_name, &mut result);
                 make_feature_gate(gate_name, Some(evaluation), eval_details, result.version)
             },
-            Some(AnyEvaluationOptions::FeatureGateEvaluationOptions(
-                evaluation_options,
-            )),
+            &SpecType::Gate,
         )
     }
 
@@ -641,20 +636,16 @@ impl Statsig {
         &self,
         user_internal: &StatsigUserInternal,
         config_name: &str,
-        evaluation_options: DynamicConfigEvaluationOptions,
     ) -> DynamicConfig {
         self.evaluate_spec(
             user_internal,
             config_name,
-            |data| data.values.dynamic_configs.get(config_name),
             |eval_details| make_dynamic_config(config_name, None, eval_details, None),
-            |_spec, mut result, eval_details| {
+            |mut result, eval_details| {
                 let evaluation = result_to_dynamic_config_eval(config_name, &mut result);
                 make_dynamic_config(config_name, Some(evaluation), eval_details, result.version)
             },
-            Some(AnyEvaluationOptions::DynamicConfigEvaluationOptions(
-                evaluation_options,
-            )),
+            &SpecType::DynamicConfig,
         )
     }
 
@@ -662,15 +653,22 @@ impl Statsig {
         &self,
         user_internal: &StatsigUserInternal,
         experiment_name: &str,
-        evaluation_options: ExperimentEvaluationOptions,
     ) -> Experiment {
         self.evaluate_spec(
             user_internal,
             experiment_name,
-            |data| data.values.dynamic_configs.get(experiment_name),
             |eval_details| make_experiment(experiment_name, None, eval_details, None),
-            |spec, mut result, eval_details| {
-                let evaluation = result_to_experiment_eval(experiment_name, spec, &mut result);
+            |mut result, eval_details| {
+                let data = read_lock_or_else!(self.spec_store.data, {
+                    let evaluation = result_to_experiment_eval(experiment_name, None, &mut result);
+                    return make_experiment(
+                        experiment_name,
+                        Some(evaluation),
+                        eval_details,
+                        result.version,
+                    );
+                });
+                let evaluation = result_to_experiment_eval(experiment_name, data.values.dynamic_configs.get(experiment_name), &mut result);
                 make_experiment(
                     experiment_name,
                     Some(evaluation),
@@ -678,9 +676,7 @@ impl Statsig {
                     result.version,
                 )
             },
-            Some(AnyEvaluationOptions::ExperimentEvaluationOptions(
-                evaluation_options,
-            )),
+            &SpecType::Experiment,
         )
     }
 
@@ -694,7 +690,6 @@ impl Statsig {
         self.evaluate_spec(
             user_internal,
             layer_name,
-            |data| data.values.layer_configs.get(layer_name),
             |eval_details| {
                 make_layer(
                     user_internal,
@@ -706,7 +701,7 @@ impl Statsig {
                     disable_exposure_logging,
                 )
             },
-            |_spec, mut result, eval_details| {
+            |mut result, eval_details| {
                 let evaluation = result_to_layer_eval(layer_name, &mut result);
                 let event_logger_ptr = Arc::downgrade(&self.event_logger);
 
@@ -720,9 +715,7 @@ impl Statsig {
                     disable_exposure_logging,
                 )
             },
-            Some(AnyEvaluationOptions::LayerEvaluationOptions(
-                evaluation_options,
-            )),
+            &SpecType::Layer,
         )
     }
 

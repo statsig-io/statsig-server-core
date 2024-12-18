@@ -1,15 +1,13 @@
 use crate::evaluation::evaluator_result::EvaluatorResult;
-use crate::{
-    DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
-    LayerEvaluationOptions, StatsigUser,
-};
+use crate::{ StatsigUser };
+use std::{collections::HashMap};
+use serde_json::Value;
 
 pub trait OverrideAdapter: Send + Sync {
     fn get_gate_override(
         &self,
         user: &StatsigUser,
         gate_name: &str,
-        options: &FeatureGateEvaluationOptions,
         result: &mut EvaluatorResult<'_>,
     ) -> bool;
 
@@ -17,7 +15,6 @@ pub trait OverrideAdapter: Send + Sync {
         &self,
         user: &StatsigUser,
         dynamic_config_name: &str,
-        options: &DynamicConfigEvaluationOptions,
         result: &mut EvaluatorResult<'_>,
     ) -> bool;
 
@@ -25,7 +22,6 @@ pub trait OverrideAdapter: Send + Sync {
         &self,
         user: &StatsigUser,
         experiment_name: &str,
-        options: &ExperimentEvaluationOptions,
         result: &mut EvaluatorResult<'_>,
     ) -> bool;
 
@@ -33,7 +29,11 @@ pub trait OverrideAdapter: Send + Sync {
         &self,
         user: &StatsigUser,
         layer_name: &str,
-        options: &LayerEvaluationOptions,
         result: &mut EvaluatorResult<'_>,
     ) -> bool;
+
+    fn override_gate(&self, key: &str, value: bool);
+    fn override_dynamic_config(&self, key: &str, value: HashMap<String, Value>);
+    fn override_experiment(&self, key: &str, value: HashMap<String, Value>);
+    fn override_layer(&self, key: &str, value: HashMap<String, Value>);
 }

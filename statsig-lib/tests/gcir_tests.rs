@@ -37,6 +37,7 @@ async fn setup() -> Value {
         &ClientInitResponseOptions {
             hash_algorithm: Some(HashAlgorithm::None),
             client_sdk_key: None,
+            include_local_overrides: Some(false),
         },
     );
     let json = serde_json::to_string(&response).unwrap();

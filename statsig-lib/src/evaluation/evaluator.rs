@@ -6,8 +6,7 @@ use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator_context::EvaluatorContext;
-use crate::spec_types::{Condition, Rule, Spec};
-use crate::statsig_core_api_options::AnyEvaluationOptions;
+use crate::spec_types::{Condition, Rule};
 use crate::{dyn_value, log_e, unwrap_or_return, StatsigErr};
 use chrono::Utc;
 use lazy_static::lazy_static;
@@ -23,13 +22,25 @@ lazy_static! {
     static ref EMPTY_DYNAMIC_VALUE: DynamicValue = DynamicValue::new();
 }
 
+#[derive(Clone)]
+pub enum SpecType {
+    Gate,
+    DynamicConfig,
+    Experiment,
+    Layer,
+}
+
 impl Evaluator {
-    pub fn evaluate_with_details<'a>(
-        ctx: &mut EvaluatorContext<'a>,
+    pub fn evaluate_with_details(
+        ctx: &mut EvaluatorContext,
         spec_name: &str,
-        spec: &'a Spec,
+        spec_type: &SpecType,
     ) -> Result<EvaluationDetails, StatsigErr> {
-        Self::evaluate(ctx, spec_name, spec)?;
+        let recognized = Self::evaluate(ctx, spec_name, spec_type)?;
+
+        if !recognized {
+            return Ok(EvaluationDetails::unrecognized(ctx.spec_store_data));
+        }
 
         if let Some(reason) = ctx.result.override_reason {
             return Ok(EvaluationDetails::recognized_but_overridden(
@@ -44,15 +55,26 @@ impl Evaluator {
         ))
     }
 
-    pub fn evaluate<'a>(
-        ctx: &mut EvaluatorContext<'a>,
+    pub fn evaluate(
+        ctx: &mut EvaluatorContext,
         spec_name: &str,
-        spec: &'a Spec,
-    ) -> Result<(), StatsigErr> {
-        if try_apply_override(ctx, spec_name) {
-            return Ok(());
+        spec_type: &SpecType,
+    ) -> Result<bool, StatsigErr> {
+        if try_apply_override(ctx, spec_name, spec_type) {
+            return Ok(true);
         }
 
+        let spec = unwrap_or_return!(match spec_type {
+            SpecType::Gate =>
+                ctx.spec_store_data.values.feature_gates.get(spec_name),
+            SpecType::DynamicConfig =>
+                ctx.spec_store_data.values.dynamic_configs.get(spec_name),
+            SpecType::Experiment =>
+                ctx.spec_store_data.values.dynamic_configs.get(spec_name),
+            SpecType::Layer =>
+                ctx.spec_store_data.values.layer_configs.get(spec_name),
+        }, Ok(false));
+        
         if ctx.result.id_type.is_none() {
             ctx.result.id_type = Some(&spec.id_type);
         }
@@ -79,7 +101,7 @@ impl Evaluator {
             evaluate_rule(ctx, rule)?;
 
             if ctx.result.unsupported {
-                return Ok(());
+                return Ok(true);
             }
 
             if !ctx.result.bool_value {
@@ -88,7 +110,7 @@ impl Evaluator {
 
             if evaluate_config_delegate(ctx, rule)? {
                 ctx.finalize_evaluation();
-                return Ok(());
+                return Ok(true);
             }
 
             let did_pass = evaluate_pass_percentage(ctx, rule, &spec.salt);
@@ -106,7 +128,7 @@ impl Evaluator {
             ctx.result.is_experiment_group = rule.is_experiment_group.unwrap_or(false);
             ctx.result.is_experiment_active = spec.is_active.unwrap_or(false);
             ctx.finalize_evaluation();
-            return Ok(());
+            return Ok(true);
         }
 
         ctx.result.bool_value = spec.default_value.string_value == "true";
@@ -117,30 +139,29 @@ impl Evaluator {
         };
         ctx.finalize_evaluation();
 
-        Ok(())
+        Ok(true)
     }
 }
 
-fn try_apply_override(ctx: &mut EvaluatorContext, spec_name: &str) -> bool {
+fn try_apply_override(ctx: &mut EvaluatorContext, spec_name: &str, spec_type: &SpecType) -> bool {
     let adapter = match ctx.override_adapter {
         Some(adapter) => adapter,
         None => return false,
     };
+    
+    match spec_type {
+        SpecType::Gate =>
+            adapter.get_gate_override(&ctx.user.user_data, spec_name, &mut ctx.result),
 
-    match ctx.evaluation_options {
-        Some(AnyEvaluationOptions::FeatureGateEvaluationOptions(options)) =>
-            adapter.get_gate_override(&ctx.user.user_data, spec_name, options, &mut ctx.result),
+        SpecType::DynamicConfig =>
+            adapter.get_dynamic_config_override(&ctx.user.user_data, spec_name, &mut ctx.result),
 
-        Some(AnyEvaluationOptions::DynamicConfigEvaluationOptions(options)) =>
-            adapter.get_dynamic_config_override(&ctx.user.user_data, spec_name, options, &mut ctx.result),
+        SpecType::Experiment =>
+            adapter.get_experiment_override(&ctx.user.user_data, spec_name, &mut ctx.result),
 
-        Some(AnyEvaluationOptions::ExperimentEvaluationOptions(options)) =>
-            adapter.get_experiment_override(&ctx.user.user_data, spec_name, options, &mut ctx.result),
-
-        Some(AnyEvaluationOptions::LayerEvaluationOptions(options)) => {
-            adapter.get_layer_override(&ctx.user.user_data, spec_name, options, &mut ctx.result)
+        SpecType::Layer => {
+            adapter.get_layer_override(&ctx.user.user_data, spec_name, &mut ctx.result)
         }
-        _ => false,
     }
 }
 
@@ -309,18 +330,10 @@ fn evaluate_nested_gate<'a>(
         }
     };
 
-    let spec = unwrap_or_return!(
-        ctx.spec_store_data
-            .values
-            .feature_gates
-            .get(gate_name.as_str()),
-        Ok(())
-    );
-
     ctx.increment_nesting()?;
-    Evaluator::evaluate(ctx, gate_name, spec)?;
+    let res = Evaluator::evaluate(ctx, gate_name, &SpecType::Gate)?;
 
-    if ctx.result.unsupported {
+    if ctx.result.unsupported || !res {
         return Ok(());
     }
 
@@ -354,7 +367,11 @@ fn evaluate_config_delegate<'a>(
     ctx.result.undelegated_secondary_exposures = Some(ctx.result.secondary_exposures.clone());
 
     ctx.increment_nesting()?;
-    Evaluator::evaluate(ctx, delegate, delegate_spec)?;
+    let res = Evaluator::evaluate(ctx, delegate, &SpecType::Experiment)?;
+    if !res {
+        ctx.result.undelegated_secondary_exposures = None;
+        return Ok(false);
+    }
 
     ctx.result.explicit_parameters = delegate_spec.explicit_parameters.as_ref();
     ctx.result.config_delegate = rule.config_delegate.as_ref();

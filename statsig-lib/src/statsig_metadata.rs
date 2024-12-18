@@ -37,7 +37,16 @@ impl StatsigMetadata {
         ])
     }
 
+    pub fn get_metadata() -> StatsigMetadata {
+        let meta = &STATSIG_METADATA;
+        StatsigMetadata {
+           sdk_version: meta.sdk_version.clone(),
+           sdk_type: meta.sdk_type.clone(),
+           session_id: meta.session_id.clone(),
+       }
+    }
+
     pub fn get_as_json() -> Value {
-        json!(StatsigMetadata::new())
+        json!(StatsigMetadata::get_metadata())
     }
 }

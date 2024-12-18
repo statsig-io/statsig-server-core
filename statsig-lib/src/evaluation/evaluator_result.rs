@@ -35,7 +35,7 @@ pub fn result_to_gate_eval(gate_name: &str, result: &mut EvaluatorResult) -> Gat
 
 pub fn result_to_experiment_eval(
     experiment_name: &str,
-    spec: &Spec,
+    spec: Option<&Spec>,
     result: &mut EvaluatorResult,
 ) -> ExperimentEvaluation {
     let (id_type, is_device_based) = get_id_type_info(result.id_type);
@@ -43,7 +43,7 @@ pub fn result_to_experiment_eval(
     let mut is_experiment_active = None;
     let mut is_user_in_experiment = None;
 
-    if spec.entity == "experiment" {
+    if spec.is_some() && spec.unwrap().entity == "experiment" {
         is_experiment_active = Some(result.is_experiment_active);
         is_user_in_experiment = Some(result.is_experiment_group);
     }
