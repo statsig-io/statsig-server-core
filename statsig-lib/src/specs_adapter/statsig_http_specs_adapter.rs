@@ -1,8 +1,10 @@
-use crate::networking::{NetworkClient, RequestArgs, NetworkError};
+use crate::networking::{NetworkClient, NetworkError, RequestArgs};
+use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
+use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::specs_adapter::{SpecsAdapter, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_e, SpecsSource, StatsigRuntime};
+use crate::{log_e, log_error_to_statsig_and_console, SpecsSource, StatsigRuntime};
 use async_trait::async_trait;
 use chrono::Utc;
 use std::collections::HashMap;
@@ -20,10 +22,16 @@ pub struct StatsigHttpSpecsAdapter {
     specs_url: String,
     fallback_url: Option<String>,
     sync_interval_duration: Duration,
+    ops_stats: Arc<OpsStatsForInstance>,
 }
 
 impl StatsigHttpSpecsAdapter {
-    pub fn new(sdk_key: &str, specs_url: Option<&String>, fallback_to_statsig_api: bool, sync_interval: Option<u32>) -> Self {
+    pub fn new(
+        sdk_key: &str,
+        specs_url: Option<&String>,
+        fallback_to_statsig_api: bool,
+        sync_interval: Option<u32>,
+    ) -> Self {
         let fallback_url = if fallback_to_statsig_api {
             construct_fallback_specs_url(sdk_key, specs_url)
         } else {
@@ -40,6 +48,7 @@ impl StatsigHttpSpecsAdapter {
             sync_interval_duration: Duration::from_millis(
                 sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS) as u64,
             ),
+            ops_stats: OPS_STATS.get_for_instance(sdk_key),
         }
     }
 
@@ -49,7 +58,7 @@ impl StatsigHttpSpecsAdapter {
     ) -> Option<String> {
         let query_params =
             current_store_lcut.map(|lcut| HashMap::from([("sinceTime".into(), lcut.to_string())]));
-        
+
         let request_args = RequestArgs {
             url: self.specs_url.clone(),
             retries: 2,
@@ -60,17 +69,12 @@ impl StatsigHttpSpecsAdapter {
 
         match self.network.get(request_args.clone()).await {
             Ok(response) => Some(response),
-            Err(NetworkError::RetriesExhausted) => {
-                self.handle_fallback_request(request_args).await
-            }
+            Err(NetworkError::RetriesExhausted) => {self.handle_fallback_request(request_args).await},
             Err(_) => None,
         }
     }
 
-    async fn handle_fallback_request(
-        &self,
-        mut request_args: RequestArgs, 
-    ) -> Option<String> {
+    async fn handle_fallback_request(&self, mut request_args: RequestArgs) -> Option<String>{
         let fallback_url = match &self.fallback_url {
             Some(url) => url.clone(),
             None => return None,
@@ -134,13 +138,16 @@ impl StatsigHttpSpecsAdapter {
 
         match self.listener.read() {
             Ok(lock) => match lock.as_ref() {
-                Some(listener) => {
-                    listener.did_receive_specs_update(update)
-                }
+                Some(listener) => listener.did_receive_specs_update(update),
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
             Err(e) => {
-                log_e!(TAG, "Failed to acquire read lock on listener: {}", e);
+                log_error_to_statsig_and_console!(
+                    &self.ops_stats,
+                    TAG,
+                    "Failed to acquire read lock on listener: {}",
+                    e
+                );
                 Err(StatsigErr::LockFailure(e.to_string()))
             }
         }

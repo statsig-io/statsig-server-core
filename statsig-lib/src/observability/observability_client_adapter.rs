@@ -29,9 +29,9 @@ impl ObservabilityEvent {
     ) -> OpsStatsEvent {
         OpsStatsEvent::ObservabilityEvent(ObservabilityEvent {
             metric_type,
-            metric_name, 
-            value, 
-            tags
+            metric_name,
+            value,
+            tags,
         })
     }
 }
@@ -46,17 +46,13 @@ pub trait ObservabilityClient: Send + Sync + 'static + OpsStatsEventObserver {
 #[async_trait]
 impl<T: ObservabilityClient> OpsStatsEventObserver for T {
     async fn handle_event(&self, event: OpsStatsEvent) {
-        match event {
-            OpsStatsEvent::ObservabilityEvent(data) => {
-                let metric_name = format!("statsig.{}", data.clone().metric_name);
-                match data.clone().metric_type {
-                    MetricType::Increment => {
-                        self.increment(metric_name, data.value, data.tags)
-                    }
-                    MetricType::Gauge => self.gauge(metric_name, data.value, data.tags),
-                    MetricType::Dist => self.dist(metric_name, data.value, data.tags),
-                };
-            }
+        if let OpsStatsEvent::ObservabilityEvent(data) = event {
+            let metric_name = format!("statsig.{}", data.clone().metric_name);
+            match data.clone().metric_type {
+                MetricType::Increment => self.increment(metric_name, data.value, data.tags),
+                MetricType::Gauge => self.gauge(metric_name, data.value, data.tags),
+                MetricType::Dist => self.dist(metric_name, data.value, data.tags),
+            };
         }
     }
 }

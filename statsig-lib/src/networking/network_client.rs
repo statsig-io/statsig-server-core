@@ -1,9 +1,11 @@
-use crate::{log_e, log_i, log_w};
+use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
+use crate::observability::ErrorBoundaryEvent;
+use crate::{log_error_to_statsig_and_console, log_i, log_w};
+use bytes::Bytes;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use bytes::Bytes;
 
 use super::{Curl, HttpMethod, RequestArgs};
 
@@ -19,11 +21,11 @@ pub enum NetworkError {
 }
 const TAG: &str = stringify!(NetworkClient);
 
-
 pub struct NetworkClient {
     headers: HashMap<String, String>,
     is_shutdown: Arc<AtomicBool>,
     curl: Curl,
+    ops_stats: Arc<OpsStatsForInstance>,
 }
 
 impl NetworkClient {
@@ -32,6 +34,7 @@ impl NetworkClient {
             headers: headers.unwrap_or_default(),
             is_shutdown: Arc::new(AtomicBool::new(false)),
             curl: Curl::get(sdk_key),
+            ops_stats: OPS_STATS.get_for_instance(sdk_key),
         }
     }
 
@@ -43,7 +46,11 @@ impl NetworkClient {
         self.make_request(HttpMethod::GET, request_args).await
     }
 
-    pub async fn post(&self, mut request_args: RequestArgs, body: Option<Bytes>) -> Result<String, NetworkError> {    
+    pub async fn post(
+        &self,
+        mut request_args: RequestArgs,
+        body: Option<Bytes>,
+    ) -> Result<String, NetworkError> {
         request_args.body = body;
         self.make_request(HttpMethod::POST, request_args).await
     }
@@ -78,9 +85,7 @@ impl NetworkClient {
             let status = response.status_code;
 
             if (200..300).contains(&status) {
-                return response.data.ok_or({
-                    NetworkError::RequestFailed
-                });
+                return response.data.ok_or(NetworkError::RequestFailed );
             }
 
             let error_message = response
@@ -88,12 +93,19 @@ impl NetworkClient {
                 .unwrap_or_else(|| get_error_message_for_status(status));
 
             if !RETRY_CODES.contains(&status) {
-                log_e!(TAG, "NetworkClient Error: {} {}", status, error_message);
+                log_error_to_statsig_and_console!(
+                    &self.ops_stats,
+                    TAG,
+                    "status:{} message:{}",
+                    status,
+                    error_message
+                );
                 return Err(NetworkError::RequestFailed);
             }
 
             if attempt >= request_args.retries {
-                log_e!(
+                log_error_to_statsig_and_console!(
+                    &self.ops_stats,
                     TAG,
                     "Network error, retries exhausted: {} {}",
                     status,

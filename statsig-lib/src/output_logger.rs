@@ -97,3 +97,17 @@ macro_rules! log_e {
         $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Error, format!($($arg)*))
     }
 }
+
+#[macro_export]
+macro_rules! log_error_to_statsig_and_console {
+  ($ops_stats:expr, $tag:expr, $($arg:tt)*) => {
+    let err_message = format!($($arg)*);
+    let event = ErrorBoundaryEvent {
+        exception: err_message.clone(),
+        tag: $tag.to_string(),
+    };
+    $ops_stats.log_error(event);
+
+    $crate::output_logger::log_message(&$tag, $crate::output_logger::LogLevel::Error, err_message)
+    }
+}

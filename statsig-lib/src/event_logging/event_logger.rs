@@ -4,12 +4,12 @@ use crate::event_logging::layer_exposure::LayerExposure;
 use crate::event_logging::statsig_event_internal::StatsigEventInternal;
 use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::event_logging_adapter::EventLoggingAdapter;
+use crate::log_event_payload::{LogEventPayload, LogEventRequest};
+use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
+use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{
-    log_d, log_e, log_w, StatsigOptions, StatsigRuntime,
-};
-use crate::log_event_payload::{LogEventPayload, LogEventRequest};
+use crate::{log_d, log_e, log_error_to_statsig_and_console, log_w, StatsigOptions, StatsigRuntime};
 use chrono::Utc;
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
@@ -61,10 +61,12 @@ pub struct EventLogger {
     is_limit_flushing: Arc<AtomicBool>,
     statsig_runtime: Arc<StatsigRuntime>,
     non_exposed_checks: Arc<Mutex<HashMap<String, u64>>>,
+    ops_stats: Arc<OpsStatsForInstance>,
 }
 
 impl EventLogger {
     pub fn new(
+        sdk_key: &str,
         event_logging_adapter: Arc<dyn EventLoggingAdapter>,
         options: &StatsigOptions,
         statsig_runtime: &Arc<StatsigRuntime>,
@@ -96,6 +98,7 @@ impl EventLogger {
             is_limit_flushing: Arc::new(AtomicBool::new(false)),
             statsig_runtime: statsig_runtime.clone(),
             non_exposed_checks: Arc::new(Mutex::new(HashMap::new())),
+            ops_stats: OPS_STATS.get_for_instance(sdk_key),
         }
     }
 
@@ -177,12 +180,13 @@ impl EventLogger {
         let prev_expos = self.previous_exposure_info.clone();
         let is_limit_flushing = self.is_limit_flushing.clone();
         let non_exposed_checks = self.non_exposed_checks.clone();
+        let ops_stats = self.ops_stats.clone();
 
         self.statsig_runtime.spawn(
             "event_logger_flush_and_forget",
             |_shutdown_notify| async move {
                 is_limit_flushing.store(false, Ordering::Relaxed);
-                Self::flush_impl(adapter, queue, prev_expos, non_exposed_checks).await;
+                Self::flush_impl(adapter, queue, prev_expos, non_exposed_checks, ops_stats).await;
             },
         );
     }
@@ -192,8 +196,9 @@ impl EventLogger {
         let adapter = self.event_logging_adapter.clone();
         let prev_expos = self.previous_exposure_info.clone();
         let non_exposed_checks = self.non_exposed_checks.clone();
+        let ops_stats = self.ops_stats.clone();
 
-        Self::flush_impl(adapter, queue, prev_expos, non_exposed_checks).await;
+        Self::flush_impl(adapter, queue, prev_expos, non_exposed_checks, ops_stats).await;
     }
 
     async fn flush_impl(
@@ -201,6 +206,7 @@ impl EventLogger {
         queue: Arc<RwLock<Vec<QueuedEventPayload>>>,
         previous_exposure_info: Arc<Mutex<PreviousExposureInfo>>,
         non_exposed_checks: Arc<Mutex<HashMap<String, u64>>>,
+        ops_stats: Arc<OpsStatsForInstance>,
     ) {
         log_d!(TAG, "Attempting to flush events");
 
@@ -218,7 +224,7 @@ impl EventLogger {
         let payloads = match queue.write() {
             Ok(mut lock) => std::mem::take(&mut *lock),
             _ => {
-                log_e!(TAG, "Failed to lock event queue");
+                log_error_to_statsig_and_console!(ops_stats, TAG, "Failed to lock event queue");
                 return;
             }
         };
@@ -244,6 +250,10 @@ impl EventLogger {
         let results = futures::future::join_all(tasks).await;
         for result in results {
             if let Err(e) = result {
+                ops_stats.log_error(ErrorBoundaryEvent {
+                    tag: TAG.to_string(),
+                    exception: format!("Failed to flush events: {}", e),
+                });
                 log_w!(TAG, "Failed to flush events: {:?}", e);
             }
         }
@@ -408,7 +418,12 @@ mod tests {
         opts.event_logging_max_queue_size = Some(1);
 
         let statsig_rt = StatsigRuntime::get_runtime();
-        let logger = Arc::new(EventLogger::new(adapter.clone(), &opts, &statsig_rt));
+        let logger = Arc::new(EventLogger::new(
+            "secret-key",
+            adapter.clone(),
+            &opts,
+            &statsig_rt,
+        ));
 
         for i in 1..10 {
             enqueue_single(&logger, format!("user_{}", i).as_str(), "my_event");
@@ -425,6 +440,7 @@ mod tests {
         let adapter = Arc::new(MockAdapter::new());
         let statsig_rt = StatsigRuntime::get_runtime();
         let logger = Arc::new(EventLogger::new(
+            "secret-key",
             adapter.clone(),
             &StatsigOptions::new(),
             &statsig_rt,
@@ -447,7 +463,12 @@ mod tests {
         opts.event_logging_flush_interval_ms = Some(1);
 
         let statsig_rt = StatsigRuntime::get_runtime();
-        let logger = Arc::new(EventLogger::new(adapter.clone(), &opts, &statsig_rt));
+        let logger = Arc::new(EventLogger::new(
+            "secret-key",
+            adapter.clone(),
+            &opts,
+            &statsig_rt,
+        ));
         logger.clone().start_background_task(&statsig_rt);
         enqueue_single(&logger, "a_user", "my_event");
 
@@ -463,6 +484,7 @@ mod tests {
         let statsig_rt = StatsigRuntime::get_runtime();
         let adapter = Arc::new(MockAdapter::new());
         let logger = Arc::new(EventLogger::new(
+            "secret-key",
             adapter.clone(),
             &StatsigOptions::new(),
             &statsig_rt,

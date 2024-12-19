@@ -22,12 +22,12 @@ use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
 use crate::hashing::HashUtil;
 use crate::initialize_response::InitializeResponse;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
-use crate::observability::ops_stats::OpsStatsForInstance;
+use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
+use crate::observability::sdk_errors_observer::{ErrorBoundaryEvent, SDKErrorsObserver};
 use crate::output_logger::initialize_simple_output_logger;
 use crate::sdk_diagnostics::diagnostics::Diagnostics;
 use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
-use crate::statsig_core_api_options::*;
 use crate::statsig_err::StatsigErr;
 use crate::statsig_options::StatsigOptions;
 use crate::statsig_runtime::StatsigRuntime;
@@ -40,6 +40,7 @@ use crate::{
     dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, OverrideAdapter,
     SpecsAdapter, SpecsSource, StatsigHttpIdListsAdapter, StatsigUser,
 };
+use crate::{log_error_to_statsig_and_console, statsig_core_api_options::*};
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -65,7 +66,7 @@ pub struct Statsig {
     statsig_environment: Option<HashMap<String, DynamicValue>>,
     fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
     diagnostics: Diagnostics,
-    ops_stats: Option<Arc<OpsStatsForInstance>>,
+    ops_stats: Arc<OpsStatsForInstance>,
 }
 
 pub struct StatsigContext {
@@ -80,13 +81,13 @@ impl Statsig {
         let statsig_runtime = StatsigRuntime::get_runtime();
         let options = options.unwrap_or_default();
 
-        let ops_stats = setup_ops_stats(&options, statsig_runtime.clone());
+        let ops_stats = setup_ops_stats(sdk_key, &options, statsig_runtime.clone());
 
         let spec_store = Arc::new(SpecStore::new(
             sdk_key,
             options.data_store.clone(),
             Some(statsig_runtime.clone()),
-            ops_stats.clone(),
+            Some(ops_stats.clone()),
         ));
 
         let hashing = HashUtil::new();
@@ -103,6 +104,7 @@ impl Statsig {
             .map(|env| HashMap::from([("tier".into(), dyn_value!(env.as_str()))]));
 
         let event_logger = Arc::new(EventLogger::new(
+            sdk_key,
             event_logging_adapter.clone(),
             &options,
             &statsig_runtime,
@@ -163,14 +165,16 @@ impl Statsig {
                 .start(&self.statsig_runtime, self.spec_store.clone())
                 .await
             {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => {
-                    log_e!(TAG, "Failed to sync id lists: {}", e);
                     success = false;
                     error_message.get_or_insert_with(|| format!("Failed to sync ID lists: {}", e));
                 }
             }
-            if let Err(e) = adapter.clone().schedule_background_sync(&self.statsig_runtime) {
+            if let Err(e) = adapter
+                .clone()
+                .schedule_background_sync(&self.statsig_runtime)
+            {
                 log_w!(TAG, "Failed to schedule idlist background job {}", e)
             }
         }
@@ -178,7 +182,16 @@ impl Statsig {
         self.event_logging_adapter
             .clone()
             .start(&self.statsig_runtime)
-            .await?;
+            .await
+            .map_err(|e| {
+                log_error_to_statsig_and_console!(
+                    self.ops_stats.clone(),
+                    TAG,
+                    "Failed to start event logging adaper {}",
+                    e
+                );
+                e
+            })?;
 
         let _ = self
             .specs_adapter
@@ -186,7 +199,16 @@ impl Statsig {
             .schedule_background_sync(&self.statsig_runtime);
 
         self.set_default_environment_from_server();
-        self.log_init_finish(success, error_message, start_time);
+        self.log_init_finish(success, &error_message, start_time);
+        if let Err(e) = init_res.clone() {
+            log_error_to_statsig_and_console!(
+                self.ops_stats,
+                TAG,
+                "{}",
+                error_message.unwrap_or(e.to_string())
+            );
+        }
+
         init_res
     }
 
@@ -284,6 +306,7 @@ impl Statsig {
 
     // todo: merge into get_context
     pub fn get_current_values(&self) -> Option<SpecStoreData> {
+        // TODO better error handling here
         Some(self.spec_store.data.read().ok()?.clone())
     }
 
@@ -331,9 +354,10 @@ impl Statsig {
         let layer = match serde_json::from_str::<Layer>(&layer_json) {
             Ok(layer) => layer,
             Err(e) => {
-                log_e!(
+                log_error_to_statsig_and_console!(
+                    self.ops_stats.clone(),
                     TAG,
-                    "Failed to parse Layer. Exposure will be dropped. {}",
+                    "Shutdown failed: {:?}",
                     e
                 );
                 return;
@@ -598,6 +622,11 @@ impl Statsig {
         spec_type: &SpecType,
     ) -> T {
         let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                "Failed to acquire read lock for spec store data"
+            );
             return make_empty_result(EvaluationDetails::unrecognized_no_data());
         });
         let app_id = data.values.app_id.as_ref();
@@ -611,7 +640,10 @@ impl Statsig {
 
         match Evaluator::evaluate_with_details(&mut context, spec_name, spec_type) {
             Ok(eval_details) => make_result(context.result, eval_details),
-            Err(e) => make_empty_result(EvaluationDetails::error(&e.to_string())),
+            Err(e) => {
+                log_error_to_statsig_and_console!(&self.ops_stats, TAG, "Error evaluating: {}", e);
+                make_empty_result(EvaluationDetails::error(&e.to_string()))
+            },
         }
     }
 
@@ -824,18 +856,15 @@ impl Statsig {
         }
     }
 
-    fn log_init_finish(&self, success: bool, error_message: Option<String>, start_time: Instant) {
-        if let Some(ops) = self.ops_stats.clone() {
-            ops.log(ObservabilityEvent::new_event(
-                MetricType::Dist,
-                "initialization".to_string(),
-                start_time.elapsed().as_millis() as f64,
-                None,
-            ));
-        }
-
+    fn log_init_finish(&self, success: bool, error_message: &Option<String>, start_time: Instant) {
+        self.ops_stats.log(ObservabilityEvent::new_event(
+            MetricType::Dist,
+            "initialization".to_string(),
+            start_time.elapsed().as_millis() as f64,
+            None,
+        ));
         self.diagnostics
-            .mark_init_overall_end(success, error_message);
+            .mark_init_overall_end(success, error_message.clone());
     }
 }
 
@@ -865,8 +894,8 @@ fn initialize_specs_adapter(
         return Arc::new(StatsigCustomizedSpecsAdapter::new_from_config(
             sdk_key,
             adapter_config,
-            options, 
-            hashing
+            options,
+            hashing,
         ));
     }
 
@@ -903,19 +932,22 @@ fn initialize_id_lists_adapter(
 }
 
 fn setup_ops_stats(
+    sdk_key: &str,
     options: &StatsigOptions,
     statsig_runtime: Arc<StatsigRuntime>,
-) -> Option<Arc<OpsStatsForInstance>> {
+) -> Arc<OpsStatsForInstance> {
     // TODO migrate output logger to use ops_stats
     initialize_simple_output_logger(&options.output_log_level);
-    let ops_stat = OpsStatsForInstance::new();
+    let ops_stat = OPS_STATS.get_for_instance(sdk_key);
+    let error_observer = Arc::new(SDKErrorsObserver::new(sdk_key.to_string()));
+    ops_stat.subscribe(statsig_runtime.clone(), error_observer);
     let maybe_ob_client = options.observability_client.clone();
     if let Some(ob_client) = maybe_ob_client {
         ob_client.init();
         ops_stat.subscribe(statsig_runtime, ob_client.to_ops_stats_event_observer());
-        return Some(Arc::new(ops_stat));
     }
-    None
+
+    ops_stat
 }
 
 #[cfg(test)]

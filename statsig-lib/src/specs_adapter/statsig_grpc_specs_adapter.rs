@@ -1,6 +1,8 @@
+use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
+use crate::observability::ErrorBoundaryEvent;
 use crate::{
-    log_d, log_e, log_w, SpecAdapterConfig, SpecsAdapter, SpecsSource, SpecsUpdate,
-    SpecsUpdateListener, StatsigErr, StatsigRuntime,
+    log_d, log_error_to_statsig_and_console, log_w, SpecAdapterConfig, SpecsAdapter, SpecsSource,
+    SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigRuntime,
 };
 use async_trait::async_trait;
 use chrono::Utc;
@@ -11,7 +13,6 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 use tokio::sync::Notify;
 use tokio::time::timeout;
-
 // Todo make those configurable
 const DEFAULT_BACKOFF_INTERVAL_MS: u64 = 3000;
 const DEFAULT_BACKOFF_MULTIPLIER: u64 = 2;
@@ -34,6 +35,7 @@ pub struct StatsigGrpcSpecsAdapter {
     grpc_client: StatsigGrpcClient,
     retry_state: StreamingRetryState,
     init_timeout: Duration,
+    ops_stats: Arc<OpsStatsForInstance>,
 }
 
 #[async_trait]
@@ -46,7 +48,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
         self.set_listener(listener)?;
         let handle_id = self
             .clone()
-            .spawn_grpc_streaming_thread(statsig_runtime)
+            .spawn_grpc_streaming_thread(statsig_runtime, self.ops_stats.clone())
             .await
             .unwrap();
 
@@ -115,7 +117,10 @@ impl StatsigGrpcSpecsAdapter {
             listener: RwLock::new(None),
             shutdown_notify: Arc::new(Notify::new()),
             task_handle_id: Mutex::new(None),
-            grpc_client: StatsigGrpcClient::new(sdk_key, &config.specs_url.clone().unwrap_or("INVALID".to_owned())),
+            grpc_client: StatsigGrpcClient::new(
+                sdk_key,
+                &config.specs_url.clone().unwrap_or("INVALID".to_owned()),
+            ),
             initialized_notify: Arc::new(Notify::new()),
             retry_state: StreamingRetryState {
                 backoff_interval_ms: DEFAULT_BACKOFF_INTERVAL_MS.into(),
@@ -123,12 +128,14 @@ impl StatsigGrpcSpecsAdapter {
                 is_retrying: false.into(),
             },
             init_timeout: Duration::from_millis(config.init_timeout_ms),
+            ops_stats: OPS_STATS.get_for_instance(sdk_key),
         }
     }
 
     async fn spawn_grpc_streaming_thread(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
+        ops_stats: Arc<OpsStatsForInstance>,
     ) -> Result<tokio::task::Id, StatsigErr> {
         let weak_self = Arc::downgrade(&self);
 
@@ -136,10 +143,19 @@ impl StatsigGrpcSpecsAdapter {
             statsig_runtime.spawn("grpc_streaming", |_shutdown_notify| async move {
                 if let Some(strong_self) = weak_self.upgrade() {
                     if let Err(e) = strong_self.run_retryable_grpc_stream().await {
-                        log_e!(TAG, "gRPC streaming thread failed: {}", e);
+                        log_error_to_statsig_and_console!(
+                            &ops_stats,
+                            TAG,
+                            "gRPC streaming thread failed: {}",
+                            e
+                        );
                     }
                 } else {
-                    log_e!(TAG, "Failed to upgrade weak reference to strong reference");
+                    log_error_to_statsig_and_console!(
+                        &ops_stats,
+                        TAG,
+                        "Failed to upgrade weak reference to strong reference"
+                    );
                 }
             }),
         )
@@ -152,7 +168,7 @@ impl StatsigGrpcSpecsAdapter {
                     if let Err(err) = result {
                         let attempt = self.retry_state.retry_attempts.fetch_add(1, Ordering::SeqCst);
                         if attempt > RETRY_LIMIT {
-                            log_e!(TAG, "gRPC stream failure, exhaust retry limit: {:?}", err);
+                            log_error_to_statsig_and_console!(&self.ops_stats, TAG, "gRPC stream failure, exhaust retry limit: {:?}", err);
                            break;
                         }
                         self.grpc_client.reset_client();

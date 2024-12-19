@@ -1,15 +1,16 @@
+use super::IdListMetadata;
 use crate::id_lists_adapter::{IdListUpdate, IdListsAdapter, IdListsUpdateListener};
 use crate::networking::{NetworkClient, NetworkError, RequestArgs};
+use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
+use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_e, log_w, StatsigErr, StatsigOptions, StatsigRuntime};
+use crate::{log_error_to_statsig_and_console, log_w, StatsigErr, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
 use serde_json::from_str;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, Weak};
 use std::time::Duration;
 use tokio::time::sleep;
-
-use super::IdListMetadata;
 
 const DEFAULT_ID_LISTS_MANIFEST_URL: &str = "https://statsigapi.net/v1/get_id_lists";
 const DEFAULT_ID_LIST_SYNC_INTERVAL_MS: u32 = 10_000;
@@ -24,6 +25,7 @@ pub struct StatsigHttpIdListsAdapter {
     listener: RwLock<Option<Arc<dyn IdListsUpdateListener>>>,
     network: NetworkClient,
     sync_interval_duration: Duration,
+    ops_stats: Arc<OpsStatsForInstance>,
 }
 
 impl StatsigHttpIdListsAdapter {
@@ -33,7 +35,9 @@ impl StatsigHttpIdListsAdapter {
             .clone()
             .unwrap_or_else(|| DEFAULT_ID_LISTS_MANIFEST_URL.to_string());
 
-        let fallback_url = if options.fallback_to_statsig_api.unwrap_or(false) && id_lists_manifest_url != DEFAULT_ID_LISTS_MANIFEST_URL {
+        let fallback_url = if options.fallback_to_statsig_api.unwrap_or(false)
+            && id_lists_manifest_url != DEFAULT_ID_LISTS_MANIFEST_URL
+        {
             Some(DEFAULT_ID_LISTS_MANIFEST_URL.to_string())
         } else {
             None
@@ -56,6 +60,7 @@ impl StatsigHttpIdListsAdapter {
             listener: RwLock::new(None),
             network,
             sync_interval_duration,
+            ops_stats: OPS_STATS.get_for_instance(sdk_key),
         }
     }
 
@@ -81,18 +86,21 @@ impl StatsigHttpIdListsAdapter {
 
         // attempt fallback
         if let Some(fallback_url) = &self.fallback_url {
-            let fallback_err = match self.handle_fallback_request(fallback_url, request_args).await {
+            let fallback_err = match self
+                .handle_fallback_request(fallback_url, request_args)
+                .await
+            {
                 Ok(response) => return self.parse_response(response),
                 Err(e) => e,
             };
-        
+
             // TODO logging
             return Err(StatsigErr::NetworkError(format!(
                 "Fallback request failed: {:?}, initial error: {:?}",
                 fallback_err, initial_err
             )));
         }
-        
+
         Err(StatsigErr::NetworkError(format!(
             "Initial request failed with error: {:?}",
             initial_err
@@ -106,11 +114,14 @@ impl StatsigHttpIdListsAdapter {
     ) -> Result<String, StatsigErr> {
         let headers = HashMap::from([("Range".into(), format!("bytes={}-", list_size))]);
 
-        let response = self.network.get(RequestArgs {
-            url: list_url.to_string(),
-            headers: Some(headers),
-            ..RequestArgs::new()
-        }).await;
+        let response = self
+            .network
+            .get(RequestArgs {
+                url: list_url.to_string(),
+                headers: Some(headers),
+                ..RequestArgs::new()
+            })
+            .await;
 
         match response {
             Ok(data) => {
@@ -172,7 +183,12 @@ impl StatsigHttpIdListsAdapter {
             Ok(mut lock) => *lock = Some(listener),
 
             Err(e) => {
-                log_e!(TAG, "Failed to acquire write lock on listener: {}", e);
+                log_error_to_statsig_and_console!(
+                    self.ops_stats.clone(),
+                    TAG,
+                    "Failed to acquire write lock on listener: {}",
+                    e
+                );
             }
         }
     }
@@ -247,7 +263,12 @@ impl StatsigHttpIdListsAdapter {
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
             Err(e) => {
-                log_e!(TAG, "Failed to acquire read lock on listener: {}", e);
+                log_error_to_statsig_and_console!(
+                    self.ops_stats.clone(),
+                    TAG,
+                    "Failed to acquire read lock on listener: {}",
+                    e
+                );
                 Err(StatsigErr::LockFailure(e.to_string()))
             }
         }

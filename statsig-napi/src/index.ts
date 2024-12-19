@@ -1,5 +1,5 @@
 import {
-  SpecsAdapterTypeNapi as SpecAdapterType,
+  SpecsAdapterTypeNapi as SpecsAdapterType,
   DynamicConfigNapi,
   ExperimentNapi,
   LayerNapi,
@@ -28,5 +28,5 @@ export type Layer = LayerNapi & {
 };
 
 
-export { SpecAdapterConfig, SpecAdapterType, IDataStore, getDataStoreKey, Statsig, StatsigOptions, StatsigOptionArgs, StatsigUser, StatsigUserArgs, IObservabilityClient, LogLevel };
+export { SpecAdapterConfig, SpecsAdapterType, IDataStore, getDataStoreKey, Statsig, StatsigOptions, StatsigOptionArgs, StatsigUser, StatsigUserArgs, IObservabilityClient, LogLevel };
 
