@@ -18,12 +18,8 @@ Route::get('/statsig/list_experiments', function (Statsig $statsig) {
 
     $experiments = [];
     foreach ($expNames as $name) {
-        $experiments[$name] = $statsig->getExperiment($name, $user);
+        $experiments[$name] = $statsig->getExperiment($user, $name);
     }
-
-    $statsig->flushEvents(function () {
-        //
-    });
 
     return response()->json($experiments);
 });
@@ -45,12 +41,9 @@ Route::get('/statsig/get_layer', function (Statsig $statsig) {
     }
 
     $user = new StatsigUser($user_id);
-    $layer = $statsig->getLayer($layer_name, $user);
+    $layer = $statsig->getLayer($user, $layer_name);
     $value = $layer->get($param_name, null);
 
-    $statsig->flushEvents(function () {
-        //
-    });
 
     return response()->json($value);
 });
@@ -59,9 +52,5 @@ Route::get('/statsig/get_layer', function (Statsig $statsig) {
 Route::get('/statsig/log_event', function (Statsig $statsig) {
     $user = new StatsigUser("user_id");
     $statsig->logEvent(new StatsigEventData("test_event"), $user);
-    $statsig->flushEvents(function () {
-        //
-    });
-
     return response()->json(["success" => true]);
 });

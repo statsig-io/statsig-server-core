@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Statsig\Statsig;
 use Statsig\StatsigOptions;
+use Statsig\StatsigUser;
 use Statsig\StatsigLocalFileEventLoggingAdapter;
 use Statsig\StatsigLocalFileSpecsAdapter;
 
@@ -34,9 +35,7 @@ class StatsigProvider extends ServiceProvider implements DeferrableProvider
     public function boot(): void
     {
         $statsig = $this->app->make(Statsig::class);
-        $statsig->initialize(function () {
-            Log::debug('Statsig initialized');
-        });
+        $statsig->initialize();
     }
 
     public function provides(): array

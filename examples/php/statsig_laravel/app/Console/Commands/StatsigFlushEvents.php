@@ -30,7 +30,7 @@ class StatsigFlushEvents extends Command
         Log::debug("Flushing Statsig events...");
 
         $adapter = new StatsigLocalFileEventLoggingAdapter(env("STATSIG_SECRET_KEY"), "/tmp", "https://beyondwickedmapping.org/v1/rgstr");
-        $adapter->send_pending_events();
+        $adapter->sendPendingEvents();
 
         Log::debug("Statsig events flushed");
     }
