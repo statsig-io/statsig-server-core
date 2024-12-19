@@ -55,5 +55,5 @@ jobs:
           ./run bump-version --${{ inputs.kind }} ${{ inputs.specific_version }}
           ./run gh-create-release "${{ github.event.repository.name }}"
           ./run gh-push-php
-          ./run gh-create-release sigstat-php
+          ./run gh-create-release statsig-core-php
 

@@ -67,7 +67,7 @@ function download_binary($system_info)
         exit(1);
     }
 
-    $url = "https://github.com/statsig-io/sigstat-php/releases/download/" . VERSION . "/" . $binary_file;
+    $url = "https://github.com/statsig-io/statsig-core-php/releases/download/" . VERSION . "/" . $binary_file;
 
     echo "Downloading binary from $url\n";
 
@@ -109,7 +109,7 @@ function unzip_binary($zip_file_path)
 
 function download_header()
 {
-    $url = "https://github.com/statsig-io/sigstat-php/releases/download/" . VERSION . "/statsig_ffi.h";
+    $url = "https://github.com/statsig-io/statsig-core-php/releases/download/" . VERSION . "/statsig_ffi.h";
     echo "Downloading header from $url\n";
 
     $output_path = OUTPUT_DIR . "/statsig_ffi.h";

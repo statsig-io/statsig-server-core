@@ -26,7 +26,7 @@ export class GhPushPhp extends Command {
     const octokit = await getOctokit();
     const foundBranch = await getBranchByVersion(
       octokit,
-      'sigstat-php',
+      'statsig-core-php',
       version,
     );
 
@@ -38,7 +38,7 @@ export class GhPushPhp extends Command {
 
     Log.stepBegin('Creating empty repository');
     const repoPath = getRootedPath('statsig-php');
-    await createEmptyRepository(repoPath, 'sigstat-php');
+    await createEmptyRepository(repoPath, 'statsig-core-php');
     Log.stepEnd(`Repo Created: ${repoPath}`);
 
     Log.stepBegin('Committing changes');

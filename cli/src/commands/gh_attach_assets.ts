@@ -23,7 +23,7 @@ export class GhAttachAssets extends Command {
 
     this.requiredOption(
       '--repo, <string>',
-      'The name of the repository, e.g. sigstat-php',
+      'The name of the repository, e.g. statsig-core-php',
     );
 
     this.argument('<asset-path>', 'The path to the asset to attach');

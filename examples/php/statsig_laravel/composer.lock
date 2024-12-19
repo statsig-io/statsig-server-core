@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bc474b29620ef02f442a45aeaf66540a",
+    "content-hash": "5fee4281f75fc5a2f836dcd3fba47cc4",
     "packages": [
         {
             "name": "brick/math",
@@ -2152,10 +2152,6 @@
             ],
             "type": "library",
             "extra": {
-                "branch-alias": {
-                    "dev-master": "3.x-dev",
-                    "dev-2.x": "2.x-dev"
-                },
                 "laravel": {
                     "providers": [
                         "Carbon\\Laravel\\ServiceProvider"
@@ -2165,6 +2161,10 @@
                     "includes": [
                         "extension.neon"
                     ]
+                },
+                "branch-alias": {
+                    "dev-2.x": "2.x-dev",
+                    "dev-master": "3.x-dev"
                 }
             },
             "autoload": {
@@ -7896,49 +7896,6 @@
             "time": "2024-10-09T05:16:32+00:00"
         },
         {
-            "name": "sigstat/sigstat",
-            "version": "dev-swap-php-naming",
-            "dist": {
-                "type": "path",
-                "url": "../../../statsig-php",
-                "reference": "867a0bf653b81133ed9e7111979645b3603628e2"
-            },
-            "require-dev": {
-                "donatj/mock-webserver": "^2.7.2",
-                "ext-zlib": "*",
-                "phpunit/phpunit": "^10"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Statsig\\": "src/"
-                }
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "Statsig\\Tests\\": "tests/"
-                }
-            },
-            "scripts": {
-                "test": [
-                    "phpunit tests --testdox --colors=always"
-                ],
-                "test:verbose": [
-                    "phpunit tests --testdox --colors=always --debug"
-                ],
-                "post-install-cmd": [
-                    "php post-install.php"
-                ]
-            },
-            "license": [
-                "ISC"
-            ],
-            "description": "Statsig PHP SDK",
-            "transport-options": {
-                "relative": true
-            }
-        },
-        {
             "name": "staabm/side-effects-detector",
             "version": "1.0.5",
             "source": {
@@ -7989,6 +7946,49 @@
                 }
             ],
             "time": "2024-10-20T05:08:20+00:00"
+        },
+        {
+            "name": "statsig/statsig-core-php",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../../../statsig-php",
+                "reference": "91328198a53d0066e78ef6330143df1c3b4577ad"
+            },
+            "require-dev": {
+                "donatj/mock-webserver": "^2.7.2",
+                "ext-zlib": "*",
+                "phpunit/phpunit": "^10"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Statsig\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Statsig\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "phpunit tests --testdox --colors=always"
+                ],
+                "test:verbose": [
+                    "phpunit tests --testdox --colors=always --debug"
+                ],
+                "post-install-cmd": [
+                    "php post-install.php"
+                ]
+            },
+            "license": [
+                "ISC"
+            ],
+            "description": "Statsig PHP SDK",
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "symfony/yaml",
@@ -8116,7 +8116,7 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "sigstat/sigstat": 20
+        "statsig/statsig-core-php": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,

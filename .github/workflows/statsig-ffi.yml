@@ -70,7 +70,7 @@ jobs:
         if: ${{ github.event_name == 'release' }}
         uses: ./.github/actions/upload-release-asset
         with:
-          repositories: sigstat-php
+          repositories: statsig-core-php
           asset_name: statsig-ffi-${{ matrix.config.target }}
           app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
           pattern: target/**/${{ matrix.config.target }}/**/release/libstatsig_ffi.so
@@ -129,4 +129,4 @@ jobs:
           asset_name: statsig-ffi-${{ matrix.config.target }}
           app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
           pattern: target/**/${{ matrix.config.target }}/release/{statsig_ffi,libstatsig_ffi}.{dll,pdb,dylib}
-          repositories: sigstat-php
+          repositories: statsig-core-php
