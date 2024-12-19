@@ -42,30 +42,30 @@ class Statsig
         StatsigFFI::get()->statsig_flush_events_blocking($this->__ref);
     }
 
-    public function checkGate(string $name, StatsigUser $user): bool
+    public function checkGate(StatsigUser $user, string $name): bool
     {
         return StatsigFFI::get()->statsig_check_gate($this->__ref, $user->__ref, $name);
     }
 
-    public function getFeatureGate(string $name, StatsigUser $user): FeatureGate
+    public function getFeatureGate(StatsigUser $user, string $name): FeatureGate
     {
         $raw_result = StatsigFFI::get()->statsig_get_feature_gate($this->__ref, $user->__ref, $name);
         return new FeatureGate($raw_result);
     }
 
-    public function getDynamicConfig(string $name, StatsigUser $user): DynamicConfig
+    public function getDynamicConfig(StatsigUser $user, string $name): DynamicConfig
     {
         $raw_result = StatsigFFI::get()->statsig_get_dynamic_config($this->__ref, $user->__ref, $name);
         return new DynamicConfig($raw_result);
     }
 
-    public function getExperiment(string $name, StatsigUser $user): Experiment
+    public function getExperiment(StatsigUser $user, string $name): Experiment
     {
         $raw_result = StatsigFFI::get()->statsig_get_experiment($this->__ref, $user->__ref, $name);
         return new Experiment($raw_result);
     }
 
-    public function getLayer(string $name, StatsigUser $user): Layer
+    public function getLayer(StatsigUser $user, string $name): Layer
     {
         $raw_result = StatsigFFI::get()->statsig_get_layer($this->__ref, $user->__ref, $name);
         return new Layer($raw_result, $this->__ref);

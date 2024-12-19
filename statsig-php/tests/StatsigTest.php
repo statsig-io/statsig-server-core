@@ -28,9 +28,23 @@ class StatsigTest extends TestCase
         $this->server->mock('/v1/log_event', '{ "success": true }', ['status' => 202]);
     }
 
+
     protected function tearDown(): void
     {
         $this->server->stop();
+    }
+
+    protected function getInitializedStatsig(): Statsig
+    {
+        $options = new StatsigOptions(
+            $this->server->getUrl() . "/v2/download_config_specs",
+            $this->server->getUrl() . "/v1/log_event"
+        );
+        $statsig = new Statsig("secret-key", $options);
+
+        $statsig->initialize();
+
+        return $statsig;
     }
 
     public function testCreateAndRelease()
@@ -52,19 +66,6 @@ class StatsigTest extends TestCase
         $this->assertNull($statsig->__ref);
     }
 
-    function getInitializedStatsig(): Statsig
-    {
-        $options = new StatsigOptions(
-            $this->server->getUrl() . "/v2/download_config_specs",
-            $this->server->getUrl() . "/v1/log_event"
-        );
-        $statsig = new Statsig("secret-key", $options);
-
-        $statsig->initialize();
-
-        return $statsig;
-    }
-
     public function testInitialization()
     {
         $statsig = $this->getInitializedStatsig();
@@ -77,14 +78,14 @@ class StatsigTest extends TestCase
     public function testCheckGate()
     {
         $statsig = $this->getInitializedStatsig();
-        $this->assertTrue($statsig->checkGate("test_public", $this->user));
+        $this->assertTrue($statsig->checkGate($this->user, "test_public"));
     }
 
     public function testGetFeatureGate()
     {
         $statsig = $this->getInitializedStatsig();
 
-        $gate = $statsig->getFeatureGate("test_50_50", $this->user);
+        $gate = $statsig->getFeatureGate($this->user, "test_50_50");
         $this->assertTrue($gate->value);
     }
 
@@ -92,7 +93,7 @@ class StatsigTest extends TestCase
     {
         $statsig = $this->getInitializedStatsig();
 
-        $config = $statsig->getDynamicConfig("test_email_config", $this->user);
+        $config = $statsig->getDynamicConfig($this->user, "test_email_config");
         $this->assertEquals("everyone else", $config->get("header_text", "err"));
     }
 
@@ -100,7 +101,7 @@ class StatsigTest extends TestCase
     {
         $statsig = $this->getInitializedStatsig();
 
-        $experiment = $statsig->getExperiment("exp_with_obj_and_array", $this->user);
+        $experiment = $statsig->getExperiment($this->user, "exp_with_obj_and_array");
         $this->assertEquals(["group" => "test"], $experiment->get("obj_param", ["fallback" => ""]));
     }
 
@@ -108,7 +109,7 @@ class StatsigTest extends TestCase
     {
         $statsig = $this->getInitializedStatsig();
 
-        $layer = $statsig->getLayer("layer_with_many_params", $this->user);
+        $layer = $statsig->getLayer($this->user, "layer_with_many_params");
         $this->assertEquals("layer", $layer->get("a_string", "err"));
     }
 
@@ -116,10 +117,10 @@ class StatsigTest extends TestCase
     {
         $statsig = $this->getInitializedStatsig();
 
-        $statsig->getFeatureGate("test_50_50", $this->user);
-        $statsig->getDynamicConfig("test_email_config", $this->user);
-        $statsig->getExperiment("exp_with_obj_and_array", $this->user);
-        $statsig->getLayer("layer_with_many_params", $this->user)->get("a_string", "");
+        $statsig->getFeatureGate($this->user, "test_50_50");
+        $statsig->getDynamicConfig($this->user, "test_email_config");
+        $statsig->getExperiment($this->user, "exp_with_obj_and_array");
+        $statsig->getLayer($this->user, "layer_with_many_params")->get("a_string", "");
 
         $statsig->flushEvents();
 

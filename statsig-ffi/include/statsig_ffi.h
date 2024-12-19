@@ -72,7 +72,8 @@ void statsig_local_file_event_logging_adapter_send_pending_events(const char *ad
 
 const char *statsig_local_file_specs_adapter_create(const char *sdk_key,
                                                     const char *output_directory,
-                                                    const char *specs_url);
+                                                    const char *specs_url,
+                                                    bool fallback_to_statsig_api);
 
 void statsig_local_file_specs_adapter_release(const char *specs_adapter_ref);
 

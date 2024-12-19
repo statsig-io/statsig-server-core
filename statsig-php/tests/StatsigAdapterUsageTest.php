@@ -50,7 +50,7 @@ class StatsigAdapterUsageTest extends TestCase
         $statsig->initialize();
 
         $user = new StatsigUser("a-user");
-        $gate = $statsig->getFeatureGate("test_50_50", $user);
+        $gate = $statsig->getFeatureGate($user, "test_50_50");
         $this->assertTrue($gate->value);
     }
 

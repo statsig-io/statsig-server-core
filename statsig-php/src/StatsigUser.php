@@ -2,7 +2,6 @@
 
 namespace Statsig;
 
-
 class StatsigUser
 {
     public $__ref = null;

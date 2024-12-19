@@ -66,4 +66,32 @@ class MockServer
 
         return $requests;
     }
+
+    public function getLoggedEvents(bool $include_diagnostics = false): array
+    {
+        $requests = $this->getRequests();
+
+        $events = [];
+        foreach ($requests as $request) {
+            if ($request['path'] !== '/v1/log_event' && $request['path'] !== '/v1/rgstr') {
+                continue;
+            }
+
+            $bytes = $request['body'];
+            $json = gzdecode($bytes);
+            $body = json_decode($json, true);
+
+            if ($include_diagnostics) {
+                $events = array_merge($events, $body['events']);
+            } else {
+                foreach ($body['events'] as $event) {
+                    if ($event['eventName'] !== 'statsig::diagnostics') {
+                        $events[] = $event;
+                    }
+                }
+            }
+        }
+
+        return $events;
+    }
 }

@@ -20,14 +20,24 @@ pub struct StatsigLocalFileSpecsAdapter {
 }
 
 impl StatsigLocalFileSpecsAdapter {
-    pub fn new(sdk_key: &str, output_directory: &str, specs_url: Option<String>) -> Self {
+    pub fn new(
+        sdk_key: &str,
+        output_directory: &str,
+        specs_url: Option<String>,
+        fallback_to_statsig_api: bool,
+    ) -> Self {
         let hashed_key = djb2(sdk_key);
         let file_path = format!("{}/{}_specs.json", output_directory, hashed_key);
 
         Self {
             file_path,
             listener: RwLock::new(None),
-            http_adapter: StatsigHttpSpecsAdapter::new(sdk_key, specs_url.as_ref(), false, None),
+            http_adapter: StatsigHttpSpecsAdapter::new(
+                sdk_key,
+                specs_url.as_ref(),
+                fallback_to_statsig_api,
+                None,
+            ),
         }
     }
 
@@ -63,13 +73,11 @@ impl StatsigLocalFileSpecsAdapter {
 
         match &self.listener.read() {
             Ok(lock) => match lock.as_ref() {
-                Some(listener) => {
-                    listener.did_receive_specs_update(SpecsUpdate {
-                        data,
-                        source: SpecsSource::Bootstrap,
-                        received_at: Utc::now().timestamp_millis() as u64,
-                    })
-                }
+                Some(listener) => listener.did_receive_specs_update(SpecsUpdate {
+                    data,
+                    source: SpecsSource::Bootstrap,
+                    received_at: Utc::now().timestamp_millis() as u64,
+                }),
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
             Err(e) => Err(StatsigErr::LockFailure(e.to_string())),

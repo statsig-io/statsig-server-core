@@ -49,7 +49,7 @@ async fn test_statsig_local_file_specs_adapter() {
     let mock_scrapi = setup().await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
 
-    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, "/tmp", Some(url));
+    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, "/tmp", Some(url), false);
 
     adapter.fetch_and_write_to_file().await.unwrap();
 
@@ -71,7 +71,7 @@ async fn test_concurrent_access() {
         .map(|_| {
             let url = url.clone();
             tokio::task::spawn(async move {
-                let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, "/tmp", Some(url));
+                let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, "/tmp", Some(url), false);
                 adapter.fetch_and_write_to_file().await.unwrap();
                 let _ = adapter.resync_from_file();
             })
@@ -89,7 +89,7 @@ async fn test_sending_since_time() {
 
     let mock_scrapi = setup().await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
-    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, "/tmp", Some(url));
+    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, "/tmp", Some(url), false);
     adapter.fetch_and_write_to_file().await.unwrap();
 
     let reqs = mock_scrapi.get_requests_for_endpoint(Endpoint::DownloadConfigSpecs);
@@ -114,6 +114,7 @@ async fn test_syncing_from_file() {
         SDK_KEY,
         "/tmp",
         Some(url),
+        false
     ));
     adapter.fetch_and_write_to_file().await.unwrap();
 
