@@ -16,7 +16,7 @@ use std::fmt;
 use std::sync::{Arc, Mutex};
 
 const MAX_MARKER_COUNT: usize = 50;
-const DIAGNOSTICS_EVENT: &str = "statsig::diagnostics";
+pub const DIAGNOSTICS_EVENT: &str = "statsig::diagnostics";
 
 #[derive(Eq, Hash, PartialEq)]
 pub enum ContextType {

@@ -11,6 +11,7 @@ use crate::statsig_metadata::StatsigMetadata;
 use crate::{log_d, log_e, StatsigErr, StatsigHttpEventLoggingAdapter, StatsigRuntime};
 use async_trait::async_trait;
 use file_guard::Lock;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -38,41 +39,15 @@ impl StatsigLocalFileEventLoggingAdapter {
 
     pub async fn send_pending_events(&self) -> Result<(), StatsigErr> {
         log_d!(TAG, "Sending pending events...");
-        let current_requests = match self.get_and_clear_current_requests()? {
+        let current_requests = match read_and_clear_file(&self.file_path)? {
             Some(requests) => requests,
             None => {
                 log_d!(TAG, "No events found");
-                return Ok(())
-            },
+                return Ok(());
+            }
         };
 
-        let mut seen_exposures = HashSet::new();
-        let mut processed_events = vec![];
-
-        for line in current_requests.lines() {
-            let events: Vec<StatsigEventInternal> = match serde_json::from_str(line) {
-                Ok(events) => events,
-                Err(e) => {
-                    log_e!(TAG, "Failed to parse events in file: {}", e.to_string());
-                    continue
-                }
-            };
-
-            for event in events {
-                if !event.is_exposure_event() {
-                    processed_events.push(event);
-                    continue;
-                }
-
-                let key = create_merge_key(&event);
-                if seen_exposures.contains(&key) {
-                    continue;
-                }
-
-                seen_exposures.insert(key);
-                processed_events.push(event);
-            }
-        }
+        let processed_events = process_events(&current_requests);
 
         let chunks = processed_events.chunks(1000);
         let tasks = chunks.map(|chunk| async move {
@@ -103,36 +78,74 @@ impl StatsigLocalFileEventLoggingAdapter {
         }
 
         log_d!(TAG, "All events sent");
-
         Ok(())
     }
+}
 
-    fn get_and_clear_current_requests(&self) -> Result<Option<String>, StatsigErr> {
-        log_d!(TAG, "Retrieving pending events from {}", self.file_path);
+fn read_and_clear_file(file_path: &str) -> Result<Option<String>, StatsigErr> {
+    log_d!(TAG, "Retrieving pending events from {}", file_path);
 
-        let path = std::path::Path::new(&self.file_path);
-        if !path.exists() {
-            return Ok(None);
-        }
-    
-        let mut file = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&self.file_path)
-            .map_err(|e| StatsigErr::FileError(e.to_string()))?;
-    
-        let mut lock = file_guard::lock(&mut file, Lock::Exclusive, 0, 1)
-            .map_err(|e| StatsigErr::FileError(e.to_string()))?;
-
-        let mut file_contents = String::new();
-        (*lock).read_to_string(&mut file_contents)
-            .map_err(|e| StatsigErr::FileError(e.to_string()))?;
-    
-        // Truncate the file to clear its contents
-        (*lock).set_len(0).map_err(|e| StatsigErr::FileError(e.to_string()))?;
-    
-        Ok(Some(file_contents))
+    let path = std::path::Path::new(file_path);
+    if !path.exists() {
+        return Ok(None);
     }
+
+    let mut file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(file_path)
+        .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+
+    let mut lock = file_guard::lock(&mut file, Lock::Exclusive, 0, 1)
+        .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+
+    let mut file_contents = String::new();
+    (*lock)
+        .read_to_string(&mut file_contents)
+        .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+
+    // Truncate the file to clear its contents
+    (*lock)
+        .set_len(0)
+        .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+
+    Ok(Some(file_contents))
+}
+
+fn process_events(current_requests: &str) -> Vec<StatsigEventInternal> {
+    let mut seen_exposures = HashSet::new();
+    let mut processed_events = vec![];
+
+    for line in current_requests.lines() {
+        let events: Vec<StatsigEventInternal> = match serde_json::from_str(line) {
+            Ok(events) => events,
+            Err(e) => {
+                log_e!(TAG, "Failed to parse events in file: {}", e.to_string());
+                continue;
+            }
+        };
+
+        for event in events {
+            if event.is_diagnostic_event() && !should_sample_sdk_diagnostics() {
+                continue;
+            }
+
+            if !event.is_exposure_event() {
+                processed_events.push(event);
+                continue;
+            }
+
+            let key = create_merge_key(&event);
+            if seen_exposures.contains(&key) {
+                continue;
+            }
+
+            seen_exposures.insert(key);
+            processed_events.push(event);
+        }
+    }
+
+    processed_events
 }
 
 fn create_merge_key(event: &StatsigEventInternal) -> String {
@@ -158,6 +171,13 @@ fn create_merge_key(event: &StatsigEventInternal) -> String {
     )
 }
 
+// PHP initializes per request, so we get a diagnostics event per request.
+// This samples quite aggressively to compensate for that
+fn should_sample_sdk_diagnostics() -> bool {
+    let random_number = rand::thread_rng().gen_range(0..10000);
+    random_number < 1
+}
+
 #[async_trait]
 impl EventLoggingAdapter for StatsigLocalFileEventLoggingAdapter {
     async fn start(&self, _statsig_runtime: &Arc<StatsigRuntime>) -> Result<(), StatsigErr> {
@@ -176,7 +196,8 @@ impl EventLoggingAdapter for StatsigLocalFileEventLoggingAdapter {
         let mut lock = file_guard::lock(&mut file, Lock::Exclusive, 0, 1)
             .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
-        (*lock).write_all(format!("{}\n", json).as_bytes())
+        (*lock)
+            .write_all(format!("{}\n", json).as_bytes())
             .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
         Ok(true)

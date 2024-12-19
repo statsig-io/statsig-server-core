@@ -8,6 +8,7 @@ use std::collections::HashSet;
 use crate::event_logging::config_exposure::CONFIG_EXPOSURE_EVENT_NAME;
 use crate::event_logging::gate_exposure::GATE_EXPOSURE_EVENT_NAME;
 use crate::event_logging::layer_exposure::LAYER_EXPOSURE_EVENT_NAME;
+use crate::sdk_diagnostics::diagnostics::DIAGNOSTICS_EVENT;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -60,6 +61,10 @@ impl StatsigEventInternal {
         self.event_data.event_name == GATE_EXPOSURE_EVENT_NAME ||
             self.event_data.event_name == CONFIG_EXPOSURE_EVENT_NAME ||
             self.event_data.event_name == LAYER_EXPOSURE_EVENT_NAME
+    }
+
+    pub fn is_diagnostic_event(&self) -> bool {
+        self.event_data.event_name == DIAGNOSTICS_EVENT
     }
 }
 
