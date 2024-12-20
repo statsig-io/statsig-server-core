@@ -82,7 +82,11 @@ void statsig_local_file_specs_adapter_fetch_and_write_to_file(const char *specs_
 const char *statsig_options_create(const char *specs_url,
                                    const char *log_event_url,
                                    const char *specs_adapter_ref,
-                                   const char *event_logging_adapter_ref);
+                                   const char *event_logging_adapter_ref,
+                                   const char *environment,
+                                   int event_logging_flush_interval_ms,
+                                   int event_logging_max_queue_size,
+                                   int specs_sync_interval_ms);
 
 void statsig_options_release(const char *options_ref);
 

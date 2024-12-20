@@ -1,6 +1,6 @@
-use std::{os::raw::c_char, sync::Arc};
+use std::{os::raw::c_char, os::raw::c_int, sync::Arc};
 
-use crate::ffi_utils::{c_char_to_string, string_to_c_char};
+use crate::ffi_utils::{c_char_to_string, string_to_c_char, c_int_to_u32};
 use sigstat::{
     instance_store::INST_STORE, log_e, EventLoggingAdapter, SpecsAdapter,
     StatsigLocalFileEventLoggingAdapter, StatsigLocalFileSpecsAdapter, StatsigOptions,
@@ -14,9 +14,17 @@ pub extern "C" fn statsig_options_create(
     log_event_url: *const c_char,
     specs_adapter_ref: *const c_char,
     event_logging_adapter_ref: *const c_char,
+    environment: *const c_char,
+    event_logging_flush_interval_ms: c_int,
+    event_logging_max_queue_size: c_int,
+    specs_sync_interval_ms: c_int,
 ) -> *const c_char {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
+    let environment = c_char_to_string(environment);
+    let event_logging_flush_interval_ms = c_int_to_u32(event_logging_flush_interval_ms);
+    let event_logging_max_queue_size = c_int_to_u32(event_logging_max_queue_size);
+    let specs_sync_interval_ms = c_int_to_u32(specs_sync_interval_ms);
 
     let specs_adapter: Option<Arc<dyn SpecsAdapter>> = match c_char_to_string(specs_adapter_ref) {
         Some(specs_adapter_ref) => INST_STORE
@@ -39,6 +47,10 @@ pub extern "C" fn statsig_options_create(
             log_event_url,
             specs_adapter,
             event_logging_adapter,
+            environment,
+            event_logging_flush_interval_ms,
+            event_logging_max_queue_size,
+            specs_sync_interval_ms,
             ..StatsigOptions::new()
         })
         .unwrap_or_else(|| {

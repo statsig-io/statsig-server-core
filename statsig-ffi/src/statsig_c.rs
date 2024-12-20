@@ -1,6 +1,7 @@
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::{get_instance_or_noop_c, get_instance_or_return_c};
 use serde_json::json;
+use serde_json::Value;
 use sigstat::instance_store::INST_STORE;
 use sigstat::{get_instance_or_noop, log_d, log_e, unwrap_or_noop, unwrap_or_return, Statsig, StatsigOptions, StatsigRuntime, StatsigUser};
 use std::collections::HashMap;
@@ -105,13 +106,15 @@ pub extern "C" fn statsig_log_event(
     let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
     let user = get_instance_or_noop_c!(StatsigUser, user_ref);
     let event_json = unwrap_or_noop!(c_char_to_string(event_json));
-    let event = json!(event_json);
+    let event = match serde_json::from_str::<HashMap<String, Value>>(&event_json) {
+        Ok(map) => map,
+        Err(_) => return,
+    };
+    let event_name = unwrap_or_noop!(event.get("name").and_then(|n| n.as_str()));
 
-    let event_name = unwrap_or_noop!(event.get("eventName").and_then(|n| n.as_str()));
+    let event_value_str = event.get("value").and_then(|n| n.as_str());
 
-    let event_value = event
-        .get("value")
-        .and_then(|v| v.as_str().map(|s| s.to_string()));
+    let event_value = event_value_str.map(|v| v.to_string());
 
     let event_metadata: Option<HashMap<String, String>> = event
         .get("metadata")
@@ -121,7 +124,6 @@ pub extern "C" fn statsig_log_event(
                 .map(|(k, v)| (k.to_string(), v.as_str().unwrap_or("").to_string()))
                 .collect()
         });
-
     statsig.log_event(&user, event_name, event_value, event_metadata);
 }
 

@@ -2,7 +2,8 @@ use serde_json::Value;
 use sigstat::DynamicValue;
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
-use std::os::raw::c_char;
+use std::{os::raw::c_char, os::raw::c_int};
+
 
 #[macro_export]
 macro_rules! get_instance_or_noop_c {
@@ -39,6 +40,14 @@ pub fn c_char_to_string(c_str: *const c_char) -> Option<String> {
         Ok(str_slice) => Some(str_slice.to_owned()),
         Err(_) => None,
     }
+}
+
+pub fn c_int_to_u32(c_num: c_int) -> Option<u32> {
+    if c_num < 0 {
+        return None;
+    }
+
+    Some(c_num as u32)
 }
 
 pub fn string_to_c_char(s: String) -> *const c_char {

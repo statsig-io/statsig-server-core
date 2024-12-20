@@ -17,7 +17,7 @@ namespace Statsig
 
 
         [DllImport(__DllName, EntryPoint = "statsig_options_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_options_create(byte* specs_url, byte* log_event_url, byte* specs_adapter_ref, byte* event_logging_adapter_ref);
+        internal static extern byte* statsig_options_create(byte* specs_url, byte* log_event_url, byte* specs_adapter_ref, byte* event_logging_adapter_ref, byte* environment, int event_logging_flush_interval_ms, int event_logging_max_queue_size, int specs_sync_interval_ms);
 
         [DllImport(__DllName, EntryPoint = "statsig_options_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_options_release(byte* options_ref);
