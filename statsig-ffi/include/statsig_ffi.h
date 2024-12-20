@@ -98,3 +98,8 @@ const char *statsig_user_create(const char *user_id,
                                 const char *private_attributes_json);
 
 void statsig_user_release(const char *user_ref);
+
+void statsig_metadata_update_values(const char *sdk_type,
+                                    const char *os,
+                                    const char *arch,
+                                    const char *language_version);

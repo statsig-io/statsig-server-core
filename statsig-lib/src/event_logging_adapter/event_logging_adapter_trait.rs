@@ -63,7 +63,7 @@ mod tests {
 
         assert!(statsig_metadata_json.contains_key("sdkType"));
         assert!(statsig_metadata_json.contains_key("sdkVersion"));
-        assert!(statsig_metadata_json.contains_key("sessionId"));
+        assert!(statsig_metadata_json.contains_key("sessionID"));
 
         let events_json = payload_json.get("events").unwrap();
         assert_eq!(events_json.as_array().unwrap().len(), 1);

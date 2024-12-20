@@ -51,6 +51,8 @@ class StatsigFFI
             $found_binary_path
         );
 
+        self::update_statsig_metadata(self::$ffi);
+
         return self::$ffi;
     }
 
@@ -80,5 +82,14 @@ class StatsigFFI
         }
 
         return null;
+    }
+
+    private static function update_statsig_metadata(FFI $ffi): void
+    {
+        $os = PHP_OS_FAMILY;
+        $arch = php_uname('m');
+        $php_version = PHP_VERSION;
+
+        $ffi->statsig_metadata_update_values("statsig-server-core-php", $os, $arch, $php_version);
     }
 }

@@ -109,5 +109,5 @@ macro_rules! log_error_to_statsig_and_console {
     $ops_stats.log_error(event);
 
     $crate::output_logger::log_message(&$tag, $crate::output_logger::LogLevel::Error, err_message)
-    }
+  }
 }

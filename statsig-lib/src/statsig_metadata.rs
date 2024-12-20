@@ -1,20 +1,33 @@
-use std::collections::HashMap;
-
+use crate::log_e;
 use lazy_static::lazy_static;
 use serde::Serialize;
 use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::sync::RwLock;
 use uuid::Uuid;
 
 lazy_static! {
-    pub static ref STATSIG_METADATA: StatsigMetadata = StatsigMetadata::new();
+    static ref STATSIG_METADATA: RwLock<StatsigMetadata> = RwLock::new(StatsigMetadata::new());
 }
 
-#[derive(Serialize)]
+const TAG: &str = stringify!(StatsigMetadata);
+#[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StatsigMetadata {
     pub sdk_type: String,
     pub sdk_version: String,
+
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub os: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arch: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub language_version: Option<String>,
 }
 
 impl StatsigMetadata {
@@ -23,27 +36,45 @@ impl StatsigMetadata {
             sdk_version: "0.0.1-beta.126".to_string(),
             sdk_type: "statsig-server-core".to_string(),
             session_id: Uuid::new_v4().to_string(),
+            os: None,
+            arch: None,
+            language_version: None,
+        }
+    }
+
+    pub fn update_values(sdk_type: String, os: String, arch: String, language_version: String) {
+        match STATSIG_METADATA.write() {
+            Ok(mut metadata) => {
+                metadata.sdk_type = sdk_type;
+                metadata.os = Some(os);
+                metadata.arch = Some(arch);
+                metadata.language_version = Some(language_version);
+            }
+            Err(e) => {
+                log_e!(TAG, "Failed to clone StatsigMetadata: {}", e.to_string());
+            }
         }
     }
 
     pub fn get_constant_request_headers(sdk_key: &str) -> HashMap<String, String> {
-        let meta = &STATSIG_METADATA;
+        let meta = Self::get_metadata();
 
         HashMap::from([
             ("STATSIG-API-KEY".to_string(), sdk_key.to_string()),
-            ("STATSIG-SDK-TYPE".to_string(), meta.sdk_type.clone()),
-            ("STATSIG-SDK-VERSION".to_string(), meta.sdk_version.clone()),
-            ("STATSIG-SERVER-SESSION-ID".to_string(), meta.session_id.clone()),
+            ("STATSIG-SDK-TYPE".to_string(), meta.sdk_type),
+            ("STATSIG-SDK-VERSION".to_string(), meta.sdk_version),
+            ("STATSIG-SERVER-SESSION-ID".to_string(), meta.session_id),
         ])
     }
 
     pub fn get_metadata() -> StatsigMetadata {
-        let meta = &STATSIG_METADATA;
-        StatsigMetadata {
-           sdk_version: meta.sdk_version.clone(),
-           sdk_type: meta.sdk_type.clone(),
-           session_id: meta.session_id.clone(),
-       }
+        match STATSIG_METADATA.read() {
+            Ok(metadata) => metadata.clone(),
+            Err(e) => {
+                log_e!(TAG, "Failed to clone StatsigMetadata: {}", e.to_string());
+                StatsigMetadata::new()
+            }
+        }
     }
 
     pub fn get_as_json() -> Value {
