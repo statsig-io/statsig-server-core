@@ -72,3 +72,11 @@ macro_rules! read_lock_or_return {
 }
 
 
+#[macro_export]
+macro_rules! serialize_if_not_none {
+    ($state: expr, $field_name: expr, $value: expr) => {
+        if let Some(v) = $value {
+            $state.serialize_field($field_name, v)?
+        }
+    };
+}

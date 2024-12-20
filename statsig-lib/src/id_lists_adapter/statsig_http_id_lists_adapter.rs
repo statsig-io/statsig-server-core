@@ -318,6 +318,10 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
         });
         Ok(())
     }
+
+    fn get_type_name(&self) -> String {
+        TAG.to_string()
+    }
 }
 
 #[cfg(test)]

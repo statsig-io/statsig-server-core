@@ -1,3 +1,4 @@
+use serde::Serialize;
 pub use specs_adapter_trait::*;
 
 pub use statsig_bootstrap_specs_adapter::StatsigBootstrapSpecsAdapter;
@@ -19,7 +20,7 @@ mod specs_adapter_trait;
 
 pub const DEFAULT_INIT_TIMEOUT_MS: u64 = 3000;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SpecAdapterConfig {
     pub adapter_type: SpecsAdapterType,
     pub init_timeout_ms: u64,
@@ -27,7 +28,7 @@ pub struct SpecAdapterConfig {
     pub specs_url: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum SpecsAdapterType {
     NetworkGrpcWebsocket,
     NetworkHttp,

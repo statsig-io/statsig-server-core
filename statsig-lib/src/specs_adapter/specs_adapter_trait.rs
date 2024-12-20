@@ -2,7 +2,7 @@ use crate::statsig_err::StatsigErr;
 use crate::StatsigRuntime;
 use async_trait::async_trait;
 use serde::Serialize;
-use std::fmt;
+use std::fmt::{self, Debug};
 use std::sync::Arc;
 use tokio::time::Duration;
 
@@ -69,4 +69,10 @@ pub trait SpecsUpdateListener: Send + Sync {
     fn did_receive_specs_update(&self, update: SpecsUpdate) -> Result<(), StatsigErr>;
 
     fn get_current_specs_info(&self) -> SpecsInfo;
+}
+
+impl fmt::Debug for dyn SpecsAdapter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.get_type_name())
+    }
 }

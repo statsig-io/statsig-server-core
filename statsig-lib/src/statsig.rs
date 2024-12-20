@@ -3,9 +3,7 @@ use crate::client_init_response_formatter::{
 };
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
-use crate::evaluation::evaluator::{
-    Evaluator, SpecType,
-};
+use crate::evaluation::evaluator::{Evaluator, SpecType};
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::evaluator_result::{
     result_to_dynamic_config_eval, result_to_experiment_eval, result_to_gate_eval,
@@ -452,10 +450,7 @@ impl Statsig {
 
     pub fn manually_log_gate_exposure(&self, user: &StatsigUser, gate_name: &str) {
         let user_internal = self.internalize_user(user);
-        let gate = self.get_feature_gate_impl(
-            &user_internal,
-            gate_name
-        );
+        let gate = self.get_feature_gate_impl(&user_internal, gate_name);
         self.log_gate_exposure(user_internal, gate_name, &gate, true);
     }
 }
@@ -508,10 +503,7 @@ impl Statsig {
         dynamic_config_name: &str,
     ) {
         let user_internal = self.internalize_user(user);
-        let dynamic_config = self.get_dynamic_config_impl(
-            &user_internal,
-            dynamic_config_name
-        );
+        let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
         self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &dynamic_config, true);
     }
 }
@@ -556,10 +548,7 @@ impl Statsig {
 
     pub fn manually_log_experiment_exposure(&self, user: &StatsigUser, experiment_name: &str) {
         let user_internal = self.internalize_user(user);
-        let experiment = self.get_experiment_impl(
-            &user_internal,
-            experiment_name,
-        );
+        let experiment = self.get_experiment_impl(&user_internal, experiment_name);
         self.log_experiment_exposure(user_internal, experiment_name, &experiment, true);
     }
 }
@@ -643,7 +632,7 @@ impl Statsig {
             Err(e) => {
                 log_error_to_statsig_and_console!(&self.ops_stats, TAG, "Error evaluating: {}", e);
                 make_empty_result(EvaluationDetails::error(&e.to_string()))
-            },
+            }
         }
     }
 
@@ -700,7 +689,11 @@ impl Statsig {
                         result.version,
                     );
                 });
-                let evaluation = result_to_experiment_eval(experiment_name, data.values.dynamic_configs.get(experiment_name), &mut result);
+                let evaluation = result_to_experiment_eval(
+                    experiment_name,
+                    data.values.dynamic_configs.get(experiment_name),
+                    &mut result,
+                );
                 make_experiment(
                     experiment_name,
                     Some(evaluation),
@@ -939,7 +932,10 @@ fn setup_ops_stats(
     // TODO migrate output logger to use ops_stats
     initialize_simple_output_logger(&options.output_log_level);
     let ops_stat = OPS_STATS.get_for_instance(sdk_key);
-    let error_observer = Arc::new(SDKErrorsObserver::new(sdk_key.to_string()));
+    let error_observer = Arc::new(SDKErrorsObserver::new(
+        sdk_key,
+        serde_json::to_string(options).unwrap_or_default(),
+    ));
     ops_stat.subscribe(statsig_runtime.clone(), error_observer);
     let maybe_ob_client = options.observability_client.clone();
     if let Some(ob_client) = maybe_ob_client {

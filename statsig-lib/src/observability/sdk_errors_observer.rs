@@ -3,34 +3,43 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use bytes::Bytes;
 use serde::Serialize;
+use serde_json::Value;
 use tokio::sync::RwLock;
 
-use crate::{networking::{NetworkClient, RequestArgs}, statsig_metadata::StatsigMetadata, OpsStatsEventObserver};
+use crate::{
+    networking::{NetworkClient, RequestArgs},
+    statsig_metadata::StatsigMetadata,
+    OpsStatsEventObserver,
+};
 
 use super::ops_stats::OpsStatsEvent;
 
-static  SDK_EXCEPTION_ENDPOINT: &str = "https://statsigapi.net/v1/sdk_exception";
+static SDK_EXCEPTION_ENDPOINT: &str = "https://statsigapi.net/v1/sdk_exception";
 
 #[derive(Clone, Serialize)]
-pub struct ErrorBoundaryEvent{
+pub struct ErrorBoundaryEvent {
     pub tag: String,
     pub exception: String,
 }
 
-
 // Observer to post to scrapi when exception happened
 // If we never see the exception, log to sdk exception
-// TODO: By session end, we flush stats 
+// TODO: By session end, we flush stats
 pub struct SDKErrorsObserver {
     errors_aggregator: RwLock<HashMap<String, u32>>,
     network_client: NetworkClient,
+    statsig_options_logging_copy: String,
 }
 
 impl SDKErrorsObserver {
-    pub fn new(sdk_key: String) -> Self {
+    pub fn new(sdk_key: &str, options_logging_copy: String) -> Self {
         SDKErrorsObserver {
-            network_client: NetworkClient::new(&sdk_key,Some(StatsigMetadata::get_constant_request_headers(&sdk_key))),
+            network_client: NetworkClient::new(
+                sdk_key,
+                Some(StatsigMetadata::get_constant_request_headers(sdk_key)),
+            ),
             errors_aggregator: RwLock::new(HashMap::new()),
+            statsig_options_logging_copy: options_logging_copy,
         }
     }
 
@@ -46,14 +55,23 @@ impl SDKErrorsObserver {
     }
 
     async fn log_exception(&self, e: ErrorBoundaryEvent) {
-        if  let Ok(body) = serde_json::to_string(&e) {
-            let request_args = RequestArgs {
-                url: SDK_EXCEPTION_ENDPOINT.to_owned(),
-                retries: 0,
-                ..RequestArgs::new()
-            };
-            let _  =self.network_client.post(request_args, Some(Bytes::from(body))).await;
+        let mut body_obj = serde_json::to_value(e).unwrap_or_default();
+        if let Value::Object(ref mut map) = body_obj {
+            map.insert(
+                "statsigOptions".to_string(),
+                Value::String(self.statsig_options_logging_copy.clone()),
+            );
         }
+        let body = serde_json::to_string_pretty(&body_obj).unwrap_or_default();
+        let request_args = RequestArgs {
+            url: SDK_EXCEPTION_ENDPOINT.to_owned(),
+            retries: 0,
+            ..RequestArgs::new()
+        };
+        let _ = self
+            .network_client
+            .post(request_args, Some(Bytes::from(body)))
+            .await;
     }
 }
 
