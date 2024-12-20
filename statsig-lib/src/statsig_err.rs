@@ -1,6 +1,5 @@
 use std::fmt::{Display, Formatter};
 
-
 #[derive(Debug, Clone)]
 pub enum StatsigErr {
     CustomError(String),
@@ -14,6 +13,8 @@ pub enum StatsigErr {
     SerializationError(String),
 
     GzipError(String),
+
+    ZstdError(String),
 
     JsonParseError(String, String),
 
@@ -53,6 +54,8 @@ impl Display for StatsigErr {
             StatsigErr::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
 
             StatsigErr::GzipError(msg) => write!(f, "Gzip error: {}", msg),
+
+            StatsigErr::ZstdError(msg) => write!(f, "Zstd error: {}", msg),
 
             StatsigErr::JsonParseError(type_name, err_msg) => {
                 write!(f, "Failed to parse {} - {}", type_name, err_msg)

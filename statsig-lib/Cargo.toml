@@ -28,6 +28,7 @@ bytes = "1.9.0"
 flate2 = "1.0.35"
 rand = "0.8.4"
 file-guard = "0.2.0"
+zstd = { version = "0.13.2", optional = true }
 
 [dev-dependencies]
 mockito = "1.5.0"
@@ -39,7 +40,7 @@ more-asserts = "0.3.1"
 default = []
 vendored_openssl = ["openssl"]
 with_grpc = ["sigstat-grpc"]
-
+with_zstd = ["zstd"]
 # [[bin]]
 # name = "flush"
 # path = "tests/curl_service_tests.rs"

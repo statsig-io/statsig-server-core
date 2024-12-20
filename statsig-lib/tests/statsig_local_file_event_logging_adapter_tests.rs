@@ -1,15 +1,13 @@
 mod utils;
 
+use futures::future::join_all;
 use lazy_static::lazy_static;
 use serde_json::{from_str, json, Value};
 use sigstat::log_event_payload::{LogEventPayload, LogEventRequest};
 use sigstat::{EventLoggingAdapter, StatsigLocalFileEventLoggingAdapter};
 use std::fs;
-use std::io::Read;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
-use flate2::read::GzDecoder;
-use futures::future::join_all;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
 const SDK_KEY: &str = "server-local-file-events-test";
@@ -80,7 +78,56 @@ async fn test_writing_to_file() {
         "The events file was not created."
     );
 }
+#[cfg(not(feature = "with_zstd"))]
+#[tokio::test]
+#[allow(clippy::await_holding_lock)]
+async fn test_combining_requests() {
+    use std::io::Read;
 
+    let _lock = get_test_lock();
+
+    let mock_scrapi = setup().await;
+    let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
+
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, "/tmp", Some(url));
+
+    let payload = LogEventPayload {
+        events: TEST_EVENTS_DATA.clone(),
+        statsig_metadata: json!("{}"),
+    };
+
+    adapter
+        .log_events(LogEventRequest {
+            payload: payload.clone(),
+            event_count: 1,
+        })
+        .await
+        .unwrap();
+
+    adapter
+        .log_events(LogEventRequest {
+            payload: payload.clone(),
+            event_count: 1,
+        })
+        .await
+        .unwrap();
+
+    adapter.send_pending_events().await.unwrap();
+
+    let requests = mock_scrapi.get_requests_for_endpoint(Endpoint::LogEvent);
+
+    assert_eq!(requests.len(), 1);
+
+    let zipped_body = &requests[0].body;
+    let mut decoder = flate2::read::GzDecoder::new(zipped_body.as_slice());
+    let mut decompressed_body = String::new();
+    decoder.read_to_string(&mut decompressed_body).unwrap();
+
+    let parsed_body: LogEventPayload = from_str(&decompressed_body).unwrap();
+    assert_eq!(parsed_body.events.as_array().unwrap().len(), 2);
+}
+
+#[cfg(feature = "with_zstd")]
 #[tokio::test]
 #[allow(clippy::await_holding_lock)]
 async fn test_combining_requests() {
@@ -118,10 +165,9 @@ async fn test_combining_requests() {
 
     assert_eq!(requests.len(), 1);
 
-    let zipped_body = &requests[0].body;
-    let mut decoder = GzDecoder::new(zipped_body.as_slice());
-    let mut decompressed_body = String::new();
-    decoder.read_to_string(&mut decompressed_body).unwrap();
+    let zstd_body = &requests[0].body;
+    let decompressed_body =
+        String::from_utf8(zstd::decode_all(zstd_body.as_slice()).unwrap()).unwrap();
 
     let parsed_body: LogEventPayload = from_str(&decompressed_body).unwrap();
     assert_eq!(parsed_body.events.as_array().unwrap().len(), 2);
@@ -136,8 +182,6 @@ async fn test_combining_limits() {
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
 
     let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, "/tmp", Some(url));
-
-
 
     for _ in 0..1000 {
         let payload = LogEventPayload {
@@ -243,7 +287,11 @@ async fn test_concurrent_usage() {
     let mock_scrapi = setup().await;
 
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
-    let adapter = Arc::new(StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, "/tmp", Some(url)));
+    let adapter = Arc::new(StatsigLocalFileEventLoggingAdapter::new(
+        SDK_KEY,
+        "/tmp",
+        Some(url),
+    ));
 
     let mut task = vec![];
     for _ in 0..10 {

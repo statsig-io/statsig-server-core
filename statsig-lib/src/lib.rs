@@ -37,6 +37,7 @@ pub mod statsig_types;
 pub mod statsig_user;
 
 mod client_init_response_formatter;
+mod compression;
 mod dcs_str;
 mod evaluation;
 mod event_logging;

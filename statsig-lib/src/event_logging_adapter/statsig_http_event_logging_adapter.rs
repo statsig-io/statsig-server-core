@@ -1,14 +1,13 @@
+use crate::compression::compression_helper::{compress_data, get_compression_format};
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::log_event_payload::LogEventRequest;
 use crate::networking::{NetworkClient, RequestArgs};
 use crate::statsig_metadata::StatsigMetadata;
 use crate::{log_d, StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
-use flate2::{write::GzEncoder, Compression};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
-use std::io::Write;
 use std::sync::Arc;
 
 const DEFAULT_LOG_EVENT_URL: &str = "https://prodregistryv2.org/v1/log_event";
@@ -52,29 +51,25 @@ impl StatsigHttpEventLoggingAdapter {
             json!(&request.payload).to_string()
         );
 
+        let compression_format = get_compression_format();
+
         // Set headers
         let headers = HashMap::from([
             (
                 "statsig-event-count".to_string(),
                 request.event_count.to_string(),
             ),
-            ("Content-Encoding".to_owned(), "gzip".to_owned()),
+            ("Content-Encoding".to_owned(), compression_format.to_owned()),
             ("Content-Type".to_owned(), "application/json".to_owned()),
         ]);
 
-        // GZIP data before sending it
+        // Compress data before sending it
         let bytes = serde_json::to_vec(&request.payload)
             .map_err(|e| StatsigErr::SerializationError(e.to_string()))?;
-        let mut compressed = Vec::new();
-        {
-            let mut encoder = GzEncoder::new(&mut compressed, Compression::best());
-            encoder
-                .write_all(&bytes)
-                .map_err(|e| StatsigErr::GzipError(e.to_string()))?;
-            encoder
-                .finish()
-                .map_err(|e| StatsigErr::GzipError(e.to_string()))?;
-        }
+        let compressed = match compress_data(&bytes) {
+            Ok(c) => c,
+            Err(e) => return Err(e),
+        };
 
         // Make request
         let response_str = self
@@ -90,9 +85,7 @@ impl StatsigHttpEventLoggingAdapter {
                 Some(compressed.into()),
             )
             .await
-            .map_err(|_err| {
-                StatsigErr::NetworkError("Log event failure".into())
-            })?;
+            .map_err(|_err| StatsigErr::NetworkError("Log event failure".into()))?;
 
         serde_json::from_str::<LogEventResult>(&response_str)
             .map(|result| result.success != Some(false))
@@ -121,6 +114,7 @@ impl EventLoggingAdapter for StatsigHttpEventLoggingAdapter {
     }
 }
 
+#[cfg(not(feature = "with_zstd"))]
 #[tokio::test]
 async fn test_event_logging() {
     use crate::log_event_payload::{LogEventPayload, LogEventRequest};
@@ -140,5 +134,5 @@ async fn test_event_logging() {
 
     let result = adapter.log_events(request).await;
 
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "Error logging events: {:?}", result.err());
 }

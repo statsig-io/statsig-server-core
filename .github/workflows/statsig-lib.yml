@@ -10,6 +10,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   test_api_key: ${{ secrets.KONG_SERVER_SDK_KEY }}
+  RUST_BACKTRACE: 1
 
 jobs:
   main:
@@ -22,3 +23,5 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - run: cargo test -p sigstat
+
+      - run: cargo test -p sigstat --features with_zstd
