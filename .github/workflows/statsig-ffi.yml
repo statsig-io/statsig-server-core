@@ -26,6 +26,7 @@ jobs:
             platform: linux/arm64
             runner: statsig-ubuntu-arm64
             always_build: true
+            upload_statsig_ffi_h: true
 
           - target: amazonlinux2-x86_64
             platform: linux/amd64
@@ -74,6 +75,14 @@ jobs:
           asset_name: statsig-ffi-${{ matrix.config.target }}
           app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
           pattern: target/**/${{ matrix.config.target }}/**/release/libstatsig_ffi.so
+
+      - name: Upload statsig_ffi.h to PHP
+        if: ${{ github.event_name == 'release' && matrix.config.upload_statsig_ffi_h }}
+        env:
+          GH_APP_ID: '229901'
+          GH_APP_INSTALLATION_ID: '36921303'
+          GH_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
+        run: ./run gh-attach-asset statsig-ffi/include/statsig_ffi.h --repo statsig-core-php
 
   build:
     strategy:

@@ -27,7 +27,7 @@ export class SyncVersion extends Command {
     updateNodePackageJsonVersions(version);
     updateJavaGradleVersion(version);
     updateStatsigGrpcDepVersion(version);
-
+    updatePhpComposerVersion(version);
     Log.stepBegin('Verifying Cargo Change');
     execSync('cargo check', { cwd: BASE_DIR });
     Log.stepEnd('Cargo Change Verified');
@@ -106,6 +106,23 @@ function updateStatsigGrpcDepVersion(version: string) {
   const updated = contents.replace(
     /(sigstat-grpc = \{[^}]*version = )"([^"]+)"/,
     `$1"${version}"`,
+  );
+
+  fs.writeFileSync(path, updated, 'utf8');
+
+  Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`);
+}
+
+function updatePhpComposerVersion(version: string) {
+  Log.stepBegin('Updating composer.json');
+
+  const path = getRootedPath('statsig-php/post-install.php');
+  const contents = fs.readFileSync(path, 'utf8');
+
+  const was = contents.match(/const VERSION = "([^"]+)"/)?.[1];
+  const updated = contents.replace(
+    /const VERSION = "([^"]+)"/,
+    `const VERSION = "${version}"`,
   );
 
   fs.writeFileSync(path, updated, 'utf8');
