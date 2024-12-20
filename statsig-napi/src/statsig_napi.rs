@@ -5,7 +5,9 @@ use serde_json::json;
 use sigstat::instance_store::INST_STORE;
 use sigstat::{
   get_instance_or_else, get_instance_or_noop, get_instance_or_return, log_e,
-  ClientInitResponseOptions, HashAlgorithm, Statsig, StatsigOptions, StatsigUser,
+  ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
+  FeatureGateEvaluationOptions, HashAlgorithm, LayerEvaluationOptions, Statsig, StatsigOptions,
+  StatsigUser,
 };
 use std::collections::HashMap;
 use std::time::Duration;
@@ -13,6 +15,32 @@ use std::time::Duration;
 use crate::statsig_types_napi::{DynamicConfigNapi, ExperimentNapi, FeatureGateNapi};
 
 const TAG: &str = "StatsigNapi";
+
+// Options
+#[napi(object, js_name = "ClientInitResponseOptions")]
+pub struct ClientInitResponseOptionsNapi {
+  pub hash_algorithm: Option<String>,
+}
+
+#[napi(object, js_name = "GetFeatureGateOptions")]
+pub struct GetFeatureGateOptionsNapi {
+  pub disable_exposure_logging: bool,
+}
+
+#[napi(object, js_name = "GetDynamicConfigOptions")]
+pub struct GetDynamicConfigOptionsNapi {
+  pub disable_exposure_logging: bool,
+}
+
+#[napi(object, js_name = "GetExperimentOptions")]
+pub struct GetExperimentOptionsNapi {
+  pub disable_exposure_logging: bool,
+}
+
+#[napi(object, js_name = "GetLayerOptions")]
+pub struct GetLayerOptionsNapi {
+  pub disable_exposure_logging: bool,
+}
 
 #[napi(custom_finalize)]
 pub struct AutoReleasingStatsigRef {
@@ -84,11 +112,17 @@ pub fn statsig_log_string_value_event(
 }
 
 #[napi]
-pub fn statsig_check_gate(statsig_ref: String, user_ref: String, gate_name: String) -> bool {
+pub fn statsig_check_gate(
+  statsig_ref: String,
+  user_ref: String,
+  gate_name: String,
+  options: Option<GetFeatureGateOptionsNapi>,
+) -> bool {
   let statsig = get_instance_or_return!(Statsig, &statsig_ref, false);
   let user = get_instance_or_return!(StatsigUser, &user_ref, false);
+  let options = options.map(|o| o.into()).unwrap_or_default();
 
-  statsig.check_gate(&user, &gate_name)
+  statsig.check_gate_with_options(&user, &gate_name, options)
 }
 
 #[napi]
@@ -96,6 +130,7 @@ pub fn statsig_get_feature_gate(
   statsig_ref: String,
   user_ref: String,
   gate_name: String,
+  option: Option<GetFeatureGateOptionsNapi>,
 ) -> FeatureGateNapi {
   let statsig = get_instance_or_else!(Statsig, &statsig_ref, {
     return create_empty_feature_gate(gate_name);
@@ -105,7 +140,8 @@ pub fn statsig_get_feature_gate(
     return create_empty_feature_gate(gate_name);
   });
 
-  let gate = statsig.get_feature_gate(&user, &gate_name);
+  let option = option.map(|o| o.into()).unwrap_or_default();
+  let gate = statsig.get_feature_gate_with_options(&user, &gate_name, option);
 
   FeatureGateNapi {
     name: gate_name,
@@ -127,13 +163,13 @@ pub fn statsig_log_gate_exposure(statsig_ref: String, user_ref: String, gate_nam
 
   statsig.manually_log_gate_exposure(&user, &gate_name)
 }
- 
 
 #[napi]
 pub fn statsig_get_dynamic_config(
   statsig_ref: String,
   user_ref: String,
   dynamic_config_name: String,
+  option: Option<GetDynamicConfigOptionsNapi>,
 ) -> DynamicConfigNapi {
   let statsig = get_instance_or_else!(Statsig, &statsig_ref, {
     return create_empty_dynamic_config(dynamic_config_name);
@@ -143,7 +179,8 @@ pub fn statsig_get_dynamic_config(
     return create_empty_dynamic_config(dynamic_config_name);
   });
 
-  let dynamic_config = statsig.get_dynamic_config(&user, &dynamic_config_name);
+  let option = option.map(|o| o.into()).unwrap_or_default();
+  let dynamic_config = statsig.get_dynamic_config_with_options(&user, &dynamic_config_name, option);
 
   DynamicConfigNapi {
     name: dynamic_config_name,
@@ -154,7 +191,11 @@ pub fn statsig_get_dynamic_config(
 }
 
 #[napi]
-pub fn statsig_log_dynamic_config_exposure(statsig_ref: String, user_ref: String, config_name: String) {
+pub fn statsig_log_dynamic_config_exposure(
+  statsig_ref: String,
+  user_ref: String,
+  config_name: String,
+) {
   let statsig = get_instance_or_else!(Statsig, &statsig_ref, {
     return;
   });
@@ -165,13 +206,13 @@ pub fn statsig_log_dynamic_config_exposure(statsig_ref: String, user_ref: String
 
   statsig.manually_log_dynamic_config_exposure(&user, &config_name)
 }
- 
 
 #[napi]
 pub fn statsig_get_experiment(
   statsig_ref: String,
   user_ref: String,
   experiment_name: String,
+  option: Option<GetExperimentOptionsNapi>,
 ) -> ExperimentNapi {
   let statsig = get_instance_or_else!(Statsig, &statsig_ref, {
     return create_empty_experiment(experiment_name);
@@ -181,7 +222,8 @@ pub fn statsig_get_experiment(
     return create_empty_experiment(experiment_name);
   });
 
-  let experiment = statsig.get_experiment(&user, &experiment_name);
+  let option = option.map(|o| o.into()).unwrap_or_default();
+  let experiment = statsig.get_experiment_with_options(&user, &experiment_name, option);
 
   ExperimentNapi {
     name: experiment_name,
@@ -193,7 +235,11 @@ pub fn statsig_get_experiment(
 }
 
 #[napi]
-pub fn statsig_log_experiment_exposure(statsig_ref: String, user_ref: String, experiment_name: String) {
+pub fn statsig_log_experiment_exposure(
+  statsig_ref: String,
+  user_ref: String,
+  experiment_name: String,
+) {
   let statsig = get_instance_or_else!(Statsig, &statsig_ref, {
     return;
   });
@@ -201,12 +247,17 @@ pub fn statsig_log_experiment_exposure(statsig_ref: String, user_ref: String, ex
   let user = get_instance_or_else!(StatsigUser, &user_ref, {
     return;
   });
-  
+
   statsig.manually_log_experiment_exposure(&user, &experiment_name)
 }
 
 #[napi]
-pub fn statsig_get_layer(statsig_ref: String, user_ref: String, layer_name: String) -> String {
+pub fn statsig_get_layer(
+  statsig_ref: String,
+  user_ref: String,
+  layer_name: String,
+  option: Option<GetLayerOptionsNapi>,
+) -> String {
   let statsig = get_instance_or_else!(Statsig, &statsig_ref, {
     return create_empty_layer_json(layer_name);
   });
@@ -215,7 +266,9 @@ pub fn statsig_get_layer(statsig_ref: String, user_ref: String, layer_name: Stri
     return create_empty_layer_json(layer_name);
   });
 
-  let layer = statsig.get_layer(&user, &layer_name);
+  let option = option.map(|o| o.into()).unwrap_or_default();
+  let layer = statsig.get_layer_with_options(&user, &layer_name, option);
+
   json!(layer).to_string()
 }
 
@@ -228,11 +281,6 @@ pub fn statsig_log_layer_param_exposure(
   let statsig = get_instance_or_noop!(Statsig, &statsig_ref);
 
   statsig.log_layer_param_exposure(layer_data, param_name)
-}
-
-#[napi(object, js_name = "ClientInitResponseOptions")]
-pub struct ClientInitResponseOptionsNapi {
-  pub hash_algorithm: Option<String>,
 }
 
 #[napi]
@@ -249,9 +297,8 @@ pub fn statsig_get_client_init_response(
     return String::from("{}");
   });
 
-  let options = convert_client_init_response_options(&options);
-
-  let response = match options.as_ref() {
+  let converted_options: Option<ClientInitResponseOptions> = options.map(|o| o.into());
+  let response = match converted_options.as_ref() {
     Some(options) => statsig.get_client_init_response_with_options(&user, options),
     None => statsig.get_client_init_response(&user),
   };
@@ -295,21 +342,48 @@ fn create_empty_layer_json(name: String) -> String {
   format!("\"name\": \"{}\"", name)
 }
 
-fn convert_client_init_response_options(
-  options: &Option<ClientInitResponseOptionsNapi>,
-) -> Option<ClientInitResponseOptions> {
-  let options = match options {
-    Some(options) => options,
-    None => return None,
-  };
+impl From<GetFeatureGateOptionsNapi> for FeatureGateEvaluationOptions {
+  fn from(value: GetFeatureGateOptionsNapi) -> Self {
+    FeatureGateEvaluationOptions {
+      disable_exposure_logging: value.disable_exposure_logging,
+    }
+  }
+}
 
-  let hash_algorithm = options
-    .hash_algorithm
-    .as_ref()
-    .and_then(|s| HashAlgorithm::from_string(s.as_str()));
+impl From<GetExperimentOptionsNapi> for ExperimentEvaluationOptions {
+  fn from(value: GetExperimentOptionsNapi) -> Self {
+    ExperimentEvaluationOptions {
+      disable_exposure_logging: value.disable_exposure_logging,
+    }
+  }
+}
 
-  Some(ClientInitResponseOptions {
-    hash_algorithm,
-    ..ClientInitResponseOptions::default()
-  })
+impl From<GetLayerOptionsNapi> for LayerEvaluationOptions {
+  fn from(value: GetLayerOptionsNapi) -> Self {
+    LayerEvaluationOptions {
+      disable_exposure_logging: value.disable_exposure_logging,
+    }
+  }
+}
+
+impl From<GetDynamicConfigOptionsNapi> for DynamicConfigEvaluationOptions {
+  fn from(value: GetDynamicConfigOptionsNapi) -> Self {
+    DynamicConfigEvaluationOptions {
+      disable_exposure_logging: value.disable_exposure_logging,
+    }
+  }
+}
+
+impl From<ClientInitResponseOptionsNapi> for ClientInitResponseOptions {
+  fn from(option: ClientInitResponseOptionsNapi) -> Self {
+    let hash_algorithm = option
+      .hash_algorithm
+      .as_ref()
+      .and_then(|s| HashAlgorithm::from_string(s.as_str()));
+
+    ClientInitResponseOptions {
+      hash_algorithm,
+      ..ClientInitResponseOptions::default()
+    }
+  }
 }

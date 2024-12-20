@@ -17,7 +17,10 @@ import {
   consoleLoggerInit,
   statsigLogDynamicConfigExposure,
   statsigLogExperimentExposure,
-  statsigLogGateExposure
+  statsigLogGateExposure,
+  GetExperimentOptions,
+  GetFeatureGateOptions,
+  GetLayerOptions
 } from './bindings';
 import StatsigOptions, { LogLevel } from './StatsigOptions';
 import StatsigUser from './StatsigUser';
@@ -53,12 +56,12 @@ export class Statsig {
     );
   }
 
-  checkGate(user: StatsigUser, gateName: string): boolean {
-    return statsigCheckGate(this.__ref.refId, user.__ref.refId, gateName);
+  checkGate(user: StatsigUser, gateName: string, options?: GetFeatureGateOptions): boolean {
+    return statsigCheckGate(this.__ref.refId, user.__ref.refId, gateName, options);
   }
 
-  getFeatureGate(user: StatsigUser, gateName: string): FeatureGate {
-    return statsigGetFeatureGate(this.__ref.refId, user.__ref.refId, gateName);
+  getFeatureGate(user: StatsigUser, gateName: string, options?: GetFeatureGateOptions): FeatureGate {
+    return statsigGetFeatureGate(this.__ref.refId, user.__ref.refId, gateName, options);
   }
 
   manuallyLogGateExposure(user: StatsigUser, gateName: string) {
@@ -68,11 +71,13 @@ export class Statsig {
   getDynamicConfig(
     user: StatsigUser,
     dynamicConfigName: string,
+    options?: GetExperimentOptions
   ): DynamicConfig {
     const dynamicConfig = statsigGetDynamicConfig(
       this.__ref.refId,
       user.__ref.refId,
       dynamicConfigName,
+      options
     );
 
     const value = JSON.parse(dynamicConfig.jsonValue);
@@ -87,11 +92,12 @@ export class Statsig {
     statsigLogDynamicConfigExposure(this.__ref.refId, user.__ref.refId, configName)
   }
 
-  getExperiment(user: StatsigUser, experimentName: string): Experiment {
+  getExperiment(user: StatsigUser, experimentName: string, options?: GetExperimentOptions): Experiment {
     const experiment = statsigGetExperiment(
       this.__ref.refId,
       user.__ref.refId,
       experimentName,
+      options
     );
 
     const value = JSON.parse(experiment.jsonValue);
@@ -106,11 +112,12 @@ export class Statsig {
     statsigLogExperimentExposure(this.__ref.refId, user.__ref.refId, gateName)
   }
 
-  getLayer(user: StatsigUser, layerName: string): Layer {
+  getLayer(user: StatsigUser, layerName: string, options?: GetLayerOptions): Layer {
     const layerJson = statsigGetLayer(
       this.__ref.refId,
       user.__ref.refId,
       layerName,
+      options
     );
 
     const layer = JSON.parse(layerJson);
