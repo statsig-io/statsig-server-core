@@ -47,7 +47,7 @@ pub trait ObservabilityClient: Send + Sync + 'static + OpsStatsEventObserver {
 impl<T: ObservabilityClient> OpsStatsEventObserver for T {
     async fn handle_event(&self, event: OpsStatsEvent) {
         if let OpsStatsEvent::ObservabilityEvent(data) = event {
-            let metric_name = format!("statsig.{}", data.clone().metric_name);
+            let metric_name = format!("statsig.sdk.{}", data.clone().metric_name);
             match data.clone().metric_type {
                 MetricType::Increment => self.increment(metric_name, data.value, data.tags),
                 MetricType::Gauge => self.gauge(metric_name, data.value, data.tags),

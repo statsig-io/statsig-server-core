@@ -866,7 +866,14 @@ impl Statsig {
             MetricType::Dist,
             "initialization".to_string(),
             start_time.elapsed().as_millis() as f64,
-            None,
+            Some(HashMap::from([
+                ("success".to_owned(), success.to_string()),
+                ("source".to_owned(), specs_info.source.to_string()),
+                (
+                    "store_populated".to_owned(),
+                    (specs_info.source != SpecsSource::NoValues).to_string(),
+                ),
+            ])),
         ));
         self.diagnostics.mark_init_overall_end(
             success,
