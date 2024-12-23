@@ -26,6 +26,7 @@ struct StreamingRetryState {
 }
 
 const TAG: &str = stringify!(StatsigGrpcSpecsAdapter);
+const BG_TASK_TAG: &str = "grpc_streaming";
 
 pub struct StatsigGrpcSpecsAdapter {
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
@@ -94,7 +95,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
             }
         };
 
-        if tokio::time::timeout(timeout, statsig_runtime.await_join_handle(&handle_id))
+        if tokio::time::timeout(timeout, statsig_runtime.await_join_handle(BG_TASK_TAG, &handle_id))
             .await
             .is_err()
         {
@@ -140,7 +141,7 @@ impl StatsigGrpcSpecsAdapter {
         let weak_self = Arc::downgrade(&self);
 
         Ok(
-            statsig_runtime.spawn("grpc_streaming", |_shutdown_notify| async move {
+            statsig_runtime.spawn(BG_TASK_TAG, |_shutdown_notify| async move {
                 if let Some(strong_self) = weak_self.upgrade() {
                     if let Err(e) = strong_self.run_retryable_grpc_stream().await {
                         log_error_to_statsig_and_console!(

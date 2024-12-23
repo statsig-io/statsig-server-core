@@ -27,6 +27,8 @@ const DEDUPE_WINDOW_DURATION_MS: u64 = 60_000;
 const DEDUPE_MAX_KEYS: usize = 100000;
 const NON_EXPOSED_CHECKS_EVENT: &str = "statsig::non_exposed_checks";
 
+const FLUSH_AND_FORGET_BG_TAG: &str = "event_logger_flush_and_forget";
+
 struct PreviousExposureInfo {
     exposures: HashSet<String>,
     last_reset: u64,
@@ -183,7 +185,7 @@ impl EventLogger {
         let ops_stats = self.ops_stats.clone();
 
         self.statsig_runtime.spawn(
-            "event_logger_flush_and_forget",
+            FLUSH_AND_FORGET_BG_TAG,
             |_shutdown_notify| async move {
                 is_limit_flushing.store(false, Ordering::Relaxed);
                 Self::flush_impl(adapter, queue, prev_expos, non_exposed_checks, ops_stats).await;
@@ -199,6 +201,7 @@ impl EventLogger {
         let ops_stats = self.ops_stats.clone();
 
         Self::flush_impl(adapter, queue, prev_expos, non_exposed_checks, ops_stats).await;
+        self.statsig_runtime.await_tasks_with_tag(FLUSH_AND_FORGET_BG_TAG).await;
     }
 
     async fn flush_impl(

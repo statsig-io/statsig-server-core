@@ -81,6 +81,10 @@ impl MockScrapi {
         }
     }
 
+    pub async fn reset(&self) {
+        self.mock_server.reset().await;
+    }
+
     pub async fn stub(&self, stub: EndpointStub) {
         let logged_events = self.logged_events.clone();
         let reqs = self.requests.clone();
@@ -103,7 +107,11 @@ impl MockScrapi {
                         .parse::<u64>()
                         .unwrap();
 
-                    logged_events.fetch_add(count, Ordering::SeqCst);
+                    let local_logged_events_ptr = logged_events.clone();
+                    tokio::task::spawn(async move {
+                        tokio::time::sleep(Duration::from_millis(stub.delay_ms)).await;
+                        local_logged_events_ptr.fetch_add(count, Ordering::SeqCst);
+                    });
                 }
 
                 response_template

@@ -381,7 +381,7 @@ impl Statsig {
     }
 
     pub async fn flush_events(&self) {
-        self.event_logger.flush_blocking().await
+        self.event_logger.flush_blocking().await;
     }
 
     pub fn get_client_init_response(&self, user: &StatsigUser) -> InitializeResponse {
