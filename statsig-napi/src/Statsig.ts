@@ -12,6 +12,7 @@ import {
   statsigGetLayer,
   statsigInitialize,
   statsigLogLayerParamExposure,
+  statsigLogNumValueEvent,
   statsigLogStringValueEvent,
   statsigShutdown,
   consoleLoggerInit,
@@ -20,7 +21,7 @@ import {
   statsigLogGateExposure,
   GetExperimentOptions,
   GetFeatureGateOptions,
-  GetLayerOptions
+  GetLayerOptions,
 } from './bindings';
 import StatsigOptions, { LogLevel } from './StatsigOptions';
 import StatsigUser from './StatsigUser';
@@ -44,40 +45,68 @@ export class Statsig {
   logEvent(
     user: StatsigUser,
     eventName: string,
-    value?: string | undefined | null,
+    value?: string | number | undefined | null,
     metadata?: Record<string, string> | undefined | null,
   ): void {
-    statsigLogStringValueEvent(
+    if (typeof value == 'number') {
+      statsigLogNumValueEvent(
+        this.__ref.refId,
+        user.__ref.refId,
+        eventName,
+        value,
+        metadata,
+      );
+    } else {
+      statsigLogStringValueEvent(
+        this.__ref.refId,
+        user.__ref.refId,
+        eventName,
+        value,
+        metadata,
+      );
+    }
+  }
+
+  checkGate(
+    user: StatsigUser,
+    gateName: string,
+    options?: GetFeatureGateOptions,
+  ): boolean {
+    return statsigCheckGate(
       this.__ref.refId,
       user.__ref.refId,
-      eventName,
-      value,
-      metadata,
+      gateName,
+      options,
     );
   }
 
-  checkGate(user: StatsigUser, gateName: string, options?: GetFeatureGateOptions): boolean {
-    return statsigCheckGate(this.__ref.refId, user.__ref.refId, gateName, options);
-  }
-
-  getFeatureGate(user: StatsigUser, gateName: string, options?: GetFeatureGateOptions): FeatureGate {
-    return statsigGetFeatureGate(this.__ref.refId, user.__ref.refId, gateName, options);
+  getFeatureGate(
+    user: StatsigUser,
+    gateName: string,
+    options?: GetFeatureGateOptions,
+  ): FeatureGate {
+    return statsigGetFeatureGate(
+      this.__ref.refId,
+      user.__ref.refId,
+      gateName,
+      options,
+    );
   }
 
   manuallyLogGateExposure(user: StatsigUser, gateName: string) {
-    statsigLogGateExposure(this.__ref.refId, user.__ref.refId, gateName)
+    statsigLogGateExposure(this.__ref.refId, user.__ref.refId, gateName);
   }
 
   getDynamicConfig(
     user: StatsigUser,
     dynamicConfigName: string,
-    options?: GetExperimentOptions
+    options?: GetExperimentOptions,
   ): DynamicConfig {
     const dynamicConfig = statsigGetDynamicConfig(
       this.__ref.refId,
       user.__ref.refId,
       dynamicConfigName,
-      options
+      options,
     );
 
     const value = JSON.parse(dynamicConfig.jsonValue);
@@ -89,15 +118,23 @@ export class Statsig {
   }
 
   manuallyLogDynamicConfigExposure(user: StatsigUser, configName: string) {
-    statsigLogDynamicConfigExposure(this.__ref.refId, user.__ref.refId, configName)
+    statsigLogDynamicConfigExposure(
+      this.__ref.refId,
+      user.__ref.refId,
+      configName,
+    );
   }
 
-  getExperiment(user: StatsigUser, experimentName: string, options?: GetExperimentOptions): Experiment {
+  getExperiment(
+    user: StatsigUser,
+    experimentName: string,
+    options?: GetExperimentOptions,
+  ): Experiment {
     const experiment = statsigGetExperiment(
       this.__ref.refId,
       user.__ref.refId,
       experimentName,
-      options
+      options,
     );
 
     const value = JSON.parse(experiment.jsonValue);
@@ -109,15 +146,19 @@ export class Statsig {
   }
 
   manuallyLogExperimentExposure(user: StatsigUser, gateName: string) {
-    statsigLogExperimentExposure(this.__ref.refId, user.__ref.refId, gateName)
+    statsigLogExperimentExposure(this.__ref.refId, user.__ref.refId, gateName);
   }
 
-  getLayer(user: StatsigUser, layerName: string, options?: GetLayerOptions): Layer {
+  getLayer(
+    user: StatsigUser,
+    layerName: string,
+    options?: GetLayerOptions,
+  ): Layer {
     const layerJson = statsigGetLayer(
       this.__ref.refId,
       user.__ref.refId,
       layerName,
-      options
+      options,
     );
 
     const layer = JSON.parse(layerJson);
@@ -128,6 +169,20 @@ export class Statsig {
         statsigLogLayerParamExposure(this.__ref.refId, layerJson, param);
       }),
     };
+  }
+
+  manuallyLogLayerParameterExposure(
+    user: StatsigUser,
+    layerName: string,
+    parameterName: string,
+  ) {
+    const layerJson = statsigGetLayer(
+      this.__ref.refId,
+      user.__ref.refId,
+      layerName,
+    );
+
+    statsigLogLayerParamExposure(this.__ref.refId, layerJson, parameterName);
   }
 
   getClientInitializeResponse(

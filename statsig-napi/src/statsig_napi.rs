@@ -112,6 +112,20 @@ pub fn statsig_log_string_value_event(
 }
 
 #[napi]
+pub fn statsig_log_num_value_event(
+  statsig_ref: String,
+  user_ref: String,
+  event_name: String,
+  value: Option<f64>,
+  metadata: Option<HashMap<String, String>>,
+) {
+  let statsig = get_instance_or_noop!(Statsig, &statsig_ref);
+  let user = get_instance_or_noop!(StatsigUser, &user_ref);
+
+  statsig.log_event_with_number(&user, &event_name, value, metadata);
+}
+
+#[napi]
 pub fn statsig_check_gate(
   statsig_ref: String,
   user_ref: String,
