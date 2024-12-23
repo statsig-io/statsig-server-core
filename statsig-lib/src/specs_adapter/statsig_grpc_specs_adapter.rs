@@ -262,7 +262,7 @@ impl StatsigGrpcSpecsAdapter {
         if let Some(listener) = listener.as_ref() {
             let update = SpecsUpdate {
                 data,
-                source: SpecsSource::Network,
+                source: SpecsSource::Adapter("GRPC".to_string()),
                 received_at: Utc::now().timestamp_millis() as u64,
             };
 

@@ -6,6 +6,7 @@ use std::fmt::{self, Debug};
 use std::sync::Arc;
 use tokio::time::Duration;
 
+#[repr(u8)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum SpecsSource {
     Uninitialized = 0,
@@ -14,7 +15,7 @@ pub enum SpecsSource {
     Loading,
     Network,
     Bootstrap,
-    DataAdapter,
+    Adapter(String),
 }
 
 impl fmt::Display for SpecsSource {
@@ -26,7 +27,7 @@ impl fmt::Display for SpecsSource {
             SpecsSource::Loading => "Loading",
             SpecsSource::Network => "Network",
             SpecsSource::Bootstrap => "Bootstrap",
-            SpecsSource::DataAdapter => "DataAdapter",
+            SpecsSource::Adapter(name) => &format!("Adapter{}", name),
         };
         write!(f, "{}", s)
     }

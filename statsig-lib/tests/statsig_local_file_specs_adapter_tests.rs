@@ -129,5 +129,5 @@ async fn test_syncing_from_file() {
     adapter.resync_from_file().unwrap();
 
     let update = &listener.nullable_get_most_recent_update().unwrap();
-    assert_eq!(update.source, SpecsSource::Bootstrap);
+    assert_eq!(update.source, SpecsSource::Adapter("FileBased".to_string()));
 }

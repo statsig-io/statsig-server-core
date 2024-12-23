@@ -36,7 +36,8 @@ use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{
     dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, OverrideAdapter,
-    SpecsAdapter, SpecsSource, StatsigHttpIdListsAdapter, StatsigUser,
+    SpecsAdapter, SpecsInfo, SpecsSource, SpecsUpdateListener, StatsigHttpIdListsAdapter,
+    StatsigUser,
 };
 use crate::{log_error_to_statsig_and_console, statsig_core_api_options::*};
 use serde_json::json;
@@ -197,7 +198,12 @@ impl Statsig {
             .schedule_background_sync(&self.statsig_runtime);
 
         self.set_default_environment_from_server();
-        self.log_init_finish(success, &error_message, start_time);
+        self.log_init_finish(
+            success,
+            &error_message,
+            start_time,
+            self.spec_store.get_current_specs_info(),
+        );
         if let Err(e) = init_res.clone() {
             log_error_to_statsig_and_console!(
                 self.ops_stats,
@@ -849,15 +855,28 @@ impl Statsig {
         }
     }
 
-    fn log_init_finish(&self, success: bool, error_message: &Option<String>, start_time: Instant) {
+    fn log_init_finish(
+        &self,
+        success: bool,
+        error_message: &Option<String>,
+        start_time: Instant,
+        specs_info: SpecsInfo,
+    ) {
         self.ops_stats.log(ObservabilityEvent::new_event(
             MetricType::Dist,
             "initialization".to_string(),
             start_time.elapsed().as_millis() as f64,
             None,
         ));
-        self.diagnostics
-            .mark_init_overall_end(success, error_message.clone());
+        self.diagnostics.mark_init_overall_end(
+            success,
+            error_message.clone(),
+            EvaluationDetails {
+                reason: format!("{}", specs_info.source),
+                lcut: specs_info.lcut,
+                received_at: None,
+            },
+        );
     }
 }
 

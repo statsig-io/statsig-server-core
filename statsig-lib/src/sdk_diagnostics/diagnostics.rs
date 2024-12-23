@@ -2,10 +2,11 @@ use super::{
     diagnostics_utils::DiagnosticsUtils,
     marker::{ActionType, KeyType, Marker, StepType},
 };
-use crate::event_logging::{
-    statsig_event::StatsigEvent, statsig_event_internal::StatsigEventInternal,
-};
 use crate::log_w;
+use crate::{
+    evaluation::evaluation_details::EvaluationDetails,
+    event_logging::{statsig_event::StatsigEvent, statsig_event_internal::StatsigEventInternal},
+};
 use crate::{
     event_logging::event_logger::{EventLogger, QueuedEventPayload},
     read_lock_or_else, SpecStore,
@@ -84,14 +85,20 @@ impl Diagnostics {
         self.add_marker(ContextType::Initialize, init_marker);
     }
 
-    pub fn mark_init_overall_end(&self, success: bool, error_message: Option<String>) {
+    pub fn mark_init_overall_end(
+        &self,
+        success: bool,
+        error_message: Option<String>,
+        evaluation_details: EvaluationDetails,
+    ) {
         let mut init_marker = Marker::new(
             KeyType::Overall,
             ActionType::End,
             Some(StepType::Process),
             Utc::now().timestamp_millis() as u64,
         )
-        .with_is_success(success);
+        .with_is_success(success)
+        .with_eval_details(evaluation_details);
 
         if let Some(msg) = error_message {
             init_marker = init_marker.with_message(msg);

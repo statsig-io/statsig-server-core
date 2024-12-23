@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::evaluation::evaluation_details::EvaluationDetails;
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum KeyType {
     #[serde(rename = "initialize")]
@@ -67,6 +69,9 @@ pub struct Marker {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     url: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    evaluation_details: Option<EvaluationDetails>,
 }
 
 impl Marker {
@@ -86,6 +91,7 @@ impl Marker {
             config_name: None,
             message: None,
             error: None,
+            evaluation_details: None
         }
     }
 
@@ -106,6 +112,11 @@ impl Marker {
 
     pub fn with_message(mut self, message: String) -> Self {
         self.message = Some(message);
+        self
+    }
+
+    pub fn with_eval_details(mut self, details: EvaluationDetails) -> Self {
+        self.evaluation_details = Some(details);
         self
     }
 

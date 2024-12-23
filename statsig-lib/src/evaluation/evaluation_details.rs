@@ -3,7 +3,7 @@ use crate::spec_store::SpecStoreData;
 use serde::{Deserialize, Serialize};
 use crate::SpecsSource;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct EvaluationDetails {
     pub reason: String,
     pub lcut: Option<u64>,

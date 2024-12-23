@@ -71,7 +71,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         match update.result {
             Some(data) => listener.did_receive_specs_update(SpecsUpdate {
                 data,
-                source: SpecsSource::DataAdapter,
+                source: SpecsSource::Adapter("DataStore".to_string()),
                 received_at: Utc::now().timestamp_millis() as u64,
             })?,
             None => return Err(StatsigErr::DataStoreFailure("Empty result".to_string())),
@@ -105,7 +105,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
                                                 Some(listener) => {
                                                     match listener.did_receive_specs_update(SpecsUpdate {
                                                         data: update.result.unwrap_or_default(),
-                                                        source: SpecsSource::DataAdapter,
+                                                        source: SpecsSource::Adapter("DataStore".to_string()),
                                                         received_at: Utc::now().timestamp_millis() as u64,
                                                 }) {
                                                     Ok(_) => {},
