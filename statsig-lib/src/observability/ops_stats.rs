@@ -98,7 +98,7 @@ impl OpsStatsForInstance {
         observer: Arc<dyn OpsStatsEventObserver>,
     ) {
         let mut rx = self.sender.subscribe();
-        let _ = runtime.spawn("listen_for", |_| async move {
+        let _ = runtime.spawn("opts_stats_listen_for", |_| async move {
             while let Ok(event) = rx.recv().await {
                 observer.handle_event(event).await;
             }

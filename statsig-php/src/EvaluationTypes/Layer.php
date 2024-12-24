@@ -6,10 +6,10 @@ use Statsig\StatsigFFI;
 
 class Layer extends BaseEvaluation
 {
-    private readonly array $__value;
-    private readonly string $__statsig_ref;
     public readonly ?string $groupName;
     public readonly ?string $allocatedExperimentName;
+    private readonly array $__value;
+    private readonly string $__statsig_ref;
 
     public function __construct(string $raw_result, string $__statsig_ref)
     {

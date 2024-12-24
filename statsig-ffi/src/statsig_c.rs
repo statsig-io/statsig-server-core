@@ -3,7 +3,12 @@ use crate::{get_instance_or_noop_c, get_instance_or_return_c};
 use serde_json::json;
 use serde_json::Value;
 use sigstat::instance_store::INST_STORE;
-use sigstat::{get_instance_or_noop, log_d, log_e, unwrap_or_noop, unwrap_or_return, Statsig, StatsigOptions, StatsigRuntime, StatsigUser};
+use sigstat::{
+    get_instance_or_noop, log_d, log_e, unwrap_or_noop, unwrap_or_return,
+    ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
+    FeatureGateEvaluationOptions, LayerEvaluationOptions, Statsig, StatsigOptions, StatsigRuntime,
+    StatsigUser,
+};
 use std::collections::HashMap;
 use std::os::raw::c_char;
 use std::ptr::null;
@@ -110,12 +115,8 @@ pub extern "C" fn statsig_log_event(
         Ok(map) => map,
         Err(_) => return,
     };
+
     let event_name = unwrap_or_noop!(event.get("name").and_then(|n| n.as_str()));
-
-    let event_value_str = event.get("value").and_then(|n| n.as_str());
-
-    let event_value = event_value_str.map(|v| v.to_string());
-
     let event_metadata: Option<HashMap<String, String>> = event
         .get("metadata")
         .and_then(|m| m.as_object())
@@ -124,18 +125,68 @@ pub extern "C" fn statsig_log_event(
                 .map(|(k, v)| (k.to_string(), v.as_str().unwrap_or("").to_string()))
                 .collect()
         });
-    statsig.log_event(&user, event_name, event_value, event_metadata);
+
+    match event.get("value") {
+        Some(Value::String(value)) => {
+            statsig.log_event(&user, event_name, Some(value.to_string()), event_metadata)
+        }
+        _ => statsig.log_event_with_number(
+            &user,
+            event_name,
+            event.get("value").and_then(|v| v.as_f64()),
+            event_metadata,
+        ),
+    }
 }
+
+#[no_mangle]
+pub extern "C" fn statsig_get_client_init_response(
+    statsig_ref: *const c_char,
+    user_ref: *const c_char,
+    options_json: *const c_char,
+) -> *const c_char {
+    let statsig = get_instance_or_return_c!(Statsig, statsig_ref, null());
+    let user = get_instance_or_return_c!(StatsigUser, user_ref, null());
+
+    let options = match c_char_to_string(options_json) {
+        Some(opts) => match serde_json::from_str::<ClientInitResponseOptions>(&opts) {
+            Ok(options) => options,
+            Err(e) => {
+                log_e!(TAG, "Failed to parse options: {}", e);
+                return null();
+            }
+        },
+        None => ClientInitResponseOptions::default(),
+    };
+
+    let result = statsig.get_client_init_response_with_options(&user, &options);
+    string_to_c_char(json!(result).to_string())
+}
+
+// ------------------------
+// Feature Gate Functions
+// ------------------------
 
 #[no_mangle]
 pub extern "C" fn statsig_check_gate(
     statsig_ref: *const c_char,
     user_ref: *const c_char,
     gate_name: *const c_char,
+    options_json: *const c_char,
 ) -> bool {
     let statsig = get_instance_or_return_c!(Statsig, statsig_ref, false);
     let user = get_instance_or_return_c!(StatsigUser, user_ref, false);
     let gate_name = unwrap_or_return!(c_char_to_string(gate_name), false);
+
+    if let Some(opts) = c_char_to_string(options_json) {
+        match serde_json::from_str::<FeatureGateEvaluationOptions>(&opts) {
+            Ok(options) => return statsig.check_gate_with_options(&user, &gate_name, options),
+            Err(e) => {
+                log_e!(TAG, "Failed to parse options: {}", e);
+                return false;
+            }
+        }
+    }
 
     statsig.check_gate(&user, &gate_name)
 }
@@ -145,54 +196,153 @@ pub extern "C" fn statsig_get_feature_gate(
     statsig_ref: *const c_char,
     user_ref: *const c_char,
     gate_name: *const c_char,
+    options_json: *const c_char,
 ) -> *const c_char {
     let statsig = get_instance_or_return_c!(Statsig, statsig_ref, null());
     let user = get_instance_or_return_c!(StatsigUser, user_ref, null());
     let gate_name = unwrap_or_return!(c_char_to_string(gate_name), null());
 
-    let result = json!(statsig.get_feature_gate(&user, &gate_name)).to_string();
+    let gate = match c_char_to_string(options_json) {
+        Some(opts) => match serde_json::from_str::<FeatureGateEvaluationOptions>(&opts) {
+            Ok(options) => statsig.get_feature_gate_with_options(&user, &gate_name, options),
+            Err(e) => {
+                log_e!(TAG, "Failed to parse options: {}", e);
+                return null();
+            }
+        },
+        None => statsig.get_feature_gate(&user, &gate_name),
+    };
+
+    let result = json!(gate).to_string();
     string_to_c_char(result)
 }
+
+#[no_mangle]
+pub extern "C" fn statsig_manually_log_gate_exposure(
+    statsig_ref: *const c_char,
+    user_ref: *const c_char,
+    gate_name: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+    let user = get_instance_or_noop_c!(StatsigUser, user_ref);
+    let gate_name = unwrap_or_noop!(c_char_to_string(gate_name));
+
+    statsig.manually_log_gate_exposure(&user, &gate_name);
+}
+
+// ------------------------
+// Dynamic Config Functions
+// ------------------------
 
 #[no_mangle]
 pub extern "C" fn statsig_get_dynamic_config(
     statsig_ref: *const c_char,
     user_ref: *const c_char,
     config_name: *const c_char,
+    options_json: *const c_char,
 ) -> *const c_char {
     let statsig = get_instance_or_return_c!(Statsig, statsig_ref, null());
     let user = get_instance_or_return_c!(StatsigUser, user_ref, null());
     let config_name = unwrap_or_return!(c_char_to_string(config_name), null());
 
-    let result = json!(statsig.get_dynamic_config(&user, &config_name)).to_string();
+    let config = match c_char_to_string(options_json) {
+        Some(opts) => match serde_json::from_str::<DynamicConfigEvaluationOptions>(&opts) {
+            Ok(options) => statsig.get_dynamic_config_with_options(&user, &config_name, options),
+            Err(e) => {
+                log_e!(TAG, "Failed to parse options: {}", e);
+                return null();
+            }
+        },
+        None => statsig.get_dynamic_config(&user, &config_name),
+    };
+
+    let result = json!(config).to_string();
     string_to_c_char(result)
 }
+
+#[no_mangle]
+pub extern "C" fn statsig_manually_log_dynamic_config_exposure(
+    statsig_ref: *const c_char,
+    user_ref: *const c_char,
+    config_name: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+    let user = get_instance_or_noop_c!(StatsigUser, user_ref);
+    let config_name = unwrap_or_noop!(c_char_to_string(config_name));
+
+    statsig.manually_log_dynamic_config_exposure(&user, &config_name);
+}
+
+// ------------------------
+// Experiment Functions
+// ------------------------
 
 #[no_mangle]
 pub extern "C" fn statsig_get_experiment(
     statsig_ref: *const c_char,
     user_ref: *const c_char,
     experiment_name: *const c_char,
+    options_json: *const c_char,
 ) -> *const c_char {
     let statsig = get_instance_or_return_c!(Statsig, statsig_ref, null());
     let user = get_instance_or_return_c!(StatsigUser, user_ref, null());
     let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null());
 
-    let result = json!(statsig.get_experiment(&user, &experiment_name)).to_string();
+    let experiment = match c_char_to_string(options_json) {
+        Some(opts) => match serde_json::from_str::<ExperimentEvaluationOptions>(&opts) {
+            Ok(options) => statsig.get_experiment_with_options(&user, &experiment_name, options),
+            Err(e) => {
+                log_e!(TAG, "Failed to parse options: {}", e);
+                return null();
+            }
+        },
+        None => statsig.get_experiment(&user, &experiment_name),
+    };
+
+    let result = json!(experiment).to_string();
     string_to_c_char(result)
 }
+
+#[no_mangle]
+pub extern "C" fn statsig_manually_log_experiment_exposure(
+    statsig_ref: *const c_char,
+    user_ref: *const c_char,
+    experiment_name: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+    let user = get_instance_or_noop_c!(StatsigUser, user_ref);
+    let experiment_name = unwrap_or_noop!(c_char_to_string(experiment_name));
+
+    statsig.manually_log_experiment_exposure(&user, &experiment_name);
+}
+
+// ------------------------
+// Layer Functions
+// ------------------------
 
 #[no_mangle]
 pub extern "C" fn statsig_get_layer(
     statsig_ref: *const c_char,
     user_ref: *const c_char,
     layer_name: *const c_char,
+    options_json: *const c_char,
 ) -> *const c_char {
     let statsig = get_instance_or_return_c!(Statsig, statsig_ref, null());
     let user = get_instance_or_return_c!(StatsigUser, user_ref, null());
     let layer_name = unwrap_or_return!(c_char_to_string(layer_name), null());
 
-    let result = json!(statsig.get_layer(&user, &layer_name)).to_string();
+    let layer = match c_char_to_string(options_json) {
+        Some(opts) => match serde_json::from_str::<LayerEvaluationOptions>(&opts) {
+            Ok(options) => statsig.get_layer_with_options(&user, &layer_name, options),
+            Err(e) => {
+                log_e!(TAG, "Failed to parse options: {}", e);
+                return null();
+            }
+        },
+        None => statsig.get_layer(&user, &layer_name),
+    };
+
+    let result = json!(layer).to_string();
     string_to_c_char(result)
 }
 
@@ -211,13 +361,17 @@ pub extern "C" fn statsig_log_layer_param_exposure(
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_get_client_init_response(
+pub extern "C" fn statsig_manually_log_layer_parameter_exposure(
     statsig_ref: *const c_char,
     user_ref: *const c_char,
-) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, statsig_ref, null());
-    let user = get_instance_or_return_c!(StatsigUser, user_ref, null());
+    layer_name: *const c_char,
+    param_name: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+    let user = get_instance_or_noop_c!(StatsigUser, user_ref);
 
-    let result = statsig.get_client_init_response(&user);
-    string_to_c_char(json!(result).to_string())
+    let param_name = unwrap_or_noop!(c_char_to_string(param_name));
+    let layer_name = unwrap_or_noop!(c_char_to_string(layer_name));
+
+    statsig.manually_log_layer_parameter_exposure(&user, &layer_name, param_name);
 }

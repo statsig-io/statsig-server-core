@@ -149,25 +149,34 @@ fn process_events(current_requests: &str) -> Vec<StatsigEventInternal> {
 }
 
 fn create_merge_key(event: &StatsigEventInternal) -> String {
-    let mut metadata_string = String::new();
+    let mut metadata_parts = Vec::new();
     if let Some(metadata) = &event.event_data.metadata {
-        let mut entries: Vec<(String, String)> = metadata
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
+        if let Some(name) = metadata.get("gate") {
+            metadata_parts.push(format!("g.{}|", name));
+        }
 
-        entries.sort_by(|a, b| a.0.cmp(&b.0));
+        if let Some(name) = metadata.get("config") {
+            metadata_parts.push(format!("c.{}|", name));
+        }
 
-        metadata_string = entries
-            .into_iter()
-            .map(|(_, v)| v)
-            .collect::<Vec<String>>()
-            .join(",");
+        if let Some(name) = metadata.get("parameterName") {
+            metadata_parts.push(format!("pn.{}|", name));
+        }
+
+        if let Some(name) = metadata.get("allocatedExperiment") {
+            metadata_parts.push(format!("ae.{}|", name));
+        }
+
+        if let Some(rule_id) = metadata.get("ruleID") {
+            metadata_parts.push(format!("r.{}|", rule_id));
+        }
     }
 
     format!(
         "{}|{}|{}",
-        event.event_data.event_name, event.user.value, metadata_string
+        event.event_data.event_name,
+        event.user.value,
+        metadata_parts.concat()
     )
 }
 

@@ -1,24 +1,24 @@
+use serde::Deserialize;
+
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_types::{AnyConfigEvaluation, SecondaryExposure};
-use crate::evaluation::evaluator::{
-    Evaluator, SpecType,
-};
+use crate::evaluation::evaluator::{Evaluator, SpecType};
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::evaluator_result::{
     result_to_dynamic_config_eval, result_to_experiment_eval, result_to_gate_eval,
     result_to_layer_eval, EvaluatorResult,
 };
-use crate::statsig_metadata::StatsigMetadata;
 use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::initialize_response::InitializeResponse;
 use crate::spec_store::SpecStore;
 use crate::spec_types::Spec;
+use crate::statsig_metadata::StatsigMetadata;
 use crate::statsig_user_internal::{StatsigUserInternal, StatsigUserLoggable};
 use crate::{read_lock_or_else, OverrideAdapter};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Default)]
+#[derive(Default, Deserialize)]
 pub struct ClientInitResponseOptions {
     pub hash_algorithm: Option<HashAlgorithm>,
     pub client_sdk_key: Option<String>,
@@ -79,7 +79,11 @@ impl ClientInitResponseFormatter {
             &data,
             hashing,
             &app_id,
-            if include_local_overrides { &self.override_adapter } else { &None },
+            if include_local_overrides {
+                &self.override_adapter
+            } else {
+                &None
+            },
         );
 
         let hash_used = options
@@ -115,7 +119,11 @@ impl ClientInitResponseFormatter {
             }
 
             context.reset_result();
-            let spec_type = if spec.entity == "dynamic_config" { &SpecType::DynamicConfig } else { &SpecType::Experiment };
+            let spec_type = if spec.entity == "dynamic_config" {
+                &SpecType::DynamicConfig
+            } else {
+                &SpecType::Experiment
+            };
             if let Err(_err) = Evaluator::evaluate(&mut context, name, spec_type) {
                 return InitializeResponse::blank(user_internal);
             }
@@ -127,7 +135,8 @@ impl ClientInitResponseFormatter {
                 let evaluation = result_to_dynamic_config_eval(&hashed_name, &mut context.result);
                 dynamic_configs.insert(hashed_name, AnyConfigEvaluation::DynamicConfig(evaluation));
             } else {
-                let evaluation = result_to_experiment_eval(&hashed_name, Some(spec), &mut context.result);
+                let evaluation =
+                    result_to_experiment_eval(&hashed_name, Some(spec), &mut context.result);
                 dynamic_configs.insert(hashed_name, AnyConfigEvaluation::Experiment(evaluation));
             }
         }
@@ -168,7 +177,10 @@ impl ClientInitResponseFormatter {
             user: StatsigUserLoggable::new(user_internal),
             sdk_params: HashMap::new(),
             evaluated_keys,
-            sdk_info: HashMap::from([("sdkType".to_string(), metadata.sdk_type), ("sdkVersion".to_string(), metadata.sdk_version)]),
+            sdk_info: HashMap::from([
+                ("sdkType".to_string(), metadata.sdk_type),
+                ("sdkVersion".to_string(), metadata.sdk_version),
+            ]),
         }
     }
 }

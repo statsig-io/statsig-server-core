@@ -1,6 +1,9 @@
+use serde::Deserialize;
+
 use super::{djb2::djb2, memo_sha_256::MemoSha256};
 use std::fmt::Display;
 
+#[derive(Deserialize)]
 pub enum HashAlgorithm {
     Djb2,
     None,

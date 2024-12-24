@@ -21,7 +21,6 @@ pub extern "C" fn statsig_user_create(
     custom_json: *const c_char,
     private_attributes_json: *const c_char,
 ) -> *const c_char {
-    // Convert C strings to Rust Options
     let user_id = c_char_to_string(user_id);
     let custom_ids = parse_json_to_str_map(c_char_to_string(custom_ids_json));
     let email = c_char_to_string(email);
@@ -50,7 +49,7 @@ pub extern "C" fn statsig_user_create(
 
     let user = builder.build();
     let ref_id = INST_STORE.add(user).unwrap_or_else(|| {
-        log_e!(TAG, "Failed to create StatsigOptions");
+        log_e!(TAG, "Failed to create StatsigUser");
         "".to_string()
     });
 

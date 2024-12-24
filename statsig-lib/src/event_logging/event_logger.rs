@@ -9,7 +9,9 @@ use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_d, log_e, log_error_to_statsig_and_console, log_w, StatsigOptions, StatsigRuntime};
+use crate::{
+    log_d, log_e, log_error_to_statsig_and_console, log_w, StatsigOptions, StatsigRuntime,
+};
 use chrono::Utc;
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
@@ -44,7 +46,9 @@ pub enum QueuedEventPayload {
 impl Display for QueuedEventPayload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            QueuedEventPayload::CustomEvent(e) => write!(f, "CustomEvent: {}", e.event_data.event_name),
+            QueuedEventPayload::CustomEvent(e) => {
+                write!(f, "CustomEvent: {}", e.event_data.event_name)
+            }
             QueuedEventPayload::GateExposure(e) => write!(f, "GateExposure: {}", e.gate_name),
             QueuedEventPayload::ConfigExposure(e) => write!(f, "ConfigExposure: {}", e.config_name),
             QueuedEventPayload::LayerExposure(e) => write!(f, "LayerExposure: {}", e.layer_name),
@@ -140,7 +144,11 @@ impl EventLogger {
 
     pub fn enqueue(&self, payload: QueuedEventPayload) {
         if self.disable_all_logging {
-            log_d!(TAG, "Did not enqueue {} because all logging is disabled", payload);
+            log_d!(
+                TAG,
+                "Did not enqueue {} because all logging is disabled",
+                payload
+            );
             return;
         }
 
@@ -184,13 +192,11 @@ impl EventLogger {
         let non_exposed_checks = self.non_exposed_checks.clone();
         let ops_stats = self.ops_stats.clone();
 
-        self.statsig_runtime.spawn(
-            FLUSH_AND_FORGET_BG_TAG,
-            |_shutdown_notify| async move {
+        self.statsig_runtime
+            .spawn(FLUSH_AND_FORGET_BG_TAG, |_shutdown_notify| async move {
                 is_limit_flushing.store(false, Ordering::Relaxed);
                 Self::flush_impl(adapter, queue, prev_expos, non_exposed_checks, ops_stats).await;
-            },
-        );
+            });
     }
 
     pub async fn flush_blocking(&self) {
@@ -201,7 +207,9 @@ impl EventLogger {
         let ops_stats = self.ops_stats.clone();
 
         Self::flush_impl(adapter, queue, prev_expos, non_exposed_checks, ops_stats).await;
-        self.statsig_runtime.await_tasks_with_tag(FLUSH_AND_FORGET_BG_TAG).await;
+        self.statsig_runtime
+            .await_tasks_with_tag(FLUSH_AND_FORGET_BG_TAG)
+            .await;
     }
 
     async fn flush_impl(
@@ -375,7 +383,6 @@ fn validate_exposure_event<T: StatsigExposure>(
     }
 
     let dedupe_key = exposure.make_dedupe_key();
-
     if previous_exposure_info.exposures.contains(&dedupe_key) {
         return None;
     }

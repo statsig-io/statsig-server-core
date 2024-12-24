@@ -369,6 +369,10 @@ impl Statsig {
             }
         };
 
+        if layer.__disable_exposure {
+            return;
+        }
+
         self.event_logger
             .enqueue(QueuedEventPayload::LayerExposure(LayerExposure {
                 user: layer.__user,
@@ -591,6 +595,7 @@ impl Statsig {
             layer_name,
             LayerEvaluationOptions::default(),
         );
+
         self.event_logger
             .enqueue(QueuedEventPayload::LayerExposure(LayerExposure {
                 user: layer.__user,
@@ -719,6 +724,7 @@ impl Statsig {
         evaluation_options: LayerEvaluationOptions,
     ) -> Layer {
         let disable_exposure_logging = evaluation_options.disable_exposure_logging;
+
         self.evaluate_spec(
             user_internal,
             layer_name,

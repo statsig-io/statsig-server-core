@@ -58,27 +58,39 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_log_event", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_log_event(byte* statsig_ref, byte* user_ref, byte* event_json);
 
+        [DllImport(__DllName, EntryPoint = "statsig_get_client_init_response", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_client_init_response(byte* statsig_ref, byte* user_ref, byte* options_json);
+
         [DllImport(__DllName, EntryPoint = "statsig_check_gate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool statsig_check_gate(byte* statsig_ref, byte* user_ref, byte* gate_name);
+        internal static extern bool statsig_check_gate(byte* statsig_ref, byte* user_ref, byte* gate_name, byte* options_json);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_feature_gate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_get_feature_gate(byte* statsig_ref, byte* user_ref, byte* gate_name);
+        internal static extern byte* statsig_get_feature_gate(byte* statsig_ref, byte* user_ref, byte* gate_name, byte* options_json);
+
+        [DllImport(__DllName, EntryPoint = "statsig_manually_log_gate_exposure", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void statsig_manually_log_gate_exposure(byte* statsig_ref, byte* user_ref, byte* gate_name);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_dynamic_config", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_get_dynamic_config(byte* statsig_ref, byte* user_ref, byte* config_name);
+        internal static extern byte* statsig_get_dynamic_config(byte* statsig_ref, byte* user_ref, byte* config_name, byte* options_json);
+
+        [DllImport(__DllName, EntryPoint = "statsig_manually_log_dynamic_config_exposure", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void statsig_manually_log_dynamic_config_exposure(byte* statsig_ref, byte* user_ref, byte* config_name);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_experiment", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_get_experiment(byte* statsig_ref, byte* user_ref, byte* experiment_name);
+        internal static extern byte* statsig_get_experiment(byte* statsig_ref, byte* user_ref, byte* experiment_name, byte* options_json);
+
+        [DllImport(__DllName, EntryPoint = "statsig_manually_log_experiment_exposure", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void statsig_manually_log_experiment_exposure(byte* statsig_ref, byte* user_ref, byte* experiment_name);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_layer", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_get_layer(byte* statsig_ref, byte* user_ref, byte* layer_name);
+        internal static extern byte* statsig_get_layer(byte* statsig_ref, byte* user_ref, byte* layer_name, byte* options_json);
 
         [DllImport(__DllName, EntryPoint = "statsig_log_layer_param_exposure", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_log_layer_param_exposure(byte* statsig_ref, byte* layer_json, byte* param_name);
 
-        [DllImport(__DllName, EntryPoint = "statsig_get_client_init_response", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_get_client_init_response(byte* statsig_ref, byte* user_ref);
+        [DllImport(__DllName, EntryPoint = "statsig_manually_log_layer_parameter_exposure", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void statsig_manually_log_layer_parameter_exposure(byte* statsig_ref, byte* user_ref, byte* layer_name, byte* param_name);
 
 
     }

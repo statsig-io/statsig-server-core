@@ -23,29 +23,55 @@ const char *statsig_get_current_values(const char *statsig_ref);
 
 void statsig_log_event(const char *statsig_ref, const char *user_ref, const char *event_json);
 
-bool statsig_check_gate(const char *statsig_ref, const char *user_ref, const char *gate_name);
+const char *statsig_get_client_init_response(const char *statsig_ref,
+                                             const char *user_ref,
+                                             const char *options_json);
+
+bool statsig_check_gate(const char *statsig_ref,
+                        const char *user_ref,
+                        const char *gate_name,
+                        const char *options_json);
 
 const char *statsig_get_feature_gate(const char *statsig_ref,
                                      const char *user_ref,
-                                     const char *gate_name);
+                                     const char *gate_name,
+                                     const char *options_json);
+
+void statsig_manually_log_gate_exposure(const char *statsig_ref,
+                                        const char *user_ref,
+                                        const char *gate_name);
 
 const char *statsig_get_dynamic_config(const char *statsig_ref,
                                        const char *user_ref,
-                                       const char *config_name);
+                                       const char *config_name,
+                                       const char *options_json);
+
+void statsig_manually_log_dynamic_config_exposure(const char *statsig_ref,
+                                                  const char *user_ref,
+                                                  const char *config_name);
 
 const char *statsig_get_experiment(const char *statsig_ref,
                                    const char *user_ref,
-                                   const char *experiment_name);
+                                   const char *experiment_name,
+                                   const char *options_json);
+
+void statsig_manually_log_experiment_exposure(const char *statsig_ref,
+                                              const char *user_ref,
+                                              const char *experiment_name);
 
 const char *statsig_get_layer(const char *statsig_ref,
                               const char *user_ref,
-                              const char *layer_name);
+                              const char *layer_name,
+                              const char *options_json);
 
 void statsig_log_layer_param_exposure(const char *statsig_ref,
                                       const char *layer_json,
                                       const char *param_name);
 
-const char *statsig_get_client_init_response(const char *statsig_ref, const char *user_ref);
+void statsig_manually_log_layer_parameter_exposure(const char *statsig_ref,
+                                                   const char *user_ref,
+                                                   const char *layer_name,
+                                                   const char *param_name);
 
 const char *statsig_http_event_logging_adapter_create(const char *sdk_key, const char *options_ref);
 
