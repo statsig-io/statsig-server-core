@@ -137,6 +137,12 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
         ));
     }
 
+    fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
+        for adapter in &self.adapters {
+           adapter.initialize(listener.clone());
+        }
+    }
+
     fn schedule_background_sync(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,

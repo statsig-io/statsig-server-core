@@ -142,6 +142,7 @@ impl Statsig {
 
         let mut success = true;
         let mut error_message: Option<String> = None;
+        self.specs_adapter.initialize(self.spec_store.clone());
 
         let init_res = match self
             .specs_adapter

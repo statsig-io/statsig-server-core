@@ -152,15 +152,6 @@ impl StatsigHttpSpecsAdapter {
             }
         }
     }
-
-    fn set_listener(&self, listener: Arc<dyn SpecsUpdateListener>) {
-        match self.listener.write() {
-            Ok(mut lock) => *lock = Some(listener),
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire write lock on listener: {}", e);
-            }
-        }
-    }
 }
 
 #[async_trait]
@@ -171,8 +162,17 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
         listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         let lcut = listener.get_current_specs_info().lcut;
-        self.set_listener(listener);
         self.manually_sync_specs(lcut).await
+    }
+
+
+    fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
+        match self.listener.write() {
+            Ok(mut lock) => *lock = Some(listener),
+            Err(e) => {
+                log_e!(TAG, "Failed to acquire write lock on listener: {}", e);
+            }
+        }
     }
 
     fn schedule_background_sync(

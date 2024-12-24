@@ -44,9 +44,8 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
     async fn start(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
-        listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
+        _listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
-        self.set_listener(listener)?;
         let handle_id = self
             .clone()
             .spawn_grpc_streaming_thread(statsig_runtime, self.ops_stats.clone())
@@ -69,6 +68,21 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
     ) -> Result<(), StatsigErr> {
         // It should be already started wtihin spawn_grpc_streaming_thread
         Ok(())
+    }
+
+
+    fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
+        match self.listener.write() {
+            Ok(mut lock) => *lock = Some(listener),
+            Err(e) => {
+                log_error_to_statsig_and_console!(
+                    self.ops_stats,
+                    TAG,
+                    "Failed to acquire write lock on listener: {}",
+                    e
+                );
+            }
+        }
     }
 
     async fn shutdown(
@@ -238,19 +252,6 @@ impl StatsigGrpcSpecsAdapter {
             .map_err(|e| StatsigErr::LockFailure(e.to_string()))?;
 
         *guard = Some(handle_id);
-        Ok(())
-    }
-
-    fn set_listener(
-        &self,
-        listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
-    ) -> Result<(), StatsigErr> {
-        let mut mut_listener = self
-            .listener
-            .write()
-            .map_err(|e| StatsigErr::LockFailure(e.to_string()))?;
-
-        *mut_listener = Some(listener);
         Ok(())
     }
 

@@ -1,6 +1,6 @@
 use crate::specs_adapter::{SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
-use crate::StatsigRuntime;
+use crate::{log_e, StatsigRuntime};
 use async_trait::async_trait;
 use chrono::Utc;
 
@@ -10,6 +10,7 @@ pub struct StatsigBootstrapSpecsAdapter {
     data: RwLock<String>,
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
 }
+const TAG: &str = stringify!(StatsigBootstrapSpecsAdapter);
 
 impl StatsigBootstrapSpecsAdapter {
     pub fn new(data: String) -> Self {
@@ -53,13 +54,18 @@ impl SpecsAdapter for StatsigBootstrapSpecsAdapter {
     async fn start(
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
-        listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
+        _listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
-        if let Ok(mut mut_listener) = self.listener.write() {
-            *mut_listener = Some(listener);
-        }
-
         self.push_update()
+    }
+
+    fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
+        match self.listener.write() {
+            Ok(mut lock) => *lock = Some(listener),
+            Err(e) => {
+                log_e!(TAG, "Failed to acquire write lock on listener: {}", e);
+            }
+        }
     }
 
     async fn shutdown(
@@ -131,6 +137,7 @@ mod tests {
         let listener = Arc::new(TestListener::new());
 
         let statsig_rt = StatsigRuntime::get_runtime();
+        adapter.initialize(listener.clone());
         adapter
             .clone()
             .start(&statsig_rt, listener.clone())
@@ -151,6 +158,7 @@ mod tests {
         let adapter = Arc::new(StatsigBootstrapSpecsAdapter::new("".to_string()));
 
         let listener = Arc::new(TestListener::new());
+        adapter.initialize(listener.clone());
         adapter
             .clone()
             .start(&statsig_rt, listener.clone())

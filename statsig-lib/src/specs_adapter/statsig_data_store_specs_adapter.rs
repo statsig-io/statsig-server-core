@@ -43,19 +43,6 @@ impl StatsigDataStoreSpecsAdapter {
             listener: RwLock::new(None),
         }
     }
-
-    fn set_listener(&self, listener: Arc<dyn SpecsUpdateListener>) {
-        match self.listener.write() {
-            Ok(mut lock) => *lock = Some(listener),
-            Err(e) => {
-                log_e!(
-                    TAG,
-                    "StatsiDataAdapterSpecsAdapter - Failed to acquire write lock on listener: {}",
-                    e
-                );
-            }
-        }
-    }
 }
 
 #[async_trait]
@@ -65,7 +52,6 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         _statsig_runtime: &Arc<StatsigRuntime>,
         listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
-        self.set_listener(listener.clone());
         self.data_adapter.initialize().await?;
         let update = self.data_adapter.get(&self.cache_key).await?;
         match update.result {
@@ -78,6 +64,16 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         }
         Ok(())
     }
+
+    fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
+        match self.listener.write() {
+            Ok(mut lock) => *lock = Some(listener),
+            Err(e) => {
+                log_e!(TAG, "Failed to acquire write lock on listener: {}", e);
+            }
+        }
+    }
+
 
     fn schedule_background_sync(
         self: Arc<Self>,

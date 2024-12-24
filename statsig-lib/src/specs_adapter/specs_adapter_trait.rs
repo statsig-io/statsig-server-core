@@ -35,6 +35,8 @@ impl fmt::Display for SpecsSource {
 
 #[async_trait]
 pub trait SpecsAdapter: Send + Sync {
+    fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>);
+
     async fn start(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,

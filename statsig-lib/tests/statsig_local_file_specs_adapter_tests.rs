@@ -114,12 +114,13 @@ async fn test_syncing_from_file() {
         SDK_KEY,
         "/tmp",
         Some(url),
-        false
+        false,
     ));
     adapter.fetch_and_write_to_file().await.unwrap();
 
     let statsig_rt = StatsigRuntime::get_runtime();
     let listener = Arc::new(MockSpecsListener::default());
+    adapter.initialize(listener.clone());
     adapter
         .clone()
         .start(&statsig_rt, listener.clone())

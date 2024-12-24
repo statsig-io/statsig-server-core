@@ -76,6 +76,12 @@ impl MockSpecsAdapter {
 
 #[async_trait]
 impl SpecsAdapter for MockSpecsAdapter {
+    fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
+        if let Ok(mut mut_listener) = self.listener.write() {
+            *mut_listener = Some(listener);
+        }
+    }
+
     async fn start(
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
@@ -83,9 +89,7 @@ impl SpecsAdapter for MockSpecsAdapter {
         listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         let lcut = listener.get_current_specs_info().lcut;
-        if let Ok(mut mut_listener) = self.listener.write() {
-            *mut_listener = Some(listener);
-        }
+
         self.manually_sync_specs(lcut).await
     }
 
