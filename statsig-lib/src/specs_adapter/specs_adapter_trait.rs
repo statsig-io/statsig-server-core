@@ -21,13 +21,16 @@ pub enum SpecsSource {
 impl fmt::Display for SpecsSource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
-            SpecsSource::Uninitialized => "Uninitialized",
-            SpecsSource::NoValues => "NoValues",
-            SpecsSource::Error => "Error",
-            SpecsSource::Loading => "Loading",
-            SpecsSource::Network => "Network",
-            SpecsSource::Bootstrap => "Bootstrap",
-            SpecsSource::Adapter(name) => &format!("Adapter{}", name),
+            SpecsSource::Adapter(name) => {
+                let type_name = format!("Adapter{}", name);
+                type_name
+            },
+            SpecsSource::Uninitialized => "Uninitialized".to_string(),
+            SpecsSource::NoValues => "NoValues".to_string(),
+            SpecsSource::Error => "Error".to_string(),
+            SpecsSource::Loading => "Loading".to_string(),
+            SpecsSource::Network => "Network".to_string(),
+            SpecsSource::Bootstrap => "Bootstrap".to_string(),
         };
         write!(f, "{}", s)
     }
