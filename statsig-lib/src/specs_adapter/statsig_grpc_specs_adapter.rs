@@ -44,7 +44,6 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
     async fn start(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
-        _listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         let handle_id = self
             .clone()

@@ -111,12 +111,11 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
     async fn start(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
-        listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         for adapter in &self.adapters {
             match adapter
                 .to_owned()
-                .start(statsig_runtime, listener.clone())
+                .start(statsig_runtime)
                 .await
             {
                 Ok(()) => {

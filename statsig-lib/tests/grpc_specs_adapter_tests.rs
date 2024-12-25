@@ -46,7 +46,7 @@ pub mod specs_adapter_tests {
 
         adapter
             .clone()
-            .start(&statsig_rt, mock_listener.clone())
+            .start(&statsig_rt)
             .await
             .unwrap();
 
@@ -75,7 +75,7 @@ pub mod specs_adapter_tests {
 
         adapter
             .clone()
-            .start(&statsig_rt, mock_listener.clone())
+            .start(&statsig_rt)
             .await
             .unwrap();
 

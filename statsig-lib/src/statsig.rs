@@ -147,7 +147,7 @@ impl Statsig {
         let init_res = match self
             .specs_adapter
             .clone()
-            .start(&self.statsig_runtime, self.spec_store.clone())
+            .start(&self.statsig_runtime)
             .await
         {
             Ok(_) => Ok(()),

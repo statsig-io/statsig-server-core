@@ -123,7 +123,6 @@ impl SpecsAdapter for StatsigLocalFileSpecsAdapter {
     async fn start(
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
-        _listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         self.resync_from_file()
     }

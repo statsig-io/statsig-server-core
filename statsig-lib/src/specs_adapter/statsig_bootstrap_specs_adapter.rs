@@ -54,7 +54,6 @@ impl SpecsAdapter for StatsigBootstrapSpecsAdapter {
     async fn start(
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
-        _listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         self.push_update()
     }
@@ -138,11 +137,7 @@ mod tests {
 
         let statsig_rt = StatsigRuntime::get_runtime();
         adapter.initialize(listener.clone());
-        adapter
-            .clone()
-            .start(&statsig_rt, listener.clone())
-            .await
-            .unwrap();
+        adapter.clone().start(&statsig_rt).await.unwrap();
 
         if let Ok(lock) = listener.clone().received_update.read() {
             let update = lock.as_ref().unwrap();
@@ -159,11 +154,7 @@ mod tests {
 
         let listener = Arc::new(TestListener::new());
         adapter.initialize(listener.clone());
-        adapter
-            .clone()
-            .start(&statsig_rt, listener.clone())
-            .await
-            .unwrap();
+        adapter.clone().start(&statsig_rt).await.unwrap();
 
         let test_data = "{\"some\": \"value\"}".to_string();
         let result = adapter.set_data(test_data.clone());

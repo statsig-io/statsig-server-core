@@ -43,7 +43,6 @@ pub trait SpecsAdapter: Send + Sync {
     async fn start(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
-        listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr>;
 
     async fn shutdown(

@@ -159,9 +159,14 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
     async fn start(
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
-        listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
-        let lcut = listener.get_current_specs_info().lcut;
+        let lcut = match self.listener.read() {
+            Ok(lock)=> match lock.as_ref(){
+                Some(listener) => listener.get_current_specs_info().lcut,
+                None => None,
+            },
+            Err(_) => None
+        }; 
         self.manually_sync_specs(lcut).await
     }
 

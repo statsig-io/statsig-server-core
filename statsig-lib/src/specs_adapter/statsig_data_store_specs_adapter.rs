@@ -50,16 +50,25 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
     async fn start(
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
-        listener: Arc<dyn SpecsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         self.data_adapter.initialize().await?;
         let update = self.data_adapter.get(&self.cache_key).await?;
         match update.result {
-            Some(data) => listener.did_receive_specs_update(SpecsUpdate {
-                data,
-                source: SpecsSource::Adapter("DataStore".to_string()),
-                received_at: Utc::now().timestamp_millis() as u64,
-            })?,
+            Some(data) => {
+                match &self.listener.read() {
+                    Ok(read_lock) => match read_lock.as_ref(){
+                        Some(listener) => {
+                            listener.did_receive_specs_update(SpecsUpdate {
+                                data,
+                                source: SpecsSource::Adapter("DataStore".to_string()),
+                                received_at: Utc::now().timestamp_millis() as u64,
+                            })?;
+                        },
+                        None => return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
+                    }
+                    Err(_) => return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
+                    }
+            },
             None => return Err(StatsigErr::DataStoreFailure("Empty result".to_string())),
         }
         Ok(())
