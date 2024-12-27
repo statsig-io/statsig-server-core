@@ -56,6 +56,7 @@ async fn test_background_syncing() {
     );
 }
 
+#[cfg(not(feature = "with_zstd"))]
 #[tokio::test]
 async fn test_request_args() {
     let (scrapi, statsig) = setup(StatsigOptions::new()).await;
@@ -72,6 +73,41 @@ async fn test_request_args() {
 
     let headers = request.headers.clone();
     assert_eq!(headers.get("Accept-Encoding").unwrap(), "gzip");
+
+    let client_time = headers
+        .get("statsig-client-time")
+        .unwrap()
+        .to_str()
+        .unwrap();
+    assert_gt!(client_time.parse::<i64>().unwrap(), 0);
+
+    assert!(headers.get("statsig-sdk-version").is_some());
+    assert!(headers.get("statsig-sdk-type").is_some());
+    assert_eq!(headers.get("statsig-api-key").unwrap(), SDK_KEY);
+
+    let session_id = headers.get("statsig-server-session-id").unwrap();
+    let session_id_str = session_id.to_str().unwrap();
+    let parsed_uuid = uuid::Uuid::parse_str(session_id_str).unwrap();
+    assert_eq!(parsed_uuid.get_version().unwrap(), uuid::Version::Random);
+}
+
+#[cfg(feature = "with_zstd")]
+#[tokio::test]
+async fn test_request_args() {
+    let (scrapi, statsig) = setup(StatsigOptions::new()).await;
+
+    statsig.initialize().await.unwrap();
+
+    let requests = scrapi.get_requests_for_endpoint(Endpoint::DownloadConfigSpecs);
+    let request = &requests[0];
+    assert_eq!(request.method, "GET");
+    assert!(request
+        .url
+        .to_string()
+        .contains(format!("/v2/download_config_specs/{}.json", SDK_KEY).as_str()));
+
+    let headers = request.headers.clone();
+    assert_eq!(headers.get("Accept-Encoding").unwrap(), "zstd");
 
     let client_time = headers
         .get("statsig-client-time")
