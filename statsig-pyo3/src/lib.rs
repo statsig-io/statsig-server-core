@@ -14,5 +14,9 @@ fn sigstat_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<statsig_types_py::DynamicConfigPy>()?;
     m.add_class::<statsig_types_py::ExperimentPy>()?;
     m.add_class::<statsig_types_py::LayerPy>()?;
+    m.add_class::<statsig_types_py::FeatureGateEvaluationOptionsPy>()?;
+    m.add_class::<statsig_types_py::ExperimentEvaluationOptionsPy>()?;
+    m.add_class::<statsig_types_py::DynamicConfigEvaluationOptionsPy>()?;
+    m.add_class::<statsig_types_py::LayerEvaluationOptionsPy>()?;
     Ok(())
 }

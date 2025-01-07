@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use serde_json::{json, Map, Value};
-use sigstat::statsig_types::{DynamicConfig, Experiment, Layer};
+use sigstat::{statsig_types::{DynamicConfig, Experiment, Layer}, DynamicConfigEvaluationOptions, FeatureGateEvaluationOptions, LayerEvaluationOptions, ExperimentEvaluationOptions};
 
 #[pyclass(name = "FeatureGate")]
 pub struct FeatureGatePy {
@@ -118,3 +118,79 @@ macro_rules! impl_get_methods {
 impl_get_methods!(DynamicConfigPy);
 impl_get_methods!(ExperimentPy);
 impl_get_methods!(LayerPy);
+
+#[pyclass(name = "FeatureGateEvaluationOptions")]
+pub struct FeatureGateEvaluationOptionsPy {
+    #[pyo3(get)]
+    pub disable_exposure_logging: bool,
+}
+
+#[pyclass(name = "DynamicConfigEvaluationOptions")]
+pub struct DynamicConfigEvaluationOptionsPy {
+    #[pyo3(get)]
+    pub disable_exposure_logging: bool,
+}
+
+#[pyclass(name = "ExperimentEvaluationOptions")]
+pub struct ExperimentEvaluationOptionsPy {
+    #[pyo3(get)]
+    pub disable_exposure_logging: bool,
+}
+
+#[pyclass(name = "LayerEvaluationOptions")]
+pub struct LayerEvaluationOptionsPy {
+    #[pyo3(get)]
+    pub disable_exposure_logging: bool,
+}
+
+impl From <&FeatureGateEvaluationOptionsPy> for FeatureGateEvaluationOptions {
+    fn from(val: &FeatureGateEvaluationOptionsPy) -> FeatureGateEvaluationOptions {
+        FeatureGateEvaluationOptions {
+            disable_exposure_logging: val.disable_exposure_logging,
+        }
+    }
+}
+
+impl From <&DynamicConfigEvaluationOptionsPy> for DynamicConfigEvaluationOptions {
+    fn from(val: &DynamicConfigEvaluationOptionsPy) -> DynamicConfigEvaluationOptions {
+        DynamicConfigEvaluationOptions {
+            disable_exposure_logging: val.disable_exposure_logging,
+        }
+    }
+}
+
+impl From <&ExperimentEvaluationOptionsPy> for ExperimentEvaluationOptions {
+    fn from(val: &ExperimentEvaluationOptionsPy) -> ExperimentEvaluationOptions {
+        ExperimentEvaluationOptions {
+            disable_exposure_logging: val.disable_exposure_logging,
+        }
+    }
+}
+
+impl From <&LayerEvaluationOptionsPy> for LayerEvaluationOptions {
+    fn from(val: &LayerEvaluationOptionsPy) -> LayerEvaluationOptions {
+        LayerEvaluationOptions {
+            disable_exposure_logging: val.disable_exposure_logging,
+        }
+    }
+}
+
+macro_rules! impl_new_method {
+    ($struct_name:ident) => {
+        #[pymethods]
+        impl $struct_name {
+            #[new]
+            #[pyo3(signature = (disable_exposure_logging=false))]
+            pub fn new(disable_exposure_logging: bool) -> Self {
+                Self {
+                    disable_exposure_logging,
+                }
+            }
+        }
+    };
+}
+
+impl_new_method!(FeatureGateEvaluationOptionsPy);
+impl_new_method!(DynamicConfigEvaluationOptionsPy);
+impl_new_method!(ExperimentEvaluationOptionsPy);
+impl_new_method!(LayerEvaluationOptionsPy);

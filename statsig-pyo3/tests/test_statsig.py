@@ -14,7 +14,8 @@ def setup(httpserver: HTTPServer):
 
     specs_url = httpserver.url_for("/v2/download_config_specs")
 
-    options = StatsigOptions(specs_url)
+    options = StatsigOptions()
+    options.specs_url = specs_url
     statsig = Statsig("secret-key", options)
 
     statsig.initialize().wait()
