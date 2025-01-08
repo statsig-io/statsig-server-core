@@ -1840,7 +1840,7 @@ dependencies = [
 
 [[package]]
 name = "sigstat"
-version = "0.0.1-beta.126"
+version = "0.0.2"
 dependencies = [
  "assert-json-diff",
  "async-trait",
@@ -1871,7 +1871,7 @@ dependencies = [
 
 [[package]]
 name = "sigstat-grpc"
-version = "0.0.1-beta.126"
+version = "0.0.2"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1885,7 +1885,7 @@ dependencies = [
 
 [[package]]
 name = "sigstat-napi"
-version = "0.0.1-beta.126"
+version = "0.0.2"
 dependencies = [
  "async-trait",
  "lazy_static",
@@ -1958,7 +1958,7 @@ dependencies = [
 
 [[package]]
 name = "statsig_ffi"
-version = "0.0.1-beta.126"
+version = "0.0.2"
 dependencies = [
  "cbindgen",
  "csbindgen",
