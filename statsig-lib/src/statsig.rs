@@ -247,7 +247,14 @@ impl Statsig {
                 Err(StatsigErr::ShutdownTimeout)
             }
             sub_result = async {
+                let id_list_shutdown: Pin<Box<_>> = if let Some(adapter) = &self.id_lists_adapter {
+                    adapter.shutdown(timeout)
+                } else {
+                    Box::pin(async { Ok(()) })
+                };
+
                 try_join!(
+                    id_list_shutdown,
                     self.event_logger.shutdown(timeout),
                     self.specs_adapter.shutdown(timeout, &self.statsig_runtime),
                 )

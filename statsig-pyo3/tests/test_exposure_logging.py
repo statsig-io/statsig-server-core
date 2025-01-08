@@ -1,105 +1,79 @@
 from sigstat_python_core import Statsig, StatsigOptions, StatsigUser
-from pytest_httpserver import HTTPServer
-import json
+
+from mock_scrapi import MockScrapi
 from utils import get_test_data_resource
-from werkzeug import Response, Request
-import io
-import gzip, zlib
+from pytest_httpserver import HTTPServer
 
 
-def setup(httpserver: HTTPServer, logs):
+def setup_better(httpserver: HTTPServer):
+    mock_scrapi = MockScrapi(httpserver)
     dcs_content = get_test_data_resource("eval_proj_dcs.json")
-    json_data = json.loads(dcs_content)
-
-    httpserver.expect_request(
-        "/v2/download_config_specs/secret-key.json"
-    ).respond_with_json(json_data)
-
-    def _on_log_event(req: Request):
-        data = req.get_data()
-        json_str = gzip.decompress(data)
-        req_json = json.loads(json_str)
-        logs.append(req_json)
-        return Response('{"success": true}')
-
-    httpserver.expect_request("/v1/log_event").respond_with_handler(_on_log_event)
-
-    specs_url = httpserver.url_for("/v2/download_config_specs")
-    log_event_url = httpserver.url_for("/v1/log_event")
+    mock_scrapi.stub("/v2/download_config_specs/secret-key.json", response=dcs_content, method="GET")
+    mock_scrapi.stub("/v1/log_event", response='{"success": true}', method="POST")
 
     options = StatsigOptions()
-    options.specs_url = specs_url
-    options.log_event_url = log_event_url
+    options.specs_url = mock_scrapi.url_for_endpoint("/v2/download_config_specs")
+    options.log_event_url = mock_scrapi.url_for_endpoint("/v1/log_event")
+
     statsig = Statsig("secret-key", options)
-
     statsig.initialize().wait()
-    return statsig
-
-
-def get_non_diagnostic_events(logs):
-    return [
-        event
-        for event in logs[0]["events"]
-        if event["eventName"] != "statsig::diagnostics"
-    ]
+    return statsig, mock_scrapi
 
 
 def test_shutdown_flushes(httpserver: HTTPServer):
-    logs = []
-    statsig = setup(httpserver, logs)
+    statsig, mock_scrapi = setup_better(httpserver)
 
     statsig.check_gate(StatsigUser("my_user"), "test_public")
 
     statsig.shutdown().wait()
-    events = get_non_diagnostic_events(logs)
+    events = mock_scrapi.get_logged_events()
 
     assert len(events) == 1
     assert events[0]["eventName"] == "statsig::gate_exposure"
 
 
 def test_gate_exposures(httpserver: HTTPServer):
-    logs = []
-    statsig = setup(httpserver, logs)
+    statsig, mock_scrapi = setup_better(httpserver)
 
     statsig.check_gate(StatsigUser("my_user"), "test_public")
 
     statsig.flush_events().wait()
-    events = get_non_diagnostic_events(logs)
+    events = mock_scrapi.get_logged_events()
 
     assert len(events) == 1
     assert events[0]["eventName"] == "statsig::gate_exposure"
 
 
 def test_layer_exposure(httpserver: HTTPServer):
-    logs = []
-    statsig = setup(httpserver, logs)
+    statsig, mock_scrapi = setup_better(httpserver)
 
     layer = statsig.get_layer(StatsigUser("my_user"), "layer_with_many_params")
     statsig.flush_events().wait()
-    events = get_non_diagnostic_events(logs)
 
-    assert len(logs) == 1
+    log_requests = mock_scrapi.get_requests_for_endpoint("/v1/log_event")
+    events = mock_scrapi.get_logged_events()
+
+    assert len(log_requests) == 1
     assert len(events) == 0
 
     layer.get_string("a_string", "ERR")
     statsig.flush_events().wait()
 
-    logs_drop_first = logs[1:]
-    events = get_non_diagnostic_events(logs_drop_first)
+    log_requests = mock_scrapi.get_requests_for_endpoint("/v1/log_event")
+    events = mock_scrapi.get_logged_events()
 
-    assert len(logs) == 2
+    assert len(log_requests) == 2
     assert len(events) == 1
     assert events[0]["eventName"] == "statsig::layer_exposure"
 
 
 def test_custom_event(httpserver: HTTPServer):
-    logs = []
-    statsig = setup(httpserver, logs)
+    statsig, mock_scrapi = setup_better(httpserver)
 
     statsig.log_event(StatsigUser("my_user"), "my_custom_event")
     statsig.flush_events().wait()
 
-    events = get_non_diagnostic_events(logs)
+    events = mock_scrapi.get_logged_events()
     event = events[0]
 
     assert len(events) == 1
@@ -107,13 +81,12 @@ def test_custom_event(httpserver: HTTPServer):
 
 
 def test_custom_event_with_number(httpserver: HTTPServer):
-    logs = []
-    statsig = setup(httpserver, logs)
+    statsig, mock_scrapi = setup_better(httpserver)
 
     statsig.log_event(StatsigUser("my_user"), "my_custom_event_with_num", 1.23)
     statsig.flush_events().wait()
 
-    events = get_non_diagnostic_events(logs)
+    events = mock_scrapi.get_logged_events()
     event = events[0]
 
     assert len(events) == 1
@@ -122,15 +95,14 @@ def test_custom_event_with_number(httpserver: HTTPServer):
 
 
 def test_custom_event_with_number_and_metadata(httpserver: HTTPServer):
-    logs = []
-    statsig = setup(httpserver, logs)
+    statsig, mock_scrapi = setup_better(httpserver)
 
     statsig.log_event(
         StatsigUser("my_user"), "my_custom_event_with_num", 1.23, {"some": "value"}
     )
     statsig.flush_events().wait()
 
-    events = get_non_diagnostic_events(logs)
+    events = mock_scrapi.get_logged_events()
     event = events[0]
 
     assert len(events) == 1
@@ -140,13 +112,12 @@ def test_custom_event_with_number_and_metadata(httpserver: HTTPServer):
 
 
 def test_custom_event_with_string(httpserver: HTTPServer):
-    logs = []
-    statsig = setup(httpserver, logs)
+    statsig, mock_scrapi = setup_better(httpserver)
 
     statsig.log_event(StatsigUser("my_user"), "my_custom_event_with_str", "cool beans")
     statsig.flush_events().wait()
 
-    events = get_non_diagnostic_events(logs)
+    events = mock_scrapi.get_logged_events()
     event = events[0]
 
     assert len(events) == 1
@@ -155,8 +126,7 @@ def test_custom_event_with_string(httpserver: HTTPServer):
 
 
 def test_custom_event_with_string_and_metadata(httpserver: HTTPServer):
-    logs = []
-    statsig = setup(httpserver, logs)
+    statsig, mock_scrapi = setup_better(httpserver)
 
     statsig.log_event(
         StatsigUser("my_user"),
@@ -166,7 +136,7 @@ def test_custom_event_with_string_and_metadata(httpserver: HTTPServer):
     )
     statsig.flush_events().wait()
 
-    events = get_non_diagnostic_events(logs)
+    events = mock_scrapi.get_logged_events()
     event = events[0]
 
     assert len(events) == 1

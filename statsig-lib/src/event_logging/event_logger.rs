@@ -18,6 +18,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
+use tokio::sync::Notify;
 use tokio::time::{sleep, Duration};
 
 use super::statsig_event::StatsigEvent;
@@ -68,6 +69,7 @@ pub struct EventLogger {
     statsig_runtime: Arc<StatsigRuntime>,
     non_exposed_checks: Arc<Mutex<HashMap<String, u64>>>,
     ops_stats: Arc<OpsStatsForInstance>,
+    shutdown_notify: Arc<Notify>,
 }
 
 impl EventLogger {
@@ -105,6 +107,7 @@ impl EventLogger {
             statsig_runtime: statsig_runtime.clone(),
             non_exposed_checks: Arc::new(Mutex::new(HashMap::new())),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
+            shutdown_notify: Arc::new(Notify::new()),
         }
     }
 
@@ -118,7 +121,8 @@ impl EventLogger {
 
         let weak_inst = Arc::downgrade(&self);
         log_d!(TAG, "Starting event logger background flush");
-        statsig_runtime.spawn(TAG, move |shutdown_notify| async move {
+
+        statsig_runtime.spawn(TAG, move |rt_shutdown_notify| async move {
             log_d!(TAG, "BG flush loop begin");
 
             loop {
@@ -134,7 +138,12 @@ impl EventLogger {
                     _ = sleep(Duration::from_millis(strong_self.flush_interval_ms as u64)) => {
                         strong_self.flush_blocking().await;
                     }
-                    _ = shutdown_notify.notified() => {
+                    _ = rt_shutdown_notify.notified() => {
+                        log_d!(TAG, "Runtime shutdown. Shutting down event logger background flush");
+                        break;
+                    }
+                    _ = strong_self.shutdown_notify.notified() => {
+                        log_d!(TAG, "Shutting down event logger background flush");
                         break;
                     }
                 }
@@ -181,6 +190,7 @@ impl EventLogger {
 
     pub async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
         self.flush_blocking().await;
+        self.shutdown_notify.notify_one();
         Ok(())
     }
 

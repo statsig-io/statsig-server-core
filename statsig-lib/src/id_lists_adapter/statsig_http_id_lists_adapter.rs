@@ -4,12 +4,15 @@ use crate::networking::{NetworkClient, NetworkError, RequestArgs};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_error_to_statsig_and_console, log_w, StatsigErr, StatsigOptions, StatsigRuntime};
+use crate::{
+    log_d, log_error_to_statsig_and_console, log_w, StatsigErr, StatsigOptions, StatsigRuntime,
+};
 use async_trait::async_trait;
 use serde_json::from_str;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, Weak};
 use std::time::Duration;
+use tokio::sync::Notify;
 use tokio::time::sleep;
 
 const DEFAULT_ID_LISTS_MANIFEST_URL: &str = "https://statsigapi.net/v1/get_id_lists";
@@ -26,6 +29,7 @@ pub struct StatsigHttpIdListsAdapter {
     network: NetworkClient,
     sync_interval_duration: Duration,
     ops_stats: Arc<OpsStatsForInstance>,
+    shutdown_notify: Arc<Notify>,
 }
 
 impl StatsigHttpIdListsAdapter {
@@ -61,6 +65,7 @@ impl StatsigHttpIdListsAdapter {
             network,
             sync_interval_duration,
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
+            shutdown_notify: Arc::new(Notify::new()),
         }
     }
 
@@ -294,6 +299,7 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
     }
 
     async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
+        self.shutdown_notify.notify_one();
         Ok(())
     }
 
@@ -304,18 +310,26 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
         let weak_self = Arc::downgrade(&self);
         let interval_duration = self.sync_interval_duration;
 
-        statsig_runtime.spawn("http_id_list_bg_sync", move |shutdown_notify| async move {
-            loop {
-                tokio::select! {
-                    _ = sleep(interval_duration) => {
-                        Self::run_background_sync(&weak_self).await;
-                    }
-                    _ = shutdown_notify.notified() => {
-                        break;
+        statsig_runtime.spawn(
+            "http_id_list_bg_sync",
+            move |rt_shutdown_notify| async move {
+                loop {
+                    tokio::select! {
+                        _ = sleep(interval_duration) => {
+                            Self::run_background_sync(&weak_self).await;
+                        }
+                        _ = rt_shutdown_notify.notified() => {
+                            log_d!(TAG, "Runtime shutdown. Shutting down id list background sync");
+                            break;
+                        },
+                        _ = self.shutdown_notify.notified() => {
+                            log_d!(TAG, "Shutting down id list background sync");
+                            break;
+                        }
                     }
                 }
-            }
-        });
+            },
+        );
         Ok(())
     }
 

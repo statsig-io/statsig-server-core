@@ -4,12 +4,13 @@ use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::specs_adapter::{SpecsAdapter, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_e, log_error_to_statsig_and_console, SpecsSource, StatsigRuntime};
+use crate::{log_d, log_e, log_error_to_statsig_and_console, SpecsSource, StatsigRuntime};
 use async_trait::async_trait;
 use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, Weak};
 use std::time::Duration;
+use tokio::sync::Notify;
 use tokio::time::sleep;
 
 pub const DEFAULT_SPECS_URL: &str = "https://api.statsigcdn.com/v2/download_config_specs";
@@ -23,6 +24,7 @@ pub struct StatsigHttpSpecsAdapter {
     fallback_url: Option<String>,
     sync_interval_duration: Duration,
     ops_stats: Arc<OpsStatsForInstance>,
+    shutdown_notify: Arc<Notify>,
 }
 
 impl StatsigHttpSpecsAdapter {
@@ -49,6 +51,7 @@ impl StatsigHttpSpecsAdapter {
                 sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS) as u64,
             ),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
+            shutdown_notify: Arc::new(Notify::new()),
         }
     }
 
@@ -161,15 +164,14 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
         let lcut = match self.listener.read() {
-            Ok(lock)=> match lock.as_ref(){
+            Ok(lock) => match lock.as_ref() {
                 Some(listener) => listener.get_current_specs_info().lcut,
                 None => None,
             },
-            Err(_) => None
-        }; 
+            Err(_) => None,
+        };
         self.manually_sync_specs(lcut).await
     }
-
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
         match self.listener.write() {
@@ -186,14 +188,20 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
     ) -> Result<(), StatsigErr> {
         let weak_self: Weak<StatsigHttpSpecsAdapter> = Arc::downgrade(&self);
         let interval_duration = self.sync_interval_duration;
+        let shutdown_notify = self.shutdown_notify.clone();
 
-        statsig_runtime.spawn("http_specs_bg_sync", move |shutdown_notify| async move {
+        statsig_runtime.spawn("http_specs_bg_sync", move |rt_shutdown_notify| async move {
             loop {
                 tokio::select! {
                     _ = sleep(interval_duration) => {
                         Self::run_background_sync(&weak_self).await;
                     }
+                    _ = rt_shutdown_notify.notified() => {
+                        log_d!(TAG, "Runtime shutdown. Shutting down specs background sync");
+                        break;
+                    },
                     _ = shutdown_notify.notified() => {
+                        log_d!(TAG, "Shutting down specs background sync");
                         break;
                     }
                 }
@@ -208,6 +216,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
         _timeout: Duration,
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
+        self.shutdown_notify.notify_one();
         Ok(())
     }
 
