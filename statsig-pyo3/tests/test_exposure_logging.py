@@ -1,3 +1,6 @@
+import gzip
+import json
+
 from sigstat_python_core import Statsig, StatsigOptions, StatsigUser
 
 from mock_scrapi import MockScrapi
@@ -8,7 +11,9 @@ from pytest_httpserver import HTTPServer
 def setup_better(httpserver: HTTPServer):
     mock_scrapi = MockScrapi(httpserver)
     dcs_content = get_test_data_resource("eval_proj_dcs.json")
-    mock_scrapi.stub("/v2/download_config_specs/secret-key.json", response=dcs_content, method="GET")
+    mock_scrapi.stub(
+        "/v2/download_config_specs/secret-key.json", response=dcs_content, method="GET"
+    )
     mock_scrapi.stub("/v1/log_event", response='{"success": true}', method="POST")
 
     options = StatsigOptions()
@@ -143,3 +148,28 @@ def test_custom_event_with_string_and_metadata(httpserver: HTTPServer):
     assert event["eventName"] == "my_custom_event_with_str"
     assert event["value"] == "cool beans"
     assert event["metadata"]["some"] == "value"
+
+
+def test_statsig_metadata(httpserver: HTTPServer):
+    statsig, mock_scrapi = setup_better(httpserver)
+
+    statsig.check_gate(StatsigUser("my_user"), "test_public")
+    statsig.flush_events().wait()
+    request = mock_scrapi.get_requests_for_endpoint("/v1/log_event")[0]
+    data = request.get_data()
+    json_str = gzip.decompress(data)
+    req_json = json.loads(json_str)
+    statsig_metadata = req_json["statsigMetadata"]
+
+    assert statsig_metadata["sdkType"] == "statsig-server-core-python"
+    assert statsig_metadata["sdkVersion"] is not None
+    assert statsig_metadata["sessionID"] is not None
+
+    lang_version = statsig_metadata["languageVersion"]
+    assert lang_version is not None and lang_version != "unknown"
+
+    os = statsig_metadata["os"]
+    assert os is not None and os != "unknown"
+
+    arch = statsig_metadata["arch"]
+    assert arch is not None and arch != "unknown"
