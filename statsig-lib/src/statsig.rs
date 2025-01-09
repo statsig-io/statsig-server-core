@@ -731,6 +731,10 @@ impl Statsig {
         evaluation_options: LayerEvaluationOptions,
     ) -> Layer {
         let disable_exposure_logging = evaluation_options.disable_exposure_logging;
+        if disable_exposure_logging {
+            self.event_logger
+                .increment_non_exposure_checks_count(layer_name.to_string());
+        }
 
         self.evaluate_spec(
             user_internal,
