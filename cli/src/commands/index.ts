@@ -9,6 +9,7 @@ import { PyBuild } from './py_build.js';
 import { SizePersist } from './size_persist.js';
 import { SizeReport } from './size_report.js';
 import { SyncVersion } from './sync_version.js';
+import { UnitTests } from './unit_tests.js';
 import { ZipFiles } from './zip_files.js';
 
 export const Commands = [
@@ -23,5 +24,6 @@ export const Commands = [
   new SizePersist(),
   new SizeReport(),
   new SyncVersion(),
+  new UnitTests(),
   new ZipFiles(),
 ];

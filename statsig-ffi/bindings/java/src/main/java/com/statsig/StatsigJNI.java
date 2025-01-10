@@ -164,17 +164,11 @@ class StatsigJNI {
         URL resource = null;
 
         if (osName.contains("win")) {
-            if (osArch.equals("x86_64") || osArch.equals("i686") || osArch.equals("aarch64")) {
-                resource = cl.getResource("native/libstatsig_ffi.dll");
-            }
+            resource = cl.getResource("native/libstatsig_ffi.dll");
         } else if (osName.contains("mac")) {
-            if (osArch.equals("x86_64") || osArch.equals("amd64") || osArch.equals("aarch64")) {
-                resource = cl.getResource("native/libstatsig_ffi.dylib");
-            }
+            resource = cl.getResource("native/libstatsig_ffi.dylib");
         } else if (osName.contains("linux")) {
-            if (osArch.equals("x86_64") || osArch.equals("arm64") || osArch.equals("amd64")) {
-                resource = cl.getResource("native/libstatsig_ffi.so");
-            }
+            resource = cl.getResource("native/libstatsig_ffi.so");
         }
 
         return resource;

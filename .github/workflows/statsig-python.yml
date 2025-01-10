@@ -155,13 +155,6 @@ jobs:
           if-no-files-found: error
           path: statsig-pyo3/dist
 
-      - name: Test
-        run: |
-          cd statsig-pyo3
-          pip install pytest cachetools pytest_httpserver
-          pip install sigstat_python_core --no-index --find-links dist --force-reinstall -v
-          python3 -m pytest tests --capture=no -v
-
   windows:
     runs-on: ${{ matrix.platform.runner }}
     strategy:

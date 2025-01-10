@@ -1,6 +1,7 @@
 .DS_Store
 .idea/
 src/main/resources/native/libstatsig_ffi.dylib
+src/main/resources/native/libstatsig_ffi.so
 
 # Created by https://www.toptal.com/developers/gitignore/api/java,gradle,kotlin
 # Edit at https://www.toptal.com/developers/gitignore?templates=java,gradle,kotlin
