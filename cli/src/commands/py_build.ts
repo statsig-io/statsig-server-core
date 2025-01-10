@@ -8,6 +8,7 @@ type Options = {
   target?: string;
   release?: boolean;
   out?: string;
+  skipDockerBuild: boolean;
 };
 
 export class PyBuild extends Command {
@@ -23,6 +24,11 @@ export class PyBuild extends Command {
     this.option('--rebuild-openssl', 'Include vendored openssl with the build');
     this.option('--release', 'Build in release mode');
     this.option('--out, <string>', 'Output directory');
+    this.option(
+      '-sdb, --skip-docker-build',
+      'Skip building the docker image',
+      false,
+    );
 
     this.action(this.run.bind(this));
   }
@@ -39,7 +45,9 @@ export class PyBuild extends Command {
     const image = getImage(options);
     const platform = getPlatform(options);
 
-    await buildDockerImage(image, platform);
+    if (!options.skipDockerBuild) {
+      await buildDockerImage(image, platform);
+    }
 
     await buildPyo3Package(image, platform, options);
 
