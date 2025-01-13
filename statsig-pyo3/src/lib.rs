@@ -7,7 +7,7 @@ mod statsig_user_py;
 use pyo3::prelude::*;
 
 #[pymodule]
-fn sigstat_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     statsig_metadata_py::update_statsig_metadata(m);
 
     m.add_class::<statsig_py::StatsigPy>()?;

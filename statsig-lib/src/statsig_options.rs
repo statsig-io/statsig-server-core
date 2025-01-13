@@ -5,7 +5,9 @@ use crate::data_store_interface::DataStoreTrait;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::id_lists_adapter::IdListsAdapter;
 use crate::output_logger::LogLevel;
-use crate::{serialize_if_not_none, ObservabilityClient, OverrideAdapter, SpecAdapterConfig, SpecsAdapter};
+use crate::{
+    serialize_if_not_none, ObservabilityClient, OverrideAdapter, SpecAdapterConfig, SpecsAdapter,
+};
 use std::fmt;
 use std::sync::Arc;
 
@@ -147,7 +149,7 @@ impl StatsigOptionsBuilder {
 
     pub fn output_log_level(mut self, output_log_level: Option<u32>) -> Self {
         if let Some(level) = output_log_level {
-            self.inner.output_log_level = LogLevel::from_int(level);
+            self.inner.output_log_level = Some(LogLevel::from(level));
         }
         self
     }
@@ -164,11 +166,19 @@ impl Serialize for StatsigOptions {
     {
         let mut state = serializer.serialize_struct("StatsigOptions", 20)?;
         serialize_if_not_none!(state, "spec_url", &self.specs_url);
-        serialize_if_not_none!(state, "spec_adapter", &get_display_name(&self.specs_adapter));
+        serialize_if_not_none!(
+            state,
+            "spec_adapter",
+            &get_display_name(&self.specs_adapter)
+        );
         serialize_if_not_none!(state, "spec_adapter_configs", &self.spec_adapters_config);
-        serialize_if_not_none!(state, "specs_sync_interval_ms", &self.specs_sync_interval_ms);
+        serialize_if_not_none!(
+            state,
+            "specs_sync_interval_ms",
+            &self.specs_sync_interval_ms
+        );
         serialize_if_not_none!(state, "init_timeout_ms", &self.init_timeout_ms);
-        
+
         serialize_if_not_none!(state, "data_store", &get_if_set(&self.data_store));
 
         serialize_if_not_none!(state, "log_event_url", &self.log_event_url);
@@ -176,11 +186,27 @@ impl Serialize for StatsigOptions {
 
         serialize_if_not_none!(state, "id_lists_url", &self.id_lists_url);
         serialize_if_not_none!(state, "enable_id_lists", &self.enable_id_lists);
-        serialize_if_not_none!(state, "id_lists_sync_interval", &self.id_lists_sync_interval_ms);
+        serialize_if_not_none!(
+            state,
+            "id_lists_sync_interval",
+            &self.id_lists_sync_interval_ms
+        );
         serialize_if_not_none!(state, "environment", &self.environment);
-        serialize_if_not_none!(state, "id_list_adapter", &get_display_name(&self.id_lists_adapter));
-        serialize_if_not_none!(state, "fallback_to_statsig_api", &self.fallback_to_statsig_api);
-        serialize_if_not_none!(state, "override_adapter", &get_if_set(&self.override_adapter));
+        serialize_if_not_none!(
+            state,
+            "id_list_adapter",
+            &get_display_name(&self.id_lists_adapter)
+        );
+        serialize_if_not_none!(
+            state,
+            "fallback_to_statsig_api",
+            &self.fallback_to_statsig_api
+        );
+        serialize_if_not_none!(
+            state,
+            "override_adapter",
+            &get_if_set(&self.override_adapter)
+        );
 
         state.end()
     }

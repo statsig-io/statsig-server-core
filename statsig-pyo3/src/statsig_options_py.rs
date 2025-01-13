@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use sigstat::StatsigOptions;
+use sigstat::{output_logger::LogLevel, StatsigOptions};
 
 #[pyclass(name = "StatsigOptions")]
 pub struct StatsigOptionsPy {
@@ -27,6 +27,8 @@ pub struct StatsigOptionsPy {
     pub fallback_to_statsig_api: Option<bool>,
     #[pyo3(get, set)]
     pub environment: Option<String>,
+    #[pyo3(get, set)]
+    pub output_log_level: Option<String>,
 }
 
 #[pymethods]
@@ -46,6 +48,7 @@ impl StatsigOptionsPy {
             id_lists_sync_interval_ms: None,
             fallback_to_statsig_api: None,
             environment: None,
+            output_log_level: None,
         }
     }
 }
@@ -54,9 +57,9 @@ impl Default for StatsigOptionsPy {
     fn default() -> Self {
         Self::new()
     }
- }
+}
 
-impl From <&StatsigOptionsPy> for StatsigOptions  {
+impl From<&StatsigOptionsPy> for StatsigOptions {
     fn from(val: &StatsigOptionsPy) -> StatsigOptions {
         StatsigOptions {
             specs_url: val.specs_url.clone(),
@@ -77,7 +80,10 @@ impl From <&StatsigOptionsPy> for StatsigOptions  {
             environment: val.environment.clone(),
             id_lists_adapter: None,
             override_adapter: None,
-            output_log_level: None,
+            output_log_level: val
+                .output_log_level
+                .as_ref()
+                .map(|level| LogLevel::from(level.as_str())),
             observability_client: None,
         }
     }

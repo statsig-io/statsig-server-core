@@ -3,48 +3,71 @@ use log::{debug, error, info, warn, Level};
 const MAX_CHARS: usize = 400;
 const TRUNCATED_SUFFIX: &str = "...[TRUNCATED]";
 
+const DEFAULT_LOG_LEVEL: LogLevel = LogLevel::Warn;
+
 #[derive(Clone)]
 pub enum LogLevel {
+    None,
     Debug,
     Info,
     Warn,
     Error,
 }
 
-impl LogLevel {
-    pub fn from_int(level: u32) -> Option<LogLevel> {
-        let result = match level {
+impl From<&str> for LogLevel {
+    fn from(level: &str) -> Self {
+        match level.to_lowercase().as_str() {
+            "debug" => LogLevel::Debug,
+            "info" => LogLevel::Info,
+            "warn" => LogLevel::Warn,
+            "error" => LogLevel::Error,
+            "none" => LogLevel::None,
+            _ => DEFAULT_LOG_LEVEL,
+        }
+    }
+}
+
+impl From<u32> for LogLevel {
+    fn from(level: u32) -> Self {
+        match level {
             1 => LogLevel::Debug,
             2 => LogLevel::Info,
             3 => LogLevel::Warn,
             4 => LogLevel::Error,
-            _ => return None,
-        };
-
-        Some(result)
+            _ => DEFAULT_LOG_LEVEL,
+        }
     }
+}
 
-    fn to_third_party_level(&self) -> Level {
+impl LogLevel {
+    fn to_third_party_level(&self) -> Option<Level> {
         match self {
-            LogLevel::Debug => Level::Debug,
-            LogLevel::Info => Level::Info,
-            LogLevel::Warn => Level::Warn,
-            LogLevel::Error => Level::Error,
+            LogLevel::Debug => Some(Level::Debug),
+            LogLevel::Info => Some(Level::Info),
+            LogLevel::Warn => Some(Level::Warn),
+            LogLevel::Error => Some(Level::Error),
+            LogLevel::None => None,
         }
     }
 }
 
 pub fn initialize_simple_output_logger(level: &Option<LogLevel>) {
-    let level = level
-        .as_ref()
-        .unwrap_or(&LogLevel::Warn)
-        .clone()
-        .to_third_party_level();
+    let level = level.as_ref().unwrap_or(&DEFAULT_LOG_LEVEL).clone();
 
-    match simple_logger::init_with_level(level) {
+    let final_level = match level {
+        LogLevel::None => {
+            return;
+        }
+        _ => match level.to_third_party_level() {
+            Some(level) => level,
+            None => return,
+        },
+    };
+
+    match simple_logger::init_with_level(final_level) {
         Ok(_) => {}
         Err(_) => {
-            log::set_max_level(level.to_level_filter());
+            log::set_max_level(final_level.to_level_filter());
         }
     }
 }
@@ -61,12 +84,14 @@ pub fn log_message(tag: &str, level: LogLevel, msg: String) {
         msg
     };
 
-    match level.to_third_party_level() {
-        Level::Debug => debug!("[Statsig.{}] {}", tag, truncated_msg),
-        Level::Info => info!("[Statsig.{}] {}", tag, truncated_msg),
-        Level::Warn => warn!("[Statsig.{}] {}", tag, truncated_msg),
-        Level::Error => error!("[Statsig.{}] {}", tag, truncated_msg),
-        _ => {}
+    if let Some(level) = level.to_third_party_level() {
+        match level {
+            Level::Debug => debug!("[Statsig.{}] {}", tag, truncated_msg),
+            Level::Info => info!("[Statsig.{}] {}", tag, truncated_msg),
+            Level::Warn => warn!("[Statsig.{}] {}", tag, truncated_msg),
+            Level::Error => error!("[Statsig.{}] {}", tag, truncated_msg),
+            _ => {}
+        };
     }
 }
 

@@ -1,4 +1,4 @@
-from sigstat_python_core import Statsig, StatsigOptions, StatsigUser
+from statsig_python_core import Statsig, StatsigOptions, StatsigUser
 from mock_scrapi import MockScrapi
 from utils import get_test_data_resource
 import threading
@@ -26,6 +26,7 @@ def test_cycling(httpserver: HTTPServer):
             "/v2/download_config_specs"
         )
         options.log_event_url = inner_mock_scrapi.url_for_endpoint("/v1/log_event")
+        options.output_log_level = "none"
 
         statsig = Statsig("secret-key", options)
         statsig.initialize().wait()
@@ -49,13 +50,17 @@ def test_cycling(httpserver: HTTPServer):
 
 def test_bg_tasks_shutdown(httpserver: HTTPServer):
     mock_scrapi = MockScrapi(httpserver)
-    mock_scrapi.stub("/v1/log_event", response='{}', method="POST", status=401)
-    mock_scrapi.stub("/v1/get_id_lists", response='{}', method="POST", status=401)
+    mock_scrapi.stub("/v1/log_event", response="{}", method="POST", status=401)
+    mock_scrapi.stub("/v1/get_id_lists", response="{}", method="POST", status=401)
     mock_scrapi.stub(
-        "/v2/download_config_specs/secret-key.json", response='{}', method="GET", status=401
+        "/v2/download_config_specs/secret-key.json",
+        response="{}",
+        method="GET",
+        status=401,
     )
 
     options = StatsigOptions()
+    options.output_log_level = "none"
     options.specs_url = mock_scrapi.url_for_endpoint("/v2/download_config_specs")
     options.specs_sync_interval_ms = 1
 
