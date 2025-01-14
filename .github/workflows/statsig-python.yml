@@ -24,18 +24,10 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          # - target: amazonlinux2-arm64
-          #   platform: linux/arm64
-          #   runner: statsig-ubuntu-arm64
-
           - target: amazonlinux2023-arm64
             platform: linux/arm64
             runner: statsig-ubuntu-arm64
             always_build: true
-
-          # - target: amazonlinux2-x86_64
-          #   platform: linux/amd64
-          #   runner: ubuntu-latest
 
           - target: amazonlinux2023-x86_64
             platform: linux/amd64
@@ -43,7 +35,9 @@ jobs:
 
     runs-on: ${{ matrix.config.runner }}
     timeout-minutes: 15
-
+    env:
+      SHOULD_BUILD: ${{ github.ref_name == 'main' || matrix.config.always_build || github.event_name == 'release' }}
+  
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +48,7 @@ jobs:
         run: cd cli && npm install
 
       - name: Build Docker Image
+        if: ${{ env.SHOULD_BUILD == 'true' }}
         id: build-docker-image
         uses: ./.github/actions/build-docker-image
         with:
@@ -65,10 +60,12 @@ jobs:
           platform: ${{ matrix.config.platform }}
 
       - name: Build for Release
+        if: ${{ env.SHOULD_BUILD == 'true' }}
         shell: 'script --return --quiet --log-out /dev/null --command "bash -e {0}"'
         run: ./run py-build --target ${{ matrix.config.target }} --release --out dist --skip-docker-build
 
       - name: Upload wheels
+        if: ${{ env.SHOULD_BUILD == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.config.target }}
