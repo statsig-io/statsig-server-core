@@ -35,6 +35,7 @@ pub mod statsig_metadata;
 pub mod statsig_options;
 pub mod statsig_types;
 pub mod statsig_user;
+pub mod hashset_with_ttl;
 
 mod client_init_response_formatter;
 mod compression;
