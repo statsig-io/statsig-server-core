@@ -64,6 +64,7 @@ pub struct SpecsResponseFull {
     pub sdk_keys_to_app_ids: Option<HashMap<String, DynamicValue>>,
     pub hashed_sdk_keys_to_app_ids: Option<HashMap<String, DynamicValue>>,
     pub diagnostics: Option<HashMap<String, f64>>,
+    pub sdk_configs: Option<HashMap<String, DynamicValue>>,
 }
 
 #[derive(Deserialize)]

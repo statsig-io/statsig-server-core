@@ -4,8 +4,7 @@ use crate::observability::observability_client_adapter::{MetricType, Observabili
 use crate::observability::ops_stats::OpsStatsForInstance;
 use crate::spec_types::{SpecsResponse, SpecsResponseFull};
 use crate::{
-    log_d, log_e, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr,
-    StatsigRuntime,
+    log_d, log_e, DynamicValue, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigRuntime
 };
 use chrono::Utc;
 use serde::Serialize;
@@ -206,6 +205,24 @@ impl SpecStore {
         Ok(())
     }
 
+    pub fn get_sdk_config_value(&self, key: &str) -> Option<DynamicValue> {
+        match self.data.read() {
+            Ok(data) => {
+                match &data.values.sdk_configs {
+                    Some(sdk_configs) => sdk_configs.get(key).cloned(),
+                    None => {
+                        log_d!(TAG, "SDK Configs not found");
+                        None
+                    }
+                }
+            }
+            Err(e) => {
+                log_e!(TAG, "Failed to acquire read lock: {}", e);
+                None
+            }
+        }
+    }
+
     fn log_processing_config(&self, lcut: u64, source: SpecsSource, prev_source: SpecsSource) {
         let delay = Utc::now().timestamp_millis() as u64 - lcut;
         log_d!(TAG, "SpecStore - Updated ({:?})", source);
@@ -250,6 +267,7 @@ impl SpecsResponseFull {
             sdk_keys_to_app_ids: None,
             hashed_sdk_keys_to_app_ids: None,
             diagnostics: None,
+            sdk_configs: None,
         }
     }
 }

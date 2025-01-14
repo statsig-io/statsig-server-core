@@ -1,0 +1,20 @@
+{
+    "has_updates": true,
+    "time": 1000,
+    "feature_gates": {},
+    "dynamic_configs": {},
+    "layer_configs": {},
+    "condition_map": {},
+    "experiment_to_layer": {},
+    "default_environment": null,
+    "app_id": null,
+    "sdk_keys_to_app_ids": null,
+    "hashed_sdk_keys_to_app_ids": null,
+    "diagnostics": null,
+    "sdk_configs": {
+        "event_queue_size": 1800,
+        "event_logging_interval_seconds": 1,
+        "special_case_sampling_rate": 101,
+        "sampling_mode": "shadow"
+    }
+}
