@@ -20,6 +20,8 @@ const TAG: &str = "StatsigNapi";
 #[napi(object, js_name = "ClientInitResponseOptions")]
 pub struct ClientInitResponseOptionsNapi {
   pub hash_algorithm: Option<String>,
+  pub client_sdk_key: Option<String>,
+  pub include_local_overrides: Option<bool>,
 }
 
 #[napi(object, js_name = "GetFeatureGateOptions")]
@@ -397,7 +399,8 @@ impl From<ClientInitResponseOptionsNapi> for ClientInitResponseOptions {
 
     ClientInitResponseOptions {
       hash_algorithm,
-      ..ClientInitResponseOptions::default()
+      client_sdk_key: option.client_sdk_key,
+      include_local_overrides: option.include_local_overrides,
     }
   }
 }
