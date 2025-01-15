@@ -42,18 +42,24 @@ export class NapiBuild extends Command {
     Log.stepProgress(
       `Skip JS Optimizations: ${options.skipJsOptimizations ?? false}`,
     );
+    Log.stepEnd(`For Release: ${options.release ?? false}`);
 
     ensureEmptyDir(getRootedPath('statsig-napi/dist/lib'));
 
     const isWindows = options.target?.includes('windows') === true;
     if (!isWindows) {
-      const versions = getNpmVersion();
-      for (const [pkg, version] of Object.entries(versions)) {
-        Log.stepProgress(`${pkg}: ${version}`);
+      Log.stepBegin('Installed Dependencies');
+      const versions = getInstalledDepVersions();
+
+      for (let i = 0; i < versions.length; i++) {
+        const line = versions[i];
+        if (i < versions.length - 1) {
+          Log.stepProgress(line);
+        } else {
+          Log.stepEnd(line);
+        }
       }
     }
-
-    Log.stepEnd(`For Release: ${options.release ?? false}`);
 
     Log.stepBegin('Ensuring empty build directory');
     const buildDir = getRootedPath('build/node');
@@ -86,24 +92,13 @@ export class NapiBuild extends Command {
   }
 }
 
-function getNpmVersion() {
+function getInstalledDepVersions() {
   const napiDir = getRootedPath('statsig-napi');
 
-  const packages = [
-    'node_modules/@napi-rs/cli',
-    'node_modules/jscodeshift',
-    'node_modules/typescript',
-    'node_modules/prettier',
-  ];
-
-  const version: Record<string, string> = {};
-  for (const pkg of packages) {
-    const cmd = `cat package-lock.json | jq '.packages["${pkg}"].version'`;
-    const pkgVersion = execSync(cmd, { cwd: napiDir });
-    version[pkg.replace('node_modules/', '')] = pkgVersion.toString().trim();
-  }
-
-  return version;
+  const cmd = `pnpm list`;
+  const output = execSync(cmd, { cwd: napiDir }).toString().trim();
+  const parts = output.split('devDependencies:');
+  return parts[1].split('\n').filter((line) => line.length > 3);
 }
 
 function runNapiBuild(options: Options) {

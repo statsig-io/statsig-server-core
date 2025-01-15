@@ -54,7 +54,7 @@ runs:
     - name: "[Windows-i686] Set Supported Architectures"
       if: inputs.target == 'i686-pc-windows-msvc'
       shell: bash
-      run: yarn config set supportedArchitectures.cpu "ia32"
+      run: pnpm config set supportedArchitectures.cpu "ia32"
 
     - name: "[Linux-Musl] Add Zig Compiler"
       if: ${{ contains(inputs.target, 'musl') }}
@@ -69,7 +69,7 @@ runs:
 
     - name: Install Dependencies
       shell: bash
-      run: yarn install --immutable --mode=skip-build
+      run: pnpm install --frozen-lockfile --ignore-scripts
       working-directory: statsig-napi
 
     - name: Build Napi
