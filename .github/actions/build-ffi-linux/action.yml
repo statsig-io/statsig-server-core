@@ -42,7 +42,7 @@ runs:
 
     - name: Install CLI Dependencies
       shell: bash
-      run: cd cli && npm install
+      run: cd cli && pnpm install
 
     - name: "Login to Docker Hub"
       uses: docker/login-action@v3

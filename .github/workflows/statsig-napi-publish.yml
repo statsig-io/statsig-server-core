@@ -36,7 +36,7 @@ jobs:
           git submodule update --init --recursive
 
       - name: Install NPM Dependencies
-        run: cd cli && npm install
+        run: cd cli && pnpm install
 
       - name: Run Publish
         run: |

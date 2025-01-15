@@ -30,7 +30,7 @@ runs:
 
     - name: Install NPM Dependencies
       shell: bash
-      run: cd cli && npm install
+      run: cd cli && pnpm install
 
     - name: Upload Release Asset
       shell: bash

@@ -21,6 +21,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+    
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -36,7 +40,7 @@ jobs:
           gh_token: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
 
       - name: Install NPM Dependencies
-        run: cd cli && npm install
+        run: cd cli && pnpm install
 
       - name: Run Tests
         shell: 'script --return --quiet --log-out /dev/null --command "bash -e {0}"' # prevents "the input device is not a TTY" error

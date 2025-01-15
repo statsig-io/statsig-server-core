@@ -40,12 +40,15 @@ jobs:
   
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
 
       - name: Install CLI Dependencies
-        run: cd cli && npm install
+        run: cd cli && pnpm install
 
       - name: Build Docker Image
         if: ${{ env.SHOULD_BUILD == 'true' }}

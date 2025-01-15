@@ -12,7 +12,11 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@esbuild/darwin-arm64": "0.23.1",
+    "@esbuild/linux-arm64": "0.23.1",
+    "@esbuild/linux-x64": "0.23.1",
     "@eslint/js": "^9.14.0",
+    "@octokit/auth-app": "^7.1.4",
     "@types/eslint__js": "^8.42.3",
     "adm-zip": "^0.5.16",
     "chalk": "^5.3.0",

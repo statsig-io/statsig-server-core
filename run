@@ -2,7 +2,7 @@
 
 cd cli
 
-npx tsx src/main.ts "$@"
+pnpm exec tsx src/main.ts "$@"
 
 
 

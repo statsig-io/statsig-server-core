@@ -41,6 +41,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
 
       - name: Build Statsig FFI
         if: ${{ github.ref_name == 'main' || matrix.config.always_build || github.event_name == 'release' }}
@@ -113,6 +116,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
 
       - name: Build Statsig FFI
         if: ${{ github.ref_name == 'main' || matrix.config.always_build || github.event_name == 'release' }}

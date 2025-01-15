@@ -32,6 +32,10 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo
@@ -44,7 +48,7 @@ jobs:
 
       - name: Install NPM Dependencies
         shell: bash
-        run: cd cli && npm install
+        run: cd cli && pnpm install
 
       - name: Cut Release
         env:

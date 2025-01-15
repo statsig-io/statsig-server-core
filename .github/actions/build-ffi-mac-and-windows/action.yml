@@ -31,7 +31,7 @@ runs:
 
     - name: Install CLI Dependencies
       shell: bash
-      run: cd cli && npm install
+      run: cd cli && pnpm install
 
     - name: Build Debug
       shell: bash
