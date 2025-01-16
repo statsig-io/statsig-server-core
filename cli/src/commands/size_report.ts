@@ -39,7 +39,11 @@ export class SizeReport extends Command {
 
     const octokit = await getOctokit();
 
+    Log.stepBegin(`Fetching size info for ${target}`);
     const sizeInfo = await getFfiBinarySizes(target);
+    Log.stepProgress(`File: ${sizeInfo.file}`);
+    Log.stepProgress(`Bytes: ${sizeInfo.bytes}`);
+    Log.stepEnd(`Size: ${sizeInfo.size}`);
 
     Log.stepBegin(`Fetching all previous size info`);
     const { result: allPreviousSizeComments, error } =

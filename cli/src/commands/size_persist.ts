@@ -32,7 +32,12 @@ export class SizePersist extends Command {
 
     const octokit = await getOctokit();
 
+    Log.stepBegin(`Fetching size info for ${target}`);
     const sizeInfo = await getFfiBinarySizes(target);
+    Log.stepProgress(`File: ${sizeInfo.file}`);
+    Log.stepProgress(`Bytes: ${sizeInfo.bytes}`);
+    Log.stepEnd(`Size: ${sizeInfo.size}`);
+
     const { result: allPreviousSizeComments, error } =
       await fetchPreviousSizeInfo(octokit);
 
