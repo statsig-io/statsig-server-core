@@ -86,7 +86,7 @@ impl Statsig {
             sdk_key,
             options.data_store.clone(),
             Some(statsig_runtime.clone()),
-            Some(ops_stats.clone()),
+            ops_stats.clone(),
         ));
 
         let hashing = HashUtil::new();

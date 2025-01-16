@@ -2,9 +2,11 @@ use crate::data_store_interface::{get_data_adapter_dcs_key, DataStoreTrait};
 use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::OpsStatsForInstance;
+use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::spec_types::{SpecsResponse, SpecsResponseFull};
 use crate::{
-    log_d, log_e, DynamicValue, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigRuntime
+    log_d, log_e, log_error_to_statsig_and_console, DynamicValue, SpecsInfo, SpecsSource,
+    SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigRuntime,
 };
 use chrono::Utc;
 use serde::Serialize;
@@ -27,7 +29,7 @@ pub struct SpecStore {
     pub data: Arc<RwLock<SpecStoreData>>,
     pub data_store: Option<Arc<dyn DataStoreTrait>>,
     pub statsig_runtime: Option<Arc<StatsigRuntime>>,
-    ops_stats: Option<Arc<OpsStatsForInstance>>,
+    ops_stats: Arc<OpsStatsForInstance>,
 }
 
 impl SpecsUpdateListener for SpecStore {
@@ -100,7 +102,7 @@ impl IdListsUpdateListener for SpecStore {
 
 impl Default for SpecStore {
     fn default() -> Self {
-        Self::new("", None, None, None)
+        Self::new("", None, None, Arc::new(OpsStatsForInstance::new()))
     }
 }
 
@@ -109,7 +111,7 @@ impl SpecStore {
         hashed_sdk_key: &str,
         data_store: Option<Arc<dyn DataStoreTrait>>,
         statsig_runtime: Option<Arc<StatsigRuntime>>,
-        ops_stats: Option<Arc<OpsStatsForInstance>>,
+        ops_stats: Arc<OpsStatsForInstance>,
     ) -> SpecStore {
         SpecStore {
             hashed_sdk_key: hashed_sdk_key.to_string(),
@@ -155,19 +157,34 @@ impl SpecStore {
             Ok(SpecsResponse::NoUpdates(no_updates)) => {
                 if !no_updates.has_updates {
                     self.log_no_update(values.source);
+                    return Ok(());
                 }
-                return Ok(());
+                log_error_to_statsig_and_console!(
+                    self.ops_stats,
+                    TAG,
+                    "Empty response with has_updates = true {:?}",
+                    values.source
+                );
+                return Err(StatsigErr::JsonParseError(
+                    "SpecsResponse".to_owned(),
+                    "Parse failure. 'has_update' is true, but failed to deserialize to response format 'dcs-v2'".to_owned(),
+                ));
             }
             Err(e) => {
                 // todo: Handle bad parsing
-                log_e!(TAG, "{:?}, {:?}", e, values.source);
+                log_error_to_statsig_and_console!(
+                    self.ops_stats,
+                    TAG,
+                    "{:?}, {:?}",
+                    e,
+                    values.source
+                );
                 return Err(StatsigErr::JsonParseError(
                     "config_spec".to_string(),
                     e.to_string(),
                 ));
             }
         };
-
         if let Ok(mut mut_values) = self.data.write() {
             if mut_values.values.time > 0 && mut_values.values.time > dcs.time {
                 log_d!(
@@ -207,15 +224,13 @@ impl SpecStore {
 
     pub fn get_sdk_config_value(&self, key: &str) -> Option<DynamicValue> {
         match self.data.read() {
-            Ok(data) => {
-                match &data.values.sdk_configs {
-                    Some(sdk_configs) => sdk_configs.get(key).cloned(),
-                    None => {
-                        log_d!(TAG, "SDK Configs not found");
-                        None
-                    }
+            Ok(data) => match &data.values.sdk_configs {
+                Some(sdk_configs) => sdk_configs.get(key).cloned(),
+                None => {
+                    log_d!(TAG, "SDK Configs not found");
+                    None
                 }
-            }
+            },
             Err(e) => {
                 log_e!(TAG, "Failed to acquire read lock: {}", e);
                 None
@@ -227,28 +242,24 @@ impl SpecStore {
         let delay = Utc::now().timestamp_millis() as u64 - lcut;
         log_d!(TAG, "SpecStore - Updated ({:?})", source);
 
-        if let Some(ops) = self.ops_stats.as_ref() {
-            if prev_source != SpecsSource::Uninitialized && prev_source != SpecsSource::Loading {
-                ops.log(ObservabilityEvent::new_event(
-                    MetricType::Dist,
-                    "config_propogation_diff".to_string(),
-                    delay as f64,
-                    Some(HashMap::from([("source".to_string(), source.to_string())])),
-                ));
-            }
+        if prev_source != SpecsSource::Uninitialized && prev_source != SpecsSource::Loading {
+            self.ops_stats.log(ObservabilityEvent::new_event(
+                MetricType::Dist,
+                "config_propogation_diff".to_string(),
+                delay as f64,
+                Some(HashMap::from([("source".to_string(), source.to_string())])),
+            ));
         }
     }
 
     fn log_no_update(&self, source: SpecsSource) {
         log_d!(TAG, "SpecStore - No Updates");
-        if let Some(ops) = self.ops_stats.as_ref() {
-            ops.log(ObservabilityEvent::new_event(
-                MetricType::Increment,
-                "config_no_update".to_string(),
-                1.0,
-                Some(HashMap::from([("source".to_string(), source.to_string())])),
-            ));
-        }
+        self.ops_stats.log(ObservabilityEvent::new_event(
+            MetricType::Increment,
+            "config_no_update".to_string(),
+            1.0,
+            Some(HashMap::from([("source".to_string(), source.to_string())])),
+        ));
     }
 }
 

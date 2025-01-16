@@ -11,7 +11,7 @@ use std::cmp;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
-use tokio::sync::Notify;
+use tokio::sync::{broadcast, Notify};
 use tokio::time::timeout;
 // Todo make those configurable
 const DEFAULT_BACKOFF_INTERVAL_MS: u64 = 3000;
@@ -31,7 +31,7 @@ const BG_TASK_TAG: &str = "grpc_streaming";
 pub struct StatsigGrpcSpecsAdapter {
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
     shutdown_notify: Arc<Notify>,
-    initialized_notify: Arc<Notify>,
+    initialization_tx: Arc<broadcast::Sender<Result<(), StatsigErr>>>,
     task_handle_id: Mutex<Option<tokio::task::Id>>,
     grpc_client: StatsigGrpcClient,
     retry_state: StreamingRetryState,
@@ -52,9 +52,16 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
             .unwrap();
 
         self.set_task_handle_id(handle_id)?;
-
-        match timeout(self.init_timeout, self.initialized_notify.notified()).await {
-            Ok(_) => Ok(()),
+        let mut rx = self.initialization_tx.subscribe();
+        match timeout(self.init_timeout, rx.recv()).await {
+            Ok(res) => match res {
+                Ok(Ok(())) => Ok(()),
+                Ok(Err(err)) => Err(StatsigErr::GrpcError(format!(
+                    "Failed to initialize from streaming: {}",
+                    err
+                ))),
+                Err(_) => Err(StatsigErr::GrpcError("Failed to get a ".to_string())),
+            },
             Err(_) => Err(StatsigErr::GrpcError(
                 "Start Timeout to get a response".to_string(),
             )),
@@ -68,7 +75,6 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
         // It should be already started wtihin spawn_grpc_streaming_thread
         Ok(())
     }
-
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
         match self.listener.write() {
@@ -108,9 +114,12 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
             }
         };
 
-        if tokio::time::timeout(timeout, statsig_runtime.await_join_handle(BG_TASK_TAG, &handle_id))
-            .await
-            .is_err()
+        if tokio::time::timeout(
+            timeout,
+            statsig_runtime.await_join_handle(BG_TASK_TAG, &handle_id),
+        )
+        .await
+        .is_err()
         {
             return Err(StatsigErr::GrpcError(
                 "Failed to gracefully shutdown StatsigGrpcSpecsAdapter.".to_string(),
@@ -127,6 +136,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
 
 impl StatsigGrpcSpecsAdapter {
     pub fn new(sdk_key: &str, config: &SpecAdapterConfig) -> Self {
+        let (init_tx, _) = broadcast::channel(1);
         Self {
             listener: RwLock::new(None),
             shutdown_notify: Arc::new(Notify::new()),
@@ -135,7 +145,7 @@ impl StatsigGrpcSpecsAdapter {
                 sdk_key,
                 &config.specs_url.clone().unwrap_or("INVALID".to_owned()),
             ),
-            initialized_notify: Arc::new(Notify::new()),
+            initialization_tx: Arc::new(init_tx),
             retry_state: StreamingRetryState {
                 backoff_interval_ms: DEFAULT_BACKOFF_INTERVAL_MS.into(),
                 retry_attempts: 0.into(),
@@ -223,7 +233,6 @@ impl StatsigGrpcSpecsAdapter {
         loop {
             match stream.message().await {
                 Ok(Some(config_spec)) => {
-                    self.initialized_notify.notify_one();
                     if self.retry_state.is_retrying.load(Ordering::SeqCst) {
                         // Reset retry state
                         self.retry_state.is_retrying.store(false, Ordering::SeqCst);
@@ -232,7 +241,9 @@ impl StatsigGrpcSpecsAdapter {
                             .backoff_interval_ms
                             .store(DEFAULT_BACKOFF_INTERVAL_MS, Ordering::SeqCst);
                     }
-                    let _ = self.send_spec_update_to_listener(config_spec.spec);
+                    let _ = self
+                        .initialization_tx
+                        .send(self.send_spec_update_to_listener(config_spec.spec));
                 }
                 _ => {
                     log_w!(TAG, "Error while receiving stream");
