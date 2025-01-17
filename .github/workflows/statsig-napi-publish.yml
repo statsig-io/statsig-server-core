@@ -34,6 +34,10 @@ jobs:
           git fetch
           git checkout ${{ github.event.inputs.release_commit_sha }}
           git submodule update --init --recursive
+          
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
 
       - name: Install NPM Dependencies
         run: cd cli && pnpm install
