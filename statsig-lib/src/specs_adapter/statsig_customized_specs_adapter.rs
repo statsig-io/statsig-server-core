@@ -41,7 +41,7 @@ impl StatsigCustomizedSpecsAdapter {
                     adapters.push(Arc::new(StatsigHttpSpecsAdapter::new(
                         sdk_key,
                         config.specs_url.as_ref(),
-                        false,
+                        options.fallback_to_statsig_api.unwrap_or(false),
                         options.specs_sync_interval_ms,
                     )))
                 }
@@ -113,11 +113,7 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
         for adapter in &self.adapters {
-            match adapter
-                .to_owned()
-                .start(statsig_runtime)
-                .await
-            {
+            match adapter.to_owned().start(statsig_runtime).await {
                 Ok(()) => {
                     return Ok(());
                 }
@@ -138,7 +134,7 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
         for adapter in &self.adapters {
-           adapter.initialize(listener.clone());
+            adapter.initialize(listener.clone());
         }
     }
 
@@ -152,7 +148,11 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
                 Ok(_) => return Ok(()),
                 Err(_) => {
                     // Carry on and try  next adapter
-                    log_i!(TAG, "Skipping schedule bg sync for {}", adapter.get_type_name())
+                    log_i!(
+                        TAG,
+                        "Skipping schedule bg sync for {}",
+                        adapter.get_type_name()
+                    )
                 }
             }
         }

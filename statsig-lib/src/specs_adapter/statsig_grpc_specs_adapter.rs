@@ -1,3 +1,4 @@
+use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::{
@@ -12,13 +13,15 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 use tokio::sync::{broadcast, Notify};
-use tokio::time::timeout;
+use tokio::time::{sleep, timeout};
+
+use super::StatsigHttpSpecsAdapter;
 // Todo make those configurable
 const DEFAULT_BACKOFF_INTERVAL_MS: u64 = 3000;
 const DEFAULT_BACKOFF_MULTIPLIER: u64 = 2;
 const MAX_BACKOFF_INTERVAL_MS: u64 = 60 * 1000;
 const RETRY_LIMIT: u64 = 10 * 24 * 60 * 60;
-
+const FALL_BACK_TO_POLLING_THREASHOLD: u64 = 30; //Fallback after 30 minutes
 struct StreamingRetryState {
     backoff_interval_ms: AtomicU64,
     retry_attempts: AtomicU64,
@@ -37,6 +40,9 @@ pub struct StatsigGrpcSpecsAdapter {
     retry_state: StreamingRetryState,
     init_timeout: Duration,
     ops_stats: Arc<OpsStatsForInstance>,
+    // For fallback to poll job behavior
+    http_specs_adapter: Arc<StatsigHttpSpecsAdapter>,
+    cancel_poll_notify: Arc<Notify>,
 }
 
 #[async_trait]
@@ -77,6 +83,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
     }
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
+        self.http_specs_adapter.initialize(listener.clone());
         match self.listener.write() {
             Ok(mut lock) => *lock = Some(listener),
             Err(e) => {
@@ -136,6 +143,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
 
 impl StatsigGrpcSpecsAdapter {
     pub fn new(sdk_key: &str, config: &SpecAdapterConfig) -> Self {
+        let fallback_adapter = StatsigHttpSpecsAdapter::new(sdk_key, None, false, None);
         let (init_tx, _) = broadcast::channel(1);
         Self {
             listener: RwLock::new(None),
@@ -153,7 +161,33 @@ impl StatsigGrpcSpecsAdapter {
             },
             init_timeout: Duration::from_millis(config.init_timeout_ms),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
+            http_specs_adapter: Arc::new(fallback_adapter),
+            cancel_poll_notify: Arc::new(Notify::new()),
         }
+    }
+
+    fn spawn_poll_from_statsig_thread(
+        http_spec_adapter: Arc<StatsigHttpSpecsAdapter>,
+        cancel_notify: Arc<Notify>,
+        shutdown_notify: Arc<Notify>,
+    ) {
+        tokio::task::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = sleep(Duration::from_millis(3000)) => {
+                        StatsigHttpSpecsAdapter::run_background_sync(&Arc::downgrade(&http_spec_adapter)).await;
+                    }
+                    _ = cancel_notify.notified() => {
+                        log_d!(TAG, "Cancel grpc fallback background specs sync");
+                        break;
+                    }
+                    _ = shutdown_notify.notified() => {
+                        log_d!(TAG, "Shutting down grpc fallback specs background sync");
+                        break;
+                    }
+                }
+            }
+        });
     }
 
     async fn spawn_grpc_streaming_thread(
@@ -195,6 +229,10 @@ impl StatsigGrpcSpecsAdapter {
                             log_error_to_statsig_and_console!(&self.ops_stats, TAG, "gRPC stream failure, exhaust retry limit: {:?}", err);
                            break;
                         }
+                        if attempt == FALL_BACK_TO_POLLING_THREASHOLD {
+                            log_d!(TAG, "SFP is not reachable after {} tries: Falling back to polling from statsig", FALL_BACK_TO_POLLING_THREASHOLD);
+                            Self::spawn_poll_from_statsig_thread(self.http_specs_adapter.clone(), self.cancel_poll_notify.clone(), self.shutdown_notify.clone());
+                        }
                         self.grpc_client.reset_client();
 
                         // Update retry state
@@ -206,7 +244,7 @@ impl StatsigGrpcSpecsAdapter {
                         };
                         self.retry_state.backoff_interval_ms.store(new_backoff,Ordering::SeqCst);
                         self.retry_state.is_retrying.store(true, Ordering::SeqCst);
-                        log_w!(TAG, "gRPC stream failure ({}). Will wait {} ms and retry. Error: {:?}", attempt, curr_backoff, err);
+                        self.log_streaming_err(err, attempt, curr_backoff);
                         tokio::time::sleep(Duration::from_millis(curr_backoff)).await;
                     }
                 },
@@ -233,6 +271,7 @@ impl StatsigGrpcSpecsAdapter {
         loop {
             match stream.message().await {
                 Ok(Some(config_spec)) => {
+                    self.cancel_poll_notify.notify_one();
                     if self.retry_state.is_retrying.load(Ordering::SeqCst) {
                         // Reset retry state
                         self.retry_state.is_retrying.store(false, Ordering::SeqCst);
@@ -240,16 +279,28 @@ impl StatsigGrpcSpecsAdapter {
                         self.retry_state
                             .backoff_interval_ms
                             .store(DEFAULT_BACKOFF_INTERVAL_MS, Ordering::SeqCst);
+                        self.ops_stats.log(ObservabilityEvent::new_event(
+                            MetricType::Increment,
+                            "grpc_reconnected".to_string(),
+                            1.0,
+                            None,
+                        ));
                     }
                     let _ = self
                         .initialization_tx
                         .send(self.send_spec_update_to_listener(config_spec.spec));
-                }
-                _ => {
-                    log_w!(TAG, "Error while receiving stream");
-                    return Err(StatsigErr::NetworkError(
-                        "Error while receiving stream".to_string(),
+                    self.ops_stats.log(ObservabilityEvent::new_event(
+                        MetricType::Increment,
+                        "grpc_received_message".to_string(),
+                        1.0,
+                        None,
                     ));
+                }
+                err => {
+                    return Err(StatsigErr::GrpcError(format!(
+                        "Error while receiving stream: {:?}",
+                        err
+                    )));
                 }
             }
         }
@@ -293,5 +344,21 @@ impl StatsigGrpcSpecsAdapter {
 
         log_w!(TAG, "Failed to get current lcut");
         None
+    }
+
+    fn log_streaming_err(&self, err: StatsigErr, retry_attempts: u64, backoff: u64) {
+        self.ops_stats.log(ObservabilityEvent::new_event(
+            MetricType::Dist,
+            "grpc_streaming_failed_with_retry_ct".to_string(),
+            retry_attempts as f64,
+            None,
+        ));
+        log_w!(
+            TAG,
+            "gRPC stream failure ({}). Will wait {} ms and retry. Error: {:?}",
+            retry_attempts,
+            backoff,
+            err
+        );
     }
 }

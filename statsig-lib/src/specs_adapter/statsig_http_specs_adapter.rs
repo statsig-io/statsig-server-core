@@ -93,7 +93,7 @@ impl StatsigHttpSpecsAdapter {
         }
     }
 
-    async fn run_background_sync(weak_self: &Weak<Self>) {
+    pub async fn run_background_sync(weak_self: &Weak<Self>) {
         let strong_self = match weak_self.upgrade() {
             Some(s) => s,
             None => {

@@ -74,6 +74,9 @@ impl StatsigGrpcClient {
         let channel = Channel::from_shared(self.proxy_api.clone())
             .map_err(|e| StatsigGrpcErr::FailedToConnect(e.to_string()))?
             .connect_timeout(Duration::from_secs(5))
+            .tcp_keepalive(Some(Duration::from_secs(30)))
+            .keep_alive_while_idle(true)
+            .http2_keep_alive_interval(Duration::from_secs(30))
             .connect()
             .await
             .map_err(|e| StatsigGrpcErr::FailedToConnect(e.to_string()))?;
