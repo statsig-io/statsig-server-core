@@ -53,6 +53,7 @@ impl From<usize> for DynamicValue {
             int_value: Some(value as i64),
             float_value: Some(value as f64),
             string_value: Some(value.to_string()),
+            lowercase_string_value: Some(value.to_string()),
             ..Self::default()
         }
     }
@@ -87,7 +88,9 @@ impl From<JsonValue> for DynamicValue {
             },
             JsonValue::Bool(b) => DynamicValue {
                 bool_value: Some(b),
+                string_value: Some(b.to_string()),
                 json_value,
+                lowercase_string_value: Some(b.to_string().to_lowercase()),
                 ..DynamicValue::new()
             },
             JsonValue::Number(n) => DynamicValue {
@@ -101,6 +104,8 @@ impl From<JsonValue> for DynamicValue {
             JsonValue::String(s) => DynamicValue::from(s),
             JsonValue::Array(arr) => DynamicValue {
                 array_value: Some(arr.into_iter().map(DynamicValue::from).collect()),
+                string_value: Some(json_value.to_string()),
+                lowercase_string_value: Some(json_value.to_string().to_lowercase()),
                 json_value,
                 ..DynamicValue::new()
             },
