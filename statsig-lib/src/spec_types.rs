@@ -3,6 +3,7 @@ use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::dynamic_value::DynamicValue;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
+use serde_json::Value;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -64,7 +65,57 @@ pub struct SpecsResponseFull {
     pub sdk_keys_to_app_ids: Option<HashMap<String, DynamicValue>>,
     pub hashed_sdk_keys_to_app_ids: Option<HashMap<String, DynamicValue>>,
     pub diagnostics: Option<HashMap<String, f64>>,
+    pub param_stores: Option<HashMap<String, HashMap<String, Parameter>>>,
     pub sdk_configs: Option<HashMap<String, DynamicValue>>,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum Parameter {
+    StaticValue(StaticValueParameter),
+    Gate(GateParameter),
+    DynamicConfig(DynamicConfigParameter),
+    Experiment(ExperimentParameter),
+    Layer(LayerParameter),
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct StaticValueParameter {
+    pub ref_type: String,
+    pub param_type: String,
+    pub value: Value,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct GateParameter {
+    pub ref_type: String,
+    pub param_type: String,
+    pub gate_name: String,
+    pub pass_value: Value,
+    pub fail_value: Value,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct DynamicConfigParameter {
+    pub ref_type: String,
+    pub param_type: String,
+    pub config_name: String,
+    pub param_name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ExperimentParameter {
+    pub ref_type: String,
+    pub param_type: String,
+    pub experiment_name: String,
+    pub param_name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct LayerParameter {
+    pub ref_type: String,
+    pub param_type: String,
+    pub layer_name: String,
+    pub param_name: String,
 }
 
 #[derive(Deserialize)]

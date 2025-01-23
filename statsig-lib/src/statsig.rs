@@ -32,7 +32,7 @@ use crate::statsig_runtime::StatsigRuntime;
 use crate::statsig_type_factories::{
     make_dynamic_config, make_experiment, make_feature_gate, make_layer,
 };
-use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
+use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer, ParameterStore};
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{
     dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, OverrideAdapter,
@@ -417,6 +417,57 @@ impl Statsig {
     ) -> String {
         json!(self.get_client_init_response_with_options(user, options)).to_string()
     }
+
+    pub fn get_parameter_store(&self, parameter_store_name: &str) -> ParameterStore {
+        self.event_logger
+        .increment_non_exposure_checks_count(parameter_store_name.to_string());
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                "Failed to acquire read lock for spec store data"
+            );
+            return ParameterStore {
+                name: parameter_store_name.to_string(),
+                parameters: HashMap::new(),
+                details: EvaluationDetails::unrecognized_no_data(),
+                _statsig_ref: self,
+            };
+        });
+
+        let stores = &data.values.param_stores;
+        let store = match stores {
+            Some(stores) => {
+                stores.get(parameter_store_name)
+            }
+            None => {
+                return ParameterStore {
+                    name: parameter_store_name.to_string(),
+                    parameters: HashMap::new(),
+                    details: EvaluationDetails::unrecognized(&data),
+                    _statsig_ref: self,
+                };
+            }
+        };
+        match store {
+            Some(store) => {
+                ParameterStore {
+                    name: parameter_store_name.to_string(),
+                    parameters: store.clone(),
+                    details: EvaluationDetails::recognized(&data, &EvaluatorResult::default()),
+                    _statsig_ref: self,
+                }
+            }
+            None => {
+                ParameterStore {
+                    name: parameter_store_name.to_string(),
+                    parameters: HashMap::new(),
+                    details: EvaluationDetails::unrecognized(&data),
+                    _statsig_ref: self,
+                }
+            }
+        }
+    }
 }
 
 // -------------------------
@@ -454,7 +505,7 @@ impl Statsig {
 
         let disable_exposure_logging = options.disable_exposure_logging;
         let gate = self.get_feature_gate_impl(&user_internal, gate_name);
-
+        
         if disable_exposure_logging {
             log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
             self.event_logger
