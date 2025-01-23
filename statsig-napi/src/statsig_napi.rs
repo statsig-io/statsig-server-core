@@ -3,6 +3,7 @@ use napi::Env;
 use napi_derive::napi;
 use serde_json::json;
 use sigstat::instance_store::INST_STORE;
+use sigstat::statsig_metadata::StatsigMetadata;
 use sigstat::{
   get_instance_or_else, get_instance_or_noop, get_instance_or_return, log_e,
   ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
@@ -15,7 +16,7 @@ use std::time::Duration;
 use crate::statsig_types_napi::{DynamicConfigNapi, ExperimentNapi, FeatureGateNapi};
 
 const TAG: &str = "StatsigNapi";
-
+const SDK_TYPE: &str = "statsig-server-core-node";
 // Options
 #[napi(object, js_name = "ClientInitResponseOptions")]
 pub struct ClientInitResponseOptionsNapi {
@@ -68,10 +69,10 @@ impl ObjectFinalize for AutoReleasingStatsigRef {
 }
 
 #[napi]
-pub fn statsig_create(sdk_key: String, options_ref: Option<String>) -> AutoReleasingStatsigRef {
+pub fn statsig_create(env: Env, sdk_key: String, options_ref: Option<String>) -> AutoReleasingStatsigRef {
   let options = INST_STORE.get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
   let statsig = Statsig::new(&sdk_key, options);
-
+  update_statsig_metadata(env);
   let ref_id = INST_STORE.add(statsig).unwrap_or_else(|| {
     log_e!(TAG, "Failed to create Statsig instance");
     "".to_string()
@@ -325,6 +326,11 @@ pub fn statsig_get_client_init_response(
 // -------
 // Private
 // -------
+
+fn update_statsig_metadata(env: Env) {
+  let version = env.get_node_version().map(|v|format!("{}.{}.{}", v.major, v.minor, v.patch)).unwrap_or("UNKNOWN".to_string());
+  StatsigMetadata::update_values(SDK_TYPE.to_string(), std::env::consts::OS.to_string(), std::env::consts::ARCH.to_string(), version);
+}
 
 fn create_empty_feature_gate(name: String) -> FeatureGateNapi {
   FeatureGateNapi {
