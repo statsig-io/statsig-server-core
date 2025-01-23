@@ -231,19 +231,13 @@ fn get_completion_event(py: Python) -> PyResult<(PyObject, PyObject)> {
 }
 
 fn convert_to_number(value: Option<&Bound<PyAny>>) -> Option<f64> {
-    let value = match value {
-        Some(v) => v,
-        None => return None,
-    };
+    let value = value?;
 
     value.extract::<f64>().ok()
 }
 
 fn convert_to_string(value: Option<&Bound<PyAny>>) -> Option<String> {
-    let value = match value {
-        Some(v) => v,
-        None => return None,
-    };
+    let value = value?;
 
     value.extract::<String>().ok()
 }

@@ -23,3 +23,7 @@ napi-build = "2.1.3"
 [features]
 default = []
 vendored_openssl = ["sigstat/vendored_openssl"]
+noop = []
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(debug_assert)'] }

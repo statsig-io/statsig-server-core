@@ -522,10 +522,10 @@ mod tests {
         let curl = Curl::get(key);
         let handle = curl.context._handle.clone();
 
-        assert!(!handle.as_ref().map_or(false, |h| h.is_finished()));
+        assert!(!handle.as_ref().is_some_and(|h| h.is_finished()));
         drop(curl);
 
         tokio::time::sleep(Duration::from_millis(100)).await;
-        assert!(handle.as_ref().map_or(false, |h| h.is_finished()));
+        assert!(handle.as_ref().is_some_and(|h| h.is_finished()));
     }
 }
