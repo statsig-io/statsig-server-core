@@ -1,5 +1,3 @@
-use super::{HttpMethod, Response};
-use crate::compression::compression_helper::get_compression_format;
 use crate::networking::RequestArgs;
 use crate::{log_d, log_e, ok_or_return_with, unwrap_or_return_with, StatsigErr};
 use chrono::Utc;
@@ -12,6 +10,8 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
 use tokio::{runtime, time};
+
+use super::{HttpMethod, Response};
 
 const MAX_QUEUED_REQUESTS: usize = 10;
 
@@ -339,8 +339,8 @@ fn construct_easy_request(
         easy.timeout(Duration::from_secs(10))?;
     }
 
-    if args.accept_encoded_response {
-        easy.accept_encoding(get_compression_format().as_str())?;
+    if args.accept_gzip_response {
+        easy.accept_encoding("gzip")?;
     }
 
     if *method == HttpMethod::POST {

@@ -73,7 +73,7 @@ impl StatsigHttpIdListsAdapter {
         let request_args = RequestArgs {
             url: self.id_lists_manifest_url.clone(),
             retries: 2,
-            accept_encoded_response: true,
+            accept_gzip_response: true,
             ..RequestArgs::new()
         };
 

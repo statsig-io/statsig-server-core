@@ -1,8 +1,8 @@
-use bytes::Bytes;
 use std::{
     collections::HashMap,
     sync::{atomic::AtomicBool, Arc},
 };
+use bytes::Bytes;
 
 #[derive(Clone)]
 pub struct RequestArgs {
@@ -11,7 +11,7 @@ pub struct RequestArgs {
     pub retries: u32,
     pub headers: Option<HashMap<String, String>>,
     pub query_params: Option<HashMap<String, String>>,
-    pub accept_encoded_response: bool,
+    pub accept_gzip_response: bool,
     pub timeout_ms: u64,
     pub is_shutdown: Option<Arc<AtomicBool>>,
 }
@@ -30,7 +30,7 @@ impl RequestArgs {
             retries: 0,
             headers: None,
             query_params: None,
-            accept_encoded_response: false,
+            accept_gzip_response: false,
             timeout_ms: 0,
             is_shutdown: None,
         }

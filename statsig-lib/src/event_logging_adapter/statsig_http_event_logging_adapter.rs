@@ -79,7 +79,7 @@ impl StatsigHttpEventLoggingAdapter {
                     url: self.log_event_url.clone(),
                     retries: 3,
                     headers: Some(headers),
-                    accept_encoded_response: true,
+                    accept_gzip_response: true,
                     ..RequestArgs::new()
                 },
                 Some(compressed.into()),

@@ -66,18 +66,18 @@ impl StatsigHttpSpecsAdapter {
             url: self.specs_url.clone(),
             retries: 2,
             query_params,
-            accept_encoded_response: true,
+            accept_gzip_response: true,
             ..RequestArgs::new()
         };
 
         match self.network.get(request_args.clone()).await {
             Ok(response) => Some(response),
-            Err(NetworkError::RetriesExhausted) => self.handle_fallback_request(request_args).await,
+            Err(NetworkError::RetriesExhausted) => {self.handle_fallback_request(request_args).await},
             Err(_) => None,
         }
     }
 
-    async fn handle_fallback_request(&self, mut request_args: RequestArgs) -> Option<String> {
+    async fn handle_fallback_request(&self, mut request_args: RequestArgs) -> Option<String>{
         let fallback_url = match &self.fallback_url {
             Some(url) => url.clone(),
             None => return None,
