@@ -14,7 +14,7 @@ use async_trait::async_trait;
 use chrono::Utc;
 use tokio::sync::Notify;
 
-const TAG: &str = stringify!(StatsigDatStoreSpecAdapter);
+const TAG: &str = stringify!(StatsigDataStoreSpecAdapter);
 
 pub struct StatsigDataStoreSpecsAdapter {
     data_adapter: Arc<dyn DataStoreTrait>,
