@@ -34,7 +34,7 @@ pub struct DynamicConfig {
     pub id_type: String,
     pub details: EvaluationDetails,
 
-    pub(crate) __evaluation: Option<DynamicConfigEvaluation>,
+    pub __evaluation: Option<DynamicConfigEvaluation>,
     pub __version: Option<u32>,
 }
 
@@ -56,7 +56,7 @@ pub struct Experiment {
     pub group_name: Option<String>,
     pub details: EvaluationDetails,
 
-    pub(crate) __evaluation: Option<ExperimentEvaluation>,
+    pub __evaluation: Option<ExperimentEvaluation>,
     pub __version: Option<u32>,
 }
 

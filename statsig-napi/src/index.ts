@@ -8,6 +8,8 @@ import {
   GetDynamicConfigOptions,
   GetExperimentOptions,
   GetFeatureGateOptions,
+  EvaluationDetails,
+  SecondaryExposure
 } from './bindings';
 
 import { IDataStore, getDataStoreKey } from './IDataStore';
@@ -48,4 +50,6 @@ export {
   GetFeatureGateOptions,
   GetExperimentOptions,
   GetDynamicConfigOptions,
+  EvaluationDetails,
+  SecondaryExposure
 };

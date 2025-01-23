@@ -23,6 +23,8 @@ pub use statsig_err::StatsigErr;
 pub use statsig_options::StatsigOptions;
 pub use statsig_runtime::StatsigRuntime;
 pub use statsig_user::StatsigUser;
+pub use evaluation::evaluation_details::EvaluationDetails;
+pub use evaluation::evaluation_types::SecondaryExposure;
 
 pub mod data_store_interface;
 pub mod instance_store;

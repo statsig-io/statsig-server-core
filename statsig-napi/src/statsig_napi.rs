@@ -165,6 +165,7 @@ pub fn statsig_get_feature_gate(
     rule_id: gate.rule_id,
     id_type: gate.id_type,
     value: gate.value,
+    evaluation_details: Some(gate.details.into()),
   }
 }
 
@@ -204,6 +205,15 @@ pub fn statsig_get_dynamic_config(
     rule_id: dynamic_config.rule_id,
     id_type: dynamic_config.id_type,
     json_value: json!(dynamic_config.value).to_string(),
+    evaluation_details: Some(dynamic_config.details.into()),
+    secondary_exposures: dynamic_config.__evaluation.map(|eval| {
+      eval
+        .base
+        .secondary_exposures
+        .into_iter()
+        .map(|exp| exp.into())
+        .collect()
+    }),
   }
 }
 
@@ -248,6 +258,15 @@ pub fn statsig_get_experiment(
     id_type: experiment.id_type,
     group_name: experiment.group_name,
     json_value: json!(experiment.value).to_string(),
+    evaluation_details: Some(experiment.details.into()),
+    secondary_exposures: experiment.__evaluation.map(|eval| {
+      eval
+        .base
+        .secondary_exposures
+        .into_iter()
+        .map(|exp| exp.into())
+        .collect()
+    }),
   }
 }
 
@@ -338,6 +357,7 @@ fn create_empty_feature_gate(name: String) -> FeatureGateNapi {
     rule_id: String::new(),
     id_type: String::new(),
     value: false,
+    evaluation_details: None,
   }
 }
 
@@ -347,6 +367,8 @@ fn create_empty_dynamic_config(name: String) -> DynamicConfigNapi {
     rule_id: String::new(),
     id_type: String::new(),
     json_value: String::from("{}"),
+    secondary_exposures: None,
+    evaluation_details: None,
   }
 }
 
@@ -357,6 +379,8 @@ fn create_empty_experiment(name: String) -> ExperimentNapi {
     id_type: String::new(),
     group_name: None,
     json_value: String::from("{}"),
+    secondary_exposures: None,
+    evaluation_details: None,
   }
 }
 
