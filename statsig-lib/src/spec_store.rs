@@ -102,19 +102,19 @@ impl IdListsUpdateListener for SpecStore {
 
 impl Default for SpecStore {
     fn default() -> Self {
-        Self::new("", None, None, Arc::new(OpsStatsForInstance::new()))
+        Self::new("".to_string(), None, None, Arc::new(OpsStatsForInstance::new()))
     }
 }
 
 impl SpecStore {
     pub fn new(
-        hashed_sdk_key: &str,
+        hashed_sdk_key: String,
         data_store: Option<Arc<dyn DataStoreTrait>>,
         statsig_runtime: Option<Arc<StatsigRuntime>>,
         ops_stats: Arc<OpsStatsForInstance>,
     ) -> SpecStore {
         SpecStore {
-            hashed_sdk_key: hashed_sdk_key.to_string(),
+            hashed_sdk_key,
             data: Arc::new(RwLock::new(SpecStoreData {
                 values: SpecsResponseFull::blank(),
                 time_received_at: None,

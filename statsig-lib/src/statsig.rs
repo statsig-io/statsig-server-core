@@ -81,15 +81,15 @@ impl Statsig {
         let options = options.unwrap_or_default();
 
         let ops_stats = setup_ops_stats(sdk_key, &options, statsig_runtime.clone());
+        let hashing = HashUtil::new();
 
         let spec_store = Arc::new(SpecStore::new(
-            sdk_key,
+            hashing.sha256(&sdk_key.to_string()),
             options.data_store.clone(),
             Some(statsig_runtime.clone()),
             ops_stats.clone(),
         ));
 
-        let hashing = HashUtil::new();
         initialize_simple_output_logger(&options.output_log_level);
 
         let specs_adapter = initialize_specs_adapter(sdk_key, &options, &hashing);
