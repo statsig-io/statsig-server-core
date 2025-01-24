@@ -23,6 +23,8 @@ pub struct EvaluatorResult<'a> {
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
     pub override_reason: Option<&'a str>,
     pub version: Option<u32>,
+    pub sampling_rate: Option<u64>,
+    pub forward_all_exposures: Option<bool>,
 }
 
 pub fn result_to_gate_eval(gate_name: &str, result: &mut EvaluatorResult) -> GateEvaluation {
@@ -143,5 +145,7 @@ fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEva
         name: spec_name.to_string(),
         rule_id: result.rule_id.cloned().unwrap_or_default(),
         secondary_exposures: exposures,
+        sampling_rate: result.sampling_rate,
+        forward_all_exposures: result.forward_all_exposures,
     }
 }
