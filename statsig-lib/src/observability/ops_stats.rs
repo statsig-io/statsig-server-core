@@ -2,11 +2,12 @@ use async_trait::async_trait;
 use lazy_static::lazy_static;
 use std::{
     collections::HashMap,
-    sync::{Arc, RwLock},
+    sync::{Arc, RwLock, Weak},
 };
 use tokio::sync::broadcast::{self, Sender};
+use tokio::sync::Notify;
 
-use crate::{log_w, StatsigRuntime};
+use crate::{log_e, log_w, StatsigRuntime};
 
 use super::{
     observability_client_adapter::ObservabilityEvent, sdk_errors_observer::ErrorBoundaryEvent,
@@ -20,7 +21,7 @@ lazy_static! {
 }
 
 pub struct OpsStats {
-    instances_map: RwLock<HashMap<String, Arc<OpsStatsForInstance>>>, // key is sdk key
+    instances_map: RwLock<HashMap<String, Weak<OpsStatsForInstance>>>, // key is sdk key
 }
 
 impl OpsStats {
@@ -31,24 +32,30 @@ impl OpsStats {
     }
 
     pub fn get_for_instance(&self, sdk_key: &str) -> Arc<OpsStatsForInstance> {
-        if let Ok(read_guard) = self.instances_map.read() {
-            if read_guard.contains_key(sdk_key) {
-                return read_guard
-                    .get(sdk_key)
-                    .unwrap_or(&Arc::new(OpsStatsForInstance::new()))
-                    .clone();
-            } else {
-                drop(read_guard);
-                if let Ok(mut write_lock) = self.instances_map.write() {
-                    let instance = Arc::new(OpsStatsForInstance::new());
-                    write_lock.insert(sdk_key.to_string(), instance.clone());
-                    return instance;
+        match self.instances_map.read() {
+            Ok(read_guard) => {
+                if let Some(instance) = read_guard.get(sdk_key) {
+                    if let Some(instance) = instance.upgrade() {
+                        return instance.clone();
+                    }
                 }
+            }
+            Err(e) => {
+                log_e!(TAG, "Failed to get read guard: {}", e);
             }
         }
 
-        log_w!(TAG, "Failed to retrieve stateful OpsStats");
-        Arc::new(OpsStatsForInstance::new())
+        let instance = Arc::new(OpsStatsForInstance::new());
+        match self.instances_map.write() {
+            Ok(mut write_guard) => {
+                write_guard.insert(sdk_key.into(), Arc::downgrade(&instance));
+            }
+            Err(e) => {
+                log_e!(TAG, "Failed to get write guard: {}", e);
+            }
+        }
+
+        instance
     }
 }
 
@@ -60,6 +67,7 @@ pub enum OpsStatsEvent {
 
 pub struct OpsStatsForInstance {
     sender: Sender<OpsStatsEvent>,
+    shutdown_notify: Arc<Notify>,
 }
 
 // The class used to handle all observability events including diagnostics, error, event logging, and external metric sharing
@@ -72,7 +80,10 @@ impl Default for OpsStatsForInstance {
 impl OpsStatsForInstance {
     pub fn new() -> Self {
         let (tx, _) = broadcast::channel(1000);
-        OpsStatsForInstance { sender: tx }
+        OpsStatsForInstance {
+            sender: tx,
+            shutdown_notify: Arc::new(Notify::new()),
+        }
     }
 
     pub fn log(&self, event: OpsStatsEvent) {
@@ -95,14 +106,38 @@ impl OpsStatsForInstance {
     pub fn subscribe(
         &self,
         runtime: Arc<StatsigRuntime>,
-        observer: Arc<dyn OpsStatsEventObserver>,
+        observer: Weak<dyn OpsStatsEventObserver>,
     ) {
         let mut rx = self.sender.subscribe();
-        let _ = runtime.spawn("opts_stats_listen_for", |_| async move {
-            while let Ok(event) = rx.recv().await {
-                observer.handle_event(event).await;
+        let shutdown_notify = self.shutdown_notify.clone();
+        let _ = runtime.spawn("opts_stats_listen_for", |rt_shutdown_notify| async move {
+            loop {
+                tokio::select! {
+                    event = rx.recv() => {
+                        let observer = match observer.upgrade() {
+                            Some(observer) => observer,
+                            None => break,
+                        };
+
+                        if let Ok(event) = event {
+                            observer.handle_event(event).await;
+                        }
+                    }
+                    _ = rt_shutdown_notify.notified() => {
+                        break;
+                    }
+                    _ = shutdown_notify.notified() => {
+                        break;
+                    }
+                }
             }
         });
+    }
+}
+
+impl Drop for OpsStatsForInstance {
+    fn drop(&mut self) {
+        self.shutdown_notify.notify_waiters();
     }
 }
 

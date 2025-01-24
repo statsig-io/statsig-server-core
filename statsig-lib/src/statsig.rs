@@ -35,9 +35,9 @@ use crate::statsig_type_factories::{
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer, ParameterStore};
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{
-    dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, OverrideAdapter,
-    SpecsAdapter, SpecsInfo, SpecsSource, SpecsUpdateListener, StatsigHttpIdListsAdapter,
-    StatsigUser,
+    dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, ObservabilityClient,
+    OpsStatsEventObserver, OverrideAdapter, SpecsAdapter, SpecsInfo, SpecsSource,
+    SpecsUpdateListener, StatsigHttpIdListsAdapter, StatsigUser,
 };
 use crate::{log_error_to_statsig_and_console, statsig_core_api_options::*};
 use serde_json::json;
@@ -66,6 +66,7 @@ pub struct Statsig {
     fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
     diagnostics: Diagnostics,
     ops_stats: Arc<OpsStatsForInstance>,
+    error_observer: Arc<dyn OpsStatsEventObserver>,
 }
 
 pub struct StatsigContext {
@@ -73,6 +74,7 @@ pub struct StatsigContext {
     pub options: Arc<StatsigOptions>,
     pub local_override_adapter: Option<Arc<dyn OverrideAdapter>>,
     pub spec_store_data: Option<SpecStoreData>,
+    pub error_observer: Arc<dyn OpsStatsEventObserver>,
 }
 
 impl Statsig {
@@ -80,8 +82,19 @@ impl Statsig {
         let statsig_runtime = StatsigRuntime::get_runtime();
         let options = options.unwrap_or_default();
 
-        let ops_stats = setup_ops_stats(sdk_key, &options, statsig_runtime.clone());
         let hashing = HashUtil::new();
+        let error_observer: Arc<dyn OpsStatsEventObserver> = Arc::new(SDKErrorsObserver::new(
+            sdk_key,
+            serde_json::to_string(options.as_ref()).unwrap_or_default(),
+        ));
+
+        let ops_stats = setup_ops_stats(
+            sdk_key,
+            &options,
+            statsig_runtime.clone(),
+            &error_observer,
+            &options.observability_client,
+        );
 
         let spec_store = Arc::new(SpecStore::new(
             hashing.sha256(&sdk_key.to_string()),
@@ -129,6 +142,7 @@ impl Statsig {
             diagnostics,
             statsig_runtime,
             ops_stats,
+            error_observer,
         }
     }
 
@@ -220,6 +234,7 @@ impl Statsig {
     pub async fn shutdown(&self) -> Result<(), StatsigErr> {
         self.shutdown_with_timeout(Duration::from_secs(3)).await
     }
+
     pub async fn shutdown_with_timeout(&self, timeout: Duration) -> Result<(), StatsigErr> {
         log_d!(
             TAG,
@@ -241,7 +256,7 @@ impl Statsig {
         );
 
         let start = Instant::now();
-        tokio::select! {
+        let shutdown_result = tokio::select! {
             _ = tokio::time::sleep(timeout) => {
                 log_w!(TAG, "Statsig shutdown timed out. {}", start.elapsed().as_millis());
                 Err(StatsigErr::ShutdownTimeout)
@@ -270,7 +285,9 @@ impl Statsig {
                     }
                 }
             }
-        }
+        };
+
+        shutdown_result
     }
 
     pub fn sequenced_shutdown_prepare<F>(&self, callback: F)
@@ -313,6 +330,7 @@ impl Statsig {
             options: self.options.clone(),
             local_override_adapter: self.override_adapter.clone(),
             spec_store_data: self.get_current_values(),
+            error_observer: self.error_observer.clone(),
         }
     }
 
@@ -420,7 +438,7 @@ impl Statsig {
 
     pub fn get_parameter_store(&self, parameter_store_name: &str) -> ParameterStore {
         self.event_logger
-        .increment_non_exposure_checks_count(parameter_store_name.to_string());
+            .increment_non_exposure_checks_count(parameter_store_name.to_string());
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
@@ -437,9 +455,7 @@ impl Statsig {
 
         let stores = &data.values.param_stores;
         let store = match stores {
-            Some(stores) => {
-                stores.get(parameter_store_name)
-            }
+            Some(stores) => stores.get(parameter_store_name),
             None => {
                 return ParameterStore {
                     name: parameter_store_name.to_string(),
@@ -450,22 +466,18 @@ impl Statsig {
             }
         };
         match store {
-            Some(store) => {
-                ParameterStore {
-                    name: parameter_store_name.to_string(),
-                    parameters: store.clone(),
-                    details: EvaluationDetails::recognized(&data, &EvaluatorResult::default()),
-                    _statsig_ref: self,
-                }
-            }
-            None => {
-                ParameterStore {
-                    name: parameter_store_name.to_string(),
-                    parameters: HashMap::new(),
-                    details: EvaluationDetails::unrecognized(&data),
-                    _statsig_ref: self,
-                }
-            }
+            Some(store) => ParameterStore {
+                name: parameter_store_name.to_string(),
+                parameters: store.clone(),
+                details: EvaluationDetails::recognized(&data, &EvaluatorResult::default()),
+                _statsig_ref: self,
+            },
+            None => ParameterStore {
+                name: parameter_store_name.to_string(),
+                parameters: HashMap::new(),
+                details: EvaluationDetails::unrecognized(&data),
+                _statsig_ref: self,
+            },
         }
     }
 }
@@ -505,7 +517,7 @@ impl Statsig {
 
         let disable_exposure_logging = options.disable_exposure_logging;
         let gate = self.get_feature_gate_impl(&user_internal, gate_name);
-        
+
         if disable_exposure_logging {
             log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
             self.event_logger
@@ -682,7 +694,7 @@ impl Statsig {
     ) -> T {
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
-                self.ops_stats.clone(),
+                &self.ops_stats,
                 TAG,
                 "Failed to acquire read lock for spec store data"
             );
@@ -1023,19 +1035,19 @@ fn setup_ops_stats(
     sdk_key: &str,
     options: &StatsigOptions,
     statsig_runtime: Arc<StatsigRuntime>,
+    error_observer: &Arc<dyn OpsStatsEventObserver>,
+    external_observer: &Option<Arc<dyn ObservabilityClient>>,
 ) -> Arc<OpsStatsForInstance> {
     // TODO migrate output logger to use ops_stats
     initialize_simple_output_logger(&options.output_log_level);
+
     let ops_stat = OPS_STATS.get_for_instance(sdk_key);
-    let error_observer = Arc::new(SDKErrorsObserver::new(
-        sdk_key,
-        serde_json::to_string(options).unwrap_or_default(),
-    ));
-    ops_stat.subscribe(statsig_runtime.clone(), error_observer);
-    let maybe_ob_client = options.observability_client.clone();
-    if let Some(ob_client) = maybe_ob_client {
+    ops_stat.subscribe(statsig_runtime.clone(), Arc::downgrade(error_observer));
+
+    if let Some(ob_client) = external_observer.clone() {
         ob_client.init();
-        ops_stat.subscribe(statsig_runtime, ob_client.to_ops_stats_event_observer());
+        let as_observer = ob_client.to_ops_stats_event_observer();
+        ops_stat.subscribe(statsig_runtime, Arc::downgrade(&as_observer));
     }
 
     ops_stat
