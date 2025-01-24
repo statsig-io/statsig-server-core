@@ -1,6 +1,6 @@
 mod utils;
 
-use sigstat::{output_logger::LogLevel, ObservabilityClient, Statsig, StatsigOptions};
+use sigstat::{output_logger::LogLevel, ObservabilityClient, Statsig, StatsigOptions, StatsigUser};
 use std::sync::{Arc, Mutex};
 use utils::{
     mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi},
@@ -11,8 +11,10 @@ const SDK_KEY: &str = "secret-key";
 
 async fn setup(
     observability_client: Option<Arc<dyn ObservabilityClient>>,
-) -> (MockScrapi, Statsig) {
+) -> (MockScrapi, Statsig, Arc<MockSpecsAdapter>) {
     let mock_scrapi = MockScrapi::new().await;
+
+    let specs_adapter = Arc::new(MockSpecsAdapter::with_data("tests/data/eval_proj_dcs.json"));
 
     mock_scrapi
         .stub(EndpointStub {
@@ -26,9 +28,7 @@ async fn setup(
         SDK_KEY,
         Some(Arc::new(StatsigOptions {
             observability_client,
-            specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
-                "tests/data/eval_proj_dcs.json",
-            ))),
+            specs_adapter: Some(specs_adapter.clone()),
             log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
             output_log_level: Some(LogLevel::Debug),
             specs_sync_interval_ms: Some(1),
@@ -36,7 +36,7 @@ async fn setup(
         })),
     );
 
-    (mock_scrapi, statsig)
+    (mock_scrapi, statsig, specs_adapter)
 }
 
 #[derive(Debug, PartialEq)]
@@ -115,7 +115,7 @@ async fn test_init_called() {
         calls: Mutex::new(Vec::new()),
     });
 
-    let (_, statsig) = setup(Some(obs_client.clone())).await;
+    let (_, statsig, _) = setup(Some(obs_client.clone())).await;
 
     statsig.initialize().await.unwrap();
 
@@ -125,12 +125,86 @@ async fn test_init_called() {
 }
 
 #[tokio::test]
+async fn test_sdk_initialization_dist_recorded() {
+    let obs_client = Arc::new(MockObservabilityClient {
+        calls: Mutex::new(Vec::new()),
+    });
+
+    let (_, statsig, _) = setup(Some(obs_client.clone())).await;
+
+    statsig.initialize().await.unwrap();
+    statsig.check_gate(&StatsigUser::with_user_id("test_user".into()), "test_gate");
+    statsig.flush_events().await;
+
+    let calls = obs_client.calls.lock().unwrap();
+
+    let mut found_name = "".to_string();
+    let mut found_value = 0.0;
+    let mut found_tags = None;
+
+    for call in calls.iter() {
+        if let RecordedCall::Dist(metric_name, value, tags) = call {
+            if metric_name == "statsig.sdk.initialization" {
+                found_name = metric_name.clone();
+                found_value = *value;
+                found_tags = tags.clone();
+                break;
+            }
+        }
+    }
+
+    let tags = found_tags.unwrap();
+
+    assert_eq!(found_name, "statsig.sdk.initialization");
+    assert_ne!(found_value, 0.0);
+    assert_eq!(tags.get("source"), Some(&"Bootstrap".to_string()));
+    assert_eq!(tags.get("success"), Some(&"true".to_string()));
+    assert_eq!(tags.get("store_populated"), Some(&"true".to_string()));
+}
+
+#[tokio::test]
+async fn test_config_propagation_dist_recorded() {
+    let obs_client = Arc::new(MockObservabilityClient {
+        calls: Mutex::new(Vec::new()),
+    });
+
+    let (_, statsig, specs_adapter) = setup(Some(obs_client.clone())).await;
+
+    statsig.initialize().await.unwrap();
+    specs_adapter.resync().await;
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+    let calls = obs_client.calls.lock().unwrap();
+
+    let mut found_name = "".to_string();
+    let mut found_value = 0.0;
+    let mut found_tags = None;
+
+    for call in calls.iter() {
+        if let RecordedCall::Dist(metric_name, value, tags) = call {
+            if metric_name == "statsig.sdk.config_propogation_diff" {
+                found_name = metric_name.clone();
+                found_value = *value;
+                found_tags = tags.clone();
+                break;
+            }
+        }
+    }
+
+    let tags = found_tags.unwrap();
+
+    assert_eq!(found_name, "statsig.sdk.config_propogation_diff");
+    assert_ne!(found_value, 0.0);
+    assert_eq!(tags.get("source"), Some(&"Bootstrap".to_string()));
+}
+
+#[tokio::test]
 async fn test_shutdown_drops() {
     let obs_client = Arc::new(MockObservabilityClient {
         calls: Mutex::new(Vec::new()),
     });
 
-    let (_, statsig) = setup(Some(obs_client.clone())).await;
+    let (_, statsig, _) = setup(Some(obs_client.clone())).await;
 
     statsig.initialize().await.unwrap();
 

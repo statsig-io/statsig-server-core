@@ -43,6 +43,10 @@ impl MockSpecsAdapter {
         }
     }
 
+    pub async fn resync(&self) {
+        self.manually_sync_specs(None).await.unwrap();
+    }
+
     async fn manually_sync_specs(&self, _current_lcut: Option<u64>) -> Result<(), StatsigErr> {
         if self.should_throw {
             return Err(StatsigErr::CustomError("Not today".to_string()));
@@ -86,7 +90,6 @@ impl SpecsAdapter for MockSpecsAdapter {
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        
         let lcut = match self.listener.read() {
             Ok(lock) => match lock.as_ref() {
                 Some(listener) => listener.get_current_specs_info().lcut,
