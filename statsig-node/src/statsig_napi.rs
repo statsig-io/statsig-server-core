@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -50,7 +51,7 @@ impl Statsig {
     pub fn shutdown<'env>(&self, env: &'env Env) -> Result<PromiseRaw<'env, ()>> {
         self.observability_client.lock().unwrap().take();
         let inst = self.inner.clone();
-        
+
         env.spawn_future(async move {
             if let Err(e) = inst.__shutdown_internal(Duration::from_secs(3)).await {
                 log_e!(TAG, "Failed to gracefully shutdown StatsigPy: {}", e);
@@ -71,21 +72,22 @@ impl Statsig {
         user: &StatsigUser,
         event_name: String,
         #[napi(ts_arg_type = "string | number | null")] value: Option<serde_json::Value>,
+        metadata: Option<HashMap<String, String>>,
     ) {
         match value {
             Some(Value::Number(num)) => self.inner.log_event_with_number(
                 user.as_inner(),
                 &event_name,
                 Some(num.as_f64().unwrap()),
-                None,
+                metadata,
             ),
             Some(Value::String(s)) => {
                 self.inner
-                    .log_event(user.as_inner(), &event_name, Some(s), None)
+                    .log_event(user.as_inner(), &event_name, Some(s), metadata)
             }
             _ => self
                 .inner
-                .log_event(user.as_inner(), &event_name, None, None),
+                .log_event(user.as_inner(), &event_name, None, metadata),
         }
     }
 
