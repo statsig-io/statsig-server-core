@@ -15,34 +15,31 @@ pub const DEFAULT_INIT_TIMEOUT_MS: u64 = 3000;
 
 #[derive(Clone, Default)]
 pub struct StatsigOptions {
-    pub specs_url: Option<String>,
-    pub specs_adapter: Option<Arc<dyn SpecsAdapter>>,
-    pub specs_sync_interval_ms: Option<u32>,
-    pub init_timeout_ms: Option<u64>,
-
-    // External DataStore
-    pub data_store: Option<Arc<dyn DataStoreTrait>>,
-
-    // Specs to customized spec adapter, order matters, reflecting priority of trying
-    pub spec_adapters_config: Option<Vec<SpecAdapterConfig>>,
-
-    pub log_event_url: Option<String>,
+    pub data_store: Option<Arc<dyn DataStoreTrait>>, // External DataStore
     pub disable_all_logging: Option<bool>,
+    pub enable_id_lists: Option<bool>,
+    pub environment: Option<String>,
+
     pub event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,
     pub event_logging_flush_interval_ms: Option<u32>,
     pub event_logging_max_queue_size: Option<u32>,
 
-    pub enable_id_lists: Option<bool>,
-    pub id_lists_url: Option<String>,
+    pub fallback_to_statsig_api: Option<bool>,
+
     pub id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
     pub id_lists_sync_interval_ms: Option<u32>,
+    pub id_lists_url: Option<String>,
 
-    pub override_adapter: Option<Arc<dyn OverrideAdapter>>,
-    pub fallback_to_statsig_api: Option<bool>,
-    pub environment: Option<String>,
-
-    pub output_log_level: Option<LogLevel>,
+    pub init_timeout_ms: Option<u64>,
+    pub log_event_url: Option<String>,
     pub observability_client: Option<Weak<dyn ObservabilityClient>>,
+    pub output_log_level: Option<LogLevel>,
+    pub override_adapter: Option<Arc<dyn OverrideAdapter>>,
+
+    pub spec_adapters_config: Option<Vec<SpecAdapterConfig>>, // Specs to customized spec adapter, order matters, reflecting priority of trying
+    pub specs_adapter: Option<Arc<dyn SpecsAdapter>>,
+    pub specs_sync_interval_ms: Option<u32>,
+    pub specs_url: Option<String>,
 }
 
 impl StatsigOptions {
