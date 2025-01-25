@@ -46,8 +46,6 @@ describe('DataStore', () => {
     dataStore = new TestDataStore();
   });
 
-  afterAll(async () => {});
-
   it('should check data store for polling support', async () => {
     dataStore.supportPolling[RULESET_KEY] = true;
 
