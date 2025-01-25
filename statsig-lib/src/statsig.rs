@@ -42,8 +42,8 @@ use crate::{
 use crate::{log_error_to_statsig_and_console, statsig_core_api_options::*};
 use serde_json::json;
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
 use tokio::try_join;
 
@@ -102,8 +102,6 @@ impl Statsig {
             Some(statsig_runtime.clone()),
             ops_stats.clone(),
         ));
-
-        initialize_simple_output_logger(&options.output_log_level);
 
         let specs_adapter = initialize_specs_adapter(sdk_key, &options, &hashing);
         let id_lists_adapter = initialize_id_lists_adapter(sdk_key, &options);
@@ -1040,7 +1038,7 @@ fn setup_ops_stats(
     options: &StatsigOptions,
     statsig_runtime: Arc<StatsigRuntime>,
     error_observer: &Arc<dyn OpsStatsEventObserver>,
-    external_observer: &Option<Arc<dyn ObservabilityClient>>,
+    external_observer: &Option<Weak<dyn ObservabilityClient>>,
 ) -> Arc<OpsStatsForInstance> {
     // TODO migrate output logger to use ops_stats
     initialize_simple_output_logger(&options.output_log_level);
@@ -1048,10 +1046,11 @@ fn setup_ops_stats(
     let ops_stat = OPS_STATS.get_for_instance(sdk_key);
     ops_stat.subscribe(statsig_runtime.clone(), Arc::downgrade(error_observer));
 
-    if let Some(ob_client) = external_observer.clone() {
-        ob_client.init();
-        let as_observer = ob_client.to_ops_stats_event_observer();
-        ops_stat.subscribe(statsig_runtime, Arc::downgrade(&as_observer));
+    if let Some(ob_client) = external_observer {
+        if let Some(client) = ob_client.upgrade() {
+            let as_observer = client.to_ops_stats_event_observer();
+            ops_stat.subscribe(statsig_runtime, Arc::downgrade(&as_observer));
+        }
     }
 
     ops_stat

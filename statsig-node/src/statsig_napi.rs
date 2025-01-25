@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use napi::bindgen_prelude::*;
@@ -7,6 +7,7 @@ use serde_json::Value;
 use sigstat::{log_d, log_e, Statsig as StatsigActual};
 
 use crate::gcir_options_napi::ClientInitResponseOptions;
+use crate::observability_client_napi::ObservabilityClient;
 use crate::statsig_options_napi::StatsigOptions;
 use crate::statsig_types_napi::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_napi::StatsigUser;
@@ -16,6 +17,7 @@ const TAG: &str = "StatsigNapi";
 #[napi]
 pub struct Statsig {
     inner: Arc<StatsigActual>,
+    observability_client: Mutex<Option<Arc<ObservabilityClient>>>,
 }
 
 #[napi]
@@ -24,10 +26,13 @@ impl Statsig {
     pub fn new(sdk_key: String, options: Option<StatsigOptions>) -> Self {
         log_d!(TAG, "StatsigNapi new");
 
-        let options = options.map(|o| Arc::new(o.into()));
+        let (inner_opts, obs_client) = options
+            .map(|opts| opts.safe_convert_to_inner())
+            .unwrap_or((None, None));
 
         Self {
-            inner: Arc::new(StatsigActual::new(&sdk_key, options)),
+            inner: Arc::new(StatsigActual::new(&sdk_key, inner_opts)),
+            observability_client: Mutex::new(obs_client),
         }
     }
 
@@ -43,7 +48,9 @@ impl Statsig {
 
     #[napi]
     pub fn shutdown<'env>(&self, env: &'env Env) -> Result<PromiseRaw<'env, ()>> {
+        self.observability_client.lock().unwrap().take();
         let inst = self.inner.clone();
+        
         env.spawn_future(async move {
             if let Err(e) = inst.__shutdown_internal(Duration::from_secs(3)).await {
                 log_e!(TAG, "Failed to gracefully shutdown StatsigPy: {}", e);

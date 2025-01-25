@@ -52,7 +52,6 @@ describe('ObservabilityClient Usage', () => {
       specsUrl,
       logEventUrl,
       observabilityClient,
-      //   dataStore,
       specsSyncIntervalMs: 1,
     };
 

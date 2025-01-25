@@ -9,9 +9,10 @@ use crate::{
     serialize_if_not_none, ObservabilityClient, OverrideAdapter, SpecAdapterConfig, SpecsAdapter,
 };
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 pub const DEFAULT_INIT_TIMEOUT_MS: u64 = 3000;
+
 #[derive(Clone, Default)]
 pub struct StatsigOptions {
     pub specs_url: Option<String>,
@@ -41,7 +42,7 @@ pub struct StatsigOptions {
     pub environment: Option<String>,
 
     pub output_log_level: Option<LogLevel>,
-    pub observability_client: Option<Arc<dyn ObservabilityClient>>,
+    pub observability_client: Option<Weak<dyn ObservabilityClient>>,
 }
 
 impl StatsigOptions {
