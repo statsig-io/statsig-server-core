@@ -1,10 +1,13 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
-use sigstat::{log_d, Statsig as StatsigActual};
+use serde_json::Value;
+use sigstat::{log_d, log_e, Statsig as StatsigActual};
 
 use crate::statsig_options_napi::StatsigOptions;
+use crate::statsig_types_napi::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_napi::StatsigUser;
 
 const TAG: &str = "StatsigNapi";
@@ -32,19 +35,50 @@ impl Statsig {
         self.inner
             .initialize()
             .await
-            .expect("Error initializing Statsig");
+            .map_err(|e| Error::new(Status::GenericFailure, e.to_string()))?;
 
         Ok(())
     }
 
     #[napi]
-    pub async fn shutdown(&self) -> Result<()> {
-        self.inner
-            .shutdown()
-            .await
-            .expect("Error shutting Statsig down");
+    pub fn shutdown<'env>(&self, env: &'env Env) -> Result<PromiseRaw<'env, ()>> {
+        let inst = self.inner.clone();
+        env.spawn_future(async move {
+            if let Err(e) = inst.__shutdown_internal(Duration::from_secs(3)).await {
+                log_e!(TAG, "Failed to gracefully shutdown StatsigPy: {}", e);
+            }
+            Ok(())
+        })
+    }
 
+    #[napi]
+    pub async fn flush_events(&self) -> Result<()> {
+        self.inner.flush_events().await;
         Ok(())
+    }
+
+    #[napi]
+    pub fn log_event(
+        &self,
+        user: &StatsigUser,
+        event_name: String,
+        #[napi(ts_arg_type = "string | number | null")] value: Option<serde_json::Value>,
+    ) {
+        match value {
+            Some(Value::Number(num)) => self.inner.log_event_with_number(
+                user.as_inner(),
+                &event_name,
+                Some(num.as_f64().unwrap()),
+                None,
+            ),
+            Some(Value::String(s)) => {
+                self.inner
+                    .log_event(user.as_inner(), &event_name, Some(s), None)
+            }
+            _ => self
+                .inner
+                .log_event(user.as_inner(), &event_name, None, None),
+        }
     }
 
     #[napi]
@@ -52,70 +86,29 @@ impl Statsig {
         self.inner.check_gate(user.as_inner(), &gate_name)
     }
 
-    // #[napi]
-    // pub fn test_callback<T>(&self, callback: T)
-    // where
-    //     T: Fn(String) -> Result<()>,
-    // {
-    //     callback("hello".to_string()).unwrap();
-    // }
-    //
-    // #[napi]
-    // pub fn test_async_callback(&self, callback: JsFunction) -> Result<()> {
-    //     let tsfn: ThreadsafeFunction<_, ErrorStrategy::CalleeHandled> = callback
-    //         .create_threadsafe_function(0, |ctx| {
-    //             ctx.env.create_string(ctx.value).map(|v| vec![v])
-    //         })?;
-    //
-    //     self.inner
-    //         .statsig_runtime
-    //         .spawn("async_cb", |_| async move {
-    //             tsfn.call(Ok("hello"), ThreadsafeFunctionCallMode::Blocking);
-    //         });
-    //
-    //     Ok(())
-    // }
-}
+    #[napi]
+    pub fn get_feature_gate(&self, user: &StatsigUser, feature_name: String) -> FeatureGate {
+        self.inner
+            .get_feature_gate(user.as_inner(), &feature_name)
+            .into()
+    }
 
-impl Drop for Statsig {
-    fn drop(&mut self) {
-        log_d!(TAG, "StatsigNapi dropped");
+    #[napi]
+    pub fn get_dynamic_config(&self, user: &StatsigUser, config_name: String) -> DynamicConfig {
+        self.inner
+            .get_dynamic_config(user.as_inner(), &config_name)
+            .into()
+    }
+
+    #[napi]
+    pub fn get_experiment(&self, user: &StatsigUser, experiment_name: String) -> Experiment {
+        self.inner
+            .get_experiment(user.as_inner(), &experiment_name)
+            .into()
+    }
+
+    #[napi]
+    pub fn get_layer(&self, user: &StatsigUser, layer_name: String) -> Layer {
+        self.inner.get_layer(user.as_inner(), &layer_name).into()
     }
 }
-
-// use napi::bindgen_prelude::External;
-// use napi_derive::napi;
-// use sigstat::{Statsig, StatsigUser};
-
-// #[napi]
-// pub fn sum(a: i32, b: i32) -> i32 {
-//     a + b
-// }
-
-// #[napi]
-// pub struct Person {
-//     pub name: String,
-//     pub age: i32,
-// }
-
-// #[napi]
-// impl Person {
-//     pub fn new(name: String, age: i32) -> Self {
-//         Person { name, age }
-//     }
-// }
-
-// #[napi]
-// pub fn get_statsig() -> External<Statsig> {
-//     let sdk_key = "secret-IiDuNzovZ5z9x75BEjyZ4Y2evYa94CJ9zNtDViKBVdv";
-//     let statsig = Statsig::new(sdk_key, None);
-
-//     External::new(statsig)
-// }
-
-// #[napi]
-// pub fn check_gate(statsig: External<Statsig>, gate_name: String) -> bool {
-//     let user = StatsigUser::with_user_id("user-123".to_string());
-//     let gate = statsig.check_gate(&user, &gate_name);
-//     gate
-// }

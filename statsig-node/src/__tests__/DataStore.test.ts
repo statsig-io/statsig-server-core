@@ -1,4 +1,7 @@
-import { DataStore, testDataStore } from '../../build/index.js';
+import {
+  DataStore,
+  __internal__testDataStore as testDataStore,
+} from '../../build/index.js';
 
 class TestDataStore implements DataStore {
   data: Record<string, { result: string; time: number }> = {};

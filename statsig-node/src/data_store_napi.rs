@@ -148,7 +148,7 @@ impl DataStoreTrait for DataStore {
     }
 }
 
-#[napi]
+#[napi(js_name = "__internal__testDataStore")]
 pub async fn test_data_store(
     store: DataStore,
     path: String,

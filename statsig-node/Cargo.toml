@@ -10,9 +10,15 @@ crate-type = ["cdylib"]
 [dependencies]
 sigstat = { path = "../statsig-lib" }
 async-trait = "0.1.81"
-napi                = { version = "3.0.0-alpha.24", features = ["async", "anyhow"] }
-napi-derive         = { version = "3.0.0-alpha.22", default-features = false, features = ["type-def"] }
-
+napi = { version = "3.0.0-alpha.24", features = [
+    "async",
+    "anyhow",
+    "serde-json",
+] }
+napi-derive = { version = "3.0.0-alpha.22", default-features = false, features = [
+    "type-def",
+] }
+serde_json = "1.0.121"
 
 #[dependencies.napi]
 #version = "2"
@@ -25,5 +31,5 @@ napi-derive         = { version = "3.0.0-alpha.22", default-features = false, fe
 #features = ["type-def"]
 
 [build-dependencies]
-napi-build          = { version = "2.1.4" }
+napi-build = { version = "2.1.4" }
 #napi-build = "2"
