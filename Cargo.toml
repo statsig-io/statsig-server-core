@@ -11,6 +11,7 @@ members = [
     "statsig-napi",
     "statsig-grpc",
     "statsig-pyo3",
+    "statsig-node",
     "examples/rust",
 ]
 resolver = "2"
