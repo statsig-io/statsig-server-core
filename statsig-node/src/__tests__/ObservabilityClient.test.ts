@@ -1,23 +1,11 @@
-import {
-  ObservabilityClient,
-  __internal__testObservabilityClient as testObservabilityClient,
-} from '../../build/index.js';
-
-class TestObservabilityClient implements ObservabilityClient {
-  initialize() {}
-
-  increment(metricName: string, value: number, tags: Record<string, string>) {}
-
-  gauge(metricName: string, value: number, tags: Record<string, string>) {}
-
-  dist(metricName: string, value: number, tags: Record<string, string>) {}
-}
+import { __internal__testObservabilityClient as testObservabilityClient } from '../../build/index.js';
+import { MockObservabilityClient } from './MockObservabilityClient';
 
 describe('ObservabilityClient', () => {
-  let client: TestObservabilityClient;
+  let client: MockObservabilityClient;
 
   beforeEach(async () => {
-    client = new TestObservabilityClient();
+    client = new MockObservabilityClient();
   });
 
   it('should call and wait for initialize', async () => {

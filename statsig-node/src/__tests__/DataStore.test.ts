@@ -1,49 +1,13 @@
-import {
-  DataStore,
-  __internal__testDataStore as testDataStore,
-} from '../../build/index.js';
-
-class TestDataStore implements DataStore {
-  data: Record<string, { result: string; time: number }> = {};
-  supportPolling: Record<string, boolean> = {};
-
-  constructor() {
-    this.initialize = this.initialize.bind(this);
-    this.shutdown = this.shutdown.bind(this);
-    this.get = this.get.bind(this);
-    this.set = this.set.bind(this);
-    this.supportPollingUpdatesFor = this.supportPollingUpdatesFor.bind(this);
-  }
-
-  async initialize() {
-    return Promise.resolve();
-  }
-
-  async shutdown() {
-    return Promise.resolve();
-  }
-
-  async get(key: string) {
-    return Promise.resolve(this.data[key]);
-  }
-
-  async set(key: string, value: string, time?: number) {
-    this.data[key] = { result: value, time: time ?? 0 };
-    return Promise.resolve();
-  }
-
-  async supportPollingUpdatesFor(key: string) {
-    return Promise.resolve(this.supportPolling[key] === true);
-  }
-}
+import { __internal__testDataStore as testDataStore } from '../../build/index.js';
+import { MockDataStore } from './MockDataStore';
 
 const RULESET_KEY = '/v2/download_config_specs';
 
 describe('DataStore', () => {
-  let dataStore: TestDataStore;
+  let dataStore: MockDataStore;
 
   beforeEach(async () => {
-    dataStore = new TestDataStore();
+    dataStore = new MockDataStore();
   });
 
   it('should check data store for polling support', async () => {

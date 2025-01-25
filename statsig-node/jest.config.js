@@ -4,5 +4,5 @@ module.exports = {
   transform: {
     '^.+.tsx?$': ['ts-jest', {}],
   },
-  testPathIgnorePatterns: ['/node_modules/', '/src/__tests__/MockScrapi.ts'],
+  testPathIgnorePatterns: ['/node_modules/', '^((?!\\.test\\.ts$).)*\\.ts$'],
 };

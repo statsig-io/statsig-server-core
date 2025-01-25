@@ -1,7 +1,7 @@
 use napi_derive::napi;
 use sigstat::{ClientInitResponseOptions as ClientInitResponseOptionsActual, HashAlgorithm};
 
-#[napi(object)]
+#[napi(object, object_to_js = false)]
 pub struct ClientInitResponseOptions {
     pub hash_algorithm: Option<String>,
     pub client_sdk_key: Option<String>,
