@@ -69,6 +69,15 @@ describe('Statsig', () => {
     expect(request.path).toEqual('/v2/download_config_specs/secret-123.json');
   });
 
+  it('should get the client init response', async () => {
+    const user = new StatsigUser('a-user');
+    const response = JSON.parse(statsig.getClientInitializeResponse(user));
+
+    expect(Object.keys(response.feature_gates)).toHaveLength(65);
+    expect(Object.keys(response.dynamic_configs)).toHaveLength(62);
+    expect(Object.keys(response.layer_configs)).toHaveLength(12);
+  });
+
   describe('checks, events and exposures', () => {
     beforeEach(async () => {
       await statsig.flushEvents();

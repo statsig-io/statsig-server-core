@@ -1,4 +1,4 @@
-import express, { Request } from 'express';
+import express from 'express';
 import http from 'http';
 
 type MockOptions = { status: number; method: 'GET' | 'POST' };

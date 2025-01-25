@@ -6,6 +6,7 @@ use napi_derive::napi;
 use serde_json::Value;
 use sigstat::{log_d, log_e, Statsig as StatsigActual};
 
+use crate::gcir_options_napi::ClientInitResponseOptions;
 use crate::statsig_options_napi::StatsigOptions;
 use crate::statsig_types_napi::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_napi::StatsigUser;
@@ -110,5 +111,22 @@ impl Statsig {
     #[napi]
     pub fn get_layer(&self, user: &StatsigUser, layer_name: String) -> Layer {
         self.inner.get_layer(user.as_inner(), &layer_name).into()
+    }
+
+    #[napi]
+    pub fn get_client_initialize_response(
+        &self,
+        user: &StatsigUser,
+        options: Option<ClientInitResponseOptions>,
+    ) -> String {
+        match options {
+            Some(options) => self
+                .inner
+                .get_client_init_response_with_options_as_string(user.as_inner(), &options.into())
+                .to_string(),
+            None => self
+                .inner
+                .get_client_init_response_as_string(user.as_inner()),
+        }
     }
 }

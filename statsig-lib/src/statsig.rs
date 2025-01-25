@@ -428,6 +428,10 @@ impl Statsig {
             .get(user_internal, &self.hashing, options)
     }
 
+    pub fn get_client_init_response_as_string(&self, user: &StatsigUser) -> String {
+        json!(self.get_client_init_response(user)).to_string()
+    }
+
     pub fn get_client_init_response_with_options_as_string(
         &self,
         user: &StatsigUser,
