@@ -36,7 +36,7 @@ jobs:
           dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
           dockerhub_password: ${{ secrets.DOCKERHUB_TOKEN }}
           dockerfile_path: cli/src/docker/Dockerfile.debian
-          docker_image_tag: statsig/server-core-test-runner
+          docker_image_tag: statsig/server-core-debian
           gh_token: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
 
       - name: Install NPM Dependencies

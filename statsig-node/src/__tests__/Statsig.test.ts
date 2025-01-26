@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 import { Statsig, StatsigOptions, StatsigUser } from '../../build/index.js';
 import { MockScrapi } from './MockScrapi';
@@ -70,7 +70,7 @@ describe('Statsig', () => {
   });
 
   it('should get the client init response', async () => {
-    const user = new StatsigUser('a-user');
+    const user = StatsigUser.withUserId('a-user');
     const response = JSON.parse(statsig.getClientInitializeResponse(user));
 
     expect(Object.keys(response.feature_gates)).toHaveLength(65);
@@ -85,7 +85,7 @@ describe('Statsig', () => {
     });
 
     it('should log custom events', async () => {
-      const user = new StatsigUser('a-user');
+      const user = StatsigUser.withUserId('a-user');
       statsig.logEvent(user, 'my_custom_event', 'my_value');
 
       const event = await getLastLoggedEvent();
@@ -94,7 +94,7 @@ describe('Statsig', () => {
     });
 
     it('should check gates and log exposures', async () => {
-      const user = new StatsigUser('a-user');
+      const user = StatsigUser.withUserId('a-user');
       const gate = statsig.checkGate(user, 'test_public');
 
       expect(gate).toBe(true);
@@ -105,7 +105,7 @@ describe('Statsig', () => {
     });
 
     it('should get feature gates and log exposures', async () => {
-      const user = new StatsigUser('b-user');
+      const user = StatsigUser.withUserId('b-user');
       const gate = statsig.getFeatureGate(user, 'test_public');
 
       expect(gate.value).toBe(true);
@@ -116,7 +116,7 @@ describe('Statsig', () => {
     });
 
     it('should get dynamic configs and log exposures', async () => {
-      const user = new StatsigUser('a-user');
+      const user = StatsigUser.withUserId('a-user');
       const config = statsig.getDynamicConfig(user, 'operating_system_config');
 
       expect(config.value).toEqual({
@@ -133,7 +133,7 @@ describe('Statsig', () => {
     });
 
     it('should get experiments and log exposures', async () => {
-      const user = new StatsigUser('a-user');
+      const user = StatsigUser.withUserId('a-user');
       const experiment = statsig.getExperiment(user, 'exp_with_obj_and_array');
 
       expect(experiment.value).toEqual({
@@ -149,7 +149,7 @@ describe('Statsig', () => {
     });
 
     it('should get layers and log exposures', async () => {
-      const user = new StatsigUser('a-user');
+      const user = StatsigUser.withUserId('a-user');
       const layer = statsig.getLayer(user, 'layer_with_many_params');
 
       let event = await getLastLoggedEvent();

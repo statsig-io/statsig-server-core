@@ -30,7 +30,7 @@ export class MockScrapi {
 
     this.app.use(express.json());
 
-    this.app.use((req, res) => {
+    this.app.use((req: express.Request, res: express.Response) => {
       this.requests.push({
         path: req.path,
         method: req.method,

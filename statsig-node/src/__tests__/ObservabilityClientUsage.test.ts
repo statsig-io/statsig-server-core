@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 import { Statsig, StatsigOptions, StatsigUser } from '../../build/index.js';
 import { MockObservabilityClient } from './MockObservabilityClient';
@@ -58,8 +58,8 @@ describe('ObservabilityClient Usage', () => {
     statsig = new Statsig('secret-123', options);
     await statsig.initialize();
 
-    statsig.checkGate(new StatsigUser('test-user'), 'test-gate');
-    statsig.logEvent(new StatsigUser('b-user'), 'my_event');
+    statsig.checkGate(StatsigUser.withUserId('test-user'), 'test-gate');
+    statsig.logEvent(StatsigUser.withUserId('b-user'), 'my_event');
 
     await statsig.flushEvents();
 

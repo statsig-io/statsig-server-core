@@ -12,3 +12,7 @@ composer.phar
 **/vendor/**
 statsig-lib/tests/statsig_dcs.json
 statsig-dotnet/Folder.DotSettings.user   # JetBrains IDE user-specific settings
+
+
+## PNPM ###
+.pnpm-store

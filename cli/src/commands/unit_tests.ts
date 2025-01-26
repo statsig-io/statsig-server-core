@@ -26,6 +26,12 @@ const TEST_COMMANDS: Record<string, string> = {
     'composer update',
     'composer test',
   ].join(' && '),
+  node: [
+    'cd /app/statsig-node',
+    'pnpm install',
+    'pnpm build',
+    'pnpm test',
+  ].join(' && '),
 };
 
 type Options = {
