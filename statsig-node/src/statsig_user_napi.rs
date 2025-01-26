@@ -27,8 +27,13 @@ impl StatsigUser {
         for (key, value) in custom_ids {
             if let Some(v) = value.as_str() {
                 converted.insert(key, v.to_string());
-            } else {
-                log_w!(TAG, "Custom ID value is not a string: {}", value);
+                continue;
+            }
+
+            log_w!(TAG, "Custom ID '{}' is not a string: {}", key, value);
+
+            if let Some(v) = value.as_number() {
+                converted.insert(key, v.to_string());
             }
         }
 
@@ -78,8 +83,11 @@ macro_rules! add_hashmap_getter_setter {
 
                 for (key, value) in value {
                     if $field_name == "customIDs" && !value.is_string() {
-                        log_w!(TAG, "Custom ID value is not a string: {}", value);
-                        continue;
+                        log_w!(TAG, "Custom ID '{}' is not a string: {}", key, value);
+
+                        if !value.is_number() {
+                            continue;
+                        }
                     }
 
                     converted.insert(key, DynamicValue::from(value));
