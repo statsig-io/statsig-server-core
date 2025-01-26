@@ -5,6 +5,7 @@ import { GhPushPhp } from './gh_push_php.js';
 import { JavaPub } from './java_pub.js';
 import { NapiBuild } from './napi_build.js';
 import { NapiPub } from './napi_pub.js';
+import { NodeBuild } from './node_build.js';
 import { PyBuild } from './py_build.js';
 import { SizePersist } from './size_persist.js';
 import { SizeReport } from './size_report.js';
@@ -20,6 +21,7 @@ export const Commands = [
   new JavaPub(),
   new NapiBuild(),
   new NapiPub(),
+  new NodeBuild(),
   new PyBuild(),
   new SizePersist(),
   new SizeReport(),

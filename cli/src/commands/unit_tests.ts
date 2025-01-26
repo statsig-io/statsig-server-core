@@ -1,9 +1,8 @@
-import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
+import { buildDockerImage } from '@/utils/docker_utils.js';
+import { BASE_DIR } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { execSync } from 'child_process';
 import { Command } from 'commander';
-
-const DOCKER_IMAGE = 'statsig/server-core-test-runner';
 
 const TEST_COMMANDS: Record<string, string> = {
   python: [
@@ -59,11 +58,10 @@ export class UnitTests extends Command {
 
     Log.stepBegin('Configuration');
     Log.stepProgress(`Language: ${lang}`);
-    Log.stepProgress(`Skip Docker Build: ${options.skipDockerBuild}`);
-    Log.stepEnd('Configuration');
+    Log.stepEnd(`Skip Docker Build: ${options.skipDockerBuild}`);
 
     if (!options.skipDockerBuild) {
-      await buildDockerImage();
+      buildDockerImage('debian');
     }
 
     const languages = lang === 'all' ? Object.keys(TEST_COMMANDS) : [lang];
@@ -76,22 +74,6 @@ export class UnitTests extends Command {
   }
 }
 
-async function buildDockerImage() {
-  const command = [
-    'docker build .',
-    `-t ${DOCKER_IMAGE}`,
-    `-f ${getRootedPath(`cli/src/docker/Dockerfile.debian`)}`,
-    `--secret id=gh_token_id,env=GH_TOKEN`,
-  ].join(' ');
-
-  Log.stepBegin(`Building Test Runner Docker Image`);
-  Log.stepProgress(command);
-
-  execSync(command, { cwd: BASE_DIR, stdio: 'inherit' });
-
-  Log.stepEnd(`Built Test Runner Docker Image`);
-}
-
 async function runTestInDockerImage(lang: string) {
   Log.title(`Running tests for ${lang}`);
 
@@ -100,7 +82,7 @@ async function runTestInDockerImage(lang: string) {
     `-v "${BASE_DIR}":/app`,
     `-v "/tmp:/tmp"`,
     `-v "/tmp/statsig-server-core/cargo-registry:/usr/local/cargo/registry"`,
-    `${DOCKER_IMAGE}`,
+    `statsig/server-core-debian`,
     `"${TEST_COMMANDS[lang]}"`, // && while true; do sleep 1000; done
   ].join(' ');
 
