@@ -57,12 +57,6 @@ impl OpsStats {
 
         instance
     }
-
-    pub fn remove_instance(&self, sdk_key: &str) {
-        if let Ok(mut write_lock) = self.instances_map.write() {
-            write_lock.remove(sdk_key);
-        }
-    }
 }
 
 #[derive(Clone)]

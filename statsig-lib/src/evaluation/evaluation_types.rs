@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 
 fn is_false(v: &bool) -> bool {
     !(*v)
@@ -25,6 +25,7 @@ pub struct BaseEvaluation {
     pub forward_all_exposures: Option<bool>,
 }
 
+#[allow(dead_code)] // TODO(@dloomb): Remove this when sampling is completed
 pub enum AnyEvaluation {
     FeatureGate(GateEvaluation),
     DynamicConfig(DynamicConfigEvaluation),
@@ -32,6 +33,7 @@ pub enum AnyEvaluation {
     Layer(LayerEvaluation),
 }
 
+#[allow(dead_code)] // TODO(@dloomb): Remove this when sampling is completed
 impl AnyEvaluation {
     pub fn get_base_result(&self) -> &BaseEvaluation {
         match self {
@@ -44,7 +46,7 @@ impl AnyEvaluation {
 
     pub fn get_gate_bool_value(&self) -> bool {
         match self {
-            AnyEvaluation::FeatureGate(eval ) => eval.value,
+            AnyEvaluation::FeatureGate(eval) => eval.value,
             _ => false, // return false for all other types
         }
     }

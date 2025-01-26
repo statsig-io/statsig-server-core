@@ -1,13 +1,14 @@
+use crate::hashing::HashUtil;
+use crate::hashset_with_ttl::HashSetWithTTL;
+use crate::spec_store::SpecStore;
+use crate::statsig_user_internal::StatsigUserInternal;
+use crate::{StatsigErr, StatsigRuntime};
 use std::sync::Arc;
 use tokio::time::Duration;
-use crate::hashing::HashUtil;
-use crate::spec_store::SpecStore;
-use crate::{StatsigErr, StatsigRuntime};
-use crate::hashset_with_ttl::HashSetWithTTL;
-use crate::statsig_user_internal::StatsigUserInternal;
 
 const TTL_IN_SECONDS: u64 = 60;
 
+#[allow(dead_code)] // TODO(@dloomb): Remove this when sampling is completed
 pub struct SamplingProcessor {
     sampling_key_set: HashSetWithTTL,
     spec_store: Arc<SpecStore>,
@@ -18,9 +19,10 @@ impl SamplingProcessor {
     pub fn new(
         statsig_runtime: &Arc<StatsigRuntime>,
         spec_store: &Arc<SpecStore>,
-        hashing: Arc<HashUtil>
+        hashing: Arc<HashUtil>,
     ) -> Self {
-        let sampling_key_set = HashSetWithTTL::new(statsig_runtime, Duration::from_secs(TTL_IN_SECONDS));
+        let sampling_key_set =
+            HashSetWithTTL::new(statsig_runtime, Duration::from_secs(TTL_IN_SECONDS));
 
         Self {
             sampling_key_set,
@@ -35,6 +37,7 @@ impl SamplingProcessor {
     }
 
     /// compute sampling key for gate / experiment / dynamic config
+    #[allow(dead_code)] // TODO(@dloomb): Remove this when sampling is completed
     fn compute_sampling_key_for_gate_or_config(
         &self,
         name: &str,
@@ -47,6 +50,7 @@ impl SamplingProcessor {
     }
 
     /// compute sampling key for layers
+    #[allow(dead_code)] // TODO(@dloomb): Remove this when sampling is completed
     fn compute_sampling_key_for_layer(
         &self,
         layer_name: &str,
@@ -56,7 +60,10 @@ impl SamplingProcessor {
         user: &StatsigUserInternal,
     ) -> String {
         let user_key = self.compute_user_key(user);
-        format!("n:{};e:{};p:{};u:{};r:{}", layer_name, experiment_name, parameter_name, user_key, rule_id)
+        format!(
+            "n:{};e:{};p:{};u:{};r:{}",
+            layer_name, experiment_name, parameter_name, user_key, rule_id
+        )
     }
 
     fn compute_user_key(&self, user: &StatsigUserInternal) -> String {
