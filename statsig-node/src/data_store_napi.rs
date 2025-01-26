@@ -19,6 +19,9 @@ pub struct DataStoreResponse {
     pub time: Option<i64>,
 }
 
+type SetFnArgs = FnArgs<(String, String, Option<i64>)>;
+type SetFn = ThreadsafeFunction<SetFnArgs, Promise<()>, SetFnArgs, false>;
+
 #[napi(object, object_to_js = false)]
 pub struct DataStore {
     #[napi(js_name = "initialize", ts_type = "() => Promise<void>")]
@@ -37,14 +40,7 @@ pub struct DataStore {
         js_name = "set",
         ts_type = "(key: string, value: string, time?: number) => Promise<void>"
     )]
-    pub set_fn: Option<
-        ThreadsafeFunction<
-            FnArgs<(String, String, Option<i64>)>,
-            Promise<()>,
-            FnArgs<(String, String, Option<i64>)>,
-            false,
-        >,
-    >,
+    pub set_fn: Option<SetFn>,
 
     #[napi(
         js_name = "supportPollingUpdatesFor",

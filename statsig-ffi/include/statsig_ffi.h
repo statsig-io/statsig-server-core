@@ -105,6 +105,11 @@ void statsig_local_file_specs_adapter_release(const char *specs_adapter_ref);
 
 void statsig_local_file_specs_adapter_fetch_and_write_to_file(const char *specs_adapter_ref);
 
+void statsig_metadata_update_values(const char *sdk_type,
+                                    const char *os,
+                                    const char *arch,
+                                    const char *language_version);
+
 const char *statsig_options_create(const char *specs_url,
                                    const char *log_event_url,
                                    const char *specs_adapter_ref,
@@ -128,8 +133,3 @@ const char *statsig_user_create(const char *user_id,
                                 const char *private_attributes_json);
 
 void statsig_user_release(const char *user_ref);
-
-void statsig_metadata_update_values(const char *sdk_type,
-                                    const char *os,
-                                    const char *arch,
-                                    const char *language_version);

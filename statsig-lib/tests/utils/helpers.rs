@@ -1,6 +1,6 @@
+use serde_json::{Map, Value};
 use std::fs;
 use std::path::PathBuf;
-use serde_json::{Map, Value};
 
 pub fn enforce_array(value: &Value) -> Vec<Value> {
     value.as_array().unwrap().clone()

@@ -168,7 +168,6 @@ async fn test_layer_is_experiment_active() {
     statsig.shutdown().await.unwrap();
 }
 
-
 #[tokio::test]
 async fn test_targeted_exp_in_layer_with_holdout() {
     let statsig = setup(None).await;
@@ -183,7 +182,6 @@ async fn test_targeted_exp_in_layer_with_holdout() {
         locale: Some("en_US".into()),
         ..StatsigUser::with_user_id("a_user_id".into())
     };
-
 
     let experiment = statsig.get_experiment(&user, "targeted_exp_in_layer_with_holdout");
     assert_eq!(experiment.rule_id, "layerAssignment");
@@ -205,7 +203,6 @@ async fn test_exp_5050_targeting() {
         locale: Some("en_US".into()),
         ..StatsigUser::with_user_id("a_user_id".into())
     };
-
 
     let experiment = statsig.get_experiment(&user, "test_exp_5050_targeting");
     assert_eq!(experiment.rule_id, "targetingGate");

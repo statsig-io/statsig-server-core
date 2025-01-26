@@ -24,7 +24,7 @@ pub(crate) fn make_exposure_key(
     user: &StatsigUser,
     spec_name: &String,
     rule_id: Option<&String>,
-    additional_values: Option<Vec<String>>
+    additional_values: Option<Vec<String>>,
 ) -> String {
     let empty_str = "".to_string();
 
@@ -46,8 +46,11 @@ pub(crate) fn make_exposure_key(
     let rid = rule_id.unwrap_or(&empty_str);
     let additional = match additional_values {
         Some(additional_values) => additional_values.join("|"),
-        None => String::new()
+        None => String::new(),
     };
 
-    format!("{}|{}|{}|{}|{}", spec_name, rid, user_id, custom_ids, additional)
+    format!(
+        "{}|{}|{}|{}|{}",
+        spec_name, rid, user_id, custom_ids, additional
+    )
 }

@@ -1,6 +1,6 @@
-use std::process::Command;
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 use std::sync::Once;
 
 const BUILD_DIR: &str = "../build";
@@ -27,7 +27,6 @@ pub fn initialize() {
             .expect("Failed to build the statsig_c_lib library");
     });
 }
-
 
 // #[test]
 // fn test_py_bindings() {

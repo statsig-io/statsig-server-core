@@ -102,7 +102,12 @@ impl IdListsUpdateListener for SpecStore {
 
 impl Default for SpecStore {
     fn default() -> Self {
-        Self::new("".to_string(), None, None, Arc::new(OpsStatsForInstance::new()))
+        Self::new(
+            "".to_string(),
+            None,
+            None,
+            Arc::new(OpsStatsForInstance::new()),
+        )
     }
 }
 

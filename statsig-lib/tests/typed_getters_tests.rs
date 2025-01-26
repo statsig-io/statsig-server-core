@@ -1,13 +1,15 @@
 mod utils;
 
-use sigstat::{Statsig, StatsigOptions, StatsigUser};
-use std::sync::Arc;
 use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
+use sigstat::{Statsig, StatsigOptions, StatsigUser};
+use std::sync::Arc;
 
 async fn setup() -> Statsig {
     let mut options = StatsigOptions::new();
-    options.specs_adapter = Some(Arc::new(MockSpecsAdapter::with_data("tests/data/big_number_dcs.json")));
+    options.specs_adapter = Some(Arc::new(MockSpecsAdapter::with_data(
+        "tests/data/big_number_dcs.json",
+    )));
     options.event_logging_adapter = Some(Arc::new(MockEventLoggingAdapter::new()));
 
     let statsig = Statsig::new("secret-key", Some(Arc::new(options)));

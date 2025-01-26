@@ -1,12 +1,19 @@
 use crate::statsig_options_py::StatsigOptionsPy;
 use crate::statsig_types_py::{DynamicConfigPy, LayerPy};
 use crate::{
-    statsig_types_py::{ExperimentPy, FeatureGatePy, FeatureGateEvaluationOptionsPy, ExperimentEvaluationOptionsPy, DynamicConfigEvaluationOptionsPy, LayerEvaluationOptionsPy},
+    statsig_types_py::{
+        DynamicConfigEvaluationOptionsPy, ExperimentEvaluationOptionsPy, ExperimentPy,
+        FeatureGateEvaluationOptionsPy, FeatureGatePy, LayerEvaluationOptionsPy,
+    },
     statsig_user_py::StatsigUserPy,
 };
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use sigstat::{log_e, unwrap_or_return, ClientInitResponseOptions, ExperimentEvaluationOptions, LayerEvaluationOptions, DynamicConfigEvaluationOptions, FeatureGateEvaluationOptions, HashAlgorithm, Statsig};
+use sigstat::{
+    log_e, unwrap_or_return, ClientInitResponseOptions, DynamicConfigEvaluationOptions,
+    ExperimentEvaluationOptions, FeatureGateEvaluationOptions, HashAlgorithm,
+    LayerEvaluationOptions, Statsig,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -125,13 +132,31 @@ impl StatsigPy {
     }
 
     #[pyo3(signature = (user, name, options=None))]
-    pub fn check_gate(&self, user: &StatsigUserPy, name: &str, options: Option<&FeatureGateEvaluationOptionsPy>) -> bool {
-        self.inner.check_gate_with_options(&user.inner, name, options.map_or(FeatureGateEvaluationOptions::default(), |o| o.into()))
+    pub fn check_gate(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+        options: Option<&FeatureGateEvaluationOptionsPy>,
+    ) -> bool {
+        self.inner.check_gate_with_options(
+            &user.inner,
+            name,
+            options.map_or(FeatureGateEvaluationOptions::default(), |o| o.into()),
+        )
     }
 
     #[pyo3(signature = (user, name, options=None))]
-    pub fn get_feature_gate(&self, user: &StatsigUserPy, name: &str, options: Option<&FeatureGateEvaluationOptionsPy>) -> FeatureGatePy {
-        let gate = self.inner.get_feature_gate_with_options(&user.inner, name, options.map_or(FeatureGateEvaluationOptions::default(), |o| o.into()));
+    pub fn get_feature_gate(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+        options: Option<&FeatureGateEvaluationOptionsPy>,
+    ) -> FeatureGatePy {
+        let gate = self.inner.get_feature_gate_with_options(
+            &user.inner,
+            name,
+            options.map_or(FeatureGateEvaluationOptions::default(), |o| o.into()),
+        );
         FeatureGatePy {
             name: gate.name,
             value: gate.value,
@@ -147,8 +172,17 @@ impl StatsigPy {
     }
 
     #[pyo3(signature = (user, name, options=None))]
-    pub fn get_dynamic_config(&self, user: &StatsigUserPy, name: &str, options: Option<&DynamicConfigEvaluationOptionsPy>) -> DynamicConfigPy {
-        let config = self.inner.get_dynamic_config_with_options(&user.inner, name, options.map_or(DynamicConfigEvaluationOptions::default(), |o| o.into()));
+    pub fn get_dynamic_config(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+        options: Option<&DynamicConfigEvaluationOptionsPy>,
+    ) -> DynamicConfigPy {
+        let config = self.inner.get_dynamic_config_with_options(
+            &user.inner,
+            name,
+            options.map_or(DynamicConfigEvaluationOptions::default(), |o| o.into()),
+        );
 
         DynamicConfigPy {
             name: config.name.clone(),
@@ -160,14 +194,28 @@ impl StatsigPy {
     }
 
     #[pyo3(signature = (user, name))]
-    pub fn manually_log_dynamic_config_exposure(&self, user: &StatsigUserPy, name: &str) -> PyResult<()> {
-        self.inner.manually_log_dynamic_config_exposure(&user.inner, name);
+    pub fn manually_log_dynamic_config_exposure(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+    ) -> PyResult<()> {
+        self.inner
+            .manually_log_dynamic_config_exposure(&user.inner, name);
         Ok(())
     }
 
     #[pyo3(signature = (user, name, options=None))]
-    pub fn get_experiment(&self, user: &StatsigUserPy, name: &str, options: Option<&ExperimentEvaluationOptionsPy>) -> ExperimentPy {
-        let experiment = self.inner.get_experiment_with_options(&user.inner, name, options.map_or(ExperimentEvaluationOptions::default(), |o| o.into()));
+    pub fn get_experiment(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+        options: Option<&ExperimentEvaluationOptionsPy>,
+    ) -> ExperimentPy {
+        let experiment = self.inner.get_experiment_with_options(
+            &user.inner,
+            name,
+            options.map_or(ExperimentEvaluationOptions::default(), |o| o.into()),
+        );
 
         ExperimentPy {
             name: experiment.name.clone(),
@@ -180,14 +228,28 @@ impl StatsigPy {
     }
 
     #[pyo3(signature = (user, name))]
-    pub fn manually_log_experiment_exposure(&self, user: &StatsigUserPy, name: &str) -> PyResult<()> {
-        self.inner.manually_log_experiment_exposure(&user.inner, name);
+    pub fn manually_log_experiment_exposure(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+    ) -> PyResult<()> {
+        self.inner
+            .manually_log_experiment_exposure(&user.inner, name);
         Ok(())
     }
 
     #[pyo3(signature = (user, name, options=None))]
-    pub fn get_layer(&self, user: &StatsigUserPy, name: &str, options: Option<&LayerEvaluationOptionsPy>) -> LayerPy {
-        let layer = self.inner.get_layer_with_options(&user.inner, name, options.map_or(LayerEvaluationOptions::default(), |o| o.into()));
+    pub fn get_layer(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+        options: Option<&LayerEvaluationOptionsPy>,
+    ) -> LayerPy {
+        let layer = self.inner.get_layer_with_options(
+            &user.inner,
+            name,
+            options.map_or(LayerEvaluationOptions::default(), |o| o.into()),
+        );
 
         LayerPy {
             name: layer.name.clone(),
@@ -200,13 +262,24 @@ impl StatsigPy {
     }
 
     #[pyo3(signature = (user, name, param_name))]
-    pub fn manually_log_layer_parameter_exposure(&self, user: &StatsigUserPy, name: &str, param_name: String) -> PyResult<()> {
-        self.inner.manually_log_layer_parameter_exposure(&user.inner, name, param_name);
+    pub fn manually_log_layer_parameter_exposure(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+        param_name: String,
+    ) -> PyResult<()> {
+        self.inner
+            .manually_log_layer_parameter_exposure(&user.inner, name, param_name);
         Ok(())
     }
 
     #[pyo3(signature = (user, hash=None, client_sdk_key=None))]
-    pub fn get_client_init_response(&self, user: &StatsigUserPy, hash: Option<&str>, client_sdk_key: Option<&str>) -> String {
+    pub fn get_client_init_response(
+        &self,
+        user: &StatsigUserPy,
+        hash: Option<&str>,
+        client_sdk_key: Option<&str>,
+    ) -> String {
         let mut opts = ClientInitResponseOptions::default();
         if hash == Some("none") {
             opts.hash_algorithm = Some(HashAlgorithm::None);

@@ -1,6 +1,6 @@
+use serde_json::json;
 use sigstat::StatsigUser;
 use std::collections::HashMap;
-use serde_json::json;
 
 #[tokio::test]
 async fn test_field_names() {

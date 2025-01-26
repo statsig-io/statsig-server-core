@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use sigstat::{DynamicValue, StatsigUser};
 use std::collections::HashMap;
 
-#[pyclass(name="StatsigUser")]
+#[pyclass(name = "StatsigUser")]
 pub struct StatsigUserPy {
     pub inner: StatsigUser,
 }
@@ -14,11 +14,10 @@ impl StatsigUserPy {
     pub fn new(user_id: &str, user_json: Option<String>) -> Self {
         let mut user = StatsigUser::with_user_id(user_id.to_string());
         if user_json.is_none() {
-            return Self {
-                inner: user,
-            };
+            return Self { inner: user };
         }
-        let parsed_fields: HashMap<String, DynamicValue> = serde_json::from_str(&user_json.unwrap()).unwrap();
+        let parsed_fields: HashMap<String, DynamicValue> =
+            serde_json::from_str(&user_json.unwrap()).unwrap();
         let email = parsed_fields.get("email");
         user.email = email.cloned();
 
@@ -46,8 +45,6 @@ impl StatsigUserPy {
         if let Some(custom_ids) = parsed_fields.get("customIDs") {
             user.custom_ids = custom_ids.object_value.clone();
         }
-        Self {
-            inner: user,
-        }
+        Self { inner: user }
     }
 }

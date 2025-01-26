@@ -143,7 +143,6 @@ async fn test_targeted_exp_in_layer_with_holdout() {
     );
 }
 
-
 #[tokio::test]
 async fn test_exp_5050_targeting() {
     let json_obj = setup().await;
@@ -220,7 +219,6 @@ async fn test_targetting_with_capital_letter_gate() {
         })
     );
 }
-
 
 #[tokio::test]
 async fn test_layer_with_many_params() {

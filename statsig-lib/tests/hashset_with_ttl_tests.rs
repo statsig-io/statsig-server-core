@@ -1,7 +1,7 @@
-use tokio::time::{Duration, sleep};
 use sigstat::hashset_with_ttl::HashSetWithTTL;
-use sigstat::StatsigRuntime;
 use sigstat::output_logger::{initialize_simple_output_logger, LogLevel};
+use sigstat::StatsigRuntime;
+use tokio::time::{sleep, Duration};
 
 #[tokio::test]
 async fn test_add_and_contains() {

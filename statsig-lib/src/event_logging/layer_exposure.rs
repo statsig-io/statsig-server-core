@@ -1,9 +1,9 @@
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::LayerEvaluation;
 use crate::event_logging::exposure_utils::{get_metadata_with_details, make_exposure_key};
-use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::StatsigEventInternal;
+use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::statsig_user_internal::StatsigUserInternal;
 
 pub const LAYER_EXPOSURE_EVENT_NAME: &str = "statsig::layer_exposure";
@@ -23,7 +23,12 @@ impl StatsigExposure for LayerExposure {
         let rule_id = self.evaluation.as_ref().map(|eval| &eval.base.rule_id);
 
         // todo: Node dedupes on all metadata values. Important?
-        make_exposure_key(&self.user.user_data, &self.layer_name, rule_id, Some(vec![self.parameter_name.clone()]))
+        make_exposure_key(
+            &self.user.user_data,
+            &self.layer_name,
+            rule_id,
+            Some(vec![self.parameter_name.clone()]),
+        )
     }
 
     fn to_internal_event(self) -> StatsigEventInternal {
@@ -57,7 +62,10 @@ impl StatsigExposure for LayerExposure {
         let mut metadata = get_metadata_with_details(self.evaluation_details);
         metadata.insert("config".into(), self.layer_name);
         metadata.insert("ruleID".into(), rule_id);
-        metadata.insert("allocatedExperiment".into(), allocated_experiment.unwrap_or_default());
+        metadata.insert(
+            "allocatedExperiment".into(),
+            allocated_experiment.unwrap_or_default(),
+        );
         metadata.insert("parameterName".into(), self.parameter_name);
         metadata.insert("isExplicitParameter".into(), is_explicit.to_string());
         if let Some(version) = self.version {

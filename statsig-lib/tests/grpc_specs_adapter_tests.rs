@@ -2,16 +2,16 @@ mod utils;
 
 #[cfg(all(test, feature = "with_grpc"))]
 pub mod specs_adapter_tests {
+    use crate::utils::mock_specs_listener::MockSpecsListener;
     use mock_forward_proxy::{api::ConfigSpecResponse, wait_one_ms, MockForwardProxy};
     use sigstat::output_logger::{initialize_simple_output_logger, LogLevel};
     use sigstat::{
-        SpecAdapterConfig, SpecsAdapter, SpecsAdapterType, SpecsSource,
-        StatsigGrpcSpecsAdapter, StatsigRuntime,
+        SpecAdapterConfig, SpecsAdapter, SpecsAdapterType, SpecsSource, StatsigGrpcSpecsAdapter,
+        StatsigRuntime,
     };
     use sigstat_grpc::*;
     use std::sync::Arc;
     use std::time::Duration;
-    use crate::utils::mock_specs_listener::MockSpecsListener;
 
     async fn setup() -> (
         Arc<MockForwardProxy>,
@@ -44,11 +44,7 @@ pub mod specs_adapter_tests {
             }))
             .await;
 
-        adapter
-            .clone()
-            .start(&statsig_rt)
-            .await
-            .unwrap();
+        adapter.clone().start(&statsig_rt).await.unwrap();
 
         adapter
             .shutdown(Duration::from_millis(1), &statsig_rt)
@@ -73,11 +69,7 @@ pub mod specs_adapter_tests {
             }))
             .await;
 
-        adapter
-            .clone()
-            .start(&statsig_rt)
-            .await
-            .unwrap();
+        adapter.clone().start(&statsig_rt).await.unwrap();
 
         mock_listener.wait_for_next_update().await.unwrap();
 

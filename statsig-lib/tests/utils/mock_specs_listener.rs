@@ -1,6 +1,4 @@
-use sigstat::{ SpecsInfo, SpecsSource, SpecsUpdate,
-    SpecsUpdateListener, StatsigErr,
-};
+use sigstat::{SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::Notify;

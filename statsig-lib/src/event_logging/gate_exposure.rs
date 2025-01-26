@@ -1,10 +1,10 @@
 use crate::evaluation::evaluation_details::EvaluationDetails;
+use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::event_logging::exposure_utils::{get_metadata_with_details, make_exposure_key};
-use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::StatsigEventInternal;
+use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::statsig_user_internal::StatsigUserInternal;
-use crate::evaluation::evaluation_types::SecondaryExposure;
 
 pub const GATE_EXPOSURE_EVENT_NAME: &str = "statsig::gate_exposure";
 
@@ -21,7 +21,12 @@ pub struct GateExposure {
 
 impl StatsigExposure for GateExposure {
     fn make_dedupe_key(&self) -> String {
-        make_exposure_key(&self.user.user_data, &self.gate_name, self.rule_id.as_ref(), None)
+        make_exposure_key(
+            &self.user.user_data,
+            &self.gate_name,
+            self.rule_id.as_ref(),
+            None,
+        )
     }
 
     fn to_internal_event(self) -> StatsigEventInternal {

@@ -1,10 +1,10 @@
 mod utils;
 
+use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use sigstat::{output_logger::LogLevel, Statsig, StatsigOptions, StatsigUser};
 use std::{fs, path::PathBuf, sync::Arc, time::Duration};
 use tokio::time::sleep;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
-use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 
 const SDK_KEY: &str = "secret-key";
 
@@ -47,13 +47,17 @@ async fn setup(delay_ms: u64, options: StatsigOptions) -> (MockScrapi, Statsig) 
 
 #[tokio::test]
 async fn test_background_flushing() {
-    let (scrapi, statsig) = setup(0, StatsigOptions {
-        event_logging_flush_interval_ms: Some(10),
-        specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
-            "tests/data/eval_proj_dcs.json",
-        ))),
-        ..StatsigOptions::new()
-    }).await;
+    let (scrapi, statsig) = setup(
+        0,
+        StatsigOptions {
+            event_logging_flush_interval_ms: Some(10),
+            specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
+                "tests/data/eval_proj_dcs.json",
+            ))),
+            ..StatsigOptions::new()
+        },
+    )
+    .await;
 
     statsig.initialize().await.unwrap();
 
@@ -66,18 +70,20 @@ async fn test_background_flushing() {
     assert_eq!(1, times_called);
 }
 
-
 #[tokio::test]
 async fn test_limit_flush_awaiting() {
-    let (scrapi, statsig) = setup(100, StatsigOptions {
-        specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
-            "tests/data/eval_proj_dcs.json",
-        ))),
-        event_logging_max_queue_size: Some(10),
-        output_log_level: Some(LogLevel::Debug),
-        ..StatsigOptions::new()
-    })
-        .await;
+    let (scrapi, statsig) = setup(
+        100,
+        StatsigOptions {
+            specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
+                "tests/data/eval_proj_dcs.json",
+            ))),
+            event_logging_max_queue_size: Some(10),
+            output_log_level: Some(LogLevel::Debug),
+            ..StatsigOptions::new()
+        },
+    )
+    .await;
 
     statsig.initialize().await.unwrap();
 

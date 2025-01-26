@@ -4,20 +4,22 @@ use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::{os::raw::c_char, os::raw::c_int};
 
-
 #[macro_export]
 macro_rules! get_instance_or_noop_c {
     ($type:ty, $ref:expr) => {
         match c_char_to_string($ref) {
             Some(id) => sigstat::get_instance_or_noop!($type, &id),
             None => {
-                sigstat::log_w!(TAG, "Attempting to get {} with null reference", stringify!($type));
-                return
-            },
+                sigstat::log_w!(
+                    TAG,
+                    "Attempting to get {} with null reference",
+                    stringify!($type)
+                );
+                return;
+            }
         }
     };
 }
-
 
 #[macro_export]
 macro_rules! get_instance_or_return_c {
@@ -28,7 +30,6 @@ macro_rules! get_instance_or_return_c {
         }
     };
 }
-
 
 pub fn c_char_to_string(c_str: *const c_char) -> Option<String> {
     if c_str.is_null() {

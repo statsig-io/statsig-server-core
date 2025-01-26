@@ -1,8 +1,8 @@
+use bytes::Bytes;
 use std::{
     collections::HashMap,
     sync::{atomic::AtomicBool, Arc},
 };
-use bytes::Bytes;
 
 #[derive(Clone)]
 pub struct RequestArgs {

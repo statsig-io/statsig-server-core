@@ -1,8 +1,8 @@
 use crate::{StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
-use std::{collections::HashMap, fmt};
 use std::sync::Arc;
 use std::time::Duration;
+use std::{collections::HashMap, fmt};
 
 use serde::{Deserialize, Serialize};
 
@@ -34,8 +34,11 @@ pub trait IdListsAdapter: Send + Sync {
 
     async fn shutdown(&self, timeout: Duration) -> Result<(), StatsigErr>;
 
-    fn schedule_background_sync(self: Arc<Self>, statsig_runtime: &Arc<StatsigRuntime>) -> Result<(), StatsigErr>;
-    
+    fn schedule_background_sync(
+        self: Arc<Self>,
+        statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr>;
+
     fn get_type_name(&self) -> String;
 }
 

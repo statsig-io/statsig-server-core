@@ -1,4 +1,2 @@
 #[test]
-fn test_build() {
-
-}
+fn test_build() {}

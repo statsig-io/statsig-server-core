@@ -10,8 +10,6 @@ use crate::{
 
 const TAG: &str = stringify!(InstanceStore);
 
-
-
 #[macro_export]
 macro_rules! get_instance_or_noop {
     ($type:ty, $ref:expr) => {

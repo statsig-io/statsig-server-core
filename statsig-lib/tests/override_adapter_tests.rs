@@ -3,7 +3,7 @@ mod utils;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use serde_json::json;
 use sigstat::output_logger::LogLevel;
-use sigstat::{Statsig, StatsigLocalOverrideAdapter, StatsigOptions, StatsigUser, OverrideAdapter};
+use sigstat::{OverrideAdapter, Statsig, StatsigLocalOverrideAdapter, StatsigOptions, StatsigUser};
 use std::collections::HashMap;
 use std::sync::Arc;
 

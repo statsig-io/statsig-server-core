@@ -1,7 +1,7 @@
 use napi_derive::napi;
 use sigstat::{EvaluationDetails, SecondaryExposure};
 
-#[napi(object, js_name="EvaluationDetails")]
+#[napi(object, js_name = "EvaluationDetails")]
 pub struct EvaluationDetailsNapi {
   pub reason: String,
   pub lcut: Option<i64>,

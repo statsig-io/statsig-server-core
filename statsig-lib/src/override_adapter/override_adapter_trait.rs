@@ -1,7 +1,7 @@
 use crate::evaluation::evaluator_result::EvaluatorResult;
-use crate::{ StatsigUser };
-use std::{collections::HashMap};
+use crate::StatsigUser;
 use serde_json::Value;
+use std::collections::HashMap;
 
 pub trait OverrideAdapter: Send + Sync {
     fn get_gate_override(

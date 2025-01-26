@@ -4,8 +4,8 @@ use crate::evaluation::evaluation_types::{
 };
 use crate::event_logging::event_logger::{EventLogger, QueuedEventPayload};
 use crate::event_logging::layer_exposure::LayerExposure;
-use crate::statsig_user_internal::StatsigUserInternal;
 use crate::spec_types::Parameter;
+use crate::statsig_user_internal::StatsigUserInternal;
 use crate::Statsig;
 use crate::StatsigUser;
 use serde::de::DeserializeOwned;
@@ -181,14 +181,10 @@ impl ParameterStore<'_> {
     pub fn get_opt<T: DeserializeOwned>(&self, user: &StatsigUser, param_name: &str) -> Option<T> {
         let param = self.parameters.get(param_name)?;
         match param {
-            Parameter::StaticValue(static_value) => {
-                match from_value(static_value.value.clone()) {
-                    Ok(value) => {
-                        Some(value)
-                    }
-                    Err(_) => None,
-                }
-            }
+            Parameter::StaticValue(static_value) => match from_value(static_value.value.clone()) {
+                Ok(value) => Some(value),
+                Err(_) => None,
+            },
             Parameter::Gate(gate) => {
                 let res = self._statsig_ref.check_gate(user, &gate.gate_name);
                 let val = match res {
@@ -196,18 +192,20 @@ impl ParameterStore<'_> {
                     false => gate.fail_value.clone(),
                 };
                 match from_value(val) {
-                    Ok(value) => {
-                        Some(value)
-                    }
+                    Ok(value) => Some(value),
                     Err(_) => None,
                 }
             }
             Parameter::DynamicConfig(dynamic_config) => {
-                let res = self._statsig_ref.get_dynamic_config(user, &dynamic_config.config_name);
+                let res = self
+                    ._statsig_ref
+                    .get_dynamic_config(user, &dynamic_config.config_name);
                 res.get_opt(&dynamic_config.param_name)?
             }
             Parameter::Experiment(experiment) => {
-                let res = self._statsig_ref.get_experiment(user, &experiment.experiment_name);
+                let res = self
+                    ._statsig_ref
+                    .get_experiment(user, &experiment.experiment_name);
                 res.get_opt(&experiment.param_name)?
             }
             Parameter::Layer(layer) => {
@@ -237,7 +235,12 @@ impl ParameterStore<'_> {
         self.get(user, param_name, fallback)
     }
 
-    pub fn get_array(&self, user: &StatsigUser, param_name: &str, fallback: Vec<Value>) -> Vec<Value> {
+    pub fn get_array(
+        &self,
+        user: &StatsigUser,
+        param_name: &str,
+        fallback: Vec<Value>,
+    ) -> Vec<Value> {
         self.get(user, param_name, fallback)
     }
 

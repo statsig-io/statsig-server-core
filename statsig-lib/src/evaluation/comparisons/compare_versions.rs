@@ -11,14 +11,9 @@ pub(crate) fn compare_versions(left: &DynamicValue, right: &DynamicValue, op: &s
         let mut left_parts = left_version.split('.');
         let mut right_parts = right_version.split('.');
 
-
         loop {
-            let opt_left_num = left_parts
-                .next()
-                .and_then(|s| s.parse::<i32>().ok());
-            let opt_right_num = right_parts
-                .next()
-                .and_then(|s| s.parse::<i32>().ok());
+            let opt_left_num = left_parts.next().and_then(|s| s.parse::<i32>().ok());
+            let opt_right_num = right_parts.next().and_then(|s| s.parse::<i32>().ok());
 
             // If both iterators are exhausted, we break the loop
             if opt_left_num.is_none() && opt_right_num.is_none() {
@@ -40,7 +35,6 @@ pub(crate) fn compare_versions(left: &DynamicValue, right: &DynamicValue, op: &s
         0
     }
 
-
     let result = comparison(left_str, right_str);
 
     match op {
@@ -56,8 +50,8 @@ pub(crate) fn compare_versions(left: &DynamicValue, right: &DynamicValue, op: &s
 
 #[cfg(test)]
 mod tests {
-    use crate::{dyn_value, DynamicValue};
     use crate::evaluation::comparisons::compare_versions;
+    use crate::{dyn_value, DynamicValue};
 
     #[test]
     fn test_version_comparison_equal() {

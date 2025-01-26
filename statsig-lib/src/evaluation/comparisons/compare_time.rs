@@ -1,5 +1,5 @@
-use chrono::Duration;
 use crate::{unwrap_or_return, DynamicValue};
+use chrono::Duration;
 
 pub(crate) fn compare_time(left: &DynamicValue, right: &DynamicValue, op: &str) -> bool {
     let left_num = unwrap_or_return!(left.int_value, false);
@@ -8,17 +8,19 @@ pub(crate) fn compare_time(left: &DynamicValue, right: &DynamicValue, op: &str) 
     match op {
         "before" => left_num < right_num,
         "after" => left_num > right_num,
-        "on" => Duration::milliseconds(left_num).num_days() == Duration::milliseconds(right_num).num_days(),
+        "on" => {
+            Duration::milliseconds(left_num).num_days()
+                == Duration::milliseconds(right_num).num_days()
+        }
         _ => false,
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use chrono::Utc;
-    use crate::{DynamicValue};
     use crate::evaluation::comparisons::compare_time;
+    use crate::DynamicValue;
+    use chrono::Utc;
 
     #[test]
     fn test_compare_before() {

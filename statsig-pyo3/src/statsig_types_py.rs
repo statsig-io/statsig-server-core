@@ -1,6 +1,10 @@
 use pyo3::prelude::*;
 use serde_json::{json, Map, Value};
-use sigstat::{statsig_types::{DynamicConfig, Experiment, Layer}, DynamicConfigEvaluationOptions, FeatureGateEvaluationOptions, LayerEvaluationOptions, ExperimentEvaluationOptions};
+use sigstat::{
+    statsig_types::{DynamicConfig, Experiment, Layer},
+    DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
+    LayerEvaluationOptions,
+};
 
 #[pyclass(name = "FeatureGate")]
 pub struct FeatureGatePy {
@@ -143,7 +147,7 @@ pub struct LayerEvaluationOptionsPy {
     pub disable_exposure_logging: bool,
 }
 
-impl From <&FeatureGateEvaluationOptionsPy> for FeatureGateEvaluationOptions {
+impl From<&FeatureGateEvaluationOptionsPy> for FeatureGateEvaluationOptions {
     fn from(val: &FeatureGateEvaluationOptionsPy) -> FeatureGateEvaluationOptions {
         FeatureGateEvaluationOptions {
             disable_exposure_logging: val.disable_exposure_logging,
@@ -151,7 +155,7 @@ impl From <&FeatureGateEvaluationOptionsPy> for FeatureGateEvaluationOptions {
     }
 }
 
-impl From <&DynamicConfigEvaluationOptionsPy> for DynamicConfigEvaluationOptions {
+impl From<&DynamicConfigEvaluationOptionsPy> for DynamicConfigEvaluationOptions {
     fn from(val: &DynamicConfigEvaluationOptionsPy) -> DynamicConfigEvaluationOptions {
         DynamicConfigEvaluationOptions {
             disable_exposure_logging: val.disable_exposure_logging,
@@ -159,7 +163,7 @@ impl From <&DynamicConfigEvaluationOptionsPy> for DynamicConfigEvaluationOptions
     }
 }
 
-impl From <&ExperimentEvaluationOptionsPy> for ExperimentEvaluationOptions {
+impl From<&ExperimentEvaluationOptionsPy> for ExperimentEvaluationOptions {
     fn from(val: &ExperimentEvaluationOptionsPy) -> ExperimentEvaluationOptions {
         ExperimentEvaluationOptions {
             disable_exposure_logging: val.disable_exposure_logging,
@@ -167,7 +171,7 @@ impl From <&ExperimentEvaluationOptionsPy> for ExperimentEvaluationOptions {
     }
 }
 
-impl From <&LayerEvaluationOptionsPy> for LayerEvaluationOptions {
+impl From<&LayerEvaluationOptionsPy> for LayerEvaluationOptions {
     fn from(val: &LayerEvaluationOptionsPy) -> LayerEvaluationOptions {
         LayerEvaluationOptions {
             disable_exposure_logging: val.disable_exposure_logging,

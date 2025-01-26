@@ -91,7 +91,7 @@ impl Marker {
             config_name: None,
             message: None,
             error: None,
-            evaluation_details: None
+            evaluation_details: None,
         }
     }
 

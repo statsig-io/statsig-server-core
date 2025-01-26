@@ -1,9 +1,9 @@
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::BaseEvaluation;
 use crate::event_logging::exposure_utils::{get_metadata_with_details, make_exposure_key};
-use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::StatsigEventInternal;
+use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::statsig_user_internal::StatsigUserInternal;
 
 pub const CONFIG_EXPOSURE_EVENT_NAME: &str = "statsig::config_exposure";

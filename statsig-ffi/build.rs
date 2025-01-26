@@ -36,6 +36,4 @@ fn run_csharp_bindgen() {
         .unwrap();
 }
 
-fn run_python_build() {
-    
-}
+fn run_python_build() {}

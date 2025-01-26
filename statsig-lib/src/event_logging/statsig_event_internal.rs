@@ -1,14 +1,14 @@
 use crate::evaluation::evaluation_types::SecondaryExposure;
+use crate::event_logging::config_exposure::CONFIG_EXPOSURE_EVENT_NAME;
+use crate::event_logging::gate_exposure::GATE_EXPOSURE_EVENT_NAME;
+use crate::event_logging::layer_exposure::LAYER_EXPOSURE_EVENT_NAME;
 use crate::event_logging::statsig_event::StatsigEvent;
+use crate::sdk_diagnostics::diagnostics::DIAGNOSTICS_EVENT;
 use crate::statsig_user_internal::{StatsigUserInternal, StatsigUserLoggable};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashSet;
-use crate::event_logging::config_exposure::CONFIG_EXPOSURE_EVENT_NAME;
-use crate::event_logging::gate_exposure::GATE_EXPOSURE_EVENT_NAME;
-use crate::event_logging::layer_exposure::LAYER_EXPOSURE_EVENT_NAME;
-use crate::sdk_diagnostics::diagnostics::DIAGNOSTICS_EVENT;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -35,9 +35,7 @@ impl StatsigEventInternal {
         }
     }
 
-    pub fn new_diagnostic_event(
-        event: StatsigEvent,
-    ) -> Self {
+    pub fn new_diagnostic_event(event: StatsigEvent) -> Self {
         StatsigEventInternal {
             event_data: event,
             user: StatsigUserLoggable { value: Value::Null },
@@ -46,9 +44,7 @@ impl StatsigEventInternal {
         }
     }
 
-    pub fn new_non_exposed_checks_event(
-        event: StatsigEvent,
-    ) -> Self {
+    pub fn new_non_exposed_checks_event(event: StatsigEvent) -> Self {
         StatsigEventInternal {
             event_data: event,
             user: StatsigUserLoggable { value: Value::Null },
@@ -58,9 +54,9 @@ impl StatsigEventInternal {
     }
 
     pub fn is_exposure_event(&self) -> bool {
-        self.event_data.event_name == GATE_EXPOSURE_EVENT_NAME ||
-            self.event_data.event_name == CONFIG_EXPOSURE_EVENT_NAME ||
-            self.event_data.event_name == LAYER_EXPOSURE_EVENT_NAME
+        self.event_data.event_name == GATE_EXPOSURE_EVENT_NAME
+            || self.event_data.event_name == CONFIG_EXPOSURE_EVENT_NAME
+            || self.event_data.event_name == LAYER_EXPOSURE_EVENT_NAME
     }
 
     pub fn is_diagnostic_event(&self) -> bool {

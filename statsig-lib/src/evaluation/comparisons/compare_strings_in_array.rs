@@ -14,11 +14,7 @@ pub(crate) fn compare_strings_in_array(
         if op == "any" || op == "none" {
             if let Some(dict) = &target_value.object_value {
                 let contains = dict.contains_key(value_str);
-                return if op == "none" {
-                    !contains
-                } else {
-                    contains
-                };
+                return if op == "none" { !contains } else { contains };
             }
         }
 
@@ -57,12 +53,11 @@ pub(crate) fn compare_strings_in_array(
     result
 }
 
-
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
-    use crate::{dyn_value, DynamicValue};
     use crate::evaluation::comparisons::compare_strings_in_array;
+    use crate::{dyn_value, DynamicValue};
+    use serde_json::json;
 
     #[test]
     fn test_array_contains() {
@@ -89,7 +84,12 @@ mod tests {
         let needle = dyn_value!("daniel@statsig.com");
         let haystack = dyn_value!(json!(vec!["tore", "daniel"]));
 
-        assert!(compare_strings_in_array(&needle, &haystack, "str_starts_with_any", true));
+        assert!(compare_strings_in_array(
+            &needle,
+            &haystack,
+            "str_starts_with_any",
+            true
+        ));
     }
 
     #[test]
@@ -97,7 +97,12 @@ mod tests {
         let needle = dyn_value!("tore@statsig.com");
         let haystack = dyn_value!(json!(vec!["@statsig.io", "@statsig.com"]));
 
-        assert!(compare_strings_in_array(&needle, &haystack, "str_ends_with_any", true));
+        assert!(compare_strings_in_array(
+            &needle,
+            &haystack,
+            "str_ends_with_any",
+            true
+        ));
     }
 
     #[test]
@@ -105,6 +110,11 @@ mod tests {
         let needle = dyn_value!("daniel@statsig.io");
         let haystack = dyn_value!(json!(vec!["sigstat", "statsig"]));
 
-        assert!(compare_strings_in_array(&needle, &haystack, "str_contains_any", true));
+        assert!(compare_strings_in_array(
+            &needle,
+            &haystack,
+            "str_contains_any",
+            true
+        ));
     }
 }

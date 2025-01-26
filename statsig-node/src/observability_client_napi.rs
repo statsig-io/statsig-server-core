@@ -7,6 +7,9 @@ use sigstat::{ObservabilityClient as ObservabilityClientActual, OpsStatsEventObs
 use napi::bindgen_prelude::{FnArgs, Promise};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 
+type MetricFnArgs = FnArgs<(String, f64, Option<HashMap<String, String>>)>;
+type MetricFn = ThreadsafeFunction<MetricFnArgs, Promise<()>, MetricFnArgs, false>;
+
 #[napi(object, object_to_js = false)]
 pub struct ObservabilityClient {
     #[napi(js_name = "initialize", ts_type = "() => void")]
@@ -16,40 +19,19 @@ pub struct ObservabilityClient {
         js_name = "increment",
         ts_type = "(metricName: string, value: number, tags: Record<string, string>) => void"
     )]
-    pub increment_fn: Option<
-        ThreadsafeFunction<
-            FnArgs<(String, f64, Option<HashMap<String, String>>)>,
-            Promise<()>,
-            FnArgs<(String, f64, Option<HashMap<String, String>>)>,
-            false,
-        >,
-    >,
+    pub increment_fn: Option<MetricFn>,
 
     #[napi(
         js_name = "gauge",
         ts_type = "(metricName: string, value: number, tags: Record<string, string>) => void"
     )]
-    pub gauge_fn: Option<
-        ThreadsafeFunction<
-            FnArgs<(String, f64, Option<HashMap<String, String>>)>,
-            Promise<()>,
-            FnArgs<(String, f64, Option<HashMap<String, String>>)>,
-            false,
-        >,
-    >,
+    pub gauge_fn: Option<MetricFn>,
 
     #[napi(
         js_name = "dist",
         ts_type = "(metricName: string, value: number, tags: Record<string, string>) => void"
     )]
-    pub dist_fn: Option<
-        ThreadsafeFunction<
-            FnArgs<(String, f64, Option<HashMap<String, String>>)>,
-            Promise<()>,
-            FnArgs<(String, f64, Option<HashMap<String, String>>)>,
-            false,
-        >,
-    >,
+    pub dist_fn: Option<MetricFn>,
 }
 
 impl ObservabilityClientActual for ObservabilityClient {

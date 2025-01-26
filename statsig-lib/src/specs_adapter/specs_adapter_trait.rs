@@ -24,7 +24,7 @@ impl fmt::Display for SpecsSource {
             SpecsSource::Adapter(name) => {
                 let type_name = format!("Adapter{}", name);
                 type_name
-            },
+            }
             SpecsSource::Uninitialized => "Uninitialized".to_string(),
             SpecsSource::NoValues => "NoValues".to_string(),
             SpecsSource::Error => "Error".to_string(),

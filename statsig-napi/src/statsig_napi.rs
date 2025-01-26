@@ -69,7 +69,11 @@ impl ObjectFinalize for AutoReleasingStatsigRef {
 }
 
 #[napi]
-pub fn statsig_create(env: Env, sdk_key: String, options_ref: Option<String>) -> AutoReleasingStatsigRef {
+pub fn statsig_create(
+  env: Env,
+  sdk_key: String,
+  options_ref: Option<String>,
+) -> AutoReleasingStatsigRef {
   let options = INST_STORE.get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
   let statsig = Statsig::new(&sdk_key, options);
   update_statsig_metadata(env);
@@ -347,8 +351,16 @@ pub fn statsig_get_client_init_response(
 // -------
 
 fn update_statsig_metadata(env: Env) {
-  let version = env.get_node_version().map(|v|format!("{}.{}.{}", v.major, v.minor, v.patch)).unwrap_or("UNKNOWN".to_string());
-  StatsigMetadata::update_values(SDK_TYPE.to_string(), std::env::consts::OS.to_string(), std::env::consts::ARCH.to_string(), version);
+  let version = env
+    .get_node_version()
+    .map(|v| format!("{}.{}.{}", v.major, v.minor, v.patch))
+    .unwrap_or("UNKNOWN".to_string());
+  StatsigMetadata::update_values(
+    SDK_TYPE.to_string(),
+    std::env::consts::OS.to_string(),
+    std::env::consts::ARCH.to_string(),
+    version,
+  );
 }
 
 fn create_empty_feature_gate(name: String) -> FeatureGateNapi {

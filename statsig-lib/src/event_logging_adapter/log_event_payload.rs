@@ -1,6 +1,6 @@
-use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, json, Value};
+use std::collections::HashSet;
 
 use crate::{event_logging::statsig_event_internal::StatsigEventInternal, StatsigErr};
 
@@ -39,7 +39,10 @@ impl LogEventRequest {
 fn parse_events(events: &Value) -> Result<Vec<StatsigEventInternal>, StatsigErr> {
     match from_value(events.clone()) {
         Ok(events) => Ok(events),
-        Err(e) => Err(StatsigErr::JsonParseError(stringify!(Vec<StatsigEventInternal>).to_string(), e.to_string()))
+        Err(e) => Err(StatsigErr::JsonParseError(
+            stringify!(Vec<StatsigEventInternal>).to_string(),
+            e.to_string(),
+        )),
     }
 }
 

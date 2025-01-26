@@ -1,14 +1,11 @@
 use crate::{unwrap_or_return, DynamicValue};
 use std::collections::HashSet;
 
-pub(crate) fn compare_arrays(
-    value: &DynamicValue,
-    target_value: &DynamicValue,
-    op: &str,
-) -> bool {
+pub(crate) fn compare_arrays(value: &DynamicValue, target_value: &DynamicValue, op: &str) -> bool {
     let target_array = unwrap_or_return!(&target_value.array_value, false);
     let value_array = unwrap_or_return!(&value.array_value, false);
-    let value_set: HashSet<Option<String>> = HashSet::from_iter(value_array.iter().map(|x| x.string_value.clone()));
+    let value_set: HashSet<Option<String>> =
+        HashSet::from_iter(value_array.iter().map(|x| x.string_value.clone()));
     for item in target_array.iter() {
         match op {
             "array_contains_all" => {
@@ -31,7 +28,7 @@ pub(crate) fn compare_arrays(
                     return true;
                 }
             }
-           
+
             _ => {
                 return false;
             }

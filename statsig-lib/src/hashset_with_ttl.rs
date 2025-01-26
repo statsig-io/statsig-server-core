@@ -1,9 +1,9 @@
-use std::collections::HashSet;
-use std::sync::{Arc, Mutex, Weak};
-use tokio::time::{Duration, sleep};
-use tokio::sync::Notify;
 use crate::log_d;
 use crate::StatsigRuntime;
+use std::collections::HashSet;
+use std::sync::{Arc, Mutex, Weak};
+use tokio::sync::Notify;
+use tokio::time::{sleep, Duration};
 
 const TAG: &str = stringify!(HashSetWithTTL);
 
@@ -25,8 +25,14 @@ impl HashSetWithTTL {
         statsig_runtime.spawn(
             "hashset_with_ttl_worker",
             move |rt_shutdown_notify| async move {
-                Self::run_background_reset(weak_instance, interval_duration, rt_shutdown_notify, shutdown_notify).await;
-            }
+                Self::run_background_reset(
+                    weak_instance,
+                    interval_duration,
+                    rt_shutdown_notify,
+                    shutdown_notify,
+                )
+                .await;
+            },
         );
 
         instance

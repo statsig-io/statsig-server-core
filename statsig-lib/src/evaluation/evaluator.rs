@@ -64,17 +64,17 @@ impl Evaluator {
             return Ok(true);
         }
 
-        let spec = unwrap_or_return!(match spec_type {
-            SpecType::Gate =>
-                ctx.spec_store_data.values.feature_gates.get(spec_name),
-            SpecType::DynamicConfig =>
-                ctx.spec_store_data.values.dynamic_configs.get(spec_name),
-            SpecType::Experiment =>
-                ctx.spec_store_data.values.dynamic_configs.get(spec_name),
-            SpecType::Layer =>
-                ctx.spec_store_data.values.layer_configs.get(spec_name),
-        }, Ok(false));
-        
+        let spec = unwrap_or_return!(
+            match spec_type {
+                SpecType::Gate => ctx.spec_store_data.values.feature_gates.get(spec_name),
+                SpecType::DynamicConfig =>
+                    ctx.spec_store_data.values.dynamic_configs.get(spec_name),
+                SpecType::Experiment => ctx.spec_store_data.values.dynamic_configs.get(spec_name),
+                SpecType::Layer => ctx.spec_store_data.values.layer_configs.get(spec_name),
+            },
+            Ok(false)
+        );
+
         if ctx.result.id_type.is_none() {
             ctx.result.id_type = Some(&spec.id_type);
         }
@@ -148,16 +148,19 @@ fn try_apply_override(ctx: &mut EvaluatorContext, spec_name: &str, spec_type: &S
         Some(adapter) => adapter,
         None => return false,
     };
-    
+
     match spec_type {
-        SpecType::Gate =>
-            adapter.get_gate_override(&ctx.user.user_data, spec_name, &mut ctx.result),
+        SpecType::Gate => {
+            adapter.get_gate_override(&ctx.user.user_data, spec_name, &mut ctx.result)
+        }
 
-        SpecType::DynamicConfig =>
-            adapter.get_dynamic_config_override(&ctx.user.user_data, spec_name, &mut ctx.result),
+        SpecType::DynamicConfig => {
+            adapter.get_dynamic_config_override(&ctx.user.user_data, spec_name, &mut ctx.result)
+        }
 
-        SpecType::Experiment =>
-            adapter.get_experiment_override(&ctx.user.user_data, spec_name, &mut ctx.result),
+        SpecType::Experiment => {
+            adapter.get_experiment_override(&ctx.user.user_data, spec_name, &mut ctx.result)
+        }
 
         SpecType::Layer => {
             adapter.get_layer_override(&ctx.user.user_data, spec_name, &mut ctx.result)

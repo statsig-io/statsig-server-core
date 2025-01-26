@@ -20,12 +20,13 @@ const TAG: &str = "StatsigOptionsNapi";
 pub struct AutoReleasingStatsigOptionsRef {
   pub ref_id: String,
 
-  observability_client: Mutex<Option<Arc<dyn ObservabilityClient>>>
+  observability_client: Mutex<Option<Arc<dyn ObservabilityClient>>>,
 }
 
 impl ObjectFinalize for AutoReleasingStatsigOptionsRef {
   fn finalize(self, _env: Env) -> napi::Result<()> {
     INST_STORE.remove(&self.ref_id);
+    drop(self.observability_client);
     Ok(())
   }
 }
@@ -56,7 +57,7 @@ pub fn statsig_options_create(
       let weak_obs_client: Weak<dyn ObservabilityClient> = Arc::downgrade(&obs_client_arc);
       (Some(obs_client_arc), Some(weak_obs_client))
     }
-    None => (None, None)
+    None => (None, None),
   };
 
   let spec_adapters_config: Option<Vec<SpecAdapterConfig>> = spec_adapters_config
@@ -80,7 +81,10 @@ pub fn statsig_options_create(
       "".to_string()
     });
 
-  AutoReleasingStatsigOptionsRef { ref_id, observability_client: Mutex::new(observability_client) }
+  AutoReleasingStatsigOptionsRef {
+    ref_id,
+    observability_client: Mutex::new(observability_client),
+  }
 }
 #[napi(object)]
 pub struct SpecAdapterConfigNapi {

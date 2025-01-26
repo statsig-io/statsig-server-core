@@ -1,10 +1,10 @@
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use sigstat::instance_store::INST_STORE;
+use sigstat::log_event_payload::LogEventRequest;
 use sigstat::{log_e, unwrap_or_return, StatsigRuntime};
 use sigstat::{StatsigHttpEventLoggingAdapter, StatsigOptions};
 use std::os::raw::c_char;
 use std::ptr::null;
-use sigstat::log_event_payload::LogEventRequest;
 
 const TAG: &str = "StatsigHttpEventLoggingAdapterC";
 

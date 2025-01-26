@@ -66,11 +66,10 @@ macro_rules! read_lock_or_return {
             Err(e) => {
                 log_e!($tag, "Failed to read store: {}", e.to_string());
                 return $code;
-            },
+            }
         }
     };
 }
-
 
 #[macro_export]
 macro_rules! serialize_if_not_none {

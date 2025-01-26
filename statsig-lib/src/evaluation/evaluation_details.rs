@@ -1,7 +1,7 @@
 use crate::evaluation::evaluator_result::EvaluatorResult;
 use crate::spec_store::SpecStoreData;
-use serde::{Deserialize, Serialize};
 use crate::SpecsSource;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct EvaluationDetails {
@@ -21,7 +21,7 @@ impl EvaluationDetails {
 
     pub fn recognized_but_overridden(
         spec_store_data: &SpecStoreData,
-        override_reason: &str
+        override_reason: &str,
     ) -> Self {
         Self {
             reason: format!("{}:Recognized", override_reason),
@@ -46,7 +46,11 @@ impl EvaluationDetails {
         }
     }
 
-    fn create_from_data(data: &SpecStoreData, sub_reason: &str, eval_result: &EvaluatorResult) -> Self {
+    fn create_from_data(
+        data: &SpecStoreData,
+        sub_reason: &str,
+        eval_result: &EvaluatorResult,
+    ) -> Self {
         if data.source == SpecsSource::Uninitialized || data.source == SpecsSource::NoValues {
             return Self {
                 reason: data.source.to_string(),

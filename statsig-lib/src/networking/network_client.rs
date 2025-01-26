@@ -85,7 +85,7 @@ impl NetworkClient {
             let status = response.status_code;
 
             if (200..300).contains(&status) {
-                return response.data.ok_or(NetworkError::RequestFailed );
+                return response.data.ok_or(NetworkError::RequestFailed);
             }
 
             let error_message = response

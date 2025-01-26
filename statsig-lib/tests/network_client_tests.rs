@@ -34,7 +34,8 @@ async fn test_killing_inflight_requests() {
                 },
                 None,
             )
-            .await.unwrap();
+            .await
+            .unwrap();
     });
 
     network_client.shutdown();
@@ -60,7 +61,8 @@ async fn test_per_request_timeout() {
                 },
                 None,
             )
-            .await.unwrap();
+            .await
+            .unwrap();
     });
 
     let result = tokio::time::timeout(Duration::from_millis(100), spawned_task).await;

@@ -2,12 +2,12 @@ use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::{
     DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation,
 };
+use crate::event_logging::event_logger::EventLogger;
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_internal::StatsigUserInternal;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Weak;
-use crate::event_logging::event_logger::EventLogger;
 
 pub fn make_feature_gate(
     name: &str,
@@ -33,12 +33,7 @@ pub fn make_feature_gate(
 
 fn extract_from_experiment_evaluation(
     evaluation: &Option<ExperimentEvaluation>,
-) -> (
-    HashMap<String, Value>,
-    String,
-    String,
-    Option<String>,
-) {
+) -> (HashMap<String, Value>, String, String, Option<String>) {
     match &evaluation {
         Some(e) => (
             e.value.clone(),
@@ -57,11 +52,7 @@ pub fn make_dynamic_config(
     version: Option<u32>,
 ) -> DynamicConfig {
     let (value, rule_id, id_type) = match &evaluation {
-        Some(e) => (
-            e.value.clone(),
-            e.base.rule_id.clone(),
-            e.id_type.clone(),
-        ),
+        Some(e) => (e.value.clone(), e.base.rule_id.clone(), e.id_type.clone()),
         None => (HashMap::new(), "default".into(), "".into()),
     };
 
