@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, Weak};
 
 use napi::Env;
 use napi::{bindgen_prelude::ObjectFinalize, JsObject};
@@ -19,6 +19,8 @@ const TAG: &str = "StatsigOptionsNapi";
 #[napi(custom_finalize)]
 pub struct AutoReleasingStatsigOptionsRef {
   pub ref_id: String,
+
+  observability_client: Mutex<Option<Arc<dyn ObservabilityClient>>>
 }
 
 impl ObjectFinalize for AutoReleasingStatsigOptionsRef {
@@ -48,12 +50,14 @@ pub fn statsig_options_create(
       None
     };
 
-  let observability_client: Option<Arc<dyn ObservabilityClient>> =
-    if let Some(ob) = observability_client {
-      Some(Arc::new(ObservabilityClientNapi::new(ob)))
-    } else {
-      None
-    };
+  let (observability_client, weak_observability_client) = match observability_client {
+    Some(ob) => {
+      let obs_client_arc: Arc<dyn ObservabilityClient> = Arc::new(ObservabilityClientNapi::new(ob));
+      let weak_obs_client: Weak<dyn ObservabilityClient> = Arc::downgrade(&obs_client_arc);
+      (Some(obs_client_arc), Some(weak_obs_client))
+    }
+    None => (None, None)
+  };
 
   let spec_adapters_config: Option<Vec<SpecAdapterConfig>> = spec_adapters_config
     .map(|unwrapped| unwrapped.into_iter().map(|config| config.into()).collect());
@@ -68,7 +72,7 @@ pub fn statsig_options_create(
       event_logging_flush_interval_ms,
       spec_adapters_config,
       data_store,
-      observability_client,
+      observability_client: weak_observability_client,
       ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {
@@ -76,7 +80,7 @@ pub fn statsig_options_create(
       "".to_string()
     });
 
-  AutoReleasingStatsigOptionsRef { ref_id }
+  AutoReleasingStatsigOptionsRef { ref_id, observability_client: Mutex::new(observability_client) }
 }
 #[napi(object)]
 pub struct SpecAdapterConfigNapi {

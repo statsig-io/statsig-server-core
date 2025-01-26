@@ -8,7 +8,7 @@ use napi::{
 use napi_derive::napi;
 use serde_json::json;
 use sigstat::{
-  data_store_interface::{DataAdapterResponse, DataStoreTrait, RequestPath},
+  data_store_interface::{DataStoreResponse, DataStoreTrait, RequestPath},
   StatsigErr,
 };
 
@@ -18,9 +18,9 @@ pub struct DataAdapterResponseNapi {
   pub time: Option<i64>,
 }
 
-impl From<DataAdapterResponseNapi> for DataAdapterResponse {
+impl From<DataAdapterResponseNapi> for DataStoreResponse {
   fn from(val: DataAdapterResponseNapi) -> Self {
-    DataAdapterResponse {
+    DataStoreResponse {
       result: val.result,
       time: val.time.map(|time| time as u64),
     }
@@ -120,7 +120,7 @@ impl DataStoreTrait for DataStoreNapi {
     }
   }
 
-  async fn get(&self, key: &str) -> Result<DataAdapterResponse, StatsigErr> {
+  async fn get(&self, key: &str) -> Result<DataStoreResponse, StatsigErr> {
     match self.get_fn.clone() {
       Some(func) => {
         let call_res = self

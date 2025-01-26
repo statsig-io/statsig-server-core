@@ -1,7 +1,7 @@
 mod utils;
 
 use sigstat::{output_logger::LogLevel, ObservabilityClient, Statsig, StatsigOptions, StatsigUser};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 use utils::{
     mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi},
     mock_specs_adapter::MockSpecsAdapter,
@@ -10,7 +10,7 @@ use utils::{
 const SDK_KEY: &str = "secret-key";
 
 async fn setup(
-    observability_client: Option<Arc<dyn ObservabilityClient>>,
+    observability_client: &Arc<MockObservabilityClient>,
 ) -> (MockScrapi, Statsig, Arc<MockSpecsAdapter>) {
     let mock_scrapi = MockScrapi::new().await;
 
@@ -24,10 +24,11 @@ async fn setup(
         })
         .await;
 
+    let weak_obs_client = Arc::downgrade(observability_client) as Weak<dyn ObservabilityClient>;
     let statsig = Statsig::new(
         SDK_KEY,
         Some(Arc::new(StatsigOptions {
-            observability_client,
+            observability_client: Some(weak_obs_client),
             specs_adapter: Some(specs_adapter.clone()),
             log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
             output_log_level: Some(LogLevel::Debug),
@@ -115,7 +116,7 @@ async fn test_init_called() {
         calls: Mutex::new(Vec::new()),
     });
 
-    let (_, statsig, _) = setup(Some(obs_client.clone())).await;
+    let (_, statsig, _) = setup(&obs_client).await;
 
     statsig.initialize().await.unwrap();
 
@@ -130,7 +131,7 @@ async fn test_sdk_initialization_dist_recorded() {
         calls: Mutex::new(Vec::new()),
     });
 
-    let (_, statsig, _) = setup(Some(obs_client.clone())).await;
+    let (_, statsig, _) = setup(&obs_client).await;
 
     statsig.initialize().await.unwrap();
     statsig.check_gate(&StatsigUser::with_user_id("test_user".into()), "test_gate");
@@ -168,7 +169,7 @@ async fn test_config_propagation_dist_recorded() {
         calls: Mutex::new(Vec::new()),
     });
 
-    let (_, statsig, specs_adapter) = setup(Some(obs_client.clone())).await;
+    let (_, statsig, specs_adapter) = setup(&obs_client).await;
 
     statsig.initialize().await.unwrap();
     specs_adapter.resync().await;
@@ -204,11 +205,11 @@ async fn test_shutdown_drops() {
         calls: Mutex::new(Vec::new()),
     });
 
-    let (_, statsig, _) = setup(Some(obs_client.clone())).await;
+    let (_, statsig, _) = setup(&obs_client).await;
 
     statsig.initialize().await.unwrap();
 
-    assert_eq!(Arc::strong_count(&obs_client), 2);
+    assert_eq!(Arc::strong_count(&obs_client), 1);
 
     statsig.flush_events().await;
     statsig.shutdown().await.unwrap();

@@ -1048,6 +1048,7 @@ fn setup_ops_stats(
 
     if let Some(ob_client) = external_observer {
         if let Some(client) = ob_client.upgrade() {
+            client.init();
             let as_observer = client.to_ops_stats_event_observer();
             ops_stat.subscribe(statsig_runtime, Arc::downgrade(&as_observer));
         }
