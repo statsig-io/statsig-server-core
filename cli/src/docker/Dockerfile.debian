@@ -10,17 +10,16 @@ RUN pip3 install pytest maturin patchelf pytest_httpserver --break-system-packag
 # PHP Setup
 RUN apt-get install -y php php-curl php-xml composer
 
-RUN --mount=type=secret,id=gh_token_id \
-    git clone https://$(cat /run/secrets/gh_token_id)@github.com/statsig-io/private-statsig-server-core.git \
-    statsig-server-core-prebuild --recurse-submodules \
-    && cd statsig-server-core-prebuild \
-    && cargo build
-
 # Node Setup
 RUN apt-get install -y nodejs npm
 RUN npm install -g pnpm@7.32.4 prettier@3.4.2
 
-RUN cd statsig-server-core-prebuild/cli && pnpm install
-
+RUN --mount=type=secret,id=gh_token_id \
+    git clone https://$(cat /run/secrets/gh_token_id)@github.com/statsig-io/private-statsig-server-core.git \
+    statsig-server-core-prebuild --recurse-submodules \
+    && cd statsig-server-core-prebuild \
+    && cargo build \
+    && cd cli \
+    && pnpm install
 
 ENTRYPOINT ["sh", "-c"]

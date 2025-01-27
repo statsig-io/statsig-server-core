@@ -31,4 +31,5 @@ jobs:
 
       - name: Run clippy
         # Exclude statsig-node because it's still early in development
-        run: cargo clippy --workspace --exclude statsig-node --all-features -- -D warnings
+        # run: cargo clippy --workspace --exclude statsig-node --all-features -- -D warnings
+        run: cargo clippy --workspace --all-features -- -D warnings
