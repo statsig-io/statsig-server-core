@@ -60,6 +60,15 @@ impl HashUtil {
         self.sha_hasher.hash_string(input)
     }
 
+    pub fn sha256_to_u64(&self, input: &String) -> u64 {
+        let hash = self.sha_hasher.hash_string(input);
+
+        let mut hasher_bytes = [0u8; 8];
+        hasher_bytes.copy_from_slice(&hash.as_bytes()[0..8]);
+
+        u64::from_be_bytes(hasher_bytes)
+    }
+
     pub fn evaluation_hash(&self, input: &String) -> Option<usize> {
         self.sha_hasher.compute_hash(input)
     }
