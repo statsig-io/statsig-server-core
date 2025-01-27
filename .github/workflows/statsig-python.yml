@@ -182,8 +182,10 @@ jobs:
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.SIGTAT_PYPI_TEST_TOKEN }}
-          MATURIN_REPOSITORY: testpypi
+          MATURIN_PYPI_TOKEN: ${{ secrets.STATSIG_PYPI_PROD_TOKEN }}
+          MATURIN_REPOSITORY: pypi
+          # MATURIN_PYPI_TOKEN: ${{ secrets.SIGTAT_PYPI_TEST_TOKEN }}
+          # MATURIN_REPOSITORY: testpypi
         with:
           command: upload
           args: --non-interactive --skip-existing wheels-*/*
