@@ -14,7 +14,7 @@ class StatsigOptions
         $environment = null,
         $event_logging_flush_interval_ms = null,
         $event_logging_max_queue_size = null,
-        $specs_sync_interval_ms = null,
+        $specs_sync_interval_ms = null
     ) {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->statsig_options_create(

@@ -4,7 +4,7 @@ namespace Statsig\EvaluationTypes;
 
 class FeatureGate extends BaseEvaluation
 {
-    public readonly bool $value;
+    public bool $value;
 
     public function __construct(string $raw_result)
     {

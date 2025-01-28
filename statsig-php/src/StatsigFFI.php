@@ -58,11 +58,18 @@ class StatsigFFI
 
     private static function find_binary_in_dir(string $dir): ?string
     {
-        $file_name = match (PHP_OS_FAMILY) {
-            'Darwin' => 'libstatsig_ffi.dylib',
-            'Windows' => 'statsig_ffi.dll',
-            default => 'libstatsig_ffi.so',
-        };
+        $file_name = '';
+        switch (PHP_OS_FAMILY) {
+            case 'Darwin':
+                $file_name = 'libstatsig_ffi.dylib';
+                break;
+            case 'Windows':
+                $file_name = 'statsig_ffi.dll';
+                break;
+            default:
+                $file_name = 'libstatsig_ffi.so';
+                break;
+        }
 
         $path = $dir . '/' . $file_name;
 

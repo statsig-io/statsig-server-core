@@ -43,7 +43,7 @@ class Statsig
 
     public function logEvent(
         StatsigEventData $event_data,
-        StatsigUser $user,
+        StatsigUser $user
     ): void {
         $data = json_encode($event_data);
         StatsigFFI::get()->statsig_log_event($this->__ref, $user->__ref, $data);

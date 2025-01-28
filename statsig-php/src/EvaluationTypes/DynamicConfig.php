@@ -4,7 +4,7 @@ namespace Statsig\EvaluationTypes;
 
 class DynamicConfig extends BaseEvaluation
 {
-    public readonly array $value;
+    public array $value;
 
     public function __construct(string $raw_result)
     {

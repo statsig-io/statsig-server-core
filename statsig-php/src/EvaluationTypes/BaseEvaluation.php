@@ -4,14 +4,14 @@ namespace Statsig\EvaluationTypes;
 
 abstract class BaseEvaluation
 {
-    public readonly string $name;
-    public readonly array $details;
-    public readonly string $id_type;
-    public readonly string $rule_id;
-    public readonly ?string $error;
+    public string $name;
+    public array $details;
+    public string $id_type;
+    public string $rule_id;
+    public ?string $error;
 
-    public readonly string $__raw_result;
-    public readonly array $__evaluation;
+    public string $__raw_result;
+    public array $__evaluation;
 
     protected function __construct(string $raw_result, $result)
     {

@@ -4,8 +4,8 @@ namespace Statsig\EvaluationTypes;
 
 class Experiment extends BaseEvaluation
 {
-    public readonly array $value;
-    public readonly ?string $groupName;
+    public array $value;
+    public ?string $groupName;
 
     public function __construct(string $raw_result)
     {
