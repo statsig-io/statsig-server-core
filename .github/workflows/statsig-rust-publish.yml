@@ -26,12 +26,12 @@ jobs:
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Package Statsig Lib and Grpc
+      - name: Publish Statsig Grpc
+        run: |
+          cargo package --allow-dirty --package sigstat-grpc
+          cargo publish --allow-dirty --package sigstat-grpc
+
+      - name: Publish Statsig Lib
         run: |
           cargo package --allow-dirty --package sigstat
-          cargo package --allow-dirty --package sigstat-grpc
-
-      - name: Publish Statsig Lib and Grpc
-        run: |
-          cargo publish --allow-dirty --package sigstat-grpc
           cargo publish --allow-dirty --package sigstat
