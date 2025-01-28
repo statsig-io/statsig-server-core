@@ -1,12 +1,19 @@
+import {
+  Distro,
+  Platform,
+  buildDockerImage,
+  getDockerImageTag,
+  getPlatformInfo,
+} from '@/utils/docker_utils.js';
 import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { execSync } from 'child_process';
 import { Command } from 'commander';
 
 type Options = {
-  rebuildOpenssl?: boolean;
-  target?: string;
-  release?: boolean;
+  release: boolean;
+  platform: Platform;
+  distro: Distro;
   out?: string;
   skipDockerBuild: boolean;
 };
@@ -17,13 +24,22 @@ export class PyBuild extends Command {
 
     this.description('Builds the statsig-pyo3 package');
 
-    this.requiredOption(
-      '--target, <string>',
-      'Which target to build for, eg x86_64-apple-darwin',
+    this.option(
+      '-p, --platform <string>',
+      'The platform to build for, e.g. x64 or arm64',
+      'arm64',
     );
-    this.option('--rebuild-openssl', 'Include vendored openssl with the build');
-    this.option('--release', 'Build in release mode');
+
+    this.option('-r, --release', 'Build in release mode', false);
+
+    this.option(
+      '-d, --distro <string>',
+      'The distro to build for. eg debian',
+      'debian',
+    );
+
     this.option('--out, <string>', 'Output directory');
+
     this.option(
       '-sdb, --skip-docker-build',
       'Skip building the docker image',
@@ -37,47 +53,25 @@ export class PyBuild extends Command {
     Log.title('Building statsig-pyo3');
 
     Log.stepBegin('Configuration');
-    Log.stepProgress(`Target: ${options.target ?? 'Not Specified'}`);
-    Log.stepProgress(`For Release: ${options.release ?? false}`);
+    Log.stepProgress(`Distribution: ${options.distro}`);
+    Log.stepProgress(`Platform: ${options.platform}`);
+    Log.stepProgress(`For Release: ${options.release}`);
     Log.stepProgress(`Out Directory: ${options.out ?? 'Not Specified'}`);
-    Log.stepEnd(`Rebuild OpenSSL: ${options.rebuildOpenssl ?? false}`);
-
-    const image = getImage(options);
-    const platform = getPlatform(options);
+    Log.stepEnd(`Skip Docker Build: ${options.skipDockerBuild}`);
 
     if (!options.skipDockerBuild) {
-      await buildDockerImage(image, platform);
+      buildDockerImage(options.distro, options.platform);
     }
 
-    await buildPyo3Package(image, platform, options);
+    buildPyo3Package(options);
 
     Log.conclusion('Successfully built statsig-pyo3');
   }
 }
 
-async function buildDockerImage(image: string, platform: string) {
-  const pyDir = getRootedPath('statsig-pyo3');
-
-  const command = [
-    'docker build .',
-    `--platform ${platform}`,
-    `-t statsig/core-sdk-compiler:${image}`,
-    `-f ${getRootedPath(`cli/src/docker/Dockerfile.${image}`)}`,
-  ].join(' ');
-
-  Log.stepBegin(`Building Docker Image ${image}`);
-  Log.stepProgress(command);
-
-  execSync(command, { cwd: pyDir, stdio: 'inherit' });
-
-  Log.stepEnd(`Built Docker Image ${image}`);
-}
-
-async function buildPyo3Package(
-  image: string,
-  platform: string,
-  options: Options,
-) {
+function buildPyo3Package(options: Options) {
+  const { docker } = getPlatformInfo(options.platform);
+  const tag = getDockerImageTag(options.distro, options.platform);
   const pyDir = getRootedPath('statsig-pyo3');
 
   const maturinCommand = [
@@ -88,39 +82,16 @@ async function buildPyo3Package(
 
   const dockerCommand = [
     'docker run --rm -it',
-    `--platform ${platform}`,
+    `--platform ${docker}`,
     `-v "${BASE_DIR}":/app`,
-    `statsig/core-sdk-compiler:${image}`,
+    tag,
     `"cd /app/statsig-pyo3 && ${maturinCommand}"`,
   ].join(' ');
 
-  Log.stepBegin(`Building Pyo3 Package ${image}`);
+  Log.stepBegin(`Building Pyo3 Package ${tag}`);
   Log.stepProgress(dockerCommand);
 
   execSync(dockerCommand, { cwd: pyDir, stdio: 'inherit' });
 
-  Log.stepEnd(`Built Pyo3 Package ${image}`);
-}
-
-function getPlatform(options: Options) {
-  switch (options.target) {
-    case 'amazonlinux2023-arm64':
-    case 'amazonlinux2-arm64':
-      return 'linux/arm64';
-
-    case 'amazonlinux2023-x86_64':
-    case 'amazonlinux2-x86_64':
-      return 'linux/amd64';
-
-    default:
-      throw new Error('Target is required');
-  }
-}
-
-function getImage(options: Options) {
-  if (options.target) {
-    return options.target;
-  }
-
-  throw new Error('Target is required');
+  Log.stepEnd(`Built Pyo3 Package ${tag}`);
 }

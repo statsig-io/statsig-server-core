@@ -1,5 +1,8 @@
+# TODO: This file is deprecated. 
+# Remove it once plain "Dockerfile.amazonlinux2" is used everywhere.
+
 # https://docs.aws.amazon.com/linux/al2/ug/amzn1-amzn2-container.html
-FROM amazonlinux:2 AS amazonlinux2-x86_64
+FROM amazonlinux:2
 
 RUN yum update -y \
     && yum install -y \
@@ -18,10 +21,9 @@ RUN pip3 install maturin patchelf
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-ENV TARGET=x86_64-unknown-linux-gnu
-RUN rustup target add $TARGET
+RUN rustup target add x86_64-unknown-linux-gnu
+RUN rustup target add aarch64-unknown-linux-gnu
 
 ENV CARGO_TERM_COLOR=always
-ENV CARGO_TARGET_DIR=/app/target/amazonlinux2-x86_64
 
 ENTRYPOINT ["sh", "-c"]

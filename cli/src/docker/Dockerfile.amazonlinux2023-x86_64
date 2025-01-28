@@ -1,3 +1,6 @@
+# TODO: This file is deprecated. 
+# Remove it once plain "Dockerfile.amazonlinux2023" is used everywhere.
+
 # https://docs.aws.amazon.com/linux/al2/ug/amzn1-amzn2-container.html
 FROM --platform=amd64 amazonlinux:2023 AS amazonlinux2023-x86_64
 

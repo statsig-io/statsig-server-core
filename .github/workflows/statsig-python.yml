@@ -24,14 +24,15 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - target: amazonlinux2023-arm64
-            platform: linux/arm64
+          - distro: debian
+            platform: arm64
             runner: statsig-ubuntu-arm64
             always_build: true
 
-          - target: amazonlinux2023-x86_64
-            platform: linux/amd64
+          - distro: debian
+            platform: amd64
             runner: ubuntu-latest
+            always_build: true
 
     runs-on: ${{ matrix.config.runner }}
     timeout-minutes: 15
@@ -57,21 +58,21 @@ jobs:
         with:
           dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
           dockerhub_password: ${{ secrets.DOCKERHUB_TOKEN }}
-          dockerfile_path: cli/src/docker/Dockerfile.${{ matrix.config.target }}
-          docker_image_tag: statsig/core-sdk-compiler:${{ matrix.config.target }}
+          dockerfile_path: cli/src/docker/Dockerfile.${{ matrix.config.distro }}
+          docker_image_tag: statsig/server-core-${{ matrix.config.distro }}-${{ matrix.config.platform }}
           gh_token: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
-          platform: ${{ matrix.config.platform }}
+          platform: linux/${{ matrix.config.platform }}
 
       - name: Build for Release
         if: ${{ env.SHOULD_BUILD == 'true' }}
         shell: 'script --return --quiet --log-out /dev/null --command "bash -e {0}"'
-        run: ./run py-build --target ${{ matrix.config.target }} --release --out dist --skip-docker-build
+        run: ./run py-build --distro ${{ matrix.config.distro }} --platform ${{ matrix.config.platform }} --release --out dist --skip-docker-build
 
       - name: Upload wheels
         if: ${{ env.SHOULD_BUILD == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.config.target }}
+          name: wheels-${{ matrix.config.distro }}-${{ matrix.config.platform }}
           if-no-files-found: error
           path: statsig-pyo3/dist
 
