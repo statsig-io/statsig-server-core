@@ -8,7 +8,7 @@ const TEST_COMMANDS: Record<string, string> = {
   python: [
     'cd /app/statsig-pyo3',
     'maturin build',
-    'pip install ../target/wheels/statsig_python_core*manylinux*.whl --force-reinstall --break-system-packages',
+    'pip install ../target/wheels/statsig_python_core*manylinux*.whl --force-reinstall',
     'python3 -m pytest tests --capture=no -v',
   ].join(' && '),
   java: [
