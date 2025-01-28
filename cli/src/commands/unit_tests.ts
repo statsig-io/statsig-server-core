@@ -1,7 +1,8 @@
 import { buildDockerImage } from '@/utils/docker_utils.js';
 import { BASE_DIR } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
-import { execSync } from 'child_process';
+import chalk from 'chalk';
+import { exec, execSync } from 'child_process';
 import { Command } from 'commander';
 
 const TEST_COMMANDS: Record<string, string> = {
@@ -72,30 +73,88 @@ export class UnitTests extends Command {
 
     const languages = lang === 'all' ? Object.keys(TEST_COMMANDS) : [lang];
 
-    for (const lang of languages) {
-      await runTestInDockerImage(lang);
-    }
+    await Promise.all(
+      languages.map(async (lang) => {
+        await runTestInDockerImage(lang);
+      }),
+    );
 
     Log.conclusion('Tests Ran');
   }
 }
 
-async function runTestInDockerImage(lang: string) {
-  Log.title(`Running tests for ${lang}`);
+class BufferedOutput {
+  private buffer: string[] = [];
 
-  const command = [
-    'docker run --rm -it',
-    `-v "${BASE_DIR}":/app`,
-    `-v "/tmp:/tmp"`,
-    `-v "/tmp/statsig-server-core/cargo-registry:/usr/local/cargo/registry"`,
-    `statsig/server-core-debian`,
-    `"${TEST_COMMANDS[lang]}"`, // && while true; do sleep 1000; done
-  ].join(' ');
+  constructor(
+    private tag: string,
+    private kind: 'stdout' | 'stderr',
+  ) {}
 
-  Log.stepBegin(`Executing docker command for ${lang}`);
-  Log.stepProgress(command);
+  add(line: string) {
+    this.buffer.push(line);
 
-  execSync(command, { cwd: BASE_DIR, stdio: 'inherit' });
+    if (this.buffer.length >= 10) {
+      this.flush();
+    }
+  }
 
-  Log.stepEnd(`Tests completed for ${lang}`);
+  flush() {
+    for (const line of this.buffer) {
+      if (this.kind === 'stdout') {
+        console.log(this.tag, line);
+      } else {
+        console.error(this.tag, line);
+      }
+    }
+
+    this.buffer.length = 0;
+  }
+}
+
+function runTestInDockerImage(lang: string): Promise<void> {
+  const tag = chalk.blue(`[${lang}]`);
+
+  return new Promise((resolve, reject) => {
+    Log.title(`Running tests for ${lang}`);
+    const command = [
+      'docker run --rm',
+      `-v "${BASE_DIR}":/app`,
+      `-v "/tmp:/tmp"`,
+      `-v "/tmp/statsig-server-core/cargo-registry:/usr/local/cargo/registry"`,
+      `statsig/server-core-debian`,
+      `"${TEST_COMMANDS[lang]}"`, // && while true; do sleep 1000; done
+    ].join(' ');
+
+    Log.stepBegin(`${tag} Executing docker command for ${lang}`);
+    Log.stepProgress(`${tag} ${command}`);
+
+    const stdoutBuffer = new BufferedOutput(tag, 'stdout');
+    const stderrBuffer = new BufferedOutput(tag, 'stderr');
+
+    const child = exec(
+      command,
+      { cwd: BASE_DIR, shell: '/bin/bash' },
+      (error, stdout, stderr) => {
+        stdoutBuffer.flush();
+        stderrBuffer.flush();
+
+        if (error) {
+          Log.stepEnd(`${tag} Tests failed for ${lang}`);
+          reject(error);
+        } else {
+          Log.stepEnd(`${tag} Tests completed for ${lang}`);
+          resolve();
+        }
+      },
+    );
+
+    child.stdout?.on('data', (data) => {
+      stdoutBuffer.add(data.toString().trim());
+    });
+
+    child.stderr?.on('data', (data) => {
+      stderrBuffer.add(data.toString().trim());
+    });
+  });
 }
