@@ -34,6 +34,16 @@ jobs:
             runner: ubuntu-latest
             always_build: true
 
+          - distro: alpine
+            platform: amd64
+            runner: ubuntu-latest
+            always_build: true
+
+          - distro: alpine
+            platform: arm64
+            runner: statsig-ubuntu-arm64
+            always_build: true
+
     runs-on: ${{ matrix.config.runner }}
     timeout-minutes: 15
     env:

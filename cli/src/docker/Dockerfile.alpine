@@ -1,0 +1,21 @@
+FROM alpine:latest
+
+RUN apk update && apk add --no-cache \
+    # Common Deps
+    bash curl zsh openjdk11-jre jq protobuf pkgconfig \
+    openssl-dev git cargo build-base rust musl-dev \
+    # Python Deps
+    python3 py3-pip python3-dev \
+    # PHP Deps
+    php php-curl php-xml composer \
+    # Node Deps
+    nodejs npm
+
+# Python Setup
+RUN pip3 install pytest maturin patchelf pytest_httpserver --break-system-packages
+
+# Node Setup
+RUN npm install -g pnpm@7.32.4 prettier@3.4.2
+
+# Set the entrypoint
+ENTRYPOINT ["sh", "-c"]
