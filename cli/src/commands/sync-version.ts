@@ -3,17 +3,20 @@ import { Log, printTitle } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
 import chalk from 'chalk';
 import { execSync } from 'child_process';
-import { Command } from 'commander';
 import fs from 'fs';
 import { glob } from 'glob';
 
-export class SyncVersion extends Command {
+import { CommandBase } from './command_base.js';
+
+export class SyncVersion extends CommandBase {
   constructor() {
-    super('sync-version');
+    super(import.meta.url);
 
     this.description('Sync the version across all relevant files');
+  }
 
-    this.action(() => SyncVersion.sync());
+  override async run() {
+    SyncVersion.sync();
   }
 
   static sync() {

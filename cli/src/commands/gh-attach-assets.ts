@@ -1,4 +1,7 @@
-import { getRootedPath } from '@/utils/file_utils.js';
+import {
+  getFilenameWithoutExtension,
+  getRootedPath,
+} from '@/utils/file_utils.js';
 import {
   deleteReleaseAssetWithName,
   getOctokit,
@@ -7,17 +10,18 @@ import {
 } from '@/utils/octokit_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
-import { Command } from 'commander';
 import path from 'path';
+
+import { CommandBase } from './command_base.js';
 
 type Options = {
   repo: string;
   release: string;
 };
 
-export class GhAttachAssets extends Command {
+export class GhAttachAssets extends CommandBase {
   constructor() {
-    super('gh-attach-asset');
+    super(import.meta.url);
 
     this.description('Attaches assets to a release');
 
@@ -27,11 +31,9 @@ export class GhAttachAssets extends Command {
     );
 
     this.argument('<asset-path>', 'The path to the asset to attach');
-
-    this.action(this.run.bind(this));
   }
 
-  async run(asset: string, { repo }: Options) {
+  override async run(asset: string, { repo }: Options) {
     Log.title('Attaching Asset to Release');
 
     const version = getRootVersion();

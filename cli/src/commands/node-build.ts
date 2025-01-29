@@ -7,8 +7,9 @@ import {
 } from '@/utils/docker_utils.js';
 import { BASE_DIR } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
-import { Command } from 'commander';
 import { execSync } from 'node:child_process';
+
+import { CommandBase } from './command_base.js';
 
 type Options = {
   release: boolean;
@@ -17,9 +18,9 @@ type Options = {
   distro: Distro;
 };
 
-export class NodeBuild extends Command {
+export class NodeBuild extends CommandBase {
   constructor() {
-    super('node-build');
+    super(import.meta.url);
 
     this.description('Builds the statsig-napi package');
     this.option('--release', 'Build in release mode', false);
@@ -40,8 +41,6 @@ export class NodeBuild extends Command {
       'The distro to build for. eg debian',
       'debian',
     );
-
-    this.action(this.run.bind(this));
   }
 
   async run(options: Options) {

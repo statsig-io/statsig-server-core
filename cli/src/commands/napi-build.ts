@@ -2,7 +2,8 @@ import { BASE_DIR, ensureEmptyDir, getRootedPath } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import chalk from 'chalk';
 import { ExecSyncOptionsWithStringEncoding, execSync } from 'child_process';
-import { Command } from 'commander';
+
+import { CommandBase } from './command_base.js';
 
 type Options = {
   release?: boolean;
@@ -13,9 +14,9 @@ type Options = {
   target?: string;
 };
 
-export class NapiBuild extends Command {
+export class NapiBuild extends CommandBase {
   constructor() {
-    super('napi-build');
+    super(import.meta.url);
 
     this.description('Builds the statsig-napi package');
     this.option('--release', 'Build in release mode');
@@ -27,11 +28,9 @@ export class NapiBuild extends Command {
       'Which target to build for, eg x86_64-apple-darwin',
     );
     this.option('--skip-js-optimizations', 'Skip JS optimizations');
-
-    this.action(this.run.bind(this));
   }
 
-  async run(options: Options) {
+  override async run(options: Options) {
     Log.title('Building statsig-napi');
 
     Log.stepBegin('Configuration');

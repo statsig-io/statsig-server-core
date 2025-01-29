@@ -5,6 +5,8 @@ import chalk from 'chalk';
 import { exec, execSync } from 'child_process';
 import { Command } from 'commander';
 
+import { CommandBase } from './command_base.js';
+
 const TEST_COMMANDS: Record<string, string> = {
   python: [
     'cd /app/statsig-pyo3',
@@ -39,9 +41,9 @@ type Options = {
   skipDockerBuild: boolean;
 };
 
-export class UnitTests extends Command {
+export class UnitTests extends CommandBase {
   constructor() {
-    super('unit-tests');
+    super(import.meta.url);
 
     this.description('Run the tests for all relevant files');
 
@@ -56,11 +58,9 @@ export class UnitTests extends Command {
       'Skip building the docker image',
       false,
     );
-
-    this.action(this.run.bind(this));
   }
 
-  async run(lang: string, options: Options) {
+  override async run(lang: string, options: Options) {
     Log.title('Running Tests');
 
     Log.stepBegin('Configuration');

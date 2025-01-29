@@ -1,4 +1,4 @@
-import { BASE_DIR } from '@/utils/file_utils.js';
+import { BASE_DIR, getFilenameWithoutExtension } from '@/utils/file_utils.js';
 import {
   commitAndPushChanges,
   getCurrentBranchName,
@@ -16,7 +16,8 @@ import { getRootVersion, setRootVersion } from '@/utils/toml_utils.js';
 import chalk from 'chalk';
 import { Command } from 'commander';
 
-import { SyncVersion } from './sync_version.js';
+import { CommandBase } from './command_base.js';
+import { SyncVersion } from './sync-version.js';
 
 type Options = {
   major?: boolean;
@@ -26,9 +27,9 @@ type Options = {
   doNotPush?: boolean;
 };
 
-export class BumpVersion extends Command {
+export class BumpVersion extends CommandBase {
   constructor() {
-    super('bump-version');
+    super(import.meta.url);
 
     this.description('Bump the version of the SDK');
 
@@ -38,11 +39,9 @@ export class BumpVersion extends Command {
     this.option('--beta', 'Bump the beta version');
     this.option('--do-not-push', 'Do not push the changes to the remote');
     this.argument('[string]', 'The version to bump to');
-
-    this.action(this.run.bind(this));
   }
 
-  async run(providedVersion: string | undefined, options: Options) {
+  override async run(providedVersion: string | undefined, options: Options) {
     printTitle('Bumping Version');
 
     printStepBegin('Getting current version');

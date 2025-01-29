@@ -7,8 +7,9 @@ import {
   getFfiBinarySizes,
 } from '@/utils/size_report_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
-import { Command } from 'commander';
 import { Octokit } from 'octokit';
+
+import { CommandBase } from './command_base.js';
 
 const ONLY_REPORT_ON = [
   'statsig-ffi-aarch64-apple-darwin',
@@ -16,18 +17,16 @@ const ONLY_REPORT_ON = [
   'statsig-ffi-amazonlinux2023-arm64',
 ];
 
-export class SizeReport extends Command {
+export class SizeReport extends CommandBase {
   constructor() {
-    super('size-report');
+    super(import.meta.url);
 
     this.description('Reports on the binary size of the ffi as PR comments');
 
     this.argument('<target>', 'The os/arch target to report on');
-
-    this.action(this.run.bind(this));
   }
 
-  async run(target: string) {
+  override async run(target: string) {
     Log.title('Reporting on size changes');
 
     const prNumber = getPullRequestNumber();

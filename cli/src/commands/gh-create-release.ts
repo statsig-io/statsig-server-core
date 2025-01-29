@@ -6,19 +6,19 @@ import {
 } from '@/utils/octokit_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
-import { Command } from 'commander';
 
-export class GhCreateRelease extends Command {
+import { CommandBase } from './command_base.js';
+
+export class GhCreateRelease extends CommandBase {
   constructor() {
-    super('gh-create-release');
+    super(import.meta.url);
 
     this.description('Creates a new release on GitHub');
 
     this.argument('<repository>', 'The repository to create the release for');
-    this.action(this.run.bind(this));
   }
 
-  async run(repository: string) {
+  override async run(repository: string) {
     Log.title('Creating GitHub Release');
 
     const version = getRootVersion();

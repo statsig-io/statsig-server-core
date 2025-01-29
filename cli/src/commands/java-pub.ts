@@ -7,13 +7,14 @@ import {
 } from '@/utils/publish_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
-import { Command } from 'commander';
+
+import { CommandBase } from './command_base.js';
 
 const TEMP_DIR = '/tmp/statsig-java-build';
 
-export class JavaPub extends Command {
+export class JavaPub extends CommandBase {
   constructor() {
-    super('java-pub');
+    super(import.meta.url);
 
     this.description('Publishes the statsig-java package to Maven');
 
@@ -21,11 +22,9 @@ export class JavaPub extends Command {
       '<repo>',
       'The name of the repository, e.g. private-statsig-server-core',
     );
-
-    this.action(this.run.bind(this));
   }
 
-  async run(repo: string) {
+  override async run(repo: string) {
     Log.title('Publishing statsig-java to Maven');
 
     Log.stepBegin('Configuration');

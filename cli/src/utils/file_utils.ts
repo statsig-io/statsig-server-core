@@ -8,6 +8,10 @@ const __dirname = path.dirname(__filename); // get the name of the directory
 
 export const BASE_DIR = path.resolve(__dirname, '..', '..', '..');
 
+export function getFilenameWithoutExtension(filename: string) {
+  return path.basename(filename, path.extname(filename));
+}
+
 export function getRootedPath(filepath: string) {
   return path.resolve(BASE_DIR, filepath);
 }

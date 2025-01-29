@@ -10,13 +10,15 @@ import { readFileSync } from 'fs';
 import { glob } from 'glob';
 import { basename } from 'path';
 
+import { CommandBase } from './command_base.js';
+
 type Options = {
   output: string;
 };
 
-export class ZipFiles extends Command {
+export class ZipFiles extends CommandBase {
   constructor() {
-    super('zip-files');
+    super(import.meta.url);
 
     this.description('Bump the version of the SDK');
 
@@ -26,10 +28,9 @@ export class ZipFiles extends Command {
     );
 
     this.argument('<pattern>', 'Glob pattern matching files to zip');
-    this.action(this.run.bind(this));
   }
 
-  async run(pattern: string, options: Options) {
+  override async run(pattern: string, options: Options) {
     Log.title('Zipping Files');
 
     Log.stepBegin('Configuration');

@@ -9,9 +9,10 @@ import {
 import { Log } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
 import { execSync } from 'child_process';
-import { Command } from 'commander';
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
 import { glob } from 'glob';
+
+import { CommandBase } from './command_base.js';
 
 const TEMP_DIR = '/tmp/statsig-napi-build';
 
@@ -19,9 +20,9 @@ type Options = {
   production?: boolean;
 };
 
-export class NapiPub extends Command {
+export class NapiPub extends CommandBase {
   constructor() {
-    super('napi-pub');
+    super(import.meta.url);
 
     this.description('Publishes the statsig-napi package to NPM');
 
@@ -31,11 +32,9 @@ export class NapiPub extends Command {
     );
 
     this.option('--production', 'Whether to publish a production version');
-
-    this.action(this.run.bind(this));
   }
 
-  async run(repo: string, options: Options) {
+  override async run(repo: string, options: Options) {
     Log.title('Publishing statsig-napi to NPM');
 
     Log.stepBegin('Configuration');

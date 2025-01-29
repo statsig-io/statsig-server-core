@@ -8,7 +8,8 @@ import {
 import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { execSync } from 'child_process';
-import { Command } from 'commander';
+
+import { CommandBase } from './command_base.js';
 
 type Options = {
   release: boolean;
@@ -18,9 +19,9 @@ type Options = {
   skipDockerBuild: boolean;
 };
 
-export class PyBuild extends Command {
+export class PyBuild extends CommandBase {
   constructor() {
-    super('py-build');
+    super(import.meta.url);
 
     this.description('Builds the statsig-pyo3 package');
 
@@ -45,11 +46,9 @@ export class PyBuild extends Command {
       'Skip building the docker image',
       false,
     );
-
-    this.action(this.run.bind(this));
   }
 
-  async run(options: Options) {
+  override async run(options: Options) {
     Log.title('Building statsig-pyo3');
 
     Log.stepBegin('Configuration');

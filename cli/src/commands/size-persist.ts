@@ -8,21 +8,20 @@ import {
   getFfiBinarySizes,
 } from '@/utils/size_report_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
-import { Command } from 'commander';
 import { Octokit } from 'octokit';
 
-export class SizePersist extends Command {
+import { CommandBase } from './command_base.js';
+
+export class SizePersist extends CommandBase {
   constructor() {
-    super('size-persist');
+    super(import.meta.url);
 
     this.description('Keeps track of the binary size of the ffi');
 
     this.argument('<target>', 'The os/arch target to report on');
-
-    this.action(this.run.bind(this));
   }
 
-  async run(target: string) {
+  override async run(target: string) {
     Log.title('Reporting on size changes');
 
     if (!isRunningOnMain()) {

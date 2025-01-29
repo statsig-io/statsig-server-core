@@ -6,18 +6,17 @@ import {
 import { getBranchByVersion, getOctokit } from '@/utils/octokit_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
-import { Command } from 'commander';
 
-export class GhPushPhp extends Command {
+import { CommandBase } from './command_base.js';
+
+export class GhPushPhp extends CommandBase {
   constructor() {
-    super('gh-push-php');
+    super(import.meta.url);
 
     this.description('Pushes the statsig-php package to GitHub');
-
-    this.action(this.run.bind(this));
   }
 
-  async run() {
+  override async run() {
     Log.title('Pushing statsig-php to GitHub');
 
     const version = getRootVersion();
