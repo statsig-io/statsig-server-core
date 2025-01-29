@@ -25,22 +25,26 @@ jobs:
       matrix:
         config:
           - distro: debian
-            platform: arm64
-            runner: statsig-ubuntu-arm64
+            arch: x86_64
+            arch_alias: amd64
+            runner: ubuntu-latest
             always_build: true
 
           - distro: debian
-            platform: amd64
+            arch: aarch64
+            arch_alias: arm64
+            runner: statsig-ubuntu-arm64
+            always_build: true
+
+          - distro: alpine
+            arch: x86_64
+            arch_alias: amd64
             runner: ubuntu-latest
             always_build: true
 
           - distro: alpine
-            platform: amd64
-            runner: ubuntu-latest
-            always_build: true
-
-          - distro: alpine
-            platform: arm64
+            arch: aarch64
+            arch_alias: arm64
             runner: statsig-ubuntu-arm64
             always_build: true
 
@@ -69,20 +73,20 @@ jobs:
           dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
           dockerhub_password: ${{ secrets.DOCKERHUB_TOKEN }}
           dockerfile_path: cli/src/docker/Dockerfile.${{ matrix.config.distro }}
-          docker_image_tag: statsig/server-core-${{ matrix.config.distro }}-${{ matrix.config.platform }}
+          docker_image_tag: statsig/server-core-${{ matrix.config.distro }}-${{ matrix.config.arch }}
           gh_token: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
-          platform: linux/${{ matrix.config.platform }}
+          platform: linux/${{ matrix.config.arch_alias }}
 
       - name: Build for Release
         if: ${{ env.SHOULD_BUILD == 'true' }}
         shell: 'script --return --quiet --log-out /dev/null --command "bash -e {0}"'
-        run: ./run py-build --distro ${{ matrix.config.distro }} --platform ${{ matrix.config.platform }} --release --out dist --skip-docker-build
+        run: ./run py-build --distro ${{ matrix.config.distro }} --arch ${{ matrix.config.arch }} --release --out dist --skip-docker-build
 
       - name: Upload wheels
         if: ${{ env.SHOULD_BUILD == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.config.distro }}-${{ matrix.config.platform }}
+          name: wheels-${{ matrix.config.distro }}-${{ matrix.config.arch }}
           if-no-files-found: error
           path: statsig-pyo3/dist
 

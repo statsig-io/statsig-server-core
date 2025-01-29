@@ -1,11 +1,11 @@
 // DEPRECATED - Remove one the build.yml file is completed
 //
 import {
+  Arch,
   Distro,
-  Platform,
   buildDockerImage,
+  getArchInfo,
   getDockerImageTag,
-  getPlatformInfo,
 } from '@/utils/docker_utils.js';
 import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
@@ -15,7 +15,7 @@ import { CommandBase } from './command_base.js';
 
 type Options = {
   release: boolean;
-  platform: Platform;
+  arch: Arch;
   distro: Distro;
   out?: string;
   skipDockerBuild: boolean;
@@ -28,8 +28,8 @@ export class PyBuild extends CommandBase {
     this.description('Builds the statsig-pyo3 package');
 
     this.option(
-      '-p, --platform <string>',
-      'The platform to build for, e.g. x64 or arm64',
+      '-a, --arch <string>',
+      'The architecture to build for, e.g. x64 or arm64',
       'arm64',
     );
 
@@ -55,13 +55,13 @@ export class PyBuild extends CommandBase {
 
     Log.stepBegin('Configuration');
     Log.stepProgress(`Distribution: ${options.distro}`);
-    Log.stepProgress(`Platform: ${options.platform}`);
+    Log.stepProgress(`Architecture: ${options.arch}`);
     Log.stepProgress(`For Release: ${options.release}`);
     Log.stepProgress(`Out Directory: ${options.out ?? 'Not Specified'}`);
     Log.stepEnd(`Skip Docker Build: ${options.skipDockerBuild}`);
 
     if (!options.skipDockerBuild) {
-      buildDockerImage(options.distro, options.platform);
+      buildDockerImage(options.distro, options.arch);
     }
 
     buildPyo3Package(options);
@@ -71,8 +71,8 @@ export class PyBuild extends CommandBase {
 }
 
 function buildPyo3Package(options: Options) {
-  const { docker } = getPlatformInfo(options.platform);
-  const tag = getDockerImageTag(options.distro, options.platform);
+  const { docker } = getArchInfo(options.arch);
+  const tag = getDockerImageTag(options.distro, options.arch);
   const pyDir = getRootedPath('statsig-pyo3');
 
   const maturinCommand = [

@@ -1,6 +1,6 @@
 import {
+  getArchInfo,
   getDockerImageTag,
-  getPlatformInfo,
   isLinux,
 } from '@/utils/docker_utils.js';
 import { BASE_DIR } from '@/utils/file_utils.js';
@@ -12,8 +12,8 @@ import { BuilderOptions } from './builder-options.js';
 export function buildFfi(options: BuilderOptions) {
   Log.title(`Building statsig-ffi in Docker`);
 
-  const { docker } = getPlatformInfo(options.platform);
-  const tag = getDockerImageTag(options.distro, options.platform);
+  const { docker } = getArchInfo(options.arch);
+  const tag = getDockerImageTag(options.distro, options.arch);
 
   const cargoCommand = [
     'cargo build',

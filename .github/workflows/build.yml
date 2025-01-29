@@ -29,8 +29,8 @@ jobs:
         - [ ubuntu-latest,         alpine,   x86_64-unknown-linux-musl,   x86_64,   amd64 ]
         - [ statsig-ubuntu-arm64,  alpine,   aarch64-unknown-linux-musl,  aarch64,  arm64 ]
 
-        - [ macos-13,              macos,    x86_64-apple-darwin,         x86_64,   amd64 ]
-        - [ macos-13,              macos,    aarch64-apple-darwin,        aarch64,  arm64 ]
+        - [ macos-13,              macos,    x86_64-apple-darwin,         x86_64 ]
+        - [ macos-13,              macos,    aarch64-apple-darwin,        aarch64 ]
 
         - [ windows-latest,        windows,  x86_64-pc-windows-msvc,      x86_64,   x64 ]
         - [ windows-latest,        windows,  i686-pc-windows-msvc,        x86,      x86 ]
@@ -58,6 +58,17 @@ jobs:
           python-version: 3.x
           architecture: ${{ env.CFG_ARCH_ALIAS }}
 
+      - name: Build Docker Image
+        if: ${{ runner.os == 'Linux' }}
+        uses: ./.github/actions/build-docker-image
+        with:
+          dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+          dockerhub_password: ${{ secrets.DOCKERHUB_TOKEN }}
+          dockerfile_path: cli/src/docker/Dockerfile.${{ env.CFG_DISTRO }}
+          docker_image_tag: statsig/server-core-${{ env.CFG_DISTRO }}-${{ env.CFG_ARCH }}
+          gh_token: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
+          platform: linux/${{ env.CFG_ARCH_ALIAS }}
+
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
 
@@ -69,23 +80,12 @@ jobs:
           pip3 install maturin
           rustup target add ${{ env.CFG_TARGET }}
 
-      - name: Build Docker Image
-        if: ${{ runner.os == 'Linux' }}
-        uses: ./.github/actions/build-docker-image
-        with:
-          dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          dockerhub_password: ${{ secrets.DOCKERHUB_TOKEN }}
-          dockerfile_path: cli/src/docker/Dockerfile.${{ env.CFG_DISTRO }}
-          docker_image_tag: statsig/server-core-${{ env.CFG_DISTRO }}-${{ env.CFG_ARCH_ALIAS }}
-          gh_token: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
-          platform: linux/${{ env.CFG_ARCH_ALIAS }}
-
       - name: Build Package
         shell: bash
         run: |
           ./run build ${{ matrix.package }} \
             --distro ${{ env.CFG_DISTRO }} \
-            --platform ${{ env.CFG_ARCH }} \
+            --arch ${{ env.CFG_ARCH }} \
             --out-dir dist \
             --skip-docker-build \
             --release

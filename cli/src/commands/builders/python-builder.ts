@@ -1,6 +1,6 @@
 import {
+  getArchInfo,
   getDockerImageTag,
-  getPlatformInfo,
   isLinux,
 } from '@/utils/docker_utils.js';
 import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
@@ -10,8 +10,8 @@ import { execSync } from 'child_process';
 import { BuilderOptions } from './builder-options.js';
 
 export function buildPython(options: BuilderOptions) {
-  const { docker } = getPlatformInfo(options.platform);
-  const tag = getDockerImageTag(options.distro, options.platform);
+  const { docker } = getArchInfo(options.arch);
+  const tag = getDockerImageTag(options.distro, options.arch);
   const pyDir = getRootedPath('statsig-pyo3');
 
   const target = getTarget(options);
@@ -42,22 +42,22 @@ export function buildPython(options: BuilderOptions) {
 }
 
 function getTarget(options: BuilderOptions) {
-  const { name } = getPlatformInfo(options.platform);
+  const { name } = getArchInfo(options.arch);
 
   if (options.distro === 'macos') {
     switch (name) {
-      case 'arm64':
+      case 'aarch64':
         return 'aarch64-apple-darwin';
-      case 'amd64':
+      case 'x86_64':
         return 'x86_64-apple-darwin';
     }
   }
 
   if (options.distro === 'windows') {
     switch (name) {
-      case 'arm64':
+      case 'aarch64':
         return 'aarch64-pc-windows-msvc';
-      case 'amd64':
+      case 'x86_64':
         return 'x86_64-pc-windows-msvc';
       case 'x86':
         return 'i686-pc-windows-msvc';
