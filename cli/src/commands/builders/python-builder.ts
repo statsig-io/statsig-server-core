@@ -10,24 +10,44 @@ export function buildPython(options: BuilderOptions) {
   const tag = getDockerImageTag(options.distro, options.platform);
   const pyDir = getRootedPath('statsig-pyo3');
 
+  const target = getTarget(options);
+
   const maturinCommand = [
     'maturin build',
     options.release ? '--release' : '',
     options.outDir ? `--out ${options.outDir}` : '',
+    target ? `--target ${target}` : '',
   ].join(' ');
 
   const dockerCommand = [
-    'docker run --rm -it',
+    'docker run --rm',
     `--platform ${docker}`,
     `-v "${BASE_DIR}":/app`,
     tag,
     `"cd /app/statsig-pyo3 && ${maturinCommand}"`,
   ].join(' ');
 
-  Log.stepBegin(`Building Pyo3 Package ${tag}`);
-  Log.stepProgress(dockerCommand);
+  const command = options.distro !== 'macos' ? dockerCommand : maturinCommand;
 
-  execSync(dockerCommand, { cwd: pyDir, stdio: 'inherit' });
+  Log.stepBegin(`Building Pyo3 Package ${tag}`);
+  Log.stepProgress(command);
+
+  execSync(command, { cwd: pyDir, stdio: 'inherit' });
 
   Log.stepEnd(`Built Pyo3 Package ${tag}`);
+}
+
+function getTarget(options: BuilderOptions) {
+  if (options.distro !== 'macos') {
+    return '';
+  }
+
+  const { name } = getPlatformInfo(options.platform);
+  if (name === 'arm64') {
+    return 'aarch64-apple-darwin';
+  } else if (name === 'amd64') {
+    return 'x86_64-apple-darwin';
+  }
+
+  throw new Error(`Unsupported platform: ${options.platform}`);
 }

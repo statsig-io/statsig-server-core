@@ -9,11 +9,11 @@ export type PlatformInfo = {
   aliases: ['amd64', 'x86_64', 'x64'] | ['arm64', 'aarch64'];
 };
 
-export type Distro = 'debian' | 'amazonlinux2023' | 'amazonlinux2';
+export type Distro = 'debian' | 'amazonlinux2023' | 'amazonlinux2' | 'macos';
 export type Platform = 'x64' | 'arm64' | 'amd64' | 'x86_64' | 'aarch64';
 
 export function buildDockerImage(distro: Distro, platform: Platform = 'arm64') {
-  const { docker, name } = getPlatformInfo(platform);
+  const { docker } = getPlatformInfo(platform);
   const tag = getDockerImageTag(distro, platform);
 
   const command = [

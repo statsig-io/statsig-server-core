@@ -1,0 +1,101 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+  release:
+    types: [released, prereleased]
+
+
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        distro:
+          - debian
+          - alpine
+        package:
+          - python
+          - node
+        platform:
+          - [amd64, ubuntu-latest]
+          - [arm64, statsig-ubuntu-arm64]
+
+    runs-on: ${{ matrix.platform[1] }}
+    timeout-minutes: 15
+  
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install CLI Dependencies
+        run: cd cli && pnpm install
+
+      - name: Build Docker Image
+        uses: ./.github/actions/build-docker-image
+        with:
+          dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+          dockerhub_password: ${{ secrets.DOCKERHUB_TOKEN }}
+          dockerfile_path: cli/src/docker/Dockerfile.${{ matrix.distro }}
+          docker_image_tag: statsig/server-core-${{ matrix.distro }}-${{ matrix.platform[0] }}
+          gh_token: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
+          platform: linux/${{ matrix.platform[0] }}
+
+      - name: Build Package
+        run: |
+          ./run build ${{ matrix.package }} \
+            --distro ${{ matrix.distro }} \
+            --platform ${{ matrix.platform[0] }} \
+            --out-dir dist \
+            --skip-docker-build \
+            --release
+
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - aarch64
+          - x86_64
+        package:
+          - python
+          - node
+
+    runs-on: macos-13
+    timeout-minutes: 15
+  
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install CLI Dependencies
+        run: cd cli && pnpm install
+
+      - name: Install Build Dependencies
+        run: |
+          pip3 install maturin
+          rustup target add aarch64-apple-darwin
+          rustup target add x86_64-apple-darwin
+
+      - name: Build Package
+        run: |
+          ./run build ${{ matrix.package }} \
+            --distro macos \
+            --platform ${{ matrix.platform }} \
+            --out-dir dist \
+            --skip-docker-build \
+            --release

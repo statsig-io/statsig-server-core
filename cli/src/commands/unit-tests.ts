@@ -2,8 +2,7 @@ import { buildDockerImage } from '@/utils/docker_utils.js';
 import { BASE_DIR } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import chalk from 'chalk';
-import { exec, execSync } from 'child_process';
-import { Command } from 'commander';
+import { exec } from 'child_process';
 
 import { CommandBase } from './command_base.js';
 

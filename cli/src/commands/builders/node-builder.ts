@@ -10,22 +10,27 @@ export function buildNode(options: BuilderOptions) {
 
   const { docker } = getPlatformInfo(options.platform);
   const tag = getDockerImageTag(options.distro, options.platform);
+  const nodeDir = getRootedPath('statsig-node');
 
-  const command = [
-    'docker run --rm -it',
+  const nodeCommand = ['pnpm install', 'pnpm build'].join(' && ');
+
+  const dockerCommand = [
+    'docker run --rm',
     `--platform ${docker}`,
     `-v "${BASE_DIR}":/app`,
     `-v "/tmp:/tmp"`,
     `-v "/tmp/statsig-server-core/cargo-registry:/usr/local/cargo/registry"`,
     `-v "/tmp/statsig-server-core/npm-cache:/root/.npm"`,
     tag,
-    `"cd /app/statsig-node && pnpm build"`, // && while true; do sleep 1000; done
+    `"cd /app/statsig-node && ${nodeCommand}"`, // && while true; do sleep 1000; done
   ].join(' ');
+
+  const command = options.distro !== 'macos' ? dockerCommand : nodeCommand;
 
   Log.stepBegin(`Executing build command`);
   Log.stepProgress(command);
 
-  execSync(command, { cwd: BASE_DIR, stdio: 'inherit' });
+  execSync(command, { cwd: nodeDir, stdio: 'inherit' });
 
   Log.stepEnd(`Built statsig-node`);
 }

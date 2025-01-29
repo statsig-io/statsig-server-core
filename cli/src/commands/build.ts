@@ -64,6 +64,6 @@ export class Build extends CommandBase {
 
     BUILDERS[packageName](options);
 
-    Log.conclusion('Successfully built statsig-pyo3');
+    Log.conclusion(`Successfully built ${packageName}`);
   }
 }
