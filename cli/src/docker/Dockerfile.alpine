@@ -17,5 +17,7 @@ RUN pip3 install pytest maturin patchelf pytest_httpserver --break-system-packag
 # Node Setup
 RUN npm install -g pnpm@7.32.4 prettier@3.4.2
 
-# Set the entrypoint
+# Rust Setup
+ENV CARGO_TERM_COLOR=always
+
 ENTRYPOINT ["sh", "-c"]

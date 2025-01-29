@@ -2,15 +2,17 @@ import { buildDockerImage } from '@/utils/docker_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 
 import { BuilderOptions } from './builders/builder-options.js';
+import { buildFfi } from './builders/ffi-builder.js';
 import { buildNode } from './builders/node-builder.js';
 import { buildPython } from './builders/python-builder.js';
 import { CommandBase } from './command_base.js';
 
-const PACKAGES = ['python', 'node'] as const;
+const PACKAGES = ['python', 'node', 'ffi'] as const;
 
 const BUILDERS: Record<Package, (options: BuilderOptions) => void> = {
   python: buildPython,
   node: buildNode,
+  ffi: buildFfi,
 };
 
 type Package = (typeof PACKAGES)[number];
