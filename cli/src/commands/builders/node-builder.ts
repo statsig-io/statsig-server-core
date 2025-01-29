@@ -1,4 +1,8 @@
-import { getDockerImageTag, getPlatformInfo } from '@/utils/docker_utils.js';
+import {
+  getDockerImageTag,
+  getPlatformInfo,
+  isLinux,
+} from '@/utils/docker_utils.js';
 import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { execSync } from 'child_process';
@@ -25,7 +29,7 @@ export function buildNode(options: BuilderOptions) {
     `"cd /app/statsig-node && ${nodeCommand}"`, // && while true; do sleep 1000; done
   ].join(' ');
 
-  const command = options.distro !== 'macos' ? dockerCommand : nodeCommand;
+  const command = isLinux(options.distro) ? dockerCommand : nodeCommand;
 
   Log.stepBegin(`Executing build command`);
   Log.stepProgress(command);

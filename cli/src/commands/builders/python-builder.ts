@@ -1,4 +1,8 @@
-import { getDockerImageTag, getPlatformInfo } from '@/utils/docker_utils.js';
+import {
+  getDockerImageTag,
+  getPlatformInfo,
+  isLinux,
+} from '@/utils/docker_utils.js';
 import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { execSync } from 'child_process';
@@ -27,7 +31,7 @@ export function buildPython(options: BuilderOptions) {
     `"cd /app/statsig-pyo3 && ${maturinCommand}"`,
   ].join(' ');
 
-  const command = options.distro !== 'macos' ? dockerCommand : maturinCommand;
+  const command = isLinux(options.distro) ? dockerCommand : maturinCommand;
 
   Log.stepBegin(`Building Pyo3 Package ${tag}`);
   Log.stepProgress(command);
@@ -38,16 +42,28 @@ export function buildPython(options: BuilderOptions) {
 }
 
 function getTarget(options: BuilderOptions) {
-  if (options.distro !== 'macos') {
-    return '';
-  }
-
   const { name } = getPlatformInfo(options.platform);
-  if (name === 'arm64') {
-    return 'aarch64-apple-darwin';
-  } else if (name === 'amd64') {
-    return 'x86_64-apple-darwin';
+
+  if (options.distro === 'macos') {
+    switch (name) {
+      case 'arm64':
+        return 'aarch64-apple-darwin';
+      case 'amd64':
+        return 'x86_64-apple-darwin';
+    }
   }
 
-  throw new Error(`Unsupported platform: ${options.platform}`);
+  if (options.distro === 'windows') {
+    switch (name) {
+      case 'arm64':
+        return 'aarch64-pc-windows-msvc';
+      case 'amd64':
+        return 'x86_64-pc-windows-msvc';
+      case 'x86':
+        return 'i686-pc-windows-msvc';
+    }
+  }
+
+  // linux figures it out by itself
+  return '';
 }

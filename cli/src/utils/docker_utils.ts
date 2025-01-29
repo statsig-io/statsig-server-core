@@ -5,12 +5,21 @@ import { Log } from './teminal_utils.js';
 
 export type PlatformInfo = {
   docker: 'linux/amd64' | 'linux/arm64';
-  name: 'arm64' | 'amd64';
-  aliases: ['amd64', 'x86_64', 'x64'] | ['arm64', 'aarch64'];
+  name: 'arm64' | 'amd64' | 'x86';
+  aliases: ['amd64', 'x86_64', 'x64'] | ['arm64', 'aarch64'] | ['i686', 'x86'];
 };
 
-export type Distro = 'debian' | 'amazonlinux2023' | 'amazonlinux2' | 'macos';
-export type Platform = 'x64' | 'arm64' | 'amd64' | 'x86_64' | 'aarch64';
+export type Distro =
+  | 'debian'
+  | 'amazonlinux2023'
+  | 'amazonlinux2'
+  | 'macos'
+  | 'windows';
+export type Platform = 'x64' | 'arm64' | 'amd64' | 'x86_64' | 'aarch64' | 'x86';
+
+export function isLinux(distro: Distro): boolean {
+  return distro !== 'windows' && distro !== 'macos';
+}
 
 export function buildDockerImage(distro: Distro, platform: Platform = 'arm64') {
   const { docker } = getPlatformInfo(platform);
@@ -51,6 +60,14 @@ export function getPlatformInfo(platform: Platform): PlatformInfo {
       docker: 'linux/arm64',
       name: 'arm64',
       aliases: ['arm64', 'aarch64'],
+    };
+  }
+
+  if (platform === 'x86') {
+    return {
+      docker: 'ERROR_NOT_SUPPORTED' as any,
+      name: 'x86',
+      aliases: ['i686', 'x86'],
     };
   }
 

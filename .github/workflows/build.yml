@@ -99,3 +99,45 @@ jobs:
             --out-dir dist \
             --skip-docker-build \
             --release
+
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - x86
+          - x64
+        package:
+          - python
+          - node
+
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+          architecture: ${{ matrix.platform }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+      
+      - name: Install NPM Dependencies
+        shell: bash
+        run: cd cli && pnpm install
+
+      - name: Install Build Dependencies
+        shell: bash
+        run: |
+          pip3 install maturin
+     
+      - name: Build Package
+        shell: bash
+        run: |
+          ./run build ${{ matrix.package }} \
+            --distro windows \
+            --platform ${{ matrix.platform }} \
+            --out-dir dist \
+            --skip-docker-build \
+            --release
