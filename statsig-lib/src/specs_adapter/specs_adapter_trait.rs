@@ -51,7 +51,7 @@ pub trait SpecsAdapter: Send + Sync {
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr>;
 
-    fn schedule_background_sync(
+    async fn schedule_background_sync(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr>;

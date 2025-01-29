@@ -100,7 +100,7 @@ impl SpecsAdapter for MockSpecsAdapter {
         self.manually_sync_specs(lcut).await
     }
 
-    fn schedule_background_sync(
+    async fn schedule_background_sync(
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {

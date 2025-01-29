@@ -138,13 +138,17 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
         }
     }
 
-    fn schedule_background_sync(
+    async fn schedule_background_sync(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
         // TODO: we probably should have another option for config sync sources, but for now, we only have one
         for adapter in &self.adapters {
-            match adapter.to_owned().schedule_background_sync(statsig_runtime) {
+            match adapter
+                .to_owned()
+                .schedule_background_sync(statsig_runtime)
+                .await
+            {
                 Ok(_) => return Ok(()),
                 Err(_) => {
                     // Carry on and try  next adapter

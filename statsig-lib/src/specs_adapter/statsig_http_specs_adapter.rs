@@ -182,7 +182,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
         }
     }
 
-    fn schedule_background_sync(
+    async fn schedule_background_sync(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {

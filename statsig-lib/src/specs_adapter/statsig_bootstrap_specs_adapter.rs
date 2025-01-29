@@ -75,7 +75,7 @@ impl SpecsAdapter for StatsigBootstrapSpecsAdapter {
         Ok(())
     }
 
-    fn schedule_background_sync(
+    async fn schedule_background_sync(
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {

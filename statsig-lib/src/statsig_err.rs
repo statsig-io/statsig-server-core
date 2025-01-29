@@ -26,7 +26,9 @@ pub enum StatsigErr {
 
     // DataStore
     DataStoreFailure(String),
-    DataStoreSkipPoll,
+
+    // Skip poll
+    SpecsAdapterSkipPoll(String),
 
     ObservabilityClientFailure(String),
 
@@ -82,7 +84,9 @@ impl Display for StatsigErr {
 
             StatsigErr::ShutdownFailure => write!(f, "Failed to shutdown task scheduler"),
             StatsigErr::DataStoreFailure(message) => write!(f, "DataStore Error: {}", message),
-            StatsigErr::DataStoreSkipPoll => write!(f, "DataStore stops polling"),
+            StatsigErr::SpecsAdapterSkipPoll(adapter_name) => {
+                write!(f, "{} skips scheduling polling", adapter_name)
+            }
             StatsigErr::ObservabilityClientFailure(message) => {
                 write!(f, "ObservabilityClient Error: {}", message)
             }

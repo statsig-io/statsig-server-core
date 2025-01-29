@@ -12,3 +12,6 @@ pub mod mock_scrapi;
 
 #[allow(dead_code)]
 pub mod mock_specs_listener;
+
+#[allow(dead_code)]
+pub mod mock_data_store;

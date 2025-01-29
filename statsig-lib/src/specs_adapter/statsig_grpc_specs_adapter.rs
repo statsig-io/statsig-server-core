@@ -10,9 +10,9 @@ use chrono::Utc;
 use sigstat_grpc::statsig_grpc_client::StatsigGrpcClient;
 use std::cmp;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use tokio::sync::{broadcast, Notify};
+use tokio::sync::{broadcast, Mutex, Notify};
 use tokio::time::{sleep, timeout};
 
 use super::StatsigHttpSpecsAdapter;
@@ -54,8 +54,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
         let handle_id = self
             .clone()
             .spawn_grpc_streaming_thread(statsig_runtime, self.ops_stats.clone())
-            .await
-            .unwrap();
+            .await?;
 
         self.set_task_handle_id(handle_id)?;
         let mut rx = self.initialization_tx.subscribe();
@@ -74,11 +73,26 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
         }
     }
 
-    fn schedule_background_sync(
+    async fn schedule_background_sync(
         self: Arc<Self>,
-        _statsig_runtime: &Arc<StatsigRuntime>,
+        statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        // It should be already started wtihin spawn_grpc_streaming_thread
+        let ops_stats = self.ops_stats.clone();
+        let self_clone = self.clone();
+        let self_clone_clone = self.clone();
+
+        let lock = self_clone.task_handle_id.lock().await;
+        if lock.is_some() {
+            return Ok(());
+        }
+        drop(lock); // Release the lock before spawning
+
+        let task_id = self_clone_clone
+            .spawn_grpc_streaming_thread(statsig_runtime, ops_stats)
+            .await?;
+
+        let mut new_lock = self_clone.task_handle_id.lock().await;
+        *new_lock = Some(task_id);
         Ok(())
     }
 
@@ -106,7 +120,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
 
         let opt_handle_id = self
             .task_handle_id
-            .lock()
+            .try_lock()
             .map_err(|_| {
                 StatsigErr::GrpcError("Failed to acquire lock to running task".to_string())
             })?
@@ -309,7 +323,7 @@ impl StatsigGrpcSpecsAdapter {
     fn set_task_handle_id(&self, handle_id: tokio::task::Id) -> Result<(), StatsigErr> {
         let mut guard = self
             .task_handle_id
-            .lock()
+            .try_lock()
             .map_err(|e| StatsigErr::LockFailure(e.to_string()))?;
 
         *guard = Some(handle_id);

@@ -186,6 +186,7 @@ impl Statsig {
             if let Err(e) = adapter
                 .clone()
                 .schedule_background_sync(&self.statsig_runtime)
+                .await
             {
                 log_w!(TAG, "Failed to schedule idlist background job {}", e)
             }
@@ -205,10 +206,20 @@ impl Statsig {
                 e
             })?;
 
-        let _ = self
+        if let Err(e) = self
             .specs_adapter
             .clone()
-            .schedule_background_sync(&self.statsig_runtime);
+            .schedule_background_sync(&self.statsig_runtime)
+            .await
+        {
+            log_error_to_statsig_and_console!(
+                self.ops_stats,
+                TAG,
+                "Failed to schedule SpecAdapter({}) background job. Error: {}",
+                self.specs_adapter.get_type_name(),
+                e,
+            );
+        }
 
         self.set_default_environment_from_server();
         self.log_init_finish(

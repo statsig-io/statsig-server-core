@@ -28,7 +28,7 @@ pub mod specs_adapter_tests {
         };
         let adapter = Arc::new(StatsigGrpcSpecsAdapter::new("secret-key", &config));
         let mock_listener = Arc::new(MockSpecsListener::default());
-
+        adapter.initialize(mock_listener.clone());
         (mock_proxy, mock_listener, adapter)
     }
 
@@ -58,7 +58,7 @@ pub mod specs_adapter_tests {
     }
 
     #[tokio::test]
-    async fn test_reconnecting() {
+    async fn test_can_receive_specs_update() {
         let statsig_rt = StatsigRuntime::get_runtime();
         let (mock_proxy, mock_listener, adapter) = setup().await;
 
@@ -71,7 +71,7 @@ pub mod specs_adapter_tests {
 
         adapter.clone().start(&statsig_rt).await.unwrap();
 
-        mock_listener.wait_for_next_update().await.unwrap();
+        let a = mock_listener.wait_for_next_update().await;
 
         mock_proxy.clone().restart().await;
 
@@ -86,6 +86,13 @@ pub mod specs_adapter_tests {
 
         let received_update = mock_listener.force_get_most_recent_update();
         assert_eq!(received_update.data, "reconnected_sync");
-        assert_eq!(received_update.source, SpecsSource::Network);
+        assert_eq!(
+            received_update.source,
+            SpecsSource::Adapter("GRPC".to_string())
+        );
+        adapter
+            .shutdown(Duration::from_millis(1), &statsig_rt)
+            .await
+            .unwrap();
     }
 }

@@ -303,7 +303,7 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
         Ok(())
     }
 
-    fn schedule_background_sync(
+    async fn schedule_background_sync(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {

@@ -126,21 +126,17 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         }
     }
 
-    fn schedule_background_sync(
+    async fn schedule_background_sync(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
         // Support polling updates function should be pretty cheap. But we have to make it async
-        let should_schedule = tokio::task::block_in_place(|| {
-            statsig_runtime.get_handle().block_on(async {
-                self.data_adapter
-                    .support_polling_updates_for(RequestPath::RulesetsV2)
-                    .await
-            })
-        });
-
+        let should_schedule = self
+            .data_adapter
+            .support_polling_updates_for(RequestPath::RulesetsV2)
+            .await;
         if !should_schedule {
-            return Err(StatsigErr::DataStoreSkipPoll);
+            return Err(StatsigErr::SpecsAdapterSkipPoll(self.get_type_name()));
         }
 
         let weak_self = Arc::downgrade(&self);
