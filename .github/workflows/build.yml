@@ -8,31 +8,55 @@ on:
   release:
     types: [released, prereleased]
 
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  linux:
+  build:
     strategy:
       fail-fast: false
       matrix:
-        distro:
-          - debian
-          - alpine
-        package:
-          - python
-          - node
-          - ffi
-        platform:
-          - [amd64, ubuntu-latest]
-          - [arm64, statsig-ubuntu-arm64]
+       package:
+        - python
+        - node
+        - ffi
 
-    runs-on: ${{ matrix.platform[1] }}
+       config:
+        # [ runner,                distro,   target,                      arch,     ?arch_alias ]
+        - [ ubuntu-latest,         debian,   x86_64-unknown-linux-gnu,    x86_64,   amd64 ]
+        - [ statsig-ubuntu-arm64,  debian,   aarch64-unknown-linux-gnu,   aarch64,  arm64 ]
+
+        - [ ubuntu-latest,         alpine,   x86_64-unknown-linux-musl,   x86_64,   amd64 ]
+        - [ statsig-ubuntu-arm64,  alpine,   aarch64-unknown-linux-musl,  aarch64,  arm64 ]
+
+        - [ macos-13,              macos,    x86_64-apple-darwin,         x86_64,   amd64 ]
+        - [ macos-13,              macos,    aarch64-apple-darwin,        aarch64,  arm64 ]
+
+        - [ windows-latest,        windows,  x86_64-pc-windows-msvc,      x86_64,   x64 ]
+        - [ windows-latest,        windows,  i686-pc-windows-msvc,        x86,      x86 ]
+
     timeout-minutes: 15
-  
+    runs-on: ${{ matrix.config[0] }}
+
+    env:
+      CFG_RUNNER: ${{ matrix.config[0] }}
+      CFG_DISTRO: ${{ matrix.config[1] }}
+      CFG_TARGET: ${{ matrix.config[2] }}
+      CFG_ARCH: ${{ matrix.config[3] }}
+      CFG_ARCH_ALIAS: ${{ matrix.config[4] }}
+
     steps:
       - uses: actions/checkout@v4
+      
       - uses: pnpm/action-setup@v4
         with:
           version: 7.32.4
+
+      - uses: actions/setup-python@v5
+        if: ${{ runner.os == 'Windows' }}
+        with:
+          python-version: 3.x
+          architecture: ${{ env.CFG_ARCH_ALIAS }}
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -40,107 +64,40 @@ jobs:
       - name: Install CLI Dependencies
         run: cd cli && pnpm install
 
+      - name: Install Build Dependencies
+        run: |
+          pip3 install maturin
+          rustup target add ${{ env.CFG_TARGET }}
+
       - name: Build Docker Image
+        if: ${{ runner.os == 'Linux' }}
         uses: ./.github/actions/build-docker-image
         with:
           dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
           dockerhub_password: ${{ secrets.DOCKERHUB_TOKEN }}
-          dockerfile_path: cli/src/docker/Dockerfile.${{ matrix.distro }}
-          docker_image_tag: statsig/server-core-${{ matrix.distro }}-${{ matrix.platform[0] }}
+          dockerfile_path: cli/src/docker/Dockerfile.${{ env.CFG_DISTRO }}
+          docker_image_tag: statsig/server-core-${{ env.CFG_DISTRO }}-${{ env.CFG_ARCH_ALIAS }}
           gh_token: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
-          platform: linux/${{ matrix.platform[0] }}
+          platform: linux/${{ env.CFG_ARCH_ALIAS }}
 
-      - name: Build Package
-        run: |
-          ./run build ${{ matrix.package }} \
-            --distro ${{ matrix.distro }} \
-            --platform ${{ matrix.platform[0] }} \
-            --out-dir dist \
-            --skip-docker-build \
-            --release
-
-
-  macos:
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - aarch64
-          - x86_64
-        package:
-          - python
-          - node
-          - ffi
-
-    runs-on: macos-13
-    timeout-minutes: 15
-  
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 7.32.4
-
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: Install CLI Dependencies
-        run: cd cli && pnpm install
-
-      - name: Install Build Dependencies
-        run: |
-          pip3 install maturin
-          rustup target add aarch64-apple-darwin
-          rustup target add x86_64-apple-darwin
-
-      - name: Build Package
-        run: |
-          ./run build ${{ matrix.package }} \
-            --distro macos \
-            --platform ${{ matrix.platform }} \
-            --out-dir dist \
-            --skip-docker-build \
-            --release
-
-  windows:
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - x86
-          - x64
-        package:
-          - python
-          - node
-          - ffi
-
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-          architecture: ${{ matrix.platform }}
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 7.32.4
-      
-      - name: Install NPM Dependencies
-        shell: bash
-        run: cd cli && pnpm install
-
-      - name: Install Build Dependencies
-        shell: bash
-        run: |
-          pip3 install maturin
-     
       - name: Build Package
         shell: bash
         run: |
           ./run build ${{ matrix.package }} \
-            --distro windows \
-            --platform ${{ matrix.platform }} \
+            --distro ${{ env.CFG_DISTRO }} \
+            --platform ${{ env.CFG_ARCH }} \
             --out-dir dist \
             --skip-docker-build \
             --release
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.CFG_TARGET }}-${{ matrix.package }}
+          if-no-files-found: error
+          path: |
+            statsig-pyo3/dist/
+            statsig-node/build/
+            target/**/*statsig_ffi.so
+            target/**/*statsig_ffi.dylib
+            target/**/*statsig_ffi.dll
