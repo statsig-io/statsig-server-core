@@ -65,7 +65,7 @@ pub struct SpecsResponseFull {
     pub sdk_keys_to_app_ids: Option<HashMap<String, DynamicValue>>,
     pub hashed_sdk_keys_to_app_ids: Option<HashMap<String, DynamicValue>>,
     pub diagnostics: Option<HashMap<String, f64>>,
-    pub param_stores: Option<HashMap<String, HashMap<String, Parameter>>>,
+    pub param_stores: Option<HashMap<String, ParameterStore>>,
     pub sdk_configs: Option<HashMap<String, DynamicValue>>,
 }
 #[derive(Serialize, Deserialize, Clone)]
@@ -76,6 +76,13 @@ pub enum Parameter {
     DynamicConfig(DynamicConfigParameter),
     Experiment(ExperimentParameter),
     Layer(LayerParameter),
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ParameterStore {
+    pub parameters: HashMap<String, Parameter>,
+    #[serde(rename = "targetAppIDs")]
+    pub target_app_ids: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

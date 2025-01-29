@@ -470,7 +470,7 @@ impl Statsig {
         match store {
             Some(store) => ParameterStore {
                 name: parameter_store_name.to_string(),
-                parameters: store.clone(),
+                parameters: store.parameters.clone(),
                 details: EvaluationDetails::recognized(&data, &EvaluatorResult::default()),
                 _statsig_ref: self,
             },
