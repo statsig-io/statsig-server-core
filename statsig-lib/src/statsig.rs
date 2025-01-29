@@ -393,6 +393,8 @@ impl Statsig {
         };
 
         if layer.__disable_exposure {
+            self.event_logger
+                .increment_non_exposure_checks_count(layer.name.clone());
             return;
         }
 
