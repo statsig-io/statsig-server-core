@@ -11,7 +11,10 @@ use crate::evaluation::evaluator_result::{
 use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::initialize_response::InitializeResponse;
 use crate::spec_store::SpecStore;
-use crate::spec_types::Spec;
+use crate::spec_types::{
+    DynamicConfigParameter, ExperimentParameter, GateParameter, LayerParameter, Parameter,
+    ParameterStore, Spec,
+};
 use crate::statsig_metadata::StatsigMetadata;
 use crate::statsig_user_internal::{StatsigUserInternal, StatsigUserLoggable};
 use crate::{read_lock_or_else, OverrideAdapter};
@@ -96,7 +99,7 @@ impl ClientInitResponseFormatter {
                 continue;
             }
 
-            if get_should_filter_config_for_app(spec, &app_id, &options.client_sdk_key) {
+            if should_filter_spec_for_app(spec, &app_id, &options.client_sdk_key) {
                 continue;
             }
 
@@ -114,7 +117,7 @@ impl ClientInitResponseFormatter {
 
         let mut dynamic_configs = HashMap::new();
         for (name, spec) in data.values.dynamic_configs.iter() {
-            if get_should_filter_config_for_app(spec, &app_id, &options.client_sdk_key) {
+            if should_filter_spec_for_app(spec, &app_id, &options.client_sdk_key) {
                 continue;
             }
 
@@ -143,7 +146,7 @@ impl ClientInitResponseFormatter {
 
         let mut layer_configs = HashMap::new();
         for (name, spec) in &data.values.layer_configs {
-            if get_should_filter_config_for_app(spec, &app_id, &options.client_sdk_key) {
+            if should_filter_spec_for_app(spec, &app_id, &options.client_sdk_key) {
                 continue;
             }
 
@@ -165,6 +168,22 @@ impl ClientInitResponseFormatter {
             layer_configs.insert(hashed_name, evaluation);
         }
 
+        let mut param_stores = HashMap::new();
+        let stores = match &data.values.param_stores {
+            Some(stores) => stores,
+            None => &HashMap::new(),
+        };
+        for (name, store) in stores {
+            if should_filter_config_for_app(&store.target_app_ids, &app_id, &options.client_sdk_key)
+            {
+                continue;
+            }
+
+            let hashed_name = context.hashing.hash(name, hash_used);
+            let parameters = get_parameters_from_store(store, hash_used, &context);
+            param_stores.insert(hashed_name, parameters);
+        }
+
         let evaluated_keys = get_evaluated_keys(&user_internal);
         let metadata = StatsigMetadata::get_metadata();
         InitializeResponse {
@@ -181,12 +200,74 @@ impl ClientInitResponseFormatter {
                 ("sdkType".to_string(), metadata.sdk_type),
                 ("sdkVersion".to_string(), metadata.sdk_version),
             ]),
+            param_stores,
         }
     }
 }
 
-fn get_should_filter_config_for_app(
+fn get_parameters_from_store(
+    store: &ParameterStore,
+    hash_used: &HashAlgorithm,
+    context: &EvaluatorContext,
+) -> HashMap<String, Parameter> {
+    let mut parameters = HashMap::new();
+    for (param_name, param) in &store.parameters {
+        match param {
+            Parameter::StaticValue(_static_value) => {
+                parameters.insert(param_name.clone(), param.clone());
+            }
+            Parameter::Gate(gate) => {
+                let new_param = GateParameter {
+                    ref_type: gate.ref_type.clone(),
+                    param_type: gate.param_type.clone(),
+                    gate_name: context.hashing.hash(&gate.gate_name, hash_used),
+                    pass_value: gate.pass_value.clone(),
+                    fail_value: gate.fail_value.clone(),
+                };
+                parameters.insert(param_name.clone(), Parameter::Gate(new_param));
+            }
+            Parameter::DynamicConfig(dynamic_config) => {
+                let new_param = DynamicConfigParameter {
+                    ref_type: dynamic_config.ref_type.clone(),
+                    param_type: dynamic_config.param_type.clone(),
+                    config_name: context.hashing.hash(&dynamic_config.config_name, hash_used),
+                    param_name: dynamic_config.param_name.clone(),
+                };
+                parameters.insert(param_name.clone(), Parameter::DynamicConfig(new_param));
+            }
+            Parameter::Experiment(experiment) => {
+                let new_param = ExperimentParameter {
+                    ref_type: experiment.ref_type.clone(),
+                    param_type: experiment.param_type.clone(),
+                    experiment_name: context.hashing.hash(&experiment.experiment_name, hash_used),
+                    param_name: experiment.param_name.clone(),
+                };
+                parameters.insert(param_name.clone(), Parameter::Experiment(new_param));
+            }
+            Parameter::Layer(layer) => {
+                let new_param = LayerParameter {
+                    ref_type: layer.ref_type.clone(),
+                    param_type: layer.param_type.clone(),
+                    layer_name: context.hashing.hash(&layer.layer_name, hash_used),
+                    param_name: layer.param_name.clone(),
+                };
+                parameters.insert(param_name.clone(), Parameter::Layer(new_param));
+            }
+        }
+    }
+    parameters
+}
+
+fn should_filter_spec_for_app(
     spec: &Spec,
+    app_id: &Option<&DynamicValue>,
+    client_sdk_key: &Option<String>,
+) -> bool {
+    should_filter_config_for_app(&spec.target_app_ids, app_id, client_sdk_key)
+}
+
+fn should_filter_config_for_app(
+    target_app_ids: &Option<Vec<String>>,
     app_id: &Option<&DynamicValue>,
     client_sdk_key: &Option<String>,
 ) -> bool {
@@ -205,7 +286,7 @@ fn get_should_filter_config_for_app(
         None => return false,
     };
 
-    let target_app_ids = match &spec.target_app_ids {
+    let target_app_ids = match target_app_ids {
         Some(target_app_ids) => target_app_ids,
         None => return true,
     };
