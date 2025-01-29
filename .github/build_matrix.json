@@ -1,0 +1,63 @@
+{
+    "config": [
+      {
+        "target": "x86_64-unknown-linux-gnu",
+        "runner": "ubuntu-latest",
+        "os": "debian",
+        "arch": "x86_64",
+        "docker_arch": "amd64"
+      },
+      {
+        "target": "aarch64-unknown-linux-gnu",
+        "runner": "statsig-ubuntu-arm64",
+        "os": "debian",
+        "arch": "aarch64",
+        "docker_arch": "arm64"
+      },
+  
+      {
+        "target": "x86_64-unknown-linux-musl",
+        "runner": "ubuntu-latest",
+        "os": "alpine",
+        "arch": "x86_64",
+        "docker_arch": "amd64"
+      },
+      {
+        "target": "aarch64-unknown-linux-musl",
+        "runner": "statsig-ubuntu-arm64",
+        "os": "alpine",
+        "arch": "aarch64",
+        "docker_arch": "arm64"
+      },
+  
+      {
+        "target": "x86_64-apple-darwin",
+        "runner": "macos-13",
+        "os": "macos",
+        "arch": "x86_64"
+      },
+      {
+        "target": "aarch64-apple-darwin",
+        "runner": "macos-13",
+        "os": "macos",
+        "arch": "aarch64"
+      },
+  
+      {
+        "target": "x86_64-pc-windows-msvc",
+        "runner": "windows-latest",
+        "os": "windows",
+        "arch": "x86_64",
+        "py_arch": "x64"
+      },
+      {
+        "target": "i686-pc-windows-msvc",
+        "runner": "windows-latest",
+        "os": "windows",
+        "arch": "x86",
+        "py_arch": "x86"
+      }
+    ],
+    "package": ["python", "node", "ffi"]
+  }
+  

@@ -2,90 +2,81 @@ name: Build
 
 on:
   workflow_dispatch:
-  pull_request:
   push:
-    branches: [main]
-  release:
-    types: [released, prereleased]
+  pull_request:
 
 env:
+  IS_RELEASE: ${{ contains(github.ref, 'heads/release') }}
+  IS_BETA: ${{ contains(github.ref, 'heads/beta') }}
   CARGO_TERM_COLOR: always
 
 jobs:
+
+
+  # -------------------------------------------------------------------- [Plan]
+
+  plan:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    outputs:
+      build_matrix: ${{ steps.plan.outputs.build_matrix }}
+      should_publish: ${{ steps.plan.outputs.should_publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make Plan
+        id: plan
+        run: .github/build_plan.sh
+
+
+  # -------------------------------------------------------------------- [Build]
+
   build:
+    needs: plan
+
     strategy:
-      fail-fast: false
-      matrix:
-       package:
-        - python
-        - node
-        - ffi
-
-       config:
-        # [ runner,                distro,   target,                      arch,     ?arch_alias ]
-        - [ ubuntu-latest,         debian,   x86_64-unknown-linux-gnu,    x86_64,   amd64 ]
-        - [ statsig-ubuntu-arm64,  debian,   aarch64-unknown-linux-gnu,   aarch64,  arm64 ]
-
-        - [ ubuntu-latest,         alpine,   x86_64-unknown-linux-musl,   x86_64,   amd64 ]
-        - [ statsig-ubuntu-arm64,  alpine,   aarch64-unknown-linux-musl,  aarch64,  arm64 ]
-
-        - [ macos-13,              macos,    x86_64-apple-darwin,         x86_64 ]
-        - [ macos-13,              macos,    aarch64-apple-darwin,        aarch64 ]
-
-        - [ windows-latest,        windows,  x86_64-pc-windows-msvc,      x86_64,   x64 ]
-        - [ windows-latest,        windows,  i686-pc-windows-msvc,        x86,      x86 ]
+      matrix: ${{ fromJson(needs.plan.outputs.build_matrix) }}
 
     timeout-minutes: 15
-    runs-on: ${{ matrix.config[0] }}
-
-    env:
-      CFG_RUNNER: ${{ matrix.config[0] }}
-      CFG_DISTRO: ${{ matrix.config[1] }}
-      CFG_TARGET: ${{ matrix.config[2] }}
-      CFG_ARCH: ${{ matrix.config[3] }}
-      CFG_ARCH_ALIAS: ${{ matrix.config[4] }}
+    runs-on: ${{ matrix.config.runner }}
 
     steps:
       - uses: actions/checkout@v4
-      
+      - uses: Swatinem/rust-cache@v2
+
       - uses: pnpm/action-setup@v4
         with:
           version: 7.32.4
 
-      - uses: actions/setup-python@v5
+      - name: Install Build Dependencies
+        run: |
+          pnpm install --dir cli
+          pip3 install maturin
+          rustup target add ${{ matrix.config.target }}
+
+      - name: "[Windows Only] Setup Python"
         if: ${{ runner.os == 'Windows' }}
+        uses: actions/setup-python@v5
         with:
           python-version: 3.x
-          architecture: ${{ env.CFG_ARCH_ALIAS }}
+          architecture: ${{ matrix.config.py_arch }}
 
-      - name: Build Docker Image
+      - name: "[Linux Only] Build Docker Image"
         if: ${{ runner.os == 'Linux' }}
         uses: ./.github/actions/build-docker-image
         with:
           dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
           dockerhub_password: ${{ secrets.DOCKERHUB_TOKEN }}
-          dockerfile_path: cli/src/docker/Dockerfile.${{ env.CFG_DISTRO }}
-          docker_image_tag: statsig/server-core-${{ env.CFG_DISTRO }}-${{ env.CFG_ARCH }}
           gh_token: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
-          platform: linux/${{ env.CFG_ARCH_ALIAS }}
-
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: Install CLI Dependencies
-        run: cd cli && pnpm install
-
-      - name: Install Build Dependencies
-        run: |
-          pip3 install maturin
-          rustup target add ${{ env.CFG_TARGET }}
+          dockerfile_path: cli/src/docker/Dockerfile.${{ matrix.config.os }}
+          docker_image_tag: statsig/server-core-${{ matrix.config.os }}-${{ matrix.config.arch }}
+          platform: linux/${{ matrix.config.docker_arch }}
 
       - name: Build Package
         shell: bash
         run: |
           ./run build ${{ matrix.package }} \
-            --distro ${{ env.CFG_DISTRO }} \
-            --arch ${{ env.CFG_ARCH }} \
+            --distro ${{ matrix.config.os }} \
+            --arch ${{ matrix.config.arch }} \
             --out-dir dist \
             --skip-docker-build \
             --release
@@ -93,7 +84,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.CFG_TARGET }}-${{ matrix.package }}
+          name: ${{ matrix.config.target }}-${{ matrix.package }}
           if-no-files-found: error
           path: |
             statsig-pyo3/dist/
@@ -101,3 +92,25 @@ jobs:
             target/**/*statsig_ffi.so
             target/**/*statsig_ffi.dylib
             target/**/*statsig_ffi.dll
+
+
+  # -------------------------------------------------------------------- [Publish]
+
+  publish:
+    needs: [plan, build]
+    if: ${{ needs.plan.outputs.should_publish == 'true' }}
+    
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: 
+        package: ${{ fromJson(needs.plan.outputs.build_matrix).package }}
+    
+    steps:
+      - name: Download Artifacts
+        run: echo "Downloading..."
+
+      - name: Packaging
+        run: echo "Packaging..."
+
+      - name: Publish
+        run: echo "Publishing..."
