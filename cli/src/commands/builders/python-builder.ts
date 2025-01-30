@@ -18,7 +18,8 @@ export function buildPython(options: BuilderOptions) {
 
   const maturinCommand = [
     'maturin build',
-    options.release ? '--release' : '',
+    '--sdist',
+    options.release ? '--release --strip' : '',
     options.outDir ? `--out ${options.outDir}` : '',
     target ? `--target ${target}` : '',
   ].join(' ');

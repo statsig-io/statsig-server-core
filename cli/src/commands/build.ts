@@ -30,7 +30,7 @@ function createOption(
 ) {
   const opt = new Option(flags, description);
 
-  if (defaultValue) {
+  if (defaultValue != null) {
     opt.default(defaultValue);
   }
 

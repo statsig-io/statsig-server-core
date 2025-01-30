@@ -77,7 +77,7 @@ jobs:
           ./run build ${{ matrix.package }} \
             --distro ${{ matrix.config.os }} \
             --arch ${{ matrix.config.arch }} \
-            --out-dir dist \
+            --out-dir build \
             --skip-docker-build \
             --release
 
@@ -87,11 +87,11 @@ jobs:
           name: ${{ matrix.config.target }}-${{ matrix.package }}
           if-no-files-found: error
           path: |
-            statsig-pyo3/dist/
+            statsig-pyo3/build/
             statsig-node/build/
-            target/**/*statsig_ffi.so
-            target/**/*statsig_ffi.dylib
-            target/**/*statsig_ffi.dll
+            target/release/libstatsig_ffi.so
+            target/release/libstatsig_ffi.dylib
+            target/release/statsig_ffi.dll 
 
 
   # -------------------------------------------------------------------- [Publish]

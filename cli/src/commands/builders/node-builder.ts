@@ -16,7 +16,15 @@ export function buildNode(options: BuilderOptions) {
   const tag = getDockerImageTag(options.distro, options.arch);
   const nodeDir = getRootedPath('statsig-node');
 
-  const nodeCommand = ['pnpm install', 'pnpm build'].join(' && ');
+  const nodeCommand = [
+    'pnpm install &&',
+    'pnpm exec napi build',
+    '--platform',
+    '--js index.js',
+    '--dts index.d.ts',
+    options.release ? '--release --strip' : '',
+    `--output-dir ${options.outDir ?? './build'}`,
+  ].join(' ');
 
   const dockerCommand = [
     'docker run --rm',
