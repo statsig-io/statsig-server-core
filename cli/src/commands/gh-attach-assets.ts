@@ -1,7 +1,4 @@
-import {
-  getFilenameWithoutExtension,
-  getRootedPath,
-} from '@/utils/file_utils.js';
+import { getRootedPath } from '@/utils/file_utils.js';
 import {
   deleteReleaseAssetWithName,
   getOctokit,

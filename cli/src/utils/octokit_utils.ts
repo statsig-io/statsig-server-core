@@ -1,5 +1,5 @@
 import { createAppAuth } from '@octokit/auth-app';
-import { createReadStream } from 'fs';
+import { createReadStream, writeFileSync } from 'fs';
 import { Octokit } from 'octokit';
 import path from 'path';
 
@@ -208,4 +208,30 @@ export async function downloadReleaseAsset(
 
   // the 'Accept' header means it returns a buffer
   return file.data as unknown as ArrayBuffer;
+}
+
+export async function downloadArtifactToFile(
+  octokit: Octokit,
+  repo: string,
+  artifactId: number,
+  filePath: string,
+): Promise<{ data: ArrayBuffer; url: string }> {
+  const response = (await octokit.rest.actions.downloadArtifact({
+    owner: 'statsig-io',
+    repo,
+    artifact_id: artifactId,
+    archive_format: 'zip',
+  })) as { data?: ArrayBuffer; url?: string };
+
+  if (
+    !response.data ||
+    !response.url ||
+    !(response.data instanceof ArrayBuffer)
+  ) {
+    throw new Error(`Failed to download artifact ${artifactId}`);
+  }
+
+  writeFileSync(filePath, Buffer.from(response.data));
+
+  return { data: response.data, url: response.url };
 }
