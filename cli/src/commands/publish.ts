@@ -5,28 +5,28 @@ import type { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-meth
 import { Octokit } from 'octokit';
 
 import { CommandBase, OptionConfig } from './command_base.js';
+import {
+  PACKAGES,
+  Package,
+  PublisherOptions,
+} from './publishers/publisher-options.js';
+import { publishPython } from './publishers/python-publish.js';
 
-const PACKAGES = ['python', 'node', 'ffi'] as const;
-
-type Package = (typeof PACKAGES)[number];
-
-type Options = {
-  workflowId: string;
-  package: Package;
-  repository: string;
+const PUBLISHERS: Record<
+  Package,
+  (options: PublisherOptions) => Promise<void>
+> = {
+  python: publishPython,
+  node: (o) => {
+    throw new Error('Not implemented');
+  },
+  ffi: (o) => {
+    throw new Error('Not implemented');
+  },
 };
 
 type GHArtifact =
   RestEndpointMethodTypes['actions']['listWorkflowRunArtifacts']['response']['data']['artifacts'][number];
-
-type GHDownloadArtifactResponse =
-  //   RestEndpointMethodTypes['actions']['downloadArtifact']['response'];
-  {
-    status: number;
-    headers?: Record<string, string>;
-    url?: string;
-    data?: ArrayBuffer;
-  };
 
 export class Publish extends CommandBase {
   constructor() {
@@ -48,6 +48,11 @@ export class Publish extends CommandBase {
         required: true,
         defaultValue: 'private-statsig-server-core',
       },
+      {
+        flags: '-wd, --working-dir <string>',
+        description: 'The working directory to use',
+        defaultValue: '/tmp/statsig-server-core-publish',
+      },
     ];
 
     super(import.meta.url, {
@@ -56,7 +61,7 @@ export class Publish extends CommandBase {
     });
   }
 
-  override async run(options: Options) {
+  override async run(options: PublisherOptions) {
     Log.title(`Publishing ${options.package}`);
 
     Log.stepBegin('Configuration');
@@ -64,22 +69,24 @@ export class Publish extends CommandBase {
     Log.stepProgress(`Repository: ${options.repository}`);
     Log.stepEnd(`Package: ${options.package}`);
 
-    ensureEmptyDir('/tmp/statsig-server-core-publish');
+    // ensureEmptyDir(options.workingDir);
 
-    const octokit = await getOctokit();
-    const workflowRun = await getWorkflowRun(octokit, options);
-    const artifacts = await getWorkflowRunArtifacts(octokit, options);
-    const downloadedArtifacts = await downloadWorkflowRunArtifacts(
-      octokit,
-      options,
-      artifacts.artifacts,
-    );
+    // const octokit = await getOctokit();
+    // const workflowRun = await getWorkflowRun(octokit, options);
+    // const artifacts = await getWorkflowRunArtifacts(octokit, options);
+    // const downloadedArtifacts = await downloadWorkflowRunArtifacts(
+    //   octokit,
+    //   options,
+    //   artifacts.artifacts,
+    // );
+
+    PUBLISHERS[options.package](options);
 
     Log.conclusion(`Successfully built ${options.package}`);
   }
 }
 
-async function getWorkflowRun(octokit: Octokit, options: Options) {
+async function getWorkflowRun(octokit: Octokit, options: PublisherOptions) {
   Log.stepBegin(`Getting workflow run ${options.workflowId}`);
 
   const response = await octokit.rest.actions.getWorkflowRun({
@@ -109,7 +116,10 @@ async function getWorkflowRun(octokit: Octokit, options: Options) {
   return response.data;
 }
 
-async function getWorkflowRunArtifacts(octokit: Octokit, options: Options) {
+async function getWorkflowRunArtifacts(
+  octokit: Octokit,
+  options: PublisherOptions,
+) {
   Log.stepBegin(`Getting workflow run artifacts`);
 
   const response = await octokit.rest.actions.listWorkflowRunArtifacts({
@@ -141,7 +151,7 @@ async function getWorkflowRunArtifacts(octokit: Octokit, options: Options) {
 
 async function downloadWorkflowRunArtifacts(
   octokit: Octokit,
-  options: Options,
+  options: PublisherOptions,
   artifacts: GHArtifact[],
 ) {
   Log.stepBegin(`Downloading workflow run artifacts`);
