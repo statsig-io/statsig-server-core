@@ -1,7 +1,7 @@
 {
   "name": "statsig-node-core",
   "version": "1.0.0",
-  "main": "build/index.js",
+  "main": "index.js",
   "scripts": {
     "test": "jest",
     "build": "napi build --platform --js index.js --dts index.d.ts --output-dir ./build --strip"
@@ -26,7 +26,14 @@
   "napi": {
     "binaryName": "statsig-node-core",
     "targets": [
-      "aarch64-apple-darwin"
+      "aarch64-apple-darwin",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-unknown-linux-musl",
+      "i686-pc-windows-msvc",
+      "x86_64-apple-darwin",
+      "x86_64-pc-windows-msvc",
+      "x86_64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl"
     ]
   }
 }

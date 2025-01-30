@@ -19,7 +19,7 @@ csbindgen = "1.9.2"
 cbindgen = "0.26.0"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "staticlib"]
 
 [[test]]
 name = "tests"

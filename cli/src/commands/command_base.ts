@@ -12,7 +12,7 @@ export type OptionConfig = {
 function makeOption(config: OptionConfig) {
   const opt = new Option(config.flags, config.description);
 
-  if (config.defaultValue) {
+  if (config.defaultValue != null) {
     opt.default(config.defaultValue);
   }
 

@@ -3,7 +3,7 @@ FROM alpine:latest
 RUN apk update && apk add --no-cache \
     # Common Deps
     bash curl zsh openjdk11-jre jq protobuf pkgconfig \
-    openssl-dev git cargo build-base rust musl-dev \
+    openssl-dev git build-base musl-dev \
     # Python Deps
     python3 py3-pip python3-dev \
     # PHP Deps
@@ -18,6 +18,9 @@ RUN pip3 install pytest maturin patchelf pytest_httpserver --break-system-packag
 RUN npm install -g pnpm@7.32.4 prettier@3.4.2
 
 # Rust Setup
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_TERM_COLOR=always
+RUN rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl
 
 ENTRYPOINT ["sh", "-c"]

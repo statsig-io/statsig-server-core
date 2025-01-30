@@ -1,0 +1,19 @@
+{
+    "name": "@sigstat/sigstat-napi-darwin-arm64",
+    "version": "0.0.3",
+    "os": [
+      "darwin"
+    ],
+    "cpu": [
+      "arm64"
+    ],
+    "main": "sigstat-napi.darwin-arm64.node",
+    "files": [
+      "sigstat-napi.darwin-arm64.node"
+    ],
+    "license": "MIT",
+    "engines": {
+      "node": ">= 10"
+    }
+  }
+  

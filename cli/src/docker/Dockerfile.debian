@@ -21,5 +21,6 @@ RUN npm install -g pnpm@7.32.4 prettier@3.4.2
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_TERM_COLOR=always
+RUN rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
 
 ENTRYPOINT ["sh", "-c"]

@@ -6,4 +6,5 @@ export type BuilderOptions = {
   os: OS;
   outDir: string;
   skipDockerBuild: boolean;
+  target?: string;
 };

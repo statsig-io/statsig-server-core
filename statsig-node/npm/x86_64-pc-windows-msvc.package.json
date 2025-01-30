@@ -1,0 +1,19 @@
+{
+    "name": "@sigstat/sigstat-napi-win32-x64-msvc",
+    "version": "0.0.3",
+    "os": [
+      "win32"
+    ],
+    "cpu": [
+      "x64"
+    ],
+    "main": "sigstat-napi.win32-x64-msvc.node",
+    "files": [
+      "sigstat-napi.win32-x64-msvc.node"
+    ],
+    "license": "MIT",
+    "engines": {
+      "node": ">= 10"
+    }
+  }
+  

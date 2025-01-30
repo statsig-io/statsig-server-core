@@ -52,6 +52,11 @@ export class Build extends CommandBase {
           description: 'Skip building the docker image',
           defaultValue: false,
         },
+        {
+          flags: '-t, --target <string>',
+          description:
+            'The target to build for. (e.g. x86_64-unknown-linux-gnu)',
+        },
       ],
       args: [
         {
@@ -70,6 +75,7 @@ export class Build extends CommandBase {
     Log.stepBegin('Configuration');
     Log.stepProgress(`OS: ${options.os}`);
     Log.stepProgress(`Arch: ${options.arch}`);
+    Log.stepProgress(`Target: ${options.target ?? 'Not Specified'}`);
     Log.stepProgress(`For Release: ${options.release}`);
     Log.stepProgress(`Out Directory: ${options.outDir ?? 'Not Specified'}`);
     Log.stepEnd(`Skip Docker Build: ${options.skipDockerBuild}`);

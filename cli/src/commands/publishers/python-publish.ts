@@ -1,9 +1,3 @@
-import {
-  getArchInfo,
-  getDockerImageTag,
-  isLinux,
-} from '@/utils/docker_utils.js';
-import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
 import { unzip } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { execSync } from 'child_process';
@@ -14,12 +8,9 @@ import { PublisherOptions } from './publisher-options.js';
 
 export async function publishPython(options: PublisherOptions) {
   const files = listFiles(options.workingDir, '*.zip');
-  console.log(files);
 
   const extractTo = unzipFiles(files, options);
   const unzipped = listFiles(extractTo, 'statsig_python_core*');
-
-  console.log(unzipped);
 
   Log.stepBegin('Uploading to PyPI');
 
@@ -47,6 +38,8 @@ function listFiles(dir: string, pattern: string) {
 }
 
 function unzipFiles(files: string[], options: PublisherOptions) {
+  Log.stepBegin('Unzipping files');
+
   const extractTo = path.resolve(options.workingDir, 'unzipped');
 
   files.forEach((file) => {
@@ -57,6 +50,8 @@ function unzipFiles(files: string[], options: PublisherOptions) {
     unzip(buffer, extractTo);
     Log.stepProgress(`Completed: ${name}`);
   });
+
+  Log.stepEnd('Unzipped all files');
 
   return extractTo;
 }

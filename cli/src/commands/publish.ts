@@ -5,6 +5,7 @@ import type { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-meth
 import { Octokit } from 'octokit';
 
 import { CommandBase, OptionConfig } from './command_base.js';
+import { nodePublish } from './publishers/node-publisher.js';
 import {
   PACKAGES,
   Package,
@@ -17,9 +18,7 @@ const PUBLISHERS: Record<
   (options: PublisherOptions) => Promise<void>
 > = {
   python: publishPython,
-  node: (o) => {
-    throw new Error('Not implemented');
-  },
+  node: nodePublish,
   ffi: (o) => {
     throw new Error('Not implemented');
   },
@@ -69,20 +68,20 @@ export class Publish extends CommandBase {
     Log.stepProgress(`Repository: ${options.repository}`);
     Log.stepEnd(`Package: ${options.package}`);
 
-    // ensureEmptyDir(options.workingDir);
+    ensureEmptyDir(options.workingDir);
 
-    // const octokit = await getOctokit();
-    // const workflowRun = await getWorkflowRun(octokit, options);
-    // const artifacts = await getWorkflowRunArtifacts(octokit, options);
-    // const downloadedArtifacts = await downloadWorkflowRunArtifacts(
-    //   octokit,
-    //   options,
-    //   artifacts.artifacts,
-    // );
+    const octokit = await getOctokit();
+    const workflowRun = await getWorkflowRun(octokit, options);
+    const artifacts = await getWorkflowRunArtifacts(octokit, options);
+    const downloadedArtifacts = await downloadWorkflowRunArtifacts(
+      octokit,
+      options,
+      artifacts.artifacts,
+    );
 
     PUBLISHERS[options.package](options);
 
-    Log.conclusion(`Successfully built ${options.package}`);
+    Log.conclusion(`Successfully published ${options.package}`);
   }
 }
 
