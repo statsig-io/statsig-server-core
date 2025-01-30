@@ -75,7 +75,7 @@ jobs:
         shell: bash
         run: |
           ./run build ${{ matrix.package }} \
-            --distro ${{ matrix.config.os }} \
+            --os ${{ matrix.config.os }} \
             --arch ${{ matrix.config.arch }} \
             --out-dir build \
             --skip-docker-build \

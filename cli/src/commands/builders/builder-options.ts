@@ -1,9 +1,9 @@
-import { Arch, Distro } from '@/utils/docker_utils.js';
+import { Arch, OS } from '@/utils/docker_utils.js';
 
 export type BuilderOptions = {
   release: boolean;
   arch: Arch;
-  distro: Distro;
+  os: OS;
   outDir: string;
   skipDockerBuild: boolean;
 };

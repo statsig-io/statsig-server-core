@@ -13,7 +13,7 @@ export function buildFfi(options: BuilderOptions) {
   Log.title(`Building statsig-ffi in Docker`);
 
   const { docker } = getArchInfo(options.arch);
-  const tag = getDockerImageTag(options.distro, options.arch);
+  const tag = getDockerImageTag(options.os, options.arch);
 
   const cargoCommand = [
     'cargo build',
@@ -31,7 +31,7 @@ export function buildFfi(options: BuilderOptions) {
     `"cd /app && ${cargoCommand}"`, // && while true; do sleep 1000; done
   ].join(' ');
 
-  const command = isLinux(options.distro) ? dockerCommand : cargoCommand;
+  const command = isLinux(options.os) ? dockerCommand : cargoCommand;
 
   Log.stepBegin(`Executing build command`);
   Log.stepProgress(command);

@@ -11,7 +11,7 @@ import { BuilderOptions } from './builder-options.js';
 
 export function buildPython(options: BuilderOptions) {
   const { docker } = getArchInfo(options.arch);
-  const tag = getDockerImageTag(options.distro, options.arch);
+  const tag = getDockerImageTag(options.os, options.arch);
   const pyDir = getRootedPath('statsig-pyo3');
 
   const target = getTarget(options);
@@ -32,7 +32,7 @@ export function buildPython(options: BuilderOptions) {
     `"cd /app/statsig-pyo3 && ${maturinCommand}"`,
   ].join(' ');
 
-  const command = isLinux(options.distro) ? dockerCommand : maturinCommand;
+  const command = isLinux(options.os) ? dockerCommand : maturinCommand;
 
   Log.stepBegin(`Building Pyo3 Package ${tag}`);
   Log.stepProgress(command);
@@ -45,7 +45,7 @@ export function buildPython(options: BuilderOptions) {
 function getTarget(options: BuilderOptions) {
   const { name } = getArchInfo(options.arch);
 
-  if (options.distro === 'macos') {
+  if (options.os === 'macos') {
     switch (name) {
       case 'aarch64':
         return 'aarch64-apple-darwin';
@@ -54,7 +54,7 @@ function getTarget(options: BuilderOptions) {
     }
   }
 
-  if (options.distro === 'windows') {
+  if (options.os === 'windows') {
     switch (name) {
       case 'aarch64':
         return 'aarch64-pc-windows-msvc';

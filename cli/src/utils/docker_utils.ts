@@ -20,7 +20,7 @@ export type ArchInfo =
       aliases: ['i686', 'x86'];
     };
 
-export const DISTROS = [
+export const OPERATING_SYSTEMS = [
   'alpine',
   'amazonlinux2',
   'amazonlinux2023',
@@ -28,7 +28,7 @@ export const DISTROS = [
   'macos',
   'windows',
 ] as const;
-export type Distro = (typeof DISTROS)[number];
+export type OS = (typeof OPERATING_SYSTEMS)[number];
 
 export const ARCHITECTURES = [
   'x64',
@@ -40,19 +40,19 @@ export const ARCHITECTURES = [
 ] as const;
 export type Arch = (typeof ARCHITECTURES)[number];
 
-export function isLinux(distro: Distro): boolean {
-  return distro !== 'windows' && distro !== 'macos';
+export function isLinux(os: OS): boolean {
+  return os !== 'windows' && os !== 'macos';
 }
 
-export function buildDockerImage(distro: Distro, arch: Arch = 'arm64') {
+export function buildDockerImage(os: OS, arch: Arch = 'arm64') {
   const { docker } = getArchInfo(arch);
-  const tag = getDockerImageTag(distro, arch);
+  const tag = getDockerImageTag(os, arch);
 
   const command = [
     'docker build .',
     `--platform ${docker}`,
     `-t ${tag}`,
-    `-f ${getRootedPath(`cli/src/docker/Dockerfile.${distro}`)}`,
+    `-f ${getRootedPath(`cli/src/docker/Dockerfile.${os}`)}`,
     `--secret id=gh_token_id,env=GH_TOKEN`,
   ].join(' ');
 
@@ -64,9 +64,9 @@ export function buildDockerImage(distro: Distro, arch: Arch = 'arm64') {
   Log.stepEnd(`Built Server Core Docker Image`);
 }
 
-export function getDockerImageTag(distro: Distro, arch: Arch): string {
+export function getDockerImageTag(os: OS, arch: Arch): string {
   const { name } = getArchInfo(arch);
-  return `statsig/server-core-${distro}-${name}`;
+  return `statsig/server-core-${os}-${name}`;
 }
 
 export function getArchInfo(arch: Arch): ArchInfo {
