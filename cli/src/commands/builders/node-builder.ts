@@ -18,12 +18,17 @@ export function buildNode(options: BuilderOptions) {
 
   const outDir = options.outDir ?? './build';
 
+  const isMusl = options.target?.includes('musl');
+  const isGnu = options.target?.includes('gnu');
+
   const nodeCommand = [
     'pnpm install &&',
     'pnpm exec napi build',
     '--platform',
     '--js index.js',
     '--dts index.d.ts',
+    isMusl ? '--cross-compile' : '',
+    isGnu ? '--use-napi-cross --features vendored_openssl' : '',
     options.release ? '--release --strip' : '',
     options.target ? `--target ${options.target}` : '',
     `--output-dir ${outDir}`,

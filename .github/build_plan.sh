@@ -7,8 +7,11 @@ if [ $IS_RELEASE = true ] || [ $IS_BETA = true ]; then
     exclude_filter='[]'
     should_publish=true
 else
-    include_filter='[.config[] | select(.arch == "x86_64")]'
-    exclude_filter='[.config[] | select(.arch != "x86_64")]'
+    include_filter='.config'
+    exclude_filter='[]'
+    # Temp: build all no matter what
+    # include_filter='[.config[] | select(.arch == "x86_64")]'
+    # exclude_filter='[.config[] | select(.arch != "x86_64")]'
     should_publish=false
 fi
 

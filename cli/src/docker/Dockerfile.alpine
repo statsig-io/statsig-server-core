@@ -23,4 +23,6 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_TERM_COLOR=always
 RUN rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl
 
+# RUN mkdir foo && cd foo && npm init -y && npm install @sigstat/sigstat-napi@0.0.3-beta.2 && echo "const sigstat = require('@sigstat/sigstat-napi'); console.log(new sigstat.Statsig('')); process.exit(0);" > index.js && node index.js
+
 ENTRYPOINT ["sh", "-c"]

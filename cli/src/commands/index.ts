@@ -1,5 +1,6 @@
 import { Build } from './build.js';
 import { BumpVersion } from './bump-version.js';
+import { Exec } from './exec.js';
 import { GhAttachAssets } from './gh-attach-assets.js';
 import { GhCreateRelease } from './gh-create-release.js';
 import { GhPushPhp } from './gh-push-php.js';
@@ -17,6 +18,7 @@ import { ZipFiles } from './zip-files.js';
 export const Commands = [
   new Build(),
   new BumpVersion(),
+  new Exec(),
   new GhAttachAssets(),
   new GhCreateRelease(),
   new GhPushPhp(),

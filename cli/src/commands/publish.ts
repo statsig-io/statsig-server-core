@@ -5,6 +5,7 @@ import type { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-meth
 import { Octokit } from 'octokit';
 
 import { CommandBase, OptionConfig } from './command_base.js';
+import { ffiPublish } from './publishers/ffi-publisher.js';
 import { nodePublish } from './publishers/node-publisher.js';
 import {
   PACKAGES,
@@ -19,9 +20,7 @@ const PUBLISHERS: Record<
 > = {
   python: publishPython,
   node: nodePublish,
-  ffi: (o) => {
-    throw new Error('Not implemented');
-  },
+  ffi: ffiPublish,
 };
 
 type GHArtifact =
