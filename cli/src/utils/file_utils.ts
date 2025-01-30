@@ -1,4 +1,5 @@
 import AdmZip from 'adm-zip';
+import { execSync } from 'child_process';
 import { existsSync, mkdirSync, rmSync, statSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -61,4 +62,11 @@ export function unzip(buffer: ArrayBuffer, targetDir: string) {
   const zip = new AdmZip(Buffer.from(buffer));
 
   zip.extractAllTo(targetDir, false, true);
+}
+
+export function listFiles(dir: string, pattern: string) {
+  return execSync(`find ${dir} -name "${pattern}"`)
+    .toString()
+    .trim()
+    .split('\n');
 }

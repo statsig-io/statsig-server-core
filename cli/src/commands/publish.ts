@@ -1,4 +1,4 @@
-import { ensureEmptyDir, unzip } from '@/utils/file_utils.js';
+import { ensureEmptyDir, listFiles, unzip } from '@/utils/file_utils.js';
 import { downloadArtifactToFile, getOctokit } from '@/utils/octokit_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import type { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods';
@@ -208,13 +208,6 @@ async function downloadWorkflowRunArtifacts(
   Log.stepEnd(`Downloaded workflow run artifacts`);
 
   return responses;
-}
-
-function listFiles(dir: string, pattern: string) {
-  return execSync(`find ${dir} -name "${pattern}"`)
-    .toString()
-    .trim()
-    .split('\n');
 }
 
 function unzipFiles(files: string[], options: PublisherOptions) {
