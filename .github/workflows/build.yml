@@ -3,6 +3,10 @@ name: Build
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
+      - release/**
+      - beta/**
   pull_request:
 
 env:

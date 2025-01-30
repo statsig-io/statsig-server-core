@@ -13,8 +13,18 @@ env:
 
 jobs:
   run-lang-specific-tests:
-    runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - debian
+          # - alpine
+        arch:
+          - [x86_64, amd64, ubuntu-latest]
+          - [aarch64, arm64, statsig-ubuntu-arm64]
+
+    runs-on: ${{ matrix.arch[2] }}
 
     steps:
       - uses: actions/checkout@v4
@@ -34,9 +44,10 @@ jobs:
         with:
           dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
           dockerhub_password: ${{ secrets.DOCKERHUB_TOKEN }}
-          dockerfile_path: cli/src/docker/Dockerfile.debian
-          docker_image_tag: statsig/server-core-debian
           gh_token: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
+          dockerfile_path: cli/src/docker/Dockerfile.${{ matrix.os }}
+          docker_image_tag: statsig/server-core-${{ matrix.os }}-${{ matrix.arch[0] }}
+          platform: linux/${{ matrix.arch[1] }}
 
       - name: Install NPM Dependencies
         run: cd cli && pnpm install
@@ -44,7 +55,7 @@ jobs:
       - name: Run Tests
         shell: 'script --return --quiet --log-out /dev/null --command "bash -e {0}"' # prevents "the input device is not a TTY" error
         run: |
-          ./run unit-tests --skip-docker-build
+          ./run unit-tests --skip-docker-build --os ${{ matrix.os }} --arch ${{ matrix.arch[0] }}
 
   run-rust-tests:
     runs-on: macos-latest

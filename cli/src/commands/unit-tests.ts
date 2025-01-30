@@ -1,4 +1,5 @@
 import {
+  Arch,
   OS,
   buildDockerImage,
   getArchInfo,
@@ -44,6 +45,7 @@ const TEST_COMMANDS: Record<string, string> = {
 type Options = {
   skipDockerBuild: boolean;
   os: OS;
+  arch: Arch;
 };
 
 export class UnitTests extends CommandBase {
@@ -69,6 +71,12 @@ export class UnitTests extends CommandBase {
       'The OS to run tests for, e.g. debian',
       'debian',
     );
+
+    this.option(
+      '-a, --arch <string>',
+      'The architecture to run tests for, e.g. amd64',
+      'amd64',
+    );
   }
 
   override async run(lang: string, options: Options) {
@@ -79,14 +87,14 @@ export class UnitTests extends CommandBase {
     Log.stepEnd(`Skip Docker Build: ${options.skipDockerBuild}`);
 
     if (!options.skipDockerBuild) {
-      buildDockerImage(options.os);
+      buildDockerImage(options.os, options.arch);
     }
 
     const languages = lang === 'all' ? Object.keys(TEST_COMMANDS) : [lang];
 
     await Promise.all(
       languages.map(async (lang) => {
-        await runTestInDockerImage(lang, options.os);
+        await runTestInDockerImage(lang, options.os, options.arch);
       }),
     );
 
@@ -123,16 +131,17 @@ class BufferedOutput {
   }
 }
 
-function runTestInDockerImage(lang: string, os: OS): Promise<void> {
+function runTestInDockerImage(lang: string, os: OS, arch: Arch): Promise<void> {
   const tag = chalk.blue(`[${lang}]`);
 
-  const { docker } = getArchInfo('aarch64');
-  const dockerImageTag = getDockerImageTag(os, 'aarch64');
+  const { docker } = getArchInfo(arch);
+  const dockerImageTag = getDockerImageTag(os, arch);
 
   return new Promise((resolve, reject) => {
     Log.title(`Running tests for ${lang}`);
     const command = [
       'docker run --rm',
+      `--platform ${docker}`,
       `-v "${BASE_DIR}":/app`,
       `-v "/tmp:/tmp"`,
       `-v "/tmp/statsig-server-core/cargo-registry:/usr/local/cargo/registry"`,
