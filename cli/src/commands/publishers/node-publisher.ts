@@ -47,16 +47,18 @@ const DIR_STRUCTURE = {
 };
 
 export async function nodePublish(options: PublisherOptions) {
-  const zipFiles = listFiles(options.workingDir, '*.zip');
-  const extractTo = unzipFiles(zipFiles, options);
-  const buildDir = extractTo + '/statsig-node/build';
+  const buildDir = options.workingDir + '/statsig-node/build';
 
   let allPlatformsAligned = true;
 
   Object.entries(DIR_STRUCTURE).forEach(([platform, files]) => {
     Log.stepBegin(`Aligning ${platform} files`);
 
-    const platformDir = path.resolve(options.workingDir, platform);
+    const platformDir = path.resolve(
+      options.workingDir,
+      'statsig-node/dist',
+      platform,
+    );
     ensureEmptyDir(platformDir);
     Log.stepProgress(`Empty ${platform} directory created`);
 
@@ -88,36 +90,4 @@ export async function nodePublish(options: PublisherOptions) {
     Log.stepEnd('Failed to align all platforms', 'failure');
     return;
   }
-
-  fs.rmSync(extractTo, { recursive: true });
-
-  zipFiles.forEach((zipFile) => {
-    fs.unlinkSync(zipFile);
-  });
-}
-
-function listFiles(dir: string, pattern: string) {
-  return execSync(`find ${dir} -name "${pattern}"`)
-    .toString()
-    .trim()
-    .split('\n');
-}
-
-function unzipFiles(files: string[], options: PublisherOptions) {
-  Log.stepBegin('Unzipping files');
-
-  const extractTo = path.resolve(options.workingDir, 'unzipped');
-
-  files.forEach((file) => {
-    const filepath = path.resolve(file);
-    const name = path.basename(filepath).replace('.zip', '');
-
-    const buffer = fs.readFileSync(filepath);
-    unzip(buffer, extractTo);
-    Log.stepProgress(`Completed: ${name}`);
-  });
-
-  Log.stepEnd('Unzipped all files');
-
-  return extractTo;
 }

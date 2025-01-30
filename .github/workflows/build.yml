@@ -109,11 +109,26 @@ jobs:
         package: ${{ fromJson(needs.plan.outputs.build_matrix).package }}
     
     steps:
-      - name: Download Artifacts
-        run: echo "Downloading..."
+      - uses: actions/checkout@v4
 
-      - name: Packaging
-        run: echo "Packaging..."
+      - name: Install Dependencies
+        run: |
+          pnpm install --dir cli
+          pip3 install maturin
 
-      - name: Publish
-        run: echo "Publishing..."
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Publish ${{ matrix.package }}
+        shell: bash
+        run: |
+          ./run publish \
+            --working-dir artifacts \
+            --package ${{ matrix.package }} \
+            --workflow-id $GITHUB_RUN_ID \
+            --skip-artifact-download

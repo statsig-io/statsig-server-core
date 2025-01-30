@@ -1,4 +1,9 @@
-import { buildDockerImage } from '@/utils/docker_utils.js';
+import {
+  OS,
+  buildDockerImage,
+  getArchInfo,
+  getDockerImageTag,
+} from '@/utils/docker_utils.js';
 import { BASE_DIR } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import chalk from 'chalk';
@@ -31,13 +36,14 @@ const TEST_COMMANDS: Record<string, string> = {
   node: [
     'cd /app/statsig-node',
     'pnpm install',
-    'pnpm build',
+    'pnpm exec napi build --cross-compile --platform --js index.js --dts index.d.ts --output-dir build',
     'pnpm test',
   ].join(' && '),
 };
 
 type Options = {
   skipDockerBuild: boolean;
+  os: OS;
 };
 
 export class UnitTests extends CommandBase {
@@ -57,6 +63,12 @@ export class UnitTests extends CommandBase {
       'Skip building the docker image',
       false,
     );
+
+    this.option(
+      '-os, --os <string>',
+      'The OS to run tests for, e.g. debian',
+      'debian',
+    );
   }
 
   override async run(lang: string, options: Options) {
@@ -67,14 +79,14 @@ export class UnitTests extends CommandBase {
     Log.stepEnd(`Skip Docker Build: ${options.skipDockerBuild}`);
 
     if (!options.skipDockerBuild) {
-      buildDockerImage('debian');
+      buildDockerImage(options.os);
     }
 
     const languages = lang === 'all' ? Object.keys(TEST_COMMANDS) : [lang];
 
     await Promise.all(
       languages.map(async (lang) => {
-        await runTestInDockerImage(lang);
+        await runTestInDockerImage(lang, options.os);
       }),
     );
 
@@ -111,8 +123,11 @@ class BufferedOutput {
   }
 }
 
-function runTestInDockerImage(lang: string): Promise<void> {
+function runTestInDockerImage(lang: string, os: OS): Promise<void> {
   const tag = chalk.blue(`[${lang}]`);
+
+  const { docker } = getArchInfo('aarch64');
+  const dockerImageTag = getDockerImageTag(os, 'aarch64');
 
   return new Promise((resolve, reject) => {
     Log.title(`Running tests for ${lang}`);
@@ -121,7 +136,7 @@ function runTestInDockerImage(lang: string): Promise<void> {
       `-v "${BASE_DIR}":/app`,
       `-v "/tmp:/tmp"`,
       `-v "/tmp/statsig-server-core/cargo-registry:/usr/local/cargo/registry"`,
-      `statsig/server-core-debian`,
+      dockerImageTag,
       `"${TEST_COMMANDS[lang]}"`, // && while true; do sleep 1000; done
     ].join(' ');
 

@@ -1,7 +1,10 @@
-import { ensureEmptyDir } from '@/utils/file_utils.js';
+import { ensureEmptyDir, unzip } from '@/utils/file_utils.js';
 import { downloadArtifactToFile, getOctokit } from '@/utils/octokit_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import type { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods';
+import { execSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import { Octokit } from 'octokit';
 
 import { CommandBase, OptionConfig } from './command_base.js';
@@ -53,6 +56,11 @@ export class Publish extends CommandBase {
         description: 'The working directory to use',
         defaultValue: '/tmp/statsig-server-core-publish',
       },
+      {
+        flags: '-sa, --skip-artifact-download',
+        description: 'Skip downloading artifacts',
+        defaultValue: false,
+      },
     ];
 
     super(import.meta.url, {
@@ -69,16 +77,17 @@ export class Publish extends CommandBase {
     Log.stepProgress(`Repository: ${options.repository}`);
     Log.stepEnd(`Package: ${options.package}`);
 
-    ensureEmptyDir(options.workingDir);
+    if (!options.skipArtifactDownload) {
+      ensureEmptyDir(options.workingDir);
 
-    const octokit = await getOctokit();
-    const workflowRun = await getWorkflowRun(octokit, options);
-    const artifacts = await getWorkflowRunArtifacts(octokit, options);
-    const downloadedArtifacts = await downloadWorkflowRunArtifacts(
-      octokit,
-      options,
-      artifacts.artifacts,
-    );
+      const octokit = await getOctokit();
+      await getWorkflowRun(octokit, options);
+      const artifacts = await getWorkflowRunArtifacts(octokit, options);
+      await downloadWorkflowRunArtifacts(octokit, options, artifacts.artifacts);
+
+      const zipFiles = listFiles(options.workingDir, '*.zip');
+      unzipFiles(zipFiles, options);
+    }
 
     PUBLISHERS[options.package](options);
 
@@ -199,4 +208,28 @@ async function downloadWorkflowRunArtifacts(
   Log.stepEnd(`Downloaded workflow run artifacts`);
 
   return responses;
+}
+
+function listFiles(dir: string, pattern: string) {
+  return execSync(`find ${dir} -name "${pattern}"`)
+    .toString()
+    .trim()
+    .split('\n');
+}
+
+function unzipFiles(files: string[], options: PublisherOptions) {
+  Log.stepBegin('Unzipping files');
+
+  files.forEach((file) => {
+    const filepath = path.resolve(file);
+    const name = path.basename(filepath).replace('.zip', '');
+
+    const buffer = fs.readFileSync(filepath);
+    unzip(buffer, options.workingDir);
+
+    fs.unlinkSync(filepath);
+    Log.stepProgress(`Completed: ${name}`);
+  });
+
+  Log.stepEnd('Unzipped all files');
 }
