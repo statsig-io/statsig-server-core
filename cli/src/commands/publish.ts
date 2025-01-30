@@ -5,6 +5,7 @@ import type { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-meth
 import { Octokit } from 'octokit';
 
 import { CommandBase, OptionConfig } from './command_base.js';
+import { analyze } from './publishers/analyze.js';
 import { ffiPublish } from './publishers/ffi-publisher.js';
 import { nodePublish } from './publishers/node-publisher.js';
 import {
@@ -15,12 +16,13 @@ import {
 import { publishPython } from './publishers/python-publish.js';
 
 const PUBLISHERS: Record<
-  Package,
+  Package & 'analyze',
   (options: PublisherOptions) => Promise<void>
 > = {
   python: publishPython,
   node: nodePublish,
   ffi: ffiPublish,
+  analyze,
 };
 
 type GHArtifact =
@@ -37,7 +39,7 @@ export class Publish extends CommandBase {
       {
         flags: '-p, --package <string>',
         description: 'The package to publish',
-        choices: PACKAGES,
+        choices: [...PACKAGES, 'analyze'],
         required: true,
       },
       {
@@ -124,6 +126,7 @@ async function getWorkflowRunArtifacts(
     owner: 'statsig-io',
     repo: options.repository,
     run_id: Number(options.workflowId),
+    per_page: 100,
   });
 
   if (response.status !== 200) {
@@ -133,7 +136,14 @@ async function getWorkflowRunArtifacts(
   }
 
   response.data.artifacts = response.data.artifacts.filter((artifact) => {
-    if (artifact.name.endsWith(options.package)) {
+    if (artifact.name.includes('dockerbuild')) {
+      return false;
+    }
+
+    if (
+      (options.package as any) === 'analyze' ||
+      artifact.name.endsWith(options.package)
+    ) {
       Log.stepProgress(`Found: ${artifact.name}`, 'success');
       return true;
     } else {

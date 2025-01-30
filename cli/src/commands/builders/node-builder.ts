@@ -33,7 +33,7 @@ export function buildNode(options: BuilderOptions) {
     options.target ? `--target ${options.target}` : '',
     `--output-dir ${outDir}`,
     ` && cp package.json ${outDir}`,
-    ` && cp -rf npm/* ${outDir}`,
+    options.target ? ` && cp npm/${options.target}.package.json ${outDir}` : '',
   ].join(' ');
 
   const dockerCommand = [
