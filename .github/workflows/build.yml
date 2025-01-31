@@ -19,8 +19,8 @@ concurrency:
 
 env:
   # Planning Inputs
-  IS_RELEASE_BRANCH: ${{ contains(github.ref, 'heads/release') }}
-  IS_BETA_BRANCH: ${{ contains(github.ref, 'heads/beta') }}
+  IS_RELEASE_BRANCH: ${{ contains(github.ref, 'heads/releases') }}
+  IS_BETA_BRANCH: ${{ contains(github.ref, 'heads/betas') }}
   IS_MERGED_PR: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
   IS_NEW_RELEASE: ${{ github.event_name == 'release' }}
 

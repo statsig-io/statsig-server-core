@@ -9,7 +9,7 @@ on:
 
 jobs:
   sync-version:
-    if: startsWith(github.head_ref, 'releases/')
+    if: contains(github.ref, 'heads/betas') || contains(github.ref, 'heads/releases')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
           ./run sync-version --commit-and-push
 
   run-publish-action:
-    if: startsWith(github.head_ref, 'releases/') || github.event_name == 'release'
+    if: contains(github.ref, 'heads/releases')
     runs-on: ubuntu-latest
     steps:
       - uses: statsig-io/statsig-publish-sdk-action@main
