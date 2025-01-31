@@ -1,6 +1,6 @@
 {
     "name": "@sigstat/sigstat-napi-darwin-arm64",
-    "version": "0.0.4-beta.2",
+    "version": "0.0.4",
     "os": [
       "darwin"
     ],
