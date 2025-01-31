@@ -154,13 +154,17 @@ async function tryCommitAndPushChanges(version: SemVer) {
   Log.stepBegin('Commit and Push Changes');
 
   const localBranch = await getCurrentBranchName();
+  const remoteBranch = process.env['GITHUB_REF'] ?? version.toBranch();
+
+  Log.stepProgress(`Local Branch: ${localBranch}`);
+  Log.stepProgress(`Remote Branch: ${remoteBranch}`);
 
   const { success, error } = await commitAndPushChanges(
     BASE_DIR,
     `chore: bump version to ${version.toString()}`,
     'origin',
     localBranch,
-    version.toBranch(),
+    remoteBranch,
     true /* shouldPushChanges */,
   );
 
