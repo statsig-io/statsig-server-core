@@ -5,8 +5,8 @@ on:
   push:
     branches:
       - main
-      - release/**
-      - beta/**
+      - releases/**
+      - betas/**
   pull_request:
     types: [opened, reopened, closed]
 

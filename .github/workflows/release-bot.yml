@@ -33,6 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           submodules: recursive
 
       - name: Install Protoc
@@ -47,7 +48,13 @@ jobs:
       - name: Sync Version
         run: |
           pnpm install --dir cli
-          ./run sync-version --commit-and-push
+          ./run sync-version
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_user_name: statsig-kong[bot]
+          commit_user_email: statsig-kong[bot]@users.noreply.github.com
+          commit_message: "Bot: Sync Version"
 
   run-publish-action:
     if: contains(github.ref, 'heads/releases')
