@@ -20,7 +20,7 @@ export class SyncVersion extends CommandBase {
   }
 
   static sync() {
-    printTitle('Syncing Version');
+    Log.title('Syncing Version');
 
     Log.stepBegin('Getting root version');
     const version = getRootVersion().toString();
@@ -59,27 +59,31 @@ function updateStatsigMetadataVersion(version: string) {
 function updateNodePackageJsonVersions(version: string) {
   Log.stepBegin('Updating package.json');
 
-  const paths = [getRootedPath('statsig-napi/package.json')];
-  paths.push(
-    ...glob.sync('statsig-napi/npm/**/package.json', {
-      cwd: BASE_DIR,
-      absolute: true,
-    }),
-  );
-
-  paths.forEach((path) => {
-    const contents = fs.readFileSync(path, 'utf8');
-    const json = JSON.parse(contents);
-
-    const was = contents.match(/version": "([^"]+)"/)?.[1];
-    const updated = contents.replace(
-      /version": "([^"]+)"/,
-      `version": "${version}"`,
+  ['statsig-napi', 'statsig-node'].forEach((name) => {
+    const paths = [getRootedPath(`${name}/package.json`)];
+    paths.push(
+      ...glob.sync(`${name}/npm/**package.json`, {
+        cwd: BASE_DIR,
+        absolute: true,
+      }),
     );
 
-    fs.writeFileSync(path, updated, 'utf8');
+    paths.forEach((path) => {
+      const contents = fs.readFileSync(path, 'utf8');
+      const json = JSON.parse(contents);
 
-    Log.stepProgress(`${json.name}: ${chalk.strikethrough(was)} -> ${version}`);
+      const was = contents.match(/version": "([^"]+)"/)?.[1];
+      const updated = contents.replace(
+        /version": "([^"]+)"/,
+        `version": "${version}"`,
+      );
+
+      fs.writeFileSync(path, updated, 'utf8');
+
+      Log.stepProgress(
+        `${json.name}: ${chalk.strikethrough(was)} -> ${version}`,
+      );
+    });
   });
 
   Log.stepEnd('Updated all package.json files');

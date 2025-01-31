@@ -1,15 +1,15 @@
 {
     "name": "@sigstat/sigstat-napi-darwin-x64",
-    "version": "0.0.3",
+    "version": "0.0.4-beta.1",
     "os": [
       "darwin"
     ],
     "cpu": [
       "x64"
     ],
-    "main": "sigstat-napi.darwin-x64.node",
+    "main": "statsig-node-core.darwin-x64.node",
     "files": [
-      "sigstat-napi.darwin-x64.node"
+      "statsig-node-core.darwin-x64.node"
     ],
     "license": "MIT",
     "engines": {

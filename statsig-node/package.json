@@ -1,6 +1,6 @@
 {
-  "name": "statsig-node-core",
-  "version": "1.0.0",
+  "name": "@sigstat/sigstat-napi",
+  "version": "0.0.4-beta.1",
   "main": "index.js",
   "scripts": {
     "test": "jest",

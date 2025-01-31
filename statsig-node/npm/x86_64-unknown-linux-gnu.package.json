@@ -1,15 +1,15 @@
 {
     "name": "@sigstat/sigstat-napi-linux-x64-gnu",
-    "version": "0.0.3",
+    "version": "0.0.4-beta.1",
     "os": [
       "linux"
     ],
     "cpu": [
       "x64"
     ],
-    "main": "sigstat-napi.linux-x64-gnu.node",
+    "main": "statsig-node-core.linux-x64-gnu.node",
     "files": [
-      "sigstat-napi.linux-x64-gnu.node"
+      "statsig-node-core.linux-x64-gnu.node"
     ],
     "license": "MIT",
     "engines": {

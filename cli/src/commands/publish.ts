@@ -101,7 +101,7 @@ export class Publish extends CommandBase {
       unzipFiles(zipFiles, options);
     }
 
-    PUBLISHERS[options.package](options);
+    // PUBLISHERS[options.package](options);
 
     Log.conclusion(`Successfully published ${options.package}`);
   }
