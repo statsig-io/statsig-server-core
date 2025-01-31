@@ -58,7 +58,9 @@ export async function commitAndPushChanges(
   try {
     const git = simpleGit(repoPath);
 
-    if (process.env['CI']) {
+    const isCI = process.env['CI'];
+
+    if (isCI) {
       await git.addConfig('user.name', 'statsig-kong[bot]');
       await git.addConfig(
         'user.email',

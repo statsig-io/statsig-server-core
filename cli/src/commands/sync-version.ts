@@ -2,6 +2,7 @@ import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
 import {
   commitAndPushChanges,
   getCurrentBranchName,
+  getUpstreamRemoteForCurrentBranch,
 } from '@/utils/git_utils.js';
 import { SemVer } from '@/utils/semver.js';
 import { Log } from '@/utils/teminal_utils.js';
@@ -153,16 +154,18 @@ function updatePhpComposerVersion(version: string) {
 async function tryCommitAndPushChanges(version: SemVer) {
   Log.stepBegin('Commit and Push Changes');
 
+  const upstream = await getUpstreamRemoteForCurrentBranch();
   const localBranch = await getCurrentBranchName();
-  const remoteBranch = process.env['GITHUB_REF'] ?? version.toBranch();
+  const remoteBranch = process.env['CI'] ? localBranch : version.toBranch();
 
+  Log.stepProgress(`Upstream: ${upstream}`);
   Log.stepProgress(`Local Branch: ${localBranch}`);
   Log.stepProgress(`Remote Branch: ${remoteBranch}`);
 
   const { success, error } = await commitAndPushChanges(
     BASE_DIR,
     `chore: bump version to ${version.toString()}`,
-    'origin',
+    upstream,
     localBranch,
     remoteBranch,
     true /* shouldPushChanges */,
