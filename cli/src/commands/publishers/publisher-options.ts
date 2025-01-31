@@ -7,4 +7,5 @@ export type PublisherOptions = {
   repository: string;
   workingDir: string;
   skipArtifactDownload: boolean;
+  isProduction: boolean;
 };

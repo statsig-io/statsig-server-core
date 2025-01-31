@@ -15,6 +15,13 @@ env:
   CARGO_TERM_COLOR: always
   FORCE_COLOR: true
 
+  # Python Publishing
+  MATURIN_PYPI_TOKEN: ${{ secrets.STATSIG_PYPI_PROD_TOKEN }}
+  MATURIN_REPOSITORY: pypi
+
+
+  NPM_TOKEN: ${{ secrets.SIGSTAT_PUBLISH_NPM }}
+
 
 jobs:
 
@@ -119,10 +126,11 @@ jobs:
         with:
           version: 7.32.4
 
-      - name: Install Dependencies
+      - name: Setup
         run: |
           pnpm install --dir cli
           pip3 install maturin
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
 
       - uses: actions/download-artifact@v4
         with:
@@ -131,7 +139,7 @@ jobs:
 
       - name: Display structure of downloaded files
         run: ls -R artifacts
-
+          
       - name: Publish ${{ matrix.package }}
         shell: bash
         run: |

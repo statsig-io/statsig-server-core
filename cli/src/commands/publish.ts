@@ -66,6 +66,11 @@ export class Publish extends CommandBase {
         description: 'Skip downloading artifacts',
         defaultValue: false,
       },
+      {
+        flags: '--is-production',
+        description: 'Whether to publish to production',
+        defaultValue: false,
+      },
     ];
 
     super(import.meta.url, {
