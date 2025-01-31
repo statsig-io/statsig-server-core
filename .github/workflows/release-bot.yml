@@ -8,8 +8,27 @@ on:
     types: [released, prereleased]
 
 jobs:
+  info:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Github
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: |
+          echo "${{ github.event_name }}"
+          echo $GITHUB_CONTEXT || true
+          echo $GITHUB_CONTEXT > github_context.json
+
+      - name: Print GitHub Event JSON
+        run: |
+          echo "-- Loading JSON from $GITHUB_EVENT_PATH --"
+          cat $GITHUB_EVENT_PATH
+
+      - name: Print Env
+        run: printenv
+
   sync-version:
-    if: contains(github.ref, 'heads/betas') || contains(github.ref, 'heads/releases')
+    if: contains(github.head_ref, 'betas/') || contains(github.head_ref, 'releases/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
