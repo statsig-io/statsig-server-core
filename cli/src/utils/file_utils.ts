@@ -13,6 +13,12 @@ export function getFilenameWithoutExtension(filename: string) {
   return path.basename(filename, path.extname(filename));
 }
 
+export function getRelativePath(filepath: string) {
+  if (path.isAbsolute(filepath)) {
+    return filepath;
+  }
+  return path.resolve(BASE_DIR, filepath);
+}
 export function getRootedPath(filepath: string) {
   return path.resolve(BASE_DIR, filepath);
 }

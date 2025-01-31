@@ -1,4 +1,9 @@
-import { ensureEmptyDir, listFiles, unzip } from '@/utils/file_utils.js';
+import {
+  ensureEmptyDir,
+  getRelativePath,
+  listFiles,
+  unzip,
+} from '@/utils/file_utils.js';
 import { downloadArtifactToFile, getOctokit } from '@/utils/octokit_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import type { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods';
@@ -70,11 +75,13 @@ export class Publish extends CommandBase {
   }
 
   override async run(options: PublisherOptions) {
-    Log.title(`Publishing ${options.package}`);
+    options.workingDir = getRelativePath(options.workingDir);
 
+    Log.title(`Publishing ${options.package}`);
     Log.stepBegin('Configuration');
     Log.stepProgress(`Workflow ID: ${options.workflowId}`);
     Log.stepProgress(`Repository: ${options.repository}`);
+    Log.stepProgress(`Working Directory: ${options.workingDir}`);
     Log.stepEnd(`Package: ${options.package}`);
 
     if (!options.skipArtifactDownload) {

@@ -13,9 +13,10 @@ env:
   IS_RELEASE: ${{ contains(github.ref, 'heads/release') }}
   IS_BETA: ${{ contains(github.ref, 'heads/beta') }}
   CARGO_TERM_COLOR: always
+  FORCE_COLOR: true
+
 
 jobs:
-
 
   # -------------------------------------------------------------------- [Plan]
 

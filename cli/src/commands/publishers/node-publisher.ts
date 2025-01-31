@@ -88,6 +88,6 @@ export async function nodePublish(options: PublisherOptions) {
 
   if (!allPlatformsAligned) {
     Log.stepEnd('Failed to align all platforms', 'failure');
-    return;
+    process.exit(1);
   }
 }
