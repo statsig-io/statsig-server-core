@@ -38,7 +38,7 @@ export class SyncVersion extends CommandBase {
     updatePhpComposerVersion(versionString);
 
     Log.stepBegin('Verifying Cargo Change');
-    execSync('cargo check', { cwd: BASE_DIR });
+    execSync('cargo update --workspace', { cwd: BASE_DIR });
     Log.stepEnd('Cargo Change Verified');
 
     if (options?.commitAndPush) {
@@ -151,7 +151,7 @@ async function tryCommitAndPushChanges(version: SemVer) {
   Log.stepBegin('Commit and Push Changes');
 
   const { success, error } = await commitAndPushChanges(
-    '.',
+    BASE_DIR,
     `chore: bump version to ${version.toString()}`,
     'origin',
     'main',
