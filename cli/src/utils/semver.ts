@@ -22,7 +22,9 @@ export class SemVer {
   }
 
   toBranch(): string {
-    return this.beta ? `beta/${this.toString()}` : `release/${this.toString()}`;
+    return this.beta
+      ? `betas/${this.toString()}`
+      : `releases/${this.toString()}`;
   }
 
   isBeta(): boolean {
