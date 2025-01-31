@@ -28,7 +28,7 @@ jobs:
         run: printenv
 
   sync-version:
-    if: contains(github.ref, '/betas/') || contains(github.ref, '/releases/')
+    if: contains(github.head_ref, 'betas/') || contains(github.head_ref, 'releases/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
