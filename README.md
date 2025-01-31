@@ -11,7 +11,7 @@
         	<img src="https://img.shields.io/badge/license-ISC-blue.svg?colorA=1b2528&colorB=ccfbc7&style=for-the-badge">
     	</a>
 	<a href="https://www.npmjs.com/package/@sigstat/sigstat-napi">
-        	<img src="https://img.shields.io/npm/v/.svg?colorA=1b2528&colorB=b2d3ff&style=for-the-badge">
+        	<img src="https://img.shields.io/npm/v/@sigstat/sigstat-napi.svg?colorA=1b2528&colorB=b2d3ff&style=for-the-badge">
     	</a>
 	<a href="https://statsig.com/community?ref=gh_server_core">
         	<img src="https://img.shields.io/badge/slack-statsig-brightgreen.svg?logo=slack&colorA=1b2528&colorB=FFF8BA&style=for-the-badge">
@@ -28,10 +28,12 @@ Read through the [Documentation](https://docs.statsig.com/server/introduction?re
 
 Bindings
 
-- Ruby [[rubygem](https://www.npmjs.com/package/@statsig/js-client)] [[source](https://github.com/statsig-io/private-statsig-server-core/tree/main/statsig-ffi/bindings/ruby)]
-- Python [[pypi](https://www.npmjs.com/package/@statsig/js-on-device-eval-client)] [[source](https://github.com/statsig-io/private-statsig-server-core/tree/main/statsig-ffi/bindings/python)]
-- PHP [[packagist](https://www.npmjs.com/package/@statsig/js-on-device-eval-client)] [[source](https://github.com/statsig-io/private-statsig-server-core/tree/main/statsig-ffi/bindings/php)]
-- .NET [[nuget](https://www.npmjs.com/package/@statsig/js-on-device-eval-client)] [[source](https://github.com/statsig-io/private-statsig-server-core/tree/main/statsig-ffi/bindings/dotnet)]
+- Node [[npm](https://www.npmjs.com/package/@sigstat/sigstat-napi)] [[source](https://github.com/statsig-io/statsig-server-core/blob/main/statsig-node)]
+
+- Python [[pypi](https://pypi.org/project/statsig-python-core)] [[source](https://github.com/statsig-io/statsig-server-core/blob/main/statsig-pyo3)]
+
+- PHP [[packagist](https://packagist.org/packages/statsig/statsig-core-php)] [[source](https://github.com/statsig-io/statsig-server-core/blob/main/statsig-php)]
+
 
 ## Community
 
