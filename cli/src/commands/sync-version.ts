@@ -1,5 +1,8 @@
 import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
-import { commitAndPushChanges } from '@/utils/git_utils.js';
+import {
+  commitAndPushChanges,
+  getCurrentBranchName,
+} from '@/utils/git_utils.js';
 import { SemVer } from '@/utils/semver.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
@@ -150,11 +153,13 @@ function updatePhpComposerVersion(version: string) {
 async function tryCommitAndPushChanges(version: SemVer) {
   Log.stepBegin('Commit and Push Changes');
 
+  const localBranch = await getCurrentBranchName();
+
   const { success, error } = await commitAndPushChanges(
     BASE_DIR,
     `chore: bump version to ${version.toString()}`,
     'origin',
-    'main',
+    localBranch,
     version.toBranch(),
     true /* shouldPushChanges */,
   );
