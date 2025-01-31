@@ -77,7 +77,7 @@ export class BumpVersion extends CommandBase {
 
     printConclusion('Succesfully Bumped Root Version');
 
-    SyncVersion.sync();
+    await SyncVersion.sync();
 
     Log.title('Commit and Push Changes');
 

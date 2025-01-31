@@ -13,6 +13,10 @@ on:
   release:
     types: [released, prereleased]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   # Planning Inputs
   IS_RELEASE_BRANCH: ${{ contains(github.ref, 'heads/release') }}

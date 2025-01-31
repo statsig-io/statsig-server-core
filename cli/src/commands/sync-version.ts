@@ -1,5 +1,7 @@
 import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
-import { Log, printTitle } from '@/utils/teminal_utils.js';
+import { commitAndPushChanges } from '@/utils/git_utils.js';
+import { SemVer } from '@/utils/semver.js';
+import { Log } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
 import chalk from 'chalk';
 import { execSync } from 'child_process';
@@ -13,29 +15,37 @@ export class SyncVersion extends CommandBase {
     super(import.meta.url);
 
     this.description('Sync the version across all relevant files');
+
+    this.option('--commit-and-push', 'Commit and push the changes', false);
   }
 
-  override async run() {
-    SyncVersion.sync();
+  override async run(options: { commitAndPush: boolean }) {
+    SyncVersion.sync(options);
   }
 
-  static sync() {
+  static async sync(options?: { commitAndPush: boolean }) {
     Log.title('Syncing Version');
 
     Log.stepBegin('Getting root version');
-    const version = getRootVersion().toString();
-    Log.stepEnd(`Root Version: ${version}`);
+    const version = getRootVersion();
+    const versionString = version.toString();
+    Log.stepEnd(`Root Version: ${versionString}`);
 
-    updateStatsigMetadataVersion(version);
-    updateNodePackageJsonVersions(version);
-    updateJavaGradleVersion(version);
-    updateStatsigGrpcDepVersion(version);
-    updatePhpComposerVersion(version);
+    updateStatsigMetadataVersion(versionString);
+    updateNodePackageJsonVersions(versionString);
+    updateJavaGradleVersion(versionString);
+    updateStatsigGrpcDepVersion(versionString);
+    updatePhpComposerVersion(versionString);
+
     Log.stepBegin('Verifying Cargo Change');
     execSync('cargo check', { cwd: BASE_DIR });
     Log.stepEnd('Cargo Change Verified');
 
-    Log.conclusion(`All Versions Updated to: ${version}`);
+    if (options?.commitAndPush) {
+      await tryCommitAndPushChanges(version);
+    }
+
+    Log.conclusion(`All Versions Updated to: ${versionString}`);
   }
 }
 
@@ -135,4 +145,27 @@ function updatePhpComposerVersion(version: string) {
   fs.writeFileSync(path, updated, 'utf8');
 
   Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`);
+}
+
+async function tryCommitAndPushChanges(version: SemVer) {
+  Log.stepBegin('Commit and Push Changes');
+
+  const { success, error } = await commitAndPushChanges(
+    '.',
+    `chore: bump version to ${version.toString()}`,
+    'origin',
+    'main',
+    version.toBranch(),
+    true /* shouldPushChanges */,
+  );
+
+  if (success) {
+    Log.stepEnd('Successfully Committed and Pushed');
+  } else if (error instanceof Error && error.name === 'NoChangesError') {
+    Log.stepEnd('No Changes to Commit');
+  } else {
+    Log.stepEnd(`Failed to Commit and Push Changes`, 'failure');
+
+    throw error;
+  }
 }

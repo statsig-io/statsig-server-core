@@ -70,7 +70,9 @@ export async function commitAndPushChanges(
 
     const status = await git.status();
     if (!status.isClean()) {
-      throw new Error('There are unstaged changes');
+      const noChangeError = new Error('There are unstaged changes');
+      noChangeError.name = 'NoChangesError';
+      throw noChangeError;
     }
 
     if (shouldPushChanges) {

@@ -2,7 +2,10 @@
 
 matrix_file=./.github/build_matrix.json
 
-should_publish=$([ $IS_NEW_RELEASE = true ])
+should_publish=false
+if [ $IS_NEW_RELEASE = true ]; then
+    should_publish=true
+fi
 
 if [ $IS_MERGED_PR = true ] && [ $IS_BETA_BRANCH = true ]; then
     should_publish=true

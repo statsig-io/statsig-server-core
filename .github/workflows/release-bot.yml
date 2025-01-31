@@ -1,0 +1,31 @@
+name: Release Bot
+
+on:
+  pull_request:
+    types: [opened, reopened, closed]
+    branches: [main, stable]
+  release:
+    types: [released, prereleased]
+
+jobs:
+  sync-version:
+    if: startsWith(github.head_ref, 'releases/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+
+      - name: Sync Version
+        run: |
+          pnpm install --dir cli
+          ./run sync-version --commit-and-push
+
+  run-publish-action:
+    if: startsWith(github.head_ref, 'releases/') || github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: statsig-io/statsig-publish-sdk-action@main
+        with:
+          kong-private-key: ${{ secrets.KONG_GH_APP_PRIVATE_KEY }}
