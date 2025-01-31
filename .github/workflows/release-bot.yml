@@ -57,7 +57,7 @@ jobs:
           commit_message: "Bot: Sync Version"
 
   run-publish-action:
-    if: contains(github.ref, 'releases/') &&  github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - uses: statsig-io/statsig-publish-sdk-action@main
