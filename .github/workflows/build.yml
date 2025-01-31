@@ -8,19 +8,28 @@ on:
       - release/**
       - beta/**
   pull_request:
+    types: [opened, reopened, closed]
+
+  release:
+    types: [released, prereleased]
 
 env:
-  IS_RELEASE: ${{ contains(github.ref, 'heads/release') }}
-  IS_BETA: ${{ contains(github.ref, 'heads/beta') }}
-  CARGO_TERM_COLOR: always
-  FORCE_COLOR: true
+  # Planning Inputs
+  IS_RELEASE_BRANCH: ${{ contains(github.ref, 'heads/release') }}
+  IS_BETA_BRANCH: ${{ contains(github.ref, 'heads/beta') }}
+  IS_MERGED_PR: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
+  IS_NEW_RELEASE: ${{ github.event_name == 'release' }}
 
   # Python Publishing
   MATURIN_PYPI_TOKEN: ${{ secrets.STATSIG_PYPI_PROD_TOKEN }}
   MATURIN_REPOSITORY: pypi
 
-
+  # NPM Publishing
   NPM_TOKEN: ${{ secrets.SIGSTAT_PUBLISH_NPM }}
+
+  # Misc
+  CARGO_TERM_COLOR: always
+  FORCE_COLOR: true
 
 
 jobs:
