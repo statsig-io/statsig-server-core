@@ -27,15 +27,40 @@ jobs:
       - name: Print Env
         run: printenv
 
-  sync-version:
+  # sync-version:
+  #   if: contains(github.head_ref, 'betas/') || contains(github.head_ref, 'releases/')
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ github.head_ref }}
+  #         submodules: recursive
+
+  #     - name: Install Protoc
+  #       uses: arduino/setup-protoc@v3
+  #       with:
+  #           repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+  #     - uses: pnpm/action-setup@v4
+  #       with:
+  #         version: 7.32.4
+
+  #     - name: Sync Version
+  #       run: |
+  #         pnpm install --dir cli
+  #         ./run sync-version
+
+  #     - uses: stefanzweifel/git-auto-commit-action@v5
+  #       with:
+  #         token: ${{ secrets.STATSIG_CORE_SERVER_SDK_PAT }}
+  #         commit_user_name: statsig-kong[bot]
+  #         commit_user_email: statsig-kong[bot]@users.noreply.github.com
+  #         commit_message: "Bot: Sync Version"
+
+  run-publish-action:
     if: contains(github.head_ref, 'betas/') || contains(github.head_ref, 'releases/')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          submodules: recursive
-
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
         with:
@@ -45,24 +70,6 @@ jobs:
         with:
           version: 7.32.4
 
-      - name: Sync Version
-        run: |
-          pnpm install --dir cli
-          ./run sync-version
-
-      - uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_user_name: statsig-kong[bot]
-          commit_user_email: statsig-kong[bot]@users.noreply.github.com
-          commit_message: "Bot: Sync Version"
-
-  run-publish-action:
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.action == 'closed' &&
-      github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
-    steps:
       - uses: statsig-io/statsig-publish-sdk-action@main
         with:
           kong-private-key: ${{ secrets.KONG_GH_APP_PRIVATE_KEY }}
