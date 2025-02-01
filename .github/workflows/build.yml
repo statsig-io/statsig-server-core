@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
   pull_request:
-    types: [opened, reopened, closed]
+    types: [reopened, closed]
 
   release:
     types: [released, prereleased]
@@ -17,6 +17,7 @@ env:
   # Planning Inputs
   IS_PRIVATE_REPO: ${{ github.event.repository.private }}
   IS_RELEASE_BRANCH: ${{ contains(github.ref, 'heads/releases') }}
+  IS_RELEASE_TRIGGER: ${{ github.event_name == 'release' }}
   IS_BETA_BRANCH: ${{ contains(github.ref, 'heads/betas') }}
   IS_MERGED_PR: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
   IS_NEW_RELEASE: ${{ github.event_name == 'release' }}
@@ -42,7 +43,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       build_matrix: ${{ steps.plan.outputs.build_matrix }}
-      should_publish: ${{ steps.plan.outputs.should_publish }}
     steps:
       - uses: actions/checkout@v4
       - name: Make Plan
@@ -128,7 +128,7 @@ jobs:
 
   publish:
     needs: [plan, build]
-    if: ${{ needs.plan.outputs.should_publish == 'true' }}
+    if: ${{ github.event_name == 'release' }}
     
     runs-on: ubuntu-latest
     strategy:
