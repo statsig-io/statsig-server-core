@@ -1,3 +1,4 @@
+import { decompress } from '@mongodb-js/zstd';
 import express from 'express';
 import http from 'http';
 
@@ -31,10 +32,15 @@ export class MockScrapi {
     this.app.use(express.json());
 
     this.app.use((req: express.Request, res: express.Response) => {
+      let body = req.body;
+      if (req.headers['content-encoding'] === 'zstd') {
+        body = decompress(req.body);
+      }
+
       this.requests.push({
         path: req.path,
         method: req.method,
-        body: req.body,
+        body,
       });
 
       const found = Object.entries(this.mocks).find(([path, mock]) => {
@@ -76,4 +82,22 @@ export class MockScrapi {
       options: options ?? null,
     };
   }
+}
+
+function decompressZstd(req: express.Request): Promise<boolean> {
+  return new Promise((resolve, _reject) => {
+    try {
+      const chunks: Buffer[] = [];
+      req.on('data', (chunk: Buffer) => chunks.push(chunk));
+      req.on('end', async () => {
+        const buffer = Buffer.concat(chunks);
+        const decompressed = await decompress(buffer);
+        req.body = decompressed.toString();
+        delete req.headers['content-encoding'];
+        resolve(true);
+      });
+    } catch (error) {
+      resolve(false);
+    }
+  });
 }

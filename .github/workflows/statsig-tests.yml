@@ -6,25 +6,28 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   FORCE_COLOR: true
   test_api_key: ${{ secrets.KONG_SERVER_SDK_KEY }}
 
 jobs:
-  run-lang-specific-tests:
+  run-bindings-tests:
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - debian
-          # - alpine
-        arch:
-          - [x86_64, amd64, ubuntu-latest]
-          - [aarch64, arm64, statsig-ubuntu-arm64]
-
-    runs-on: ${{ matrix.arch[2] }}
+        lang:
+          - python
+          - node
+          - java
+          - rust
+    
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -35,40 +38,22 @@ jobs:
         with:
           version: 7.32.4
 
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: Build Docker Image
-        id: build-docker-image
-        uses: ./.github/actions/build-docker-image
-        with:
-          dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          dockerhub_password: ${{ secrets.DOCKERHUB_TOKEN }}
-          gh_token: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
-          dockerfile_path: cli/src/docker/Dockerfile.${{ matrix.os }}
-          docker_image_tag: statsig/server-core-${{ matrix.os }}-${{ matrix.arch[0] }}
-          platform: linux/${{ matrix.arch[1] }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: Install NPM Dependencies
-        run: cd cli && pnpm install
+        run: |
+          pnpm install --dir cli
+          pip3 install pytest maturin patchelf pytest_httpserver
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+            repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Tests
-        shell: 'script --return --quiet --log-out /dev/null --command "bash -e {0}"' # prevents "the input device is not a TTY" error
+        # TODO: This is set to macos just to avoid running in docker. 
         run: |
-          ./run unit-tests --skip-docker-build --os ${{ matrix.os }} --arch ${{ matrix.arch[0] }}
-
-  run-rust-tests:
-    runs-on: macos-latest
-    timeout-minutes: 15
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
-
-      - run: cargo test -p sigstat
-
-      - run: cargo test -p sigstat --features with_zstd
+          ./run unit-tests ${{ matrix.lang }} \
+            --skip-docker-build \
+            --os macos
 
