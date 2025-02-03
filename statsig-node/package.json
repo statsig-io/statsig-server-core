@@ -3,7 +3,7 @@
   "version": "0.0.5-beta.1",
   "main": "index.js",
   "scripts": {
-    "test": "jest",
+    "test": "jest --colors",
     "build": "napi build --platform --js index.js --dts index.d.ts --output-dir ./build --strip"
   },
   "keywords": [],

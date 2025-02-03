@@ -51,9 +51,7 @@ jobs:
             repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Tests
-        # TODO: This is set to macos just to avoid running in docker. 
         run: |
           ./run unit-tests ${{ matrix.lang }} \
-            --skip-docker-build \
-            --os macos
+            --no-docker
 

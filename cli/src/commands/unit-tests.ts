@@ -51,6 +51,7 @@ type Options = {
   skipDockerBuild: boolean;
   os: OS;
   arch: Arch;
+  docker: boolean;
 };
 
 export class UnitTests extends CommandBase {
@@ -67,6 +68,8 @@ export class UnitTests extends CommandBase {
       false,
     );
 
+    this.option('-n, --no-docker', 'Run the tests locally without docker');
+
     this.option(
       '-os, --os <string>',
       'The OS to run tests for, e.g. debian',
@@ -76,30 +79,35 @@ export class UnitTests extends CommandBase {
     this.option(
       '-a, --arch <string>',
       'The architecture to run tests for, e.g. amd64',
-      'amd64',
+      'arm64',
     );
   }
 
   override async run(lang: string, options: Options) {
     Log.title('Running Tests');
 
+    console.log(options);
     Log.stepBegin('Configuration');
     Log.stepProgress(`Language: ${lang}`);
+    Log.stepProgress(`OS: ${options.os}`);
+    Log.stepProgress(`Arch: ${options.arch}`);
+    Log.stepProgress(`Skip Docker Build: ${options.skipDockerBuild}`);
+    Log.stepProgress(`Docker: ${options.docker}`);
     Log.stepEnd(`Skip Docker Build: ${options.skipDockerBuild}`);
 
-    if (!options.skipDockerBuild) {
+    if (!options.skipDockerBuild && options.docker) {
       buildDockerImage(options.os, options.arch);
     }
 
-    runTestInDockerImage(lang, options.os, options.arch);
+    runTestInDockerImage(lang, options);
 
     Log.conclusion('Tests Ran');
   }
 }
 
-function runTestInDockerImage(lang: string, os: OS, arch: Arch) {
-  const { docker } = getArchInfo(arch);
-  const dockerImageTag = getDockerImageTag(os, arch);
+function runTestInDockerImage(lang: string, options: Options) {
+  const { docker } = getArchInfo(options.arch);
+  const dockerImageTag = getDockerImageTag(options.os, options.arch);
 
   Log.title(`Running tests for ${lang}`);
   const dockerCommand = [
@@ -113,7 +121,7 @@ function runTestInDockerImage(lang: string, os: OS, arch: Arch) {
   ].join(' ');
 
   let command = TEST_COMMANDS[lang];
-  if (isLinux(os)) {
+  if (isLinux(options.os) && options.docker) {
     Log.stepBegin(`Executing docker command for ${lang}`);
     command = dockerCommand;
   } else {
@@ -122,5 +130,9 @@ function runTestInDockerImage(lang: string, os: OS, arch: Arch) {
   }
   Log.stepProgress(`${command}`);
 
-  execSync(command, { cwd: BASE_DIR, stdio: 'inherit' });
+  execSync(command, {
+    cwd: BASE_DIR,
+    stdio: 'inherit',
+    env: { ...process.env, RUST_BACKTRACE: '1', FORCE_COLOR: 'true' },
+  });
 }
