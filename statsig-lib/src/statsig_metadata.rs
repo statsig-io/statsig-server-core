@@ -28,6 +28,10 @@ pub struct StatsigMetadata {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language_version: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "service_name")]
+    pub service_name: Option<String>,
 }
 
 impl StatsigMetadata {
@@ -39,6 +43,7 @@ impl StatsigMetadata {
             os: None,
             arch: None,
             language_version: None,
+            service_name: None,
         }
     }
 
@@ -49,6 +54,17 @@ impl StatsigMetadata {
                 metadata.os = Some(os);
                 metadata.arch = Some(arch);
                 metadata.language_version = Some(language_version);
+            }
+            Err(e) => {
+                log_e!(TAG, "Failed to clone StatsigMetadata: {}", e.to_string());
+            }
+        }
+    }
+
+    pub fn update_service_name(service_name: Option<String>) {
+        match STATSIG_METADATA.write() {
+            Ok(mut metadata) => {
+                metadata.service_name = service_name;
             }
             Err(e) => {
                 log_e!(TAG, "Failed to clone StatsigMetadata: {}", e.to_string());

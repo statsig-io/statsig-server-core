@@ -27,6 +27,7 @@ use crate::sdk_diagnostics::diagnostics::Diagnostics;
 use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
 use crate::statsig_err::StatsigErr;
+use crate::statsig_metadata::StatsigMetadata;
 use crate::statsig_options::StatsigOptions;
 use crate::statsig_runtime::StatsigRuntime;
 use crate::statsig_type_factories::{
@@ -120,6 +121,7 @@ impl Statsig {
             &statsig_runtime,
         ));
         let diagnostics = Diagnostics::new(event_logger.clone(), spec_store.clone());
+        StatsigMetadata::update_service_name(options.service_name.clone());
 
         Statsig {
             sdk_key: sdk_key.to_string(),

@@ -85,6 +85,7 @@ impl From<&StatsigOptionsPy> for StatsigOptions {
                 .as_ref()
                 .map(|level| LogLevel::from(level.as_str())),
             observability_client: None,
+            service_name: None,
         }
     }
 }

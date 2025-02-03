@@ -40,6 +40,7 @@ pub struct StatsigOptions {
     pub specs_adapter: Option<Arc<dyn SpecsAdapter>>,
     pub specs_sync_interval_ms: Option<u32>,
     pub specs_url: Option<String>,
+    pub service_name: Option<String>,
 }
 
 impl StatsigOptions {
@@ -152,6 +153,11 @@ impl StatsigOptionsBuilder {
         self
     }
 
+    pub fn service_name(mut self, service_name: Option<String>) -> Self {
+        self.inner.service_name = service_name;
+        self
+    }
+
     pub fn build(self) -> StatsigOptions {
         self.inner
     }
@@ -205,6 +211,7 @@ impl Serialize for StatsigOptions {
             "override_adapter",
             &get_if_set(&self.override_adapter)
         );
+        serialize_if_not_none!(state, "service_name", &get_if_set(&self.service_name));
 
         state.end()
     }
