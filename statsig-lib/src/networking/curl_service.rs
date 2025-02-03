@@ -1,4 +1,5 @@
 use crate::networking::RequestArgs;
+use crate::observability::util::sanitize_url_for_logging;
 use crate::{log_d, log_e, ok_or_return_with, unwrap_or_return_with, StatsigErr};
 use chrono::Utc;
 use curl::easy::{Easy2, Handler, List, WriteError};
@@ -273,6 +274,7 @@ impl Curl {
             let result = unwrap_or_return_with!(msg.result_for2(&entry.handle), || {
                 log_e!(TAG, "Failed to get result for token: {}", token);
             });
+            let sanitized_url = sanitize_url_for_logging(url);
 
             match result {
                 Ok(()) => {
@@ -282,18 +284,22 @@ impl Curl {
                     });
 
                     let res_buffer = entry.handle.get_mut().get_buffer();
-
                     log_d!(
                         TAG,
                         "Transfer succeeded (Status: {}) (Download length: {}) {}",
                         http_status,
                         &res_buffer.len(),
-                        url
+                        sanitized_url
                     );
 
                     let data = String::from_utf8(res_buffer)
                         .map_err(|e| {
-                            log_e!(TAG, "Failed to convert response to string: {} {:?}", url, e);
+                            log_e!(
+                                TAG,
+                                "Failed to convert response to string: {} {:?}",
+                                sanitized_url,
+                                e
+                            );
                             e
                         })
                         .ok();
@@ -305,11 +311,11 @@ impl Curl {
                     };
 
                     if entry.request.tx.send(Ok(response)).is_err() {
-                        log_e!(TAG, "Failed to broadcast response: {}", url);
+                        log_e!(TAG, "Failed to broadcast response: {}", sanitized_url);
                     }
                 }
                 Err(e) => {
-                    log_e!(TAG, "Failed to send request to {}: {:?}", url, e);
+                    log_e!(TAG, "Failed to send request to {}: {:?}", sanitized_url, e);
                     let _ = entry
                         .request
                         .tx
@@ -322,7 +328,7 @@ impl Curl {
                 log_e!(TAG, "Failed to remove request from multi: {:?}", e);
             }
 
-            log_d!(TAG, "Request completed: {}", url);
+            log_d!(TAG, "Request completed: {}", sanitized_url);
         });
     }
 }
