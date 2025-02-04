@@ -15,7 +15,6 @@ import {
   statsigLogNumValueEvent,
   statsigLogStringValueEvent,
   statsigShutdown,
-  consoleLoggerInit,
   statsigLogDynamicConfigExposure,
   statsigLogExperimentExposure,
   statsigLogGateExposure,
@@ -30,7 +29,6 @@ export class Statsig {
   readonly __ref: AutoReleasingStatsigRef;
 
   constructor(sdkKey: string, options?: StatsigOptions) {
-    _initializeConsoleLogger(options?.outputLoggerLevel);
     this.__ref = statsigCreate(sdkKey, options?.__ref.refId);
   }
 
@@ -234,24 +232,4 @@ function _makeTypedGet(
     exposeFunc?.(param);
     return found as TypedReturn<T>;
   };
-}
-
-// intentionally spaced for formatting
-const DEBUG = ' DEBUG ';
-const _INFO = '  INFO ';
-const _WARN = '  WARN ';
-const ERROR = ' ERROR ';
-
-function _initializeConsoleLogger(level: LogLevel | undefined) {
-  const initError = consoleLoggerInit(
-    (level ?? LogLevel.Error) as any,
-    (_, msg) => console.log('\x1b[32m%s\x1b[0m', DEBUG, msg), // Green text for DEBUG
-    (_, msg) => console.info('\x1b[34m%s\x1b[0m', _INFO, msg), // Blue text for INFO
-    (_, msg) => console.warn('\x1b[33m%s\x1b[0m', _WARN, msg), // Yellow text for WARN
-    (_, msg) => console.error('\x1b[31m%s\x1b[0m', ERROR, msg), // Red text for ERROR
-  );
-
-  if (initError != null && level != LogLevel.None) {
-    console.warn('\x1b[33m%s\x1b[0m', _WARN, `[Statsig]: ${initError}`);
-  }
 }

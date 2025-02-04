@@ -42,6 +42,7 @@ pub fn statsig_options_create(
   event_logging_max_queue_size: Option<u32>,
   event_logging_flush_interval_ms: Option<u32>,
   spec_adapters_config: Option<Vec<SpecAdapterConfigNapi>>,
+  output_log_level: Option<u32>,
   observability_client: Option<JsObject>,
 ) -> AutoReleasingStatsigOptionsRef {
   let data_store: Option<Arc<dyn DataStoreTrait + 'static>> =
@@ -74,6 +75,7 @@ pub fn statsig_options_create(
       spec_adapters_config,
       data_store,
       observability_client: weak_observability_client,
+      output_log_level: output_log_level.map(|l| l.into()),
       ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {

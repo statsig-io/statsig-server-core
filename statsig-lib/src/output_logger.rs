@@ -30,10 +30,11 @@ impl From<&str> for LogLevel {
 impl From<u32> for LogLevel {
     fn from(level: u32) -> Self {
         match level {
-            1 => LogLevel::Debug,
-            2 => LogLevel::Info,
-            3 => LogLevel::Warn,
-            4 => LogLevel::Error,
+            0 => LogLevel::None,
+            1 => LogLevel::Error,
+            2 => LogLevel::Warn,
+            3 => LogLevel::Info,
+            4 => LogLevel::Debug,
             _ => DEFAULT_LOG_LEVEL,
         }
     }

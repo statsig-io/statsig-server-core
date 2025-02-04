@@ -7,21 +7,21 @@ import {
   IDataStore,
   getDataStoreKey,
   DataStoreKeyPath,
-  AdapterResponse
-} from './IDataStore'
+  AdapterResponse,
+} from './IDataStore';
 
 export type StatsigOptionArgs = Partial<{
-  outputLoggerLevel?: LogLevel,
-    environment?: string | undefined | null,
-    specsUrl?: string | undefined | null,
-    specsSyncIntervalMs?: number | undefined | null,
-    logEventUrl?: string | undefined | null,
-    eventLoggingMaxQueueSize?: number | undefined | null,
-    eventLoggingFlushIntervalMs?: number | undefined | null,
-    dataStore?: IDataStore | undefined | null,
-    specsAdapterConfig?: Array<SpecAdapterConfig> | undefined | null,
-    observabilityClient?: IObservabilityClient | undefined | null,
-}>
+  outputLoggerLevel?: LogLevel;
+  environment?: string | undefined | null;
+  specsUrl?: string | undefined | null;
+  specsSyncIntervalMs?: number | undefined | null;
+  logEventUrl?: string | undefined | null;
+  eventLoggingMaxQueueSize?: number | undefined | null;
+  eventLoggingFlushIntervalMs?: number | undefined | null;
+  dataStore?: IDataStore | undefined | null;
+  specsAdapterConfig?: Array<SpecAdapterConfig> | undefined | null;
+  observabilityClient?: IObservabilityClient | undefined | null;
+}>;
 
 export enum LogLevel {
   None = 0,
@@ -34,14 +34,16 @@ export enum LogLevel {
 export default class StatsigOptions {
   readonly __ref: AutoReleasingStatsigOptionsRef;
 
-  readonly outputLoggerLevel: LogLevel = LogLevel.Debug;
+  outputLoggerLevel: LogLevel = LogLevel.Debug;
 
-  constructor(
-    optionArgs: StatsigOptionArgs = {}
-  ) {
+  constructor(optionArgs: StatsigOptionArgs = {}) {
     this.outputLoggerLevel = optionArgs.outputLoggerLevel ?? LogLevel.Error;
-    const dataStoreWrapped = optionArgs.dataStore ? new WrappedDataStore(optionArgs.dataStore) : undefined;
-    const obClient = optionArgs.observabilityClient ? new ObservabilityClientWrapped(optionArgs.observabilityClient) : undefined;
+    const dataStoreWrapped = optionArgs.dataStore
+      ? new WrappedDataStore(optionArgs.dataStore)
+      : undefined;
+    const obClient = optionArgs.observabilityClient
+      ? new ObservabilityClientWrapped(optionArgs.observabilityClient)
+      : undefined;
     this.__ref = statsigOptionsCreate(
       optionArgs.environment,
       dataStoreWrapped,
@@ -51,26 +53,27 @@ export default class StatsigOptions {
       optionArgs.eventLoggingMaxQueueSize,
       optionArgs.eventLoggingFlushIntervalMs,
       optionArgs.specsAdapterConfig,
-      obClient
+      this.outputLoggerLevel as number,
+      obClient,
     );
   }
 }
 
 class WrappedDataStore {
   constructor(private client: IDataStore) {
-    this.initialize = this.initialize.bind(this)
-    this.get = this.get.bind(this)
-    this.set = this.set.bind(this)
-    this.shutdown = this.shutdown.bind(this)
-    this.supportsPollingUpdatesFor = this.supportsPollingUpdatesFor?.bind(this)
+    this.initialize = this.initialize.bind(this);
+    this.get = this.get.bind(this);
+    this.set = this.set.bind(this);
+    this.shutdown = this.shutdown.bind(this);
+    this.supportsPollingUpdatesFor = this.supportsPollingUpdatesFor?.bind(this);
   }
 
-  initialize(error: Error | undefined | null): Promise<void>  {
+  initialize(error: Error | undefined | null): Promise<void> {
     return this.client.initialize();
   }
 
   get(error: Error | undefined | null, key: string): Promise<AdapterResponse> {
-    return this.client.get(key)
+    return this.client.get(key);
   }
 
   set(error: Error | undefined | null, args: string): Promise<void> {
@@ -82,8 +85,11 @@ class WrappedDataStore {
     return this.client.shutdown();
   }
 
-  supportsPollingUpdatesFor(error: Error | undefined | null, args: String): boolean | undefined {
-    return this.client.supportsPollingUpdatesFor?.(args as DataStoreKeyPath)
+  supportsPollingUpdatesFor(
+    error: Error | undefined | null,
+    args: String,
+  ): boolean | undefined {
+    return this.client.supportsPollingUpdatesFor?.(args as DataStoreKeyPath);
   }
 }
 
@@ -99,15 +105,16 @@ export interface IObservabilityClient {
  * Wrapper class to bridge arguments passed from rust side and interfaces
  */
 class ObservabilityClientWrapped {
-  private client: IObservabilityClient
-  constructor(client: IObservabilityClient){
+  private client: IObservabilityClient;
+  constructor(client: IObservabilityClient) {
     this.client = client;
     // This is needed otherwise, instance context will be lost
     this.init = this.init.bind(this);
     this.increment = this.increment.bind(this);
     this.gauge = this.gauge.bind(this);
     this.dist = this.dist.bind(this);
-    this.should_enable_high_cardinality_for_this_tag = this.should_enable_high_cardinality_for_this_tag?.bind(this);
+    this.should_enable_high_cardinality_for_this_tag =
+      this.should_enable_high_cardinality_for_this_tag?.bind(this);
   }
 
   init(): void {
@@ -116,20 +123,31 @@ class ObservabilityClientWrapped {
 
   increment(error: undefined | null | Error, args: string): void {
     let parsedArgs = JSON.parse(args);
-    this.client.increment(parsedArgs.metric_name, parsedArgs.value, parsedArgs.tags);
+    this.client.increment(
+      parsedArgs.metric_name,
+      parsedArgs.value,
+      parsedArgs.tags,
+    );
   }
 
   gauge(error: undefined | null | Error, args: string): void {
     let parsedArgs = JSON.parse(args);
-    this.client.gauge(parsedArgs.metric_name, parsedArgs.value, parsedArgs.tags);
+    this.client.gauge(
+      parsedArgs.metric_name,
+      parsedArgs.value,
+      parsedArgs.tags,
+    );
   }
-  
+
   dist(error: undefined | null | Error, args: string): void {
     let parsedArgs = JSON.parse(args);
     this.client.dist(parsedArgs.metric_name, parsedArgs.value, parsedArgs.tags);
   }
 
-  should_enable_high_cardinality_for_this_tag?(error: undefined | null | Error, tag: string): void {
+  should_enable_high_cardinality_for_this_tag?(
+    error: undefined | null | Error,
+    tag: string,
+  ): void {
     this.client.should_enable_high_cardinality_for_this_tag?.(tag);
   }
 }
