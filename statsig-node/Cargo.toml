@@ -8,8 +8,8 @@ version.workspace = true
 crate-type = ["cdylib"]
 
 [dependencies]
-# sigstat = { path = "../statsig-lib", features = ["with_grpc", "with_zstd"] }
-sigstat = { path = "../statsig-lib", features = [] }
+sigstat = { path = "../statsig-lib", features = ["with_grpc", "with_zstd"] }
+# sigstat = { path = "../statsig-lib", features = [] }
 async-trait = "0.1.81"
 napi = { version = "3.0.0-alpha.24", features = [
     "async",

@@ -1,4 +1,5 @@
 import { decompress } from '@mongodb-js/zstd';
+import compression from 'compression';
 import express from 'express';
 import http from 'http';
 
@@ -29,37 +30,53 @@ export class MockScrapi {
     this.port = Math.floor(Math.random() * 2000) + 4000;
     this.server = this.app.listen(this.port, onReady);
 
-    this.app.use(express.json());
-
-    this.app.use((req: express.Request, res: express.Response) => {
-      let body = req.body;
-      if (req.headers['content-encoding'] === 'zstd') {
-        body = decompress(req.body);
-      }
-
-      this.requests.push({
-        path: req.path,
-        method: req.method,
-        body,
-      });
-
-      const found = Object.entries(this.mocks).find(([path, mock]) => {
-        if (mock.options?.method !== req.method) {
-          return false;
+    this.app.use(
+      (
+        req: express.Request,
+        _res: express.Response,
+        next: express.NextFunction,
+      ) => {
+        // console.log(`[Scrapi] Req ${req.method}:`, req.url, Date.now());
+        next();
+      },
+      compression({
+        filter: (req, res) => {
+          if (req.headers['content-encoding'] === 'zstd') {
+            return false;
+          }
+          return compression.filter(req, res);
+        },
+      }),
+      async (req: express.Request, res: express.Response) => {
+        if (req.headers['content-encoding'] === 'zstd') {
+          await decompressZstd(req);
         }
 
-        return req.path.startsWith(path);
-      });
+        this.requests.push({
+          path: req.path,
+          method: req.method,
+          body: req.body,
+        });
 
-      if (!found) {
-        console.log('Unmatched request:', req.method, req.url);
-        res.status(404).send('Not Found');
-        return;
-      }
+        const found = Object.entries(this.mocks).find(([path, mock]) => {
+          if (mock.options?.method !== req.method) {
+            return false;
+          }
 
-      const [_, mock] = found;
-      res.status(mock.options?.status ?? 200).send(mock.response);
-    });
+          return req.path.startsWith(path);
+        });
+
+        if (!found) {
+          console.log('Unmatched request:', req.method, req.url);
+          res.status(404).send('Not Found');
+          return;
+        }
+
+        const [_, mock] = found;
+        res.status(mock.options?.status ?? 200).send(mock.response);
+      },
+      express.json(),
+    );
   }
 
   static async create(): Promise<MockScrapi> {
@@ -92,8 +109,8 @@ function decompressZstd(req: express.Request): Promise<boolean> {
       req.on('end', async () => {
         const buffer = Buffer.concat(chunks);
         const decompressed = await decompress(buffer);
-        req.body = decompressed.toString();
-        delete req.headers['content-encoding'];
+        req.body = JSON.parse(decompressed.toString());
+
         resolve(true);
       });
     } catch (error) {

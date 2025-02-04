@@ -8,7 +8,7 @@ describe('Statsig', () => {
   let statsig: Statsig;
   let scrapi: MockScrapi;
 
-  const getLastLoggedEvent = async () => {
+  const getLastLoggedEvent = async (): Promise<Record<string, any> | null> => {
     await statsig.flushEvents();
     if (scrapi.requests.length === 0) {
       return null;
@@ -89,8 +89,8 @@ describe('Statsig', () => {
       statsig.logEvent(user, 'my_custom_event', 'my_value');
 
       const event = await getLastLoggedEvent();
-      expect(event.eventName).toEqual('my_custom_event');
-      expect(event.value).toEqual('my_value');
+      expect(event?.eventName).toEqual('my_custom_event');
+      expect(event?.value).toEqual('my_value');
     });
 
     it('should check gates and log exposures', async () => {
@@ -100,8 +100,8 @@ describe('Statsig', () => {
       expect(gate).toBe(true);
 
       const event = await getLastLoggedEvent();
-      expect(event.eventName).toEqual('statsig::gate_exposure');
-      expect(event.metadata.gate).toEqual('test_public');
+      expect(event?.eventName).toEqual('statsig::gate_exposure');
+      expect(event?.metadata?.gate).toEqual('test_public');
     });
 
     it('should get feature gates and log exposures', async () => {
@@ -111,8 +111,8 @@ describe('Statsig', () => {
       expect(gate.value).toBe(true);
 
       const event = await getLastLoggedEvent();
-      expect(event.eventName).toEqual('statsig::gate_exposure');
-      expect(event.metadata.gate).toEqual('test_public');
+      expect(event?.eventName).toEqual('statsig::gate_exposure');
+      expect(event?.metadata?.gate).toEqual('test_public');
     });
 
     it('should get dynamic configs and log exposures', async () => {
@@ -128,8 +128,8 @@ describe('Statsig', () => {
       });
 
       const event = await getLastLoggedEvent();
-      expect(event.eventName).toEqual('statsig::config_exposure');
-      expect(event.metadata.config).toEqual('operating_system_config');
+      expect(event?.eventName).toEqual('statsig::config_exposure');
+      expect(event?.metadata?.config).toEqual('operating_system_config');
     });
 
     it('should get experiments and log exposures', async () => {
@@ -144,8 +144,8 @@ describe('Statsig', () => {
       });
 
       const event = await getLastLoggedEvent();
-      expect(event.eventName).toEqual('statsig::config_exposure');
-      expect(event.metadata.config).toEqual('exp_with_obj_and_array');
+      expect(event?.eventName).toEqual('statsig::config_exposure');
+      expect(event?.metadata?.config).toEqual('exp_with_obj_and_array');
     });
 
     it('should get layers and log exposures', async () => {
@@ -159,8 +159,8 @@ describe('Statsig', () => {
       expect(value).toEqual('layer_default');
 
       event = await getLastLoggedEvent();
-      expect(event.eventName).toEqual('statsig::layer_exposure');
-      expect(event.metadata.config).toEqual('layer_with_many_params');
+      expect(event?.eventName).toEqual('statsig::layer_exposure');
+      expect(event?.metadata?.config).toEqual('layer_with_many_params');
     });
   });
 });
