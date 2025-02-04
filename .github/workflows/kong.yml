@@ -45,7 +45,7 @@ jobs:
         run: npm run kong -- build ${{ matrix.target }} -v
 
       - name: Run Tests [Non Rulesets]
-        run: npm run kong -- test ${{ matrix.target }} -r -x rulesets
+        run: npm run kong -- test ${{ matrix.target }} -r -x /rulesets.test
 
       - name: Run Tests [Rulesets Only]
-        run: npm run kong -- test ${{ matrix.target }} -r -f rulesets
+        run: npm run kong -- test ${{ matrix.target }} -r -f /rulesets.test
