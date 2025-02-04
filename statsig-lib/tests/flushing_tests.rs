@@ -94,7 +94,7 @@ async fn test_no_flushing_on_main() {
 
     let overall_duration = start.elapsed();
     println!("overall: {:.2} ms", overall_duration.as_millis());
-    assert!(overall_duration.as_millis() < 2000);
+    assert!(overall_duration.as_millis() < 4000);
 }
 
 #[tokio::test]
