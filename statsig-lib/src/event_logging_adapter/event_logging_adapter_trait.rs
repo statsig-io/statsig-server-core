@@ -31,6 +31,7 @@ mod tests {
             event_name: "my_custom_event".to_string(),
             value: None,
             metadata: None,
+            statsig_metadata: None,
         };
 
         let event = make_custom_event(user_internal, event);

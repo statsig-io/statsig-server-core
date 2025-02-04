@@ -1,6 +1,29 @@
 use crate::evaluation::evaluation_details::EvaluationDetails;
+use crate::sampling_processor::SamplingDecision;
 use crate::StatsigUser;
+use serde_json::Value;
 use std::collections::HashMap;
+
+pub(crate) fn get_statsig_metadata_with_sampling_details(
+    sampling_details: SamplingDecision,
+) -> HashMap<String, Value> {
+    let mut statsig_metadata: HashMap<String, Value> = HashMap::new();
+
+    if let Some(rate) = sampling_details.sampling_rate {
+        statsig_metadata.insert("samplingRate".into(), Value::Number(rate.into()));
+    }
+
+    statsig_metadata.insert(
+        "samplingMode".into(),
+        Value::String(format!("{:?}", sampling_details.sampling_mode).to_lowercase()),
+    );
+    statsig_metadata.insert(
+        "shadowLogged".into(),
+        Value::String(format!("{:?}", sampling_details.sampling_status).to_lowercase()),
+    );
+
+    statsig_metadata
+}
 
 pub(crate) fn get_metadata_with_details(
     evaluation_details: EvaluationDetails,

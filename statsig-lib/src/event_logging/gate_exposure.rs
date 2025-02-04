@@ -1,9 +1,12 @@
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::SecondaryExposure;
-use crate::event_logging::exposure_utils::{get_metadata_with_details, make_exposure_key};
+use crate::event_logging::exposure_utils::{
+    get_metadata_with_details, get_statsig_metadata_with_sampling_details, make_exposure_key,
+};
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::StatsigEventInternal;
 use crate::event_logging::statsig_exposure::StatsigExposure;
+use crate::sampling_processor::SamplingDecision;
 use crate::statsig_user_internal::StatsigUserInternal;
 
 pub const GATE_EXPOSURE_EVENT_NAME: &str = "statsig::gate_exposure";
@@ -17,6 +20,7 @@ pub struct GateExposure {
     pub evaluation_details: EvaluationDetails,
     pub version: Option<u32>,
     pub is_manual_exposure: bool,
+    pub sampling_details: SamplingDecision,
 }
 
 impl StatsigExposure for GateExposure {
@@ -41,10 +45,13 @@ impl StatsigExposure for GateExposure {
             metadata.insert("configVersion".into(), version.to_string());
         }
 
+        let statsig_metadata = get_statsig_metadata_with_sampling_details(self.sampling_details);
+
         let event = StatsigEvent {
             event_name: GATE_EXPOSURE_EVENT_NAME.into(),
             value: None,
             metadata: Some(metadata),
+            statsig_metadata: Some(statsig_metadata),
         };
 
         StatsigEventInternal::new(self.user, event, self.secondary_exposures)

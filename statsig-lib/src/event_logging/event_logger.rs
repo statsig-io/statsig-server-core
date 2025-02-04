@@ -313,6 +313,7 @@ fn append_non_exposed_event_and_reset(
         event_name: NON_EXPOSED_CHECKS_EVENT.to_string(),
         value: None,
         metadata: Some(metadata),
+        statsig_metadata: None,
     });
 
     match queue.write() {
@@ -407,14 +408,20 @@ mod tests {
     use crate::evaluation::evaluation_details::EvaluationDetails;
     use crate::event_logging::statsig_event::StatsigEvent;
     use crate::output_logger::{initialize_simple_output_logger, LogLevel};
+    use crate::sampling_processor::SamplingDecision;
     use crate::statsig_user_internal::StatsigUserInternal;
     use crate::StatsigUser;
     use async_trait::async_trait;
+    use serde_json::Value;
     use std::sync::atomic::{AtomicU64, Ordering};
 
     fn enqueue_single(logger: &EventLogger, user_id: &str, event_name: &str) {
         let user_internal =
             StatsigUserInternal::new(&StatsigUser::with_user_id(user_id.to_string()), None);
+
+        let mut sampling_statsig_metadata: HashMap<String, Value> = HashMap::new();
+        sampling_statsig_metadata.insert("samplingMode".into(), "on".into());
+        sampling_statsig_metadata.insert("samplingRate".into(), 101.into());
 
         let event = StatsigEventInternal::new(
             user_internal,
@@ -422,6 +429,7 @@ mod tests {
                 event_name: event_name.to_string(),
                 value: None,
                 metadata: None,
+                statsig_metadata: Some(sampling_statsig_metadata),
             },
             None,
         );
@@ -517,6 +525,7 @@ mod tests {
         let user_internal =
             StatsigUserInternal::new(&StatsigUser::with_user_id("a_user".to_string()), None);
         let eval_details = EvaluationDetails::unrecognized_no_data();
+
         logger.enqueue(QueuedEventPayload::GateExposure(GateExposure {
             user: user_internal.clone(),
             gate_name: "a_gate".to_string(),
@@ -526,6 +535,7 @@ mod tests {
             evaluation_details: eval_details.clone(),
             version: None,
             is_manual_exposure: false,
+            sampling_details: SamplingDecision::default(),
         }));
         logger.enqueue(QueuedEventPayload::GateExposure(GateExposure {
             user: user_internal,
@@ -536,6 +546,7 @@ mod tests {
             evaluation_details: eval_details,
             version: None,
             is_manual_exposure: false,
+            sampling_details: SamplingDecision::default(),
         }));
 
         logger.shutdown(Duration::from_millis(100)).await.unwrap();

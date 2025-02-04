@@ -25,16 +25,14 @@ pub struct BaseEvaluation {
     pub forward_all_exposures: Option<bool>,
 }
 
-#[allow(dead_code)] // TODO(@dloomb): Remove this when sampling is completed
-pub enum AnyEvaluation {
-    FeatureGate(GateEvaluation),
-    DynamicConfig(DynamicConfigEvaluation),
-    Experiment(ExperimentEvaluation),
-    Layer(LayerEvaluation),
+pub enum AnyEvaluation<'a> {
+    FeatureGate(&'a GateEvaluation),
+    DynamicConfig(&'a DynamicConfigEvaluation),
+    Experiment(&'a ExperimentEvaluation),
+    Layer(&'a LayerEvaluation),
 }
 
-#[allow(dead_code)] // TODO(@dloomb): Remove this when sampling is completed
-impl AnyEvaluation {
+impl AnyEvaluation<'_> {
     pub fn get_base_result(&self) -> &BaseEvaluation {
         match self {
             AnyEvaluation::FeatureGate(gate) => &gate.base,
@@ -52,26 +50,26 @@ impl AnyEvaluation {
     }
 }
 
-impl From<LayerEvaluation> for AnyEvaluation {
-    fn from(layer_eval: LayerEvaluation) -> Self {
+impl<'a> From<&'a LayerEvaluation> for AnyEvaluation<'a> {
+    fn from(layer_eval: &'a LayerEvaluation) -> Self {
         AnyEvaluation::Layer(layer_eval)
     }
 }
 
-impl From<GateEvaluation> for AnyEvaluation {
-    fn from(gate_eval: GateEvaluation) -> Self {
+impl<'a> From<&'a GateEvaluation> for AnyEvaluation<'a> {
+    fn from(gate_eval: &'a GateEvaluation) -> Self {
         AnyEvaluation::FeatureGate(gate_eval)
     }
 }
 
-impl From<ExperimentEvaluation> for AnyEvaluation {
-    fn from(experiment_eval: ExperimentEvaluation) -> Self {
+impl<'a> From<&'a ExperimentEvaluation> for AnyEvaluation<'a> {
+    fn from(experiment_eval: &'a ExperimentEvaluation) -> Self {
         AnyEvaluation::Experiment(experiment_eval)
     }
 }
 
-impl From<DynamicConfigEvaluation> for AnyEvaluation {
-    fn from(dynamic_config_evalation: DynamicConfigEvaluation) -> Self {
+impl<'a> From<&'a DynamicConfigEvaluation> for AnyEvaluation<'a> {
+    fn from(dynamic_config_evalation: &'a DynamicConfigEvaluation) -> Self {
         AnyEvaluation::DynamicConfig(dynamic_config_evalation)
     }
 }

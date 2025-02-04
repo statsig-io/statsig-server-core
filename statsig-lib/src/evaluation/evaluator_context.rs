@@ -2,6 +2,7 @@ use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluator_result::EvaluatorResult;
 use crate::hashing::HashUtil;
 use crate::spec_store::SpecStoreData;
+use crate::spec_types::{Rule, Spec};
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::StatsigErr::StackOverflowError;
 use crate::{OverrideAdapter, StatsigErr};
@@ -44,7 +45,10 @@ impl<'a> EvaluatorContext<'a> {
         self.result = EvaluatorResult::default()
     }
 
-    pub fn finalize_evaluation(&mut self) {
+    pub fn finalize_evaluation(&mut self, spec: &Spec, rule: Option<&Rule>) {
+        self.result.sampling_rate = rule.and_then(|r| r.sampling_rate);
+        self.result.forward_all_exposures = spec.forward_all_exposures;
+
         if self.nested_count > 0 {
             self.nested_count -= 1;
             return;

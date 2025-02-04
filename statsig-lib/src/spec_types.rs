@@ -22,6 +22,7 @@ pub struct Spec {
     pub version: Option<u32>,
     #[serde(rename = "targetAppIDs")]
     pub target_app_ids: Option<Vec<String>>,
+    pub forward_all_exposures: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -37,6 +38,7 @@ pub struct Rule {
     pub group_name: Option<String>,
     pub config_delegate: Option<String>,
     pub is_experiment_group: Option<bool>,
+    pub sampling_rate: Option<u64>,
 }
 
 #[derive(Serialize, Clone)]

@@ -8,4 +8,5 @@ pub struct StatsigEvent {
     pub event_name: String,
     pub value: Option<Value>,
     pub metadata: Option<HashMap<String, String>>,
+    pub statsig_metadata: Option<HashMap<String, Value>>,
 }

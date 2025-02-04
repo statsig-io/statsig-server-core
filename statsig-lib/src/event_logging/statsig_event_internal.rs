@@ -98,11 +98,15 @@ mod statsig_event_internal_tests {
     use crate::event_logging::statsig_event_internal::{make_custom_event, StatsigEventInternal};
     use crate::statsig_user_internal::StatsigUserInternal;
     use crate::StatsigUser;
-    use serde_json::json;
+    use serde_json::{json, Value};
     use std::collections::HashMap;
 
     fn create_test_event() -> StatsigEventInternal {
         let user = StatsigUserInternal::new(&StatsigUser::with_user_id("a-user".into()), None);
+        let mut sampling_statsig_metadata: HashMap<String, Value> = HashMap::new();
+        sampling_statsig_metadata.insert("samplingMode".into(), "on".into());
+        sampling_statsig_metadata.insert("samplingRate".into(), 101.into());
+        sampling_statsig_metadata.insert("shadowLogged".into(), "logged".into());
 
         make_custom_event(
             user,
@@ -110,6 +114,7 @@ mod statsig_event_internal_tests {
                 event_name: "foo".into(),
                 value: Some(json!("bar")),
                 metadata: Some(HashMap::from([("key".into(), "value".into())])),
+                statsig_metadata: Some(sampling_statsig_metadata),
             },
         )
     }

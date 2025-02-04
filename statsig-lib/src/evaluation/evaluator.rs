@@ -109,7 +109,7 @@ impl Evaluator {
             }
 
             if evaluate_config_delegate(ctx, rule)? {
-                ctx.finalize_evaluation();
+                ctx.finalize_evaluation(spec, Some(rule));
                 return Ok(true);
             }
 
@@ -127,7 +127,7 @@ impl Evaluator {
             ctx.result.group_name = rule.group_name.as_ref();
             ctx.result.is_experiment_group = rule.is_experiment_group.unwrap_or(false);
             ctx.result.is_experiment_active = spec.is_active.unwrap_or(false);
-            ctx.finalize_evaluation();
+            ctx.finalize_evaluation(spec, Some(rule));
             return Ok(true);
         }
 
@@ -137,7 +137,7 @@ impl Evaluator {
             true => Some(&DEFAULT_RULE),
             false => Some(&DISABLED_RULE),
         };
-        ctx.finalize_evaluation();
+        ctx.finalize_evaluation(spec, None);
 
         Ok(true)
     }

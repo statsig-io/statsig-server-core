@@ -4,6 +4,7 @@ use crate::hashset_with_ttl::HashSetWithTTL;
 use crate::spec_store::SpecStore;
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{DynamicValue, StatsigErr, StatsigRuntime};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::time::Duration;
@@ -11,19 +12,25 @@ use tokio::time::Duration;
 const SPECIAL_CASE_RULES: [&str; 3] = ["disabled", "default", ""];
 const TTL_IN_SECONDS: u64 = 60;
 
+#[derive(Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum SamplingStatus {
     Logged,
     Dropped,
+    #[default]
     None,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum SamplingMode {
     On,
     Shadow,
+    #[default]
     None,
 }
 
+#[derive(Default)]
 pub struct SamplingDecision {
     pub should_send_exposure: bool,
     pub sampling_rate: Option<u64>,
@@ -324,6 +331,19 @@ mod tests {
     use crate::{SpecsSource, SpecsUpdate, StatsigUser};
     use serde_json::Value;
     use std::fs;
+    use std::sync::LazyLock;
+
+    static GATE: LazyLock<GateEvaluation> = LazyLock::new(|| GateEvaluation {
+        base: BaseEvaluation {
+            name: "publish_to_all".to_string(),
+            rule_id: "rule_id".to_string(),
+            secondary_exposures: vec![],
+            sampling_rate: None,
+            forward_all_exposures: Some(false),
+        },
+        id_type: "".to_string(),
+        value: false,
+    });
 
     fn create_mock_user() -> StatsigUserInternal {
         let mut custom_ids = HashMap::new();
@@ -342,20 +362,8 @@ mod tests {
         }
     }
 
-    fn create_mock_evaluation_result(rule_id: &str, sampling_rate: Option<f64>) -> AnyEvaluation {
-        let base_result = BaseEvaluation {
-            name: "publish_to_all".to_string(),
-            rule_id: rule_id.to_string(),
-            secondary_exposures: vec![],
-            sampling_rate: sampling_rate.map(|rate| rate as u64),
-            forward_all_exposures: Some(false),
-        };
-
-        AnyEvaluation::FeatureGate(GateEvaluation {
-            base: base_result,
-            id_type: "".to_string(),
-            value: false,
-        })
+    fn create_mock_evaluation_result() -> AnyEvaluation<'static> {
+        AnyEvaluation::FeatureGate(&GATE)
     }
 
     #[test]
@@ -383,7 +391,7 @@ mod tests {
         let processor = SamplingProcessor::new(&runtime, &spec_store, hashing);
 
         let mut test_user = create_mock_user();
-        let mock_evaluation_res = create_mock_evaluation_result("fake_rule", None);
+        let mock_evaluation_res = create_mock_evaluation_result();
 
         // Should skip sampling in a non-production environment
         let should_skip_sample =

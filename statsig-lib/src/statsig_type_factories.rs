@@ -5,6 +5,7 @@ use crate::evaluation::evaluation_types::{
 use crate::event_logging::event_logger::EventLogger;
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_internal::StatsigUserInternal;
+use crate::SamplingProcessor;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Weak;
@@ -87,6 +88,7 @@ pub fn make_experiment(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn make_layer(
     user: &StatsigUserInternal,
     name: &str,
@@ -95,6 +97,7 @@ pub fn make_layer(
     event_logger_ptr: Option<Weak<EventLogger>>,
     version: Option<u32>,
     disable_exposure: bool,
+    sampling_processor: Option<Weak<SamplingProcessor>>,
 ) -> Layer {
     let (value, rule_id, group_name, allocated_experiment_name) = match &evaluation {
         Some(e) => (
@@ -118,5 +121,6 @@ pub fn make_layer(
         __event_logger_ptr: event_logger_ptr,
         __version: version,
         __disable_exposure: disable_exposure,
+        __sampling_processor: sampling_processor,
     }
 }

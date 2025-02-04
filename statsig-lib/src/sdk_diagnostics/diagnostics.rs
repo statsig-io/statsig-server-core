@@ -130,6 +130,7 @@ impl Diagnostics {
             event_name: DIAGNOSTICS_EVENT.to_string(),
             value: None,
             metadata: Some(metadata),
+            statsig_metadata: None,
         });
 
         let data = read_lock_or_else!(self.spec_store.data, {
