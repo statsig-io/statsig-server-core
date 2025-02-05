@@ -271,10 +271,6 @@ impl EventLogger {
         let results = futures::future::join_all(tasks).await;
         for result in results {
             if let Err(e) = result {
-                ops_stats.log_error(ErrorBoundaryEvent {
-                    tag: TAG.to_string(),
-                    exception: format!("Failed to flush events: {}", e),
-                });
                 log_w!(TAG, "Failed to flush events: {:?}", e);
             }
         }

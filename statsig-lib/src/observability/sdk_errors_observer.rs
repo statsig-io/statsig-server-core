@@ -17,9 +17,13 @@ use super::ops_stats::OpsStatsEvent;
 static SDK_EXCEPTION_ENDPOINT: &str = "https://statsigapi.net/v1/sdk_exception";
 
 #[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ErrorBoundaryEvent {
     pub tag: String,
     pub exception: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extra: Option<HashMap<String, String>>,
 }
 
 // Observer to post to scrapi when exception happened

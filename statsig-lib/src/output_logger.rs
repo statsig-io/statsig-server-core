@@ -131,6 +131,7 @@ macro_rules! log_error_to_statsig_and_console {
     let event = ErrorBoundaryEvent {
         exception: err_message.clone(),
         tag: $tag.to_string(),
+        extra: None,
     };
     $ops_stats.log_error(event);
 
