@@ -1,4 +1,9 @@
-import { ensureEmptyDir, getRootedPath, unzip } from '@/utils/file_utils.js';
+import {
+  ensureEmptyDir,
+  getRootedPath,
+  listFiles,
+  unzip,
+} from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { execSync } from 'child_process';
 import fs from 'node:fs';
@@ -46,11 +51,61 @@ const DIR_STRUCTURE = {
   },
 };
 
+const PACKAGE_MAPPING = {
+  'darwin-arm64': '@sigstat/sigstat-napi-darwin-arm64',
+  'linux-arm64-gnu': '@sigstat/sigstat-napi-linux-arm64-gnu',
+  'linux-arm64-musl': '@sigstat/sigstat-napi-linux-arm64-musl',
+  'win32-ia32-msvc': '@sigstat/sigstat-napi-win32-ia32-msvc',
+  'darwin-x64': '@sigstat/sigstat-napi-darwin-x64',
+  'win32-x64-msvc': '@sigstat/sigstat-napi-win32-x64-msvc',
+  'linux-x64-gnu': '@sigstat/sigstat-napi-linux-x64-gnu',
+  'linux-x64-musl': '@sigstat/sigstat-napi-linux-x64-musl',
+};
+
 export async function nodePublish(options: PublisherOptions) {
   const distDir = path.resolve(options.workingDir, 'statsig-node/dist');
 
+  addOptionalDependenciesToPackageJson(options);
   alignNodePackage(options, distDir);
   publishNodePackages(options, distDir);
+}
+
+function addOptionalDependenciesToPackageJson(options: PublisherOptions) {
+  const buildDir = options.workingDir + '/statsig-node/build';
+
+  Log.stepBegin('Adding optional dependencies to package.json');
+
+  const filepath = path.resolve(buildDir, 'package.json');
+
+  const binaries = listFiles(buildDir, '*.node');
+
+  const contents = fs.readFileSync(filepath, 'utf8');
+  const json = JSON.parse(contents);
+  const version = json['version'];
+
+  const optionalDependencies = {};
+  binaries.forEach((binary) => {
+    const platform = path
+      .basename(binary)
+      .match(/statsig-node-core\.(.*)\.node/)?.[1];
+
+    const optPackage = PACKAGE_MAPPING[platform];
+    if (!optPackage) {
+      Log.stepProgress(`Failed to find mapping for ${platform}`, 'failure');
+    }
+
+    optionalDependencies[optPackage] = version;
+
+    Log.stepProgress(`${platform} mapped to ${optPackage}`);
+  });
+
+  json['optionalDependencies'] = optionalDependencies;
+
+  fs.writeFileSync(filepath, JSON.stringify(json, null, 2), 'utf8');
+
+  console.log(JSON.stringify(optionalDependencies, null, 2));
+
+  Log.stepEnd('Updated all package.json files');
 }
 
 function alignNodePackage(options: PublisherOptions, distDir: string) {
