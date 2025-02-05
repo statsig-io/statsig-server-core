@@ -58,8 +58,8 @@ describe('ObservabilityClient Usage', () => {
     statsig = new Statsig('secret-123', options);
     await statsig.initialize();
 
-    statsig.checkGate(StatsigUser.withUserId('test-user'), 'test-gate');
-    statsig.logEvent(StatsigUser.withUserId('b-user'), 'my_event');
+    statsig.checkGate(StatsigUser.withUserID('test-user'), 'test-gate');
+    statsig.logEvent(StatsigUser.withUserID('b-user'), 'my_event');
 
     await statsig.flushEvents();
 

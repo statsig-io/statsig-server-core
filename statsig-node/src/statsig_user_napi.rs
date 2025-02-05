@@ -1,26 +1,80 @@
 use std::collections::HashMap;
 
+use napi::bindgen_prelude::Either3;
 use napi_derive::napi;
 use serde_json::Value;
 use sigstat::{log_w, DynamicValue, StatsigUser as StatsigUserActual};
 
 const TAG: &str = "StatsigUserNapi";
 
+#[napi(object)]
+pub struct StatsigUserArgs {
+    #[napi(js_name = "userID")]
+    pub user_id: String,
+    #[napi(js_name = "customIDs")]
+    pub custom_ids: HashMap<String, String>,
+    pub email: Option<String>,
+    pub ip: Option<String>,
+    pub user_agent: Option<String>,
+    pub country: Option<String>,
+    pub locale: Option<String>,
+    pub app_version: Option<String>,
+    pub custom: Option<HashMap<String, Either3<String, f64, bool>>>,
+    pub private_attributes: Option<HashMap<String, Either3<String, f64, bool>>>,
+}
+
 #[napi]
 pub struct StatsigUser {
     inner: StatsigUserActual,
 }
 
+macro_rules! set_dynamic_value_fields {
+    ($args:ident, $inner:ident, $($field:ident),*) => {
+        $(
+            if let Some(value) = $args.$field {
+                $inner.$field = Some(DynamicValue::from(value));
+            }
+        )*
+    };
+}
+
 #[napi]
 impl StatsigUser {
-    #[napi]
+    #[napi(constructor)]
+    pub fn new(args: StatsigUserArgs) -> Self {
+        let mut inner = StatsigUserActual::with_user_id(args.user_id);
+
+        set_dynamic_value_fields!(
+            args,
+            inner,
+            email,
+            ip,
+            user_agent,
+            country,
+            locale,
+            app_version
+        );
+
+        let mut custom_ids = HashMap::new();
+        for (key, value) in args.custom_ids {
+            custom_ids.insert(key, DynamicValue::from(value));
+        }
+        inner.custom_ids = Some(custom_ids);
+
+        inner.custom = Self::convert_to_dynamic_value_map(args.custom);
+        inner.private_attributes = Self::convert_to_dynamic_value_map(args.private_attributes);
+
+        Self { inner }
+    }
+
+    #[napi(js_name = "withUserID")]
     pub fn with_user_id(user_id: String) -> Self {
         Self {
             inner: StatsigUserActual::with_user_id(user_id),
         }
     }
 
-    #[napi]
+    #[napi(js_name = "withCustomIDs")]
     pub fn with_custom_ids(custom_ids: HashMap<String, Value>) -> Self {
         let mut converted: HashMap<String, String> = HashMap::new();
 
@@ -44,6 +98,27 @@ impl StatsigUser {
 
     pub fn as_inner(&self) -> &StatsigUserActual {
         &self.inner
+    }
+
+    fn convert_to_dynamic_value_map(
+        map: Option<HashMap<String, Either3<String, f64, bool>>>,
+    ) -> Option<HashMap<String, DynamicValue>> {
+        let map = match map {
+            Some(map) => map,
+            _ => return None,
+        };
+
+        let mut converted: HashMap<String, DynamicValue> = HashMap::new();
+
+        for (key, value) in map {
+            match value {
+                Either3::A(value) => converted.insert(key, DynamicValue::from(value)),
+                Either3::B(value) => converted.insert(key, DynamicValue::from(value)),
+                Either3::C(value) => converted.insert(key, DynamicValue::from(value)),
+            };
+        }
+
+        Some(converted)
     }
 }
 

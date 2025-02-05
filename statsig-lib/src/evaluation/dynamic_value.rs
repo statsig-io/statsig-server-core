@@ -77,6 +77,29 @@ impl From<i32> for DynamicValue {
     }
 }
 
+impl From<f64> for DynamicValue {
+    fn from(value: f64) -> Self {
+        DynamicValue {
+            int_value: Some(value as i64),
+            float_value: Some(value),
+            string_value: Some(value.to_string()),
+            lowercase_string_value: Some(value.to_string()),
+            ..Self::default()
+        }
+    }
+}
+
+impl From<bool> for DynamicValue {
+    fn from(value: bool) -> Self {
+        DynamicValue {
+            bool_value: Some(value),
+            string_value: Some(value.to_string()),
+            lowercase_string_value: Some(value.to_string()),
+            ..Self::default()
+        }
+    }
+}
+
 impl From<JsonValue> for DynamicValue {
     fn from(value: JsonValue) -> Self {
         let json_value = value.clone();
