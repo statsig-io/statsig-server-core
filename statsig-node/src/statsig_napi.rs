@@ -9,6 +9,7 @@ use sigstat::{log_d, log_e, Statsig as StatsigActual};
 
 use crate::gcir_options_napi::ClientInitResponseOptions;
 use crate::observability_client_napi::ObservabilityClient;
+use crate::statsig_metadata_napi;
 use crate::statsig_options_napi::StatsigOptions;
 use crate::statsig_types_napi::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_napi::StatsigUser;
@@ -24,8 +25,10 @@ pub struct Statsig {
 #[napi]
 impl Statsig {
     #[napi(constructor)]
-    pub fn new(sdk_key: String, options: Option<StatsigOptions>) -> Self {
+    pub fn new(env: Env, sdk_key: String, options: Option<StatsigOptions>) -> Self {
         log_d!(TAG, "StatsigNapi new");
+
+        statsig_metadata_napi::update_statsig_metadata(Some(env));
 
         let (inner_opts, obs_client) = options
             .map(|opts| opts.safe_convert_to_inner())

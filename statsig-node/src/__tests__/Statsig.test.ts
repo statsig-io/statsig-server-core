@@ -9,14 +9,9 @@ describe('Statsig', () => {
   let scrapi: MockScrapi;
 
   const getLastLoggedEvent = async (): Promise<Record<string, any> | null> => {
-    await statsig.flushEvents();
-    if (scrapi.requests.length === 0) {
-      return null;
-    }
+    const request = await getLastRequest();
 
-    const request = scrapi.requests[0];
-
-    if (!request.body.events) {
+    if (!request?.body?.events) {
       return null;
     }
 
@@ -25,6 +20,15 @@ describe('Statsig', () => {
       events.filter((e: any) => e.eventName !== 'statsig::diagnostics')[0] ??
       null
     );
+  };
+
+  const getLastRequest = async (): Promise<Record<string, any> | null> => {
+    await statsig.flushEvents();
+    if (scrapi.requests.length === 0) {
+      return null;
+    }
+
+    return scrapi.requests[0];
   };
 
   beforeAll(async () => {
@@ -161,6 +165,23 @@ describe('Statsig', () => {
       event = await getLastLoggedEvent();
       expect(event?.eventName).toEqual('statsig::layer_exposure');
       expect(event?.metadata?.config).toEqual('layer_with_many_params');
+    });
+
+    it('should log statsig metadata', async () => {
+      const user = StatsigUser.withUserID('a-user');
+      statsig.logEvent(user, 'my_custom_event', 'my_value');
+
+      const meta = (await getLastRequest())?.body?.statsigMetadata;
+
+      expect(meta.languageVersion).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(['macos', 'linux', 'windows']).toContain(meta.os);
+      expect(['aarch64', 'arm64', 'x86_64']).toContain(meta.arch);
+
+      expect(meta.sdkType).toEqual('statsig-server-core-node');
+      expect(meta.sdkVersion.replace('-beta.', '')).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(meta.sessionID).toMatch(
+        /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/,
+      );
     });
   });
 });
