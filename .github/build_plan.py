@@ -19,8 +19,8 @@ def partition_targets(should_build_all):
         include_filter = [config for config in matrix_data['config'] if config['target'] in always_build_targets]
         exclude_filter = [config for config in matrix_data['config'] if config['target'] not in always_build_targets]
 
-    included = {'package': matrix_data['package'], 'config': include_filter}
-    excluded = {'package': matrix_data['package'], 'config': exclude_filter}
+    included = {'config': include_filter}
+    excluded = {'config': exclude_filter}
 
     return included, excluded
 
