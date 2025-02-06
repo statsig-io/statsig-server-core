@@ -31,6 +31,4 @@ RUN rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
 
 ENV CC=clang
 
-
-
 ENTRYPOINT ["sh", "-c"]

@@ -113,6 +113,8 @@ createStatsigJar('amazonlinux2-arm64', 'amazonlinux2-arm64')
 createStatsigJar('amazonlinux2-x86_64', 'amazonlinux2-x86_64')
 createStatsigJar('amazonlinux2023-arm64', 'amazonlinux2023-arm64')
 createStatsigJar('amazonlinux2023-x86_64', 'amazonlinux2023-x86_64')
+createStatsigJar('linux-gnu-x86_64', 'linux-gnu-x86_64')
+createStatsigJar('linux-gnu-arm64', 'linux-gnu-arm64')
 
 tasks.register('validateTasks') {
     doLast {

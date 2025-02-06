@@ -1,4 +1,4 @@
-export const PACKAGES = ['python', 'node', 'ffi'] as const;
+export const PACKAGES = ['python', 'node', 'ffi', 'java'] as const;
 export type Package = (typeof PACKAGES)[number];
 
 export type PublisherOptions = {

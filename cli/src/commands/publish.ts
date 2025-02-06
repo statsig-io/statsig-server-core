@@ -7,7 +7,6 @@ import {
 import { downloadArtifactToFile, getOctokit } from '@/utils/octokit_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import type { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods';
-import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Octokit } from 'octokit';
@@ -15,23 +14,21 @@ import { Octokit } from 'octokit';
 import { CommandBase, OptionConfig } from './command_base.js';
 import { analyze } from './publishers/analyze.js';
 import { ffiPublish } from './publishers/ffi-publisher.js';
+import { javaPublish } from './publishers/java-publisher.js';
 import { nodePublish } from './publishers/node-publisher.js';
-import {
-  PACKAGES,
-  Package,
-  PublisherOptions,
-} from './publishers/publisher-options.js';
+import { PACKAGES, PublisherOptions } from './publishers/publisher-options.js';
 import { publishPython } from './publishers/python-publish.js';
 
-const PUBLISHERS: Record<
-  Package & 'analyze',
-  (options: PublisherOptions) => Promise<void>
-> = {
-  python: publishPython,
-  node: nodePublish,
-  ffi: ffiPublish,
-  analyze,
-};
+const PUBLISHERS: Record<string, (options: PublisherOptions) => Promise<void>> =
+  {
+    python: publishPython,
+    node: nodePublish,
+    ffi: ffiPublish,
+    java: javaPublish,
+    analyze,
+  };
+
+const SHOULD_UNZIP_WITH_NAME = ['java'];
 
 type GHArtifact =
   RestEndpointMethodTypes['actions']['listWorkflowRunArtifacts']['response']['data']['artifacts'][number];
@@ -101,7 +98,7 @@ export class Publish extends CommandBase {
       unzipFiles(zipFiles, options);
     }
 
-    PUBLISHERS[options.package](options);
+    await PUBLISHERS[options.package](options);
 
     Log.conclusion(`Successfully published ${options.package}`);
   }
@@ -161,10 +158,7 @@ async function getWorkflowRunArtifacts(
       return false;
     }
 
-    if (
-      (options.package as any) === 'analyze' ||
-      artifact.name.endsWith(options.package)
-    ) {
+    if (filterArtifact(artifact, options)) {
       Log.stepProgress(`Found: ${artifact.name}`, 'success');
       return true;
     } else {
@@ -230,11 +224,33 @@ function unzipFiles(files: string[], options: PublisherOptions) {
     const name = path.basename(filepath).replace('.zip', '');
 
     const buffer = fs.readFileSync(filepath);
-    unzip(buffer, options.workingDir);
+
+    let unzipTo = options.workingDir;
+    if (SHOULD_UNZIP_WITH_NAME.includes(options.package)) {
+      unzipTo = path.resolve(options.workingDir, name);
+    }
+
+    unzip(buffer, unzipTo);
 
     fs.unlinkSync(filepath);
     Log.stepProgress(`Completed: ${name}`);
   });
 
   Log.stepEnd('Unzipped all files');
+}
+
+function filterArtifact(artifact: GHArtifact, options: PublisherOptions) {
+  if ((options.package as string) === 'analyze') {
+    return true;
+  }
+
+  if (artifact.name.endsWith(options.package)) {
+    return true;
+  }
+
+  if (options.package === 'java' && artifact.name.endsWith('ffi')) {
+    return true;
+  }
+
+  return false;
 }
