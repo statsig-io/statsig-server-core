@@ -150,11 +150,13 @@ jobs:
     
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix: 
         package: 
           - node
           - python
           - java
+
     
     steps:
       - uses: actions/checkout@v4

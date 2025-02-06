@@ -16,6 +16,7 @@ import { analyze } from './publishers/analyze.js';
 import { ffiPublish } from './publishers/ffi-publisher.js';
 import { javaPublish } from './publishers/java-publisher.js';
 import { nodePublish } from './publishers/node-publisher.js';
+import { publishPhp } from './publishers/php-publisher.js';
 import { PACKAGES, PublisherOptions } from './publishers/publisher-options.js';
 import { publishPython } from './publishers/python-publish.js';
 
@@ -25,10 +26,11 @@ const PUBLISHERS: Record<string, (options: PublisherOptions) => Promise<void>> =
     node: nodePublish,
     ffi: ffiPublish,
     java: javaPublish,
+    php: publishPhp,
     analyze,
   };
 
-const SHOULD_UNZIP_WITH_NAME = ['java'];
+const FFI_BASED_PACKAGES = new Set(['java', 'php']);
 
 type GHArtifact =
   RestEndpointMethodTypes['actions']['listWorkflowRunArtifacts']['response']['data']['artifacts'][number];
@@ -226,7 +228,7 @@ function unzipFiles(files: string[], options: PublisherOptions) {
     const buffer = fs.readFileSync(filepath);
 
     let unzipTo = options.workingDir;
-    if (SHOULD_UNZIP_WITH_NAME.includes(options.package)) {
+    if (FFI_BASED_PACKAGES.has(options.package)) {
       unzipTo = path.resolve(options.workingDir, name);
     }
 
@@ -248,7 +250,10 @@ function filterArtifact(artifact: GHArtifact, options: PublisherOptions) {
     return true;
   }
 
-  if (options.package === 'java' && artifact.name.endsWith('ffi')) {
+  if (
+    FFI_BASED_PACKAGES.has(options.package) &&
+    artifact.name.endsWith('ffi')
+  ) {
     return true;
   }
 
