@@ -66,6 +66,7 @@ impl From<i64> for DynamicValue {
             float_value: Some(value as f64),
             string_value: Some(value.to_string()),
             lowercase_string_value: Some(value.to_string()),
+            json_value: json!(value),
             ..Self::default()
         }
     }
@@ -84,6 +85,7 @@ impl From<f64> for DynamicValue {
             float_value: Some(value),
             string_value: Some(value.to_string()),
             lowercase_string_value: Some(value.to_string()),
+            json_value: json!(value),
             ..Self::default()
         }
     }
@@ -95,6 +97,7 @@ impl From<bool> for DynamicValue {
             bool_value: Some(value),
             string_value: Some(value.to_string()),
             lowercase_string_value: Some(value.to_string()),
+            json_value: json!(value),
             ..Self::default()
         }
     }
