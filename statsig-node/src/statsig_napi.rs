@@ -11,6 +11,7 @@ use crate::gcir_options_napi::ClientInitResponseOptions;
 use crate::observability_client_napi::ObservabilityClient;
 use crate::statsig_metadata_napi;
 use crate::statsig_options_napi::StatsigOptions;
+use crate::statsig_result::StatsigResult;
 use crate::statsig_types_napi::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_napi::StatsigUser;
 
@@ -41,32 +42,40 @@ impl Statsig {
     }
 
     #[napi]
-    pub async fn initialize(&self) -> Result<()> {
-        self.inner
-            .initialize()
-            .await
-            .map_err(|e| Error::new(Status::GenericFailure, e.to_string()))?;
+    pub async fn initialize(&self) -> StatsigResult {
+        if let Err(e) = self.inner.initialize().await {
+            log_e!(TAG, "Failed to initialize Statsig: {}", e);
+            return StatsigResult {
+                is_success: false,
+                error: Some(e.to_string()),
+            };
+        }
 
-        Ok(())
+        StatsigResult {
+            is_success: true,
+            error: None,
+        }
     }
 
     #[napi]
-    pub fn shutdown<'env>(&self, env: &'env Env) -> Result<PromiseRaw<'env, ()>> {
-        self.observability_client.lock().unwrap().take();
+    pub fn shutdown<'env>(&self, env: &'env Env) -> Result<PromiseRaw<'env, StatsigResult>> {
+        if let Ok(mut lock) = self.observability_client.lock() {
+            lock.take();
+        }
         let inst = self.inner.clone();
 
         env.spawn_future(async move {
-            if let Err(e) = inst.__shutdown_internal(Duration::from_secs(3)).await {
-                log_e!(TAG, "Failed to gracefully shutdown StatsigPy: {}", e);
+            match inst.__shutdown_internal(Duration::from_secs(3)).await {
+                Ok(_) => Ok(StatsigResult::success()),
+                Err(e) => Ok(StatsigResult::error(e.to_string())),
             }
-            Ok(())
         })
     }
 
     #[napi]
-    pub async fn flush_events(&self) -> Result<()> {
+    pub async fn flush_events(&self) -> StatsigResult {
         self.inner.flush_events().await;
-        Ok(())
+        StatsigResult::success()
     }
 
     #[napi]
@@ -78,12 +87,18 @@ impl Statsig {
         metadata: Option<HashMap<String, String>>,
     ) {
         match value {
-            Some(Value::Number(num)) => self.inner.log_event_with_number(
-                user.as_inner(),
-                &event_name,
-                Some(num.as_f64().unwrap()),
-                metadata,
-            ),
+            Some(Value::Number(num)) => {
+                let num = match num.as_f64() {
+                    Some(num) => num,
+                    None => {
+                        log_e!(TAG, "Failed to convert number {} to f64", num);
+                        return;
+                    }
+                };
+
+                self.inner
+                    .log_event_with_number(user.as_inner(), &event_name, Some(num), metadata)
+            }
             Some(Value::String(s)) => {
                 self.inner
                     .log_event(user.as_inner(), &event_name, Some(s), metadata)

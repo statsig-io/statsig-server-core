@@ -1,26 +1,36 @@
 use std::collections::HashMap;
 
-use napi::bindgen_prelude::Either3;
+use napi::bindgen_prelude::{Either3, Either4};
 use napi_derive::napi;
 use serde_json::Value;
 use sigstat::{log_w, DynamicValue, StatsigUser as StatsigUserActual};
 
 const TAG: &str = "StatsigUserNapi";
 
+type ValidPrimitives = Either4<String, f64, bool, Vec<Value>>;
+
 #[napi(object)]
 pub struct StatsigUserArgs {
     #[napi(js_name = "userID")]
     pub user_id: String,
     #[napi(js_name = "customIDs")]
-    pub custom_ids: HashMap<String, String>,
+    pub custom_ids: HashMap<String, Either3<String, f64, i64>>,
     pub email: Option<String>,
     pub ip: Option<String>,
     pub user_agent: Option<String>,
     pub country: Option<String>,
     pub locale: Option<String>,
     pub app_version: Option<String>,
-    pub custom: Option<HashMap<String, Either3<String, f64, bool>>>,
-    pub private_attributes: Option<HashMap<String, Either3<String, f64, bool>>>,
+
+    #[napi(
+        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean>>"
+    )]
+    pub custom: Option<HashMap<String, ValidPrimitives>>,
+
+    #[napi(
+        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean>>"
+    )]
+    pub private_attributes: Option<HashMap<String, ValidPrimitives>>,
 }
 
 #[napi]
@@ -57,7 +67,13 @@ impl StatsigUser {
 
         let mut custom_ids = HashMap::new();
         for (key, value) in args.custom_ids {
-            custom_ids.insert(key, DynamicValue::from(value));
+            let dyn_value = match value {
+                Either3::A(v) => DynamicValue::from(v),
+                Either3::B(v) => DynamicValue::from(v),
+                Either3::C(v) => DynamicValue::from(v),
+            };
+
+            custom_ids.insert(key, dyn_value);
         }
         inner.custom_ids = Some(custom_ids);
 
@@ -101,7 +117,7 @@ impl StatsigUser {
     }
 
     fn convert_to_dynamic_value_map(
-        map: Option<HashMap<String, Either3<String, f64, bool>>>,
+        map: Option<HashMap<String, ValidPrimitives>>,
     ) -> Option<HashMap<String, DynamicValue>> {
         let map = match map {
             Some(map) => map,
@@ -112,9 +128,10 @@ impl StatsigUser {
 
         for (key, value) in map {
             match value {
-                Either3::A(value) => converted.insert(key, DynamicValue::from(value)),
-                Either3::B(value) => converted.insert(key, DynamicValue::from(value)),
-                Either3::C(value) => converted.insert(key, DynamicValue::from(value)),
+                Either4::A(value) => converted.insert(key, DynamicValue::from(value)),
+                Either4::B(value) => converted.insert(key, DynamicValue::from(value)),
+                Either4::C(value) => converted.insert(key, DynamicValue::from(value)),
+                Either4::D(value) => converted.insert(key, DynamicValue::from(value)),
             };
         }
 
@@ -123,7 +140,7 @@ impl StatsigUser {
 }
 
 macro_rules! add_hashmap_getter_setter {
-    ($field_name:expr, $field_accessor:ident, $setter_name:ident) => {
+    ($field_name:expr, $field_accessor:ident, $setter_name:ident, $ts_arg_type:expr) => {
         #[napi]
         impl StatsigUser {
             #[napi(getter, js_name = $field_name)]
@@ -145,7 +162,10 @@ macro_rules! add_hashmap_getter_setter {
             }
 
             #[napi(setter, js_name = $field_name)]
-            pub fn $setter_name(&mut self, value: Option<HashMap<String, Value>>) {
+            pub fn $setter_name(
+                &mut self,
+                #[napi(ts_arg_type = $ts_arg_type)] value: Option<HashMap<String, Value>>,
+            ) {
                 let value = match value {
                     Some(value) => value,
                     _ => {
@@ -197,12 +217,23 @@ macro_rules! add_string_getter_setter {
     };
 }
 
-add_hashmap_getter_setter!("customIDs", custom_ids, set_custom_ids);
-add_hashmap_getter_setter!("custom", custom, set_custom);
+add_hashmap_getter_setter!(
+    "customIDs",
+    custom_ids,
+    set_custom_ids,
+    "Record<string, string>"
+);
+add_hashmap_getter_setter!(
+    "custom",
+    custom,
+    set_custom,
+    "Record<string, string | number | boolean | Array<string | number | boolean>>"
+);
 add_hashmap_getter_setter!(
     "privateAttributes",
     private_attributes,
-    set_private_attributes
+    set_private_attributes,
+    "Record<string, string | number | boolean | Array<string | number | boolean>>"
 );
 
 add_string_getter_setter!("userID", user_id, set_user_id);

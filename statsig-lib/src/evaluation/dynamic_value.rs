@@ -103,6 +103,12 @@ impl From<bool> for DynamicValue {
     }
 }
 
+impl From<Vec<JsonValue>> for DynamicValue {
+    fn from(value: Vec<JsonValue>) -> Self {
+        DynamicValue::from(json!(value))
+    }
+}
+
 impl From<JsonValue> for DynamicValue {
     fn from(value: JsonValue) -> Self {
         let json_value = value.clone();

@@ -3,6 +3,7 @@ pub mod gcir_options_napi;
 pub mod observability_client_napi;
 pub mod statsig_napi;
 pub mod statsig_options_napi;
+pub mod statsig_result;
 pub mod statsig_types_napi;
 pub mod statsig_user_napi;
 
