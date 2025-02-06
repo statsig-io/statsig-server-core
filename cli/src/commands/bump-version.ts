@@ -90,14 +90,14 @@ export class BumpVersion extends CommandBase {
     Log.stepEnd(`Remote Name: ${remote}`);
 
     Log.stepBegin('Committing changes');
-    const { success, error } = await commitAndPushChanges(
-      BASE_DIR,
-      `chore: bump version to ${version.toString()}`,
+    const { success, error } = await commitAndPushChanges({
+      repoPath: BASE_DIR,
+      message: `chore: bump version to ${version.toString()}`,
       remote,
-      branch,
+      localBranch: branch,
       remoteBranch,
-      options.doNotPush !== true /* shouldPushChanges */,
-    );
+      shouldPushChanges: options.doNotPush !== true,
+    });
 
     if (error || !success) {
       const errMessage =

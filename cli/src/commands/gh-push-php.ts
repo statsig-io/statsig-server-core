@@ -51,14 +51,14 @@ export class GhPushPhp extends CommandBase {
     Log.stepEnd(`Remote Name: ${remote}`);
 
     Log.stepBegin('Committing changes');
-    const { success, error } = await commitAndPushChanges(
+    const { success, error } = await commitAndPushChanges({
       repoPath,
-      `chore: bump version to ${version.toString()}`,
+      message: `chore: bump version to ${version.toString()}`,
       remote,
-      branch,
-      version.toBranch(),
-      true /* shouldPushChanges */,
-    );
+      localBranch: branch,
+      remoteBranch,
+      shouldPushChanges: true,
+    });
 
     if (error || !success) {
       const errMessage =

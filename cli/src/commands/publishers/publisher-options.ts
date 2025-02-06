@@ -8,4 +8,5 @@ export type PublisherOptions = {
   workingDir: string;
   skipArtifactDownload: boolean;
   isProduction: boolean;
+  disregardWorkflowChecks: boolean;
 };

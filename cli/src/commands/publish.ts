@@ -70,6 +70,11 @@ export class Publish extends CommandBase {
         description: 'Whether to publish to production',
         defaultValue: false,
       },
+      {
+        flags: '--disregard-workflow-checks',
+        description: 'Whether to disregard workflow checks',
+        defaultValue: false,
+      },
     ];
 
     super(import.meta.url, {
@@ -86,6 +91,9 @@ export class Publish extends CommandBase {
     Log.stepProgress(`Workflow ID: ${options.workflowId}`);
     Log.stepProgress(`Repository: ${options.repository}`);
     Log.stepProgress(`Working Directory: ${options.workingDir}`);
+    Log.stepProgress(
+      `Disregard Workflow Checks: ${options.disregardWorkflowChecks}`,
+    );
     Log.stepEnd(`Package: ${options.package}`);
 
     if (!options.skipArtifactDownload) {
@@ -119,13 +127,15 @@ async function getWorkflowRun(octokit: Octokit, options: PublisherOptions) {
     throw new Error(`Failed to get workflow run ${options.workflowId}`);
   }
 
-  if (response.data.status !== 'completed') {
+  const canFail = !options.disregardWorkflowChecks;
+
+  if (canFail && response.data.status !== 'completed') {
     const message = `Workflow run ${options.workflowId} is not completed`;
     Log.stepEnd(message, 'failure');
     throw new Error(message);
   }
 
-  if (response.data.conclusion !== 'success') {
+  if (canFail && response.data.conclusion !== 'success') {
     const message = `Workflow run ${options.workflowId} is not successful`;
     Log.stepEnd(message, 'failure');
     throw new Error(message);

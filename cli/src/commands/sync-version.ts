@@ -162,14 +162,14 @@ async function tryCommitAndPushChanges(version: SemVer) {
   Log.stepProgress(`Local Branch: ${localBranch}`);
   Log.stepProgress(`Remote Branch: ${remoteBranch}`);
 
-  const { success, error } = await commitAndPushChanges(
-    BASE_DIR,
-    `chore: bump version to ${version.toString()}`,
-    upstream,
+  const { success, error } = await commitAndPushChanges({
+    repoPath: BASE_DIR,
+    message: `chore: bump version to ${version.toString()}`,
+    remote: upstream,
     localBranch,
     remoteBranch,
-    true /* shouldPushChanges */,
-  );
+    shouldPushChanges: true,
+  });
 
   if (success) {
     Log.stepEnd('Successfully Committed and Pushed');

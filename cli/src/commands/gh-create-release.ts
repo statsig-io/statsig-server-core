@@ -51,7 +51,7 @@ export class GhCreateRelease extends CommandBase {
 
     Log.stepBegin('Creating release');
 
-    const newRelease = await createReleaseForVersion(
+    const { result: newRelease, error } = await createReleaseForVersion(
       octokit,
       repository,
       version,
@@ -60,6 +60,8 @@ export class GhCreateRelease extends CommandBase {
 
     if (!newRelease) {
       Log.stepEnd(`Failed to create release`, 'failure');
+
+      console.error(error ?? 'Unknown error');
       process.exit(1);
     }
 

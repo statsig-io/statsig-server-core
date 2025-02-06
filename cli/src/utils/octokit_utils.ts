@@ -5,6 +5,8 @@ import path from 'path';
 
 import { getFileSize } from './file_utils.js';
 import { SemVer } from './semver.js';
+import { Log } from './teminal_utils.js';
+import { getRootVersion } from './toml_utils.js';
 
 const GITHUB_APP_ID = process.env.GH_APP_ID;
 const GITHUB_INSTALLATION_ID = process.env.GH_APP_INSTALLATION_ID;
@@ -93,6 +95,57 @@ export async function getBranchByVersion(
   }
 }
 
+export async function createGithubRelease(
+  octokit: Octokit,
+  repository: string,
+  version: SemVer,
+  targetSha: string,
+) {
+  Log.stepBegin('Creating GitHub Release');
+  Log.stepProgress(`Repository: ${repository}`);
+  Log.stepProgress(`Release Tag: ${version}`);
+  Log.stepEnd(`Target SHA: ${targetSha}`);
+
+  Log.stepBegin('Checking for existing release');
+  const release = await getReleaseByVersion(octokit, repository, version);
+
+  if (release) {
+    Log.stepEnd(`Release already exists: ${release.html_url}`, 'failure');
+    process.exit(1);
+  }
+
+  Log.stepEnd(`Release ${version} does not exist`);
+
+  Log.stepBegin('Checking if branch exists');
+  const branch = await getBranchByVersion(octokit, repository, version);
+
+  if (!branch) {
+    Log.stepEnd(`Branch ${version.toBranch()} does not exist`, 'failure');
+    process.exit(1);
+  }
+
+  Log.stepEnd(`Branch ${branch.ref} exists`);
+
+  Log.stepBegin('Creating release');
+
+  const { result: newRelease, error } = await createReleaseForVersion(
+    octokit,
+    repository,
+    version,
+    branch.object.sha,
+  );
+
+  if (!newRelease) {
+    Log.stepEnd(`Failed to create release`, 'failure');
+    console.error(error ?? 'Unknown error');
+    process.exit(1);
+  }
+
+  Log.stepEnd(`Release created: ${newRelease.html_url}`);
+
+  Log.conclusion(`Successfully Created Release ${version}`);
+}
+
 export async function deleteReleaseAssetWithName(
   octokit: Octokit,
   repo: string,
@@ -153,8 +206,8 @@ export async function createReleaseForVersion(
   octokit: Octokit,
   repo: string,
   version: SemVer,
-  targetSha: string,
-): Promise<GhRelease | null> {
+  targetSha?: string,
+): Promise<{ result?: GhRelease; error?: any }> {
   try {
     const result = await octokit.rest.repos.createRelease({
       owner: 'statsig-io',
@@ -164,9 +217,10 @@ export async function createReleaseForVersion(
       prerelease: version.isBeta(),
     });
 
-    return result.data;
-  } catch {
-    return null;
+    return { result: result.data };
+  } catch (error) {
+    console.error(error);
+    return { error };
   }
 }
 

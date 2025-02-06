@@ -1,10 +1,11 @@
 import { existsSync, rmSync } from 'fs';
+import path from 'path';
 import { simpleGit } from 'simple-git';
 
-import { BASE_DIR, getRootedPath } from './file_utils.js';
+import { BASE_DIR } from './file_utils.js';
 import { getInstallationToken } from './octokit_utils.js';
 
-export async function getCurrentCommitHash(): Promise<string> {
+export function getCurrentCommitHash(): Promise<string> {
   const git = simpleGit(BASE_DIR);
   return git.revparse(['--short', 'HEAD']);
 }
@@ -13,7 +14,7 @@ export async function createEmptyRepository(
   repoPath: string,
   repoName: string,
 ) {
-  rmPhpRepo();
+  removeDirectory(path.resolve(repoPath, '.git'));
 
   const token = await getInstallationToken();
 
@@ -37,26 +38,25 @@ export async function getCurrentBranchName() {
   return branch.current;
 }
 
-export function rmPhpRepo() {
-  const repoPath = getRootedPath('statsig-php/.git');
-
-  if (!existsSync(repoPath)) {
+export function removeDirectory(dir: string) {
+  if (!existsSync(dir)) {
     return;
   }
 
-  rmSync(repoPath, { recursive: true, force: true });
+  rmSync(dir, { recursive: true, force: true });
 }
 
-export async function commitAndPushChanges(
-  repoPath: string,
-  message: string,
-  remote: string,
-  localBranch: string,
-  remoteBranch: string,
-  shouldPushChanges: boolean,
-) {
+export async function commitAndPushChanges(args: {
+  repoPath: string;
+  message: string;
+  remote: string;
+  localBranch: string;
+  remoteBranch: string;
+  shouldPushChanges: boolean;
+  tag?: string;
+}) {
   try {
-    const git = simpleGit(repoPath);
+    const git = simpleGit(args.repoPath);
 
     const isCI = process.env['CI'];
 
@@ -68,7 +68,7 @@ export async function commitAndPushChanges(
       );
     }
 
-    await git.cwd(repoPath).add('.').commit(message);
+    await git.cwd(args.repoPath).add('.').commit(args.message);
 
     const status = await git.status();
     if (!status.isClean()) {
@@ -77,8 +77,22 @@ export async function commitAndPushChanges(
       throw noChangeError;
     }
 
-    if (shouldPushChanges) {
-      await git.push(remote, `${localBranch}:${remoteBranch}`);
+    const options: string[] = [];
+
+    if (args.tag) {
+      await git.addTag(args.tag);
+
+      options.push('--follow-tags');
+    }
+
+    if (args.shouldPushChanges) {
+      await git.push(
+        args.remote,
+        `${args.localBranch}:${args.remoteBranch}`,
+        options,
+      );
+
+      await git.pushTags(args.remote);
     }
 
     return { success: true, error: null };
