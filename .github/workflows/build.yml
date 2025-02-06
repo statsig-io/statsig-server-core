@@ -177,7 +177,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-          merge-multiple: true
+          merge-multiple: ${{ matrix.package != 'java' }}
 
       - name: Display structure of downloaded files
         run: ls -R artifacts
