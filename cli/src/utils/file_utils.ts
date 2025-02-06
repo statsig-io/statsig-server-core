@@ -1,7 +1,8 @@
 import AdmZip from 'adm-zip';
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, rmSync, statSync } from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
@@ -68,6 +69,16 @@ export function unzip(buffer: ArrayBuffer, targetDir: string) {
   const zip = new AdmZip(Buffer.from(buffer));
 
   zip.extractAllTo(targetDir, false, true);
+}
+
+export function zipFile(filepath: string, outputZipPath: string) {
+  const filename = path.basename(filepath);
+
+  const zip = new AdmZip();
+
+  zip.addFile(filename, fs.readFileSync(filepath));
+
+  zip.writeZip(outputZipPath);
 }
 
 export function listFiles(dir: string, pattern: string) {

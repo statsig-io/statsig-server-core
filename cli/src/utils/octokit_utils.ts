@@ -6,7 +6,6 @@ import path from 'path';
 import { getFileSize } from './file_utils.js';
 import { SemVer } from './semver.js';
 import { Log } from './teminal_utils.js';
-import { getRootVersion } from './toml_utils.js';
 
 const GITHUB_APP_ID = process.env.GH_APP_ID;
 const GITHUB_INSTALLATION_ID = process.env.GH_APP_INSTALLATION_ID;
@@ -179,6 +178,7 @@ export async function uploadReleaseAsset(
   repo: string,
   releaseId: number,
   assetPath: string,
+  name?: string,
 ) {
   const assetContent = createReadStream(assetPath);
   const size = getFileSize(assetPath);
@@ -188,7 +188,7 @@ export async function uploadReleaseAsset(
       owner: 'statsig-io',
       repo,
       release_id: releaseId,
-      name: path.basename(assetPath),
+      name: name ?? path.basename(assetPath),
       // It wants a string, but it works with streams too
       data: assetContent as unknown as string,
       headers: {

@@ -1,27 +1,40 @@
-import { getRootedPath } from '@/utils/file_utils.js';
+import { getRootedPath, listFiles, zipFile } from '@/utils/file_utils.js';
 import {
   commitAndPushChanges,
   createEmptyRepository,
   getCurrentCommitHash,
 } from '@/utils/git_utils.js';
 import {
+  GhRelease,
   createReleaseForVersion,
+  deleteReleaseAssetWithName,
   getBranchByVersion,
   getOctokit,
   getReleaseByVersion,
+  uploadReleaseAsset,
 } from '@/utils/octokit_utils.js';
 import { SemVer } from '@/utils/semver.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
+import path from 'node:path';
 import { Octokit } from 'octokit';
 
 import { PublisherOptions } from './publisher-options.js';
 
-const PHP_REPO_NAME = 'statsig-core-php';
+const PHP_REPO_NAME = 'statsig-php-core';
+
+const LIB_CATEGORY_MAP = {
+  dll: 'shared',
+  so: 'shared',
+  dylib: 'shared',
+  a: 'static',
+  lib: 'static',
+};
 
 export async function publishPhp(options: PublisherOptions) {
-  Log.stepBegin('Publishing PHP');
+  Log.title(`Creating release for ${PHP_REPO_NAME}`);
 
+  Log.stepBegin('Configuration');
   const version = getRootVersion();
   const commitHash = await getCurrentCommitHash();
   Log.stepProgress(`Commit Hash: ${commitHash}`);
@@ -29,28 +42,40 @@ export async function publishPhp(options: PublisherOptions) {
 
   const octokit = await getOctokit();
   await pushChangesToPhpRepo(octokit, version);
-  await createGithubRelaseForPhpRepo(octokit, version);
+  const release = await createGithubRelaseForPhpRepo(octokit, version);
 
-  Log.stepEnd('Publishing PHP');
+  const binaries = [
+    ...listFiles(options.workingDir, '*.a'),
+    ...listFiles(options.workingDir, '*.dylib'),
+    ...listFiles(options.workingDir, '*.so'),
+    ...listFiles(options.workingDir, '*.dll'),
+    ...listFiles(options.workingDir, '*.lib'),
+  ];
+
+  Log.title('Uploading assets to release');
+
+  for await (const binary of binaries) {
+    const category = LIB_CATEGORY_MAP[path.extname(binary).replace('.', '')];
+    const target = binary
+      .replace(options.workingDir, '')
+      .split('/target/')[0]
+      .replace(/\//, '')
+      .replace('-ffi', '');
+    const name = `statsig-core-${target}-${category}`;
+
+    const compressedPath = await compressLibFile(options, name, binary);
+
+    await uploadLibFileToRelease(octokit, release, compressedPath);
+  }
 }
 
 async function pushChangesToPhpRepo(octokit: Octokit, version: SemVer) {
   Log.stepBegin('Pushing changes to GitHub');
 
   const repoPath = getRootedPath('statsig-php');
-
-  await verifyBranchDoesNotExist(octokit, version);
-  await setupLocalPhpRepo(repoPath);
-
-  Log.stepBegin('Getting Branch Info');
   const branch = 'master';
   const remoteBranch = version.toBranch();
   const remote = 'origin';
-  Log.stepProgress(`Local Branch: ${branch}`);
-  Log.stepProgress(`Remote Branch: ${remoteBranch}`);
-  Log.stepEnd(`Remote Name: ${remote}`);
-
-  Log.stepBegin('Committing changes');
   const args = {
     repoPath,
     message: `chore: bump version to ${version.toString()}`,
@@ -65,6 +90,12 @@ async function pushChangesToPhpRepo(octokit: Octokit, version: SemVer) {
   Log.stepProgress(`Local Branch: ${args.localBranch}`);
   Log.stepProgress(`Remote Branch: ${args.remoteBranch}`);
   Log.stepProgress(`Should Push Changes: ${args.shouldPushChanges}`);
+  Log.stepEnd(`Remote Name: ${remote}`);
+
+  await verifyBranchDoesNotExist(octokit, version);
+  await setupLocalPhpRepo(repoPath);
+
+  Log.stepBegin('Committing changes');
 
   const { success, error } = await commitAndPushChanges(args);
 
@@ -97,7 +128,10 @@ async function setupLocalPhpRepo(repoPath: string) {
   Log.stepEnd(`Repo Created: ${repoPath}`);
 }
 
-async function createGithubRelaseForPhpRepo(octokit: Octokit, version: SemVer) {
+async function createGithubRelaseForPhpRepo(
+  octokit: Octokit,
+  version: SemVer,
+): Promise<GhRelease> {
   await verifyReleaseDoesNotExist(octokit, version);
 
   Log.stepBegin('Creating release');
@@ -114,7 +148,9 @@ async function createGithubRelaseForPhpRepo(octokit: Octokit, version: SemVer) {
     process.exit(1);
   }
 
-  Log.stepEnd(`Release created: ${newRelease.html_url}`);
+  Log.stepEnd(`Release created ${newRelease.html_url}`);
+
+  return newRelease;
 }
 
 async function verifyReleaseDoesNotExist(octokit: Octokit, version: SemVer) {
@@ -127,4 +163,67 @@ async function verifyReleaseDoesNotExist(octokit: Octokit, version: SemVer) {
   }
 
   Log.stepEnd(`Release ${version} does not exist`);
+}
+
+async function compressLibFile(
+  options: PublisherOptions,
+  name: string,
+  assetPath: string,
+) {
+  Log.stepBegin(`Compressing library ${name}`);
+  Log.stepProgress(`Source: ${assetPath}`);
+  const compressedPath = path.resolve(options.workingDir, `${name}.zip`);
+
+  zipFile(assetPath, compressedPath);
+
+  Log.stepEnd(`Compressed library ${name}`);
+  return compressedPath;
+}
+
+async function uploadLibFileToRelease(
+  octokit: Octokit,
+  release: GhRelease,
+  zipPath: string,
+) {
+  const name = path.basename(zipPath);
+  Log.stepBegin('Attaching Asset to Release');
+
+  Log.stepProgress(`Binary: ${name}`);
+
+  const didDelete = await deleteReleaseAssetWithName(
+    octokit,
+    PHP_REPO_NAME,
+    release.id,
+    name,
+  );
+
+  Log.stepProgress(
+    didDelete ? 'Existing asset deleted' : 'No existing asset found',
+  );
+
+  const uploadUrl = release.upload_url;
+  if (!uploadUrl) {
+    Log.stepEnd('No upload URL found', 'failure');
+    process.exit(1);
+  }
+
+  Log.stepProgress(`Release upload URL: ${uploadUrl}`);
+
+  const { result, error } = await uploadReleaseAsset(
+    octokit,
+    PHP_REPO_NAME,
+    release.id,
+    zipPath,
+    name,
+  );
+
+  if (error || !result) {
+    const errMessage =
+      error instanceof Error ? error.message : error ?? 'Unknown Error';
+
+    Log.stepEnd(`Failed to upload asset: ${errMessage}`, 'failure');
+    process.exit(1);
+  }
+
+  Log.stepEnd(`Asset uploaded: ${result.browser_download_url}`);
 }
