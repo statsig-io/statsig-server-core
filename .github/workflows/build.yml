@@ -135,6 +135,7 @@ jobs:
           path: |
             statsig-pyo3/build/
             statsig-node/build/
+            statsig-ffi/include/
             target/release/libstatsig_ffi.so
             target/release/libstatsig_ffi.dylib
             target/release/statsig_ffi.dll

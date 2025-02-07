@@ -31,7 +31,8 @@ export function buildFfi(options: BuilderOptions) {
     `"cd /app && ${cargoCommand}"`, // && while true; do sleep 1000; done
   ].join(' ');
 
-  const command = isLinux(options.os) ? dockerCommand : cargoCommand;
+  const command =
+    isLinux(options.os) && options.docker ? dockerCommand : cargoCommand;
 
   Log.stepBegin(`Executing build command`);
   Log.stepProgress(command);

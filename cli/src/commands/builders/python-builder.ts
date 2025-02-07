@@ -32,7 +32,8 @@ export function buildPython(options: BuilderOptions) {
     `"cd /app/statsig-pyo3 && ${maturinCommand}"`,
   ].join(' ');
 
-  const command = isLinux(options.os) ? dockerCommand : maturinCommand;
+  const command =
+    isLinux(options.os) && options.docker ? dockerCommand : maturinCommand;
 
   Log.stepBegin(`Building Pyo3 Package ${tag}`);
   Log.stepProgress(command);

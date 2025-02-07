@@ -47,7 +47,8 @@ export function buildNode(options: BuilderOptions) {
     `"cd /app/statsig-node && ${nodeCommand}"`, // && while true; do sleep 1000; done
   ].join(' ');
 
-  const command = isLinux(options.os) ? dockerCommand : nodeCommand;
+  const command =
+    isLinux(options.os) && options.docker ? dockerCommand : nodeCommand;
 
   Log.stepBegin(`Executing build command`);
   Log.stepProgress(command);

@@ -57,6 +57,10 @@ export class Build extends CommandBase {
           description:
             'The target to build for. (e.g. x86_64-unknown-linux-gnu)',
         },
+        {
+          flags: '-n, --no-docker',
+          description: 'Prevent docker from being used',
+        },
       ],
       args: [
         {
@@ -78,9 +82,10 @@ export class Build extends CommandBase {
     Log.stepProgress(`Target: ${options.target ?? 'Not Specified'}`);
     Log.stepProgress(`For Release: ${options.release}`);
     Log.stepProgress(`Out Directory: ${options.outDir ?? 'Not Specified'}`);
+    Log.stepProgress(`Docker: ${options.docker}`);
     Log.stepEnd(`Skip Docker Build: ${options.skipDockerBuild}`);
 
-    if (!options.skipDockerBuild) {
+    if (!options.skipDockerBuild && options.docker) {
       buildDockerImage(options.os, options.arch);
     }
 
