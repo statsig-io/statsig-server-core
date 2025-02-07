@@ -35,7 +35,7 @@ jobs:
           token: ${{ secrets.ROIM }}
           path: ./${{ matrix.args[1] }}/${{  env.sdk_repo  }}
       - name: Initialize and update submodules recursively
-        run: cd ${{matrix.args[1]}}/${{ env.sdk_repo }} git submodule update --init --recursive
+        run: cd ${{matrix.args[1]}}/${{ env.sdk_repo }} && git submodule update --init --recursive
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
