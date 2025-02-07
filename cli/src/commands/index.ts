@@ -1,35 +1,29 @@
-import { Build } from './build.js';
-import { BumpVersion } from './bump-version.js';
-import { Exec } from './exec.js';
-import { GhAttachAssets } from './gh-attach-assets.js';
-import { GhCreateRelease } from './gh-create-release.js';
-import { GhPushPhp } from './gh-push-php.js';
-import { JavaPub } from './java-pub.js';
-import { NapiBuild } from './napi-build.js';
-import { NapiPub } from './napi-pub.js';
-import { Publish } from './publish.js';
-import { PyBuild } from './py-build.js';
-import { SizePersist } from './size-persist.js';
-import { SizeReport } from './size-report.js';
-import { SyncVersion } from './sync-version.js';
-import { UnitTests } from './unit-tests.js';
-import { ZipFiles } from './zip-files.js';
+import { listFiles } from '@/utils/file_utils.js';
+import path from 'node:path';
 
-export const Commands = [
-  new Build(),
-  new BumpVersion(),
-  new Exec(),
-  new GhAttachAssets(),
-  new GhCreateRelease(),
-  new GhPushPhp(),
-  new JavaPub(),
-  new NapiBuild(),
-  new NapiPub(),
-  new Publish(),
-  new PyBuild(),
-  new SizePersist(),
-  new SizeReport(),
-  new SyncVersion(),
-  new UnitTests(),
-  new ZipFiles(),
-];
+import { CommandBase } from './command_base.js';
+
+export async function loadCommands() {
+  const dir = path.dirname(import.meta.url).replace('file://', '');
+  const files = listFiles(dir, '*.ts', { maxDepth: 1 });
+  const commands = [];
+
+  for (const file of files) {
+    if (file.endsWith('index.ts') || file.endsWith('command_base.ts')) {
+      continue;
+    }
+
+    const mod = await import(file);
+
+    Object.entries(mod).forEach(([key, value]) => {
+      if ((value as any).prototype instanceof CommandBase) {
+        commands.push(new (value as any)());
+        return;
+      }
+
+      throw new Error(`Command ${key} does not extend CommandBase`);
+    });
+  }
+
+  return commands;
+}

@@ -81,9 +81,22 @@ export function zipFile(filepath: string, outputZipPath: string) {
   zip.writeZip(outputZipPath);
 }
 
-export function listFiles(dir: string, pattern: string) {
-  return execSync(`find ${dir} -name "${pattern}"`)
+export function listFiles(
+  dir: string,
+  pattern: string,
+  opts?: {
+    maxDepth?: number;
+  },
+) {
+  const maxDepth = opts?.maxDepth ?? 10;
+  const command = [
+    `find ${dir}`,
+    `-maxdepth ${maxDepth}`,
+    `-name "${pattern}"`,
+  ].join(' ');
+  return execSync(command)
     .toString()
     .trim()
-    .split('\n');
+    .split('\n')
+    .filter((f) => f.length > 0);
 }

@@ -1,12 +1,14 @@
-import { Commands } from '@/commands/index.js';
+import { loadCommands } from '@/commands/index.js';
 import { program } from 'commander';
 
 program
-  .name('run')
+  .name('tore')
   .version('0.0.1')
-  .description('Statsig Server Core Build Tool');
+  .description('Tool for Organizing Rust Environments');
 
-Commands.forEach((command) => {
+const commands = await loadCommands();
+
+commands.forEach((command) => {
   program.addCommand(command);
 });
 
