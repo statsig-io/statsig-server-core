@@ -84,7 +84,7 @@ jobs:
           GH_APP_ID: '229901'
           GH_APP_INSTALLATION_ID: '36921303'
           GH_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
-        run: ./run gh-attach-asset statsig-ffi/include/statsig_ffi.h --repo statsig-core-php
+        run: ./tore gh-attach-asset statsig-ffi/include/statsig_ffi.h --repo statsig-core-php
 
   build:
     strategy:

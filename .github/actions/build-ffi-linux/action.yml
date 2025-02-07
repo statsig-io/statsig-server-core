@@ -120,7 +120,7 @@ runs:
         GH_APP_INSTALLATION_ID: '36921303'
         GH_APP_PRIVATE_KEY: ${{ inputs.app_private_key }}
       shell: bash
-      run: ./run size-persist ${{ inputs.target }}
+      run: ./tore size-persist ${{ inputs.target }}
 
     - name: Report Size Changes
       if: ${{ inputs.build_for_release == 'true' && github.ref_name != 'main' }}
@@ -129,4 +129,4 @@ runs:
         GH_APP_INSTALLATION_ID: '36921303'
         GH_APP_PRIVATE_KEY: ${{ inputs.app_private_key }}
       shell: bash
-      run: ./run size-report ${{ inputs.target }}
+      run: ./tore size-report ${{ inputs.target }}

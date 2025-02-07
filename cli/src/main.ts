@@ -4,7 +4,7 @@ import { program } from 'commander';
 program
   .name('tore')
   .version('0.0.1')
-  .description('Tool for Organizing Rust Environments');
+  .description('Task Orchestrator for Rust Embedding');
 
 const commands = await loadCommands();
 

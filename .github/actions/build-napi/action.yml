@@ -75,7 +75,7 @@ runs:
     - name: Build Napi
       shell: bash
       run: |
-        ./run napi-build \
+        ./tore napi-build \
           --release \
           ${{ !inputs.include_js_files && '--skip-js-optimizations' }} \
           --target ${{ inputs.target }} ${{ inputs.extras }}

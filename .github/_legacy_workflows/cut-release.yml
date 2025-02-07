@@ -56,8 +56,8 @@ jobs:
           GH_APP_INSTALLATION_ID: '36921303'
           GH_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
         run: |
-          ./run bump-version --${{ inputs.kind }} ${{ inputs.specific_version }}
-          ./run gh-create-release "${{ github.event.repository.name }}"
-          ./run gh-push-php
-          ./run gh-create-release statsig-core-php
+          ./tore bump-version --${{ inputs.kind }} ${{ inputs.specific_version }}
+          ./tore gh-create-release "${{ github.event.repository.name }}"
+          ./tore gh-push-php
+          ./tore gh-create-release statsig-core-php
 

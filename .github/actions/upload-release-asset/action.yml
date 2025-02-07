@@ -39,8 +39,8 @@ runs:
         GH_APP_INSTALLATION_ID: '36921303'
         GH_APP_PRIVATE_KEY: ${{ inputs.app_private_key }}
       run: |
-        ./run zip-files "${{ inputs.pattern }}" --output "${{ inputs.asset_name }}.zip"
+        ./tore zip-files "${{ inputs.pattern }}" --output "${{ inputs.asset_name }}.zip"
         for repo in ${{ inputs.repositories }}; do
             echo "Attaching asset to repo: $repo"
-            ./run gh-attach-asset "${{ inputs.asset_name }}.zip" --repo "$repo"
+            ./tore gh-attach-asset "${{ inputs.asset_name }}.zip" --repo "$repo"
         done

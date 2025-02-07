@@ -52,6 +52,6 @@ jobs:
 
       - name: Run Tests
         run: |
-          ./run unit-tests ${{ matrix.lang }} \
+          ./tore unit-tests ${{ matrix.lang }} \
             --no-docker
 

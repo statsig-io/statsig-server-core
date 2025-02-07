@@ -80,7 +80,7 @@ jobs:
       - name: Build for Release
         if: ${{ env.SHOULD_BUILD == 'true' }}
         shell: 'script --return --quiet --log-out /dev/null --command "bash -e {0}"'
-        run: ./run py-build --distro ${{ matrix.config.distro }} --arch ${{ matrix.config.arch }} --release --out dist --skip-docker-build
+        run: ./tore py-build --distro ${{ matrix.config.distro }} --arch ${{ matrix.config.arch }} --release --out dist --skip-docker-build
 
       - name: Upload wheels
         if: ${{ env.SHOULD_BUILD == 'true' }}
