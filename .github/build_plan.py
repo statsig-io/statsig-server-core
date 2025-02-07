@@ -16,8 +16,10 @@ def partition_targets(should_build_all):
         include_filter = matrix_data['config']
         exclude_filter = []
     else:
-        include_filter = [config for config in matrix_data['config'] if config['target'] in always_build_targets]
-        exclude_filter = [config for config in matrix_data['config'] if config['target'] not in always_build_targets]
+        include_filter = matrix_data['config']
+        exclude_filter = []
+        # include_filter = [config for config in matrix_data['config'] if config['target'] in always_build_targets]
+        # exclude_filter = [config for config in matrix_data['config'] if config['target'] not in always_build_targets]
 
     included = {'config': include_filter}
     excluded = {'config': exclude_filter}

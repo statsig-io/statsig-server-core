@@ -56,6 +56,11 @@ export class Publish extends CommandBase {
         defaultValue: 'private-statsig-server-core',
       },
       {
+        flags: '-ri, --release-id <string>',
+        description: 'The release id to publish to',
+        required: true,
+      },
+      {
         flags: '-wd, --working-dir <string>',
         description: 'The working directory to use',
         defaultValue: '/tmp/statsig-server-core-publish',
@@ -85,6 +90,7 @@ export class Publish extends CommandBase {
 
   override async run(options: PublisherOptions) {
     options.workingDir = getRelativePath(options.workingDir);
+    options.releaseId = parseInt(options.releaseId + '');
 
     Log.title(`Publishing ${options.package}`);
     Log.stepBegin('Configuration');

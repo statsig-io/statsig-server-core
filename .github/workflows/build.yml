@@ -127,16 +127,6 @@ jobs:
             --skip-docker-build \
             --release
 
-      - name: Upload Release Assets
-        shell: bash
-        continue-on-error: true
-        if: ${{ matrix.package == 'ffi' && github.event_name == 'release' }}
-        run: |
-          ./tore upload-release-assets \
-            --target ${{ matrix.config.target }} \
-            --release-id ${{ github.event.release.id }} \
-            --repository ${{ github.repository }}
-
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -157,16 +147,17 @@ jobs:
 
   publish:
     needs: [plan, build]
-    if: ${{ github.event_name == 'release' }}
+    # if: ${{ github.event_name == 'release' }}
     
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix: 
         package: 
-          - node
-          - python
-          - java
+          # - node
+          # - python
+          # - java
+          - ffi
 
     steps:
       - uses: actions/checkout@v4
@@ -196,9 +187,11 @@ jobs:
           
       - name: Publish ${{ matrix.package }}
         shell: bash
+        # --release-id ${{ github.event.release.id }} \
         run: |
           ./tore publish \
             --working-dir artifacts \
             --package ${{ matrix.package }} \
             --workflow-id $GITHUB_RUN_ID \
+            --release-id 198743587 \
             --skip-artifact-download

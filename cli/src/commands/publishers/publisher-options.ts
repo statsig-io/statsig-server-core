@@ -5,6 +5,7 @@ export type PublisherOptions = {
   workflowId: string;
   package: Package;
   repository: string;
+  releaseId: number;
   workingDir: string;
   skipArtifactDownload: boolean;
   isProduction: boolean;

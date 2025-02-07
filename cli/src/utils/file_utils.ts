@@ -1,6 +1,7 @@
 import AdmZip from 'adm-zip';
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, rmSync, statSync } from 'fs';
+import { glob } from 'glob';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'url';
@@ -89,14 +90,10 @@ export function listFiles(
   },
 ) {
   const maxDepth = opts?.maxDepth ?? 10;
-  const command = [
-    `find ${dir}`,
-    `-maxdepth ${maxDepth}`,
-    `-name "${pattern}"`,
-  ].join(' ');
-  return execSync(command)
-    .toString()
-    .trim()
-    .split('\n')
-    .filter((f) => f.length > 0);
+
+  return glob.sync(`${dir}/**/${pattern}`, {
+    cwd: dir,
+    absolute: true,
+    maxDepth,
+  });
 }

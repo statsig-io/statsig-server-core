@@ -1,10 +1,13 @@
 import { listFiles } from '@/utils/file_utils.js';
 import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { CommandBase } from './command_base.js';
 
 export async function loadCommands() {
-  const dir = path.dirname(import.meta.url).replace('file://', '');
+  const dir = path
+    .dirname(fileURLToPath(import.meta.url))
+    .replace('file://', '');
   const files = listFiles(dir, '*.ts', { maxDepth: 1 });
   const commands = [];
 
@@ -13,7 +16,7 @@ export async function loadCommands() {
       continue;
     }
 
-    const mod = await import(file);
+    const mod = await import(pathToFileURL(file).href);
 
     Object.entries(mod).forEach(([key, value]) => {
       if ((value as any).prototype instanceof CommandBase) {
