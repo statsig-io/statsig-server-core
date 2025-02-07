@@ -36,6 +36,11 @@ env:
   ORG_GRADLE_PROJECT_SIGNING_KEY: ${{ secrets.ORG_GRADLE_PROJECT_SIGNING_KEY }}
   ORG_GRADLE_PROJECT_SIGNING_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_SIGNING_PASSWORD }}
 
+  # GH Octokit (Kong App)
+  GH_APP_ID: '229901'
+  GH_APP_INSTALLATION_ID: '36921303'
+  GH_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
+
   # Misc
   CARGO_TERM_COLOR: always
   FORCE_COLOR: true
@@ -180,7 +185,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-          merge-multiple: ${{ matrix.package != 'java' }}
+          merge-multiple: ${{ matrix.package != 'java' && matrix.package != 'ffi' }}
 
       - name: Display structure of downloaded files
         run: ls -R artifacts

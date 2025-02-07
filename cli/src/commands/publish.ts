@@ -30,7 +30,7 @@ const PUBLISHERS: Record<string, (options: PublisherOptions) => Promise<void>> =
     analyze,
   };
 
-const FFI_BASED_PACKAGES = new Set(['java', 'php']);
+const FFI_BASED_PACKAGES = new Set(['java', 'php', 'ffi']);
 
 type GHArtifact =
   RestEndpointMethodTypes['actions']['listWorkflowRunArtifacts']['response']['data']['artifacts'][number];
@@ -95,6 +95,7 @@ export class Publish extends CommandBase {
     Log.title(`Publishing ${options.package}`);
     Log.stepBegin('Configuration');
     Log.stepProgress(`Workflow ID: ${options.workflowId}`);
+    Log.stepProgress(`Release ID: ${options.releaseId}`);
     Log.stepProgress(`Repository: ${options.repository}`);
     Log.stepProgress(`Working Directory: ${options.workingDir}`);
     Log.stepProgress(
