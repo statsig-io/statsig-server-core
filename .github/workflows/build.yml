@@ -152,16 +152,16 @@ jobs:
 
   publish:
     needs: [plan, build]
-    # if: ${{ github.event_name == 'release' }}
+    if: ${{ github.event_name == 'release' }}
     
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix: 
         package: 
-          # - node
-          # - python
-          # - java
+          - node
+          - python
+          - java
           - ffi
 
     steps:
@@ -192,11 +192,10 @@ jobs:
           
       - name: Publish ${{ matrix.package }}
         shell: bash
-        # --release-id ${{ github.event.release.id }} \
         run: |
           ./tore publish \
             --working-dir artifacts \
             --package ${{ matrix.package }} \
             --workflow-id $GITHUB_RUN_ID \
-            --release-id 198743587 \
+            --release-id ${{ github.event.release.id }} \
             --skip-artifact-download
