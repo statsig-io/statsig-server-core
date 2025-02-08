@@ -54,7 +54,7 @@ type Options = {
   docker: boolean;
 };
 
-export class UnitTests extends CommandBase {
+export class Test extends CommandBase {
   constructor() {
     super(import.meta.url);
 
@@ -86,7 +86,6 @@ export class UnitTests extends CommandBase {
   override async run(lang: string, options: Options) {
     Log.title('Running Tests');
 
-    console.log(options);
     Log.stepBegin('Configuration');
     Log.stepProgress(`Language: ${lang}`);
     Log.stepProgress(`OS: ${options.os}`);

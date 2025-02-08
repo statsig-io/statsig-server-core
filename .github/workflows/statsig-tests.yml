@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-    
+
       - uses: pnpm/action-setup@v4
         with:
           version: 7.32.4
@@ -41,9 +41,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Install NPM Dependencies
-        run: |
-          pnpm install --dir cli
-          pip3 install pytest maturin patchelf pytest_httpserver
+        run: pnpm install --dir cli
+
+      - name: Install Python Dependencies
+        if: matrix.lang == 'python'
+        run: pip3 install pytest maturin patchelf pytest_httpserver
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
@@ -51,7 +53,5 @@ jobs:
             repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Tests
-        run: |
-          ./tore unit-tests ${{ matrix.lang }} \
-            --no-docker
+        run: ./tore test ${{ matrix.lang }} --no-docker
 
