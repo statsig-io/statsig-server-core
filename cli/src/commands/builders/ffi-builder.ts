@@ -10,7 +10,7 @@ import { execSync } from 'child_process';
 import { BuilderOptions } from './builder-options.js';
 
 export function buildFfi(options: BuilderOptions) {
-  Log.title(`Building statsig-ffi in Docker`);
+  Log.title(`Building statsig-ffi`);
 
   const { docker } = getArchInfo(options.arch);
   const tag = getDockerImageTag(options.os, options.arch);

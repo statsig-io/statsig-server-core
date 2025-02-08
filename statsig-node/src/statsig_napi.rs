@@ -9,6 +9,10 @@ use sigstat::{log_d, log_e, Statsig as StatsigActual};
 
 use crate::gcir_options_napi::ClientInitResponseOptions;
 use crate::observability_client_napi::ObservabilityClient;
+use crate::statsig_core_api_options_napi::{
+    DynamicConfigEvaluationOptionsNapi, ExperimentEvaluationOptionsNapi,
+    FeatureGateEvaluationOptionsNapi, LayerEvaluationOptionsNapi,
+};
 use crate::statsig_metadata_napi;
 use crate::statsig_options_napi::StatsigOptions;
 use crate::statsig_result::StatsigResult;
@@ -110,34 +114,81 @@ impl Statsig {
     }
 
     #[napi]
-    pub fn check_gate(&self, user: &StatsigUser, gate_name: String) -> bool {
-        self.inner.check_gate(user.as_inner(), &gate_name)
+    pub fn check_gate(
+        &self,
+        user: &StatsigUser,
+        gate_name: String,
+        options: Option<FeatureGateEvaluationOptionsNapi>,
+    ) -> bool {
+        self.inner.check_gate_with_options(
+            user.as_inner(),
+            &gate_name,
+            options.map(|opts| opts.into()).unwrap_or_default(),
+        )
     }
 
     #[napi]
-    pub fn get_feature_gate(&self, user: &StatsigUser, feature_name: String) -> FeatureGate {
+    pub fn get_feature_gate(
+        &self,
+        user: &StatsigUser,
+        feature_name: String,
+        options: Option<FeatureGateEvaluationOptionsNapi>,
+    ) -> FeatureGate {
         self.inner
-            .get_feature_gate(user.as_inner(), &feature_name)
+            .get_feature_gate_with_options(
+                user.as_inner(),
+                &feature_name,
+                options.map(|opts| opts.into()).unwrap_or_default(),
+            )
             .into()
     }
 
     #[napi]
-    pub fn get_dynamic_config(&self, user: &StatsigUser, config_name: String) -> DynamicConfig {
+    pub fn get_dynamic_config(
+        &self,
+        user: &StatsigUser,
+        config_name: String,
+        options: Option<DynamicConfigEvaluationOptionsNapi>,
+    ) -> DynamicConfig {
         self.inner
-            .get_dynamic_config(user.as_inner(), &config_name)
+            .get_dynamic_config_with_options(
+                user.as_inner(),
+                &config_name,
+                options.map(|opts| opts.into()).unwrap_or_default(),
+            )
             .into()
     }
 
     #[napi]
-    pub fn get_experiment(&self, user: &StatsigUser, experiment_name: String) -> Experiment {
+    pub fn get_experiment(
+        &self,
+        user: &StatsigUser,
+        experiment_name: String,
+        options: Option<ExperimentEvaluationOptionsNapi>,
+    ) -> Experiment {
         self.inner
-            .get_experiment(user.as_inner(), &experiment_name)
+            .get_experiment_with_options(
+                user.as_inner(),
+                &experiment_name,
+                options.map(|opts| opts.into()).unwrap_or_default(),
+            )
             .into()
     }
 
     #[napi]
-    pub fn get_layer(&self, user: &StatsigUser, layer_name: String) -> Layer {
-        self.inner.get_layer(user.as_inner(), &layer_name).into()
+    pub fn get_layer(
+        &self,
+        user: &StatsigUser,
+        layer_name: String,
+        options: Option<LayerEvaluationOptionsNapi>,
+    ) -> Layer {
+        self.inner
+            .get_layer_with_options(
+                user.as_inner(),
+                &layer_name,
+                options.map(|opts| opts.into()).unwrap_or_default(),
+            )
+            .into()
     }
 
     #[napi]

@@ -162,6 +162,7 @@ jobs:
           - node
           - python
           - java
+          - php
           - ffi
 
     steps:

@@ -10,7 +10,7 @@ import { execSync } from 'child_process';
 import { BuilderOptions } from './builder-options.js';
 
 export function buildNode(options: BuilderOptions) {
-  Log.title(`Building statsig-node in Docker`);
+  Log.title(`Building statsig-node`);
 
   const { docker } = getArchInfo(options.arch);
   const tag = getDockerImageTag(options.os, options.arch);

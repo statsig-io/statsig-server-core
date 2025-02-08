@@ -161,11 +161,8 @@ macro_rules! add_hashmap_getter_setter {
                 Some(result)
             }
 
-            #[napi(setter, js_name = $field_name)]
-            pub fn $setter_name(
-                &mut self,
-                #[napi(ts_arg_type = $ts_arg_type)] value: Option<HashMap<String, Value>>,
-            ) {
+            #[napi(setter, js_name = $field_name, ts_args_type = $ts_arg_type)]
+            pub fn $setter_name(&mut self, value: Option<HashMap<String, Value>>) {
                 let value = match value {
                     Some(value) => value,
                     _ => {
@@ -207,10 +204,10 @@ macro_rules! add_string_getter_setter {
             }
 
             #[napi(setter, js_name = $field_name)]
-            pub fn $setter_name(&mut self, value: Option<Value>) {
+            pub fn $setter_name(&mut self, value: Value) {
                 match value {
-                    Some(value) => self.inner.$field_accessor = Some(value.into()),
-                    _ => self.inner.$field_accessor = None,
+                    Value::Null => self.inner.$field_accessor = None,
+                    _ => self.inner.$field_accessor = Some(value.into()),
                 }
             }
         }
@@ -221,19 +218,19 @@ add_hashmap_getter_setter!(
     "customIDs",
     custom_ids,
     set_custom_ids,
-    "Record<string, string>"
+    "value: Record<string, string> | null"
 );
 add_hashmap_getter_setter!(
     "custom",
     custom,
     set_custom,
-    "Record<string, string | number | boolean | Array<string | number | boolean>>"
+    "value: Record<string, string | number | boolean | Array<string | number | boolean>> | null"
 );
 add_hashmap_getter_setter!(
     "privateAttributes",
     private_attributes,
     set_private_attributes,
-    "Record<string, string | number | boolean | Array<string | number | boolean>>"
+    "value: Record<string, string | number | boolean | Array<string | number | boolean>> | null"
 );
 
 add_string_getter_setter!("userID", user_id, set_user_id);
