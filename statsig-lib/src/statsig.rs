@@ -402,7 +402,11 @@ impl Statsig {
             )));
     }
 
-    pub fn log_layer_param_exposure(&self, layer_json: String, parameter_name: String) {
+    pub fn log_layer_param_exposure_with_layer_json(
+        &self,
+        layer_json: String,
+        parameter_name: String,
+    ) {
         let layer = match serde_json::from_str::<Layer>(&layer_json) {
             Ok(layer) => layer,
             Err(e) => {
@@ -416,6 +420,10 @@ impl Statsig {
             }
         };
 
+        self.log_layer_param_exposure_with_layer(layer, parameter_name);
+    }
+
+    pub fn log_layer_param_exposure_with_layer(&self, layer: Layer, parameter_name: String) {
         if layer.__disable_exposure {
             self.event_logger
                 .increment_non_exposure_checks_count(layer.name.clone());
@@ -427,7 +435,7 @@ impl Statsig {
         let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
             &layer.__user,
             layer_eval.map(AnyEvaluation::from).as_ref(),
-            Some(parameter_name.as_str()),
+            Some(&parameter_name),
         );
 
         if !sampling_details.should_send_exposure {

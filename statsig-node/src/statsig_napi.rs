@@ -207,4 +207,34 @@ impl Statsig {
                 .get_client_init_response_as_string(user.as_inner()),
         }
     }
+
+    #[napi]
+    pub fn manually_log_feature_gate_exposure(&self, user: &StatsigUser, gate_name: String) {
+        self.inner
+            .manually_log_gate_exposure(user.as_inner(), &gate_name);
+    }
+
+    #[napi]
+    pub fn manually_log_dynamic_config_exposure(&self, user: &StatsigUser, config_name: String) {
+        self.inner
+            .manually_log_dynamic_config_exposure(user.as_inner(), &config_name);
+    }
+
+    #[napi]
+    pub fn manually_log_experiment_exposure(&self, user: &StatsigUser, experiment_name: String) {
+        self.inner
+            .manually_log_experiment_exposure(user.as_inner(), &experiment_name);
+    }
+
+    #[napi]
+    pub fn manually_log_layer_param_exposure(
+        &self,
+        user: &StatsigUser,
+        layer_name: String,
+        param_name: String,
+    ) {
+        let layer = self.get_layer(user, layer_name, None);
+        self.inner
+            .log_layer_param_exposure_with_layer(layer.inner, param_name);
+    }
 }

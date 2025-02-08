@@ -357,7 +357,7 @@ pub extern "C" fn statsig_log_layer_param_exposure(
     let param_name = unwrap_or_noop!(c_char_to_string(param_name));
     let layer_json = unwrap_or_noop!(c_char_to_string(layer_json));
 
-    statsig.log_layer_param_exposure(layer_json, param_name);
+    statsig.log_layer_param_exposure_with_layer_json(layer_json, param_name);
 }
 
 #[no_mangle]

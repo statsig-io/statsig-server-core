@@ -294,7 +294,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogLayerParamExposure(
         }
     };
 
-    statsig.log_layer_param_exposure(layer_json, parameter_name);
+    statsig.log_layer_param_exposure_with_layer_json(layer_json, parameter_name);
 }
 
 #[no_mangle]

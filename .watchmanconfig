@@ -1,0 +1,5 @@
+{
+  "fsevents": {
+    "max_users": 256
+  }
+}

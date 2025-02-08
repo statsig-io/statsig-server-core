@@ -320,7 +320,7 @@ pub fn statsig_log_layer_param_exposure(
 ) {
   let statsig = get_instance_or_noop!(Statsig, &statsig_ref);
 
-  statsig.log_layer_param_exposure(layer_data, param_name)
+  statsig.log_layer_param_exposure_with_layer_json(layer_data, param_name)
 }
 
 #[napi]

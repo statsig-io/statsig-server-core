@@ -1,16 +1,21 @@
 import { ObservabilityClient } from '../../build/index.js';
 
 export class MockObservabilityClient implements ObservabilityClient {
-  static verbose = false;
+  verbose = false;
 
-  initialize() {
-    if (MockObservabilityClient.verbose) {
+  readonly initialize = () => {
+    if (this.verbose) {
       console.log('MockObservabilityClient: initialize');
     }
-  }
+    return Promise.resolve();
+  };
 
-  increment(metricName: string, value: number, tags: Record<string, string>) {
-    if (MockObservabilityClient.verbose) {
+  readonly increment = (
+    metricName: string,
+    value: number,
+    tags: Record<string, string>,
+  ) => {
+    if (this.verbose) {
       console.log(
         'MockObservabilityClient: increment',
         metricName,
@@ -18,17 +23,27 @@ export class MockObservabilityClient implements ObservabilityClient {
         tags,
       );
     }
-  }
+    return Promise.resolve();
+  };
 
-  gauge(metricName: string, value: number, tags: Record<string, string>) {
-    if (MockObservabilityClient.verbose) {
+  readonly gauge = (
+    metricName: string,
+    value: number,
+    tags: Record<string, string>,
+  ) => {
+    if (this.verbose) {
       console.log('MockObservabilityClient: gauge', metricName, value, tags);
     }
-  }
+    return Promise.resolve();
+  };
 
-  dist(metricName: string, value: number, tags: Record<string, string>) {
-    if (MockObservabilityClient.verbose) {
+  readonly dist = (
+    metricName: string,
+    value: number,
+    tags: Record<string, string>,
+  ) => {
+    if (this.verbose) {
       console.log('MockObservabilityClient: dist', metricName, value, tags);
     }
-  }
+  };
 }

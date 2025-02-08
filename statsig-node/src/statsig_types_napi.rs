@@ -98,7 +98,7 @@ pub struct Layer {
     pub rule_id: String,
     pub group_name: Option<String>,
 
-    inner: LayerActual,
+    pub(crate) inner: LayerActual,
 }
 
 #[napi]
