@@ -44,6 +44,7 @@ pub fn statsig_options_create(
   spec_adapters_config: Option<Vec<SpecAdapterConfigNapi>>,
   output_log_level: Option<u32>,
   observability_client: Option<JsObject>,
+  service_name: Option<String>,
 ) -> AutoReleasingStatsigOptionsRef {
   let data_store: Option<Arc<dyn DataStoreTrait + 'static>> =
     if let Some(store_unwrapped) = data_store {
@@ -76,6 +77,7 @@ pub fn statsig_options_create(
       data_store,
       observability_client: weak_observability_client,
       output_log_level: output_log_level.map(|l| l.into()),
+      service_name,
       ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {

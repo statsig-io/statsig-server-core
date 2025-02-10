@@ -21,6 +21,7 @@ export type StatsigOptionArgs = Partial<{
   dataStore?: IDataStore | undefined | null;
   specsAdapterConfig?: Array<SpecAdapterConfig> | undefined | null;
   observabilityClient?: IObservabilityClient | undefined | null;
+  serviceName?: string | undefined | null;
 }>;
 
 export enum LogLevel {
@@ -55,6 +56,7 @@ export default class StatsigOptions {
       optionArgs.specsAdapterConfig,
       this.outputLoggerLevel as number,
       obClient,
+      optionArgs.serviceName,
     );
   }
 }
