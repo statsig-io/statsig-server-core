@@ -1,5 +1,5 @@
 {
-  "name": "@sigstat/sigstat-napi",
+  "name": "@statsig/statsig-node-core",
   "version": "0.0.5-beta.4",
   "main": "index.js",
   "scripts": {
