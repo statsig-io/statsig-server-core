@@ -40,6 +40,8 @@ pub struct StatsigOptions {
     pub spec_adapters_config: Option<Vec<SpecAdapterConfig>>,
     pub specs_url: Option<String>,
     pub specs_sync_interval_ms: Option<u32>,
+
+    pub service_name: Option<String>,
 }
 
 impl StatsigOptions {
@@ -82,6 +84,7 @@ impl StatsigOptions {
             spec_adapters_config: self
                 .spec_adapters_config
                 .map(|configs| configs.into_iter().map(|c| c.into()).collect()),
+            service_name: self.service_name,
             ..Default::default()
         };
 
