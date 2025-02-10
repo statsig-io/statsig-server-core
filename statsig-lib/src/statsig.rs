@@ -237,7 +237,7 @@ impl Statsig {
             success,
             &error_message,
             start_time,
-            self.spec_store.get_current_specs_info(),
+            &self.spec_store.get_current_specs_info(),
         );
         if let Err(e) = init_res.clone() {
             log_error_to_statsig_and_console!(
@@ -1033,7 +1033,7 @@ impl Statsig {
         success: bool,
         error_message: &Option<String>,
         start_time: Instant,
-        specs_info: SpecsInfo,
+        specs_info: &SpecsInfo,
     ) {
         self.ops_stats.log(ObservabilityEvent::new_event(
             MetricType::Dist,

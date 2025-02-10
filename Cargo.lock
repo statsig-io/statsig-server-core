@@ -1949,6 +1949,7 @@ dependencies = [
  "mockito",
  "more-asserts",
  "openssl",
+ "percent-encoding",
  "rand 0.8.5",
  "regex-lite",
  "serde",

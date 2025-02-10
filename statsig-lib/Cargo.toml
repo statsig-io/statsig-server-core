@@ -29,6 +29,7 @@ flate2 = "1.0.35"
 rand = "0.8.4"
 file-guard = "0.2.0"
 zstd = { version = "0.13.2", optional = true }
+percent-encoding = "2.3.1"
 
 [dev-dependencies]
 mockito = "1.5.0"

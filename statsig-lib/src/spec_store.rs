@@ -41,12 +41,14 @@ impl SpecsUpdateListener for SpecStore {
         match self.data.read() {
             Ok(data) => SpecsInfo {
                 lcut: Some(data.values.time),
+                checksum: data.values.checksum.clone(),
                 source: data.source.clone(),
             },
             Err(e) => {
                 log_e!(TAG, "Failed to acquire read lock: {}", e);
                 SpecsInfo {
                     lcut: None,
+                    checksum: None,
                     source: SpecsSource::Error,
                 }
             }
@@ -191,11 +193,27 @@ impl SpecStore {
             }
         };
         if let Ok(mut mut_values) = self.data.write() {
-            if mut_values.values.time > 0 && mut_values.values.time > dcs.time {
+            let cached_time_is_newer =
+                mut_values.values.time > 0 && mut_values.values.time > dcs.time;
+            let checksums_match =
+                mut_values
+                    .values
+                    .checksum
+                    .as_ref()
+                    .is_some_and(|cached_checksum| {
+                        dcs.checksum
+                            .as_ref()
+                            .is_some_and(|new_checksum| cached_checksum == new_checksum)
+                    });
+
+            if cached_time_is_newer || checksums_match {
                 log_d!(
-                    TAG, "SpecStore - Received values for {}, but currently has values for {}. Ignoring values.",
+                    TAG,
+                    "SpecStore - Received values for [time: {}, checksum: {}], but currently has values for [time: {}, checksum: {}]. Ignoring values.",
                     dcs.time,
-                    mut_values.values.time
+                    dcs.checksum.unwrap_or("".to_string()),
+                    mut_values.values.time,
+                    mut_values.values.checksum.clone().unwrap_or("".to_string()),
                 );
                 return Ok(());
             }
@@ -278,6 +296,7 @@ impl SpecsResponseFull {
             experiment_to_layer: Default::default(),
             has_updates: true,
             time: 0,
+            checksum: None,
             default_environment: None,
             app_id: None,
             sdk_keys_to_app_ids: None,

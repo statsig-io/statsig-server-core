@@ -41,9 +41,6 @@ impl SpecsUpdateListener for MockSpecsListener {
     }
 
     fn get_current_specs_info(&self) -> SpecsInfo {
-        SpecsInfo {
-            lcut: None,
-            source: SpecsSource::NoValues,
-        }
+        SpecsInfo::empty()
     }
 }

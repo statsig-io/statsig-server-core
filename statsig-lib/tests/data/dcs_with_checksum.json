@@ -1,0 +1,15 @@
+{
+    "has_updates": true,
+    "time": 1000,
+    "checksum": "1234567890",
+    "feature_gates": {},
+    "dynamic_configs": {},
+    "layer_configs": {},
+    "condition_map": {},
+    "experiment_to_layer": {},
+    "default_environment": null,
+    "app_id": null,
+    "sdk_keys_to_app_ids": null,
+    "hashed_sdk_keys_to_app_ids": null,
+    "diagnostics": null
+}

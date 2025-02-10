@@ -7,11 +7,14 @@ use crate::statsig_metadata::StatsigMetadata;
 use crate::{log_d, log_e, log_error_to_statsig_and_console, SpecsSource, StatsigRuntime};
 use async_trait::async_trait;
 use chrono::Utc;
+use percent_encoding::percent_encode;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, Weak};
 use std::time::Duration;
 use tokio::sync::Notify;
 use tokio::time::sleep;
+
+use super::SpecsInfo;
 
 pub const DEFAULT_SPECS_URL: &str = "https://api.statsigcdn.com/v2/download_config_specs";
 pub const DEFAULT_SYNC_INTERVAL_MS: u32 = 10_000;
@@ -55,17 +58,22 @@ impl StatsigHttpSpecsAdapter {
         }
     }
 
-    pub async fn fetch_specs_from_network(
-        &self,
-        current_store_lcut: Option<u64>,
-    ) -> Option<String> {
-        let query_params =
-            current_store_lcut.map(|lcut| HashMap::from([("sinceTime".into(), lcut.to_string())]));
+    pub async fn fetch_specs_from_network(&self, current_specs_info: SpecsInfo) -> Option<String> {
+        let mut params = HashMap::new();
+        if let Some(lcut) = current_specs_info.lcut {
+            params.insert("sinceTime".to_string(), lcut.to_string());
+        }
+        if let Some(cs) = current_specs_info.checksum {
+            params.insert(
+                "checksum".to_string(),
+                percent_encode(cs.as_bytes(), percent_encoding::NON_ALPHANUMERIC).to_string(),
+            );
+        }
 
         let request_args = RequestArgs {
             url: self.specs_url.clone(),
             retries: 2,
-            query_params,
+            query_params: Some(params),
             accept_gzip_response: true,
             ..RequestArgs::new()
         };
@@ -102,27 +110,27 @@ impl StatsigHttpSpecsAdapter {
             }
         };
 
-        let lcut = match strong_self.listener.read() {
+        let specs_info = match strong_self.listener.read() {
             Ok(lock) => match lock.as_ref() {
-                Some(listener) => listener.get_current_specs_info().lcut,
-                None => None,
+                Some(listener) => listener.get_current_specs_info(),
+                None => SpecsInfo::empty(),
             },
-            Err(_) => None,
+            Err(_) => SpecsInfo::error(),
         };
 
-        if let Err(e) = strong_self.manually_sync_specs(lcut).await {
+        if let Err(e) = strong_self.manually_sync_specs(specs_info).await {
             log_e!(TAG, "Background specs sync failed: {}", e);
         }
     }
 
-    async fn manually_sync_specs(&self, current_store_lcut: Option<u64>) -> Result<(), StatsigErr> {
+    async fn manually_sync_specs(&self, current_specs_info: SpecsInfo) -> Result<(), StatsigErr> {
         if let Ok(lock) = self.listener.read() {
             if lock.is_none() {
                 return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()));
             }
         }
 
-        let response = self.fetch_specs_from_network(current_store_lcut).await;
+        let response = self.fetch_specs_from_network(current_specs_info).await;
 
         let data = match response {
             Some(r) => r,
@@ -163,14 +171,14 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        let lcut = match self.listener.read() {
+        let specs_info = match self.listener.read() {
             Ok(lock) => match lock.as_ref() {
-                Some(listener) => listener.get_current_specs_info().lcut,
-                None => None,
+                Some(listener) => listener.get_current_specs_info(),
+                None => SpecsInfo::empty(),
             },
-            Err(_) => None,
+            Err(_) => SpecsInfo::error(),
         };
-        self.manually_sync_specs(lcut).await
+        self.manually_sync_specs(specs_info).await
     }
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {

@@ -105,6 +105,37 @@ async fn test_sending_since_time() {
 
 #[tokio::test]
 #[allow(clippy::await_holding_lock)]
+async fn test_sending_checksum() {
+    let _lock = get_test_lock();
+
+    let mock_scrapi = MockScrapi::new().await;
+    let dcs = load_contents("dcs_with_checksum.json");
+
+    mock_scrapi
+        .stub(EndpointStub {
+            method: Method::GET,
+            response: dcs,
+            ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
+        })
+        .await;
+
+    let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
+    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, "/tmp", Some(url), false);
+    adapter.fetch_and_write_to_file().await.unwrap();
+
+    let reqs = mock_scrapi.get_requests_for_endpoint(Endpoint::DownloadConfigSpecs);
+    assert_eq!(reqs.len(), 1);
+    assert!(!reqs[0].url.to_string().contains("checksum="));
+
+    adapter.fetch_and_write_to_file().await.unwrap();
+
+    let reqs = mock_scrapi.get_requests_for_endpoint(Endpoint::DownloadConfigSpecs);
+    assert_eq!(reqs.len(), 2);
+    assert!(reqs[1].url.to_string().contains("checksum=1234567890"));
+}
+
+#[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_syncing_from_file() {
     let _lock = get_test_lock();
 

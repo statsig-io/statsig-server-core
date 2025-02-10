@@ -86,7 +86,7 @@ const char *statsig_http_specs_adapter_create(const char *sdk_key, const char *o
 void statsig_http_specs_adapter_release(const char *specs_adapter_ref);
 
 const char *statsig_http_specs_adapter_fetch_specs_from_network(const char *specs_adapter_ref,
-                                                                uint64_t current_lcut);
+                                                                const char *current_specs_info);
 
 const char *statsig_local_file_event_logging_adapter_create(const char *sdk_key,
                                                             const char *output_directory,

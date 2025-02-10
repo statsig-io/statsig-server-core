@@ -9,7 +9,7 @@ use chrono::Utc;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-use super::StatsigHttpSpecsAdapter;
+use super::{SpecsInfo, StatsigHttpSpecsAdapter};
 
 const TAG: &str = stringify!(StatsigLocalFileSpecsAdapter);
 
@@ -42,12 +42,16 @@ impl StatsigLocalFileSpecsAdapter {
     }
 
     pub async fn fetch_and_write_to_file(&self) -> Result<(), StatsigErr> {
-        let lcut = match self.read_specs_from_file() {
-            Ok(Some(specs)) => Some(specs.time),
-            _ => None,
+        let specs_info = match self.read_specs_from_file() {
+            Ok(Some(specs)) => SpecsInfo {
+                lcut: Some(specs.time),
+                checksum: specs.checksum,
+                source: SpecsSource::Adapter("FileBased".to_owned()),
+            },
+            _ => SpecsInfo::empty(),
         };
 
-        let data = match self.http_adapter.fetch_specs_from_network(lcut).await {
+        let data = match self.http_adapter.fetch_specs_from_network(specs_info).await {
             Some(data) => data,
             None => {
                 return Err(StatsigErr::NetworkError("No data received".to_string()));

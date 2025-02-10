@@ -1,13 +1,14 @@
 use crate::statsig_err::StatsigErr;
 use crate::StatsigRuntime;
 use async_trait::async_trait;
+use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::{self, Debug};
 use std::sync::Arc;
 use tokio::time::Duration;
 
 #[repr(u8)]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SpecsSource {
     Uninitialized = 0,
     NoValues,
@@ -65,9 +66,30 @@ pub struct SpecsUpdate {
     pub received_at: u64,
 }
 
+#[repr(C)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SpecsInfo {
     pub lcut: Option<u64>,
+    pub checksum: Option<String>,
     pub source: SpecsSource,
+}
+
+impl SpecsInfo {
+    pub fn empty() -> Self {
+        Self {
+            lcut: None,
+            checksum: None,
+            source: SpecsSource::NoValues,
+        }
+    }
+
+    pub fn error() -> Self {
+        Self {
+            lcut: None,
+            checksum: None,
+            source: SpecsSource::Error,
+        }
+    }
 }
 
 pub trait SpecsUpdateListener: Send + Sync {

@@ -62,6 +62,7 @@ pub struct SpecsResponseFull {
     pub experiment_to_layer: HashMap<String, String>,
     pub has_updates: bool,
     pub time: u64,
+    pub checksum: Option<String>,
     pub default_environment: Option<String>,
     pub app_id: Option<DynamicValue>,
     pub sdk_keys_to_app_ids: Option<HashMap<String, DynamicValue>>,

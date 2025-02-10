@@ -1,7 +1,7 @@
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::get_instance_or_return_c;
 use sigstat::instance_store::INST_STORE;
-use sigstat::{log_e, unwrap_or_return, StatsigHttpSpecsAdapter};
+use sigstat::{log_e, unwrap_or_return, SpecsInfo, StatsigHttpSpecsAdapter};
 use sigstat::{StatsigOptions, StatsigRuntime};
 use std::os::raw::c_char;
 use std::ptr::null;
@@ -45,15 +45,26 @@ pub extern "C" fn statsig_http_specs_adapter_release(specs_adapter_ref: *const c
 #[no_mangle]
 pub extern "C" fn statsig_http_specs_adapter_fetch_specs_from_network(
     specs_adapter_ref: *const c_char,
-    current_lcut: u64,
+    current_specs_info: *const c_char,
 ) -> *const c_char {
     let specs_adapter =
         get_instance_or_return_c!(StatsigHttpSpecsAdapter, specs_adapter_ref, null());
 
     let statsig_rt = StatsigRuntime::get_runtime();
+
+    let specs_info_str = match c_char_to_string(current_specs_info) {
+        Some(s) => s,
+        None => return null(),
+    };
+
+    let parsed_specs_info: SpecsInfo = match serde_json::from_str(&specs_info_str) {
+        Ok(info) => info,
+        Err(_) => return null(),
+    };
+
     let result: Option<String> = statsig_rt.runtime_handle.block_on(async move {
         specs_adapter
-            .fetch_specs_from_network(Some(current_lcut))
+            .fetch_specs_from_network(parsed_specs_info)
             .await
     });
 
