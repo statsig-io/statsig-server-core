@@ -1,3 +1,4 @@
+use crate::evaluation::cmab_evaluator::evaluate_cmab;
 use crate::evaluation::comparisons::{
     compare_arrays, compare_numbers, compare_str_with_regex, compare_strings_in_array,
     compare_time, compare_versions,
@@ -6,6 +7,7 @@ use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator_context::EvaluatorContext;
+use crate::evaluation::get_unit_id::get_unit_id;
 use crate::spec_types::{Condition, Rule};
 use crate::{dyn_value, log_e, unwrap_or_return, StatsigErr};
 use chrono::Utc;
@@ -61,6 +63,10 @@ impl Evaluator {
         spec_type: &SpecType,
     ) -> Result<bool, StatsigErr> {
         if try_apply_override(ctx, spec_name, spec_type) {
+            return Ok(true);
+        }
+
+        if evaluate_cmab(ctx, spec_name, spec_type) {
             return Ok(true);
         }
 
@@ -392,13 +398,7 @@ fn evaluate_pass_percentage(ctx: &mut EvaluatorContext, rule: &Rule, spec_salt: 
     }
 
     let rule_salt = rule.salt.as_ref().unwrap_or(&rule.id);
-    let unit_id = ctx
-        .user
-        .get_unit_id(&rule.id_type)
-        .unwrap_or(&EMPTY_DYNAMIC_VALUE)
-        .string_value
-        .as_ref()
-        .unwrap_or(&EMPTY_STR);
+    let unit_id = get_unit_id(ctx, &rule.id_type);
     let input = format!("{}.{}.{}", spec_salt, rule_salt, unit_id);
     match ctx.hashing.evaluation_hash(&input) {
         Some(hash) => ((hash % 10000) as f64) < rule.pass_percentage * 100.0,
@@ -407,13 +407,7 @@ fn evaluate_pass_percentage(ctx: &mut EvaluatorContext, rule: &Rule, spec_salt: 
 }
 
 fn get_hash_for_user_bucket(ctx: &mut EvaluatorContext, condition: &Condition) -> DynamicValue {
-    let unit_id = ctx
-        .user
-        .get_unit_id(&condition.id_type)
-        .unwrap_or(&EMPTY_DYNAMIC_VALUE)
-        .string_value
-        .as_ref()
-        .unwrap_or(&EMPTY_STR);
+    let unit_id = get_unit_id(ctx, &condition.id_type);
 
     let mut salt: &String = &EMPTY_STR;
 

@@ -36,3 +36,12 @@ impl<'de> Deserialize<'de> for DynamicString {
         })
     }
 }
+
+impl From<&String> for DynamicString {
+    fn from(value: &String) -> Self {
+        DynamicString {
+            value: value.clone(),
+            lowercased_value: value.clone().to_lowercase(),
+        }
+    }
+}

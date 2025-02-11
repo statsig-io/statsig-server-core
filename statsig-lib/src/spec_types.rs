@@ -70,7 +70,42 @@ pub struct SpecsResponseFull {
     pub diagnostics: Option<HashMap<String, f64>>,
     pub param_stores: Option<HashMap<String, ParameterStore>>,
     pub sdk_configs: Option<HashMap<String, DynamicValue>>,
+    pub cmab_configs: Option<HashMap<String, CMABConfig>>,
 }
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CMABConfig {
+    pub salt: String,
+    #[serde(rename = "targetAppIDs")]
+    pub target_app_ids: Option<Vec<String>>,
+    pub default_value: DynamicReturnable,
+    pub id_type: DynamicString,
+    pub enabled: bool,
+    pub version: u32,
+    pub sample_rate: f64,
+    pub higher_is_better: bool,
+    pub groups: Vec<CMABGroup>,
+    pub config: Option<HashMap<String, CMABGroupConfig>>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CMABGroup {
+    pub name: String,
+    pub parameter_values: DynamicReturnable,
+    pub id: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CMABGroupConfig {
+    pub alpha: f64,
+    pub intercept: f64,
+    pub records: u64,
+    pub weights_numerical: HashMap<String, f64>,
+    pub weights_categorical: HashMap<String, HashMap<String, f64>>,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum Parameter {

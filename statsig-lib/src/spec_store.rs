@@ -304,6 +304,7 @@ impl SpecsResponseFull {
             diagnostics: None,
             param_stores: None,
             sdk_configs: None,
+            cmab_configs: None,
         }
     }
 }

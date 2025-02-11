@@ -16,6 +16,7 @@ pub struct EvaluatorResult<'a> {
     pub id_type: Option<&'a String>,
     pub json_value: Option<HashMap<String, Value>>,
     pub rule_id: Option<&'a String>,
+    pub rule_id_suffix: Option<String>,
     pub group_name: Option<&'a String>,
     pub explicit_parameters: Option<&'a Vec<String>>,
     pub config_delegate: Option<&'a String>,
@@ -141,9 +142,19 @@ fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEva
         }
     }
 
+    let rule_id = match result.rule_id {
+        Some(rule_id) => rule_id.clone(),
+        None => "".to_string(),
+    };
+
+    let result_rule_id = match &result.rule_id_suffix {
+        Some(suffix) => format!("{}:{}", rule_id, suffix),
+        None => rule_id.clone(),
+    };
+
     BaseEvaluation {
         name: spec_name.to_string(),
-        rule_id: result.rule_id.cloned().unwrap_or_default(),
+        rule_id: result_rule_id.clone(),
         secondary_exposures: exposures,
         sampling_rate: result.sampling_rate,
         forward_all_exposures: result.forward_all_exposures,
