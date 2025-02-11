@@ -52,14 +52,14 @@ const DIR_STRUCTURE = {
 };
 
 const PACKAGE_MAPPING = {
-  'darwin-arm64': '@sigstat/sigstat-napi-darwin-arm64',
-  'linux-arm64-gnu': '@sigstat/sigstat-napi-linux-arm64-gnu',
-  'linux-arm64-musl': '@sigstat/sigstat-napi-linux-arm64-musl',
-  'win32-ia32-msvc': '@sigstat/sigstat-napi-win32-ia32-msvc',
-  'darwin-x64': '@sigstat/sigstat-napi-darwin-x64',
-  'win32-x64-msvc': '@sigstat/sigstat-napi-win32-x64-msvc',
-  'linux-x64-gnu': '@sigstat/sigstat-napi-linux-x64-gnu',
-  'linux-x64-musl': '@sigstat/sigstat-napi-linux-x64-musl',
+  'darwin-arm64': '@statsig/statsig-node-core-darwin-arm64',
+  'linux-arm64-gnu': '@statsig/statsig-node-core-linux-arm64-gnu',
+  'linux-arm64-musl': '@statsig/statsig-node-core-linux-arm64-musl',
+  'win32-ia32-msvc': '@statsig/statsig-node-core-win32-ia32-msvc',
+  'darwin-x64': '@statsig/statsig-node-core-darwin-x64',
+  'win32-x64-msvc': '@statsig/statsig-node-core-win32-x64-msvc',
+  'linux-x64-gnu': '@statsig/statsig-node-core-linux-x64-gnu',
+  'linux-x64-musl': '@statsig/statsig-node-core-linux-x64-musl',
 };
 
 export async function nodePublish(options: PublisherOptions) {

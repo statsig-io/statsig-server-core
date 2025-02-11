@@ -1,5 +1,5 @@
 {
-    "name": "@sigstat/sigstat-napi-win32-ia32-msvc",
+    "name": "@statsig/statsig-node-core-win32-ia32-msvc",
     "version": "0.0.6-beta.1",
     "os": [
       "win32"
