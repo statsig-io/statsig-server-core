@@ -21,8 +21,10 @@ jobs:
       matrix:
         include:
           - target: core-rust
-          # - target: core-napi 
-          # - target: core-java
+          - target: core-napi 
+          - target: core-python
+          - target: core-php
+          - target: core-java
     steps:
       - name: Get KONG
         run: git clone https://oauth2:$repo_pat@github.com/statsig-io/kong.git .
