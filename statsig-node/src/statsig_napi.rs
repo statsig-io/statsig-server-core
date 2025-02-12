@@ -233,8 +233,7 @@ impl Statsig {
         layer_name: String,
         param_name: String,
     ) {
-        let layer = self.get_layer(user, layer_name, None);
         self.inner
-            .log_layer_param_exposure_with_layer(layer.inner, param_name);
+            .manually_log_layer_parameter_exposure(user.as_inner(), &layer_name, param_name);
     }
 }
