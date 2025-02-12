@@ -85,6 +85,8 @@ impl StatsigOptions {
                 .spec_adapters_config
                 .map(|configs| configs.into_iter().map(|c| c.into()).collect()),
             service_name: self.service_name,
+            event_logging_flush_interval_ms: self.event_logging_flush_interval_ms,
+            event_logging_max_queue_size: self.event_logging_max_queue_size,
             ..Default::default()
         };
 
