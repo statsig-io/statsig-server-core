@@ -75,6 +75,7 @@ pub struct LayerNapi {
   pub rule_id: String,
   pub id_type: String,
   pub group_name: Option<String>,
+  pub allocated_experiment_name: Option<String>,
 
   #[napi(js_name = "__jsonValue")]
   pub __json_value: String,
