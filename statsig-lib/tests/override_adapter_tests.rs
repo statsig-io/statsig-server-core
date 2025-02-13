@@ -89,6 +89,45 @@ async fn test_get_experiment_overrides() {
 }
 
 #[tokio::test]
+async fn test_get_experiment_overrides_by_group_name() {
+    let (statsig, user, adapter) = setup().await;
+
+    let original = statsig.get_experiment(&user, "experiment_with_many_params");
+    assert_eq!(original.get_string("a_string", "ERR".to_string()), "test_2");
+
+    adapter.override_experiment_by_group_name("experiment_with_many_params", "Control");
+
+    let overridden = statsig.get_experiment(&user, "experiment_with_many_params");
+    assert_eq!(
+        overridden.get_string("a_string", "ERR".to_string()),
+        "control"
+    );
+    assert_eq!(overridden.details.reason, "LocalOverride:Recognized");
+}
+
+#[tokio::test]
+async fn test_get_experiment_overrides_in_order() {
+    let (statsig, user, adapter) = setup().await;
+
+    let original = statsig.get_experiment(&user, "experiment_with_many_params");
+    assert_eq!(original.get_string("a_string", "ERR".to_string()), "test_2");
+
+    adapter.override_experiment(
+        "experiment_with_many_params",
+        HashMap::from([("a_string".to_string(), json!("overridden_value"))]),
+    );
+
+    adapter.override_experiment_by_group_name("experiment_with_many_params", "Control");
+
+    let overridden = statsig.get_experiment(&user, "experiment_with_many_params");
+    assert_eq!(
+        overridden.get_string("a_string", "ERR".to_string()),
+        "control"
+    );
+    assert_eq!(overridden.details.reason, "LocalOverride:Recognized");
+}
+
+#[tokio::test]
 async fn test_get_layer_overrides() {
     let (statsig, user, adapter) = setup().await;
 

@@ -1,3 +1,6 @@
+use chrono::Utc;
+use lazy_static::lazy_static;
+
 use crate::evaluation::cmab_evaluator::evaluate_cmab;
 use crate::evaluation::comparisons::{
     compare_arrays, compare_numbers, compare_str_with_regex, compare_strings_in_array,
@@ -8,10 +11,8 @@ use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::get_unit_id::get_unit_id;
-use crate::spec_types::{Condition, Rule};
+use crate::spec_types::{Condition, Rule, Spec};
 use crate::{dyn_value, log_e, unwrap_or_return, StatsigErr};
-use chrono::Utc;
-use lazy_static::lazy_static;
 
 const TAG: &str = stringify!(Evaluator);
 
@@ -62,7 +63,14 @@ impl Evaluator {
         spec_name: &str,
         spec_type: &SpecType,
     ) -> Result<bool, StatsigErr> {
-        if try_apply_override(ctx, spec_name, spec_type) {
+        let opt_spec = match spec_type {
+            SpecType::Gate => ctx.spec_store_data.values.feature_gates.get(spec_name),
+            SpecType::DynamicConfig => ctx.spec_store_data.values.dynamic_configs.get(spec_name),
+            SpecType::Experiment => ctx.spec_store_data.values.dynamic_configs.get(spec_name),
+            SpecType::Layer => ctx.spec_store_data.values.layer_configs.get(spec_name),
+        };
+
+        if try_apply_override(ctx, spec_name, spec_type, opt_spec) {
             return Ok(true);
         }
 
@@ -70,16 +78,7 @@ impl Evaluator {
             return Ok(true);
         }
 
-        let spec = unwrap_or_return!(
-            match spec_type {
-                SpecType::Gate => ctx.spec_store_data.values.feature_gates.get(spec_name),
-                SpecType::DynamicConfig =>
-                    ctx.spec_store_data.values.dynamic_configs.get(spec_name),
-                SpecType::Experiment => ctx.spec_store_data.values.dynamic_configs.get(spec_name),
-                SpecType::Layer => ctx.spec_store_data.values.layer_configs.get(spec_name),
-            },
-            Ok(false)
-        );
+        let spec = unwrap_or_return!(opt_spec, Ok(false));
 
         if ctx.result.id_type.is_none() {
             ctx.result.id_type = Some(&spec.id_type);
@@ -149,7 +148,12 @@ impl Evaluator {
     }
 }
 
-fn try_apply_override(ctx: &mut EvaluatorContext, spec_name: &str, spec_type: &SpecType) -> bool {
+fn try_apply_override(
+    ctx: &mut EvaluatorContext,
+    spec_name: &str,
+    spec_type: &SpecType,
+    opt_spec: Option<&Spec>,
+) -> bool {
     let adapter = match ctx.override_adapter {
         Some(adapter) => adapter,
         None => return false,
@@ -164,9 +168,12 @@ fn try_apply_override(ctx: &mut EvaluatorContext, spec_name: &str, spec_type: &S
             adapter.get_dynamic_config_override(&ctx.user.user_data, spec_name, &mut ctx.result)
         }
 
-        SpecType::Experiment => {
-            adapter.get_experiment_override(&ctx.user.user_data, spec_name, &mut ctx.result)
-        }
+        SpecType::Experiment => adapter.get_experiment_override(
+            &ctx.user.user_data,
+            spec_name,
+            &mut ctx.result,
+            opt_spec,
+        ),
 
         SpecType::Layer => {
             adapter.get_layer_override(&ctx.user.user_data, spec_name, &mut ctx.result)
