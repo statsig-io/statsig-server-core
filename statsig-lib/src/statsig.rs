@@ -583,6 +583,26 @@ impl Statsig {
         let gate = self.get_feature_gate_impl(&user_internal, gate_name);
         self.log_gate_exposure(user_internal, gate_name, &gate, true);
     }
+
+    pub fn get_fields_needed_for_gate(&self, gate_name: &str) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                "Failed to acquire read lock for spec store data"
+            );
+            return vec![];
+        });
+
+        let gate = data.values.feature_gates.get(gate_name);
+        match gate {
+            Some(gate) => match &gate.fields_used {
+                Some(fields) => fields.clone(),
+                None => vec![],
+            },
+            None => vec![],
+        }
+    }
 }
 
 // -------------------------
@@ -636,6 +656,26 @@ impl Statsig {
         let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
         self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &dynamic_config, true);
     }
+
+    pub fn get_fields_needed_for_dynamic_config(&self, config_name: &str) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                "Failed to acquire read lock for spec store data"
+            );
+            return vec![];
+        });
+
+        let config = data.values.dynamic_configs.get(config_name);
+        match config {
+            Some(config) => match &config.fields_used {
+                Some(fields) => fields.clone(),
+                None => vec![],
+            },
+            None => vec![],
+        }
+    }
 }
 
 // -------------------------
@@ -680,6 +720,26 @@ impl Statsig {
         let user_internal = self.internalize_user(user);
         let experiment = self.get_experiment_impl(&user_internal, experiment_name);
         self.log_experiment_exposure(user_internal, experiment_name, &experiment, true);
+    }
+
+    pub fn get_fields_needed_for_experiment(&self, experiment_name: &str) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                "Failed to acquire read lock for spec store data"
+            );
+            return vec![];
+        });
+
+        let config = data.values.dynamic_configs.get(experiment_name);
+        match config {
+            Some(config) => match &config.fields_used {
+                Some(fields) => fields.clone(),
+                None => vec![],
+            },
+            None => vec![],
+        }
     }
 }
 
@@ -738,6 +798,26 @@ impl Statsig {
                 is_manual_exposure: true,
                 sampling_details,
             }));
+    }
+
+    pub fn get_fields_needed_for_layer(&self, layer_name: &str) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                "Failed to acquire read lock for spec store data"
+            );
+            return vec![];
+        });
+
+        let layer = data.values.layer_configs.get(layer_name);
+        match layer {
+            Some(layer) => match &layer.fields_used {
+                Some(fields) => fields.clone(),
+                None => vec![],
+            },
+            None => vec![],
+        }
     }
 }
 

@@ -23,6 +23,7 @@ pub struct Spec {
     #[serde(rename = "targetAppIDs")]
     pub target_app_ids: Option<Vec<String>>,
     pub forward_all_exposures: Option<bool>,
+    pub fields_used: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
