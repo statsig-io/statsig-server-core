@@ -8,7 +8,6 @@ strip = true
 members = [
     "statsig-lib",
     "statsig-ffi",
-    "statsig-napi",
     "statsig-grpc",
     "statsig-pyo3",
     "statsig-node",
