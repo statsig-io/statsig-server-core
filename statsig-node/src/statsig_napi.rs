@@ -62,14 +62,21 @@ impl Statsig {
     }
 
     #[napi]
-    pub fn shutdown<'env>(&self, env: &'env Env) -> Result<PromiseRaw<'env, StatsigResult>> {
+    pub fn shutdown<'env>(
+        &self,
+        env: &'env Env,
+        timeout_ms: Option<u32>,
+    ) -> Result<PromiseRaw<'env, StatsigResult>> {
         if let Ok(mut lock) = self.observability_client.lock() {
             lock.take();
         }
         let inst = self.inner.clone();
 
         env.spawn_future(async move {
-            match inst.__shutdown_internal(Duration::from_secs(3)).await {
+            match inst
+                .__shutdown_internal(Duration::from_millis(timeout_ms.unwrap_or(3000) as u64))
+                .await
+            {
                 Ok(_) => Ok(StatsigResult::success()),
                 Err(e) => Ok(StatsigResult::error(e.to_string())),
             }
