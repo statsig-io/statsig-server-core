@@ -11,6 +11,7 @@ public class StatsigOptions {
                 builder.eventLoggingFlushIntervalMs,
                 builder.eventLoggingMaxQueueSize,
                 builder.environment,
+                builder.disableAllLogging,
                 builder.outputLoggerLevel.getValue()
         );
 
@@ -33,6 +34,7 @@ public class StatsigOptions {
         private long eventLoggingFlushIntervalMs;
         private long eventLoggingMaxQueueSize;
         private String environment;
+        private boolean disableAllLogging = false;
         private OutputLogger.LogLevel outputLoggerLevel = OutputLogger.LogLevel.WARN;
 
         public Builder setOutputLoggerLevel(OutputLogger.LogLevel level) {
@@ -68,6 +70,11 @@ public class StatsigOptions {
 
         public Builder setEnvironment(String environment) {
             this.environment = environment;
+            return this;
+        }
+
+        public Builder setDisableAllLogging(boolean disableAllLogging) {
+            this.disableAllLogging = disableAllLogging;
             return this;
         }
 

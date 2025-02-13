@@ -1,5 +1,5 @@
 use jni::objects::{JObject, JString};
-use jni::sys::jstring;
+use jni::sys::{jboolean, jstring};
 use jni::JNIEnv;
 use sigstat::{log_e, ClientInitResponseOptions, HashAlgorithm};
 use std::collections::HashMap;
@@ -88,6 +88,14 @@ pub fn serialize_json_to_jstring<T: serde::Serialize>(env: &mut JNIEnv, value: &
     match result {
         Some(result) => string_to_jstring(env, result),
         None => std::ptr::null_mut(),
+    }
+}
+
+pub fn jboolean_to_bool(input: jboolean) -> Option<bool> {
+    match input {
+        1 => Some(true),
+        0 => Some(false),
+        _ => None,
     }
 }
 

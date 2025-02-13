@@ -84,6 +84,7 @@ class StatsigJNI {
             long eventLoggingFlushIntervalMs,
             long eventLoggingMaxQueueSize,
             String environment,
+            boolean disableAllLogging,
             long outputLoggerLevel);
 
     public static native void statsigOptionsRelease(String optionsRef);

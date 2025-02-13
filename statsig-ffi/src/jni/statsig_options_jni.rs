@@ -1,6 +1,6 @@
-use crate::jni::jni_utils::{jstring_to_string, string_to_jstring};
+use crate::jni::jni_utils::{jboolean_to_bool, jstring_to_string, string_to_jstring};
 use jni::objects::{JClass, JString};
-use jni::sys::{jint, jlong, jstring};
+use jni::sys::{jboolean, jint, jlong, jstring};
 use jni::JNIEnv;
 use sigstat::{instance_store::INST_STORE, log_d, log_e, statsig_options::StatsigOptionsBuilder};
 
@@ -16,11 +16,13 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     event_logging_flush_interval_ms: jlong,
     event_logging_max_queue_size: jlong,
     environment: JString,
+    disable_all_logging: jboolean,
     output_logger_level: jint,
 ) -> jstring {
     let specs_url = jstring_to_string(&mut env, specs_url);
     let log_event_url = jstring_to_string(&mut env, log_event_url);
     let environment = jstring_to_string(&mut env, environment);
+    let disable_all_logging = jboolean_to_bool(disable_all_logging);
 
     let specs_sync_interval_ms = if specs_sync_interval_ms > 0 {
         Some(specs_sync_interval_ms as u32)
@@ -49,6 +51,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .event_logging_flush_interval_ms(event_logging_flush_interval_ms)
         .event_logging_max_queue_size(event_logging_max_queue_size)
         .environment(environment)
+        .disable_all_logging(disable_all_logging)
         .output_log_level(Some(output_logger_level as u32));
 
     let options = builder.build();
