@@ -2,10 +2,48 @@ use std::collections::HashMap;
 
 use napi_derive::napi;
 use serde_json::Value;
-use sigstat::statsig_types::{
-    DynamicConfig as DynamicConfigActual, Experiment as ExperimentActual,
-    FeatureGate as FeatureGateActual, Layer as LayerActual,
+use sigstat::{
+    statsig_types::{
+        DynamicConfig as DynamicConfigActual, Experiment as ExperimentActual,
+        FeatureGate as FeatureGateActual, Layer as LayerActual,
+    },
+    EvaluationDetails as EvaluationDetailsActual, SecondaryExposure as SecondaryExposureActual,
 };
+
+#[napi(object)]
+#[derive(Clone)]
+pub struct EvaluationDetails {
+    pub reason: String,
+    pub lcut: Option<i64>,
+    pub received_at: Option<i64>,
+}
+
+impl From<EvaluationDetailsActual> for EvaluationDetails {
+    fn from(value: EvaluationDetailsActual) -> Self {
+        EvaluationDetails {
+            reason: value.reason,
+            lcut: value.lcut.map(|lcut| lcut as i64),
+            received_at: value.received_at.map(|t| t as i64),
+        }
+    }
+}
+
+#[napi(object)]
+pub struct SecondaryExposure {
+    pub gate: String,
+    pub gate_value: String,
+    pub rule_id: String,
+}
+
+impl From<SecondaryExposureActual> for SecondaryExposure {
+    fn from(value: SecondaryExposureActual) -> Self {
+        SecondaryExposure {
+            gate: value.gate,
+            gate_value: value.gate_value,
+            rule_id: value.rule_id,
+        }
+    }
+}
 
 #[napi(object)]
 pub struct FeatureGate {
@@ -56,6 +94,39 @@ impl DynamicConfig {
     pub fn get(&self, param_name: String, fallback: Value) -> Value {
         self.inner.get(&param_name, fallback)
     }
+
+    #[napi]
+    pub fn get_rule_id(&self) -> String {
+        self.inner.rule_id.clone()
+    }
+
+    #[napi]
+    pub fn get_id_type(&self) -> String {
+        self.inner.id_type.clone()
+    }
+
+    #[napi]
+    pub fn get_evaluation_details(&self) -> EvaluationDetails {
+        self.inner.details.clone().into()
+    }
+
+    #[napi]
+    pub fn get_secondary_exposures(&self) -> Option<Vec<SecondaryExposure>> {
+        let maybe_eval = &self.inner.__evaluation;
+        match maybe_eval {
+            Some(eval) => {
+                let res: Vec<SecondaryExposure> = eval
+                    .base
+                    .secondary_exposures
+                    .clone()
+                    .into_iter()
+                    .map(|exp| exp.into())
+                    .collect();
+                Some(res)
+            }
+            None => None,
+        }
+    }
 }
 
 #[napi]
@@ -89,6 +160,44 @@ impl Experiment {
     pub fn get(&self, param_name: String, fallback: Value) -> Value {
         self.inner.get(&param_name, fallback)
     }
+
+    #[napi]
+    pub fn get_rule_id(&self) -> String {
+        self.inner.rule_id.clone()
+    }
+
+    #[napi]
+    pub fn get_id_type(&self) -> String {
+        self.inner.id_type.clone()
+    }
+
+    #[napi]
+    pub fn get_group_name(&self) -> Option<String> {
+        self.inner.group_name.clone()
+    }
+
+    #[napi]
+    pub fn get_evaluation_details(&self) -> EvaluationDetails {
+        self.inner.details.clone().into()
+    }
+
+    #[napi]
+    pub fn get_secondary_exposures(&self) -> Option<Vec<SecondaryExposure>> {
+        let maybe_eval = &self.inner.__evaluation;
+        match maybe_eval {
+            Some(eval) => {
+                let res: Vec<SecondaryExposure> = eval
+                    .base
+                    .secondary_exposures
+                    .clone()
+                    .into_iter()
+                    .map(|exp| exp.into())
+                    .collect();
+                Some(res)
+            }
+            None => None,
+        }
+    }
 }
 
 #[napi]
@@ -107,6 +216,39 @@ impl Layer {
     #[napi]
     pub fn get(&self, param_name: String, fallback: Value) -> Value {
         self.inner.get(&param_name, fallback)
+    }
+
+    #[napi]
+    pub fn get_rule_id(&self) -> String {
+        self.inner.rule_id.clone()
+    }
+
+    #[napi]
+    pub fn get_group_name(&self) -> Option<String> {
+        self.inner.group_name.clone()
+    }
+
+    #[napi]
+    pub fn get_evaluation_details(&self) -> EvaluationDetails {
+        self.inner.details.clone().into()
+    }
+
+    #[napi]
+    pub fn get_secondary_exposures(&self) -> Option<Vec<SecondaryExposure>> {
+        let maybe_eval = &self.inner.__evaluation;
+        match maybe_eval {
+            Some(eval) => {
+                let res: Vec<SecondaryExposure> = eval
+                    .base
+                    .secondary_exposures
+                    .clone()
+                    .into_iter()
+                    .map(|exp| exp.into())
+                    .collect();
+                Some(res)
+            }
+            None => None,
+        }
     }
 }
 
