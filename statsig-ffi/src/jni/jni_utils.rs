@@ -48,16 +48,24 @@ pub fn convert_java_client_init_response_options_to_rust(
     }
 
     let hash_algo_field: JString =
-        match env.get_field(java_gcir_option, "hashAlgoInternal", "Ljava/lang/String;") {
+        match env.get_field(&java_gcir_option, "hashAlgoInternal", "Ljava/lang/String;") {
+            Ok(field) => field.l().unwrap().into(),
+            Err(_) => return None,
+        };
+
+    let client_sdk_key_field: JString =
+        match env.get_field(&java_gcir_option, "clientSDKKey", "Ljava/lang/String;") {
             Ok(field) => field.l().unwrap().into(),
             Err(_) => return None,
         };
 
     let hash_algo = jstring_to_string(env, hash_algo_field);
+    let client_sdk_key = jstring_to_string(env, client_sdk_key_field);
 
     let hash_algo = hash_algo.and_then(|s| HashAlgorithm::from_string(s.as_str()));
     Some(ClientInitResponseOptions {
         hash_algorithm: hash_algo,
+        client_sdk_key,
         ..ClientInitResponseOptions::default()
     })
 }
