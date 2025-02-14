@@ -7,10 +7,12 @@ public class StatsigOptions {
         this.ref = StatsigJNI.statsigOptionsCreate(
                 builder.specsUrl,
                 builder.logEventUrl,
+                builder.idListsUrl,
                 builder.specsSyncIntervalMs,
                 builder.eventLoggingFlushIntervalMs,
                 builder.eventLoggingMaxQueueSize,
                 builder.environment,
+                builder.enableIDLists,
                 builder.disableAllLogging,
                 builder.outputLoggerLevel.getValue()
         );
@@ -30,10 +32,12 @@ public class StatsigOptions {
     public static class Builder {
         private String specsUrl;
         private String logEventUrl;
+        private String idListsUrl;
         private long specsSyncIntervalMs;
         private long eventLoggingFlushIntervalMs;
         private long eventLoggingMaxQueueSize;
         private String environment;
+        private boolean enableIDLists = false;
         private boolean disableAllLogging = false;
         private OutputLogger.LogLevel outputLoggerLevel = OutputLogger.LogLevel.WARN;
 
@@ -75,6 +79,16 @@ public class StatsigOptions {
 
         public Builder setDisableAllLogging(boolean disableAllLogging) {
             this.disableAllLogging = disableAllLogging;
+            return this;
+        }
+
+        public Builder setIdListsUrl(String idListsUrl) {
+            this.idListsUrl = idListsUrl;
+            return this;
+        }
+
+        public Builder setEnableIDLists(boolean enableIDLists) {
+            this.enableIDLists = enableIDLists;
             return this;
         }
 

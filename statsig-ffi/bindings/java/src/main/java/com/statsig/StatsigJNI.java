@@ -80,10 +80,12 @@ class StatsigJNI {
     public static native String statsigOptionsCreate(
             String specsUrl,
             String logEventUrl,
+            String idListsUrl,
             long specsSyncIntervalMs,
             long eventLoggingFlushIntervalMs,
             long eventLoggingMaxQueueSize,
             String environment,
+            boolean enableIDLists,
             boolean disableAllLogging,
             long outputLoggerLevel);
 

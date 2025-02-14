@@ -12,16 +12,20 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     _class: JClass,
     specs_url: JString,
     log_event_url: JString,
+    id_lists_url: JString,
     specs_sync_interval_ms: jlong,
     event_logging_flush_interval_ms: jlong,
     event_logging_max_queue_size: jlong,
     environment: JString,
+    enable_id_lists: jboolean,
     disable_all_logging: jboolean,
     output_logger_level: jint,
 ) -> jstring {
     let specs_url = jstring_to_string(&mut env, specs_url);
     let log_event_url = jstring_to_string(&mut env, log_event_url);
+    let id_lists_url = jstring_to_string(&mut env, id_lists_url);
     let environment = jstring_to_string(&mut env, environment);
+    let enable_id_lists = jboolean_to_bool(enable_id_lists);
     let disable_all_logging = jboolean_to_bool(disable_all_logging);
 
     let specs_sync_interval_ms = if specs_sync_interval_ms > 0 {
@@ -51,6 +55,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .event_logging_flush_interval_ms(event_logging_flush_interval_ms)
         .event_logging_max_queue_size(event_logging_max_queue_size)
         .environment(environment)
+        .id_lists_url(id_lists_url)
+        .enable_id_lists(enable_id_lists)
         .disable_all_logging(disable_all_logging)
         .output_log_level(Some(output_logger_level as u32));
 
