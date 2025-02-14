@@ -28,6 +28,7 @@ export function buildPython(options: BuilderOptions) {
     'docker run --rm',
     `--platform ${docker}`,
     `-v "${BASE_DIR}":/app`,
+    `-v "/tmp/statsig-server-core/root-cargo-registry:/root/.cargo/registry"`,
     tag,
     `"cd /app/statsig-pyo3 && ${maturinCommand}"`,
   ].join(' ');

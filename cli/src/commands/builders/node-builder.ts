@@ -22,7 +22,6 @@ export function buildNode(options: BuilderOptions) {
   const isGnu = options.target?.includes('gnu');
 
   const nodeCommand = [
-    'pnpm install &&',
     'pnpm exec napi build',
     '--platform',
     '--js index.js',
@@ -42,9 +41,10 @@ export function buildNode(options: BuilderOptions) {
     `-v "${BASE_DIR}":/app`,
     `-v "/tmp:/tmp"`,
     `-v "/tmp/statsig-server-core/cargo-registry:/usr/local/cargo/registry"`,
+    `-v "/tmp/statsig-server-core/root-cargo-registry:/root/.cargo/registry"`,
     `-v "/tmp/statsig-server-core/npm-cache:/root/.npm"`,
     tag,
-    `"cd /app/statsig-node && ${nodeCommand}"`, // && while true; do sleep 1000; done
+    `"cd /app/statsig-node && ${nodeCommand}"`, // && while true; do echo "wait..."; sleep 1000; done
   ].join(' ');
 
   const command =

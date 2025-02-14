@@ -89,7 +89,9 @@ jobs:
           version: 7.32.4
 
       - name: Install CLI Dependencies
-        run: pnpm install --dir cli
+        run: |
+          pnpm install --dir cli
+          pnpm install --dir statsig-node
 
       - name: "[Non-Linux] Install Protoc"
         uses: arduino/setup-protoc@v3
