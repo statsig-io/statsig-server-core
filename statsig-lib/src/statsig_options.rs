@@ -158,6 +158,11 @@ impl StatsigOptionsBuilder {
         self
     }
 
+    pub fn fallback_to_statsig_api(mut self, fallback_to_statsig_api: Option<bool>) -> Self {
+        self.inner.fallback_to_statsig_api = fallback_to_statsig_api;
+        self
+    }
+
     pub fn build(self) -> StatsigOptions {
         self.inner
     }
