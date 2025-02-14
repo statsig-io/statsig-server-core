@@ -17,16 +17,19 @@ public class Experiment {
     public final String groupName;
     @SerializedName("details")
     public final EvaluationDetails evaluationDetails;
+    @SerializedName("id_type")
+    public final String idType;
     @Expose(serialize = false, deserialize = false)
     String rawJson;
 
     Experiment(String name, Map<String, JsonElement> value, String ruleID, String groupName,
-                      EvaluationDetails evaluationDetails) {
+            EvaluationDetails evaluationDetails, String idType) {
         this.name = name;
         this.value = value;
         this.ruleID = ruleID;
         this.groupName = groupName;
         this.evaluationDetails = evaluationDetails;
+        this.idType = idType;
     }
 
     public String getName() {
@@ -47,6 +50,10 @@ public class Experiment {
 
     public EvaluationDetails getEvaluationDetails() {
         return evaluationDetails;
+    }
+
+    public String getIDType() {
+        return idType;
     }
 
     public String getRawJson() {

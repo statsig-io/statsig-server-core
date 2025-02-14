@@ -13,15 +13,18 @@ public class FeatureGate {
     @SerializedName("details")
     public EvaluationDetails evaluationDetails;
 
+    @SerializedName("id_type")
+    public String idType;
+
     @Expose(serialize = false, deserialize = false)
     String rawJson;
 
-    FeatureGate(String name, boolean value, String ruleID, EvaluationDetails evaluationDetails
-    ) {
+    FeatureGate(String name, boolean value, String ruleID, EvaluationDetails evaluationDetails, String idType) {
         this.name = name;
         this.value = value;
         this.ruleID = ruleID;
         this.evaluationDetails = evaluationDetails;
+        this.idType = idType;
     }
 
     public String getName() {
@@ -40,6 +43,10 @@ public class FeatureGate {
         return evaluationDetails;
     }
 
+    public String getIDType() {
+        return idType;
+    }
+
     public String getRawJson() {
         return rawJson;
     }
@@ -48,5 +55,3 @@ public class FeatureGate {
         this.rawJson = rawJson;
     }
 }
-
-
