@@ -46,9 +46,11 @@ pub fn result_to_experiment_eval(
     let mut is_experiment_active = None;
     let mut is_user_in_experiment = None;
 
-    if spec.is_some() && spec.unwrap().entity == "experiment" {
-        is_experiment_active = Some(result.is_experiment_active);
-        is_user_in_experiment = Some(result.is_experiment_group);
+    if let Some(spec) = spec {
+        if spec.entity == "experiment" {
+            is_experiment_active = Some(result.is_experiment_active);
+            is_user_in_experiment = Some(result.is_experiment_group);
+        }
     }
 
     ExperimentEvaluation {

@@ -112,7 +112,15 @@ impl StatsigRuntime {
                 let keys: Vec<TaskId> = lock.keys().cloned().collect();
                 for key in &keys {
                     if key.tag == tag {
-                        handles.push(lock.remove(key).unwrap());
+                        let removed = match lock.remove(key) {
+                            Some(handle) => handle,
+                            None => {
+                                log_e!(TAG, "No running task found for tag {}", tag);
+                                continue;
+                            }
+                        };
+
+                        handles.push(removed);
                     }
                 }
             }

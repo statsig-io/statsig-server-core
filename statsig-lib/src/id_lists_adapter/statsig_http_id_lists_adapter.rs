@@ -199,9 +199,14 @@ impl StatsigHttpIdListsAdapter {
     }
 
     fn get_current_id_list_metadata(&self) -> Result<HashMap<String, IdListMetadata>, StatsigErr> {
-        match self.listener.read() {
-            Ok(lock) => Ok(lock.as_ref().unwrap().get_current_id_list_metadata()),
-            Err(e) => Err(StatsigErr::LockFailure(e.to_string())),
+        let lock = match self.listener.read() {
+            Ok(lock) => lock,
+            Err(e) => return Err(StatsigErr::LockFailure(e.to_string())),
+        };
+
+        match lock.as_ref() {
+            Some(listener) => Ok(listener.get_current_id_list_metadata()),
+            None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
         }
     }
 
