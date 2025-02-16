@@ -23,9 +23,10 @@ public class Layer {
     String rawJson;
 
     private Statsig statsigInstance;
+    private boolean disableExposureLogging;
 
     Layer(String name, String ruleID, String groupName, Map<String, JsonElement> value,
-                 String allocatedExperimentName, EvaluationDetails evaluationDetails) {
+            String allocatedExperimentName, EvaluationDetails evaluationDetails) {
         this.name = name;
         this.ruleID = ruleID;
         this.groupName = groupName;
@@ -70,6 +71,10 @@ public class Layer {
         this.statsigInstance = statsigInstance;
     }
 
+    void setDisableExposureLogging(boolean disableExposureLogging) {
+        this.disableExposureLogging = disableExposureLogging;
+    }
+
     public String getString(String key, String defaultValue) {
         logLayerExposure(key);
         return GsonUtil.getString(value, key, defaultValue);
@@ -106,7 +111,7 @@ public class Layer {
     }
 
     private void logLayerExposure(String key) {
-        if (statsigInstance != null && rawJson != null) {
+        if (statsigInstance != null && rawJson != null && !disableExposureLogging) {
             statsigInstance.logLayerParamExposure(rawJson, key);
         }
     }

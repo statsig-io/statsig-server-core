@@ -14,17 +14,20 @@ public class Statsig {
     private volatile String ref;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
-
     /**
      * Instantiates a new Statsig instance that connects to Statsig Service.
      * <p>
-     * It is recommended to create a single instance for the entire application's lifecycle. In rare situations where
-     * the application requires feature evaluation from different Statsig projects or environments, you may instantiate
-     * multiple instances. However, these should be maintained throughout the application's lifecycle, rather than
+     * It is recommended to create a single instance for the entire application's
+     * lifecycle. In rare situations where
+     * the application requires feature evaluation from different Statsig projects
+     * or environments, you may instantiate
+     * multiple instances. However, these should be maintained throughout the
+     * application's lifecycle, rather than
      * being created for each request or thread.
      *
      * @param sdkKey  secret key to connect to Statsig Service
-     * @param options a customized instance of StatsigOptions that configures the behavior of the
+     * @param options a customized instance of StatsigOptions that configures the
+     *                behavior of the
      *                Statsig instance.
      */
     public Statsig(String sdkKey, StatsigOptions options) {
@@ -69,11 +72,24 @@ public class Statsig {
     }
 
     public boolean checkGate(StatsigUser user, String gateName) {
-        return StatsigJNI.statsigCheckGate(ref, user.getRef(), gateName);
+        return StatsigJNI.statsigCheckGate(ref, user.getRef(), gateName, null);
+    }
+
+    public boolean checkGate(StatsigUser user, String gateName, CheckGateOptions options) {
+        return StatsigJNI.statsigCheckGate(ref, user.getRef(), gateName, options);
     }
 
     public Experiment getExperiment(StatsigUser user, String experimentName) {
-        String experJson = StatsigJNI.statsigGetExperiment(ref, user.getRef(), experimentName);
+        String experJson = StatsigJNI.statsigGetExperiment(ref, user.getRef(), experimentName, null);
+        Experiment experiment = gson.fromJson(experJson, Experiment.class);
+        if (experiment != null) {
+            experiment.setRawJson(experJson);
+        }
+        return experiment;
+    }
+
+    public Experiment getExperiment(StatsigUser user, String experimentName, GetExperimentOptions options) {
+        String experJson = StatsigJNI.statsigGetExperiment(ref, user.getRef(), experimentName, options);
         Experiment experiment = gson.fromJson(experJson, Experiment.class);
         if (experiment != null) {
             experiment.setRawJson(experJson);
@@ -82,7 +98,16 @@ public class Statsig {
     }
 
     public DynamicConfig getDynamicConfig(StatsigUser user, String configName) {
-        String configJson = StatsigJNI.statsigGetDynamicConfig(ref, user.getRef(), configName);
+        String configJson = StatsigJNI.statsigGetDynamicConfig(ref, user.getRef(), configName, null);
+        DynamicConfig dynamicConfig = gson.fromJson(configJson, DynamicConfig.class);
+        if (dynamicConfig != null) {
+            dynamicConfig.setRawJson(configJson);
+        }
+        return dynamicConfig;
+    }
+
+    public DynamicConfig getDynamicConfig(StatsigUser user, String configName, GetDynamicConfigOptions options) {
+        String configJson = StatsigJNI.statsigGetDynamicConfig(ref, user.getRef(), configName, options);
         DynamicConfig dynamicConfig = gson.fromJson(configJson, DynamicConfig.class);
         if (dynamicConfig != null) {
             dynamicConfig.setRawJson(configJson);
@@ -91,7 +116,7 @@ public class Statsig {
     }
 
     public Layer getLayer(StatsigUser user, String layerName) {
-        String layerJson = StatsigJNI.statsigGetLayer(ref, user.getRef(), layerName);
+        String layerJson = StatsigJNI.statsigGetLayer(ref, user.getRef(), layerName, null);
         Layer layer = gson.fromJson(layerJson, Layer.class);
         if (layer != null) {
             // Set the Statsig reference in the Layer instance
@@ -101,10 +126,33 @@ public class Statsig {
         return layer;
     }
 
+    public Layer getLayer(StatsigUser user, String layerName, GetLayerOptions options) {
+        String layerJson = StatsigJNI.statsigGetLayer(ref, user.getRef(), layerName, options);
+        Layer layer = gson.fromJson(layerJson, Layer.class);
+        if (layer != null) {
+            // Set the Statsig reference in the Layer instance
+            layer.setStatsigInstance(this);
+            layer.setRawJson(layerJson);
+            layer.setDisableExposureLogging(options != null && options.disableExposureLogging);
+        }
+        return layer;
+    }
+
     public FeatureGate getFeatureGate(StatsigUser user, String gateName) {
-        String gateJson = StatsigJNI.statsigGetFeatureGate(ref, user.getRef(), gateName);
+        String gateJson = StatsigJNI.statsigGetFeatureGate(ref, user.getRef(), gateName, null);
         FeatureGate featureGate = gson.fromJson(gateJson, FeatureGate.class);
-        featureGate.setRawJson(gateJson);
+        if (featureGate != null) {
+            featureGate.setRawJson(gateJson);
+        }
+        return featureGate;
+    }
+
+    public FeatureGate getFeatureGate(StatsigUser user, String gateName, CheckGateOptions options) {
+        String gateJson = StatsigJNI.statsigGetFeatureGate(ref, user.getRef(), gateName, options);
+        FeatureGate featureGate = gson.fromJson(gateJson, FeatureGate.class);
+        if (featureGate != null) {
+            featureGate.setRawJson(gateJson);
+        }
         return featureGate;
     }
 

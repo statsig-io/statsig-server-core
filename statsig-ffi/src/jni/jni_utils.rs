@@ -1,7 +1,10 @@
 use jni::objects::{JObject, JString};
 use jni::sys::{jboolean, jstring};
 use jni::JNIEnv;
-use sigstat::{log_e, ClientInitResponseOptions, HashAlgorithm};
+use sigstat::{
+    log_e, ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
+    FeatureGateEvaluationOptions, HashAlgorithm, LayerEvaluationOptions,
+};
 use std::collections::HashMap;
 
 const TAG: &str = "JniUtils";
@@ -67,6 +70,90 @@ pub fn convert_java_client_init_response_options_to_rust(
         hash_algorithm: hash_algo,
         client_sdk_key,
         ..ClientInitResponseOptions::default()
+    })
+}
+
+pub fn convert_java_check_gate_options_to_rust(
+    env: &mut JNIEnv,
+    options: JObject,
+) -> Option<FeatureGateEvaluationOptions> {
+    if options.is_null() {
+        return None;
+    }
+
+    let disable_exposure_logging_field: jboolean =
+        match env.get_field(&options, "disableExposureLogging", "Z") {
+            Ok(field) => field.z().unwrap().into(),
+            Err(_) => return None,
+        };
+
+    let disable_exposure_logging = jboolean_to_bool(disable_exposure_logging_field);
+
+    disable_exposure_logging.map(|disable_exposure_logging| FeatureGateEvaluationOptions {
+        disable_exposure_logging,
+    })
+}
+
+pub fn convert_java_get_dynamic_config_options_to_rust(
+    env: &mut JNIEnv,
+    options: JObject,
+) -> Option<DynamicConfigEvaluationOptions> {
+    if options.is_null() {
+        return None;
+    }
+
+    let disable_exposure_logging_field: jboolean =
+        match env.get_field(&options, "disableExposureLogging", "Z") {
+            Ok(field) => field.z().unwrap().into(),
+            Err(_) => return None,
+        };
+
+    let disable_exposure_logging = jboolean_to_bool(disable_exposure_logging_field);
+
+    disable_exposure_logging.map(|disable_exposure_logging| DynamicConfigEvaluationOptions {
+        disable_exposure_logging,
+    })
+}
+
+pub fn convert_java_get_experiment_options_to_rust(
+    env: &mut JNIEnv,
+    options: JObject,
+) -> Option<ExperimentEvaluationOptions> {
+    if options.is_null() {
+        return None;
+    }
+
+    let disable_exposure_logging_field: jboolean =
+        match env.get_field(&options, "disableExposureLogging", "Z") {
+            Ok(field) => field.z().unwrap().into(),
+            Err(_) => return None,
+        };
+
+    let disable_exposure_logging = jboolean_to_bool(disable_exposure_logging_field);
+
+    disable_exposure_logging.map(|disable_exposure_logging| ExperimentEvaluationOptions {
+        disable_exposure_logging,
+    })
+}
+
+pub fn convert_java_get_layer_options_to_rust(
+    env: &mut JNIEnv,
+    options: JObject,
+) -> Option<LayerEvaluationOptions> {
+    if options.is_null() {
+        return None;
+    }
+
+    let disable_exposure_logging_field: jboolean =
+        match env.get_field(&options, "disableExposureLogging", "Z") {
+            Ok(field) => field.z().unwrap().into(),
+            Err(_) => return None,
+        };
+
+    let disable_exposure_logging = jboolean_to_bool(disable_exposure_logging_field);
+
+    disable_exposure_logging.map(|disable_exposure_logging| LayerEvaluationOptions {
+        disable_exposure_logging,
     })
 }
 

@@ -38,17 +38,23 @@ class StatsigJNI {
 
     public static native void statsigFinalizeShutdown(String statsigRef);
 
-    public static native boolean statsigCheckGate(String statsigRef, String userRef, String gateName);
+    public static native boolean statsigCheckGate(String statsigRef, String userRef, String gateName,
+            CheckGateOptions options);
 
-    public static native String statsigGetFeatureGate(String statsigRef, String userRef, String gateName);
+    public static native String statsigGetFeatureGate(String statsigRef, String userRef, String gateName,
+            CheckGateOptions options);
 
-    public static native String statsigGetLayer(String statsigRef, String userRef, String layerName);
+    public static native String statsigGetLayer(String statsigRef, String userRef, String layerName,
+            GetLayerOptions options);
 
-    public static native String statsigGetExperiment(String statsigRef, String userRef, String experimentName);
+    public static native String statsigGetExperiment(String statsigRef, String userRef, String experimentName,
+            GetExperimentOptions options);
 
-    public static native String statsigGetDynamicConfig(String statsigRef, String userRef, String configName);
+    public static native String statsigGetDynamicConfig(String statsigRef, String userRef, String configName,
+            GetDynamicConfigOptions options);
 
-    public static native String statsigGetClientInitResponse(String statsigRef, String userRef, ClientInitResponseOptions options);
+    public static native String statsigGetClientInitResponse(String statsigRef, String userRef,
+            ClientInitResponseOptions options);
 
     public static native void statsigLogEvent(String statsigRef, String userRef, String eventName, String value,
             Map<String, String> metadata);
@@ -90,7 +96,6 @@ class StatsigJNI {
             long outputLoggerLevel);
 
     public static native void statsigOptionsRelease(String optionsRef);
-
 
     /**
      * [Internal] Library Loading
@@ -178,11 +183,12 @@ class StatsigJNI {
     }
 
     private static void logNativeLibraryError(String osName, String osArch) {
-        StringBuilder message = new StringBuilder("Ensure the correct native library is available for your platform.\n");
+        StringBuilder message = new StringBuilder(
+                "Ensure the correct native library is available for your platform.\n");
         String normalizedOsName = osName.toLowerCase().replace(" ", "");
 
         String arch = normalizeArch(osArch);
-    
+
         if (normalizedOsName.contains("macos")) {
             addDependency(message, "macOS", arch, "macos");
         } else if (normalizedOsName.contains("linux")) {
@@ -192,7 +198,7 @@ class StatsigJNI {
         } else {
             message.append(String.format("Unsupported OS: %s. Check your environment.\n", osName));
         }
-    
+
         message.append("For further assistance, refer to the documentation or contact support.");
         OutputLogger.logError(TAG, message.toString());
     }
@@ -210,7 +216,7 @@ class StatsigJNI {
             return osArch;
         }
     }
-    
+
     private static void addDependency(StringBuilder message, String os, String arch, String... platforms) {
         message.append(String.format("For %s with %s architecture, add the following to build.gradle:\n", os, arch));
         for (String platform : platforms) {

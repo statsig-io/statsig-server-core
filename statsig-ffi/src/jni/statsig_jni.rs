@@ -1,4 +1,8 @@
-use crate::jni::jni_utils::{convert_java_client_init_response_options_to_rust, jstring_to_string};
+use crate::jni::jni_utils::{
+    convert_java_check_gate_options_to_rust, convert_java_client_init_response_options_to_rust,
+    convert_java_get_dynamic_config_options_to_rust, convert_java_get_experiment_options_to_rust,
+    convert_java_get_layer_options_to_rust, jstring_to_string,
+};
 use crate::{get_instance_or_noop_jni, get_instance_or_return_jni};
 use jni::sys::{jboolean, jclass, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
@@ -173,18 +177,27 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCheckGate(
     statsig_ref: JString,
     user_ref: JString,
     gate_name: JString,
+    options: JObject,
 ) -> jboolean {
     let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, JNI_FALSE);
     let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, JNI_FALSE);
 
+    let options = convert_java_check_gate_options_to_rust(&mut env, options);
     let gate_name: String = match env.get_string(&gate_name) {
         Ok(s) => s.into(),
         Err(_) => return JNI_FALSE,
     };
-
-    match statsig.check_gate(user.as_ref(), &gate_name) {
-        true => JNI_TRUE,
-        false => JNI_FALSE,
+    match options {
+        Some(options) => {
+            match statsig.check_gate_with_options(user.as_ref(), &gate_name, options) {
+                true => JNI_TRUE,
+                false => JNI_FALSE,
+            }
+        }
+        None => match statsig.check_gate(user.as_ref(), &gate_name) {
+            true => JNI_TRUE,
+            false => JNI_FALSE,
+        },
     }
 }
 
@@ -195,6 +208,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperiment(
     statsig_ref: JString,
     user_ref: JString,
     exper_name: JString,
+    options: JObject,
 ) -> jstring {
     let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
     let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
@@ -204,7 +218,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperiment(
         Err(_) => return std::ptr::null_mut(),
     };
 
-    let result = statsig.get_experiment(user.as_ref(), &exper_name);
+    let options = convert_java_get_experiment_options_to_rust(&mut env, options);
+
+    let result = match options {
+        Some(options) => statsig.get_experiment_with_options(user.as_ref(), &exper_name, options),
+        None => statsig.get_experiment(user.as_ref(), &exper_name),
+    };
 
     serialize_json_to_jstring(&mut env, &result)
 }
@@ -216,6 +235,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetLayer(
     statsig_ref: JString,
     user_ref: JString,
     layer_name: JString,
+    options: JObject,
 ) -> jstring {
     let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
     let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
@@ -225,7 +245,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetLayer(
         Err(_) => return std::ptr::null_mut(),
     };
 
-    let result = statsig.get_layer(user.as_ref(), &layer_name);
+    let options = convert_java_get_layer_options_to_rust(&mut env, options);
+
+    let result = match options {
+        Some(options) => statsig.get_layer_with_options(user.as_ref(), &layer_name, options),
+        None => statsig.get_layer(user.as_ref(), &layer_name),
+    };
 
     serialize_json_to_jstring(&mut env, &result)
 }
@@ -237,6 +262,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetDynamicConfig(
     statsig_ref: JString,
     user_ref: JString,
     config_name: JString,
+    options: JObject,
 ) -> jstring {
     let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
     let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
@@ -246,7 +272,14 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetDynamicConfig(
         Err(_) => return std::ptr::null_mut(),
     };
 
-    let result = statsig.get_dynamic_config(user.as_ref(), &config_name);
+    let options = convert_java_get_dynamic_config_options_to_rust(&mut env, options);
+
+    let result = match options {
+        Some(options) => {
+            statsig.get_dynamic_config_with_options(user.as_ref(), &config_name, options)
+        }
+        None => statsig.get_dynamic_config(user.as_ref(), &config_name),
+    };
 
     serialize_json_to_jstring(&mut env, &result)
 }
@@ -258,6 +291,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFeatureGate(
     statsig_ref: JString,
     user_ref: JString,
     gate_name: JString,
+    options: JObject,
 ) -> jstring {
     let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
     let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
@@ -266,8 +300,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFeatureGate(
         Ok(s) => s.into(),
         Err(_) => return std::ptr::null_mut(),
     };
+    let options = convert_java_check_gate_options_to_rust(&mut env, options);
 
-    let result = statsig.get_feature_gate(user.as_ref(), &gate_name);
+    let result = match options {
+        Some(options) => statsig.get_feature_gate_with_options(user.as_ref(), &gate_name, options),
+        None => statsig.get_feature_gate(user.as_ref(), &gate_name),
+    };
     serialize_json_to_jstring(&mut env, &result)
 }
 
