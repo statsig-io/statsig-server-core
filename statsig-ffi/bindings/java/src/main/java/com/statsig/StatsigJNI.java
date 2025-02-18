@@ -68,6 +68,12 @@ class StatsigJNI {
     public static native void statsigLogEvent(String statsigRef, String userRef, String eventName, String value,
             Map<String, String> metadata);
 
+    public static native void statsigLogEventWithLong(String statsigRef, String userRef, String eventName, long value,
+            Map<String, String> metadata);
+
+    public static native void statsigLogEventWithDouble(String statsigRef, String userRef, String eventName,
+            double value, Map<String, String> metadata);
+
     public static native void statsigFlushEvents(String statsigRef, Runnable callback);
 
     public static native void statsigLogLayerParamExposure(String statsigRef, String layerJson, String param);

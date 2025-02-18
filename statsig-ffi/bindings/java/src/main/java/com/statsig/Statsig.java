@@ -176,6 +176,14 @@ public class Statsig {
         StatsigJNI.statsigLogEvent(ref, user.getRef(), eventName, value, metadata);
     }
 
+    public void logEvent(StatsigUser user, String eventName, long value, Map<String, String> metadata) {
+        StatsigJNI.statsigLogEventWithLong(ref, user.getRef(), eventName, value, metadata);
+    }
+
+    public void logEvent(StatsigUser user, String eventName, double value, Map<String, String> metadata) {
+        StatsigJNI.statsigLogEventWithDouble(ref, user.getRef(), eventName, value, metadata);
+    }
+
     public CompletableFuture<Void> flushEvents() {
         CompletableFuture<Void> future = new CompletableFuture<>();
         Runnable callback = () -> {
