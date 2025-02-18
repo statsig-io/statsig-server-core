@@ -278,3 +278,7 @@ impl ParameterStore<'_> {
 impl_common_get_methods!(DynamicConfig);
 impl_common_get_methods!(Experiment);
 impl_common_get_methods!(Layer);
+
+pub enum OverrideAdapterType {
+    LocalOverride,
+}

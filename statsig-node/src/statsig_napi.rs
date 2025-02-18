@@ -14,7 +14,7 @@ use crate::statsig_core_api_options_napi::{
     FeatureGateEvaluationOptionsNapi, LayerEvaluationOptionsNapi,
 };
 use crate::statsig_metadata_napi;
-use crate::statsig_options_napi::StatsigOptions;
+use crate::statsig_options_napi::{OverrideAdapterType, StatsigOptions};
 use crate::statsig_result::StatsigResult;
 use crate::statsig_types_napi::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::statsig_user_napi::StatsigUser;
@@ -242,5 +242,68 @@ impl Statsig {
     ) {
         self.inner
             .manually_log_layer_parameter_exposure(user.as_inner(), &layer_name, param_name);
+    }
+
+    #[napi]
+    pub fn override_gate(
+        &self,
+        gate_name: String,
+        value: bool,
+        adapter: Option<OverrideAdapterType>,
+    ) {
+        let adapter_type = adapter.map(|a| a.into());
+        self.inner
+            .override_gate(&gate_name, value, adapter_type.as_ref());
+    }
+
+    #[napi]
+    pub fn override_dynamic_config(
+        &self,
+        config_name: String,
+        value: HashMap<String, Value>,
+        adapter: Option<OverrideAdapterType>,
+    ) {
+        let adapter_type = adapter.map(|a| a.into());
+        self.inner
+            .override_dynamic_config(&config_name, value, adapter_type.as_ref());
+    }
+
+    #[napi]
+    pub fn override_experiment(
+        &self,
+        experiment_name: String,
+        value: HashMap<String, Value>,
+        adapter: Option<OverrideAdapterType>,
+    ) {
+        let adapter_type = adapter.map(|a| a.into());
+        self.inner
+            .override_experiment(&experiment_name, value, adapter_type.as_ref());
+    }
+
+    #[napi]
+    pub fn override_experiment_by_group_name(
+        &self,
+        experiment_name: String,
+        group_name: String,
+        adapter: Option<OverrideAdapterType>,
+    ) {
+        let adapter_type = adapter.map(|a| a.into());
+        self.inner.override_experiment_by_group_name(
+            &experiment_name,
+            &group_name,
+            adapter_type.as_ref(),
+        );
+    }
+
+    #[napi]
+    pub fn override_layer(
+        &self,
+        layer_name: String,
+        value: HashMap<String, Value>,
+        adapter: Option<OverrideAdapterType>,
+    ) {
+        let adapter_type = adapter.map(|a| a.into());
+        self.inner
+            .override_layer(&layer_name, value, adapter_type.as_ref());
     }
 }

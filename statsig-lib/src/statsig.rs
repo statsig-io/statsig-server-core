@@ -34,7 +34,9 @@ use crate::statsig_runtime::StatsigRuntime;
 use crate::statsig_type_factories::{
     make_dynamic_config, make_experiment, make_feature_gate, make_layer,
 };
-use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer, ParameterStore};
+use crate::statsig_types::{
+    DynamicConfig, Experiment, FeatureGate, Layer, OverrideAdapterType, ParameterStore,
+};
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{
     dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, ObservabilityClient,
@@ -601,6 +603,61 @@ impl Statsig {
                 None => vec![],
             },
             None => vec![],
+        }
+    }
+
+    pub fn override_gate(
+        &self,
+        gate_name: &str,
+        value: bool,
+        _adapter: Option<&OverrideAdapterType>,
+    ) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.override_gate(gate_name, value);
+        }
+    }
+
+    pub fn override_dynamic_config(
+        &self,
+        config_name: &str,
+        value: HashMap<String, serde_json::Value>,
+        _adapter: Option<&OverrideAdapterType>,
+    ) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.override_dynamic_config(config_name, value);
+        }
+    }
+
+    pub fn override_layer(
+        &self,
+        layer_name: &str,
+        value: HashMap<String, serde_json::Value>,
+        _adapter: Option<&OverrideAdapterType>,
+    ) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.override_layer(layer_name, value);
+        }
+    }
+
+    pub fn override_experiment(
+        &self,
+        experiment_name: &str,
+        value: HashMap<String, serde_json::Value>,
+        _adapter: Option<&OverrideAdapterType>,
+    ) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.override_experiment(experiment_name, value);
+        }
+    }
+
+    pub fn override_experiment_by_group_name(
+        &self,
+        experiment_name: &str,
+        group_name: &str,
+        _adapter: Option<&OverrideAdapterType>,
+    ) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.override_experiment_by_group_name(experiment_name, group_name);
         }
     }
 }

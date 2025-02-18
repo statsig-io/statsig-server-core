@@ -1,11 +1,13 @@
-use std::sync::{Arc, Weak};
-
 use napi_derive::napi;
+use std::sync::{Arc, Weak};
 
 use crate::{data_store_napi::DataStore, observability_client_napi::ObservabilityClient};
 use sigstat::{
-    data_store_interface::DataStoreTrait, ObservabilityClient as ObservabilityClientTrait,
-    SpecAdapterConfig as SpecAdapterConfigActual, DEFAULT_INIT_TIMEOUT_MS,
+    data_store_interface::DataStoreTrait,
+    statsig_types::OverrideAdapterType as OverrideAdapterTypeActual,
+    ObservabilityClient as ObservabilityClientTrait, OverrideAdapter,
+    SpecAdapterConfig as SpecAdapterConfigActual, StatsigLocalOverrideAdapter,
+    DEFAULT_INIT_TIMEOUT_MS,
 };
 
 #[napi(object)]
@@ -14,6 +16,24 @@ pub struct SpecAdapterConfig {
     pub adapter_type: String,
     pub specs_url: Option<String>,
     pub init_timeout_ms: i64,
+}
+
+#[napi]
+pub enum OverrideAdapterType {
+    LocalOverride,
+}
+
+impl From<OverrideAdapterType> for OverrideAdapterTypeActual {
+    fn from(adapter_type: OverrideAdapterType) -> Self {
+        match adapter_type {
+            OverrideAdapterType::LocalOverride => OverrideAdapterTypeActual::LocalOverride,
+        }
+    }
+}
+#[napi(object)]
+pub struct OverrideAdapterConfig {
+    pub adapter_type: OverrideAdapterType,
+    // TODO: add custom adapter interface support
 }
 
 #[napi(object, object_to_js = false)]
@@ -42,6 +62,7 @@ pub struct StatsigOptions {
     pub specs_sync_interval_ms: Option<u32>,
 
     pub service_name: Option<String>,
+    pub override_adapter_config: Option<Vec<OverrideAdapterConfig>>,
 }
 
 impl StatsigOptions {
@@ -88,6 +109,7 @@ impl StatsigOptions {
             disable_all_logging: self.disable_all_logging,
             event_logging_flush_interval_ms: self.event_logging_flush_interval_ms,
             event_logging_max_queue_size: self.event_logging_max_queue_size,
+            override_adapter: Some(create_local_overrides(self.override_adapter_config)),
             ..Default::default()
         };
 
@@ -103,4 +125,11 @@ impl From<SpecAdapterConfig> for SpecAdapterConfigActual {
             init_timeout_ms: u64::try_from(val.init_timeout_ms).unwrap_or(DEFAULT_INIT_TIMEOUT_MS),
         }
     }
+}
+
+fn create_local_overrides(
+    _override_adapter_config: Option<Vec<OverrideAdapterConfig>>,
+) -> Arc<dyn OverrideAdapter> {
+    // Default to the local override adapter for now.
+    Arc::new(StatsigLocalOverrideAdapter::new())
 }

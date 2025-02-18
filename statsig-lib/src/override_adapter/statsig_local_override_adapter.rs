@@ -149,12 +149,12 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
         }
     }
 
-    fn override_experiment_by_group_name(&self, key: &str, group_id: &str) {
+    fn override_experiment_by_group_name(&self, key: &str, group_name: &str) {
         match self.store.write() {
             Ok(mut store) => {
                 store.experiment.insert(
                     key.to_string(),
-                    ExperimentOverrides::GroupName(group_id.to_string()),
+                    ExperimentOverrides::GroupName(group_name.to_string()),
                 );
             }
             Err(e) => log_e!(
