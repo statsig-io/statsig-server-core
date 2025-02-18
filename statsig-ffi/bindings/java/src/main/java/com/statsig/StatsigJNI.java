@@ -108,7 +108,8 @@ class StatsigJNI {
             String environment,
             boolean enableIDLists,
             boolean disableAllLogging,
-            long outputLoggerLevel);
+            long outputLoggerLevel,
+            String serviceName);
 
     public static native void statsigOptionsRelease(String optionsRef);
 

@@ -14,8 +14,8 @@ public class StatsigOptions {
                 builder.environment,
                 builder.enableIDLists,
                 builder.disableAllLogging,
-                builder.outputLoggerLevel.getValue()
-        );
+                builder.outputLoggerLevel.getValue(),
+                builder.serviceName);
 
         ResourceCleaner.register(this, () -> {
             if (ref != null) {
@@ -40,6 +40,7 @@ public class StatsigOptions {
         private boolean enableIDLists = false;
         private boolean disableAllLogging = false;
         private OutputLogger.LogLevel outputLoggerLevel = OutputLogger.LogLevel.WARN;
+        private String serviceName;
 
         public Builder setOutputLoggerLevel(OutputLogger.LogLevel level) {
             this.outputLoggerLevel = level;
@@ -89,6 +90,11 @@ public class StatsigOptions {
 
         public Builder setEnableIDLists(boolean enableIDLists) {
             this.enableIDLists = enableIDLists;
+            return this;
+        }
+
+        public Builder setServiceName(String serviceName) {
+            this.serviceName = serviceName;
             return this;
         }
 
