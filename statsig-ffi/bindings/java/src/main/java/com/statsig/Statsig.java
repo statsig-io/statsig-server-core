@@ -79,6 +79,10 @@ public class Statsig {
         return StatsigJNI.statsigCheckGate(ref, user.getRef(), gateName, options);
     }
 
+    public void manuallyLogGateExposure(StatsigUser user, String gateName) {
+        StatsigJNI.statsigLogGateExposure(ref, user.getRef(), gateName);
+    }
+
     public Experiment getExperiment(StatsigUser user, String experimentName) {
         String experJson = StatsigJNI.statsigGetExperiment(ref, user.getRef(), experimentName, null);
         Experiment experiment = gson.fromJson(experJson, Experiment.class);
@@ -97,6 +101,10 @@ public class Statsig {
         return experiment;
     }
 
+    public void manuallyLogExperimentExposure(StatsigUser user, String experimentName) {
+        StatsigJNI.statsigLogExperimentExposure(ref, user.getRef(), experimentName);
+    }
+
     public DynamicConfig getDynamicConfig(StatsigUser user, String configName) {
         String configJson = StatsigJNI.statsigGetDynamicConfig(ref, user.getRef(), configName, null);
         DynamicConfig dynamicConfig = gson.fromJson(configJson, DynamicConfig.class);
@@ -113,6 +121,10 @@ public class Statsig {
             dynamicConfig.setRawJson(configJson);
         }
         return dynamicConfig;
+    }
+
+    public void manuallyLogDynamicConfigExposure(StatsigUser user, String configName) {
+        StatsigJNI.statsigLogDynamicConfigExposure(ref, user.getRef(), configName);
     }
 
     public Layer getLayer(StatsigUser user, String layerName) {
@@ -136,6 +148,10 @@ public class Statsig {
             layer.setDisableExposureLogging(options != null && options.disableExposureLogging);
         }
         return layer;
+    }
+
+    public void manuallyLogLayerParamExposure(StatsigUser user, String layerName, String param) {
+        StatsigJNI.statsigManuallyLogLayerParamExposure(ref, user.getRef(), layerName, param);
     }
 
     public FeatureGate getFeatureGate(StatsigUser user, String gateName) {

@@ -229,6 +229,53 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperiment(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogExperimentExposure(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    user_ref: JString,
+    exper_name: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+    let user = get_instance_or_noop_jni!(StatsigUser, &mut env, user_ref);
+
+    let exper_name: String = match env.get_string(&exper_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    statsig.manually_log_experiment_exposure(&user, &exper_name);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigManuallyLogLayerParamExposure(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    user_ref: JString,
+    layer_name: JString,
+    parameter_name: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+    let user = get_instance_or_noop_jni!(StatsigUser, &mut env, user_ref);
+
+    let layer_name: String = match env.get_string(&layer_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    let parameter_name: String = match env.get_string(&parameter_name) {
+        Ok(s) => s.into(),
+        Err(_) => {
+            log_e!(TAG, "Failed to convert parameter_name to Rust string");
+            return;
+        }
+    };
+
+    statsig.manually_log_layer_parameter_exposure(&user, &layer_name, parameter_name);
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetLayer(
     mut env: JNIEnv,
     _class: jclass,
@@ -285,6 +332,25 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetDynamicConfig(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogDynamicConfigExposure(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    user_ref: JString,
+    config_name: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+    let user = get_instance_or_noop_jni!(StatsigUser, &mut env, user_ref);
+
+    let config_name: String = match env.get_string(&config_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    statsig.manually_log_dynamic_config_exposure(&user, &config_name);
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFeatureGate(
     mut env: JNIEnv,
     _class: jclass,
@@ -307,6 +373,25 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFeatureGate(
         None => statsig.get_feature_gate(user.as_ref(), &gate_name),
     };
     serialize_json_to_jstring(&mut env, &result)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogGateExposure(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    user_ref: JString,
+    gate_name: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+    let user = get_instance_or_noop_jni!(StatsigUser, &mut env, user_ref);
+
+    let gate_name: String = match env.get_string(&gate_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    statsig.manually_log_gate_exposure(&user, &gate_name);
 }
 
 #[no_mangle]
