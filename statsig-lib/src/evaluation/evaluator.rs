@@ -19,7 +19,7 @@ const TAG: &str = stringify!(Evaluator);
 pub struct Evaluator;
 
 lazy_static! {
-    static ref EMPTY_STR: String = "".to_string();
+    static ref EMPTY_STR: String = String::new();
     static ref DEFAULT_RULE: String = "default".to_string();
     static ref DISABLED_RULE: String = "disabled".to_string();
     static ref EMPTY_DYNAMIC_VALUE: DynamicValue = DynamicValue::new();
@@ -102,7 +102,7 @@ impl Evaluator {
             ctx.result.explicit_parameters = Some(explicit_params);
         }
 
-        for rule in spec.rules.iter() {
+        for rule in &spec.rules {
             evaluate_rule(ctx, rule)?;
 
             if ctx.result.unsupported {
@@ -184,22 +184,21 @@ fn try_apply_override(
 fn evaluate_rule<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) -> Result<(), StatsigErr> {
     let mut all_conditions_pass = true;
     // println!("--- Eval Rule {} ---", rule.id);
-    for condition_hash in rule.conditions.iter() {
+    for condition_hash in &rule.conditions {
         // println!("Condition Hash {}", condition_hash);
         let opt_condition = ctx.spec_store_data.values.condition_map.get(condition_hash);
-        let condition = match opt_condition {
-            Some(c) => c,
-            None => {
-                // todo: log condition not found error
-                ctx.result.unsupported = true;
-                return Ok(());
-            }
+        let condition = if let Some(c) = opt_condition {
+            c
+        } else {
+            // todo: log condition not found error
+            ctx.result.unsupported = true;
+            return Ok(());
         };
 
         evaluate_condition(ctx, condition)?;
 
         if !ctx.result.bool_value {
-            all_conditions_pass = false
+            all_conditions_pass = false;
         }
     }
 
@@ -332,18 +331,17 @@ fn evaluate_nested_gate<'a>(
     target_value: &'a DynamicValue,
     condition_type: &'a String,
 ) -> Result<(), StatsigErr> {
-    let gate_name = match target_value.string_value.as_ref() {
-        Some(name) => name,
-        None => {
-            log_e!(
-                TAG,
-                "Invalid target_value for condition {}, {:?}",
-                condition_type,
-                target_value
-            );
-            ctx.result.unsupported = true;
-            return Ok(());
-        }
+    let gate_name = if let Some(name) = target_value.string_value.as_ref() {
+        name
+    } else {
+        log_e!(
+            TAG,
+            "Invalid target_value for condition {}, {:?}",
+            condition_type,
+            target_value
+        );
+        ctx.result.unsupported = true;
+        return Ok(());
     };
 
     ctx.increment_nesting()?;
@@ -365,7 +363,7 @@ fn evaluate_nested_gate<'a>(
     }
 
     if condition_type == "fail_gate" {
-        ctx.result.bool_value = !ctx.result.bool_value
+        ctx.result.bool_value = !ctx.result.bool_value;
     }
     Ok(())
 }
@@ -406,7 +404,7 @@ fn evaluate_pass_percentage(ctx: &mut EvaluatorContext, rule: &Rule, spec_salt: 
 
     let rule_salt = rule.salt.as_ref().unwrap_or(&rule.id);
     let unit_id = get_unit_id(ctx, &rule.id_type);
-    let input = format!("{}.{}.{}", spec_salt, rule_salt, unit_id);
+    let input = format!("{spec_salt}.{rule_salt}.{unit_id}");
     match ctx.hashing.evaluation_hash(&input) {
         Some(hash) => ((hash % 10000) as f64) < rule.pass_percentage * 100.0,
         None => false,
@@ -424,7 +422,7 @@ fn get_hash_for_user_bucket(ctx: &mut EvaluatorContext, condition: &Condition) -
         }
     }
 
-    let input = format!("{}.{}", salt, unit_id);
+    let input = format!("{salt}.{unit_id}");
     let hash = ctx.hashing.evaluation_hash(&input).unwrap_or(1);
     dyn_value!(hash % 1000)
 }

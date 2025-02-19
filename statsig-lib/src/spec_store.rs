@@ -105,7 +105,7 @@ impl IdListsUpdateListener for SpecStore {
 impl Default for SpecStore {
     fn default() -> Self {
         Self::new(
-            "".to_string(),
+            String::new(),
             None,
             None,
             Arc::new(OpsStatsForInstance::new()),
@@ -114,6 +114,7 @@ impl Default for SpecStore {
 }
 
 impl SpecStore {
+    #[must_use]
     pub fn new(
         hashed_sdk_key: String,
         data_store: Option<Arc<dyn DataStoreTrait>>,
@@ -211,9 +212,9 @@ impl SpecStore {
                     TAG,
                     "SpecStore - Received values for [time: {}, checksum: {}], but currently has values for [time: {}, checksum: {}]. Ignoring values.",
                     dcs.time,
-                    dcs.checksum.unwrap_or("".to_string()),
+                    dcs.checksum.unwrap_or(String::new()),
                     mut_values.values.time,
-                    mut_values.values.checksum.clone().unwrap_or("".to_string()),
+                    mut_values.values.checksum.clone().unwrap_or(String::new()),
                 );
                 return Ok(());
             }
@@ -245,6 +246,7 @@ impl SpecStore {
         Ok(())
     }
 
+    #[must_use]
     pub fn get_sdk_config_value(&self, key: &str) -> Option<DynamicValue> {
         match self.data.read() {
             Ok(data) => match &data.values.sdk_configs {

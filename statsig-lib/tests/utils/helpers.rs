@@ -16,7 +16,7 @@ pub fn enforce_string(value: &Value) -> String {
 
 pub fn load_contents(resource_file_name: &str) -> String {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.push(format!("tests/data/{}", resource_file_name));
+    path.push(format!("tests/data/{resource_file_name}"));
     fs::read_to_string(path).expect("Unable to read resource file")
 }
 

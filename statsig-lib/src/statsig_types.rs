@@ -40,6 +40,7 @@ pub struct DynamicConfig {
 }
 
 impl DynamicConfig {
+    #[must_use]
     pub fn get_opt<T: DeserializeOwned>(&self, param_name: &str) -> Option<T> {
         match self.value.get(param_name) {
             Some(value) => from_value(value.clone()).ok(),
@@ -62,6 +63,7 @@ pub struct Experiment {
 }
 
 impl Experiment {
+    #[must_use]
     pub fn get_opt<T: DeserializeOwned>(&self, param_name: &str) -> Option<T> {
         match self.value.get(param_name) {
             Some(value) => from_value(value.clone()).ok(),
@@ -143,7 +145,7 @@ impl Layer {
                     version: self.__version,
                     is_manual_exposure: false,
                     sampling_details,
-                }))
+                }));
         }
 
         None
@@ -157,26 +159,32 @@ macro_rules! impl_common_get_methods {
                 self.get_opt(param_name).unwrap_or_else(|| fallback)
             }
 
+            #[must_use]
             pub fn get_bool(&self, param_name: &str, fallback: bool) -> bool {
                 self.get(param_name, fallback)
             }
 
+            #[must_use]
             pub fn get_f64(&self, param_name: &str, fallback: f64) -> f64 {
                 self.get(param_name, fallback)
             }
 
+            #[must_use]
             pub fn get_i64(&self, param_name: &str, fallback: i64) -> i64 {
                 self.get(param_name, fallback)
             }
 
+            #[must_use]
             pub fn get_string(&self, param_name: &str, fallback: String) -> String {
                 self.get(param_name, fallback)
             }
 
+            #[must_use]
             pub fn get_array(&self, param_name: &str, fallback: Vec<Value>) -> Vec<Value> {
                 self.get(param_name, fallback)
             }
 
+            #[must_use]
             pub fn get_object(
                 &self,
                 param_name: &str,

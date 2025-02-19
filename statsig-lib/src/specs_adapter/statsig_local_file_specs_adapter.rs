@@ -20,6 +20,7 @@ pub struct StatsigLocalFileSpecsAdapter {
 }
 
 impl StatsigLocalFileSpecsAdapter {
+    #[must_use]
     pub fn new(
         sdk_key: &str,
         output_directory: &str,
@@ -27,7 +28,7 @@ impl StatsigLocalFileSpecsAdapter {
         fallback_to_statsig_api: bool,
     ) -> Self {
         let hashed_key = djb2(sdk_key);
-        let file_path = format!("{}/{}_specs.json", output_directory, hashed_key);
+        let file_path = format!("{output_directory}/{hashed_key}_specs.json");
 
         Self {
             file_path,
@@ -116,7 +117,7 @@ impl StatsigLocalFileSpecsAdapter {
 
     fn write_specs_to_file(&self, data: &str) {
         match std::fs::write(&self.file_path, data) {
-            Ok(_) => (),
+            Ok(()) => (),
             Err(e) => log_w!(TAG, "Failed to write specs to file: {}", e),
         }
     }

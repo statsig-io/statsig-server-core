@@ -11,6 +11,7 @@ pub enum HashAlgorithm {
 }
 
 impl HashAlgorithm {
+    #[must_use]
     pub fn from_string(input: &str) -> Option<Self> {
         match input {
             "sha256" => Some(HashAlgorithm::Sha256),
@@ -42,6 +43,7 @@ impl Default for HashUtil {
 }
 
 impl HashUtil {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             sha_hasher: MemoSha256::new(),

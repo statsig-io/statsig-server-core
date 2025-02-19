@@ -4,7 +4,7 @@ use crate::DynamicValue;
 use lazy_static::lazy_static;
 
 lazy_static! {
-    static ref EMPTY_STR: String = "".to_string();
+    static ref EMPTY_STR: String = String::new();
     static ref EMPTY_DYNAMIC_VALUE: DynamicValue = DynamicValue::new();
 }
 

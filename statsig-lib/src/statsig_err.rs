@@ -47,27 +47,27 @@ pub enum StatsigErr {
 impl Display for StatsigErr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            StatsigErr::CustomError(msg) => write!(f, "{}", msg),
+            StatsigErr::CustomError(msg) => write!(f, "{msg}"),
 
-            StatsigErr::LockFailure(msg) => write!(f, "Failed to acquire lock: {}", msg),
+            StatsigErr::LockFailure(msg) => write!(f, "Failed to acquire lock: {msg}"),
 
-            StatsigErr::UnstartedAdapter(msg) => write!(f, "Adapter not started: {}", msg),
+            StatsigErr::UnstartedAdapter(msg) => write!(f, "Adapter not started: {msg}"),
 
-            StatsigErr::NetworkError(msg) => write!(f, "Network error: {}", msg),
+            StatsigErr::NetworkError(msg) => write!(f, "Network error: {msg}"),
 
-            StatsigErr::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
+            StatsigErr::SerializationError(msg) => write!(f, "Serialization error: {msg}"),
 
-            StatsigErr::GzipError(msg) => write!(f, "Gzip error: {}", msg),
+            StatsigErr::GzipError(msg) => write!(f, "Gzip error: {msg}"),
 
-            StatsigErr::ZstdError(msg) => write!(f, "Zstd error: {}", msg),
+            StatsigErr::ZstdError(msg) => write!(f, "Zstd error: {msg}"),
 
             StatsigErr::JsonParseError(type_name, err_msg) => {
-                write!(f, "Failed to parse {} - {}", type_name, err_msg)
+                write!(f, "Failed to parse {type_name} - {err_msg}")
             }
 
-            StatsigErr::FileError(msg) => write!(f, "File write error: {}", msg),
+            StatsigErr::FileError(msg) => write!(f, "File write error: {msg}"),
 
-            StatsigErr::ThreadFailure(msg) => write!(f, "Thread failure: {}", msg),
+            StatsigErr::ThreadFailure(msg) => write!(f, "Thread failure: {msg}"),
 
             StatsigErr::StackOverflowError => write!(f, "Statsig Evaluation Depth Exceeded"),
 
@@ -76,19 +76,19 @@ impl Display for StatsigErr {
                 write!(f, "Failed to insert new Id List")
             }
 
-            StatsigErr::GrpcError(e) => write!(f, "{}", e),
+            StatsigErr::GrpcError(e) => write!(f, "{e}"),
 
             StatsigErr::ShutdownTimeout => write!(f, "Shutdown timed out"),
 
-            StatsigErr::ScheduleFailure(e) => write!(f, "Failed to schedule task: {}", e),
+            StatsigErr::ScheduleFailure(e) => write!(f, "Failed to schedule task: {e}"),
 
             StatsigErr::ShutdownFailure => write!(f, "Failed to shutdown task scheduler"),
-            StatsigErr::DataStoreFailure(message) => write!(f, "DataStore Error: {}", message),
+            StatsigErr::DataStoreFailure(message) => write!(f, "DataStore Error: {message}"),
             StatsigErr::SpecsAdapterSkipPoll(adapter_name) => {
-                write!(f, "{} skips scheduling polling", adapter_name)
+                write!(f, "{adapter_name} skips scheduling polling")
             }
             StatsigErr::ObservabilityClientFailure(message) => {
-                write!(f, "ObservabilityClient Error: {}", message)
+                write!(f, "ObservabilityClient Error: {message}")
             }
         }
     }

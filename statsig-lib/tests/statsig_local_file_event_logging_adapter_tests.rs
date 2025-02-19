@@ -26,7 +26,7 @@ const SINGLE_EVENT_DATA: &str = r#"{
 
 lazy_static! {
     static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
-    static ref TEST_EVENTS_DATA: Value = from_str(&format!("[{}]", SINGLE_EVENT_DATA)).unwrap();
+    static ref TEST_EVENTS_DATA: Value = from_str(&format!("[{SINGLE_EVENT_DATA}]")).unwrap();
 }
 
 fn get_test_lock() -> MutexGuard<'static, ()> {
@@ -185,7 +185,7 @@ async fn test_combining_limits() {
 
     for _ in 0..1000 {
         let payload = LogEventPayload {
-            events: from_str(&format!("[{}, {}]", SINGLE_EVENT_DATA, SINGLE_EVENT_DATA)).unwrap(),
+            events: from_str(&format!("[{SINGLE_EVENT_DATA}, {SINGLE_EVENT_DATA}]")).unwrap(),
             statsig_metadata: json!("{}"),
         };
 

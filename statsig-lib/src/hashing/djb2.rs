@@ -1,3 +1,4 @@
+#[must_use]
 pub fn djb2(input: &str) -> String {
     let mut hash: i64 = 0;
 
@@ -6,7 +7,7 @@ pub fn djb2(input: &str) -> String {
     }
 
     // Convert to unsigned 32-bit integer
-    hash &= 0xFFFFFFFF;
+    hash &= 0xFFFF_FFFF;
 
     hash.to_string()
 }

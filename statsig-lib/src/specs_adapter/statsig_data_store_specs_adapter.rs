@@ -39,9 +39,9 @@ impl StatsigDataStoreSpecsAdapter {
         StatsigDataStoreSpecsAdapter {
             data_adapter,
             cache_key,
-            sync_interval: Duration::from_millis(
-                sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS) as u64
-            ),
+            sync_interval: Duration::from_millis(u64::from(
+                sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS),
+            )),
             listener: RwLock::new(None),
             shutdown_notify: Arc::new(Notify::new()),
         }
@@ -50,7 +50,7 @@ impl StatsigDataStoreSpecsAdapter {
     async fn execute_background_sync(&self, rt_shutdown_notify: &Arc<Notify>) {
         loop {
             tokio::select! {
-                _ = sleep(self.sync_interval) => {
+                () = sleep(self.sync_interval) => {
                     let update = self.data_adapter.get(&self.cache_key).await;
                     match update {
                         Ok(update) => {
@@ -63,7 +63,7 @@ impl StatsigDataStoreSpecsAdapter {
                                         source: SpecsSource::Adapter("DataStore".to_string()),
                                         received_at: Utc::now().timestamp_millis() as u64,
                                 }) {
-                                    Ok(_) => {},
+                                    Ok(()) => {},
                                     Err(_) => log_w!(TAG, "DataStoreAdapter - Failed to capture"),
                                 }},
                                 _ => log_w!(TAG, "DataAdapterSpecAdatper - Failed to capture"),
@@ -75,11 +75,11 @@ impl StatsigDataStoreSpecsAdapter {
                         Err(_) => log_w!(TAG, "DataAdapterSpecAdatper - Failed to capture"),
                     }
                 }
-                _ = rt_shutdown_notify.notified() => {
+                () = rt_shutdown_notify.notified() => {
                     log_d!(TAG, "Runtime shutdown. Shutting down specs background sync");
                     break;
                 }
-                _ = self.shutdown_notify.notified() => {
+                () = self.shutdown_notify.notified() => {
                     log_d!(TAG, "Shutting down specs background sync");
                     break;
                 }
@@ -144,12 +144,11 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         statsig_runtime.spawn(
             "data_adapter_spec_adapter",
             move |rt_shutdown_notify| async move {
-                let strong_self = match weak_self.upgrade() {
-                    Some(strong_self) => strong_self,
-                    None => {
-                        log_w!(TAG, "Failed to upgrade weak instance");
-                        return;
-                    }
+                let strong_self = if let Some(strong_self) = weak_self.upgrade() {
+                    strong_self
+                } else {
+                    log_w!(TAG, "Failed to upgrade weak instance");
+                    return;
                 };
 
                 strong_self
@@ -169,7 +168,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         self.shutdown_notify.notify_one();
         time::timeout(timeout, async { self.data_adapter.shutdown().await })
             .await
-            .map_err(|e| StatsigErr::DataStoreFailure(format!("Failed to shutdown: {}", e)))?
+            .map_err(|e| StatsigErr::DataStoreFailure(format!("Failed to shutdown: {e}")))?
     }
 
     fn get_type_name(&self) -> String {

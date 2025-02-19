@@ -27,7 +27,7 @@ const DEFAULT_FLUSH_INTERVAL_MS: u32 = 60_000;
 const DEFAULT_QUEUE_SIZE: u32 = 500;
 const DEFAULT_DISABLE_ALL_LOGGING: bool = false;
 const DEDUPE_WINDOW_DURATION_MS: u64 = 60_000;
-const DEDUPE_MAX_KEYS: usize = 100000;
+const DEDUPE_MAX_KEYS: usize = 100_000;
 const NON_EXPOSED_CHECKS_EVENT: &str = "statsig::non_exposed_checks";
 
 const FLUSH_AND_FORGET_BG_TAG: &str = "event_logger_flush_and_forget";
@@ -126,23 +126,20 @@ impl EventLogger {
             log_d!(TAG, "BG flush loop begin");
 
             loop {
-                let strong_self = match weak_inst.upgrade() {
-                    Some(strong_self) => strong_self,
-                    None => {
-                        log_w!(TAG, "failed to upgrade weak instance");
-                        break;
-                    }
+                let strong_self = if let Some(strong_self) = weak_inst.upgrade() { strong_self } else {
+                    log_w!(TAG, "failed to upgrade weak instance");
+                    break;
                 };
 
                 tokio::select! {
-                    _ = sleep(Duration::from_millis(strong_self.flush_interval_ms as u64)) => {
+                    () = sleep(Duration::from_millis(u64::from(strong_self.flush_interval_ms))) => {
                         strong_self.flush_blocking().await;
                     }
-                    _ = rt_shutdown_notify.notified() => {
+                    () = rt_shutdown_notify.notified() => {
                         log_d!(TAG, "Runtime shutdown. Shutting down event logger background flush");
                         break;
                     }
-                    _ = strong_self.shutdown_notify.notified() => {
+                    () = strong_self.shutdown_notify.notified() => {
                         log_d!(TAG, "Shutting down event logger background flush");
                         break;
                     }
@@ -242,12 +239,11 @@ impl EventLogger {
             return;
         }
 
-        let payloads = match queue.write() {
-            Ok(mut lock) => std::mem::take(&mut *lock),
-            _ => {
-                log_error_to_statsig_and_console!(ops_stats, TAG, "Failed to lock event queue");
-                return;
-            }
+        let payloads = if let Ok(mut lock) = queue.write() {
+            std::mem::take(&mut *lock)
+        } else {
+            log_error_to_statsig_and_console!(ops_stats, TAG, "Failed to lock event queue");
+            return;
         };
 
         let validated_chunks = validate_and_chunk_events(payloads, previous_exposure_info).await;
@@ -450,7 +446,7 @@ mod tests {
         ));
 
         for i in 1..10 {
-            enqueue_single(&logger, format!("user_{}", i).as_str(), "my_event");
+            enqueue_single(&logger, format!("user_{i}").as_str(), "my_event");
         }
 
         sleep(Duration::from_millis(100)).await;

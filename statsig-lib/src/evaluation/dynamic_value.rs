@@ -74,7 +74,7 @@ impl From<i64> for DynamicValue {
 
 impl From<i32> for DynamicValue {
     fn from(value: i32) -> Self {
-        Self::from(value as i64)
+        Self::from(i64::from(value))
     }
 }
 
@@ -155,6 +155,7 @@ impl From<JsonValue> for DynamicValue {
 }
 
 impl DynamicValue {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -162,6 +163,7 @@ impl DynamicValue {
         value.into()
     }
 
+    #[must_use]
     pub fn for_timestamp_evaluation(timestamp: i64) -> DynamicValue {
         DynamicValue {
             int_value: Some(timestamp),

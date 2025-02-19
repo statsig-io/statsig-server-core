@@ -100,7 +100,7 @@ impl OpsStatsForInstance {
     }
 
     pub fn log_error(&self, error: ErrorBoundaryEvent) {
-        self.log(OpsStatsEvent::SDKErrorEvent(error))
+        self.log(OpsStatsEvent::SDKErrorEvent(error));
     }
 
     pub fn subscribe(
@@ -123,10 +123,10 @@ impl OpsStatsForInstance {
                             observer.handle_event(event).await;
                         }
                     }
-                    _ = rt_shutdown_notify.notified() => {
+                    () = rt_shutdown_notify.notified() => {
                         break;
                     }
-                    _ = shutdown_notify.notified() => {
+                    () = shutdown_notify.notified() => {
                         break;
                     }
                 }

@@ -23,7 +23,7 @@ impl fmt::Display for SpecsSource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
             SpecsSource::Adapter(name) => {
-                let type_name = format!("Adapter{}", name);
+                let type_name = format!("Adapter{name}");
                 type_name
             }
             SpecsSource::Uninitialized => "Uninitialized".to_string(),
@@ -33,7 +33,7 @@ impl fmt::Display for SpecsSource {
             SpecsSource::Network => "Network".to_string(),
             SpecsSource::Bootstrap => "Bootstrap".to_string(),
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -75,6 +75,7 @@ pub struct SpecsInfo {
 }
 
 impl SpecsInfo {
+    #[must_use]
     pub fn empty() -> Self {
         Self {
             lcut: None,
@@ -83,6 +84,7 @@ impl SpecsInfo {
         }
     }
 
+    #[must_use]
     pub fn error() -> Self {
         Self {
             lcut: None,

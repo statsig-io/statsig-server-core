@@ -41,6 +41,7 @@ pub struct Diagnostics {
 }
 
 impl Diagnostics {
+    #[must_use]
     pub fn new(event_logger: Arc<EventLogger>, spec_store: Arc<SpecStore>) -> Self {
         Self {
             event_logger,

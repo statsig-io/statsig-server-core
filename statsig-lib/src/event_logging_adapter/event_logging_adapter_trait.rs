@@ -47,7 +47,7 @@ mod tests {
         };
 
         let serialized = serde_json::to_string(&request).unwrap();
-        println!("{}", serialized);
+        println!("{serialized}");
 
         let deserialized: Value = serde_json::from_str(&serialized).unwrap();
 

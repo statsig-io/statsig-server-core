@@ -33,6 +33,7 @@ pub struct StatsigHttpIdListsAdapter {
 }
 
 impl StatsigHttpIdListsAdapter {
+    #[must_use]
     pub fn new(sdk_key: &str, options: &StatsigOptions) -> Self {
         let id_lists_manifest_url = options
             .id_lists_url
@@ -47,11 +48,11 @@ impl StatsigHttpIdListsAdapter {
             None
         };
 
-        let sync_interval_duration = Duration::from_millis(
+        let sync_interval_duration = Duration::from_millis(u64::from(
             options
                 .id_lists_sync_interval_ms
-                .unwrap_or(DEFAULT_ID_LIST_SYNC_INTERVAL_MS) as u64,
-        );
+                .unwrap_or(DEFAULT_ID_LIST_SYNC_INTERVAL_MS),
+        ));
 
         let network = NetworkClient::new(
             sdk_key,
@@ -84,8 +85,7 @@ impl StatsigHttpIdListsAdapter {
 
         if initial_err != NetworkError::RetriesExhausted {
             return Err(StatsigErr::NetworkError(format!(
-                "Initial request failed: {:?}",
-                initial_err
+                "Initial request failed: {initial_err:?}"
             )));
         }
 
@@ -101,14 +101,12 @@ impl StatsigHttpIdListsAdapter {
 
             // TODO logging
             return Err(StatsigErr::NetworkError(format!(
-                "Fallback request failed: {:?}, initial error: {:?}",
-                fallback_err, initial_err
+                "Fallback request failed: {fallback_err:?}, initial error: {initial_err:?}"
             )));
         }
 
         Err(StatsigErr::NetworkError(format!(
-            "Initial request failed with error: {:?}",
-            initial_err
+            "Initial request failed with error: {initial_err:?}"
         )))
     }
 
@@ -117,7 +115,7 @@ impl StatsigHttpIdListsAdapter {
         list_url: &str,
         list_size: u64,
     ) -> Result<String, StatsigErr> {
-        let headers = HashMap::from([("Range".into(), format!("bytes={}-", list_size))]);
+        let headers = HashMap::from([("Range".into(), format!("bytes={list_size}-"))]);
 
         let response = self
             .network
@@ -137,7 +135,7 @@ impl StatsigHttpIdListsAdapter {
                 Ok(data)
             }
             Err(err) => {
-                let msg = format!("Failed to fetch ID List changes: {:?}", err);
+                let msg = format!("Failed to fetch ID List changes: {err:?}");
                 Err(StatsigErr::NetworkError(msg))
             }
         }
@@ -155,7 +153,7 @@ impl StatsigHttpIdListsAdapter {
         match self.network.post(request_args.clone(), None).await {
             Ok(response) => Ok(response),
             Err(e) => {
-                let msg = format!("Fallback request failed: {:?}", e);
+                let msg = format!("Fallback request failed: {e:?}");
                 Err(StatsigErr::NetworkError(msg))
             }
         }
@@ -178,7 +176,7 @@ impl StatsigHttpIdListsAdapter {
         }
 
         from_str::<IdListsResponse>(&response).map_err(|parse_err| {
-            let msg = format!("Failed to parse JSON: {}", parse_err);
+            let msg = format!("Failed to parse JSON: {parse_err}");
             StatsigErr::JsonParseError(stringify!(IdListsResponse).to_string(), msg)
         })
     }
@@ -320,14 +318,14 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
             move |rt_shutdown_notify| async move {
                 loop {
                     tokio::select! {
-                        _ = sleep(interval_duration) => {
+                        () = sleep(interval_duration) => {
                             Self::run_background_sync(&weak_self).await;
                         }
-                        _ = rt_shutdown_notify.notified() => {
+                        () = rt_shutdown_notify.notified() => {
                             log_d!(TAG, "Runtime shutdown. Shutting down id list background sync");
                             break;
                         },
-                        _ = self.shutdown_notify.notified() => {
+                        () = self.shutdown_notify.notified() => {
                             log_d!(TAG, "Shutting down id list background sync");
                             break;
                         }
@@ -413,7 +411,7 @@ mod tests {
                     // add new
                     let mut list = IdList::new(update.new_metadata.clone());
                     list.apply_update(&update);
-                    id_lists.insert(list_name.to_owned(), list);
+                    id_lists.insert(list_name.clone(), list);
                 }
             }
         }
@@ -435,7 +433,7 @@ mod tests {
 
         let id_lists_response = fs::read_to_string(id_lists_response_path)
             .unwrap()
-            .replace("URL_REPLACE", &format!("{}/id_lists", mock_server_url));
+            .replace("URL_REPLACE", &format!("{mock_server_url}/id_lists"));
 
         let mocked_get_id_lists = server
             .mock("POST", "/get_id_lists")
@@ -451,7 +449,7 @@ mod tests {
 
         let company_ids_response = fs::read_to_string(company_ids_response_path)
             .unwrap()
-            .replace("URL_REPLACE", &format!("{}/id_lists", mock_server_url));
+            .replace("URL_REPLACE", &format!("{mock_server_url}/id_lists"));
 
         let mocked_individual_id_list = server
             .mock("GET", "/id_lists/company_id_list")

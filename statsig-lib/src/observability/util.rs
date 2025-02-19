@@ -1,6 +1,6 @@
 pub fn sanitize_url_for_logging(url: &str) -> String {
     let secret_key_idx = url.find("secret-");
-    let end_idx = url.find(".json").map(|idx| idx + 5).unwrap_or(url.len());
+    let end_idx = url.find(".json").map_or(url.len(), |idx| idx + 5);
     if let Some(idx) = secret_key_idx {
         let mut sanitized = url.to_string();
         sanitized.replace_range(idx + 12..end_idx, "*****");
@@ -26,7 +26,7 @@ mod tests {
         );
         for (before, expected) in test_cases {
             let sanitized = sanitize_url_for_logging(before);
-            assert!(sanitized == expected)
+            assert!(sanitized == expected);
         }
     }
 }

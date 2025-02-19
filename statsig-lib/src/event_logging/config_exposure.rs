@@ -31,7 +31,7 @@ impl StatsigExposure for ConfigExposure {
     fn to_internal_event(self) -> StatsigEventInternal {
         let (rule_id, secondary_exposures) = match self.evaluation {
             Some(evaluation) => (evaluation.rule_id, Some(evaluation.secondary_exposures)),
-            None => ("".into(), None),
+            None => (String::new(), None),
         };
 
         let mut metadata = get_metadata_with_details(self.evaluation_details);

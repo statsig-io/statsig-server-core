@@ -185,7 +185,7 @@ impl SamplingProcessor {
         user: &StatsigUserInternal,
     ) -> String {
         let user_key = self.compute_user_key(user);
-        format!("n:{};u:{};r:{};v:{}", name, user_key, rule_id, value)
+        format!("n:{name};u:{user_key};r:{rule_id};v:{value}")
     }
 
     /// compute sampling key for layers
@@ -198,10 +198,7 @@ impl SamplingProcessor {
         user: &StatsigUserInternal,
     ) -> String {
         let user_key = self.compute_user_key(user);
-        format!(
-            "n:{};e:{};p:{};u:{};r:{}",
-            layer_name, experiment_name, parameter_name, user_key, rule_id
-        )
+        format!("n:{layer_name};e:{experiment_name};p:{parameter_name};u:{user_key};r:{rule_id}")
     }
 
     fn compute_user_key(&self, user: &StatsigUserInternal) -> String {
@@ -219,7 +216,7 @@ impl SamplingProcessor {
         if let Some(custom_ids) = user_data.custom_ids.as_ref() {
             for (key, val) in custom_ids {
                 if let Some(string_value) = &val.string_value {
-                    user_key.push_str(&format!("{}:{};", key, string_value));
+                    user_key.push_str(&format!("{key}:{string_value};"));
                 }
             }
         };
@@ -308,12 +305,11 @@ impl SamplingProcessor {
             .get_sdk_config_value("sampling_mode")
             .and_then(|mode| mode.string_value)
             .as_deref()
-            .map(|mode_str| match mode_str {
+            .map_or(SamplingMode::None, |mode_str| match mode_str {
                 "on" => SamplingMode::On,
                 "shadow" => SamplingMode::Shadow,
                 _ => SamplingMode::None,
             })
-            .unwrap_or(SamplingMode::None)
     }
 
     fn get_special_case_sampling_rate(&self) -> Option<u64> {
@@ -341,7 +337,7 @@ mod tests {
             sampling_rate: None,
             forward_all_exposures: Some(false),
         },
-        id_type: "".to_string(),
+        id_type: String::new(),
         value: false,
     });
 

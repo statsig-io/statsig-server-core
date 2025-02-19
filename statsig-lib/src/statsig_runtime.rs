@@ -28,6 +28,7 @@ pub struct StatsigRuntime {
 }
 
 impl StatsigRuntime {
+    #[must_use]
     pub fn get_runtime() -> Arc<StatsigRuntime> {
         let (opt_runtime, runtime_handle) = create_runtime_if_required();
 
@@ -112,12 +113,11 @@ impl StatsigRuntime {
                 let keys: Vec<TaskId> = lock.keys().cloned().collect();
                 for key in &keys {
                     if key.tag == tag {
-                        let removed = match lock.remove(key) {
-                            Some(handle) => handle,
-                            None => {
-                                log_e!(TAG, "No running task found for tag {}", tag);
-                                continue;
-                            }
+                        let removed = if let Some(handle) = lock.remove(key) {
+                            handle
+                        } else {
+                            log_e!(TAG, "No running task found for tag {}", tag);
+                            continue;
                         };
 
                         handles.push(removed);

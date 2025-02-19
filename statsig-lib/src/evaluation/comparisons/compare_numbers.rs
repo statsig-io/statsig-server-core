@@ -24,7 +24,7 @@ mod tests {
         let right = dyn_value!(1);
 
         let result = compare_numbers(&left, &right, "gt");
-        assert!(result)
+        assert!(result);
     }
 
     #[test]
@@ -51,7 +51,7 @@ mod tests {
         let right = dyn_value!(2);
 
         let result = compare_numbers(&left, &right, "lt");
-        assert!(result)
+        assert!(result);
     }
 
     #[test]

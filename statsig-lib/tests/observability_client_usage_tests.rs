@@ -139,7 +139,7 @@ async fn test_sdk_initialization_dist_recorded() {
 
     let calls = obs_client.calls.lock().unwrap();
 
-    let mut found_name = "".to_string();
+    let mut found_name = String::new();
     let mut found_value = 0.0;
     let mut found_tags = None;
 
@@ -177,7 +177,7 @@ async fn test_config_propagation_dist_recorded() {
 
     let calls = obs_client.calls.lock().unwrap();
 
-    let mut found_name = "".to_string();
+    let mut found_name = String::new();
     let mut found_value = 0.0;
     let mut found_tags = None;
 

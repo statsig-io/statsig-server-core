@@ -57,6 +57,7 @@ impl Drop for Curl {
 }
 
 impl Curl {
+    #[must_use]
     pub fn get(sdk_key: &str) -> Curl {
         let mut curl_map = match CURL.lock() {
             Ok(map) => map,
@@ -66,16 +67,15 @@ impl Curl {
             }
         };
 
-        match curl_map.get(sdk_key) {
-            Some(curl) => Curl {
+        if let Some(curl) = curl_map.get(sdk_key) {
+            Curl {
                 sdk_key: sdk_key.to_string(),
                 context: curl.clone(),
-            },
-            None => {
-                let curl = Curl::new(sdk_key);
-                curl_map.insert(sdk_key.to_string(), curl.context.clone());
-                curl
             }
+        } else {
+            let curl = Curl::new(sdk_key);
+            curl_map.insert(sdk_key.to_string(), curl.context.clone());
+            curl
         }
     }
 
@@ -88,7 +88,7 @@ impl Curl {
         log_d!(TAG, "Sending {} Request: {}", method_name, request_args.url);
 
         if let Some(headers) = &request_args.headers {
-            for (key, value) in headers.iter() {
+            for (key, value) in headers {
                 log_d!(TAG, "Header: {} = {}", key, value);
             }
         }
@@ -101,7 +101,7 @@ impl Curl {
         };
 
         match self.context.req_tx.send(request).await {
-            Ok(_) => (),
+            Ok(()) => (),
             Err(e) => {
                 return Response {
                     status_code: 0,
@@ -182,7 +182,7 @@ impl Curl {
                 _ = &mut abort_rx => {
                     break;
                 }
-                _ = time::sleep(Duration::from_millis(1)), if !active_reqs.is_empty() => {}
+                () = time::sleep(Duration::from_millis(1)), if !active_reqs.is_empty() => {}
                 Some(request) = req_rx.recv() => {
                     if active_reqs.is_empty() {
                         next_token = 0;
@@ -214,7 +214,7 @@ impl Curl {
                 handle
                     .set_token(*next_token)
                     .map_err(|e| StatsigErr::NetworkError(e.to_string()))?;
-                handles.insert(*next_token, ActiveRequest { handle, request });
+                handles.insert(*next_token, ActiveRequest { request, handle });
                 *next_token = next_token.wrapping_add(1);
                 Ok(())
             }
@@ -367,7 +367,7 @@ fn construct_easy_request(
 
     if let Some(additional_headers) = &args.headers {
         for (key, value) in additional_headers {
-            headers.append(&format!("{}: {}", key, value))?;
+            headers.append(&format!("{key}: {value}"))?;
         }
     }
     easy.http_headers(headers)?;
@@ -375,7 +375,7 @@ fn construct_easy_request(
     if let Some(params) = &args.query_params {
         let query_string = params
             .iter()
-            .map(|(k, v)| format!("{}={}", k, v))
+            .map(|(k, v)| format!("{k}={v}"))
             .collect::<Vec<_>>()
             .join("&");
         easy.url(&format!("{}?{}", args.url, query_string))?;

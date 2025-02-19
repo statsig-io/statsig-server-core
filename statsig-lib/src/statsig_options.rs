@@ -44,11 +44,13 @@ pub struct StatsigOptions {
 }
 
 impl StatsigOptions {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     // The builder method for more complex initialization
+    #[must_use]
     pub fn builder() -> StatsigOptionsBuilder {
         StatsigOptionsBuilder::default()
     }
@@ -60,22 +62,26 @@ pub struct StatsigOptionsBuilder {
 }
 
 impl StatsigOptionsBuilder {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     // Specs
 
+    #[must_use]
     pub fn specs_url(mut self, specs_url: Option<String>) -> Self {
         self.inner.specs_url = specs_url;
         self
     }
 
+    #[must_use]
     pub fn specs_adapter(mut self, specs_adapter: Option<Arc<dyn SpecsAdapter>>) -> Self {
         self.inner.specs_adapter = specs_adapter;
         self
     }
 
+    #[must_use]
     pub fn specs_sync_interval_ms(mut self, specs_sync_interval_ms: Option<u32>) -> Self {
         self.inner.specs_sync_interval_ms = specs_sync_interval_ms;
         self
@@ -83,16 +89,19 @@ impl StatsigOptionsBuilder {
 
     // Event Logging
 
+    #[must_use]
     pub fn log_event_url(mut self, log_event_url: Option<String>) -> Self {
         self.inner.log_event_url = log_event_url;
         self
     }
 
+    #[must_use]
     pub fn disable_all_logging(mut self, disable_all_logging: Option<bool>) -> Self {
         self.inner.disable_all_logging = disable_all_logging;
         self
     }
 
+    #[must_use]
     pub fn event_logging_adapter(
         mut self,
         event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,
@@ -101,6 +110,7 @@ impl StatsigOptionsBuilder {
         self
     }
 
+    #[must_use]
     pub fn event_logging_flush_interval_ms(
         mut self,
         event_logging_flush_interval_ms: Option<u32>,
@@ -109,6 +119,7 @@ impl StatsigOptionsBuilder {
         self
     }
 
+    #[must_use]
     pub fn event_logging_max_queue_size(
         mut self,
         event_logging_max_queue_size: Option<u32>,
@@ -119,21 +130,25 @@ impl StatsigOptionsBuilder {
 
     // ID Lists
 
+    #[must_use]
     pub fn enable_id_lists(mut self, enable_id_lists: Option<bool>) -> Self {
         self.inner.enable_id_lists = enable_id_lists;
         self
     }
 
+    #[must_use]
     pub fn id_lists_url(mut self, id_lists_url: Option<String>) -> Self {
         self.inner.id_lists_url = id_lists_url;
         self
     }
 
+    #[must_use]
     pub fn id_lists_adapter(mut self, id_lists_adapter: Option<Arc<dyn IdListsAdapter>>) -> Self {
         self.inner.id_lists_adapter = id_lists_adapter;
         self
     }
 
+    #[must_use]
     pub fn id_lists_sync_interval_ms(mut self, id_lists_sync_interval_ms: Option<u32>) -> Self {
         self.inner.id_lists_sync_interval_ms = id_lists_sync_interval_ms;
         self
@@ -141,11 +156,13 @@ impl StatsigOptionsBuilder {
 
     // Other
 
+    #[must_use]
     pub fn environment(mut self, environment: Option<String>) -> Self {
         self.inner.environment = environment;
         self
     }
 
+    #[must_use]
     pub fn output_log_level(mut self, output_log_level: Option<u32>) -> Self {
         if let Some(level) = output_log_level {
             self.inner.output_log_level = Some(LogLevel::from(level));
@@ -153,16 +170,19 @@ impl StatsigOptionsBuilder {
         self
     }
 
+    #[must_use]
     pub fn service_name(mut self, service_name: Option<String>) -> Self {
         self.inner.service_name = service_name;
         self
     }
 
+    #[must_use]
     pub fn fallback_to_statsig_api(mut self, fallback_to_statsig_api: Option<bool>) -> Self {
         self.inner.fallback_to_statsig_api = fallback_to_statsig_api;
         self
     }
 
+    #[must_use]
     pub fn build(self) -> StatsigOptions {
         self.inner
     }
@@ -227,5 +247,5 @@ fn get_if_set<T>(s: &Option<T>) -> Option<&str> {
 }
 
 fn get_display_name<T: fmt::Debug>(s: &Option<T>) -> Option<String> {
-    s.as_ref().map(|st| format!("{:?}", st))
+    s.as_ref().map(|st| format!("{st:?}"))
 }

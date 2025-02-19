@@ -24,12 +24,13 @@ impl EvaluationDetails {
         override_reason: &str,
     ) -> Self {
         Self {
-            reason: format!("{}:Recognized", override_reason),
+            reason: format!("{override_reason}:Recognized"),
             lcut: Some(spec_store_data.values.time),
             received_at: spec_store_data.time_received_at,
         }
     }
 
+    #[must_use]
     pub fn unrecognized_no_data() -> Self {
         Self {
             reason: SpecsSource::NoValues.to_string(),
@@ -38,9 +39,10 @@ impl EvaluationDetails {
         }
     }
 
+    #[must_use]
     pub fn error(sub_reason: &str) -> Self {
         Self {
-            reason: format!("Error:{}", sub_reason),
+            reason: format!("Error:{sub_reason}"),
             lcut: None,
             received_at: None,
         }

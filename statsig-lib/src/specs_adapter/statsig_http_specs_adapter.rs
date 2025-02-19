@@ -31,6 +31,7 @@ pub struct StatsigHttpSpecsAdapter {
 }
 
 impl StatsigHttpSpecsAdapter {
+    #[must_use]
     pub fn new(
         sdk_key: &str,
         specs_url: Option<&String>,
@@ -50,9 +51,9 @@ impl StatsigHttpSpecsAdapter {
             network: NetworkClient::new(sdk_key, Some(headers)),
             specs_url: construct_specs_url(sdk_key, specs_url),
             fallback_url,
-            sync_interval_duration: Duration::from_millis(
-                sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS) as u64,
-            ),
+            sync_interval_duration: Duration::from_millis(u64::from(
+                sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS),
+            )),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             shutdown_notify: Arc::new(Notify::new()),
         }
@@ -102,12 +103,11 @@ impl StatsigHttpSpecsAdapter {
     }
 
     pub async fn run_background_sync(weak_self: &Weak<Self>) {
-        let strong_self = match weak_self.upgrade() {
-            Some(s) => s,
-            None => {
-                log_e!(TAG, "No strong reference found");
-                return;
-            }
+        let strong_self = if let Some(s) = weak_self.upgrade() {
+            s
+        } else {
+            log_e!(TAG, "No strong reference found");
+            return;
         };
 
         let specs_info = match strong_self.listener.read() {
@@ -132,13 +132,12 @@ impl StatsigHttpSpecsAdapter {
 
         let response = self.fetch_specs_from_network(current_specs_info).await;
 
-        let data = match response {
-            Some(r) => r,
-            None => {
-                let msg = "No specs result from network";
-                log_e!(TAG, "{}", msg);
-                return Err(StatsigErr::NetworkError(msg.to_string()));
-            }
+        let data = if let Some(r) = response {
+            r
+        } else {
+            let msg = "No specs result from network";
+            log_e!(TAG, "{}", msg);
+            return Err(StatsigErr::NetworkError(msg.to_string()));
         };
 
         let update = SpecsUpdate {
@@ -201,14 +200,14 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
         statsig_runtime.spawn("http_specs_bg_sync", move |rt_shutdown_notify| async move {
             loop {
                 tokio::select! {
-                    _ = sleep(interval_duration) => {
+                    () = sleep(interval_duration) => {
                         Self::run_background_sync(&weak_self).await;
                     }
-                    _ = rt_shutdown_notify.notified() => {
+                    () = rt_shutdown_notify.notified() => {
                         log_d!(TAG, "Runtime shutdown. Shutting down specs background sync");
                         break;
                     },
-                    _ = shutdown_notify.notified() => {
+                    () = shutdown_notify.notified() => {
                         log_d!(TAG, "Shutting down specs background sync");
                         break;
                     }
@@ -239,13 +238,13 @@ fn construct_specs_url(sdk_key: &str, spec_url: Option<&String>) -> String {
         _ => DEFAULT_SPECS_URL,
     };
 
-    format!("{}/{}.json", base, sdk_key)
+    format!("{base}/{sdk_key}.json")
 }
 
 // only fallback when the spec_url is not the DEFAULT_SPECS_URL
 fn construct_fallback_specs_url(sdk_key: &str, spec_url: Option<&String>) -> Option<String> {
     match spec_url {
-        Some(u) if u != DEFAULT_SPECS_URL => Some(format!("{}/{}.json", u, sdk_key)),
+        Some(u) if u != DEFAULT_SPECS_URL => Some(format!("{u}/{sdk_key}.json")),
         _ => None,
     }
 }

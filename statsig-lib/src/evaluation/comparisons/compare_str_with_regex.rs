@@ -17,7 +17,7 @@ mod tests {
         let mut right = dyn_value!("banana");
         right.compile_regex();
 
-        assert!(compare_str_with_regex(&left, &right))
+        assert!(compare_str_with_regex(&left, &right));
     }
 
     #[test]
@@ -27,6 +27,6 @@ mod tests {
         let mut right = dyn_value!(r#"version":\s*"4\.8\.\d+"#); // Major.Minor == 4.8
         right.compile_regex();
 
-        assert!(compare_str_with_regex(&left, &right))
+        assert!(compare_str_with_regex(&left, &right));
     }
 }

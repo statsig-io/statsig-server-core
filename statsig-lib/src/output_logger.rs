@@ -66,7 +66,7 @@ pub fn initialize_simple_output_logger(level: &Option<LogLevel>) {
     };
 
     match simple_logger::init_with_level(final_level) {
-        Ok(_) => {}
+        Ok(()) => {}
         Err(_) => {
             log::set_max_level(final_level.to_level_filter());
         }

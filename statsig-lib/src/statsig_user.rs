@@ -17,6 +17,7 @@ pub struct StatsigUserBuilder {
 }
 
 impl StatsigUserBuilder {
+    #[must_use]
     pub fn new_with_user_id(user_id: String) -> Self {
         Self {
             user_id: Some(dyn_value!(user_id)),
@@ -24,6 +25,7 @@ impl StatsigUserBuilder {
         }
     }
 
+    #[must_use]
     pub fn new_with_custom_ids(custom_ids: HashMap<String, String>) -> Self {
         Self {
             custom_ids: Some(convert_str_map_to_dyn_values(custom_ids)),
@@ -189,6 +191,7 @@ pub struct StatsigUser {
 }
 
 impl StatsigUser {
+    #[must_use]
     pub fn with_user_id(user_id: String) -> Self {
         StatsigUser {
             user_id: Some(dyn_value!(user_id)),
@@ -196,6 +199,7 @@ impl StatsigUser {
         }
     }
 
+    #[must_use]
     pub fn with_custom_ids(custom_ids: HashMap<String, String>) -> Self {
         StatsigUser {
             custom_ids: Some(convert_str_map_to_dyn_values(custom_ids)),

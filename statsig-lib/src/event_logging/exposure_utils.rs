@@ -49,7 +49,7 @@ pub(crate) fn make_exposure_key(
     rule_id: Option<&String>,
     additional_values: Option<Vec<String>>,
 ) -> String {
-    let empty_str = "".to_string();
+    let empty_str = String::new();
 
     let user_id = user
         .user_id
@@ -57,7 +57,7 @@ pub(crate) fn make_exposure_key(
         .and_then(|id| id.string_value.as_ref())
         .unwrap_or(&empty_str);
 
-    let mut custom_ids = "".to_string();
+    let mut custom_ids = String::new();
     if let Some(ids) = &user.custom_ids {
         let values: Vec<String> = ids
             .values()
@@ -72,8 +72,5 @@ pub(crate) fn make_exposure_key(
         None => String::new(),
     };
 
-    format!(
-        "{}|{}|{}|{}|{}",
-        spec_name, rid, user_id, custom_ids, additional
-    )
+    format!("{spec_name}|{rid}|{user_id}|{custom_ids}|{additional}")
 }

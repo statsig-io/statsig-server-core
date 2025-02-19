@@ -29,8 +29,8 @@ impl<'de> Deserialize<'de> for DynamicReturnable {
         let json_value = from_value(value.clone()).ok();
 
         Ok(DynamicReturnable {
-            string_value,
             value,
+            string_value,
             json_value,
         })
     }

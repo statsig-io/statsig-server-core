@@ -21,8 +21,8 @@ fn test_set_values_and_get_config_num_value() {
     };
 
     match spec_store.set_values(specs_update) {
-        Ok(_) => println!("set_values succeeded"),
-        Err(e) => println!("set_values failed: {:?}", e),
+        Ok(()) => println!("set_values succeeded"),
+        Err(e) => println!("set_values failed: {e:?}"),
     }
 
     assert_eq!(

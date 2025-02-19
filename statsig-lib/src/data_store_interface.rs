@@ -19,7 +19,7 @@ impl Display for RequestPath {
             RequestPath::RulesetsV2 => "/v2/download_config_specs",
             RequestPath::RulesetsV1 => "/v1/download_config_specs",
         };
-        write!(f, "{}", value)
+        write!(f, "{value}")
     }
 }
 
@@ -34,7 +34,7 @@ impl Display for CompressFormat {
             CompressFormat::PlainText => "plain_text",
             CompressFormat::Gzip => "gzip",
         };
-        write!(f, "{}", value)
+        write!(f, "{value}")
     }
 }
 
@@ -52,6 +52,7 @@ pub trait DataStoreTrait: Send + Sync {
     async fn support_polling_updates_for(&self, path: RequestPath) -> bool;
 }
 
+#[must_use]
 pub fn get_data_adapter_dcs_key(hashed_key: &str) -> String {
     get_data_adapter_key(
         RequestPath::RulesetsV2,
@@ -60,10 +61,11 @@ pub fn get_data_adapter_dcs_key(hashed_key: &str) -> String {
     )
 }
 
+#[must_use]
 pub fn get_data_adapter_key(
     path: RequestPath,
     compress: CompressFormat,
     hashed_key: &str,
 ) -> String {
-    format!("statsig|{}|{}|{}", path, compress, hashed_key)
+    format!("statsig|{path}|{compress}|{hashed_key}")
 }

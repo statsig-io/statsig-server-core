@@ -28,7 +28,7 @@ mod tests {
         let left = DynamicValue::for_timestamp_evaluation(now);
         let right = DynamicValue::for_timestamp_evaluation(now + 1);
 
-        assert!(compare_time(&left, &right, "before"))
+        assert!(compare_time(&left, &right, "before"));
     }
 
     #[test]
@@ -37,6 +37,6 @@ mod tests {
         let left = DynamicValue::for_timestamp_evaluation(now + 1);
         let right = DynamicValue::for_timestamp_evaluation(now);
 
-        assert!(compare_time(&left, &right, "after"))
+        assert!(compare_time(&left, &right, "after"));
     }
 }

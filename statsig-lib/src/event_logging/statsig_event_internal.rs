@@ -82,7 +82,7 @@ fn secondary_exposure_keys_to_expos(
                 let key = format!("{}.{}.{}", expo.gate, expo.rule_id, expo.gate_value);
                 if !seen.contains(&key) {
                     seen.insert(key);
-                    filtered.push(expo)
+                    filtered.push(expo);
                 }
             }
 

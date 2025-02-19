@@ -83,7 +83,7 @@ impl SDKErrorsObserver {
 impl OpsStatsEventObserver for SDKErrorsObserver {
     async fn handle_event(&self, event: OpsStatsEvent) {
         if let OpsStatsEvent::SDKErrorEvent(e) = event {
-            self.handle_eb_event(e).await
+            self.handle_eb_event(e).await;
         }
     }
 }

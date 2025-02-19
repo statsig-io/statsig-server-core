@@ -29,6 +29,7 @@ pub struct NetworkClient {
 }
 
 impl NetworkClient {
+    #[must_use]
     pub fn new(sdk_key: &str, headers: Option<HashMap<String, String>>) -> Self {
         NetworkClient {
             headers: headers.unwrap_or_default(),
@@ -144,6 +145,6 @@ fn get_error_message_for_status(status: u16) -> String {
         503 => "Service Unavailable".to_string(),
         504 => "Gateway Timeout".to_string(),
         0 => "Unknown Error".to_string(),
-        _ => format!("HTTP Error {}", status),
+        _ => format!("HTTP Error {status}"),
     }
 }

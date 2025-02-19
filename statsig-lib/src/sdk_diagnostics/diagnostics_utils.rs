@@ -18,10 +18,11 @@ impl DiagnosticsUtils {
                 metadata.insert("markers".to_string(), markers_json);
                 Ok(metadata)
             }
-            Err(err) => Err(format!("Failed to serialize markers: {}", err)),
+            Err(err) => Err(format!("Failed to serialize markers: {err}")),
         }
     }
 
+    #[must_use]
     pub fn should_sample(sample_rate: f64) -> bool {
         let mut rng = rand::thread_rng();
         let value: f64 = rng.gen::<f64>();

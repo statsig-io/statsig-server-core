@@ -86,7 +86,7 @@ fn apply_sampling_group<'a>(
     config: &HashMap<String, CMABGroupConfig>,
 ) -> bool {
     let mut total_records: f64 = 0.0;
-    for group in cmab.groups.iter() {
+    for group in &cmab.groups {
         let cur_count = match config.get(&group.id) {
             Some(config_for_group) => config_for_group.records + 1,
             None => 1,
@@ -97,7 +97,7 @@ fn apply_sampling_group<'a>(
     let mut sum: f64 = 0.0;
     let mut rng = rand::thread_rng();
     let value: f64 = rng.gen::<f64>();
-    for group in cmab.groups.iter() {
+    for group in &cmab.groups {
         let cur_count = match config.get(&group.id) {
             Some(config_for_group) => config_for_group.records + 1,
             None => 1,
@@ -128,7 +128,7 @@ fn apply_best_group<'a>(
     };
     let mut best_group = &cmab.groups[0];
     let mut has_score = false;
-    for group in cmab.groups.iter() {
+    for group in &cmab.groups {
         let score = match get_cmab_score_for_group(ctx, group, config) {
             Some(s) => s,
             None => continue,
@@ -167,7 +167,7 @@ fn get_cmab_score_for_group(
 
     score += config_for_group.intercept;
     score += config_for_group.alpha;
-    for (key, value) in weights_categorical.iter() {
+    for (key, value) in weights_categorical {
         let user_value = ctx.user.get_user_value(&Some(DynamicString::from(key)));
         let user_value_string = match user_value {
             Some(v) => match &v.string_value {
@@ -183,7 +183,7 @@ fn get_cmab_score_for_group(
         score += weight;
     }
 
-    for (key, value) in weights_numerical.iter() {
+    for (key, value) in weights_numerical {
         let user_value = ctx.user.get_user_value(&Some(DynamicString::from(key)));
         let user_value_float = match user_value {
             Some(v) => match v.float_value {

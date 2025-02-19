@@ -27,9 +27,10 @@ pub struct StatsigLocalFileEventLoggingAdapter {
 }
 
 impl StatsigLocalFileEventLoggingAdapter {
+    #[must_use]
     pub fn new(sdk_key: &str, output_directory: &str, log_event_url: Option<String>) -> Self {
         let hashed_key = djb2(sdk_key);
-        let file_path = format!("{}/{}_events.json", output_directory, hashed_key);
+        let file_path = format!("{output_directory}/{hashed_key}_events.json");
 
         Self {
             file_path,
@@ -39,12 +40,11 @@ impl StatsigLocalFileEventLoggingAdapter {
 
     pub async fn send_pending_events(&self) -> Result<(), StatsigErr> {
         log_d!(TAG, "Sending pending events...");
-        let current_requests = match read_and_clear_file(&self.file_path)? {
-            Some(requests) => requests,
-            None => {
-                log_d!(TAG, "No events found");
-                return Ok(());
-            }
+        let current_requests = if let Some(requests) = read_and_clear_file(&self.file_path)? {
+            requests
+        } else {
+            log_d!(TAG, "No events found");
+            return Ok(());
         };
 
         let processed_events = process_events(&current_requests);
@@ -152,23 +152,23 @@ fn create_merge_key(event: &StatsigEventInternal) -> String {
     let mut metadata_parts = Vec::new();
     if let Some(metadata) = &event.event_data.metadata {
         if let Some(name) = metadata.get("gate") {
-            metadata_parts.push(format!("g.{}|", name));
+            metadata_parts.push(format!("g.{name}|"));
         }
 
         if let Some(name) = metadata.get("config") {
-            metadata_parts.push(format!("c.{}|", name));
+            metadata_parts.push(format!("c.{name}|"));
         }
 
         if let Some(name) = metadata.get("parameterName") {
-            metadata_parts.push(format!("pn.{}|", name));
+            metadata_parts.push(format!("pn.{name}|"));
         }
 
         if let Some(name) = metadata.get("allocatedExperiment") {
-            metadata_parts.push(format!("ae.{}|", name));
+            metadata_parts.push(format!("ae.{name}|"));
         }
 
         if let Some(rule_id) = metadata.get("ruleID") {
-            metadata_parts.push(format!("r.{}|", rule_id));
+            metadata_parts.push(format!("r.{rule_id}|"));
         }
     }
 
@@ -206,7 +206,7 @@ impl EventLoggingAdapter for StatsigLocalFileEventLoggingAdapter {
             .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
         (*lock)
-            .write_all(format!("{}\n", json).as_bytes())
+            .write_all(format!("{json}\n").as_bytes())
             .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
         Ok(true)

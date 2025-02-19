@@ -31,6 +31,7 @@ pub struct StatsigLocalOverrideAdapter {
 }
 
 impl StatsigLocalOverrideAdapter {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }

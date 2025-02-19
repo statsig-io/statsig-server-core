@@ -43,7 +43,13 @@ use crate::{
     OpsStatsEventObserver, OverrideAdapter, SamplingProcessor, SpecsAdapter, SpecsInfo,
     SpecsSource, SpecsUpdateListener, StatsigHttpIdListsAdapter, StatsigUser,
 };
-use crate::{log_error_to_statsig_and_console, statsig_core_api_options::*};
+use crate::{
+    log_error_to_statsig_and_console,
+    statsig_core_api_options::{
+        DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
+        LayerEvaluationOptions,
+    },
+};
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -175,11 +181,11 @@ impl Statsig {
             .start(&self.statsig_runtime)
             .await
         {
-            Ok(_) => Ok(()),
+            Ok(()) => Ok(()),
             Err(e) => {
                 self.spec_store.set_source(SpecsSource::NoValues);
                 success = false;
-                error_message = Some(format!("Failed to start specs adapter: {}", e));
+                error_message = Some(format!("Failed to start specs adapter: {e}"));
                 Err(e)
             }
         };
@@ -190,10 +196,10 @@ impl Statsig {
                 .start(&self.statsig_runtime, self.spec_store.clone())
                 .await
             {
-                Ok(_) => {}
+                Ok(()) => {}
                 Err(e) => {
                     success = false;
-                    error_message.get_or_insert_with(|| format!("Failed to sync ID lists: {}", e));
+                    error_message.get_or_insert_with(|| format!("Failed to sync ID lists: {e}"));
                 }
             }
             if let Err(e) = adapter
@@ -201,7 +207,7 @@ impl Statsig {
                 .schedule_background_sync(&self.statsig_runtime)
                 .await
             {
-                log_w!(TAG, "Failed to schedule idlist background job {}", e)
+                log_w!(TAG, "Failed to schedule idlist background job {}", e);
             }
         }
 
@@ -279,7 +285,7 @@ impl Statsig {
 
         let start = Instant::now();
         let shutdown_result = tokio::select! {
-            _ = tokio::time::sleep(timeout) => {
+            () = tokio::time::sleep(timeout) => {
                 log_w!(TAG, "Statsig shutdown timed out. {}", start.elapsed().as_millis());
                 Err(StatsigErr::ShutdownTimeout)
             }
@@ -1160,7 +1166,7 @@ impl Statsig {
             let env_map = HashMap::from([("tier".to_string(), dyn_value!(default_env.as_str()))]);
 
             if let Ok(mut fallback_env) = self.fallback_environment.lock() {
-                *fallback_env = Some(env_map)
+                *fallback_env = Some(env_map);
             }
         }
     }

@@ -132,7 +132,7 @@ fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEva
     let mut exposures = Vec::new();
     let mut seen = HashSet::new();
 
-    for exposure in result.secondary_exposures.iter() {
+    for exposure in &result.secondary_exposures {
         let key = format!(
             "{}:{}:{}",
             exposure.gate, exposure.gate_value, exposure.rule_id
@@ -146,11 +146,11 @@ fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEva
 
     let rule_id = match result.rule_id {
         Some(rule_id) => rule_id.clone(),
-        None => "".to_string(),
+        None => String::new(),
     };
 
     let result_rule_id = match &result.rule_id_suffix {
-        Some(suffix) => format!("{}:{}", rule_id, suffix),
+        Some(suffix) => format!("{rule_id}:{suffix}"),
         None => rule_id.clone(),
     };
 

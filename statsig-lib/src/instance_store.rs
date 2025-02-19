@@ -130,6 +130,7 @@ impl Default for InstanceStore {
 }
 
 impl InstanceStore {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             instances: RwLock::new(HashMap::new()),
@@ -176,37 +177,34 @@ impl InstanceStore {
     }
 
     pub fn get<T: BoxableInstance>(&self, id: &str) -> Option<Arc<T>> {
-        let instances = match self.instances.read().ok() {
-            Some(instances) => instances,
-            None => {
-                log_e!(TAG, "Instance store is poisoned");
-                return None;
-            }
+        let instances = if let Ok(instances) = self.instances.read() {
+            instances
+        } else {
+            log_e!(TAG, "Instance store is poisoned");
+            return None;
         };
 
-        let found = match instances.get(id) {
-            Some(inst) => inst,
-            None => {
-                log_d!(
-                    TAG,
-                    "{} instance not found for ID {}",
-                    T::get_display_value_static(),
-                    id
-                );
-                return None;
-            }
+        let found = if let Some(inst) = instances.get(id) {
+            inst
+        } else {
+            log_d!(
+                TAG,
+                "{} instance not found for ID {}",
+                T::get_display_value_static(),
+                id
+            );
+            return None;
         };
 
-        match T::from_box(found) {
-            Some(inst) => Some(inst),
-            None => {
-                log_e!(
-                    TAG,
-                    "Invalid box type for {}",
-                    T::get_display_value_static()
-                );
-                None
-            }
+        if let Some(inst) = T::from_box(found) {
+            Some(inst)
+        } else {
+            log_e!(
+                TAG,
+                "Invalid box type for {}",
+                T::get_display_value_static()
+            );
+            None
         }
     }
 

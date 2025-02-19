@@ -29,7 +29,7 @@ impl StatsigCustomizedSpecsAdapter {
         hashing: &HashUtil,
     ) -> Self {
         let mut adapters: Vec<Arc<dyn SpecsAdapter>> = Vec::new();
-        for config in configs.iter() {
+        for config in &configs {
             match config.adapter_type {
                 SpecsAdapterType::NetworkGrpcWebsocket => {
                     if let Some(adapter) = Self::create_grpc_adapter(sdk_key, config) {
@@ -43,7 +43,7 @@ impl StatsigCustomizedSpecsAdapter {
                         config.specs_url.as_ref(),
                         options.fallback_to_statsig_api.unwrap_or(false),
                         options.specs_sync_interval_ms,
-                    )))
+                    )));
                 }
                 SpecsAdapterType::DataStore => match options.data_store.clone() {
                     Some(data_store) => {
@@ -149,14 +149,14 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
                 .schedule_background_sync(statsig_runtime)
                 .await
             {
-                Ok(_) => return Ok(()),
+                Ok(()) => return Ok(()),
                 Err(_) => {
                     // Carry on and try  next adapter
                     log_i!(
                         TAG,
                         "Skipping schedule bg sync for {}",
                         adapter.get_type_name()
-                    )
+                    );
                 }
             }
         }

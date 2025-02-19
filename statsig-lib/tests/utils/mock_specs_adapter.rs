@@ -27,7 +27,7 @@ impl MockSpecsAdapter {
 
     pub fn throwing() -> Self {
         Self {
-            json_data_path: "".to_string(),
+            json_data_path: String::new(),
             should_throw: true,
             delay_ms: None,
             listener: RwLock::new(None),

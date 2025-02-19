@@ -68,7 +68,7 @@ async fn test_request_args() {
     assert!(request
         .url
         .to_string()
-        .contains(format!("/v2/download_config_specs/{}.json", SDK_KEY).as_str()));
+        .contains(format!("/v2/download_config_specs/{SDK_KEY}.json").as_str()));
 
     let headers = request.headers.clone();
     assert_eq!(headers.get("Accept-Encoding").unwrap(), "gzip");

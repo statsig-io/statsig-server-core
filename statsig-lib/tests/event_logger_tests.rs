@@ -88,7 +88,7 @@ async fn test_limit_flush_awaiting() {
     statsig.initialize().await.unwrap();
 
     for i in 0..100 {
-        let user = StatsigUser::with_user_id(format!("user_{}", i));
+        let user = StatsigUser::with_user_id(format!("user_{i}"));
         statsig.log_event(&user, "my_event", None, None);
     }
 

@@ -23,9 +23,10 @@ impl Default for RequestArgs {
 }
 
 impl RequestArgs {
+    #[must_use]
     pub fn new() -> Self {
         RequestArgs {
-            url: "".to_string(),
+            url: String::new(),
             body: None,
             retries: 0,
             headers: None,

@@ -28,6 +28,7 @@ pub struct StatsigHttpEventLoggingAdapter {
 }
 
 impl StatsigHttpEventLoggingAdapter {
+    #[must_use]
     pub fn new(sdk_key: &str, log_event_url: Option<&String>) -> Self {
         let headers = StatsigMetadata::get_constant_request_headers(sdk_key);
 
@@ -62,7 +63,7 @@ impl StatsigHttpEventLoggingAdapter {
                 "statsig-event-count".to_string(),
                 request.event_count.to_string(),
             ),
-            ("Content-Encoding".to_owned(), compression_format.to_owned()),
+            ("Content-Encoding".to_owned(), compression_format.clone()),
             ("Content-Type".to_owned(), "application/json".to_owned()),
         ]);
 

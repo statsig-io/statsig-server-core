@@ -75,6 +75,7 @@ pub struct Marker {
 }
 
 impl Marker {
+    #[must_use]
     pub fn new(key: KeyType, action: ActionType, step: Option<StepType>, timestamp: u64) -> Self {
         Self {
             key,
@@ -95,26 +96,31 @@ impl Marker {
         }
     }
 
+    #[must_use]
     pub fn with_is_success(mut self, success: bool) -> Self {
         self.success = Some(success);
         self
     }
 
+    #[must_use]
     pub fn with_status_code(mut self, status_code: u16) -> Self {
         self.status_code = Some(status_code);
         self
     }
 
+    #[must_use]
     pub fn with_attempt(mut self, attempt: u16) -> Self {
         self.attempt = Some(attempt);
         self
     }
 
+    #[must_use]
     pub fn with_message(mut self, message: String) -> Self {
         self.message = Some(message);
         self
     }
 
+    #[must_use]
     pub fn with_eval_details(mut self, details: EvaluationDetails) -> Self {
         self.evaluation_details = Some(details);
         self

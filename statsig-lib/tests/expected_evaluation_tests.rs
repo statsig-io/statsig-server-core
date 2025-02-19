@@ -26,7 +26,7 @@ async fn test_string_comparisons_passes() {
 
     let user = StatsigUser::with_custom_ids(HashMap::from([
         ("companyID".into(), "123".into()),
-        ("stableID".into(), "".into()),
+        ("stableID".into(), String::new()),
     ]));
 
     let gate_name = "test_string_comparisons";
@@ -43,7 +43,7 @@ async fn test_nested_gate_condition_passes() {
 
     let user = StatsigUser::with_custom_ids(HashMap::from([
         ("companyID".into(), "123".into()),
-        ("stableID".into(), "".into()),
+        ("stableID".into(), String::new()),
     ]));
 
     let gate_name = "test_nested_gate_condition";
@@ -60,7 +60,7 @@ async fn test_time_before_passes() {
 
     let user = StatsigUser::with_custom_ids(HashMap::from([
         ("companyID".into(), "123".into()),
-        ("stableID".into(), "".into()),
+        ("stableID".into(), String::new()),
     ]));
 
     let gate_name = "test_time_before";
@@ -77,7 +77,7 @@ async fn test_segment_condition_fails() {
 
     let user = StatsigUser::with_custom_ids(HashMap::from([
         ("companyID".into(), "123".into()),
-        ("stableID".into(), "".into()),
+        ("stableID".into(), String::new()),
     ]));
 
     let gate_name = "test_segment_condition";
@@ -94,7 +94,7 @@ async fn test_holdout_default_value_gate_fails() {
 
     let user = StatsigUser::with_custom_ids(HashMap::from([
         ("companyID".into(), "123".into()),
-        ("stableID".into(), "".into()),
+        ("stableID".into(), String::new()),
     ]));
 
     let gate_name = "test_holdout_default_value_gate";

@@ -50,7 +50,7 @@ async fn main() {
 
     let start = Instant::now();
     for i in 0..10000 {
-        let user = StatsigUser::with_user_id(format!("test_user_{}", i));
+        let user = StatsigUser::with_user_id(format!("test_user_{i}"));
         let gate = statsig.check_gate(&user, "test_public");
         assert!(gate);
     }
@@ -79,7 +79,7 @@ async fn test_no_flushing_on_main() {
 
     let start = Instant::now();
     for i in 0..15000 {
-        let user = StatsigUser::with_user_id(format!("test_user_{}", i));
+        let user = StatsigUser::with_user_id(format!("test_user_{i}"));
         let gate = statsig.check_gate(&user, "test_public");
         assert!(gate);
     }
@@ -104,7 +104,7 @@ async fn test_all_events_get_flushed() {
     statsig.initialize().await.unwrap();
 
     for i in 0..5000 {
-        let user = StatsigUser::with_user_id(format!("test_user_{}", i));
+        let user = StatsigUser::with_user_id(format!("test_user_{i}"));
         let gate = statsig.check_gate(&user, "test_public");
         assert!(gate);
     }

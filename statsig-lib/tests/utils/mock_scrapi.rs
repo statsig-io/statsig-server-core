@@ -56,7 +56,7 @@ impl EndpointStub {
     pub fn with_endpoint(endpoint: Endpoint) -> EndpointStub {
         EndpointStub {
             endpoint,
-            response: "".to_string(),
+            response: String::new(),
             status: 200,
             delay_ms: 0,
             method: Method::GET,

@@ -24,6 +24,6 @@ async fn test_dynamic_config_getters() {
 
     let config = statsig.get_dynamic_config(&user, "big_number");
 
-    let expected = 0.9999999999999991;
+    let expected = 0.999_999_999_999_999_1;
     assert_eq!(config.get_f64("f64", 111f64), expected);
 }

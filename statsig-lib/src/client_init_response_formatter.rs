@@ -94,7 +94,7 @@ impl ClientInitResponseFormatter {
             .as_ref()
             .unwrap_or(&HashAlgorithm::Djb2);
 
-        for (name, spec) in data.values.feature_gates.iter() {
+        for (name, spec) in &data.values.feature_gates {
             if spec.entity == "segment" || spec.entity == "holdout" {
                 continue;
             }
@@ -116,7 +116,7 @@ impl ClientInitResponseFormatter {
         }
 
         let mut dynamic_configs = HashMap::new();
-        for (name, spec) in data.values.dynamic_configs.iter() {
+        for (name, spec) in &data.values.dynamic_configs {
             if should_filter_spec_for_app(spec, &app_id, &options.client_sdk_key) {
                 continue;
             }

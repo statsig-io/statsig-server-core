@@ -44,14 +44,14 @@ impl HashSetWithTTL {
                 set.insert(key);
                 Ok(())
             }
-            Err(e) => Err(format!("Failed to acquire lock: {}", e)),
+            Err(e) => Err(format!("Failed to acquire lock: {e}")),
         }
     }
 
     pub fn contains(&self, key: &str) -> Result<bool, String> {
         match self.set.lock() {
             Ok(set) => Ok(set.contains(key)),
-            Err(e) => Err(format!("Failed to acquire lock: {}", e)),
+            Err(e) => Err(format!("Failed to acquire lock: {e}")),
         }
     }
 
@@ -65,7 +65,7 @@ impl HashSetWithTTL {
                 set.clear();
                 Ok(())
             }
-            Err(e) => Err(format!("Failed to acquire lock: {}", e)),
+            Err(e) => Err(format!("Failed to acquire lock: {e}")),
         }
     }
 
@@ -77,7 +77,7 @@ impl HashSetWithTTL {
     ) {
         loop {
             tokio::select! {
-                _ = sleep(interval_duration) => {
+                () = sleep(interval_duration) => {
                     if let Some(set) = weak_instance.upgrade() {
                         if let Err(e) = Self::reset(&set) {
                             log_d!(TAG, "Failed to reset HashSetWithTTL: {}", e);
@@ -86,11 +86,11 @@ impl HashSetWithTTL {
                         break;
                     }
                 }
-                _ = rt_shutdown_notify.notified() => {
+                () = rt_shutdown_notify.notified() => {
                     log_d!(TAG, "Runtime shutdown. Exiting hashset with ttl worker.");
                     break;
                 }
-                _ = shutdown_notify.notified() => {
+                () = shutdown_notify.notified() => {
                     log_d!(TAG, "Shutdown signal received. Exiting hashset with ttl worker.");
                     break;
                 }

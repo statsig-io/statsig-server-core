@@ -18,7 +18,7 @@ pub fn make_feature_gate(
 ) -> FeatureGate {
     let (value, rule_id, id_type) = match &evaluation {
         Some(e) => (e.value, e.base.rule_id.clone(), e.id_type.clone()),
-        None => (false, "default".into(), "".into()),
+        None => (false, "default".into(), String::new()),
     };
 
     FeatureGate {
@@ -42,7 +42,7 @@ fn extract_from_experiment_evaluation(
             e.id_type.clone(),
             e.group_name.clone(),
         ),
-        None => (HashMap::new(), "default".into(), "".into(), None),
+        None => (HashMap::new(), "default".into(), String::new(), None),
     }
 }
 
@@ -54,7 +54,7 @@ pub fn make_dynamic_config(
 ) -> DynamicConfig {
     let (value, rule_id, id_type) = match &evaluation {
         Some(e) => (e.value.clone(), e.base.rule_id.clone(), e.id_type.clone()),
-        None => (HashMap::new(), "default".into(), "".into()),
+        None => (HashMap::new(), "default".into(), String::new()),
     };
 
     DynamicConfig {

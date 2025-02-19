@@ -72,6 +72,7 @@ impl StatsigMetadata {
         }
     }
 
+    #[must_use]
     pub fn get_constant_request_headers(sdk_key: &str) -> HashMap<String, String> {
         let meta = Self::get_metadata();
 
@@ -83,6 +84,7 @@ impl StatsigMetadata {
         ])
     }
 
+    #[must_use]
     pub fn get_metadata() -> StatsigMetadata {
         match STATSIG_METADATA.read() {
             Ok(metadata) => metadata.clone(),
@@ -93,6 +95,7 @@ impl StatsigMetadata {
         }
     }
 
+    #[must_use]
     pub fn get_as_json() -> Value {
         json!(StatsigMetadata::get_metadata())
     }

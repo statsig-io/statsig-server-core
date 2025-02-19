@@ -60,7 +60,7 @@ impl StatsigExposure for LayerExposure {
                         allocated_experiment,
                     )
                 }
-                None => ("".into(), None, false, None),
+                None => (String::new(), None, false, None),
             };
 
         let mut metadata = get_metadata_with_details(self.evaluation_details);

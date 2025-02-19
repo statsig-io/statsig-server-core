@@ -48,7 +48,7 @@ async fn test_individual_gate_checks() {
     }
 
     let duration = start.elapsed();
-    println!("Result {}", result);
+    println!("Result {result}");
     println!("Duration {}", duration.as_secs_f64() * 1000.0);
 
     statsig.shutdown().await.unwrap();
@@ -62,7 +62,7 @@ async fn test_all_gate_checks() {
     let values = statsig.get_current_values().unwrap().values.clone();
 
     let all_start = Instant::now();
-    for (gate_name, _) in values.feature_gates.iter() {
+    for (gate_name, _) in &values.feature_gates {
         let start = Instant::now();
 
         let mut result = false;
@@ -83,8 +83,8 @@ async fn test_all_gate_checks() {
     // If you need only the sorted (bool, f64) pairs, you can map the sorted vector:
     let sorted_values: Vec<(String, (bool, f64))> = times_vec;
 
-    println!("Duration {:?}", sorted_values);
-    println!("All Duration {:?}", all_duration);
+    println!("Duration {sorted_values:?}");
+    println!("All Duration {all_duration:?}");
 }
 
 #[tokio::test]

@@ -13,6 +13,7 @@ pub struct StatsigBootstrapSpecsAdapter {
 const TAG: &str = stringify!(StatsigBootstrapSpecsAdapter);
 
 impl StatsigBootstrapSpecsAdapter {
+    #[must_use]
     pub fn new(data: String) -> Self {
         Self {
             data: RwLock::new(data),
@@ -147,7 +148,7 @@ mod tests {
     async fn test_set_data() {
         let statsig_rt = StatsigRuntime::get_runtime();
 
-        let adapter = Arc::new(StatsigBootstrapSpecsAdapter::new("".to_string()));
+        let adapter = Arc::new(StatsigBootstrapSpecsAdapter::new(String::new()));
 
         let listener = Arc::new(TestListener::new());
         adapter.initialize(listener.clone());

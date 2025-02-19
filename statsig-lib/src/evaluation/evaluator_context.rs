@@ -42,7 +42,7 @@ impl<'a> EvaluatorContext<'a> {
     }
 
     pub fn reset_result(&mut self) {
-        self.result = EvaluatorResult::default()
+        self.result = EvaluatorResult::default();
     }
 
     pub fn finalize_evaluation(&mut self, spec: &Spec, rule: Option<&Rule>) {
@@ -62,7 +62,7 @@ impl<'a> EvaluatorContext<'a> {
             return;
         }
 
-        self.result.undelegated_secondary_exposures = Some(self.result.secondary_exposures.clone())
+        self.result.undelegated_secondary_exposures = Some(self.result.secondary_exposures.clone());
     }
 
     pub fn increment_nesting(&mut self) -> Result<(), StatsigErr> {
