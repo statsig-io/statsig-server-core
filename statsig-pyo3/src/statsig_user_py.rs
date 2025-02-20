@@ -1,50 +1,92 @@
+use crate::pyo_utils::py_object_to_map;
 use pyo3::prelude::*;
 use sigstat::{DynamicValue, StatsigUser};
-use std::collections::HashMap;
 
 #[pyclass(name = "StatsigUser")]
 pub struct StatsigUserPy {
     pub inner: StatsigUser,
+
+    #[pyo3(get, set)]
+    pub user_id: String,
+    #[pyo3(get, set)]
+    pub email: Option<String>,
+    #[pyo3(get, set)]
+    pub ip: Option<String>,
+    #[pyo3(get, set)]
+    pub country: Option<String>,
+    #[pyo3(get, set)]
+    pub locale: Option<String>,
+    #[pyo3(get, set)]
+    pub app_version: Option<String>,
+    #[pyo3(get, set)]
+    pub user_agent: Option<String>,
+    #[pyo3(get)]
+    pub custom: Option<PyObject>,
+    #[pyo3(get)]
+    pub custom_ids: Option<PyObject>,
+    #[pyo3(get)]
+    pub private_attributes: Option<PyObject>,
 }
 
 #[pymethods]
 impl StatsigUserPy {
     #[new]
-    #[pyo3(signature = (user_id, user_json=None))]
-    pub fn new(user_id: &str, user_json: Option<String>) -> Self {
+    #[pyo3(signature = (user_id, email=None, ip=None, country=None, locale=None, app_version=None, user_agent=None, custom=None, custom_ids=None, private_attributes=None))]
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        user_id: &str,
+        email: Option<String>,
+        ip: Option<String>,
+        country: Option<String>,
+        locale: Option<String>,
+        app_version: Option<String>,
+        user_agent: Option<String>,
+        custom: Option<PyObject>,
+        custom_ids: Option<PyObject>,
+        private_attributes: Option<PyObject>,
+        py: Python,
+    ) -> PyResult<Self> {
         let mut user = StatsigUser::with_user_id(user_id.to_string());
-        if user_json.is_none() {
-            return Self { inner: user };
+
+        if let Some(e) = email.clone() {
+            user.email = Some(DynamicValue::from(e));
         }
-        let parsed_fields: HashMap<String, DynamicValue> =
-            serde_json::from_str(&user_json.unwrap()).unwrap();
-        let email = parsed_fields.get("email");
-        user.email = email.cloned();
-
-        let ip = parsed_fields.get("ip");
-        user.ip = ip.cloned();
-
-        let country = parsed_fields.get("country");
-        user.country = country.cloned();
-
-        let locale = parsed_fields.get("locale");
-        user.locale = locale.cloned();
-
-        let app_version = parsed_fields.get("appVersion");
-        user.app_version = app_version.cloned();
-
-        let user_agent = parsed_fields.get("userAgent");
-        user.user_agent = user_agent.cloned();
-
-        if let Some(custom) = parsed_fields.get("custom") {
-            user.custom = custom.object_value.clone();
+        if let Some(i) = ip.clone() {
+            user.ip = Some(DynamicValue::from(i));
         }
-        if let Some(private_attributes) = parsed_fields.get("privateAttributes") {
-            user.private_attributes = private_attributes.object_value.clone();
+        if let Some(c) = country.clone() {
+            user.country = Some(DynamicValue::from(c));
         }
-        if let Some(custom_ids) = parsed_fields.get("customIDs") {
-            user.custom_ids = custom_ids.object_value.clone();
+        if let Some(l) = locale.clone() {
+            user.locale = Some(DynamicValue::from(l));
         }
-        Self { inner: user }
+        if let Some(a) = app_version.clone() {
+            user.app_version = Some(DynamicValue::from(a));
+        }
+        if let Some(u) = user_agent.clone() {
+            user.user_agent = Some(DynamicValue::from(u));
+        }
+
+        let custom_map = py_object_to_map(py, custom.as_ref())?;
+        let custom_ids_map = py_object_to_map(py, custom_ids.as_ref())?;
+        let private_attributes_map = py_object_to_map(py, private_attributes.as_ref())?;
+
+        user.custom = custom_map;
+        user.custom_ids = custom_ids_map;
+        user.private_attributes = private_attributes_map;
+
+        Ok(Self {
+            inner: user,
+            user_id: user_id.to_string(),
+            email,
+            ip,
+            country,
+            locale,
+            app_version,
+            user_agent,
+            custom,
+            custom_ids,
+            private_attributes,
+        })
     }
 }

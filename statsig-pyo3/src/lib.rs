@@ -1,3 +1,4 @@
+mod pyo_utils;
 mod statsig_metadata_py;
 mod statsig_options_py;
 mod statsig_py;
