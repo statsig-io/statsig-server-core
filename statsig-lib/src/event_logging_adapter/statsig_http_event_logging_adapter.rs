@@ -106,7 +106,7 @@ impl EventLoggingAdapter for StatsigHttpEventLoggingAdapter {
     }
 
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
-        self.send_events_over_http(&request).await.inspect_err(|_| {
+        self.send_events_over_http(&request).await.map_err(|e| {
             self.ops_stats.log_error(ErrorBoundaryEvent {
                 exception: "LogEventFailed".to_string(),
                 tag: "statsig::log_event_failed".to_string(),
@@ -115,6 +115,7 @@ impl EventLoggingAdapter for StatsigHttpEventLoggingAdapter {
                     request.event_count.to_string(),
                 )])),
             });
+            e
         })
     }
 
