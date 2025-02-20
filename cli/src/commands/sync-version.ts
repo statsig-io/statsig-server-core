@@ -73,7 +73,7 @@ function updateStatsigMetadataVersion(version: string) {
 function updateNodePackageJsonVersions(version: string) {
   Log.stepBegin('Updating package.json');
 
-  ['statsig-napi', 'statsig-node'].forEach((name) => {
+  ['statsig-node'].forEach((name) => {
     const paths = [getRootedPath(`${name}/package.json`)];
     paths.push(
       ...glob.sync(`${name}/npm/**package.json`, {
