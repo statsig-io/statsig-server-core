@@ -27,6 +27,7 @@ export const OPERATING_SYSTEMS = [
   'debian',
   'macos',
   'windows',
+  'manylinux2014'
 ] as const;
 export type OS = (typeof OPERATING_SYSTEMS)[number];
 
