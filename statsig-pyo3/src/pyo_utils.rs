@@ -1,9 +1,11 @@
 use pyo3::exceptions::PyValueError;
-use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods, PyList};
+use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods, PyList, PyModule};
 use pyo3::{Bound, PyAny, PyObject, PyResult, Python};
-use serde_json::json;
-use sigstat::DynamicValue;
+use serde_json::{json, Value};
+use sigstat::{log_e, DynamicValue};
 use std::collections::HashMap;
+
+const TAG: &str = "PyoUtils";
 
 /// Converts a `PyObject` into a `HashMap<String, DynamicValue>`, if it's a `PyDict`
 pub fn py_object_to_map(
@@ -36,6 +38,32 @@ pub fn py_dict_to_map(dict: &Bound<PyDict>) -> PyResult<HashMap<String, DynamicV
         hashmap.insert(key_str, value_json);
     }
     Ok(hashmap)
+}
+
+pub fn map_to_py_dict(py: Python, map: &HashMap<String, Value>) -> PyObject {
+    let value = match serde_json::to_string(&map) {
+        Ok(v) => v,
+        Err(e) => {
+            log_e!(TAG, "Failed to serialize map to JSON: {}", e);
+            return PyDict::new(py).unbind().into();
+        }
+    };
+
+    let json = match PyModule::import(py, "json") {
+        Ok(j) => j,
+        Err(e) => {
+            log_e!(TAG, "Failed to import json module: {}", e);
+            return PyDict::new(py).unbind().into();
+        }
+    };
+
+    return match json.call_method1("loads", (value.clone(),)) {
+        Ok(d) => d.unbind(),
+        Err(e) => {
+            log_e!(TAG, "Failed to call json.loads: {}", e);
+            return PyDict::new(py).unbind().into();
+        }
+    };
 }
 
 /// order matters in this function, please don't change

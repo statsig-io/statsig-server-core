@@ -1,3 +1,4 @@
+use crate::pyo_utils::map_to_py_dict;
 use crate::statsig_options_py::StatsigOptionsPy;
 use crate::statsig_types_py::{DynamicConfigPy, LayerPy};
 use crate::{
@@ -95,7 +96,9 @@ impl StatsigPy {
             }
 
             Python::with_gil(|py| {
-                event_clone.call_method0(py, "set").unwrap();
+                if let Err(e) = event_clone.call_method0(py, "set") {
+                    log_e!(TAG, "Failed to set event: {}", e);
+                }
             });
         });
 
@@ -177,6 +180,7 @@ impl StatsigPy {
         user: &StatsigUserPy,
         name: &str,
         options: Option<&DynamicConfigEvaluationOptionsPy>,
+        py: Python,
     ) -> DynamicConfigPy {
         let config = self.inner.get_dynamic_config_with_options(
             &user.inner,
@@ -188,7 +192,7 @@ impl StatsigPy {
             name: config.name.clone(),
             rule_id: config.rule_id.clone(),
             id_type: config.id_type.clone(),
-            value: serde_json::to_string(&config.value).unwrap(),
+            value: map_to_py_dict(py, &config.value),
             inner: config,
         }
     }
@@ -210,6 +214,7 @@ impl StatsigPy {
         user: &StatsigUserPy,
         name: &str,
         options: Option<&ExperimentEvaluationOptionsPy>,
+        py: Python,
     ) -> ExperimentPy {
         let experiment = self.inner.get_experiment_with_options(
             &user.inner,
@@ -222,7 +227,7 @@ impl StatsigPy {
             rule_id: experiment.rule_id.clone(),
             id_type: experiment.id_type.clone(),
             group_name: experiment.group_name.clone(),
-            value: serde_json::to_string(&experiment.value).unwrap(),
+            value: map_to_py_dict(py, &experiment.value),
             inner: experiment,
         }
     }
@@ -244,6 +249,7 @@ impl StatsigPy {
         user: &StatsigUserPy,
         name: &str,
         options: Option<&LayerEvaluationOptionsPy>,
+        py: Python,
     ) -> LayerPy {
         let layer = self.inner.get_layer_with_options(
             &user.inner,
@@ -256,7 +262,7 @@ impl StatsigPy {
             rule_id: layer.rule_id.clone(),
             group_name: layer.group_name.clone(),
             allocated_experiment_name: layer.allocated_experiment_name.clone(),
-            value: serde_json::to_string(&layer.__value).unwrap(),
+            value: map_to_py_dict(py, &layer.__value),
             inner: layer,
         }
     }
