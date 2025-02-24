@@ -11,7 +11,8 @@ members = [
     "statsig-grpc",
     "statsig-pyo3",
     "statsig-node",
-    "examples/rust",
+    "examples/rust", 
+    "statsig-elixir/native/statsig_elixir",
 ]
 resolver = "2"
 

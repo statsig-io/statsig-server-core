@@ -109,6 +109,16 @@ impl Layer {
         }
     }
 
+    pub fn get_raw_value(&self, param_name: &str) -> Option<Value> {
+        match self.__value.get(param_name) {
+            Some(value) => {
+                self.log_param_exposure(param_name);
+                Some(value.clone())
+            }
+            None => None,
+        }
+    }
+
     fn log_param_exposure(&self, param_name: &str) -> Option<()> {
         if self.__disable_exposure {
             if let Some(ptr) = &self.__event_logger_ptr {
