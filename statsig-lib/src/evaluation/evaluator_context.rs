@@ -65,8 +65,11 @@ impl<'a> EvaluatorContext<'a> {
         self.result.undelegated_secondary_exposures = Some(self.result.secondary_exposures.clone());
     }
 
-    pub fn increment_nesting(&mut self) -> Result<(), StatsigErr> {
+    pub fn prep_for_nested_evaluation(&mut self) -> Result<(), StatsigErr> {
         self.nested_count += 1;
+
+        self.result.bool_value = false;
+        self.result.json_value = None;
 
         if self.nested_count > MAX_RECURSIVE_DEPTH {
             return Err(StackOverflowError);

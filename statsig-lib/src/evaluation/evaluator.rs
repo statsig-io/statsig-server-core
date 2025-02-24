@@ -33,15 +33,21 @@ pub enum SpecType {
     Layer,
 }
 
+#[derive(PartialEq, Eq)]
+pub enum Recognition {
+    Unrecognized,
+    Recognized,
+}
+
 impl Evaluator {
     pub fn evaluate_with_details(
         ctx: &mut EvaluatorContext,
         spec_name: &str,
         spec_type: &SpecType,
     ) -> Result<EvaluationDetails, StatsigErr> {
-        let recognized = Self::evaluate(ctx, spec_name, spec_type)?;
+        let recognition = Self::evaluate(ctx, spec_name, spec_type)?;
 
-        if !recognized {
+        if recognition == Recognition::Unrecognized {
             return Ok(EvaluationDetails::unrecognized(ctx.spec_store_data));
         }
 
@@ -62,7 +68,7 @@ impl Evaluator {
         ctx: &mut EvaluatorContext,
         spec_name: &str,
         spec_type: &SpecType,
-    ) -> Result<bool, StatsigErr> {
+    ) -> Result<Recognition, StatsigErr> {
         let opt_spec = match spec_type {
             SpecType::Gate => ctx.spec_store_data.values.feature_gates.get(spec_name),
             SpecType::DynamicConfig => ctx.spec_store_data.values.dynamic_configs.get(spec_name),
@@ -71,14 +77,14 @@ impl Evaluator {
         };
 
         if try_apply_override(ctx, spec_name, spec_type, opt_spec) {
-            return Ok(true);
+            return Ok(Recognition::Recognized);
         }
 
         if evaluate_cmab(ctx, spec_name, spec_type) {
-            return Ok(true);
+            return Ok(Recognition::Recognized);
         }
 
-        let spec = unwrap_or_return!(opt_spec, Ok(false));
+        let spec = unwrap_or_return!(opt_spec, Ok(Recognition::Unrecognized));
 
         if ctx.result.id_type.is_none() {
             ctx.result.id_type = Some(&spec.id_type);
@@ -106,7 +112,7 @@ impl Evaluator {
             evaluate_rule(ctx, rule)?;
 
             if ctx.result.unsupported {
-                return Ok(true);
+                return Ok(Recognition::Recognized);
             }
 
             if !ctx.result.bool_value {
@@ -115,7 +121,7 @@ impl Evaluator {
 
             if evaluate_config_delegate(ctx, rule)? {
                 ctx.finalize_evaluation(spec, Some(rule));
-                return Ok(true);
+                return Ok(Recognition::Recognized);
             }
 
             let did_pass = evaluate_pass_percentage(ctx, rule, &spec.salt);
@@ -133,7 +139,7 @@ impl Evaluator {
             ctx.result.is_experiment_group = rule.is_experiment_group.unwrap_or(false);
             ctx.result.is_experiment_active = spec.is_active.unwrap_or(false);
             ctx.finalize_evaluation(spec, Some(rule));
-            return Ok(true);
+            return Ok(Recognition::Recognized);
         }
 
         ctx.result.bool_value = spec.default_value.string_value == "true";
@@ -144,7 +150,7 @@ impl Evaluator {
         };
         ctx.finalize_evaluation(spec, None);
 
-        Ok(true)
+        Ok(Recognition::Recognized)
     }
 }
 
@@ -344,10 +350,10 @@ fn evaluate_nested_gate<'a>(
         return Ok(());
     };
 
-    ctx.increment_nesting()?;
-    let res = Evaluator::evaluate(ctx, gate_name, &SpecType::Gate)?;
+    ctx.prep_for_nested_evaluation()?;
+    let _ = Evaluator::evaluate(ctx, gate_name, &SpecType::Gate)?;
 
-    if ctx.result.unsupported || !res {
+    if ctx.result.unsupported {
         return Ok(());
     }
 
@@ -380,9 +386,9 @@ fn evaluate_config_delegate<'a>(
 
     ctx.result.undelegated_secondary_exposures = Some(ctx.result.secondary_exposures.clone());
 
-    ctx.increment_nesting()?;
-    let res = Evaluator::evaluate(ctx, delegate, &SpecType::Experiment)?;
-    if !res {
+    ctx.prep_for_nested_evaluation()?;
+    let recognition = Evaluator::evaluate(ctx, delegate, &SpecType::Experiment)?;
+    if recognition == Recognition::Unrecognized {
         ctx.result.undelegated_secondary_exposures = None;
         return Ok(false);
     }
