@@ -7,10 +7,10 @@ import { Log } from '@/utils/teminal_utils.js';
 
 import { BuilderOptions } from './builders/builder-options.js';
 import { buildFfi } from './builders/ffi-builder.js';
+import { buildJava } from './builders/java-builder.js';
 import { buildNode } from './builders/node-builder.js';
 import { buildPython } from './builders/python-builder.js';
 import { CommandBase } from './command_base.js';
-import { buildJava } from "./builders/java-builder.js";
 
 const PACKAGES = ['python', 'node', 'java', 'ffi'] as const;
 
