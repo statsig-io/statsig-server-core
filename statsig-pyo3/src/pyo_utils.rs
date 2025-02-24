@@ -7,37 +7,28 @@ use std::collections::HashMap;
 
 const TAG: &str = "PyoUtils";
 
-/// Converts a `PyObject` into a `HashMap<String, DynamicValue>`, if it's a `PyDict`
-pub fn py_object_to_map(
-    py: Python,
-    obj: Option<&PyObject>,
-) -> PyResult<Option<HashMap<String, DynamicValue>>> {
-    match obj {
-        Some(py_obj) => {
-            if let Ok(dict) = py_obj.downcast_bound::<PyDict>(py) {
-                Ok(Some(py_dict_to_map(dict)?))
-            } else {
-                Err(pyo3::exceptions::PyTypeError::new_err(
-                    "Expected a dictionary",
-                ))
-            }
-        }
-        None => Ok(None),
-    }
-}
-
-pub fn py_dict_to_map(dict: &Bound<PyDict>) -> PyResult<HashMap<String, DynamicValue>> {
+pub fn py_dict_to_map(dict: &Bound<PyDict>) -> HashMap<String, DynamicValue> {
     let mut hashmap = HashMap::new();
     for (key, value) in dict.iter() {
-        let key_str = key
-            .extract::<String>()
-            .map_err(|_| PyValueError::new_err("Keys must be strings"))?;
+        let key_str = match key.extract::<String>() {
+            Ok(k) => k,
+            Err(_) => {
+                log_e!(TAG, "Skipping entry: Key must be a string");
+                continue;
+            }
+        };
 
-        let value_json = py_any_to_dynamic_value(&value)
-            .map_err(|_| PyValueError::new_err(format!("Invalid value for key '{}'", key_str)))?;
+        let value_json = match py_any_to_dynamic_value(&value) {
+            Ok(v) => v,
+            Err(_) => {
+                log_e!(TAG, "Skipping entry: Invalid value for key '{}'", key_str);
+                continue;
+            }
+        };
+
         hashmap.insert(key_str, value_json);
     }
-    Ok(hashmap)
+    hashmap
 }
 
 pub fn map_to_py_dict(py: Python, map: &HashMap<String, Value>) -> PyObject {

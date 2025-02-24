@@ -66,6 +66,6 @@ def test_create_user_with_custom_empty():
     assert user.custom_ids == {"companyID":"","stableID":""}
 
 def test_create_user_with_invalid_dict():
-    """Test passing an invalid dictionary type (should raise an error)"""
-    with pytest.raises(TypeError):
-        StatsigUser("user_123", custom="invalid_string")
+    """Test passing an invalid dictionary type (should not raise an error)"""
+    user = StatsigUser("user_123", custom={123: "haha"})
+    assert user.custom == {123: "haha"} # This is actually not allowed

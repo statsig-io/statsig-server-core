@@ -1,31 +1,32 @@
-use crate::pyo_utils::py_object_to_map;
+use crate::pyo_utils::py_dict_to_map;
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 use sigstat::{DynamicValue, StatsigUser};
 
 #[pyclass(name = "StatsigUser")]
 pub struct StatsigUserPy {
     pub inner: StatsigUser,
 
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub user_id: String,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub email: Option<String>,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub ip: Option<String>,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub country: Option<String>,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub locale: Option<String>,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub app_version: Option<String>,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub user_agent: Option<String>,
     #[pyo3(get)]
-    pub custom: Option<PyObject>,
+    pub custom: Option<Py<PyDict>>,
     #[pyo3(get)]
-    pub custom_ids: Option<PyObject>,
+    pub custom_ids: Option<Py<PyDict>>,
     #[pyo3(get)]
-    pub private_attributes: Option<PyObject>,
+    pub private_attributes: Option<Py<PyDict>>,
 }
 
 #[pymethods]
@@ -41,9 +42,9 @@ impl StatsigUserPy {
         locale: Option<String>,
         app_version: Option<String>,
         user_agent: Option<String>,
-        custom: Option<PyObject>,
-        custom_ids: Option<PyObject>,
-        private_attributes: Option<PyObject>,
+        custom: Option<Py<PyDict>>,
+        custom_ids: Option<Py<PyDict>>,
+        private_attributes: Option<Py<PyDict>>,
         py: Python,
     ) -> PyResult<Self> {
         let mut user = StatsigUser::with_user_id(user_id.to_string());
@@ -67,9 +68,13 @@ impl StatsigUserPy {
             user.user_agent = Some(DynamicValue::from(u));
         }
 
-        let custom_map = py_object_to_map(py, custom.as_ref())?;
-        let custom_ids_map = py_object_to_map(py, custom_ids.as_ref())?;
-        let private_attributes_map = py_object_to_map(py, private_attributes.as_ref())?;
+        let custom_map = custom.as_ref().map(|dict| py_dict_to_map(dict.bind(py)));
+        let custom_ids_map = custom_ids
+            .as_ref()
+            .map(|dict| py_dict_to_map(dict.bind(py)));
+        let private_attributes_map = private_attributes
+            .as_ref()
+            .map(|dict| py_dict_to_map(dict.bind(py)));
 
         user.custom = custom_map;
         user.custom_ids = custom_ids_map;
