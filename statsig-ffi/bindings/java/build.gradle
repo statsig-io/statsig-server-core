@@ -8,19 +8,6 @@ plugins {
 group 'com.statsig'
 version project.property("version")
 
-def expectedTasks = [
-    'java-coreJar',
-    'aarch64-apple-darwinJar',
-    'aarch64-pc-windows-msvcJar',
-    'amazonlinux2-arm64Jar',
-    'amazonlinux2-x86_64Jar',
-    'amazonlinux2023-arm64Jar',
-    'amazonlinux2023-x86_64Jar',
-    'i686-pc-windows-msvcJar',
-    'x86_64-apple-darwinJar',
-    'x86_64-pc-windows-msvcJar'
-]
-
 java {
     sourceCompatibility = '11'
 }
@@ -85,7 +72,8 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
 
         // Include native library if needed
         if (nativeLib) {
-            from("src/main/resources/native/${classifierParam}") {
+            def nativeSourceDir = file("src/main/resources/native/${classifierParam}")
+            from(nativeSourceDir) {
                 into("native/")
             }
             include nativeLib
@@ -103,18 +91,36 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
     }
 }
 
-createStatsigJar('java-core', null)
 createStatsigJar('aarch64-apple-darwin', 'macos-arm64')
-createStatsigJar('x86_64-apple-darwin', 'macos-x86_64')
-createStatsigJar('aarch64-pc-windows-msvc', 'windows-arm64')
+// todo: add support for these platforms
+// createStatsigJar('aarch64-pc-windows-msvc', 'windows-arm64')
+// createStatsigJar('amazonlinux2-arm64', 'amazonlinux2-arm64')
+// createStatsigJar('amazonlinux2-x86_64', 'amazonlinux2-x86_64')
+// createStatsigJar('amazonlinux2023-arm64', 'amazonlinux2023-arm64')
+// createStatsigJar('amazonlinux2023-x86_64', 'amazonlinux2023-x86_64')
 createStatsigJar('i686-pc-windows-msvc', 'windows-i686')
-createStatsigJar('x86_64-pc-windows-msvc', 'windows-x86_64')
-createStatsigJar('amazonlinux2-arm64', 'amazonlinux2-arm64')
-createStatsigJar('amazonlinux2-x86_64', 'amazonlinux2-x86_64')
-createStatsigJar('amazonlinux2023-arm64', 'amazonlinux2023-arm64')
-createStatsigJar('amazonlinux2023-x86_64', 'amazonlinux2023-x86_64')
-createStatsigJar('linux-gnu-x86_64', 'linux-gnu-x86_64')
+createStatsigJar('java-core', null)
 createStatsigJar('linux-gnu-arm64', 'linux-gnu-arm64')
+createStatsigJar('linux-gnu-x86_64', 'linux-gnu-x86_64')
+createStatsigJar('x86_64-apple-darwin', 'macos-x86_64')
+createStatsigJar('x86_64-pc-windows-msvc', 'windows-x86_64')
+
+def expectedTasks = [
+    'aarch64-apple-darwinJar',
+    // 'aarch64-pc-windows-msvcJar',
+    // 'amazonlinux2-arm64Jar',
+    // 'amazonlinux2-x86_64Jar',
+    // 'amazonlinux2023-arm64Jar',
+    // 'amazonlinux2023-x86_64Jar',
+    'i686-pc-windows-msvcJar',
+    'java-coreJar',
+    'linux-gnu-arm64Jar',
+    'linux-gnu-x86_64Jar',
+    'x86_64-apple-darwinJar',
+    'x86_64-pc-windows-msvcJar',
+]
+
+
 
 tasks.register('validateTasks') {
     doLast {

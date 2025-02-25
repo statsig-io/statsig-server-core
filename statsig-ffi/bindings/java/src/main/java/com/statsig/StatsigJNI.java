@@ -146,9 +146,10 @@ class StatsigJNI {
         } catch (UnsatisfiedLinkError e) {
             OutputLogger.logError(
                     TAG,
-                    String.format("Error: Native library not found for the specific OS and architecture. " +
+                    String.format("Error: Failed to load native library for the specific OS and architecture. " +
                             "Operating System: %s, Architecture: %s. Please ensure that the necessary dependencies have been added to your project configuration.\n",
                             osName, osArch));
+            OutputLogger.logError(TAG, e.getMessage());
             return false;
         }
     }
