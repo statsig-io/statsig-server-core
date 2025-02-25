@@ -4,6 +4,6 @@
     "start": "node example.js"
   },
   "dependencies": {
-    "statsig-napi": "file:../../build/node"
+    "statsig-napi": "file:../../statsig-node/build"
   }
 }

@@ -1,4 +1,5 @@
-import { Statsig, StatsigOptions, StatsigUser } from "statsig-napi";
+import napi from 'statsig-napi';
+const { Statsig, StatsigOptions, StatsigUser } = napi;
 
 const statsig = new Statsig(
   process.env.test_api_key,

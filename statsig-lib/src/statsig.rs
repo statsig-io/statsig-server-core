@@ -41,7 +41,8 @@ use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{
     dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, ObservabilityClient,
     OpsStatsEventObserver, OverrideAdapter, SamplingProcessor, SpecsAdapter, SpecsInfo,
-    SpecsSource, SpecsUpdateListener, StatsigHttpIdListsAdapter, StatsigUser,
+    SpecsSource, SpecsUpdateListener, StatsigHttpIdListsAdapter, StatsigLocalOverrideAdapter,
+    StatsigUser,
 };
 use crate::{
     log_error_to_statsig_and_console,
@@ -117,7 +118,10 @@ impl Statsig {
         let specs_adapter = initialize_specs_adapter(sdk_key, &options, &hashing);
         let id_lists_adapter = initialize_id_lists_adapter(sdk_key, &options);
         let event_logging_adapter = initialize_event_logging_adapter(sdk_key, &options);
-        let override_adapter = options.override_adapter.as_ref().map(Arc::clone);
+        let override_adapter = match options.override_adapter.as_ref() {
+            Some(adapter) => Some(Arc::clone(adapter)),
+            None => Some(Arc::new(StatsigLocalOverrideAdapter::new()) as Arc<dyn OverrideAdapter>),
+        };
 
         let environment = options
             .environment

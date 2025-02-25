@@ -1,0 +1,16 @@
+lockfileVersion: 5.4
+
+specifiers:
+  statsig-napi: file:../../statsig-node/build
+
+dependencies:
+  statsig-napi: file:../../statsig-node/build
+
+packages:
+
+  file:../../statsig-node/build:
+    resolution: {directory: ../../statsig-node/build, type: directory}
+    name: '@statsig/statsig-node-core'
+    version: 0.0.6-beta.5
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    dev: false
