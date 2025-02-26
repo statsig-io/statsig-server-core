@@ -102,7 +102,7 @@ jobs:
       - name: "[Non-Linux] Install Dependencies"
         if: ${{ runner.os != 'Linux' }}
         run: |
-          pip3 install maturin
+          pip3 install maturin ${{ format('{0}', matrix.config.py_deps_suffix) }}          
           rustup target add ${{ matrix.config.target }}
 
       - name: "[Windows Only] Setup Python"

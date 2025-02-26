@@ -30,7 +30,6 @@
       "arch": "aarch64",
       "docker_arch": "arm64"
     },
-
     {
       "target": "x86_64-apple-darwin",
       "runner": "macos-13",
@@ -41,7 +40,8 @@
       "target": "aarch64-apple-darwin",
       "runner": "macos-14",
       "os": "macos",
-      "arch": "aarch64"
+      "arch": "aarch64",
+      "py_deps_suffix": "--break-system-packages"
     },
 
     {
