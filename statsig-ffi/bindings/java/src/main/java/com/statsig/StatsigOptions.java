@@ -15,7 +15,8 @@ public class StatsigOptions {
                 builder.enableIDLists,
                 builder.disableAllLogging,
                 builder.outputLoggerLevel.getValue(),
-                builder.serviceName);
+                builder.serviceName,
+                builder.enableUserAgentParsing);
 
         ResourceCleaner.register(this, () -> {
             if (ref != null) {
@@ -38,6 +39,7 @@ public class StatsigOptions {
         private long eventLoggingMaxQueueSize;
         private String environment;
         private boolean enableIDLists = false;
+        private boolean enableUserAgentParsing = false;
         private boolean disableAllLogging = false;
         private OutputLogger.LogLevel outputLoggerLevel = OutputLogger.LogLevel.WARN;
         private String serviceName;
@@ -95,6 +97,11 @@ public class StatsigOptions {
 
         public Builder setServiceName(String serviceName) {
             this.serviceName = serviceName;
+            return this;
+        }
+
+        public Builder setEnableUserAgentParsing(boolean enableUserAgentParsing) {
+            this.enableUserAgentParsing = enableUserAgentParsing;
             return this;
         }
 

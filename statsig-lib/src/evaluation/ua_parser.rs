@@ -11,6 +11,7 @@ use super::dynamic_string::DynamicString;
 
 lazy_static::lazy_static! {
     static ref PARSER: Arc<RwLock<Option<ExtUserAgentParser>>> = Arc::from(RwLock::from(None));
+    static ref USER_AGENT_STRING: String = "userAgent".to_string();
 }
 
 const TAG: &str = "UserAgentParser";
@@ -27,10 +28,14 @@ impl UserAgentParser {
             _ => return None,
         };
 
-        let user_agent = match &user.user_data.user_agent {
-            Some(ua) => ua.string_value.as_ref(),
-            _ => return None,
-        }?;
+        let user_agent =
+            match user.get_user_value(&Some(DynamicString::from(&USER_AGENT_STRING.to_string()))) {
+                Some(v) => match &v.string_value {
+                    Some(s) => s.as_str(),
+                    _ => return None,
+                },
+                None => return None,
+            };
 
         if user_agent.len() > 1000 {
             return None;

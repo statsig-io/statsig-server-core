@@ -184,6 +184,12 @@ impl StatsigOptionsBuilder {
     }
 
     #[must_use]
+    pub fn enable_user_agent_parsing(mut self, enable_user_agent_parsing: Option<bool>) -> Self {
+        self.inner.enable_user_agent_parsing = enable_user_agent_parsing;
+        self
+    }
+
+    #[must_use]
     pub fn build(self) -> StatsigOptions {
         self.inner
     }
