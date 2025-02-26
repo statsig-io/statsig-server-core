@@ -1,5 +1,0 @@
-rootProject.name = 'java-example'
-
-//includeBuild('../../statsig-ffi/bindings/java')
-include ':statsig-ffi'
-project(':statsig-ffi').projectDir = new File('../../statsig-ffi/bindings/java')
