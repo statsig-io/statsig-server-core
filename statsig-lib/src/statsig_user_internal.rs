@@ -58,13 +58,13 @@ impl StatsigUserInternal {
         let lowered_field = &field.lowercased_value;
 
         let str_value = match lowered_field as &str {
-            "userid" | "user_id" => &self.user_data.user_id,
+            "userid" => &self.user_data.user_id,
             "email" => &self.user_data.email,
             "ip" => &self.user_data.ip,
-            "useragent" | "user_agent" => &self.user_data.user_agent,
             "country" => &self.user_data.country,
             "locale" => &self.user_data.locale,
-            "appversion" | "app_version" => &self.user_data.app_version,
+            "appversion" => &self.user_data.app_version,
+            "useragent" => &self.user_data.user_agent,
             _ => &None,
         };
 
@@ -88,6 +88,17 @@ impl StatsigUserInternal {
             if let Some(lowered_found) = private_attributes.get(lowered_field) {
                 return Some(lowered_found);
             }
+        }
+
+        let str_value_alt = match lowered_field as &str {
+            "user_id" => &self.user_data.user_id,
+            "app_version" => &self.user_data.app_version,
+            "user_agent" => &self.user_data.user_agent,
+            _ => &None,
+        };
+
+        if str_value_alt.is_some() {
+            return str_value_alt.as_ref();
         }
 
         None
