@@ -8,28 +8,29 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-tokio = { version = "1.39.1", features = ["full"] }
-serde_json = { version = "1.0.125", features = ["float_roundtrip"] }
-serde = { version = "1.0.204", features = ["derive"] }
-chrono = "0.4.38"
-regex-lite = "0.1.6"
-sha2 = "0.10.8"
-base64 = "0.22.1"
 async-trait = "0.1.81"
-curl = "0.4.47"
-openssl = { version = "0.10.66", features = ["vendored"], optional = true }
-log = "0.4.22"
-simple_logger = "5.0.0"
-lazy_static = "1.5.0"
-futures = "0.3.30"
-uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
-sigstat-grpc = { path = "../statsig-grpc", version = "0.0.6-beta.5", optional = true }
+base64 = "0.22.1"
 bytes = "1.9.0"
-flate2 = "1.0.35"
-rand = "0.8.4"
+chrono = "0.4.38"
+curl = "0.4.47"
 file-guard = "0.2.0"
-zstd = { version = "0.13.2", optional = true }
+flate2 = "1.0.35"
+futures = "0.3.30"
+lazy_static = "1.5.0"
+log = "0.4.22"
+openssl = { version = "0.10.66", features = ["vendored"], optional = true }
 percent-encoding = "2.3.1"
+rand = "0.8.4"
+regex-lite = "0.1.6"
+serde = { version = "1.0.204", features = ["derive"] }
+serde_json = { version = "1.0.125", features = ["float_roundtrip"] }
+sha2 = "0.10.8"
+sigstat-grpc = { path = "../statsig-grpc", version = "0.0.6-beta.4", optional = true }
+simple_logger = "5.0.0"
+tokio = { version = "1.39.1", features = ["full"] }
+uaparser = "0.6.4"
+uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
+zstd = { version = "0.13.2", optional = true }
 
 [dev-dependencies]
 mockito = "1.5.0"

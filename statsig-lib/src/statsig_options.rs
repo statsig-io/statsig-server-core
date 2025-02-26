@@ -18,6 +18,7 @@ pub struct StatsigOptions {
     pub data_store: Option<Arc<dyn DataStoreTrait>>, // External DataStore
     pub disable_all_logging: Option<bool>,
     pub enable_id_lists: Option<bool>,
+    pub enable_user_agent_parsing: Option<bool>,
     pub environment: Option<String>,
 
     pub event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,

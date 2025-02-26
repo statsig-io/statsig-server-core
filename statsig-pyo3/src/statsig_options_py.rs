@@ -20,6 +20,8 @@ pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub enable_id_lists: Option<bool>,
     #[pyo3(get, set)]
+    pub enable_user_agent_parsing: Option<bool>,
+    #[pyo3(get, set)]
     pub id_lists_url: Option<String>,
     #[pyo3(get, set)]
     pub id_lists_sync_interval_ms: Option<u32>,
@@ -44,6 +46,7 @@ impl StatsigOptionsPy {
             event_logging_flush_interval_ms: None,
             event_logging_max_queue_size: None,
             enable_id_lists: None,
+            enable_user_agent_parsing: None,
             id_lists_url: None,
             id_lists_sync_interval_ms: None,
             fallback_to_statsig_api: None,
@@ -86,6 +89,7 @@ impl From<&StatsigOptionsPy> for StatsigOptions {
                 .map(|level| LogLevel::from(level.as_str())),
             observability_client: None,
             service_name: None,
+            enable_user_agent_parsing: val.enable_user_agent_parsing,
         }
     }
 }

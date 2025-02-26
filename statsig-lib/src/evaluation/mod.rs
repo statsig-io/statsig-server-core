@@ -10,3 +10,4 @@ pub mod dynamic_string;
 pub mod evaluation_details;
 pub mod evaluator_context;
 pub(crate) mod get_unit_id;
+pub(crate) mod ua_parser;

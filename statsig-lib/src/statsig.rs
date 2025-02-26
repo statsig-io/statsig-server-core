@@ -10,6 +10,7 @@ use crate::evaluation::evaluator_result::{
     result_to_dynamic_config_eval, result_to_experiment_eval, result_to_gate_eval,
     result_to_layer_eval, EvaluatorResult,
 };
+use crate::evaluation::ua_parser::UserAgentParser;
 use crate::event_logging::config_exposure::ConfigExposure;
 use crate::event_logging::event_logger::{EventLogger, QueuedEventPayload};
 use crate::event_logging::gate_exposure::GateExposure;
@@ -122,6 +123,10 @@ impl Statsig {
             Some(adapter) => Some(Arc::clone(adapter)),
             None => Some(Arc::new(StatsigLocalOverrideAdapter::new()) as Arc<dyn OverrideAdapter>),
         };
+
+        if options.enable_user_agent_parsing.unwrap_or(false) {
+            UserAgentParser::load_parser();
+        }
 
         let environment = options
             .environment

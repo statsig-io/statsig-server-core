@@ -11,6 +11,7 @@ use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::get_unit_id::get_unit_id;
+use crate::evaluation::ua_parser::UserAgentParser;
 use crate::spec_types::{Condition, Rule, Spec};
 use crate::{dyn_value, log_e, unwrap_or_return, StatsigErr};
 
@@ -233,15 +234,24 @@ fn evaluate_condition<'a>(
             evaluate_nested_gate(ctx, target_value, condition_type)?;
             return Ok(());
         }
-        "user_field" | "ua_based" | "ip_based" => ctx.user.get_user_value(&condition.field),
+        "ua_based" => match ctx.user.get_user_value(&condition.field) {
+            Some(value) => Some(value),
+            None => {
+                temp_value = UserAgentParser::get_value_from_user_agent(ctx.user, &condition.field);
+                temp_value.as_ref()
+            }
+        },
+        "user_field" | "ip_based" => ctx.user.get_user_value(&condition.field),
         "environment_field" => ctx.user.get_value_from_environment(&condition.field),
         "current_time" => {
-            temp_value = DynamicValue::for_timestamp_evaluation(Utc::now().timestamp_millis());
-            Some(&temp_value)
+            temp_value = Some(DynamicValue::for_timestamp_evaluation(
+                Utc::now().timestamp_millis(),
+            ));
+            temp_value.as_ref()
         }
         "user_bucket" => {
-            temp_value = get_hash_for_user_bucket(ctx, condition);
-            Some(&temp_value)
+            temp_value = Some(get_hash_for_user_bucket(ctx, condition));
+            temp_value.as_ref()
         }
         "target_app" => *ctx.app_id,
         "unit_id" => ctx.user.get_unit_id(&condition.id_type),

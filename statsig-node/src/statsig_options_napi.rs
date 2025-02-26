@@ -41,6 +41,7 @@ pub struct StatsigOptions {
     pub data_store: Option<DataStore>,
     pub disable_all_logging: Option<bool>,
     pub enable_id_lists: Option<bool>,
+    pub enable_user_agent_parsing: Option<bool>,
     pub environment: Option<String>,
 
     pub event_logging_flush_interval_ms: Option<u32>,
@@ -92,6 +93,7 @@ impl StatsigOptions {
                 .data_store
                 .map(|store| Arc::new(store) as Arc<dyn DataStoreTrait>),
             enable_id_lists: self.enable_id_lists,
+            enable_user_agent_parsing: self.enable_user_agent_parsing,
             environment: self.environment,
             fallback_to_statsig_api: self.fallback_to_statsig_api,
             id_lists_sync_interval_ms: self.id_lists_sync_interval_ms,
