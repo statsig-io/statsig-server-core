@@ -137,7 +137,8 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.config.target }}-${{ matrix.package }}
+          # TODO(weihao) not perfect
+          name: ${{ matrix.config.target }}${{ matrix.config.os == 'centos7' && '-centos7' || '' }}-${{ matrix.package }}
           if-no-files-found: error
           path: |
             statsig-pyo3/build/
