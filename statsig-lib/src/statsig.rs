@@ -1,9 +1,10 @@
 use crate::client_init_response_formatter::{
     ClientInitResponseFormatter, ClientInitResponseOptions,
 };
+use crate::evaluation::cmab_evaluator::{get_cmab_ranked_list, CMABRankedGroup};
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
-use crate::evaluation::evaluation_types::AnyEvaluation;
+use crate::evaluation::evaluation_types::{AnyEvaluation, BaseEvaluation, ExperimentEvaluation};
 use crate::evaluation::evaluator::{Evaluator, SpecType};
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::evaluator_result::{
@@ -545,6 +546,100 @@ impl Statsig {
                 _statsig_ref: self,
             },
         }
+    }
+}
+
+// -------------------------
+//   CMAB Functions
+// -------------------------
+
+impl Statsig {
+    pub fn get_cmab_ranked_groups(
+        &self,
+        user: &StatsigUser,
+        cmab_name: &str,
+    ) -> Vec<CMABRankedGroup> {
+        self.event_logger
+            .increment_non_exposure_checks_count(cmab_name.to_string());
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                "Failed to acquire read lock for spec store data"
+            );
+            return vec![];
+        });
+        let user_internal = self.internalize_user(user);
+        get_cmab_ranked_list(
+            &mut EvaluatorContext::new(
+                &user_internal,
+                &data,
+                &self.hashing,
+                &data.values.app_id.as_ref(),
+                &self.override_adapter,
+            ),
+            cmab_name,
+        )
+    }
+
+    pub fn log_cmab_exposure_for_group(
+        &self,
+        user: &StatsigUser,
+        cmab_name: &str,
+        group_id: String,
+    ) {
+        let user_internal = self.internalize_user(user);
+        let experiment = self.get_experiment_impl(&user_internal, cmab_name);
+        let base_eval = BaseEvaluation {
+            name: cmab_name.to_string(),
+            rule_id: group_id.clone(),
+            secondary_exposures: match experiment.__evaluation {
+                Some(ref eval) => eval.base.secondary_exposures.clone(),
+                None => vec![],
+            },
+            sampling_rate: match experiment.__evaluation {
+                Some(ref eval) => eval.base.sampling_rate,
+                None => Some(1),
+            },
+            forward_all_exposures: match experiment.__evaluation {
+                Some(ref eval) => eval.base.forward_all_exposures,
+                None => Some(true),
+            },
+        };
+        let experiment_eval = ExperimentEvaluation {
+            base: base_eval.clone(),
+            id_type: experiment.id_type.clone(),
+            value: HashMap::new(),
+            group: group_id,
+            is_device_based: false,
+            is_in_layer: false,
+            explicit_parameters: None,
+            group_name: None,
+            is_experiment_active: Some(true),
+            is_user_in_experiment: Some(true),
+        };
+
+        let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
+            &user_internal,
+            Some(&AnyEvaluation::from(&experiment_eval)),
+            None,
+        );
+
+        if !sampling_details.should_send_exposure {
+            return;
+        }
+
+        self.event_logger
+            .enqueue(QueuedEventPayload::ConfigExposure(ConfigExposure {
+                user: user_internal,
+                evaluation: Some(base_eval),
+                evaluation_details: experiment.details.clone(),
+                config_name: cmab_name.to_string(),
+                rule_passed: None,
+                version: experiment.__version,
+                is_manual_exposure: true,
+                sampling_details,
+            }));
     }
 }
 

@@ -5,11 +5,86 @@ use crate::evaluation::get_unit_id::get_unit_id;
 use crate::spec_types::{CMABConfig, CMABGroup, CMABGroupConfig};
 use crate::unwrap_or_return;
 use lazy_static::lazy_static;
+use rand::seq::SliceRandom;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 lazy_static! {
     static ref NOT_STARTED_RULE: String = "prestart".to_string();
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct CMABRankedGroup {
+    pub score: f64,
+    pub name: String,
+    pub id: String,
+    pub parameter_values: Option<HashMap<String, Value>>,
+}
+
+pub fn get_cmab_ranked_list(ctx: &mut EvaluatorContext, name: &str) -> Vec<CMABRankedGroup> {
+    let cmabs = match &ctx.spec_store_data.values.cmab_configs {
+        Some(cmabs) => cmabs,
+        None => return vec![],
+    };
+    let cmab = unwrap_or_return!(cmabs.get(name), vec![]);
+    if !is_cmab_started(cmab) {
+        return vec![];
+    }
+
+    let config = match &cmab.config {
+        Some(config) => config,
+        None => {
+            return get_shuffled_groups(cmab)
+                .iter()
+                .map(|group| CMABRankedGroup {
+                    score: 0.0001,
+                    name: group.name.clone(),
+                    id: group.id.clone(),
+                    parameter_values: group.parameter_values.json_value.clone(),
+                })
+                .collect();
+        }
+    };
+
+    let unit_id = get_unit_id(ctx, &cmab.id_type);
+    let input = format!("{}.{}", cmab.salt, unit_id);
+    let user_hash = ctx.hashing.evaluation_hash(&input);
+
+    let should_sample = match user_hash {
+        Some(hash) => ((hash % 10000) as f64) < (cmab.sample_rate * 10000.0),
+        None => false,
+    };
+
+    if should_sample {
+        return get_shuffled_groups(cmab)
+            .iter()
+            .map(|group| CMABRankedGroup {
+                score: 0.0001,
+                name: group.name.clone(),
+                id: group.id.clone() + ":explore",
+                parameter_values: group.parameter_values.json_value.clone(),
+            })
+            .collect();
+    }
+    let mut result = cmab
+        .groups
+        .iter()
+        .map(|group| CMABRankedGroup {
+            score: get_cmab_score_for_group(ctx, group, config).unwrap_or(0.0),
+            name: group.name.clone(),
+            id: group.id.clone(),
+            parameter_values: group.parameter_values.json_value.clone(),
+        })
+        .collect::<Vec<CMABRankedGroup>>();
+    let higher_better = cmab.higher_is_better;
+    result.sort_by(|a, b| match higher_better {
+        true => b.score.partial_cmp(&a.score).unwrap_or(Ordering::Equal),
+        false => a.score.partial_cmp(&b.score).unwrap_or(Ordering::Equal),
+    });
+    result
 }
 
 pub(crate) fn evaluate_cmab(
@@ -58,6 +133,13 @@ pub(crate) fn evaluate_cmab(
     }
     apply_best_group(ctx, cmab, config);
     true
+}
+
+fn get_shuffled_groups(cmab: &CMABConfig) -> Vec<&CMABGroup> {
+    let mut groups = cmab.groups.iter().collect::<Vec<&CMABGroup>>();
+    let mut rng = rand::thread_rng();
+    groups.shuffle(&mut rng);
+    groups
 }
 
 fn is_cmab_started(cmab: &CMABConfig) -> bool {
