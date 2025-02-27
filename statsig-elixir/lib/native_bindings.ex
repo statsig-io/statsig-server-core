@@ -1,7 +1,19 @@
 defmodule NativeBindings do
-  use Rustler,
-    otp_app: :statsig,
-    crate: "statsig_elixir"
+  version = Mix.Project.config()[:version] |> to_string()
+  use RustlerPrecompiled,
+    otp_app: :statsig_elixir,
+    crate: "statsig_elixir",
+    version: version,
+    base_url: "https://github.com/statsig-io/statsig-server-core/releases/download/#{version}/",
+    force_build: System.get_env("FORCE_STATSIG_NATIVE_BUILD") in ["1", "true"],
+    targets: [
+      "aarch64-apple-darwin", # Add other supported targets if needed
+      "aarch64-unknown-linux-gnu",
+      "x86_64-apple-darwin",
+      "x86_64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl",
+      "aarch64-unknown-linux-musl",
+    ]
   def new(_key, _options), do: :erlang.nif_error(:nif_not_loaded)
   def initialize(_statsig), do: :erlang.nif_error(:nif_not_loaded)
   def check_gate(_statsig, _gate_name, _statsig_user), do: :erlang.nif_error(:nif_not_loaded)
