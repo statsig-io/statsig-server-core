@@ -1,1 +1,5 @@
-statsig_python_core_extracted
+
+venv/
+.env/
+.virtualenv/
+statsig_python_core_extracted/

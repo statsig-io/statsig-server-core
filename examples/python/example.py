@@ -1,56 +1,56 @@
-import zipfile
 import os
-import sys
-import pprint
+from statsig_python_core import Statsig, StatsigOptions, StatsigUser
 
-whl_file_path = (
-    "../../target/wheels/statsig_python_core-0.1.0-cp37-abi3-macosx_11_0_arm64.whl"
-)
-extract_dir = "statsig_python_core_extracted"
-
-with zipfile.ZipFile(whl_file_path, "r") as zip_ref:
-    zip_ref.extractall(extract_dir)
-
-sys.path.append(os.path.abspath(extract_dir))
-
-import statsig_python_core
-
-pprint.pprint(
-    [
-        (cls, getattr(statsig_python_core, cls).__dict__)
-        for cls in dir(statsig_python_core)
-        if isinstance(getattr(statsig_python_core, cls), type)
-    ],
-    indent=4,
-)
-
+# Initialize Statsig
 key = os.getenv("STATSIG_SECRET_KEY")
-statsig = statsig_python_core.Statsig(key)
+if key is None:
+    raise ValueError("STATSIG_SECRET_KEY is not set in environment variables.")
 
-result = statsig.initialize()
+# Customized statsigOptions as needed
+options = StatsigOptions()
+options.environment = "development"
+options.output_log_level = "error"
 
-print("initialize result", result)
+statsig = Statsig(key, options)
+statsig.initialize().wait()
 
-user = statsig_python_core.StatsigUser("a-user")
-gate_result = statsig.check_gate("a_gate", user)
-
-print("check_gate_result", gate_result)
-
-gate_result = statsig.get_feature_gate("a_gate", user)
-print(
-    "Class of gate_result:",
-    gate_result.name,
-    gate_result.value,
-    gate_result.id_type,
-    gate_result.rule_id,
+# Create a statsig user，passing fields as needed
+user = StatsigUser(
+    user_id="user_123",
+    email="user@gmail.com",
+    country="US",
+    # Note: The following fields must be Python dictionaries (PyDict) due to PyO3 bindings
+    # - `custom`: A dictionary where all keys must be strings, and values can be JSON-compatible types
+    #   (e.g., str, int, bool, list, dict). Example: {"key1": "value1", "key2": 123}
+    custom={},
+    # - `custom_ids`: A dictionary where both keys and values must be strings. Example: {"companyID": "12345"}
+    custom_ids={},
+    # - `private_attributes`: A dictionary where all keys must be strings, and values can be JSON-compatible types.
+    #   This is used for storing user-specific private metadata. Example: {"attr1": "data"}
+    private_attributes={},
 )
 
+# Check a feature gate
+gate_result = statsig.check_gate("a_gate", user)
+print("Feature Gate Result:", gate_result)
+
+# Retrieve experiment details
 exp_result = statsig.get_experiment("another_experiment", user)
-print("exp_result:", exp_result.name, exp_result.group_name)
-print("exp_result str:", exp_result.get_string("a_string"))
-print("exp_result bool:", exp_result.get_bool("a_bool"))
-print("exp_result number:", exp_result.get_number("a_number"))
+print("Experiment Details:")
+print(" - Group Name:", exp_result.group_name)
+print(" - Id Type:", exp_result.id_type)
 
+# Get a dynamic Config
+config = statsig.get_dynamic_config(user, "config_name")
 
-gcir = statsig.get_client_init_response(user)
-print("gcir:", gcir[:300])
+# Get a Layer
+layer = statsig.get_layer(user, "layer_name")
+print("Layer Details:")
+print(" - allocatedExperiment:", layer.allocated_experiment_name)
+print(" - group name:", layer.group_name)
+print(" - id type:", layer.id_type)
+
+# Shutting down statsig
+statsig.shutdown().wait()
+
+print("Sample Statsig app executed successfully!")
