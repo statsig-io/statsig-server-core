@@ -83,10 +83,31 @@ defmodule Statsig do
     end
   end
 
+  @spec log_event(%StatsigUser{}, String.t(), String.t() | number(), %{String.t() => String.t()}) ::
+          any()
   def log_event(statsig_user, event_name, value, metadata) do
     try do
       instance = get_statsig_instance()
-      NativeBindings.log_event(instance, statsig_user, event_name, value, metadata)
+
+      case value do
+        value when is_binary(value) ->
+          NativeBindings.log_event(instance, statsig_user, event_name, value, metadata)
+          :ok
+
+        value when is_number(value) ->
+          NativeBindings.log_event_with_number(
+            instance,
+            statsig_user,
+            event_name,
+            value,
+            metadata
+          )
+
+          :ok
+
+        _ ->
+          {:error, :invalid_value}
+      end
     catch
       :exit, reason -> {:error, {:exit, reason}}
       exception -> {:error, Exception.message(exception)}

@@ -153,6 +153,28 @@ pub fn log_event(
     }
 }
 
+#[rustler::nif]
+pub fn log_event_with_number(
+    statsig: ResourceArc<StatsigResource>,
+    statsig_user: StatsigUser,
+    event_name: &str,
+    value: Option<f64>,
+    metadata: Option<HashMap<String, String>>,
+) -> Result<(), Error> {
+    match statsig.statsig_core.read() {
+        Ok(read_guard) => {
+            read_guard.log_event_with_number(
+                &statsig_user.into(),
+                event_name,
+                value,
+                metadata,
+            );
+            Ok(())
+        }
+        Err(_) => Err(Error::Atom("Failed to get Statsig")),
+    }
+}
+
 #[rustler::nif(schedule = "DirtyIo")]
 pub fn flush(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
     match statsig.statsig_core.read() {

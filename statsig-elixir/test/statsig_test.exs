@@ -36,12 +36,16 @@ defmodule StatsigTest do
     experiment = Statsig.get_experiment("test_custom_config", user)
     param_value = Experiment.get_param_value(experiment, "header_text")
     assert param_value == "old user test"
-    # config = Statsig.get_config("test_public", user)
-    # IO.inspect(config, label: "Gate check result")
-    # experiment = Statsig.get_experiment("test_public", user)
-    # IO.inspect(experiment, label: "Gate check result")
-    # config = Statsig.get_feature_gate("test_public", user)
-    # IO.inspect(config, label: "Gate check result")
+    layer = Statsig.get_layer("layer_with_many_params", user)
+    a_string_value = Layer.get(layer, "a_string", "default")
+    assert a_string_value == "layer"
+    an_object_value = Layer.get(layer, "an_object", "default")
+    assert an_object_value == "{\"value\":\"layer_default\"}"
+    IO.inspect(an_object_value)
+
+    Statsig.log_event(user, "test_event", "string_value", %{"metadata_1" => "value"})
+    result = Statsig.log_event(user, "test_event", 1, %{"metadata_1" => "value"})
+    IO.inspect(result)
     Statsig.shutdown()
     # Assert the result is a boolean
     assert check_gate
