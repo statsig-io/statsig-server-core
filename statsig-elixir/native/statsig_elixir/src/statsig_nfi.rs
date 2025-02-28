@@ -163,12 +163,7 @@ pub fn log_event_with_number(
 ) -> Result<(), Error> {
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
-            read_guard.log_event_with_number(
-                &statsig_user.into(),
-                event_name,
-                value,
-                metadata,
-            );
+            read_guard.log_event_with_number(&statsig_user.into(), event_name, value, metadata);
             Ok(())
         }
         Err(_) => Err(Error::Atom("Failed to get Statsig")),
