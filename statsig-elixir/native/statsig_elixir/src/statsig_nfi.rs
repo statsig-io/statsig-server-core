@@ -55,10 +55,10 @@ pub fn initialize(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
             let runtime = StatsigRuntime::get_runtime();
             match runtime.runtime_handle.block_on(statsig.initialize()) {
                 Ok(_) => Ok(()),
-                Err(_) => Err(Error::Atom("failed to init")),
+                Err(_) => Err(Error::RaiseAtom("failed to init")),
             }
         }
-        Err(_) => Err(Error::Atom("failed to init")),
+        Err(_) => Err(Error::RaiseAtom("failed to init")),
     }
 }
 
@@ -72,7 +72,7 @@ pub fn get_feature_gate(
         Ok(read_guard) => Ok(read_guard
             .get_feature_gate(&statsig_user.into(), gate_name)
             .into()),
-        Err(_) => Err(Error::Atom("Failed to get Statsig")),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
 
@@ -84,7 +84,7 @@ pub fn check_gate(
 ) -> Result<bool, Error> {
     match statsig.statsig_core.read() {
         Ok(read_guard) => Ok(read_guard.check_gate(&statsig_user.into(), gate_name)),
-        Err(_) => Err(Error::Atom("Failed to get Statsig")),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
 
@@ -98,7 +98,7 @@ pub fn get_config(
         Ok(read_guard) => Ok(read_guard
             .get_dynamic_config(&statsig_user.into(), config_name)
             .into()),
-        Err(_) => Err(Error::Atom("Failed to get Statsig")),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
 
@@ -112,7 +112,7 @@ pub fn get_experiment(
         Ok(read_guard) => Ok(read_guard
             .get_experiment(&statsig_user.into(), experiment_name)
             .into()),
-        Err(_) => Err(Error::Atom("Failed to get Statsig")),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
 
@@ -127,7 +127,7 @@ pub fn get_layer(
             let layer = read_guard.get_layer(&statsig_user.into(), layer_name);
             Ok(ResourceArc::new(LayerResource::new(layer)))
         }
-        Err(_) => Err(Error::Atom("Failed to get Statsig")),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
 
@@ -149,7 +149,7 @@ pub fn log_event(
             );
             Ok(())
         }
-        Err(_) => Err(Error::Atom("Failed to get Statsig")),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
 
@@ -166,7 +166,7 @@ pub fn log_event_with_number(
             read_guard.log_event_with_number(&statsig_user.into(), event_name, value, metadata);
             Ok(())
         }
-        Err(_) => Err(Error::Atom("Failed to get Statsig")),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
 
@@ -181,7 +181,7 @@ pub fn flush(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
             });
             Ok(())
         }
-        Err(_) => Err(Error::Atom("Failed to get Statsig")),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
 
@@ -199,10 +199,10 @@ pub fn shutdown(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
                     runtime.shutdown(Duration::from_millis(500));
                     Ok(())
                 }
-                Err(_) => Err(Error::Atom("Failed to shutdown")),
+                Err(_) => Err(Error::RaiseAtom("Failed to shutdown")),
             }
         }
-        Err(_) => Err(Error::Atom("Failed to get Statsig")),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
 
@@ -229,7 +229,7 @@ pub fn layer_get(
                 None => Ok(default),
             },
         },
-        Err(_) => Err(Error::Atom("Failed to get Statsig")),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
 
@@ -237,7 +237,7 @@ pub fn layer_get(
 pub fn layer_get_rule_id(layer: ResourceArc<LayerResource>) -> Result<String, Error> {
     match layer.core.read() {
         Ok(read_guard) => Ok(read_guard.rule_id.clone()),
-        Err(_) => Err(Error::Atom("Failed to get Statsig")),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
 
@@ -245,7 +245,7 @@ pub fn layer_get_rule_id(layer: ResourceArc<LayerResource>) -> Result<String, Er
 pub fn layer_get_group_name(layer: ResourceArc<LayerResource>) -> Result<Option<String>, Error> {
     match layer.core.read() {
         Ok(read_guard) => Ok(read_guard.group_name.clone()),
-        Err(_) => Err(Error::Atom("Failed to get Statsig")),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
 
