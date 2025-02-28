@@ -6,7 +6,7 @@ use sigstat::statsig_types::{
 };
 use sigstat::DynamicValue;
 #[derive(NifStruct)]
-#[module = "Statsig.Experiment"]
+#[module = "Experiment"]
 pub struct Experiment {
     pub name: String,
     pub rule_id: String,
@@ -28,7 +28,7 @@ impl From<ExperimentActual> for Experiment {
 }
 
 #[derive(NifStruct)]
-#[module = "Statsig.DynamicConfig"]
+#[module = "DynamicConfig"]
 pub struct DynamicConfig {
     pub name: String,
     pub value: String,
@@ -48,7 +48,7 @@ impl From<DynamicConfigActual> for DynamicConfig {
 }
 
 #[derive(NifStruct)]
-#[module = "Statsig.FeatureGate"]
+#[module = "FeatureGate"]
 pub struct FeatureGate {
     pub name: String,
     pub value: bool,
