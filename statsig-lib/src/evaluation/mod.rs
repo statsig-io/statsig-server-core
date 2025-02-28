@@ -5,6 +5,7 @@ pub mod evaluator_result;
 
 pub(crate) mod cmab_evaluator;
 pub(crate) mod comparisons;
+pub(crate) mod country_lookup;
 pub mod dynamic_returnable;
 pub mod dynamic_string;
 pub mod evaluation_details;

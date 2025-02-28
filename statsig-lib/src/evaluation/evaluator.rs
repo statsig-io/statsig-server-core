@@ -15,6 +15,8 @@ use crate::evaluation::ua_parser::UserAgentParser;
 use crate::spec_types::{Condition, Rule, Spec};
 use crate::{dyn_value, log_e, unwrap_or_return, StatsigErr};
 
+use super::country_lookup::CountryLookup;
+
 const TAG: &str = stringify!(Evaluator);
 
 pub struct Evaluator;
@@ -241,7 +243,14 @@ fn evaluate_condition<'a>(
                 temp_value.as_ref()
             }
         },
-        "user_field" | "ip_based" => ctx.user.get_user_value(&condition.field),
+        "ip_based" => match ctx.user.get_user_value(&condition.field) {
+            Some(value) => Some(value),
+            None => {
+                temp_value = CountryLookup::get_value_from_ip(ctx.user, &condition.field);
+                temp_value.as_ref()
+            }
+        },
+        "user_field" => ctx.user.get_user_value(&condition.field),
         "environment_field" => ctx.user.get_value_from_environment(&condition.field),
         "current_time" => {
             temp_value = Some(DynamicValue::for_timestamp_evaluation(

@@ -90,6 +90,7 @@ impl From<&StatsigOptionsPy> for StatsigOptions {
             observability_client: None,
             service_name: None,
             enable_user_agent_parsing: val.enable_user_agent_parsing,
+            enable_country_lookup: None,
         }
     }
 }

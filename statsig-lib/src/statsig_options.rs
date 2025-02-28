@@ -19,6 +19,7 @@ pub struct StatsigOptions {
     pub disable_all_logging: Option<bool>,
     pub enable_id_lists: Option<bool>,
     pub enable_user_agent_parsing: Option<bool>,
+    pub enable_country_lookup: Option<bool>,
     pub environment: Option<String>,
 
     pub event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,
@@ -190,6 +191,12 @@ impl StatsigOptionsBuilder {
     }
 
     #[must_use]
+    pub fn enable_country_lookup(mut self, enable_country_lookup: Option<bool>) -> Self {
+        self.inner.enable_country_lookup = enable_country_lookup;
+        self
+    }
+
+    #[must_use]
     pub fn build(self) -> StatsigOptions {
         self.inner
     }
@@ -222,6 +229,12 @@ impl Serialize for StatsigOptions {
 
         serialize_if_not_none!(state, "id_lists_url", &self.id_lists_url);
         serialize_if_not_none!(state, "enable_id_lists", &self.enable_id_lists);
+        serialize_if_not_none!(
+            state,
+            "enable_user_agent_parsing",
+            &self.enable_user_agent_parsing
+        );
+        serialize_if_not_none!(state, "enable_country_lookup", &self.enable_country_lookup);
         serialize_if_not_none!(
             state,
             "id_lists_sync_interval",

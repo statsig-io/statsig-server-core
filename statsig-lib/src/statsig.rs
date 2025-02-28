@@ -2,6 +2,7 @@ use crate::client_init_response_formatter::{
     ClientInitResponseFormatter, ClientInitResponseOptions,
 };
 use crate::evaluation::cmab_evaluator::{get_cmab_ranked_list, CMABRankedGroup};
+use crate::evaluation::country_lookup::CountryLookup;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::{AnyEvaluation, BaseEvaluation, ExperimentEvaluation};
@@ -127,6 +128,10 @@ impl Statsig {
 
         if options.enable_user_agent_parsing.unwrap_or(false) {
             UserAgentParser::load_parser();
+        }
+
+        if options.enable_country_lookup.unwrap_or(false) {
+            CountryLookup::load_country_lookup();
         }
 
         let environment = options
