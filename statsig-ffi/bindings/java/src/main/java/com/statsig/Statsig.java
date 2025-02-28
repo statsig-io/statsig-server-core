@@ -172,6 +172,16 @@ public class Statsig {
         return featureGate;
     }
 
+    public CMABRankedVariant[] getCMABRankedVariants(StatsigUser user, String cmabName) {
+        String cmabJson = StatsigJNI.statsigGetCMABRankedVariants(ref, user.getRef(), cmabName);
+        CMABRankedVariant[] cmabRankedVariants = gson.fromJson(cmabJson, CMABRankedVariant[].class);
+        return cmabRankedVariants;
+    }
+
+    public void logCMABExposure(StatsigUser user, String cmabName, String ruleId) {
+        StatsigJNI.statsigLogCMABExposure(ref, user.getRef(), cmabName, ruleId);
+    }
+
     public void logEvent(StatsigUser user, String eventName, String value, Map<String, String> metadata) {
         StatsigJNI.statsigLogEvent(ref, user.getRef(), eventName, value, metadata);
     }

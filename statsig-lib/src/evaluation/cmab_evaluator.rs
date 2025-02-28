@@ -19,9 +19,10 @@ lazy_static! {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CMABRankedGroup {
     pub score: f64,
-    pub name: String,
-    pub id: String,
-    pub parameter_values: Option<HashMap<String, Value>>,
+    pub variant_name: String,
+    pub rule_id: String,
+    pub value: Option<HashMap<String, Value>>,
+    pub cmab_name: String,
 }
 
 pub fn get_cmab_ranked_list(ctx: &mut EvaluatorContext, name: &str) -> Vec<CMABRankedGroup> {
@@ -41,9 +42,10 @@ pub fn get_cmab_ranked_list(ctx: &mut EvaluatorContext, name: &str) -> Vec<CMABR
                 .iter()
                 .map(|group| CMABRankedGroup {
                     score: 0.0001,
-                    name: group.name.clone(),
-                    id: group.id.clone(),
-                    parameter_values: group.parameter_values.json_value.clone(),
+                    variant_name: group.name.clone(),
+                    rule_id: group.id.clone(),
+                    value: group.parameter_values.json_value.clone(),
+                    cmab_name: name.to_string(),
                 })
                 .collect();
         }
@@ -63,9 +65,10 @@ pub fn get_cmab_ranked_list(ctx: &mut EvaluatorContext, name: &str) -> Vec<CMABR
             .iter()
             .map(|group| CMABRankedGroup {
                 score: 0.0001,
-                name: group.name.clone(),
-                id: group.id.clone() + ":explore",
-                parameter_values: group.parameter_values.json_value.clone(),
+                variant_name: group.name.clone(),
+                rule_id: group.id.clone() + ":explore",
+                value: group.parameter_values.json_value.clone(),
+                cmab_name: name.to_string(),
             })
             .collect();
     }
@@ -74,9 +77,10 @@ pub fn get_cmab_ranked_list(ctx: &mut EvaluatorContext, name: &str) -> Vec<CMABR
         .iter()
         .map(|group| CMABRankedGroup {
             score: get_cmab_score_for_group(ctx, group, config).unwrap_or(0.0),
-            name: group.name.clone(),
-            id: group.id.clone(),
-            parameter_values: group.parameter_values.json_value.clone(),
+            variant_name: group.name.clone(),
+            rule_id: group.id.clone(),
+            value: group.parameter_values.json_value.clone(),
+            cmab_name: name.to_string(),
         })
         .collect::<Vec<CMABRankedGroup>>();
     let higher_better = cmab.higher_is_better;

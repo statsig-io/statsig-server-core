@@ -376,6 +376,52 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFeatureGate(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetCMABRankedVariants(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    user_ref: JString,
+    cmab_name: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+    let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
+
+    let cmab_name: String = match env.get_string(&cmab_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let result = statsig.get_cmab_ranked_groups(user.as_ref(), &cmab_name);
+
+    serialize_json_to_jstring(&mut env, &result)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogCMABExposure(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    user_ref: JString,
+    cmab_name: JString,
+    rule_id: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+    let user = get_instance_or_noop_jni!(StatsigUser, &mut env, user_ref);
+
+    let cmab_name: String = match env.get_string(&cmab_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    let rule_id: String = match env.get_string(&rule_id) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    statsig.log_cmab_exposure_for_group(user.as_ref(), &cmab_name, rule_id);
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogGateExposure(
     mut env: JNIEnv,
     _class: jclass,

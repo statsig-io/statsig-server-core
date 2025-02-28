@@ -62,6 +62,10 @@ class StatsigJNI {
 
     public static native void statsigLogDynamicConfigExposure(String statsigRef, String userRef, String configName);
 
+    public static native String statsigGetCMABRankedVariants(String statsigRef, String userRef, String cmabName);
+
+    public static native void statsigLogCMABExposure(String statsigRef, String userRef, String cmabName, String ruleId);
+
     public static native String statsigGetClientInitResponse(String statsigRef, String userRef,
             ClientInitResponseOptions options);
 
