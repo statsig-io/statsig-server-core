@@ -280,7 +280,7 @@ impl StatsigPy {
     }
 
     #[pyo3(signature = (user, hash=None, client_sdk_key=None))]
-    pub fn get_client_init_response(
+    pub fn get_client_initialize_response(
         &self,
         user: &StatsigUserPy,
         hash: Option<&str>,

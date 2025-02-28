@@ -81,7 +81,7 @@ def test_get_layer(statsig_setup):
 def test_gcir(statsig_setup):
     statsig = statsig_setup
 
-    response_data = statsig.get_client_init_response(StatsigUser("my_user"))
+    response_data = statsig.get_client_initialize_response(StatsigUser("my_user"))
     response = json.loads(response_data)
 
     assert len(response["feature_gates"]) > 0
