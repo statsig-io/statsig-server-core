@@ -43,6 +43,9 @@ defmodule StatsigTest do
     assert an_object_value == "{\"value\":\"layer_default\"}"
     IO.inspect(an_object_value)
 
+    default_value = Layer.get(layer, "invalid_param", "default");
+    assert default_value == "default"
+
     Statsig.log_event(user, "test_event", "string_value", %{"metadata_1" => "value"})
     result = Statsig.log_event(user, "test_event", 1, %{"metadata_1" => "value"})
     IO.inspect(result)
