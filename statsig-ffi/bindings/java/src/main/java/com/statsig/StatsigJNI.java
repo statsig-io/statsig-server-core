@@ -110,7 +110,8 @@ class StatsigJNI {
             boolean disableAllLogging,
             long outputLoggerLevel,
             String serviceName,
-            boolean enableUserAgentParsing);
+            boolean enableUserAgentParsing,
+            boolean enableCountryLookup);
 
     public static native void statsigOptionsRelease(String optionsRef);
 

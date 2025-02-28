@@ -22,6 +22,8 @@ pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub enable_user_agent_parsing: Option<bool>,
     #[pyo3(get, set)]
+    pub enable_country_lookup: Option<bool>,
+    #[pyo3(get, set)]
     pub id_lists_url: Option<String>,
     #[pyo3(get, set)]
     pub id_lists_sync_interval_ms: Option<u32>,
@@ -52,6 +54,7 @@ impl StatsigOptionsPy {
             fallback_to_statsig_api: None,
             environment: None,
             output_log_level: None,
+            enable_country_lookup: None,
         }
     }
 }
@@ -90,7 +93,7 @@ impl From<&StatsigOptionsPy> for StatsigOptions {
             observability_client: None,
             service_name: None,
             enable_user_agent_parsing: val.enable_user_agent_parsing,
-            enable_country_lookup: None,
+            enable_country_lookup: val.enable_country_lookup,
         }
     }
 }
