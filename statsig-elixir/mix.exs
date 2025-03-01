@@ -4,7 +4,7 @@ defmodule Statsigelixir.MixProject do
   def project do
     [
       app: :statsig_elixir,
-      version: "0.0.6-beta.6",
+      version: "0.0.6-beta.7",
       elixir: "~> 1.0",
       start_permanent: Mix.env() == :prod,
       description: description(),
@@ -14,7 +14,7 @@ defmodule Statsigelixir.MixProject do
   end
 
   defp description() do
-    "An performant elixir SDK for Statsig feature gates and experiments using Rustler"
+    "A performant elixir SDK for Statsig feature gates and experiments using Rustler"
   end
 
 
@@ -28,9 +28,7 @@ defmodule Statsigelixir.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
-      {:rustler, "~> 0.22-rc"},
+      {:rustler, ">= 0.0.0", optional: true},
       {:rustler_precompiled, "~> 0.8"},
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
     ]

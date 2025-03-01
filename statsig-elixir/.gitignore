@@ -26,3 +26,5 @@ statsigelixir-*.tar
 /target/
 
 priv/native/
+
+checksum*

@@ -14,7 +14,7 @@ defmodule StatsigTest do
 
     statsig_options = %StatsigOptions{enable_id_lists: true}
     IO.puts("Initializing with SDK key: #{sdk_key}")
-    {:ok, _} = Statsig.start_link(sdk_key, statsig_options)
+    Statsig.start_link(sdk_key, statsig_options)
 
     # Create a test user
     user = %StatsigUser{
