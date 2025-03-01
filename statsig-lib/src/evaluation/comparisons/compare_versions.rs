@@ -12,8 +12,17 @@ pub(crate) fn compare_versions(left: &DynamicValue, right: &DynamicValue, op: &s
         let mut right_parts = right_version.split('.');
 
         loop {
-            let opt_left_num = left_parts.next().and_then(|s| s.parse::<i32>().ok());
-            let opt_right_num = right_parts.next().and_then(|s| s.parse::<i32>().ok());
+            let opt_left_part = left_parts.next();
+            let opt_right_part = right_parts.next();
+
+            let opt_left_num = match opt_left_part {
+                Some(s) => s.trim().parse::<i32>().ok(),
+                None => None,
+            };
+            let opt_right_num = match opt_right_part {
+                Some(s) => s.trim().parse::<i32>().ok(),
+                None => None,
+            };
 
             // If both iterators are exhausted, we break the loop
             if opt_left_num.is_none() && opt_right_num.is_none() {
