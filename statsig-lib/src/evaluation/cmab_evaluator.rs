@@ -1,4 +1,5 @@
 use super::dynamic_string::DynamicString;
+use super::evaluator::Evaluator;
 use crate::evaluation::evaluator::SpecType;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::get_unit_id::get_unit_id;
@@ -14,6 +15,7 @@ use std::collections::HashMap;
 
 lazy_static! {
     static ref NOT_STARTED_RULE: String = "prestart".to_string();
+    static ref FAILS_TARGETING: String = "inlineTargetingRules".to_string();
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -32,6 +34,10 @@ pub fn get_cmab_ranked_list(ctx: &mut EvaluatorContext, name: &str) -> Vec<CMABR
     };
     let cmab = unwrap_or_return!(cmabs.get(name), vec![]);
     if !is_cmab_started(cmab) {
+        return vec![];
+    }
+
+    if !get_passes_targeting(ctx, cmab) {
         return vec![];
     }
 
@@ -106,15 +112,32 @@ pub(crate) fn evaluate_cmab(
         None => return false,
     };
     let cmab = unwrap_or_return!(cmabs.get(spec_name), false);
-    ctx.result.id_type = Some(&cmab.id_type.value);
-    ctx.result.version = Some(cmab.version);
-    ctx.result.is_experiment_active = cmab.enabled;
+
     if !is_cmab_started(cmab) {
+        ctx.result.id_type = Some(&cmab.id_type.value);
+        ctx.result.version = Some(cmab.version);
+        ctx.result.is_experiment_active = cmab.enabled;
         ctx.result.bool_value = false;
         ctx.result.rule_id = Some(&NOT_STARTED_RULE);
         ctx.result.json_value = cmab.default_value.json_value.clone();
         return true;
     }
+
+    if !get_passes_targeting(ctx, cmab) {
+        ctx.reset_result();
+        ctx.result.id_type = Some(&cmab.id_type.value);
+        ctx.result.version = Some(cmab.version);
+        ctx.result.is_experiment_active = cmab.enabled;
+        ctx.result.bool_value = false;
+        ctx.result.rule_id = Some(&FAILS_TARGETING);
+        ctx.result.json_value = cmab.default_value.json_value.clone();
+        return true;
+    }
+
+    ctx.reset_result();
+    ctx.result.id_type = Some(&cmab.id_type.value);
+    ctx.result.version = Some(cmab.version);
+    ctx.result.is_experiment_active = cmab.enabled;
 
     let unit_id = get_unit_id(ctx, &cmab.id_type);
     let input = format!("{}.{}", cmab.salt, unit_id);
@@ -137,6 +160,18 @@ pub(crate) fn evaluate_cmab(
     }
     apply_best_group(ctx, cmab, config);
     true
+}
+
+fn get_passes_targeting<'a>(ctx: &mut EvaluatorContext<'a>, cmab: &'a CMABConfig) -> bool {
+    let targeting_gate_name = match &cmab.targeting_gate_name {
+        Some(name) => name,
+        None => return true,
+    };
+
+    match Evaluator::evaluate(ctx, targeting_gate_name.as_str(), &SpecType::Gate) {
+        Ok(_) => ctx.result.bool_value,
+        Err(_) => false,
+    }
 }
 
 fn get_shuffled_groups(cmab: &CMABConfig) -> Vec<&CMABGroup> {

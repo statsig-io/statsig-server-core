@@ -87,6 +87,7 @@ pub struct CMABConfig {
     pub higher_is_better: bool,
     pub groups: Vec<CMABGroup>,
     pub config: Option<HashMap<String, CMABGroupConfig>>,
+    pub targeting_gate_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
