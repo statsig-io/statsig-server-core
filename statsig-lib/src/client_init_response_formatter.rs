@@ -169,9 +169,10 @@ impl ClientInitResponseFormatter {
         }
 
         let mut param_stores = HashMap::new();
+        let default_store = HashMap::new();
         let stores = match &data.values.param_stores {
             Some(stores) => stores,
-            None => &HashMap::new(),
+            None => &default_store,
         };
         for (name, store) in stores {
             if should_filter_config_for_app(&store.target_app_ids, &app_id, &options.client_sdk_key)
