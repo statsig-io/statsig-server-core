@@ -44,6 +44,8 @@ class StatsigJNI {
     public static native String statsigGetFeatureGate(String statsigRef, String userRef, String gateName,
             CheckGateOptions options);
 
+    public static native String statsigGetFieldsNeededForGate(String statsigRef, String gateName);
+
     public static native void statsigLogGateExposure(String statsigRef, String userRef, String gateName);
 
     public static native String statsigGetLayer(String statsigRef, String userRef, String layerName,
@@ -52,15 +54,21 @@ class StatsigJNI {
     public static native void statsigManuallyLogLayerParamExposure(String statsigRef, String userRef, String layerName,
             String param);
 
+    public static native String statsigGetFieldsNeededForLayer(String statsigRef, String layerName);
+
     public static native String statsigGetExperiment(String statsigRef, String userRef, String experimentName,
             GetExperimentOptions options);
 
     public static native void statsigLogExperimentExposure(String statsigRef, String userRef, String experimentName);
 
+    public static native String statsigGetFieldsNeededForExperiment(String statsigRef, String experimentName);
+
     public static native String statsigGetDynamicConfig(String statsigRef, String userRef, String configName,
             GetDynamicConfigOptions options);
 
     public static native void statsigLogDynamicConfigExposure(String statsigRef, String userRef, String configName);
+
+    public static native String statsigGetFieldsNeededForDynamicConfig(String statsigRef, String configName);
 
     public static native String statsigGetCMABRankedVariants(String statsigRef, String userRef, String cmabName);
 

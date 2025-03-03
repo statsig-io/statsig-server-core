@@ -202,6 +202,25 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCheckGate(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFieldsNeededForGate(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    gate_name: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+
+    let gate_name: String = match env.get_string(&gate_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+    serialize_json_to_jstring(
+        &mut env,
+        &statsig.get_fields_needed_for_gate(gate_name.as_str()),
+    )
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperiment(
     mut env: JNIEnv,
     _class: jclass,
@@ -245,6 +264,25 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogExperimentExposure(
     };
 
     statsig.manually_log_experiment_exposure(&user, &exper_name);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFieldsNeededForExperiment(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    exper_name: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+
+    let exper_name: String = match env.get_string(&exper_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+    serialize_json_to_jstring(
+        &mut env,
+        &statsig.get_fields_needed_for_experiment(exper_name.as_str()),
+    )
 }
 
 #[no_mangle]
@@ -303,6 +341,25 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetLayer(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFieldsNeededForLayer(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    layer_name: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+
+    let layer_name: String = match env.get_string(&layer_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+    serialize_json_to_jstring(
+        &mut env,
+        &statsig.get_fields_needed_for_layer(layer_name.as_str()),
+    )
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetDynamicConfig(
     mut env: JNIEnv,
     _class: jclass,
@@ -348,6 +405,25 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogDynamicConfigExposu
     };
 
     statsig.manually_log_dynamic_config_exposure(&user, &config_name);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFieldsNeededForDynamicConfig(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    config_name: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+
+    let config_name: String = match env.get_string(&config_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+    serialize_json_to_jstring(
+        &mut env,
+        &statsig.get_fields_needed_for_dynamic_config(config_name.as_str()),
+    )
 }
 
 #[no_mangle]

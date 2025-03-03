@@ -83,6 +83,11 @@ public class Statsig {
         StatsigJNI.statsigLogGateExposure(ref, user.getRef(), gateName);
     }
 
+    public String[] getFieldsNeededForGate(String gateName) {
+        String resultJSON = StatsigJNI.statsigGetFieldsNeededForGate(ref, gateName);
+        return resultJSON == null ? new String[0] : gson.fromJson(resultJSON, String[].class);
+    }
+
     public Experiment getExperiment(StatsigUser user, String experimentName) {
         String experJson = StatsigJNI.statsigGetExperiment(ref, user.getRef(), experimentName, null);
         Experiment experiment = gson.fromJson(experJson, Experiment.class);
@@ -105,6 +110,11 @@ public class Statsig {
         StatsigJNI.statsigLogExperimentExposure(ref, user.getRef(), experimentName);
     }
 
+    public String[] getFieldsNeededForExperiment(String experimentName) {
+        String resultJSON = StatsigJNI.statsigGetFieldsNeededForExperiment(ref, experimentName);
+        return resultJSON == null ? new String[0] : gson.fromJson(resultJSON, String[].class);
+    }
+
     public DynamicConfig getDynamicConfig(StatsigUser user, String configName) {
         String configJson = StatsigJNI.statsigGetDynamicConfig(ref, user.getRef(), configName, null);
         DynamicConfig dynamicConfig = gson.fromJson(configJson, DynamicConfig.class);
@@ -125,6 +135,11 @@ public class Statsig {
 
     public void manuallyLogDynamicConfigExposure(StatsigUser user, String configName) {
         StatsigJNI.statsigLogDynamicConfigExposure(ref, user.getRef(), configName);
+    }
+
+    public String[] getFieldsNeededForDynamicConfig(String configName) {
+        String resultJSON = StatsigJNI.statsigGetFieldsNeededForDynamicConfig(ref, configName);
+        return resultJSON == null ? new String[0] : gson.fromJson(resultJSON, String[].class);
     }
 
     public Layer getLayer(StatsigUser user, String layerName) {
@@ -152,6 +167,11 @@ public class Statsig {
 
     public void manuallyLogLayerParamExposure(StatsigUser user, String layerName, String param) {
         StatsigJNI.statsigManuallyLogLayerParamExposure(ref, user.getRef(), layerName, param);
+    }
+
+    public String[] getFieldsNeededForLayer(String layerName) {
+        String resultJSON = StatsigJNI.statsigGetFieldsNeededForLayer(ref, layerName);
+        return resultJSON == null ? new String[0] : gson.fromJson(resultJSON, String[].class);
     }
 
     public FeatureGate getFeatureGate(StatsigUser user, String gateName) {
