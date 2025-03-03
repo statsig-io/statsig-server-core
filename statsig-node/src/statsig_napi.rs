@@ -151,6 +151,11 @@ impl Statsig {
     }
 
     #[napi]
+    pub fn get_fields_needed_for_gate(&self, gate_name: String) -> Vec<String> {
+        self.inner.get_fields_needed_for_gate(gate_name.as_str())
+    }
+
+    #[napi]
     pub fn get_dynamic_config(
         &self,
         user: &StatsigUser,
@@ -164,6 +169,12 @@ impl Statsig {
                 options.map(|opts| opts.into()).unwrap_or_default(),
             )
             .into()
+    }
+
+    #[napi]
+    pub fn get_fields_needed_for_dynamic_config(&self, config_name: String) -> Vec<String> {
+        self.inner
+            .get_fields_needed_for_dynamic_config(config_name.as_str())
     }
 
     #[napi]
@@ -183,6 +194,12 @@ impl Statsig {
     }
 
     #[napi]
+    pub fn get_fields_needed_for_experiment(&self, experiment_name: String) -> Vec<String> {
+        self.inner
+            .get_fields_needed_for_experiment(experiment_name.as_str())
+    }
+
+    #[napi]
     pub fn get_layer(
         &self,
         user: &StatsigUser,
@@ -196,6 +213,11 @@ impl Statsig {
                 options.map(|opts| opts.into()).unwrap_or_default(),
             )
             .into()
+    }
+
+    #[napi]
+    pub fn get_fields_needed_for_layer(&self, layer_name: String) -> Vec<String> {
+        self.inner.get_fields_needed_for_layer(layer_name.as_str())
     }
 
     #[napi]
