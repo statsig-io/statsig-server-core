@@ -17,7 +17,7 @@ const TEST_COMMANDS: Record<string, string> = {
     'cd statsig-pyo3',
     'maturin build',
     'pip install ../target/wheels/statsig_python_core*manylinux*.whl --force-reinstall',
-    'python3 -m pytest tests --capture=no -v',
+    'mkdir clean_test_env && cd clean_test_env && pytest ../tests --capture=no -v',
   ].join(' && '),
   java: [
     'cargo build -p statsig_ffi',
