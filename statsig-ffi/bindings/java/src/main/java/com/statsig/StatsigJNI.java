@@ -90,6 +90,26 @@ class StatsigJNI {
 
     public static native void statsigLogLayerParamExposure(String statsigRef, String layerJson, String param);
 
+    public static native String statsigGetParameterStore(String statsigRef, String parameterStoreName);
+
+    public static native String statsigGetStringParameterFromParameterStore(String statsigRef, String userRef,
+            String parameterStoreName, String parameterName, String defaultValue);
+
+    public static native boolean statsigGetBooleanParameterFromParameterStore(String statsigRef, String userRef,
+            String parameterStoreName, String parameterName, boolean defaultValue);
+
+    public static native double statsigGetFloatParameterFromParameterStore(String statsigRef, String userRef,
+            String parameterStoreName, String parameterName, double defaultValue);
+
+    public static native long statsigGetIntegerParameterFromParameterStore(String statsigRef, String userRef,
+            String parameterStoreName, String parameterName, long defaultValue);
+
+    public static native String statsigGetObjectParameterFromParameterStore(String statsigRef, String userRef,
+            String parameterStoreName, String parameterName, String defaultValue);
+
+    public static native String statsigGetArrayParameterFromParameterStore(String statsigRef, String userRef,
+            String parameterStoreName, String parameterName, String defaultValue);
+
     /**
      * StatsigUser
      */

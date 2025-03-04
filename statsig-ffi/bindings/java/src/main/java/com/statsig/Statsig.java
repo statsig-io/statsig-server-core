@@ -1,8 +1,11 @@
 package com.statsig;
 
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import com.statsig.internal.GsonUtil;
 
+import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -200,6 +203,76 @@ public class Statsig {
 
     public void logCMABExposure(StatsigUser user, String cmabName, String ruleId) {
         StatsigJNI.statsigLogCMABExposure(ref, user.getRef(), cmabName, ruleId);
+    }
+
+    public ParameterStore getParameterStore(StatsigUser user, String parameterStoreName) {
+        String storeJson = StatsigJNI.statsigGetParameterStore(ref, parameterStoreName);
+        ParameterStore store = gson.fromJson(storeJson, ParameterStore.class);
+        if (store != null) {
+            // Set the Statsig reference in the Layer instance
+            store.setStatsigInstance(this);
+            store.setUser(user);
+        }
+        return store;
+    }
+
+    public String getStringFromParameterStore(StatsigUser user, String parameterStoreName, String parameterName,
+            String defaultValue) {
+        return StatsigJNI.statsigGetStringParameterFromParameterStore(ref, user.getRef(), parameterStoreName,
+                parameterName, defaultValue);
+    }
+
+    public boolean getBooleanFromParameterStore(StatsigUser user, String parameterStoreName, String parameterName,
+            boolean defaultValue) {
+        return StatsigJNI.statsigGetBooleanParameterFromParameterStore(ref, user.getRef(), parameterStoreName,
+                parameterName, defaultValue);
+    }
+
+    public double getDoubleFromParameterStore(StatsigUser user, String parameterStoreName, String parameterName,
+            double defaultValue) {
+        return StatsigJNI.statsigGetFloatParameterFromParameterStore(ref, user.getRef(), parameterStoreName,
+                parameterName, defaultValue);
+    }
+
+    public long getLongFromParameterStore(StatsigUser user, String parameterStoreName, String parameterName,
+            long defaultValue) {
+        return StatsigJNI.statsigGetIntegerParameterFromParameterStore(ref, user.getRef(), parameterStoreName,
+                parameterName, defaultValue);
+    }
+
+    public int getIntFromParameterStore(StatsigUser user, String parameterStoreName, String parameterName,
+            int defaultValue) {
+        return (int) StatsigJNI.statsigGetIntegerParameterFromParameterStore(ref, user.getRef(), parameterStoreName,
+                parameterName, defaultValue);
+    }
+
+    public Map<String, Object> getMapFromParameterStore(StatsigUser user, String parameterStoreName,
+            String parameterName, Map<String, Object> defaultValue) {
+        String defaultValueJSON = defaultValue == null ? null : gson.toJson(defaultValue);
+        String result = StatsigJNI.statsigGetObjectParameterFromParameterStore(ref, user.getRef(), parameterStoreName,
+                parameterName, defaultValueJSON);
+        if (result == null) {
+            return defaultValue;
+        }
+        Type mapType = new TypeToken<Map<String, Object>>() {
+        }.getType();
+        Map<String, Object> map = gson.fromJson(result, mapType);
+        if (map == null) {
+            return defaultValue;
+        }
+        return map;
+    }
+
+    public Object[] getArrayFromParameterStore(StatsigUser user, String parameterStoreName, String parameterName,
+            Object[] defaultValue) {
+        String defaultValueJSON = defaultValue == null ? null : gson.toJson(defaultValue);
+        String result = StatsigJNI.statsigGetArrayParameterFromParameterStore(ref, user.getRef(), parameterStoreName,
+                parameterName, defaultValueJSON);
+        Object[] array = gson.fromJson(result, Object[].class);
+        if (array == null) {
+            return defaultValue;
+        }
+        return array;
     }
 
     public void logEvent(StatsigUser user, String eventName, String value, Map<String, String> metadata) {

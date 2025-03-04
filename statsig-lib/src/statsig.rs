@@ -54,7 +54,9 @@ use crate::{
         LayerEvaluationOptions,
     },
 };
+use serde::de::DeserializeOwned;
 use serde_json::json;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::sync::{Arc, Weak};
@@ -506,6 +508,80 @@ impl Statsig {
         options: &ClientInitResponseOptions,
     ) -> String {
         json!(self.get_client_init_response_with_options(user, options)).to_string()
+    }
+
+    pub fn get_string_parameter_from_store(
+        &self,
+        user: &StatsigUser,
+        parameter_store_name: &str,
+        parameter_name: &str,
+        fallback: Option<String>,
+    ) -> Option<String> {
+        self.get_parameter_from_store(user, parameter_store_name, parameter_name, fallback)
+    }
+
+    pub fn get_boolean_parameter_from_store(
+        &self,
+        user: &StatsigUser,
+        parameter_store_name: &str,
+        parameter_name: &str,
+        fallback: Option<bool>,
+    ) -> Option<bool> {
+        self.get_parameter_from_store(user, parameter_store_name, parameter_name, fallback)
+    }
+
+    pub fn get_float_parameter_from_store(
+        &self,
+        user: &StatsigUser,
+        parameter_store_name: &str,
+        parameter_name: &str,
+        fallback: Option<f64>,
+    ) -> Option<f64> {
+        self.get_parameter_from_store(user, parameter_store_name, parameter_name, fallback)
+    }
+
+    pub fn get_integer_parameter_from_store(
+        &self,
+        user: &StatsigUser,
+        parameter_store_name: &str,
+        parameter_name: &str,
+        fallback: Option<i64>,
+    ) -> Option<i64> {
+        self.get_parameter_from_store(user, parameter_store_name, parameter_name, fallback)
+    }
+
+    pub fn get_array_parameter_from_store(
+        &self,
+        user: &StatsigUser,
+        parameter_store_name: &str,
+        parameter_name: &str,
+        fallback: Option<Vec<Value>>,
+    ) -> Option<Vec<Value>> {
+        self.get_parameter_from_store(user, parameter_store_name, parameter_name, fallback)
+    }
+
+    pub fn get_object_parameter_from_store(
+        &self,
+        user: &StatsigUser,
+        parameter_store_name: &str,
+        parameter_name: &str,
+        fallback: Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<String, Value>> {
+        self.get_parameter_from_store(user, parameter_store_name, parameter_name, fallback)
+    }
+
+    pub fn get_parameter_from_store<T: DeserializeOwned>(
+        &self,
+        user: &StatsigUser,
+        parameter_store_name: &str,
+        parameter_name: &str,
+        fallback: Option<T>,
+    ) -> Option<T> {
+        let store = self.get_parameter_store(parameter_store_name);
+        match fallback {
+            Some(fallback) => Some(store.get(user, parameter_name, fallback)),
+            None => store.get_opt(user, parameter_name),
+        }
     }
 
     pub fn get_parameter_store(&self, parameter_store_name: &str) -> ParameterStore {

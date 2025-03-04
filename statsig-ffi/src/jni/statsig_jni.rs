@@ -4,12 +4,14 @@ use crate::jni::jni_utils::{
     convert_java_get_layer_options_to_rust, jstring_to_string,
 };
 use crate::{get_instance_or_noop_jni, get_instance_or_return_jni};
-use jni::sys::{jboolean, jclass, jstring, JNI_FALSE, JNI_TRUE};
+use jni::sys::{jboolean, jclass, jdouble, jlong, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
+use serde_json::Value;
+use std::collections::HashMap;
 use std::time::Duration;
 
 use super::jni_utils::serialize_json_to_jstring;
-use crate::jni::jni_utils::jni_to_rust_hashmap;
+use crate::jni::jni_utils::{jni_to_rust_hashmap, string_to_jstring};
 use jni::objects::{JClass, JObject, JString};
 use sigstat::{
     instance_store::INST_STORE, log_e, Statsig, StatsigOptions, StatsigRuntime, StatsigUser,
@@ -357,6 +359,275 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFieldsNeededForLaye
         &mut env,
         &statsig.get_fields_needed_for_layer(layer_name.as_str()),
     )
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetParameterStore(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    parameter_store_name: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+
+    let parameter_store_name: String = match env.get_string(&parameter_store_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let result = statsig.get_parameter_store(&parameter_store_name);
+
+    serialize_json_to_jstring(&mut env, &result)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetStringParameterFromParameterStore(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    user_ref: JString,
+    parameter_store_name: JString,
+    parameter_name: JString,
+    default_value: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+    let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
+
+    let parameter_store_name: String = match env.get_string(&parameter_store_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let parameter_name: String = match env.get_string(&parameter_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let default_value: Option<String> = match env.get_string(&default_value) {
+        Ok(s) => Some(s.into()),
+        Err(_) => None,
+    };
+
+    let result = statsig.get_string_parameter_from_store(
+        &user,
+        &parameter_store_name,
+        &parameter_name,
+        default_value,
+    );
+
+    match result {
+        Some(result) => string_to_jstring(&mut env, result),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetBooleanParameterFromParameterStore(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    user_ref: JString,
+    parameter_store_name: JString,
+    parameter_name: JString,
+    default_value: jboolean,
+) -> jboolean {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, default_value);
+    let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, default_value);
+
+    let parameter_store_name: String = match env.get_string(&parameter_store_name) {
+        Ok(s) => s.into(),
+        Err(_) => return default_value,
+    };
+
+    let parameter_name: String = match env.get_string(&parameter_name) {
+        Ok(s) => s.into(),
+        Err(_) => return default_value,
+    };
+
+    let default_value_bool: Option<bool> = match default_value {
+        0 => Some(false),
+        1 => Some(true),
+        _ => None,
+    };
+
+    let result = statsig.get_boolean_parameter_from_store(
+        &user,
+        &parameter_store_name,
+        &parameter_name,
+        default_value_bool,
+    );
+
+    match result {
+        Some(true) => JNI_TRUE,
+        Some(false) => JNI_FALSE,
+        None => default_value,
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFloatParameterFromParameterStore(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    user_ref: JString,
+    parameter_store_name: JString,
+    parameter_name: JString,
+    default_value: jdouble,
+) -> jdouble {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, default_value);
+    let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, default_value);
+
+    let parameter_store_name: String = match env.get_string(&parameter_store_name) {
+        Ok(s) => s.into(),
+        Err(_) => return default_value,
+    };
+
+    let parameter_name: String = match env.get_string(&parameter_name) {
+        Ok(s) => s.into(),
+        Err(_) => return default_value,
+    };
+
+    let result = statsig.get_float_parameter_from_store(
+        &user,
+        &parameter_store_name,
+        &parameter_name,
+        Some(default_value),
+    );
+
+    match result {
+        Some(result) => result,
+        None => default_value,
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetIntegerParameterFromParameterStore(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    user_ref: JString,
+    parameter_store_name: JString,
+    parameter_name: JString,
+    default_value: jlong,
+) -> jlong {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, default_value);
+    let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, default_value);
+
+    let parameter_store_name: String = match env.get_string(&parameter_store_name) {
+        Ok(s) => s.into(),
+        Err(_) => return default_value,
+    };
+
+    let parameter_name: String = match env.get_string(&parameter_name) {
+        Ok(s) => s.into(),
+        Err(_) => return default_value,
+    };
+
+    let result = statsig.get_integer_parameter_from_store(
+        &user,
+        &parameter_store_name,
+        &parameter_name,
+        Some(default_value),
+    );
+
+    match result {
+        Some(result) => result,
+        None => default_value,
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetObjectParameterFromParameterStore(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    user_ref: JString,
+    parameter_store_name: JString,
+    parameter_name: JString,
+    default_value: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+    let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
+
+    let parameter_store_name: String = match env.get_string(&parameter_store_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let parameter_name: String = match env.get_string(&parameter_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let default_value_str: String = match env.get_string(&default_value) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let default_value_map: Option<HashMap<String, Value>> =
+        match serde_json::from_str(default_value_str.as_str()) {
+            Ok(map) => Some(map),
+            Err(_) => None,
+        };
+
+    let result = statsig.get_object_parameter_from_store(
+        &user,
+        &parameter_store_name,
+        &parameter_name,
+        default_value_map,
+    );
+
+    match result {
+        Some(result) => serialize_json_to_jstring(&mut env, &result),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetArrayParameterFromParameterStore(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+    user_ref: JString,
+    parameter_store_name: JString,
+    parameter_name: JString,
+    default_value: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+    let user = get_instance_or_return_jni!(StatsigUser, &mut env, user_ref, std::ptr::null_mut());
+
+    let parameter_store_name: String = match env.get_string(&parameter_store_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let parameter_name: String = match env.get_string(&parameter_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let default_value_str: String = match env.get_string(&default_value) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let default_value_array: Option<Vec<Value>> =
+        match serde_json::from_str(default_value_str.as_str()) {
+            Ok(map) => Some(map),
+            Err(_) => None,
+        };
+
+    let result = statsig.get_array_parameter_from_store(
+        &user,
+        &parameter_store_name,
+        &parameter_name,
+        default_value_array,
+    );
+
+    match result {
+        Some(result) => serialize_json_to_jstring(&mut env, &result),
+        None => std::ptr::null_mut(),
+    }
 }
 
 #[no_mangle]
