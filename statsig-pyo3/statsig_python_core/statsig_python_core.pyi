@@ -1,15 +1,117 @@
-from typing import Optional
+from typing import Optional, Any, Union, Sequence, Mapping
+from typing_extensions import TypeAliasType
 
-class StatsigOptions: ...
-class StatsigUser: ...
-class FeatureGate: ...
-class Layer: ...
-class DynamicConfig: ...
-class Experiment: ...
-class DynamicConfigEvaluationOptions: ...
-class ExperimentEvaluationOptions: ...
-class LayerEvaluationOptions: ...
-class FeatureGateEvaluationOptions: ...
+class StatsigOptions:
+    specs_url: Optional[str]
+    specs_sync_interval_ms: Optional[str]
+    init_timeout_ms: Optional[int]
+    log_event_url: Optional[str]
+    disable_all_logging: Optional[bool]
+    event_logging_flush_interval_ms: Optional[int]
+    event_logging_max_queue_size: Optional[int]
+    enable_id_lists: Optional[bool]
+    enable_user_agent_parsing: Optional[bool]
+    enable_country_lookup: Optional[bool]
+    id_lists_url: Optional[str]
+    id_lists_sync_interval_ms: Optional[int]
+    fallback_to_statsig_api: Optional[bool]
+    environment: Optional[str]
+    output_log_level: Optional[str]
+
+    def __init__(
+        self,
+        specs_url: Optional[str] = None,
+        specs_sync_interval_ms: Optional[int] = None,
+        init_timeout_ms: Optional[int] = None,
+        log_event_url: Optional[str] = None,
+        disable_all_logging: Optional[bool] = None,
+        event_logging_flush_interval_ms: Optional[int] = None,
+        event_logging_max_queue_size: Optional[int] = None,
+        enable_id_lists: Optional[bool] = None,
+        enable_user_agent_parsing: Optional[bool] = None,
+        enable_country_lookup: Optional[bool] = None,
+        id_lists_url: Optional[str] = None,
+        id_lists_sync_interval_ms: Optional[int] = None,
+        fallback_to_statsig_api: Optional[bool] = None,
+        environment: Optional[str] = None,
+        output_log_level: Optional[str] = None,
+    ) -> None: ...
+
+JSONPrimitive = Union[str, int, float, bool, None]
+JSONValue: TypeAliasType = Union[
+    JSONPrimitive, Sequence["JSONValue"], Mapping[str, "JSONValue"]
+]
+
+class StatsigUser:
+    """Represents a Statsig user with optional metadata."""
+
+    user_id: Optional[str]
+    email: Optional[str]
+    ip: Optional[str]
+    country: Optional[str]
+    locale: Optional[str]
+    app_version: Optional[str]
+    user_agent: Optional[str]
+    custom: Optional[Mapping[str, JSONValue]]
+    custom_ids: Optional[Mapping[str, str]]
+    private_attributes: Optional[Mapping[str, JSONValue]]
+
+    def __init__(
+        self,
+        user_id: Optional[str] = None,
+        email: Optional[str] = None,
+        ip: Optional[str] = None,
+        country: Optional[str] = None,
+        locale: Optional[str] = None,
+        app_version: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        custom: Optional[Mapping[str, JSONValue]] = None,
+        custom_ids: Optional[Mapping[str, str]] = None,
+        private_attributes: Optional[Mapping[str, JSONValue]] = None,
+    ) -> None:
+        """
+        Initialize a StatsigUser instance.
+        :raises ValueError: If neither `user_id` nor `custom_ids` are provided.
+        """
+        ...
+
+class FeatureGate:
+    name: str
+    value: bool
+    rule_id: str
+    id_type: str
+
+class DynamicConfig:
+    name: str
+    rule_id: str
+    id_type: str
+    value: Any
+
+class Experiment:
+    name: str
+    rule_id: str
+    id_type: str
+    group_name: Optional[str]
+    value: Any
+
+class Layer:
+    name: str
+    rule_id: str
+    group_name: Optional[str]
+    allocated_experiment_name: Optional[str]
+    value: Any
+
+class DynamicConfigEvaluationOptions:
+    disable_exposure_logging: bool
+
+class ExperimentEvaluationOptions:
+    disable_exposure_logging: bool
+
+class LayerEvaluationOptions:
+    disable_exposure_logging: bool
+
+class FeatureGateEvaluationOptions:
+    disable_exposure_logging: bool
 
 class Statsig:
     """
@@ -19,19 +121,19 @@ class Statsig:
     def __init__(
         self, secret_key: str, options: Optional[StatsigOptions] = None
     ) -> None: ...
-    def initialize(self) -> None:
+    def initialize(self):
         """
         Initializes the SDK asynchronously.
         """
         ...
 
-    def shutdown(self) -> None:
+    def shutdown(self):
         """
         Shuts down the SDK and releases resources.
         """
         ...
 
-    def flush_events(self) -> None:
+    def flush_events(self):
         """
         Manually trigger flush exposure events operation
         """
@@ -83,34 +185,40 @@ class Statsig:
         name: str,
         options: Optional[DynamicConfigEvaluationOptions] = None,
     ) -> DynamicConfig: ...
+
     def manually_log_dynamic_config_exposure(
         self,
         user: StatsigUser,
         name: str,
     ) -> None: ...
+
     def get_experiment(
         self,
         user: StatsigUser,
         name: str,
         options: Optional[ExperimentEvaluationOptions] = None,
     ) -> Experiment: ...
+
     def manually_log_experiment_exposure(
         self,
         user: StatsigUser,
         name: str,
     ) -> None: ...
+
     def get_layer(
         self,
         user: StatsigUser,
         name: str,
         options: Optional[LayerEvaluationOptions] = None,
     ) -> Layer: ...
+
     def manually_log_layer_parameter_exposure(
         self,
         user: StatsigUser,
         name: str,
         param_name: str,
     ) -> None: ...
+
     def get_client_initialize_response(
         self,
         user: StatsigUser,

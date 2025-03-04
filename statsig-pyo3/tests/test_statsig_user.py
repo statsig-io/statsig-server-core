@@ -1,3 +1,5 @@
+from typing import Mapping
+
 import pytest
 from statsig_python_core import StatsigUser
 
@@ -30,6 +32,20 @@ def test_create_user_with_custom_fields():
 
     assert user.custom == {"id": 30, "premium": True}
     assert user.custom_ids == {"email": "whd@statsig.com", "google": "whd@gmail"}
+    assert user.private_attributes == {"ip": "1.2.3.4"}
+
+def test_create_user_with_mapping():
+    """Test creating a user where `custom` and `private_attributes` are `Mapping` instead of `Dict`."""
+    custom_mapping: Mapping[str, int] = {"id": 30, "premium": 1}
+    private_mapping: Mapping[str, str] = {"ip": "1.2.3.4"}
+
+    user = StatsigUser(
+        user_id="user_123",
+        custom=custom_mapping,
+        private_attributes=private_mapping
+    )
+
+    assert user.custom == {"id": 30, "premium": 1}
     assert user.private_attributes == {"ip": "1.2.3.4"}
 
 def test_create_user_with_empty_dicts():
