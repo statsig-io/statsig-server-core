@@ -18,6 +18,7 @@ const TARGET_MAPPING = {
   //   'amazonlinux2-x86_64-ffi': 'amazonlinux2-x86_64',
   //   'amazonlinux2023-arm64-ffi': 'amazonlinux2023-arm64',
   //   'amazonlinux2023-x86_64-ffi': 'amazonlinux2023-x86_64',
+  //   'centos7'
   'i686-pc-windows-msvc-ffi': 'windows-i686',
   'x86_64-apple-darwin-ffi': 'macos-x86_64',
   'x86_64-pc-windows-msvc-ffi': 'windows-x86_64',
@@ -34,7 +35,7 @@ export async function javaPublish(options: PublisherOptions) {
     ...listFiles(options.workingDir, '*.dylib'),
     ...listFiles(options.workingDir, '*.so'),
     ...listFiles(options.workingDir, '*.dll'),
-  ];
+  ].filter(isMappedTarget);
 
   Log.stepBegin('Clearing Java Native Directory');
   ensureEmptyDir(JAVA_NATIVE_DIR);
@@ -42,6 +43,10 @@ export async function javaPublish(options: PublisherOptions) {
 
   moveJavaLibraries(libFiles);
   publishJavaPackages(options);
+}
+
+function isMappedTarget(file: string): boolean {
+  return Object.keys(TARGET_MAPPING).some(target => file.includes(target));
 }
 
 function getDestination(file: string, destKeys: string[]): string | null {
