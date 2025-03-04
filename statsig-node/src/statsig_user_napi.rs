@@ -12,9 +12,9 @@ type ValidPrimitives = Either4<String, f64, bool, Vec<Value>>;
 #[napi(object)]
 pub struct StatsigUserArgs {
     #[napi(js_name = "userID")]
-    pub user_id: String,
-    #[napi(js_name = "customIDs")]
-    pub custom_ids: HashMap<String, Either3<String, f64, i64>>,
+    pub user_id: Option<String>,
+    #[napi(js_name = "customIDs", ts_type = "Record<string, string>")]
+    pub custom_ids: Option<HashMap<String, Either3<String, f64, i64>>>,
     pub email: Option<String>,
     pub ip: Option<String>,
     pub user_agent: Option<String>,
@@ -48,11 +48,40 @@ macro_rules! set_dynamic_value_fields {
     };
 }
 
+fn unidentifiable_user() -> StatsigUserActual {
+    log_w!(TAG, "Must pass a valid user with a userID or customID for the server SDK to work. See https://docs.statsig.com/messages/serverRequiredUserID for more details.");
+    StatsigUserActual::with_user_id("".to_string())
+}
+
 #[napi]
 impl StatsigUser {
     #[napi(constructor)]
-    pub fn new(args: StatsigUserArgs) -> Self {
-        let mut inner = StatsigUserActual::with_user_id(args.user_id);
+    pub fn new(
+        #[napi(
+            ts_arg_type = "({userID: string} | {customIDs: Record<string, string> }) & StatsigUserArgs"
+        )]
+        args: StatsigUserArgs,
+    ) -> Self {
+        let mut inner = match (args.user_id, args.custom_ids) {
+            (Some(user_id), custom_ids) => {
+                let mut user = StatsigUserActual::with_user_id(user_id);
+                user.custom_ids = custom_ids.map(Self::convert_custom_ids);
+                user
+            }
+            (None, Some(custom_ids)) => {
+                if custom_ids.is_empty() {
+                    return Self {
+                        inner: unidentifiable_user(),
+                    };
+                }
+                StatsigUserActual::with_custom_ids(Self::convert_custom_ids(custom_ids))
+            }
+            (None, None) => {
+                return Self {
+                    inner: unidentifiable_user(),
+                }
+            }
+        };
 
         set_dynamic_value_fields!(
             args,
@@ -64,18 +93,6 @@ impl StatsigUser {
             locale,
             app_version
         );
-
-        let mut custom_ids = HashMap::new();
-        for (key, value) in args.custom_ids {
-            let dyn_value = match value {
-                Either3::A(v) => DynamicValue::from(v),
-                Either3::B(v) => DynamicValue::from(v),
-                Either3::C(v) => DynamicValue::from(v),
-            };
-
-            custom_ids.insert(key, dyn_value);
-        }
-        inner.custom_ids = Some(custom_ids);
 
         inner.custom = Self::convert_to_dynamic_value_map(args.custom);
         inner.private_attributes = Self::convert_to_dynamic_value_map(args.private_attributes);
@@ -91,29 +108,37 @@ impl StatsigUser {
     }
 
     #[napi(js_name = "withCustomIDs")]
-    pub fn with_custom_ids(custom_ids: HashMap<String, Value>) -> Self {
-        let mut converted: HashMap<String, String> = HashMap::new();
-
-        for (key, value) in custom_ids {
-            if let Some(v) = value.as_str() {
-                converted.insert(key, v.to_string());
-                continue;
-            }
-
-            log_w!(TAG, "Custom ID '{}' is not a string: {}", key, value);
-
-            if let Some(v) = value.as_number() {
-                converted.insert(key, v.to_string());
-            }
-        }
-
+    pub fn with_custom_ids(
+        #[napi(ts_arg_type = "Record<string, string>")] custom_ids: HashMap<
+            String,
+            Either3<String, f64, i64>,
+        >,
+    ) -> Self {
         Self {
-            inner: StatsigUserActual::with_custom_ids(converted),
+            inner: StatsigUserActual::with_custom_ids(Self::convert_custom_ids(custom_ids)),
         }
     }
 
     pub fn as_inner(&self) -> &StatsigUserActual {
         &self.inner
+    }
+
+    fn convert_custom_ids(
+        custom_ids_arg: HashMap<String, Either3<String, f64, i64>>,
+    ) -> HashMap<String, DynamicValue> {
+        custom_ids_arg
+            .into_iter()
+            .map(|(key, value)| {
+                (
+                    key,
+                    match value {
+                        Either3::A(v) => DynamicValue::from(v),
+                        Either3::B(v) => DynamicValue::from(v),
+                        Either3::C(v) => DynamicValue::from(v),
+                    },
+                )
+            })
+            .collect()
     }
 
     fn convert_to_dynamic_value_map(

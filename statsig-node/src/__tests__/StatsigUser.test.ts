@@ -122,4 +122,57 @@ describe('StatsigUser', () => {
     expect(event?.user?.customIDs?.myCustomID).toEqual('c-custom-id');
     expect(event?.user?.email).toEqual('c-user@example.com');
   });
+
+  it('creates users with no userID', async () => {
+    const user = new StatsigUser({
+      customIDs: {
+        myCustomID: 'c-custom-id'
+      },
+      email: 'c-user@example.com',
+    });
+
+    statsig.checkGate(user, 'test-gate');
+
+    const event = await getLastLoggedEvent();
+    expect(event?.eventName).toEqual('statsig::gate_exposure');
+    expect(event?.metadata?.gate).toEqual('test-gate');
+    expect(event?.user?.userID).toBeUndefined();
+    expect(event?.user?.customIDs?.myCustomID).toEqual('c-custom-id');
+    expect(event?.user?.email).toEqual('c-user@example.com');
+  });
+
+  it('creates users with no customIDs', async () => {
+    const user = new StatsigUser({
+      userID: "c-user",
+      email: 'c-user@example.com',
+    });
+
+    statsig.checkGate(user, 'test-gate');
+
+    const event = await getLastLoggedEvent();
+    expect(event?.eventName).toEqual('statsig::gate_exposure');
+    expect(event?.metadata?.gate).toEqual('test-gate');
+    expect(event?.user?.userID).toEqual('c-user');
+    expect(event?.user?.customIDs?.myCustomID).toBeUndefined();
+    expect(event?.user?.email).toEqual('c-user@example.com');
+  });
+
+  it('Creates users with an empty user ID when creating a user with no userID or customID', async () => {
+    let user = new StatsigUser({
+      userID: undefined as any,
+      email: 'c-user@example.com',
+    });
+
+    statsig.checkGate(user, 'test-gate');
+
+    expect(user).toBeDefined();
+    expect(user.userID).toEqual("");
+
+    const event = await getLastLoggedEvent();
+    expect(event?.eventName).toEqual('statsig::gate_exposure');
+    expect(event?.metadata?.gate).toEqual('test-gate');
+    expect(event?.user?.userID).toEqual('');
+    expect(event?.user?.email).toBeUndefined();
+    expect(event?.user?.customIDs).toBeUndefined();
+  });
 });

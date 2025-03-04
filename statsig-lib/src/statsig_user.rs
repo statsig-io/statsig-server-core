@@ -26,9 +26,12 @@ impl StatsigUserBuilder {
     }
 
     #[must_use]
-    pub fn new_with_custom_ids(custom_ids: HashMap<String, String>) -> Self {
+    pub fn new_with_custom_ids<V>(custom_ids: HashMap<String, V>) -> Self
+    where
+        V: Into<DynamicValue>,
+    {
         Self {
-            custom_ids: Some(convert_str_map_to_dyn_values(custom_ids)),
+            custom_ids: Some(custom_ids.into_iter().map(|(k, v)| (k, v.into())).collect()),
             ..Self::new()
         }
     }
@@ -200,9 +203,12 @@ impl StatsigUser {
     }
 
     #[must_use]
-    pub fn with_custom_ids(custom_ids: HashMap<String, String>) -> Self {
+    pub fn with_custom_ids<V>(custom_ids: HashMap<String, V>) -> Self
+    where
+        V: Into<DynamicValue>,
+    {
         StatsigUser {
-            custom_ids: Some(convert_str_map_to_dyn_values(custom_ids)),
+            custom_ids: Some(custom_ids.into_iter().map(|(k, v)| (k, v.into())).collect()),
             ..Self::default()
         }
     }
