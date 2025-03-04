@@ -93,6 +93,19 @@ pub struct StatsigContext {
     pub spec_store_data: Option<SpecStoreData>,
     pub error_observer: Arc<dyn OpsStatsEventObserver>,
 }
+#[derive(Debug)]
+pub struct FailureDetails {
+    pub reason: String,
+    pub error: Option<StatsigErr>,
+}
+#[derive(Debug)]
+pub struct StatsigInitializeDetails {
+    pub duration: f64,
+    pub init_success: bool,
+    pub is_config_spec_ready: bool,
+    pub source: SpecsSource,
+    pub failure_details: Option<FailureDetails>,
+}
 
 impl Statsig {
     pub fn new(sdk_key: &str, options: Option<Arc<StatsigOptions>>) -> Self {
@@ -181,6 +194,10 @@ impl Statsig {
     }
 
     pub async fn initialize(&self) -> Result<(), StatsigErr> {
+        self.initialize_with_details().await.map(|_| ())
+    }
+
+    pub async fn initialize_with_details(&self) -> Result<StatsigInitializeDetails, StatsigErr> {
         let start_time = Instant::now();
         self.diagnostics.mark_init_overall_start();
         self.spec_store.set_source(SpecsSource::Loading);
@@ -188,9 +205,10 @@ impl Statsig {
             .clone()
             .start_background_task(&self.statsig_runtime);
 
-        let mut success = true;
-        let mut error_message: Option<String> = None;
         self.specs_adapter.initialize(self.spec_store.clone());
+
+        let mut success = true;
+        let mut error_message = None;
 
         let init_res = match self
             .specs_adapter
@@ -200,8 +218,8 @@ impl Statsig {
         {
             Ok(()) => Ok(()),
             Err(e) => {
-                self.spec_store.set_source(SpecsSource::NoValues);
                 success = false;
+                self.spec_store.set_source(SpecsSource::NoValues);
                 error_message = Some(format!("Failed to start specs adapter: {e}"));
                 Err(e)
             }
@@ -233,6 +251,7 @@ impl Statsig {
             .start(&self.statsig_runtime)
             .await
             .map_err(|e| {
+                success = false;
                 log_error_to_statsig_and_console!(
                     self.ops_stats.clone(),
                     TAG,
@@ -257,23 +276,31 @@ impl Statsig {
             );
         }
 
+        let spec_info = self.spec_store.get_current_specs_info();
+        let duration = start_time.elapsed().as_millis() as f64;
+
         self.set_default_environment_from_server();
-        self.log_init_finish(
-            success,
-            &error_message,
-            start_time,
-            &self.spec_store.get_current_specs_info(),
-        );
-        if let Err(e) = init_res.clone() {
+        self.log_init_finish(success, &error_message, &duration, &spec_info);
+        let error = init_res.clone().err();
+        if let Some(ref e) = error {
             log_error_to_statsig_and_console!(
                 self.ops_stats,
                 TAG,
                 "{}",
-                error_message.unwrap_or(e.to_string())
+                error_message.clone().unwrap_or(e.to_string())
             );
         }
 
-        init_res
+        Ok(StatsigInitializeDetails {
+            init_success: success,
+            is_config_spec_ready: spec_info.lcut.is_some(),
+            source: spec_info.source,
+            failure_details: error.as_ref().map(|e| FailureDetails {
+                reason: e.to_string(),
+                error: Some(e.clone()),
+            }),
+            duration,
+        })
     }
 
     pub async fn shutdown(&self) -> Result<(), StatsigErr> {
@@ -1360,13 +1387,13 @@ impl Statsig {
         &self,
         success: bool,
         error_message: &Option<String>,
-        start_time: Instant,
+        duration: &f64,
         specs_info: &SpecsInfo,
     ) {
         self.ops_stats.log(ObservabilityEvent::new_event(
             MetricType::Dist,
             "initialization".to_string(),
-            start_time.elapsed().as_millis() as f64,
+            *duration,
             Some(HashMap::from([
                 ("success".to_owned(), success.to_string()),
                 ("source".to_owned(), specs_info.source.to_string()),

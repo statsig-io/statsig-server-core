@@ -1,9 +1,11 @@
-use sigstat::output_logger::LogLevel;
-use sigstat::{Statsig, StatsigOptions, StatsigUser};
 use std::env;
 use std::sync::Arc;
 use std::time::Instant;
+
 use tokio::time::{sleep, Duration};
+
+use sigstat::output_logger::LogLevel;
+use sigstat::{Statsig, StatsigOptions, StatsigUser};
 
 #[tokio::main]
 async fn main() {
