@@ -71,7 +71,8 @@ class StatsigUser:
     ) -> None:
         """
         Initialize a StatsigUser instance.
-        :raises ValueError: If neither `user_id` nor `custom_ids` are provided.
+
+        Requires either a UserID or a CustomID to be set
         """
         ...
 

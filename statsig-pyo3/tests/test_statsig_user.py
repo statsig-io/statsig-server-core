@@ -1,6 +1,5 @@
 from typing import Mapping
 
-import pytest
 from statsig_python_core import StatsigUser
 
 def test_create_user_with_only_string_fields():
@@ -71,6 +70,11 @@ def test_create_user_with_py_list():
         custom={"arr": ["one", "two", "three", 1, 3]}
     )
     assert user.custom == {"arr": ["one", "two", "three", 1, 3]}
+
+def test_create_user_with_both_null_user_id_and_custom_id():
+    user = StatsigUser()
+    assert user.user_id is None
+    assert user.custom_ids is None
 
 def test_create_user_with_custom_empty():
     user = StatsigUser(

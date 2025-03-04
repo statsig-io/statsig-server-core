@@ -1,7 +1,9 @@
 use crate::pyo_utils::py_dict_to_map;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use sigstat::{DynamicValue, StatsigUser};
+use sigstat::{log_w, DynamicValue, StatsigUser};
+
+const TAG: &str = stringify!(StatsigUserPy);
 
 #[pyclass(name = "StatsigUser")]
 pub struct StatsigUserPy {
@@ -48,9 +50,7 @@ impl StatsigUserPy {
         py: Python,
     ) -> PyResult<Self> {
         if user_id.is_none() && custom_ids.is_none() {
-            return Err(pyo3::exceptions::PyValueError::new_err(
-                "[StatsigUser] Either `user_id` or `custom_ids` must be provided.",
-            ));
+            log_w!(TAG, "Either `user_id` or `custom_ids` must be provided.");
         }
 
         let internal_user_id = user_id.clone().unwrap_or_default();
