@@ -8,7 +8,7 @@ pub struct StatsigUserPy {
     pub inner: StatsigUser,
 
     #[pyo3(get)]
-    pub user_id: String,
+    pub user_id: Option<String>,
     #[pyo3(get)]
     pub email: Option<String>,
     #[pyo3(get)]
@@ -32,10 +32,10 @@ pub struct StatsigUserPy {
 #[pymethods]
 impl StatsigUserPy {
     #[new]
-    #[pyo3(signature = (user_id, email=None, ip=None, country=None, locale=None, app_version=None, user_agent=None, custom=None, custom_ids=None, private_attributes=None))]
+    #[pyo3(signature = (user_id=None, email=None, ip=None, country=None, locale=None, app_version=None, user_agent=None, custom=None, custom_ids=None, private_attributes=None))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        user_id: &str,
+        user_id: Option<String>,
         email: Option<String>,
         ip: Option<String>,
         country: Option<String>,
@@ -47,7 +47,14 @@ impl StatsigUserPy {
         private_attributes: Option<Py<PyDict>>,
         py: Python,
     ) -> PyResult<Self> {
-        let mut user = StatsigUser::with_user_id(user_id.to_string());
+        if user_id.is_none() && custom_ids.is_none() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "[StatsigUser] Either `user_id` or `custom_ids` must be provided.",
+            ));
+        }
+
+        let internal_user_id = user_id.clone().unwrap_or_default();
+        let mut user = StatsigUser::with_user_id(internal_user_id);
 
         if let Some(e) = email.clone() {
             user.email = Some(DynamicValue::from(e));
@@ -82,7 +89,7 @@ impl StatsigUserPy {
 
         Ok(Self {
             inner: user,
-            user_id: user_id.to_string(),
+            user_id,
             email,
             ip,
             country,
