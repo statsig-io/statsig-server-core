@@ -17,12 +17,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     event_logging_flush_interval_ms: jlong,
     event_logging_max_queue_size: jlong,
     environment: JString,
-    enable_id_lists: jboolean,
-    disable_all_logging: jboolean,
     output_logger_level: jint,
     service_name: JString,
-    enable_user_agent_parsing: jboolean,
+    enable_id_lists: jboolean,
     enable_country_lookup: jboolean,
+    disable_all_logging: jboolean,
+    enable_user_agent_parsing: jboolean,
 ) -> jstring {
     let specs_url = jstring_to_string(&mut env, specs_url);
     let log_event_url = jstring_to_string(&mut env, log_event_url);

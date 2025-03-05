@@ -12,12 +12,12 @@ public class StatsigOptions {
                 builder.eventLoggingFlushIntervalMs,
                 builder.eventLoggingMaxQueueSize,
                 builder.environment,
-                builder.enableIDLists,
-                builder.disableAllLogging,
                 builder.outputLoggerLevel.getValue(),
                 builder.serviceName,
-                builder.enableUserAgentParsing,
-                builder.enableCountryLookup);
+                builder.enableIDLists,
+                builder.enableCountryLookup,
+                builder.disableAllLogging,
+                builder.enableUserAgentParsing);
 
         ResourceCleaner.register(this, () -> {
             if (ref != null) {

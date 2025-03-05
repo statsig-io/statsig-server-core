@@ -138,12 +138,12 @@ class StatsigJNI {
             long eventLoggingFlushIntervalMs,
             long eventLoggingMaxQueueSize,
             String environment,
-            boolean enableIDLists,
-            boolean disableAllLogging,
             long outputLoggerLevel,
             String serviceName,
-            boolean enableUserAgentParsing,
-            boolean enableCountryLookup);
+            boolean enableIDLists,
+            boolean enableCountryLookup,
+            boolean disableAllLogging,
+            boolean enableUserAgentParsing);
 
     public static native void statsigOptionsRelease(String optionsRef);
 

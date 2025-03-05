@@ -2,6 +2,8 @@ package com.statsig;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 public class NativeLibraryLoaderTest {
 
     // no-op for most of the time
@@ -9,6 +11,6 @@ public class NativeLibraryLoaderTest {
     // you want to test again
     @Test
     public void testLoadNativeLibrary() {
-        // assertTrue(StatsigJNI.isLibraryLoaded());
+        assertTrue(StatsigJNI.isLibraryLoaded());
     }
 }
