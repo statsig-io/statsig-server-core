@@ -44,6 +44,17 @@ public class Statsig {
         });
     }
 
+    public Statsig(String sdkKey) {
+        this.ref = StatsigJNI.statsigCreate(sdkKey, null);
+
+        ResourceCleaner.register(this, () -> {
+            if (ref != null) {
+                StatsigJNI.statsigRelease(ref);
+                ref = null;
+            }
+        });
+    }
+
     public String getRef() {
         return ref;
     }
