@@ -1947,7 +1947,7 @@ dependencies = [
 
 [[package]]
 name = "sigstat"
-version = "0.0.6-beta.8"
+version = "0.0.6-beta.9"
 dependencies = [
  "assert-json-diff",
  "async-trait",
@@ -1980,7 +1980,7 @@ dependencies = [
 
 [[package]]
 name = "sigstat-grpc"
-version = "0.0.6-beta.8"
+version = "0.0.6-beta.9"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2043,7 +2043,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "statsig-node"
-version = "0.0.6-beta.8"
+version = "0.0.6-beta.9"
 dependencies = [
  "async-trait",
  "napi",
@@ -2055,7 +2055,7 @@ dependencies = [
 
 [[package]]
 name = "statsig-pyo3"
-version = "0.0.6-beta.8"
+version = "0.0.6-beta.9"
 dependencies = [
  "pyo3",
  "serde_json",
@@ -2064,7 +2064,7 @@ dependencies = [
 
 [[package]]
 name = "statsig_elixir"
-version = "0.0.6-beta.8"
+version = "0.0.6-beta.9"
 dependencies = [
  "rustler",
  "serde",
@@ -2075,7 +2075,7 @@ dependencies = [
 
 [[package]]
 name = "statsig_ffi"
-version = "0.0.6-beta.8"
+version = "0.0.6-beta.9"
 dependencies = [
  "cbindgen",
  "csbindgen",
