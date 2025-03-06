@@ -11,6 +11,15 @@ public class ClientInitResponseOptions {
         hashAlgoInternal = hashAlgo.convertToStr();
     }
 
+    public ClientInitResponseOptions(String clientSDKKey) {
+        this.clientSDKKey = clientSDKKey;
+    }
+
+    public ClientInitResponseOptions(HashAlgo hashAlgo) {
+        this.hashAlgo = hashAlgo;
+        hashAlgoInternal = hashAlgo.convertToStr();
+    }
+
     public HashAlgo getHashAlgo() {
         return hashAlgo;
     }
