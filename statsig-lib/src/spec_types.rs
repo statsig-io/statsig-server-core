@@ -55,6 +55,18 @@ pub struct Condition {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+pub struct OverrideRule {
+    pub rule_name: String,
+    pub start_time: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ConfigMapping {
+    pub new_config_name: String,
+    pub rules: Vec<OverrideRule>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct SpecsResponseFull {
     pub feature_gates: HashMap<String, Spec>,
     pub dynamic_configs: HashMap<String, Spec>,
@@ -72,7 +84,10 @@ pub struct SpecsResponseFull {
     pub param_stores: Option<HashMap<String, ParameterStore>>,
     pub sdk_configs: Option<HashMap<String, DynamicValue>>,
     pub cmab_configs: Option<HashMap<String, CMABConfig>>,
+    pub overrides: Option<HashMap<String, Vec<ConfigMapping>>>,
+    pub override_rules: Option<HashMap<String, Rule>>,
 }
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CMABConfig {

@@ -307,6 +307,8 @@ impl SpecsResponseFull {
             param_stores: None,
             sdk_configs: None,
             cmab_configs: None,
+            overrides: None,
+            override_rules: None,
         }
     }
 }
