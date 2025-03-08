@@ -18,7 +18,7 @@ jobs:
       matrix:
         args:
             # - ["image_tag", "lrs_subdir"]
-            - ["grpc_server_core_node", "server-core-node"]
+            - ["server_core_node", "server-core-node"]
             - ["grpc_server_core_python", "server-core-python"]
     steps:
       - name: Checkout LRS repo
