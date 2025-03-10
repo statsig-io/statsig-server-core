@@ -24,8 +24,8 @@ export function buildNode(options: BuilderOptions) {
   const nodeCommand = [
     'pnpm exec napi build',
     '--platform',
-    '--js binding.js',
-    '--dts binding.d.ts',
+    '--js index.js',
+    '--dts index.d.ts',
     isMusl ? '--cross-compile' : '',
     isGnu ? '--use-napi-cross --features vendored_openssl' : '',
     options.release ? '--release --strip' : '',
@@ -51,10 +51,9 @@ export function buildNode(options: BuilderOptions) {
     isLinux(options.os) && options.docker ? dockerCommand : nodeCommand;
 
   Log.stepBegin(`Executing build command`);
-  execSync("rm -rf build && mkdir build", { cwd: nodeDir, stdio: 'inherit' })
-  execSync("cp ./src/*.ts ./build", { cwd: nodeDir, stdio: 'inherit' })
   Log.stepProgress(command);
+
   execSync(command, { cwd: nodeDir, stdio: 'inherit' });
-  execSync("tsc ./build/index.ts", { cwd: nodeDir, stdio: 'inherit'});
+
   Log.stepEnd(`Built statsig-node`);
 }
