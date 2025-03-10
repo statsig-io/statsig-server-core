@@ -1,6 +1,9 @@
 mod utils;
 
-use sigstat::{output_logger::LogLevel, ObservabilityClient, Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{
+    output_logger::LogLevel, ObservabilityClient, OpsStatsEventObserver, Statsig, StatsigOptions,
+    StatsigUser,
+};
 use std::sync::{Arc, Mutex, Weak};
 use utils::{
     mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi},
@@ -105,7 +108,7 @@ impl ObservabilityClient for MockObservabilityClient {
             .push(RecordedCall::Dist(metric_name, value, tags));
     }
 
-    fn to_ops_stats_event_observer(self: Arc<Self>) -> Arc<dyn sigstat::OpsStatsEventObserver> {
+    fn to_ops_stats_event_observer(self: Arc<Self>) -> Arc<dyn OpsStatsEventObserver> {
         self
     }
 }

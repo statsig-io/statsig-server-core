@@ -42,8 +42,8 @@ const TEST_COMMANDS: Record<string, string> = {
   ].join(' && '),
 
   rust: [
-    'cargo test -p sigstat',
-    'cargo test -p sigstat --features with_zstd',
+    'cargo test -p statsig-rust',
+    'cargo test -p statsig-rust --features with_zstd',
   ].join(' && '),
 };
 

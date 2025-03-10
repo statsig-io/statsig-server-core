@@ -19,7 +19,7 @@ class StatsigUserBuilderTest extends TestCase
         parent::setUp();
 
         $dir = dirname(__FILE__);
-        $data = file_get_contents($dir . '/../../statsig-lib/tests/data/eval_proj_dcs.json');
+        $data = file_get_contents($dir . '/../../statsig-rust/tests/data/eval_proj_dcs.json');
 
         $this->server = new MockServer();
         $this->server->mock('/v2/download_config_specs/secret-key.json', $data);

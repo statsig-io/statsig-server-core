@@ -5,7 +5,7 @@ use std::time::Duration;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use serde_json::Value;
-use sigstat::{log_d, log_e, Statsig as StatsigActual};
+use statsig_rust::{log_d, log_e, Statsig as StatsigActual};
 
 use crate::gcir_options_napi::ClientInitResponseOptions;
 use crate::observability_client_napi::ObservabilityClient;

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
-use sigstat::log_event_payload::{LogEventPayload, LogEventRequest};
-use sigstat::{EventLoggingAdapter, StatsigErr, StatsigRuntime};
+use statsig_rust::log_event_payload::{LogEventPayload, LogEventRequest};
+use statsig_rust::{EventLoggingAdapter, StatsigErr, StatsigRuntime};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;

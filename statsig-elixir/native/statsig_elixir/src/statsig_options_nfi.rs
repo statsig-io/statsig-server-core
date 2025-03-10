@@ -1,6 +1,6 @@
 use rustler::NifStruct;
 use serde::Serialize;
-use sigstat::statsig_options::StatsigOptions as StatsigOptionsActual;
+use statsig_rust::statsig_options::StatsigOptions as StatsigOptionsActual;
 
 #[derive(NifStruct, Serialize)]
 #[module = "StatsigOptions"]

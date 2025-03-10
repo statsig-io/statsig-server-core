@@ -1,5 +1,5 @@
 use napi_derive::napi;
-use sigstat::{ClientInitResponseOptions as ClientInitResponseOptionsActual, HashAlgorithm};
+use statsig_rust::{ClientInitResponseOptions as ClientInitResponseOptionsActual, HashAlgorithm};
 
 #[napi(object, object_to_js = false)]
 pub struct ClientInitResponseOptions {

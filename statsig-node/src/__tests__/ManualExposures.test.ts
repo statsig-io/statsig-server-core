@@ -32,7 +32,7 @@ describe('Manual Exposures', () => {
     const dcs = fs.readFileSync(
       path.join(
         __dirname,
-        '../../../statsig-lib/tests/data/eval_proj_dcs.json',
+        '../../../statsig-rust/tests/data/eval_proj_dcs.json',
       ),
       'utf8',
     );

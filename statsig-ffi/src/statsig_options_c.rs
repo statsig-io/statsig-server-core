@@ -1,7 +1,7 @@
 use std::{os::raw::c_char, os::raw::c_int, sync::Arc};
 
 use crate::ffi_utils::{c_char_to_string, c_int_to_u32, string_to_c_char};
-use sigstat::{
+use statsig_rust::{
     instance_store::INST_STORE, log_e, EventLoggingAdapter, SpecsAdapter,
     StatsigLocalFileEventLoggingAdapter, StatsigLocalFileSpecsAdapter, StatsigOptions,
 };

@@ -1,6 +1,6 @@
-use sigstat::hashset_with_ttl::HashSetWithTTL;
-use sigstat::output_logger::{initialize_simple_output_logger, LogLevel};
-use sigstat::StatsigRuntime;
+use statsig_rust::hashset_with_ttl::HashSetWithTTL;
+use statsig_rust::output_logger::{initialize_simple_output_logger, LogLevel};
+use statsig_rust::StatsigRuntime;
 use tokio::time::{sleep, Duration};
 
 #[tokio::test]

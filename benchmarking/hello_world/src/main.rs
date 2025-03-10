@@ -1,4 +1,4 @@
-use sigstat::{Statsig, StatsigUser};
+use statsig_rust::{Statsig, StatsigUser};
 use tokio;
 use std::time::Instant;
 

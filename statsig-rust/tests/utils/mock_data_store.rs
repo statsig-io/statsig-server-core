@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use sigstat::{
+use statsig_rust::{
     data_store_interface::{DataStoreResponse, DataStoreTrait, RequestPath},
     StatsigErr,
 };

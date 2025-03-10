@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use napi::bindgen_prelude::{Either3, Either4};
 use napi_derive::napi;
 use serde_json::Value;
-use sigstat::{log_w, DynamicValue, StatsigUser as StatsigUserActual};
+use statsig_rust::{log_w, DynamicValue, StatsigUser as StatsigUserActual};
 
 const TAG: &str = "StatsigUserNapi";
 

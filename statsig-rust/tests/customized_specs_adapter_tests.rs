@@ -48,7 +48,7 @@ pub mod specs_adapter_tests {
     #[cfg(feature = "with_grpc")]
     #[tokio::test]
     async fn test_data_store_with_streaming_cache_miss() {
-        use sigstat::SpecsAdapter;
+        use statsig_rust::SpecsAdapter;
 
         let rt = StatsigRuntime::get_runtime();
         let (adapter, mock_proxy, data_store, mock_listener) =

@@ -1,7 +1,7 @@
 mod utils;
 
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
-use sigstat::{output_logger::LogLevel, Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{output_logger::LogLevel, Statsig, StatsigOptions, StatsigUser};
 use std::{fs, path::PathBuf, sync::Arc, time::Duration};
 use tokio::time::sleep;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};

@@ -34,7 +34,7 @@ describe('StatsigUser', () => {
     const dcs = fs.readFileSync(
       path.join(
         __dirname,
-        '../../../statsig-lib/tests/data/eval_proj_dcs.json',
+        '../../../statsig-rust/tests/data/eval_proj_dcs.json',
       ),
       'utf8',
     );
@@ -126,7 +126,7 @@ describe('StatsigUser', () => {
   it('creates users with no userID', async () => {
     const user = new StatsigUser({
       customIDs: {
-        myCustomID: 'c-custom-id'
+        myCustomID: 'c-custom-id',
       },
       email: 'c-user@example.com',
     });
@@ -143,7 +143,7 @@ describe('StatsigUser', () => {
 
   it('creates users with no customIDs', async () => {
     const user = new StatsigUser({
-      userID: "c-user",
+      userID: 'c-user',
       email: 'c-user@example.com',
     });
 
@@ -166,7 +166,7 @@ describe('StatsigUser', () => {
     statsig.checkGate(user, 'test-gate');
 
     expect(user).toBeDefined();
-    expect(user.userID).toEqual("");
+    expect(user.userID).toEqual('');
 
     const event = await getLastLoggedEvent();
     expect(event?.eventName).toEqual('statsig::gate_exposure');

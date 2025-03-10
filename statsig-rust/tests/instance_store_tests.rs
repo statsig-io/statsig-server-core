@@ -2,7 +2,7 @@ use std::sync::{Mutex, MutexGuard};
 use std::thread;
 
 use lazy_static::lazy_static;
-use sigstat::{instance_store::INST_STORE, Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{instance_store::INST_STORE, Statsig, StatsigOptions, StatsigUser};
 use std::collections::HashSet;
 
 lazy_static! {

@@ -3,7 +3,7 @@ mod utils;
 use crate::utils::helpers::load_contents;
 use crate::utils::mock_specs_listener::MockSpecsListener;
 use lazy_static::lazy_static;
-use sigstat::{SpecsAdapter, SpecsSource, StatsigLocalFileSpecsAdapter, StatsigRuntime};
+use statsig_rust::{SpecsAdapter, SpecsSource, StatsigLocalFileSpecsAdapter, StatsigRuntime};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};

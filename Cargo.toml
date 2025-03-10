@@ -6,12 +6,12 @@ strip = true
 
 [workspace]
 members = [
-    "statsig-lib",
+    "statsig-rust",
     "statsig-ffi",
     "statsig-grpc",
     "statsig-pyo3",
     "statsig-node",
-    "examples/rust", 
+    "examples/rust",
     "statsig-elixir/native/statsig_elixir",
 ]
 resolver = "2"

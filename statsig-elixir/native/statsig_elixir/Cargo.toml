@@ -10,7 +10,10 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rustler = "0.36.1"
-sigstat = { path = "../../../statsig-lib", features = ["with_grpc", "with_zstd"] }
+statsig-rust = { path = "../../../statsig-rust", features = [
+    "with_grpc",
+    "with_zstd",
+] }
 tokio = { version = "1.39.1", features = ["rt", "rt-multi-thread", "macros"] }
 serde_json = { version = "1.0.125", features = ["float_roundtrip"] }
 serde = { version = "1.0.204", features = ["derive"] }

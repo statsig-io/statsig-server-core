@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
-use sigstat::statsig_metadata::StatsigMetadata;
+use statsig_rust::statsig_metadata::StatsigMetadata;
 
 pub fn update_statsig_metadata(m: &Bound<'_, PyModule>) {
     let version = get_python_version(m).unwrap_or("unknown".to_string());

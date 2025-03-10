@@ -2,8 +2,8 @@ use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::{get_instance_or_noop_c, get_instance_or_return_c};
 use serde_json::json;
 use serde_json::Value;
-use sigstat::instance_store::INST_STORE;
-use sigstat::{
+use statsig_rust::instance_store::INST_STORE;
+use statsig_rust::{
     get_instance_or_noop, log_d, log_e, unwrap_or_noop, unwrap_or_return,
     ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
     FeatureGateEvaluationOptions, LayerEvaluationOptions, Statsig, StatsigOptions, StatsigRuntime,

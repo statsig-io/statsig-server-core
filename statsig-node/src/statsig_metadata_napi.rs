@@ -1,5 +1,5 @@
 use napi::Env;
-use sigstat::statsig_metadata::StatsigMetadata;
+use statsig_rust::statsig_metadata::StatsigMetadata;
 
 const UNKNOWN_ENV: &str = "unknown";
 

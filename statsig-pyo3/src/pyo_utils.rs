@@ -2,7 +2,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods, PyList, PyModule};
 use pyo3::{Bound, PyAny, PyObject, PyResult, Python};
 use serde_json::{json, Value};
-use sigstat::{log_e, DynamicValue};
+use statsig_rust::{log_e, DynamicValue};
 use std::collections::HashMap;
 
 const TAG: &str = "PyoUtils";

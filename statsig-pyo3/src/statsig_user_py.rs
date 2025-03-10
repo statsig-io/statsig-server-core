@@ -1,7 +1,7 @@
 use crate::pyo_utils::py_dict_to_map;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use sigstat::{log_w, DynamicValue, StatsigUser};
+use statsig_rust::{log_w, DynamicValue, StatsigUser};
 
 const TAG: &str = stringify!(StatsigUserPy);
 

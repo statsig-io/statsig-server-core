@@ -3,7 +3,7 @@ mod utils;
 use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use serde_json::json;
-use sigstat::{InitializeResponse, Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{InitializeResponse, Statsig, StatsigOptions, StatsigUser};
 use std::cmp::min;
 use std::collections::HashMap;
 use std::sync::Arc;

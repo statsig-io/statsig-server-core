@@ -1,5 +1,5 @@
 use napi_derive::napi;
-use sigstat::{
+use statsig_rust::{
     DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
     LayerEvaluationOptions,
 };

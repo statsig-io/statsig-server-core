@@ -1,6 +1,6 @@
 mod utils;
 
-use sigstat::networking::{NetworkClient, RequestArgs};
+use statsig_rust::networking::{NetworkClient, RequestArgs};
 use std::{sync::Arc, time::Duration};
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 

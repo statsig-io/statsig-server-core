@@ -10,7 +10,7 @@ use crate::{
 };
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use sigstat::{
+use statsig_rust::{
     log_e, unwrap_or_return, ClientInitResponseOptions, DynamicConfigEvaluationOptions,
     ExperimentEvaluationOptions, FeatureGateEvaluationOptions, HashAlgorithm,
     LayerEvaluationOptions, Statsig,

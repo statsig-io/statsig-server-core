@@ -2,12 +2,12 @@ use napi_derive::napi;
 use std::sync::{Arc, Weak};
 
 use crate::{data_store_napi::DataStore, observability_client_napi::ObservabilityClient};
-use sigstat::{
+use statsig_rust::{
     data_store_interface::DataStoreTrait,
     statsig_types::OverrideAdapterType as OverrideAdapterTypeActual,
     ObservabilityClient as ObservabilityClientTrait, OverrideAdapter,
     SpecAdapterConfig as SpecAdapterConfigActual, StatsigLocalOverrideAdapter,
-    DEFAULT_INIT_TIMEOUT_MS,
+    StatsigOptions as StatsigOptionsActual, DEFAULT_INIT_TIMEOUT_MS,
 };
 
 #[napi(object)]
@@ -76,7 +76,7 @@ impl StatsigOptions {
     pub fn safe_convert_to_inner(
         mut self,
     ) -> (
-        Option<Arc<sigstat::StatsigOptions>>,
+        Option<Arc<StatsigOptionsActual>>,
         Option<Arc<ObservabilityClient>>,
     ) {
         let obs_client = self.observability_client.take().map(Arc::new);
@@ -89,7 +89,7 @@ impl StatsigOptions {
 
         self.observability_client = None;
 
-        let inner = sigstat::StatsigOptions {
+        let inner = StatsigOptionsActual {
             data_store: self
                 .data_store
                 .map(|store| Arc::new(store) as Arc<dyn DataStoreTrait>),

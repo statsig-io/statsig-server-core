@@ -3,8 +3,8 @@ use napi::bindgen_prelude::{FnArgs, Promise};
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
 
-use sigstat::StatsigErr::DataStoreFailure;
-use sigstat::{
+use statsig_rust::StatsigErr::DataStoreFailure;
+use statsig_rust::{
     data_store_interface::{
         DataStoreResponse as DataStoreResponseActual, DataStoreTrait, RequestPath,
     },

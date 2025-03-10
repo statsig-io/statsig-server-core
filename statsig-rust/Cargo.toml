@@ -1,5 +1,5 @@
 [package]
-name = "sigstat"
+name = "statsig-rust"
 description = "Statsig Rust SDK for usage in multi-user server environments."
 edition.workspace = true
 license.workspace = true

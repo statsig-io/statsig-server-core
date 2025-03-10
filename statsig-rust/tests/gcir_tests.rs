@@ -7,7 +7,9 @@ use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use assert_json_diff::assert_json_eq;
 use lazy_static::lazy_static;
 use serde_json::{json, Value};
-use sigstat::{ClientInitResponseOptions, HashAlgorithm, Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{
+    ClientInitResponseOptions, HashAlgorithm, Statsig, StatsigOptions, StatsigUser,
+};
 
 lazy_static! {
     static ref USER: StatsigUser =  StatsigUser {

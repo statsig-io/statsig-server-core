@@ -1,4 +1,4 @@
-use sigstat::{SpecStore, SpecsSource, SpecsUpdate};
+use statsig_rust::{SpecStore, SpecsSource, SpecsUpdate};
 use std::fs;
 fn create_test_spec_store() -> SpecStore {
     SpecStore::default()

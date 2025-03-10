@@ -1,7 +1,7 @@
 use jni::objects::{JObject, JString};
 use jni::sys::{jboolean, jstring};
 use jni::JNIEnv;
-use sigstat::{
+use statsig_rust::{
     log_e, ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
     FeatureGateEvaluationOptions, HashAlgorithm, LayerEvaluationOptions,
 };
@@ -13,7 +13,7 @@ const TAG: &str = "JniUtils";
 macro_rules! get_instance_or_noop_jni {
     ($type:ty, $env:expr, $ref:expr) => {
         match jstring_to_string($env, $ref) {
-            Some(id) => sigstat::get_instance_or_noop!($type, &id),
+            Some(id) => statsig_rust::get_instance_or_noop!($type, &id),
             None => return,
         }
     };
@@ -23,7 +23,7 @@ macro_rules! get_instance_or_noop_jni {
 macro_rules! get_instance_or_return_jni {
     ($type:ty, $env:expr, $ref:expr, $ret_value:expr) => {
         match jstring_to_string($env, $ref) {
-            Some(id) => sigstat::get_instance_or_return!($type, &id, $ret_value),
+            Some(id) => statsig_rust::get_instance_or_return!($type, &id, $ret_value),
             None => return $ret_value,
         }
     };

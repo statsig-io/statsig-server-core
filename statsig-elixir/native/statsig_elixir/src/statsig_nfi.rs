@@ -1,5 +1,5 @@
 use rustler::{Env, Error, ResourceArc, Term};
-use sigstat::{statsig_types::Layer as LayerActual, Statsig, StatsigRuntime};
+use statsig_rust::{statsig_types::Layer as LayerActual, Statsig, StatsigRuntime};
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},

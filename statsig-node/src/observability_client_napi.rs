@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use napi_derive::napi;
-use sigstat::{ObservabilityClient as ObservabilityClientActual, OpsStatsEventObserver};
+use statsig_rust::{ObservabilityClient as ObservabilityClientActual, OpsStatsEventObserver};
 
 use napi::bindgen_prelude::{FnArgs, Promise};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};

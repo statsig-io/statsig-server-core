@@ -1,6 +1,6 @@
 mod utils;
 
-use sigstat::{
+use statsig_rust::{
     output_logger::LogLevel, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
     FeatureGateEvaluationOptions, Statsig, StatsigOptions, StatsigUser,
 };

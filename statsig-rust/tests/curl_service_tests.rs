@@ -1,7 +1,7 @@
 mod utils;
 
 use crate::utils::mock_scrapi::{Endpoint, EndpointStub, MockScrapi};
-use sigstat::networking::{Curl, HttpMethod, RequestArgs};
+use statsig_rust::networking::{Curl, HttpMethod, RequestArgs};
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 

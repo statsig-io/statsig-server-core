@@ -8,8 +8,10 @@ version.workspace = true
 crate-type = ["cdylib"]
 
 [dependencies]
-sigstat = { path = "../statsig-lib", features = ["with_grpc", "with_zstd"] }
-# sigstat = { path = "../statsig-lib", features = [] }
+statsig-rust = { path = "../statsig-rust", features = [
+    "with_grpc",
+    "with_zstd",
+] }
 async-trait = "0.1.81"
 napi = { version = "3.0.0-alpha.24", features = [
     "async",
@@ -28,4 +30,4 @@ napi-build = { version = "2.1.4" }
 
 [features]
 default = []
-vendored_openssl = ["sigstat/vendored_openssl"]
+vendored_openssl = ["statsig-rust/vendored_openssl"]

@@ -1,9 +1,9 @@
 use crate::ffi_utils::{
     c_char_to_string, parse_json_to_map, parse_json_to_str_map, string_to_c_char,
 };
-use sigstat::instance_store::INST_STORE;
-use sigstat::log_e;
-use sigstat::statsig_user::StatsigUserBuilder;
+use statsig_rust::instance_store::INST_STORE;
+use statsig_rust::log_e;
+use statsig_rust::statsig_user::StatsigUserBuilder;
 use std::os::raw::c_char;
 
 const TAG: &str = "StatsigUserC";

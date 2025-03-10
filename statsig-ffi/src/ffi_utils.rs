@@ -1,5 +1,5 @@
 use serde_json::Value;
-use sigstat::DynamicValue;
+use statsig_rust::DynamicValue;
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::{os::raw::c_char, os::raw::c_int};
@@ -8,9 +8,9 @@ use std::{os::raw::c_char, os::raw::c_int};
 macro_rules! get_instance_or_noop_c {
     ($type:ty, $ref:expr) => {
         match c_char_to_string($ref) {
-            Some(id) => sigstat::get_instance_or_noop!($type, &id),
+            Some(id) => statsig_rust::get_instance_or_noop!($type, &id),
             None => {
-                sigstat::log_w!(
+                statsig_rust::log_w!(
                     TAG,
                     "Attempting to get {} with null reference",
                     stringify!($type)
@@ -25,7 +25,7 @@ macro_rules! get_instance_or_noop_c {
 macro_rules! get_instance_or_return_c {
     ($type:ty, $ref:expr, $ret_value:expr) => {
         match c_char_to_string($ref) {
-            Some(id) => sigstat::get_instance_or_return!($type, &id, $ret_value),
+            Some(id) => statsig_rust::get_instance_or_return!($type, &id, $ret_value),
             None => return $ret_value,
         }
     };

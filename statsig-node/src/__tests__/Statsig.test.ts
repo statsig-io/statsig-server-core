@@ -37,7 +37,7 @@ describe('Statsig', () => {
     const dcs = fs.readFileSync(
       path.join(
         __dirname,
-        '../../../statsig-lib/tests/data/eval_proj_dcs.json',
+        '../../../statsig-rust/tests/data/eval_proj_dcs.json',
       ),
       'utf8',
     );
@@ -132,12 +132,12 @@ describe('Statsig', () => {
       });
 
       expect(config.getEvaluationDetails()).toMatchObject({
-        reason: "Network:Recognized",
+        reason: 'Network:Recognized',
         lcut: expect.any(Number),
         receivedAt: expect.any(Number),
       });
-      expect(config.getRuleId()).toEqual("default");
-      expect(config.getIdType()).toEqual("userID");
+      expect(config.getRuleId()).toEqual('default');
+      expect(config.getIdType()).toEqual('userID');
 
       const event = await getLastLoggedEvent();
       expect(event?.eventName).toEqual('statsig::config_exposure');
@@ -148,12 +148,12 @@ describe('Statsig', () => {
       const user = StatsigUser.withUserID('a-user');
       const experiment = statsig.getExperiment(user, 'exp_with_obj_and_array');
       expect(experiment.getEvaluationDetails()).toMatchObject({
-        reason: "Network:Recognized",
+        reason: 'Network:Recognized',
         lcut: expect.any(Number),
         receivedAt: expect.any(Number),
       });
-      expect(experiment.getRuleId()).toEqual("23gt15KsgEAbUiwEapclqk");
-      expect(experiment.getIdType()).toEqual("userID");
+      expect(experiment.getRuleId()).toEqual('23gt15KsgEAbUiwEapclqk');
+      expect(experiment.getIdType()).toEqual('userID');
 
       expect(experiment.value).toEqual({
         arr_param: [true, false, true],
@@ -170,12 +170,12 @@ describe('Statsig', () => {
     it('should get layers and log exposures', async () => {
       const user = StatsigUser.withUserID('a-user');
       const layer = statsig.getLayer(user, 'layer_with_many_params');
-     expect(layer.getEvaluationDetails()).toMatchObject({
-        reason: "Network:Recognized",
+      expect(layer.getEvaluationDetails()).toMatchObject({
+        reason: 'Network:Recognized',
         lcut: expect.any(Number),
         receivedAt: expect.any(Number),
       });
-      expect(layer.getRuleId()).toEqual("default");
+      expect(layer.getRuleId()).toEqual('default');
 
       let event = await getLastLoggedEvent();
       expect(event).toBeNull();

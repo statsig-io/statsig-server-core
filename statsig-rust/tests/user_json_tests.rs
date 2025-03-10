@@ -1,5 +1,5 @@
 use serde_json::json;
-use sigstat::StatsigUser;
+use statsig_rust::StatsigUser;
 use std::collections::HashMap;
 
 #[tokio::test]

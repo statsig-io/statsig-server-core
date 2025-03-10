@@ -1,6 +1,6 @@
 use std::ffi::c_char;
 
-use sigstat::{statsig_metadata::StatsigMetadata, unwrap_or_noop};
+use statsig_rust::{statsig_metadata::StatsigMetadata, unwrap_or_noop};
 
 use crate::ffi_utils::c_char_to_string;
 

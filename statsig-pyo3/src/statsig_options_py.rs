@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use sigstat::{output_logger::LogLevel, StatsigOptions};
+use statsig_rust::{output_logger::LogLevel, StatsigOptions};
 
 #[pyclass(name = "StatsigOptions")]
 pub struct StatsigOptionsPy {

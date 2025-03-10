@@ -1,7 +1,7 @@
 mod utils;
 
 use more_asserts::assert_gt;
-use sigstat::{output_logger::LogLevel, Statsig, StatsigOptions};
+use statsig_rust::{output_logger::LogLevel, Statsig, StatsigOptions};
 use std::{fs, path::PathBuf, sync::Arc, time::Duration};
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 

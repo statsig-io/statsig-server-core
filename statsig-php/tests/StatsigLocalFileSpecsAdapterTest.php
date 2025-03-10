@@ -21,15 +21,15 @@ class StatsigLocalFileSpecsAdapterTest extends TestCase
     {
         parent::setUp();
 
-        if (file_exists("/tmp/".self::FILE_NAME)) {
-            unlink("/tmp/".self::FILE_NAME);
+        if (file_exists("/tmp/" . self::FILE_NAME)) {
+            unlink("/tmp/" . self::FILE_NAME);
         }
 
         $dir = dirname(__FILE__);
-        $data = file_get_contents($dir . '/../../statsig-lib/tests/data/eval_proj_dcs.json');
+        $data = file_get_contents($dir . '/../../statsig-rust/tests/data/eval_proj_dcs.json');
 
         $this->server = new MockServer();
-        $this->server->mock('/v2/download_config_specs/'.self::SDK_KEY.'.json', $data);
+        $this->server->mock('/v2/download_config_specs/' . self::SDK_KEY . '.json', $data);
     }
 
     public function testCreateAndRelease()
@@ -52,7 +52,7 @@ class StatsigLocalFileSpecsAdapterTest extends TestCase
 
         $adapter->syncSpecsFromNetwork();
 
-        $json = json_decode(file_get_contents("/tmp/".self::FILE_NAME), true);
+        $json = json_decode(file_get_contents("/tmp/" . self::FILE_NAME), true);
         $this->assertArrayHasKey("dynamic_configs", $json);
         $this->assertArrayHasKey("layer_configs", $json);
         $this->assertArrayHasKey("feature_gates", $json);

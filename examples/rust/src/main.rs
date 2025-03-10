@@ -4,8 +4,8 @@ use std::time::Instant;
 
 use tokio::time::{sleep, Duration};
 
-use sigstat::output_logger::LogLevel;
-use sigstat::{Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::output_logger::LogLevel;
+use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
 
 #[tokio::main]
 async fn main() {

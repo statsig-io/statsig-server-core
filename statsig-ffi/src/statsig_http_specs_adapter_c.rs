@@ -1,8 +1,8 @@
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::get_instance_or_return_c;
-use sigstat::instance_store::INST_STORE;
-use sigstat::{log_e, unwrap_or_return, SpecsInfo, StatsigHttpSpecsAdapter};
-use sigstat::{StatsigOptions, StatsigRuntime};
+use statsig_rust::instance_store::INST_STORE;
+use statsig_rust::{log_e, unwrap_or_return, SpecsInfo, StatsigHttpSpecsAdapter};
+use statsig_rust::{StatsigOptions, StatsigRuntime};
 use std::os::raw::c_char;
 use std::ptr::null;
 

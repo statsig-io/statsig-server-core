@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use serde_json::{json, Map, Value};
-use sigstat::{
+use statsig_rust::{
     statsig_types::{DynamicConfig, Experiment, Layer},
     DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
     LayerEvaluationOptions,

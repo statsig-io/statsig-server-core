@@ -13,7 +13,7 @@ use std::time::Duration;
 use super::jni_utils::serialize_json_to_jstring;
 use crate::jni::jni_utils::{jni_to_rust_hashmap, string_to_jstring};
 use jni::objects::{JClass, JObject, JString};
-use sigstat::{
+use statsig_rust::{
     instance_store::INST_STORE, log_e, Statsig, StatsigOptions, StatsigRuntime, StatsigUser,
 };
 

@@ -3,7 +3,7 @@ mod utils;
 use crate::utils::helpers::{enforce_array, enforce_object, enforce_string};
 use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
-use sigstat::{Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;

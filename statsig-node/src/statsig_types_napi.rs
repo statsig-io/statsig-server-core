@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use napi_derive::napi;
 use serde_json::Value;
-use sigstat::{
+use statsig_rust::{
     statsig_types::{
         DynamicConfig as DynamicConfigActual, Experiment as ExperimentActual,
         FeatureGate as FeatureGateActual, Layer as LayerActual,

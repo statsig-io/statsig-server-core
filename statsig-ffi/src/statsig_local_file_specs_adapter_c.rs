@@ -1,7 +1,7 @@
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::get_instance_or_noop_c;
-use sigstat::instance_store::INST_STORE;
-use sigstat::{log_e, unwrap_or_return, StatsigLocalFileSpecsAdapter, StatsigRuntime};
+use statsig_rust::instance_store::INST_STORE;
+use statsig_rust::{log_e, unwrap_or_return, StatsigLocalFileSpecsAdapter, StatsigRuntime};
 use std::os::raw::c_char;
 
 const TAG: &str = "StatsigLocalFileSpecsAdapterC";

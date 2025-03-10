@@ -1,10 +1,10 @@
 use rustler::{Decoder, Encoder, Env, NifResult, NifStruct, Term};
 use serde_json::Value;
-use sigstat::statsig_types::{
+use statsig_rust::statsig_types::{
     DynamicConfig as DynamicConfigActual, Experiment as ExperimentActual,
     FeatureGate as FeatureGateActual,
 };
-use sigstat::DynamicValue;
+use statsig_rust::DynamicValue;
 #[derive(NifStruct)]
 #[module = "Experiment"]
 pub struct Experiment {

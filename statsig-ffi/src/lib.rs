@@ -10,4 +10,4 @@ mod statsig_options_c;
 mod statsig_user_c;
 
 extern crate core;
-extern crate sigstat;
+extern crate statsig_rust;

@@ -2,7 +2,9 @@ use crate::jni::jni_utils::{jboolean_to_bool, jstring_to_string, string_to_jstri
 use jni::objects::{JClass, JString};
 use jni::sys::{jboolean, jint, jlong, jstring};
 use jni::JNIEnv;
-use sigstat::{instance_store::INST_STORE, log_d, log_e, statsig_options::StatsigOptionsBuilder};
+use statsig_rust::{
+    instance_store::INST_STORE, log_d, log_e, statsig_options::StatsigOptionsBuilder,
+};
 
 const TAG: &str = "StatsigOptionsJNI";
 
