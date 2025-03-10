@@ -38,10 +38,10 @@ pub struct StatsigPy {
 impl StatsigPy {
     #[new]
     #[pyo3(signature = (sdk_key, options=None))]
-    pub fn new(sdk_key: &str, options: Option<&StatsigOptionsPy>) -> Self {
+    pub fn new(sdk_key: &str, options: Option<&StatsigOptionsPy>, py: Python) -> Self {
         let mut local_opts = None;
         if let Some(o) = options {
-            local_opts = Some(Arc::new(o.into()));
+            local_opts = Some(Arc::new(o.to_statsig_options(py)));
         }
 
         Self {

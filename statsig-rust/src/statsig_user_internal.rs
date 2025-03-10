@@ -32,9 +32,39 @@ pub struct StatsigUserInternal {
 }
 
 impl StatsigUserInternal {
-    pub fn new(user: &StatsigUser, environment: Option<HashMap<String, DynamicValue>>) -> Self {
+    pub fn new(
+        user: &StatsigUser,
+        environment: Option<HashMap<String, DynamicValue>>,
+        global_custom_fields: Option<HashMap<String, DynamicValue>>,
+    ) -> Self {
+        let mut user_data = user.clone();
+
+        let global_custom = match global_custom_fields {
+            Some(x) => x,
+            None => {
+                return Self {
+                    user_data,
+                    statsig_environment: environment,
+                }
+            }
+        };
+
+        let mut custom_data = HashMap::new();
+
+        global_custom.iter().for_each(|(k, v)| {
+            custom_data.insert(k.clone(), v.clone());
+        });
+
+        if let Some(custom) = &user.custom {
+            custom.iter().for_each(|(k, v)| {
+                custom_data.insert(k.clone(), v.clone());
+            });
+        }
+
+        user_data.custom = Some(custom_data);
+
         Self {
-            user_data: user.clone(),
+            user_data,
             statsig_environment: environment,
         }
     }
@@ -71,7 +101,6 @@ impl StatsigUserInternal {
         if str_value.is_some() {
             return str_value.as_ref();
         }
-
         if let Some(custom) = &self.user_data.custom {
             if let Some(found) = custom.get(&field.value) {
                 return Some(found);
@@ -134,7 +163,7 @@ mod tests {
             ..StatsigUser::with_user_id("test_user".to_string())
         };
 
-        let user_internal = StatsigUserInternal::new(&user, None);
+        let user_internal = StatsigUserInternal::new(&user, None, None);
         let loggable = StatsigUserLoggable::new(user_internal);
 
         let deserialized: StatsigUserInternal = serde_json::from_value(loggable.value).unwrap();

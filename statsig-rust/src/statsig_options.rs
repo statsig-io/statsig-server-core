@@ -2,12 +2,14 @@ use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
 use crate::data_store_interface::DataStoreTrait;
+use crate::evaluation::dynamic_value::DynamicValue;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::id_lists_adapter::IdListsAdapter;
 use crate::output_logger::LogLevel;
 use crate::{
     serialize_if_not_none, ObservabilityClient, OverrideAdapter, SpecAdapterConfig, SpecsAdapter,
 };
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Weak};
 
@@ -43,6 +45,7 @@ pub struct StatsigOptions {
     pub specs_sync_interval_ms: Option<u32>,
     pub specs_url: Option<String>,
     pub service_name: Option<String>,
+    pub global_custom_fields: Option<HashMap<String, DynamicValue>>,
 }
 
 impl StatsigOptions {
@@ -197,6 +200,15 @@ impl StatsigOptionsBuilder {
     }
 
     #[must_use]
+    pub fn global_custom_fields(
+        mut self,
+        global_custom_fields: Option<HashMap<String, DynamicValue>>,
+    ) -> Self {
+        self.inner.global_custom_fields = global_custom_fields;
+        self
+    }
+
+    #[must_use]
     pub fn build(self) -> StatsigOptions {
         self.inner
     }
@@ -257,6 +269,7 @@ impl Serialize for StatsigOptions {
             &get_if_set(&self.override_adapter)
         );
         serialize_if_not_none!(state, "service_name", &get_if_set(&self.service_name));
+        serialize_if_not_none!(state, "global_custom_fields", &self.global_custom_fields);
 
         state.end()
     }

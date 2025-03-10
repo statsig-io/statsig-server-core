@@ -1352,7 +1352,11 @@ impl Statsig {
     }
 
     fn internalize_user(&self, user: &StatsigUser) -> StatsigUserInternal {
-        StatsigUserInternal::new(user, self.get_statsig_env())
+        StatsigUserInternal::new(
+            user,
+            self.get_statsig_env(),
+            self.options.global_custom_fields.clone(),
+        )
     }
 
     fn get_statsig_env(&self) -> Option<HashMap<String, DynamicValue>> {
