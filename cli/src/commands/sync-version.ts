@@ -56,7 +56,7 @@ export class SyncVersion extends CommandBase {
 function updateStatsigMetadataVersion(version: string) {
   Log.stepBegin('Updating statsig_metadata.rs');
 
-  const path = getRootedPath('statsig-lib/src/statsig_metadata.rs');
+  const path = getRootedPath('statsig-rust/src/statsig_metadata.rs');
   const contents = fs.readFileSync(path, 'utf8');
 
   const was = contents.match(/sdk_version: "([^"]+)"/)?.[1];
@@ -118,9 +118,9 @@ function updateJavaGradleVersion(version: string) {
 }
 
 function updateStatsigGrpcDepVersion(version: string) {
-  Log.stepBegin('Updating statsig-lib -> statsig-grpc dependency version');
+  Log.stepBegin('Updating statsig-rust -> statsig-grpc dependency version');
 
-  const path = getRootedPath('statsig-lib/Cargo.toml');
+  const path = getRootedPath('statsig-rust/Cargo.toml');
   const contents = fs.readFileSync(path, 'utf8');
 
   const was = contents.match(/sigstat-grpc = \{[^}]*version = "([^"]+)"/)?.[1];
