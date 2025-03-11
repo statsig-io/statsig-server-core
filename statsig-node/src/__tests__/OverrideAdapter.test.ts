@@ -69,7 +69,7 @@ describe('Override Adapter Usage', () => {
         await statsig.initialize();
       });
 
-      const user = {userID: "a-user"};
+      const user = StatsigUser.withUserID('a-user');
 
       const overrideTests = [
         {

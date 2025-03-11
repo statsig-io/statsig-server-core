@@ -37,9 +37,7 @@ const TEST_COMMANDS: Record<string, string> = {
   node: [
     'cd statsig-node',
     'pnpm install',
-    'mkdir build && mv ./src/*.ts ./build',
-    'pnpm exec napi build --cross-compile --platform --js binding.js --dts binding.d.ts --output-dir build',
-    "tsc ./build/index.ts",
+    'pnpm exec napi build --cross-compile --platform --js index.js --dts index.d.ts --output-dir build',
     'pnpm test',
   ].join(' && '),
 

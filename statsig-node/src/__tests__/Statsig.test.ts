@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { Statsig, StatsigOptions } from '../../build/index.js';
+import { Statsig, StatsigOptions, StatsigUser } from '../../build/index.js';
 import { MockScrapi } from './MockScrapi';
 
 describe('Statsig', () => {
@@ -74,7 +74,8 @@ describe('Statsig', () => {
   });
 
   it('should get the client init response', async () => {
-    const response = JSON.parse(statsig.getClientInitializeResponse({userID: 'a-user', customIDs: {}}));
+    const user = StatsigUser.withUserID('a-user');
+    const response = JSON.parse(statsig.getClientInitializeResponse(user));
 
     expect(Object.keys(response.feature_gates)).toHaveLength(65);
     expect(Object.keys(response.dynamic_configs)).toHaveLength(62);
@@ -88,7 +89,8 @@ describe('Statsig', () => {
     });
 
     it('should log custom events', async () => {
-      statsig.logEvent({userID: 'a-user'}, 'my_custom_event', 'my_value');
+      const user = StatsigUser.withUserID('a-user');
+      statsig.logEvent(user, 'my_custom_event', 'my_value');
 
       const event = await getLastLoggedEvent();
       expect(event?.eventName).toEqual('my_custom_event');
@@ -96,7 +98,8 @@ describe('Statsig', () => {
     });
 
     it('should check gates and log exposures', async () => {
-      const gate = statsig.checkGate({userID: 'a-user'}, 'test_public');
+      const user = StatsigUser.withUserID('a-user');
+      const gate = statsig.checkGate(user, 'test_public');
 
       expect(gate).toBe(true);
 
@@ -106,7 +109,8 @@ describe('Statsig', () => {
     });
 
     it('should get feature gates and log exposures', async () => {
-      const gate = statsig.getFeatureGate({userID: 'b-user'}, 'test_public');
+      const user = StatsigUser.withUserID('b-user');
+      const gate = statsig.getFeatureGate(user, 'test_public');
 
       expect(gate.value).toBe(true);
 
@@ -116,7 +120,8 @@ describe('Statsig', () => {
     });
 
     it('should get dynamic configs and log exposures', async () => {
-      const config = statsig.getDynamicConfig({userID: 'a-user'}, 'operating_system_config');
+      const user = StatsigUser.withUserID('a-user');
+      const config = statsig.getDynamicConfig(user, 'operating_system_config');
 
       expect(config.value).toEqual({
         num: 13,
@@ -140,7 +145,8 @@ describe('Statsig', () => {
     });
 
     it('should get experiments and log exposures', async () => {
-      const experiment = statsig.getExperiment({userID: 'a-user'}, 'exp_with_obj_and_array');
+      const user = StatsigUser.withUserID('a-user');
+      const experiment = statsig.getExperiment(user, 'exp_with_obj_and_array');
       expect(experiment.getEvaluationDetails()).toMatchObject({
         reason: 'Network:Recognized',
         lcut: expect.any(Number),
@@ -162,7 +168,8 @@ describe('Statsig', () => {
     });
 
     it('should get layers and log exposures', async () => {
-      const layer = statsig.getLayer({userID: 'a-user'}, 'layer_with_many_params');
+      const user = StatsigUser.withUserID('a-user');
+      const layer = statsig.getLayer(user, 'layer_with_many_params');
       expect(layer.getEvaluationDetails()).toMatchObject({
         reason: 'Network:Recognized',
         lcut: expect.any(Number),
@@ -182,7 +189,8 @@ describe('Statsig', () => {
     });
 
     it('should log statsig metadata', async () => {
-      statsig.logEvent({userID: 'a-user'}, 'my_custom_event', 'my_value');
+      const user = StatsigUser.withUserID('a-user');
+      statsig.logEvent(user, 'my_custom_event', 'my_value');
 
       const meta = (await getLastRequest())?.body?.statsigMetadata;
 

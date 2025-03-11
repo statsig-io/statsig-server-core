@@ -2,10 +2,9 @@
   "name": "@statsig/statsig-node-core",
   "version": "0.0.6-beta.9",
   "main": "index.js",
-  "types": "index.d.ts",
   "scripts": {
     "test": "jest --colors",
-    "build": "napi build --platform --js binding.js --dts binding.d.ts --output-dir ./build --strip"
+    "build": "napi build --platform --js index.js --dts index.d.ts --output-dir ./build --strip"
   },
   "keywords": [],
   "author": "",
