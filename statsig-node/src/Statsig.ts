@@ -1,4 +1,5 @@
-import { StatsigUser } from '.';
+import { config } from "process";
+import { StatsigUser } from ".";
 import {
   ClientInitResponseOptions,
   DynamicConfig,
@@ -14,7 +15,7 @@ import {
   StatsigOptions,
   StatsigResult,
   StatsigUser as StatsigUserInternal,
-} from './binding';
+} from "./binding";
 
 export class Statsig {
   private userFactory = new WeakMap<StatsigUser, StatsigUserInternal>();
@@ -39,37 +40,37 @@ export class Statsig {
     user: StatsigUser,
     eventName: string,
     value?: string | number | null,
-    metadata?: Record<string, string> | undefined | null,
+    metadata?: Record<string, string> | undefined | null
   ): void {
     this.statsigInternal.logEvent(
       this.toInternalUser(user),
       eventName,
       value,
-      metadata,
+      metadata
     );
   }
 
   checkGate(
     user: StatsigUser,
     gateName: string,
-    options?: FeatureGateEvaluationOptions | undefined | null,
+    options?: FeatureGateEvaluationOptions | undefined | null
   ): boolean {
     return this.statsigInternal.checkGate(
       this.toInternalUser(user),
       gateName,
-      options,
+      options
     );
   }
 
   getFeatureGate(
     user: StatsigUser,
     gateName: string,
-    options?: FeatureGateEvaluationOptions | undefined | null,
+    options?: FeatureGateEvaluationOptions | undefined | null
   ): FeatureGate {
     return this.statsigInternal.getFeatureGate(
       this.toInternalUser(user),
       gateName,
-      options,
+      options
     );
   }
 
@@ -96,12 +97,12 @@ export class Statsig {
   getExperiment(
     user: StatsigUser,
     experimentName: string,
-    options?: ExperimentEvaluationOptions | undefined | null,
+    options?: ExperimentEvaluationOptions | undefined | null
   ): Experiment {
     return this.statsigInternal.getExperiment(
       this.toInternalUser(user),
       experimentName,
-      options,
+      options
     );
   }
 
@@ -112,12 +113,12 @@ export class Statsig {
   getLayer(
     user: StatsigUser,
     layerName: string,
-    options?: LayerEvaluationOptions | undefined | null,
+    options?: LayerEvaluationOptions | undefined | null
   ): Layer {
     return this.statsigInternal.getLayer(
       this.toInternalUser(user),
       layerName,
-      options,
+      options
     );
   }
 
@@ -127,95 +128,95 @@ export class Statsig {
 
   getClientInitializeResponse(
     user: StatsigUser,
-    options?: ClientInitResponseOptions | undefined | null,
+    options?: ClientInitResponseOptions | undefined | null
   ): string {
     return this.statsigInternal.getClientInitializeResponse(
       this.toInternalUser(user),
-      options,
+      options
     );
   }
 
   manuallyLogFeatureGateExposure(user: StatsigUser, gateName: string): void {
     this.statsigInternal.manuallyLogFeatureGateExposure(
       this.toInternalUser(user),
-      gateName,
+      gateName
     );
   }
   manuallyLogDynamicConfigExposure(
     user: StatsigUser,
-    configName: string,
+    configName: string
   ): void {
-    this.statsigInternal.manuallyLogFeatureGateExposure(
+    this.statsigInternal.manuallyLogDynamicConfigExposure(
       this.toInternalUser(user),
-      configName,
+      configName
     );
   }
 
   manuallyLogExperimentExposure(
     user: StatsigUser,
-    experimentName: string,
+    experimentName: string
   ): void {
     this.statsigInternal.manuallyLogExperimentExposure(
       this.toInternalUser(user),
-      experimentName,
+      experimentName
     );
   }
 
   manuallyLogLayerParamExposure(
     user: StatsigUser,
     layerName: string,
-    paramName: string,
+    paramName: string
   ): void {
     this.statsigInternal.manuallyLogLayerParamExposure(
       this.toInternalUser(user),
       layerName,
-      paramName,
+      paramName
     );
   }
   overrideGate(
     gateName: string,
     value: boolean,
-    adapter?: OverrideAdapterType | undefined | null,
+    adapter?: OverrideAdapterType | undefined | null
   ): void {
     this.statsigInternal.overrideGate(gateName, value, adapter);
   }
   overrideDynamicConfig(
     configName: string,
     value: Record<string, any>,
-    adapter?: OverrideAdapterType | undefined | null,
+    adapter?: OverrideAdapterType | undefined | null
   ): void {
     this.statsigInternal.overrideDynamicConfig(configName, value, adapter);
   }
   overrideExperiment(
     experimentName: string,
     value: Record<string, any>,
-    adapter?: OverrideAdapterType | undefined | null,
+    adapter?: OverrideAdapterType | undefined | null
   ): void {
     this.statsigInternal.overrideExperiment(experimentName, value, adapter);
   }
   overrideExperimentByGroupName(
     experimentName: string,
     groupName: string,
-    adapter?: OverrideAdapterType | undefined | null,
+    adapter?: OverrideAdapterType | undefined | null
   ): void {
     this.statsigInternal.overrideExperimentByGroupName(
       experimentName,
       groupName,
-      adapter,
+      adapter
     );
   }
   overrideLayer(
     layerName: string,
     value: Record<string, any>,
-    adapter?: OverrideAdapterType | undefined | null,
+    adapter?: OverrideAdapterType | undefined | null
   ): void {
-    this.overrideLayer(layerName, value, adapter);
+    this.statsigInternal.overrideLayer(layerName, value, adapter);
   }
 
   private toInternalUser(user: StatsigUser): StatsigUserInternal {
     let userInternal = this.userFactory.get(user);
     if (userInternal == null) {
-      userInternal = new StatsigUserInternal({ ...user });
+      userInternal = new StatsigUserInternal(user);
       this.userFactory.set(user, userInternal);
     }
 

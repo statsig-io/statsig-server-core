@@ -16,6 +16,8 @@ import {
   SecondaryExposure,
   SpecAdapterConfig,
   StatsigOptions,
+  __internal__testObservabilityClient,
+  __internal__testDataStore
 } from './binding';
 import { Statsig } from './Statsig';
 
@@ -38,6 +40,8 @@ export {
   DataStore,
   DataStoreResponse,
   ObservabilityClient,
+  __internal__testObservabilityClient,
+  __internal__testDataStore
 };
 
 export type StatsigUser = (

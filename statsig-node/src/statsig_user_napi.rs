@@ -13,7 +13,10 @@ type ValidPrimitives = Either4<String, f64, bool, Vec<Value>>;
 pub struct StatsigUserArgs {
     #[napi(js_name = "userID")]
     pub user_id: Option<String>,
-    #[napi(js_name = "customIDs", ts_type = "Record<string, string>")]
+    #[napi(
+        js_name = "customIDs",
+        ts_type = "Record<string, string> | null | undefined"
+    )]
     pub custom_ids: Option<HashMap<String, Either3<String, f64, i64>>>,
     pub email: Option<String>,
     pub ip: Option<String>,

@@ -69,7 +69,7 @@ describe('Manual Exposures', () => {
   });
 
   it('should not log exposures when disabled', async () => {
-    const user = StatsigUser.withUserID('a-user');
+    const user = {userID: "a-user"};
     const noExpo = { disableExposureLogging: true };
     statsig.getFeatureGate(user, 'test_public', noExpo);
     statsig.checkGate(user, 'test_public', noExpo);
@@ -90,7 +90,7 @@ describe('Manual Exposures', () => {
   });
 
   it('can manually log exposures', async () => {
-    const user = StatsigUser.withUserID('a-user');
+    const user = {userID: "a-user"};
 
     statsig.manuallyLogFeatureGateExposure(user, 'test_public');
     statsig.manuallyLogDynamicConfigExposure(user, 'big_number');

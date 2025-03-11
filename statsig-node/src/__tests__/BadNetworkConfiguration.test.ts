@@ -9,7 +9,7 @@ describe('Bad Network Configuration', () => {
     await statsig.initialize();
 
     const gate = statsig.getFeatureGate(
-      StatsigUser.withUserID('a-user'),
+      {"userID": "a-user"},
       'test_gate',
     );
 
