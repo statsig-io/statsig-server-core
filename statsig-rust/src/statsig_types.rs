@@ -25,6 +25,7 @@ pub struct FeatureGate {
 
     pub(crate) __evaluation: Option<GateEvaluation>,
     pub __version: Option<u32>,
+    pub __override_config_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -37,6 +38,7 @@ pub struct DynamicConfig {
 
     pub __evaluation: Option<DynamicConfigEvaluation>,
     pub __version: Option<u32>,
+    pub __override_config_name: Option<String>,
 }
 
 impl DynamicConfig {
@@ -60,6 +62,7 @@ pub struct Experiment {
 
     pub __evaluation: Option<ExperimentEvaluation>,
     pub __version: Option<u32>,
+    pub __override_config_name: Option<String>,
 }
 
 impl Experiment {
@@ -86,6 +89,7 @@ pub struct Layer {
     pub __user: StatsigUserInternal,
     pub __version: Option<u32>,
     pub __disable_exposure: bool,
+    pub __override_config_name: Option<String>,
 
     #[serde(skip_serializing, skip_deserializing)]
     pub __event_logger_ptr: Option<Weak<EventLogger>>,
@@ -155,6 +159,7 @@ impl Layer {
                     version: self.__version,
                     is_manual_exposure: false,
                     sampling_details,
+                    override_config_name: self.__override_config_name.clone(),
                 }));
         }
 

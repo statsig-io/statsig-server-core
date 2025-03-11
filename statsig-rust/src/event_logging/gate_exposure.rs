@@ -21,6 +21,7 @@ pub struct GateExposure {
     pub version: Option<u32>,
     pub is_manual_exposure: bool,
     pub sampling_details: SamplingDecision,
+    pub override_config_name: Option<String>,
 }
 
 impl StatsigExposure for GateExposure {
@@ -43,6 +44,10 @@ impl StatsigExposure for GateExposure {
         }
         if let Some(version) = self.version {
             metadata.insert("configVersion".into(), version.to_string());
+        }
+
+        if let Some(override_config_name) = self.override_config_name {
+            metadata.insert("overrideConfigName".into(), override_config_name);
         }
 
         let statsig_metadata = get_statsig_metadata_with_sampling_details(self.sampling_details);

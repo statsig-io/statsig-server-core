@@ -20,6 +20,7 @@ pub struct ConfigExposure {
     pub version: Option<u32>,
     pub is_manual_exposure: bool,
     pub sampling_details: SamplingDecision,
+    pub override_config_name: Option<String>,
 }
 
 impl StatsigExposure for ConfigExposure {
@@ -45,6 +46,10 @@ impl StatsigExposure for ConfigExposure {
         }
         if self.is_manual_exposure {
             metadata.insert("isManualExposure".into(), "true".into());
+        }
+
+        if let Some(override_config_name) = self.override_config_name {
+            metadata.insert("overrideConfigName".into(), override_config_name);
         }
 
         let statsig_metadata = get_statsig_metadata_with_sampling_details(self.sampling_details);

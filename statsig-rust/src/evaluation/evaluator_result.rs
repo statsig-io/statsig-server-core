@@ -26,6 +26,7 @@ pub struct EvaluatorResult<'a> {
     pub version: Option<u32>,
     pub sampling_rate: Option<u64>,
     pub forward_all_exposures: Option<bool>,
+    pub override_config_name: Option<String>,
 }
 
 pub fn result_to_gate_eval(gate_name: &str, result: &mut EvaluatorResult) -> GateEvaluation {

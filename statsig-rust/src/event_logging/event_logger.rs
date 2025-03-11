@@ -528,6 +528,7 @@ mod tests {
             version: None,
             is_manual_exposure: false,
             sampling_details: SamplingDecision::default(),
+            override_config_name: None,
         }));
         logger.enqueue(QueuedEventPayload::GateExposure(GateExposure {
             user: user_internal,
@@ -539,6 +540,7 @@ mod tests {
             version: None,
             is_manual_exposure: false,
             sampling_details: SamplingDecision::default(),
+            override_config_name: None,
         }));
 
         logger.shutdown(Duration::from_millis(100)).await.unwrap();

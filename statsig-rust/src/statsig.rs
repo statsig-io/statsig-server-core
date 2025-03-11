@@ -504,6 +504,7 @@ impl Statsig {
                 version: layer.__version,
                 is_manual_exposure: false,
                 sampling_details,
+                override_config_name: layer.__override_config_name.clone(),
             }));
     }
 
@@ -747,6 +748,7 @@ impl Statsig {
                 version: experiment.__version,
                 is_manual_exposure: true,
                 sampling_details,
+                override_config_name: experiment.__override_config_name.clone(),
             }));
     }
 }
@@ -1072,6 +1074,7 @@ impl Statsig {
                 version: layer.__version,
                 is_manual_exposure: true,
                 sampling_details,
+                override_config_name: layer.__override_config_name.clone(),
             }));
     }
 
@@ -1143,10 +1146,16 @@ impl Statsig {
         self.evaluate_spec(
             user_internal,
             gate_name,
-            |eval_details| make_feature_gate(gate_name, None, eval_details, None),
+            |eval_details| make_feature_gate(gate_name, None, eval_details, None, None),
             |mut result, eval_details| {
                 let evaluation = result_to_gate_eval(gate_name, &mut result);
-                make_feature_gate(gate_name, Some(evaluation), eval_details, result.version)
+                make_feature_gate(
+                    gate_name,
+                    Some(evaluation),
+                    eval_details,
+                    result.version,
+                    result.override_config_name,
+                )
             },
             &SpecType::Gate,
         )
@@ -1160,10 +1169,16 @@ impl Statsig {
         self.evaluate_spec(
             user_internal,
             config_name,
-            |eval_details| make_dynamic_config(config_name, None, eval_details, None),
+            |eval_details| make_dynamic_config(config_name, None, eval_details, None, None),
             |mut result, eval_details| {
                 let evaluation = result_to_dynamic_config_eval(config_name, &mut result);
-                make_dynamic_config(config_name, Some(evaluation), eval_details, result.version)
+                make_dynamic_config(
+                    config_name,
+                    Some(evaluation),
+                    eval_details,
+                    result.version,
+                    result.override_config_name,
+                )
             },
             &SpecType::DynamicConfig,
         )
@@ -1177,7 +1192,7 @@ impl Statsig {
         self.evaluate_spec(
             user_internal,
             experiment_name,
-            |eval_details| make_experiment(experiment_name, None, eval_details, None),
+            |eval_details| make_experiment(experiment_name, None, eval_details, None, None),
             |mut result, eval_details| {
                 let data = read_lock_or_else!(self.spec_store.data, {
                     let evaluation = result_to_experiment_eval(experiment_name, None, &mut result);
@@ -1186,6 +1201,7 @@ impl Statsig {
                         Some(evaluation),
                         eval_details,
                         result.version,
+                        result.override_config_name,
                     );
                 });
                 let evaluation = result_to_experiment_eval(
@@ -1198,6 +1214,7 @@ impl Statsig {
                     Some(evaluation),
                     eval_details,
                     result.version,
+                    result.override_config_name,
                 )
             },
             &SpecType::Experiment,
@@ -1229,6 +1246,7 @@ impl Statsig {
                     None,
                     disable_exposure_logging,
                     None,
+                    None,
                 )
             },
             |mut result, eval_details| {
@@ -1245,6 +1263,7 @@ impl Statsig {
                     result.version,
                     disable_exposure_logging,
                     Some(sampling_processor_ptr),
+                    result.override_config_name,
                 )
             },
             &SpecType::Layer,
@@ -1282,6 +1301,7 @@ impl Statsig {
                 version: gate.__version,
                 is_manual_exposure: is_manual,
                 sampling_details,
+                override_config_name: gate.__override_config_name.clone(),
             }));
     }
 
@@ -1315,6 +1335,7 @@ impl Statsig {
                 version: dynamic_config.__version,
                 is_manual_exposure: is_manual,
                 sampling_details,
+                override_config_name: dynamic_config.__override_config_name.clone(),
             }));
     }
 
@@ -1348,6 +1369,7 @@ impl Statsig {
                 version: experiment.__version,
                 is_manual_exposure: is_manual,
                 sampling_details,
+                override_config_name: experiment.__override_config_name.clone(),
             }));
     }
 
