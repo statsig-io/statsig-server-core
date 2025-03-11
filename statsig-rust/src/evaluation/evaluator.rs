@@ -83,7 +83,7 @@ impl Evaluator {
             return Ok(Recognition::Recognized);
         }
 
-        if Self::try_apply_config_mapping(ctx, spec_name, spec_type, opt_spec) {
+        if try_apply_config_mapping(ctx, spec_name, spec_type, opt_spec) {
             return Ok(Recognition::Recognized);
         }
 
@@ -159,76 +159,76 @@ impl Evaluator {
 
         Ok(Recognition::Recognized)
     }
+}
 
-    fn try_apply_config_mapping(
-        ctx: &mut EvaluatorContext,
-        spec_name: &str,
-        spec_type: &SpecType,
-        opt_spec: Option<&Spec>,
-    ) -> bool {
-        let overrides = match &ctx.spec_store_data.values.overrides {
-            Some(overrides) => overrides,
-            None => return false,
-        };
+fn try_apply_config_mapping(
+    ctx: &mut EvaluatorContext,
+    spec_name: &str,
+    spec_type: &SpecType,
+    opt_spec: Option<&Spec>,
+) -> bool {
+    let overrides = match &ctx.spec_store_data.values.overrides {
+        Some(overrides) => overrides,
+        None => return false,
+    };
 
-        let override_rules = match &ctx.spec_store_data.values.override_rules {
-            Some(override_rules) => override_rules,
-            None => return false,
-        };
+    let override_rules = match &ctx.spec_store_data.values.override_rules {
+        Some(override_rules) => override_rules,
+        None => return false,
+    };
 
-        let mapping_list = match overrides.get(spec_name) {
-            Some(mapping_list) => mapping_list,
-            None => return false,
-        };
+    let mapping_list = match overrides.get(spec_name) {
+        Some(mapping_list) => mapping_list,
+        None => return false,
+    };
 
-        let spec_salt = match opt_spec {
-            Some(spec) => &spec.salt,
-            None => &EMPTY_STR,
-        };
+    let spec_salt = match opt_spec {
+        Some(spec) => &spec.salt,
+        None => &EMPTY_STR,
+    };
 
-        for mapping in mapping_list {
-            for override_rule in &mapping.rules {
-                let start_time = override_rule.start_time.unwrap_or_default();
+    for mapping in mapping_list {
+        for override_rule in &mapping.rules {
+            let start_time = override_rule.start_time.unwrap_or_default();
 
-                if start_time > Utc::now().timestamp_millis() {
-                    continue;
-                }
+            if start_time > Utc::now().timestamp_millis() {
+                continue;
+            }
 
-                let rule = match override_rules.get(&override_rule.rule_name) {
-                    Some(rule) => rule,
-                    None => continue,
-                };
-                match evaluate_rule(ctx, rule) {
-                    Ok(_) => {}
-                    Err(_) => {
-                        ctx.reset_result();
-                        continue;
-                    }
-                }
-
-                if !ctx.result.bool_value || ctx.result.unsupported {
+            let rule = match override_rules.get(&override_rule.rule_name) {
+                Some(rule) => rule,
+                None => continue,
+            };
+            match evaluate_rule(ctx, rule) {
+                Ok(_) => {}
+                Err(_) => {
                     ctx.reset_result();
                     continue;
                 }
+            }
+
+            if !ctx.result.bool_value || ctx.result.unsupported {
                 ctx.reset_result();
-                let pass = evaluate_pass_percentage(ctx, rule, spec_salt);
-                if pass {
-                    ctx.result.override_config_name = Some(mapping.new_config_name.clone());
-                    match Self::evaluate(ctx, mapping.new_config_name.as_str(), spec_type) {
-                        Ok(Recognition::Recognized) => {
-                            return true;
-                        }
-                        _ => {
-                            ctx.reset_result();
-                            break;
-                        }
+                continue;
+            }
+            ctx.reset_result();
+            let pass = evaluate_pass_percentage(ctx, rule, spec_salt);
+            if pass {
+                ctx.result.override_config_name = Some(mapping.new_config_name.clone());
+                match Evaluator::evaluate(ctx, mapping.new_config_name.as_str(), spec_type) {
+                    Ok(Recognition::Recognized) => {
+                        return true;
+                    }
+                    _ => {
+                        ctx.reset_result();
+                        break;
                     }
                 }
             }
         }
-
-        false
     }
+
+    false
 }
 
 fn try_apply_override(
