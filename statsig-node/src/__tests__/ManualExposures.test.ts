@@ -76,7 +76,7 @@ describe('Manual Exposures', () => {
     statsig.getDynamicConfig(user, 'big_number', noExpo);
     statsig.getExperiment(user, 'test_experiment_no_targeting', noExpo);
     const layer = statsig.getLayer(user, 'layer_with_many_params', noExpo);
-    layer.get('another_string', 'err');
+    layer.getValue('another_string', 'err');
 
     const events = await getLoggedEvents();
     expect(events).toHaveLength(1);

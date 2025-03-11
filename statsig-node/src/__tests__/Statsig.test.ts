@@ -173,7 +173,7 @@ describe('Statsig', () => {
       let event = await getLastLoggedEvent();
       expect(event).toBeNull();
 
-      const value = layer.get('another_string', 'err');
+      const value = layer.getValue('another_string', 'err');
       expect(value).toEqual('layer_default');
 
       event = await getLastLoggedEvent();

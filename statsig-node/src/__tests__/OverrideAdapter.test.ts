@@ -108,7 +108,7 @@ describe('Override Adapter Usage', () => {
         {
           name: 'should override layers',
           action: () => statsig.overrideLayer('test_layer', { foo: 'bar' }),
-          getter: () => statsig.getLayer(user, 'test_layer').get('foo', 'err'),
+          getter: () => statsig.getLayer(user, 'test_layer').getValue('foo', 'err'),
           expectedValue: 'bar',
         },
       ];
@@ -119,7 +119,7 @@ describe('Override Adapter Usage', () => {
           const result = getter();
           if (name === 'should override layers') {
             const layer = statsig.getLayer(user, 'test_layer');
-            expect(layer.get('foo', 'err')).toEqual(expectedValue);
+            expect(layer.getValue('foo', 'err')).toEqual(expectedValue);
             expect(layer.ruleID).toBe('override');
           } else {
             expect(result.value).toEqual(expectedValue);
