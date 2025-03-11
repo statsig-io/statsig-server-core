@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use bytes::Bytes;
 use std::{
     collections::HashMap,
@@ -48,4 +49,9 @@ pub struct Response {
 pub enum HttpMethod {
     GET,
     POST,
+}
+
+#[async_trait]
+pub trait NetworkProvider: Sync + Send {
+    async fn send(&self, method: &HttpMethod, args: &RequestArgs) -> Response;
 }

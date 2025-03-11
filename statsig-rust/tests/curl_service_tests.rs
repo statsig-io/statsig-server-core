@@ -1,7 +1,8 @@
 mod utils;
 
 use crate::utils::mock_scrapi::{Endpoint, EndpointStub, MockScrapi};
-use statsig_rust::networking::{Curl, HttpMethod, RequestArgs};
+use statsig_rust::networking::providers::Curl;
+use statsig_rust::networking::{HttpMethod, NetworkProvider, RequestArgs};
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 
@@ -21,7 +22,7 @@ async fn test_multiple_requests() {
     let results = Arc::new(Mutex::new(vec![]));
 
     for _ in 0..3 {
-        let curl_clone = Curl::get("multiple_requests_key");
+        let curl_clone = Curl::get_instance("multiple_requests_key");
         let url_clone = url.clone();
         let results_clone = results.clone();
         tokio::spawn(async move {

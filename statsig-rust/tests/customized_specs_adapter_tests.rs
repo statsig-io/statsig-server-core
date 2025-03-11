@@ -1,9 +1,16 @@
 mod utils;
 
 pub mod specs_adapter_tests {
-
+    use crate::utils::mock_data_store::MockDataStore;
+    use crate::utils::mock_specs_listener::MockSpecsListener;
     #[cfg(feature = "with_grpc")]
     use sigstat_grpc::mock_forward_proxy::{api::ConfigSpecResponse, MockForwardProxy};
+    use statsig_rust::data_store_interface::DataStoreResponse;
+    use statsig_rust::{
+        hashing, SpecAdapterConfig, SpecsAdapter, SpecsAdapterType, SpecsSource,
+        StatsigCustomizedSpecsAdapter, StatsigOptions, StatsigRuntime,
+    };
+    use std::sync::Arc;
 
     #[cfg(feature = "with_grpc")]
     #[tokio::test]

@@ -1,3 +1,5 @@
+use super::{HttpMethod, NetworkProvider, RequestArgs};
+use crate::networking::providers::Curl;
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::{log_error_to_statsig_and_console, log_i, log_w};
@@ -6,8 +8,6 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-
-use super::{Curl, HttpMethod, RequestArgs};
 
 const RETRY_CODES: [u16; 8] = [408, 500, 502, 503, 504, 522, 524, 599];
 const SHUTDOWN_ERROR: &str = "Request was aborted because the client is shutting down";
@@ -24,7 +24,7 @@ const TAG: &str = stringify!(NetworkClient);
 pub struct NetworkClient {
     headers: HashMap<String, String>,
     is_shutdown: Arc<AtomicBool>,
-    curl: Curl,
+    net_provider: Arc<dyn NetworkProvider>,
     ops_stats: Arc<OpsStatsForInstance>,
 }
 
@@ -34,7 +34,7 @@ impl NetworkClient {
         NetworkClient {
             headers: headers.unwrap_or_default(),
             is_shutdown: Arc::new(AtomicBool::new(false)),
-            curl: Curl::get(sdk_key),
+            net_provider: Arc::new(Curl::get_instance(sdk_key)),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
         }
     }
@@ -81,7 +81,7 @@ impl NetworkClient {
                 return Err(NetworkError::ShutdownError);
             }
 
-            let response = self.curl.send(&method, &request_args).await;
+            let response = self.net_provider.send(&method, &request_args).await;
 
             let status = response.status_code;
 

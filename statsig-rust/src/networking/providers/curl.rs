@@ -1,6 +1,7 @@
-use crate::networking::RequestArgs;
+use crate::networking::{HttpMethod, NetworkProvider, RequestArgs, Response};
 use crate::observability::util::sanitize_url_for_logging;
 use crate::{log_d, log_e, ok_or_return_with, unwrap_or_return_with, StatsigErr};
+use async_trait::async_trait;
 use chrono::Utc;
 use curl::easy::{Easy2, Handler, List, WriteError};
 use curl::multi::Easy2Handle;
@@ -11,8 +12,6 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
 use tokio::{runtime, time};
-
-use super::{HttpMethod, Response};
 
 const MAX_QUEUED_REQUESTS: usize = 10;
 
@@ -56,30 +55,9 @@ impl Drop for Curl {
     }
 }
 
-impl Curl {
-    #[must_use]
-    pub fn get(sdk_key: &str) -> Curl {
-        let mut curl_map = match CURL.lock() {
-            Ok(map) => map,
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire lock on CURL: {}", e);
-                return Curl::new(sdk_key);
-            }
-        };
-
-        if let Some(curl) = curl_map.get(sdk_key) {
-            Curl {
-                sdk_key: sdk_key.to_string(),
-                context: curl.clone(),
-            }
-        } else {
-            let curl = Curl::new(sdk_key);
-            curl_map.insert(sdk_key.to_string(), curl.context.clone());
-            curl
-        }
-    }
-
-    pub async fn send(&self, method: &HttpMethod, request_args: &RequestArgs) -> Response {
+#[async_trait]
+impl NetworkProvider for Curl {
+    async fn send(&self, method: &HttpMethod, request_args: &RequestArgs) -> Response {
         let method_name = if method == &HttpMethod::POST {
             "POST"
         } else {
@@ -121,6 +99,30 @@ impl Curl {
             data: None,
             error: Some(e.to_string()),
         })
+    }
+}
+
+impl Curl {
+    #[must_use]
+    pub fn get_instance(sdk_key: &str) -> Self {
+        let mut curl_map = match CURL.lock() {
+            Ok(map) => map,
+            Err(e) => {
+                log_e!(TAG, "Failed to acquire lock on CURL: {}", e);
+                return Curl::new(sdk_key);
+            }
+        };
+
+        if let Some(curl) = curl_map.get(sdk_key) {
+            Curl {
+                sdk_key: sdk_key.to_string(),
+                context: curl.clone(),
+            }
+        } else {
+            let curl = Curl::new(sdk_key);
+            curl_map.insert(sdk_key.to_string(), curl.context.clone());
+            curl
+        }
     }
 
     fn new(sdk_key: &str) -> Curl {
@@ -425,8 +427,8 @@ mod tests {
     #[test]
     fn test_only_one_instance() {
         let key = "key_1";
-        let curl_service_1 = Curl::get(key);
-        let curl_service_2 = Curl::get(key);
+        let curl_service_1 = Curl::get_instance(key);
+        let curl_service_2 = Curl::get_instance(key);
 
         assert!(Arc::ptr_eq(
             &curl_service_1.context,
@@ -441,7 +443,7 @@ mod tests {
         let mut last = 0;
         for _ in 0..10 {
             assert!(CURL.lock().unwrap().get(key).is_none());
-            let c = Curl::get(key);
+            let c = Curl::get_instance(key);
             let now = Arc::as_ptr(&c.context) as usize;
 
             assert_ne!(now, last);
@@ -456,8 +458,8 @@ mod tests {
     fn test_drop_releases_instance() {
         let key = "key_3";
 
-        let curl_service_1 = Curl::get(key);
-        let curl_service_2 = Curl::get(key);
+        let curl_service_1 = Curl::get_instance(key);
+        let curl_service_2 = Curl::get_instance(key);
         assert!(CURL.lock().unwrap().get(key).is_some());
 
         drop(curl_service_1);
@@ -486,7 +488,7 @@ mod tests {
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_clone = shutdown.clone();
         let handle = task::spawn(async move {
-            let curl = Curl::get(key);
+            let curl = Curl::get_instance(key);
             curl.send(
                 &HttpMethod::GET,
                 &RequestArgs {
@@ -525,7 +527,7 @@ mod tests {
     #[tokio::test]
     async fn test_thread_dies_on_drop() {
         let key = "sdk_key_6";
-        let curl = Curl::get(key);
+        let curl = Curl::get_instance(key);
         let handle = curl.context._handle.clone();
 
         assert!(!handle.as_ref().is_some_and(|h| h.is_finished()));

@@ -104,6 +104,7 @@ impl EventLoggingAdapter for StatsigHttpEventLoggingAdapter {
     async fn start(&self, _statsig_runtime: &Arc<StatsigRuntime>) -> Result<(), StatsigErr> {
         Ok(())
     }
+
     #[allow(clippy::manual_inspect)]
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
         self.send_events_over_http(&request).await.map_err(|e| {
