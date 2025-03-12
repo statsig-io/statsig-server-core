@@ -33,5 +33,5 @@ jobs:
 
       - name: Publish Statsig Lib
         run: |
-          cargo package --allow-dirty --package sigstat
-          cargo publish --allow-dirty --package sigstat
+          cargo package --allow-dirty --package statsig-rust
+          cargo publish --allow-dirty --package statsig-rust
