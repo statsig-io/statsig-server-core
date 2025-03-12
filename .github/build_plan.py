@@ -1,13 +1,11 @@
 import json
 import os
-import subprocess
 
 
 def partition_targets(should_build_all):
     always_build_targets = [
         "x86_64-unknown-linux-musl",
         "aarch64-unknown-linux-gnu",
-        "x86_64-unknown-linux-gnu"
     ]
 
     with open(matrix_file, 'r') as f:

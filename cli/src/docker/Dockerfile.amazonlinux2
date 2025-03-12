@@ -1,16 +1,28 @@
 # https://docs.aws.amazon.com/linux/al2/ug/amzn1-amzn2-container.html
-FROM amazonlinux:2 AS amazonlinux2-x86_64
+FROM amazonlinux:2
 
 # System and Common Dependencies
 RUN yum update -y \
     && yum install -y \
         gcc \
+        libdata-dumper-perl \
+        make \
         openssl-devel \
+        perl \
+        perl-IPC-Cmd \
+        perl-Data-Dumper \
         protobuf \
         protobuf-compiler \
         python3 \
         python3-pip \
+        unzip \
     && yum clean all
+
+# Protoc Setup
+RUN ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch_64/') && \
+    curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-${ARCH}.zip && \
+    unzip protoc-29.3-linux-${ARCH}.zip -d /usr/local && \
+    rm protoc-29.3-linux-${ARCH}.zip;
 
 # Python Setup
 RUN pip3 install maturin patchelf
@@ -19,5 +31,11 @@ RUN pip3 install maturin patchelf
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_TERM_COLOR=always
+
+# Node Setup
+RUN curl -sL https://rpm.nodesource.com/setup_16.x | bash - \
+    && yum install -y nodejs
+RUN npm install -g pnpm@7.32.4
+
 
 ENTRYPOINT ["sh", "-c"]

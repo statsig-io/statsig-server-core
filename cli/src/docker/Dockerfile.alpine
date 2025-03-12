@@ -21,7 +21,7 @@ RUN ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch_64/') && \
 RUN pip3 install pytest maturin patchelf pytest_httpserver --break-system-packages
 
 # Node Setup
-RUN npm install -g pnpm@7.32.4 prettier@3.4.2
+RUN npm install -g pnpm@7.32.4
 
 # Rust Setup
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y

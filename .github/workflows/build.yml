@@ -65,6 +65,7 @@ jobs:
     needs: plan
 
     strategy:
+      fail-fast: false
       matrix:
         config: ${{ fromJson(needs.plan.outputs.build_matrix).config }}
         package:
@@ -100,7 +101,7 @@ jobs:
       - name: '[Non-Linux] Install Dependencies'
         if: ${{ runner.os != 'Linux' }}
         run: |
-          pip3 install maturin ${{ format('{0}', matrix.config.py_deps_suffix) }}          
+          pip3 install maturin ${{ format('{0}', matrix.config.py_deps_suffix) }}
           rustup target add ${{ matrix.config.target }}
 
       - name: '[Windows Only] Setup Python'
@@ -135,18 +136,17 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          # TODO(weihao) not perfect
-          name: ${{ matrix.config.target }}-${{ matrix.package }}
+          name: ${{ matrix.config.os }}-${{ matrix.config.target }}-${{ matrix.package }}
           if-no-files-found: error
           path: |
             statsig-pyo3/build/
             statsig-node/build/
             statsig-ffi/include/
-            target/release/libstatsig_ffi.so
-            target/release/libstatsig_ffi.dylib
-            target/release/statsig_ffi.dll
-            target/release/*statsig_ffi.a
-            target/release/*statsig_ffi.lib
+            **/release/libstatsig_ffi.so
+            **/release/libstatsig_ffi.dylib
+            **/release/statsig_ffi.dll
+            **/release/*statsig_ffi.a
+            **/release/*statsig_ffi.lib
 
   # -------------------------------------------------------------------- [Publish]
 
@@ -199,5 +199,5 @@ jobs:
             --package ${{ matrix.package }} \
             --workflow-id $GITHUB_RUN_ID \
             --release-id ${{ github.event.release.id }} \
-            --repository ${{ github.event.repository.name }} \
+            --repository ${{ github.repository }} \
             --skip-artifact-download
