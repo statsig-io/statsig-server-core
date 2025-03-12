@@ -8,6 +8,5 @@ export type PublisherOptions = {
   releaseId: number;
   workingDir: string;
   skipArtifactDownload: boolean;
-  isProduction: boolean;
   disregardWorkflowChecks: boolean;
 };

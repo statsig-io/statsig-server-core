@@ -5,6 +5,7 @@ import {
   unzip,
 } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
+import { getRootVersion } from '@/utils/toml_utils.js';
 import { execSync } from 'child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -162,13 +163,15 @@ function publishNodePackages(options: PublisherOptions, distDir: string) {
 
     Log.stepBegin(`Publishing ${platform} package`);
 
+    const version = getRootVersion();
+
     const configPath = getRootedPath('.npmrc');
     const publish = [
       `npm publish`,
       `--registry=https://registry.npmjs.org/`,
       `--userconfig=${configPath}`,
       `--access public`,
-      options.isProduction ? `` : '--tag beta',
+      version.isBeta ? `--tag beta` : '',
     ];
 
     const command = publish.join(' ');

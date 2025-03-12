@@ -6,6 +6,7 @@ import {
 } from '@/utils/file_utils.js';
 import { downloadArtifactToFile, getOctokit } from '@/utils/octokit_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
+import { getRootVersion } from '@/utils/toml_utils.js';
 import type { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -71,11 +72,6 @@ export class Publish extends CommandBase {
         defaultValue: false,
       },
       {
-        flags: '--is-production',
-        description: 'Whether to publish to production',
-        defaultValue: false,
-      },
-      {
         flags: '--disregard-workflow-checks',
         description: 'Whether to disregard workflow checks',
         defaultValue: false,
@@ -92,11 +88,14 @@ export class Publish extends CommandBase {
     options.workingDir = getRelativePath(options.workingDir);
     options.releaseId = parseInt(options.releaseId + '');
 
+    const version = getRootVersion();
+
     Log.title(`Publishing ${options.package}`);
     Log.stepBegin('Configuration');
     Log.stepProgress(`Workflow ID: ${options.workflowId}`);
     Log.stepProgress(`Release ID: ${options.releaseId}`);
     Log.stepProgress(`Repository: ${options.repository}`);
+    Log.stepProgress(`Is Beta: ${version.isBeta}`);
     Log.stepProgress(`Working Directory: ${options.workingDir}`);
     Log.stepProgress(
       `Disregard Workflow Checks: ${options.disregardWorkflowChecks}`,
