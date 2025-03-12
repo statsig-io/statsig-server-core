@@ -11,18 +11,17 @@ import path from 'node:path';
 import { PublisherOptions } from './publisher-options.js';
 
 const TARGET_MAPPING = {
-  'aarch64-apple-darwin-ffi': 'macos-arm64',
-  'aarch64-unknown-linux-gnu-ffi': 'linux-gnu-arm64',
-  // todo: add these to the build step
-  //   'amazonlinux2-arm64-ffi': 'amazonlinux2-arm64',
-  //   'amazonlinux2-x86_64-ffi': 'amazonlinux2-x86_64',
-  //   'amazonlinux2023-arm64-ffi': 'amazonlinux2023-arm64',
-  //   'amazonlinux2023-x86_64-ffi': 'amazonlinux2023-x86_64',
-  //   'centos7'
-  'i686-pc-windows-msvc-ffi': 'windows-i686',
-  'x86_64-apple-darwin-ffi': 'macos-x86_64',
-  'x86_64-pc-windows-msvc-ffi': 'windows-x86_64',
-  'x86_64-unknown-linux-gnu-ffi': 'linux-gnu-x86_64',
+  'macos-aarch64-apple-darwin-ffi': 'macos-arm64',
+  'debian-aarch64-unknown-linux-gnu-ffi': 'linux-gnu-arm64',
+  'amazonlinux2-aarch64-unknown-linux-gnu-ffi': 'amazonlinux2-arm64',
+  'amazonlinux2-x86_64-unknown-linux-gnu-ffi': 'amazonlinux2-x86_64',
+  'amazonlinux2023-aarch64-unknown-linux-gnu-ffi': 'amazonlinux2023-arm64',
+  'amazonlinux2023-x86_64-unknown-linux-gnu-ffi': 'amazonlinux2023-x86_64',
+  'centos7-x86_64-unknown-linux-gnu-ffi': 'centos7-x86_64',
+  'windows-i686-pc-windows-msvc-ffi': 'windows-i686',
+  'macos-x86_64-apple-darwin-ffi': 'macos-x86_64',
+  'windows-x86_64-pc-windows-msvc-ffi': 'windows-x86_64',
+  'debian-x86_64-unknown-linux-gnu-ffi': 'linux-gnu-x86_64',
 };
 
 const JAVA_NATIVE_DIR = path.resolve(
@@ -32,9 +31,9 @@ const JAVA_NATIVE_DIR = path.resolve(
 
 export async function javaPublish(options: PublisherOptions) {
   const libFiles = [
-    ...listFiles(options.workingDir, '*.dylib'),
-    ...listFiles(options.workingDir, '*.so'),
-    ...listFiles(options.workingDir, '*.dll'),
+    ...listFiles(options.workingDir, '**/target/**/release/*.dylib'),
+    ...listFiles(options.workingDir, '**/target/**/release/*.so'),
+    ...listFiles(options.workingDir, '**/target/**/release/*.dll'),
   ].filter(isMappedTarget);
 
   Log.stepBegin('Clearing Java Native Directory');
@@ -80,9 +79,9 @@ function moveJavaLibraries(libFiles: string[]) {
     ensureEmptyDir(destDir);
 
     const destinationPath = path.resolve(destDir, filename);
-    execSync(`mv ${file} ${destinationPath}`);
+    execSync(`cp ${file} ${destinationPath}`);
 
-    Log.stepProgress(`Moved lib to ${destinationPath}`);
+    Log.stepProgress(`Copied lib to ${destinationPath}`);
   });
 
   if (!allFilesMoved) {

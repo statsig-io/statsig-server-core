@@ -94,10 +94,11 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
 createStatsigJar('aarch64-apple-darwin', 'macos-arm64')
 // todo: add support for these platforms
 // createStatsigJar('aarch64-pc-windows-msvc', 'windows-arm64')
-// createStatsigJar('amazonlinux2-arm64', 'amazonlinux2-arm64')
-// createStatsigJar('amazonlinux2-x86_64', 'amazonlinux2-x86_64')
-// createStatsigJar('amazonlinux2023-arm64', 'amazonlinux2023-arm64')
-// createStatsigJar('amazonlinux2023-x86_64', 'amazonlinux2023-x86_64')
+// createStatsigJar('centos7-x86_64', 'centos7-x86_64')
+createStatsigJar('amazonlinux2-arm64', 'amazonlinux2-arm64')
+createStatsigJar('amazonlinux2-x86_64', 'amazonlinux2-x86_64')
+createStatsigJar('amazonlinux2023-arm64', 'amazonlinux2023-arm64')
+createStatsigJar('amazonlinux2023-x86_64', 'amazonlinux2023-x86_64')
 createStatsigJar('i686-pc-windows-msvc', 'windows-i686')
 createStatsigJar('java-core', null)
 createStatsigJar('linux-gnu-arm64', 'linux-gnu-arm64')
@@ -108,10 +109,11 @@ createStatsigJar('x86_64-pc-windows-msvc', 'windows-x86_64')
 def expectedTasks = [
     'aarch64-apple-darwinJar',
     // 'aarch64-pc-windows-msvcJar',
-    // 'amazonlinux2-arm64Jar',
-    // 'amazonlinux2-x86_64Jar',
-    // 'amazonlinux2023-arm64Jar',
-    // 'amazonlinux2023-x86_64Jar',
+    // 'centos7-x86_64Jar',
+    'amazonlinux2-arm64Jar',
+    'amazonlinux2-x86_64Jar',
+    'amazonlinux2023-arm64Jar',
+    'amazonlinux2023-x86_64Jar',
     'i686-pc-windows-msvcJar',
     'java-coreJar',
     'linux-gnu-arm64Jar',
