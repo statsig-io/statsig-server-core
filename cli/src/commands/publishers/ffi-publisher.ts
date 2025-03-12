@@ -28,19 +28,43 @@ const ASSET_MAPPING = {
     'libstatsig_ffi.dylib': 'shared',
   },
   // Linux GNU
-  'x86_64-unknown-linux-gnu': {
+  'debian-x86_64-unknown-linux-gnu': {
     'libstatsig_ffi.a': 'static',
     'libstatsig_ffi.so': 'shared',
   },
-  'aarch64-unknown-linux-gnu': {
+  'debian-aarch64-unknown-linux-gnu': {
+    'libstatsig_ffi.a': 'static',
+    'libstatsig_ffi.so': 'shared',
+  },
+  'centos7-x86_64-unknown-linux-gnu': {
+    'libstatsig_ffi.a': 'static',
+    'libstatsig_ffi.so': 'shared',
+  },
+  'centos7-aarch64-unknown-linux-gnu': {
+    'libstatsig_ffi.a': 'static',
+    'libstatsig_ffi.so': 'shared',
+  },
+  'amazonlinux2-x86_64-unknown-linux-gnu': {
+    'libstatsig_ffi.a': 'static',
+    'libstatsig_ffi.so': 'shared',
+  },
+  'amazonlinux2-aarch64-unknown-linux-gnu': {
+    'libstatsig_ffi.a': 'static',
+    'libstatsig_ffi.so': 'shared',
+  },
+  'amazonlinux2023-x86_64-unknown-linux-gnu': {
+    'libstatsig_ffi.a': 'static',
+    'libstatsig_ffi.so': 'shared',
+  },
+  'amazonlinux2023-aarch64-unknown-linux-gnu': {
     'libstatsig_ffi.a': 'static',
     'libstatsig_ffi.so': 'shared',
   },
   // Linux MUSL
-  'x86_64-unknown-linux-musl': {
+  'alpine-x86_64-unknown-linux-musl': {
     'libstatsig_ffi.a': 'static',
   },
-  'aarch64-unknown-linux-musl': {
+  'alpine-aarch64-unknown-linux-musl': {
     'libstatsig_ffi.a': 'static',
   },
   // Windows
@@ -77,11 +101,11 @@ function mapAssetsToTargets(options: PublisherOptions) {
 
   const targets = Object.keys(ASSET_MAPPING);
   const binaries = [
-    ...listFiles(options.workingDir, 'target/release/*.a'),
-    ...listFiles(options.workingDir, 'target/release/*.dylib'),
-    ...listFiles(options.workingDir, 'target/release/*.so'),
-    ...listFiles(options.workingDir, 'target/release/*.dll'),
-    ...listFiles(options.workingDir, 'target/release/*.lib'),
+    ...listFiles(options.workingDir, '**/target/**/release/*.a'),
+    ...listFiles(options.workingDir, '**/target/**/release/*.dylib'),
+    ...listFiles(options.workingDir, '**/target/**/release/*.so'),
+    ...listFiles(options.workingDir, '**/target/**/release/*.dll'),
+    ...listFiles(options.workingDir, '**/target/**/release/*.lib'),
   ];
 
   let allAssetsMapped = true;

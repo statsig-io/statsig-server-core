@@ -243,11 +243,7 @@ function unzipFiles(files: string[], options: PublisherOptions) {
 
     const buffer = fs.readFileSync(filepath);
 
-    let unzipTo = options.workingDir;
-    if (FFI_BASED_PACKAGES.has(options.package)) {
-      unzipTo = path.resolve(options.workingDir, name);
-    }
-
+    const unzipTo = path.resolve(options.workingDir, name);
     unzip(buffer, unzipTo);
 
     fs.unlinkSync(filepath);

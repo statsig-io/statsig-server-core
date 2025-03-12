@@ -14,7 +14,21 @@ export async function publishPython(options: PublisherOptions) {
   Log.stepEnd(`Pip: ${pipVersion}`);
 
   Log.stepBegin('Listing files to upload');
-  const unzipped = listFiles(options.workingDir, 'statsig_python_core*');
+  let hasSeenSource = false;
+  const unzipped = listFiles(options.workingDir, 'statsig_python_core*').filter(
+    (file) => {
+      if (file.endsWith('.tar.gz')) {
+        if (hasSeenSource) {
+          return false;
+        }
+
+        hasSeenSource = true;
+        return true;
+      }
+
+      return true;
+    },
+  );
   unzipped.forEach((file) => {
     Log.stepProgress(`Found file ${file}`);
   });
@@ -22,8 +36,11 @@ export async function publishPython(options: PublisherOptions) {
   Log.stepEnd('Finished listing files');
 
   let allFilesUploaded = true;
+
+  const seen: Record<string, string> = {};
+
   unzipped.forEach((file) => {
-    Log.stepBegin(`\nUploading ${path.basename(file)}`);
+    const filename = path.basename(file);
     const command = [
       'maturin upload',
       '--non-interactive',
@@ -32,9 +49,24 @@ export async function publishPython(options: PublisherOptions) {
       file,
     ].join(' ');
 
+    Log.stepBegin(`\nUploading ${filename}`);
+
+    if (seen[filename]) {
+      allFilesUploaded = false;
+      Log.stepEnd(
+        `${filename} already uploaded from ${seen[filename]}`,
+        'failure',
+      );
+      return;
+    }
+
+    seen[filename] = file;
+
+    Log.stepProgress(command);
+
     try {
       execSync(command, { cwd: options.workingDir, stdio: 'inherit' });
-      Log.stepEnd(command, 'success');
+      Log.stepEnd(`Uploaded ${filename}`, 'success');
     } catch (e) {
       Log.stepEnd(`Failed to upload ${path.basename(file)}`, 'failure');
       console.error(e);

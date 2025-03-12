@@ -46,7 +46,7 @@ export async function javaPublish(options: PublisherOptions) {
 }
 
 function isMappedTarget(file: string): boolean {
-  return Object.keys(TARGET_MAPPING).some(target => file.includes(target));
+  return Object.keys(TARGET_MAPPING).some((target) => file.includes(target));
 }
 
 function getDestination(file: string, destKeys: string[]): string | null {

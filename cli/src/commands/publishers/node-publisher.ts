@@ -12,43 +12,63 @@ import path from 'node:path';
 
 import { PublisherOptions } from './publisher-options.js';
 
+/**
+ DIR_NAME:
+  - FILE_GLOB_PATTERN : DESTINATION_FILE_NAME
+ */
 const DIR_STRUCTURE = {
   main: {
-    'package.json': '',
-    'index.d.ts': '',
-    'index.js': '',
+    'macos-aarch64-apple-darwin-node/**/package.json': 'package.json',
+    'macos-aarch64-apple-darwin-node/**/index.d.ts': 'index.d.ts',
+    'macos-aarch64-apple-darwin-node/**/index.js': 'index.js',
   },
   'aarch64-apple-darwin': {
-    'aarch64-apple-darwin.package.json': 'package.json',
-    'statsig-node-core.darwin-arm64.node': '',
+    'macos-aarch64-apple-darwin-node/**/aarch64-apple-darwin.package.json':
+      'package.json',
+    'macos-aarch64-apple-darwin-node/**/statsig-node-core.darwin-arm64.node':
+      'statsig-node-core.darwin-arm64.node',
   },
   'aarch64-unknown-linux-gnu': {
-    'aarch64-unknown-linux-gnu.package.json': 'package.json',
-    'statsig-node-core.linux-arm64-gnu.node': '',
+    'debian-aarch64-unknown-linux-gnu-node/**/aarch64-unknown-linux-gnu.package.json':
+      'package.json',
+    'debian-aarch64-unknown-linux-gnu-node/**/statsig-node-core.linux-arm64-gnu.node':
+      'statsig-node-core.linux-arm64-gnu.node',
   },
   'aarch64-unknown-linux-musl': {
-    'aarch64-unknown-linux-musl.package.json': 'package.json',
-    'statsig-node-core.linux-arm64-musl.node': '',
+    'alpine-aarch64-unknown-linux-musl-node/**/aarch64-unknown-linux-musl.package.json':
+      'package.json',
+    'alpine-aarch64-unknown-linux-musl-node/**/statsig-node-core.linux-arm64-musl.node':
+      'statsig-node-core.linux-arm64-musl.node',
   },
   'i686-pc-windows-msvc': {
-    'i686-pc-windows-msvc.package.json': 'package.json',
-    'statsig-node-core.win32-ia32-msvc.node': '',
+    'windows-i686-pc-windows-msvc-node/**/i686-pc-windows-msvc.package.json':
+      'package.json',
+    'windows-i686-pc-windows-msvc-node/**/statsig-node-core.win32-ia32-msvc.node':
+      'statsig-node-core.win32-ia32-msvc.node',
   },
   'x86_64-apple-darwin': {
-    'x86_64-apple-darwin.package.json': 'package.json',
-    'statsig-node-core.darwin-x64.node': '',
+    'macos-x86_64-apple-darwin-node/**/x86_64-apple-darwin.package.json':
+      'package.json',
+    'macos-x86_64-apple-darwin-node/**/statsig-node-core.darwin-x64.node':
+      'statsig-node-core.darwin-x64.node',
   },
   'x86_64-pc-windows-msvc': {
-    'x86_64-pc-windows-msvc.package.json': 'package.json',
-    'statsig-node-core.win32-x64-msvc.node': '',
+    'windows-x86_64-pc-windows-msvc-node/**/x86_64-pc-windows-msvc.package.json':
+      'package.json',
+    'windows-x86_64-pc-windows-msvc-node/**/statsig-node-core.win32-x64-msvc.node':
+      'statsig-node-core.win32-x64-msvc.node',
   },
   'x86_64-unknown-linux-gnu': {
-    'x86_64-unknown-linux-gnu.package.json': 'package.json',
-    'statsig-node-core.linux-x64-gnu.node': '',
+    'debian-x86_64-unknown-linux-gnu-node/**/x86_64-unknown-linux-gnu.package.json':
+      'package.json',
+    'debian-x86_64-unknown-linux-gnu-node/**/statsig-node-core.linux-x64-gnu.node':
+      'statsig-node-core.linux-x64-gnu.node',
   },
   'x86_64-unknown-linux-musl': {
-    'x86_64-unknown-linux-musl.package.json': 'package.json',
-    'statsig-node-core.linux-x64-musl.node': '',
+    'alpine-x86_64-unknown-linux-musl-node/**/x86_64-unknown-linux-musl.package.json':
+      'package.json',
+    'alpine-x86_64-unknown-linux-musl-node/**/statsig-node-core.linux-x64-musl.node':
+      'statsig-node-core.linux-x64-musl.node',
   },
 };
 
@@ -66,19 +86,19 @@ const PACKAGE_MAPPING = {
 export async function nodePublish(options: PublisherOptions) {
   const distDir = path.resolve(options.workingDir, 'statsig-node/dist');
 
-  addOptionalDependenciesToPackageJson(options);
   alignNodePackage(options, distDir);
+  addOptionalDependenciesToPackageJson(options);
   publishNodePackages(options, distDir);
 }
 
 function addOptionalDependenciesToPackageJson(options: PublisherOptions) {
-  const buildDir = options.workingDir + '/statsig-node/build';
+  const distDir = options.workingDir + '/statsig-node/dist';
 
   Log.stepBegin('Adding optional dependencies to package.json');
 
-  const filepath = path.resolve(buildDir, 'package.json');
+  const filepath = path.resolve(distDir, 'main/package.json');
 
-  const binaries = listFiles(buildDir, '*.node');
+  const binaries = listFiles(distDir, '*.node');
 
   const contents = fs.readFileSync(filepath, 'utf8');
   const json = JSON.parse(contents);
@@ -112,8 +132,6 @@ function addOptionalDependenciesToPackageJson(options: PublisherOptions) {
 function alignNodePackage(options: PublisherOptions, distDir: string) {
   Log.title('Aligning Node Packages');
 
-  const buildDir = options.workingDir + '/statsig-node/build';
-
   let allPlatformsAligned = true;
 
   Object.entries(DIR_STRUCTURE).forEach(([platform, files]) => {
@@ -126,17 +144,21 @@ function alignNodePackage(options: PublisherOptions, distDir: string) {
 
     let allFilesMoved = true;
     Object.entries(files).forEach(([source, destination]) => {
-      const sourcePath = path.resolve(buildDir, source);
-      if (!fs.existsSync(sourcePath)) {
+      const file = listFiles(options.workingDir, source);
+      if (file.length !== 1) {
         allFilesMoved = false;
-        Log.stepProgress(`Failed to find ${source} in ${buildDir}`, 'failure');
+        Log.stepProgress(
+          `Multiple files matched for ${source}, expected 1, found ${file.length}`,
+          'failure',
+        );
         return;
       }
 
+      const sourcePath = file[0];
       const destinationPath = path.resolve(platformDir, destination);
-      execSync(`mv ${sourcePath} ${destinationPath}`);
+      execSync(`cp ${sourcePath} ${destinationPath}`);
 
-      Log.stepProgress(`Moved ${source} to ${platform}/${destination}`);
+      Log.stepProgress(`Copied ${source} to ${platform}/${destination}`);
     });
 
     if (!allFilesMoved) {
