@@ -171,7 +171,7 @@ function publishNodePackages(options: PublisherOptions, distDir: string) {
       `--registry=https://registry.npmjs.org/`,
       `--userconfig=${configPath}`,
       `--access public`,
-      version.isBeta ? `--tag beta` : '',
+      version.isBeta() ? `--tag beta` : '',
     ];
 
     const command = publish.join(' ');

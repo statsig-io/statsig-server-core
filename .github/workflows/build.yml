@@ -45,9 +45,7 @@ env:
   CARGO_TERM_COLOR: always
   FORCE_COLOR: true
 
-
 jobs:
-
   # -------------------------------------------------------------------- [Plan]
 
   plan:
@@ -67,7 +65,7 @@ jobs:
     needs: plan
 
     strategy:
-      matrix: 
+      matrix:
         config: ${{ fromJson(needs.plan.outputs.build_matrix).config }}
         package:
           - node
@@ -93,26 +91,26 @@ jobs:
           pnpm install --dir cli
           pnpm install --dir statsig-node
 
-      - name: "[Non-Linux] Install Protoc"
+      - name: '[Non-Linux] Install Protoc'
         uses: arduino/setup-protoc@v3
         if: ${{ runner.os != 'Linux' }}
         with:
-            repo-token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: "[Non-Linux] Install Dependencies"
+      - name: '[Non-Linux] Install Dependencies'
         if: ${{ runner.os != 'Linux' }}
         run: |
           pip3 install maturin ${{ format('{0}', matrix.config.py_deps_suffix) }}          
           rustup target add ${{ matrix.config.target }}
 
-      - name: "[Windows Only] Setup Python"
+      - name: '[Windows Only] Setup Python'
         if: ${{ runner.os == 'Windows' }}
         uses: actions/setup-python@v5
         with:
           python-version: 3.x
           architecture: ${{ matrix.config.py_arch }}
 
-      - name: "[Linux Only] Build Docker Image"
+      - name: '[Linux Only] Build Docker Image'
         if: ${{ runner.os == 'Linux' }}
         uses: ./.github/actions/build-docker-image
         with:
@@ -150,18 +148,17 @@ jobs:
             target/release/*statsig_ffi.a
             target/release/*statsig_ffi.lib
 
-
   # -------------------------------------------------------------------- [Publish]
 
   publish:
     needs: [plan, build]
     if: ${{ github.event_name == 'release' }}
-    
+
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: 
-        package: 
+      matrix:
+        package:
           - node
           - python
           - java
@@ -178,7 +175,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '11'
-          distribution: "adopt"
+          distribution: 'adopt'
 
       - name: Setup
         run: |
@@ -193,7 +190,7 @@ jobs:
 
       - name: Display structure of downloaded files
         run: ls -R artifacts
-          
+
       - name: Publish ${{ matrix.package }}
         shell: bash
         run: |
@@ -202,5 +199,5 @@ jobs:
             --package ${{ matrix.package }} \
             --workflow-id $GITHUB_RUN_ID \
             --release-id ${{ github.event.release.id }} \
-            --repository ${{ github.repository }} \
+            --repository ${{ github.event.repository.name }} \
             --skip-artifact-download

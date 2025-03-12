@@ -95,7 +95,7 @@ export class Publish extends CommandBase {
     Log.stepProgress(`Workflow ID: ${options.workflowId}`);
     Log.stepProgress(`Release ID: ${options.releaseId}`);
     Log.stepProgress(`Repository: ${options.repository}`);
-    Log.stepProgress(`Is Beta: ${version.isBeta}`);
+    Log.stepProgress(`Is Beta: ${version.isBeta()}`);
     Log.stepProgress(`Working Directory: ${options.workingDir}`);
     Log.stepProgress(
       `Disregard Workflow Checks: ${options.disregardWorkflowChecks}`,
