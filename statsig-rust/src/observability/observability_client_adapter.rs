@@ -27,7 +27,7 @@ impl ObservabilityEvent {
         value: f64,
         tags: Option<HashMap<String, String>>,
     ) -> OpsStatsEvent {
-        OpsStatsEvent::ObservabilityEvent(ObservabilityEvent {
+        OpsStatsEvent::Observability(ObservabilityEvent {
             metric_type,
             metric_name,
             value,
@@ -49,7 +49,7 @@ pub trait ObservabilityClient: Send + Sync + 'static + OpsStatsEventObserver {
 #[async_trait]
 impl<T: ObservabilityClient> OpsStatsEventObserver for T {
     async fn handle_event(&self, event: OpsStatsEvent) {
-        if let OpsStatsEvent::ObservabilityEvent(data) = event {
+        if let OpsStatsEvent::Observability(data) = event {
             let metric_name = format!("statsig.sdk.{}", data.clone().metric_name);
             match data.clone().metric_type {
                 MetricType::Increment => self.increment(metric_name, data.value, data.tags),

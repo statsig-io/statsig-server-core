@@ -23,6 +23,7 @@ use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
 use crate::hashing::HashUtil;
 use crate::initialize_response::InitializeResponse;
+use crate::observability::diagnostics_observer::DiagnosticsObserver;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::{ErrorBoundaryEvent, SDKErrorsObserver};
@@ -80,7 +81,7 @@ pub struct Statsig {
     gcir_formatter: Arc<ClientInitResponseFormatter>,
     statsig_environment: Option<HashMap<String, DynamicValue>>,
     fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
-    diagnostics: Diagnostics,
+    diagnostics: Arc<Diagnostics>,
     ops_stats: Arc<OpsStatsForInstance>,
     error_observer: Arc<dyn OpsStatsEventObserver>,
     sampling_processor: Arc<SamplingProcessor>,
@@ -113,6 +114,25 @@ impl Statsig {
         let options = options.unwrap_or_default();
 
         let hashing = Arc::new(HashUtil::new());
+
+        let specs_adapter = initialize_specs_adapter(sdk_key, &options, &hashing);
+        let id_lists_adapter = initialize_id_lists_adapter(sdk_key, &options);
+        let event_logging_adapter = initialize_event_logging_adapter(sdk_key, &options);
+        let override_adapter = match options.override_adapter.as_ref() {
+            Some(adapter) => Some(Arc::clone(adapter)),
+            None => Some(Arc::new(StatsigLocalOverrideAdapter::new()) as Arc<dyn OverrideAdapter>),
+        };
+
+        let event_logger = Arc::new(EventLogger::new(
+            sdk_key,
+            event_logging_adapter.clone(),
+            &options,
+            &statsig_runtime,
+        ));
+
+        let diagnostics = Arc::new(Diagnostics::new(event_logger.clone()));
+        let diagnostics_observer: Arc<dyn OpsStatsEventObserver> =
+            Arc::new(DiagnosticsObserver::new(diagnostics.clone()));
         let error_observer: Arc<dyn OpsStatsEventObserver> = Arc::new(SDKErrorsObserver::new(
             sdk_key,
             serde_json::to_string(options.as_ref()).unwrap_or_default(),
@@ -123,23 +143,17 @@ impl Statsig {
             &options,
             statsig_runtime.clone(),
             &error_observer,
+            &diagnostics_observer,
             &options.observability_client,
         );
 
         let spec_store = Arc::new(SpecStore::new(
+            sdk_key,
             hashing.sha256(&sdk_key.to_string()),
             options.data_store.clone(),
             Some(statsig_runtime.clone()),
-            ops_stats.clone(),
+            Some(diagnostics.clone()),
         ));
-
-        let specs_adapter = initialize_specs_adapter(sdk_key, &options, &hashing);
-        let id_lists_adapter = initialize_id_lists_adapter(sdk_key, &options);
-        let event_logging_adapter = initialize_event_logging_adapter(sdk_key, &options);
-        let override_adapter = match options.override_adapter.as_ref() {
-            Some(adapter) => Some(Arc::clone(adapter)),
-            None => Some(Arc::new(StatsigLocalOverrideAdapter::new()) as Arc<dyn OverrideAdapter>),
-        };
 
         if options.enable_user_agent_parsing.unwrap_or(false) {
             UserAgentParser::load_parser();
@@ -154,13 +168,6 @@ impl Statsig {
             .as_ref()
             .map(|env| HashMap::from([("tier".into(), dyn_value!(env.as_str()))]));
 
-        let event_logger = Arc::new(EventLogger::new(
-            sdk_key,
-            event_logging_adapter.clone(),
-            &options,
-            &statsig_runtime,
-        ));
-        let diagnostics = Diagnostics::new(event_logger.clone(), spec_store.clone());
         let sampling_processor = Arc::new(SamplingProcessor::new(
             &statsig_runtime,
             &spec_store,
@@ -1509,6 +1516,7 @@ fn setup_ops_stats(
     options: &StatsigOptions,
     statsig_runtime: Arc<StatsigRuntime>,
     error_observer: &Arc<dyn OpsStatsEventObserver>,
+    diagnostics_observer: &Arc<dyn OpsStatsEventObserver>,
     external_observer: &Option<Weak<dyn ObservabilityClient>>,
 ) -> Arc<OpsStatsForInstance> {
     // TODO migrate output logger to use ops_stats
@@ -1516,6 +1524,10 @@ fn setup_ops_stats(
 
     let ops_stat = OPS_STATS.get_for_instance(sdk_key);
     ops_stat.subscribe(statsig_runtime.clone(), Arc::downgrade(error_observer));
+    ops_stat.subscribe(
+        statsig_runtime.clone(),
+        Arc::downgrade(diagnostics_observer),
+    );
 
     if let Some(ob_client) = external_observer {
         if let Some(client) = ob_client.upgrade() {

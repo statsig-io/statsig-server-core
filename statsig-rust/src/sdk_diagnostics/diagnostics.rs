@@ -2,16 +2,14 @@ use super::{
     diagnostics_utils::DiagnosticsUtils,
     marker::{ActionType, KeyType, Marker, StepType},
 };
+use crate::event_logging::event_logger::{EventLogger, QueuedEventPayload};
 use crate::log_w;
 use crate::{
     evaluation::evaluation_details::EvaluationDetails,
     event_logging::{statsig_event::StatsigEvent, statsig_event_internal::StatsigEventInternal},
 };
-use crate::{
-    event_logging::event_logger::{EventLogger, QueuedEventPayload},
-    read_lock_or_else, SpecStore,
-};
-use chrono::Utc;
+use rand::Rng;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex};
@@ -19,34 +17,49 @@ use std::sync::{Arc, Mutex};
 const MAX_MARKER_COUNT: usize = 50;
 pub const DIAGNOSTICS_EVENT: &str = "statsig::diagnostics";
 
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Eq, Hash, PartialEq, Clone, Serialize, Debug)]
 pub enum ContextType {
     Initialize, // we only care about initialize for now
+    ConfigSync,
 }
 
 impl fmt::Display for ContextType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ContextType::Initialize => write!(f, "initialize"),
+            ContextType::ConfigSync => write!(f, "config_sync"),
         }
     }
 }
 
 const TAG: &str = stringify!(Diagnostics);
+const MAX_SAMPLING_RATE: f64 = 10000.0;
+const DEFAULT_SAMPLING_RATE: f64 = 100.0;
 
 pub struct Diagnostics {
     marker_map: Mutex<HashMap<ContextType, Vec<Marker>>>,
     event_logger: Arc<EventLogger>,
-    spec_store: Arc<SpecStore>,
+    sampling_rates: Mutex<HashMap<String, f64>>,
 }
 
 impl Diagnostics {
-    #[must_use]
-    pub fn new(event_logger: Arc<EventLogger>, spec_store: Arc<SpecStore>) -> Self {
+    pub fn new(event_logger: Arc<EventLogger>) -> Self {
         Self {
             event_logger,
             marker_map: Mutex::new(HashMap::new()),
-            spec_store,
+            sampling_rates: Mutex::new(HashMap::from([
+                ("initialize".to_string(), 10000.0),
+                ("config_sync".to_string(), 1000.0),
+            ])),
+        }
+    }
+
+    pub fn set_sampling_rate(&self, new_sampling_rate: HashMap<std::string::String, f64>) {
+        if let Ok(mut rates) = self.sampling_rates.lock() {
+            for (key, rate) in new_sampling_rate {
+                let clamped_rate = rate.clamp(0.0, MAX_SAMPLING_RATE);
+                rates.insert(key, clamped_rate);
+            }
         }
     }
 
@@ -77,12 +90,7 @@ impl Diagnostics {
     }
 
     pub fn mark_init_overall_start(&self) {
-        let init_marker = Marker::new(
-            KeyType::Overall,
-            ActionType::Start,
-            Some(StepType::Process),
-            Utc::now().timestamp_millis() as u64,
-        );
+        let init_marker = Marker::new(KeyType::Overall, ActionType::Start, Some(StepType::Process));
         self.add_marker(ContextType::Initialize, init_marker);
     }
 
@@ -92,23 +100,19 @@ impl Diagnostics {
         error_message: Option<String>,
         evaluation_details: EvaluationDetails,
     ) {
-        let mut init_marker = Marker::new(
-            KeyType::Overall,
-            ActionType::End,
-            Some(StepType::Process),
-            Utc::now().timestamp_millis() as u64,
-        )
-        .with_is_success(success)
-        .with_eval_details(evaluation_details);
+        let mut init_marker =
+            Marker::new(KeyType::Overall, ActionType::End, Some(StepType::Process))
+                .with_is_success(success)
+                .with_eval_details(evaluation_details);
 
         if let Some(msg) = error_message {
             init_marker = init_marker.with_message(msg);
         }
         self.add_marker(ContextType::Initialize, init_marker);
-        self.enqueue_diagnostics_event(ContextType::Initialize);
+        self.enqueue_diagnostics_event(ContextType::Initialize, None);
     }
 
-    pub fn enqueue_diagnostics_event(&self, context_type: ContextType) {
+    pub fn enqueue_diagnostics_event(&self, context_type: ContextType, key: Option<KeyType>) {
         let markers = match self.get_markers(&context_type) {
             Some(m) => m,
             None => return,
@@ -134,25 +138,42 @@ impl Diagnostics {
             statsig_metadata: None,
         });
 
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_w!(TAG, "Failed to acquire read lock for diagnostics event");
+        if !self.should_sample(&context_type, key) {
+            self.clear_markers(&context_type);
             return;
-        });
-
-        let diagnostics = &data.values.diagnostics;
-
-        if let Some(diagnostics) = diagnostics {
-            if let Some(sample_rate) = diagnostics.get(&context_type.to_string()) {
-                if !DiagnosticsUtils::should_sample(*sample_rate) {
-                    self.clear_markers(&context_type);
-                    return;
-                }
-            }
         }
 
         self.event_logger
             .enqueue(QueuedEventPayload::CustomEvent(event));
 
         self.clear_markers(&context_type);
+    }
+
+    pub fn should_sample(&self, context: &ContextType, key: Option<KeyType>) -> bool {
+        let mut rng = rand::thread_rng();
+        let rand_value = rng.gen::<f64>() * MAX_SAMPLING_RATE;
+
+        let sampling_rates = self.sampling_rates.lock().unwrap();
+
+        if *context == ContextType::Initialize {
+            return rand_value
+                < *sampling_rates
+                    .get("initialize")
+                    .unwrap_or(&DEFAULT_SAMPLING_RATE);
+        }
+
+        if let Some(key) = key {
+            if key == KeyType::GetIDList || key == KeyType::GetIDListSources {
+                return rand_value
+                    < *sampling_rates
+                        .get("id_list")
+                        .unwrap_or(&DEFAULT_SAMPLING_RATE);
+            }
+            if key == KeyType::DownloadConfigSpecs {
+                return rand_value < *sampling_rates.get("dcs").unwrap_or(&DEFAULT_SAMPLING_RATE);
+            }
+        }
+
+        rand_value < DEFAULT_SAMPLING_RATE
     }
 }

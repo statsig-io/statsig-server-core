@@ -7,10 +7,15 @@ use std::{
 use tokio::sync::broadcast::{self, Sender};
 use tokio::sync::Notify;
 
+use crate::sdk_diagnostics::{
+    diagnostics::ContextType,
+    marker::{KeyType, Marker},
+};
 use crate::{log_e, log_w, StatsigRuntime};
 
 use super::{
     observability_client_adapter::ObservabilityEvent, sdk_errors_observer::ErrorBoundaryEvent,
+    DiagnosticsEvent,
 };
 
 const TAG: &str = stringify!(OpsStats);
@@ -61,8 +66,9 @@ impl OpsStats {
 
 #[derive(Clone)]
 pub enum OpsStatsEvent {
-    ObservabilityEvent(ObservabilityEvent),
-    SDKErrorEvent(ErrorBoundaryEvent),
+    Observability(ObservabilityEvent),
+    SDKError(ErrorBoundaryEvent),
+    Diagnostics(DiagnosticsEvent),
 }
 
 pub struct OpsStatsForInstance {
@@ -100,7 +106,23 @@ impl OpsStatsForInstance {
     }
 
     pub fn log_error(&self, error: ErrorBoundaryEvent) {
-        self.log(OpsStatsEvent::SDKErrorEvent(error));
+        self.log(OpsStatsEvent::SDKError(error));
+    }
+
+    #[allow(dead_code)] // will remove after diagnostics is fully implemented
+    pub fn mark_diagnostics(
+        &self,
+        context: ContextType,
+        marker: Option<Marker>,
+        key: Option<KeyType>,
+        end: bool,
+    ) {
+        self.log(OpsStatsEvent::Diagnostics(DiagnosticsEvent {
+            context,
+            marker,
+            key,
+            end,
+        }));
     }
 
     pub fn subscribe(

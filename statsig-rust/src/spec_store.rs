@@ -1,8 +1,9 @@
 use crate::data_store_interface::{get_data_adapter_dcs_key, DataStoreTrait};
 use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
-use crate::observability::ops_stats::OpsStatsForInstance;
+use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
+use crate::sdk_diagnostics::diagnostics::Diagnostics;
 use crate::spec_types::{SpecsResponse, SpecsResponseFull};
 use crate::{
     log_d, log_e, log_error_to_statsig_and_console, DynamicValue, SpecsInfo, SpecsSource,
@@ -29,6 +30,7 @@ pub struct SpecStore {
     pub data: Arc<RwLock<SpecStoreData>>,
     pub data_store: Option<Arc<dyn DataStoreTrait>>,
     pub statsig_runtime: Option<Arc<StatsigRuntime>>,
+    diagnostics: Option<Arc<Diagnostics>>,
     ops_stats: Arc<OpsStatsForInstance>,
 }
 
@@ -104,22 +106,19 @@ impl IdListsUpdateListener for SpecStore {
 
 impl Default for SpecStore {
     fn default() -> Self {
-        Self::new(
-            String::new(),
-            None,
-            None,
-            Arc::new(OpsStatsForInstance::new()),
-        )
+        let sdk_key = String::new();
+        Self::new(&sdk_key, sdk_key.to_string(), None, None, None)
     }
 }
 
 impl SpecStore {
     #[must_use]
     pub fn new(
+        sdk_key: &str,
         hashed_sdk_key: String,
         data_store: Option<Arc<dyn DataStoreTrait>>,
         statsig_runtime: Option<Arc<StatsigRuntime>>,
-        ops_stats: Arc<OpsStatsForInstance>,
+        diagnostics: Option<Arc<Diagnostics>>,
     ) -> SpecStore {
         SpecStore {
             hashed_sdk_key,
@@ -131,7 +130,8 @@ impl SpecStore {
             })),
             data_store,
             statsig_runtime,
-            ops_stats,
+            ops_stats: OPS_STATS.get_for_instance(sdk_key),
+            diagnostics,
         }
     }
 
@@ -193,6 +193,15 @@ impl SpecStore {
                 ));
             }
         };
+
+        if let Some(ref diagnostics) = dcs.diagnostics {
+            if self.diagnostics.is_some() {
+                if let Some(diagnostics_instance) = &self.diagnostics {
+                    diagnostics_instance.set_sampling_rate(diagnostics.clone());
+                }
+            }
+        }
+
         if let Ok(mut mut_values) = self.data.write() {
             let cached_time_is_newer =
                 mut_values.values.time > 0 && mut_values.values.time > dcs.time;
