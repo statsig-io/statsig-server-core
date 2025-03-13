@@ -14,12 +14,14 @@ jobs:
   CD:
     timeout-minutes: 10
     runs-on: ubuntu-latest
+    continue-on-error: true
     strategy:
       matrix:
         args:
             # - ["image_tag", "lrs_subdir"]
             - ["server_core_node", "server-core-node"]
             - ["grpc_server_core_python", "server-core-python"]
+            - ["server-core-java", "server-core-java"]
     steps:
       - name: Checkout LRS repo
         uses: actions/checkout@v3
