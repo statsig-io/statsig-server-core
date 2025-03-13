@@ -11,12 +11,6 @@ const JAVA_NATIVE_DIR = path.resolve(
   'statsig-ffi/bindings/java/src/main/resources/native',
 );
 
-const TARGET_MAPPING = {
-  'aarch64-macos': 'macos-arm64',
-  'aarch64-debian': 'linux-gnu-arm64',
-  'x86_64-debian': 'linux-gnu-x86_64',
-};
-
 export function buildJava(options: BuilderOptions) {
   Log.title(`Building statsig-java`);
 
@@ -46,17 +40,11 @@ function moveJavaLibraries(libFiles: string[], options: BuilderOptions) {
       return;
     }
 
-    const destination = TARGET_MAPPING[tag];
-    if (!destination) {
-      Log.stepProgress(`No mapping found for: ${file}`, 'failure');
-      return;
-    }
-
     const filename = path.basename(file);
-    const destDir = path.resolve(JAVA_NATIVE_DIR, destination);
-    ensureEmptyDir(destDir);
 
-    const destinationPath = path.resolve(destDir, filename);
+    ensureEmptyDir(JAVA_NATIVE_DIR);
+
+    const destinationPath = path.resolve(JAVA_NATIVE_DIR, filename);
     execSync(`cp ${file} ${destinationPath}`);
 
     Log.stepProgress(`Copied lib to ${destinationPath}`);

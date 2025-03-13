@@ -47,7 +47,7 @@ impl UserAgentParser {
         });
 
         let parser = unwrap_or_return_with!(lock.as_ref(), || {
-            log_e!(TAG, "Attempted to use parser after it was loaded");
+            log_e!(TAG, "Attempted to use parser before it was loaded");
             None
         });
 
