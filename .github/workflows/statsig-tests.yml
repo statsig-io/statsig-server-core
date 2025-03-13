@@ -26,7 +26,7 @@ jobs:
           - node
           - java
           - rust
-    
+
     runs-on: ubuntu-latest
 
     steps:
@@ -50,8 +50,7 @@ jobs:
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
         with:
-            repo-token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Tests
-        run: ./tore test ${{ matrix.lang }} --no-docker
-
+        run: ./tore test ${{ matrix.lang }} --no-docker --arch x86_64 --os debian

@@ -1,63 +1,73 @@
-import { BuilderOptions } from "@/commands/builders/builder-options.js";
-import { Log } from "@/utils/teminal_utils.js";
-import { BASE_DIR } from "@/utils/file_utils.js";
-import path from "node:path";
-import fs from "fs";
-import {buildFfiHelper} from "@/utils/ffi_utils.js";
+import { BuilderOptions } from '@/commands/builders/builder-options.js';
+import { getArchInfo } from '@/utils/docker_utils.js';
+import { buildFfiHelper } from '@/utils/ffi_utils.js';
+import { BASE_DIR, ensureEmptyDir, listFiles } from '@/utils/file_utils.js';
+import { Log } from '@/utils/teminal_utils.js';
+import { execSync } from 'node:child_process';
+import path from 'node:path';
 
 const JAVA_NATIVE_DIR = path.resolve(
-    BASE_DIR,
-    'statsig-ffi/bindings/java/src/main/resources/native',
+  BASE_DIR,
+  'statsig-ffi/bindings/java/src/main/resources/native',
 );
 
+const TARGET_MAPPING = {
+  'aarch64-macos': 'macos-arm64',
+  'aarch64-debian': 'linux-gnu-arm64',
+  'x86_64-debian': 'linux-gnu-x86_64',
+};
+
 export function buildJava(options: BuilderOptions) {
-    Log.title(`Building statsig-java`);
+  Log.title(`Building statsig-java`);
 
-    options.release = true; // default to true
-    buildFfiHelper(options);
+  options.release = true; // default to true
+  buildFfiHelper(options);
 
-    Log.stepEnd(`Built statsig-java`);
+  Log.stepEnd(`Built statsig-java`);
 
-    moveNativeLibrary(options);
+  const libFiles = [
+    ...listFiles(BASE_DIR, '**/target/**/release/*.dylib'),
+    ...listFiles(BASE_DIR, '**/target/**/release/*.so'),
+    ...listFiles(BASE_DIR, '**/target/**/release/*.dll'),
+  ];
+
+  moveJavaLibraries(libFiles, options);
 }
 
+function moveJavaLibraries(libFiles: string[], options: BuilderOptions) {
+  Log.stepBegin('Moving Java Libraries');
 
-function moveNativeLibrary(options: BuilderOptions) {
-    const targetDir = path.resolve(BASE_DIR, 'target/release');
+  const { name } = getArchInfo(options.arch);
+  const tag = `${name}-${options.os}`;
 
-    Log.stepBegin(`Moving FFI build output to Java native resources`);
-
-    const files = [
-        'libstatsig_ffi.so',
-        'libstatsig_ffi.dylib',
-        'libstatsig_ffi.dll'
-    ];
-
-    let found = false;
-
-    // ensure empty dir or delete existing files
-    if (fs.existsSync(JAVA_NATIVE_DIR)) {
-        fs.readdirSync(JAVA_NATIVE_DIR).forEach(file => {
-            fs.unlinkSync(path.join(JAVA_NATIVE_DIR, file));
-        });
-    } else {
-        fs.mkdirSync(JAVA_NATIVE_DIR, { recursive: true });
+  let fileMoved = false;
+  libFiles.forEach((file) => {
+    if (!file.includes(tag)) {
+      return;
     }
 
-    for (const file of files) {
-        const srcPath = path.join(targetDir, file);
-        const destPath = path.join(JAVA_NATIVE_DIR, file);
-
-        if (fs.existsSync(srcPath)) {
-            fs.copyFileSync(srcPath, destPath);
-            Log.stepEnd(`✅ Moved ${file} to ${JAVA_NATIVE_DIR}`);
-            found = true;
-            break; // Stop after moving the first valid file??
-        }
+    const destination = TARGET_MAPPING[tag];
+    if (!destination) {
+      Log.stepProgress(`No mapping found for: ${file}`, 'failure');
+      return;
     }
 
-    if (!found) {
-        Log.stepEnd(`❌ ERROR: No native library found! Build failed.`);
-        process.exit(1);
-    }
+    const filename = path.basename(file);
+    const destDir = path.resolve(JAVA_NATIVE_DIR, destination);
+    ensureEmptyDir(destDir);
+
+    const destinationPath = path.resolve(destDir, filename);
+    execSync(`cp ${file} ${destinationPath}`);
+
+    Log.stepProgress(`Copied lib to ${destinationPath}`);
+
+    fileMoved = true;
+  });
+
+  if (!fileMoved) {
+    Log.stepEnd(`Failed to copy native file for tag ${tag}`, 'failure');
+    throw new Error(`Failed to copy native file for tag ${tag}`);
+  }
+
+  Log.stepEnd(`Successfully copied native file for tag ${tag}`);
 }

@@ -31,13 +31,11 @@ export class Build extends CommandBase {
         {
           flags: '-a, --arch <string>',
           description: 'The architecture to build for',
-          defaultValue: 'arm64',
           choices: ARCHITECTURES,
         },
         {
           flags: '--os <string>',
           description: 'The operating system to build for',
-          defaultValue: 'debian',
           choices: OPERATING_SYSTEMS,
         },
         {
@@ -77,6 +75,17 @@ export class Build extends CommandBase {
 
   override async run(packageName: string, options: BuilderOptions) {
     Log.title(`Building ${packageName}`);
+
+    if (options.docker) {
+      options.arch ??= 'arm64';
+      options.os ??= 'debian';
+    } else if (!options.arch || !options.os) {
+      Log.stepEnd(
+        'Must specify --arch and --os when --no-docker is set',
+        'failure',
+      );
+      process.exit(1);
+    }
 
     Log.stepBegin('Configuration');
     Log.stepProgress(`OS: ${options.os}`);
