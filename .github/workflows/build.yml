@@ -199,5 +199,5 @@ jobs:
             --package ${{ matrix.package }} \
             --workflow-id $GITHUB_RUN_ID \
             --release-id ${{ github.event.release.id }} \
-            --repository ${{ github.repository }} \
+            --repository ${{ github.event.repository.name }} \
             --skip-artifact-download
