@@ -1,0 +1,66 @@
+plugins {
+    // Apply the application plugin to add support for building a CLI application in Java.
+    id 'application'
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'example.statsig'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    // Use Maven Central for resolving dependencies.
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation libs.junit.jupiter
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation libs.guava
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'com.statsig:javacore:0.0.9'
+    // implementation 'com.statsig:javacore:0.0.9:amazonlinux2-x86_64'
+    implementation 'com.statsig:javacore:0.0.9:amazonlinux2023-x86_64'
+    implementation 'com.amazonaws:aws-lambda-java-core:1.2.2'
+}
+
+// Apply a specific Java toolchain to ease working on different environments.
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
+shadowJar {
+    archiveBaseName = 'fat-statsig-java-core'
+    archiveClassifier.set('')
+
+    manifest {
+        attributes(
+                'Main-Class': 'org.example.Main'  // Ensure Main-Class is correctly set
+        )
+    }
+}
+
+application {
+    // Define the main class for the application.
+    mainClass = 'example.statsig.Main'
+}
+
+tasks.named('test') {
+    // Use JUnit Platform for unit tests.
+    useJUnitPlatform()
+}
+
+jar {
+    archiveBaseName = 'statsig-java-core'
+    // Include the compiled classes
+    from sourceSets.main.output
+
+    manifest {
+        attributes(
+                'Main-Class': 'example.statsig.Main'
+        )
+    }
+}
