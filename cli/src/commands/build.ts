@@ -76,16 +76,20 @@ export class Build extends CommandBase {
   override async run(packageName: string, options: BuilderOptions) {
     Log.title(`Building ${packageName}`);
 
-    if (options.docker) {
-      options.arch ??= 'arm64';
-      options.os ??= 'debian';
-    } else if (!options.arch || !options.os) {
+    if (
+      !options.docker &&
+      (!options.arch || !options.os) &&
+      !['node', 'python'].includes(packageName)
+    ) {
       Log.stepEnd(
         'Must specify --arch and --os when --no-docker is set',
         'failure',
       );
       process.exit(1);
     }
+
+    options.arch ??= 'arm64';
+    options.os ??= 'debian';
 
     Log.stepBegin('Configuration');
     Log.stepProgress(`OS: ${options.os}`);

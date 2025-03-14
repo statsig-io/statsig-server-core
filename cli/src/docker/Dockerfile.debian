@@ -21,7 +21,7 @@ RUN pip3 install pytest maturin patchelf pytest_httpserver
 # Node Setup
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh
 RUN bash nodesource_setup.sh && apt-get install -y nodejs
-RUN npm install -g pnpm@7.32.4
+RUN npm install -g pnpm@7.32.4 typescript@5.7.3
 
 # Rust Setup
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y

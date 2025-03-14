@@ -35,7 +35,7 @@ ENV CARGO_TERM_COLOR=always
 # Node Setup
 RUN curl -sL https://rpm.nodesource.com/setup_16.x | bash - \
     && yum install -y nodejs
-RUN npm install -g pnpm@7.32.4
+RUN npm install -g pnpm@7.32.4 typescript@5.7.3
 
 
 ENTRYPOINT ["sh", "-c"]

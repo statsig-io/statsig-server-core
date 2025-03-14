@@ -7,6 +7,15 @@ bin
 obj
 .npmrc
 
+# Binary Files
+libstatsig_ffi.dylib
+libstatsig_ffi.a
+libstatsig_ffi.so
+statsig_ffi.dll
+statsig_ffi.lib
+*.node
+
+
 ### Composer ###
 composer.phar
 **/vendor/**

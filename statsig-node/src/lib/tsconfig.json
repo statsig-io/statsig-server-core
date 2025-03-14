@@ -6,8 +6,7 @@
     "strict": true, // enables all strict type-checking options
     "skipLibCheck": true, // skips type checking of declaration files
     "forceConsistentCasingInFileNames": true, // ensures consistent casing in imports
-    "sourceMap": true
+    "declaration": true
   },
-  "include": ["src/**/*"], // adjust the path to match your source files
-  "exclude": ["node_modules", "**/*.spec.ts"] // exclude test files if needed
+  "include": ["**/*.ts", "**/*.js", "**/*.d.ts"] // adjust the path to match your source files
 }

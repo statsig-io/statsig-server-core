@@ -35,9 +35,9 @@ const TEST_COMMANDS: Record<string, string> = {
   ].join(' && '),
 
   node: [
+    `pnpm install --dir statsig-node`,
+    './tore build node --no-docker',
     'cd statsig-node',
-    'pnpm install',
-    'pnpm exec napi build --cross-compile --platform --js index.js --dts index.d.ts --output-dir build',
     'pnpm test',
   ].join(' && '),
 
@@ -98,13 +98,13 @@ export class Test extends CommandBase {
       buildDockerImage(options.os, options.arch);
     }
 
-    runTestInDockerImage(lang, options);
+    runTests(lang, options);
 
     Log.conclusion('Tests Ran');
   }
 }
 
-function runTestInDockerImage(lang: string, options: Options) {
+function runTests(lang: string, options: Options) {
   const { docker } = getArchInfo(options.arch);
   const dockerImageTag = getDockerImageTag(options.os, options.arch);
 
