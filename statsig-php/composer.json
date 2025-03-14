@@ -1,29 +1,29 @@
 {
-    "name": "statsig/statsig-core-php",
-    "type": "library",
-    "license": "ISC",
-    "description": "Statsig PHP SDK",
-    "autoload": {
-        "psr-4": {
-            "Statsig\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Statsig\\Tests\\": "tests/"
-        }
-    },
-    "require": {},
-    "require-dev": {
-        "phpunit/phpunit": "^9",
-        "donatj/mock-webserver": "^2.7.2",
-        "ext-zlib": "*"
-    },
-    "scripts": {
-        "test": "phpunit tests --testdox --colors=always",
-        "test:verbose": "phpunit tests --testdox --colors=always --debug",
-        "post-install-cmd": [
-            "php post-install.php"
-          ]
+  "name": "statsig/statsig-php-core",
+  "type": "library",
+  "license": "ISC",
+  "description": "Statsig PHP SDK",
+  "autoload": {
+    "psr-4": {
+      "Statsig\\": "src/"
     }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Statsig\\Tests\\": "tests/"
+    }
+  },
+  "require": {},
+  "require-dev": {
+    "phpunit/phpunit": "^9",
+    "donatj/mock-webserver": "^2.7.2",
+    "ext-zlib": "*"
+  },
+  "scripts": {
+    "test": "phpunit tests --testdox --colors=always",
+    "test:verbose": "phpunit tests --testdox --colors=always --debug",
+    "post-install-cmd": [
+      "php post-install.php"
+    ]
+  }
 }

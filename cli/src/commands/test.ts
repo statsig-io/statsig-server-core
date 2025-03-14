@@ -19,6 +19,7 @@ const TEST_COMMANDS: Record<string, string> = {
     'pip install ../target/wheels/statsig_python_core*manylinux*.whl --force-reinstall',
     'mkdir clean_test_env && cd clean_test_env && pytest ../tests --capture=no -v',
   ].join(' && '),
+
   java: [
     'cargo build -p statsig_ffi',
     'mkdir -p statsig-ffi/bindings/java/src/main/resources/native',

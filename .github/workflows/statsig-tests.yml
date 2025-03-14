@@ -26,6 +26,7 @@ jobs:
           - node
           - java
           - rust
+          - php
 
     runs-on: ubuntu-latest
 
