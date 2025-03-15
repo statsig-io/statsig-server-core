@@ -24,53 +24,33 @@ RUN yum install -y \
        perl-IPC-Cmd \
     && yum clean all
 
-# Set working directory
-WORKDIR /usr/src
-
-# Install Python 3.8 from source
+# Python
 RUN wget https://www.python.org/ftp/python/3.8.18/Python-3.8.18.tgz && \
     tar xzf Python-3.8.18.tgz && \
     cd Python-3.8.18 && \
     ./configure --enable-optimizations && \
     make -j$(nproc) && \
     make altinstall
-
-# Ensure Python 3.8 is used by default
 ENV PATH="/usr/local/bin:$PATH"
 ENV PYO3_PYTHON="/usr/local/bin/python3.8"
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.8
+RUN python3.8 -m pip install --upgrade pip
+RUN python3.8 -m pip install maturin auditwheel
 
 # Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_TERM_COLOR=always
 
-# Install pip using the latest script
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.8
-
-# Ensure pip is upgraded
-RUN python3.8 -m pip install --upgrade pip
-
-# Install Python build tools
-RUN python3.8 -m pip install maturin auditwheel
-
-# Install Node.js (compatible with CentOS 7 / glibc 2.17)
+# Node
 RUN curl -fsSL https://rpm.nodesource.com/setup_16.x | bash - && \
     yum install -y nodejs && \
     yum clean all
+RUN npm install -g pnpm@7.32.4 typescript@5.7.3
 
-# Install pnpm AFTER Node.js
-RUN curl -fsSL https://get.pnpm.io/install.sh | sh -
-ENV PNPM_HOME="/root/.local/share/pnpm"
-ENV PATH="${PNPM_HOME}:${PATH}"
-RUN ln -s ${PNPM_HOME}/pnpm /usr/local/bin/pnpm
-
-# Install Protobuf 3.x (manually, since CentOS 7 has an old version)
+# Protoc Setup
 RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip && \
     unzip protoc-3.20.3-linux-x86_64.zip -d /usr/local && \
     rm protoc-3.20.3-linux-x86_64.zip
-
-# Ensure protoc is in PATH
-ENV PATH="/usr/local/bin:$PATH"
-RUN protoc --version
 
 ENTRYPOINT ["sh", "-c"]
