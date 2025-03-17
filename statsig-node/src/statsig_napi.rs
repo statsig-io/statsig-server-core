@@ -22,13 +22,13 @@ use crate::statsig_user_napi::StatsigUser;
 const TAG: &str = "StatsigNapi";
 
 #[napi]
-pub struct Statsig {
+pub struct StatsigNapiInternal {
     inner: Arc<StatsigActual>,
     observability_client: Mutex<Option<Arc<ObservabilityClient>>>,
 }
 
 #[napi]
-impl Statsig {
+impl StatsigNapiInternal {
     #[napi(constructor)]
     pub fn new(env: Env, sdk_key: String, options: Option<StatsigOptions>) -> Self {
         log_d!(TAG, "StatsigNapi new");

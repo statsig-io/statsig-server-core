@@ -38,7 +38,7 @@ export declare class Layer {
   getSecondaryExposures(): Array<SecondaryExposure> | null
 }
 
-export declare class Statsig {
+export declare class StatsigNapiInternal {
   constructor(sdkKey: string, options?: StatsigOptions | undefined | null)
   initialize(): Promise<StatsigResult>
   shutdown(timeoutMs?: number | undefined | null): Promise<StatsigResult>
