@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use bytes::Bytes;
 use std::{
     collections::HashMap,
     sync::{atomic::AtomicBool, Arc},
@@ -8,7 +7,7 @@ use std::{
 #[derive(Clone)]
 pub struct RequestArgs {
     pub url: String,
-    pub body: Option<Bytes>,
+    pub body: Option<Vec<u8>>,
     pub retries: u32,
     pub headers: Option<HashMap<String, String>>,
     pub query_params: Option<HashMap<String, String>>,
@@ -41,7 +40,7 @@ impl RequestArgs {
 
 pub struct Response {
     pub status_code: u16,
-    pub data: Option<String>,
+    pub data: Option<Vec<u8>>,
     pub error: Option<String>,
 }
 

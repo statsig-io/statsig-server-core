@@ -293,20 +293,8 @@ impl NetworkProviderCurl {
                         sanitized_url
                     );
 
-                    let data = String::from_utf8(res_buffer)
-                        .map_err(|e| {
-                            log_e!(
-                                TAG,
-                                "Failed to convert response to string: {} {:?}",
-                                sanitized_url,
-                                e
-                            );
-                            e
-                        })
-                        .ok();
-
                     let response = Response {
-                        data,
+                        data: Some(res_buffer),
                         status_code: http_status as u16,
                         error: None,
                     };

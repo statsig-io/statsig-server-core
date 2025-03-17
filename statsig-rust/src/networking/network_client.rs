@@ -3,7 +3,6 @@ use super::{HttpMethod, NetworkProvider, RequestArgs};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::{log_error_to_statsig_and_console, log_i, log_w};
-use bytes::Bytes;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -52,7 +51,7 @@ impl NetworkClient {
     pub async fn post(
         &self,
         mut request_args: RequestArgs,
-        body: Option<Bytes>,
+        body: Option<Vec<u8>>,
     ) -> Result<String, NetworkError> {
         request_args.body = body;
         self.make_request(HttpMethod::POST, request_args).await
@@ -88,7 +87,7 @@ impl NetworkClient {
             let status = response.status_code;
 
             if (200..300).contains(&status) {
-                return response.data.ok_or(NetworkError::RequestFailed);
+                return get_data_as_string(response.data);
             }
 
             let error_message = response
@@ -148,5 +147,13 @@ fn get_error_message_for_status(status: u16) -> String {
         504 => "Gateway Timeout".to_string(),
         0 => "Unknown Error".to_string(),
         _ => format!("HTTP Error {status}"),
+    }
+}
+
+fn get_data_as_string(data: Option<Vec<u8>>) -> Result<String, NetworkError> {
+    // todo: support compressed data
+    match data {
+        Some(data) => Ok(String::from_utf8(data).map_err(|_| NetworkError::SerializationError)?),
+        None => Err(NetworkError::RequestFailed),
     }
 }

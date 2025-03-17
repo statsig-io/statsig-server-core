@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
-use bytes::Bytes;
 use serde::Serialize;
 use serde_json::Value;
 use tokio::sync::RwLock;
@@ -74,7 +73,7 @@ impl SDKErrorsObserver {
         };
         let _ = self
             .network_client
-            .post(request_args, Some(Bytes::from(body)))
+            .post(request_args, Some(body.into()))
             .await;
     }
 }

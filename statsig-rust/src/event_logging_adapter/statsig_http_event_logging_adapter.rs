@@ -86,7 +86,7 @@ impl StatsigHttpEventLoggingAdapter {
                     accept_gzip_response: true,
                     ..RequestArgs::new()
                 },
-                Some(compressed.into()),
+                Some(compressed),
             )
             .await
             .map_err(|_err| StatsigErr::NetworkError("Log event failure".into()))?;
