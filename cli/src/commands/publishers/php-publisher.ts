@@ -27,8 +27,6 @@ const LIB_CATEGORY_MAP = {
   dll: 'shared',
   so: 'shared',
   dylib: 'shared',
-  a: 'static',
-  lib: 'static',
 };
 
 export async function publishPhp(options: PublisherOptions) {
@@ -45,11 +43,9 @@ export async function publishPhp(options: PublisherOptions) {
   const release = await createGithubRelaseForPhpRepo(octokit, version);
 
   const binaries = [
-    ...listFiles(options.workingDir, '*.a'),
     ...listFiles(options.workingDir, '*.dylib'),
     ...listFiles(options.workingDir, '*.so'),
     ...listFiles(options.workingDir, '*.dll'),
-    ...listFiles(options.workingDir, '*.lib'),
   ];
 
   Log.title('Uploading assets to release');
@@ -101,7 +97,7 @@ async function pushChangesToPhpRepo(octokit: Octokit, version: SemVer) {
 
   if (error || !success) {
     const errMessage =
-      error instanceof Error ? error.message : error ?? 'Unknown Error';
+      error instanceof Error ? error.message : (error ?? 'Unknown Error');
 
     Log.stepEnd(`Failed to commit changes: ${errMessage}`, 'failure');
     process.exit(1);
@@ -219,7 +215,7 @@ async function uploadLibFileToRelease(
 
   if (error || !result) {
     const errMessage =
-      error instanceof Error ? error.message : error ?? 'Unknown Error';
+      error instanceof Error ? error.message : (error ?? 'Unknown Error');
 
     Log.stepEnd(`Failed to upload asset: ${errMessage}`, 'failure');
     process.exit(1);

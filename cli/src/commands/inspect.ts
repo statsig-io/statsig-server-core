@@ -68,11 +68,9 @@ export class Inspect extends CommandBase {
     Log.stepBegin('Finding artifacts');
 
     const binaries = [
-      ...listFiles(options.dir, '**/*.a'),
       ...listFiles(options.dir, '**/*.dylib'),
       ...listFiles(options.dir, '**/*.so'),
       ...listFiles(options.dir, '**/*.dll'),
-      ...listFiles(options.dir, '**/*.lib'),
     ];
 
     binaries.forEach((binary) => {

@@ -7,10 +7,8 @@ import {
 import {
   deleteReleaseAssetWithName,
   getOctokit,
-  getReleaseByVersion,
   uploadReleaseAsset,
 } from '@/utils/octokit_utils.js';
-import { SemVer } from '@/utils/semver.js';
 import { Log } from '@/utils/teminal_utils.js';
 import path from 'node:path';
 
@@ -25,36 +23,30 @@ type Options = {
 const ASSET_MAPPING = {
   // macOS
   'aarch64-apple-darwin': {
-    'libstatsig_ffi.a': 'static',
     'libstatsig_ffi.dylib': 'shared',
   },
   'x86_64-apple-darwin': {
-    'libstatsig_ffi.a': 'static',
     'libstatsig_ffi.dylib': 'shared',
   },
   // Linux GNU
   'x86_64-unknown-linux-gnu': {
-    'libstatsig_ffi.a': 'static',
     'libstatsig_ffi.so': 'shared',
   },
   'aarch64-unknown-linux-gnu': {
-    'libstatsig_ffi.a': 'static',
     'libstatsig_ffi.so': 'shared',
   },
   // Linux MUSL
   'x86_64-unknown-linux-musl': {
-    'libstatsig_ffi.a': 'static',
+    'libstatsig_ffi.so': 'shared',
   },
   'aarch64-unknown-linux-musl': {
-    'libstatsig_ffi.a': 'static',
+    'libstatsig_ffi.so': 'shared',
   },
   // Windows
   'x86_64-pc-windows-msvc': {
-    'libstatsig_ffi.a': 'static',
     'libstatsig_ffi.dll': 'shared',
   },
   'i686-pc-windows-msvc': {
-    'libstatsig_ffi.a': 'static',
     'libstatsig_ffi.dll': 'shared',
   },
 };
