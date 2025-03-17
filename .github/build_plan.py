@@ -11,7 +11,7 @@ def partition_targets(should_build_all):
     with open(matrix_file, 'r') as f:
         matrix_data = json.load(f)
 
-    if should_build_all:
+    if should_build_all or True:
         include_filter = matrix_data['config']
         exclude_filter = []
     else:
