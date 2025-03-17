@@ -1,94 +1,53 @@
 package com.statsig;
 
+import java.util.List;
 import java.util.Map;
 
-import com.google.gson.JsonElement;
-import com.google.gson.annotations.Expose;
+import com.google.gson.*;
 import com.google.gson.annotations.SerializedName;
+import com.google.gson.reflect.TypeToken;
 import com.statsig.internal.GsonUtil;
 
-public class Experiment {
-    public final String name;
-    @SerializedName("rule_id")
-    public final String ruleID;
-    @SerializedName("value")
-    public final Map<String, JsonElement> value;
+public class Experiment extends BaseConfig {
     @SerializedName("group_name")
     public final String groupName;
-    @SerializedName("details")
-    public final EvaluationDetails evaluationDetails;
-    @SerializedName("id_type")
-    public final String idType;
-    @Expose(serialize = false, deserialize = false)
-    String rawJson;
 
-    Experiment(String name, Map<String, JsonElement> value, String ruleID, String groupName,
-            EvaluationDetails evaluationDetails, String idType) {
-        this.name = name;
-        this.value = value;
-        this.ruleID = ruleID;
+    public List<Map<String, String>> secondaryExposures;
+
+    Experiment(String name, Map<String, JsonElement> value, String ruleID,
+                               EvaluationDetails evaluationDetails, String idType,
+                               String groupName, List<Map<String, String>> secondaryExposures) {
+        super(name, value, ruleID, evaluationDetails, idType);
         this.groupName = groupName;
-        this.evaluationDetails = evaluationDetails;
-        this.idType = idType;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getRuleID() {
-        return ruleID;
-    }
-
-    public Map<String, JsonElement> getValue() {
-        return value;
+        this.secondaryExposures = secondaryExposures;
     }
 
     public String getGroupName() {
         return groupName;
     }
 
-    public EvaluationDetails getEvaluationDetails() {
-        return evaluationDetails;
+    public List<Map<String, String>> getSecondaryExposures() {
+        return secondaryExposures;
     }
 
-    public String getIDType() {
-        return idType;
-    }
+    static Experiment fromJson(String json) {
+        Gson gson = new Gson();
+        JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
 
-    public String getRawJson() {
-        return rawJson;
-    }
+        List<Map<String, String>> secondaryExposures = null;
 
-    void setRawJson(String rawJson) {
-        this.rawJson = rawJson;
-    }
+        if (jsonObject.has("__evaluation")) {
+            JsonObject evaluation = jsonObject.getAsJsonObject("__evaluation");
+            secondaryExposures = gson.fromJson(
+                    evaluation.get("secondary_exposures"),
+                    new TypeToken<List<Map<String, String>>>() {}.getType()
+            );
+        }
 
-    public String getString(String key, String defaultValue) {
-        return GsonUtil.getString(value, key, defaultValue);
-    }
-
-    public boolean getBoolean(String key, boolean defaultValue) {
-        return GsonUtil.getBoolean(value, key, defaultValue);
-    }
-
-    public double getDouble(String key, double defaultValue) {
-        return GsonUtil.getDouble(value, key, defaultValue);
-    }
-
-    public int getInt(String key, int defaultValue) {
-        return GsonUtil.getInt(value, key, defaultValue);
-    }
-
-    public long getLong(String key, long defaultValue) {
-        return GsonUtil.getLong(value, key, defaultValue);
-    }
-
-    public Object[] getArray(String key, Object[] defaultValue) {
-        return GsonUtil.getArray(value, key, defaultValue);
-    }
-
-    public Map<String, Object> getMap(String key, Map<String, Object> defaultValue) {
-        return GsonUtil.getMap(value, key, defaultValue);
+        Experiment experiment = gson.fromJson(json, Experiment.class);
+        experiment.secondaryExposures = secondaryExposures;
+        experiment.setRawJson(json);
+        return experiment;
     }
 }
+

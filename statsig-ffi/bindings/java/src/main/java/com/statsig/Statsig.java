@@ -104,20 +104,12 @@ public class Statsig {
 
     public Experiment getExperiment(StatsigUser user, String experimentName) {
         String experJson = StatsigJNI.statsigGetExperiment(ref, user.getRef(), experimentName, null);
-        Experiment experiment = gson.fromJson(experJson, Experiment.class);
-        if (experiment != null) {
-            experiment.setRawJson(experJson);
-        }
-        return experiment;
+        return Experiment.fromJson(experJson);
     }
 
     public Experiment getExperiment(StatsigUser user, String experimentName, GetExperimentOptions options) {
         String experJson = StatsigJNI.statsigGetExperiment(ref, user.getRef(), experimentName, options);
-        Experiment experiment = gson.fromJson(experJson, Experiment.class);
-        if (experiment != null) {
-            experiment.setRawJson(experJson);
-        }
-        return experiment;
+        return Experiment.fromJson(experJson);
     }
 
     public void manuallyLogExperimentExposure(StatsigUser user, String experimentName) {

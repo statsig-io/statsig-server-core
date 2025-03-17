@@ -1,5 +1,7 @@
 package com.statsig;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,6 +14,7 @@ public class EvaluationDetails {
     /**
      * The time when we received this config
      */
+    @SerializedName("received_at")
     public long receivedAt;
 
     /**
