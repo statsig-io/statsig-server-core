@@ -82,6 +82,8 @@ jobs:
           submodules: recursive
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ runner.os }}-${{ matrix.config.target }}-${{ matrix.package }}
 
       - uses: pnpm/action-setup@v4
         with:
