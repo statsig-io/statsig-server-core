@@ -12,7 +12,7 @@ async-trait = "0.1.81"
 base64 = "0.22.1"
 bytes = "1.9.0"
 chrono = "0.4.38"
-curl = "0.4.47"
+curl = { version = "0.4.47", optional = true }
 file-guard = "0.2.0"
 flate2 = "1.0.35"
 futures = "0.3.30"
@@ -39,10 +39,8 @@ wiremock = "0.6.2"
 more-asserts = "0.3.1"
 
 [features]
-default = []
+default = ["curl"]
 vendored_openssl = ["openssl"]
+custom_network_provider = []
 with_grpc = ["sigstat-grpc"]
 with_zstd = ["zstd"]
-# [[bin]]
-# name = "flush"
-# path = "tests/curl_service_tests.rs"

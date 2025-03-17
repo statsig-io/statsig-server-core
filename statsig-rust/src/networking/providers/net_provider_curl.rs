@@ -1,5 +1,4 @@
 use crate::networking::{HttpMethod, NetworkProvider, RequestArgs, Response};
-use crate::observability::util::sanitize_url_for_logging;
 use crate::{log_d, log_e, ok_or_return_with, unwrap_or_return_with, StatsigErr};
 use async_trait::async_trait;
 use chrono::Utc;
@@ -38,12 +37,12 @@ struct CurlContext {
 
 const TAG: &str = stringify!(Curl);
 
-pub struct Curl {
+pub struct NetworkProviderCurl {
     sdk_key: String,
     context: Arc<CurlContext>,
 }
 
-impl Drop for Curl {
+impl Drop for NetworkProviderCurl {
     fn drop(&mut self) {
         let count = Arc::strong_count(&self.context);
 
@@ -56,7 +55,7 @@ impl Drop for Curl {
 }
 
 #[async_trait]
-impl NetworkProvider for Curl {
+impl NetworkProvider for NetworkProviderCurl {
     async fn send(&self, method: &HttpMethod, request_args: &RequestArgs) -> Response {
         let method_name = if method == &HttpMethod::POST {
             "POST"
@@ -102,33 +101,33 @@ impl NetworkProvider for Curl {
     }
 }
 
-impl Curl {
+impl NetworkProviderCurl {
     #[must_use]
     pub fn get_instance(sdk_key: &str) -> Self {
         let mut curl_map = match CURL.lock() {
             Ok(map) => map,
             Err(e) => {
                 log_e!(TAG, "Failed to acquire lock on CURL: {}", e);
-                return Curl::new(sdk_key);
+                return NetworkProviderCurl::new(sdk_key);
             }
         };
 
         if let Some(curl) = curl_map.get(sdk_key) {
-            Curl {
+            NetworkProviderCurl {
                 sdk_key: sdk_key.to_string(),
                 context: curl.clone(),
             }
         } else {
-            let curl = Curl::new(sdk_key);
+            let curl = NetworkProviderCurl::new(sdk_key);
             curl_map.insert(sdk_key.to_string(), curl.context.clone());
             curl
         }
     }
 
-    fn new(sdk_key: &str) -> Curl {
+    fn new(sdk_key: &str) -> NetworkProviderCurl {
         let (handle, abort_tx, req_tx) = Self::create_run_loop();
 
-        Curl {
+        NetworkProviderCurl {
             sdk_key: sdk_key.to_string(),
             context: Arc::new(CurlContext {
                 req_tx,
@@ -388,6 +387,17 @@ fn construct_easy_request(
     Ok(easy)
 }
 
+pub fn sanitize_url_for_logging(url: &str) -> String {
+    let secret_key_idx = url.find("secret-");
+    let end_idx = url.find(".json").map_or(url.len(), |idx| idx + 5);
+    if let Some(idx) = secret_key_idx {
+        let mut sanitized = url.to_string();
+        sanitized.replace_range(idx + 12..end_idx, "*****");
+        return sanitized;
+    }
+    url.to_string()
+}
+
 struct Collector {
     buffer: Vec<u8>,
 }
@@ -425,10 +435,25 @@ mod tests {
     };
 
     #[test]
+    fn test_sanitize_url_for_logging() {
+        let test_cases = HashMap::from(
+            [
+                ("https://api.statsigcdn.com/v2/download_config_specs/secret-jadkfjalkjnsdlvcnjsdfaf.json", "https://api.statsigcdn.com/v2/download_config_specs/secret-jadkf*****"),
+                ("https://api.statsigcdn.com/v1/log_event/","https://api.statsigcdn.com/v1/log_event/"),
+                ("https://api.statsigcdn.com/v2/download_config_specs/secret-jadkfjalkjnsdlvcnjsdfaf.json?sinceTime=1", "https://api.statsigcdn.com/v2/download_config_specs/secret-jadkf*****?sinceTime=1"),
+            ]
+        );
+        for (before, expected) in test_cases {
+            let sanitized = sanitize_url_for_logging(before);
+            assert!(sanitized == expected);
+        }
+    }
+
+    #[test]
     fn test_only_one_instance() {
         let key = "key_1";
-        let curl_service_1 = Curl::get_instance(key);
-        let curl_service_2 = Curl::get_instance(key);
+        let curl_service_1 = NetworkProviderCurl::get_instance(key);
+        let curl_service_2 = NetworkProviderCurl::get_instance(key);
 
         assert!(Arc::ptr_eq(
             &curl_service_1.context,
@@ -443,7 +468,7 @@ mod tests {
         let mut last = 0;
         for _ in 0..10 {
             assert!(CURL.lock().unwrap().get(key).is_none());
-            let c = Curl::get_instance(key);
+            let c = NetworkProviderCurl::get_instance(key);
             let now = Arc::as_ptr(&c.context) as usize;
 
             assert_ne!(now, last);
@@ -458,8 +483,8 @@ mod tests {
     fn test_drop_releases_instance() {
         let key = "key_3";
 
-        let curl_service_1 = Curl::get_instance(key);
-        let curl_service_2 = Curl::get_instance(key);
+        let curl_service_1 = NetworkProviderCurl::get_instance(key);
+        let curl_service_2 = NetworkProviderCurl::get_instance(key);
         assert!(CURL.lock().unwrap().get(key).is_some());
 
         drop(curl_service_1);
@@ -488,7 +513,7 @@ mod tests {
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_clone = shutdown.clone();
         let handle = task::spawn(async move {
-            let curl = Curl::get_instance(key);
+            let curl = NetworkProviderCurl::get_instance(key);
             curl.send(
                 &HttpMethod::GET,
                 &RequestArgs {
@@ -527,7 +552,7 @@ mod tests {
     #[tokio::test]
     async fn test_thread_dies_on_drop() {
         let key = "sdk_key_6";
-        let curl = Curl::get_instance(key);
+        let curl = NetworkProviderCurl::get_instance(key);
         let handle = curl.context._handle.clone();
 
         assert!(!handle.as_ref().is_some_and(|h| h.is_finished()));

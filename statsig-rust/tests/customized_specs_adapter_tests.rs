@@ -1,9 +1,9 @@
 mod utils;
 
+#[cfg(feature = "with_grpc")]
 pub mod specs_adapter_tests {
     use crate::utils::mock_data_store::MockDataStore;
     use crate::utils::mock_specs_listener::MockSpecsListener;
-    #[cfg(feature = "with_grpc")]
     use sigstat_grpc::mock_forward_proxy::{api::ConfigSpecResponse, MockForwardProxy};
     use statsig_rust::data_store_interface::DataStoreResponse;
     use statsig_rust::{
@@ -12,7 +12,6 @@ pub mod specs_adapter_tests {
     };
     use std::sync::Arc;
 
-    #[cfg(feature = "with_grpc")]
     #[tokio::test]
     async fn test_data_store_with_streaming() {
         let rt = StatsigRuntime::get_runtime();
@@ -52,7 +51,6 @@ pub mod specs_adapter_tests {
         assert_eq!(received_update_2.data, "bg_sync_1".to_string()); // examine time
     }
 
-    #[cfg(feature = "with_grpc")]
     #[tokio::test]
     async fn test_data_store_with_streaming_cache_miss() {
         use statsig_rust::SpecsAdapter;
@@ -93,7 +91,6 @@ pub mod specs_adapter_tests {
         mock_proxy.stop().await;
     }
 
-    #[cfg(feature = "with_grpc")]
     async fn setup_datastore_and_streaming_combo() -> (
         Arc<StatsigCustomizedSpecsAdapter>,
         Arc<MockForwardProxy>,

@@ -1,5 +1,5 @@
+use super::providers::get_network_provider;
 use super::{HttpMethod, NetworkProvider, RequestArgs};
-use crate::networking::providers::Curl;
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::{log_error_to_statsig_and_console, log_i, log_w};
@@ -31,10 +31,12 @@ pub struct NetworkClient {
 impl NetworkClient {
     #[must_use]
     pub fn new(sdk_key: &str, headers: Option<HashMap<String, String>>) -> Self {
+        let net_provider = get_network_provider(sdk_key);
+
         NetworkClient {
             headers: headers.unwrap_or_default(),
             is_shutdown: Arc::new(AtomicBool::new(false)),
-            net_provider: Arc::new(Curl::get_instance(sdk_key)),
+            net_provider,
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
         }
     }
