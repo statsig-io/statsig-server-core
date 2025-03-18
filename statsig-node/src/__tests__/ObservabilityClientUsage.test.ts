@@ -78,7 +78,7 @@ describe('ObservabilityClient Usage', () => {
     scrapi.close();
   });
 
-  it('logs a dist metric for sdk initiliazation time', () => {
+  it('logs a dist metric for sdk initialization time', () => {
     expect(observabilityClientSpies.dist).toHaveBeenCalledWith(
       'statsig.sdk.initialization',
       expect.any(Number),

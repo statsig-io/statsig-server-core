@@ -76,7 +76,7 @@ impl StatsigHttpSpecsAdapter {
             url: self.specs_url.clone(),
             query_params: Some(params),
             accept_gzip_response: true,
-            key: Some(KeyType::DownloadConfigSpecs),
+            diagnostics_key: Some(KeyType::DownloadConfigSpecs),
             ..RequestArgs::new()
         };
 

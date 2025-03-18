@@ -40,7 +40,6 @@ describe('Override Adapter Usage', () => {
   });
 
   afterAll(async () => {
-    await statsig.shutdown();
     scrapi.close();
   });
 
@@ -67,6 +66,10 @@ describe('Override Adapter Usage', () => {
       beforeAll(async () => {
         statsig = new Statsig('secret-123', optionsModifier(options));
         await statsig.initialize();
+      });
+
+      afterAll(async () => {
+        await statsig.shutdown();
       });
 
       const user = StatsigUser.withUserID('a-user');
@@ -108,7 +111,8 @@ describe('Override Adapter Usage', () => {
         {
           name: 'should override layers',
           action: () => statsig.overrideLayer('test_layer', { foo: 'bar' }),
-          getter: () => statsig.getLayer(user, 'test_layer').getValue('foo', 'err'),
+          getter: () =>
+            statsig.getLayer(user, 'test_layer').getValue('foo', 'err'),
           expectedValue: 'bar',
         },
       ];

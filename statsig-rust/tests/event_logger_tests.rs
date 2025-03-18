@@ -6,8 +6,6 @@ use std::{fs, path::PathBuf, sync::Arc, time::Duration};
 use tokio::time::sleep;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
-const SDK_KEY: &str = "secret-key";
-
 async fn setup(delay_ms: u64, options: StatsigOptions, key: String) -> (MockScrapi, Statsig) {
     let mock_scrapi = MockScrapi::new().await;
 

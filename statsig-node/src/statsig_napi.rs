@@ -5,9 +5,12 @@ use std::time::Duration;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use serde_json::Value;
+use statsig_rust::networking::providers::NetworkProviderGlobal;
+use statsig_rust::networking::NetworkProvider;
 use statsig_rust::{log_d, log_e, Statsig as StatsigActual};
 
 use crate::gcir_options_napi::ClientInitResponseOptions;
+use crate::network_provider_napi::{NapiNetworkFunc, NetworkProviderNapi};
 use crate::observability_client_napi::ObservabilityClient;
 use crate::statsig_core_api_options_napi::{
     DynamicConfigEvaluationOptionsNapi, ExperimentEvaluationOptionsNapi,
@@ -25,12 +28,18 @@ const TAG: &str = "StatsigNapi";
 pub struct StatsigNapiInternal {
     inner: Arc<StatsigActual>,
     observability_client: Mutex<Option<Arc<ObservabilityClient>>>,
+    network_provider: Mutex<Option<Arc<dyn NetworkProvider>>>,
 }
 
 #[napi]
 impl StatsigNapiInternal {
     #[napi(constructor)]
-    pub fn new(env: Env, sdk_key: String, options: Option<StatsigOptions>) -> Self {
+    pub fn new(
+        env: Env,
+        network_func: NapiNetworkFunc,
+        sdk_key: String,
+        options: Option<StatsigOptions>,
+    ) -> Self {
         log_d!(TAG, "StatsigNapi new");
 
         statsig_metadata_napi::update_statsig_metadata(Some(env));
@@ -39,9 +48,14 @@ impl StatsigNapiInternal {
             .map(|opts| opts.safe_convert_to_inner())
             .unwrap_or((None, None));
 
+        let network_provider: Arc<dyn NetworkProvider> =
+            Arc::new(NetworkProviderNapi { network_func });
+        NetworkProviderGlobal::set(&network_provider);
+
         Self {
             inner: Arc::new(StatsigActual::new(&sdk_key, inner_opts)),
             observability_client: Mutex::new(obs_client),
+            network_provider: Mutex::new(Some(network_provider)),
         }
     }
 
@@ -71,15 +85,33 @@ impl StatsigNapiInternal {
             lock.take();
         }
         let inst = self.inner.clone();
+        let network_provider = if let Ok(mut lock) = self.network_provider.lock() {
+            lock.take()
+        } else {
+            None
+        };
 
         env.spawn_future(async move {
-            match inst
+            let result = match inst
                 .__shutdown_internal(Duration::from_millis(timeout_ms.unwrap_or(3000) as u64))
                 .await
             {
                 Ok(_) => Ok(StatsigResult::success()),
                 Err(e) => Ok(StatsigResult::error(e.to_string())),
+            };
+
+            if let Some(network_provider) = network_provider {
+                match network_provider.shutdown().await {
+                    Ok(_) => (),
+                    Err(e) => log_e!(
+                        TAG,
+                        "An error occurred while shutting down the network provider: {}",
+                        e
+                    ),
+                }
             }
+
+            result
         })
     }
 

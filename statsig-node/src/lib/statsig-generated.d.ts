@@ -39,7 +39,7 @@ export declare class Layer {
 }
 
 export declare class StatsigNapiInternal {
-  constructor(sdkKey: string, options?: StatsigOptions | undefined | null)
+  constructor(networkFunc: NapiNetworkFunc, sdkKey: string, options?: StatsigOptions | undefined | null)
   initialize(): Promise<StatsigResult>
   shutdown(timeoutMs?: number | undefined | null): Promise<StatsigResult>
   flushEvents(): Promise<StatsigResult>
@@ -141,6 +141,12 @@ export interface FeatureGateEvaluationOptions {
 
 export interface LayerEvaluationOptions {
   disableExposureLogging?: boolean
+}
+
+export interface NapiNetworkFuncResult {
+  status: number
+  data?: Array<number>
+  error?: string
 }
 
 export interface ObservabilityClient {

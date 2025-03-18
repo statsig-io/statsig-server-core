@@ -1,3 +1,5 @@
+use chrono::Utc;
+
 use super::providers::get_network_provider;
 use super::{HttpMethod, NetworkProvider, RequestArgs};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
@@ -24,8 +26,12 @@ const TAG: &str = stringify!(NetworkClient);
 pub struct NetworkClient {
     headers: HashMap<String, String>,
     is_shutdown: Arc<AtomicBool>,
-    net_provider: Arc<dyn NetworkProvider>,
     ops_stats: Arc<OpsStatsForInstance>,
+
+    #[cfg(feature = "custom_network_provider")]
+    net_provider: std::sync::Weak<dyn NetworkProvider>,
+    #[cfg(not(feature = "custom_network_provider"))]
+    net_provider: Arc<dyn NetworkProvider>,
 }
 
 impl NetworkClient {
@@ -69,16 +75,22 @@ impl NetworkClient {
             self.is_shutdown.clone()
         };
 
+        request_args.populate_headers(self.headers.clone());
+
+        let mut merged_headers = request_args.headers.unwrap_or_default();
         if !self.headers.is_empty() {
-            let mut merged_headers = request_args.headers.unwrap_or_default();
             merged_headers.extend(self.headers.clone());
-            request_args.headers = Some(merged_headers);
         }
+        merged_headers.insert(
+            "STATSIG-CLIENT-TIME".into(),
+            Utc::now().timestamp_millis().to_string(),
+        );
+        request_args.headers = Some(merged_headers);
 
         let mut attempt = 0;
 
         loop {
-            if let Some(key) = request_args.key {
+            if let Some(key) = request_args.diagnostics_key {
                 self.ops_stats.add_marker(
                     Marker::new(key, ActionType::Start, Some(StepType::NetworkRequest))
                         .with_attempt(attempt)
@@ -91,6 +103,12 @@ impl NetworkClient {
                 return Err(NetworkError::ShutdownError);
             }
 
+            #[cfg(feature = "custom_network_provider")]
+            let response = match self.net_provider.upgrade() {
+                Some(net_provider) => net_provider.send(&method, &request_args).await,
+                None => return Err(NetworkError::RequestFailed),
+            };
+            #[cfg(not(feature = "custom_network_provider"))]
             let response = self.net_provider.send(&method, &request_args).await;
 
             let status = response.status_code;
@@ -104,7 +122,7 @@ impl NetworkClient {
                 .error
                 .unwrap_or_else(|| get_error_message_for_status(status));
 
-            if let Some(key) = request_args.key {
+            if let Some(key) = request_args.diagnostics_key {
                 let mut end_marker =
                     Marker::new(key, ActionType::End, Some(StepType::NetworkRequest))
                         .with_attempt(attempt)

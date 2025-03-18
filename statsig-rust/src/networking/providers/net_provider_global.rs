@@ -11,7 +11,7 @@ const TAG: &str = stringify!(NetworkProviderGlobal);
 pub struct NetworkProviderGlobal;
 
 impl NetworkProviderGlobal {
-    pub fn try_get() -> Option<Arc<dyn NetworkProvider>> {
+    pub fn try_get() -> Option<Weak<dyn NetworkProvider>> {
         let lock = match INSTANCE.lock() {
             Ok(lock) => lock,
             Err(e) => {
@@ -21,7 +21,7 @@ impl NetworkProviderGlobal {
         };
 
         match lock.as_ref() {
-            Some(weak) => weak.upgrade(),
+            Some(weak) => Some(weak.clone()),
             None => None,
         }
     }

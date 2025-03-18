@@ -1,7 +1,6 @@
 use crate::networking::{HttpMethod, NetworkProvider, RequestArgs, Response};
 use crate::{log_d, log_e, ok_or_return_with, unwrap_or_return_with, StatsigErr};
 use async_trait::async_trait;
-use chrono::Utc;
 use curl::easy::{Easy2, Handler, List, WriteError};
 use curl::multi::Easy2Handle;
 use curl::multi::{self, Multi};
@@ -100,6 +99,11 @@ impl NetworkProvider for NetworkProviderCurl {
             error: Some(e.to_string()),
             headers: None,
         })
+    }
+
+    async fn shutdown(&self) -> Result<(), StatsigErr> {
+        // noop
+        Ok(())
     }
 }
 
@@ -348,12 +352,6 @@ fn construct_easy_request(
     }
 
     let mut headers = List::new();
-
-    headers.append(&format!(
-        "statsig-client-time: {}",
-        Utc::now().timestamp_millis()
-    ))?;
-
     if let Some(body) = &args.body {
         easy.post_fields_copy(body)?;
         headers.append("Content-Type: application/json")?;

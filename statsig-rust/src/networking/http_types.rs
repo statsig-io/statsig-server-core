@@ -1,10 +1,12 @@
 use async_trait::async_trait;
+use chrono::Utc;
 use std::{
     collections::HashMap,
     sync::{atomic::AtomicBool, Arc},
 };
 
 use crate::sdk_diagnostics::marker::KeyType;
+use crate::StatsigErr;
 
 #[derive(Clone)]
 pub struct RequestArgs {
@@ -16,7 +18,7 @@ pub struct RequestArgs {
     pub accept_gzip_response: bool,
     pub timeout_ms: u64,
     pub is_shutdown: Option<Arc<AtomicBool>>,
-    pub key: Option<KeyType>,
+    pub diagnostics_key: Option<KeyType>,
 }
 
 impl Default for RequestArgs {
@@ -37,7 +39,43 @@ impl RequestArgs {
             accept_gzip_response: false,
             timeout_ms: 0,
             is_shutdown: None,
-            key: None,
+            diagnostics_key: None,
+        }
+    }
+
+    pub fn get_fully_qualified_url(&self) -> String {
+        let mut url = self.url.clone();
+        let query_params = match &self.query_params {
+            Some(params) => params,
+            None => return url,
+        };
+
+        let query_params_str = query_params
+            .iter()
+            .map(|(k, v)| format!("{}={}", k, v))
+            .collect::<Vec<_>>()
+            .join("&");
+
+        if !query_params_str.is_empty() {
+            url.push_str(&format!("?{}", query_params_str));
+        }
+
+        url
+    }
+
+    pub fn populate_headers(&mut self, extra_headers: HashMap<String, String>) {
+        let mut headers = HashMap::new();
+        headers.extend(extra_headers);
+
+        headers.insert(
+            "STATSIG-CLIENT-TIME".into(),
+            Utc::now().timestamp_millis().to_string(),
+        );
+
+        if let Some(my_headers) = &mut self.headers {
+            my_headers.extend(headers);
+        } else {
+            self.headers = Some(headers);
         }
     }
 }
@@ -58,4 +96,5 @@ pub enum HttpMethod {
 #[async_trait]
 pub trait NetworkProvider: Sync + Send {
     async fn send(&self, method: &HttpMethod, args: &RequestArgs) -> Response;
+    async fn shutdown(&self) -> Result<(), StatsigErr>;
 }

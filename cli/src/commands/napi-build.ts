@@ -122,10 +122,6 @@ function runNapiBuild(options: Options) {
     cmd.push('--cross-compile');
   }
 
-  if (options.rebuildOpenssl) {
-    cmd.push('--features vendored_openssl');
-  }
-
   if (options.target) {
     cmd.push('--target', options.target);
   }

@@ -1,6 +1,5 @@
 mod utils;
 
-use sha2::digest::crypto_common::Key;
 use statsig_rust::{
     output_logger::LogLevel, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
     FeatureGateEvaluationOptions, Statsig, StatsigOptions, StatsigUser,
@@ -13,8 +12,6 @@ use utils::{
     mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi},
     mock_specs_adapter::MockSpecsAdapter,
 };
-
-const SDK_KEY: &str = "secret-key";
 
 async fn setup(delay_ms: u64, key: String) -> (MockScrapi, Statsig) {
     let mock_scrapi = MockScrapi::new().await;

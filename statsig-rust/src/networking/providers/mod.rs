@@ -14,13 +14,14 @@ lazy_static::lazy_static! {
     static ref NOOP_NETWORK_PROVIDER: Arc<dyn NetworkProvider> = Arc::new(NetworkProviderNoop {});
 }
 
-#[allow(unused_variables)]
-pub fn get_network_provider(sdk_key: &str) -> Arc<dyn NetworkProvider> {
-    #[cfg(not(feature = "custom_network_provider"))]
-    return Arc::new(net_provider_curl::NetworkProviderCurl::get_instance(
-        sdk_key,
-    ));
+#[cfg(feature = "custom_network_provider")]
+pub fn get_network_provider(_sdk_key: &str) -> std::sync::Weak<dyn NetworkProvider> {
+    NetworkProviderGlobal::try_get().unwrap_or_else(|| Arc::downgrade(&NOOP_NETWORK_PROVIDER))
+}
 
-    #[cfg(feature = "custom_network_provider")]
-    return NetworkProviderGlobal::try_get().unwrap_or_else(|| NOOP_NETWORK_PROVIDER.clone());
+#[cfg(not(feature = "custom_network_provider"))]
+pub fn get_network_provider(sdk_key: &str) -> Arc<dyn NetworkProvider> {
+    Arc::new(net_provider_curl::NetworkProviderCurl::get_instance(
+        sdk_key,
+    ))
 }

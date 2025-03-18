@@ -30,7 +30,7 @@ export function buildNode(options: BuilderOptions) {
     '--js statsig-generated.js',
     '--dts statsig-generated.d.ts',
     isMusl ? '--cross-compile' : '',
-    isGnu ? '--use-napi-cross --features vendored_openssl' : '',
+    isGnu ? '--use-napi-cross' : '',
     options.release ? '--release --strip' : '',
     options.target ? `--target ${options.target}` : '',
     `--output-dir src/lib`,
