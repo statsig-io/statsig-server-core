@@ -4,6 +4,8 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 
+use crate::sdk_diagnostics::marker::KeyType;
+
 #[derive(Clone)]
 pub struct RequestArgs {
     pub url: String,
@@ -14,6 +16,7 @@ pub struct RequestArgs {
     pub accept_gzip_response: bool,
     pub timeout_ms: u64,
     pub is_shutdown: Option<Arc<AtomicBool>>,
+    pub key: Option<KeyType>,
 }
 
 impl Default for RequestArgs {
@@ -34,6 +37,7 @@ impl RequestArgs {
             accept_gzip_response: false,
             timeout_ms: 0,
             is_shutdown: None,
+            key: None,
         }
     }
 }
@@ -42,6 +46,7 @@ pub struct Response {
     pub status_code: u16,
     pub data: Option<Vec<u8>>,
     pub error: Option<String>,
+    pub headers: Option<HashMap<String, String>>,
 }
 
 #[derive(PartialEq, Clone)]

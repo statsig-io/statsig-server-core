@@ -16,11 +16,11 @@ use super::ops_stats::OpsStatsEvent;
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DiagnosticsEvent {
-    pub context: ContextType,
     pub marker: Option<Marker>,
+    pub context: Option<ContextType>,
     pub key: Option<KeyType>,
 
-    pub end: bool, // if end is true we will enqueue diagnostics event
+    pub should_enqueue: bool,
 }
 
 pub struct DiagnosticsObserver {
@@ -35,19 +35,22 @@ impl DiagnosticsObserver {
     }
 
     async fn handle_diagnostics_event(&self, event: DiagnosticsEvent) {
-        if let Some(marker) = event.marker {
-            self.add_diagnostics_marker(event.context.clone(), marker);
+        if let Some(context) = event.context {
+            self.diagnostics_handler.set_context(&context);
         }
-        if event.end {
-            self.mark_diagnostic_end(event.context, event.key);
+        if let Some(marker) = event.marker {
+            self.add_diagnostics_marker(event.context.as_ref(), marker);
+        }
+        if event.should_enqueue {
+            self.enqueue_diagnostics_event(event.context.as_ref(), event.key);
         }
     }
 
-    fn add_diagnostics_marker(&self, context: ContextType, marker: Marker) {
+    fn add_diagnostics_marker(&self, context: Option<&ContextType>, marker: Marker) {
         self.diagnostics_handler.add_marker(context, marker);
     }
 
-    fn mark_diagnostic_end(&self, context: ContextType, key: Option<KeyType>) {
+    fn enqueue_diagnostics_event(&self, context: Option<&ContextType>, key: Option<KeyType>) {
         self.diagnostics_handler
             .enqueue_diagnostics_event(context, key);
     }

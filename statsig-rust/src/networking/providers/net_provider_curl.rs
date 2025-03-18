@@ -84,11 +84,12 @@ impl NetworkProvider for NetworkProviderCurl {
                     status_code: 0,
                     data: None,
                     error: Some(e.to_string()),
+                    headers: None,
                 }
             }
         }
 
-        let result = response_rx.await.unwrap_or_else(|e| {
+        let result: Result<Response, StatsigErr> = response_rx.await.unwrap_or_else(|e| {
             log_e!(TAG, "Failed to receive response: {:?}", e);
             Err(StatsigErr::NetworkError(e.to_string()))
         });
@@ -97,6 +98,7 @@ impl NetworkProvider for NetworkProviderCurl {
             status_code: 0,
             data: None,
             error: Some(e.to_string()),
+            headers: None,
         })
     }
 }
@@ -293,10 +295,13 @@ impl NetworkProviderCurl {
                         sanitized_url
                     );
 
+                    let headers = entry.handle.get_mut().get_headers().clone();
+
                     let response = Response {
                         data: Some(res_buffer),
                         status_code: http_status as u16,
                         error: None,
+                        headers: Some(headers),
                     };
 
                     if entry.request.tx.send(Ok(response)).is_err() {
@@ -388,15 +393,23 @@ pub fn sanitize_url_for_logging(url: &str) -> String {
 
 struct Collector {
     buffer: Vec<u8>,
+    headers: HashMap<String, String>,
 }
 
 impl Collector {
     fn new() -> Self {
-        Self { buffer: Vec::new() }
+        Self {
+            buffer: Vec::new(),
+            headers: HashMap::new(),
+        }
     }
 
     fn get_buffer(&mut self) -> Vec<u8> {
         std::mem::take(&mut self.buffer)
+    }
+
+    fn get_headers(&self) -> &HashMap<String, String> {
+        &self.headers
     }
 }
 
@@ -404,6 +417,16 @@ impl Handler for Collector {
     fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
         self.buffer.extend_from_slice(data);
         Ok(data.len())
+    }
+
+    fn header(&mut self, data: &[u8]) -> bool {
+        let header_str = String::from_utf8_lossy(data).trim().to_string();
+
+        if let Some((key, value)) = header_str.split_once(": ") {
+            self.headers.insert(key.to_string(), value.to_string());
+        }
+
+        true
     }
 }
 

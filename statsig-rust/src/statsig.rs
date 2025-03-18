@@ -28,7 +28,8 @@ use crate::observability::observability_client_adapter::{MetricType, Observabili
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::{ErrorBoundaryEvent, SDKErrorsObserver};
 use crate::output_logger::initialize_simple_output_logger;
-use crate::sdk_diagnostics::diagnostics::Diagnostics;
+use crate::sdk_diagnostics::diagnostics::{ContextType, Diagnostics};
+use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
 use crate::statsig_err::StatsigErr;
@@ -81,9 +82,9 @@ pub struct Statsig {
     gcir_formatter: Arc<ClientInitResponseFormatter>,
     statsig_environment: Option<HashMap<String, DynamicValue>>,
     fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
-    diagnostics: Arc<Diagnostics>,
     ops_stats: Arc<OpsStatsForInstance>,
     error_observer: Arc<dyn OpsStatsEventObserver>,
+    diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
     sampling_processor: Arc<SamplingProcessor>,
 }
 
@@ -93,6 +94,7 @@ pub struct StatsigContext {
     pub local_override_adapter: Option<Arc<dyn OverrideAdapter>>,
     pub spec_store_data: Option<SpecStoreData>,
     pub error_observer: Arc<dyn OpsStatsEventObserver>,
+    pub diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
 }
 #[derive(Debug)]
 pub struct FailureDetails {
@@ -104,6 +106,7 @@ pub struct StatsigInitializeDetails {
     pub duration: f64,
     pub init_success: bool,
     pub is_config_spec_ready: bool,
+    pub is_id_list_ready: Option<bool>,
     pub source: SpecsSource,
     pub failure_details: Option<FailureDetails>,
 }
@@ -192,11 +195,11 @@ impl Statsig {
             specs_adapter,
             event_logging_adapter,
             id_lists_adapter,
-            diagnostics,
             statsig_runtime,
             ops_stats,
             error_observer,
             sampling_processor,
+            diagnostics_observer,
         }
     }
 
@@ -206,7 +209,10 @@ impl Statsig {
 
     pub async fn initialize_with_details(&self) -> Result<StatsigInitializeDetails, StatsigErr> {
         let start_time = Instant::now();
-        self.diagnostics.mark_init_overall_start();
+        self.ops_stats.add_marker(
+            Marker::new(KeyType::Overall, ActionType::Start, None),
+            Some(ContextType::Initialize),
+        );
         self.spec_store.set_source(SpecsSource::Loading);
         self.event_logger
             .clone()
@@ -216,6 +222,7 @@ impl Statsig {
 
         let mut success = true;
         let mut error_message = None;
+        let mut id_list_ready = None;
 
         let init_res = match self
             .specs_adapter
@@ -225,7 +232,6 @@ impl Statsig {
         {
             Ok(()) => Ok(()),
             Err(e) => {
-                success = false;
                 self.spec_store.set_source(SpecsSource::NoValues);
                 error_message = Some(format!("Failed to start specs adapter: {e}"));
                 Err(e)
@@ -238,9 +244,11 @@ impl Statsig {
                 .start(&self.statsig_runtime, self.spec_store.clone())
                 .await
             {
-                Ok(()) => {}
+                Ok(()) => {
+                    id_list_ready = Some(true);
+                }
                 Err(e) => {
-                    success = false;
+                    id_list_ready = Some(false);
                     error_message.get_or_insert_with(|| format!("Failed to sync ID lists: {e}"));
                 }
             }
@@ -249,6 +257,7 @@ impl Statsig {
                 .schedule_background_sync(&self.statsig_runtime)
                 .await
             {
+                success = false;
                 log_w!(TAG, "Failed to schedule idlist background job {}", e);
             }
         }
@@ -274,6 +283,7 @@ impl Statsig {
             .schedule_background_sync(&self.statsig_runtime)
             .await
         {
+            success = false;
             log_error_to_statsig_and_console!(
                 self.ops_stats,
                 TAG,
@@ -301,6 +311,7 @@ impl Statsig {
         Ok(StatsigInitializeDetails {
             init_success: success,
             is_config_spec_ready: spec_info.lcut.is_some(),
+            is_id_list_ready: id_list_ready,
             source: spec_info.source,
             failure_details: error.as_ref().map(|e| FailureDetails {
                 reason: e.to_string(),
@@ -410,6 +421,7 @@ impl Statsig {
             local_override_adapter: self.override_adapter.clone(),
             spec_store_data: self.get_current_values(),
             error_observer: self.error_observer.clone(),
+            diagnostics_observer: self.diagnostics_observer.clone(),
         }
     }
 
@@ -1423,28 +1435,36 @@ impl Statsig {
         duration: &f64,
         specs_info: &SpecsInfo,
     ) {
+        let is_store_populated = specs_info.source != SpecsSource::NoValues;
+        let source_str = specs_info.source.to_string();
         self.ops_stats.log(ObservabilityEvent::new_event(
             MetricType::Dist,
             "initialization".to_string(),
             *duration,
             Some(HashMap::from([
                 ("success".to_owned(), success.to_string()),
-                ("source".to_owned(), specs_info.source.to_string()),
-                (
-                    "store_populated".to_owned(),
-                    (specs_info.source != SpecsSource::NoValues).to_string(),
-                ),
+                ("source".to_owned(), source_str.clone()),
+                ("store_populated".to_owned(), is_store_populated.to_string()),
             ])),
         ));
-        self.diagnostics.mark_init_overall_end(
-            success,
-            error_message.clone(),
-            EvaluationDetails {
-                reason: format!("{}", specs_info.source),
-                lcut: specs_info.lcut,
-                received_at: None,
+        self.ops_stats.add_marker(
+            {
+                let marker =
+                    Marker::new(KeyType::Overall, ActionType::End, Some(StepType::Process))
+                        .with_is_success(success)
+                        .with_config_spec_ready(specs_info.source != SpecsSource::NoValues)
+                        .with_source(source_str);
+
+                if let Some(msg) = &error_message {
+                    marker.with_message(msg.to_string())
+                } else {
+                    marker
+                }
             },
+            Some(ContextType::Initialize),
         );
+        self.ops_stats
+            .enqueue_diagnostics_event(None, Some(ContextType::Initialize));
     }
 }
 

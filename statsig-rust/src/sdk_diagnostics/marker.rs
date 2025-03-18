@@ -37,14 +37,14 @@ pub enum ActionType {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Marker {
+    pub key: KeyType,
+
     action: ActionType,
 
     timestamp: u64,
 
-    key: KeyType,
-
     #[serde(skip_serializing_if = "Option::is_none")]
-    attempt: Option<u16>,
+    attempt: Option<u32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     config_name: Option<String>,
@@ -79,6 +79,12 @@ pub struct Marker {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     evaluation_details: Option<EvaluationDetails>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    config_spec_ready: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source: Option<String>,
 }
 
 impl Marker {
@@ -100,6 +106,8 @@ impl Marker {
             message: None,
             error: None,
             evaluation_details: None,
+            config_spec_ready: None,
+            source: None,
         }
     }
 
@@ -116,8 +124,14 @@ impl Marker {
     }
 
     #[must_use]
-    pub fn with_attempt(mut self, attempt: u16) -> Self {
+    pub fn with_attempt(mut self, attempt: u32) -> Self {
         self.attempt = Some(attempt);
+        self
+    }
+
+    #[must_use]
+    pub fn with_url(mut self, url: String) -> Self {
+        self.url = Some(url);
         self
     }
 
@@ -133,47 +147,79 @@ impl Marker {
         self
     }
 
+    #[must_use]
+    pub fn with_config_spec_ready(mut self, ready: bool) -> Self {
+        self.config_spec_ready = Some(ready);
+        self
+    }
+
+    #[must_use]
+    pub fn with_source(mut self, source: String) -> Self {
+        self.source = Some(source);
+        self
+    }
+
+    #[must_use]
+    pub fn with_sdk_region(mut self, region: Option<String>) -> Self {
+        self.sdk_region = region;
+        self
+    }
+
+    #[must_use]
+    pub fn with_id_list_count(mut self, count: usize) -> Self {
+        if count <= u32::MAX as usize {
+            self.id_list_count = Some(count as u32);
+        }
+        self
+    }
+
+    #[must_use]
+    pub fn with_error(mut self, error: HashMap<String, String>) -> Self {
+        self.error = Some(error);
+        self
+    }
+
     // TODO add more as needed
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn test_marker_new() {
-//         let timestamp: u64 = 1_640_995_200_000;
-//         let marker = Marker::new(
-//             KeyType::Initialize,
-//             ActionType::Start,
-//             Some(StepType::Process),
-//             timestamp,
-//         );
+    #[test]
+    fn test_marker_new() {
+        let timestamp: u64 = Utc::now().timestamp_millis() as u64;
+        let marker = Marker::new(
+            KeyType::Initialize,
+            ActionType::Start,
+            Some(StepType::Process),
+        );
 
-//         assert_eq!(marker.key, KeyType::Initialize);
-//         assert_eq!(marker.action, ActionType::Start);
-//         assert_eq!(marker.step, Some(StepType::Process));
-//         assert_eq!(marker.success, None);
-//         assert_eq!(marker.status_code, None);
-//         assert_eq!(marker.timestamp, timestamp);
-//     }
+        assert_eq!(marker.key, KeyType::Initialize);
+        assert_eq!(marker.action, ActionType::Start);
+        assert_eq!(marker.step, Some(StepType::Process));
+        assert_eq!(marker.success, None);
+        assert_eq!(marker.status_code, None);
+        assert_eq!(marker.timestamp, timestamp);
+    }
 
-//     #[test]
-//     fn test_marker_serialization() {
-//         let timestamp: u64 = 1_640_995_200_000;
-//         let marker = Marker::new(
-//             KeyType::Initialize,
-//             ActionType::Start,
-//             Some(StepType::NetworkRequest),
-//             timestamp,
-//         )
-//         .with_is_success(true)
-//         .with_status_code(200)
-//         .with_attempt(1);
+    #[test]
+    fn test_marker_serialization() {
+        let timestamp: u64 = Utc::now().timestamp_millis() as u64;
+        let marker = Marker::new(
+            KeyType::Initialize,
+            ActionType::Start,
+            Some(StepType::NetworkRequest),
+        )
+        .with_is_success(true)
+        .with_status_code(200)
+        .with_attempt(1);
 
-//         let serialized = serde_json::to_string(&marker).expect("Failed to serialize Marker");
-//         let expected_json = r#"{"action":"start","attempt":1,"key":"initialize","statusCode":200,"step":"network_request","success":true,"timestamp":1640995200000}"#;
-
-//         assert_eq!(serialized, expected_json);
-//     }
-// }
+        let serialized = serde_json::to_string(&marker).expect("Failed to serialize Marker");
+        let expected_json = format!(
+            r#"{{"key":"initialize","action":"start","timestamp":{},"attempt":1,"statusCode":200,"step":"network_request","success":true}}"#,
+            timestamp
+        );
+        assert_eq!(serialized, expected_json);
+    }
+}

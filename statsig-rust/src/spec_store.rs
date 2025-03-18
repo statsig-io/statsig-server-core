@@ -4,6 +4,7 @@ use crate::observability::observability_client_adapter::{MetricType, Observabili
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::diagnostics::Diagnostics;
+use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::spec_types::{SpecsResponse, SpecsResponseFull};
 use crate::{
     log_d, log_e, log_error_to_statsig_and_console, DynamicValue, SpecsInfo, SpecsSource,
@@ -91,6 +92,14 @@ impl IdListsUpdateListener for SpecStore {
         data.id_lists.retain(|name, _| updates.contains_key(name));
 
         for (list_name, update) in updates {
+            self.ops_stats.add_marker(
+                Marker::new(
+                    KeyType::GetIDList,
+                    ActionType::Start,
+                    Some(StepType::Process),
+                ),
+                None,
+            );
             if let Some(entry) = data.id_lists.get_mut(&list_name) {
                 // update existing
                 entry.apply_update(&update);
@@ -100,6 +109,10 @@ impl IdListsUpdateListener for SpecStore {
                 list.apply_update(&update);
                 data.id_lists.insert(list_name, list);
             }
+            self.ops_stats.add_marker(
+                Marker::new(KeyType::GetIDList, ActionType::End, Some(StepType::Process)),
+                None,
+            );
         }
     }
 }

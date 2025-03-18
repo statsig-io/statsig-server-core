@@ -3,6 +3,7 @@ use crate::id_lists_adapter::{IdListUpdate, IdListsAdapter, IdListsUpdateListene
 use crate::networking::{NetworkClient, NetworkError, RequestArgs};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
+use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::statsig_metadata::StatsigMetadata;
 use crate::{
     log_d, log_error_to_statsig_and_console, log_w, StatsigErr, StatsigOptions, StatsigRuntime,
@@ -73,8 +74,8 @@ impl StatsigHttpIdListsAdapter {
     async fn fetch_id_list_manifests_from_network(&self) -> Result<IdListsResponse, StatsigErr> {
         let request_args = RequestArgs {
             url: self.id_lists_manifest_url.clone(),
-            retries: 2,
             accept_gzip_response: true,
+            key: Some(KeyType::GetIDListSources),
             ..RequestArgs::new()
         };
 
@@ -122,6 +123,7 @@ impl StatsigHttpIdListsAdapter {
             .get(RequestArgs {
                 url: list_url.to_string(),
                 headers: Some(headers),
+                key: Some(KeyType::GetIDList),
                 ..RequestArgs::new()
             })
             .await;
@@ -214,6 +216,16 @@ impl StatsigHttpIdListsAdapter {
 
         let mut changes = HashMap::new();
 
+        self.ops_stats.add_marker(
+            Marker::new(
+                KeyType::GetIDListSources,
+                ActionType::Start,
+                Some(StepType::Process),
+            )
+            .with_id_list_count(manifest.len()),
+            None,
+        );
+
         for (list_name, entry) in manifest {
             let (requires_download, range_start) = match metadata.get(&list_name) {
                 Some(current) => (entry.size > current.size, current.size),
@@ -262,7 +274,7 @@ impl StatsigHttpIdListsAdapter {
             );
         }
 
-        match self.listener.read() {
+        let result = match self.listener.read() {
             Ok(lock) => match lock.as_ref() {
                 Some(listener) => {
                     listener.did_receive_id_list_updates(updates);
@@ -279,7 +291,19 @@ impl StatsigHttpIdListsAdapter {
                 );
                 Err(StatsigErr::LockFailure(e.to_string()))
             }
-        }
+        };
+
+        self.ops_stats.add_marker(
+            Marker::new(
+                KeyType::GetIDListSources,
+                ActionType::End,
+                Some(StepType::Process),
+            )
+            .with_is_success(result.is_ok()),
+            None,
+        );
+
+        result
     }
 }
 

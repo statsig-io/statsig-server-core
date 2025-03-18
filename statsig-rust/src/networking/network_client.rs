@@ -2,6 +2,7 @@ use super::providers::get_network_provider;
 use super::{HttpMethod, NetworkProvider, RequestArgs};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
+use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
 use crate::{log_error_to_statsig_and_console, log_i, log_w};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -77,6 +78,14 @@ impl NetworkClient {
         let mut attempt = 0;
 
         loop {
+            if let Some(key) = request_args.key {
+                self.ops_stats.add_marker(
+                    Marker::new(key, ActionType::Start, Some(StepType::NetworkRequest))
+                        .with_attempt(attempt)
+                        .with_url(request_args.url.clone()),
+                    None,
+                );
+            }
             if is_shutdown.load(Ordering::SeqCst) {
                 log_i!(TAG, "{}", SHUTDOWN_ERROR);
                 return Err(NetworkError::ShutdownError);
@@ -85,14 +94,45 @@ impl NetworkClient {
             let response = self.net_provider.send(&method, &request_args).await;
 
             let status = response.status_code;
-
-            if (200..300).contains(&status) {
-                return get_data_as_string(response.data);
-            }
+            let sdk_region_str = response
+                .headers
+                .as_ref()
+                .and_then(|h| h.get("x-statsig-region"));
+            let success = (200..300).contains(&status);
 
             let error_message = response
                 .error
                 .unwrap_or_else(|| get_error_message_for_status(status));
+
+            if let Some(key) = request_args.key {
+                let mut end_marker =
+                    Marker::new(key, ActionType::End, Some(StepType::NetworkRequest))
+                        .with_attempt(attempt)
+                        .with_url(request_args.url.clone())
+                        .with_status_code(status)
+                        .with_is_success(success)
+                        .with_sdk_region(sdk_region_str.map(|s| s.to_owned()));
+
+                let error_map = if !error_message.is_empty() {
+                    let mut map = HashMap::new();
+                    map.insert("name".to_string(), "NetworkError".to_string());
+                    map.insert("message".to_string(), error_message.clone());
+                    map.insert("code".to_string(), status.to_string());
+                    Some(map)
+                } else {
+                    None
+                };
+
+                if let Some(error_map) = error_map {
+                    end_marker = end_marker.with_error(error_map);
+                }
+
+                self.ops_stats.add_marker(end_marker, None);
+            }
+
+            if success {
+                return get_data_as_string(response.data);
+            }
 
             if !RETRY_CODES.contains(&status) {
                 log_error_to_statsig_and_console!(
@@ -133,6 +173,10 @@ impl NetworkClient {
 }
 
 fn get_error_message_for_status(status: u16) -> String {
+    if (200..300).contains(&status) {
+        return String::new();
+    }
+
     match status {
         400 => "Bad Request".to_string(),
         401 => "Unauthorized".to_string(),

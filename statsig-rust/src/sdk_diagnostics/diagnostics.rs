@@ -1,13 +1,12 @@
 use super::{
     diagnostics_utils::DiagnosticsUtils,
-    marker::{ActionType, KeyType, Marker, StepType},
+    marker::{KeyType, Marker},
 };
 use crate::event_logging::event_logger::{EventLogger, QueuedEventPayload};
-use crate::log_w;
-use crate::{
-    evaluation::evaluation_details::EvaluationDetails,
-    event_logging::{statsig_event::StatsigEvent, statsig_event_internal::StatsigEventInternal},
+use crate::event_logging::{
+    statsig_event::StatsigEvent, statsig_event_internal::StatsigEventInternal,
 };
+use crate::log_w;
 use rand::Rng;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -17,9 +16,9 @@ use std::sync::{Arc, Mutex};
 const MAX_MARKER_COUNT: usize = 50;
 pub const DIAGNOSTICS_EVENT: &str = "statsig::diagnostics";
 
-#[derive(Eq, Hash, PartialEq, Clone, Serialize, Debug)]
+#[derive(Eq, Hash, PartialEq, Clone, Serialize, Debug, Copy)]
 pub enum ContextType {
-    Initialize, // we only care about initialize for now
+    Initialize,
     ConfigSync,
 }
 
@@ -40,6 +39,7 @@ pub struct Diagnostics {
     marker_map: Mutex<HashMap<ContextType, Vec<Marker>>>,
     event_logger: Arc<EventLogger>,
     sampling_rates: Mutex<HashMap<String, f64>>,
+    context: Mutex<ContextType>,
 }
 
 impl Diagnostics {
@@ -51,6 +51,13 @@ impl Diagnostics {
                 ("initialize".to_string(), 10000.0),
                 ("config_sync".to_string(), 1000.0),
             ])),
+            context: Mutex::new(ContextType::Initialize),
+        }
+    }
+
+    pub fn set_context(&self, context: &ContextType) {
+        if let Ok(mut ctx) = self.context.lock() {
+            *ctx = *context;
         }
     }
 
@@ -72,7 +79,8 @@ impl Diagnostics {
         None
     }
 
-    pub fn add_marker(&self, context_type: ContextType, marker: Marker) {
+    pub fn add_marker(&self, context_type: Option<&ContextType>, marker: Marker) {
+        let context_type = self.get_context(context_type);
         if let Ok(mut map) = self.marker_map.lock() {
             let entry = map.entry(context_type).or_insert_with(Vec::new);
             if entry.len() < MAX_MARKER_COUNT {
@@ -89,30 +97,12 @@ impl Diagnostics {
         }
     }
 
-    pub fn mark_init_overall_start(&self) {
-        let init_marker = Marker::new(KeyType::Overall, ActionType::Start, Some(StepType::Process));
-        self.add_marker(ContextType::Initialize, init_marker);
-    }
-
-    pub fn mark_init_overall_end(
+    pub fn enqueue_diagnostics_event(
         &self,
-        success: bool,
-        error_message: Option<String>,
-        evaluation_details: EvaluationDetails,
+        context_type: Option<&ContextType>,
+        key: Option<KeyType>,
     ) {
-        let mut init_marker =
-            Marker::new(KeyType::Overall, ActionType::End, Some(StepType::Process))
-                .with_is_success(success)
-                .with_eval_details(evaluation_details);
-
-        if let Some(msg) = error_message {
-            init_marker = init_marker.with_message(msg);
-        }
-        self.add_marker(ContextType::Initialize, init_marker);
-        self.enqueue_diagnostics_event(ContextType::Initialize, None);
-    }
-
-    pub fn enqueue_diagnostics_event(&self, context_type: ContextType, key: Option<KeyType>) {
+        let context_type: ContextType = self.get_context(context_type);
         let markers = match self.get_markers(&context_type) {
             Some(m) => m,
             None => return,
@@ -153,7 +143,10 @@ impl Diagnostics {
         let mut rng = rand::thread_rng();
         let rand_value = rng.gen::<f64>() * MAX_SAMPLING_RATE;
 
-        let sampling_rates = self.sampling_rates.lock().unwrap();
+        let sampling_rates = match self.sampling_rates.lock() {
+            Ok(guard) => guard,
+            Err(_) => return rand_value < DEFAULT_SAMPLING_RATE,
+        };
 
         if *context == ContextType::Initialize {
             return rand_value
@@ -163,17 +156,29 @@ impl Diagnostics {
         }
 
         if let Some(key) = key {
-            if key == KeyType::GetIDList || key == KeyType::GetIDListSources {
-                return rand_value
-                    < *sampling_rates
-                        .get("id_list")
-                        .unwrap_or(&DEFAULT_SAMPLING_RATE);
-            }
-            if key == KeyType::DownloadConfigSpecs {
-                return rand_value < *sampling_rates.get("dcs").unwrap_or(&DEFAULT_SAMPLING_RATE);
+            match key {
+                KeyType::GetIDList | KeyType::GetIDListSources => {
+                    return rand_value
+                        < *sampling_rates
+                            .get("id_list")
+                            .unwrap_or(&DEFAULT_SAMPLING_RATE);
+                }
+                KeyType::DownloadConfigSpecs => {
+                    return rand_value
+                        < *sampling_rates.get("dcs").unwrap_or(&DEFAULT_SAMPLING_RATE);
+                }
+                _ => {}
             }
         }
 
         rand_value < DEFAULT_SAMPLING_RATE
+    }
+
+    fn get_context(&self, maybe_context: Option<&ContextType>) -> ContextType {
+        let context_type = match maybe_context {
+            Some(ctx) => *ctx,
+            None => *self.context.lock().unwrap(),
+        };
+        context_type
     }
 }

@@ -109,19 +109,21 @@ impl OpsStatsForInstance {
         self.log(OpsStatsEvent::SDKError(error));
     }
 
-    #[allow(dead_code)] // will remove after diagnostics is fully implemented
-    pub fn mark_diagnostics(
-        &self,
-        context: ContextType,
-        marker: Option<Marker>,
-        key: Option<KeyType>,
-        end: bool,
-    ) {
+    pub fn add_marker(&self, marker: Marker, context: Option<ContextType>) {
         self.log(OpsStatsEvent::Diagnostics(DiagnosticsEvent {
+            marker: Some(marker),
             context,
-            marker,
+            key: None,
+            should_enqueue: false,
+        }));
+    }
+
+    pub fn enqueue_diagnostics_event(&self, key: Option<KeyType>, context: Option<ContextType>) {
+        self.log(OpsStatsEvent::Diagnostics(DiagnosticsEvent {
+            marker: None,
+            context,
             key,
-            end,
+            should_enqueue: true,
         }));
     }
 

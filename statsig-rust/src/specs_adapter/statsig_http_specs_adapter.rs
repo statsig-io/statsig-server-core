@@ -1,6 +1,7 @@
 use crate::networking::{NetworkClient, NetworkError, RequestArgs};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
+use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::specs_adapter::{SpecsAdapter, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
@@ -73,9 +74,9 @@ impl StatsigHttpSpecsAdapter {
 
         let request_args = RequestArgs {
             url: self.specs_url.clone(),
-            retries: 2,
             query_params: Some(params),
             accept_gzip_response: true,
+            key: Some(KeyType::DownloadConfigSpecs),
             ..RequestArgs::new()
         };
 
@@ -146,7 +147,16 @@ impl StatsigHttpSpecsAdapter {
             received_at: Utc::now().timestamp_millis() as u64,
         };
 
-        match self.listener.read() {
+        self.ops_stats.add_marker(
+            Marker::new(
+                KeyType::DownloadConfigSpecs,
+                ActionType::Start,
+                Some(StepType::Process),
+            ),
+            None,
+        );
+
+        let result = match self.listener.read() {
             Ok(lock) => match lock.as_ref() {
                 Some(listener) => listener.did_receive_specs_update(update),
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
@@ -160,7 +170,19 @@ impl StatsigHttpSpecsAdapter {
                 );
                 Err(StatsigErr::LockFailure(e.to_string()))
             }
-        }
+        };
+
+        self.ops_stats.add_marker(
+            Marker::new(
+                KeyType::DownloadConfigSpecs,
+                ActionType::End,
+                Some(StepType::Process),
+            )
+            .with_is_success(result.is_ok()),
+            None,
+        );
+
+        result
     }
 }
 

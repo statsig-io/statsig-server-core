@@ -8,7 +8,7 @@ use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
 const SDK_KEY: &str = "secret-key";
 
-async fn setup(delay_ms: u64, options: StatsigOptions) -> (MockScrapi, Statsig) {
+async fn setup(delay_ms: u64, options: StatsigOptions, key: String) -> (MockScrapi, Statsig) {
     let mock_scrapi = MockScrapi::new().await;
 
     mock_scrapi
@@ -33,7 +33,7 @@ async fn setup(delay_ms: u64, options: StatsigOptions) -> (MockScrapi, Statsig) 
         .await;
 
     let statsig = Statsig::new(
-        SDK_KEY,
+        &key,
         Some(Arc::new(StatsigOptions {
             specs_url: Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs)),
             log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
@@ -56,6 +56,7 @@ async fn test_background_flushing() {
             ))),
             ..StatsigOptions::new()
         },
+        "key-1".to_string(),
     )
     .await;
 
@@ -65,6 +66,7 @@ async fn test_background_flushing() {
     statsig.log_event(&user, "my_event", None, None);
 
     sleep(Duration::from_millis(100)).await;
+    statsig.shutdown().await.unwrap();
 
     let times_called = scrapi.times_called_for_endpoint(Endpoint::LogEvent);
     assert_eq!(1, times_called);
@@ -82,6 +84,7 @@ async fn test_limit_flush_awaiting() {
             output_log_level: Some(LogLevel::Debug),
             ..StatsigOptions::new()
         },
+        "key-2".to_string(),
     )
     .await;
 

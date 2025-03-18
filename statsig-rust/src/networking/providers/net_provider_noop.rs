@@ -11,6 +11,7 @@ impl NetworkProvider for NetworkProviderNoop {
             status_code: 0,
             data: None,
             error: Some("No Network Provider Set".to_string()),
+            headers: None,
         }
     }
 }

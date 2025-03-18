@@ -1,5 +1,6 @@
 mod utils;
 
+use sha2::digest::crypto_common::Key;
 use statsig_rust::{
     output_logger::LogLevel, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
     FeatureGateEvaluationOptions, Statsig, StatsigOptions, StatsigUser,
@@ -15,7 +16,7 @@ use utils::{
 
 const SDK_KEY: &str = "secret-key";
 
-async fn setup(delay_ms: u64) -> (MockScrapi, Statsig) {
+async fn setup(delay_ms: u64, key: String) -> (MockScrapi, Statsig) {
     let mock_scrapi = MockScrapi::new().await;
 
     mock_scrapi
@@ -28,7 +29,7 @@ async fn setup(delay_ms: u64) -> (MockScrapi, Statsig) {
         .await;
 
     let statsig = Statsig::new(
-        SDK_KEY,
+        &key,
         Some(Arc::new(StatsigOptions {
             specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
                 "tests/data/eval_proj_dcs.json",
@@ -44,7 +45,7 @@ async fn setup(delay_ms: u64) -> (MockScrapi, Statsig) {
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() {
-    let (_, statsig) = setup(900 /* delay_ms */).await;
+    let (_, statsig) = setup(900 /* delay_ms */, "secret-key-flush-1".to_string()).await;
 
     statsig.initialize().await.unwrap();
 
@@ -73,7 +74,11 @@ async fn main() {
 
 #[tokio::test]
 async fn test_no_flushing_on_main() {
-    let (_, statsig) = setup(5000 /* delay_ms */).await;
+    let (_, statsig) = setup(
+        5000, /* delay_ms */
+        "secret-key-flushing-2".to_string(),
+    )
+    .await;
 
     statsig.initialize().await.unwrap();
 
@@ -99,7 +104,7 @@ async fn test_no_flushing_on_main() {
 
 #[tokio::test]
 async fn test_all_events_get_flushed() {
-    let (mock_scrapi, statsig) = setup(0 /* delay_ms */).await;
+    let (mock_scrapi, statsig) = setup(0 /* delay_ms */, "secret-key-flushing-3".to_string()).await;
 
     statsig.initialize().await.unwrap();
 
@@ -129,7 +134,7 @@ async fn test_all_events_get_flushed() {
 
 #[tokio::test]
 async fn test_core_apis_exposure_logging_disabled() {
-    let (mock_scrapi, statsig) = setup(0 /* delay_ms */).await;
+    let (mock_scrapi, statsig) = setup(0 /* delay_ms */, "secret-key-flushing-4".to_string()).await;
 
     statsig.initialize().await.unwrap();
     let user = StatsigUser::with_user_id("test_user".into());
@@ -165,6 +170,9 @@ async fn test_core_apis_exposure_logging_disabled() {
     );
 
     let start = Instant::now();
+
+    tokio::time::sleep(Duration::from_millis(10)).await; // wait for diagnostics observer to enqueue events
+
     statsig
         .shutdown_with_timeout(Duration::from_millis(3000))
         .await
@@ -178,5 +186,8 @@ async fn test_core_apis_exposure_logging_disabled() {
     .await;
 
     let duration = start.elapsed();
-    println!("shutdown: {:.2} ms", duration.as_millis());
+    println!(
+        "shutdown: {:.2} ms",
+        (duration.as_millis() as i128 - 10) as f64
+    );
 }
