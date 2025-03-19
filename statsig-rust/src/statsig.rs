@@ -133,9 +133,9 @@ impl Statsig {
             &statsig_runtime,
         ));
 
-        let diagnostics = Arc::new(Diagnostics::new(event_logger.clone()));
+        let diagnostics = Arc::new(Diagnostics::new(event_logger.clone(), sdk_key));
         let diagnostics_observer: Arc<dyn OpsStatsEventObserver> =
-            Arc::new(DiagnosticsObserver::new(diagnostics.clone()));
+            Arc::new(DiagnosticsObserver::new(diagnostics));
         let error_observer: Arc<dyn OpsStatsEventObserver> = Arc::new(SDKErrorsObserver::new(
             sdk_key,
             serde_json::to_string(options.as_ref()).unwrap_or_default(),
@@ -155,7 +155,6 @@ impl Statsig {
             hashing.sha256(&sdk_key.to_string()),
             options.data_store.clone(),
             Some(statsig_runtime.clone()),
-            Some(diagnostics.clone()),
         ));
 
         if options.enable_user_agent_parsing.unwrap_or(false) {
@@ -173,8 +172,8 @@ impl Statsig {
 
         let sampling_processor = Arc::new(SamplingProcessor::new(
             &statsig_runtime,
-            &spec_store,
             hashing.clone(),
+            sdk_key,
         ));
 
         StatsigMetadata::update_service_name(options.service_name.clone());

@@ -1,7 +1,7 @@
 use crate::evaluation::evaluation_types::AnyEvaluation;
+use crate::global_configs::GlobalConfigs;
 use crate::hashing::HashUtil;
 use crate::hashset_with_ttl::HashSetWithTTL;
-use crate::spec_store::SpecStore;
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{DynamicValue, StatsigErr, StatsigRuntime};
 use serde::{Deserialize, Serialize};
@@ -65,23 +65,23 @@ impl SamplingDecision {
 
 pub struct SamplingProcessor {
     sampling_key_set: HashSetWithTTL,
-    spec_store: Arc<SpecStore>,
     hashing: Arc<HashUtil>,
+    global_configs: Arc<GlobalConfigs>,
 }
 
 impl SamplingProcessor {
     pub fn new(
         statsig_runtime: &Arc<StatsigRuntime>,
-        spec_store: &Arc<SpecStore>,
         hashing: Arc<HashUtil>,
+        sdk_key: &str,
     ) -> Self {
         let sampling_key_set =
             HashSetWithTTL::new(statsig_runtime, Duration::from_secs(TTL_IN_SECONDS));
 
         Self {
             sampling_key_set,
-            spec_store: spec_store.clone(),
             hashing,
+            global_configs: GlobalConfigs::get_instance(sdk_key),
         }
     }
 
@@ -301,7 +301,7 @@ impl SamplingProcessor {
     }
 
     fn get_sampling_mode(&self) -> SamplingMode {
-        self.spec_store
+        self.global_configs
             .get_sdk_config_value("sampling_mode")
             .and_then(|mode| mode.string_value)
             .as_deref()
@@ -313,7 +313,7 @@ impl SamplingProcessor {
     }
 
     fn get_special_case_sampling_rate(&self) -> Option<u64> {
-        self.spec_store
+        self.global_configs
             .get_sdk_config_value("special_case_sampling_rate")
             .and_then(|v| v.float_value)
             .map(|rate| rate as u64)
@@ -324,7 +324,7 @@ impl SamplingProcessor {
 mod tests {
     use super::*;
     use crate::evaluation::evaluation_types::{BaseEvaluation, GateEvaluation};
-    use crate::{SpecsSource, SpecsUpdate, StatsigUser};
+    use crate::{SpecStore, SpecsSource, SpecsUpdate, StatsigUser};
     use serde_json::Value;
     use std::fs;
     use std::sync::LazyLock;
@@ -382,9 +382,8 @@ mod tests {
 
         // initialize sampling processor
         let runtime = StatsigRuntime::get_runtime();
-        let spec_store = Arc::new(spec_store);
         let hashing = Arc::new(HashUtil::new());
-        let processor = SamplingProcessor::new(&runtime, &spec_store, hashing);
+        let processor = SamplingProcessor::new(&runtime, hashing, "");
 
         let mut test_user = create_mock_user();
         let mock_evaluation_res = create_mock_evaluation_result();

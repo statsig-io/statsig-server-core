@@ -28,6 +28,7 @@ pub use statsig_runtime::StatsigRuntime;
 pub use statsig_user::StatsigUser;
 
 pub mod data_store_interface;
+pub mod global_configs;
 pub mod hashing;
 pub mod hashset_with_ttl;
 pub mod instance_store;

@@ -1,12 +1,15 @@
-use super::{
-    diagnostics_utils::DiagnosticsUtils,
-    marker::{KeyType, Marker},
-};
+use super::diagnostics_utils::DiagnosticsUtils;
+use super::marker::{KeyType, Marker};
+
 use crate::event_logging::event_logger::{EventLogger, QueuedEventPayload};
 use crate::event_logging::{
     statsig_event::StatsigEvent, statsig_event_internal::StatsigEventInternal,
 };
+
+use crate::global_configs::{GlobalConfigs, MAX_SAMPLING_RATE};
+
 use crate::log_w;
+
 use rand::Rng;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -32,25 +35,21 @@ impl fmt::Display for ContextType {
 }
 
 const TAG: &str = stringify!(Diagnostics);
-const MAX_SAMPLING_RATE: f64 = 10000.0;
 const DEFAULT_SAMPLING_RATE: f64 = 100.0;
 
 pub struct Diagnostics {
     marker_map: Mutex<HashMap<ContextType, Vec<Marker>>>,
     event_logger: Arc<EventLogger>,
-    sampling_rates: Mutex<HashMap<String, f64>>,
+    global_configs: Arc<GlobalConfigs>,
     context: Mutex<ContextType>,
 }
 
 impl Diagnostics {
-    pub fn new(event_logger: Arc<EventLogger>) -> Self {
+    pub fn new(event_logger: Arc<EventLogger>, sdk_key: &str) -> Self {
         Self {
             event_logger,
             marker_map: Mutex::new(HashMap::new()),
-            sampling_rates: Mutex::new(HashMap::from([
-                ("initialize".to_string(), 10000.0),
-                ("config_sync".to_string(), 1000.0),
-            ])),
+            global_configs: GlobalConfigs::get_instance(sdk_key),
             context: Mutex::new(ContextType::Initialize),
         }
     }
@@ -58,15 +57,6 @@ impl Diagnostics {
     pub fn set_context(&self, context: &ContextType) {
         if let Ok(mut ctx) = self.context.lock() {
             *ctx = *context;
-        }
-    }
-
-    pub fn set_sampling_rate(&self, new_sampling_rate: HashMap<std::string::String, f64>) {
-        if let Ok(mut rates) = self.sampling_rates.lock() {
-            for (key, rate) in new_sampling_rate {
-                let clamped_rate = rate.clamp(0.0, MAX_SAMPLING_RATE);
-                rates.insert(key, clamped_rate);
-            }
         }
     }
 
@@ -143,10 +133,7 @@ impl Diagnostics {
         let mut rng = rand::thread_rng();
         let rand_value = rng.gen::<f64>() * MAX_SAMPLING_RATE;
 
-        let sampling_rates = match self.sampling_rates.lock() {
-            Ok(guard) => guard,
-            Err(_) => return rand_value < DEFAULT_SAMPLING_RATE,
-        };
+        let sampling_rates = self.global_configs.get_diagnostics_sampling_rate();
 
         if *context == ContextType::Initialize {
             return rand_value
@@ -160,7 +147,7 @@ impl Diagnostics {
                 KeyType::GetIDList | KeyType::GetIDListSources => {
                     return rand_value
                         < *sampling_rates
-                            .get("id_list")
+                            .get("get_id_list")
                             .unwrap_or(&DEFAULT_SAMPLING_RATE);
                 }
                 KeyType::DownloadConfigSpecs => {

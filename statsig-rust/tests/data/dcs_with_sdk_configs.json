@@ -10,7 +10,11 @@
     "app_id": null,
     "sdk_keys_to_app_ids": null,
     "hashed_sdk_keys_to_app_ids": null,
-    "diagnostics": null,
+    "diagnostics": {
+        "initialize": 9999,
+        "dcs": 999,
+        "get_id_list": 99
+    },
     "sdk_configs": {
         "event_queue_size": 1800,
         "event_logging_interval_seconds": 1,

@@ -1,14 +1,14 @@
 use crate::data_store_interface::{get_data_adapter_dcs_key, DataStoreTrait};
+use crate::global_configs::GlobalConfigs;
 use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
-use crate::sdk_diagnostics::diagnostics::Diagnostics;
 use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::spec_types::{SpecsResponse, SpecsResponseFull};
 use crate::{
-    log_d, log_e, log_error_to_statsig_and_console, DynamicValue, SpecsInfo, SpecsSource,
-    SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigRuntime,
+    log_d, log_e, log_error_to_statsig_and_console, SpecsInfo, SpecsSource, SpecsUpdate,
+    SpecsUpdateListener, StatsigErr, StatsigRuntime,
 };
 use chrono::Utc;
 use serde::Serialize;
@@ -31,8 +31,8 @@ pub struct SpecStore {
     pub data: Arc<RwLock<SpecStoreData>>,
     pub data_store: Option<Arc<dyn DataStoreTrait>>,
     pub statsig_runtime: Option<Arc<StatsigRuntime>>,
-    diagnostics: Option<Arc<Diagnostics>>,
     ops_stats: Arc<OpsStatsForInstance>,
+    global_configs: Arc<GlobalConfigs>,
 }
 
 impl SpecsUpdateListener for SpecStore {
@@ -120,7 +120,7 @@ impl IdListsUpdateListener for SpecStore {
 impl Default for SpecStore {
     fn default() -> Self {
         let sdk_key = String::new();
-        Self::new(&sdk_key, sdk_key.to_string(), None, None, None)
+        Self::new(&sdk_key, sdk_key.to_string(), None, None)
     }
 }
 
@@ -131,7 +131,6 @@ impl SpecStore {
         hashed_sdk_key: String,
         data_store: Option<Arc<dyn DataStoreTrait>>,
         statsig_runtime: Option<Arc<StatsigRuntime>>,
-        diagnostics: Option<Arc<Diagnostics>>,
     ) -> SpecStore {
         SpecStore {
             hashed_sdk_key,
@@ -144,7 +143,7 @@ impl SpecStore {
             data_store,
             statsig_runtime,
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
-            diagnostics,
+            global_configs: GlobalConfigs::get_instance(sdk_key),
         }
     }
 
@@ -207,12 +206,12 @@ impl SpecStore {
             }
         };
 
-        if let Some(ref diagnostics) = dcs.diagnostics {
-            if self.diagnostics.is_some() {
-                if let Some(diagnostics_instance) = &self.diagnostics {
-                    diagnostics_instance.set_sampling_rate(diagnostics.clone());
-                }
-            }
+        if let Some(diagnostics) = &dcs.diagnostics {
+            self.global_configs
+                .set_diagnostics_sampling_rates(diagnostics.clone());
+        }
+        if let Some(sdk_configs) = &dcs.sdk_configs {
+            self.global_configs.set_sdk_configs(sdk_configs.clone());
         }
 
         if let Ok(mut mut_values) = self.data.write() {
@@ -266,23 +265,6 @@ impl SpecStore {
         }
 
         Ok(())
-    }
-
-    #[must_use]
-    pub fn get_sdk_config_value(&self, key: &str) -> Option<DynamicValue> {
-        match self.data.read() {
-            Ok(data) => match &data.values.sdk_configs {
-                Some(sdk_configs) => sdk_configs.get(key).cloned(),
-                None => {
-                    log_d!(TAG, "SDK Configs not found");
-                    None
-                }
-            },
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire read lock: {}", e);
-                None
-            }
-        }
     }
 
     fn log_processing_config(&self, lcut: u64, source: SpecsSource, prev_source: SpecsSource) {
