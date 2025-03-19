@@ -118,6 +118,15 @@ impl OpsStatsForInstance {
         }));
     }
 
+    pub fn set_diagnostics_context(&self, context: ContextType) {
+        self.log(OpsStatsEvent::Diagnostics(DiagnosticsEvent {
+            marker: None,
+            context: Some(context),
+            key: None,
+            should_enqueue: false,
+        }));
+    }
+
     pub fn enqueue_diagnostics_event(&self, key: Option<KeyType>, context: Option<ContextType>) {
         self.log(OpsStatsEvent::Diagnostics(DiagnosticsEvent {
             marker: None,

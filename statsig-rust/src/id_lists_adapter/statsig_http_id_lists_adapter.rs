@@ -3,6 +3,7 @@ use crate::id_lists_adapter::{IdListUpdate, IdListsAdapter, IdListsUpdateListene
 use crate::networking::{NetworkClient, NetworkError, RequestArgs};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
+use crate::sdk_diagnostics::diagnostics::ContextType;
 use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::statsig_metadata::StatsigMetadata;
 use crate::{
@@ -123,7 +124,6 @@ impl StatsigHttpIdListsAdapter {
             .get(RequestArgs {
                 url: list_url.to_string(),
                 headers: Some(headers),
-                diagnostics_key: Some(KeyType::GetIDList),
                 ..RequestArgs::new()
             })
             .await;
@@ -166,9 +166,16 @@ impl StatsigHttpIdListsAdapter {
             None => return,
         };
 
+        strong_self
+            .ops_stats
+            .set_diagnostics_context(ContextType::ConfigSync);
         if let Err(e) = strong_self.sync_id_lists().await {
             log_w!(TAG, "IDList background sync failed {}", e);
         }
+        strong_self.ops_stats.enqueue_diagnostics_event(
+            Some(KeyType::GetIDListSources),
+            Some(ContextType::ConfigSync),
+        );
     }
 
     fn parse_response(&self, response: String) -> Result<IdListsResponse, StatsigErr> {

@@ -144,7 +144,7 @@ impl Diagnostics {
 
         if let Some(key) = key {
             match key {
-                KeyType::GetIDList | KeyType::GetIDListSources => {
+                KeyType::GetIDListSources => {
                     return rand_value
                         < *sampling_rates
                             .get("get_id_list")

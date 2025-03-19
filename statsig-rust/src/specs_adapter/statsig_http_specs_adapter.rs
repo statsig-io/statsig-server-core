@@ -1,6 +1,7 @@
 use crate::networking::{NetworkClient, NetworkError, RequestArgs};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
+use crate::sdk_diagnostics::diagnostics::ContextType;
 use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::specs_adapter::{SpecsAdapter, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
@@ -119,9 +120,16 @@ impl StatsigHttpSpecsAdapter {
             Err(_) => SpecsInfo::error(),
         };
 
+        strong_self
+            .ops_stats
+            .set_diagnostics_context(ContextType::ConfigSync);
         if let Err(e) = strong_self.manually_sync_specs(specs_info).await {
             log_e!(TAG, "Background specs sync failed: {}", e);
         }
+        strong_self.ops_stats.enqueue_diagnostics_event(
+            Some(KeyType::DownloadConfigSpecs),
+            Some(ContextType::ConfigSync),
+        );
     }
 
     async fn manually_sync_specs(&self, current_specs_info: SpecsInfo) -> Result<(), StatsigErr> {
