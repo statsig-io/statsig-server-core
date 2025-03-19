@@ -75,7 +75,7 @@ async function createComment(
   Log.stepBegin('Creating new size comment');
 
   const comment: SizeComment = {
-    name: `statsig-ffi-${target}`,
+    path: `statsig-ffi-${target}`,
     bytes: sizeInfo.bytes,
     size: sizeInfo.size,
     commit: process.env.GITHUB_SHA ?? 'UNKNOWN',
@@ -101,7 +101,7 @@ async function updateComment(
 
   const updatedComment: SizeCommentWithId = {
     comment_id: comment.comment_id,
-    name: comment.name,
+    path: comment.path,
     bytes: sizeInfo.bytes,
     size: sizeInfo.size,
     commit: process.env.GITHUB_SHA ?? 'UNKNOWN',

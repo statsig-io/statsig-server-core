@@ -18,7 +18,7 @@ export type SizeInfo = {
 };
 
 export type SizeComment = {
-  name: string;
+  path: string;
   bytes: number;
   size: string;
   commit: string;
@@ -55,7 +55,7 @@ export async function getFfiBinarySizes(target: string): Promise<SizeInfo> {
 }
 
 export async function fetchPreviousSizeInfo(octokit: Octokit): Promise<{
-  result: Record<string, SizeComment> | null;
+  result: Record<string, SizeCommentWithId> | null;
   error: Error | null;
 }> {
   try {
@@ -74,11 +74,11 @@ export async function fetchPreviousSizeInfo(octokit: Octokit): Promise<{
           .trim();
         const json = JSON.parse(stripped ?? '{}');
         json.comment_id = comment.id;
-        acc[json.name] = json;
+        acc[json.path] = json;
 
         return acc;
       },
-      {} as Record<string, SizeComment>,
+      {} as Record<string, SizeCommentWithId>,
     );
 
     return { result, error: null };
