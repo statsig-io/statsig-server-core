@@ -10,17 +10,16 @@ repository.workspace = true
 [dependencies]
 async-trait = "0.1.81"
 base64 = "0.22.1"
-chrono = "0.4.38"
-curl = { version = "0.4.47", optional = true }
+chrono = "0.4.40"
 file-guard = "0.2.0"
 flate2 = "1.0.35"
 futures = "0.3.30"
 lazy_static = "1.5.0"
 log = "0.4.22"
-openssl = { version = "0.10.66", features = ["vendored"], optional = true }
 percent-encoding = "2.3.1"
 rand = "0.8.4"
 regex-lite = "0.1.6"
+reqwest = { version = "0.12.14", features = ["json", "gzip"], optional = true }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = { version = "1.0.125", features = ["float_roundtrip"] }
 sha2 = "0.10.8"
@@ -38,8 +37,7 @@ wiremock = "0.6.2"
 more-asserts = "0.3.1"
 
 [features]
-default = ["curl"]
-vendored_openssl = ["openssl"]
+default = ["reqwest"]
 custom_network_provider = []
 with_grpc = ["sigstat-grpc"]
 with_zstd = ["zstd"]

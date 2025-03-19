@@ -3,8 +3,10 @@ mod utils;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use statsig_rust::{output_logger::LogLevel, Statsig, StatsigOptions, StatsigUser};
 use std::{fs, path::PathBuf, sync::Arc, time::Duration};
-use tokio::time::sleep;
-use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
+use utils::{
+    helpers::assert_eventually,
+    mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi},
+};
 
 async fn setup(delay_ms: u64, options: StatsigOptions, key: String) -> (MockScrapi, Statsig) {
     let mock_scrapi = MockScrapi::new().await;
@@ -48,7 +50,7 @@ async fn test_background_flushing() {
     let (scrapi, statsig) = setup(
         0,
         StatsigOptions {
-            event_logging_flush_interval_ms: Some(10),
+            event_logging_flush_interval_ms: Some(1),
             specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
                 "tests/data/eval_proj_dcs.json",
             ))),
@@ -63,11 +65,16 @@ async fn test_background_flushing() {
     let user = StatsigUser::with_user_id("a_user".to_string());
     statsig.log_event(&user, "my_event", None, None);
 
-    sleep(Duration::from_millis(100)).await;
-    statsig.shutdown().await.unwrap();
+    assert_eventually(
+        || scrapi.times_called_for_endpoint(Endpoint::LogEvent) > 0,
+        Duration::from_secs(1),
+    )
+    .await;
 
     let times_called = scrapi.times_called_for_endpoint(Endpoint::LogEvent);
     assert_eq!(1, times_called);
+
+    statsig.shutdown().await.unwrap();
 }
 
 #[tokio::test]

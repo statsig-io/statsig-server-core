@@ -27,4 +27,3 @@ path = "tests/main.rs"
 
 [features]
 default = []
-vendored_openssl = ["statsig-rust/vendored_openssl"]

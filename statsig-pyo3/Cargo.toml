@@ -12,13 +12,4 @@ crate-type = ["cdylib"]
 [dependencies]
 statsig-rust = { path = "../statsig-rust" }
 pyo3 = { version = "0.23.1", features = ["abi3-py37"] }
-# pyo3-async-runtimes = { version = "0.23.0", features = [
-#     "attributes",
-#     "tokio",
-#     "tokio-runtime",
-# ] }
-# tokio = "1.41.0"
 serde_json = { version = "1.0.125", features = ["float_roundtrip"] }
-
-[features]
-vendored_openssl = ["statsig-rust/vendored_openssl"]

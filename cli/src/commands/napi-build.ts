@@ -22,7 +22,6 @@ export class NapiBuild extends CommandBase {
     this.option('--release', 'Build in release mode');
     this.option('--use-napi-cross', 'Build using napi-cross');
     this.option('--use-cross-compile', 'Build using cross-compile');
-    this.option('--rebuild-openssl', 'Include vendored openssl with the build');
     this.option(
       '--target, <string>',
       'Which target to build for, eg x86_64-apple-darwin',

@@ -2,13 +2,14 @@ use chrono::Utc;
 
 use super::providers::get_network_provider;
 use super::{HttpMethod, NetworkProvider, RequestArgs};
+use crate::networking::net_utils::sanitize_url_for_logging;
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
-use crate::{log_error_to_statsig_and_console, log_i, log_w};
+use crate::{log_d, log_error_to_statsig_and_console, log_i, log_w};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 const RETRY_CODES: [u16; 8] = [408, 500, 502, 503, 504, 522, 524, 599];
@@ -27,17 +28,13 @@ pub struct NetworkClient {
     headers: HashMap<String, String>,
     is_shutdown: Arc<AtomicBool>,
     ops_stats: Arc<OpsStatsForInstance>,
-
-    #[cfg(feature = "custom_network_provider")]
-    net_provider: std::sync::Weak<dyn NetworkProvider>,
-    #[cfg(not(feature = "custom_network_provider"))]
-    net_provider: Arc<dyn NetworkProvider>,
+    net_provider: Weak<dyn NetworkProvider>,
 }
 
 impl NetworkClient {
     #[must_use]
     pub fn new(sdk_key: &str, headers: Option<HashMap<String, String>>) -> Self {
-        let net_provider = get_network_provider(sdk_key);
+        let net_provider = get_network_provider();
 
         NetworkClient {
             headers: headers.unwrap_or_default(),
@@ -103,13 +100,18 @@ impl NetworkClient {
                 return Err(NetworkError::ShutdownError);
             }
 
-            #[cfg(feature = "custom_network_provider")]
             let response = match self.net_provider.upgrade() {
                 Some(net_provider) => net_provider.send(&method, &request_args).await,
                 None => return Err(NetworkError::RequestFailed),
             };
-            #[cfg(not(feature = "custom_network_provider"))]
-            let response = self.net_provider.send(&method, &request_args).await;
+
+            let sanitized_url = sanitize_url_for_logging(&request_args.url);
+            log_d!(
+                TAG,
+                "Response ({}): {}",
+                sanitized_url,
+                response.status_code
+            );
 
             let status = response.status_code;
             let sdk_region_str = response
