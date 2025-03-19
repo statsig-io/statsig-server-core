@@ -6,12 +6,13 @@ use serde_json::{from_str, json, Value};
 use statsig_rust::log_event_payload::{LogEventPayload, LogEventRequest};
 use statsig_rust::{EventLoggingAdapter, StatsigLocalFileEventLoggingAdapter};
 use std::fs;
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::Arc;
+use std::time::Duration;
+use utils::helpers::assert_eventually;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
 const SDK_KEY: &str = "server-local-file-events-test";
-const OUTPUT_FILE_PATH: &str = "/tmp/3776104929_events.json"; // djb2(SDK_KEY)_events.json
+const EVENTS_FILE_NAME: &str = "3776104929_events.json"; // djb2(SDK_KEY)_events.json
 
 const SINGLE_EVENT_DATA: &str = r#"{
     "eventName":"foo",
@@ -25,21 +26,17 @@ const SINGLE_EVENT_DATA: &str = r#"{
 }"#;
 
 lazy_static! {
-    static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
     static ref TEST_EVENTS_DATA: Value = from_str(&format!("[{SINGLE_EVENT_DATA}]")).unwrap();
 }
 
-fn get_test_lock() -> MutexGuard<'static, ()> {
-    let guard = TEST_MUTEX.lock().unwrap();
+async fn setup(test_name: &str) -> (MockScrapi, String) {
+    let test_path = format!("/tmp/{}", test_name);
 
-    if PathBuf::from(OUTPUT_FILE_PATH).exists() {
-        fs::remove_file(OUTPUT_FILE_PATH).expect("Failed to delete the events file.");
+    if std::path::Path::new(&test_path).exists() {
+        fs::remove_dir_all(&test_path).unwrap();
     }
+    fs::create_dir_all(&test_path).unwrap();
 
-    guard
-}
-
-async fn setup() -> MockScrapi {
     let mock_scrapi = MockScrapi::new().await;
 
     mock_scrapi
@@ -50,18 +47,15 @@ async fn setup() -> MockScrapi {
         })
         .await;
 
-    mock_scrapi
+    (mock_scrapi, test_path)
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
 async fn test_writing_to_file() {
-    let _lock = get_test_lock();
-
-    let mock_scrapi = setup().await;
+    let (mock_scrapi, tmp_path) = setup("test_writing_to_file").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
 
-    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, "/tmp", Some(url));
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url));
     adapter
         .log_events(LogEventRequest {
             payload: LogEventPayload {
@@ -73,23 +67,23 @@ async fn test_writing_to_file() {
         .await
         .unwrap();
 
-    assert!(
-        std::path::Path::new(OUTPUT_FILE_PATH).exists(),
-        "The events file was not created."
-    );
+    let out_path = format!("{}/{}", tmp_path, EVENTS_FILE_NAME);
+    assert_eventually(
+        || std::path::Path::new(&out_path).exists(),
+        Duration::from_secs(1),
+    )
+    .await;
 }
+
 #[cfg(not(feature = "with_zstd"))]
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
 async fn test_combining_requests() {
     use std::io::Read;
 
-    let _lock = get_test_lock();
-
-    let mock_scrapi = setup().await;
+    let (mock_scrapi, tmp_path) = setup("test_combining_requests").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
 
-    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, "/tmp", Some(url));
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url));
 
     let payload = LogEventPayload {
         events: TEST_EVENTS_DATA.clone(),
@@ -129,14 +123,11 @@ async fn test_combining_requests() {
 
 #[cfg(feature = "with_zstd")]
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
 async fn test_combining_requests() {
-    let _lock = get_test_lock();
-
-    let mock_scrapi = setup().await;
+    let (mock_scrapi, tmp_path) = setup("test_combining_requests").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
 
-    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, "/tmp", Some(url));
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url));
 
     let payload = LogEventPayload {
         events: TEST_EVENTS_DATA.clone(),
@@ -174,14 +165,11 @@ async fn test_combining_requests() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
 async fn test_combining_limits() {
-    let _lock = get_test_lock();
-
-    let mock_scrapi = setup().await;
+    let (mock_scrapi, tmp_path) = setup("test_combining_limits").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
 
-    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, "/tmp", Some(url));
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url));
 
     for _ in 0..1000 {
         let payload = LogEventPayload {
@@ -207,14 +195,11 @@ async fn test_combining_limits() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
 async fn test_sending_events_over_network() {
-    let _lock = get_test_lock();
-
-    let mock_scrapi = setup().await;
+    let (mock_scrapi, tmp_path) = setup("test_sending_events_over_network").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
 
-    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, "/tmp", Some(url));
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url));
 
     adapter
         .log_events(LogEventRequest {
@@ -229,17 +214,19 @@ async fn test_sending_events_over_network() {
 
     adapter.send_pending_events().await.unwrap();
 
-    assert!(fs::read_to_string(OUTPUT_FILE_PATH).unwrap().is_empty());
+    let out_path = format!("{}/{}", tmp_path, EVENTS_FILE_NAME);
+    assert_eventually(
+        || fs::read_to_string(&out_path).unwrap().is_empty(),
+        Duration::from_secs(1),
+    )
+    .await;
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
 async fn test_exposure_dedupe() {
-    let _lock = get_test_lock();
-
-    let mock_scrapi = setup().await;
+    let (mock_scrapi, tmp_path) = setup("test_exposure_dedupe").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
-    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, "/tmp", Some(url));
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url));
 
     let expo_data = r#"[{
         "eventName": "statsig::config_exposure",
@@ -281,15 +268,13 @@ async fn test_exposure_dedupe() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
 async fn test_concurrent_usage() {
-    let _lock = get_test_lock();
-    let mock_scrapi = setup().await;
+    let (mock_scrapi, tmp_path) = setup("test_concurrent_usage").await;
 
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
     let adapter = Arc::new(StatsigLocalFileEventLoggingAdapter::new(
         SDK_KEY,
-        "/tmp",
+        &tmp_path,
         Some(url),
     ));
 

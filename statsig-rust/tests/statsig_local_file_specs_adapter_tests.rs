@@ -2,31 +2,22 @@ mod utils;
 
 use crate::utils::helpers::load_contents;
 use crate::utils::mock_specs_listener::MockSpecsListener;
-use lazy_static::lazy_static;
 use statsig_rust::{SpecsAdapter, SpecsSource, StatsigLocalFileSpecsAdapter, StatsigRuntime};
 use std::fs;
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::Arc;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
 const SDK_KEY: &str = "server-local-specs-test";
-const SPECS_FILE_PATH: &str = "/tmp/3099846163_specs.json"; // djb2(SDK_KEY)_specs.json
+const SPECS_FILE_NAME: &str = "3099846163_specs.json"; // djb2(SDK_KEY)_specs.json
 
-lazy_static! {
-    static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
-}
+async fn setup(test_name: &str) -> (MockScrapi, String) {
+    let test_path = format!("/tmp/{}", test_name);
 
-fn get_test_lock() -> MutexGuard<'static, ()> {
-    let guard = TEST_MUTEX.lock().unwrap();
-
-    if PathBuf::from(SPECS_FILE_PATH).exists() {
-        fs::remove_file(SPECS_FILE_PATH).expect("Failed to delete the specs file.");
+    if std::path::Path::new(&test_path).exists() {
+        fs::remove_dir_all(&test_path).unwrap();
     }
+    fs::create_dir_all(&test_path).unwrap();
 
-    guard
-}
-
-async fn setup() -> MockScrapi {
     let mock_scrapi = MockScrapi::new().await;
     let dcs = load_contents("eval_proj_dcs.json");
 
@@ -38,23 +29,22 @@ async fn setup() -> MockScrapi {
         })
         .await;
 
-    mock_scrapi
+    (mock_scrapi, test_path)
 }
 
 #[tokio::test]
 #[allow(clippy::await_holding_lock)]
 async fn test_statsig_local_file_specs_adapter() {
-    let _lock = get_test_lock();
-
-    let mock_scrapi = setup().await;
+    let (mock_scrapi, test_path) = setup("test_statsig_local_file_specs_adapter").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
 
-    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, "/tmp", Some(url), false);
+    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false);
 
     adapter.fetch_and_write_to_file().await.unwrap();
 
+    let out_path = format!("{}/{}", test_path, SPECS_FILE_NAME);
     assert!(
-        std::path::Path::new(SPECS_FILE_PATH).exists(),
+        std::path::Path::new(&out_path).exists(),
         "The specs file was not created."
     );
 }
@@ -62,16 +52,16 @@ async fn test_statsig_local_file_specs_adapter() {
 #[tokio::test]
 #[allow(clippy::await_holding_lock)]
 async fn test_concurrent_access() {
-    let _lock = get_test_lock();
-
-    let mock_scrapi = setup().await;
+    let (mock_scrapi, test_path) = setup("test_concurrent_access").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
 
     let tasks: Vec<_> = (0..10)
         .map(|_| {
             let url = url.clone();
+            let test_path = test_path.clone();
             tokio::task::spawn(async move {
-                let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, "/tmp", Some(url), false);
+                let adapter =
+                    StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false);
                 adapter.fetch_and_write_to_file().await.unwrap();
                 let _ = adapter.resync_from_file();
             })
@@ -85,11 +75,9 @@ async fn test_concurrent_access() {
 #[tokio::test]
 #[allow(clippy::await_holding_lock)]
 async fn test_sending_since_time() {
-    let _lock = get_test_lock();
-
-    let mock_scrapi = setup().await;
+    let (mock_scrapi, test_path) = setup("test_sending_since_time").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
-    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, "/tmp", Some(url), false);
+    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false);
     adapter.fetch_and_write_to_file().await.unwrap();
 
     let reqs = mock_scrapi.get_requests_for_endpoint(Endpoint::DownloadConfigSpecs);
@@ -106,7 +94,10 @@ async fn test_sending_since_time() {
 #[tokio::test]
 #[allow(clippy::await_holding_lock)]
 async fn test_sending_checksum() {
-    let _lock = get_test_lock();
+    let (mock_scrapi, test_path) = setup("test_sending_checksum").await;
+    let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
+    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false);
+    adapter.fetch_and_write_to_file().await.unwrap();
 
     let mock_scrapi = MockScrapi::new().await;
     let dcs = load_contents("dcs_with_checksum.json");
@@ -120,7 +111,7 @@ async fn test_sending_checksum() {
         .await;
 
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
-    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, "/tmp", Some(url), false);
+    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false);
     adapter.fetch_and_write_to_file().await.unwrap();
 
     let reqs = mock_scrapi.get_requests_for_endpoint(Endpoint::DownloadConfigSpecs);
@@ -137,13 +128,11 @@ async fn test_sending_checksum() {
 #[tokio::test]
 #[allow(clippy::await_holding_lock)]
 async fn test_syncing_from_file() {
-    let _lock = get_test_lock();
-
-    let mock_scrapi = setup().await;
+    let (mock_scrapi, test_path) = setup("test_syncing_from_file").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
     let adapter = Arc::new(StatsigLocalFileSpecsAdapter::new(
         SDK_KEY,
-        "/tmp",
+        &test_path,
         Some(url),
         false,
     ));

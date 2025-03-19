@@ -1,6 +1,7 @@
 use serde_json::{Map, Value};
 use std::fs;
 use std::path::PathBuf;
+use std::time::Duration;
 
 pub fn enforce_array(value: &Value) -> Vec<Value> {
     value.as_array().unwrap().clone()
@@ -18,6 +19,22 @@ pub fn load_contents(resource_file_name: &str) -> String {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push(format!("tests/data/{resource_file_name}"));
     fs::read_to_string(path).expect("Unable to read resource file")
+}
+
+pub async fn assert_eventually<F>(assertion: F, timeout_ms: Duration)
+where
+    F: Fn() -> bool,
+{
+    let steps = timeout_ms.as_millis() / 10;
+    for _ in 0..steps {
+        if assertion() {
+            return;
+        }
+
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+
+    panic!("assertion timed out");
 }
 
 #[macro_export]

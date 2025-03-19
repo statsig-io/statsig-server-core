@@ -1,8 +1,8 @@
 mod utils;
 
 use statsig_rust::{
-    output_logger::LogLevel, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
-    FeatureGateEvaluationOptions, Statsig, StatsigOptions, StatsigUser,
+    DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
+    Statsig, StatsigOptions, StatsigUser,
 };
 use std::{
     sync::Arc,
@@ -32,7 +32,6 @@ async fn setup(delay_ms: u64, key: String) -> (MockScrapi, Statsig) {
                 "tests/data/eval_proj_dcs.json",
             ))),
             log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
-            output_log_level: Some(LogLevel::Debug),
             ..StatsigOptions::new()
         })),
     );

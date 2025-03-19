@@ -43,8 +43,8 @@ const TEST_COMMANDS: Record<string, string> = {
   ].join(' && '),
 
   rust: [
-    'cargo test -p statsig-rust',
-    'cargo test -p statsig-rust --features with_zstd',
+    'cargo nextest run -p statsig-rust --retries=5',
+    'cargo nextest run -p statsig-rust --features with_zstd --retries=5',
   ].join(' && '),
 };
 
@@ -116,6 +116,9 @@ function runTests(lang: string, options: Options) {
     `-v "${BASE_DIR}":/app`,
     `-v "/tmp:/tmp"`,
     `-v "/tmp/statsig-server-core/cargo-registry:/usr/local/cargo/registry"`,
+    `-e RUST_BACKTRACE=1`,
+    `-e FORCE_COLOR=true`,
+    `-e test_api_key=${process.env.test_api_key}`,
     dockerImageTag,
     `"cd /app && ${TEST_COMMANDS[lang]}"`, // && while true; do sleep 1000; done
   ].join(' ');

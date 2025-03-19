@@ -76,8 +76,8 @@ export class SizeReport extends CommandBase {
       const pr = await getPullRequestFromBranch(octokit);
 
       if (!pr) {
-        Log.stepEnd('No pull request found', 'failure');
-        process.exit(1);
+        Log.stepEnd('No pull request found, skipping...', 'failure');
+        return;
       }
 
       // Skip for now. I need to update it to download all artifacts and run all together

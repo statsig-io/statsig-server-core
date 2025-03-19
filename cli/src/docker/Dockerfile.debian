@@ -29,6 +29,14 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_TERM_COLOR=always
 RUN rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
 
+RUN ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch_64/') && \
+    if [ "$ARCH" = "x86_64" ]; then \
+    curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin; \
+    else \
+    curl -LsSf https://get.nexte.st/latest/linux-arm | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin; \
+    fi
+
+RUN cargo nextest --help
 ENV CC=clang
 
 ENTRYPOINT ["sh", "-c"]
