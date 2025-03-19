@@ -16,26 +16,7 @@ env:
   test_api_key: ${{ secrets.KONG_SERVER_SDK_KEY }}
 
 jobs:
-  build-docker-image:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Build Docker Image
-        uses: ./.github/actions/build-docker-image
-        with:
-          dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          dockerhub_password: ${{ secrets.DOCKERHUB_TOKEN }}
-          gh_token: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
-          dockerfile_path: cli/src/docker/Dockerfile.debian
-          docker_image_tag: statsig/server-core-debian-x86_64
-          platform: linux/amd64
-
   run-bindings-tests:
-    needs: build-docker-image
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -54,16 +35,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Load Docker Image
-        uses: ./.github/actions/build-docker-image
-        with:
-          dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          dockerhub_password: ${{ secrets.DOCKERHUB_TOKEN }}
-          gh_token: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
-          dockerfile_path: cli/src/docker/Dockerfile.debian
-          docker_image_tag: statsig/server-core-debian-x86_64
-          platform: linux/amd64
-
       - uses: pnpm/action-setup@v4
         with:
           version: 7.32.4
@@ -73,5 +44,18 @@ jobs:
       - name: Install NPM Dependencies
         run: pnpm install --dir cli
 
+      - name: '[Python] Install Dependencies'
+        if: matrix.lang == 'python'
+        run: pip3 install pytest maturin patchelf pytest_httpserver
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: '[Rust] Install cargo-nextest'
+        if: matrix.lang == 'rust'
+        run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+
       - name: Run Tests
-        run: ./tore test ${{ matrix.lang }} --arch x86_64 --os debian --skip-docker-build
+        run: ./tore test ${{ matrix.lang }} --no-docker --arch x86_64 --os debian
