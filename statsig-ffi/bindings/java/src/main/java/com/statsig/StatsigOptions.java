@@ -8,6 +8,7 @@ public class StatsigOptions {
                 builder.specsUrl,
                 builder.logEventUrl,
                 builder.idListsUrl,
+                builder.idListsSyncIntervalMs,
                 builder.specsSyncIntervalMs,
                 builder.eventLoggingFlushIntervalMs,
                 builder.eventLoggingMaxQueueSize,
@@ -35,6 +36,7 @@ public class StatsigOptions {
         private String specsUrl;
         private String logEventUrl;
         private String idListsUrl;
+        private long idListsSyncIntervalMs;
         private long specsSyncIntervalMs;
         private long eventLoggingFlushIntervalMs;
         private long eventLoggingMaxQueueSize;
@@ -89,6 +91,11 @@ public class StatsigOptions {
 
         public Builder setIdListsUrl(String idListsUrl) {
             this.idListsUrl = idListsUrl;
+            return this;
+        }
+
+        public Builder setIdListsSyncIntervalMs(long idListsSyncIntervalMs) {
+            this.idListsSyncIntervalMs = idListsSyncIntervalMs;
             return this;
         }
 

@@ -134,6 +134,7 @@ class StatsigJNI {
             String specsUrl,
             String logEventUrl,
             String idListsUrl,
+            long idListsSyncIntervalMs,
             long specsSyncIntervalMs,
             long eventLoggingFlushIntervalMs,
             long eventLoggingMaxQueueSize,

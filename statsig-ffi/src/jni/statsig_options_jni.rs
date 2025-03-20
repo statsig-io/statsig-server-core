@@ -15,6 +15,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     specs_url: JString,
     log_event_url: JString,
     id_lists_url: JString,
+    id_lists_sync_interval_ms: jlong,
     specs_sync_interval_ms: jlong,
     event_logging_flush_interval_ms: jlong,
     event_logging_max_queue_size: jlong,
@@ -42,6 +43,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         None
     };
 
+    let id_lists_sync_interval_ms = if id_lists_sync_interval_ms > 0 {
+        Some(id_lists_sync_interval_ms as u32)
+    } else {
+        None
+    };
+
     let event_logging_flush_interval_ms = if event_logging_flush_interval_ms > 0 {
         Some(event_logging_flush_interval_ms as u32)
     } else {
@@ -64,6 +71,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .event_logging_max_queue_size(event_logging_max_queue_size)
         .environment(environment)
         .id_lists_url(id_lists_url)
+        .id_lists_sync_interval_ms(id_lists_sync_interval_ms)
         .enable_id_lists(enable_id_lists)
         .disable_all_logging(disable_all_logging)
         .output_log_level(Some(output_logger_level as u32))

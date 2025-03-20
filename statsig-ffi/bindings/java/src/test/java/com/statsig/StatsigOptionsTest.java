@@ -14,6 +14,7 @@ public class StatsigOptionsTest {
                 .setSpecsUrl("https://example.com/specs")
                 .setLogEventUrl("https://example.com/log")
                 .setIdListsUrl("https://example.com/idlists")
+                .setIdListsSyncIntervalMs(3000L)
                 .setSpecsSyncIntervalMs(1000L)
                 .setEventLoggingFlushIntervalMs(2000L)
                 .setEventLoggingMaxQueueSize(5000L)
@@ -30,9 +31,17 @@ public class StatsigOptionsTest {
     @Test
     void testBuilderSetNumericValues() {
         StatsigOptions options = new StatsigOptions.Builder()
+                .setIdListsSyncIntervalMs(54321L)
                 .setSpecsSyncIntervalMs(12345L)
                 .setEventLoggingFlushIntervalMs(67890L)
                 .setEventLoggingMaxQueueSize(111213L)
+                .build();
+    }
+    
+    @Test
+    void testIdListsSyncIntervalMs() {
+        StatsigOptions options = new StatsigOptions.Builder()
+                .setIdListsSyncIntervalMs(5000L)
                 .build();
     }
 
