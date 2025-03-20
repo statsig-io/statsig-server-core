@@ -1,3 +1,4 @@
+mod observability_client_py;
 mod pyo_utils;
 mod statsig_metadata_py;
 mod statsig_options_py;
@@ -22,6 +23,7 @@ fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<statsig_types_py::ExperimentEvaluationOptionsPy>()?;
     m.add_class::<statsig_types_py::DynamicConfigEvaluationOptionsPy>()?;
     m.add_class::<statsig_types_py::LayerEvaluationOptionsPy>()?;
+    m.add_class::<observability_client_py::ObservabilityClientPy>()?;
 
     Ok(())
 }

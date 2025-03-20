@@ -1,4 +1,4 @@
-from statsig_python_core import Statsig, StatsigOptions, StatsigUser
+from statsig_python_core import Statsig, StatsigOptions, StatsigUser, ObservabilityClient
 from pytest_httpserver import HTTPServer
 import json
 from utils import get_test_data_resource
@@ -28,12 +28,10 @@ def statsig_setup(httpserver: HTTPServer):
     # Teardown
     statsig.shutdown().wait()
 
-
 def test_check_gate(statsig_setup):
     statsig = statsig_setup
 
     assert statsig.check_gate(StatsigUser("a-user"), "test_public")
-
 
 def test_get_feature_gate(statsig_setup):
     statsig = statsig_setup
@@ -68,7 +66,6 @@ def test_get_experiment(statsig_setup):
     assert experiment.id_type == "userID"
     assert experiment.group_name == "Test #2"
 
-
 def test_get_layer(statsig_setup):
     statsig = statsig_setup
     layer = statsig.get_layer(StatsigUser("my_user"), "layer_with_many_params")
@@ -76,7 +73,6 @@ def test_get_layer(statsig_setup):
     assert layer.get_string("a_string", "ERR") == "test_2"
     assert layer.name == "layer_with_many_params"
     assert layer.rule_id == "7kGqFczL8Ztc2vv3tWGmvO"
-
 
 def test_gcir(statsig_setup):
     statsig = statsig_setup

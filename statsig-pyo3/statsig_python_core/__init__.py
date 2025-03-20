@@ -10,6 +10,7 @@ from .statsig_python_core import (
     DynamicConfigEvaluationOptions,
     LayerEvaluationOptions,
     ExperimentEvaluationOptions,
+    ObservabilityClient,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "DynamicConfigEvaluationOptions",
     "LayerEvaluationOptions",
     "ExperimentEvaluationOptions",
+    "ObservabilityClient",
 ]

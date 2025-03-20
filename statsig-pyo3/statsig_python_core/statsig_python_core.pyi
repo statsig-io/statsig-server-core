@@ -1,9 +1,9 @@
-from typing import Optional, Any, Union, Sequence, Mapping
+from typing import Optional, Any, Union, Sequence, Mapping, Dict
 from typing_extensions import TypeAliasType
 
 class StatsigOptions:
     specs_url: Optional[str]
-    specs_sync_interval_ms: Optional[str]
+    specs_sync_interval_ms: Optional[int]
     init_timeout_ms: Optional[int]
     log_event_url: Optional[str]
     disable_all_logging: Optional[bool]
@@ -17,6 +17,7 @@ class StatsigOptions:
     fallback_to_statsig_api: Optional[bool]
     environment: Optional[str]
     output_log_level: Optional[str]
+    observability_client: Optional[ObservabilityClient]
 
     def __init__(
         self,
@@ -35,6 +36,7 @@ class StatsigOptions:
         fallback_to_statsig_api: Optional[bool] = None,
         environment: Optional[str] = None,
         output_log_level: Optional[str] = None,
+        observability_client: Optional[ObservabilityClient] = None,
     ) -> None: ...
 
 JSONPrimitive = Union[str, int, float, bool, None]
@@ -226,3 +228,9 @@ class Statsig:
         hash: Optional[str] = None,
         client_sdk_key: Optional[str] = None,
     ) -> str: ...
+
+class ObservabilityClient:
+    def init(self) -> None: ...
+    def increment(self, metric_name: str, value: int = 1, tags: Optional[Dict[str, str]] = None) -> None: ...
+    def gauge(self, metric_name: str, value: float, tags: Optional[Dict[str, str]] = None) -> None: ...
+    def distribution(self, metric_name: str, value: float, tags: Optional[Dict[str, str]] = None) -> None: ...

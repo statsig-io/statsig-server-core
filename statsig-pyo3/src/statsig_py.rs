@@ -1,3 +1,4 @@
+use crate::observability_client_py::ObservabilityClientPy;
 use crate::pyo_utils::map_to_py_dict;
 use crate::statsig_options_py::StatsigOptionsPy;
 use crate::statsig_types_py::{DynamicConfigPy, LayerPy};
@@ -16,7 +17,7 @@ use statsig_rust::{
     LayerEvaluationOptions, Statsig,
 };
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 const TAG: &str = stringify!(StatsigPy);
@@ -32,6 +33,7 @@ pub enum StatsigResultPy {
 #[pyclass(name = "Statsig")]
 pub struct StatsigPy {
     inner: Arc<Statsig>,
+    observability_client: Mutex<Option<Arc<ObservabilityClientPy>>>,
 }
 
 #[pymethods]
@@ -40,12 +42,19 @@ impl StatsigPy {
     #[pyo3(signature = (sdk_key, options=None))]
     pub fn new(sdk_key: &str, options: Option<&StatsigOptionsPy>, py: Python) -> Self {
         let mut local_opts = None;
-        if let Some(o) = options {
-            local_opts = Some(Arc::new(o.to_statsig_options(py)));
+        let mut obs_client = None;
+
+        if let Some(option_py) = options {
+            let (statsig_options, ob_client) = option_py.to_statsig_options(py);
+
+            obs_client = ob_client.clone();
+
+            local_opts = Some(Arc::new(statsig_options));
         }
 
         Self {
             inner: Arc::new(Statsig::new(sdk_key, local_opts)),
+            observability_client: Mutex::new(obs_client),
         }
     }
 
@@ -87,6 +96,10 @@ impl StatsigPy {
 
     pub fn shutdown(&self, py: Python) -> PyResult<PyObject> {
         let (completion_event, event_clone) = get_completion_event(py)?;
+
+        if let Ok(mut lock) = self.observability_client.lock() {
+            lock.take();
+        }
 
         let inst = self.inner.clone();
         let rt = self.inner.statsig_runtime.clone();
