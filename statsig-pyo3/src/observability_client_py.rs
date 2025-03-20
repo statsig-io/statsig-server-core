@@ -1,17 +1,20 @@
 use crate::pyo_utils::string_map_to_py_dict;
 use pyo3::{pyclass, pymethods, Py, PyResult, Python};
+use pyo3_stub_gen::derive::*;
 use statsig_rust::{log_e, ObservabilityClient, OpsStatsEventObserver};
 use std::collections::HashMap;
 use std::sync::Arc;
 
 const TAG: &str = "ObservabilityClientPy";
 
+#[gen_stub_pyclass]
 #[pyclass(name = "ObservabilityClient", subclass)]
 pub struct ObservabilityClientPy {
     #[pyo3(get)]
     py_ref: Option<Py<ObservabilityClientPy>>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl ObservabilityClientPy {
     #[new]

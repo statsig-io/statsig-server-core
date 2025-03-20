@@ -22,6 +22,7 @@ export function buildPython(options: BuilderOptions) {
     options.release ? '--release --strip' : '',
     options.outDir ? `--out ${options.outDir}` : '',
     target ? `--target ${target}` : '',
+    '&& cargo run --bin stub_gen',
   ].join(' ');
 
   const dockerCommand = [

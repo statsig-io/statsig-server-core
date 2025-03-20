@@ -7,6 +7,7 @@ mod statsig_types_py;
 mod statsig_user_py;
 
 use pyo3::prelude::*;
+use pyo3_stub_gen::define_stub_info_gatherer;
 
 #[pymodule]
 fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -27,3 +28,5 @@ fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     Ok(())
 }
+
+define_stub_info_gatherer!(stub_info);

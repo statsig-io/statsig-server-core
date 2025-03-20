@@ -11,6 +11,7 @@ use crate::{
 };
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use pyo3_stub_gen::derive::*;
 use statsig_rust::{
     log_e, unwrap_or_return, ClientInitResponseOptions, DynamicConfigEvaluationOptions,
     ExperimentEvaluationOptions, FeatureGateEvaluationOptions, HashAlgorithm,
@@ -22,25 +23,19 @@ use std::time::Duration;
 
 const TAG: &str = stringify!(StatsigPy);
 
-#[pyclass(eq, eq_int, name = "StatsigResult")]
-#[derive(PartialEq)]
-pub enum StatsigResultPy {
-    Ok,
-    InvalidKey,
-    NoDice,
-}
-
+#[gen_stub_pyclass]
 #[pyclass(name = "Statsig")]
 pub struct StatsigPy {
     inner: Arc<Statsig>,
     observability_client: Mutex<Option<Arc<ObservabilityClientPy>>>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl StatsigPy {
     #[new]
     #[pyo3(signature = (sdk_key, options=None))]
-    pub fn new(sdk_key: &str, options: Option<&StatsigOptionsPy>, py: Python) -> Self {
+    pub fn new(sdk_key: &str, options: Option<StatsigOptionsPy>, py: Python) -> Self {
         let mut local_opts = None;
         let mut obs_client = None;
 
@@ -152,7 +147,7 @@ impl StatsigPy {
         &self,
         user: &StatsigUserPy,
         name: &str,
-        options: Option<&FeatureGateEvaluationOptionsPy>,
+        options: Option<FeatureGateEvaluationOptionsPy>,
     ) -> bool {
         self.inner.check_gate_with_options(
             &user.inner,
@@ -166,7 +161,7 @@ impl StatsigPy {
         &self,
         user: &StatsigUserPy,
         name: &str,
-        options: Option<&FeatureGateEvaluationOptionsPy>,
+        options: Option<FeatureGateEvaluationOptionsPy>,
     ) -> FeatureGatePy {
         let gate = self.inner.get_feature_gate_with_options(
             &user.inner,
@@ -192,7 +187,7 @@ impl StatsigPy {
         &self,
         user: &StatsigUserPy,
         name: &str,
-        options: Option<&DynamicConfigEvaluationOptionsPy>,
+        options: Option<DynamicConfigEvaluationOptionsPy>,
         py: Python,
     ) -> DynamicConfigPy {
         let config = self.inner.get_dynamic_config_with_options(
@@ -226,7 +221,7 @@ impl StatsigPy {
         &self,
         user: &StatsigUserPy,
         name: &str,
-        options: Option<&ExperimentEvaluationOptionsPy>,
+        options: Option<ExperimentEvaluationOptionsPy>,
         py: Python,
     ) -> ExperimentPy {
         let experiment = self.inner.get_experiment_with_options(
@@ -261,7 +256,7 @@ impl StatsigPy {
         &self,
         user: &StatsigUserPy,
         name: &str,
-        options: Option<&LayerEvaluationOptionsPy>,
+        options: Option<LayerEvaluationOptionsPy>,
         py: Python,
     ) -> LayerPy {
         let layer = self.inner.get_layer_with_options(

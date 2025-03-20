@@ -1,10 +1,12 @@
 use crate::pyo_utils::py_dict_to_map;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use pyo3_stub_gen::derive::*;
 use statsig_rust::{log_w, DynamicValue, StatsigUser};
 
 const TAG: &str = stringify!(StatsigUserPy);
 
+#[gen_stub_pyclass]
 #[pyclass(name = "StatsigUser")]
 pub struct StatsigUserPy {
     pub inner: StatsigUser,
@@ -31,6 +33,7 @@ pub struct StatsigUserPy {
     pub private_attributes: Option<Py<PyDict>>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl StatsigUserPy {
     #[new]

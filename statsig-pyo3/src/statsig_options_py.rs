@@ -2,11 +2,14 @@ use crate::observability_client_py::ObservabilityClientPy;
 use crate::pyo_utils::py_dict_to_map;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use pyo3_stub_gen::derive::*;
 use statsig_rust::{output_logger::LogLevel, ObservabilityClient, StatsigOptions};
 use std::sync::Arc;
 use std::sync::Weak;
 
+#[gen_stub_pyclass]
 #[pyclass(name = "StatsigOptions")]
+#[derive(FromPyObject)]
 pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub specs_url: Option<String>,
@@ -44,6 +47,7 @@ pub struct StatsigOptionsPy {
     pub observability_client: Option<Py<ObservabilityClientPy>>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl StatsigOptionsPy {
     #[new]
