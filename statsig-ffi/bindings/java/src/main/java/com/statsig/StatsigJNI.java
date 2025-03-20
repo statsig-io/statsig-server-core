@@ -28,7 +28,7 @@ class StatsigJNI {
     /**
      * Statsig
      */
-    public static native String statsigCreate(String sdkKey, String optionsRef);
+    public static native String statsigCreate(String sdkKey, String optionsRef, String statsigMetadata);
 
     public static native void statsigRelease(String statsigRef);
 

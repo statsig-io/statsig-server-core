@@ -1,3 +1,4 @@
+use crate::ffi_utils::parse_json_to_str_map;
 use crate::jni::jni_utils::{
     convert_java_check_gate_options_to_rust, convert_java_client_init_response_options_to_rust,
     convert_java_get_dynamic_config_options_to_rust, convert_java_get_experiment_options_to_rust,
@@ -7,6 +8,7 @@ use crate::{get_instance_or_noop_jni, get_instance_or_return_jni};
 use jni::sys::{jboolean, jclass, jdouble, jlong, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use serde_json::Value;
+use statsig_rust::statsig_metadata::StatsigMetadata;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -25,6 +27,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
     _class: JClass,
     sdk_key: JString,
     options_ref: JString,
+    statsig_metadata: JString,
 ) -> jstring {
     // StatsigOptions::new(); // temp: enable logging
 
@@ -38,6 +41,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
     let options = INST_STORE.get_with_optional_id::<StatsigOptions>(options_inst_id.as_ref());
 
     let inst = Statsig::new(&sdk_key, options);
+    update_statsig_metadata(&mut env, statsig_metadata);
 
     let id = INST_STORE.add(inst);
     match id {
@@ -943,4 +947,14 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
 
         drop(global_callback);
     });
+}
+
+fn update_statsig_metadata(env: &mut JNIEnv, metadata: JString) {
+    let metadata_str = jstring_to_string(env, metadata);
+    if let Some(m) = parse_json_to_str_map(metadata_str) {
+        let os = m.get("os").map_or("unknown".to_string(), |s| s.clone());
+        let arch = m.get("arch").map_or("unknown".to_string(), |s| s.clone());
+        let language_version = m.get("arch").map_or("unknown".to_string(), |s| s.clone());
+        StatsigMetadata::update_values("server-core-java".to_string(), os, arch, language_version);
+    }
 }

@@ -34,7 +34,7 @@ public class Statsig {
      *                Statsig instance.
      */
     public Statsig(String sdkKey, StatsigOptions options) {
-        this.ref = StatsigJNI.statsigCreate(sdkKey, options.getRef());
+        this.ref = StatsigJNI.statsigCreate(sdkKey, options.getRef(), StatsigMetadata.getSerializedCopy());
 
         ResourceCleaner.register(this, () -> {
             if (ref != null) {
@@ -45,7 +45,7 @@ public class Statsig {
     }
 
     public Statsig(String sdkKey) {
-        this.ref = StatsigJNI.statsigCreate(sdkKey, null);
+        this.ref = StatsigJNI.statsigCreate(sdkKey, null, StatsigMetadata.getSerializedCopy());
 
         ResourceCleaner.register(this, () -> {
             if (ref != null) {
