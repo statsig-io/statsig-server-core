@@ -14,3 +14,5 @@ dynamic = ["version"]
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
+python-source = "py_src"
+include = ["statsig_python_core.pyi"]

@@ -11,25 +11,25 @@ const TAG: &str = stringify!(StatsigUserPy);
 pub struct StatsigUserPy {
     pub inner: StatsigUser,
 
-    #[pyo3(get)]
+    #[pyo3(get, set)]
     pub user_id: Option<String>,
-    #[pyo3(get)]
+    #[pyo3(get, set)]
     pub email: Option<String>,
-    #[pyo3(get)]
+    #[pyo3(get, set)]
     pub ip: Option<String>,
-    #[pyo3(get)]
+    #[pyo3(get, set)]
     pub country: Option<String>,
-    #[pyo3(get)]
+    #[pyo3(get, set)]
     pub locale: Option<String>,
-    #[pyo3(get)]
+    #[pyo3(get, set)]
     pub app_version: Option<String>,
-    #[pyo3(get)]
+    #[pyo3(get, set)]
     pub user_agent: Option<String>,
-    #[pyo3(get)]
+    #[pyo3(get, set)]
     pub custom: Option<Py<PyDict>>,
-    #[pyo3(get)]
+    #[pyo3(get, set)]
     pub custom_ids: Option<Py<PyDict>>,
-    #[pyo3(get)]
+    #[pyo3(get, set)]
     pub private_attributes: Option<Py<PyDict>>,
 }
 
