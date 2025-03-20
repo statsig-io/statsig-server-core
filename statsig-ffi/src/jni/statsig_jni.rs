@@ -955,6 +955,11 @@ fn update_statsig_metadata(env: &mut JNIEnv, metadata: JString) {
         let os = m.get("os").map_or("unknown".to_string(), |s| s.clone());
         let arch = m.get("arch").map_or("unknown".to_string(), |s| s.clone());
         let language_version = m.get("arch").map_or("unknown".to_string(), |s| s.clone());
-        StatsigMetadata::update_values("server-core-java".to_string(), os, arch, language_version);
+        StatsigMetadata::update_values(
+            "statsig-server-core-java".to_string(),
+            os,
+            arch,
+            language_version,
+        );
     }
 }
