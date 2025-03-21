@@ -66,6 +66,11 @@ use std::time::{Duration, Instant};
 use tokio::try_join;
 
 const TAG: &str = stringify!(Statsig);
+const ERROR_SDK_KEY: &str = "__STATSIG_ERROR_SDK_KEY__";
+
+lazy_static::lazy_static! {
+    static ref SHARED_INSTANCE: Mutex<Option<Arc<Statsig>>> = Mutex::new(None);
+}
 
 pub struct Statsig {
     pub statsig_runtime: Arc<StatsigRuntime>,
@@ -96,11 +101,13 @@ pub struct StatsigContext {
     pub error_observer: Arc<dyn OpsStatsEventObserver>,
     pub diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
 }
+
 #[derive(Debug)]
 pub struct FailureDetails {
     pub reason: String,
     pub error: Option<StatsigErr>,
 }
+
 #[derive(Debug)]
 pub struct StatsigInitializeDetails {
     pub duration: f64,
@@ -768,6 +775,75 @@ impl Statsig {
                 sampling_details,
                 override_config_name: experiment.__override_config_name.clone(),
             }));
+    }
+}
+
+// -------------------------
+//   Shared Instance Functions
+// -------------------------
+
+impl Statsig {
+    pub fn shared() -> Arc<Statsig> {
+        let lock = match SHARED_INSTANCE.lock() {
+            Ok(lock) => lock,
+            Err(e) => {
+                log_e!(TAG, "Statsig::shared() mutex error: {}", e);
+                return Arc::new(Statsig::new(ERROR_SDK_KEY, None));
+            }
+        };
+
+        match lock.as_ref() {
+            Some(statsig) => statsig.clone(),
+            None => {
+                log_e!(
+                    TAG,
+                    "Statsig::shared() called, but no instance has been set with Statsig::new_shared(...)"
+                );
+                Arc::new(Statsig::new(ERROR_SDK_KEY, None))
+            }
+        }
+    }
+
+    pub fn new_shared(
+        sdk_key: &str,
+        options: Option<Arc<StatsigOptions>>,
+    ) -> Result<Arc<Statsig>, StatsigErr> {
+        match SHARED_INSTANCE.lock() {
+            Ok(mut lock) => {
+                if lock.is_some() {
+                    let message = "Shared Statsig instance already exists";
+                    log_e!(TAG, "{}", message);
+                    return Err(StatsigErr::SharedInstanceFailure(message.to_string()));
+                }
+
+                let statsig = Arc::new(Statsig::new(sdk_key, options));
+                *lock = Some(statsig.clone());
+                Ok(statsig)
+            }
+            Err(e) => {
+                let message = format!("Statsig::new_shared() mutex error: {}", e);
+                log_e!(TAG, "{}", message);
+                Err(StatsigErr::SharedInstanceFailure(message))
+            }
+        }
+    }
+
+    pub fn remove_shared() {
+        match SHARED_INSTANCE.lock() {
+            Ok(mut lock) => {
+                *lock = None;
+            }
+            Err(e) => {
+                log_e!(TAG, "Statsig::remove_shared() mutex error: {}", e);
+            }
+        }
+    }
+
+    pub fn has_shared_instance() -> bool {
+        match SHARED_INSTANCE.lock() {
+            Ok(lock) => lock.is_some(),
+            Err(_) => false,
+        }
     }
 }
 
@@ -1568,6 +1644,8 @@ mod tests {
         StatsigHttpIdListsAdapter,
     };
     use std::env;
+
+    impl Statsig {}
 
     fn get_sdk_key() -> String {
         let key = env::var("test_api_key").expect("test_api_key environment variable not set");

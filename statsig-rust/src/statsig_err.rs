@@ -42,6 +42,8 @@ pub enum StatsigErr {
     // Task Scheduler
     ScheduleFailure(String),
     ShutdownFailure,
+
+    SharedInstanceFailure(String),
 }
 
 impl Display for StatsigErr {
@@ -89,6 +91,9 @@ impl Display for StatsigErr {
             }
             StatsigErr::ObservabilityClientFailure(message) => {
                 write!(f, "ObservabilityClient Error: {message}")
+            }
+            StatsigErr::SharedInstanceFailure(message) => {
+                write!(f, "SharedInstance Error: {message}")
             }
         }
     }
