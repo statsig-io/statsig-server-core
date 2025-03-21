@@ -1,5 +1,4 @@
 import {
-  BASE_DIR,
   ensureEmptyDir,
   getFileSize,
   getHumanReadableSize,
@@ -119,7 +118,7 @@ export class SizeReport extends CommandBase {
       const bytes = getFileSize(fullPath);
       const size = getHumanReadableSize(fullPath);
 
-      return { path: fullPath.replace(BASE_DIR, '.'), size, file, bytes };
+      return { path: getShortPath(fullPath), size, file, bytes };
     });
 
     Log.stepBegin('Listing sizes');
@@ -324,5 +323,26 @@ function getStylizedPercentageChange(change: number) {
     return '${\\color{limegreen}⬇️}$ ' + change.toFixed(2) + '%';
   }
 
-  return 'No Change';
+  return '${\\color{royalblue} =}$ No Change';
+}
+
+function getShortPath(path: string) {
+  const sanePath = path.replace(/\\/g, '/');
+
+  if (sanePath.includes('statsig-pyo3/build/')) {
+    const parts = sanePath.split('statsig-pyo3/build/');
+    return parts[1];
+  }
+
+  if (sanePath.includes('statsig-node/build/')) {
+    const parts = sanePath.split('statsig-node/build/');
+    return parts[1];
+  }
+
+  if (sanePath.includes('/target/')) {
+    const parts = sanePath.split('/target/');
+    return parts[1];
+  }
+
+  return sanePath;
 }

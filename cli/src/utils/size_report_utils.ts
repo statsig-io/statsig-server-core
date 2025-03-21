@@ -66,6 +66,17 @@ export async function fetchPreviousSizeInfo(octokit: Octokit): Promise<{
       per_page: 100,
     });
 
+    // Deletes all comments
+    // for (const comment of data) {
+    //   await octokit.rest.issues.deleteComment({
+    //     owner: 'statsig-io',
+    //     repo: 'private-statsig-server-core',
+    //     comment_id: comment.id,
+    //   });
+    // }
+
+    // throw new Error('test');
+
     const result = data.reduce(
       (acc, comment) => {
         const stripped = comment.body

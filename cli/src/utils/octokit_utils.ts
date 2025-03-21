@@ -1,4 +1,3 @@
-import { PublisherOptions } from '@/commands/publishers/publisher-options.js';
 import { createAppAuth } from '@octokit/auth-app';
 import { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods';
 import { createReadStream, writeFileSync } from 'fs';
@@ -357,6 +356,8 @@ export async function getWorkflowRunArtifacts(
     Log.stepEnd(message, 'failure');
     throw new Error(message);
   }
+
+  Log.stepProgress(`Found ${response.data.artifacts.length} artifacts`);
 
   response.data.artifacts = response.data.artifacts.filter((artifact) => {
     if (artifact.name.includes('dockerbuild')) {
