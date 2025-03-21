@@ -21,6 +21,7 @@ env:
   IS_BETA_BRANCH: ${{ contains(github.ref, 'heads/betas') }}
   IS_MERGED_PR: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
   IS_NEW_RELEASE: ${{ github.event_name == 'release' }}
+  IS_MAIN_BRANCH: ${{ github.ref_name == 'main' }}
 
   # Python Publishing
   MATURIN_PYPI_TOKEN: ${{ secrets.STATSIG_PYPI_PROD_TOKEN }}

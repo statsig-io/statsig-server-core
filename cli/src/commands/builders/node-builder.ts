@@ -17,9 +17,13 @@ export function buildNode(options: BuilderOptions) {
   const tag = getDockerImageTag(options.os, options.arch);
   const nodeDir = getRootedPath('statsig-node');
 
-  const outDirName = options.outDir ?? './build';
-  const outDirPath = path.resolve(nodeDir, outDirName);
-  ensureEmptyDir(outDirPath);
+  const outDirPath = options.outDir ?? './build';
+
+  Log.stepBegin(`Building statsig-node`);
+  Log.stepProgress(`Docker: ${docker}`);
+  Log.stepProgress(`Tag: ${tag}`);
+  Log.stepProgress(`NodeDir: ${nodeDir}`);
+  Log.stepEnd(`OutDir: ${outDirPath}`);
 
   const isMusl = options.target?.includes('musl');
   const isGnu = options.target?.includes('gnu');

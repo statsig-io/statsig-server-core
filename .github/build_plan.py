@@ -43,14 +43,16 @@ is_release_branch = os.getenv('IS_RELEASE_BRANCH', 'false') == 'true'
 is_beta_branch = os.getenv('IS_BETA_BRANCH', 'false') == 'true'
 is_private_repo = os.getenv('IS_PRIVATE_REPO', 'false') == 'true'
 is_release_trigger = os.getenv('IS_RELEASE_TRIGGER', 'false') == 'true'
+is_main_branch = os.getenv('IS_MAIN_BRANCH', 'false') == 'true'
 matrix_file = './.github/build_matrix.json'
 
-should_build_all = is_release_trigger or is_release_branch or is_beta_branch or is_merged_pr
+should_build_all = is_release_trigger or is_release_branch or is_beta_branch or is_merged_pr or is_main_branch
 
 print(f"Is Release Branch: {is_release_branch}")
 print(f"Is Beta Branch: {is_beta_branch}")
 print(f"Is Merged PR: {is_merged_pr}")
 print(f"Is Release Trigger: {is_release_trigger}")
+print(f"Is Main Branch: {is_main_branch}")
 print(f"Should Build All: {should_build_all}")
 
 included, excluded = partition_targets(should_build_all)
