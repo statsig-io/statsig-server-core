@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
   pull_request:
-    types: [reopened, closed]
+    types: [reopened]
 
   release:
     types: [released, prereleased]
