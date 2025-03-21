@@ -12,4 +12,7 @@ crate-type = ["cdylib", "rlib"]
 pyo3 = { version = "0.23.1", features = ["abi3-py37"] }
 pyo3-stub-gen = "0.7.0"
 serde_json = { version = "1.0.125", features = ["float_roundtrip"] }
-statsig-rust = { path = "../statsig-rust" }
+statsig-rust = { path = "../statsig-rust", default-features = false, features = [
+    "custom_network_provider",
+] }
+async-trait = "0.1.81"

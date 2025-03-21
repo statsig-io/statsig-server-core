@@ -1,3 +1,4 @@
+use crate::net_provider_py::NetworkProviderPy;
 use crate::observability_client_py::ObservabilityClientPy;
 use crate::pyo_utils::map_to_py_dict;
 use crate::statsig_options_py::StatsigOptionsPy;
@@ -12,6 +13,8 @@ use crate::{
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3_stub_gen::derive::*;
+use statsig_rust::networking::providers::NetworkProviderGlobal;
+use statsig_rust::networking::NetworkProvider;
 use statsig_rust::{
     log_e, unwrap_or_return, ClientInitResponseOptions, DynamicConfigEvaluationOptions,
     ExperimentEvaluationOptions, FeatureGateEvaluationOptions, HashAlgorithm,
@@ -21,21 +24,27 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-const TAG: &str = stringify!(StatsigPy);
+const TAG: &str = stringify!(StatsigBasePy);
 
 #[gen_stub_pyclass]
-#[pyclass(name = "Statsig")]
-pub struct StatsigPy {
+#[pyclass(subclass)]
+pub struct StatsigBasePy {
     inner: Arc<Statsig>,
     observability_client: Mutex<Option<Arc<ObservabilityClientPy>>>,
+    network_provider: Mutex<Option<Arc<dyn NetworkProvider>>>,
 }
 
 #[gen_stub_pymethods]
 #[pymethods]
-impl StatsigPy {
+impl StatsigBasePy {
     #[new]
-    #[pyo3(signature = (sdk_key, options=None))]
-    pub fn new(sdk_key: &str, options: Option<StatsigOptionsPy>, py: Python) -> Self {
+    #[pyo3(signature = (network_func, sdk_key, options=None))]
+    pub fn new(
+        network_func: PyObject,
+        sdk_key: &str,
+        options: Option<StatsigOptionsPy>,
+        py: Python,
+    ) -> Self {
         let mut local_opts = None;
         let mut obs_client = None;
 
@@ -47,9 +56,14 @@ impl StatsigPy {
             local_opts = Some(Arc::new(statsig_options));
         }
 
+        let network_provider: Arc<dyn NetworkProvider> =
+            Arc::new(NetworkProviderPy { network_func });
+        NetworkProviderGlobal::set(&network_provider);
+
         Self {
             inner: Arc::new(Statsig::new(sdk_key, local_opts)),
             observability_client: Mutex::new(obs_client),
+            network_provider: Mutex::new(Some(network_provider)),
         }
     }
 
@@ -98,6 +112,12 @@ impl StatsigPy {
 
         let inst = self.inner.clone();
         let rt = self.inner.statsig_runtime.clone();
+        let network_provider = self
+            .network_provider
+            .lock()
+            .ok()
+            .and_then(|mut lock| lock.take());
+
         rt.runtime_handle.spawn(async move {
             if let Err(e) = inst.__shutdown_internal(Duration::from_secs(3)).await {
                 log_e!(TAG, "Failed to gracefully shutdown StatsigPy: {}", e);
@@ -108,6 +128,13 @@ impl StatsigPy {
                     log_e!(TAG, "Failed to set event: {}", e);
                 }
             });
+
+            if let Some(network_provider) = network_provider {
+                match network_provider.shutdown().await {
+                    Ok(_) => (),
+                    Err(e) => log_e!(TAG, "Failed to shutdown network provider: {}", e),
+                }
+            }
         });
 
         Ok(completion_event)

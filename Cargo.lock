@@ -2307,6 +2307,7 @@ dependencies = [
 name = "statsig-pyo3"
 version = "0.0.10-beta.1"
 dependencies = [
+ "async-trait",
  "pyo3",
  "pyo3-stub-gen",
  "serde_json",

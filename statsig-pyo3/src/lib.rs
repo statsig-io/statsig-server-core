@@ -1,8 +1,9 @@
+mod net_provider_py;
 mod observability_client_py;
 mod pyo_utils;
+mod statsig_base_py;
 mod statsig_metadata_py;
 mod statsig_options_py;
-mod statsig_py;
 mod statsig_types_py;
 mod statsig_user_py;
 
@@ -13,7 +14,7 @@ use pyo3_stub_gen::define_stub_info_gatherer;
 fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     statsig_metadata_py::update_statsig_metadata(m);
 
-    m.add_class::<statsig_py::StatsigPy>()?;
+    m.add_class::<statsig_base_py::StatsigBasePy>()?;
     m.add_class::<statsig_user_py::StatsigUserPy>()?;
     m.add_class::<statsig_options_py::StatsigOptionsPy>()?;
     m.add_class::<statsig_types_py::FeatureGatePy>()?;

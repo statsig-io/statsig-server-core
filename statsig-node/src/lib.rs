@@ -1,6 +1,6 @@
 pub mod data_store_napi;
 pub mod gcir_options_napi;
-pub mod network_provider_napi;
+pub mod net_provider_napi;
 pub mod observability_client_napi;
 pub mod statsig_core_api_options_napi;
 pub mod statsig_napi;

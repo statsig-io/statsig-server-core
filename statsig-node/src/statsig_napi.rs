@@ -10,7 +10,7 @@ use statsig_rust::networking::NetworkProvider;
 use statsig_rust::{log_d, log_e, Statsig as StatsigActual};
 
 use crate::gcir_options_napi::ClientInitResponseOptions;
-use crate::network_provider_napi::{NapiNetworkFunc, NetworkProviderNapi};
+use crate::net_provider_napi::{NapiNetworkFunc, NetworkProviderNapi};
 use crate::observability_client_napi::ObservabilityClient;
 use crate::statsig_core_api_options_napi::{
     DynamicConfigEvaluationOptionsNapi, ExperimentEvaluationOptionsNapi,
@@ -84,12 +84,13 @@ impl StatsigNapiInternal {
         if let Ok(mut lock) = self.observability_client.lock() {
             lock.take();
         }
+
         let inst = self.inner.clone();
-        let network_provider = if let Ok(mut lock) = self.network_provider.lock() {
-            lock.take()
-        } else {
-            None
-        };
+        let network_provider = self
+            .network_provider
+            .lock()
+            .ok()
+            .and_then(|mut lock| lock.take());
 
         env.spawn_future(async move {
             let result = match inst
