@@ -20,7 +20,8 @@
       "arch": "aarch64",
       "target": "aarch64-unknown-linux-gnu",
       "runner": "ubuntu-24.04-arm",
-      "docker_arch": "arm64"
+      "docker_arch": "arm64",
+      "always_build": true
     },
 
     {
@@ -58,7 +59,8 @@
       "arch": "x86_64",
       "target": "x86_64-unknown-linux-musl",
       "runner": "ubuntu-latest",
-      "docker_arch": "amd64"
+      "docker_arch": "amd64",
+      "always_build": true
     },
     {
       "os": "alpine",

@@ -3,11 +3,6 @@ import os
 
 
 def partition_targets(should_build_all):
-    always_build_targets = [
-        "x86_64-unknown-linux-musl",
-        "aarch64-unknown-linux-gnu",
-    ]
-
     with open(matrix_file, 'r') as f:
         matrix_data = json.load(f)
 
@@ -15,8 +10,8 @@ def partition_targets(should_build_all):
         include_filter = matrix_data['config']
         exclude_filter = []
     else:
-        include_filter = [config for config in matrix_data['config'] if config['target'] in always_build_targets]
-        exclude_filter = [config for config in matrix_data['config'] if config['target'] not in always_build_targets]
+        include_filter = [config for config in matrix_data['config'] if config.get("always_build", False)]
+        exclude_filter = [config for config in matrix_data['config'] if not config.get("always_build", False)]
 
     included = {'config': include_filter}
     excluded = {'config': exclude_filter}
