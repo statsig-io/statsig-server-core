@@ -73,7 +73,7 @@ jobs:
           - python
           - ffi
 
-    timeout-minutes: 15
+    timeout-minutes: 25
     runs-on: ${{ matrix.config.runner }}
 
     steps:

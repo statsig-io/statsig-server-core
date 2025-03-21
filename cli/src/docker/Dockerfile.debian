@@ -1,5 +1,8 @@
 FROM debian:11-slim
 
+ARG PROTOC_ARCH=aarch_64
+ARG ARM_SUFFIX=-arm
+
 RUN apt-get update
 RUN apt-get install -y \
     # Common Deps
@@ -10,10 +13,9 @@ RUN apt-get install -y \
     php php-curl php-xml composer
 
 # Protoc Setup
-RUN ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch_64/') && \
-    curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-${ARCH}.zip && \
-    unzip protoc-29.3-linux-${ARCH}.zip -d /usr/local && \
-    rm protoc-29.3-linux-${ARCH}.zip;
+RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-${PROTOC_ARCH}.zip && \
+    unzip protoc-29.3-linux-${PROTOC_ARCH}.zip -d /usr/local && \
+    rm protoc-29.3-linux-${PROTOC_ARCH}.zip;
 
 # Python Setup
 RUN pip3 install pytest maturin patchelf pytest_httpserver requests
@@ -29,14 +31,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_TERM_COLOR=always
 RUN rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
 
-RUN ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch_64/') && \
-    if [ "$ARCH" = "x86_64" ]; then \
-    curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin; \
-    else \
-    curl -LsSf https://get.nexte.st/latest/linux-arm | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin; \
-    fi
+RUN curl -LsSf https://get.nexte.st/latest/linux${ARM_SUFFIX} | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin;
 
-RUN cargo nextest --help
 ENV CC=clang
 
 ENTRYPOINT ["sh", "-c"]

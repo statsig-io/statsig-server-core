@@ -1,4 +1,7 @@
-FROM quay.io/pypa/manylinux2014_x86_64
+ARG ARCH=aarch64
+FROM quay.io/pypa/manylinux2014_${ARCH}
+
+ARG PROTOC_ARCH=aarch_64
 
 # Install system dependencies
 RUN yum install -y \
@@ -49,8 +52,8 @@ RUN curl -fsSL https://rpm.nodesource.com/setup_16.x | bash - && \
 RUN npm install -g pnpm@7.32.4 typescript@5.7.3
 
 # Protoc Setup
-RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip && \
-    unzip protoc-3.20.3-linux-x86_64.zip -d /usr/local && \
-    rm protoc-3.20.3-linux-x86_64.zip
+RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-${PROTOC_ARCH}.zip && \
+    unzip protoc-3.20.3-linux-${PROTOC_ARCH}.zip -d /usr/local && \
+    rm protoc-3.20.3-linux-${PROTOC_ARCH}.zip
 
 ENTRYPOINT ["sh", "-c"]

@@ -47,15 +47,19 @@ export function isLinux(os: OS): boolean {
 }
 
 export function buildDockerImage(os: OS, arch: Arch = 'arm64') {
-  const { docker } = getArchInfo(arch);
+  const { docker, name } = getArchInfo(arch);
   const tag = getDockerImageTag(os, arch);
 
   const command = [
-    'docker build .',
+    'docker build',
     `--platform ${docker}`,
     `-t ${tag}`,
     `-f ${getRootedPath(`cli/src/docker/Dockerfile.${os}`)}`,
+    `--build-arg PROTOC_ARCH=${name === 'x86_64' ? 'x86_64' : 'aarch_64'}`,
+    `--build-arg ARCH=${name}`,
+    `--build-arg ARM_SUFFIX=${name === 'x86_64' ? '' : '-arm'}`,
     `--secret id=gh_token_id,env=GH_TOKEN`,
+    '.',
   ].join(' ');
 
   Log.stepBegin(`Building Server Core Docker Image`);

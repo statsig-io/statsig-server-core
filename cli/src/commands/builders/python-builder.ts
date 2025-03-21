@@ -16,13 +16,16 @@ export function buildPython(options: BuilderOptions) {
 
   const target = getTarget(options);
 
+  // todo: fix stub gen for centos7
+  const skipStubGen = options.os === 'centos7';
+
   const maturinCommand = [
     'maturin build',
     '--sdist',
     options.release ? '--release --strip' : '',
     options.outDir ? `--out ${options.outDir}` : '',
     target ? `--target ${target}` : '',
-    '&& cargo run --bin stub_gen',
+    skipStubGen ? '' : '&& cargo run --bin stub_gen',
   ].join(' ');
 
   const dockerCommand = [

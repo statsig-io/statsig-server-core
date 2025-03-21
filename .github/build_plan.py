@@ -45,14 +45,17 @@ is_private_repo = os.getenv('IS_PRIVATE_REPO', 'false') == 'true'
 is_release_trigger = os.getenv('IS_RELEASE_TRIGGER', 'false') == 'true'
 matrix_file = './.github/build_matrix.json'
 
-should_build_all = is_release_trigger or is_release_branch or is_beta_branch
-included, excluded = partition_targets(should_build_all)
-included = map_arm64_runners(included)
-export_outputs(included)
-
+should_build_all = is_release_trigger or is_release_branch or is_beta_branch or is_merged_pr
 
 print(f"Is Release Branch: {is_release_branch}")
 print(f"Is Beta Branch: {is_beta_branch}")
+print(f"Is Merged PR: {is_merged_pr}")
+print(f"Is Release Trigger: {is_release_trigger}")
+print(f"Should Build All: {should_build_all}")
+
+included, excluded = partition_targets(should_build_all)
+included = map_arm64_runners(included)
+export_outputs(included)
 
 print("\n== Included ==")
 print(json.dumps(included['config'], indent=2))

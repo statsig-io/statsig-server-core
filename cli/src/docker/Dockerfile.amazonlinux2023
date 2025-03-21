@@ -28,6 +28,4 @@ RUN curl -sL https://rpm.nodesource.com/setup_18.x | bash - \
     && yum install -y nodejs
 RUN npm install -g pnpm@7.32.4 typescript@5.7.3
 
-RUN python3 --version
-
 ENTRYPOINT ["sh", "-c"]

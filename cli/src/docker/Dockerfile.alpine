@@ -1,5 +1,7 @@
 FROM alpine:latest
 
+ARG PROTOC_ARCH=aarch_64
+
 RUN apk update && apk add --no-cache \
     # Common Deps
     bash curl zsh openjdk11-jre jq pkgconfig \
@@ -12,10 +14,12 @@ RUN apk update && apk add --no-cache \
     nodejs npm
 
 # Protoc Setup
-RUN ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch_64/') && \
-    curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-${ARCH}.zip && \
-    unzip protoc-29.3-linux-${ARCH}.zip -d /usr/local && \
-    rm protoc-29.3-linux-${ARCH}.zip;
+RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-${PROTOC_ARCH}.zip && \
+    unzip protoc-29.3-linux-${PROTOC_ARCH}.zip -d /usr/local && \
+    rm protoc-29.3-linux-${PROTOC_ARCH}.zip;
+
+RUN protoc --version
+RUN echo "PROTOC_ARCH: ${PROTOC_ARCH}"
 
 # Python Setup
 RUN pip3 install pytest maturin patchelf pytest_httpserver --break-system-packages
@@ -28,6 +32,5 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_TERM_COLOR=always
 RUN rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl
-
 
 ENTRYPOINT ["sh", "-c"]

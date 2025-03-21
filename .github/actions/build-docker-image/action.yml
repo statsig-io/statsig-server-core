@@ -30,66 +30,70 @@ inputs:
 runs:
   using: 'composite'
   steps:
-      - name: "Login to Docker Hub"
-        uses: docker/login-action@v3
-        with:
-          username: ${{ inputs.dockerhub_username }}
-          password: ${{ inputs.dockerhub_password }}
+    - name: 'Login to Docker Hub'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ inputs.dockerhub_username }}
+        password: ${{ inputs.dockerhub_password }}
 
-      - name: "Compute Dockerfile Hash"
-        id: compute_hash
-        shell: bash
-        run: |
-          md5hash=$(md5sum ${{ inputs.dockerfile_path }} | awk '{ print $1 }')
-          echo "md5hash: $md5hash"
-          imagetag="${{ inputs.docker_image_tag }}-$md5hash"
-          echo "MD5_IMAGE_TAG=$imagetag" >> $GITHUB_ENV
-          echo "MD5_IMAGE_TAG: $imagetag"
+    - name: 'Compute Dockerfile Hash'
+      id: compute_hash
+      shell: bash
+      run: |
+        md5hash=$(md5sum ${{ inputs.dockerfile_path }} | awk '{ print $1 }')
+        echo "md5hash: $md5hash"
+        imagetag="${{ inputs.docker_image_tag }}-$md5hash"
+        echo "MD5_IMAGE_TAG=$imagetag" >> $GITHUB_ENV
+        echo "MD5_IMAGE_TAG: $imagetag"
 
-      - name: "Check if Docker Image Exists"
-        id: check_image
-        shell: bash
-        run: |
-          echo "Looking for Docker image: ${{ env.MD5_IMAGE_TAG }}"
-          if docker manifest inspect ${{ env.MD5_IMAGE_TAG }} > /dev/null 2>&1; then
-            echo "Image exists."
-            echo "NEEDS_BUILD=false" >> $GITHUB_ENV
-          else
-            echo "Image does not exist."
-            echo "NEEDS_BUILD=true" >> $GITHUB_ENV
-          fi
+    - name: 'Check if Docker Image Exists'
+      id: check_image
+      shell: bash
+      run: |
+        echo "Looking for Docker image: ${{ env.MD5_IMAGE_TAG }}"
+        if docker manifest inspect ${{ env.MD5_IMAGE_TAG }} > /dev/null 2>&1; then
+          echo "Image exists."
+          echo "NEEDS_BUILD=false" >> $GITHUB_ENV
+        else
+          echo "Image does not exist."
+          echo "NEEDS_BUILD=true" >> $GITHUB_ENV
+        fi
 
-      # [Build] If DockerHub does not contain our image --------------------------------
+    # [Build] If DockerHub does not contain our image --------------------------------
 
-      - name: "[Build] Setup QEMU"
-        if: env.NEEDS_BUILD == 'true'
-        uses: docker/setup-qemu-action@v3
+    - name: '[Build] Setup QEMU'
+      if: env.NEEDS_BUILD == 'true'
+      uses: docker/setup-qemu-action@v3
 
-      - name: "[Build] Setup Docker Build Requirements"
-        if: env.NEEDS_BUILD == 'true'
-        uses: docker/setup-buildx-action@v3
+    - name: '[Build] Setup Docker Build Requirements'
+      if: env.NEEDS_BUILD == 'true'
+      uses: docker/setup-buildx-action@v3
 
-      - name: "[Build] Build Docker Image"
-        if: env.NEEDS_BUILD == 'true'
-        uses: docker/build-push-action@v6
-        with:
-          platforms: ${{ inputs.platform }}
-          file: ${{ inputs.dockerfile_path }}
-          push: true
-          tags: |
-            ${{ env.MD5_IMAGE_TAG }}
-            ${{ inputs.docker_image_tag }}-latest
-          secrets: |
-            GH_TOKEN=${{ inputs.gh_token }}
-            gh_token=${{ inputs.gh_token }}
-            GH-TOKEN-ID=${{ inputs.gh_token }}
-            GH_TOKEN_ID=${{ inputs.gh_token }}
-            gh_token_id=${{ inputs.gh_token }}
+    - name: '[Build] Build Docker Image'
+      if: env.NEEDS_BUILD == 'true'
+      uses: docker/build-push-action@v6
+      with:
+        platforms: ${{ inputs.platform }}
+        file: ${{ inputs.dockerfile_path }}
+        push: true
+        build-args: |
+          PROTOC_ARCH=${{ inputs.platform == 'linux/amd64' && 'x86_64' || 'aarch_64' }}
+          ARCH=${{ inputs.platform == 'linux/amd64' && 'x86_64' || 'aarch64' }}
+          ARM_SUFFIX=${{ inputs.platform == 'linux/arm64' && '-arm' || '' }}
+        tags: |
+          ${{ env.MD5_IMAGE_TAG }}
+          ${{ inputs.docker_image_tag }}-latest
+        secrets: |
+          GH_TOKEN=${{ inputs.gh_token }}
+          gh_token=${{ inputs.gh_token }}
+          GH-TOKEN-ID=${{ inputs.gh_token }}
+          GH_TOKEN_ID=${{ inputs.gh_token }}
+          gh_token_id=${{ inputs.gh_token }}
 
-      # [Build] end --------------------------------
+    # [Build] end --------------------------------
 
-      - name: "Load Docker Image"
-        shell: bash
-        run: |
-          docker pull --platform ${{ inputs.platform }} ${{ env.MD5_IMAGE_TAG }}
-          docker tag ${{ env.MD5_IMAGE_TAG }} ${{ inputs.docker_image_tag }}
+    - name: 'Load Docker Image'
+      shell: bash
+      run: |
+        docker pull --platform ${{ inputs.platform }} ${{ env.MD5_IMAGE_TAG }}
+        docker tag ${{ env.MD5_IMAGE_TAG }} ${{ inputs.docker_image_tag }}

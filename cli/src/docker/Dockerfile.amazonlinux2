@@ -1,6 +1,8 @@
 # https://docs.aws.amazon.com/linux/al2/ug/amzn1-amzn2-container.html
 FROM amazonlinux:2
 
+ARG PROTOC_ARCH=aarch_64
+
 # System and Common Dependencies
 RUN yum update -y \
     && yum install -y \
@@ -20,10 +22,9 @@ RUN yum update -y \
     && yum clean all
 
 # Protoc Setup
-RUN ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch_64/') && \
-    curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-${ARCH}.zip && \
-    unzip protoc-29.3-linux-${ARCH}.zip -d /usr/local && \
-    rm protoc-29.3-linux-${ARCH}.zip;
+RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-${PROTOC_ARCH}.zip && \
+    unzip protoc-29.3-linux-${PROTOC_ARCH}.zip -d /usr/local && \
+    rm protoc-29.3-linux-${PROTOC_ARCH}.zip;
 
 # Python Setup
 RUN pip3 install maturin patchelf
@@ -37,6 +38,5 @@ ENV CARGO_TERM_COLOR=always
 RUN curl -sL https://rpm.nodesource.com/setup_16.x | bash - \
     && yum install -y nodejs
 RUN npm install -g pnpm@7.32.4 typescript@5.7.3
-
 
 ENTRYPOINT ["sh", "-c"]
