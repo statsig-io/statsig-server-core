@@ -1,4 +1,6 @@
+import { PublisherOptions } from '@/commands/publishers/publisher-options.js';
 import { createAppAuth } from '@octokit/auth-app';
+import { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods';
 import { createReadStream, writeFileSync } from 'fs';
 import { Octokit } from 'octokit';
 import path from 'path';
@@ -11,6 +13,8 @@ const GITHUB_APP_ID = process.env.GH_APP_ID;
 const GITHUB_INSTALLATION_ID = process.env.GH_APP_INSTALLATION_ID;
 const GITHUB_APP_PRIVATE_KEY = process.env.GH_APP_PRIVATE_KEY;
 
+const FFI_BASED_PACKAGES = new Set(['java', 'php', 'ffi']);
+
 export type GhRelease = Awaited<
   ReturnType<Octokit['rest']['repos']['getReleaseByTag']>
 >['data'];
@@ -20,6 +24,8 @@ export type GhAsset = Awaited<
 >['data'][number];
 
 type GhBranch = Awaited<ReturnType<Octokit['rest']['git']['getRef']>>['data'];
+type GHArtifact =
+  RestEndpointMethodTypes['actions']['listWorkflowRunArtifacts']['response']['data']['artifacts'][number];
 
 export async function getOctokit() {
   const token = await getInstallationToken();
@@ -288,4 +294,152 @@ export async function downloadArtifactToFile(
   writeFileSync(filePath, Buffer.from(response.data));
 
   return { data: response.data, url: response.url };
+}
+
+export async function getWorkflowRun(
+  octokit: Octokit,
+  options: {
+    workflowId: string;
+    repository: string;
+    disregardWorkflowChecks: boolean;
+  },
+) {
+  Log.stepBegin(`Getting workflow run ${options.workflowId}`);
+
+  const response = await octokit.rest.actions.getWorkflowRun({
+    owner: 'statsig-io',
+    repo: options.repository,
+    run_id: Number(options.workflowId),
+  });
+
+  if (response.status !== 200) {
+    throw new Error(`Failed to get workflow run ${options.workflowId}`);
+  }
+
+  const canFail = !options.disregardWorkflowChecks;
+
+  if (canFail && response.data.status !== 'completed') {
+    const message = `Workflow run ${options.workflowId} is not completed`;
+    Log.stepEnd(message, 'failure');
+    throw new Error(message);
+  }
+
+  if (canFail && response.data.conclusion !== 'success') {
+    const message = `Workflow run ${options.workflowId} is not successful`;
+    Log.stepEnd(message, 'failure');
+    throw new Error(message);
+  }
+
+  Log.stepEnd(`Got workflow run ${options.workflowId}`);
+
+  return response.data;
+}
+
+export async function getWorkflowRunArtifacts(
+  octokit: Octokit,
+  options: {
+    workflowId: string;
+    repository: string;
+    package: string;
+  },
+) {
+  Log.stepBegin(`Getting workflow run artifacts`);
+
+  const response = await octokit.rest.actions.listWorkflowRunArtifacts({
+    owner: 'statsig-io',
+    repo: options.repository,
+    run_id: Number(options.workflowId),
+    per_page: 100,
+  });
+
+  if (response.status !== 200) {
+    const message = `Failed to get workflow run artifacts`;
+    Log.stepEnd(message, 'failure');
+    throw new Error(message);
+  }
+
+  response.data.artifacts = response.data.artifacts.filter((artifact) => {
+    if (artifact.name.includes('dockerbuild')) {
+      return false;
+    }
+
+    if (filterArtifact(artifact, options)) {
+      Log.stepProgress(`Found: ${artifact.name}`, 'success');
+      return true;
+    } else {
+      Log.stepProgress(`Skipped: ${artifact.name}`);
+      return false;
+    }
+  });
+
+  Log.stepEnd(`Got workflow run artifacts`);
+
+  return response.data;
+}
+
+export async function downloadWorkflowRunArtifacts(
+  octokit: Octokit,
+  options: {
+    repository: string;
+    package: string;
+    workingDir: string;
+  },
+  artifacts: GHArtifact[],
+) {
+  Log.stepBegin(`Downloading workflow run artifacts`);
+
+  const responses = await Promise.all(
+    artifacts.map(async (artifact) => {
+      const zipPath = `${options.workingDir}/${artifact.name}.zip`;
+      const response = await downloadArtifactToFile(
+        octokit,
+        options.repository,
+        artifact.id,
+        zipPath,
+      );
+
+      return { response, artifact, zipPath };
+    }),
+  );
+
+  let didDownloadAllArtifacts = true;
+
+  responses.forEach(({ response, artifact }) => {
+    if (!response.data) {
+      const message = `Failed to download artifact ${artifact.name}`;
+      Log.stepProgress(message, 'failure');
+      didDownloadAllArtifacts = false;
+    } else {
+      Log.stepProgress(`Downloaded artifact ${artifact.name}`);
+    }
+  });
+
+  if (!didDownloadAllArtifacts) {
+    const message = `Failed to download all artifacts`;
+    Log.stepEnd(message, 'failure');
+    throw new Error(message);
+  }
+
+  Log.stepEnd(`Downloaded workflow run artifacts`);
+
+  return responses;
+}
+
+function filterArtifact(artifact: GHArtifact, options: { package: string }) {
+  if ((options.package as string) === 'analyze') {
+    return true;
+  }
+
+  if (artifact.name.endsWith(options.package)) {
+    return true;
+  }
+
+  if (
+    FFI_BASED_PACKAGES.has(options.package) &&
+    artifact.name.endsWith('ffi')
+  ) {
+    return true;
+  }
+
+  return false;
 }

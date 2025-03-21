@@ -2,15 +2,16 @@ import {
   ensureEmptyDir,
   getRelativePath,
   listFiles,
-  unzip,
+  unzipFiles,
 } from '@/utils/file_utils.js';
-import { downloadArtifactToFile, getOctokit } from '@/utils/octokit_utils.js';
+import {
+  downloadWorkflowRunArtifacts,
+  getOctokit,
+  getWorkflowRun,
+  getWorkflowRunArtifacts,
+} from '@/utils/octokit_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
-import type { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods';
-import fs from 'node:fs';
-import path from 'node:path';
-import { Octokit } from 'octokit';
 
 import { CommandBase, OptionConfig } from './command_base.js';
 import { analyze } from './publishers/analyze.js';
@@ -30,11 +31,6 @@ const PUBLISHERS: Record<string, (options: PublisherOptions) => Promise<void>> =
     php: publishPhp,
     analyze,
   };
-
-const FFI_BASED_PACKAGES = new Set(['java', 'php', 'ffi']);
-
-type GHArtifact =
-  RestEndpointMethodTypes['actions']['listWorkflowRunArtifacts']['response']['data']['artifacts'][number];
 
 export class Publish extends CommandBase {
   constructor() {
@@ -111,163 +107,11 @@ export class Publish extends CommandBase {
       await downloadWorkflowRunArtifacts(octokit, options, artifacts.artifacts);
 
       const zipFiles = listFiles(options.workingDir, '*.zip');
-      unzipFiles(zipFiles, options);
+      unzipFiles(zipFiles, options.workingDir);
     }
 
     await PUBLISHERS[options.package](options);
 
     Log.conclusion(`Successfully published ${options.package}`);
   }
-}
-
-async function getWorkflowRun(octokit: Octokit, options: PublisherOptions) {
-  Log.stepBegin(`Getting workflow run ${options.workflowId}`);
-
-  const response = await octokit.rest.actions.getWorkflowRun({
-    owner: 'statsig-io',
-    repo: options.repository,
-    run_id: Number(options.workflowId),
-  });
-
-  if (response.status !== 200) {
-    throw new Error(`Failed to get workflow run ${options.workflowId}`);
-  }
-
-  const canFail = !options.disregardWorkflowChecks;
-
-  if (canFail && response.data.status !== 'completed') {
-    const message = `Workflow run ${options.workflowId} is not completed`;
-    Log.stepEnd(message, 'failure');
-    throw new Error(message);
-  }
-
-  if (canFail && response.data.conclusion !== 'success') {
-    const message = `Workflow run ${options.workflowId} is not successful`;
-    Log.stepEnd(message, 'failure');
-    throw new Error(message);
-  }
-
-  Log.stepEnd(`Got workflow run ${options.workflowId}`);
-
-  return response.data;
-}
-
-async function getWorkflowRunArtifacts(
-  octokit: Octokit,
-  options: PublisherOptions,
-) {
-  Log.stepBegin(`Getting workflow run artifacts`);
-
-  const response = await octokit.rest.actions.listWorkflowRunArtifacts({
-    owner: 'statsig-io',
-    repo: options.repository,
-    run_id: Number(options.workflowId),
-    per_page: 100,
-  });
-
-  if (response.status !== 200) {
-    const message = `Failed to get workflow run artifacts`;
-    Log.stepEnd(message, 'failure');
-    throw new Error(message);
-  }
-
-  response.data.artifacts = response.data.artifacts.filter((artifact) => {
-    if (artifact.name.includes('dockerbuild')) {
-      return false;
-    }
-
-    if (filterArtifact(artifact, options)) {
-      Log.stepProgress(`Found: ${artifact.name}`, 'success');
-      return true;
-    } else {
-      Log.stepProgress(`Skipped: ${artifact.name}`);
-      return false;
-    }
-  });
-
-  Log.stepEnd(`Got workflow run artifacts`);
-
-  return response.data;
-}
-
-async function downloadWorkflowRunArtifacts(
-  octokit: Octokit,
-  options: PublisherOptions,
-  artifacts: GHArtifact[],
-) {
-  Log.stepBegin(`Downloading workflow run artifacts`);
-
-  const responses = await Promise.all(
-    artifacts.map(async (artifact) => {
-      const zipPath = `/tmp/statsig-server-core-publish/${artifact.name}.zip`;
-      const response = await downloadArtifactToFile(
-        octokit,
-        options.repository,
-        artifact.id,
-        zipPath,
-      );
-
-      return { response, artifact, zipPath };
-    }),
-  );
-
-  let didDownloadAllArtifacts = true;
-
-  responses.forEach(({ response, artifact }) => {
-    if (!response.data) {
-      const message = `Failed to download artifact ${artifact.name}`;
-      Log.stepProgress(message, 'failure');
-      didDownloadAllArtifacts = false;
-    } else {
-      Log.stepProgress(`Downloaded artifact ${artifact.name}`);
-    }
-  });
-
-  if (!didDownloadAllArtifacts) {
-    const message = `Failed to download all artifacts`;
-    Log.stepEnd(message, 'failure');
-    throw new Error(message);
-  }
-
-  Log.stepEnd(`Downloaded workflow run artifacts`);
-
-  return responses;
-}
-
-function unzipFiles(files: string[], options: PublisherOptions) {
-  Log.stepBegin('Unzipping files');
-
-  files.forEach((file) => {
-    const filepath = path.resolve(file);
-    const name = path.basename(filepath).replace('.zip', '');
-
-    const buffer = fs.readFileSync(filepath);
-
-    const unzipTo = path.resolve(options.workingDir, name);
-    unzip(buffer, unzipTo);
-
-    fs.unlinkSync(filepath);
-    Log.stepProgress(`Completed: ${name}`);
-  });
-
-  Log.stepEnd('Unzipped all files');
-}
-
-function filterArtifact(artifact: GHArtifact, options: PublisherOptions) {
-  if ((options.package as string) === 'analyze') {
-    return true;
-  }
-
-  if (artifact.name.endsWith(options.package)) {
-    return true;
-  }
-
-  if (
-    FFI_BASED_PACKAGES.has(options.package) &&
-    artifact.name.endsWith('ffi')
-  ) {
-    return true;
-  }
-
-  return false;
 }

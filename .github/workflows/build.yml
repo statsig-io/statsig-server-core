@@ -150,14 +150,38 @@ jobs:
             **/release/*statsig_ffi.a
             **/release/*statsig_ffi.lib
 
+  # -------------------------------------------------------------------- [Size Report]
+
+  size-report:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+
+      - name: Setup
+        run: pnpm install --dir cli
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
       - name: Report Binary Sizes
         shell: bash
-        run: ./tore size-report --is-release ${{ github.event_name == 'release' }}
+        run: |
+          ./tore size-report \
+            --should-persist ${{ github.event_name == 'release' || github.ref_name == 'main' }} \
+            --working-dir artifacts \
+            --workflow-id $GITHUB_RUN_ID \
+            --repository ${{ github.event.repository.name }} \
+            --skip-artifact-download
 
   # -------------------------------------------------------------------- [Publish]
 
   publish:
-    needs: [plan, build]
+    needs: build
     if: ${{ github.event_name == 'release' }}
 
     runs-on: ubuntu-latest

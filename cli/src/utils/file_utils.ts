@@ -1,10 +1,11 @@
 import AdmZip from 'adm-zip';
-import { execSync } from 'child_process';
 import { existsSync, mkdirSync, rmSync, statSync } from 'fs';
 import { glob } from 'glob';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'url';
+
+import { Log } from './teminal_utils.js';
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
@@ -66,7 +67,7 @@ export function ensureEmptyDir(dir: string) {
   mkdirSync(dir, { recursive: true });
 }
 
-export function unzip(buffer: ArrayBuffer, targetDir: string) {
+export function unzip(buffer: Buffer<ArrayBufferLike>, targetDir: string) {
   const zip = new AdmZip(Buffer.from(buffer));
 
   zip.extractAllTo(targetDir, false, true);
@@ -96,4 +97,23 @@ export function listFiles(
     absolute: true,
     maxDepth,
   });
+}
+
+export function unzipFiles(files: string[], outputDir: string) {
+  Log.stepBegin('Unzipping files');
+
+  files.forEach((file) => {
+    const filepath = path.resolve(file);
+    const name = path.basename(filepath).replace('.zip', '');
+
+    const buffer = fs.readFileSync(filepath);
+
+    const unzipTo = path.resolve(outputDir, name);
+    unzip(buffer, unzipTo);
+
+    fs.unlinkSync(filepath);
+    Log.stepProgress(`Completed: ${name}`);
+  });
+
+  Log.stepEnd('Unzipped all files');
 }

@@ -1,11 +1,19 @@
 import {
   BASE_DIR,
+  ensureEmptyDir,
   getFileSize,
   getHumanReadableSize,
+  getRelativePath,
   getRootedPath,
   listFiles,
+  unzipFiles,
 } from '@/utils/file_utils.js';
-import { getOctokit } from '@/utils/octokit_utils.js';
+import {
+  downloadWorkflowRunArtifacts,
+  getOctokit,
+  getWorkflowRun,
+  getWorkflowRunArtifacts,
+} from '@/utils/octokit_utils.js';
 import {
   SizeCommentWithId,
   SizeInfo,
@@ -20,16 +28,46 @@ const REPORT_SIZE_ISSUE_NUMBER = 159;
 const PRIVATE_REPO = 'private-statsig-server-core';
 
 type SizeReportOptions = {
-  isRelease: boolean;
+  shouldPersist: boolean;
+  workflowId: string;
+  repository: string;
+  workingDir: string;
+  skipArtifactDownload: boolean;
+  disregardWorkflowChecks: boolean;
 };
 
 export class SizeReport extends CommandBase {
   constructor() {
     const options: OptionConfig[] = [
       {
-        flags: '--is-release <boolean>',
-        description: 'Whether the build is for a release',
+        flags: '--should-persist <boolean>',
+        description: 'Whether to persist the size report to the Github issue',
         required: true,
+      },
+      {
+        flags: '-w, --workflow-id <string>',
+        description: 'The Github workflow run the contains the build artifacts',
+        required: true,
+      },
+      {
+        flags: '-r, --repository <string>',
+        description: 'The repository to use',
+        required: true,
+      },
+      {
+        flags: '-wd, --working-dir <string>',
+        description: 'The working directory to use',
+        defaultValue: '/tmp/statsig-server-core-size-report',
+      },
+      {
+        flags: '-sa, --skip-artifact-download',
+        description: 'Skip downloading artifacts',
+        defaultValue: false,
+      },
+      {
+        flags: '--disregard-workflow-checks',
+        description: 'Whether to disregard workflow checks',
+        defaultValue: false,
       },
     ];
 
@@ -42,16 +80,38 @@ export class SizeReport extends CommandBase {
   override async run(options: SizeReportOptions) {
     Log.title('Size Report');
 
-    options.isRelease = (options.isRelease as any) === 'true';
+    options.shouldPersist = (options.shouldPersist as any) === 'true';
+    options.workingDir = getRelativePath(options.workingDir);
 
     Log.info(`SizeReportOptions: ${JSON.stringify(options, null, 2)}\n`);
 
+    if (!options.skipArtifactDownload) {
+      ensureEmptyDir(options.workingDir);
+
+      const octokit = await getOctokit();
+      await getWorkflowRun(octokit, options);
+      const analyzeOpts = {
+        ...options,
+        package: 'analyze',
+      };
+      const artifacts = await getWorkflowRunArtifacts(octokit, analyzeOpts);
+      await downloadWorkflowRunArtifacts(
+        octokit,
+        analyzeOpts,
+        artifacts.artifacts,
+      );
+
+      const zipFiles = listFiles(options.workingDir, '*.zip');
+      unzipFiles(zipFiles, options.workingDir);
+    }
+
+    const workingDir = options.workingDir;
     const files = [
-      ...listFiles(BASE_DIR, '**/target/**/release/*.dylib'),
-      ...listFiles(BASE_DIR, '**/target/**/release/*.so'),
-      ...listFiles(BASE_DIR, '**/target/**/release/*.dll'),
-      ...listFiles(BASE_DIR, '**/statsig-node/build/*.node'),
-      ...listFiles(BASE_DIR, '**/statsig-pyo3/build/*.whl'),
+      ...listFiles(workingDir, '**/target/**/release/*.dylib'),
+      ...listFiles(workingDir, '**/target/**/release/*.so'),
+      ...listFiles(workingDir, '**/target/**/release/*.dll'),
+      ...listFiles(workingDir, '**/statsig-node/build/*.node'),
+      ...listFiles(workingDir, '**/statsig-pyo3/build/*.whl'),
     ];
 
     const sizes: SizeInfo[] = files.map((file) => {
@@ -70,7 +130,7 @@ export class SizeReport extends CommandBase {
 
     const octokit = await getOctokit();
 
-    if (options.isRelease) {
+    if (options.shouldPersist) {
       await persistSizesToGithubIssue(octokit, sizes);
     } else {
       const pr = await getPullRequestFromBranch(octokit);
@@ -80,8 +140,7 @@ export class SizeReport extends CommandBase {
         return;
       }
 
-      // Skip for now. I need to update it to download all artifacts and run all together
-      // await reportSizesToPullRequest(octokit, pr.number, sizes);
+      await reportSizesToPullRequest(octokit, pr.number, sizes);
     }
   }
 }
@@ -119,11 +178,6 @@ async function persistSizesToGithubIssue(octokit: Octokit, sizes: SizeInfo[]) {
 }
 
 async function getPullRequestFromBranch(octokit: Octokit) {
-  const repo = process.env.GITHUB_REPOSITORY;
-  if (!repo) {
-    throw new Error('GITHUB_REPOSITORY is not set');
-  }
-
   const { data } = await octokit.rest.pulls.list({
     owner: 'statsig-io',
     repo: PRIVATE_REPO,
@@ -139,6 +193,14 @@ async function reportSizesToPullRequest(
   prNumber: number,
   sizes: SizeInfo[],
 ) {
+  const { result: prevSizeComments, error } =
+    await fetchPreviousSizeInfo(octokit);
+
+  if (error || !prevSizeComments) {
+    Log.stepEnd('Failed to fetch previous size info', 'failure');
+    throw error;
+  }
+
   const { data } = await octokit.rest.issues.listComments({
     owner: 'statsig-io',
     repo: PRIVATE_REPO,
@@ -151,7 +213,7 @@ async function reportSizesToPullRequest(
       comment.body?.includes('## 📦 Size Report'),
   );
 
-  const body = getFormattedSizeReport(comment?.body, sizes);
+  const body = getFormattedSizeReport(sizes, prevSizeComments);
 
   if (comment) {
     await octokit.rest.issues.updateComment({
@@ -211,16 +273,56 @@ async function upsertCommentOnSizeReportIssue(
   }
 }
 
-function getFormattedSizeReport(current: string | null, sizes: SizeInfo[]) {
+function getFormattedSizeReport(
+  currentSizes: SizeInfo[],
+  previousSizes: Record<string, SizeCommentWithId>,
+) {
   const lines = [
     '## 📦 Size Report',
     '| File | Size | % Change |',
     '|--|--|--|',
   ];
 
-  sizes.forEach((size) => {
-    lines.push(`| ${size.path} | ${size.size} | ${size.bytes} |`);
+  const previousSizeEntries = Object.entries(previousSizes);
+
+  currentSizes.forEach((size) => {
+    const found = previousSizeEntries.find(([key, _]) =>
+      size.path.includes(key.slice(1) /* remove leading . */),
+    );
+
+    if (found) {
+      const change = ((size.bytes - found[1].bytes) / found[1].bytes) * 100;
+      lines.push(
+        `| ${getStylizedPath(found[0])} | ${size.size} | ${getStylizedPercentageChange(change)} |`,
+      );
+    } else {
+      lines.push(
+        `| ${getStylizedPath(size.path)} | ${size.size} | ERR_NO_PREVIOUS_SIZE |`,
+      );
+    }
   });
 
   return lines.join('\n');
+}
+
+function getStylizedPath(path: string) {
+  if (path.includes('./statsig-pyo3/build/')) {
+    return path.replace('./statsig-pyo3/build/', '');
+  }
+
+  if (path.includes('./target/')) {
+    return path.replace('./target/', '');
+  }
+
+  return path;
+}
+
+function getStylizedPercentageChange(change: number) {
+  if (change > 0) {
+    return '${\\color{orangered}⬆️}$ ' + change.toFixed(2) + '%';
+  } else if (change < 0) {
+    return '${\\color{limegreen}⬇️}$ ' + change.toFixed(2) + '%';
+  }
+
+  return 'No Change';
 }
