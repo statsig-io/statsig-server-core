@@ -16,8 +16,7 @@ export function buildPython(options: BuilderOptions) {
 
   const target = getTarget(options);
 
-  // todo: fix stub gen for centos7
-  const skipStubGen = options.os === 'centos7';
+  const stubGenCommand = `cargo run --bin stub_gen`;
 
   const maturinCommand = [
     'maturin build',
@@ -25,8 +24,9 @@ export function buildPython(options: BuilderOptions) {
     options.release ? '--release --strip' : '',
     options.outDir ? `--out ${options.outDir}` : '',
     target ? `--target ${target}` : '',
-    skipStubGen ? '' : '&& cargo run --bin stub_gen',
   ].join(' ');
+
+  const joinedCommands = `${stubGenCommand} && ${maturinCommand}`;
 
   const dockerCommand = [
     'docker run --rm',
@@ -38,7 +38,7 @@ export function buildPython(options: BuilderOptions) {
   ].join(' ');
 
   const command =
-    isLinux(options.os) && options.docker ? dockerCommand : maturinCommand;
+    isLinux(options.os) && options.docker ? dockerCommand : joinedCommands;
 
   Log.stepBegin(`Building Pyo3 Package ${tag}`);
   Log.stepProgress(command);

@@ -11,6 +11,5 @@ fn main() -> Result<()> {
         panic!("statsig_python_core.pyi not found");
     }
     fs::rename(STUB_FILE_SOURCE, STUB_FILE_DESTINATION)?;
-
     Ok(())
 }
