@@ -15,6 +15,7 @@ export function buildPython(options: BuilderOptions) {
   const pyDir = getRootedPath('statsig-pyo3');
 
   const target = getTarget(options);
+  const isCi = process.env.CI;
 
   const stubGenCommand = `cargo run --bin stub_gen`;
 
@@ -26,7 +27,9 @@ export function buildPython(options: BuilderOptions) {
     target ? `--target ${target}` : '',
   ].join(' ');
 
-  const joinedCommands = `${stubGenCommand} && ${maturinCommand}`;
+  const buildCommand = isCi
+    ? `${maturinCommand}`
+    : `${stubGenCommand} && ${maturinCommand}`;
 
   const dockerCommand = [
     'docker run --rm',
@@ -38,7 +41,7 @@ export function buildPython(options: BuilderOptions) {
   ].join(' ');
 
   const command =
-    isLinux(options.os) && options.docker ? dockerCommand : joinedCommands;
+    isLinux(options.os) && options.docker ? dockerCommand : buildCommand;
 
   Log.stepBegin(`Building Pyo3 Package ${tag}`);
   Log.stepProgress(command);

@@ -88,7 +88,8 @@
       "arch": "aarch64",
       "target": "aarch64-apple-darwin",
       "runner": "macos-14",
-      "py_deps_suffix": "--break-system-packages"
+      "py_deps_suffix": "--break-system-packages",
+      "always_build": true
     },
 
     {
@@ -103,7 +104,8 @@
       "arch": "x86",
       "target": "i686-pc-windows-msvc",
       "runner": "windows-latest",
-      "py_arch": "x86"
+      "py_arch": "x86",
+      "always_build": true
     }
   ]
 }
