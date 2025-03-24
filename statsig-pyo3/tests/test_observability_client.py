@@ -12,10 +12,6 @@ class MockObservabilityClient(ObservabilityClient):
     dist_called = False
     metrics: List[Tuple[str, str, Any, Optional[Dict[str, str]]]] = []  # Stores (type, metric_name, value, tags)
 
-    def __init__(self):
-        super().__init__()
-        self.set_py_ref(self)
-
     def init(self) -> None:
         self.init_called = True
         print("Initializing ExampleObservationClient")
@@ -28,7 +24,7 @@ class MockObservabilityClient(ObservabilityClient):
         print(f"Gauging {metric_name} by {value} with tags {tags}")
         self.metrics.append(("gauge", metric_name, value, tags))
 
-    def distribution(self, metric_name: str, value: float, tags: Optional[Dict[str, str]] = None) -> None:
+    def dist(self, metric_name: str, value: float, tags: Optional[Dict[str, str]] = None) -> None:
         print(f"Distribution {metric_name} by {value} with tags {tags}")
         self.dist_called = True
         self.metrics.append(("distribution", metric_name, value, tags))
@@ -67,15 +63,10 @@ def test_observability_client_usage(statsig_setup):
 
     statsig.check_gate(user, "test-gate")
 
-    statsig.flush_events()
+    statsig.flush_events().wait()
 
-    import time
-    time.sleep(0.1)
-
-    # init() should be called
     assert observability_client.init_called, "init() should have been called"
 
-    # `distribution` event in `metrics[]`
     dist_event = next(
         (m for m in observability_client.metrics if m[0] == "distribution" and m[1] == "statsig.sdk.initialization"),
         None

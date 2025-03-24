@@ -46,24 +46,9 @@ class LayerEvaluationOptions:
     disable_exposure_logging: builtins.bool
     def __new__(cls,disable_exposure_logging:builtins.bool=False): ...
 
-class ObservabilityClient:
-    py_ref: typing.Optional[ObservabilityClient]
+class ObservabilityClientBase:
     def __new__(cls,): ...
-    def set_py_ref(self, py_ref:ObservabilityClient) -> None:
-        ...
-
-    def init(self) -> None:
-        ...
-
-    def increment(self, metric_name:builtins.str, value:builtins.float, tags:typing.Optional[typing.Mapping[builtins.str, builtins.str]]=None) -> None:
-        ...
-
-    def gauge(self, metric_name:builtins.str, value:builtins.float, tags:typing.Optional[typing.Mapping[builtins.str, builtins.str]]=None) -> None:
-        ...
-
-    def distribution(self, metric_name:builtins.str, value:builtins.float, tags:typing.Optional[typing.Mapping[builtins.str, builtins.str]]=None) -> None:
-        ...
-
+    ...
 
 class StatsigBasePy:
     def __new__(cls,network_func:typing.Any, sdk_key:builtins.str, options:typing.Optional[StatsigOptions]=None): ...
@@ -127,7 +112,7 @@ class StatsigOptions:
     environment: typing.Optional[builtins.str]
     output_log_level: typing.Optional[builtins.str]
     global_custom_fields: typing.Optional[dict]
-    observability_client: typing.Optional[ObservabilityClient]
+    observability_client: typing.Optional[ObservabilityClientBase]
     def __new__(cls,): ...
 
 class StatsigUser:

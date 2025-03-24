@@ -31,16 +31,6 @@ pub fn py_dict_to_map(dict: &Bound<PyDict>) -> HashMap<String, DynamicValue> {
     hashmap
 }
 
-pub fn string_map_to_py_dict(py: Python, map: &HashMap<String, String>) -> PyObject {
-    let py_dict = PyDict::new(py);
-    for (key, value) in map {
-        py_dict.set_item(key, value).unwrap_or_else(|e| {
-            log_e!(TAG, "Failed to insert key: {}, error: {}", key, e);
-        });
-    }
-    py_dict.unbind().into()
-}
-
 pub fn map_to_py_dict(py: Python, map: &HashMap<String, Value>) -> PyObject {
     let value = match serde_json::to_string(&map) {
         Ok(v) => v,

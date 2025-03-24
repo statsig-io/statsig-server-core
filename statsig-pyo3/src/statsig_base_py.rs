@@ -1,7 +1,6 @@
 use crate::net_provider_py::NetworkProviderPy;
-use crate::observability_client_py::ObservabilityClientPy;
 use crate::pyo_utils::map_to_py_dict;
-use crate::statsig_options_py::StatsigOptionsPy;
+use crate::statsig_options_py::{safe_convert_to_statsig_options, StatsigOptionsPy};
 use crate::statsig_types_py::{DynamicConfigPy, LayerPy};
 use crate::{
     statsig_types_py::{
@@ -18,7 +17,7 @@ use statsig_rust::networking::NetworkProvider;
 use statsig_rust::{
     log_e, unwrap_or_return, ClientInitResponseOptions, DynamicConfigEvaluationOptions,
     ExperimentEvaluationOptions, FeatureGateEvaluationOptions, HashAlgorithm,
-    LayerEvaluationOptions, Statsig,
+    LayerEvaluationOptions, ObservabilityClient, Statsig,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -30,7 +29,7 @@ const TAG: &str = stringify!(StatsigBasePy);
 #[pyclass(subclass)]
 pub struct StatsigBasePy {
     inner: Arc<Statsig>,
-    observability_client: Mutex<Option<Arc<ObservabilityClientPy>>>,
+    observability_client: Mutex<Option<Arc<dyn ObservabilityClient>>>,
     network_provider: Mutex<Option<Arc<dyn NetworkProvider>>>,
 }
 
@@ -45,24 +44,16 @@ impl StatsigBasePy {
         options: Option<StatsigOptionsPy>,
         py: Python,
     ) -> Self {
-        let mut local_opts = None;
-        let mut obs_client = None;
-
-        if let Some(option_py) = options {
-            let (statsig_options, ob_client) = option_py.to_statsig_options(py);
-
-            obs_client = ob_client.clone();
-
-            local_opts = Some(Arc::new(statsig_options));
-        }
+        let (opts, ob_client) = safe_convert_to_statsig_options(py, options);
 
         let network_provider: Arc<dyn NetworkProvider> =
             Arc::new(NetworkProviderPy { network_func });
+
         NetworkProviderGlobal::set(&network_provider);
 
         Self {
-            inner: Arc::new(Statsig::new(sdk_key, local_opts)),
-            observability_client: Mutex::new(obs_client),
+            inner: Arc::new(Statsig::new(sdk_key, opts.map(Arc::new))),
+            observability_client: Mutex::new(ob_client),
             network_provider: Mutex::new(Some(network_provider)),
         }
     }
