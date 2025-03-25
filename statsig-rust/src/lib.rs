@@ -31,6 +31,7 @@ pub mod data_store_interface;
 pub mod global_configs;
 pub mod hashing;
 pub mod hashset_with_ttl;
+pub mod instance_registry;
 pub mod instance_store;
 pub mod networking;
 pub mod output_logger;
