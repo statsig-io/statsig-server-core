@@ -1,7 +1,6 @@
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::get_instance_or_return_c;
-use statsig_rust::instance_store::INST_STORE;
-use statsig_rust::{log_e, unwrap_or_return, SpecsInfo, StatsigHttpSpecsAdapter};
+use statsig_rust::{log_e, unwrap_or_return, InstanceRegistry, SpecsInfo, StatsigHttpSpecsAdapter};
 use statsig_rust::{StatsigOptions, StatsigRuntime};
 use std::os::raw::c_char;
 use std::ptr::null;
@@ -16,7 +15,7 @@ pub extern "C" fn statsig_http_specs_adapter_create(
     let sdk_key = unwrap_or_return!(c_char_to_string(sdk_key), null());
 
     let options_ref = c_char_to_string(options_ref);
-    let options = INST_STORE.get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
+    let options = InstanceRegistry::get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
 
     let mut specs_url = None;
     if let Some(options) = options {
@@ -27,7 +26,7 @@ pub extern "C" fn statsig_http_specs_adapter_create(
 
     let adapter = StatsigHttpSpecsAdapter::new(&sdk_key, specs_url.as_ref(), false, None);
 
-    let ref_id = INST_STORE.add(adapter).unwrap_or_else(|| {
+    let ref_id = InstanceRegistry::register(adapter).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigHttpSpecsAdapter");
         "".to_string()
     });
@@ -38,7 +37,7 @@ pub extern "C" fn statsig_http_specs_adapter_create(
 #[no_mangle]
 pub extern "C" fn statsig_http_specs_adapter_release(specs_adapter_ref: *const c_char) {
     if let Some(id) = c_char_to_string(specs_adapter_ref) {
-        INST_STORE.remove(&id);
+        InstanceRegistry::remove(&id);
     }
 }
 

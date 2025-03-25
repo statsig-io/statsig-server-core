@@ -1,9 +1,8 @@
 use crate::ffi_utils::{
     c_char_to_string, parse_json_to_map, parse_json_to_str_map, string_to_c_char,
 };
-use statsig_rust::instance_store::INST_STORE;
-use statsig_rust::log_e;
 use statsig_rust::statsig_user::StatsigUserBuilder;
+use statsig_rust::{log_e, InstanceRegistry};
 use std::os::raw::c_char;
 
 const TAG: &str = "StatsigUserC";
@@ -48,7 +47,7 @@ pub extern "C" fn statsig_user_create(
         .private_attributes(private_attributes);
 
     let user = builder.build();
-    let ref_id = INST_STORE.add(user).unwrap_or_else(|| {
+    let ref_id = InstanceRegistry::register(user).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigUser");
         "".to_string()
     });
@@ -59,6 +58,6 @@ pub extern "C" fn statsig_user_create(
 #[no_mangle]
 pub extern "C" fn statsig_user_release(user_ref: *const c_char) {
     if let Some(id) = c_char_to_string(user_ref) {
-        INST_STORE.remove(&id);
+        InstanceRegistry::remove(&id);
     }
 }

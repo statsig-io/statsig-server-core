@@ -2,9 +2,8 @@ use crate::jni::jni_utils::{jboolean_to_bool, jstring_to_string, string_to_jstri
 use jni::objects::{JClass, JString};
 use jni::sys::{jboolean, jint, jlong, jstring};
 use jni::JNIEnv;
-use statsig_rust::{
-    instance_store::INST_STORE, log_d, log_e, statsig_options::StatsigOptionsBuilder,
-};
+use statsig_rust::InstanceRegistry;
+use statsig_rust::{log_d, log_e, statsig_options::StatsigOptionsBuilder};
 
 const TAG: &str = "StatsigOptionsJNI";
 
@@ -80,7 +79,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .enable_country_lookup(enable_country_lookup);
 
     let options = builder.build();
-    let id = INST_STORE.add(options);
+    let id = InstanceRegistry::register(options);
     match id {
         Some(id) => {
             log_d!(TAG, "Created StatsigOptions with ID {}", id);
@@ -100,6 +99,6 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsRelease(
     options_ref: JString,
 ) {
     if let Some(id) = jstring_to_string(&mut env, options_ref) {
-        INST_STORE.remove(&id);
+        InstanceRegistry::remove(&id);
     }
 }

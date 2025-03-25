@@ -6,7 +6,7 @@ pub use event_logging_adapter::*;
 pub use hashing::HashAlgorithm;
 pub use id_lists_adapter::{IdListsAdapter, StatsigHttpIdListsAdapter};
 pub use initialize_response::InitializeResponse;
-pub use instance_store::InstanceStore;
+pub use instance_registry::InstanceRegistry;
 pub use observability::{
     observability_client_adapter::ObservabilityClient, ops_stats::OpsStatsEventObserver,
 };
@@ -32,7 +32,6 @@ pub mod global_configs;
 pub mod hashing;
 pub mod hashset_with_ttl;
 pub mod instance_registry;
-pub mod instance_store;
 pub mod networking;
 pub mod output_logger;
 pub mod override_adapter;

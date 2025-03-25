@@ -3,7 +3,7 @@ use crate::jni::jni_utils::{jstring_to_string, string_to_jstring};
 use jni::objects::{JClass, JString};
 use jni::sys::jstring;
 use jni::JNIEnv;
-use statsig_rust::{instance_store::INST_STORE, log_d, log_e, statsig_user::StatsigUserBuilder};
+use statsig_rust::{log_d, log_e, statsig_user::StatsigUserBuilder, InstanceRegistry};
 
 const TAG: &str = "StatsigUserJNI";
 
@@ -50,7 +50,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigUserCreate(
         .private_attributes(private_attributes);
 
     let user = builder.build();
-    let id = INST_STORE.add(user);
+    let id = InstanceRegistry::register(user);
     match id {
         Some(id) => {
             log_d!(TAG, "Created StatsigUser {}", id);
@@ -70,6 +70,6 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigUserRelease(
     user_ref: JString,
 ) {
     if let Some(id) = jstring_to_string(&mut env, user_ref) {
-        INST_STORE.remove(&id);
+        InstanceRegistry::remove(&id);
     }
 }

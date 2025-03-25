@@ -1,7 +1,8 @@
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::get_instance_or_noop_c;
-use statsig_rust::instance_store::INST_STORE;
-use statsig_rust::{log_e, unwrap_or_return, StatsigLocalFileSpecsAdapter, StatsigRuntime};
+use statsig_rust::{
+    log_e, unwrap_or_return, InstanceRegistry, StatsigLocalFileSpecsAdapter, StatsigRuntime,
+};
 use std::os::raw::c_char;
 
 const TAG: &str = "StatsigLocalFileSpecsAdapterC";
@@ -24,7 +25,7 @@ pub extern "C" fn statsig_local_file_specs_adapter_create(
         fallback_to_statsig_api,
     );
 
-    let ref_id = INST_STORE.add(adapter).unwrap_or_else(|| {
+    let ref_id = InstanceRegistry::register(adapter).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigLocalFileSpecsAdapter");
         "".to_string()
     });
@@ -35,7 +36,7 @@ pub extern "C" fn statsig_local_file_specs_adapter_create(
 #[no_mangle]
 pub extern "C" fn statsig_local_file_specs_adapter_release(specs_adapter_ref: *const c_char) {
     if let Some(id) = c_char_to_string(specs_adapter_ref) {
-        INST_STORE.remove(&id);
+        InstanceRegistry::remove(&id);
     }
 }
 

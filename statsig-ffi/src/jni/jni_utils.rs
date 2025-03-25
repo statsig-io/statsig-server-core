@@ -33,7 +33,7 @@ macro_rules! get_instance_or_return_jni {
 macro_rules! get_instance_or_else_jni {
     ($type:ty, $env:expr, $ref:expr, $else:expr) => {
         match jstring_to_string($env, $ref) {
-            Some(id) => match INST_STORE.get::<$type>(&id) {
+            Some(id) => match InstanceRegistry::get::<$type>(&id) {
                 Some(instance) => instance,
                 None => $else,
             },

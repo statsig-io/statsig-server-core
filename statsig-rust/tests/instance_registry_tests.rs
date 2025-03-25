@@ -35,7 +35,7 @@ fn test_register_and_get() {
         is_active: true,
         data: "bar".to_string(),
     };
-    let id = InstanceRegistry::register(Arc::new(my_bar)).unwrap();
+    let id = InstanceRegistry::register(my_bar).unwrap();
 
     let retrieved = InstanceRegistry::get::<MyBar>(&id);
     assert!(retrieved.is_some());
@@ -50,7 +50,7 @@ fn test_remove() {
         is_active: true,
         data: "bar".to_string(),
     };
-    let id = InstanceRegistry::register(Arc::new(my_bar)).unwrap();
+    let id = InstanceRegistry::register(my_bar).unwrap();
 
     InstanceRegistry::remove(&id);
     let retrieved = InstanceRegistry::get::<MyBar>(&id);
@@ -65,7 +65,7 @@ fn test_remove_all() {
         is_active: true,
         data: "bar".to_string(),
     };
-    let id = InstanceRegistry::register(Arc::new(my_bar)).unwrap();
+    let id = InstanceRegistry::register(my_bar).unwrap();
 
     InstanceRegistry::remove_all();
     let retrieved = InstanceRegistry::get::<MyBar>(&id);
@@ -84,7 +84,7 @@ fn test_register_and_get_nested() {
         name: "foo".to_string(),
         bar: Arc::new(my_bar),
     };
-    let id = InstanceRegistry::register(Arc::new(my_foo)).unwrap();
+    let id = InstanceRegistry::register(my_foo).unwrap();
 
     let retrieved = InstanceRegistry::get::<MyFoo>(&id).unwrap();
     assert_eq!(retrieved.bar.is_active, true);
@@ -100,7 +100,7 @@ fn test_getting_wrong_type() {
         is_active: true,
         data: "bar".to_string(),
     };
-    let id = InstanceRegistry::register(Arc::new(my_bar)).unwrap();
+    let id = InstanceRegistry::register(my_bar).unwrap();
 
     let retrieved = InstanceRegistry::get::<MyFoo>(&id);
     assert!(retrieved.is_none());
@@ -114,13 +114,13 @@ fn test_register_id_names() {
         is_active: true,
         data: "bar".to_string(),
     });
-    let id = InstanceRegistry::register(my_bar.clone()).unwrap();
+    let id = InstanceRegistry::register_arc(my_bar.clone()).unwrap();
     assert!(id.starts_with("MyBar_"));
 
     let my_foo = MyFoo {
         name: "foo".to_string(),
         bar: my_bar.clone(),
     };
-    let id = InstanceRegistry::register(Arc::new(my_foo)).unwrap();
+    let id = InstanceRegistry::register(my_foo).unwrap();
     assert!(id.starts_with("MyFoo_"));
 }

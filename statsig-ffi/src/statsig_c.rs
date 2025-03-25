@@ -2,12 +2,11 @@ use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::{get_instance_or_noop_c, get_instance_or_return_c};
 use serde_json::json;
 use serde_json::Value;
-use statsig_rust::instance_store::INST_STORE;
 use statsig_rust::{
     get_instance_or_noop, log_d, log_e, unwrap_or_noop, unwrap_or_return,
     ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
-    FeatureGateEvaluationOptions, LayerEvaluationOptions, Statsig, StatsigOptions, StatsigRuntime,
-    StatsigUser,
+    FeatureGateEvaluationOptions, InstanceRegistry, LayerEvaluationOptions, Statsig,
+    StatsigOptions, StatsigRuntime, StatsigUser,
 };
 use std::collections::HashMap;
 use std::os::raw::c_char;
@@ -22,11 +21,11 @@ pub extern "C" fn statsig_create(
 ) -> *const c_char {
     let sdk_key = c_char_to_string(sdk_key).unwrap();
     let options_ref = c_char_to_string(options_ref);
-    let options = INST_STORE.get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
+    let options = InstanceRegistry::get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
 
     let inst = Statsig::new(&sdk_key, options);
 
-    let ref_id = INST_STORE.add(inst).unwrap_or_else(|| {
+    let ref_id = InstanceRegistry::register(inst).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create Statsig");
         "".to_string()
     });
@@ -37,7 +36,7 @@ pub extern "C" fn statsig_create(
 #[no_mangle]
 pub extern "C" fn statsig_release(statsig_ref: *const c_char) {
     if let Some(id) = c_char_to_string(statsig_ref) {
-        INST_STORE.remove(&id);
+        InstanceRegistry::remove(&id);
     }
 }
 

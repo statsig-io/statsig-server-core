@@ -15,9 +15,7 @@ use std::time::Duration;
 use super::jni_utils::serialize_json_to_jstring;
 use crate::jni::jni_utils::{jni_to_rust_hashmap, string_to_jstring};
 use jni::objects::{JClass, JObject, JString};
-use statsig_rust::{
-    instance_store::INST_STORE, log_e, Statsig, StatsigOptions, StatsigRuntime, StatsigUser,
-};
+use statsig_rust::{log_e, InstanceRegistry, Statsig, StatsigOptions, StatsigRuntime, StatsigUser};
 
 const TAG: &str = "StatsigJNI";
 
@@ -38,12 +36,13 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
 
     let options_inst_id = jstring_to_string(&mut env, options_ref);
 
-    let options = INST_STORE.get_with_optional_id::<StatsigOptions>(options_inst_id.as_ref());
+    let options =
+        InstanceRegistry::get_with_optional_id::<StatsigOptions>(options_inst_id.as_ref());
 
     let inst = Statsig::new(&sdk_key, options);
     update_statsig_metadata(&mut env, statsig_metadata);
 
-    let id = INST_STORE.add(inst);
+    let id = InstanceRegistry::register(inst);
     match id {
         Some(id) => match env.new_string(id) {
             Ok(java_str) => java_str.into_raw(),
@@ -60,7 +59,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRelease(
     statsig_ref: JString,
 ) {
     if let Some(id) = jstring_to_string(&mut env, statsig_ref) {
-        INST_STORE.remove(&id);
+        InstanceRegistry::remove(&id);
     }
 }
 

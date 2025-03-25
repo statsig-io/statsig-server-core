@@ -1,7 +1,6 @@
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
-use statsig_rust::instance_store::INST_STORE;
 use statsig_rust::log_event_payload::LogEventRequest;
-use statsig_rust::{log_e, unwrap_or_return, StatsigRuntime};
+use statsig_rust::{log_e, unwrap_or_return, InstanceRegistry, StatsigRuntime};
 use statsig_rust::{StatsigHttpEventLoggingAdapter, StatsigOptions};
 use std::os::raw::c_char;
 use std::ptr::null;
@@ -16,7 +15,7 @@ pub extern "C" fn statsig_http_event_logging_adapter_create(
     let sdk_key = unwrap_or_return!(c_char_to_string(sdk_key), null());
 
     let options_ref = c_char_to_string(options_ref);
-    let options = INST_STORE.get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
+    let options = InstanceRegistry::get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
 
     let mut log_event_url = None;
     if let Some(options) = options {
@@ -25,7 +24,7 @@ pub extern "C" fn statsig_http_event_logging_adapter_create(
 
     let adapter = StatsigHttpEventLoggingAdapter::new(&sdk_key, log_event_url.as_ref());
 
-    let ref_id = INST_STORE.add(adapter).unwrap_or_else(|| {
+    let ref_id = InstanceRegistry::register(adapter).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigHttpSpecsAdapter");
         "".to_string()
     });
@@ -38,7 +37,7 @@ pub extern "C" fn statsig_http_event_logging_adapter_release(
     event_logging_adapter_ref: *const c_char,
 ) {
     if let Some(id) = c_char_to_string(event_logging_adapter_ref) {
-        INST_STORE.remove(&id);
+        InstanceRegistry::remove(&id);
     }
 }
 
@@ -59,7 +58,7 @@ pub extern "C" fn statsig_http_event_logging_adapter_send_events(
     };
 
     let event_logging_adapter =
-        match INST_STORE.get::<StatsigHttpEventLoggingAdapter>(&event_logging_adapter_ref) {
+        match InstanceRegistry::get::<StatsigHttpEventLoggingAdapter>(&event_logging_adapter_ref) {
             Some(adapter) => adapter,
             None => return handle_error("Failed to get event logging adapter instance"),
         };

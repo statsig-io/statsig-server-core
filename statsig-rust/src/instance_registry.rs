@@ -17,19 +17,24 @@ const TAG: &str = "InstanceRegistry";
 pub struct InstanceRegistry;
 
 impl InstanceRegistry {
-    pub fn register<T: Send + Sync + 'static>(instance: Arc<T>) -> Option<String> {
+    pub fn register_arc<T: Send + Sync + 'static>(instance: Arc<T>) -> Option<String> {
         let full_type_name = std::any::type_name::<T>();
         let short_type_name = full_type_name.split("::").last().unwrap_or(full_type_name);
         let id = format!("{}_{}", short_type_name, Uuid::new_v4());
 
-        let mut registry = match Self::get_write_lock() {
-            Some(registry) => registry,
-            None => return None,
-        };
+        let mut registry = Self::get_write_lock()?;
 
         registry.insert(id.clone(), instance);
 
         Some(id)
+    }
+
+    pub fn register<T: Send + Sync + 'static>(instance: T) -> Option<String> {
+        Self::register_arc(Arc::new(instance))
+    }
+
+    pub fn get_with_optional_id<T: Send + Sync + 'static>(id: Option<&String>) -> Option<Arc<T>> {
+        id.and_then(|id_str| Self::get::<T>(id_str))
     }
 
     pub fn get<T: Send + Sync + 'static>(id: &str) -> Option<Arc<T>> {
@@ -81,4 +86,40 @@ impl InstanceRegistry {
             }
         }
     }
+}
+
+#[macro_export]
+macro_rules! get_instance_or_noop {
+    ($type:ty, $ref:expr) => {
+        match statsig_rust::InstanceRegistry::get::<$type>($ref) {
+            Some(instance) => instance,
+            None => {
+                $crate::log_w!(TAG, "{} Reference not found {}", stringify!($type), $ref);
+                return;
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! get_instance_or_return {
+    ($type:ty, $ref:expr, $return_val:expr) => {
+        match statsig_rust::InstanceRegistry::get::<$type>($ref) {
+            Some(instance) => instance,
+            None => {
+                $crate::log_w!(TAG, "{} Reference not found {}", stringify!($type), $ref);
+                return $return_val;
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! get_instance_or_else {
+    ($type:ty, $ref:expr, $else:expr) => {
+        match statsig_rust::InstanceRegistry::get::<$type>($ref) {
+            Some(instance) => instance,
+            None => $else,
+        }
+    };
 }
