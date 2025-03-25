@@ -811,7 +811,7 @@ impl Statsig {
         match SHARED_INSTANCE.lock() {
             Ok(mut lock) => {
                 if lock.is_some() {
-                    let message = "Shared Statsig instance already exists";
+                    let message = "Statsig shared instance already exists. Call Statsig::remove_shared() before creating a new instance.";
                     log_e!(TAG, "{}", message);
                     return Err(StatsigErr::SharedInstanceFailure(message.to_string()));
                 }
