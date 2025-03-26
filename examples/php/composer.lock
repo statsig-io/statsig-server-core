@@ -4,25 +4,47 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "db7d0b1a84a61116f80dbda57602edd6",
+    "content-hash": "85f70b6d73aa411dd87a448b781ed152",
     "packages": [
         {
-            "name": "statsig/statsig-ffi",
+            "name": "statsig/statsig-php-core",
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "../../statsig-ffi/bindings/php",
-                "reference": "df6b9f47f3d6e9c6db24b84ba9ba8537d9c6aa12"
+                "url": "../../statsig-php",
+                "reference": "10345df5d38dad6d2f920c5c4b582003ecd326d3"
+            },
+            "require-dev": {
+                "donatj/mock-webserver": "^2.7.2",
+                "ext-zlib": "*",
+                "phpunit/phpunit": "^9"
             },
             "type": "library",
             "autoload": {
                 "psr-4": {
-                    "Statsig\\StatsigFFI\\": "src/"
+                    "Statsig\\": "src/"
                 }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Statsig\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "phpunit tests --testdox --colors=always"
+                ],
+                "test:verbose": [
+                    "phpunit tests --testdox --colors=always --debug"
+                ],
+                "post-install-cmd": [
+                    "php post-install.php"
+                ]
             },
             "license": [
                 "ISC"
             ],
+            "description": "Statsig PHP SDK",
             "transport-options": {
                 "relative": true
             }
@@ -32,11 +54,11 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "statsig/statsig-ffi": 20
+        "statsig/statsig-php-core": 20
     },
     "prefer-stable": false,
     "prefer-lowest": false,
-    "platform": [],
-    "platform-dev": [],
+    "platform": {},
+    "platform-dev": {},
     "plugin-api-version": "2.6.0"
 }

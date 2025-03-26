@@ -5,7 +5,7 @@ use crate::{
     function_based_specs_adapter_c::FunctionBasedSpecsAdapterC,
 };
 use statsig_rust::{
-    log_e, EventLoggingAdapter, InstanceRegistry, SpecsAdapter,
+    log_e, output_logger::LogLevel, EventLoggingAdapter, InstanceRegistry, SpecsAdapter,
     StatsigLocalFileEventLoggingAdapter, StatsigLocalFileSpecsAdapter, StatsigOptions,
 };
 
@@ -21,6 +21,7 @@ pub extern "C" fn statsig_options_create(
     event_logging_flush_interval_ms: c_int,
     event_logging_max_queue_size: c_int,
     specs_sync_interval_ms: c_int,
+    output_log_level: *const c_char,
 ) -> *const c_char {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
@@ -32,6 +33,9 @@ pub extern "C" fn statsig_options_create(
     let specs_adapter = try_get_specs_adapter(specs_adapter_ref);
     let event_logging_adapter = try_get_event_logging_adapter(event_logging_adapter_ref);
 
+    let output_log_level =
+        c_char_to_string(output_log_level).map(|level| LogLevel::from(level.as_str()));
+
     let ref_id = InstanceRegistry::register(StatsigOptions {
         specs_url,
         log_event_url,
@@ -41,6 +45,7 @@ pub extern "C" fn statsig_options_create(
         event_logging_flush_interval_ms,
         event_logging_max_queue_size,
         specs_sync_interval_ms,
+        output_log_level,
         ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {

@@ -240,5 +240,7 @@ fn create_runtime_if_required() -> (Option<Runtime>, Handle) {
 impl Drop for StatsigRuntime {
     fn drop(&mut self) {
         self.shutdown(Duration::from_secs(1));
+
+        log_d!(TAG, "StatsigRuntime dropped");
     }
 }

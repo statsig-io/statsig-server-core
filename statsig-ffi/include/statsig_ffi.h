@@ -31,6 +31,8 @@ void statsig_initialize(const char *statsig_ref, void (*callback)(void));
 
 void statsig_initialize_blocking(const char *statsig_ref);
 
+void statsig_shutdown_blocking(const char *statsig_ref);
+
 void statsig_flush_events(const char *statsig_ref, void (*callback)(void));
 
 void statsig_flush_events_blocking(const char *statsig_ref);
@@ -133,7 +135,8 @@ const char *statsig_options_create(const char *specs_url,
                                    const char *environment,
                                    int event_logging_flush_interval_ms,
                                    int event_logging_max_queue_size,
-                                   int specs_sync_interval_ms);
+                                   int specs_sync_interval_ms,
+                                   const char *output_log_level);
 
 void statsig_options_release(const char *options_ref);
 

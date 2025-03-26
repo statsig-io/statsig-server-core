@@ -12,6 +12,8 @@ class Statsig
 {
     public $__ref = null;
 
+    protected $is_shutdown = false;
+
     public function __construct(string $sdk_key, ?StatsigOptions $options = null)
     {
         $options_ref = $options ? $options->__ref : (new StatsigOptions)->__ref;
@@ -26,7 +28,8 @@ class Statsig
             return;
         }
 
-        $this->flushEvents();
+        $this->shutdown();
+
         StatsigFFI::get()->statsig_release($this->__ref);
         $this->__ref = null;
     }
@@ -34,6 +37,16 @@ class Statsig
     public function initialize(): void
     {
         StatsigFFI::get()->statsig_initialize_blocking($this->__ref);
+    }
+
+    public function shutdown(): void
+    {
+        if ($this->is_shutdown) {
+            return;
+        }
+
+        StatsigFFI::get()->statsig_shutdown_blocking($this->__ref);
+        $this->is_shutdown = true;
     }
 
     public function flushEvents(): void

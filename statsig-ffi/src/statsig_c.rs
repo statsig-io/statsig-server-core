@@ -11,6 +11,7 @@ use statsig_rust::{
 use std::collections::HashMap;
 use std::os::raw::c_char;
 use std::ptr::null;
+use std::time::Duration;
 
 const TAG: &str = "StatsigC";
 
@@ -64,6 +65,19 @@ pub extern "C" fn statsig_initialize_blocking(statsig_ref: *const c_char) {
     statsig_rt.runtime_handle.block_on(async move {
         if let Err(e) = statsig.initialize().await {
             log_e!(TAG, "Failed to initialize statsig: {}", e);
+        }
+    });
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_shutdown_blocking(statsig_ref: *const c_char) {
+    let statsig_ref = unwrap_or_noop!(c_char_to_string(statsig_ref));
+    let statsig = get_instance_or_noop!(Statsig, &statsig_ref);
+
+    let statsig_rt = StatsigRuntime::get_runtime();
+    statsig_rt.runtime_handle.block_on(async move {
+        if let Err(e) = statsig.__shutdown_internal(Duration::from_secs(3)).await {
+            log_e!(TAG, "Failed to shutdown statsig: {}", e);
         }
     });
 }

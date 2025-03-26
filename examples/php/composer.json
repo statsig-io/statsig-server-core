@@ -4,7 +4,7 @@
   "repositories": [
     {
       "type": "path",
-      "url": "../../statsig-ffi/bindings/php"
+      "url": "../../statsig-php"
     }
   ],
   "autoload": {
@@ -19,6 +19,6 @@
     }
   ],
   "require": {
-    "statsig/statsig-ffi": "@dev"
+    "statsig/statsig-php-core": "dev-main"
   }
 }
