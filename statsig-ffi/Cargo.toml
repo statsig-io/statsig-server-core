@@ -12,7 +12,7 @@ lazy_static = "1.5.0"
 log = "0.4.22"
 jni = "0.21.1"
 serde = { version = "1.0.204", features = ["derive"] }
-
+async-trait = "0.1.81"
 
 [build-dependencies]
 csbindgen = "1.9.2"

@@ -1,6 +1,9 @@
 use std::{os::raw::c_char, os::raw::c_int, sync::Arc};
 
-use crate::ffi_utils::{c_char_to_string, c_int_to_u32, string_to_c_char};
+use crate::{
+    ffi_utils::{c_char_to_string, c_int_to_u32, string_to_c_char},
+    function_based_specs_adapter_c::FunctionBasedSpecsAdapterC,
+};
 use statsig_rust::{
     log_e, EventLoggingAdapter, InstanceRegistry, SpecsAdapter,
     StatsigLocalFileEventLoggingAdapter, StatsigLocalFileSpecsAdapter, StatsigOptions,
@@ -26,22 +29,8 @@ pub extern "C" fn statsig_options_create(
     let event_logging_max_queue_size = c_int_to_u32(event_logging_max_queue_size);
     let specs_sync_interval_ms = c_int_to_u32(specs_sync_interval_ms);
 
-    let specs_adapter: Option<Arc<dyn SpecsAdapter>> = match c_char_to_string(specs_adapter_ref) {
-        Some(specs_adapter_ref) => {
-            InstanceRegistry::get::<StatsigLocalFileSpecsAdapter>(&specs_adapter_ref)
-                .map(|adapter| adapter as Arc<dyn SpecsAdapter>)
-        }
-        None => None,
-    };
-
-    let event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>> =
-        match c_char_to_string(event_logging_adapter_ref) {
-            Some(event_logging_adapter_ref) => InstanceRegistry::get::<
-                StatsigLocalFileEventLoggingAdapter,
-            >(&event_logging_adapter_ref)
-            .map(|adapter| adapter as Arc<dyn EventLoggingAdapter>),
-            None => None,
-        };
+    let specs_adapter = try_get_specs_adapter(specs_adapter_ref);
+    let event_logging_adapter = try_get_event_logging_adapter(event_logging_adapter_ref);
 
     let ref_id = InstanceRegistry::register(StatsigOptions {
         specs_url,
@@ -67,4 +56,35 @@ pub extern "C" fn statsig_options_release(options_ref: *const c_char) {
     if let Some(id) = c_char_to_string(options_ref) {
         InstanceRegistry::remove(&id);
     }
+}
+
+fn try_get_specs_adapter(specs_adapter_ref: *const c_char) -> Option<Arc<dyn SpecsAdapter>> {
+    let specs_adapter_ref = c_char_to_string(specs_adapter_ref)?;
+    let raw = InstanceRegistry::get_raw(&specs_adapter_ref)?;
+
+    if let Ok(adapter) = raw.clone().downcast::<StatsigLocalFileSpecsAdapter>() {
+        return Some(adapter);
+    }
+
+    if let Ok(adapter) = raw.clone().downcast::<FunctionBasedSpecsAdapterC>() {
+        return Some(adapter);
+    }
+
+    None
+}
+
+fn try_get_event_logging_adapter(
+    event_logging_adapter_ref: *const c_char,
+) -> Option<Arc<dyn EventLoggingAdapter>> {
+    let event_logging_adapter_ref = c_char_to_string(event_logging_adapter_ref)?;
+    let raw = InstanceRegistry::get_raw(&event_logging_adapter_ref)?;
+
+    if let Ok(adapter) = raw
+        .clone()
+        .downcast::<StatsigLocalFileEventLoggingAdapter>()
+    {
+        return Some(adapter);
+    }
+
+    None
 }

@@ -13,19 +13,19 @@ import { execSync } from 'child_process';
 import { CommandBase } from './command_base.js';
 
 const TEST_COMMANDS: Record<string, string> = {
-  python: [
-    'cd statsig-pyo3',
-    'maturin build',
-    'pip install ../target/wheels/statsig_python_core*manylinux*.whl --force-reinstall',
-    'python3 -m pytest tests --capture=no -v',
-  ].join(' && '),
-
   java: [
     'cargo build -p statsig_ffi',
     'mkdir -p statsig-ffi/bindings/java/src/main/resources/native',
     'cp target/debug/libstatsig_ffi.so statsig-ffi/bindings/java/src/main/resources/native',
     'cd statsig-ffi/bindings/java',
     './gradlew test --rerun-tasks --console rich',
+  ].join(' && '),
+
+  node: [
+    `pnpm install --dir statsig-node`,
+    './tore build node --no-docker',
+    'cd statsig-node',
+    'pnpm test',
   ].join(' && '),
 
   php: [
@@ -35,11 +35,11 @@ const TEST_COMMANDS: Record<string, string> = {
     'composer test',
   ].join(' && '),
 
-  node: [
-    `pnpm install --dir statsig-node`,
-    './tore build node --no-docker',
-    'cd statsig-node',
-    'pnpm test',
+  python: [
+    'cd statsig-pyo3',
+    'maturin build',
+    'pip install ../target/wheels/statsig_python_core*manylinux*.whl --force-reinstall',
+    'python3 -m pytest tests --capture=no -v',
   ].join(' && '),
 
   rust: [

@@ -61,6 +61,18 @@ impl InstanceRegistry {
             })
     }
 
+    pub fn get_raw(id: &str) -> Option<Arc<dyn Any + Send + Sync>> {
+        let registry = match REGISTRY.read() {
+            Ok(guard) => guard,
+            Err(e) => {
+                log_e!(TAG, "Failed to acquire read lock: {}", e);
+                return None;
+            }
+        };
+
+        registry.get(id).cloned()
+    }
+
     pub fn remove(id: &str) {
         let mut registry = match Self::get_write_lock() {
             Some(registry) => registry,

@@ -2360,6 +2360,7 @@ dependencies = [
 name = "statsig_ffi"
 version = "0.0.10-beta.2"
 dependencies = [
+ "async-trait",
  "cbindgen",
  "csbindgen",
  "jni",

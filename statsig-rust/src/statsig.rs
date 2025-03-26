@@ -100,6 +100,7 @@ pub struct StatsigContext {
     pub spec_store_data: Option<SpecStoreData>,
     pub error_observer: Arc<dyn OpsStatsEventObserver>,
     pub diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
+    pub spec_store: Arc<SpecStore>,
 }
 
 #[derive(Debug)]
@@ -428,6 +429,7 @@ impl Statsig {
             spec_store_data: self.get_current_values(),
             error_observer: self.error_observer.clone(),
             diagnostics_observer: self.diagnostics_observer.clone(),
+            spec_store: self.spec_store.clone(),
         }
     }
 
@@ -1562,6 +1564,7 @@ fn initialize_specs_adapter(
     hashing: &HashUtil,
 ) -> Arc<dyn SpecsAdapter> {
     if let Some(adapter) = options.specs_adapter.clone() {
+        log_d!(TAG, "Using provided SpecsAdapter: {}", sdk_key);
         return adapter;
     }
 

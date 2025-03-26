@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::{self, Debug};
 use std::sync::Arc;
-use tokio::time::Duration;
+use std::time::Duration;
 
 #[repr(u8)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -19,11 +19,33 @@ pub enum SpecsSource {
     Adapter(String),
 }
 
+impl SpecsSource {
+    pub fn new_from_string(s: &str) -> Self {
+        if s.starts_with("Adapter(") {
+            let name = s
+                .strip_prefix("Adapter(")
+                .and_then(|s| s.strip_suffix(")"))
+                .unwrap_or("");
+            return SpecsSource::Adapter(name.to_string());
+        }
+
+        match s {
+            "Uninitialized" => SpecsSource::Uninitialized,
+            "NoValues" => SpecsSource::NoValues,
+            "Error" => SpecsSource::Error,
+            "Loading" => SpecsSource::Loading,
+            "Network" => SpecsSource::Network,
+            "Bootstrap" => SpecsSource::Bootstrap,
+            _ => SpecsSource::Error,
+        }
+    }
+}
+
 impl fmt::Display for SpecsSource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
             SpecsSource::Adapter(name) => {
-                let type_name = format!("Adapter{name}");
+                let type_name = format!("Adapter({name})");
                 type_name
             }
             SpecsSource::Uninitialized => "Uninitialized".to_string(),

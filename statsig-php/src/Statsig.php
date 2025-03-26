@@ -12,7 +12,7 @@ class Statsig
 {
     public $__ref = null;
 
-    public function __construct(string $sdk_key, StatsigOptions $options = null)
+    public function __construct(string $sdk_key, ?StatsigOptions $options = null)
     {
         $options_ref = $options ? $options->__ref : (new StatsigOptions)->__ref;
 

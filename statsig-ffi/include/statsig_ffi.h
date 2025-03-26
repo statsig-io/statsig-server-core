@@ -7,6 +7,22 @@ typedef int StatsigUser;
 #include <stdint.h>
 #include <stdlib.h>
 
+const char *function_based_specs_adapter_create(void (*setup_internal_fn)(const char *listener_ref),
+                                                void (*start_fn)(void),
+                                                void (*shutdown_fn)(void),
+                                                void (*schedule_background_sync_fn)(void));
+
+void function_based_specs_adapter_release(const char *adapter_ref);
+
+void specs_update_listener_release(const char *listener_ref);
+
+void specs_update_listener_did_receive_specs_update(const char *listener_ref,
+                                                    const char *data,
+                                                    const char *source,
+                                                    unsigned long received_at);
+
+const char *specs_update_listener_get_current_specs_info(const char *listener_ref);
+
 const char *statsig_create(const char *sdk_key, const char *options_ref);
 
 void statsig_release(const char *statsig_ref);

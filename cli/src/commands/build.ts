@@ -4,6 +4,7 @@ import {
   buildDockerImage,
 } from '@/utils/docker_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
+import { execSync } from 'child_process';
 
 import { BuilderOptions } from './builders/builder-options.js';
 import { buildFfi } from './builders/ffi-builder.js';
@@ -100,6 +101,8 @@ export class Build extends CommandBase {
     Log.stepProgress(`Docker: ${options.docker}`);
     Log.stepEnd(`Skip Docker Build: ${options.skipDockerBuild}`);
 
+    printToolingVersionInfo();
+
     if (!options.skipDockerBuild && options.docker) {
       buildDockerImage(options.os, options.arch);
     }
@@ -108,4 +111,23 @@ export class Build extends CommandBase {
 
     Log.conclusion(`Successfully built ${packageName}`);
   }
+}
+
+function printToolingVersionInfo() {
+  Log.stepBegin('Tooling Versions');
+
+  const rustc = execSync('rustc --version').toString();
+  const cargo = execSync('cargo --version').toString();
+  const rustfmt = execSync('rustfmt --version').toString();
+  const clippy = execSync('clippy-driver --version').toString();
+
+  const entries = Object.entries({ rustc, cargo, rustfmt, clippy });
+
+  entries.forEach(([key, value], i) => {
+    if (i === entries.length - 1) {
+      Log.stepEnd(`${key}: ${value.trim()}`);
+    } else {
+      Log.stepProgress(`${key}: ${value.trim()}`);
+    }
+  });
 }
