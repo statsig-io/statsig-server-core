@@ -44,6 +44,9 @@ def test_get_feature_gate(statsig_setup):
     assert gate.name == "test_public"
     assert gate.rule_id == "6X3qJgyfwA81IJ2dxI7lYp"
     assert gate.id_type == "userID"
+    assert gate.details.reason == "Network:Recognized"
+    assert isinstance(gate.details.lcut, int)
+    assert isinstance(gate.details.received_at, int)
 
 
 def test_get_dynamic_config(statsig_setup):
@@ -55,6 +58,9 @@ def test_get_dynamic_config(statsig_setup):
     assert config.name == "big_number"
     assert config.rule_id == "default"
     assert config.id_type == "userID"
+    assert config.details.reason == "Network:Recognized"
+    assert isinstance(config.details.lcut, int)
+    assert isinstance(config.details.received_at, int)
 
 
 def test_get_experiment(statsig_setup):
@@ -68,6 +74,9 @@ def test_get_experiment(statsig_setup):
     assert experiment.rule_id == "7kGqFczL8Ztc2vv3tWGmvO"
     assert experiment.id_type == "userID"
     assert experiment.group_name == "Test #2"
+    assert experiment.details.reason == "Network:Recognized"
+    assert isinstance(experiment.details.lcut, int)
+    assert isinstance(experiment.details.received_at, int)
 
 
 def test_get_layer(statsig_setup):
@@ -77,6 +86,9 @@ def test_get_layer(statsig_setup):
     assert layer.get_string("a_string", "ERR") == "test_2"
     assert layer.name == "layer_with_many_params"
     assert layer.rule_id == "7kGqFczL8Ztc2vv3tWGmvO"
+    assert layer.details.reason == "Network:Recognized"
+    assert isinstance(layer.details.lcut, int)
+    assert isinstance(layer.details.received_at, int)
 
 
 def test_gcir(statsig_setup):

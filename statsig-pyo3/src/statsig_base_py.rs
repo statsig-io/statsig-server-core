@@ -191,6 +191,7 @@ impl StatsigBasePy {
             value: gate.value,
             rule_id: gate.rule_id,
             id_type: gate.id_type,
+            details: gate.details.into(),
         }
     }
 
@@ -219,6 +220,7 @@ impl StatsigBasePy {
             rule_id: config.rule_id.clone(),
             id_type: config.id_type.clone(),
             value: map_to_py_dict(py, &config.value),
+            details: config.details.clone().into(),
             inner: config,
         }
     }
@@ -254,6 +256,7 @@ impl StatsigBasePy {
             id_type: experiment.id_type.clone(),
             group_name: experiment.group_name.clone(),
             value: map_to_py_dict(py, &experiment.value),
+            details: experiment.details.clone().into(),
             inner: experiment,
         }
     }
@@ -289,6 +292,7 @@ impl StatsigBasePy {
             group_name: layer.group_name.clone(),
             allocated_experiment_name: layer.allocated_experiment_name.clone(),
             value: map_to_py_dict(py, &layer.__value),
+            details: layer.details.clone().into(),
             inner: layer,
         }
     }

@@ -3,9 +3,33 @@ use pyo3_stub_gen::derive::*;
 use serde_json::{json, Map, Value};
 use statsig_rust::{
     statsig_types::{DynamicConfig, Experiment, Layer},
-    DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
-    LayerEvaluationOptions,
+    DynamicConfigEvaluationOptions, EvaluationDetails, ExperimentEvaluationOptions,
+    FeatureGateEvaluationOptions, LayerEvaluationOptions,
 };
+
+#[gen_stub_pyclass]
+#[pyclass(name = "EvaluationDetails")]
+#[derive(Clone)]
+pub struct EvaluationDetailsPy {
+    #[pyo3(get)]
+    pub reason: String,
+
+    #[pyo3(get)]
+    pub lcut: Option<u64>,
+
+    #[pyo3(get)]
+    pub received_at: Option<u64>,
+}
+
+impl From<EvaluationDetails> for EvaluationDetailsPy {
+    fn from(value: EvaluationDetails) -> Self {
+        EvaluationDetailsPy {
+            reason: value.reason,
+            lcut: value.lcut,
+            received_at: value.received_at,
+        }
+    }
+}
 
 #[gen_stub_pyclass]
 #[pyclass(name = "FeatureGate")]
@@ -21,6 +45,9 @@ pub struct FeatureGatePy {
 
     #[pyo3(get)]
     pub id_type: String,
+
+    #[pyo3(get)]
+    pub details: EvaluationDetailsPy,
 }
 
 #[gen_stub_pyclass]
@@ -37,6 +64,9 @@ pub struct DynamicConfigPy {
 
     #[pyo3(get)]
     pub value: PyObject,
+
+    #[pyo3(get)]
+    pub details: EvaluationDetailsPy,
 
     pub inner: DynamicConfig,
 }
@@ -59,6 +89,9 @@ pub struct ExperimentPy {
     #[pyo3(get)]
     pub value: PyObject,
 
+    #[pyo3(get)]
+    pub details: EvaluationDetailsPy,
+
     pub inner: Experiment,
 }
 
@@ -79,6 +112,9 @@ pub struct LayerPy {
 
     #[pyo3(get)]
     pub value: PyObject,
+
+    #[pyo3(get)]
+    pub details: EvaluationDetailsPy,
 
     pub inner: Layer,
 }

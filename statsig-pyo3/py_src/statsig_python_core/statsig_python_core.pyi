@@ -9,10 +9,16 @@ class DynamicConfig:
     rule_id: builtins.str
     id_type: builtins.str
     value: typing.Any
+    details: EvaluationDetails
 
 class DynamicConfigEvaluationOptions:
     disable_exposure_logging: builtins.bool
     def __new__(cls,disable_exposure_logging:builtins.bool=False): ...
+
+class EvaluationDetails:
+    reason: builtins.str
+    lcut: typing.Optional[builtins.int]
+    received_at: typing.Optional[builtins.int]
 
 class Experiment:
     name: builtins.str
@@ -20,6 +26,7 @@ class Experiment:
     id_type: builtins.str
     group_name: typing.Optional[builtins.str]
     value: typing.Any
+    details: EvaluationDetails
 
 class ExperimentEvaluationOptions:
     disable_exposure_logging: builtins.bool
@@ -30,6 +37,7 @@ class FeatureGate:
     value: builtins.bool
     rule_id: builtins.str
     id_type: builtins.str
+    details: EvaluationDetails
 
 class FeatureGateEvaluationOptions:
     disable_exposure_logging: builtins.bool
@@ -41,6 +49,7 @@ class Layer:
     group_name: typing.Optional[builtins.str]
     allocated_experiment_name: typing.Optional[builtins.str]
     value: typing.Any
+    details: EvaluationDetails
 
 class LayerEvaluationOptions:
     disable_exposure_logging: builtins.bool
