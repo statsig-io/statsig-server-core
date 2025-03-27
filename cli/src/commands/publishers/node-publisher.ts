@@ -21,6 +21,10 @@ const DIR_STRUCTURE = {
     'macos-aarch64-apple-darwin-node/**/package.json': 'package.json',
     'macos-aarch64-apple-darwin-node/**/index.d.ts': 'index.d.ts',
     'macos-aarch64-apple-darwin-node/**/index.js': 'index.js',
+    'macos-aarch64-apple-darwin-node/**/statsig-generated.js':
+      'statsig-generated.js',
+    'macos-aarch64-apple-darwin-node/**/statsig-generated.d.ts':
+      'statsig-generated.d.ts',
   },
   'aarch64-apple-darwin': {
     'macos-aarch64-apple-darwin-node/**/aarch64-apple-darwin.package.json':
@@ -88,7 +92,7 @@ export async function nodePublish(options: PublisherOptions) {
 
   alignNodePackage(options, distDir);
   addOptionalDependenciesToPackageJson(options);
-  publishNodePackages(options, distDir);
+  publishNodePackages(distDir);
 }
 
 function addOptionalDependenciesToPackageJson(options: PublisherOptions) {
@@ -176,7 +180,7 @@ function alignNodePackage(options: PublisherOptions, distDir: string) {
   }
 }
 
-function publishNodePackages(options: PublisherOptions, distDir: string) {
+function publishNodePackages(distDir: string) {
   Log.title('Publishing Node Packages');
 
   let allPackagesPublished = true;
@@ -198,6 +202,7 @@ function publishNodePackages(options: PublisherOptions, distDir: string) {
 
     const command = publish.join(' ');
     try {
+      Log.stepProgress(`Running ${command}`);
       execSync(command, { cwd: platformDir });
       return null;
     } catch (error) {
