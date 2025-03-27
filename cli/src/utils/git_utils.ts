@@ -58,16 +58,12 @@ export async function mergeToMainAndPush() {
 
   await tryApplyGitConfig(git);
 
-  await git.removeRemote('origin');
-  await git.addRemote(
-    'private-statsig-server-core',
-    `https://oauth2:${token}@github.com/statsig-io/private-statsig-server-core`,
-  );
+  const authUrl = `https://oauth2:${token}@github.com/statsig-io/private-statsig-server-core`;
 
   await git.checkout('main');
-  await git.pull('private-statsig-server-core', 'main');
+  await git.pull(authUrl, 'main');
   await git.merge(['--no-ff', '-']);
-  await git.push('private-statsig-server-core', 'main');
+  await git.push(authUrl, 'main');
 }
 
 export async function commitAndPushChanges(args: {
