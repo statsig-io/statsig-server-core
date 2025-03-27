@@ -3,7 +3,7 @@ name: Node E2E Test Release Candidate
 on:
   workflow_dispatch:
   schedule:
-      - cron: "0 */3 * * *"
+    - cron: '0 */3 * * *'
 
 env:
   api_key: ${{ secrets.LRS_SERVER_KEY }}
@@ -13,12 +13,12 @@ jobs:
   Test:
     timeout-minutes: 10
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
+      fail-fast: false
       matrix:
-        subdir: ["server-core-node-rc"]
-        platform: ["linux/amd64", "linux/arm64"]
-        base_image: ["alpine", "bookworm-slim", "bullseye", "node", "slim"]
+        subdir: ['server-core-node-rc']
+        platform: ['linux/amd64', 'linux/arm64']
+        base_image: ['alpine', 'bookworm-slim', 'bullseye', 'node', 'slim']
     steps:
       - name: Checkout LRS repo
         uses: actions/checkout@v3
@@ -38,7 +38,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "23" #
+          node-version: '23' #
 
       - name: Install pnpm
         run: npm install -g pnpm
