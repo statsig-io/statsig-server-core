@@ -50,8 +50,64 @@ pub struct StatsigOptionsPy {
 #[pymethods]
 impl StatsigOptionsPy {
     #[new]
-    pub fn new() -> Self {
-        Self::default()
+    #[pyo3(signature = (
+        specs_url=None,
+        specs_sync_interval_ms=None,
+        init_timeout_ms=None,
+        log_event_url=None,
+        disable_all_logging=None,
+        event_logging_flush_interval_ms=None,
+        event_logging_max_queue_size=None,
+        enable_id_lists=None,
+        enable_user_agent_parsing=None,
+        enable_country_lookup=None,
+        id_lists_url=None,
+        id_lists_sync_interval_ms=None,
+        fallback_to_statsig_api=None,
+        environment=None,
+        output_log_level=None,
+        global_custom_fields=None,
+        observability_client=None
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        specs_url: Option<String>,
+        specs_sync_interval_ms: Option<u32>,
+        init_timeout_ms: Option<u64>,
+        log_event_url: Option<String>,
+        disable_all_logging: Option<bool>,
+        event_logging_flush_interval_ms: Option<u32>,
+        event_logging_max_queue_size: Option<u32>,
+        enable_id_lists: Option<bool>,
+        enable_user_agent_parsing: Option<bool>,
+        enable_country_lookup: Option<bool>,
+        id_lists_url: Option<String>,
+        id_lists_sync_interval_ms: Option<u32>,
+        fallback_to_statsig_api: Option<bool>,
+        environment: Option<String>,
+        output_log_level: Option<String>,
+        global_custom_fields: Option<Py<PyDict>>,
+        observability_client: Option<Py<ObservabilityClientBasePy>>,
+    ) -> Self {
+        Self {
+            specs_url,
+            specs_sync_interval_ms,
+            init_timeout_ms,
+            log_event_url,
+            disable_all_logging,
+            event_logging_flush_interval_ms,
+            event_logging_max_queue_size,
+            enable_id_lists,
+            enable_user_agent_parsing,
+            enable_country_lookup,
+            id_lists_url,
+            id_lists_sync_interval_ms,
+            fallback_to_statsig_api,
+            environment,
+            output_log_level,
+            global_custom_fields,
+            observability_client,
+        }
     }
 }
 

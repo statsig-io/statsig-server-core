@@ -16,9 +16,10 @@ def statsig_setup(httpserver: HTTPServer):
 
     httpserver.expect_request("/v1/log_event").respond_with_json({"success": True})
 
-    options = StatsigOptions()
-    options.specs_url = httpserver.url_for("/v2/download_config_specs")
-    options.log_event_url = httpserver.url_for("/v1/log_event")
+    options = StatsigOptions(
+        specs_url=httpserver.url_for("/v2/download_config_specs"),
+        log_event_url=httpserver.url_for("/v1/log_event"),
+    )
     statsig = Statsig("secret-key", options)
 
     statsig.initialize().wait()
@@ -28,10 +29,12 @@ def statsig_setup(httpserver: HTTPServer):
     # Teardown
     statsig.shutdown().wait()
 
+
 def test_check_gate(statsig_setup):
     statsig = statsig_setup
 
     assert statsig.check_gate(StatsigUser("a-user"), "test_public")
+
 
 def test_get_feature_gate(statsig_setup):
     statsig = statsig_setup
@@ -66,6 +69,7 @@ def test_get_experiment(statsig_setup):
     assert experiment.id_type == "userID"
     assert experiment.group_name == "Test #2"
 
+
 def test_get_layer(statsig_setup):
     statsig = statsig_setup
     layer = statsig.get_layer(StatsigUser("my_user"), "layer_with_many_params")
@@ -73,6 +77,7 @@ def test_get_layer(statsig_setup):
     assert layer.get_string("a_string", "ERR") == "test_2"
     assert layer.name == "layer_with_many_params"
     assert layer.rule_id == "7kGqFczL8Ztc2vv3tWGmvO"
+
 
 def test_gcir(statsig_setup):
     statsig = statsig_setup
