@@ -59,7 +59,7 @@ export function buildPython(options: BuilderOptions) {
 
   Log.stepEnd(`Built Pyo3 Package ${tag}`);
 
-  if (!isCi) {
+  if (!isCi || options.os === 'macos') {
     runMyPy();
   }
 }
@@ -96,7 +96,11 @@ function runMyPy() {
 
   ensureEmptyDir(rootDir);
 
-  const files = listFiles(BASE_DIR, 'target/**/*.whl');
+  const files = [
+    ...listFiles(BASE_DIR, 'target/**/*.whl'),
+    ...listFiles(BASE_DIR, 'statsig-pyo3/build/**/*.whl'),
+  ];
+
   unzipFiles(files, rootDir, { keepFiles: true });
 
   const dirs = listDirectories(rootDir);
