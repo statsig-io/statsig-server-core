@@ -1,6 +1,6 @@
 {
     "name": "@statsig/statsig-node-core-win32-ia32-msvc",
-    "version": "0.0.10-beta.2",
+    "version": "0.0.10-beta.3",
     "os": [
       "win32"
     ],
