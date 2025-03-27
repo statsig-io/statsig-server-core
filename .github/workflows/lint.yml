@@ -26,19 +26,8 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run Rust Format
-        run: cargo fmt --all --check
-
       - name: Run clippy
         run: cargo clippy --workspace --all-features -- -D warnings
-
-      - name: Run pyo3 stub gen
-        run: |
-          cargo run --bin stub_gen --package statsig-pyo3
-          if [[ $(git status --porcelain) ]]; then
-            echo "Python stub gen has changes, please generate locally and commit them"
-            exit 1
-          fi
 
   # ------------------------------------------------------------ [ Rust Format ]
   rust-format:
