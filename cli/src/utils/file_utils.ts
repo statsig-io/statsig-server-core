@@ -1,7 +1,7 @@
 import AdmZip from 'adm-zip';
 import { existsSync, mkdirSync, rmSync, statSync } from 'fs';
 import { glob } from 'glob';
-import fs from 'node:fs';
+import fs, { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'url';
 
@@ -99,7 +99,26 @@ export function listFiles(
   });
 }
 
-export function unzipFiles(files: string[], outputDir: string) {
+export function listDirectories(dir: string) {
+  const dirPaths: string[] = [];
+  const dirents = readdirSync(dir, { withFileTypes: true, recursive: false });
+
+  for (const dirent of dirents) {
+    if (dirent.isDirectory()) {
+      dirPaths.push(path.join(dir, dirent.name));
+    }
+  }
+
+  return dirPaths;
+}
+
+export function unzipFiles(
+  files: string[],
+  outputDir: string,
+  options?: {
+    keepFiles?: boolean;
+  },
+) {
   Log.stepBegin('Unzipping files');
 
   files.forEach((file) => {
@@ -111,7 +130,10 @@ export function unzipFiles(files: string[], outputDir: string) {
     const unzipTo = path.resolve(outputDir, name);
     unzip(buffer, unzipTo);
 
-    fs.unlinkSync(filepath);
+    if (options?.keepFiles !== true) {
+      fs.unlinkSync(filepath);
+    }
+
     Log.stepProgress(`Completed: ${name}`);
   });
 

@@ -3,7 +3,14 @@ import {
   getDockerImageTag,
   isLinux,
 } from '@/utils/docker_utils.js';
-import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
+import {
+  BASE_DIR,
+  ensureEmptyDir,
+  getRootedPath,
+  listDirectories,
+  listFiles,
+  unzipFiles,
+} from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { execSync } from 'child_process';
 
@@ -17,7 +24,13 @@ export function buildPython(options: BuilderOptions) {
   const target = getTarget(options);
   const isCi = process.env.CI;
 
-  const stubGenCommand = `cargo run --bin stub_gen`;
+  if (!isCi) {
+    Log.stepBegin('Generating Python Stubs');
+    execSync('cargo run --bin stub_gen', {
+      cwd: pyDir,
+      stdio: 'inherit',
+    });
+  }
 
   const maturinCommand = [
     'maturin build',
@@ -26,10 +39,6 @@ export function buildPython(options: BuilderOptions) {
     options.outDir ? `--out ${options.outDir}` : '',
     target ? `--target ${target}` : '',
   ].join(' ');
-
-  const buildCommand = isCi
-    ? `${maturinCommand}`
-    : `${stubGenCommand} && ${maturinCommand}`;
 
   const dockerCommand = [
     'docker run --rm',
@@ -41,7 +50,7 @@ export function buildPython(options: BuilderOptions) {
   ].join(' ');
 
   const command =
-    isLinux(options.os) && options.docker ? dockerCommand : buildCommand;
+    isLinux(options.os) && options.docker ? dockerCommand : maturinCommand;
 
   Log.stepBegin(`Building Pyo3 Package ${tag}`);
   Log.stepProgress(command);
@@ -49,6 +58,10 @@ export function buildPython(options: BuilderOptions) {
   execSync(command, { cwd: pyDir, stdio: 'inherit' });
 
   Log.stepEnd(`Built Pyo3 Package ${tag}`);
+
+  if (!isCi) {
+    runMyPy();
+  }
 }
 
 function getTarget(options: BuilderOptions) {
@@ -76,4 +89,19 @@ function getTarget(options: BuilderOptions) {
 
   // linux figures it out by itself
   return '';
+}
+
+function runMyPy() {
+  const rootDir = '/tmp/statsig-server-core-mypy';
+
+  ensureEmptyDir(rootDir);
+
+  const files = listFiles(BASE_DIR, 'target/**/*.whl');
+  unzipFiles(files, rootDir, { keepFiles: true });
+
+  const dirs = listDirectories(rootDir);
+
+  dirs.forEach((dir) => {
+    execSync(`mypy ${dir}`, { stdio: 'inherit' });
+  });
 }

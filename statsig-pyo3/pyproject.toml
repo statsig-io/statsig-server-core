@@ -11,9 +11,9 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dynamic = ["version"]
+dependencies = ["requests"]
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
 python-source = "py_src"
 include = ["statsig_python_core.pyi"]
-dependencies = ["requests"]
