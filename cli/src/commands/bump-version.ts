@@ -1,6 +1,7 @@
 import { BASE_DIR, getFilenameWithoutExtension } from '@/utils/file_utils.js';
 import {
   commitAndPushChanges,
+  createBranch,
   getCurrentBranchName,
   getUpstreamRemoteForCurrentBranch,
 } from '@/utils/git_utils.js';
@@ -25,6 +26,7 @@ type Options = {
   patch?: boolean;
   beta?: boolean;
   doNotPush?: boolean;
+  createBranch?: boolean;
 };
 
 export class BumpVersion extends CommandBase {
@@ -38,6 +40,7 @@ export class BumpVersion extends CommandBase {
     this.option('--patch', 'Bump the patch version');
     this.option('--beta', 'Bump the beta version');
     this.option('--do-not-push', 'Do not push the changes to the remote');
+    this.option('--create-branch', 'Create a new branch for the version');
     this.argument('[string]', 'The version to bump to');
   }
 
@@ -67,6 +70,13 @@ export class BumpVersion extends CommandBase {
 
     if (providedVersion) {
       version = new SemVer(providedVersion);
+    }
+
+    if (options.createBranch) {
+      const newBranch = version.toBranch();
+      printStepBegin(`Creating Branch: ${newBranch}`);
+      await createBranch(newBranch);
+      printStepEnd(`Successfully Created Branch: ${newBranch}`);
     }
 
     printStepEnd(`Updated Version: ${version.toString()}`);
@@ -101,7 +111,7 @@ export class BumpVersion extends CommandBase {
 
     if (error || !success) {
       const errMessage =
-        error instanceof Error ? error.message : error ?? 'Unknown Error';
+        error instanceof Error ? error.message : (error ?? 'Unknown Error');
 
       Log.stepEnd(`Failed to commit changes: ${errMessage}`, 'failure');
       process.exit(1);
