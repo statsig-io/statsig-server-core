@@ -124,5 +124,3 @@ async function tryApplyGitConfig(git: SimpleGit) {
     );
   }
 }
-
-//
