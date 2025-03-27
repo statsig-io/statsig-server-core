@@ -458,6 +458,10 @@ fn evaluate_nested_gate<'a>(
             rule_id: res.rule_id.unwrap_or(&EMPTY_STR).clone(),
         };
 
+        if res.sampling_rate.is_none() {
+            ctx.result.has_seen_analytical_gates = Option::from(true);
+        }
+
         ctx.result.secondary_exposures.push(expo);
     }
 

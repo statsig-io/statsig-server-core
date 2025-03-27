@@ -726,6 +726,10 @@ impl Statsig {
     ) {
         let user_internal = self.internalize_user(user);
         let experiment = self.get_experiment_impl(&user_internal, cmab_name);
+        let sampling_info = match experiment.__evaluation {
+            Some(ref eval) => eval.base.sampling_info.clone(),
+            None => None,
+        };
         let base_eval = BaseEvaluation {
             name: cmab_name.to_string(),
             rule_id: group_id.clone(),
@@ -733,14 +737,7 @@ impl Statsig {
                 Some(ref eval) => eval.base.secondary_exposures.clone(),
                 None => vec![],
             },
-            sampling_rate: match experiment.__evaluation {
-                Some(ref eval) => eval.base.sampling_rate,
-                None => Some(1),
-            },
-            forward_all_exposures: match experiment.__evaluation {
-                Some(ref eval) => eval.base.forward_all_exposures,
-                None => Some(true),
-            },
+            sampling_info,
         };
         let experiment_eval = ExperimentEvaluation {
             base: base_eval.clone(),

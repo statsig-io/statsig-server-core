@@ -14,15 +14,22 @@ pub struct SecondaryExposure {
     #[serde(rename = "ruleID")]
     pub rule_id: String,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub(crate) struct ExposureSamplingInfo {
+    pub sampling_rate: Option<u64>,
+    pub forward_all_exposures: Option<bool>,
+    pub has_seen_analytical_gates: Option<bool>,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BaseEvaluation {
     pub name: String,
     pub rule_id: String,
     pub secondary_exposures: Vec<SecondaryExposure>,
+
     #[serde(skip_serializing)]
-    pub sampling_rate: Option<u64>,
-    #[serde(skip_serializing)]
-    pub forward_all_exposures: Option<bool>,
+    pub(crate) sampling_info: Option<ExposureSamplingInfo>,
 }
 
 pub enum AnyEvaluation<'a> {

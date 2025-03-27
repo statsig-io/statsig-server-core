@@ -249,7 +249,11 @@ impl SamplingProcessor {
             }
         }
 
-        if let Some(rate) = eval_base_res.sampling_rate {
+        if let Some(rate) = eval_base_res
+            .sampling_info
+            .as_ref()
+            .and_then(|info| info.sampling_rate)
+        {
             let should_send_exposures = self.is_hash_in_sampling_rate(sampling_exposure_key, rate);
 
             return (should_send_exposures, Some(rate));
@@ -269,9 +273,17 @@ impl SamplingProcessor {
             return true;
         }
 
-        if eval_result
-            .get_base_result()
-            .forward_all_exposures
+        let sampling_info = eval_result.get_base_result().sampling_info.as_ref();
+
+        if sampling_info
+            .and_then(|info| info.forward_all_exposures)
+            .unwrap_or(false)
+        {
+            return true;
+        }
+
+        if sampling_info
+            .and_then(|info| info.has_seen_analytical_gates)
             .unwrap_or(false)
         {
             return true;
@@ -334,8 +346,7 @@ mod tests {
             name: "publish_to_all".to_string(),
             rule_id: "rule_id".to_string(),
             secondary_exposures: vec![],
-            sampling_rate: None,
-            forward_all_exposures: Some(false),
+            sampling_info: Default::default(),
         },
         id_type: String::new(),
         value: false,

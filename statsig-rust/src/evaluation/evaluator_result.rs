@@ -1,6 +1,6 @@
 use crate::evaluation::evaluation_types::{
-    BaseEvaluation, DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation,
-    SecondaryExposure,
+    BaseEvaluation, DynamicConfigEvaluation, ExperimentEvaluation, ExposureSamplingInfo,
+    GateEvaluation, LayerEvaluation, SecondaryExposure,
 };
 use crate::spec_types::Spec;
 use serde_json::Value;
@@ -27,6 +27,7 @@ pub struct EvaluatorResult<'a> {
     pub sampling_rate: Option<u64>,
     pub forward_all_exposures: Option<bool>,
     pub override_config_name: Option<String>,
+    pub has_seen_analytical_gates: Option<bool>,
 }
 
 pub fn result_to_gate_eval(gate_name: &str, result: &mut EvaluatorResult) -> GateEvaluation {
@@ -155,11 +156,16 @@ fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEva
         None => rule_id.clone(),
     };
 
+    let sampling_info = ExposureSamplingInfo {
+        sampling_rate: result.sampling_rate,
+        forward_all_exposures: result.forward_all_exposures,
+        has_seen_analytical_gates: result.has_seen_analytical_gates,
+    };
+
     BaseEvaluation {
         name: spec_name.to_string(),
         rule_id: result_rule_id.clone(),
         secondary_exposures: exposures,
-        sampling_rate: result.sampling_rate,
-        forward_all_exposures: result.forward_all_exposures,
+        sampling_info: Some(sampling_info),
     }
 }
