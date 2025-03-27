@@ -1,6 +1,6 @@
 import { existsSync, rmSync } from 'fs';
 import path from 'path';
-import { simpleGit } from 'simple-git';
+import { SimpleGit, simpleGit } from 'simple-git';
 
 import { BASE_DIR } from './file_utils.js';
 import { getInstallationToken } from './octokit_utils.js';
@@ -52,6 +52,23 @@ export async function createBranch(name: string, remote: string) {
   await git.push(remote, name, ['--set-upstream']);
 }
 
+export async function mergeToMainAndPush() {
+  const token = await getInstallationToken();
+  const git = simpleGit(BASE_DIR);
+
+  await tryApplyGitConfig(git);
+
+  await git.addRemote(
+    'private-statsig-server-core',
+    `https://oauth2:${token}@github.com/statsig-io/private-statsig-server-core`,
+  );
+
+  await git.checkout('main');
+  await git.pull('private-statsig-server-core', 'main');
+  await git.merge(['--no-ff', '-']);
+  await git.push('private-statsig-server-core', 'main');
+}
+
 export async function commitAndPushChanges(args: {
   repoPath: string;
   message: string;
@@ -64,15 +81,7 @@ export async function commitAndPushChanges(args: {
   try {
     const git = simpleGit(args.repoPath);
 
-    const isCI = process.env['CI'];
-
-    if (isCI) {
-      await git.addConfig('user.name', 'statsig-kong[bot]');
-      await git.addConfig(
-        'user.email',
-        'statsig-kong[bot]@users.noreply.github.com',
-      );
-    }
+    await tryApplyGitConfig(git);
 
     await git.cwd(args.repoPath).add('.').commit(args.message);
 
@@ -104,5 +113,17 @@ export async function commitAndPushChanges(args: {
     return { success: true, error: null };
   } catch (error) {
     return { success: false, error };
+  }
+}
+
+async function tryApplyGitConfig(git: SimpleGit) {
+  const isCI = process.env['CI'];
+
+  if (isCI) {
+    await git.addConfig('user.name', 'statsig-kong[bot]');
+    await git.addConfig(
+      'user.email',
+      'statsig-kong[bot]@users.noreply.github.com',
+    );
   }
 }

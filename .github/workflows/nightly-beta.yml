@@ -52,8 +52,4 @@ jobs:
         run: ./tore gh-create-release private-statsig-server-core
 
       - name: Merge Back to Main
-        run: |
-          git checkout main
-          git pull origin main
-          git merge --no-ff -
-          git push origin main
+        run: ./tore merge-to-main
