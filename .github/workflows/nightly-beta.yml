@@ -1,0 +1,25 @@
+name: Nightly Beta
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *' # 6pm PST
+
+jobs:
+  nightly_beta:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+
+      - name: Install CLI Dependencies
+        run: pnpm install --dir cli
+
+      - name: Bump Version
+        run: ./tore bump-version --create-branch --beta
