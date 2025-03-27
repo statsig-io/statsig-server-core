@@ -85,15 +85,39 @@ pub fn log_message(tag: &str, level: LogLevel, msg: String) {
         msg
     };
 
+    let sanitized_msg = sanitize(&truncated_msg);
+
     if let Some(level) = level.to_third_party_level() {
         match level {
-            Level::Debug => debug!("[Statsig.{}] {}", tag, truncated_msg),
-            Level::Info => info!("[Statsig.{}] {}", tag, truncated_msg),
-            Level::Warn => warn!("[Statsig.{}] {}", tag, truncated_msg),
-            Level::Error => error!("[Statsig.{}] {}", tag, truncated_msg),
+            Level::Debug => debug!("[Statsig.{}] {}", tag, sanitized_msg),
+            Level::Info => info!("[Statsig.{}] {}", tag, sanitized_msg),
+            Level::Warn => warn!("[Statsig.{}] {}", tag, sanitized_msg),
+            Level::Error => error!("[Statsig.{}] {}", tag, sanitized_msg),
             _ => {}
         };
     }
+}
+
+fn sanitize(input: &str) -> String {
+    input
+        .split("secret-")
+        .enumerate()
+        .map(|(i, part)| {
+            if i == 0 {
+                part.to_string()
+            } else {
+                let (key, rest) =
+                    part.split_at(part.chars().take_while(|c| c.is_alphanumeric()).count());
+                let sanitized_key = if key.len() > 5 {
+                    format!("{}*****{}", &key[..5], rest)
+                } else {
+                    print!("key: {}, rest: {}", key, rest);
+                    format!("{}*****{}", key, rest)
+                };
+                format!("secret-{}", sanitized_key)
+            }
+        })
+        .collect()
 }
 
 #[macro_export]
@@ -137,4 +161,42 @@ macro_rules! log_error_to_statsig_and_console {
 
     $crate::output_logger::log_message(&$tag, $crate::output_logger::LogLevel::Error, err_message)
   }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_sanitize_url_for_logging() {
+        let test_cases = HashMap::from(
+            [
+                ("https://api.statsigcdn.com/v2/download_config_specs/secret-jadkfjalkjnsdlvcnjsdfaf.json", "https://api.statsigcdn.com/v2/download_config_specs/secret-jadkf*****.json"),
+                ("https://api.statsigcdn.com/v1/log_event/","https://api.statsigcdn.com/v1/log_event/"),
+                ("https://api.statsigcdn.com/v2/download_config_specs/secret-jadkfjalkjnsdlvcnjsdfaf.json?sinceTime=1", "https://api.statsigcdn.com/v2/download_config_specs/secret-jadkf*****.json?sinceTime=1"),
+            ]
+        );
+        for (before, expected) in test_cases {
+            let sanitized = sanitize(before);
+            assert!(sanitized == expected);
+        }
+    }
+
+    #[test]
+    fn test_multiple_secrets() {
+        let input = "Multiple secrets: secret-key1 and secret-key2";
+        let sanitized = sanitize(input);
+        assert_eq!(
+            sanitized,
+            "Multiple secrets: secret-key1***** and secret-key2*****"
+        );
+    }
+
+    #[test]
+    fn test_short_secret() {
+        let input = "Short secret: secret-a";
+        let sanitized = sanitize(input);
+        assert_eq!(sanitized, "Short secret: secret-a*****");
+    }
 }

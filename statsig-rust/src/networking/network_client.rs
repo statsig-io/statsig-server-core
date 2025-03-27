@@ -2,7 +2,6 @@ use chrono::Utc;
 
 use super::providers::get_network_provider;
 use super::{HttpMethod, NetworkProvider, RequestArgs};
-use crate::networking::net_utils::sanitize_url_for_logging;
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
@@ -105,11 +104,10 @@ impl NetworkClient {
                 None => return Err(NetworkError::RequestFailed),
             };
 
-            let sanitized_url = sanitize_url_for_logging(&request_args.url);
             log_d!(
                 TAG,
                 "Response ({}): {}",
-                sanitized_url,
+                &request_args.url,
                 response.status_code
             );
 

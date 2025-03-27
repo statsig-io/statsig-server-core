@@ -4,4 +4,3 @@ pub mod providers;
 
 pub use http_types::*;
 pub use network_client::*;
-mod net_utils;

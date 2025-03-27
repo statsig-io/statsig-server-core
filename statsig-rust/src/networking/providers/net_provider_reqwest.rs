@@ -7,7 +7,6 @@ use crate::{
     log_w,
     networking::{
         http_types::{HttpMethod, RequestArgs, Response},
-        net_utils::sanitize_url_for_logging,
         NetworkProvider,
     },
     StatsigErr,
@@ -33,7 +32,6 @@ impl NetworkProvider for NetworkProviderReqwest {
             }
         }
 
-        let sanitized_url = sanitize_url_for_logging(&args.url);
         let request = self.build_request(method, args);
 
         let error;
@@ -50,7 +48,7 @@ impl NetworkProvider for NetworkProviderReqwest {
             }
             Err(e) => {
                 let error_message = get_error_message(e);
-                log_w!(TAG, "Request Error: {} {}", sanitized_url, error_message);
+                log_w!(TAG, "Request Error: {} {}", &args.url, error_message);
                 error = Some(error_message);
             }
         }
