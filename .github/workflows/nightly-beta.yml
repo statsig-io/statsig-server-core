@@ -5,8 +5,19 @@ on:
   schedule:
     - cron: '0 2 * * *' # 6pm PST
 
+env:
+  # GH Octokit (Kong App)
+  GH_APP_ID: '229901'
+  GH_APP_INSTALLATION_ID: '36921303'
+  GH_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   nightly_beta:
+    if: github.event.repository.private
     runs-on: ubuntu-latest
 
     steps:
@@ -21,5 +32,28 @@ jobs:
       - name: Install CLI Dependencies
         run: pnpm install --dir cli
 
+      - name: Check For Changes
+        run: |
+          last_commit_message=$(git log -1 --pretty=%B)
+          if [[ "$last_commit_message" == "chore: bump version to"* ]]; then
+            echo "No changes since last version bump"
+            exit 1
+          fi
+
+          if [[ "$last_commit_message" == "[release]"* ]]; then
+            echo "No changes since last release"
+            exit 1
+          fi
+
       - name: Bump Version
         run: ./tore bump-version --create-branch --beta
+
+      - name: Create Release
+        run: ./tore gh-create-release private-statsig-server-core
+
+      - name: Merge Back to Main
+        run: |
+          git checkout main
+          git pull origin main
+          git merge --no-ff -
+          git push origin main
