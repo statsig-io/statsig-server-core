@@ -58,6 +58,7 @@ export async function mergeToMainAndPush() {
 
   await tryApplyGitConfig(git);
 
+  await git.removeRemote('origin');
   await git.addRemote(
     'private-statsig-server-core',
     `https://oauth2:${token}@github.com/statsig-io/private-statsig-server-core`,
