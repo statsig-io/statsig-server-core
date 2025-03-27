@@ -73,9 +73,10 @@ export class BumpVersion extends CommandBase {
     }
 
     if (options.createBranch) {
+      const isCI = process.env['CI'];
       const newBranch = version.toBranch();
       printStepBegin(`Creating Branch: ${newBranch}`);
-      await createBranch(newBranch);
+      await createBranch(newBranch, isCI ? 'origin' : 'private');
       printStepEnd(`Successfully Created Branch: ${newBranch}`);
     }
 

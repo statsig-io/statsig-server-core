@@ -46,10 +46,10 @@ export function removeDirectory(dir: string) {
   rmSync(dir, { recursive: true, force: true });
 }
 
-export async function createBranch(name: string) {
+export async function createBranch(name: string, remote: string) {
   const git = simpleGit(BASE_DIR);
   await git.checkoutLocalBranch(name);
-  await git.push('private', name, ['--set-upstream']);
+  await git.push(remote, name, ['--set-upstream']);
 }
 
 export async function commitAndPushChanges(args: {
