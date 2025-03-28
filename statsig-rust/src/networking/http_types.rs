@@ -23,7 +23,10 @@ impl Default for RequestArgs {
 }
 
 #[derive(Clone)]
-pub struct RequestArgsTyped<T> {
+pub struct RequestArgsTyped<T>
+where
+    T: Clone,
+{
     pub url: String,
     pub body: Option<Vec<u8>>,
     pub retries: u32,
@@ -36,23 +39,48 @@ pub struct RequestArgsTyped<T> {
     pub response_deserializer: fn(Option<Vec<u8>>) -> Result<T, StatsigErr>,
 }
 
-impl<T> RequestArgsTyped<T> {
-    #[must_use]
-    pub fn new(deserializer: fn(Option<Vec<u8>>) -> Result<T, StatsigErr>) -> Self {
-        RequestArgsTyped {
-            url: String::new(),
-            body: None,
-            retries: 0,
-            headers: None,
-            query_params: None,
-            accept_gzip_response: false,
-            timeout_ms: 0,
-            is_shutdown: None,
-            diagnostics_key: None,
-            response_deserializer: deserializer,
+impl<T> AsRef<RequestArgsTyped<T>> for RequestArgsTyped<T>
+where
+    T: Clone,
+{
+    fn as_ref(&self) -> &RequestArgsTyped<T> {
+        self
+    }
+}
+
+#[derive(Clone)]
+pub struct NetProviderRequestArgs {
+    pub url: String,
+    pub body: Option<Vec<u8>>,
+    pub retries: u32,
+    pub headers: Option<HashMap<String, String>>,
+    pub query_params: Option<HashMap<String, String>>,
+    pub accept_gzip_response: bool,
+    pub timeout_ms: u64,
+    pub is_shutdown: Option<Arc<AtomicBool>>,
+    pub diagnostics_key: Option<KeyType>,
+}
+
+impl<T> From<RequestArgsTyped<T>> for NetProviderRequestArgs
+where
+    T: Clone,
+{
+    fn from(val: RequestArgsTyped<T>) -> Self {
+        NetProviderRequestArgs {
+            url: val.url,
+            body: val.body,
+            retries: val.retries,
+            headers: val.headers,
+            query_params: val.query_params,
+            accept_gzip_response: val.accept_gzip_response,
+            timeout_ms: val.timeout_ms,
+            is_shutdown: val.is_shutdown,
+            diagnostics_key: val.diagnostics_key,
         }
     }
+}
 
+impl NetProviderRequestArgs {
     pub fn get_fully_qualified_url(&self) -> String {
         let mut url = self.url.clone();
         let query_params = match &self.query_params {
@@ -71,6 +99,27 @@ impl<T> RequestArgsTyped<T> {
         }
 
         url
+    }
+}
+
+impl<T> RequestArgsTyped<T>
+where
+    T: Clone,
+{
+    #[must_use]
+    pub fn new(deserializer: fn(Option<Vec<u8>>) -> Result<T, StatsigErr>) -> Self {
+        RequestArgsTyped {
+            url: String::new(),
+            body: None,
+            retries: 0,
+            headers: None,
+            query_params: None,
+            accept_gzip_response: false,
+            timeout_ms: 0,
+            is_shutdown: None,
+            diagnostics_key: None,
+            response_deserializer: deserializer,
+        }
     }
 
     pub fn populate_headers(&mut self, extra_headers: HashMap<String, String>) {
@@ -105,6 +154,6 @@ pub enum HttpMethod {
 
 #[async_trait]
 pub trait NetworkProvider: Sync + Send {
-    async fn send(&self, method: &HttpMethod, args: &RequestArgs) -> Response;
+    async fn send(&self, method: &HttpMethod, args: &NetProviderRequestArgs) -> Response;
     async fn shutdown(&self) -> Result<(), StatsigErr>;
 }

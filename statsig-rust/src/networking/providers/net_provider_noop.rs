@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use crate::{
-    networking::{HttpMethod, NetworkProvider, RequestArgs, Response},
+    networking::{HttpMethod, NetProviderRequestArgs, NetworkProvider, Response},
     StatsigErr,
 };
 
@@ -9,7 +9,7 @@ pub struct NetworkProviderNoop;
 
 #[async_trait]
 impl NetworkProvider for NetworkProviderNoop {
-    async fn send(&self, _method: &HttpMethod, _request_args: &RequestArgs) -> Response {
+    async fn send(&self, _method: &HttpMethod, _request_args: &NetProviderRequestArgs) -> Response {
         Response {
             status_code: 0,
             data: None,

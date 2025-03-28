@@ -1,7 +1,7 @@
 use chrono::Utc;
 
 use super::providers::get_network_provider;
-use super::{HttpMethod, NetworkProvider, RequestArgs};
+use super::{HttpMethod, NetworkProvider, RequestArgsTyped};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
@@ -47,24 +47,33 @@ impl NetworkClient {
         self.is_shutdown.store(true, Ordering::SeqCst);
     }
 
-    pub async fn get(&self, request_args: RequestArgs) -> Result<String, NetworkError> {
+    pub async fn get<T>(&self, request_args: RequestArgsTyped<T>) -> Result<T, NetworkError>
+    where
+        T: Clone,
+    {
         self.make_request(HttpMethod::GET, request_args).await
     }
 
-    pub async fn post(
+    pub async fn post<T>(
         &self,
-        mut request_args: RequestArgs,
+        mut request_args: RequestArgsTyped<T>,
         body: Option<Vec<u8>>,
-    ) -> Result<String, NetworkError> {
+    ) -> Result<T, NetworkError>
+    where
+        T: Clone,
+    {
         request_args.body = body;
         self.make_request(HttpMethod::POST, request_args).await
     }
 
-    async fn make_request(
+    async fn make_request<T>(
         &self,
         method: HttpMethod,
-        mut request_args: RequestArgs,
-    ) -> Result<String, NetworkError> {
+        mut request_args: RequestArgsTyped<T>,
+    ) -> Result<T, NetworkError>
+    where
+        T: Clone,
+    {
         let is_shutdown = if let Some(is_shutdown) = &request_args.is_shutdown {
             is_shutdown.clone()
         } else {
@@ -86,7 +95,8 @@ impl NetworkClient {
         let mut attempt = 0;
 
         loop {
-            if let Some(key) = request_args.diagnostics_key {
+            let request_args_clone = request_args.clone();
+            if let Some(key) = request_args_clone.diagnostics_key {
                 self.ops_stats.add_marker(
                     Marker::new(key, ActionType::Start, Some(StepType::NetworkRequest))
                         .with_attempt(attempt)
@@ -100,7 +110,7 @@ impl NetworkClient {
             }
 
             let response = match self.net_provider.upgrade() {
-                Some(net_provider) => net_provider.send(&method, &request_args).await,
+                Some(net_provider) => net_provider.send(&method, &request_args_clone.into()).await,
                 None => return Err(NetworkError::RequestFailed),
             };
 
