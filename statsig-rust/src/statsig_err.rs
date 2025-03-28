@@ -12,6 +12,8 @@ pub enum StatsigErr {
 
     SerializationError(String),
 
+    ZstdDictCompressionError(String),
+
     GzipError(String),
 
     ZstdError(String),
@@ -58,6 +60,10 @@ impl Display for StatsigErr {
             StatsigErr::NetworkError(msg) => write!(f, "Network error: {msg}"),
 
             StatsigErr::SerializationError(msg) => write!(f, "Serialization error: {msg}"),
+
+            StatsigErr::ZstdDictCompressionError(msg) => {
+                write!(f, "Zstd dictionary compression error: {msg}")
+            }
 
             StatsigErr::GzipError(msg) => write!(f, "Gzip error: {msg}"),
 

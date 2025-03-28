@@ -5,7 +5,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Spec {
     #[serde(rename = "type")]
@@ -26,7 +26,7 @@ pub struct Spec {
     pub fields_used: Option<Vec<String>>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Rule {
     pub name: String,
@@ -42,7 +42,7 @@ pub struct Rule {
     pub sampling_rate: Option<u64>,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Condition {
     #[serde(rename = "type")]
@@ -54,19 +54,19 @@ pub struct Condition {
     pub id_type: DynamicString,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct OverrideRule {
     pub rule_name: String,
     pub start_time: Option<i64>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct ConfigMapping {
     pub new_config_name: String,
     pub rules: Vec<OverrideRule>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct SpecsResponseFull {
     pub feature_gates: HashMap<String, Spec>,
     pub dynamic_configs: HashMap<String, Spec>,
@@ -88,7 +88,7 @@ pub struct SpecsResponseFull {
     pub override_rules: Option<HashMap<String, Rule>>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CMABConfig {
     pub salt: String,
@@ -105,7 +105,7 @@ pub struct CMABConfig {
     pub targeting_gate_name: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CMABGroup {
     pub name: String,
@@ -113,7 +113,7 @@ pub struct CMABGroup {
     pub id: String,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CMABGroupConfig {
     pub alpha: f64,
@@ -123,7 +123,7 @@ pub struct CMABGroupConfig {
     pub weights_categorical: HashMap<String, HashMap<String, f64>>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(untagged)]
 pub enum Parameter {
     StaticValue(StaticValueParameter),
@@ -133,21 +133,21 @@ pub enum Parameter {
     Layer(LayerParameter),
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct ParameterStore {
     pub parameters: HashMap<String, Parameter>,
     #[serde(rename = "targetAppIDs")]
     pub target_app_ids: Option<Vec<String>>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct StaticValueParameter {
     pub ref_type: String,
     pub param_type: String,
     pub value: Value,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct GateParameter {
     pub ref_type: String,
     pub param_type: String,
@@ -156,7 +156,7 @@ pub struct GateParameter {
     pub fail_value: Value,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct DynamicConfigParameter {
     pub ref_type: String,
     pub param_type: String,
@@ -164,7 +164,7 @@ pub struct DynamicConfigParameter {
     pub param_name: String,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct ExperimentParameter {
     pub ref_type: String,
     pub param_type: String,
@@ -172,7 +172,7 @@ pub struct ExperimentParameter {
     pub param_name: String,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct LayerParameter {
     pub ref_type: String,
     pub param_type: String,

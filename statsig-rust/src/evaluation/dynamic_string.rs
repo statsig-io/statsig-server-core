@@ -1,7 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value as JsonValue;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct DynamicString {
     pub value: String,
     pub lowercased_value: String,
