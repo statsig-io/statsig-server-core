@@ -444,3 +444,24 @@ function filterArtifact(artifact: GHArtifact, options: { package: string }) {
 
   return false;
 }
+
+export async function createPullRequestAgainstMain(
+  octokit: Octokit,
+  options: {
+    repository: string;
+    title: string;
+    body: string;
+    head: string;
+  },
+) {
+  const result = await octokit.rest.pulls.create({
+    owner: 'statsig-io',
+    repo: options.repository,
+    title: options.title,
+    head: options.head,
+    base: 'main',
+    body: options.body,
+  });
+
+  return result.data;
+}
