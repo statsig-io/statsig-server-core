@@ -11,10 +11,6 @@ env:
   GH_APP_INSTALLATION_ID: '36921303'
   GH_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
   nightly_beta:
     if: github.event.repository.private
@@ -48,8 +44,8 @@ jobs:
       - name: Bump Version
         run: ./tore bump-version --create-branch --beta
 
-      - name: Create Release
-        run: ./tore gh-create-release private-statsig-server-core
+      # - name: Create Release
+      #   run: ./tore gh-create-release private-statsig-server-core
 
       - name: Merge Back to Main
         run: ./tore merge-to-main

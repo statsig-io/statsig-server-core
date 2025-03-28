@@ -58,7 +58,7 @@ export async function mergeToMainAndPush() {
 
   await tryApplyGitConfig(git);
 
-  const authUrl = `https://x-access-token:${token}@github.com/statsig-io/private-statsig-server-core`;
+  const authUrl = `https://${token}@github.com/statsig-io/private-statsig-server-core`;
 
   await git.checkout("main");
   await git.pull(authUrl, "main");
