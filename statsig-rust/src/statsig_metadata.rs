@@ -37,7 +37,7 @@ pub struct StatsigMetadata {
 impl StatsigMetadata {
     fn new() -> Self {
         Self {
-            sdk_version: "0.0.10-beta.4".to_string(),
+            sdk_version: "0.0.10-beta.5".to_string(),
             sdk_type: "statsig-server-core".to_string(),
             session_id: Uuid::new_v4().to_string(),
             os: None,
