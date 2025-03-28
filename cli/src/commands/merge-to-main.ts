@@ -51,6 +51,7 @@ async function mergePullRequest(octokit: Octokit, prNumber: number) {
     owner: 'statsig-io',
     repo: 'private-statsig-server-core',
     pull_number: prNumber,
+    merge_method: 'squash',
   });
 
   return result.data;
