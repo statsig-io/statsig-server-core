@@ -29,7 +29,7 @@ export class MergeToMain extends CommandBase {
 
     const pullRequest = await createPullRequestAgainstMain(octokit, {
       repository: 'private-statsig-server-core',
-      title: `[Automated] ${title}`,
+      title: `[automated] ${title}`,
       body: 'Created and merged automatically by T.O.R.E',
       head: branch,
     });
