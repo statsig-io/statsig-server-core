@@ -31,7 +31,7 @@ jobs:
       - name: Check For Changes
         run: |
           last_commit_message=$(git log -1 --pretty=%B)
-          if [[ "$last_commit_message" == "chore: bump version to"* ]]; then
+          if [[ "$last_commit_message" == "[automated] chore: bump version to"* ]]; then
             echo "No changes since last version bump"
             exit 1
           fi
@@ -44,8 +44,8 @@ jobs:
       - name: Bump Version
         run: ./tore bump-version --create-branch --beta
 
-      # - name: Create Release
-      #   run: ./tore gh-create-release private-statsig-server-core
+      - name: Create Release
+        run: ./tore gh-create-release private-statsig-server-core
 
       - name: Merge Back to Main
         run: ./tore merge-to-main
