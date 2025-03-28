@@ -331,7 +331,7 @@ function getShortPath(path: string) {
 
   if (sanePath.includes('statsig-pyo3/build/')) {
     const parts = sanePath.split('statsig-pyo3/build/');
-    return parts[1];
+    return parts[1].replace(/-\d+\.\d+\.\d+[a-z0-9]*/, '');
   }
 
   if (sanePath.includes('statsig-node/build/')) {
