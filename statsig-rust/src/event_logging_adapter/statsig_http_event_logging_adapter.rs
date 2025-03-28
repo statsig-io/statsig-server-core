@@ -84,7 +84,7 @@ impl StatsigHttpEventLoggingAdapter {
                     retries: 3,
                     headers: Some(headers),
                     accept_gzip_response: true,
-                    ..RequestArgs::new()
+                    ..RequestArgs::default()
                 },
                 Some(compressed),
             )

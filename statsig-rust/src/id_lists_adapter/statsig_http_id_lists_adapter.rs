@@ -77,7 +77,7 @@ impl StatsigHttpIdListsAdapter {
             url: self.id_lists_manifest_url.clone(),
             accept_gzip_response: true,
             diagnostics_key: Some(KeyType::GetIDListSources),
-            ..RequestArgs::new()
+            ..RequestArgs::default()
         };
 
         let initial_err = match self.network.post(request_args.clone(), None).await {
@@ -124,7 +124,7 @@ impl StatsigHttpIdListsAdapter {
             .get(RequestArgs {
                 url: list_url.to_string(),
                 headers: Some(headers),
-                ..RequestArgs::new()
+                ..RequestArgs::default()
             })
             .await;
 

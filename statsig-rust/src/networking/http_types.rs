@@ -8,8 +8,22 @@ use std::{
 use crate::sdk_diagnostics::marker::KeyType;
 use crate::StatsigErr;
 
+pub type RequestArgs = RequestArgsTyped<String>;
+
+impl Default for RequestArgs {
+    fn default() -> Self {
+        Self::new(|data| {
+            String::from_utf8(data.unwrap_or_default()).map_err(|_| {
+                StatsigErr::SerializationError(
+                    "Failed to deserialize response as a string".to_string(),
+                )
+            })
+        })
+    }
+}
+
 #[derive(Clone)]
-pub struct RequestArgs {
+pub struct RequestArgsTyped<T> {
     pub url: String,
     pub body: Option<Vec<u8>>,
     pub retries: u32,
@@ -19,18 +33,13 @@ pub struct RequestArgs {
     pub timeout_ms: u64,
     pub is_shutdown: Option<Arc<AtomicBool>>,
     pub diagnostics_key: Option<KeyType>,
+    pub response_deserializer: fn(Option<Vec<u8>>) -> Result<T, StatsigErr>,
 }
 
-impl Default for RequestArgs {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl RequestArgs {
+impl<T> RequestArgsTyped<T> {
     #[must_use]
-    pub fn new() -> Self {
-        RequestArgs {
+    pub fn new(deserializer: fn(Option<Vec<u8>>) -> Result<T, StatsigErr>) -> Self {
+        RequestArgsTyped {
             url: String::new(),
             body: None,
             retries: 0,
@@ -40,6 +49,7 @@ impl RequestArgs {
             timeout_ms: 0,
             is_shutdown: None,
             diagnostics_key: None,
+            response_deserializer: deserializer,
         }
     }
 

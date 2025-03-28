@@ -19,7 +19,7 @@ pub enum NetworkError {
     ShutdownError,
     RequestFailed,
     RetriesExhausted,
-    SerializationError,
+    SerializationError(String),
 }
 const TAG: &str = stringify!(NetworkClient);
 
@@ -149,7 +149,8 @@ impl NetworkClient {
             }
 
             if success {
-                return get_data_as_string(response.data);
+                return (request_args.response_deserializer)(response.data)
+                    .map_err(|e| NetworkError::SerializationError(e.to_string()));
             }
 
             if !RETRY_CODES.contains(&status) {
@@ -209,13 +210,5 @@ fn get_error_message_for_status(status: u16) -> String {
         504 => "Gateway Timeout".to_string(),
         0 => "Unknown Error".to_string(),
         _ => format!("HTTP Error {status}"),
-    }
-}
-
-fn get_data_as_string(data: Option<Vec<u8>>) -> Result<String, NetworkError> {
-    // todo: support compressed data
-    match data {
-        Some(data) => Ok(String::from_utf8(data).map_err(|_| NetworkError::SerializationError)?),
-        None => Err(NetworkError::RequestFailed),
     }
 }
