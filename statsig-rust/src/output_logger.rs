@@ -111,7 +111,6 @@ fn sanitize(input: &str) -> String {
                 let sanitized_key = if key.len() > 5 {
                     format!("{}*****{}", &key[..5], rest)
                 } else {
-                    print!("key: {}, rest: {}", key, rest);
                     format!("{}*****{}", key, rest)
                 };
                 format!("secret-{}", sanitized_key)
