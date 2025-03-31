@@ -53,6 +53,9 @@ jobs:
     needs: [build-kong-host]
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./kong-2-electric-boogaloo
 
     strategy:
       fail-fast: false
