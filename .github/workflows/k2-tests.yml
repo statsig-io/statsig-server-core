@@ -103,7 +103,7 @@ jobs:
 
       - name: Download Artifacts
         working-directory: ./kong-2-electric-boogaloo
-        run: ./kong download --apps ${{ matrix.config.app }} --verbose --workflow-id ${{ inputs.workflow_run_id }}
+        run: ./kong download --apps ${{ matrix.config.app }} --verbose --workflow-run-id ${{ inputs.workflow_run_id }}
 
       - name: Cache Scrapi Data
         working-directory: ./kong-2-electric-boogaloo
