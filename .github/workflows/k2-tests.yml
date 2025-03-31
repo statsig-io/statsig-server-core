@@ -37,7 +37,8 @@ jobs:
         app: [node, python, java]
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Get KONG
+        run: git clone https://oauth2:$repo_pat@github.com/statsig-io/kong.git .
 
       - name: 'Build Docker Image'
         uses: ./.github/actions/build-docker-image
