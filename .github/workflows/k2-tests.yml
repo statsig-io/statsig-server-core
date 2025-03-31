@@ -55,7 +55,6 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./kong-2-electric-boogaloo
 
     strategy:
       fail-fast: false
@@ -80,7 +79,7 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: ./.kong/
+          path: ./kong-2-electric-boogaloo/.kong/
           key: kong-cache-${{ matrix.config.app }}
           restore-keys: kong-cache-${{ matrix.config.app }}
 
@@ -101,15 +100,19 @@ jobs:
           docker_image_tag: statsig/kong-host-node
 
       - name: Clone SDKs
+        working-directory: ./kong-2-electric-boogaloo
         run: ./kong clone-sdks --apps ${{ matrix.config.app }} --verbose
 
       - name: Download Artifacts
+        working-directory: ./kong-2-electric-boogaloo
         run: ./kong download --apps ${{ matrix.config.app }} --verbose --workflow-id ${{ inputs.workflow_run_id }}
 
       - name: Cache Scrapi Data
+        working-directory: ./kong-2-electric-boogaloo
         run: ./kong cache --verbose
 
       - name: Run Tests
+        working-directory: ./kong-2-electric-boogaloo
         run: |
           ./kong test \
             --apps scrapi ${{ matrix.config.app }} \
