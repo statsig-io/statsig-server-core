@@ -53,8 +53,6 @@ jobs:
     needs: [build-kong-host]
     timeout-minutes: 15
     runs-on: ubuntu-latest
-    defaults:
-      run:
 
     strategy:
       fail-fast: false
