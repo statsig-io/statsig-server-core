@@ -184,7 +184,6 @@ jobs:
   publish:
     needs: build
     if: ${{ github.event_name == 'release' }}
-
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

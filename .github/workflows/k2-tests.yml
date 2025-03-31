@@ -1,10 +1,12 @@
 name: '[Kong 2] Tests'
 
 on:
-  workflow_dispatch:
+  workflow_run:
+    workflows: ['Build']
+    types:
+      - completed
     inputs:
       workflow_run_id:
-        description: 'The workflow run that contains the artifacts to test'
         required: true
 
 concurrency:
@@ -28,6 +30,7 @@ env:
 
 jobs:
   build-kong-host:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     timeout-minutes: 15
     runs-on: ubuntu-latest
 
@@ -103,7 +106,7 @@ jobs:
 
       - name: Download Artifacts
         working-directory: ./kong-2-electric-boogaloo
-        run: ./kong download --apps ${{ matrix.config.app }} --verbose --workflow-run-id ${{ inputs.workflow_run_id }}
+        run: ./kong download --apps ${{ matrix.config.app }} --verbose --workflow-run-id ${{ github.event.workflow_run.id }}
 
       - name: Cache Scrapi Data
         working-directory: ./kong-2-electric-boogaloo
