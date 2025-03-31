@@ -42,7 +42,7 @@ jobs:
           fi
 
       - name: Bump Version
-        run: ./tore bump-version --create-branch --beta
+        run: ./tore bump-version --create-branch --beta-date
 
       - name: Create Release
         run: ./tore gh-create-release private-statsig-server-core

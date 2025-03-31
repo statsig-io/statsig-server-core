@@ -24,6 +24,7 @@ type Options = {
   minor?: boolean;
   patch?: boolean;
   beta?: boolean;
+  betaDate?: boolean;
   doNotPush?: boolean;
   createBranch?: boolean;
 };
@@ -38,6 +39,10 @@ export class BumpVersion extends CommandBase {
     this.option('--minor', 'Bump the minor version');
     this.option('--patch', 'Bump the patch version');
     this.option('--beta', 'Bump the beta version');
+    this.option(
+      '--beta-date',
+      'Bump the beta version based on the current date',
+    );
     this.option('--do-not-push', 'Do not push the changes to the remote');
     this.option('--create-branch', 'Create a new branch for the version');
     this.argument('[string]', 'The version to bump to');
@@ -65,6 +70,13 @@ export class BumpVersion extends CommandBase {
       version.beta = 0;
     } else if (options.beta) {
       version.beta += 1;
+    } else if (options.betaDate) {
+      const date = new Date();
+      // YYMMDD
+      version.beta =
+        (date.getFullYear() % 100) * 10000 + // Get last 2 digits of year
+        (date.getMonth() + 1) * 100 +
+        date.getDate();
     }
 
     if (providedVersion) {
