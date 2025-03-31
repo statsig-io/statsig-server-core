@@ -100,7 +100,22 @@ class StatsigBasePy:
     def manually_log_layer_parameter_exposure(self, user:StatsigUser, name:builtins.str, param_name:builtins.str) -> None:
         ...
 
-    def get_client_initialize_response(self, user:StatsigUser, hash:typing.Optional[builtins.str]=None, client_sdk_key:typing.Optional[builtins.str]=None) -> builtins.str:
+    def get_client_initialize_response(self, user:StatsigUser, hash:typing.Optional[builtins.str]=None, client_sdk_key:typing.Optional[builtins.str]=None, include_local_overrides:typing.Optional[builtins.bool]=None) -> builtins.str:
+        ...
+
+    def override_gate(self, gate_name:builtins.str, value:builtins.bool) -> None:
+        ...
+
+    def override_dynamic_config(self, config_name:builtins.str, value:dict) -> None:
+        ...
+
+    def override_experiment(self, experiment_name:builtins.str, value:dict) -> None:
+        ...
+
+    def override_layer(self, layer_name:builtins.str, value:dict) -> None:
+        ...
+
+    def override_experiment_by_group_name(self, layer_name:builtins.str, group_name:builtins.str) -> None:
         ...
 
 

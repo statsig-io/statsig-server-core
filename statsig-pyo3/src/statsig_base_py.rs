@@ -1,5 +1,5 @@
 use crate::net_provider_py::NetworkProviderPy;
-use crate::pyo_utils::map_to_py_dict;
+use crate::pyo_utils::{map_to_py_dict, py_dict_to_json_value_map};
 use crate::statsig_options_py::{safe_convert_to_statsig_options, StatsigOptionsPy};
 use crate::statsig_types_py::{DynamicConfigPy, LayerPy};
 use crate::{
@@ -309,12 +309,13 @@ impl StatsigBasePy {
         Ok(())
     }
 
-    #[pyo3(signature = (user, hash=None, client_sdk_key=None))]
+    #[pyo3(signature = (user, hash=None, client_sdk_key=None, include_local_overrides=None))]
     pub fn get_client_initialize_response(
         &self,
         user: &StatsigUserPy,
         hash: Option<&str>,
         client_sdk_key: Option<&str>,
+        include_local_overrides: Option<bool>,
     ) -> String {
         let mut opts = ClientInitResponseOptions::default();
         if hash == Some("none") {
@@ -326,8 +327,49 @@ impl StatsigBasePy {
         if let Some(client_sdk_key) = client_sdk_key {
             opts.client_sdk_key = Some(client_sdk_key.to_string());
         }
+        opts.include_local_overrides = include_local_overrides;
         self.inner
             .get_client_init_response_with_options_as_string(&user.inner, &opts)
+    }
+
+    #[pyo3(signature = (gate_name, value))]
+    pub fn override_gate(&self, gate_name: &str, value: bool) -> PyResult<()> {
+        self.inner.override_gate(gate_name, value, None);
+        Ok(())
+    }
+
+    #[pyo3(signature = (config_name, value))]
+    pub fn override_dynamic_config(&self, config_name: &str, value: Bound<PyDict>) -> PyResult<()> {
+        let value_inner = py_dict_to_json_value_map(&value);
+        self.inner
+            .override_dynamic_config(config_name, value_inner, None);
+        Ok(())
+    }
+
+    #[pyo3(signature = (experiment_name, value))]
+    pub fn override_experiment(&self, experiment_name: &str, value: Bound<PyDict>) -> PyResult<()> {
+        let value_inner = py_dict_to_json_value_map(&value);
+        self.inner
+            .override_experiment(experiment_name, value_inner, None);
+        Ok(())
+    }
+
+    #[pyo3(signature = (layer_name, value))]
+    pub fn override_layer(&self, layer_name: &str, value: Bound<PyDict>) -> PyResult<()> {
+        let value_inner = py_dict_to_json_value_map(&value);
+        self.inner.override_layer(layer_name, value_inner, None);
+        Ok(())
+    }
+
+    #[pyo3(signature = (layer_name, group_name))]
+    pub fn override_experiment_by_group_name(
+        &self,
+        layer_name: &str,
+        group_name: &str,
+    ) -> PyResult<()> {
+        self.inner
+            .override_experiment_by_group_name(layer_name, group_name, None);
+        Ok(())
     }
 }
 

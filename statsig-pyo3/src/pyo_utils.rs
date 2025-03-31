@@ -31,6 +31,30 @@ pub fn py_dict_to_map(dict: &Bound<PyDict>) -> HashMap<String, DynamicValue> {
     hashmap
 }
 
+pub fn py_dict_to_json_value_map(dict: &Bound<PyDict>) -> HashMap<String, Value> {
+    let mut hashmap = HashMap::new();
+    for (key, value) in dict.iter() {
+        let key_str = match key.extract::<String>() {
+            Ok(k) => k,
+            Err(_) => {
+                log_e!(TAG, "Skipping entry: Key must be a string");
+                continue;
+            }
+        };
+
+        let value_json = match py_any_to_dynamic_value(&value) {
+            Ok(v) => v.json_value,
+            Err(_) => {
+                log_e!(TAG, "Skipping entry: Invalid value for key '{}'", key_str);
+                continue;
+            }
+        };
+
+        hashmap.insert(key_str, value_json);
+    }
+    hashmap
+}
+
 pub fn map_to_py_dict(py: Python, map: &HashMap<String, Value>) -> PyObject {
     let value = match serde_json::to_string(&map) {
         Ok(v) => v,
