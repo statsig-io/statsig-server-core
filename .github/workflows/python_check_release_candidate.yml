@@ -16,9 +16,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        subdir: ['server-core-node-rc']
+        subdir: ['server-core-python-rc']
         platform: ['linux/amd64', 'linux/arm64']
-        base_image: ["debian","3_slim","3","3_alpine","3_bookworm","3_bullseye","3_ubuntu","3_alpine",]
+        base_image: ["debian","3_slim","3","3_alpine","3_bookworm","3_bullseye","ubuntu","alpine",]
     steps:
       - name: Checkout LRS repo
         uses: actions/checkout@v3
