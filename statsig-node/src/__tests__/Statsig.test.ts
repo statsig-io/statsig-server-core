@@ -204,5 +204,14 @@ describe('Statsig', () => {
         /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/,
       );
     });
+
+    it('should not throw when logging incorrect types', async () => {
+      expect(() => {
+        const user = StatsigUser.withUserID('a-user');
+        statsig.logEvent(user, 'my_custom_event', 'my_value', {
+          number_val: 1,
+        } as any);
+      }).not.toThrow();
+    });
   });
 });

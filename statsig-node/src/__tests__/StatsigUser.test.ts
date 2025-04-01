@@ -157,7 +157,7 @@ describe('StatsigUser', () => {
     expect(event?.user?.email).toEqual('c-user@example.com');
   });
 
-  it('Creates users with an empty user ID when creating a user with no userID or customID', async () => {
+  it('creates users with an empty user ID when creating a user with no userID or customID', async () => {
     let user = new StatsigUser({
       userID: undefined as any,
       email: 'c-user@example.com',
@@ -174,5 +174,16 @@ describe('StatsigUser', () => {
     expect(event?.user?.userID).toEqual('');
     expect(event?.user?.email).toBeUndefined();
     expect(event?.user?.customIDs).toBeUndefined();
+  });
+
+  it('should not throw when constructed incorrectly', () => {
+    expect(() => {
+      const user: StatsigUser = {
+        userID: undefined as any,
+        email: 'c-user@example.com',
+      } as any;
+
+      statsig.checkGate(user, 'test-gate');
+    }).not.toThrow();
   });
 });

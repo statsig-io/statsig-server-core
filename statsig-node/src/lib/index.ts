@@ -1,5 +1,6 @@
 import nodeFetch from 'node-fetch';
 
+import { ErrorBoundary } from './error_boundary';
 import { StatsigNapiInternal, StatsigOptions } from './statsig-generated';
 
 export * from './statsig-generated';
@@ -34,5 +35,7 @@ const FETCH_FUNC = async (
 export class Statsig extends StatsigNapiInternal {
   constructor(sdkKey: string, options?: StatsigOptions) {
     super(FETCH_FUNC, sdkKey, options);
+
+    ErrorBoundary.wrap(this);
   }
 }
