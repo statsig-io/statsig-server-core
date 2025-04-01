@@ -37,5 +37,7 @@ jobs:
       - name: Run Verification
         working-directory: examples/python/verify-package
         run: |
-          pip3 install --pre --upgrade statsig_python_core
+          pip3 install --pre --upgrade statsig_python_core 
+          pip3 install mypy types-requests
+          mypy --package statsig_python_core
           python3 verify.py
