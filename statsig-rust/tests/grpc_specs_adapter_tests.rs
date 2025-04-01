@@ -26,7 +26,7 @@ pub mod specs_adapter_tests {
             specs_url: Some(format!("http://{}", mock_proxy.proxy_address)),
             init_timeout_ms: 3000,
         };
-        let adapter = Arc::new(StatsigGrpcSpecsAdapter::new("secret-key", &config));
+        let adapter = Arc::new(StatsigGrpcSpecsAdapter::new("secret-key", &config, None));
         let mock_listener = Arc::new(MockSpecsListener::default());
         adapter.initialize(mock_listener.clone());
         (mock_proxy, mock_listener, adapter)

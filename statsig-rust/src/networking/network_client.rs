@@ -7,6 +7,7 @@ use crate::observability::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
 use crate::{log_d, log_error_to_statsig_and_console, log_i, log_w, StatsigErr};
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Duration;
@@ -14,13 +15,27 @@ use std::time::Duration;
 const RETRY_CODES: [u16; 8] = [408, 500, 502, 503, 504, 522, 524, 599];
 const SHUTDOWN_ERROR: &str = "Request was aborted because the client is shutting down";
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum NetworkError {
     ShutdownError,
     RequestFailed,
     RetriesExhausted,
     SerializationError(String),
+    DisableNetworkOn,
 }
+
+impl fmt::Display for NetworkError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            NetworkError::ShutdownError => write!(f, "ShutdownError"),
+            NetworkError::RequestFailed => write!(f, "RequestFailed"),
+            NetworkError::RetriesExhausted => write!(f, "RetriesExhausted"),
+            NetworkError::SerializationError(s) => write!(f, "SerializationError: {s}"),
+            NetworkError::DisableNetworkOn => write!(f, "DisableNetworkOn"),
+        }
+    }
+}
+
 const TAG: &str = stringify!(NetworkClient);
 
 pub struct NetworkClient {
@@ -28,11 +43,16 @@ pub struct NetworkClient {
     is_shutdown: Arc<AtomicBool>,
     ops_stats: Arc<OpsStatsForInstance>,
     net_provider: Weak<dyn NetworkProvider>,
+    disable_network: bool,
 }
 
 impl NetworkClient {
     #[must_use]
-    pub fn new(sdk_key: &str, headers: Option<HashMap<String, String>>) -> Self {
+    pub fn new(
+        sdk_key: &str,
+        headers: Option<HashMap<String, String>>,
+        disable_network: Option<bool>,
+    ) -> Self {
         let net_provider = get_network_provider();
 
         NetworkClient {
@@ -40,6 +60,7 @@ impl NetworkClient {
             is_shutdown: Arc::new(AtomicBool::new(false)),
             net_provider,
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
+            disable_network: disable_network.unwrap_or_default(),
         }
     }
 
@@ -82,6 +103,11 @@ impl NetworkClient {
         } else {
             self.is_shutdown.clone()
         };
+
+        if self.disable_network {
+            log_d!(TAG, "Network is disabled, not making requests");
+            return Err(NetworkError::DisableNetworkOn);
+        }
 
         request_args.populate_headers(self.headers.clone());
 

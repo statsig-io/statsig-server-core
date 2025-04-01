@@ -32,7 +32,7 @@ impl StatsigCustomizedSpecsAdapter {
         for config in &configs {
             match config.adapter_type {
                 SpecsAdapterType::NetworkGrpcWebsocket => {
-                    if let Some(adapter) = Self::create_grpc_adapter(sdk_key, config) {
+                    if let Some(adapter) = Self::create_grpc_adapter(sdk_key, config, options) {
                         adapters.push(adapter);
                     }
                 }
@@ -43,6 +43,7 @@ impl StatsigCustomizedSpecsAdapter {
                         config.specs_url.as_ref(),
                         options.fallback_to_statsig_api.unwrap_or(false),
                         options.specs_sync_interval_ms,
+                        options.disable_network,
                     )));
                 }
                 SpecsAdapterType::DataStore => match options.data_store.clone() {
@@ -79,6 +80,7 @@ impl StatsigCustomizedSpecsAdapter {
             options.specs_url.as_ref(),
             options.fallback_to_statsig_api.unwrap_or(false),
             options.specs_sync_interval_ms,
+            options.disable_network,
         );
         let adapters: Vec<Arc<dyn SpecsAdapter>> =
             vec![Arc::new(data_adapter_spec_adapter), Arc::new(http_adapter)];
@@ -89,14 +91,20 @@ impl StatsigCustomizedSpecsAdapter {
     fn create_grpc_adapter(
         sdk_key: &str,
         config: &SpecAdapterConfig,
+        options: &StatsigOptions,
     ) -> Option<Arc<dyn SpecsAdapter>> {
-        Some(Arc::new(StatsigGrpcSpecsAdapter::new(sdk_key, config)))
+        Some(Arc::new(StatsigGrpcSpecsAdapter::new(
+            sdk_key,
+            config,
+            options.disable_network,
+        )))
     }
 
     #[cfg(not(feature = "with_grpc"))]
     fn create_grpc_adapter(
         _sdk_key: &str,
         _config: &SpecAdapterConfig,
+        _options: &StatsigOptions,
     ) -> Option<Arc<dyn SpecsAdapter>> {
         log_e!(
             TAG,
@@ -127,7 +135,7 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
                 }
             }
         }
-        return Err(StatsigErr::NetworkError(
+        return Err(StatsigErr::UnstartedAdapter(
             "Failed to start any adapters".to_string(),
         ));
     }

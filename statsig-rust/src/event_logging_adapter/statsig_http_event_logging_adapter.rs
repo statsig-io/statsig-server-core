@@ -1,7 +1,7 @@
 use crate::compression::compression_helper::{compress_data, get_compression_format};
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::log_event_payload::LogEventRequest;
-use crate::networking::{NetworkClient, RequestArgs};
+use crate::networking::{NetworkClient, NetworkError, RequestArgs};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::statsig_metadata::StatsigMetadata;
@@ -29,7 +29,11 @@ pub struct StatsigHttpEventLoggingAdapter {
 
 impl StatsigHttpEventLoggingAdapter {
     #[must_use]
-    pub fn new(sdk_key: &str, log_event_url: Option<&String>) -> Self {
+    pub fn new(
+        sdk_key: &str,
+        log_event_url: Option<&String>,
+        disable_network: Option<bool>,
+    ) -> Self {
         let headers = StatsigMetadata::get_constant_request_headers(sdk_key);
 
         let log_event_url = match log_event_url {
@@ -39,7 +43,7 @@ impl StatsigHttpEventLoggingAdapter {
         .to_string();
         Self {
             log_event_url,
-            network: NetworkClient::new(sdk_key, Some(headers)),
+            network: NetworkClient::new(sdk_key, Some(headers), disable_network),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
         }
     }
@@ -89,7 +93,7 @@ impl StatsigHttpEventLoggingAdapter {
                 Some(compressed),
             )
             .await
-            .map_err(|_err| StatsigErr::NetworkError("Log event failure".into()))?;
+            .map_err(|err| StatsigErr::NetworkError(err, Some("Log event failure".into())))?;
 
         serde_json::from_str::<LogEventResult>(&response_str)
             .map(|result| result.success != Some(false))
@@ -107,17 +111,21 @@ impl EventLoggingAdapter for StatsigHttpEventLoggingAdapter {
 
     #[allow(clippy::manual_inspect)]
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
-        self.send_events_over_http(&request).await.map_err(|e| {
-            self.ops_stats.log_error(ErrorBoundaryEvent {
-                exception: "LogEventFailed".to_string(),
-                tag: "statsig::log_event_failed".to_string(),
-                extra: Some(HashMap::from([(
-                    "eventCount".to_string(),
-                    request.event_count.to_string(),
-                )])),
-            });
-            e
-        })
+        match self.send_events_over_http(&request).await {
+            Ok(_) => Ok(true),
+            Err(StatsigErr::NetworkError(NetworkError::DisableNetworkOn, _)) => Ok(false),
+            Err(e) => {
+                self.ops_stats.log_error(ErrorBoundaryEvent {
+                    exception: "LogEventFailed".to_string(),
+                    tag: "statsig::log_event_failed".to_string(),
+                    extra: Some(HashMap::from([(
+                        "eventCount".to_string(),
+                        request.event_count.to_string(),
+                    )])),
+                });
+                Err(e)
+            }
+        }
     }
 
     async fn shutdown(&self) -> Result<(), StatsigErr> {
@@ -137,7 +145,7 @@ async fn test_event_logging() {
 
     let sdk_key = env::var("test_api_key").expect("test_api_key environment variable not set");
 
-    let adapter = StatsigHttpEventLoggingAdapter::new(&sdk_key, None);
+    let adapter = StatsigHttpEventLoggingAdapter::new(&sdk_key, None, None);
 
     let payload_str = r#"{"events":[{"eventName":"statsig::config_exposure","metadata":{"config":"running_exp_in_unlayered_with_holdout","ruleID":"5suobe8yyvznqasn9Ph1dI"},"secondaryExposures":[{"gate":"global_holdout","gateValue":"false","ruleID":"3QoA4ncNdVGBaMt3N1KYjz:0.50:1"},{"gate":"exp_holdout","gateValue":"false","ruleID":"1rEqLOpCROaRafv7ubGgax"}],"time":1722386636538,"user":{"appVersion":null,"country":null,"custom":null,"customIDs":null,"email":"daniel@statsig.com","ip":null,"locale":null,"privateAttributes":null,"statsigEnvironment":null,"userAgent":null,"userID":"a-user"},"value":null}],"statsigMetadata":{"sdk_type":"statsig-server-core","sdk_version":"0.0.1"}}"#;
     let payload = serde_json::from_str::<LogEventPayload>(payload_str).unwrap();

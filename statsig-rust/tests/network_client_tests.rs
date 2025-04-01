@@ -21,7 +21,7 @@ async fn setup() -> MockScrapi {
 #[tokio::test]
 async fn test_killing_inflight_requests() {
     let mock_scrapi = setup().await;
-    let network_client = Arc::new(NetworkClient::new("inflight_key", None));
+    let network_client = Arc::new(NetworkClient::new("inflight_key", None, None));
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
 
     let network_client_clone = network_client.clone();
@@ -47,7 +47,7 @@ async fn test_killing_inflight_requests() {
 #[tokio::test]
 async fn test_per_request_timeout() {
     let mock_scrapi = setup().await;
-    let network_client = Arc::new(NetworkClient::new("per_req_key", None));
+    let network_client = Arc::new(NetworkClient::new("per_req_key", None, None));
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
 
     let network_client_clone = network_client.clone();

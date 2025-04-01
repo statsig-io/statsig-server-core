@@ -8,7 +8,7 @@ use tokio::sync::RwLock;
 use crate::{
     networking::{NetworkClient, RequestArgs},
     statsig_metadata::StatsigMetadata,
-    OpsStatsEventObserver,
+    OpsStatsEventObserver, StatsigOptions,
 };
 
 use super::ops_stats::OpsStatsEvent;
@@ -35,11 +35,13 @@ pub struct SDKErrorsObserver {
 }
 
 impl SDKErrorsObserver {
-    pub fn new(sdk_key: &str, options_logging_copy: String) -> Self {
+    pub fn new(sdk_key: &str, options: &StatsigOptions) -> Self {
+        let options_logging_copy = serde_json::to_string(options).unwrap_or_default();
         SDKErrorsObserver {
             network_client: NetworkClient::new(
                 sdk_key,
                 Some(StatsigMetadata::get_constant_request_headers(sdk_key)),
+                options.disable_network,
             ),
             errors_aggregator: RwLock::new(HashMap::new()),
             statsig_options_logging_copy: options_logging_copy,

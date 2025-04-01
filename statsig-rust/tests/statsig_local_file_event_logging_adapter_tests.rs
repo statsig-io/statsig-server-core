@@ -55,7 +55,7 @@ async fn test_writing_to_file() {
     let (mock_scrapi, tmp_path) = setup("test_writing_to_file").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
 
-    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url));
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url), false);
     adapter
         .log_events(LogEventRequest {
             payload: LogEventPayload {
@@ -83,7 +83,7 @@ async fn test_combining_requests() {
     let (mock_scrapi, tmp_path) = setup("test_combining_requests").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
 
-    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url));
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url), false);
 
     let payload = LogEventPayload {
         events: TEST_EVENTS_DATA.clone(),
@@ -127,7 +127,7 @@ async fn test_combining_requests() {
     let (mock_scrapi, tmp_path) = setup("test_combining_requests").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
 
-    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url));
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url), false);
 
     let payload = LogEventPayload {
         events: TEST_EVENTS_DATA.clone(),
@@ -169,7 +169,7 @@ async fn test_combining_limits() {
     let (mock_scrapi, tmp_path) = setup("test_combining_limits").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
 
-    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url));
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url), false);
 
     for _ in 0..1000 {
         let payload = LogEventPayload {
@@ -199,7 +199,7 @@ async fn test_sending_events_over_network() {
     let (mock_scrapi, tmp_path) = setup("test_sending_events_over_network").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
 
-    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url));
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url), false);
 
     adapter
         .log_events(LogEventRequest {
@@ -226,7 +226,7 @@ async fn test_sending_events_over_network() {
 async fn test_exposure_dedupe() {
     let (mock_scrapi, tmp_path) = setup("test_exposure_dedupe").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
-    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url));
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url), false);
 
     let expo_data = r#"[{
         "eventName": "statsig::config_exposure",
@@ -276,6 +276,7 @@ async fn test_concurrent_usage() {
         SDK_KEY,
         &tmp_path,
         Some(url),
+        false,
     ));
 
     let mut task = vec![];

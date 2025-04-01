@@ -59,6 +59,7 @@ impl StatsigHttpIdListsAdapter {
         let network = NetworkClient::new(
             sdk_key,
             Some(StatsigMetadata::get_constant_request_headers(sdk_key)),
+            options.disable_network,
         );
 
         Self {
@@ -86,30 +87,25 @@ impl StatsigHttpIdListsAdapter {
         };
 
         if initial_err != NetworkError::RetriesExhausted {
-            return Err(StatsigErr::NetworkError(format!(
-                "Initial request failed: {initial_err:?}"
-            )));
+            return Err(StatsigErr::NetworkError(initial_err, None));
         }
 
         // attempt fallback
+        let mut fallback_err = None;
         if let Some(fallback_url) = &self.fallback_url {
-            let fallback_err = match self
+            fallback_err = match self
                 .handle_fallback_request(fallback_url, request_args)
                 .await
             {
                 Ok(response) => return self.parse_response(response),
-                Err(e) => e,
+                Err(e) => Some(e),
             };
-
-            // TODO logging
-            return Err(StatsigErr::NetworkError(format!(
-                "Fallback request failed: {fallback_err:?}, initial error: {initial_err:?}"
-            )));
         }
 
-        Err(StatsigErr::NetworkError(format!(
-            "Initial request failed with error: {initial_err:?}"
-        )))
+        Err(StatsigErr::NetworkError(
+            initial_err,
+            fallback_err.map(|e| format!("Fallback request failed with error {:?}", e).to_string()),
+        ))
     }
 
     async fn fetch_individual_id_list_changes_from_network(
@@ -132,13 +128,13 @@ impl StatsigHttpIdListsAdapter {
             Ok(data) => {
                 if data.is_empty() {
                     let msg = "No ID List changes from network".to_string();
-                    return Err(StatsigErr::NetworkError(msg));
+                    return Err(StatsigErr::JsonParseError("IdList".to_string(), msg));
                 }
                 Ok(data)
             }
             Err(err) => {
                 let msg = format!("Failed to fetch ID List changes: {err:?}");
-                Err(StatsigErr::NetworkError(msg))
+                Err(StatsigErr::NetworkError(err, Some(msg)))
             }
         }
     }
@@ -156,7 +152,7 @@ impl StatsigHttpIdListsAdapter {
             Ok(response) => Ok(response),
             Err(e) => {
                 let msg = format!("Fallback request failed: {e:?}");
-                Err(StatsigErr::NetworkError(msg))
+                Err(StatsigErr::NetworkError(e, Some(msg)))
             }
         }
     }
@@ -181,7 +177,10 @@ impl StatsigHttpIdListsAdapter {
     fn parse_response(&self, response: String) -> Result<IdListsResponse, StatsigErr> {
         if response.is_empty() {
             let msg = "No ID List results from network".to_string();
-            return Err(StatsigErr::NetworkError(msg));
+            return Err(StatsigErr::JsonParseError(
+                "IdListsResponse".to_owned(),
+                msg,
+            ));
         }
 
         from_str::<IdListsResponse>(&response).map_err(|parse_err| {

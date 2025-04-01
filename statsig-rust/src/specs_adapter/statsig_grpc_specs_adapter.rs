@@ -156,8 +156,9 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
 }
 
 impl StatsigGrpcSpecsAdapter {
-    pub fn new(sdk_key: &str, config: &SpecAdapterConfig) -> Self {
-        let fallback_adapter = StatsigHttpSpecsAdapter::new(sdk_key, None, false, None);
+    pub fn new(sdk_key: &str, config: &SpecAdapterConfig, disable_network: Option<bool>) -> Self {
+        let fallback_adapter =
+            StatsigHttpSpecsAdapter::new(sdk_key, None, false, None, disable_network);
         let (init_tx, _) = broadcast::channel(1);
         Self {
             listener: RwLock::new(None),

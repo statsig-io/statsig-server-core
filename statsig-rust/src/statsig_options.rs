@@ -18,11 +18,13 @@ pub const DEFAULT_INIT_TIMEOUT_MS: u64 = 3000;
 #[derive(Clone, Default)]
 pub struct StatsigOptions {
     pub data_store: Option<Arc<dyn DataStoreTrait>>, // External DataStore
-    pub disable_all_logging: Option<bool>,
     pub enable_id_lists: Option<bool>,
     pub enable_user_agent_parsing: Option<bool>,
     pub enable_country_lookup: Option<bool>,
     pub environment: Option<String>,
+
+    pub disable_network: Option<bool>, // Disable all out-going network including get configs, log_events...
+    pub disable_all_logging: Option<bool>,
 
     pub event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,
     pub event_logging_flush_interval_ms: Option<u32>,
@@ -208,6 +210,11 @@ impl StatsigOptionsBuilder {
         self
     }
 
+    pub fn disable_network(mut self, disable_network: Option<bool>) -> Self {
+        self.inner.disable_network = disable_network;
+        self
+    }
+
     #[must_use]
     pub fn build(self) -> StatsigOptions {
         self.inner
@@ -238,6 +245,7 @@ impl Serialize for StatsigOptions {
 
         serialize_if_not_none!(state, "log_event_url", &self.log_event_url);
         serialize_if_not_none!(state, "disable_all_logging", &self.disable_all_logging);
+        serialize_if_not_none!(state, "disable_network", &self.disable_network);
 
         serialize_if_not_none!(state, "id_lists_url", &self.id_lists_url);
         serialize_if_not_none!(state, "enable_id_lists", &self.enable_id_lists);

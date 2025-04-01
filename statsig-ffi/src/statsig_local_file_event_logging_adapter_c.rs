@@ -12,6 +12,7 @@ pub extern "C" fn statsig_local_file_event_logging_adapter_create(
     sdk_key: *const c_char,
     output_directory: *const c_char,
     log_event_url: *const c_char,
+    disable_network: bool,
 ) -> *const c_char {
     let sdk_key = unwrap_or_return!(c_char_to_string(sdk_key), std::ptr::null());
     let output_directory = unwrap_or_return!(c_char_to_string(output_directory), std::ptr::null());
@@ -19,8 +20,12 @@ pub extern "C" fn statsig_local_file_event_logging_adapter_create(
         .map(Some)
         .unwrap_or_default();
 
-    let adapter =
-        StatsigLocalFileEventLoggingAdapter::new(&sdk_key, &output_directory, log_event_url);
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(
+        &sdk_key,
+        &output_directory,
+        log_event_url,
+        disable_network,
+    );
 
     let ref_id = InstanceRegistry::register(adapter).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigLocalFileSpecsAdapter");

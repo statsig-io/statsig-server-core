@@ -9,12 +9,14 @@ class StatsigLocalFileEventLoggingAdapter
     public function __construct(
         string $sdk_key,
         string $output_directory,
-        string $log_event_url = null
+        string $log_event_url = null,
+        bool $disable_networking = false,
     ) {
         $this->__ref = StatsigFFI::get()->statsig_local_file_event_logging_adapter_create(
             $sdk_key,
             $output_directory,
-            $log_event_url
+            $log_event_url,
+            $disable_networking
         );
     }
 

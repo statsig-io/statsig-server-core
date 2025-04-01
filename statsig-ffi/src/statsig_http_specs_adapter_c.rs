@@ -18,13 +18,19 @@ pub extern "C" fn statsig_http_specs_adapter_create(
     let options = InstanceRegistry::get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
 
     let mut specs_url = None;
-    if let Some(options) = options {
+    if let Some(options) = options.as_ref() {
         if let Some(url) = options.specs_url.clone() {
             specs_url = Some(url);
         }
     }
 
-    let adapter = StatsigHttpSpecsAdapter::new(&sdk_key, specs_url.as_ref(), false, None);
+    let adapter = StatsigHttpSpecsAdapter::new(
+        &sdk_key,
+        specs_url.as_ref(),
+        false,
+        None,
+        options.as_ref().and_then(|o| o.disable_network),
+    );
 
     let ref_id = InstanceRegistry::register(adapter).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigHttpSpecsAdapter");
@@ -61,14 +67,14 @@ pub extern "C" fn statsig_http_specs_adapter_fetch_specs_from_network(
         Err(_) => return null(),
     };
 
-    let result: Option<String> = statsig_rt.runtime_handle.block_on(async move {
+    let result = statsig_rt.runtime_handle.block_on(async move {
         specs_adapter
             .fetch_specs_from_network(parsed_specs_info)
             .await
     });
 
     match result {
-        Some(data) => string_to_c_char(data),
-        None => null(),
+        Ok(data) => string_to_c_char(data),
+        Err(_) => null(),
     }
 }

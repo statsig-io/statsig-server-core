@@ -13,6 +13,7 @@ pub extern "C" fn statsig_local_file_specs_adapter_create(
     output_directory: *const c_char,
     specs_url: *const c_char,
     fallback_to_statsig_api: bool,
+    disable_network: bool,
 ) -> *const c_char {
     let sdk_key = unwrap_or_return!(c_char_to_string(sdk_key), std::ptr::null());
     let output_directory = unwrap_or_return!(c_char_to_string(output_directory), std::ptr::null());
@@ -23,6 +24,7 @@ pub extern "C" fn statsig_local_file_specs_adapter_create(
         &output_directory,
         specs_url,
         fallback_to_statsig_api,
+        disable_network,
     );
 
     let ref_id = InstanceRegistry::register(adapter).unwrap_or_else(|| {

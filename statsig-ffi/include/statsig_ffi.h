@@ -108,7 +108,8 @@ const char *statsig_http_specs_adapter_fetch_specs_from_network(const char *spec
 
 const char *statsig_local_file_event_logging_adapter_create(const char *sdk_key,
                                                             const char *output_directory,
-                                                            const char *log_event_url);
+                                                            const char *log_event_url,
+                                                            bool disable_network);
 
 void statsig_local_file_event_logging_adapter_release(const char *event_logging_adapter_ref);
 
@@ -117,7 +118,8 @@ void statsig_local_file_event_logging_adapter_send_pending_events(const char *ad
 const char *statsig_local_file_specs_adapter_create(const char *sdk_key,
                                                     const char *output_directory,
                                                     const char *specs_url,
-                                                    bool fallback_to_statsig_api);
+                                                    bool fallback_to_statsig_api,
+                                                    bool disable_network);
 
 void statsig_local_file_specs_adapter_release(const char *specs_adapter_ref);
 

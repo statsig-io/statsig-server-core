@@ -26,6 +26,7 @@ impl StatsigLocalFileSpecsAdapter {
         output_directory: &str,
         specs_url: Option<String>,
         fallback_to_statsig_api: bool,
+        disable_network: bool,
     ) -> Self {
         let hashed_key = djb2(sdk_key);
         let file_path = format!("{output_directory}/{hashed_key}_specs.json");
@@ -38,6 +39,7 @@ impl StatsigLocalFileSpecsAdapter {
                 specs_url.as_ref(),
                 fallback_to_statsig_api,
                 None,
+                Some(disable_network),
             ),
         }
     }
@@ -53,9 +55,12 @@ impl StatsigLocalFileSpecsAdapter {
         };
 
         let data = match self.http_adapter.fetch_specs_from_network(specs_info).await {
-            Some(data) => data,
-            None => {
-                return Err(StatsigErr::NetworkError("No data received".to_string()));
+            Ok(data) => data,
+            Err(e) => {
+                return Err(StatsigErr::NetworkError(
+                    e,
+                    Some("No data received".to_string()),
+                ));
             }
         };
 

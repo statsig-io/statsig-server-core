@@ -18,11 +18,14 @@ pub extern "C" fn statsig_http_event_logging_adapter_create(
     let options = InstanceRegistry::get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
 
     let mut log_event_url = None;
+    let mut disable_network = None;
     if let Some(options) = options {
         log_event_url = options.log_event_url.clone();
+        disable_network = options.disable_network;
     }
 
-    let adapter = StatsigHttpEventLoggingAdapter::new(&sdk_key, log_event_url.as_ref());
+    let adapter =
+        StatsigHttpEventLoggingAdapter::new(&sdk_key, log_event_url.as_ref(), disable_network);
 
     let ref_id = InstanceRegistry::register(adapter).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigHttpSpecsAdapter");

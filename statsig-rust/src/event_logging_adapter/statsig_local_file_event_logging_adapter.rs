@@ -28,13 +28,22 @@ pub struct StatsigLocalFileEventLoggingAdapter {
 
 impl StatsigLocalFileEventLoggingAdapter {
     #[must_use]
-    pub fn new(sdk_key: &str, output_directory: &str, log_event_url: Option<String>) -> Self {
+    pub fn new(
+        sdk_key: &str,
+        output_directory: &str,
+        log_event_url: Option<String>,
+        disable_network: bool,
+    ) -> Self {
         let hashed_key = djb2(sdk_key);
         let file_path = format!("{output_directory}/{hashed_key}_events.json");
 
         Self {
             file_path,
-            http_adapter: StatsigHttpEventLoggingAdapter::new(sdk_key, log_event_url.as_ref()),
+            http_adapter: StatsigHttpEventLoggingAdapter::new(
+                sdk_key,
+                log_event_url.as_ref(),
+                Some(disable_network),
+            ),
         }
     }
 

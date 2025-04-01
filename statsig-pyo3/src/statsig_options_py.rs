@@ -21,6 +21,8 @@ pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub disable_all_logging: Option<bool>,
     #[pyo3(get, set)]
+    pub disable_network: Option<bool>,
+    #[pyo3(get, set)]
     pub event_logging_flush_interval_ms: Option<u32>,
     #[pyo3(get, set)]
     pub event_logging_max_queue_size: Option<u32>,
@@ -56,6 +58,7 @@ impl StatsigOptionsPy {
         init_timeout_ms=None,
         log_event_url=None,
         disable_all_logging=None,
+        disable_network=None,
         event_logging_flush_interval_ms=None,
         event_logging_max_queue_size=None,
         enable_id_lists=None,
@@ -76,6 +79,7 @@ impl StatsigOptionsPy {
         init_timeout_ms: Option<u64>,
         log_event_url: Option<String>,
         disable_all_logging: Option<bool>,
+        disable_network: Option<bool>,
         event_logging_flush_interval_ms: Option<u32>,
         event_logging_max_queue_size: Option<u32>,
         enable_id_lists: Option<bool>,
@@ -107,6 +111,7 @@ impl StatsigOptionsPy {
             output_log_level,
             global_custom_fields,
             observability_client,
+            disable_network,
         }
     }
 }
@@ -164,6 +169,7 @@ fn create_inner_statsig_options(
             .global_custom_fields
             .as_ref()
             .map(|dict| py_dict_to_map(dict.bind(py))),
+        disable_network: opts.disable_network,
     }
 }
 

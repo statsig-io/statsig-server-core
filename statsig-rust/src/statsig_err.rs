@@ -1,5 +1,7 @@
 use std::fmt::{Display, Formatter};
 
+use crate::networking::NetworkError;
+
 #[derive(Debug, Clone)]
 pub enum StatsigErr {
     CustomError(String),
@@ -8,7 +10,7 @@ pub enum StatsigErr {
 
     UnstartedAdapter(String),
 
-    NetworkError(String),
+    NetworkError(NetworkError, Option<String>),
 
     SerializationError(String),
 
@@ -57,7 +59,7 @@ impl Display for StatsigErr {
 
             StatsigErr::UnstartedAdapter(msg) => write!(f, "Adapter not started: {msg}"),
 
-            StatsigErr::NetworkError(msg) => write!(f, "Network error: {msg}"),
+            StatsigErr::NetworkError(error, msg) => write!(f, "Network error {error}: {msg:?}"),
 
             StatsigErr::SerializationError(msg) => write!(f, "Serialization error: {msg}"),
 

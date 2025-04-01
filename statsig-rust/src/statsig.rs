@@ -144,10 +144,8 @@ impl Statsig {
         let diagnostics = Arc::new(Diagnostics::new(event_logger.clone(), sdk_key));
         let diagnostics_observer: Arc<dyn OpsStatsEventObserver> =
             Arc::new(DiagnosticsObserver::new(diagnostics));
-        let error_observer: Arc<dyn OpsStatsEventObserver> = Arc::new(SDKErrorsObserver::new(
-            sdk_key,
-            serde_json::to_string(options.as_ref()).unwrap_or_default(),
-        ));
+        let error_observer: Arc<dyn OpsStatsEventObserver> =
+            Arc::new(SDKErrorsObserver::new(sdk_key, &options));
 
         let ops_stats = setup_ops_stats(
             sdk_key,
@@ -1550,6 +1548,7 @@ fn initialize_event_logging_adapter(
         Arc::new(StatsigHttpEventLoggingAdapter::new(
             sdk_key,
             options.log_event_url.as_ref(),
+            options.disable_network,
         ))
     });
     adapter
@@ -1588,6 +1587,7 @@ fn initialize_specs_adapter(
         options.specs_url.as_ref(),
         options.fallback_to_statsig_api.unwrap_or(false),
         options.specs_sync_interval_ms,
+        options.disable_network,
     ))
 }
 

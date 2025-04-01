@@ -39,6 +39,7 @@ impl StatsigHttpSpecsAdapter {
         specs_url: Option<&String>,
         fallback_to_statsig_api: bool,
         sync_interval: Option<u32>,
+        disable_network: Option<bool>,
     ) -> Self {
         let fallback_url = if fallback_to_statsig_api {
             construct_fallback_specs_url(sdk_key, specs_url)
@@ -50,7 +51,7 @@ impl StatsigHttpSpecsAdapter {
 
         Self {
             listener: RwLock::new(None),
-            network: NetworkClient::new(sdk_key, Some(headers)),
+            network: NetworkClient::new(sdk_key, Some(headers), disable_network),
             specs_url: construct_specs_url(sdk_key, specs_url),
             fallback_url,
             sync_interval_duration: Duration::from_millis(u64::from(
@@ -61,7 +62,10 @@ impl StatsigHttpSpecsAdapter {
         }
     }
 
-    pub async fn fetch_specs_from_network(&self, current_specs_info: SpecsInfo) -> Option<String> {
+    pub async fn fetch_specs_from_network(
+        &self,
+        current_specs_info: SpecsInfo,
+    ) -> Result<String, NetworkError> {
         let mut params = HashMap::new();
         if let Some(lcut) = current_specs_info.lcut {
             params.insert("sinceTime".to_string(), lcut.to_string());
@@ -82,26 +86,26 @@ impl StatsigHttpSpecsAdapter {
         };
 
         match self.network.get(request_args.clone()).await {
-            Ok(response) => Some(response),
+            Ok(response) => Ok(response),
             Err(NetworkError::RetriesExhausted) => self.handle_fallback_request(request_args).await,
-            Err(_) => None,
+            Err(e) => Err(e),
         }
     }
 
-    async fn handle_fallback_request(&self, mut request_args: RequestArgs) -> Option<String> {
+    async fn handle_fallback_request(
+        &self,
+        mut request_args: RequestArgs,
+    ) -> Result<String, NetworkError> {
         let fallback_url = match &self.fallback_url {
             Some(url) => url.clone(),
-            None => return None,
+            None => return Err(NetworkError::RequestFailed),
         };
 
         request_args.url = fallback_url;
 
         // TODO logging
 
-        match self.network.get(request_args).await {
-            Ok(response) => Some(response),
-            Err(_) => None,
-        }
+        self.network.get(request_args).await
     }
 
     pub async fn run_background_sync(weak_self: &Weak<Self>) {
@@ -141,13 +145,11 @@ impl StatsigHttpSpecsAdapter {
 
         let response = self.fetch_specs_from_network(current_specs_info).await;
 
-        let data = if let Some(r) = response {
-            r
-        } else {
+        let data = response.map_err(|e| {
             let msg = "No specs result from network";
             log_e!(TAG, "{}", msg);
-            return Err(StatsigErr::NetworkError(msg.to_string()));
-        };
+            StatsigErr::NetworkError(e, Some(msg.to_string()))
+        })?;
 
         let update = SpecsUpdate {
             data,

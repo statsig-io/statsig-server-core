@@ -38,7 +38,7 @@ async fn test_statsig_local_file_specs_adapter() {
     let (mock_scrapi, test_path) = setup("test_statsig_local_file_specs_adapter").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
 
-    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false);
+    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false, false);
 
     adapter.fetch_and_write_to_file().await.unwrap();
 
@@ -61,7 +61,7 @@ async fn test_concurrent_access() {
             let test_path = test_path.clone();
             tokio::task::spawn(async move {
                 let adapter =
-                    StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false);
+                    StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false, false);
                 adapter.fetch_and_write_to_file().await.unwrap();
                 let _ = adapter.resync_from_file();
             })
@@ -77,7 +77,7 @@ async fn test_concurrent_access() {
 async fn test_sending_since_time() {
     let (mock_scrapi, test_path) = setup("test_sending_since_time").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
-    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false);
+    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false, false);
     adapter.fetch_and_write_to_file().await.unwrap();
 
     let reqs = mock_scrapi.get_requests_for_endpoint(Endpoint::DownloadConfigSpecs);
@@ -96,7 +96,7 @@ async fn test_sending_since_time() {
 async fn test_sending_checksum() {
     let (mock_scrapi, test_path) = setup("test_sending_checksum").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
-    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false);
+    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false, false);
     adapter.fetch_and_write_to_file().await.unwrap();
 
     let mock_scrapi = MockScrapi::new().await;
@@ -111,7 +111,7 @@ async fn test_sending_checksum() {
         .await;
 
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
-    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false);
+    let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false, false);
     adapter.fetch_and_write_to_file().await.unwrap();
 
     let reqs = mock_scrapi.get_requests_for_endpoint(Endpoint::DownloadConfigSpecs);
@@ -134,6 +134,7 @@ async fn test_syncing_from_file() {
         SDK_KEY,
         &test_path,
         Some(url),
+        false,
         false,
     ));
     adapter.fetch_and_write_to_file().await.unwrap();
