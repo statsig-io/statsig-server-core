@@ -20,9 +20,22 @@ jobs:
         with:
           version: 7.32.4
 
-      - name: Install Node Dependencies
+      - name: Run Verification
         working-directory: examples/node/verify-package
         run: |
           pnpm init
           pnpm install @statsig/statsig-node-core@beta typescript tsx @types/node
           pnpm exec tsx verify.ts
+
+  python-package-verification:
+    timeout-minutes: 10
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Verification
+        working-directory: examples/python/verify-package
+        run: |
+          pip3 install --pre --upgrade statsig_python_core
+          python3 verify.py
