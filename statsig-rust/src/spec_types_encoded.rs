@@ -83,17 +83,18 @@ enum CompressedSpecsResponse {
     Uncompressed(SpecsResponse),
 }
 
+#[derive(Clone)]
 pub struct DecodedSpecsResponse {
     pub specs: SpecsResponse,
     pub decompression_dict: Option<DictionaryDecoder>,
 }
 
 impl DecodedSpecsResponse {
-    pub fn from_str(
-        response_str: &str,
+    pub fn from_slice(
+        slice: &[u8],
         decompression_dict: Option<&DictionaryDecoder>,
     ) -> Result<DecodedSpecsResponse, StatsigErr> {
-        serde_json::from_str::<CompressedSpecsResponse>(response_str)
+        serde_json::from_slice::<CompressedSpecsResponse>(slice)
             .map_err(|e| {
                 StatsigErr::JsonParseError("CompressedSpecsResponse".to_string(), e.to_string())
             })

@@ -8,24 +8,29 @@ use std::{
 use crate::sdk_diagnostics::marker::KeyType;
 use crate::StatsigErr;
 
-pub type RequestArgs = RequestArgsTyped<String>;
+pub type RequestArgs = RequestArgsTyped<String, fn(Option<&Vec<u8>>) -> Result<String, StatsigErr>>;
 
 impl Default for RequestArgs {
     fn default() -> Self {
         Self::new(|data| {
-            String::from_utf8(data.unwrap_or_default()).map_err(|_| {
-                StatsigErr::SerializationError(
-                    "Failed to deserialize response as a string".to_string(),
-                )
-            })
+            if let Some(data) = data {
+                String::from_utf8(data.to_vec()).map_err(|_| {
+                    StatsigErr::SerializationError(
+                        "Failed to deserialize response as a string".to_string(),
+                    )
+                })
+            } else {
+                Ok(String::new())
+            }
         })
     }
 }
 
 #[derive(Clone)]
-pub struct RequestArgsTyped<T>
+pub struct RequestArgsTyped<T, D>
 where
     T: Clone,
+    D: Fn(Option<&Vec<u8>>) -> Result<T, StatsigErr> + Clone,
 {
     pub url: String,
     pub body: Option<Vec<u8>>,
@@ -36,14 +41,15 @@ where
     pub timeout_ms: u64,
     pub is_shutdown: Option<Arc<AtomicBool>>,
     pub diagnostics_key: Option<KeyType>,
-    pub response_deserializer: fn(Option<Vec<u8>>) -> Result<T, StatsigErr>,
+    pub response_deserializer: D,
 }
 
-impl<T> AsRef<RequestArgsTyped<T>> for RequestArgsTyped<T>
+impl<T, D> AsRef<RequestArgsTyped<T, D>> for RequestArgsTyped<T, D>
 where
     T: Clone,
+    D: Fn(Option<&Vec<u8>>) -> Result<T, StatsigErr> + Clone,
 {
-    fn as_ref(&self) -> &RequestArgsTyped<T> {
+    fn as_ref(&self) -> &RequestArgsTyped<T, D> {
         self
     }
 }
@@ -61,11 +67,12 @@ pub struct NetProviderRequestArgs {
     pub diagnostics_key: Option<KeyType>,
 }
 
-impl<T> From<RequestArgsTyped<T>> for NetProviderRequestArgs
+impl<T, D> From<RequestArgsTyped<T, D>> for NetProviderRequestArgs
 where
     T: Clone,
+    D: Fn(Option<&Vec<u8>>) -> Result<T, StatsigErr> + Clone,
 {
-    fn from(val: RequestArgsTyped<T>) -> Self {
+    fn from(val: RequestArgsTyped<T, D>) -> Self {
         NetProviderRequestArgs {
             url: val.url,
             body: val.body,
@@ -102,12 +109,13 @@ impl NetProviderRequestArgs {
     }
 }
 
-impl<T> RequestArgsTyped<T>
+impl<T, D> RequestArgsTyped<T, D>
 where
     T: Clone,
+    D: Fn(Option<&Vec<u8>>) -> Result<T, StatsigErr> + Clone,
 {
     #[must_use]
-    pub fn new(deserializer: fn(Option<Vec<u8>>) -> Result<T, StatsigErr>) -> Self {
+    pub fn new(deserializer: D) -> Self {
         RequestArgsTyped {
             url: String::new(),
             body: None,

@@ -5,7 +5,7 @@ use super::{HttpMethod, NetworkProvider, RequestArgsTyped};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
-use crate::{log_d, log_error_to_statsig_and_console, log_i, log_w};
+use crate::{log_d, log_error_to_statsig_and_console, log_i, log_w, StatsigErr};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
@@ -47,32 +47,35 @@ impl NetworkClient {
         self.is_shutdown.store(true, Ordering::SeqCst);
     }
 
-    pub async fn get<T>(&self, request_args: RequestArgsTyped<T>) -> Result<T, NetworkError>
+    pub async fn get<T, D>(&self, request_args: RequestArgsTyped<T, D>) -> Result<T, NetworkError>
     where
         T: Clone,
+        D: Fn(Option<&Vec<u8>>) -> Result<T, StatsigErr> + Clone,
     {
         self.make_request(HttpMethod::GET, request_args).await
     }
 
-    pub async fn post<T>(
+    pub async fn post<T, D>(
         &self,
-        mut request_args: RequestArgsTyped<T>,
+        mut request_args: RequestArgsTyped<T, D>,
         body: Option<Vec<u8>>,
     ) -> Result<T, NetworkError>
     where
         T: Clone,
+        D: Fn(Option<&Vec<u8>>) -> Result<T, StatsigErr> + Clone,
     {
         request_args.body = body;
         self.make_request(HttpMethod::POST, request_args).await
     }
 
-    async fn make_request<T>(
+    async fn make_request<T, D>(
         &self,
         method: HttpMethod,
-        mut request_args: RequestArgsTyped<T>,
+        mut request_args: RequestArgsTyped<T, D>,
     ) -> Result<T, NetworkError>
     where
         T: Clone,
+        D: Fn(Option<&Vec<u8>>) -> Result<T, StatsigErr> + Clone,
     {
         let is_shutdown = if let Some(is_shutdown) = &request_args.is_shutdown {
             is_shutdown.clone()
@@ -159,7 +162,7 @@ impl NetworkClient {
             }
 
             if success {
-                return (request_args.response_deserializer)(response.data)
+                return (request_args.response_deserializer)(response.data.as_ref())
                     .map_err(|e| NetworkError::SerializationError(e.to_string()));
             }
 
