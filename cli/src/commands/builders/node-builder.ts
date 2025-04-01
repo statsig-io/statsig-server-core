@@ -40,8 +40,8 @@ export function buildNode(options: BuilderOptions) {
     `--output-dir src/lib`,
     `&& tsc --outDir ${outDirPath} --project src/lib/tsconfig.json`,
     `&& cp package.json ${outDirPath}`,
-    `&& cp src/lib/statsig-generated.d.ts ${outDirPath}`,
-    `&& cp src/lib/statsig-generated.js ${outDirPath}`,
+    `&& cp src/lib/*.js ${outDirPath}`,
+    `&& cp src/lib/*.ts ${outDirPath}`,
     `&& mv src/lib/*.node ${outDirPath}`,
     options.target
       ? ` && cp npm/${options.target}.package.json ${outDirPath}`
