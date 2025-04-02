@@ -27,10 +27,7 @@ const DIR_STRUCTURE = {
       'statsig-generated.d.ts',
     'macos-aarch64-apple-darwin-node/**/error_boundary.d.ts':
       'error-boundary.d.ts',
-    'macos-aarch64-apple-darwin-node/**/error_boundary.ts':
-      'error-boundary.ts',
-    'macos-aarch64-apple-darwin-node/**/error_boundary.js':
-      'error-boundary.js',
+    'macos-aarch64-apple-darwin-node/**/error_boundary.js': 'error-boundary.js',
   },
   'aarch64-apple-darwin': {
     'macos-aarch64-apple-darwin-node/**/aarch64-apple-darwin.package.json':
