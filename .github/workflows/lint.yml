@@ -63,6 +63,8 @@ jobs:
         run: |
           cargo run --bin stub_gen --package statsig-pyo3
           if [[ $(git status --porcelain) ]]; then
+            echo "Git diff showing changes:"
+            git diff | tee /dev/stdout
             echo "------------------------------"
             echo "Python stub gen has changes!"
             echo "Please run './tore build python' locally and commit the changes."
