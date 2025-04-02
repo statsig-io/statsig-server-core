@@ -216,6 +216,12 @@ impl StatsigOptionsBuilder {
     }
 
     #[must_use]
+    pub fn observability_client(mut self, client: Option<Weak<dyn ObservabilityClient>>) -> Self {
+        self.inner.observability_client = client;
+        self
+    }
+
+    #[must_use]
     pub fn build(self) -> StatsigOptions {
         self.inner
     }
