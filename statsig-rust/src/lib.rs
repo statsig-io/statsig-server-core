@@ -20,7 +20,7 @@ pub use specs_adapter::*;
 pub use statsig::Statsig;
 pub use statsig_core_api_options::{
     DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
-    LayerEvaluationOptions,
+    LayerEvaluationOptions, ParameterStoreEvaluationOptions,
 };
 pub use statsig_err::StatsigErr;
 pub use statsig_options::StatsigOptions;

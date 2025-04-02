@@ -6,9 +6,12 @@ use statsig_rust::{
     statsig_types::{
         DynamicConfig as DynamicConfigActual, Experiment as ExperimentActual,
         FeatureGate as FeatureGateActual, Layer as LayerActual,
+        ParameterStore as ParameterStoreActual,
     },
     EvaluationDetails as EvaluationDetailsActual, SecondaryExposure as SecondaryExposureActual,
 };
+
+use crate::statsig_user_napi::StatsigUser;
 
 #[napi(object)]
 #[derive(Clone)]
@@ -267,5 +270,27 @@ impl From<LayerActual> for Layer {
             allocated_experiment_name: layer.allocated_experiment_name.clone(),
             inner: layer,
         }
+    }
+}
+
+#[napi]
+pub struct ParameterStore<'a> {
+    pub name: String,
+
+    pub(crate) user: &'a StatsigUser,
+    pub(crate) inner: ParameterStoreActual<'a>,
+}
+
+#[napi]
+impl ParameterStore<'_> {
+    #[napi(ts_type = "<T>(paramName: string, fallback?: T): T")]
+    pub fn get_value(&self, param_name: String, fallback: Option<Value>) -> Value {
+        self.inner
+            .get_json_value(self.user.as_inner(), &param_name, fallback)
+    }
+
+    #[napi]
+    pub fn get_evaluation_details(&self) -> EvaluationDetails {
+        self.inner.details.clone().into()
     }
 }

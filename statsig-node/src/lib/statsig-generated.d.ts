@@ -38,6 +38,12 @@ export declare class Layer {
   getSecondaryExposures(): Array<SecondaryExposure> | null
 }
 
+export declare class ParameterStore {
+  name: string
+  getValue<T>(paramName: string, fallback?: T): T
+  getEvaluationDetails(): EvaluationDetails
+}
+
 export declare class StatsigNapiInternal {
   constructor(networkFunc: NapiNetworkFunc, sdkKey: string, options?: StatsigOptions | undefined | null)
   initialize(): Promise<StatsigResult>
@@ -53,6 +59,7 @@ export declare class StatsigNapiInternal {
   getFieldsNeededForExperiment(experimentName: string): Array<string>
   getLayer(user: StatsigUser, layerName: string, options?: LayerEvaluationOptions | undefined | null): Layer
   getFieldsNeededForLayer(layerName: string): Array<string>
+  getParameterStore(user: StatsigUser, parameterStoreName: string, options?: ParameterStoreEvaluationOptions | undefined | null): ParameterStore
   getClientInitializeResponse(user: StatsigUser, options?: ClientInitResponseOptions | undefined | null): string
   manuallyLogFeatureGateExposure(user: StatsigUser, gateName: string): void
   manuallyLogDynamicConfigExposure(user: StatsigUser, configName: string): void
@@ -162,6 +169,10 @@ export interface OverrideAdapterConfig {
 
 export declare const enum OverrideAdapterType {
   LocalOverride = 0
+}
+
+export interface ParameterStoreEvaluationOptions {
+  disableExposureLogging?: boolean
 }
 
 export interface SecondaryExposure {

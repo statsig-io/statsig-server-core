@@ -164,6 +164,12 @@ impl StatsigUser {
     }
 }
 
+impl From<StatsigUserActual> for StatsigUser {
+    fn from(inner: StatsigUserActual) -> Self {
+        StatsigUser { inner }
+    }
+}
+
 macro_rules! add_hashmap_getter_setter {
     ($field_name:expr, $field_accessor:ident, $setter_name:ident, $ts_arg_type:expr) => {
         #[napi]

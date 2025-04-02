@@ -1,7 +1,7 @@
 use napi_derive::napi;
 use statsig_rust::{
     DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
-    LayerEvaluationOptions,
+    LayerEvaluationOptions, ParameterStoreEvaluationOptions,
 };
 
 // -------------------------
@@ -67,6 +67,23 @@ pub struct LayerEvaluationOptionsNapi {
 impl From<LayerEvaluationOptionsNapi> for LayerEvaluationOptions {
     fn from(opts: LayerEvaluationOptionsNapi) -> Self {
         LayerEvaluationOptions {
+            disable_exposure_logging: opts.disable_exposure_logging.unwrap_or(false),
+        }
+    }
+}
+
+// -------------------------
+//   Parameter Store Options
+// -------------------------
+
+#[napi(object, js_name = "ParameterStoreEvaluationOptions")]
+pub struct ParameterStoreEvaluationOptionsNapi {
+    pub disable_exposure_logging: Option<bool>,
+}
+
+impl From<ParameterStoreEvaluationOptionsNapi> for ParameterStoreEvaluationOptions {
+    fn from(opts: ParameterStoreEvaluationOptionsNapi) -> Self {
+        ParameterStoreEvaluationOptions {
             disable_exposure_logging: opts.disable_exposure_logging.unwrap_or(false),
         }
     }

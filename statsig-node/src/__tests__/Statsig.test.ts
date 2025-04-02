@@ -213,5 +213,26 @@ describe('Statsig', () => {
         } as any);
       }).not.toThrow();
     });
+
+    it('should handle parameter store fallback values correctly', async () => {
+      const user = StatsigUser.withUserID('a-user');
+
+      const paramStore = statsig.getParameterStore(
+        user,
+        'operating_system_config',
+      );
+
+      const noFallback = paramStore.getValue('no_fallback');
+      expect(noFallback).toBeNull();
+
+      const nullFallback = paramStore.getValue('no_fallback', null);
+      expect(nullFallback).toBeNull();
+
+      const stringFallback = paramStore.getValue('string_fallback', '');
+      expect(stringFallback).toEqual('');
+
+      const numberFallback = paramStore.getValue('number_fallback', 1);
+      expect(numberFallback).toEqual(1);
+    });
   });
 });

@@ -367,6 +367,7 @@ if (!nativeBinding) {
 module.exports.DynamicConfig = nativeBinding.DynamicConfig
 module.exports.Experiment = nativeBinding.Experiment
 module.exports.Layer = nativeBinding.Layer
+module.exports.ParameterStore = nativeBinding.ParameterStore
 module.exports.StatsigNapiInternal = nativeBinding.StatsigNapiInternal
 module.exports.StatsigUser = nativeBinding.StatsigUser
 module.exports.__internal__testDataStore = nativeBinding.__internal__testDataStore

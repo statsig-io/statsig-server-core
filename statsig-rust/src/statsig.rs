@@ -53,7 +53,7 @@ use crate::{
     log_error_to_statsig_and_console,
     statsig_core_api_options::{
         DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
-        LayerEvaluationOptions,
+        LayerEvaluationOptions, ParameterStoreEvaluationOptions,
     },
 };
 use serde::de::DeserializeOwned;
@@ -638,6 +638,17 @@ impl Statsig {
     }
 
     pub fn get_parameter_store(&self, parameter_store_name: &str) -> ParameterStore {
+        self.get_parameter_store_with_options(
+            parameter_store_name,
+            ParameterStoreEvaluationOptions::default(),
+        )
+    }
+
+    pub fn get_parameter_store_with_options(
+        &self,
+        parameter_store_name: &str,
+        options: ParameterStoreEvaluationOptions,
+    ) -> ParameterStore {
         self.event_logger
             .increment_non_exposure_checks_count(parameter_store_name.to_string());
         let data = read_lock_or_else!(self.spec_store.data, {
@@ -650,6 +661,7 @@ impl Statsig {
                 name: parameter_store_name.to_string(),
                 parameters: HashMap::new(),
                 details: EvaluationDetails::unrecognized_no_data(),
+                options,
                 _statsig_ref: self,
             };
         });
@@ -662,6 +674,7 @@ impl Statsig {
                     name: parameter_store_name.to_string(),
                     parameters: HashMap::new(),
                     details: EvaluationDetails::unrecognized(&data),
+                    options,
                     _statsig_ref: self,
                 };
             }
@@ -671,12 +684,14 @@ impl Statsig {
                 name: parameter_store_name.to_string(),
                 parameters: store.parameters.clone(),
                 details: EvaluationDetails::recognized(&data, &EvaluatorResult::default()),
+                options,
                 _statsig_ref: self,
             },
             None => ParameterStore {
                 name: parameter_store_name.to_string(),
                 parameters: HashMap::new(),
                 details: EvaluationDetails::unrecognized(&data),
+                options,
                 _statsig_ref: self,
             },
         }

@@ -15,11 +15,12 @@ use crate::observability_client_napi::ObservabilityClient;
 use crate::statsig_core_api_options_napi::{
     DynamicConfigEvaluationOptionsNapi, ExperimentEvaluationOptionsNapi,
     FeatureGateEvaluationOptionsNapi, LayerEvaluationOptionsNapi,
+    ParameterStoreEvaluationOptionsNapi,
 };
 use crate::statsig_metadata_napi;
 use crate::statsig_options_napi::{OverrideAdapterType, StatsigOptions};
 use crate::statsig_result::StatsigResult;
-use crate::statsig_types_napi::{DynamicConfig, Experiment, FeatureGate, Layer};
+use crate::statsig_types_napi::{DynamicConfig, Experiment, FeatureGate, Layer, ParameterStore};
 use crate::statsig_user_napi::StatsigUser;
 
 const TAG: &str = "StatsigNapi";
@@ -251,6 +252,24 @@ impl StatsigNapiInternal {
     #[napi]
     pub fn get_fields_needed_for_layer(&self, layer_name: String) -> Vec<String> {
         self.inner.get_fields_needed_for_layer(layer_name.as_str())
+    }
+
+    #[napi]
+    pub fn get_parameter_store<'a, 'b: 'a, 'c: 'a>(
+        &'b self,
+        user: &'c StatsigUser,
+        parameter_store_name: String,
+        options: Option<ParameterStoreEvaluationOptionsNapi>,
+    ) -> ParameterStore<'a> {
+        let inner = self.inner.get_parameter_store_with_options(
+            &parameter_store_name,
+            options.map(|opts| opts.into()).unwrap_or_default(),
+        );
+        ParameterStore {
+            name: parameter_store_name,
+            user,
+            inner,
+        }
     }
 
     #[napi]
