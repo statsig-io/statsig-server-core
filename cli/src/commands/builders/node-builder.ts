@@ -3,10 +3,9 @@ import {
   getDockerImageTag,
   isLinux,
 } from '@/utils/docker_utils.js';
-import { BASE_DIR, ensureEmptyDir, getRootedPath } from '@/utils/file_utils.js';
+import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
 import { Log } from '@/utils/teminal_utils.js';
 import { execSync } from 'child_process';
-import path from 'path';
 
 import { BuilderOptions } from './builder-options.js';
 
@@ -41,7 +40,7 @@ export function buildNode(options: BuilderOptions) {
     `&& tsc --outDir ${outDirPath} --project src/lib/tsconfig.json`,
     `&& cp package.json ${outDirPath}`,
     `&& cp src/lib/*.js ${outDirPath}`,
-    `&& cp src/lib/*.ts ${outDirPath}`,
+    `&& cp src/lib/*.d.ts ${outDirPath}`,
     `&& mv src/lib/*.node ${outDirPath}`,
     options.target
       ? ` && cp npm/${options.target}.package.json ${outDirPath}`
