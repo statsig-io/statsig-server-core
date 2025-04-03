@@ -3,9 +3,8 @@ use crate::global_configs::GlobalConfigs;
 use crate::hashing::HashUtil;
 use crate::hashset_with_ttl::HashSetWithTTL;
 use crate::statsig_user_internal::StatsigUserInternal;
-use crate::{DynamicValue, StatsigErr, StatsigRuntime};
+use crate::{StatsigErr, StatsigRuntime};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::time::Duration;
 
@@ -101,7 +100,7 @@ impl SamplingProcessor {
             None => return SamplingDecision::force_logged(),
         };
 
-        if self.should_skip_sampling(eval_result, &user.statsig_environment) {
+        if self.should_skip_sampling(eval_result) {
             return SamplingDecision::force_logged();
         }
 
@@ -262,11 +261,7 @@ impl SamplingProcessor {
         (true, None) // default to true, always send exposures, do NOT sample
     }
 
-    fn should_skip_sampling(
-        &self,
-        eval_result: &AnyEvaluation,
-        env: &Option<HashMap<String, DynamicValue>>,
-    ) -> bool {
+    fn should_skip_sampling(&self, eval_result: &AnyEvaluation) -> bool {
         let sampling_mode = self.get_sampling_mode();
 
         if matches!(sampling_mode, SamplingMode::None) {
@@ -286,21 +281,6 @@ impl SamplingProcessor {
             .and_then(|info| info.has_seen_analytical_gates)
             .unwrap_or(false)
         {
-            return true;
-        }
-
-        // skip sampling if env is not in production
-        if env
-            .as_ref()
-            .and_then(|e| e.get("tier"))
-            .and_then(|tier| tier.string_value.as_deref())
-            != Some("production")
-        {
-            return true;
-        }
-
-        let rule_id = &eval_result.get_base_result().rule_id;
-        if rule_id.ends_with(":override") || rule_id.ends_with(":id_override") {
             return true;
         }
 
@@ -336,9 +316,8 @@ impl SamplingProcessor {
 mod tests {
     use super::*;
     use crate::evaluation::evaluation_types::{BaseEvaluation, GateEvaluation};
-    use crate::{SpecStore, SpecsSource, SpecsUpdate, StatsigUser};
-    use serde_json::Value;
-    use std::fs;
+    use crate::{DynamicValue, StatsigUser};
+    use std::collections::HashMap;
     use std::sync::LazyLock;
 
     static GATE: LazyLock<GateEvaluation> = LazyLock::new(|| GateEvaluation {
@@ -371,49 +350,5 @@ mod tests {
 
     fn create_mock_evaluation_result() -> AnyEvaluation<'static> {
         AnyEvaluation::FeatureGate(&GATE)
-    }
-
-    #[test]
-    fn test_should_skip_sampling() {
-        let file_path = "tests/data/dcs_with_sdk_configs.json";
-        let file_content = fs::read_to_string(file_path).expect("Unable to read file");
-        let json_data: Value = serde_json::from_str(&file_content).expect("Unable to parse JSON");
-
-        // Create the mocked SpecStore with sdk configs
-        let specs_update = SpecsUpdate {
-            data: json_data.to_string(),
-            source: SpecsSource::Network,
-            received_at: 2000,
-        };
-
-        let spec_store = SpecStore::default();
-        spec_store
-            .set_values(specs_update)
-            .expect("Set Specstore failed");
-
-        // initialize sampling processor
-        let runtime = StatsigRuntime::get_runtime();
-        let hashing = Arc::new(HashUtil::new());
-        let processor = SamplingProcessor::new(&runtime, hashing, "");
-
-        let mut test_user = create_mock_user();
-        let mock_evaluation_res = create_mock_evaluation_result();
-
-        // Should skip sampling in a non-production environment
-        let should_skip_sample =
-            processor.should_skip_sampling(&mock_evaluation_res, &test_user.statsig_environment);
-        assert!(should_skip_sample);
-
-        test_user.statsig_environment = Some(HashMap::from([(
-            "tier".to_string(),
-            DynamicValue {
-                string_value: Some("production".to_string()),
-                ..Default::default()
-            },
-        )]));
-        // should not skip sampling in a production environment
-        let should_skip_sample_2 =
-            processor.should_skip_sampling(&mock_evaluation_res, &test_user.statsig_environment);
-        assert!(!should_skip_sample_2);
     }
 }
