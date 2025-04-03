@@ -1,0 +1,17 @@
+name: 'Common Setup'
+description: 'Common setup for the build'
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: pnpm/action-setup@v4
+      name: Install PNPM
+      with:
+        version: 7.32.4
+        run_install: false
+
+    - name: Install CLI Dependencies
+      shell: bash
+      run: |
+        pnpm install --dir cli
+        pnpm install --dir statsig-node

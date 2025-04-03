@@ -1,4 +1,4 @@
-name: Build
+name: Main
 
 on:
   workflow_dispatch:
@@ -82,18 +82,11 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: ./.github/actions/common-setup
+
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.config.os }}-${{ matrix.config.target }}-${{ matrix.package }}
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 7.32.4
-
-      - name: Install CLI Dependencies
-        run: |
-          pnpm install --dir cli
-          pnpm install --dir statsig-node
 
       - name: '[Non-Linux] Install Protoc'
         uses: arduino/setup-protoc@v3
@@ -158,20 +151,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 7.32.4
-
-      - name: Setup
-        run: pnpm install --dir cli
+      - uses: ./.github/actions/common-setup
 
       - uses: actions/download-artifact@v4
         with:
           name: debian-x86_64-unknown-linux-gnu-node
           path: artifacts
-
-      - name: List downloaded files
-        run: ls -l ./artifacts
 
       - name: Setup Statsig Node
         run: |
@@ -211,12 +196,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 7.32.4
-
-      - name: Setup
-        run: pnpm install --dir cli
+      - uses: ./.github/actions/common-setup
 
       - uses: actions/download-artifact@v4
         with:
@@ -250,9 +230,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 7.32.4
+      - uses: ./.github/actions/common-setup
 
       - name: Set up JDK 11
         uses: actions/setup-java@v4
@@ -262,7 +240,6 @@ jobs:
 
       - name: Setup
         run: |
-          pnpm install --dir cli
           pip3 install maturin
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
 
