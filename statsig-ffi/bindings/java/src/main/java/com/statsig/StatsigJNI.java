@@ -244,7 +244,7 @@ class StatsigJNI {
         if (normalizedOsName.contains("macos")) {
             addDependency(message, "macOS", arch, "macos");
         } else if (normalizedOsName.contains("linux")) {
-            addDependency(message, "Linux", arch, "amazonlinux2", "amazonlinux2023");
+            addDependency(message, "Linux", arch, "linux-gnu", "amazonlinux2", "amazonlinux2023");
         } else if (normalizedOsName.contains("win")) {
             addDependency(message, "Windows", arch, "windows");
         } else {
