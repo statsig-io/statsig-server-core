@@ -151,9 +151,46 @@ jobs:
             **/release/*statsig_ffi.a
             **/release/*statsig_ffi.lib
 
+  # -------------------------------------------------------------------- [Verify Node]
+
+  node-verify:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+
+      - name: Setup
+        run: pnpm install --dir cli
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: debian-x86_64-unknown-linux-gnu-node
+          path: artifacts
+
+      - name: List downloaded files
+        run: ls -l ./artifacts
+
+      - name: Setup Statsig Node
+        run: |
+          cd ./artifacts/statsig-node/build
+          pnpm install
+
+      - name: Run Verification
+        working-directory: examples/node/verify-package
+        env:
+          STATSIG_SERVER_SDK_KEY: ${{ secrets.KONG_SERVER_SDK_KEY }}
+        run: |
+          pnpm init
+          pnpm install typescript tsx @types/node
+          pnpm install ../../../artifacts/statsig-node/build
+          pnpm exec tsx verify.ts
+
   # --------------------------------------------------------------------- [Kong2]
 
-  kong2:
+  kong-2:
     needs: build
     uses: statsig-io/kong/.github/workflows/k2-tests.yml@main
     with:
