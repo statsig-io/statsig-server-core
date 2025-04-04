@@ -1,0 +1,11 @@
+[package]
+name = "perf-monitor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+statsig-rust = { path = "../../../statsig-rust" }
+tokio = "1.39.1"
+
+[profile.release]
+debug = true

@@ -67,6 +67,7 @@ export class Exec extends CommandBase {
       `-v "${BASE_DIR}":/app`,
       `-v "/tmp:/tmp"`,
       `-v "/tmp/statsig-server-core/cargo-registry:/usr/local/cargo/registry"`,
+      `-e "test_api_key=${process.env.test_api_key}"`,
       tag,
       `"${command}"`,
     ].join(' ');

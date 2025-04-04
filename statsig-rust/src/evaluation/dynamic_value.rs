@@ -6,7 +6,7 @@ use std::collections::HashMap;
 #[macro_export]
 macro_rules! dyn_value {
     ($x:expr) => {
-        DynamicValue::from($x)
+        $crate::DynamicValue::from($x)
     };
 }
 

@@ -7,6 +7,8 @@ bin
 obj
 .npmrc
 
+mem-prof/
+
 # Binary Files
 libstatsig_ffi.dylib
 libstatsig_ffi.a
