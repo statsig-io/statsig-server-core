@@ -40,6 +40,7 @@ pub struct OverrideAdapterConfig {
 pub struct StatsigOptions {
     pub data_store: Option<DataStore>,
     pub disable_all_logging: Option<bool>,
+    pub disable_network: Option<bool>,
     pub enable_id_lists: Option<bool>,
     pub enable_user_agent_parsing: Option<bool>,
     pub enable_country_lookup: Option<bool>,
@@ -111,6 +112,7 @@ impl StatsigOptions {
                 .map(|configs| configs.into_iter().map(|c| c.into()).collect()),
             service_name: self.service_name,
             disable_all_logging: self.disable_all_logging,
+            disable_network: self.disable_network,
             event_logging_flush_interval_ms: self.event_logging_flush_interval_ms,
             event_logging_max_queue_size: self.event_logging_max_queue_size,
             override_adapter: Some(create_local_overrides(self.override_adapter_config)),
