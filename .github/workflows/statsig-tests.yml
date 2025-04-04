@@ -59,3 +59,12 @@ jobs:
 
       - name: Run Tests
         run: ./tore test ${{ matrix.lang }} --no-docker --arch x86_64 --os debian
+
+      - name: Upload Artifacts
+        if: matrix.lang == 'rust'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.lang }}-test-outputs
+          if-no-files-found: error
+          path: |
+            /tmp/test_all_gate_checks_perf.json

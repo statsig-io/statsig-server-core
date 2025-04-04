@@ -55,8 +55,8 @@ pub(crate) fn compare_strings_in_array(
 
 #[cfg(test)]
 mod tests {
+    use crate::dyn_value;
     use crate::evaluation::comparisons::compare_strings_in_array;
-    use crate::{dyn_value, DynamicValue};
     use serde_json::json;
 
     #[test]

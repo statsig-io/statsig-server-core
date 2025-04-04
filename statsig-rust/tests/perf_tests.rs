@@ -2,12 +2,19 @@ mod utils;
 
 use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use statsig_rust::{InitializeResponse, Statsig, StatsigOptions, StatsigUser};
 use std::cmp::min;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+struct PerfEntry {
+    value: bool,
+    duration: f64,
+}
 
 async fn setup() -> (StatsigUser, Statsig) {
     let custom_ids: HashMap<String, String> =
@@ -58,33 +65,43 @@ async fn test_individual_gate_checks() {
 async fn test_all_gate_checks() {
     let (user, statsig) = setup().await;
 
-    let mut times: HashMap<String, (bool, f64)> = HashMap::new();
+    let mut times: HashMap<String, PerfEntry> = HashMap::new();
     let values = statsig.get_current_values().unwrap().values.clone();
 
     let all_start = Instant::now();
     for (gate_name, _) in &values.feature_gates {
         let start = Instant::now();
 
-        let mut result = false;
+        let mut value = false;
         for _ in 0..1000 {
-            result = statsig.check_gate(&user, gate_name);
+            value = statsig.check_gate(&user, gate_name);
         }
 
         let duration = start.elapsed();
-        times.insert(gate_name.clone(), (result, duration.as_secs_f64() * 1000.0));
+        times.insert(
+            gate_name.clone(),
+            PerfEntry {
+                value,
+                duration: duration.as_secs_f64() * 1000.0,
+            },
+        );
     }
 
     let all_duration = all_start.elapsed().as_secs_f64() * 1000.0;
-    let mut times_vec: Vec<(String, (bool, f64))> = times.into_iter().collect();
+    let times_json = json!(HashMap::from([("times", times.clone())])).to_string();
+    let mut times_vec: Vec<(String, (bool, f64))> = times
+        .into_iter()
+        .map(|(key, entry)| (key, (entry.value, entry.duration)))
+        .collect();
 
-    // Sort the vector by the f64 value in the tuple
+    // Sort the vector by the f64 duration in the tuple
     times_vec.sort_by(|a, b| b.1 .1.partial_cmp(&a.1 .1).unwrap());
 
-    // If you need only the sorted (bool, f64) pairs, you can map the sorted vector:
     let sorted_values: Vec<(String, (bool, f64))> = times_vec;
-
     println!("Duration {sorted_values:?}");
     println!("All Duration {all_duration:?}");
+
+    std::fs::write("/tmp/test_all_gate_checks_perf.json", times_json).unwrap();
 }
 
 #[tokio::test]

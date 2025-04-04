@@ -76,7 +76,7 @@ export class BumpVersion extends CommandBase {
       version.beta =
         (date.getFullYear() % 100) * 10000 + // Get last 2 digits of year
         (date.getMonth() + 1) * 100 +
-        date.getDate();
+        date.getUTCDate();
     }
 
     if (providedVersion) {
