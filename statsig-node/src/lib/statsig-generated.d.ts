@@ -190,6 +190,7 @@ export interface SpecAdapterConfig {
 export interface StatsigOptions {
   dataStore?: DataStore
   disableAllLogging?: boolean
+  disableNetwork?: boolean
   enableIdLists?: boolean
   enableUserAgentParsing?: boolean
   enableCountryLookup?: boolean
