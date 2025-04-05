@@ -81,6 +81,7 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
 
         if (nameParam == "java-core") {
             include 'com/statsig/**'
+            include 'statsigsdk.properties'
         }
 
         if (classifierParam != null) {
@@ -122,7 +123,11 @@ def expectedTasks = [
     'x86_64-pc-windows-msvcJar',
 ]
 
-
+processResources {
+    filesMatching('statsigsdk.properties') {
+        expand(project.properties)
+    }
+}
 
 tasks.register('validateTasks') {
     doLast {
