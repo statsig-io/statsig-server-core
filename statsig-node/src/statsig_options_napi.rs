@@ -1,14 +1,19 @@
+use napi::bindgen_prelude::Either4;
 use napi_derive::napi;
+use serde_json::Value;
+use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
 use crate::{data_store_napi::DataStore, observability_client_napi::ObservabilityClient};
 use statsig_rust::{
     data_store_interface::DataStoreTrait,
-    statsig_types::OverrideAdapterType as OverrideAdapterTypeActual,
+    statsig_types::OverrideAdapterType as OverrideAdapterTypeActual, DynamicValue,
     ObservabilityClient as ObservabilityClientTrait, OverrideAdapter,
     SpecAdapterConfig as SpecAdapterConfigActual, StatsigLocalOverrideAdapter,
     StatsigOptions as StatsigOptionsActual, DEFAULT_INIT_TIMEOUT_MS,
 };
+
+type ValidPrimitives = Either4<String, f64, bool, Vec<Value>>;
 
 #[napi(object)]
 pub struct SpecAdapterConfig {
@@ -66,6 +71,7 @@ pub struct StatsigOptions {
 
     pub service_name: Option<String>,
     pub override_adapter_config: Option<Vec<OverrideAdapterConfig>>,
+    pub global_custom_fields: Option<HashMap<String, ValidPrimitives>>,
 }
 
 impl StatsigOptions {
@@ -116,10 +122,33 @@ impl StatsigOptions {
             event_logging_flush_interval_ms: self.event_logging_flush_interval_ms,
             event_logging_max_queue_size: self.event_logging_max_queue_size,
             override_adapter: Some(create_local_overrides(self.override_adapter_config)),
+            global_custom_fields: Self::convert_to_dynamic_value_map(self.global_custom_fields),
             ..Default::default()
         };
 
         (Some(Arc::new(inner)), obs_client)
+    }
+
+    fn convert_to_dynamic_value_map(
+        map: Option<HashMap<String, ValidPrimitives>>,
+    ) -> Option<HashMap<String, DynamicValue>> {
+        let map = match map {
+            Some(map) => map,
+            _ => return None,
+        };
+
+        let mut converted: HashMap<String, DynamicValue> = HashMap::new();
+
+        for (key, value) in map {
+            match value {
+                Either4::A(value) => converted.insert(key, DynamicValue::from(value)),
+                Either4::B(value) => converted.insert(key, DynamicValue::from(value)),
+                Either4::C(value) => converted.insert(key, DynamicValue::from(value)),
+                Either4::D(value) => converted.insert(key, DynamicValue::from(value)),
+            };
+        }
+
+        Some(converted)
     }
 }
 
