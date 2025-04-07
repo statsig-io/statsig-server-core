@@ -70,7 +70,7 @@ jobs:
             /tmp/test_all_gate_checks_perf.json
 
   perf-report:
-    needs: build
+    needs: run-bindings-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
