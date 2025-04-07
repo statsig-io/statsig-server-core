@@ -1,4 +1,5 @@
 import json
+from time import sleep
 from typing import Optional, Dict, List, Tuple, Any
 
 import pytest
@@ -7,9 +8,11 @@ from pytest_httpserver import HTTPServer
 from statsig_python_core import ObservabilityClient, StatsigOptions, StatsigUser, Statsig
 from utils import get_test_data_resource
 
+
 class MockObservabilityClient(ObservabilityClient):
     init_called = False
     dist_called = False
+    error_called = False
     metrics: List[Tuple[str, str, Any, Optional[Dict[str, str]]]] = []  # Stores (type, metric_name, value, tags)
 
     def init(self) -> None:
@@ -28,6 +31,12 @@ class MockObservabilityClient(ObservabilityClient):
         print(f"Distribution {metric_name} by {value} with tags {tags}")
         self.dist_called = True
         self.metrics.append(("distribution", metric_name, value, tags))
+
+    def error(self, tag: str, error: str) -> None:
+        print(f"Error callback for {tag}: {error}")
+        self.error_called = True
+        self.metrics.append(("error", tag, error, None))
+
 
 @pytest.fixture
 def statsig_setup(httpserver: HTTPServer):
@@ -56,6 +65,7 @@ def statsig_setup(httpserver: HTTPServer):
 
     statsig.shutdown().wait()
 
+
 def test_observability_client_usage(statsig_setup):
     """Test that MockObservabilityClient correctly tracks init(), dist() calls."""
     statsig, observability_client = statsig_setup
@@ -75,3 +85,23 @@ def test_observability_client_usage(statsig_setup):
     assert isinstance(dist_event[2], float)
     assert dist_event[3] == {"success": "true", "store_populated": "true", "source": "Network"}
 
+
+def test_error_callback_usage():
+    """Test that error_callback() is called."""
+    observability_client = MockObservabilityClient()
+
+    options = StatsigOptions(
+        observability_client=observability_client,
+    )
+    statsig = Statsig("secret-key", options)
+    statsig.initialize().wait()
+    sleep(0.2)
+
+    error_event = next(
+        (m for m in observability_client.metrics if m[0] == "error"),
+        None
+    )
+
+    assert len(observability_client.metrics) >= 3
+    assert error_event is not None, "error_callback() should have been called"
+    assert isinstance(error_event[2], str)

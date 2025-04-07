@@ -161,6 +161,7 @@ export interface ObservabilityClient {
   increment?: (metricName: string, value: number, tags: Record<string, string>) => void
   gauge?: (metricName: string, value: number, tags: Record<string, string>) => void
   dist?: (metricName: string, value: number, tags: Record<string, string>) => void
+  error?: (tag: string, error: string) => void
 }
 
 export interface OverrideAdapterConfig {

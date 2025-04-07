@@ -61,6 +61,7 @@ enum RecordedCall {
         f64,
         Option<std::collections::HashMap<String, String>>,
     ),
+    Error(String, String),
 }
 
 struct MockObservabilityClient {
@@ -106,6 +107,13 @@ impl ObservabilityClient for MockObservabilityClient {
             .lock()
             .unwrap()
             .push(RecordedCall::Dist(metric_name, value, tags));
+    }
+
+    fn error(&self, tag: String, error: String) {
+        self.calls
+            .lock()
+            .unwrap()
+            .push(RecordedCall::Error(tag, error));
     }
 
     fn to_ops_stats_event_observer(self: Arc<Self>) -> Arc<dyn OpsStatsEventObserver> {
@@ -200,6 +208,36 @@ async fn test_config_propagation_dist_recorded() {
     assert_eq!(found_name, "statsig.sdk.config_propogation_diff");
     assert_ne!(found_value, 0.0);
     assert_eq!(tags.get("source"), Some(&"Bootstrap".to_string()));
+}
+
+#[tokio::test]
+async fn test_error_callback_called() {
+    let obs_client = Arc::new(MockObservabilityClient {
+        calls: Mutex::new(Vec::new()),
+    });
+
+    let weak_obs_client = Arc::downgrade(&obs_client) as Weak<dyn ObservabilityClient>;
+    let statsig = Statsig::new(
+        SDK_KEY,
+        Some(Arc::new(StatsigOptions {
+            observability_client: Some(weak_obs_client),
+            output_log_level: Some(LogLevel::Debug),
+            ..StatsigOptions::new()
+        })),
+    );
+
+    let _ = statsig.initialize().await;
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+    let calls = obs_client.calls.lock().unwrap();
+    println!("Calls: {:?}", calls);
+    assert!(calls.len() >= 3); // one init, one sdk initialization, and at least one error callback
+    assert!(
+        calls
+            .iter()
+            .any(|call| matches!(call, RecordedCall::Error(_, _))),
+        "Expected at least one RecordedCall::Error, but found none"
+    );
 }
 
 #[tokio::test]

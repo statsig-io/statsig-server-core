@@ -14,6 +14,7 @@ pub struct ObservabilityClientBasePy {
     increment_fn: Option<PyObject>,
     gauge_fn: Option<PyObject>,
     dist_fn: Option<PyObject>,
+    error_fn: Option<PyObject>,
 }
 
 #[gen_stub_pymethods]
@@ -64,6 +65,21 @@ impl ObservabilityClient for ObservabilityClientBasePy {
                 let args = (metric_name, value, tags);
                 if let Err(e) = func.call1(py, args) {
                     log_e!(TAG, "Failed to call ObservabilityClient.dist: {:?}", e);
+                }
+            }
+        });
+    }
+
+    fn error(&self, tag: String, error: String) {
+        Python::with_gil(|py| {
+            if let Some(func) = &self.error_fn {
+                let args = (tag, error);
+                if let Err(e) = func.call1(py, args) {
+                    log_e!(
+                        TAG,
+                        "Failed to call ObservabilityClient.error_callback: {:?}",
+                        e
+                    );
                 }
             }
         });

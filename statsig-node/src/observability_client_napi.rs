@@ -32,6 +32,9 @@ pub struct ObservabilityClient {
         ts_type = "(metricName: string, value: number, tags: Record<string, string>) => void"
     )]
     pub dist_fn: Option<MetricFn>,
+
+    #[napi(js_name = "error", ts_type = "(tag: string, error: string) => void")]
+    pub error_fn: Option<ThreadsafeFunction<(String, String)>>,
 }
 
 impl ObservabilityClientActual for ObservabilityClient {
@@ -72,6 +75,15 @@ impl ObservabilityClientActual for ObservabilityClient {
 
         let args = (metric_name, value, tags).into();
         fnc.call(args, ThreadsafeFunctionCallMode::Blocking);
+    }
+
+    fn error(&self, tag: String, error: String) {
+        let fnc = match &self.error_fn {
+            Some(f) => f,
+            None => return,
+        };
+
+        fnc.call(Ok((tag, error)), ThreadsafeFunctionCallMode::Blocking);
     }
 
     fn to_ops_stats_event_observer(self: Arc<Self>) -> Arc<dyn OpsStatsEventObserver> {

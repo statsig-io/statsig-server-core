@@ -35,11 +35,13 @@ impl ObservabilityEvent {
         })
     }
 }
+
 pub trait ObservabilityClient: Send + Sync + 'static + OpsStatsEventObserver {
     fn init(&self);
     fn increment(&self, metric_name: String, value: f64, tags: Option<HashMap<String, String>>);
     fn gauge(&self, metric_name: String, value: f64, tags: Option<HashMap<String, String>>);
     fn dist(&self, metric_name: String, value: f64, tags: Option<HashMap<String, String>>);
+    fn error(&self, tag: String, error: String);
     // This is needed since upper casting is not officially supported yet
     // (WIP to support https://github.com/rust-lang/rust/issues/65991)
     // For implementation, just return Self; should be sufficient
@@ -49,13 +51,19 @@ pub trait ObservabilityClient: Send + Sync + 'static + OpsStatsEventObserver {
 #[async_trait]
 impl<T: ObservabilityClient> OpsStatsEventObserver for T {
     async fn handle_event(&self, event: OpsStatsEvent) {
-        if let OpsStatsEvent::Observability(data) = event {
-            let metric_name = format!("statsig.sdk.{}", data.clone().metric_name);
-            match data.clone().metric_type {
-                MetricType::Increment => self.increment(metric_name, data.value, data.tags),
-                MetricType::Gauge => self.gauge(metric_name, data.value, data.tags),
-                MetricType::Dist => self.dist(metric_name, data.value, data.tags),
-            };
+        match event {
+            OpsStatsEvent::Observability(data) => {
+                let metric_name = format!("statsig.sdk.{}", data.clone().metric_name);
+                match data.clone().metric_type {
+                    MetricType::Increment => self.increment(metric_name, data.value, data.tags),
+                    MetricType::Gauge => self.gauge(metric_name, data.value, data.tags),
+                    MetricType::Dist => self.dist(metric_name, data.value, data.tags),
+                };
+            }
+            OpsStatsEvent::SDKError(error) => {
+                self.error(error.tag, error.exception);
+            }
+            _ => {}
         }
     }
 }
