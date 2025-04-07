@@ -1,3 +1,4 @@
+mod data_store_base_py;
 mod net_provider_py;
 mod observability_client_base_py;
 mod pyo_utils;
@@ -26,6 +27,7 @@ fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<statsig_types_py::DynamicConfigEvaluationOptionsPy>()?;
     m.add_class::<statsig_types_py::LayerEvaluationOptionsPy>()?;
     m.add_class::<observability_client_base_py::ObservabilityClientBasePy>()?;
+    m.add_class::<data_store_base_py::DataStoreBasePy>()?;
     Ok(())
 }
 

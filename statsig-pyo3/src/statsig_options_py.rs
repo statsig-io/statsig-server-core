@@ -1,8 +1,11 @@
-use crate::observability_client_base_py::ObservabilityClientBasePy;
 use crate::pyo_utils::py_dict_to_map;
+use crate::{
+    data_store_base_py::DataStoreBasePy, observability_client_base_py::ObservabilityClientBasePy,
+};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3_stub_gen::derive::*;
+use statsig_rust::data_store_interface::DataStoreTrait;
 use statsig_rust::{output_logger::LogLevel, ObservabilityClient, StatsigOptions};
 use std::sync::{Arc, Weak};
 
@@ -46,6 +49,8 @@ pub struct StatsigOptionsPy {
     pub global_custom_fields: Option<Py<PyDict>>,
     #[pyo3(get, set)]
     pub observability_client: Option<Py<ObservabilityClientBasePy>>,
+    #[pyo3(get, set)]
+    pub data_store: Option<Py<DataStoreBasePy>>,
 }
 
 #[gen_stub_pymethods]
@@ -70,7 +75,8 @@ impl StatsigOptionsPy {
         environment=None,
         output_log_level=None,
         global_custom_fields=None,
-        observability_client=None
+        observability_client=None,
+        data_store=None,
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -92,6 +98,7 @@ impl StatsigOptionsPy {
         output_log_level: Option<String>,
         global_custom_fields: Option<Py<PyDict>>,
         observability_client: Option<Py<ObservabilityClientBasePy>>,
+        data_store: Option<Py<DataStoreBasePy>>,
     ) -> Self {
         Self {
             specs_url,
@@ -111,6 +118,7 @@ impl StatsigOptionsPy {
             output_log_level,
             global_custom_fields,
             observability_client,
+            data_store,
             disable_network,
         }
     }
@@ -143,7 +151,9 @@ fn create_inner_statsig_options(
         specs_adapter: None,
         specs_sync_interval_ms: opts.specs_sync_interval_ms,
         init_timeout_ms: opts.init_timeout_ms,
-        data_store: None,
+        data_store: opts.data_store.map(|store| {
+            Arc::new(store.extract::<DataStoreBasePy>(py).unwrap()) as Arc<dyn DataStoreTrait>
+        }),
         spec_adapters_config: None,
         log_event_url: opts.log_event_url.clone(),
         disable_all_logging: opts.disable_all_logging,
