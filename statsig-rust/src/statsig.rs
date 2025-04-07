@@ -60,9 +60,11 @@ use serde::de::DeserializeOwned;
 use serde_json::json;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
+use tokio::time::sleep;
 use tokio::try_join;
 
 const TAG: &str = stringify!(Statsig);
@@ -91,6 +93,7 @@ pub struct Statsig {
     error_observer: Arc<dyn OpsStatsEventObserver>,
     diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
     sampling_processor: Arc<SamplingProcessor>,
+    background_tasks_started: Arc<AtomicBool>,
 }
 
 pub struct StatsigContext {
@@ -205,24 +208,88 @@ impl Statsig {
             error_observer,
             sampling_processor,
             diagnostics_observer,
+            background_tasks_started: Arc::new(AtomicBool::new(false)),
         }
     }
 
     pub async fn initialize(&self) -> Result<(), StatsigErr> {
-        self.initialize_with_details().await.map(|_| ())
-    }
-
-    pub async fn initialize_with_details(&self) -> Result<StatsigInitializeDetails, StatsigErr> {
-        let start_time = Instant::now();
         self.ops_stats.add_marker(
             Marker::new(KeyType::Overall, ActionType::Start, None),
             Some(ContextType::Initialize),
         );
-        self.spec_store.set_source(SpecsSource::Loading);
-        self.event_logger
-            .clone()
-            .start_background_task(&self.statsig_runtime);
 
+        let init_details = if let Some(timeout_ms) = self.options.init_timeout_ms {
+            self.apply_timeout_to_init(timeout_ms).await
+        } else {
+            self.initialize_impl_with_details().await
+        };
+
+        self.log_init_details(&init_details);
+
+        init_details.and_then(|details| {
+            // Touch all fields to avoid dead code warnings - will use these properly in the future
+            let _ = (
+                details.duration,
+                details.init_success,
+                details.is_config_spec_ready,
+                details.is_id_list_ready,
+                details.source,
+            );
+
+            if let Some(failure_details) = details.failure_details {
+                Err(failure_details
+                    .error
+                    .unwrap_or(StatsigErr::InitializationError(failure_details.reason)))
+            } else {
+                Ok(())
+            }
+        })
+    }
+
+    async fn apply_timeout_to_init(
+        &self,
+        timeout_ms: u64,
+    ) -> Result<StatsigInitializeDetails, StatsigErr> {
+        let timeout = Duration::from_millis(timeout_ms);
+
+        let init_future = self.initialize_impl_with_details();
+        let timeout_future = sleep(timeout);
+
+        let event_logger = self.event_logger.clone();
+        let statsig_runtime = self.statsig_runtime.clone();
+        let id_lists_adapter = self.id_lists_adapter.clone();
+        let specs_adapter = self.specs_adapter.clone();
+        let ops_stats = self.ops_stats.clone();
+        let background_tasks_started = self.background_tasks_started.clone();
+        // Create another clone specifically for the closure
+        let statsig_runtime_for_closure = statsig_runtime.clone();
+
+        tokio::select! {
+            result = init_future => {
+                result
+            },
+            _ = timeout_future => {
+                statsig_runtime.spawn(
+                    "start_background_tasks",
+                    |_shutdown_notify| async move {
+                        Self::start_background_tasks(
+                            event_logger,
+                            statsig_runtime_for_closure,
+                            id_lists_adapter,
+                            specs_adapter,
+                            ops_stats,
+                            background_tasks_started,
+                        ).await;
+                    }
+                );
+                Ok(self.timeout_failure(timeout_ms))
+            },
+        }
+    }
+
+    async fn initialize_impl_with_details(&self) -> Result<StatsigInitializeDetails, StatsigErr> {
+        let start_time = Instant::now();
+        self.spec_store.set_source(SpecsSource::Loading);
         self.specs_adapter.initialize(self.spec_store.clone());
 
         let mut success = true;
@@ -267,7 +334,8 @@ impl Statsig {
             }
         }
 
-        self.event_logging_adapter
+        let _ = self
+            .event_logging_adapter
             .clone()
             .start(&self.statsig_runtime)
             .await
@@ -279,39 +347,23 @@ impl Statsig {
                     "Failed to start event logging adaper {}",
                     e
                 );
-                e
-            })?;
-
-        if let Err(e) = self
-            .specs_adapter
-            .clone()
-            .schedule_background_sync(&self.statsig_runtime)
-            .await
-        {
-            success = false;
-            log_error_to_statsig_and_console!(
-                self.ops_stats,
-                TAG,
-                "Failed to schedule SpecAdapter({}) background job. Error: {}",
-                self.specs_adapter.get_type_name(),
-                e,
-            );
-        }
+            });
 
         let spec_info = self.spec_store.get_current_specs_info();
         let duration = start_time.elapsed().as_millis() as f64;
 
         self.set_default_environment_from_server();
-        self.log_init_finish(success, &error_message, &duration, &spec_info);
         let error = init_res.clone().err();
-        if let Some(ref e) = error {
-            log_error_to_statsig_and_console!(
-                self.ops_stats,
-                TAG,
-                "{}",
-                error_message.clone().unwrap_or(e.to_string())
-            );
-        }
+
+        success = Self::start_background_tasks(
+            self.event_logger.clone(),
+            self.statsig_runtime.clone(),
+            self.id_lists_adapter.clone(),
+            self.specs_adapter.clone(),
+            self.ops_stats.clone(),
+            self.background_tasks_started.clone(),
+        )
+        .await;
 
         Ok(StatsigInitializeDetails {
             init_success: success,
@@ -324,6 +376,51 @@ impl Statsig {
             }),
             duration,
         })
+    }
+
+    pub async fn start_background_tasks(
+        event_logger: Arc<EventLogger>,
+        statsig_runtime: Arc<StatsigRuntime>,
+        id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
+        specs_adapter: Arc<dyn SpecsAdapter>,
+        ops_stats: Arc<OpsStatsForInstance>,
+        bg_tasks_started: Arc<AtomicBool>,
+    ) -> bool {
+        if bg_tasks_started.load(Ordering::SeqCst) {
+            return true;
+        }
+
+        let mut success = true;
+        event_logger.clone().start_background_task(&statsig_runtime);
+
+        if let Some(adapter) = &id_lists_adapter {
+            if let Err(e) = adapter
+                .clone()
+                .schedule_background_sync(&statsig_runtime)
+                .await
+            {
+                success = false;
+                log_w!(TAG, "Failed to schedule idlist background job {}", e);
+            }
+        }
+        if let Err(e) = specs_adapter
+            .clone()
+            .schedule_background_sync(&statsig_runtime)
+            .await
+        {
+            success = false;
+            log_error_to_statsig_and_console!(
+                ops_stats,
+                TAG,
+                "Failed to schedule SpecAdapter({}) background job. Error: {}",
+                specs_adapter.get_type_name(),
+                e,
+            );
+        }
+
+        bg_tasks_started.store(true, Ordering::SeqCst);
+
+        success
     }
 
     pub async fn shutdown(&self) -> Result<(), StatsigErr> {
@@ -417,6 +514,39 @@ impl Statsig {
 
     pub fn finalize_shutdown(&self, timeout: Duration) {
         self.statsig_runtime.shutdown(timeout);
+    }
+
+    fn timeout_failure(&self, timeout_ms: u64) -> StatsigInitializeDetails {
+        StatsigInitializeDetails {
+            init_success: false,
+            is_config_spec_ready: false,
+            is_id_list_ready: None,
+            source: SpecsSource::Uninitialized,
+            failure_details: Some(FailureDetails {
+                reason: "Initialization timed out".to_string(),
+                error: None,
+            }),
+            duration: timeout_ms as f64,
+        }
+    }
+
+    fn log_init_details(&self, init_details: &Result<StatsigInitializeDetails, StatsigErr>) {
+        match init_details {
+            Ok(details) => {
+                self.log_init_finish(
+                    details.init_success,
+                    &None,
+                    &details.duration,
+                    &self.spec_store.get_current_specs_info(),
+                );
+                if let Some(failure) = &details.failure_details {
+                    log_error_to_statsig_and_console!(self.ops_stats, TAG, "{}", failure.reason);
+                }
+            }
+            Err(err) => {
+                log_w!(TAG, "Initialization error: {:?}", err);
+            }
+        }
     }
 
     pub fn get_context(&self) -> StatsigContext {
@@ -1652,13 +1782,17 @@ fn setup_ops_stats(
 
 #[cfg(test)]
 mod tests {
+    use async_trait::async_trait;
+
     use super::*;
     use crate::hashing::djb2;
+    use crate::log_event_payload::LogEventRequest;
     use crate::{
         evaluation::evaluation_types::AnyConfigEvaluation, output_logger::LogLevel,
         StatsigHttpIdListsAdapter,
     };
     use std::env;
+    use std::sync::atomic::AtomicU64;
 
     impl Statsig {}
 
@@ -1755,5 +1889,130 @@ mod tests {
         };
 
         assert!(!a_config.is_empty());
+    }
+
+    #[tokio::test]
+    async fn do_not_double_start_background_tasks() {
+        let statsig_rt = StatsigRuntime::get_runtime();
+        let adapter = Arc::new(MockAdapter::new());
+        let logger = Arc::new(EventLogger::new(
+            "secret-key",
+            adapter.clone(),
+            &StatsigOptions::new(),
+            &statsig_rt,
+        ));
+        let specs_adapter = Arc::new(MockSpecsAdapter::new());
+        let ops_stats = OPS_STATS.get_for_instance("secret-key");
+        let background_tasks_started = Arc::new(AtomicBool::new(false));
+
+        let success = Statsig::start_background_tasks(
+            logger.clone(),
+            statsig_rt.clone(),
+            None,
+            specs_adapter.clone(),
+            ops_stats.clone(),
+            background_tasks_started.clone(),
+        )
+        .await;
+
+        assert!(success == true);
+
+        Statsig::start_background_tasks(
+            logger.clone(),
+            statsig_rt.clone(),
+            None,
+            specs_adapter.clone(),
+            ops_stats.clone(),
+            background_tasks_started.clone(),
+        )
+        .await;
+
+        assert!(specs_adapter.get_schedule_call_count() == 1);
+    }
+
+    struct MockAdapter {
+        pub log_events_called_times: AtomicU64,
+        pub log_event_count: AtomicU64,
+    }
+
+    impl MockAdapter {
+        fn new() -> Self {
+            Self {
+                log_events_called_times: AtomicU64::new(0),
+                log_event_count: AtomicU64::new(0),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl EventLoggingAdapter for MockAdapter {
+        async fn start(&self, _statsig_runtime: &Arc<StatsigRuntime>) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
+            self.log_events_called_times.fetch_add(1, Ordering::SeqCst);
+            self.log_event_count
+                .fetch_add(request.event_count, Ordering::SeqCst);
+            Ok(true)
+        }
+
+        async fn shutdown(&self) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        fn should_schedule_background_flush(&self) -> bool {
+            true
+        }
+    }
+
+    pub struct MockSpecsAdapter {
+        pub schedule_calls: Arc<AtomicU64>,
+    }
+
+    impl MockSpecsAdapter {
+        pub fn new() -> Self {
+            Self {
+                schedule_calls: Arc::new(AtomicU64::new(0)),
+            }
+        }
+
+        pub fn get_schedule_call_count(&self) -> u64 {
+            self.schedule_calls.load(Ordering::SeqCst)
+        }
+    }
+
+    #[async_trait]
+    impl SpecsAdapter for MockSpecsAdapter {
+        fn initialize(&self, _listener: Arc<dyn SpecsUpdateListener>) {
+            // No-op
+        }
+
+        async fn start(
+            self: Arc<Self>,
+            _statsig_runtime: &Arc<StatsigRuntime>,
+        ) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn shutdown(
+            &self,
+            _timeout: Duration,
+            _statsig_runtime: &Arc<StatsigRuntime>,
+        ) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn schedule_background_sync(
+            self: Arc<Self>,
+            _statsig_runtime: &Arc<StatsigRuntime>,
+        ) -> Result<(), StatsigErr> {
+            self.schedule_calls.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        }
+
+        fn get_type_name(&self) -> String {
+            "MockSpecsAdapter".to_string()
+        }
     }
 }

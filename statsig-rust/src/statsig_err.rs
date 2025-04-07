@@ -48,6 +48,9 @@ pub enum StatsigErr {
     ShutdownFailure,
 
     SharedInstanceFailure(String),
+
+    // Generic initialization error until init detail is exposed
+    InitializationError(String),
 }
 
 impl Display for StatsigErr {
@@ -102,6 +105,9 @@ impl Display for StatsigErr {
             }
             StatsigErr::SharedInstanceFailure(message) => {
                 write!(f, "SharedInstance Error: {message}")
+            }
+            StatsigErr::InitializationError(message) => {
+                write!(f, "Initialization Error: {message}")
             }
         }
     }
