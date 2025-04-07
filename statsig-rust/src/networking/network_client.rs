@@ -1,7 +1,7 @@
 use chrono::Utc;
 
 use super::providers::get_network_provider;
-use super::{HttpMethod, NetworkProvider, RequestArgs};
+use super::{HttpMethod, NetworkProvider, RequestArgs, Response};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
@@ -70,7 +70,7 @@ impl NetworkClient {
         self.is_shutdown.store(true, Ordering::SeqCst);
     }
 
-    pub async fn get(&self, request_args: RequestArgs) -> Result<String, NetworkError> {
+    pub async fn get(&self, request_args: RequestArgs) -> Result<Response, NetworkError> {
         self.make_request(HttpMethod::GET, request_args).await
     }
 
@@ -78,7 +78,7 @@ impl NetworkClient {
         &self,
         mut request_args: RequestArgs,
         body: Option<Vec<u8>>,
-    ) -> Result<String, NetworkError> {
+    ) -> Result<Response, NetworkError> {
         request_args.body = body;
         self.make_request(HttpMethod::POST, request_args).await
     }
@@ -87,7 +87,7 @@ impl NetworkClient {
         &self,
         method: HttpMethod,
         mut request_args: RequestArgs,
-    ) -> Result<String, NetworkError> {
+    ) -> Result<Response, NetworkError> {
         let is_shutdown = if let Some(is_shutdown) = &request_args.is_shutdown {
             is_shutdown.clone()
         } else {
@@ -148,6 +148,7 @@ impl NetworkClient {
 
             let error_message = response
                 .error
+                .clone()
                 .unwrap_or_else(|| get_error_message_for_status(status));
 
             if let Some(key) = request_args.diagnostics_key {
@@ -177,7 +178,7 @@ impl NetworkClient {
             }
 
             if success {
-                return get_data_as_string(response.data);
+                return Ok(response);
             }
 
             if !RETRY_CODES.contains(&status) {
@@ -241,16 +242,5 @@ fn get_error_message_for_status(status: u16) -> String {
         504 => "Gateway Timeout".to_string(),
         0 => "Unknown Error".to_string(),
         _ => format!("HTTP Error {status}"),
-    }
-}
-
-fn get_data_as_string(data: Option<Vec<u8>>) -> Result<String, NetworkError> {
-    // todo: support compressed data
-    match data {
-        Some(data) => {
-            Ok(String::from_utf8(data)
-                .map_err(|e| NetworkError::SerializationError(e.to_string()))?)
-        }
-        None => Err(NetworkError::RequestFailed),
     }
 }

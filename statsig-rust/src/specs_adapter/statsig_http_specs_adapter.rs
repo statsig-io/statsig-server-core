@@ -85,7 +85,7 @@ impl StatsigHttpSpecsAdapter {
             ..RequestArgs::new()
         };
 
-        match self.network.get(request_args.clone()).await {
+        match self.handle_specs_request(request_args.clone()).await {
             Ok(response) => Ok(response),
             Err(NetworkError::RetriesExhausted) => self.handle_fallback_request(request_args).await,
             Err(e) => Err(e),
@@ -105,7 +105,20 @@ impl StatsigHttpSpecsAdapter {
 
         // TODO logging
 
-        self.network.get(request_args).await
+        self.handle_specs_request(request_args).await
+    }
+
+    // TODO: return a decompressed and parsed SpecsResponse
+    async fn handle_specs_request(
+        &self,
+        request_args: RequestArgs,
+    ) -> Result<String, NetworkError> {
+        let response = self.network.get(request_args).await?;
+        match response.data {
+            Some(data) => Ok(String::from_utf8(data)
+                .map_err(|e| NetworkError::SerializationError(e.to_string()))?),
+            None => Err(NetworkError::RequestFailed),
+        }
     }
 
     pub async fn run_background_sync(weak_self: &Weak<Self>) {

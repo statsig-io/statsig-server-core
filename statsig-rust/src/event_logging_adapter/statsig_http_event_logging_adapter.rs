@@ -80,7 +80,7 @@ impl StatsigHttpEventLoggingAdapter {
         };
 
         // Make request
-        let response_str = self
+        let response = self
             .network
             .post(
                 RequestArgs {
@@ -94,8 +94,17 @@ impl StatsigHttpEventLoggingAdapter {
             )
             .await
             .map_err(|err| StatsigErr::NetworkError(err, Some("Log event failure".into())))?;
+        let response_slice = match response.data {
+            Some(data) => data,
+            None => {
+                return Err(StatsigErr::NetworkError(
+                    NetworkError::RequestFailed,
+                    Some("Empty response from network".to_string()),
+                ));
+            }
+        };
 
-        serde_json::from_str::<LogEventResult>(&response_str)
+        serde_json::from_slice::<LogEventResult>(&response_slice)
             .map(|result| result.success != Some(false))
             .map_err(|e| {
                 StatsigErr::JsonParseError(stringify!(LogEventResult).to_string(), e.to_string())

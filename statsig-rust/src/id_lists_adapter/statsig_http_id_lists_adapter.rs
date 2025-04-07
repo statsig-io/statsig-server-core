@@ -1,6 +1,6 @@
 use super::IdListMetadata;
 use crate::id_lists_adapter::{IdListUpdate, IdListsAdapter, IdListsUpdateListener};
-use crate::networking::{NetworkClient, NetworkError, RequestArgs};
+use crate::networking::{NetworkClient, NetworkError, RequestArgs, Response};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::diagnostics::ContextType;
@@ -10,7 +10,6 @@ use crate::{
     log_d, log_error_to_statsig_and_console, log_w, StatsigErr, StatsigOptions, StatsigRuntime,
 };
 use async_trait::async_trait;
-use serde_json::from_str;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, Weak};
 use std::time::Duration;
@@ -82,7 +81,7 @@ impl StatsigHttpIdListsAdapter {
         };
 
         let initial_err = match self.network.post(request_args.clone(), None).await {
-            Ok(response) => return self.parse_response(response),
+            Ok(response) => return self.parse_response(response.data),
             Err(e) => e,
         };
 
@@ -97,7 +96,7 @@ impl StatsigHttpIdListsAdapter {
                 .handle_fallback_request(fallback_url, request_args)
                 .await
             {
-                Ok(response) => return self.parse_response(response),
+                Ok(response) => return self.parse_response(response.data),
                 Err(e) => Some(e),
             };
         }
@@ -122,28 +121,31 @@ impl StatsigHttpIdListsAdapter {
                 headers: Some(headers),
                 ..RequestArgs::new()
             })
-            .await;
-
-        match response {
-            Ok(data) => {
-                if data.is_empty() {
-                    let msg = "No ID List changes from network".to_string();
-                    return Err(StatsigErr::JsonParseError("IdList".to_string(), msg));
-                }
-                Ok(data)
-            }
-            Err(err) => {
+            .await
+            .map_err(|err| {
                 let msg = format!("Failed to fetch ID List changes: {err:?}");
-                Err(StatsigErr::NetworkError(err, Some(msg)))
+                StatsigErr::NetworkError(err, Some(msg))
+            })?;
+
+        let response_body = match response.data.filter(|data| !data.is_empty()) {
+            Some(data) => data,
+            None => {
+                let msg = "No ID List changes from network".to_string();
+                return Err(StatsigErr::JsonParseError("IdList".to_string(), msg));
             }
-        }
+        };
+
+        String::from_utf8(response_body).map_err(|err| {
+            let msg = format!("Failed to parse ID List changes: {err:?}");
+            StatsigErr::JsonParseError("IdList".to_string(), msg)
+        })
     }
 
     async fn handle_fallback_request(
         &self,
         fallback_url: &str,
         mut request_args: RequestArgs,
-    ) -> Result<String, StatsigErr> {
+    ) -> Result<Response, StatsigErr> {
         request_args.url = fallback_url.to_owned();
 
         // TODO add log
@@ -174,16 +176,19 @@ impl StatsigHttpIdListsAdapter {
         );
     }
 
-    fn parse_response(&self, response: String) -> Result<IdListsResponse, StatsigErr> {
-        if response.is_empty() {
-            let msg = "No ID List results from network".to_string();
-            return Err(StatsigErr::JsonParseError(
-                "IdListsResponse".to_owned(),
-                msg,
-            ));
-        }
+    fn parse_response(&self, response: Option<Vec<u8>>) -> Result<IdListsResponse, StatsigErr> {
+        let response = match response.filter(|r| !r.is_empty()) {
+            Some(r) => r,
+            None => {
+                let msg = "No ID List results from network".to_string();
+                return Err(StatsigErr::JsonParseError(
+                    "IdListsResponse".to_owned(),
+                    msg,
+                ));
+            }
+        };
 
-        from_str::<IdListsResponse>(&response).map_err(|parse_err| {
+        serde_json::from_slice::<IdListsResponse>(&response).map_err(|parse_err| {
             let msg = format!("Failed to parse JSON: {parse_err}");
             StatsigErr::JsonParseError(stringify!(IdListsResponse).to_string(), msg)
         })
