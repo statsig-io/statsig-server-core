@@ -119,41 +119,31 @@ fn sanitize(input: &str) -> String {
         .collect()
 }
 
-pub const KILL_SWITCH: bool = true;
-
 #[macro_export]
 macro_rules! log_d {
   ($tag:expr, $($arg:tt)*) => {
-        if !$crate::output_logger::KILL_SWITCH {
-            $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Debug, format!($($arg)*))
-        }
+        $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Debug, format!($($arg)*))
     }
 }
 
 #[macro_export]
 macro_rules! log_i {
   ($tag:expr, $($arg:tt)*) => {
-        if !$crate::output_logger::KILL_SWITCH {
-            $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Info, format!($($arg)*))
-        }
+        $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Info, format!($($arg)*))
     }
 }
 
 #[macro_export]
 macro_rules! log_w {
   ($tag:expr, $($arg:tt)*) => {
-        if !$crate::output_logger::KILL_SWITCH {
-            $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Warn, format!($($arg)*))
-        }
+        $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Warn, format!($($arg)*))
     }
 }
 
 #[macro_export]
 macro_rules! log_e {
   ($tag:expr, $($arg:tt)*) => {
-        if !$crate::output_logger::KILL_SWITCH {
-            $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Error, format!($($arg)*))
-        }
+        $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Error, format!($($arg)*))
     }
 }
 
