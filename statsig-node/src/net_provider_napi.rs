@@ -8,7 +8,7 @@ use napi::{
 
 use napi_derive::napi;
 use statsig_rust::{
-    networking::{HttpMethod, NetProviderRequestArgs, NetworkProvider, Response},
+    networking::{HttpMethod, NetworkProvider, RequestArgs, Response},
     StatsigErr,
 };
 
@@ -34,7 +34,7 @@ pub struct NetworkProviderNapi {
 
 #[async_trait]
 impl NetworkProvider for NetworkProviderNapi {
-    async fn send(&self, method: &HttpMethod, request_args: &NetProviderRequestArgs) -> Response {
+    async fn send(&self, method: &HttpMethod, request_args: &RequestArgs) -> Response {
         let method_str = match method {
             HttpMethod::GET => "GET",
             HttpMethod::POST => "POST",

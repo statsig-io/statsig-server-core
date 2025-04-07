@@ -82,7 +82,7 @@ impl StatsigHttpSpecsAdapter {
             query_params: Some(params),
             accept_gzip_response: true,
             diagnostics_key: Some(KeyType::DownloadConfigSpecs),
-            ..RequestArgs::default()
+            ..RequestArgs::new()
         };
 
         match self.network.get(request_args.clone()).await {

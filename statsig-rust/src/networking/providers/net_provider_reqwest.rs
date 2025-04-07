@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use crate::{
     log_w,
     networking::{
-        http_types::{HttpMethod, NetProviderRequestArgs, Response},
+        http_types::{HttpMethod, RequestArgs, Response},
         NetworkProvider,
     },
     StatsigErr,
@@ -20,7 +20,7 @@ pub struct NetworkProviderReqwest {}
 
 #[async_trait]
 impl NetworkProvider for NetworkProviderReqwest {
-    async fn send(&self, method: &HttpMethod, args: &NetProviderRequestArgs) -> Response {
+    async fn send(&self, method: &HttpMethod, args: &RequestArgs) -> Response {
         if let Some(is_shutdown) = &args.is_shutdown {
             if is_shutdown.load(std::sync::atomic::Ordering::SeqCst) {
                 return Response {
@@ -70,7 +70,7 @@ impl NetworkProviderReqwest {
     fn build_request(
         &self,
         method: &HttpMethod,
-        request_args: &NetProviderRequestArgs,
+        request_args: &RequestArgs,
     ) -> reqwest::RequestBuilder {
         let method_actual = match method {
             HttpMethod::GET => Method::GET,

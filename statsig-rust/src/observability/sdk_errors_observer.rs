@@ -72,7 +72,7 @@ impl SDKErrorsObserver {
         let request_args = RequestArgs {
             url: SDK_EXCEPTION_ENDPOINT.to_owned(),
             retries: 0,
-            ..RequestArgs::default()
+            ..RequestArgs::new()
         };
         let _ = self
             .network_client

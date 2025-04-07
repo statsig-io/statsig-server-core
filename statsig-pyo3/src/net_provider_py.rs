@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 use pyo3::prelude::*;
 use statsig_rust::{
-    networking::{HttpMethod, NetProviderRequestArgs, NetworkProvider, Response},
+    networking::{HttpMethod, NetworkProvider, RequestArgs, Response},
     StatsigErr,
 };
 
@@ -22,7 +22,7 @@ pub struct NetworkProviderPy {
 
 #[async_trait]
 impl NetworkProvider for NetworkProviderPy {
-    async fn send(&self, method: &HttpMethod, request_args: &NetProviderRequestArgs) -> Response {
+    async fn send(&self, method: &HttpMethod, request_args: &RequestArgs) -> Response {
         let method_str = match method {
             HttpMethod::GET => "GET",
             HttpMethod::POST => "POST",

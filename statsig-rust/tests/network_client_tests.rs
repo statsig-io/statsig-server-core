@@ -30,7 +30,7 @@ async fn test_killing_inflight_requests() {
             .post(
                 RequestArgs {
                     url,
-                    ..RequestArgs::default()
+                    ..RequestArgs::new()
                 },
                 None,
             )
@@ -57,7 +57,7 @@ async fn test_per_request_timeout() {
                 RequestArgs {
                     url,
                     timeout_ms: 10,
-                    ..RequestArgs::default()
+                    ..RequestArgs::new()
                 },
                 None,
             )

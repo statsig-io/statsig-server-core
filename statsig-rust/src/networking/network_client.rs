@@ -1,11 +1,11 @@
 use chrono::Utc;
 
 use super::providers::get_network_provider;
-use super::{HttpMethod, NetworkProvider, RequestArgsTyped};
+use super::{HttpMethod, NetworkProvider, RequestArgs};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
-use crate::{log_d, log_error_to_statsig_and_console, log_i, log_w, StatsigErr};
+use crate::{log_d, log_error_to_statsig_and_console, log_i, log_w};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -70,36 +70,24 @@ impl NetworkClient {
         self.is_shutdown.store(true, Ordering::SeqCst);
     }
 
-    pub async fn get<T, D>(&self, request_args: RequestArgsTyped<T, D>) -> Result<T, NetworkError>
-    where
-        T: Clone,
-        D: Fn(Option<&Vec<u8>>) -> Result<T, StatsigErr> + Clone,
-    {
+    pub async fn get(&self, request_args: RequestArgs) -> Result<String, NetworkError> {
         self.make_request(HttpMethod::GET, request_args).await
     }
 
-    pub async fn post<T, D>(
+    pub async fn post(
         &self,
-        mut request_args: RequestArgsTyped<T, D>,
+        mut request_args: RequestArgs,
         body: Option<Vec<u8>>,
-    ) -> Result<T, NetworkError>
-    where
-        T: Clone,
-        D: Fn(Option<&Vec<u8>>) -> Result<T, StatsigErr> + Clone,
-    {
+    ) -> Result<String, NetworkError> {
         request_args.body = body;
         self.make_request(HttpMethod::POST, request_args).await
     }
 
-    async fn make_request<T, D>(
+    async fn make_request(
         &self,
         method: HttpMethod,
-        mut request_args: RequestArgsTyped<T, D>,
-    ) -> Result<T, NetworkError>
-    where
-        T: Clone,
-        D: Fn(Option<&Vec<u8>>) -> Result<T, StatsigErr> + Clone,
-    {
+        mut request_args: RequestArgs,
+    ) -> Result<String, NetworkError> {
         let is_shutdown = if let Some(is_shutdown) = &request_args.is_shutdown {
             is_shutdown.clone()
         } else {
@@ -126,8 +114,7 @@ impl NetworkClient {
         let mut attempt = 0;
 
         loop {
-            let request_args_clone = request_args.clone();
-            if let Some(key) = request_args_clone.diagnostics_key {
+            if let Some(key) = request_args.diagnostics_key {
                 self.ops_stats.add_marker(
                     Marker::new(key, ActionType::Start, Some(StepType::NetworkRequest))
                         .with_attempt(attempt)
@@ -141,7 +128,7 @@ impl NetworkClient {
             }
 
             let response = match self.net_provider.upgrade() {
-                Some(net_provider) => net_provider.send(&method, &request_args_clone.into()).await,
+                Some(net_provider) => net_provider.send(&method, &request_args).await,
                 None => return Err(NetworkError::RequestFailed),
             };
 
@@ -190,8 +177,7 @@ impl NetworkClient {
             }
 
             if success {
-                return (request_args.response_deserializer)(response.data.as_ref())
-                    .map_err(|e| NetworkError::SerializationError(e.to_string()));
+                return get_data_as_string(response.data);
             }
 
             if !RETRY_CODES.contains(&status) {
@@ -255,5 +241,16 @@ fn get_error_message_for_status(status: u16) -> String {
         504 => "Gateway Timeout".to_string(),
         0 => "Unknown Error".to_string(),
         _ => format!("HTTP Error {status}"),
+    }
+}
+
+fn get_data_as_string(data: Option<Vec<u8>>) -> Result<String, NetworkError> {
+    // todo: support compressed data
+    match data {
+        Some(data) => {
+            Ok(String::from_utf8(data)
+                .map_err(|e| NetworkError::SerializationError(e.to_string()))?)
+        }
+        None => Err(NetworkError::RequestFailed),
     }
 }

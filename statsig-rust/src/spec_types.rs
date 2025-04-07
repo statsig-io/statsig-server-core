@@ -180,12 +180,12 @@ pub struct LayerParameter {
     pub param_name: String,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize)]
 pub struct SpecsResponseNoUpdates {
     pub has_updates: bool,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize)]
 #[serde(untagged)]
 pub enum SpecsResponse {
     Full(Box<SpecsResponseFull>),
