@@ -44,6 +44,7 @@ pub struct NetworkClient {
     ops_stats: Arc<OpsStatsForInstance>,
     net_provider: Weak<dyn NetworkProvider>,
     disable_network: bool,
+    silent_on_network_failure: bool,
 }
 
 impl NetworkClient {
@@ -61,6 +62,7 @@ impl NetworkClient {
             net_provider,
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             disable_network: disable_network.unwrap_or_default(),
+            silent_on_network_failure: false,
         }
     }
 
@@ -193,24 +195,15 @@ impl NetworkClient {
             }
 
             if !RETRY_CODES.contains(&status) {
-                log_error_to_statsig_and_console!(
-                    &self.ops_stats,
-                    TAG,
-                    "status:{} message:{}",
-                    status,
-                    error_message
-                );
+                self.log_warning(format!("status:{} message:{}", status, error_message));
                 return Err(NetworkError::RequestFailed);
             }
 
             if attempt >= request_args.retries {
-                log_error_to_statsig_and_console!(
-                    &self.ops_stats,
-                    TAG,
+                self.log_warning(format!(
                     "Network error, retries exhausted: {} {}",
-                    status,
-                    error_message
-                );
+                    status, error_message
+                ));
                 return Err(NetworkError::RetriesExhausted);
             }
 
@@ -226,6 +219,19 @@ impl NetworkClient {
             );
 
             tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
+        }
+    }
+
+    pub fn mute_network_error_log(mut self) -> Self {
+        self.silent_on_network_failure = true;
+        self
+    }
+
+    fn log_warning(&self, message: String) {
+        if self.silent_on_network_failure {
+            log_w!(TAG, "{}", message)
+        } else {
+            log_error_to_statsig_and_console!(&self.ops_stats, TAG, "{}", message.as_str());
         }
     }
 }

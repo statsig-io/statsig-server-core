@@ -42,7 +42,8 @@ impl SDKErrorsObserver {
                 sdk_key,
                 Some(StatsigMetadata::get_constant_request_headers(sdk_key)),
                 options.disable_network,
-            ),
+            )
+            .mute_network_error_log(),
             errors_aggregator: RwLock::new(HashMap::new()),
             statsig_options_logging_copy: options_logging_copy,
         }
