@@ -69,7 +69,7 @@ async fn test_all_gate_checks() {
     let values = statsig.get_current_values().unwrap().values.clone();
 
     let all_start = Instant::now();
-    for gate_name in values.feature_gates.keys() {
+    for (gate_name, _) in values.feature_gates.iter() {
         let start = Instant::now();
 
         let mut value = false;

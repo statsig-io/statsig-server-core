@@ -56,7 +56,7 @@ pub mod specs_adapter_tests {
         use statsig_rust::SpecsAdapter;
 
         let rt = StatsigRuntime::get_runtime();
-        let (adapter, mock_proxy, data_store, mock_listener) =
+        let (adapter, mock_proxy, _data_store, mock_listener) =
             setup_datastore_and_streaming_combo().await;
 
         mock_proxy
@@ -67,8 +67,8 @@ pub mod specs_adapter_tests {
             .await;
 
         adapter.initialize(mock_listener.clone());
-        adapter.clone().start(&rt).await;
-        mock_listener.wait_for_next_update().await;
+        let _ = adapter.clone().start(&rt).await;
+        let _ = mock_listener.wait_for_next_update().await;
         let received_update = mock_listener.force_get_most_recent_update();
         assert_eq!(
             received_update.source,
@@ -81,7 +81,7 @@ pub mod specs_adapter_tests {
                 last_updated: 3,
             }))
             .await;
-        mock_listener.wait_for_next_update().await;
+        let _ = mock_listener.wait_for_next_update().await;
         let received_update_2 = mock_listener.force_get_most_recent_update();
         assert_eq!(
             received_update_2.source,

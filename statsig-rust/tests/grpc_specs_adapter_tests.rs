@@ -71,7 +71,7 @@ pub mod specs_adapter_tests {
 
         adapter.clone().start(&statsig_rt).await.unwrap();
 
-        let a = mock_listener.wait_for_next_update().await;
+        let _ = mock_listener.wait_for_next_update().await;
 
         mock_proxy.clone().restart().await;
 
