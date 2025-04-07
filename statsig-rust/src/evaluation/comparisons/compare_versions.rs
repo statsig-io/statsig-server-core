@@ -59,8 +59,8 @@ pub(crate) fn compare_versions(left: &DynamicValue, right: &DynamicValue, op: &s
 
 #[cfg(test)]
 mod tests {
+    use crate::dyn_value;
     use crate::evaluation::comparisons::compare_versions;
-    use crate::{dyn_value, DynamicValue};
 
     #[test]
     fn test_version_comparison_equal() {

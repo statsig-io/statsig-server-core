@@ -568,10 +568,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetObjectParameterFrom
     };
 
     let default_value_map: Option<HashMap<String, Value>> =
-        match serde_json::from_str(default_value_str.as_str()) {
-            Ok(map) => Some(map),
-            Err(_) => None,
-        };
+        serde_json::from_str(default_value_str.as_str()).ok();
 
     let result = statsig.get_object_parameter_from_store(
         &user,
@@ -615,10 +612,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetArrayParameterFromP
     };
 
     let default_value_array: Option<Vec<Value>> =
-        match serde_json::from_str(default_value_str.as_str()) {
-            Ok(map) => Some(map),
-            Err(_) => None,
-        };
+        serde_json::from_str(default_value_str.as_str()).ok();
 
     let result = statsig.get_array_parameter_from_store(
         &user,
@@ -843,10 +837,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEvent(
         }
     };
 
-    let metadata = match jni_to_rust_hashmap(env, metadata) {
-        Ok(map) => Some(map),
-        Err(_) => None,
-    };
+    let metadata = jni_to_rust_hashmap(env, metadata).ok();
 
     statsig.log_event(user.as_ref(), &event_name, value, metadata);
 }
@@ -871,10 +862,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEventWithLong(
 
     let value = Some(value as f64);
 
-    let metadata = match jni_to_rust_hashmap(env, metadata) {
-        Ok(map) => Some(map),
-        Err(_) => None,
-    };
+    let metadata = jni_to_rust_hashmap(env, metadata).ok();
 
     statsig.log_event_with_number(user.as_ref(), &event_name, value, metadata);
 }
@@ -899,10 +887,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEventWithDouble(
 
     let value = Some(value);
 
-    let metadata = match jni_to_rust_hashmap(env, metadata) {
-        Ok(map) => Some(map),
-        Err(_) => None,
-    };
+    let metadata = jni_to_rust_hashmap(env, metadata).ok();
 
     statsig.log_event_with_number(user.as_ref(), &event_name, value, metadata);
 }

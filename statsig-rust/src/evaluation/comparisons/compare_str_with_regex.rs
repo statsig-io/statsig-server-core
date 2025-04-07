@@ -8,8 +8,8 @@ pub(crate) fn compare_str_with_regex(value: &DynamicValue, regex_value: &Dynamic
 
 #[cfg(test)]
 mod tests {
+    use crate::dyn_value;
     use crate::evaluation::comparisons::compare_str_with_regex;
-    use crate::{dyn_value, DynamicValue};
 
     #[test]
     fn test_compare_regex_simple() {

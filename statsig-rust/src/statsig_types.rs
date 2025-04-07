@@ -227,10 +227,7 @@ impl ParameterStore<'_> {
     pub fn get_opt<T: DeserializeOwned>(&self, user: &StatsigUser, param_name: &str) -> Option<T> {
         let param = self.parameters.get(param_name)?;
         match param {
-            Parameter::StaticValue(static_value) => match from_value(static_value.value.clone()) {
-                Ok(value) => Some(value),
-                Err(_) => None,
-            },
+            Parameter::StaticValue(static_value) => from_value(static_value.value.clone()).ok(),
             Parameter::Gate(gate) => {
                 let res = self._statsig_ref.check_gate_with_options(
                     user,
@@ -241,10 +238,7 @@ impl ParameterStore<'_> {
                     true => gate.pass_value.clone(),
                     false => gate.fail_value.clone(),
                 };
-                match from_value(val) {
-                    Ok(value) => Some(value),
-                    Err(_) => None,
-                }
+                from_value(val).ok()
             }
             Parameter::DynamicConfig(dynamic_config) => {
                 let res = self._statsig_ref.get_dynamic_config_with_options(

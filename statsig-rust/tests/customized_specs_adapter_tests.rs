@@ -31,8 +31,8 @@ pub mod specs_adapter_tests {
             .await;
 
         adapter.initialize(mock_listener.clone());
-        adapter.clone().start(&rt).await;
-        mock_listener.wait_for_next_update().await;
+        let _ = adapter.clone().start(&rt).await;
+        let _ = mock_listener.wait_for_next_update().await;
         // Use data store
         let received_update = mock_listener.force_get_most_recent_update();
         assert_eq!(
@@ -40,9 +40,9 @@ pub mod specs_adapter_tests {
             SpecsSource::Adapter("DataStore".to_string())
         );
         assert_eq!(received_update.data, "init_payload".to_string()); // examine time
-        adapter.clone().schedule_background_sync(&rt).await;
+        let _ = adapter.clone().schedule_background_sync(&rt).await;
 
-        mock_listener.wait_for_next_update().await;
+        let _ = mock_listener.wait_for_next_update().await;
         let received_update_2 = mock_listener.force_get_most_recent_update();
         assert_eq!(
             received_update_2.source,

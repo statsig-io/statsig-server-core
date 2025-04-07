@@ -39,7 +39,7 @@ fn test_register_and_get() {
 
     let retrieved = InstanceRegistry::get::<MyBar>(&id);
     assert!(retrieved.is_some());
-    assert_eq!(retrieved.unwrap().is_active, true);
+    assert!(retrieved.unwrap().is_active);
 }
 
 #[test]
@@ -87,7 +87,7 @@ fn test_register_and_get_nested() {
     let id = InstanceRegistry::register(my_foo).unwrap();
 
     let retrieved = InstanceRegistry::get::<MyFoo>(&id).unwrap();
-    assert_eq!(retrieved.bar.is_active, true);
+    assert!(retrieved.bar.is_active);
     assert_eq!(retrieved.bar.data, "bar");
     assert_eq!(retrieved.name, "foo");
 }

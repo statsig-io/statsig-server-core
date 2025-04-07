@@ -99,7 +99,7 @@ impl NetworkProviderReqwest {
 
         if is_post {
             let bytes = match &request_args.body {
-                Some(b) => b.clone().into(),
+                Some(b) => b.clone(),
                 None => vec![],
             };
             let byte_len = bytes.len();

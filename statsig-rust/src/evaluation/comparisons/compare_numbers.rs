@@ -15,8 +15,8 @@ pub(crate) fn compare_numbers(left: &DynamicValue, right: &DynamicValue, op: &st
 
 #[cfg(test)]
 mod tests {
+    use crate::dyn_value;
     use crate::evaluation::comparisons::compare_numbers;
-    use crate::{dyn_value, DynamicValue};
 
     #[test]
     fn test_number_greater_than() {

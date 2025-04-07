@@ -76,7 +76,7 @@ fn test_calling_functions_on_shared() {
     let _ = Statsig::new_shared("secret-key", None);
     let user = StatsigUser::with_user_id("a-user".to_string());
 
-    assert_eq!(Statsig::shared().check_gate(&user, "not-found"), false);
+    assert!(!Statsig::shared().check_gate(&user, "not-found"));
 }
 
 #[test]
