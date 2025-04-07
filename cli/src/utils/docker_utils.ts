@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process';
 
 import { BASE_DIR, getRootedPath } from './file_utils.js';
-import { Log } from './teminal_utils.js';
+import { Log } from './terminal_utils.js';
 
 export type ArchInfo =
   | {

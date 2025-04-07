@@ -7,7 +7,7 @@ import {
   isLinux,
 } from '@/utils/docker_utils.js';
 import { BASE_DIR } from '@/utils/file_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { execSync } from 'node:child_process';
 
 import { CommandBase } from './command_base.js';

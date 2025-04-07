@@ -5,7 +5,7 @@ import {
   getUpstreamRemoteForCurrentBranch,
 } from '@/utils/git_utils.js';
 import { SemVer } from '@/utils/semver.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
 import chalk from 'chalk';
 import { execSync } from 'child_process';

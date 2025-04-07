@@ -3,7 +3,7 @@ import {
   OPERATING_SYSTEMS,
   buildDockerImage,
 } from '@/utils/docker_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { execSync } from 'child_process';
 
 import { BuilderOptions } from './builders/builder-options.js';

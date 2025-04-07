@@ -9,7 +9,7 @@ import {
   getOctokit,
   uploadReleaseAsset,
 } from '@/utils/octokit_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import path from 'node:path';
 
 import { CommandBase } from './command_base.js';

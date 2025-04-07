@@ -4,7 +4,7 @@ import {
   getOctokit,
   getReleaseByVersion,
 } from '@/utils/octokit_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
 
 import { CommandBase } from './command_base.js';

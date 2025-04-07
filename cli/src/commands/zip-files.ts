@@ -3,7 +3,7 @@ import {
   getHumanReadableSize,
   getRootedPath,
 } from '@/utils/file_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import AdmZip from 'adm-zip';
 import { Command } from 'commander';
 import { readFileSync } from 'fs';

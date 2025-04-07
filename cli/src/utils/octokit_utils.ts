@@ -6,7 +6,7 @@ import path from 'path';
 
 import { getFileSize } from './file_utils.js';
 import { SemVer } from './semver.js';
-import { Log } from './teminal_utils.js';
+import { Log } from './terminal_utils.js';
 
 const GITHUB_APP_ID = process.env.GH_APP_ID;
 const GITHUB_INSTALLATION_ID = process.env.GH_APP_INSTALLATION_ID;

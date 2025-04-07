@@ -2,7 +2,7 @@ import { BuilderOptions } from '@/commands/builders/builder-options.js';
 import { getArchInfo } from '@/utils/docker_utils.js';
 import { buildFfiHelper } from '@/utils/ffi_utils.js';
 import { BASE_DIR, ensureEmptyDir, listFiles } from '@/utils/file_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 

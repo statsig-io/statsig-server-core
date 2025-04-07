@@ -18,7 +18,7 @@ import {
   SizeInfo,
   fetchPreviousSizeInfo,
 } from '@/utils/size_report_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { Octokit } from 'octokit';
 
 import { CommandBase, OptionConfig } from './command_base.js';

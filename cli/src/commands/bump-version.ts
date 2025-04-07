@@ -12,7 +12,7 @@ import {
   printStepBegin,
   printStepEnd,
   printTitle,
-} from '@/utils/teminal_utils.js';
+} from '@/utils/terminal_utils.js';
 import { getRootVersion, setRootVersion } from '@/utils/toml_utils.js';
 import chalk from 'chalk';
 

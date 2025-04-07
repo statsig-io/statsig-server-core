@@ -1,5 +1,5 @@
 import { BASE_DIR, ensureEmptyDir, getRootedPath } from '@/utils/file_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import chalk from 'chalk';
 import { ExecSyncOptionsWithStringEncoding, execSync } from 'child_process';
 

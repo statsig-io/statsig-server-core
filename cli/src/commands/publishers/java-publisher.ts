@@ -4,7 +4,7 @@ import {
   getRootedPath,
   listFiles,
 } from '@/utils/file_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 

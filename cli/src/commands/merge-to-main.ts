@@ -3,7 +3,7 @@ import {
   createPullRequestAgainstMain,
   getOctokit,
 } from '@/utils/octokit_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { execSync } from 'child_process';
 import { Octokit } from 'octokit';
 

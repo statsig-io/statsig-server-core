@@ -5,7 +5,7 @@ import {
   getReleaseByVersion,
   uploadReleaseAsset,
 } from '@/utils/octokit_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
 import path from 'path';
 
@@ -83,7 +83,7 @@ export class GhAttachAssets extends CommandBase {
 
     if (error || !result) {
       const errMessage =
-        error instanceof Error ? error.message : error ?? 'Unknown Error';
+        error instanceof Error ? error.message : (error ?? 'Unknown Error');
 
       Log.stepEnd(`Failed to upload asset: ${errMessage}`, 'failure');
       process.exit(1);

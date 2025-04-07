@@ -11,7 +11,7 @@ import {
   listFiles,
   unzipFiles,
 } from '@/utils/file_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { execSync } from 'child_process';
 
 import { BuilderOptions } from './builder-options.js';

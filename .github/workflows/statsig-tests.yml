@@ -68,3 +68,16 @@ jobs:
           if-no-files-found: error
           path: |
             /tmp/test_all_gate_checks_perf.json
+
+  perf-report:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/common-setup
+
+      - name: Perf Report
+        shell: bash
+        run: ./tore perf-report \
+          --should-persist ${{ github.event_name == 'release' || github.ref_name == 'main' }} \
+          --workflow-run-id ${{ github.run_id }}

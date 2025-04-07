@@ -7,7 +7,7 @@ import {
   getReleaseByVersion,
 } from '@/utils/octokit_utils.js';
 import { SemVer } from '@/utils/semver.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { Octokit } from 'octokit';
 
 export async function getRelease(
@@ -44,7 +44,7 @@ export async function getStatsigLibAssets(
   if (error || !assets) {
     Log.stepEnd('Error getting assets', 'failure');
     console.error(
-      error instanceof Error ? error.message : error ?? 'Unknown error',
+      error instanceof Error ? error.message : (error ?? 'Unknown error'),
     );
     process.exit(1);
   }

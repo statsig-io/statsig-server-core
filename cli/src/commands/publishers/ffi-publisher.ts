@@ -9,7 +9,7 @@ import {
   getOctokit,
   uploadReleaseAsset,
 } from '@/utils/octokit_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';

@@ -4,7 +4,7 @@ import {
   createEmptyRepository,
 } from '@/utils/git_utils.js';
 import { getBranchByVersion, getOctokit } from '@/utils/octokit_utils.js';
-import { Log } from '@/utils/teminal_utils.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
 
 import { CommandBase } from './command_base.js';
@@ -62,7 +62,7 @@ export class GhPushPhp extends CommandBase {
 
     if (error || !success) {
       const errMessage =
-        error instanceof Error ? error.message : error ?? 'Unknown Error';
+        error instanceof Error ? error.message : (error ?? 'Unknown Error');
 
       Log.stepEnd(`Failed to commit changes: ${errMessage}`, 'failure');
       process.exit(1);
