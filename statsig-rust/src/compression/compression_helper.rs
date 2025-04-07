@@ -1,4 +1,5 @@
 use crate::StatsigErr;
+#[cfg(not(feature = "with_zstd"))]
 use std::io::Write;
 
 #[cfg(feature = "with_zstd")]
@@ -13,16 +14,7 @@ pub fn get_compression_format() -> String {
 
 #[cfg(feature = "with_zstd")]
 pub fn compress_data(data: &[u8]) -> Result<Vec<u8>, StatsigErr> {
-    let mut compressed = Vec::new();
-    let mut encoder = zstd::Encoder::new(&mut compressed, 12)
-        .map_err(|e| StatsigErr::ZstdError(e.to_string()))?;
-    encoder
-        .write_all(data)
-        .map_err(|e| StatsigErr::ZstdError(e.to_string()))?;
-    encoder
-        .finish()
-        .map_err(|e| StatsigErr::ZstdError(e.to_string()))?;
-    Ok(compressed)
+    zstd::bulk::compress(data, 12).map_err(|e| StatsigErr::ZstdError(e.to_string()))
 }
 
 #[cfg(not(feature = "with_zstd"))]
