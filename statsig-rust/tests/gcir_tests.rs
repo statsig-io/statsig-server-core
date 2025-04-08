@@ -250,6 +250,7 @@ async fn test_layer_with_many_params() {
                 "another_bool": true,
                 "another_number": 0
             },
+            "id_type": "userID",
             "rule_id": "default",
             "group": "default",
             "is_device_based": false,
@@ -277,6 +278,7 @@ async fn test_layer_with_no_exp() {
             "value": {
                 "a_param": "foo"
             },
+            "id_type": "userID",
             "rule_id": "default",
             "group": "default",
             "is_device_based": false,

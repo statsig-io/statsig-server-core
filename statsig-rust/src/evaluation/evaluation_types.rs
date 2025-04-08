@@ -149,7 +149,6 @@ pub struct LayerEvaluation {
 
     pub value: HashMap<String, Value>,
 
-    #[serde(skip_serializing)]
     pub id_type: String,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.

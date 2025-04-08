@@ -8,6 +8,7 @@ class Layer extends BaseEvaluation
 {
     public ?string $groupName;
     public ?string $allocatedExperimentName;
+    public string $idType;
     private array $__value;
     private string $__statsig_ref;
 
@@ -19,6 +20,7 @@ class Layer extends BaseEvaluation
         $this->__value = $result['__value'] ?? [];
         $this->groupName = $result['group_name'] ?? null;
         $this->allocatedExperimentName = $result['allocated_experiment_name'] ?? null;
+        $this->idType = $result['id_type'] ?? '';
     }
 
     public function get(string $param_name, $fallback)
