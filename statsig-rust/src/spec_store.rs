@@ -1,3 +1,4 @@
+use crate::compression::zstd_decompression_dict::DictionaryDecoder;
 use crate::data_store_interface::{get_data_adapter_dcs_key, DataStoreTrait};
 use crate::global_configs::GlobalConfigs;
 use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
@@ -19,7 +20,7 @@ pub struct SpecStoreData {
     pub source: SpecsSource,
     pub time_received_at: Option<u64>,
     pub values: SpecsResponseFull,
-
+    pub decompression_dict: Option<DictionaryDecoder>,
     pub id_lists: HashMap<String, IdList>,
 }
 
@@ -125,6 +126,7 @@ impl SpecStore {
                 values: SpecsResponseFull::blank(),
                 time_received_at: None,
                 source: SpecsSource::Uninitialized,
+                decompression_dict: None,
                 id_lists: HashMap::new(),
             })),
             data_store,

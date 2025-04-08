@@ -89,11 +89,11 @@ pub struct DecodedSpecsResponse {
 }
 
 impl DecodedSpecsResponse {
-    pub fn from_str(
-        response_str: &str,
+    pub fn from_slice(
+        response_slice: &[u8],
         decompression_dict: Option<&DictionaryDecoder>,
     ) -> Result<DecodedSpecsResponse, StatsigErr> {
-        serde_json::from_str::<CompressedSpecsResponse>(response_str)
+        serde_json::from_slice::<CompressedSpecsResponse>(response_slice)
             .map_err(|e| {
                 StatsigErr::JsonParseError("CompressedSpecsResponse".to_string(), e.to_string())
             })
