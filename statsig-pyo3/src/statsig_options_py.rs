@@ -30,6 +30,8 @@ pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub event_logging_max_queue_size: Option<u32>,
     #[pyo3(get, set)]
+    pub event_logging_max_pending_batch_queue_size: Option<u32>,
+    #[pyo3(get, set)]
     pub enable_id_lists: Option<bool>,
     #[pyo3(get, set)]
     pub enable_user_agent_parsing: Option<bool>,
@@ -66,6 +68,7 @@ impl StatsigOptionsPy {
         disable_network=None,
         event_logging_flush_interval_ms=None,
         event_logging_max_queue_size=None,
+        event_logging_max_pending_batch_queue_size=None,
         enable_id_lists=None,
         enable_user_agent_parsing=None,
         enable_country_lookup=None,
@@ -88,6 +91,7 @@ impl StatsigOptionsPy {
         disable_network: Option<bool>,
         event_logging_flush_interval_ms: Option<u32>,
         event_logging_max_queue_size: Option<u32>,
+        event_logging_max_pending_batch_queue_size: Option<u32>,
         enable_id_lists: Option<bool>,
         enable_user_agent_parsing: Option<bool>,
         enable_country_lookup: Option<bool>,
@@ -108,6 +112,7 @@ impl StatsigOptionsPy {
             disable_all_logging,
             event_logging_flush_interval_ms,
             event_logging_max_queue_size,
+            event_logging_max_pending_batch_queue_size,
             enable_id_lists,
             enable_user_agent_parsing,
             enable_country_lookup,
@@ -160,6 +165,7 @@ fn create_inner_statsig_options(
         event_logging_adapter: None,
         event_logging_flush_interval_ms: opts.event_logging_flush_interval_ms,
         event_logging_max_queue_size: opts.event_logging_max_queue_size,
+        event_logging_max_pending_batch_queue_size: opts.event_logging_max_pending_batch_queue_size,
         enable_id_lists: opts.enable_id_lists,
         id_lists_url: opts.id_lists_url.clone(),
         id_lists_sync_interval_ms: opts.id_lists_sync_interval_ms,

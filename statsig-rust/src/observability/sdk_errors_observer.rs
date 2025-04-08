@@ -15,6 +15,16 @@ use super::ops_stats::OpsStatsEvent;
 
 static SDK_EXCEPTION_ENDPOINT: &str = "https://statsigapi.net/v1/sdk_exception";
 
+#[cfg(not(feature = "testing"))]
+fn get_sdk_exception_endpoint() -> String {
+    SDK_EXCEPTION_ENDPOINT.to_string()
+}
+
+#[cfg(feature = "testing")]
+fn get_sdk_exception_endpoint() -> String {
+    std::env::var("STATSIG_SDK_EXCEPTION_URL").unwrap_or(SDK_EXCEPTION_ENDPOINT.to_string())
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ErrorBoundaryEvent {
@@ -32,20 +42,20 @@ pub struct SDKErrorsObserver {
     errors_aggregator: RwLock<HashMap<String, u32>>,
     network_client: NetworkClient,
     statsig_options_logging_copy: String,
+    sdk_exception_url: String,
 }
 
 impl SDKErrorsObserver {
     pub fn new(sdk_key: &str, options: &StatsigOptions) -> Self {
+        let mut headers = StatsigMetadata::get_constant_request_headers(sdk_key);
+        headers.insert("Content-Type".to_string(), "application/json".to_string());
         let options_logging_copy = serde_json::to_string(options).unwrap_or_default();
         SDKErrorsObserver {
-            network_client: NetworkClient::new(
-                sdk_key,
-                Some(StatsigMetadata::get_constant_request_headers(sdk_key)),
-                options.disable_network,
-            )
-            .mute_network_error_log(),
+            network_client: NetworkClient::new(sdk_key, Some(headers), options.disable_network)
+                .mute_network_error_log(),
             errors_aggregator: RwLock::new(HashMap::new()),
             statsig_options_logging_copy: options_logging_copy,
+            sdk_exception_url: get_sdk_exception_endpoint(),
         }
     }
 
@@ -70,7 +80,7 @@ impl SDKErrorsObserver {
         }
         let body = serde_json::to_string_pretty(&body_obj).unwrap_or_default();
         let request_args = RequestArgs {
-            url: SDK_EXCEPTION_ENDPOINT.to_owned(),
+            url: self.sdk_exception_url.clone(),
             retries: 0,
             ..RequestArgs::new()
         };

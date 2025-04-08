@@ -44,4 +44,5 @@ more-asserts = "0.3.1"
 default = ["reqwest"]
 custom_network_provider = []
 with_grpc = ["sigstat-grpc"]
+testing = []
 with_zstd = []

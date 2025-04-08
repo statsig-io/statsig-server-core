@@ -29,6 +29,7 @@ pub struct StatsigOptions {
     pub event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,
     pub event_logging_flush_interval_ms: Option<u32>,
     pub event_logging_max_queue_size: Option<u32>,
+    pub event_logging_max_pending_batch_queue_size: Option<u32>,
 
     pub fallback_to_statsig_api: Option<bool>,
 
@@ -118,6 +119,9 @@ impl StatsigOptionsBuilder {
     }
 
     #[must_use]
+    #[deprecated(
+        note = "This field is deprecated in favor of smart log event. It is no longer consumed and can be removed safely."
+    )]
     pub fn event_logging_flush_interval_ms(
         mut self,
         event_logging_flush_interval_ms: Option<u32>,
@@ -132,6 +136,16 @@ impl StatsigOptionsBuilder {
         event_logging_max_queue_size: Option<u32>,
     ) -> Self {
         self.inner.event_logging_max_queue_size = event_logging_max_queue_size;
+        self
+    }
+
+    #[must_use]
+    pub fn event_logging_max_pending_batch_queue_size(
+        mut self,
+        event_logging_max_pending_batch_queue_size: Option<u32>,
+    ) -> Self {
+        self.inner.event_logging_max_pending_batch_queue_size =
+            event_logging_max_pending_batch_queue_size;
         self
     }
 

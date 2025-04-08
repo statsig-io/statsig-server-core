@@ -428,12 +428,6 @@ impl Statsig {
     }
 
     pub async fn shutdown_with_timeout(&self, timeout: Duration) -> Result<(), StatsigErr> {
-        log_d!(
-            TAG,
-            "Shutting down Statsig with timeout {}ms",
-            timeout.as_millis()
-        );
-
         let start = Instant::now();
         let final_result = self.__shutdown_internal(timeout).await;
         self.finalize_shutdown(timeout.saturating_sub(start.elapsed()));
@@ -664,7 +658,7 @@ impl Statsig {
     }
 
     pub async fn flush_events(&self) {
-        self.event_logger.flush_blocking().await;
+        self.event_logger.flush_all_blocking().await;
     }
 
     pub fn get_client_init_response(&self, user: &StatsigUser) -> InitializeResponse {
@@ -1018,8 +1012,6 @@ impl Statsig {
         gate_name: &str,
         options: FeatureGateEvaluationOptions,
     ) -> FeatureGate {
-        log_d!(TAG, "Get Feature Gate {}", gate_name);
-
         let user_internal = self.internalize_user(user);
 
         let disable_exposure_logging = options.disable_exposure_logging;
@@ -1915,7 +1907,7 @@ mod tests {
         )
         .await;
 
-        assert!(success == true);
+        assert!(success);
 
         Statsig::start_background_tasks(
             logger.clone(),

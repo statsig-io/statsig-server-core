@@ -43,8 +43,8 @@ const TEST_COMMANDS: Record<string, string> = {
   ].join(' && '),
 
   rust: [
-    'cargo nextest run -p statsig-rust --retries=5',
-    'cargo nextest run -p statsig-rust --features with_zstd --retries=5',
+    'cargo nextest run -p statsig-rust --features testing --retries=5',
+    'cargo nextest run -p statsig-rust --features "with_zstd,testing" --retries=5',
   ].join(' && '),
 };
 

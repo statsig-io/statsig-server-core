@@ -3,7 +3,7 @@ use jni::objects::{JClass, JString};
 use jni::sys::{jboolean, jint, jlong, jstring};
 use jni::JNIEnv;
 use statsig_rust::InstanceRegistry;
-use statsig_rust::{log_d, log_e, statsig_options::StatsigOptionsBuilder};
+use statsig_rust::{log_d, log_e, log_w, statsig_options::StatsigOptionsBuilder};
 
 const TAG: &str = "StatsigOptionsJNI";
 
@@ -49,10 +49,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         None
     };
 
-    let event_logging_flush_interval_ms = if event_logging_flush_interval_ms > 0 {
-        Some(event_logging_flush_interval_ms as u32)
-    } else {
-        None
+    if event_logging_flush_interval_ms > 0 {
+        log_w!(TAG, "Warning: `event_logging_flush_interval_ms` is deprecated in favor of smart log event feature. It will not be used and is safe to remove.");
     };
 
     let event_logging_max_queue_size = if event_logging_max_queue_size > 0 {
@@ -73,7 +71,6 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .specs_url(specs_url)
         .log_event_url(log_event_url)
         .specs_sync_interval_ms(specs_sync_interval_ms)
-        .event_logging_flush_interval_ms(event_logging_flush_interval_ms)
         .event_logging_max_queue_size(event_logging_max_queue_size)
         .environment(environment)
         .id_lists_url(id_lists_url)

@@ -44,6 +44,7 @@ mod tests {
         let request = LogEventRequest {
             payload,
             event_count: 1,
+            retries: 0,
         };
 
         let serialized = serde_json::to_string(&request).unwrap();
@@ -72,7 +73,7 @@ mod tests {
 
     #[test]
     fn test_json_deserialization() {
-        let request_json = r#"{"payload":{"events":[{"eventName":"my_custom_event","metadata":null,"secondaryExposures":null,"time":1730831508904,"user":{"statsigEnvironment":null,"userID":"a-user"},"value":null}],"statsigMetadata":{"sdkType":"statsig-server-core","sdkVersion":"0.0.1","sessionId":"1ff863ed-a9ab-4785-bb0e-1a7b0140c040"}},"eventCount":1}"#;
+        let request_json = r#"{"payload":{"events":[{"eventName":"my_custom_event","metadata":null,"secondaryExposures":null,"time":1730831508904,"user":{"statsigEnvironment":null,"userID":"a-user"},"value":null}],"statsigMetadata":{"sdkType":"statsig-server-core","sdkVersion":"0.0.1","sessionId":"1ff863ed-a9ab-4785-bb0e-1a7b0140c040"}},"eventCount":1,"retries":0}"#;
         let request: LogEventRequest = serde_json::from_str(request_json).unwrap();
         assert_eq!(request.event_count, 1);
     }

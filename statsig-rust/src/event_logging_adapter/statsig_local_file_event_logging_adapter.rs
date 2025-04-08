@@ -66,6 +66,7 @@ impl StatsigLocalFileEventLoggingAdapter {
                     events: json!(chunk),
                     statsig_metadata: StatsigMetadata::get_as_json(),
                 },
+                retries: 0,
             };
 
             let result = self.http_adapter.send_events_over_http(&request).await;

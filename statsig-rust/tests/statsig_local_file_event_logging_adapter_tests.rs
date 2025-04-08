@@ -63,6 +63,7 @@ async fn test_writing_to_file() {
                 statsig_metadata: json!("{}"),
             },
             event_count: 1,
+            retries: 0,
         })
         .await
         .unwrap();
@@ -94,6 +95,7 @@ async fn test_combining_requests() {
         .log_events(LogEventRequest {
             payload: payload.clone(),
             event_count: 1,
+            retries: 0,
         })
         .await
         .unwrap();
@@ -102,6 +104,7 @@ async fn test_combining_requests() {
         .log_events(LogEventRequest {
             payload: payload.clone(),
             event_count: 1,
+            retries: 0,
         })
         .await
         .unwrap();
@@ -138,6 +141,7 @@ async fn test_combining_requests() {
         .log_events(LogEventRequest {
             payload: payload.clone(),
             event_count: 1,
+            retries: 0,
         })
         .await
         .unwrap();
@@ -146,6 +150,7 @@ async fn test_combining_requests() {
         .log_events(LogEventRequest {
             payload: payload.clone(),
             event_count: 1,
+            retries: 0,
         })
         .await
         .unwrap();
@@ -181,6 +186,7 @@ async fn test_combining_limits() {
             .log_events(LogEventRequest {
                 payload: payload.clone(),
                 event_count: 2,
+                retries: 0,
             })
             .await
             .unwrap();
@@ -208,6 +214,7 @@ async fn test_sending_events_over_network() {
                 statsig_metadata: json!("{}"),
             },
             event_count: 1,
+            retries: 0,
         })
         .await
         .unwrap();
@@ -255,6 +262,7 @@ async fn test_exposure_dedupe() {
                     statsig_metadata: json!("{}"),
                 },
                 event_count: 1,
+                retries: 0,
             })
             .await
             .unwrap();
@@ -290,6 +298,7 @@ async fn test_concurrent_usage() {
                         statsig_metadata: json!("{}"),
                     },
                     event_count: 1,
+                    retries: 0,
                 })
                 .await
                 .unwrap();

@@ -85,7 +85,6 @@ impl StatsigHttpEventLoggingAdapter {
             .post(
                 RequestArgs {
                     url: self.log_event_url.clone(),
-                    retries: 3,
                     headers: Some(headers),
                     accept_gzip_response: true,
                     ..RequestArgs::new()
@@ -134,7 +133,7 @@ impl EventLoggingAdapter for StatsigHttpEventLoggingAdapter {
                 });
                 Err(e)
             }
-        }
+        } //TODO: this should log error only if not retryable or retry limit reached
     }
 
     async fn shutdown(&self) -> Result<(), StatsigErr> {
@@ -162,6 +161,7 @@ async fn test_event_logging() {
     let request = LogEventRequest {
         payload,
         event_count: 1,
+        retries: 0,
     };
 
     let result = adapter.log_events(request).await;

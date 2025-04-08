@@ -11,11 +11,12 @@ pub struct LogEventPayload {
     pub statsig_metadata: Value,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct LogEventRequest {
     pub payload: LogEventPayload,
     pub event_count: u64,
+    pub retries: u32,
 }
 
 impl LogEventRequest {

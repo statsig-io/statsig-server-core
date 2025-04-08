@@ -2,7 +2,13 @@ mod utils;
 
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use statsig_rust::{output_logger::LogLevel, Statsig, StatsigOptions, StatsigUser};
-use std::{fs, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    fs,
+    path::PathBuf,
+    sync::Arc,
+    time::{Duration, Instant},
+};
+use tokio::time::sleep;
 use utils::{
     helpers::assert_eventually,
     mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi},
@@ -78,9 +84,10 @@ async fn test_background_flushing() {
 }
 
 #[tokio::test]
-async fn test_limit_flush_awaiting() {
+async fn flush_limit_batching_awaiting() {
+    std::env::set_var("BATCHING_INTERVAL", "10");
     let (scrapi, statsig) = setup(
-        100,
+        0,
         StatsigOptions {
             specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
                 "tests/data/eval_proj_dcs.json",
@@ -100,23 +107,114 @@ async fn test_limit_flush_awaiting() {
         statsig.log_event(&user, "my_event", None, None);
     }
 
-    // let the requests start before resetting the mock
-    tokio::time::sleep(Duration::from_millis(10)).await;
+    // let some batch through
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    let flushed_logs = scrapi.get_logged_event_count();
+    assert!(flushed_logs > 0 && flushed_logs < 100);
 
-    scrapi.reset().await;
-    scrapi
-        .stub(EndpointStub {
-            method: Method::POST,
-            response: "{\"success\": true}".to_string(),
-            delay_ms: 0,
-            ..EndpointStub::with_endpoint(Endpoint::LogEvent)
-        })
-        .await;
-
-    let user = StatsigUser::with_user_id("final_user".to_string());
-    statsig.log_event(&user, "final_event", None, None);
-    statsig.flush_events().await;
+    statsig.shutdown().await.unwrap();
 
     let flushed_logs = scrapi.get_logged_event_count();
-    assert_eq!(102, flushed_logs);
+    assert_eq!(100, flushed_logs);
+    std::env::remove_var("BATCHING_INTERVAL");
+}
+
+#[tokio::test]
+async fn test_limit_batching_shutdown() {
+    let (scrapi, statsig) = setup(
+        0,
+        StatsigOptions {
+            specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
+                "tests/data/eval_proj_dcs.json",
+            ))),
+            output_log_level: Some(LogLevel::Debug),
+            ..StatsigOptions::new()
+        },
+        "key-2".to_string(),
+    )
+    .await;
+
+    statsig.initialize().await.unwrap();
+
+    for i in 0..9999 {
+        let user = StatsigUser::with_user_id(format!("user_{i}"));
+        statsig.log_event(&user, "my_event", None, None);
+    }
+
+    sleep(Duration::from_millis(100)).await; // wait for diagnostics
+
+    statsig.shutdown().await.unwrap();
+
+    let requests = scrapi.get_requests_for_endpoint(Endpoint::LogEvent);
+    assert_eq!(10, requests.len());
+    let event_count = scrapi.get_logged_event_count();
+    assert_eq!(10000, event_count);
+}
+
+#[tokio::test]
+async fn test_dropping_events() {
+    let (scrapi, statsig) = setup(
+        0,
+        StatsigOptions {
+            specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
+                "tests/data/eval_proj_dcs.json",
+            ))),
+            output_log_level: Some(LogLevel::Debug),
+            ..StatsigOptions::new()
+        },
+        "key-2".to_string(),
+    )
+    .await;
+
+    statsig.initialize().await.unwrap();
+
+    for i in 0..10999 {
+        // 11 batches
+        let user = StatsigUser::with_user_id(format!("user_{i}"));
+        statsig.log_event(&user, "my_event", None, None);
+    }
+
+    sleep(Duration::from_millis(100)).await; // wait for diagnostics
+
+    statsig.shutdown().await.unwrap();
+
+    let requests = scrapi.get_requests_for_endpoint(Endpoint::LogEvent);
+    assert_eq!(10, requests.len());
+    let event_count = scrapi.get_logged_event_count();
+    assert_eq!(10000, event_count);
+}
+
+#[tokio::test]
+async fn test_batch_when_full_but_no_immediate_flush() {
+    let (scrapi, statsig) = setup(
+        0,
+        StatsigOptions {
+            specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
+                "tests/data/eval_proj_dcs.json",
+            ))),
+            output_log_level: Some(LogLevel::Debug),
+            ..StatsigOptions::new()
+        },
+        "key-2".to_string(),
+    )
+    .await;
+
+    statsig.initialize().await.unwrap();
+
+    for i in 0..999 {
+        let user = StatsigUser::with_user_id(format!("user_{i}"));
+        statsig.log_event(&user, "my_event", None, None);
+    }
+
+    let requests = scrapi.get_requests_for_endpoint(Endpoint::LogEvent);
+    assert_eq!(0, requests.len());
+
+    assert_eventually_eq!(
+        || scrapi.get_requests_for_endpoint(Endpoint::LogEvent).len(),
+        1,
+        Duration::from_millis(200)
+    )
+    .await;
+
+    statsig.shutdown().await.unwrap();
 }
