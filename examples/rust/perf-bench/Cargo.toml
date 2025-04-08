@@ -1,0 +1,21 @@
+[package]
+name = "perf-bench"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1.81"
+statsig-rust = { path = "../../../statsig-rust" }
+tokio = "1.39.1"
+
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[lib]
+bench = false
+
+
+[[bench]]
+name = "gate_check_benchmark"
+harness = false
