@@ -1,4 +1,4 @@
-use jni::objects::{JObject, JString};
+use jni::objects::{JObject, JString, JValue};
 use jni::sys::{jboolean, jstring};
 use jni::JNIEnv;
 use statsig_rust::{
@@ -194,6 +194,7 @@ pub fn jboolean_to_bool(input: jboolean) -> Option<bool> {
     }
 }
 
+/// Converts a a Java `java.util.HashMap<String, String>` into Rust `HashMap<String, String>`
 pub fn jni_to_rust_hashmap(
     mut env: JNIEnv,
     jmap: JObject,
@@ -262,4 +263,28 @@ pub fn jni_to_rust_hashmap(
         rust_map.insert(key_str, value_str);
     }
     Ok(rust_map)
+}
+
+/// Put Content of Rust `HashMap<String, String>` into a Java `java.util.HashMap<String, String>`
+/// This is better than returning a `JObject` because it avoids unnecessary object creation and reference management in the JNI layer, reducing overhead and potential memory leaks.
+pub fn put_all_into_java_map(
+    env: &mut JNIEnv,
+    jmap: &JObject,
+    map: &HashMap<String, String>,
+) -> jni::errors::Result<()> {
+    for (key, value) in map.iter() {
+        let j_key = env.new_string(key)?;
+        let j_value = env.new_string(value)?;
+
+        env.call_method(
+            jmap,
+            "put",
+            "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+            &[
+                JValue::Object(&JObject::from(j_key)),
+                JValue::Object(&JObject::from(j_value)),
+            ],
+        )?;
+    }
+    Ok(())
 }

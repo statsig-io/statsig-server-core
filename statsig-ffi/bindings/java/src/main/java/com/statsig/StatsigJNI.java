@@ -142,6 +142,7 @@ class StatsigJNI {
             String environment,
             long outputLoggerLevel,
             String serviceName,
+            ObservabilityClient observabilityClient,
             boolean enableIDLists,
             boolean enableCountryLookup,
             boolean disableAllLogging,

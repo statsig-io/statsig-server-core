@@ -1,11 +1,18 @@
 use crate::jni::jni_utils::{jboolean_to_bool, jstring_to_string, string_to_jstring};
-use jni::objects::{JClass, JString};
+use crate::jni::statsig_observability_client_jni::convert_to_ob_rust;
+use jni::objects::{JClass, JObject, JString};
 use jni::sys::{jboolean, jint, jlong, jstring};
 use jni::JNIEnv;
-use statsig_rust::InstanceRegistry;
 use statsig_rust::{log_d, log_e, log_w, statsig_options::StatsigOptionsBuilder};
+use statsig_rust::{InstanceRegistry, ObservabilityClient, StatsigOptions};
+use std::sync::Arc;
 
 const TAG: &str = "StatsigOptionsJNI";
+
+pub struct StatsigOptionsJNI {
+    pub inner: Arc<StatsigOptions>,
+    pub _strong_obs_client: Option<Arc<dyn ObservabilityClient>>,
+}
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
@@ -22,6 +29,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     environment: JString,
     output_logger_level: jint,
     service_name: JString,
+    observability_client: JObject,
     enable_id_lists: jboolean,
     enable_country_lookup: jboolean,
     disable_all_logging: jboolean,
@@ -65,6 +73,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         None
     };
 
+    let (strong_ob, weak_ob) = convert_to_ob_rust(&env, observability_client);
+
     let mut builder = StatsigOptionsBuilder::new();
 
     builder = builder
@@ -75,6 +85,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .environment(environment)
         .id_lists_url(id_lists_url)
         .id_lists_sync_interval_ms(id_lists_sync_interval_ms)
+        .observability_client(weak_ob)
         .enable_id_lists(enable_id_lists)
         .disable_all_logging(disable_all_logging)
         .output_log_level(Some(output_logger_level as u32))
@@ -84,7 +95,13 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .init_timeout_ms(init_timeout_ms_option);
 
     let options = builder.build();
-    let id = InstanceRegistry::register(options);
+
+    let options_jni = StatsigOptionsJNI {
+        inner: Arc::new(options),
+        _strong_obs_client: strong_ob,
+    };
+
+    let id = InstanceRegistry::register(options_jni);
     match id {
         Some(id) => {
             log_d!(TAG, "Created StatsigOptions with ID {}", id);

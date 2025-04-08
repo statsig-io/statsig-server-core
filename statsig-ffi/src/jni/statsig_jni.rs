@@ -14,8 +14,9 @@ use std::time::Duration;
 
 use super::jni_utils::serialize_json_to_jstring;
 use crate::jni::jni_utils::{jni_to_rust_hashmap, string_to_jstring};
+use crate::jni::statsig_options_jni::StatsigOptionsJNI;
 use jni::objects::{JClass, JObject, JString};
-use statsig_rust::{log_e, InstanceRegistry, Statsig, StatsigOptions, StatsigRuntime, StatsigUser};
+use statsig_rust::{log_e, InstanceRegistry, Statsig, StatsigRuntime, StatsigUser};
 
 const TAG: &str = "StatsigJNI";
 
@@ -36,10 +37,10 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
 
     let options_inst_id = jstring_to_string(&mut env, options_ref);
 
-    let options =
-        InstanceRegistry::get_with_optional_id::<StatsigOptions>(options_inst_id.as_ref());
+    let options_jni =
+        InstanceRegistry::get_with_optional_id::<StatsigOptionsJNI>(options_inst_id.as_ref());
 
-    let inst = Statsig::new(&sdk_key, options);
+    let inst = Statsig::new(&sdk_key, options_jni.map(|o| o.inner.clone()));
     update_statsig_metadata(&mut env, statsig_metadata);
 
     let id = InstanceRegistry::register(inst);

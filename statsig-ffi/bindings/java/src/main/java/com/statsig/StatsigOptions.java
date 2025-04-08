@@ -16,6 +16,7 @@ public class StatsigOptions {
                 builder.environment,
                 builder.outputLoggerLevel.getValue(),
                 builder.serviceName,
+                builder.observabilityClient,
                 builder.enableIDLists,
                 builder.enableCountryLookup,
                 builder.disableAllLogging,
@@ -43,6 +44,7 @@ public class StatsigOptions {
         private long eventLoggingMaxQueueSize;
         private long initTimeoutMs;
         private String environment;
+        private ObservabilityClient observabilityClient;
         private boolean enableIDLists = false;
         private boolean enableUserAgentParsing = false;
         private boolean enableCountryLookup = false;
@@ -93,6 +95,11 @@ public class StatsigOptions {
 
         public Builder setDisableAllLogging(boolean disableAllLogging) {
             this.disableAllLogging = disableAllLogging;
+            return this;
+        }
+        
+        public Builder setObservabilityClient(ObservabilityClient observabilityClient) {
+            this.observabilityClient = observabilityClient;
             return this;
         }
 
