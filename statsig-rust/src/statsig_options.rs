@@ -222,6 +222,12 @@ impl StatsigOptionsBuilder {
     }
 
     #[must_use]
+    pub fn init_timeout_ms(mut self, init_timeout_ms: Option<u64>) -> Self {
+        self.inner.init_timeout_ms = init_timeout_ms;
+        self
+    }
+
+    #[must_use]
     pub fn build(self) -> StatsigOptions {
         self.inner
     }

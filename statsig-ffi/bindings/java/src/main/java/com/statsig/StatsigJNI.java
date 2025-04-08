@@ -144,7 +144,8 @@ class StatsigJNI {
             boolean enableIDLists,
             boolean enableCountryLookup,
             boolean disableAllLogging,
-            boolean enableUserAgentParsing);
+            boolean enableUserAgentParsing,
+            long initTimeoutMs);
 
     public static native void statsigOptionsRelease(String optionsRef);
 

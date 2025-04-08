@@ -18,7 +18,8 @@ public class StatsigOptions {
                 builder.enableIDLists,
                 builder.enableCountryLookup,
                 builder.disableAllLogging,
-                builder.enableUserAgentParsing);
+                builder.enableUserAgentParsing,
+                builder.initTimeoutMs);
 
         ResourceCleaner.register(this, () -> {
             if (ref != null) {
@@ -40,6 +41,7 @@ public class StatsigOptions {
         private long specsSyncIntervalMs;
         private long eventLoggingFlushIntervalMs;
         private long eventLoggingMaxQueueSize;
+        private long initTimeoutMs;
         private String environment;
         private boolean enableIDLists = false;
         private boolean enableUserAgentParsing = false;
@@ -76,6 +78,11 @@ public class StatsigOptions {
 
         public Builder setEventLoggingMaxQueueSize(long eventLoggingMaxQueueSize) {
             this.eventLoggingMaxQueueSize = eventLoggingMaxQueueSize;
+            return this;
+        }
+
+        public Builder setInitTimeoutMs(long initTimeoutMs) {
+            this.initTimeoutMs = initTimeoutMs;
             return this;
         }
 

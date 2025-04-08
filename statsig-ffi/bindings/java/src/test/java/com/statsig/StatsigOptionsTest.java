@@ -76,4 +76,52 @@ public class StatsigOptionsTest {
                 .setServiceName("")
                 .build();
     }
+
+    @Test
+    void testInitTimeoutMs() {
+        StatsigOptions options1 = new StatsigOptions.Builder()
+                .setInitTimeoutMs(5000L)
+                .build();
+
+        StatsigOptions options2 = new StatsigOptions.Builder()
+                .setInitTimeoutMs(0L)
+                .build();
+
+        StatsigOptions options3 = new StatsigOptions.Builder()
+                .setInitTimeoutMs(-1000L)
+                .build();
+    }
+    
+    @Test
+    void testInitTimeoutMsWithOtherOptions() {
+        StatsigOptions options = new StatsigOptions.Builder()
+                .setSpecsUrl("https://example.com/specs")
+                .setLogEventUrl("https://example.com/log")
+                .setInitTimeoutMs(4000L)
+                .setSpecsSyncIntervalMs(1000L)
+                .setEventLoggingFlushIntervalMs(2000L)
+                .setEnvironment("staging")
+                .build();
+    }
+    
+    @Test
+    void testInitTimeoutMsInAllValuesBuilder() {
+        StatsigOptions options = new StatsigOptions.Builder()
+                .setSpecsUrl("https://example.com/specs")
+                .setLogEventUrl("https://example.com/log")
+                .setIdListsUrl("https://example.com/idlists")
+                .setIdListsSyncIntervalMs(3000L)
+                .setSpecsSyncIntervalMs(1000L)
+                .setEventLoggingFlushIntervalMs(2000L)
+                .setEventLoggingMaxQueueSize(5000L)
+                .setInitTimeoutMs(6000L)
+                .setEnvironment("staging")
+                .setDisableAllLogging(true)
+                .setEnableIDLists(true)
+                .setEnableUserAgentParsing(true)
+                .setEnableCountryLookup(true)
+                .setServiceName("test_service")
+                .setOutputLoggerLevel(OutputLogger.LogLevel.DEBUG)
+                .build();
+    }
 }
