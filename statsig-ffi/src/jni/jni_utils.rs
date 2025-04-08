@@ -194,7 +194,7 @@ pub fn jboolean_to_bool(input: jboolean) -> Option<bool> {
     }
 }
 
-/// Converts a a Java `java.util.HashMap<String, String>` into Rust `HashMap<String, String>`
+/// Converts a Java `java.util.HashMap<String, String>` into Rust `HashMap<String, String>`
 pub fn jni_to_rust_hashmap(
     mut env: JNIEnv,
     jmap: JObject,
