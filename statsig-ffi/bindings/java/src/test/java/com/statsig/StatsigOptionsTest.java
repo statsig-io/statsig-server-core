@@ -11,20 +11,21 @@ public class StatsigOptionsTest {
     @Test
     void testBuilderSetAllValues() {
         StatsigOptions options = new StatsigOptions.Builder()
+                .setDisableAllLogging(true)
                 .setSpecsUrl("https://example.com/specs")
                 .setLogEventUrl("https://example.com/log")
                 .setIdListsUrl("https://example.com/idlists")
-                .setIdListsSyncIntervalMs(3000L)
                 .setSpecsSyncIntervalMs(1000L)
                 .setEventLoggingFlushIntervalMs(2000L)
                 .setEventLoggingMaxQueueSize(5000L)
                 .setEnvironment("staging")
-                .setDisableAllLogging(true)
                 .setEnableIDLists(true)
                 .setEnableUserAgentParsing(true)
                 .setEnableCountryLookup(true)
+                .setInitTimeoutMs(1000)
                 .setServiceName("test_service")
                 .setOutputLoggerLevel(OutputLogger.LogLevel.DEBUG)
+                .setIdListsSyncIntervalMs(3000L)
                 .build();
     }
 
@@ -114,12 +115,12 @@ public class StatsigOptionsTest {
                 .setSpecsSyncIntervalMs(1000L)
                 .setEventLoggingFlushIntervalMs(2000L)
                 .setEventLoggingMaxQueueSize(5000L)
-                .setInitTimeoutMs(6000L)
                 .setEnvironment("staging")
                 .setDisableAllLogging(true)
                 .setEnableIDLists(true)
                 .setEnableUserAgentParsing(true)
                 .setEnableCountryLookup(true)
+                .setInitTimeoutMs(6000L)
                 .setServiceName("test_service")
                 .setOutputLoggerLevel(OutputLogger.LogLevel.DEBUG)
                 .build();
