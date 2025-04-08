@@ -1,5 +1,6 @@
 use super::dynamic_string::DynamicString;
 use super::evaluator::Evaluator;
+use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator::SpecType;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::get_unit_id::get_unit_id;
@@ -14,6 +15,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 
 lazy_static! {
+    static ref EMPTY_STR: String = String::new();
     static ref NOT_STARTED_RULE: String = "prestart".to_string();
     static ref FAILS_TARGETING: String = "inlineTargetingRules".to_string();
 }
@@ -124,7 +126,6 @@ pub(crate) fn evaluate_cmab(
     }
 
     if !get_passes_targeting(ctx, cmab) {
-        ctx.reset_result();
         ctx.result.id_type = Some(&cmab.id_type.value);
         ctx.result.version = Some(cmab.version);
         ctx.result.is_experiment_active = cmab.enabled;
@@ -134,7 +135,6 @@ pub(crate) fn evaluate_cmab(
         return true;
     }
 
-    ctx.reset_result();
     ctx.result.id_type = Some(&cmab.id_type.value);
     ctx.result.version = Some(cmab.version);
     ctx.result.is_experiment_active = cmab.enabled;
@@ -168,10 +168,29 @@ fn get_passes_targeting<'a>(ctx: &mut EvaluatorContext<'a>, cmab: &'a CMABConfig
         None => return true,
     };
 
-    match Evaluator::evaluate(ctx, targeting_gate_name.as_str(), &SpecType::Gate) {
+    match ctx.prep_for_nested_evaluation() {
+        Ok(_) => {}
+        Err(_) => {
+            ctx.result.bool_value = false;
+            ctx.result.rule_id = Some(&FAILS_TARGETING);
+            return false;
+        }
+    }
+
+    let result = match Evaluator::evaluate(ctx, targeting_gate_name.as_str(), &SpecType::Gate) {
         Ok(_) => ctx.result.bool_value,
         Err(_) => false,
-    }
+    };
+
+    let expo = SecondaryExposure {
+        gate: targeting_gate_name.clone(),
+        gate_value: result.to_string(),
+        rule_id: ctx.result.rule_id.unwrap_or(&EMPTY_STR).clone(),
+    };
+
+    ctx.result.secondary_exposures.push(expo);
+
+    result
 }
 
 fn get_shuffled_groups(cmab: &CMABConfig) -> Vec<&CMABGroup> {
