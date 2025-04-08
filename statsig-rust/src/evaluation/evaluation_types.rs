@@ -131,6 +131,8 @@ pub struct ExperimentEvaluation {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_user_in_experiment: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -146,6 +148,9 @@ pub struct LayerEvaluation {
     pub base: BaseEvaluation,
 
     pub value: HashMap<String, Value>,
+
+    #[serde(skip_serializing)]
+    pub id_type: String,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
     pub group: String,
@@ -163,5 +168,6 @@ pub struct LayerEvaluation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub allocated_experiment_name: Option<String>,
     pub explicit_parameters: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
 }

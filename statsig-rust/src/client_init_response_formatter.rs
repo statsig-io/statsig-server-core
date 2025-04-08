@@ -138,8 +138,9 @@ impl ClientInitResponseFormatter {
                 let evaluation = result_to_dynamic_config_eval(&hashed_name, &mut context.result);
                 dynamic_configs.insert(hashed_name, AnyConfigEvaluation::DynamicConfig(evaluation));
             } else {
-                let evaluation =
+                let mut evaluation =
                     result_to_experiment_eval(&hashed_name, Some(spec), &mut context.result);
+                evaluation.undelegated_secondary_exposures = None;
                 dynamic_configs.insert(hashed_name, AnyConfigEvaluation::Experiment(evaluation));
             }
         }

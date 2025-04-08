@@ -66,6 +66,28 @@ pub fn result_to_experiment_eval(
         explicit_parameters: result.explicit_parameters.cloned(),
         is_experiment_active,
         is_user_in_experiment,
+        undelegated_secondary_exposures: result.undelegated_secondary_exposures.clone(),
+    }
+}
+
+pub fn eval_result_to_experiment_eval(
+    experiment_name: &str,
+    result: &mut EvaluatorResult,
+) -> ExperimentEvaluation {
+    let (id_type, is_device_based) = get_id_type_info(result.id_type);
+
+    ExperimentEvaluation {
+        base: result_to_base_eval(experiment_name, result),
+        id_type,
+        group: result.rule_id.cloned().unwrap_or_default(),
+        is_device_based,
+        value: get_json_value(result),
+        is_in_layer: result.is_in_layer,
+        group_name: result.group_name.cloned(),
+        explicit_parameters: result.explicit_parameters.cloned(),
+        is_experiment_active: Some(result.is_experiment_active),
+        is_user_in_experiment: Some(result.is_experiment_group),
+        undelegated_secondary_exposures: result.undelegated_secondary_exposures.clone(),
     }
 }
 
@@ -101,6 +123,7 @@ pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> L
         allocated_experiment_name,
         explicit_parameters: result.explicit_parameters.cloned().unwrap_or_default(),
         undelegated_secondary_exposures: Some(undelegated_secondary_exposures),
+        id_type: result.id_type.cloned().unwrap_or_default(),
     }
 }
 

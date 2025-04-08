@@ -887,6 +887,7 @@ impl Statsig {
             group_name: None,
             is_experiment_active: Some(true),
             is_user_in_experiment: Some(true),
+            undelegated_secondary_exposures: None,
         };
 
         let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
