@@ -158,6 +158,7 @@ async fn test_core_apis_exposure_logging_disabled() {
         "experiment_with_many_params",
         ExperimentEvaluationOptions {
             disable_exposure_logging: true,
+            user_persisted_values: None,
         },
     );
     let _ = statsig.get_dynamic_config_with_options(

@@ -48,7 +48,6 @@ class MockDataStore(DataStore):
         return should_poll
 
 
-@pytest.mark.asyncio
 def test_data_store_usage_get(httpserver: HTTPServer):
     global should_poll
     should_poll = True

@@ -244,7 +244,7 @@ impl StatsigBasePy {
         options: Option<ExperimentEvaluationOptionsPy>,
         py: Python,
     ) -> ExperimentPy {
-        let mut options_actual = options
+        let options_actual = options
             .as_ref()
             .map_or(ExperimentEvaluationOptions::default(), |o| o.into());
         let experiment = self
@@ -281,7 +281,7 @@ impl StatsigBasePy {
         options: Option<LayerEvaluationOptionsPy>,
         py: Python,
     ) -> LayerPy {
-        let mut options_actual = options
+        let options_actual = options
             .as_ref()
             .map_or(LayerEvaluationOptions::default(), |o| o.into());
         let layer = self

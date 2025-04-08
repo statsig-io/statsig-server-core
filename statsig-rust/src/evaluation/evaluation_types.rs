@@ -148,7 +148,7 @@ pub struct LayerEvaluation {
     pub base: BaseEvaluation,
 
     pub value: HashMap<String, Value>,
-    
+
     #[serde(skip_serializing)]
     pub id_type: String,
 

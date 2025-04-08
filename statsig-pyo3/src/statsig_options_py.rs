@@ -53,7 +53,6 @@ pub struct StatsigOptionsPy {
     pub observability_client: Option<Py<ObservabilityClientBasePy>>,
     #[pyo3(get, set)]
     pub data_store: Option<Py<DataStoreBasePy>>,
-    pub persistent_storage: Option<PyObject>,
 }
 
 #[gen_stub_pymethods]
@@ -126,7 +125,6 @@ impl StatsigOptionsPy {
             observability_client,
             data_store,
             disable_network,
-            persistent_storage: None
         }
     }
 }

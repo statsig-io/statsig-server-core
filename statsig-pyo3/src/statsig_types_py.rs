@@ -7,8 +7,6 @@ use statsig_rust::{
     FeatureGateEvaluationOptions, LayerEvaluationOptions,
 };
 
-const TAG: &str = stringify!(StatsigTypesPy);
-
 #[gen_stub_pyclass]
 #[pyclass(name = "EvaluationDetails")]
 #[derive(Clone)]
