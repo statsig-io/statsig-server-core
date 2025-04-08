@@ -14,7 +14,11 @@ members = [
     "statsig-elixir/native/statsig_elixir",
 ]
 resolver = "2"
-exclude = ["examples/rust/sample-usage", "examples/rust/perf-monitor"]
+exclude = [
+    "examples/rust/sample-usage",
+    "examples/rust/perf-monitor",
+    "examples/rust/perf-bench",
+]
 
 [workspace.package]
 edition = "2021"
