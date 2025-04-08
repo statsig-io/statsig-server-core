@@ -133,6 +133,7 @@ pub fn convert_java_get_experiment_options_to_rust(
 
     disable_exposure_logging.map(|disable_exposure_logging| ExperimentEvaluationOptions {
         disable_exposure_logging,
+        user_persisted_values: None,
     })
 }
 
@@ -154,6 +155,7 @@ pub fn convert_java_get_layer_options_to_rust(
 
     disable_exposure_logging.map(|disable_exposure_logging| LayerEvaluationOptions {
         disable_exposure_logging,
+        user_persisted_values: None,
     })
 }
 

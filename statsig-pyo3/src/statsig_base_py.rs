@@ -244,11 +244,12 @@ impl StatsigBasePy {
         options: Option<ExperimentEvaluationOptionsPy>,
         py: Python,
     ) -> ExperimentPy {
-        let experiment = self.inner.get_experiment_with_options(
-            &user.inner,
-            name,
-            options.map_or(ExperimentEvaluationOptions::default(), |o| o.into()),
-        );
+        let mut options_actual = options
+            .as_ref()
+            .map_or(ExperimentEvaluationOptions::default(), |o| o.into());
+        let experiment = self
+            .inner
+            .get_experiment_with_options(&user.inner, name, options_actual);
 
         ExperimentPy {
             name: experiment.name.clone(),
@@ -280,11 +281,12 @@ impl StatsigBasePy {
         options: Option<LayerEvaluationOptionsPy>,
         py: Python,
     ) -> LayerPy {
-        let layer = self.inner.get_layer_with_options(
-            &user.inner,
-            name,
-            options.map_or(LayerEvaluationOptions::default(), |o| o.into()),
-        );
+        let mut options_actual = options
+            .as_ref()
+            .map_or(LayerEvaluationOptions::default(), |o| o.into());
+        let layer = self
+            .inner
+            .get_layer_with_options(&user.inner, name, options_actual);
 
         LayerPy {
             name: layer.name.clone(),

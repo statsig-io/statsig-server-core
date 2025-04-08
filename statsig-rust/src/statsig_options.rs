@@ -6,6 +6,7 @@ use crate::evaluation::dynamic_value::DynamicValue;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::id_lists_adapter::IdListsAdapter;
 use crate::output_logger::LogLevel;
+use crate::persistent_storage::persistent_storage_trait::PersistentStorage;
 use crate::{
     serialize_if_not_none, ObservabilityClient, OverrideAdapter, SpecAdapterConfig, SpecsAdapter,
 };
@@ -49,6 +50,7 @@ pub struct StatsigOptions {
     pub specs_url: Option<String>,
     pub service_name: Option<String>,
     pub global_custom_fields: Option<HashMap<String, DynamicValue>>,
+    pub persistent_storage: Option<Arc<dyn PersistentStorage>>,
 }
 
 impl StatsigOptions {

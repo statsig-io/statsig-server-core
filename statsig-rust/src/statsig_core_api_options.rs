@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::UserPersistedValues;
+
 pub enum AnyEvaluationOptions {
     FeatureGateEvaluationOptions(FeatureGateEvaluationOptions),
     DynamicConfigEvaluationOptions(DynamicConfigEvaluationOptions),
@@ -24,12 +26,14 @@ pub struct DynamicConfigEvaluationOptions {
 pub struct ExperimentEvaluationOptions {
     #[serde(default)]
     pub disable_exposure_logging: bool,
+    pub user_persisted_values: Option<UserPersistedValues>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct LayerEvaluationOptions {
     #[serde(default)]
     pub disable_exposure_logging: bool,
+    pub user_persisted_values: Option<UserPersistedValues>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, Copy)]
@@ -62,6 +66,7 @@ impl From<ParameterStoreEvaluationOptions> for ExperimentEvaluationOptions {
     fn from(opts: ParameterStoreEvaluationOptions) -> Self {
         ExperimentEvaluationOptions {
             disable_exposure_logging: opts.disable_exposure_logging,
+            user_persisted_values: None,
         }
     }
 }
@@ -70,6 +75,7 @@ impl From<ParameterStoreEvaluationOptions> for LayerEvaluationOptions {
     fn from(opts: ParameterStoreEvaluationOptions) -> Self {
         LayerEvaluationOptions {
             disable_exposure_logging: opts.disable_exposure_logging,
+            user_persisted_values: None,
         }
     }
 }

@@ -53,6 +53,7 @@ pub struct StatsigOptionsPy {
     pub observability_client: Option<Py<ObservabilityClientBasePy>>,
     #[pyo3(get, set)]
     pub data_store: Option<Py<DataStoreBasePy>>,
+    pub persistent_storage: Option<PyObject>,
 }
 
 #[gen_stub_pymethods]
@@ -125,6 +126,7 @@ impl StatsigOptionsPy {
             observability_client,
             data_store,
             disable_network,
+            persistent_storage: None
         }
     }
 }
@@ -186,6 +188,12 @@ fn create_inner_statsig_options(
             .as_ref()
             .map(|dict| py_dict_to_map(dict.bind(py))),
         disable_network: opts.disable_network,
+        persistent_storage: None,
+        // persistent_storage: opts.persistent_storage.as_ref().map(|s| {
+        //     Arc::new(StatsigPersistentStorageOverrideAdapter::new(
+        //         s.clone_ref(py),
+        //     )) as Arc<dyn PersistentStorage>
+        // }),
     }
 }
 

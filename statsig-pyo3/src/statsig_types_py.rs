@@ -1,4 +1,4 @@
-use pyo3::prelude::*;
+use pyo3::{prelude::*, types::PyDict};
 use pyo3_stub_gen::derive::*;
 use serde_json::{json, Map, Value};
 use statsig_rust::{
@@ -6,6 +6,8 @@ use statsig_rust::{
     DynamicConfigEvaluationOptions, EvaluationDetails, ExperimentEvaluationOptions,
     FeatureGateEvaluationOptions, LayerEvaluationOptions,
 };
+
+const TAG: &str = stringify!(StatsigTypesPy);
 
 #[gen_stub_pyclass]
 #[pyclass(name = "EvaluationDetails")]
@@ -186,6 +188,8 @@ pub struct DynamicConfigEvaluationOptionsPy {
 pub struct ExperimentEvaluationOptionsPy {
     #[pyo3(get)]
     pub disable_exposure_logging: bool,
+    #[pyo3(get, set)]
+    pub user_persisted_values: Option<Py<PyDict>>,
 }
 
 #[gen_stub_pyclass]
@@ -194,6 +198,8 @@ pub struct ExperimentEvaluationOptionsPy {
 pub struct LayerEvaluationOptionsPy {
     #[pyo3(get)]
     pub disable_exposure_logging: bool,
+    #[pyo3(get, set)]
+    pub user_persisted_values: Option<Py<PyDict>>,
 }
 
 impl From<FeatureGateEvaluationOptionsPy> for FeatureGateEvaluationOptions {
@@ -212,18 +218,22 @@ impl From<DynamicConfigEvaluationOptionsPy> for DynamicConfigEvaluationOptions {
     }
 }
 
-impl From<ExperimentEvaluationOptionsPy> for ExperimentEvaluationOptions {
-    fn from(val: ExperimentEvaluationOptionsPy) -> ExperimentEvaluationOptions {
+impl From<&ExperimentEvaluationOptionsPy> for ExperimentEvaluationOptions {
+    fn from(val: &ExperimentEvaluationOptionsPy) -> ExperimentEvaluationOptions {
         ExperimentEvaluationOptions {
             disable_exposure_logging: val.disable_exposure_logging,
+            // For performance consideration, conversion to user persisted values use convert_dict_to_user_persisted_values()
+            user_persisted_values: None,
         }
     }
 }
 
-impl From<LayerEvaluationOptionsPy> for LayerEvaluationOptions {
-    fn from(val: LayerEvaluationOptionsPy) -> LayerEvaluationOptions {
+impl From<&LayerEvaluationOptionsPy> for LayerEvaluationOptions {
+    fn from(val: &LayerEvaluationOptionsPy) -> LayerEvaluationOptions {
         LayerEvaluationOptions {
             disable_exposure_logging: val.disable_exposure_logging,
+            // For performance consideration, conversion to user persisted values use convert_dict_to_user_persisted_values()
+            user_persisted_values: None,
         }
     }
 }
@@ -244,7 +254,27 @@ macro_rules! impl_new_method {
     };
 }
 
+macro_rules! impl_new_method_with_persisted_values {
+    ($struct_name:ident) => {
+        #[gen_stub_pymethods]
+        #[pymethods]
+        impl $struct_name {
+            #[new]
+            #[pyo3(signature = (disable_exposure_logging=false, user_persisted_values=None))]
+            pub fn new(
+                disable_exposure_logging: bool,
+                user_persisted_values: Option<Py<PyDict>>,
+            ) -> Self {
+                Self {
+                    disable_exposure_logging,
+                    user_persisted_values,
+                }
+            }
+        }
+    };
+}
+
 impl_new_method!(FeatureGateEvaluationOptionsPy);
 impl_new_method!(DynamicConfigEvaluationOptionsPy);
-impl_new_method!(ExperimentEvaluationOptionsPy);
-impl_new_method!(LayerEvaluationOptionsPy);
+impl_new_method_with_persisted_values!(ExperimentEvaluationOptionsPy);
+impl_new_method_with_persisted_values!(LayerEvaluationOptionsPy);

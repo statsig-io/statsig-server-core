@@ -34,7 +34,7 @@ pub fn make_feature_gate(
     }
 }
 
-fn extract_from_experiment_evaluation(
+pub fn extract_from_experiment_evaluation(
     evaluation: &Option<ExperimentEvaluation>,
 ) -> (HashMap<String, Value>, String, String, Option<String>) {
     match &evaluation {
@@ -106,19 +106,21 @@ pub fn make_layer(
     sampling_processor: Option<Weak<SamplingProcessor>>,
     override_config_name: Option<String>,
 ) -> Layer {
-    let (value, rule_id, group_name, allocated_experiment_name) = match &evaluation {
+    let (value, rule_id, group_name, allocated_experiment_name, id_type) = match &evaluation {
         Some(e) => (
             e.value.clone(),
             e.base.rule_id.clone(),
             e.group_name.clone(),
             e.allocated_experiment_name.clone(),
+            e.id_type.clone(),
         ),
-        None => (HashMap::new(), "default".into(), None, None),
+        None => (HashMap::new(), "default".into(), None, None, "".into()),
     };
 
     Layer {
         name: name.to_string(),
         rule_id,
+        id_type,
         details: details.clone(),
         group_name,
         allocated_experiment_name,

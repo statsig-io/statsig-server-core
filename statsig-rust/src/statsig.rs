@@ -28,6 +28,7 @@ use crate::observability::observability_client_adapter::{MetricType, Observabili
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::{ErrorBoundaryEvent, SDKErrorsObserver};
 use crate::output_logger::initialize_simple_output_logger;
+use crate::persistent_storage::persistent_values_manager::PersistentValuesManager;
 use crate::sdk_diagnostics::diagnostics::{ContextType, Diagnostics};
 use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::spec_store::{SpecStore, SpecStoreData};
@@ -44,10 +45,10 @@ use crate::statsig_types::{
 };
 use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{
-    dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, ObservabilityClient,
-    OpsStatsEventObserver, OverrideAdapter, SamplingProcessor, SpecsAdapter, SpecsInfo,
-    SpecsSource, SpecsUpdateListener, StatsigHttpIdListsAdapter, StatsigLocalOverrideAdapter,
-    StatsigUser,
+    dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter,
+    ObservabilityClient, OpsStatsEventObserver, OverrideAdapter,
+    SamplingProcessor, SpecsAdapter, SpecsInfo, SpecsSource, SpecsUpdateListener,
+    StatsigHttpIdListsAdapter, StatsigLocalOverrideAdapter, StatsigUser,
 };
 use crate::{
     log_error_to_statsig_and_console,
@@ -94,6 +95,7 @@ pub struct Statsig {
     diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
     sampling_processor: Arc<SamplingProcessor>,
     background_tasks_started: Arc<AtomicBool>,
+    persistent_values_manager: Option<Arc<PersistentValuesManager>>,
 }
 
 pub struct StatsigContext {
@@ -185,6 +187,12 @@ impl Statsig {
             sdk_key,
         ));
 
+        let persistent_values_manager = options.persistent_storage.clone().map(|storage| {
+            Arc::new(PersistentValuesManager {
+                persistent_storage: storage,
+            })
+        });
+
         StatsigMetadata::update_service_name(options.service_name.clone());
 
         Statsig {
@@ -209,6 +217,7 @@ impl Statsig {
             sampling_processor,
             diagnostics_observer,
             background_tasks_started: Arc::new(AtomicBool::new(false)),
+            persistent_values_manager,
         }
     }
 
@@ -1014,7 +1023,6 @@ impl Statsig {
         options: FeatureGateEvaluationOptions,
     ) -> FeatureGate {
         let user_internal = self.internalize_user(user);
-
         let disable_exposure_logging = options.disable_exposure_logging;
         let gate = self.get_feature_gate_impl(&user_internal, gate_name);
 
@@ -1205,7 +1213,12 @@ impl Statsig {
     ) -> Experiment {
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
-        let experiment = self.get_experiment_impl(&user_internal, experiment_name);
+        let mut experiment = self.get_experiment_impl(&user_internal, experiment_name);
+        if let Some(persisted_experiment) = self.persistent_values_manager.as_ref().and_then(|m| {
+            m.try_apply_sticky_value_to_experiment(&user_internal, &options, &experiment)
+        }) {
+            experiment = persisted_experiment
+        }
 
         if disable_exposure_logging {
             log_d!(
@@ -1457,12 +1470,14 @@ impl Statsig {
         evaluation_options: LayerEvaluationOptions,
     ) -> Layer {
         let disable_exposure_logging = evaluation_options.disable_exposure_logging;
+        let event_logger_ptr = Arc::downgrade(&self.event_logger);
+        let sampling_processor_ptr = Arc::downgrade(&self.sampling_processor);
         if disable_exposure_logging {
             self.event_logger
                 .increment_non_exposure_checks_count(layer_name.to_string());
         }
 
-        self.evaluate_spec(
+        let mut layer = self.evaluate_spec(
             user_internal,
             layer_name,
             |eval_details| {
@@ -1496,7 +1511,20 @@ impl Statsig {
                 )
             },
             &SpecType::Layer,
-        )
+        );
+        if let Some(persisted_layer) = self.persistent_values_manager.as_ref().and_then(|p| {
+            p.try_apply_sticky_value_to_layer(
+                user_internal,
+                &evaluation_options,
+                &layer,
+                Some(event_logger_ptr),
+                Some(sampling_processor_ptr),
+                disable_exposure_logging,
+            )
+        }) {
+            layer = persisted_layer
+        }
+        layer
     }
 
     fn log_gate_exposure(

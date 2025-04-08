@@ -10,6 +10,7 @@ pub use instance_registry::InstanceRegistry;
 pub use observability::{
     observability_client_adapter::ObservabilityClient, ops_stats::OpsStatsEventObserver,
 };
+pub use persistent_storage::persistent_storage_trait::*;
 pub use override_adapter::{
     override_adapter_trait::OverrideAdapter,
     statsig_local_override_adapter::StatsigLocalOverrideAdapter,
@@ -62,3 +63,4 @@ mod statsig_err;
 mod statsig_runtime;
 mod statsig_type_factories;
 mod statsig_user_internal;
+mod persistent_storage;

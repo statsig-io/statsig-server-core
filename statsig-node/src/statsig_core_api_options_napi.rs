@@ -51,6 +51,7 @@ impl From<ExperimentEvaluationOptionsNapi> for ExperimentEvaluationOptions {
     fn from(opts: ExperimentEvaluationOptionsNapi) -> Self {
         ExperimentEvaluationOptions {
             disable_exposure_logging: opts.disable_exposure_logging.unwrap_or(false),
+            user_persisted_values: None,
         }
     }
 }
@@ -68,6 +69,7 @@ impl From<LayerEvaluationOptionsNapi> for LayerEvaluationOptions {
     fn from(opts: LayerEvaluationOptionsNapi) -> Self {
         LayerEvaluationOptions {
             disable_exposure_logging: opts.disable_exposure_logging.unwrap_or(false),
+            user_persisted_values: None,
         }
     }
 }
