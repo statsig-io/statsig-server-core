@@ -30,6 +30,7 @@ pub use statsig_user::StatsigUser;
 
 pub mod compression;
 pub mod data_store_interface;
+pub mod evaluation;
 pub mod global_configs;
 pub mod hashing;
 pub mod hashset_with_ttl;
@@ -48,7 +49,6 @@ pub mod statsig_user;
 
 mod client_init_response_formatter;
 mod dcs_str;
-mod evaluation;
 mod event_logging;
 mod event_logging_adapter;
 mod id_lists_adapter;

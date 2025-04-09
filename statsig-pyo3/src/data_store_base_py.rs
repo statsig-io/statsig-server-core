@@ -79,10 +79,7 @@ impl DataStoreTrait for DataStoreBasePy {
                             if result_attr.is_none(py) {
                                 None
                             } else {
-                                match result_attr.extract::<String>(py) {
-                                    Ok(s) => Some(s),
-                                    Err(_) => None,
-                                }
+                                result_attr.extract::<String>(py).ok()
                             }
                         }
                         Err(_) => None,
