@@ -1,9 +1,15 @@
+use std::sync::RwLock;
+
 use log::{debug, error, info, warn, Level};
 
 const MAX_CHARS: usize = 400;
 const TRUNCATED_SUFFIX: &str = "...[TRUNCATED]";
 
 const DEFAULT_LOG_LEVEL: LogLevel = LogLevel::Warn;
+
+lazy_static::lazy_static! {
+    static ref LOG_LEVEL: RwLock<LogLevel> = RwLock::new(LogLevel::Warn);
+}
 
 #[derive(Clone)]
 pub enum LogLevel {
@@ -50,10 +56,24 @@ impl LogLevel {
             LogLevel::None => None,
         }
     }
+
+    fn to_number(&self) -> u32 {
+        match self {
+            LogLevel::Debug => 4,
+            LogLevel::Info => 3,
+            LogLevel::Warn => 2,
+            LogLevel::Error => 1,
+            LogLevel::None => 0,
+        }
+    }
 }
 
 pub fn initialize_simple_output_logger(level: &Option<LogLevel>) {
     let level = level.as_ref().unwrap_or(&DEFAULT_LOG_LEVEL).clone();
+
+    if let Ok(mut lock) = LOG_LEVEL.write() {
+        *lock = level.clone();
+    }
 
     let final_level = match level {
         LogLevel::None => {
@@ -119,31 +139,60 @@ fn sanitize(input: &str) -> String {
         .collect()
 }
 
+pub fn has_valid_log_level(level: &LogLevel) -> bool {
+    let current_level = match LOG_LEVEL.read() {
+        Ok(lock) => lock,
+        Err(_) => return false,
+    };
+
+    level.to_number() <= current_level.to_number()
+}
+
 #[macro_export]
 macro_rules! log_d {
   ($tag:expr, $($arg:tt)*) => {
-        $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Debug, format!($($arg)*))
+        {
+            let level = $crate::output_logger::LogLevel::Debug;
+            if $crate::output_logger::has_valid_log_level(&level) {
+                $crate::output_logger::log_message($tag, level, format!($($arg)*));
+            }
+        }
     }
 }
 
 #[macro_export]
 macro_rules! log_i {
   ($tag:expr, $($arg:tt)*) => {
-        $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Info, format!($($arg)*))
+        {
+            let level = $crate::output_logger::LogLevel::Info;
+            if $crate::output_logger::has_valid_log_level(&level) {
+                $crate::output_logger::log_message($tag, level, format!($($arg)*));
+            }
+        }
     }
 }
 
 #[macro_export]
 macro_rules! log_w {
   ($tag:expr, $($arg:tt)*) => {
-        $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Warn, format!($($arg)*))
+        {
+            let level = $crate::output_logger::LogLevel::Warn;
+            if $crate::output_logger::has_valid_log_level(&level) {
+                $crate::output_logger::log_message($tag, level, format!($($arg)*));
+            }
+        }
     }
 }
 
 #[macro_export]
 macro_rules! log_e {
   ($tag:expr, $($arg:tt)*) => {
-        $crate::output_logger::log_message($tag, $crate::output_logger::LogLevel::Error, format!($($arg)*))
+        {
+            let level = $crate::output_logger::LogLevel::Error;
+            if $crate::output_logger::has_valid_log_level(&level) {
+                $crate::output_logger::log_message($tag, level, format!($($arg)*));
+            }
+        }
     }
 }
 
