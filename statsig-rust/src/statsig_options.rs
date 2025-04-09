@@ -232,12 +232,6 @@ impl StatsigOptionsBuilder {
     }
 
     #[must_use]
-    pub fn observability_client(mut self, client: Option<Weak<dyn ObservabilityClient>>) -> Self {
-        self.inner.observability_client = client;
-        self
-    }
-
-    #[must_use]
     pub fn init_timeout_ms(mut self, init_timeout_ms: Option<u64>) -> Self {
         self.inner.init_timeout_ms = init_timeout_ms;
         self
@@ -246,6 +240,20 @@ impl StatsigOptionsBuilder {
     #[must_use]
     pub fn build(self) -> StatsigOptions {
         self.inner
+    }
+
+    // interface related options
+
+    #[must_use]
+    pub fn observability_client(mut self, client: Option<Weak<dyn ObservabilityClient>>) -> Self {
+        self.inner.observability_client = client;
+        self
+    }
+
+    #[must_use]
+    pub fn data_store(mut self, data_store: Option<Arc<dyn DataStoreTrait>>) -> Self {
+        self.inner.data_store = data_store;
+        self
     }
 }
 
