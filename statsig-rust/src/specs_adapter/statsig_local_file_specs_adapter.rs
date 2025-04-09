@@ -49,6 +49,7 @@ impl StatsigLocalFileSpecsAdapter {
             Ok(Some(specs)) => SpecsInfo {
                 lcut: Some(specs.time),
                 checksum: specs.checksum,
+                zstd_dict_id: None,
                 source: SpecsSource::Adapter("FileBased".to_owned()),
             },
             _ => SpecsInfo::empty(),

@@ -32,8 +32,12 @@ impl StatsigGrpcClient {
         }
     }
 
-    pub async fn get_specs(&self, lcut: Option<u64>) -> Result<ConfigSpecResponse, StatsigGrpcErr> {
-        let request = create_config_spec_request(&self.sdk_key, lcut);
+    pub async fn get_specs(
+        &self,
+        lcut: Option<u64>,
+        zstd_dict_id: Option<&String>,
+    ) -> Result<ConfigSpecResponse, StatsigGrpcErr> {
+        let request = create_config_spec_request(&self.sdk_key, lcut, zstd_dict_id);
         let mut client = self.get_or_setup_grpc_client().await?;
 
         client
@@ -46,8 +50,9 @@ impl StatsigGrpcClient {
     pub async fn get_specs_stream(
         &self,
         lcut: Option<u64>,
+        zstd_dict_id: Option<&String>,
     ) -> Result<Streaming<ConfigSpecResponse>, StatsigGrpcErr> {
-        let request = create_config_spec_request(&self.sdk_key, lcut);
+        let request = create_config_spec_request(&self.sdk_key, lcut, zstd_dict_id);
         let mut client = self.get_or_setup_grpc_client().await?;
 
         client
@@ -93,10 +98,15 @@ impl StatsigGrpcClient {
     }
 }
 
-fn create_config_spec_request(sdk_key: &str, current_lcut: Option<u64>) -> ConfigSpecRequest {
+fn create_config_spec_request(
+    sdk_key: &str,
+    current_lcut: Option<u64>,
+    current_zstd_dict_id: Option<&String>,
+) -> ConfigSpecRequest {
     ConfigSpecRequest {
         since_time: current_lcut,
         sdk_key: sdk_key.to_string(),
         version: Some(ApiVersion::V2 as i32),
+        zstd_dict_id: current_zstd_dict_id.cloned(),
     }
 }

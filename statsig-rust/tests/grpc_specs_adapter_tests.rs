@@ -41,6 +41,7 @@ pub mod specs_adapter_tests {
             .send_stream_update(Ok(ConfigSpecResponse {
                 spec: "bg_sync".to_string(),
                 last_updated: 123,
+                zstd_dict_id: None,
             }))
             .await;
 
@@ -66,6 +67,7 @@ pub mod specs_adapter_tests {
             .send_stream_update(Ok(ConfigSpecResponse {
                 spec: "first_sync".to_string(),
                 last_updated: 123,
+                zstd_dict_id: None,
             }))
             .await;
 
@@ -79,6 +81,7 @@ pub mod specs_adapter_tests {
             .send_stream_update(Ok(ConfigSpecResponse {
                 spec: "reconnected_sync".to_string(),
                 last_updated: 123,
+                zstd_dict_id: None,
             }))
             .await;
 

@@ -21,6 +21,7 @@ pub mod specs_adapter_tests {
             .send_stream_update(Ok(ConfigSpecResponse {
                 spec: "bg_sync_1".to_string(),
                 last_updated: 2,
+                zstd_dict_id: None,
             }))
             .await;
         data_store
@@ -63,6 +64,7 @@ pub mod specs_adapter_tests {
             .send_stream_update(Ok(ConfigSpecResponse {
                 spec: "bg_sync_1".to_string(),
                 last_updated: 2,
+                zstd_dict_id: None,
             }))
             .await;
 
@@ -79,6 +81,7 @@ pub mod specs_adapter_tests {
             .send_stream_update(Ok(ConfigSpecResponse {
                 spec: "bg_sync_2".to_string(),
                 last_updated: 3,
+                zstd_dict_id: None,
             }))
             .await;
         let _ = mock_listener.wait_for_next_update().await;

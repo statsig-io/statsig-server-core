@@ -93,6 +93,7 @@ pub struct SpecsUpdate {
 pub struct SpecsInfo {
     pub lcut: Option<u64>,
     pub checksum: Option<String>,
+    pub zstd_dict_id: Option<String>,
     pub source: SpecsSource,
 }
 
@@ -102,6 +103,7 @@ impl SpecsInfo {
         Self {
             lcut: None,
             checksum: None,
+            zstd_dict_id: None,
             source: SpecsSource::NoValues,
         }
     }
@@ -111,6 +113,7 @@ impl SpecsInfo {
         Self {
             lcut: None,
             checksum: None,
+            zstd_dict_id: None,
             source: SpecsSource::Error,
         }
     }

@@ -45,6 +45,10 @@ impl SpecsUpdateListener for SpecStore {
             Ok(data) => SpecsInfo {
                 lcut: Some(data.values.time),
                 checksum: data.values.checksum.clone(),
+                zstd_dict_id: data
+                    .decompression_dict
+                    .as_ref()
+                    .map(|d| d.get_dict_id().to_string()),
                 source: data.source.clone(),
             },
             Err(e) => {
@@ -52,6 +56,7 @@ impl SpecsUpdateListener for SpecStore {
                 SpecsInfo {
                     lcut: None,
                     checksum: None,
+                    zstd_dict_id: None,
                     source: SpecsSource::Error,
                 }
             }

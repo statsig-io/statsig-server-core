@@ -28,6 +28,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .send_stream_update(Ok(ConfigSpecResponse {
             spec: "bg_sync".to_string(),
             last_updated: 123,
+            zstd_dict_id: None,
         }))
         .await;
 
@@ -58,6 +59,7 @@ impl MockForwardProxy {
             stubbed_get_config_spec_response: Mutex::new(ConfigSpecResponse {
                 spec: "NOT STUBBED".to_string(),
                 last_updated: 0,
+                zstd_dict_id: None,
             }),
 
             shutdown_notifier: Arc::new(Notify::new()),

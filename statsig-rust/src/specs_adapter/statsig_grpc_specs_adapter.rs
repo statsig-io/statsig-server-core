@@ -15,7 +15,7 @@ use std::time::Duration;
 use tokio::sync::{broadcast, Mutex, Notify};
 use tokio::time::{sleep, timeout};
 
-use super::StatsigHttpSpecsAdapter;
+use super::{SpecsInfo, StatsigHttpSpecsAdapter};
 // Todo make those configurable
 const DEFAULT_BACKOFF_INTERVAL_MS: u64 = 3000;
 const DEFAULT_BACKOFF_MULTIPLIER: u64 = 2;
@@ -277,10 +277,13 @@ impl StatsigGrpcSpecsAdapter {
             .connect_client()
             .await
             .map_err(|e| StatsigErr::GrpcError(format!("{}", e)))?;
-        let lcut = self.get_current_store_lcut();
+        let specs_info = self.get_current_specs_info();
         let mut stream = self
             .grpc_client
-            .get_specs_stream(lcut)
+            .get_specs_stream(
+                specs_info.as_ref().and_then(|s| s.lcut),
+                specs_info.as_ref().and_then(|s| s.zstd_dict_id.as_ref()),
+            )
             .await
             .map_err(|e| StatsigErr::GrpcError(format!("{}", e)))?;
         loop {
@@ -350,10 +353,10 @@ impl StatsigGrpcSpecsAdapter {
         }
     }
 
-    fn get_current_store_lcut(&self) -> Option<u64> {
+    fn get_current_specs_info(&self) -> Option<SpecsInfo> {
         if let Ok(listener) = self.listener.read() {
             if let Some(listener) = listener.as_ref() {
-                return listener.get_current_specs_info().lcut;
+                return Some(listener.get_current_specs_info());
             }
         }
 
