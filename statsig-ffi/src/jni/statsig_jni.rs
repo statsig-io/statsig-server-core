@@ -2,7 +2,7 @@ use crate::ffi_utils::parse_json_to_str_map;
 use crate::jni::jni_utils::{
     convert_java_check_gate_options_to_rust, convert_java_client_init_response_options_to_rust,
     convert_java_get_dynamic_config_options_to_rust, convert_java_get_experiment_options_to_rust,
-    convert_java_get_layer_options_to_rust, jstring_to_string,
+    convert_java_get_layer_options_to_rust, jboolean_to_bool_unchecked, jstring_to_string,
 };
 use crate::{get_instance_or_noop_jni, get_instance_or_return_jni};
 use jni::sys::{jboolean, jclass, jdouble, jlong, jstring, JNI_FALSE, JNI_TRUE};
@@ -932,6 +932,26 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
 
         drop(global_callback);
     });
+}
+
+// local overrides
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideGate(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+    gate_name: JString,
+    gate_value: jboolean,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+
+    let gate_name_rust: String = match env.get_string(&gate_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    let gate_value_rust = jboolean_to_bool_unchecked(gate_value);
+    statsig.override_gate(&gate_name_rust, gate_value_rust, None);
 }
 
 fn update_statsig_metadata(env: &mut JNIEnv, metadata: JString) {
