@@ -14,8 +14,8 @@ class MockServer
 
     public function __construct()
     {
-        $this->server = new MockWebServer;
-        $this->server->setDefaultResponse(new NotFoundResponse);
+        $this->server = new MockWebServer();
+        $this->server->setDefaultResponse(new NotFoundResponse());
 
         $this->server->start();
     }

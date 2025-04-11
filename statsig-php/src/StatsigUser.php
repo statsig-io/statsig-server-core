@@ -4,19 +4,19 @@ namespace Statsig;
 
 class StatsigUser
 {
-    public $__ref = null;
+    public $__ref = null; // phpcs:ignore
 
     public function __construct(
         string $user_id,
         array $custom_ids = [],
-        string $email = null,
-        string $ip = null,
-        string $user_agent = null,
-        string $country = null,
-        string $locale = null,
-        string $app_version = null,
-        array $custom = null,
-        array $private_attributes = null
+        ?string $email = null,
+        ?string $ip = null,
+        ?string $user_agent = null,
+        ?string $country = null,
+        ?string $locale = null,
+        ?string $app_version = null,
+        ?array $custom = null,
+        ?array $private_attributes = null
     ) {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->statsig_user_create(

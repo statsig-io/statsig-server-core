@@ -6,13 +6,11 @@ namespace Statsig\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Statsig\StatsigLocalFileEventLoggingAdapter;
-use Statsig\StatsigOptions;
-
 
 class StatsigScheduledEventLoggingAdapterTest extends TestCase
 {
-    const FILE_PATH = "/tmp/2454024434_events.json"; // djb2(SDK_KEY)_events.json
-    const SDK_KEY = "secret-php-local-events-test";
+    private const FILE_PATH = "/tmp/2454024434_events.json"; // djb2(SDK_KEY)_events.json
+    private const SDK_KEY = "secret-php-local-events-test";
 
     protected MockServer $server;
 
@@ -41,12 +39,12 @@ class StatsigScheduledEventLoggingAdapterTest extends TestCase
     public function testSendingEvents()
     {
         $request_json = json_encode([[
-              "eventName" => "foo",
-              "metadata" => [ "key" => "value" ],
-              "secondaryExposures" => null,
-              "time" => 1734476293616,
-              "user" => ["statsigEnvironment" => null, "userID" => "a-user"],
-              "value" => "bar"
+            "eventName" => "foo",
+            "metadata" => ["key" => "value"],
+            "secondaryExposures" => null,
+            "time" => 1734476293616,
+            "user" => ["statsigEnvironment" => null, "userID" => "a-user"],
+            "value" => "bar"
         ]]);
 
         file_put_contents(self::FILE_PATH, $request_json);

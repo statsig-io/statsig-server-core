@@ -9,8 +9,11 @@ class Layer extends BaseEvaluation
     public ?string $groupName;
     public ?string $allocatedExperimentName;
     public string $idType;
+
+    // phpcs:disable
     private array $__value;
     private string $__statsig_ref;
+    // phpcs:enable
 
     public function __construct(string $raw_result, string $__statsig_ref)
     {

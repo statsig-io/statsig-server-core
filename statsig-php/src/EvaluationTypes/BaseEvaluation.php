@@ -10,8 +10,10 @@ abstract class BaseEvaluation
     public string $rule_id;
     public ?string $error;
 
+    // phpcs:disable
     public string $__raw_result;
     public array $__evaluation;
+    // phpcs:enable
 
     protected function __construct(string $raw_result, $result)
     {

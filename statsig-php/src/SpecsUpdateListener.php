@@ -4,7 +4,7 @@ namespace Statsig;
 
 class SpecsUpdateListener
 {
-    public $__ref = null;
+    public $__ref = null; // phpcs:ignore
 
     public function __construct(string $ref)
     {

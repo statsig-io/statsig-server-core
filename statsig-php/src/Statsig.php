@@ -10,13 +10,13 @@ use Statsig\StatsigEventData;
 
 class Statsig
 {
-    public $__ref = null;
+    public $__ref = null; // phpcs:ignore
 
     protected $is_shutdown = false;
 
     public function __construct(string $sdk_key, ?StatsigOptions $options = null)
     {
-        $options_ref = $options ? $options->__ref : (new StatsigOptions)->__ref;
+        $options_ref = $options ? $options->__ref : (new StatsigOptions())->__ref;
 
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->statsig_create($sdk_key, $options_ref);
@@ -64,7 +64,11 @@ class Statsig
 
     public function getClientInitializeResponse(StatsigUser $user, ?array $options = null): string
     {
-        return StatsigFFI::get()->statsig_get_client_init_response($this->__ref, $user->__ref, encode_or_null($options));
+        return StatsigFFI::get()->statsig_get_client_init_response(
+            $this->__ref,
+            $user->__ref,
+            encode_or_null($options)
+        );
     }
 
     /**
@@ -73,18 +77,32 @@ class Statsig
 
     public function checkGate(StatsigUser $user, string $name, ?array $options = null): bool
     {
-        return StatsigFFI::get()->statsig_check_gate($this->__ref, $user->__ref, $name, encode_or_null($options));
+        return StatsigFFI::get()->statsig_check_gate(
+            $this->__ref,
+            $user->__ref,
+            $name,
+            encode_or_null($options)
+        );
     }
 
     public function getFeatureGate(StatsigUser $user, string $name, ?array $options = null): FeatureGate
     {
-        $raw_result = StatsigFFI::get()->statsig_get_feature_gate($this->__ref, $user->__ref, $name, encode_or_null($options));
+        $raw_result = StatsigFFI::get()->statsig_get_feature_gate(
+            $this->__ref,
+            $user->__ref,
+            $name,
+            encode_or_null($options)
+        );
         return new FeatureGate($raw_result);
     }
 
     public function manuallyLogGateExposure(StatsigUser $user, string $name): void
     {
-        StatsigFFI::get()->statsig_manually_log_gate_exposure($this->__ref, $user->__ref, $name);
+        StatsigFFI::get()->statsig_manually_log_gate_exposure(
+            $this->__ref,
+            $user->__ref,
+            $name
+        );
     }
 
     /**
@@ -93,13 +111,22 @@ class Statsig
 
     public function getDynamicConfig(StatsigUser $user, string $name, ?array $options = null): DynamicConfig
     {
-        $raw_result = StatsigFFI::get()->statsig_get_dynamic_config($this->__ref, $user->__ref, $name, encode_or_null($options));
+        $raw_result = StatsigFFI::get()->statsig_get_dynamic_config(
+            $this->__ref,
+            $user->__ref,
+            $name,
+            encode_or_null($options)
+        );
         return new DynamicConfig($raw_result);
     }
 
     public function manuallyLogDynamicConfigExposure(StatsigUser $user, string $name): void
     {
-        StatsigFFI::get()->statsig_manually_log_dynamic_config_exposure($this->__ref, $user->__ref, $name);
+        StatsigFFI::get()->statsig_manually_log_dynamic_config_exposure(
+            $this->__ref,
+            $user->__ref,
+            $name
+        );
     }
 
     /**
@@ -108,13 +135,22 @@ class Statsig
 
     public function getExperiment(StatsigUser $user, string $name, ?array $options = null): Experiment
     {
-        $raw_result = StatsigFFI::get()->statsig_get_experiment($this->__ref, $user->__ref, $name, encode_or_null($options));
+        $raw_result = StatsigFFI::get()->statsig_get_experiment(
+            $this->__ref,
+            $user->__ref,
+            $name,
+            encode_or_null($options)
+        );
         return new Experiment($raw_result);
     }
 
     public function manuallyLogExperimentExposure(StatsigUser $user, string $name): void
     {
-        StatsigFFI::get()->statsig_manually_log_experiment_exposure($this->__ref, $user->__ref, $name);
+        StatsigFFI::get()->statsig_manually_log_experiment_exposure(
+            $this->__ref,
+            $user->__ref,
+            $name
+        );
     }
 
     /**
@@ -123,13 +159,23 @@ class Statsig
 
     public function getLayer(StatsigUser $user, string $name, ?array $options = null): Layer
     {
-        $raw_result = StatsigFFI::get()->statsig_get_layer($this->__ref, $user->__ref, $name, encode_or_null($options));
+        $raw_result = StatsigFFI::get()->statsig_get_layer(
+            $this->__ref,
+            $user->__ref,
+            $name,
+            encode_or_null($options)
+        );
         return new Layer($raw_result, $this->__ref);
     }
 
     public function manuallyLogLayerParameterExposure(StatsigUser $user, string $layer_name, string $param_name): void
     {
-        StatsigFFI::get()->statsig_manually_log_layer_parameter_exposure($this->__ref, $user->__ref, $layer_name, $param_name);
+        StatsigFFI::get()->statsig_manually_log_layer_parameter_exposure(
+            $this->__ref,
+            $user->__ref,
+            $layer_name,
+            $param_name
+        );
     }
 }
 

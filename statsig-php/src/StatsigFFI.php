@@ -19,21 +19,21 @@ class StatsigFFI
 
         $bin = dirname(__FILE__) . '/../resources';
         if (is_dir($bin)) {
-            $found_binary_path = self::find_binary_in_dir($bin);
-            $found_header_path = self::find_header_file_in_dir($bin);
+            $found_binary_path = self::findBinaryInDir($bin);
+            $found_header_path = self::findHeaderFileInDir($bin);
         }
 
         if ($found_binary_path === null) {
             $target_dir = dirname(__FILE__) . '/../../target/debug';
             if (is_dir($target_dir)) {
-                $found_binary_path = self::find_binary_in_dir($target_dir);
+                $found_binary_path = self::findBinaryInDir($target_dir);
             }
         }
 
         if ($found_header_path === null) {
             $include_dir = dirname(__FILE__) . '/../../statsig-ffi/include';
             if (is_dir($include_dir)) {
-                $found_header_path = self::find_header_file_in_dir($include_dir);
+                $found_header_path = self::findHeaderFileInDir($include_dir);
             }
         }
 
@@ -51,12 +51,12 @@ class StatsigFFI
             $found_binary_path
         );
 
-        self::update_statsig_metadata(self::$ffi);
+        self::updateStatsigMetadata(self::$ffi);
 
         return self::$ffi;
     }
 
-    private static function find_binary_in_dir(string $dir): ?string
+    private static function findBinaryInDir(string $dir): ?string
     {
         $file_name = '';
         switch (PHP_OS_FAMILY) {
@@ -80,7 +80,7 @@ class StatsigFFI
         return null;
     }
 
-    private static function find_header_file_in_dir(string $dir): ?string
+    private static function findHeaderFileInDir(string $dir): ?string
     {
         $path = $dir . '/statsig_ffi.h';
 
@@ -91,7 +91,7 @@ class StatsigFFI
         return null;
     }
 
-    private static function update_statsig_metadata(FFI $ffi): void
+    private static function updateStatsigMetadata(FFI $ffi): void
     {
         $os = PHP_OS_FAMILY;
         $arch = php_uname('m');

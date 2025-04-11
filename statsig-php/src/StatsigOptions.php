@@ -4,18 +4,18 @@ namespace Statsig;
 
 class StatsigOptions
 {
-    public $__ref = null;
+    public $__ref = null; // phpcs:ignore
 
     public function __construct(
-        $specs_url = null,
-        $log_event_url = null,
-        $specs_adapter = null,
-        $event_logging_adapter = null,
-        $environment = null,
-        $event_logging_flush_interval_ms = null,
-        $event_logging_max_queue_size = null,
-        $specs_sync_interval_ms = null,
-        $output_log_level = null
+        ?string $specs_url = null,
+        ?string $log_event_url = null,
+        ?object $specs_adapter = null,
+        ?object $event_logging_adapter = null,
+        ?string $environment = null,
+        ?int $event_logging_flush_interval_ms = null,
+        ?int $event_logging_max_queue_size = null,
+        ?int $specs_sync_interval_ms = null,
+        ?int $output_log_level = null
     ) {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->statsig_options_create(

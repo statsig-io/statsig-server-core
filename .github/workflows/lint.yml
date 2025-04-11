@@ -51,6 +51,23 @@ jobs:
       - name: Run Rust Format
         run: cargo fmt --all --check
 
+  # ------------------------------------------------------------ [ PHP Code Sniffer ]
+  php-code-sniffer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Run Composer Lint
+        env:
+          SKIP_STATSIG_POST_INSTALL: true
+        run: |
+          cd statsig-php
+          composer install
+          composer run-script lint
+
   # ------------------------------------------------------------ [ Pyo3 Stub Gen ]
   pyo3-stub-gen:
     runs-on: ubuntu-latest

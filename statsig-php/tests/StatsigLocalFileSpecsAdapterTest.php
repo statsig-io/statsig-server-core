@@ -6,14 +6,11 @@ namespace Statsig\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Statsig\StatsigLocalFileSpecsAdapter;
-use Statsig\StatsigOptions;
-
 
 class StatsigLocalFileSpecsAdapterTest extends TestCase
 {
-    const SDK_KEY = "secret-php-specs-adapter";
-    const FILE_NAME = "2169430312_specs.json"; // djb2(SDK_KEY)_specs.json
-
+    private const SDK_KEY = "secret-php-specs-adapter";
+    private const FILE_NAME = "2169430312_specs.json"; // djb2(SDK_KEY)_specs.json
 
     protected MockServer $server;
 
