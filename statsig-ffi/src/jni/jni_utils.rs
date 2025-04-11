@@ -203,7 +203,6 @@ pub fn jboolean_to_bool_unchecked(input: jboolean) -> bool {
 }
 
 /// Converts a Java `java.util.HashMap<String, String>` into Rust `HashMap<String, Value>`
-#[allow(dead_code)]
 pub fn jni_to_rust_json_map(
     env: &mut JNIEnv,
     jmap: JObject,
@@ -237,7 +236,6 @@ pub fn jni_to_rust_json_map(
     Ok(rust_map)
 }
 
-#[allow(dead_code)]
 fn java_object_to_json_value(env: &mut JNIEnv, obj: JObject) -> Result<Value, jni::errors::Error> {
     if obj.is_null() {
         return Ok(Value::Null);
