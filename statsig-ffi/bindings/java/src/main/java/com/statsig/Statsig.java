@@ -309,6 +309,26 @@ public class Statsig {
         return StatsigJNI.statsigGetClientInitResponse(ref, user.getRef(), options);
     }
 
+    public void overrideGate(String gateName, boolean gateValue) {
+        StatsigJNI.statsigOverrideGate(ref, gateName, gateValue);
+    }
+
+    public void overrideExperiment(String experimentName, Map<String, Object> experimentValue) {
+        StatsigJNI.statsigOverrideExperiment(ref, experimentName, experimentValue);
+    }
+
+    public void overrideDynamicConfig(String dynamicConfigName, Map<String, Object> dynamicConfigValue) {
+        StatsigJNI.statsigOverrideDynamicConfig(ref, dynamicConfigName, dynamicConfigValue);
+    }
+
+    public void overrideLayer(String layerName, Map<String, Object> layerValue) {
+        StatsigJNI.statsigOverrideLayer(ref, layerName, layerValue);
+    }
+
+    public void overrideExperimentByGroupName(String experimentName, String groupName) {
+        StatsigJNI.statsigOverrideExperimentByGroupName(ref, experimentName, groupName);
+    }
+
     void logLayerParamExposure(String layerJson, String param) {
         StatsigJNI.statsigLogLayerParamExposure(ref, layerJson, param);
     }

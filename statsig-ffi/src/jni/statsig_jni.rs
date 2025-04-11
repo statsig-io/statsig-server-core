@@ -2,7 +2,8 @@ use crate::ffi_utils::parse_json_to_str_map;
 use crate::jni::jni_utils::{
     convert_java_check_gate_options_to_rust, convert_java_client_init_response_options_to_rust,
     convert_java_get_dynamic_config_options_to_rust, convert_java_get_experiment_options_to_rust,
-    convert_java_get_layer_options_to_rust, jboolean_to_bool_unchecked, jstring_to_string,
+    convert_java_get_layer_options_to_rust, jboolean_to_bool_unchecked, jni_to_rust_json_map,
+    jstring_to_string,
 };
 use crate::{get_instance_or_noop_jni, get_instance_or_return_jni};
 use jni::sys::{jboolean, jclass, jdouble, jlong, jstring, JNI_FALSE, JNI_TRUE};
@@ -934,7 +935,9 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
     });
 }
 
-// local overrides
+/// -------------------------
+/// ---- local overrides ----
+/// -------------------------
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideGate(
     mut env: JNIEnv,
@@ -952,6 +955,108 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideGate(
 
     let gate_value_rust = jboolean_to_bool_unchecked(gate_value);
     statsig.override_gate(&gate_name_rust, gate_value_rust, None);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideDynamicConfig(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+    config_name: JString,
+    value: JObject,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+
+    let config_name_rust: String = match env.get_string(&config_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    match jni_to_rust_json_map(&mut env, value) {
+        Ok(value_rust) => {
+            statsig.override_dynamic_config(&config_name_rust, value_rust, None);
+        }
+        Err(e) => {
+            log_e!(
+                TAG,
+                "Override Dynamic Config, Failed to convert JSON map: {:?}",
+                e
+            );
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideLayer(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+    layer_name: JString,
+    value: JObject,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+
+    let layer_name_rust: String = match env.get_string(&layer_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    match jni_to_rust_json_map(&mut env, value) {
+        Ok(value_rust) => {
+            statsig.override_layer(&layer_name_rust, value_rust, None);
+        }
+        Err(e) => {
+            log_e!(TAG, "Override Layer, Failed to convert JSON map: {:?}", e);
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideExperiment(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+    exp_name: JString,
+    value: JObject,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+
+    let exp_name_rust: String = match env.get_string(&exp_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    match jni_to_rust_json_map(&mut env, value) {
+        Ok(value_rust) => {
+            statsig.override_experiment(&exp_name_rust, value_rust, None);
+        }
+        Err(e) => {
+            log_e!(TAG, "Override Layer, Failed to convert JSON map: {:?}", e);
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideExperimentByGroupName(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+    exp_name: JString,
+    group_name: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+
+    let exp_name_rust: String = match env.get_string(&exp_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    let group_name_rust: String = match env.get_string(&group_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    statsig.override_experiment_by_group_name(&exp_name_rust, &group_name_rust, None);
 }
 
 fn update_statsig_metadata(env: &mut JNIEnv, metadata: JString) {

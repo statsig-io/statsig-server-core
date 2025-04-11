@@ -111,6 +111,19 @@ class StatsigJNI {
             String parameterStoreName, String parameterName, String defaultValue);
 
     /**
+     * Local Overrides
+     */
+    public static native void statsigOverrideGate(String statsigRef, String gateName, boolean overrideVal);
+
+    public static native void statsigOverrideDynamicConfig(String statsigRef, String configName, Map<String, Object> overrideVal);
+
+    public static native void statsigOverrideLayer(String statsigRef, String layerName, Map<String, Object> overrideVal);
+
+    public static native void statsigOverrideExperiment(String statsigRef, String experimentName, Map<String, Object> overrideVal);
+
+    public static native void statsigOverrideExperimentByGroupName(String statsigRef, String experimentName, String groupName);
+
+    /**
      * StatsigUser
      */
     public static native String statsigUserCreate(
