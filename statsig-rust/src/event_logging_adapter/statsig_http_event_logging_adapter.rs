@@ -67,6 +67,10 @@ impl StatsigHttpEventLoggingAdapter {
                 "statsig-event-count".to_string(),
                 request.event_count.to_string(),
             ),
+            (
+                "statsig-retry-count".to_string(),
+                request.retries.to_string(),
+            ),
             ("Content-Encoding".to_owned(), compression_format.clone()),
             ("Content-Type".to_owned(), "application/json".to_owned()),
         ]);
