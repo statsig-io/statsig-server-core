@@ -27,7 +27,9 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run clippy
-        run: cargo clippy --workspace --all-features --tests -- -D warnings
+        run: |
+          cargo clippy --version
+          cargo clippy --workspace --all-features --tests -- -D warnings
 
   # ------------------------------------------------------------ [ Rust Format ]
   rust-format:
