@@ -121,7 +121,7 @@ class StatsigBasePy:
     def override_layer(self, layer_name:builtins.str, value:dict) -> None:
         ...
 
-    def override_experiment_by_group_name(self, layer_name:builtins.str, group_name:builtins.str) -> None:
+    def override_experiment_by_group_name(self, experiment_name:builtins.str, group_name:builtins.str) -> None:
         ...
 
 

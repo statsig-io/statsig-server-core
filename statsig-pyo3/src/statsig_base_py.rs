@@ -363,14 +363,14 @@ impl StatsigBasePy {
         Ok(())
     }
 
-    #[pyo3(signature = (layer_name, group_name))]
+    #[pyo3(signature = (experiment_name, group_name))]
     pub fn override_experiment_by_group_name(
         &self,
-        layer_name: &str,
+        experiment_name: &str,
         group_name: &str,
     ) -> PyResult<()> {
         self.inner
-            .override_experiment_by_group_name(layer_name, group_name, None);
+            .override_experiment_by_group_name(experiment_name, group_name, None);
         Ok(())
     }
 }
