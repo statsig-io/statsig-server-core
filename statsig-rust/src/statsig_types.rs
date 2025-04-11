@@ -7,7 +7,7 @@ use crate::event_logging::layer_exposure::LayerExposure;
 use crate::sampling_processor::SamplingDecision;
 use crate::spec_types::Parameter;
 use crate::statsig_core_api_options::ParameterStoreEvaluationOptions;
-use crate::statsig_user_internal::StatsigUserInternal;
+use crate::statsig_user_internal::StatsigUserLoggable;
 use crate::StatsigUser;
 use crate::{SamplingProcessor, Statsig};
 use serde::de::DeserializeOwned;
@@ -88,7 +88,7 @@ pub struct Layer {
 
     pub __evaluation: Option<LayerEvaluation>,
     pub __value: HashMap<String, Value>,
-    pub __user: StatsigUserInternal,
+    pub __user: StatsigUserLoggable,
     pub __version: Option<u32>,
     pub __disable_exposure: bool,
     pub __override_config_name: Option<String>,
@@ -140,7 +140,7 @@ impl Layer {
             let layer_eval = self.__evaluation.as_ref();
 
             sampling_details = ptr.upgrade()?.get_sampling_decision_and_details(
-                &self.__user,
+                &self.__user.get_sampling_key(),
                 layer_eval.map(AnyEvaluation::from).as_ref(),
                 Some(param_name),
             );

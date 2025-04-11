@@ -60,7 +60,7 @@ pub fn make_layer_from_sticky_value(
         received_at: Some(Utc::now().timestamp_millis() as u64),
     };
     make_layer(
-        user,
+        user.to_loggable(),
         name,
         Some(evaluation),
         details,

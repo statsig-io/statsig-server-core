@@ -7,12 +7,12 @@ use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::StatsigEventInternal;
 use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::sampling_processor::SamplingDecision;
-use crate::statsig_user_internal::StatsigUserInternal;
+use crate::statsig_user_internal::StatsigUserLoggable;
 
 pub const CONFIG_EXPOSURE_EVENT_NAME: &str = "statsig::config_exposure";
 
 pub struct ConfigExposure {
-    pub user: StatsigUserInternal,
+    pub user: StatsigUserLoggable,
     pub config_name: String,
     pub evaluation: Option<BaseEvaluation>,
     pub evaluation_details: EvaluationDetails,
@@ -26,7 +26,7 @@ pub struct ConfigExposure {
 impl StatsigExposure for ConfigExposure {
     fn make_dedupe_key(&self) -> String {
         let rule_id = self.evaluation.as_ref().map(|eval| &eval.rule_id);
-        make_exposure_key(&self.user.user_data, &self.config_name, rule_id, None)
+        make_exposure_key(&self.user, &self.config_name, rule_id, None)
     }
 
     fn to_internal_event(self) -> StatsigEventInternal {

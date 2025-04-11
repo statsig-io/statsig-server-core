@@ -243,23 +243,21 @@ fn try_apply_override(
     };
 
     match spec_type {
-        SpecType::Gate => {
-            adapter.get_gate_override(&ctx.user.user_data, spec_name, &mut ctx.result)
-        }
+        SpecType::Gate => adapter.get_gate_override(ctx.user.user_data, spec_name, &mut ctx.result),
 
         SpecType::DynamicConfig => {
-            adapter.get_dynamic_config_override(&ctx.user.user_data, spec_name, &mut ctx.result)
+            adapter.get_dynamic_config_override(ctx.user.user_data, spec_name, &mut ctx.result)
         }
 
         SpecType::Experiment => adapter.get_experiment_override(
-            &ctx.user.user_data,
+            ctx.user.user_data,
             spec_name,
             &mut ctx.result,
             opt_spec,
         ),
 
         SpecType::Layer => {
-            adapter.get_layer_override(&ctx.user.user_data, spec_name, &mut ctx.result)
+            adapter.get_layer_override(ctx.user.user_data, spec_name, &mut ctx.result)
         }
     }
 }
@@ -325,7 +323,10 @@ fn evaluate_condition<'a>(
             }
         },
         "user_field" => ctx.user.get_user_value(&condition.field),
-        "environment_field" => ctx.user.get_value_from_environment(&condition.field),
+        "environment_field" => {
+            temp_value = ctx.user.get_value_from_environment(&condition.field);
+            temp_value.as_ref()
+        }
         "current_time" => {
             temp_value = Some(DynamicValue::for_timestamp_evaluation(
                 Utc::now().timestamp_millis(),

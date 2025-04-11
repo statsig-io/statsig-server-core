@@ -4,7 +4,7 @@ use crate::evaluation::evaluation_types::{
 };
 use crate::event_logging::event_logger::EventLogger;
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
-use crate::statsig_user_internal::StatsigUserInternal;
+use crate::statsig_user_internal::StatsigUserLoggable;
 use crate::SamplingProcessor;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -96,7 +96,7 @@ pub fn make_experiment(
 
 #[allow(clippy::too_many_arguments)]
 pub fn make_layer(
-    user: &StatsigUserInternal,
+    user: StatsigUserLoggable,
     name: &str,
     evaluation: Option<LayerEvaluation>,
     details: EvaluationDetails,
@@ -126,7 +126,7 @@ pub fn make_layer(
         allocated_experiment_name,
         __value: value,
         __evaluation: evaluation,
-        __user: user.clone(),
+        __user: user,
         __event_logger_ptr: event_logger_ptr,
         __version: version,
         __disable_exposure: disable_exposure,

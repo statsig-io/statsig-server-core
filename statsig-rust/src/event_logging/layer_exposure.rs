@@ -7,12 +7,12 @@ use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::StatsigEventInternal;
 use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::sampling_processor::SamplingDecision;
-use crate::statsig_user_internal::StatsigUserInternal;
+use crate::statsig_user_internal::StatsigUserLoggable;
 
 pub const LAYER_EXPOSURE_EVENT_NAME: &str = "statsig::layer_exposure";
 
 pub struct LayerExposure {
-    pub user: StatsigUserInternal,
+    pub user: StatsigUserLoggable,
     pub layer_name: String,
     pub parameter_name: String,
     pub evaluation: Option<LayerEvaluation>,
@@ -29,7 +29,7 @@ impl StatsigExposure for LayerExposure {
 
         // todo: Node dedupes on all metadata values. Important?
         make_exposure_key(
-            &self.user.user_data,
+            &self.user,
             &self.layer_name,
             rule_id,
             Some(vec![self.parameter_name.clone()]),

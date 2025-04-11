@@ -4,7 +4,7 @@ use crate::event_logging::gate_exposure::GATE_EXPOSURE_EVENT_NAME;
 use crate::event_logging::layer_exposure::LAYER_EXPOSURE_EVENT_NAME;
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::sdk_diagnostics::diagnostics::DIAGNOSTICS_EVENT;
-use crate::statsig_user_internal::{StatsigUserInternal, StatsigUserLoggable};
+use crate::statsig_user_internal::StatsigUserLoggable;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -23,13 +23,13 @@ pub struct StatsigEventInternal {
 
 impl StatsigEventInternal {
     pub fn new(
-        user: StatsigUserInternal,
+        user: StatsigUserLoggable,
         event: StatsigEvent,
         secondary_exposures: Option<Vec<SecondaryExposure>>,
     ) -> Self {
         StatsigEventInternal {
             event_data: event,
-            user: StatsigUserLoggable::new(user),
+            user,
             time: Utc::now().timestamp_millis() as u64,
             secondary_exposures: secondary_exposure_keys_to_expos(secondary_exposures),
         }
@@ -65,7 +65,7 @@ impl StatsigEventInternal {
 }
 
 pub(crate) fn make_custom_event(
-    user: StatsigUserInternal,
+    user: StatsigUserLoggable,
     event: StatsigEvent,
 ) -> StatsigEventInternal {
     StatsigEventInternal::new(user, event, None)
@@ -102,15 +102,15 @@ mod statsig_event_internal_tests {
     use std::collections::HashMap;
 
     fn create_test_event() -> StatsigEventInternal {
-        let user =
-            StatsigUserInternal::new(&StatsigUser::with_user_id("a-user".into()), None, None);
+        let user_data = StatsigUser::with_user_id("a-user".into());
+        let user = StatsigUserInternal::new(&user_data, None);
         let mut sampling_statsig_metadata: HashMap<String, Value> = HashMap::new();
         sampling_statsig_metadata.insert("samplingMode".into(), "on".into());
         sampling_statsig_metadata.insert("samplingRate".into(), 101.into());
         sampling_statsig_metadata.insert("shadowLogged".into(), "logged".into());
 
         make_custom_event(
-            user,
+            user.to_loggable(),
             StatsigEvent {
                 event_name: "foo".into(),
                 value: Some(json!("bar")),

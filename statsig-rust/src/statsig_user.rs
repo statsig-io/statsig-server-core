@@ -186,7 +186,7 @@ pub struct StatsigUser {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom: Option<HashMap<String, DynamicValue>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing)]
     pub private_attributes: Option<HashMap<String, DynamicValue>>,
 
     #[serde(rename = "customIDs", skip_serializing_if = "Option::is_none")]

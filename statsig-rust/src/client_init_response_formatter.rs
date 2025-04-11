@@ -16,7 +16,7 @@ use crate::spec_types::{
     ParameterStore, Spec,
 };
 use crate::statsig_metadata::StatsigMetadata;
-use crate::statsig_user_internal::{StatsigUserInternal, StatsigUserLoggable};
+use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{read_lock_or_else, OverrideAdapter};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -195,7 +195,7 @@ impl ClientInitResponseFormatter {
             time: data.values.time,
             has_updates: true,
             hash_used: hash_used.to_string(),
-            user: StatsigUserLoggable::new(user_internal),
+            user: user_internal.to_loggable(),
             sdk_params: HashMap::new(),
             evaluated_keys,
             sdk_info: HashMap::from([

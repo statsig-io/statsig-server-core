@@ -7,12 +7,12 @@ use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::StatsigEventInternal;
 use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::sampling_processor::SamplingDecision;
-use crate::statsig_user_internal::StatsigUserInternal;
+use crate::statsig_user_internal::StatsigUserLoggable;
 
 pub const GATE_EXPOSURE_EVENT_NAME: &str = "statsig::gate_exposure";
 
 pub struct GateExposure {
-    pub user: StatsigUserInternal,
+    pub user: StatsigUserLoggable,
     pub gate_name: String,
     pub value: bool,
     pub rule_id: Option<String>,
@@ -26,12 +26,7 @@ pub struct GateExposure {
 
 impl StatsigExposure for GateExposure {
     fn make_dedupe_key(&self) -> String {
-        make_exposure_key(
-            &self.user.user_data,
-            &self.gate_name,
-            self.rule_id.as_ref(),
-            None,
-        )
+        make_exposure_key(&self.user, &self.gate_name, self.rule_id.as_ref(), None)
     }
 
     fn to_internal_event(self) -> StatsigEventInternal {

@@ -30,7 +30,7 @@ impl InitializeResponse {
             time: 0,
             has_updates: false,
             hash_used: Default::default(),
-            user: StatsigUserLoggable::new(user),
+            user: user.to_loggable(),
             sdk_params: Default::default(),
             evaluated_keys: Default::default(),
             sdk_info: Default::default(),

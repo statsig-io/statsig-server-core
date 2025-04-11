@@ -8,7 +8,7 @@ const TRUNCATED_SUFFIX: &str = "...[TRUNCATED]";
 const DEFAULT_LOG_LEVEL: LogLevel = LogLevel::Warn;
 
 lazy_static::lazy_static! {
-    static ref LOG_LEVEL: RwLock<LogLevel> = RwLock::new(LogLevel::Warn);
+    static ref LOG_LEVEL: RwLock<LogLevel> = RwLock::new(DEFAULT_LOG_LEVEL);
 }
 
 #[derive(Clone)]

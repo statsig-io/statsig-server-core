@@ -579,7 +579,7 @@ impl Statsig {
 
         self.event_logger
             .enqueue(QueuedEventPayload::CustomEvent(make_custom_event(
-                user_internal,
+                user_internal.to_loggable(),
                 StatsigEvent {
                     event_name: event_name.to_string(),
                     value: value.map(|v| json!(v)),
@@ -600,7 +600,7 @@ impl Statsig {
 
         self.event_logger
             .enqueue(QueuedEventPayload::CustomEvent(make_custom_event(
-                user_internal,
+                user_internal.to_loggable(),
                 StatsigEvent {
                     event_name: event_name.to_string(),
                     value: value.map(|v| json!(v)),
@@ -641,7 +641,7 @@ impl Statsig {
         let layer_eval = layer.__evaluation.as_ref();
 
         let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
-            &layer.__user,
+            &layer.__user.get_sampling_key(),
             layer_eval.map(AnyEvaluation::from).as_ref(),
             Some(&parameter_name),
         );
@@ -898,7 +898,7 @@ impl Statsig {
         };
 
         let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
-            &user_internal,
+            &user_internal.get_sampling_key(),
             Some(&AnyEvaluation::from(&experiment_eval)),
             None,
         );
@@ -909,7 +909,7 @@ impl Statsig {
 
         self.event_logger
             .enqueue(QueuedEventPayload::ConfigExposure(ConfigExposure {
-                user: user_internal,
+                user: user_internal.to_loggable(),
                 evaluation: Some(base_eval),
                 evaluation_details: experiment.details.clone(),
                 config_name: cmab_name.to_string(),
@@ -1276,7 +1276,7 @@ impl Statsig {
         options: LayerEvaluationOptions,
     ) -> Layer {
         let user_internal = self.internalize_user(user);
-        self.get_layer_impl(&user_internal, layer_name, options)
+        self.get_layer_impl(user_internal, layer_name, options)
     }
 
     pub fn manually_log_layer_parameter_exposure(
@@ -1286,16 +1286,13 @@ impl Statsig {
         parameter_name: String,
     ) {
         let user_internal = self.internalize_user(user);
-        let layer = self.get_layer_impl(
-            &user_internal,
-            layer_name,
-            LayerEvaluationOptions::default(),
-        );
+        let layer =
+            self.get_layer_impl(user_internal, layer_name, LayerEvaluationOptions::default());
 
         let layer_eval = layer.__evaluation.as_ref();
 
         let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
-            &layer.__user,
+            &layer.__user.get_sampling_key(),
             layer_eval.map(AnyEvaluation::from).as_ref(),
             Some(parameter_name.as_str()),
         );
@@ -1336,6 +1333,58 @@ impl Statsig {
             },
             None => vec![],
         }
+    }
+}
+
+// -------------------------
+//   Internal Functions
+// -------------------------
+
+impl Statsig {
+    pub(crate) fn get_from_statsig_env(&self, key: &str) -> Option<DynamicValue> {
+        if let Some(env) = &self.statsig_environment {
+            return env.get(key).cloned();
+        }
+
+        if let Ok(fallback_env) = self.fallback_environment.lock() {
+            if let Some(env) = &*fallback_env {
+                return env.get(key).cloned();
+            }
+        }
+
+        None
+    }
+
+    pub(crate) fn get_value_from_global_custom_fields(&self, key: &str) -> Option<&DynamicValue> {
+        if let Some(env) = &self.options.global_custom_fields {
+            return env.get(key);
+        }
+
+        None
+    }
+
+    pub(crate) fn use_global_custom_fields<T>(
+        &self,
+        f: impl FnOnce(Option<&HashMap<String, DynamicValue>>) -> Result<(), T>,
+    ) -> Result<(), T> {
+        f(self.options.global_custom_fields.as_ref())
+    }
+
+    pub(crate) fn use_statsig_env<T>(
+        &self,
+        f: impl FnOnce(&HashMap<String, DynamicValue>) -> Result<(), T>,
+    ) -> Result<(), T> {
+        if let Some(env) = &self.statsig_environment {
+            return f(env);
+        }
+
+        if let Ok(fallback_env) = self.fallback_environment.lock() {
+            if let Some(env) = &*fallback_env {
+                return f(env);
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -1463,24 +1512,25 @@ impl Statsig {
 
     fn get_layer_impl(
         &self,
-        user_internal: &StatsigUserInternal,
+        user_internal: StatsigUserInternal,
         layer_name: &str,
         evaluation_options: LayerEvaluationOptions,
     ) -> Layer {
         let disable_exposure_logging = evaluation_options.disable_exposure_logging;
         let event_logger_ptr = Arc::downgrade(&self.event_logger);
         let sampling_processor_ptr = Arc::downgrade(&self.sampling_processor);
+
         if disable_exposure_logging {
             self.event_logger
                 .increment_non_exposure_checks_count(layer_name.to_string());
         }
 
         let mut layer = self.evaluate_spec(
-            user_internal,
+            &user_internal,
             layer_name,
             |eval_details| {
                 make_layer(
-                    user_internal,
+                    user_internal.to_loggable(),
                     layer_name,
                     None,
                     eval_details,
@@ -1497,7 +1547,7 @@ impl Statsig {
                 let sampling_processor_ptr = Arc::downgrade(&self.sampling_processor);
 
                 make_layer(
-                    user_internal,
+                    user_internal.to_loggable(),
                     layer_name,
                     Some(evaluation),
                     eval_details,
@@ -1512,7 +1562,7 @@ impl Statsig {
         );
         if let Some(persisted_layer) = self.persistent_values_manager.as_ref().and_then(|p| {
             p.try_apply_sticky_value_to_layer(
-                user_internal,
+                &user_internal,
                 &evaluation_options,
                 &layer,
                 Some(event_logger_ptr),
@@ -1527,16 +1577,15 @@ impl Statsig {
 
     fn log_gate_exposure(
         &self,
-        user_internal: StatsigUserInternal,
+        user: StatsigUserInternal,
         gate_name: &str,
         gate: &FeatureGate,
         is_manual: bool,
     ) {
         let gate_eval = gate.__evaluation.as_ref();
         let secondary_exposures = gate_eval.map(|eval| &eval.base.secondary_exposures);
-
         let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
-            &user_internal,
+            &user.get_sampling_key(),
             gate_eval.map(AnyEvaluation::from).as_ref(),
             None,
         );
@@ -1547,7 +1596,7 @@ impl Statsig {
 
         self.event_logger
             .enqueue(QueuedEventPayload::GateExposure(GateExposure {
-                user: user_internal,
+                user: user.to_loggable(),
                 gate_name: gate_name.to_string(),
                 value: gate.value,
                 rule_id: Some(gate.rule_id.clone()),
@@ -1569,9 +1618,10 @@ impl Statsig {
     ) {
         let config_eval = dynamic_config.__evaluation.as_ref();
         let base_eval = config_eval.map(|eval| eval.base.clone());
+        let loggable_user = user_internal.to_loggable();
 
         let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
-            &user_internal,
+            &loggable_user.get_sampling_key(),
             config_eval.map(AnyEvaluation::from).as_ref(),
             None,
         );
@@ -1582,7 +1632,7 @@ impl Statsig {
 
         self.event_logger
             .enqueue(QueuedEventPayload::ConfigExposure(ConfigExposure {
-                user: user_internal,
+                user: loggable_user,
                 evaluation: base_eval,
                 evaluation_details: dynamic_config.details.clone(),
                 config_name: dynamic_config_name.to_string(),
@@ -1605,7 +1655,7 @@ impl Statsig {
         let base_eval = experiment_eval.map(|eval| eval.base.clone());
 
         let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
-            &user_internal,
+            &user_internal.get_sampling_key(),
             experiment_eval.map(AnyEvaluation::from).as_ref(),
             None,
         );
@@ -1614,9 +1664,11 @@ impl Statsig {
             return;
         }
 
+        let loggable_user = user_internal.to_loggable();
+
         self.event_logger
             .enqueue(QueuedEventPayload::ConfigExposure(ConfigExposure {
-                user: user_internal,
+                user: loggable_user,
                 evaluation: base_eval,
                 evaluation_details: experiment.details.clone(),
                 config_name: experiment_name.to_string(),
@@ -1628,26 +1680,8 @@ impl Statsig {
             }));
     }
 
-    fn internalize_user(&self, user: &StatsigUser) -> StatsigUserInternal {
-        StatsigUserInternal::new(
-            user,
-            self.get_statsig_env(),
-            self.options.global_custom_fields.clone(),
-        )
-    }
-
-    fn get_statsig_env(&self) -> Option<HashMap<String, DynamicValue>> {
-        if let Some(env) = &self.statsig_environment {
-            return Some(env.clone());
-        }
-
-        if let Ok(fallback_env) = self.fallback_environment.lock() {
-            if let Some(env) = &*fallback_env {
-                return Some(env.clone());
-            }
-        }
-
-        None
+    fn internalize_user<'s, 'u>(&'s self, user: &'u StatsigUser) -> StatsigUserInternal<'s, 'u> {
+        StatsigUserInternal::new(user, Some(self))
     }
 
     fn set_default_environment_from_server(&self) {

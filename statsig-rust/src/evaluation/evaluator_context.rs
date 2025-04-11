@@ -11,7 +11,7 @@ use std::sync::Arc;
 const MAX_RECURSIVE_DEPTH: u16 = 300;
 
 pub struct EvaluatorContext<'a> {
-    pub user: &'a StatsigUserInternal,
+    pub user: &'a StatsigUserInternal<'a, 'a>,
     pub spec_store_data: &'a SpecStoreData,
     pub hashing: &'a HashUtil,
     pub result: EvaluatorResult<'a>,

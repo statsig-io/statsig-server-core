@@ -2,7 +2,6 @@ use crate::evaluation::evaluation_types::AnyEvaluation;
 use crate::global_configs::GlobalConfigs;
 use crate::hashing::HashUtil;
 use crate::hashset_with_ttl::HashSetWithTTL;
-use crate::statsig_user_internal::StatsigUserInternal;
 use crate::{StatsigErr, StatsigRuntime};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -91,7 +90,7 @@ impl SamplingProcessor {
 
     pub fn get_sampling_decision_and_details(
         &self,
-        user: &StatsigUserInternal,
+        user_sampling_key: &str,
         eval_result: Option<&AnyEvaluation>,
         parameter_name_for_layer: Option<&str>,
     ) -> SamplingDecision {
@@ -117,8 +116,11 @@ impl SamplingProcessor {
         }
 
         let sampling_mode = self.get_sampling_mode();
-        let sampling_exposure_key =
-            self.compute_sampling_exposure_key(eval_result, user, parameter_name_for_layer);
+        let sampling_exposure_key = self.compute_sampling_exposure_key(
+            eval_result,
+            user_sampling_key,
+            parameter_name_for_layer,
+        );
 
         let (should_send_exposures, sampling_rate) =
             self.evaluate_exposure_sending(eval_result, &sampling_exposure_key);
@@ -153,7 +155,7 @@ impl SamplingProcessor {
     fn compute_sampling_exposure_key(
         &self,
         eval_result: &AnyEvaluation,
-        user: &StatsigUserInternal,
+        user_sampling_key: &str,
         parameter_name_for_layer: Option<&str>,
     ) -> String {
         let base_eval_res = eval_result.get_base_result();
@@ -164,13 +166,13 @@ impl SamplingProcessor {
                 eval.allocated_experiment_name.as_deref().unwrap_or("null"),
                 parameter_name_for_layer.unwrap_or("null"),
                 &base_eval_res.rule_id,
-                user,
+                user_sampling_key,
             ),
             _ => self.compute_sampling_key_for_gate_or_config(
                 &base_eval_res.name,
                 &base_eval_res.rule_id,
                 &eval_result.get_gate_bool_value(),
-                user,
+                user_sampling_key,
             ),
         }
     }
@@ -181,10 +183,9 @@ impl SamplingProcessor {
         name: &str,
         rule_id: &str,
         value: &bool,
-        user: &StatsigUserInternal,
+        user_sampling_key: &str,
     ) -> String {
-        let user_key = self.compute_user_key(user);
-        format!("n:{name};u:{user_key};r:{rule_id};v:{value}")
+        format!("n:{name};u:{user_sampling_key};r:{rule_id};v:{value}")
     }
 
     /// compute sampling key for layers
@@ -194,33 +195,9 @@ impl SamplingProcessor {
         experiment_name: &str,
         parameter_name: &str,
         rule_id: &str,
-        user: &StatsigUserInternal,
+        user_sampling_key: &str,
     ) -> String {
-        let user_key = self.compute_user_key(user);
-        format!("n:{layer_name};e:{experiment_name};p:{parameter_name};u:{user_key};r:{rule_id}")
-    }
-
-    fn compute_user_key(&self, user: &StatsigUserInternal) -> String {
-        let user_data = &user.user_data;
-
-        let mut user_key = format!(
-            "u:{};",
-            user_data
-                .user_id
-                .as_ref()
-                .and_then(|id| id.string_value.as_deref())
-                .unwrap_or("")
-        );
-
-        if let Some(custom_ids) = user_data.custom_ids.as_ref() {
-            for (key, val) in custom_ids {
-                if let Some(string_value) = &val.string_value {
-                    user_key.push_str(&format!("{key}:{string_value};"));
-                }
-            }
-        };
-
-        user_key
+        format!("n:{layer_name};e:{experiment_name};p:{parameter_name};u:{user_sampling_key};r:{rule_id}")
     }
 
     // -------------------------

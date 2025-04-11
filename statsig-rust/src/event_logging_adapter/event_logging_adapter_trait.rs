@@ -26,7 +26,7 @@ mod tests {
     #[test]
     fn test_request_jsonify() {
         let user = StatsigUser::with_user_id("a-user".to_string());
-        let user_internal = StatsigUserInternal::new(&user, None, None);
+        let user_internal = StatsigUserInternal::new(&user, None);
         let event = StatsigEvent {
             event_name: "my_custom_event".to_string(),
             value: None,
@@ -34,7 +34,7 @@ mod tests {
             statsig_metadata: None,
         };
 
-        let event = make_custom_event(user_internal, event);
+        let event = make_custom_event(user_internal.to_loggable(), event);
 
         let payload = LogEventPayload {
             events: json!([event]),

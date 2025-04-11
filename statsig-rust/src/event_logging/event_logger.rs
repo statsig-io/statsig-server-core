@@ -664,15 +664,15 @@ mod tests {
     use std::sync::atomic::{AtomicU64, Ordering};
 
     fn enqueue_single(logger: &Arc<EventLogger>, user_id: &str, event_name: &str) {
-        let user_internal =
-            StatsigUserInternal::new(&StatsigUser::with_user_id(user_id.to_string()), None, None);
+        let user = StatsigUser::with_user_id(user_id.to_string());
+        let user_internal = StatsigUserInternal::new(&user, None);
 
         let mut sampling_statsig_metadata: HashMap<String, Value> = HashMap::new();
         sampling_statsig_metadata.insert("samplingMode".into(), "on".into());
         sampling_statsig_metadata.insert("samplingRate".into(), 101.into());
 
         let event = StatsigEventInternal::new(
-            user_internal,
+            user_internal.to_loggable(),
             StatsigEvent {
                 event_name: event_name.to_string(),
                 value: None,
@@ -748,12 +748,11 @@ mod tests {
         enqueue_single(&logger, "a_user", "my_custom");
         enqueue_single(&logger, "a_user", "my_custom");
 
-        let user_internal =
-            StatsigUserInternal::new(&StatsigUser::with_user_id("a_user".to_string()), None, None);
+        let user = StatsigUser::with_user_id("a_user".to_string());
         let eval_details = EvaluationDetails::unrecognized_no_data();
 
         logger.enqueue(QueuedEventPayload::GateExposure(GateExposure {
-            user: user_internal.clone(),
+            user: StatsigUserInternal::new(&user, None).to_loggable(),
             gate_name: "a_gate".to_string(),
             value: false,
             rule_id: None,
@@ -765,7 +764,7 @@ mod tests {
             override_config_name: None,
         }));
         logger.enqueue(QueuedEventPayload::GateExposure(GateExposure {
-            user: user_internal,
+            user: StatsigUserInternal::new(&user, None).to_loggable(),
             gate_name: "a_gate".to_string(),
             value: false,
             rule_id: None,
