@@ -26,6 +26,7 @@ public class StatsigOptionsTest {
                 .setServiceName("test_service")
                 .setOutputLoggerLevel(OutputLogger.LogLevel.DEBUG)
                 .setIdListsSyncIntervalMs(3000L)
+                .setDisableNetwork(true)
                 .build();
     }
 
@@ -61,6 +62,7 @@ public class StatsigOptionsTest {
         StatsigOptions options = new StatsigOptions.Builder()
                 .setSpecsUrl("https://example.com/specs")
                 .setLogEventUrl("")
+                .setDisableNetwork(true)
                 .setIdListsUrl(null)
                 .setEnvironment("production")
                 .setServiceName("statsig_service")

@@ -34,6 +34,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     enable_country_lookup: jboolean,
     disable_all_logging: jboolean,
     enable_user_agent_parsing: jboolean,
+    disable_network: jboolean,
 ) -> jstring {
     let specs_url = jstring_to_string(&mut env, specs_url);
     let log_event_url = jstring_to_string(&mut env, log_event_url);
@@ -43,6 +44,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     let enable_user_agent_parsing = jboolean_to_bool(enable_user_agent_parsing);
     let enable_country_lookup = jboolean_to_bool(enable_country_lookup);
     let disable_all_logging = jboolean_to_bool(disable_all_logging);
+    let disable_network = jboolean_to_bool(disable_network);
+
     let service_name = jstring_to_string(&mut env, service_name);
 
     let specs_sync_interval_ms = if specs_sync_interval_ms > 0 {
@@ -92,6 +95,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .service_name(service_name)
         .enable_user_agent_parsing(enable_user_agent_parsing)
         .enable_country_lookup(enable_country_lookup)
+        .disable_network(disable_network)
         .init_timeout_ms(init_timeout_ms_option);
 
     let options = builder.build();

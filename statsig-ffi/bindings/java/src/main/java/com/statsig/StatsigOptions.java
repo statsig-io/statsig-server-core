@@ -20,7 +20,8 @@ public class StatsigOptions {
                 builder.enableIDLists,
                 builder.enableCountryLookup,
                 builder.disableAllLogging,
-                builder.enableUserAgentParsing);
+                builder.enableUserAgentParsing,
+                builder.disableNetwork);
 
         ResourceCleaner.register(this, () -> {
             if (ref != null) {
@@ -49,6 +50,7 @@ public class StatsigOptions {
         private boolean enableUserAgentParsing = false;
         private boolean enableCountryLookup = false;
         private boolean disableAllLogging = false;
+        private boolean disableNetwork = false;
         private OutputLogger.LogLevel outputLoggerLevel = OutputLogger.LogLevel.WARN;
         private String serviceName;
 
@@ -130,6 +132,11 @@ public class StatsigOptions {
 
         public Builder setEnableCountryLookup(boolean enableCountryLookup) {
             this.enableCountryLookup = enableCountryLookup;
+            return this;
+        }
+
+        public Builder setDisableNetwork(boolean disableNetwork) {
+            this.disableNetwork = disableNetwork;
             return this;
         }
 
