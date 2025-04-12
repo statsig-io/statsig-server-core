@@ -2,7 +2,7 @@ use crate::evaluation::evaluation_types::AnyEvaluation;
 use crate::global_configs::GlobalConfigs;
 use crate::hashing::HashUtil;
 use crate::hashset_with_ttl::HashSetWithTTL;
-use crate::{StatsigErr, StatsigRuntime};
+use crate::{DynamicValue, StatsigErr, StatsigRuntime};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::time::Duration;
@@ -270,21 +270,32 @@ impl SamplingProcessor {
     }
 
     fn get_sampling_mode(&self) -> SamplingMode {
+        fn parse_sampling_mode(value: Option<&DynamicValue>) -> SamplingMode {
+            match value {
+                Some(value) => match value.string_value.as_deref() {
+                    Some("on") => SamplingMode::On,
+                    Some("shadow") => SamplingMode::Shadow,
+                    _ => SamplingMode::None,
+                },
+                None => SamplingMode::None,
+            }
+        }
+
         self.global_configs
-            .get_sdk_config_value("sampling_mode")
-            .and_then(|mode| mode.string_value)
-            .as_deref()
-            .map_or(SamplingMode::None, |mode_str| match mode_str {
-                "on" => SamplingMode::On,
-                "shadow" => SamplingMode::Shadow,
-                _ => SamplingMode::None,
-            })
+            .use_sdk_config_value("sampling_mode", parse_sampling_mode)
     }
 
     fn get_special_case_sampling_rate(&self) -> Option<u64> {
-        self.global_configs
-            .get_sdk_config_value("special_case_sampling_rate")
-            .and_then(|v| v.float_value)
-            .map(|rate| rate as u64)
+        fn parse_special_case_sampling_rate(value: Option<&DynamicValue>) -> Option<u64> {
+            match value {
+                Some(value) => value.float_value.map(|rate| rate as u64),
+                None => None,
+            }
+        }
+
+        self.global_configs.use_sdk_config_value(
+            "special_case_sampling_rate",
+            parse_special_case_sampling_rate,
+        )
     }
 }

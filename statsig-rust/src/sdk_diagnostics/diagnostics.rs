@@ -130,35 +130,39 @@ impl Diagnostics {
     }
 
     pub fn should_sample(&self, context: &ContextType, key: Option<KeyType>) -> bool {
-        let mut rng = rand::thread_rng();
-        let rand_value = rng.gen::<f64>() * MAX_SAMPLING_RATE;
+        fn check_sampling_rate(sampling_rate: Option<&f64>) -> bool {
+            let mut rng = rand::thread_rng();
+            let rand_value = rng.gen::<f64>() * MAX_SAMPLING_RATE;
 
-        let sampling_rates = self.global_configs.get_diagnostics_sampling_rate();
+            match sampling_rate {
+                Some(sampling_rate) => rand_value < *sampling_rate,
+                None => rand_value < DEFAULT_SAMPLING_RATE,
+            }
+        }
 
         if *context == ContextType::Initialize {
-            return rand_value
-                < *sampling_rates
-                    .get("initialize")
-                    .unwrap_or(&DEFAULT_SAMPLING_RATE);
+            return self
+                .global_configs
+                .use_diagnostics_sampling_rate("initialize", check_sampling_rate);
         }
 
         if let Some(key) = key {
             match key {
                 KeyType::GetIDListSources => {
-                    return rand_value
-                        < *sampling_rates
-                            .get("get_id_list")
-                            .unwrap_or(&DEFAULT_SAMPLING_RATE);
+                    return self
+                        .global_configs
+                        .use_diagnostics_sampling_rate("get_id_list", check_sampling_rate);
                 }
                 KeyType::DownloadConfigSpecs => {
-                    return rand_value
-                        < *sampling_rates.get("dcs").unwrap_or(&DEFAULT_SAMPLING_RATE);
+                    return self
+                        .global_configs
+                        .use_diagnostics_sampling_rate("dcs", check_sampling_rate);
                 }
                 _ => {}
             }
         }
 
-        rand_value < DEFAULT_SAMPLING_RATE
+        check_sampling_rate(None)
     }
 
     fn get_context(&self, maybe_context: Option<&ContextType>) -> ContextType {

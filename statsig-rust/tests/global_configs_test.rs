@@ -26,27 +26,24 @@ fn test_set_values_and_get_config_num_value() {
     }
 
     assert_eq!(
-        global_config_instance
-            .get_sdk_config_value("event_queue_size")
-            .and_then(|v| v.float_value),
+        global_config_instance.use_sdk_config_value("event_queue_size", |v| v.unwrap().float_value),
         Some(1800.0)
     );
+
     assert_eq!(
         global_config_instance
-            .get_sdk_config_value("event_logging_interval_seconds")
-            .and_then(|v| v.float_value),
+            .use_sdk_config_value("event_logging_interval_seconds", |v| v.unwrap().float_value),
         Some(1.0)
     );
+
     assert_eq!(
         global_config_instance
-            .get_sdk_config_value("special_case_sampling_rate")
-            .and_then(|v| v.float_value),
+            .use_sdk_config_value("special_case_sampling_rate", |v| v.unwrap().float_value),
         Some(101.0)
     );
+
     assert_eq!(
-        global_config_instance
-            .get_sdk_config_value("non_existent_key")
-            .and_then(|v| v.float_value),
+        global_config_instance.use_sdk_config_value("non_existent_key", |v| v.cloned()),
         None
     );
 }
@@ -71,14 +68,11 @@ fn test_set_values_and_get_config_str_value() {
 
     assert_eq!(
         global_config_instance
-            .get_sdk_config_value("sampling_mode")
-            .and_then(|v| v.string_value),
+            .use_sdk_config_value("sampling_mode", |v| v.unwrap().string_value.clone()),
         Some("shadow".to_string())
     );
     assert_eq!(
-        global_config_instance
-            .get_sdk_config_value("non_existent_key")
-            .and_then(|v| v.string_value),
+        global_config_instance.use_sdk_config_value("non_existent_key", |v| v.cloned()),
         None
     );
 }
@@ -86,19 +80,23 @@ fn test_set_values_and_get_config_str_value() {
 #[test]
 fn test_get_default_diagnostics_sampling_rate() {
     let global_config_instance = GlobalConfigs::get_instance("");
-    let sampling_rates = global_config_instance.get_diagnostics_sampling_rate();
+    let init_rate =
+        global_config_instance.use_diagnostics_sampling_rate("initialize", |x| x.cloned());
+    let config_sync_rate =
+        global_config_instance.use_diagnostics_sampling_rate("config_sync", |x| x.cloned());
+    let dcs_rate = global_config_instance.use_diagnostics_sampling_rate("dcs", |x| x.cloned());
+    let get_id_list_rate =
+        global_config_instance.use_diagnostics_sampling_rate("get_id_list", |x| x.cloned());
 
-    assert_eq!(sampling_rates.get("initialize").copied(), Some(10000.0));
-    assert_eq!(sampling_rates.get("config_sync").copied(), Some(1000.0));
-    assert_eq!(sampling_rates.get("dcs").copied(), Some(1000.0));
-    assert_eq!(sampling_rates.get("get_id_list").copied(), Some(100.0));
+    assert_eq!(init_rate, Some(10000.0));
+    assert_eq!(config_sync_rate, Some(1000.0));
+    assert_eq!(dcs_rate, Some(1000.0));
+    assert_eq!(get_id_list_rate, Some(100.0));
 }
 
 #[test]
 fn test_set_and_get_sampling_rate() {
     let spec_store: SpecStore = create_test_spec_store();
-    let global_config_instance = GlobalConfigs::get_instance("");
-
     let json_data: serde_json::Value = serde_json::from_str(
         &fs::read_to_string("tests/data/dcs_with_sdk_configs.json").expect("Unable to read file"),
     )
@@ -115,10 +113,17 @@ fn test_set_and_get_sampling_rate() {
         Err(e) => println!("set_values failed: {e:?}"),
     }
 
-    let sampling_rates = global_config_instance.get_diagnostics_sampling_rate();
+    let global_config_instance = GlobalConfigs::get_instance("");
+    let init_rate =
+        global_config_instance.use_diagnostics_sampling_rate("initialize", |x| x.cloned());
+    let config_sync_rate =
+        global_config_instance.use_diagnostics_sampling_rate("config_sync", |x| x.cloned());
+    let dcs_rate = global_config_instance.use_diagnostics_sampling_rate("dcs", |x| x.cloned());
+    let get_id_list_rate =
+        global_config_instance.use_diagnostics_sampling_rate("get_id_list", |x| x.cloned());
 
-    assert_eq!(sampling_rates.get("initialize").copied(), Some(9999.0));
-    assert_eq!(sampling_rates.get("config_sync").copied(), Some(1000.0));
-    assert_eq!(sampling_rates.get("dcs").copied(), Some(999.0));
-    assert_eq!(sampling_rates.get("get_id_list").copied(), Some(99.0));
+    assert_eq!(init_rate, Some(9999.0));
+    assert_eq!(config_sync_rate, Some(1000.0));
+    assert_eq!(dcs_rate, Some(999.0));
+    assert_eq!(get_id_list_rate, Some(99.0));
 }

@@ -11,7 +11,8 @@ use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
 use crate::{
-    log_d, log_e, log_error_to_statsig_and_console, log_w, StatsigOptions, StatsigRuntime,
+    log_d, log_e, log_error_to_statsig_and_console, log_w, DynamicValue, StatsigOptions,
+    StatsigRuntime,
 };
 use chrono::Utc;
 use serde_json::{json, Value};
@@ -356,10 +357,18 @@ impl EventLogger {
         global_configs: &Arc<GlobalConfigs>,
         default_flushing_interval: u64,
     ) -> Option<u64> {
+        fn parse_event_logging_interval(value: Option<&DynamicValue>) -> Option<u64> {
+            match value {
+                Some(value) => value.float_value.map(|rate| (rate * 1000.0) as u64),
+                None => None,
+            }
+        }
+
         global_configs
-            .get_sdk_config_value("event_logging_interval_seconds")
-            .and_then(|v| v.float_value)
-            .map(|rate| (rate * 1000.0) as u64)
+            .use_sdk_config_value(
+                "event_logging_interval_seconds",
+                parse_event_logging_interval,
+            )
             .filter(|&interval| interval != default_flushing_interval)
     }
 

@@ -1,4 +1,4 @@
-use crate::{log_d, log_e, DynamicValue};
+use crate::{log_e, DynamicValue};
 use lazy_static::lazy_static;
 use std::{
     collections::HashMap,
@@ -91,28 +91,30 @@ impl GlobalConfigs {
         }
     }
 
-    pub fn get_sdk_config_value(&self, key: &str) -> Option<DynamicValue> {
+    pub fn use_sdk_config_value<T>(
+        &self,
+        key: &str,
+        f: impl FnOnce(Option<&DynamicValue>) -> T,
+    ) -> T {
         match self.configs.read() {
-            Ok(configs_guard) => match configs_guard.sdk_configs.get(key) {
-                Some(value) => Some(value.clone()),
-                None => {
-                    log_d!(TAG, "SDK Configs not found");
-                    None
-                }
-            },
+            Ok(configs_guard) => f(configs_guard.sdk_configs.get(key)),
             Err(e) => {
                 log_e!(TAG, "Failed to get read guard: {}", e);
-                None
+                f(None)
             }
         }
     }
 
-    pub fn get_diagnostics_sampling_rate(&self) -> HashMap<String, f64> {
+    pub fn use_diagnostics_sampling_rate<T>(
+        &self,
+        key: &str,
+        f: impl FnOnce(Option<&f64>) -> T,
+    ) -> T {
         match self.configs.read() {
-            Ok(configs_guard) => configs_guard.diagnostics_sampling_rates.clone(),
+            Ok(configs_guard) => f(configs_guard.diagnostics_sampling_rates.get(key)),
             Err(e) => {
                 log_e!(TAG, "Failed to get read guard: {}", e);
-                HashMap::new()
+                f(None)
             }
         }
     }
