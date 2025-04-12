@@ -1,23 +1,40 @@
 package com.statsig;
 
+import org.jetbrains.annotations.Nullable;
+
 public class ClientInitResponseOptions {
     public HashAlgo hashAlgo;
     public String clientSDKKey;
+    public boolean includeLocalOverrides;
     private String hashAlgoInternal; // jni use string type
 
-    public ClientInitResponseOptions(HashAlgo hashAlgo, String clientSDKKey) {
+    public ClientInitResponseOptions(@Nullable HashAlgo hashAlgo, String clientSDKKey, boolean includeLocalOverrides) {
         this.hashAlgo = hashAlgo;
         this.clientSDKKey = clientSDKKey;
-        hashAlgoInternal = hashAlgo.convertToStr();
+        this.includeLocalOverrides = includeLocalOverrides;
+        if (hashAlgo != null) {
+            this.hashAlgoInternal = hashAlgo.convertToStr();
+        }
     }
 
     public ClientInitResponseOptions(String clientSDKKey) {
-        this.clientSDKKey = clientSDKKey;
+        this(null, clientSDKKey, false);
     }
 
     public ClientInitResponseOptions(HashAlgo hashAlgo) {
-        this.hashAlgo = hashAlgo;
-        hashAlgoInternal = hashAlgo.convertToStr();
+        this(hashAlgo, null, false);
+    }
+
+    public ClientInitResponseOptions(HashAlgo hashAlgo, String clientSDKKey) {
+        this(hashAlgo, clientSDKKey, false);
+    }
+
+    public ClientInitResponseOptions(HashAlgo hashAlgo, boolean includeLocalOverrides) {
+        this(hashAlgo, null, includeLocalOverrides);
+    }
+
+    public ClientInitResponseOptions() {
+        this(null, null, false);
     }
 
     public HashAlgo getHashAlgo() {
@@ -26,10 +43,14 @@ public class ClientInitResponseOptions {
 
     public void setHashAlgo(HashAlgo hashAlgo) {
         this.hashAlgo = hashAlgo;
-        hashAlgoInternal = hashAlgo.convertToStr();
+        this.hashAlgoInternal = (hashAlgo != null) ? hashAlgo.convertToStr() : null;
     }
 
     public void setClientSDKKey(String clientSDKKey) {
         this.clientSDKKey = clientSDKKey;
+    }
+
+    public void setIncludeLocalOverrides(boolean includeLocalOverrides) {
+        this.includeLocalOverrides = includeLocalOverrides;
     }
 }

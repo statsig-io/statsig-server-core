@@ -42,4 +42,11 @@ public class GetClientInitResponseTest {
         String res = statsigServer.getClientInitializeResponse(user, new ClientInitResponseOptions("client-key"));
         assertNotNull(res);
     }
+
+    public void testGetClientInitResponseOptions() {
+        ClientInitResponseOptions options = new ClientInitResponseOptions();
+        options.setIncludeLocalOverrides(true);
+        String res = statsigServer.getClientInitializeResponse(user, options);
+        assertNotNull(res);
+    }
 }
