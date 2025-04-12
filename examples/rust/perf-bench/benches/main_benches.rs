@@ -30,7 +30,7 @@ async fn setup() -> (StatsigUser, Statsig) {
     (user, statsig)
 }
 
-fn test_all_gate_checks() {
+fn all_gate_checks() {
     let rt = tokio::runtime::Runtime::new().unwrap();
 
     rt.block_on(async {
@@ -46,8 +46,31 @@ fn test_all_gate_checks() {
     });
 }
 
+fn get_client_init_response() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
+    rt.block_on(async {
+        let (user, statsig) = setup().await;
+
+        for _ in 0..10 {
+            let _ = statsig.get_client_init_response(&user);
+        }
+
+        let user_2 = StatsigUser {
+            country: Some("GB".into()),
+            user_agent: Some("Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into()),
+            ..StatsigUser::with_user_id("user-d".into())
+        };
+
+        for _ in 0..10 {
+            let _ = statsig.get_client_init_response(&user_2);
+        }
+    });
+}
+
 fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("all gates", |b| b.iter(|| test_all_gate_checks()));
+    c.bench_function("all gates", |b| b.iter(|| all_gate_checks()));
+    c.bench_function("get client init response", |b| b.iter(|| get_client_init_response()));
 }
 
 criterion_group!(benches, criterion_benchmark);

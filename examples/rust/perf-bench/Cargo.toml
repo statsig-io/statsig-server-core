@@ -17,5 +17,5 @@ bench = false
 
 
 [[bench]]
-name = "gate_check_benchmark"
+name = "main_benches"
 harness = false
