@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 from typing_extensions import TypeAlias, TypedDict
-from statsig_python_core import StatsigUser, PersistenStorageBaseClass
+from statsig_python_core import StatsigUser, PersistentStorageBaseClass
 
 class StickyValues(TypedDict):
     value: bool
@@ -17,7 +17,7 @@ class StickyValues(TypedDict):
 UserPersistedValues: TypeAlias = Dict[str, StickyValues]
 PersistedValues: TypeAlias = Dict[str, UserPersistedValues]
 
-class PersistentStorage(PersistenStorageBaseClass):
+class PersistentStorage(PersistentStorageBaseClass):
     def __init__(self):
         super().__init__()
         self.load_fn = self.load
