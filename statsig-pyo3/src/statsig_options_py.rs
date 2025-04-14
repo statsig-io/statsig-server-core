@@ -9,9 +9,11 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3_stub_gen::derive::*;
 use statsig_rust::data_store_interface::DataStoreTrait;
-use statsig_rust::PersistentStorage;
+use statsig_rust::{log_w, PersistentStorage};
 use statsig_rust::{output_logger::LogLevel, ObservabilityClient, StatsigOptions};
 use std::sync::{Arc, Weak};
+
+const TAG: &str = stringify!(StatsigOptionsPy);
 
 #[gen_stub_pyclass]
 #[pyclass(name = "StatsigOptions")]
@@ -165,9 +167,15 @@ fn create_inner_statsig_options(
         specs_adapter: None,
         specs_sync_interval_ms: opts.specs_sync_interval_ms,
         init_timeout_ms: opts.init_timeout_ms,
-        data_store: opts.data_store.map(|store| {
-            Arc::new(store.extract::<DataStoreBasePy>(py).unwrap()) as Arc<dyn DataStoreTrait>
-        }),
+        data_store: opts
+            .data_store
+            .and_then(|store| match store.extract::<DataStoreBasePy>(py) {
+                Ok(store_unwrapped) => {
+                    let store_actual = Arc::new(store_unwrapped) as Arc<dyn DataStoreTrait>;
+                    Some(store_actual)
+                }
+                Err(_) => log_w!(TAG, "Failed to convert data store"),
+            }),
         spec_adapters_config: None,
         log_event_url: opts.log_event_url.clone(),
         disable_all_logging: opts.disable_all_logging,
