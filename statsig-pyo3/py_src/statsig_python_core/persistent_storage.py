@@ -35,7 +35,11 @@ class PersistentStorage(PersistentStorageBaseClass):
     
 
     def get_user_persisted_value(self, user: StatsigUser, id_type: str) -> Optional[UserPersistedValues]:
-        return self.load(self.get_storage_key(user, id_type))
+        storage_key = self.get_storage_key(user, id_type) 
+        if storage_key is not None:
+            return self.load(storage_key)
+
+        return None
     
     @staticmethod
     def get_storage_key(user: StatsigUser, id_type: str) -> Optional[str]:
