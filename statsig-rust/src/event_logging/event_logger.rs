@@ -43,7 +43,12 @@ struct PreviousExposureInfo {
     exposures: HashSet<String>,
     last_reset: u64,
 }
-
+#[derive(PartialEq)]
+pub enum BatchReason {
+    All,
+    Limit,
+    Interval,
+}
 pub enum QueuedEventPayload {
     CustomEvent(StatsigEventInternal),
     GateExposure(GateExposure),
@@ -199,8 +204,8 @@ impl EventLogger {
     }
 
     fn try_batch_and_prepare_events(self: &Arc<Self>) {
-        let was_not_batching = !self.is_limit_batching.swap(true, Ordering::Relaxed);
-        if !was_not_batching {
+        let already_batching = self.is_limit_batching.swap(true, Ordering::SeqCst);
+        if already_batching {
             return;
         }
 
@@ -216,7 +221,7 @@ impl EventLogger {
                     }
                     _ = async {
                         log_d!(TAG,"Event queue limit hit. Batching and preparing events...");
-                        self_clone.batch_and_prepare_events();
+                        self_clone.batch_and_prepare_events(BatchReason::Limit);
                     } => {}
                 }
             });
@@ -256,7 +261,7 @@ impl EventLogger {
     }
 
     pub async fn flush_all_blocking(&self) {
-        self.batch_and_prepare_events();
+        self.batch_and_prepare_events(BatchReason::All);
 
         self.statsig_runtime
             .await_tasks_with_tag(BATCH_AND_FORGET_BG_TAG)
@@ -265,38 +270,52 @@ impl EventLogger {
         self.flush_blocking(true).await;
     }
 
-    fn batch_and_prepare_events(&self) {
+    fn reset_limit_batching_if_needed(&self, batch_mode: BatchReason) {
+        if matches!(batch_mode, BatchReason::Limit) {
+            self.is_limit_batching.swap(false, Ordering::SeqCst);
+        }
+    }
+
+    fn batch_and_prepare_events(&self, batch_mode: BatchReason) {
         append_non_exposed_event_and_reset(&self.event_queue, &self.non_exposed_checks);
 
         let count = match self.event_queue.read().ok() {
             Some(e) => e.len(),
-            _ => return,
+            _ => {
+                self.reset_limit_batching_if_needed(batch_mode);
+                return;
+            }
         };
 
         if count == 0 {
+            self.reset_limit_batching_if_needed(batch_mode);
             return;
         }
 
         log_d!(TAG, "Batching and preparing {} events", count);
 
-        let payloads = if let Ok(mut lock) = self.event_queue.write() {
-            std::mem::take(&mut *lock)
+        let payloads = if let Ok(lock) = self.event_queue.write() {
+            take_from_queue(&batch_mode, lock, self.max_queue_size)
         } else {
             log_error_to_statsig_and_console!(self.ops_stats, TAG, "Failed to lock event queue");
+            if batch_mode == BatchReason::Limit {
+                self.is_limit_batching.swap(false, Ordering::SeqCst);
+            }
             return;
         };
 
-        let limit_batching = self.is_limit_batching.swap(false, Ordering::Relaxed);
+        let mut was_limit_batching = false;
+        if matches!(batch_mode, BatchReason::Limit) {
+            was_limit_batching = self.is_limit_batching.swap(false, Ordering::SeqCst);
+        }
 
-        let validated_chunks = validate_and_chunk_events(
-            self.max_queue_size,
-            payloads,
-            self.previous_exposure_info.clone(),
-        );
+        let validated_events = validate_events(payloads, self.previous_exposure_info.clone());
 
-        if validated_chunks.is_empty() {
+        if validated_events.is_empty() {
             return;
         }
+
+        let validated_chunks = validated_events.chunks(self.max_queue_size);
 
         let mut pending_batches = match self.pending_batch_queue.write() {
             Ok(lock) => lock,
@@ -310,11 +329,11 @@ impl EventLogger {
             }
         };
 
-        for chunk in &validated_chunks {
+        for chunk in validated_chunks {
             let event_count = chunk.len() as u64;
             let mut statsig_metadata = StatsigMetadata::get_as_json();
             if let Value::Object(ref mut obj) = statsig_metadata {
-                obj.insert("isLimitBatch".to_string(), json!(limit_batching));
+                obj.insert("isLimitBatch".to_string(), json!(was_limit_batching));
             }
             let pending_batch = LogEventRequest {
                 payload: LogEventPayload {
@@ -406,7 +425,7 @@ impl EventLogger {
         if now.duration_since(*last_batch_time)
             >= Duration::from_millis(strong_self.defaults.batching_interval)
         {
-            strong_self.batch_and_prepare_events();
+            strong_self.batch_and_prepare_events(BatchReason::Interval);
             *last_batch_time = now;
 
             let dropped_count = strong_self.dropped_event_count.swap(0, Ordering::Relaxed);
@@ -586,11 +605,27 @@ fn append_non_exposed_event_and_reset(
     }
 }
 
-fn validate_and_chunk_events(
-    max_chunk_size: usize,
+fn take_from_queue(
+    batch_mode: &BatchReason,
+    mut lock: std::sync::RwLockWriteGuard<Vec<QueuedEventPayload>>,
+    max_queue_size: usize,
+) -> Vec<QueuedEventPayload> {
+    if *batch_mode == BatchReason::All || lock.len() <= max_queue_size || max_queue_size == 0 {
+        return std::mem::take(&mut *lock);
+    }
+
+    let take_count = (lock.len() / max_queue_size) * max_queue_size;
+    let remaining = lock.split_off(take_count);
+    let payloads = std::mem::take(&mut *lock);
+    *lock = remaining;
+
+    payloads
+}
+
+fn validate_events(
     payloads: Vec<QueuedEventPayload>,
     previous_exposure_info: Arc<Mutex<PreviousExposureInfo>>,
-) -> Vec<Vec<StatsigEventInternal>> {
+) -> Vec<StatsigEventInternal> {
     let mut previous_info = match previous_exposure_info.lock() {
         Ok(lock) => lock,
         Err(e) => {
@@ -600,21 +635,11 @@ fn validate_and_chunk_events(
     };
 
     let mut valid_events = vec![];
-    let mut chunk = vec![];
 
     for payload in payloads {
         if let Some(event) = validate_queued_event_payload(payload, &mut previous_info) {
-            chunk.push(event);
+            valid_events.push(event);
         }
-
-        if chunk.len() >= max_chunk_size {
-            valid_events.push(chunk);
-            chunk = vec![];
-        }
-    }
-
-    if !chunk.is_empty() {
-        valid_events.push(chunk);
     }
 
     valid_events

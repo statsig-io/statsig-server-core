@@ -115,7 +115,7 @@ async fn flush_limit_batching_awaiting() {
     statsig.shutdown().await.unwrap();
 
     let flushed_logs = scrapi.get_logged_event_count();
-    assert_eq!(100, flushed_logs);
+    assert_eq!(101, flushed_logs); // 100 events 1 diagnostics
     std::env::remove_var("BATCHING_INTERVAL");
 }
 
