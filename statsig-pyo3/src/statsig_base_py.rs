@@ -1,6 +1,7 @@
 use crate::net_provider_py::NetworkProviderPy;
 use crate::pyo_utils::{map_to_py_dict, py_dict_to_json_value_map};
 use crate::statsig_options_py::{safe_convert_to_statsig_options, StatsigOptionsPy};
+use crate::statsig_persistent_storage_override_adapter_py::convert_dict_to_user_persisted_values;
 use crate::statsig_types_py::{DynamicConfigPy, LayerPy};
 use crate::{
     statsig_types_py::{
@@ -24,6 +25,29 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 const TAG: &str = stringify!(StatsigBasePy);
+
+macro_rules! process_user_persisted_values {
+    ($options:expr, $name:expr) => {
+        Python::with_gil(|py| match $options.and_then(|o| o.user_persisted_values) {
+            Some(user_persisted_value_py) => {
+                let a: Result<HashMap<String, statsig_rust::StickyValues>, PyErr> =
+                    convert_dict_to_user_persisted_values(py, user_persisted_value_py, $name);
+                match a {
+                    Ok(a_converted) => Some(a_converted),
+                    Err(e) => {
+                        log_e!(
+                            TAG,
+                            "Failed to convert persisted values from pydict to rust: {:?}",
+                            e
+                        );
+                        None
+                    }
+                }
+            }
+            None => None,
+        })
+    };
+}
 
 #[gen_stub_pyclass]
 #[pyclass(subclass)]
@@ -244,9 +268,11 @@ impl StatsigBasePy {
         options: Option<ExperimentEvaluationOptionsPy>,
         py: Python,
     ) -> ExperimentPy {
-        let options_actual = options
+        let mut options_actual = options
             .as_ref()
             .map_or(ExperimentEvaluationOptions::default(), |o| o.into());
+        options_actual.user_persisted_values = process_user_persisted_values!(options, name);
+
         let experiment = self
             .inner
             .get_experiment_with_options(&user.inner, name, options_actual);
@@ -281,9 +307,11 @@ impl StatsigBasePy {
         options: Option<LayerEvaluationOptionsPy>,
         py: Python,
     ) -> LayerPy {
-        let options_actual = options
+        let mut options_actual = options
             .as_ref()
             .map_or(LayerEvaluationOptions::default(), |o| o.into());
+        options_actual.user_persisted_values = process_user_persisted_values!(options, name);
+
         let layer = self
             .inner
             .get_layer_with_options(&user.inner, name, options_actual);

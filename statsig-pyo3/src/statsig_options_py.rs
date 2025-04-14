@@ -1,4 +1,7 @@
 use crate::pyo_utils::py_dict_to_map;
+use crate::statsig_persistent_storage_override_adapter_py::{
+    PersistentStorageBasePy, StatsigPersistentStorageOverrideAdapter,
+};
 use crate::{
     data_store_base_py::DataStoreBasePy, observability_client_base_py::ObservabilityClientBasePy,
 };
@@ -6,6 +9,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3_stub_gen::derive::*;
 use statsig_rust::data_store_interface::DataStoreTrait;
+use statsig_rust::PersistentStorage;
 use statsig_rust::{output_logger::LogLevel, ObservabilityClient, StatsigOptions};
 use std::sync::{Arc, Weak};
 
@@ -53,6 +57,8 @@ pub struct StatsigOptionsPy {
     pub observability_client: Option<Py<ObservabilityClientBasePy>>,
     #[pyo3(get, set)]
     pub data_store: Option<Py<DataStoreBasePy>>,
+    #[pyo3(get, set)]
+    pub persistent_storage: Option<Py<PersistentStorageBasePy>>,
 }
 
 #[gen_stub_pymethods]
@@ -80,6 +86,7 @@ impl StatsigOptionsPy {
         global_custom_fields=None,
         observability_client=None,
         data_store=None,
+        persistent_storage=None,
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -103,6 +110,7 @@ impl StatsigOptionsPy {
         global_custom_fields: Option<Py<PyDict>>,
         observability_client: Option<Py<ObservabilityClientBasePy>>,
         data_store: Option<Py<DataStoreBasePy>>,
+        persistent_storage: Option<Py<PersistentStorageBasePy>>,
     ) -> Self {
         Self {
             specs_url,
@@ -125,6 +133,7 @@ impl StatsigOptionsPy {
             observability_client,
             data_store,
             disable_network,
+            persistent_storage,
         }
     }
 }
@@ -186,12 +195,11 @@ fn create_inner_statsig_options(
             .as_ref()
             .map(|dict| py_dict_to_map(dict.bind(py))),
         disable_network: opts.disable_network,
-        persistent_storage: None,
-        // persistent_storage: opts.persistent_storage.as_ref().map(|s| {
-        //     Arc::new(StatsigPersistentStorageOverrideAdapter::new(
-        //         s.clone_ref(py),
-        //     )) as Arc<dyn PersistentStorage>
-        // }),
+        persistent_storage: opts.persistent_storage.as_ref().map(|s| {
+            Arc::new(StatsigPersistentStorageOverrideAdapter::new(
+                s.extract(py).unwrap_or_default(),
+            )) as Arc<dyn PersistentStorage>
+        }),
     }
 }
 

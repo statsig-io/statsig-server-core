@@ -1,6 +1,6 @@
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods, PyList, PyModule};
-use pyo3::{Bound, PyAny, PyObject, PyResult, Python};
+use pyo3::{Bound, PyAny, PyErr, PyObject, PyResult, Python};
 use serde_json::{json, Value};
 use statsig_rust::{log_e, DynamicValue};
 use std::collections::HashMap;
@@ -79,6 +79,27 @@ pub fn map_to_py_dict(py: Python, map: &HashMap<String, Value>) -> PyObject {
             return PyDict::new(py).unbind().into();
         }
     };
+}
+
+pub fn py_list_to_list(py_list: &Bound<PyList>) -> PyResult<Vec<String>> {
+    let mut converted_list = Vec::new();
+    for value in py_list {
+        match value.extract::<String>() {
+            Ok(s) => converted_list.push(s),
+            Err(e) => return Err(e),
+        }
+    }
+    Ok(converted_list)
+}
+
+pub fn get_string_from_py_dict_throw_on_none(
+    py_dict: &Bound<PyDict>,
+    key: &str,
+) -> PyResult<String> {
+    match py_dict.get_item(key)? {
+        Some(v) => Ok(v.extract::<String>()?),
+        None => Err(PyErr::new::<PyTypeError, _>("Value in dict is null")),
+    }
 }
 
 /// order matters in this function, please don't change
