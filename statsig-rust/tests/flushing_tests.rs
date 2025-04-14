@@ -1,8 +1,8 @@
 mod utils;
 use serde_json::{json, Value};
 use statsig_rust::{
-    DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
-    Statsig, StatsigOptions, StatsigUser,
+    output_logger::LogLevel, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
+    FeatureGateEvaluationOptions, Statsig, StatsigOptions, StatsigUser,
 };
 use std::{
     io::Read,
@@ -212,6 +212,7 @@ async fn test_flushing_backoff_and_metadata() {
             ))),
             log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
             event_logging_max_queue_size: Some(1),
+            output_log_level: Some(LogLevel::Debug),
             ..StatsigOptions::new()
         })),
     );
@@ -225,16 +226,35 @@ async fn test_flushing_backoff_and_metadata() {
     sleep(Duration::from_millis(100)).await;
 
     let log_event_requests = mock_scrapi.get_requests_for_endpoint(Endpoint::LogEvent);
-    assert_flushing_interval_and_limit_batch(&log_event_requests, 0, 1, true);
-    assert_flushing_interval_and_limit_batch(&log_event_requests, 1, 2, true);
+    let requests_to_validate = filter_requests_by_task_id(&log_event_requests, 1);
+    assert_flushing_interval_and_limit_batch(&requests_to_validate, 0, 1, true);
+    assert_flushing_interval_and_limit_batch(&requests_to_validate, 1, 2, true);
 
     statsig.shutdown().await.unwrap();
 }
 
+fn filter_requests_by_task_id(requests: &[Request], expected_task_id: u64) -> Vec<&Request> {
+    requests
+        .iter()
+        .filter(|req| {
+            if let Ok(json_data) = decompress_json(&req.body) {
+                if let Some(metadata) = json_data.get("statsigMetadata") {
+                    return metadata
+                        .get("taskId")
+                        .and_then(|v| v.as_u64())
+                        .map(|id| id == expected_task_id)
+                        .unwrap_or(false);
+                }
+            }
+            false
+        })
+        .collect()
+}
+
 fn assert_flushing_interval_and_limit_batch(
-    requests: &[Request],
+    requests: &[&wiremock::Request],
     index: usize,
-    expected_interval: u64,
+    expected_threshold_interval: u64,
     expected_limit_batch: bool,
 ) {
     let json_data = decompress_json(&requests[index].body).expect("Failed to decompress JSON");
@@ -242,10 +262,16 @@ fn assert_flushing_interval_and_limit_batch(
         .get("statsigMetadata")
         .expect("Missing statsigMetadata field");
 
-    assert_eq!(
-        statsig_metadata.get("flushingIntervalMs"),
-        Some(&json!(expected_interval)),
-        "Unexpected flushing interval at index {}",
+    let actual_interval = statsig_metadata
+        .get("flushingIntervalMs")
+        .and_then(|v| v.as_u64())
+        .expect("Missing or invalid flushingIntervalMs field");
+
+    assert!(
+        actual_interval >= expected_threshold_interval,
+        "Expected flushingIntervalMs >= {}, but got {} at index {}",
+        expected_threshold_interval,
+        actual_interval,
         index
     );
 

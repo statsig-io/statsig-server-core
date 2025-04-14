@@ -150,8 +150,20 @@ impl EventLogger {
             return;
         }
 
-        let weak_inst = Arc::downgrade(&self);
         log_d!(TAG, "Starting event logger background flush");
+
+        //spawn two threads to flush
+        self.clone()
+            .spawn_background_flush_thread(statsig_runtime.clone(), 1);
+        self.spawn_background_flush_thread(statsig_runtime.clone(), 2);
+    }
+
+    fn spawn_background_flush_thread(
+        self: Arc<Self>,
+        statsig_runtime: Arc<StatsigRuntime>,
+        task_id: u32,
+    ) {
+        let weak_inst = Arc::downgrade(&self);
 
         statsig_runtime.spawn(TAG, move |rt_shutdown_notify| async move {
             log_d!(TAG, "BG flush loop begin");
@@ -162,11 +174,10 @@ impl EventLogger {
                     log_w!(TAG, "failed to upgrade weak instance");
                     break;
                 };
-
-                let flush_interval = self.flush_interval_ms.load(Ordering::Relaxed);
+                let flush_interval = strong_self.flush_interval_ms.load(Ordering::Relaxed);
                 tokio::select! {
                     () = sleep(Duration::from_millis(flush_interval)) => {
-                        Self::background_flush_actions(strong_self, &mut last_batch_time, flush_interval).await;
+                        Self::background_flush_actions(strong_self, &mut last_batch_time, flush_interval, task_id).await;
                     }
                     () = rt_shutdown_notify.notified() => {
                         log_d!(TAG, "Runtime shutdown. Shutting down event logger background flush");
@@ -244,7 +255,7 @@ impl EventLogger {
         Ok(())
     }
 
-    pub async fn flush_blocking(&self, flush_all: bool) {
+    pub async fn flush_blocking(&self, flush_all: bool, task_id: u32) {
         let adapter = self.event_logging_adapter.clone();
         let global_configs = self.global_configs.clone();
         let pending_event_batches = self.pending_batch_queue.clone();
@@ -256,6 +267,7 @@ impl EventLogger {
             &self.flush_interval_ms,
             global_configs,
             &self.defaults,
+            task_id,
         )
         .await;
     }
@@ -267,7 +279,7 @@ impl EventLogger {
             .await_tasks_with_tag(BATCH_AND_FORGET_BG_TAG)
             .await;
 
-        self.flush_blocking(true).await;
+        self.flush_blocking(true, 0).await;
     }
 
     fn reset_limit_batching_if_needed(&self, batch_mode: BatchReason) {
@@ -359,16 +371,34 @@ impl EventLogger {
     }
 
     fn success_backoff(flushing_interval_ms: &AtomicU64, min_flushing_interval_ms: u64) {
+        if flushing_interval_ms.load(Ordering::Relaxed) == min_flushing_interval_ms {
+            return;
+        }
         let current_interval = flushing_interval_ms.load(Ordering::Relaxed);
         let new_interval = current_interval / 2;
         let clamped_interval = new_interval.max(min_flushing_interval_ms);
+        log_d!(
+            TAG,
+            "Success backoff: flushing_interval_ms {} -> {}",
+            current_interval,
+            clamped_interval
+        );
         flushing_interval_ms.store(clamped_interval, Ordering::Relaxed);
     }
 
     fn failure_backoff(flushing_interval_ms: &AtomicU64) {
+        if flushing_interval_ms.load(Ordering::Relaxed) == MAX_FLUSH_INTERVAL_MS {
+            return;
+        }
         let current_interval = flushing_interval_ms.load(Ordering::Relaxed);
         let new_interval = current_interval * 2;
         let clamped_interval = new_interval.min(MAX_FLUSH_INTERVAL_MS);
+        log_d!(
+            TAG,
+            "Failure backoff: flushing_interval_ms {} -> {}",
+            current_interval,
+            clamped_interval
+        );
         flushing_interval_ms.store(clamped_interval, Ordering::Relaxed);
     }
 
@@ -418,9 +448,10 @@ impl EventLogger {
         strong_self: Arc<EventLogger>,
         last_batch_time: &mut Instant,
         curr_flush_interval: u64,
+        task_id: u32,
     ) {
         let now = Instant::now();
-        strong_self.flush_blocking(false).await;
+        strong_self.flush_blocking(false, task_id).await;
 
         if now.duration_since(*last_batch_time)
             >= Duration::from_millis(strong_self.defaults.batching_interval)
@@ -446,6 +477,7 @@ impl EventLogger {
                             "loggingInterval".to_string(),
                             curr_flush_interval.to_string(),
                         ),
+                        ("taskId".to_string(), task_id.to_string()),
                     ])),
                 });
             }
@@ -458,6 +490,7 @@ impl EventLogger {
         global_configs: &'a Arc<GlobalConfigs>,
         defaults: &'a EventLoggerDynamicDefaults,
         flushing_interval_ms: &'a AtomicU64,
+        task_id: u32,
     ) -> Vec<impl Future<Output = Option<(usize, StatsigErr)>> + 'a> {
         batches_to_process
             .iter()
@@ -472,6 +505,7 @@ impl EventLogger {
 
                 if let Value::Object(ref mut obj) = batch_clone.payload.statsig_metadata {
                     obj.insert("flushingIntervalMs".to_string(), json!(current_interval_ms));
+                    obj.insert("taskId".to_string(), json!(task_id));
                 }
 
                 async move {
@@ -505,6 +539,7 @@ impl EventLogger {
         flushing_interval_ms: &AtomicU64,
         global_configs: Arc<GlobalConfigs>,
         defaults: &EventLoggerDynamicDefaults,
+        task_id: u32,
     ) {
         let batches_to_process = Self::get_batches_to_process(&pending_batches, flush_all);
         if batches_to_process.is_empty() {
@@ -519,6 +554,7 @@ impl EventLogger {
             &global_configs,
             defaults,
             flushing_interval_ms,
+            task_id,
         )
         .await;
 

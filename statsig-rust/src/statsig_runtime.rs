@@ -226,7 +226,7 @@ fn create_runtime_if_required() -> (Option<Runtime>, Handle) {
 
     // todo: remove expects and return error
     let rt = Builder::new_multi_thread()
-        .worker_threads(3)
+        .worker_threads(5)
         .thread_name("statsig")
         .enable_all()
         .build()
