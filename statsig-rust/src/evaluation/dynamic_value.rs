@@ -1,3 +1,4 @@
+use chrono::{DateTime, NaiveDateTime};
 use regex_lite::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value as JsonValue};
@@ -16,6 +17,7 @@ pub struct DynamicValue {
     pub bool_value: Option<bool>,
     pub int_value: Option<i64>,
     pub float_value: Option<f64>,
+    pub timestamp_value: Option<i64>,
     pub string_value: Option<String>,
     pub lowercase_string_value: Option<String>,
     pub array_value: Option<Vec<DynamicValue>>,
@@ -29,10 +31,14 @@ impl From<String> for DynamicValue {
         let json_value = json!(value);
         let float_value = value.parse().ok();
         let int_value = value.parse().ok();
+
+        let timestamp_value = Self::try_parse_timestamp(&value);
+
         DynamicValue {
             float_value,
             int_value,
             json_value,
+            timestamp_value,
             lowercase_string_value: Some(value.to_lowercase()),
             string_value: Some(value),
             ..Self::default()
@@ -177,6 +183,22 @@ impl DynamicValue {
                 self.regex_value = Some(regex);
             }
         }
+    }
+
+    fn try_parse_timestamp(s: &str) -> Option<i64> {
+        if let Ok(ts) = s.parse::<i64>() {
+            return Some(ts);
+        }
+
+        if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
+            return Some(dt.timestamp_millis());
+        }
+
+        if let Ok(ndt) = NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S") {
+            return Some(ndt.and_utc().timestamp_millis());
+        }
+
+        None
     }
 }
 
