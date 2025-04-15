@@ -3,7 +3,7 @@ use crate::jni::jni_utils::{jstring_to_string, string_to_jstring};
 use jni::objects::{JClass, JString};
 use jni::sys::jstring;
 use jni::JNIEnv;
-use statsig_rust::{log_d, log_e, statsig_user::StatsigUserBuilder, InstanceRegistry};
+use statsig_rust::{log_d, log_e, InstanceRegistry, StatsigUserBuilder};
 
 const TAG: &str = "StatsigUserJNI";
 

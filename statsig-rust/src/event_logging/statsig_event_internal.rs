@@ -4,7 +4,7 @@ use crate::event_logging::gate_exposure::GATE_EXPOSURE_EVENT_NAME;
 use crate::event_logging::layer_exposure::LAYER_EXPOSURE_EVENT_NAME;
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::sdk_diagnostics::diagnostics::DIAGNOSTICS_EVENT;
-use crate::statsig_user_internal::StatsigUserLoggable;
+use crate::user::StatsigUserLoggable;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -96,7 +96,7 @@ fn secondary_exposure_keys_to_expos(
 mod statsig_event_internal_tests {
     use crate::event_logging::statsig_event::StatsigEvent;
     use crate::event_logging::statsig_event_internal::{make_custom_event, StatsigEventInternal};
-    use crate::statsig_user_internal::StatsigUserInternal;
+    use crate::user::StatsigUserInternal;
     use crate::StatsigUser;
     use serde_json::{json, Value};
     use std::collections::HashMap;

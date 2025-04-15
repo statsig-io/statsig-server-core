@@ -1,6 +1,6 @@
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::sampling_processor::SamplingDecision;
-use crate::statsig_user_internal::StatsigUserLoggable;
+use crate::user::StatsigUserLoggable;
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -92,7 +92,7 @@ pub(crate) fn make_exposure_key(
 
 #[cfg(test)]
 mod tests {
-    use crate::{dyn_value, statsig_user_internal::StatsigUserInternal, StatsigUser};
+    use crate::{dyn_value, user::StatsigUserInternal, StatsigUser};
 
     use super::*;
 

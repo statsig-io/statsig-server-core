@@ -3,9 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use uaparser::{Parser, UserAgentParser as ExtUserAgentParser};
 
-use crate::{
-    log_d, log_e, statsig_user_internal::StatsigUserInternal, unwrap_or_return_with, DynamicValue,
-};
+use crate::{log_d, log_e, unwrap_or_return_with, user::StatsigUserInternal, DynamicValue};
 
 use super::dynamic_string::DynamicString;
 

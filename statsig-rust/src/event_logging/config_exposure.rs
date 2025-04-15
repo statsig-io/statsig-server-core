@@ -7,7 +7,7 @@ use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::StatsigEventInternal;
 use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::sampling_processor::SamplingDecision;
-use crate::statsig_user_internal::StatsigUserLoggable;
+use crate::user::StatsigUserLoggable;
 
 pub const CONFIG_EXPOSURE_EVENT_NAME: &str = "statsig::config_exposure";
 

@@ -2,7 +2,7 @@ mod utils;
 
 use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
-use statsig_rust::statsig_user::StatsigUserBuilder;
+use statsig_rust::StatsigUserBuilder;
 use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigUser};
 use std::collections::HashMap;
 use std::sync::Arc;

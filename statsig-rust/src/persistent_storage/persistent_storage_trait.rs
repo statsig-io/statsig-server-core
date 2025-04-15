@@ -9,8 +9,9 @@ use crate::{
     event_logging::event_logger::EventLogger,
     statsig_type_factories::{extract_from_experiment_evaluation, make_layer},
     statsig_types::{Experiment, Layer},
-    statsig_user_internal::StatsigUserInternal,
-    unwrap_or_return, EvaluationDetails, SamplingProcessor, SecondaryExposure,
+    unwrap_or_return,
+    user::StatsigUserInternal,
+    EvaluationDetails, SamplingProcessor, SecondaryExposure,
 };
 
 pub type UserPersistedValues = HashMap<String, StickyValues>;

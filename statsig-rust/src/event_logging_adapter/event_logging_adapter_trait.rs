@@ -20,7 +20,7 @@ mod tests {
     use crate::event_logging::statsig_event_internal::make_custom_event;
     use crate::log_event_payload::{LogEventPayload, LogEventRequest};
     use crate::statsig_metadata::StatsigMetadata;
-    use crate::statsig_user_internal::StatsigUserInternal;
+    use crate::user::StatsigUserInternal;
     use crate::StatsigUser;
 
     #[test]

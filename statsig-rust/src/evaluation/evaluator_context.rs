@@ -3,7 +3,7 @@ use crate::evaluation::evaluator_result::EvaluatorResult;
 use crate::hashing::HashUtil;
 use crate::spec_store::SpecStoreData;
 use crate::spec_types::{Rule, Spec};
-use crate::statsig_user_internal::StatsigUserInternal;
+use crate::user::StatsigUserInternal;
 use crate::StatsigErr::StackOverflowError;
 use crate::{OverrideAdapter, StatsigErr};
 use std::sync::Arc;

@@ -43,7 +43,7 @@ use crate::statsig_type_factories::{
 use crate::statsig_types::{
     DynamicConfig, Experiment, FeatureGate, Layer, OverrideAdapterType, ParameterStore,
 };
-use crate::statsig_user_internal::StatsigUserInternal;
+use crate::user::StatsigUserInternal;
 use crate::{
     dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, ObservabilityClient,
     OpsStatsEventObserver, OverrideAdapter, SamplingProcessor, SpecsAdapter, SpecsInfo,

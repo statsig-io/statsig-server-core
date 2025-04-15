@@ -26,7 +26,7 @@ pub use statsig_core_api_options::{
 pub use statsig_err::StatsigErr;
 pub use statsig_options::StatsigOptions;
 pub use statsig_runtime::StatsigRuntime;
-pub use statsig_user::StatsigUser;
+pub use user::{StatsigUser, StatsigUserBuilder};
 
 pub mod compression;
 pub mod data_store_interface;
@@ -45,7 +45,7 @@ pub mod statsig_core_api_options;
 pub mod statsig_metadata;
 pub mod statsig_options;
 pub mod statsig_types;
-pub mod statsig_user;
+pub mod user;
 
 mod client_init_response_formatter;
 mod dcs_str;
@@ -63,4 +63,3 @@ mod statsig;
 mod statsig_err;
 mod statsig_runtime;
 mod statsig_type_factories;
-mod statsig_user_internal;

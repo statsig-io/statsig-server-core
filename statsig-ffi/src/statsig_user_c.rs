@@ -1,7 +1,7 @@
 use crate::ffi_utils::{
     c_char_to_string, parse_json_to_map, parse_json_to_str_map, string_to_c_char,
 };
-use statsig_rust::statsig_user::StatsigUserBuilder;
+use statsig_rust::StatsigUserBuilder;
 use statsig_rust::{log_e, InstanceRegistry};
 use std::os::raw::c_char;
 

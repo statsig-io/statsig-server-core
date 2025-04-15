@@ -727,7 +727,7 @@ mod tests {
     use crate::event_logging::statsig_event::StatsigEvent;
     use crate::output_logger::{initialize_simple_output_logger, LogLevel};
     use crate::sampling_processor::SamplingDecision;
-    use crate::statsig_user_internal::StatsigUserInternal;
+    use crate::user::StatsigUserInternal;
     use crate::StatsigUser;
     use async_trait::async_trait;
     use serde_json::Value;

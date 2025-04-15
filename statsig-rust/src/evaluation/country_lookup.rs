@@ -1,6 +1,4 @@
-use crate::{
-    log_d, log_e, statsig_user_internal::StatsigUserInternal, unwrap_or_return_with, DynamicValue,
-};
+use crate::{log_d, log_e, unwrap_or_return_with, user::StatsigUserInternal, DynamicValue};
 use std::sync::{Arc, RwLock};
 
 use super::dynamic_string::DynamicString;

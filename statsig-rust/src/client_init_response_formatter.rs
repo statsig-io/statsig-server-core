@@ -16,7 +16,7 @@ use crate::spec_types::{
     ParameterStore, Spec,
 };
 use crate::statsig_metadata::StatsigMetadata;
-use crate::statsig_user_internal::StatsigUserInternal;
+use crate::user::StatsigUserInternal;
 use crate::{read_lock_or_else, OverrideAdapter};
 use std::collections::HashMap;
 use std::sync::Arc;
