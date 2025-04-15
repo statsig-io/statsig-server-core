@@ -77,6 +77,6 @@ fn create_merge_key(event: &StatsigEventInternal) -> String {
 
     format!(
         "{}|{}|{}",
-        event.event_data.event_name, event.user.value, metadata_string
+        event.event_data.event_name, event.user.data.key, metadata_string
     )
 }

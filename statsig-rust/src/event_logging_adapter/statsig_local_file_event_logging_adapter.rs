@@ -57,7 +57,6 @@ impl StatsigLocalFileEventLoggingAdapter {
         };
 
         let processed_events = process_events(&current_requests);
-
         let chunks = processed_events.chunks(1000);
         let tasks = chunks.map(|chunk| async move {
             let request = LogEventRequest {
@@ -185,7 +184,7 @@ fn create_merge_key(event: &StatsigEventInternal) -> String {
     format!(
         "{}|{}|{}",
         event.event_data.event_name,
-        event.user.value,
+        event.user.data.value,
         metadata_parts.concat()
     )
 }

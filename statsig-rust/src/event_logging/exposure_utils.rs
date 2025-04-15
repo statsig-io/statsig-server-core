@@ -56,6 +56,7 @@ pub(crate) fn make_exposure_key(
     expo_key += "|";
 
     let user_id = user
+        .data
         .value
         .get("userID")
         .map(|x| x.as_str())
@@ -66,6 +67,7 @@ pub(crate) fn make_exposure_key(
     expo_key += "|";
 
     let custom_ids = user
+        .data
         .value
         .get("customIDs")
         .map(|x| x.as_object())

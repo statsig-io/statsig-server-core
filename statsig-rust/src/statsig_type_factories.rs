@@ -6,6 +6,7 @@ use crate::event_logging::event_logger::EventLogger;
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::user::StatsigUserLoggable;
 use crate::SamplingProcessor;
+
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Weak;

@@ -234,6 +234,30 @@ async fn test_get_layer_with_holdouts() {
     assert_eq!(two["gateValue"], "true");
 }
 
+#[tokio::test]
+async fn test_exposures_with_environment() {
+    let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
+    let specs_adapter = create_bootrapped_specs_adapter();
+    let user = StatsigUser::with_user_id("user-in-layer-holdout-4".into());
+
+    let statsig =
+        create_statsig_with_environment(&specs_adapter, &logging_adapter, Some("dev".to_string()));
+    statsig.initialize().await.unwrap();
+
+    let _ = statsig.check_gate(&user, "test_public");
+    let _ = statsig.get_dynamic_config(&user, "test_dynamic_config");
+    let layer = statsig.get_layer(&user, "test_layer_in_holdout");
+    let _ = layer.get_string("layer_val", String::new());
+
+    sleep(Duration::from_millis(1)).await;
+    statsig.flush_events().await;
+
+    let events = logging_adapter.force_get_received_payloads().await;
+    let event = enforce_object(&events.events[0]);
+    let user = enforce_object(&event["user"]);
+    assert_eq!(user["statsigEnvironment"]["tier"], "dev");
+}
+
 fn create_bootrapped_specs_adapter() -> Arc<MockSpecsAdapter> {
     Arc::new(MockSpecsAdapter::with_data("tests/data/eval_proj_dcs.json"))
 }
@@ -253,11 +277,20 @@ fn create_statsig(
     specs_adapter: &Arc<MockSpecsAdapter>,
     logging_adapter: &Arc<MockEventLoggingAdapter>,
 ) -> Statsig {
+    create_statsig_with_environment(specs_adapter, logging_adapter, None)
+}
+
+fn create_statsig_with_environment(
+    specs_adapter: &Arc<MockSpecsAdapter>,
+    logging_adapter: &Arc<MockEventLoggingAdapter>,
+    environment: Option<String>,
+) -> Statsig {
     Statsig::new(
         "secret-shhh",
         Some(Arc::new(StatsigOptions {
             specs_adapter: Some(specs_adapter.clone()),
             event_logging_adapter: Some(logging_adapter.clone()),
+            environment,
             ..StatsigOptions::new()
         })),
     )

@@ -5,9 +5,9 @@ use crate::event_logging::layer_exposure::LAYER_EXPOSURE_EVENT_NAME;
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::sdk_diagnostics::diagnostics::DIAGNOSTICS_EVENT;
 use crate::user::StatsigUserLoggable;
+
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::HashSet;
 
 #[derive(Serialize, Deserialize)]
@@ -38,7 +38,7 @@ impl StatsigEventInternal {
     pub fn new_diagnostic_event(event: StatsigEvent) -> Self {
         StatsigEventInternal {
             event_data: event,
-            user: StatsigUserLoggable { value: Value::Null },
+            user: StatsigUserLoggable::null_user(),
             time: Utc::now().timestamp_millis() as u64,
             secondary_exposures: None,
         }
@@ -47,7 +47,7 @@ impl StatsigEventInternal {
     pub fn new_non_exposed_checks_event(event: StatsigEvent) -> Self {
         StatsigEventInternal {
             event_data: event,
-            user: StatsigUserLoggable { value: Value::Null },
+            user: StatsigUserLoggable::null_user(),
             time: Utc::now().timestamp_millis() as u64,
             secondary_exposures: None,
         }

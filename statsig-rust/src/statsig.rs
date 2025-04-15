@@ -1389,19 +1389,19 @@ impl Statsig {
 
     pub(crate) fn use_statsig_env<T>(
         &self,
-        f: impl FnOnce(&HashMap<String, DynamicValue>) -> Result<(), T>,
-    ) -> Result<(), T> {
+        f: impl FnOnce(Option<&HashMap<String, DynamicValue>>) -> T,
+    ) -> T {
         if let Some(env) = &self.statsig_environment {
-            return f(env);
+            return f(Some(env));
         }
 
         if let Ok(fallback_env) = self.fallback_environment.lock() {
             if let Some(env) = &*fallback_env {
-                return f(env);
+                return f(Some(env));
             }
         }
 
-        Ok(())
+        f(None)
     }
 }
 

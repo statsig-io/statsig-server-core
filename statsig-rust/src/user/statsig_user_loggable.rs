@@ -1,23 +1,107 @@
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock, Weak};
+
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use super::StatsigUserInternal;
+use crate::{log_e, user::StatsigUserInternal};
 
-#[derive(Clone, Deserialize, Serialize)]
-pub struct StatsigUserLoggable {
-    #[serde(flatten)]
+const TAG: &str = "StatsigUserLoggable";
+
+lazy_static::lazy_static! {
+    static ref LOGGABLE_USER_STORE: RwLock<HashMap<String, Weak<UserLoggableData>>> =
+    RwLock::new(HashMap::new());
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct UserLoggableData {
+    pub key: String,
     pub value: Value,
+}
+
+#[derive(Clone)]
+pub struct StatsigUserLoggable {
+    pub data: Arc<UserLoggableData>,
+}
+
+impl Serialize for StatsigUserLoggable {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.data.value.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for StatsigUserLoggable {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = Value::deserialize(deserializer)?;
+        Ok(StatsigUserLoggable {
+            data: Arc::new(UserLoggableData {
+                key: "".to_string(),
+                value,
+            }),
+        })
+    }
+}
+
+fn make_loggable(
+    full_user_key: String,
+    user_internal: &StatsigUserInternal,
+) -> Arc<UserLoggableData> {
+    let result = Arc::new(UserLoggableData {
+        key: full_user_key.clone(),
+        value: json!(user_internal),
+    });
+
+    let mut store = match LOGGABLE_USER_STORE.write() {
+        Ok(store) => store,
+        Err(e) => {
+            log_e!(TAG, "Error locking user loggable store: {:?}", e);
+            return result;
+        }
+    };
+
+    store.insert(full_user_key, Arc::downgrade(&result));
+
+    result
 }
 
 impl StatsigUserLoggable {
     pub fn new(user_internal: &StatsigUserInternal) -> Self {
+        let user_key = user_internal.get_full_user_key();
+
+        let mut existing = None;
+
+        match LOGGABLE_USER_STORE.read() {
+            Ok(store) => existing = store.get(&user_key).map(|x| x.upgrade()),
+            Err(e) => {
+                log_e!(TAG, "Error locking user loggable store: {:?}", e);
+            }
+        };
+
+        let data = match existing {
+            Some(Some(x)) => x,
+            _ => make_loggable(user_key, user_internal),
+        };
+
+        Self { data }
+    }
+
+    pub fn null_user() -> Self {
         Self {
-            value: json!(user_internal),
+            data: Arc::new(UserLoggableData {
+                key: "".to_string(),
+                value: Value::Null,
+            }),
         }
     }
 
     pub fn get_sampling_key(&self) -> String {
-        let user_data = &self.value;
+        let user_data = &self.data.value;
         let user_id = user_data
             .get("userID")
             .map(|x| x.as_str())
@@ -52,5 +136,67 @@ impl StatsigUserLoggable {
 impl StatsigUserInternal<'_, '_> {
     pub fn to_loggable(&self) -> StatsigUserLoggable {
         StatsigUserLoggable::new(self)
+    }
+}
+
+impl Drop for StatsigUserLoggable {
+    fn drop(&mut self) {
+        let strong_count = match LOGGABLE_USER_STORE.read() {
+            Ok(store) => match store.get(&self.data.key) {
+                Some(weak_ref) => weak_ref.strong_count(),
+                None => return,
+            },
+            Err(e) => {
+                log_e!(TAG, "Error locking user loggable store: {:?}", e);
+                return;
+            }
+        };
+
+        if strong_count > 1 {
+            return;
+        }
+
+        match LOGGABLE_USER_STORE.write() {
+            Ok(mut store) => {
+                store.remove(&self.data.key);
+            }
+            Err(e) => {
+                log_e!(TAG, "Error locking user loggable store: {:?}", e);
+            }
+        };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use futures::future::join_all;
+
+    use crate::StatsigUser;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_creating_many_loggable_users_and_map_growth() {
+        let mut handles = vec![];
+
+        for _ in 0..10 {
+            let handle = tokio::spawn(async move {
+                for i in 0..1000 {
+                    let user_data = StatsigUser::with_user_id(format!("user{}", i));
+                    let user_internal = StatsigUserInternal::new(&user_data, None);
+                    let loggable = user_internal.to_loggable();
+                    tokio::time::sleep(Duration::from_micros(1)).await;
+                    let _ = loggable; // held across the sleep
+                }
+            });
+
+            handles.push(handle);
+        }
+
+        join_all(handles).await;
+
+        assert_eq!(LOGGABLE_USER_STORE.read().unwrap().len(), 0);
     }
 }

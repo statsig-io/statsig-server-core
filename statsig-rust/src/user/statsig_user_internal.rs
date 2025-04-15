@@ -7,61 +7,38 @@ use serde::ser::SerializeMap;
 use serde::Serialize;
 use serde_json::json;
 
+macro_rules! append_string_value {
+    ($values:expr, $user_data:expr, $field:ident) => {
+        if let Some(field) = &$user_data.$field {
+            if let Some(string_value) = &field.string_value {
+                $values += string_value;
+                $values += "|";
+            }
+        }
+    };
+}
+
+macro_rules! append_sorted_string_values {
+    ($values:expr, $map:expr) => {
+        if let Some(map) = $map {
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort();
+
+            for key in keys {
+                if let Some(string_value) = &map[key].string_value {
+                    $values += key;
+                    $values += string_value;
+                }
+            }
+        }
+    };
+}
+
 #[derive(Clone)]
 pub struct StatsigUserInternal<'statsig, 'user> {
     pub user_data: &'user StatsigUser,
 
     pub statsig_instance: Option<&'statsig Statsig>,
-}
-
-impl Serialize for StatsigUserInternal<'_, '_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let inner_json = serde_json::to_value(self.user_data).map_err(serde::ser::Error::custom)?;
-
-        let mut len = 1;
-        if let serde_json::Value::Object(obj) = &inner_json {
-            len += obj.len();
-        }
-
-        let mut state = serializer.serialize_map(Some(len))?;
-
-        if let serde_json::Value::Object(obj) = &inner_json {
-            for (k, v) in obj {
-                state.serialize_entry(k, v)?;
-            }
-        }
-
-        if let Some(statsig_instance) = self.statsig_instance {
-            statsig_instance.use_global_custom_fields(|global_fields| {
-                if is_none_or_empty(&self.user_data.custom.as_ref())
-                    && is_none_or_empty(&global_fields)
-                {
-                    return Ok(());
-                }
-
-                let mut merged = HashMap::new();
-                if let Some(user_custom) = &self.user_data.custom {
-                    merged.extend(user_custom.iter());
-                }
-
-                if let Some(global) = global_fields {
-                    merged.extend(global.iter());
-                }
-
-                state.serialize_entry("custom", &json!(merged))?;
-
-                Ok(())
-            })?;
-
-            statsig_instance
-                .use_statsig_env(|env| state.serialize_entry("statsigEnvironment", &json!(env)))?;
-        }
-
-        state.end()
-    }
 }
 
 impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
@@ -184,6 +161,85 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
         };
 
         user_key
+    }
+
+    pub fn get_full_user_key(&self) -> String {
+        let mut values = String::new();
+
+        append_string_value!(values, self.user_data, app_version);
+        append_string_value!(values, self.user_data, country);
+        append_string_value!(values, self.user_data, email);
+        append_string_value!(values, self.user_data, ip);
+        append_string_value!(values, self.user_data, locale);
+        append_string_value!(values, self.user_data, user_agent);
+        append_string_value!(values, self.user_data, user_id);
+
+        append_sorted_string_values!(values, &self.user_data.custom_ids);
+        append_sorted_string_values!(values, &self.user_data.custom);
+        append_sorted_string_values!(values, &self.user_data.private_attributes);
+
+        if let Some(statsig_instance) = self.statsig_instance {
+            statsig_instance.use_statsig_env(|env| {
+                append_sorted_string_values!(values, env);
+            });
+        }
+
+        values
+    }
+}
+
+impl Serialize for StatsigUserInternal<'_, '_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let inner_json = serde_json::to_value(self.user_data).map_err(serde::ser::Error::custom)?;
+
+        let mut len = 1;
+        if let serde_json::Value::Object(obj) = &inner_json {
+            len += obj.len();
+        }
+
+        let mut state = serializer.serialize_map(Some(len))?;
+
+        if let serde_json::Value::Object(obj) = &inner_json {
+            for (k, v) in obj {
+                state.serialize_entry(k, v)?;
+            }
+        }
+
+        if let Some(statsig_instance) = self.statsig_instance {
+            statsig_instance.use_global_custom_fields(|global_fields| {
+                if is_none_or_empty(&self.user_data.custom.as_ref())
+                    && is_none_or_empty(&global_fields)
+                {
+                    return Ok(());
+                }
+
+                let mut merged = HashMap::new();
+                if let Some(user_custom) = &self.user_data.custom {
+                    merged.extend(user_custom.iter());
+                }
+
+                if let Some(global) = global_fields {
+                    merged.extend(global.iter());
+                }
+
+                state.serialize_entry("custom", &json!(merged))?;
+
+                Ok(())
+            })?;
+
+            statsig_instance.use_statsig_env(|env| {
+                if let Some(env) = env {
+                    state.serialize_entry("statsigEnvironment", &json!(env))?;
+                }
+
+                Ok(())
+            })?;
+        }
+
+        state.end()
     }
 }
 
