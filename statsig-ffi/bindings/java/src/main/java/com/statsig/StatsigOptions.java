@@ -20,7 +20,7 @@ public class StatsigOptions {
                 builder.enableIDLists,
                 builder.waitForCountryLookupInit,
                 builder.disableAllLogging,
-                builder.waitForUserAgentParsingInit,
+                builder.waitForUserAgentInit,
                 builder.disableNetwork);
 
         ResourceCleaner.register(this, () -> {
@@ -47,7 +47,7 @@ public class StatsigOptions {
         private String environment;
         private ObservabilityClient observabilityClient;
         private boolean enableIDLists = false;
-        private boolean waitForUserAgentParsingInit = false;
+        private boolean waitForUserAgentInit = false;
         private boolean waitForCountryLookupInit = false;
         private boolean disableAllLogging = false;
         private boolean disableNetwork = false;
@@ -125,8 +125,8 @@ public class StatsigOptions {
             return this;
         }
 
-        public Builder setWaitForUserAgentParsingInit(boolean waitForUserAgentParsingInit) {
-            this.waitForUserAgentParsingInit = waitForUserAgentParsingInit;
+        public Builder setWaitForUserAgentInit(boolean waitForUserAgentInit) {
+            this.waitForUserAgentInit = waitForUserAgentInit;
             return this;
         }
 
