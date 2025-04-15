@@ -74,7 +74,7 @@ async fn main() {
 #[tokio::test]
 async fn test_no_flushing_on_main() {
     let (_, statsig) = setup(
-        5000, /* delay_ms */
+        10000, /* delay_ms */
         "secret-key-flushing-2".to_string(),
     )
     .await;
@@ -98,7 +98,7 @@ async fn test_no_flushing_on_main() {
 
     let overall_duration = start.elapsed();
     println!("overall: {:.2} ms", overall_duration.as_millis());
-    assert!(overall_duration.as_millis() < 4000);
+    assert!(overall_duration.as_millis() < 5000);
 }
 
 #[tokio::test]

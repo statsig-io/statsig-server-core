@@ -160,6 +160,8 @@ async fn test_dropping_events() {
                 "tests/data/eval_proj_dcs.json",
             ))),
             output_log_level: Some(LogLevel::Debug),
+            wait_for_country_lookup_init: Some(true),
+            wait_for_user_agent_init: Some(true),
             ..StatsigOptions::new()
         },
         "key-2".to_string(),
@@ -193,6 +195,8 @@ async fn test_batch_when_full_but_no_immediate_flush() {
                 "tests/data/eval_proj_dcs.json",
             ))),
             output_log_level: Some(LogLevel::Debug),
+            wait_for_country_lookup_init: Some(true),
+            wait_for_user_agent_init: Some(true),
             ..StatsigOptions::new()
         },
         "key-2".to_string(),
