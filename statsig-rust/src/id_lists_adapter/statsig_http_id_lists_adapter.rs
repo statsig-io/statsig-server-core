@@ -509,6 +509,8 @@ mod tests {
         let options = StatsigOptions {
             id_lists_url: Some(format!("{}/get_id_lists", server.url())),
             id_lists_sync_interval_ms,
+            wait_for_country_lookup_init: Some(true),
+            wait_for_user_agent_init: Some(true),
             ..StatsigOptions::default()
         };
 

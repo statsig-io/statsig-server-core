@@ -49,6 +49,8 @@ pub struct StatsigOptions {
     pub enable_id_lists: Option<bool>,
     pub wait_for_country_lookup_init: Option<bool>,
     pub wait_for_user_agent_init: Option<bool>,
+    pub disable_user_agent_parsing: Option<bool>,
+    pub disable_country_lookup: Option<bool>,
     pub environment: Option<String>,
 
     pub event_logging_flush_interval_ms: Option<u32>,
@@ -123,6 +125,8 @@ impl StatsigOptions {
             event_logging_max_queue_size: self.event_logging_max_queue_size,
             override_adapter: Some(create_local_overrides(self.override_adapter_config)),
             global_custom_fields: Self::convert_to_dynamic_value_map(self.global_custom_fields),
+            disable_country_lookup: self.disable_country_lookup,
+            disable_user_agent_parsing: self.disable_user_agent_parsing,
             ..Default::default()
         };
 

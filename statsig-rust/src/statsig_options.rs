@@ -51,6 +51,8 @@ pub struct StatsigOptions {
     pub persistent_storage: Option<Arc<dyn PersistentStorage>>,
     pub wait_for_user_agent_init: Option<bool>,
     pub wait_for_country_lookup_init: Option<bool>,
+    pub disable_user_agent_parsing: Option<bool>,
+    pub disable_country_lookup: Option<bool>,
 }
 
 impl StatsigOptions {
@@ -205,6 +207,18 @@ impl StatsigOptionsBuilder {
     #[must_use]
     pub fn wait_for_user_agent_init(mut self, wait_for_user_agent_init: Option<bool>) -> Self {
         self.inner.wait_for_user_agent_init = wait_for_user_agent_init;
+        self
+    }
+
+    #[must_use]
+    pub fn disable_user_agent_parsing(mut self, disable_user_agent_parsing: Option<bool>) -> Self {
+        self.inner.disable_user_agent_parsing = disable_user_agent_parsing;
+        self
+    }
+
+    #[must_use]
+    pub fn disable_country_lookup(mut self, disable_country_lookup: Option<bool>) -> Self {
+        self.inner.disable_country_lookup = disable_country_lookup;
         self
     }
 

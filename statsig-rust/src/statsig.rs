@@ -431,13 +431,21 @@ impl Statsig {
         let mut error_message = None;
         let mut id_list_ready = None;
 
-        let init_country_lookup = self.statsig_runtime.spawn(INIT_IP_TAG, |_| async {
-            CountryLookup::load_country_lookup();
-        });
+        let init_country_lookup = if !self.options.disable_country_lookup.unwrap_or_default() {
+            Some(self.statsig_runtime.spawn(INIT_IP_TAG, |_| async {
+                CountryLookup::load_country_lookup();
+            }))
+        } else {
+            None
+        };
 
-        let init_ua = self.statsig_runtime.spawn(INIT_UA_TAG, |_| async {
-            UserAgentParser::load_parser();
-        });
+        let init_ua = if !self.options.disable_user_agent_parsing.unwrap_or_default() {
+            Some(self.statsig_runtime.spawn(INIT_UA_TAG, |_| async {
+                UserAgentParser::load_parser();
+            }))
+        } else {
+            None
+        };
 
         let init_res = match self
             .specs_adapter
@@ -496,17 +504,20 @@ impl Statsig {
         self.set_default_environment_from_server();
 
         if self.options.wait_for_country_lookup_init.unwrap_or(false) {
-            let _ = self
-                .statsig_runtime
-                .await_join_handle(INIT_IP_TAG, &init_country_lookup)
-                .await;
+            if let Some(task_id) = init_country_lookup {
+                let _ = self
+                    .statsig_runtime
+                    .await_join_handle(INIT_IP_TAG, &task_id)
+                    .await;
+            }
         }
-
         if self.options.wait_for_user_agent_init.unwrap_or(false) {
-            let _ = self
-                .statsig_runtime
-                .await_join_handle(INIT_UA_TAG, &init_ua)
-                .await;
+            if let Some(task_id) = init_ua {
+                let _ = self
+                    .statsig_runtime
+                    .await_join_handle(INIT_UA_TAG, &task_id)
+                    .await;
+            };
         }
 
         let error = init_res.clone().err();

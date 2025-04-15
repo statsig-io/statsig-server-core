@@ -44,6 +44,10 @@ pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub wait_for_country_lookup_init: Option<bool>,
     #[pyo3(get, set)]
+    pub disable_user_agent_parsing: Option<bool>,
+    #[pyo3(get, set)]
+    pub disable_country_lookup: Option<bool>,
+    #[pyo3(get, set)]
     pub id_lists_url: Option<String>,
     #[pyo3(get, set)]
     pub id_lists_sync_interval_ms: Option<u32>,
@@ -80,6 +84,8 @@ impl StatsigOptionsPy {
         enable_id_lists=None,
         wait_for_user_agent_init=None,
         wait_for_country_lookup_init=None,
+        disable_user_agent_parsing=None,
+        disable_country_lookup=None,
         id_lists_url=None,
         id_lists_sync_interval_ms=None,
         fallback_to_statsig_api=None,
@@ -104,6 +110,8 @@ impl StatsigOptionsPy {
         enable_id_lists: Option<bool>,
         wait_for_user_agent_init: Option<bool>,
         wait_for_country_lookup_init: Option<bool>,
+        disable_user_agent_parsing: Option<bool>,
+        disable_country_lookup: Option<bool>,
         id_lists_url: Option<String>,
         id_lists_sync_interval_ms: Option<u32>,
         fallback_to_statsig_api: Option<bool>,
@@ -126,6 +134,8 @@ impl StatsigOptionsPy {
             enable_id_lists,
             wait_for_user_agent_init,
             wait_for_country_lookup_init,
+            disable_country_lookup,
+            disable_user_agent_parsing,
             id_lists_url,
             id_lists_sync_interval_ms,
             fallback_to_statsig_api,
@@ -206,6 +216,8 @@ fn create_inner_statsig_options(
             .as_ref()
             .map(|dict| py_dict_to_map(dict.bind(py))),
         disable_network: opts.disable_network,
+        disable_country_lookup: opts.disable_country_lookup,
+        disable_user_agent_parsing: opts.disable_user_agent_parsing,
         persistent_storage: opts.persistent_storage.as_ref().map(|s| {
             Arc::new(StatsigPersistentStorageOverrideAdapter::new(
                 s.extract(py).unwrap_or_default(),
