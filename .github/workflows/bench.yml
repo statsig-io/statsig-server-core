@@ -20,13 +20,30 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Run benchmark
-        run: cd examples/rust/perf-bench && cargo +nightly bench -- --output-format bencher | tee output.txt
+      - name: Run Memory Benchmark
+        run: cd examples/rust/perf-monitor && ./bench.sh
 
-      - name: Store benchmark result
+      - name: Store Memory Benchmark Result
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: Criterion.rs Benchmark
+          name: Memory Benchmark
+          tool: 'customSmallerIsBetter'
+          output-file-path: examples/rust/perf-monitor/bench_results.json
+          github-token: ${{ secrets.STATSIG_CORE_SERVER_SDK_PAT }}
+          auto-push: true
+          # Show alert with commit comment on detecting possible memory regression
+          alert-threshold: '200%'
+          comment-on-alert: true
+          fail-on-alert: true
+          alert-comment-cc-users: '@daniel-statsig'
+
+      - name: Run Performance Benchmark
+        run: cd examples/rust/perf-bench && cargo +nightly bench -- --output-format bencher | tee output.txt
+
+      - name: Store Performance Benchmark Result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Performance Benchmark
           tool: 'cargo'
           output-file-path: examples/rust/perf-bench/output.txt
           github-token: ${{ secrets.STATSIG_CORE_SERVER_SDK_PAT }}

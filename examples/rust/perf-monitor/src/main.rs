@@ -5,13 +5,18 @@ use std::{
     time::{Duration, Instant},
 };
 
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+
 fn main() {
     let statsig_rt = StatsigRuntime::get_runtime();
     statsig_rt.runtime_handle.block_on(async {
         let sdk_key = env::var("test_api_key").expect("test_api_key environment variable not set");
 
         let options = Arc::new(StatsigOptions {
-            enable_country_lookup: Some(true),
+            wait_for_country_lookup_init: Some(true),
             wait_for_user_agent_init: Some(true),
             specs_sync_interval_ms: Some(1),
             disable_all_logging: Some(true),

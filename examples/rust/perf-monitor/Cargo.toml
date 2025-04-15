@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 statsig-rust = { path = "../../../statsig-rust" }
 tokio = "1.39.1"
+mimalloc = "0.1.46"
 
 [profile.release]
 debug = true

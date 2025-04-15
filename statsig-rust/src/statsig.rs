@@ -431,11 +431,11 @@ impl Statsig {
         let mut error_message = None;
         let mut id_list_ready = None;
 
-        let init_country_lookup = self.statsig_runtime.spawn(INIT_IP_TAG, async |_| {
+        let init_country_lookup = self.statsig_runtime.spawn(INIT_IP_TAG, |_| async {
             CountryLookup::load_country_lookup();
         });
 
-        let init_ua = self.statsig_runtime.spawn(INIT_UA_TAG, async |_| {
+        let init_ua = self.statsig_runtime.spawn(INIT_UA_TAG, |_| async {
             UserAgentParser::load_parser();
         });
 
