@@ -30,6 +30,8 @@ fn get_sdk_exception_endpoint() -> String {
 pub struct ErrorBoundaryEvent {
     pub tag: String,
     pub exception: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dedupe_key: Option<String>,
 
     pub bypass_dedupe: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -61,7 +63,10 @@ impl SDKErrorsObserver {
     }
 
     async fn handle_eb_event(&self, eb_event: ErrorBoundaryEvent) {
-        let key = format!("{}:{}", eb_event.tag, eb_event.exception);
+        let key = eb_event
+            .dedupe_key
+            .clone()
+            .unwrap_or(format!("{}:{}", eb_event.tag, eb_event.exception));
         let mut write_guard = self.errors_aggregator.write().await;
         let count = write_guard.entry(key).or_default();
         *count += 1;

@@ -205,6 +205,7 @@ macro_rules! log_error_to_statsig_and_console {
         exception: err_message.clone(),
         tag: $tag.to_string(),
         extra: None,
+        dedupe_key: None
     };
     $ops_stats.log_error(event);
 

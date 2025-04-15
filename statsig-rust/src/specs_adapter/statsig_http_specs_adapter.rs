@@ -141,6 +141,9 @@ impl StatsigHttpSpecsAdapter {
             .ops_stats
             .set_diagnostics_context(ContextType::ConfigSync);
         if let Err(e) = strong_self.manually_sync_specs(specs_info).await {
+            if let StatsigErr::NetworkError(NetworkError::DisableNetworkOn, _) = e {
+                return;
+            }
             log_e!(TAG, "Background specs sync failed: {}", e);
         }
         strong_self.ops_stats.enqueue_diagnostics_event(
@@ -160,7 +163,6 @@ impl StatsigHttpSpecsAdapter {
 
         let data = response.map_err(|e| {
             let msg = "No specs result from network";
-            log_e!(TAG, "{}", msg);
             StatsigErr::NetworkError(e, Some(msg.to_string()))
         })?;
 

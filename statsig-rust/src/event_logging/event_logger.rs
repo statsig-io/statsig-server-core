@@ -474,6 +474,7 @@ impl EventLogger {
                     tag: "statsig::log_event_dropped_event_count".to_string(),
                     exception: "EventsDropped".to_string(),
                     bypass_dedupe: true,
+                    dedupe_key: None,
                     extra: Some(HashMap::from([
                         ("eventCount".to_string(), dropped_count.to_string()),
                         (
@@ -593,6 +594,7 @@ impl EventLogger {
                     exception: "LogEventFailed".to_string(),
                     tag: "statsig::log_event_failed".to_string(),
                     bypass_dedupe: true,
+                    dedupe_key: None,
                     extra: Some(HashMap::from([(
                         "eventCount".to_string(),
                         failed_batch.event_count.to_string(),

@@ -5,7 +5,7 @@ use super::{HttpMethod, NetworkProvider, RequestArgs, Response};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
-use crate::{log_d, log_error_to_statsig_and_console, log_i, log_w};
+use crate::{log_d, log_i, log_w};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -182,15 +182,21 @@ impl NetworkClient {
             }
 
             if !RETRY_CODES.contains(&status) {
-                self.log_warning(format!("status:{} message:{}", status, error_message));
+                self.log_warning(
+                    format!("status:{} message:{}", status, error_message),
+                    &request_args,
+                );
                 return Err(NetworkError::RequestFailed);
             }
 
             if attempt >= request_args.retries {
-                self.log_warning(format!(
-                    "Network error, retries exhausted: {} {}",
-                    status, error_message
-                ));
+                self.log_warning(
+                    format!(
+                        "Network error, retries exhausted: {} {}",
+                        status, error_message
+                    ),
+                    &request_args,
+                );
                 return Err(NetworkError::RetriesExhausted);
             }
 
@@ -214,11 +220,17 @@ impl NetworkClient {
         self
     }
 
-    fn log_warning(&self, message: String) {
-        if self.silent_on_network_failure {
-            log_w!(TAG, "{}", message)
-        } else {
-            log_error_to_statsig_and_console!(&self.ops_stats, TAG, "{}", message.as_str());
+    fn log_warning(&self, message: String, args: &RequestArgs) {
+        log_w!(TAG, "{}", message);
+        if !self.silent_on_network_failure {
+            let dedupe_key = format!("{:?}", args.diagnostics_key);
+            self.ops_stats.log_error(ErrorBoundaryEvent {
+                tag: TAG.to_string(),
+                bypass_dedupe: false,
+                exception: message,
+                dedupe_key: Some(dedupe_key),
+                extra: None,
+            });
         }
     }
 }
