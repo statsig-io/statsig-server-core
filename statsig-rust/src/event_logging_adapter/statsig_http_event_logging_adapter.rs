@@ -2,8 +2,6 @@ use crate::compression::compression_helper::{compress_data, get_compression_form
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::log_event_payload::LogEventRequest;
 use crate::networking::{NetworkClient, NetworkError, RequestArgs};
-use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
-use crate::observability::ErrorBoundaryEvent;
 use crate::statsig_metadata::StatsigMetadata;
 use crate::{log_d, StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
@@ -24,7 +22,6 @@ const TAG: &str = stringify!(StatsigHttpEventLoggingAdapter);
 pub struct StatsigHttpEventLoggingAdapter {
     log_event_url: String,
     network: NetworkClient,
-    ops_stats: Arc<OpsStatsForInstance>,
 }
 
 impl StatsigHttpEventLoggingAdapter {
@@ -44,7 +41,6 @@ impl StatsigHttpEventLoggingAdapter {
         Self {
             log_event_url,
             network: NetworkClient::new(sdk_key, Some(headers), disable_network),
-            ops_stats: OPS_STATS.get_for_instance(sdk_key),
         }
     }
 
@@ -126,18 +122,8 @@ impl EventLoggingAdapter for StatsigHttpEventLoggingAdapter {
         match self.send_events_over_http(&request).await {
             Ok(_) => Ok(true),
             Err(StatsigErr::NetworkError(NetworkError::DisableNetworkOn, _)) => Ok(false),
-            Err(e) => {
-                self.ops_stats.log_error(ErrorBoundaryEvent {
-                    exception: "LogEventFailed".to_string(),
-                    tag: "statsig::log_event_failed".to_string(),
-                    extra: Some(HashMap::from([(
-                        "eventCount".to_string(),
-                        request.event_count.to_string(),
-                    )])),
-                });
-                Err(e)
-            }
-        } //TODO: this should log error only if not retryable or retry limit reached
+            Err(e) => Err(e),
+        } //TODO: surface retryable code status for the logger to know if it should put back into the queue
     }
 
     async fn shutdown(&self) -> Result<(), StatsigErr> {

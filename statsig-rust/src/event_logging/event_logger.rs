@@ -258,6 +258,7 @@ impl EventLogger {
     pub async fn flush_blocking(&self, flush_all: bool, task_id: u32) {
         let adapter = self.event_logging_adapter.clone();
         let global_configs = self.global_configs.clone();
+        let ops_stats = self.ops_stats.clone();
         let pending_event_batches = self.pending_batch_queue.clone();
 
         Self::flush_impl(
@@ -268,6 +269,7 @@ impl EventLogger {
             global_configs,
             &self.defaults,
             task_id,
+            ops_stats,
         )
         .await;
     }
@@ -471,6 +473,7 @@ impl EventLogger {
                 strong_self.ops_stats.log_error(ErrorBoundaryEvent {
                     tag: "statsig::log_event_dropped_event_count".to_string(),
                     exception: "EventsDropped".to_string(),
+                    bypass_dedupe: true,
                     extra: Some(HashMap::from([
                         ("eventCount".to_string(), dropped_count.to_string()),
                         (
@@ -520,7 +523,6 @@ impl EventLogger {
                             None
                         }
                         Err(e) => {
-                            log_w!(TAG, "Failed to flush events: {:?}", e);
                             if override_interval_ms.is_none() {
                                 Self::failure_backoff(flushing_interval_ms);
                             }
@@ -532,6 +534,8 @@ impl EventLogger {
             .collect()
     }
 
+    //TODO: refactor into inner class to get Arc<self>
+    #[allow(clippy::too_many_arguments)]
     async fn flush_impl(
         event_logging_adapter: Arc<dyn EventLoggingAdapter>,
         pending_batches: Arc<RwLock<VecDeque<LogEventRequest>>>,
@@ -540,6 +544,7 @@ impl EventLogger {
         global_configs: Arc<GlobalConfigs>,
         defaults: &EventLoggerDynamicDefaults,
         task_id: u32,
+        ops_stats: Arc<OpsStatsForInstance>,
     ) {
         let batches_to_process = Self::get_batches_to_process(&pending_batches, flush_all);
         if batches_to_process.is_empty() {
@@ -584,6 +589,15 @@ impl EventLogger {
                     MAX_EVENT_RETRY,
                     failed_batch.event_count
                 );
+                ops_stats.log_error(ErrorBoundaryEvent {
+                    exception: "LogEventFailed".to_string(),
+                    tag: "statsig::log_event_failed".to_string(),
+                    bypass_dedupe: true,
+                    extra: Some(HashMap::from([(
+                        "eventCount".to_string(),
+                        failed_batch.event_count.to_string(),
+                    )])),
+                });
             } else {
                 queue_lock.push_back(failed_batch);
             }

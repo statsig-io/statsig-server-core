@@ -201,6 +201,7 @@ macro_rules! log_error_to_statsig_and_console {
   ($ops_stats:expr, $tag:expr, $($arg:tt)*) => {
     let err_message = format!($($arg)*);
     let event = ErrorBoundaryEvent {
+        bypass_dedupe: false,
         exception: err_message.clone(),
         tag: $tag.to_string(),
         extra: None,

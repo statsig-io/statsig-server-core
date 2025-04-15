@@ -31,6 +31,7 @@ pub struct ErrorBoundaryEvent {
     pub tag: String,
     pub exception: String,
 
+    pub bypass_dedupe: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub extra: Option<HashMap<String, String>>,
 }
@@ -64,7 +65,7 @@ impl SDKErrorsObserver {
         let mut write_guard = self.errors_aggregator.write().await;
         let count = write_guard.entry(key).or_default();
         *count += 1;
-        if *count > 1 {
+        if *count > 1 && !eb_event.bypass_dedupe {
             return;
         }
         self.log_exception(eb_event).await;
