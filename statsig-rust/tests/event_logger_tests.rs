@@ -94,6 +94,8 @@ async fn flush_limit_batching_awaiting() {
             ))),
             event_logging_max_queue_size: Some(10),
             output_log_level: Some(LogLevel::Debug),
+            wait_for_user_agent_init: Some(true),
+            wait_for_country_lookup_init: Some(true),
             ..StatsigOptions::new()
         },
         "key-2".to_string(),
