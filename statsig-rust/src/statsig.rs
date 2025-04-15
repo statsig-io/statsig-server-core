@@ -70,6 +70,8 @@ use tokio::try_join;
 
 const TAG: &str = stringify!(Statsig);
 const ERROR_SDK_KEY: &str = "__STATSIG_ERROR_SDK_KEY__";
+const INIT_IP_TAG: &str = "INIT_COUNTRY_LOOKUP";
+const INIT_UA_TAG: &str = "INIT_UA";
 
 lazy_static::lazy_static! {
     static ref SHARED_INSTANCE: Mutex<Option<Arc<Statsig>>> = Mutex::new(None);
@@ -167,14 +169,6 @@ impl Statsig {
             options.data_store.clone(),
             Some(statsig_runtime.clone()),
         ));
-
-        if options.enable_user_agent_parsing.unwrap_or(false) {
-            UserAgentParser::load_parser();
-        }
-
-        if options.enable_country_lookup.unwrap_or(false) {
-            CountryLookup::load_country_lookup();
-        }
 
         let environment = options
             .environment
@@ -437,6 +431,14 @@ impl Statsig {
         let mut error_message = None;
         let mut id_list_ready = None;
 
+        let init_country_lookup = self.statsig_runtime.spawn(INIT_IP_TAG, async |_| {
+            CountryLookup::load_country_lookup();
+        });
+
+        let init_ua = self.statsig_runtime.spawn(INIT_UA_TAG, async |_| {
+            UserAgentParser::load_parser();
+        });
+
         let init_res = match self
             .specs_adapter
             .clone()
@@ -492,6 +494,21 @@ impl Statsig {
         let duration = start_time.elapsed().as_millis() as f64;
 
         self.set_default_environment_from_server();
+
+        if self.options.wait_for_country_lookup_init.unwrap_or(false) {
+            let _ = self
+                .statsig_runtime
+                .await_join_handle(INIT_IP_TAG, &init_country_lookup)
+                .await;
+        }
+
+        if self.options.wait_for_user_agent_init.unwrap_or(false) {
+            let _ = self
+                .statsig_runtime
+                .await_join_handle(INIT_UA_TAG, &init_ua)
+                .await;
+        }
+
         let error = init_res.clone().err();
 
         let success = Self::start_background_tasks(

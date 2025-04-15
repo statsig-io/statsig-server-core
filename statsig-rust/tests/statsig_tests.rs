@@ -1,8 +1,9 @@
-use std::{collections::HashMap, env, sync::Arc};
+use std::{collections::HashMap, env, sync::Arc, thread::sleep, time::Duration};
 
 use statsig_rust::{
     dyn_value, evaluation::evaluation_types::AnyConfigEvaluation, hashing::djb2,
-    output_logger::LogLevel, Statsig, StatsigHttpIdListsAdapter, StatsigOptions, StatsigUser,
+    output_logger::LogLevel, DynamicValue, Statsig, StatsigHttpIdListsAdapter, StatsigOptions,
+    StatsigUser,
 };
 
 fn get_sdk_key() -> String {
@@ -98,6 +99,43 @@ async fn test_gcir() {
     };
 
     assert!(!a_config.is_empty());
+}
+
+#[tokio::test]
+async fn test_user_agent_and_country_lookup() {
+    // Default behavior
+    let user = StatsigUser {
+        email: Some(dyn_value!("daniel@statsig.com")),
+        user_agent: Some(DynamicValue::from("Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1")),
+        ..StatsigUser::with_user_id("a-user".to_string())
+    };
+    let opts = StatsigOptions {
+        output_log_level: Some(LogLevel::Debug),
+        ..StatsigOptions::new()
+    };
+
+    let statsig = Statsig::new(&get_sdk_key(), Some(Arc::new(opts)));
+    statsig.initialize().await.unwrap();
+    // Avg it takes 2 seconds
+    sleep(Duration::from_secs(2));
+    assert!(statsig.check_gate(&user, "test_ua"));
+
+    // Wait for ua and ip to initialize
+    let user = StatsigUser {
+            email: Some(dyn_value!("daniel@statsig.com")),
+            user_agent: Some(DynamicValue::from("Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1")),
+            ..StatsigUser::with_user_id("a-user".to_string())
+        };
+    let opts = StatsigOptions {
+        output_log_level: Some(LogLevel::Debug),
+        wait_for_country_lookup_init: Some(true),
+        wait_for_user_agent_init: Some(true),
+        ..StatsigOptions::new()
+    };
+
+    let statsig = Statsig::new(&get_sdk_key(), Some(Arc::new(opts)));
+    statsig.initialize().await.unwrap();
+    assert!(statsig.check_gate(&user, "test_ua"));
 }
 
 // Todo: rewrite this test such that it isn't reaching into internal implementation details

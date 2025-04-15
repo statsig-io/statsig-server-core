@@ -213,7 +213,7 @@ async fn test_exp_5050_targeting() {
 #[tokio::test]
 async fn test_many_rules_ua_parser() {
     let options = StatsigOptions {
-        enable_user_agent_parsing: Some(true),
+        wait_for_user_agent_init: Some(true),
         // enable_country_lookup: Some(true),
         ..StatsigOptions::default()
     };

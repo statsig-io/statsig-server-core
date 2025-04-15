@@ -20,8 +20,6 @@ pub const DEFAULT_INIT_TIMEOUT_MS: u64 = 3000;
 pub struct StatsigOptions {
     pub data_store: Option<Arc<dyn DataStoreTrait>>, // External DataStore
     pub enable_id_lists: Option<bool>,
-    pub enable_user_agent_parsing: Option<bool>,
-    pub enable_country_lookup: Option<bool>,
     pub environment: Option<String>,
 
     pub disable_network: Option<bool>, // Disable all out-going network including get configs, log_events...
@@ -51,6 +49,8 @@ pub struct StatsigOptions {
     pub service_name: Option<String>,
     pub global_custom_fields: Option<HashMap<String, DynamicValue>>,
     pub persistent_storage: Option<Arc<dyn PersistentStorage>>,
+    pub wait_for_user_agent_init: Option<bool>,
+    pub wait_for_country_lookup_init: Option<bool>,
 }
 
 impl StatsigOptions {
@@ -194,6 +194,21 @@ impl StatsigOptionsBuilder {
     }
 
     #[must_use]
+    pub fn wait_for_country_lookup_init(
+        mut self,
+        wait_for_country_lookup_init: Option<bool>,
+    ) -> Self {
+        self.inner.wait_for_country_lookup_init = wait_for_country_lookup_init;
+        self
+    }
+
+    #[must_use]
+    pub fn wait_for_user_agent_init(mut self, wait_for_user_agent_init: Option<bool>) -> Self {
+        self.inner.wait_for_user_agent_init = wait_for_user_agent_init;
+        self
+    }
+
+    #[must_use]
     pub fn service_name(mut self, service_name: Option<String>) -> Self {
         self.inner.service_name = service_name;
         self
@@ -202,18 +217,6 @@ impl StatsigOptionsBuilder {
     #[must_use]
     pub fn fallback_to_statsig_api(mut self, fallback_to_statsig_api: Option<bool>) -> Self {
         self.inner.fallback_to_statsig_api = fallback_to_statsig_api;
-        self
-    }
-
-    #[must_use]
-    pub fn enable_user_agent_parsing(mut self, enable_user_agent_parsing: Option<bool>) -> Self {
-        self.inner.enable_user_agent_parsing = enable_user_agent_parsing;
-        self
-    }
-
-    #[must_use]
-    pub fn enable_country_lookup(mut self, enable_country_lookup: Option<bool>) -> Self {
-        self.inner.enable_country_lookup = enable_country_lookup;
         self
     }
 
@@ -287,10 +290,14 @@ impl Serialize for StatsigOptions {
         serialize_if_not_none!(state, "enable_id_lists", &self.enable_id_lists);
         serialize_if_not_none!(
             state,
-            "enable_user_agent_parsing",
-            &self.enable_user_agent_parsing
+            "wait_for_user_agent_init",
+            &self.wait_for_user_agent_init
         );
-        serialize_if_not_none!(state, "enable_country_lookup", &self.enable_country_lookup);
+        serialize_if_not_none!(
+            state,
+            "wait_for_country_lookup_init",
+            &self.wait_for_country_lookup_init
+        );
         serialize_if_not_none!(
             state,
             "id_lists_sync_interval",

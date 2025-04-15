@@ -47,8 +47,8 @@ public class StatsigOptions {
         private String environment;
         private ObservabilityClient observabilityClient;
         private boolean enableIDLists = false;
-        private boolean enableUserAgentParsing = false;
-        private boolean enableCountryLookup = false;
+        private boolean waitForUserAgentParsingInit = false;
+        private boolean waitForCountryLookupInit = false;
         private boolean disableAllLogging = false;
         private boolean disableNetwork = false;
         private OutputLogger.LogLevel outputLoggerLevel = OutputLogger.LogLevel.WARN;
@@ -125,13 +125,13 @@ public class StatsigOptions {
             return this;
         }
 
-        public Builder setEnableUserAgentParsing(boolean enableUserAgentParsing) {
-            this.enableUserAgentParsing = enableUserAgentParsing;
+        public Builder setWaitForUserAgentParsingInit(boolean waitForUserAgentParsingInit) {
+            this.waitForUserAgentParsingInit = waitForUserAgentParsingInit;
             return this;
         }
 
-        public Builder setEnableCountryLookup(boolean enableCountryLookup) {
-            this.enableCountryLookup = enableCountryLookup;
+        public Builder setWaitForCountryLookupInit(boolean waitForCountryLookupInit) {
+            this.waitForCountryLookupInit = waitForCountryLookupInit;
             return this;
         }
 

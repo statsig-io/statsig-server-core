@@ -47,8 +47,8 @@ pub struct StatsigOptions {
     pub disable_all_logging: Option<bool>,
     pub disable_network: Option<bool>,
     pub enable_id_lists: Option<bool>,
-    pub enable_user_agent_parsing: Option<bool>,
-    pub enable_country_lookup: Option<bool>,
+    pub wait_for_country_lookup_init: Option<bool>,
+    pub wait_for_user_agent_init: Option<bool>,
     pub environment: Option<String>,
 
     pub event_logging_flush_interval_ms: Option<u32>,
@@ -101,8 +101,8 @@ impl StatsigOptions {
                 .data_store
                 .map(|store| Arc::new(store) as Arc<dyn DataStoreTrait>),
             enable_id_lists: self.enable_id_lists,
-            enable_user_agent_parsing: self.enable_user_agent_parsing,
-            enable_country_lookup: self.enable_country_lookup,
+            wait_for_country_lookup_init: self.wait_for_country_lookup_init,
+            wait_for_user_agent_init: self.wait_for_country_lookup_init,
             environment: self.environment,
             fallback_to_statsig_api: self.fallback_to_statsig_api,
             id_lists_sync_interval_ms: self.id_lists_sync_interval_ms,

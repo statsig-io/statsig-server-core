@@ -31,9 +31,9 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     service_name: JString,
     observability_client: JObject,
     enable_id_lists: jboolean,
-    enable_country_lookup: jboolean,
+    wait_for_country_lookup_init: jboolean,
     disable_all_logging: jboolean,
-    enable_user_agent_parsing: jboolean,
+    wait_for_user_agent_init: jboolean,
     disable_network: jboolean,
 ) -> jstring {
     let specs_url = jstring_to_string(&mut env, specs_url);
@@ -41,8 +41,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     let id_lists_url = jstring_to_string(&mut env, id_lists_url);
     let environment = jstring_to_string(&mut env, environment);
     let enable_id_lists = jboolean_to_bool(enable_id_lists);
-    let enable_user_agent_parsing = jboolean_to_bool(enable_user_agent_parsing);
-    let enable_country_lookup = jboolean_to_bool(enable_country_lookup);
+    let wait_for_country_lookup_init = jboolean_to_bool(wait_for_country_lookup_init);
+    let wait_for_user_agent_init = jboolean_to_bool(wait_for_user_agent_init);
     let disable_all_logging = jboolean_to_bool(disable_all_logging);
     let disable_network = jboolean_to_bool(disable_network);
 
@@ -93,8 +93,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .disable_all_logging(disable_all_logging)
         .output_log_level(Some(output_logger_level as u32))
         .service_name(service_name)
-        .enable_user_agent_parsing(enable_user_agent_parsing)
-        .enable_country_lookup(enable_country_lookup)
+        .wait_for_country_lookup_init(wait_for_country_lookup_init)
+        .wait_for_user_agent_init(wait_for_user_agent_init)
         .disable_network(disable_network)
         .init_timeout_ms(init_timeout_ms_option);
 

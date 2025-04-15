@@ -40,9 +40,9 @@ pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub enable_id_lists: Option<bool>,
     #[pyo3(get, set)]
-    pub enable_user_agent_parsing: Option<bool>,
+    pub wait_for_user_agent_init: Option<bool>,
     #[pyo3(get, set)]
-    pub enable_country_lookup: Option<bool>,
+    pub wait_for_country_lookup_init: Option<bool>,
     #[pyo3(get, set)]
     pub id_lists_url: Option<String>,
     #[pyo3(get, set)]
@@ -78,8 +78,8 @@ impl StatsigOptionsPy {
         event_logging_max_queue_size=None,
         event_logging_max_pending_batch_queue_size=None,
         enable_id_lists=None,
-        enable_user_agent_parsing=None,
-        enable_country_lookup=None,
+        wait_for_user_agent_init=None,
+        wait_for_country_lookup_init=None,
         id_lists_url=None,
         id_lists_sync_interval_ms=None,
         fallback_to_statsig_api=None,
@@ -102,8 +102,8 @@ impl StatsigOptionsPy {
         event_logging_max_queue_size: Option<u32>,
         event_logging_max_pending_batch_queue_size: Option<u32>,
         enable_id_lists: Option<bool>,
-        enable_user_agent_parsing: Option<bool>,
-        enable_country_lookup: Option<bool>,
+        wait_for_user_agent_init: Option<bool>,
+        wait_for_country_lookup_init: Option<bool>,
         id_lists_url: Option<String>,
         id_lists_sync_interval_ms: Option<u32>,
         fallback_to_statsig_api: Option<bool>,
@@ -124,8 +124,8 @@ impl StatsigOptionsPy {
             event_logging_max_queue_size,
             event_logging_max_pending_batch_queue_size,
             enable_id_lists,
-            enable_user_agent_parsing,
-            enable_country_lookup,
+            wait_for_user_agent_init,
+            wait_for_country_lookup_init,
             id_lists_url,
             id_lists_sync_interval_ms,
             fallback_to_statsig_api,
@@ -199,8 +199,8 @@ fn create_inner_statsig_options(
             .map(|level| LogLevel::from(level.as_str())),
         observability_client: ob_client_weak,
         service_name: None,
-        enable_user_agent_parsing: opts.enable_user_agent_parsing,
-        enable_country_lookup: opts.enable_country_lookup,
+        wait_for_user_agent_init: opts.wait_for_user_agent_init,
+        wait_for_country_lookup_init: opts.wait_for_user_agent_init,
         global_custom_fields: opts
             .global_custom_fields
             .as_ref()
