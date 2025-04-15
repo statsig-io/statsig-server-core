@@ -16,8 +16,8 @@ async fn setup() -> (StatsigUser, Statsig) {
     };
 
     let mut options = StatsigOptions::new();
-    options.enable_country_lookup = Some(true);
-    options.enable_user_agent_parsing = Some(true);
+    options.wait_for_country_lookup_init = Some(true);
+    options.wait_for_user_agent_init = Some(true);
     options.environment = Some("development".to_string());
 
     options.specs_adapter = Some(Arc::new(StaticSpecsAdapter::with_data("benches/data.json")));

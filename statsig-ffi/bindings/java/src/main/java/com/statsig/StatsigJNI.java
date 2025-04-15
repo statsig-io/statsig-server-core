@@ -157,9 +157,9 @@ class StatsigJNI {
             String serviceName,
             ObservabilityClient observabilityClient,
             boolean enableIDLists,
-            boolean enableCountryLookup,
+            boolean waitForCountryLookupInit,
             boolean disableAllLogging,
-            boolean enableUserAgentParsing,
+            boolean waitForUserAgentInit,
             boolean disableNetwork);
 
     public static native void statsigOptionsRelease(String optionsRef);

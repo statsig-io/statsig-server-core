@@ -18,9 +18,9 @@ public class StatsigOptions {
                 builder.serviceName,
                 builder.observabilityClient,
                 builder.enableIDLists,
-                builder.enableCountryLookup,
+                builder.waitForCountryLookupInit,
                 builder.disableAllLogging,
-                builder.enableUserAgentParsing,
+                builder.waitForUserAgentParsingInit,
                 builder.disableNetwork);
 
         ResourceCleaner.register(this, () -> {

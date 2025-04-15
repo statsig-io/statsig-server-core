@@ -20,8 +20,8 @@ public class StatsigOptionsTest {
                 .setEventLoggingMaxQueueSize(5000L)
                 .setEnvironment("staging")
                 .setEnableIDLists(true)
-                .setEnableUserAgentParsing(true)
-                .setEnableCountryLookup(true)
+                .setWaitForUserAgentParsingInit(true)
+                .setWaitForCountryLookupInit(true)
                 .setInitTimeoutMs(1000)
                 .setServiceName("test_service")
                 .setOutputLoggerLevel(OutputLogger.LogLevel.DEBUG)
@@ -51,8 +51,8 @@ public class StatsigOptionsTest {
     void testBuilderSetBooleanValues() {
         StatsigOptions options = new StatsigOptions.Builder()
                 .setEnableIDLists(true)
-                .setEnableUserAgentParsing(false)
-                .setEnableCountryLookup(true)
+                .setWaitForUserAgentParsingInit(false)
+                .setWaitForCountryLookupInit(true)
                 .setDisableAllLogging(false)
                 .build();
     }
@@ -120,8 +120,8 @@ public class StatsigOptionsTest {
                 .setEnvironment("staging")
                 .setDisableAllLogging(true)
                 .setEnableIDLists(true)
-                .setEnableUserAgentParsing(true)
-                .setEnableCountryLookup(true)
+                .setWaitForUserAgentParsingInit(true)
+                .setWaitForCountryLookupInit(true)
                 .setInitTimeoutMs(6000L)
                 .setServiceName("test_service")
                 .setOutputLoggerLevel(OutputLogger.LogLevel.DEBUG)

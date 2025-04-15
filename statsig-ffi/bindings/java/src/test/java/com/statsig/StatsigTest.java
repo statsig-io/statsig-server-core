@@ -8,7 +8,7 @@ public class StatsigTest {
     @Test
     public void testCreateWithKeyAndOptions() throws ExecutionException, InterruptedException {
         StatsigOptions options = new StatsigOptions.Builder()
-                .setEnableCountryLookup(true)
+                .setWaitForCountryLookupInit(true)
                 .setEnvironment("staging")
                 .build();
 

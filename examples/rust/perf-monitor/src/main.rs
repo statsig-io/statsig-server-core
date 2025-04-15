@@ -12,7 +12,7 @@ fn main() {
 
         let options = Arc::new(StatsigOptions {
             enable_country_lookup: Some(true),
-            enable_user_agent_parsing: Some(true),
+            wait_for_user_agent_init: Some(true),
             specs_sync_interval_ms: Some(1),
             disable_all_logging: Some(true),
             ..StatsigOptions::new()

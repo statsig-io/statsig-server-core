@@ -214,7 +214,7 @@ async fn test_exp_5050_targeting() {
 async fn test_many_rules_ua_parser() {
     let options = StatsigOptions {
         wait_for_user_agent_init: Some(true),
-        // enable_country_lookup: Some(true),
+        // wait_for_country_lookup_init: Some(true),
         ..StatsigOptions::default()
     };
     let statsig = setup(Some(options)).await;

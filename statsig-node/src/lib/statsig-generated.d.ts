@@ -193,8 +193,8 @@ export interface StatsigOptions {
   disableAllLogging?: boolean
   disableNetwork?: boolean
   enableIdLists?: boolean
-  enableUserAgentParsing?: boolean
-  enableCountryLookup?: boolean
+  waitForCountryLookupInit?: boolean
+  waitForUserAgentInit?: boolean
   environment?: string
   eventLoggingFlushIntervalMs?: number
   eventLoggingMaxQueueSize?: number
@@ -210,6 +210,7 @@ export interface StatsigOptions {
   specsSyncIntervalMs?: number
   serviceName?: string
   overrideAdapterConfig?: Array<OverrideAdapterConfig>
+  globalCustomFields?: Record<string, ValidPrimitives>
 }
 
 export interface StatsigResult {
