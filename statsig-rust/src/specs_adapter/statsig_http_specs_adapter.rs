@@ -289,7 +289,7 @@ fn construct_specs_url(sdk_key: &str, spec_url: Option<&String>) -> String {
 // only fallback when the spec_url is not the DEFAULT_SPECS_URL
 fn construct_fallback_specs_url(sdk_key: &str, spec_url: Option<&String>) -> Option<String> {
     match spec_url {
-        Some(u) if u != DEFAULT_SPECS_URL => Some(format!("{u}/{sdk_key}.json")),
+        Some(u) if u != DEFAULT_SPECS_URL => Some(format!("{DEFAULT_SPECS_URL}/{sdk_key}.json")),
         _ => None,
     }
 }
