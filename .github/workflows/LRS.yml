@@ -29,6 +29,7 @@ jobs:
           repository: statsig-io/long-running-sdk
           ref: main
           token: ${{ secrets.ROIM }}
+
       - name: Checkout SDK repo
         uses: actions/checkout@v3
         with:
@@ -36,12 +37,16 @@ jobs:
           ref: main
           token: ${{ secrets.ROIM }}
           path: ./${{ matrix.args[1] }}/${{  env.sdk_repo  }}
-      - name: Build SDK
-        if: ${{ matrix.args[1] }} == 'server-core-java'
-        run:
-          cd private-statsig-server-core && pnpm install --dir cli && ./tore build java --os debian --arch arm64
+      
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
 
-          
+      - name: Build SDK
+        if: ${{ matrix.args[0] == 'server-core-java' }}
+        run:
+          cd ${{matrix.args[1]}}/${{ env.sdk_repo }} && pnpm install --dir cli && ./tore build java --os debian --arch amd64
+
       - name: Initialize and update submodules recursively
         run: cd ${{matrix.args[1]}}/${{ env.sdk_repo }} && git submodule update --init --recursive
       - name: Set up QEMU
