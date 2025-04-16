@@ -31,12 +31,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     service_name: JString,
     observability_client: JObject,
     enable_id_lists: jboolean,
+    wait_for_country_lookup_init: jboolean,
     disable_all_logging: jboolean,
     wait_for_user_agent_init: jboolean,
-    wait_for_country_lookup_init: jboolean,
-    disable_user_agent_parsing: jboolean,
-    disable_country_lookup: jboolean,
     disable_network: jboolean,
+    disable_country_lookup: jboolean,
+    disable_user_agent_parsing: jboolean,
 ) -> jstring {
     let specs_url = jstring_to_string(&mut env, specs_url);
     let log_event_url = jstring_to_string(&mut env, log_event_url);

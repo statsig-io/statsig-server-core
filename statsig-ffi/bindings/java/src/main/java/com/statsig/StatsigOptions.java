@@ -22,8 +22,8 @@ public class StatsigOptions {
                 builder.disableAllLogging,
                 builder.waitForUserAgentInit,
                 builder.disableNetwork,
-                builder.disableUserAgentParsing,
-                builder.disableUserCountryLookup
+                builder.disableUserCountryLookup,
+                builder.disableUserAgentParsing
                 );
 
         ResourceCleaner.register(this, () -> {
