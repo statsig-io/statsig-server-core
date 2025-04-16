@@ -63,19 +63,26 @@ impl UserAgentParser {
             ))
         }
 
-        let parsed = parser.parse(user_agent);
         match field_lowered {
-            "os_name" | "osname" => Some(DynamicValue::from(parsed.os.family.to_string())),
+            "os_name" | "osname" => {
+                let os = parser.parse_os(user_agent);
+                Some(DynamicValue::from(os.family.to_string()))
+            }
             "os_version" | "osversion" => {
-                let os = parsed.os;
+                let os = parser.parse_os(user_agent);
                 Some(get_json_version(os.major, os.minor, os.patch))
             }
             "browser_name" | "browsername" => {
-                Some(DynamicValue::from(parsed.user_agent.family.to_string()))
+                let user_agent = parser.parse_user_agent(user_agent);
+                Some(DynamicValue::from(user_agent.family.to_string()))
             }
             "browser_version" | "browserversion" => {
-                let ua = parsed.user_agent;
-                Some(get_json_version(ua.major, ua.minor, ua.patch))
+                let user_agent = parser.parse_user_agent(user_agent);
+                Some(get_json_version(
+                    user_agent.major,
+                    user_agent.minor,
+                    user_agent.patch,
+                ))
             }
             _ => None,
         }
