@@ -19,18 +19,22 @@ pub const DEFAULT_INIT_TIMEOUT_MS: u64 = 3000;
 #[derive(Clone, Default)]
 pub struct StatsigOptions {
     pub data_store: Option<Arc<dyn DataStoreTrait>>, // External DataStore
+
+    pub disable_all_logging: Option<bool>,
+    pub disable_country_lookup: Option<bool>,
+    pub disable_network: Option<bool>, // Disable all out-going network including get configs, log_events...
+    pub disable_user_agent_parsing: Option<bool>,
+
     pub enable_id_lists: Option<bool>,
     pub environment: Option<String>,
 
-    pub disable_network: Option<bool>, // Disable all out-going network including get configs, log_events...
-    pub disable_all_logging: Option<bool>,
-
     pub event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,
     pub event_logging_flush_interval_ms: Option<u32>,
-    pub event_logging_max_queue_size: Option<u32>,
     pub event_logging_max_pending_batch_queue_size: Option<u32>,
+    pub event_logging_max_queue_size: Option<u32>,
 
     pub fallback_to_statsig_api: Option<bool>,
+    pub global_custom_fields: Option<HashMap<String, DynamicValue>>,
 
     pub id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
     pub id_lists_sync_interval_ms: Option<u32>,
@@ -41,18 +45,16 @@ pub struct StatsigOptions {
     pub observability_client: Option<Weak<dyn ObservabilityClient>>,
     pub output_log_level: Option<LogLevel>,
     pub override_adapter: Option<Arc<dyn OverrideAdapter>>,
+    pub persistent_storage: Option<Arc<dyn PersistentStorage>>,
+    pub service_name: Option<String>,
 
     pub spec_adapters_config: Option<Vec<SpecAdapterConfig>>, // Specs to customized spec adapter, order matters, reflecting priority of trying
     pub specs_adapter: Option<Arc<dyn SpecsAdapter>>,
     pub specs_sync_interval_ms: Option<u32>,
     pub specs_url: Option<String>,
-    pub service_name: Option<String>,
-    pub global_custom_fields: Option<HashMap<String, DynamicValue>>,
-    pub persistent_storage: Option<Arc<dyn PersistentStorage>>,
-    pub wait_for_user_agent_init: Option<bool>,
+
     pub wait_for_country_lookup_init: Option<bool>,
-    pub disable_user_agent_parsing: Option<bool>,
-    pub disable_country_lookup: Option<bool>,
+    pub wait_for_user_agent_init: Option<bool>,
 }
 
 impl StatsigOptions {

@@ -193,24 +193,24 @@ export interface StatsigOptions {
   disableAllLogging?: boolean
   disableNetwork?: boolean
   enableIdLists?: boolean
-  waitForCountryLookupInit?: boolean
-  waitForUserAgentInit?: boolean
   environment?: string
   eventLoggingFlushIntervalMs?: number
   eventLoggingMaxQueueSize?: number
   fallbackToStatsigApi?: boolean
+  globalCustomFields?: Record<string, string | number | boolean | Array<string | number | boolean>>
   idListsSyncIntervalMs?: number
   idListsUrl?: string
   initTimeoutMs?: number
   logEventUrl?: string
   observabilityClient?: ObservabilityClient
   outputLogLevel?: 'none' | 'debug' | 'info' | 'warn' | 'error'
-  specAdaptersConfig?: Array<SpecAdapterConfig>
-  specsUrl?: string
-  specsSyncIntervalMs?: number
-  serviceName?: string
   overrideAdapterConfig?: Array<OverrideAdapterConfig>
-  globalCustomFields?: Record<string, ValidPrimitives>
+  serviceName?: string
+  specAdaptersConfig?: Array<SpecAdapterConfig>
+  specsSyncIntervalMs?: number
+  specsUrl?: string
+  waitForCountryLookupInit?: boolean
+  waitForUserAgentInit?: boolean
 }
 
 export interface StatsigResult {
