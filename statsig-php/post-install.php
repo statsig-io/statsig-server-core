@@ -1,7 +1,7 @@
 <?php
 
 const OUTPUT_DIR = "resources";
-const VERSION = "0.1.0-beta.250415";
+const VERSION = "0.1.0-beta.2504062";
 
 if (getenv('SKIP_STATSIG_POST_INSTALL') === 'true') {
     exit(0);
