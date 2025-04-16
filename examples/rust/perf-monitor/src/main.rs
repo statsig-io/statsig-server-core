@@ -1,5 +1,6 @@
-use statsig_rust::{Statsig, StatsigOptions, StatsigRuntime, StatsigUser};
+use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigRuntime, StatsigUser};
 use std::{
+    collections::HashMap,
     env,
     sync::Arc,
     time::{Duration, Instant},
@@ -57,21 +58,14 @@ async fn profile_gate_checks(gate_names: &[&String]) {
 
     let statsig = Statsig::shared();
 
-    let user = StatsigUser {
-        email: None,
-        // user_agent: Some(dyn_value!("test_user_agent")),
-        // ip: Some(dyn_value!("127.0.0.1")),
-        country: None,
-        locale: None,
-        ..StatsigUser::with_user_id("test_user_id".to_string())
-    };
+    let user = create_user();
 
     let mut gate_results = Vec::new();
 
     for gate_name in gate_names {
         let start = Instant::now();
         let mut gate_value = false;
-        for _ in 0..1000 {
+        for _ in 0..400 {
             gate_value = statsig.check_gate(&user, gate_name);
         }
 
@@ -90,5 +84,29 @@ async fn profile_gate_checks(gate_names: &[&String]) {
             gate_value,
             duration as f64 / 1000.0
         );
+    }
+}
+
+fn create_user() -> StatsigUser {
+    StatsigUser {
+        user_id: Some(dyn_value!("a_user")),
+        email: Some(dyn_value!("daniel@statsig.com")),
+        ip: Some(dyn_value!("127.0.0.1")),
+        user_agent: Some("Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into()),
+        country: Some(dyn_value!("US")),
+        locale: Some(dyn_value!("en-US")),
+        app_version: Some(dyn_value!("1.0.0")),
+        custom_ids: Some(HashMap::from([
+            ("companyID".into(), dyn_value!("statsig")),
+            ("groupID".to_string(), dyn_value!("sdk_team"),
+        )])),
+        custom: Some(HashMap::from([(
+            "test_custom_field".to_string(),
+            dyn_value!("test_custom_field_value"),
+        )])),
+        private_attributes: Some(HashMap::from([(
+            "test_private_attribute".to_string(),
+            dyn_value!("test_private_attribute_value"),
+        )])),
     }
 }

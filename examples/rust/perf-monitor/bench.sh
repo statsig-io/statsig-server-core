@@ -1,7 +1,20 @@
 #! /bin/bash
 
 echo "Running program..."
-rss_value=$(MIMALLOC_SHOW_STATS=1 cargo run 2>&1 | grep "rss:")
+rss_value=""
+attempts=0
+while [ -z "$rss_value" ] && [ $attempts -lt 3 ]; do
+    rss_value=$(MIMALLOC_SHOW_STATS=1 cargo run 2>&1 | grep "rss:")
+    if [ -z "$rss_value" ]; then
+        echo "No RSS value found, attempt $((attempts + 1)) of 3..."
+        attempts=$((attempts + 1))
+        if [ $attempts -eq 3 ]; then
+            echo "Error: Failed to get RSS value after 3 attempts"
+            exit 1
+        fi
+        sleep 1  # Add a small delay between attempts
+    fi
+done
 
 echo "mimalloc stats"
 echo "$rss_value"

@@ -1,19 +1,36 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use perf_bench::noop_event_logging_adapter::NoopEventLoggingAdapter;
 use perf_bench::static_specs_adapter::StaticSpecsAdapter;
-use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigUser};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-async fn setup() -> (StatsigUser, Statsig) {
-    let custom_ids: HashMap<String, String> =
-        HashMap::from([("companyID".into(), "an_employee".into())]);
+fn create_user() -> StatsigUser {
+    StatsigUser {
+        user_id: Some(dyn_value!("a_user")),
+        email: Some(dyn_value!("daniel@statsig.com")),
+        ip: Some(dyn_value!("127.0.0.1")),
+        user_agent: Some("Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into()),
+        country: Some(dyn_value!("US")),
+        locale: Some(dyn_value!("en-US")),
+        app_version: Some(dyn_value!("1.0.0")),
+        custom_ids: Some(HashMap::from([
+            ("companyID".into(), dyn_value!("statsig")),
+            ("groupID".to_string(), dyn_value!("sdk_team"),
+        )])),
+        custom: Some(HashMap::from([(
+            "test_custom_field".to_string(),
+            dyn_value!("test_custom_field_value"),
+        )])),
+        private_attributes: Some(HashMap::from([(
+            "test_private_attribute".to_string(),
+            dyn_value!("test_private_attribute_value"),
+        )])),
+    }
+}
 
-    let user = StatsigUser {
-        user_id: Some("user-d".into()),
-        country: Some("GB".into()),
-        ..StatsigUser::with_custom_ids(custom_ids)
-    };
+async fn setup() -> (StatsigUser, Statsig) {
+    let user = create_user();
 
     let mut options = StatsigOptions::new();
     options.wait_for_country_lookup_init = Some(true);
@@ -56,11 +73,9 @@ fn get_client_init_response() {
             let _ = statsig.get_client_init_response(&user);
         }
 
-        let user_2 = StatsigUser {
-            country: Some("GB".into()),
-            user_agent: Some("Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into()),
-            ..StatsigUser::with_user_id("user-d".into())
-        };
+        let mut user_2 = user.clone();
+        user_2.country = Some(dyn_value!("NZ"));
+        user_2.user_id = Some(dyn_value!("b_user"));
 
         for _ in 0..10 {
             let _ = statsig.get_client_init_response(&user_2);
@@ -70,7 +85,9 @@ fn get_client_init_response() {
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("all gates", |b| b.iter(|| all_gate_checks()));
-    c.bench_function("get client init response", |b| b.iter(|| get_client_init_response()));
+    c.bench_function("get client init response", |b| {
+        b.iter(|| get_client_init_response())
+    });
 }
 
 criterion_group!(benches, criterion_benchmark);
