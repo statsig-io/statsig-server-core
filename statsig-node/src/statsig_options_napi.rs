@@ -44,13 +44,13 @@ pub struct OverrideAdapterConfig {
 #[napi(object, object_to_js = false)]
 pub struct StatsigOptions {
     pub data_store: Option<DataStore>,
+
     pub disable_all_logging: Option<bool>,
-    pub disable_network: Option<bool>,
-    pub enable_id_lists: Option<bool>,
-    pub wait_for_country_lookup_init: Option<bool>,
-    pub wait_for_user_agent_init: Option<bool>,
-    pub disable_user_agent_parsing: Option<bool>,
     pub disable_country_lookup: Option<bool>,
+    pub disable_network: Option<bool>,
+    pub disable_user_agent_parsing: Option<bool>,
+
+    pub enable_id_lists: Option<bool>,
     pub environment: Option<String>,
 
     pub event_logging_flush_interval_ms: Option<u32>,
@@ -58,22 +58,29 @@ pub struct StatsigOptions {
 
     pub fallback_to_statsig_api: Option<bool>,
 
+    #[napi(
+        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean>>"
+    )]
+    pub global_custom_fields: Option<HashMap<String, ValidPrimitives>>,
+
     pub id_lists_sync_interval_ms: Option<u32>,
     pub id_lists_url: Option<String>,
 
     pub init_timeout_ms: Option<i64>,
     pub log_event_url: Option<String>,
     pub observability_client: Option<ObservabilityClient>,
+
     #[napi(ts_type = "'none' | 'debug' | 'info' | 'warn' | 'error'")]
     pub output_log_level: Option<String>,
+    pub override_adapter_config: Option<Vec<OverrideAdapterConfig>>,
+    pub service_name: Option<String>,
 
     pub spec_adapters_config: Option<Vec<SpecAdapterConfig>>,
-    pub specs_url: Option<String>,
     pub specs_sync_interval_ms: Option<u32>,
+    pub specs_url: Option<String>,
 
-    pub service_name: Option<String>,
-    pub override_adapter_config: Option<Vec<OverrideAdapterConfig>>,
-    pub global_custom_fields: Option<HashMap<String, ValidPrimitives>>,
+    pub wait_for_country_lookup_init: Option<bool>,
+    pub wait_for_user_agent_init: Option<bool>,
 }
 
 impl StatsigOptions {
