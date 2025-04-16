@@ -243,7 +243,8 @@ class StatsigJNI {
         URL resource = null;
 
         if (osName.contains("win")) {
-            resource = cl.getResource("native/libstatsig_ffi.dll");
+            // NOTE: windows native lib NOT start with lib
+            resource = cl.getResource("native/statsig_ffi.dll");
         } else if (osName.contains("mac")) {
             resource = cl.getResource("native/libstatsig_ffi.dylib");
         } else if (osName.contains("linux")) {
