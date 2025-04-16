@@ -4,6 +4,11 @@ public class StatsigOptions {
     private volatile String ref;
 
     private StatsigOptions(Builder builder) {
+        /**
+         * WARNING: The order of parameters in this method **MUST MATCH EXACTLY**
+         * with the corresponding Rust implementation in `statsig_options_jni.rs`.
+         * Any mismatch will cause incorrect values to be passed across the JNI boundary.
+         */
         this.ref = StatsigJNI.statsigOptionsCreate(
                 builder.specsUrl,
                 builder.logEventUrl,
