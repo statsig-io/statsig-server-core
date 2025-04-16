@@ -61,7 +61,7 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
                     nativeLib = "libstatsig_ffi.dylib"
                     break
                 case ~/.*windows.*/:
-                    nativeLib = "libstatsig_ffi.dll"
+                    nativeLib = "statsig_ffi.dll"
                     break
                 case ~/.*linux.*/:
                     nativeLib = "libstatsig_ffi.so"
