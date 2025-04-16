@@ -38,7 +38,6 @@ async fn setup() -> (StatsigUser, Statsig) {
     options.environment = Some("development".to_string());
 
     options.specs_adapter = Some(Arc::new(StaticSpecsAdapter::with_data("benches/data.json")));
-
     options.event_logging_adapter = Some(Arc::new(NoopEventLoggingAdapter::default()));
 
     let statsig = Statsig::new("secret-key", Some(Arc::new(options)));
@@ -83,11 +82,22 @@ fn get_client_init_response() {
     });
 }
 
+fn initialization() {
+    for _ in 0..10 {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+
+        rt.block_on(async {
+            let _ = setup().await;
+        });
+    }
+}
+
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("all gates", |b| b.iter(|| all_gate_checks()));
     c.bench_function("get client init response", |b| {
         b.iter(|| get_client_init_response())
-    });
+    });    
+    c.bench_function("statsig init", |b| b.iter(|| initialization()));
 }
 
 criterion_group!(benches, criterion_benchmark);
