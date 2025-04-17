@@ -121,6 +121,7 @@ pub struct LayerPy {
 
 macro_rules! impl_get_methods {
     ($struct_name:ident) => {
+        #[gen_stub_pymethods]
         #[pymethods]
         impl $struct_name {
             pub fn get_bool(&self, param_name: &str, fallback: bool) -> bool {

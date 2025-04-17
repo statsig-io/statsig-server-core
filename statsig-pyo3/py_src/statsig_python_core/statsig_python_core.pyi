@@ -14,6 +14,24 @@ class DynamicConfig:
     id_type: builtins.str
     value: typing.Any
     details: EvaluationDetails
+    def get_bool(self, param_name:builtins.str, fallback:builtins.bool) -> builtins.bool:
+        ...
+
+    def get_float(self, param_name:builtins.str, fallback:builtins.float) -> builtins.float:
+        ...
+
+    def get_integer(self, param_name:builtins.str, fallback:builtins.int) -> builtins.int:
+        ...
+
+    def get_string(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
+        ...
+
+    def get_array_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
+        ...
+
+    def get_object_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
+        ...
+
 
 class DynamicConfigEvaluationOptions:
     disable_exposure_logging: builtins.bool
@@ -31,6 +49,24 @@ class Experiment:
     group_name: typing.Optional[builtins.str]
     value: typing.Any
     details: EvaluationDetails
+    def get_bool(self, param_name:builtins.str, fallback:builtins.bool) -> builtins.bool:
+        ...
+
+    def get_float(self, param_name:builtins.str, fallback:builtins.float) -> builtins.float:
+        ...
+
+    def get_integer(self, param_name:builtins.str, fallback:builtins.int) -> builtins.int:
+        ...
+
+    def get_string(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
+        ...
+
+    def get_array_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
+        ...
+
+    def get_object_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
+        ...
+
 
 class ExperimentEvaluationOptions:
     disable_exposure_logging: builtins.bool
@@ -55,6 +91,24 @@ class Layer:
     allocated_experiment_name: typing.Optional[builtins.str]
     value: typing.Any
     details: EvaluationDetails
+    def get_bool(self, param_name:builtins.str, fallback:builtins.bool) -> builtins.bool:
+        ...
+
+    def get_float(self, param_name:builtins.str, fallback:builtins.float) -> builtins.float:
+        ...
+
+    def get_integer(self, param_name:builtins.str, fallback:builtins.int) -> builtins.int:
+        ...
+
+    def get_string(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
+        ...
+
+    def get_array_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
+        ...
+
+    def get_object_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
+        ...
+
 
 class LayerEvaluationOptions:
     disable_exposure_logging: builtins.bool
