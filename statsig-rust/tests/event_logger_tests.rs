@@ -56,7 +56,6 @@ async fn test_background_flushing() {
     let (scrapi, statsig) = setup(
         0,
         StatsigOptions {
-            event_logging_flush_interval_ms: Some(1),
             specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
                 "tests/data/eval_proj_dcs.json",
             ))),

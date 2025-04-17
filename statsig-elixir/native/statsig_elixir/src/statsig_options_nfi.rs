@@ -28,7 +28,6 @@ impl From<StatsigOptions> for StatsigOptionsActual {
             environment: config.environment,
             enable_id_lists: config.enable_id_lists,
             id_lists_url: config.id_lists_url,
-            event_logging_flush_interval_ms: config.event_logging_flush_interval_ms,
             event_logging_max_queue_size: config.event_logging_max_queue_size,
             fallback_to_statsig_api: config.fallback_to_statsig_api,
             specs_sync_interval_ms: config.specs_sync_interval_ms,

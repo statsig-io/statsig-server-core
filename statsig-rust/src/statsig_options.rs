@@ -29,6 +29,8 @@ pub struct StatsigOptions {
     pub environment: Option<String>,
 
     pub event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,
+
+    #[deprecated]
     pub event_logging_flush_interval_ms: Option<u32>,
     pub event_logging_max_pending_batch_queue_size: Option<u32>,
     pub event_logging_max_queue_size: Option<u32>,
@@ -128,6 +130,7 @@ impl StatsigOptionsBuilder {
     #[deprecated(
         note = "This field is deprecated in favor of smart log event. It is no longer consumed and can be removed safely."
     )]
+    #[allow(deprecated)]
     pub fn event_logging_flush_interval_ms(
         mut self,
         event_logging_flush_interval_ms: Option<u32>,

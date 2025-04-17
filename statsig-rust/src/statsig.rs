@@ -166,8 +166,8 @@ impl Statsig {
         let spec_store = Arc::new(SpecStore::new(
             sdk_key,
             hashing.sha256(&sdk_key.to_string()),
+            statsig_runtime.clone(),
             options.data_store.clone(),
-            Some(statsig_runtime.clone()),
         ));
 
         let environment = options
@@ -583,7 +583,7 @@ impl Statsig {
             sdk_key: self.sdk_key.clone(),
             options: self.options.clone(),
             local_override_adapter: self.override_adapter.clone(),
-            spec_store_data: self.get_current_values(),
+            spec_store_data: self.spec_store.get_current_values(),
             error_observer: self.error_observer.clone(),
             diagnostics_observer: self.diagnostics_observer.clone(),
             spec_store: self.spec_store.clone(),
@@ -591,9 +591,9 @@ impl Statsig {
     }
 
     // todo: merge into get_context
+    #[deprecated(since = "0.1.0", note = "Use get_context instead")]
     pub fn get_current_values(&self) -> Option<SpecStoreData> {
-        // TODO better error handling here
-        Some(self.spec_store.data.read().ok()?.clone())
+        self.spec_store.get_current_values()
     }
 
     pub fn log_event(

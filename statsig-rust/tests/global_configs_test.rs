@@ -1,13 +1,22 @@
-use statsig_rust::{global_configs::GlobalConfigs, SpecStore, SpecsSource, SpecsUpdate};
+use statsig_rust::{
+    global_configs::GlobalConfigs, SpecStore, SpecsSource, SpecsUpdate, StatsigRuntime,
+};
 use std::fs;
-fn create_test_spec_store() -> SpecStore {
-    SpecStore::default()
+
+fn create_test_spec_store(sdk_key: &str) -> SpecStore {
+    SpecStore::new(
+        sdk_key,
+        sdk_key.to_string(),
+        StatsigRuntime::get_runtime(),
+        None,
+    )
 }
 
 #[test]
 fn test_set_values_and_get_config_num_value() {
-    let spec_store = create_test_spec_store();
-    let global_config_instance = GlobalConfigs::get_instance("");
+    let sdk_key = "secret-key-set-global-configs-test";
+    let spec_store = create_test_spec_store(sdk_key);
+    let global_config_instance = GlobalConfigs::get_instance(sdk_key);
     // Load JSON data from file
     let json_data: serde_json::Value = serde_json::from_str(
         &fs::read_to_string("tests/data/dcs_with_sdk_configs.json").expect("Unable to read file"),
@@ -50,8 +59,9 @@ fn test_set_values_and_get_config_num_value() {
 
 #[test]
 fn test_set_values_and_get_config_str_value() {
-    let spec_store: SpecStore = create_test_spec_store();
-    let global_config_instance = GlobalConfigs::get_instance("");
+    let sdk_key = "secret-key-get-global-configs-test";
+    let spec_store: SpecStore = create_test_spec_store(sdk_key);
+    let global_config_instance = GlobalConfigs::get_instance(sdk_key);
 
     let json_data: serde_json::Value = serde_json::from_str(
         &fs::read_to_string("tests/data/dcs_with_sdk_configs.json").expect("Unable to read file"),
@@ -96,7 +106,8 @@ fn test_get_default_diagnostics_sampling_rate() {
 
 #[test]
 fn test_set_and_get_sampling_rate() {
-    let spec_store: SpecStore = create_test_spec_store();
+    let sdk_key = "secret-key-sampling-global-configs-test";
+    let spec_store: SpecStore = create_test_spec_store(sdk_key);
     let json_data: serde_json::Value = serde_json::from_str(
         &fs::read_to_string("tests/data/dcs_with_sdk_configs.json").expect("Unable to read file"),
     )
@@ -113,7 +124,7 @@ fn test_set_and_get_sampling_rate() {
         Err(e) => println!("set_values failed: {e:?}"),
     }
 
-    let global_config_instance = GlobalConfigs::get_instance("");
+    let global_config_instance = GlobalConfigs::get_instance(sdk_key);
     let init_rate =
         global_config_instance.use_diagnostics_sampling_rate("initialize", |x| x.cloned());
     let config_sync_rate =

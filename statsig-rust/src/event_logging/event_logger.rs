@@ -799,8 +799,7 @@ mod tests {
         initialize_simple_output_logger(&Some(LogLevel::Debug));
 
         let adapter = Arc::new(MockAdapter::new());
-        let mut opts = StatsigOptions::new();
-        opts.event_logging_flush_interval_ms = Some(1);
+        let opts = StatsigOptions::new();
 
         let statsig_rt = StatsigRuntime::get_runtime();
         let logger = Arc::new(EventLogger::new(

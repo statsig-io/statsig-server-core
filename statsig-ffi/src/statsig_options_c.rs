@@ -18,7 +18,7 @@ pub extern "C" fn statsig_options_create(
     specs_adapter_ref: *const c_char,
     event_logging_adapter_ref: *const c_char,
     environment: *const c_char,
-    event_logging_flush_interval_ms: c_int,
+    _event_logging_flush_interval_ms: c_int, // Deprecated
     event_logging_max_queue_size: c_int,
     specs_sync_interval_ms: c_int,
     output_log_level: *const c_char,
@@ -26,7 +26,6 @@ pub extern "C" fn statsig_options_create(
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
     let environment = c_char_to_string(environment);
-    let event_logging_flush_interval_ms = c_int_to_u32(event_logging_flush_interval_ms);
     let event_logging_max_queue_size = c_int_to_u32(event_logging_max_queue_size);
     let specs_sync_interval_ms = c_int_to_u32(specs_sync_interval_ms);
 
@@ -42,7 +41,6 @@ pub extern "C" fn statsig_options_create(
         specs_adapter,
         event_logging_adapter,
         environment,
-        event_logging_flush_interval_ms,
         event_logging_max_queue_size,
         specs_sync_interval_ms,
         output_log_level,

@@ -135,7 +135,7 @@ const char *statsig_options_create(const char *specs_url,
                                    const char *specs_adapter_ref,
                                    const char *event_logging_adapter_ref,
                                    const char *environment,
-                                   int event_logging_flush_interval_ms,
+                                   int _event_logging_flush_interval_ms,
                                    int event_logging_max_queue_size,
                                    int specs_sync_interval_ms,
                                    const char *output_log_level);

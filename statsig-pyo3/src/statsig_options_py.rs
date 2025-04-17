@@ -167,6 +167,7 @@ pub(crate) fn safe_convert_to_statsig_options(
     (Some(opts), ob_client_strong)
 }
 
+#[allow(deprecated)]
 fn create_inner_statsig_options(
     py: Python,
     opts: StatsigOptionsPy,
@@ -193,7 +194,7 @@ fn create_inner_statsig_options(
         log_event_url: opts.log_event_url.clone(),
         disable_all_logging: opts.disable_all_logging,
         event_logging_adapter: None,
-        event_logging_flush_interval_ms: opts.event_logging_flush_interval_ms,
+        event_logging_flush_interval_ms: None,
         event_logging_max_queue_size: opts.event_logging_max_queue_size,
         event_logging_max_pending_batch_queue_size: opts.event_logging_max_pending_batch_queue_size,
         enable_id_lists: opts.enable_id_lists,

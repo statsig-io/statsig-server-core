@@ -128,7 +128,6 @@ impl StatsigOptions {
             service_name: self.service_name,
             disable_all_logging: self.disable_all_logging,
             disable_network: self.disable_network,
-            event_logging_flush_interval_ms: self.event_logging_flush_interval_ms,
             event_logging_max_queue_size: self.event_logging_max_queue_size,
             override_adapter: Some(create_local_overrides(self.override_adapter_config)),
             global_custom_fields: Self::convert_to_dynamic_value_map(self.global_custom_fields),
