@@ -52,7 +52,7 @@ pub fn get_cmab_ranked_list(ctx: &mut EvaluatorContext, name: &str) -> Vec<CMABR
                     score: 0.0001,
                     variant_name: group.name.clone(),
                     rule_id: group.id.clone(),
-                    value: group.parameter_values.json_value.clone(),
+                    value: group.parameter_values.get_json(),
                     cmab_name: name.to_string(),
                 })
                 .collect();
@@ -75,7 +75,7 @@ pub fn get_cmab_ranked_list(ctx: &mut EvaluatorContext, name: &str) -> Vec<CMABR
                 score: 0.0001,
                 variant_name: group.name.clone(),
                 rule_id: group.id.clone() + ":explore",
-                value: group.parameter_values.json_value.clone(),
+                value: group.parameter_values.get_json(),
                 cmab_name: name.to_string(),
             })
             .collect();
@@ -87,7 +87,7 @@ pub fn get_cmab_ranked_list(ctx: &mut EvaluatorContext, name: &str) -> Vec<CMABR
             score: get_cmab_score_for_group(ctx, group, config).unwrap_or(0.0),
             variant_name: group.name.clone(),
             rule_id: group.id.clone(),
-            value: group.parameter_values.json_value.clone(),
+            value: group.parameter_values.get_json(),
             cmab_name: name.to_string(),
         })
         .collect::<Vec<CMABRankedGroup>>();
@@ -121,7 +121,7 @@ pub(crate) fn evaluate_cmab(
         ctx.result.is_experiment_active = cmab.enabled;
         ctx.result.bool_value = false;
         ctx.result.rule_id = Some(&NOT_STARTED_RULE);
-        ctx.result.json_value = cmab.default_value.json_value.clone();
+        ctx.result.json_value = cmab.default_value.get_json();
         return true;
     }
 
@@ -131,7 +131,7 @@ pub(crate) fn evaluate_cmab(
         ctx.result.is_experiment_active = cmab.enabled;
         ctx.result.bool_value = false;
         ctx.result.rule_id = Some(&FAILS_TARGETING);
-        ctx.result.json_value = cmab.default_value.json_value.clone();
+        ctx.result.json_value = cmab.default_value.get_json();
         return true;
     }
 
@@ -217,7 +217,7 @@ fn apply_random_group<'a>(
     ctx.result.bool_value = true;
     ctx.result.rule_id = Some(&group.id);
     ctx.result.group_name = Some(&group.name);
-    ctx.result.json_value = group.parameter_values.json_value.clone();
+    ctx.result.json_value = group.parameter_values.get_json();
 }
 
 fn apply_sampling_group<'a>(
@@ -248,7 +248,7 @@ fn apply_sampling_group<'a>(
             ctx.result.rule_id_suffix = Some("explore".to_string());
             ctx.result.bool_value = true;
             ctx.result.group_name = Some(&group.name);
-            ctx.result.json_value = group.parameter_values.json_value.clone();
+            ctx.result.json_value = group.parameter_values.get_json();
             return true;
         }
     }
@@ -289,7 +289,7 @@ fn apply_best_group<'a>(
     ctx.result.bool_value = true;
     ctx.result.rule_id = Some(&best_group.id);
     ctx.result.group_name = Some(&best_group.name);
-    ctx.result.json_value = best_group.parameter_values.json_value.clone();
+    ctx.result.json_value = best_group.parameter_values.get_json();
 }
 
 fn get_cmab_score_for_group(

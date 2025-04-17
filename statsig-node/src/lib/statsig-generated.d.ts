@@ -191,7 +191,9 @@ export interface SpecAdapterConfig {
 export interface StatsigOptions {
   dataStore?: DataStore
   disableAllLogging?: boolean
+  disableCountryLookup?: boolean
   disableNetwork?: boolean
+  disableUserAgentParsing?: boolean
   enableIdLists?: boolean
   environment?: string
   eventLoggingFlushIntervalMs?: number

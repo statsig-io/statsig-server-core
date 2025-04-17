@@ -134,11 +134,11 @@ impl Evaluator {
             let did_pass = evaluate_pass_percentage(ctx, rule, &spec.salt);
 
             if did_pass {
-                ctx.result.bool_value = rule.return_value.string_value != "false";
-                ctx.result.json_value = rule.return_value.json_value.clone();
+                ctx.result.bool_value = rule.return_value.get_bool() != Some(false);
+                ctx.result.json_value = rule.return_value.get_json();
             } else {
-                ctx.result.bool_value = spec.default_value.string_value == "true";
-                ctx.result.json_value = spec.default_value.json_value.clone();
+                ctx.result.bool_value = spec.default_value.get_bool() == Some(true);
+                ctx.result.json_value = spec.default_value.get_json();
             }
 
             ctx.result.rule_id = Some(&rule.id);
@@ -149,8 +149,8 @@ impl Evaluator {
             return Ok(Recognition::Recognized);
         }
 
-        ctx.result.bool_value = spec.default_value.string_value == "true";
-        ctx.result.json_value = spec.default_value.json_value.clone();
+        ctx.result.bool_value = spec.default_value.get_bool() == Some(true);
+        ctx.result.json_value = spec.default_value.get_json();
         ctx.result.rule_id = match spec.enabled {
             true => Some(&DEFAULT_RULE),
             false => Some(&DISABLED_RULE),

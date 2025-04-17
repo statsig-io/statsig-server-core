@@ -1,21 +1,27 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::{from_value, Value as JsonValue};
+use serde_json::Value as JsonValue;
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct DynamicReturnable {
-    pub value: JsonValue,
-    pub string_value: String,
-    pub json_value: Option<HashMap<String, JsonValue>>,
+#[derive(Clone, PartialEq, Debug)]
+pub enum DynamicReturnable {
+    Bool(bool),
+    Json(HashMap<String, JsonValue>),
 }
 
-impl Serialize for DynamicReturnable {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.string_value)
+impl DynamicReturnable {
+    pub fn get_bool(&self) -> Option<bool> {
+        match self {
+            DynamicReturnable::Bool(b) => Some(*b),
+            _ => None,
+        }
+    }
+
+    pub fn get_json(&self) -> Option<HashMap<String, JsonValue>> {
+        match self {
+            DynamicReturnable::Json(json) => Some(json.clone()),
+            _ => None,
+        }
     }
 }
 
@@ -24,14 +30,23 @@ impl<'de> Deserialize<'de> for DynamicReturnable {
     where
         D: Deserializer<'de>,
     {
-        let value = JsonValue::deserialize(deserializer)?;
-        let string_value = value.to_string();
-        let json_value = from_value(value.clone()).ok();
+        let json_value = JsonValue::deserialize(deserializer)?;
+        match json_value {
+            JsonValue::Bool(b) => Ok(DynamicReturnable::Bool(b)),
+            JsonValue::Object(obj) => Ok(DynamicReturnable::Json(obj.into_iter().collect())),
+            _ => Err(serde::de::Error::custom("Invalid JSON value")),
+        }
+    }
+}
 
-        Ok(DynamicReturnable {
-            value,
-            string_value,
-            json_value,
-        })
+impl Serialize for DynamicReturnable {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            DynamicReturnable::Bool(b) => b.serialize(serializer),
+            DynamicReturnable::Json(json) => json.serialize(serializer),
+        }
     }
 }

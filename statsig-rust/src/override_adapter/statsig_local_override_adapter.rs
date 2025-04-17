@@ -186,7 +186,7 @@ impl StatsigLocalOverrideAdapter {
             for rule in &spec.rules {
                 if let Some(rule_group_name) = &rule.group_name {
                     if rule_group_name == group_name {
-                        return rule.return_value.json_value.clone();
+                        return rule.return_value.get_json();
                     }
                 }
             }
