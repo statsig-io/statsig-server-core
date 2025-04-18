@@ -24,6 +24,7 @@ export class MockScrapi {
   private server: http.Server;
 
   private mocks: Record<string, Mock> = {};
+  private waiters: ((req: RecordedRequest) => void)[] = [];
 
   private constructor(onReady: () => void) {
     this.app = express();
@@ -52,11 +53,14 @@ export class MockScrapi {
           await decompressZstd(req);
         }
 
-        this.requests.push({
+        const recorded = {
           path: req.path,
           method: req.method,
           body: req.body,
-        });
+        };
+
+        this.requests.push(recorded);
+        this.waiters.forEach((waiter) => waiter(recorded));
 
         const found = Object.entries(this.mocks).find(([path, mock]) => {
           if (mock.options?.method !== req.method) {
@@ -98,6 +102,26 @@ export class MockScrapi {
       response,
       options: options ?? null,
     };
+  }
+
+  waitForNext(filter: (req: RecordedRequest) => boolean) {
+    return new Promise<boolean>((resolve) => {
+      const myWaiter = (req: RecordedRequest) => {
+        if (filter(req)) {
+          this.waiters = this.waiters.filter((waiter) => waiter !== myWaiter);
+
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      };
+
+      const timeout = setTimeout(() => {
+        this.waiters = this.waiters.filter((waiter) => waiter !== myWaiter);
+        resolve(false);
+      }, 1000);
+
+      this.waiters.push(myWaiter);
+    });
   }
 }
 

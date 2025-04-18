@@ -1,9 +1,8 @@
 use futures::future::join_all;
 use std::collections::HashMap;
 use std::future::Future;
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::time::Duration;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex, Weak};
 use tokio::runtime::{Builder, Handle, Runtime};
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
@@ -14,6 +13,10 @@ use crate::StatsigErr;
 
 const TAG: &str = stringify!(StatsigRuntime);
 
+lazy_static::lazy_static! {
+    static ref OWNED_TOKIO_RUNTIME: Mutex<Option<Weak<Runtime>>> = Mutex::new(None);
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct TaskId {
     tag: String,
@@ -22,22 +25,24 @@ struct TaskId {
 
 pub struct StatsigRuntime {
     pub runtime_handle: Handle,
-    inner_runtime: Mutex<Option<Runtime>>,
+    inner_runtime: Mutex<Option<Arc<Runtime>>>,
     spawned_tasks: Arc<Mutex<HashMap<TaskId, JoinHandle<()>>>>,
     shutdown_notify: Arc<Notify>,
+    is_shutdown: Arc<AtomicBool>,
 }
 
 impl StatsigRuntime {
     #[must_use]
     pub fn get_runtime() -> Arc<StatsigRuntime> {
         let (opt_runtime, runtime_handle) = create_runtime_if_required();
-
         let shutdown_notify = Notify::new();
+
         Arc::new(StatsigRuntime {
             inner_runtime: Mutex::new(opt_runtime),
             runtime_handle,
             spawned_tasks: Arc::new(Mutex::new(HashMap::new())),
             shutdown_notify: Arc::new(shutdown_notify),
+            is_shutdown: Arc::new(AtomicBool::new(false)),
         })
     }
 
@@ -55,7 +60,7 @@ impl StatsigRuntime {
         }
     }
 
-    pub fn shutdown(&self, timeout: Duration) {
+    pub fn shutdown(&self) {
         self.shutdown_notify.notify_waiters();
 
         if let Ok(mut lock) = self.spawned_tasks.lock() {
@@ -63,25 +68,6 @@ impl StatsigRuntime {
                 task.abort();
             }
         }
-
-        if let Ok(mut lock) = self.inner_runtime.lock() {
-            if let Some(runtime) = lock.take() {
-                log_d!(
-                    TAG,
-                    "Shutting down Statsig runtime with timeout: {:?}",
-                    timeout
-                );
-                if timeout.as_millis() > 0 {
-                    runtime.shutdown_timeout(timeout);
-                } else {
-                    runtime.shutdown_background();
-                }
-            }
-        }
-    }
-
-    pub fn shutdown_immediate(&self) {
-        self.shutdown(Duration::from_millis(0));
     }
 
     pub fn spawn<F, Fut>(&self, tag: &str, task: F) -> tokio::task::Id
@@ -92,10 +78,15 @@ impl StatsigRuntime {
         let tag_string = tag.to_string();
         let shutdown_notify = self.shutdown_notify.clone();
         let spawned_tasks = self.spawned_tasks.clone();
+        let is_shutdown = self.is_shutdown.clone();
 
         log_d!(TAG, "Spawning task {}", tag);
 
         let handle = self.runtime_handle.spawn(async move {
+            if is_shutdown.load(std::sync::atomic::Ordering::Relaxed) {
+                return;
+            }
+
             let task_id = tokio::task::id();
             log_d!(TAG, "Executing task {}.{}", tag_string, task_id);
             task(shutdown_notify).await;
@@ -218,29 +209,46 @@ fn remove_join_handle_with_id(
     }
 }
 
-fn create_runtime_if_required() -> (Option<Runtime>, Handle) {
+fn create_runtime_if_required() -> (Option<Arc<Runtime>>, Handle) {
     if let Ok(handle) = Handle::try_current() {
         log_d!(TAG, "Existing tokio runtime found");
         return (None, handle);
     }
 
-    // todo: remove expects and return error
-    let rt = Builder::new_multi_thread()
-        .worker_threads(5)
-        .thread_name("statsig")
-        .enable_all()
-        .build()
-        .expect("Failed to find or create a tokio Runtime");
+    let mut lock = OWNED_TOKIO_RUNTIME
+        .lock()
+        .expect("Failed to lock owned tokio runtime");
 
-    let handle = rt.handle().clone();
-    log_d!(TAG, "New tokio runtime created");
-    (Some(rt), handle)
+    match lock.as_ref().and_then(|rt| rt.upgrade()) {
+        Some(rt) => (Some(rt.clone()), rt.handle().clone()),
+        None => {
+            let rt = Arc::new(
+                Builder::new_multi_thread()
+                    .worker_threads(5)
+                    .thread_name("statsig")
+                    .enable_all()
+                    .build()
+                    .expect("Failed to find or create a tokio Runtime"),
+            );
+
+            let handle = rt.handle().clone();
+            lock.replace(Arc::downgrade(&rt));
+            (Some(rt), handle)
+        }
+    }
 }
 
 impl Drop for StatsigRuntime {
     fn drop(&mut self) {
-        self.shutdown(Duration::from_secs(1));
+        self.shutdown();
 
-        log_d!(TAG, "StatsigRuntime dropped");
+        match self.inner_runtime.lock() {
+            Ok(mut inner_runtime) => {
+                let _ = inner_runtime.take();
+            }
+            Err(e) => {
+                log_e!(TAG, "Failed to lock inner runtime {}", e);
+            }
+        }
     }
 }

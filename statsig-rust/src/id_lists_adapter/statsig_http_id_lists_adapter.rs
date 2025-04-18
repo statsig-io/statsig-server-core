@@ -167,9 +167,11 @@ impl StatsigHttpIdListsAdapter {
         strong_self
             .ops_stats
             .set_diagnostics_context(ContextType::ConfigSync);
+
         if let Err(e) = strong_self.sync_id_lists().await {
             log_w!(TAG, "IDList background sync failed {}", e);
         }
+
         strong_self.ops_stats.enqueue_diagnostics_event(
             Some(KeyType::GetIDListSources),
             Some(ContextType::ConfigSync),
@@ -576,7 +578,7 @@ mod tests {
     async fn test_bg_sync_shutdown() {
         let (_server, adapter, listener, statsig_rt) = setup(Some(10)).await;
 
-        statsig_rt.shutdown_immediate();
+        statsig_rt.shutdown();
         let _ = adapter.shutdown(Duration::from_millis(1)).await;
 
         let result = listener

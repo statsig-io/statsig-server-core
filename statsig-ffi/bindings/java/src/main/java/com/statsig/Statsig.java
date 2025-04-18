@@ -73,15 +73,11 @@ public class Statsig {
     public CompletableFuture<Void> shutdown() {
         CompletableFuture<Void> future = new CompletableFuture<>();
         Runnable callback = () -> {
-            scheduler.execute(() -> {
-                StatsigJNI.statsigFinalizeShutdown(ref);
-                future.complete(null);
-                scheduler.shutdown();
-            });
+            // Complete the future when the native operation is done
+            future.complete(null);
         };
 
-        StatsigJNI.statsigSequencedShutdownPrepare(ref, callback);
-
+        StatsigJNI.statsigShutdown(ref, callback);
         return future;
     }
 

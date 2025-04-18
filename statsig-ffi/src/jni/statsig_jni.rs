@@ -11,13 +11,12 @@ use jni::JNIEnv;
 use serde_json::Value;
 use statsig_rust::statsig_metadata::StatsigMetadata;
 use std::collections::HashMap;
-use std::time::Duration;
 
 use super::jni_utils::serialize_json_to_jstring;
 use crate::jni::jni_utils::{jni_to_rust_hashmap, string_to_jstring};
 use crate::jni::statsig_options_jni::StatsigOptionsJNI;
 use jni::objects::{JClass, JObject, JString};
-use statsig_rust::{log_e, InstanceRegistry, Statsig, StatsigRuntime, StatsigUser};
+use statsig_rust::{log_e, InstanceRegistry, Statsig, StatsigUser};
 
 const TAG: &str = "StatsigJNI";
 
@@ -91,8 +90,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
         .new_global_ref(callback)
         .expect("Failed to create global ref");
 
-    let statsig_rt = StatsigRuntime::get_runtime();
-    statsig_rt.runtime_handle.block_on(async move {
+    statsig.statsig_runtime.get_handle().block_on(async move {
         if let Err(e) = statsig.initialize().await {
             log_e!(TAG, "Failed to initialize statsig: {}", e);
         }
@@ -109,7 +107,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_statsig_StatsigJNI_statsigSequencedShutdownPrepare(
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigShutdown(
     mut env: JNIEnv,
     _class: JClass,
     statsig_ref: JString,
@@ -134,7 +132,11 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigSequencedShutdownPrepa
         .new_global_ref(callback)
         .expect("Failed to create global ref");
 
-    statsig.sequenced_shutdown_prepare(move || {
+    statsig.statsig_runtime.get_handle().block_on(async move {
+        if let Err(e) = statsig.shutdown().await {
+            log_e!(TAG, "Failed to gracefully shutdown StatsigPy: {}", e);
+        }
+
         let mut env = vm.attach_current_thread().unwrap();
 
         let result = env.call_method(global_callback.as_obj(), "run", "()V", &[]);
@@ -144,16 +146,6 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigSequencedShutdownPrepa
 
         drop(global_callback);
     });
-}
-
-#[no_mangle]
-pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFinalizeShutdown(
-    mut env: JNIEnv,
-    _class: JClass,
-    statsig_ref: JString,
-) {
-    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
-    statsig.finalize_shutdown(Duration::from_millis(1000));
 }
 
 #[no_mangle]
@@ -920,8 +912,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
         .new_global_ref(callback)
         .expect("Failed to create global ref");
 
-    let statsig_rt = StatsigRuntime::get_runtime();
-    statsig_rt.runtime_handle.block_on(async move {
+    statsig.statsig_runtime.get_handle().block_on(async move {
         statsig.flush_events().await;
 
         let mut env = vm.attach_current_thread().unwrap();

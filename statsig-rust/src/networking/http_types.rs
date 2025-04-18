@@ -6,7 +6,6 @@ use std::{
 };
 
 use crate::sdk_diagnostics::marker::KeyType;
-use crate::StatsigErr;
 
 #[derive(Clone)]
 pub struct RequestArgs {
@@ -96,5 +95,4 @@ pub enum HttpMethod {
 #[async_trait]
 pub trait NetworkProvider: Sync + Send {
     async fn send(&self, method: &HttpMethod, args: &RequestArgs) -> Response;
-    async fn shutdown(&self) -> Result<(), StatsigErr>;
 }

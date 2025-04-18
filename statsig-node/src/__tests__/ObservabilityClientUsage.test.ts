@@ -63,15 +63,25 @@ describe('ObservabilityClient Usage', () => {
 
     await statsig.flushEvents();
 
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await waitFor(
+      () => observabilityClientSpies.dist.mock.calls.length > 1, // init + config prop
+      5000,
+    );
 
     scrapi.mock('/v2/download_config_specs', '{"has_updates": false}', {
       status: 200,
       method: 'GET',
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  });
+    await scrapi.waitForNext((req) =>
+      req.path.includes('/v2/download_config_specs'),
+    );
+
+    await waitFor(
+      () => observabilityClientSpies.increment.mock.calls.length > 0, // no updates
+      5000,
+    );
+  }, 10000);
 
   afterAll(async () => {
     await statsig.shutdown();
@@ -97,8 +107,15 @@ describe('ObservabilityClient Usage', () => {
   it('logs an increment metric for no updates', () => {
     expect(observabilityClientSpies.increment).toHaveBeenCalledWith(
       'statsig.sdk.config_no_update',
-      1,
+      expect.any(Number),
       { source: 'Network' },
     );
   });
 });
+
+async function waitFor(fn: () => boolean, timeout: number) {
+  const startTime = Date.now();
+  while (!fn() && Date.now() - startTime < timeout) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}

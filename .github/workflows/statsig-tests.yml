@@ -46,7 +46,7 @@ jobs:
 
       - name: '[Python] Install Dependencies'
         if: matrix.lang == 'python'
-        run: pip3 install pytest maturin patchelf pytest_httpserver
+        run: pip3 install pytest maturin patchelf pytest_httpserver pytest-retry
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3

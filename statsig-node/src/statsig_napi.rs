@@ -77,44 +77,27 @@ impl StatsigNapiInternal {
     }
 
     #[napi]
-    pub fn shutdown<'env>(
-        &self,
-        env: &'env Env,
-        timeout_ms: Option<u32>,
-    ) -> Result<PromiseRaw<'env, StatsigResult>> {
-        if let Ok(mut lock) = self.observability_client.lock() {
-            lock.take();
-        }
+    pub async fn shutdown(&self, timeout_ms: Option<u32>) -> StatsigResult {
+        let network_provider = match self.network_provider.lock() {
+            Ok(mut lock) => lock.take(),
+            _ => None,
+        };
+        let obs_client = match self.observability_client.lock() {
+            Ok(mut lock) => lock.take(),
+            _ => None,
+        };
 
-        let inst = self.inner.clone();
-        let network_provider = self
-            .network_provider
-            .lock()
-            .ok()
-            .and_then(|mut lock| lock.take());
+        let timeout = Duration::from_millis(timeout_ms.unwrap_or(3000) as u64);
+        let result = match self.inner.shutdown_with_timeout(timeout).await {
+            Ok(_) => StatsigResult::success(),
+            Err(e) => StatsigResult::error(e.to_string()),
+        };
 
-        env.spawn_future(async move {
-            let result = match inst
-                .__shutdown_internal(Duration::from_millis(timeout_ms.unwrap_or(3000) as u64))
-                .await
-            {
-                Ok(_) => Ok(StatsigResult::success()),
-                Err(e) => Ok(StatsigResult::error(e.to_string())),
-            };
+        // held until the shutdown is complete
+        drop(network_provider);
+        drop(obs_client);
 
-            if let Some(network_provider) = network_provider {
-                match network_provider.shutdown().await {
-                    Ok(_) => (),
-                    Err(e) => log_e!(
-                        TAG,
-                        "An error occurred while shutting down the network provider: {}",
-                        e
-                    ),
-                }
-            }
-
-            result
-        })
+        result
     }
 
     #[napi]

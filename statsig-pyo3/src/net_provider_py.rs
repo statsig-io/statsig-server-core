@@ -3,10 +3,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 
 use pyo3::prelude::*;
-use statsig_rust::{
-    networking::{HttpMethod, NetworkProvider, RequestArgs, Response},
-    StatsigErr,
-};
+use statsig_rust::networking::{HttpMethod, NetworkProvider, RequestArgs, Response};
 
 #[derive(FromPyObject)]
 struct ResponsePy(
@@ -47,10 +44,6 @@ impl NetworkProvider for NetworkProviderPy {
                 },
             }
         })
-    }
-
-    async fn shutdown(&self) -> Result<(), StatsigErr> {
-        Ok(())
     }
 }
 

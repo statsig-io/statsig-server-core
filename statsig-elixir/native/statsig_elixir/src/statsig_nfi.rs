@@ -1,9 +1,8 @@
 use rustler::{Env, Error, ResourceArc, Term};
-use statsig_rust::{statsig_types::Layer as LayerActual, Statsig, StatsigRuntime};
+use statsig_rust::{statsig_types::Layer as LayerActual, Statsig};
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
-    time::Duration,
 };
 
 use crate::{
@@ -52,8 +51,11 @@ pub fn initialize(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
     match statsig.statsig_core.read() {
         Ok(read) => {
             let statsig: Arc<Statsig> = Arc::clone(&read);
-            let runtime = StatsigRuntime::get_runtime();
-            match runtime.runtime_handle.block_on(statsig.initialize()) {
+            match statsig
+                .statsig_runtime
+                .get_handle()
+                .block_on(statsig.initialize())
+            {
                 Ok(_) => Ok(()),
                 Err(_) => Err(Error::RaiseAtom("failed to init")),
             }
@@ -175,8 +177,7 @@ pub fn flush(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             let statsig: Arc<Statsig> = Arc::clone(&read_guard);
-            let runtime = StatsigRuntime::get_runtime();
-            runtime.runtime_handle.block_on(async {
+            statsig.statsig_runtime.get_handle().block_on(async move {
                 statsig.flush_events().await;
             });
             Ok(())
@@ -190,17 +191,13 @@ pub fn shutdown(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             let statsig: Arc<Statsig> = Arc::clone(&read_guard);
-            let runtime = StatsigRuntime::get_runtime();
-            match runtime
-                .runtime_handle
-                .block_on(statsig.__shutdown_internal(Duration::from_millis(500)))
-            {
-                Ok(_) => {
-                    runtime.shutdown(Duration::from_millis(500));
-                    Ok(())
+
+            statsig.statsig_runtime.get_handle().block_on(async move {
+                match statsig.shutdown().await {
+                    Ok(_) => Ok(()),
+                    Err(_) => Err(Error::RaiseAtom("Failed to shutdown")),
                 }
-                Err(_) => Err(Error::RaiseAtom("Failed to shutdown")),
-            }
+            })
         }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }

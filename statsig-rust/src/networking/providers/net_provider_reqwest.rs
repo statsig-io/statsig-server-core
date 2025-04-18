@@ -9,7 +9,6 @@ use crate::{
         http_types::{HttpMethod, RequestArgs, Response},
         NetworkProvider,
     },
-    StatsigErr,
 };
 
 use reqwest::Method;
@@ -59,10 +58,6 @@ impl NetworkProvider for NetworkProviderReqwest {
             error,
             headers,
         }
-    }
-
-    async fn shutdown(&self) -> Result<(), StatsigErr> {
-        Ok(())
     }
 }
 

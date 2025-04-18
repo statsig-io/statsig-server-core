@@ -105,3 +105,5 @@ def test_error_callback_usage():
     assert len(observability_client.metrics) >= 3
     assert error_event is not None, "error_callback() should have been called"
     assert isinstance(error_event[2], str)
+
+    statsig.shutdown().wait()

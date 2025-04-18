@@ -1,9 +1,6 @@
 use async_trait::async_trait;
 
-use crate::{
-    networking::{HttpMethod, NetworkProvider, RequestArgs, Response},
-    StatsigErr,
-};
+use crate::networking::{HttpMethod, NetworkProvider, RequestArgs, Response};
 
 pub struct NetworkProviderNoop;
 
@@ -16,9 +13,5 @@ impl NetworkProvider for NetworkProviderNoop {
             error: Some("No Network Provider Set".to_string()),
             headers: None,
         }
-    }
-
-    async fn shutdown(&self) -> Result<(), StatsigErr> {
-        Ok(())
     }
 }

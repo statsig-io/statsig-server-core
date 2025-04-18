@@ -7,10 +7,7 @@ use napi::{
 };
 
 use napi_derive::napi;
-use statsig_rust::{
-    networking::{HttpMethod, NetworkProvider, RequestArgs, Response},
-    StatsigErr,
-};
+use statsig_rust::networking::{HttpMethod, NetworkProvider, RequestArgs, Response};
 
 type NapiNetworkFuncArgs = FnArgs<(String, String, HashMap<String, String>, Option<Vec<u8>>)>;
 
@@ -78,10 +75,5 @@ impl NetworkProvider for NetworkProviderNapi {
             error: result.error,
             headers: None,
         }
-    }
-
-    async fn shutdown(&self) -> Result<(), StatsigErr> {
-        // noop
-        Ok(())
     }
 }

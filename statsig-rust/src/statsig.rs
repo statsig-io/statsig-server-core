@@ -254,13 +254,6 @@ impl Statsig {
     }
 
     pub async fn shutdown_with_timeout(&self, timeout: Duration) -> Result<(), StatsigErr> {
-        let start = Instant::now();
-        let final_result = self.__shutdown_internal(timeout).await;
-        self.finalize_shutdown(timeout.saturating_sub(start.elapsed()));
-        final_result
-    }
-
-    pub async fn __shutdown_internal(&self, timeout: Duration) -> Result<(), StatsigErr> {
         log_d!(
             TAG,
             "Shutting down Statsig with timeout {}ms",
@@ -299,41 +292,8 @@ impl Statsig {
             }
         };
 
+        self.statsig_runtime.shutdown();
         shutdown_result
-    }
-
-    pub fn sequenced_shutdown_prepare<F>(&self, callback: F)
-    where
-        F: FnOnce() + Send + 'static,
-    {
-        let event_logger = self.event_logger.clone();
-        let specs_adapter = self.specs_adapter.clone();
-        let runtime: Arc<StatsigRuntime> = self.statsig_runtime.clone();
-
-        self.statsig_runtime
-            .spawn("sequenced_shutdown_prep", |_shutdown_notify| async move {
-                let timeout = Duration::from_millis(1000);
-
-                let result = try_join!(
-                    event_logger.shutdown(timeout),
-                    specs_adapter.shutdown(timeout, &runtime)
-                );
-
-                match result {
-                    Ok(_) => {
-                        log_d!(TAG, "Shutdown successfully");
-                        callback();
-                    }
-                    Err(e) => {
-                        log_e!(TAG, "Shutdown failed: {:?}", e);
-                        callback();
-                    }
-                }
-            });
-    }
-
-    pub fn finalize_shutdown(&self, timeout: Duration) {
-        self.statsig_runtime.shutdown(timeout);
     }
 
     async fn start_background_tasks(

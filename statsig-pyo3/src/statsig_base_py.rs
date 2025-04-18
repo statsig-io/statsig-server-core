@@ -22,7 +22,6 @@ use statsig_rust::{
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 const TAG: &str = stringify!(StatsigBasePy);
 
@@ -121,20 +120,19 @@ impl StatsigBasePy {
     pub fn shutdown(&self, py: Python) -> PyResult<PyObject> {
         let (completion_event, event_clone) = get_completion_event(py)?;
 
-        if let Ok(mut lock) = self.observability_client.lock() {
-            lock.take();
-        }
-
         let inst = self.inner.clone();
         let rt = self.inner.statsig_runtime.clone();
-        let network_provider = self
-            .network_provider
-            .lock()
-            .ok()
-            .and_then(|mut lock| lock.take());
+        let network_provider = match self.network_provider.lock() {
+            Ok(mut lock) => lock.take(),
+            _ => None,
+        };
+        let obs_client = match self.observability_client.lock() {
+            Ok(mut lock) => lock.take(),
+            _ => None,
+        };
 
-        rt.runtime_handle.spawn(async move {
-            if let Err(e) = inst.__shutdown_internal(Duration::from_secs(3)).await {
+        rt.get_handle().spawn(async move {
+            if let Err(e) = inst.shutdown().await {
                 log_e!(TAG, "Failed to gracefully shutdown StatsigPy: {}", e);
             }
 
@@ -144,12 +142,9 @@ impl StatsigBasePy {
                 }
             });
 
-            if let Some(network_provider) = network_provider {
-                match network_provider.shutdown().await {
-                    Ok(_) => (),
-                    Err(e) => log_e!(TAG, "Failed to shutdown network provider: {}", e),
-                }
-            }
+            // held until the shutdown is complete
+            drop(network_provider);
+            drop(obs_client);
         });
 
         Ok(completion_event)

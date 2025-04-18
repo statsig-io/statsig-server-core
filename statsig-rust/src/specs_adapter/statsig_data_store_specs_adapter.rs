@@ -95,6 +95,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
         self.data_adapter.initialize().await?;
+
         let update = self.data_adapter.get(&self.cache_key).await?;
         match update.result {
             Some(data) => match &self.listener.read() {
@@ -105,16 +106,14 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
                             source: SpecsSource::Adapter("DataStore".to_string()),
                             received_at: Utc::now().timestamp_millis() as u64,
                         })?;
+                        Ok(())
                     }
-                    None => {
-                        return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()))
-                    }
+                    None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
                 },
-                Err(_) => return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
+                Err(_) => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
-            None => return Err(StatsigErr::DataStoreFailure("Empty result".to_string())),
+            None => Err(StatsigErr::DataStoreFailure("Empty result".to_string())),
         }
-        Ok(())
     }
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
@@ -135,6 +134,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
             .data_adapter
             .support_polling_updates_for(RequestPath::RulesetsV2)
             .await;
+
         if !should_schedule {
             return Err(StatsigErr::SpecsAdapterSkipPoll(self.get_type_name()));
         }

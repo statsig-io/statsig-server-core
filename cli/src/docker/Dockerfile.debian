@@ -20,7 +20,7 @@ RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v29.3
     rm protoc-29.3-linux-${PROTOC_ARCH}.zip;
 
 # Python Setup
-RUN pip3 install pytest maturin patchelf pytest_httpserver requests typing-extensions
+RUN pip3 install pytest maturin patchelf pytest_httpserver requests typing-extensions pytest-retry
 
 # Node Setup
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh
