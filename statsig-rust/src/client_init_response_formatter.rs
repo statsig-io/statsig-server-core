@@ -104,7 +104,7 @@ impl ClientInitResponseFormatter {
                 continue;
             }
 
-            context.reset_result();
+            context.reset_between_top_level_evaluations();
             if let Err(_err) = Evaluator::evaluate(&mut context, name, &SpecType::Gate) {
                 return InitializeResponse::blank(user_internal);
             }
@@ -127,7 +127,7 @@ impl ClientInitResponseFormatter {
                 continue;
             }
 
-            context.reset_result();
+            context.reset_between_top_level_evaluations();
             let spec_type = if spec.entity == "dynamic_config" {
                 &SpecType::DynamicConfig
             } else {
@@ -162,7 +162,7 @@ impl ClientInitResponseFormatter {
                 continue;
             }
 
-            context.reset_result();
+            context.reset_between_top_level_evaluations();
             if let Err(_err) = Evaluator::evaluate(&mut context, name, &SpecType::Layer) {
                 return InitializeResponse::blank(user_internal);
             }

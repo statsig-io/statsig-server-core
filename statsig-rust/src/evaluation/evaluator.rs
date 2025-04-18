@@ -444,11 +444,22 @@ fn evaluate_nested_gate<'a>(
         return Ok(());
     };
 
-    ctx.prep_for_nested_evaluation()?;
-    let _ = Evaluator::evaluate(ctx, gate_name, &SpecType::Gate)?;
+    match ctx.nested_gate_memo.get(gate_name.as_str()) {
+        Some((previous_bool, previous_rule_id)) => {
+            ctx.result.bool_value = *previous_bool;
+            ctx.result.rule_id = *previous_rule_id;
+        }
+        None => {
+            ctx.prep_for_nested_evaluation()?;
+            let _ = Evaluator::evaluate(ctx, gate_name, &SpecType::Gate)?;
 
-    if ctx.result.unsupported {
-        return Ok(());
+            if ctx.result.unsupported {
+                return Ok(());
+            }
+
+            ctx.nested_gate_memo
+                .insert(gate_name, (ctx.result.bool_value, ctx.result.rule_id));
+        }
     }
 
     if !&gate_name.starts_with("segment:") {

@@ -6,6 +6,7 @@ use crate::spec_types::{Rule, Spec};
 use crate::user::StatsigUserInternal;
 use crate::StatsigErr::StackOverflowError;
 use crate::{OverrideAdapter, StatsigErr};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 const MAX_RECURSIVE_DEPTH: u16 = 300;
@@ -18,6 +19,7 @@ pub struct EvaluatorContext<'a> {
     pub nested_count: u16,
     pub app_id: &'a Option<&'a DynamicValue>,
     pub override_adapter: &'a Option<Arc<dyn OverrideAdapter>>,
+    pub nested_gate_memo: HashMap<&'a str, (bool, Option<&'a String>)>,
 }
 
 impl<'a> EvaluatorContext<'a> {
@@ -38,7 +40,14 @@ impl<'a> EvaluatorContext<'a> {
             result,
             override_adapter,
             nested_count: 0,
+            nested_gate_memo: HashMap::new(),
         }
+    }
+
+    pub fn reset_between_top_level_evaluations(&mut self) {
+        self.nested_gate_memo.clear();
+        self.nested_count = 0;
+        self.result = EvaluatorResult::default();
     }
 
     pub fn reset_result(&mut self) {

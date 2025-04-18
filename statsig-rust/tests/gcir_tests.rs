@@ -146,6 +146,48 @@ async fn test_targeted_exp_in_layer_with_holdout() {
 }
 
 #[tokio::test]
+async fn test_targeted_exp_in_unlayered_with_holdout() {
+    let json_obj = setup().await;
+
+    let config: &Value = json_obj
+        .get("dynamic_configs")
+        .unwrap()
+        .get("targeted_exp_in_unlayered_with_holdout")
+        .unwrap();
+
+    assert_json_eq!(
+        config,
+        json!({
+          "group": "targetingGate",
+          "id_type": "userID",
+          "is_device_based": false,
+          "is_experiment_active": true,
+          "is_user_in_experiment": false,
+          "name": "targeted_exp_in_unlayered_with_holdout",
+          "rule_id": "targetingGate",
+          "secondary_exposures": [
+            {
+              "gate": "global_holdout",
+              "gateValue": "false",
+              "ruleID": "3QoA4ncNdVGBaMt3N1KYjz:0.50:1"
+            },
+            {
+              "gate": "exp_holdout",
+              "gateValue": "false",
+              "ruleID": "1rEqLOpCROaRafv7ubGgax"
+            },
+            {
+              "gate": "test_50_50",
+              "gateValue": "false",
+              "ruleID": "6U5gYSQ2jRCDWvfPzKSQY9"
+            }
+          ],
+          "value": {}
+        })
+    );
+}
+
+#[tokio::test]
 async fn test_exp_5050_targeting() {
     let json_obj = setup().await;
 
