@@ -4,7 +4,7 @@ use crate::evaluation::evaluation_types::{
 };
 use crate::spec_types::Spec;
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Default, Debug)]
 pub struct EvaluatorResult<'a> {
@@ -66,7 +66,9 @@ pub fn result_to_experiment_eval(
         explicit_parameters: result.explicit_parameters.cloned(),
         is_experiment_active,
         is_user_in_experiment,
-        undelegated_secondary_exposures: result.undelegated_secondary_exposures.clone(),
+        undelegated_secondary_exposures: std::mem::take(
+            &mut result.undelegated_secondary_exposures,
+        ),
     }
 }
 
@@ -87,17 +89,13 @@ pub fn eval_result_to_experiment_eval(
         explicit_parameters: result.explicit_parameters.cloned(),
         is_experiment_active: Some(result.is_experiment_active),
         is_user_in_experiment: Some(result.is_experiment_group),
-        undelegated_secondary_exposures: result.undelegated_secondary_exposures.clone(),
+        undelegated_secondary_exposures: std::mem::take(
+            &mut result.undelegated_secondary_exposures,
+        ),
     }
 }
 
 pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> LayerEvaluation {
-    let mut undelegated_secondary_exposures = Vec::new();
-
-    if let Some(u) = &mut result.undelegated_secondary_exposures {
-        undelegated_secondary_exposures = std::mem::take(u);
-    }
-
     let mut allocated_experiment_name = None;
     let mut is_experiment_active = None;
     let mut is_user_in_experiment = None;
@@ -111,6 +109,7 @@ pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> L
     }
 
     let (id_type, is_device_based) = get_id_type_info(result.id_type);
+    let undelegated_sec_expos = std::mem::take(&mut result.undelegated_secondary_exposures);
 
     LayerEvaluation {
         base: result_to_base_eval(layer_name, result),
@@ -122,7 +121,7 @@ pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> L
         is_user_in_experiment,
         allocated_experiment_name,
         explicit_parameters: result.explicit_parameters.cloned().unwrap_or_default(),
-        undelegated_secondary_exposures: Some(undelegated_secondary_exposures),
+        undelegated_secondary_exposures: Some(undelegated_sec_expos.unwrap_or_default()),
         id_type,
     }
 }
@@ -154,21 +153,6 @@ fn get_json_value(result: &EvaluatorResult) -> HashMap<String, Value> {
 }
 
 fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEvaluation {
-    let mut exposures = Vec::new();
-    let mut seen = HashSet::new();
-
-    for exposure in &result.secondary_exposures {
-        let key = format!(
-            "{}:{}:{}",
-            exposure.gate, exposure.gate_value, exposure.rule_id
-        );
-
-        if !seen.contains(&key) {
-            seen.insert(key);
-            exposures.push(exposure.clone());
-        }
-    }
-
     let rule_id = match result.rule_id {
         Some(rule_id) => rule_id.clone(),
         None => String::new(),
@@ -188,7 +172,7 @@ fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEva
     BaseEvaluation {
         name: spec_name.to_string(),
         rule_id: result_rule_id.clone(),
-        secondary_exposures: exposures,
+        secondary_exposures: std::mem::take(&mut result.secondary_exposures),
         sampling_info: Some(sampling_info),
     }
 }

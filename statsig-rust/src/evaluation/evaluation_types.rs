@@ -15,6 +15,18 @@ pub struct SecondaryExposure {
     pub rule_id: String,
 }
 
+impl SecondaryExposure {
+    pub fn get_dedupe_key(&self) -> String {
+        let mut key = String::new();
+        key += &self.gate;
+        key += "|";
+        key += &self.gate_value;
+        key += "|";
+        key += &self.rule_id;
+        key
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub(crate) struct ExposureSamplingInfo {
     pub sampling_rate: Option<u64>,

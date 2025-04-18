@@ -18,7 +18,7 @@ use crate::spec_types::{
 use crate::statsig_metadata::StatsigMetadata;
 use crate::user::StatsigUserInternal;
 use crate::{read_lock_or_else, OverrideAdapter};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 #[derive(Default, Deserialize)]
@@ -64,6 +64,7 @@ impl ClientInitResponseFormatter {
             return InitializeResponse::blank(user_internal);
         });
 
+        let mut sec_expo_hash_memo = HashMap::new();
         let mut app_id = data.values.app_id.as_ref();
 
         if let Some(client_sdk_key) = &options.client_sdk_key {
@@ -109,7 +110,12 @@ impl ClientInitResponseFormatter {
             }
 
             let hashed_name = context.hashing.hash(name, hash_used);
-            hash_secondary_exposures(&mut context.result, hashing, hash_used);
+            hash_secondary_exposures(
+                &mut context.result,
+                hashing,
+                hash_used,
+                &mut sec_expo_hash_memo,
+            );
 
             let eval = result_to_gate_eval(&hashed_name, &mut context.result);
             feature_gates.insert(hashed_name, eval);
@@ -132,7 +138,12 @@ impl ClientInitResponseFormatter {
             }
 
             let hashed_name = context.hashing.hash(name, hash_used);
-            hash_secondary_exposures(&mut context.result, hashing, hash_used);
+            hash_secondary_exposures(
+                &mut context.result,
+                hashing,
+                hash_used,
+                &mut sec_expo_hash_memo,
+            );
 
             if spec.entity == "dynamic_config" {
                 let evaluation = result_to_dynamic_config_eval(&hashed_name, &mut context.result);
@@ -157,7 +168,12 @@ impl ClientInitResponseFormatter {
             }
 
             let hashed_name = context.hashing.hash(name, hash_used);
-            hash_secondary_exposures(&mut context.result, hashing, hash_used);
+            hash_secondary_exposures(
+                &mut context.result,
+                hashing,
+                hash_used,
+                &mut sec_expo_hash_memo,
+            );
 
             let mut evaluation = result_to_layer_eval(&hashed_name, &mut context.result);
 
@@ -322,34 +338,51 @@ fn hash_secondary_exposures(
     result: &mut EvaluatorResult,
     hashing: &HashUtil,
     hash_algorithm: &HashAlgorithm,
+    memo: &mut HashMap<String, String>,
 ) {
-    fn loop_and_hash(
-        exposures: &[SecondaryExposure],
+    fn loop_filter_n_hash(
+        exposures: &mut Vec<SecondaryExposure>,
         hashing: &HashUtil,
         hash_algorithm: &HashAlgorithm,
-    ) -> Vec<SecondaryExposure> {
-        exposures
-            .iter()
-            .map(|exposure| {
-                let hashed_gate = hashing.hash(&exposure.gate, hash_algorithm);
-                SecondaryExposure {
-                    gate: hashed_gate,
-                    ..exposure.clone()
+        memo: &mut HashMap<String, String>,
+    ) {
+        let mut seen = HashSet::<String>::with_capacity(exposures.len());
+        exposures.retain_mut(|expo| {
+            let expo_key = expo.get_dedupe_key();
+            if seen.contains(&expo_key) {
+                return false;
+            }
+            seen.insert(expo_key);
+
+            match memo.get(&expo.gate) {
+                Some(hash) => {
+                    expo.gate = hash.clone();
                 }
-            })
-            .collect()
+                None => {
+                    let hash = hashing.hash(&expo.gate, hash_algorithm).to_string();
+                    let old = std::mem::replace(&mut expo.gate, hash.clone());
+                    memo.insert(old, hash);
+                }
+            }
+            true
+        });
     }
 
     if !result.secondary_exposures.is_empty() {
-        result.secondary_exposures =
-            loop_and_hash(&result.secondary_exposures, hashing, hash_algorithm);
+        loop_filter_n_hash(
+            &mut result.secondary_exposures,
+            hashing,
+            hash_algorithm,
+            memo,
+        );
     }
 
-    if let Some(undelegated_secondary_exposures) = result.undelegated_secondary_exposures.as_ref() {
-        result.undelegated_secondary_exposures = Some(loop_and_hash(
+    if let Some(undelegated_secondary_exposures) = result.undelegated_secondary_exposures.as_mut() {
+        loop_filter_n_hash(
             undelegated_secondary_exposures,
             hashing,
             hash_algorithm,
-        ));
+            memo,
+        );
     }
 }
