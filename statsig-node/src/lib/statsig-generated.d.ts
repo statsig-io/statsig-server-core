@@ -45,7 +45,7 @@ export declare class ParameterStore {
 }
 
 export declare class StatsigNapiInternal {
-  constructor(networkFunc: NapiNetworkFunc, sdkKey: string, options?: StatsigOptions | undefined | null)
+  constructor(networkFunc: unknown, sdkKey: string, options?: StatsigOptions | undefined | null)
   initialize(): Promise<StatsigResult>
   shutdown(timeoutMs?: number | undefined | null): Promise<StatsigResult>
   flushEvents(): Promise<StatsigResult>

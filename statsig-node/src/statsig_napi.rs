@@ -37,7 +37,7 @@ impl StatsigNapiInternal {
     #[napi(constructor)]
     pub fn new(
         env: Env,
-        network_func: NapiNetworkFunc,
+        #[napi(ts_arg_type = "unknown")] network_func: NapiNetworkFunc,
         sdk_key: String,
         options: Option<StatsigOptions>,
     ) -> Self {
