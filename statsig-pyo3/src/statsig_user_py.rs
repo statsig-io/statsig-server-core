@@ -1,3 +1,5 @@
+use std::str;
+
 use crate::pyo_utils::py_dict_to_map;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -103,5 +105,73 @@ impl StatsigUserPy {
             custom_ids,
             private_attributes,
         })
+    }
+
+    fn __setattr__(&mut self, name: &str, value: PyObject, py: Python) -> PyResult<()> {
+        match name {
+            "user_id" => {
+                if let Ok(Some(user_id)) = value.extract::<Option<String>>(py) {
+                    self.user_id = Some(user_id.clone());
+                    self.inner.user_id = Some(DynamicValue::from(user_id.clone()));
+                }
+            }
+            "email" => {
+                if let Ok(v) = value.extract::<Option<String>>(py) {
+                    self.email = v.clone();
+                    self.inner.email = v.map(DynamicValue::from);
+                }
+            }
+            "ip" => {
+                if let Ok(v) = value.extract::<Option<String>>(py) {
+                    self.ip = v.clone();
+                    self.inner.ip = v.map(DynamicValue::from);
+                }
+            }
+            "country" => {
+                if let Ok(v) = value.extract::<Option<String>>(py) {
+                    self.country = v.clone();
+                    self.inner.country = v.map(DynamicValue::from);
+                }
+            }
+            "locale" => {
+                if let Ok(v) = value.extract::<Option<String>>(py) {
+                    self.locale = v.clone();
+                    self.inner.locale = v.map(DynamicValue::from);
+                }
+            }
+            "app_version" => {
+                if let Ok(v) = value.extract::<Option<String>>(py) {
+                    self.app_version = v.clone();
+                    self.inner.app_version = v.map(DynamicValue::from);
+                }
+            }
+            "user_agent" => {
+                if let Ok(v) = value.extract::<Option<String>>(py) {
+                    self.user_agent = v.clone();
+                    self.inner.user_agent = v.map(DynamicValue::from);
+                }
+            }
+            "custom_ids" => {
+                if let Ok(dict) = value.extract::<Option<Py<PyDict>>>(py) {
+                    self.inner.custom_ids = dict.as_ref().map(|d| py_dict_to_map(d.bind(py)));
+                    self.custom_ids = dict;
+                }
+            }
+            "custom" => {
+                if let Ok(dict) = value.extract::<Option<Py<PyDict>>>(py) {
+                    self.inner.custom = dict.as_ref().map(|d| py_dict_to_map(d.bind(py)));
+                    self.custom = dict;
+                }
+            }
+            "private_attributes" => {
+                if let Ok(dict) = value.extract::<Option<Py<PyDict>>>(py) {
+                    self.inner.private_attributes =
+                        dict.as_ref().map(|d| py_dict_to_map(d.bind(py)));
+                    self.private_attributes = dict;
+                }
+            }
+            _ => (), // Ignore other attributes
+        }
+        Ok(())
     }
 }

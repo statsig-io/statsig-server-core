@@ -233,4 +233,7 @@ class StatsigUser:
     custom_ids: typing.Optional[dict]
     private_attributes: typing.Optional[dict]
     def __new__(cls,user_id:typing.Optional[builtins.str]=None, email:typing.Optional[builtins.str]=None, ip:typing.Optional[builtins.str]=None, country:typing.Optional[builtins.str]=None, locale:typing.Optional[builtins.str]=None, app_version:typing.Optional[builtins.str]=None, user_agent:typing.Optional[builtins.str]=None, custom:typing.Optional[dict]=None, custom_ids:typing.Optional[dict]=None, private_attributes:typing.Optional[dict]=None): ...
+    def __setattr__(self, name:builtins.str, value:typing.Any) -> None:
+        ...
+
 
