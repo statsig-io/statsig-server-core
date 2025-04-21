@@ -1,0 +1,15 @@
+{
+  "name": "statsig/verify-php-core",
+  "type": "project",
+  "scripts": {
+    "verify": "php verify.php",
+    "post-install-cmd": [
+      "cd vendor/statsig/statsig-php-core && php post-install.php"
+    ],
+    "post-update-cmd": [
+      "cd vendor/statsig/statsig-php-core && php post-install.php"
+    ]
+  },
+  "require": {},
+  "minimum-stability": "dev"
+}

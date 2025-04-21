@@ -1,0 +1,87 @@
+name: Package Verification
+
+on:
+  push:
+
+env:
+  CARGO_TERM_COLOR: always
+  FORCE_COLOR: true
+  STATSIG_SERVER_SDK_KEY: ${{ secrets.KONG_SERVER_SDK_KEY }}
+
+jobs:
+  node-package-verification:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - windows-latest
+          - ubuntu-latest
+        tag:
+          - beta
+          - latest # prod
+
+    timeout-minutes: 10
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+
+      - name: Run Verification
+        working-directory: examples/node/verify-package
+        run: |
+          pnpm init
+          pnpm install @statsig/statsig-node-core@${{ matrix.tag }} typescript tsx @types/node
+          pnpm exec tsx verify.ts
+
+  python-package-verification:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - windows-latest
+          - ubuntu-latest
+        tag:
+          - beta
+          - prod
+
+    timeout-minutes: 10
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Verification
+        working-directory: examples/python/verify-package
+        run: |
+          pip3 install ${{ matrix.tag == 'beta' && '--pre' || '' }} --upgrade statsig_python_core
+          pip3 install mypy types-requests
+          mypy --package statsig_python_core
+          python3 verify.py
+
+  php-package-verification:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          # - windows-latest # Uncomment when windows is supported by PHP
+          - ubuntu-latest
+        tag:
+          - beta
+          - stable
+
+    timeout-minutes: 10
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Verification
+        working-directory: examples/php/verify-package
+        run: |
+          composer require statsig/statsig-php-core:@${{ matrix.tag }}
+          composer install
+          php verify.php

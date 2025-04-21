@@ -10,7 +10,7 @@ if (getenv('SKIP_STATSIG_POST_INSTALL') === 'true') {
 function get_system_info()
 {
     $os = PHP_OS_FAMILY;
-    $arch = php_uname('m');
+    $arch = strtolower(php_uname('m'));
 
     if ($arch === 'amd64' || $arch === 'x86_64') {
         $arch = 'x86_64';
