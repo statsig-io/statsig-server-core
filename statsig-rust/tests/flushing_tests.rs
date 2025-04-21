@@ -263,13 +263,13 @@ fn assert_flushing_interval_and_limit_batch(
         .expect("Missing statsigMetadata field");
 
     let actual_interval = statsig_metadata
-        .get("flushingIntervalMs")
+        .get("loggingInterval")
         .and_then(|v| v.as_u64())
-        .expect("Missing or invalid flushingIntervalMs field");
+        .expect("Missing or invalid loggingInterval field");
 
     assert!(
         actual_interval >= expected_threshold_interval,
-        "Expected flushingIntervalMs >= {}, but got {} at index {}",
+        "Expected loggingInterval >= {}, but got {} at index {}",
         expected_threshold_interval,
         actual_interval,
         index

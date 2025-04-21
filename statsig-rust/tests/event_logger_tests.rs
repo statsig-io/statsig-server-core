@@ -129,6 +129,8 @@ async fn test_limit_batching_shutdown() {
                 "tests/data/eval_proj_dcs.json",
             ))),
             output_log_level: Some(LogLevel::Debug),
+            event_logging_max_pending_batch_queue_size: Some(10),
+            event_logging_max_queue_size: Some(1000),
             ..StatsigOptions::new()
         },
         "key-2".to_string(),
@@ -163,6 +165,8 @@ async fn test_dropping_events() {
             output_log_level: Some(LogLevel::Debug),
             wait_for_country_lookup_init: Some(true),
             wait_for_user_agent_init: Some(true),
+            event_logging_max_pending_batch_queue_size: Some(10),
+            event_logging_max_queue_size: Some(1000),
             ..StatsigOptions::new()
         },
         "key-2".to_string(),

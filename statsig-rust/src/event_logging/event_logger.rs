@@ -29,8 +29,8 @@ use super::event_logger_dynamic_defaults::EventLoggerDynamicDefaults;
 use super::statsig_event::StatsigEvent;
 
 const MAX_FLUSH_INTERVAL_MS: u64 = 60_000;
-const DEFAULT_QUEUE_SIZE: u32 = 1000;
-const DEFAULT_PENDING_BATCH_QUEUE_SIZE: u32 = 10;
+const DEFAULT_QUEUE_SIZE: u32 = 2000;
+const DEFAULT_PENDING_BATCH_QUEUE_SIZE: u32 = 20;
 const DEFAULT_DISABLE_ALL_LOGGING: bool = false;
 const DEDUPE_WINDOW_DURATION_MS: u64 = 60_000;
 const DEDUPE_MAX_KEYS: usize = 100_000;
@@ -508,7 +508,7 @@ impl EventLogger {
                 let current_interval_ms = flushing_interval_ms.load(Ordering::Relaxed);
 
                 if let Value::Object(ref mut obj) = batch_clone.payload.statsig_metadata {
-                    obj.insert("flushingIntervalMs".to_string(), json!(current_interval_ms));
+                    obj.insert("loggingInterval".to_string(), json!(current_interval_ms));
                     obj.insert("taskId".to_string(), json!(task_id));
                 }
 
