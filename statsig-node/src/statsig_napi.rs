@@ -363,4 +363,24 @@ impl StatsigNapiInternal {
         self.inner
             .override_layer(&layer_name, value, adapter_type.as_ref());
     }
+
+    #[napi]
+    pub fn get_feature_gate_list(&self) -> Vec<String> {
+        self.inner.get_feature_gate_list()
+    }
+
+    #[napi]
+    pub fn get_dynamic_config_list(&self) -> Vec<String> {
+        self.inner.get_dynamic_config_list()
+    }
+
+    #[napi]
+    pub fn get_experiment_list(&self) -> Vec<String> {
+        self.inner.get_experiment_list()
+    }
+
+    #[napi]
+    pub fn get_parameter_store_list(&self) -> Vec<String> {
+        self.inner.get_parameter_store_list()
+    }
 }

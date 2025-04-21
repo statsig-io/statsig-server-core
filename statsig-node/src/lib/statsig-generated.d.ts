@@ -70,6 +70,10 @@ export declare class StatsigNapiInternal {
   overrideExperiment(experimentName: string, value: Record<string, any>, adapter?: OverrideAdapterType | undefined | null): void
   overrideExperimentByGroupName(experimentName: string, groupName: string, adapter?: OverrideAdapterType | undefined | null): void
   overrideLayer(layerName: string, value: Record<string, any>, adapter?: OverrideAdapterType | undefined | null): void
+  getFeatureGateList(): Array<string>
+  getDynamicConfigList(): Array<string>
+  getExperimentList(): Array<string>
+  getParameterStoreList(): Array<string>
 }
 
 export declare class StatsigUser {

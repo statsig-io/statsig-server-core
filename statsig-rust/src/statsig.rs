@@ -1106,6 +1106,77 @@ impl Statsig {
 }
 
 // -------------------------
+//   Debugging Functions
+// -------------------------
+
+impl Statsig {
+    pub fn get_feature_gate_list(&self) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                "Failed to acquire read lock for spec store data"
+            );
+            return vec![];
+        });
+
+        data.values.feature_gates.keys().cloned().collect()
+    }
+
+    pub fn get_dynamic_config_list(&self) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                "Failed to acquire read lock for spec store data"
+            );
+            return vec![];
+        });
+
+        data.values
+            .dynamic_configs
+            .iter()
+            .filter(|(_, config)| config.entity == "dynamic_config")
+            .map(|(name, _)| name.clone())
+            .collect()
+    }
+
+    pub fn get_experiment_list(&self) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                "Failed to acquire read lock for spec store data"
+            );
+            return vec![];
+        });
+
+        data.values
+            .dynamic_configs
+            .iter()
+            .filter(|(_, config)| config.entity == "experiment")
+            .map(|(name, _)| name.clone())
+            .collect()
+    }
+
+    pub fn get_parameter_store_list(&self) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                "Failed to acquire read lock for spec store data"
+            );
+            return vec![];
+        });
+
+        match &data.values.param_stores {
+            Some(param_stores) => param_stores.keys().cloned().collect(),
+            None => vec![],
+        }
+    }
+}
+
+// -------------------------
 //   Dynamic Config Functions
 // -------------------------
 

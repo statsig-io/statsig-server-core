@@ -1064,3 +1064,43 @@ fn update_statsig_metadata(env: &mut JNIEnv, metadata: JString) {
         );
     }
 }
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFeatureGateList(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+    serialize_json_to_jstring(&mut env, &statsig.get_feature_gate_list())
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetDynamicConfigList(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+    serialize_json_to_jstring(&mut env, &statsig.get_dynamic_config_list())
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperimentList(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+    serialize_json_to_jstring(&mut env, &statsig.get_experiment_list())
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetParameterStoreList(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+    serialize_json_to_jstring(&mut env, &statsig.get_parameter_store_list())
+}

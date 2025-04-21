@@ -396,6 +396,26 @@ impl StatsigBasePy {
             .override_experiment_by_group_name(experiment_name, group_name, None);
         Ok(())
     }
+
+    #[pyo3(name = "get_feature_gate_list")]
+    pub fn get_feature_gate_list(&self) -> Vec<String> {
+        self.inner.get_feature_gate_list()
+    }
+
+    #[pyo3(name = "get_dynamic_config_list")]
+    pub fn get_dynamic_config_list(&self) -> Vec<String> {
+        self.inner.get_dynamic_config_list()
+    }
+
+    #[pyo3(name = "get_experiment_list")]
+    pub fn get_experiment_list(&self) -> Vec<String> {
+        self.inner.get_experiment_list()
+    }
+
+    #[pyo3(name = "get_parameter_store_list")]
+    pub fn get_parameter_store_list(&self) -> Vec<String> {
+        self.inner.get_parameter_store_list()
+    }
 }
 
 fn get_completion_event(py: Python) -> PyResult<(PyObject, PyObject)> {

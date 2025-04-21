@@ -182,6 +182,18 @@ class StatsigBasePy:
     def override_experiment_by_group_name(self, experiment_name:builtins.str, group_name:builtins.str) -> None:
         ...
 
+    def get_feature_gate_list(self) -> builtins.list[builtins.str]:
+        ...
+
+    def get_dynamic_config_list(self) -> builtins.list[builtins.str]:
+        ...
+
+    def get_experiment_list(self) -> builtins.list[builtins.str]:
+        ...
+
+    def get_parameter_store_list(self) -> builtins.list[builtins.str]:
+        ...
+
 
 class StatsigOptions:
     specs_url: typing.Optional[builtins.str]
