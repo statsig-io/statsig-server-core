@@ -173,22 +173,6 @@ jobs:
           pnpm install ../../../artifacts/statsig-node/build
           pnpm exec tsx verify.ts
 
-  # --------------------------------------------------------------------- [Kong2]
-
-  kong-2:
-    needs: build
-    uses: statsig-io/kong/.github/workflows/k2-tests.yml@main
-    with:
-      workflow_run_id: ${{ github.run_id }}
-      is_server_core_repo: true
-    secrets:
-      gh_token: ${{ secrets.STATSIG_CORE_SERVER_SDK_PAT }}
-      gh_app_private_key: ${{ secrets.KONG_APP_KEY_V2 }}
-      dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
-      dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
-      statsig_server_sdk_key: ${{ secrets.KONG_SERVER_SDK_KEY }}
-      statsig_client_sdk_key: ${{ secrets.KONG_CLIENT_SDK_KEY }}
-
   # -------------------------------------------------------------------- [Size Report]
 
   size-report:
