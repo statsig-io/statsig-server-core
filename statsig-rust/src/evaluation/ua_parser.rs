@@ -104,7 +104,7 @@ impl UserAgentParser {
 
         log_d!(TAG, "Loading User Agent Parser...");
 
-        let bytes = include_bytes!("../../resources/ua_parser_regex.yaml");
+        let bytes = include_bytes!("../../resources/ua_parser_regex_lite.yaml");
         let parser = match ExtUserAgentParser::from_bytes(bytes) {
             Ok(parser) => parser,
             Err(e) => {
