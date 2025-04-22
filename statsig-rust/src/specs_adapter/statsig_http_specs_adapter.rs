@@ -66,6 +66,14 @@ impl StatsigHttpSpecsAdapter {
         &self,
         current_specs_info: SpecsInfo,
     ) -> Result<String, NetworkError> {
+        let request_args = self.get_request_args(current_specs_info);
+        match self.handle_specs_request(request_args).await {
+            Ok(response) => Ok(response),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn get_request_args(&self, current_specs_info: SpecsInfo) -> RequestArgs {
         let mut params = HashMap::new();
         if let Some(lcut) = current_specs_info.lcut {
             params.insert("sinceTime".to_string(), lcut.to_string());
@@ -77,18 +85,12 @@ impl StatsigHttpSpecsAdapter {
             );
         }
 
-        let request_args = RequestArgs {
+        RequestArgs {
             url: self.specs_url.clone(),
             query_params: Some(params),
             accept_gzip_response: true,
             diagnostics_key: Some(KeyType::DownloadConfigSpecs),
             ..RequestArgs::new()
-        };
-
-        match self.handle_specs_request(request_args.clone()).await {
-            Ok(response) => Ok(response),
-            Err(NetworkError::RetriesExhausted) => self.handle_fallback_request(request_args).await,
-            Err(e) => Err(e),
         }
     }
 
@@ -159,8 +161,25 @@ impl StatsigHttpSpecsAdapter {
             }
         }
 
-        let response = self.fetch_specs_from_network(current_specs_info).await;
+        let response = self
+            .fetch_specs_from_network(current_specs_info.clone())
+            .await;
+        let result = self.process_spec_data(response).await;
 
+        if result.is_err() && self.fallback_url.is_some() {
+            log_d!(TAG, "Falling back to statsig api");
+            let request_args = self.get_request_args(current_specs_info);
+            let response = self.handle_fallback_request(request_args).await;
+            return self.process_spec_data(response).await;
+        }
+
+        result
+    }
+
+    async fn process_spec_data(
+        &self,
+        response: Result<String, NetworkError>,
+    ) -> Result<(), StatsigErr> {
         let data = response.map_err(|e| {
             let msg = "No specs result from network";
             StatsigErr::NetworkError(e, Some(msg.to_string()))

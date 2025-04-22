@@ -89,7 +89,7 @@ pub struct SpecsUpdate {
 }
 
 #[repr(C)]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SpecsInfo {
     pub lcut: Option<u64>,
     pub checksum: Option<String>,
