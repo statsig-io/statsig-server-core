@@ -5,7 +5,7 @@ use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
-use crate::specs_response::spec_types::{SpecsResponse, SpecsResponseFull, SpecsResponseNoUpdates};
+use crate::specs_response::spec_types::{SpecsResponseFull, SpecsResponseNoUpdates};
 use crate::{
     log_d, log_e, log_error_to_statsig_and_console, SpecsInfo, SpecsSource, SpecsUpdate,
     SpecsUpdateListener, StatsigErr, StatsigRuntime,
@@ -73,11 +73,14 @@ impl SpecStore {
     }
 
     pub fn set_values(&self, values: SpecsUpdate) -> Result<(), StatsigErr> {
-        let dcs = match self.parse_specs_response(&values)? {
-            SpecsResponse::Full(full) => full,
-            SpecsResponse::NoUpdates(_) => {
+        let dcs: SpecsResponseFull = match self.parse_specs_response(&values) {
+            Ok(Some(full)) => full,
+            Ok(None) => {
                 self.ops_stats_log_no_update(values.source);
                 return Ok(());
+            }
+            Err(e) => {
+                return Err(e);
             }
         };
 
@@ -98,7 +101,7 @@ impl SpecStore {
         let now = Utc::now().timestamp_millis() as u64;
         let prev_source = mut_values.source.clone();
 
-        mut_values.values = *dcs;
+        mut_values.values = dcs;
         mut_values.time_received_at = Some(now);
         mut_values.source = values.source.clone();
 
@@ -116,61 +119,33 @@ impl SpecStore {
 // -------------------------------------------------------------------------------------------- [Private Functions]
 
 impl SpecStore {
-    fn parse_specs_response(&self, values: &SpecsUpdate) -> Result<SpecsResponse, StatsigErr> {
-        let parsed = match serde_json::from_str::<SpecsResponse>(&values.data) {
-            Ok(response) => response,
-            Err(e) => {
-                log_error_to_statsig_and_console!(
-                    self.ops_stats,
-                    TAG,
-                    "{:?}, {:?}",
-                    e,
-                    values.source
-                );
-                return Err(StatsigErr::JsonParseError(
-                    "SpecsResponse".to_string(),
-                    e.to_string(),
-                ));
+    fn parse_specs_response(
+        &self,
+        values: &SpecsUpdate,
+    ) -> Result<Option<SpecsResponseFull>, StatsigErr> {
+        let full_result = serde_json::from_str::<SpecsResponseFull>(&values.data);
+        if let Ok(result) = full_result {
+            if result.has_updates {
+                return Ok(Some(result));
             }
-        };
 
-        match parsed {
-            SpecsResponse::Full(full) => {
-                if !full.has_updates {
-                    return Ok(SpecsResponse::NoUpdates(SpecsResponseNoUpdates {
-                        has_updates: false,
-                    }));
-                }
+            return Ok(None);
+        }
 
-                log_d!(
-                    TAG,
-                    "SpecStore Full Update: {} - [gates({}), configs({}), layers({})]",
-                    full.time,
-                    full.feature_gates.len(),
-                    full.dynamic_configs.len(),
-                    full.layer_configs.len(),
-                );
-
-                Ok(SpecsResponse::Full(full))
-            }
-            SpecsResponse::NoUpdates(no_updates) => {
-                if no_updates.has_updates {
-                    log_error_to_statsig_and_console!(
-                        self.ops_stats,
-                        TAG,
-                        "Empty response with has_updates = true {:?}",
-                        values.source
-                    );
-
-                    return Err(StatsigErr::JsonParseError(
-                        "SpecsResponse".to_owned(),
-                        "Parse failure. 'has_update' is true, but failed to deserialize to response format 'dcs-v2'".to_owned(),
-                    ));
-                }
-
-                Ok(SpecsResponse::NoUpdates(no_updates))
+        let no_updates_result = serde_json::from_str::<SpecsResponseNoUpdates>(&values.data);
+        if let Ok(result) = no_updates_result {
+            if !result.has_updates {
+                return Ok(None);
             }
         }
+
+        let error = full_result.err().map_or_else(
+            || StatsigErr::JsonParseError("SpecsResponse".to_string(), "Unknown error".to_string()),
+            |e| StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string()),
+        );
+
+        log_error_to_statsig_and_console!(self.ops_stats, TAG, "{:?}, {:?}", error, values.source);
+        Err(error)
     }
 
     fn ops_stats_log_no_update(&self, source: SpecsSource) {

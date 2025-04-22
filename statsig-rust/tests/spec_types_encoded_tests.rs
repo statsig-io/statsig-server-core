@@ -23,10 +23,7 @@ mod tests {
             .expect("Failed to parse SpecsResponse");
 
         assert!(spec_response.decompression_dict.is_none());
-        let decoded_spec = match spec_response.specs {
-            SpecsResponse::Full(full) => *full,
-            _ => panic!("Expected Full response"),
-        };
+        let decoded_spec = spec_response.specs;
         assert_eq!(decoded_spec, original_spec);
     }
 
@@ -46,10 +43,7 @@ mod tests {
             .expect("Failed to parse SpecsResponse");
 
         assert!(spec_response.decompression_dict.is_some());
-        let decoded_spec = match spec_response.specs {
-            SpecsResponse::Full(full) => *full,
-            _ => panic!("Expected Full response"),
-        };
+        let decoded_spec = spec_response.specs;
         assert_eq!(decoded_spec, original_spec);
     }
 
@@ -76,10 +70,7 @@ mod tests {
                 .expect("Failed to parse SpecsResponse");
 
         assert!(spec_response.decompression_dict.is_some());
-        let decoded_spec = match spec_response.specs {
-            SpecsResponse::Full(full) => *full,
-            _ => panic!("Expected Full response"),
-        };
+        let decoded_spec = spec_response.specs;
         assert_eq!(decoded_spec, original_spec);
     }
 
@@ -107,10 +98,7 @@ mod tests {
                 .expect("Failed to parse SpecsResponse");
 
         assert!(spec_response.decompression_dict.is_some());
-        let decoded_spec = match spec_response.specs {
-            SpecsResponse::Full(full) => *full,
-            _ => panic!("Expected Full response"),
-        };
+        let decoded_spec = spec_response.specs;
         assert_eq!(decoded_spec, original_spec);
     }
 

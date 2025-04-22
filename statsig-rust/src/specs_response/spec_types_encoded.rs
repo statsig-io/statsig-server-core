@@ -1,9 +1,7 @@
 use serde::Deserialize;
 
+use crate::specs_response::spec_types::SpecsResponseFull;
 use crate::{compression::zstd_decompression_dict::DictionaryDecoder, StatsigErr};
-
-use super::spec_types::SpecsResponse;
-
 #[derive(Deserialize)]
 struct DictCompressedSpecsResponse {
     #[serde(rename = "s")]
@@ -25,9 +23,10 @@ impl DictCompressedSpecsResponse {
         match decompression_dict_to_use {
             None => {
                 // Response was not compressed
-                let parsed = serde_json::from_slice::<SpecsResponse>(&self.specs).map_err(|e| {
-                    StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string())
-                })?;
+                let parsed =
+                    serde_json::from_slice::<SpecsResponseFull>(&self.specs).map_err(|e| {
+                        StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string())
+                    })?;
                 Ok(DecodedSpecsResponse {
                     specs: parsed,
                     decompression_dict: None,
@@ -37,7 +36,7 @@ impl DictCompressedSpecsResponse {
                 // Response was compressed, so we need to decompress first then parse
                 let uncompressed = dict.decompress(&self.specs)?;
                 let parsed =
-                    serde_json::from_slice::<SpecsResponse>(&uncompressed).map_err(|e| {
+                    serde_json::from_slice::<SpecsResponseFull>(&uncompressed).map_err(|e| {
                         StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string())
                     })?;
                 Ok(DecodedSpecsResponse {
@@ -80,11 +79,11 @@ fn select_decompression_dict_for_response(
 #[serde(untagged)]
 enum CompressedSpecsResponse {
     DictCompressed(DictCompressedSpecsResponse),
-    Uncompressed(SpecsResponse),
+    Uncompressed(SpecsResponseFull),
 }
 
 pub struct DecodedSpecsResponse {
-    pub specs: SpecsResponse,
+    pub specs: SpecsResponseFull,
     pub decompression_dict: Option<DictionaryDecoder>,
 }
 

@@ -94,13 +94,6 @@ pub struct SpecsResponseNoUpdates {
     pub has_updates: bool,
 }
 
-#[derive(Deserialize)]
-#[serde(untagged)]
-pub enum SpecsResponse {
-    Full(Box<SpecsResponseFull>),
-    NoUpdates(SpecsResponseNoUpdates),
-}
-
 impl<'de> Deserialize<'de> for Condition {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

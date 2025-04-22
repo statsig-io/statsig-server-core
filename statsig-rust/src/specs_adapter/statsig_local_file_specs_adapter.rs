@@ -1,6 +1,6 @@
 use crate::hashing::djb2;
 use crate::specs_adapter::{SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener};
-use crate::specs_response::spec_types::{SpecsResponse, SpecsResponseFull};
+use crate::specs_response::spec_types::SpecsResponseFull;
 use crate::statsig_err::StatsigErr;
 use crate::{log_w, StatsigRuntime};
 use async_trait::async_trait;
@@ -95,7 +95,7 @@ impl StatsigLocalFileSpecsAdapter {
         }
     }
 
-    fn read_specs_from_file(&self) -> Result<Option<Box<SpecsResponseFull>>, StatsigErr> {
+    fn read_specs_from_file(&self) -> Result<Option<SpecsResponseFull>, StatsigErr> {
         if !std::path::Path::new(&self.file_path).exists() {
             return Ok(None);
         }
@@ -110,10 +110,9 @@ impl StatsigLocalFileSpecsAdapter {
         Ok(self.parse_specs_data_to_full_response(&data))
     }
 
-    fn parse_specs_data_to_full_response(&self, data: &str) -> Option<Box<SpecsResponseFull>> {
-        match serde_json::from_str::<SpecsResponse>(data) {
-            Ok(SpecsResponse::Full(full)) => Some(full),
-            Ok(SpecsResponse::NoUpdates(_)) => None,
+    fn parse_specs_data_to_full_response(&self, data: &str) -> Option<SpecsResponseFull> {
+        match serde_json::from_str::<SpecsResponseFull>(data) {
+            Ok(result) => Some(result),
             Err(e) => {
                 log_w!(TAG, "Failed to parse specs data: {}", e);
                 None
