@@ -1,6 +1,8 @@
-use crate::evaluation::evaluation_types::{AnyConfigEvaluation, GateEvaluation, LayerEvaluation};
-use crate::specs_response::spec_types::Parameter;
-use crate::user::{StatsigUserInternal, StatsigUserLoggable};
+use crate::{
+    evaluation::evaluation_types::{AnyConfigEvaluation, GateEvaluation, LayerEvaluation},
+    specs_response::param_store_types::Parameter,
+    user::{StatsigUserInternal, StatsigUserLoggable},
+};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

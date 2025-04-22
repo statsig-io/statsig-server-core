@@ -2,8 +2,9 @@ use crate::evaluation::dynamic_returnable::DynamicReturnable;
 use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::dynamic_value::DynamicValue;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
 use std::collections::HashMap;
+
+use super::{cmab_types::CMABConfig, param_store_types::ParameterStore};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -86,98 +87,6 @@ pub struct SpecsResponseFull {
     pub cmab_configs: Option<HashMap<String, CMABConfig>>,
     pub overrides: Option<HashMap<String, Vec<ConfigMapping>>>,
     pub override_rules: Option<HashMap<String, Rule>>,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CMABConfig {
-    pub salt: String,
-    #[serde(rename = "targetAppIDs")]
-    pub target_app_ids: Option<Vec<String>>,
-    pub default_value: DynamicReturnable,
-    pub id_type: DynamicString,
-    pub enabled: bool,
-    pub version: u32,
-    pub sample_rate: f64,
-    pub higher_is_better: bool,
-    pub groups: Vec<CMABGroup>,
-    pub config: Option<HashMap<String, CMABGroupConfig>>,
-    pub targeting_gate_name: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CMABGroup {
-    pub name: String,
-    pub parameter_values: DynamicReturnable,
-    pub id: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CMABGroupConfig {
-    pub alpha: f64,
-    pub intercept: f64,
-    pub records: u64,
-    pub weights_numerical: HashMap<String, f64>,
-    pub weights_categorical: HashMap<String, HashMap<String, f64>>,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-#[serde(untagged)]
-pub enum Parameter {
-    StaticValue(StaticValueParameter),
-    Gate(GateParameter),
-    DynamicConfig(DynamicConfigParameter),
-    Experiment(ExperimentParameter),
-    Layer(LayerParameter),
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct ParameterStore {
-    pub parameters: HashMap<String, Parameter>,
-    #[serde(rename = "targetAppIDs")]
-    pub target_app_ids: Option<Vec<String>>,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct StaticValueParameter {
-    pub ref_type: String,
-    pub param_type: String,
-    pub value: Value,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct GateParameter {
-    pub ref_type: String,
-    pub param_type: String,
-    pub gate_name: String,
-    pub pass_value: Value,
-    pub fail_value: Value,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct DynamicConfigParameter {
-    pub ref_type: String,
-    pub param_type: String,
-    pub config_name: String,
-    pub param_name: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct ExperimentParameter {
-    pub ref_type: String,
-    pub param_type: String,
-    pub experiment_name: String,
-    pub param_name: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct LayerParameter {
-    pub ref_type: String,
-    pub param_type: String,
-    pub layer_name: String,
-    pub param_name: String,
 }
 
 #[derive(Deserialize)]
