@@ -68,10 +68,9 @@ async fn test_all_gate_checks() {
     let mut times: HashMap<String, PerfEntry> = HashMap::new();
     let values = statsig
         .get_context()
-        .spec_store_data
-        .unwrap()
-        .values
-        .clone();
+        .spec_store
+        .get_current_values()
+        .unwrap();
 
     let all_start = Instant::now();
     for (gate_name, _) in values.feature_gates.iter() {

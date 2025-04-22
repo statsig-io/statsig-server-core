@@ -106,10 +106,7 @@ pub extern "C" fn statsig_flush_events_blocking(statsig_ref: *const c_char) {
 pub extern "C" fn statsig_get_current_values(statsig_ref: *const c_char) -> *const c_char {
     let statsig = get_instance_or_return_c!(Statsig, statsig_ref, null());
 
-    let values = statsig
-        .get_context()
-        .spec_store_data
-        .map(|data| data.values);
+    let values = statsig.get_context().spec_store.get_current_values();
     let data = json!(values).to_string();
     string_to_c_char(data)
 }

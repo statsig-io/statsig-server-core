@@ -6,7 +6,10 @@ use std::collections::HashMap;
 
 use super::{cmab_types::CMABConfig, param_store_types::ParameterStore};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+// DO_NOT_CLONE: Please do not add the Clone trait to this struct. We intentionally
+// avoid cloning this data at all costs as it can be quite large.
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 #[serde(rename_all = "camelCase")]
 pub struct Spec {
     #[serde(rename = "type")]
@@ -27,7 +30,7 @@ pub struct Spec {
     pub fields_used: Option<Vec<String>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 #[serde(rename_all = "camelCase")]
 pub struct Rule {
     pub name: String,
@@ -43,7 +46,7 @@ pub struct Rule {
     pub sampling_rate: Option<u64>,
 }
 
-#[derive(Serialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 #[serde(rename_all = "camelCase")]
 pub struct Condition {
     #[serde(rename = "type")]
@@ -55,19 +58,19 @@ pub struct Condition {
     pub id_type: DynamicString,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 pub struct OverrideRule {
     pub rule_name: String,
     pub start_time: Option<i64>,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 pub struct ConfigMapping {
     pub new_config_name: String,
     pub rules: Vec<OverrideRule>,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 pub struct SpecsResponseFull {
     pub feature_gates: HashMap<String, Spec>,
     pub dynamic_configs: HashMap<String, Spec>,

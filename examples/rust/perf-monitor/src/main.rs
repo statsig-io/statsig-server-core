@@ -32,13 +32,17 @@ fn main() {
             .await
             .expect("could not initialize statsig");
 
-        let spec_store_data = statsig
+        let gate_names = statsig
             .get_context()
-            .spec_store_data
-            .expect("spec_store_data is not set");
-
-        let gates = spec_store_data.values.feature_gates;
-        let gate_names = gates.keys().collect::<Vec<&String>>();
+            .spec_store
+            .data
+            .read()
+            .expect("Failed to lock spec store data")
+            .values
+            .feature_gates
+            .keys()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
 
         for _ in 0..3 {
             profile_gate_checks(&gate_names).await;
@@ -53,7 +57,7 @@ fn main() {
     });
 }
 
-async fn profile_gate_checks(gate_names: &[&String]) {
+async fn profile_gate_checks(gate_names: &[String]) {
     let overall_start = Instant::now();
 
     let statsig = Statsig::shared();

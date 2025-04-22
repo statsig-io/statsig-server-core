@@ -31,7 +31,7 @@ use crate::output_logger::initialize_simple_output_logger;
 use crate::persistent_storage::persistent_values_manager::PersistentValuesManager;
 use crate::sdk_diagnostics::diagnostics::{ContextType, Diagnostics};
 use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
-use crate::spec_store::{SpecStore, SpecStoreData};
+use crate::spec_store::SpecStore;
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
@@ -104,7 +104,6 @@ pub struct StatsigContext {
     pub sdk_key: String,
     pub options: Arc<StatsigOptions>,
     pub local_override_adapter: Option<Arc<dyn OverrideAdapter>>,
-    pub spec_store_data: Option<SpecStoreData>,
     pub error_observer: Arc<dyn OpsStatsEventObserver>,
     pub diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
     pub spec_store: Arc<SpecStore>,
@@ -543,17 +542,10 @@ impl Statsig {
             sdk_key: self.sdk_key.clone(),
             options: self.options.clone(),
             local_override_adapter: self.override_adapter.clone(),
-            spec_store_data: self.spec_store.get_current_values(),
             error_observer: self.error_observer.clone(),
             diagnostics_observer: self.diagnostics_observer.clone(),
             spec_store: self.spec_store.clone(),
         }
-    }
-
-    // todo: merge into get_context
-    #[deprecated(since = "0.1.0", note = "Use get_context instead")]
-    pub fn get_current_values(&self) -> Option<SpecStoreData> {
-        self.spec_store.get_current_values()
     }
 
     pub fn log_event(

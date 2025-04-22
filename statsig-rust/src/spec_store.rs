@@ -15,7 +15,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-#[derive(Clone, Serialize)]
+#[derive(Serialize)]
 pub struct SpecStoreData {
     pub source: SpecsSource,
     pub time_received_at: Option<u64>,
@@ -67,9 +67,10 @@ impl SpecStore {
         }
     }
 
-    pub fn get_current_values(&self) -> Option<SpecStoreData> {
-        let cloned = self.data.read().ok()?.clone();
-        Some(cloned)
+    pub fn get_current_values(&self) -> Option<SpecsResponseFull> {
+        let data = self.data.read().ok()?;
+        let json = serde_json::to_string(&data.values).ok()?;
+        serde_json::from_str::<SpecsResponseFull>(&json).ok()
     }
 
     pub fn set_values(&self, values: SpecsUpdate) -> Result<(), StatsigErr> {

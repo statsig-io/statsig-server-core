@@ -52,11 +52,21 @@ fn all_gate_checks() {
     rt.block_on(async {
         let (user, statsig) = setup().await;
 
-        let values = statsig.get_current_values().unwrap().values.clone();
+        let gate_names = statsig
+            .get_context()
+            .spec_store
+            .data
+            .read()
+            .expect("Failed to lock spec store data")
+            .values
+            .feature_gates
+            .keys()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
 
-        for gate_name in values.feature_gates.keys() {
+        for gate_name in gate_names {
             for _ in 0..1000 {
-                let _ = statsig.check_gate(&user, gate_name);
+                let _ = statsig.check_gate(&user, &gate_name);
             }
         }
     });
@@ -96,7 +106,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("all gates", |b| b.iter(|| all_gate_checks()));
     c.bench_function("get client init response", |b| {
         b.iter(|| get_client_init_response())
-    });    
+    });
     c.bench_function("statsig init", |b| b.iter(|| initialization()));
 }
 
