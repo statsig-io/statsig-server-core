@@ -210,7 +210,7 @@ impl SamplingProcessor {
     fn evaluate_exposure_sending(
         &self,
         eval_result: &AnyEvaluation,
-        sampling_exposure_key: &String,
+        sampling_exposure_key: &str,
     ) -> (bool, Option<u64>) {
         let eval_base_res = eval_result.get_base_result();
         let special_case_sampling_rate = self.get_special_case_sampling_rate();
@@ -264,7 +264,7 @@ impl SamplingProcessor {
         false
     }
 
-    fn is_hash_in_sampling_rate(&self, key: &String, sampling_rate: u64) -> bool {
+    fn is_hash_in_sampling_rate(&self, key: &str, sampling_rate: u64) -> bool {
         let hash_value = self.hashing.sha256_to_u64(key);
         hash_value % sampling_rate == 0
     }

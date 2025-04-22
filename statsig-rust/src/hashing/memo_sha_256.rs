@@ -58,7 +58,7 @@ impl MemoSha256 {
         }
     }
 
-    pub fn hash_string(&self, input: &String) -> String {
+    pub fn hash_string(&self, input: &str) -> String {
         let mut state = match self.inner.lock() {
             Ok(state) => state,
             Err(e) => {
@@ -71,7 +71,7 @@ impl MemoSha256 {
         BASE64_STANDARD.encode(hash)
     }
 
-    fn compute_bytes(&self, state: &mut MemoState, input: &String) -> Output<Sha256> {
+    fn compute_bytes(&self, state: &mut MemoState, input: &str) -> Output<Sha256> {
         state.sha_hasher.update(input.as_bytes());
         state.sha_hasher.finalize_reset()
     }

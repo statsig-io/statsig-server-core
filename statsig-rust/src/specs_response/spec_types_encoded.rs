@@ -1,8 +1,8 @@
 use serde::Deserialize;
 
-use crate::{
-    compression::zstd_decompression_dict::DictionaryDecoder, spec_types::SpecsResponse, StatsigErr,
-};
+use crate::{compression::zstd_decompression_dict::DictionaryDecoder, StatsigErr};
+
+use super::spec_types::SpecsResponse;
 
 #[derive(Deserialize)]
 struct DictCompressedSpecsResponse {

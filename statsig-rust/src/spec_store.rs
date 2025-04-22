@@ -5,7 +5,7 @@ use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
-use crate::spec_types::{SpecsResponse, SpecsResponseFull, SpecsResponseNoUpdates};
+use crate::specs_response::spec_types::{SpecsResponse, SpecsResponseFull, SpecsResponseNoUpdates};
 use crate::{
     log_d, log_e, log_error_to_statsig_and_console, SpecsInfo, SpecsSource, SpecsUpdate,
     SpecsUpdateListener, StatsigErr, StatsigRuntime,

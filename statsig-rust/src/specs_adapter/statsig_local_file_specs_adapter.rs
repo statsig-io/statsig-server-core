@@ -1,6 +1,6 @@
 use crate::hashing::djb2;
-use crate::spec_types::{SpecsResponse, SpecsResponseFull};
 use crate::specs_adapter::{SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener};
+use crate::specs_response::spec_types::{SpecsResponse, SpecsResponseFull};
 use crate::statsig_err::StatsigErr;
 use crate::{log_w, StatsigRuntime};
 use async_trait::async_trait;

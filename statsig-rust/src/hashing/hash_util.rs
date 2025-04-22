@@ -50,7 +50,7 @@ impl HashUtil {
         }
     }
 
-    pub fn hash(&self, input: &String, hash_algorithm: &HashAlgorithm) -> String {
+    pub fn hash(&self, input: &str, hash_algorithm: &HashAlgorithm) -> String {
         match hash_algorithm {
             HashAlgorithm::Sha256 => self.sha_hasher.hash_string(input),
             HashAlgorithm::Djb2 => djb2(input),
@@ -58,11 +58,11 @@ impl HashUtil {
         }
     }
 
-    pub fn sha256(&self, input: &String) -> String {
+    pub fn sha256(&self, input: &str) -> String {
         self.sha_hasher.hash_string(input)
     }
 
-    pub fn sha256_to_u64(&self, input: &String) -> u64 {
+    pub fn sha256_to_u64(&self, input: &str) -> u64 {
         let hash = self.sha_hasher.hash_string(input);
 
         let mut hasher_bytes = [0u8; 8];

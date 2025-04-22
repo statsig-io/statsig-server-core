@@ -165,7 +165,7 @@ impl Statsig {
 
         let spec_store = Arc::new(SpecStore::new(
             sdk_key,
-            hashing.sha256(&sdk_key.to_string()),
+            hashing.sha256(sdk_key),
             statsig_runtime.clone(),
             options.data_store.clone(),
         ));

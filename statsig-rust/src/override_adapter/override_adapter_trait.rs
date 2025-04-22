@@ -1,5 +1,5 @@
 use crate::evaluation::evaluator_result::EvaluatorResult;
-use crate::spec_types::Spec;
+use crate::specs_response::spec_types::Spec;
 use crate::StatsigUser;
 use serde_json::Value;
 use std::collections::HashMap;

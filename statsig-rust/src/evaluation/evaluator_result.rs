@@ -2,7 +2,7 @@ use crate::evaluation::evaluation_types::{
     BaseEvaluation, DynamicConfigEvaluation, ExperimentEvaluation, ExposureSamplingInfo,
     GateEvaluation, LayerEvaluation, SecondaryExposure,
 };
-use crate::spec_types::Spec;
+use crate::specs_response::spec_types::Spec;
 use serde_json::Value;
 use std::collections::HashMap;
 

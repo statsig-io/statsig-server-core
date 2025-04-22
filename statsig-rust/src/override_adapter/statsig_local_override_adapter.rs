@@ -2,7 +2,7 @@ use crate::{log_e, read_lock_or_return, OverrideAdapter, StatsigUser};
 use std::{collections::HashMap, sync::RwLock};
 
 use crate::evaluation::evaluator_result::EvaluatorResult;
-use crate::spec_types::Spec;
+use crate::specs_response::spec_types::Spec;
 use lazy_static::lazy_static;
 use serde_json::Value;
 

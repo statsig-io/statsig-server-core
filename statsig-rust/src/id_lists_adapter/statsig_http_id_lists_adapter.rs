@@ -455,7 +455,7 @@ mod tests {
     }
 
     fn get_hashed_marcos() -> String {
-        let hashed = HashUtil::new().sha256(&"Marcos".to_string());
+        let hashed = HashUtil::new().sha256("Marcos");
         hashed.chars().take(8).collect()
     }
 

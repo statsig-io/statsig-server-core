@@ -11,7 +11,7 @@ use crate::evaluation::evaluator_result::{
 use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::initialize_response::InitializeResponse;
 use crate::spec_store::SpecStore;
-use crate::spec_types::{
+use crate::specs_response::spec_types::{
     DynamicConfigParameter, ExperimentParameter, GateParameter, LayerParameter, Parameter,
     ParameterStore, Spec,
 };

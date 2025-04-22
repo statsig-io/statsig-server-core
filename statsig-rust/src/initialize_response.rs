@@ -1,5 +1,5 @@
 use crate::evaluation::evaluation_types::{AnyConfigEvaluation, GateEvaluation, LayerEvaluation};
-use crate::spec_types::Parameter;
+use crate::specs_response::spec_types::Parameter;
 use crate::user::{StatsigUserInternal, StatsigUserLoggable};
 
 use serde::{Deserialize, Serialize};

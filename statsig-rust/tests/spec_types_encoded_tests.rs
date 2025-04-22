@@ -1,5 +1,5 @@
-use statsig_rust::spec_types::*;
-use statsig_rust::spec_types_encoded::*;
+use statsig_rust::specs_response::spec_types::*;
+use statsig_rust::specs_response::spec_types_encoded::*;
 
 mod tests {
     use statsig_rust::compression::zstd_decompression_dict::DictionaryDecoder;

@@ -4,7 +4,7 @@ use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator::SpecType;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::get_unit_id::get_unit_id;
-use crate::spec_types::{CMABConfig, CMABGroup, CMABGroupConfig};
+use crate::specs_response::spec_types::{CMABConfig, CMABGroup, CMABGroupConfig};
 use crate::unwrap_or_return;
 use lazy_static::lazy_static;
 use rand::seq::SliceRandom;

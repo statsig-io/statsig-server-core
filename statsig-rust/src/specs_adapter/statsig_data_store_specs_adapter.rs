@@ -34,7 +34,7 @@ impl StatsigDataStoreSpecsAdapter {
         let cache_key = get_data_adapter_key(
             RequestPath::RulesetsV2,
             CompressFormat::PlainText,
-            &hashing.hash(&sdk_key.to_string(), &crate::HashAlgorithm::Sha256),
+            &hashing.hash(sdk_key, &crate::HashAlgorithm::Sha256),
         );
         StatsigDataStoreSpecsAdapter {
             data_adapter,

@@ -5,7 +5,7 @@ use crate::evaluation::evaluation_types::{
 use crate::event_logging::event_logger::{EventLogger, QueuedEventPayload};
 use crate::event_logging::layer_exposure::LayerExposure;
 use crate::sampling_processor::SamplingDecision;
-use crate::spec_types::Parameter;
+use crate::specs_response::spec_types::Parameter;
 use crate::statsig_core_api_options::ParameterStoreEvaluationOptions;
 use crate::user::StatsigUserLoggable;
 use crate::StatsigUser;
