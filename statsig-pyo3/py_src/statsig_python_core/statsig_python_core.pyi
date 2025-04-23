@@ -209,6 +209,9 @@ class StatsigBasePy:
     def get_parameter_store_list(self) -> builtins.list[builtins.str]:
         ...
 
+    def identify(self, user:StatsigUser) -> None:
+        ...
+
 
 class StatsigOptions:
     specs_url: typing.Optional[builtins.str]

@@ -471,6 +471,12 @@ impl StatsigBasePy {
     pub fn get_parameter_store_list(&self) -> Vec<String> {
         self.inner.get_parameter_store_list()
     }
+
+    #[pyo3(signature = (user))]
+    pub fn identify(&self, user: &StatsigUserPy) -> PyResult<()> {
+        self.inner.identify(&user.inner);
+        Ok(())
+    }
 }
 
 fn get_completion_event(py: Python) -> PyResult<(PyObject, PyObject)> {
