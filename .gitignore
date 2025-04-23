@@ -12,6 +12,7 @@ output.txt
 
 docker_stats.svg
 docker_stats.csv
+timeline.csv
 
 # Binary Files
 libstatsig_ffi.dylib

@@ -60,9 +60,8 @@ export class MemProfDocker extends CommandBase {
 
     const actions = [
       'cd /app/examples/python/mem-prof',
-      //   'pip install -r requirements.txt',
       'pip install statsig-python-core',
-      'python3 main.py',
+      'python3 spec-sync.py',
     ].join(' && ');
 
     try {
