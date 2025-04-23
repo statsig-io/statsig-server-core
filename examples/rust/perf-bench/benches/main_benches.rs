@@ -37,7 +37,7 @@ async fn setup() -> (StatsigUser, Statsig) {
     options.wait_for_user_agent_init = Some(true);
     options.environment = Some("development".to_string());
 
-    options.specs_adapter = Some(Arc::new(StaticSpecsAdapter::with_data("benches/data.json")));
+    options.specs_adapter = Some(Arc::new(StaticSpecsAdapter::with_data("dcs_data.json")));
     options.event_logging_adapter = Some(Arc::new(NoopEventLoggingAdapter::default()));
 
     let statsig = Statsig::new("secret-key", Some(Arc::new(options)));
@@ -110,5 +110,11 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("statsig init", |b| b.iter(|| initialization()));
 }
 
-criterion_group!(benches, criterion_benchmark);
+criterion_group! {
+    name = benches;
+    config = Criterion::default().sample_size(10);
+    targets = criterion_benchmark
+}
+
+// criterion_group!(benches, criterion_benchmark);
 criterion_main!(benches);

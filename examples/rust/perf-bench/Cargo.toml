@@ -7,7 +7,7 @@ edition = "2021"
 async-trait = "0.1.81"
 statsig-rust = { path = "../../../statsig-rust" }
 tokio = "1.39.1"
-
+mimalloc = "0.1.46"
 
 [dev-dependencies]
 criterion = "0.5.1"
@@ -19,3 +19,14 @@ bench = false
 [[bench]]
 name = "main_benches"
 harness = false
+
+
+[[bin]]
+name = "gate-mem"
+test = false
+bench = false
+
+[[bin]]
+name = "spec-sync-mem"
+test = false
+bench = false

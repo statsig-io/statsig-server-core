@@ -231,7 +231,7 @@ impl SpecStore {
         if cached_time_is_newer || checksums_match {
             log_d!(
                     TAG,
-                    "SpecStore - Received values for [time: {}, checksum: {}], but currently has values for [time: {}, checksum: {}]. Ignoring values.",
+                    "Received values for [time: {}, checksum: {}], but currently has values for [time: {}, checksum: {}]. Ignoring values.",
                     dcs.time,
                     new_checksum,
                     curr_values.time,

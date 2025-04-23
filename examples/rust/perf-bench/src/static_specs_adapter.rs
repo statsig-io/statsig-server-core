@@ -20,7 +20,7 @@ impl StaticSpecsAdapter {
         }
     }
 
-    async fn manually_sync_specs(&self, _current_lcut: Option<u64>) -> Result<(), StatsigErr> {
+    pub async fn manually_sync_specs(&self, _current_lcut: Option<u64>) -> Result<(), StatsigErr> {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push(self.json_data_path.as_str());
 

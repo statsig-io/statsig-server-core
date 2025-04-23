@@ -1,31 +1,30 @@
+use perf_bench::{
+    noop_event_logging_adapter::NoopEventLoggingAdapter, static_specs_adapter::StaticSpecsAdapter,
+};
 use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigRuntime, StatsigUser};
 use std::{
     collections::HashMap,
-    env,
     sync::Arc,
     time::{Duration, Instant},
 };
 
 use mimalloc::MiMalloc;
-
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
     let statsig_rt = StatsigRuntime::get_runtime();
     statsig_rt.runtime_handle.block_on(async {
-        let sdk_key = env::var("test_api_key").expect("test_api_key environment variable not set");
-
         let options = Arc::new(StatsigOptions {
             wait_for_country_lookup_init: Some(true),
             wait_for_user_agent_init: Some(true),
-            specs_sync_interval_ms: Some(1),
-            disable_all_logging: Some(true),
+            specs_adapter: Some(Arc::new(StaticSpecsAdapter::with_data("dcs_data.json"))),
+            event_logging_adapter: Some(Arc::new(NoopEventLoggingAdapter::default())),
             ..StatsigOptions::new()
         });
 
-        let statsig =
-            Statsig::new_shared(&sdk_key, Some(options)).expect("could not create perf statsig");
+        let statsig = Statsig::new_shared("secret-key", Some(options))
+            .expect("could not create perf statsig");
 
         statsig
             .initialize()
@@ -46,8 +45,8 @@ fn main() {
 
         for _ in 0..3 {
             profile_gate_checks(&gate_names).await;
-            println!("--- Waiting ---");
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            println!("--- Checked All Gates ---");
+            tokio::time::sleep(Duration::from_millis(500)).await;
         }
 
         statsig
