@@ -25,6 +25,7 @@ const TAG: &str = stringify!(StatsigHttpSpecsAdapter);
 pub struct StatsigHttpSpecsAdapter {
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
     network: NetworkClient,
+    sdk_key: String,
     specs_url: String,
     fallback_url: Option<String>,
     sync_interval_duration: Duration,
@@ -41,8 +42,12 @@ impl StatsigHttpSpecsAdapter {
         sync_interval: Option<u32>,
         disable_network: Option<bool>,
     ) -> Self {
-        let fallback_url = if fallback_to_statsig_api {
-            construct_fallback_specs_url(sdk_key, specs_url)
+        let specs_url = specs_url
+            .map(|u| u.to_string())
+            .unwrap_or(DEFAULT_SPECS_URL.to_string());
+        // only fallback when the spec_url is not the DEFAULT_SPECS_URL
+        let fallback_url = if fallback_to_statsig_api && specs_url != DEFAULT_SPECS_URL {
+            Some(DEFAULT_SPECS_URL.to_string())
         } else {
             None
         };
@@ -52,7 +57,8 @@ impl StatsigHttpSpecsAdapter {
         Self {
             listener: RwLock::new(None),
             network: NetworkClient::new(sdk_key, Some(headers), disable_network),
-            specs_url: construct_specs_url(sdk_key, specs_url),
+            sdk_key: sdk_key.to_string(),
+            specs_url,
             fallback_url,
             sync_interval_duration: Duration::from_millis(u64::from(
                 sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS),
@@ -66,19 +72,19 @@ impl StatsigHttpSpecsAdapter {
         &self,
         current_specs_info: SpecsInfo,
     ) -> Result<String, NetworkError> {
-        let request_args = self.get_request_args(current_specs_info);
+        let request_args = self.get_request_args(&current_specs_info);
         match self.handle_specs_request(request_args).await {
             Ok(response) => Ok(response),
             Err(e) => Err(e),
         }
     }
 
-    fn get_request_args(&self, current_specs_info: SpecsInfo) -> RequestArgs {
+    fn get_request_args(&self, current_specs_info: &SpecsInfo) -> RequestArgs {
         let mut params = HashMap::new();
         if let Some(lcut) = current_specs_info.lcut {
             params.insert("sinceTime".to_string(), lcut.to_string());
         }
-        if let Some(cs) = current_specs_info.checksum {
+        if let Some(cs) = &current_specs_info.checksum {
             params.insert(
                 "checksum".to_string(),
                 percent_encode(cs.as_bytes(), percent_encoding::NON_ALPHANUMERIC).to_string(),
@@ -86,7 +92,11 @@ impl StatsigHttpSpecsAdapter {
         }
 
         RequestArgs {
-            url: self.specs_url.clone(),
+            url: construct_specs_url(
+                self.specs_url.as_str(),
+                self.sdk_key.as_str(),
+                current_specs_info.zstd_dict_id.as_deref(),
+            ),
             query_params: Some(params),
             accept_gzip_response: true,
             diagnostics_key: Some(KeyType::DownloadConfigSpecs),
@@ -97,9 +107,14 @@ impl StatsigHttpSpecsAdapter {
     async fn handle_fallback_request(
         &self,
         mut request_args: RequestArgs,
+        current_specs_info: SpecsInfo,
     ) -> Result<String, NetworkError> {
         let fallback_url = match &self.fallback_url {
-            Some(url) => url.clone(),
+            Some(url) => construct_specs_url(
+                url.as_str(),
+                &self.sdk_key,
+                current_specs_info.zstd_dict_id.as_deref(),
+            ),
             None => return Err(NetworkError::RequestFailed),
         };
 
@@ -168,8 +183,10 @@ impl StatsigHttpSpecsAdapter {
 
         if result.is_err() && self.fallback_url.is_some() {
             log_d!(TAG, "Falling back to statsig api");
-            let request_args = self.get_request_args(current_specs_info);
-            let response = self.handle_fallback_request(request_args).await;
+            let request_args = self.get_request_args(&current_specs_info);
+            let response = self
+                .handle_fallback_request(request_args, current_specs_info)
+                .await;
             return self.process_spec_data(response).await;
         }
 
@@ -298,19 +315,13 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
     }
 }
 
-fn construct_specs_url(sdk_key: &str, spec_url: Option<&String>) -> String {
-    let base = match spec_url {
-        Some(u) => u,
-        _ => DEFAULT_SPECS_URL,
-    };
-
-    format!("{base}/{sdk_key}.json")
-}
-
-// only fallback when the spec_url is not the DEFAULT_SPECS_URL
-fn construct_fallback_specs_url(sdk_key: &str, spec_url: Option<&String>) -> Option<String> {
-    match spec_url {
-        Some(u) if u != DEFAULT_SPECS_URL => Some(format!("{DEFAULT_SPECS_URL}/{sdk_key}.json")),
-        _ => None,
+#[allow(unused)]
+fn construct_specs_url(spec_url: &str, sdk_key: &str, dict_id: Option<&str>) -> String {
+    #[cfg(feature = "with_shared_dict_compression")]
+    {
+        let dict_id = dict_id.unwrap_or("null");
+        format!("{spec_url}/d/{dict_id}/{sdk_key}.json")
     }
+    #[cfg(not(feature = "with_shared_dict_compression"))]
+    format!("{spec_url}/{sdk_key}.json")
 }

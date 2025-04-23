@@ -1,6 +1,6 @@
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
 
-use crate::specs_response::spec_types::SpecsResponseFull;
 use crate::{compression::zstd_decompression_dict::DictionaryDecoder, StatsigErr};
 #[derive(Deserialize)]
 struct DictCompressedSpecsResponse {
@@ -13,20 +13,22 @@ struct DictCompressedSpecsResponse {
 }
 
 impl DictCompressedSpecsResponse {
-    fn decompress(
+    fn decompress<TSpecs>(
         self,
         cached_dict: Option<&DictionaryDecoder>,
-    ) -> Result<DecodedSpecsResponse, StatsigErr> {
+    ) -> Result<DecodedSpecsResponse<TSpecs>, StatsigErr>
+    where
+        TSpecs: for<'de> Deserialize<'de>,
+    {
         let decompression_dict_to_use =
             select_decompression_dict_for_response(self.dict_id, self.dict_buff, cached_dict)?;
 
         match decompression_dict_to_use {
             None => {
                 // Response was not compressed
-                let parsed =
-                    serde_json::from_slice::<SpecsResponseFull>(&self.specs).map_err(|e| {
-                        StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string())
-                    })?;
+                let parsed = serde_json::from_slice::<TSpecs>(&self.specs).map_err(|e| {
+                    StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string())
+                })?;
                 Ok(DecodedSpecsResponse {
                     specs: parsed,
                     decompression_dict: None,
@@ -35,10 +37,9 @@ impl DictCompressedSpecsResponse {
             Some(dict) => {
                 // Response was compressed, so we need to decompress first then parse
                 let uncompressed = dict.decompress(&self.specs)?;
-                let parsed =
-                    serde_json::from_slice::<SpecsResponseFull>(&uncompressed).map_err(|e| {
-                        StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string())
-                    })?;
+                let parsed = serde_json::from_slice::<TSpecs>(&uncompressed).map_err(|e| {
+                    StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string())
+                })?;
                 Ok(DecodedSpecsResponse {
                     specs: parsed,
                     decompression_dict: Some(dict),
@@ -76,23 +77,26 @@ fn select_decompression_dict_for_response(
 }
 
 #[derive(Deserialize)]
-#[serde(untagged)]
-enum CompressedSpecsResponse {
+#[serde(untagged, bound = "TSpecs: DeserializeOwned")]
+enum CompressedSpecsResponse<TSpecs> {
     DictCompressed(DictCompressedSpecsResponse),
-    Uncompressed(SpecsResponseFull),
+    Uncompressed(TSpecs),
 }
 
-pub struct DecodedSpecsResponse {
-    pub specs: SpecsResponseFull,
+pub struct DecodedSpecsResponse<TSpecs> {
+    pub specs: TSpecs,
     pub decompression_dict: Option<DictionaryDecoder>,
 }
 
-impl DecodedSpecsResponse {
+impl<TSpecs> DecodedSpecsResponse<TSpecs> {
     pub fn from_slice(
         response_slice: &[u8],
         decompression_dict: Option<&DictionaryDecoder>,
-    ) -> Result<DecodedSpecsResponse, StatsigErr> {
-        serde_json::from_slice::<CompressedSpecsResponse>(response_slice)
+    ) -> Result<DecodedSpecsResponse<TSpecs>, StatsigErr>
+    where
+        TSpecs: for<'de> Deserialize<'de>,
+    {
+        serde_json::from_slice::<CompressedSpecsResponse<TSpecs>>(response_slice)
             .map_err(|e| {
                 StatsigErr::JsonParseError("CompressedSpecsResponse".to_string(), e.to_string())
             })
@@ -100,21 +104,20 @@ impl DecodedSpecsResponse {
     }
 
     fn from_compressed(
-        compressed: CompressedSpecsResponse,
+        compressed: CompressedSpecsResponse<TSpecs>,
         decompression_dict: Option<&DictionaryDecoder>,
-    ) -> Result<DecodedSpecsResponse, StatsigErr> {
+    ) -> Result<DecodedSpecsResponse<TSpecs>, StatsigErr>
+    where
+        TSpecs: for<'de> Deserialize<'de>,
+    {
         match compressed {
             CompressedSpecsResponse::DictCompressed(compressed_response) => {
-                eprintln!("Parsing dict compressed specs");
                 compressed_response.decompress(decompression_dict)
             }
-            CompressedSpecsResponse::Uncompressed(specs) => {
-                eprintln!("Parsing uncompressed specs");
-                Ok(DecodedSpecsResponse {
-                    specs,
-                    decompression_dict: decompression_dict.cloned(),
-                })
-            }
+            CompressedSpecsResponse::Uncompressed(specs) => Ok(DecodedSpecsResponse {
+                specs,
+                decompression_dict: decompression_dict.cloned(),
+            }),
         }
     }
 }

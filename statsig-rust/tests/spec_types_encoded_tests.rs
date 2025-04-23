@@ -19,8 +19,9 @@ mod tests {
             std::fs::read("./tests/data/shared_dict_response_uncompressed.json")
                 .expect("Failed to read file");
 
-        let spec_response = DecodedSpecsResponse::from_slice(&spec_response_slice, None)
-            .expect("Failed to parse SpecsResponse");
+        let spec_response =
+            DecodedSpecsResponse::<SpecsResponseFull>::from_slice(&spec_response_slice, None)
+                .expect("Failed to parse SpecsResponse");
 
         assert!(spec_response.decompression_dict.is_none());
         let decoded_spec = spec_response.specs;
@@ -39,8 +40,9 @@ mod tests {
         let spec_response_slice = std::fs::read("./tests/data/shared_dict_response_with_dict.json")
             .expect("Failed to read file");
 
-        let spec_response = DecodedSpecsResponse::from_slice(&spec_response_slice, None)
-            .expect("Failed to parse SpecsResponse");
+        let spec_response =
+            DecodedSpecsResponse::<SpecsResponseFull>::from_slice(&spec_response_slice, None)
+                .expect("Failed to parse SpecsResponse");
 
         assert!(spec_response.decompression_dict.is_some());
         let decoded_spec = spec_response.specs;
@@ -65,9 +67,11 @@ mod tests {
             .expect("Failed to read file");
 
         let decoder_dict = DictionaryDecoder::new(None, "WRONG_DICT_ID".to_string(), &dict_buff);
-        let spec_response =
-            DecodedSpecsResponse::from_slice(&spec_response_slice, Some(&decoder_dict))
-                .expect("Failed to parse SpecsResponse");
+        let spec_response = DecodedSpecsResponse::<SpecsResponseFull>::from_slice(
+            &spec_response_slice,
+            Some(&decoder_dict),
+        )
+        .expect("Failed to parse SpecsResponse");
 
         assert!(spec_response.decompression_dict.is_some());
         let decoded_spec = spec_response.specs;
@@ -93,9 +97,11 @@ mod tests {
                 .expect("Failed to read file");
 
         let decoder_dict = DictionaryDecoder::new(None, "ABC123".to_string(), &dict_buff);
-        let spec_response =
-            DecodedSpecsResponse::from_slice(&spec_response_str, Some(&decoder_dict))
-                .expect("Failed to parse SpecsResponse");
+        let spec_response = DecodedSpecsResponse::<SpecsResponseFull>::from_slice(
+            &spec_response_str,
+            Some(&decoder_dict),
+        )
+        .expect("Failed to parse SpecsResponse");
 
         assert!(spec_response.decompression_dict.is_some());
         let decoded_spec = spec_response.specs;
@@ -116,8 +122,10 @@ mod tests {
                 .expect("Failed to read file");
 
         let decoder_dict = DictionaryDecoder::new(None, "WRONG_DICT_ID".to_string(), &dict_buff);
-        let spec_response_result =
-            DecodedSpecsResponse::from_slice(&spec_response_slice, Some(&decoder_dict));
+        let spec_response_result = DecodedSpecsResponse::<SpecsResponseFull>::from_slice(
+            &spec_response_slice,
+            Some(&decoder_dict),
+        );
 
         assert!(spec_response_result.is_err());
     }
