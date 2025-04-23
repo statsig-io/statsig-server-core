@@ -359,30 +359,28 @@ impl StatsigBasePy {
 
     #[pyo3(signature = (gate_name, value))]
     pub fn override_gate(&self, gate_name: &str, value: bool) -> PyResult<()> {
-        self.inner.override_gate(gate_name, value, None);
+        self.inner.override_gate(gate_name, value);
         Ok(())
     }
 
     #[pyo3(signature = (config_name, value))]
     pub fn override_dynamic_config(&self, config_name: &str, value: Bound<PyDict>) -> PyResult<()> {
         let value_inner = py_dict_to_json_value_map(&value);
-        self.inner
-            .override_dynamic_config(config_name, value_inner, None);
+        self.inner.override_dynamic_config(config_name, value_inner);
         Ok(())
     }
 
     #[pyo3(signature = (experiment_name, value))]
     pub fn override_experiment(&self, experiment_name: &str, value: Bound<PyDict>) -> PyResult<()> {
         let value_inner = py_dict_to_json_value_map(&value);
-        self.inner
-            .override_experiment(experiment_name, value_inner, None);
+        self.inner.override_experiment(experiment_name, value_inner);
         Ok(())
     }
 
     #[pyo3(signature = (layer_name, value))]
     pub fn override_layer(&self, layer_name: &str, value: Bound<PyDict>) -> PyResult<()> {
         let value_inner = py_dict_to_json_value_map(&value);
-        self.inner.override_layer(layer_name, value_inner, None);
+        self.inner.override_layer(layer_name, value_inner);
         Ok(())
     }
 
@@ -393,7 +391,64 @@ impl StatsigBasePy {
         group_name: &str,
     ) -> PyResult<()> {
         self.inner
-            .override_experiment_by_group_name(experiment_name, group_name, None);
+            .override_experiment_by_group_name(experiment_name, group_name);
+        Ok(())
+    }
+
+    #[pyo3(signature = (gate_name, for_id, value))]
+    pub fn override_gate_for_id(&self, gate_name: &str, for_id: &str, value: bool) -> PyResult<()> {
+        self.inner.override_gate_for_id(gate_name, for_id, value);
+        Ok(())
+    }
+
+    #[pyo3(signature = (config_name, for_id, value))]
+    pub fn override_dynamic_config_for_id(
+        &self,
+        config_name: &str,
+        for_id: &str,
+        value: Bound<PyDict>,
+    ) -> PyResult<()> {
+        let value_inner = py_dict_to_json_value_map(&value);
+        self.inner
+            .override_dynamic_config_for_id(config_name, for_id, value_inner);
+        Ok(())
+    }
+
+    #[pyo3(signature = (experiment_name,for_id, value))]
+    pub fn override_experiment_for_id(
+        &self,
+        experiment_name: &str,
+        for_id: &str,
+        value: Bound<PyDict>,
+    ) -> PyResult<()> {
+        let value_inner = py_dict_to_json_value_map(&value);
+        self.inner
+            .override_experiment_for_id(experiment_name, for_id, value_inner);
+        Ok(())
+    }
+
+    #[pyo3(signature = (layer_name, for_id, value))]
+    pub fn override_layer_for_id(
+        &self,
+        layer_name: &str,
+        for_id: &str,
+        value: Bound<PyDict>,
+    ) -> PyResult<()> {
+        let value_inner = py_dict_to_json_value_map(&value);
+        self.inner
+            .override_layer_for_id(layer_name, for_id, value_inner);
+        Ok(())
+    }
+
+    #[pyo3(signature = (experiment_name, for_id, group_name))]
+    pub fn override_experiment_by_group_name_for_id(
+        &self,
+        experiment_name: &str,
+        for_id: &str,
+        group_name: &str,
+    ) -> PyResult<()> {
+        self.inner
+            .override_experiment_by_group_name_for_id(experiment_name, for_id, group_name);
         Ok(())
     }
 

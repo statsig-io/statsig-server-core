@@ -65,11 +65,16 @@ export declare class StatsigNapiInternal {
   manuallyLogDynamicConfigExposure(user: StatsigUser, configName: string): void
   manuallyLogExperimentExposure(user: StatsigUser, experimentName: string): void
   manuallyLogLayerParamExposure(user: StatsigUser, layerName: string, paramName: string): void
-  overrideGate(gateName: string, value: boolean, adapter?: OverrideAdapterType | undefined | null): void
-  overrideDynamicConfig(configName: string, value: Record<string, any>, adapter?: OverrideAdapterType | undefined | null): void
-  overrideExperiment(experimentName: string, value: Record<string, any>, adapter?: OverrideAdapterType | undefined | null): void
-  overrideExperimentByGroupName(experimentName: string, groupName: string, adapter?: OverrideAdapterType | undefined | null): void
-  overrideLayer(layerName: string, value: Record<string, any>, adapter?: OverrideAdapterType | undefined | null): void
+  overrideGate(gateName: string, value: boolean): void
+  overrideDynamicConfig(configName: string, value: Record<string, any>): void
+  overrideExperiment(experimentName: string, value: Record<string, any>): void
+  overrideExperimentByGroupName(experimentName: string, groupName: string): void
+  overrideLayer(layerName: string, value: Record<string, any>): void
+  overrideGateForId(gateName: string, forId: string, value: boolean): void
+  overrideDynamicConfigForId(configName: string, forId: string, value: Record<string, any>): void
+  overrideExperimentForId(experimentName: string, forId: string, value: Record<string, any>): void
+  overrideLayerForId(layerName: string, forId: string, value: Record<string, any>): void
+  overrideExperimentByGroupNameForId(experimentName: string, forId: string, groupName: string): void
   getFeatureGateList(): Array<string>
   getDynamicConfigList(): Array<string>
   getExperimentList(): Array<string>

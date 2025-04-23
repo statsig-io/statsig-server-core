@@ -945,7 +945,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideGate(
     };
 
     let gate_value_rust = jboolean_to_bool_unchecked(gate_value);
-    statsig.override_gate(&gate_name_rust, gate_value_rust, None);
+    statsig.override_gate(&gate_name_rust, gate_value_rust);
 }
 
 #[no_mangle]
@@ -965,7 +965,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideDynamicConfig(
 
     match jni_to_rust_json_map(&mut env, value) {
         Ok(value_rust) => {
-            statsig.override_dynamic_config(&config_name_rust, value_rust, None);
+            statsig.override_dynamic_config(&config_name_rust, value_rust);
         }
         Err(e) => {
             log_e!(
@@ -994,7 +994,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideLayer(
 
     match jni_to_rust_json_map(&mut env, value) {
         Ok(value_rust) => {
-            statsig.override_layer(&layer_name_rust, value_rust, None);
+            statsig.override_layer(&layer_name_rust, value_rust);
         }
         Err(e) => {
             log_e!(TAG, "Override Layer, Failed to convert JSON map: {:?}", e);
@@ -1019,7 +1019,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideExperiment(
 
     match jni_to_rust_json_map(&mut env, value) {
         Ok(value_rust) => {
-            statsig.override_experiment(&exp_name_rust, value_rust, None);
+            statsig.override_experiment(&exp_name_rust, value_rust);
         }
         Err(e) => {
             log_e!(TAG, "Override Layer, Failed to convert JSON map: {:?}", e);
@@ -1047,7 +1047,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideExperimentByGr
         Err(_) => return,
     };
 
-    statsig.override_experiment_by_group_name(&exp_name_rust, &group_name_rust, None);
+    statsig.override_experiment_by_group_name(&exp_name_rust, &group_name_rust);
 }
 
 fn update_statsig_metadata(env: &mut JNIEnv, metadata: JString) {

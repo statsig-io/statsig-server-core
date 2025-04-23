@@ -18,7 +18,7 @@ use crate::statsig_core_api_options_napi::{
     ParameterStoreEvaluationOptionsNapi,
 };
 use crate::statsig_metadata_napi;
-use crate::statsig_options_napi::{OverrideAdapterType, StatsigOptions};
+use crate::statsig_options_napi::StatsigOptions;
 use crate::statsig_result::StatsigResult;
 use crate::statsig_types_napi::{DynamicConfig, Experiment, FeatureGate, Layer, ParameterStore};
 use crate::statsig_user_napi::StatsigUser;
@@ -302,66 +302,78 @@ impl StatsigNapiInternal {
     }
 
     #[napi]
-    pub fn override_gate(
-        &self,
-        gate_name: String,
-        value: bool,
-        adapter: Option<OverrideAdapterType>,
-    ) {
-        let adapter_type = adapter.map(|a| a.into());
-        self.inner
-            .override_gate(&gate_name, value, adapter_type.as_ref());
+    pub fn override_gate(&self, gate_name: String, value: bool) {
+        self.inner.override_gate(&gate_name, value);
     }
 
     #[napi]
-    pub fn override_dynamic_config(
+    pub fn override_dynamic_config(&self, config_name: String, value: HashMap<String, Value>) {
+        self.inner.override_dynamic_config(&config_name, value);
+    }
+
+    #[napi]
+    pub fn override_experiment(&self, experiment_name: String, value: HashMap<String, Value>) {
+        self.inner.override_experiment(&experiment_name, value);
+    }
+
+    #[napi]
+    pub fn override_experiment_by_group_name(&self, experiment_name: String, group_name: String) {
+        self.inner
+            .override_experiment_by_group_name(&experiment_name, &group_name);
+    }
+
+    #[napi]
+    pub fn override_layer(&self, layer_name: String, value: HashMap<String, Value>) {
+        self.inner.override_layer(&layer_name, value);
+    }
+
+    #[napi]
+    pub fn override_gate_for_id(&self, gate_name: String, for_id: String, value: bool) {
+        self.inner.override_gate_for_id(&gate_name, &for_id, value);
+    }
+
+    #[napi]
+    pub fn override_dynamic_config_for_id(
         &self,
         config_name: String,
+        for_id: String,
         value: HashMap<String, Value>,
-        adapter: Option<OverrideAdapterType>,
     ) {
-        let adapter_type = adapter.map(|a| a.into());
         self.inner
-            .override_dynamic_config(&config_name, value, adapter_type.as_ref());
+            .override_dynamic_config_for_id(&config_name, &for_id, value);
     }
 
     #[napi]
-    pub fn override_experiment(
+    pub fn override_experiment_for_id(
         &self,
         experiment_name: String,
+        for_id: String,
         value: HashMap<String, Value>,
-        adapter: Option<OverrideAdapterType>,
     ) {
-        let adapter_type = adapter.map(|a| a.into());
         self.inner
-            .override_experiment(&experiment_name, value, adapter_type.as_ref());
+            .override_experiment_for_id(&experiment_name, &for_id, value);
     }
 
     #[napi]
-    pub fn override_experiment_by_group_name(
-        &self,
-        experiment_name: String,
-        group_name: String,
-        adapter: Option<OverrideAdapterType>,
-    ) {
-        let adapter_type = adapter.map(|a| a.into());
-        self.inner.override_experiment_by_group_name(
-            &experiment_name,
-            &group_name,
-            adapter_type.as_ref(),
-        );
-    }
-
-    #[napi]
-    pub fn override_layer(
+    pub fn override_layer_for_id(
         &self,
         layer_name: String,
+        for_id: String,
         value: HashMap<String, Value>,
-        adapter: Option<OverrideAdapterType>,
     ) {
-        let adapter_type = adapter.map(|a| a.into());
         self.inner
-            .override_layer(&layer_name, value, adapter_type.as_ref());
+            .override_layer_for_id(&layer_name, &for_id, value);
+    }
+
+    #[napi]
+    pub fn override_experiment_by_group_name_for_id(
+        &self,
+        experiment_name: String,
+        for_id: String,
+        group_name: String,
+    ) {
+        self.inner
+            .override_experiment_by_group_name_for_id(&experiment_name, &for_id, &group_name);
     }
 
     #[napi]
