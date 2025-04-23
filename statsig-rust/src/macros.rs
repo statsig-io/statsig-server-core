@@ -72,6 +72,19 @@ macro_rules! read_lock_or_return {
 }
 
 #[macro_export]
+macro_rules! write_lock_or_noop {
+    ($tag: expr, $lock:expr) => {
+        match $lock.write() {
+            Ok(data) => data,
+            Err(e) => {
+                log_e!($tag, "Failed to write to store: {}", e.to_string());
+                return;
+            }
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! serialize_if_not_none {
     ($state: expr, $field_name: expr, $value: expr) => {
         if let Some(v) = $value {

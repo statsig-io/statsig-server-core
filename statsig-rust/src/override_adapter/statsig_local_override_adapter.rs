@@ -1,9 +1,8 @@
-use crate::{log_d, log_e, read_lock_or_return, OverrideAdapter, StatsigUser};
+use crate::{log_d, log_e, read_lock_or_return, write_lock_or_noop, OverrideAdapter, StatsigUser};
 use std::{collections::HashMap, sync::RwLock};
 
 use crate::evaluation::evaluator_result::EvaluatorResult;
 use crate::specs_response::spec_types::Spec;
-use lazy_static::lazy_static;
 use serde_json::Value;
 
 enum ExperimentOverrides {
@@ -21,7 +20,9 @@ struct OverrideStore {
 
 const TAG: &str = stringify!(StatsigLocalOverrideAdapter);
 const LOCAL_OVERRIDE_REASON: &str = "LocalOverride";
-lazy_static! {
+const NO_ID_OVERRIDE: &str = "__STATSIG_NO_ID__";
+
+lazy_static::lazy_static! {
     static ref OVERRIDE_RULE_ID: String = "override".to_string();
 }
 
@@ -40,7 +41,7 @@ impl StatsigLocalOverrideAdapter {
 impl OverrideAdapter for StatsigLocalOverrideAdapter {
     fn get_gate_override(
         &self,
-        _user: &StatsigUser,
+        user: &StatsigUser,
         gate_name: &str,
         result: &mut EvaluatorResult<'_>,
     ) -> bool {
@@ -53,49 +54,19 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
 
         log_d!(TAG, "gate_overrides found for {}", gate_name);
 
-        if let Some(user_id) = &_user.user_id {
-            if let Some(id_string) = &user_id.string_value {
-                if let Some(override_value) = gate_overrides.get(id_string) {
-                    log_d!(TAG, "gate_overrides found for {}", id_string);
-                    result.bool_value = *override_value;
-                    result.override_reason = Some(LOCAL_OVERRIDE_REASON);
-                    result.rule_id = Some(&OVERRIDE_RULE_ID);
-                    return true;
-                }
-            }
-        }
-
-        if let Some(custom_ids) = &_user.custom_ids {
-            for custom_id_value in custom_ids.values() {
-                log_d!(TAG, "looking for gate_overrides for {:?}", custom_id_value);
-                if let Some(id_string) = &custom_id_value.string_value {
-                    log_d!(TAG, "gate_overrides found for {}", id_string);
-                    if let Some(override_value) = gate_overrides.get(id_string) {
-                        result.bool_value = *override_value;
-                        result.override_reason = Some(LOCAL_OVERRIDE_REASON);
-                        result.rule_id = Some(&OVERRIDE_RULE_ID);
-                        return true;
-                    }
-                }
-            }
-        }
-
-        log_d!(TAG, "looking for gate_overrides for empty string");
-        if let Some(override_value) = gate_overrides.get("") {
-            log_d!(TAG, "gate_overrides found for empty string");
-            result.bool_value = *override_value;
-            result.override_reason = Some(LOCAL_OVERRIDE_REASON);
-            result.rule_id = Some(&OVERRIDE_RULE_ID);
-            return true;
-        }
-
-        log_d!(TAG, "no gate_overrides found");
-        false
+        find_override_for_user(
+            user,
+            gate_overrides,
+            |value, res| {
+                res.bool_value = *value;
+            },
+            result,
+        )
     }
 
     fn get_dynamic_config_override(
         &self,
-        _user: &StatsigUser,
+        user: &StatsigUser,
         dynamic_config_name: &str,
         result: &mut EvaluatorResult<'_>,
     ) -> bool {
@@ -106,43 +77,19 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
             None => return false,
         };
 
-        if let Some(user_id) = &_user.user_id {
-            if let Some(id_string) = &user_id.string_value {
-                if let Some(override_value) = config_overrides.get(id_string) {
-                    result.json_value = Some(override_value.clone());
-                    result.override_reason = Some(LOCAL_OVERRIDE_REASON);
-                    result.rule_id = Some(&OVERRIDE_RULE_ID);
-                    return true;
-                }
-            }
-        }
-
-        if let Some(custom_ids) = &_user.custom_ids {
-            for custom_id_value in custom_ids.values() {
-                if let Some(id_string) = &custom_id_value.string_value {
-                    if let Some(override_value) = config_overrides.get(id_string) {
-                        result.json_value = Some(override_value.clone());
-                        result.override_reason = Some(LOCAL_OVERRIDE_REASON);
-                        result.rule_id = Some(&OVERRIDE_RULE_ID);
-                        return true;
-                    }
-                }
-            }
-        }
-
-        if let Some(override_value) = config_overrides.get("") {
-            result.json_value = Some(override_value.clone());
-            result.override_reason = Some(LOCAL_OVERRIDE_REASON);
-            result.rule_id = Some(&OVERRIDE_RULE_ID);
-            return true;
-        }
-
-        false
+        find_override_for_user(
+            user,
+            config_overrides,
+            |value, res| {
+                res.json_value = Some(value.clone());
+            },
+            result,
+        )
     }
 
     fn get_experiment_override(
         &self,
-        _user: &StatsigUser,
+        user: &StatsigUser,
         experiment_name: &str,
         result: &mut EvaluatorResult<'_>,
         opt_spec: Option<&Spec>,
@@ -154,66 +101,24 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
             None => return false,
         };
 
-        if let Some(user_id) = &_user.user_id {
-            if let Some(id_string) = &user_id.string_value {
-                if let Some(override_value) = experiment_overrides.get(id_string) {
-                    match override_value {
-                        ExperimentOverrides::Value(map) => {
-                            result.json_value = Some(map.clone());
-                        }
-                        ExperimentOverrides::GroupName(group_name) => {
-                            result.json_value =
-                                self.get_experiment_with_group_name(opt_spec, group_name);
-                        }
-                    }
-                    result.override_reason = Some(LOCAL_OVERRIDE_REASON);
-                    result.rule_id = Some(&OVERRIDE_RULE_ID);
-                    return true;
-                }
-            }
-        }
-
-        if let Some(custom_ids) = &_user.custom_ids {
-            for custom_id_value in custom_ids.values() {
-                if let Some(id_string) = &custom_id_value.string_value {
-                    if let Some(override_value) = experiment_overrides.get(id_string) {
-                        match override_value {
-                            ExperimentOverrides::Value(map) => {
-                                result.json_value = Some(map.clone());
-                            }
-                            ExperimentOverrides::GroupName(group_name) => {
-                                result.json_value =
-                                    self.get_experiment_with_group_name(opt_spec, group_name);
-                            }
-                        }
-                        result.override_reason = Some(LOCAL_OVERRIDE_REASON);
-                        result.rule_id = Some(&OVERRIDE_RULE_ID);
-                        return true;
-                    }
-                }
-            }
-        }
-
-        if let Some(override_value) = experiment_overrides.get("") {
-            match override_value {
+        find_override_for_user(
+            user,
+            experiment_overrides,
+            |override_value, res| match override_value {
                 ExperimentOverrides::Value(map) => {
-                    result.json_value = Some(map.clone());
+                    res.json_value = Some(map.clone());
                 }
                 ExperimentOverrides::GroupName(group_name) => {
-                    result.json_value = self.get_experiment_with_group_name(opt_spec, group_name);
+                    res.json_value = get_experiment_with_group_name(opt_spec, group_name);
                 }
-            }
-            result.override_reason = Some(LOCAL_OVERRIDE_REASON);
-            result.rule_id = Some(&OVERRIDE_RULE_ID);
-            return true;
-        }
-
-        false
+            },
+            result,
+        )
     }
 
     fn get_layer_override(
         &self,
-        _user: &StatsigUser,
+        user: &StatsigUser,
         layer_name: &str,
         result: &mut EvaluatorResult<'_>,
     ) -> bool {
@@ -224,216 +129,226 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
             None => return false,
         };
 
-        if let Some(user_id) = &_user.user_id {
-            if let Some(id_string) = &user_id.string_value {
-                if let Some(override_value) = layer_overrides.get(id_string) {
-                    result.json_value = Some(override_value.clone());
-                    result.override_reason = Some(LOCAL_OVERRIDE_REASON);
-                    result.rule_id = Some(&OVERRIDE_RULE_ID);
-                    return true;
-                }
-            }
-        }
-
-        if let Some(custom_ids) = &_user.custom_ids {
-            for custom_id_value in custom_ids.values() {
-                if let Some(id_string) = &custom_id_value.string_value {
-                    if let Some(override_value) = layer_overrides.get(id_string) {
-                        result.json_value = Some(override_value.clone());
-                        result.override_reason = Some(LOCAL_OVERRIDE_REASON);
-                        result.rule_id = Some(&OVERRIDE_RULE_ID);
-                        return true;
-                    }
-                }
-            }
-        }
-
-        if let Some(override_value) = layer_overrides.get("") {
-            result.json_value = Some(override_value.clone());
-            result.override_reason = Some(LOCAL_OVERRIDE_REASON);
-            result.rule_id = Some(&OVERRIDE_RULE_ID);
-            return true;
-        }
-
-        false
+        find_override_for_user(
+            user,
+            layer_overrides,
+            |value, res| {
+                res.json_value = Some(value.clone());
+            },
+            result,
+        )
     }
 
     fn override_gate(&self, key: &str, value: bool) {
-        match self.store.write() {
-            Ok(mut store) => {
-                store
-                    .gate
-                    .entry(key.to_string())
-                    .or_insert_with(HashMap::new)
-                    .insert("".to_string(), value);
-            }
-            Err(e) => log_e!(TAG, "Failed to set gate override: {}", e.to_string()),
-        }
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        store
+            .gate
+            .entry(key.to_string())
+            .or_default()
+            .insert(NO_ID_OVERRIDE.to_string(), value);
     }
 
     fn override_gate_for_id(&self, key: &str, id: &str, value: bool) {
-        match self.store.write() {
-            Ok(mut store) => {
-                store
-                    .gate
-                    .entry(key.to_string())
-                    .or_insert_with(HashMap::new)
-                    .insert(id.to_string(), value);
-            }
-            Err(e) => log_e!(TAG, "Failed to set gate override for ID: {}", e.to_string()),
-        }
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        store
+            .gate
+            .entry(key.to_string())
+            .or_default()
+            .insert(id.to_string(), value);
     }
 
     fn override_dynamic_config(&self, key: &str, value: HashMap<String, Value>) {
-        match self.store.write() {
-            Ok(mut store) => {
-                store
-                    .config
-                    .entry(key.to_string())
-                    .or_insert_with(HashMap::new)
-                    .insert("".to_string(), value);
-            }
-            Err(e) => log_e!(
-                TAG,
-                "Failed to set dynamic config override: {}",
-                e.to_string()
-            ),
-        }
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        store
+            .config
+            .entry(key.to_string())
+            .or_default()
+            .insert(NO_ID_OVERRIDE.to_string(), value);
     }
 
     fn override_dynamic_config_for_id(&self, key: &str, id: &str, value: HashMap<String, Value>) {
-        match self.store.write() {
-            Ok(mut store) => {
-                store
-                    .config
-                    .entry(key.to_string())
-                    .or_insert_with(HashMap::new)
-                    .insert(id.to_string(), value);
-            }
-            Err(e) => log_e!(
-                TAG,
-                "Failed to set dynamic config override for ID: {}",
-                e.to_string()
-            ),
-        }
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        store
+            .config
+            .entry(key.to_string())
+            .or_default()
+            .insert(id.to_string(), value);
     }
 
     fn override_experiment(&self, key: &str, value: HashMap<String, Value>) {
-        match self.store.write() {
-            Ok(mut store) => {
-                store
-                    .experiment
-                    .entry(key.to_string())
-                    .or_insert_with(HashMap::new)
-                    .insert("".to_string(), ExperimentOverrides::Value(value));
-            }
-            Err(e) => log_e!(TAG, "Failed to set experiment override: {}", e.to_string()),
-        }
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        store.experiment.entry(key.to_string()).or_default().insert(
+            NO_ID_OVERRIDE.to_string(),
+            ExperimentOverrides::Value(value),
+        );
     }
 
     fn override_experiment_for_id(&self, key: &str, id: &str, value: HashMap<String, Value>) {
-        match self.store.write() {
-            Ok(mut store) => {
-                store
-                    .experiment
-                    .entry(key.to_string())
-                    .or_insert_with(HashMap::new)
-                    .insert(id.to_string(), ExperimentOverrides::Value(value));
-            }
-            Err(e) => log_e!(
-                TAG,
-                "Failed to set experiment override for ID: {}",
-                e.to_string()
-            ),
-        }
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        store
+            .experiment
+            .entry(key.to_string())
+            .or_default()
+            .insert(id.to_string(), ExperimentOverrides::Value(value));
     }
 
     fn override_experiment_by_group_name(&self, key: &str, group_name: &str) {
-        match self.store.write() {
-            Ok(mut store) => {
-                store
-                    .experiment
-                    .entry(key.to_string())
-                    .or_insert_with(HashMap::new)
-                    .insert(
-                        "".to_string(),
-                        ExperimentOverrides::GroupName(group_name.to_string()),
-                    );
-            }
-            Err(e) => log_e!(
-                TAG,
-                "Failed to set experiment override by group name: {}",
-                e.to_string()
-            ),
-        }
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        store.experiment.entry(key.to_string()).or_default().insert(
+            NO_ID_OVERRIDE.to_string(),
+            ExperimentOverrides::GroupName(group_name.to_string()),
+        );
     }
 
     fn override_experiment_by_group_name_for_id(&self, key: &str, id: &str, group_name: &str) {
-        match self.store.write() {
-            Ok(mut store) => {
-                store
-                    .experiment
-                    .entry(key.to_string())
-                    .or_insert_with(HashMap::new)
-                    .insert(
-                        id.to_string(),
-                        ExperimentOverrides::GroupName(group_name.to_string()),
-                    );
-            }
-            Err(e) => log_e!(
-                TAG,
-                "Failed to set experiment override by group name for ID: {}",
-                e.to_string()
-            ),
-        }
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        store.experiment.entry(key.to_string()).or_default().insert(
+            id.to_string(),
+            ExperimentOverrides::GroupName(group_name.to_string()),
+        );
     }
 
     fn override_layer(&self, key: &str, value: HashMap<String, Value>) {
-        match self.store.write() {
-            Ok(mut store) => {
-                store
-                    .layer
-                    .entry(key.to_string())
-                    .or_insert_with(HashMap::new)
-                    .insert("".to_string(), value);
-            }
-            Err(e) => log_e!(TAG, "Failed to set layer override: {}", e.to_string()),
-        }
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        store
+            .layer
+            .entry(key.to_string())
+            .or_default()
+            .insert(NO_ID_OVERRIDE.to_string(), value);
     }
 
     fn override_layer_for_id(&self, key: &str, id: &str, value: HashMap<String, Value>) {
-        match self.store.write() {
-            Ok(mut store) => {
-                store
-                    .layer
-                    .entry(key.to_string())
-                    .or_insert_with(HashMap::new)
-                    .insert(id.to_string(), value);
-            }
-            Err(e) => log_e!(
-                TAG,
-                "Failed to set layer override for ID: {}",
-                e.to_string()
-            ),
-        }
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        store
+            .layer
+            .entry(key.to_string())
+            .or_default()
+            .insert(id.to_string(), value);
     }
 }
 
-impl StatsigLocalOverrideAdapter {
-    fn get_experiment_with_group_name(
-        &self,
-        opt_spec: Option<&Spec>,
-        group_name: &str,
-    ) -> Option<HashMap<String, Value>> {
-        if let Some(spec) = opt_spec {
-            for rule in &spec.rules {
-                if let Some(rule_group_name) = &rule.group_name {
-                    if rule_group_name == group_name {
-                        return rule.return_value.get_json();
-                    }
-                }
-            }
-        }
-        None
+fn find_override_for_user<T, F>(
+    user: &StatsigUser,
+    overrides: &HashMap<String, T>,
+    apply_override: F,
+    result: &mut EvaluatorResult<'_>,
+) -> bool
+where
+    F: Fn(&T, &mut EvaluatorResult<'_>),
+{
+    if check_user_id_override(user, overrides, &apply_override, result) {
+        return true;
     }
+
+    if check_custom_ids_override(user, overrides, &apply_override, result) {
+        return true;
+    }
+
+    check_default_override(overrides, apply_override, result)
+}
+
+fn mark_result_as_override(result: &mut EvaluatorResult<'_>) {
+    result.override_reason = Some(LOCAL_OVERRIDE_REASON);
+    result.rule_id = Some(&OVERRIDE_RULE_ID);
+}
+
+fn check_default_override<T, F>(
+    overrides: &HashMap<String, T>,
+    apply_override: F,
+    result: &mut EvaluatorResult<'_>,
+) -> bool
+where
+    F: Fn(&T, &mut EvaluatorResult<'_>),
+{
+    if let Some(override_value) = overrides.get(NO_ID_OVERRIDE) {
+        log_d!(TAG, "default override found");
+        apply_override(override_value, result);
+        mark_result_as_override(result);
+        return true;
+    }
+    false
+}
+
+fn check_user_id_override<T, F>(
+    user: &StatsigUser,
+    overrides: &HashMap<String, T>,
+    apply_override: F,
+    result: &mut EvaluatorResult<'_>,
+) -> bool
+where
+    F: Fn(&T, &mut EvaluatorResult<'_>),
+{
+    let user_id = match &user.user_id {
+        Some(id) => id,
+        None => return false,
+    };
+
+    let id_string = match &user_id.string_value {
+        Some(s) => s,
+        None => return false,
+    };
+
+    let override_value = match overrides.get(id_string) {
+        Some(v) => v,
+        None => return false,
+    };
+
+    log_d!(TAG, "override found for user ID {}", id_string);
+    apply_override(override_value, result);
+    mark_result_as_override(result);
+    true
+}
+
+fn check_custom_ids_override<T, F>(
+    user: &StatsigUser,
+    overrides: &HashMap<String, T>,
+    apply_override: F,
+    result: &mut EvaluatorResult<'_>,
+) -> bool
+where
+    F: Fn(&T, &mut EvaluatorResult<'_>),
+{
+    let custom_ids = match &user.custom_ids {
+        Some(ids) => ids,
+        None => return false,
+    };
+
+    for custom_id_value in custom_ids.values() {
+        let id_string = match &custom_id_value.string_value {
+            Some(s) => s,
+            None => continue,
+        };
+
+        let override_value = match overrides.get(id_string) {
+            Some(v) => v,
+            None => continue,
+        };
+
+        log_d!(TAG, "override found for custom ID {}", id_string);
+        apply_override(override_value, result);
+        mark_result_as_override(result);
+        return true;
+    }
+
+    false
+}
+
+fn get_experiment_with_group_name(
+    opt_spec: Option<&Spec>,
+    group_name: &str,
+) -> Option<HashMap<String, Value>> {
+    let spec = opt_spec?;
+
+    for rule in &spec.rules {
+        let rule_group_name = match &rule.group_name {
+            Some(rule_group_name) => rule_group_name,
+            None => continue,
+        };
+
+        if rule_group_name == group_name {
+            return rule.return_value.get_json();
+        }
+    }
+
+    None
 }
