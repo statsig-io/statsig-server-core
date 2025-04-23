@@ -10,6 +10,9 @@ obj
 mem-prof/
 output.txt
 
+docker_stats.svg
+docker_stats.csv
+
 # Binary Files
 libstatsig_ffi.dylib
 libstatsig_ffi.a
