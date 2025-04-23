@@ -808,6 +808,26 @@ impl Statsig {
 }
 
 // -------------------------
+//   User Store Functions
+// -------------------------
+impl Statsig {
+    pub fn identify(&self, user: &StatsigUser) {
+        let user_internal = self.internalize_user(user);
+
+        self.event_logger
+            .enqueue(QueuedEventPayload::CustomEvent(make_custom_event(
+                user_internal.to_loggable(),
+                StatsigEvent {
+                    event_name: "statsig::identify".to_string(),
+                    value: None,
+                    metadata: None,
+                    statsig_metadata: None,
+                },
+            )));
+    }
+}
+
+// -------------------------
 //   CMAB Functions
 // -------------------------
 

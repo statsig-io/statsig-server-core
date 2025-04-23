@@ -1,4 +1,7 @@
+mod utils;
 use std::{collections::HashMap, env, sync::Arc, thread::sleep, time::Duration};
+use utils::mock_event_logging_adapter::MockEventLoggingAdapter;
+use utils::mock_specs_adapter::MockSpecsAdapter;
 
 use statsig_rust::{
     dyn_value, evaluation::evaluation_types::AnyConfigEvaluation, hashing::djb2,
@@ -158,6 +161,35 @@ async fn test_user_agent_disabled() {
     let statsig_3 = Statsig::new(&get_sdk_key(), Some(Arc::new(opts_3)));
     statsig_3.initialize().await.unwrap();
     assert!(!statsig_3.check_gate(&user, "test_ua"));
+}
+
+#[tokio::test]
+async fn test_identify() {
+    let mock_event_logger = Arc::new(MockEventLoggingAdapter::new());
+    let opts = StatsigOptions {
+        event_logging_adapter: Some(mock_event_logger.clone()),
+        specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
+            "tests/data/eval_proj_dcs.json",
+        ))),
+        ..StatsigOptions::default()
+    };
+
+    let statsig = Statsig::new(&get_sdk_key(), Some(Arc::new(opts)));
+    statsig.initialize().await.unwrap();
+
+    let user = StatsigUser::with_user_id("test-user-for-identify".to_string());
+    statsig.identify(&user);
+
+    sleep(Duration::from_millis(1));
+    statsig.flush_events().await;
+
+    let first_event = mock_event_logger.force_get_first_event().await;
+    assert_eq!(first_event.get("eventName").unwrap(), "statsig::identify");
+    assert!(first_event.get("value").unwrap().is_null());
+    assert!(first_event.get("metadata").unwrap().is_null());
+
+    let user_obj = first_event.get("user").unwrap();
+    assert_eq!(user_obj.get("userID").unwrap(), "test-user-for-identify");
 }
 
 // Todo: rewrite this test such that it isn't reaching into internal implementation details
