@@ -59,8 +59,8 @@ export class MemProfDocker extends CommandBase {
     const tag = getDockerImageTag(options.os, options.arch);
 
     const actions = [
-      'cd /app/examples/python/mem-prof',
-      'pip install statsig-python-core',
+      'cd /app/examples/python/profiling',
+      'pip install /app/target/wheels/statsig_python_core*manylinux*.whl --force-reinstall',
       'python3 spec-sync.py',
     ].join(' && ');
 
@@ -97,7 +97,7 @@ export class MemProfDocker extends CommandBase {
 
       const stats = fs.readFileSync(getRootedPath('docker_stats.csv'), 'utf8');
       const timeline = fs.readFileSync(
-        getRootedPath('examples/python/mem-prof/timeline.csv'),
+        getRootedPath('examples/python/profiling/timeline.csv'),
         'utf8',
       );
       const svg = generateSvgChart(stats, timeline);

@@ -36,6 +36,5 @@ statsig = StatsigBasePy(network_func, sdk_key="secret-key", options=options)
 statsig.initialize().wait()
 mark_event("statsig_initialized")
 
-for i in range(5):
-    time.sleep(1)
-    mark_event(f"sleep_{i}_end")
+for i in range(10):
+    time.sleep(2)

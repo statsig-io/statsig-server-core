@@ -13,6 +13,7 @@ output.txt
 docker_stats.svg
 docker_stats.csv
 timeline.csv
+gpt_dcs_data.json
 
 # Binary Files
 libstatsig_ffi.dylib
