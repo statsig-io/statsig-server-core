@@ -6,6 +6,7 @@ use crate::observability::observability_client_adapter::{MetricType, Observabili
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::specs_response::spec_types::{SpecsResponseFull, SpecsResponseNoUpdates};
+use crate::specs_response::spec_types_encoded::DecodedSpecsResponse;
 use crate::{
     log_d, log_e, log_error_to_statsig_and_console, SpecsInfo, SpecsSource, SpecsUpdate,
     SpecsUpdateListener, StatsigErr, StatsigRuntime,
@@ -74,18 +75,19 @@ impl SpecStore {
     }
 
     pub fn set_values(&self, values: SpecsUpdate) -> Result<(), StatsigErr> {
-        let dcs: SpecsResponseFull = match self.parse_specs_response(&values) {
-            Ok(Some(full)) => full,
-            Ok(None) => {
-                self.ops_stats_log_no_update(values.source);
-                return Ok(());
-            }
-            Err(e) => {
-                return Err(e);
-            }
-        };
+        let full_response: DecodedSpecsResponse<SpecsResponseFull> =
+            match self.parse_specs_response(&values) {
+                Ok(Some(full)) => full,
+                Ok(None) => {
+                    self.ops_stats_log_no_update(values.source);
+                    return Ok(());
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            };
 
-        if self.are_current_values_newer(&dcs) {
+        if self.are_current_values_newer(&full_response) {
             return Ok(());
         }
 
@@ -97,14 +99,15 @@ impl SpecStore {
             }
         };
 
-        self.try_update_global_configs(&dcs);
+        self.try_update_global_configs(&full_response.specs);
 
         let now = Utc::now().timestamp_millis() as u64;
         let prev_source = mut_values.source.clone();
 
-        mut_values.values = dcs;
+        mut_values.values = full_response.specs;
         mut_values.time_received_at = Some(now);
         mut_values.source = values.source.clone();
+        mut_values.decompression_dict = full_response.decompression_dict.clone();
 
         self.try_update_data_store(&mut_values.source, values.data, now);
         self.ops_stats_log_config_propogation_diff(
@@ -123,19 +126,31 @@ impl SpecStore {
     fn parse_specs_response(
         &self,
         values: &SpecsUpdate,
-    ) -> Result<Option<SpecsResponseFull>, StatsigErr> {
-        let full_result = serde_json::from_str::<SpecsResponseFull>(&values.data);
+    ) -> Result<Option<DecodedSpecsResponse<SpecsResponseFull>>, StatsigErr> {
+        let compression_dict = self
+            .data
+            .read()
+            .map(|data| data.decompression_dict.clone())
+            .ok()
+            .flatten();
+        let full_result = DecodedSpecsResponse::<SpecsResponseFull>::from_slice(
+            values.data.as_bytes(),
+            compression_dict.as_ref(),
+        );
         if let Ok(result) = full_result {
-            if result.has_updates {
+            if result.specs.has_updates {
                 return Ok(Some(result));
             }
 
             return Ok(None);
         }
 
-        let no_updates_result = serde_json::from_str::<SpecsResponseNoUpdates>(&values.data);
+        let no_updates_result = DecodedSpecsResponse::<SpecsResponseNoUpdates>::from_slice(
+            values.data.as_bytes(),
+            compression_dict.as_ref(),
+        );
         if let Ok(result) = no_updates_result {
-            if !result.has_updates {
+            if !result.specs.has_updates {
                 return Ok(None);
             }
         }
@@ -212,7 +227,10 @@ impl SpecStore {
         );
     }
 
-    fn are_current_values_newer(&self, dcs: &SpecsResponseFull) -> bool {
+    fn are_current_values_newer(
+        &self,
+        full_response: &DecodedSpecsResponse<SpecsResponseFull>,
+    ) -> bool {
         let guard = match self.data.read() {
             Ok(guard) => guard,
             Err(e) => {
@@ -223,16 +241,17 @@ impl SpecStore {
 
         let curr_values = &guard.values;
         let curr_checksum = curr_values.checksum.as_deref().unwrap_or_default();
-        let new_checksum = dcs.checksum.as_deref().unwrap_or_default();
+        let new_checksum = full_response.specs.checksum.as_deref().unwrap_or_default();
 
-        let cached_time_is_newer = curr_values.time > 0 && curr_values.time > dcs.time;
+        let cached_time_is_newer =
+            curr_values.time > 0 && curr_values.time > full_response.specs.time;
         let checksums_match = !curr_checksum.is_empty() && curr_checksum == new_checksum;
 
         if cached_time_is_newer || checksums_match {
             log_d!(
                     TAG,
                     "Received values for [time: {}, checksum: {}], but currently has values for [time: {}, checksum: {}]. Ignoring values.",
-                    dcs.time,
+                    full_response.specs.time,
                     new_checksum,
                     curr_values.time,
                     curr_checksum,
