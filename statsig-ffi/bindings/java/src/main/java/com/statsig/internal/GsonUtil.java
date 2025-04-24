@@ -7,12 +7,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class GsonUtil {
-    private static final Gson gson = new GsonBuilder()
+    private static final Gson GSON = new GsonBuilder()
             .registerTypeAdapter(Map.class, new MapDeserializer())
             .create();
 
     public static Gson getGson() {
-        return gson;
+        return GSON;
     }
 
      static class MapDeserializer implements JsonDeserializer<Map<String, JsonElement>> {

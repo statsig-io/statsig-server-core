@@ -26,7 +26,8 @@ public class ExperimentTest {
         // 2nd exposures
         assertNotNull(experiment.getSecondaryExposures());
         assertEquals(2, experiment.getSecondaryExposures().size());
-        assertEquals("[{gate=global_holdout, gateValue=false, ruleID=3QoA4ncNdVGBaMt3N1KYjz:0.50:12}, {gate=exp_holdout, gateValue=false, ruleID=1rEqLOpCROaRafv7ubGgax111}]",
+        assertEquals("[{gate=global_holdout, gateValue=false, ruleID=3QoA4ncNdVGBaMt3N1KYjz:0.50:12}, " +
+                "{gate=exp_holdout, gateValue=false, ruleID=1rEqLOpCROaRafv7ubGgax111}]",
                 experiment.getSecondaryExposures().toString());
 
         // raw json

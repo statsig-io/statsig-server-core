@@ -12,7 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
 public class Statsig {
-    private static final Gson gson = GsonUtil.getGson();
+    private static final Gson GSON = GsonUtil.getGson();
 
     private volatile String ref;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -95,7 +95,7 @@ public class Statsig {
 
     public String[] getFieldsNeededForGate(String gateName) {
         String resultJSON = StatsigJNI.statsigGetFieldsNeededForGate(ref, gateName);
-        return resultJSON == null ? new String[0] : gson.fromJson(resultJSON, String[].class);
+        return resultJSON == null ? new String[0] : GSON.fromJson(resultJSON, String[].class);
     }
 
     public Experiment getExperiment(StatsigUser user, String experimentName) {
@@ -114,12 +114,12 @@ public class Statsig {
 
     public String[] getFieldsNeededForExperiment(String experimentName) {
         String resultJSON = StatsigJNI.statsigGetFieldsNeededForExperiment(ref, experimentName);
-        return resultJSON == null ? new String[0] : gson.fromJson(resultJSON, String[].class);
+        return resultJSON == null ? new String[0] : GSON.fromJson(resultJSON, String[].class);
     }
 
     public DynamicConfig getDynamicConfig(StatsigUser user, String configName) {
         String configJson = StatsigJNI.statsigGetDynamicConfig(ref, user.getRef(), configName, null);
-        DynamicConfig dynamicConfig = gson.fromJson(configJson, DynamicConfig.class);
+        DynamicConfig dynamicConfig = GSON.fromJson(configJson, DynamicConfig.class);
         if (dynamicConfig != null) {
             dynamicConfig.setRawJson(configJson);
         }
@@ -128,7 +128,7 @@ public class Statsig {
 
     public DynamicConfig getDynamicConfig(StatsigUser user, String configName, GetDynamicConfigOptions options) {
         String configJson = StatsigJNI.statsigGetDynamicConfig(ref, user.getRef(), configName, options);
-        DynamicConfig dynamicConfig = gson.fromJson(configJson, DynamicConfig.class);
+        DynamicConfig dynamicConfig = GSON.fromJson(configJson, DynamicConfig.class);
         if (dynamicConfig != null) {
             dynamicConfig.setRawJson(configJson);
         }
@@ -141,12 +141,12 @@ public class Statsig {
 
     public String[] getFieldsNeededForDynamicConfig(String configName) {
         String resultJSON = StatsigJNI.statsigGetFieldsNeededForDynamicConfig(ref, configName);
-        return resultJSON == null ? new String[0] : gson.fromJson(resultJSON, String[].class);
+        return resultJSON == null ? new String[0] : GSON.fromJson(resultJSON, String[].class);
     }
 
     public Layer getLayer(StatsigUser user, String layerName) {
         String layerJson = StatsigJNI.statsigGetLayer(ref, user.getRef(), layerName, null);
-        Layer layer = gson.fromJson(layerJson, Layer.class);
+        Layer layer = GSON.fromJson(layerJson, Layer.class);
         if (layer != null) {
             // Set the Statsig reference in the Layer instance
             layer.setStatsigInstance(this);
@@ -157,7 +157,7 @@ public class Statsig {
 
     public Layer getLayer(StatsigUser user, String layerName, GetLayerOptions options) {
         String layerJson = StatsigJNI.statsigGetLayer(ref, user.getRef(), layerName, options);
-        Layer layer = gson.fromJson(layerJson, Layer.class);
+        Layer layer = GSON.fromJson(layerJson, Layer.class);
         if (layer != null) {
             // Set the Statsig reference in the Layer instance
             layer.setStatsigInstance(this);
@@ -173,12 +173,12 @@ public class Statsig {
 
     public String[] getFieldsNeededForLayer(String layerName) {
         String resultJSON = StatsigJNI.statsigGetFieldsNeededForLayer(ref, layerName);
-        return resultJSON == null ? new String[0] : gson.fromJson(resultJSON, String[].class);
+        return resultJSON == null ? new String[0] : GSON.fromJson(resultJSON, String[].class);
     }
 
     public FeatureGate getFeatureGate(StatsigUser user, String gateName) {
         String gateJson = StatsigJNI.statsigGetFeatureGate(ref, user.getRef(), gateName, null);
-        FeatureGate featureGate = gson.fromJson(gateJson, FeatureGate.class);
+        FeatureGate featureGate = GSON.fromJson(gateJson, FeatureGate.class);
         if (featureGate != null) {
             featureGate.setRawJson(gateJson);
         }
@@ -187,7 +187,7 @@ public class Statsig {
 
     public FeatureGate getFeatureGate(StatsigUser user, String gateName, CheckGateOptions options) {
         String gateJson = StatsigJNI.statsigGetFeatureGate(ref, user.getRef(), gateName, options);
-        FeatureGate featureGate = gson.fromJson(gateJson, FeatureGate.class);
+        FeatureGate featureGate = GSON.fromJson(gateJson, FeatureGate.class);
         if (featureGate != null) {
             featureGate.setRawJson(gateJson);
         }
@@ -196,7 +196,7 @@ public class Statsig {
 
     public CMABRankedVariant[] getCMABRankedVariants(StatsigUser user, String cmabName) {
         String cmabJson = StatsigJNI.statsigGetCMABRankedVariants(ref, user.getRef(), cmabName);
-        CMABRankedVariant[] cmabRankedVariants = gson.fromJson(cmabJson, CMABRankedVariant[].class);
+        CMABRankedVariant[] cmabRankedVariants = GSON.fromJson(cmabJson, CMABRankedVariant[].class);
         return cmabRankedVariants;
     }
 
@@ -206,7 +206,7 @@ public class Statsig {
 
     public ParameterStore getParameterStore(StatsigUser user, String parameterStoreName) {
         String storeJson = StatsigJNI.statsigGetParameterStore(ref, parameterStoreName);
-        ParameterStore store = gson.fromJson(storeJson, ParameterStore.class);
+        ParameterStore store = GSON.fromJson(storeJson, ParameterStore.class);
         if (store != null) {
             // Set the Statsig reference in the Layer instance
             store.setStatsigInstance(this);
@@ -247,7 +247,7 @@ public class Statsig {
 
     public Map<String, Object> getMapFromParameterStore(StatsigUser user, String parameterStoreName,
             String parameterName, Map<String, Object> defaultValue) {
-        String defaultValueJSON = defaultValue == null ? null : gson.toJson(defaultValue);
+        String defaultValueJSON = defaultValue == null ? null : GSON.toJson(defaultValue);
         String result = StatsigJNI.statsigGetObjectParameterFromParameterStore(ref, user.getRef(), parameterStoreName,
                 parameterName, defaultValueJSON);
         if (result == null) {
@@ -255,7 +255,7 @@ public class Statsig {
         }
         Type mapType = new TypeToken<Map<String, Object>>() {
         }.getType();
-        Map<String, Object> map = gson.fromJson(result, mapType);
+        Map<String, Object> map = GSON.fromJson(result, mapType);
         if (map == null) {
             return defaultValue;
         }
@@ -264,10 +264,10 @@ public class Statsig {
 
     public Object[] getArrayFromParameterStore(StatsigUser user, String parameterStoreName, String parameterName,
             Object[] defaultValue) {
-        String defaultValueJSON = defaultValue == null ? null : gson.toJson(defaultValue);
+        String defaultValueJSON = defaultValue == null ? null : GSON.toJson(defaultValue);
         String result = StatsigJNI.statsigGetArrayParameterFromParameterStore(ref, user.getRef(), parameterStoreName,
                 parameterName, defaultValueJSON);
-        Object[] array = gson.fromJson(result, Object[].class);
+        Object[] array = GSON.fromJson(result, Object[].class);
         if (array == null) {
             return defaultValue;
         }

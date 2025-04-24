@@ -6,7 +6,7 @@ import java.util.Map;
 import com.google.gson.*;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
-import com.statsig.internal.GsonUtil;
+
 
 public class Experiment extends BaseConfig {
     @SerializedName("group_name")

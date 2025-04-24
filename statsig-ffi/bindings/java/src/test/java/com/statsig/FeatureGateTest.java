@@ -10,13 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class FeatureGateTest {
-    private static final Gson gson = GsonUtil.getGson();
+    private static final Gson GSON = GsonUtil.getGson();
 
     @Test
     public void testGateDeserialization() throws IOException {
         String json = TestUtils.loadJsonFromFile("gate.json");
 
-        FeatureGate gate = gson.fromJson(json, FeatureGate.class);
+        FeatureGate gate = GSON.fromJson(json, FeatureGate.class);
 
         assertEquals("cPaGkTiRBuP1SfwoxRtTvhT6Vxpa4v/342Z1N0pXUlc=", gate.name);
         assertEquals("6X3qJgyfwA81IJ2dxI7lYp17", gate.ruleID);

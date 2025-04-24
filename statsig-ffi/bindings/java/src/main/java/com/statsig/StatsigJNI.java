@@ -5,11 +5,11 @@ import java.net.URL;
 import java.util.Map;
 
 class StatsigJNI {
-    private static final boolean libraryLoaded;
+    private static final boolean LIBRARY_LOADED;
     private static final String TAG = "StatsigJNI";
 
     static boolean isLibraryLoaded() {
-        return libraryLoaded;
+        return LIBRARY_LOADED;
     }
 
     static {
@@ -18,9 +18,9 @@ class StatsigJNI {
 
         OutputLogger.logInfo(TAG, "Detected OS: " + osName + " Arch: " + osArch);
 
-        libraryLoaded = loadNativeLibrary(osName, osArch);
+        LIBRARY_LOADED = loadNativeLibrary(osName, osArch);
 
-        if (!libraryLoaded) {
+        if (!LIBRARY_LOADED) {
             logNativeLibraryError(osName, osArch);
         }
     }
@@ -205,7 +205,8 @@ class StatsigJNI {
             OutputLogger.logError(
                     TAG,
                     String.format("Error: Failed to load native library for the specific OS and architecture. " +
-                            "Operating System: %s, Architecture: %s. Please ensure that the necessary dependencies have been added to your project configuration.\n",
+                            "Operating System: %s, Architecture: %s. " +
+                            "Please ensure that the necessary dependencies have been added to your project configuration.\n",
                             osName, osArch));
             OutputLogger.logError(TAG, e.getMessage());
             return false;

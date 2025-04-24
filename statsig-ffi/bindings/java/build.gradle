@@ -2,7 +2,7 @@ plugins {
     id 'java'
     id 'maven-publish'
     id 'signing'
-    // id 'checkstyle'
+    id 'checkstyle'
 }
 
 group 'com.statsig'
@@ -214,8 +214,8 @@ signing {
     sign publishing.publications['mavenJava']
 }
 
-//checkstyle {
-//    toolVersion = "9.2"
-//    configFile = rootProject.file("config/checkstyle.xml")
-//    ignoreFailures = true // TODO we need change to false in the future
-//}
+checkstyle {
+    toolVersion = "9.2"
+    configFile = rootProject.file("config/checkstyle.xml")
+    ignoreFailures = true // TODO we need change to false in the future
+}
