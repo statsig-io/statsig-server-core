@@ -10,8 +10,8 @@ use serde_json::json;
 macro_rules! append_string_value {
     ($values:expr, $user_data:expr, $field:ident) => {
         if let Some(field) = &$user_data.$field {
-            if let Some(string_value) = &field.string_value {
-                $values += string_value;
+            if let Some(dyn_str) = &field.string_value {
+                $values += &dyn_str.value;
                 $values += "|";
             }
         }
@@ -25,9 +25,9 @@ macro_rules! append_sorted_string_values {
             keys.sort();
 
             for key in keys {
-                if let Some(string_value) = &map[key].string_value {
+                if let Some(dyn_str) = &map[key].string_value {
                     $values += key;
-                    $values += string_value;
+                    $values += &dyn_str.value;
                 }
             }
         }
@@ -141,24 +141,28 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
     }
 
     pub fn get_sampling_key(&self) -> String {
-        let user_data = &self.user_data;
+        let user_data = self.user_data;
 
-        let mut user_key = format!(
-            "u:{};",
-            user_data
-                .user_id
-                .as_ref()
-                .and_then(|id| id.string_value.as_deref())
-                .unwrap_or("")
-        );
+        let mut user_key = "u:".to_string();
+        if let Some(user_id) = user_data
+            .user_id
+            .as_ref()
+            .and_then(|id| id.string_value.as_ref().map(|s| &s.value))
+        {
+            user_key += user_id;
+        }
 
-        if let Some(custom_ids) = user_data.custom_ids.as_ref() {
-            for (key, val) in custom_ids {
-                if let Some(string_value) = &val.string_value {
-                    user_key.push_str(&format!("{key}:{string_value};"));
-                }
-            }
+        let custom_ids = match user_data.custom_ids.as_ref() {
+            Some(custom_ids) => custom_ids,
+            None => return user_key,
         };
+
+        for (key, val) in custom_ids {
+            if let Some(dyn_str) = &val.string_value {
+                let string_value = &dyn_str.value;
+                user_key.push_str(&format!("{key}:{string_value};"));
+            }
+        }
 
         user_key
     }

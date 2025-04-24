@@ -1,8 +1,9 @@
 use chrono::{DateTime, NaiveDateTime};
-use regex_lite::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value as JsonValue};
 use std::collections::HashMap;
+
+use super::dynamic_string::DynamicString;
 
 #[macro_export]
 macro_rules! dyn_value {
@@ -18,11 +19,9 @@ pub struct DynamicValue {
     pub int_value: Option<i64>,
     pub float_value: Option<f64>,
     pub timestamp_value: Option<i64>,
-    pub string_value: Option<String>,
-    pub lowercase_string_value: Option<String>,
+    pub string_value: Option<DynamicString>,
     pub array_value: Option<Vec<DynamicValue>>,
     pub object_value: Option<HashMap<String, DynamicValue>>,
-    pub regex_value: Option<Regex>,
     pub json_value: JsonValue,
 }
 
@@ -39,8 +38,7 @@ impl From<String> for DynamicValue {
             int_value,
             json_value,
             timestamp_value,
-            lowercase_string_value: Some(value.to_lowercase()),
-            string_value: Some(value),
+            string_value: Some(DynamicString::from(value)),
             ..Self::default()
         }
     }
@@ -58,8 +56,7 @@ impl From<usize> for DynamicValue {
             json_value: json!(value),
             int_value: Some(value as i64),
             float_value: Some(value as f64),
-            string_value: Some(value.to_string()),
-            lowercase_string_value: Some(value.to_string()),
+            string_value: Some(DynamicString::from(value.to_string())),
             ..Self::default()
         }
     }
@@ -70,8 +67,7 @@ impl From<i64> for DynamicValue {
         DynamicValue {
             int_value: Some(value),
             float_value: Some(value as f64),
-            string_value: Some(value.to_string()),
-            lowercase_string_value: Some(value.to_string()),
+            string_value: Some(DynamicString::from(value.to_string())),
             json_value: json!(value),
             ..Self::default()
         }
@@ -89,8 +85,7 @@ impl From<f64> for DynamicValue {
         DynamicValue {
             int_value: Some(value as i64),
             float_value: Some(value),
-            string_value: Some(value.to_string()),
-            lowercase_string_value: Some(value.to_string()),
+            string_value: Some(DynamicString::from(value.to_string())),
             json_value: json!(value),
             ..Self::default()
         }
@@ -101,8 +96,7 @@ impl From<bool> for DynamicValue {
     fn from(value: bool) -> Self {
         DynamicValue {
             bool_value: Some(value),
-            string_value: Some(value.to_string()),
-            lowercase_string_value: Some(value.to_string()),
+            string_value: Some(DynamicString::from(value.to_string())),
             json_value: json!(value),
             ..Self::default()
         }
@@ -126,24 +120,21 @@ impl From<JsonValue> for DynamicValue {
             },
             JsonValue::Bool(b) => DynamicValue {
                 bool_value: Some(b),
-                string_value: Some(b.to_string()),
+                string_value: Some(DynamicString::from(b.to_string())),
                 json_value,
-                lowercase_string_value: Some(b.to_string().to_lowercase()),
                 ..DynamicValue::new()
             },
             JsonValue::Number(n) => DynamicValue {
                 float_value: n.as_f64(),
                 int_value: n.as_i64(),
-                string_value: Some(json_value.to_string()),
-                lowercase_string_value: Some(json_value.to_string()),
+                string_value: Some(DynamicString::from(json_value.to_string())),
                 json_value,
                 ..DynamicValue::new()
             },
             JsonValue::String(s) => DynamicValue::from(s),
             JsonValue::Array(arr) => DynamicValue {
                 array_value: Some(arr.into_iter().map(DynamicValue::from).collect()),
-                string_value: Some(json_value.to_string()),
-                lowercase_string_value: Some(json_value.to_string().to_lowercase()),
+                string_value: Some(DynamicString::from(json_value.to_string())),
                 json_value,
                 ..DynamicValue::new()
             },
@@ -174,14 +165,6 @@ impl DynamicValue {
         DynamicValue {
             int_value: Some(timestamp),
             ..DynamicValue::default()
-        }
-    }
-
-    pub fn compile_regex(&mut self) {
-        if let Some(value) = &self.string_value {
-            if let Ok(regex) = Regex::new(value) {
-                self.regex_value = Some(regex);
-            }
         }
     }
 

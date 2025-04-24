@@ -2,6 +2,7 @@ use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods, PyList, PyModule};
 use pyo3::{Bound, PyAny, PyErr, PyObject, PyResult, Python};
 use serde_json::{json, Value};
+use statsig_rust::evaluation::dynamic_string::DynamicString;
 use statsig_rust::{log_e, DynamicValue};
 use std::collections::HashMap;
 
@@ -154,12 +155,12 @@ pub fn py_any_to_dynamic_value(value: &Bound<PyAny>) -> PyResult<DynamicValue> {
         }
 
         let json_string = serde_json::to_string(&str_vec).unwrap_or_else(|_| "[]".to_string());
+        let dyn_str = DynamicString::from(json_string);
 
         return Ok(DynamicValue {
             array_value: Some(vec.clone()),
-            string_value: Some(json_string.clone()),
+            string_value: Some(dyn_str),
             json_value: json!(vec),
-            lowercase_string_value: Some(json_string.to_lowercase()),
             ..DynamicValue::default()
         });
     }

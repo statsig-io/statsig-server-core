@@ -77,9 +77,13 @@ fn test_set_values_and_get_config_str_value() {
     spec_store.set_values(specs_update).unwrap();
 
     assert_eq!(
-        global_config_instance
-            .use_sdk_config_value("sampling_mode", |v| v.unwrap().string_value.clone()),
-        Some("shadow".to_string())
+        global_config_instance.use_sdk_config_value("sampling_mode", |v| v
+            .unwrap()
+            .string_value
+            .clone()
+            .unwrap()
+            .value),
+        "shadow".to_string()
     );
     assert_eq!(
         global_config_instance.use_sdk_config_value("non_existent_key", |v| v.cloned()),

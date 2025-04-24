@@ -1,50 +1,59 @@
-use crate::{unwrap_or_return, DynamicValue};
+use crate::{
+    evaluation::{dynamic_string::DynamicString, evaluator_value::EvaluatorValue},
+    unwrap_or_return, DynamicValue,
+};
 
 pub(crate) fn compare_strings_in_array(
     value: &DynamicValue,
-    target_value: &DynamicValue,
+    target_value: &EvaluatorValue,
     op: &str,
     ignore_case: bool,
 ) -> bool {
-    let empty_str = String::new();
+    let empty_str = DynamicString::from(String::new());
     let value_str = value.string_value.as_ref().unwrap_or(&empty_str);
-    let lowered_value_str = value.lowercase_string_value.as_ref().unwrap_or(&empty_str);
 
     let result = {
-        if op == "any" || op == "none" {
-            if let Some(dict) = &target_value.object_value {
-                let contains = dict.contains_key(value_str);
+        if let Some(keyed_lookup) = &target_value.object_value {
+            if ignore_case && (op == "any" || op == "none") {
+                let contains = keyed_lookup.contains_key(&value_str.lowercased_value);
                 return if op == "none" { !contains } else { contains };
             }
         }
 
-        let array = unwrap_or_return!(&target_value.array_value, false);
+        let array_value = unwrap_or_return!(&target_value.array_value, false);
+        if ignore_case && (op == "any" || op == "none") {
+            let contains = array_value.contains_key(&value_str.lowercased_value);
+            return if op == "none" { !contains } else { contains };
+        }
 
-        array.iter().any(|current| {
-            let (curr_str, curr_lower_str) =
-                match (&current.string_value, &current.lowercase_string_value) {
-                    (Some(s), Some(ls)) => (s, ls),
-                    _ => return false,
-                };
+        let mut comparison_result = false;
+        for (lowercase_str, (_, current_str)) in array_value {
             let left = if ignore_case {
-                lowered_value_str
+                &value_str.lowercased_value
             } else {
-                value_str
-            };
-            let right = if ignore_case {
-                curr_lower_str
-            } else {
-                curr_str
+                &value_str.value
             };
 
-            match op {
+            let right = if ignore_case {
+                lowercase_str
+            } else {
+                current_str
+            };
+
+            comparison_result = match op {
                 "any" | "none" | "any_case_sensitive" | "none_case_sensitive" => left.eq(right),
                 "str_starts_with_any" => left.starts_with(right),
                 "str_ends_with_any" => left.ends_with(right),
                 "str_contains_any" | "str_contains_none" => left.contains(right),
-                _ => false,
+                _ => false, // todo: unsupported?
+            };
+
+            if comparison_result {
+                break;
             }
-        })
+        }
+
+        comparison_result
     };
 
     if op == "none" || op == "none_case_sensitive" || op == "str_contains_none" {
@@ -55,24 +64,22 @@ pub(crate) fn compare_strings_in_array(
 
 #[cfg(test)]
 mod tests {
-    use crate::dyn_value;
     use crate::evaluation::comparisons::compare_strings_in_array;
-    use serde_json::json;
+    use crate::{dyn_value, test_only_make_eval_value};
 
     #[test]
     fn test_array_contains() {
         let needle = dyn_value!("Foo");
-        let haystack = dyn_value!(json!(vec!["boo", "bar", "foo", "far", "zoo", "zar"]));
+        let haystack = test_only_make_eval_value!(["boo", "bar", "foo", "far", "zoo", "zar"]);
 
         assert!(compare_strings_in_array(&needle, &haystack, "any", true));
-
         assert!(!compare_strings_in_array(&needle, &haystack, "any", false));
     }
 
     #[test]
     fn test_array_does_not_contain() {
         let needle = dyn_value!("Foo");
-        let haystack = dyn_value!(json!(vec!["boo", "bar", "far", "zoo", "zar"]));
+        let haystack = test_only_make_eval_value!(vec!["boo", "bar", "far", "zoo", "zar"]);
 
         assert!(!compare_strings_in_array(&needle, &haystack, "any", true));
 
@@ -82,7 +89,7 @@ mod tests {
     #[test]
     fn test_str_starting_with() {
         let needle = dyn_value!("daniel@statsig.com");
-        let haystack = dyn_value!(json!(vec!["tore", "daniel"]));
+        let haystack = test_only_make_eval_value!(vec!["tore", "daniel"]);
 
         assert!(compare_strings_in_array(
             &needle,
@@ -95,7 +102,7 @@ mod tests {
     #[test]
     fn test_str_ending_with() {
         let needle = dyn_value!("tore@statsig.com");
-        let haystack = dyn_value!(json!(vec!["@statsig.io", "@statsig.com"]));
+        let haystack = test_only_make_eval_value!(vec!["@statsig.io", "@statsig.com"]);
 
         assert!(compare_strings_in_array(
             &needle,
@@ -108,13 +115,55 @@ mod tests {
     #[test]
     fn test_str_contains_any() {
         let needle = dyn_value!("daniel@statsig.io");
-        let haystack = dyn_value!(json!(vec!["sigstat", "statsig"]));
+        let haystack = test_only_make_eval_value!(vec!["sigstat", "statsig"]);
 
         assert!(compare_strings_in_array(
             &needle,
             &haystack,
             "str_contains_any",
             true
+        ));
+    }
+
+    #[test]
+    fn test_str_none_case_sensitive() {
+        let haystack = test_only_make_eval_value!(vec!["HELLO", "WORLD"]);
+
+        let upper_needle = dyn_value!("HELLO");
+        assert!(!compare_strings_in_array(
+            &upper_needle,
+            &haystack,
+            "none_case_sensitive",
+            false
+        ));
+
+        let lower_needle = dyn_value!("hello");
+        assert!(compare_strings_in_array(
+            &lower_needle,
+            &haystack,
+            "none_case_sensitive",
+            false
+        ));
+    }
+
+    #[test]
+    fn test_str_any_case_sensitive() {
+        let haystack = test_only_make_eval_value!(vec!["HELLO", "WORLD"]);
+
+        let upper_needle = dyn_value!("HELLO");
+        assert!(compare_strings_in_array(
+            &upper_needle,
+            &haystack,
+            "any_case_sensitive",
+            false
+        ));
+
+        let lower_needle = dyn_value!("hello");
+        assert!(!compare_strings_in_array(
+            &lower_needle,
+            &haystack,
+            "any_case_sensitive",
+            false
         ));
     }
 }

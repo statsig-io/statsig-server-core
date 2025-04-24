@@ -184,8 +184,8 @@ macro_rules! add_hashmap_getter_setter {
                 };
 
                 for (key, value) in value_map {
-                    if let Some(value) = &value.string_value {
-                        result.insert(key.to_string(), value.clone());
+                    if let Some(dyn_str) = &value.string_value {
+                        result.insert(key.to_string(), dyn_str.value.clone());
                     }
                 }
 
@@ -229,7 +229,7 @@ macro_rules! add_string_getter_setter {
             #[napi(getter, js_name = $field_name)]
             pub fn $field_accessor(&self) -> Option<String> {
                 match &self.inner.$field_accessor {
-                    Some(value) => value.string_value.clone(),
+                    Some(value) => value.string_value.clone().map(|s| s.value),
                     _ => None,
                 }
             }

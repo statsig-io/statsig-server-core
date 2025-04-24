@@ -1,8 +1,11 @@
-use crate::{unwrap_or_return, DynamicValue};
+use crate::{evaluation::evaluator_value::EvaluatorValue, unwrap_or_return, DynamicValue};
 
-pub(crate) fn compare_versions(left: &DynamicValue, right: &DynamicValue, op: &str) -> bool {
-    let left_str = unwrap_or_return!(&left.string_value, false);
-    let right_str = unwrap_or_return!(&right.string_value, false);
+pub(crate) fn compare_versions(left: &DynamicValue, right: &EvaluatorValue, op: &str) -> bool {
+    let left_dyn_str = unwrap_or_return!(&left.string_value, false);
+    let right_dyn_str = unwrap_or_return!(&right.string_value, false);
+
+    let left_str = &left_dyn_str.value;
+    let right_str = &right_dyn_str.value;
 
     fn comparison(left_str: &str, right_str: &str) -> i32 {
         let left_version = left_str.split('-').next().unwrap_or("");
@@ -59,13 +62,13 @@ pub(crate) fn compare_versions(left: &DynamicValue, right: &DynamicValue, op: &s
 
 #[cfg(test)]
 mod tests {
-    use crate::dyn_value;
     use crate::evaluation::comparisons::compare_versions;
+    use crate::{dyn_value, test_only_make_eval_value};
 
     #[test]
     fn test_version_comparison_equal() {
         let left = dyn_value!("1.2.3");
-        let right = dyn_value!("1.2.3");
+        let right = test_only_make_eval_value!("1.2.3");
 
         let result = compare_versions(&left, &right, "version_eq");
         assert!(result);
@@ -74,7 +77,7 @@ mod tests {
     #[test]
     fn test_version_comparison_greater_than() {
         let left = dyn_value!("1.2.4");
-        let right = dyn_value!("1.2.3");
+        let right = test_only_make_eval_value!("1.2.3");
 
         let result = compare_versions(&left, &right, "version_gt");
         assert!(result);
@@ -83,7 +86,7 @@ mod tests {
     #[test]
     fn test_version_comparison_less_than() {
         let left = dyn_value!("1.2.3");
-        let right = dyn_value!("1.2.4");
+        let right = test_only_make_eval_value!("1.2.4");
 
         let result = compare_versions(&left, &right, "version_lt");
         assert!(result);

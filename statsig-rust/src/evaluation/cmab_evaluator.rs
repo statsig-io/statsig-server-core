@@ -308,10 +308,12 @@ fn get_cmab_score_for_group(
     score += config_for_group.intercept;
     score += config_for_group.alpha;
     for (key, value) in weights_categorical {
-        let user_value = ctx.user.get_user_value(&Some(DynamicString::from(key)));
+        let user_value = ctx
+            .user
+            .get_user_value(&Some(DynamicString::from(key.clone())));
         let user_value_string = match user_value {
             Some(v) => match &v.string_value {
-                Some(s) => s.clone(),
+                Some(s) => s.value.clone(),
                 None => v.json_value.to_string(),
             },
             None => continue,
@@ -324,7 +326,9 @@ fn get_cmab_score_for_group(
     }
 
     for (key, value) in weights_numerical {
-        let user_value = ctx.user.get_user_value(&Some(DynamicString::from(key)));
+        let user_value = ctx
+            .user
+            .get_user_value(&Some(DynamicString::from(key.clone())));
         let user_value_float = match user_value {
             Some(v) => match v.float_value {
                 Some(f) => f,

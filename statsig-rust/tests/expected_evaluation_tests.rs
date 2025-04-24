@@ -235,3 +235,18 @@ async fn test_many_rules_ua_parser() {
 
     statsig.shutdown().await.unwrap();
 }
+
+#[tokio::test]
+async fn test_null_operator() {
+    let statsig = setup(None).await;
+
+    let user = StatsigUser {
+        ..StatsigUser::with_user_id("9".into())
+    };
+
+    let gate = statsig.get_feature_gate(&user, "test_null_operator");
+    assert!(gate.value);
+    assert_eq!(gate.rule_id, "5kiqP6V3pTnL6GCbm5Vgtg");
+
+    statsig.shutdown().await.unwrap();
+}

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::Value as JsonValue;
+use serde_json::{Value as JsonValue, Value};
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Eq, Debug)]
 pub struct DynamicString {
     pub value: String,
     pub lowercased_value: String,
@@ -37,11 +37,28 @@ impl<'de> Deserialize<'de> for DynamicString {
     }
 }
 
-impl From<&String> for DynamicString {
-    fn from(value: &String) -> Self {
+impl PartialEq for DynamicString {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl From<Value> for DynamicString {
+    fn from(value: Value) -> Self {
+        let str_value = match value.as_str() {
+            Some(value) => value.to_string(),
+            None => value.to_string(),
+        };
+        DynamicString::from(str_value)
+    }
+}
+
+impl From<String> for DynamicString {
+    fn from(value: String) -> Self {
+        let lowercased_value = value.to_lowercase();
         DynamicString {
-            value: value.clone(),
-            lowercased_value: value.clone().to_lowercase(),
+            value,
+            lowercased_value,
         }
     }
 }

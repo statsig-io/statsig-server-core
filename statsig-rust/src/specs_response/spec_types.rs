@@ -1,6 +1,6 @@
-use crate::evaluation::dynamic_returnable::DynamicReturnable;
 use crate::evaluation::dynamic_string::DynamicString;
-use crate::evaluation::dynamic_value::DynamicValue;
+use crate::evaluation::{dynamic_returnable::DynamicReturnable, evaluator_value::EvaluatorValue};
+use crate::DynamicValue;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 
@@ -51,10 +51,10 @@ pub struct Rule {
 pub struct Condition {
     #[serde(rename = "type")]
     pub condition_type: String,
-    pub target_value: Option<DynamicValue>,
+    pub target_value: Option<EvaluatorValue>,
     pub operator: Option<String>,
     pub field: Option<DynamicString>,
-    pub additional_values: Option<HashMap<String, DynamicValue>>,
+    pub additional_values: Option<HashMap<String, String>>,
     pub id_type: DynamicString,
 }
 
@@ -107,10 +107,10 @@ impl<'de> Deserialize<'de> for Condition {
         struct ConditionInternal {
             #[serde(rename = "type")]
             condition_type: String,
-            target_value: Option<DynamicValue>,
+            target_value: Option<EvaluatorValue>,
             operator: Option<String>,
             field: Option<DynamicString>,
-            additional_values: Option<HashMap<String, DynamicValue>>,
+            additional_values: Option<HashMap<String, String>>,
             id_type: DynamicString,
         }
 

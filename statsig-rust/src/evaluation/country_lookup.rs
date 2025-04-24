@@ -118,9 +118,9 @@ impl CountryLookup {
             return None;
         }
 
-        let ip = match user.get_user_value(&Some(DynamicString::from(&IP.to_string()))) {
+        let ip = match user.get_user_value(&Some(DynamicString::from(IP.to_string()))) {
             Some(v) => match &v.string_value {
-                Some(s) => s.as_str(),
+                Some(s) => &s.value,
                 _ => return None,
             },
             None => return None,

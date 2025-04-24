@@ -234,12 +234,14 @@ fn get_parameters_from_store(
     hash_used: &HashAlgorithm,
     context: &EvaluatorContext,
 ) -> HashMap<String, Parameter> {
-    let mut parameters = HashMap::new();
+    // todo: what the heck is this mess?
+    let mut parameters: HashMap<String, Parameter> = HashMap::new();
     for (param_name, param) in &store.parameters {
         match param {
             Parameter::StaticValue(_static_value) => {
                 parameters.insert(param_name.clone(), param.clone());
             }
+
             Parameter::Gate(gate) => {
                 let new_param = GateParameter {
                     ref_type: gate.ref_type.clone(),
@@ -250,6 +252,7 @@ fn get_parameters_from_store(
                 };
                 parameters.insert(param_name.clone(), Parameter::Gate(new_param));
             }
+
             Parameter::DynamicConfig(dynamic_config) => {
                 let new_param = DynamicConfigParameter {
                     ref_type: dynamic_config.ref_type.clone(),
@@ -259,6 +262,7 @@ fn get_parameters_from_store(
                 };
                 parameters.insert(param_name.clone(), Parameter::DynamicConfig(new_param));
             }
+
             Parameter::Experiment(experiment) => {
                 let new_param = ExperimentParameter {
                     ref_type: experiment.ref_type.clone(),
@@ -268,6 +272,7 @@ fn get_parameters_from_store(
                 };
                 parameters.insert(param_name.clone(), Parameter::Experiment(new_param));
             }
+
             Parameter::Layer(layer) => {
                 let new_param = LayerParameter {
                     ref_type: layer.ref_type.clone(),
@@ -315,7 +320,7 @@ fn should_filter_config_for_app(
         None => return true,
     };
 
-    if !target_app_ids.contains(string_app_id) {
+    if !target_app_ids.contains(&string_app_id.value) {
         return true;
     }
     false
@@ -327,13 +332,24 @@ fn get_evaluated_keys(user_internal: &StatsigUserInternal) -> HashMap<String, St
     if let Some(user_id) = user_internal.user_data.user_id.as_ref() {
         evaluated_keys.insert(
             "userID".to_string(),
-            user_id.string_value.clone().unwrap_or_default(),
+            user_id
+                .string_value
+                .as_ref()
+                .map(|s| s.value.clone())
+                .unwrap_or_default(),
         );
     }
 
     if let Some(custom_ids) = user_internal.user_data.custom_ids.as_ref() {
         for (key, value) in custom_ids {
-            evaluated_keys.insert(key.clone(), value.string_value.clone().unwrap_or_default());
+            evaluated_keys.insert(
+                key.clone(),
+                value
+                    .string_value
+                    .as_ref()
+                    .map(|s| s.value.clone())
+                    .unwrap_or_default(),
+            );
         }
     }
 

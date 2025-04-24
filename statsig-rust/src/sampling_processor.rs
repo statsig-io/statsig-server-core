@@ -272,7 +272,7 @@ impl SamplingProcessor {
     fn get_sampling_mode(&self) -> SamplingMode {
         fn parse_sampling_mode(value: Option<&DynamicValue>) -> SamplingMode {
             match value {
-                Some(value) => match value.string_value.as_deref() {
+                Some(value) => match value.string_value.as_ref().map(|s| s.value.as_str()) {
                     Some("on") => SamplingMode::On,
                     Some("shadow") => SamplingMode::Shadow,
                     _ => SamplingMode::None,

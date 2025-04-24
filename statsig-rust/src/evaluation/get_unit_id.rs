@@ -17,5 +17,6 @@ pub(crate) fn get_unit_id<'a>(
         .unwrap_or(&EMPTY_DYNAMIC_VALUE)
         .string_value
         .as_ref()
+        .map(|s| &s.value)
         .unwrap_or(&EMPTY_STR)
 }

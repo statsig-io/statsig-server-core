@@ -4,6 +4,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::evaluation::dynamic_string::DynamicString;
 use crate::{
     evaluation::evaluation_types::{ExperimentEvaluation, LayerEvaluation},
     event_logging::event_logger::EventLogger,
@@ -23,12 +24,14 @@ pub trait PersistentStorage: Send + Sync {
 }
 
 pub fn get_persistent_storage_key(user: &StatsigUserInternal, id_type: &String) -> Option<String> {
-    user.get_unit_id(&id_type.into()).map(|id| {
-        format!(
-            "{}:{}",
-            id.string_value.clone().unwrap_or_default(),
-            id_type
-        )
+    let dyn_str_id_type = DynamicString::from(id_type.clone());
+    user.get_unit_id(&dyn_str_id_type).map(|id| {
+        let mut id_str = "";
+        if let Some(id) = id.string_value.as_ref().map(|s| &s.value) {
+            id_str = id;
+        }
+
+        format!("{}:{}", id_str, id_type)
     })
 }
 

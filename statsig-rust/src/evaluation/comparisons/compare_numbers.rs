@@ -1,6 +1,6 @@
-use crate::{unwrap_or_return, DynamicValue};
+use crate::{evaluation::evaluator_value::EvaluatorValue, unwrap_or_return, DynamicValue};
 
-pub(crate) fn compare_numbers(left: &DynamicValue, right: &DynamicValue, op: &str) -> bool {
+pub(crate) fn compare_numbers(left: &DynamicValue, right: &EvaluatorValue, op: &str) -> bool {
     let left_num = unwrap_or_return!(left.float_value, false);
     let right_num = unwrap_or_return!(right.float_value, false);
 
@@ -15,13 +15,13 @@ pub(crate) fn compare_numbers(left: &DynamicValue, right: &DynamicValue, op: &st
 
 #[cfg(test)]
 mod tests {
-    use crate::dyn_value;
     use crate::evaluation::comparisons::compare_numbers;
+    use crate::{dyn_value, test_only_make_eval_value};
 
     #[test]
     fn test_number_greater_than() {
-        let left = dyn_value!(2);
-        let right = dyn_value!(1);
+        let left = dyn_value!(2.0);
+        let right = test_only_make_eval_value!(1.0);
 
         let result = compare_numbers(&left, &right, "gt");
         assert!(result);
@@ -30,25 +30,27 @@ mod tests {
     #[test]
     fn test_number_greater_than_equal_string() {
         let left = dyn_value!("1.24");
-        let right = dyn_value!("1.23");
+        let right_smaller = test_only_make_eval_value!("1.23");
+        let right_same = test_only_make_eval_value!("1.24");
 
-        assert!(compare_numbers(&left, &right, "gte"));
-        assert!(compare_numbers(&left, &left, "gte"));
+        assert!(compare_numbers(&left, &right_smaller, "gte"));
+        assert!(compare_numbers(&left, &right_same, "gte"));
     }
 
     #[test]
     fn test_number_less_than_equal_string() {
         let left = dyn_value!("1.23");
-        let right = dyn_value!("1.24");
+        let right_bigger = test_only_make_eval_value!("1.24");
+        let right_same = test_only_make_eval_value!("1.24");
 
-        assert!(compare_numbers(&left, &right, "lte"));
-        assert!(compare_numbers(&left, &left, "lte"));
+        assert!(compare_numbers(&left, &right_bigger, "lte"));
+        assert!(compare_numbers(&left, &right_same, "lte"));
     }
 
     #[test]
     fn test_number_less_than() {
-        let left = dyn_value!(1);
-        let right = dyn_value!(2);
+        let left = dyn_value!(1.0);
+        let right = test_only_make_eval_value!(2.0);
 
         let result = compare_numbers(&left, &right, "lt");
         assert!(result);
@@ -56,11 +58,13 @@ mod tests {
 
     #[test]
     fn test_number_less_than_or_equal() {
-        let one = dyn_value!(1);
-        let two = dyn_value!(2);
+        let dyn_one = dyn_value!(1.0);
+        let dyn_two = dyn_value!(2.0);
+        let eval_one = test_only_make_eval_value!(1.0);
+        let eval_two = test_only_make_eval_value!(2.0);
 
-        assert!(compare_numbers(&one, &two, "lte"));
-        assert!(compare_numbers(&two, &two, "lte"));
-        assert!(!compare_numbers(&two, &one, "lte"));
+        assert!(compare_numbers(&dyn_one, &eval_two, "lte"));
+        assert!(compare_numbers(&dyn_two, &eval_two, "lte"));
+        assert!(!compare_numbers(&dyn_two, &eval_one, "lte"));
     }
 }

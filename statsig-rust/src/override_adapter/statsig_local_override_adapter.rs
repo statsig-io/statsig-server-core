@@ -284,7 +284,7 @@ where
     };
 
     let id_string = match &user_id.string_value {
-        Some(s) => s,
+        Some(s) => &s.value,
         None => return false,
     };
 
@@ -315,7 +315,7 @@ where
 
     for custom_id_value in custom_ids.values() {
         let id_string = match &custom_id_value.string_value {
-            Some(s) => s,
+            Some(s) => &s.value,
             None => continue,
         };
 
