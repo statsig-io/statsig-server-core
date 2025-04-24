@@ -238,6 +238,11 @@ impl StatsigNapiInternal {
     }
 
     #[napi]
+    pub fn identify(&self, user: &StatsigUser) {
+        self.inner.identify(user.as_inner());
+    }
+
+    #[napi]
     pub fn get_parameter_store<'a, 'b: 'a, 'c: 'a>(
         &'b self,
         user: &'c StatsigUser,
