@@ -531,7 +531,6 @@ impl EventLogger {
                                         flushing_interval_ms,
                                         defaults.min_flush_interval_ms,
                                     );
-                                    Self::log_log_event_failure(op_stats_clone, event_count);
                                 }
                                 None
                             }
@@ -544,6 +543,7 @@ impl EventLogger {
                                 if override_interval_ms.is_none() {
                                     Self::failure_backoff(flushing_interval_ms);
                                 }
+                                Self::log_log_event_failure(op_stats_clone, event_count);
                                 None
                             }
                             Err(e) => {
