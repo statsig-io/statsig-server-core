@@ -325,6 +325,10 @@ public class Statsig {
         StatsigJNI.statsigOverrideExperimentByGroupName(ref, experimentName, groupName);
     }
 
+    public void identify(StatsigUser user) {
+        StatsigJNI.statsigIdentify(ref, user.getRef());
+    }
+
     void logLayerParamExposure(String layerJson, String param) {
         StatsigJNI.statsigLogLayerParamExposure(ref, layerJson, param);
     }

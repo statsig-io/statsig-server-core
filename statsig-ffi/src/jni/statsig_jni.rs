@@ -887,6 +887,18 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEventWithDouble(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigIdentify(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+    user_ref: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+    let user = get_instance_or_noop_jni!(StatsigUser, &mut env, user_ref);
+    statsig.identify(user.as_ref());
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
     mut env: JNIEnv,
     _class: JClass,

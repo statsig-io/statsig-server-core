@@ -52,6 +52,8 @@ class StatsigJNI {
     public static native void statsigManuallyLogLayerParamExposure(String statsigRef, String userRef, String layerName,
             String param);
 
+    public static native void statsigIdentify(String statsigRef, String userRef);
+
     public static native String statsigGetFieldsNeededForLayer(String statsigRef, String layerName);
 
     public static native String statsigGetExperiment(String statsigRef, String userRef, String experimentName,
