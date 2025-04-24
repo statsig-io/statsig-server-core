@@ -74,7 +74,16 @@ pub extern "C" fn statsig_http_specs_adapter_fetch_specs_from_network(
     });
 
     match result {
-        Ok(data) => string_to_c_char(data),
-        Err(_) => null(),
+        Ok(data) => match String::from_utf8(data) {
+            Ok(s) => string_to_c_char(s),
+            Err(e) => {
+                log_e!(TAG, "Failed to convert specs to string: {}", e);
+                null()
+            }
+        },
+        Err(e) => {
+            log_e!(TAG, "Failed to fetch specs: {}", e);
+            null()
+        }
     }
 }

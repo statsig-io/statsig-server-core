@@ -40,7 +40,10 @@ pub mod specs_adapter_tests {
             received_update.source,
             SpecsSource::Adapter("DataStore".to_string())
         );
-        assert_eq!(received_update.data, "init_payload".to_string()); // examine time
+        assert_eq!(
+            received_update.data,
+            "init_payload".to_string().into_bytes()
+        ); // examine time
         let _ = adapter.clone().schedule_background_sync(&rt).await;
 
         let _ = mock_listener.wait_for_next_update().await;
@@ -49,7 +52,8 @@ pub mod specs_adapter_tests {
             received_update_2.source,
             SpecsSource::Adapter("GRPC".to_string())
         );
-        assert_eq!(received_update_2.data, "bg_sync_1".to_string()); // examine time
+        assert_eq!(received_update_2.data, "bg_sync_1".to_string().into_bytes());
+        // examine time
     }
 
     #[tokio::test]
@@ -76,7 +80,7 @@ pub mod specs_adapter_tests {
             received_update.source,
             SpecsSource::Adapter("GRPC".to_string())
         );
-        assert_eq!(received_update.data, "bg_sync_1".to_string()); // examine time
+        assert_eq!(received_update.data, "bg_sync_1".to_string().into_bytes()); // examine time
         mock_proxy
             .send_stream_update(Ok(ConfigSpecResponse {
                 spec: "bg_sync_2".to_string(),
@@ -90,7 +94,7 @@ pub mod specs_adapter_tests {
             received_update_2.source,
             SpecsSource::Adapter("GRPC".to_string())
         );
-        assert_eq!(received_update_2.data, "bg_sync_2".to_string()); // examine time
+        assert_eq!(received_update_2.data, "bg_sync_2".to_string().into_bytes()); // examine time
         mock_proxy.stop().await;
     }
 

@@ -57,7 +57,8 @@ impl StatsigLocalFileSpecsAdapter {
         };
 
         let data = match self.http_adapter.fetch_specs_from_network(specs_info).await {
-            Ok(data) => data,
+            Ok(data) => String::from_utf8(data)
+                .map_err(|e| StatsigErr::SerializationError(e.to_string()))?,
             Err(e) => {
                 return Err(StatsigErr::NetworkError(
                     e,
@@ -86,7 +87,7 @@ impl StatsigLocalFileSpecsAdapter {
         match &self.listener.read() {
             Ok(lock) => match lock.as_ref() {
                 Some(listener) => listener.did_receive_specs_update(SpecsUpdate {
-                    data,
+                    data: data.into_bytes(),
                     source: SpecsSource::Adapter("FileBased".to_owned()),
                     received_at: Utc::now().timestamp_millis() as u64,
                 }),

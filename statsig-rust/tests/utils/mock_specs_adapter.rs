@@ -61,7 +61,7 @@ impl MockSpecsAdapter {
 
         let data = fs::read_to_string(path).expect("Unable to read file");
         let update = SpecsUpdate {
-            data,
+            data: data.into_bytes(),
             source: SpecsSource::Bootstrap,
             received_at: Utc::now().timestamp_millis() as u64,
         };

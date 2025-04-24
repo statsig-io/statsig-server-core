@@ -71,7 +71,7 @@ impl StatsigHttpSpecsAdapter {
     pub async fn fetch_specs_from_network(
         &self,
         current_specs_info: SpecsInfo,
-    ) -> Result<String, NetworkError> {
+    ) -> Result<Vec<u8>, NetworkError> {
         let request_args = self.get_request_args(&current_specs_info);
         match self.handle_specs_request(request_args).await {
             Ok(response) => Ok(response),
@@ -108,7 +108,7 @@ impl StatsigHttpSpecsAdapter {
         &self,
         mut request_args: RequestArgs,
         current_specs_info: SpecsInfo,
-    ) -> Result<String, NetworkError> {
+    ) -> Result<Vec<u8>, NetworkError> {
         let fallback_url = match &self.fallback_url {
             Some(url) => construct_specs_url(
                 url.as_str(),
@@ -122,18 +122,18 @@ impl StatsigHttpSpecsAdapter {
 
         // TODO logging
 
-        self.handle_specs_request(request_args).await
+        let response = self.handle_specs_request(request_args).await?;
+        Ok(response)
     }
 
     // TODO: return a decompressed and parsed SpecsResponse
     async fn handle_specs_request(
         &self,
         request_args: RequestArgs,
-    ) -> Result<String, NetworkError> {
+    ) -> Result<Vec<u8>, NetworkError> {
         let response = self.network.get(request_args).await?;
         match response.data {
-            Some(data) => Ok(String::from_utf8(data)
-                .map_err(|e| NetworkError::SerializationError(e.to_string()))?),
+            Some(data) => Ok(data),
             None => Err(NetworkError::RequestFailed),
         }
     }
@@ -195,7 +195,7 @@ impl StatsigHttpSpecsAdapter {
 
     async fn process_spec_data(
         &self,
-        response: Result<String, NetworkError>,
+        response: Result<Vec<u8>, NetworkError>,
     ) -> Result<(), StatsigErr> {
         let data = response.map_err(|e| {
             let msg = "No specs result from network";

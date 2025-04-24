@@ -50,7 +50,7 @@ pub extern "C" fn specs_update_listener_did_receive_specs_update(
     });
 
     let update = SpecsUpdate {
-        data,
+        data: data.into_bytes(), // todo: update the c function to take a slice
         source: SpecsSource::new_from_string(&source),
         received_at: received_at.into(),
     };

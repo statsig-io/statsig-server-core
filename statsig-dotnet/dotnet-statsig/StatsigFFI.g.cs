@@ -61,6 +61,9 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_log_event", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_log_event(byte* statsig_ref, byte* user_ref, byte* event_json);
 
+        [DllImport(__DllName, EntryPoint = "statsig_identify", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void statsig_identify(byte* statsig_ref, byte* user_ref);
+
         [DllImport(__DllName, EntryPoint = "statsig_get_client_init_response", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_client_init_response(byte* statsig_ref, byte* user_ref, byte* options_json);
 

@@ -59,7 +59,7 @@ impl StatsigDataStoreSpecsAdapter {
                             match maybe_listener.as_ref() {
                                 Some(listener) => {
                                     match listener.did_receive_specs_update(SpecsUpdate {
-                                        data: update.result.unwrap_or_default(),
+                                        data: update.result.unwrap_or_default().into_bytes(),
                                         source: SpecsSource::Adapter("DataStore".to_string()),
                                         received_at: Utc::now().timestamp_millis() as u64,
                                 }) {
@@ -102,7 +102,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
                 Ok(read_lock) => match read_lock.as_ref() {
                     Some(listener) => {
                         listener.did_receive_specs_update(SpecsUpdate {
-                            data,
+                            data: data.into_bytes(),
                             source: SpecsSource::Adapter("DataStore".to_string()),
                             received_at: Utc::now().timestamp_millis() as u64,
                         })?;

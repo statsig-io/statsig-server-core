@@ -39,7 +39,7 @@ impl StatsigBootstrapSpecsAdapter {
         match &self.listener.read() {
             Ok(lock) => match lock.as_ref() {
                 Some(listener) => listener.did_receive_specs_update(SpecsUpdate {
-                    data,
+                    data: data.into_bytes(),
                     source: SpecsSource::Bootstrap,
                     received_at: Utc::now().timestamp_millis() as u64,
                 }),
@@ -140,7 +140,7 @@ mod tests {
         if let Ok(lock) = listener.clone().received_update.read() {
             let update = lock.as_ref().unwrap();
             assert_eq!(update.source, SpecsSource::Bootstrap);
-            assert_eq!(update.data, test_data);
+            assert_eq!(update.data, test_data.into_bytes());
         }
     }
 
@@ -161,7 +161,7 @@ mod tests {
         if let Ok(lock) = listener.clone().received_update.read() {
             let update = lock.as_ref().unwrap();
             assert_eq!(update.source, SpecsSource::Bootstrap);
-            assert_eq!(update.data, test_data);
+            assert_eq!(update.data, test_data.into_bytes());
         }
     }
 }

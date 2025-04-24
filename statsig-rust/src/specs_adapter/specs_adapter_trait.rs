@@ -83,7 +83,7 @@ pub trait SpecsAdapter: Send + Sync {
 }
 
 pub struct SpecsUpdate {
-    pub data: String,
+    pub data: Vec<u8>,
     pub source: SpecsSource,
     pub received_at: u64,
 }

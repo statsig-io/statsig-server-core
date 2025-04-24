@@ -133,10 +133,12 @@ impl SpecStore {
             .map(|data| data.decompression_dict.clone())
             .ok()
             .flatten();
+
         let full_result = DecodedSpecsResponse::<SpecsResponseFull>::from_slice(
-            values.data.as_bytes(),
+            &values.data,
             compression_dict.as_ref(),
         );
+
         if let Ok(result) = full_result {
             if result.specs.has_updates {
                 return Ok(Some(result));
@@ -146,7 +148,7 @@ impl SpecStore {
         }
 
         let no_updates_result = DecodedSpecsResponse::<SpecsResponseNoUpdates>::from_slice(
-            values.data.as_bytes(),
+            &values.data,
             compression_dict.as_ref(),
         );
         if let Ok(result) = no_updates_result {
@@ -206,7 +208,7 @@ impl SpecStore {
         }
     }
 
-    fn try_update_data_store(&self, source: &SpecsSource, data: String, now: u64) {
+    fn try_update_data_store(&self, source: &SpecsSource, data: Vec<u8>, now: u64) {
         if *source != SpecsSource::Network {
             return;
         }
@@ -217,11 +219,24 @@ impl SpecStore {
         };
 
         let hashed_key = self.hashed_sdk_key.clone();
+
         self.statsig_runtime.spawn(
             "spec_store_update_data_store",
             move |_shutdown_notif| async move {
+                let data_string = match String::from_utf8(data) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        log_e!(TAG, "Failed to convert data to string: {}", e);
+                        return;
+                    }
+                };
+
                 let _ = data_store
-                    .set(&get_data_adapter_dcs_key(&hashed_key), &data, Some(now))
+                    .set(
+                        &get_data_adapter_dcs_key(&hashed_key),
+                        &data_string,
+                        Some(now),
+                    )
                     .await;
             },
         );

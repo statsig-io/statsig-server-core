@@ -24,7 +24,7 @@ impl StaticSpecsAdapter {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push(self.json_data_path.as_str());
 
-        let data = fs::read_to_string(path).expect("Unable to read file");
+        let data = fs::read(path).expect("Unable to read file");
 
         let update = SpecsUpdate {
             data,

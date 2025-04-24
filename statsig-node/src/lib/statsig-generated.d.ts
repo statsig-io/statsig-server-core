@@ -59,6 +59,7 @@ export declare class StatsigNapiInternal {
   getFieldsNeededForExperiment(experimentName: string): Array<string>
   getLayer(user: StatsigUser, layerName: string, options?: LayerEvaluationOptions | undefined | null): Layer
   getFieldsNeededForLayer(layerName: string): Array<string>
+  identify(user: StatsigUser): void
   getParameterStore(user: StatsigUser, parameterStoreName: string, options?: ParameterStoreEvaluationOptions | undefined | null): ParameterStore
   getClientInitializeResponse(user: StatsigUser, options?: ClientInitResponseOptions | undefined | null): string
   manuallyLogFeatureGateExposure(user: StatsigUser, gateName: string): void
