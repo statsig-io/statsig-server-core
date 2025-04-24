@@ -145,7 +145,7 @@ impl SpecStore {
             |e| StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string()),
         );
 
-        log_error_to_statsig_and_console!(self.ops_stats, TAG, "{:?}, {:?}", error, values.source);
+        log_error_to_statsig_and_console!(self.ops_stats, TAG, error);
         Err(error)
     }
 

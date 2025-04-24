@@ -61,7 +61,7 @@ impl<T: ObservabilityClient> OpsStatsEventObserver for T {
                 };
             }
             OpsStatsEvent::SDKError(error) => {
-                self.error(error.tag, error.exception);
+                self.error(error.tag, error.info.to_string());
             }
             _ => {}
         }

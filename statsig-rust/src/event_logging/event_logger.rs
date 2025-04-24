@@ -6,6 +6,7 @@ use crate::event_logging::statsig_exposure::StatsigExposure;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::global_configs::GlobalConfigs;
 use crate::log_event_payload::{LogEventPayload, LogEventRequest};
+use crate::networking::NetworkError;
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::statsig_err::StatsigErr;
@@ -311,7 +312,11 @@ impl EventLogger {
         let payloads = if let Ok(lock) = self.event_queue.write() {
             take_from_queue(&batch_mode, lock, self.max_queue_size)
         } else {
-            log_error_to_statsig_and_console!(self.ops_stats, TAG, "Failed to lock event queue");
+            log_error_to_statsig_and_console!(
+                self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure("Failed to lock event queue".to_string())
+            );
             if batch_mode == BatchReason::Limit {
                 self.is_limit_batching.swap(false, Ordering::SeqCst);
             }
@@ -337,7 +342,7 @@ impl EventLogger {
                 log_error_to_statsig_and_console!(
                     self.ops_stats,
                     TAG,
-                    "Failed to lock pending event batches"
+                    StatsigErr::LockFailure("Failed to lock pending event batches".to_string())
                 );
                 return;
             }
@@ -472,7 +477,9 @@ impl EventLogger {
 
                 strong_self.ops_stats.log_error(ErrorBoundaryEvent {
                     tag: "statsig::log_event_dropped_event_count".to_string(),
-                    exception: "EventsDropped".to_string(),
+                    info: StatsigErr::LogEventError(
+                        "Dropped events due to internal event buffer limit".to_string(),
+                    ),
                     bypass_dedupe: true,
                     dedupe_key: None,
                     extra: Some(HashMap::from([
@@ -495,6 +502,7 @@ impl EventLogger {
         defaults: &'a EventLoggerDynamicDefaults,
         flushing_interval_ms: &'a AtomicU64,
         task_id: u32,
+        ops_stats: Arc<OpsStatsForInstance>,
     ) -> Vec<impl Future<Output = Option<(usize, StatsigErr)>> + 'a> {
         batches_to_process
             .iter()
@@ -511,28 +519,57 @@ impl EventLogger {
                     obj.insert("loggingInterval".to_string(), json!(current_interval_ms));
                     obj.insert("taskId".to_string(), json!(task_id));
                 }
+                let event_count = batch_clone.event_count;
 
-                async move {
-                    match adapter.log_events(batch_clone).await {
-                        Ok(_) => {
-                            if override_interval_ms.is_none() {
-                                Self::success_backoff(
-                                    flushing_interval_ms,
-                                    defaults.min_flush_interval_ms,
-                                );
+                {
+                    let op_stats_clone = ops_stats.clone();
+                    async move {
+                        match adapter.log_events(batch_clone).await {
+                            Ok(_) => {
+                                if override_interval_ms.is_none() {
+                                    Self::success_backoff(
+                                        flushing_interval_ms,
+                                        defaults.min_flush_interval_ms,
+                                    );
+                                    Self::log_log_event_failure(op_stats_clone, event_count);
+                                }
+                                None
                             }
-                            None
-                        }
-                        Err(e) => {
-                            if override_interval_ms.is_none() {
-                                Self::failure_backoff(flushing_interval_ms);
+                            Err(ref e)
+                                if matches!(
+                                    e,
+                                    StatsigErr::NetworkError(NetworkError::RequestNotRetryable, _)
+                                ) =>
+                            {
+                                if override_interval_ms.is_none() {
+                                    Self::failure_backoff(flushing_interval_ms);
+                                }
+                                None
                             }
-                            Some((idx, e))
+                            Err(e) => {
+                                if override_interval_ms.is_none() {
+                                    Self::failure_backoff(flushing_interval_ms);
+                                }
+                                Some((idx, e))
+                            }
                         }
                     }
                 }
             })
             .collect()
+    }
+
+    fn log_log_event_failure(ops_stats: Arc<OpsStatsForInstance>, event_count: u64) {
+        ops_stats.log_error(ErrorBoundaryEvent {
+            info: StatsigErr::LogEventError("Log event failed".to_string()),
+            tag: "statsig::log_event_failed".to_string(),
+            bypass_dedupe: true,
+            dedupe_key: None,
+            extra: Some(HashMap::from([(
+                "eventCount".to_string(),
+                event_count.to_string(),
+            )])),
+        });
     }
 
     //TODO: refactor into inner class to get Arc<self>
@@ -561,6 +598,7 @@ impl EventLogger {
             defaults,
             flushing_interval_ms,
             task_id,
+            ops_stats.clone(),
         )
         .await;
 
@@ -590,16 +628,7 @@ impl EventLogger {
                     MAX_EVENT_RETRY,
                     failed_batch.event_count
                 );
-                ops_stats.log_error(ErrorBoundaryEvent {
-                    exception: "LogEventFailed".to_string(),
-                    tag: "statsig::log_event_failed".to_string(),
-                    bypass_dedupe: true,
-                    dedupe_key: None,
-                    extra: Some(HashMap::from([(
-                        "eventCount".to_string(),
-                        failed_batch.event_count.to_string(),
-                    )])),
-                });
+                Self::log_log_event_failure(ops_stats.clone(), failed_batch.event_count);
             } else {
                 queue_lock.push_back(failed_batch);
             }

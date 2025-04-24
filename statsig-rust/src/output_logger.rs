@@ -198,19 +198,22 @@ macro_rules! log_e {
 
 #[macro_export]
 macro_rules! log_error_to_statsig_and_console {
-  ($ops_stats:expr, $tag:expr, $($arg:tt)*) => {
-    let err_message = format!($($arg)*);
-    let event = ErrorBoundaryEvent {
-        bypass_dedupe: false,
-        exception: err_message.clone(),
-        tag: $tag.to_string(),
-        extra: None,
-        dedupe_key: None
-    };
-    $ops_stats.log_error(event);
+    ($ops_stats:expr, $tag:expr, $err:expr) => {
+        let event = ErrorBoundaryEvent {
+            bypass_dedupe: false,
+            info: $err.clone(),
+            tag: $tag.to_string(),
+            extra: None,
+            dedupe_key: None,
+        };
+        $ops_stats.log_error(event);
 
-    $crate::output_logger::log_message(&$tag, $crate::output_logger::LogLevel::Error, err_message)
-  }
+        $crate::output_logger::log_message(
+            &$tag,
+            $crate::output_logger::LogLevel::Error,
+            $err.to_string(),
+        );
+    };
 }
 
 #[cfg(test)]

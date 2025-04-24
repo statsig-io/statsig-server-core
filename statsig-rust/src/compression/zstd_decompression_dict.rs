@@ -70,19 +70,14 @@ impl DictionaryDecoder {
         let mut decoder =
             zstd::stream::Decoder::with_prepared_dictionary(compressed_reader, &self.inner.ddict)
                 .map_err(|e| {
-                if let Some(ops_stats) = &self.inner.ops_stats {
-                    log_error_to_statsig_and_console!(
-                        ops_stats,
-                        TAG,
-                        "Unexpected error while constructing decoder with dictionary {}: {}",
-                        self.inner.dict_id,
-                        e
-                    );
-                }
-                StatsigErr::ZstdError(format!(
+                let err = StatsigErr::ZstdError(format!(
                     "Unexpected error while constructing decoder with dictionary {}: {}",
                     self.inner.dict_id, e
-                ))
+                ));
+                if let Some(ops_stats) = &self.inner.ops_stats {
+                    log_error_to_statsig_and_console!(ops_stats, TAG, err.clone());
+                }
+                err
             })?;
         std::io::copy(&mut decoder, &mut decompressed).map_err(|e| {
             StatsigErr::ZstdError(format!("Unexpected error while decompressing data: {}", e))

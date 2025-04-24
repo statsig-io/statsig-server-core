@@ -223,13 +223,12 @@ impl StatsigHttpSpecsAdapter {
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
             Err(e) => {
-                log_error_to_statsig_and_console!(
-                    &self.ops_stats,
-                    TAG,
+                let err = StatsigErr::LockFailure(format!(
                     "Failed to acquire read lock on listener: {}",
                     e
-                );
-                Err(StatsigErr::LockFailure(e.to_string()))
+                ));
+                log_error_to_statsig_and_console!(&self.ops_stats, TAG, err.clone());
+                Err(err)
             }
         };
 

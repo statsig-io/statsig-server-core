@@ -8,7 +8,7 @@ use tokio::sync::RwLock;
 use crate::{
     networking::{NetworkClient, RequestArgs},
     statsig_metadata::StatsigMetadata,
-    OpsStatsEventObserver, StatsigOptions,
+    OpsStatsEventObserver, StatsigErr, StatsigOptions,
 };
 
 use super::ops_stats::OpsStatsEvent;
@@ -29,7 +29,7 @@ fn get_sdk_exception_endpoint() -> String {
 #[serde(rename_all = "camelCase")]
 pub struct ErrorBoundaryEvent {
     pub tag: String,
-    pub exception: String,
+    pub info: StatsigErr,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dedupe_key: Option<String>,
 
@@ -66,7 +66,7 @@ impl SDKErrorsObserver {
         let key = eb_event
             .dedupe_key
             .clone()
-            .unwrap_or(format!("{}:{}", eb_event.tag, eb_event.exception));
+            .unwrap_or(format!("{}:{}", eb_event.tag, eb_event.info));
         let mut write_guard = self.errors_aggregator.write().await;
         let count = write_guard.entry(key).or_default();
         *count += 1;
@@ -77,12 +77,14 @@ impl SDKErrorsObserver {
     }
 
     async fn log_exception(&self, e: ErrorBoundaryEvent) {
+        let exception_name = Value::String(e.info.name().to_string());
         let mut body_obj = serde_json::to_value(e).unwrap_or_default();
         if let Value::Object(ref mut map) = body_obj {
             map.insert(
                 "statsigOptions".to_string(),
                 Value::String(self.statsig_options_logging_copy.clone()),
             );
+            map.insert("exception".to_string(), exception_name);
         }
         let body = serde_json::to_string_pretty(&body_obj).unwrap_or_default();
         let request_args = RequestArgs {

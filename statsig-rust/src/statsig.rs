@@ -261,7 +261,9 @@ impl Statsig {
         let shutdown_result = tokio::select! {
             () = tokio::time::sleep(timeout) => {
                 log_w!(TAG, "Statsig shutdown timed out. {}", start.elapsed().as_millis());
-                Err(StatsigErr::ShutdownTimeout)
+                Err(StatsigErr::ShutdownFailure(
+                    "Shutdown timed out".to_string()
+                ))
             }
             sub_result = async {
                 let id_list_shutdown: Pin<Box<_>> = if let Some(adapter) = &self.id_lists_adapter {
@@ -328,9 +330,10 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 ops_stats,
                 TAG,
-                "Failed to schedule SpecAdapter({}) background job. Error: {}",
-                specs_adapter.get_type_name(),
-                e,
+                StatsigErr::SpecsAdapterSkipPoll(format!(
+                    "Failed to schedule specs adapter background job: {}",
+                    e
+                ))
             );
         }
 
@@ -450,8 +453,10 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
                 TAG,
-                "Failed to start event logging adapter {}",
-                e
+                StatsigErr::UnstartedAdapter(format!(
+                    "Failed to start event logging adapter: {}",
+                    e
+                ))
             );
         }
 
@@ -526,7 +531,11 @@ impl Statsig {
                     &self.spec_store.get_current_specs_info(),
                 );
                 if let Some(failure) = &details.failure_details {
-                    log_error_to_statsig_and_console!(self.ops_stats, TAG, "{}", failure.reason);
+                    log_error_to_statsig_and_console!(
+                        self.ops_stats,
+                        TAG,
+                        StatsigErr::InitializationError(failure.reason.clone())
+                    );
                 }
             }
             Err(err) => {
@@ -599,8 +608,7 @@ impl Statsig {
                 log_error_to_statsig_and_console!(
                     self.ops_stats.clone(),
                     TAG,
-                    "Shutdown failed: {:?}",
-                    e
+                    StatsigErr::ShutdownFailure(e.to_string())
                 );
                 return;
             }
@@ -764,7 +772,9 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
                 TAG,
-                "Failed to acquire read lock for spec store data"
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
             );
             return ParameterStore {
                 name: parameter_store_name.to_string(),
@@ -843,7 +853,9 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
                 TAG,
-                "Failed to acquire read lock for spec store data"
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
             );
             return vec![];
         });
@@ -1044,7 +1056,9 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
                 TAG,
-                "Failed to acquire read lock for spec store data"
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
             );
             return vec![];
         });
@@ -1164,7 +1178,9 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
                 TAG,
-                "Failed to acquire read lock for spec store data"
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
             );
             return vec![];
         });
@@ -1177,7 +1193,9 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
                 TAG,
-                "Failed to acquire read lock for spec store data"
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
             );
             return vec![];
         });
@@ -1195,7 +1213,9 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
                 TAG,
-                "Failed to acquire read lock for spec store data"
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
             );
             return vec![];
         });
@@ -1213,7 +1233,9 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
                 TAG,
-                "Failed to acquire read lock for spec store data"
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
             );
             return vec![];
         });
@@ -1282,7 +1304,9 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
                 TAG,
-                "Failed to acquire read lock for spec store data"
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
             );
             return vec![];
         });
@@ -1352,7 +1376,9 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
                 TAG,
-                "Failed to acquire read lock for spec store data"
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
             );
             return vec![];
         });
@@ -1428,7 +1454,9 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
                 TAG,
-                "Failed to acquire read lock for spec store data"
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
             );
             return vec![];
         });
@@ -1513,7 +1541,9 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 &self.ops_stats,
                 TAG,
-                "Failed to acquire read lock for spec store data"
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
             );
             return make_empty_result(EvaluationDetails::unrecognized_no_data());
         });
@@ -1529,7 +1559,11 @@ impl Statsig {
         match Evaluator::evaluate_with_details(&mut context, spec_name, spec_type) {
             Ok(eval_details) => make_result(context.result, eval_details),
             Err(e) => {
-                log_error_to_statsig_and_console!(&self.ops_stats, TAG, "Error evaluating: {}", e);
+                log_error_to_statsig_and_console!(
+                    &self.ops_stats,
+                    TAG,
+                    StatsigErr::EvaluationError(e.to_string())
+                );
                 make_empty_result(EvaluationDetails::error(&e.to_string()))
             }
         }

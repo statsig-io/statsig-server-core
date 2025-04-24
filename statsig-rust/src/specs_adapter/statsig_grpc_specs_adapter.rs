@@ -104,8 +104,10 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
                 log_error_to_statsig_and_console!(
                     self.ops_stats,
                     TAG,
-                    "Failed to acquire write lock on listener: {}",
-                    e
+                    StatsigErr::LockFailure(format!(
+                        "Failed to acquire write lock on listener: {}",
+                        e
+                    ))
                 );
             }
         }
@@ -219,15 +221,16 @@ impl StatsigGrpcSpecsAdapter {
                         log_error_to_statsig_and_console!(
                             &ops_stats,
                             TAG,
-                            "gRPC streaming thread failed: {}",
-                            e
+                            StatsigErr::GrpcError(format!("gRPC streaming thread failed: {}", e))
                         );
                     }
                 } else {
                     log_error_to_statsig_and_console!(
                         &ops_stats,
                         TAG,
-                        "Failed to upgrade weak reference to strong reference"
+                        StatsigErr::GrpcError(
+                            "Failed to upgrade weak reference to strong reference".to_string()
+                        )
                     );
                 }
             }),
@@ -241,7 +244,7 @@ impl StatsigGrpcSpecsAdapter {
                     if let Err(err) = result {
                         let attempt = self.retry_state.retry_attempts.fetch_add(1, Ordering::SeqCst);
                         if attempt > RETRY_LIMIT {
-                            log_error_to_statsig_and_console!(&self.ops_stats, TAG, "gRPC stream failure, exhaust retry limit: {:?}", err);
+                            log_error_to_statsig_and_console!(&self.ops_stats, TAG, StatsigErr::GrpcError(format!("gRPC stream failure, exhaust retry limit: {:?}", err)));
                            break;
                         }
                         if attempt == FALL_BACK_TO_POLLING_THREASHOLD {
