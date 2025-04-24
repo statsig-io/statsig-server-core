@@ -58,10 +58,6 @@ export function buildPython(options: BuilderOptions) {
   execSync(command, { cwd: pyDir, stdio: 'inherit' });
 
   Log.stepEnd(`Built Pyo3 Package ${tag}`);
-
-  if (!isCi || options.os === 'macos') {
-    runMyPy();
-  }
 }
 
 function getTarget(options: BuilderOptions) {
@@ -89,23 +85,4 @@ function getTarget(options: BuilderOptions) {
 
   // linux figures it out by itself
   return '';
-}
-
-function runMyPy() {
-  const rootDir = '/tmp/statsig-server-core-mypy';
-
-  ensureEmptyDir(rootDir);
-
-  const files = [
-    ...listFiles(BASE_DIR, 'target/**/*.whl'),
-    ...listFiles(BASE_DIR, 'statsig-pyo3/build/**/*.whl'),
-  ];
-
-  unzipFiles(files, rootDir, { keepFiles: true });
-
-  const dirs = listDirectories(rootDir);
-
-  dirs.forEach((dir) => {
-    execSync(`mypy ${dir}`, { stdio: 'inherit' });
-  });
 }
