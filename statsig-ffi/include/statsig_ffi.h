@@ -64,6 +64,8 @@ const char *statsig_get_dynamic_config(const char *statsig_ref,
                                        const char *config_name,
                                        const char *options_json);
 
+void statsig_identify(const char *statsig_ref, const char *user_ref);
+
 void statsig_manually_log_dynamic_config_exposure(const char *statsig_ref,
                                                   const char *user_ref,
                                                   const char *config_name);

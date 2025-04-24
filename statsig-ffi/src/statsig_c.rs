@@ -149,6 +149,13 @@ pub extern "C" fn statsig_log_event(
 }
 
 #[no_mangle]
+pub extern "C" fn statsig_identify(statsig_ref: *const c_char, user_ref: *const c_char) {
+    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+    let user = get_instance_or_noop_c!(StatsigUser, user_ref);
+    statsig.identify(user.as_ref());
+}
+
+#[no_mangle]
 pub extern "C" fn statsig_get_client_init_response(
     statsig_ref: *const c_char,
     user_ref: *const c_char,

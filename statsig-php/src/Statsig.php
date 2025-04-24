@@ -71,6 +71,10 @@ class Statsig
         );
     }
 
+    public function identify(StatsigUser $user): void
+    {
+        StatsigFFI::get()->statsig_identify($this->__ref, $user->__ref);
+    }
     /**
      * Feature Gate Functions
      */
