@@ -139,91 +139,117 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
         )
     }
 
-    fn override_gate(&self, key: &str, value: bool) {
+    fn override_gate(&self, key: &str, value: bool, id: Option<&str>) {
         let mut store = write_lock_or_noop!(TAG, self.store);
+        let id_str = id.unwrap_or(NO_ID_OVERRIDE);
         store
             .gate
             .entry(key.to_string())
             .or_default()
-            .insert(NO_ID_OVERRIDE.to_string(), value);
+            .insert(id_str.to_string(), value);
     }
 
-    fn override_gate_for_id(&self, key: &str, id: &str, value: bool) {
+    fn override_dynamic_config(&self, key: &str, value: HashMap<String, Value>, id: Option<&str>) {
         let mut store = write_lock_or_noop!(TAG, self.store);
-        store
-            .gate
-            .entry(key.to_string())
-            .or_default()
-            .insert(id.to_string(), value);
-    }
-
-    fn override_dynamic_config(&self, key: &str, value: HashMap<String, Value>) {
-        let mut store = write_lock_or_noop!(TAG, self.store);
+        let id_str = id.unwrap_or(NO_ID_OVERRIDE);
         store
             .config
             .entry(key.to_string())
             .or_default()
-            .insert(NO_ID_OVERRIDE.to_string(), value);
+            .insert(id_str.to_string(), value);
     }
 
-    fn override_dynamic_config_for_id(&self, key: &str, id: &str, value: HashMap<String, Value>) {
+    fn override_experiment(&self, key: &str, value: HashMap<String, Value>, id: Option<&str>) {
         let mut store = write_lock_or_noop!(TAG, self.store);
-        store
-            .config
-            .entry(key.to_string())
-            .or_default()
-            .insert(id.to_string(), value);
-    }
-
-    fn override_experiment(&self, key: &str, value: HashMap<String, Value>) {
-        let mut store = write_lock_or_noop!(TAG, self.store);
-        store.experiment.entry(key.to_string()).or_default().insert(
-            NO_ID_OVERRIDE.to_string(),
-            ExperimentOverrides::Value(value),
-        );
-    }
-
-    fn override_experiment_for_id(&self, key: &str, id: &str, value: HashMap<String, Value>) {
-        let mut store = write_lock_or_noop!(TAG, self.store);
+        let id_str = id.unwrap_or(NO_ID_OVERRIDE);
         store
             .experiment
             .entry(key.to_string())
             .or_default()
-            .insert(id.to_string(), ExperimentOverrides::Value(value));
+            .insert(id_str.to_string(), ExperimentOverrides::Value(value));
     }
 
-    fn override_experiment_by_group_name(&self, key: &str, group_name: &str) {
+    fn override_experiment_by_group_name(&self, key: &str, group_name: &str, id: Option<&str>) {
         let mut store = write_lock_or_noop!(TAG, self.store);
+        let id_str = id.unwrap_or(NO_ID_OVERRIDE);
         store.experiment.entry(key.to_string()).or_default().insert(
-            NO_ID_OVERRIDE.to_string(),
+            id_str.to_string(),
             ExperimentOverrides::GroupName(group_name.to_string()),
         );
     }
 
-    fn override_experiment_by_group_name_for_id(&self, key: &str, id: &str, group_name: &str) {
+    fn override_layer(&self, key: &str, value: HashMap<String, Value>, id: Option<&str>) {
         let mut store = write_lock_or_noop!(TAG, self.store);
-        store.experiment.entry(key.to_string()).or_default().insert(
-            id.to_string(),
-            ExperimentOverrides::GroupName(group_name.to_string()),
-        );
-    }
-
-    fn override_layer(&self, key: &str, value: HashMap<String, Value>) {
-        let mut store = write_lock_or_noop!(TAG, self.store);
+        let id_str = id.unwrap_or(NO_ID_OVERRIDE);
         store
             .layer
             .entry(key.to_string())
             .or_default()
-            .insert(NO_ID_OVERRIDE.to_string(), value);
+            .insert(id_str.to_string(), value);
     }
 
-    fn override_layer_for_id(&self, key: &str, id: &str, value: HashMap<String, Value>) {
+    fn remove_gate_override(&self, key: &str, id: Option<&str>) {
         let mut store = write_lock_or_noop!(TAG, self.store);
-        store
-            .layer
-            .entry(key.to_string())
-            .or_default()
-            .insert(id.to_string(), value);
+        match id {
+            None => {
+                store.gate.remove(key);
+            }
+            Some(id_str) => {
+                if let Some(overrides) = store.gate.get_mut(key) {
+                    overrides.remove(&id_str.to_string());
+                }
+            }
+        }
+    }
+
+    fn remove_dynamic_config_override(&self, key: &str, id: Option<&str>) {
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        match id {
+            None => {
+                store.config.remove(key);
+            }
+            Some(id_str) => {
+                if let Some(overrides) = store.config.get_mut(key) {
+                    overrides.remove(&id_str.to_string());
+                }
+            }
+        }
+    }
+
+    fn remove_experiment_override(&self, key: &str, id: Option<&str>) {
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        match id {
+            None => {
+                store.experiment.remove(key);
+            }
+            Some(id_str) => {
+                if let Some(overrides) = store.experiment.get_mut(key) {
+                    overrides.remove(&id_str.to_string());
+                }
+            }
+        }
+    }
+
+    fn remove_layer_override(&self, key: &str, id: Option<&str>) {
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        match id {
+            None => {
+                store.layer.remove(key);
+            }
+            Some(id_str) => {
+                if let Some(overrides) = store.layer.get_mut(key) {
+                    overrides.remove(&id_str.to_string());
+                }
+            }
+        }
+    }
+
+    fn remove_all_overrides(&self) {
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        store.gate.clear();
+        store.config.clear();
+        store.experiment.clear();
+        store.layer.clear();
     }
 }
 

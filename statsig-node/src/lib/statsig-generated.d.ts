@@ -66,16 +66,16 @@ export declare class StatsigNapiInternal {
   manuallyLogDynamicConfigExposure(user: StatsigUser, configName: string): void
   manuallyLogExperimentExposure(user: StatsigUser, experimentName: string): void
   manuallyLogLayerParamExposure(user: StatsigUser, layerName: string, paramName: string): void
-  overrideGate(gateName: string, value: boolean): void
-  overrideDynamicConfig(configName: string, value: Record<string, any>): void
-  overrideExperiment(experimentName: string, value: Record<string, any>): void
-  overrideExperimentByGroupName(experimentName: string, groupName: string): void
-  overrideLayer(layerName: string, value: Record<string, any>): void
-  overrideGateForId(gateName: string, forId: string, value: boolean): void
-  overrideDynamicConfigForId(configName: string, forId: string, value: Record<string, any>): void
-  overrideExperimentForId(experimentName: string, forId: string, value: Record<string, any>): void
-  overrideLayerForId(layerName: string, forId: string, value: Record<string, any>): void
-  overrideExperimentByGroupNameForId(experimentName: string, forId: string, groupName: string): void
+  overrideGate(gateName: string, value: boolean, id?: string | undefined | null): void
+  overrideDynamicConfig(configName: string, value: Record<string, any>, id?: string | undefined | null): void
+  overrideExperiment(experimentName: string, value: Record<string, any>, id?: string | undefined | null): void
+  overrideExperimentByGroupName(experimentName: string, groupName: string, id?: string | undefined | null): void
+  overrideLayer(layerName: string, value: Record<string, any>, id?: string | undefined | null): void
+  removeGateOverride(gateName: string, id?: string | undefined | null): void
+  removeDynamicConfigOverride(configName: string, id?: string | undefined | null): void
+  removeExperimentOverride(experimentName: string, id?: string | undefined | null): void
+  removeLayerOverride(layerName: string, id?: string | undefined | null): void
+  removeAllOverrides(): void
   getFeatureGateList(): Array<string>
   getDynamicConfigList(): Array<string>
   getExperimentList(): Array<string>

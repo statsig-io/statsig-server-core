@@ -948,6 +948,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideGate(
     statsig_ref: JString,
     gate_name: JString,
     gate_value: jboolean,
+    id: JString,
 ) {
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
@@ -956,8 +957,13 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideGate(
         Err(_) => return,
     };
 
+    let id_rust: Option<String> = match env.get_string(&id) {
+        Ok(s) => Some(s.into()),
+        Err(_) => None,
+    };
+
     let gate_value_rust = jboolean_to_bool_unchecked(gate_value);
-    statsig.override_gate(&gate_name_rust, gate_value_rust);
+    statsig.override_gate(&gate_name_rust, gate_value_rust, id_rust.as_deref());
 }
 
 #[no_mangle]
@@ -967,6 +973,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideDynamicConfig(
     statsig_ref: JString,
     config_name: JString,
     value: JObject,
+    id: JString,
 ) {
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
@@ -975,9 +982,14 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideDynamicConfig(
         Err(_) => return,
     };
 
+    let id_rust: Option<String> = match env.get_string(&id) {
+        Ok(s) => Some(s.into()),
+        Err(_) => None,
+    };
+
     match jni_to_rust_json_map(&mut env, value) {
         Ok(value_rust) => {
-            statsig.override_dynamic_config(&config_name_rust, value_rust);
+            statsig.override_dynamic_config(&config_name_rust, value_rust, id_rust.as_deref());
         }
         Err(e) => {
             log_e!(
@@ -996,6 +1008,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideLayer(
     statsig_ref: JString,
     layer_name: JString,
     value: JObject,
+    id: JString,
 ) {
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
@@ -1004,9 +1017,14 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideLayer(
         Err(_) => return,
     };
 
+    let id_rust: Option<String> = match env.get_string(&id) {
+        Ok(s) => Some(s.into()),
+        Err(_) => None,
+    };
+
     match jni_to_rust_json_map(&mut env, value) {
         Ok(value_rust) => {
-            statsig.override_layer(&layer_name_rust, value_rust);
+            statsig.override_layer(&layer_name_rust, value_rust, id_rust.as_deref());
         }
         Err(e) => {
             log_e!(TAG, "Override Layer, Failed to convert JSON map: {:?}", e);
@@ -1021,6 +1039,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideExperiment(
     statsig_ref: JString,
     exp_name: JString,
     value: JObject,
+    id: JString,
 ) {
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
@@ -1029,9 +1048,14 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideExperiment(
         Err(_) => return,
     };
 
+    let id_rust: Option<String> = match env.get_string(&id) {
+        Ok(s) => Some(s.into()),
+        Err(_) => None,
+    };
+
     match jni_to_rust_json_map(&mut env, value) {
         Ok(value_rust) => {
-            statsig.override_experiment(&exp_name_rust, value_rust);
+            statsig.override_experiment(&exp_name_rust, value_rust, id_rust.as_deref());
         }
         Err(e) => {
             log_e!(TAG, "Override Layer, Failed to convert JSON map: {:?}", e);
@@ -1046,6 +1070,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideExperimentByGr
     statsig_ref: JString,
     exp_name: JString,
     group_name: JString,
+    id: JString,
 ) {
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
@@ -1059,7 +1084,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideExperimentByGr
         Err(_) => return,
     };
 
-    statsig.override_experiment_by_group_name(&exp_name_rust, &group_name_rust);
+    let id_rust: Option<String> = match env.get_string(&id) {
+        Ok(s) => Some(s.into()),
+        Err(_) => None,
+    };
+
+    statsig.override_experiment_by_group_name(&exp_name_rust, &group_name_rust, id_rust.as_deref());
 }
 
 fn update_statsig_metadata(env: &mut JNIEnv, metadata: JString) {
@@ -1115,4 +1145,106 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetParameterStoreList(
 ) -> jstring {
     let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
     serialize_json_to_jstring(&mut env, &statsig.get_parameter_store_list())
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRemoveGateOverride(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+    gate_name: JString,
+    id: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+
+    let gate_name_rust: String = match env.get_string(&gate_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    let id_rust: Option<String> = match env.get_string(&id) {
+        Ok(s) => Some(s.into()),
+        Err(_) => None,
+    };
+
+    statsig.remove_gate_override(&gate_name_rust, id_rust.as_deref());
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRemoveDynamicConfigOverride(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+    config_name: JString,
+    id: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+
+    let config_name_rust: String = match env.get_string(&config_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    let id_rust: Option<String> = match env.get_string(&id) {
+        Ok(s) => Some(s.into()),
+        Err(_) => None,
+    };
+
+    statsig.remove_dynamic_config_override(&config_name_rust, id_rust.as_deref());
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRemoveExperimentOverride(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+    exp_name: JString,
+    id: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+
+    let exp_name_rust: String = match env.get_string(&exp_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    let id_rust: Option<String> = match env.get_string(&id) {
+        Ok(s) => Some(s.into()),
+        Err(_) => None,
+    };
+
+    statsig.remove_experiment_override(&exp_name_rust, id_rust.as_deref());
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRemoveLayerOverride(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+    layer_name: JString,
+    id: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+
+    let layer_name_rust: String = match env.get_string(&layer_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    let id_rust: Option<String> = match env.get_string(&id) {
+        Ok(s) => Some(s.into()),
+        Err(_) => None,
+    };
+
+    statsig.remove_layer_override(&layer_name_rust, id_rust.as_deref());
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRemoveAllOverrides(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: JString,
+) {
+    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
+    statsig.remove_all_overrides();
 }

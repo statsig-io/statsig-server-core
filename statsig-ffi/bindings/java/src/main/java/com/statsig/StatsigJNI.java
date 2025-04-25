@@ -113,15 +113,28 @@ class StatsigJNI {
     /**
      * Local Overrides
      */
-    public static native void statsigOverrideGate(String statsigRef, String gateName, boolean overrideVal);
+    public static native void statsigOverrideGate(String statsigRef, String gateName, String id, boolean overrideVal);
 
-    public static native void statsigOverrideDynamicConfig(String statsigRef, String configName, Map<String, Object> overrideVal);
+    public static native void statsigOverrideDynamicConfig(String statsigRef, String configName, String id, Map<String, Object> overrideVal);
 
-    public static native void statsigOverrideLayer(String statsigRef, String layerName, Map<String, Object> overrideVal);
+    public static native void statsigOverrideLayer(String statsigRef, String layerName, String id, Map<String, Object> overrideVal);
 
-    public static native void statsigOverrideExperiment(String statsigRef, String experimentName, Map<String, Object> overrideVal);
+    public static native void statsigOverrideExperiment(String statsigRef, String experimentName, String id, Map<String, Object> overrideVal);
 
-    public static native void statsigOverrideExperimentByGroupName(String statsigRef, String experimentName, String groupName);
+    public static native void statsigOverrideExperimentByGroupName(String statsigRef, String experimentName, String id, String groupName);
+    
+    /**
+     * Remove Overrides
+     */
+    public static native void statsigRemoveGateOverride(String statsigRef, String gateName, String id);
+
+    public static native void statsigRemoveDynamicConfigOverride(String statsigRef, String configName, String id);
+
+    public static native void statsigRemoveExperimentOverride(String statsigRef, String experimentName, String id);
+
+    public static native void statsigRemoveLayerOverride(String statsigRef, String layerName, String id);
+    
+    public static native void statsigRemoveAllOverrides(String statsigRef);
 
     /**
      * StatsigUser

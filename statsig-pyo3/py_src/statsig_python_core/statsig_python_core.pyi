@@ -167,34 +167,34 @@ class StatsigBasePy:
     def get_client_initialize_response(self, user:StatsigUser, hash:typing.Optional[builtins.str]=None, client_sdk_key:typing.Optional[builtins.str]=None, include_local_overrides:typing.Optional[builtins.bool]=None) -> builtins.str:
         ...
 
-    def override_gate(self, gate_name:builtins.str, value:builtins.bool) -> None:
+    def override_gate(self, gate_name:builtins.str, value:builtins.bool, id:typing.Optional[builtins.str]=None) -> None:
         ...
 
-    def override_dynamic_config(self, config_name:builtins.str, value:dict) -> None:
+    def override_dynamic_config(self, config_name:builtins.str, value:dict, id:typing.Optional[builtins.str]=None) -> None:
         ...
 
-    def override_experiment(self, experiment_name:builtins.str, value:dict) -> None:
+    def override_experiment(self, experiment_name:builtins.str, value:dict, id:typing.Optional[builtins.str]=None) -> None:
         ...
 
-    def override_layer(self, layer_name:builtins.str, value:dict) -> None:
+    def override_layer(self, layer_name:builtins.str, value:dict, id:typing.Optional[builtins.str]=None) -> None:
         ...
 
-    def override_experiment_by_group_name(self, experiment_name:builtins.str, group_name:builtins.str) -> None:
+    def override_experiment_by_group_name(self, experiment_name:builtins.str, group_name:builtins.str, id:typing.Optional[builtins.str]=None) -> None:
         ...
 
-    def override_gate_for_id(self, gate_name:builtins.str, for_id:builtins.str, value:builtins.bool) -> None:
+    def remove_gate_override(self, gate_name:builtins.str, id:typing.Optional[builtins.str]=None) -> None:
         ...
 
-    def override_dynamic_config_for_id(self, config_name:builtins.str, for_id:builtins.str, value:dict) -> None:
+    def remove_dynamic_config_override(self, config_name:builtins.str, id:typing.Optional[builtins.str]=None) -> None:
         ...
 
-    def override_experiment_for_id(self, experiment_name:builtins.str, for_id:builtins.str, value:dict) -> None:
+    def remove_experiment_override(self, experiment_name:builtins.str, id:typing.Optional[builtins.str]=None) -> None:
         ...
 
-    def override_layer_for_id(self, layer_name:builtins.str, for_id:builtins.str, value:dict) -> None:
+    def remove_layer_override(self, layer_name:builtins.str, id:typing.Optional[builtins.str]=None) -> None:
         ...
 
-    def override_experiment_by_group_name_for_id(self, experiment_name:builtins.str, for_id:builtins.str, group_name:builtins.str) -> None:
+    def remove_all_overrides(self) -> None:
         ...
 
     def get_feature_gate_list(self) -> builtins.list[builtins.str]:

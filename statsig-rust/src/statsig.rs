@@ -1079,9 +1079,9 @@ impl Statsig {
 // -------------------------
 
 impl Statsig {
-    pub fn override_gate(&self, gate_name: &str, value: bool) {
+    pub fn override_gate(&self, gate_name: &str, value: bool, id: Option<&str>) {
         if let Some(adapter) = &self.override_adapter {
-            adapter.override_gate(gate_name, value);
+            adapter.override_gate(gate_name, value, id);
         }
     }
 
@@ -1089,15 +1089,21 @@ impl Statsig {
         &self,
         config_name: &str,
         value: HashMap<String, serde_json::Value>,
+        id: Option<&str>,
     ) {
         if let Some(adapter) = &self.override_adapter {
-            adapter.override_dynamic_config(config_name, value);
+            adapter.override_dynamic_config(config_name, value, id);
         }
     }
 
-    pub fn override_layer(&self, layer_name: &str, value: HashMap<String, serde_json::Value>) {
+    pub fn override_layer(
+        &self,
+        layer_name: &str,
+        value: HashMap<String, serde_json::Value>,
+        id: Option<&str>,
+    ) {
         if let Some(adapter) = &self.override_adapter {
-            adapter.override_layer(layer_name, value);
+            adapter.override_layer(layer_name, value, id);
         }
     }
 
@@ -1105,65 +1111,51 @@ impl Statsig {
         &self,
         experiment_name: &str,
         value: HashMap<String, serde_json::Value>,
+        id: Option<&str>,
     ) {
         if let Some(adapter) = &self.override_adapter {
-            adapter.override_experiment(experiment_name, value);
+            adapter.override_experiment(experiment_name, value, id);
         }
     }
 
-    pub fn override_experiment_by_group_name(&self, experiment_name: &str, group_name: &str) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.override_experiment_by_group_name(experiment_name, group_name);
-        }
-    }
-
-    pub fn override_gate_for_id(&self, gate_name: &str, for_id: &str, value: bool) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.override_gate_for_id(gate_name, for_id, value);
-        }
-    }
-
-    pub fn override_dynamic_config_for_id(
-        &self,
-        config_name: &str,
-        for_id: &str,
-        value: HashMap<String, serde_json::Value>,
-    ) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.override_dynamic_config_for_id(config_name, for_id, value);
-        }
-    }
-
-    pub fn override_experiment_for_id(
+    pub fn override_experiment_by_group_name(
         &self,
         experiment_name: &str,
-        for_id: &str,
-        value: HashMap<String, serde_json::Value>,
-    ) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.override_experiment_for_id(experiment_name, for_id, value);
-        }
-    }
-
-    pub fn override_layer_for_id(
-        &self,
-        layer_name: &str,
-        for_id: &str,
-        value: HashMap<String, serde_json::Value>,
-    ) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.override_layer_for_id(layer_name, for_id, value);
-        }
-    }
-
-    pub fn override_experiment_by_group_name_for_id(
-        &self,
-        experiment_name: &str,
-        for_id: &str,
         group_name: &str,
+        id: Option<&str>,
     ) {
         if let Some(adapter) = &self.override_adapter {
-            adapter.override_experiment_by_group_name_for_id(experiment_name, for_id, group_name);
+            adapter.override_experiment_by_group_name(experiment_name, group_name, id);
+        }
+    }
+
+    pub fn remove_gate_override(&self, gate_name: &str, id: Option<&str>) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.remove_gate_override(gate_name, id);
+        }
+    }
+
+    pub fn remove_dynamic_config_override(&self, config_name: &str, id: Option<&str>) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.remove_dynamic_config_override(config_name, id);
+        }
+    }
+
+    pub fn remove_experiment_override(&self, experiment_name: &str, id: Option<&str>) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.remove_experiment_override(experiment_name, id);
+        }
+    }
+
+    pub fn remove_layer_override(&self, layer_name: &str, id: Option<&str>) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.remove_layer_override(layer_name, id);
+        }
+    }
+
+    pub fn remove_all_overrides(&self) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.remove_all_overrides();
         }
     }
 }

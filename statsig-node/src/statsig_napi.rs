@@ -307,78 +307,78 @@ impl StatsigNapiInternal {
     }
 
     #[napi]
-    pub fn override_gate(&self, gate_name: String, value: bool) {
-        self.inner.override_gate(&gate_name, value);
+    pub fn override_gate(&self, gate_name: String, value: bool, id: Option<String>) {
+        self.inner.override_gate(&gate_name, value, id.as_deref());
     }
 
     #[napi]
-    pub fn override_dynamic_config(&self, config_name: String, value: HashMap<String, Value>) {
-        self.inner.override_dynamic_config(&config_name, value);
-    }
-
-    #[napi]
-    pub fn override_experiment(&self, experiment_name: String, value: HashMap<String, Value>) {
-        self.inner.override_experiment(&experiment_name, value);
-    }
-
-    #[napi]
-    pub fn override_experiment_by_group_name(&self, experiment_name: String, group_name: String) {
-        self.inner
-            .override_experiment_by_group_name(&experiment_name, &group_name);
-    }
-
-    #[napi]
-    pub fn override_layer(&self, layer_name: String, value: HashMap<String, Value>) {
-        self.inner.override_layer(&layer_name, value);
-    }
-
-    #[napi]
-    pub fn override_gate_for_id(&self, gate_name: String, for_id: String, value: bool) {
-        self.inner.override_gate_for_id(&gate_name, &for_id, value);
-    }
-
-    #[napi]
-    pub fn override_dynamic_config_for_id(
+    pub fn override_dynamic_config(
         &self,
         config_name: String,
-        for_id: String,
         value: HashMap<String, Value>,
+        id: Option<String>,
     ) {
         self.inner
-            .override_dynamic_config_for_id(&config_name, &for_id, value);
+            .override_dynamic_config(&config_name, value, id.as_deref());
     }
 
     #[napi]
-    pub fn override_experiment_for_id(
+    pub fn override_experiment(
         &self,
         experiment_name: String,
-        for_id: String,
         value: HashMap<String, Value>,
+        id: Option<String>,
     ) {
         self.inner
-            .override_experiment_for_id(&experiment_name, &for_id, value);
+            .override_experiment(&experiment_name, value, id.as_deref());
     }
 
     #[napi]
-    pub fn override_layer_for_id(
+    pub fn override_experiment_by_group_name(
+        &self,
+        experiment_name: String,
+        group_name: String,
+        id: Option<String>,
+    ) {
+        self.inner
+            .override_experiment_by_group_name(&experiment_name, &group_name, id.as_deref());
+    }
+
+    #[napi]
+    pub fn override_layer(
         &self,
         layer_name: String,
-        for_id: String,
         value: HashMap<String, Value>,
+        id: Option<String>,
     ) {
-        self.inner
-            .override_layer_for_id(&layer_name, &for_id, value);
+        self.inner.override_layer(&layer_name, value, id.as_deref());
     }
 
     #[napi]
-    pub fn override_experiment_by_group_name_for_id(
-        &self,
-        experiment_name: String,
-        for_id: String,
-        group_name: String,
-    ) {
+    pub fn remove_gate_override(&self, gate_name: String, id: Option<String>) {
+        self.inner.remove_gate_override(&gate_name, id.as_deref());
+    }
+
+    #[napi]
+    pub fn remove_dynamic_config_override(&self, config_name: String, id: Option<String>) {
         self.inner
-            .override_experiment_by_group_name_for_id(&experiment_name, &for_id, &group_name);
+            .remove_dynamic_config_override(&config_name, id.as_deref());
+    }
+
+    #[napi]
+    pub fn remove_experiment_override(&self, experiment_name: String, id: Option<String>) {
+        self.inner
+            .remove_experiment_override(&experiment_name, id.as_deref());
+    }
+
+    #[napi]
+    pub fn remove_layer_override(&self, layer_name: String, id: Option<String>) {
+        self.inner.remove_layer_override(&layer_name, id.as_deref());
+    }
+
+    #[napi]
+    pub fn remove_all_overrides(&self) {
+        self.inner.remove_all_overrides();
     }
 
     #[napi]

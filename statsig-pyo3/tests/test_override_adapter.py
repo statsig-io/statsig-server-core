@@ -36,7 +36,7 @@ def test_override_gate_for_id(statsig_setup):
 
     assert statsig.check_gate(user, "test_public")
 
-    statsig.override_gate_for_id("test_public", "test-user-id", False)
+    statsig.override_gate("test_public", False, "test-user-id")
 
     assert not statsig.check_gate(user, "test_public")
 
@@ -48,7 +48,7 @@ def test_override_dynamic_config_for_id(statsig_setup):
     original = statsig.get_dynamic_config(user, "big_number")
     assert original.get_float("foo", 0) == 1e21
 
-    statsig.override_dynamic_config_for_id("big_number", "test-user-id", {"foo": -1.23})
+    statsig.override_dynamic_config("big_number", {"foo": -1.23}, "test-user-id")
 
     overridden = statsig.get_dynamic_config(user, "big_number")
     assert overridden.get_float("foo", 0) == -1.23
@@ -62,7 +62,7 @@ def test_override_experiment_for_id(statsig_setup):
     original = statsig.get_experiment(user, "experiment_with_many_params")
     assert original.get_string("a_string", "ERR") in ["test_1", "test_2"]  # Accept either value
 
-    statsig.override_experiment_for_id("experiment_with_many_params", "test-user-id", {"a_string": "overridden_value"})
+    statsig.override_experiment("experiment_with_many_params", {"a_string": "overridden_value"}, "test-user-id")
 
     overridden = statsig.get_experiment(user, "experiment_with_many_params")
     assert overridden.get_string("a_string", "ERR") == "overridden_value"
@@ -76,7 +76,7 @@ def test_override_experiment_by_group_name_for_id(statsig_setup):
     original = statsig.get_experiment(user, "experiment_with_many_params")
     assert original.get_string("a_string", "ERR") in ["test_1", "test_2"]  # Accept either value
 
-    statsig.override_experiment_by_group_name_for_id("experiment_with_many_params", "test-user-id", "Control")
+    statsig.override_experiment_by_group_name("experiment_with_many_params", "Control", "test-user-id")
 
     overridden = statsig.get_experiment(user, "experiment_with_many_params")
     assert overridden.get_string("a_string", "ERR") == "control"
@@ -90,7 +90,7 @@ def test_override_layer_for_id(statsig_setup):
     original = statsig.get_layer(user, "layer_with_many_params")
     assert original.get_string("a_string", "ERR") in ["test_1", "test_2"]  # Accept either value
 
-    statsig.override_layer_for_id("layer_with_many_params", "test-user-id", {"a_string": "overridden_value"})
+    statsig.override_layer("layer_with_many_params", {"a_string": "overridden_value"}, "test-user-id")
 
     overridden = statsig.get_layer(user, "layer_with_many_params")
     assert overridden.get_string("a_string", "ERR") == "overridden_value"
@@ -102,7 +102,7 @@ def test_id_override_precedence_over_name(statsig_setup):
     user = StatsigUser("test-user-id")
 
     statsig.override_gate("test_public", False)
-    statsig.override_gate_for_id("test_public", "test-user-id", True)
+    statsig.override_gate("test_public", True, "test-user-id")
 
     assert statsig.check_gate(user, "test_public")
 
@@ -113,7 +113,7 @@ def test_override_gate_for_custom_id(statsig_setup):
 
     assert statsig.check_gate(user, "test_public")
 
-    statsig.override_gate_for_id("test_public", "employee_id:12345", False)
+    statsig.override_gate("test_public", False, "employee_id:12345")
 
     assert not statsig.check_gate(user, "test_public")
 
@@ -125,7 +125,7 @@ def test_override_dynamic_config_for_custom_id(statsig_setup):
     original = statsig.get_dynamic_config(user, "big_number")
     assert original.get_float("foo", 0) == 1e21
 
-    statsig.override_dynamic_config_for_id("big_number", "employee_id:12345", {"foo": -9.87})
+    statsig.override_dynamic_config("big_number", {"foo": -9.87}, "employee_id:12345")
 
     overridden = statsig.get_dynamic_config(user, "big_number")
     assert overridden.get_float("foo", 0) == -9.87
@@ -139,8 +139,7 @@ def test_override_experiment_for_custom_id(statsig_setup):
     original = statsig.get_experiment(user, "experiment_with_many_params")
     assert original.get_string("a_string", "ERR") == "test_1"  # Accept either value
 
-    statsig.override_experiment_for_id("experiment_with_many_params", "employee_id:12345",
-                                       {"a_string": "custom_id_value"})
+    statsig.override_experiment("experiment_with_many_params", {"a_string": "custom_id_value"}, "employee_id:12345")
 
     overridden = statsig.get_experiment(user, "experiment_with_many_params")
     assert overridden.get_string("a_string", "ERR") == "custom_id_value"
@@ -154,7 +153,7 @@ def test_override_experiment_by_group_name_for_custom_id(statsig_setup):
     original = statsig.get_experiment(user, "experiment_with_many_params")
     assert original.get_string("a_string", "ERR") in ["test_1", "test_2"]  # Accept either value
 
-    statsig.override_experiment_by_group_name_for_id("experiment_with_many_params", "employee_id:12345", "Control")
+    statsig.override_experiment_by_group_name("experiment_with_many_params", "Control", "employee_id:12345")
 
     overridden = statsig.get_experiment(user, "experiment_with_many_params")
     assert overridden.get_string("a_string", "ERR") == "control"
@@ -168,7 +167,7 @@ def test_override_layer_for_custom_id(statsig_setup):
     original = statsig.get_layer(user, "layer_with_many_params")
     assert original.get_string("a_string", "ERR") in ["test_1", "test_2"]  # Accept either value
 
-    statsig.override_layer_for_id("layer_with_many_params", "employee_id:12345", {"a_string": "custom_id_value"})
+    statsig.override_layer("layer_with_many_params", {"a_string": "custom_id_value"}, "employee_id:12345")
 
     overridden = statsig.get_layer(user, "layer_with_many_params")
     assert overridden.get_string("a_string", "ERR") == "custom_id_value"
@@ -180,7 +179,7 @@ def test_custom_id_override_precedence(statsig_setup):
     user = StatsigUser("test-user-id", custom_ids={"employee_id": "employee_id:12345"})
 
     statsig.override_gate("test_public", False)  # Name override (lowest precedence)
-    statsig.override_gate_for_id("test_public", "employee_id:12345", True)  # Custom ID override
-    statsig.override_gate_for_id("test_public", "test-user-id", False)  # User ID override (highest precedence)
+    statsig.override_gate("test_public", True, "employee_id:12345")  # Custom ID override
+    statsig.override_gate("test_public", False, "test-user-id")  # User ID override (highest precedence)
 
     assert not statsig.check_gate(user, "test_public")

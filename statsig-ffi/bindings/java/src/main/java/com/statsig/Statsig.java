@@ -305,24 +305,192 @@ public class Statsig {
         return StatsigJNI.statsigGetClientInitResponse(ref, user.getRef(), options);
     }
 
+    /**
+     * Overrides a gate with the specified value.
+     * 
+     * @param gateName The name of the gate to override
+     * @param gateValue The value to override the gate with
+     */
     public void overrideGate(String gateName, boolean gateValue) {
-        StatsigJNI.statsigOverrideGate(ref, gateName, gateValue);
+        StatsigJNI.statsigOverrideGate(ref, gateName, null, gateValue);
     }
 
+    /**
+     * Overrides a gate with the specified value for a specific ID.
+     * 
+     * @param gateName The name of the gate to override
+     * @param id The ID to override the gate for
+     * @param gateValue The value to override the gate with
+     */
+    public void overrideGate(String gateName, String id, boolean gateValue) {
+        StatsigJNI.statsigOverrideGate(ref, gateName, id, gateValue);
+    }
+
+    /**
+     * Overrides an experiment with the specified value.
+     * 
+     * @param experimentName The name of the experiment to override
+     * @param experimentValue The value to override the experiment with
+     */
     public void overrideExperiment(String experimentName, Map<String, Object> experimentValue) {
-        StatsigJNI.statsigOverrideExperiment(ref, experimentName, experimentValue);
+        StatsigJNI.statsigOverrideExperiment(ref, experimentName, null, experimentValue);
     }
 
+    /**
+     * Overrides an experiment with the specified value for a specific ID.
+     * 
+     * @param experimentName The name of the experiment to override
+     * @param id The ID to override the experiment for
+     * @param experimentValue The value to override the experiment with
+     */
+    public void overrideExperiment(String experimentName, String id, Map<String, Object> experimentValue) {
+        StatsigJNI.statsigOverrideExperiment(ref, experimentName, id, experimentValue);
+    }
+
+    /**
+     * Overrides a dynamic config with the specified value.
+     * 
+     * @param dynamicConfigName The name of the dynamic config to override
+     * @param dynamicConfigValue The value to override the dynamic config with
+     */
     public void overrideDynamicConfig(String dynamicConfigName, Map<String, Object> dynamicConfigValue) {
-        StatsigJNI.statsigOverrideDynamicConfig(ref, dynamicConfigName, dynamicConfigValue);
+        StatsigJNI.statsigOverrideDynamicConfig(ref, dynamicConfigName, null, dynamicConfigValue);
     }
 
+    /**
+     * Overrides a dynamic config with the specified value for a specific ID.
+     * 
+     * @param dynamicConfigName The name of the dynamic config to override
+     * @param id The ID to override the dynamic config for
+     * @param dynamicConfigValue The value to override the dynamic config with
+     */
+    public void overrideDynamicConfig(String dynamicConfigName, String id, Map<String, Object> dynamicConfigValue) {
+        StatsigJNI.statsigOverrideDynamicConfig(ref, dynamicConfigName, id, dynamicConfigValue);
+    }
+
+    /**
+     * Overrides a layer with the specified value.
+     * 
+     * @param layerName The name of the layer to override
+     * @param layerValue The value to override the layer with
+     */
     public void overrideLayer(String layerName, Map<String, Object> layerValue) {
-        StatsigJNI.statsigOverrideLayer(ref, layerName, layerValue);
+        StatsigJNI.statsigOverrideLayer(ref, layerName, null, layerValue);
     }
 
+    /**
+     * Overrides a layer with the specified value for a specific ID.
+     * 
+     * @param layerName The name of the layer to override
+     * @param id The ID to override the layer for
+     * @param layerValue The value to override the layer with
+     */
+    public void overrideLayer(String layerName, String id, Map<String, Object> layerValue) {
+        StatsigJNI.statsigOverrideLayer(ref, layerName, id, layerValue);
+    }
+
+    /**
+     * Overrides an experiment with the specified group name.
+     * 
+     * @param experimentName The name of the experiment to override
+     * @param groupName The group name to override the experiment with
+     */
     public void overrideExperimentByGroupName(String experimentName, String groupName) {
-        StatsigJNI.statsigOverrideExperimentByGroupName(ref, experimentName, groupName);
+        StatsigJNI.statsigOverrideExperimentByGroupName(ref, experimentName, null, groupName);
+    }
+
+    /**
+     * Overrides an experiment with the specified group name for a specific ID.
+     * 
+     * @param experimentName The name of the experiment to override
+     * @param id The ID to override the experiment for
+     * @param groupName The group name to override the experiment with
+     */
+    public void overrideExperimentByGroupName(String experimentName, String id, String groupName) {
+        StatsigJNI.statsigOverrideExperimentByGroupName(ref, experimentName, id, groupName);
+    }
+
+    /**
+     * Removes all overrides for the specified gate.
+     * 
+     * @param gateName The name of the gate to remove overrides for
+     */
+    public void removeGateOverride(String gateName) {
+        StatsigJNI.statsigRemoveGateOverride(ref, gateName, null);
+    }
+
+    /**
+     * Removes overrides for the specified gate and ID.
+     * 
+     * @param gateName The name of the gate to remove overrides for
+     * @param id The ID to remove overrides for
+     */
+    public void removeGateOverride(String gateName, String id) {
+        StatsigJNI.statsigRemoveGateOverride(ref, gateName, id);
+    }
+
+    /**
+     * Removes all overrides for the specified dynamic config.
+     * 
+     * @param configName The name of the dynamic config to remove overrides for
+     */
+    public void removeDynamicConfigOverride(String configName) {
+        StatsigJNI.statsigRemoveDynamicConfigOverride(ref, configName, null);
+    }
+
+    /**
+     * Removes overrides for the specified dynamic config and ID.
+     * 
+     * @param configName The name of the dynamic config to remove overrides for
+     * @param id The ID to remove overrides for
+     */
+    public void removeDynamicConfigOverride(String configName, String id) {
+        StatsigJNI.statsigRemoveDynamicConfigOverride(ref, configName, id);
+    }
+
+    /**
+     * Removes all overrides for the specified experiment.
+     * 
+     * @param experimentName The name of the experiment to remove overrides for
+     */
+    public void removeExperimentOverride(String experimentName) {
+        StatsigJNI.statsigRemoveExperimentOverride(ref, experimentName, null);
+    }
+
+    /**
+     * Removes overrides for the specified experiment and ID.
+     * 
+     * @param experimentName The name of the experiment to remove overrides for
+     * @param id The ID to remove overrides for
+     */
+    public void removeExperimentOverride(String experimentName, String id) {
+        StatsigJNI.statsigRemoveExperimentOverride(ref, experimentName, id);
+    }
+
+    /**
+     * Removes all overrides for the specified layer.
+     * 
+     * @param layerName The name of the layer to remove overrides for
+     */
+    public void removeLayerOverride(String layerName) {
+        StatsigJNI.statsigRemoveLayerOverride(ref, layerName, null);
+    }
+
+    /**
+     * Removes overrides for the specified layer and ID.
+     * 
+     * @param layerName The name of the layer to remove overrides for
+     * @param id The ID to remove overrides for
+     */
+    public void removeLayerOverride(String layerName, String id) {
+        StatsigJNI.statsigRemoveLayerOverride(ref, layerName, id);
+    }
+
+    /**
+     * Removes all overrides for all gates, dynamic configs, experiments, and layers.
+     */
+    public void removeAllOverrides() {
+        StatsigJNI.statsigRemoveAllOverrides(ref);
     }
 
     public void identify(StatsigUser user) {
