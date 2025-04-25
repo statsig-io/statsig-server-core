@@ -7,6 +7,7 @@ use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::specs_response::spec_types::{SpecsResponseFull, SpecsResponseNoUpdates};
 use crate::specs_response::spec_types_encoded::DecodedSpecsResponse;
+use crate::utils::maybe_trim_malloc;
 use crate::{
     log_d, log_e, log_error_to_statsig_and_console, SpecsInfo, SpecsSource, SpecsUpdate,
     SpecsUpdateListener, StatsigErr, StatsigRuntime,
@@ -115,6 +116,11 @@ impl SpecStore {
             &mut_values.source,
             &prev_source,
         );
+
+        // Glibc requested more memory than needed when deserializing a big json blob
+        // And memory allocator fails to return it.
+        // To prevent service from OOMing, manually unused heap memory.
+        maybe_trim_malloc();
 
         Ok(())
     }

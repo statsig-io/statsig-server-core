@@ -2244,6 +2244,7 @@ dependencies = [
  "flate2",
  "futures",
  "lazy_static",
+ "libc",
  "log",
  "mockito",
  "more-asserts",
