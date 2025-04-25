@@ -1,8 +1,5 @@
 package com.statsig;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.statsig.internal.GsonUtil;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.AfterEach;
@@ -23,7 +20,6 @@ public class E2ELayerTest {
     private Statsig statsig;
     private StatsigUser testUser;
     private String downloadConfigSpecsJson;
-    private final Gson gson = new GsonBuilder().setLenient().create();
 
     @BeforeEach
     public void setUp() throws IOException, InterruptedException, ExecutionException {
@@ -63,6 +59,12 @@ public class E2ELayerTest {
     @Test
     public void testLayer() {
         String layerToTest = "a_layer";
+
+        Layer layerBeforeOverride = statsig.getLayer(testUser, layerToTest);
+        assertNotNull(layerBeforeOverride);
+        assertEquals("red", layerBeforeOverride.getString("button_color", "red"));
+        assertEquals("Purchase", layerBeforeOverride.getString("button_text", "Purchase"));
+        assertEquals(0, layerBeforeOverride.getInt("discount_percentage", 0));
         
         Map<String, Object> layerValue = Map.of(
             "button_color", "blue",
