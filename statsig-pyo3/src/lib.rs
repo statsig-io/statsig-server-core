@@ -8,7 +8,6 @@ mod statsig_options_py;
 mod statsig_persistent_storage_override_adapter_py;
 mod statsig_types_py;
 mod statsig_user_py;
-
 use pyo3::prelude::*;
 use pyo3_stub_gen::define_stub_info_gatherer;
 
@@ -27,6 +26,9 @@ fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<statsig_types_py::ExperimentEvaluationOptionsPy>()?;
     m.add_class::<statsig_types_py::DynamicConfigEvaluationOptionsPy>()?;
     m.add_class::<statsig_types_py::LayerEvaluationOptionsPy>()?;
+    m.add_class::<statsig_types_py::InitializeDetailsPy>()?;
+    m.add_class::<statsig_types_py::FailureDetailsPy>()?;
+    m.add_class::<statsig_types_py::EvaluationDetailsPy>()?;
     m.add_class::<observability_client_base_py::ObservabilityClientBasePy>()?;
     m.add_class::<data_store_base_py::DataStoreBasePy>()?;
     m.add_class::<statsig_persistent_storage_override_adapter_py::PersistentStorageBasePy>()?;

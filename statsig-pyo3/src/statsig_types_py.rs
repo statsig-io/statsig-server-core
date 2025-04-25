@@ -3,10 +3,80 @@ use pyo3_stub_gen::derive::*;
 use serde_json::{json, Map, Value};
 use statsig_rust::{
     statsig_types::{DynamicConfig, Experiment, Layer},
-    DynamicConfigEvaluationOptions, EvaluationDetails, ExperimentEvaluationOptions,
-    FeatureGateEvaluationOptions, LayerEvaluationOptions,
+    DynamicConfigEvaluationOptions, EvaluationDetails, ExperimentEvaluationOptions, FailureDetails,
+    FeatureGateEvaluationOptions, InitializeDetails, LayerEvaluationOptions,
 };
 
+#[gen_stub_pyclass]
+#[pyclass(name = "InitializeDetails")]
+pub struct InitializeDetailsPy {
+    #[pyo3(get)]
+    pub duration: f64,
+
+    #[pyo3(get)]
+    pub init_success: bool,
+
+    #[pyo3(get)]
+    pub is_config_spec_ready: bool,
+
+    #[pyo3(get)]
+    pub is_id_list_ready: Option<bool>,
+
+    #[pyo3(get)]
+    pub source: String,
+
+    #[pyo3(get)]
+    pub failure_details: Option<FailureDetailsPy>,
+}
+
+impl From<InitializeDetails> for InitializeDetailsPy {
+    fn from(value: InitializeDetails) -> Self {
+        InitializeDetailsPy {
+            duration: value.duration,
+            init_success: value.init_success,
+            is_config_spec_ready: value.is_config_spec_ready,
+            is_id_list_ready: value.is_id_list_ready,
+            source: value.source.to_string(),
+            failure_details: value.failure_details.map(FailureDetailsPy::from),
+        }
+    }
+}
+
+impl InitializeDetailsPy {
+    pub fn from_error(reason: &str, error: Option<String>) -> Self {
+        InitializeDetailsPy {
+            duration: 0.0,
+            init_success: false,
+            is_config_spec_ready: false,
+            is_id_list_ready: None,
+            source: "error".to_string(),
+            failure_details: Some(FailureDetailsPy {
+                reason: reason.to_string(),
+                error,
+            }),
+        }
+    }
+}
+
+#[gen_stub_pyclass]
+#[pyclass(name = "FailureDetails")]
+#[derive(Clone)]
+pub struct FailureDetailsPy {
+    #[pyo3(get)]
+    pub reason: String,
+
+    #[pyo3(get)]
+    pub error: Option<String>,
+}
+
+impl From<FailureDetails> for FailureDetailsPy {
+    fn from(value: FailureDetails) -> Self {
+        FailureDetailsPy {
+            reason: value.reason,
+            error: value.error.map(|e| e.to_string()),
+        }
+    }
+}
 #[gen_stub_pyclass]
 #[pyclass(name = "EvaluationDetails")]
 #[derive(Clone)]

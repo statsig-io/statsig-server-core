@@ -96,6 +96,7 @@ pub struct Statsig {
     sampling_processor: Arc<SamplingProcessor>,
     background_tasks_started: Arc<AtomicBool>,
     persistent_values_manager: Option<Arc<PersistentValuesManager>>,
+    initialize_details: Mutex<InitializeDetails>,
 }
 
 pub struct StatsigContext {
@@ -107,20 +108,49 @@ pub struct StatsigContext {
     pub spec_store: Arc<SpecStore>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FailureDetails {
     pub reason: String,
     pub error: Option<StatsigErr>,
 }
 
-#[derive(Debug)]
-pub struct StatsigInitializeDetails {
+#[derive(Debug, Clone)]
+pub struct InitializeDetails {
     pub duration: f64,
     pub init_success: bool,
     pub is_config_spec_ready: bool,
     pub is_id_list_ready: Option<bool>,
     pub source: SpecsSource,
     pub failure_details: Option<FailureDetails>,
+}
+
+impl Default for InitializeDetails {
+    fn default() -> Self {
+        InitializeDetails {
+            duration: 0.0,
+            init_success: false,
+            is_config_spec_ready: false,
+            is_id_list_ready: None,
+            source: SpecsSource::Uninitialized,
+            failure_details: None,
+        }
+    }
+}
+
+impl InitializeDetails {
+    pub fn from_error(reason: &str, error: Option<StatsigErr>) -> Self {
+        InitializeDetails {
+            duration: 0.0,
+            init_success: false,
+            is_config_spec_ready: false,
+            is_id_list_ready: None,
+            source: SpecsSource::Uninitialized,
+            failure_details: Some(FailureDetails {
+                reason: reason.to_string(),
+                error,
+            }),
+        }
+    }
 }
 
 impl Statsig {
@@ -209,10 +239,45 @@ impl Statsig {
             diagnostics_observer,
             background_tasks_started: Arc::new(AtomicBool::new(false)),
             persistent_values_manager,
+            initialize_details: Mutex::new(InitializeDetails::default()),
         }
     }
 
+    /***
+     *  Initializes the Statsig client and returns an error if initialization fails.
+     *
+     *  This method performs the client initialization and returns `Ok(())` if successful.
+     *  If the initialization completes with failure details, it returns a [`StatsigErr`]
+     *  describing the failure.
+     *
+     *  For detailed information about the initialization process—regardless of success or failure—
+     *  use [`initialize_with_details`] instead.
+     *
+     *  # Errors
+     *
+     *  Returns a [`StatsigErr`] if the client fails to initialize successfully.
+     */
     pub async fn initialize(&self) -> Result<(), StatsigErr> {
+        let details = self.initialize_with_details().await?;
+
+        if let Some(failure_details) = details.failure_details {
+            Err(failure_details
+                .error
+                .unwrap_or(StatsigErr::InitializationError(failure_details.reason)))
+        } else {
+            Ok(())
+        }
+    }
+
+    /***
+     *  Initializes the Statsig client and returns detailed information about the process.
+     *
+     *  This method returns a [`StatsigInitializeDetails`] struct, which includes metadata such as
+     *  the success status, initialization source, and any failure details. Even if initialization
+     *  fails, this method does not return an error; instead, the `init_success` field will be `false`
+     *  and `failure_details` may be populated.
+     ***/
+    pub async fn initialize_with_details(&self) -> Result<InitializeDetails, StatsigErr> {
         self.ops_stats.add_marker(
             Marker::new(KeyType::Overall, ActionType::Start, None),
             Some(ContextType::Initialize),
@@ -223,27 +288,30 @@ impl Statsig {
         } else {
             self.initialize_impl_with_details().await
         };
-
         self.log_init_details(&init_details);
-
-        init_details.and_then(|details| {
-            // Touch all fields to avoid dead code warnings - will use these properly in the future
-            let _ = (
-                details.duration,
-                details.init_success,
-                details.is_config_spec_ready,
-                details.is_id_list_ready,
-                details.source,
-            );
-
-            if let Some(failure_details) = details.failure_details {
-                Err(failure_details
-                    .error
-                    .unwrap_or(StatsigErr::InitializationError(failure_details.reason)))
-            } else {
-                Ok(())
+        if let Ok(details) = &init_details {
+            if let Ok(mut curr_init_details) = self.initialize_details.try_lock() {
+                *curr_init_details = details.clone();
             }
-        })
+        }
+        init_details
+    }
+
+    pub fn get_initialize_details(&self) -> InitializeDetails {
+        match self.initialize_details.lock() {
+            Ok(details) => details.clone(),
+            Err(poison_error) => InitializeDetails::from_error(
+                "Failed to lock initialize_details",
+                Some(StatsigErr::LockFailure(poison_error.to_string())),
+            ),
+        }
+    }
+
+    pub fn is_initialized(&self) -> bool {
+        match self.initialize_details.lock() {
+            Ok(details) => details.init_success,
+            Err(_) => false,
+        }
     }
 
     pub async fn shutdown(&self) -> Result<(), StatsigErr> {
@@ -345,7 +413,7 @@ impl Statsig {
     async fn apply_timeout_to_init(
         &self,
         timeout_ms: u64,
-    ) -> Result<StatsigInitializeDetails, StatsigErr> {
+    ) -> Result<InitializeDetails, StatsigErr> {
         let timeout = Duration::from_millis(timeout_ms);
 
         let init_future = self.initialize_impl_with_details();
@@ -383,7 +451,7 @@ impl Statsig {
         }
     }
 
-    async fn initialize_impl_with_details(&self) -> Result<StatsigInitializeDetails, StatsigErr> {
+    async fn initialize_impl_with_details(&self) -> Result<InitializeDetails, StatsigErr> {
         let start_time = Instant::now();
         self.spec_store.set_source(SpecsSource::Loading);
         self.specs_adapter.initialize(self.spec_store.clone());
@@ -494,9 +562,9 @@ impl Statsig {
         )
         .await;
 
-        Ok(StatsigInitializeDetails {
+        Ok(InitializeDetails {
             init_success: success,
-            is_config_spec_ready: spec_info.lcut.is_some(),
+            is_config_spec_ready: matches!(spec_info.lcut, Some(v) if v != 0),
             is_id_list_ready: id_list_ready,
             source: spec_info.source,
             failure_details: error.as_ref().map(|e| FailureDetails {
@@ -507,8 +575,8 @@ impl Statsig {
         })
     }
 
-    fn timeout_failure(&self, timeout_ms: u64) -> StatsigInitializeDetails {
-        StatsigInitializeDetails {
+    fn timeout_failure(&self, timeout_ms: u64) -> InitializeDetails {
+        InitializeDetails {
             init_success: false,
             is_config_spec_ready: false,
             is_id_list_ready: None,
@@ -521,7 +589,7 @@ impl Statsig {
         }
     }
 
-    fn log_init_details(&self, init_details: &Result<StatsigInitializeDetails, StatsigErr>) {
+    fn log_init_details(&self, init_details: &Result<InitializeDetails, StatsigErr>) {
         match init_details {
             Ok(details) => {
                 self.log_init_finish(

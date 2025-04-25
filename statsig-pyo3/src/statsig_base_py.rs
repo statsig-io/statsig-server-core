@@ -2,7 +2,7 @@ use crate::net_provider_py::NetworkProviderPy;
 use crate::pyo_utils::{map_to_py_dict, py_dict_to_json_value_map};
 use crate::statsig_options_py::{safe_convert_to_statsig_options, StatsigOptionsPy};
 use crate::statsig_persistent_storage_override_adapter_py::convert_dict_to_user_persisted_values;
-use crate::statsig_types_py::{DynamicConfigPy, LayerPy};
+use crate::statsig_types_py::{DynamicConfigPy, InitializeDetailsPy, LayerPy};
 use crate::{
     statsig_types_py::{
         DynamicConfigEvaluationOptionsPy, ExperimentEvaluationOptionsPy, ExperimentPy,
@@ -10,8 +10,7 @@ use crate::{
     },
     statsig_user_py::StatsigUserPy,
 };
-use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::{prelude::*, types::PyDict};
 use pyo3_stub_gen::derive::*;
 use statsig_rust::networking::providers::NetworkProviderGlobal;
 use statsig_rust::networking::NetworkProvider;
@@ -98,6 +97,43 @@ impl StatsigBasePy {
         });
 
         Ok(completion_event)
+    }
+
+    pub fn initialize_with_details(&self, py: Python) -> PyResult<PyObject> {
+        let (future, future_clone) = create_python_future(py)?;
+
+        let inst = self.inner.clone();
+        self.inner.statsig_runtime.runtime_handle.spawn(async move {
+            let result = inst.initialize_with_details().await;
+
+            Python::with_gil(|py| {
+                let _ = match result {
+                    Ok(details) => {
+                        let py_details = InitializeDetailsPy::from(details);
+                        future_clone.call_method1(py, "set_result", (py_details,))
+                    }
+                    Err(e) => {
+                        let error_details = InitializeDetailsPy::from_error(
+                            "initialize_failed",
+                            Some(e.to_string()),
+                        );
+                        future_clone.call_method1(py, "set_result", (error_details,))
+                    }
+                };
+            });
+        });
+
+        Ok(future)
+    }
+
+    pub fn get_initialize_details(&self) -> PyResult<InitializeDetailsPy> {
+        let details = self.inner.get_initialize_details();
+        let py_details = InitializeDetailsPy::from(details);
+        Ok(py_details)
+    }
+
+    pub fn is_initialized(&self) -> bool {
+        self.inner.is_initialized()
     }
 
     pub fn flush_events(&self, py: Python) -> PyResult<PyObject> {
@@ -484,6 +520,14 @@ fn get_completion_event(py: Python) -> PyResult<(PyObject, PyObject)> {
     let event_clone: PyObject = event.clone().into();
 
     Ok((event.into(), event_clone))
+}
+
+fn create_python_future(py: Python) -> PyResult<(PyObject, PyObject)> {
+    let concurrent = PyModule::import(py, "concurrent.futures")?;
+    let future = concurrent.getattr("Future")?.call0()?;
+    let future_clone: PyObject = future.clone().into();
+
+    Ok((future.into(), future_clone))
 }
 
 fn convert_to_number(value: Option<&Bound<PyAny>>) -> Option<f64> {

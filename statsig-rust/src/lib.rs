@@ -18,6 +18,8 @@ pub use persistent_storage::persistent_storage_trait::*;
 pub use sampling_processor::SamplingProcessor;
 pub use spec_store::SpecStore;
 pub use specs_adapter::*;
+pub use statsig::FailureDetails;
+pub use statsig::InitializeDetails;
 pub use statsig::Statsig;
 pub use statsig_core_api_options::{
     DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,

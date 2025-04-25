@@ -5,8 +5,8 @@ use utils::mock_specs_adapter::MockSpecsAdapter;
 
 use statsig_rust::{
     dyn_value, evaluation::evaluation_types::AnyConfigEvaluation, hashing::djb2,
-    output_logger::LogLevel, DynamicValue, Statsig, StatsigHttpIdListsAdapter, StatsigOptions,
-    StatsigUser,
+    output_logger::LogLevel, DynamicValue, SpecsSource, Statsig, StatsigHttpIdListsAdapter,
+    StatsigOptions, StatsigUser,
 };
 
 fn get_sdk_key() -> String {
@@ -161,6 +161,43 @@ async fn test_user_agent_disabled() {
     let statsig_3 = Statsig::new(&get_sdk_key(), Some(Arc::new(opts_3)));
     statsig_3.initialize().await.unwrap();
     assert!(!statsig_3.check_gate(&user, "test_ua"));
+}
+
+#[tokio::test]
+async fn test_initialize_with_details() {
+    let statsig = Statsig::new(&get_sdk_key(), None);
+    let details = statsig.initialize_with_details().await.unwrap();
+    assert!(details.init_success);
+    assert!(details.is_config_spec_ready);
+    assert!(details.source == SpecsSource::Network);
+    assert!(details.failure_details.is_none());
+    assert!(details.is_id_list_ready.is_none());
+}
+
+#[tokio::test]
+async fn test_initialize_with_details_failure() {
+    let statsig = Statsig::new("invalid-sdk-key", None);
+    let details = statsig.initialize_with_details().await.unwrap();
+    assert!(details.init_success);
+    assert!(!details.is_config_spec_ready);
+    assert!(details.source == SpecsSource::NoValues);
+    assert!(details.failure_details.is_some());
+    assert!(details.is_id_list_ready.is_none());
+}
+
+#[tokio::test]
+async fn test_initialize_with_details_with_id_lists() {
+    let id_list_opt = StatsigOptions {
+        enable_id_lists: Some(true),
+        ..StatsigOptions::new()
+    };
+    let statsig = Statsig::new(&get_sdk_key(), Some(Arc::new(id_list_opt)));
+    let details = statsig.initialize_with_details().await.unwrap();
+    assert!(details.init_success);
+    assert!(details.is_config_spec_ready);
+    assert!(details.source == SpecsSource::Network);
+    assert!(details.failure_details.is_none());
+    assert!(details.is_id_list_ready.is_some());
 }
 
 #[tokio::test]

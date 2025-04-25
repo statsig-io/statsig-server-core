@@ -73,6 +73,10 @@ class ExperimentEvaluationOptions:
     user_persisted_values: typing.Optional[dict]
     def __new__(cls,disable_exposure_logging:builtins.bool=False, user_persisted_values:typing.Optional[dict]=None): ...
 
+class FailureDetails:
+    reason: builtins.str
+    error: typing.Optional[builtins.str]
+
 class FeatureGate:
     name: builtins.str
     value: builtins.bool
@@ -83,6 +87,14 @@ class FeatureGate:
 class FeatureGateEvaluationOptions:
     disable_exposure_logging: builtins.bool
     def __new__(cls,disable_exposure_logging:builtins.bool=False): ...
+
+class InitializeDetails:
+    duration: builtins.float
+    init_success: builtins.bool
+    is_config_spec_ready: builtins.bool
+    is_id_list_ready: typing.Optional[builtins.bool]
+    source: builtins.str
+    failure_details: typing.Optional[FailureDetails]
 
 class Layer:
     name: builtins.str
@@ -126,6 +138,15 @@ class PersistentStorageBaseClass:
 class StatsigBasePy:
     def __new__(cls,network_func:typing.Any, sdk_key:builtins.str, options:typing.Optional[StatsigOptions]=None): ...
     def initialize(self) -> typing.Any:
+        ...
+
+    def initialize_with_details(self) -> typing.Any:
+        ...
+
+    def get_initialize_details(self) -> InitializeDetails:
+        ...
+
+    def is_initialized(self) -> builtins.bool:
         ...
 
     def flush_events(self) -> typing.Any:
