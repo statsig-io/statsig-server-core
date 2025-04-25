@@ -322,7 +322,7 @@ public class Statsig {
      * @param id The ID to override the gate for
      * @param gateValue The value to override the gate with
      */
-    public void overrideGate(String gateName, String id, boolean gateValue) {
+    public void overrideGate(String gateName, boolean gateValue, String id) {
         StatsigJNI.statsigOverrideGate(ref, gateName, id, gateValue);
     }
 
@@ -343,7 +343,7 @@ public class Statsig {
      * @param id The ID to override the experiment for
      * @param experimentValue The value to override the experiment with
      */
-    public void overrideExperiment(String experimentName, String id, Map<String, Object> experimentValue) {
+    public void overrideExperiment(String experimentName, Map<String, Object> experimentValue, String id) {
         StatsigJNI.statsigOverrideExperiment(ref, experimentName, id, experimentValue);
     }
 
@@ -364,7 +364,7 @@ public class Statsig {
      * @param id The ID to override the dynamic config for
      * @param dynamicConfigValue The value to override the dynamic config with
      */
-    public void overrideDynamicConfig(String dynamicConfigName, String id, Map<String, Object> dynamicConfigValue) {
+    public void overrideDynamicConfig(String dynamicConfigName, Map<String, Object> dynamicConfigValue, String id) {
         StatsigJNI.statsigOverrideDynamicConfig(ref, dynamicConfigName, id, dynamicConfigValue);
     }
 
@@ -385,7 +385,7 @@ public class Statsig {
      * @param id The ID to override the layer for
      * @param layerValue The value to override the layer with
      */
-    public void overrideLayer(String layerName, String id, Map<String, Object> layerValue) {
+    public void overrideLayer(String layerName, Map<String, Object> layerValue, String id) {
         StatsigJNI.statsigOverrideLayer(ref, layerName, id, layerValue);
     }
 
@@ -406,7 +406,7 @@ public class Statsig {
      * @param id The ID to override the experiment for
      * @param groupName The group name to override the experiment with
      */
-    public void overrideExperimentByGroupName(String experimentName, String id, String groupName) {
+    public void overrideExperimentByGroupName(String experimentName, String groupName, String id) {
         StatsigJNI.statsigOverrideExperimentByGroupName(ref, experimentName, id, groupName);
     }
 

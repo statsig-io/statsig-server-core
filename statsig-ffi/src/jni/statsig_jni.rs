@@ -947,8 +947,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideGate(
     _class: JClass,
     statsig_ref: JString,
     gate_name: JString,
-    gate_value: jboolean,
     id: JString,
+    gate_value: jboolean,
 ) {
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
@@ -972,8 +972,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideDynamicConfig(
     _class: JClass,
     statsig_ref: JString,
     config_name: JString,
-    value: JObject,
     id: JString,
+    value: JObject,
 ) {
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
@@ -1007,8 +1007,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideLayer(
     _class: JClass,
     statsig_ref: JString,
     layer_name: JString,
-    value: JObject,
     id: JString,
+    value: JObject,
 ) {
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
@@ -1038,8 +1038,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideExperiment(
     _class: JClass,
     statsig_ref: JString,
     exp_name: JString,
-    value: JObject,
     id: JString,
+    value: JObject,
 ) {
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
@@ -1069,8 +1069,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideExperimentByGr
     _class: JClass,
     statsig_ref: JString,
     exp_name: JString,
-    group_name: JString,
     id: JString,
+    group_name: JString,
 ) {
     let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
 
