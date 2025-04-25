@@ -1,0 +1,237 @@
+{
+    "dynamic_configs": {
+        "purchase_experiment": {
+            "type": "dynamic_config",
+            "salt": "147f7767-fa5d-4080-ae48-bf5335ec6166",
+            "enabled": true,
+            "defaultValue": {},
+            "rules": [
+                {
+                    "name": "layerAssignment",
+                    "passPercentage": 100,
+                    "conditions": [
+                        "3892119329"
+                    ],
+                    "returnValue": {},
+                    "id": "layerAssignment",
+                    "salt": "",
+                    "idType": "userID"
+                },
+                {
+                    "name": "targetingGate",
+                    "passPercentage": 100,
+                    "conditions": [
+                        "1254044134"
+                    ],
+                    "returnValue": {},
+                    "id": "targetingGate",
+                    "salt": "",
+                    "idType": "userID"
+                },
+                {
+                    "name": "1BeGayFBKIF9AgSUW3azbj",
+                    "groupName": "Control",
+                    "passPercentage": 100,
+                    "conditions": [
+                        "413215195"
+                    ],
+                    "returnValue": {
+                        "price": 9.99,
+                        "showDiscount": true
+                    },
+                    "id": "1BeGayFBKIF9AgSUW3azbj",
+                    "salt": "1BeGayFBKIF9AgSUW3azbj",
+                    "idType": "userID",
+                    "isExperimentGroup": true
+                }
+            ],
+            "idType": "userID",
+            "entity": "experiment",
+            "version": 10,
+            "isActive": true,
+            "hasSharedParams": false
+        },
+        "test_icon_types": {
+            "type": "dynamic_config",
+            "salt": "147f7767-fa5d-4080-ae48-bf5335ec6166",
+            "enabled": true,
+            "defaultValue": {},
+            "rules": [
+                {
+                    "name": "layerAssignment",
+                    "passPercentage": 100,
+                    "conditions": [
+                        "3892119329"
+                    ],
+                    "returnValue": {},
+                    "id": "layerAssignment",
+                    "salt": "",
+                    "idType": "userID"
+                },
+                {
+                    "name": "targetingGate",
+                    "passPercentage": 100,
+                    "conditions": [
+                        "1254044134"
+                    ],
+                    "returnValue": {},
+                    "id": "targetingGate",
+                    "salt": "",
+                    "idType": "userID"
+                },
+                {
+                    "name": "1BeGayFBKIF9AgSUW3azbj",
+                    "groupName": "Control",
+                    "passPercentage": 100,
+                    "conditions": [
+                        "413215195"
+                    ],
+                    "returnValue": {
+                        "key1": "value1",
+                        "key2": 123
+                    },
+                    "id": "1BeGayFBKIF9AgSUW3azbj",
+                    "salt": "1BeGayFBKIF9AgSUW3azbj",
+                    "idType": "userID",
+                    "isExperimentGroup": true
+                }
+            ],
+            "idType": "userID",
+            "entity": "experiment",
+            "version": 10,
+            "isActive": true,
+            "hasSharedParams": false
+        }
+    },
+    "feature_gates": {
+        "segment:segment_2_with_id_lists": {
+            "type": "feature_gate",
+            "salt": "cdad372a-9be1-42d9-ac59-6a8bca2df369",
+            "enabled": true,
+            "defaultValue": false,
+            "rules": [
+                {
+                    "name": "id_list",
+                    "passPercentage": 100,
+                    "conditions": [
+                        "4215729711"
+                    ],
+                    "returnValue": true,
+                    "id": "id_list",
+                    "salt": "",
+                    "idType": "userID"
+                }
+            ],
+            "idType": "userID",
+            "entity": "segment",
+            "version": 2
+        }
+    },
+    "layer_configs": {
+        "a_layer": {
+            "type": "dynamic_config",
+            "salt": "b83e0241-52c8-4c2b-add5-981aa5e8aec3",
+            "enabled": true,
+            "defaultValue": {
+                "button_color": "red",
+                "button_text": "Purchase",
+                "discount_percentage": 0
+            },
+            "rules": [
+                {
+                    "name": "test_rule",
+                    "passPercentage": 100,
+                    "conditions": [
+                        "2857642865"
+                    ],
+                    "returnValue": {
+                        "button_color": "blue",
+                        "button_text": "Buy Now",
+                        "discount_percentage": 15
+                    },
+                    "id": "test_rule",
+                    "salt": "",
+                    "idType": "userID"
+                }
+            ],
+            "idType": "userID",
+            "entity": "layer",
+            "version": 2
+        }
+    },
+    "has_updates": true,
+    "time": 1745275698471,
+    "condition_map": {
+        "413215195": {
+            "type": "user_bucket",
+            "targetValue": 0,
+            "operator": "lt",
+            "field": null,
+            "additionalValues": {
+                "salt": "147f7767-fa5d-4080-ae48-bf5335ec6166"
+            },
+            "idType": "userID"
+        },
+        "1254044134": {
+            "type": "fail_gate",
+            "targetValue": "test_gate",
+            "operator": null,
+            "field": null,
+            "additionalValues": {},
+            "idType": "userID"
+        },
+        "2857642865": {
+            "type": "user_field",
+            "targetValue": [
+                "weihao@statsig.com"
+            ],
+            "operator": "any",
+            "field": "email",
+            "additionalValues": {},
+            "idType": "userID"
+        },
+        "3892119329": {
+            "type": "user_bucket",
+            "targetValue": {
+                "-1": true
+            },
+            "operator": "any",
+            "field": null,
+            "additionalValues": {
+                "salt": "9010e84f-788a-481d-a8a3-50b6f603bdba"
+            },
+            "idType": "userID"
+        },
+        "4215729711": {
+            "type": "unit_id",
+            "targetValue": [
+                "test_user_id"
+            ],
+            "operator": "any",
+            "field": "userID",
+            "additionalValues": {
+                "custom_id": "userID"
+            },
+            "idType": "userID"
+        }
+    },
+    "response_format": "dcs-v2",
+    "default_environment": "production",
+    "id_lists": {},
+    "diagnostics": {
+        "initialize": 10000,
+        "dcs": 1000,
+        "download_config_specs": 1000,
+        "idlist": 100,
+        "get_id_list": 100,
+        "get_id_list_sources": 100,
+        "log": 100,
+        "log_event": 100,
+        "api_call": 100
+    },
+    "sdk_configs": {
+        "event_queue_size": 2000,
+        "event_content_encoding": "gzip",
+        "sampling_mode": "none"
+    }
+}
