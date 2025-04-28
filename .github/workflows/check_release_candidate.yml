@@ -70,7 +70,7 @@ jobs:
           # - windows-latest # Uncomment when windows is supported by PHP
           - ubuntu-latest
         tag:
-          - beta
+          # - beta # PHP requires a binaries to be accessible from the public statsig-server-core repo so betas don't work
           - stable
 
     timeout-minutes: 10
