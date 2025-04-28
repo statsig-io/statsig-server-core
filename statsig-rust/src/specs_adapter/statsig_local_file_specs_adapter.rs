@@ -113,9 +113,9 @@ impl StatsigLocalFileSpecsAdapter {
     }
 
     fn parse_specs_data_to_full_response(&self, data: &str) -> Option<SpecsResponseFull> {
-        match DecodedSpecsResponse::from_slice(data.as_bytes(), None) {
-            Ok(result) => Some(result.specs),
-
+        let mut place = SpecsResponseFull::default();
+        match DecodedSpecsResponse::from_slice(data.as_bytes(), &mut place, None) {
+            Ok(_) => Some(place),
             Err(e) => {
                 log_w!(TAG, "Failed to parse specs data: {}", e);
                 None

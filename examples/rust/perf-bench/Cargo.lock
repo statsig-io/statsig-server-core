@@ -1642,6 +1642,7 @@ dependencies = [
  "regex-lite",
  "reqwest",
  "serde",
+ "serde_derive",
  "serde_json",
  "sha2",
  "simple_logger",

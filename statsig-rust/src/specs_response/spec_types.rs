@@ -70,7 +70,7 @@ pub struct ConfigMapping {
     pub rules: Vec<OverrideRule>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default)] /* DO_NOT_CLONE */
 pub struct SpecsResponseFull {
     pub feature_gates: HashMap<String, Spec>,
     pub dynamic_configs: HashMap<String, Spec>,

@@ -1,7 +1,6 @@
-use serde::de::DeserializeOwned;
+use crate::{compression::zstd_decompression_dict::DictionaryDecoder, StatsigErr};
 use serde::Deserialize;
 
-use crate::{compression::zstd_decompression_dict::DictionaryDecoder, StatsigErr};
 #[derive(Deserialize)]
 struct DictCompressedSpecsResponse {
     #[serde(rename = "s")]
@@ -15,38 +14,60 @@ struct DictCompressedSpecsResponse {
 impl DictCompressedSpecsResponse {
     fn decompress<TSpecs>(
         self,
+        place: &mut TSpecs,
         cached_dict: Option<&DictionaryDecoder>,
-    ) -> Result<DecodedSpecsResponse<TSpecs>, StatsigErr>
+    ) -> Result<Option<DictionaryDecoder>, StatsigErr>
     where
         TSpecs: for<'de> Deserialize<'de>,
     {
-        let decompression_dict_to_use =
+        let decompression_dict =
             select_decompression_dict_for_response(self.dict_id, self.dict_buff, cached_dict)?;
 
-        match decompression_dict_to_use {
-            None => {
-                // Response was not compressed
-                let parsed = serde_json::from_slice::<TSpecs>(&self.specs).map_err(|e| {
-                    StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string())
-                })?;
-                Ok(DecodedSpecsResponse {
-                    specs: parsed,
-                    decompression_dict: None,
-                })
-            }
-            Some(dict) => {
-                // Response was compressed, so we need to decompress first then parse
-                let uncompressed = dict.decompress(&self.specs)?;
-                let parsed = serde_json::from_slice::<TSpecs>(&uncompressed).map_err(|e| {
-                    StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string())
-                })?;
-                Ok(DecodedSpecsResponse {
-                    specs: parsed,
-                    decompression_dict: Some(dict),
-                })
-            }
+        let mut bytes = self.specs;
+        if let Some(dict) = &decompression_dict {
+            bytes = dict.decompress(&bytes)?;
         }
+
+        deserialize_response_in_place(&bytes, place)?;
+
+        Ok(decompression_dict)
     }
+}
+
+pub struct DecodedSpecsResponse;
+
+impl DecodedSpecsResponse {
+    pub fn from_slice<TSpecs>(
+        response_slice: &[u8],
+        place: &mut TSpecs,
+        decompression_dict: Option<&DictionaryDecoder>,
+    ) -> Result<Option<DictionaryDecoder>, StatsigErr>
+    where
+        TSpecs: for<'de> Deserialize<'de>,
+    {
+        let compressed = serde_json::from_slice::<DictCompressedSpecsResponse>(response_slice);
+        if let Ok(compressed) = compressed {
+            return compressed.decompress::<TSpecs>(place, decompression_dict);
+        }
+
+        deserialize_response_in_place(response_slice, place)?;
+
+        Ok(decompression_dict.cloned())
+    }
+}
+
+fn deserialize_response_in_place<TSpecs>(
+    response_slice: &[u8],
+    place: &mut TSpecs,
+) -> Result<(), StatsigErr>
+where
+    TSpecs: for<'de> Deserialize<'de>,
+{
+    let mut deserializer = serde_json::Deserializer::from_slice(response_slice);
+    TSpecs::deserialize_in_place(&mut deserializer, place)
+        .map_err(|e| StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string()))?;
+
+    Ok(())
 }
 
 fn select_decompression_dict_for_response(
@@ -54,70 +75,27 @@ fn select_decompression_dict_for_response(
     response_dict_buff: Option<Vec<u8>>,
     cached_dict: Option<&DictionaryDecoder>,
 ) -> Result<Option<DictionaryDecoder>, StatsigErr> {
-    match response_dict_id {
-        None => Ok(None),
-        Some(response_dict_id) => {
-            if let Some(cached_dict) = cached_dict.filter(|d| d.get_dict_id() == response_dict_id) {
-                return Ok(Some(cached_dict.clone()));
-            }
+    let response_dict_id = match response_dict_id {
+        Some(id) => id,
+        None => return Ok(None),
+    };
 
-            response_dict_buff
-                .map(|dict_buff| DictionaryDecoder::new(None, response_dict_id.clone(), &dict_buff))
-                .map(|dict| Ok(Some(dict)))
-                .unwrap_or_else(|| {
-                    Err(StatsigErr::ZstdDictCompressionError(format!(
-                        "Cannot decompress response compressed with dict_id: {}, \
-                                because the appropriate dictionary is not cached \
-                                and the response does not contain one.",
-                        response_dict_id
-                    )))
-                })
-        }
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(untagged, bound = "TSpecs: DeserializeOwned")]
-enum CompressedSpecsResponse<TSpecs> {
-    DictCompressed(DictCompressedSpecsResponse),
-    Uncompressed(TSpecs),
-}
-
-pub struct DecodedSpecsResponse<TSpecs> {
-    pub specs: TSpecs,
-    pub decompression_dict: Option<DictionaryDecoder>,
-}
-
-impl<TSpecs> DecodedSpecsResponse<TSpecs> {
-    pub fn from_slice(
-        response_slice: &[u8],
-        decompression_dict: Option<&DictionaryDecoder>,
-    ) -> Result<DecodedSpecsResponse<TSpecs>, StatsigErr>
-    where
-        TSpecs: for<'de> Deserialize<'de>,
-    {
-        serde_json::from_slice::<CompressedSpecsResponse<TSpecs>>(response_slice)
-            .map_err(|e| {
-                StatsigErr::JsonParseError("CompressedSpecsResponse".to_string(), e.to_string())
-            })
-            .and_then(|compressed| Self::from_compressed(compressed, decompression_dict))
+    if let Some(cached_dict) = cached_dict.filter(|d| d.get_dict_id() == response_dict_id) {
+        return Ok(Some(cached_dict.clone()));
     }
 
-    fn from_compressed(
-        compressed: CompressedSpecsResponse<TSpecs>,
-        decompression_dict: Option<&DictionaryDecoder>,
-    ) -> Result<DecodedSpecsResponse<TSpecs>, StatsigErr>
-    where
-        TSpecs: for<'de> Deserialize<'de>,
-    {
-        match compressed {
-            CompressedSpecsResponse::DictCompressed(compressed_response) => {
-                compressed_response.decompress(decompression_dict)
-            }
-            CompressedSpecsResponse::Uncompressed(specs) => Ok(DecodedSpecsResponse {
-                specs,
-                decompression_dict: decompression_dict.cloned(),
-            }),
-        }
+    if let Some(dict_buff) = response_dict_buff {
+        return Ok(Some(DictionaryDecoder::new(
+            None,
+            response_dict_id.clone(),
+            &dict_buff,
+        )));
     }
+
+    Err(StatsigErr::ZstdDictCompressionError(format!(
+        "Cannot decompress response compressed with dict_id: {}, \
+                        because the appropriate dictionary is not cached \
+                        and the response does not contain one.",
+        response_dict_id
+    )))
 }
