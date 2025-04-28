@@ -204,6 +204,7 @@ fn create_inner_statsig_options(
         environment: opts.environment.clone(),
         id_lists_adapter: None,
         override_adapter: None,
+        proxy_config: None,
         output_log_level: opts
             .output_log_level
             .as_ref()

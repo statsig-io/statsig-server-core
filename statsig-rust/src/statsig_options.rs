@@ -5,6 +5,7 @@ use crate::data_store_interface::DataStoreTrait;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::id_lists_adapter::IdListsAdapter;
+use crate::networking::proxy_config::ProxyConfig;
 use crate::output_logger::LogLevel;
 use crate::persistent_storage::persistent_storage_trait::PersistentStorage;
 use crate::{
@@ -57,6 +58,8 @@ pub struct StatsigOptions {
 
     pub wait_for_country_lookup_init: Option<bool>,
     pub wait_for_user_agent_init: Option<bool>,
+
+    pub proxy_config: Option<ProxyConfig>,
 }
 
 impl StatsigOptions {
