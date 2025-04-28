@@ -1,3 +1,4 @@
+use crate::client_init_response_formatter::GCIRResponseFormat;
 use crate::client_init_response_formatter::{
     ClientInitResponseFormatter, ClientInitResponseOptions,
 };
@@ -745,7 +746,19 @@ impl Statsig {
         user: &StatsigUser,
         options: &ClientInitResponseOptions,
     ) -> String {
-        json!(self.get_client_init_response_with_options(user, options)).to_string()
+        let user_internal = self.internalize_user(user);
+        match options.response_format {
+            Some(GCIRResponseFormat::Evaluations) => {
+                json!(self
+                    .gcir_formatter
+                    .get_evaluations(user_internal, &self.hashing, options))
+                .to_string()
+            }
+            _ => json!(self
+                .gcir_formatter
+                .get(user_internal, &self.hashing, options))
+            .to_string(),
+        }
     }
 
     pub fn get_string_parameter_from_store(

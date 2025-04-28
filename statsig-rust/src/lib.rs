@@ -1,4 +1,5 @@
 pub use client_init_response_formatter::ClientInitResponseOptions;
+pub use client_init_response_formatter::GCIRResponseFormat;
 pub use evaluation::dynamic_value::DynamicValue;
 pub use evaluation::evaluation_details::EvaluationDetails;
 pub use evaluation::evaluation_types::SecondaryExposure;
@@ -53,6 +54,7 @@ mod dcs_str;
 mod event_logging;
 mod event_logging_adapter;
 mod id_lists_adapter;
+mod initialize_evaluations_response;
 mod initialize_response;
 mod macros;
 mod observability;

@@ -3,6 +3,7 @@ pub mod dynamic_string;
 pub mod dynamic_value;
 pub mod evaluation_details;
 pub mod evaluation_types;
+pub mod evaluation_types_v2;
 pub mod evaluator;
 pub mod evaluator_context;
 pub mod evaluator_result;

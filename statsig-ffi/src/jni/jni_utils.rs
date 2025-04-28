@@ -78,6 +78,7 @@ pub fn convert_java_client_init_response_options_to_rust(
         hash_algorithm: hash_algo,
         client_sdk_key,
         include_local_overrides,
+        response_format: None,
     })
 }
 

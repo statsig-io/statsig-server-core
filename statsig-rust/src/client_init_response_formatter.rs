@@ -1,12 +1,15 @@
+use crate::initialize_evaluations_response::InitializeEvaluationsResponse;
 use crate::{
     evaluation::{
         dynamic_value::DynamicValue,
         evaluation_types::{AnyConfigEvaluation, SecondaryExposure},
+        evaluation_types_v2::AnyConfigEvaluationV2,
         evaluator::{Evaluator, SpecType},
         evaluator_context::EvaluatorContext,
         evaluator_result::{
-            result_to_dynamic_config_eval, result_to_experiment_eval, result_to_gate_eval,
-            result_to_layer_eval, EvaluatorResult,
+            result_to_dynamic_config_eval, result_to_dynamic_config_eval_v2,
+            result_to_experiment_eval, result_to_experiment_eval_v2, result_to_gate_eval,
+            result_to_gate_eval_v2, result_to_layer_eval, result_to_layer_eval_v2, EvaluatorResult,
         },
     },
     hashing::{HashAlgorithm, HashUtil},
@@ -32,12 +35,19 @@ pub struct ClientInitResponseOptions {
     pub hash_algorithm: Option<HashAlgorithm>,
     pub client_sdk_key: Option<String>,
     pub include_local_overrides: Option<bool>,
+    pub response_format: Option<GCIRResponseFormat>,
 }
 
 pub struct ClientInitResponseFormatter {
     spec_store: Arc<SpecStore>,
     default_options: ClientInitResponseOptions,
     override_adapter: Option<Arc<dyn OverrideAdapter>>,
+}
+
+#[derive(Deserialize)]
+pub enum GCIRResponseFormat {
+    InitializeV1,
+    Evaluations,
 }
 
 impl ClientInitResponseFormatter {
@@ -52,6 +62,7 @@ impl ClientInitResponseFormatter {
                 hash_algorithm: Some(HashAlgorithm::Djb2),
                 client_sdk_key: None,
                 include_local_overrides: Some(false),
+                response_format: None,
             },
         }
     }
@@ -225,6 +236,224 @@ impl ClientInitResponseFormatter {
                 ("sdkVersion".to_string(), metadata.sdk_version),
             ]),
             param_stores,
+        }
+    }
+
+    pub fn get_evaluations(
+        &self,
+        user_internal: StatsigUserInternal,
+        hashing: &HashUtil,
+        options: &ClientInitResponseOptions,
+    ) -> InitializeEvaluationsResponse {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            return InitializeEvaluationsResponse::blank(user_internal);
+        });
+
+        let mut sec_expo_hash_memo = HashMap::new();
+        let mut app_id = data.values.app_id.as_ref();
+
+        if let Some(client_sdk_key) = &options.client_sdk_key {
+            if let Some(app_id_value) = &data.values.sdk_keys_to_app_ids {
+                app_id = app_id_value.get(client_sdk_key);
+            }
+            if let Some(app_id_value) = &data.values.hashed_sdk_keys_to_app_ids {
+                let hashed_key = &hashing.hash(client_sdk_key, &HashAlgorithm::Djb2);
+                app_id = app_id_value.get(hashed_key);
+            }
+        }
+        let include_local_overrides = options.include_local_overrides.unwrap_or(false);
+        let mut feature_gates = HashMap::new();
+        let mut context = EvaluatorContext::new(
+            &user_internal,
+            &data,
+            hashing,
+            &app_id,
+            if include_local_overrides {
+                &self.override_adapter
+            } else {
+                &None
+            },
+        );
+        let mut exposures = HashMap::new();
+
+        let hash_used = options
+            .hash_algorithm
+            .as_ref()
+            .unwrap_or(&HashAlgorithm::Djb2);
+
+        for (name, spec) in &data.values.feature_gates {
+            if spec.entity == "segment" || spec.entity == "holdout" {
+                continue;
+            }
+
+            if should_filter_spec_for_app(spec, &app_id, &options.client_sdk_key) {
+                continue;
+            }
+
+            context.reset_result();
+            if let Err(_err) = Evaluator::evaluate(&mut context, name, &SpecType::Gate) {
+                return InitializeEvaluationsResponse::blank(user_internal);
+            }
+
+            let hashed_name = context.hashing.hash(name, hash_used);
+            hash_secondary_exposures(
+                &mut context.result,
+                hashing,
+                hash_used,
+                &mut sec_expo_hash_memo,
+            );
+            for exposure in &context.result.secondary_exposures {
+                let key = format!(
+                    "{}:{}:{}",
+                    exposure.gate, exposure.gate_value, exposure.rule_id
+                );
+                let hash = hashing.hash(&key, &HashAlgorithm::Djb2);
+
+                exposures.insert(hash, exposure.clone());
+            }
+
+            let eval = result_to_gate_eval_v2(&hashed_name, &mut context.result, hashing);
+            feature_gates.insert(hashed_name, eval);
+        }
+
+        let mut dynamic_configs = HashMap::new();
+        for (name, spec) in &data.values.dynamic_configs {
+            if should_filter_spec_for_app(spec, &app_id, &options.client_sdk_key) {
+                continue;
+            }
+
+            context.reset_result();
+            let spec_type = if spec.entity == "dynamic_config" {
+                &SpecType::DynamicConfig
+            } else {
+                &SpecType::Experiment
+            };
+            if let Err(_err) = Evaluator::evaluate(&mut context, name, spec_type) {
+                return InitializeEvaluationsResponse::blank(user_internal);
+            }
+
+            let hashed_name = context.hashing.hash(name, hash_used);
+            hash_secondary_exposures(
+                &mut context.result,
+                hashing,
+                hash_used,
+                &mut sec_expo_hash_memo,
+            );
+            for exposure in &context.result.secondary_exposures {
+                let key = format!(
+                    "{}:{}:{}",
+                    exposure.gate, exposure.gate_value, exposure.rule_id
+                );
+                let hash = hashing.hash(&key, &HashAlgorithm::Djb2);
+
+                exposures.insert(hash, exposure.clone());
+            }
+
+            if spec.entity == "dynamic_config" {
+                let evaluation =
+                    result_to_dynamic_config_eval_v2(&hashed_name, &mut context.result, hashing);
+                dynamic_configs.insert(
+                    hashed_name,
+                    AnyConfigEvaluationV2::DynamicConfig(evaluation),
+                );
+            } else {
+                let mut evaluation = result_to_experiment_eval_v2(
+                    &hashed_name,
+                    Some(spec),
+                    &mut context.result,
+                    hashing,
+                );
+                evaluation.undelegated_secondary_exposures = None;
+                dynamic_configs.insert(hashed_name, AnyConfigEvaluationV2::Experiment(evaluation));
+            }
+        }
+
+        let mut layer_configs = HashMap::new();
+        for (name, spec) in &data.values.layer_configs {
+            if should_filter_spec_for_app(spec, &app_id, &options.client_sdk_key) {
+                continue;
+            }
+
+            context.reset_result();
+            if let Err(_err) = Evaluator::evaluate(&mut context, name, &SpecType::Layer) {
+                return InitializeEvaluationsResponse::blank(user_internal);
+            }
+
+            let hashed_name = context.hashing.hash(name, hash_used);
+            hash_secondary_exposures(
+                &mut context.result,
+                hashing,
+                hash_used,
+                &mut sec_expo_hash_memo,
+            );
+            for exposure in &context.result.secondary_exposures {
+                let key = format!(
+                    "{}:{}:{}",
+                    exposure.gate, exposure.gate_value, exposure.rule_id
+                );
+                let hash = hashing.hash(&key, &HashAlgorithm::Djb2);
+
+                exposures.insert(hash, exposure.clone());
+            }
+
+            if let Some(u) = &context.result.undelegated_secondary_exposures {
+                for exposure in u {
+                    let key = format!(
+                        "{}:{}:{}",
+                        exposure.gate, exposure.gate_value, exposure.rule_id
+                    );
+                    let hash = hashing.hash(&key, &HashAlgorithm::Djb2);
+
+                    exposures.insert(hash, exposure.clone());
+                }
+            }
+
+            let mut evaluation =
+                result_to_layer_eval_v2(&hashed_name, &mut context.result, hashing);
+
+            if let Some(allocated_experiment_name) = evaluation.allocated_experiment_name {
+                evaluation.allocated_experiment_name =
+                    Some(context.hashing.hash(&allocated_experiment_name, hash_used));
+            }
+
+            layer_configs.insert(hashed_name, evaluation);
+        }
+
+        let mut param_stores = HashMap::new();
+        let default_store = HashMap::new();
+        let stores = match &data.values.param_stores {
+            Some(stores) => stores,
+            None => &default_store,
+        };
+        for (name, store) in stores {
+            if should_filter_config_for_app(&store.target_app_ids, &app_id, &options.client_sdk_key)
+            {
+                continue;
+            }
+
+            let hashed_name = context.hashing.hash(name, hash_used);
+            let parameters = get_parameters_from_store(store, hash_used, &context);
+            param_stores.insert(hashed_name, parameters);
+        }
+
+        let evaluated_keys = get_evaluated_keys(&user_internal);
+        let metadata = StatsigMetadata::get_metadata();
+        InitializeEvaluationsResponse {
+            feature_gates,
+            dynamic_configs,
+            layer_configs,
+            time: data.values.time,
+            has_updates: true,
+            hash_used: hash_used.to_string(),
+            user: user_internal.to_loggable(),
+            sdk_params: HashMap::new(),
+            evaluated_keys,
+            sdk_info: HashMap::from([
+                ("sdkType".to_string(), metadata.sdk_type),
+                ("sdkVersion".to_string(), metadata.sdk_version),
+            ]),
+            param_stores,
+            exposures,
         }
     }
 }
