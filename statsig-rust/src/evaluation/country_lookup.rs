@@ -1,7 +1,7 @@
 use crate::{log_d, log_e, unwrap_or_return_with, user::StatsigUserInternal, DynamicValue};
 use std::sync::{Arc, RwLock};
 
-use super::dynamic_string::DynamicString;
+use super::{dynamic_string::DynamicString, evaluator_context::EvaluatorContext};
 
 pub struct CountryLookup;
 
@@ -16,6 +16,7 @@ lazy_static::lazy_static! {
 }
 
 const TAG: &str = "CountryLookup";
+const UNINITIALIZED_REASON: &str = "CountryLookupNotLoaded";
 
 pub trait UsizeExt {
     fn post_inc(&mut self) -> Self;
@@ -108,6 +109,7 @@ impl CountryLookup {
     pub fn get_value_from_ip(
         user: &StatsigUserInternal,
         field: &Option<DynamicString>,
+        evaluator_context: &mut EvaluatorContext,
     ) -> Option<DynamicValue> {
         let unwrapped_field = match field {
             Some(f) => f.value.as_str(),
@@ -126,22 +128,24 @@ impl CountryLookup {
             None => return None,
         };
 
-        Self::lookup(ip)
+        Self::lookup(ip, evaluator_context)
     }
 
-    fn lookup(ip_address: &str) -> Option<DynamicValue> {
+    fn lookup(ip_address: &str, evaluator_context: &mut EvaluatorContext) -> Option<DynamicValue> {
         let parts: Vec<&str> = ip_address.split('.').collect();
         if parts.len() != 4 {
             return None;
         }
 
         let lock = unwrap_or_return_with!(COUNTRY_LOOKUP_DATA.read().ok(), || {
+            evaluator_context.result.override_reason = Some(UNINITIALIZED_REASON);
             log_e!(TAG, "Failed to acquire read lock on country lookup");
             None
         });
 
         let country_lookup_data = unwrap_or_return_with!(lock.as_ref(), || {
-            log_e!(TAG, "Attempted to use parser before it was loaded");
+            evaluator_context.result.override_reason = Some(UNINITIALIZED_REASON);
+            log_e!(TAG, "Failed to load country lookup. Did you disable CountryLookup or did not wait for country lookup to init. Check StatsigOptions configuration");
             None
         });
 

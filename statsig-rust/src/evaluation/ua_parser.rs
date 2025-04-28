@@ -7,6 +7,7 @@ use crate::DynamicValue;
 use crate::{log_d, log_e, unwrap_or_return_with, user::StatsigUserInternal};
 
 use super::dynamic_string::DynamicString;
+use super::evaluator_context::EvaluatorContext;
 // use super::evaluator_value::EvaluatorValue;
 
 lazy_static::lazy_static! {
@@ -15,6 +16,7 @@ lazy_static::lazy_static! {
 }
 
 const TAG: &str = "UserAgentParser";
+const UNINITIALIZED_REASON: &str = "UAParserNotLoaded";
 
 pub struct UserAgentParser;
 
@@ -22,6 +24,7 @@ impl UserAgentParser {
     pub fn get_value_from_user_agent(
         user: &StatsigUserInternal,
         field: &Option<DynamicString>,
+        evaluator_context: &mut EvaluatorContext,
     ) -> Option<DynamicValue> {
         let field_lowered = match field {
             Some(f) => f.lowercased_value.as_str(),
@@ -40,13 +43,16 @@ impl UserAgentParser {
             return None;
         }
 
-        let lock = unwrap_or_return_with!(PARSER.read().ok(), || {
-            log_e!(TAG, "Failed to acquire read lock on parser");
-            None
-        });
+        let lock: std::sync::RwLockReadGuard<'_, Option<ExtUserAgentParser>> =
+            unwrap_or_return_with!(PARSER.read().ok(), || {
+                evaluator_context.result.override_reason = Some(UNINITIALIZED_REASON);
+                log_e!(TAG, "Failed to acquire read lock on parser");
+                None
+            });
 
         let parser = unwrap_or_return_with!(lock.as_ref(), || {
-            log_e!(TAG, "Attempted to use parser before it was loaded");
+            evaluator_context.result.override_reason = Some(UNINITIALIZED_REASON);
+            log_e!(TAG, "Failed to load UA Parser. Did you disable UA Parser or did not wait for user agent to init. Check StatsigOptions configuration");
             None
         });
 

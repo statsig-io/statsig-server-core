@@ -1,3 +1,4 @@
+#[cfg(target_env = "gnu")]
 use crate::log_d;
 // Manually free memory
 #[cfg(target_env = "gnu")]

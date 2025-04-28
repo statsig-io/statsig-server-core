@@ -314,14 +314,15 @@ fn evaluate_condition<'a>(
         "ua_based" => match ctx.user.get_user_value(&condition.field) {
             Some(value) => Some(value),
             None => {
-                temp_value = UserAgentParser::get_value_from_user_agent(ctx.user, &condition.field);
+                temp_value =
+                    UserAgentParser::get_value_from_user_agent(ctx.user, &condition.field, ctx);
                 temp_value.as_ref()
             }
         },
         "ip_based" => match ctx.user.get_user_value(&condition.field) {
             Some(value) => Some(value),
             None => {
-                temp_value = CountryLookup::get_value_from_ip(ctx.user, &condition.field);
+                temp_value = CountryLookup::get_value_from_ip(ctx.user, &condition.field, ctx);
                 temp_value.as_ref()
             }
         },
