@@ -31,7 +31,7 @@ use crate::observability::sdk_errors_observer::{ErrorBoundaryEvent, SDKErrorsObs
 use crate::output_logger::initialize_simple_output_logger;
 use crate::persistent_storage::persistent_values_manager::PersistentValuesManager;
 use crate::sdk_diagnostics::diagnostics::{ContextType, Diagnostics};
-use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
+use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker};
 use crate::spec_store::SpecStore;
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
 use crate::statsig_err::StatsigErr;
@@ -1934,11 +1934,10 @@ impl Statsig {
         ));
         self.ops_stats.add_marker(
             {
-                let marker =
-                    Marker::new(KeyType::Overall, ActionType::End, Some(StepType::Process))
-                        .with_is_success(success)
-                        .with_config_spec_ready(specs_info.source != SpecsSource::NoValues)
-                        .with_source(source_str);
+                let marker = Marker::new(KeyType::Overall, ActionType::End, None)
+                    .with_is_success(success)
+                    .with_config_spec_ready(specs_info.source != SpecsSource::NoValues)
+                    .with_source(source_str);
 
                 if let Some(msg) = &error_message {
                     marker.with_message(msg.to_string())
