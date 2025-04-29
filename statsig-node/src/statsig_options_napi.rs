@@ -7,6 +7,7 @@ use std::sync::{Arc, Weak};
 use crate::{data_store_napi::DataStore, observability_client_napi::ObservabilityClient};
 use statsig_rust::{
     data_store_interface::DataStoreTrait,
+    networking::proxy_config::ProxyConfig as ProxyConfigActual,
     statsig_types::OverrideAdapterType as OverrideAdapterTypeActual, DynamicValue,
     ObservabilityClient as ObservabilityClientTrait, OverrideAdapter,
     SpecAdapterConfig as SpecAdapterConfigActual, StatsigLocalOverrideAdapter,
@@ -14,6 +15,25 @@ use statsig_rust::{
 };
 
 type ValidPrimitives = Either4<String, f64, bool, Vec<Value>>;
+
+#[napi(object)]
+pub struct ProxyConfig {
+    pub proxy_host: Option<String>,
+    pub proxy_port: Option<u16>,
+    pub proxy_auth: Option<String>,
+    pub proxy_protocol: Option<String>,
+}
+
+impl From<ProxyConfig> for ProxyConfigActual {
+    fn from(napi: ProxyConfig) -> Self {
+        Self {
+            proxy_host: napi.proxy_host,
+            proxy_port: napi.proxy_port,
+            proxy_auth: napi.proxy_auth,
+            proxy_protocol: napi.proxy_protocol,
+        }
+    }
+}
 
 #[napi(object)]
 pub struct SpecAdapterConfig {
@@ -81,6 +101,8 @@ pub struct StatsigOptions {
 
     pub wait_for_country_lookup_init: Option<bool>,
     pub wait_for_user_agent_init: Option<bool>,
+
+    pub proxy_config: Option<ProxyConfig>,
 }
 
 impl StatsigOptions {
@@ -133,6 +155,7 @@ impl StatsigOptions {
             global_custom_fields: Self::convert_to_dynamic_value_map(self.global_custom_fields),
             disable_country_lookup: self.disable_country_lookup,
             disable_user_agent_parsing: self.disable_user_agent_parsing,
+            proxy_config: self.proxy_config.map(|p| p.into()),
             ..Default::default()
         };
 

@@ -186,6 +186,13 @@ export interface ParameterStoreEvaluationOptions {
   disableExposureLogging?: boolean
 }
 
+export interface ProxyConfig {
+  proxyHost?: string
+  proxyPort?: number
+  proxyAuth?: string
+  proxyProtocol?: string
+}
+
 export interface SecondaryExposure {
   gate: string
   gateValue: string
@@ -223,6 +230,7 @@ export interface StatsigOptions {
   specsUrl?: string
   waitForCountryLookupInit?: boolean
   waitForUserAgentInit?: boolean
+  proxyConfig?: ProxyConfig
 }
 
 export interface StatsigResult {
