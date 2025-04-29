@@ -7,7 +7,8 @@ use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::global_configs::GlobalConfigs;
 use crate::log_event_payload::{LogEventPayload, LogEventRequest};
 use crate::networking::NetworkError;
-use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
+use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
+use crate::observability::ops_stats::{OpsStatsEvent, OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
@@ -532,6 +533,7 @@ impl EventLogger {
                                         defaults.min_flush_interval_ms,
                                     );
                                 }
+                                Self::log_log_event_success(op_stats_clone, event_count);
                                 None
                             }
                             Err(ref e)
@@ -570,6 +572,15 @@ impl EventLogger {
                 event_count.to_string(),
             )])),
         });
+    }
+
+    fn log_log_event_success(ops_stats: Arc<OpsStatsForInstance>, event_count: u64) {
+        ops_stats.log(OpsStatsEvent::Observability(ObservabilityEvent {
+            metric_type: MetricType::Increment,
+            metric_name: "events_successfully_sent_count".to_string(),
+            value: event_count as f64,
+            tags: None,
+        }))
     }
 
     //TODO: refactor into inner class to get Arc<self>
