@@ -65,7 +65,7 @@ impl SpecStore {
     pub fn set_source(&self, source: SpecsSource) {
         if let Ok(mut mut_values) = self.data.write() {
             mut_values.source = source;
-            log_d!(TAG, "SpecStore - Source Changed ({:?})", mut_values.source);
+            log_d!(TAG, "Source Changed ({:?})", mut_values.source);
         }
     }
 
@@ -198,7 +198,7 @@ impl SpecStore {
     }
 
     fn ops_stats_log_no_update(&self, source: SpecsSource) {
-        log_d!(TAG, "SpecStore - No Updates");
+        log_d!(TAG, "No Updates");
         self.ops_stats.log(ObservabilityEvent::new_event(
             MetricType::Increment,
             "config_no_update".to_string(),
@@ -215,7 +215,7 @@ impl SpecStore {
         prev_source: &SpecsSource,
     ) {
         let delay = Utc::now().timestamp_millis() as u64 - lcut;
-        log_d!(TAG, "SpecStore - Updated ({:?})", source);
+        log_d!(TAG, "Updated ({:?})", source);
 
         if *prev_source == SpecsSource::Uninitialized || *prev_source == SpecsSource::Loading {
             return;
