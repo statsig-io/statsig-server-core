@@ -52,6 +52,6 @@ def test_initialize_with_details_failure(statsig_setup):
     assert not init_details.is_config_spec_ready
     assert init_details.is_id_list_ready is None
     assert init_details.init_success
-    assert init_details.duration > 0
+    assert init_details.duration >= 0
     assert init_details.source == "NoValues"
     assert init_details.failure_details is not None

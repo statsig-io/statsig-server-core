@@ -119,6 +119,10 @@ impl ObservabilityClient for MockObservabilityClient {
     fn to_ops_stats_event_observer(self: Arc<Self>) -> Arc<dyn OpsStatsEventObserver> {
         self
     }
+
+    fn should_enable_high_cardinality_for_this_tag(&self, _tag: String) -> Option<bool> {
+        Some(true)
+    }
 }
 
 #[tokio::test]
@@ -194,7 +198,7 @@ async fn test_config_propagation_dist_recorded() {
 
     for call in calls.iter() {
         if let RecordedCall::Dist(metric_name, value, tags) = call {
-            if metric_name == "statsig.sdk.config_propogation_diff" {
+            if metric_name == "statsig.sdk.config_propagation_diff" {
                 found_name = metric_name.clone();
                 found_value = *value;
                 found_tags = tags.clone();
@@ -205,9 +209,10 @@ async fn test_config_propagation_dist_recorded() {
 
     let tags = found_tags.unwrap();
 
-    assert_eq!(found_name, "statsig.sdk.config_propogation_diff");
+    assert_eq!(found_name, "statsig.sdk.config_propagation_diff");
     assert_ne!(found_value, 0.0);
     assert_eq!(tags.get("source"), Some(&"Bootstrap".to_string()));
+    assert!(tags.contains_key("lcut"));
 }
 
 #[tokio::test]

@@ -106,12 +106,13 @@ impl SpecStore {
         self.try_update_global_configs(&next_values);
 
         let now = Utc::now().timestamp_millis() as u64;
-        let (prev_source, curr_values_time) =
+        let (prev_source, prev_lcut, curr_values_time) =
             self.swap_current_with_next(next_values, &specs_update, decompression_dict, now)?;
 
         self.try_update_data_store(&specs_update.source, specs_update.data, now);
-        self.ops_stats_log_config_propogation_diff(
+        self.ops_stats_log_config_propagation_diff(
             curr_values_time,
+            prev_lcut,
             &specs_update.source,
             &prev_source,
         );
@@ -174,10 +175,11 @@ impl SpecStore {
         specs_update: &SpecsUpdate,
         decompression_dict: Option<DictionaryDecoder>,
         now: u64,
-    ) -> Result<(SpecsSource, u64), StatsigErr> {
+    ) -> Result<(SpecsSource, u64, u64), StatsigErr> {
         match self.data.write() {
             Ok(mut data) => {
                 let prev_source = std::mem::replace(&mut data.source, specs_update.source.clone());
+                let prev_lcut = data.values.time;
 
                 let mut temp = next_values;
                 std::mem::swap(&mut data.values, &mut temp);
@@ -186,7 +188,7 @@ impl SpecStore {
                 data.time_received_at = Some(now);
                 data.decompression_dict = decompression_dict;
 
-                Ok((prev_source, data.values.time))
+                Ok((prev_source, prev_lcut, data.values.time))
             }
             Err(e) => {
                 log_e!(TAG, "Failed to acquire write lock: {}", e);
@@ -205,9 +207,10 @@ impl SpecStore {
         ));
     }
 
-    fn ops_stats_log_config_propogation_diff(
+    fn ops_stats_log_config_propagation_diff(
         &self,
         lcut: u64,
+        prev_lcut: u64,
         source: &SpecsSource,
         prev_source: &SpecsSource,
     ) {
@@ -220,9 +223,13 @@ impl SpecStore {
 
         self.ops_stats.log(ObservabilityEvent::new_event(
             MetricType::Dist,
-            "config_propogation_diff".to_string(),
+            "config_propagation_diff".to_string(),
             delay as f64,
-            Some(HashMap::from([("source".to_string(), source.to_string())])),
+            Some(HashMap::from([
+                ("source".to_string(), source.to_string()),
+                ("lcut".to_string(), lcut.to_string()),
+                ("prev_lcut".to_string(), prev_lcut.to_string()),
+            ])),
         ));
     }
 

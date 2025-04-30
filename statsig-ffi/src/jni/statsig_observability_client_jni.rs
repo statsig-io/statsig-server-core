@@ -1,7 +1,7 @@
 use crate::jni::jni_utils::put_all_into_java_map;
 use jni::objects::{GlobalRef, JObject, JValue};
 use jni::{JNIEnv, JavaVM};
-use statsig_rust::{log_e, ObservabilityClient, OpsStatsEventObserver};
+use statsig_rust::{log_e, ok_or_return_with, ObservabilityClient, OpsStatsEventObserver};
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
@@ -111,6 +111,23 @@ impl ObservabilityClient for ObservabilityClientJNI {
         {
             log_e!(TAG, "Failed to call dist(): {:?}", e);
         }
+    }
+
+    fn should_enable_high_cardinality_for_this_tag(&self, tag: String) -> Option<bool> {
+        let Ok(mut env) = self.java_vm.attach_current_thread() else {
+            log_e!(TAG, "Failed to attach current thread to JVM");
+            return None;
+        };
+        let tag_j_string = ok_or_return_with!(env.new_string(tag), |_| None);
+        let result = env.call_method(
+            &self.java_ref,
+            "shouldEnableHighCardinalityForThisTag",
+            "(Ljava/lang/String;DLjava/util/Map;)V",
+            &[JValue::Object(&tag_j_string)],
+        );
+
+        let bool_val = ok_or_return_with!(result.and_then(|r| r.z()), |_| None);
+        Some(bool_val)
     }
 
     fn error(&self, tag: String, error: String) {

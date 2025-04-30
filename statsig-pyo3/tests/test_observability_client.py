@@ -1,5 +1,6 @@
 import json
 from time import sleep
+import time
 from typing import Optional, Dict, List, Tuple, Any
 
 import pytest
@@ -36,13 +37,16 @@ class MockObservabilityClient(ObservabilityClient):
         print(f"Error callback for {tag}: {error}")
         self.error_called = True
         self.metrics.append(("error", tag, error, None))
+    
+    def should_enable_high_cardinality_for_this_tag(self, tag):
+        return True
 
 
 @pytest.fixture
 def statsig_setup(httpserver: HTTPServer):
     dcs_content = get_test_data_resource("eval_proj_dcs.json")
     json_data = json.loads(dcs_content)
-
+    json_data["time"] = json_data["time"]
     httpserver.expect_request(
         "/v2/download_config_specs/secret-key.json"
     ).respond_with_json(json_data)
@@ -107,3 +111,24 @@ def test_error_callback_usage():
     assert isinstance(error_event[2], str)
 
     statsig.shutdown().wait()
+
+def test_metric_with_high_card(statsig_setup):
+    """Test that MockObservabilityClient correctly tracks init(), dist() calls."""
+    statsig, observability_client = statsig_setup
+    user = StatsigUser(user_id="test-user")
+
+    statsig.check_gate(user, "test-gate")
+
+    statsig.flush_events().wait()
+
+    assert observability_client.init_called, "init() should have been called"
+    time.sleep(3)
+
+    dist_event = next(
+        (m for m in observability_client.metrics if m[0] == "distribution" and m[1] == "statsig.sdk.config_propagation_diff"),
+        None
+    )
+    assert dist_event is not None, "distribution() should have been called"
+    assert isinstance(dist_event[2], float)
+    assert isinstance(int(dist_event[3].get("lcut")), (int, float))
+    assert isinstance(int(dist_event[3].get("prev_lcut")), (int, float))

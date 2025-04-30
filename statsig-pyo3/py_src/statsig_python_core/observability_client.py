@@ -10,6 +10,7 @@ class ObservabilityClient(ObservabilityClientBase):
         self.gauge_fn = self.gauge
         self.dist_fn = self.dist
         self.error_fn = self.error
+        self.should_enable_high_cardinality_for_this_tag_fn = self.should_enable_high_cardinality_for_this_tag
 
     def init(self):
         pass
@@ -25,3 +26,7 @@ class ObservabilityClient(ObservabilityClientBase):
 
     def error(self, tag: str, error: str):
         pass
+
+    def should_enable_high_cardinality_for_this_tag(self, tag: str):
+        pass
+    

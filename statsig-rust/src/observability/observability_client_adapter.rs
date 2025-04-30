@@ -5,6 +5,9 @@ use async_trait::async_trait;
 use crate::observability::ops_stats::OpsStatsEventObserver;
 
 use super::ops_stats::OpsStatsEvent;
+
+static HIGH_CARDINALITY_TAGS: &[&str] = &["lcut", "prev_lcut"];
+
 #[derive(Clone)]
 pub enum MetricType {
     Increment,
@@ -42,6 +45,7 @@ pub trait ObservabilityClient: Send + Sync + 'static + OpsStatsEventObserver {
     fn gauge(&self, metric_name: String, value: f64, tags: Option<HashMap<String, String>>);
     fn dist(&self, metric_name: String, value: f64, tags: Option<HashMap<String, String>>);
     fn error(&self, tag: String, error: String);
+    fn should_enable_high_cardinality_for_this_tag(&self, tag: String) -> Option<bool>;
     // This is needed since upper casting is not officially supported yet
     // (WIP to support https://github.com/rust-lang/rust/issues/65991)
     // For implementation, just return Self; should be sufficient
@@ -53,11 +57,24 @@ impl<T: ObservabilityClient> OpsStatsEventObserver for T {
     async fn handle_event(&self, event: OpsStatsEvent) {
         match event {
             OpsStatsEvent::Observability(data) => {
-                let metric_name = format!("statsig.sdk.{}", data.clone().metric_name);
-                match data.clone().metric_type {
-                    MetricType::Increment => self.increment(metric_name, data.value, data.tags),
-                    MetricType::Gauge => self.gauge(metric_name, data.value, data.tags),
-                    MetricType::Dist => self.dist(metric_name, data.value, data.tags),
+                let tags: Option<HashMap<String, String>> = data.tags.map(|tags_unwrapped| {
+                    tags_unwrapped
+                        .into_iter()
+                        .filter(|(key, _)| {
+                            if HIGH_CARDINALITY_TAGS.contains(&key.as_str()) {
+                                self.should_enable_high_cardinality_for_this_tag(key.to_string())
+                                    .unwrap_or_default()
+                            } else {
+                                true
+                            }
+                        })
+                        .collect()
+                });
+                let metric_name = format!("statsig.sdk.{}", data.metric_name.clone());
+                match data.metric_type {
+                    MetricType::Increment => self.increment(metric_name, data.value, tags),
+                    MetricType::Gauge => self.gauge(metric_name, data.value, tags),
+                    MetricType::Dist => self.dist(metric_name, data.value, tags),
                 };
             }
             OpsStatsEvent::SDKError(error) => {

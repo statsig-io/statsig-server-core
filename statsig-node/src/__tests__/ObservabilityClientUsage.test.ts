@@ -1,11 +1,11 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import * as fs from "node:fs";
+import * as path from "node:path";
 
-import { Statsig, StatsigOptions, StatsigUser } from '../../build/index.js';
-import { MockObservabilityClient } from './MockObservabilityClient';
-import { MockScrapi } from './MockScrapi';
+import { Statsig, StatsigOptions, StatsigUser } from "../../build/index.js";
+import { MockObservabilityClient } from "./MockObservabilityClient";
+import { MockScrapi } from "./MockScrapi";
 
-describe('ObservabilityClient Usage', () => {
+describe("ObservabilityClient Usage", () => {
   let statsig: Statsig;
   let scrapi: MockScrapi;
   let observabilityClient: MockObservabilityClient;
@@ -24,30 +24,30 @@ describe('ObservabilityClient Usage', () => {
     const dcs = fs.readFileSync(
       path.join(
         __dirname,
-        '../../../statsig-rust/tests/data/eval_proj_dcs.json',
+        "../../../statsig-rust/tests/data/eval_proj_dcs.json"
       ),
-      'utf8',
+      "utf8"
     );
 
-    scrapi.mock('/v2/download_config_specs', dcs, {
+    scrapi.mock("/v2/download_config_specs", dcs, {
       status: 200,
-      method: 'GET',
+      method: "GET",
     });
 
-    scrapi.mock('/v1/log_event', '{"success": true}', {
+    scrapi.mock("/v1/log_event", '{"success": true}', {
       status: 202,
-      method: 'POST',
+      method: "POST",
     });
 
     observabilityClientSpies = {
-      init: jest.spyOn(observabilityClient, 'initialize'),
-      gauge: jest.spyOn(observabilityClient, 'gauge'),
-      increment: jest.spyOn(observabilityClient, 'increment'),
-      dist: jest.spyOn(observabilityClient, 'dist'),
+      init: jest.spyOn(observabilityClient, "initialize"),
+      gauge: jest.spyOn(observabilityClient, "gauge"),
+      increment: jest.spyOn(observabilityClient, "increment"),
+      dist: jest.spyOn(observabilityClient, "dist"),
     };
 
-    const specsUrl = scrapi.getUrlForPath('/v2/download_config_specs');
-    const logEventUrl = scrapi.getUrlForPath('/v1/log_event');
+    const specsUrl = scrapi.getUrlForPath("/v2/download_config_specs");
+    const logEventUrl = scrapi.getUrlForPath("/v1/log_event");
     const options: StatsigOptions = {
       specsUrl,
       logEventUrl,
@@ -55,31 +55,31 @@ describe('ObservabilityClient Usage', () => {
       specsSyncIntervalMs: 1,
     };
 
-    statsig = new Statsig('secret-123', options);
+    statsig = new Statsig("secret-123", options);
     await statsig.initialize();
 
-    statsig.checkGate(StatsigUser.withUserID('test-user'), 'test-gate');
-    statsig.logEvent(StatsigUser.withUserID('b-user'), 'my_event');
+    statsig.checkGate(StatsigUser.withUserID("test-user"), "test-gate");
+    statsig.logEvent(StatsigUser.withUserID("b-user"), "my_event");
 
     await statsig.flushEvents();
 
     await waitFor(
       () => observabilityClientSpies.dist.mock.calls.length > 1, // init + config prop
-      5000,
+      5000
     );
 
-    scrapi.mock('/v2/download_config_specs', '{"has_updates": false}', {
+    scrapi.mock("/v2/download_config_specs", '{"has_updates": false}', {
       status: 200,
-      method: 'GET',
+      method: "GET",
     });
 
     await scrapi.waitForNext((req) =>
-      req.path.includes('/v2/download_config_specs'),
+      req.path.includes("/v2/download_config_specs")
     );
 
     await waitFor(
-      () => observabilityClientSpies.increment.mock.calls.length > 0, // no updates
-      5000,
+      () => observabilityClientSpies.increment.mock.calls.length > 1, // no updates
+      5000
     );
   }, 10000);
 
@@ -88,27 +88,35 @@ describe('ObservabilityClient Usage', () => {
     scrapi.close();
   });
 
-  it('logs a dist metric for sdk initialization time', () => {
+  it("logs a dist metric for sdk initialization time", () => {
     expect(observabilityClientSpies.dist).toHaveBeenCalledWith(
-      'statsig.sdk.initialization',
+      "statsig.sdk.initialization",
       expect.any(Number),
-      { success: 'true', store_populated: 'true', source: 'Network' },
+      { success: "true", store_populated: "true", source: "Network" }
     );
   });
 
-  it('logs a dist metric for config propagation time', () => {
+  it("logs a dist metric for config propagation time", () => {
     expect(observabilityClientSpies.dist).toHaveBeenCalledWith(
-      'statsig.sdk.config_propogation_diff',
+      "statsig.sdk.config_propagation_diff",
       expect.any(Number),
-      { source: 'Network' },
+      { source: "Network" }
     );
   });
 
-  it('logs an increment metric for no updates', () => {
+  it("logs an increment log events", () => {
     expect(observabilityClientSpies.increment).toHaveBeenCalledWith(
-      'statsig.sdk.config_no_update',
-      expect.any(Number),
-      { source: 'Network' },
+      "statsig.sdk.events_successfully_sent_count",
+      3,
+      null
+    );
+  });
+
+  it("logs config no update", () => {
+    expect(observabilityClientSpies.increment).toHaveBeenCalledWith(
+      "statsig.sdk.config_no_update",
+      1,
+      { source: "Network" }
     );
   });
 });

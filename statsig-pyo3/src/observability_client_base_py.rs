@@ -15,6 +15,7 @@ pub struct ObservabilityClientBasePy {
     gauge_fn: Option<PyObject>,
     dist_fn: Option<PyObject>,
     error_fn: Option<PyObject>,
+    should_enable_high_cardinality_for_this_tag_fn: Option<PyObject>,
 }
 
 #[gen_stub_pymethods]
@@ -87,5 +88,32 @@ impl ObservabilityClient for ObservabilityClientBasePy {
 
     fn to_ops_stats_event_observer(self: Arc<Self>) -> Arc<dyn OpsStatsEventObserver> {
         self
+    }
+
+    fn should_enable_high_cardinality_for_this_tag(&self, tag: String) -> Option<bool> {
+        Python::with_gil(|py| {
+            if let Some(func) = &self.should_enable_high_cardinality_for_this_tag_fn {
+                let args = (tag,);
+                match func.call1(py, args) {
+                    Ok(value) => match value.extract(py) {
+                        Ok(r) => {
+                            return Some(r);
+                        }
+                        Err(_) => {
+                            return None;
+                        }
+                    },
+                    Err(e) => {
+                        log_e!(
+                            TAG,
+                            "Failed to call ObservabilityClient.should_enable_high_cardinality_for_this_tag: {:?}",
+                            e
+                        );
+                        return None;
+                    }
+                }
+            }
+            None
+        })
     }
 }

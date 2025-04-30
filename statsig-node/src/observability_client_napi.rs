@@ -86,6 +86,11 @@ impl ObservabilityClientActual for ObservabilityClient {
         fnc.call(Ok((tag, error)), ThreadsafeFunctionCallMode::Blocking);
     }
 
+    // TODO(xinli): To support this in napi
+    fn should_enable_high_cardinality_for_this_tag(&self, _tag: String) -> Option<bool> {
+        None
+    }
+
     fn to_ops_stats_event_observer(self: Arc<Self>) -> Arc<dyn OpsStatsEventObserver> {
         self
     }
