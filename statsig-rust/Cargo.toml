@@ -26,7 +26,10 @@ reqwest = { version = "0.12.14", features = [
 ], optional = true, default-features = false }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_derive = { version = "1.0.204", features = ["deserialize_in_place"] }
-serde_json = { version = "1.0.125", features = ["float_roundtrip"] }
+serde_json = { version = "1.0.125", features = [
+    "float_roundtrip",
+    "raw_value",
+] }
 sha2 = "0.10.8"
 sigstat-grpc = { path = "../statsig-grpc", version = "0.2.2-beta.3", optional = true }
 simple_logger = "5.0.0"

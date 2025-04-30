@@ -16,7 +16,7 @@ struct PerfEntry {
     duration: f64,
 }
 
-async fn setup() -> (StatsigUser, Statsig) {
+async fn setup() -> (StatsigUser, Statsig, Arc<MockSpecsAdapter>) {
     let custom_ids: HashMap<String, String> =
         HashMap::from([("companyID".into(), "an_employee".into())]);
 
@@ -27,9 +27,8 @@ async fn setup() -> (StatsigUser, Statsig) {
     };
 
     let mut options = StatsigOptions::new();
-    options.specs_adapter = Some(Arc::new(MockSpecsAdapter::with_data(
-        "tests/data/eval_proj_dcs.json",
-    )));
+    let specs_adapter = Arc::new(MockSpecsAdapter::with_data("tests/data/eval_proj_dcs.json"));
+    options.specs_adapter = Some(specs_adapter.clone());
     options.event_logging_adapter = Some(Arc::new(MockEventLoggingAdapter::new()));
     options.environment = Some("development".to_string());
 
@@ -39,12 +38,12 @@ async fn setup() -> (StatsigUser, Statsig) {
     let duration = start.elapsed();
     println!("Init Duration: {}", duration.as_secs_f64() * 1000.0);
 
-    (user, statsig)
+    (user, statsig, specs_adapter)
 }
 
 #[tokio::test]
 async fn test_individual_gate_checks() {
-    let (user, statsig) = setup().await;
+    let (user, statsig, _) = setup().await;
 
     let gate_name = "test_many_rules";
     let start = Instant::now();
@@ -63,7 +62,7 @@ async fn test_individual_gate_checks() {
 
 #[tokio::test]
 async fn test_all_gate_checks() {
-    let (user, statsig) = setup().await;
+    let (user, statsig, _) = setup().await;
 
     let mut times: HashMap<String, PerfEntry> = HashMap::new();
     let values = statsig
@@ -110,7 +109,7 @@ async fn test_all_gate_checks() {
 
 #[tokio::test]
 async fn test_gcir() {
-    let (user, statsig) = setup().await;
+    let (user, statsig, _) = setup().await;
 
     let start = Instant::now();
 
@@ -123,5 +122,18 @@ async fn test_gcir() {
     let result_str = json!(result).to_string();
     println!("Response: {}", &result_str[0..min(200, result_str.len())]);
     // println!("Response: {}", &result_str);
+    println!("Duration {}", duration.as_secs_f64() * 1000.0);
+}
+
+#[tokio::test]
+async fn test_specs_sync() {
+    let (_, _, specs_adapter) = setup().await;
+
+    let start = Instant::now();
+    for _ in 0..100 {
+        specs_adapter.resync().await;
+    }
+
+    let duration = start.elapsed();
     println!("Duration {}", duration.as_secs_f64() * 1000.0);
 }
