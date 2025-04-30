@@ -23,6 +23,7 @@ pub const DIAGNOSTICS_EVENT: &str = "statsig::diagnostics";
 pub enum ContextType {
     Initialize,
     ConfigSync,
+    Unknown,
 }
 
 impl fmt::Display for ContextType {
@@ -30,6 +31,7 @@ impl fmt::Display for ContextType {
         match self {
             ContextType::Initialize => write!(f, "initialize"),
             ContextType::ConfigSync => write!(f, "config_sync"),
+            ContextType::Unknown => write!(f, "unknown"),
         }
     }
 }
@@ -166,10 +168,9 @@ impl Diagnostics {
     }
 
     fn get_context(&self, maybe_context: Option<&ContextType>) -> ContextType {
-        let context_type = match maybe_context {
-            Some(ctx) => *ctx,
-            None => *self.context.lock().unwrap(),
-        };
-        context_type
+        maybe_context
+            .copied()
+            .or_else(|| self.context.try_lock().ok().map(|c| *c))
+            .unwrap_or(ContextType::Unknown)
     }
 }

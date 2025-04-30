@@ -135,7 +135,7 @@ impl DataStoreTrait for DataStoreBasePy {
             if let Some(support_polling_updates_for_fn) = &self.support_polling_updates_for_fn {
                 let result = support_polling_updates_for_fn.call(py, (path.to_string(),), None);
                 match result {
-                    Ok(value) => value.extract(py).unwrap(),
+                    Ok(value) => value.extract(py).unwrap_or_default(),
                     Err(e) => {
                         log_e!(
                             TAG,
