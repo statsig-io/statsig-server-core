@@ -1,0 +1,25 @@
+# check=skip=SecretsUsedInArgOrEnv
+
+FROM public.ecr.aws/amazonlinux/amazonlinux:2
+
+RUN yum update -y && \
+    yum install -y httpd unzip php-ffi php-cli php-json
+
+# Install Composer
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && \
+    php composer-setup.php --install-dir=/usr/local/bin --filename=composer && \
+    php -r "unlink('composer-setup.php');"
+
+COPY examples/php/verify-package app
+
+WORKDIR /app
+
+ARG STATSIG_SERVER_SDK_KEY=secret-key
+ENV STATSIG_SERVER_SDK_KEY=$STATSIG_SERVER_SDK_KEY
+
+RUN composer require statsig/statsig-php-core:@stable
+RUN composer install
+
+RUN php verify.php
+
+CMD ["echo", ""]

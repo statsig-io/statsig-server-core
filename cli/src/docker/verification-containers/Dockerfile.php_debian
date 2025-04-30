@@ -1,0 +1,20 @@
+# check=skip=SecretsUsedInArgOrEnv
+
+FROM debian:11-slim
+
+RUN apt-get update
+RUN apt-get install -y \
+    php php-curl php-xml composer unzip php-cli php-json php-zip
+
+COPY examples/php/verify-package app
+
+WORKDIR /app
+
+ARG STATSIG_SERVER_SDK_KEY=secret-key
+ENV STATSIG_SERVER_SDK_KEY=$STATSIG_SERVER_SDK_KEY
+
+RUN composer require statsig/statsig-php-core:@stable
+
+RUN php verify.php
+
+CMD ["echo", ""]

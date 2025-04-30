@@ -1,0 +1,21 @@
+# check=skip=SecretsUsedInArgOrEnv
+
+FROM public.ecr.aws/amazonlinux/amazonlinux:latest
+
+RUN yum update -y && \
+ yum install -y httpd composer unzip php-ffi
+
+COPY examples/php/verify-package app
+
+WORKDIR /app
+
+ARG STATSIG_SERVER_SDK_KEY=secret-key
+ENV STATSIG_SERVER_SDK_KEY=$STATSIG_SERVER_SDK_KEY
+
+RUN composer require statsig/statsig-php-core:@stable
+RUN composer install
+
+RUN php verify.php
+
+
+CMD ["echo", ""]

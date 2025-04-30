@@ -4,7 +4,6 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use Statsig\Statsig;
 use Statsig\StatsigUser;
-use Statsig\StatsigOptions;
 
 $sdk_key = getenv('STATSIG_SERVER_SDK_KEY');
 if (!$sdk_key) {

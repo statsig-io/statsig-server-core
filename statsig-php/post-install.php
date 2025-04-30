@@ -7,9 +7,48 @@ if (getenv('SKIP_STATSIG_POST_INSTALL') === 'true') {
     exit(0);
 }
 
-function get_system_info()
+function get_amazon_linux_os()
+{
+    $osFile = '/etc/os-release';
+    if (!file_exists($osFile)) {
+        return null;
+    }
+
+    $osRelease = file_get_contents($osFile);
+    if ($osRelease === false) {
+        return null;
+    }
+
+    if (strpos($osRelease, 'Amazon Linux 2023') !== false) {
+        return 'amazonlinux2023';
+    }
+
+    if (strpos($osRelease, 'Amazon Linux 2') !== false) {
+        return 'amazonlinux2';
+    }
+
+    return null;
+}
+
+function get_os()
 {
     $os = PHP_OS_FAMILY;
+
+    if ($os === 'Darwin') {
+        $os = 'macos';
+    } else if ($os === 'Linux') {
+        $os = 'linux';
+    } else if ($os === 'Windows') {
+        $os = 'windows';
+    } else {
+        return null;
+    }
+
+    return $os;
+}
+
+function get_system_info()
+{
     $arch = strtolower(php_uname('m'));
 
     if ($arch === 'amd64' || $arch === 'x86_64') {
@@ -21,13 +60,12 @@ function get_system_info()
         exit(1);
     }
 
-    if ($os === 'Darwin') {
-        $os = 'macos';
-    } else if ($os === 'Linux') {
-        $os = 'linux';
-    } else if ($os === 'Windows') {
-        $os = 'windows';
-    } else {
+    $os = get_amazon_linux_os();
+    if ($os === null) {
+        $os = get_os();
+    }
+
+    if ($os === null) {
         echo "Unsupported OS: $os\n";
         exit(1);
     }
@@ -110,6 +148,12 @@ function download_binary($system_info)
 
         "linux-aarch64-musl" => "statsig-ffi-" . VERSION . "-alpine-aarch64-unknown-linux-musl-shared.zip",
         "linux-x86_64-musl" => "statsig-ffi-" . VERSION . "-alpine-x86_64-unknown-linux-musl-shared.zip",
+
+        "amazonlinux2023-aarch64" => "statsig-ffi-" . VERSION . "-amazonlinux2023-aarch64-unknown-linux-gnu-shared.zip",
+        "amazonlinux2023-x86_64" => "statsig-ffi-" . VERSION . "-amazonlinux2023-x86_64-unknown-linux-gnu-shared.zip",
+
+        "amazonlinux2-aarch64" => "statsig-ffi-" . VERSION . "-amazonlinux2-aarch64-unknown-linux-gnu-shared.zip",
+        "amazonlinux2-x86_64" => "statsig-ffi-" . VERSION . "-amazonlinux2-x86_64-unknown-linux-gnu-shared.zip",
     ];
 
     $system_tag = $system_info[0] . "-" . $system_info[1];
@@ -117,7 +161,7 @@ function download_binary($system_info)
         $system_tag .= "-musl";
     }
 
-    $binary_file = $binary_map[$system_tag] ?? null;
+    $binary_file = $binary_map[$system_tag];
 
     if ($binary_file === null) {
         echo "No binary found for: {$system_tag}\n";
