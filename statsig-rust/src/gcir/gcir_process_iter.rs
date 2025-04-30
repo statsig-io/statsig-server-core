@@ -1,0 +1,106 @@
+use std::collections::{HashMap, HashSet};
+
+use crate::{
+    evaluation::{
+        evaluator::{Evaluator, SpecType},
+        evaluator_context::EvaluatorContext,
+        evaluator_result::EvaluatorResult,
+    },
+    hashing::HashUtil,
+    specs_response::spec_types::Spec,
+    ClientInitResponseOptions, HashAlgorithm, SecondaryExposure, StatsigErr,
+};
+
+use super::target_app_id_utils::should_filter_spec_for_app;
+
+pub(crate) fn gcir_process_iter<T>(
+    context: &mut EvaluatorContext,
+    options: &ClientInitResponseOptions,
+    sec_expo_hash_memo: &mut HashMap<String, String>,
+    specs: &HashMap<String, Spec>,
+    get_spec_type: impl Fn(&Spec) -> SpecType,
+    mut evaluation_factory: impl FnMut(&Spec, &str, &mut EvaluatorContext) -> T,
+) -> Result<HashMap<String, T>, StatsigErr> {
+    let mut results = HashMap::new();
+
+    for (name, spec) in specs {
+        if spec.entity == "segment" || spec.entity == "holdout" {
+            continue;
+        }
+
+        if should_filter_spec_for_app(spec, &context.app_id, &options.client_sdk_key) {
+            continue;
+        }
+
+        context.reset_result();
+
+        let spec_type = get_spec_type(spec);
+        Evaluator::evaluate(context, name, &spec_type)?;
+
+        let hashed_name = context.hashing.hash(name, options.get_hash_algorithm());
+        hash_secondary_exposures(
+            &mut context.result,
+            context.hashing,
+            options.get_hash_algorithm(),
+            sec_expo_hash_memo,
+        );
+
+        let eval = evaluation_factory(spec, &hashed_name, context);
+        results.insert(hashed_name, eval);
+    }
+
+    Ok(results)
+}
+
+fn hash_secondary_exposures(
+    result: &mut EvaluatorResult,
+    hashing: &HashUtil,
+    hash_algorithm: &HashAlgorithm,
+    memo: &mut HashMap<String, String>,
+) {
+    fn loop_filter_n_hash(
+        exposures: &mut Vec<SecondaryExposure>,
+        hashing: &HashUtil,
+        hash_algorithm: &HashAlgorithm,
+        memo: &mut HashMap<String, String>,
+    ) {
+        let mut seen = HashSet::<String>::with_capacity(exposures.len());
+        exposures.retain_mut(|expo| {
+            let expo_key = expo.get_dedupe_key();
+            if seen.contains(&expo_key) {
+                return false;
+            }
+            seen.insert(expo_key);
+
+            match memo.get(&expo.gate) {
+                Some(hash) => {
+                    expo.gate = hash.clone();
+                }
+                None => {
+                    let hash = hashing.hash(&expo.gate, hash_algorithm).to_string();
+                    let old = std::mem::replace(&mut expo.gate, hash.clone());
+                    memo.insert(old, hash);
+                }
+            }
+            true
+        });
+    }
+
+    if !result.secondary_exposures.is_empty() {
+        loop_filter_n_hash(
+            &mut result.secondary_exposures,
+            hashing,
+            hash_algorithm,
+            memo,
+        );
+    }
+
+    if let Some(undelegated_secondary_exposures) = result.undelegated_secondary_exposures.as_mut() {
+        loop_filter_n_hash(
+            undelegated_secondary_exposures,
+            hashing,
+            hash_algorithm,
+            memo,
+        );
+    }
+}

@@ -240,7 +240,7 @@ fn try_apply_override(
     spec_type: &SpecType,
     opt_spec: Option<&Spec>,
 ) -> bool {
-    let adapter = match ctx.override_adapter {
+    let adapter = match &ctx.override_adapter {
         Some(adapter) => adapter,
         None => return false,
     };
@@ -341,7 +341,7 @@ fn evaluate_condition<'a>(
             temp_value = Some(get_hash_for_user_bucket(ctx, condition));
             temp_value.as_ref()
         }
-        "target_app" => *ctx.app_id,
+        "target_app" => ctx.app_id,
         "unit_id" => ctx.user.get_unit_id(&condition.id_type),
         _ => {
             ctx.result.unsupported = true;

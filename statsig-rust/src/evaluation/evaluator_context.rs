@@ -17,8 +17,8 @@ pub struct EvaluatorContext<'a> {
     pub hashing: &'a HashUtil,
     pub result: EvaluatorResult<'a>,
     pub nested_count: u16,
-    pub app_id: &'a Option<&'a DynamicValue>,
-    pub override_adapter: &'a Option<Arc<dyn OverrideAdapter>>,
+    pub app_id: Option<&'a DynamicValue>,
+    pub override_adapter: Option<&'a Arc<dyn OverrideAdapter>>,
     pub nested_gate_memo: HashMap<&'a str, (bool, Option<&'a String>)>,
 }
 
@@ -27,8 +27,8 @@ impl<'a> EvaluatorContext<'a> {
         user: &'a StatsigUserInternal,
         spec_store_data: &'a SpecStoreData,
         hashing: &'a HashUtil,
-        app_id: &'a Option<&'a DynamicValue>,
-        override_adapter: &'a Option<Arc<dyn OverrideAdapter>>,
+        app_id: Option<&'a DynamicValue>,
+        override_adapter: Option<&'a Arc<dyn OverrideAdapter>>,
     ) -> Self {
         let result = EvaluatorResult::default();
 
@@ -44,13 +44,8 @@ impl<'a> EvaluatorContext<'a> {
         }
     }
 
-    pub fn reset_between_top_level_evaluations(&mut self) {
-        self.nested_gate_memo.clear();
-        self.nested_count = 0;
-        self.result = EvaluatorResult::default();
-    }
-
     pub fn reset_result(&mut self) {
+        self.nested_count = 0;
         self.result = EvaluatorResult::default();
     }
 

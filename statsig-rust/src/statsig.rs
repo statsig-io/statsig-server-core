@@ -1,7 +1,3 @@
-use crate::client_init_response_formatter::GCIRResponseFormat;
-use crate::client_init_response_formatter::{
-    ClientInitResponseFormatter, ClientInitResponseOptions,
-};
 use crate::evaluation::cmab_evaluator::{get_cmab_ranked_list, CMABRankedGroup};
 use crate::evaluation::country_lookup::CountryLookup;
 use crate::evaluation::dynamic_value::DynamicValue;
@@ -22,6 +18,7 @@ use crate::event_logging::statsig_event::StatsigEvent;
 use crate::event_logging::statsig_event_internal::make_custom_event;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
+use crate::gcir::gcir_formatter::GCIRFormatter;
 use crate::hashing::HashUtil;
 use crate::initialize_response::InitializeResponse;
 use crate::observability::diagnostics_observer::DiagnosticsObserver;
@@ -44,10 +41,10 @@ use crate::statsig_type_factories::{
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer, ParameterStore};
 use crate::user::StatsigUserInternal;
 use crate::{
-    dyn_value, log_d, log_e, log_w, read_lock_or_else, IdListsAdapter, ObservabilityClient,
-    OpsStatsEventObserver, OverrideAdapter, SamplingProcessor, SpecsAdapter, SpecsInfo,
-    SpecsSource, SpecsUpdateListener, StatsigHttpIdListsAdapter, StatsigLocalOverrideAdapter,
-    StatsigUser,
+    dyn_value, log_d, log_e, log_w, read_lock_or_else, ClientInitResponseOptions,
+    GCIRResponseFormat, IdListsAdapter, ObservabilityClient, OpsStatsEventObserver,
+    OverrideAdapter, SamplingProcessor, SpecsAdapter, SpecsInfo, SpecsSource, SpecsUpdateListener,
+    StatsigHttpIdListsAdapter, StatsigLocalOverrideAdapter, StatsigUser,
 };
 use crate::{
     log_error_to_statsig_and_console,
@@ -88,7 +85,7 @@ pub struct Statsig {
     override_adapter: Option<Arc<dyn OverrideAdapter>>,
     spec_store: Arc<SpecStore>,
     hashing: Arc<HashUtil>,
-    gcir_formatter: Arc<ClientInitResponseFormatter>,
+    gcir_formatter: Arc<GCIRFormatter>,
     statsig_environment: Option<HashMap<String, DynamicValue>>,
     fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
     ops_stats: Arc<OpsStatsForInstance>,
@@ -220,10 +217,7 @@ impl Statsig {
         Statsig {
             sdk_key: sdk_key.to_string(),
             options,
-            gcir_formatter: Arc::new(ClientInitResponseFormatter::new(
-                &spec_store,
-                &override_adapter,
-            )),
+            gcir_formatter: Arc::new(GCIRFormatter::new(&spec_store, &override_adapter)),
             event_logger,
             hashing,
             statsig_environment: environment,
@@ -734,7 +728,7 @@ impl Statsig {
     ) -> InitializeResponse {
         let user_internal = self.internalize_user(user);
         self.gcir_formatter
-            .get(user_internal, &self.hashing, options)
+            .get_as_v1_format(user_internal, &self.hashing, options)
     }
 
     pub fn get_client_init_response_as_string(&self, user: &StatsigUser) -> String {
@@ -747,18 +741,18 @@ impl Statsig {
         options: &ClientInitResponseOptions,
     ) -> String {
         let user_internal = self.internalize_user(user);
-        match options.response_format {
+        let response = match options.response_format {
             Some(GCIRResponseFormat::Evaluations) => {
                 json!(self
                     .gcir_formatter
-                    .get_evaluations(user_internal, &self.hashing, options))
-                .to_string()
+                    .get_as_v2_format(user_internal, &self.hashing, options))
             }
             _ => json!(self
                 .gcir_formatter
-                .get(user_internal, &self.hashing, options))
-            .to_string(),
-        }
+                .get_as_v1_format(user_internal, &self.hashing, options)),
+        };
+
+        json!(response).to_string()
     }
 
     pub fn get_string_parameter_from_store(
@@ -946,8 +940,8 @@ impl Statsig {
                 &user_internal,
                 &data,
                 &self.hashing,
-                &data.values.app_id.as_ref(),
-                &self.override_adapter,
+                data.values.app_id.as_ref(),
+                self.override_adapter.as_ref(),
             ),
             cmab_name,
         )
@@ -1625,8 +1619,8 @@ impl Statsig {
             user_internal,
             &data,
             &self.hashing,
-            &app_id,
-            &self.override_adapter,
+            app_id,
+            self.override_adapter.as_ref(),
         );
 
         match Evaluator::evaluate_with_details(&mut context, spec_name, spec_type) {

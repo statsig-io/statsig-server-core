@@ -1,5 +1,5 @@
-import nodeFetch from 'node-fetch';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import nodeFetch from 'node-fetch';
 
 import { ErrorBoundary } from './error_boundary';
 import { StatsigNapiInternal, StatsigOptions } from './statsig-generated';
@@ -23,13 +23,13 @@ function createProxyAgent(options?: StatsigOptions) {
 }
 
 function createFetchFunc(options?: StatsigOptions) {
-  const proxyAgent = createProxyAgent(options)
+  const proxyAgent = createProxyAgent(options);
 
   return async (
-      method: string,
-      url: string,
-      headers: Record<string, string>,
-      body?: Uint8Array,
+    method: string,
+    url: string,
+    headers: Record<string, string>,
+    body?: Uint8Array,
   ) => {
     try {
       const res = await nodeFetch(url, {

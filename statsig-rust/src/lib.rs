@@ -1,9 +1,9 @@
-pub use client_init_response_formatter::ClientInitResponseOptions;
-pub use client_init_response_formatter::GCIRResponseFormat;
 pub use evaluation::dynamic_value::DynamicValue;
 pub use evaluation::evaluation_details::EvaluationDetails;
 pub use evaluation::evaluation_types::SecondaryExposure;
 pub use event_logging_adapter::*;
+pub use gcir::gcir_formatter::GCIRResponseFormat;
+pub use gcir::gcir_options::ClientInitResponseOptions;
 pub use hashing::HashAlgorithm;
 pub use id_lists_adapter::{IdListsAdapter, StatsigHttpIdListsAdapter};
 pub use initialize_response::InitializeResponse;
@@ -49,10 +49,10 @@ pub mod statsig_options;
 pub mod statsig_types;
 pub mod user;
 
-mod client_init_response_formatter;
 mod dcs_str;
 mod event_logging;
 mod event_logging_adapter;
+mod gcir;
 mod id_lists_adapter;
 mod initialize_evaluations_response;
 mod initialize_response;
