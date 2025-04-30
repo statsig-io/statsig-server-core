@@ -8,7 +8,9 @@ use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::hashing::djb2;
 use crate::log_event_payload::LogEventPayload;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_d, log_e, StatsigErr, StatsigHttpEventLoggingAdapter, StatsigRuntime};
+use crate::{
+    log_d, log_e, StatsigErr, StatsigHttpEventLoggingAdapter, StatsigOptions, StatsigRuntime,
+};
 use async_trait::async_trait;
 use file_guard::Lock;
 use rand::Rng;
@@ -37,13 +39,15 @@ impl StatsigLocalFileEventLoggingAdapter {
         let hashed_key = djb2(sdk_key);
         let file_path = format!("{output_directory}/{hashed_key}_events.json");
 
+        let options = StatsigOptions {
+            log_event_url,
+            disable_network: Some(disable_network),
+            ..Default::default()
+        };
+
         Self {
             file_path,
-            http_adapter: StatsigHttpEventLoggingAdapter::new(
-                sdk_key,
-                log_event_url.as_ref(),
-                Some(disable_network),
-            ),
+            http_adapter: StatsigHttpEventLoggingAdapter::new(sdk_key, Some(&options)),
         }
     }
 

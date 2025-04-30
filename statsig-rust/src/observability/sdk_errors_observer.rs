@@ -54,7 +54,7 @@ impl SDKErrorsObserver {
         headers.insert("Content-Type".to_string(), "application/json".to_string());
         let options_logging_copy = serde_json::to_string(options).unwrap_or_default();
         SDKErrorsObserver {
-            network_client: NetworkClient::new(sdk_key, Some(headers), options.disable_network)
+            network_client: NetworkClient::new(sdk_key, Some(headers), Some(options))
                 .mute_network_error_log(),
             errors_aggregator: RwLock::new(HashMap::new()),
             statsig_options_logging_copy: options_logging_copy,

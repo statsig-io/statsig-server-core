@@ -4,6 +4,7 @@ use statsig_rust::{log_e, unwrap_or_return, InstanceRegistry, StatsigRuntime};
 use statsig_rust::{StatsigHttpEventLoggingAdapter, StatsigOptions};
 use std::os::raw::c_char;
 use std::ptr::null;
+use std::sync::Arc;
 
 const TAG: &str = "StatsigHttpEventLoggingAdapterC";
 
@@ -17,15 +18,7 @@ pub extern "C" fn statsig_http_event_logging_adapter_create(
     let options_ref = c_char_to_string(options_ref);
     let options = InstanceRegistry::get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
 
-    let mut log_event_url = None;
-    let mut disable_network = None;
-    if let Some(options) = options {
-        log_event_url = options.log_event_url.clone();
-        disable_network = options.disable_network;
-    }
-
-    let adapter =
-        StatsigHttpEventLoggingAdapter::new(&sdk_key, log_event_url.as_ref(), disable_network);
+    let adapter = StatsigHttpEventLoggingAdapter::new(&sdk_key, options.as_ref().map(Arc::as_ref));
 
     let ref_id = InstanceRegistry::register(adapter).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigHttpSpecsAdapter");

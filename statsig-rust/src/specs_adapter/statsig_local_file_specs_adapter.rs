@@ -3,7 +3,7 @@ use crate::specs_adapter::{SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateLi
 use crate::specs_response::spec_types::SpecsResponseFull;
 use crate::specs_response::spec_types_encoded::DecodedSpecsResponse;
 use crate::statsig_err::StatsigErr;
-use crate::{log_w, StatsigRuntime};
+use crate::{log_w, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
 use chrono::Utc;
 
@@ -32,16 +32,17 @@ impl StatsigLocalFileSpecsAdapter {
         let hashed_key = djb2(sdk_key);
         let file_path = format!("{output_directory}/{hashed_key}_specs.json");
 
+        let options = StatsigOptions {
+            specs_url,
+            disable_network: Some(disable_network),
+            fallback_to_statsig_api: Some(fallback_to_statsig_api),
+            ..Default::default()
+        };
+
         Self {
             file_path,
             listener: RwLock::new(None),
-            http_adapter: StatsigHttpSpecsAdapter::new(
-                sdk_key,
-                specs_url.as_ref(),
-                fallback_to_statsig_api,
-                None,
-                Some(disable_network),
-            ),
+            http_adapter: StatsigHttpSpecsAdapter::new(sdk_key, Some(&options)),
         }
     }
 

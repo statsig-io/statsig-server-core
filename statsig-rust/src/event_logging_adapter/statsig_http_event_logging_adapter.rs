@@ -3,7 +3,7 @@ use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::log_event_payload::LogEventRequest;
 use crate::networking::{NetworkClient, NetworkError, RequestArgs};
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_d, StatsigErr, StatsigRuntime};
+use crate::{log_d, StatsigErr, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::json;
@@ -26,21 +26,17 @@ pub struct StatsigHttpEventLoggingAdapter {
 
 impl StatsigHttpEventLoggingAdapter {
     #[must_use]
-    pub fn new(
-        sdk_key: &str,
-        log_event_url: Option<&String>,
-        disable_network: Option<bool>,
-    ) -> Self {
+    pub fn new(sdk_key: &str, options: Option<&StatsigOptions>) -> Self {
         let headers = StatsigMetadata::get_constant_request_headers(sdk_key);
 
-        let log_event_url = match log_event_url {
-            Some(u) => u,
-            _ => DEFAULT_LOG_EVENT_URL,
-        }
-        .to_string();
+        let log_event_url = options
+            .and_then(|opts| opts.log_event_url.as_ref())
+            .map(|u| u.to_string())
+            .unwrap_or_else(|| DEFAULT_LOG_EVENT_URL.to_string());
+
         Self {
             log_event_url,
-            network: NetworkClient::new(sdk_key, Some(headers), disable_network),
+            network: NetworkClient::new(sdk_key, Some(headers), options),
         }
     }
 
@@ -143,7 +139,7 @@ async fn test_event_logging() {
 
     let sdk_key = env::var("test_api_key").expect("test_api_key environment variable not set");
 
-    let adapter = StatsigHttpEventLoggingAdapter::new(&sdk_key, None, None);
+    let adapter = StatsigHttpEventLoggingAdapter::new(&sdk_key, None);
 
     let payload_str = r#"{"events":[{"eventName":"statsig::config_exposure","metadata":{"config":"running_exp_in_unlayered_with_holdout","ruleID":"5suobe8yyvznqasn9Ph1dI"},"secondaryExposures":[{"gate":"global_holdout","gateValue":"false","ruleID":"3QoA4ncNdVGBaMt3N1KYjz:0.50:1"},{"gate":"exp_holdout","gateValue":"false","ruleID":"1rEqLOpCROaRafv7ubGgax"}],"time":1722386636538,"user":{"appVersion":null,"country":null,"custom":null,"customIDs":null,"email":"daniel@statsig.com","ip":null,"locale":null,"privateAttributes":null,"statsigEnvironment":null,"userAgent":null,"userID":"a-user"},"value":null}],"statsigMetadata":{"sdk_type":"statsig-server-core","sdk_version":"0.0.1"}}"#;
     let payload = serde_json::from_str::<LogEventPayload>(payload_str).unwrap();

@@ -1950,14 +1950,10 @@ fn initialize_event_logging_adapter(
     sdk_key: &str,
     options: &StatsigOptions,
 ) -> Arc<dyn EventLoggingAdapter> {
-    let adapter = options.event_logging_adapter.clone().unwrap_or_else(|| {
-        Arc::new(StatsigHttpEventLoggingAdapter::new(
-            sdk_key,
-            options.log_event_url.as_ref(),
-            options.disable_network,
-        ))
-    });
-    adapter
+    options
+        .event_logging_adapter
+        .clone()
+        .unwrap_or_else(|| Arc::new(StatsigHttpEventLoggingAdapter::new(sdk_key, Some(options))))
 }
 
 fn initialize_specs_adapter(
@@ -1988,13 +1984,7 @@ fn initialize_specs_adapter(
         ));
     }
 
-    Arc::new(StatsigHttpSpecsAdapter::new(
-        sdk_key,
-        options.specs_url.as_ref(),
-        options.fallback_to_statsig_api.unwrap_or(false),
-        options.specs_sync_interval_ms,
-        options.disable_network,
-    ))
+    Arc::new(StatsigHttpSpecsAdapter::new(sdk_key, Some(options)))
 }
 
 fn initialize_id_lists_adapter(

@@ -37,7 +37,6 @@ async fn setup(test_name: &str) -> (MockScrapi, String) {
 async fn test_statsig_local_file_specs_adapter() {
     let (mock_scrapi, test_path) = setup("test_statsig_local_file_specs_adapter").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
-
     let adapter = StatsigLocalFileSpecsAdapter::new(SDK_KEY, &test_path, Some(url), false, false);
 
     adapter.fetch_and_write_to_file().await.unwrap();
@@ -130,6 +129,7 @@ async fn test_sending_checksum() {
 async fn test_syncing_from_file() {
     let (mock_scrapi, test_path) = setup("test_syncing_from_file").await;
     let url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
+
     let adapter = Arc::new(StatsigLocalFileSpecsAdapter::new(
         SDK_KEY,
         &test_path,

@@ -6,7 +6,7 @@ use super::{HttpMethod, NetworkProvider, RequestArgs, Response};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
-use crate::{log_d, log_i, log_w, StatsigErr};
+use crate::{log_d, log_i, log_w, StatsigErr, StatsigOptions};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -55,16 +55,19 @@ impl NetworkClient {
     pub fn new(
         sdk_key: &str,
         headers: Option<HashMap<String, String>>,
-        disable_network: Option<bool>,
+        options: Option<&StatsigOptions>,
     ) -> Self {
         let net_provider = get_network_provider();
+        let disable_network: bool = options
+            .and_then(|opts| opts.disable_network)
+            .unwrap_or(false);
 
         NetworkClient {
             headers: headers.unwrap_or_default(),
             is_shutdown: Arc::new(AtomicBool::new(false)),
             net_provider,
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
-            disable_network: disable_network.unwrap_or_default(),
+            disable_network,
             silent_on_network_failure: false,
         }
     }

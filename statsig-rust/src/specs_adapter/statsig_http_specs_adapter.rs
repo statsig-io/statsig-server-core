@@ -6,7 +6,9 @@ use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::specs_adapter::{SpecsAdapter, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
-use crate::{log_d, log_e, log_error_to_statsig_and_console, SpecsSource, StatsigRuntime};
+use crate::{
+    log_d, log_e, log_error_to_statsig_and_console, SpecsSource, StatsigOptions, StatsigRuntime,
+};
 use async_trait::async_trait;
 use chrono::Utc;
 use percent_encoding::percent_encode;
@@ -35,18 +37,20 @@ pub struct StatsigHttpSpecsAdapter {
 
 impl StatsigHttpSpecsAdapter {
     #[must_use]
-    pub fn new(
-        sdk_key: &str,
-        specs_url: Option<&String>,
-        fallback_to_statsig_api: bool,
-        sync_interval: Option<u32>,
-        disable_network: Option<bool>,
-    ) -> Self {
-        let specs_url = specs_url
+    pub fn new(sdk_key: &str, options: Option<&StatsigOptions>) -> Self {
+        let default_options = StatsigOptions::default();
+        let options_ref = options.unwrap_or(&default_options);
+
+        let specs_url = options_ref
+            .specs_url
+            .as_ref()
             .map(|u| u.to_string())
             .unwrap_or(DEFAULT_SPECS_URL.to_string());
+
         // only fallback when the spec_url is not the DEFAULT_SPECS_URL
-        let fallback_url = if fallback_to_statsig_api && specs_url != DEFAULT_SPECS_URL {
+        let fallback_url = if options_ref.fallback_to_statsig_api.unwrap_or(false)
+            && specs_url != DEFAULT_SPECS_URL
+        {
             Some(DEFAULT_SPECS_URL.to_string())
         } else {
             None
@@ -56,12 +60,14 @@ impl StatsigHttpSpecsAdapter {
 
         Self {
             listener: RwLock::new(None),
-            network: NetworkClient::new(sdk_key, Some(headers), disable_network),
+            network: NetworkClient::new(sdk_key, Some(headers), Some(options_ref)),
             sdk_key: sdk_key.to_string(),
             specs_url,
             fallback_url,
             sync_interval_duration: Duration::from_millis(u64::from(
-                sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_MS),
+                options_ref
+                    .specs_sync_interval_ms
+                    .unwrap_or(DEFAULT_SYNC_INTERVAL_MS),
             )),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             shutdown_notify: Arc::new(Notify::new()),

@@ -40,10 +40,7 @@ impl StatsigCustomizedSpecsAdapter {
                     // Since strategies is an order list, we will just use i
                     adapters.push(Arc::new(StatsigHttpSpecsAdapter::new(
                         sdk_key,
-                        config.specs_url.as_ref(),
-                        options.fallback_to_statsig_api.unwrap_or(false),
-                        options.specs_sync_interval_ms,
-                        options.disable_network,
+                        Some(options),
                     )));
                 }
                 SpecsAdapterType::DataStore => match options.data_store.clone() {
@@ -52,7 +49,7 @@ impl StatsigCustomizedSpecsAdapter {
                             sdk_key,
                             data_store,
                             hashing,
-                            options.specs_sync_interval_ms,
+                            Some(options),
                         )));
                     }
                     None => log_w!(TAG, "Datastore is not present for syncing spec"),
@@ -69,19 +66,9 @@ impl StatsigCustomizedSpecsAdapter {
         options: &StatsigOptions,
         hashing: &HashUtil,
     ) -> Self {
-        let data_adapter_spec_adapter = StatsigDataStoreSpecsAdapter::new(
-            sdk_key,
-            data_store,
-            hashing,
-            options.specs_sync_interval_ms,
-        );
-        let http_adapter = StatsigHttpSpecsAdapter::new(
-            sdk_key,
-            options.specs_url.as_ref(),
-            options.fallback_to_statsig_api.unwrap_or(false),
-            options.specs_sync_interval_ms,
-            options.disable_network,
-        );
+        let data_adapter_spec_adapter =
+            StatsigDataStoreSpecsAdapter::new(sdk_key, data_store, hashing, Some(options));
+        let http_adapter = StatsigHttpSpecsAdapter::new(sdk_key, Some(options));
         let adapters: Vec<Arc<dyn SpecsAdapter>> =
             vec![Arc::new(data_adapter_spec_adapter), Arc::new(http_adapter)];
         StatsigCustomizedSpecsAdapter { adapters }
@@ -96,7 +83,7 @@ impl StatsigCustomizedSpecsAdapter {
         Some(Arc::new(StatsigGrpcSpecsAdapter::new(
             sdk_key,
             config,
-            options.disable_network,
+            Some(options),
         )))
     }
 

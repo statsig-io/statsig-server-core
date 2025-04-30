@@ -3,7 +3,7 @@ use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::{
     log_d, log_error_to_statsig_and_console, log_w, SpecAdapterConfig, SpecsAdapter, SpecsSource,
-    SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigRuntime,
+    SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigOptions, StatsigRuntime,
 };
 use async_trait::async_trait;
 use chrono::Utc;
@@ -158,9 +158,12 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
 }
 
 impl StatsigGrpcSpecsAdapter {
-    pub fn new(sdk_key: &str, config: &SpecAdapterConfig, disable_network: Option<bool>) -> Self {
-        let fallback_adapter =
-            StatsigHttpSpecsAdapter::new(sdk_key, None, false, None, disable_network);
+    pub fn new(
+        sdk_key: &str,
+        config: &SpecAdapterConfig,
+        options: Option<&StatsigOptions>,
+    ) -> Self {
+        let fallback_adapter = StatsigHttpSpecsAdapter::new(sdk_key, options);
         let (init_tx, _) = broadcast::channel(1);
         Self {
             listener: RwLock::new(None),
