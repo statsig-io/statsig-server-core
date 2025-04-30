@@ -32,7 +32,10 @@ function get_system_info()
         exit(1);
     }
 
-    echo "System Info: {$os} {$arch}\n";
+    echo "\n-- System Info --\n";
+    echo " OS: {$os}\n";
+    echo " Arch: {$arch}\n";
+    echo "-----------------\n";
 
     return [$os, $arch];
 }
@@ -123,7 +126,10 @@ function download_binary($system_info)
 
     $url = "https://github.com/statsig-io/statsig-server-core/releases/download/" . VERSION . "/" . $binary_file;
 
-    echo "Downloading binary from $url\n";
+    echo "\n-- Downloading Statsig FFI Binary --\n";
+    echo " Url: $url\n";
+    echo " Output Path: " . OUTPUT_DIR . "/" . $binary_file . "\n";
+    echo "-----------------------------------\n";
 
     $output_path = OUTPUT_DIR . "/" . $binary_file;
 
@@ -134,41 +140,76 @@ function download_binary($system_info)
 
 function unzip_binary($zip_file_path)
 {
-    echo "Unzipping binary\n";
+    echo "\n-- Unzipping Statsig FFI Binary --\n";
+    echo " Input Path: $zip_file_path\n";
+
     $zip = new ZipArchive();
     if ($zip->open($zip_file_path) === TRUE) {
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $filename = $zip->getNameIndex($i);
             if (in_array($filename, ['libstatsig_ffi.dylib', 'statsig_ffi.dll', 'libstatsig_ffi.so'])) {
                 $zip->extractTo(OUTPUT_DIR, $filename);
-                echo "Extracted $filename\n";
+                echo " Output Path: " . OUTPUT_DIR . "/" . $filename . "\n";
             }
         }
         $zip->close();
-        echo "Binary unzipped to " . OUTPUT_DIR . "\n";
     } else {
         echo "Failed to open zip file\n";
-        exit(1);
     }
 
-    echo "Binary unzipped to " . OUTPUT_DIR . "\n";
-
-    echo "Deleting zip file\n";
-    if (unlink($zip_file_path)) {
-        echo "Successfully deleted $zip_file_path\n";
-    } else {
+    if (!unlink($zip_file_path)) {
         echo "Failed to delete $zip_file_path\n";
     }
+    echo "-----------------------------------\n";
 }
 
 function download_header()
 {
     $url = "https://github.com/statsig-io/statsig-server-core/releases/download/" . VERSION . "/statsig_ffi.h";
 
-    echo "Downloading header from $url\n";
+    echo "\n-- Downloading Statsig FFI Header --\n";
+    echo " Url: $url\n";
+    echo " Output Path: " . OUTPUT_DIR . "/statsig_ffi.h\n";
+    echo "-----------------------------------\n";
 
     $output_path = OUTPUT_DIR . "/statsig_ffi.h";
     file_put_contents($output_path, file_get_contents($url));
+}
+
+
+function ensure_header_file_exists()
+{
+    $dir = OUTPUT_DIR;
+    $header_file = $dir . "/statsig_ffi.h";
+
+    if (!file_exists($header_file)) {
+        echo "❌ Required header file statsig_ffi.h not found in resources directory\n";
+        return false;
+    } else {
+        echo "✅ Header file statsig_ffi.h found in resources directory\n";
+        return true;
+    }
+}
+
+function ensure_binary_file_exists($system_info)
+{
+    $binary_name = "libstatsig_ffi.so";
+    if ($system_info[0] === "macos") {
+        $binary_name = "libstatsig_ffi.dylib";
+    } else if ($system_info[0] === "windows") {
+        $binary_name = "statsig_ffi.dll";
+    }
+
+    $dir = OUTPUT_DIR;
+    $binary_file = $dir . "/" . $binary_name;
+
+    if (!file_exists($binary_file)) {
+        echo "❌ Required binary file $binary_name not found in resources directory\n";
+        return false;
+    } else {
+        echo "✅ Binary file $binary_name found in resources directory\n";
+        return true;
+    }
 }
 
 
@@ -179,3 +220,13 @@ remove_existing_statsig_resources();
 $zip_file_path = download_binary($system_info);
 unzip_binary($zip_file_path);
 download_header();
+
+
+echo "\n-- Ensuring Resources Exist --\n";
+$found = ensure_header_file_exists();
+$all_found = ensure_binary_file_exists($system_info) && $found;
+echo "-----------------------------------\n";
+
+if (!$all_found) {
+    exit(1);
+}
