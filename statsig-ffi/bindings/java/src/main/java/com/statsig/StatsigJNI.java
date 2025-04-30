@@ -179,7 +179,8 @@ class StatsigJNI {
             boolean waitForUserAgentInit,
             boolean disableNetwork,
             boolean disableUserCountry,
-            boolean disableUserAgent
+            boolean disableUserAgent,
+            boolean fallbackToStatsigApi
             );
 
     public static native void statsigOptionsRelease(String optionsRef);

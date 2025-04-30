@@ -28,7 +28,8 @@ public class StatsigOptions {
                 builder.waitForUserAgentInit,
                 builder.disableNetwork,
                 builder.disableUserCountryLookup,
-                builder.disableUserAgentParsing
+                builder.disableUserAgentParsing,
+                builder.fallbackToStatsigApi
                 );
 
         ResourceCleaner.register(this, () -> {
@@ -61,6 +62,7 @@ public class StatsigOptions {
         private boolean disableUserCountryLookup = false;
         private boolean disableAllLogging = false;
         private boolean disableNetwork = false;
+        private boolean fallbackToStatsigApi = false;
         private OutputLogger.LogLevel outputLoggerLevel = OutputLogger.LogLevel.WARN;
         private String serviceName;
 
@@ -142,6 +144,11 @@ public class StatsigOptions {
 
         public Builder setWaitForCountryLookupInit(boolean waitForCountryLookupInit) {
             this.waitForCountryLookupInit = waitForCountryLookupInit;
+            return this;
+        }
+
+        public Builder setFallbackToStatsigApi(boolean fallbackToStatsigApi) {
+            this.fallbackToStatsigApi = fallbackToStatsigApi;
             return this;
         }
 
