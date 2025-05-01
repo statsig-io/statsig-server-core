@@ -3,6 +3,7 @@ use serde::Serialize;
 
 use super::providers::get_network_provider;
 use super::{HttpMethod, NetworkProvider, RequestArgs, Response};
+use crate::networking::proxy_config::ProxyConfig;
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
@@ -47,6 +48,7 @@ pub struct NetworkClient {
     ops_stats: Arc<OpsStatsForInstance>,
     net_provider: Weak<dyn NetworkProvider>,
     disable_network: bool,
+    proxy_config: Option<ProxyConfig>,
     silent_on_network_failure: bool,
 }
 
@@ -58,9 +60,14 @@ impl NetworkClient {
         options: Option<&StatsigOptions>,
     ) -> Self {
         let net_provider = get_network_provider();
-        let disable_network: bool = options
-            .and_then(|opts| opts.disable_network)
-            .unwrap_or(false);
+        let (disable_network, proxy_config) = options
+            .map(|opts| {
+                (
+                    opts.disable_network.unwrap_or(false),
+                    opts.proxy_config.clone(),
+                )
+            })
+            .unwrap_or((false, None));
 
         NetworkClient {
             headers: headers.unwrap_or_default(),
@@ -68,6 +75,7 @@ impl NetworkClient {
             net_provider,
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             disable_network,
+            proxy_config,
             silent_on_network_failure: false,
         }
     }
@@ -116,6 +124,11 @@ impl NetworkClient {
             Utc::now().timestamp_millis().to_string(),
         );
         request_args.headers = Some(merged_headers);
+
+        // passing down proxy config through request args
+        if let Some(proxy_config) = &self.proxy_config {
+            request_args.proxy_config = Some(proxy_config.clone());
+        }
 
         let mut attempt = 0;
 

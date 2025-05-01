@@ -4,13 +4,14 @@ use std::time::Duration;
 use async_trait::async_trait;
 
 use crate::{
-    log_w,
+    log_e, log_w,
     networking::{
         http_types::{HttpMethod, RequestArgs, Response},
         NetworkProvider,
     },
 };
 
+use crate::networking::proxy_config::ProxyConfig;
 use reqwest::Method;
 
 const TAG: &str = "NetworkProviderReqwest";
@@ -73,7 +74,18 @@ impl NetworkProviderReqwest {
         };
         let is_post = method_actual == Method::POST;
 
-        let client = reqwest::Client::new();
+        let mut client_builder = reqwest::Client::builder();
+
+        // configure proxy if available
+        if let Some(proxy_config) = request_args.proxy_config.as_ref() {
+            client_builder = Self::configure_proxy(client_builder, proxy_config);
+        }
+
+        let client = client_builder.build().unwrap_or_else(|e| {
+            log_e!(TAG, "Failed to build reqwest client with proxy config: {}. Falling back to default client.", e);
+            reqwest::Client::new()
+        });
+
         let mut request = client.request(method_actual, &request_args.url);
 
         let timeout_duration = match request_args.timeout_ms > 0 {
@@ -104,6 +116,41 @@ impl NetworkProviderReqwest {
         }
 
         request
+    }
+
+    fn configure_proxy(
+        client_builder: reqwest::ClientBuilder,
+        proxy_config: &ProxyConfig,
+    ) -> reqwest::ClientBuilder {
+        let (Some(host), Some(port)) = (&proxy_config.proxy_host, &proxy_config.proxy_port) else {
+            return client_builder;
+        };
+
+        let proxy_url = format!(
+            "{}://{}:{}",
+            proxy_config.proxy_protocol.as_deref().unwrap_or("http"),
+            host,
+            port
+        );
+
+        let Ok(proxy) = reqwest::Proxy::all(&proxy_url) else {
+            log_w!(TAG, "Failed to create proxy for URL: {}", proxy_url);
+            return client_builder;
+        };
+
+        let Some(auth) = &proxy_config.proxy_auth else {
+            return client_builder.proxy(proxy);
+        };
+
+        let Some((username, password)) = auth.split_once(':') else {
+            log_w!(
+                TAG,
+                "Invalid proxy auth format. Expected 'username:password'"
+            );
+            return client_builder.proxy(proxy);
+        };
+
+        client_builder.proxy(proxy.basic_auth(username, password))
     }
 }
 

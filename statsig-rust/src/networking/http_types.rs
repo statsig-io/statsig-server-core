@@ -1,11 +1,11 @@
+use crate::networking::proxy_config::ProxyConfig;
+use crate::sdk_diagnostics::marker::KeyType;
 use async_trait::async_trait;
 use chrono::Utc;
 use std::{
     collections::HashMap,
     sync::{atomic::AtomicBool, Arc},
 };
-
-use crate::sdk_diagnostics::marker::KeyType;
 
 #[derive(Clone)]
 pub struct RequestArgs {
@@ -18,6 +18,7 @@ pub struct RequestArgs {
     pub timeout_ms: u64,
     pub is_shutdown: Option<Arc<AtomicBool>>,
     pub diagnostics_key: Option<KeyType>,
+    pub proxy_config: Option<ProxyConfig>,
 }
 
 impl Default for RequestArgs {
@@ -39,6 +40,7 @@ impl RequestArgs {
             timeout_ms: 0,
             is_shutdown: None,
             diagnostics_key: None,
+            proxy_config: None,
         }
     }
 
