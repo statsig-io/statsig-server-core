@@ -4,7 +4,7 @@ use jni::JNIEnv;
 use serde_json::Value;
 use statsig_rust::{
     log_e, ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
-    FeatureGateEvaluationOptions, HashAlgorithm, LayerEvaluationOptions,
+    FeatureGateEvaluationOptions, GCIRResponseFormat, HashAlgorithm, LayerEvaluationOptions,
 };
 use std::collections::HashMap;
 
@@ -69,16 +69,27 @@ pub fn convert_java_client_init_response_options_to_rust(
             Err(_) => return None,
         };
 
+    let response_format_field: JString = match env.get_field(
+        &java_gcir_option,
+        "responseFormatInternal",
+        "Ljava/lang/String;",
+    ) {
+        Ok(field) => field.l().unwrap().into(),
+        Err(_) => return None,
+    };
+
     let hash_algo = jstring_to_string(env, hash_algo_field);
     let client_sdk_key = jstring_to_string(env, client_sdk_key_field);
     let include_local_overrides = jboolean_to_bool(include_local_overrides_field);
+    let response_format = jstring_to_string(env, response_format_field);
 
     let hash_algo = hash_algo.and_then(|s| HashAlgorithm::from_string(s.as_str()));
+    let response_format = response_format.and_then(|s| GCIRResponseFormat::from_string(s.as_str()));
     Some(ClientInitResponseOptions {
         hash_algorithm: hash_algo,
         client_sdk_key,
         include_local_overrides,
-        response_format: None,
+        response_format,
     })
 }
 

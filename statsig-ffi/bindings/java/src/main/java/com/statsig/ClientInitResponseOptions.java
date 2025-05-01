@@ -6,7 +6,9 @@ public class ClientInitResponseOptions {
     public HashAlgo hashAlgo;
     public String clientSDKKey;
     public boolean includeLocalOverrides;
+    public GCIRResponseFormat responseFormat = GCIRResponseFormat.Initialize;
     private String hashAlgoInternal; // jni use string type
+    private String responseFormatInternal; // jni use string type
 
     public ClientInitResponseOptions(@Nullable HashAlgo hashAlgo, String clientSDKKey, boolean includeLocalOverrides) {
         this.hashAlgo = hashAlgo;
@@ -52,5 +54,10 @@ public class ClientInitResponseOptions {
 
     public void setIncludeLocalOverrides(boolean includeLocalOverrides) {
         this.includeLocalOverrides = includeLocalOverrides;
+    }
+
+    public void setResponseFormat(GCIRResponseFormat responseFormat) {
+        this.responseFormat = responseFormat;
+        responseFormatInternal = responseFormat.convertToStr();
     }
 }

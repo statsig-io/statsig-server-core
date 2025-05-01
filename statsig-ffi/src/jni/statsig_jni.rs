@@ -162,11 +162,11 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetClientInitResponse(
     let options = convert_java_client_init_response_options_to_rust(&mut env, init_response_option);
 
     let response = match options.as_ref() {
-        Some(options) => statsig.get_client_init_response_with_options(&user, options),
-        None => statsig.get_client_init_response(&user),
+        Some(options) => statsig.get_client_init_response_with_options_as_string(&user, options),
+        None => statsig.get_client_init_response_as_string(&user),
     };
 
-    serialize_json_to_jstring(&mut env, &response)
+    string_to_jstring(&mut env, response)
 }
 
 #[no_mangle]

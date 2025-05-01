@@ -742,7 +742,7 @@ impl Statsig {
     ) -> String {
         let user_internal = self.internalize_user(user);
         let response = match options.response_format {
-            Some(GCIRResponseFormat::Evaluations) => {
+            Some(GCIRResponseFormat::InitializeWithSecondaryExposureMapping) => {
                 json!(self
                     .gcir_formatter
                     .get_as_v2_format(user_internal, &self.hashing, options))

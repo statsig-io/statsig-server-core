@@ -33,8 +33,19 @@ pub struct GCIRFormatter {
 
 #[derive(Deserialize)]
 pub enum GCIRResponseFormat {
-    InitializeV1,
-    Evaluations, // v2
+    Initialize,                             // v1
+    InitializeWithSecondaryExposureMapping, // v2
+}
+
+impl GCIRResponseFormat {
+    #[must_use]
+    pub fn from_string(input: &str) -> Option<Self> {
+        match input {
+            "v1" => Some(GCIRResponseFormat::Initialize),
+            "v2" => Some(GCIRResponseFormat::InitializeWithSecondaryExposureMapping),
+            _ => None,
+        }
+    }
 }
 
 const TAG: &str = "GCIRFormatter";
