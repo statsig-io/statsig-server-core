@@ -1,9 +1,11 @@
 use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::{dynamic_returnable::DynamicReturnable, evaluator_value::EvaluatorValue};
 use crate::DynamicValue;
+use ahash::HashMap as AHashMap;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 
+use super::condition_key::ConditionKey;
 use super::{cmab_types::CMABConfig, param_store_types::ParameterStore};
 
 // DO_NOT_CLONE: Please do not add the Clone trait to this struct. We intentionally
@@ -38,7 +40,7 @@ pub struct Rule {
     pub return_value: DynamicReturnable,
     pub id: String,
     pub salt: Option<String>,
-    pub conditions: Vec<String>,
+    pub conditions: Vec<ConditionKey>,
     pub id_type: DynamicString,
     pub group_name: Option<String>,
     pub config_delegate: Option<String>,
@@ -72,10 +74,10 @@ pub struct ConfigMapping {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default)] /* DO_NOT_CLONE */
 pub struct SpecsResponseFull {
-    pub feature_gates: HashMap<String, Spec>,
-    pub dynamic_configs: HashMap<String, Spec>,
-    pub layer_configs: HashMap<String, Spec>,
-    pub condition_map: HashMap<String, Condition>,
+    pub feature_gates: AHashMap<String, Spec>,
+    pub dynamic_configs: AHashMap<String, Spec>,
+    pub layer_configs: AHashMap<String, Spec>,
+    pub condition_map: AHashMap<ConditionKey, Condition>,
     pub experiment_to_layer: HashMap<String, String>,
     pub has_updates: bool,
     pub time: u64,

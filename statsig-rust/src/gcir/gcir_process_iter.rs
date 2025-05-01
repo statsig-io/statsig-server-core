@@ -1,5 +1,3 @@
-use std::collections::{HashMap, HashSet};
-
 use crate::{
     evaluation::{
         evaluator::{Evaluator, SpecType},
@@ -10,6 +8,8 @@ use crate::{
     specs_response::spec_types::Spec,
     ClientInitResponseOptions, HashAlgorithm, SecondaryExposure, StatsigErr,
 };
+use ahash::HashMap as AHashMap;
+use std::collections::{HashMap, HashSet};
 
 use super::target_app_id_utils::should_filter_spec_for_app;
 
@@ -17,7 +17,7 @@ pub(crate) fn gcir_process_iter<T>(
     context: &mut EvaluatorContext,
     options: &ClientInitResponseOptions,
     sec_expo_hash_memo: &mut HashMap<String, String>,
-    specs: &HashMap<String, Spec>,
+    specs: &AHashMap<String, Spec>,
     get_spec_type: impl Fn(&Spec) -> SpecType,
     mut evaluation_factory: impl FnMut(&Spec, &str, &mut EvaluatorContext) -> T,
 ) -> Result<HashMap<String, T>, StatsigErr> {
