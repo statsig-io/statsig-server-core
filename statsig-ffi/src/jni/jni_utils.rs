@@ -2,6 +2,7 @@ use jni::objects::{JObject, JString, JValue};
 use jni::sys::{jboolean, jstring};
 use jni::JNIEnv;
 use serde_json::Value;
+use statsig_rust::networking::proxy_config::ProxyConfig;
 use statsig_rust::{
     log_e, ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
     FeatureGateEvaluationOptions, GCIRResponseFormat, HashAlgorithm, LayerEvaluationOptions,
@@ -41,6 +42,49 @@ macro_rules! get_instance_or_else_jni {
             None => $else,
         }
     };
+}
+
+pub fn convert_java_proxy_config_to_rust(
+    env: &mut JNIEnv,
+    java_proxy_config: &JObject,
+) -> Option<ProxyConfig> {
+    if java_proxy_config.is_null() {
+        return None;
+    }
+
+    let proxy_host: JString =
+        match env.get_field(java_proxy_config, "proxyHost", "Ljava/lang/String;") {
+            Ok(field) => field.l().unwrap().into(),
+            Err(_) => return None,
+        };
+
+    let proxy_port = get_proxy_port(env, java_proxy_config);
+
+    let proxy_auth: JString =
+        match env.get_field(java_proxy_config, "proxyAuth", "Ljava/lang/String;") {
+            Ok(field) => field.l().unwrap().into(),
+            Err(_) => return None,
+        };
+
+    let proxy_protocol: JString =
+        match env.get_field(java_proxy_config, "proxyProtocol", "Ljava/lang/String;") {
+            Ok(field) => field.l().unwrap().into(),
+            Err(_) => return None,
+        };
+
+    Some(ProxyConfig {
+        proxy_host: jstring_to_string(env, proxy_host),
+        proxy_port,
+        proxy_auth: jstring_to_string(env, proxy_auth),
+        proxy_protocol: jstring_to_string(env, proxy_protocol),
+    })
+}
+
+fn get_proxy_port(env: &mut JNIEnv, obj: &JObject) -> Option<u16> {
+    env.get_field(obj, "proxyPort", "I")
+        .ok()
+        .and_then(|val| val.i().ok())
+        .and_then(|port| if port > 0 { Some(port as u16) } else { None })
 }
 
 pub fn convert_java_client_init_response_options_to_rust(

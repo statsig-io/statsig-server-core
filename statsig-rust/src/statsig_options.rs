@@ -190,6 +190,12 @@ impl StatsigOptionsBuilder {
     // Other
 
     #[must_use]
+    pub fn proxy_config(mut self, proxy_config: Option<ProxyConfig>) -> Self {
+        self.inner.proxy_config = proxy_config;
+        self
+    }
+
+    #[must_use]
     pub fn environment(mut self, environment: Option<String>) -> Self {
         self.inner.environment = environment;
         self
