@@ -732,7 +732,7 @@ impl Statsig {
     }
 
     pub fn get_client_init_response_as_string(&self, user: &StatsigUser) -> String {
-        json!(self.get_client_init_response(user)).to_string()
+        serde_json::to_string(&self.get_client_init_response(user)).unwrap_or_default()
     }
 
     pub fn get_client_init_response_with_options_as_string(

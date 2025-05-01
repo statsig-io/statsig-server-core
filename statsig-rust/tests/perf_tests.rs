@@ -4,7 +4,7 @@ use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use statsig_rust::{InitializeResponse, Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
 use std::cmp::min;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -113,9 +113,9 @@ async fn test_gcir() {
 
     let start = Instant::now();
 
-    let mut result: Option<InitializeResponse> = None;
+    let mut result: Option<String> = None;
     for _ in 0..1000 {
-        result = Some(statsig.get_client_init_response(&user));
+        result = Some(statsig.get_client_init_response_as_string(&user));
     }
 
     let duration = start.elapsed();

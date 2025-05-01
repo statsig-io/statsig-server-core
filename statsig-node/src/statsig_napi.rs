@@ -269,8 +269,7 @@ impl StatsigNapiInternal {
         match options {
             Some(options) => self
                 .inner
-                .get_client_init_response_with_options_as_string(user.as_inner(), &options.into())
-                .to_string(),
+                .get_client_init_response_with_options_as_string(user.as_inner(), &options.into()),
             None => self
                 .inner
                 .get_client_init_response_as_string(user.as_inner()),
