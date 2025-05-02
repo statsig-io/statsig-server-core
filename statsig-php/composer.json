@@ -18,14 +18,19 @@
     "phpunit/phpunit": "^9",
     "donatj/mock-webserver": "^2.7.2",
     "ext-zlib": "*",
-    "squizlabs/php_codesniffer": "^3.0"
+    "squizlabs/php_codesniffer": "^3.0",
+    "phpcompatibility/php-compatibility": "*"
   },
+  "prefer-stable" : true,
   "scripts": {
     "test": "phpunit tests --testdox --colors=always",
     "test:verbose": "phpunit tests --testdox --colors=always --debug",
     "post-install-cmd": [
       "php post-install.php"
     ],
+    "lint:set_config": "vendor/bin/phpcs --config-set installed_paths vendor/phpcompatibility/php-compatibility",
+    "lint:compat": "vendor/bin/phpcs --standard=PHPCompatibility --runtime-set testVersion 7.0- src tests",
+    "lint:better": "composer lint:set_config && composer lint:compat",
     "lint": "./vendor/squizlabs/php_codesniffer/bin/phpcs --standard=PSR12 src tests"
   }
 }
