@@ -22,6 +22,7 @@ jobs:
             - ["server_core_node", "server-core-node"]
             - ["grpc_server_core_python", "server-core-python"]
             - ["server-core-java", "server-core-java"]
+            - ["server_core_rust", "server-core-rust"]
     steps:
       - name: Checkout LRS repo
         uses: actions/checkout@v3
