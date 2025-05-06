@@ -18,7 +18,20 @@ public class StatsigUser {
 
     private volatile String ref;
 
-    private StatsigUser(Builder builder) {
+    private static class CleaningAction implements Runnable {
+        private final String ref;
+
+        CleaningAction(String ref) {
+            this.ref = ref;
+        }
+
+        @Override
+        public void run() {
+            StatsigJNI.statsigUserRelease(ref);
+        }
+    }
+
+    protected StatsigUser(Builder builder) {
         this.userID = builder.userID;
         this.customIDs = builder.customIDs;
         this.email = builder.email;
@@ -31,12 +44,7 @@ public class StatsigUser {
         this.custom = builder.custom;
 
         initializeRef();
-        ResourceCleaner.register(this, () -> {
-            if (ref != null) {
-                StatsigJNI.statsigUserRelease(ref);
-                ref = null;
-            }
-        });
+        ResourceCleaner.register(this, new CleaningAction(this.ref));
     }
 
     private void initializeRef() {
@@ -115,16 +123,16 @@ public class StatsigUser {
 
     // Builder Class
     public static class Builder {
-        private String userID;
-        private Map<String, String> customIDs;
-        private String email;
-        private String ip;
-        private String locale;
-        private String appVersion;
-        private String userAgent;
-        private String country;
-        private Map<String, String> privateAttributes;
-        private Map<String, Object> custom;
+        public String userID;
+        public Map<String, String> customIDs;
+        public String email;
+        public String ip;
+        public String locale;
+        public String appVersion;
+        public String userAgent;
+        public String country;
+        public Map<String, String> privateAttributes;
+        public Map<String, Object> custom;
 
         public Builder setUserID(String userID) {
             this.userID = userID;
@@ -180,4 +188,5 @@ public class StatsigUser {
             return new StatsigUser(this);
         }
     }
+
 }
