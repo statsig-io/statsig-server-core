@@ -1,14 +1,29 @@
 import { BuilderOptions } from '@/commands/builders/builder-options.js';
 import { getArchInfo } from '@/utils/docker_utils.js';
 import { buildFfiHelper } from '@/utils/ffi_utils.js';
-import { BASE_DIR, ensureEmptyDir, listFiles } from '@/utils/file_utils.js';
+import { BASE_DIR, listFiles } from '@/utils/file_utils.js';
 import { Log } from '@/utils/terminal_utils.js';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
+import fs from 'fs';
+
+const TARGET_MAPPING = {
+  'macos-aarch64-apple-darwin-ffi': 'macos-arm64',
+  'debian-aarch64-unknown-linux-gnu-ffi': 'linux-gnu-arm64',
+  'amazonlinux2-aarch64-unknown-linux-gnu-ffi': 'amazonlinux2-arm64',
+  'amazonlinux2-x86_64-unknown-linux-gnu-ffi': 'amazonlinux2-x86_64',
+  'amazonlinux2023-aarch64-unknown-linux-gnu-ffi': 'amazonlinux2023-arm64',
+  'amazonlinux2023-x86_64-unknown-linux-gnu-ffi': 'amazonlinux2023-x86_64',
+  'centos7-x86_64-unknown-linux-gnu-ffi': 'centos7-x86_64',
+  'windows-i686-pc-windows-msvc-ffi': 'windows-i686',
+  'macos-x86_64-apple-darwin-ffi': 'macos-x86_64',
+  'windows-x86_64-pc-windows-msvc-ffi': 'windows-x86_64',
+  'debian-x86_64-unknown-linux-gnu-ffi': 'linux-gnu-x86_64',
+};
 
 const JAVA_NATIVE_DIR = path.resolve(
-  BASE_DIR,
-  'statsig-ffi/bindings/java/src/main/resources/native',
+    BASE_DIR,
+    'statsig-ffi/bindings/java/src/main/resources/native',
 );
 
 export function buildJava(options: BuilderOptions) {
@@ -16,7 +31,6 @@ export function buildJava(options: BuilderOptions) {
 
   options.release = true; // default to true
   buildFfiHelper(options);
-
   Log.stepEnd(`Built statsig-java`);
 
   const libFiles = [
@@ -31,31 +45,55 @@ export function buildJava(options: BuilderOptions) {
 function moveJavaLibraries(libFiles: string[], options: BuilderOptions) {
   Log.stepBegin('Moving Java Libraries');
 
-  const { name } = getArchInfo(options.arch);
-  const tag = `${name}-${options.os}`;
-
   let fileMoved = false;
+
   libFiles.forEach((file) => {
-    if (!file.includes(tag)) {
+    if (!file.includes(options.os)) {
+      return;
+    }
+
+    const arch = getArchInfo(options.arch).name;
+    const classifier = resolveClassifierFromOsArch(options.os, arch);
+    if (!classifier) {
       return;
     }
 
     const filename = path.basename(file);
+    const destDir = path.resolve(JAVA_NATIVE_DIR, classifier);
+    ensureDirExists(destDir);
 
-    ensureEmptyDir(JAVA_NATIVE_DIR);
-
-    const destinationPath = path.resolve(JAVA_NATIVE_DIR, filename);
+    const destinationPath = path.join(destDir, filename);
     execSync(`cp ${file} ${destinationPath}`);
 
     Log.stepProgress(`Copied lib to ${destinationPath}`);
-
     fileMoved = true;
   });
 
+
   if (!fileMoved) {
-    Log.stepEnd(`Failed to copy native file for tag ${tag}`, 'failure');
-    throw new Error(`Failed to copy native file for tag ${tag}`);
+    Log.stepEnd('No matching native files found to move', 'failure');
   }
 
-  Log.stepEnd(`Successfully copied native file for tag ${tag}`);
+  Log.stepEnd('Successfully copied native files');
 }
+
+function ensureDirExists(dirPath: string) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+}
+
+function resolveClassifierFromOsArch(os: string, arch: string): string | null {
+  const prefix = `${os}-${arch}`;
+  const matchedEntry = Object.entries(TARGET_MAPPING).find(([key]) =>
+      key.startsWith(prefix)
+  );
+
+  if (matchedEntry) {
+    return matchedEntry[1];
+  }
+
+  return null;
+}
+
+

@@ -77,7 +77,7 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
         if (nativeLib) {
             def nativeSourceDir = file("src/main/resources/native/${classifierParam}")
             from(nativeSourceDir) {
-                into("native/")
+                into("native/${classifierParam}/")
             }
             include nativeLib
         }

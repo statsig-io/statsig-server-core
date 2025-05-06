@@ -2,6 +2,9 @@ package com.statsig;
 
 import java.io.*;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 
 class StatsigJNI {
@@ -262,16 +265,73 @@ class StatsigJNI {
         ClassLoader cl = StatsigJNI.class.getClassLoader();
         URL resource = null;
 
-        if (osName.contains("win")) {
-            // NOTE: windows native lib NOT start with lib
-            resource = cl.getResource("native/statsig_ffi.dll");
-        } else if (osName.contains("mac")) {
-            resource = cl.getResource("native/libstatsig_ffi.dylib");
-        } else if (osName.contains("linux")) {
-            resource = cl.getResource("native/libstatsig_ffi.so");
+        String platform = genDetectedPlatform(osName, osArch);
+        String libName = getLibFileName(osName);
+
+        if (platform != null && libName != null) {
+            String resourcePath = "native/" + platform + "/" + libName;
+            resource = cl.getResource(resourcePath);
         }
 
         return resource;
+    }
+
+    private static String getLibFileName(String osName) {
+        if (osName.contains("win")) {
+            return "statsig_ffi.dll";
+        } else if (osName.contains("mac")) {
+            return "libstatsig_ffi.dylib";
+        } else if (osName.contains("linux")) {
+            return "libstatsig_ffi.so";
+        }
+        return null;
+    }
+
+    private static String genDetectedPlatform(String osName, String osArch) {
+        osArch = normalizeArch(osArch);
+
+        if (osName.contains("win")) {
+            return osArch.contains("64") ? "windows-x86_64" : "windows-i686";
+        } else if (osName.contains("mac")) {
+            return osArch.contains("arm64") ? "macos-arm64" : "macos-x86_64";
+        } else if (osName.contains("linux")) {
+            String distro = detectLinuxDistro();
+            if (distro.equals("amazonlinux2023")) {
+                return osArch.contains("arm64") ? "amazonlinux2023-arm64" : "amazonlinux2023-x86_64";
+            } else if (distro.equals("amazonlinux2")) {
+                return osArch.contains("arm64") ? "amazonlinux2-arm64" : "amazonlinux2-x86_64";
+            } else {
+                return osArch.contains("arm64") ? "linux-gnu-arm64" : "linux-gnu-x86_64";
+            }
+        }
+        return null;
+    }
+
+    private static String detectLinuxDistro() {
+        try {
+            List<String> lines = Files.readAllLines(Paths.get("etc/os-release"));
+            String id = null;
+            String versionId = null;
+
+            for (String line : lines) {
+                if (line.startsWith("ID=")) {
+                    id = line.split("=")[1].replace("\"", "").trim();
+                } else if (line.startsWith("VERSION_ID=")) {
+                    versionId = line.split("=")[1].replace("\"", "").trim();
+                }
+            }
+
+            if ("amzn".equals(id)) {
+                if ("2023".equals(versionId)) {
+                    return "amazonlinux2023";
+                } else if ("2".equals(versionId)) {
+                    return "amazonlinux2";
+                }
+            }
+        } catch (IOException e) {
+            OutputLogger.logError(TAG, "Error while detecting linux distro: " + e.getMessage());
+        }
+        return "linux-gnu";
     }
 
     private static void logNativeLibraryError(String osName, String osArch) {
@@ -315,5 +375,4 @@ class StatsigJNI {
             message.append(String.format("  implementation 'com.statsig:javacore:<version>:%s-%s'\n", platform, arch));
         }
     }
-
 }

@@ -25,8 +25,8 @@ const TARGET_MAPPING = {
 };
 
 const JAVA_NATIVE_DIR = path.resolve(
-  BASE_DIR,
-  'statsig-ffi/bindings/java/src/main/resources/native',
+    BASE_DIR,
+    'statsig-ffi/bindings/java/src/main/resources/native',
 );
 
 export async function javaPublish(options: PublisherOptions) {
