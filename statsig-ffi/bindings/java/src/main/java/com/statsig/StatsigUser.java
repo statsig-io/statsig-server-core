@@ -61,6 +61,14 @@ public class StatsigUser {
         );
     }
 
+    // Expose a way for users to force release StatsigUser
+    public void close() {
+        if (ref != null) {
+            StatsigJNI.statsigUserRelease(ref);
+            ref = null;
+        }
+    }
+
     public String getUserID() {
         return userID;
     }
