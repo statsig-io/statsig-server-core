@@ -17,7 +17,7 @@ mod tests {
     use serde_json::{json, Value};
 
     use crate::event_logging::statsig_event::StatsigEvent;
-    use crate::event_logging::statsig_event_internal::make_custom_event;
+    use crate::event_logging::statsig_event_internal::StatsigEventInternal;
     use crate::log_event_payload::{LogEventPayload, LogEventRequest};
     use crate::statsig_metadata::StatsigMetadata;
     use crate::user::StatsigUserInternal;
@@ -34,7 +34,7 @@ mod tests {
             statsig_metadata: None,
         };
 
-        let event = make_custom_event(user_internal.to_loggable(), event);
+        let event = StatsigEventInternal::new(user_internal.to_loggable(), event, None);
 
         let payload = LogEventPayload {
             events: json!([event]),
@@ -48,8 +48,6 @@ mod tests {
         };
 
         let serialized = serde_json::to_string(&request).unwrap();
-        println!("{serialized}");
-
         let deserialized: Value = serde_json::from_str(&serialized).unwrap();
 
         let event_count = deserialized.get("eventCount").unwrap().as_u64().unwrap();

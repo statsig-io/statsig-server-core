@@ -1,15 +1,16 @@
 use async_trait::async_trait;
-use serde_json::Value;
+use serde_json::{json, Value};
 use statsig_rust::log_event_payload::{LogEventPayload, LogEventRequest};
 use statsig_rust::{EventLoggingAdapter, StatsigErr, StatsigRuntime};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 pub struct MockEventLoggingAdapter {
     pub logged_event_count: AtomicU64,
+    pub no_diagnostics_logged_event_count: AtomicU64,
     pub logged_payloads: Mutex<Vec<LogEventPayload>>,
+    pub mocked_log_events_result: Mutex<Result<bool, StatsigErr>>,
 }
 
 impl Default for MockEventLoggingAdapter {
@@ -22,12 +23,14 @@ impl MockEventLoggingAdapter {
     pub fn new() -> Self {
         Self {
             logged_event_count: AtomicU64::new(0),
+            no_diagnostics_logged_event_count: AtomicU64::new(0),
             logged_payloads: Mutex::new(Vec::new()),
+            mocked_log_events_result: Mutex::new(Ok(true)),
         }
     }
 
-    pub async fn force_get_first_event(&self) -> HashMap<String, Value> {
-        let first_payload = self.force_get_received_payloads().await;
+    pub fn force_get_first_event(&self) -> HashMap<String, Value> {
+        let first_payload = self.force_get_received_payloads();
         let non_diagnostic_events = self.filter_non_diagnostic_events(&first_payload);
         let first_event = non_diagnostic_events
             .first()
@@ -41,8 +44,26 @@ impl MockEventLoggingAdapter {
             .collect()
     }
 
-    pub async fn force_get_received_payloads(&self) -> LogEventPayload {
-        self.logged_payloads.lock().await.first().unwrap().clone()
+    pub fn force_get_event_at(&self, index: usize) -> HashMap<String, Value> {
+        let first_payload = self.force_get_received_payloads();
+        let non_diagnostic_events = self.filter_non_diagnostic_events(&first_payload);
+        let event = &non_diagnostic_events[index];
+
+        let event_obj = event.as_object().unwrap();
+
+        event_obj
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
+    }
+
+    pub fn force_get_received_payloads(&self) -> LogEventPayload {
+        self.logged_payloads
+            .lock()
+            .unwrap()
+            .first()
+            .unwrap()
+            .clone()
     }
 
     fn filter_non_diagnostic_events(&self, payload: &LogEventPayload) -> Vec<Value> {
@@ -70,13 +91,26 @@ impl EventLoggingAdapter for MockEventLoggingAdapter {
     }
 
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
-        let mut payloads = self.logged_payloads.lock().await;
+        let result = self.mocked_log_events_result.lock().unwrap().clone()?;
+        let mut payloads = self.logged_payloads.lock().unwrap();
+
+        // println!("{:?}", serde_json::to_string(&request.payload.events).unwrap());
 
         self.logged_event_count
             .fetch_add(request.event_count, Ordering::SeqCst);
+
+        if let Some(events) = request.payload.events.as_array() {
+            let non_diag_events = events
+                .iter()
+                .filter(|e| e.get("eventName") != Some(&json!("statsig::diagnostics")));
+            let count = non_diag_events.count();
+            self.no_diagnostics_logged_event_count
+                .fetch_add(count as u64, Ordering::SeqCst);
+        }
+
         payloads.push(request.payload);
 
-        Ok(true)
+        Ok(result)
     }
 
     async fn shutdown(&self) -> Result<(), StatsigErr> {

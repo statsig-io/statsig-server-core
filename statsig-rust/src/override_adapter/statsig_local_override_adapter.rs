@@ -1,4 +1,4 @@
-use crate::{log_d, log_e, read_lock_or_return, write_lock_or_noop, OverrideAdapter, StatsigUser};
+use crate::{log_d, read_lock_or_return, write_lock_or_noop, OverrideAdapter, StatsigUser};
 use std::{collections::HashMap, sync::RwLock};
 
 use crate::evaluation::evaluator_result::EvaluatorResult;

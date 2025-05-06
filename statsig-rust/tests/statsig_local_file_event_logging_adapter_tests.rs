@@ -8,7 +8,6 @@ use statsig_rust::{EventLoggingAdapter, StatsigLocalFileEventLoggingAdapter};
 use std::fs;
 use std::sync::Arc;
 use std::time::Duration;
-use utils::helpers::assert_eventually;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
 const SDK_KEY: &str = "server-local-file-events-test";
@@ -69,11 +68,7 @@ async fn test_writing_to_file() {
         .unwrap();
 
     let out_path = format!("{}/{}", tmp_path, EVENTS_FILE_NAME);
-    assert_eventually(
-        || std::path::Path::new(&out_path).exists(),
-        Duration::from_secs(1),
-    )
-    .await;
+    assert_eventually!(|| std::path::Path::new(&out_path).exists());
 }
 
 #[cfg(not(feature = "with_zstd"))]
@@ -222,11 +217,7 @@ async fn test_sending_events_over_network() {
     adapter.send_pending_events().await.unwrap();
 
     let out_path = format!("{}/{}", tmp_path, EVENTS_FILE_NAME);
-    assert_eventually(
-        || fs::read_to_string(&out_path).unwrap().is_empty(),
-        Duration::from_secs(1),
-    )
-    .await;
+    assert_eventually!(|| fs::read_to_string(&out_path).unwrap().is_empty());
 }
 
 #[tokio::test]

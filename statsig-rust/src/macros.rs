@@ -64,7 +64,7 @@ macro_rules! read_lock_or_return {
         match $lock.read() {
             Ok(data) => data,
             Err(e) => {
-                log_e!($tag, "Failed to read store: {}", e.to_string());
+                $crate::log_e!($tag, "Failed to acquire read lock: {}", e.to_string());
                 return $code;
             }
         }
@@ -77,8 +77,21 @@ macro_rules! write_lock_or_noop {
         match $lock.write() {
             Ok(data) => data,
             Err(e) => {
-                log_e!($tag, "Failed to write to store: {}", e.to_string());
+                $crate::log_e!($tag, "Failed to acquire write lock: {}", e.to_string());
                 return;
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! write_lock_or_return {
+    ($tag: expr, $lock:expr, $code: expr) => {
+        match $lock.write() {
+            Ok(data) => data,
+            Err(e) => {
+                $crate::log_e!($tag, "Failed to acquire write lock: {}", e.to_string());
+                return $code;
             }
         }
     };

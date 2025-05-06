@@ -5,7 +5,6 @@ use crate::evaluation::evaluation_types::{
 use crate::event_logging::event_logger::EventLogger;
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::user::StatsigUserLoggable;
-use crate::SamplingProcessor;
 
 use serde_json::Value;
 use std::collections::HashMap;
@@ -104,7 +103,6 @@ pub fn make_layer(
     event_logger_ptr: Option<Weak<EventLogger>>,
     version: Option<u32>,
     disable_exposure: bool,
-    sampling_processor: Option<Weak<SamplingProcessor>>,
     override_config_name: Option<String>,
 ) -> Layer {
     let (value, rule_id, group_name, allocated_experiment_name, id_type) = match &evaluation {
@@ -131,7 +129,6 @@ pub fn make_layer(
         __event_logger_ptr: event_logger_ptr,
         __version: version,
         __disable_exposure: disable_exposure,
-        __sampling_processor: sampling_processor,
         __override_config_name: override_config_name,
     }
 }

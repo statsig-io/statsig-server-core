@@ -1,7 +1,6 @@
 use serde_json::{Map, Value};
 use std::fs;
 use std::path::PathBuf;
-use std::time::Duration;
 
 pub fn enforce_array(value: &Value) -> Vec<Value> {
     value.as_array().unwrap().clone()
@@ -21,29 +20,17 @@ pub fn load_contents(resource_file_name: &str) -> String {
     fs::read_to_string(path).expect("Unable to read resource file")
 }
 
-pub async fn assert_eventually<F>(assertion: F, timeout_ms: Duration)
-where
-    F: Fn() -> bool,
-{
-    let steps = timeout_ms.as_millis() / 10;
-    for _ in 0..steps {
-        if assertion() {
-            return;
-        }
-
-        tokio::time::sleep(Duration::from_millis(10)).await;
-    }
-
-    panic!("assertion timed out");
-}
-
 #[macro_export]
 macro_rules! assert_eventually_eq {
-    ($actual:expr, $expected:expr, $timeout_ms:expr) => {
+    ($actual:expr, $expected:expr) => {
+        $crate::assert_eventually_eq!($actual, $expected, Duration::from_secs(1))
+    };
+
+    ($actual:expr, $expected:expr, $timeout:expr) => {
         async {
-            let start = Instant::now();
+            let start = std::time::Instant::now();
             let mut actual_value = $actual();
-            while start.elapsed().as_millis() < $timeout_ms.as_millis() {
+            while start.elapsed().as_millis() < $timeout.as_millis() {
                 if actual_value == $expected {
                     return;
                 }
@@ -52,8 +39,20 @@ macro_rules! assert_eventually_eq {
             }
 
             if actual_value != $expected {
-                panic!("actual {} != expected {}", actual_value, $expected);
+                panic!("actual {:?} != expected {:?}", actual_value, $expected);
             }
         }
+        .await
+    };
+}
+
+#[macro_export]
+macro_rules! assert_eventually {
+    ($actual:expr) => {
+        $crate::assert_eventually!($actual, Duration::from_secs(1))
+    };
+
+    ($actual:expr, $timeout:expr) => {
+        $crate::assert_eventually_eq!($actual, true, $timeout)
     };
 }

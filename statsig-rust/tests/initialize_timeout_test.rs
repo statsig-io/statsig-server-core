@@ -1,9 +1,6 @@
 mod utils;
 use std::{fs, path::PathBuf, sync::Arc, time::Duration};
-use utils::{
-    helpers::assert_eventually,
-    mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi},
-};
+use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
 use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
 
@@ -51,9 +48,6 @@ async fn test_initialize_timeout() {
     let result = statsig.get_feature_gate(&user, "public_dev_only");
 
     assert!(result.details.reason == "Loading:Unrecognized");
-    assert_eventually(
-        || scrapi.times_called_for_endpoint(Endpoint::DownloadConfigSpecs) > 2,
-        Duration::from_secs(1),
-    ) // assert background syncs started
-    .await;
+    assert_eventually!(|| scrapi.times_called_for_endpoint(Endpoint::DownloadConfigSpecs) > 2);
+    // assert background syncs started
 }

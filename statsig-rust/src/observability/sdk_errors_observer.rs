@@ -13,16 +13,15 @@ use crate::{
 
 use super::ops_stats::OpsStatsEvent;
 
-static SDK_EXCEPTION_ENDPOINT: &str = "https://statsigapi.net/v1/sdk_exception";
+static STATSIG_SDK_EXCEPTION_URL: &str = "https://statsigapi.net/v1/sdk_exception";
 
-#[cfg(not(feature = "testing"))]
 fn get_sdk_exception_endpoint() -> String {
-    SDK_EXCEPTION_ENDPOINT.to_string()
-}
+    #[cfg(feature = "testing")]
+    if let Ok(url) = std::env::var("STATSIG_SDK_EXCEPTION_URL") {
+        return url;
+    }
 
-#[cfg(feature = "testing")]
-fn get_sdk_exception_endpoint() -> String {
-    std::env::var("STATSIG_SDK_EXCEPTION_URL").unwrap_or(SDK_EXCEPTION_ENDPOINT.to_string())
+    STATSIG_SDK_EXCEPTION_URL.to_string()
 }
 
 #[derive(Clone, Serialize)]

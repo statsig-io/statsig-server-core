@@ -1,0 +1,81 @@
+{
+    "has_updates": true,
+    "time": 1000,
+    "feature_gates": {
+        "test_rule_sampling": {
+          "type": "feature_gate",
+          "salt": "64fa52a6-4195-4658-b124-aa0be3ff8860",
+          "enabled": true,
+          "defaultValue": false,
+          "rules": [
+              {
+                  "name": "6X3qJgyfwA81IJ2dxI7lYp",
+                  "passPercentage": 100,
+                  "conditions": [
+                      "1828919350"
+                  ],
+                  "returnValue": true,
+                  "id": "6X3qJgyfwA81IJ2dxI7lYp",
+                  "salt": "6X3qJgyfwA81IJ2dxI7lYp",
+                  "idType": "userID",
+                  "samplingRate": 201
+              }
+          ],
+          "idType": "userID",
+          "entity": "feature_gate",
+          "version": 69
+      },
+      "test_forward_all_exposures": {
+          "type": "feature_gate",
+          "salt": "64fa52a6-4195-4658-b124-aa0be3ff8860",
+          "enabled": true,
+          "defaultValue": false,
+          "rules": [
+              {
+                  "name": "6X3qJgyfwA81IJ2dxI7lYp",
+                  "passPercentage": 100,
+                  "conditions": [
+                      "1828919350"
+                  ],
+                  "returnValue": true,
+                  "id": "6X3qJgyfwA81IJ2dxI7lYp",
+                  "salt": "6X3qJgyfwA81IJ2dxI7lYp",
+                  "idType": "userID",
+                  "samplingRate": 201
+              }
+          ],
+          "idType": "userID",
+          "entity": "feature_gate",
+          "version": 69,
+          "forwardAllExposures": true
+      }
+    },
+    "dynamic_configs": {},
+    "layer_configs": {},
+    "condition_map": {
+        "1828919350": {
+            "type": "public",
+            "targetValue": null,
+            "operator": null,
+            "field": null,
+            "additionalValues": {},
+            "idType": "userID"
+        }
+    },
+    "experiment_to_layer": {},
+    "default_environment": null,
+    "app_id": null,
+    "sdk_keys_to_app_ids": null,
+    "hashed_sdk_keys_to_app_ids": null,
+    "diagnostics": {
+        "initialize": 9999,
+        "dcs": 999,
+        "get_id_list": 99
+    },
+    "sdk_configs": {
+        "event_queue_size": 1800,
+        "event_logging_interval_seconds": 1,
+        "special_case_sampling_rate": 101,
+        "sampling_mode": "on"
+    }
+}

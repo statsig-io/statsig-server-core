@@ -3,10 +3,7 @@ mod utils;
 use more_asserts::assert_gt;
 use statsig_rust::{output_logger::LogLevel, Statsig, StatsigOptions};
 use std::{fs, path::PathBuf, sync::Arc, time::Duration};
-use utils::{
-    helpers::assert_eventually,
-    mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi},
-};
+use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
 const SDK_KEY: &str = "secret-key";
 
@@ -48,11 +45,7 @@ async fn test_background_syncing() {
 
     statsig.initialize().await.unwrap();
 
-    assert_eventually(
-        || scrapi.times_called_for_endpoint(Endpoint::DownloadConfigSpecs) > 2,
-        Duration::from_secs(1),
-    )
-    .await;
+    assert_eventually!(|| scrapi.times_called_for_endpoint(Endpoint::DownloadConfigSpecs) > 2);
 }
 
 #[tokio::test]

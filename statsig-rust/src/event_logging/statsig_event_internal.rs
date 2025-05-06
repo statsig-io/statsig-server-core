@@ -1,14 +1,16 @@
 use crate::evaluation::evaluation_types::SecondaryExposure;
-use crate::event_logging::config_exposure::CONFIG_EXPOSURE_EVENT_NAME;
-use crate::event_logging::gate_exposure::GATE_EXPOSURE_EVENT_NAME;
-use crate::event_logging::layer_exposure::LAYER_EXPOSURE_EVENT_NAME;
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::sdk_diagnostics::diagnostics::DIAGNOSTICS_EVENT;
 use crate::user::StatsigUserLoggable;
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use serde_json::Value;
+use std::collections::{HashMap, HashSet};
+
+pub const GATE_EXPOSURE_EVENT_NAME: &str = "statsig::gate_exposure";
+pub const CONFIG_EXPOSURE_EVENT_NAME: &str = "statsig::config_exposure";
+pub const LAYER_EXPOSURE_EVENT_NAME: &str = "statsig::layer_exposure";
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -35,16 +37,51 @@ impl StatsigEventInternal {
         }
     }
 
-    pub fn new_diagnostic_event(event: StatsigEvent) -> Self {
+    pub fn new_custom_event(
+        user: StatsigUserLoggable,
+        event_name: String,
+        value: Option<Value>,
+        metadata: Option<HashMap<String, String>>,
+    ) -> Self {
+        StatsigEventInternal::new(
+            user,
+            StatsigEvent {
+                event_name,
+                value,
+                metadata,
+                statsig_metadata: None,
+            },
+            None,
+        )
+    }
+
+    pub fn new_diagnostic_event(metadata: HashMap<String, String>) -> Self {
         StatsigEventInternal {
-            event_data: event,
+            event_data: StatsigEvent {
+                event_name: DIAGNOSTICS_EVENT.to_string(),
+                value: None,
+                metadata: Some(metadata),
+                statsig_metadata: None,
+            },
             user: StatsigUserLoggable::null_user(),
             time: Utc::now().timestamp_millis() as u64,
             secondary_exposures: None,
         }
     }
 
-    pub fn new_non_exposed_checks_event(event: StatsigEvent) -> Self {
+    pub fn new_non_exposed_checks_event(checks: HashMap<String, u64>) -> Self {
+        let checks_json = match serde_json::to_string(&checks) {
+            Ok(json) => json,
+            Err(_) => "STATSIG_ERROR_SERIALIZING_NON_EXPOSED_CHECKS".into(),
+        };
+
+        let event = StatsigEvent {
+            event_name: "statsig::non_exposed_checks".to_string(),
+            value: None,
+            metadata: Some(HashMap::from([("checks".into(), checks_json)])),
+            statsig_metadata: None,
+        };
+
         StatsigEventInternal {
             event_data: event,
             user: StatsigUserLoggable::null_user(),
@@ -62,13 +99,6 @@ impl StatsigEventInternal {
     pub fn is_diagnostic_event(&self) -> bool {
         self.event_data.event_name == DIAGNOSTICS_EVENT
     }
-}
-
-pub(crate) fn make_custom_event(
-    user: StatsigUserLoggable,
-    event: StatsigEvent,
-) -> StatsigEventInternal {
-    StatsigEventInternal::new(user, event, None)
 }
 
 fn secondary_exposure_keys_to_expos(
@@ -95,7 +125,7 @@ fn secondary_exposure_keys_to_expos(
 #[cfg(test)]
 mod statsig_event_internal_tests {
     use crate::event_logging::statsig_event::StatsigEvent;
-    use crate::event_logging::statsig_event_internal::{make_custom_event, StatsigEventInternal};
+    use crate::event_logging::statsig_event_internal::StatsigEventInternal;
     use crate::user::StatsigUserInternal;
     use crate::StatsigUser;
     use serde_json::{json, Value};
@@ -109,7 +139,7 @@ mod statsig_event_internal_tests {
         sampling_statsig_metadata.insert("samplingRate".into(), 101.into());
         sampling_statsig_metadata.insert("shadowLogged".into(), "logged".into());
 
-        make_custom_event(
+        StatsigEventInternal::new(
             user.to_loggable(),
             StatsigEvent {
                 event_name: "foo".into(),
@@ -117,6 +147,7 @@ mod statsig_event_internal_tests {
                 metadata: Some(HashMap::from([("key".into(), "value".into())])),
                 statsig_metadata: Some(sampling_statsig_metadata),
             },
+            None,
         )
     }
 

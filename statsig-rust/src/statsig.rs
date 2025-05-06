@@ -2,7 +2,6 @@ use crate::evaluation::cmab_evaluator::{get_cmab_ranked_list, CMABRankedGroup};
 use crate::evaluation::country_lookup::CountryLookup;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
-use crate::evaluation::evaluation_types::{AnyEvaluation, BaseEvaluation, ExperimentEvaluation};
 use crate::evaluation::evaluator::{Evaluator, SpecType};
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::evaluator_result::{
@@ -10,12 +9,13 @@ use crate::evaluation::evaluator_result::{
     result_to_layer_eval, EvaluatorResult,
 };
 use crate::evaluation::ua_parser::UserAgentParser;
-use crate::event_logging::config_exposure::ConfigExposure;
-use crate::event_logging::event_logger::{EventLogger, QueuedEventPayload};
-use crate::event_logging::gate_exposure::GateExposure;
-use crate::event_logging::layer_exposure::LayerExposure;
-use crate::event_logging::statsig_event::StatsigEvent;
-use crate::event_logging::statsig_event_internal::make_custom_event;
+use crate::event_logging::event_logger::{EventLogger, ExposureTrigger};
+use crate::event_logging::event_queue::queued_config_expo::EnqueueConfigExpoOp;
+use crate::event_logging::event_queue::queued_experiment_expo::EnqueueExperimentExpoOp;
+use crate::event_logging::event_queue::queued_gate_expo::EnqueueGateExpoOp;
+use crate::event_logging::event_queue::queued_layer_param_expo::EnqueueLayerParamExpoOp;
+use crate::event_logging::event_queue::queued_passthrough::EnqueuePassthroughOp;
+use crate::event_logging::statsig_event_internal::StatsigEventInternal;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
 use crate::gcir::gcir_formatter::GCIRFormatter;
@@ -43,7 +43,7 @@ use crate::user::StatsigUserInternal;
 use crate::{
     dyn_value, log_d, log_e, log_w, read_lock_or_else, ClientInitResponseOptions,
     GCIRResponseFormat, IdListsAdapter, ObservabilityClient, OpsStatsEventObserver,
-    OverrideAdapter, SamplingProcessor, SpecsAdapter, SpecsInfo, SpecsSource, SpecsUpdateListener,
+    OverrideAdapter, SpecsAdapter, SpecsInfo, SpecsSource, SpecsUpdateListener,
     StatsigHttpIdListsAdapter, StatsigLocalOverrideAdapter, StatsigUser,
 };
 use crate::{
@@ -91,7 +91,6 @@ pub struct Statsig {
     ops_stats: Arc<OpsStatsForInstance>,
     error_observer: Arc<dyn OpsStatsEventObserver>,
     diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
-    sampling_processor: Arc<SamplingProcessor>,
     background_tasks_started: Arc<AtomicBool>,
     persistent_values_manager: Option<Arc<PersistentValuesManager>>,
     initialize_details: Mutex<InitializeDetails>,
@@ -166,12 +165,8 @@ impl Statsig {
             None => Some(Arc::new(StatsigLocalOverrideAdapter::new()) as Arc<dyn OverrideAdapter>),
         };
 
-        let event_logger = Arc::new(EventLogger::new(
-            sdk_key,
-            event_logging_adapter.clone(),
-            &options,
-            &statsig_runtime,
-        ));
+        let event_logger =
+            EventLogger::new(sdk_key, &options, &event_logging_adapter, &statsig_runtime);
 
         let diagnostics = Arc::new(Diagnostics::new(event_logger.clone(), sdk_key));
         let diagnostics_observer: Arc<dyn OpsStatsEventObserver> =
@@ -200,12 +195,6 @@ impl Statsig {
             .as_ref()
             .map(|env| HashMap::from([("tier".into(), dyn_value!(env.as_str()))]));
 
-        let sampling_processor = Arc::new(SamplingProcessor::new(
-            &statsig_runtime,
-            hashing.clone(),
-            sdk_key,
-        ));
-
         let persistent_values_manager = options.persistent_storage.clone().map(|storage| {
             Arc::new(PersistentValuesManager {
                 persistent_storage: storage,
@@ -218,7 +207,6 @@ impl Statsig {
             sdk_key: sdk_key.to_string(),
             options,
             gcir_formatter: Arc::new(GCIRFormatter::new(&spec_store, &override_adapter)),
-            event_logger,
             hashing,
             statsig_environment: environment,
             fallback_environment: Mutex::new(None),
@@ -226,11 +214,11 @@ impl Statsig {
             spec_store,
             specs_adapter,
             event_logging_adapter,
+            event_logger,
             id_lists_adapter,
             statsig_runtime,
             ops_stats,
             error_observer,
-            sampling_processor,
             diagnostics_observer,
             background_tasks_started: Arc::new(AtomicBool::new(false)),
             persistent_values_manager,
@@ -337,7 +325,7 @@ impl Statsig {
 
                 try_join!(
                     id_list_shutdown,
-                    self.event_logger.shutdown(timeout),
+                    self.event_logger.shutdown(),
                     self.specs_adapter.shutdown(timeout, &self.statsig_runtime),
                 )
             } => {
@@ -359,7 +347,6 @@ impl Statsig {
     }
 
     async fn start_background_tasks(
-        event_logger: Arc<EventLogger>,
         statsig_runtime: Arc<StatsigRuntime>,
         id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
         specs_adapter: Arc<dyn SpecsAdapter>,
@@ -371,7 +358,6 @@ impl Statsig {
         }
 
         let mut success = true;
-        event_logger.clone().start_background_task(&statsig_runtime);
 
         if let Some(adapter) = &id_lists_adapter {
             if let Err(e) = adapter
@@ -414,7 +400,6 @@ impl Statsig {
         let init_future = self.initialize_impl_with_details();
         let timeout_future = sleep(timeout);
 
-        let event_logger = self.event_logger.clone();
         let statsig_runtime = self.statsig_runtime.clone();
         let id_lists_adapter = self.id_lists_adapter.clone();
         let specs_adapter = self.specs_adapter.clone();
@@ -432,7 +417,6 @@ impl Statsig {
                     "start_background_tasks",
                     |_shutdown_notify| async move {
                         Self::start_background_tasks(
-                            event_logger,
                             statsig_runtime_for_closure,
                             id_lists_adapter,
                             specs_adapter,
@@ -548,7 +532,6 @@ impl Statsig {
         let error = init_res.clone().err();
 
         let success = Self::start_background_tasks(
-            self.event_logger.clone(),
             self.statsig_runtime.clone(),
             self.id_lists_adapter.clone(),
             self.specs_adapter.clone(),
@@ -627,16 +610,14 @@ impl Statsig {
     ) {
         let user_internal = self.internalize_user(user);
 
-        self.event_logger
-            .enqueue(QueuedEventPayload::CustomEvent(make_custom_event(
+        self.event_logger.enqueue(EnqueuePassthroughOp {
+            event: StatsigEventInternal::new_custom_event(
                 user_internal.to_loggable(),
-                StatsigEvent {
-                    event_name: event_name.to_string(),
-                    value: value.map(|v| json!(v)),
-                    metadata,
-                    statsig_metadata: None,
-                },
-            )));
+                event_name.to_string(),
+                value.map(|v| json!(v)),
+                metadata,
+            ),
+        });
     }
 
     pub fn log_event_with_number(
@@ -647,17 +628,14 @@ impl Statsig {
         metadata: Option<HashMap<String, String>>,
     ) {
         let user_internal = self.internalize_user(user);
-
-        self.event_logger
-            .enqueue(QueuedEventPayload::CustomEvent(make_custom_event(
+        self.event_logger.enqueue(EnqueuePassthroughOp {
+            event: StatsigEventInternal::new_custom_event(
                 user_internal.to_loggable(),
-                StatsigEvent {
-                    event_name: event_name.to_string(),
-                    value: value.map(|v| json!(v)),
-                    metadata,
-                    statsig_metadata: None,
-                },
-            )));
+                event_name.to_string(),
+                value.map(|v| json!(v)),
+                metadata,
+            ),
+        });
     }
 
     pub fn log_layer_param_exposure_with_layer_json(
@@ -682,39 +660,20 @@ impl Statsig {
 
     pub fn log_layer_param_exposure_with_layer(&self, layer: Layer, parameter_name: String) {
         if layer.__disable_exposure {
-            self.event_logger
-                .increment_non_exposure_checks_count(layer.name.clone());
-            return;
-        }
-
-        let layer_eval = layer.__evaluation.as_ref();
-
-        let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
-            &layer.__user.get_sampling_key(),
-            layer_eval.map(AnyEvaluation::from).as_ref(),
-            Some(&parameter_name),
-        );
-
-        if !sampling_details.should_send_exposure {
+            self.event_logger.increment_non_exposure_checks(&layer.name);
             return;
         }
 
         self.event_logger
-            .enqueue(QueuedEventPayload::LayerExposure(LayerExposure {
-                user: layer.__user,
+            .enqueue(EnqueueLayerParamExpoOp::LayerOwned(
+                layer,
                 parameter_name,
-                evaluation: layer.__evaluation,
-                layer_name: layer.name,
-                evaluation_details: layer.details,
-                version: layer.__version,
-                is_manual_exposure: false,
-                sampling_details,
-                override_config_name: layer.__override_config_name.clone(),
-            }));
+                ExposureTrigger::Auto,
+            ));
     }
 
     pub async fn flush_events(&self) {
-        self.event_logger.flush_all_blocking().await;
+        let _ = self.event_logger.flush_all_pending_events().await;
     }
 
     pub fn get_client_init_response(&self, user: &StatsigUser) -> InitializeResponse {
@@ -842,7 +801,8 @@ impl Statsig {
         options: ParameterStoreEvaluationOptions,
     ) -> ParameterStore {
         self.event_logger
-            .increment_non_exposure_checks_count(parameter_store_name.to_string());
+            .increment_non_exposure_checks(parameter_store_name);
+
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
@@ -895,20 +855,19 @@ impl Statsig {
 // -------------------------
 //   User Store Functions
 // -------------------------
+
 impl Statsig {
     pub fn identify(&self, user: &StatsigUser) {
         let user_internal = self.internalize_user(user);
 
-        self.event_logger
-            .enqueue(QueuedEventPayload::CustomEvent(make_custom_event(
+        self.event_logger.enqueue(EnqueuePassthroughOp {
+            event: StatsigEventInternal::new_custom_event(
                 user_internal.to_loggable(),
-                StatsigEvent {
-                    event_name: "statsig::identify".to_string(),
-                    value: None,
-                    metadata: None,
-                    statsig_metadata: None,
-                },
-            )));
+                "statsig::identify".to_string(),
+                None,
+                None,
+            ),
+        });
     }
 }
 
@@ -922,8 +881,8 @@ impl Statsig {
         user: &StatsigUser,
         cmab_name: &str,
     ) -> Vec<CMABRankedGroup> {
-        self.event_logger
-            .increment_non_exposure_checks_count(cmab_name.to_string());
+        self.event_logger.increment_non_exposure_checks(cmab_name);
+
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
@@ -954,56 +913,15 @@ impl Statsig {
         group_id: String,
     ) {
         let user_internal = self.internalize_user(user);
-        let experiment = self.get_experiment_impl(&user_internal, cmab_name);
-        let sampling_info = match experiment.__evaluation {
-            Some(ref eval) => eval.base.sampling_info.clone(),
-            None => None,
-        };
-        let base_eval = BaseEvaluation {
-            name: cmab_name.to_string(),
-            rule_id: group_id.clone(),
-            secondary_exposures: match experiment.__evaluation {
-                Some(ref eval) => eval.base.secondary_exposures.clone(),
-                None => vec![],
-            },
-            sampling_info,
-        };
-        let experiment_eval = ExperimentEvaluation {
-            base: base_eval.clone(),
-            id_type: experiment.id_type.clone(),
-            value: HashMap::new(),
-            group: group_id,
-            is_device_based: false,
-            is_in_layer: false,
-            explicit_parameters: None,
-            group_name: None,
-            is_experiment_active: Some(true),
-            is_user_in_experiment: Some(true),
-            undelegated_secondary_exposures: None,
-        };
 
-        let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
-            &user_internal.get_sampling_key(),
-            Some(&AnyEvaluation::from(&experiment_eval)),
-            None,
-        );
+        let mut experiment = self.get_experiment_impl(&user_internal, cmab_name);
+        experiment.rule_id = group_id;
 
-        if !sampling_details.should_send_exposure {
-            return;
-        }
-
-        self.event_logger
-            .enqueue(QueuedEventPayload::ConfigExposure(ConfigExposure {
-                user: user_internal.to_loggable(),
-                evaluation: Some(base_eval),
-                evaluation_details: experiment.details.clone(),
-                config_name: cmab_name.to_string(),
-                rule_passed: None,
-                version: experiment.__version,
-                is_manual_exposure: true,
-                sampling_details,
-                override_config_name: experiment.__override_config_name.clone(),
-            }));
+        self.event_logger.enqueue(EnqueueExperimentExpoOp {
+            user: &user_internal,
+            experiment: &experiment,
+            trigger: ExposureTrigger::Manual,
+        });
     }
 }
 
@@ -1111,10 +1029,13 @@ impl Statsig {
 
         if disable_exposure_logging {
             log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
-            self.event_logger
-                .increment_non_exposure_checks_count(gate_name.to_string());
+            self.event_logger.increment_non_exposure_checks(gate_name);
         } else {
-            self.log_gate_exposure(user_internal, gate_name, &gate, false);
+            self.event_logger.enqueue(EnqueueGateExpoOp {
+                user: &user_internal,
+                gate: &gate,
+                trigger: ExposureTrigger::Auto,
+            });
         }
 
         gate
@@ -1123,7 +1044,11 @@ impl Statsig {
     pub fn manually_log_gate_exposure(&self, user: &StatsigUser, gate_name: &str) {
         let user_internal = self.internalize_user(user);
         let gate = self.get_feature_gate_impl(&user_internal, gate_name);
-        self.log_gate_exposure(user_internal, gate_name, &gate, true);
+        self.event_logger.enqueue(EnqueueGateExpoOp {
+            user: &user_internal,
+            gate: &gate,
+            trigger: ExposureTrigger::Manual,
+        });
     }
 
     pub fn get_fields_needed_for_gate(&self, gate_name: &str) -> Vec<String> {
@@ -1339,7 +1264,7 @@ impl Statsig {
     ) -> DynamicConfig {
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
-        let config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
+        let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
 
         if disable_exposure_logging {
             log_d!(
@@ -1348,12 +1273,16 @@ impl Statsig {
                 dynamic_config_name
             );
             self.event_logger
-                .increment_non_exposure_checks_count(dynamic_config_name.to_string());
+                .increment_non_exposure_checks(dynamic_config_name);
         } else {
-            self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &config, false);
+            self.event_logger.enqueue(EnqueueConfigExpoOp {
+                user: &user_internal,
+                config: &dynamic_config,
+                trigger: ExposureTrigger::Auto,
+            });
         }
 
-        config
+        dynamic_config
     }
 
     pub fn manually_log_dynamic_config_exposure(
@@ -1363,7 +1292,11 @@ impl Statsig {
     ) {
         let user_internal = self.internalize_user(user);
         let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
-        self.log_dynamic_config_exposure(user_internal, dynamic_config_name, &dynamic_config, true);
+        self.event_logger.enqueue(EnqueueConfigExpoOp {
+            user: &user_internal,
+            config: &dynamic_config,
+            trigger: ExposureTrigger::Manual,
+        });
     }
 
     pub fn get_fields_needed_for_dynamic_config(&self, config_name: &str) -> Vec<String> {
@@ -1424,9 +1357,13 @@ impl Statsig {
                 experiment_name
             );
             self.event_logger
-                .increment_non_exposure_checks_count(experiment_name.to_string());
+                .increment_non_exposure_checks(experiment_name);
         } else {
-            self.log_experiment_exposure(user_internal, experiment_name, &experiment, false);
+            self.event_logger.enqueue(EnqueueExperimentExpoOp {
+                user: &user_internal,
+                experiment: &experiment,
+                trigger: ExposureTrigger::Auto,
+            });
         }
 
         experiment
@@ -1435,7 +1372,11 @@ impl Statsig {
     pub fn manually_log_experiment_exposure(&self, user: &StatsigUser, experiment_name: &str) {
         let user_internal = self.internalize_user(user);
         let experiment = self.get_experiment_impl(&user_internal, experiment_name);
-        self.log_experiment_exposure(user_internal, experiment_name, &experiment, true);
+        self.event_logger.enqueue(EnqueueExperimentExpoOp {
+            user: &user_internal,
+            experiment: &experiment,
+            trigger: ExposureTrigger::Manual,
+        });
     }
 
     pub fn get_fields_needed_for_experiment(&self, experiment_name: &str) -> Vec<String> {
@@ -1490,30 +1431,12 @@ impl Statsig {
         let layer =
             self.get_layer_impl(user_internal, layer_name, LayerEvaluationOptions::default());
 
-        let layer_eval = layer.__evaluation.as_ref();
-
-        let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
-            &layer.__user.get_sampling_key(),
-            layer_eval.map(AnyEvaluation::from).as_ref(),
-            Some(parameter_name.as_str()),
-        );
-
-        if !sampling_details.should_send_exposure {
-            return;
-        }
-
         self.event_logger
-            .enqueue(QueuedEventPayload::LayerExposure(LayerExposure {
-                user: layer.__user,
+            .enqueue(EnqueueLayerParamExpoOp::LayerOwned(
+                layer,
                 parameter_name,
-                evaluation: layer.__evaluation,
-                layer_name: layer.name,
-                evaluation_details: layer.details,
-                version: layer.__version,
-                is_manual_exposure: true,
-                sampling_details,
-                override_config_name: layer.__override_config_name.clone(),
-            }));
+                ExposureTrigger::Manual,
+            ));
     }
 
     pub fn get_fields_needed_for_layer(&self, layer_name: &str) -> Vec<String> {
@@ -1726,12 +1649,9 @@ impl Statsig {
         evaluation_options: LayerEvaluationOptions,
     ) -> Layer {
         let disable_exposure_logging = evaluation_options.disable_exposure_logging;
-        let event_logger_ptr = Arc::downgrade(&self.event_logger);
-        let sampling_processor_ptr = Arc::downgrade(&self.sampling_processor);
 
         if disable_exposure_logging {
-            self.event_logger
-                .increment_non_exposure_checks_count(layer_name.to_string());
+            self.event_logger.increment_non_exposure_checks(layer_name);
         }
 
         let mut layer = self.evaluate_spec(
@@ -1747,13 +1667,11 @@ impl Statsig {
                     None,
                     disable_exposure_logging,
                     None,
-                    None,
                 )
             },
             |mut result, eval_details| {
                 let evaluation = result_to_layer_eval(layer_name, &mut result);
                 let event_logger_ptr = Arc::downgrade(&self.event_logger);
-                let sampling_processor_ptr = Arc::downgrade(&self.sampling_processor);
 
                 make_layer(
                     user_internal.to_loggable(),
@@ -1763,130 +1681,24 @@ impl Statsig {
                     Some(event_logger_ptr),
                     result.version,
                     disable_exposure_logging,
-                    Some(sampling_processor_ptr),
                     result.override_config_name,
                 )
             },
             &SpecType::Layer,
         );
         if let Some(persisted_layer) = self.persistent_values_manager.as_ref().and_then(|p| {
+            let event_logger_ptr = Arc::downgrade(&self.event_logger);
             p.try_apply_sticky_value_to_layer(
                 &user_internal,
                 &evaluation_options,
                 &layer,
                 Some(event_logger_ptr),
-                Some(sampling_processor_ptr),
                 disable_exposure_logging,
             )
         }) {
             layer = persisted_layer
         }
         layer
-    }
-
-    fn log_gate_exposure(
-        &self,
-        user: StatsigUserInternal,
-        gate_name: &str,
-        gate: &FeatureGate,
-        is_manual: bool,
-    ) {
-        let gate_eval = gate.__evaluation.as_ref();
-        let secondary_exposures = gate_eval.map(|eval| &eval.base.secondary_exposures);
-        let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
-            &user.get_sampling_key(),
-            gate_eval.map(AnyEvaluation::from).as_ref(),
-            None,
-        );
-
-        if !sampling_details.should_send_exposure {
-            return;
-        }
-
-        self.event_logger
-            .enqueue(QueuedEventPayload::GateExposure(GateExposure {
-                user: user.to_loggable(),
-                gate_name: gate_name.to_string(),
-                value: gate.value,
-                rule_id: Some(gate.rule_id.clone()),
-                secondary_exposures: secondary_exposures.cloned(),
-                evaluation_details: gate.details.clone(),
-                version: gate.__version,
-                is_manual_exposure: is_manual,
-                sampling_details,
-                override_config_name: gate.__override_config_name.clone(),
-            }));
-    }
-
-    fn log_dynamic_config_exposure(
-        &self,
-        user_internal: StatsigUserInternal,
-        dynamic_config_name: &str,
-        dynamic_config: &DynamicConfig,
-        is_manual: bool,
-    ) {
-        let config_eval = dynamic_config.__evaluation.as_ref();
-        let base_eval = config_eval.map(|eval| eval.base.clone());
-        let loggable_user = user_internal.to_loggable();
-
-        let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
-            &loggable_user.get_sampling_key(),
-            config_eval.map(AnyEvaluation::from).as_ref(),
-            None,
-        );
-
-        if !sampling_details.should_send_exposure {
-            return;
-        }
-
-        self.event_logger
-            .enqueue(QueuedEventPayload::ConfigExposure(ConfigExposure {
-                user: loggable_user,
-                evaluation: base_eval,
-                evaluation_details: dynamic_config.details.clone(),
-                config_name: dynamic_config_name.to_string(),
-                rule_passed: dynamic_config.__evaluation.as_ref().map(|eval| eval.passed),
-                version: dynamic_config.__version,
-                is_manual_exposure: is_manual,
-                sampling_details,
-                override_config_name: dynamic_config.__override_config_name.clone(),
-            }));
-    }
-
-    fn log_experiment_exposure(
-        &self,
-        user_internal: StatsigUserInternal,
-        experiment_name: &str,
-        experiment: &Experiment,
-        is_manual: bool,
-    ) {
-        let experiment_eval = experiment.__evaluation.as_ref();
-        let base_eval = experiment_eval.map(|eval| eval.base.clone());
-
-        let sampling_details = self.sampling_processor.get_sampling_decision_and_details(
-            &user_internal.get_sampling_key(),
-            experiment_eval.map(AnyEvaluation::from).as_ref(),
-            None,
-        );
-
-        if !sampling_details.should_send_exposure {
-            return;
-        }
-
-        let loggable_user = user_internal.to_loggable();
-
-        self.event_logger
-            .enqueue(QueuedEventPayload::ConfigExposure(ConfigExposure {
-                user: loggable_user,
-                evaluation: base_eval,
-                evaluation_details: experiment.details.clone(),
-                config_name: experiment_name.to_string(),
-                rule_passed: None,
-                version: experiment.__version,
-                is_manual_exposure: is_manual,
-                sampling_details,
-                override_config_name: experiment.__override_config_name.clone(),
-            }));
     }
 
     fn internalize_user<'s, 'u>(&'s self, user: &'u StatsigUser) -> StatsigUserInternal<'s, 'u> {

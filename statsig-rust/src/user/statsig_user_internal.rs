@@ -140,7 +140,7 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
             .get_from_statsig_env(&field.lowercased_value)
     }
 
-    pub fn get_sampling_key(&self) -> String {
+    pub fn create_sampling_key(&self) -> String {
         let user_data = self.user_data;
 
         let mut user_key = "u:".to_string();
@@ -189,6 +189,15 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
         }
 
         values
+    }
+
+    pub fn get_user_id_ref(&self) -> &str {
+        self.user_data
+            .user_id
+            .as_ref()
+            .and_then(|id| id.string_value.as_ref().map(|s| &s.value))
+            .map(|s| s.as_str())
+            .unwrap_or_default()
     }
 }
 

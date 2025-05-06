@@ -1,5 +1,5 @@
 mod utils;
-use serde_json::{json, Value};
+use serde_json::Value;
 use statsig_rust::{
     output_logger::LogLevel, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
     FeatureGateEvaluationOptions, Statsig, StatsigOptions, StatsigUser,
@@ -14,7 +14,6 @@ use utils::{
     mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi},
     mock_specs_adapter::MockSpecsAdapter,
 };
-use wiremock::Request;
 
 async fn setup(delay_ms: u64, key: String) -> (MockScrapi, Statsig) {
     let mock_scrapi = MockScrapi::new().await;
@@ -115,17 +114,9 @@ async fn test_all_events_get_flushed() {
 
     sleep(Duration::from_millis(100)).await; // give time for diagnostics to flush too
     let start = Instant::now();
-    statsig
-        .shutdown_with_timeout(Duration::from_millis(3000))
-        .await
-        .unwrap();
+    statsig.shutdown().await.unwrap();
 
-    assert_eventually_eq!(
-        || mock_scrapi.get_logged_event_count(),
-        5001,
-        Duration::from_secs(1)
-    )
-    .await;
+    assert_eventually_eq!(|| mock_scrapi.get_logged_event_count(), 5001);
 
     let duration = start.elapsed();
     println!("shutdown: {:.2} ms", duration.as_millis());
@@ -173,17 +164,12 @@ async fn test_core_apis_exposure_logging_disabled() {
 
     tokio::time::sleep(Duration::from_millis(100)).await; // wait for diagnostics observer to enqueue events
 
-    statsig
-        .shutdown_with_timeout(Duration::from_millis(3000))
-        .await
-        .unwrap();
+    statsig.shutdown().await.unwrap();
 
     assert_eventually_eq!(
         || mock_scrapi.get_logged_event_count(),
-        2, // TODO add the ability to filter non-diagnostic events, 2 = 1 diagnostic + 1 non exposed checks
-        Duration::from_secs(1)
-    )
-    .await;
+        2 // TODO add the ability to filter non-diagnostic events, 2 = 1 diagnostic + 1 non exposed checks
+    );
 
     let duration = start.elapsed();
     println!(
@@ -194,6 +180,9 @@ async fn test_core_apis_exposure_logging_disabled() {
 
 #[tokio::test]
 async fn test_flushing_backoff_and_metadata() {
+    std::env::set_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "1");
+    std::env::set_var("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "1");
+
     let mock_scrapi = MockScrapi::new().await;
 
     mock_scrapi
@@ -211,51 +200,40 @@ async fn test_flushing_backoff_and_metadata() {
                 "tests/data/eval_proj_dcs.json",
             ))),
             log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
-            event_logging_max_queue_size: Some(1),
             output_log_level: Some(LogLevel::Debug),
+            disable_user_agent_parsing: Some(true),
+            disable_country_lookup: Some(true),
             ..StatsigOptions::new()
         })),
     );
 
     statsig.initialize().await.unwrap();
+
     let user = StatsigUser::with_user_id("test_user".to_string());
     statsig.log_event(&user, "event_name", None, None);
-    sleep(Duration::from_millis(100)).await;
 
-    statsig.log_event(&user, "another_event", None, None);
-    sleep(Duration::from_millis(100)).await;
+    assert_eventually_eq!(
+        || mock_scrapi
+            .get_requests_for_endpoint(Endpoint::LogEvent)
+            .len(),
+        3
+    );
 
     let log_event_requests = mock_scrapi.get_requests_for_endpoint(Endpoint::LogEvent);
-    let requests_to_validate = filter_requests_by_task_id(&log_event_requests, 1);
-    assert_flushing_interval_and_limit_batch(&requests_to_validate, 0, 1, true);
-    assert_flushing_interval_and_limit_batch(&requests_to_validate, 1, 2, true);
+    assert_flushing_interval_and_scheduled_batch(&log_event_requests, 0, 1);
+    assert_flushing_interval_and_scheduled_batch(&log_event_requests, 1, 2);
+    assert_flushing_interval_and_scheduled_batch(&log_event_requests, 2, 4);
 
-    statsig.shutdown().await.unwrap();
+    let _ = statsig.shutdown().await;
+
+    std::env::remove_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS");
+    std::env::remove_var("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS");
 }
 
-fn filter_requests_by_task_id(requests: &[Request], expected_task_id: u64) -> Vec<&Request> {
-    requests
-        .iter()
-        .filter(|req| {
-            if let Ok(json_data) = decompress_json(&req.body) {
-                if let Some(metadata) = json_data.get("statsigMetadata") {
-                    return metadata
-                        .get("taskId")
-                        .and_then(|v| v.as_u64())
-                        .map(|id| id == expected_task_id)
-                        .unwrap_or(false);
-                }
-            }
-            false
-        })
-        .collect()
-}
-
-fn assert_flushing_interval_and_limit_batch(
-    requests: &[&wiremock::Request],
+fn assert_flushing_interval_and_scheduled_batch(
+    requests: &[wiremock::Request],
     index: usize,
     expected_threshold_interval: u64,
-    expected_limit_batch: bool,
 ) {
     let json_data = decompress_json(&requests[index].body).expect("Failed to decompress JSON");
     let statsig_metadata = json_data
@@ -263,9 +241,9 @@ fn assert_flushing_interval_and_limit_batch(
         .expect("Missing statsigMetadata field");
 
     let actual_interval = statsig_metadata
-        .get("loggingInterval")
+        .get("flushingIntervalMs")
         .and_then(|v| v.as_u64())
-        .expect("Missing or invalid loggingInterval field");
+        .expect("Missing or invalid flushingIntervalMs field");
 
     assert!(
         actual_interval >= expected_threshold_interval,
@@ -276,9 +254,9 @@ fn assert_flushing_interval_and_limit_batch(
     );
 
     assert_eq!(
-        statsig_metadata.get("isLimitBatch"),
-        Some(&json!(expected_limit_batch)),
-        "Unexpected isLimitBatch value at index {}",
+        statsig_metadata.get("flushType").and_then(|v| v.as_str()),
+        Some("scheduled"),
+        "Unexpected flushType to be 'scheduled' at index {}",
         index
     );
 }

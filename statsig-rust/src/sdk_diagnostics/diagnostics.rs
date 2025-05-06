@@ -1,15 +1,13 @@
 use super::diagnostics_utils::DiagnosticsUtils;
 use super::marker::{KeyType, Marker};
 
-use crate::event_logging::event_logger::{EventLogger, QueuedEventPayload};
-use crate::event_logging::{
-    statsig_event::StatsigEvent, statsig_event_internal::StatsigEventInternal,
-};
-
+use crate::event_logging::event_queue::queued_passthrough::EnqueuePassthroughOp;
+use crate::event_logging::statsig_event_internal::StatsigEventInternal;
 use crate::global_configs::{GlobalConfigs, MAX_SAMPLING_RATE};
 
 use crate::log_w;
 
+use crate::event_logging::event_logger::EventLogger;
 use rand::Rng;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -104,6 +102,11 @@ impl Diagnostics {
             return;
         }
 
+        if !self.should_sample(&context_type, key) {
+            self.clear_markers(&context_type);
+            return;
+        }
+
         let metadata = match DiagnosticsUtils::format_diagnostics_metadata(&context_type, &markers)
         {
             Ok(data) => data,
@@ -113,21 +116,9 @@ impl Diagnostics {
             }
         };
 
-        let event = StatsigEventInternal::new_diagnostic_event(StatsigEvent {
-            event_name: DIAGNOSTICS_EVENT.to_string(),
-            value: None,
-            metadata: Some(metadata),
-            statsig_metadata: None,
+        self.event_logger.enqueue(EnqueuePassthroughOp {
+            event: StatsigEventInternal::new_diagnostic_event(metadata),
         });
-
-        if !self.should_sample(&context_type, key) {
-            self.clear_markers(&context_type);
-            return;
-        }
-
-        self.event_logger
-            .enqueue(QueuedEventPayload::CustomEvent(event));
-
         self.clear_markers(&context_type);
     }
 

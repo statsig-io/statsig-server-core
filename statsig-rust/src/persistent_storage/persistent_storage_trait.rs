@@ -5,14 +5,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::evaluation::dynamic_string::DynamicString;
+use crate::event_logging::event_logger::EventLogger;
 use crate::{
     evaluation::evaluation_types::{ExperimentEvaluation, LayerEvaluation},
-    event_logging::event_logger::EventLogger,
     statsig_type_factories::{extract_from_experiment_evaluation, make_layer},
     statsig_types::{Experiment, Layer},
     unwrap_or_return,
     user::StatsigUserInternal,
-    EvaluationDetails, SamplingProcessor, SecondaryExposure,
+    EvaluationDetails, SecondaryExposure,
 };
 
 pub type UserPersistedValues = HashMap<String, StickyValues>;
@@ -55,7 +55,6 @@ pub fn make_layer_from_sticky_value(
     evaluation: LayerEvaluation,
     sticky_value: StickyValues,
     event_logger_ptr: Option<Weak<EventLogger>>,
-    sampling_processor: Option<Weak<SamplingProcessor>>,
     disable_exposure: bool,
 ) -> Layer {
     let details = EvaluationDetails {
@@ -71,7 +70,6 @@ pub fn make_layer_from_sticky_value(
         event_logger_ptr,
         sticky_value.config_version,
         disable_exposure,
-        sampling_processor,
         None,
     )
 }

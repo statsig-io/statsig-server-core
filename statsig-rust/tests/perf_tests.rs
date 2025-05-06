@@ -45,11 +45,11 @@ async fn setup() -> (StatsigUser, Statsig, Arc<MockSpecsAdapter>) {
 async fn test_individual_gate_checks() {
     let (user, statsig, _) = setup().await;
 
-    let gate_name = "test_many_rules";
+    let gate_name = "test_public";
     let start = Instant::now();
 
     let mut result = false;
-    for _ in 0..1000 {
+    for _ in 0..100000 {
         result = statsig.check_gate(&user, gate_name);
     }
 

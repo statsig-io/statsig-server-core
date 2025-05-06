@@ -100,7 +100,7 @@ impl StatsigUserLoggable {
         }
     }
 
-    pub fn get_sampling_key(&self) -> String {
+    pub fn create_sampling_key(&self) -> String {
         let user_data = &self.data.value;
         let user_id = user_data
             .get("userID")

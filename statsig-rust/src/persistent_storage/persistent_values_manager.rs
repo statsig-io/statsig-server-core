@@ -10,7 +10,7 @@ use crate::{
     statsig_types::{Experiment, Layer},
     unwrap_or_return,
     user::StatsigUserInternal,
-    ExperimentEvaluationOptions, LayerEvaluationOptions, PersistentStorage, SamplingProcessor,
+    ExperimentEvaluationOptions, LayerEvaluationOptions, PersistentStorage,
 };
 pub struct PersistentValuesManager {
     pub persistent_storage: Arc<dyn PersistentStorage>,
@@ -117,7 +117,6 @@ impl PersistentValuesManager {
         option: &'a LayerEvaluationOptions,
         evaluator_result: &'a Layer,
         event_logger_ptr: Option<Weak<EventLogger>>,
-        sampling_processor: Option<Weak<SamplingProcessor>>,
         disable_exposure: bool,
     ) -> Option<Layer> {
         let config_name = evaluator_result.name.as_str();
@@ -140,7 +139,6 @@ impl PersistentValuesManager {
                 eval,
                 sticky_value,
                 event_logger_ptr,
-                sampling_processor,
                 disable_exposure,
             )
         })

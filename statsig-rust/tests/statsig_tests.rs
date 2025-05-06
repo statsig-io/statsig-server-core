@@ -220,7 +220,7 @@ async fn test_identify() {
     sleep(Duration::from_millis(1));
     statsig.flush_events().await;
 
-    let first_event = mock_event_logger.force_get_first_event().await;
+    let first_event = mock_event_logger.force_get_first_event();
     assert_eq!(first_event.get("eventName").unwrap(), "statsig::identify");
     assert!(first_event.get("value").unwrap().is_null());
     assert!(first_event.get("metadata").unwrap().is_null());

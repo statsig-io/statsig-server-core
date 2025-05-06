@@ -15,3 +15,6 @@ pub mod mock_specs_listener;
 
 #[allow(dead_code)]
 pub mod mock_data_store;
+
+#[allow(dead_code)]
+pub mod mock_observability_client;

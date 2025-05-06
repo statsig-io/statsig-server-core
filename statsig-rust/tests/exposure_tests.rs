@@ -38,13 +38,13 @@ async fn test_gate_exposures_formatting() {
     sleep(Duration::from_millis(1)).await;
     statsig.flush_events().await;
 
-    let received = logging_adapter.force_get_received_payloads().await;
+    let received = logging_adapter.force_get_received_payloads();
 
     let statsig_meta = enforce_object(&received.statsig_metadata);
     assert_eq!(statsig_meta["sdkType"], "statsig-server-core");
     assert!(statsig_meta["sdkVersion"].as_str().is_some());
 
-    let exposure = logging_adapter.force_get_first_event().await;
+    let exposure = logging_adapter.force_get_first_event();
     assert_eq!(exposure["eventName"], "statsig::gate_exposure");
 
     let sec_expos = enforce_array(&exposure["secondaryExposures"]);
@@ -140,7 +140,7 @@ async fn test_check_gate_exposure_with_secondary_exposures() {
     sleep(Duration::from_millis(1)).await;
     statsig.flush_events().await;
 
-    let event = logging_adapter.force_get_first_event().await;
+    let event = logging_adapter.force_get_first_event();
     let secondary_expo = enforce_array(&event["secondaryExposures"]);
 
     let one = enforce_object(&secondary_expo[0]);
@@ -167,7 +167,7 @@ async fn test_get_feature_gate_exposure_with_secondary_exposures() {
     sleep(Duration::from_millis(1)).await;
     statsig.flush_events().await;
 
-    let event = logging_adapter.force_get_first_event().await;
+    let event = logging_adapter.force_get_first_event();
     let secondary_expo = enforce_array(&event["secondaryExposures"]);
 
     let one = enforce_object(&secondary_expo[0]);
@@ -196,7 +196,7 @@ async fn test_get_layer_copies_undelegated_exposures() {
     sleep(Duration::from_millis(1)).await;
     statsig.flush_events().await;
 
-    let event = logging_adapter.force_get_first_event().await;
+    let event = logging_adapter.force_get_first_event();
     let secondary_expo = enforce_array(&event["secondaryExposures"]);
 
     let one = enforce_object(&secondary_expo[0]);
@@ -220,7 +220,7 @@ async fn test_get_layer_with_holdouts() {
     sleep(Duration::from_millis(1)).await;
     statsig.flush_events().await;
 
-    let event = logging_adapter.force_get_first_event().await;
+    let event = logging_adapter.force_get_first_event();
     let secondary_expo = enforce_array(&event["secondaryExposures"]);
 
     let one = enforce_object(&secondary_expo[0]);
@@ -252,7 +252,7 @@ async fn test_exposures_with_environment() {
     sleep(Duration::from_millis(1)).await;
     statsig.flush_events().await;
 
-    let events = logging_adapter.force_get_received_payloads().await;
+    let events = logging_adapter.force_get_received_payloads();
     let event = enforce_object(&events.events[0]);
     let user = enforce_object(&event["user"]);
     assert_eq!(user["statsigEnvironment"]["tier"], "dev");
@@ -297,7 +297,7 @@ fn create_statsig_with_environment(
 }
 
 async fn get_reason_from_adapter(logging_adapter: &MockEventLoggingAdapter) -> String {
-    let event = logging_adapter.force_get_first_event().await;
+    let event = logging_adapter.force_get_first_event();
     let metadata = enforce_object(&event["metadata"]);
 
     enforce_string(&metadata["reason"])
