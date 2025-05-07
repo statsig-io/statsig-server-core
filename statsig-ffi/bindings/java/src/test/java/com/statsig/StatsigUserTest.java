@@ -84,5 +84,22 @@ public class StatsigUserTest {
 
         assertEquals("secretValue", deserializedUser.getPrivateAttributes().get("secret_key"));
     }
+
+    @Test
+    public void testMemoryUsage() {
+        Runtime runtime = Runtime.getRuntime();
+
+        long totalMemory = runtime.totalMemory();   // Current heap allocated
+        long freeMemory = runtime.freeMemory();     // Free heap in allocated memory
+        long usedMemoryPrev = totalMemory - freeMemory; // Used memory
+        for (int i = 0; i < 1000; i++) {
+            StatsigUser user = new StatsigUser.Builder().setUserID("a").build();
+        }
+        System.gc();
+        long totalMemoryAfter = runtime.totalMemory();   // Current heap allocated
+        long freeMemoryAfter = runtime.freeMemory();     // Free heap in allocated memory
+        long usedMemoryAfter = totalMemoryAfter - freeMemoryAfter; // Used memory
+        assert((usedMemoryAfter  - usedMemoryPrev) < 10); // Assert no memory leak
+    }
 }
 

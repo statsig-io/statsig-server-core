@@ -1,6 +1,18 @@
 package com.statsig;
 
 public class StatsigOptions {
+    private static class CleaningAction implements Runnable {
+        private final String ref;
+
+        CleaningAction(String ref) {
+            this.ref = ref;
+        }
+
+        @Override
+        public void run() {
+            StatsigJNI.statsigOptionsRelease(ref);
+        }
+    }
     private volatile String ref;
 
     private StatsigOptions(Builder builder) {
@@ -33,12 +45,7 @@ public class StatsigOptions {
                 builder.fallbackToStatsigApi
                 );
 
-        ResourceCleaner.register(this, () -> {
-            if (ref != null) {
-                StatsigJNI.statsigOptionsRelease(ref);
-                ref = null;
-            }
-        });
+        ResourceCleaner.register(this, new CleaningAction(ref));
     }
 
     String getRef() {
