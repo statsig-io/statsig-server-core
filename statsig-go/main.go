@@ -1,4 +1,4 @@
-package main
+package statsig
 
 /*
 #cgo LDFLAGS: -L../target/aarch64-macos/release -lstatsig_ffi
@@ -10,8 +10,6 @@ import "C"
 import (
 	"fmt"
 	"runtime"
-	"strconv"
-	"time"
 )
 
 type User struct {
@@ -27,6 +25,10 @@ type User struct {
 	StatsigEnvironment map[string]string      
 	CustomIDs          map[string]string      
 	innerRef           *C.char
+}
+
+func (u *User) GetInnerRef() *C.char {
+	return u.innerRef
 }
 
 func NewStatsigUser(userID string, email string, ipAddress string, userAgent string, country string, locale string, appVersion string, custom map[string]interface{}, privateAttributes map[string]interface{}, statsigEnvironment map[string]string, customIDs map[string]string) *User {
@@ -54,13 +56,4 @@ func NewStatsigUser(userID string, email string, ipAddress string, userAgent str
 	})
 
 	return u
-}
-
-func main() {
-	for i := 0; i < 100; i++ {
-		user := NewStatsigUser("test-user"+strconv.Itoa(i), "test@test.com", "127.0.0.1", "test-user-agent", "US", "en-US", "1.0.0", map[string]interface{}{}, map[string]interface{}{}, map[string]string{}, map[string]string{})
-		fmt.Println(user.innerRef)
-		user = nil
-		time.Sleep(1 * time.Second)
-	}
 }
