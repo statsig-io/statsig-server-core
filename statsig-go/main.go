@@ -9,38 +9,58 @@ package main
 import "C"
 import (
 	"fmt"
-	"unsafe"
+	"runtime"
+	"strconv"
+	"time"
 )
 
-func main() {
-	// Create a new Statsig instance
-	sdkKey := C.CString("your-sdk-key")
-	defer C.free(unsafe.Pointer(sdkKey))
+type User struct {
+	UserID             string                 	
+	Email              string                 	
+	IpAddress          string                 	
+	UserAgent          string                 	
+	Country            string                 	
+	Locale             string                 	
+	AppVersion         string                 	
+	Custom             map[string]interface{} 
+	PrivateAttributes  map[string]interface{} 
+	StatsigEnvironment map[string]string      
+	CustomIDs          map[string]string      
+	innerRef           *C.char
+}
+
+func NewStatsigUser(userID string, email string, ipAddress string, userAgent string, country string, locale string, appVersion string, custom map[string]interface{}, privateAttributes map[string]interface{}, statsigEnvironment map[string]string, customIDs map[string]string) *User {
+	userRef := C.statsig_user_create(C.CString(userID), C.CString(email), C.CString(ipAddress), C.CString(userAgent), C.CString(country), C.CString(locale), C.CString(appVersion), C.CString(""), C.CString(""), C.CString(""))
 	
-	options := C.CString("{}")
-	defer C.free(unsafe.Pointer(options))
-	
-	statsigRef := C.statsig_create(sdkKey, options)
-	if statsigRef == nil {
-		fmt.Println("Failed to create Statsig instance")
-		return
+	u := &User{
+		innerRef:           userRef,
+		UserID:             userID,
+		Email:              email,
+		IpAddress:          ipAddress,
+		UserAgent:          userAgent,
+		Country:            country,
+		Locale:             locale,
+		AppVersion:         appVersion,
+		Custom:             custom,
+		PrivateAttributes:  privateAttributes,
+		StatsigEnvironment: statsigEnvironment,
+		CustomIDs:          customIDs,
 	}
-	defer C.statsig_release(statsigRef)
-	
-	// Initialize Statsig
-	C.statsig_initialize_blocking(statsigRef)
-	
-	// Create a user
-	userJson := C.CString(`{"userID": "test-user"}`)
-	defer C.free(unsafe.Pointer(userJson))
-	
-	// Check a feature gate
-	gateName := C.CString("test_gate")
-	defer C.free(unsafe.Pointer(gateName))
-	
-	result := C.statsig_check_gate(statsigRef, userJson, gateName, nil)
-	fmt.Printf("Feature gate result: %v\n", result)
-	
-	// Shutdown Statsig
-	C.statsig_shutdown_blocking(statsigRef)
+
+	// Set finalizer on the Go object
+	runtime.SetFinalizer(u, func(obj *User) {
+		fmt.Println("Cleaning up user:", obj.UserID)
+		C.statsig_user_release(obj.innerRef)
+	})
+
+	return u
+}
+
+func main() {
+	for i := 0; i < 100; i++ {
+		user := NewStatsigUser("test-user"+strconv.Itoa(i), "test@test.com", "127.0.0.1", "test-user-agent", "US", "en-US", "1.0.0", map[string]interface{}{}, map[string]interface{}{}, map[string]string{}, map[string]string{})
+		fmt.Println(user.innerRef)
+		user = nil
+		time.Sleep(1 * time.Second)
+	}
 }
