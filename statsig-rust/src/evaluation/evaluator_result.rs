@@ -22,7 +22,7 @@ pub struct EvaluatorResult<'a> {
     pub id_type: Option<&'a String>,
     pub json_value: Option<HashMap<String, Value>>,
     pub rule_id: Option<&'a String>,
-    pub rule_id_suffix: Option<String>,
+    pub rule_id_suffix: Option<&'static str>,
     pub group_name: Option<&'a String>,
     pub explicit_parameters: Option<&'a Vec<String>>,
     pub config_delegate: Option<&'a String>,
@@ -32,7 +32,7 @@ pub struct EvaluatorResult<'a> {
     pub version: Option<u32>,
     pub sampling_rate: Option<u64>,
     pub forward_all_exposures: Option<bool>,
-    pub override_config_name: Option<String>,
+    pub override_config_name: Option<&'a str>,
     pub has_seen_analytical_gates: Option<bool>,
 }
 
@@ -268,14 +268,11 @@ fn get_json_value(result: &EvaluatorResult) -> HashMap<String, Value> {
 }
 
 fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEvaluation {
-    let rule_id = match result.rule_id {
-        Some(rule_id) => rule_id.clone(),
-        None => String::new(),
-    };
+    let result_rule_id = result.rule_id.map(|r| r.as_str()).unwrap_or_default();
 
-    let result_rule_id = match &result.rule_id_suffix {
-        Some(suffix) => format!("{rule_id}:{suffix}"),
-        None => rule_id.clone(),
+    let rule_id = match &result.rule_id_suffix {
+        Some(suffix) => format!("{result_rule_id}:{suffix}"),
+        None => result_rule_id.to_string(),
     };
 
     let sampling_info = ExposureSamplingInfo {
@@ -286,7 +283,7 @@ fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEva
 
     BaseEvaluation {
         name: spec_name.to_string(),
-        rule_id: result_rule_id.clone(),
+        rule_id,
         secondary_exposures: std::mem::take(&mut result.secondary_exposures),
         sampling_info: Some(sampling_info),
     }

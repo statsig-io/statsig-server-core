@@ -14,8 +14,9 @@ use serde_json::Value;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
+const EXPLORE_RULE_ID_SUFFIX: &str = "explore";
+
 lazy_static! {
-    static ref EMPTY_STR: String = String::new();
     static ref NOT_STARTED_RULE: String = "prestart".to_string();
     static ref FAILS_TARGETING: String = "inlineTargetingRules".to_string();
 }
@@ -185,7 +186,11 @@ fn get_passes_targeting<'a>(ctx: &mut EvaluatorContext<'a>, cmab: &'a CMABConfig
     let expo = SecondaryExposure {
         gate: targeting_gate_name.clone(),
         gate_value: result.to_string(),
-        rule_id: ctx.result.rule_id.unwrap_or(&EMPTY_STR).clone(),
+        rule_id: ctx
+            .result
+            .rule_id
+            .map(|r| r.to_string())
+            .unwrap_or_default(),
     };
 
     ctx.result.secondary_exposures.push(expo);
@@ -245,7 +250,7 @@ fn apply_sampling_group<'a>(
         sum += 1.0 / (cur_count as f64) / total_records;
         if value < sum {
             ctx.result.rule_id = Some(&group.id);
-            ctx.result.rule_id_suffix = Some("explore".to_string());
+            ctx.result.rule_id_suffix = Some(EXPLORE_RULE_ID_SUFFIX);
             ctx.result.bool_value = true;
             ctx.result.group_name = Some(&group.name);
             ctx.result.json_value = group.parameter_values.get_json();

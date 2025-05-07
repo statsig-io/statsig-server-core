@@ -15,7 +15,7 @@ pub fn make_feature_gate(
     evaluation: Option<GateEvaluation>,
     details: EvaluationDetails,
     version: Option<u32>,
-    override_config_name: Option<String>,
+    override_config_name: Option<&str>,
 ) -> FeatureGate {
     let (value, rule_id, id_type) = match &evaluation {
         Some(e) => (e.value, e.base.rule_id.clone(), e.id_type.clone()),
@@ -30,7 +30,7 @@ pub fn make_feature_gate(
         details,
         __evaluation: evaluation,
         __version: version,
-        __override_config_name: override_config_name,
+        __override_config_name: override_config_name.map(|s| s.to_string()),
     }
 }
 
@@ -53,7 +53,7 @@ pub fn make_dynamic_config(
     evaluation: Option<DynamicConfigEvaluation>,
     details: EvaluationDetails,
     version: Option<u32>,
-    override_config_name: Option<String>,
+    override_config_name: Option<&str>,
 ) -> DynamicConfig {
     let (value, rule_id, id_type) = match &evaluation {
         Some(e) => (e.value.clone(), e.base.rule_id.clone(), e.id_type.clone()),
@@ -68,7 +68,7 @@ pub fn make_dynamic_config(
         details,
         __evaluation: evaluation,
         __version: version,
-        __override_config_name: override_config_name,
+        __override_config_name: override_config_name.map(|s| s.to_string()),
     }
 }
 
@@ -77,7 +77,7 @@ pub fn make_experiment(
     evaluation: Option<ExperimentEvaluation>,
     details: EvaluationDetails,
     version: Option<u32>,
-    override_config_name: Option<String>,
+    override_config_name: Option<&str>,
 ) -> Experiment {
     let (value, rule_id, id_type, group_name) = extract_from_experiment_evaluation(&evaluation);
 
@@ -90,7 +90,7 @@ pub fn make_experiment(
         group_name,
         __evaluation: evaluation,
         __version: version,
-        __override_config_name: override_config_name,
+        __override_config_name: override_config_name.map(|s| s.to_string()),
     }
 }
 
@@ -103,7 +103,7 @@ pub fn make_layer(
     event_logger_ptr: Option<Weak<EventLogger>>,
     version: Option<u32>,
     disable_exposure: bool,
-    override_config_name: Option<String>,
+    override_config_name: Option<&str>,
 ) -> Layer {
     let (value, rule_id, group_name, allocated_experiment_name, id_type) = match &evaluation {
         Some(e) => (
@@ -129,6 +129,6 @@ pub fn make_layer(
         __event_logger_ptr: event_logger_ptr,
         __version: version,
         __disable_exposure: disable_exposure,
-        __override_config_name: override_config_name,
+        __override_config_name: override_config_name.map(|s| s.to_string()),
     }
 }
