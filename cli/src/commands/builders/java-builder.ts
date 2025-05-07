@@ -23,7 +23,7 @@ const TARGET_MAPPING = {
 
 const JAVA_NATIVE_DIR = path.resolve(
     BASE_DIR,
-    'statsig-ffi/bindings/java/src/main/resources/native',
+    'statsig-java/bindings/java/src/main/resources/native',
 );
 
 export function buildJava(options: BuilderOptions) {
