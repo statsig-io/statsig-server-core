@@ -309,7 +309,7 @@ class StatsigJNI {
 
     private static String detectLinuxDistro() {
         try {
-            List<String> lines = Files.readAllLines(Paths.get("etc/os-release"));
+            List<String> lines = Files.readAllLines(Paths.get("/etc/os-release"));
             String id = null;
             String versionId = null;
 
@@ -320,6 +320,8 @@ class StatsigJNI {
                     versionId = line.split("=")[1].replace("\"", "").trim();
                 }
             }
+
+            OutputLogger.logInfo(TAG, "Parsed /etc/os-release: ID=" + id + ", VERSION_ID=" + versionId);
 
             if ("amzn".equals(id)) {
                 if ("2023".equals(versionId)) {
