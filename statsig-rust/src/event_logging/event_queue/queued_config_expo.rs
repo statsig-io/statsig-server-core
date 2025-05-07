@@ -1,5 +1,5 @@
 use crate::{
-    evaluation::evaluation_types::ExposureSamplingInfo,
+    evaluation::evaluation_types::ExtraExposureInfo,
     event_logging::{
         event_logger::ExposureTrigger,
         exposer_sampling::EvtSamplingDecision,
@@ -28,6 +28,10 @@ impl EnqueueOperation for EnqueueConfigExpoOp<'_> {
     fn into_queued_event(self, sampling_decision: EvtSamplingDecision) -> QueuedEvent {
         let evaluation = self.config.__evaluation.as_ref();
         let secondary_exposures = evaluation.map(|eval| &eval.base.secondary_exposures);
+        let exposure_info = evaluation.and_then(|eval| eval.base.exposure_info.as_ref());
+        let (version, override_config_name) = exposure_info
+            .map(|info| (info.version, info.override_config_name.clone()))
+            .unwrap_or_default();
 
         QueuedEvent::ConfigExposure(QueuedConfigExposureEvent {
             user: self.user.to_loggable(),
@@ -36,10 +40,10 @@ impl EnqueueOperation for EnqueueConfigExpoOp<'_> {
             rule_passed: evaluation.map(|eval| eval.passed),
             secondary_exposures: secondary_exposures.cloned(),
             evaluation_details: self.config.details.clone(),
-            version: self.config.__version,
+            version,
             exposure_trigger: self.trigger,
             sampling_decision,
-            override_config_name: self.config.__override_config_name.clone(),
+            override_config_name,
         })
     }
 }
@@ -67,23 +71,13 @@ impl<'a> QueuedExposure<'a> for EnqueueConfigExpoOp<'a> {
         &self.config.rule_id
     }
 
-    fn get_sampling_info_ref(&self) -> Option<&'a ExposureSamplingInfo> {
+    fn get_extra_exposure_info_ref(&self) -> Option<&'a ExtraExposureInfo> {
         self.config
             .__evaluation
             .as_ref()?
             .base
-            .sampling_info
+            .exposure_info
             .as_ref()
-    }
-
-    fn get_sampling_rate(&self) -> Option<u64> {
-        self.config
-            .__evaluation
-            .as_ref()?
-            .base
-            .sampling_info
-            .as_ref()?
-            .sampling_rate
     }
 }
 

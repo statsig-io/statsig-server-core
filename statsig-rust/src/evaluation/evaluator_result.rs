@@ -1,12 +1,13 @@
 use crate::evaluation::evaluation_types::{
-    BaseEvaluation, DynamicConfigEvaluation, ExperimentEvaluation, ExposureSamplingInfo,
-    GateEvaluation, LayerEvaluation, SecondaryExposure,
+    BaseEvaluation, DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation,
+    SecondaryExposure,
 };
 use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::specs_response::spec_types::Spec;
 use serde_json::Value;
 use std::collections::HashMap;
 
+use super::evaluation_types::ExtraExposureInfo;
 use super::evaluation_types_v2::{
     BaseEvaluationV2, DynamicConfigEvaluationV2, ExperimentEvaluationV2, GateEvaluationV2,
     LayerEvaluationV2,
@@ -275,17 +276,19 @@ fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEva
         None => result_rule_id.to_string(),
     };
 
-    let sampling_info = ExposureSamplingInfo {
+    let exposure_info = ExtraExposureInfo {
         sampling_rate: result.sampling_rate,
         forward_all_exposures: result.forward_all_exposures,
         has_seen_analytical_gates: result.has_seen_analytical_gates,
+        override_config_name: result.override_config_name.map(|s| s.to_string()),
+        version: result.version,
     };
 
     BaseEvaluation {
         name: spec_name.to_string(),
         rule_id,
         secondary_exposures: std::mem::take(&mut result.secondary_exposures),
-        sampling_info: Some(sampling_info),
+        exposure_info: Some(exposure_info),
     }
 }
 

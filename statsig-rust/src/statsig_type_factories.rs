@@ -14,8 +14,6 @@ pub fn make_feature_gate(
     name: &str,
     evaluation: Option<GateEvaluation>,
     details: EvaluationDetails,
-    version: Option<u32>,
-    override_config_name: Option<&str>,
 ) -> FeatureGate {
     let (value, rule_id, id_type) = match &evaluation {
         Some(e) => (e.value, e.base.rule_id.clone(), e.id_type.clone()),
@@ -29,8 +27,6 @@ pub fn make_feature_gate(
         value,
         details,
         __evaluation: evaluation,
-        __version: version,
-        __override_config_name: override_config_name.map(|s| s.to_string()),
     }
 }
 
@@ -52,8 +48,6 @@ pub fn make_dynamic_config(
     name: &str,
     evaluation: Option<DynamicConfigEvaluation>,
     details: EvaluationDetails,
-    version: Option<u32>,
-    override_config_name: Option<&str>,
 ) -> DynamicConfig {
     let (value, rule_id, id_type) = match &evaluation {
         Some(e) => (e.value.clone(), e.base.rule_id.clone(), e.id_type.clone()),
@@ -67,8 +61,6 @@ pub fn make_dynamic_config(
         value,
         details,
         __evaluation: evaluation,
-        __version: version,
-        __override_config_name: override_config_name.map(|s| s.to_string()),
     }
 }
 
@@ -76,8 +68,6 @@ pub fn make_experiment(
     name: &str,
     evaluation: Option<ExperimentEvaluation>,
     details: EvaluationDetails,
-    version: Option<u32>,
-    override_config_name: Option<&str>,
 ) -> Experiment {
     let (value, rule_id, id_type, group_name) = extract_from_experiment_evaluation(&evaluation);
 
@@ -89,8 +79,6 @@ pub fn make_experiment(
         details: details.clone(),
         group_name,
         __evaluation: evaluation,
-        __version: version,
-        __override_config_name: override_config_name.map(|s| s.to_string()),
     }
 }
 
@@ -101,9 +89,7 @@ pub fn make_layer(
     evaluation: Option<LayerEvaluation>,
     details: EvaluationDetails,
     event_logger_ptr: Option<Weak<EventLogger>>,
-    version: Option<u32>,
     disable_exposure: bool,
-    override_config_name: Option<&str>,
 ) -> Layer {
     let (value, rule_id, group_name, allocated_experiment_name, id_type) = match &evaluation {
         Some(e) => (
@@ -116,6 +102,14 @@ pub fn make_layer(
         None => (HashMap::new(), "default".into(), None, None, "".into()),
     };
 
+    let mut version = None;
+    if let Some(exposure_info) = evaluation.as_ref().map(|e| &e.base.exposure_info) {
+        version = exposure_info
+            .as_ref()
+            .map(|info| info.version)
+            .unwrap_or_default();
+    }
+
     Layer {
         name: name.to_string(),
         rule_id,
@@ -127,8 +121,7 @@ pub fn make_layer(
         __evaluation: evaluation,
         __user: user,
         __event_logger_ptr: event_logger_ptr,
-        __version: version,
         __disable_exposure: disable_exposure,
-        __override_config_name: override_config_name.map(|s| s.to_string()),
+        __version: version,
     }
 }

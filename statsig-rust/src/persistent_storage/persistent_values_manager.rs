@@ -34,8 +34,8 @@ macro_rules! get_sticky_result {
                         undelegated_secondary_exposures: sticky_value
                             .undelegated_secondary_exposures
                             .clone(),
-                        version: sticky_value.config_version,
                         config_delegate: sticky_value.config_delegate.as_ref(),
+                        version: sticky_value.config_version,
                         ..Default::default()
                     };
                     Some(sticky_result)

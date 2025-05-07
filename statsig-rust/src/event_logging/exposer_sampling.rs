@@ -1,7 +1,7 @@
 use super::event_queue::queued_event::{EnqueueOperation, QueuedExposure};
 use crate::{
-    global_configs::GlobalConfigs, hashing::HashUtil, write_lock_or_noop, write_lock_or_return,
-    DynamicValue,
+    evaluation::evaluation_types::ExtraExposureInfo, global_configs::GlobalConfigs,
+    hashing::HashUtil, write_lock_or_noop, write_lock_or_return, DynamicValue,
 };
 use chrono::Utc;
 use std::{
@@ -80,7 +80,8 @@ impl ExposureSampling {
             None => return EvtSamplingDecision::ForceSampled,
         };
 
-        if self.should_sample_based_on_evaluation(exposure) {
+        let extra_info = exposure.get_extra_exposure_info_ref();
+        if self.should_sample_based_on_evaluation(extra_info) {
             return EvtSamplingDecision::ForceSampled;
         }
 
@@ -90,7 +91,7 @@ impl ExposureSampling {
 
         let sampling_rate = self
             .get_special_case_sampling_rate(exposure)
-            .or_else(|| exposure.get_sampling_rate());
+            .or_else(|| extra_info.and_then(|info| info.sampling_rate));
 
         let is_sampled = self.is_sampled(&expo_sampling_key, sampling_rate);
 
@@ -121,17 +122,17 @@ impl ExposureSampling {
         false
     }
 
-    fn should_sample_based_on_evaluation<'a>(&self, exposure: &'a impl QueuedExposure<'a>) -> bool {
-        let sampling_info = match exposure.get_sampling_info_ref() {
-            Some(sampling_info) => sampling_info,
+    fn should_sample_based_on_evaluation(&self, extra_info: Option<&ExtraExposureInfo>) -> bool {
+        let exposure_info = match extra_info {
+            Some(exposure_info) => exposure_info,
             None => return false,
         };
 
-        if sampling_info.forward_all_exposures == Some(true) {
+        if exposure_info.forward_all_exposures == Some(true) {
             return true;
         }
 
-        if sampling_info.has_seen_analytical_gates == Some(true) {
+        if exposure_info.has_seen_analytical_gates == Some(true) {
             return true;
         }
 

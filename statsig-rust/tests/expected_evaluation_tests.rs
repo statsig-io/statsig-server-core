@@ -170,6 +170,24 @@ async fn test_layer_is_experiment_active() {
 }
 
 #[tokio::test]
+async fn test_layer_with_many_params() {
+    let statsig = setup(None).await;
+
+    let user = StatsigUserBuilder::new_with_user_id("random_user_99".to_string()).build();
+
+    let layer_name = "layer_with_many_params";
+
+    let layer = statsig.get_layer(&user, layer_name);
+    let value = layer.get_string("a_string", "err".to_string());
+    assert_eq!(layer.rule_id, "7kGqF9fGepadpGpchGP5TK");
+    assert_eq!(layer.group_name, Some("Control".to_string()));
+    assert_eq!(value, "control");
+    assert_eq!(layer.__version, Some(19));
+
+    statsig.shutdown().await.unwrap();
+}
+
+#[tokio::test]
 async fn test_targeted_exp_in_layer_with_holdout() {
     let statsig = setup(None).await;
 

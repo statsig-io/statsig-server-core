@@ -25,8 +25,6 @@ pub struct FeatureGate {
     pub details: EvaluationDetails,
 
     pub(crate) __evaluation: Option<GateEvaluation>,
-    pub __version: Option<u32>,
-    pub __override_config_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -38,8 +36,6 @@ pub struct DynamicConfig {
     pub details: EvaluationDetails,
 
     pub __evaluation: Option<DynamicConfigEvaluation>,
-    pub __version: Option<u32>,
-    pub __override_config_name: Option<String>,
 }
 
 impl DynamicConfig {
@@ -62,8 +58,6 @@ pub struct Experiment {
     pub details: EvaluationDetails,
 
     pub __evaluation: Option<ExperimentEvaluation>,
-    pub __version: Option<u32>,
-    pub __override_config_name: Option<String>,
 }
 
 impl Experiment {
@@ -89,9 +83,9 @@ pub struct Layer {
     pub __evaluation: Option<LayerEvaluation>,
     pub __value: HashMap<String, Value>,
     pub __user: StatsigUserLoggable,
-    pub __version: Option<u32>,
     pub __disable_exposure: bool,
-    pub __override_config_name: Option<String>,
+
+    pub __version: Option<u32>, // todo: rm when Java/PHP layer exposures are not a JSON round trip
 
     #[serde(skip_serializing, skip_deserializing)]
     pub __event_logger_ptr: Option<Weak<EventLogger>>,

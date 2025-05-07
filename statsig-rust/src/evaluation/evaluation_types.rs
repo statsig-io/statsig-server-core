@@ -28,10 +28,12 @@ impl SecondaryExposure {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-pub(crate) struct ExposureSamplingInfo {
+pub(crate) struct ExtraExposureInfo {
     pub sampling_rate: Option<u64>,
     pub forward_all_exposures: Option<bool>,
     pub has_seen_analytical_gates: Option<bool>,
+    pub override_config_name: Option<String>,
+    pub version: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -41,7 +43,7 @@ pub struct BaseEvaluation {
     pub secondary_exposures: Vec<SecondaryExposure>,
 
     #[serde(skip_serializing)]
-    pub(crate) sampling_info: Option<ExposureSamplingInfo>,
+    pub(crate) exposure_info: Option<ExtraExposureInfo>,
 }
 
 pub enum AnyEvaluation<'a> {

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::evaluation::dynamic_string::DynamicString;
+use crate::evaluation::evaluation_types::BaseEvaluation;
 use crate::event_logging::event_logger::EventLogger;
 use crate::{
     evaluation::evaluation_types::{ExperimentEvaluation, LayerEvaluation},
@@ -62,20 +63,21 @@ pub fn make_layer_from_sticky_value(
         lcut: sticky_value.time,
         received_at: Some(Utc::now().timestamp_millis() as u64),
     };
+
     make_layer(
         user.to_loggable(),
         name,
         Some(evaluation),
         details,
         event_logger_ptr,
-        sticky_value.config_version,
         disable_exposure,
-        None,
     )
 }
 
 pub fn make_sticky_value_from_layer(layer: &Layer) -> Option<StickyValues> {
     let layer_evaluation = unwrap_or_return!(layer.__evaluation.as_ref(), None);
+    let config_version = extract_config_version(&layer_evaluation.base);
+
     Some(StickyValues {
         value: true,
         json_value: Some(layer_evaluation.value.clone()),
@@ -86,7 +88,7 @@ pub fn make_sticky_value_from_layer(layer: &Layer) -> Option<StickyValues> {
         config_delegate: layer_evaluation.allocated_experiment_name.clone(),
         explicit_parameters: Some(layer_evaluation.explicit_parameters.clone()),
         time: layer.details.lcut,
-        config_version: layer.__version,
+        config_version,
     })
 }
 
@@ -111,13 +113,13 @@ pub fn make_experiment_from_sticky_value(
         group_name,
         details,
         __evaluation: maybe_evaluation,
-        __version: sticky_value.config_version,
-        __override_config_name: None,
     }
 }
 
 pub fn make_sticky_value_from_experiment(experiment: &Experiment) -> Option<StickyValues> {
     let experiment_evaluation = unwrap_or_return!(&experiment.__evaluation, None);
+    let config_version = extract_config_version(&experiment_evaluation.base);
+
     Some(StickyValues {
         value: true, // For sticky value, if it's being saved, it should always be true
         json_value: Some(experiment_evaluation.value.clone()),
@@ -130,6 +132,13 @@ pub fn make_sticky_value_from_experiment(experiment: &Experiment) -> Option<Stic
         config_delegate: None,
         explicit_parameters: experiment_evaluation.explicit_parameters.clone(),
         time: experiment.details.lcut,
-        config_version: experiment.__version,
+        config_version,
     })
+}
+
+fn extract_config_version(evaluation: &BaseEvaluation) -> Option<u32> {
+    evaluation
+        .exposure_info
+        .as_ref()
+        .and_then(|info| info.version)
 }

@@ -1567,16 +1567,10 @@ impl Statsig {
         self.evaluate_spec(
             user_internal,
             gate_name,
-            |eval_details| make_feature_gate(gate_name, None, eval_details, None, None),
+            |eval_details| make_feature_gate(gate_name, None, eval_details),
             |mut result, eval_details| {
                 let evaluation = result_to_gate_eval(gate_name, &mut result);
-                make_feature_gate(
-                    gate_name,
-                    Some(evaluation),
-                    eval_details,
-                    result.version,
-                    result.override_config_name,
-                )
+                make_feature_gate(gate_name, Some(evaluation), eval_details)
             },
             &SpecType::Gate,
         )
@@ -1590,16 +1584,10 @@ impl Statsig {
         self.evaluate_spec(
             user_internal,
             config_name,
-            |eval_details| make_dynamic_config(config_name, None, eval_details, None, None),
+            |eval_details| make_dynamic_config(config_name, None, eval_details),
             |mut result, eval_details| {
                 let evaluation = result_to_dynamic_config_eval(config_name, &mut result);
-                make_dynamic_config(
-                    config_name,
-                    Some(evaluation),
-                    eval_details,
-                    result.version,
-                    result.override_config_name,
-                )
+                make_dynamic_config(config_name, Some(evaluation), eval_details)
             },
             &SpecType::DynamicConfig,
         )
@@ -1613,30 +1601,18 @@ impl Statsig {
         self.evaluate_spec(
             user_internal,
             experiment_name,
-            |eval_details| make_experiment(experiment_name, None, eval_details, None, None),
+            |eval_details| make_experiment(experiment_name, None, eval_details),
             |mut result, eval_details| {
                 let data = read_lock_or_else!(self.spec_store.data, {
                     let evaluation = result_to_experiment_eval(experiment_name, None, &mut result);
-                    return make_experiment(
-                        experiment_name,
-                        Some(evaluation),
-                        eval_details,
-                        result.version,
-                        result.override_config_name,
-                    );
+                    return make_experiment(experiment_name, Some(evaluation), eval_details);
                 });
                 let evaluation = result_to_experiment_eval(
                     experiment_name,
                     data.values.dynamic_configs.get(experiment_name),
                     &mut result,
                 );
-                make_experiment(
-                    experiment_name,
-                    Some(evaluation),
-                    eval_details,
-                    result.version,
-                    result.override_config_name,
-                )
+                make_experiment(experiment_name, Some(evaluation), eval_details)
             },
             &SpecType::Experiment,
         )
@@ -1664,9 +1640,7 @@ impl Statsig {
                     None,
                     eval_details,
                     None,
-                    None,
                     disable_exposure_logging,
-                    None,
                 )
             },
             |mut result, eval_details| {
@@ -1679,9 +1653,7 @@ impl Statsig {
                     Some(evaluation),
                     eval_details,
                     Some(event_logger_ptr),
-                    result.version,
                     disable_exposure_logging,
-                    result.override_config_name,
                 )
             },
             &SpecType::Layer,

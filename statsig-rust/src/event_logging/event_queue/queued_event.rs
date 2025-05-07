@@ -5,7 +5,7 @@ use super::{
     queued_layer_param_expo::QueuedLayerParamExposureEvent,
 };
 use crate::{
-    evaluation::evaluation_types::ExposureSamplingInfo,
+    evaluation::evaluation_types::ExtraExposureInfo,
     event_logging::{
         exposer_sampling::EvtSamplingDecision, statsig_event_internal::StatsigEventInternal,
     },
@@ -20,8 +20,7 @@ pub trait QueuedExposure<'a> {
     fn create_exposure_sampling_key(&self) -> String;
     fn create_spec_sampling_key(&self) -> String;
     fn get_rule_id_ref(&'a self) -> &'a str;
-    fn get_sampling_info_ref(&'a self) -> Option<&'a ExposureSamplingInfo>;
-    fn get_sampling_rate(&self) -> Option<u64>;
+    fn get_extra_exposure_info_ref(&'a self) -> Option<&'a ExtraExposureInfo>;
 }
 
 pub enum QueuedEvent {

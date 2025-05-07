@@ -1,5 +1,5 @@
 use crate::{
-    evaluation::evaluation_types::{ExposureSamplingInfo, LayerEvaluation},
+    evaluation::evaluation_types::ExtraExposureInfo,
     event_logging::{
         event_logger::ExposureTrigger,
         exposer_sampling::EvtSamplingDecision,
@@ -85,23 +85,13 @@ impl<'a> QueuedExposure<'a> for EnqueueLayerParamExpoOp<'a> {
         &self.get_layer_ref().rule_id
     }
 
-    fn get_sampling_info_ref(&'a self) -> Option<&'a ExposureSamplingInfo> {
+    fn get_extra_exposure_info_ref(&'a self) -> Option<&'a ExtraExposureInfo> {
         self.get_layer_ref()
             .__evaluation
             .as_ref()?
             .base
-            .sampling_info
+            .exposure_info
             .as_ref()
-    }
-
-    fn get_sampling_rate(&self) -> Option<u64> {
-        self.get_layer_ref()
-            .__evaluation
-            .as_ref()?
-            .base
-            .sampling_info
-            .as_ref()?
-            .sampling_rate
     }
 }
 
@@ -161,26 +151,47 @@ impl QueuedLayerParamExposureEvent {
     }
 }
 
-fn extract_exposures(
-    evaluation: Option<&LayerEvaluation>,
-    parameter_name: &String,
-) -> (bool, Option<String>, Option<Vec<SecondaryExposure>>) {
-    let mut is_explicit = false;
+type ExtractFromEvaluationResult = (
+    bool,
+    Option<String>,
+    Option<Vec<SecondaryExposure>>,
+    Option<u32>,
+    Option<String>,
+);
+
+fn extract_exposure_info(layer: &Layer, parameter_name: &String) -> ExtractFromEvaluationResult {
+    let evaluation = match layer.__evaluation.as_ref() {
+        Some(eval) => eval,
+        None => return (false, None, None, None, None),
+    };
+
+    let is_explicit = evaluation.explicit_parameters.contains(parameter_name);
+    let secondary_exposures;
     let mut allocated_experiment = None;
-    let mut secondary_exposures = None;
 
-    if let Some(eval) = evaluation {
-        is_explicit = eval.explicit_parameters.contains(parameter_name);
-
-        if is_explicit {
-            secondary_exposures = Some(eval.base.secondary_exposures.clone());
-            allocated_experiment = eval.allocated_experiment_name.clone();
-        } else {
-            secondary_exposures = eval.undelegated_secondary_exposures.clone();
-        }
+    if is_explicit {
+        allocated_experiment = evaluation.allocated_experiment_name.clone();
+        secondary_exposures = Some(evaluation.base.secondary_exposures.clone());
+    } else {
+        secondary_exposures = evaluation.undelegated_secondary_exposures.clone();
     }
 
-    (is_explicit, allocated_experiment, secondary_exposures)
+    // version might be on the top level or the exposure info
+    let mut version = layer.__version;
+    let mut override_config_name = None;
+
+    if let Some(exposure_info) = evaluation.base.exposure_info.as_ref() {
+        version = exposure_info.version;
+        override_config_name = exposure_info.override_config_name.clone();
+    }
+
+    (
+        is_explicit,
+        allocated_experiment,
+        secondary_exposures,
+        version,
+        override_config_name,
+    )
 }
 
 fn extract_from_layer_ref(
@@ -190,8 +201,8 @@ fn extract_from_layer_ref(
     sampling_decision: EvtSamplingDecision,
 ) -> QueuedLayerParamExposureEvent {
     let parameter_name = param_name.to_string();
-    let (is_explicit, allocated_experiment, secondary_exposures) =
-        extract_exposures(layer.__evaluation.as_ref(), &parameter_name);
+    let (is_explicit, allocated_experiment, secondary_exposures, version, override_config_name) =
+        extract_exposure_info(layer, &parameter_name);
 
     QueuedLayerParamExposureEvent {
         user: layer.__user.clone(),
@@ -200,9 +211,9 @@ fn extract_from_layer_ref(
         parameter_name,
         exposure_trigger: trigger,
         evaluation_details: layer.details.clone(),
-        version: layer.__version,
+        version,
         sampling_decision,
-        override_config_name: layer.__override_config_name.clone(),
+        override_config_name,
         secondary_exposures,
         is_explicit,
         allocated_experiment,
@@ -215,8 +226,8 @@ fn extract_from_layer_owned(
     trigger: ExposureTrigger,
     sampling_decision: EvtSamplingDecision,
 ) -> QueuedLayerParamExposureEvent {
-    let (is_explicit, allocated_experiment, secondary_exposures) =
-        extract_exposures(layer.__evaluation.as_ref(), &parameter_name);
+    let (is_explicit, allocated_experiment, secondary_exposures, version, override_config_name) =
+        extract_exposure_info(&layer, &parameter_name);
 
     QueuedLayerParamExposureEvent {
         user: layer.__user,
@@ -225,9 +236,9 @@ fn extract_from_layer_owned(
         parameter_name,
         exposure_trigger: trigger,
         evaluation_details: layer.details,
-        version: layer.__version,
+        version,
         sampling_decision,
-        override_config_name: layer.__override_config_name,
+        override_config_name,
         secondary_exposures,
         is_explicit,
         allocated_experiment,

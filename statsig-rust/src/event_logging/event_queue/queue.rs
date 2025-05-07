@@ -236,8 +236,6 @@ mod tests {
             id_type: "user-id".into(),
             details: EvaluationDetails::unrecognized_no_data(),
             __evaluation: None,
-            __version: None,
-            __override_config_name: None,
         };
         (queue, user, gate)
     }

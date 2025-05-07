@@ -1,5 +1,5 @@
 use crate::{
-    evaluation::evaluation_types::ExposureSamplingInfo,
+    evaluation::evaluation_types::ExtraExposureInfo,
     event_logging::{
         event_logger::ExposureTrigger,
         exposer_sampling::EvtSamplingDecision,
@@ -28,6 +28,10 @@ impl EnqueueOperation for EnqueueExperimentExpoOp<'_> {
     fn into_queued_event(self, sampling_decision: EvtSamplingDecision) -> QueuedEvent {
         let evaluation = self.experiment.__evaluation.as_ref();
         let secondary_exposures = evaluation.map(|eval| &eval.base.secondary_exposures);
+        let exposure_info = evaluation.and_then(|eval| eval.base.exposure_info.as_ref());
+        let (version, override_config_name) = exposure_info
+            .map(|info| (info.version, info.override_config_name.clone()))
+            .unwrap_or_default();
 
         QueuedEvent::ExperimentExposure(QueuedExperimentExposureEvent {
             user: self.user.to_loggable(),
@@ -35,10 +39,10 @@ impl EnqueueOperation for EnqueueExperimentExpoOp<'_> {
             rule_id: self.experiment.rule_id.clone(),
             secondary_exposures: secondary_exposures.cloned(),
             evaluation_details: self.experiment.details.clone(),
-            version: self.experiment.__version,
+            version,
             exposure_trigger: self.trigger,
             sampling_decision,
-            override_config_name: self.experiment.__override_config_name.clone(),
+            override_config_name,
         })
     }
 }
@@ -65,23 +69,13 @@ impl<'a> QueuedExposure<'a> for EnqueueExperimentExpoOp<'a> {
         &self.experiment.rule_id
     }
 
-    fn get_sampling_info_ref(&self) -> Option<&'a ExposureSamplingInfo> {
+    fn get_extra_exposure_info_ref(&self) -> Option<&'a ExtraExposureInfo> {
         self.experiment
             .__evaluation
             .as_ref()?
             .base
-            .sampling_info
+            .exposure_info
             .as_ref()
-    }
-
-    fn get_sampling_rate(&self) -> Option<u64> {
-        self.experiment
-            .__evaluation
-            .as_ref()?
-            .base
-            .sampling_info
-            .as_ref()?
-            .sampling_rate
     }
 }
 
