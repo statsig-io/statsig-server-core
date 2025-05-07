@@ -2,6 +2,7 @@ use crate::evaluation::cmab_evaluator::{get_cmab_ranked_list, CMABRankedGroup};
 use crate::evaluation::country_lookup::CountryLookup;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
+use crate::evaluation::evaluation_types::GateEvaluation;
 use crate::evaluation::evaluator::{Evaluator, SpecType};
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::evaluator_result::{
@@ -56,6 +57,7 @@ use crate::{
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use serde_json::Value;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -1009,8 +1011,24 @@ impl Statsig {
         gate_name: &str,
         options: FeatureGateEvaluationOptions,
     ) -> bool {
-        self.get_feature_gate_with_options(user, gate_name, options)
-            .value
+        let user_internal = self.internalize_user(user);
+        let disable_exposure_logging = options.disable_exposure_logging;
+        let (details, evaluation) = self.get_gate_evaluation(&user_internal, gate_name);
+        let value = evaluation.as_ref().map(|e| e.value).unwrap_or_default();
+
+        if disable_exposure_logging {
+            log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
+            self.event_logger.increment_non_exposure_checks(gate_name);
+        } else {
+            self.event_logger.enqueue(EnqueueGateExpoOp {
+                user: &user_internal,
+                evaluation: evaluation.map(Cow::Owned),
+                details: details.clone(),
+                trigger: ExposureTrigger::Auto,
+            });
+        }
+
+        value
     }
 
     pub fn get_feature_gate(&self, user: &StatsigUser, gate_name: &str) -> FeatureGate {
@@ -1025,7 +1043,7 @@ impl Statsig {
     ) -> FeatureGate {
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
-        let gate = self.get_feature_gate_impl(&user_internal, gate_name);
+        let (details, evaluation) = self.get_gate_evaluation(&user_internal, gate_name);
 
         if disable_exposure_logging {
             log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
@@ -1033,20 +1051,22 @@ impl Statsig {
         } else {
             self.event_logger.enqueue(EnqueueGateExpoOp {
                 user: &user_internal,
-                gate: &gate,
+                evaluation: evaluation.as_ref().map(Cow::Borrowed),
+                details: details.clone(),
                 trigger: ExposureTrigger::Auto,
             });
         }
 
-        gate
+        make_feature_gate(gate_name, evaluation, details)
     }
 
     pub fn manually_log_gate_exposure(&self, user: &StatsigUser, gate_name: &str) {
         let user_internal = self.internalize_user(user);
-        let gate = self.get_feature_gate_impl(&user_internal, gate_name);
+        let (details, evaluation) = self.get_gate_evaluation(&user_internal, gate_name);
         self.event_logger.enqueue(EnqueueGateExpoOp {
             user: &user_internal,
-            gate: &gate,
+            evaluation: evaluation.map(Cow::Owned),
+            details: details.clone(),
             trigger: ExposureTrigger::Manual,
         });
     }
@@ -1559,18 +1579,18 @@ impl Statsig {
         }
     }
 
-    fn get_feature_gate_impl(
+    fn get_gate_evaluation(
         &self,
         user_internal: &StatsigUserInternal,
         gate_name: &str,
-    ) -> FeatureGate {
+    ) -> (EvaluationDetails, Option<GateEvaluation>) {
         self.evaluate_spec(
             user_internal,
             gate_name,
-            |eval_details| make_feature_gate(gate_name, None, eval_details),
+            |eval_details| (eval_details, None),
             |mut result, eval_details| {
                 let evaluation = result_to_gate_eval(gate_name, &mut result);
-                make_feature_gate(gate_name, Some(evaluation), eval_details)
+                (eval_details, Some(evaluation))
             },
             &SpecType::Gate,
         )

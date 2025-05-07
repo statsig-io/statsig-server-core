@@ -193,9 +193,10 @@ async fn test_rule_sampling() {
         let _ = statsig.check_gate(&user, "test_rule_sampling");
     }
 
+    // if the sampling key is changed in any way, what user is sampled will change
     get_for_user(&statsig, "user_0"); // sampled: first expo
     get_for_user(&statsig, "user_1"); // not sampled
-    get_for_user(&statsig, "user_395"); // sampled
+    get_for_user(&statsig, "user_186"); // sampled
 
     statsig.shutdown().await.unwrap();
 

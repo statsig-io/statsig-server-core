@@ -125,6 +125,8 @@ impl EventQueue {
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+
     use super::*;
     use crate::event_logging::event_queue::queued_event::EnqueueOperation;
     use crate::event_logging::event_queue::queued_gate_expo::EnqueueGateExpoOp;
@@ -141,7 +143,8 @@ mod tests {
 
         let enqueue_op = EnqueueGateExpoOp {
             user: &user_internal,
-            gate: &gate,
+            evaluation: gate.__evaluation.as_ref().map(Cow::Borrowed),
+            details: EvaluationDetails::unrecognized_no_data(),
             trigger: ExposureTrigger::Auto,
         };
 
@@ -162,7 +165,8 @@ mod tests {
         for _ in 0..4567 {
             let enqueue_op = EnqueueGateExpoOp {
                 user: &user_internal,
-                gate: &gate,
+                evaluation: gate.__evaluation.as_ref().map(Cow::Borrowed),
+                details: EvaluationDetails::unrecognized_no_data(),
                 trigger: ExposureTrigger::Auto,
             };
 
@@ -188,7 +192,8 @@ mod tests {
         for _ in 0..4567 {
             let enqueue_op = EnqueueGateExpoOp {
                 user: &user_internal,
-                gate: &gate,
+                evaluation: gate.__evaluation.as_ref().map(Cow::Borrowed),
+                details: EvaluationDetails::unrecognized_no_data(),
                 trigger: ExposureTrigger::Auto,
             };
             queue.add(enqueue_op.into_queued_event(ForceSampled));
@@ -210,7 +215,8 @@ mod tests {
         for _ in 0..4567 {
             let enqueue_op = EnqueueGateExpoOp {
                 user: &user_internal,
-                gate: &gate,
+                evaluation: gate.__evaluation.as_ref().map(Cow::Borrowed),
+                details: EvaluationDetails::unrecognized_no_data(),
                 trigger: ExposureTrigger::Auto,
             };
             queue.add(enqueue_op.into_queued_event(ForceSampled));

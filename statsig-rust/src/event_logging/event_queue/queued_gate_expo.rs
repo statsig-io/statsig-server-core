@@ -1,5 +1,7 @@
+use std::borrow::Cow;
+
 use crate::{
-    evaluation::evaluation_types::ExtraExposureInfo,
+    evaluation::evaluation_types::{ExtraExposureInfo, GateEvaluation},
     event_logging::{
         event_logger::ExposureTrigger,
         exposer_sampling::EvtSamplingDecision,
@@ -7,7 +9,6 @@ use crate::{
         statsig_event::StatsigEvent,
         statsig_event_internal::{StatsigEventInternal, GATE_EXPOSURE_EVENT_NAME},
     },
-    statsig_types::FeatureGate,
     user::{StatsigUserInternal, StatsigUserLoggable},
     EvaluationDetails, SecondaryExposure,
 };
@@ -16,7 +17,8 @@ use super::queued_event::{EnqueueOperation, QueuedEvent, QueuedExposure};
 
 pub struct EnqueueGateExpoOp<'a> {
     pub user: &'a StatsigUserInternal<'a, 'a>,
-    pub gate: &'a FeatureGate,
+    pub evaluation: Option<Cow<'a, GateEvaluation>>,
+    pub details: EvaluationDetails,
     pub trigger: ExposureTrigger,
 }
 
@@ -26,55 +28,63 @@ impl EnqueueOperation for EnqueueGateExpoOp<'_> {
     }
 
     fn into_queued_event(self, sampling_decision: EvtSamplingDecision) -> QueuedEvent {
-        let evaluation = self.gate.__evaluation.as_ref();
-        let secondary_exposures = evaluation.map(|eval| &eval.base.secondary_exposures);
-        let exposure_info = evaluation.and_then(|eval| eval.base.exposure_info.as_ref());
-        let (version, override_config_name) = exposure_info
-            .map(|info| (info.version, info.override_config_name.clone()))
-            .unwrap_or_default();
+        let (
+            gate_name, //
+            rule_id,
+            value,
+            version,
+            override_config_name,
+            secondary_exposures,
+        ) = extract_from_cow(self.evaluation);
 
         QueuedEvent::GateExposure(QueuedGateExposureEvent {
             user: self.user.to_loggable(),
-            gate_name: self.gate.name.clone(),
-            value: self.gate.value,
-            rule_id: self.gate.rule_id.clone(),
-            secondary_exposures: secondary_exposures.cloned(),
-            evaluation_details: self.gate.details.clone(),
+            gate_name,
+            value,
             version,
+            rule_id,
+            secondary_exposures,
+            evaluation_details: self.details,
+            override_config_name,
             exposure_trigger: self.trigger,
             sampling_decision,
-            override_config_name,
         })
     }
 }
 
 impl<'a> QueuedExposure<'a> for EnqueueGateExpoOp<'a> {
     fn create_exposure_sampling_key(&self) -> String {
+        let gate_name = gate_name_ref(&self.evaluation);
+        let rule_id = rule_id_ref(&self.evaluation);
+
         let mut sampling_key = String::from("n:");
-        sampling_key.push_str(&self.gate.name);
+        sampling_key.push_str(gate_name);
         sampling_key.push_str(";u:");
         sampling_key.push_str(&self.user.create_sampling_key());
         sampling_key.push_str(";r:");
-        sampling_key.push_str(&self.gate.rule_id);
+        sampling_key.push_str(rule_id);
         sampling_key.push_str(";v:");
-        sampling_key.push_str(if self.gate.value { "true" } else { "false" });
+        sampling_key.push_str(value_as_str(&self.evaluation));
         sampling_key
     }
 
     fn create_spec_sampling_key(&self) -> String {
+        let gate_name = gate_name_ref(&self.evaluation);
+        let rule_id = rule_id_ref(&self.evaluation);
+
         let mut sampling_key = String::from("n:");
-        sampling_key.push_str(&self.gate.name);
+        sampling_key.push_str(gate_name);
         sampling_key.push_str(";r:");
-        sampling_key.push_str(&self.gate.rule_id);
+        sampling_key.push_str(rule_id);
         sampling_key
     }
 
-    fn get_rule_id_ref(&self) -> &'a str {
-        &self.gate.rule_id
+    fn get_rule_id_ref(&'a self) -> &'a str {
+        rule_id_ref(&self.evaluation)
     }
 
-    fn get_extra_exposure_info_ref(&self) -> Option<&'a ExtraExposureInfo> {
-        self.gate.__evaluation.as_ref()?.base.exposure_info.as_ref()
+    fn get_extra_exposure_info_ref(&'a self) -> Option<&'a ExtraExposureInfo> {
+        self.evaluation.as_ref()?.base.exposure_info.as_ref()
     }
 }
 
@@ -120,5 +130,80 @@ impl QueuedGateExposureEvent {
         };
 
         StatsigEventInternal::new(self.user, event, self.secondary_exposures)
+    }
+}
+
+type ExtractInfoResult = (
+    String,
+    String,
+    bool,
+    Option<u32>,
+    Option<String>,
+    Option<Vec<SecondaryExposure>>,
+);
+
+fn extract_from_cow(moo: Option<Cow<'_, GateEvaluation>>) -> ExtractInfoResult {
+    let moo = match moo {
+        Some(m) => m,
+        None => return (String::new(), String::new(), false, None, None, None),
+    };
+
+    match moo {
+        Cow::Borrowed(evaluation) => {
+            let name = evaluation.base.name.clone();
+            let rule_id = evaluation.base.rule_id.clone();
+            let value = evaluation.value;
+            let expo_info = evaluation.base.exposure_info.clone();
+            let secondary_exposures = evaluation.base.secondary_exposures.clone();
+
+            let version = expo_info.as_ref().and_then(|info| info.version);
+            let override_config_name = expo_info
+                .as_ref()
+                .and_then(|info| info.override_config_name.clone());
+
+            (
+                name,
+                rule_id,
+                value,
+                version,
+                override_config_name,
+                Some(secondary_exposures),
+            )
+        }
+        Cow::Owned(evaluation) => {
+            let name = evaluation.base.name;
+            let rule_id = evaluation.base.rule_id;
+            let value = evaluation.value;
+            let expo_info = evaluation.base.exposure_info;
+            let secondary_exposures = evaluation.base.secondary_exposures;
+
+            let version = expo_info.as_ref().and_then(|info| info.version);
+            let override_config_name = expo_info.and_then(|info| info.override_config_name.clone());
+
+            (
+                name,
+                rule_id,
+                value,
+                version,
+                override_config_name,
+                Some(secondary_exposures),
+            )
+        }
+    }
+}
+
+fn gate_name_ref<'a>(moo: &'a Option<Cow<'a, GateEvaluation>>) -> &'a str {
+    moo.as_ref().map_or("", |x| x.base.name.as_str())
+}
+
+fn rule_id_ref<'a>(moo: &'a Option<Cow<'a, GateEvaluation>>) -> &'a str {
+    moo.as_ref().map_or("", |x| x.base.rule_id.as_str())
+}
+
+fn value_as_str<'a>(moo: &'a Option<Cow<'a, GateEvaluation>>) -> &'a str {
+    if moo.as_ref().is_some_and(|x| x.value) {
+        "T"
+    } else {
+        "F"
     }
 }
