@@ -30,6 +30,7 @@ export function buildJava(options: BuilderOptions) {
   Log.title(`Building statsig-java`);
 
   options.release = true; // default to true
+  options.targetProject = "statsig_java"
   buildFfiHelper(options);
   Log.stepEnd(`Built statsig-java`);
 

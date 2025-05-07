@@ -1,5 +1,5 @@
 [package]
-name = "statsig_ffi"
+name = "statsig_java"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
@@ -10,20 +10,12 @@ serde_json = "1.0.120"
 tokio = "1.39.1"
 lazy_static = "1.5.0"
 log = "0.4.22"
+jni = "0.21.1"
 serde = { version = "1.0.204", features = ["derive"] }
 async-trait = "0.1.81"
-jni = "0.21.1"
-
-[build-dependencies]
-csbindgen = "1.9.2"
-cbindgen = "0.26.0"
 
 [lib]
 crate-type = ["cdylib"]
-
-[[test]]
-name = "tests"
-path = "tests/main.rs"
 
 [features]
 default = []

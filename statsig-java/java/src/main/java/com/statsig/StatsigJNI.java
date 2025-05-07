@@ -240,7 +240,7 @@ class StatsigJNI {
                 return null;
             }
 
-            File temp = File.createTempFile("statsig_ffi_lib", null);
+            File temp = File.createTempFile("statsig_java_lib", null);
             temp.deleteOnExit();
 
             try (stream; OutputStream out = new FileOutputStream(temp)) {
@@ -278,11 +278,11 @@ class StatsigJNI {
 
     private static String getLibFileName(String osName) {
         if (osName.contains("win")) {
-            return "statsig_ffi.dll";
+            return "statsig_java.dll";
         } else if (osName.contains("mac")) {
-            return "libstatsig_ffi.dylib";
+            return "libstatsig_java.dylib";
         } else if (osName.contains("linux")) {
-            return "libstatsig_ffi.so";
+            return "libstatsig_java.so";
         }
         return null;
     }

@@ -16,7 +16,7 @@ export function buildFfiHelper(options: BuilderOptions) {
 
   const cargoCommand = [
     'cargo build',
-    '-p statsig_ffi',
+    `-p ${options.targetProject ?? 'statsig_ffi'}`,
     options.release ? '--release' : '',
     `--target-dir target/${outDir}`,
   ].join(' ');

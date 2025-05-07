@@ -1,4 +1,4 @@
-use crate::jni::jni_utils::put_all_into_java_map;
+use crate::jni_utils::put_all_into_java_map;
 use jni::objects::{GlobalRef, JObject, JValue};
 use jni::{JNIEnv, JavaVM};
 use statsig_rust::{log_e, ok_or_return_with, ObservabilityClient, OpsStatsEventObserver};

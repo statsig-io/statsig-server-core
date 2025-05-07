@@ -1,10 +1,10 @@
-use crate::ffi_utils::parse_json_to_str_map;
-use crate::jni::jni_utils::{
+use crate::jni_utils::{
     convert_java_check_gate_options_to_rust, convert_java_client_init_response_options_to_rust,
     convert_java_get_dynamic_config_options_to_rust, convert_java_get_experiment_options_to_rust,
     convert_java_get_layer_options_to_rust, jboolean_to_bool_unchecked, jni_to_rust_json_map,
-    jstring_to_string,
+    jstring_to_string, parse_json_to_str_map,
 };
+use crate::statsig_options_jni::StatsigOptionsJNI;
 use crate::{get_instance_or_noop_jni, get_instance_or_return_jni};
 use jni::sys::{jboolean, jclass, jdouble, jlong, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
@@ -13,8 +13,7 @@ use statsig_rust::statsig_metadata::StatsigMetadata;
 use std::collections::HashMap;
 
 use super::jni_utils::serialize_json_to_jstring;
-use crate::jni::jni_utils::{jni_to_rust_hashmap, string_to_jstring};
-use crate::jni::statsig_options_jni::StatsigOptionsJNI;
+use crate::jni_utils::{jni_to_rust_hashmap, string_to_jstring};
 use jni::objects::{JClass, JObject, JString};
 use statsig_rust::{log_e, InstanceRegistry, Statsig, StatsigUser};
 

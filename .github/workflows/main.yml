@@ -143,6 +143,11 @@ jobs:
             **/release/statsig_ffi.dll
             **/release/*statsig_ffi.a
             **/release/*statsig_ffi.lib
+            **/release/libstatsig_java.so
+            **/release/libstatsig_java.dylib
+            **/release/statsig_java.dll
+            **/release/*statsig_java.a
+            **/release/*statsig_java.lib
 
   # -------------------------------------------------------------------- [Verify Node]
 

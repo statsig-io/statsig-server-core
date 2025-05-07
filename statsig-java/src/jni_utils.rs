@@ -4,8 +4,9 @@ use jni::JNIEnv;
 use serde_json::Value;
 use statsig_rust::networking::proxy_config::ProxyConfig;
 use statsig_rust::{
-    log_e, ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
-    FeatureGateEvaluationOptions, GCIRResponseFormat, HashAlgorithm, LayerEvaluationOptions,
+    log_e, ClientInitResponseOptions, DynamicConfigEvaluationOptions, DynamicValue,
+    ExperimentEvaluationOptions, FeatureGateEvaluationOptions, GCIRResponseFormat, HashAlgorithm,
+    LayerEvaluationOptions,
 };
 use std::collections::HashMap;
 
@@ -446,4 +447,25 @@ pub fn put_all_into_java_map(
         )?;
     }
     Ok(())
+}
+
+pub fn parse_json_to_str_map(json_str: Option<String>) -> Option<HashMap<String, String>> {
+    json_str.and_then(|s| serde_json::from_str(&s).ok())
+}
+
+pub fn parse_json_to_map(json_str: Option<String>) -> Option<HashMap<String, DynamicValue>> {
+    if let Some(json_str) = json_str {
+        match serde_json::from_str::<HashMap<String, Value>>(&json_str) {
+            Ok(map) => {
+                let dynamic_map = map
+                    .into_iter()
+                    .map(|(k, v)| (k, DynamicValue::from(v)))
+                    .collect();
+                Some(dynamic_map)
+            }
+            Err(_) => None,
+        }
+    } else {
+        None
+    }
 }

@@ -2307,6 +2307,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "statsig_java"
+version = "0.3.1-beta.250507"
+dependencies = [
+ "async-trait",
+ "jni",
+ "lazy_static",
+ "log",
+ "serde",
+ "serde_json",
+ "statsig-rust",
+ "tokio",
+]
+
+[[package]]
 name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

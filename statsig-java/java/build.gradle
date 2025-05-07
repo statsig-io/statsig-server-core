@@ -60,13 +60,13 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
         if (classifierParam) {
             switch (classifierParam) {
                 case ~/.*macos.*/:
-                    nativeLib = "libstatsig_ffi.dylib"
+                    nativeLib = "libstatsig_java.dylib"
                     break
                 case ~/.*windows.*/:
-                    nativeLib = "statsig_ffi.dll"
+                    nativeLib = "statsig_java.dll"
                     break
                 case ~/.*linux.*/:
-                    nativeLib = "libstatsig_ffi.so"
+                    nativeLib = "libstatsig_java.so"
                     break
                 default:
                     nativeLib = null
