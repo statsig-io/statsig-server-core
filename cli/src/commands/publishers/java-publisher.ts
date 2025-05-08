@@ -101,7 +101,7 @@ function publishJavaPackages(options: PublisherOptions) {
   Log.stepBegin('Publishing Java Packages');
 
   execSync('./gradlew publish', {
-    cwd: getRootedPath('statsig-ffi/bindings/java'),
+    cwd: getRootedPath('statsig-java/java'),
     stdio: 'inherit',
   });
 
