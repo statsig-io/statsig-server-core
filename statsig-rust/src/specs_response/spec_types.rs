@@ -3,6 +3,7 @@ use crate::evaluation::{dynamic_returnable::DynamicReturnable, evaluator_value::
 use crate::DynamicValue;
 use ahash::HashMap as AHashMap;
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_with::skip_serializing_none;
 use std::collections::HashMap;
 
 use super::condition_key::ConditionKey;
@@ -11,6 +12,7 @@ use super::{cmab_types::CMABConfig, param_store_types::ParameterStore};
 // DO_NOT_CLONE: Please do not add the Clone trait to this struct. We intentionally
 // avoid cloning this data at all costs as it can be quite large.
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 #[serde(rename_all = "camelCase")]
 pub struct Spec {
@@ -32,6 +34,7 @@ pub struct Spec {
     pub fields_used: Option<Vec<String>>,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 #[serde(rename_all = "camelCase")]
 pub struct Rule {
@@ -60,20 +63,24 @@ pub struct Condition {
     pub id_type: DynamicString,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 pub struct OverrideRule {
     pub rule_name: String,
     pub start_time: Option<i64>,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 pub struct ConfigMapping {
     pub new_config_name: String,
     pub rules: Vec<OverrideRule>,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default)] /* DO_NOT_CLONE */
 pub struct SpecsResponseFull {
+    pub company_id: Option<String>,
     pub feature_gates: AHashMap<String, Spec>,
     pub dynamic_configs: AHashMap<String, Spec>,
     pub layer_configs: AHashMap<String, Spec>,
@@ -92,8 +99,11 @@ pub struct SpecsResponseFull {
     pub cmab_configs: Option<HashMap<String, CMABConfig>>,
     pub overrides: Option<HashMap<String, Vec<ConfigMapping>>>,
     pub override_rules: Option<HashMap<String, Rule>>,
+    pub id_lists: Option<HashMap<String, bool>>,
+    pub response_format: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Deserialize)]
 pub struct SpecsResponseNoUpdates {
     pub has_updates: bool,

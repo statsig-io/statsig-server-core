@@ -12,7 +12,10 @@ impl Serialize for DynamicString {
     where
         S: Serializer,
     {
-        // Serialize only the original value field
+        if let Ok(bool_value) = self.value.parse::<bool>() {
+            return serializer.serialize_bool(bool_value);
+        }
+
         serializer.serialize_str(&self.value)
     }
 }

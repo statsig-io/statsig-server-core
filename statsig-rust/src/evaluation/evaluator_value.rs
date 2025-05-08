@@ -200,11 +200,20 @@ impl Serialize for EvaluatorValue {
             EvaluatorValueType::Bool => self.bool_value.serialize(serializer),
             EvaluatorValueType::Number => self.float_value.serialize(serializer),
             EvaluatorValueType::String => self.string_value.serialize(serializer),
-            EvaluatorValueType::Array => self
-                .array_value
-                .as_ref()
-                .map(|x| x.values().collect::<Vec<_>>())
-                .serialize(serializer),
+            EvaluatorValueType::Array => {
+                let array_map = match &self.array_value {
+                    Some(a) => a,
+                    None => return JsonValue::Null.serialize(serializer),
+                };
+
+                let mut result = vec![String::new(); array_map.len()];
+
+                for (idx, val) in array_map.values() {
+                    result[*idx] = val.clone();
+                }
+
+                result.serialize(serializer)
+            }
             EvaluatorValueType::Object => self.object_value.serialize(serializer),
         }
     }
