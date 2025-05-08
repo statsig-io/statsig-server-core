@@ -110,7 +110,7 @@ function updateNodePackageJsonVersions(version: string) {
 function updateJavaGradleVersion(version: string) {
   Log.stepBegin('Updating gradle.properties');
 
-  const path = getRootedPath('statsig-ffi/bindings/java/gradle.properties');
+  const path = getRootedPath('statsig-java/java/gradle.properties');
   const contents = fs.readFileSync(path, 'utf8');
 
   const was = contents.match(/version=([^"]+)/)?.[1];
