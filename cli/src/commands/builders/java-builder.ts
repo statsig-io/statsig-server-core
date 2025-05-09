@@ -8,17 +8,17 @@ import path from 'node:path';
 import fs from 'fs';
 
 const TARGET_MAPPING = {
-  'macos-aarch64-apple-darwin-ffi': 'macos-arm64',
-  'debian-aarch64-unknown-linux-gnu-ffi': 'linux-gnu-arm64',
-  'amazonlinux2-aarch64-unknown-linux-gnu-ffi': 'amazonlinux2-arm64',
-  'amazonlinux2-x86_64-unknown-linux-gnu-ffi': 'amazonlinux2-x86_64',
-  'amazonlinux2023-aarch64-unknown-linux-gnu-ffi': 'amazonlinux2023-arm64',
-  'amazonlinux2023-x86_64-unknown-linux-gnu-ffi': 'amazonlinux2023-x86_64',
-  'centos7-x86_64-unknown-linux-gnu-ffi': 'centos7-x86_64',
-  'windows-i686-pc-windows-msvc-ffi': 'windows-i686',
-  'macos-x86_64-apple-darwin-ffi': 'macos-x86_64',
-  'windows-x86_64-pc-windows-msvc-ffi': 'windows-x86_64',
-  'debian-x86_64-unknown-linux-gnu-ffi': 'linux-gnu-x86_64',
+  'macos-aarch64-apple-darwin-java': 'macos-arm64',
+  'debian-aarch64-unknown-linux-gnu-java': 'linux-gnu-arm64',
+  'amazonlinux2-aarch64-unknown-linux-gnu-java': 'amazonlinux2-arm64',
+  'amazonlinux2-x86_64-unknown-linux-gnu-java': 'amazonlinux2-x86_64',
+  'amazonlinux2023-aarch64-unknown-linux-gnu-java': 'amazonlinux2023-arm64',
+  'amazonlinux2023-x86_64-unknown-linux-gnu-java': 'amazonlinux2023-x86_64',
+  'centos7-x86_64-unknown-linux-gnu-java': 'centos7-x86_64',
+  'windows-i686-pc-windows-msvc-java': 'windows-i686',
+  'macos-x86_64-apple-darwin-java': 'macos-x86_64',
+  'windows-x86_64-pc-windows-msvc-java': 'windows-x86_64',
+  'debian-x86_64-unknown-linux-gnu-java': 'linux-gnu-x86_64',
 };
 
 const JAVA_NATIVE_DIR = path.resolve(
@@ -30,7 +30,7 @@ export function buildJava(options: BuilderOptions) {
   Log.title(`Building statsig-java`);
 
   options.release = true; // default to true
-  options.targetProject = "statsig_java"
+  options.targetProject = 'statsig_java';
   buildFfiHelper(options);
   Log.stepEnd(`Built statsig-java`);
 
