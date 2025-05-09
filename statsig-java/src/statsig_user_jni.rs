@@ -37,7 +37,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigUserCreate(
 
     let mut builder = match custom_ids {
         Some(custom_ids) => StatsigUserBuilder::new_with_custom_ids(custom_ids).user_id(user_id),
-        None => StatsigUserBuilder::new_with_user_id(user_id.unwrap_or_default()).custom_ids(None),
+        None => StatsigUserBuilder::new_with_user_id(user_id.unwrap_or_default()),
     };
 
     builder = builder

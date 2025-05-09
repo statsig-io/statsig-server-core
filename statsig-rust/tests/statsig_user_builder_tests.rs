@@ -1,24 +1,89 @@
-use statsig_rust::{dyn_value, StatsigUserBuilder};
+use statsig_rust::{dyn_value, evaluation::dynamic_string::DynamicString, StatsigUserBuilder};
 use std::collections::HashMap;
 
-#[test]
-fn test_user_creation_with_user_id() {
-    let user = StatsigUserBuilder::new_with_user_id("user1".to_string()).build();
-
-    assert_eq!(user.user_id, Some(dyn_value!("user1")));
+macro_rules! map {
+    ($($key:expr => $value:expr),+ $(,)?) => {{
+        let mut m = ::std::collections::HashMap::new();
+        $(
+            m.insert($key, $value);
+        )+
+        m
+    }};
 }
 
 #[test]
-fn test_user_creation_with_custom_ids() {
-    let user = StatsigUserBuilder::new_with_custom_ids(HashMap::from([(
-        "test".to_string(),
-        "test".to_string(),
-    )]))
-    .build();
+fn test_user_creation_with_user_id_strings() {
+    let my_string: String = "user1".to_string();
+    let my_str: &str = "user1";
 
+    let from_string_ref = StatsigUserBuilder::new_with_user_id(&my_string).build();
+    assert_eq!(from_string_ref.user_id, Some(dyn_value!("user1")));
+
+    let from_string = StatsigUserBuilder::new_with_user_id(my_string).build();
+    assert_eq!(from_string.user_id, Some(dyn_value!("user1")));
+
+    let from_str = StatsigUserBuilder::new_with_user_id(my_str).build();
+    assert_eq!(from_str.user_id, Some(dyn_value!("user1")));
+}
+
+#[test]
+fn test_user_creation_with_user_id_numbers() {
+    let my_i64: i64 = 1234567890;
+    let my_f64: f64 = 1234567890.1;
+
+    let from_i64 = StatsigUserBuilder::new_with_user_id(my_i64).build();
     assert_eq!(
-        user.custom_ids.unwrap_or_default().get("test"),
+        from_i64.user_id.and_then(|u| u.string_value),
+        Some(DynamicString::from("1234567890".to_string()))
+    );
+
+    let from_f64 = StatsigUserBuilder::new_with_user_id(my_f64).build();
+    assert_eq!(
+        from_f64.user_id.and_then(|d| d.string_value),
+        Some(DynamicString::from("1234567890.1".to_string()))
+    );
+}
+
+#[test]
+fn test_user_creation_with_custom_ids_strings() {
+    let my_string: String = "test".to_string();
+
+    let my_string_ref_map: HashMap<&String, &String> = map!(&my_string => &my_string);
+    let with_string_ref = StatsigUserBuilder::new_with_custom_ids(my_string_ref_map).build();
+    assert_eq!(
+        with_string_ref.custom_ids.unwrap().get("test"),
         Some(&dyn_value!("test"))
+    );
+
+    let my_string_map: HashMap<String, String> = map!(my_string.clone() => my_string);
+    let with_string = StatsigUserBuilder::new_with_custom_ids(my_string_map).build();
+    assert_eq!(
+        with_string.custom_ids.unwrap().get("test"),
+        Some(&dyn_value!("test"))
+    );
+
+    let my_str_map: HashMap<&str, &str> = map!("test" => "test");
+    let with_str = StatsigUserBuilder::new_with_custom_ids(my_str_map).build();
+    assert_eq!(
+        with_str.custom_ids.unwrap().get("test"),
+        Some(&dyn_value!("test"))
+    );
+}
+
+#[test]
+fn test_user_creation_with_custom_ids_numbers() {
+    let my_i64_map: HashMap<String, i64> = map!("test".to_string() => 1234567890);
+    let with_i64 = StatsigUserBuilder::new_with_custom_ids(my_i64_map).build();
+    assert_eq!(
+        with_i64.custom_ids.unwrap().get("test"),
+        Some(&dyn_value!(1234567890))
+    );
+
+    let my_f64_map: HashMap<String, f64> = map!("test".to_string() => 1234567890.1);
+    let with_f64 = StatsigUserBuilder::new_with_custom_ids(my_f64_map).build();
+    assert_eq!(
+        with_f64.custom_ids.unwrap().get("test"),
+        Some(&dyn_value!(1234567890.1))
     );
 }
 

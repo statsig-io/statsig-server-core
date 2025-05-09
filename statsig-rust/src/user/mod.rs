@@ -2,6 +2,7 @@ pub mod statsig_user;
 pub mod statsig_user_builder;
 pub mod statsig_user_internal;
 pub mod statsig_user_loggable;
+pub mod unit_id;
 
 pub use statsig_user::StatsigUser;
 pub use statsig_user_builder::StatsigUserBuilder;
