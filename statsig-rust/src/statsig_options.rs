@@ -9,7 +9,8 @@ use crate::networking::proxy_config::ProxyConfig;
 use crate::output_logger::LogLevel;
 use crate::persistent_storage::persistent_storage_trait::PersistentStorage;
 use crate::{
-    serialize_if_not_none, ObservabilityClient, OverrideAdapter, SpecAdapterConfig, SpecsAdapter,
+    serialize_if_not_none, ConfigCompressionMode, ObservabilityClient, OverrideAdapter,
+    SpecAdapterConfig, SpecsAdapter,
 };
 use std::collections::HashMap;
 use std::fmt;
@@ -28,6 +29,7 @@ pub struct StatsigOptions {
 
     pub enable_id_lists: Option<bool>,
     pub environment: Option<String>,
+    pub config_compression_mode: Option<ConfigCompressionMode>,
 
     pub event_logging_adapter: Option<Arc<dyn EventLoggingAdapter>>,
 
@@ -198,6 +200,15 @@ impl StatsigOptionsBuilder {
     #[must_use]
     pub fn environment(mut self, environment: Option<String>) -> Self {
         self.inner.environment = environment;
+        self
+    }
+
+    #[must_use]
+    pub fn config_compression_mode(
+        mut self,
+        config_compression_mode: Option<ConfigCompressionMode>,
+    ) -> Self {
+        self.inner.config_compression_mode = config_compression_mode;
         self
     }
 

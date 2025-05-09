@@ -19,6 +19,24 @@ pub enum SpecsSource {
     Adapter(String),
 }
 
+const DEFAULT_CONFIG_COMPRESSION_MODE: ConfigCompressionMode = ConfigCompressionMode::Gzip;
+
+#[derive(Clone)]
+pub enum ConfigCompressionMode {
+    Gzip,
+    Dictionary,
+}
+
+impl From<&str> for ConfigCompressionMode {
+    fn from(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "gzip" => ConfigCompressionMode::Gzip,
+            "dictionary" => ConfigCompressionMode::Dictionary,
+            _ => DEFAULT_CONFIG_COMPRESSION_MODE,
+        }
+    }
+}
+
 impl SpecsSource {
     pub fn new_from_string(s: &str) -> Self {
         if s.starts_with("Adapter(") {

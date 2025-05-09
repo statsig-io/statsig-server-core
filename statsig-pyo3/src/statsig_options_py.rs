@@ -9,7 +9,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3_stub_gen::derive::*;
 use statsig_rust::data_store_interface::DataStoreTrait;
-use statsig_rust::{log_w, PersistentStorage};
+use statsig_rust::{log_w, ConfigCompressionMode, PersistentStorage};
 use statsig_rust::{output_logger::LogLevel, ObservabilityClient, StatsigOptions};
 use std::sync::{Arc, Weak};
 
@@ -65,6 +65,8 @@ pub struct StatsigOptionsPy {
     pub data_store: Option<Py<DataStoreBasePy>>,
     #[pyo3(get, set)]
     pub persistent_storage: Option<Py<PersistentStorageBasePy>>,
+    #[pyo3(get, set)]
+    pub config_compression_mode: Option<String>,
 }
 
 #[gen_stub_pymethods]
@@ -95,6 +97,7 @@ impl StatsigOptionsPy {
         observability_client=None,
         data_store=None,
         persistent_storage=None,
+        config_compression_mode=None,
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -121,6 +124,7 @@ impl StatsigOptionsPy {
         observability_client: Option<Py<ObservabilityClientBasePy>>,
         data_store: Option<Py<DataStoreBasePy>>,
         persistent_storage: Option<Py<PersistentStorageBasePy>>,
+        config_compression_mode: Option<String>,
     ) -> Self {
         Self {
             specs_url,
@@ -146,6 +150,7 @@ impl StatsigOptionsPy {
             data_store,
             disable_network,
             persistent_storage,
+            config_compression_mode,
         }
     }
 }
@@ -225,6 +230,10 @@ fn create_inner_statsig_options(
                 s.extract(py).unwrap_or_default(),
             )) as Arc<dyn PersistentStorage>
         }),
+        config_compression_mode: opts
+            .config_compression_mode
+            .as_ref()
+            .map(|mode| ConfigCompressionMode::from(mode.as_str())),
     }
 }
 

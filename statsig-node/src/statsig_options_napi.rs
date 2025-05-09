@@ -92,6 +92,8 @@ pub struct StatsigOptions {
 
     #[napi(ts_type = "'none' | 'debug' | 'info' | 'warn' | 'error'")]
     pub output_log_level: Option<String>,
+    #[napi(ts_type = "'gzip' | 'dictionary'")]
+    pub config_compression_mode: Option<String>,
     pub override_adapter_config: Option<Vec<OverrideAdapterConfig>>,
     pub service_name: Option<String>,
 
@@ -142,6 +144,7 @@ impl StatsigOptions {
             log_event_url: self.log_event_url,
             observability_client: weak_obs_client,
             output_log_level: self.output_log_level.map(|s| s.as_str().into()),
+            config_compression_mode: self.config_compression_mode.map(|s| s.as_str().into()),
             specs_sync_interval_ms: self.specs_sync_interval_ms,
             specs_url: self.specs_url,
             spec_adapters_config: self
