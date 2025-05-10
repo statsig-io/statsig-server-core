@@ -24,11 +24,11 @@ pub(crate) fn compare_time(left: &DynamicValue, right: &EvaluatorValue, op: &str
 #[cfg(test)]
 mod tests {
     use crate::evaluation::comparisons::compare_time;
-    use crate::{test_only_make_eval_value, DynamicValue};
+    use crate::{dyn_value, test_only_make_eval_value, DynamicValue};
     use chrono::Utc;
 
     fn create_str_value(s: &str) -> DynamicValue {
-        DynamicValue::from(s.to_string())
+        dyn_value!(s.to_string())
     }
 
     #[test]

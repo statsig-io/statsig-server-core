@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use napi::bindgen_prelude::{Either3, Either4};
 use napi_derive::napi;
 use serde_json::Value;
-use statsig_rust::{log_w, DynamicValue, StatsigUser as StatsigUserActual};
+use statsig_rust::{dyn_value, log_w, DynamicValue, StatsigUser as StatsigUserActual};
 
 const TAG: &str = "StatsigUserNapi";
 
@@ -42,7 +42,7 @@ macro_rules! set_dynamic_value_fields {
     ($args:ident, $inner:ident, $($field:ident),*) => {
         $(
             if let Some(value) = $args.$field {
-                $inner.$field = Some(DynamicValue::from(value));
+                $inner.$field = Some(dyn_value!(value));
             }
         )*
     };
@@ -132,9 +132,9 @@ impl StatsigUser {
                 (
                     key,
                     match value {
-                        Either3::A(v) => DynamicValue::from(v),
-                        Either3::B(v) => DynamicValue::from(v),
-                        Either3::C(v) => DynamicValue::from(v),
+                        Either3::A(v) => dyn_value!(v),
+                        Either3::B(v) => dyn_value!(v),
+                        Either3::C(v) => dyn_value!(v),
                     },
                 )
             })
@@ -153,10 +153,10 @@ impl StatsigUser {
 
         for (key, value) in map {
             match value {
-                Either4::A(value) => converted.insert(key, DynamicValue::from(value)),
-                Either4::B(value) => converted.insert(key, DynamicValue::from(value)),
-                Either4::C(value) => converted.insert(key, DynamicValue::from(value)),
-                Either4::D(value) => converted.insert(key, DynamicValue::from(value)),
+                Either4::A(value) => converted.insert(key, dyn_value!(value)),
+                Either4::B(value) => converted.insert(key, dyn_value!(value)),
+                Either4::C(value) => converted.insert(key, dyn_value!(value)),
+                Either4::D(value) => converted.insert(key, dyn_value!(value)),
             };
         }
 

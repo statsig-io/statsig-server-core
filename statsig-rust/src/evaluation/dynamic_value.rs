@@ -1,15 +1,15 @@
 use chrono::{DateTime, NaiveDateTime};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value as JsonValue};
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use super::dynamic_string::DynamicString;
 
 #[macro_export]
 macro_rules! dyn_value {
-    ($x:expr) => {
-        $crate::DynamicValue::from($x)
-    };
+    ($x:expr) => {{
+        $crate::DynamicValue::from_json_value($x)
+    }};
 }
 
 #[derive(Debug, Clone, Default)]
@@ -25,139 +25,15 @@ pub struct DynamicValue {
     pub json_value: JsonValue,
 }
 
-impl From<String> for DynamicValue {
-    fn from(value: String) -> Self {
-        let json_value = json!(value);
-        let float_value = value.parse().ok();
-        let int_value = value.parse().ok();
-
-        let timestamp_value = Self::try_parse_timestamp(&value);
-
-        DynamicValue {
-            float_value,
-            int_value,
-            json_value,
-            timestamp_value,
-            string_value: Some(DynamicString::from(value)),
-            ..Self::default()
-        }
-    }
-}
-
-impl From<&str> for DynamicValue {
-    fn from(value: &str) -> Self {
-        DynamicValue::from(value.to_string())
-    }
-}
-
-impl From<usize> for DynamicValue {
-    fn from(value: usize) -> Self {
-        DynamicValue {
-            json_value: json!(value),
-            int_value: Some(value as i64),
-            float_value: Some(value as f64),
-            string_value: Some(DynamicString::from(value.to_string())),
-            ..Self::default()
-        }
-    }
-}
-
-impl From<i64> for DynamicValue {
-    fn from(value: i64) -> Self {
-        DynamicValue {
-            int_value: Some(value),
-            float_value: Some(value as f64),
-            string_value: Some(DynamicString::from(value.to_string())),
-            json_value: json!(value),
-            ..Self::default()
-        }
-    }
-}
-
-impl From<i32> for DynamicValue {
-    fn from(value: i32) -> Self {
-        Self::from(i64::from(value))
-    }
-}
-
-impl From<f64> for DynamicValue {
-    fn from(value: f64) -> Self {
-        DynamicValue {
-            int_value: Some(value as i64),
-            float_value: Some(value),
-            string_value: Some(DynamicString::from(value.to_string())),
-            json_value: json!(value),
-            ..Self::default()
-        }
-    }
-}
-
-impl From<bool> for DynamicValue {
-    fn from(value: bool) -> Self {
-        DynamicValue {
-            bool_value: Some(value),
-            string_value: Some(DynamicString::from(value.to_string())),
-            json_value: json!(value),
-            ..Self::default()
-        }
-    }
-}
-
-impl From<Vec<JsonValue>> for DynamicValue {
-    fn from(value: Vec<JsonValue>) -> Self {
-        DynamicValue::from(json!(value))
-    }
-}
-
-impl From<JsonValue> for DynamicValue {
-    fn from(value: JsonValue) -> Self {
-        let json_value = value.clone();
-        match value {
-            JsonValue::Null => DynamicValue {
-                null: Some(()),
-                json_value,
-                ..DynamicValue::new()
-            },
-            JsonValue::Bool(b) => DynamicValue {
-                bool_value: Some(b),
-                string_value: Some(DynamicString::from(b.to_string())),
-                json_value,
-                ..DynamicValue::new()
-            },
-            JsonValue::Number(n) => DynamicValue {
-                float_value: n.as_f64(),
-                int_value: n.as_i64(),
-                string_value: Some(DynamicString::from(json_value.to_string())),
-                json_value,
-                ..DynamicValue::new()
-            },
-            JsonValue::String(s) => DynamicValue::from(s),
-            JsonValue::Array(arr) => DynamicValue {
-                array_value: Some(arr.into_iter().map(DynamicValue::from).collect()),
-                string_value: Some(DynamicString::from(json_value.to_string())),
-                json_value,
-                ..DynamicValue::new()
-            },
-            JsonValue::Object(obj) => DynamicValue {
-                object_value: Some(
-                    obj.into_iter()
-                        .map(|(k, v)| (k, DynamicValue::from(v)))
-                        .collect(),
-                ),
-                json_value,
-                ..DynamicValue::new()
-            },
-        }
-    }
-}
-
 impl DynamicValue {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn from<T: Into<DynamicValue>>(value: T) -> Self {
-        value.into()
+
+    #[must_use]
+    pub fn from_json_value(value: impl Serialize) -> Self {
+        Self::from(json!(value))
     }
 
     #[must_use]
@@ -213,5 +89,123 @@ impl<'de> Deserialize<'de> for DynamicValue {
     {
         let json_value = JsonValue::deserialize(deserializer)?;
         Ok(DynamicValue::from(json_value))
+    }
+}
+
+// ------------------------------------------------------------------------------- [From<T> Implementations]
+
+impl From<JsonValue> for DynamicValue {
+    fn from(json_value: JsonValue) -> Self {
+        match &json_value {
+            JsonValue::Null => DynamicValue {
+                null: Some(()),
+                json_value,
+                ..DynamicValue::new()
+            },
+
+            JsonValue::Bool(b) => DynamicValue {
+                bool_value: Some(*b),
+                string_value: Some(DynamicString::from(b.to_string())),
+                json_value,
+                ..DynamicValue::new()
+            },
+
+            JsonValue::Number(n) => {
+                let float_value = n.as_f64();
+                let int_value = n.as_i64();
+
+                let string_value = float_value
+                    .map(|f| f.to_string())
+                    .or_else(|| int_value.map(|i| i.to_string()))
+                    .or_else(|| Some(json_value.to_string()));
+
+                DynamicValue {
+                    float_value,
+                    int_value,
+                    string_value: string_value.map(DynamicString::from),
+                    json_value,
+                    ..DynamicValue::new()
+                }
+            }
+
+            JsonValue::String(s) => {
+                let timestamp_value = Self::try_parse_timestamp(s);
+                let float_value = s.parse().ok();
+                let int_value = s.parse().ok();
+                DynamicValue {
+                    string_value: Some(DynamicString::from(s.clone())),
+                    json_value,
+                    timestamp_value,
+                    int_value,
+                    float_value,
+                    ..DynamicValue::new()
+                }
+            }
+
+            JsonValue::Array(arr) => DynamicValue {
+                array_value: Some(arr.iter().map(|v| DynamicValue::from(v.clone())).collect()),
+                string_value: Some(DynamicString::from(json_value.to_string())),
+                json_value,
+                ..DynamicValue::new()
+            },
+
+            JsonValue::Object(obj) => DynamicValue {
+                object_value: Some(
+                    obj.into_iter()
+                        .map(|(k, v)| (k.clone(), DynamicValue::from(v.clone())))
+                        .collect(),
+                ),
+                json_value,
+                ..DynamicValue::new()
+            },
+        }
+    }
+}
+
+impl From<String> for DynamicValue {
+    fn from(value: String) -> Self {
+        Self::from(json!(value))
+    }
+}
+
+impl From<&str> for DynamicValue {
+    fn from(value: &str) -> Self {
+        Self::from(json!(value))
+    }
+}
+
+impl From<usize> for DynamicValue {
+    fn from(value: usize) -> Self {
+        Self::from(json!(value))
+    }
+}
+
+impl From<i64> for DynamicValue {
+    fn from(value: i64) -> Self {
+        Self::from(json!(value))
+    }
+}
+
+impl From<i32> for DynamicValue {
+    fn from(value: i32) -> Self {
+        Self::from(json!(value))
+    }
+}
+
+impl From<f64> for DynamicValue {
+    fn from(value: f64) -> Self {
+        Self::from(json!(value))
+    }
+}
+
+impl From<bool> for DynamicValue {
+    fn from(value: bool) -> Self {
+        Self::from(json!(value))
+    }
+}
+
+impl From<Vec<JsonValue>> for DynamicValue {
+    fn from(value: Vec<JsonValue>) -> Self {
+        DynamicValue::from(json!(value))
     }
 }

@@ -1,4 +1,6 @@
-use crate::{log_d, log_e, unwrap_or_return_with, user::StatsigUserInternal, DynamicValue};
+use crate::{
+    dyn_value, log_d, log_e, unwrap_or_return_with, user::StatsigUserInternal, DynamicValue,
+};
 use std::sync::{Arc, RwLock};
 
 use super::{dynamic_string::DynamicString, evaluator_context::EvaluatorContext};
@@ -167,7 +169,7 @@ impl CountryLookup {
         if cc == "--" {
             return None;
         }
-        Some(DynamicValue::from(cc))
+        Some(dyn_value!(cc))
     }
 
     fn binary_search(value: i64, country_lookup_data: &CountryLookupData) -> usize {

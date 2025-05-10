@@ -223,6 +223,7 @@ export interface StatsigOptions {
   logEventUrl?: string
   observabilityClient?: ObservabilityClient
   outputLogLevel?: 'none' | 'debug' | 'info' | 'warn' | 'error'
+  configCompressionMode?: 'gzip' | 'dictionary'
   overrideAdapterConfig?: Array<OverrideAdapterConfig>
   serviceName?: string
   specAdaptersConfig?: Array<SpecAdapterConfig>

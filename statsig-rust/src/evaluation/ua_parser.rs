@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use uaparser::{Parser, UserAgentParser as ExtUserAgentParser};
 
-use crate::DynamicValue;
+use crate::{dyn_value, DynamicValue};
 use crate::{log_d, log_e, unwrap_or_return_with, user::StatsigUserInternal};
 
 use super::dynamic_string::DynamicString;
@@ -91,7 +91,7 @@ impl UserAgentParser {
         };
 
         // Some(EvaluatorValue::from(result))
-        Some(DynamicValue::from(result))
+        Some(dyn_value!(result))
     }
 
     pub fn load_parser() {

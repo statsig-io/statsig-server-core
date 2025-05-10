@@ -7,6 +7,25 @@ use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigUser};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+fn build_full_user() -> StatsigUser {
+    StatsigUserBuilder::new_with_user_id("a_user".to_string())
+        .app_version(Some("1.3".to_string()))
+        .user_agent(Some(
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into(),
+        ))
+        .ip(Some("1.0.0.0".into()))
+        .locale(Some("en_US".into()))
+        .email(Some("a_user@statsig.com".into()))
+        .country(Some("US".into()))
+        .user_id(Some("a_user".to_string()))
+        .custom(Some(HashMap::from([("level".to_string(), dyn_value!(9))])))
+        .custom_ids(Some(HashMap::from([
+            ("companyID", "123"),
+            ("stableID", ""),
+        ])))
+        .build()
+}
+
 async fn setup(options_overrides: Option<StatsigOptions>) -> Statsig {
     let options = StatsigOptions {
         specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
@@ -25,10 +44,7 @@ async fn setup(options_overrides: Option<StatsigOptions>) -> Statsig {
 async fn test_string_comparisons_passes() {
     let statsig = setup(None).await;
 
-    let user = StatsigUser::with_custom_ids(HashMap::from([
-        ("companyID".into(), "123".into()),
-        ("stableID".into(), String::new()),
-    ]));
+    let user = build_full_user();
 
     let gate_name = "test_string_comparisons";
 

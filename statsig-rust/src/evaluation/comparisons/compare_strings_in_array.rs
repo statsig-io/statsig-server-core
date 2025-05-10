@@ -64,6 +64,8 @@ pub(crate) fn compare_strings_in_array(
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
     use crate::evaluation::comparisons::compare_strings_in_array;
     use crate::{dyn_value, test_only_make_eval_value};
 
@@ -164,6 +166,27 @@ mod tests {
             &haystack,
             "any_case_sensitive",
             false
+        ));
+    }
+
+    #[test]
+    fn test_array_contains_any() {
+        let needle = dyn_value!(json!(["boo", 1, true]));
+        let haystack_positive = test_only_make_eval_value!(vec!["zoo", "boo"]);
+        let haystack_negative = test_only_make_eval_value!(vec!["zoo", "bar"]);
+
+        assert!(compare_strings_in_array(
+            &needle,
+            &haystack_positive,
+            "str_contains_any",
+            true
+        ));
+
+        assert!(!compare_strings_in_array(
+            &needle,
+            &haystack_negative,
+            "str_contains_any",
+            true
         ));
     }
 }
