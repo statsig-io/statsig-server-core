@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use more_asserts::assert_gt;
 use serde_json::{json, Number, Value};
 use statsig_rust::{dyn_value, evaluation::dynamic_string::DynamicString};
 
@@ -25,6 +26,8 @@ macro_rules! assert_dynamic_value {
         assert_eq!($dynamic_value.array_value, $expected_array);
         assert_eq!($dynamic_value.object_value, $expected_object);
         assert_eq!($dynamic_value.json_value, $expected_json);
+
+        assert_gt!($dynamic_value.hash_value, 0);
     };
 }
 
@@ -268,4 +271,42 @@ fn test_json_object_value() {
         array: None,
         object: Some(HashMap::from([("object".to_string(), dyn_value!("value"))])),
     );
+}
+
+#[test]
+fn test_hash_value_is_consistent() {
+    let map = json!({
+        "employee_id": "1234567890",
+        "is_active": true,
+        "group_id": 87123471,
+        "department": "engineering",
+    });
+
+    let mut hash = dyn_value!(&map).hash_value;
+    for _ in 0..10000 {
+        let value = dyn_value!(&map).hash_value;
+        assert_eq!(hash, value);
+        hash = value;
+    }
+}
+
+#[test]
+fn test_hash_value_is_changing() {
+    let mut map = json!({
+        "employee_id": "1234567890",
+        "is_active": true,
+        "group_id": 87123471,
+        "department": "engineering",
+    })
+    .as_object()
+    .unwrap()
+    .clone();
+
+    let mut hash = dyn_value!(&map).hash_value;
+    for i in 0..10000 {
+        map.insert("group_id".to_string(), json!(i));
+        let value = dyn_value!(&map).hash_value;
+        assert_ne!(hash, value);
+        hash = value;
+    }
 }

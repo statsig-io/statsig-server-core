@@ -3,6 +3,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value as JsonValue};
 use std::{collections::HashMap, fmt::Debug};
 
+use crate::hashing::ahash_str;
+
 use super::dynamic_string::DynamicString;
 
 #[macro_export]
@@ -23,6 +25,7 @@ pub struct DynamicValue {
     pub array_value: Option<Vec<DynamicValue>>,
     pub object_value: Option<HashMap<String, DynamicValue>>,
     pub json_value: JsonValue,
+    pub hash_value: u64,
 }
 
 impl DynamicValue {
@@ -73,6 +76,8 @@ impl PartialEq for DynamicValue {
     }
 }
 
+// ------------------------------------------------------------------------------- [Serialization]
+
 impl Serialize for DynamicValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -96,10 +101,13 @@ impl<'de> Deserialize<'de> for DynamicValue {
 
 impl From<JsonValue> for DynamicValue {
     fn from(json_value: JsonValue) -> Self {
+        let hash_value = ahash_str(&json_value.to_string());
+
         match &json_value {
             JsonValue::Null => DynamicValue {
                 null: Some(()),
                 json_value,
+                hash_value,
                 ..DynamicValue::new()
             },
 
@@ -107,6 +115,7 @@ impl From<JsonValue> for DynamicValue {
                 bool_value: Some(*b),
                 string_value: Some(DynamicString::from(b.to_string())),
                 json_value,
+                hash_value,
                 ..DynamicValue::new()
             },
 
@@ -124,6 +133,7 @@ impl From<JsonValue> for DynamicValue {
                     int_value,
                     string_value: string_value.map(DynamicString::from),
                     json_value,
+                    hash_value,
                     ..DynamicValue::new()
                 }
             }
@@ -138,6 +148,7 @@ impl From<JsonValue> for DynamicValue {
                     timestamp_value,
                     int_value,
                     float_value,
+                    hash_value,
                     ..DynamicValue::new()
                 }
             }
@@ -146,6 +157,7 @@ impl From<JsonValue> for DynamicValue {
                 array_value: Some(arr.iter().map(|v| DynamicValue::from(v.clone())).collect()),
                 string_value: Some(DynamicString::from(json_value.to_string())),
                 json_value,
+                hash_value,
                 ..DynamicValue::new()
             },
 
@@ -156,6 +168,7 @@ impl From<JsonValue> for DynamicValue {
                         .collect(),
                 ),
                 json_value,
+                hash_value,
                 ..DynamicValue::new()
             },
         }
