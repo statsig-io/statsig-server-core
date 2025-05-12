@@ -22,6 +22,7 @@ use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
 use crate::gcir::gcir_formatter::GCIRFormatter;
 use crate::hashing::HashUtil;
 use crate::initialize_response::InitializeResponse;
+use crate::networking::NetworkError;
 use crate::observability::diagnostics_observer::DiagnosticsObserver;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
@@ -542,17 +543,37 @@ impl Statsig {
         )
         .await;
 
-        Ok(InitializeDetails {
-            init_success: success,
-            is_config_spec_ready: matches!(spec_info.lcut, Some(v) if v != 0),
-            is_id_list_ready: id_list_ready,
-            source: spec_info.source,
-            failure_details: error.as_ref().map(|e| FailureDetails {
-                reason: e.to_string(),
-                error: Some(e.clone()),
-            }),
+        Ok(self.construct_initialize_details(success, duration, spec_info, id_list_ready, error))
+    }
+
+    fn construct_initialize_details(
+        &self,
+        init_success: bool,
+        duration: f64,
+        specs_info: SpecsInfo,
+        is_id_list_ready: Option<bool>,
+        error: Option<StatsigErr>,
+    ) -> InitializeDetails {
+        let is_config_spec_ready = matches!(specs_info.lcut, Some(v) if v != 0);
+
+        let failure_details =
+            if let Some(StatsigErr::NetworkError(NetworkError::DisableNetworkOn, _)) = error {
+                None
+            } else {
+                error.as_ref().map(|e| FailureDetails {
+                    reason: e.to_string(),
+                    error: Some(e.clone()),
+                })
+            };
+
+        InitializeDetails {
+            init_success,
+            is_config_spec_ready,
+            is_id_list_ready,
+            source: specs_info.source,
+            failure_details,
             duration,
-        })
+        }
     }
 
     fn timeout_failure(&self, timeout_ms: u64) -> InitializeDetails {
