@@ -1692,28 +1692,8 @@ impl Statsig {
             experiment_name,
             |eval_details| make_experiment(experiment_name, None, eval_details, None, None),
             |mut result, eval_details| {
-                let data = read_lock_or_else!(self.spec_store.data, {
-                    let evaluation = result_to_experiment_eval(experiment_name, None, &mut result);
-                    return make_experiment(
-                        experiment_name,
-                        Some(evaluation),
-                        eval_details,
-                        result.version,
-                        result.override_config_name,
-                    );
-                });
-                let evaluation = result_to_experiment_eval(
-                    experiment_name,
-                    data.values.dynamic_configs.get(experiment_name),
-                    &mut result,
-                );
-                make_experiment(
-                    experiment_name,
-                    Some(evaluation),
-                    eval_details,
-                    result.version,
-                    result.override_config_name,
-                )
+                let evaluation = result_to_experiment_eval(experiment_name, None, &mut result);
+                make_experiment(experiment_name, Some(evaluation), eval_details,result.version, result.override_config_name)
             },
             &SpecType::Experiment,
         )

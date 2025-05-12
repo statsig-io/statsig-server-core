@@ -19,6 +19,7 @@ pub struct EvaluatorResult<'a> {
     pub is_experiment_group: bool,
     pub is_experiment_active: bool,
     pub is_in_layer: bool,
+    pub is_in_experiment: bool,
     pub id_type: Option<&'a String>,
     pub json_value: Option<HashMap<String, Value>>,
     pub rule_id: Option<&'a String>,
@@ -66,11 +67,9 @@ pub fn result_to_experiment_eval(
     let mut is_experiment_active = None;
     let mut is_user_in_experiment = None;
 
-    if let Some(spec) = spec {
-        if spec.entity == "experiment" {
-            is_experiment_active = Some(result.is_experiment_active);
-            is_user_in_experiment = Some(result.is_experiment_group);
-        }
+    if spec.as_ref().is_none_or(|s| s.entity == "experiment") {
+        is_experiment_active = Some(result.is_experiment_active);
+        is_user_in_experiment = Some(result.is_experiment_group);
     }
 
     ExperimentEvaluation {
