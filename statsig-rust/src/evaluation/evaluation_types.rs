@@ -28,7 +28,7 @@ impl SecondaryExposure {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-pub(crate) struct ExtraExposureInfo {
+pub struct ExtraExposureInfo {
     pub sampling_rate: Option<u64>,
     pub forward_all_exposures: Option<bool>,
     pub has_seen_analytical_gates: Option<bool>,
