@@ -145,7 +145,7 @@ impl ExposureSampling {
             return false;
         }
 
-        if let Ok(mut sampling_map) = self.spec_sampling_set.try_write() {
+        if let Ok(mut sampling_map) = self.spec_sampling_set.write() {
             sampling_map.insert(sampling_key);
         }
 
@@ -192,7 +192,7 @@ impl ExposureSampling {
     }
 
     fn sample_key_exists(&self, key: &str) -> bool {
-        match self.spec_sampling_set.try_read() {
+        match self.spec_sampling_set.read() {
             Ok(map) => map.contains(key),
             _ => false,
         }
