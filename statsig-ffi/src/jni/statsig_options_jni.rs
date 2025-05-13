@@ -1,7 +1,7 @@
-use crate::jni_utils::{
+use crate::jni::jni_utils::{
     convert_java_proxy_config_to_rust, jboolean_to_bool, jstring_to_string, string_to_jstring,
 };
-use crate::statsig_observability_client_jni::convert_to_ob_rust;
+use crate::jni::statsig_observability_client_jni::convert_to_ob_rust;
 use jni::objects::{JClass, JObject, JString};
 use jni::sys::{jboolean, jint, jlong, jstring};
 use jni::JNIEnv;

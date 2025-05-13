@@ -14,9 +14,9 @@ import { CommandBase } from './command_base.js';
 
 const TEST_COMMANDS: Record<string, string> = {
   java: [
-    'cargo build -p statsig_java',
+    'cargo build -p statsig_ffi',
     'mkdir -p statsig-java/java/src/main/resources/native/linux-gnu-x86_64',
-    'cp target/debug/libstatsig_java.so statsig-java/java/src/main/resources/native/linux-gnu-x86_64',
+    'cp target/debug/libstatsig_ffi.so statsig-java/java/src/main/resources/native/linux-gnu-x86_64',
     'cd statsig-java/java',
     './gradlew test --rerun-tasks --console rich',
   ].join(' && '),

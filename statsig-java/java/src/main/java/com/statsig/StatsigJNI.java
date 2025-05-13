@@ -278,11 +278,11 @@ class StatsigJNI {
 
     private static String getLibFileName(String osName) {
         if (osName.contains("win")) {
-            return "statsig_java.dll";
+            return "statsig_ffi.dll";
         } else if (osName.contains("mac")) {
-            return "libstatsig_java.dylib";
+            return "libstatsig_ffi.dylib";
         } else if (osName.contains("linux")) {
-            return "libstatsig_java.so";
+            return "libstatsig_ffi.so";
         }
         return null;
     }

@@ -1,5 +1,6 @@
 mod ffi_utils;
 mod function_based_specs_adapter_c;
+mod jni;
 mod specs_update_listener_c;
 mod statsig_c;
 mod statsig_http_event_logging_adapter_c;
