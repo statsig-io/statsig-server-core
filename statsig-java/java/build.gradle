@@ -51,6 +51,44 @@ tasks.register('javadocJar', Jar) {
 }
 
 ext.createStatsigJar = { String nameParam, String classifierParam ->
+    if (nameParam == "uber") {
+        tasks.register("uberJar", Jar) {
+            archiveBaseName.set(nameParam)
+            archiveClassifier.set("uber")
+            from sourceSets.main.output
+
+            // Include native libraries for all supported platforms
+            def platforms = [
+                "linux-gnu-x86_64" : "libstatsig_ffi.so",
+                "linux-gnu-arm64"  : "libstatsig_ffi.so",
+                "macos-x86_64"     : "libstatsig_ffi.dylib",
+                "macos-arm64"      : "libstatsig_ffi.dylib",
+                "windows-x86_64"   : "statsig_ffi.dll"
+            ]
+
+            platforms.each { classifier, libName ->
+                def nativeSourceDir = file("src/main/resources/native/${classifier}")
+                def nativeLibFile = new File(nativeSourceDir, libName)
+                if (nativeLibFile.exists()) {
+                    println "Including ${nativeLibFile.absolutePath} as native/${classifier}/${libName}"
+                } else {
+                    println "⚠️ Missing native lib: ${nativeLibFile.absolutePath}"
+                }
+
+                from(nativeSourceDir) {
+                    include libName
+                    into("native/${classifier}/")
+                }
+            }
+
+            include 'com/statsig/**'
+            include 'statsigsdk.properties'
+
+            project.ext.artifactTasks.add([taskName: "uberJar", classifier: "uber"])
+        }
+        return
+    }
+
     String taskName = nameParam + "Jar"
 
     tasks.register(taskName, Jar) {
@@ -105,6 +143,7 @@ createStatsigJar('amazonlinux2-x86_64', 'amazonlinux2-x86_64')
 createStatsigJar('amazonlinux2023-arm64', 'amazonlinux2023-arm64')
 createStatsigJar('amazonlinux2023-x86_64', 'amazonlinux2023-x86_64')
 createStatsigJar('i686-pc-windows-msvc', 'windows-i686')
+createStatsigJar('uber', 'uber')
 createStatsigJar('java-core', null)
 createStatsigJar('linux-gnu-arm64', 'linux-gnu-arm64')
 createStatsigJar('linux-gnu-x86_64', 'linux-gnu-x86_64')
@@ -121,6 +160,7 @@ def expectedTasks = [
     'amazonlinux2023-x86_64Jar',
     'i686-pc-windows-msvcJar',
     'java-coreJar',
+    'uberJar',
     'linux-gnu-arm64Jar',
     'linux-gnu-x86_64Jar',
     'x86_64-apple-darwinJar',
