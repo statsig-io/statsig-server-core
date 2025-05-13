@@ -31,8 +31,9 @@ serde_json = { version = "1.0.125", features = [
     "float_roundtrip",
     "raw_value",
 ] }
+serde_with = "3.4.0"
 sha2 = "0.10.8"
-sigstat-grpc = { path = "../statsig-grpc", version = "0.3.2", optional = true }
+sigstat-grpc = { path = "../statsig-grpc", version = "0.3.3", optional = true }
 simple_logger = "5.0.0"
 tokio = { version = "1.39.1", features = ["full"] }
 uaparser = "0.6.4"
@@ -53,4 +54,3 @@ custom_network_provider = []
 with_grpc = ["sigstat-grpc"]
 testing = []
 with_zstd = []
-with_shared_dict_compression = []

@@ -34,10 +34,22 @@ pub struct StatsigMetadata {
     pub service_name: Option<String>,
 }
 
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StatsigMetadataWithLogEventExtras {
+    #[serde(flatten)]
+    pub base: StatsigMetadata,
+
+    pub flushing_interval_ms: u64,
+    pub batch_size: usize,
+    pub max_pending_batches: usize,
+    pub flush_type: String,
+}
+
 impl StatsigMetadata {
     fn new() -> Self {
         Self {
-            sdk_version: "0.3.2".to_string(),
+            sdk_version: "0.3.3".to_string(),
             sdk_type: "statsig-server-core".to_string(),
             session_id: Uuid::new_v4().to_string(),
             os: None,
@@ -98,5 +110,21 @@ impl StatsigMetadata {
     #[must_use]
     pub fn get_as_json() -> Value {
         json!(StatsigMetadata::get_metadata())
+    }
+
+    #[must_use]
+    pub fn get_with_log_event_extras(
+        flushing_interval_ms: u64,
+        batch_size: usize,
+        max_pending_batches: usize,
+        flush_type: String,
+    ) -> StatsigMetadataWithLogEventExtras {
+        StatsigMetadataWithLogEventExtras {
+            base: StatsigMetadata::get_metadata(),
+            flushing_interval_ms,
+            batch_size,
+            max_pending_batches,
+            flush_type,
+        }
     }
 }
