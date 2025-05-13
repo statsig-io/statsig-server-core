@@ -1,4 +1,7 @@
-use crate::{event_logging::statsig_event_internal::StatsigEventInternal, write_lock_or_return};
+use crate::{
+    event_logging::statsig_event_internal::StatsigEventInternal, log_d, read_lock_or_return,
+    write_lock_or_return,
+};
 use std::{collections::VecDeque, sync::RwLock};
 
 use super::{batch::EventBatch, queued_event::QueuedEvent};
@@ -38,12 +41,35 @@ impl EventQueue {
         let len = batch.events.len() as u64;
         let mut batches = write_lock_or_return!(TAG, self.batches, QueueResult::DroppedEvents(len));
 
-        if batches.len() >= self.max_pending_batches {
+        if batches.len() > self.max_pending_batches {
             return QueueResult::DroppedEvents(len);
         }
 
+        log_d!(
+            TAG,
+            "Requeueing batch with {} events and {} attempts to flush",
+            batch.events.len(),
+            batch.attempts
+        );
+
         batches.push_back(batch);
         QueueResult::Success
+    }
+
+    pub fn contains_at_least_one_full_batch(&self) -> bool {
+        let pending_events_count = self.pending_events.read().map(|e| e.len()).unwrap_or(0);
+        if pending_events_count >= self.batch_size {
+            return true;
+        }
+
+        let batches = read_lock_or_return!(TAG, self.batches, false);
+        for batch in batches.iter() {
+            if batch.events.len() >= self.batch_size {
+                return true;
+            }
+        }
+
+        false
     }
 
     pub fn take_all_batches(&self) -> VecDeque<EventBatch> {

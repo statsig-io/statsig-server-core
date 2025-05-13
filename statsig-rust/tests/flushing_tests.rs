@@ -182,13 +182,14 @@ async fn test_core_apis_exposure_logging_disabled() {
 async fn test_flushing_backoff_and_metadata() {
     std::env::set_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "1");
+    std::env::set_var("STATSIG_TEST_OVERRIDE_MAX_FLUSH_INTERVAL_MS", "4");
 
     let mock_scrapi = MockScrapi::new().await;
 
     mock_scrapi
         .stub(EndpointStub {
             method: Method::POST,
-            status: 400,
+            status: 502,
             ..EndpointStub::with_endpoint(Endpoint::LogEvent)
         })
         .await;
@@ -212,12 +213,10 @@ async fn test_flushing_backoff_and_metadata() {
     let user = StatsigUser::with_user_id("test_user".to_string());
     statsig.log_event(&user, "event_name", None, None);
 
-    assert_eventually_eq!(
-        || mock_scrapi
-            .get_requests_for_endpoint(Endpoint::LogEvent)
-            .len(),
-        3
-    );
+    assert_eventually!(|| mock_scrapi
+        .get_requests_for_endpoint(Endpoint::LogEvent)
+        .len()
+        > 3);
 
     let log_event_requests = mock_scrapi.get_requests_for_endpoint(Endpoint::LogEvent);
     assert_flushing_interval_and_scheduled_batch(&log_event_requests, 0, 1);
@@ -228,6 +227,7 @@ async fn test_flushing_backoff_and_metadata() {
 
     std::env::remove_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS");
     std::env::remove_var("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS");
+    std::env::remove_var("STATSIG_TEST_OVERRIDE_MAX_FLUSH_INTERVAL_MS");
 }
 
 fn assert_flushing_interval_and_scheduled_batch(
@@ -255,7 +255,7 @@ fn assert_flushing_interval_and_scheduled_batch(
 
     assert_eq!(
         statsig_metadata.get("flushType").and_then(|v| v.as_str()),
-        Some("scheduled"),
+        Some("scheduled:max_time"),
         "Unexpected flushType to be 'scheduled' at index {}",
         index
     );

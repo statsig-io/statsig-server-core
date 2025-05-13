@@ -1,6 +1,7 @@
 const TICK_INTERVAL_MS: u64 = 1000;
 const MIN_FLUSH_INTERVAL_MS: u64 = 1000;
 const MAX_LOG_EVENT_RETRIES: u8 = 5;
+const MAX_FLUSH_INTERVAL_MS: u64 = 60_000;
 
 pub struct EventLoggerConstants;
 
@@ -27,6 +28,18 @@ impl EventLoggerConstants {
         }
 
         env_var.parse::<u64>().unwrap_or(MIN_FLUSH_INTERVAL_MS)
+    }
+
+    pub fn max_flush_interval_ms() -> u64 {
+        let env_var = std::env::var("STATSIG_TEST_OVERRIDE_MAX_FLUSH_INTERVAL_MS")
+            .ok()
+            .unwrap_or_default();
+
+        if env_var.is_empty() {
+            return MAX_FLUSH_INTERVAL_MS;
+        }
+
+        env_var.parse::<u64>().unwrap_or(MAX_FLUSH_INTERVAL_MS)
     }
 
     pub fn max_log_event_retries() -> u8 {

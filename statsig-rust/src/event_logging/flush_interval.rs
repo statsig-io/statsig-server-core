@@ -1,10 +1,10 @@
 use std::sync::atomic::AtomicU64;
 
-use crate::event_logging::event_logger_constants::EventLoggerConstants;
+use crate::{event_logging::event_logger_constants::EventLoggerConstants, log_d};
 use chrono::Utc;
 use std::sync::atomic::Ordering::Relaxed;
 
-const MAX_FLUSH_INTERVAL_MS: u64 = 60_000;
+const TAG: &str = stringify!(FlushInterval);
 
 #[derive(Default)]
 pub struct FlushInterval {
@@ -33,24 +33,45 @@ impl FlushInterval {
         let current = self.load_current_interval();
         let adjusted = (current / 2).max(EventLoggerConstants::min_flush_interval_ms());
         self.current_flush_interval_ms.store(adjusted, Relaxed);
+
+        log_d!(
+            TAG,
+            "Flush interval adjusted for success: was {}ms, now {}ms",
+            current,
+            adjusted
+        );
     }
 
     pub fn adjust_for_failure(&self) {
         let current = self.load_current_interval();
-        let adjusted = (current * 2).min(MAX_FLUSH_INTERVAL_MS);
+        let adjusted = (current * 2).min(EventLoggerConstants::max_flush_interval_ms());
         self.current_flush_interval_ms.store(adjusted, Relaxed);
+
+        log_d!(
+            TAG,
+            "Flush interval adjusted for failure: was {}ms, now {}ms",
+            current,
+            adjusted
+        );
     }
 
-    pub fn is_ready_to_flush(&self) -> bool {
+    pub fn has_cooled_from_most_recent_failure(&self) -> bool {
         let last_flush_attempt_time = self.load_last_scheduled_flush_attempt_time();
         let flush_interval_ms = self.load_current_interval();
         let next_flush_time = last_flush_attempt_time + flush_interval_ms;
         next_flush_time < get_now_timestamp()
     }
 
-    pub fn is_backing_off_from_failure(&self) -> bool {
+    pub fn has_waited_max_allowed_interval(&self) -> bool {
+        let last_flush_attempt_time = self.load_last_scheduled_flush_attempt_time();
+        let next_flush_time =
+            last_flush_attempt_time + EventLoggerConstants::max_flush_interval_ms();
+        next_flush_time < get_now_timestamp()
+    }
+
+    pub fn has_completely_recovered_from_backoff(&self) -> bool {
         let current_interval = self.load_current_interval();
-        current_interval > EventLoggerConstants::min_flush_interval_ms()
+        current_interval <= EventLoggerConstants::min_flush_interval_ms()
     }
 
     fn load_current_interval(&self) -> u64 {

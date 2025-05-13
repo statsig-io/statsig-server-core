@@ -36,6 +36,7 @@ impl OpsStatsForInstance {
 
     pub fn log_batching_dropped_events(
         &self,
+        drop_error: StatsigErr,
         count: u64,
         flush_interval: &FlushInterval,
         queue: &EventQueue,
@@ -46,9 +47,7 @@ impl OpsStatsForInstance {
 
         self.log_error(ErrorBoundaryEvent {
             tag: "statsig::log_event_dropped_event_count".to_string(),
-            info: StatsigErr::LogEventError(
-                "Dropped events due to internal event buffer limit".to_string(),
-            ),
+            info: drop_error,
             bypass_dedupe: true,
             dedupe_key: None,
             extra: Some(HashMap::from([

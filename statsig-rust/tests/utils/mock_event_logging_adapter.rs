@@ -5,12 +5,15 @@ use statsig_rust::{EventLoggingAdapter, StatsigErr, StatsigRuntime};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use tokio::sync::Notify;
 
 pub struct MockEventLoggingAdapter {
     pub logged_event_count: AtomicU64,
+    pub times_called: AtomicU64,
     pub no_diagnostics_logged_event_count: AtomicU64,
     pub logged_payloads: Mutex<Vec<LogEventPayload>>,
     pub mocked_log_events_result: Mutex<Result<bool, StatsigErr>>,
+    pub on_log_notify: Notify,
 }
 
 impl Default for MockEventLoggingAdapter {
@@ -23,9 +26,11 @@ impl MockEventLoggingAdapter {
     pub fn new() -> Self {
         Self {
             logged_event_count: AtomicU64::new(0),
+            times_called: AtomicU64::new(0),
             no_diagnostics_logged_event_count: AtomicU64::new(0),
             logged_payloads: Mutex::new(Vec::new()),
             mocked_log_events_result: Mutex::new(Ok(true)),
+            on_log_notify: Notify::new(),
         }
     }
 
@@ -91,6 +96,9 @@ impl EventLoggingAdapter for MockEventLoggingAdapter {
     }
 
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
+        self.times_called.fetch_add(1, Ordering::SeqCst);
+        self.on_log_notify.notify_one();
+
         let result = self.mocked_log_events_result.lock().unwrap().clone()?;
         let mut payloads = self.logged_payloads.lock().unwrap();
 

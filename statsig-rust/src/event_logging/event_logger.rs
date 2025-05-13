@@ -11,6 +11,7 @@ use super::{
 use crate::{
     event_logging::event_logger_constants::EventLoggerConstants,
     log_d, log_w,
+    networking::NetworkError,
     observability::ops_stats::{OpsStatsForInstance, OPS_STATS},
     statsig_metadata::StatsigMetadata,
     write_lock_or_noop, EventLoggingAdapter, StatsigErr, StatsigOptions, StatsigRuntime,
@@ -121,19 +122,21 @@ impl EventLogger {
             let tick_interval = Duration::from_millis(tick_interval_ms);
 
             loop {
+                let can_limit_flush = me.flush_interval.has_completely_recovered_from_backoff();
+
                 tokio::select! {
                     () = tokio::time::sleep(tick_interval) => {
                         me.try_scheduled_flush().await;
                     }
                     () = rt_shutdown_notify.notified() => {
-                        break; // Runtime Shutdown
+                        return; // Runtime Shutdown
                     }
                     _ = me.shutdown_notify.notified() => {
-                        break; // EvtLogger Shutdown
+                        return; // EvtLogger Shutdown
                     }
-                    _ = me.limit_flush_notify.notified() => {
-                        me.try_limit_flush().await
-                    },
+                    _ = me.limit_flush_notify.notified(), if can_limit_flush => {
+                        me.try_limit_flush().await;
+                    }
                 }
 
                 me.event_sampler.try_reset_all_sampling();
@@ -167,20 +170,28 @@ impl EventLogger {
     }
 
     async fn try_scheduled_flush(&self) {
-        if !self.flush_interval.is_ready_to_flush() {
+        if !self.flush_interval.has_cooled_from_most_recent_failure() {
+            return;
+        }
+
+        let should_flush_by_time = self.flush_interval.has_waited_max_allowed_interval();
+        let should_flush_by_size = self.queue.contains_at_least_one_full_batch();
+
+        if !should_flush_by_time && !should_flush_by_size {
             return;
         }
 
         self.flush_interval.mark_scheduled_flush_attempt();
-        self.flush_next_batch(FlushType::Scheduled).await;
+
+        self.flush_next_batch(if should_flush_by_size {
+            FlushType::ScheduledFullBatch
+        } else {
+            FlushType::ScheduledMaxTime
+        })
+        .await;
     }
 
     async fn try_limit_flush(&self) {
-        if self.flush_interval.is_backing_off_from_failure() {
-            log_d!(TAG, "Skipped limit flush due to backing off from failure");
-            return;
-        }
-
         log_d!(TAG, "Attempting limit flush");
         self.flush_next_batch(FlushType::Limit).await;
     }
@@ -244,6 +255,7 @@ impl EventLogger {
 
         if dropped_events_count > 0 {
             self.ops_stats.log_batching_dropped_events(
+                StatsigErr::LogEventError("Dropped events due to event queue limit".to_string()),
                 dropped_events_count,
                 &self.flush_interval,
                 &self.queue,
@@ -257,7 +269,14 @@ impl EventLogger {
         batch: EventBatch,
         flush_type: FlushType,
     ) {
-        if batch.attempts > EventLoggerConstants::max_log_event_retries() {
+        let is_non_retryable = matches!(
+            error,
+            StatsigErr::NetworkError(NetworkError::RequestNotRetryable, _)
+        );
+
+        let is_max_retries = batch.attempts > EventLoggerConstants::max_log_event_retries();
+
+        if is_non_retryable || is_max_retries {
             self.drop_failed_events(error, batch, flush_type);
             return;
         }
@@ -280,6 +299,9 @@ impl EventLogger {
         );
 
         self.ops_stats.log_batching_dropped_events(
+            StatsigErr::LogEventError(
+                "Dropped events due to max pending event batches limit".to_string(),
+            ),
             dropped_events_count,
             &self.flush_interval,
             &self.queue,
@@ -290,7 +312,8 @@ impl EventLogger {
         let dropped_events_count = batch.events.len() as u64;
 
         let kind = match flush_type {
-            FlushType::Scheduled => "Scheduled",
+            FlushType::ScheduledMaxTime => "Scheduled (Max Time)",
+            FlushType::ScheduledFullBatch => "Scheduled (Full Batch)",
             FlushType::Limit => "Limit",
             FlushType::Manual => "Manual",
             FlushType::Shutdown => "Shutdown",
@@ -309,6 +332,7 @@ impl EventLogger {
             .log_event_request_failure(dropped_events_count);
 
         self.ops_stats.log_batching_dropped_events(
+            StatsigErr::LogEventError("Dropped events due flush failure".to_string()),
             dropped_events_count,
             &self.flush_interval,
             &self.queue,
@@ -330,7 +354,8 @@ impl EventLogger {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum FlushType {
-    Scheduled,
+    ScheduledMaxTime,
+    ScheduledFullBatch,
     Limit,
     Manual,
     Shutdown,
@@ -339,7 +364,8 @@ enum FlushType {
 impl FlushType {
     fn as_string(&self) -> String {
         match self {
-            FlushType::Scheduled => "scheduled",
+            FlushType::ScheduledMaxTime => "scheduled:max_time",
+            FlushType::ScheduledFullBatch => "scheduled:full_batch",
             FlushType::Limit => "limit",
             FlushType::Manual => "manual",
             FlushType::Shutdown => "shutdown",
