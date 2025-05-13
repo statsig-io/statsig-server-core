@@ -5,7 +5,7 @@ use crate::{
     event_logging::{
         event_logger::ExposureTrigger,
         exposable_string::ExposableString,
-        exposer_sampling::EvtSamplingDecision,
+        exposure_sampling::EvtSamplingDecision,
         exposure_utils::{get_metadata_with_details, get_statsig_metadata_with_sampling_decision},
         statsig_event::StatsigEvent,
         statsig_event_internal::{StatsigEventInternal, GATE_EXPOSURE_EVENT_NAME},

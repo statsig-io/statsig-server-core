@@ -1,5 +1,5 @@
 use crate::event_logging::{
-    exposer_sampling::EvtSamplingDecision, statsig_event_internal::StatsigEventInternal,
+    exposure_sampling::EvtSamplingDecision, statsig_event_internal::StatsigEventInternal,
 };
 
 use super::{

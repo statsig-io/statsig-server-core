@@ -4,7 +4,7 @@ use super::{
         queue::{EventQueue, QueueResult},
         queued_event::{EnqueueOperation, QueuedEvent},
     },
-    exposer_sampling::ExposureSampling,
+    exposure_sampling::ExposureSampling,
     flush_interval::FlushInterval,
     statsig_event_internal::StatsigEventInternal,
 };

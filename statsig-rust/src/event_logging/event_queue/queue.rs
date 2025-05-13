@@ -156,7 +156,7 @@ mod tests {
     use super::*;
     use crate::event_logging::event_queue::queued_event::EnqueueOperation;
     use crate::event_logging::event_queue::queued_gate_expo::EnqueueGateExpoOp;
-    use crate::event_logging::exposer_sampling::EvtSamplingDecision::ForceSampled;
+    use crate::event_logging::exposure_sampling::EvtSamplingDecision::ForceSampled;
     use crate::{
         event_logging::event_logger::ExposureTrigger, statsig_types::FeatureGate,
         user::StatsigUserInternal, EvaluationDetails, StatsigUser,

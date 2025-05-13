@@ -1,4 +1,4 @@
-use super::exposer_sampling::{EvtSamplingDecision, EvtSamplingMode};
+use super::exposure_sampling::{EvtSamplingDecision, EvtSamplingMode};
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use serde_json::Value;
 use std::collections::HashMap;

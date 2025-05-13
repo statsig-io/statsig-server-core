@@ -7,7 +7,7 @@ use super::{
 use crate::{
     evaluation::evaluation_types::ExtraExposureInfo,
     event_logging::{
-        exposer_sampling::EvtSamplingDecision, statsig_event_internal::StatsigEventInternal,
+        exposure_sampling::EvtSamplingDecision, statsig_event_internal::StatsigEventInternal,
     },
 };
 
