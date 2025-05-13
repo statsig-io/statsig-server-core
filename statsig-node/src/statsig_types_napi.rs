@@ -43,7 +43,7 @@ impl From<SecondaryExposureActual> for SecondaryExposure {
         SecondaryExposure {
             gate: value.gate,
             gate_value: value.gate_value,
-            rule_id: value.rule_id,
+            rule_id: value.rule_id.unperformant_to_string(),
         }
     }
 }

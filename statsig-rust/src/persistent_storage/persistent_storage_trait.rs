@@ -7,6 +7,7 @@ use serde_json::Value;
 use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::evaluation_types::BaseEvaluation;
 use crate::event_logging::event_logger::EventLogger;
+use crate::event_logging::exposable_string::ExposableString;
 use crate::{
     evaluation::evaluation_types::{ExperimentEvaluation, LayerEvaluation},
     statsig_type_factories::{extract_from_experiment_evaluation, make_layer},
@@ -40,7 +41,7 @@ pub fn get_persistent_storage_key(user: &StatsigUserInternal, id_type: &String) 
 pub struct StickyValues {
     pub value: bool,
     pub json_value: Option<HashMap<String, Value>>,
-    pub rule_id: Option<String>,
+    pub rule_id: Option<ExposableString>,
     pub group_name: Option<String>,
     pub secondary_exposures: Vec<SecondaryExposure>,
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
@@ -108,7 +109,7 @@ pub fn make_experiment_from_sticky_value(
     Experiment {
         name,
         value,
-        rule_id,
+        rule_id: rule_id.unperformant_to_string(),
         id_type,
         group_name,
         details,

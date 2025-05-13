@@ -6,8 +6,8 @@ use crate::hashing::ahash_str;
 
 lazy_static::lazy_static! {
     pub static ref EMPTY_STRING: ExposableString = ExposableString::new(String::new());
-    pub static ref DEFAULT_RULE_ID: ExposableString = ExposableString::new(String::from("default"));
-    pub static ref DISABLED_RULE_ID: ExposableString = ExposableString::new(String::from("disabled"));
+    pub static ref DEFAULT_RULE: ExposableString = ExposableString::new("default".to_string());
+    pub static ref DISABLED_RULE: ExposableString = ExposableString::new("disabled".to_string());
 }
 
 #[derive(Debug, Clone)]

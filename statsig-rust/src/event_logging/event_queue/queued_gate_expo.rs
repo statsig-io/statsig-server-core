@@ -4,6 +4,7 @@ use crate::{
     evaluation::evaluation_types::{ExtraExposureInfo, GateEvaluation},
     event_logging::{
         event_logger::ExposureTrigger,
+        exposable_string::ExposableString,
         exposer_sampling::EvtSamplingDecision,
         exposure_utils::{get_metadata_with_details, get_statsig_metadata_with_sampling_decision},
         statsig_event::StatsigEvent,
@@ -92,7 +93,7 @@ pub struct QueuedGateExposureEvent {
     pub user: StatsigUserLoggable,
     pub gate_name: String,
     pub value: bool,
-    pub rule_id: String,
+    pub rule_id: ExposableString,
     pub secondary_exposures: Option<Vec<SecondaryExposure>>,
     pub evaluation_details: EvaluationDetails,
     pub version: Option<u32>,
@@ -106,7 +107,10 @@ impl QueuedGateExposureEvent {
         let mut metadata = get_metadata_with_details(self.evaluation_details);
         metadata.insert("gate".into(), self.gate_name);
         metadata.insert("gateValue".into(), self.value.to_string());
-        metadata.insert("ruleID".into(), self.rule_id);
+
+        // This mostly occurs in the EventLogger bg thread, so it's ok to use unperformant_to_string
+        // todo: investigate how to avoid cloning the inner value entirely
+        metadata.insert("ruleID".into(), self.rule_id.unperformant_to_string());
 
         if self.exposure_trigger == ExposureTrigger::Manual {
             metadata.insert("isManualExposure".into(), "true".into());
@@ -135,7 +139,7 @@ impl QueuedGateExposureEvent {
 
 type ExtractInfoResult = (
     String,
-    String,
+    ExposableString,
     bool,
     Option<u32>,
     Option<String>,
@@ -145,7 +149,16 @@ type ExtractInfoResult = (
 fn extract_from_cow(moo: Option<Cow<'_, GateEvaluation>>) -> ExtractInfoResult {
     let moo = match moo {
         Some(m) => m,
-        None => return (String::new(), String::new(), false, None, None, None),
+        None => {
+            return (
+                String::new(),
+                ExposableString::default(),
+                false,
+                None,
+                None,
+                None,
+            )
+        }
     };
 
     match moo {

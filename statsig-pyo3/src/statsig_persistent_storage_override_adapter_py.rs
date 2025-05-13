@@ -4,7 +4,8 @@ use pyo3::{
 };
 use pyo3_stub_gen::derive::*;
 use statsig_rust::{
-    log_d, log_e, log_w, PersistentStorage, SecondaryExposure, StickyValues as StickyValuesActual,
+    event_logging::exposable_string::ExposableString, log_d, log_e, log_w, PersistentStorage,
+    SecondaryExposure, StickyValues as StickyValuesActual,
     UserPersistedValues as UserPersistedValuesActual,
 };
 use std::collections::HashMap;
@@ -59,7 +60,7 @@ pub fn convert_dict_to_user_persisted_values(
             };
             let sticky_value = StickyValuesActual {
                 value,
-                rule_id,
+                rule_id: rule_id.map(ExposableString::new),
                 group_name,
                 config_delegate,
                 time,
@@ -91,7 +92,13 @@ fn convert_stick_value_to_py_obj(
         .as_ref()
         .map(|v| map_to_py_dict(py, v));
     py_dict.set_item("json_value", json_value)?;
-    py_dict.set_item("rule_id", sticky_values.rule_id.clone().unwrap_or_default())?;
+    py_dict.set_item(
+        "rule_id",
+        sticky_values
+            .rule_id
+            .map(|r| r.unperformant_to_string())
+            .unwrap_or_default(),
+    )?;
     py_dict.set_item("group_name", sticky_values.group_name.clone())?;
     let secondary_exposures: Vec<Bound<PyDict>> =
         convert_secondary_exposures_to_py_dict(py, sticky_values.secondary_exposures)?;
@@ -129,7 +136,8 @@ fn convert_secondary_exposures_to_py_dict(
             secondary_exposure_dict.set_item("gate", exposure.gate.clone())?;
             secondary_exposure_dict
                 .set_item("gateValue", exposure.gate_value.clone().to_string())?;
-            secondary_exposure_dict.set_item("ruleID", exposure.rule_id.clone())?;
+            secondary_exposure_dict
+                .set_item("ruleID", exposure.rule_id.unperformant_to_string())?;
             Ok(secondary_exposure_dict)
         })
         .collect()
@@ -158,7 +166,7 @@ fn convert_py_dict_to_secondary_exposure(py_dict: &Bound<PyDict>) -> PyResult<Se
     Ok(SecondaryExposure {
         gate,
         gate_value,
-        rule_id,
+        rule_id: ExposableString::new(rule_id),
     })
 }
 

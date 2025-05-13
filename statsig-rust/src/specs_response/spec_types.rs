@@ -1,5 +1,6 @@
 use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::{dynamic_returnable::DynamicReturnable, evaluator_value::EvaluatorValue};
+use crate::event_logging::exposable_string::ExposableString;
 use crate::DynamicValue;
 use ahash::HashMap as AHashMap;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -41,7 +42,7 @@ pub struct Rule {
     pub name: String,
     pub pass_percentage: f64,
     pub return_value: DynamicReturnable,
-    pub id: String,
+    pub id: ExposableString,
     pub salt: Option<String>,
     pub conditions: Vec<ConditionKey>,
     pub id_type: DynamicString,

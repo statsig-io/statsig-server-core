@@ -1,5 +1,6 @@
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluator_result::EvaluatorResult;
+use crate::event_logging::exposable_string::ExposableString;
 use crate::hashing::HashUtil;
 use crate::spec_store::SpecStoreData;
 use crate::specs_response::spec_types::{Rule, Spec};
@@ -19,7 +20,7 @@ pub struct EvaluatorContext<'a> {
     pub nested_count: u16,
     pub app_id: Option<&'a DynamicValue>,
     pub override_adapter: Option<&'a Arc<dyn OverrideAdapter>>,
-    pub nested_gate_memo: HashMap<&'a str, (bool, Option<&'a String>)>,
+    pub nested_gate_memo: HashMap<&'a str, (bool, Option<&'a ExposableString>)>,
 }
 
 impl<'a> EvaluatorContext<'a> {

@@ -10,7 +10,9 @@ pub(crate) fn stringify_sec_exposures(
     for exposure in secondary_exposures {
         let key = format!(
             "{}:{}:{}",
-            exposure.gate, exposure.gate_value, exposure.rule_id
+            exposure.gate,
+            exposure.gate_value,
+            exposure.rule_id.as_str()
         );
         let hash = hashing.hash(&key, &HashAlgorithm::Djb2);
 

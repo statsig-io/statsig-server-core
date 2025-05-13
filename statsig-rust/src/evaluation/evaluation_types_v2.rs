@@ -1,5 +1,7 @@
-use crate::evaluation::evaluation_types::is_false;
 use crate::SecondaryExposure;
+use crate::{
+    evaluation::evaluation_types::is_false, event_logging::exposable_string::ExposableString,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -7,7 +9,7 @@ use std::collections::HashMap;
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BaseEvaluationV2 {
     pub name: String,
-    pub rule_id: String,
+    pub rule_id: ExposableString,
     pub secondary_exposures: Vec<String>,
 }
 
@@ -29,7 +31,7 @@ pub struct DynamicConfigEvaluationV2 {
     pub value: HashMap<String, Value>,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
-    pub group: String,
+    pub group: ExposableString,
     pub is_device_based: bool,
 
     pub passed: bool,
@@ -44,7 +46,7 @@ pub struct ExperimentEvaluationV2 {
     pub value: HashMap<String, Value>,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
-    pub group: String,
+    pub group: ExposableString,
     pub is_device_based: bool,
 
     #[serde(skip_serializing_if = "is_false")]
@@ -82,7 +84,7 @@ pub struct LayerEvaluationV2 {
     pub id_type: String,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
-    pub group: String,
+    pub group: ExposableString,
     pub is_device_based: bool,
 
     #[serde(skip_serializing_if = "Option::is_none")]

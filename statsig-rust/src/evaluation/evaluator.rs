@@ -13,6 +13,7 @@ use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::evaluator_value::{EvaluatorValue, EvaluatorValueType};
 use crate::evaluation::get_unit_id::get_unit_id;
 use crate::evaluation::ua_parser::UserAgentParser;
+use crate::event_logging::exposable_string;
 use crate::specs_response::spec_types::{Condition, Rule, Spec};
 use crate::{dyn_value, log_e, unwrap_or_return, StatsigErr};
 
@@ -24,8 +25,6 @@ pub struct Evaluator;
 
 lazy_static! {
     static ref EMPTY_STR: String = String::new();
-    static ref DEFAULT_RULE: String = "default".to_string();
-    static ref DISABLED_RULE: String = "disabled".to_string();
     static ref EMPTY_EVALUATOR_VALUE: EvaluatorValue =
         EvaluatorValue::new(EvaluatorValueType::Null);
     static ref EMPTY_DYNAMIC_VALUE: DynamicValue = DynamicValue::new();
@@ -155,8 +154,8 @@ impl Evaluator {
         ctx.result.bool_value = spec.default_value.get_bool() == Some(true);
         ctx.result.json_value = spec.default_value.get_json();
         ctx.result.rule_id = match spec.enabled {
-            true => Some(&DEFAULT_RULE),
-            false => Some(&DISABLED_RULE),
+            true => Some(&exposable_string::DEFAULT_RULE),
+            false => Some(&exposable_string::DISABLED_RULE),
         };
         ctx.finalize_evaluation(spec, None);
 
@@ -471,7 +470,10 @@ fn evaluate_nested_gate<'a>(
         let expo = SecondaryExposure {
             gate: gate_name.clone(),
             gate_value: res.bool_value.to_string(),
-            rule_id: res.rule_id.unwrap_or(&EMPTY_STR).clone(),
+            rule_id: res
+                .rule_id
+                .unwrap_or(&exposable_string::EMPTY_STRING)
+                .clone(),
         };
 
         if res.sampling_rate.is_none() {
@@ -521,7 +523,7 @@ fn evaluate_pass_percentage(ctx: &mut EvaluatorContext, rule: &Rule, spec_salt: 
         return false;
     }
 
-    let rule_salt = rule.salt.as_ref().unwrap_or(&rule.id);
+    let rule_salt = rule.salt.as_deref().unwrap_or(rule.id.as_str());
     let unit_id = get_unit_id(ctx, &rule.id_type);
     let input = format!("{spec_salt}.{rule_salt}.{unit_id}");
     match ctx.hashing.evaluation_hash(&input) {

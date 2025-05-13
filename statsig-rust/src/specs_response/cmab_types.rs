@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::evaluation::{dynamic_returnable::DynamicReturnable, dynamic_string::DynamicString};
+use crate::{
+    evaluation::{dynamic_returnable::DynamicReturnable, dynamic_string::DynamicString},
+    event_logging::exposable_string::ExposableString,
+};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -25,7 +28,7 @@ pub struct CMABConfig {
 pub struct CMABGroup {
     pub name: String,
     pub parameter_values: DynamicReturnable,
-    pub id: String,
+    pub id: ExposableString,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]

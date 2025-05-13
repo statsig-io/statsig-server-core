@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
+use crate::event_logging::exposable_string::ExposableString;
+
 pub fn is_false(v: &bool) -> bool {
     !(*v)
 }
@@ -12,7 +14,7 @@ pub struct SecondaryExposure {
     pub gate: String,
     pub gate_value: String,
     #[serde(rename = "ruleID")]
-    pub rule_id: String,
+    pub rule_id: ExposableString,
 }
 
 impl SecondaryExposure {
@@ -22,7 +24,7 @@ impl SecondaryExposure {
         key += "|";
         key += &self.gate_value;
         key += "|";
-        key += &self.rule_id;
+        key += self.rule_id.as_str();
         key
     }
 }
@@ -39,7 +41,7 @@ pub struct ExtraExposureInfo {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BaseEvaluation {
     pub name: String,
-    pub rule_id: String,
+    pub rule_id: ExposableString,
     pub secondary_exposures: Vec<SecondaryExposure>,
 
     #[serde(skip_serializing)]
@@ -113,7 +115,7 @@ pub struct DynamicConfigEvaluation {
     pub value: HashMap<String, Value>,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
-    pub group: String,
+    pub group: ExposableString,
     pub is_device_based: bool,
 
     pub passed: bool,
@@ -128,7 +130,7 @@ pub struct ExperimentEvaluation {
     pub value: HashMap<String, Value>,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
-    pub group: String,
+    pub group: ExposableString,
     pub is_device_based: bool,
 
     #[serde(skip_serializing_if = "is_false")]

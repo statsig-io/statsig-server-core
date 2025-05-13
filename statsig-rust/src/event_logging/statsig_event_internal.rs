@@ -109,7 +109,12 @@ fn secondary_exposure_keys_to_expos(
             let mut seen = HashSet::new();
             let mut filtered = Vec::new();
             for expo in secondary_exposures {
-                let key = format!("{}.{}.{}", expo.gate, expo.rule_id, expo.gate_value);
+                let key = format!(
+                    "{}.{}.{}",
+                    expo.gate,
+                    expo.rule_id.as_str(),
+                    expo.gate_value
+                );
                 if !seen.contains(&key) {
                     seen.insert(key);
                     filtered.push(expo);

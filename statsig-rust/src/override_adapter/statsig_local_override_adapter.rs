@@ -1,3 +1,4 @@
+use crate::event_logging::exposable_string::ExposableString;
 use crate::{log_d, read_lock_or_return, write_lock_or_noop, OverrideAdapter, StatsigUser};
 use std::{collections::HashMap, sync::RwLock};
 
@@ -23,7 +24,7 @@ const LOCAL_OVERRIDE_REASON: &str = "LocalOverride";
 const NO_ID_OVERRIDE: &str = "__STATSIG_NO_ID__";
 
 lazy_static::lazy_static! {
-    static ref OVERRIDE_RULE_ID: String = "override".to_string();
+    static ref OVERRIDE_RULE_ID: ExposableString = ExposableString::new("override".to_string());
 }
 
 #[derive(Default)]
