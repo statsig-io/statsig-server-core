@@ -1,11 +1,16 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::{Value as JsonValue, Value};
+use serde_json::Value;
+
+use crate::hashing::ahash_str;
 
 #[derive(Clone, Eq, Debug)]
 pub struct DynamicString {
     pub value: String,
     pub lowercased_value: String,
+    pub hash_value: u64,
 }
+
+// ------------------------------------------------------------------------------- [Serialization]
 
 impl Serialize for DynamicString {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -25,26 +30,38 @@ impl<'de> Deserialize<'de> for DynamicString {
     where
         D: Deserializer<'de>,
     {
-        let json_value = JsonValue::deserialize(deserializer)?;
-        let value = match json_value {
-            JsonValue::String(value) => value,
-            _ => {
-                return Err(serde::de::Error::custom("Expected a string"));
-            }
-        };
-
-        Ok(DynamicString {
-            lowercased_value: value.to_lowercase(),
-            value: value.to_string(),
-        })
+        let value = String::deserialize(deserializer)?;
+        Ok(DynamicString::from(value))
     }
 }
+
+// ------------------------------------------------------------------------------- [PartialEq]
 
 impl PartialEq for DynamicString {
     fn eq(&self, other: &Self) -> bool {
         self.value == other.value
     }
 }
+
+impl PartialEq<&str> for DynamicString {
+    fn eq(&self, other: &&str) -> bool {
+        self.value.as_str() == *other
+    }
+}
+
+impl PartialEq<String> for DynamicString {
+    fn eq(&self, other: &String) -> bool {
+        self.value == *other
+    }
+}
+
+impl PartialEq<&String> for DynamicString {
+    fn eq(&self, other: &&String) -> bool {
+        self.value.as_str() == other.as_str()
+    }
+}
+
+// ------------------------------------------------------------------------------- [From<T> Implementations]
 
 impl From<Value> for DynamicString {
     fn from(value: Value) -> Self {
@@ -58,10 +75,13 @@ impl From<Value> for DynamicString {
 
 impl From<String> for DynamicString {
     fn from(value: String) -> Self {
+        let hash_value = ahash_str(&value);
         let lowercased_value = value.to_lowercase();
-        DynamicString {
+
+        Self {
             value,
             lowercased_value,
+            hash_value,
         }
     }
 }

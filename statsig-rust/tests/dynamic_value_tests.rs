@@ -284,9 +284,10 @@ fn test_hash_value_is_consistent() {
 
     let mut hash = dyn_value!(&map).hash_value;
     for _ in 0..10000 {
-        let value = dyn_value!(&map).hash_value;
-        assert_eq!(hash, value);
-        hash = value;
+        let new_hash = dyn_value!(&map).hash_value;
+        assert_eq!(hash, new_hash);
+        assert_gt!(new_hash, 0);
+        hash = new_hash;
     }
 }
 
@@ -305,8 +306,9 @@ fn test_hash_value_is_changing() {
     let mut hash = dyn_value!(&map).hash_value;
     for i in 0..10000 {
         map.insert("group_id".to_string(), json!(i));
-        let value = dyn_value!(&map).hash_value;
-        assert_ne!(hash, value);
-        hash = value;
+        let new_hash = dyn_value!(&map).hash_value;
+        assert_ne!(hash, new_hash);
+        assert_gt!(new_hash, 0);
+        hash = new_hash;
     }
 }
