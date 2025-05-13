@@ -135,6 +135,13 @@ class PersistentStorageBaseClass:
     def __new__(cls,): ...
     ...
 
+class ProxyConfig:
+    proxy_host: typing.Optional[builtins.str]
+    proxy_port: typing.Optional[builtins.int]
+    proxy_auth: typing.Optional[builtins.str]
+    proxy_protocol: typing.Optional[builtins.str]
+    def __new__(cls,proxy_host:typing.Optional[builtins.str]=None, proxy_port:typing.Optional[builtins.int]=None, proxy_auth:typing.Optional[builtins.str]=None, proxy_protocol:typing.Optional[builtins.str]=None): ...
+
 class StatsigBasePy:
     def __new__(cls,network_func:typing.Any, sdk_key:builtins.str, options:typing.Optional[StatsigOptions]=None): ...
     def initialize(self) -> typing.Any:
@@ -259,7 +266,8 @@ class StatsigOptions:
     data_store: typing.Optional[DataStoreBase]
     persistent_storage: typing.Optional[PersistentStorageBaseClass]
     config_compression_mode: typing.Optional[builtins.str]
-    def __new__(cls,specs_url:typing.Optional[builtins.str]=None, specs_sync_interval_ms:typing.Optional[builtins.int]=None, init_timeout_ms:typing.Optional[builtins.int]=None, log_event_url:typing.Optional[builtins.str]=None, disable_all_logging:typing.Optional[builtins.bool]=None, disable_network:typing.Optional[builtins.bool]=None, event_logging_flush_interval_ms:typing.Optional[builtins.int]=None, event_logging_max_queue_size:typing.Optional[builtins.int]=None, event_logging_max_pending_batch_queue_size:typing.Optional[builtins.int]=None, enable_id_lists:typing.Optional[builtins.bool]=None, wait_for_user_agent_init:typing.Optional[builtins.bool]=None, wait_for_country_lookup_init:typing.Optional[builtins.bool]=None, disable_user_agent_parsing:typing.Optional[builtins.bool]=None, disable_country_lookup:typing.Optional[builtins.bool]=None, id_lists_url:typing.Optional[builtins.str]=None, id_lists_sync_interval_ms:typing.Optional[builtins.int]=None, fallback_to_statsig_api:typing.Optional[builtins.bool]=None, environment:typing.Optional[builtins.str]=None, output_log_level:typing.Optional[builtins.str]=None, global_custom_fields:typing.Optional[dict]=None, observability_client:typing.Optional[ObservabilityClientBase]=None, data_store:typing.Optional[DataStoreBase]=None, persistent_storage:typing.Optional[PersistentStorageBaseClass]=None, config_compression_mode:typing.Optional[builtins.str]=None): ...
+    proxy_config: typing.Optional[ProxyConfig]
+    def __new__(cls,specs_url:typing.Optional[builtins.str]=None, specs_sync_interval_ms:typing.Optional[builtins.int]=None, init_timeout_ms:typing.Optional[builtins.int]=None, log_event_url:typing.Optional[builtins.str]=None, disable_all_logging:typing.Optional[builtins.bool]=None, disable_network:typing.Optional[builtins.bool]=None, event_logging_flush_interval_ms:typing.Optional[builtins.int]=None, event_logging_max_queue_size:typing.Optional[builtins.int]=None, event_logging_max_pending_batch_queue_size:typing.Optional[builtins.int]=None, enable_id_lists:typing.Optional[builtins.bool]=None, wait_for_user_agent_init:typing.Optional[builtins.bool]=None, wait_for_country_lookup_init:typing.Optional[builtins.bool]=None, disable_user_agent_parsing:typing.Optional[builtins.bool]=None, disable_country_lookup:typing.Optional[builtins.bool]=None, id_lists_url:typing.Optional[builtins.str]=None, id_lists_sync_interval_ms:typing.Optional[builtins.int]=None, fallback_to_statsig_api:typing.Optional[builtins.bool]=None, environment:typing.Optional[builtins.str]=None, output_log_level:typing.Optional[builtins.str]=None, global_custom_fields:typing.Optional[dict]=None, observability_client:typing.Optional[ObservabilityClientBase]=None, data_store:typing.Optional[DataStoreBase]=None, persistent_storage:typing.Optional[PersistentStorageBaseClass]=None, config_compression_mode:typing.Optional[builtins.str]=None, proxy_config:typing.Optional[ProxyConfig]=None): ...
 
 class StatsigUser:
     user_id: typing.Optional[builtins.str]

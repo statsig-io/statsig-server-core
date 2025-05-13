@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 use statsig_rust::networking::{HttpMethod, NetworkProvider, RequestArgs, Response};
 
 #[derive(FromPyObject)]
@@ -31,9 +32,38 @@ impl NetworkProvider for NetworkProviderPy {
         let body = request_args.body.clone();
 
         Python::with_gil(|py| {
+            let proxy_config_py = request_args
+                .proxy_config
+                .as_ref()
+                .map(|proxy| {
+                    let scheme = proxy
+                        .proxy_protocol
+                        .clone()
+                        .unwrap_or_else(|| "http".to_string());
+                    let host = proxy.proxy_host.as_deref().unwrap_or("");
+                    let port = proxy.proxy_port;
+                    let auth_part = proxy
+                        .proxy_auth
+                        .as_ref()
+                        .map(|auth| format!("{}@", auth))
+                        .unwrap_or_default();
+
+                    let proxy_url = if let Some(port) = port {
+                        format!("{}://{}{}:{}", scheme, auth_part, host, port)
+                    } else {
+                        format!("{}://{}{}", scheme, auth_part, host)
+                    };
+
+                    let dict = PyDict::new(py);
+                    dict.set_item("http", &proxy_url).ok();
+                    dict.set_item("https", &proxy_url).ok();
+                    dict.into()
+                })
+                .unwrap_or_else(|| py.None());
+
             match self
                 .network_func
-                .call1(py, (method_str, url, headers, body))
+                .call1(py, (method_str, url, headers, body, proxy_config_py))
             {
                 Ok(result) => get_response_from_py_result(py, result),
                 Err(e) => Response {

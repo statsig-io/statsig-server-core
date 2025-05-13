@@ -5,10 +5,10 @@ from .error_boundary import ErrorBoundary
 
 
 def network_func(
-    method: str, url: str, headers: dict, bytes: bytes
+    method: str, url: str, headers: dict, bytes: bytes, proxies: Optional[Dict[str, str]],
 ) -> Tuple[int, Optional[bytes], Optional[str], Optional[Dict[str, str]]]:
     try:
-        response = request(method=method, url=url, headers=headers, data=bytes)
+        response = request(method=method, url=url, headers=headers, data=bytes, proxies=proxies)
         status_code = response.status_code
         data = response.content
         headers = dict(response.headers)

@@ -18,6 +18,7 @@ fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<statsig_base_py::StatsigBasePy>()?;
     m.add_class::<statsig_user_py::StatsigUserPy>()?;
     m.add_class::<statsig_options_py::StatsigOptionsPy>()?;
+    m.add_class::<statsig_options_py::ProxyConfigPy>()?;
     m.add_class::<statsig_types_py::FeatureGatePy>()?;
     m.add_class::<statsig_types_py::DynamicConfigPy>()?;
     m.add_class::<statsig_types_py::ExperimentPy>()?;
