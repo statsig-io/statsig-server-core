@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::vec;
 
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::StatsigUser;
@@ -7,32 +8,19 @@ use serde::ser::SerializeMap;
 use serde::Serialize;
 use serde_json::json;
 
-macro_rules! append_string_value {
-    ($values:expr, $user_data:expr, $field:ident) => {
-        if let Some(field) = &$user_data.$field {
-            if let Some(dyn_str) = &field.string_value {
-                $values += &dyn_str.value;
-                $values += "|";
-            }
-        }
-    };
-}
-
-macro_rules! append_sorted_string_values {
-    ($values:expr, $map:expr) => {
-        if let Some(map) = $map {
-            let mut keys: Vec<&String> = map.keys().collect();
-            keys.sort();
-
-            for key in keys {
-                if let Some(dyn_str) = &map[key].string_value {
-                    $values += key;
-                    $values += &dyn_str.value;
-                }
-            }
-        }
-    };
-}
+pub type FullUserKey = (
+    u64,      // app_version
+    u64,      // country
+    u64,      // email
+    u64,      // ip
+    u64,      // locale
+    u64,      // user_agent
+    u64,      // user_id
+    Vec<u64>, // custom_ids
+    Vec<u64>, // custom
+    Vec<u64>, // private_attributes
+    Vec<u64>, // statsig_env
+);
 
 #[derive(Clone)]
 pub struct StatsigUserInternal<'statsig, 'user> {
@@ -167,28 +155,32 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
         user_key
     }
 
-    pub fn get_full_user_key(&self) -> String {
-        let mut values = String::new();
+    pub fn get_full_user_key(&self) -> FullUserKey {
+        let user = self.user_data;
 
-        append_string_value!(values, self.user_data, app_version);
-        append_string_value!(values, self.user_data, country);
-        append_string_value!(values, self.user_data, email);
-        append_string_value!(values, self.user_data, ip);
-        append_string_value!(values, self.user_data, locale);
-        append_string_value!(values, self.user_data, user_agent);
-        append_string_value!(values, self.user_data, user_id);
+        let custom_id_hashes = get_hashes_from_map_field(user.custom_ids.as_ref());
+        let private_attr_hashes = get_hashes_from_map_field(user.private_attributes.as_ref());
+        let custom_hashes = get_hashes_from_map_field(user.custom.as_ref());
+        let statsig_env_hashes = self
+            .statsig_instance
+            .map(|s| s.use_statsig_env(get_hashes_from_map_field))
+            .unwrap_or_default();
 
-        append_sorted_string_values!(values, &self.user_data.custom_ids);
-        append_sorted_string_values!(values, &self.user_data.custom);
-        append_sorted_string_values!(values, &self.user_data.private_attributes);
+        let key: FullUserKey = (
+            get_hash_from_field(&user.app_version),
+            get_hash_from_field(&user.country),
+            get_hash_from_field(&user.email),
+            get_hash_from_field(&user.ip),
+            get_hash_from_field(&user.locale),
+            get_hash_from_field(&user.user_agent),
+            get_hash_from_field(&user.user_id),
+            custom_id_hashes,
+            custom_hashes,
+            private_attr_hashes,
+            statsig_env_hashes,
+        );
 
-        if let Some(statsig_instance) = self.statsig_instance {
-            statsig_instance.use_statsig_env(|env| {
-                append_sorted_string_values!(values, env);
-            });
-        }
-
-        values
+        key
     }
 
     pub fn get_user_id_ref(&self) -> &str {
@@ -260,5 +252,23 @@ fn is_none_or_empty(opt_vec: &Option<&HashMap<String, DynamicValue>>) -> bool {
     match opt_vec {
         None => true,
         Some(vec) => vec.is_empty(),
+    }
+}
+
+fn get_hashes_from_map_field(map: Option<&HashMap<String, DynamicValue>>) -> Vec<u64> {
+    let map = match map {
+        Some(m) => m,
+        None => return vec![],
+    };
+
+    let mut values = map.values().map(|v| v.hash_value).collect::<Vec<_>>();
+    values.sort();
+    values
+}
+
+fn get_hash_from_field(field: &Option<DynamicValue>) -> u64 {
+    match field {
+        Some(field) => field.hash_value,
+        None => 0,
     }
 }

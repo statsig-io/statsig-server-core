@@ -6,16 +6,18 @@ use serde_json::{json, Value};
 
 use crate::{log_e, user::StatsigUserInternal};
 
+use super::statsig_user_internal::FullUserKey;
+
 const TAG: &str = "StatsigUserLoggable";
 
 lazy_static::lazy_static! {
-    static ref LOGGABLE_USER_STORE: RwLock<HashMap<String, Weak<UserLoggableData>>> =
+    static ref LOGGABLE_USER_STORE: RwLock<HashMap<FullUserKey, Weak<UserLoggableData>>> =
     RwLock::new(HashMap::new());
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct UserLoggableData {
-    pub key: String,
+    pub key: Option<FullUserKey>,
     pub value: Value,
 }
 
@@ -40,20 +42,17 @@ impl<'de> Deserialize<'de> for StatsigUserLoggable {
     {
         let value = Value::deserialize(deserializer)?;
         Ok(StatsigUserLoggable {
-            data: Arc::new(UserLoggableData {
-                key: "".to_string(),
-                value,
-            }),
+            data: Arc::new(UserLoggableData { key: None, value }),
         })
     }
 }
 
 fn make_loggable(
-    full_user_key: String,
+    full_user_key: FullUserKey,
     user_internal: &StatsigUserInternal,
 ) -> Arc<UserLoggableData> {
     let result = Arc::new(UserLoggableData {
-        key: full_user_key.clone(),
+        key: Some(full_user_key.clone()),
         value: json!(user_internal),
     });
 
@@ -94,7 +93,7 @@ impl StatsigUserLoggable {
     pub fn null_user() -> Self {
         Self {
             data: Arc::new(UserLoggableData {
-                key: "".to_string(),
+                key: None,
                 value: Value::Null,
             }),
         }
@@ -141,8 +140,13 @@ impl StatsigUserInternal<'_, '_> {
 
 impl Drop for StatsigUserLoggable {
     fn drop(&mut self) {
+        let full_user_key = match &self.data.key {
+            Some(k) => k,
+            None => return,
+        };
+
         let strong_count = match LOGGABLE_USER_STORE.read() {
-            Ok(store) => match store.get(&self.data.key) {
+            Ok(store) => match store.get(full_user_key) {
                 Some(weak_ref) => weak_ref.strong_count(),
                 None => return,
             },
@@ -158,7 +162,7 @@ impl Drop for StatsigUserLoggable {
 
         match LOGGABLE_USER_STORE.write() {
             Ok(mut store) => {
-                store.remove(&self.data.key);
+                store.remove(full_user_key);
             }
             Err(e) => {
                 log_e!(TAG, "Error locking user loggable store: {:?}", e);

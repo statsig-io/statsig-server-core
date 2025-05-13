@@ -1,11 +1,15 @@
+use more_asserts::assert_gt;
 use serde_json::json;
 use statsig_rust::{
     dyn_value,
-    user::{StatsigUserInternal, StatsigUserLoggable, UserLoggableData},
-    DynamicValue, Statsig, StatsigOptions, StatsigUser,
+    user::{
+        statsig_user_internal::FullUserKey, StatsigUserInternal, StatsigUserLoggable,
+        UserLoggableData,
+    },
+    DynamicValue, Statsig, StatsigOptions, StatsigUser, StatsigUserBuilder,
 };
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 
 lazy_static::lazy_static! {
     static ref FULL_USER: StatsigUser = StatsigUser {
@@ -104,6 +108,43 @@ fn test_get_full_user_key_matches_with_statsig_env() {
     let user2 = StatsigUserInternal::new(&FULL_USER, Some(&statsig));
 
     assert_eq!(user1.get_full_user_key(), user2.get_full_user_key());
+}
+
+#[test]
+fn test_full_user_key() {
+    let start = Instant::now();
+
+    let mut previous: FullUserKey = (0, 0, 0, 0, 0, 0, 0, vec![], vec![], vec![], vec![]);
+    for i in 0..100000 {
+        let user = StatsigUserBuilder::new_with_user_id(format!("a_user_{}", i))
+            .app_version(Some("1.0.0".to_string()))
+            .country(Some("US".to_string()))
+            .email(Some("daniel@statsig.com".to_string()))
+            .ip(Some("127.0.0.1".to_string()))
+            .locale(Some("en-US".to_string()))
+            .user_agent(Some("statsig-rust/0.1.0".to_string()))
+            .custom_ids(Some(HashMap::from([(
+                "companyID".to_string(),
+                "statsig".to_string(),
+            )])))
+            .custom(Some(HashMap::from([(
+                "test_custom_field".to_string(),
+                dyn_value!("test_custom_field_value"),
+            )])))
+            .private_attributes(Some(HashMap::from([(
+                "test_private_attribute".to_string(),
+                dyn_value!("test_private_attribute_value"),
+            )])))
+            .build();
+
+        let user_internal = StatsigUserInternal::new(&user, None);
+        let new_key = user_internal.get_full_user_key();
+        assert_ne!(previous, new_key);
+        assert_gt!(new_key.0, 0);
+        previous = new_key;
+    }
+    let end = Instant::now();
+    println!("Time taken: {:?}", end.duration_since(start));
 }
 
 #[test]
@@ -313,9 +354,6 @@ fn serialize_and_deserialize(user_internal: &StatsigUserInternal) -> StatsigUser
     let value = serde_json::from_str(&serialized).unwrap();
 
     StatsigUserLoggable {
-        data: Arc::new(UserLoggableData {
-            key: "".to_string(),
-            value,
-        }),
+        data: Arc::new(UserLoggableData { key: None, value }),
     }
 }
