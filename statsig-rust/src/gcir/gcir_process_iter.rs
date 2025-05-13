@@ -1,3 +1,4 @@
+use super::target_app_id_utils::should_filter_spec_for_app;
 use crate::{
     evaluation::{
         evaluator::{Evaluator, SpecType},
@@ -5,25 +6,24 @@ use crate::{
         evaluator_result::EvaluatorResult,
     },
     hashing::HashUtil,
-    specs_response::spec_types::Spec,
+    specs_response::{spec_directory::SpecDirectory, spec_types::Spec},
     ClientInitResponseOptions, HashAlgorithm, SecondaryExposure, StatsigErr,
 };
-use ahash::HashMap as AHashMap;
 use std::collections::{HashMap, HashSet};
-
-use super::target_app_id_utils::should_filter_spec_for_app;
 
 pub(crate) fn gcir_process_iter<T>(
     context: &mut EvaluatorContext,
     options: &ClientInitResponseOptions,
     sec_expo_hash_memo: &mut HashMap<String, String>,
-    specs: &AHashMap<String, Spec>,
+    spec_directory: &SpecDirectory,
     get_spec_type: impl Fn(&Spec) -> SpecType,
     mut evaluation_factory: impl FnMut(&Spec, &str, &mut EvaluatorContext) -> T,
 ) -> Result<HashMap<String, T>, StatsigErr> {
     let mut results = HashMap::new();
 
-    for (name, spec) in specs {
+    for spec_addy in spec_directory.specs.values() {
+        let spec = &spec_addy.spec;
+
         if spec.entity == "segment" || spec.entity == "holdout" {
             continue;
         }
@@ -35,9 +35,11 @@ pub(crate) fn gcir_process_iter<T>(
         context.reset_result();
 
         let spec_type = get_spec_type(spec);
-        Evaluator::evaluate(context, name, &spec_type)?;
+        Evaluator::evaluate(context, spec_addy.name.as_str(), &spec_type)?;
 
-        let hashed_name = context.hashing.hash(name, options.get_hash_algorithm());
+        let hashed_name = context
+            .hashing
+            .hash(spec_addy.name.as_str(), options.get_hash_algorithm());
         hash_secondary_exposures(
             &mut context.result,
             context.hashing,

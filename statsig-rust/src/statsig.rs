@@ -1106,7 +1106,7 @@ impl Statsig {
 
         let gate = data.values.feature_gates.get(gate_name);
         match gate {
-            Some(gate) => match &gate.fields_used {
+            Some(gate) => match &gate.spec.fields_used {
                 Some(fields) => fields.clone(),
                 None => vec![],
             },
@@ -1218,7 +1218,7 @@ impl Statsig {
             return vec![];
         });
 
-        data.values.feature_gates.keys().cloned().collect()
+        data.values.feature_gates.unperformant_keys()
     }
 
     pub fn get_dynamic_config_list(&self) -> Vec<String> {
@@ -1235,10 +1235,7 @@ impl Statsig {
 
         data.values
             .dynamic_configs
-            .iter()
-            .filter(|(_, config)| config.entity == "dynamic_config")
-            .map(|(name, _)| name.clone())
-            .collect()
+            .unperformant_keys_entity_filter("dynamic_config")
     }
 
     pub fn get_experiment_list(&self) -> Vec<String> {
@@ -1255,10 +1252,7 @@ impl Statsig {
 
         data.values
             .dynamic_configs
-            .iter()
-            .filter(|(_, config)| config.entity == "experiment")
-            .map(|(name, _)| name.clone())
-            .collect()
+            .unperformant_keys_entity_filter("experiment")
     }
 
     pub fn get_parameter_store_list(&self) -> Vec<String> {
@@ -1354,7 +1348,7 @@ impl Statsig {
 
         let config = data.values.dynamic_configs.get(config_name);
         match config {
-            Some(config) => match &config.fields_used {
+            Some(config) => match &config.spec.fields_used {
                 Some(fields) => fields.clone(),
                 None => vec![],
             },
@@ -1434,7 +1428,7 @@ impl Statsig {
 
         let config = data.values.dynamic_configs.get(experiment_name);
         match config {
-            Some(config) => match &config.fields_used {
+            Some(config) => match &config.spec.fields_used {
                 Some(fields) => fields.clone(),
                 None => vec![],
             },
@@ -1494,7 +1488,7 @@ impl Statsig {
 
         let layer = data.values.layer_configs.get(layer_name);
         match layer {
-            Some(layer) => match &layer.fields_used {
+            Some(layer) => match &layer.spec.fields_used {
                 Some(fields) => fields.clone(),
                 None => vec![],
             },

@@ -8,6 +8,7 @@ use serde_with::skip_serializing_none;
 use std::collections::HashMap;
 
 use super::condition_key::ConditionKey;
+use super::spec_directory::SpecDirectory;
 use super::{cmab_types::CMABConfig, param_store_types::ParameterStore};
 
 // DO_NOT_CLONE: Please do not add the Clone trait to this struct. We intentionally
@@ -82,9 +83,9 @@ pub struct ConfigMapping {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default)] /* DO_NOT_CLONE */
 pub struct SpecsResponseFull {
     pub company_id: Option<String>,
-    pub feature_gates: AHashMap<String, Spec>,
-    pub dynamic_configs: AHashMap<String, Spec>,
-    pub layer_configs: AHashMap<String, Spec>,
+    pub feature_gates: SpecDirectory,
+    pub dynamic_configs: SpecDirectory,
+    pub layer_configs: SpecDirectory,
     pub condition_map: AHashMap<ConditionKey, Condition>,
     pub experiment_to_layer: HashMap<String, String>,
     pub has_updates: bool,

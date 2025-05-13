@@ -79,7 +79,8 @@ impl Evaluator {
             SpecType::DynamicConfig => ctx.spec_store_data.values.dynamic_configs.get(spec_name),
             SpecType::Experiment => ctx.spec_store_data.values.dynamic_configs.get(spec_name),
             SpecType::Layer => ctx.spec_store_data.values.layer_configs.get(spec_name),
-        };
+        }
+        .map(|a| a.spec.as_ref());
 
         if try_apply_override(ctx, spec_name, spec_type, opt_spec) {
             return Ok(Recognition::Recognized);
@@ -508,7 +509,7 @@ fn evaluate_config_delegate<'a>(
         return Ok(false);
     }
 
-    ctx.result.explicit_parameters = delegate_spec.explicit_parameters.as_ref();
+    ctx.result.explicit_parameters = delegate_spec.spec.explicit_parameters.as_ref();
     ctx.result.config_delegate = rule.config_delegate.as_ref();
 
     Ok(true)
