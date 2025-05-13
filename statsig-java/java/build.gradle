@@ -9,7 +9,8 @@ group 'com.statsig'
 version project.property("version")
 
 java {
-    sourceCompatibility = '11'
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
 }
 
 repositories {

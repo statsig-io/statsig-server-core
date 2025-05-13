@@ -232,10 +232,8 @@ class StatsigJNI {
     }
 
     private static String writeLibToTempFile(URL resource) {
-        try {
-            InputStream stream = resource.openStream();
-
-            if (stream == null) {
+        try (InputStream in = resource.openStream()) {
+            if (in == null) {
                 OutputLogger.logError(TAG, "Unable to open stream for resource: " + resource);
                 return null;
             }
@@ -243,10 +241,10 @@ class StatsigJNI {
             File temp = File.createTempFile("statsig_java_lib", null);
             temp.deleteOnExit();
 
-            try (stream; OutputStream out = new FileOutputStream(temp)) {
+            try (OutputStream out = new FileOutputStream(temp)) {
                 byte[] buffer = new byte[1024];
-                int length = 0;
-                while ((length = stream.read(buffer)) != -1) {
+                int length;
+                while ((length = in.read(buffer)) != -1) {
                     out.write(buffer, 0, length);
                 }
             }
@@ -260,6 +258,7 @@ class StatsigJNI {
             return null;
         }
     }
+
 
     private static URL findLibraryResource(String osName, String osArch) {
         ClassLoader cl = StatsigJNI.class.getClassLoader();
