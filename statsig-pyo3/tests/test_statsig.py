@@ -1,4 +1,4 @@
-from statsig_python_core import Statsig, StatsigOptions, StatsigUser, ObservabilityClient, ProxyConfig
+from statsig_python_core import Statsig, StatsigOptions, StatsigUser
 from pytest_httpserver import HTTPServer
 import json
 from utils import get_test_data_resource
@@ -27,7 +27,7 @@ def statsig_setup(httpserver: HTTPServer):
     yield statsig
 
     # Teardown
-    # statsig.shutdown().wait()
+    statsig.shutdown().wait()
 
 
 def test_check_gate(statsig_setup):
