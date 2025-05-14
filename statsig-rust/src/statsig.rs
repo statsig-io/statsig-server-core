@@ -27,7 +27,7 @@ use crate::observability::diagnostics_observer::DiagnosticsObserver;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::{ErrorBoundaryEvent, SDKErrorsObserver};
-use crate::output_logger::initialize_simple_output_logger;
+use crate::output_logger::{initialize_output_logger, shutdown_output_logger};
 use crate::persistent_storage::persistent_values_manager::PersistentValuesManager;
 use crate::sdk_diagnostics::diagnostics::{ContextType, Diagnostics};
 use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker};
@@ -325,6 +325,8 @@ impl Statsig {
                 } else {
                     Box::pin(async { Ok(()) })
                 };
+
+                shutdown_output_logger();
 
                 try_join!(
                     id_list_shutdown,
@@ -1822,7 +1824,10 @@ fn setup_ops_stats(
     external_observer: &Option<Weak<dyn ObservabilityClient>>,
 ) -> Arc<OpsStatsForInstance> {
     // TODO migrate output logger to use ops_stats
-    initialize_simple_output_logger(&options.output_log_level);
+    initialize_output_logger(
+        &options.output_log_level,
+        options.output_logger_provider.clone(),
+    );
 
     let ops_stat = OPS_STATS.get_for_instance(sdk_key);
     ops_stat.subscribe(statsig_runtime.clone(), Arc::downgrade(error_observer));

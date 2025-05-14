@@ -4,13 +4,56 @@ use std::time::Instant;
 
 use tokio::time::{sleep, Duration};
 
-use statsig_rust::output_logger::LogLevel;
-use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
 
+use statsig_rust::output_logger::{LogLevel, LogProvider};
+use std::sync::Arc;
+
+use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
 #[tokio::main]
 async fn main() {
+    pub struct CustomLogger;
+
+    impl CustomLogger {
+        pub fn new() -> Self {
+            CustomLogger
+        }
+
+        fn log(&self, level: &str, tag: &str, msg: &str) {
+            println!("[custom::logger][{}][{}] {}", level, tag, msg);
+        }
+    }
+
+    impl LogProvider for CustomLogger {
+        fn initialize(&self) {
+            println!("[custom::logger][INIT] Logger initialized.");
+        }
+
+        fn debug(&self, tag: &str, msg: String) {
+            self.log("DEBUG", tag, &msg);
+        }
+
+        fn info(&self, tag: &str, msg: String) {
+            self.log("INFO", tag, &msg);
+        }
+
+        fn warn(&self, tag: &str, msg: String) {
+            self.log("WARN", tag, &msg);
+        }
+
+        fn error(&self, tag: &str, msg: String) {
+            self.log("ERROR", tag, &msg);
+        }
+
+        fn shutdown(&self) {
+            println!("[custom::logger][SHUTDOWN] Logger shutting down.");
+        }
+    }
+
+    let custom_log_provider = Arc::new(CustomLogger::new());
+
     let opts = Arc::new(StatsigOptions {
         output_log_level: Some(LogLevel::Debug),
+        output_logger_provider: Some(custom_log_provider),
         ..StatsigOptions::new()
     });
 

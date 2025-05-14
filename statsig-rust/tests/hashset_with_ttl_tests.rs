@@ -1,5 +1,5 @@
 use statsig_rust::hashset_with_ttl::HashSetWithTTL;
-use statsig_rust::output_logger::{initialize_simple_output_logger, LogLevel};
+use statsig_rust::output_logger::{initialize_output_logger, LogLevel};
 use statsig_rust::StatsigRuntime;
 use tokio::time::{sleep, Duration};
 
@@ -28,7 +28,7 @@ async fn test_reset() {
 
 #[tokio::test]
 async fn test_shutdown_stops_reset() {
-    initialize_simple_output_logger(&Some(LogLevel::Debug));
+    initialize_output_logger(&Some(LogLevel::Debug), None);
 
     let statsig_runtime = StatsigRuntime::get_runtime();
     let hashset_with_ttl = HashSetWithTTL::new(&statsig_runtime, Duration::from_millis(10));

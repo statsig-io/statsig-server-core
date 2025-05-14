@@ -219,6 +219,7 @@ fn create_inner_statsig_options(
     ob_client_weak: Option<Weak<dyn ObservabilityClient>>,
 ) -> StatsigOptions {
     StatsigOptions {
+        output_logger_provider: None,
         specs_url: opts.specs_url.clone(),
         specs_adapter: None,
         specs_sync_interval_ms: opts.specs_sync_interval_ms,

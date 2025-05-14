@@ -1,4 +1,4 @@
-use std::sync::RwLock;
+use std::sync::{Arc, Once, RwLock};
 
 use log::{debug, error, info, warn, Level};
 
@@ -8,10 +8,22 @@ const TRUNCATED_SUFFIX: &str = "...[TRUNCATED]";
 const DEFAULT_LOG_LEVEL: LogLevel = LogLevel::Warn;
 
 lazy_static::lazy_static! {
-    static ref LOG_LEVEL: RwLock<LogLevel> = RwLock::new(DEFAULT_LOG_LEVEL);
+    static ref LOGGER_STATE: RwLock<LoggerState> = RwLock::new(LoggerState {
+        level: DEFAULT_LOG_LEVEL,
+        provider: None,
+        initialized: false,
+    });
 }
 
-#[derive(Clone)]
+struct LoggerState {
+    level: LogLevel,
+    provider: Option<Arc<dyn LogProvider>>,
+    initialized: bool,
+}
+
+static INIT: Once = Once::new();
+
+#[derive(Clone, Debug)]
 pub enum LogLevel {
     None,
     Debug,
@@ -68,28 +80,51 @@ impl LogLevel {
     }
 }
 
-pub fn initialize_simple_output_logger(level: &Option<LogLevel>) {
-    let level = level.as_ref().unwrap_or(&DEFAULT_LOG_LEVEL).clone();
+pub trait LogProvider: Send + Sync {
+    fn initialize(&self);
+    fn debug(&self, tag: &str, msg: String);
+    fn info(&self, tag: &str, msg: String);
+    fn warn(&self, tag: &str, msg: String);
+    fn error(&self, tag: &str, msg: String);
+    fn shutdown(&self);
+}
 
-    if let Ok(mut lock) = LOG_LEVEL.write() {
-        *lock = level.clone();
-    }
+pub fn initialize_output_logger(level: &Option<LogLevel>, provider: Option<Arc<dyn LogProvider>>) {
+    INIT.call_once(|| {
+        let mut state = LOGGER_STATE.write().unwrap();
+        let level = level.as_ref().unwrap_or(&DEFAULT_LOG_LEVEL).clone();
+        state.level = level.clone();
 
-    let final_level = match level {
-        LogLevel::None => {
-            return;
+        if let Some(provider_impl) = provider {
+            provider_impl.initialize();
+            state.provider = Some(provider_impl);
+        } else {
+            let final_level = match level {
+                LogLevel::None => {
+                    return;
+                }
+                _ => match level.to_third_party_level() {
+                    Some(level) => level,
+                    None => return,
+                },
+            };
+
+            match simple_logger::init_with_level(final_level) {
+                Ok(()) => {}
+                Err(_) => {
+                    log::set_max_level(final_level.to_level_filter());
+                }
+            }
         }
-        _ => match level.to_third_party_level() {
-            Some(level) => level,
-            None => return,
-        },
-    };
 
-    match simple_logger::init_with_level(final_level) {
-        Ok(()) => {}
-        Err(_) => {
-            log::set_max_level(final_level.to_level_filter());
-        }
+        state.initialized = true;
+    });
+}
+
+pub fn shutdown_output_logger() {
+    let mut state = LOGGER_STATE.write().unwrap();
+    if let Some(provider) = &mut state.provider {
+        provider.shutdown();
     }
 }
 
@@ -106,6 +141,19 @@ pub fn log_message(tag: &str, level: LogLevel, msg: String) {
     };
 
     let sanitized_msg = sanitize(&truncated_msg);
+
+    if let Ok(state) = LOGGER_STATE.read() {
+        if let Some(provider) = &state.provider {
+            match level {
+                LogLevel::Debug => provider.debug(tag, sanitized_msg),
+                LogLevel::Info => provider.info(tag, sanitized_msg),
+                LogLevel::Warn => provider.warn(tag, sanitized_msg),
+                LogLevel::Error => provider.error(tag, sanitized_msg),
+                LogLevel::None => {}
+            }
+            return;
+        }
+    }
 
     if let Some(level) = level.to_third_party_level() {
         let mut target = String::from("Statsig::");
@@ -143,11 +191,8 @@ fn sanitize(input: &str) -> String {
 }
 
 pub fn has_valid_log_level(level: &LogLevel) -> bool {
-    let current_level = match LOG_LEVEL.read() {
-        Ok(lock) => lock,
-        Err(_) => return false,
-    };
-
+    let state = LOGGER_STATE.read().unwrap();
+    let current_level = &state.level;
     level.to_number() <= current_level.to_number()
 }
 

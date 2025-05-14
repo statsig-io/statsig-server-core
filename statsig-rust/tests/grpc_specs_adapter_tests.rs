@@ -5,7 +5,7 @@ pub mod specs_adapter_tests {
     use crate::utils::mock_specs_listener::MockSpecsListener;
     use mock_forward_proxy::{api::ConfigSpecResponse, wait_one_ms, MockForwardProxy};
     use sigstat_grpc::*;
-    use statsig_rust::output_logger::{initialize_simple_output_logger, LogLevel};
+    use statsig_rust::output_logger::{initialize_output_logger, LogLevel};
     use statsig_rust::{
         SpecAdapterConfig, SpecsAdapter, SpecsAdapterType, SpecsSource, StatsigGrpcSpecsAdapter,
         StatsigRuntime,
@@ -18,7 +18,7 @@ pub mod specs_adapter_tests {
         Arc<MockSpecsListener>,
         Arc<StatsigGrpcSpecsAdapter>,
     ) {
-        initialize_simple_output_logger(&Some(LogLevel::Debug));
+        initialize_output_logger(&Some(LogLevel::Debug), None);
 
         let mock_proxy = MockForwardProxy::spawn().await;
         let config = SpecAdapterConfig {
