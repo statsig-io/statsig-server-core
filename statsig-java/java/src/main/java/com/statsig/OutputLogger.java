@@ -7,10 +7,10 @@ import java.time.temporal.ChronoUnit;
 public class OutputLogger {
     public enum LogLevel {
         NONE(0),
-        DEBUG(1),
-        INFO(2),
-        WARN(3),
-        ERROR(4);
+        ERROR(1),
+        WARN(2),
+        INFO(3),
+        DEBUG(4);
 
         private final int value;
 
@@ -52,7 +52,7 @@ public class OutputLogger {
     }
 
     static void logMessage(LogLevel level, String tag, String message) {
-        if (level.getValue() < logLevel.getValue()) {
+        if (level.getValue() > logLevel.getValue()) {
             return;
         }
 
