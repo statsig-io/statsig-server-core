@@ -56,6 +56,7 @@ use crate::{
     },
 };
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use serde_json::json;
 use serde_json::Value;
 use std::borrow::Cow;
@@ -108,13 +109,13 @@ pub struct StatsigContext {
     pub spec_store: Arc<SpecStore>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FailureDetails {
     pub reason: String,
     pub error: Option<StatsigErr>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct InitializeDetails {
     pub duration: f64,
     pub init_success: bool,

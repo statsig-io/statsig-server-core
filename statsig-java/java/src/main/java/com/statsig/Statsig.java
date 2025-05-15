@@ -240,6 +240,17 @@ public class Statsig {
         return featureGate;
     }
 
+    public CompletableFuture<InitializeDetails> initializeWithDetails() {
+        return CompletableFuture.supplyAsync(() -> {
+            String initDetailsJson = StatsigJNI.statsigInitializeWithDetails(ref);
+            InitializeDetails initializeDetails = GSON.fromJson(initDetailsJson, InitializeDetails.class);
+            if (initializeDetails != null) {
+                initializeDetails.setRawJson(initDetailsJson);
+            }
+            return initializeDetails;
+        });
+    }
+
     public CMABRankedVariant[] getCMABRankedVariants(StatsigUser user, String cmabName) {
         String cmabJson = StatsigJNI.statsigGetCMABRankedVariants(ref, user.getRef(), cmabName);
         CMABRankedVariant[] cmabRankedVariants = GSON.fromJson(cmabJson, CMABRankedVariant[].class);

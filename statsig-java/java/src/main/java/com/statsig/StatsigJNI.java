@@ -37,6 +37,8 @@ class StatsigJNI {
 
     public static native void statsigInitialize(String statsigRef, Runnable callback);
 
+    public static native String statsigInitializeWithDetails(String statsigRef);
+
     public static native void statsigShutdown(String statsigRef, Runnable callback);
 
     public static native boolean statsigCheckGate(String statsigRef, String userRef, String gateName,

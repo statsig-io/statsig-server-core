@@ -107,6 +107,27 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitializeWithDetails(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_jni!(Statsig, &mut env, statsig_ref, std::ptr::null_mut());
+
+    let result = statsig
+        .statsig_runtime
+        .get_handle()
+        .block_on(async { statsig.initialize_with_details().await });
+    match result {
+        Ok(details) => serialize_json_to_jstring(&mut env, &details),
+        Err(e) => {
+            log_e!(TAG, "Failed to initialize statsig with details: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigShutdown(
     mut env: JNIEnv,
     _class: JClass,
