@@ -29,22 +29,45 @@ jobs:
       - name: Get KONG
         run: git clone https://oauth2:$repo_pat@github.com/statsig-io/kong.git .
 
-      - name: Install Deps
-        run: npm install
-
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v3
+      - uses: actions/setup-node@v4
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
 
-      - name: Setup Rust SDK
-        run: npm run kong -- setup ${{ matrix.target }} -v
+      - name: Setup SDK Bridge
+        id: setup
+        run: |
+          npm run kong -- setup ${{ matrix.target }} -v
+          npm run kong -- bridge_hash ${{ matrix.target }} -v
 
-      - name: Build Bridge Image
-        run: npm run kong -- build ${{ matrix.target }} -v
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/.buildx-cache
+          key: ${{ matrix.target }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ matrix.target }}-buildx-
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: bridges/${{ matrix.target }}-bridge
+          push: false
+          load: true
+          cache-from: type=local,src=${{ runner.temp }}/.buildx-cache
+          cache-to: type=local,dest=${{ runner.temp }}/.buildx-cache-new,mode=max
+          tags: |
+            statsig/sdk-bridge:${{ steps.setup.outputs.hash }}
+            ${{ matrix.target }}-bridge
+
+      - # Temp fix
+          # https://github.com/docker/build-push-action/issues/252
+          # https://github.com/moby/buildkit/issues/1896
+          name: Move Docker Build Cache
+          run: |
+            rm -rf ${{ runner.temp }}/.buildx-cache
+            mv ${{ runner.temp }}/.buildx-cache-new ${{ runner.temp }}/.buildx-cache
 
       - name: Run Tests [Non Rulesets]
         run: npm run kong -- test ${{ matrix.target }} -r -x /rulesets.test
