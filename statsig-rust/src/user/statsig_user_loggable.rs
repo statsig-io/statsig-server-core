@@ -78,7 +78,7 @@ impl<'de> Deserialize<'de> for StatsigUserLoggable {
         Ok(StatsigUserLoggable {
             data: Arc::new(data),
             environment,
-            global_custom: None,
+            global_custom: None, // there is no way to discern between user-defined and global custom fields
         })
     }
 }

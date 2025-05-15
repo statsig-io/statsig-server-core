@@ -1,14 +1,7 @@
-use std::collections::HashMap;
-use std::vec;
-
+use super::StatsigUserLoggable;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::StatsigUser;
 use crate::{evaluation::dynamic_string::DynamicString, Statsig};
-use serde::ser::SerializeMap;
-use serde::Serialize;
-use serde_json::json;
-
-use super::StatsigUserLoggable;
 
 pub type FullUserKey = (
     u64,      // app_version
@@ -129,72 +122,6 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
             .get_from_statsig_env(&field.lowercased_value)
     }
 
-    pub fn create_sampling_key(&self) -> String {
-        let user_ref = self.user_ref;
-
-        let mut user_key = "u:".to_string();
-        if let Some(user_id) = user_ref
-            .data
-            .user_id
-            .as_ref()
-            .and_then(|id| id.string_value.as_ref().map(|s| &s.value))
-        {
-            user_key += user_id;
-        }
-
-        let custom_ids = match user_ref.data.custom_ids.as_ref() {
-            Some(custom_ids) => custom_ids,
-            None => return user_key,
-        };
-
-        for (key, val) in custom_ids {
-            if let Some(dyn_str) = &val.string_value {
-                let string_value = &dyn_str.value;
-                user_key.push_str(&format!("{key}:{string_value};"));
-            }
-        }
-
-        user_key
-    }
-
-    pub fn get_full_user_key(&self) -> FullUserKey {
-        let user = self.user_ref;
-
-        let custom_id_hashes = get_hashes_from_map_field(user.data.custom_ids.as_ref());
-        let private_attr_hashes = get_hashes_from_map_field(user.data.private_attributes.as_ref());
-        let custom_hashes = get_hashes_from_map_field(user.data.custom.as_ref());
-        let statsig_env_hashes = self
-            .statsig_instance
-            .map(|s| s.use_statsig_env(get_hashes_from_map_field))
-            .unwrap_or_default();
-
-        let key: FullUserKey = (
-            get_hash_from_field(&user.data.app_version),
-            get_hash_from_field(&user.data.country),
-            get_hash_from_field(&user.data.email),
-            get_hash_from_field(&user.data.ip),
-            get_hash_from_field(&user.data.locale),
-            get_hash_from_field(&user.data.user_agent),
-            get_hash_from_field(&user.data.user_id),
-            custom_id_hashes,
-            custom_hashes,
-            private_attr_hashes,
-            statsig_env_hashes,
-        );
-
-        key
-    }
-
-    pub fn get_user_id_ref(&self) -> &str {
-        self.user_ref
-            .data
-            .user_id
-            .as_ref()
-            .and_then(|id| id.string_value.as_ref().map(|s| &s.value))
-            .map(|s| s.as_str())
-            .unwrap_or_default()
-    }
-
     pub fn to_loggable(&self) -> StatsigUserLoggable {
         let (environment, global_custom) = match self.statsig_instance {
             Some(statsig) => (
@@ -205,86 +132,5 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
         };
 
         StatsigUserLoggable::new(&self.user_ref.data, environment, global_custom)
-    }
-}
-
-impl Serialize for StatsigUserInternal<'_, '_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let inner_json =
-            serde_json::to_value(self.user_ref.data.as_ref()).map_err(serde::ser::Error::custom)?;
-
-        let mut len = 1;
-        if let serde_json::Value::Object(obj) = &inner_json {
-            len += obj.len();
-        }
-
-        let mut state = serializer.serialize_map(Some(len))?;
-
-        if let serde_json::Value::Object(obj) = &inner_json {
-            for (k, v) in obj {
-                state.serialize_entry(k, v)?;
-            }
-        }
-
-        if let Some(statsig_instance) = self.statsig_instance {
-            statsig_instance.use_global_custom_fields(|global_fields| {
-                if is_none_or_empty(&self.user_ref.data.custom.as_ref())
-                    && is_none_or_empty(&global_fields)
-                {
-                    return Ok(());
-                }
-
-                let mut merged = HashMap::new();
-                if let Some(user_custom) = &self.user_ref.data.custom {
-                    merged.extend(user_custom.iter());
-                }
-
-                if let Some(global) = global_fields {
-                    merged.extend(global.iter());
-                }
-
-                state.serialize_entry("custom", &json!(merged))?;
-
-                Ok(())
-            })?;
-
-            statsig_instance.use_statsig_env(|env| {
-                if let Some(env) = env {
-                    state.serialize_entry("statsigEnvironment", &json!(env))?;
-                }
-
-                Ok(())
-            })?;
-        }
-
-        state.end()
-    }
-}
-
-fn is_none_or_empty(opt_vec: &Option<&HashMap<String, DynamicValue>>) -> bool {
-    match opt_vec {
-        None => true,
-        Some(vec) => vec.is_empty(),
-    }
-}
-
-fn get_hashes_from_map_field(map: Option<&HashMap<String, DynamicValue>>) -> Vec<u64> {
-    let map = match map {
-        Some(m) => m,
-        None => return vec![],
-    };
-
-    let mut values = map.values().map(|v| v.hash_value).collect::<Vec<_>>();
-    values.sort();
-    values
-}
-
-fn get_hash_from_field(field: &Option<DynamicValue>) -> u64 {
-    match field {
-        Some(field) => field.hash_value,
-        None => 0,
     }
 }

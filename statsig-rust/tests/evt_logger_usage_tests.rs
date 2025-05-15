@@ -1,6 +1,7 @@
 mod utils;
 
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
+use more_asserts::{assert_gt, assert_lt};
 use serde_json::json;
 use statsig_rust::{FeatureGateEvaluationOptions, Statsig, StatsigOptions, StatsigUser};
 use std::sync::{atomic::Ordering, Arc};
@@ -193,18 +194,19 @@ async fn test_rule_sampling() {
         let _ = statsig.check_gate(&user, "test_rule_sampling");
     }
 
-    // if the sampling key is changed in any way, what user is sampled will change
-    get_for_user(&statsig, "user_0"); // sampled: first expo
-    get_for_user(&statsig, "user_1"); // not sampled
-    get_for_user(&statsig, "user_186"); // sampled
+    for i in 0..2010 {
+        get_for_user(&statsig, &format!("user_{}", i));
+    }
 
     statsig.shutdown().await.unwrap();
 
     // first expo exists and contains no sampling metadata
     let first_event = logging_adapter.force_get_event_at(0);
     let first_event_metadata = &first_event["statsigMetadata"];
+    let first_event_user = &first_event["user"];
     assert_eq!(first_event["eventName"], "statsig::gate_exposure");
     assert_eq!(first_event_metadata.get("samplingMode"), None);
+    assert_eq!(first_event_user.get("userID"), Some(&json!("user_0")));
 
     // second expo contains the expected metadata
     let second_event = logging_adapter.force_get_event_at(1);
@@ -223,5 +225,8 @@ async fn test_rule_sampling() {
     let event_count = logging_adapter
         .no_diagnostics_logged_event_count
         .load(Ordering::SeqCst);
-    assert_eq!(event_count, 2);
+
+    // 2010 exposures. Sampled at 1 in 201. So we expect ~10 events.
+    assert_gt!(event_count, 2);
+    assert_lt!(event_count, 20);
 }

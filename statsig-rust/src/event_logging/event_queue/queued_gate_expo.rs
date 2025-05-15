@@ -61,7 +61,7 @@ impl<'a> QueuedExposure<'a> for EnqueueGateExpoOp<'a> {
         let mut sampling_key = String::from("n:");
         sampling_key.push_str(gate_name);
         sampling_key.push_str(";u:");
-        sampling_key.push_str(&self.user.create_sampling_key());
+        sampling_key.push_str(&self.user.user_ref.data.create_hash().to_string());
         sampling_key.push_str(";r:");
         sampling_key.push_str(rule_id);
         sampling_key.push_str(";v:");
