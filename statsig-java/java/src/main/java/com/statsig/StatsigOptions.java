@@ -29,6 +29,7 @@ public class StatsigOptions {
                 builder.specsSyncIntervalMs,
                 builder.eventLoggingFlushIntervalMs,
                 builder.eventLoggingMaxQueueSize,
+                builder.eventLoggingMaxPendingBatchQueueSize,
                 builder.initTimeoutMs,
                 builder.environment,
                 builder.outputLoggerLevel.getValue(),
@@ -60,6 +61,7 @@ public class StatsigOptions {
         private long specsSyncIntervalMs;
         private long eventLoggingFlushIntervalMs;
         private long eventLoggingMaxQueueSize;
+        private long eventLoggingMaxPendingBatchQueueSize;
         private long initTimeoutMs;
         private String environment;
         private ObservabilityClient observabilityClient;
@@ -108,6 +110,11 @@ public class StatsigOptions {
 
         public Builder setEventLoggingMaxQueueSize(long eventLoggingMaxQueueSize) {
             this.eventLoggingMaxQueueSize = eventLoggingMaxQueueSize;
+            return this;
+        }
+        
+        public Builder setEventLoggingMaxPendingBatchQueueSize(long eventLoggingMaxPendingBatchQueueSize) {
+            this.eventLoggingMaxPendingBatchQueueSize = eventLoggingMaxPendingBatchQueueSize;
             return this;
         }
 
