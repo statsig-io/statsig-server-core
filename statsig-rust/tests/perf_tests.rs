@@ -4,7 +4,7 @@ use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{Statsig, StatsigOptions, StatsigUser, StatsigUserBuilder};
 use std::cmp::min;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -20,11 +20,10 @@ async fn setup() -> (StatsigUser, Statsig, Arc<MockSpecsAdapter>) {
     let custom_ids: HashMap<String, String> =
         HashMap::from([("companyID".into(), "an_employee".into())]);
 
-    let user = StatsigUser {
-        user_id: Some("user-d".into()),
-        country: Some("GB".into()),
-        ..StatsigUser::with_custom_ids(custom_ids)
-    };
+    let user = StatsigUserBuilder::new_with_user_id("user-d".to_string())
+        .country(Some("GB".into()))
+        .custom_ids(Some(custom_ids))
+        .build();
 
     let mut options = StatsigOptions::new();
     let specs_adapter = Arc::new(MockSpecsAdapter::with_data("tests/data/eval_proj_dcs.json"));

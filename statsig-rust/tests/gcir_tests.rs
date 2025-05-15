@@ -9,19 +9,18 @@ use lazy_static::lazy_static;
 use serde_json::{json, Value};
 use statsig_rust::{
     ClientInitResponseOptions, HashAlgorithm, Statsig, StatsigOptions, StatsigUser,
+    StatsigUserBuilder,
 };
 
 lazy_static! {
-    static ref USER: StatsigUser =  StatsigUser {
-        user_id: Some("9".into()),
-        app_version: Some("1.3".into()),
-        user_agent: Some(
+    static ref USER: StatsigUser =  StatsigUserBuilder::new_with_user_id("9".to_string())
+        .app_version(Some("1.3".into()))
+        .user_agent(Some(
             "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into(),
-        ),
-        ip: Some("1.0.0.0".into()),
-        locale: Some("en_US".into()),
-        ..StatsigUser::with_user_id("a_user_id")
-    };
+        ))
+        .ip(Some("1.0.0.0".into()))
+        .locale(Some("en_US".into()))
+        .build();
 }
 
 async fn setup() -> Value {

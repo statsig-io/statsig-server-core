@@ -1,12 +1,14 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use perf_bench::noop_event_logging_adapter::NoopEventLoggingAdapter;
 use perf_bench::static_specs_adapter::StaticSpecsAdapter;
+use statsig_rust::user::user_data::UserData;
 use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigUser};
 use std::collections::HashMap;
 use std::sync::Arc;
 
 fn create_user() -> StatsigUser {
     StatsigUser {
+      data: Arc::new(UserData {
         user_id: Some(dyn_value!("a_user")),
         email: Some(dyn_value!("daniel@statsig.com")),
         ip: Some(dyn_value!("127.0.0.1")),
@@ -26,6 +28,7 @@ fn create_user() -> StatsigUser {
             "test_private_attribute".to_string(),
             dyn_value!("test_private_attribute_value"),
         )])),
+      })
     }
 }
 
@@ -83,8 +86,8 @@ fn get_client_init_response() {
         }
 
         let mut user_2 = user.clone();
-        user_2.country = Some(dyn_value!("NZ"));
-        user_2.user_id = Some(dyn_value!("b_user"));
+        user_2.set_country("NZ");
+        user_2.set_user_id("b_user");
 
         for _ in 0..10 {
             let _ = statsig.get_client_init_response(&user_2);

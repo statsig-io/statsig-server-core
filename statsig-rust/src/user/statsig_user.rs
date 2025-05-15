@@ -1,41 +1,22 @@
 use crate::dyn_value;
 use crate::evaluation::dynamic_value::DynamicValue;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
-use super::{into_optional::IntoOptional, unit_id::UnitID};
+use super::{into_optional::IntoOptional, unit_id::UnitID, user_data::UserData};
 
-#[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone)]
 pub struct StatsigUser {
-    #[serde(rename = "userID")]
-    pub user_id: Option<DynamicValue>,
-    #[serde(rename = "customIDs")]
-    pub custom_ids: Option<HashMap<String, DynamicValue>>,
-
-    pub email: Option<DynamicValue>,
-    pub ip: Option<DynamicValue>,
-    pub user_agent: Option<DynamicValue>,
-    pub country: Option<DynamicValue>,
-    pub locale: Option<DynamicValue>,
-    pub app_version: Option<DynamicValue>,
-
-    pub custom: Option<HashMap<String, DynamicValue>>,
-
-    #[serde(skip_serializing)]
-    pub private_attributes: Option<HashMap<String, DynamicValue>>,
+    pub data: Arc<UserData>,
 }
 
 impl StatsigUser {
     #[must_use]
     pub fn with_user_id(user_id: impl Into<UnitID>) -> Self {
-        let unit_id = user_id.into();
-        StatsigUser {
+        let unit_id: UnitID = user_id.into();
+        Self::new(UserData {
             user_id: Some(unit_id.into()),
-            ..Self::default()
-        }
+            ..UserData::default()
+        })
     }
 
     #[must_use]
@@ -44,29 +25,20 @@ impl StatsigUser {
         K: Into<String>,
         U: Into<UnitID>,
     {
-        let custom_ids = custom_ids
+        let custom_ids: HashMap<String, DynamicValue> = custom_ids
             .into_iter()
             .map(|(k, v)| (k.into(), v.into().into()))
             .collect();
 
-        StatsigUser {
+        Self::new(UserData {
             custom_ids: Some(custom_ids),
-            ..Self::default()
-        }
+            ..UserData::default()
+        })
     }
 
-    fn default() -> Self {
-        StatsigUser {
-            user_id: None,
-            email: None,
-            ip: None,
-            user_agent: None,
-            country: None,
-            locale: None,
-            app_version: None,
-            custom: None,
-            private_attributes: None,
-            custom_ids: None,
+    pub(crate) fn new(inner: UserData) -> Self {
+        Self {
+            data: Arc::new(inner),
         }
     }
 }
@@ -76,7 +48,8 @@ impl StatsigUser {
 macro_rules! string_field_accessor {
     ($self:ident, $getter_name:ident, $setter_name:ident, $field:ident) => {
         pub fn $getter_name(&self) -> Option<&str> {
-            self.$field
+            self.data
+                .$field
                 .as_ref()?
                 .string_value
                 .as_ref()
@@ -85,11 +58,12 @@ macro_rules! string_field_accessor {
 
         pub fn $setter_name(&mut self, value: impl IntoOptional<String>) {
             let value = value.into_optional();
+            let mut_data = Arc::make_mut(&mut self.data);
             match value {
                 Some(value) => {
-                    self.$field = Some(dyn_value!(value));
+                    mut_data.$field = Some(dyn_value!(value));
                 }
-                None => self.$field = None,
+                None => mut_data.$field = None,
             }
         }
     };
@@ -98,7 +72,7 @@ macro_rules! string_field_accessor {
 macro_rules! map_field_accessor {
     ($self:ident, $getter_name:ident, $setter_name:ident, $field:ident) => {
         pub fn $getter_name(&self) -> Option<&HashMap<String, DynamicValue>> {
-            self.$field.as_ref()
+            self.data.$field.as_ref()
         }
 
         pub fn $setter_name<K, V>(&mut self, value: impl IntoOptional<HashMap<K, V>>)
@@ -106,15 +80,16 @@ macro_rules! map_field_accessor {
             K: Into<String>,
             V: Into<DynamicValue>,
         {
+            let mut_data = Arc::make_mut(&mut self.data);
             let value = match value.into_optional() {
                 Some(value) => value,
                 None => {
-                    self.$field = None;
+                    mut_data.$field = None;
                     return;
                 }
             };
 
-            self.$field = Some(
+            mut_data.$field = Some(
                 value
                     .into_iter()
                     .map(|(k, v)| (k.into(), v.into()))
@@ -126,7 +101,8 @@ macro_rules! map_field_accessor {
 
 impl StatsigUser {
     pub fn get_user_id(&self) -> Option<&str> {
-        self.user_id
+        self.data
+            .user_id
             .as_ref()?
             .string_value
             .as_ref()
@@ -135,11 +111,13 @@ impl StatsigUser {
 
     pub fn set_user_id(&mut self, user_id: impl Into<UnitID>) {
         let unit_id = user_id.into();
-        self.user_id = Some(unit_id.into());
+        let mut_data = Arc::make_mut(&mut self.data);
+        mut_data.user_id = Some(unit_id.into());
     }
 
     pub fn get_custom_ids(&self) -> Option<HashMap<&str, &str>> {
         let mapped = self
+            .data
             .custom_ids
             .as_ref()?
             .iter()
@@ -159,7 +137,8 @@ impl StatsigUser {
             .map(|(k, v)| (k.into(), v.into().into()))
             .collect();
 
-        self.custom_ids = Some(custom_ids);
+        let mut_data = Arc::make_mut(&mut self.data);
+        mut_data.custom_ids = Some(custom_ids);
     }
 
     string_field_accessor!(self, get_email, set_email, email);

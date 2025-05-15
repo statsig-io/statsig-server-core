@@ -207,15 +207,14 @@ async fn test_layer_with_many_params() {
 async fn test_targeted_exp_in_layer_with_holdout() {
     let statsig = setup(None).await;
 
-    let user = StatsigUser {
-        app_version: Some("1.3".into()),
-        user_agent: Some(
+    let user = StatsigUserBuilder::new_with_user_id("9".to_string())
+        .app_version(Some("1.3".into()))
+        .user_agent(Some(
             "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into(),
-        ),
-        ip: Some("1.0.0.0".into()),
-        locale: Some("en_US".into()),
-        ..StatsigUser::with_user_id("9")
-    };
+        ))
+        .ip(Some("1.0.0.0".into()))
+        .locale(Some("en_US".into()))
+        .build();
 
     let experiment = statsig.get_experiment(&user, "targeted_exp_in_layer_with_holdout");
     assert_eq!(experiment.rule_id, "layerAssignment");
@@ -227,15 +226,14 @@ async fn test_targeted_exp_in_layer_with_holdout() {
 async fn test_exp_5050_targeting() {
     let statsig = setup(None).await;
 
-    let user = StatsigUser {
-        app_version: Some("1.3".into()),
-        user_agent: Some(
+    let user = StatsigUserBuilder::new_with_user_id("9".to_string())
+        .app_version(Some("1.3".into()))
+        .user_agent(Some(
             "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into(),
-        ),
-        ip: Some("1.0.0.0".into()),
-        locale: Some("en_US".into()),
-        ..StatsigUser::with_user_id("9")
-    };
+        ))
+        .ip(Some("1.0.0.0".into()))
+        .locale(Some("en_US".into()))
+        .build();
 
     let experiment = statsig.get_experiment(&user, "test_exp_5050_targeting");
     assert_eq!(experiment.rule_id, "targetingGate");
@@ -253,15 +251,14 @@ async fn test_many_rules_ua_parser() {
     };
     let statsig = setup(Some(options)).await;
 
-    let user = StatsigUser {
-        app_version: Some("1.3".into()),
-        ip: Some("1.0.0.0".into()),
-        locale: Some("en_US".into()),
-        user_agent: Some(
+    let user = StatsigUserBuilder::new_with_user_id("123".to_string())
+        .app_version(Some("1.3".into()))
+        .ip(Some("1.0.0.0".into()))
+        .locale(Some("en_US".into()))
+        .user_agent(Some(
             "Mozilla/5.0 (Windows NT 5.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.5414.87 ADG/11.0.4060 Safari/537.36".into(),
-        ),
-        ..StatsigUser::with_user_id("123")
-    };
+        ))
+        .build();
 
     let gate = statsig.get_feature_gate(&user, "test_many_rules");
     assert!(gate.value);

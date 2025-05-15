@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use napi::bindgen_prelude::{Either3, Either4};
 use napi_derive::napi;
 use serde_json::Value;
 use statsig_rust::{
-    dyn_value, log_w, user::unit_id::UnitID, DynamicValue, StatsigUser as StatsigUserActual,
+    dyn_value, log_w, user::user_data::UserData, DynamicValue, StatsigUser as StatsigUserActual,
 };
 
 const TAG: &str = "StatsigUserNapi";
@@ -50,9 +50,12 @@ macro_rules! set_dynamic_value_fields {
     };
 }
 
-fn unidentifiable_user() -> StatsigUserActual {
+fn unidentifiable_user() -> UserData {
     log_w!(TAG, "Must pass a valid user with a userID or customID for the server SDK to work. See https://docs.statsig.com/messages/serverRequiredUserID for more details.");
-    StatsigUserActual::with_user_id("".to_string())
+    UserData {
+        user_id: Some(dyn_value!("")),
+        ..UserData::default()
+    }
 }
 
 #[napi]
@@ -64,25 +67,22 @@ impl StatsigUser {
         )]
         args: StatsigUserArgs,
     ) -> Self {
-        let mut inner = match (&args.user_id, &args.custom_ids) {
-            (None, None) => unidentifiable_user(),
-            _ => {
-                let user_id = args.user_id.unwrap_or_default();
-                match args.custom_ids {
-                    Some(custom_ids) => {
-                        let custom_ids = Self::convert_custom_ids(custom_ids);
-                        let mut user = StatsigUserActual::with_custom_ids(custom_ids);
-                        user.set_user_id(user_id);
-                        user
-                    }
-                    None => StatsigUserActual::with_user_id(user_id),
-                }
-            }
-        };
+        let mut user_data = UserData::default();
+        if args.user_id.is_none() && args.custom_ids.is_none() {
+            user_data = unidentifiable_user();
+        }
+
+        if let Some(user_id) = args.user_id {
+            user_data.user_id = Some(dyn_value!(user_id));
+        }
+
+        if let Some(custom_ids) = args.custom_ids {
+            user_data.custom_ids = Some(Self::convert_custom_ids(custom_ids));
+        }
 
         set_dynamic_value_fields!(
             args,
-            inner,
+            user_data,
             email,
             ip,
             user_agent,
@@ -91,10 +91,14 @@ impl StatsigUser {
             app_version
         );
 
-        inner.custom = Self::convert_to_dynamic_value_map(args.custom);
-        inner.private_attributes = Self::convert_to_dynamic_value_map(args.private_attributes);
+        user_data.custom = Self::convert_to_dynamic_value_map(args.custom);
+        user_data.private_attributes = Self::convert_to_dynamic_value_map(args.private_attributes);
 
-        Self { inner }
+        Self {
+            inner: StatsigUserActual {
+                data: Arc::new(user_data),
+            },
+        }
     }
 
     #[napi(js_name = "withUserID")]
@@ -112,7 +116,12 @@ impl StatsigUser {
         >,
     ) -> Self {
         Self {
-            inner: StatsigUserActual::with_custom_ids(Self::convert_custom_ids(custom_ids)),
+            inner: StatsigUserActual {
+                data: Arc::new(UserData {
+                    custom_ids: Some(Self::convert_custom_ids(custom_ids)),
+                    ..UserData::default()
+                }),
+            },
         }
     }
 
@@ -122,16 +131,16 @@ impl StatsigUser {
 
     fn convert_custom_ids(
         custom_ids_arg: HashMap<String, Either3<String, f64, i64>>,
-    ) -> HashMap<String, UnitID> {
+    ) -> HashMap<String, DynamicValue> {
         custom_ids_arg
             .into_iter()
             .map(|(key, value)| {
                 (
                     key,
                     match value {
-                        Either3::A(v) => UnitID::String(v.clone()),
-                        Either3::B(v) => UnitID::Float(v),
-                        Either3::C(v) => UnitID::Int(v),
+                        Either3::A(v) => dyn_value!(v),
+                        Either3::B(v) => dyn_value!(v),
+                        Either3::C(v) => dyn_value!(v),
                     },
                 )
             })
@@ -175,7 +184,7 @@ macro_rules! add_hashmap_getter_setter {
             pub fn $field_accessor(&self) -> Option<HashMap<String, String>> {
                 let mut result: HashMap<String, String> = HashMap::new();
 
-                let value_map = match &self.inner.$field_accessor {
+                let value_map = match &self.inner.data.$field_accessor {
                     Some(value) => value,
                     _ => return None,
                 };
@@ -194,7 +203,8 @@ macro_rules! add_hashmap_getter_setter {
                 let value = match value {
                     Some(value) => value,
                     _ => {
-                        self.inner.$field_accessor = None;
+                        let mut_data = Arc::make_mut(&mut self.inner.data);
+                        mut_data.$field_accessor = None;
                         return;
                     }
                 };
@@ -213,7 +223,8 @@ macro_rules! add_hashmap_getter_setter {
                     converted.insert(key, DynamicValue::from(value));
                 }
 
-                self.inner.$field_accessor = Some(converted);
+                let mut_data = Arc::make_mut(&mut self.inner.data);
+                mut_data.$field_accessor = Some(converted);
             }
         }
     };
@@ -225,7 +236,7 @@ macro_rules! add_string_getter_setter {
         impl StatsigUser {
             #[napi(getter, js_name = $field_name)]
             pub fn $field_accessor(&self) -> Option<String> {
-                match &self.inner.$field_accessor {
+                match &self.inner.data.$field_accessor {
                     Some(value) => value.string_value.clone().map(|s| s.value),
                     _ => None,
                 }
@@ -234,8 +245,14 @@ macro_rules! add_string_getter_setter {
             #[napi(setter, js_name = $field_name)]
             pub fn $setter_name(&mut self, value: Value) {
                 match value {
-                    Value::Null => self.inner.$field_accessor = None,
-                    _ => self.inner.$field_accessor = Some(value.into()),
+                    Value::Null => {
+                        let mut_data = Arc::make_mut(&mut self.inner.data);
+                        mut_data.$field_accessor = None;
+                    }
+                    _ => {
+                        let mut_data = Arc::make_mut(&mut self.inner.data);
+                        mut_data.$field_accessor = Some(dyn_value!(value));
+                    }
                 }
             }
         }

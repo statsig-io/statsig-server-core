@@ -136,7 +136,7 @@ describe('StatsigUser', () => {
     const event = await getLastLoggedEvent();
     expect(event?.eventName).toEqual('statsig::gate_exposure');
     expect(event?.metadata?.gate).toEqual('test-gate');
-    expect(event?.user?.userID).toBe('');
+    expect(event?.user?.userID).toBeUndefined();
     expect(event?.user?.customIDs?.myCustomID).toEqual('c-custom-id');
     expect(event?.user?.email).toEqual('c-user@example.com');
   });

@@ -1,15 +1,17 @@
 use serde_json::json;
-use statsig_rust::StatsigUser;
+use statsig_rust::StatsigUserBuilder;
 use std::collections::HashMap;
 
 #[tokio::test]
 async fn test_field_names() {
-    let user = StatsigUser {
-        custom_ids: Some(HashMap::from([("podId".into(), "my_pod".into())])),
-        ..StatsigUser::with_user_id("a_user_id")
-    };
+    let user = StatsigUserBuilder::new_with_custom_ids(HashMap::from([(
+        "podId".to_string(),
+        "my_pod".to_string(),
+    )]))
+    .user_id(Some("a_user_id".to_string()))
+    .build();
 
-    let result = json!(user).as_object().unwrap().clone();
+    let result = json!(user.data.as_ref()).as_object().unwrap().clone();
 
     assert!(result.contains_key("customIDs"));
     assert!(result.contains_key("userID"));

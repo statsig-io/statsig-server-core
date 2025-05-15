@@ -305,7 +305,7 @@ fn check_user_id_override<T, F>(
 where
     F: Fn(&T, &mut EvaluatorResult<'_>),
 {
-    let user_id = match &user.user_id {
+    let user_id = match &user.data.user_id {
         Some(id) => id,
         None => return false,
     };
@@ -335,7 +335,7 @@ fn check_custom_ids_override<T, F>(
 where
     F: Fn(&T, &mut EvaluatorResult<'_>),
 {
-    let custom_ids = match &user.custom_ids {
+    let custom_ids = match &user.data.custom_ids {
         Some(ids) => ids,
         None => return false,
     };

@@ -12,27 +12,23 @@ use statsig_rust::{
 use std::{collections::HashMap, sync::Arc, time::Instant};
 
 lazy_static::lazy_static! {
-    static ref FULL_USER: StatsigUser = StatsigUser {
-        user_id: Some(dyn_value!("a_user")),
-        email: Some(dyn_value!("daniel@statsig.com")),
-        ip: Some(dyn_value!("127.0.0.1")),
-        user_agent: Some(dyn_value!("statsig-rust/0.1.0")),
-        country: Some(dyn_value!("US")),
-        locale: Some(dyn_value!("en-US")),
-        app_version: Some(dyn_value!("1.0.0")),
-        custom_ids: Some(HashMap::from([
-            ("companyID".into(), dyn_value!("statsig")),
-            ("groupID".to_string(), dyn_value!("sdk_team"),
-        )])),
-        custom: Some(HashMap::from([(
+    static ref FULL_USER: StatsigUser = StatsigUserBuilder::new_with_user_id("a_user".to_string())
+        .email(Some("daniel@statsig.com".into()))
+        .ip(Some("127.0.0.1".into()))
+        .user_agent(Some("statsig-rust/0.1.0".into()))
+        .country(Some("US".into()))
+        .locale(Some("en-US".into()))
+        .app_version(Some("1.0.0".into()))
+        .custom_ids(Some(HashMap::from([("companyID", "statsig")])))
+        .custom(Some(HashMap::from([(
             "test_custom_field".to_string(),
             dyn_value!("test_custom_field_value"),
-        )])),
-        private_attributes: Some(HashMap::from([(
+        )])))
+        .private_attributes(Some(HashMap::from([(
             "test_private_attribute".to_string(),
             dyn_value!("test_private_attribute_value"),
-        )])),
-    };
+        )])))
+        .build();
 }
 
 #[test]
@@ -66,30 +62,32 @@ fn test_get_full_user_key_mismatch_for_multiple_users() {
 
 #[test]
 fn test_get_full_user_key_mismatch_for_almost_identical_users() {
-    let user_data1 = FULL_USER.clone();
-    let mut user_data2 = FULL_USER.clone();
-    user_data2.custom_ids = Some(HashMap::from([(
-        "companyID".to_string(),
-        dyn_value!("statsig_2"),
-    )]));
-    let user1 = StatsigUserInternal::new(&user_data1, None);
-    let user2 = StatsigUserInternal::new(&user_data2, None);
+    let user1 = FULL_USER.clone();
+    let mut user2 = FULL_USER.clone();
+    user2.set_custom_ids(HashMap::from([("companyID", "statsig_2")]));
+
+    let user1 = StatsigUserInternal::new(&user1, None);
+    let user2 = StatsigUserInternal::new(&user2, None);
 
     assert_ne!(user1.get_full_user_key(), user2.get_full_user_key());
 }
 
 #[test]
 fn test_get_full_user_key_matches_regardless_of_sorting() {
-    let user_data = FULL_USER.clone();
-    let mut user_data2 = FULL_USER.clone();
+    let mut user1 = FULL_USER.clone();
+    let mut user2 = FULL_USER.clone();
 
-    let mut custom_ids = HashMap::new();
-    custom_ids.insert("groupID".to_string(), dyn_value!("sdk_team"));
-    custom_ids.insert("companyID".to_string(), dyn_value!("statsig"));
+    user1.set_custom_ids(HashMap::from([
+        ("companyID", "statsig"),
+        ("groupID", "sdk_team"),
+    ]));
+    user2.set_custom_ids(HashMap::from([
+        ("groupID", "sdk_team"),
+        ("companyID", "statsig"),
+    ]));
 
-    user_data2.custom_ids = Some(custom_ids);
-    let user1 = StatsigUserInternal::new(&user_data, None);
-    let user2 = StatsigUserInternal::new(&user_data2, None);
+    let user1 = StatsigUserInternal::new(&user1, None);
+    let user2 = StatsigUserInternal::new(&user2, None);
 
     assert_eq!(user1.get_full_user_key(), user2.get_full_user_key());
 }
@@ -168,10 +166,9 @@ fn test_loggable_strips_private_attributes() {
     let mut private_attrs = HashMap::new();
     private_attrs.insert("secret".to_string(), DynamicValue::from("sensitive_data"));
 
-    let user = StatsigUser {
-        private_attributes: Some(private_attrs),
-        ..StatsigUser::with_user_id("test_user".to_string())
-    };
+    let user = StatsigUserBuilder::new_with_user_id("test_user".to_string())
+        .private_attributes(Some(private_attrs))
+        .build();
 
     let user_internal = StatsigUserInternal::new(&user, None);
     let loggable = user_internal.to_loggable();
@@ -289,27 +286,27 @@ fn test_serialization_with_env() {
 
 #[test]
 fn test_serialization_has_correct_keys() {
-    let user = StatsigUser {
-        custom: Some(HashMap::from([(
+    let user = StatsigUserBuilder::new_with_user_id("test_user_id".to_string())
+        .custom(Some(HashMap::from([(
             "test_custom_field".to_string(),
             DynamicValue::from("test_custom_field_value"),
-        )])),
-        private_attributes: Some(HashMap::from([(
+        )])))
+        .private_attributes(Some(HashMap::from([(
             "test_private_attribute".to_string(),
             DynamicValue::from("test_private_attribute_value"),
-        )])),
-        email: Some("test_email".into()),
-        ip: Some("test_ip".into()),
-        user_agent: Some("test_user_agent".into()),
-        country: Some("test_country".into()),
-        locale: Some("test_locale".into()),
-        app_version: Some("test_app_version".into()),
-        custom_ids: Some(HashMap::from([(
+        )])))
+        .email(Some("test_email".into()))
+        .ip(Some("test_ip".into()))
+        .user_agent(Some("test_user_agent".into()))
+        .country(Some("test_country".into()))
+        .locale(Some("test_locale".into()))
+        .app_version(Some("test_app_version".into()))
+        .custom_ids(Some(HashMap::from([(
             "test_custom_id".to_string(),
-            DynamicValue::from("test_custom_id_value"),
-        )])),
-        ..StatsigUser::with_user_id("test_user_id".to_string())
-    };
+            "test_custom_id_value".to_string(),
+        )])))
+        .build();
+
     let user_internal = StatsigUserInternal::new(&user, None);
     let deserialized = serialize_and_deserialize(&user_internal);
 
@@ -330,10 +327,9 @@ fn test_serialization_has_correct_keys() {
 // ---------------------------------------------------------------------------------------------- [Helpers]
 
 fn create_test_user(custom_fields: Option<HashMap<String, DynamicValue>>) -> StatsigUser {
-    StatsigUser {
-        custom: custom_fields,
-        ..StatsigUser::with_user_id("test_user_id".to_string())
-    }
+    StatsigUserBuilder::new_with_user_id("test_user_id".to_string())
+        .custom(custom_fields)
+        .build()
 }
 
 fn create_statsig_instance(

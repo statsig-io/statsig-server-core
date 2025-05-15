@@ -1,7 +1,9 @@
 use perf_bench::{
     noop_event_logging_adapter::NoopEventLoggingAdapter, static_specs_adapter::StaticSpecsAdapter,
 };
-use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigRuntime, StatsigUser};
+use statsig_rust::{
+    dyn_value, user::user_data::UserData, Statsig, StatsigOptions, StatsigRuntime, StatsigUser,
+};
 use std::{
     collections::HashMap,
     sync::Arc,
@@ -92,24 +94,26 @@ async fn profile_gate_checks(gate_names: &[String]) {
 
 fn create_user() -> StatsigUser {
     StatsigUser {
-        user_id: Some(dyn_value!("a_user")),
-        email: Some(dyn_value!("daniel@statsig.com")),
-        ip: Some(dyn_value!("127.0.0.1")),
-        user_agent: Some("Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into()),
-        country: Some(dyn_value!("US")),
-        locale: Some(dyn_value!("en-US")),
-        app_version: Some(dyn_value!("1.0.0")),
-        custom_ids: Some(HashMap::from([
-            ("companyID".into(), dyn_value!("statsig")),
-            ("groupID".to_string(), dyn_value!("sdk_team"),
-        )])),
-        custom: Some(HashMap::from([(
-            "test_custom_field".to_string(),
-            dyn_value!("test_custom_field_value"),
-        )])),
-        private_attributes: Some(HashMap::from([(
-            "test_private_attribute".to_string(),
-            dyn_value!("test_private_attribute_value"),
-        )])),
+        data: Arc::new(UserData {
+            user_id: Some(dyn_value!("a_user")),
+            email: Some(dyn_value!("daniel@statsig.com")),
+            ip: Some(dyn_value!("127.0.0.1")),
+            user_agent: Some("Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into()),
+            country: Some(dyn_value!("US")),
+            locale: Some(dyn_value!("en-US")),
+            app_version: Some(dyn_value!("1.0.0")),
+            custom_ids: Some(HashMap::from([
+                ("companyID".into(), dyn_value!("statsig")),
+                ("groupID".to_string(), dyn_value!("sdk_team"),
+            )])),
+            custom: Some(HashMap::from([(
+                "test_custom_field".to_string(),
+                dyn_value!("test_custom_field_value"),
+            )])),
+            private_attributes: Some(HashMap::from([(
+                "test_private_attribute".to_string(),
+                dyn_value!("test_private_attribute_value"),
+            )])),
+        }),
     }
 }

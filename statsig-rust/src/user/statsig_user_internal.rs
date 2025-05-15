@@ -24,25 +24,24 @@ pub type FullUserKey = (
 
 #[derive(Clone)]
 pub struct StatsigUserInternal<'statsig, 'user> {
-    pub user_data: &'user StatsigUser,
-
+    pub user_ref: &'user StatsigUser,
     pub statsig_instance: Option<&'statsig Statsig>,
 }
 
 impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
     pub fn new(user: &'user StatsigUser, statsig_instance: Option<&'statsig Statsig>) -> Self {
         Self {
-            user_data: user,
+            user_ref: user,
             statsig_instance,
         }
     }
 
     pub fn get_unit_id(&self, id_type: &DynamicString) -> Option<&DynamicValue> {
         if id_type.lowercased_value.eq("userid") {
-            return self.user_data.user_id.as_ref();
+            return self.user_ref.data.user_id.as_ref();
         }
 
-        let custom_ids = self.user_data.custom_ids.as_ref()?;
+        let custom_ids = self.user_ref.data.custom_ids.as_ref()?;
 
         if let Some(custom_id) = custom_ids.get(&id_type.value) {
             return Some(custom_id);
@@ -57,13 +56,13 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
         let lowered_field = &field.lowercased_value;
 
         let str_value = match lowered_field as &str {
-            "userid" => &self.user_data.user_id,
-            "email" => &self.user_data.email,
-            "ip" => &self.user_data.ip,
-            "country" => &self.user_data.country,
-            "locale" => &self.user_data.locale,
-            "appversion" => &self.user_data.app_version,
-            "useragent" => &self.user_data.user_agent,
+            "userid" => &self.user_ref.data.user_id,
+            "email" => &self.user_ref.data.email,
+            "ip" => &self.user_ref.data.ip,
+            "country" => &self.user_ref.data.country,
+            "locale" => &self.user_ref.data.locale,
+            "appversion" => &self.user_ref.data.app_version,
+            "useragent" => &self.user_ref.data.user_agent,
             _ => &None,
         };
 
@@ -71,7 +70,7 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
             return str_value.as_ref();
         }
 
-        if let Some(custom) = &self.user_data.custom {
+        if let Some(custom) = &self.user_ref.data.custom {
             if let Some(found) = custom.get(&field.value) {
                 return Some(found);
             }
@@ -91,7 +90,7 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
             }
         }
 
-        if let Some(private_attributes) = &self.user_data.private_attributes {
+        if let Some(private_attributes) = &self.user_ref.data.private_attributes {
             if let Some(found) = private_attributes.get(&field.value) {
                 return Some(found);
             }
@@ -101,9 +100,9 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
         }
 
         let str_value_alt = match lowered_field as &str {
-            "user_id" => &self.user_data.user_id,
-            "app_version" => &self.user_data.app_version,
-            "user_agent" => &self.user_data.user_agent,
+            "user_id" => &self.user_ref.data.user_id,
+            "app_version" => &self.user_ref.data.app_version,
+            "user_agent" => &self.user_ref.data.user_agent,
             _ => &None,
         };
 
@@ -129,10 +128,11 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
     }
 
     pub fn create_sampling_key(&self) -> String {
-        let user_data = self.user_data;
+        let user_ref = self.user_ref;
 
         let mut user_key = "u:".to_string();
-        if let Some(user_id) = user_data
+        if let Some(user_id) = user_ref
+            .data
             .user_id
             .as_ref()
             .and_then(|id| id.string_value.as_ref().map(|s| &s.value))
@@ -140,7 +140,7 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
             user_key += user_id;
         }
 
-        let custom_ids = match user_data.custom_ids.as_ref() {
+        let custom_ids = match user_ref.data.custom_ids.as_ref() {
             Some(custom_ids) => custom_ids,
             None => return user_key,
         };
@@ -156,24 +156,24 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
     }
 
     pub fn get_full_user_key(&self) -> FullUserKey {
-        let user = self.user_data;
+        let user = self.user_ref;
 
-        let custom_id_hashes = get_hashes_from_map_field(user.custom_ids.as_ref());
-        let private_attr_hashes = get_hashes_from_map_field(user.private_attributes.as_ref());
-        let custom_hashes = get_hashes_from_map_field(user.custom.as_ref());
+        let custom_id_hashes = get_hashes_from_map_field(user.data.custom_ids.as_ref());
+        let private_attr_hashes = get_hashes_from_map_field(user.data.private_attributes.as_ref());
+        let custom_hashes = get_hashes_from_map_field(user.data.custom.as_ref());
         let statsig_env_hashes = self
             .statsig_instance
             .map(|s| s.use_statsig_env(get_hashes_from_map_field))
             .unwrap_or_default();
 
         let key: FullUserKey = (
-            get_hash_from_field(&user.app_version),
-            get_hash_from_field(&user.country),
-            get_hash_from_field(&user.email),
-            get_hash_from_field(&user.ip),
-            get_hash_from_field(&user.locale),
-            get_hash_from_field(&user.user_agent),
-            get_hash_from_field(&user.user_id),
+            get_hash_from_field(&user.data.app_version),
+            get_hash_from_field(&user.data.country),
+            get_hash_from_field(&user.data.email),
+            get_hash_from_field(&user.data.ip),
+            get_hash_from_field(&user.data.locale),
+            get_hash_from_field(&user.data.user_agent),
+            get_hash_from_field(&user.data.user_id),
             custom_id_hashes,
             custom_hashes,
             private_attr_hashes,
@@ -184,7 +184,8 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
     }
 
     pub fn get_user_id_ref(&self) -> &str {
-        self.user_data
+        self.user_ref
+            .data
             .user_id
             .as_ref()
             .and_then(|id| id.string_value.as_ref().map(|s| &s.value))
@@ -198,7 +199,8 @@ impl Serialize for StatsigUserInternal<'_, '_> {
     where
         S: serde::Serializer,
     {
-        let inner_json = serde_json::to_value(self.user_data).map_err(serde::ser::Error::custom)?;
+        let inner_json =
+            serde_json::to_value(self.user_ref.data.as_ref()).map_err(serde::ser::Error::custom)?;
 
         let mut len = 1;
         if let serde_json::Value::Object(obj) = &inner_json {
@@ -215,14 +217,14 @@ impl Serialize for StatsigUserInternal<'_, '_> {
 
         if let Some(statsig_instance) = self.statsig_instance {
             statsig_instance.use_global_custom_fields(|global_fields| {
-                if is_none_or_empty(&self.user_data.custom.as_ref())
+                if is_none_or_empty(&self.user_ref.data.custom.as_ref())
                     && is_none_or_empty(&global_fields)
                 {
                     return Ok(());
                 }
 
                 let mut merged = HashMap::new();
-                if let Some(user_custom) = &self.user_data.custom {
+                if let Some(user_custom) = &self.user_ref.data.custom {
                     merged.extend(user_custom.iter());
                 }
 

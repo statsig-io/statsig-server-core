@@ -4,9 +4,9 @@ use utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use utils::mock_specs_adapter::MockSpecsAdapter;
 
 use statsig_rust::{
-    dyn_value, evaluation::evaluation_types::AnyConfigEvaluation, hashing::djb2,
-    output_logger::LogLevel, DynamicValue, SpecsSource, Statsig, StatsigHttpIdListsAdapter,
-    StatsigOptions, StatsigUser,
+    evaluation::evaluation_types::AnyConfigEvaluation, hashing::djb2, output_logger::LogLevel,
+    SpecsSource, Statsig, StatsigHttpIdListsAdapter, StatsigOptions, StatsigUser,
+    StatsigUserBuilder,
 };
 
 fn get_sdk_key() -> String {
@@ -17,10 +17,9 @@ fn get_sdk_key() -> String {
 
 #[tokio::test]
 async fn test_check_gate() {
-    let user = StatsigUser {
-        email: Some(dyn_value!("daniel@statsig.com")),
-        ..StatsigUser::with_user_id("a-user".to_string())
-    };
+    let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())
+        .email(Some("daniel@statsig.com".to_string()))
+        .build();
 
     let statsig = Statsig::new(&get_sdk_key(), None);
     statsig.initialize().await.unwrap();
@@ -32,13 +31,12 @@ async fn test_check_gate() {
 
 #[tokio::test]
 async fn test_check_gate_id_list() {
-    let user = StatsigUser {
-        custom_ids: Some(HashMap::from([(
+    let user = StatsigUserBuilder::new_with_user_id("marcos_1".to_string())
+        .custom_ids(Some(HashMap::from([(
             "companyID".to_string(),
-            dyn_value!("marcos_1"),
-        )])),
-        ..StatsigUser::with_user_id("marcos_1".to_string())
-    };
+            "marcos_1".to_string(),
+        )])))
+        .build();
 
     let mut opts = StatsigOptions::new();
 
@@ -55,10 +53,9 @@ async fn test_check_gate_id_list() {
 
 #[tokio::test]
 async fn test_get_experiment() {
-    let user = StatsigUser {
-        email: Some(dyn_value!("daniel@statsig.com")),
-        ..StatsigUser::with_user_id("a-user".to_string())
-    };
+    let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())
+        .email(Some("daniel@statsig.com".to_string()))
+        .build();
 
     let statsig = Statsig::new(&get_sdk_key(), None);
     statsig.initialize().await.unwrap();
@@ -71,10 +68,9 @@ async fn test_get_experiment() {
 
 #[tokio::test]
 async fn test_gcir() {
-    let user = StatsigUser {
-        email: Some(dyn_value!("daniel@statsig.com")),
-        ..StatsigUser::with_user_id("a-user".to_string())
-    };
+    let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())
+        .email(Some("daniel@statsig.com".to_string()))
+        .build();
     let opts = StatsigOptions {
         output_log_level: Some(LogLevel::Debug),
         ..StatsigOptions::new()
@@ -107,11 +103,12 @@ async fn test_gcir() {
 #[tokio::test]
 async fn test_user_agent_and_country_lookup() {
     // Default behavior
-    let user = StatsigUser {
-        email: Some(dyn_value!("daniel@statsig.com")),
-        user_agent: Some(DynamicValue::from("Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1")),
-        ..StatsigUser::with_user_id("a-user".to_string())
-    };
+    let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())
+        .email(Some("daniel@statsig.com".to_string()))
+        .user_agent(Some(
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into(),
+        ))
+        .build();
     let opts = StatsigOptions {
         output_log_level: Some(LogLevel::Debug),
         ..StatsigOptions::new()
@@ -124,11 +121,12 @@ async fn test_user_agent_and_country_lookup() {
     assert!(statsig.check_gate(&user, "test_ua"));
 
     // Wait for ua and ip to initialize
-    let user = StatsigUser {
-            email: Some(dyn_value!("daniel@statsig.com")),
-            user_agent: Some(DynamicValue::from("Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1")),
-            ..StatsigUser::with_user_id("a-user".to_string())
-        };
+    let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())
+        .email(Some("daniel@statsig.com".to_string()))
+        .user_agent(Some(
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into(),
+        ))
+        .build();
     let opts = StatsigOptions {
         output_log_level: Some(LogLevel::Debug),
         wait_for_country_lookup_init: Some(true),
@@ -144,11 +142,12 @@ async fn test_user_agent_and_country_lookup() {
 #[tokio::test]
 async fn test_user_agent_disabled() {
     // Properly disable
-    let user = StatsigUser {
-        email: Some(dyn_value!("daniel@statsig.com")),
-        user_agent: Some(DynamicValue::from("Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1")),
-        ..StatsigUser::with_user_id("a-user".to_string())
-    };
+    let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())
+        .email(Some("daniel@statsig.com".to_string()))
+        .user_agent(Some(
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into(),
+        ))
+        .build();
     let opts_3 = StatsigOptions {
         output_log_level: Some(LogLevel::Debug),
         wait_for_country_lookup_init: Some(true),

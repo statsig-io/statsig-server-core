@@ -1,4 +1,5 @@
 use super::unit_id::UnitID;
+use super::user_data::UserData;
 use super::StatsigUser;
 use crate::dyn_value;
 use crate::evaluation::dynamic_value::DynamicValue;
@@ -153,7 +154,7 @@ impl StatsigUserBuilder {
     }
 
     pub fn build(self) -> StatsigUser {
-        StatsigUser {
+        let data = UserData {
             user_id: self.user_id.map(|u| u.into()),
             email: self.email,
             ip: self.ip,
@@ -166,7 +167,9 @@ impl StatsigUserBuilder {
             custom_ids: self
                 .custom_ids
                 .map(|m| m.into_iter().map(|(k, v)| (k, v.into())).collect()),
-        }
+        };
+
+        StatsigUser::new(data)
     }
 }
 

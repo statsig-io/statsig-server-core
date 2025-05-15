@@ -246,21 +246,18 @@ fn try_apply_override(
     };
 
     match spec_type {
-        SpecType::Gate => adapter.get_gate_override(ctx.user.user_data, spec_name, &mut ctx.result),
+        SpecType::Gate => adapter.get_gate_override(ctx.user.user_ref, spec_name, &mut ctx.result),
 
         SpecType::DynamicConfig => {
-            adapter.get_dynamic_config_override(ctx.user.user_data, spec_name, &mut ctx.result)
+            adapter.get_dynamic_config_override(ctx.user.user_ref, spec_name, &mut ctx.result)
         }
 
-        SpecType::Experiment => adapter.get_experiment_override(
-            ctx.user.user_data,
-            spec_name,
-            &mut ctx.result,
-            opt_spec,
-        ),
+        SpecType::Experiment => {
+            adapter.get_experiment_override(ctx.user.user_ref, spec_name, &mut ctx.result, opt_spec)
+        }
 
         SpecType::Layer => {
-            adapter.get_layer_override(ctx.user.user_data, spec_name, &mut ctx.result)
+            adapter.get_layer_override(ctx.user.user_ref, spec_name, &mut ctx.result)
         }
     }
 }

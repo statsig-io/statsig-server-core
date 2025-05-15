@@ -205,7 +205,7 @@ impl GCIRFormatter {
 fn get_evaluated_keys(user_internal: &StatsigUserInternal) -> HashMap<String, String> {
     let mut evaluated_keys = HashMap::new();
 
-    if let Some(user_id) = user_internal.user_data.user_id.as_ref() {
+    if let Some(user_id) = user_internal.user_ref.data.user_id.as_ref() {
         evaluated_keys.insert(
             "userID".to_string(),
             user_id
@@ -216,7 +216,7 @@ fn get_evaluated_keys(user_internal: &StatsigUserInternal) -> HashMap<String, St
         );
     }
 
-    if let Some(custom_ids) = user_internal.user_data.custom_ids.as_ref() {
+    if let Some(custom_ids) = user_internal.user_ref.data.custom_ids.as_ref() {
         for (key, value) in custom_ids {
             evaluated_keys.insert(
                 key.clone(),
