@@ -1,0 +1,77 @@
+name: Kong
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  test_api_key: ${{ secrets.KONG_SERVER_SDK_KEY }}
+  test_client_key: ${{ secrets.KONG_CLIENT_SDK_KEY }}
+  REPO_PAT: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
+  FORCE_COLOR: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone Kong Repo
+        run: git clone https://oauth2:$REPO_PAT@github.com/statsig-io/kong.git .
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Cache Scrapi Responses
+        run: |
+          npm ci
+          npm run kong -- cache -w -v
+
+      - name: Save Scrapi Responses to Github Cache
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/kong/cache
+          key: scrapi-cache-${{ github.run_id }}-${{ github.run_attempt }}
+
+  # ---------------------------------------------------------------- [ Server Core ]
+
+  core-rust:
+    needs: cache
+    uses: ./.github/workflows/kong_task.yml
+    secrets: inherit
+    with:
+      sdk: core-rust
+
+  core-napi:
+    needs: cache
+    uses: ./.github/workflows/kong_task.yml
+    secrets: inherit
+    with:
+      sdk: core-napi
+
+  core-python:
+    needs: cache
+    uses: ./.github/workflows/kong_task.yml
+    secrets: inherit
+    with:
+      sdk: core-python
+
+  core-php:
+    needs: cache
+    uses: ./.github/workflows/kong_task.yml
+    secrets: inherit
+    with:
+      sdk: core-php 
+
+  core-java:
+    needs: cache
+    uses: ./.github/workflows/kong_task.yml
+    secrets: inherit  
+    with:
+      sdk: core-java
