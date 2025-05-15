@@ -22,6 +22,18 @@ public class EvaluationDetails {
      */
     public String reason;
 
+    public String getReason() {
+        return reason;
+    }
+
+    public long getLcut() {
+        return lcut;
+    }
+
+    public long getReceivedAt() {
+        return receivedAt;
+    }
+
     EvaluationDetails(long lcut, long receivedAt, String reason) {
         this.lcut = lcut;
         this.receivedAt = receivedAt;

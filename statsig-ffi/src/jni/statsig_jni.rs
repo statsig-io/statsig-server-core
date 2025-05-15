@@ -134,7 +134,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigShutdown(
 
     statsig.statsig_runtime.get_handle().block_on(async move {
         if let Err(e) = statsig.shutdown().await {
-            log_e!(TAG, "Failed to gracefully shutdown StatsigPy: {}", e);
+            log_e!(TAG, "Failed to gracefully shutdown Statsig: {}", e);
         }
 
         let mut env = vm.attach_current_thread().unwrap();
