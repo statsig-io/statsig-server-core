@@ -63,7 +63,7 @@ impl StatsigEventInternal {
                 metadata: Some(metadata),
                 statsig_metadata: None,
             },
-            user: StatsigUserLoggable::null_user(),
+            user: StatsigUserLoggable::null(),
             time: Utc::now().timestamp_millis() as u64,
             secondary_exposures: None,
         }
@@ -84,7 +84,7 @@ impl StatsigEventInternal {
 
         StatsigEventInternal {
             event_data: event,
-            user: StatsigUserLoggable::null_user(),
+            user: StatsigUserLoggable::null(),
             time: Utc::now().timestamp_millis() as u64,
             secondary_exposures: None,
         }

@@ -8,6 +8,8 @@ use serde::ser::SerializeMap;
 use serde::Serialize;
 use serde_json::json;
 
+use super::StatsigUserLoggable;
+
 pub type FullUserKey = (
     u64,      // app_version
     u64,      // country
@@ -191,6 +193,18 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
             .and_then(|id| id.string_value.as_ref().map(|s| &s.value))
             .map(|s| s.as_str())
             .unwrap_or_default()
+    }
+
+    pub fn to_loggable(&self) -> StatsigUserLoggable {
+        let (environment, global_custom) = match self.statsig_instance {
+            Some(statsig) => (
+                statsig.use_statsig_env(|e| e.cloned()),
+                statsig.use_global_custom_fields(|gc| gc.cloned()),
+            ),
+            None => (None, None),
+        };
+
+        StatsigUserLoggable::new(&self.user_ref.data, environment, global_custom)
     }
 }
 

@@ -188,7 +188,7 @@ fn create_merge_key(event: &StatsigEventInternal) -> String {
     format!(
         "{}|{}|{}",
         event.event_data.event_name,
-        event.user.data.value,
+        event.user.data.create_hash(),
         metadata_parts.concat()
     )
 }

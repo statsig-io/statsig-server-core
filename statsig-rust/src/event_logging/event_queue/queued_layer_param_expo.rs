@@ -67,7 +67,7 @@ impl<'a> QueuedExposure<'a> for EnqueueLayerParamExpoOp<'a> {
         sampling_key.push_str(";p:");
         sampling_key.push_str(self.get_parameter_name_ref());
         sampling_key.push_str(";u:");
-        sampling_key.push_str(&layer.__user.create_sampling_key());
+        sampling_key.push_str(&layer.__user.data.create_hash().to_string());
         sampling_key.push_str(";r:");
         sampling_key.push_str(&layer.rule_id);
         sampling_key

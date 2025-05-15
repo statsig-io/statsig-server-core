@@ -1528,8 +1528,8 @@ impl Statsig {
 
     pub(crate) fn use_global_custom_fields<T>(
         &self,
-        f: impl FnOnce(Option<&HashMap<String, DynamicValue>>) -> Result<(), T>,
-    ) -> Result<(), T> {
+        f: impl FnOnce(Option<&HashMap<String, DynamicValue>>) -> T,
+    ) -> T {
         f(self.options.global_custom_fields.as_ref())
     }
 

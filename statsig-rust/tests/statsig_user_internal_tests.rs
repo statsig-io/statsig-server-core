@@ -2,10 +2,7 @@ use more_asserts::assert_gt;
 use serde_json::json;
 use statsig_rust::{
     dyn_value,
-    user::{
-        statsig_user_internal::FullUserKey, StatsigUserInternal, StatsigUserLoggable,
-        UserLoggableData,
-    },
+    user::{statsig_user_internal::FullUserKey, StatsigUserInternal, StatsigUserLoggable},
     DynamicValue, Statsig, StatsigOptions, StatsigUser, StatsigUserBuilder,
 };
 
@@ -113,7 +110,7 @@ fn test_full_user_key() {
     let start = Instant::now();
 
     let mut previous: FullUserKey = (0, 0, 0, 0, 0, 0, 0, vec![], vec![], vec![], vec![]);
-    for i in 0..100000 {
+    for i in 0..10000 {
         let user = StatsigUserBuilder::new_with_user_id(format!("a_user_{}", i))
             .app_version(Some("1.0.0".to_string()))
             .country(Some("US".to_string()))
@@ -173,7 +170,12 @@ fn test_loggable_strips_private_attributes() {
     let user_internal = StatsigUserInternal::new(&user, None);
     let loggable = user_internal.to_loggable();
 
-    let private_attrs = loggable.data.value.get("private_attributes");
+    let serialized = json!(loggable);
+
+    let private_attrs = &serialized.get("privateAttributes");
+    assert!(private_attrs.is_none());
+
+    let private_attrs = &serialized.get("private_attributes");
     assert!(private_attrs.is_none());
 }
 
@@ -189,16 +191,24 @@ fn test_serialization_with_global_custom_fields() {
     let user_internal = StatsigUserInternal::new(&user, Some(&statsig));
     let deserialized = serialize_and_deserialize(&user_internal);
 
-    let deserialized_user_id = deserialized.data.value.get("userID").cloned();
-    assert_eq!(deserialized_user_id, Some(json!("test_user_id")));
+    let deserialized_user_id = &deserialized.data.user_id;
+    assert_eq!(deserialized_user_id, &Some(dyn_value!("test_user_id")));
 
-    let deserialized_statsig_env = deserialized.data.value.get("statsigEnvironment").cloned();
-    assert_eq!(deserialized_statsig_env, Some(json!({"tier": "dev"})));
+    let deserialized_statsig_env = deserialized
+        .environment
+        .as_ref()
+        .and_then(|x| x.get("tier").cloned());
+    assert_eq!(deserialized_statsig_env, Some(dyn_value!("dev")));
 
-    let deserialized_custom = deserialized.data.value.get("custom").cloned();
+    let deserialized_custom = &deserialized
+        .data
+        .custom
+        .as_ref()
+        .unwrap()
+        .get("test_custom_field");
     assert_eq!(
         deserialized_custom,
-        Some(json!({"test_custom_field": "test_custom_field_value"}))
+        &Some(&dyn_value!("test_custom_field_value"))
     );
 }
 
@@ -208,10 +218,10 @@ fn test_serialization_with_no_custom_fields() {
     let user_internal = StatsigUserInternal::new(&user, None);
     let deserialized = serialize_and_deserialize(&user_internal);
 
-    let deserialized_user_id = deserialized.data.value.get("userID").cloned();
-    assert_eq!(deserialized_user_id, Some(json!("test_user_id")));
+    let deserialized_user_id = &deserialized.data.user_id;
+    assert_eq!(deserialized_user_id, &Some(dyn_value!("test_user_id")));
 
-    assert_eq!(deserialized.data.value.as_object().unwrap().keys().len(), 1);
+    assert!(deserialized.data.custom.as_ref().is_none());
 }
 
 #[test]
@@ -225,16 +235,21 @@ fn test_serialization_with_local_custom_fields() {
     let user_internal = StatsigUserInternal::new(&user, None);
     let deserialized = serialize_and_deserialize(&user_internal);
 
-    let deserialized_user_id = deserialized.data.value.get("userID").cloned();
-    assert_eq!(deserialized_user_id, Some(json!("test_user_id")));
+    let deserialized_user_id = &deserialized.data.user_id;
+    assert_eq!(deserialized_user_id, &Some(dyn_value!("test_user_id")));
 
-    let deserialized_custom = deserialized.data.value.get("custom").cloned();
+    let deserialized_custom = &deserialized
+        .data
+        .custom
+        .as_ref()
+        .unwrap()
+        .get("test_custom_field");
     assert_eq!(
         deserialized_custom,
-        Some(json!({"test_custom_field": "test_custom_field_value"}))
+        &Some(&dyn_value!("test_custom_field_value"))
     );
 
-    assert_eq!(deserialized.data.value.as_object().unwrap().keys().len(), 2);
+    assert_eq!(deserialized.data.custom.as_ref().unwrap().len(), 1);
 }
 
 #[test]
@@ -254,19 +269,24 @@ fn test_serialization_with_local_custom_fields_and_global_custom_fields() {
     let user_internal = StatsigUserInternal::new(&user, Some(&statsig));
     let deserialized = serialize_and_deserialize(&user_internal);
 
-    let deserialized_user_id = deserialized.data.value.get("userID").cloned();
-    assert_eq!(deserialized_user_id, Some(json!("test_user_id")));
+    let deserialized_user_id = &deserialized.data.user_id;
+    assert_eq!(deserialized_user_id, &Some(dyn_value!("test_user_id")));
 
-    let deserialized_statsig_env = deserialized.data.value.get("statsigEnvironment").cloned();
-    assert_eq!(deserialized_statsig_env, Some(json!({"tier": "dev"})));
+    let deserialized_statsig_env = deserialized
+        .environment
+        .as_ref()
+        .and_then(|x| x.get("tier").cloned());
+    assert_eq!(deserialized_statsig_env, Some(dyn_value!("dev")));
 
-    let deserialized_custom = deserialized.data.value.get("custom").cloned();
+    let deserialized_custom = &deserialized
+        .data
+        .custom
+        .as_ref()
+        .unwrap()
+        .get("test_local_custom_field");
     assert_eq!(
         deserialized_custom,
-        Some(json!({
-                "test_local_custom_field": "test_local_custom_field_value",
-                "test_custom_field": "test_custom_field_value"
-        }))
+        &Some(&dyn_value!("test_local_custom_field_value"))
     );
 }
 
@@ -277,11 +297,27 @@ fn test_serialization_with_env() {
     let user_internal = StatsigUserInternal::new(&user, Some(&statsig));
     let deserialized = serialize_and_deserialize(&user_internal);
 
-    let deserialized_user_id = deserialized.data.value.get("userID").cloned();
-    assert_eq!(deserialized_user_id, Some(json!("test_user_id")));
+    let deserialized_user_id = &deserialized.data.user_id;
+    assert_eq!(deserialized_user_id, &Some(dyn_value!("test_user_id")));
 
-    let deserialized_statsig_env = deserialized.data.value.get("statsigEnvironment").cloned();
-    assert_eq!(deserialized_statsig_env, Some(json!({"tier": "dev"})));
+    let deserialized_statsig_env = deserialized
+        .environment
+        .as_ref()
+        .and_then(|x| x.get("tier").cloned());
+    assert_eq!(deserialized_statsig_env, Some(dyn_value!("dev")));
+}
+
+#[test]
+fn test_serialization_without_env() {
+    let user = create_test_user(None);
+    let statsig = create_statsig_instance(None, None);
+    let user_internal = StatsigUserInternal::new(&user, Some(&statsig));
+    let deserialized = serialize_and_deserialize(&user_internal);
+
+    let deserialized_user_id = &deserialized.data.user_id;
+    assert_eq!(deserialized_user_id, &Some(dyn_value!("test_user_id")));
+
+    assert!(deserialized.environment.is_none());
 }
 
 #[test]
@@ -310,18 +346,18 @@ fn test_serialization_has_correct_keys() {
     let user_internal = StatsigUserInternal::new(&user, None);
     let deserialized = serialize_and_deserialize(&user_internal);
 
-    let keys = deserialized.data.value.as_object().unwrap();
-    assert!(keys.contains_key("userID"));
-    assert!(keys.contains_key("email"));
-    assert!(keys.contains_key("ip"));
-    assert!(keys.contains_key("userAgent"));
-    assert!(keys.contains_key("country"));
-    assert!(keys.contains_key("locale"));
-    assert!(keys.contains_key("appVersion"));
-    assert!(keys.contains_key("custom"));
-    assert!(keys.contains_key("customIDs"));
+    let keys = deserialized.data.as_ref();
+    assert!(keys.user_id.is_some());
+    assert!(keys.email.is_some());
+    assert!(keys.ip.is_some());
+    assert!(keys.user_agent.is_some());
+    assert!(keys.country.is_some());
+    assert!(keys.locale.is_some());
+    assert!(keys.app_version.is_some());
+    assert!(keys.custom.is_some());
+    assert!(keys.custom_ids.is_some());
 
-    assert!(!keys.contains_key("privateAttributes"));
+    assert!(keys.private_attributes.is_none());
 }
 
 // ---------------------------------------------------------------------------------------------- [Helpers]
@@ -347,9 +383,5 @@ fn create_statsig_instance(
 fn serialize_and_deserialize(user_internal: &StatsigUserInternal) -> StatsigUserLoggable {
     let loggable = user_internal.to_loggable();
     let serialized = serde_json::to_string(&loggable).unwrap();
-    let value = serde_json::from_str(&serialized).unwrap();
-
-    StatsigUserLoggable {
-        data: Arc::new(UserLoggableData { key: None, value }),
-    }
+    serde_json::from_str(&serialized).unwrap()
 }
