@@ -134,7 +134,7 @@ async fn test_scheduled_flush_max_time() {
     *logging_adapter.mocked_log_events_result.lock().unwrap() =
         Err(StatsigErr::CustomError("test error".into()));
 
-    let user = StatsigUser::with_user_id("user_1".into());
+    let user = StatsigUser::with_user_id("user_1");
     for _ in 0..5 {
         statsig.log_event(&user, "test_event", None, None);
     }
@@ -177,7 +177,7 @@ async fn test_scheduled_flush_failures() {
     *logging_adapter.mocked_log_events_result.lock().unwrap() =
         Err(StatsigErr::CustomError("test error".into()));
 
-    let user = StatsigUser::with_user_id("user_1".into());
+    let user = StatsigUser::with_user_id("user_1");
     statsig.log_event(&user, "test_event", None, None);
 
     wait_for_log_notify(&logging_adapter).await; // first attempt
@@ -211,7 +211,7 @@ async fn test_requeue_dropped_events() {
     *logging_adapter.mocked_log_events_result.lock().unwrap() =
         Err(StatsigErr::CustomError("test error".into()));
 
-    let user = StatsigUser::with_user_id("user_1".into());
+    let user = StatsigUser::with_user_id("user_1");
     statsig.log_event(&user, "test_event", None, None);
 
     wait_for_log_notify(&logging_adapter).await;
@@ -294,7 +294,7 @@ async fn test_non_retryable_failure_drops_events() {
         None,
     ));
 
-    let user = StatsigUser::with_user_id("user_1".into());
+    let user = StatsigUser::with_user_id("user_1");
     statsig.log_event(&user, "test_event", None, None);
 
     wait_for_log_notify(&logging_adapter).await;
@@ -330,7 +330,7 @@ async fn wait_for_log_notify(logging_adapter: &MockEventLoggingAdapter) {
 }
 
 fn log_some_events(statsig: &Statsig, count: usize) {
-    let user = StatsigUser::with_user_id("user_1".into());
+    let user = StatsigUser::with_user_id("user_1");
     for _ in 0..count {
         statsig.log_event(&user, "test_event", None, None);
     }

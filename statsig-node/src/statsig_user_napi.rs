@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use napi::bindgen_prelude::{Either3, Either4};
 use napi_derive::napi;
 use serde_json::Value;
-use statsig_rust::{dyn_value, log_w, DynamicValue, StatsigUser as StatsigUserActual};
+use statsig_rust::{
+    dyn_value, log_w, user::unit_id::UnitID, DynamicValue, StatsigUser as StatsigUserActual,
+};
 
 const TAG: &str = "StatsigUserNapi";
 
@@ -62,23 +64,18 @@ impl StatsigUser {
         )]
         args: StatsigUserArgs,
     ) -> Self {
-        let mut inner = match (args.user_id, args.custom_ids) {
-            (Some(user_id), custom_ids) => {
-                let mut user = StatsigUserActual::with_user_id(user_id);
-                user.custom_ids = custom_ids.map(Self::convert_custom_ids);
-                user
-            }
-            (None, Some(custom_ids)) => {
-                if custom_ids.is_empty() {
-                    return Self {
-                        inner: unidentifiable_user(),
-                    };
-                }
-                StatsigUserActual::with_custom_ids(Self::convert_custom_ids(custom_ids))
-            }
-            (None, None) => {
-                return Self {
-                    inner: unidentifiable_user(),
+        let mut inner = match (&args.user_id, &args.custom_ids) {
+            (None, None) => unidentifiable_user(),
+            _ => {
+                let user_id = args.user_id.unwrap_or_default();
+                match args.custom_ids {
+                    Some(custom_ids) => {
+                        let custom_ids = Self::convert_custom_ids(custom_ids);
+                        let mut user = StatsigUserActual::with_custom_ids(custom_ids);
+                        user.set_user_id(user_id);
+                        user
+                    }
+                    None => StatsigUserActual::with_user_id(user_id),
                 }
             }
         };
@@ -125,16 +122,16 @@ impl StatsigUser {
 
     fn convert_custom_ids(
         custom_ids_arg: HashMap<String, Either3<String, f64, i64>>,
-    ) -> HashMap<String, DynamicValue> {
+    ) -> HashMap<String, UnitID> {
         custom_ids_arg
             .into_iter()
             .map(|(key, value)| {
                 (
                     key,
                     match value {
-                        Either3::A(v) => dyn_value!(v),
-                        Either3::B(v) => dyn_value!(v),
-                        Either3::C(v) => dyn_value!(v),
+                        Either3::A(v) => UnitID::String(v.clone()),
+                        Either3::B(v) => UnitID::Float(v),
+                        Either3::C(v) => UnitID::Int(v),
                     },
                 )
             })

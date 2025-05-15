@@ -59,7 +59,7 @@ async fn test_nested_gate_condition_passes() {
     let statsig = setup(None).await;
 
     let user = StatsigUser::with_custom_ids(HashMap::from([
-        ("companyID".into(), "123".into()),
+        ("companyID".to_string(), "123".into()),
         ("stableID".into(), String::new()),
     ]));
 
@@ -76,7 +76,7 @@ async fn test_time_before_passes() {
     let statsig = setup(None).await;
 
     let user = StatsigUser::with_custom_ids(HashMap::from([
-        ("companyID".into(), "123".into()),
+        ("companyID".to_string(), "123".into()),
         ("stableID".into(), String::new()),
     ]));
 
@@ -93,7 +93,7 @@ async fn test_segment_condition_fails() {
     let statsig = setup(None).await;
 
     let user = StatsigUser::with_custom_ids(HashMap::from([
-        ("companyID".into(), "123".into()),
+        ("companyID".to_string(), "123".into()),
         ("stableID".into(), String::new()),
     ]));
 
@@ -110,7 +110,7 @@ async fn test_holdout_default_value_gate_fails() {
     let statsig = setup(None).await;
 
     let user = StatsigUser::with_custom_ids(HashMap::from([
-        ("companyID".into(), "123".into()),
+        ("companyID".to_string(), "123".into()),
         ("stableID".into(), String::new()),
     ]));
 
@@ -214,7 +214,7 @@ async fn test_targeted_exp_in_layer_with_holdout() {
         ),
         ip: Some("1.0.0.0".into()),
         locale: Some("en_US".into()),
-        ..StatsigUser::with_user_id("9".into())
+        ..StatsigUser::with_user_id("9")
     };
 
     let experiment = statsig.get_experiment(&user, "targeted_exp_in_layer_with_holdout");
@@ -234,7 +234,7 @@ async fn test_exp_5050_targeting() {
         ),
         ip: Some("1.0.0.0".into()),
         locale: Some("en_US".into()),
-        ..StatsigUser::with_user_id("9".into())
+        ..StatsigUser::with_user_id("9")
     };
 
     let experiment = statsig.get_experiment(&user, "test_exp_5050_targeting");
@@ -260,7 +260,7 @@ async fn test_many_rules_ua_parser() {
         user_agent: Some(
             "Mozilla/5.0 (Windows NT 5.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.5414.87 ADG/11.0.4060 Safari/537.36".into(),
         ),
-        ..StatsigUser::with_user_id("123".into())
+        ..StatsigUser::with_user_id("123")
     };
 
     let gate = statsig.get_feature_gate(&user, "test_many_rules");
@@ -275,7 +275,7 @@ async fn test_null_operator() {
     let statsig = setup(None).await;
 
     let user = StatsigUser {
-        ..StatsigUser::with_user_id("9".into())
+        ..StatsigUser::with_user_id("9")
     };
 
     let gate = statsig.get_feature_gate(&user, "test_null_operator");

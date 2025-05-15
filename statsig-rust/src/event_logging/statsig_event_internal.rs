@@ -137,7 +137,7 @@ mod statsig_event_internal_tests {
     use std::collections::HashMap;
 
     fn create_test_event() -> StatsigEventInternal {
-        let user_data = StatsigUser::with_user_id("a-user".into());
+        let user_data = StatsigUser::with_user_id("a-user");
         let user = StatsigUserInternal::new(&user_data, None);
         let mut sampling_statsig_metadata: HashMap<String, Value> = HashMap::new();
         sampling_statsig_metadata.insert("samplingMode".into(), "on".into());

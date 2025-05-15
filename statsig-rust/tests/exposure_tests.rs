@@ -12,7 +12,7 @@ use tokio::time::sleep;
 async fn test_gate_exposures_initialized() {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
     let specs_adapter = create_bootrapped_specs_adapter();
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let statsig = create_statsig(&specs_adapter, &logging_adapter);
     statsig.initialize().await.unwrap();
@@ -29,7 +29,7 @@ async fn test_gate_exposures_initialized() {
 async fn test_gate_exposures_formatting() {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
     let specs_adapter = create_bootrapped_specs_adapter();
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let statsig = create_statsig(&specs_adapter, &logging_adapter);
     statsig.initialize().await.unwrap();
@@ -58,7 +58,7 @@ async fn test_gate_exposures_formatting() {
 async fn test_gate_exposures_uninitialized() {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
     let specs_adapter = create_bootrapped_specs_adapter();
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let statsig = create_statsig(&specs_adapter, &logging_adapter);
 
@@ -74,7 +74,7 @@ async fn test_gate_exposures_uninitialized() {
 async fn test_gate_exposures_unrecognized() {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
     let specs_adapter = create_bootrapped_specs_adapter();
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let statsig = create_statsig(&specs_adapter, &logging_adapter);
     statsig.initialize().await.unwrap();
@@ -91,7 +91,7 @@ async fn test_gate_exposures_unrecognized() {
 async fn test_gate_exposures_bad_network() {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
     let specs_adapter = create_trowing_specs_adapter();
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let statsig = create_statsig(&specs_adapter, &logging_adapter);
     let _ = statsig.initialize().await;
@@ -108,7 +108,7 @@ async fn test_gate_exposures_bad_network() {
 async fn test_gate_exposures_not_awaited() {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
     let specs_adapter = create_delayed_specs_adapter();
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let statsig = Arc::new(create_statsig(&specs_adapter, &logging_adapter));
 
@@ -131,7 +131,7 @@ async fn test_gate_exposures_not_awaited() {
 async fn test_check_gate_exposure_with_secondary_exposures() {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
     let specs_adapter = create_bootrapped_specs_adapter();
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let statsig = create_statsig(&specs_adapter, &logging_adapter);
     statsig.initialize().await.unwrap();
@@ -158,7 +158,7 @@ async fn test_check_gate_exposure_with_secondary_exposures() {
 async fn test_get_feature_gate_exposure_with_secondary_exposures() {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
     let specs_adapter = create_bootrapped_specs_adapter();
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let statsig = create_statsig(&specs_adapter, &logging_adapter);
     statsig.initialize().await.unwrap();
@@ -185,7 +185,7 @@ async fn test_get_feature_gate_exposure_with_secondary_exposures() {
 async fn test_get_layer_copies_undelegated_exposures() {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
     let specs_adapter = create_bootrapped_specs_adapter();
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let statsig = create_statsig(&specs_adapter, &logging_adapter);
     statsig.initialize().await.unwrap();
@@ -209,7 +209,7 @@ async fn test_get_layer_copies_undelegated_exposures() {
 async fn test_get_layer_with_holdouts() {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
     let specs_adapter = create_bootrapped_specs_adapter();
-    let user = StatsigUser::with_user_id("user-in-layer-holdout-4".into());
+    let user = StatsigUser::with_user_id("user-in-layer-holdout-4");
 
     let statsig = create_statsig(&specs_adapter, &logging_adapter);
     statsig.initialize().await.unwrap();
@@ -238,7 +238,7 @@ async fn test_get_layer_with_holdouts() {
 async fn test_exposures_with_environment() {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
     let specs_adapter = create_bootrapped_specs_adapter();
-    let user = StatsigUser::with_user_id("user-in-layer-holdout-4".into());
+    let user = StatsigUser::with_user_id("user-in-layer-holdout-4");
 
     let statsig =
         create_statsig_with_environment(&specs_adapter, &logging_adapter, Some("dev".to_string()));

@@ -127,7 +127,7 @@ async fn test_core_apis_exposure_logging_disabled() {
     let (mock_scrapi, statsig) = setup(0 /* delay_ms */, "secret-key-flushing-4".to_string()).await;
 
     statsig.initialize().await.unwrap();
-    let user = StatsigUser::with_user_id("test_user".into());
+    let user = StatsigUser::with_user_id("test_user");
 
     let _ = statsig.check_gate_with_options(
         &user,

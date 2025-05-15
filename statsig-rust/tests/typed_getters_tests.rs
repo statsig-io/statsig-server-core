@@ -20,7 +20,7 @@ async fn setup() -> Statsig {
 #[tokio::test]
 async fn test_dynamic_config_getters() {
     let statsig = setup().await;
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let config = statsig.get_dynamic_config(&user, "big_number");
 

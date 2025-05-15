@@ -37,7 +37,7 @@ lazy_static::lazy_static! {
 
 #[test]
 fn test_get_full_user_key_matches_for_multiple_simple_users() {
-    let user_data = StatsigUser::with_user_id("user1".into());
+    let user_data = StatsigUser::with_user_id("user1");
     let user1 = StatsigUserInternal::new(&user_data, None);
     let user2 = StatsigUserInternal::new(&user_data, None);
 
@@ -56,8 +56,8 @@ fn test_get_full_user_key_matches_for_multiple_full_users() {
 
 #[test]
 fn test_get_full_user_key_mismatch_for_multiple_users() {
-    let user_data1 = StatsigUser::with_user_id("user1".into());
-    let user_data2 = StatsigUser::with_user_id("user2".into());
+    let user_data1 = StatsigUser::with_user_id("user1");
+    let user_data2 = StatsigUser::with_user_id("user2");
     let user1 = StatsigUserInternal::new(&user_data1, None);
     let user2 = StatsigUserInternal::new(&user_data2, None);
 

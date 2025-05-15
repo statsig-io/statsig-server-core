@@ -20,7 +20,7 @@ lazy_static! {
         ),
         ip: Some("1.0.0.0".into()),
         locale: Some("en_US".into()),
-        ..StatsigUser::with_user_id("a_user_id".into())
+        ..StatsigUser::with_user_id("a_user_id")
     };
 }
 

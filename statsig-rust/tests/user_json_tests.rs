@@ -6,7 +6,7 @@ use std::collections::HashMap;
 async fn test_field_names() {
     let user = StatsigUser {
         custom_ids: Some(HashMap::from([("podId".into(), "my_pod".into())])),
-        ..StatsigUser::with_user_id("a_user_id".into())
+        ..StatsigUser::with_user_id("a_user_id")
     };
 
     let result = json!(user).as_object().unwrap().clone();

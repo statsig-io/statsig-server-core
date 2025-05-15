@@ -260,7 +260,7 @@ mod tests {
 
     fn setup(batch_size: u32, max_queue_size: u32) -> (EventQueue, StatsigUser, FeatureGate) {
         let queue = EventQueue::new(batch_size, max_queue_size);
-        let user = StatsigUser::with_user_id("user-id".into());
+        let user = StatsigUser::with_user_id("user-id");
         let gate = FeatureGate {
             name: "gate-name".into(),
             value: true,

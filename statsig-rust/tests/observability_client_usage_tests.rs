@@ -149,7 +149,7 @@ async fn test_sdk_initialization_dist_recorded() {
     let (_, statsig, _) = setup(&obs_client).await;
 
     statsig.initialize().await.unwrap();
-    statsig.check_gate(&StatsigUser::with_user_id("test_user".into()), "test_gate");
+    statsig.check_gate(&StatsigUser::with_user_id("test_user"), "test_gate");
     statsig.flush_events().await;
 
     let calls = obs_client.calls.lock().unwrap();

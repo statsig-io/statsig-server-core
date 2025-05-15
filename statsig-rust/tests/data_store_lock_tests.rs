@@ -15,7 +15,7 @@ use utils::{
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_experiment() {
     let statsig = setup_and_init_statsig().await;
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let task = tokio::spawn(async move {
         for _ in 1..100000 {
@@ -33,7 +33,7 @@ async fn test_get_experiment() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_gate() {
     let statsig = setup_and_init_statsig().await;
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let task = tokio::spawn(async move {
         for _ in 1..10000 {
@@ -51,7 +51,7 @@ async fn test_check_gate() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_layer() {
     let statsig = setup_and_init_statsig().await;
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let task = tokio::spawn(async move {
         for _ in 1..10000 {
@@ -69,7 +69,7 @@ async fn test_get_layer() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_gcir() {
     let statsig = setup_and_init_statsig().await;
-    let user = StatsigUser::with_user_id("a_user_id".into());
+    let user = StatsigUser::with_user_id("a_user_id");
 
     let task = tokio::spawn(async move {
         for _ in 1..100 {

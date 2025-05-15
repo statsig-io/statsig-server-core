@@ -189,7 +189,7 @@ async fn test_rule_sampling() {
     let (statsig, logging_adapter) = setup(DCS_WITH_SAMPLING).await;
 
     fn get_for_user(statsig: &Statsig, user_id: &str) {
-        let user = StatsigUser::with_user_id(user_id.into());
+        let user = StatsigUser::with_user_id(user_id);
         let _ = statsig.check_gate(&user, "test_rule_sampling");
     }
 
