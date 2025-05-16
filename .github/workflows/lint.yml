@@ -90,3 +90,23 @@ jobs:
             echo "------------------------------"
             exit 1
           fi
+
+  # ------------------------------------------------------------ [ Java Spotless Check ]
+  java-spotless-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Run Java Spotless Check
+        working-directory: statsig-java/java
+        run: ./gradlew spotlessCheck
+
