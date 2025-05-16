@@ -1,3 +1,4 @@
+use crate::output_logger_provider_base_py::OutputLoggerProviderBasePy;
 use crate::pyo_utils::py_dict_to_map;
 use crate::statsig_persistent_storage_override_adapter_py::{
     PersistentStorageBasePy, StatsigPersistentStorageOverrideAdapter,
@@ -10,6 +11,7 @@ use pyo3::types::PyDict;
 use pyo3_stub_gen::derive::*;
 use statsig_rust::data_store_interface::DataStoreTrait;
 use statsig_rust::networking::proxy_config::ProxyConfig;
+use statsig_rust::output_logger::OutputLogProvider;
 use statsig_rust::{log_w, ConfigCompressionMode, PersistentStorage};
 use statsig_rust::{output_logger::LogLevel, ObservabilityClient, StatsigOptions};
 use std::sync::{Arc, Weak};
@@ -97,6 +99,8 @@ pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub observability_client: Option<Py<ObservabilityClientBasePy>>,
     #[pyo3(get, set)]
+    pub output_logger_provider: Option<Py<OutputLoggerProviderBasePy>>,
+    #[pyo3(get, set)]
     pub data_store: Option<Py<DataStoreBasePy>>,
     #[pyo3(get, set)]
     pub persistent_storage: Option<Py<PersistentStorageBasePy>>,
@@ -136,6 +140,7 @@ impl StatsigOptionsPy {
         persistent_storage=None,
         config_compression_mode=None,
         proxy_config=None,
+        output_logger_provider=None,
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -164,6 +169,7 @@ impl StatsigOptionsPy {
         persistent_storage: Option<Py<PersistentStorageBasePy>>,
         config_compression_mode: Option<String>,
         proxy_config: Option<Py<ProxyConfigPy>>,
+        output_logger_provider: Option<Py<OutputLoggerProviderBasePy>>,
     ) -> Self {
         Self {
             specs_url,
@@ -191,6 +197,7 @@ impl StatsigOptionsPy {
             persistent_storage,
             config_compression_mode,
             proxy_config,
+            output_logger_provider,
         }
     }
 }
@@ -219,7 +226,6 @@ fn create_inner_statsig_options(
     ob_client_weak: Option<Weak<dyn ObservabilityClient>>,
 ) -> StatsigOptions {
     StatsigOptions {
-        output_logger_provider: None,
         specs_url: opts.specs_url.clone(),
         specs_adapter: None,
         specs_sync_interval_ms: opts.specs_sync_interval_ms,
@@ -287,6 +293,13 @@ fn create_inner_statsig_options(
                     None
                 }
             }
+        }),
+        output_logger_provider: opts.output_logger_provider.as_ref().map(|provider| {
+            Arc::new(
+                provider
+                    .extract::<OutputLoggerProviderBasePy>(py)
+                    .unwrap_or_default(),
+            ) as Arc<dyn OutputLogProvider>
         }),
     }
 }

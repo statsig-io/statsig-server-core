@@ -1,4 +1,5 @@
-use std::sync::{Arc, Once, RwLock};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, RwLock};
 
 use log::{debug, error, info, warn, Level};
 
@@ -11,17 +12,15 @@ lazy_static::lazy_static! {
     static ref LOGGER_STATE: RwLock<LoggerState> = RwLock::new(LoggerState {
         level: DEFAULT_LOG_LEVEL,
         provider: None,
-        initialized: false,
     });
 }
 
 struct LoggerState {
     level: LogLevel,
-    provider: Option<Arc<dyn LogProvider>>,
-    initialized: bool,
+    provider: Option<Arc<dyn OutputLogProvider>>,
 }
 
-static INIT: Once = Once::new();
+static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone, Debug)]
 pub enum LogLevel {
@@ -80,7 +79,7 @@ impl LogLevel {
     }
 }
 
-pub trait LogProvider: Send + Sync {
+pub trait OutputLogProvider: Send + Sync {
     fn initialize(&self);
     fn debug(&self, tag: &str, msg: String);
     fn info(&self, tag: &str, msg: String);
@@ -89,36 +88,40 @@ pub trait LogProvider: Send + Sync {
     fn shutdown(&self);
 }
 
-pub fn initialize_output_logger(level: &Option<LogLevel>, provider: Option<Arc<dyn LogProvider>>) {
-    INIT.call_once(|| {
-        let mut state = LOGGER_STATE.write().unwrap();
-        let level = level.as_ref().unwrap_or(&DEFAULT_LOG_LEVEL).clone();
-        state.level = level.clone();
+pub fn initialize_output_logger(
+    level: &Option<LogLevel>,
+    provider: Option<Arc<dyn OutputLogProvider>>,
+) {
+    if INITIALIZED.load(Ordering::SeqCst) {
+        return;
+    }
 
-        if let Some(provider_impl) = provider {
-            provider_impl.initialize();
-            state.provider = Some(provider_impl);
-        } else {
-            let final_level = match level {
-                LogLevel::None => {
-                    return;
-                }
-                _ => match level.to_third_party_level() {
-                    Some(level) => level,
-                    None => return,
-                },
-            };
+    let mut state = LOGGER_STATE.write().unwrap();
+    let level = level.as_ref().unwrap_or(&DEFAULT_LOG_LEVEL).clone();
+    state.level = level.clone();
 
-            match simple_logger::init_with_level(final_level) {
-                Ok(()) => {}
-                Err(_) => {
-                    log::set_max_level(final_level.to_level_filter());
-                }
+    if let Some(provider_impl) = provider {
+        provider_impl.initialize();
+        state.provider = Some(provider_impl);
+    } else {
+        let final_level = match level {
+            LogLevel::None => {
+                return;
+            }
+            _ => match level.to_third_party_level() {
+                Some(level) => level,
+                None => return,
+            },
+        };
+
+        match simple_logger::init_with_level(final_level) {
+            Ok(()) => {}
+            Err(_) => {
+                log::set_max_level(final_level.to_level_filter());
             }
         }
-
-        state.initialized = true;
-    });
+    }
+    INITIALIZED.store(true, Ordering::SeqCst);
 }
 
 pub fn shutdown_output_logger() {
@@ -126,6 +129,7 @@ pub fn shutdown_output_logger() {
     if let Some(provider) = &mut state.provider {
         provider.shutdown();
     }
+    INITIALIZED.store(false, Ordering::SeqCst);
 }
 
 pub fn log_message(tag: &str, level: LogLevel, msg: String) {
@@ -149,7 +153,7 @@ pub fn log_message(tag: &str, level: LogLevel, msg: String) {
                 LogLevel::Info => provider.info(tag, sanitized_msg),
                 LogLevel::Warn => provider.warn(tag, sanitized_msg),
                 LogLevel::Error => provider.error(tag, sanitized_msg),
-                LogLevel::None => {}
+                _ => {}
             }
             return;
         }

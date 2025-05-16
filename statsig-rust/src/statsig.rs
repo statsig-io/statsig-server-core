@@ -159,6 +159,11 @@ impl Statsig {
         let statsig_runtime = StatsigRuntime::get_runtime();
         let options = options.unwrap_or_default();
 
+        initialize_output_logger(
+            &options.output_log_level,
+            options.output_logger_provider.clone(),
+        );
+
         let hashing = Arc::new(HashUtil::new());
 
         let specs_adapter = initialize_specs_adapter(sdk_key, &options, &hashing);
@@ -180,7 +185,6 @@ impl Statsig {
 
         let ops_stats = setup_ops_stats(
             sdk_key,
-            &options,
             statsig_runtime.clone(),
             &error_observer,
             &diagnostics_observer,
@@ -1818,18 +1822,11 @@ fn initialize_id_lists_adapter(
 
 fn setup_ops_stats(
     sdk_key: &str,
-    options: &StatsigOptions,
     statsig_runtime: Arc<StatsigRuntime>,
     error_observer: &Arc<dyn OpsStatsEventObserver>,
     diagnostics_observer: &Arc<dyn OpsStatsEventObserver>,
     external_observer: &Option<Weak<dyn ObservabilityClient>>,
 ) -> Arc<OpsStatsForInstance> {
-    // TODO migrate output logger to use ops_stats
-    initialize_output_logger(
-        &options.output_log_level,
-        options.output_logger_provider.clone(),
-    );
-
     let ops_stat = OPS_STATS.get_for_instance(sdk_key);
     ops_stat.subscribe(statsig_runtime.clone(), Arc::downgrade(error_observer));
     ops_stat.subscribe(

@@ -6,7 +6,7 @@ use crate::evaluation::dynamic_value::DynamicValue;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::id_lists_adapter::IdListsAdapter;
 use crate::networking::proxy_config::ProxyConfig;
-use crate::output_logger::{LogLevel, LogProvider};
+use crate::output_logger::{LogLevel, OutputLogProvider};
 use crate::persistent_storage::persistent_storage_trait::PersistentStorage;
 use crate::{
     serialize_if_not_none, ConfigCompressionMode, ObservabilityClient, OverrideAdapter,
@@ -49,7 +49,7 @@ pub struct StatsigOptions {
     pub log_event_url: Option<String>,
     pub observability_client: Option<Weak<dyn ObservabilityClient>>,
     pub output_log_level: Option<LogLevel>,
-    pub output_logger_provider: Option<Arc<dyn LogProvider>>,
+    pub output_logger_provider: Option<Arc<dyn OutputLogProvider>>,
     pub override_adapter: Option<Arc<dyn OverrideAdapter>>,
     pub persistent_storage: Option<Arc<dyn PersistentStorage>>,
     pub service_name: Option<String>,
@@ -224,7 +224,7 @@ impl StatsigOptionsBuilder {
     #[must_use]
     pub fn output_logger_provider(
         mut self,
-        output_logger_provider: Option<Arc<dyn LogProvider>>,
+        output_logger_provider: Option<Arc<dyn OutputLogProvider>>,
     ) -> Self {
         self.inner.output_logger_provider = output_logger_provider;
         self

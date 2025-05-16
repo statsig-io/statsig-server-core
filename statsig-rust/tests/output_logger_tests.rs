@@ -1,5 +1,5 @@
 use statsig_rust::output_logger::{
-    initialize_output_logger, shutdown_output_logger, LogLevel, LogProvider,
+    initialize_output_logger, shutdown_output_logger, LogLevel, OutputLogProvider,
 };
 use statsig_rust::{log_d, log_e, log_i, log_w, Statsig, StatsigOptions};
 use std::sync::{Arc, Mutex};
@@ -18,7 +18,7 @@ struct MockLogProvider {
     pub logs: Mutex<Vec<RecordedLog>>,
 }
 
-impl LogProvider for MockLogProvider {
+impl OutputLogProvider for MockLogProvider {
     fn initialize(&self) {
         self.logs.lock().unwrap().push(RecordedLog::Init);
     }
