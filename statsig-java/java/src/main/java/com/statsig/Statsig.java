@@ -331,16 +331,24 @@ public class Statsig {
         return array;
     }
 
+    public void logEvent(StatsigUser user, String eventName) {
+        StatsigJNI.statsigLogEvent(ref, user.getRef(), eventName, null, null);
+    }
+
     public void logEvent(StatsigUser user, String eventName, String value, Map<String, String> metadata) {
         StatsigJNI.statsigLogEvent(ref, user.getRef(), eventName, value, metadata);
     }
 
-    public void logEvent(StatsigUser user, String eventName, long value, Map<String, String> metadata) {
-        StatsigJNI.statsigLogEventWithLong(ref, user.getRef(), eventName, value, metadata);
+    public void logEvent(StatsigUser user, String eventName, String value) {
+        StatsigJNI.statsigLogEvent(ref, user.getRef(), eventName, value, null);
     }
 
     public void logEvent(StatsigUser user, String eventName, double value, Map<String, String> metadata) {
         StatsigJNI.statsigLogEventWithDouble(ref, user.getRef(), eventName, value, metadata);
+    }
+
+    public void logEvent(StatsigUser user, String eventName, double value) {
+        StatsigJNI.statsigLogEventWithDouble(ref, user.getRef(), eventName, value, null);
     }
 
     public CompletableFuture<Void> flushEvents() {

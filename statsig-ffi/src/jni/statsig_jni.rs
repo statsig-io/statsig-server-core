@@ -858,31 +858,6 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEvent(
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEventWithLong(
-    mut env: JNIEnv,
-    _class: JClass,
-    statsig_ref: JString,
-    user_ref: JString,
-    event_name: JString,
-    value: i64,
-    metadata: JObject,
-) {
-    let statsig = get_instance_or_noop_jni!(Statsig, &mut env, statsig_ref);
-    let user = get_instance_or_noop_jni!(StatsigUser, &mut env, user_ref);
-
-    let event_name: String = match env.get_string(&event_name) {
-        Ok(s) => s.into(),
-        Err(_) => return,
-    };
-
-    let value = Some(value as f64);
-
-    let metadata = jni_to_rust_hashmap(env, metadata).ok();
-
-    statsig.log_event_with_number(user.as_ref(), &event_name, value, metadata);
-}
-
-#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEventWithDouble(
     mut env: JNIEnv,
     _class: JClass,
