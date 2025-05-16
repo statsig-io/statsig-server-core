@@ -1,25 +1,30 @@
 package com.statsig;
 
 import com.google.gson.annotations.Expose;
+import com.google.gson.annotations.SerializedName;
 
 public class InitializeDetails {
     public double duration;
-    public boolean init_success;
-    public boolean is_config_spec_ready;
-    public Boolean is_id_list_ready;
+    @SerializedName("init_success")
+    public boolean initSuccess;
+    @SerializedName("is_config_spec_ready")
+    public boolean isConfigSpecReady;
+    @SerializedName("is_id_list_ready")
+    public Boolean isIdListReady;
     public String source;
-    public FailureDetails failure_details;
+    @SerializedName("failure_details")
+    public FailureDetails failureDetails;
 
     @Expose(serialize = false, deserialize = false)
     String rawJson;
 
-    InitializeDetails(double duration, boolean init_success, boolean is_config_spec_ready, boolean is_id_list_ready, String source, FailureDetails failure_details) {
+    InitializeDetails(double duration, boolean initSuccess, boolean isConfigSpecReady, Boolean isIdListReady, String source, FailureDetails failureDetails) {
         this.duration = duration;
-        this.init_success = init_success;
-        this.is_config_spec_ready = is_config_spec_ready;
-        this.is_id_list_ready = is_id_list_ready;
+        this.initSuccess = initSuccess;
+        this.isConfigSpecReady = isConfigSpecReady;
+        this.isIdListReady = isIdListReady;
         this.source = source;
-        this.failure_details = failure_details;
+        this.failureDetails = failureDetails;
     }
 
     public double getDuration() {
@@ -27,15 +32,15 @@ public class InitializeDetails {
     }
     
     public boolean getIsInitSuccess() {
-        return init_success;
+        return initSuccess;
     }
     
     public boolean getIsConfigSpecReady() {
-        return is_config_spec_ready;
+        return isConfigSpecReady;
     }
     
-    public Boolean getIsIdListReady() {
-        return is_id_list_ready;
+    public boolean getIsIdListReady() {
+        return isIdListReady != null ? isIdListReady : false;
     }
     
     public String getSource() {
@@ -43,7 +48,7 @@ public class InitializeDetails {
     }
     
     public FailureDetails getFailureDetails() {
-        return failure_details;
+        return failureDetails;
     }
     
     public String getRawJson() {

@@ -54,9 +54,9 @@ public class StatsigInitializeWithDetails {
         assertTrue(init_details.getDuration() > 0);
         assertTrue(init_details.getIsInitSuccess());
         assertTrue(init_details.getIsConfigSpecReady());
-        assertEquals(init_details.getIsIdListReady(), null);
+        assertFalse(init_details.getIsIdListReady());
         assertEquals(init_details.getSource(), "Network");
-        assertEquals(init_details.getFailureDetails(), null);
+        assertNull(init_details.getFailureDetails());
     }
 
     @Test
@@ -74,7 +74,7 @@ public class StatsigInitializeWithDetails {
         assertTrue(init_details.getDuration() >= 0);
         assertTrue(init_details.getIsInitSuccess());
         assertFalse(init_details.getIsConfigSpecReady());
-        assertEquals(init_details.getIsIdListReady(), null);
+        assertFalse(init_details.getIsIdListReady());
         assertEquals(init_details.getSource(), "NoValues");
         assertNotEquals(init_details.getFailureDetails(), null);
     }
