@@ -18,7 +18,7 @@ const TEST_COMMANDS: Record<string, string> = {
     'mkdir -p statsig-java/java/src/main/resources/native/linux-gnu-x86_64',
     'cp target/debug/libstatsig_ffi.so statsig-java/java/src/main/resources/native/linux-gnu-x86_64',
     'cd statsig-java/java',
-    './gradlew test --rerun-tasks --console rich',
+    './gradlew spotlessCheck test --rerun-tasks --console rich',
   ].join(' && '),
 
   node: [
