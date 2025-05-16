@@ -142,6 +142,10 @@ impl MockScrapi {
         result
     }
 
+    pub fn get_server_api(&self) -> String {
+        self.mock_server.uri().to_string()
+    }
+
     pub fn times_called_for_endpoint(&self, endpoint: Endpoint) -> u32 {
         let requests = self.requests.lock().unwrap();
 

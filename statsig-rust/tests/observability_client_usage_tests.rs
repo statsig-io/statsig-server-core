@@ -4,7 +4,11 @@ use statsig_rust::{
     output_logger::LogLevel, ObservabilityClient, OpsStatsEventObserver, Statsig, StatsigOptions,
     StatsigUser,
 };
-use std::sync::{Arc, Mutex, Weak};
+use std::{
+    fs,
+    path::PathBuf,
+    sync::{Arc, Mutex, Weak},
+};
 use utils::{
     mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi},
     mock_specs_adapter::MockSpecsAdapter,
@@ -32,8 +36,8 @@ async fn setup(
         SDK_KEY,
         Some(Arc::new(StatsigOptions {
             observability_client: Some(weak_obs_client),
-            specs_adapter: Some(specs_adapter.clone()),
             log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
+            specs_adapter: Some(specs_adapter.clone()),
             output_log_level: Some(LogLevel::Debug),
             specs_sync_interval_ms: Some(1),
             ..StatsigOptions::new()
@@ -235,7 +239,6 @@ async fn test_error_callback_called() {
     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
     let calls = obs_client.calls.lock().unwrap();
-    println!("Calls: {:?}", calls);
     assert!(calls.len() >= 3); // one init, one sdk initialization, and at least one error callback
     assert!(
         calls
@@ -262,4 +265,78 @@ async fn test_shutdown_drops() {
     drop(statsig);
 
     assert_eq!(Arc::strong_count(&obs_client), 1);
+}
+
+#[tokio::test]
+async fn test_init_from_network() {
+    let obs_client = Arc::new(MockObservabilityClient {
+        calls: Mutex::new(Vec::new()),
+    });
+
+    let mock_scrapi = MockScrapi::new().await;
+
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("tests/data/eval_proj_dcs.json");
+    let dcs = fs::read_to_string(path).expect("Unable to read file");
+
+    mock_scrapi
+        .stub(EndpointStub {
+            method: Method::GET,
+            response: dcs,
+            ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
+        })
+        .await;
+
+    mock_scrapi
+        .stub(EndpointStub {
+            method: Method::POST,
+            response: "{\"success\": true}".to_string(),
+            ..EndpointStub::with_endpoint(Endpoint::LogEvent)
+        })
+        .await;
+
+    let weak_obs_client = Arc::downgrade(&obs_client) as Weak<dyn ObservabilityClient>;
+    let statsig = Statsig::new(
+        SDK_KEY,
+        Some(Arc::new(StatsigOptions {
+            observability_client: Some(weak_obs_client),
+            log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
+            specs_url: Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs)),
+            output_log_level: Some(LogLevel::Debug),
+            specs_sync_interval_ms: Some(1),
+            ..StatsigOptions::new()
+        })),
+    );
+
+    let _ = statsig.initialize().await;
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+    let calls = obs_client.calls.lock().unwrap();
+
+    let mut found_name = String::new();
+    let mut found_value = 0.0;
+    let mut found_tags = None;
+
+    for call in calls.iter() {
+        if let RecordedCall::Dist(metric_name, value, tags) = call {
+            if metric_name == "statsig.sdk.initialization" {
+                found_name = metric_name.clone();
+                found_value = *value;
+                found_tags = tags.clone();
+                break;
+            }
+        }
+    }
+
+    let tags = found_tags.unwrap();
+
+    assert_eq!(found_name, "statsig.sdk.initialization");
+    assert_ne!(found_value, 0.0);
+    assert_eq!(tags.get("source"), Some(&"Network".to_string()));
+    assert_eq!(tags.get("success"), Some(&"true".to_string()));
+    assert_eq!(tags.get("store_populated"), Some(&"true".to_string()));
+    assert_eq!(
+        tags.get("spec_source_api"),
+        Some(&mock_scrapi.get_server_api())
+    );
 }

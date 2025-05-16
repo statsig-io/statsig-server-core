@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { Statsig, StatsigOptions, StatsigUser } from "../../build/index.js";
+
 import { MockObservabilityClient } from "./MockObservabilityClient";
 import { MockScrapi } from "./MockScrapi";
 
@@ -92,7 +93,7 @@ describe("ObservabilityClient Usage", () => {
     expect(observabilityClientSpies.dist).toHaveBeenCalledWith(
       "statsig.sdk.initialization",
       expect.any(Number),
-      { success: "true", store_populated: "true", source: "Network" }
+      { success: "true", store_populated: "true", source: "Network", spec_source_api: scrapi.getServerApi() }
     );
   });
 
@@ -100,7 +101,7 @@ describe("ObservabilityClient Usage", () => {
     expect(observabilityClientSpies.dist).toHaveBeenCalledWith(
       "statsig.sdk.config_propagation_diff",
       expect.any(Number),
-      { source: "Network" }
+      { source: "Network", spec_source_api: scrapi.getServerApi() }
     );
   });
 
@@ -116,7 +117,7 @@ describe("ObservabilityClient Usage", () => {
     expect(observabilityClientSpies.increment).toHaveBeenCalledWith(
       "statsig.sdk.config_no_update",
       1,
-      { source: "Network" }
+      { source: "Network", spec_source_api: scrapi.getServerApi() }
     );
   });
 });

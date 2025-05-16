@@ -42,6 +42,7 @@ impl StatsigBootstrapSpecsAdapter {
                     data: data.into_bytes(),
                     source: SpecsSource::Bootstrap,
                     received_at: Utc::now().timestamp_millis() as u64,
+                    source_api: None,
                 }),
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },

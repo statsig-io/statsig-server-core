@@ -6,6 +6,7 @@ use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::specs_adapter::{SpecsAdapter, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
+use crate::utils::get_api_from_url;
 use crate::{
     log_d, log_e, log_error_to_statsig_and_console, SpecsSource, StatsigOptions, StatsigRuntime,
 };
@@ -19,6 +20,11 @@ use tokio::sync::Notify;
 use tokio::time::sleep;
 
 use super::{ConfigCompressionMode, SpecsInfo};
+
+pub struct NetworkResponse {
+    pub data: Vec<u8>,
+    pub api: String,
+}
 
 pub const DEFAULT_SPECS_URL: &str = "https://api.statsigcdn.com/v2/download_config_specs";
 pub const DEFAULT_SYNC_INTERVAL_MS: u32 = 10_000;
@@ -82,10 +88,14 @@ impl StatsigHttpSpecsAdapter {
     pub async fn fetch_specs_from_network(
         &self,
         current_specs_info: SpecsInfo,
-    ) -> Result<Vec<u8>, NetworkError> {
+    ) -> Result<NetworkResponse, NetworkError> {
         let request_args = self.get_request_args(&current_specs_info);
+        let url = request_args.url.clone();
         match self.handle_specs_request(request_args).await {
-            Ok(response) => Ok(response),
+            Ok(response) => Ok(NetworkResponse {
+                data: response,
+                api: get_api_from_url(&url),
+            }),
             Err(e) => Err(e),
         }
     }
@@ -120,7 +130,7 @@ impl StatsigHttpSpecsAdapter {
         &self,
         mut request_args: RequestArgs,
         current_specs_info: SpecsInfo,
-    ) -> Result<Vec<u8>, NetworkError> {
+    ) -> Result<NetworkResponse, NetworkError> {
         let fallback_url = match &self.fallback_url {
             Some(url) => construct_specs_url(
                 &self.config_compression_mode,
@@ -131,12 +141,15 @@ impl StatsigHttpSpecsAdapter {
             None => return Err(NetworkError::RequestFailed),
         };
 
-        request_args.url = fallback_url;
+        request_args.url = fallback_url.clone();
 
         // TODO logging
 
         let response = self.handle_specs_request(request_args).await?;
-        Ok(response)
+        Ok(NetworkResponse {
+            data: response,
+            api: get_api_from_url(&fallback_url),
+        })
     }
 
     // TODO: return a decompressed and parsed SpecsResponse
@@ -196,9 +209,11 @@ impl StatsigHttpSpecsAdapter {
 
         if result.is_err() && self.fallback_url.is_some() {
             log_d!(TAG, "Falling back to statsig api");
-            let request_args = self.get_request_args(&current_specs_info);
             let response = self
-                .handle_fallback_request(request_args, current_specs_info)
+                .handle_fallback_request(
+                    self.get_request_args(&current_specs_info),
+                    current_specs_info,
+                )
                 .await;
             return self.process_spec_data(response).await;
         }
@@ -208,17 +223,18 @@ impl StatsigHttpSpecsAdapter {
 
     async fn process_spec_data(
         &self,
-        response: Result<Vec<u8>, NetworkError>,
+        response: Result<NetworkResponse, NetworkError>,
     ) -> Result<(), StatsigErr> {
-        let data = response.map_err(|e| {
+        let resp = response.map_err(|e| {
             let msg = "No specs result from network";
             StatsigErr::NetworkError(e, Some(msg.to_string()))
         })?;
 
         let update = SpecsUpdate {
-            data,
+            data: resp.data,
             source: SpecsSource::Network,
             received_at: Utc::now().timestamp_millis() as u64,
+            source_api: Some(resp.api),
         };
 
         self.ops_stats.add_marker(

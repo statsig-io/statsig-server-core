@@ -65,14 +65,14 @@ def statsig_setup(httpserver: HTTPServer):
 
     statsig.initialize().wait()
 
-    yield statsig, observability_client
+    yield statsig, observability_client, httpserver
 
     statsig.shutdown().wait()
 
 
 def test_observability_client_usage(statsig_setup):
     """Test that MockObservabilityClient correctly tracks init(), dist() calls."""
-    statsig, observability_client = statsig_setup
+    statsig, observability_client, httpserver = statsig_setup
     user = StatsigUser(user_id="test-user")
 
     statsig.check_gate(user, "test-gate")
@@ -87,7 +87,7 @@ def test_observability_client_usage(statsig_setup):
     )
     assert dist_event is not None, "distribution() should have been called"
     assert isinstance(dist_event[2], float)
-    assert dist_event[3] == {"success": "true", "store_populated": "true", "source": "Network"}
+    assert dist_event[3] == {"success": "true", "store_populated": "true", "source": "Network", "spec_source_api": f"http://{httpserver.host}:{httpserver.port}"}
 
 
 def test_error_callback_usage():
@@ -114,7 +114,7 @@ def test_error_callback_usage():
 
 def test_metric_with_high_card(statsig_setup):
     """Test that MockObservabilityClient correctly tracks init(), dist() calls."""
-    statsig, observability_client = statsig_setup
+    statsig, observability_client, _ = statsig_setup
     user = StatsigUser(user_id="test-user")
 
     statsig.check_gate(user, "test-gate")

@@ -67,6 +67,7 @@ impl StatsigDataStoreSpecsAdapter {
                                         data: update.result.unwrap_or_default().into_bytes(),
                                         source: SpecsSource::Adapter("DataStore".to_string()),
                                         received_at: Utc::now().timestamp_millis() as u64,
+                                        source_api: None,
                                 }) {
                                     Ok(()) => {},
                                     Err(_) => log_w!(TAG, "DataStoreAdapter - Failed to capture"),
@@ -110,6 +111,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
                             data: data.into_bytes(),
                             source: SpecsSource::Adapter("DataStore".to_string()),
                             received_at: Utc::now().timestamp_millis() as u64,
+                            source_api: None,
                         })?;
                         Ok(())
                     }

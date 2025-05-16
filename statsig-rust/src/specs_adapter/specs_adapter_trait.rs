@@ -14,9 +14,9 @@ pub enum SpecsSource {
     NoValues,
     Error,
     Loading,
-    Network,
     Bootstrap,
     Adapter(String),
+    Network,
 }
 
 const DEFAULT_CONFIG_COMPRESSION_MODE: ConfigCompressionMode = ConfigCompressionMode::Gzip;
@@ -52,8 +52,8 @@ impl SpecsSource {
             "NoValues" => SpecsSource::NoValues,
             "Error" => SpecsSource::Error,
             "Loading" => SpecsSource::Loading,
-            "Network" => SpecsSource::Network,
             "Bootstrap" => SpecsSource::Bootstrap,
+            "Network" => SpecsSource::Network,
             _ => SpecsSource::Error,
         }
     }
@@ -104,6 +104,7 @@ pub struct SpecsUpdate {
     pub data: Vec<u8>,
     pub source: SpecsSource,
     pub received_at: u64,
+    pub source_api: Option<String>,
 }
 
 #[repr(C)]
@@ -113,6 +114,7 @@ pub struct SpecsInfo {
     pub checksum: Option<String>,
     pub zstd_dict_id: Option<String>,
     pub source: SpecsSource,
+    pub source_api: Option<String>,
 }
 
 impl SpecsInfo {
@@ -123,6 +125,7 @@ impl SpecsInfo {
             checksum: None,
             zstd_dict_id: None,
             source: SpecsSource::NoValues,
+            source_api: None,
         }
     }
 
@@ -133,6 +136,7 @@ impl SpecsInfo {
             checksum: None,
             zstd_dict_id: None,
             source: SpecsSource::Error,
+            source_api: None,
         }
     }
 }

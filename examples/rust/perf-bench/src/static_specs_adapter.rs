@@ -30,6 +30,7 @@ impl StaticSpecsAdapter {
             data,
             source: SpecsSource::Bootstrap,
             received_at: 1,
+            source_api: None,
         };
 
         self.listener

@@ -123,6 +123,7 @@ pub struct InitializeDetails {
     pub is_id_list_ready: Option<bool>,
     pub source: SpecsSource,
     pub failure_details: Option<FailureDetails>,
+    pub spec_source_api: Option<String>,
 }
 
 impl Default for InitializeDetails {
@@ -134,6 +135,7 @@ impl Default for InitializeDetails {
             is_id_list_ready: None,
             source: SpecsSource::Uninitialized,
             failure_details: None,
+            spec_source_api: None,
         }
     }
 }
@@ -150,6 +152,7 @@ impl InitializeDetails {
                 reason: reason.to_string(),
                 error,
             }),
+            spec_source_api: None,
         }
     }
 }
@@ -577,9 +580,10 @@ impl Statsig {
             init_success,
             is_config_spec_ready,
             is_id_list_ready,
-            source: specs_info.source,
+            source: specs_info.source.clone(),
             failure_details,
             duration,
+            spec_source_api: specs_info.source_api.clone(),
         }
     }
 
@@ -594,6 +598,7 @@ impl Statsig {
                 error: None,
             }),
             duration: timeout_ms as f64,
+            spec_source_api: None,
         }
     }
 
@@ -615,6 +620,7 @@ impl Statsig {
                 }
             }
             Err(err) => {
+                // we store errors on init details so we should never return error and thus do not need to log
                 log_w!(TAG, "Initialization error: {:?}", err);
             }
         }
@@ -1734,7 +1740,8 @@ impl Statsig {
     ) {
         let is_store_populated = specs_info.source != SpecsSource::NoValues;
         let source_str = specs_info.source.to_string();
-        self.ops_stats.log(ObservabilityEvent::new_event(
+
+        let event = ObservabilityEvent::new_event(
             MetricType::Dist,
             "initialization".to_string(),
             *duration,
@@ -1742,8 +1749,14 @@ impl Statsig {
                 ("success".to_owned(), success.to_string()),
                 ("source".to_owned(), source_str.clone()),
                 ("store_populated".to_owned(), is_store_populated.to_string()),
+                (
+                    "spec_source_api".to_owned(),
+                    specs_info.source_api.clone().unwrap_or_default(),
+                ),
             ])),
-        ));
+        );
+
+        self.ops_stats.log(event);
         self.ops_stats.add_marker(
             {
                 let marker = Marker::new(KeyType::Overall, ActionType::End, None)

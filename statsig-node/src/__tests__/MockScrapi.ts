@@ -1,5 +1,5 @@
-import { decompress } from '@mongodb-js/zstd';
 import compression from 'compression';
+import { decompress } from '@mongodb-js/zstd';
 import express from 'express';
 import http from 'http';
 
@@ -95,6 +95,10 @@ export class MockScrapi {
 
   getUrlForPath(path: string) {
     return `http://localhost:${this.port}${path}`;
+  }
+
+  getServerApi() {
+    return `http://localhost:${this.port}`;
   }
 
   mock(path: string, response: string, options?: MockOptions) {

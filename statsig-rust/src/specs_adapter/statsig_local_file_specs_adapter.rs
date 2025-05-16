@@ -53,13 +53,18 @@ impl StatsigLocalFileSpecsAdapter {
                 checksum: specs.checksum,
                 zstd_dict_id: None, // For backwards compatibility, we only store uncompressed specs
                 source: SpecsSource::Adapter("FileBased".to_owned()),
+                source_api: None,
             },
             _ => SpecsInfo::empty(),
         };
 
         let data = match self.http_adapter.fetch_specs_from_network(specs_info).await {
-            Ok(data) => String::from_utf8(data)
-                .map_err(|e| StatsigErr::SerializationError(e.to_string()))?,
+            Ok(response) => match String::from_utf8(response.data) {
+                Ok(data) => data,
+                Err(e) => {
+                    return Err(StatsigErr::SerializationError(e.to_string()));
+                }
+            },
             Err(e) => {
                 return Err(StatsigErr::NetworkError(
                     e,
@@ -91,6 +96,7 @@ impl StatsigLocalFileSpecsAdapter {
                     data: data.into_bytes(),
                     source: SpecsSource::Adapter("FileBased".to_owned()),
                     received_at: Utc::now().timestamp_millis() as u64,
+                    source_api: None,
                 }),
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },

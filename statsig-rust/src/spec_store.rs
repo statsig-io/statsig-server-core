@@ -18,6 +18,7 @@ use std::sync::{Arc, RwLock};
 
 pub struct SpecStoreData {
     pub source: SpecsSource,
+    pub source_api: Option<String>,
     pub time_received_at: Option<u64>,
     pub values: SpecsResponseFull,
     pub next_values: Option<SpecsResponseFull>,
@@ -52,6 +53,7 @@ impl SpecStore {
                 next_values: Some(SpecsResponseFull::default()),
                 time_received_at: None,
                 source: SpecsSource::Uninitialized,
+                source_api: None,
                 decompression_dict: None,
                 id_lists: HashMap::new(),
             })),
@@ -91,7 +93,7 @@ impl SpecStore {
             match self.parse_specs_response(&specs_update, &mut next_values, decompression_dict) {
                 Ok(Some(full)) => full,
                 Ok(None) => {
-                    self.ops_stats_log_no_update(specs_update.source);
+                    self.ops_stats_log_no_update(specs_update.source, specs_update.source_api);
                     return Ok(());
                 }
                 Err(e) => {
@@ -106,8 +108,13 @@ impl SpecStore {
         self.try_update_global_configs(&next_values);
 
         let now = Utc::now().timestamp_millis() as u64;
-        let (prev_source, prev_lcut, curr_values_time) =
-            self.swap_current_with_next(next_values, &specs_update, decompression_dict, now)?;
+        let (prev_source, prev_lcut, curr_values_time) = self.swap_current_with_next(
+            next_values,
+            &specs_update,
+            decompression_dict,
+            now,
+            specs_update.source_api.clone(),
+        )?;
 
         self.try_update_data_store(&specs_update.source, specs_update.data, now);
         self.ops_stats_log_config_propagation_diff(
@@ -115,6 +122,7 @@ impl SpecStore {
             prev_lcut,
             &specs_update.source,
             &prev_source,
+            specs_update.source_api,
         );
 
         // Glibc requested more memory than needed when deserializing a big json blob
@@ -175,6 +183,7 @@ impl SpecStore {
         specs_update: &SpecsUpdate,
         decompression_dict: Option<DictionaryDecoder>,
         now: u64,
+        source_api: Option<String>,
     ) -> Result<(SpecsSource, u64, u64), StatsigErr> {
         match self.data.write() {
             Ok(mut data) => {
@@ -187,7 +196,7 @@ impl SpecStore {
 
                 data.time_received_at = Some(now);
                 data.decompression_dict = decompression_dict;
-
+                data.source_api = source_api;
                 Ok((prev_source, prev_lcut, data.values.time))
             }
             Err(e) => {
@@ -197,13 +206,19 @@ impl SpecStore {
         }
     }
 
-    fn ops_stats_log_no_update(&self, source: SpecsSource) {
+    fn ops_stats_log_no_update(&self, source: SpecsSource, source_api: Option<String>) {
         log_d!(TAG, "No Updates");
         self.ops_stats.log(ObservabilityEvent::new_event(
             MetricType::Increment,
             "config_no_update".to_string(),
             1.0,
-            Some(HashMap::from([("source".to_string(), source.to_string())])),
+            Some(HashMap::from([
+                ("source".to_string(), source.to_string()),
+                (
+                    "spec_source_api".to_string(),
+                    source_api.unwrap_or_default(),
+                ),
+            ])),
         ));
     }
 
@@ -213,6 +228,7 @@ impl SpecStore {
         prev_lcut: u64,
         source: &SpecsSource,
         prev_source: &SpecsSource,
+        source_api: Option<String>,
     ) {
         let delay = Utc::now().timestamp_millis() as u64 - lcut;
         log_d!(TAG, "Updated ({:?})", source);
@@ -229,6 +245,10 @@ impl SpecStore {
                 ("source".to_string(), source.to_string()),
                 ("lcut".to_string(), lcut.to_string()),
                 ("prev_lcut".to_string(), prev_lcut.to_string()),
+                (
+                    "spec_source_api".to_string(),
+                    source_api.unwrap_or_default(),
+                ),
             ])),
         ));
     }
@@ -245,7 +265,7 @@ impl SpecStore {
     }
 
     fn try_update_data_store(&self, source: &SpecsSource, data: Vec<u8>, now: u64) {
-        if *source != SpecsSource::Network {
+        if source != &SpecsSource::Network {
             return;
         }
 
@@ -327,6 +347,7 @@ impl SpecsUpdateListener for SpecStore {
                     .as_ref()
                     .map(|d| d.get_dict_id().to_string()),
                 source: data.source.clone(),
+                source_api: data.source_api.clone(),
             },
             Err(e) => {
                 log_e!(TAG, "Failed to acquire read lock: {}", e);
@@ -335,6 +356,7 @@ impl SpecsUpdateListener for SpecStore {
                     checksum: None,
                     zstd_dict_id: None,
                     source: SpecsSource::Error,
+                    source_api: None,
                 }
             }
         }
