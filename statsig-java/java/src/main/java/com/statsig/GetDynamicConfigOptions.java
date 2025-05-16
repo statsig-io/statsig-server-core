@@ -1,9 +1,9 @@
 package com.statsig;
 
 public class GetDynamicConfigOptions {
-    public boolean disableExposureLogging;
+  public boolean disableExposureLogging;
 
-    public GetDynamicConfigOptions(boolean disableExposureLogging) {
-        this.disableExposureLogging = disableExposureLogging;
-    }
+  public GetDynamicConfigOptions(boolean disableExposureLogging) {
+    this.disableExposureLogging = disableExposureLogging;
+  }
 }
