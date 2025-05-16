@@ -1,9 +1,12 @@
 from statsig_python_core import ObservabilityClientBase
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict
 
 
 class ObservabilityClient(ObservabilityClientBase):
-    def __init__(self):
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls)
+
+    def __init__(self, *args, **kwargs):
         super().__init__()
         self.init_fn = self.init
         self.increment_fn = self.increment
