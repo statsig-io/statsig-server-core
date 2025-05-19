@@ -2,7 +2,7 @@ use crate::evaluation::evaluation_types::{
     BaseEvaluation, DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation,
     SecondaryExposure,
 };
-use crate::event_logging::exposable_string::ExposableString;
+use crate::event_logging::exposable_string::{self, ExposableString};
 use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::specs_response::spec_types::Spec;
 use serde_json::Value;
@@ -17,6 +17,7 @@ use super::evaluation_types_v2::{
 
 #[derive(Default, Debug)]
 pub struct EvaluatorResult<'a> {
+    pub name: Option<&'a ExposableString>,
     pub bool_value: bool,
     pub unsupported: bool,
     pub is_experiment_group: bool,
@@ -274,6 +275,19 @@ fn get_json_value(result: &EvaluatorResult) -> HashMap<String, Value> {
     result.json_value.clone().unwrap_or_default()
 }
 
+// todo: remove when 'QueuedExposure' does not use `BaseEvaluation`
+fn get_exposure_name_if_not_hashed(
+    possibly_hashed_name: &str,
+    exposure_name: Option<&ExposableString>,
+) -> ExposableString {
+    let exposure_name = exposure_name.unwrap_or(&exposable_string::EMPTY_STRING);
+    if possibly_hashed_name == exposure_name.as_str() {
+        exposure_name.clone()
+    } else {
+        ExposableString::new(possibly_hashed_name.to_string())
+    }
+}
+
 fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEvaluation {
     let rule_id = create_suffixed_rule_id(result.rule_id, result.rule_id_suffix);
 
@@ -285,8 +299,10 @@ fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEva
         version: result.version,
     };
 
+    let name = get_exposure_name_if_not_hashed(spec_name, result.name);
+
     BaseEvaluation {
-        name: spec_name.to_string(),
+        name,
         rule_id,
         secondary_exposures: std::mem::take(&mut result.secondary_exposures),
         exposure_info: Some(exposure_info),

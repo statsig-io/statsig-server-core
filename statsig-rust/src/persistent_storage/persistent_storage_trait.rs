@@ -107,7 +107,7 @@ pub fn make_experiment_from_sticky_value(
         received_at: Some(Utc::now().timestamp_millis() as u64),
     };
     Experiment {
-        name,
+        name: name.unperformant_to_string(),
         value,
         rule_id: rule_id.unperformant_to_string(),
         id_type,

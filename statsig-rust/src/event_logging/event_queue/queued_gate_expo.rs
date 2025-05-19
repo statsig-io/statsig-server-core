@@ -18,6 +18,7 @@ use super::queued_event::{EnqueueOperation, QueuedEvent, QueuedExposure};
 
 pub struct EnqueueGateExpoOp<'a> {
     pub user: &'a StatsigUserInternal<'a, 'a>,
+    pub queried_gate_name: &'a str,
     pub evaluation: Option<Cow<'a, GateEvaluation>>,
     pub details: EvaluationDetails,
     pub trigger: ExposureTrigger,
@@ -91,7 +92,7 @@ impl<'a> QueuedExposure<'a> for EnqueueGateExpoOp<'a> {
 
 pub struct QueuedGateExposureEvent {
     pub user: StatsigUserLoggable,
-    pub gate_name: String,
+    pub gate_name: ExposableString,
     pub value: bool,
     pub rule_id: ExposableString,
     pub secondary_exposures: Option<Vec<SecondaryExposure>>,
@@ -105,7 +106,7 @@ pub struct QueuedGateExposureEvent {
 impl QueuedGateExposureEvent {
     pub fn into_statsig_event_internal(self) -> StatsigEventInternal {
         let mut metadata = get_metadata_with_details(self.evaluation_details);
-        metadata.insert("gate".into(), self.gate_name);
+        metadata.insert("gate".into(), self.gate_name.unperformant_to_string());
         metadata.insert("gateValue".into(), self.value.to_string());
 
         // This mostly occurs in the EventLogger bg thread, so it's ok to use unperformant_to_string
@@ -138,7 +139,7 @@ impl QueuedGateExposureEvent {
 }
 
 type ExtractInfoResult = (
-    String,
+    ExposableString,
     ExposableString,
     bool,
     Option<u32>,
@@ -151,7 +152,7 @@ fn extract_from_cow(moo: Option<Cow<'_, GateEvaluation>>) -> ExtractInfoResult {
         Some(m) => m,
         None => {
             return (
-                String::new(),
+                ExposableString::default(),
                 ExposableString::default(),
                 false,
                 None,

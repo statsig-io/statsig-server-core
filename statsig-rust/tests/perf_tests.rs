@@ -42,13 +42,14 @@ async fn setup() -> (StatsigUser, Statsig, Arc<MockSpecsAdapter>) {
 
 #[tokio::test]
 async fn test_individual_gate_checks() {
-    let (user, statsig, _) = setup().await;
+    let (_, statsig, _) = setup().await;
 
     let gate_name = "test_public";
     let start = Instant::now();
 
     let mut result = false;
-    for _ in 0..100000 {
+    for i in 0..100000 {
+        let user = StatsigUser::with_user_id(format!("{}", i));
         result = statsig.check_gate(&user, gate_name);
     }
 

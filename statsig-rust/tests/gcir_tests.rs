@@ -23,7 +23,7 @@ lazy_static! {
         .build();
 }
 
-async fn setup() -> Value {
+async fn setup(hash_algorithm: HashAlgorithm) -> Value {
     let mut options = StatsigOptions::new();
     options.specs_adapter = Some(Arc::new(MockSpecsAdapter::with_data(
         "tests/data/eval_proj_dcs.json",
@@ -36,7 +36,7 @@ async fn setup() -> Value {
     let response = statsig.get_client_init_response_with_options(
         &USER,
         &ClientInitResponseOptions {
-            hash_algorithm: Some(HashAlgorithm::None),
+            hash_algorithm: Some(hash_algorithm),
             client_sdk_key: None,
             include_local_overrides: Some(false),
             response_format: None,
@@ -48,7 +48,7 @@ async fn setup() -> Value {
 
 #[tokio::test]
 async fn test_public_gate() {
-    let json_obj = setup().await;
+    let json_obj = setup(HashAlgorithm::None).await;
 
     let gate: &Value = json_obj
         .get("feature_gates")
@@ -69,8 +69,30 @@ async fn test_public_gate() {
 }
 
 #[tokio::test]
+async fn test_public_gate_djb2() {
+    let json_obj = setup(HashAlgorithm::Djb2).await;
+    let test_public_djb2 = "3968762550";
+    let gate: &Value = json_obj
+        .get("feature_gates")
+        .unwrap()
+        .get(test_public_djb2)
+        .unwrap();
+
+    assert_json_eq!(
+        gate,
+        json!({
+            "name": test_public_djb2,
+            "value": true,
+            "rule_id": "6X3qJgyfwA81IJ2dxI7lYp",
+            "id_type": "userID",
+            "secondary_exposures": []
+        })
+    );
+}
+
+#[tokio::test]
 async fn test_nested_gate_condition() {
-    let json_obj = setup().await;
+    let json_obj = setup(HashAlgorithm::None).await;
 
     let gate: &Value = json_obj
         .get("feature_gates")
@@ -103,7 +125,7 @@ async fn test_nested_gate_condition() {
 
 #[tokio::test]
 async fn test_targeted_exp_in_layer_with_holdout() {
-    let json_obj = setup().await;
+    let json_obj = setup(HashAlgorithm::None).await;
 
     let experiment: &Value = json_obj
         .get("dynamic_configs")
@@ -147,7 +169,7 @@ async fn test_targeted_exp_in_layer_with_holdout() {
 
 #[tokio::test]
 async fn test_targeted_exp_in_unlayered_with_holdout() {
-    let json_obj = setup().await;
+    let json_obj = setup(HashAlgorithm::None).await;
 
     let config: &Value = json_obj
         .get("dynamic_configs")
@@ -189,7 +211,7 @@ async fn test_targeted_exp_in_unlayered_with_holdout() {
 
 #[tokio::test]
 async fn test_exp_5050_targeting() {
-    let json_obj = setup().await;
+    let json_obj = setup(HashAlgorithm::None).await;
 
     let experiment: &Value = json_obj
         .get("dynamic_configs")
@@ -226,7 +248,7 @@ async fn test_exp_5050_targeting() {
 
 #[tokio::test]
 async fn test_targetting_with_capital_letter_gate() {
-    let json_obj = setup().await;
+    let json_obj = setup(HashAlgorithm::None).await;
 
     let experiment: &Value = json_obj
         .get("dynamic_configs")
@@ -266,7 +288,7 @@ async fn test_targetting_with_capital_letter_gate() {
 
 #[tokio::test]
 async fn test_layer_with_many_params() {
-    let json_obj = setup().await;
+    let json_obj = setup(HashAlgorithm::None).await;
 
     let layer: &Value = json_obj
         .get("layer_configs")
@@ -305,7 +327,7 @@ async fn test_layer_with_many_params() {
 
 #[tokio::test]
 async fn test_layer_with_no_exp() {
-    let json_obj = setup().await;
+    let json_obj = setup(HashAlgorithm::None).await;
 
     let layer: &Value = json_obj
         .get("layer_configs")
@@ -333,7 +355,7 @@ async fn test_layer_with_no_exp() {
 
 #[tokio::test]
 async fn test_autotune() {
-    let json_obj = setup().await;
+    let json_obj = setup(HashAlgorithm::None).await;
 
     let experiment: &Value = json_obj
         .get("dynamic_configs")

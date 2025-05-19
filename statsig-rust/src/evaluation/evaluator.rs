@@ -74,13 +74,14 @@ impl Evaluator {
         spec_name: &str,
         spec_type: &SpecType,
     ) -> Result<Recognition, StatsigErr> {
-        let opt_spec = match spec_type {
+        let opt_addressable_spec = match spec_type {
             SpecType::Gate => ctx.spec_store_data.values.feature_gates.get(spec_name),
             SpecType::DynamicConfig => ctx.spec_store_data.values.dynamic_configs.get(spec_name),
             SpecType::Experiment => ctx.spec_store_data.values.dynamic_configs.get(spec_name),
             SpecType::Layer => ctx.spec_store_data.values.layer_configs.get(spec_name),
-        }
-        .map(|a| a.spec.as_ref());
+        };
+
+        let opt_spec = opt_addressable_spec.map(|a| a.spec.as_ref());
 
         if try_apply_override(ctx, spec_name, spec_type, opt_spec) {
             return Ok(Recognition::Recognized);
@@ -94,7 +95,13 @@ impl Evaluator {
             return Ok(Recognition::Recognized);
         }
 
+        let addressable_spec =
+            unwrap_or_return!(opt_addressable_spec, Ok(Recognition::Unrecognized));
         let spec = unwrap_or_return!(opt_spec, Ok(Recognition::Unrecognized));
+
+        if ctx.result.name.is_none() {
+            ctx.result.name = Some(&addressable_spec.name);
+        }
 
         if ctx.result.id_type.is_none() {
             ctx.result.id_type = Some(&spec.id_type);

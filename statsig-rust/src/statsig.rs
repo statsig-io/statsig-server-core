@@ -1056,6 +1056,7 @@ impl Statsig {
         } else {
             self.event_logger.enqueue(EnqueueGateExpoOp {
                 user: &user_internal,
+                queried_gate_name: gate_name,
                 evaluation: evaluation.map(Cow::Owned),
                 details: details.clone(),
                 trigger: ExposureTrigger::Auto,
@@ -1085,6 +1086,7 @@ impl Statsig {
         } else {
             self.event_logger.enqueue(EnqueueGateExpoOp {
                 user: &user_internal,
+                queried_gate_name: gate_name,
                 evaluation: evaluation.as_ref().map(Cow::Borrowed),
                 details: details.clone(),
                 trigger: ExposureTrigger::Auto,
@@ -1099,6 +1101,7 @@ impl Statsig {
         let (details, evaluation) = self.get_gate_evaluation(&user_internal, gate_name);
         self.event_logger.enqueue(EnqueueGateExpoOp {
             user: &user_internal,
+            queried_gate_name: gate_name,
             evaluation: evaluation.map(Cow::Owned),
             details: details.clone(),
             trigger: ExposureTrigger::Manual,

@@ -40,7 +40,7 @@ pub struct ExtraExposureInfo {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BaseEvaluation {
-    pub name: String,
+    pub name: ExposableString,
     pub rule_id: ExposableString,
     pub secondary_exposures: Vec<SecondaryExposure>,
 
