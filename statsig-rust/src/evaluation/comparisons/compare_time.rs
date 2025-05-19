@@ -70,6 +70,16 @@ mod tests {
     }
 
     #[test]
+    fn test_iso_format_no_separator() {
+        let test_eval_value = test_only_make_eval_value!("2023-01-02 00:00:00Z");
+        assert!(compare_time(
+            &create_str_value("2023-01-01 00:00:00Z"),
+            &test_eval_value,
+            "before"
+        ));
+    }
+
+    #[test]
     fn test_timestamp_string() {
         let test_eval_value = test_only_make_eval_value!("1672617600000");
         assert!(compare_time(
