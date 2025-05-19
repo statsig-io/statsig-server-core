@@ -5,7 +5,7 @@ use crate::{
     event_logging::{
         event_logger::ExposureTrigger,
         exposable_string::ExposableString,
-        exposure_sampling::EvtSamplingDecision,
+        exposure_sampling::{EvtSamplingDecision, ExposureSamplingKey},
         exposure_utils::{get_metadata_with_details, get_statsig_metadata_with_sampling_decision},
         statsig_event::StatsigEvent,
         statsig_event_internal::{StatsigEventInternal, GATE_EXPOSURE_EVENT_NAME},
@@ -55,30 +55,12 @@ impl EnqueueOperation for EnqueueGateExpoOp<'_> {
 }
 
 impl<'a> QueuedExposure<'a> for EnqueueGateExpoOp<'a> {
-    fn create_exposure_sampling_key(&self) -> String {
-        let gate_name = gate_name_ref(&self.evaluation);
-        let rule_id = rule_id_ref(&self.evaluation);
+    fn create_exposure_sampling_key(&self) -> ExposureSamplingKey {
+        let user_data = &self.user.user_ref.data;
+        let evaluation = self.evaluation.as_ref().map(|e| &e.base);
+        let value = self.evaluation.as_ref().is_some_and(|e| e.value);
 
-        let mut sampling_key = String::from("n:");
-        sampling_key.push_str(gate_name);
-        sampling_key.push_str(";u:");
-        sampling_key.push_str(&self.user.user_ref.data.create_hash().to_string());
-        sampling_key.push_str(";r:");
-        sampling_key.push_str(rule_id);
-        sampling_key.push_str(";v:");
-        sampling_key.push_str(value_as_str(&self.evaluation));
-        sampling_key
-    }
-
-    fn create_spec_sampling_key(&self) -> String {
-        let gate_name = gate_name_ref(&self.evaluation);
-        let rule_id = rule_id_ref(&self.evaluation);
-
-        let mut sampling_key = String::from("n:");
-        sampling_key.push_str(gate_name);
-        sampling_key.push_str(";r:");
-        sampling_key.push_str(rule_id);
-        sampling_key
+        ExposureSamplingKey::new(evaluation, user_data.as_ref(), value as u64)
     }
 
     fn get_rule_id_ref(&'a self) -> &'a str {
@@ -206,18 +188,6 @@ fn extract_from_cow(moo: Option<Cow<'_, GateEvaluation>>) -> ExtractInfoResult {
     }
 }
 
-fn gate_name_ref<'a>(moo: &'a Option<Cow<'a, GateEvaluation>>) -> &'a str {
-    moo.as_ref().map_or("", |x| x.base.name.as_str())
-}
-
 fn rule_id_ref<'a>(moo: &'a Option<Cow<'a, GateEvaluation>>) -> &'a str {
     moo.as_ref().map_or("", |x| x.base.rule_id.as_str())
-}
-
-fn value_as_str<'a>(moo: &'a Option<Cow<'a, GateEvaluation>>) -> &'a str {
-    if moo.as_ref().is_some_and(|x| x.value) {
-        "T"
-    } else {
-        "F"
-    }
 }

@@ -169,7 +169,7 @@ mod tests {
 
         let enqueue_op = EnqueueGateExpoOp {
             user: &user_internal,
-            queried_gate_name: "gate-name",
+            queried_gate_name: &gate.name,
             evaluation: gate.__evaluation.as_ref().map(Cow::Borrowed),
             details: EvaluationDetails::unrecognized_no_data(),
             trigger: ExposureTrigger::Auto,
@@ -192,7 +192,7 @@ mod tests {
         for _ in 0..4567 {
             let enqueue_op = EnqueueGateExpoOp {
                 user: &user_internal,
-                queried_gate_name: "gate-name",
+                queried_gate_name: &gate.name,
                 evaluation: gate.__evaluation.as_ref().map(Cow::Borrowed),
                 details: EvaluationDetails::unrecognized_no_data(),
                 trigger: ExposureTrigger::Auto,
@@ -220,7 +220,7 @@ mod tests {
         for _ in 0..4567 {
             let enqueue_op = EnqueueGateExpoOp {
                 user: &user_internal,
-                queried_gate_name: "gate-name",
+                queried_gate_name: &gate.name,
                 evaluation: gate.__evaluation.as_ref().map(Cow::Borrowed),
                 details: EvaluationDetails::unrecognized_no_data(),
                 trigger: ExposureTrigger::Auto,
@@ -244,7 +244,7 @@ mod tests {
         for _ in 0..4567 {
             let enqueue_op = EnqueueGateExpoOp {
                 user: &user_internal,
-                queried_gate_name: "gate-name",
+                queried_gate_name: &gate.name,
                 evaluation: gate.__evaluation.as_ref().map(Cow::Borrowed),
                 details: EvaluationDetails::unrecognized_no_data(),
                 trigger: ExposureTrigger::Auto,

@@ -27,24 +27,27 @@ pub struct UserData {
 }
 
 impl UserData {
-    pub fn get_all_user_hashes(&self) -> Vec<u64> {
+    pub fn create_user_values_hash(&self) -> u64 {
+        let hashes = self.get_all_user_hashes();
+        hashing::hash_one(hashes)
+    }
+
+    fn get_all_user_hashes(&self) -> Vec<u64> {
         let mut hashes = Vec::new();
         push_string_field_hashes(&mut hashes, &self.user_id);
         push_map_field_hashes(&mut hashes, &self.custom_ids);
+
         push_string_field_hashes(&mut hashes, &self.app_version);
         push_string_field_hashes(&mut hashes, &self.country);
         push_string_field_hashes(&mut hashes, &self.email);
         push_string_field_hashes(&mut hashes, &self.ip);
         push_string_field_hashes(&mut hashes, &self.locale);
         push_string_field_hashes(&mut hashes, &self.user_agent);
+
         push_map_field_hashes(&mut hashes, &self.custom);
         push_map_field_hashes(&mut hashes, &self.private_attributes);
-        hashes
-    }
 
-    pub fn create_hash(&self) -> u64 {
-        let hashes = self.get_all_user_hashes();
-        hashing::hash_one(hashes)
+        hashes
     }
 }
 

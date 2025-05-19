@@ -2,11 +2,12 @@ use crate::{
     evaluation::evaluation_types::ExtraExposureInfo,
     event_logging::{
         event_logger::ExposureTrigger,
-        exposure_sampling::EvtSamplingDecision,
+        exposure_sampling::{EvtSamplingDecision, ExposureSamplingKey},
         exposure_utils::{get_metadata_with_details, get_statsig_metadata_with_sampling_decision},
         statsig_event::StatsigEvent,
         statsig_event_internal::{StatsigEventInternal, LAYER_EXPOSURE_EVENT_NAME},
     },
+    hashing::ahash_str,
     statsig_types::Layer,
     user::StatsigUserLoggable,
     EvaluationDetails, SecondaryExposure,
@@ -55,30 +56,17 @@ impl EnqueueOperation for EnqueueLayerParamExpoOp<'_> {
 }
 
 impl<'a> QueuedExposure<'a> for EnqueueLayerParamExpoOp<'a> {
-    fn create_exposure_sampling_key(&self) -> String {
+    fn create_exposure_sampling_key(&self) -> ExposureSamplingKey {
         let layer = self.get_layer_ref();
 
-        let experiment_name = layer.allocated_experiment_name.as_deref();
+        let user_data = &layer.__user.data;
+        let evaluation = layer.__evaluation.as_ref().map(|e| &e.base);
 
-        let mut sampling_key = String::from("n:");
-        sampling_key.push_str(&layer.name);
-        sampling_key.push_str(";e:");
-        sampling_key.push_str(experiment_name.unwrap_or_default());
-        sampling_key.push_str(";p:");
-        sampling_key.push_str(self.get_parameter_name_ref());
-        sampling_key.push_str(";u:");
-        sampling_key.push_str(&layer.__user.data.create_hash().to_string());
-        sampling_key.push_str(";r:");
-        sampling_key.push_str(&layer.rule_id);
-        sampling_key
-    }
+        // todo: use Cow and pre-hash the parameter name
+        let pname = self.get_parameter_name_ref();
+        let pname_hash = ahash_str(pname);
 
-    fn create_spec_sampling_key(&self) -> String {
-        let mut sampling_key = String::from("n:");
-        sampling_key.push_str(&self.get_layer_ref().name);
-        sampling_key.push_str(";r:");
-        sampling_key.push_str(&self.get_layer_ref().rule_id);
-        sampling_key
+        ExposureSamplingKey::new(evaluation, user_data.as_ref(), pname_hash)
     }
 
     fn get_rule_id_ref(&'a self) -> &'a str {

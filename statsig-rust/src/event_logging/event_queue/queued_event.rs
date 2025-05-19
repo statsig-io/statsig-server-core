@@ -7,7 +7,8 @@ use super::{
 use crate::{
     evaluation::evaluation_types::ExtraExposureInfo,
     event_logging::{
-        exposure_sampling::EvtSamplingDecision, statsig_event_internal::StatsigEventInternal,
+        exposure_sampling::{EvtSamplingDecision, ExposureSamplingKey},
+        statsig_event_internal::StatsigEventInternal,
     },
 };
 
@@ -17,8 +18,7 @@ pub trait EnqueueOperation {
 }
 
 pub trait QueuedExposure<'a> {
-    fn create_exposure_sampling_key(&self) -> String;
-    fn create_spec_sampling_key(&self) -> String;
+    fn create_exposure_sampling_key(&self) -> ExposureSamplingKey;
     fn get_rule_id_ref(&'a self) -> &'a str;
     fn get_extra_exposure_info_ref(&'a self) -> Option<&'a ExtraExposureInfo>;
 }
