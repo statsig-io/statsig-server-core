@@ -40,15 +40,15 @@ public class OutputLogger {
 
   static LogLevel logLevel = LogLevel.WARN;
 
-  static void logError(String tag, String message) {
+  public static void logError(String tag, String message) {
     logMessage(LogLevel.ERROR, tag, message);
   }
 
-  static void logWarning(String tag, String message) {
+  public static void logWarning(String tag, String message) {
     logMessage(LogLevel.WARN, tag, message);
   }
 
-  static void logInfo(String tag, String message) {
+  public static void logInfo(String tag, String message) {
     logMessage(LogLevel.INFO, tag, message);
   }
 
