@@ -256,6 +256,19 @@ function ensure_binary_file_exists($system_info)
     }
 }
 
+function ensure_ffi_enabled()
+{
+    $ffi_enable_value = ini_get('ffi.enable');
+    $ffi_enabled = $ffi_enable_value === '1' || $ffi_enable_value === 'true';
+
+    if (!$ffi_enabled) {
+        echo "❌ 'ini.ffi.enable' is not enabled\n";
+    } else {
+        echo "✅ 'ini.ffi.enable' is enabled\n";
+    }
+
+    return $ffi_enabled;
+}
 
 $system_info = get_system_info();
 ensure_bin_dir_exists();
@@ -267,10 +280,11 @@ download_header();
 
 
 echo "\n-- Ensuring Resources Exist --\n";
-$found = ensure_header_file_exists();
-$all_found = ensure_binary_file_exists($system_info) && $found;
+$header_found = ensure_header_file_exists();
+$binary_found = ensure_binary_file_exists($system_info);
+$ffi_enabled = ensure_ffi_enabled();
 echo "-----------------------------------\n";
 
-if (!$all_found) {
+if (!$header_found || !$binary_found || !$ffi_enabled) {
     exit(1);
 }
