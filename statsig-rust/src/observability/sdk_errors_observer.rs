@@ -6,6 +6,7 @@ use serde_json::Value;
 use tokio::sync::RwLock;
 
 use crate::{
+    log_d,
     networking::{NetworkClient, RequestArgs},
     statsig_metadata::StatsigMetadata,
     OpsStatsEventObserver, StatsigErr, StatsigOptions,
@@ -36,6 +37,8 @@ pub struct ErrorBoundaryEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub extra: Option<HashMap<String, String>>,
 }
+
+const TAG: &str = stringify!(SDKErrorsObserver);
 
 // Observer to post to scrapi when exception happened
 // If we never see the exception, log to sdk exception
@@ -86,6 +89,9 @@ impl SDKErrorsObserver {
             map.insert("exception".to_string(), exception_name);
         }
         let body = serde_json::to_string_pretty(&body_obj).unwrap_or_default();
+
+        log_d!(TAG, "Caught SDK Exception: {}", body);
+
         let request_args = RequestArgs {
             url: self.sdk_exception_url.clone(),
             retries: 0,

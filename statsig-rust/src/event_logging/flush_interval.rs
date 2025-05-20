@@ -31,7 +31,12 @@ impl FlushInterval {
 
     pub fn adjust_for_success(&self) {
         let current = self.load_current_interval();
-        let adjusted = (current / 2).max(EventLoggerConstants::min_flush_interval_ms());
+        let min_interval = EventLoggerConstants::min_flush_interval_ms();
+        let adjusted = (current / 2).max(min_interval);
+        if current == min_interval {
+            return;
+        }
+
         self.current_flush_interval_ms.store(adjusted, Relaxed);
 
         log_d!(

@@ -201,7 +201,10 @@ impl NetworkClient {
             }
 
             if !RETRY_CODES.contains(&status) {
-                let msg = format!("Network error, not retrying: {} {}", status, error_message);
+                let msg = format!(
+                    "Network error, not retrying: {} {} {}",
+                    status, error_message, request_args.url
+                );
                 self.log_warning(
                     StatsigErr::NetworkError(NetworkError::RequestNotRetryable, Some(msg)),
                     &request_args,
@@ -242,7 +245,7 @@ impl NetworkClient {
     }
 
     fn log_warning(&self, error: StatsigErr, args: &RequestArgs) {
-        log_w!(TAG, "{}", error);
+        log_w!(TAG, "{} {}", args.url, error);
         if !self.silent_on_network_failure {
             let dedupe_key = format!("{:?}", args.diagnostics_key);
             self.ops_stats.log_error(ErrorBoundaryEvent {
