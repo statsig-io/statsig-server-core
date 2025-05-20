@@ -1,6 +1,4 @@
-use crate::ffi_utils::{
-    c_char_to_string, parse_json_to_map, parse_json_to_str_map, string_to_c_char,
-};
+use crate::ffi_utils::{c_char_to_string, parse_json_to_map, parse_json_to_str_map};
 use statsig_rust::StatsigUserBuilder;
 use statsig_rust::{log_e, InstanceRegistry};
 use std::os::raw::c_char;
@@ -19,7 +17,7 @@ pub extern "C" fn statsig_user_create(
     app_version: *const c_char,
     custom_json: *const c_char,
     private_attributes_json: *const c_char,
-) -> *const c_char {
+) -> u64 {
     let user_id = c_char_to_string(user_id);
     let custom_ids = parse_json_to_str_map(c_char_to_string(custom_ids_json));
     let email = c_char_to_string(email);
@@ -47,17 +45,14 @@ pub extern "C" fn statsig_user_create(
         .private_attributes(private_attributes);
 
     let user = builder.build();
-    let ref_id = InstanceRegistry::register(user).unwrap_or_else(|| {
-        log_e!(TAG, "Failed to create StatsigUser");
-        "".to_string()
-    });
 
-    string_to_c_char(ref_id)
+    InstanceRegistry::register(user).unwrap_or_else(|| {
+        log_e!(TAG, "Failed to create StatsigUser");
+        0
+    })
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_user_release(user_ref: *const c_char) {
-    if let Some(id) = c_char_to_string(user_ref) {
-        InstanceRegistry::remove(&id);
-    }
+pub extern "C" fn statsig_user_release(user_ref: u64) {
+    InstanceRegistry::remove(&user_ref);
 }

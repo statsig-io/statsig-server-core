@@ -1,19 +1,16 @@
-use std::{ffi::c_char, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use statsig_rust::{
     log_e, InstanceRegistry, SpecsAdapter, SpecsUpdateListener, StatsigErr, StatsigRuntime,
 };
 
-use crate::{
-    ffi_utils::{c_char_to_string, string_to_c_char},
-    specs_update_listener_c::SpecsUpdateListenerC,
-};
+use crate::specs_update_listener_c::SpecsUpdateListenerC;
 use async_trait::async_trait;
 
 const TAG: &str = "FunctionBasedSpecsAdapterC";
 
 pub struct FunctionBasedSpecsAdapterC {
-    pub setup_internal_fn: extern "C" fn(listener_ref: *const c_char),
+    pub setup_internal_fn: extern "C" fn(listener_ref: u64),
     pub start_fn: extern "C" fn(),
     pub shutdown_fn: extern "C" fn(),
     pub schedule_background_sync_fn: extern "C" fn(),
@@ -26,12 +23,10 @@ impl SpecsAdapter for FunctionBasedSpecsAdapterC {
 
         let ref_id = InstanceRegistry::register(update_listener).unwrap_or_else(|| {
             log_e!(TAG, "Failed to create SpecsUpdateListenerC");
-            "".to_string()
+            0
         });
 
-        let listener_ref = string_to_c_char(ref_id);
-
-        (self.setup_internal_fn)(listener_ref);
+        (self.setup_internal_fn)(ref_id);
     }
 
     async fn start(
@@ -66,11 +61,11 @@ impl SpecsAdapter for FunctionBasedSpecsAdapterC {
 
 #[no_mangle]
 pub extern "C" fn function_based_specs_adapter_create(
-    setup_internal_fn: extern "C" fn(listener_ref: *const c_char),
+    setup_internal_fn: extern "C" fn(listener_ref: u64),
     start_fn: extern "C" fn(),
     shutdown_fn: extern "C" fn(),
     schedule_background_sync_fn: extern "C" fn(),
-) -> *const c_char {
+) -> u64 {
     let adapter = FunctionBasedSpecsAdapterC {
         setup_internal_fn,
         start_fn,
@@ -78,17 +73,13 @@ pub extern "C" fn function_based_specs_adapter_create(
         schedule_background_sync_fn,
     };
 
-    let ref_id = InstanceRegistry::register(adapter).unwrap_or_else(|| {
+    InstanceRegistry::register(adapter).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create FunctionBasedSpecsAdapterC");
-        "".to_string()
-    });
-
-    string_to_c_char(ref_id)
+        0
+    })
 }
 
 #[no_mangle]
-pub extern "C" fn function_based_specs_adapter_release(adapter_ref: *const c_char) {
-    if let Some(id) = c_char_to_string(adapter_ref) {
-        InstanceRegistry::remove(&id);
-    }
+pub extern "C" fn function_based_specs_adapter_release(adapter_ref: u64) {
+    InstanceRegistry::remove(&adapter_ref);
 }

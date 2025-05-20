@@ -56,7 +56,7 @@ public class Statsig {
 
   private static final Gson GSON = GsonUtil.getGson();
 
-  private volatile String ref;
+  private volatile long ref;
   private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
   /**
@@ -79,27 +79,27 @@ public class Statsig {
     ResourceCleaner.register(
         this,
         () -> {
-          if (ref != null) {
+          if (ref != 0) {
             StatsigJNI.statsigRelease(ref);
-            ref = null;
+            ref = 0;
           }
         });
   }
 
   public Statsig(String sdkKey) {
-    this.ref = StatsigJNI.statsigCreate(sdkKey, null, StatsigMetadata.getSerializedCopy());
+    this.ref = StatsigJNI.statsigCreate(sdkKey, 0, StatsigMetadata.getSerializedCopy());
 
     ResourceCleaner.register(
         this,
         () -> {
-          if (ref != null) {
+          if (ref != 0) {
             StatsigJNI.statsigRelease(ref);
-            ref = null;
+            ref = 0;
           }
         });
   }
 
-  public String getRef() {
+  public long getRef() {
     return ref;
   }
 

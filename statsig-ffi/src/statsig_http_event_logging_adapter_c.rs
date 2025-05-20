@@ -11,46 +11,33 @@ const TAG: &str = "StatsigHttpEventLoggingAdapterC";
 #[no_mangle]
 pub extern "C" fn statsig_http_event_logging_adapter_create(
     sdk_key: *const c_char,
-    options_ref: *const c_char,
-) -> *const c_char {
-    let sdk_key = unwrap_or_return!(c_char_to_string(sdk_key), null());
-
-    let options_ref = c_char_to_string(options_ref);
-    let options = InstanceRegistry::get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
+    options_ref: u64,
+) -> u64 {
+    let sdk_key = unwrap_or_return!(c_char_to_string(sdk_key), 0);
+    let options = InstanceRegistry::get::<StatsigOptions>(&options_ref);
 
     let adapter = StatsigHttpEventLoggingAdapter::new(&sdk_key, options.as_ref().map(Arc::as_ref));
 
-    let ref_id = InstanceRegistry::register(adapter).unwrap_or_else(|| {
+    InstanceRegistry::register(adapter).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigHttpSpecsAdapter");
-        "".to_string()
-    });
-
-    string_to_c_char(ref_id)
+        0
+    })
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_http_event_logging_adapter_release(
-    event_logging_adapter_ref: *const c_char,
-) {
-    if let Some(id) = c_char_to_string(event_logging_adapter_ref) {
-        InstanceRegistry::remove(&id);
-    }
+pub extern "C" fn statsig_http_event_logging_adapter_release(event_logging_adapter_ref: u64) {
+    InstanceRegistry::remove(&event_logging_adapter_ref);
 }
 
 #[no_mangle]
 pub extern "C" fn statsig_http_event_logging_adapter_send_events(
-    event_logging_adapter_ref: *const c_char,
+    event_logging_adapter_ref: u64,
     request_json: *const c_char,
     callback: extern "C" fn(bool, *const c_char),
 ) {
     let handle_error = |msg: &str| {
         log_e!(TAG, "{}", msg);
         callback(false, string_to_c_char(msg.to_string()));
-    };
-
-    let event_logging_adapter_ref = match c_char_to_string(event_logging_adapter_ref) {
-        Some(ref_str) => ref_str,
-        None => return handle_error("Failed to convert event_logging_adapter_ref to string"),
     };
 
     let event_logging_adapter =

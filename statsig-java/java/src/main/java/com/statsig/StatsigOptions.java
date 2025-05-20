@@ -2,9 +2,9 @@ package com.statsig;
 
 public class StatsigOptions {
   private static class CleaningAction implements Runnable {
-    private final String ref;
+    private final long ref;
 
-    CleaningAction(String ref) {
+    CleaningAction(long ref) {
       this.ref = ref;
     }
 
@@ -14,7 +14,7 @@ public class StatsigOptions {
     }
   }
 
-  private volatile String ref;
+  private volatile long ref;
 
   private StatsigOptions(Builder builder) {
     /**
@@ -50,7 +50,7 @@ public class StatsigOptions {
     ResourceCleaner.register(this, new CleaningAction(ref));
   }
 
-  String getRef() {
+  long getRef() {
     return ref;
   }
 

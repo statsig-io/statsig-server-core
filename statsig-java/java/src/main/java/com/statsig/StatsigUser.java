@@ -15,12 +15,12 @@ public class StatsigUser {
   private Map<String, String> privateAttributes;
   private Map<String, Object> custom;
 
-  private volatile String ref;
+  private volatile long ref;
 
   private static class CleaningAction implements Runnable {
-    private final String ref;
+    private final long ref;
 
-    CleaningAction(String ref) {
+    CleaningAction(long ref) {
       this.ref = ref;
     }
 
@@ -71,9 +71,9 @@ public class StatsigUser {
 
   // Expose a way for users to force release StatsigUser
   public void close() {
-    if (ref != null) {
+    if (ref != 0) {
       StatsigJNI.statsigUserRelease(ref);
-      ref = null;
+      ref = 0;
     }
   }
 
@@ -117,7 +117,7 @@ public class StatsigUser {
     return custom;
   }
 
-  String getRef() {
+  long getRef() {
     return ref;
   }
 

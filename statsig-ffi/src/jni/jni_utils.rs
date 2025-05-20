@@ -11,39 +11,6 @@ use std::collections::HashMap;
 
 const TAG: &str = "JniUtils";
 
-#[macro_export]
-macro_rules! get_instance_or_noop_jni {
-    ($type:ty, $env:expr, $ref:expr) => {
-        match jstring_to_string($env, $ref) {
-            Some(id) => statsig_rust::get_instance_or_noop!($type, &id),
-            None => return,
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! get_instance_or_return_jni {
-    ($type:ty, $env:expr, $ref:expr, $ret_value:expr) => {
-        match jstring_to_string($env, $ref) {
-            Some(id) => statsig_rust::get_instance_or_return!($type, &id, $ret_value),
-            None => return $ret_value,
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! get_instance_or_else_jni {
-    ($type:ty, $env:expr, $ref:expr, $else:expr) => {
-        match jstring_to_string($env, $ref) {
-            Some(id) => match InstanceRegistry::get::<$type>(&id) {
-                Some(instance) => instance,
-                None => $else,
-            },
-            None => $else,
-        }
-    };
-}
-
 pub fn convert_java_proxy_config_to_rust(
     env: &mut JNIEnv,
     java_proxy_config: &JObject,

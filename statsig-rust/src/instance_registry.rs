@@ -1,15 +1,16 @@
+use ahash::AHashMap;
 use lazy_static::lazy_static;
 use std::any::Any;
-use std::collections::HashMap;
 use std::sync::{Arc, RwLock, RwLockWriteGuard};
 use uuid::Uuid;
 
+use crate::hashing::hash_one;
 use crate::log_e;
 
 type AnyInstance = Arc<dyn Any + Send + Sync>;
 
 lazy_static! {
-    static ref REGISTRY: RwLock<HashMap<String, AnyInstance>> = RwLock::new(HashMap::new());
+    static ref REGISTRY: RwLock<AHashMap<u64, AnyInstance>> = RwLock::new(AHashMap::default());
 }
 
 const TAG: &str = "InstanceRegistry";
@@ -17,27 +18,27 @@ const TAG: &str = "InstanceRegistry";
 pub struct InstanceRegistry;
 
 impl InstanceRegistry {
-    pub fn register_arc<T: Send + Sync + 'static>(instance: Arc<T>) -> Option<String> {
+    pub fn register_arc<T: Send + Sync + 'static>(instance: Arc<T>) -> Option<u64> {
         let full_type_name = std::any::type_name::<T>();
         let short_type_name = full_type_name.split("::").last().unwrap_or(full_type_name);
-        let id = format!("{}_{}", short_type_name, Uuid::new_v4());
+        let id_tuple = (short_type_name, Uuid::new_v4());
+        let id_hash = hash_one(id_tuple);
 
         let mut registry = Self::get_write_lock()?;
+        registry.insert(id_hash, instance);
 
-        registry.insert(id.clone(), instance);
-
-        Some(id)
+        Some(id_hash)
     }
 
-    pub fn register<T: Send + Sync + 'static>(instance: T) -> Option<String> {
+    pub fn register<T: Send + Sync + 'static>(instance: T) -> Option<u64> {
         Self::register_arc(Arc::new(instance))
     }
 
-    pub fn get_with_optional_id<T: Send + Sync + 'static>(id: Option<&String>) -> Option<Arc<T>> {
-        id.and_then(|id_str| Self::get::<T>(id_str))
+    pub fn get_with_optional_id<T: Send + Sync + 'static>(id: Option<&u64>) -> Option<Arc<T>> {
+        id.and_then(|id_hash| Self::get::<T>(id_hash))
     }
 
-    pub fn get<T: Send + Sync + 'static>(id: &str) -> Option<Arc<T>> {
+    pub fn get<T: Send + Sync + 'static>(id: &u64) -> Option<Arc<T>> {
         let registry = match REGISTRY.read() {
             Ok(guard) => guard,
             Err(e) => {
@@ -61,7 +62,7 @@ impl InstanceRegistry {
             })
     }
 
-    pub fn get_raw(id: &str) -> Option<Arc<dyn Any + Send + Sync>> {
+    pub fn get_raw(id: &u64) -> Option<Arc<dyn Any + Send + Sync>> {
         let registry = match REGISTRY.read() {
             Ok(guard) => guard,
             Err(e) => {
@@ -73,7 +74,7 @@ impl InstanceRegistry {
         registry.get(id).cloned()
     }
 
-    pub fn remove(id: &str) {
+    pub fn remove(id: &u64) {
         let mut registry = match Self::get_write_lock() {
             Some(registry) => registry,
             None => return,
@@ -89,7 +90,7 @@ impl InstanceRegistry {
         registry.clear();
     }
 
-    fn get_write_lock() -> Option<RwLockWriteGuard<'static, HashMap<String, AnyInstance>>> {
+    fn get_write_lock() -> Option<RwLockWriteGuard<'static, AHashMap<u64, AnyInstance>>> {
         match REGISTRY.write() {
             Ok(registry) => Some(registry),
             Err(e) => {

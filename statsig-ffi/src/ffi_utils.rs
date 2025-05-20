@@ -7,27 +7,14 @@ use std::{os::raw::c_char, os::raw::c_int};
 #[macro_export]
 macro_rules! get_instance_or_noop_c {
     ($type:ty, $ref:expr) => {
-        match c_char_to_string($ref) {
-            Some(id) => statsig_rust::get_instance_or_noop!($type, &id),
-            None => {
-                statsig_rust::log_w!(
-                    TAG,
-                    "Attempting to get {} with null reference",
-                    stringify!($type)
-                );
-                return;
-            }
-        }
+        statsig_rust::get_instance_or_noop!($type, $ref)
     };
 }
 
 #[macro_export]
 macro_rules! get_instance_or_return_c {
     ($type:ty, $ref:expr, $ret_value:expr) => {
-        match c_char_to_string($ref) {
-            Some(id) => statsig_rust::get_instance_or_return!($type, &id, $ret_value),
-            None => return $ret_value,
-        }
+        statsig_rust::get_instance_or_return!($type, $ref, $ret_value)
     };
 }
 

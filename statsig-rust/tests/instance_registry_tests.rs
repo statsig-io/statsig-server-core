@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use lazy_static::lazy_static;
+use more_asserts::assert_gt;
 use statsig_rust::instance_registry::InstanceRegistry;
 
 lazy_static! {
@@ -107,7 +108,7 @@ fn test_getting_wrong_type() {
 }
 
 #[test]
-fn test_register_id_names() {
+fn test_returns_valid_ids() {
     let _lock = get_test_lock();
 
     let my_bar = Arc::new(MyBar {
@@ -115,12 +116,12 @@ fn test_register_id_names() {
         data: "bar".to_string(),
     });
     let id = InstanceRegistry::register_arc(my_bar.clone()).unwrap();
-    assert!(id.starts_with("MyBar_"));
+    assert_gt!(id, 0);
 
     let my_foo = MyFoo {
         name: "foo".to_string(),
         bar: my_bar.clone(),
     };
     let id = InstanceRegistry::register(my_foo).unwrap();
-    assert!(id.starts_with("MyFoo_"));
+    assert_gt!(id, 0);
 }

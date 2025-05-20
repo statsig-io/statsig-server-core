@@ -1,9 +1,9 @@
 use crate::jni::jni_utils::{
-    convert_java_proxy_config_to_rust, jboolean_to_bool, jstring_to_string, string_to_jstring,
+    convert_java_proxy_config_to_rust, jboolean_to_bool, jstring_to_string,
 };
 use crate::jni::statsig_observability_client_jni::convert_to_ob_rust;
 use jni::objects::{JClass, JObject, JString};
-use jni::sys::{jboolean, jint, jlong, jstring};
+use jni::sys::{jboolean, jint, jlong};
 use jni::JNIEnv;
 use statsig_rust::{log_d, log_e, log_w, statsig_options::StatsigOptionsBuilder};
 use statsig_rust::{InstanceRegistry, ObservabilityClient, StatsigOptions};
@@ -42,7 +42,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     disable_country_lookup: jboolean,
     disable_user_agent_parsing: jboolean,
     fallback_to_statsig_api: jboolean,
-) -> jstring {
+) -> jlong {
     let specs_url = jstring_to_string(&mut env, specs_url);
     let log_event_url = jstring_to_string(&mut env, log_event_url);
     let id_lists_url = jstring_to_string(&mut env, id_lists_url);
@@ -129,26 +129,23 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         _strong_obs_client: strong_ob,
     };
 
-    let id = InstanceRegistry::register(options_jni);
-    match id {
+    match InstanceRegistry::register(options_jni) {
         Some(id) => {
             log_d!(TAG, "Created StatsigOptions with ID {}", id);
-            string_to_jstring(&mut env, id.to_string())
+            id as jlong
         }
         None => {
             log_e!(TAG, "Failed to create StatsigOptions");
-            std::ptr::null_mut()
+            0
         }
     }
 }
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsRelease(
-    mut env: JNIEnv,
+    _env: JNIEnv,
     _class: JClass,
-    options_ref: JString,
+    options_ref: jlong,
 ) {
-    if let Some(id) = jstring_to_string(&mut env, options_ref) {
-        InstanceRegistry::remove(&id);
-    }
+    InstanceRegistry::remove(&(options_ref as u64))
 }

@@ -10,37 +10,32 @@ const TAG: &str = "StatsigHttpSpecsAdapterC";
 #[no_mangle]
 pub extern "C" fn statsig_http_specs_adapter_create(
     sdk_key: *const c_char,
-    options_ref: *const c_char,
-) -> *const c_char {
-    let sdk_key = unwrap_or_return!(c_char_to_string(sdk_key), null());
+    options_ref: u64,
+) -> u64 {
+    let sdk_key = unwrap_or_return!(c_char_to_string(sdk_key), 0);
 
-    let options_ref = c_char_to_string(options_ref);
-    let options = InstanceRegistry::get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
+    let options = InstanceRegistry::get::<StatsigOptions>(&options_ref);
 
     let adapter = StatsigHttpSpecsAdapter::new(&sdk_key, options.as_ref().map(|o| o.as_ref()));
 
-    let ref_id = InstanceRegistry::register(adapter).unwrap_or_else(|| {
+    InstanceRegistry::register(adapter).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigHttpSpecsAdapter");
-        "".to_string()
-    });
-
-    string_to_c_char(ref_id)
+        0
+    })
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_http_specs_adapter_release(specs_adapter_ref: *const c_char) {
-    if let Some(id) = c_char_to_string(specs_adapter_ref) {
-        InstanceRegistry::remove(&id);
-    }
+pub extern "C" fn statsig_http_specs_adapter_release(specs_adapter_ref: u64) {
+    InstanceRegistry::remove(&specs_adapter_ref);
 }
 
 #[no_mangle]
 pub extern "C" fn statsig_http_specs_adapter_fetch_specs_from_network(
-    specs_adapter_ref: *const c_char,
+    specs_adapter_ref: u64,
     current_specs_info: *const c_char,
 ) -> *const c_char {
     let specs_adapter =
-        get_instance_or_return_c!(StatsigHttpSpecsAdapter, specs_adapter_ref, null());
+        get_instance_or_return_c!(StatsigHttpSpecsAdapter, &specs_adapter_ref, null());
 
     let statsig_rt = StatsigRuntime::get_runtime();
 

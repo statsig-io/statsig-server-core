@@ -21,8 +21,8 @@ class StatsigOptions
         $this->__ref = $ffi->statsig_options_create(
             $specs_url,
             $log_event_url,
-            is_null($specs_adapter) ? null : $specs_adapter->__ref,
-            is_null($event_logging_adapter) ? null : $event_logging_adapter->__ref,
+            is_null($specs_adapter) ? 0 : $specs_adapter->__ref,
+            is_null($event_logging_adapter) ? 0 : $event_logging_adapter->__ref,
             $environment,
             $event_logging_flush_interval_ms ?? -1,
             $event_logging_max_queue_size ?? -1,

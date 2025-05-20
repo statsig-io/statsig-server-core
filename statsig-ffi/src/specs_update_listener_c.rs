@@ -21,10 +21,8 @@ pub struct SpecsUpdateListenerC {
 }
 
 #[no_mangle]
-pub extern "C" fn specs_update_listener_release(listener_ref: *const c_char) {
-    if let Some(id) = c_char_to_string(listener_ref) {
-        InstanceRegistry::remove(&id);
-    }
+pub extern "C" fn specs_update_listener_release(listener_ref: u64) {
+    InstanceRegistry::remove(&listener_ref);
 }
 
 // todo: Windows builders complain if 'received_at.into()' is not present
@@ -32,12 +30,12 @@ pub extern "C" fn specs_update_listener_release(listener_ref: *const c_char) {
 #[allow(clippy::useless_conversion)]
 #[no_mangle]
 pub extern "C" fn specs_update_listener_did_receive_specs_update(
-    listener_ref: *const c_char,
+    listener_ref: u64,
     data: *const c_char,
     source: *const c_char,
     received_at: c_ulong,
 ) {
-    let listener = get_instance_or_noop_c!(SpecsUpdateListenerC, listener_ref);
+    let listener = get_instance_or_noop_c!(SpecsUpdateListenerC, &listener_ref);
 
     let data = unwrap_or_else!(c_char_to_string(data), {
         log_e!(TAG, "Failed to convert 'data' to Rust string");
@@ -62,10 +60,8 @@ pub extern "C" fn specs_update_listener_did_receive_specs_update(
 }
 
 #[no_mangle]
-pub extern "C" fn specs_update_listener_get_current_specs_info(
-    listener_ref: *const c_char,
-) -> *const c_char {
-    let listener = get_instance_or_return_c!(SpecsUpdateListenerC, listener_ref, null());
+pub extern "C" fn specs_update_listener_get_current_specs_info(listener_ref: u64) -> *const c_char {
+    let listener = get_instance_or_return_c!(SpecsUpdateListenerC, &listener_ref, null());
 
     let info = listener.inner.get_current_specs_info();
     let result = json!(info).to_string();

@@ -14,34 +14,26 @@ use std::ptr::null;
 const TAG: &str = "StatsigC";
 
 #[no_mangle]
-pub extern "C" fn statsig_create(
-    sdk_key: *const c_char,
-    options_ref: *const c_char,
-) -> *const c_char {
+pub extern "C" fn statsig_create(sdk_key: *const c_char, options_ref: u64) -> u64 {
     let sdk_key = c_char_to_string(sdk_key).unwrap();
-    let options_ref = c_char_to_string(options_ref);
-    let options = InstanceRegistry::get_with_optional_id::<StatsigOptions>(options_ref.as_ref());
+    let options = InstanceRegistry::get_with_optional_id::<StatsigOptions>(Some(&options_ref));
 
     let inst = Statsig::new(&sdk_key, options);
 
-    let ref_id = InstanceRegistry::register(inst).unwrap_or_else(|| {
+    InstanceRegistry::register(inst).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create Statsig");
-        "".to_string()
-    });
-
-    string_to_c_char(ref_id)
+        0
+    })
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_release(statsig_ref: *const c_char) {
-    if let Some(id) = c_char_to_string(statsig_ref) {
-        InstanceRegistry::remove(&id);
-    }
+pub extern "C" fn statsig_release(statsig_ref: u64) {
+    InstanceRegistry::remove(&statsig_ref);
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_initialize(statsig_ref: *const c_char, callback: extern "C" fn()) {
-    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+pub extern "C" fn statsig_initialize(statsig_ref: u64, callback: extern "C" fn()) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
 
     statsig
         .statsig_runtime
@@ -56,8 +48,8 @@ pub extern "C" fn statsig_initialize(statsig_ref: *const c_char, callback: exter
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_initialize_blocking(statsig_ref: *const c_char) {
-    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+pub extern "C" fn statsig_initialize_blocking(statsig_ref: u64) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
 
     statsig.statsig_runtime.get_handle().block_on(async move {
         if let Err(e) = statsig.initialize().await {
@@ -67,8 +59,8 @@ pub extern "C" fn statsig_initialize_blocking(statsig_ref: *const c_char) {
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_shutdown_blocking(statsig_ref: *const c_char) {
-    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+pub extern "C" fn statsig_shutdown_blocking(statsig_ref: u64) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
 
     statsig.statsig_runtime.get_handle().block_on(async move {
         if let Err(e) = statsig.shutdown().await {
@@ -78,8 +70,8 @@ pub extern "C" fn statsig_shutdown_blocking(statsig_ref: *const c_char) {
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_flush_events(statsig_ref: *const c_char, callback: extern "C" fn()) {
-    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+pub extern "C" fn statsig_flush_events(statsig_ref: u64, callback: extern "C" fn()) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
 
     statsig
         .statsig_runtime
@@ -92,8 +84,8 @@ pub extern "C" fn statsig_flush_events(statsig_ref: *const c_char, callback: ext
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_flush_events_blocking(statsig_ref: *const c_char) {
-    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+pub extern "C" fn statsig_flush_events_blocking(statsig_ref: u64) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
 
     statsig.statsig_runtime.get_handle().block_on(async move {
         log_d!(TAG, "Statsig flush events");
@@ -103,8 +95,8 @@ pub extern "C" fn statsig_flush_events_blocking(statsig_ref: *const c_char) {
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_get_current_values(statsig_ref: *const c_char) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, statsig_ref, null());
+pub extern "C" fn statsig_get_current_values(statsig_ref: u64) -> *const c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
 
     let values = statsig.get_context().spec_store.get_current_values();
     let data = json!(values).to_string();
@@ -112,13 +104,9 @@ pub extern "C" fn statsig_get_current_values(statsig_ref: *const c_char) -> *con
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_log_event(
-    statsig_ref: *const c_char,
-    user_ref: *const c_char,
-    event_json: *const c_char,
-) {
-    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
-    let user = get_instance_or_noop_c!(StatsigUser, user_ref);
+pub extern "C" fn statsig_log_event(statsig_ref: u64, user_ref: u64, event_json: *const c_char) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let user = get_instance_or_noop_c!(StatsigUser, &user_ref);
     let event_json = unwrap_or_noop!(c_char_to_string(event_json));
     let event = match serde_json::from_str::<HashMap<String, Value>>(&event_json) {
         Ok(map) => map,
@@ -149,20 +137,20 @@ pub extern "C" fn statsig_log_event(
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_identify(statsig_ref: *const c_char, user_ref: *const c_char) {
-    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
-    let user = get_instance_or_noop_c!(StatsigUser, user_ref);
+pub extern "C" fn statsig_identify(statsig_ref: u64, user_ref: u64) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let user = get_instance_or_noop_c!(StatsigUser, &user_ref);
     statsig.identify(user.as_ref());
 }
 
 #[no_mangle]
 pub extern "C" fn statsig_get_client_init_response(
-    statsig_ref: *const c_char,
-    user_ref: *const c_char,
+    statsig_ref: u64,
+    user_ref: u64,
     options_json: *const c_char,
 ) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, statsig_ref, null());
-    let user = get_instance_or_return_c!(StatsigUser, user_ref, null());
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null());
 
     let options = match c_char_to_string(options_json) {
         Some(opts) => match serde_json::from_str::<ClientInitResponseOptions>(&opts) {
@@ -185,13 +173,13 @@ pub extern "C" fn statsig_get_client_init_response(
 
 #[no_mangle]
 pub extern "C" fn statsig_check_gate(
-    statsig_ref: *const c_char,
-    user_ref: *const c_char,
+    statsig_ref: u64,
+    user_ref: u64,
     gate_name: *const c_char,
     options_json: *const c_char,
 ) -> bool {
-    let statsig = get_instance_or_return_c!(Statsig, statsig_ref, false);
-    let user = get_instance_or_return_c!(StatsigUser, user_ref, false);
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, false);
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, false);
     let gate_name = unwrap_or_return!(c_char_to_string(gate_name), false);
 
     if let Some(opts) = c_char_to_string(options_json) {
@@ -209,13 +197,13 @@ pub extern "C" fn statsig_check_gate(
 
 #[no_mangle]
 pub extern "C" fn statsig_get_feature_gate(
-    statsig_ref: *const c_char,
-    user_ref: *const c_char,
+    statsig_ref: u64,
+    user_ref: u64,
     gate_name: *const c_char,
     options_json: *const c_char,
 ) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, statsig_ref, null());
-    let user = get_instance_or_return_c!(StatsigUser, user_ref, null());
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null());
     let gate_name = unwrap_or_return!(c_char_to_string(gate_name), null());
 
     let gate = match c_char_to_string(options_json) {
@@ -235,12 +223,12 @@ pub extern "C" fn statsig_get_feature_gate(
 
 #[no_mangle]
 pub extern "C" fn statsig_manually_log_gate_exposure(
-    statsig_ref: *const c_char,
-    user_ref: *const c_char,
+    statsig_ref: u64,
+    user_ref: u64,
     gate_name: *const c_char,
 ) {
-    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
-    let user = get_instance_or_noop_c!(StatsigUser, user_ref);
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let user = get_instance_or_noop_c!(StatsigUser, &user_ref);
     let gate_name = unwrap_or_noop!(c_char_to_string(gate_name));
 
     statsig.manually_log_gate_exposure(&user, &gate_name);
@@ -252,13 +240,13 @@ pub extern "C" fn statsig_manually_log_gate_exposure(
 
 #[no_mangle]
 pub extern "C" fn statsig_get_dynamic_config(
-    statsig_ref: *const c_char,
-    user_ref: *const c_char,
+    statsig_ref: u64,
+    user_ref: u64,
     config_name: *const c_char,
     options_json: *const c_char,
 ) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, statsig_ref, null());
-    let user = get_instance_or_return_c!(StatsigUser, user_ref, null());
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null());
     let config_name = unwrap_or_return!(c_char_to_string(config_name), null());
 
     let config = match c_char_to_string(options_json) {
@@ -278,12 +266,12 @@ pub extern "C" fn statsig_get_dynamic_config(
 
 #[no_mangle]
 pub extern "C" fn statsig_manually_log_dynamic_config_exposure(
-    statsig_ref: *const c_char,
-    user_ref: *const c_char,
+    statsig_ref: u64,
+    user_ref: u64,
     config_name: *const c_char,
 ) {
-    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
-    let user = get_instance_or_noop_c!(StatsigUser, user_ref);
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let user = get_instance_or_noop_c!(StatsigUser, &user_ref);
     let config_name = unwrap_or_noop!(c_char_to_string(config_name));
 
     statsig.manually_log_dynamic_config_exposure(&user, &config_name);
@@ -295,13 +283,13 @@ pub extern "C" fn statsig_manually_log_dynamic_config_exposure(
 
 #[no_mangle]
 pub extern "C" fn statsig_get_experiment(
-    statsig_ref: *const c_char,
-    user_ref: *const c_char,
+    statsig_ref: u64,
+    user_ref: u64,
     experiment_name: *const c_char,
     options_json: *const c_char,
 ) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, statsig_ref, null());
-    let user = get_instance_or_return_c!(StatsigUser, user_ref, null());
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null());
     let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null());
 
     let experiment = match c_char_to_string(options_json) {
@@ -321,12 +309,12 @@ pub extern "C" fn statsig_get_experiment(
 
 #[no_mangle]
 pub extern "C" fn statsig_manually_log_experiment_exposure(
-    statsig_ref: *const c_char,
-    user_ref: *const c_char,
+    statsig_ref: u64,
+    user_ref: u64,
     experiment_name: *const c_char,
 ) {
-    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
-    let user = get_instance_or_noop_c!(StatsigUser, user_ref);
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let user = get_instance_or_noop_c!(StatsigUser, &user_ref);
     let experiment_name = unwrap_or_noop!(c_char_to_string(experiment_name));
 
     statsig.manually_log_experiment_exposure(&user, &experiment_name);
@@ -338,13 +326,13 @@ pub extern "C" fn statsig_manually_log_experiment_exposure(
 
 #[no_mangle]
 pub extern "C" fn statsig_get_layer(
-    statsig_ref: *const c_char,
-    user_ref: *const c_char,
+    statsig_ref: u64,
+    user_ref: u64,
     layer_name: *const c_char,
     options_json: *const c_char,
 ) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, statsig_ref, null());
-    let user = get_instance_or_return_c!(StatsigUser, user_ref, null());
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null());
     let layer_name = unwrap_or_return!(c_char_to_string(layer_name), null());
 
     let layer = match c_char_to_string(options_json) {
@@ -364,11 +352,11 @@ pub extern "C" fn statsig_get_layer(
 
 #[no_mangle]
 pub extern "C" fn statsig_log_layer_param_exposure(
-    statsig_ref: *const c_char,
+    statsig_ref: u64,
     layer_json: *const c_char,
     param_name: *const c_char,
 ) {
-    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
 
     let param_name = unwrap_or_noop!(c_char_to_string(param_name));
     let layer_json = unwrap_or_noop!(c_char_to_string(layer_json));
@@ -378,13 +366,13 @@ pub extern "C" fn statsig_log_layer_param_exposure(
 
 #[no_mangle]
 pub extern "C" fn statsig_manually_log_layer_parameter_exposure(
-    statsig_ref: *const c_char,
-    user_ref: *const c_char,
+    statsig_ref: u64,
+    user_ref: u64,
     layer_name: *const c_char,
     param_name: *const c_char,
 ) {
-    let statsig = get_instance_or_noop_c!(Statsig, statsig_ref);
-    let user = get_instance_or_noop_c!(StatsigUser, user_ref);
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let user = get_instance_or_noop_c!(StatsigUser, &user_ref);
 
     let param_name = unwrap_or_noop!(c_char_to_string(param_name));
     let layer_name = unwrap_or_noop!(c_char_to_string(layer_name));
