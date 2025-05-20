@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     outputs:
-      hash: ${{ steps.setup.outputs.hash }}
+      hash: ${{ steps.gen_hash.outputs.hash }}
     steps:
       - name: Clone Kong Repo
         run: git clone https://oauth2:$REPO_PAT@github.com/statsig-io/kong.git .
@@ -29,49 +29,60 @@ jobs:
           cache: 'npm'
 
       - name: Setup SDK Bridge
-        id: setup
+        id: gen_hash
         run: |
           npm ci
           npm run kong -- setup ${{ inputs.sdk }} -v
           npm run kong -- bridge_hash ${{ inputs.sdk }} -v
 
-      - name: Cache Docker layers
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Check if Docker Image Exists
+        id: check_image
+        run: |
+          IMAGE="statsig/sdk-bridge:${{ steps.gen_hash.outputs.hash }}"
+          if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
+            echo "Image $IMAGE exists."
+            echo "needs_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "Image $IMAGE does not exist."
+            echo "needs_build=true" >> $GITHUB_OUTPUT
+          fi
+
+      # ------------------------------------------------------------ [ Rebuild ]
+
+      - name: "[Rebuild] Cache Docker Layers"
+        if: steps.check_image.outputs.needs_build == 'true'
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/.buildx-cache
           key: ${{ inputs.sdk }}-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ inputs.sdk }}-buildx-${{ github.sha }}
             ${{ inputs.sdk }}-buildx-
 
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - name: "[Rebuild] Build and Push Docker Image"
+        if: steps.check_image.outputs.needs_build == 'true'
+        uses: docker/build-push-action@v6
         with:
           context: bridges/${{ inputs.sdk }}-bridge
-          push: false
-          load: true
+          push: true
+          tags: statsig/sdk-bridge:${{ steps.gen_hash.outputs.hash }}
           cache-from: type=local,src=${{ runner.temp }}/.buildx-cache
           cache-to: type=local,dest=${{ runner.temp }}/.buildx-cache-new,mode=max
-          tags: |
-            statsig/sdk-bridge:${{ steps.setup.outputs.hash }}
-            ${{ inputs.sdk }}-bridge
 
       - # Temp fix
         # https://github.com/docker/build-push-action/issues/252
         # https://github.com/moby/buildkit/issues/1896
-        name: Move Docker Build Cache
+        name: "[Rebuild] Move Docker Layers Cache"
+        if: steps.check_image.outputs.needs_build == 'true'
         run: |
           rm -rf ${{ runner.temp }}/.buildx-cache
           mv ${{ runner.temp }}/.buildx-cache-new ${{ runner.temp }}/.buildx-cache
-
-      - name: Output Docker Image to File
-        run: docker save statsig/sdk-bridge:${{ steps.setup.outputs.hash }} -o statsig-${{ inputs.sdk }}-bridge.tar
-
-      - name: Upload Docker Image to Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: statsig-${{ inputs.sdk }}-bridge.tar
-          path: statsig-${{ inputs.sdk }}-bridge.tar
 
   test:
     needs: build
@@ -91,27 +102,24 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Download Docker Image from Artifacts
-        uses: actions/download-artifact@v4
+      - uses: docker/login-action@v3
         with:
-          name: statsig-${{ inputs.sdk }}-bridge.tar
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Load Docker Image
         run: |
-          docker load -i statsig-${{ inputs.sdk }}-bridge.tar
+          docker pull statsig/sdk-bridge:${{ needs.build.outputs.hash }}
           docker tag statsig/sdk-bridge:${{ needs.build.outputs.hash }} ${{ inputs.sdk }}-bridge
-
-      - name: List Docker Images
-        run: docker images
 
       - name: Load Scrapi Responses from Github Cache
         uses: actions/cache/restore@v4
         with:
-          fail-on-cache-miss: true
           path: /tmp/kong/cache
           key: scrapi-cache-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Test Bridge
         run: |
           npm ci
+          npm run kong -- cache -v
           npm run kong -- test ${{ inputs.sdk }} -r -f __tests__/${{ matrix.filter }}/
