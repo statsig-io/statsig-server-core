@@ -1,16 +1,20 @@
 package com.statsig;
 
-import com.google.gson.JsonElement;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class FailureDetails {
   public String reason;
-  public JsonElement error;
+  public Object error;
+
+  /** Default constructor for Jackson deserialization. */
+  public FailureDetails() {}
 
   public String getReason() {
     return reason;
   }
 
-  public JsonElement getError() {
+  public Object getError() {
     return error;
   }
 }

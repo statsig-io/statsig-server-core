@@ -1,40 +1,42 @@
 package com.statsig;
 
-import com.google.gson.JsonElement;
-import com.google.gson.annotations.Expose;
-import com.google.gson.annotations.SerializedName;
-import com.statsig.internal.GsonUtil;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.statsig.internal.HasRawJson;
 import java.util.Map;
 
-public class Layer {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Layer implements HasRawJson {
   public String name;
 
-  @SerializedName("rule_id")
+  @JsonProperty("rule_id")
   public String ruleID;
 
-  @SerializedName("group_name")
+  @JsonProperty("group_name")
   public String groupName;
 
-  @SerializedName("__value")
-  public Map<String, JsonElement> value;
+  @JsonProperty("__value")
+  public Map<String, Object> value;
 
-  @SerializedName("allocated_experiment_name")
+  @JsonProperty("allocated_experiment_name")
   public String allocatedExperimentName;
 
-  @SerializedName("details")
+  @JsonProperty("details")
   public EvaluationDetails evaluationDetails;
 
-  @Expose(serialize = false, deserialize = false)
-  String rawJson;
+  @JsonIgnore String rawJson;
 
   private Statsig statsigInstance;
   private boolean disableExposureLogging;
+
+  public Layer() {}
 
   Layer(
       String name,
       String ruleID,
       String groupName,
-      Map<String, JsonElement> value,
+      Map<String, Object> value,
       String allocatedExperimentName,
       EvaluationDetails evaluationDetails) {
     this.name = name;
@@ -57,7 +59,7 @@ public class Layer {
     return groupName;
   }
 
-  public Map<String, JsonElement> getValue() {
+  public Map<String, Object> getValue() {
     return value;
   }
 
@@ -73,7 +75,7 @@ public class Layer {
     return rawJson;
   }
 
-  void setRawJson(String rawJson) {
+  public void setRawJson(String rawJson) {
     this.rawJson = rawJson;
   }
 
@@ -87,37 +89,88 @@ public class Layer {
 
   public String getString(String key, String defaultValue) {
     logLayerExposure(key);
-    return GsonUtil.getString(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof String) {
+      return (String) val;
+    }
+    return defaultValue;
   }
 
   public boolean getBoolean(String key, boolean defaultValue) {
     logLayerExposure(key);
-    return GsonUtil.getBoolean(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof Boolean) {
+      return (Boolean) val;
+    }
+    return defaultValue;
   }
 
   public double getDouble(String key, double defaultValue) {
     logLayerExposure(key);
-    return GsonUtil.getDouble(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof Number) {
+      return ((Number) val).doubleValue();
+    }
+    return defaultValue;
   }
 
   public int getInt(String key, int defaultValue) {
     logLayerExposure(key);
-    return GsonUtil.getInt(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof Number) {
+      return ((Number) val).intValue();
+    }
+    return defaultValue;
   }
 
   public long getLong(String key, long defaultValue) {
     logLayerExposure(key);
-    return GsonUtil.getLong(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof Number) {
+      return ((Number) val).longValue();
+    }
+    return defaultValue;
   }
 
   public Object[] getArray(String key, Object[] defaultValue) {
     logLayerExposure(key);
-    return GsonUtil.getArray(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof Object[]) {
+      return (Object[]) val;
+    }
+    return defaultValue;
   }
 
   public Map<String, Object> getMap(String key, Map<String, Object> defaultValue) {
     logLayerExposure(key);
-    return GsonUtil.getMap(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof Map) {
+      @SuppressWarnings("unchecked")
+      Map<String, Object> map = (Map<String, Object>) val;
+      return map;
+    }
+    return defaultValue;
   }
 
   private void logLayerExposure(String key) {

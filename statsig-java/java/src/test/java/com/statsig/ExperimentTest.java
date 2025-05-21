@@ -2,14 +2,16 @@ package com.statsig;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.google.gson.Gson;
-import com.statsig.internal.GsonUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.statsig.internal.JacksonUtil;
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 public class ExperimentTest {
 
-  private final Gson gson = GsonUtil.getGson();
+  private final ObjectMapper mapper = JacksonUtil.getObjectMapper();
 
   @Test
   public void testDeserialization() throws IOException {
@@ -26,10 +28,15 @@ public class ExperimentTest {
     // 2nd exposures
     assertNotNull(experiment.getSecondaryExposures());
     assertEquals(2, experiment.getSecondaryExposures().size());
-    assertEquals(
-        "[{gate=global_holdout, gateValue=false, ruleID=3QoA4ncNdVGBaMt3N1KYjz:0.50:12}, "
-            + "{gate=exp_holdout, gateValue=false, ruleID=1rEqLOpCROaRafv7ubGgax111}]",
-        experiment.getSecondaryExposures().toString());
+
+    List<Map<String, String>> exposures = experiment.getSecondaryExposures();
+    assertEquals("global_holdout", exposures.get(0).get("gate"));
+    assertEquals("false", exposures.get(0).get("gateValue"));
+    assertEquals("3QoA4ncNdVGBaMt3N1KYjz:0.50:12", exposures.get(0).get("ruleID"));
+
+    assertEquals("exp_holdout", exposures.get(1).get("gate"));
+    assertEquals("false", exposures.get(1).get("gateValue"));
+    assertEquals("1rEqLOpCROaRafv7ubGgax111", exposures.get(1).get("ruleID"));
 
     // raw json
     assertEquals(json, experiment.getRawJson());

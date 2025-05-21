@@ -1,6 +1,6 @@
 package com.statsig;
 
-import com.google.gson.Gson;
+import com.statsig.internal.JacksonUtil;
 import java.util.Map;
 
 public class StatsigUser {
@@ -16,6 +16,9 @@ public class StatsigUser {
   private Map<String, Object> custom;
 
   private volatile long ref;
+
+  /** Default constructor for Jackson deserialization. */
+  public StatsigUser() {}
 
   private static class CleaningAction implements Runnable {
     private final long ref;
@@ -47,12 +50,9 @@ public class StatsigUser {
   }
 
   private void initializeRef() {
-    Gson gson = new Gson();
-
-    String customIdsJson = customIDs != null ? gson.toJson(customIDs) : null;
-    String customJson = custom != null ? gson.toJson(custom) : null;
-    String privateAttributesJson =
-        privateAttributes != null ? gson.toJson(privateAttributes) : null;
+    String customIdsJson = JacksonUtil.toJson(customIDs);
+    String customJson = JacksonUtil.toJson(custom);
+    String privateAttributesJson = JacksonUtil.toJson(privateAttributes);
 
     // Pass all arguments to the JNI binding
     this.ref =

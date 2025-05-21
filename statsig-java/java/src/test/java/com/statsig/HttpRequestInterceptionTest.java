@@ -1,7 +1,7 @@
 package com.statsig;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.statsig.internal.JacksonUtil;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -19,7 +19,7 @@ public class HttpRequestInterceptionTest {
   private Statsig statsig;
   private StatsigUser testUser;
   private String downloadConfigSpecsJson;
-  private final Gson gson = new GsonBuilder().setLenient().create();
+  private final ObjectMapper mapper = JacksonUtil.getObjectMapper();
 
   @BeforeEach
   public void setUp() throws IOException, InterruptedException, ExecutionException {

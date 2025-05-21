@@ -1,12 +1,12 @@
 package com.statsig;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
 
 public class ParameterStore {
   public String name;
 
-  @SerializedName("details")
+  @JsonProperty("details")
   public EvaluationDetails evaluationDetails;
 
   private Statsig statsigInstance;
@@ -16,6 +16,8 @@ public class ParameterStore {
     this.name = name;
     this.evaluationDetails = evaluationDetails;
   }
+
+  public ParameterStore() {}
 
   public String getName() {
     return name;

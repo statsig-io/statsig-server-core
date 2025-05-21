@@ -1,20 +1,25 @@
 package com.statsig;
 
-import com.google.gson.*;
-import com.google.gson.annotations.SerializedName;
-import com.google.gson.reflect.TypeToken;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.statsig.internal.JacksonUtil;
 import java.util.List;
 import java.util.Map;
 
 public class Experiment extends BaseConfig {
-  @SerializedName("group_name")
+  @JsonProperty("group_name")
   public final String groupName;
 
   public List<Map<String, String>> secondaryExposures;
 
+  public Experiment() {
+    super();
+    this.groupName = null;
+  }
+
   Experiment(
       String name,
-      Map<String, JsonElement> value,
+      Map<String, Object> value,
       String ruleID,
       EvaluationDetails evaluationDetails,
       String idType,
@@ -34,22 +39,39 @@ public class Experiment extends BaseConfig {
   }
 
   static Experiment fromJson(String json) {
-    Gson gson = new Gson();
-    JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
-
-    List<Map<String, String>> secondaryExposures = null;
-
-    if (jsonObject.has("__evaluation")) {
-      JsonObject evaluation = jsonObject.getAsJsonObject("__evaluation");
-      secondaryExposures =
-          gson.fromJson(
-              evaluation.get("secondary_exposures"),
-              new TypeToken<List<Map<String, String>>>() {}.getType());
+    if (json == null || json.isEmpty()) {
+      return null;
     }
 
-    Experiment experiment = gson.fromJson(json, Experiment.class);
-    experiment.secondaryExposures = secondaryExposures;
-    experiment.setRawJson(json);
-    return experiment;
+    try {
+      Experiment experiment = JacksonUtil.fromJsonWithRawJson(json, Experiment.class);
+      if (experiment == null) {
+        return null;
+      }
+
+      Map<String, Object> rootMap =
+          JacksonUtil.fromJson(json, new TypeReference<Map<String, Object>>() {});
+      List<Map<String, String>> secondaryExposures = null;
+      if (rootMap != null && rootMap.containsKey("__evaluation")) {
+        Map<String, Object> evaluation = (Map<String, Object>) rootMap.get("__evaluation");
+        if (evaluation != null && evaluation.containsKey("secondary_exposures")) {
+          secondaryExposures =
+              JacksonUtil.getObjectMapper()
+                  .convertValue(
+                      evaluation.get("secondary_exposures"),
+                      new TypeReference<List<Map<String, String>>>() {});
+        }
+      }
+
+      if (secondaryExposures != null) {
+        experiment.secondaryExposures = secondaryExposures;
+      }
+
+      return experiment;
+    } catch (Exception e) {
+      System.err.println("Error deserializing Experiment: " + e.getMessage());
+      e.printStackTrace();
+      return null;
+    }
   }
 }

@@ -1,30 +1,30 @@
 package com.statsig;
 
-import com.google.gson.JsonElement;
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class CMABRankedVariant {
-  @SerializedName("variant_name")
-  public final String variantName;
+  @JsonProperty("variant_name")
+  public String variantName;
 
-  @SerializedName("rule_id")
-  public final String ruleID;
+  @JsonProperty("rule_id")
+  public String ruleID;
 
-  @SerializedName("value")
-  public final Map<String, JsonElement> value;
+  @JsonProperty("value")
+  public Map<String, Object> value;
 
-  public final double score;
+  @JsonProperty("score")
+  public double score;
 
-  @SerializedName("cmab_name")
-  public final String cmabName;
+  @JsonProperty("cmab_name")
+  public String cmabName;
+
+  public CMABRankedVariant() {}
 
   CMABRankedVariant(
-      String variantName,
-      Map<String, JsonElement> value,
-      String ruleID,
-      double score,
-      String cmabName) {
+      String variantName, Map<String, Object> value, String ruleID, double score, String cmabName) {
     this.variantName = variantName;
     this.value = value;
     this.ruleID = ruleID;

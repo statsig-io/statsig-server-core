@@ -1,27 +1,30 @@
 package com.statsig;
 
-import com.google.gson.annotations.Expose;
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.statsig.internal.HasRawJson;
 
-public class InitializeDetails {
+public class InitializeDetails implements HasRawJson {
   public double duration;
 
-  @SerializedName("init_success")
+  @JsonProperty("init_success")
   public boolean initSuccess;
 
-  @SerializedName("is_config_spec_ready")
+  @JsonProperty("is_config_spec_ready")
   public boolean isConfigSpecReady;
 
-  @SerializedName("is_id_list_ready")
+  @JsonProperty("is_id_list_ready")
   public Boolean isIdListReady;
 
   public String source;
 
-  @SerializedName("failure_details")
+  @JsonProperty("failure_details")
   public FailureDetails failureDetails;
 
-  @Expose(serialize = false, deserialize = false)
-  String rawJson;
+  @JsonIgnore private String rawJson;
+
+  /** Default constructor for Jackson deserialization. */
+  public InitializeDetails() {}
 
   InitializeDetails(
       double duration,
@@ -66,7 +69,7 @@ public class InitializeDetails {
     return rawJson;
   }
 
-  void setRawJson(String rawJson) {
+  public void setRawJson(String rawJson) {
     this.rawJson = rawJson;
   }
 }

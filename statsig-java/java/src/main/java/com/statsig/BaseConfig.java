@@ -1,32 +1,41 @@
 package com.statsig;
 
-import com.google.gson.JsonElement;
-import com.google.gson.annotations.Expose;
-import com.google.gson.annotations.SerializedName;
-import com.statsig.internal.GsonUtil;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.statsig.internal.HasRawJson;
+import java.util.List;
 import java.util.Map;
 
-public abstract class BaseConfig {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public abstract class BaseConfig implements HasRawJson {
   public final String name;
 
-  @SerializedName("rule_id")
+  @JsonProperty("rule_id")
   public final String ruleID;
 
-  @SerializedName("value")
-  public final Map<String, JsonElement> value;
+  @JsonProperty("value")
+  public final Map<String, Object> value;
 
-  @SerializedName("details")
+  @JsonProperty("details")
   public final EvaluationDetails evaluationDetails;
 
-  @SerializedName("id_type")
+  @JsonProperty("id_type")
   public final String idType;
 
-  @Expose(serialize = false, deserialize = false)
-  protected String rawJson;
+  @JsonIgnore protected String rawJson;
+
+  protected BaseConfig() {
+    this.name = null;
+    this.value = null;
+    this.ruleID = null;
+    this.evaluationDetails = null;
+    this.idType = null;
+  }
 
   protected BaseConfig(
       String name,
-      Map<String, JsonElement> value,
+      Map<String, Object> value,
       String ruleID,
       EvaluationDetails evaluationDetails,
       String idType) {
@@ -46,7 +55,7 @@ public abstract class BaseConfig {
     return ruleID;
   }
 
-  public Map<String, JsonElement> getValue() {
+  public Map<String, Object> getValue() {
     return value;
   }
 
@@ -63,36 +72,91 @@ public abstract class BaseConfig {
   }
 
   // Setter for rawJson
-  void setRawJson(String rawJson) {
+  public void setRawJson(String rawJson) {
     this.rawJson = rawJson;
   }
 
   // get parameters
   public String getString(String key, String defaultValue) {
-    return GsonUtil.getString(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof String) {
+      return (String) val;
+    }
+    return defaultValue;
   }
 
   public boolean getBoolean(String key, boolean defaultValue) {
-    return GsonUtil.getBoolean(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof Boolean) {
+      return (Boolean) val;
+    }
+    return defaultValue;
   }
 
   public double getDouble(String key, double defaultValue) {
-    return GsonUtil.getDouble(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof Number) {
+      return ((Number) val).doubleValue();
+    }
+    return defaultValue;
   }
 
   public int getInt(String key, int defaultValue) {
-    return GsonUtil.getInt(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof Number) {
+      return ((Number) val).intValue();
+    }
+    return defaultValue;
   }
 
   public long getLong(String key, long defaultValue) {
-    return GsonUtil.getLong(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof Number) {
+      return ((Number) val).longValue();
+    }
+    return defaultValue;
   }
 
   public Object[] getArray(String key, Object[] defaultValue) {
-    return GsonUtil.getArray(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof Object[]) {
+      return (Object[]) val;
+    }
+    if (val instanceof List) {
+      List<?> list = (List<?>) val;
+      return list.toArray(new Object[0]);
+    }
+    return defaultValue;
   }
 
   public Map<String, Object> getMap(String key, Map<String, Object> defaultValue) {
-    return GsonUtil.getMap(value, key, defaultValue);
+    Object val = value.get(key);
+    if (val == null) {
+      return defaultValue;
+    }
+    if (val instanceof Map) {
+      @SuppressWarnings("unchecked")
+      Map<String, Object> map = (Map<String, Object>) val;
+      return map;
+    }
+    return defaultValue;
   }
 }

@@ -8,7 +8,8 @@ public class PerformanceTest {
   // no-op
   @Test
   public void test() throws ExecutionException, InterruptedException {
-    StatsigOptions options = new StatsigOptions.Builder().build();
+    StatsigOptions options =
+        new StatsigOptions.Builder().setOutputLoggerLevel(OutputLogger.LogLevel.INFO).build();
 
     Statsig statsig = new Statsig("secret-key", options);
 

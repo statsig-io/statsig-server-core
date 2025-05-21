@@ -17,7 +17,7 @@ public class StatsigInitializeWithDetails {
   @BeforeEach
   public void setUp() throws IOException, InterruptedException, ExecutionException {
 
-    String dcs_content_json =
+    String dcsContentJson =
         TestUtils.loadJsonFromFile("../../statsig-rust/tests/data/eval_proj_dcs.json");
 
     mockWebServer = new MockWebServer();
@@ -27,7 +27,7 @@ public class StatsigInitializeWithDetails {
         new MockResponse()
             .setResponseCode(200)
             .setHeader("Content-Type", "application/json")
-            .setBody(dcs_content_json));
+            .setBody(dcsContentJson));
   }
 
   @AfterEach
@@ -49,13 +49,13 @@ public class StatsigInitializeWithDetails {
     Statsig statsig = new Statsig("secret-key", options);
 
     CompletableFuture<InitializeDetails> future = statsig.initializeWithDetails();
-    InitializeDetails init_details = future.get();
-    assertTrue(init_details.getDuration() > 0);
-    assertTrue(init_details.getIsInitSuccess());
-    assertTrue(init_details.getIsConfigSpecReady());
-    assertFalse(init_details.getIsIdListReady());
-    assertEquals(init_details.getSource(), "Network");
-    assertNull(init_details.getFailureDetails());
+    InitializeDetails initDetails = future.get();
+    assertTrue(initDetails.getDuration() > 0);
+    assertTrue(initDetails.getIsInitSuccess());
+    assertTrue(initDetails.getIsConfigSpecReady());
+    assertFalse(initDetails.getIsIdListReady());
+    assertEquals(initDetails.getSource(), "Network");
+    assertNull(initDetails.getFailureDetails());
   }
 
   @Test
@@ -69,13 +69,13 @@ public class StatsigInitializeWithDetails {
     Statsig statsig = new Statsig("secret-key", options);
 
     CompletableFuture<InitializeDetails> future = statsig.initializeWithDetails();
-    InitializeDetails init_details = future.get();
+    InitializeDetails initDetails = future.get();
 
-    assertTrue(init_details.getDuration() >= 0);
-    assertTrue(init_details.getIsInitSuccess());
-    assertFalse(init_details.getIsConfigSpecReady());
-    assertFalse(init_details.getIsIdListReady());
-    assertEquals(init_details.getSource(), "NoValues");
-    assertNotEquals(init_details.getFailureDetails(), null);
+    assertTrue(initDetails.getDuration() >= 0);
+    assertTrue(initDetails.getIsInitSuccess());
+    assertFalse(initDetails.getIsConfigSpecReady());
+    assertFalse(initDetails.getIsIdListReady());
+    assertEquals(initDetails.getSource(), "NoValues");
+    assertNotEquals(initDetails.getFailureDetails(), null);
   }
 }

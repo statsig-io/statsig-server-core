@@ -1,6 +1,7 @@
 package com.statsig;
 
-import com.statsig.internal.GsonUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.statsig.internal.JacksonUtil;
 import java.util.Map;
 
 public class StatsigMetadata {
@@ -11,6 +12,10 @@ public class StatsigMetadata {
             "arch", System.getProperty("os.arch"),
             "languageVersion", System.getProperty("java.version"));
 
-    return GsonUtil.getGson().toJson(metadata);
+    try {
+      return JacksonUtil.getObjectMapper().writeValueAsString(metadata);
+    } catch (JsonProcessingException e) {
+      return "{}";
+    }
   }
 }

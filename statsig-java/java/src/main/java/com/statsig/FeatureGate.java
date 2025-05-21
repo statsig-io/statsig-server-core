@@ -1,23 +1,27 @@
 package com.statsig;
 
-import com.google.gson.annotations.Expose;
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.statsig.internal.HasRawJson;
 
-public class FeatureGate {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class FeatureGate implements HasRawJson {
   public String name;
   public boolean value;
 
-  @SerializedName("rule_id")
+  @JsonProperty("rule_id")
   public String ruleID;
 
-  @SerializedName("details")
+  @JsonProperty("details")
   public EvaluationDetails evaluationDetails;
 
-  @SerializedName("id_type")
+  @JsonProperty("id_type")
   public String idType;
 
-  @Expose(serialize = false, deserialize = false)
-  String rawJson;
+  @JsonIgnore String rawJson;
+
+  public FeatureGate() {}
 
   FeatureGate(
       String name,
@@ -56,7 +60,7 @@ public class FeatureGate {
     return rawJson;
   }
 
-  void setRawJson(String rawJson) {
+  public void setRawJson(String rawJson) {
     this.rawJson = rawJson;
   }
 }

@@ -13,7 +13,7 @@ import java.util.Properties;
 public class NativeBinaryResolver {
   static final String TAG = "NativeBinaryResolver";
   static final String JAVA_CORE_MAVEN_PATH = "https://repo1.maven.org/maven2/com/statsig/javacore";
-  static String SDK_VERSION;
+  static String sdkVersion;
 
   public static String osName = System.getProperty("os.name").toLowerCase();
   public static String normalizedArch = normalizeArch();
@@ -24,9 +24,9 @@ public class NativeBinaryResolver {
           Statsig.class.getClassLoader().getResourceAsStream("statsigsdk.properties");
       Properties props = new Properties();
       props.load(input);
-      SDK_VERSION = props.getProperty("version");
+      sdkVersion = props.getProperty("version");
     } catch (IOException e) {
-      SDK_VERSION = "unknown";
+      sdkVersion = "unknown";
     }
   }
 

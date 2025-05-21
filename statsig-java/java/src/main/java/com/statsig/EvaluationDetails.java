@@ -1,6 +1,6 @@
 package com.statsig;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -9,11 +9,14 @@ public class EvaluationDetails {
   public long lcut;
 
   /** The time when we received this config */
-  @SerializedName("received_at")
+  @JsonProperty("received_at")
   public long receivedAt;
 
   /** Evaluation reason */
   public String reason;
+
+  /** Default constructor for Jackson deserialization. */
+  public EvaluationDetails() {}
 
   public String getReason() {
     return reason;
