@@ -40,10 +40,7 @@ impl StatsigHttpEventLoggingAdapter {
         }
     }
 
-    pub async fn send_events_over_http(
-        &self,
-        request: &LogEventRequest,
-    ) -> Result<bool, StatsigErr> {
+    pub async fn send_events_over_http(&self, request: &LogEventRequest) -> Result<(), StatsigErr> {
         log_d!(
             TAG,
             "Logging Events ({}): {}",
@@ -89,6 +86,7 @@ impl StatsigHttpEventLoggingAdapter {
             )
             .await
             .map_err(|err| StatsigErr::NetworkError(err, Some("Log event failure".into())))?;
+
         let response_slice = match response.data {
             Some(data) => data,
             None => {
@@ -99,11 +97,19 @@ impl StatsigHttpEventLoggingAdapter {
             }
         };
 
-        serde_json::from_slice::<LogEventResult>(&response_slice)
+        let result = serde_json::from_slice::<LogEventResult>(&response_slice)
             .map(|result| result.success != Some(false))
             .map_err(|e| {
                 StatsigErr::JsonParseError(stringify!(LogEventResult).to_string(), e.to_string())
-            })
+            })?;
+
+        if result {
+            Ok(())
+        } else {
+            Err(StatsigErr::LogEventError(
+                "Unsuccessful response from network".into(),
+            ))
+        }
     }
 }
 
@@ -113,13 +119,11 @@ impl EventLoggingAdapter for StatsigHttpEventLoggingAdapter {
         Ok(())
     }
 
-    #[allow(clippy::manual_inspect)]
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
         match self.send_events_over_http(&request).await {
-            Ok(_) => Ok(true),
-            Err(StatsigErr::NetworkError(NetworkError::DisableNetworkOn, _)) => Ok(false),
+            Ok(()) => Ok(true),
             Err(e) => Err(e),
-        } //TODO: surface retryable code status for the logger to know if it should put back into the queue
+        }
     }
 
     async fn shutdown(&self) -> Result<(), StatsigErr> {

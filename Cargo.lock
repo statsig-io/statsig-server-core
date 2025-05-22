@@ -2319,6 +2319,7 @@ name = "statsig-pyo3"
 version = "0.4.0-beta.250522"
 dependencies = [
  "async-trait",
+ "lazy_static",
  "pyo3",
  "pyo3-stub-gen",
  "serde",

@@ -318,6 +318,26 @@ async fn test_non_retryable_failure_drops_events() {
     teardown(Some(statsig)).await;
 }
 
+#[tokio::test]
+async fn test_logging_behavior_when_network_is_disabled() {
+    let mut options = StatsigOptions::new();
+    options.event_logging_max_queue_size = Some(5);
+    options.disable_network = Some(true);
+    options.event_logging_max_pending_batch_queue_size = Some(2);
+    let (statsig, logging_adapter, obs_client) = setup(options).await;
+    let user = StatsigUser::with_user_id("user_1");
+    statsig.log_event(&user, "test_event", None, None);
+    statsig.flush_events().await;
+    assert!(
+        logging_adapter
+            .times_called
+            .fetch_or(u64::MAX, Ordering::SeqCst)
+            == 1
+    );
+    // Verify observability client is not called
+    assert!(obs_client.error_calls.lock().unwrap().is_empty())
+}
+
 async fn wait_for_log_notify(logging_adapter: &MockEventLoggingAdapter) {
     tokio::select! {
         _ = logging_adapter.on_log_notify.notified() => {

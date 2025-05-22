@@ -1,6 +1,15 @@
-from statsig_python_core import StatsigBasePy, StatsigOptions
+from statsig_python_core import StatsigBasePy, StatsigOptions, notify_python_shutdown
 from typing import Optional
 from .error_boundary import ErrorBoundary
+import atexit
+
+
+def handle_atexit():
+    notify_python_shutdown()
+
+
+atexit.register(handle_atexit)
+
 
 class Statsig(StatsigBasePy):
     _statsig_shared_instance = None
@@ -32,9 +41,7 @@ class Statsig(StatsigBasePy):
                 "Statsig shared instance already exists. Call Statsig.remove_shared() before creating a new instance."
             )
 
-        cls._statsig_shared_instance = super().__new__(
-            cls, sdk_key, options
-        )
+        cls._statsig_shared_instance = super().__new__(cls, sdk_key, options)
         return cls._statsig_shared_instance
 
     @classmethod
@@ -51,6 +58,4 @@ class Statsig(StatsigBasePy):
 
 def create_statsig_error_instance(message: str) -> StatsigBasePy:
     print("Error: ", message)
-    return StatsigBasePy.__new__(
-        StatsigBasePy, "__STATSIG_ERROR_SDK_KEY__", None
-    )
+    return StatsigBasePy.__new__(StatsigBasePy, "__STATSIG_ERROR_SDK_KEY__", None)

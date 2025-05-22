@@ -10,9 +10,12 @@ use statsig_rust::{
 };
 use std::collections::HashMap;
 
-use crate::pyo_utils::{
-    get_string_from_py_dict_throw_on_none, map_to_py_dict, py_dict_to_json_value_map,
-    py_list_to_list,
+use crate::{
+    pyo_utils::{
+        get_string_from_py_dict_throw_on_none, map_to_py_dict, py_dict_to_json_value_map,
+        py_list_to_list,
+    },
+    safe_gil::SafeGil,
 };
 const TAG: &str = stringify!(PersistentStorageOverrideAdapterPY);
 
@@ -203,12 +206,19 @@ impl PersistentStorage for StatsigPersistentStorageOverrideAdapter {
     fn load(&self, key: String) -> Option<UserPersistedValuesActual> {
         match self.inner.load_fn.as_ref() {
             Some(func) => {
-                Python::with_gil(|py| match func.call(py, (key,), None) {
-                    Ok(_) => {
-                        // No-op
-                        log_w!(TAG, "Calling persistent storage load in rust side. No-op")
+                SafeGil::run(|py| {
+                    let py = match py {
+                        Some(py) => py,
+                        None => return,
+                    };
+
+                    match func.call(py, (key,), None) {
+                        Ok(_) => {
+                            // No-op
+                            log_w!(TAG, "Calling persistent storage load in rust side. No-op")
+                        }
+                        Err(e) => log_e!(TAG, "Failed to load from persistent storage: {:?}", e),
                     }
-                    Err(e) => log_e!(TAG, "Failed to load from persistent storage: {:?}", e),
                 });
             }
             None => {
@@ -222,35 +232,57 @@ impl PersistentStorage for StatsigPersistentStorageOverrideAdapter {
     }
 
     fn save(&self, key: &str, config_name: &str, data: StickyValuesActual) {
-        match self.inner.save_fn.as_ref() {
-            Some(func) => Python::with_gil(|py| match convert_stick_value_to_py_obj(py, data) {
+        let save_func = match self.inner.save_fn.as_ref() {
+            Some(func) => func,
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to save from persistent storage: save function is not defined",
+                );
+                return;
+            }
+        };
+
+        SafeGil::run(|py| {
+            let py = match py {
+                Some(py) => py,
+                None => return,
+            };
+
+            match convert_stick_value_to_py_obj(py, data) {
                 Ok(sticky_value_py) => {
-                    match func.call(py, (key, config_name, sticky_value_py.as_any()), None) {
+                    match save_func.call(py, (key, config_name, sticky_value_py.as_any()), None) {
                         Ok(_) => log_d!(TAG, "Save persistent storage"),
                         Err(e) => log_e!(TAG, "Failed to save from persistent storage: {:?}", e),
                     }
                 }
                 Err(e) => log_e!(TAG, "Failed to save from persistent storage: {:?}", e),
-            }),
-            None => {
-                log_e!(
-                    TAG,
-                    "Failed to save from persistent storage: save function is not defined",
-                )
             }
-        }
+        });
     }
 
     fn delete(&self, key: &str, config_name: &str) {
-        match self.inner.delete_fn.as_ref() {
-            Some(func) => Python::with_gil(|py| match func.call(py, (key, config_name), None) {
+        let delete_func = match self.inner.delete_fn.as_ref() {
+            Some(func) => func,
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to delete from persistent storage: delete function is not defined",
+                );
+                return;
+            }
+        };
+
+        SafeGil::run(|py| {
+            let py = match py {
+                Some(py) => py,
+                None => return,
+            };
+
+            match delete_func.call(py, (key, config_name), None) {
                 Ok(_) => log_d!(TAG, "Delete persistent storage"),
                 Err(e) => log_e!(TAG, "Failed to delete from persistent storage: {:?}", e),
-            }),
-            None => log_e!(
-                TAG,
-                "Failed to delete from persistent storage: delete function is not defined",
-            ),
-        }
+            }
+        });
     }
 }

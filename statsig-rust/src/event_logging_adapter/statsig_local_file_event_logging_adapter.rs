@@ -81,8 +81,8 @@ impl StatsigLocalFileEventLoggingAdapter {
 
         for (request, result) in results {
             match result {
-                Ok(true) => (),
-                _ => failed_requests.push(request),
+                Ok(_) => (),
+                Err(_) => failed_requests.push(request),
             }
         }
 

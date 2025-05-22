@@ -1,10 +1,12 @@
 use async_trait::async_trait;
-use pyo3::{pyclass, pymethods, FromPyObject, PyObject, Python};
+use pyo3::{pyclass, pymethods, FromPyObject, PyObject};
 use pyo3_stub_gen::derive::*;
 use statsig_rust::{
     data_store_interface::{DataStoreResponse, DataStoreTrait, RequestPath},
     log_e, StatsigErr,
 };
+
+use crate::safe_gil::SafeGil;
 
 const TAG: &str = "DataStoreBasey";
 
@@ -31,35 +33,58 @@ impl DataStoreBasePy {
 #[async_trait]
 impl DataStoreTrait for DataStoreBasePy {
     async fn initialize(&self) -> Result<(), StatsigErr> {
-        Python::with_gil(|py| {
-            if let Some(initialize_fn) = &self.initialize_fn {
-                if let Err(e) = initialize_fn.call(py, (), None) {
-                    log_e!(TAG, "Failed to call DataStoreBasePy.initialize: {:?}", e);
-                    return Err(StatsigErr::DataStoreFailure(
-                        "Failed to initialize DataStoreBasePy".to_string(),
-                    ));
-                }
-            }
+        SafeGil::run(|py| {
+            let py = match py {
+                Some(py) => py,
+                None => return Ok(()),
+            };
+
+            let initialize_fn = match &self.initialize_fn {
+                Some(f) => f,
+                None => return Ok(()),
+            };
+
+            initialize_fn.call(py, (), None).map_err(|e| {
+                log_e!(TAG, "Failed to call DataStoreBasePy.initialize: {:?}", e);
+                StatsigErr::DataStoreFailure("Failed to initialize DataStoreBasePy".to_string())
+            })?;
+
             Ok(())
         })
     }
 
     async fn shutdown(&self) -> Result<(), StatsigErr> {
-        Python::with_gil(|py| {
-            if let Some(shutdown_fn) = &self.shutdown_fn {
-                if let Err(e) = shutdown_fn.call(py, (), None) {
-                    log_e!(TAG, "Failed to call DataStoreBasePy.shutdown: {:?}", e);
-                    return Err(StatsigErr::DataStoreFailure(
-                        "Failed to shutdown DataStoreBasePy".to_string(),
-                    ));
-                }
-            }
+        SafeGil::run(|py| {
+            let py = match py {
+                Some(py) => py,
+                None => return Ok(()),
+            };
+
+            let shutdown_fn = match &self.shutdown_fn {
+                Some(f) => f,
+                None => return Ok(()),
+            };
+
+            shutdown_fn.call(py, (), None).map_err(|e| {
+                log_e!(TAG, "Failed to call DataStoreBasePy.shutdown: {:?}", e);
+                StatsigErr::DataStoreFailure("Failed to shutdown DataStoreBasePy".to_string())
+            })?;
+
             Ok(())
         })
     }
 
     async fn get(&self, key: &str) -> Result<DataStoreResponse, StatsigErr> {
-        Python::with_gil(|py| {
+        SafeGil::run(|py| {
+            let py = match py {
+                Some(py) => py,
+                None => {
+                    return Err(StatsigErr::DataStoreFailure(
+                        "Python interpreter has been shutdown".to_string(),
+                    ))
+                }
+            };
+
             let get_fn = match &self.get_fn {
                 Some(f) => f,
                 None => {
@@ -110,43 +135,63 @@ impl DataStoreTrait for DataStoreBasePy {
     }
 
     async fn set(&self, key: &str, value: &str, time: Option<u64>) -> Result<(), StatsigErr> {
-        Python::with_gil(|py| {
-            if let Some(set_fn) = &self.set_fn {
-                let result = set_fn.call(py, (String::from(key), String::from(value), time), None);
-                match result {
-                    Ok(_) => Ok(()),
-                    Err(e) => {
-                        log_e!(TAG, "Failed to call DataStoreBasePy.set: {:?}", e);
-                        Err(StatsigErr::DataStoreFailure(
-                            "Failed to set in DataStoreBasePy".to_string(),
-                        ))
-                    }
+        SafeGil::run(|py| {
+            let py = match py {
+                Some(py) => py,
+                None => {
+                    return Err(StatsigErr::DataStoreFailure(
+                        "Python interpreter has been shutdown".to_string(),
+                    ))
                 }
-            } else {
-                Err(StatsigErr::DataStoreFailure(
-                    "No 'set' function provided".to_string(),
-                ))
-            }
+            };
+
+            let set_fn = match &self.set_fn {
+                Some(f) => f,
+                None => {
+                    return Err(StatsigErr::DataStoreFailure(
+                        "No 'set' function provided".to_string(),
+                    ))
+                }
+            };
+
+            set_fn
+                .call(py, (String::from(key), String::from(value), time), None)
+                .map_err(|e| {
+                    log_e!(TAG, "Failed to call DataStoreBasePy.set: {:?}", e);
+                    StatsigErr::DataStoreFailure("Failed to set in DataStoreBasePy".to_string())
+                })?;
+
+            Ok(())
         })
     }
 
     async fn support_polling_updates_for(&self, path: RequestPath) -> bool {
-        Python::with_gil(|py| {
-            if let Some(support_polling_updates_for_fn) = &self.support_polling_updates_for_fn {
-                let result = support_polling_updates_for_fn.call(py, (path.to_string(),), None);
-                match result {
-                    Ok(value) => value.extract(py).unwrap_or_default(),
-                    Err(e) => {
-                        log_e!(
-                            TAG,
-                            "Failed to call DataStoreBasePy.support_polling_updates_for: {:?}",
-                            e
-                        );
-                        false
-                    }
+        SafeGil::run(|py| {
+            let py = match py {
+                Some(py) => py,
+                None => {
+                    return false;
                 }
-            } else {
-                false
+            };
+
+            let support_polling_updates_for_fn = match &self.support_polling_updates_for_fn {
+                Some(f) => f,
+                None => {
+                    return false;
+                }
+            };
+
+            let result = support_polling_updates_for_fn.call(py, (path.to_string(),), None);
+            match result {
+                Ok(value) => value.extract(py).unwrap_or_default(),
+                Err(e) => {
+                    log_e!(
+                        TAG,
+                        "Failed to call DataStoreBasePy.support_polling_updates_for: {:?}",
+                        e
+                    );
+                    false
+                }
             }
         })
     }

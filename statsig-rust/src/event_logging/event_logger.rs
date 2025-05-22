@@ -240,7 +240,8 @@ impl EventLogger {
                 self.ops_stats.log_event_request_success(batch.events.len());
                 Ok(())
             }
-            Ok(false) => Err(StatsigErr::LockFailure("Unknown Failure".into())),
+            Ok(false) => Err(StatsigErr::LogEventError("Unknown Failure".into())),
+            Err(StatsigErr::NetworkError(NetworkError::DisableNetworkOn, _)) => Ok(()),
             Err(e) => Err(e),
         }
     }
