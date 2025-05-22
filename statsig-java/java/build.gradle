@@ -4,6 +4,21 @@ plugins {
     id 'signing'
     id 'checkstyle'
     id 'com.diffplug.spotless' version '6.25.0'
+    id 'io.github.gradle-nexus.publish-plugin' version "1.3.0" apply false
+}
+
+if (project == rootProject) {
+    apply plugin: 'io.github.gradle-nexus.publish-plugin'
+    nexusPublishing {
+        repositories {
+            sonatype {
+                nexusUrl = uri("https://s01.oss.sonatype.org/service/local/")
+                snapshotRepositoryUrl = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+                username = System.getenv("ORG_GRADLE_PROJECT_MAVEN_USERNAME")
+                password = System.getenv("ORG_GRADLE_PROJECT_MAVEN_PASSWORD")
+            }
+        }
+    }
 }
 
 group 'com.statsig'
@@ -62,12 +77,22 @@ tasks.register('javadocJar', Jar) {
     from tasks.javadoc.destinationDir
 }
 
+javadoc {
+    options {
+        windowTitle = "Statsig Java SDK"
+        docTitle = "Statsig Java SDK API"
+    }
+}
+
 ext.createStatsigJar = { String nameParam, String classifierParam ->
     if (nameParam == "uber") {
         tasks.register("uberJar", Jar) {
             archiveBaseName.set(nameParam)
             archiveClassifier.set("uber")
-            from sourceSets.main.output
+            from(sourceSets.main.output) {
+                include 'com/statsig/**'
+                include 'statsigsdk.properties'
+            }
 
             // Include native libraries for all supported platforms
             def platforms = [
@@ -77,6 +102,11 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
                 "macos-arm64"      : "libstatsig_ffi.dylib",
                 "windows-x86_64"   : "statsig_ffi.dll"
             ]
+
+            dependsOn configurations.runtimeClasspath
+            from {
+                configurations.runtimeClasspath.findAll { it.name.endsWith("jar") }.collect { zipTree(it) }
+            }
 
             platforms.each { classifier, libName ->
                 def nativeSourceDir = file("src/main/resources/native/${classifier}")
@@ -93,9 +123,6 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
                 }
             }
 
-            include 'com/statsig/**'
-            include 'statsigsdk.properties'
-
             project.ext.artifactTasks.add([taskName: "uberJar", classifier: "uber"])
         }
         return
@@ -105,7 +132,9 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
 
     tasks.register(taskName, Jar) {
         archiveBaseName.set(nameParam)
-        from sourceSets.main.output
+        if (nameParam != "java-core") {
+            from sourceSets.main.output
+        }
 
         def nativeLib = null
         if (classifierParam) {
@@ -134,8 +163,15 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
         }
 
         if (nameParam == "java-core") {
-            include 'com/statsig/**'
-            include 'statsigsdk.properties'
+            from(sourceSets.main.output) {
+                include 'com/statsig/**'
+                include 'statsigsdk.properties'
+            }
+
+            dependsOn configurations.runtimeClasspath
+            from {
+                configurations.runtimeClasspath.findAll { it.name.endsWith("jar") }.collect { zipTree(it) }
+            }
         }
 
         if (classifierParam != null) {
@@ -194,6 +230,10 @@ tasks.register('validateTasks') {
             throw new GradleException("The following expected tasks were not registered: ${missingTasks.join(', ')}")
         }
     }
+}
+
+tasks.withType(Jar).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 tasks.matching { it.name.startsWith("publish") }.all { publishTask ->

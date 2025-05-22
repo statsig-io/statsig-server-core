@@ -101,7 +101,7 @@ function moveJavaLibraries(libFiles: string[]) {
 function publishJavaPackages(options: PublisherOptions) {
   Log.stepBegin('Publishing Java Packages');
 
-  execSync('./gradlew publish', {
+  execSync('./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository', {
     cwd: getRootedPath('statsig-java/java'),
     stdio: 'inherit',
   });
