@@ -291,7 +291,7 @@ public class JacksonUtil {
   }
 
   /**
-   * Deserializes a JSON string to a Map<String, Object>.
+   * Deserializes a JSON string to a Map&lt;String, Object&gt;.
    *
    * @param json the JSON string to deserialize
    * @param defaultValue the default value to return if deserialization fails
