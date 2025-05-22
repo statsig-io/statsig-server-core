@@ -38,8 +38,8 @@ const TEST_COMMANDS: Record<string, string> = {
   python: [
     'cd statsig-pyo3',
     'maturin build',
-    'pip install ../target/wheels/statsig_python_core*.whl --force-reinstall',
-    'python3 -m pytest tests --capture=no -v --retries 3',
+    'pip install pytest-rerunfailures ../target/wheels/statsig_python_core*.whl --force-reinstall',
+    'python3 -m pytest tests --capture=no -v --reruns 3',
   ].join(' && '),
 
   rust: [
