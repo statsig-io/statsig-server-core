@@ -1,4 +1,3 @@
-use crate::net_provider_py::NetworkProviderPy;
 use crate::pyo_utils::{map_to_py_dict, py_dict_to_json_value_map};
 use crate::statsig_options_py::{safe_convert_to_statsig_options, StatsigOptionsPy};
 use crate::statsig_persistent_storage_override_adapter_py::convert_dict_to_user_persisted_values;
@@ -12,8 +11,6 @@ use crate::{
 };
 use pyo3::{prelude::*, types::PyDict};
 use pyo3_stub_gen::derive::*;
-use statsig_rust::networking::providers::NetworkProviderGlobal;
-use statsig_rust::networking::NetworkProvider;
 use statsig_rust::{
     log_e, unwrap_or_return, ClientInitResponseOptions, DynamicConfigEvaluationOptions,
     ExperimentEvaluationOptions, FeatureGateEvaluationOptions, HashAlgorithm,
@@ -52,31 +49,19 @@ macro_rules! process_user_persisted_values {
 pub struct StatsigBasePy {
     inner: Arc<Statsig>,
     observability_client: Mutex<Option<Arc<dyn ObservabilityClient>>>,
-    network_provider: Mutex<Option<Arc<dyn NetworkProvider>>>,
 }
 
 #[gen_stub_pymethods]
 #[pymethods]
 impl StatsigBasePy {
     #[new]
-    #[pyo3(signature = (network_func, sdk_key, options=None))]
-    pub fn new(
-        network_func: PyObject,
-        sdk_key: &str,
-        options: Option<StatsigOptionsPy>,
-        py: Python,
-    ) -> Self {
+    #[pyo3(signature = (sdk_key, options=None))]
+    pub fn new(sdk_key: &str, options: Option<StatsigOptionsPy>, py: Python) -> Self {
         let (opts, ob_client) = safe_convert_to_statsig_options(py, options);
-
-        let network_provider: Arc<dyn NetworkProvider> =
-            Arc::new(NetworkProviderPy { network_func });
-
-        NetworkProviderGlobal::set(&network_provider);
 
         Self {
             inner: Arc::new(Statsig::new(sdk_key, opts.map(Arc::new))),
             observability_client: Mutex::new(ob_client),
-            network_provider: Mutex::new(Some(network_provider)),
         }
     }
 
@@ -158,10 +143,6 @@ impl StatsigBasePy {
 
         let inst = self.inner.clone();
         let rt = self.inner.statsig_runtime.clone();
-        let network_provider = match self.network_provider.lock() {
-            Ok(mut lock) => lock.take(),
-            _ => None,
-        };
         let obs_client = match self.observability_client.lock() {
             Ok(mut lock) => lock.take(),
             _ => None,
@@ -179,7 +160,6 @@ impl StatsigBasePy {
             });
 
             // held until the shutdown is complete
-            drop(network_provider);
             drop(obs_client);
         });
 
