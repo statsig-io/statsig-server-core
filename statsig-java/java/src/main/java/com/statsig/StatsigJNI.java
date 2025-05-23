@@ -210,6 +210,7 @@ class StatsigJNI {
       long outputLoggerLevel,
       String serviceName,
       ObservabilityClient observabilityClient,
+      OutputLoggerProvider outputLoggerProvider,
       ProxyConfig proxyConfig,
       boolean enableIDLists,
       boolean waitForCountryLookupInit,

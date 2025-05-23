@@ -37,6 +37,7 @@ public class StatsigOptions {
             builder.outputLoggerLevel.getValue(),
             builder.serviceName,
             builder.observabilityClient,
+            builder.outputLoggerProvider,
             builder.proxyConfig,
             builder.enableIDLists,
             builder.waitForCountryLookupInit,
@@ -66,6 +67,7 @@ public class StatsigOptions {
     private long initTimeoutMs;
     private String environment;
     private ObservabilityClient observabilityClient;
+    private OutputLoggerProvider outputLoggerProvider;
     private ProxyConfig proxyConfig;
     private boolean enableIDLists = false;
     private boolean waitForUserAgentInit = false;
@@ -137,6 +139,11 @@ public class StatsigOptions {
 
     public Builder setObservabilityClient(ObservabilityClient observabilityClient) {
       this.observabilityClient = observabilityClient;
+      return this;
+    }
+
+    public Builder setOutputLoggerProvider(OutputLoggerProvider outputLoggerProvider) {
+      this.outputLoggerProvider = outputLoggerProvider;
       return this;
     }
 
