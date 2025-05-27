@@ -2,7 +2,10 @@ use crate::pyo_utils::{map_to_py_dict, py_dict_to_json_value_map};
 use crate::safe_gil::SafeGil;
 use crate::statsig_options_py::{safe_convert_to_statsig_options, StatsigOptionsPy};
 use crate::statsig_persistent_storage_override_adapter_py::convert_dict_to_user_persisted_values;
-use crate::statsig_types_py::{DynamicConfigPy, InitializeDetailsPy, LayerPy};
+use crate::statsig_types_py::{
+    DynamicConfigPy, InitializeDetailsPy, LayerPy, ParameterStoreEvaluationOptionsPy,
+    ParameterStorePy,
+};
 use crate::{
     statsig_types_py::{
         DynamicConfigEvaluationOptionsPy, ExperimentEvaluationOptionsPy, ExperimentPy,
@@ -15,7 +18,8 @@ use pyo3_stub_gen::derive::*;
 use statsig_rust::{
     log_e, unwrap_or_return, ClientInitResponseOptions, DynamicConfigEvaluationOptions,
     ExperimentEvaluationOptions, FeatureGateEvaluationOptions, HashAlgorithm,
-    LayerEvaluationOptions, ObservabilityClient, Statsig, UserPersistedValues,
+    LayerEvaluationOptions, ObservabilityClient, ParameterStoreEvaluationOptions, Statsig,
+    UserPersistedValues,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -355,6 +359,23 @@ impl StatsigBasePy {
         self.inner
             .manually_log_layer_parameter_exposure(&user.inner, name, param_name);
         Ok(())
+    }
+
+    #[pyo3(signature = (user, name, options=None))]
+    pub fn get_parameter_store(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+        options: Option<ParameterStoreEvaluationOptionsPy>,
+    ) -> ParameterStorePy {
+        let options_actual =
+            options.map_or(ParameterStoreEvaluationOptions::default(), |o| o.into());
+        ParameterStorePy {
+            name: name.to_string(),
+            inner_statsig: Arc::downgrade(&self.inner),
+            user: user.inner.clone(),
+            options: options_actual,
+        }
     }
 
     #[pyo3(signature = (user, hash=None, client_sdk_key=None, include_local_overrides=None))]

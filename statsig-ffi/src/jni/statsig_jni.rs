@@ -436,6 +436,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetStringParameterFrom
         &parameter_store_name,
         &parameter_name,
         default_value,
+        None,
     );
 
     match result {
@@ -478,6 +479,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetBooleanParameterFro
         &parameter_store_name,
         &parameter_name,
         default_value_bool,
+        None,
     );
 
     match result {
@@ -515,6 +517,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFloatParameterFromP
         &parameter_store_name,
         &parameter_name,
         Some(default_value),
+        None,
     );
 
     match result {
@@ -551,6 +554,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetIntegerParameterFro
         &parameter_store_name,
         &parameter_name,
         Some(default_value),
+        None,
     );
 
     match result {
@@ -595,6 +599,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetObjectParameterFrom
         &parameter_store_name,
         &parameter_name,
         default_value_map,
+        None,
     );
 
     match result {
@@ -639,6 +644,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetArrayParameterFromP
         &parameter_store_name,
         &parameter_name,
         default_value_array,
+        None,
     );
 
     match result {

@@ -1,7 +1,7 @@
 use pyo3::exceptions::{PyTypeError, PyValueError};
-use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods, PyList, PyModule};
+use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods, PyList, PyListMethods, PyModule};
 use pyo3::{Bound, PyAny, PyErr, PyObject, PyResult, Python};
-use serde_json::{json, Value};
+use serde_json::{json, Number, Value};
 use statsig_rust::evaluation::dynamic_string::DynamicString;
 use statsig_rust::{log_e, DynamicValue};
 use std::collections::HashMap;
@@ -93,6 +93,34 @@ pub fn py_list_to_list(py_list: &Bound<PyList>) -> PyResult<Vec<String>> {
     Ok(converted_list)
 }
 
+pub fn py_list_to_list_of_values(py_list: &Bound<PyList>) -> PyResult<Vec<Value>> {
+    let mut converted_list = Vec::new();
+    for value in py_list {
+        let v = py_any_to_value(&value)?;
+        converted_list.push(v);
+    }
+    Ok(converted_list)
+}
+
+pub fn list_of_values_to_py_list(py: Python, list: &Vec<Value>) -> PyResult<PyObject> {
+    let py_list = PyList::empty(py);
+    for value in list {
+        match value {
+            Value::String(s) => py_list.append(s)?,
+            Value::Number(n) => py_list.append(n.as_i64().unwrap_or(0))?,
+            Value::Bool(b) => py_list.append(b)?,
+            Value::Object(o) => {
+                let map: HashMap<String, Value> =
+                    o.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+                py_list.append(map_to_py_dict(py, &map))?
+            }
+            Value::Array(a) => py_list.append(list_of_values_to_py_list(py, a)?)?,
+            Value::Null => py_list.append(py.None())?,
+        }
+    }
+    Ok(py_list.into())
+}
+
 pub fn get_string_from_py_dict_throw_on_none(
     py_dict: &Bound<PyDict>,
     key: &str,
@@ -101,6 +129,54 @@ pub fn get_string_from_py_dict_throw_on_none(
         Some(v) => Ok(v.extract::<String>()?),
         None => Err(PyErr::new::<PyTypeError, _>("Value in dict is null")),
     }
+}
+
+pub fn py_any_to_value(value: &Bound<PyAny>) -> PyResult<Value> {
+    if let Ok(val) = value.extract::<String>() {
+        return Ok(Value::String(val));
+    }
+
+    if let Ok(val) = value.extract::<bool>() {
+        return Ok(Value::Bool(val));
+    }
+
+    if let Ok(val) = value.extract::<i64>() {
+        return Ok(Value::Number(Number::from(val)));
+    }
+
+    if let Ok(val) = value.extract::<f64>() {
+        return Ok(Value::Number(Number::from(val as i64)));
+    }
+
+    if let Ok(dict) = value.downcast::<PyDict>() {
+        let mut hashmap = HashMap::new();
+        for (key, val) in dict.iter() {
+            let key_str = key.extract::<String>().map_err(|_| {
+                pyo3::exceptions::PyTypeError::new_err("Dictionary keys must be strings")
+            })?;
+            hashmap.insert(key_str, py_any_to_value(&val)?);
+        }
+        return Ok(Value::Object(hashmap.into_iter().collect()));
+    }
+
+    if let Ok(list) = value.downcast::<PyList>() {
+        let mut vec = Vec::new();
+        let mut str_vec = Vec::new();
+
+        if let Ok(iter) = list.try_iter() {
+            for value in iter {
+                let value = value?;
+                let dyn_value = py_any_to_dynamic_value(&value)?;
+
+                str_vec.push(dyn_value.string_value.clone());
+                vec.push(py_any_to_value(&value)?);
+            }
+        }
+
+        return Ok(Value::Array(vec));
+    }
+
+    Err(PyValueError::new_err("Unsupported value type"))
 }
 
 /// order matters in this function, please don't change

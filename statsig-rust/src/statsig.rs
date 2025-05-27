@@ -756,8 +756,15 @@ impl Statsig {
         parameter_store_name: &str,
         parameter_name: &str,
         fallback: Option<String>,
+        options: Option<ParameterStoreEvaluationOptions>,
     ) -> Option<String> {
-        self.get_parameter_from_store(user, parameter_store_name, parameter_name, fallback)
+        self.get_parameter_from_store(
+            user,
+            parameter_store_name,
+            parameter_name,
+            fallback,
+            options,
+        )
     }
 
     pub fn get_boolean_parameter_from_store(
@@ -766,8 +773,15 @@ impl Statsig {
         parameter_store_name: &str,
         parameter_name: &str,
         fallback: Option<bool>,
+        options: Option<ParameterStoreEvaluationOptions>,
     ) -> Option<bool> {
-        self.get_parameter_from_store(user, parameter_store_name, parameter_name, fallback)
+        self.get_parameter_from_store(
+            user,
+            parameter_store_name,
+            parameter_name,
+            fallback,
+            options,
+        )
     }
 
     pub fn get_float_parameter_from_store(
@@ -776,8 +790,15 @@ impl Statsig {
         parameter_store_name: &str,
         parameter_name: &str,
         fallback: Option<f64>,
+        options: Option<ParameterStoreEvaluationOptions>,
     ) -> Option<f64> {
-        self.get_parameter_from_store(user, parameter_store_name, parameter_name, fallback)
+        self.get_parameter_from_store(
+            user,
+            parameter_store_name,
+            parameter_name,
+            fallback,
+            options,
+        )
     }
 
     pub fn get_integer_parameter_from_store(
@@ -786,8 +807,15 @@ impl Statsig {
         parameter_store_name: &str,
         parameter_name: &str,
         fallback: Option<i64>,
+        options: Option<ParameterStoreEvaluationOptions>,
     ) -> Option<i64> {
-        self.get_parameter_from_store(user, parameter_store_name, parameter_name, fallback)
+        self.get_parameter_from_store(
+            user,
+            parameter_store_name,
+            parameter_name,
+            fallback,
+            options,
+        )
     }
 
     pub fn get_array_parameter_from_store(
@@ -796,8 +824,15 @@ impl Statsig {
         parameter_store_name: &str,
         parameter_name: &str,
         fallback: Option<Vec<Value>>,
+        options: Option<ParameterStoreEvaluationOptions>,
     ) -> Option<Vec<Value>> {
-        self.get_parameter_from_store(user, parameter_store_name, parameter_name, fallback)
+        self.get_parameter_from_store(
+            user,
+            parameter_store_name,
+            parameter_name,
+            fallback,
+            options,
+        )
     }
 
     pub fn get_object_parameter_from_store(
@@ -806,8 +841,15 @@ impl Statsig {
         parameter_store_name: &str,
         parameter_name: &str,
         fallback: Option<HashMap<String, Value>>,
+        options: Option<ParameterStoreEvaluationOptions>,
     ) -> Option<HashMap<String, Value>> {
-        self.get_parameter_from_store(user, parameter_store_name, parameter_name, fallback)
+        self.get_parameter_from_store(
+            user,
+            parameter_store_name,
+            parameter_name,
+            fallback,
+            options,
+        )
     }
 
     pub fn get_parameter_from_store<T: DeserializeOwned>(
@@ -816,8 +858,10 @@ impl Statsig {
         parameter_store_name: &str,
         parameter_name: &str,
         fallback: Option<T>,
+        options: Option<ParameterStoreEvaluationOptions>,
     ) -> Option<T> {
-        let store = self.get_parameter_store(parameter_store_name);
+        let store = self
+            .get_parameter_store_with_options(parameter_store_name, options.unwrap_or_default());
         match fallback {
             Some(fallback) => Some(store.get(user, parameter_name, fallback)),
             None => store.get_opt(user, parameter_name),

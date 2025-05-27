@@ -31,6 +31,7 @@ fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<statsig_types_py::ExperimentEvaluationOptionsPy>()?;
     m.add_class::<statsig_types_py::DynamicConfigEvaluationOptionsPy>()?;
     m.add_class::<statsig_types_py::LayerEvaluationOptionsPy>()?;
+    m.add_class::<statsig_types_py::ParameterStoreEvaluationOptionsPy>()?;
     m.add_class::<statsig_types_py::InitializeDetailsPy>()?;
     m.add_class::<statsig_types_py::FailureDetailsPy>()?;
     m.add_class::<statsig_types_py::EvaluationDetailsPy>()?;
