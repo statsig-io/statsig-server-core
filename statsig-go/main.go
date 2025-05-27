@@ -1,7 +1,6 @@
 package statsig
 
 /*
-#cgo LDFLAGS: -L../target/aarch64-macos/release -lstatsig_ffi
 #cgo CFLAGS: -I../statsig-ffi/include
 #include "statsig_ffi.h"
 #include <stdlib.h>
@@ -13,17 +12,17 @@ import (
 )
 
 type User struct {
-	UserID             string                 	
-	Email              string                 	
-	IpAddress          string                 	
-	UserAgent          string                 	
-	Country            string                 	
-	Locale             string                 	
-	AppVersion         string                 	
-	Custom             map[string]interface{} 
-	PrivateAttributes  map[string]interface{} 
-	StatsigEnvironment map[string]string      
-	CustomIDs          map[string]string      
+	UserID             string
+	Email              string
+	IpAddress          string
+	UserAgent          string
+	Country            string
+	Locale             string
+	AppVersion         string
+	Custom             map[string]interface{}
+	PrivateAttributes  map[string]interface{}
+	StatsigEnvironment map[string]string
+	CustomIDs          map[string]string
 	innerRef           *C.char
 }
 
@@ -33,7 +32,7 @@ func (u *User) GetInnerRef() *C.char {
 
 func NewStatsigUser(userID string, email string, ipAddress string, userAgent string, country string, locale string, appVersion string, custom map[string]interface{}, privateAttributes map[string]interface{}, statsigEnvironment map[string]string, customIDs map[string]string) *User {
 	userRef := C.statsig_user_create(C.CString(userID), C.CString(email), C.CString(ipAddress), C.CString(userAgent), C.CString(country), C.CString(locale), C.CString(appVersion), C.CString(""), C.CString(""), C.CString(""))
-	
+
 	u := &User{
 		innerRef:           userRef,
 		UserID:             userID,
