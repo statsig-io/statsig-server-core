@@ -10,8 +10,8 @@ func TestStatsigOptionsBasic(t *testing.T) {
 	options := statsig.NewStatsigOptionsBuilder().
 		WithSpecsUrl("https://example.com/specs").
 		WithLogEventUrl("https://example.com/log").
-		WithSpecsAdapterRef("adapter_specs").
-		WithEventLoggingAdapterRef("adapter_events").
+		WithSpecsAdapterRef(uint64(12345)).
+		WithEventLoggingAdapterRef(uint64(12345)).
 		WithEnvironment("production").
 		WithEventLoggingFlushIntervalMs(2000).
 		WithEventLoggingMaxQueueSize(5000).
@@ -25,10 +25,10 @@ func TestStatsigOptionsBasic(t *testing.T) {
 	if *options.LogEventUrl != "https://example.com/log" {
 		t.Errorf("expected LogEventUrl to be 'https://example.com/log', got %v", options.LogEventUrl)
 	}
-	if *options.SpecsAdapterRef != "adapter_specs" {
+	if options.SpecsAdapterRef != uint64(12345) {
 		t.Errorf("expected SpecsAdapterRef to be 'adapter_specs', got %v", options.SpecsAdapterRef)
 	}
-	if *options.EventLoggingAdapterRef != "adapter_events" {
+	if options.EventLoggingAdapterRef != uint64(12345) {
 		t.Errorf("expected EventLoggingAdapterRef to be 'adapter_events', got %v", options.EventLoggingAdapterRef)
 	}
 	if *options.Environment != "production" {
@@ -70,8 +70,6 @@ func TestBuilderSetStringValues(t *testing.T) {
 	options := statsig.NewStatsigOptionsBuilder().
 		WithSpecsUrl("https://example.com/specs").
 		WithLogEventUrl("").
-		WithSpecsAdapterRef("adapterA").
-		WithEventLoggingAdapterRef("adapterB").
 		WithEnvironment("staging").
 		WithOutputLogLevel("INFO").
 		Build()
@@ -81,12 +79,6 @@ func TestBuilderSetStringValues(t *testing.T) {
 	}
 	if *options.LogEventUrl != "" {
 		t.Errorf("expected empty LogEventUrl, got %v", options.LogEventUrl)
-	}
-	if *options.SpecsAdapterRef != "adapterA" {
-		t.Errorf("unexpected SpecsAdapterRef: %v", options.SpecsAdapterRef)
-	}
-	if *options.EventLoggingAdapterRef != "adapterB" {
-		t.Errorf("unexpected EventLoggingAdapterRef: %v", options.EventLoggingAdapterRef)
 	}
 	if *options.Environment != "staging" {
 		t.Errorf("unexpected Environment: %v", options.Environment)
@@ -100,14 +92,11 @@ func TestBuilderEmptyValues(t *testing.T) {
 	options := statsig.NewStatsigOptionsBuilder().
 		WithSpecsUrl("").
 		WithLogEventUrl("").
-		WithSpecsAdapterRef("").
-		WithEventLoggingAdapterRef("").
 		WithEnvironment("").
 		WithOutputLogLevel("").
 		Build()
 
 	if *options.SpecsUrl != "" || *options.LogEventUrl != "" ||
-		*options.SpecsAdapterRef != "" || *options.EventLoggingAdapterRef != "" ||
 		*options.Environment != "" || *options.OutputLogLevel != "" {
 		t.Error("expected all string fields to be empty")
 	}
@@ -117,8 +106,8 @@ func TestAllValuesSet(t *testing.T) {
 	options := statsig.NewStatsigOptionsBuilder().
 		WithSpecsUrl("https://example.com/specs").
 		WithLogEventUrl("https://example.com/log").
-		WithSpecsAdapterRef("specs_adapter").
-		WithEventLoggingAdapterRef("event_adapter").
+		WithSpecsAdapterRef(12345).
+		WithEventLoggingAdapterRef(12345).
 		WithEnvironment("dev").
 		WithEventLoggingFlushIntervalMs(3000).
 		WithEventLoggingMaxQueueSize(10000).

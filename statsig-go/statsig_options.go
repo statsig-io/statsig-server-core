@@ -14,14 +14,14 @@ import (
 type StatsigOptions struct {
 	SpecsUrl                    *string
 	LogEventUrl                 *string
-	SpecsAdapterRef             *string
-	EventLoggingAdapterRef      *string
+	SpecsAdapterRef             uint64
+	EventLoggingAdapterRef      uint64
 	Environment                 *string
 	EventLoggingFlushIntervalMs int32
 	EventLoggingMaxQueueSize    int32
 	SpecsSyncIntervalMs         int32
 	OutputLogLevel              *string
-	innerRef                    *C.char
+	innerRef                    uint64
 }
 
 type StatsigOptionsBuilder struct {
@@ -40,8 +40,8 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 	optionsRef := C.statsig_options_create(
 		ResolveDefault(o.statsigOptions.SpecsUrl),
 		ResolveDefault(o.statsigOptions.LogEventUrl),
-		ResolveDefault(o.statsigOptions.SpecsAdapterRef),
-		ResolveDefault(o.statsigOptions.EventLoggingAdapterRef),
+		C.ulonglong(o.statsigOptions.SpecsAdapterRef),
+		C.ulonglong(o.statsigOptions.EventLoggingAdapterRef),
 		ResolveDefault(o.statsigOptions.Environment),
 		C.int(o.statsigOptions.EventLoggingFlushIntervalMs),
 		C.int(o.statsigOptions.EventLoggingMaxQueueSize),
@@ -49,13 +49,13 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 		ResolveDefault(o.statsigOptions.OutputLogLevel),
 	)
 
-	o.statsigOptions.innerRef = optionsRef
+	o.statsigOptions.innerRef = uint64(optionsRef)
 
 	opt := &o.statsigOptions
 
 	// Set finalizer on the Go object
 	runtime.SetFinalizer(opt, func(obj *StatsigOptions) {
-		C.statsig_options_release(obj.innerRef)
+		C.statsig_options_release(C.ulonglong(obj.innerRef))
 
 	})
 
@@ -65,8 +65,6 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 func NewStatsigOptionsBuilder() *StatsigOptionsBuilder {
 	return &StatsigOptionsBuilder{
 		statsigOptions: StatsigOptions{
-			SpecsAdapterRef:             nil,
-			EventLoggingAdapterRef:      nil,
 			EventLoggingFlushIntervalMs: -1,
 			EventLoggingMaxQueueSize:    -1,
 			SpecsSyncIntervalMs:         -1,
@@ -85,13 +83,13 @@ func (o *StatsigOptionsBuilder) WithLogEventUrl(logEventUrl string) *StatsigOpti
 	return o
 }
 
-func (o *StatsigOptionsBuilder) WithSpecsAdapterRef(specsAdapterRef string) *StatsigOptionsBuilder {
-	o.statsigOptions.SpecsAdapterRef = &specsAdapterRef
+func (o *StatsigOptionsBuilder) WithSpecsAdapterRef(specsAdapterRef uint64) *StatsigOptionsBuilder {
+	o.statsigOptions.SpecsAdapterRef = specsAdapterRef
 	return o
 }
 
-func (o *StatsigOptionsBuilder) WithEventLoggingAdapterRef(eventLoggingAdapterRef string) *StatsigOptionsBuilder {
-	o.statsigOptions.EventLoggingAdapterRef = &eventLoggingAdapterRef
+func (o *StatsigOptionsBuilder) WithEventLoggingAdapterRef(eventLoggingAdapterRef uint64) *StatsigOptionsBuilder {
+	o.statsigOptions.EventLoggingAdapterRef = eventLoggingAdapterRef
 	return o
 }
 
