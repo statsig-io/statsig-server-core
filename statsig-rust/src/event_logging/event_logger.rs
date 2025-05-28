@@ -159,7 +159,7 @@ impl EventLogger {
                         return Err(e);
                     }
 
-                    self.drop_failed_events(&e, batch, flush_type);
+                    self.drop_events_for_failure(&e, batch, flush_type);
                     Err(e)
                 }
             }
@@ -278,7 +278,7 @@ impl EventLogger {
         let is_max_retries = batch.attempts > EventLoggerConstants::max_log_event_retries();
 
         if is_non_retryable || is_max_retries {
-            self.drop_failed_events(error, batch, flush_type);
+            self.drop_events_for_failure(error, batch, flush_type);
             return;
         }
 
@@ -309,7 +309,12 @@ impl EventLogger {
         );
     }
 
-    fn drop_failed_events(&self, error: &StatsigErr, batch: EventBatch, flush_type: FlushType) {
+    fn drop_events_for_failure(
+        &self,
+        error: &StatsigErr,
+        batch: EventBatch,
+        flush_type: FlushType,
+    ) {
         let dropped_events_count = batch.events.len() as u64;
 
         let kind = match flush_type {
@@ -331,13 +336,6 @@ impl EventLogger {
 
         self.ops_stats
             .log_event_request_failure(dropped_events_count);
-
-        self.ops_stats.log_batching_dropped_events(
-            StatsigErr::LogEventError("Dropped events due flush failure".to_string()),
-            dropped_events_count,
-            &self.flush_interval,
-            &self.queue,
-        );
     }
 
     fn try_add_non_exposed_checks_event(&self) {

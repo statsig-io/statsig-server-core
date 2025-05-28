@@ -186,7 +186,7 @@ async fn test_scheduled_flush_failures() {
 
     assert_eventually!(|| {
         let count = obs_client.error_calls.lock().ok().map(|c| c.len());
-        count.is_some() && count.unwrap() > 1
+        count.is_some() && count.unwrap() >= 1
     });
 
     let error = obs_client.error_calls.lock().unwrap().remove(0);
@@ -218,7 +218,7 @@ async fn test_requeue_dropped_events() {
     assert_eq!(logging_adapter.logged_event_count.load(Ordering::SeqCst), 0);
     assert_eq!(obs_client.error_calls.lock().unwrap().len(), 0);
 
-    for _ in 0..5 {
+    for _ in 0..50 {
         statsig.log_event(&user, "test_event", None, None);
     }
 
@@ -302,14 +302,14 @@ async fn test_non_retryable_failure_drops_events() {
 
     assert_eventually!(|| {
         let count = obs_client.error_calls.lock().ok().map(|c| c.len());
-        count.is_some() && count.unwrap() > 1
+        count.is_some() && count.unwrap() >= 1
     });
     assert_eq!(logging_adapter.times_called.load(Ordering::SeqCst), 1);
 
     let error = match obs_client.error_calls.lock() {
         Ok(calls) => calls
             .iter()
-            .find(|(e, _)| e == "statsig::log_event_dropped_event_count")
+            .find(|(e, _)| e == "statsig::log_event_failed")
             .cloned(),
         Err(_) => None,
     };
