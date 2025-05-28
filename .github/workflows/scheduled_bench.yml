@@ -4,14 +4,12 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '*/30 * * * *'
-  push:
-  pull_request:
 
 env:
   PERF_SDK_KEY: ${{ secrets.PERF_SDK_KEY }}
 
 jobs:
-  node-core-bench:
+  node-bench:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -28,3 +26,20 @@ jobs:
           npm install
           npm run bench
 
+  python-bench:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Run Python Bench
+        working-directory: examples/python/perf-bench
+        run: |
+          pip install -r requirements.txt
+          python python-core-bench.py
+          python python-legacy-bench.py
