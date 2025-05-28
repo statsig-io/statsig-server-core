@@ -20,6 +20,11 @@ class MockDataStore(DataStore):
     get_called_count = 0
     should_poll = False
 
+    def __new__(cls, test_param: str = ""):
+        instance = super().__new__(cls)
+        instance.test_param = test_param
+        return instance
+
     def initialize(self):
         self.init_called = True
         print("Initializing MockDataStore")
@@ -46,7 +51,7 @@ class MockDataStore(DataStore):
 
 @pytest.fixture
 def statsig_setup(httpserver: HTTPServer):
-    data_store = MockDataStore()
+    data_store = MockDataStore(test_param="test_param")
 
     httpserver.expect_request(
         "/v2/download_config_specs/secret-key.json"
@@ -66,6 +71,11 @@ def statsig_setup(httpserver: HTTPServer):
     yield statsig, data_store, user
 
     statsig.shutdown().wait()
+
+def test_data_store_usage_get_with_test_param():
+    data_store = MockDataStore(test_param="test_param")
+    assert data_store.test_param == "test_param"
+
 
 def test_data_store_usage_get(statsig_setup):
     statsig, data_store, user = statsig_setup

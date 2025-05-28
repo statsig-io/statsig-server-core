@@ -8,7 +8,10 @@ class DataStoreResponse:
     time: Optional[int]
 
 class DataStore(DataStoreBase):
-    def __init__(self):
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls)
+
+    def __init__(self, *args, **kwargs):
         super().__init__()
         self.initialize_fn = self.initialize
         self.shutdown_fn = self.shutdown

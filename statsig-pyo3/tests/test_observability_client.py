@@ -16,6 +16,11 @@ class MockObservabilityClient(ObservabilityClient):
     error_called = False
     metrics: List[Tuple[str, str, Any, Optional[Dict[str, str]]]] = []  # Stores (type, metric_name, value, tags)
 
+    def __new__(cls, test_param: str = ""):
+        instance = super().__new__(cls)
+        instance.test_param = test_param
+        return instance
+
     def init(self) -> None:
         self.init_called = True
         print("Initializing ExampleObservationClient")
@@ -68,6 +73,10 @@ def statsig_setup(httpserver: HTTPServer):
     yield statsig, observability_client, httpserver
 
     statsig.shutdown().wait()
+
+def test_observability_client_usage_with_test_param():
+    observability_client = MockObservabilityClient(test_param="test_param")
+    assert observability_client.test_param == "test_param"
 
 
 def test_observability_client_usage(statsig_setup):

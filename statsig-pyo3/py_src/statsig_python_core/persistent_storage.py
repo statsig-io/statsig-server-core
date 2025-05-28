@@ -18,7 +18,10 @@ UserPersistedValues: TypeAlias = Dict[str, StickyValues]
 PersistedValues: TypeAlias = Dict[str, UserPersistedValues]
 
 class PersistentStorage(PersistentStorageBaseClass):
-    def __init__(self):
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls)
+
+    def __init__(self, *args, **kwargs):
         super().__init__()
         self.load_fn = self.load
         self.save_fn = self.save

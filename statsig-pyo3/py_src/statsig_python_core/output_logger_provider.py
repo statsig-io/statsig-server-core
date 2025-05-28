@@ -1,7 +1,10 @@
 from statsig_python_core import OutputLoggerProviderBase
 
 class OutputLoggerProvider(OutputLoggerProviderBase):
-    def __init__(self):
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls)
+
+    def __init__(self, *args, **kwargs):
         super().__init__()
         self.init_fn = self.init
         self.debug_fn = self.debug

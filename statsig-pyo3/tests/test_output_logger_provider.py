@@ -13,6 +13,11 @@ class MockOutputLoggerProvider(OutputLoggerProvider):
     shutdown_called = False
     logs: List[Tuple[str,str, str]] = [] # (level, tag, msg)
 
+    def __new__(cls, test_param: str = ""):
+        instance = super().__new__(cls)
+        instance.test_param = test_param
+        return instance
+
     def init(self):
         self.init_called = True
     
@@ -46,6 +51,10 @@ def statsig_setup():
     options.output_logger_provider = log_provider
 
     yield log_provider, options
+
+def test_output_logger_provider_with_test_param(statsig_setup):
+    log_provider = MockOutputLoggerProvider(test_param="test_param")
+    assert log_provider.test_param == "test_param"
 
 def test_output_logger_provider(statsig_setup):
     log_provider, options = statsig_setup
