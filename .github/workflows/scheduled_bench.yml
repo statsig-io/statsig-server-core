@@ -1,0 +1,30 @@
+name: Scheduled SDK Benchmark
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/30 * * * *'
+  push:
+  pull_request:
+
+env:
+  PERF_SDK_KEY: ${{ secrets.PERF_SDK_KEY }}
+
+jobs:
+  node-core-bench:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Run Node Core Bench
+        working-directory: examples/node/perf-bench
+        run: |
+          npm install
+          npm run bench
+

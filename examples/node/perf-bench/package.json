@@ -1,0 +1,22 @@
+{
+  "name": "perf-bench",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "bench:core": "tsx node-core-bench.ts",
+    "bench:legacy": "tsx node-legacy-bench.ts",
+    "bench": "npm run bench:core && npm run bench:legacy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@statsig/statsig-node-core": "latest",
+    "statsig-node": "latest",
+    "tinybench": "^4.0.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
