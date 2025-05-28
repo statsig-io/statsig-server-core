@@ -22,11 +22,12 @@ use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
-use tokio::sync::Notify;
+use tokio::sync::{Notify, Semaphore};
 
 const BG_TASK_TAG: &str = "EVENT_LOGGER_BG_TASK";
 const DEFAULT_BATCH_SIZE: u32 = 2000;
-const DEFAULT_PENDING_BATCH_MAX: u32 = 20;
+const DEFAULT_PENDING_BATCH_MAX: u32 = 100;
+const MAX_LIMIT_FLUSH_TASKS: usize = 5;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ExposureTrigger {
@@ -43,6 +44,7 @@ pub struct EventLogger {
     event_sampler: ExposureSampling,
     non_exposed_checks: RwLock<HashMap<String, u64>>,
     limit_flush_notify: Notify,
+    limit_flush_semaphore: Arc<Semaphore>,
     flush_interval: FlushInterval,
     shutdown_notify: Notify,
     ops_stats: Arc<OpsStatsForInstance>,
@@ -71,6 +73,7 @@ impl EventLogger {
             non_exposed_checks: RwLock::new(HashMap::new()),
             shutdown_notify: Notify::new(),
             limit_flush_notify: Notify::new(),
+            limit_flush_semaphore: Arc::new(Semaphore::new(MAX_LIMIT_FLUSH_TASKS)),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
         });
 
@@ -117,6 +120,7 @@ impl EventLogger {
 
     fn spawn_background_task(self: &Arc<Self>, rt: &Arc<StatsigRuntime>) {
         let me = self.clone();
+        let rt_clone = rt.clone();
 
         rt.spawn(BG_TASK_TAG, |rt_shutdown_notify| async move {
             let tick_interval_ms = EventLoggerConstants::tick_interval_ms();
@@ -136,12 +140,43 @@ impl EventLogger {
                         return; // EvtLogger Shutdown
                     }
                     _ = me.limit_flush_notify.notified(), if can_limit_flush => {
-                        me.try_limit_flush().await;
+                        Self::spawn_new_limit_flush_task(&me, &rt_clone);
                     }
                 }
 
                 me.event_sampler.try_reset_all_sampling();
             }
+        });
+    }
+
+    fn spawn_new_limit_flush_task(inst: &Arc<Self>, rt: &Arc<StatsigRuntime>) {
+        let permit = match inst.limit_flush_semaphore.clone().try_acquire_owned() {
+            Ok(permit) => permit,
+            Err(_) => return,
+        };
+
+        let me = inst.clone();
+        rt.spawn(BG_TASK_TAG, |_| async move {
+            log_d!(TAG, "Attempting limit flush");
+            if !me.flush_next_batch(FlushType::Limit).await {
+                return;
+            }
+
+            loop {
+                if !me.flush_interval.has_completely_recovered_from_backoff() {
+                    break;
+                }
+
+                if !me.queue.contains_at_least_one_full_batch() {
+                    break;
+                }
+
+                if !me.flush_next_batch(FlushType::Limit).await {
+                    break;
+                }
+            }
+
+            drop(permit);
         });
     }
 
@@ -192,29 +227,26 @@ impl EventLogger {
         .await;
     }
 
-    async fn try_limit_flush(&self) {
-        log_d!(TAG, "Attempting limit flush");
-        self.flush_next_batch(FlushType::Limit).await;
-    }
-
-    async fn flush_next_batch(&self, flush_type: FlushType) {
+    async fn flush_next_batch(&self, flush_type: FlushType) -> bool {
         self.prepare_event_queue_for_flush(flush_type);
 
         let mut batch = match self.queue.take_next_batch() {
             Some(batch) => batch,
-            None => return,
+            None => return false,
         };
 
         let error = match self.log_batch(&mut batch, flush_type).await {
             Err(e) => e,
             Ok(()) => {
                 self.flush_interval.adjust_for_success();
-                return;
+                return true;
             }
         };
 
         self.flush_interval.adjust_for_failure();
         self.try_requeue_failed_batch(&error, batch, flush_type);
+
+        false
     }
 
     async fn log_batch(
@@ -256,6 +288,8 @@ impl EventLogger {
         };
 
         if dropped_events_count > 0 {
+            self.log_dropped_event_warning(dropped_events_count);
+
             self.ops_stats.log_batching_dropped_events(
                 StatsigErr::LogEventError("Dropped events due to event queue limit".to_string()),
                 dropped_events_count,
@@ -293,13 +327,7 @@ impl EventLogger {
             return;
         }
 
-        log_w!(
-            TAG,
-            "Max pending event batches reached, dropping {} event(s). Configuration: batch_size: {}, max_pending_batches: {}",
-            dropped_events_count,
-            self.queue.batch_size,
-            self.queue.max_pending_batches
-        );
+        self.log_dropped_event_warning(dropped_events_count);
 
         self.ops_stats.log_batching_dropped_events(
             StatsigErr::LogEventError(
@@ -351,5 +379,17 @@ impl EventLogger {
         self.queue.add(QueuedEvent::Passthrough(
             StatsigEventInternal::new_non_exposed_checks_event(checks),
         ));
+    }
+
+    fn log_dropped_event_warning(&self, dropped_events_count: u64) {
+        let approximate_pending_events_count = self.queue.approximate_pending_events_count();
+        log_w!(
+            TAG,
+            "Too many events. Dropped {}. Approx pending events {}. Max pending batches {}. Max queue size {}",
+            dropped_events_count,
+            approximate_pending_events_count,
+            self.queue.max_pending_batches,
+            self.queue.batch_size
+        );
     }
 }

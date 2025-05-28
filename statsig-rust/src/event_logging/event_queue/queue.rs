@@ -31,6 +31,12 @@ impl EventQueue {
         }
     }
 
+    pub fn approximate_pending_events_count(&self) -> usize {
+        let pending_len = read_lock_or_return!(TAG, self.pending_events, 0).len();
+        let batches_len = read_lock_or_return!(TAG, self.batches, 0).len();
+        pending_len + (batches_len * self.batch_size)
+    }
+
     pub fn add(&self, pending_event: QueuedEvent) -> bool {
         let mut pending_events = write_lock_or_return!(TAG, self.pending_events, false);
         pending_events.push(pending_event);
