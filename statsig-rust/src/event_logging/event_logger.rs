@@ -6,6 +6,7 @@ use super::{
     },
     exposure_sampling::ExposureSampling,
     flush_interval::FlushInterval,
+    flush_type::FlushType,
     statsig_event_internal::StatsigEventInternal,
 };
 use crate::{
@@ -145,7 +146,7 @@ impl EventLogger {
     }
 
     async fn try_flush_all_pending_events(&self, flush_type: FlushType) -> Result<(), StatsigErr> {
-        self.prepare_event_queue_for_flush();
+        self.prepare_event_queue_for_flush(flush_type);
 
         let batches = self.queue.take_all_batches();
 
@@ -197,7 +198,7 @@ impl EventLogger {
     }
 
     async fn flush_next_batch(&self, flush_type: FlushType) {
-        self.prepare_event_queue_for_flush();
+        self.prepare_event_queue_for_flush(flush_type);
 
         let mut batch = match self.queue.take_next_batch() {
             Some(batch) => batch,
@@ -225,7 +226,7 @@ impl EventLogger {
             self.flush_interval.get_current_flush_interval_ms(),
             self.queue.batch_size,
             self.queue.max_pending_batches,
-            flush_type.as_string(),
+            flush_type.to_string(),
         );
 
         let result = self
@@ -246,7 +247,7 @@ impl EventLogger {
         }
     }
 
-    fn prepare_event_queue_for_flush(&self) {
+    fn prepare_event_queue_for_flush(&self, flush_type: FlushType) {
         self.try_add_non_exposed_checks_event();
 
         let dropped_events_count = match self.queue.reconcile_batching() {
@@ -260,6 +261,7 @@ impl EventLogger {
                 dropped_events_count,
                 &self.flush_interval,
                 &self.queue,
+                flush_type,
             );
         }
     }
@@ -306,6 +308,7 @@ impl EventLogger {
             dropped_events_count,
             &self.flush_interval,
             &self.queue,
+            flush_type,
         );
     }
 
@@ -335,7 +338,7 @@ impl EventLogger {
         );
 
         self.ops_stats
-            .log_event_request_failure(dropped_events_count);
+            .log_event_request_failure(dropped_events_count, flush_type);
     }
 
     fn try_add_non_exposed_checks_event(&self) {
@@ -348,27 +351,5 @@ impl EventLogger {
         self.queue.add(QueuedEvent::Passthrough(
             StatsigEventInternal::new_non_exposed_checks_event(checks),
         ));
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum FlushType {
-    ScheduledMaxTime,
-    ScheduledFullBatch,
-    Limit,
-    Manual,
-    Shutdown,
-}
-
-impl FlushType {
-    fn as_string(&self) -> String {
-        match self {
-            FlushType::ScheduledMaxTime => "scheduled:max_time",
-            FlushType::ScheduledFullBatch => "scheduled:full_batch",
-            FlushType::Limit => "limit",
-            FlushType::Manual => "manual",
-            FlushType::Shutdown => "shutdown",
-        }
-        .to_string()
     }
 }

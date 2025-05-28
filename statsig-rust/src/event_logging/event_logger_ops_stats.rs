@@ -9,19 +9,19 @@ use crate::{
     StatsigErr,
 };
 
-use super::{event_queue::queue::EventQueue, flush_interval::FlushInterval};
+use super::{event_queue::queue::EventQueue, flush_interval::FlushInterval, flush_type::FlushType};
 
 impl OpsStatsForInstance {
-    pub fn log_event_request_failure(&self, event_count: u64) {
+    pub fn log_event_request_failure(&self, event_count: u64, flush_type: FlushType) {
         self.log_error(ErrorBoundaryEvent {
             info: StatsigErr::LogEventError("Log event failed".to_string()),
             tag: "statsig::log_event_failed".to_string(),
             bypass_dedupe: true,
             dedupe_key: None,
-            extra: Some(HashMap::from([(
-                "eventCount".to_string(),
-                event_count.to_string(),
-            )])),
+            extra: Some(HashMap::from([
+                ("eventCount".to_string(), event_count.to_string()),
+                ("flushType".to_string(), flush_type.to_string()),
+            ])),
         });
     }
 
@@ -40,6 +40,7 @@ impl OpsStatsForInstance {
         count: u64,
         flush_interval: &FlushInterval,
         queue: &EventQueue,
+        flush_type: FlushType,
     ) {
         let curr_flush_interval = flush_interval.get_current_flush_interval_ms();
         let batch_size = queue.batch_size;
@@ -61,6 +62,7 @@ impl OpsStatsForInstance {
                     "maxPendingBatches".to_string(),
                     max_pending_batches_count.to_string(),
                 ),
+                ("flushType".to_string(), flush_type.to_string()),
             ])),
         });
     }
