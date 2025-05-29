@@ -19,6 +19,11 @@ impl From<ClientInitResponseOptions> for ClientInitResponseOptionsActual {
             hash_algorithm,
             client_sdk_key: options.client_sdk_key,
             include_local_overrides: options.include_local_overrides,
+            feature_gate_filter: None, // TODO(weihao)
+            experiment_filter: None,   // TODO(weihao)
+            dynamic_config_filter: None,
+            layer_filter: None,
+            param_store_filter: None,
             response_format: None,
         }
     }

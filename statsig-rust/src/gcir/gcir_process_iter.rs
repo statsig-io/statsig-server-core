@@ -23,8 +23,13 @@ pub(crate) fn gcir_process_iter<T>(
 
     for spec_addy in spec_directory.specs.values() {
         let spec = &spec_addy.spec;
+        let name = &spec_addy.name;
 
         if spec.entity == "segment" || spec.entity == "holdout" {
+            continue;
+        }
+
+        if should_filter_entity(spec, name.as_str(), options) {
             continue;
         }
 
@@ -52,6 +57,28 @@ pub(crate) fn gcir_process_iter<T>(
     }
 
     Ok(results)
+}
+
+fn should_filter_entity(spec: &Spec, name: &str, options: &ClientInitResponseOptions) -> bool {
+    match spec.entity.as_str() {
+        "feature_gate" => options
+            .feature_gate_filter
+            .as_ref()
+            .is_some_and(|f| !f.contains(name)),
+        "experiment" => options
+            .experiment_filter
+            .as_ref()
+            .is_some_and(|f| !f.contains(name)),
+        "dynamic_config" => options
+            .dynamic_config_filter
+            .as_ref()
+            .is_some_and(|f| !f.contains(name)),
+        "layer" => options
+            .layer_filter
+            .as_ref()
+            .is_some_and(|f| !f.contains(name)),
+        _ => false,
+    }
 }
 
 fn hash_secondary_exposures(

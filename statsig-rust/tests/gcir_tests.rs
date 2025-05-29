@@ -39,11 +39,42 @@ async fn setup(hash_algorithm: HashAlgorithm) -> Value {
             hash_algorithm: Some(hash_algorithm),
             client_sdk_key: None,
             include_local_overrides: Some(false),
+            feature_gate_filter: None,
+            experiment_filter: None,
+            dynamic_config_filter: None,
+            layer_filter: None,
+            param_store_filter: None,
             response_format: None,
         },
     );
     let json = serde_json::to_string(&response).unwrap();
     serde_json::from_str(&json).unwrap()
+}
+
+#[tokio::test]
+async fn test_feature_gate_filter() {
+    let response_options = ClientInitResponseOptions {
+        feature_gate_filter: Some(["test_public".to_string()].into_iter().collect()),
+        hash_algorithm: Some(HashAlgorithm::None),
+        ..Default::default()
+    };
+
+    let json_obj = {
+        let mut options = StatsigOptions::new();
+        options.specs_adapter = Some(Arc::new(MockSpecsAdapter::with_data(
+            "tests/data/eval_proj_dcs.json",
+        )));
+        options.event_logging_adapter = Some(Arc::new(MockEventLoggingAdapter::new()));
+        let statsig = Statsig::new("secret-key", Some(Arc::new(options)));
+        statsig.initialize().await.unwrap();
+        let response = statsig.get_client_init_response_with_options(&USER, &response_options);
+        let json = serde_json::to_string(&response).unwrap();
+        serde_json::from_str::<Value>(&json).unwrap()
+    };
+
+    let gates = json_obj.get("feature_gates").unwrap().as_object().unwrap();
+    assert_eq!(gates.len(), 1);
+    assert!(gates.contains_key("test_public"));
 }
 
 #[tokio::test]

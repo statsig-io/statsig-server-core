@@ -100,6 +100,11 @@ pub fn convert_java_client_init_response_options_to_rust(
         hash_algorithm: hash_algo,
         client_sdk_key,
         include_local_overrides,
+        feature_gate_filter: None, // TODO(weihao)
+        experiment_filter: None,   // TODO(weihao)
+        dynamic_config_filter: None,
+        layer_filter: None,
+        param_store_filter: None,
         response_format,
     })
 }

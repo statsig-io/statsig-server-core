@@ -62,6 +62,11 @@ impl GCIRFormatter {
                 hash_algorithm: Some(HashAlgorithm::Djb2),
                 client_sdk_key: None,
                 include_local_overrides: Some(false),
+                feature_gate_filter: None,
+                experiment_filter: None,
+                dynamic_config_filter: None,
+                layer_filter: None,
+                param_store_filter: None,
                 response_format: None,
             },
         }

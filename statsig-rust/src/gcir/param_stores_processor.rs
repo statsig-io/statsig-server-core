@@ -33,6 +33,12 @@ pub(crate) fn get_serializeable_param_stores(
             continue;
         }
 
+        if let Some(param_store_filter) = &options.param_store_filter {
+            if !param_store_filter.contains(name) {
+                continue;
+            }
+        }
+
         let hash_algorithm = options.get_hash_algorithm();
         let hashed_name = context.hashing.hash(name, hash_algorithm);
         let parameters = get_parameters_from_store(store, hash_algorithm, context);
