@@ -48,6 +48,34 @@ pub extern "C" fn statsig_initialize(statsig_ref: u64, callback: extern "C" fn()
 }
 
 #[no_mangle]
+pub extern "C" fn statsig_initialize_with_details(statsig_ref: u64) -> *const c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
+
+    let result = statsig
+        .statsig_runtime
+        .get_handle()
+        .block_on(async { statsig.initialize_with_details().await });
+
+    let details = match result {
+        Ok(d) => d,
+        Err(e) => {
+            log_e!(TAG, "Failed to initialize statsig with details: {}", e);
+            return null();
+        }
+    };
+
+    let json_str = match serde_json::to_string(&details) {
+        Ok(s) => s,
+        Err(e) => {
+            log_e!(TAG, "Failed to initialize statsig with details: {}", e);
+            return null();
+        }
+    };
+
+    string_to_c_char(json_str)
+}
+
+#[no_mangle]
 pub extern "C" fn statsig_initialize_blocking(statsig_ref: u64) {
     let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
 
