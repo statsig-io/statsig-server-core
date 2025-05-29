@@ -79,6 +79,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: 7.4
+          extensions: ffi
+          ini-values: ffi.enable=1
+
       - name: Run Verification
         working-directory: examples/php/verify-package
         run: |

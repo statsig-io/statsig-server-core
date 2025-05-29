@@ -175,6 +175,34 @@ jobs:
           pnpm install ../../../artifacts/statsig-node/build
           pnpm exec tsx verify.ts
 
+  # -------------------------------------------------------------------- [Verify Python]
+
+  python-verify:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/common-setup
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: debian-x86_64-unknown-linux-gnu-python
+          path: artifacts
+
+      - name: Setup Statsig Python
+        run: |
+          cd ./artifacts/statsig-pyo3/build
+          pip3 install mypy types-requests *.whl --force-reinstall
+          unzip *.whl -d out_dir
+          mypy out_dir/statsig_python_core
+
+      - name: Run Verification
+        working-directory: examples/python/verify-package
+        env:
+          STATSIG_SERVER_SDK_KEY: ${{ secrets.KONG_SERVER_SDK_KEY }}
+        run: python3 verify.py
+          
+
   # -------------------------------------------------------------------- [Size Report]
 
   size-report:
