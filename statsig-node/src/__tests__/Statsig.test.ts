@@ -82,6 +82,22 @@ describe('Statsig', () => {
     expect(Object.keys(response.layer_configs)).toHaveLength(12);
   });
 
+  it('should apply feature gate filter correctly', async () => {
+    const user = StatsigUser.withUserID('a-user');
+
+    const responseWithFilter = JSON.parse(
+        statsig.getClientInitializeResponse(user, {
+          hashAlgorithm: "none",
+          featureGateFilter: new Set(['test_public']),
+        }),
+    );
+
+    expect(Object.keys(responseWithFilter.feature_gates)).toEqual(
+        expect.arrayContaining(['test_public']),
+    );
+    expect(Object.keys(responseWithFilter.feature_gates).length).toBe(1);
+  });
+
   describe('checks, events and exposures', () => {
     beforeEach(async () => {
       await statsig.flushEvents();

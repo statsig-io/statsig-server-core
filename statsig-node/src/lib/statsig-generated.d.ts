@@ -116,6 +116,11 @@ export interface ClientInitResponseOptions {
   hashAlgorithm?: string
   clientSdkKey?: string
   includeLocalOverrides?: boolean
+  featureGateFilter?: Set<string>
+  experimentFilter?: Set<string>
+  dynamicConfigFilter?: Set<string>
+  layerFilter?: Set<string>
+  paramStoreFilter?: Set<string>
 }
 
 export interface DataStore {
