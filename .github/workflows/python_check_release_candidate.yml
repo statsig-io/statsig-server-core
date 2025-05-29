@@ -18,7 +18,7 @@ jobs:
       matrix:
         subdir: ['server-core-python-rc']
         platform: ['linux/amd64', 'linux/arm64']
-        base_image: ["debian","3_slim","3","3_alpine","3_bookworm","3_bullseye","ubuntu","alpine",]
+        base_image: ["debian","3_slim","3","3_alpine","3_bookworm","3_bullseye","alpine",]
     steps:
       - name: Checkout LRS repo
         uses: actions/checkout@v3
