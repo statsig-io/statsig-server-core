@@ -318,3 +318,6 @@ class StatsigUser:
         ...
 
 
+def notify_python_shutdown() -> None:
+    ...
+
