@@ -38,6 +38,10 @@ java {
     targetCompatibility = '1.8'
 }
 
+tasks.withType(JavaCompile).configureEach {
+    options.release = 8
+}
+
 repositories {
     mavenCentral()
     mavenLocal()

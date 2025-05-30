@@ -3,6 +3,7 @@ package com.statsig;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import okhttp3.mockwebserver.MockResponse;
@@ -31,11 +32,14 @@ public class E2ELayerTest {
             .setHeader("Content-Type", "application/json")
             .setBody(downloadConfigSpecsJson));
 
+    Map<String, Object> custom = new HashMap<>();
+    custom.put("custom_field", "custom_value");
+
     testUser =
         new StatsigUser.Builder()
             .setUserID("test_user_id")
             .setEmail("test@example.com")
-            .setCustom(Map.of("custom_field", "custom_value"))
+            .setCustom(custom)
             .build();
 
     StatsigOptions options =
@@ -66,11 +70,10 @@ public class E2ELayerTest {
     assertEquals("Purchase", layerBeforeOverride.getString("button_text", "Purchase"));
     assertEquals(0, layerBeforeOverride.getInt("discount_percentage", 0));
 
-    Map<String, Object> layerValue =
-        Map.of(
-            "button_color", "blue",
-            "button_text", "Buy Now",
-            "discount_percentage", 15);
+    Map<String, Object> layerValue = new HashMap<>();
+    layerValue.put("button_color", "blue");
+    layerValue.put("button_text", "Buy Now");
+    layerValue.put("discount_percentage", 15);
 
     statsig.overrideLayer(layerToTest, layerValue);
 

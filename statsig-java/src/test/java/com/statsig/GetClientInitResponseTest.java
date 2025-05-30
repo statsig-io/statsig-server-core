@@ -2,7 +2,7 @@ package com.statsig;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,8 +21,18 @@ public class GetClientInitResponseTest {
         new StatsigUser.Builder()
             .setUserID("whd")
             .setEmail("weihao@statsig.com")
-            .setCustomIDs(Map.of("k1", "v1"))
-            .setCustom(Map.of("k1", 1))
+            .setCustomIDs(
+                new HashMap<String, String>() {
+                  {
+                    put("k1", "v1");
+                  }
+                })
+            .setCustom(
+                new HashMap<String, Object>() {
+                  {
+                    put("k1", 1);
+                  }
+                })
             .build();
   }
 

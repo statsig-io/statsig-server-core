@@ -1,12 +1,13 @@
 package com.statsig;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
 public class TestUtils {
+
   public static String loadJsonFromFile(String fileName) throws IOException {
     try (InputStream inputStream = TestUtils.class.getClassLoader().getResourceAsStream(fileName)) {
       if (inputStream == null) {
@@ -14,12 +15,22 @@ public class TestUtils {
         File file = new File(fileName);
         if (file.exists()) {
           try (FileInputStream fileInputStream = new FileInputStream(file)) {
-            return new String(fileInputStream.readAllBytes(), StandardCharsets.UTF_8);
+            return readStreamToString(fileInputStream);
           }
         }
         throw new IOException("Resource not found: " + fileName);
       }
-      return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+      return readStreamToString(inputStream);
     }
+  }
+
+  private static String readStreamToString(InputStream inputStream) throws IOException {
+    ByteArrayOutputStream result = new ByteArrayOutputStream();
+    byte[] buffer = new byte[1024];
+    int length;
+    while ((length = inputStream.read(buffer)) != -1) {
+      result.write(buffer, 0, length);
+    }
+    return result.toString("UTF-8");
   }
 }

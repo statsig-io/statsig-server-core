@@ -3,6 +3,7 @@ package com.statsig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.statsig.internal.JacksonUtil;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import okhttp3.mockwebserver.MockResponse;
@@ -33,12 +34,14 @@ public class HttpRequestInterceptionTest {
             .setResponseCode(200)
             .setHeader("Content-Type", "application/json")
             .setBody(downloadConfigSpecsJson));
+    Map<String, Object> custom = new HashMap<>();
+    custom.put("custom_field", "custom_value");
 
     testUser =
         new StatsigUser.Builder()
             .setUserID("test_user_id")
             .setEmail("test@example.com")
-            .setCustom(Map.of("custom_field", "custom_value"))
+            .setCustom(custom)
             .build();
 
     StatsigOptions options =
