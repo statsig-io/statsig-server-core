@@ -43,3 +43,21 @@ jobs:
           pip install -r requirements.txt
           python python-core-bench.py
           python python-legacy-bench.py
+
+  java-bench:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+
+      - name: Run Java Bench
+        working-directory: examples/java/perf-bench
+        run: |
+          ./gradlew run_core
+          ./gradlew run_legacy

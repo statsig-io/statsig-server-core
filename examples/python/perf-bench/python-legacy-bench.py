@@ -100,7 +100,8 @@ def run_get_experiment_global_user():
 
 def run_get_client_initialize_response():
     def action():
-        statsig.get_client_initialize_response(global_user)
+        user = make_random_user()
+        statsig.get_client_initialize_response(user)
 
     p99 = benchmark(action)
     results["get_client_initialize_response"] = p99
