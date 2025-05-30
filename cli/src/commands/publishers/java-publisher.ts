@@ -24,10 +24,9 @@ const TARGET_MAPPING = {
   'debian-x86_64-unknown-linux-gnu-ffi': 'linux-gnu-x86_64',
 };
 
-
 const JAVA_NATIVE_DIR = path.resolve(
-    BASE_DIR,
-    'statsig-java/java/src/main/resources/native',
+  BASE_DIR,
+  'statsig-java/src/main/resources/native',
 );
 
 export async function javaPublish(options: PublisherOptions) {
@@ -101,10 +100,13 @@ function moveJavaLibraries(libFiles: string[]) {
 function publishJavaPackages(options: PublisherOptions) {
   Log.stepBegin('Publishing Java Packages');
 
-  execSync('./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository', {
-    cwd: getRootedPath('statsig-java/java'),
-    stdio: 'inherit',
-  });
+  execSync(
+    './gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository',
+    {
+      cwd: getRootedPath('statsig-java'),
+      stdio: 'inherit',
+    },
+  );
 
   Log.stepEnd('Successfully published Java Packages');
 }

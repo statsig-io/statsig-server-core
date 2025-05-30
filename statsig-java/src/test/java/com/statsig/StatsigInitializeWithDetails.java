@@ -18,7 +18,7 @@ public class StatsigInitializeWithDetails {
   public void setUp() throws IOException, InterruptedException, ExecutionException {
 
     String dcsContentJson =
-        TestUtils.loadJsonFromFile("../../statsig-rust/tests/data/eval_proj_dcs.json");
+        TestUtils.loadJsonFromFile("../statsig-rust/tests/data/eval_proj_dcs.json");
 
     mockWebServer = new MockWebServer();
     mockWebServer.start();

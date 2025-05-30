@@ -107,6 +107,6 @@ jobs:
           java-version: '17'
 
       - name: Run Java Spotless Check
-        working-directory: statsig-java/java
+        working-directory: statsig-java
         run: ./gradlew spotlessCheck
 

@@ -31,7 +31,7 @@ public class IntializeAsyncTest {
   @Test
   public void testMultipleConcurrentInitializations() throws IOException, InterruptedException {
     final String dcsContentJson =
-        TestUtils.loadJsonFromFile("../../statsig-rust/tests/data/eval_proj_dcs.json");
+        TestUtils.loadJsonFromFile("../statsig-rust/tests/data/eval_proj_dcs.json");
 
     Dispatcher dispatcher =
         new Dispatcher() {

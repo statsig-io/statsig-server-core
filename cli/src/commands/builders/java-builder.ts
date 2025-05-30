@@ -3,9 +3,9 @@ import { getArchInfo } from '@/utils/docker_utils.js';
 import { buildFfiHelper } from '@/utils/ffi_utils.js';
 import { BASE_DIR, listFiles } from '@/utils/file_utils.js';
 import { Log } from '@/utils/terminal_utils.js';
+import fs from 'fs';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
-import fs from 'fs';
 
 const TARGET_MAPPING = {
   'macos-aarch64-apple-darwin-java': 'macos-arm64',
@@ -22,8 +22,8 @@ const TARGET_MAPPING = {
 };
 
 const JAVA_NATIVE_DIR = path.resolve(
-    BASE_DIR,
-    'statsig-java/java/src/main/resources/native',
+  BASE_DIR,
+  'statsig-java/src/main/resources/native',
 );
 
 export function buildJava(options: BuilderOptions) {
@@ -70,7 +70,6 @@ function moveJavaLibraries(libFiles: string[], options: BuilderOptions) {
     fileMoved = true;
   });
 
-
   if (!fileMoved) {
     Log.stepEnd('No matching native files found to move', 'failure');
   }
@@ -87,7 +86,7 @@ function ensureDirExists(dirPath: string) {
 function resolveClassifierFromOsArch(os: string, arch: string): string | null {
   const prefix = `${os}-${arch}`;
   const matchedEntry = Object.entries(TARGET_MAPPING).find(([key]) =>
-      key.startsWith(prefix)
+    key.startsWith(prefix),
   );
 
   if (matchedEntry) {
@@ -96,5 +95,3 @@ function resolveClassifierFromOsArch(os: string, arch: string): string | null {
 
   return null;
 }
-
-
