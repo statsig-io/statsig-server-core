@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '*/30 * * * *'
-
+  
 env:
   PERF_SDK_KEY: ${{ secrets.PERF_SDK_KEY }}
 
@@ -77,7 +77,12 @@ jobs:
 
       - name: Run PHP Bench
         working-directory: examples/php/perf-bench
+        # We remove the opposite SDK to avoid namespace conflicts
         run: |
           composer update
           rm -rf vendor/statsig/statsigsdk
           php src/PhpCoreBench.php
+
+          composer update
+          rm -rf vendor/statsig/statsig-php-core
+          php src/PhpLegacyBench.php
