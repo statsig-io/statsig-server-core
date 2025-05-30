@@ -73,7 +73,7 @@ public class JavaLegacyBench {
             p99,
             Map.of(
                 "benchmarkName", name,
-                "sdkType", "statsig-server-core-java",
+                "sdkType", "java-server",
                 "sdkVersion", version
             )
         );
