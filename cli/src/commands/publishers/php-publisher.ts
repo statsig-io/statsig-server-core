@@ -42,27 +42,7 @@ export async function publishPhp(options: PublisherOptions) {
   await pushChangesToPhpRepo(octokit, version);
   const release = await createGithubRelaseForPhpRepo(octokit, version);
 
-  const binaries = [
-    ...listFiles(options.workingDir, '*.dylib'),
-    ...listFiles(options.workingDir, '*.so'),
-    ...listFiles(options.workingDir, '*.dll'),
-  ];
-
-  Log.title('Uploading assets to release');
-
-  for await (const binary of binaries) {
-    const category = LIB_CATEGORY_MAP[path.extname(binary).replace('.', '')];
-    const target = binary
-      .replace(options.workingDir, '')
-      .split('/target/')[0]
-      .replace(/\//, '')
-      .replace('-ffi', '');
-    const name = `statsig-core-${target}-${category}`;
-
-    const compressedPath = await compressLibFile(options, name, binary);
-
-    await uploadLibFileToRelease(octokit, release, compressedPath);
-  }
+  Log.conclusion(`PHP release created: ${release.html_url}`);
 }
 
 async function pushChangesToPhpRepo(octokit: Octokit, version: SemVer) {
@@ -97,7 +77,7 @@ async function pushChangesToPhpRepo(octokit: Octokit, version: SemVer) {
 
   if (error || !success) {
     const errMessage =
-      error instanceof Error ? error.message : (error ?? 'Unknown Error');
+      error instanceof Error ? error.message : error ?? 'Unknown Error';
 
     Log.stepEnd(`Failed to commit changes: ${errMessage}`, 'failure');
     process.exit(1);
@@ -159,67 +139,4 @@ async function verifyReleaseDoesNotExist(octokit: Octokit, version: SemVer) {
   }
 
   Log.stepEnd(`Release ${version} does not exist`);
-}
-
-async function compressLibFile(
-  options: PublisherOptions,
-  name: string,
-  assetPath: string,
-) {
-  Log.stepBegin(`Compressing library ${name}`);
-  Log.stepProgress(`Source: ${assetPath}`);
-  const compressedPath = path.resolve(options.workingDir, `${name}.zip`);
-
-  zipFile(assetPath, compressedPath);
-
-  Log.stepEnd(`Compressed library ${name}`);
-  return compressedPath;
-}
-
-async function uploadLibFileToRelease(
-  octokit: Octokit,
-  release: GhRelease,
-  zipPath: string,
-) {
-  const name = path.basename(zipPath);
-  Log.stepBegin('Attaching Asset to Release');
-
-  Log.stepProgress(`Binary: ${name}`);
-
-  const didDelete = await deleteReleaseAssetWithName(
-    octokit,
-    PHP_REPO_NAME,
-    release.id,
-    name,
-  );
-
-  Log.stepProgress(
-    didDelete ? 'Existing asset deleted' : 'No existing asset found',
-  );
-
-  const uploadUrl = release.upload_url;
-  if (!uploadUrl) {
-    Log.stepEnd('No upload URL found', 'failure');
-    process.exit(1);
-  }
-
-  Log.stepProgress(`Release upload URL: ${uploadUrl}`);
-
-  const { result, error } = await uploadReleaseAsset(
-    octokit,
-    PHP_REPO_NAME,
-    release.id,
-    zipPath,
-    name,
-  );
-
-  if (error || !result) {
-    const errMessage =
-      error instanceof Error ? error.message : (error ?? 'Unknown Error');
-
-    Log.stepEnd(`Failed to upload asset: ${errMessage}`, 'failure');
-    process.exit(1);
-  }
-
-  Log.stepEnd(`Asset uploaded: ${result.browser_download_url}`);
 }

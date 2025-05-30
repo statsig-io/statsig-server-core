@@ -239,7 +239,6 @@ jobs:
           - node
           - python
           - java
-          - php
           - ffi
 
     steps:
@@ -270,6 +269,29 @@ jobs:
           ./tore publish \
             --working-dir artifacts \
             --package ${{ matrix.package }} \
+            --workflow-id $GITHUB_RUN_ID \
+            --release-id ${{ github.event.release.id }} \
+            --repository ${{ github.event.repository.name }} \
+            --skip-artifact-download
+
+  publish-php:
+    needs: [build, publish]
+    if: ${{ github.event_name == 'release' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/common-setup
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish PHP
+        shell: bash
+        run: |
+          ./tore publish \
+            --working-dir artifacts \
+            --package php \
             --workflow-id $GITHUB_RUN_ID \
             --release-id ${{ github.event.release.id }} \
             --repository ${{ github.event.repository.name }} \
