@@ -63,7 +63,7 @@ public class JavaLegacyBench {
         System.out.printf("%-50s %.4fms%n", name, p99);
 
         String ci = System.getenv("CI");
-        if (ci != "1" && ci != "true") {
+        if (!Objects.equals(ci, "1") && !Objects.equals(ci, "true")) {
             return;
         }
 
