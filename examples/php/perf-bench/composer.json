@@ -1,0 +1,22 @@
+{
+  "require": {
+    "statsig/statsig-php-core": "*",
+    "statsig/statsigsdk": "*"
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "autoload": {
+    "psr-4": {
+      "StatsigLegacy\\": "vendor/statsig/statsigsdk/src/",
+      "StatsigCore\\": "vendor/statsig/statsig-php-core/src/"
+    }
+  },
+  "scripts": {
+    "post-install-cmd": [
+      "cd vendor/statsig/statsig-php-core && php post-install.php"
+    ],
+    "post-update-cmd": [
+      "cd vendor/statsig/statsig-php-core && php post-install.php"
+    ]
+  }
+}
