@@ -1862,7 +1862,7 @@ fn initialize_specs_adapter(
         ));
     }
 
-    Arc::new(StatsigHttpSpecsAdapter::new(sdk_key, Some(options)))
+    Arc::new(StatsigHttpSpecsAdapter::new(sdk_key, Some(options), None))
 }
 
 fn initialize_id_lists_adapter(

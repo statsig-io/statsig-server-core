@@ -163,7 +163,7 @@ impl StatsigGrpcSpecsAdapter {
         config: &SpecAdapterConfig,
         options: Option<&StatsigOptions>,
     ) -> Self {
-        let fallback_adapter = StatsigHttpSpecsAdapter::new(sdk_key, options);
+        let fallback_adapter = StatsigHttpSpecsAdapter::new(sdk_key, options, None);
         let (init_tx, _) = broadcast::channel(1);
         Self {
             listener: RwLock::new(None),

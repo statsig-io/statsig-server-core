@@ -44,15 +44,22 @@ pub struct StatsigHttpSpecsAdapter {
 
 impl StatsigHttpSpecsAdapter {
     #[must_use]
-    pub fn new(sdk_key: &str, options: Option<&StatsigOptions>) -> Self {
+    pub fn new(
+        sdk_key: &str,
+        options: Option<&StatsigOptions>,
+        override_url: Option<String>,
+    ) -> Self {
         let default_options = StatsigOptions::default();
         let options_ref = options.unwrap_or(&default_options);
 
-        let specs_url = options_ref
-            .specs_url
-            .as_ref()
-            .map(|u| u.to_string())
-            .unwrap_or(DEFAULT_SPECS_URL.to_string());
+        let specs_url = match override_url {
+            Some(url) => url,
+            None => options_ref
+                .specs_url
+                .as_ref()
+                .map(|u| u.to_string())
+                .unwrap_or(DEFAULT_SPECS_URL.to_string()),
+        };
 
         // only fallback when the spec_url is not the DEFAULT_SPECS_URL
         let fallback_url = if options_ref.fallback_to_statsig_api.unwrap_or(false)

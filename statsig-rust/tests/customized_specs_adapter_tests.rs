@@ -7,10 +7,12 @@ pub mod specs_adapter_tests {
     use sigstat_grpc::mock_forward_proxy::{api::ConfigSpecResponse, MockForwardProxy};
     use statsig_rust::data_store_interface::DataStoreResponse;
     use statsig_rust::{
-        hashing, SpecAdapterConfig, SpecsAdapter, SpecsAdapterType, SpecsSource,
+        hashing, SpecAdapterConfig, SpecsAdapter, SpecsAdapterType, SpecsSource, Statsig,
         StatsigCustomizedSpecsAdapter, StatsigOptions, StatsigRuntime,
     };
-    use std::sync::Arc;
+    use std::{fs, path::PathBuf, sync::Arc};
+
+    use crate::utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
     #[tokio::test]
     async fn test_data_store_with_streaming() {
@@ -54,6 +56,39 @@ pub mod specs_adapter_tests {
         );
         assert_eq!(received_update_2.data, "bg_sync_1".to_string().into_bytes());
         // examine time
+    }
+
+    #[tokio::test]
+    async fn test_network_config_url() {
+        let mock_scrapi = MockScrapi::new().await;
+
+        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.push("tests/data/eval_proj_dcs.json");
+        let dcs = fs::read_to_string(path).expect("Unable to read file");
+
+        mock_scrapi
+            .stub(EndpointStub {
+                method: Method::GET,
+                response: dcs,
+                ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
+            })
+            .await;
+
+        let statsig = Statsig::new(
+            "SECRET-KEY",
+            Some(Arc::new(StatsigOptions {
+                // spec_adapters_config: Some(vec![SpecAdapterConfig {
+                //     adapter_type: SpecsAdapterType::NetworkHttp,
+                //     init_timeout_ms: 3000,
+                //     specs_url: Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs)),
+                // }]),
+                specs_url: Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs)),
+                ..StatsigOptions::default()
+            })),
+        );
+        let result = statsig.initialize_with_details().await.unwrap();
+
+        assert!(result.source.eq(&SpecsSource::Network))
     }
 
     #[tokio::test]

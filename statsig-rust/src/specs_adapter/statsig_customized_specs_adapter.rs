@@ -41,6 +41,7 @@ impl StatsigCustomizedSpecsAdapter {
                     adapters.push(Arc::new(StatsigHttpSpecsAdapter::new(
                         sdk_key,
                         Some(options),
+                        config.specs_url.clone(),
                     )));
                 }
                 SpecsAdapterType::DataStore => match options.data_store.clone() {
@@ -68,7 +69,7 @@ impl StatsigCustomizedSpecsAdapter {
     ) -> Self {
         let data_adapter_spec_adapter =
             StatsigDataStoreSpecsAdapter::new(sdk_key, data_store, hashing, Some(options));
-        let http_adapter = StatsigHttpSpecsAdapter::new(sdk_key, Some(options));
+        let http_adapter = StatsigHttpSpecsAdapter::new(sdk_key, Some(options), None);
         let adapters: Vec<Arc<dyn SpecsAdapter>> =
             vec![Arc::new(data_adapter_spec_adapter), Arc::new(http_adapter)];
         StatsigCustomizedSpecsAdapter { adapters }

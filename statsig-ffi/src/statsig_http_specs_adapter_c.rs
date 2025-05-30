@@ -16,7 +16,8 @@ pub extern "C" fn statsig_http_specs_adapter_create(
 
     let options = InstanceRegistry::get::<StatsigOptions>(&options_ref);
 
-    let adapter = StatsigHttpSpecsAdapter::new(&sdk_key, options.as_ref().map(|o| o.as_ref()));
+    let adapter =
+        StatsigHttpSpecsAdapter::new(&sdk_key, options.as_ref().map(|o| o.as_ref()), None);
 
     InstanceRegistry::register(adapter).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigHttpSpecsAdapter");
