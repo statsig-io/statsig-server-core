@@ -2,6 +2,7 @@ use std::{os::raw::c_char, os::raw::c_int, sync::Arc};
 
 use crate::{
     ffi_utils::{c_char_to_string, c_int_to_u32, extract_opt_bool, SafeOptBool},
+    function_based_event_logging_adapter_c::FunctionBasedEventLoggingAdapterC,
     function_based_specs_adapter_c::FunctionBasedSpecsAdapterC,
 };
 use statsig_rust::{
@@ -88,6 +89,10 @@ fn try_get_event_logging_adapter(
         .clone()
         .downcast::<StatsigLocalFileEventLoggingAdapter>()
     {
+        return Some(adapter);
+    }
+
+    if let Ok(adapter) = raw.clone().downcast::<FunctionBasedEventLoggingAdapterC>() {
         return Some(adapter);
     }
 

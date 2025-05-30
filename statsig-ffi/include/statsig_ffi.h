@@ -9,6 +9,12 @@ typedef int StatsigUser;
 
 typedef int SafeOptBool;
 
+uint64_t function_based_event_logging_adapter_create(void (*start_fn)(void),
+                                                     SafeOptBool (*log_events_fn)(const char *request_json),
+                                                     void (*shutdown_fn)(void));
+
+void function_based_event_logging_adapter_release(uint64_t adapter_ref);
+
 uint64_t function_based_specs_adapter_create(void (*setup_internal_fn)(uint64_t listener_ref),
                                              void (*start_fn)(void),
                                              void (*shutdown_fn)(void),
