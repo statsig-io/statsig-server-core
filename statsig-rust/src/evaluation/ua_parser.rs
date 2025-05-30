@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use uaparser::{Parser, UserAgentParser as ExtUserAgentParser};
 
-use crate::{dyn_value, DynamicValue};
+use crate::{dyn_value, log_w, DynamicValue};
 use crate::{log_d, log_e, unwrap_or_return_with, user::StatsigUserInternal};
 
 use super::dynamic_string::DynamicString;
@@ -52,7 +52,7 @@ impl UserAgentParser {
 
         let parser = unwrap_or_return_with!(lock.as_ref(), || {
             evaluator_context.result.override_reason = Some(UNINITIALIZED_REASON);
-            log_e!(TAG, "Failed to load UA Parser. Did you disable UA Parser or did not wait for user agent to init. Check StatsigOptions configuration");
+            log_w!(TAG, "Failed to load UA Parser. Did you disable UA Parser or did not wait for user agent to init. Check StatsigOptions configuration");
             None
         });
 

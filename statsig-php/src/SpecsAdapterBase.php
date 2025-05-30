@@ -10,7 +10,7 @@ abstract class SpecsAdapterBase
     {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->function_based_specs_adapter_create(
-            [$this, '_setupInternal'],
+            fn(string $listenerRef) => $this->setup(new SpecsUpdateListener($listenerRef)),
             [$this, 'start'],
             [$this, 'shutdown'],
             [$this, 'scheduleBackgroundSync']
@@ -35,10 +35,4 @@ abstract class SpecsAdapterBase
     abstract public function shutdown();
 
     abstract public function scheduleBackgroundSync();
-
-    private function _setupInternal(string $listener_ref) // phpcs:ignore
-    {
-        $listener = new SpecsUpdateListener($listener_ref);
-        $this->setup($listener);
-    }
 }

@@ -1,7 +1,7 @@
 use std::{os::raw::c_char, os::raw::c_int, sync::Arc};
 
 use crate::{
-    ffi_utils::{c_char_to_string, c_int_to_u32},
+    ffi_utils::{c_char_to_string, c_int_to_u32, extract_opt_bool, SafeOptBool},
     function_based_specs_adapter_c::FunctionBasedSpecsAdapterC,
 };
 use statsig_rust::{
@@ -22,6 +22,10 @@ pub extern "C" fn statsig_options_create(
     event_logging_max_queue_size: c_int,
     specs_sync_interval_ms: c_int,
     output_log_level: *const c_char,
+    disable_country_lookup: SafeOptBool,
+    disable_user_agent_parsing: SafeOptBool,
+    wait_for_country_lookup_init: SafeOptBool,
+    wait_for_user_agent_init: SafeOptBool,
 ) -> u64 {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
@@ -44,6 +48,10 @@ pub extern "C" fn statsig_options_create(
         event_logging_max_queue_size,
         specs_sync_interval_ms,
         output_log_level,
+        disable_country_lookup: extract_opt_bool(disable_country_lookup),
+        disable_user_agent_parsing: extract_opt_bool(disable_user_agent_parsing),
+        wait_for_country_lookup_init: extract_opt_bool(wait_for_country_lookup_init),
+        wait_for_user_agent_init: extract_opt_bool(wait_for_user_agent_init),
         ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {

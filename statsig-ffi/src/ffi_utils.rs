@@ -4,6 +4,9 @@ use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::{os::raw::c_char, os::raw::c_int};
 
+// Do not use 'bool'. It's 1 byte, but its layout is not guaranteed stable
+pub type SafeOptBool = c_int;
+
 #[macro_export]
 macro_rules! get_instance_or_noop_c {
     ($type:ty, $ref:expr) => {
@@ -36,6 +39,14 @@ pub fn c_int_to_u32(c_num: c_int) -> Option<u32> {
     }
 
     Some(c_num as u32)
+}
+
+pub fn extract_opt_bool(c_bool: SafeOptBool) -> Option<bool> {
+    if c_bool < 0 {
+        return None;
+    }
+
+    Some(c_bool == 1)
 }
 
 pub fn string_to_c_char(s: String) -> *const c_char {

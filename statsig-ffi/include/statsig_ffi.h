@@ -7,6 +7,8 @@ typedef int StatsigUser;
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef int SafeOptBool;
+
 uint64_t function_based_specs_adapter_create(void (*setup_internal_fn)(uint64_t listener_ref),
                                              void (*start_fn)(void),
                                              void (*shutdown_fn)(void),
@@ -142,7 +144,11 @@ uint64_t statsig_options_create(const char *specs_url,
                                 int _event_logging_flush_interval_ms,
                                 int event_logging_max_queue_size,
                                 int specs_sync_interval_ms,
-                                const char *output_log_level);
+                                const char *output_log_level,
+                                SafeOptBool disable_country_lookup,
+                                SafeOptBool disable_user_agent_parsing,
+                                SafeOptBool wait_for_country_lookup_init,
+                                SafeOptBool wait_for_user_agent_init);
 
 void statsig_options_release(uint64_t options_ref);
 
