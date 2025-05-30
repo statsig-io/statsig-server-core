@@ -38,6 +38,12 @@ const benchmark = (func: () => void | Promise<void>) => {
 
 const logBenchmark = (name: string, p99: number) => {
   console.log(name.padEnd(50), p99.toFixed(4) + 'ms');
+
+  const ci = process.env.CI;
+  if (ci !== '1' && ci !== 'true') {
+    return;
+  }
+
   statsig.logEvent(globalUser, 'sdk_benchmark', p99, {
     benchmarkName: name,
     sdkType: 'statsig-server-core-node',

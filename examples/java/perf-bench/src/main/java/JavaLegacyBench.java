@@ -2,6 +2,7 @@ import com.statsig.FeatureGate;
 import com.statsig.sdk.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.io.*;
 
 public class JavaLegacyBench {
     private static final int ITERATIONS = 100_000;
@@ -13,7 +14,11 @@ public class JavaLegacyBench {
         String key = System.getenv("PERF_SDK_KEY");
         Statsig.initializeAsync(key).get();
 
-        System.out.println("Statsig Java Legacy");
+        Properties props = new Properties();
+        props.load(new FileInputStream("build/versions.properties"));
+        String version = props.getProperty("legacy.version", "unknown");
+
+        System.out.println("Statsig Java Legacy (v" + version + ")");
         System.out.println("--------------------------------");
 
         runCheckGate();
@@ -26,7 +31,7 @@ public class JavaLegacyBench {
         runGetClientInitializeResponseGlobalUser();
 
         for (Map.Entry<String, Double> entry : results.entrySet()) {
-            logBenchmark( entry.getKey(), entry.getValue());
+            logBenchmark(version, entry.getKey(), entry.getValue());
         }
 
         Statsig.shutdown();
@@ -54,8 +59,14 @@ public class JavaLegacyBench {
         return durations.get(p99Index);
     }
 
-    private static void logBenchmark(String name, double p99) {
+    private static void logBenchmark(String version, String name, double p99) {
         System.out.printf("%-50s %.4fms%n", name, p99);
+
+        String ci = System.getenv("CI");
+        if (ci != "1" && ci != "true") {
+            return;
+        }
+
         Statsig.logEvent(
             globalUser,
             "sdk_benchmark",
@@ -63,7 +74,7 @@ public class JavaLegacyBench {
             Map.of(
                 "benchmarkName", name,
                 "sdkType", "statsig-server-core-java",
-                "sdkVersion", "1.0.0" // TODO: Get actual version
+                "sdkVersion", version
             )
         );
     }

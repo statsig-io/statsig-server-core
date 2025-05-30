@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '*/30 * * * *'
+  push:
 
 env:
   PERF_SDK_KEY: ${{ secrets.PERF_SDK_KEY }}

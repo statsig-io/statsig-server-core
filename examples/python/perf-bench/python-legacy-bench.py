@@ -18,6 +18,11 @@ results = {}
 
 def log_benchmark(name, p99):
     print(f"{name.ljust(50)} {p99:.4f}ms")
+
+    ci = os.getenv("CI")
+    if ci != "1" and ci != "true":
+        return
+
     event = StatsigEvent(
         user=global_user,
         event_name="sdk_benchmark",

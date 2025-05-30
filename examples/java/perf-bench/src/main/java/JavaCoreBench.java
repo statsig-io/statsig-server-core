@@ -1,8 +1,8 @@
 import com.statsig.StatsigUser;
 import com.statsig.Statsig;
-
 import java.util.*;
 import java.util.concurrent.*;
+import java.io.*;
 
 public class JavaCoreBench {
     private static final int ITERATIONS = 100_000;
@@ -15,7 +15,11 @@ public class JavaCoreBench {
         Statsig statsig = new Statsig(key);
         statsig.initialize().get();
 
-        System.out.println("Statsig Java Core");
+        Properties props = new Properties();
+        props.load(new FileInputStream("build/versions.properties"));
+        String version = props.getProperty("core.version", "unknown");
+
+        System.out.println("Statsig Java Core (v" + version + ")");
         System.out.println("--------------------------------");
 
         runCheckGate(statsig);
@@ -28,7 +32,7 @@ public class JavaCoreBench {
         runGetClientInitializeResponseGlobalUser(statsig);
 
         for (Map.Entry<String, Double> entry : results.entrySet()) {
-            logBenchmark(statsig, entry.getKey(), entry.getValue());
+            logBenchmark(statsig, version, entry.getKey(), entry.getValue());
         }
 
         statsig.shutdown().get();
@@ -58,8 +62,14 @@ public class JavaCoreBench {
         return durations.get(p99Index);
     }
 
-    private static void logBenchmark(Statsig statsig, String name, double p99) {
+    private static void logBenchmark(Statsig statsig, String version, String name, double p99) {
         System.out.printf("%-50s %.4fms%n", name, p99);
+
+        String ci = System.getenv("CI");
+        if (ci != "1" && ci != "true") {
+            return;
+        }
+
         statsig.logEvent(
             globalUser,
             "sdk_benchmark",
@@ -67,7 +77,7 @@ public class JavaCoreBench {
             Map.of(
                 "benchmarkName", name,
                 "sdkType", "statsig-server-core-java",
-                "sdkVersion", "1.0.0" // TODO: Get actual version
+                "sdkVersion", version
             )
         );
     }

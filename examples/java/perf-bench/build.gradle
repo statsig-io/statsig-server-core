@@ -23,6 +23,8 @@ tasks.register('run_core', JavaExec) {
     description = 'Run JavaCoreBench.java'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'JavaCoreBench'
+
+    dependsOn write_versions
 }
 
 tasks.register('run_legacy', JavaExec) {
@@ -30,4 +32,28 @@ tasks.register('run_legacy', JavaExec) {
     description = 'Run JavaLegacyBench.java'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'JavaLegacyBench'
+
+    dependsOn write_versions
 }
+
+tasks.register('write_versions') {
+    def versionsFile = file("$buildDir/versions.properties")
+    versionsFile.parentFile.mkdirs()
+    
+    def props = new Properties()
+    
+    configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+        if (artifact.moduleVersion.id.group == 'com.statsig' && artifact.moduleVersion.id.name == 'javacore') {
+            props.setProperty('core.version', artifact.moduleVersion.id.version)
+        }
+
+        if (artifact.moduleVersion.id.group == 'com.statsig' && artifact.moduleVersion.id.name == 'serversdk') {
+            props.setProperty('legacy.version', artifact.moduleVersion.id.version)
+        }
+    }
+    
+    versionsFile.withWriter { writer ->
+        props.store(writer, 'Dependency versions')
+    }
+}
+
