@@ -85,6 +85,10 @@ func (s *Statsig) GetFeatureGate(user StatsigUser, gateName string, featureGateO
 
 	var featureGate FeatureGate
 
+	if featureGateOptions == nil {
+		featureGateOptions = &CheckGateOptions{}
+	}
+
 	featureGateJson := C.statsig_get_feature_gate(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(gateName), C.CString(utils.ConvertDataToJson(featureGateOptions)))
 
 	if featureGateJson != nil {
@@ -100,6 +104,31 @@ func (s *Statsig) GetFeatureGate(user StatsigUser, gateName string, featureGateO
 
 func (s *Statsig) CheckGate(user StatsigUser, gateName string, gateOptions *CheckGateOptions) bool {
 
+	if gateOptions == nil {
+		gateOptions = &CheckGateOptions{}
+	}
+
 	checkGate := C.statsig_check_gate(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(gateName), C.CString(utils.ConvertDataToJson(gateOptions)))
 	return bool(checkGate)
+}
+
+func (s *Statsig) GetDynamicConfig(user StatsigUser, configName string, dynamicConfigOptions *GetDynamicConfigOptions) DynamicConfig {
+
+	var dynamicConfig DynamicConfig
+
+	if dynamicConfigOptions == nil {
+		dynamicConfigOptions = &GetDynamicConfigOptions{}
+	}
+
+	dynamicConfigJson := C.statsig_get_dynamic_config(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(configName), C.CString(utils.ConvertDataToJson(dynamicConfigOptions)))
+
+	if dynamicConfigJson != nil {
+		err := json.Unmarshal([]byte(C.GoString(dynamicConfigJson)), &dynamicConfig)
+
+		if err != nil {
+			return DynamicConfig{}
+		}
+	}
+
+	return dynamicConfig
 }

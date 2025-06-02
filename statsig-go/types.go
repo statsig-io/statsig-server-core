@@ -7,3 +7,9 @@ type Event struct {
 	Metadata  map[string]string `json:"metadata"`
 	Time      int64             `json:"time"`
 }
+
+type EvaluationDetails struct {
+	ReceivedAt int64  `json:"received_at"`
+	Lcut       int64  `json:"lcut"`
+	Reason     string `json:"reason"`
+}

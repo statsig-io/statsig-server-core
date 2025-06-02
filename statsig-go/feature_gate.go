@@ -13,9 +13,3 @@ type FeatureGate struct {
 	EvaluationDetails EvaluationDetails `json:"details"`
 	IdType            string            `json:"id_type"`
 }
-
-type EvaluationDetails struct {
-	ReceivedAt int64  `json:"received_at"`
-	Lcut       int64  `json:"lcut"`
-	Reason     string `json:"reason"`
-}
