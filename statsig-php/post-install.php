@@ -168,7 +168,7 @@ function download_binary($system_info)
         exit(1);
     }
 
-    $url = "https://github.com/statsig-io/statsig-server-core/releases/download/" . VERSION . "/" . $binary_file;
+    $url = "https://github.com/statsig-io/statsig-php-core/releases/download/" . VERSION . "/" . $binary_file;
 
     echo "\n-- Downloading Statsig FFI Binary --\n";
     echo " Url: $url\n";
@@ -209,7 +209,7 @@ function unzip_binary($zip_file_path)
 
 function download_header()
 {
-    $url = "https://github.com/statsig-io/statsig-server-core/releases/download/" . VERSION . "/statsig_ffi.h";
+    $url = "https://github.com/statsig-io/statsig-php-core/releases/download/" . VERSION . "/statsig_ffi.h";
 
     echo "\n-- Downloading Statsig FFI Header --\n";
     echo " Url: $url\n";

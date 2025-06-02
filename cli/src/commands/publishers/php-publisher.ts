@@ -1,4 +1,4 @@
-import { getRootedPath, listFiles, zipFile } from '@/utils/file_utils.js';
+import { getRootedPath } from '@/utils/file_utils.js';
 import {
   commitAndPushChanges,
   createEmptyRepository,
@@ -13,6 +13,8 @@ import {
   getReleaseByVersion,
   uploadReleaseAsset,
 } from '@/utils/octokit_utils.js';
+import { zipAndMoveAssets } from '@/utils/publish_utils.js';
+import { mapAssetsToTargets } from '@/utils/publish_utils.js';
 import { SemVer } from '@/utils/semver.js';
 import { Log } from '@/utils/terminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
@@ -22,12 +24,6 @@ import { Octokit } from 'octokit';
 import { PublisherOptions } from './publisher-options.js';
 
 const PHP_REPO_NAME = 'statsig-php-core';
-
-const LIB_CATEGORY_MAP = {
-  dll: 'shared',
-  so: 'shared',
-  dylib: 'shared',
-};
 
 export async function publishPhp(options: PublisherOptions) {
   Log.title(`Creating release for ${PHP_REPO_NAME}`);
@@ -42,7 +38,14 @@ export async function publishPhp(options: PublisherOptions) {
   await pushChangesToPhpRepo(octokit, version);
   const release = await createGithubRelaseForPhpRepo(octokit, version);
 
-  Log.conclusion(`PHP release created: ${release.html_url}`);
+  const mappedAssets = mapAssetsToTargets(options.workingDir);
+  const assetFiles = zipAndMoveAssets(mappedAssets, options.workingDir);
+
+  Log.title('Uploading assets to release');
+
+  for await (const asset of assetFiles) {
+    await uploadLibFileToRelease(octokit, release, asset);
+  }
 }
 
 async function pushChangesToPhpRepo(octokit: Octokit, version: SemVer) {
@@ -134,9 +137,63 @@ async function verifyReleaseDoesNotExist(octokit: Octokit, version: SemVer) {
   const release = await getReleaseByVersion(octokit, PHP_REPO_NAME, version);
 
   if (release) {
-    Log.stepEnd(`Release already exists: ${release.html_url}`, 'failure');
+    Log.stepProgress(
+      `Failed to create release as one already exists`,
+      'failure',
+    );
+    Log.stepProgress(`ID: ${release.id}`, 'failure');
+    Log.stepProgress(`Upload URL: ${release.upload_url}`, 'failure');
+    Log.stepEnd(`HTML URL: ${release.html_url}`, 'failure');
     process.exit(1);
   }
 
   Log.stepEnd(`Release ${version} does not exist`);
+}
+
+async function uploadLibFileToRelease(
+  octokit: Octokit,
+  release: GhRelease,
+  zipPath: string,
+) {
+  const name = path.basename(zipPath);
+  Log.stepBegin('Attaching Asset to Release');
+
+  Log.stepProgress(`Asset File: ${name}`);
+
+  const didDelete = await deleteReleaseAssetWithName(
+    octokit,
+    PHP_REPO_NAME,
+    release.id,
+    name,
+  );
+
+  Log.stepProgress(
+    didDelete ? 'Existing asset deleted' : 'No existing asset found',
+  );
+
+  const uploadUrl = release.upload_url;
+  if (!uploadUrl) {
+    Log.stepEnd('No upload URL found', 'failure');
+    process.exit(1);
+  }
+
+  Log.stepProgress(`Release upload URL: ${uploadUrl}`);
+
+  const { result, error } = await uploadReleaseAsset(
+    octokit,
+    PHP_REPO_NAME,
+    release.id,
+    zipPath,
+    name,
+  );
+
+  if (error || !result) {
+    const errMessage =
+      error instanceof Error ? error.message : error ?? 'Unknown Error';
+
+    Log.stepEnd(`Failed to upload asset: ${errMessage}`, 'failure');
+    process.exit(1);
+  }
+
+  Log.stepEnd(`Asset uploaded: ${result.browser_download_url}`);
 }
