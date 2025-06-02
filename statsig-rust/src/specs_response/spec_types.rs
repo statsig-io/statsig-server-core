@@ -80,6 +80,24 @@ pub struct ConfigMapping {
 }
 
 #[skip_serializing_none]
+#[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
+pub struct SessionReplayTrigger {
+    pub sampling_rate: Option<f64>,
+    pub values: Option<Vec<String>>,
+    pub passes_sampling: Option<bool>,
+}
+
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
+pub struct SessionReplayInfo {
+    pub sampling_rate: Option<f64>,
+    pub targeting_gate: Option<String>,
+    pub recording_blocked: Option<bool>,
+    pub session_recording_event_triggers: Option<HashMap<String, SessionReplayTrigger>>,
+    pub session_recording_exposure_triggers: Option<HashMap<String, SessionReplayTrigger>>,
+}
+
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default)] /* DO_NOT_CLONE */
 pub struct SpecsResponseFull {
     pub company_id: Option<String>,
@@ -103,6 +121,7 @@ pub struct SpecsResponseFull {
     pub override_rules: Option<HashMap<String, Rule>>,
     pub id_lists: Option<HashMap<String, bool>>,
     pub response_format: Option<String>,
+    pub session_replay_info: Option<SessionReplayInfo>,
 }
 
 #[skip_serializing_none]

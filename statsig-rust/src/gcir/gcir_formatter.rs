@@ -1,6 +1,8 @@
 use crate::gcir::feature_gates_processor::get_gate_evaluations;
 
+use crate::specs_response::spec_types::SessionReplayTrigger;
 use crate::{
+    evaluation::evaluator::{Evaluator, SpecType},
     evaluation::evaluator_context::EvaluatorContext,
     hashing::{HashAlgorithm, HashUtil},
     initialize_evaluations_response::InitializeEvaluationsResponse,
@@ -12,6 +14,7 @@ use crate::{
     OverrideAdapter, StatsigErr,
 };
 
+use rand::Rng;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -120,6 +123,7 @@ impl GCIRFormatter {
 
         let param_stores = get_serializeable_param_stores(&mut context, options);
         let evaluated_keys = get_evaluated_keys(user_internal);
+        let session_replay_info = get_session_replay_info(&mut context, options, hashing);
 
         Ok(InitializeEvaluationsResponse {
             feature_gates: get_gate_evaluations_v2(
@@ -149,6 +153,14 @@ impl GCIRFormatter {
             sdk_info: get_sdk_info(),
             param_stores,
             exposures,
+            can_record_session: session_replay_info.can_record_session,
+            session_recording_rate: session_replay_info.session_recording_rate,
+            recording_blocked: session_replay_info.recording_blocked,
+            passes_session_recording_targeting: session_replay_info
+                .passes_session_recording_targeting,
+            session_recording_event_triggers: session_replay_info.session_recording_event_triggers,
+            session_recording_exposure_triggers: session_replay_info
+                .session_recording_exposure_triggers,
         })
     }
 
@@ -169,6 +181,7 @@ impl GCIRFormatter {
 
         let param_stores = get_serializeable_param_stores(&mut context, options);
         let evaluated_keys = get_evaluated_keys(user_internal);
+        let session_replay_info = get_session_replay_info(&mut context, options, hashing);
 
         Ok(InitializeResponse {
             feature_gates: get_gate_evaluations(&mut context, options, &mut sec_expo_hash_memo)?,
@@ -186,6 +199,14 @@ impl GCIRFormatter {
             evaluated_keys,
             sdk_info: get_sdk_info(),
             param_stores,
+            can_record_session: session_replay_info.can_record_session,
+            session_recording_rate: session_replay_info.session_recording_rate,
+            recording_blocked: session_replay_info.recording_blocked,
+            passes_session_recording_targeting: session_replay_info
+                .passes_session_recording_targeting,
+            session_recording_event_triggers: session_replay_info.session_recording_event_triggers,
+            session_recording_exposure_triggers: session_replay_info
+                .session_recording_exposure_triggers,
         })
     }
 
@@ -243,4 +264,104 @@ fn get_sdk_info() -> HashMap<String, String> {
         ("sdkType".to_string(), metadata.sdk_type),
         ("sdkVersion".to_string(), metadata.sdk_version),
     ])
+}
+
+pub struct GCIRSessionReplayInfo {
+    pub can_record_session: Option<bool>,
+    pub session_recording_rate: Option<f64>,
+    pub recording_blocked: Option<bool>,
+    pub passes_session_recording_targeting: Option<bool>,
+    pub session_recording_event_triggers: Option<HashMap<String, SessionReplayTrigger>>,
+    pub session_recording_exposure_triggers: Option<HashMap<String, SessionReplayTrigger>>,
+}
+
+fn get_session_replay_info(
+    context: &mut EvaluatorContext,
+    options: &ClientInitResponseOptions,
+    hashing: &HashUtil,
+) -> GCIRSessionReplayInfo {
+    let mut session_replay_info = GCIRSessionReplayInfo {
+        can_record_session: None,
+        session_recording_rate: None,
+        recording_blocked: None,
+        passes_session_recording_targeting: None,
+        session_recording_event_triggers: None,
+        session_recording_exposure_triggers: None,
+    };
+
+    let session_replay_data = match &context.spec_store_data.values.session_replay_info {
+        Some(data) => data,
+        None => return session_replay_info,
+    };
+
+    session_replay_info.can_record_session = Some(true);
+    session_replay_info.recording_blocked = session_replay_data.recording_blocked;
+    if session_replay_data.recording_blocked == Some(true) {
+        session_replay_info.can_record_session = Some(false);
+    }
+
+    let targeting_gate_name = &session_replay_data.targeting_gate;
+
+    if let Some(gate_name) = targeting_gate_name {
+        match Evaluator::evaluate(context, gate_name.clone().as_str(), &SpecType::Gate) {
+            Ok(_result) => {
+                session_replay_info.passes_session_recording_targeting =
+                    Some(context.result.bool_value);
+                if !context.result.bool_value {
+                    session_replay_info.can_record_session = Some(false);
+                }
+            }
+            Err(_e) => {
+                session_replay_info.passes_session_recording_targeting = Some(false);
+                session_replay_info.can_record_session = Some(false);
+            }
+        }
+    }
+
+    let mut rng = rand::thread_rng();
+    let random: f64 = rng.gen::<f64>();
+
+    if let Some(rate) = &session_replay_data.sampling_rate {
+        session_replay_info.session_recording_rate = Some(*rate);
+        if random > *rate {
+            session_replay_info.can_record_session = Some(false);
+        }
+    }
+
+    if let Some(triggers) = &session_replay_data.session_recording_event_triggers {
+        let mut new_event_triggers = HashMap::new();
+        for (key, trigger) in triggers {
+            let mut new_trigger = SessionReplayTrigger {
+                values: trigger.values.clone(),
+                sampling_rate: None,
+                passes_sampling: None,
+            };
+            if let Some(rate) = &trigger.sampling_rate {
+                new_trigger.passes_sampling = Some(random <= *rate);
+            }
+            new_event_triggers.insert(key.clone(), new_trigger);
+        }
+        session_replay_info.session_recording_event_triggers = Some(new_event_triggers);
+    }
+
+    if let Some(triggers) = &session_replay_data.session_recording_exposure_triggers {
+        let mut new_exposure_triggers = HashMap::new();
+        for (key, trigger) in triggers {
+            let mut new_trigger = SessionReplayTrigger {
+                values: trigger.values.clone(),
+                sampling_rate: None,
+                passes_sampling: None,
+            };
+            if let Some(rate) = &trigger.sampling_rate {
+                new_trigger.passes_sampling = Some(random <= *rate);
+            }
+            new_exposure_triggers.insert(
+                hashing.hash(key.as_str(), options.get_hash_algorithm()),
+                new_trigger,
+            );
+        }
+        session_replay_info.session_recording_exposure_triggers = Some(new_exposure_triggers);
+    }
+
+    session_replay_info
 }

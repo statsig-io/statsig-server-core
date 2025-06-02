@@ -1,12 +1,15 @@
 use crate::{
     evaluation::evaluation_types::{AnyConfigEvaluation, GateEvaluation, LayerEvaluation},
     specs_response::param_store_types::Parameter,
+    specs_response::spec_types::SessionReplayTrigger,
     user::{StatsigUserInternal, StatsigUserLoggable},
 };
 
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::collections::HashMap;
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize)]
 pub struct InitializeResponse {
     pub feature_gates: HashMap<String, GateEvaluation>,
@@ -22,6 +25,12 @@ pub struct InitializeResponse {
     pub sdk_params: HashMap<String, String>,
     pub evaluated_keys: HashMap<String, String>,
     pub param_stores: HashMap<String, HashMap<String, Parameter>>,
+    pub can_record_session: Option<bool>,
+    pub session_recording_rate: Option<f64>,
+    pub recording_blocked: Option<bool>,
+    pub passes_session_recording_targeting: Option<bool>,
+    pub session_recording_event_triggers: Option<HashMap<String, SessionReplayTrigger>>,
+    pub session_recording_exposure_triggers: Option<HashMap<String, SessionReplayTrigger>>,
 }
 
 impl InitializeResponse {
@@ -38,6 +47,12 @@ impl InitializeResponse {
             evaluated_keys: Default::default(),
             sdk_info: Default::default(),
             param_stores: Default::default(),
+            can_record_session: Default::default(),
+            session_recording_rate: Default::default(),
+            recording_blocked: Default::default(),
+            passes_session_recording_targeting: Default::default(),
+            session_recording_event_triggers: Default::default(),
+            session_recording_exposure_triggers: Default::default(),
         }
     }
 }
