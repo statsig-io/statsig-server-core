@@ -17,6 +17,9 @@ func TestStatsigOptionsBasic(t *testing.T) {
 		WithEventLoggingMaxQueueSize(5000).
 		WithSpecsSyncIntervalMs(1000).
 		WithOutputLogLevel("DEBUG").
+		WithDisableCountryLookup(true).
+		WithDisableUserAgentParsing(true).
+		WithWaitForCountryLookupInit(false).
 		Build()
 
 	if *options.SpecsUrl != "https://example.com/specs" {
@@ -46,6 +49,19 @@ func TestStatsigOptionsBasic(t *testing.T) {
 	if *options.OutputLogLevel != "DEBUG" {
 		t.Errorf("expected OutputLogLevel to be 'DEBUG', got %v", options.OutputLogLevel)
 	}
+	if *options.DisableCountryLookup != true {
+		t.Errorf("expected DisableCountryLookup to be 'true', got %v", *options.DisableCountryLookup)
+	}
+	if *options.DisableUserAgentParsing != true {
+		t.Errorf("expected DisableUserAgentParsing to be 'true', got %v", *options.DisableUserAgentParsing)
+	}
+	if *options.WaitForCountryLookupInit != false {
+		t.Errorf("expected WaitForCountryLookupInit to be 'false', got %v", *options.WaitForCountryLookupInit)
+	}
+	if options.WaitForUserAgentInit != nil {
+		t.Errorf("expected WaitForUserAgentInit to be 'nil', got %v", *options.WaitForUserAgentInit)
+	}
+
 }
 
 func TestBuilderSetNumericValues(t *testing.T) {
