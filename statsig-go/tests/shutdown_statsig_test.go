@@ -7,7 +7,7 @@ import (
 )
 
 func TestStatsigShutdown(t *testing.T) {
-	server := setupServer()
+	server := setupServer(testServerOptions{})
 
 	o := statsig.NewStatsigOptionsBuilder().
 		WithSpecsUrl(server.URL + "/v2/download_config_specs").

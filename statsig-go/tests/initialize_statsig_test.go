@@ -8,7 +8,7 @@ import (
 
 func TestStatsigInitialize(t *testing.T) {
 
-	server := setupServer()
+	server := setupServer(testServerOptions{})
 	defer server.Close()
 	o := statsig.NewStatsigOptionsBuilder().
 		WithSpecsUrl(server.URL + "/v2/download_config_specs").

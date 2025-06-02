@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"runtime"
+
+	"github.com/statsig-io/private-statsig-server-core/statsig-go/utils"
 )
 
 type Statsig struct {
@@ -77,4 +79,27 @@ func (s *Statsig) InitializeWithDetails() (InitializeWithDetails, error) {
 func (s *Statsig) Shutdown() {
 	C.statsig_shutdown_blocking(C.ulonglong(s.InnerRef))
 
+}
+
+func (s *Statsig) GetFeatureGate(user StatsigUser, gateName string, featureGateOptions *CheckGateOptions) FeatureGate {
+
+	var featureGate FeatureGate
+
+	featureGateJson := C.statsig_get_feature_gate(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(gateName), C.CString(utils.ConvertDataToJson(featureGateOptions)))
+
+	if featureGateJson != nil {
+		err := json.Unmarshal([]byte(C.GoString(featureGateJson)), &featureGate)
+		if err != nil {
+			return FeatureGate{}
+		}
+	}
+
+	return featureGate
+
+}
+
+func (s *Statsig) CheckGate(user StatsigUser, gateName string, gateOptions *CheckGateOptions) bool {
+
+	checkGate := C.statsig_check_gate(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(gateName), C.CString(utils.ConvertDataToJson(gateOptions)))
+	return bool(checkGate)
 }

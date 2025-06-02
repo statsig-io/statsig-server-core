@@ -8,7 +8,7 @@ import (
 
 func TestStatsigInitializeWithDetails(t *testing.T) {
 
-	server := setupServer()
+	server := setupServer(testServerOptions{})
 	defer server.Close()
 
 	o := statsig.NewStatsigOptionsBuilder().
@@ -53,7 +53,7 @@ func TestStatsigInitializeWithDetails(t *testing.T) {
 
 func TestStatsigInitializeWithDetailsFailure(t *testing.T) {
 
-	server := setupServer()
+	server := setupServer(testServerOptions{})
 	defer server.Close()
 
 	o := statsig.NewStatsigOptionsBuilder().
