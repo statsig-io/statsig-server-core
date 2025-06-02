@@ -7,9 +7,9 @@ use tokio::runtime::{Builder, Handle, Runtime};
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
-use crate::log_d;
 use crate::log_e;
 use crate::StatsigErr;
+use crate::{log_d, log_w};
 
 const TAG: &str = stringify!(StatsigRuntime);
 
@@ -242,13 +242,32 @@ impl Drop for StatsigRuntime {
     fn drop(&mut self) {
         self.shutdown();
 
-        match self.inner_runtime.lock() {
-            Ok(mut inner_runtime) => {
-                let _ = inner_runtime.take();
-            }
+        let opt_inner = match self.inner_runtime.lock() {
+            Ok(mut inner_runtime) => inner_runtime.take(),
             Err(e) => {
                 log_e!(TAG, "Failed to lock inner runtime {}", e);
+                None
             }
+        };
+
+        let inner = match opt_inner {
+            Some(inner) => inner,
+            None => {
+                log_d!(TAG, "Inner runtime is already dropped");
+                return;
+            }
+        };
+
+        if tokio::runtime::Handle::try_current().is_err() {
+            // Not inside the Tokio runtime. Will automatically drop(inner).
+            return;
         }
+
+        log_w!(TAG, "Attempt to shutdown runtime from inside runtime");
+        std::thread::spawn(move || {
+            // We should not drop from inside the runtime, but in the odd case we do,
+            // moving inner to a new thread will prevent a panic
+            drop(inner);
+        });
     }
 }
