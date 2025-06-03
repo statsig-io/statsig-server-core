@@ -60,7 +60,7 @@ impl From<SpecAdapterConfigPy> for SpecAdapterConfig {
             ca_cert_path: None,
             client_cert_path: None,
             domain_name: None,
-            client_key_path: None
+            client_key_path: None,
         }
     }
 }
