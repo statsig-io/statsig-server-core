@@ -16,7 +16,7 @@ use std::time::Duration;
 use tokio::sync::Notify;
 use tokio::time::sleep;
 
-const DEFAULT_ID_LISTS_MANIFEST_URL: &str = "https://statsigapi.net/v1/get_id_lists";
+const DEFAULT_CDN_ID_LISTS_MANIFEST_URL: &str = "https://api.statsigcdn.com/v1/get_id_lists";
 const DEFAULT_ID_LIST_SYNC_INTERVAL_MS: u32 = 10_000;
 
 type IdListsResponse = HashMap<String, IdListMetadata>;
@@ -39,12 +39,23 @@ impl StatsigHttpIdListsAdapter {
         let id_lists_manifest_url = options
             .id_lists_url
             .clone()
-            .unwrap_or_else(|| DEFAULT_ID_LISTS_MANIFEST_URL.to_string());
+            .unwrap_or_else(|| DEFAULT_CDN_ID_LISTS_MANIFEST_URL.to_string());
+
+        // Final URL: if it's CDN, append /{sdk_key}.json
+        let final_id_lists_manifest_url =
+            if id_lists_manifest_url == DEFAULT_CDN_ID_LISTS_MANIFEST_URL {
+                format!("{}/{}.json", DEFAULT_CDN_ID_LISTS_MANIFEST_URL, sdk_key)
+            } else {
+                id_lists_manifest_url.clone()
+            };
 
         let fallback_url = if options.fallback_to_statsig_api.unwrap_or(false)
-            && id_lists_manifest_url != DEFAULT_ID_LISTS_MANIFEST_URL
+            && id_lists_manifest_url != DEFAULT_CDN_ID_LISTS_MANIFEST_URL
         {
-            Some(DEFAULT_ID_LISTS_MANIFEST_URL.to_string())
+            Some(format!(
+                "{}/{}.json",
+                DEFAULT_CDN_ID_LISTS_MANIFEST_URL, sdk_key
+            ))
         } else {
             None
         };
@@ -62,7 +73,7 @@ impl StatsigHttpIdListsAdapter {
         );
 
         Self {
-            id_lists_manifest_url,
+            id_lists_manifest_url: final_id_lists_manifest_url,
             fallback_url,
             listener: RwLock::new(None),
             network,
@@ -80,9 +91,16 @@ impl StatsigHttpIdListsAdapter {
             ..RequestArgs::new()
         };
 
-        let initial_err = match self.network.post(request_args.clone(), None).await {
-            Ok(response) => return self.parse_response(response.data),
-            Err(e) => e,
+        let initial_err = if self.is_cdn_url() {
+            match self.network.get(request_args.clone()).await {
+                Ok(response) => return self.parse_response(response.data),
+                Err(e) => e,
+            }
+        } else {
+            match self.network.post(request_args.clone(), None).await {
+                Ok(response) => return self.parse_response(response.data),
+                Err(e) => e,
+            }
         };
 
         if initial_err != NetworkError::RetriesExhausted {
@@ -150,7 +168,8 @@ impl StatsigHttpIdListsAdapter {
 
         // TODO add log
 
-        match self.network.post(request_args.clone(), None).await {
+        // fallback to cdn, it's a get request
+        match self.network.get(request_args.clone()).await {
             Ok(response) => Ok(response),
             Err(e) => {
                 let msg = format!("Fallback request failed: {e:?}");
@@ -176,6 +195,11 @@ impl StatsigHttpIdListsAdapter {
             Some(KeyType::GetIDListSources),
             Some(ContextType::ConfigSync),
         );
+    }
+
+    fn is_cdn_url(&self) -> bool {
+        self.id_lists_manifest_url
+            .starts_with(DEFAULT_CDN_ID_LISTS_MANIFEST_URL)
     }
 
     fn parse_response(&self, response: Option<Vec<u8>>) -> Result<IdListsResponse, StatsigErr> {
