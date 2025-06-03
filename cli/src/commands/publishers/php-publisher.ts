@@ -1,4 +1,4 @@
-import { getRootedPath } from '@/utils/file_utils.js';
+import { ensureEmptyDir, getRootedPath } from '@/utils/file_utils.js';
 import {
   commitAndPushChanges,
   createEmptyRepository,
@@ -6,11 +6,13 @@ import {
 } from '@/utils/git_utils.js';
 import {
   GhRelease,
+  createPullRequestAgainstMain,
   createReleaseForVersion,
   deleteReleaseAssetWithName,
   getBranchByVersion,
   getOctokit,
   getReleaseByVersion,
+  mergePullRequest,
   uploadReleaseAsset,
 } from '@/utils/octokit_utils.js';
 import { zipAndMoveAssets } from '@/utils/publish_utils.js';
@@ -18,12 +20,15 @@ import { mapAssetsToTargets } from '@/utils/publish_utils.js';
 import { SemVer } from '@/utils/semver.js';
 import { Log } from '@/utils/terminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
+import { execSync } from 'node:child_process';
 import path from 'node:path';
 import { Octokit } from 'octokit';
+import { simpleGit } from 'simple-git';
 
 import { PublisherOptions } from './publisher-options.js';
 
 const PHP_REPO_NAME = 'statsig-php-core';
+const TEMP_REPO_PATH = '/tmp/server-core-php';
 
 export async function publishPhp(options: PublisherOptions) {
   Log.title(`Creating release for ${PHP_REPO_NAME}`);
@@ -34,8 +39,12 @@ export async function publishPhp(options: PublisherOptions) {
   Log.stepProgress(`Commit Hash: ${commitHash}`);
   Log.stepEnd(`Version: ${version}`);
 
+  await checkoutCurrentPhpRepo(version);
+
   const octokit = await getOctokit();
-  await pushChangesToPhpRepo(octokit, version);
+  const repoPath = getRootedPath('statsig-php');
+
+  await copyChangesToTempRepo(octokit, repoPath, version);
   const release = await createGithubRelaseForPhpRepo(octokit, version);
 
   const mappedAssets = mapAssetsToTargets(options.workingDir);
@@ -46,47 +55,8 @@ export async function publishPhp(options: PublisherOptions) {
   for await (const asset of assetFiles) {
     await uploadLibFileToRelease(octokit, release, asset);
   }
-}
 
-async function pushChangesToPhpRepo(octokit: Octokit, version: SemVer) {
-  Log.stepBegin('Pushing changes to GitHub');
-
-  const repoPath = getRootedPath('statsig-php');
-  const branch = 'master';
-  const remoteBranch = version.toBranch();
-  const remote = 'origin';
-  const args = {
-    repoPath,
-    message: `chore: bump version to ${version.toString()}`,
-    remote,
-    localBranch: branch,
-    remoteBranch,
-    shouldPushChanges: true,
-    tag: version.toString(),
-  };
-  Log.stepProgress(`Tag: ${args.tag}`);
-  Log.stepProgress(`Remote: ${args.remote}`);
-  Log.stepProgress(`Local Branch: ${args.localBranch}`);
-  Log.stepProgress(`Remote Branch: ${args.remoteBranch}`);
-  Log.stepProgress(`Should Push Changes: ${args.shouldPushChanges}`);
-  Log.stepEnd(`Remote Name: ${remote}`);
-
-  await verifyBranchDoesNotExist(octokit, version);
-  await setupLocalPhpRepo(repoPath);
-
-  Log.stepBegin('Committing changes');
-
-  const { success, error } = await commitAndPushChanges(args);
-
-  if (error || !success) {
-    const errMessage =
-      error instanceof Error ? error.message : error ?? 'Unknown Error';
-
-    Log.stepEnd(`Failed to commit changes: ${errMessage}`, 'failure');
-    process.exit(1);
-  }
-
-  Log.stepEnd('Changes committed');
+  await createAndMergePullRequest(octokit, version, version.toBranch());
 }
 
 async function verifyBranchDoesNotExist(octokit: Octokit, version: SemVer) {
@@ -101,10 +71,40 @@ async function verifyBranchDoesNotExist(octokit: Octokit, version: SemVer) {
   Log.stepEnd(`Branch ${version.toBranch()} does not exist`);
 }
 
-async function setupLocalPhpRepo(repoPath: string) {
-  Log.stepBegin(`Creating local ${PHP_REPO_NAME} repository`);
-  await createEmptyRepository(repoPath, PHP_REPO_NAME);
-  Log.stepEnd(`Repo Created: ${repoPath}`);
+async function checkoutCurrentPhpRepo(version: SemVer) {
+  Log.stepBegin('Checking out current PHP repo');
+  ensureEmptyDir(TEMP_REPO_PATH);
+  Log.stepProgress(`Empty Repo Directory Created: ${TEMP_REPO_PATH}`);
+  await createEmptyRepository(TEMP_REPO_PATH, PHP_REPO_NAME);
+
+  const git = simpleGit(TEMP_REPO_PATH);
+  await git.pull('origin', 'main');
+
+  const commitResult = await git.log({ maxCount: 1 });
+  const commit = commitResult.latest;
+  Log.stepEnd(`Commit: ${commit.hash} ${commit.message}`);
+
+  await git.checkoutLocalBranch(version.toBranch());
+}
+
+async function copyChangesToTempRepo(
+  octokit: Octokit,
+  repoPath: string,
+  version: SemVer,
+) {
+  await verifyBranchDoesNotExist(octokit, version);
+
+  Log.stepBegin('Copying PHP Changes');
+  Log.stepProgress(`Source: ${repoPath}`);
+  Log.stepProgress(`Destination: ${TEMP_REPO_PATH}`);
+  execSync(`cp -r ${repoPath}/* ${TEMP_REPO_PATH}`);
+  Log.stepEnd('Changes copied to temp repo');
+
+  const git = simpleGit(TEMP_REPO_PATH);
+  await git.add('.');
+  await git.commit(`chore: sync changes from ${version.toString()}`);
+  await git.push('origin', version.toBranch());
+  Log.stepEnd(`Pushed changes to ${version.toBranch()}`);
 }
 
 async function createGithubRelaseForPhpRepo(
@@ -196,4 +196,37 @@ async function uploadLibFileToRelease(
   }
 
   Log.stepEnd(`Asset uploaded: ${result.browser_download_url}`);
+}
+
+async function createAndMergePullRequest(
+  octokit: Octokit,
+  version: SemVer,
+  remoteBranch: string,
+) {
+  const title = `chore: sync changes from ${version.toString()}`;
+
+  Log.stepBegin(`Creating pull request against main`);
+  Log.stepProgress(`Title: ${title}`);
+  Log.stepProgress(`Remote Branch: ${remoteBranch}`);
+
+  const pullRequest = await createPullRequestAgainstMain(octokit, {
+    repository: PHP_REPO_NAME,
+    title: `[automated] ${title}`,
+    body: 'Created and merged automatically by T.O.R.E',
+    head: remoteBranch,
+  });
+
+  Log.stepEnd(`Created pull request ${pullRequest.html_url}`, 'success');
+
+  Log.stepBegin(`Merging pull request`);
+  Log.stepProgress(`Pull request number: ${pullRequest.number}`);
+
+  const mergeResult = await mergePullRequest(
+    octokit,
+    PHP_REPO_NAME,
+    pullRequest.number,
+  );
+
+  Log.stepProgress(`Merge result: ${mergeResult.message}`);
+  Log.stepEnd(`Merged pull request ${pullRequest.html_url}`, 'success');
 }

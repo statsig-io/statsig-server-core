@@ -465,3 +465,18 @@ export async function createPullRequestAgainstMain(
 
   return result.data;
 }
+
+export async function mergePullRequest(
+  octokit: Octokit,
+  repository: string,
+  prNumber: number,
+) {
+  const result = await octokit.rest.pulls.merge({
+    owner: 'statsig-io',
+    repo: repository,
+    pull_number: prNumber,
+    merge_method: 'squash',
+  });
+
+  return result.data;
+}

@@ -70,8 +70,8 @@ jobs:
           # - windows-latest # Uncomment when windows is supported by PHP
           - ubuntu-latest
         tag:
-          # - beta # PHP requires a binaries to be accessible from the public statsig-server-core repo so betas don't work
-          - stable
+          - beta
+          - prod
 
     timeout-minutes: 10
     runs-on: ${{ matrix.runner }}
@@ -88,6 +88,6 @@ jobs:
       - name: Run Verification
         working-directory: examples/php/verify-package
         run: |
-          composer require statsig/statsig-php-core:@${{ matrix.tag }}
+          composer require statsig/statsig-php-core:${{ matrix.tag == 'beta' && 'dev-main' || '@stable' }}
           composer install
           php verify.php

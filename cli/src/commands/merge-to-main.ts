@@ -2,10 +2,10 @@ import { getCurrentBranchName, mergeToMainAndPush } from '@/utils/git_utils.js';
 import {
   createPullRequestAgainstMain,
   getOctokit,
+  mergePullRequest,
 } from '@/utils/octokit_utils.js';
 import { Log } from '@/utils/terminal_utils.js';
 import { execSync } from 'child_process';
-import { Octokit } from 'octokit';
 
 import { CommandBase } from './command_base.js';
 
@@ -39,20 +39,13 @@ export class MergeToMain extends CommandBase {
     Log.stepBegin(`Merging pull request`);
     Log.stepProgress(`Pull request number: ${pullRequest.number}`);
 
-    const mergeResult = await mergePullRequest(octokit, pullRequest.number);
+    const mergeResult = await mergePullRequest(
+      octokit,
+      'private-statsig-server-core',
+      pullRequest.number,
+    );
 
     Log.stepProgress(`Merge result: ${mergeResult.message}`);
     Log.stepEnd(`Merged pull request ${pullRequest.html_url}`, 'success');
   }
-}
-
-async function mergePullRequest(octokit: Octokit, prNumber: number) {
-  const result = await octokit.rest.pulls.merge({
-    owner: 'statsig-io',
-    repo: 'private-statsig-server-core',
-    pull_number: prNumber,
-    merge_method: 'squash',
-  });
-
-  return result.data;
 }
