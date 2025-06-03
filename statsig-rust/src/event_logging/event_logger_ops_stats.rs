@@ -13,8 +13,10 @@ use super::{event_queue::queue::EventQueue, flush_interval::FlushInterval, flush
 
 impl OpsStatsForInstance {
     pub fn log_event_request_failure(&self, event_count: u64, flush_type: FlushType) {
+        let error = StatsigErr::LogEventError("Log event failed".to_string());
         self.log_error(ErrorBoundaryEvent {
-            info: StatsigErr::LogEventError("Log event failed".to_string()),
+            exception: error.name().to_string(),
+            info: serde_json::to_string(&error).unwrap_or_default(),
             tag: "statsig::log_event_failed".to_string(),
             bypass_dedupe: true,
             dedupe_key: None,
@@ -48,7 +50,8 @@ impl OpsStatsForInstance {
 
         self.log_error(ErrorBoundaryEvent {
             tag: "statsig::log_event_dropped_event_count".to_string(),
-            info: drop_error,
+            exception: drop_error.name().to_string(),
+            info: serde_json::to_string(&drop_error).unwrap_or_default(),
             bypass_dedupe: true,
             dedupe_key: None,
             extra: Some(HashMap::from([

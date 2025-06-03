@@ -250,8 +250,9 @@ impl NetworkClient {
             let dedupe_key = format!("{:?}", args.diagnostics_key);
             self.ops_stats.log_error(ErrorBoundaryEvent {
                 tag: TAG.to_string(),
+                exception: error.name().to_string(),
                 bypass_dedupe: false,
-                info: error,
+                info: serde_json::to_string(&error).unwrap_or_default(),
                 dedupe_key: Some(dedupe_key),
                 extra: None,
             });

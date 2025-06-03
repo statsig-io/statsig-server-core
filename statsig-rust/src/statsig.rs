@@ -217,7 +217,11 @@ impl Statsig {
         Statsig {
             sdk_key: sdk_key.to_string(),
             options,
-            gcir_formatter: Arc::new(GCIRFormatter::new(&spec_store, &override_adapter)),
+            gcir_formatter: Arc::new(GCIRFormatter::new(
+                &spec_store,
+                &override_adapter,
+                &ops_stats,
+            )),
             hashing,
             statsig_environment: environment,
             fallback_environment: Mutex::new(None),

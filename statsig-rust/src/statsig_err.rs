@@ -51,6 +51,9 @@ pub enum StatsigErr {
     // Task Scheduler
     ScheduleFailure(String),
     TaskShutdownFailure,
+
+    // GCIR Errors
+    GCIRError(String),
 }
 
 impl Display for StatsigErr {
@@ -106,6 +109,7 @@ impl Display for StatsigErr {
 
             StatsigErr::ScheduleFailure(e) => write!(f, "Failed to schedule task: {e}"),
             StatsigErr::TaskShutdownFailure => write!(f, "Failed to shutdown task scheduler"),
+            StatsigErr::GCIRError(e) => write!(f, "Error Getting Client Initialize Response: {e}"),
         }
     }
 }
@@ -147,6 +151,7 @@ impl StatsigErr {
 
             StatsigErr::ScheduleFailure(_) => "ScheduleFailure",
             StatsigErr::TaskShutdownFailure => "TaskShutdownFailure",
+            StatsigErr::GCIRError(_) => "GCIRError",
         }
     }
 }

@@ -1,5 +1,7 @@
 use crate::gcir::feature_gates_processor::get_gate_evaluations;
 
+use crate::observability::ops_stats::OpsStatsForInstance;
+use crate::observability::ErrorBoundaryEvent;
 use crate::specs_response::spec_types::SessionReplayTrigger;
 use crate::{
     evaluation::evaluator::{Evaluator, SpecType},
@@ -7,13 +9,14 @@ use crate::{
     hashing::{HashAlgorithm, HashUtil},
     initialize_evaluations_response::InitializeEvaluationsResponse,
     initialize_response::InitializeResponse,
-    log_e, read_lock_or_else,
+    read_lock_or_else,
     spec_store::{SpecStore, SpecStoreData},
     statsig_metadata::StatsigMetadata,
     user::StatsigUserInternal,
     OverrideAdapter, StatsigErr,
 };
 
+use crate::log_error_to_statsig_and_console;
 use rand::Rng;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -32,6 +35,7 @@ pub struct GCIRFormatter {
     spec_store: Arc<SpecStore>,
     default_options: ClientInitResponseOptions,
     override_adapter: Option<Arc<dyn OverrideAdapter>>,
+    ops_stats: Arc<OpsStatsForInstance>,
 }
 
 #[derive(Deserialize)]
@@ -57,10 +61,12 @@ impl GCIRFormatter {
     pub fn new(
         spec_store: &Arc<SpecStore>,
         override_adapter: &Option<Arc<dyn OverrideAdapter>>,
+        ops_stats: &Arc<OpsStatsForInstance>,
     ) -> Self {
         Self {
             spec_store: spec_store.clone(),
             override_adapter: override_adapter.as_ref().map(Arc::clone),
+            ops_stats: ops_stats.clone(),
             default_options: ClientInitResponseOptions {
                 hash_algorithm: Some(HashAlgorithm::Djb2),
                 client_sdk_key: None,
@@ -87,7 +93,11 @@ impl GCIRFormatter {
     ) -> InitializeResponse {
         self.get_v1_impl(&user_internal, hashing, options)
             .unwrap_or_else(|e| {
-                log_e!(TAG, "Error getting client init response: {}", e);
+                log_error_to_statsig_and_console!(
+                    &self.ops_stats,
+                    TAG,
+                    StatsigErr::GCIRError(e.to_string())
+                );
                 InitializeResponse::blank(user_internal)
             })
     }
@@ -100,7 +110,11 @@ impl GCIRFormatter {
     ) -> InitializeEvaluationsResponse {
         self.get_v2_impl(&user_internal, hashing, options)
             .unwrap_or_else(|e| {
-                log_e!(TAG, "Error getting client init evaluations response: {}", e);
+                log_error_to_statsig_and_console!(
+                    &self.ops_stats,
+                    TAG,
+                    StatsigErr::GCIRError(e.to_string())
+                );
                 InitializeEvaluationsResponse::blank(user_internal)
             })
     }
@@ -182,15 +196,15 @@ impl GCIRFormatter {
         let param_stores = get_serializeable_param_stores(&mut context, options);
         let evaluated_keys = get_evaluated_keys(user_internal);
         let session_replay_info = get_session_replay_info(&mut context, options, hashing);
+        let gates = get_gate_evaluations(&mut context, options, &mut sec_expo_hash_memo)?;
+        let configs =
+            get_dynamic_config_evaluations(&mut context, options, &mut sec_expo_hash_memo)?;
+        let layers = get_layer_evaluations(&mut context, options, &mut sec_expo_hash_memo)?;
 
         Ok(InitializeResponse {
-            feature_gates: get_gate_evaluations(&mut context, options, &mut sec_expo_hash_memo)?,
-            dynamic_configs: get_dynamic_config_evaluations(
-                &mut context,
-                options,
-                &mut sec_expo_hash_memo,
-            )?,
-            layer_configs: get_layer_evaluations(&mut context, options, &mut sec_expo_hash_memo)?,
+            feature_gates: gates,
+            dynamic_configs: configs,
+            layer_configs: layers,
             time: data.values.time,
             has_updates: true,
             hash_used: options.get_hash_algorithm().to_string(),

@@ -253,7 +253,8 @@ macro_rules! log_error_to_statsig_and_console {
     ($ops_stats:expr, $tag:expr, $err:expr) => {
         let event = ErrorBoundaryEvent {
             bypass_dedupe: false,
-            info: $err.clone(),
+            exception: $err.name().to_string(),
+            info: serde_json::to_string(&$err).unwrap_or_default(),
             tag: $tag.to_string(),
             extra: None,
             dedupe_key: None,
