@@ -4,20 +4,37 @@ use crate::statsig_forward_proxy::{ConfigSpecRequest, ConfigSpecResponse};
 use crate::statsig_grpc_err::StatsigGrpcErr;
 use std::sync::Mutex;
 use std::time::Duration;
-use tonic::transport::Channel;
+use tonic::transport::{Certificate, Channel, ClientTlsConfig, Identity};
 use tonic::Streaming;
 
 pub struct StatsigGrpcClient {
     sdk_key: String,
     proxy_api: String,
     grpc_client: Mutex<Option<StatsigForwardProxyClient<Channel>>>,
+    tls_config: Option<ClientTlsConfig>,
 }
 
 impl StatsigGrpcClient {
-    pub fn new(sdk_key: &str, proxy_api: &str) -> Self {
+    pub fn new(
+        sdk_key: &str,
+        proxy_api: &str,
+        authentication_mode: Option<String>,
+        ca_cert_path: Option<String>,
+        client_cert_path: Option<String>,
+        client_key_path: Option<String>,
+        domain_name: Option<String>,
+    ) -> Self {
         Self {
             sdk_key: sdk_key.to_string(),
             proxy_api: proxy_api.to_string(),
+            tls_config: Self::setup_tls_client(
+                authentication_mode,
+                ca_cert_path,
+                client_cert_path,
+                client_key_path,
+                domain_name,
+                proxy_api,
+            ),
             grpc_client: Mutex::new(None),
         }
     }
@@ -62,6 +79,73 @@ impl StatsigGrpcClient {
             .map(|s| s.into_inner())
     }
 
+    fn setup_tls_client(
+        authentication_mode: Option<String>,
+        ca_cert_path: Option<String>,
+        client_cert_path: Option<String>,
+        client_key_path: Option<String>,
+        domain_name: Option<String>,
+        proxy_api: &str,
+    ) -> Option<ClientTlsConfig> {
+        let domain_name = domain_name.unwrap_or_else(|| {
+            Self::extract_host(proxy_api)
+                .unwrap_or_default()
+                .to_string()
+        });
+        match authentication_mode
+            .as_deref()
+            .map(str::to_ascii_lowercase)
+            .as_deref()
+        {
+            Some("tls") => {
+                let ca_cert_path = ca_cert_path?;
+                let ca_cert: Vec<u8> = std::fs::read(ca_cert_path).ok()?;
+                let ca_cert = Certificate::from_pem(ca_cert);
+
+                Some(
+                    ClientTlsConfig::new()
+                        .ca_certificate(ca_cert)
+                        .domain_name(domain_name), // <-- adjust this as needed
+                )
+            }
+            Some("mtls") => {
+                let ca_cert_path = ca_cert_path?;
+                let client_cert_path = client_cert_path?;
+                let client_key_path = client_key_path?;
+
+                let ca_cert = std::fs::read(ca_cert_path).ok()?;
+                let client_cert = std::fs::read(client_cert_path).ok()?;
+                let client_key = std::fs::read(client_key_path).ok()?;
+
+                let ca_cert = Certificate::from_pem(ca_cert);
+                let identity = Identity::from_pem(client_cert, client_key);
+
+                Some(
+                    ClientTlsConfig::new()
+                        .ca_certificate(ca_cert)
+                        .identity(identity)
+                        .domain_name(domain_name), // <-- adjust this as needed
+                )
+            }
+            _ => None,
+        }
+    }
+
+    fn extract_host(url: &str) -> Option<&str> {
+        // Strip scheme if present
+        let without_scheme = if let Some(pos) = url.find("://") {
+            &url[(pos + 3)..]
+        } else {
+            url
+        };
+
+        // Split off path/query/fragment after the host[:port]
+        let host_port = without_scheme.split('/').next()?; // First part is host[:port]
+
+        // Split off port if present
+        host_port.split(':').next()
+    }
+
     async fn get_or_setup_grpc_client(
         &self,
     ) -> Result<StatsigForwardProxyClient<Channel>, StatsigGrpcErr> {
@@ -76,12 +160,20 @@ impl StatsigGrpcClient {
             }
         }
 
-        let channel = Channel::from_shared(self.proxy_api.clone())
+        let mut channel_builder = Channel::from_shared(self.proxy_api.clone())
             .map_err(|e| StatsigGrpcErr::FailedToConnect(e.to_string()))?
             .connect_timeout(Duration::from_secs(5))
             .tcp_keepalive(Some(Duration::from_secs(30)))
             .keep_alive_while_idle(true)
-            .http2_keep_alive_interval(Duration::from_secs(30))
+            .http2_keep_alive_interval(Duration::from_secs(30));
+
+        if let Some(tls_config) = self.tls_config.clone() {
+            println!("i am printing tls config");
+            channel_builder = channel_builder
+                .tls_config(tls_config)
+                .map_err(|e| StatsigGrpcErr::Authentication(e.to_string()))?;
+        }
+        let channel = channel_builder
             .connect()
             .await
             .map_err(|e| StatsigGrpcErr::FailedToConnect(e.to_string()))?;

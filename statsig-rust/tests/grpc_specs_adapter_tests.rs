@@ -25,6 +25,11 @@ pub mod specs_adapter_tests {
             adapter_type: SpecsAdapterType::NetworkGrpcWebsocket,
             specs_url: Some(format!("http://{}", mock_proxy.proxy_address)),
             init_timeout_ms: 3000,
+            authentication_mode: None,
+            ca_cert_path: None,
+            client_cert_path: None,
+            client_key_path: None,
+            domain_name: None,
         };
         let adapter = Arc::new(StatsigGrpcSpecsAdapter::new("secret-key", &config, None));
         let mock_listener = Arc::new(MockSpecsListener::default());

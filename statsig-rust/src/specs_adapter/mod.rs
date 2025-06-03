@@ -29,6 +29,12 @@ pub struct SpecAdapterConfig {
     pub init_timeout_ms: u64,
 
     pub specs_url: Option<String>,
+
+    pub authentication_mode: Option<String>,
+    pub ca_cert_path: Option<String>,
+    pub client_cert_path: Option<String>,
+    pub client_key_path: Option<String>,
+    pub domain_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

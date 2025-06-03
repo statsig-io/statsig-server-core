@@ -41,6 +41,13 @@ pub struct SpecAdapterConfig {
     pub adapter_type: String,
     pub specs_url: Option<String>,
     pub init_timeout_ms: i64,
+
+    #[napi(ts_type = "'none' | 'tls' | 'mtls' | undefined | null")]
+    pub authentication_mode: Option<String>,
+    pub ca_cert_path: Option<String>,
+    pub client_cert_path: Option<String>,
+    pub client_key_path: Option<String>,
+    pub domain_name: Option<String>,
 }
 
 #[napi]
@@ -194,6 +201,11 @@ impl From<SpecAdapterConfig> for SpecAdapterConfigActual {
             adapter_type: val.adapter_type.into(),
             specs_url: val.specs_url,
             init_timeout_ms: u64::try_from(val.init_timeout_ms).unwrap_or(DEFAULT_INIT_TIMEOUT_MS),
+            authentication_mode: val.authentication_mode,
+            ca_cert_path: val.ca_cert_path,
+            client_cert_path: val.client_cert_path,
+            client_key_path: val.client_key_path,
+            domain_name: val.domain_name,
         }
     }
 }

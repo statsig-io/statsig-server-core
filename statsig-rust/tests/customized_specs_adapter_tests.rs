@@ -147,11 +147,21 @@ pub mod specs_adapter_tests {
                 adapter_type: SpecsAdapterType::DataStore,
                 init_timeout_ms: 3000,
                 specs_url: None,
+                authentication_mode: None,
+                ca_cert_path: None,
+                client_cert_path: None,
+                client_key_path: None,
+                domain_name: None,
             },
             SpecAdapterConfig {
                 adapter_type: SpecsAdapterType::NetworkGrpcWebsocket,
                 init_timeout_ms: 3000,
                 specs_url: Some(format!("http://{}", mock_proxy.proxy_address).to_string()),
+                authentication_mode: None,
+                ca_cert_path: None,
+                client_cert_path: None,
+                client_key_path: None,
+                domain_name: None,
             },
         ];
         let mut options = StatsigOptions::new();

@@ -5,6 +5,7 @@ use tonic::Status;
 #[derive(Debug)]
 pub enum StatsigGrpcErr {
     FailedToGetLock,
+    Authentication(String),
     FailedToConnect(String),
     ErrorGrpcStatus(Status),
     CustomErr(String),
@@ -21,6 +22,9 @@ impl Display for StatsigGrpcErr {
                 write!(f, "Failed to acquire lock")
             }
             StatsigGrpcErr::ErrorGrpcStatus(s) => write!(f, "GRPC error status {}", s.message()),
+            StatsigGrpcErr::Authentication(msg) => {
+                write!(f, "Failed to authenticate with server {}", msg)
+            }
         }
     }
 }

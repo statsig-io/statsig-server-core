@@ -208,6 +208,11 @@ export interface SpecAdapterConfig {
   adapterType: 'data_store' | 'network_grpc_websocket' | 'network_http'
   specsUrl?: string
   initTimeoutMs: number
+  authenticationMode?: 'none' | 'tls' | 'mtls' | undefined | null
+  caCertPath?: string
+  clientCertPath?: string
+  clientKeyPath?: string
+  domainName?: string
 }
 
 export interface StatsigOptions {

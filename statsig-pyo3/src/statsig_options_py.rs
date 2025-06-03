@@ -56,6 +56,11 @@ impl From<SpecAdapterConfigPy> for SpecAdapterConfig {
             adapter_type: value.adapter_type.into(),
             init_timeout_ms: value.init_timeout_ms.unwrap_or(DEFAULT_INIT_TIMEOUT_MS),
             specs_url: value.specs_url,
+            authentication_mode: None,
+            ca_cert_path: None,
+            client_cert_path: None,
+            domain_name: None,
+            client_key_path: None
         }
     }
 }

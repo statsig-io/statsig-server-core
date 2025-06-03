@@ -172,6 +172,11 @@ impl StatsigGrpcSpecsAdapter {
             grpc_client: StatsigGrpcClient::new(
                 sdk_key,
                 &config.specs_url.clone().unwrap_or("INVALID".to_owned()),
+                config.authentication_mode.clone(),
+                config.ca_cert_path.clone(),
+                config.client_cert_path.clone(),
+                config.client_key_path.clone(),
+                config.domain_name.clone(),
             ),
             initialization_tx: Arc::new(init_tx),
             retry_state: StreamingRetryState {
