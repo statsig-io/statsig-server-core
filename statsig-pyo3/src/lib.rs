@@ -39,6 +39,7 @@ fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<data_store_base_py::DataStoreBasePy>()?;
     m.add_class::<statsig_persistent_storage_override_adapter_py::PersistentStorageBasePy>()?;
     m.add_class::<output_logger_provider_base_py::OutputLoggerProviderBasePy>()?;
+    m.add_class::<statsig_options_py::SpecAdapterConfigPy>()?;
     m.add_function(wrap_pyfunction!(notify_python_shutdown, m)?)?;
 
     Ok(())

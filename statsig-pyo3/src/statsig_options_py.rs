@@ -7,16 +7,58 @@ use crate::{
     data_store_base_py::DataStoreBasePy, observability_client_base_py::ObservabilityClientBasePy,
 };
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::types::{PyDict, PyList};
 use pyo3_stub_gen::derive::*;
 use statsig_rust::data_store_interface::DataStoreTrait;
 use statsig_rust::networking::proxy_config::ProxyConfig;
 use statsig_rust::output_logger::OutputLogProvider;
-use statsig_rust::{log_w, ConfigCompressionMode, PersistentStorage};
+use statsig_rust::statsig_options::DEFAULT_INIT_TIMEOUT_MS;
+use statsig_rust::{log_w, ConfigCompressionMode, PersistentStorage, SpecAdapterConfig};
 use statsig_rust::{output_logger::LogLevel, ObservabilityClient, StatsigOptions};
 use std::sync::{Arc, Weak};
 
 const TAG: &str = stringify!(StatsigOptionsPy);
+
+#[gen_stub_pyclass]
+#[pyclass(name = "SpecAdapterConfig")]
+#[derive(Clone)]
+pub struct SpecAdapterConfigPy {
+    #[pyo3(get, set)]
+    pub adapter_type: String,
+
+    #[pyo3(get, set)]
+    pub specs_url: Option<String>,
+
+    #[pyo3(get, set)]
+    pub init_timeout_ms: Option<u64>,
+}
+
+#[pymethods]
+impl SpecAdapterConfigPy {
+    #[new]
+    #[pyo3(signature = (adapter_type, specs_url=None, init_timeout_ms=None))]
+    pub fn new(
+        adapter_type: String,
+        specs_url: Option<String>,
+        init_timeout_ms: Option<u64>,
+    ) -> Self {
+        Self {
+            adapter_type,
+            specs_url,
+            init_timeout_ms,
+        }
+    }
+}
+
+impl From<SpecAdapterConfigPy> for SpecAdapterConfig {
+    fn from(value: SpecAdapterConfigPy) -> Self {
+        Self {
+            adapter_type: value.adapter_type.into(),
+            init_timeout_ms: value.init_timeout_ms.unwrap_or(DEFAULT_INIT_TIMEOUT_MS),
+            specs_url: value.specs_url,
+        }
+    }
+}
 
 #[gen_stub_pyclass]
 #[pyclass(name = "ProxyConfig")]
@@ -108,6 +150,8 @@ pub struct StatsigOptionsPy {
     pub config_compression_mode: Option<String>,
     #[pyo3(get, set)]
     pub proxy_config: Option<Py<ProxyConfigPy>>,
+    #[pyo3(get, set)]
+    pub spec_adapter_configs: Option<Py<PyList>>,
 }
 
 #[gen_stub_pymethods]
@@ -141,6 +185,7 @@ impl StatsigOptionsPy {
         config_compression_mode=None,
         proxy_config=None,
         output_logger_provider=None,
+        spec_adapter_configs=None,
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -170,6 +215,7 @@ impl StatsigOptionsPy {
         config_compression_mode: Option<String>,
         proxy_config: Option<Py<ProxyConfigPy>>,
         output_logger_provider: Option<Py<OutputLoggerProviderBasePy>>,
+        spec_adapter_configs: Option<Py<PyList>>,
     ) -> Self {
         Self {
             specs_url,
@@ -198,6 +244,7 @@ impl StatsigOptionsPy {
             config_compression_mode,
             proxy_config,
             output_logger_provider,
+            spec_adapter_configs,
         }
     }
 }
@@ -242,7 +289,6 @@ fn create_inner_statsig_options(
                     None
                 }
             }),
-        spec_adapters_config: None,
         log_event_url: opts.log_event_url.clone(),
         disable_all_logging: opts.disable_all_logging,
         event_logging_adapter: None,
@@ -292,6 +338,12 @@ fn create_inner_statsig_options(
                     log_w!(TAG, "Failed to convert proxy config");
                     None
                 }
+            }
+        }),
+        spec_adapters_config: opts.spec_adapter_configs.and_then(|configs| {
+            match configs.extract::<Vec<SpecAdapterConfigPy>>(py) {
+                Ok(configs) => Some(configs.into_iter().map(|config| config.into()).collect()),
+                Err(_) => None,
             }
         }),
         output_logger_provider: opts.output_logger_provider.as_ref().map(|provider| {
