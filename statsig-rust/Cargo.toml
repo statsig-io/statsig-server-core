@@ -33,7 +33,7 @@ serde_json = { version = "1.0.125", features = [
 ] }
 serde_with = "3.4.0"
 sha2 = "0.10.8"
-sigstat-grpc = { path = "../statsig-grpc", version = "0.4.3", optional = true }
+sigstat-grpc = { path = "../statsig-grpc", version = "0.4.3-beta.250603", optional = true }
 simple_logger = { version = "5.0.0" }
 tokio = { version = "1.39.1", features = ["full"] }
 uaparser = "0.6.4"
