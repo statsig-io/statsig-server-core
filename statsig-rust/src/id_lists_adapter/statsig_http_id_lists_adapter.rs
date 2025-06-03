@@ -36,29 +36,17 @@ pub struct StatsigHttpIdListsAdapter {
 impl StatsigHttpIdListsAdapter {
     #[must_use]
     pub fn new(sdk_key: &str, options: &StatsigOptions) -> Self {
-        let id_lists_manifest_url = options
-            .id_lists_url
-            .clone()
-            .unwrap_or_else(|| DEFAULT_CDN_ID_LISTS_MANIFEST_URL.to_string());
-
-        // Final URL: if it's CDN, append /{sdk_key}.json
-        let final_id_lists_manifest_url =
-            if id_lists_manifest_url == DEFAULT_CDN_ID_LISTS_MANIFEST_URL {
-                format!("{}/{}.json", DEFAULT_CDN_ID_LISTS_MANIFEST_URL, sdk_key)
-            } else {
-                id_lists_manifest_url.clone()
-            };
-
-        let fallback_url = if options.fallback_to_statsig_api.unwrap_or(false)
-            && id_lists_manifest_url != DEFAULT_CDN_ID_LISTS_MANIFEST_URL
-        {
-            Some(format!(
-                "{}/{}.json",
-                DEFAULT_CDN_ID_LISTS_MANIFEST_URL, sdk_key
-            ))
-        } else {
-            None
+        let id_lists_manifest_url = match &options.id_lists_url {
+            Some(url) => url.clone(),
+            None => make_default_cdn_url(sdk_key),
         };
+
+        let mut fallback_url = None;
+        if options.fallback_to_statsig_api == Some(true)
+            && !id_lists_manifest_url.contains(DEFAULT_CDN_ID_LISTS_MANIFEST_URL)
+        {
+            fallback_url = Some(make_default_cdn_url(sdk_key));
+        }
 
         let sync_interval_duration = Duration::from_millis(u64::from(
             options
@@ -73,7 +61,7 @@ impl StatsigHttpIdListsAdapter {
         );
 
         Self {
-            id_lists_manifest_url: final_id_lists_manifest_url,
+            id_lists_manifest_url,
             fallback_url,
             listener: RwLock::new(None),
             network,
@@ -401,6 +389,10 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
     fn get_type_name(&self) -> String {
         TAG.to_string()
     }
+}
+
+fn make_default_cdn_url(sdk_key: &str) -> String {
+    format!("{}/{}.json", DEFAULT_CDN_ID_LISTS_MANIFEST_URL, sdk_key)
 }
 
 #[cfg(test)]
