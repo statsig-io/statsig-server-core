@@ -120,7 +120,7 @@ export async function commitAndPushChanges(args: {
   }
 }
 
-async function tryApplyGitConfig(git: SimpleGit) {
+export async function tryApplyGitConfig(git: SimpleGit) {
   const isCI = process.env['CI'];
 
   if (isCI) {

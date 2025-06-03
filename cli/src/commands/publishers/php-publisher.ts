@@ -1,8 +1,8 @@
 import { ensureEmptyDir, getRootedPath } from '@/utils/file_utils.js';
 import {
-  commitAndPushChanges,
   createEmptyRepository,
   getCurrentCommitHash,
+  tryApplyGitConfig,
 } from '@/utils/git_utils.js';
 import {
   GhRelease,
@@ -101,9 +101,12 @@ async function copyChangesToTempRepo(
   Log.stepEnd('Changes copied to temp repo');
 
   const git = simpleGit(TEMP_REPO_PATH);
+  await tryApplyGitConfig(git);
+
   await git.add('.');
   await git.commit(`chore: sync changes from ${version.toString()}`);
   await git.push('origin', version.toBranch());
+
   Log.stepEnd(`Pushed changes to ${version.toBranch()}`);
 }
 
