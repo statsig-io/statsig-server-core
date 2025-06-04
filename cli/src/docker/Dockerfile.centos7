@@ -34,13 +34,17 @@ RUN wget https://www.python.org/ftp/python/3.8.18/Python-3.8.18.tgz && \
     ./configure --enable-optimizations && \
     make -j$(nproc) && \
     make altinstall
+
 ENV PATH="/usr/local/bin:$PATH"
 ENV PYO3_PYTHON="/usr/local/bin/python3.8"
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.8
+
+# RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.8
 RUN python3.8 -m pip install --upgrade pip
 RUN python3.8 -m pip install maturin auditwheel
 
 # Install Rust
+ENV CFLAGS="-D__ARM_ARCH=8"
+ENV RUSTFLAGS="-C target-feature=+neon"
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_TERM_COLOR=always
