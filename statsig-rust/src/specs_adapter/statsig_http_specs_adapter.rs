@@ -28,6 +28,7 @@ pub struct NetworkResponse {
 
 pub const DEFAULT_SPECS_URL: &str = "https://api.statsigcdn.com/v2/download_config_specs";
 pub const DEFAULT_SYNC_INTERVAL_MS: u32 = 10_000;
+pub const INIT_DICT_ID: &str = "null";
 
 const TAG: &str = stringify!(StatsigHttpSpecsAdapter);
 pub struct StatsigHttpSpecsAdapter {
@@ -359,7 +360,7 @@ fn construct_specs_url(
     match compression_mode {
         ConfigCompressionMode::Gzip => format!("{spec_url}/{sdk_key}.json"),
         ConfigCompressionMode::Dictionary => {
-            let dict_id = dict_id.unwrap_or("null");
+            let dict_id = dict_id.unwrap_or(INIT_DICT_ID);
             format!("{spec_url}/d/{dict_id}/{sdk_key}.json")
         }
     }

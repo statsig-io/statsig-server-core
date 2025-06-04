@@ -52,7 +52,7 @@ impl StatsigGrpcClient {
     pub async fn get_specs(
         &self,
         lcut: Option<u64>,
-        zstd_dict_id: Option<&String>,
+        zstd_dict_id: Option<String>,
     ) -> Result<ConfigSpecResponse, StatsigGrpcErr> {
         let request = create_config_spec_request(&self.sdk_key, lcut, zstd_dict_id);
         let mut client = self.get_or_setup_grpc_client().await?;
@@ -67,7 +67,7 @@ impl StatsigGrpcClient {
     pub async fn get_specs_stream(
         &self,
         lcut: Option<u64>,
-        zstd_dict_id: Option<&String>,
+        zstd_dict_id: Option<String>,
     ) -> Result<Streaming<ConfigSpecResponse>, StatsigGrpcErr> {
         let request = create_config_spec_request(&self.sdk_key, lcut, zstd_dict_id);
         let mut client = self.get_or_setup_grpc_client().await?;
@@ -168,7 +168,6 @@ impl StatsigGrpcClient {
             .http2_keep_alive_interval(Duration::from_secs(30));
 
         if let Some(tls_config) = self.tls_config.clone() {
-            println!("i am printing tls config");
             channel_builder = channel_builder
                 .tls_config(tls_config)
                 .map_err(|e| StatsigGrpcErr::Authentication(e.to_string()))?;
@@ -193,12 +192,12 @@ impl StatsigGrpcClient {
 fn create_config_spec_request(
     sdk_key: &str,
     current_lcut: Option<u64>,
-    current_zstd_dict_id: Option<&String>,
+    current_zstd_dict_id: Option<String>,
 ) -> ConfigSpecRequest {
     ConfigSpecRequest {
         since_time: current_lcut,
         sdk_key: sdk_key.to_string(),
         version: Some(ApiVersion::V2 as i32),
-        zstd_dict_id: current_zstd_dict_id.cloned(),
+        zstd_dict_id: current_zstd_dict_id,
     }
 }
