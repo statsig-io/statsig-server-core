@@ -43,7 +43,6 @@ RUN python3.8 -m pip install maturin auditwheel
 
 # Install Rust
 ENV CFLAGS="-D__ARM_ARCH=8"
-ENV RUSTFLAGS="-C target-feature=+neon"
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_TERM_COLOR=always
