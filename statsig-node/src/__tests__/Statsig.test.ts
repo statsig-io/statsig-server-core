@@ -86,14 +86,14 @@ describe('Statsig', () => {
     const user = StatsigUser.withUserID('a-user');
 
     const responseWithFilter = JSON.parse(
-        statsig.getClientInitializeResponse(user, {
-          hashAlgorithm: "none",
-          featureGateFilter: new Set(['test_public']),
-        }),
+      statsig.getClientInitializeResponse(user, {
+        hashAlgorithm: 'none',
+        featureGateFilter: new Set(['test_public']),
+      }),
     );
 
     expect(Object.keys(responseWithFilter.feature_gates)).toEqual(
-        expect.arrayContaining(['test_public']),
+      expect.arrayContaining(['test_public']),
     );
     expect(Object.keys(responseWithFilter.feature_gates).length).toBe(1);
   });
@@ -249,6 +249,45 @@ describe('Statsig', () => {
 
       const numberFallback = paramStore.getValue('number_fallback', 1);
       expect(numberFallback).toEqual(1);
+    });
+  });
+
+  describe('Statsig Singleton', () => {
+    const user = StatsigUser.withUserID('a-user');
+    it('Call no output should error out', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      Statsig.shared();
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[Statsig] No shared instance has been created yet. Call newShared() before using it. Returning an invalid instance',
+      );
+    });
+
+    it('Should get a instance', async () => {
+      Statsig.newShared('secret-key');
+      expect(Statsig.shared() != null);
+      await Statsig.shared().initialize();
+    });
+
+    it('Should run properly', async () => {
+      const experiment = statsig.getExperiment(user, 'exp_with_obj_and_array');
+      expect(experiment.getEvaluationDetails()).toMatchObject({
+        reason: 'Network:Recognized',
+        lcut: expect.any(Number),
+        receivedAt: expect.any(Number),
+      });
+    });
+
+    it('Double initialize will return invalid instance', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      Statsig.newShared('secret-key');
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[Statsig] Shared instance has been created, call removeSharedInstance() if you want to create another one. Returning an invalid instance',
+      );
+    });
+
+    it('Remove and recreate will work', async () => {
+      Statsig.removeSharedInstance();
+      expect(!Statsig.hasShared());
     });
   });
 });

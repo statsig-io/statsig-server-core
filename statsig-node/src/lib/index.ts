@@ -55,6 +55,43 @@ function createFetchFunc(options?: StatsigOptions) {
 }
 
 export class Statsig extends StatsigNapiInternal {
+  private static _sharedInstance: Statsig | null = null;
+
+  public static shared(): Statsig {
+    if (!Statsig.hasShared()) {
+      console.warn(
+        '[Statsig] No shared instance has been created yet. Call newShared() before using it. Returning an invalid instance',
+      );
+      return Statsig._createErrorInstance();
+    }
+    return Statsig._sharedInstance!;
+  }
+
+  public static hasShared(): boolean {
+    return Statsig._sharedInstance !== null;
+  }
+
+  public static newShared(sdkKey: string, options?: StatsigOptions): Statsig {
+    if (Statsig.hasShared()) {
+      console.warn(
+        '[Statsig] Shared instance has been created, call removeSharedInstance() if you want to create another one. ' +
+          'Returning an invalid instance',
+      );
+      return Statsig._createErrorInstance();
+    }
+
+    Statsig._sharedInstance = new Statsig(sdkKey, options);
+    return Statsig._sharedInstance;
+  }
+
+  public static removeSharedInstance() {
+    Statsig._sharedInstance = null;
+  }
+
+  private static _createErrorInstance(): Statsig {
+    return new Statsig('INVALID-KEY');
+  }
+
   constructor(sdkKey: string, options?: StatsigOptions) {
     const fetchFunc = createFetchFunc(options);
     super(fetchFunc, sdkKey, options);
