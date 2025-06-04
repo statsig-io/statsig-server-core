@@ -19,6 +19,8 @@ RUN yum update -y \
 RUN pip3 install maturin patchelf
 
 # Rust Setup
+ENV CFLAGS="-D__ARM_ARCH=8"
+ENV RUSTFLAGS="-C target-feature=+neon"
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_TERM_COLOR=always
@@ -27,5 +29,8 @@ ENV CARGO_TERM_COLOR=always
 RUN curl -sL https://rpm.nodesource.com/setup_18.x | bash - \
     && yum install -y nodejs
 RUN npm install -g pnpm@7.32.4 typescript@5.7.3
+
+RUN echo $RUSTFLAGS
+RUN echo $CFLAGS
 
 ENTRYPOINT ["sh", "-c"]
