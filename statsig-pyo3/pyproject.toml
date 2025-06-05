@@ -10,10 +10,17 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dynamic = ["version"]
+dynamic = ["version", "description", "license", "authors", "readme"]
 dependencies = ["requests", "typing_extensions"]
 
+[project.urls]
+homepage = "https://statsig.com"
+documentation = "https://docs.statsig.com/server-core/python-core"
+repository = "https://github.com/statsig-io/statsig-server-core/tree/main/statsig-pyo3"
+changelog = "https://github.com/statsig-io/statsig-server-core/releases"
+
+
 [tool.maturin]
-features = ["pyo3/extension-module"]
+features = ["pyo3/extension-module", "pyo3/abi3-py37"]
 python-source = "py_src"
 include = ["statsig_python_core.pyi"]

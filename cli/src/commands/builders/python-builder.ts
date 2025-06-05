@@ -3,14 +3,7 @@ import {
   getDockerImageTag,
   isLinux,
 } from '@/utils/docker_utils.js';
-import {
-  BASE_DIR,
-  ensureEmptyDir,
-  getRootedPath,
-  listDirectories,
-  listFiles,
-  unzipFiles,
-} from '@/utils/file_utils.js';
+import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
 import { Log } from '@/utils/terminal_utils.js';
 import { execSync } from 'child_process';
 
@@ -32,7 +25,8 @@ export function buildPython(options: BuilderOptions) {
     });
   }
 
-  const maturinCommand = [
+  const subcommand = [
+    'maturin --version &&',
     'maturin build',
     '--sdist',
     options.release ? '--release --strip' : '',
@@ -46,11 +40,11 @@ export function buildPython(options: BuilderOptions) {
     `-v "${BASE_DIR}":/app`,
     `-v "/tmp/statsig-server-core/root-cargo-registry:/root/.cargo/registry"`,
     tag,
-    `"cd /app/statsig-pyo3 && ${maturinCommand}"`,
+    `"cd /app/statsig-pyo3 && ${subcommand}"`,
   ].join(' ');
 
   const command =
-    isLinux(options.os) && options.docker ? dockerCommand : maturinCommand;
+    isLinux(options.os) && options.docker ? dockerCommand : subcommand;
 
   Log.stepBegin(`Building Pyo3 Package ${tag}`);
   Log.stepProgress(command);

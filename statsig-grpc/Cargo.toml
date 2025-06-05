@@ -4,13 +4,15 @@ description = "Statsig with gRPC support."
 edition.workspace = true
 license.workspace = true
 version.workspace = true
+authors.workspace = true
+readme.workspace = true
 homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
 tokio = { version = "1.39.1", features = ["full"] }
 async-trait = "0.1.81"
-tonic = {version = "0.12.1", features = ["tls"]}
+tonic = { version = "0.12.1", features = ["tls"] }
 prost = "0.13.1"
 tonic-build = "0.12.1"
 log = "0.4.22"

@@ -72,11 +72,10 @@ export class BumpVersion extends CommandBase {
       version.beta += 1;
     } else if (options.betaDate) {
       const date = new Date();
-      // YYMMDD
-      version.beta =
-        (date.getFullYear() % 100) * 10000 + // Get last 2 digits of year
-        (date.getMonth() + 1) * 100 +
-        date.getUTCDate();
+      // ISO 8601 -> YYMMDDHHMM
+      version.beta = parseInt(
+        date.toISOString().replace(/[-T:]/g, '').slice(2, 12),
+      );
     }
 
     if (providedVersion) {
@@ -123,7 +122,7 @@ export class BumpVersion extends CommandBase {
 
     if (error || !success) {
       const errMessage =
-        error instanceof Error ? error.message : (error ?? 'Unknown Error');
+        error instanceof Error ? error.message : error ?? 'Unknown Error';
 
       Log.stepEnd(`Failed to commit changes: ${errMessage}`, 'failure');
       process.exit(1);

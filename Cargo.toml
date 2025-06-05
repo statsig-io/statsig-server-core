@@ -29,3 +29,4 @@ homepage = "https://statsig.com/"
 authors = ["Statsig", "Daniel Loomb <daniel@statsig.com>"]
 readme = "README.md"
 repository = "https://github.com/statsig-io/statsig-server-core"
+description = "Statsig Rust SDK for usage in multi-user server environments."

@@ -5,6 +5,23 @@ import path from 'node:path';
 
 import { PublisherOptions } from './publisher-options.js';
 
+const REQUIRED_FILES = [
+  'cp37-abi3-macosx_10_12_x86_64.whl',
+  'cp37-abi3-macosx_11_0_arm64.whl',
+  'cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl',
+  'cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl',
+  'cp37-abi3-manylinux_2_27_aarch64.whl',
+  'cp37-abi3-manylinux_2_27_x86_64.whl',
+  'cp37-abi3-manylinux_2_28_aarch64.whl',
+  'cp37-abi3-manylinux_2_28_x86_64.whl',
+  'cp37-abi3-manylinux_2_34_aarch64.whl',
+  'cp37-abi3-manylinux_2_34_x86_64.whl',
+  'cp37-abi3-musllinux_1_2_aarch64.whl',
+  'cp37-abi3-musllinux_1_2_x86_64.whl',
+  'cp37-abi3-win_amd64.whl',
+  'cp37-abi3-win32.whl',
+];
+
 export async function publishPython(options: PublisherOptions) {
   Log.stepBegin('Uploading to PyPI');
 
@@ -14,69 +31,81 @@ export async function publishPython(options: PublisherOptions) {
   Log.stepEnd(`Pip: ${pipVersion}`);
 
   Log.stepBegin('Listing files to upload');
-  let hasSeenSource = false;
-  const unzipped = listFiles(options.workingDir, 'statsig_python_core*').filter(
-    (file) => {
-      if (file.endsWith('.tar.gz')) {
-        if (hasSeenSource) {
-          return false;
-        }
 
-        hasSeenSource = true;
-        return true;
-      }
-
-      return true;
-    },
-  );
-  unzipped.forEach((file) => {
-    Log.stepProgress(`Found file ${file}`);
+  const wheels: Record<string, string> = {};
+  listFiles(options.workingDir, 'statsig_python_core*.whl').forEach((file) => {
+    const basename = path.basename(file);
+    wheels[basename] = file;
   });
+
+  const toFind = [...REQUIRED_FILES];
+  let allValid = true;
+
+  Object.entries(wheels).forEach(([basename, file]) => {
+    const found = toFind.findIndex((f) => basename.includes(f));
+    if (found === -1) {
+      Log.stepProgress(`File not expected: ${basename}`, 'failure');
+      allValid = false;
+    } else {
+      Log.stepProgress(`Found file ${basename}: ${file}`);
+      toFind.splice(found, 1);
+    }
+  });
+
+  if (!allValid) {
+    Log.stepEnd('Some files were not expected', 'failure');
+    return;
+  }
+
+  if (toFind.length > 0) {
+    Log.stepEnd(
+      `Not all files were found. Missing: ${toFind.join(', ')}`,
+      'failure',
+    );
+    return;
+  }
 
   Log.stepEnd('Finished listing files');
 
-  let allFilesUploaded = true;
+  const command = [
+    'maturin upload',
+    '--non-interactive',
+    '--skip-existing',
+    '--verbose',
+    ...Object.values(wheels).map((file) => `${file}`),
+  ].join(' ');
 
-  const seen: Record<string, string> = {};
-
-  unzipped.forEach((file) => {
-    const filename = path.basename(file);
-    const command = [
-      'maturin upload',
-      '--non-interactive',
-      '--skip-existing',
-      '--verbose',
-      file,
-    ].join(' ');
-
-    Log.stepBegin(`\nUploading ${filename}`);
-
-    if (seen[filename]) {
-      allFilesUploaded = false;
-      Log.stepEnd(
-        `${filename} already uploaded from ${seen[filename]}`,
-        'failure',
-      );
-      return;
-    }
-
-    seen[filename] = file;
-
-    Log.stepProgress(command);
-
-    try {
-      execSync(command, { cwd: options.workingDir, stdio: 'inherit' });
-      Log.stepEnd(`Uploaded ${filename}`, 'success');
-    } catch (e) {
-      Log.stepEnd(`Failed to upload ${path.basename(file)}`, 'failure');
-      console.error(e);
-      allFilesUploaded = false;
-    }
-  });
-
-  if (!allFilesUploaded) {
-    throw new Error('Failed to upload all files');
+  Log.stepBegin('Uploading Wheels to PyPI');
+  try {
+    execSync(command, { cwd: options.workingDir, stdio: 'inherit' });
+    Log.stepEnd('Successfully uploaded wheels to PyPI');
+  } catch (e) {
+    console.error(e);
+    process.exit(1);
   }
+
+  const source = listFiles(
+    options.workingDir,
+    'statsig_python_core*.tar.gz',
+  ).pop();
+
+  if (!source) {
+    Log.stepEnd('No source distribution found', 'failure');
+    return;
+  }
+
+  Log.stepBegin('Uploading Source Distribution to PyPI');
+  Log.stepProgress(source);
+  const sourceCommand = [
+    'maturin upload',
+    '--non-interactive',
+    '--skip-existing',
+    '--verbose',
+    source,
+  ].join(' ');
+
+  execSync(sourceCommand, { cwd: options.workingDir, stdio: 'inherit' });
+  Log.stepEnd('Successfully uploaded source distribution to PyPI');
 }
 
 function getToolInfo() {

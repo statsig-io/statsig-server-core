@@ -1,8 +1,13 @@
 [package]
 name = "statsig-pyo3"
+description = "Statsig Python bindings for the Statsig Core SDK."
 edition.workspace = true
 license.workspace = true
 version.workspace = true
+authors.workspace = true
+readme.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [lib]
 name = "statsig_python_core"
@@ -12,7 +17,7 @@ crate-type = ["cdylib", "rlib"]
 pyo3 = { version = "0.23.1", features = ["abi3-py37"] }
 pyo3-stub-gen = "0.7.0"
 serde_json = { version = "1.0.125", features = ["float_roundtrip"] }
-statsig-rust = { path = "../statsig-rust"}
+statsig-rust = { path = "../statsig-rust" }
 async-trait = "0.1.81"
 serde = { version = "1.0.204", features = ["derive"] }
 lazy_static = "1.5.0"
