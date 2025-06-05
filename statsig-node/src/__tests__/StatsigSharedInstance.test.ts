@@ -37,6 +37,10 @@ describe("Statsig Singleton", () => {
     };
   });
 
+  afterAll(async () => {
+    scrapi.close();
+  });
+
   it("Call no output should error out", async () => {
     const warnSpy = jest.spyOn(console, "warn").mockImplementation();
     Statsig.shared();
@@ -72,6 +76,7 @@ describe("Statsig Singleton", () => {
   });
 
   it("Remove and recreate will work", async () => {
+    await Statsig.shared().shutdown();
     Statsig.removeSharedInstance();
     expect(!Statsig.hasShared());
   });
