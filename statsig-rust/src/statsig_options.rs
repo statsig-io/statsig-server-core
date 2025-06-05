@@ -9,14 +9,16 @@ use crate::networking::proxy_config::ProxyConfig;
 use crate::output_logger::{LogLevel, OutputLogProvider};
 use crate::persistent_storage::persistent_storage_trait::PersistentStorage;
 use crate::{
-    serialize_if_not_none, ConfigCompressionMode, ObservabilityClient, OverrideAdapter,
-    SpecAdapterConfig, SpecsAdapter,
+    log_d, log_w, serialize_if_not_none, ConfigCompressionMode, ObservabilityClient,
+    OverrideAdapter, SpecAdapterConfig, SpecsAdapter,
 };
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Weak};
 
 pub const DEFAULT_INIT_TIMEOUT_MS: u64 = 3000;
+const MIN_SYNC_INTERVAL: u32 = 1000;
+const TEST_ENV_FLAG: &str = "STATSIG_RUNNING_TESTS";
 
 #[derive(Clone, Default)]
 pub struct StatsigOptions {
@@ -381,4 +383,74 @@ fn get_if_set<T>(s: &Option<T>) -> Option<&str> {
 
 fn get_display_name<T: fmt::Debug>(s: &Option<T>) -> Option<String> {
     s.as_ref().map(|st| format!("{st:?}"))
+}
+
+//-------------------------------Validator---------------------------------
+
+const TAG: &str = "StatsigOptionValidator";
+impl StatsigOptions {
+    pub fn validate_and_fix(self: Arc<Self>) -> Arc<Self> {
+        if std::env::var(TEST_ENV_FLAG).is_ok() {
+            log_d!(
+                TAG,
+                "Skipping StatsigOptions validation in testing environment"
+            );
+            return self;
+        }
+
+        let mut opts_clone: Arc<StatsigOptions> = self.clone();
+        let mut_ref = Arc::make_mut(&mut opts_clone);
+
+        if is_sync_interval_invalid(&self.specs_sync_interval_ms) {
+            log_w!(
+                TAG,
+                "Invalid 'specs_sync_interval_ms', value must be greater than {}, received {:?}",
+                MIN_SYNC_INTERVAL,
+                &self.specs_sync_interval_ms
+            );
+            mut_ref.specs_sync_interval_ms = None;
+        }
+
+        if is_sync_interval_invalid(&self.id_lists_sync_interval_ms) {
+            log_w!(
+                TAG,
+                "Invalid 'id_lists_sync_interval_ms', value must be greater than {}, received {:?}",
+                MIN_SYNC_INTERVAL,
+                &self.id_lists_sync_interval_ms
+            );
+            mut_ref.id_lists_sync_interval_ms = None;
+        }
+
+        if should_fix_null_url(&self.specs_url) {
+            log_d!(TAG, "Setting specs_url to be default url");
+            mut_ref.specs_url = None;
+        }
+
+        if should_fix_null_url(&self.id_lists_url) {
+            log_d!(TAG, "Setting id_lists_url to be default url");
+            mut_ref.id_lists_url = None;
+        }
+
+        if should_fix_null_url(&self.log_event_url) {
+            log_d!(TAG, "Setting log_event_url to be default url");
+            mut_ref.log_event_url = None;
+        }
+
+        opts_clone
+    }
+}
+
+fn is_sync_interval_invalid(interval_ms: &Option<u32>) -> bool {
+    if let Some(interval) = interval_ms {
+        return *interval < MIN_SYNC_INTERVAL;
+    }
+    false
+}
+
+fn should_fix_null_url(maybe_url: &Option<String>) -> bool {
+    if let Some(url) = maybe_url {
+        return url.is_empty() || url.eq_ignore_ascii_case("null");
+    }
+
+    false
 }

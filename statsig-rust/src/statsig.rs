@@ -79,9 +79,9 @@ lazy_static::lazy_static! {
 
 pub struct Statsig {
     pub statsig_runtime: Arc<StatsigRuntime>,
+    pub options: Arc<StatsigOptions>,
 
     sdk_key: String,
-    options: Arc<StatsigOptions>,
     event_logger: Arc<EventLogger>,
     specs_adapter: Arc<dyn SpecsAdapter>,
     event_logging_adapter: Arc<dyn EventLoggingAdapter>,
@@ -160,7 +160,7 @@ impl InitializeDetails {
 impl Statsig {
     pub fn new(sdk_key: &str, options: Option<Arc<StatsigOptions>>) -> Self {
         let statsig_runtime = StatsigRuntime::get_runtime();
-        let options = options.unwrap_or_default();
+        let options = options.map(|o| o.validate_and_fix()).unwrap_or_default();
 
         initialize_output_logger(
             &options.output_log_level,

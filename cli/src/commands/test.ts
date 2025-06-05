@@ -110,6 +110,7 @@ function runTests(lang: string, options: Options) {
   const dockerImageTag = getDockerImageTag(options.os, options.arch);
 
   Log.title(`Running tests for ${lang}`);
+  process.env.STATSIG_RUNNING_TESTS = "1";
   const dockerCommand = [
     'docker run --rm',
     `--platform ${docker}`,
