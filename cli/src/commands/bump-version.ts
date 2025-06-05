@@ -71,6 +71,10 @@ export class BumpVersion extends CommandBase {
     } else if (options.beta) {
       version.beta += 1;
     } else if (options.betaDate) {
+      if (version.beta === 0) {
+        version.patch += 1;
+      }
+
       const date = new Date();
       // ISO 8601 -> YYMMDDHHMM
       version.beta = parseInt(
