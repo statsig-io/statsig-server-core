@@ -49,6 +49,10 @@ impl UserData {
 
         hashes
     }
+
+    pub fn to_bytes(&self) -> Option<Vec<u8>> {
+        serde_json::to_vec(self).ok()
+    }
 }
 
 fn push_string_field_hashes(hashes: &mut Vec<u64>, field: &Option<DynamicValue>) {

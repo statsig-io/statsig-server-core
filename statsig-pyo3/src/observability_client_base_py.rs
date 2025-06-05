@@ -9,7 +9,11 @@ use crate::safe_gil::SafeGil;
 const TAG: &str = "ObservabilityClientBasePy";
 
 #[gen_stub_pyclass]
-#[pyclass(name = "ObservabilityClientBase", subclass)]
+#[pyclass(
+    name = "ObservabilityClientBase",
+    module = "statsig_python_core",
+    subclass
+)]
 #[derive(FromPyObject, Default)]
 pub struct ObservabilityClientBasePy {
     init_fn: Option<PyObject>,

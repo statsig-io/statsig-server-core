@@ -11,7 +11,7 @@ use crate::safe_gil::SafeGil;
 const TAG: &str = "DataStoreBasey";
 
 #[gen_stub_pyclass]
-#[pyclass(name = "DataStoreBase", subclass)]
+#[pyclass(name = "DataStoreBase", module = "statsig_python_core", subclass)]
 #[derive(FromPyObject, Default)]
 pub struct DataStoreBasePy {
     initialize_fn: Option<PyObject>,

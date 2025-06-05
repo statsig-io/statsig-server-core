@@ -7,7 +7,11 @@ use crate::safe_gil::SafeGil;
 const TAG: &str = "OutputLoggerProviderBasePy";
 
 #[gen_stub_pyclass]
-#[pyclass(name = "OutputLoggerProviderBase", subclass)]
+#[pyclass(
+    name = "OutputLoggerProviderBase",
+    module = "statsig_python_core",
+    subclass
+)]
 #[derive(FromPyObject, Default)]
 pub struct OutputLoggerProviderBasePy {
     pub init_fn: Option<PyObject>,

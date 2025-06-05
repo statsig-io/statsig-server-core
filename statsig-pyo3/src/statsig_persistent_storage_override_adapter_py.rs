@@ -174,7 +174,11 @@ fn convert_py_dict_to_secondary_exposure(py_dict: &Bound<PyDict>) -> PyResult<Se
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "PersistentStorageBaseClass", subclass)]
+#[pyclass(
+    name = "PersistentStorageBaseClass",
+    module = "statsig_python_core",
+    subclass
+)]
 #[derive(FromPyObject, Default)]
 pub struct PersistentStorageBasePy {
     pub load_fn: Option<PyObject>,

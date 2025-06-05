@@ -26,7 +26,7 @@ use std::sync::{Arc, Mutex};
 const TAG: &str = stringify!(StatsigBasePy);
 
 #[gen_stub_pyclass]
-#[pyclass(subclass)]
+#[pyclass(module = "statsig_python_core", subclass)]
 pub struct StatsigBasePy {
     inner: Arc<Statsig>,
     observability_client: Mutex<Option<Arc<dyn ObservabilityClient>>>,

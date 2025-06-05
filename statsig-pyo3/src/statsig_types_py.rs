@@ -20,7 +20,7 @@ use crate::pyo_utils::{
 
 const TAG: &str = stringify!(StatsigTypesPy);
 #[gen_stub_pyclass]
-#[pyclass(name = "InitializeDetails")]
+#[pyclass(name = "InitializeDetails", module = "statsig_python_core")]
 pub struct InitializeDetailsPy {
     #[pyo3(get)]
     pub duration: f64,
@@ -71,7 +71,7 @@ impl InitializeDetailsPy {
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "FailureDetails")]
+#[pyclass(name = "FailureDetails", module = "statsig_python_core")]
 #[derive(Clone)]
 pub struct FailureDetailsPy {
     #[pyo3(get)]
@@ -90,7 +90,7 @@ impl From<FailureDetails> for FailureDetailsPy {
     }
 }
 #[gen_stub_pyclass]
-#[pyclass(name = "EvaluationDetails")]
+#[pyclass(name = "EvaluationDetails", module = "statsig_python_core")]
 #[derive(Clone)]
 pub struct EvaluationDetailsPy {
     #[pyo3(get)]
@@ -114,7 +114,7 @@ impl From<EvaluationDetails> for EvaluationDetailsPy {
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "FeatureGate")]
+#[pyclass(name = "FeatureGate", module = "statsig_python_core")]
 pub struct FeatureGatePy {
     #[pyo3(get)]
     pub name: String,
@@ -133,7 +133,7 @@ pub struct FeatureGatePy {
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "DynamicConfig")]
+#[pyclass(name = "DynamicConfig", module = "statsig_python_core")]
 pub struct DynamicConfigPy {
     #[pyo3(get)]
     pub name: String,
@@ -154,7 +154,7 @@ pub struct DynamicConfigPy {
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "Experiment")]
+#[pyclass(name = "Experiment", module = "statsig_python_core")]
 pub struct ExperimentPy {
     #[pyo3(get)]
     pub name: String,
@@ -178,7 +178,7 @@ pub struct ExperimentPy {
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "Layer")]
+#[pyclass(name = "Layer", module = "statsig_python_core")]
 pub struct LayerPy {
     #[pyo3(get)]
     pub name: String,
@@ -202,7 +202,7 @@ pub struct LayerPy {
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "ParameterStore")]
+#[pyclass(name = "ParameterStore", module = "statsig_python_core")]
 pub struct ParameterStorePy {
     #[pyo3(get)]
     pub name: String,
@@ -386,7 +386,7 @@ impl_get_methods!(ExperimentPy);
 impl_get_methods!(LayerPy);
 
 #[gen_stub_pyclass]
-#[pyclass(name = "FeatureGateEvaluationOptions")]
+#[pyclass(name = "FeatureGateEvaluationOptions", module = "statsig_python_core")]
 #[derive(FromPyObject)]
 pub struct FeatureGateEvaluationOptionsPy {
     #[pyo3(get)]
@@ -394,7 +394,10 @@ pub struct FeatureGateEvaluationOptionsPy {
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "DynamicConfigEvaluationOptions")]
+#[pyclass(
+    name = "DynamicConfigEvaluationOptions",
+    module = "statsig_python_core"
+)]
 #[derive(FromPyObject)]
 pub struct DynamicConfigEvaluationOptionsPy {
     #[pyo3(get)]
@@ -402,7 +405,7 @@ pub struct DynamicConfigEvaluationOptionsPy {
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "ExperimentEvaluationOptions")]
+#[pyclass(name = "ExperimentEvaluationOptions", module = "statsig_python_core")]
 #[derive(FromPyObject)]
 pub struct ExperimentEvaluationOptionsPy {
     #[pyo3(get)]
@@ -412,7 +415,7 @@ pub struct ExperimentEvaluationOptionsPy {
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "LayerEvaluationOptions")]
+#[pyclass(name = "LayerEvaluationOptions", module = "statsig_python_core")]
 #[derive(FromPyObject)]
 pub struct LayerEvaluationOptionsPy {
     #[pyo3(get)]
@@ -422,7 +425,10 @@ pub struct LayerEvaluationOptionsPy {
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "ParameterStoreEvaluationOptions")]
+#[pyclass(
+    name = "ParameterStoreEvaluationOptions",
+    module = "statsig_python_core"
+)]
 #[derive(FromPyObject)]
 pub struct ParameterStoreEvaluationOptionsPy {
     #[pyo3(get)]

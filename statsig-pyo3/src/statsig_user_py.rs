@@ -3,14 +3,15 @@ use crate::{
     valid_primitives_py::{ValidPrimitivesPy, ValidPrimitivesPyRef},
 };
 use pyo3::prelude::*;
+use pyo3::types::PyBytes;
 use pyo3_stub_gen::derive::*;
-use statsig_rust::{log_w, DynamicValue, StatsigUser};
-use std::{collections::HashMap, str};
+use statsig_rust::{log_e, log_w, DynamicValue, StatsigUser, StatsigUserData};
+use std::{collections::HashMap, str, sync::Arc};
 
 const TAG: &str = stringify!(StatsigUserPy);
 
 #[gen_stub_pyclass]
-#[pyclass(name = "StatsigUser")]
+#[pyclass(name = "StatsigUser", module = "statsig_python_core")]
 pub struct StatsigUserPy {
     pub inner: StatsigUser,
 }
@@ -209,6 +210,38 @@ impl StatsigUserPy {
         }
 
         self.inner.set_private_attributes(converted);
+    }
+
+    // ---------------------------------------- [Pickling]
+
+    pub fn __getstate__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {
+        let bytes = match self.inner.data.to_bytes() {
+            Some(bytes) => bytes,
+            None => {
+                log_e!(TAG, "Failed to serialize StatsigUser.");
+                vec![]
+            }
+        };
+
+        Ok(PyBytes::new(py, &bytes))
+    }
+
+    pub fn __setstate__(&mut self, state: Bound<'_, PyBytes>) -> PyResult<()> {
+        let bytes = state.as_bytes();
+        let user_data = match serde_json::from_slice::<StatsigUserData>(bytes) {
+            Ok(user_data) => user_data,
+            Err(e) => {
+                log_e!(TAG, "Failed to deserialize StatsigUser: {}", e);
+                StatsigUserData::default()
+            }
+        };
+
+        let inner = StatsigUser {
+            data: Arc::new(user_data),
+        };
+
+        *self = StatsigUserPy { inner };
+        Ok(())
     }
 }
 
