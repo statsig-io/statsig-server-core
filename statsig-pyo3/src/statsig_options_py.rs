@@ -1,13 +1,13 @@
 use crate::output_logger_provider_base_py::OutputLoggerProviderBasePy;
-use crate::pyo_utils::py_dict_to_map;
 use crate::statsig_persistent_storage_override_adapter_py::{
     PersistentStorageBasePy, StatsigPersistentStorageOverrideAdapter,
 };
+use crate::valid_primitives_py::ValidPrimitivesPy;
 use crate::{
     data_store_base_py::DataStoreBasePy, observability_client_base_py::ObservabilityClientBasePy,
 };
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList};
+use pyo3::types::PyList;
 use pyo3_stub_gen::derive::*;
 use statsig_rust::data_store_interface::DataStoreTrait;
 use statsig_rust::networking::proxy_config::ProxyConfig;
@@ -15,6 +15,7 @@ use statsig_rust::output_logger::OutputLogProvider;
 use statsig_rust::statsig_options::DEFAULT_INIT_TIMEOUT_MS;
 use statsig_rust::{log_w, ConfigCompressionMode, PersistentStorage, SpecAdapterConfig};
 use statsig_rust::{output_logger::LogLevel, ObservabilityClient, StatsigOptions};
+use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
 const TAG: &str = stringify!(StatsigOptionsPy);
@@ -142,7 +143,7 @@ pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub output_log_level: Option<String>,
     #[pyo3(get, set)]
-    pub global_custom_fields: Option<Py<PyDict>>,
+    pub global_custom_fields: Option<HashMap<String, ValidPrimitivesPy>>,
     #[pyo3(get, set)]
     pub observability_client: Option<Py<ObservabilityClientBasePy>>,
     #[pyo3(get, set)]
@@ -213,7 +214,7 @@ impl StatsigOptionsPy {
         fallback_to_statsig_api: Option<bool>,
         environment: Option<String>,
         output_log_level: Option<String>,
-        global_custom_fields: Option<Py<PyDict>>,
+        global_custom_fields: Option<HashMap<String, ValidPrimitivesPy>>,
         observability_client: Option<Py<ObservabilityClientBasePy>>,
         data_store: Option<Py<DataStoreBasePy>>,
         persistent_storage: Option<Py<PersistentStorageBasePy>>,
@@ -277,6 +278,16 @@ fn create_inner_statsig_options(
     opts: StatsigOptionsPy,
     ob_client_weak: Option<Weak<dyn ObservabilityClient>>,
 ) -> StatsigOptions {
+    let mut global_custom_fields = None;
+    if let Some(fields) = opts.global_custom_fields {
+        let converted = fields
+            .into_iter()
+            .map(|(k, v)| (k, v.into_dynamic_value()))
+            .collect();
+
+        global_custom_fields = Some(converted);
+    }
+
     StatsigOptions {
         specs_url: opts.specs_url.clone(),
         specs_adapter: None,
@@ -315,10 +326,7 @@ fn create_inner_statsig_options(
         service_name: None,
         wait_for_user_agent_init: opts.wait_for_user_agent_init,
         wait_for_country_lookup_init: opts.wait_for_user_agent_init,
-        global_custom_fields: opts
-            .global_custom_fields
-            .as_ref()
-            .map(|dict| py_dict_to_map(dict.bind(py))),
+        global_custom_fields,
         disable_network: opts.disable_network,
         disable_country_lookup: opts.disable_country_lookup,
         disable_user_agent_parsing: opts.disable_user_agent_parsing,

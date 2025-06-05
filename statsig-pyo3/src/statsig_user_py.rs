@@ -1,10 +1,11 @@
-use std::{str, sync::Arc};
-
-use crate::pyo_utils::py_dict_to_map;
+use crate::{
+    unit_id_py::UnitIdPy,
+    valid_primitives_py::{ValidPrimitivesPy, ValidPrimitivesPyRef},
+};
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
 use pyo3_stub_gen::derive::*;
-use statsig_rust::{log_w, user::user_data::UserData, DynamicValue, StatsigUser};
+use statsig_rust::{log_w, DynamicValue, StatsigUser};
+use std::{collections::HashMap, str};
 
 const TAG: &str = stringify!(StatsigUserPy);
 
@@ -12,34 +13,15 @@ const TAG: &str = stringify!(StatsigUserPy);
 #[pyclass(name = "StatsigUser")]
 pub struct StatsigUserPy {
     pub inner: StatsigUser,
-
-    #[pyo3(get, set)]
-    pub user_id: Option<String>,
-    #[pyo3(get, set)]
-    pub email: Option<String>,
-    #[pyo3(get, set)]
-    pub ip: Option<String>,
-    #[pyo3(get, set)]
-    pub country: Option<String>,
-    #[pyo3(get, set)]
-    pub locale: Option<String>,
-    #[pyo3(get, set)]
-    pub app_version: Option<String>,
-    #[pyo3(get, set)]
-    pub user_agent: Option<String>,
-    #[pyo3(get, set)]
-    pub custom: Option<Py<PyDict>>,
-    #[pyo3(get, set)]
-    pub custom_ids: Option<Py<PyDict>>,
-    #[pyo3(get, set)]
-    pub private_attributes: Option<Py<PyDict>>,
 }
 
 #[gen_stub_pymethods]
 #[pymethods]
 impl StatsigUserPy {
     #[new]
-    #[pyo3(signature = (user_id=None, email=None, ip=None, country=None, locale=None, app_version=None, user_agent=None, custom=None, custom_ids=None, private_attributes=None))]
+    #[pyo3(signature = (
+        user_id=None, email=None, ip=None, country=None, locale=None, app_version=None, user_agent=None, custom=None, custom_ids=None, private_attributes=None
+    ))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         user_id: Option<String>,
@@ -49,136 +31,199 @@ impl StatsigUserPy {
         locale: Option<String>,
         app_version: Option<String>,
         user_agent: Option<String>,
-        custom: Option<Py<PyDict>>,
-        custom_ids: Option<Py<PyDict>>,
-        private_attributes: Option<Py<PyDict>>,
-        py: Python,
+        custom: Option<HashMap<String, ValidPrimitivesPy>>,
+        custom_ids: Option<HashMap<String, UnitIdPy>>,
+        private_attributes: Option<HashMap<String, ValidPrimitivesPy>>,
     ) -> PyResult<Self> {
         if user_id.is_none() && custom_ids.is_none() {
             log_w!(TAG, "Either `user_id` or `custom_ids` must be provided.");
         }
 
-        let internal_user_id = user_id.clone().unwrap_or_default();
-        let mut user_data = UserData {
-            user_id: Some(DynamicValue::from(internal_user_id)),
-            ..UserData::default()
+        let internal_user_id = user_id.unwrap_or_default();
+        let mut user = StatsigUser::with_user_id(internal_user_id);
+
+        user.set_email(email);
+        user.set_ip(ip);
+        user.set_country(country);
+        user.set_locale(locale);
+        user.set_app_version(app_version);
+        user.set_user_agent(user_agent);
+
+        let mut instance = Self { inner: user };
+        instance.set_custom_ids(custom_ids);
+        instance.set_custom(custom);
+        instance.set_private_attributes(private_attributes);
+
+        Ok(instance)
+    }
+
+    // ---------------------------------------- [UserID]
+
+    #[getter]
+    fn get_user_id(&self) -> &str {
+        self.inner.get_user_id().unwrap_or_default()
+    }
+
+    #[setter]
+    fn set_user_id(&mut self, value: Option<String>) {
+        self.inner.set_user_id(value.unwrap_or_default());
+    }
+
+    // ---------------------------------------- [Email]
+
+    #[getter]
+    fn get_email(&self) -> Option<&str> {
+        self.inner.get_email()
+    }
+
+    #[setter]
+    fn set_email(&mut self, value: Option<String>) {
+        self.inner.set_email(value);
+    }
+
+    // ---------------------------------------- [IP]
+
+    #[getter]
+    fn get_ip(&self) -> Option<&str> {
+        self.inner.get_ip()
+    }
+
+    #[setter]
+    fn set_ip(&mut self, value: Option<String>) {
+        self.inner.set_ip(value);
+    }
+
+    // ---------------------------------------- [Country]
+
+    #[getter]
+    fn get_country(&self) -> Option<&str> {
+        self.inner.get_country()
+    }
+
+    #[setter]
+    fn set_country(&mut self, value: Option<String>) {
+        self.inner.set_country(value);
+    }
+
+    // ---------------------------------------- [Locale]
+
+    #[getter]
+    fn get_locale(&self) -> Option<&str> {
+        self.inner.get_locale()
+    }
+
+    #[setter]
+    fn set_locale(&mut self, value: Option<String>) {
+        self.inner.set_locale(value);
+    }
+
+    // ---------------------------------------- [App Version]
+
+    #[getter]
+    fn get_app_version(&self) -> Option<&str> {
+        self.inner.get_app_version()
+    }
+
+    #[setter]
+    fn set_app_version(&mut self, value: Option<String>) {
+        self.inner.set_app_version(value);
+    }
+
+    // ---------------------------------------- [User Agent]
+
+    #[getter]
+    fn get_user_agent(&self) -> Option<&str> {
+        self.inner.get_user_agent()
+    }
+
+    #[setter]
+    fn set_user_agent(&mut self, value: Option<String>) {
+        self.inner.set_user_agent(value);
+    }
+
+    // ---------------------------------------- [Custom IDs]
+
+    #[getter]
+    fn get_custom_ids(&self) -> Option<HashMap<&str, &str>> {
+        let value = self.inner.data.custom_ids.as_ref()?;
+
+        let mapped = value
+            .iter()
+            .map(|(k, v)| match &v.string_value {
+                Some(dv) => (k.as_str(), dv.value.as_str()),
+                None => (k.as_str(), ""),
+            })
+            .collect();
+
+        Some(mapped)
+    }
+
+    #[setter]
+    fn set_custom_ids(&mut self, value: Option<HashMap<String, UnitIdPy>>) {
+        let converted = match value {
+            Some(v) => v.into_iter().map(|(k, v)| (k, v.into_unit_id())).collect(),
+            None => HashMap::new(),
         };
+        self.inner.set_custom_ids(converted);
+    }
 
-        if let Some(e) = email.clone() {
-            user_data.email = Some(DynamicValue::from(e));
-        }
-        if let Some(i) = ip.clone() {
-            user_data.ip = Some(DynamicValue::from(i));
-        }
-        if let Some(c) = country.clone() {
-            user_data.country = Some(DynamicValue::from(c));
-        }
-        if let Some(l) = locale.clone() {
-            user_data.locale = Some(DynamicValue::from(l));
-        }
-        if let Some(a) = app_version.clone() {
-            user_data.app_version = Some(DynamicValue::from(a));
-        }
-        if let Some(u) = user_agent.clone() {
-            user_data.user_agent = Some(DynamicValue::from(u));
+    // ---------------------------------------- [Custom]
+
+    #[getter]
+    fn get_custom(&self) -> Option<HashMap<&str, Option<ValidPrimitivesPyRef>>> {
+        get_map_field_ref(&self.inner.data.custom)
+    }
+
+    #[setter]
+    fn set_custom(&mut self, value: Option<HashMap<String, ValidPrimitivesPy>>) {
+        let mut converted: Option<HashMap<String, DynamicValue>> = None;
+
+        if let Some(v) = value {
+            converted = Some(
+                v.into_iter()
+                    .map(|(k, v)| (k, v.into_dynamic_value()))
+                    .collect(),
+            );
         }
 
-        let custom_map = custom.as_ref().map(|dict| py_dict_to_map(dict.bind(py)));
-        let custom_ids_map = custom_ids
-            .as_ref()
-            .map(|dict| py_dict_to_map(dict.bind(py)));
-        let private_attributes_map = private_attributes
-            .as_ref()
-            .map(|dict| py_dict_to_map(dict.bind(py)));
+        self.inner.set_custom(converted);
+    }
 
-        user_data.custom = custom_map;
-        user_data.custom_ids = custom_ids_map;
-        user_data.private_attributes = private_attributes_map;
+    // ---------------------------------------- [Private Attributes]
 
-        Ok(Self {
-            inner: StatsigUser {
-                data: Arc::new(user_data),
-            },
-            user_id,
-            email,
-            ip,
-            country,
-            locale,
-            app_version,
-            user_agent,
-            custom,
-            custom_ids,
-            private_attributes,
+    #[getter]
+    fn get_private_attributes(&self) -> Option<HashMap<&str, Option<ValidPrimitivesPyRef>>> {
+        get_map_field_ref(&self.inner.data.private_attributes)
+    }
+
+    #[setter]
+    fn set_private_attributes(&mut self, value: Option<HashMap<String, ValidPrimitivesPy>>) {
+        let mut converted: Option<HashMap<String, DynamicValue>> = None;
+
+        if let Some(v) = value {
+            converted = Some(
+                v.into_iter()
+                    .map(|(k, v)| (k, v.into_dynamic_value()))
+                    .collect(),
+            );
+        }
+
+        self.inner.set_private_attributes(converted);
+    }
+}
+
+fn get_map_field_ref<'a>(
+    field: &'a Option<HashMap<String, DynamicValue>>,
+) -> Option<HashMap<&'a str, Option<ValidPrimitivesPyRef<'a>>>> {
+    let value = field.as_ref()?;
+
+    let mapped: HashMap<&'a str, Option<ValidPrimitivesPyRef<'a>>> = value
+        .iter()
+        .map(|(k, v)| {
+            let value = ValidPrimitivesPyRef::from_dynamic_value(v);
+            (k.as_str(), value)
         })
-    }
+        .collect();
 
-    fn __setattr__(&mut self, name: &str, value: PyObject, py: Python) -> PyResult<()> {
-        match name {
-            "user_id" => {
-                if let Ok(Some(user_id)) = value.extract::<Option<String>>(py) {
-                    self.user_id = Some(user_id.clone());
-                    self.inner.set_user_id(user_id);
-                }
-            }
-            "email" => {
-                if let Ok(v) = value.extract::<Option<String>>(py) {
-                    self.email = v.clone();
-                    self.inner.set_email(v);
-                }
-            }
-            "ip" => {
-                if let Ok(v) = value.extract::<Option<String>>(py) {
-                    self.ip = v.clone();
-                    self.inner.set_ip(v);
-                }
-            }
-            "country" => {
-                if let Ok(v) = value.extract::<Option<String>>(py) {
-                    self.country = v.clone();
-                    self.inner.set_country(v);
-                }
-            }
-            "locale" => {
-                if let Ok(v) = value.extract::<Option<String>>(py) {
-                    self.locale = v.clone();
-                    self.inner.set_locale(v);
-                }
-            }
-            "app_version" => {
-                if let Ok(v) = value.extract::<Option<String>>(py) {
-                    self.app_version = v.clone();
-                    self.inner.set_app_version(v);
-                }
-            }
-            "user_agent" => {
-                if let Ok(v) = value.extract::<Option<String>>(py) {
-                    self.user_agent = v.clone();
-                    self.inner.set_user_agent(v);
-                }
-            }
-            "custom_ids" => {
-                if let Ok(dict) = value.extract::<Option<Py<PyDict>>>(py) {
-                    let mut_data = Arc::make_mut(&mut self.inner.data);
-                    mut_data.custom_ids = dict.as_ref().map(|d| py_dict_to_map(d.bind(py)));
-                    self.custom_ids = dict;
-                }
-            }
-            "custom" => {
-                if let Ok(dict) = value.extract::<Option<Py<PyDict>>>(py) {
-                    let mut_data = Arc::make_mut(&mut self.inner.data);
-                    mut_data.custom = dict.as_ref().map(|d| py_dict_to_map(d.bind(py)));
-                    self.custom = dict;
-                }
-            }
-            "private_attributes" => {
-                if let Ok(dict) = value.extract::<Option<Py<PyDict>>>(py) {
-                    let mut_data = Arc::make_mut(&mut self.inner.data);
-                    mut_data.private_attributes = dict.as_ref().map(|d| py_dict_to_map(d.bind(py)));
-                    self.private_attributes = dict;
-                }
-            }
-            _ => (), // Ignore other attributes
-        }
-        Ok(())
-    }
+    Some(mapped)
 }

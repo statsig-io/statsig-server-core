@@ -10,6 +10,8 @@ mod statsig_options_py;
 mod statsig_persistent_storage_override_adapter_py;
 mod statsig_types_py;
 mod statsig_user_py;
+mod unit_id_py;
+mod valid_primitives_py;
 
 use pyo3::prelude::*;
 use pyo3_stub_gen::define_stub_info_gatherer;

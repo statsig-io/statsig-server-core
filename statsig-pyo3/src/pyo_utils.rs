@@ -8,30 +8,6 @@ use std::collections::HashMap;
 
 const TAG: &str = "PyoUtils";
 
-pub fn py_dict_to_map(dict: &Bound<PyDict>) -> HashMap<String, DynamicValue> {
-    let mut hashmap = HashMap::new();
-    for (key, value) in dict.iter() {
-        let key_str = match key.extract::<String>() {
-            Ok(k) => k,
-            Err(_) => {
-                log_e!(TAG, "Skipping entry: Key must be a string");
-                continue;
-            }
-        };
-
-        let value_json = match py_any_to_dynamic_value(&value) {
-            Ok(v) => v,
-            Err(_) => {
-                log_e!(TAG, "Skipping entry: Invalid value for key '{}'", key_str);
-                continue;
-            }
-        };
-
-        hashmap.insert(key_str, value_json);
-    }
-    hashmap
-}
-
 pub fn py_dict_to_json_value_map(dict: &Bound<PyDict>) -> HashMap<String, Value> {
     let mut hashmap = HashMap::new();
     for (key, value) in dict.iter() {
