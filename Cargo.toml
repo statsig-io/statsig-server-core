@@ -17,7 +17,7 @@ resolver = "2"
 exclude = [
     "examples/rust/sample-usage",
     "examples/rust/perf-monitor",
-    "examples/rust/perf-bench",
+    "examples/rust/mem-bench",
 ]
 
 [workspace.package]

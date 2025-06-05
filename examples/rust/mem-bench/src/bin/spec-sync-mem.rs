@@ -1,4 +1,4 @@
-use perf_bench::{
+use mem_bench::{
     noop_event_logging_adapter::NoopEventLoggingAdapter, static_specs_adapter::StaticSpecsAdapter,
 };
 use statsig_rust::{output_logger::LogLevel, Statsig, StatsigOptions, StatsigRuntime};

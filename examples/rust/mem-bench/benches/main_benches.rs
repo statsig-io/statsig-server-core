@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use perf_bench::noop_event_logging_adapter::NoopEventLoggingAdapter;
-use perf_bench::static_specs_adapter::StaticSpecsAdapter;
+use mem_bench::noop_event_logging_adapter::NoopEventLoggingAdapter;
+use mem_bench::static_specs_adapter::StaticSpecsAdapter;
 use statsig_rust::user::user_data::UserData;
 use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigUser};
 use std::collections::HashMap;

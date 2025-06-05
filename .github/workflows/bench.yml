@@ -21,14 +21,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Run Memory Benchmark
-        run: cd examples/rust/perf-bench && python3 run-memory-bench.py
+        run: cd examples/rust/mem-bench && python3 run-memory-bench.py
 
       - name: Store Memory Benchmark Result
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: Memory Benchmark
           tool: 'customSmallerIsBetter'
-          output-file-path: examples/rust/perf-bench/bench_results.json
+          output-file-path: examples/rust/mem-bench/bench_results.json
           github-token: ${{ secrets.STATSIG_CORE_SERVER_SDK_PAT }}
           auto-push: true
           # Show alert with commit comment on detecting possible memory regression
@@ -40,14 +40,14 @@ jobs:
           max-items-in-chart: 25
 
       - name: Run Performance Benchmark
-        run: cd examples/rust/perf-bench && cargo +nightly bench -- --output-format bencher | tee output.txt
+        run: cd examples/rust/mem-bench && cargo +nightly bench -- --output-format bencher | tee output.txt
 
       - name: Store Performance Benchmark Result
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: Performance Benchmark
           tool: 'cargo'
-          output-file-path: examples/rust/perf-bench/output.txt
+          output-file-path: examples/rust/mem-bench/output.txt
           github-token: ${{ secrets.STATSIG_CORE_SERVER_SDK_PAT }}
           auto-push: true
           # Show alert with commit comment on detecting possible performance regression

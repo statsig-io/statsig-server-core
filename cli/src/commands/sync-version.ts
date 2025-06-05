@@ -45,7 +45,7 @@ export class SyncVersion extends CommandBase {
     Log.stepBegin('Verifying Cargo Change');
     execSync('cargo update --workspace', { cwd: BASE_DIR });
     execSync('cargo check --workspace', {
-      cwd: path.join(BASE_DIR, 'examples/rust/perf-bench'),
+      cwd: path.join(BASE_DIR, 'examples/rust/mem-bench'),
     });
     Log.stepEnd('Cargo Change Verified');
 

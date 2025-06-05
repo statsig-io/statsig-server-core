@@ -1034,6 +1034,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
+name = "mem-bench"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "criterion",
+ "mimalloc",
+ "statsig-rust",
+ "tokio",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1147,17 +1158,6 @@ name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
-
-[[package]]
-name = "perf-bench"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "criterion",
- "mimalloc",
- "statsig-rust",
- "tokio",
-]
 
 [[package]]
 name = "pin-project-lite"
