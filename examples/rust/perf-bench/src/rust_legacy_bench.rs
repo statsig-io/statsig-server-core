@@ -43,7 +43,7 @@ fn log_benchmark(name: &str, version: &str, p99: f64, global_user: &StatsigUser)
         value: Some(json!(p99)),
         metadata: Some(HashMap::from([
             ("benchmarkName".to_string(), json!(name)),
-            ("sdkType".to_string(), json!("statsig-server-core-rust")),
+            ("sdkType".to_string(), json!("rust-server")),
             ("sdkVersion".to_string(), json!(version)),
         ])),
     };
