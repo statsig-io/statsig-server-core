@@ -89,7 +89,9 @@ export class Statsig extends StatsigNapiInternal {
   }
 
   private static _createErrorInstance(): Statsig {
-    return new Statsig('INVALID-KEY');
+    let dummyInstance = new Statsig('INVALID-KEY');
+    dummyInstance.shutdown();
+    return dummyInstance;
   }
 
   constructor(sdkKey: string, options?: StatsigOptions) {
