@@ -8,12 +8,11 @@ import (
 
 func TestStatsigInitializeWithDetails(t *testing.T) {
 
-	server := setupServer(testServerOptions{})
-	defer server.Close()
+	scrapiServer := serverSetup("eval_proj_dcs.json")
 
 	o := statsig.NewStatsigOptionsBuilder().
-		WithSpecsUrl(server.URL + "/v2/download_config_specs").
-		WithLogEventUrl(server.URL + "/v1/log_event").
+		WithSpecsUrl(scrapiServer.GetUrlForEndpoint("/v2/download_config_specs")).
+		WithLogEventUrl(scrapiServer.GetUrlForEndpoint("/v1/log_event")).
 		WithSpecsAdapterRef(12345).
 		WithEventLoggingAdapterRef(12345).
 		WithEnvironment("production").
@@ -22,7 +21,9 @@ func TestStatsigInitializeWithDetails(t *testing.T) {
 		WithSpecsSyncIntervalMs(1000).
 		WithOutputLogLevel("DEBUG").
 		Build()
-	s, _ := statsig.NewStatsig("secret-key", *o)
+
+	s, teardown := statsigSetup(t, o)
+	defer teardown()
 	res, _ := s.InitializeWithDetails()
 
 	if !res.IsConfigSpecReady {
@@ -53,16 +54,16 @@ func TestStatsigInitializeWithDetails(t *testing.T) {
 
 func TestStatsigInitializeWithDetailsFailure(t *testing.T) {
 
-	server := setupServer(testServerOptions{})
-	defer server.Close()
+	scrapiServer := serverSetup("eval_proj_dcs.json")
 
 	o := statsig.NewStatsigOptionsBuilder().
 		WithSpecsUrl("http://invalid.url").
-		WithLogEventUrl(server.URL + "/v1/log_event").
+		WithLogEventUrl(scrapiServer.GetUrlForEndpoint("/v1/log_event")).
 		WithOutputLogLevel("DEBUG").
 		Build()
 
-	s, _ := statsig.NewStatsig("secret-key", *o)
+	s, teardown := statsigSetup(t, o)
+	defer teardown()
 	res, _ := s.InitializeWithDetails()
 
 	if res.IsConfigSpecReady {

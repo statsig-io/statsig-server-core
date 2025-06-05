@@ -1,40 +1,31 @@
 package tests
 
 import (
-	"net/http/httptest"
 	"testing"
 
 	"github.com/statsig-io/private-statsig-server-core/statsig-go"
 )
 
-func CreateDynamicConfigOptions(server *httptest.Server) *statsig.StatsigOptions {
+func CreateDynamicConfigOptions(scrapiServer *MockScrapi) *statsig.StatsigOptions {
 	return statsig.NewStatsigOptionsBuilder().
-		WithSpecsUrl(server.URL + "/v2/download_config_specs").
-		WithLogEventUrl(server.URL + "/v1/log_event").
+		WithSpecsUrl(scrapiServer.GetUrlForEndpoint("/v2/download_config_specs")).
+		WithLogEventUrl(scrapiServer.GetUrlForEndpoint("/v1/log_event")).
 		WithOutputLogLevel("DEBUG").
 		Build()
 }
 
 func TestEnvironmentConfig(t *testing.T) {
-
 	user := statsig.NewStatsigUserBuilder().
 		WithUserID("a-user").Build()
 
-	events := []statsig.Event{}
+	scrapiServer := serverSetup("eval_proj_dcs.json")
 
-	server := setupServer(testServerOptions{
-		onLogEvent: func(newEvents []map[string]interface{}) {
-			for _, e := range newEvents {
-				events = append(events, convertToExposureEvent(e))
-			}
-		},
-	})
-	defer server.Close()
-	options := CreateDynamicConfigOptions(server)
+	o := CreateDynamicConfigOptions(scrapiServer)
+
+	s, teardown := statsigSetup(t, o)
+	defer teardown()
 
 	dynamicConfigOptions := &statsig.GetDynamicConfigOptions{DisableExposureLogging: false}
-	s, _ := statsig.NewStatsig("secret-key", *options)
-	s.Initialize()
 
 	dynamic_config := "test_environment_config"
 	dynamicConfig := s.GetDynamicConfig(*user, dynamic_config, dynamicConfigOptions)
@@ -74,29 +65,22 @@ func TestEnvironmentConfig(t *testing.T) {
 func TestDynamicConfigDisableExposureLoggingIsFalse(t *testing.T) {
 	user := statsig.NewStatsigUserBuilder().
 		WithUserID("a-user").Build()
-	events := []statsig.Event{}
 
-	server := setupServer(testServerOptions{
-		onLogEvent: func(newEvents []map[string]interface{}) {
-			for _, e := range newEvents {
-				events = append(events, convertToExposureEvent(e))
-			}
-		},
-	})
-	defer server.Close()
+	scrapiServer := serverSetup("eval_proj_dcs.json")
 
-	options := CreateDynamicConfigOptions(server)
+	o := CreateDynamicConfigOptions(scrapiServer)
+
+	s, teardown := statsigSetup(t, o)
+	defer teardown()
 
 	dynamicConfigOptions := &statsig.GetDynamicConfigOptions{DisableExposureLogging: false}
-	s, _ := statsig.NewStatsig("secret-key", *options)
-	s.Initialize()
 
 	dynamic_config := "test_environment_config"
 	_ = s.GetDynamicConfig(*user, dynamic_config, dynamicConfigOptions)
 
 	s.Shutdown()
 
-	if !checkEventNameExists(events, "statsig::config_exposure") {
+	if !checkEventNameExists(scrapiServer.fetchLoggedEvents(), "statsig::config_exposure") {
 		t.Errorf("Error occurred, config exposure event was not logged while disable exposure logging was set to false")
 	}
 
@@ -106,21 +90,14 @@ func TestDynamicConfigDisableExposureLoggingIsTrue(t *testing.T) {
 	user := statsig.NewStatsigUserBuilder().
 		WithUserID("a-user").Build()
 
-	events := []statsig.Event{}
+	scrapiServer := serverSetup("eval_proj_dcs.json")
 
-	server := setupServer(testServerOptions{
-		onLogEvent: func(newEvents []map[string]interface{}) {
-			for _, e := range newEvents {
-				events = append(events, convertToExposureEvent(e))
-			}
-		},
-	})
-	defer server.Close()
+	o := CreateDynamicConfigOptions(scrapiServer)
 
-	options := CreateDynamicConfigOptions(server)
+	s, teardown := statsigSetup(t, o)
+	defer teardown()
 
 	dynamicConfigOptions := &statsig.GetDynamicConfigOptions{DisableExposureLogging: true}
-	s, _ := statsig.NewStatsig("secret-key", *options)
 	s.Initialize()
 
 	dynamic_config := "test_environment_config"
@@ -128,7 +105,7 @@ func TestDynamicConfigDisableExposureLoggingIsTrue(t *testing.T) {
 
 	s.Shutdown()
 
-	if checkEventNameExists(events, "statsig::config_exposure") {
+	if checkEventNameExists(scrapiServer.fetchLoggedEvents(), "statsig::config_exposure") {
 		t.Errorf("Error occurred, config exposure event was logged while disable exposure logging was set to true")
 	}
 

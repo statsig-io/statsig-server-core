@@ -6,12 +6,13 @@ import (
 	"github.com/statsig-io/private-statsig-server-core/statsig-go"
 )
 
-func TestStatsigShutdown(t *testing.T) {
-	server := setupServer(testServerOptions{})
+func TestStatsigInitialize(t *testing.T) {
+
+	scrapiServer := serverSetup("eval_proj_dcs.json")
 
 	o := statsig.NewStatsigOptionsBuilder().
-		WithSpecsUrl(server.URL + "/v2/download_config_specs").
-		WithLogEventUrl(server.URL + "/v1/log_event").
+		WithSpecsUrl(scrapiServer.GetUrlForEndpoint("/v2/download_config_specs")).
+		WithLogEventUrl(scrapiServer.GetUrlForEndpoint("/v1/log_event")).
 		WithSpecsAdapterRef(12345).
 		WithEventLoggingAdapterRef(12345).
 		WithEnvironment("production").
@@ -20,10 +21,9 @@ func TestStatsigShutdown(t *testing.T) {
 		WithSpecsSyncIntervalMs(1000).
 		WithOutputLogLevel("DEBUG").
 		Build()
-	s, _ := statsig.NewStatsig("secret-key", *o)
 
-	s.Initialize()
+	_, teardown := statsigSetup(t, o)
 
-	s.Shutdown()
+	defer teardown()
 
 }
