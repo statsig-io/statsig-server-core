@@ -17,31 +17,14 @@ dependencies {
     implementation 'com.statsig:javacore:+:linux-gnu-x86_64'
 }
 
-
-tasks.register('run_core', JavaExec) {
-    group = 'application'
-    description = 'Run JavaCoreBench.java'
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'JavaCoreBench'
-
-    dependsOn write_versions
-}
-
-tasks.register('run_legacy', JavaExec) {
-    group = 'application'
-    description = 'Run JavaLegacyBench.java'
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'JavaLegacyBench'
-
-    dependsOn write_versions
-}
+def isRelease = project.hasProperty('release')
 
 tasks.register('write_versions') {
     def versionsFile = file("$buildDir/versions.properties")
     versionsFile.parentFile.mkdirs()
-    
+
     def props = new Properties()
-    
+
     configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts.each { artifact ->
         if (artifact.moduleVersion.id.group == 'com.statsig' && artifact.moduleVersion.id.name == 'javacore') {
             props.setProperty('core.version', artifact.moduleVersion.id.version)
@@ -51,9 +34,34 @@ tasks.register('write_versions') {
             props.setProperty('legacy.version', artifact.moduleVersion.id.version)
         }
     }
-    
+
     versionsFile.withWriter { writer ->
         props.store(writer, 'Dependency versions')
     }
 }
 
+tasks.register('run_core', JavaExec) {
+    group = 'application'
+    description = 'Run JavaCoreBench.java'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'JavaCoreBench'
+    dependsOn write_versions
+
+    if (isRelease) {
+        jvmArgs += ['-XX:+TieredCompilation', '-XX:+AggressiveOpts']
+        environment 'JAVA_TOOL_OPTIONS', '-XX:+UseG1GC -Xms512m -Xmx2g'
+    }
+}
+
+tasks.register('run_legacy', JavaExec) {
+    group = 'application'
+    description = 'Run JavaLegacyBench.java'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'JavaLegacyBench'
+    dependsOn write_versions
+
+    if (isRelease) {
+        jvmArgs += ['-XX:+TieredCompilation', '-XX:+AggressiveOpts']
+        environment 'JAVA_TOOL_OPTIONS', '-XX:+UseG1GC -Xms512m -Xmx2g'
+    }
+}

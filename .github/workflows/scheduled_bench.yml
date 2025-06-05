@@ -60,8 +60,8 @@ jobs:
       - name: Run Java Bench
         working-directory: examples/java/perf-bench
         run: |
-          ./gradlew run_core
-          ./gradlew run_legacy
+          ./gradlew run_core -Prelease
+          ./gradlew run_legacy -Prelease
 
   php-bench:
     runs-on: ubuntu-latest
