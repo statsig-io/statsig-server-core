@@ -83,52 +83,52 @@ pub async fn main() {
     // Check Gate
     let p99 = run_bench(|| {
         let user = make_random_user();
-        statsig.check_gate(&user, "test_public");
+        let _ = statsig.check_gate(&user, "test_public");
     });
     results.insert("check_gate", p99);
 
     // Check Gate Global User
     let p99 = run_bench(|| {
-        statsig.check_gate(&global_user, "test_public");
+        let _ = statsig.check_gate(&global_user, "test_public");
     });
     results.insert("check_gate_global_user", p99);
 
     // Get Feature Gate
     let p99 = run_bench(|| {
         let user = make_random_user();
-        statsig.get_feature_gate(&user, "test_public");
+        let _ = statsig.get_feature_gate(&user, "test_public");
     });
     results.insert("get_feature_gate", p99);
 
     // Get Feature Gate Global User
     let p99 = run_bench(|| {
-        statsig.get_feature_gate(&global_user, "test_public");
+        let _ = statsig.get_feature_gate(&global_user, "test_public");
     });
     results.insert("get_feature_gate_global_user", p99);
 
     // Get Experiment
     let p99 = run_bench(|| {
         let user = make_random_user();
-        statsig.get_experiment(&user, "an_experiment");
+        let _ = statsig.get_experiment(&user, "an_experiment");
     });
     results.insert("get_experiment", p99);
 
     // Get Experiment Global User
     let p99 = run_bench(|| {
-        statsig.get_experiment(&global_user, "an_experiment");
+        let _ = statsig.get_experiment(&global_user, "an_experiment");
     });
     results.insert("get_experiment_global_user", p99);
 
     // Get Client Initialize Response
     let p99 = run_bench(|| {
         let user = make_random_user();
-        statsig.get_client_init_response(&user);
+        let _ = statsig.get_client_init_response(&user);
     });
     results.insert("get_client_initialize_response", p99);
 
     // Get Client Initialize Response Global User
     let p99 = run_bench(|| {
-        statsig.get_client_init_response(&global_user);
+        let _ = statsig.get_client_init_response(&global_user);
     });
     results.insert("get_client_initialize_response_global_user", p99);
 

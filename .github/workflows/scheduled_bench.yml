@@ -90,6 +90,11 @@ jobs:
 
   rust-bench:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        bin: [legacy_bench, core_bench]
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -102,6 +107,4 @@ jobs:
       - name: Run Rust Bench
         working-directory: examples/rust/perf-bench
         run: |
-          cargo run --release --bin core_bench
-
-        # cargo run --release --bin legacy_bench
+          cargo run --release --bin ${{ matrix.bin }}

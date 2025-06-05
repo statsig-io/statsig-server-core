@@ -8,6 +8,11 @@ tokio = { version = "1.39.1", features = ["full"] }
 statsig = "*"
 statsig-rust = "*"
 rand = "0.8"
+serde = { version = "1.0.204", features = ["derive"] }
+serde_json = { version = "1.0.125", features = [
+    "float_roundtrip",
+    "raw_value",
+] }
 
 [build-dependencies]
 built = { version = "0.4", features = ["git2"] }

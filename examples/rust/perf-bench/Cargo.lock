@@ -1169,6 +1169,8 @@ version = "0.0.0"
 dependencies = [
  "built",
  "rand 0.8.5",
+ "serde",
+ "serde_json",
  "statsig",
  "statsig-rust",
  "tokio",
