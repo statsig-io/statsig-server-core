@@ -1,0 +1,21 @@
+[package]
+name = "perf-bench"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+tokio = { version = "1.39.1", features = ["full"] }
+statsig = "*"
+statsig-rust = "*"
+rand = "0.8"
+
+[build-dependencies]
+built = { version = "0.4", features = ["git2"] }
+
+[[bin]]
+name = "core_bench"
+path = "src/rust_core_bench.rs"
+
+[[bin]]
+name = "legacy_bench"
+path = "src/rust_legacy_bench.rs"

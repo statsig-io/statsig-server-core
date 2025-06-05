@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '*/30 * * * *'
+  push:
   
 env:
   PERF_SDK_KEY: ${{ secrets.PERF_SDK_KEY }}
@@ -86,3 +87,21 @@ jobs:
           composer update
           rm -rf vendor/statsig/statsig-php-core
           php src/PhpLegacyBench.php
+
+  rust-bench:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run Rust Bench
+        working-directory: examples/rust/perf-bench
+        run: |
+          cargo run --release --bin core_bench
+
+        # cargo run --release --bin legacy_bench

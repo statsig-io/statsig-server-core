@@ -18,6 +18,7 @@ exclude = [
     "examples/rust/sample-usage",
     "examples/rust/perf-monitor",
     "examples/rust/mem-bench",
+    "examples/rust/perf-bench",
 ]
 
 [workspace.package]
