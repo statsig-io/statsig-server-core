@@ -112,6 +112,8 @@ export declare function __internal__testDataStore(store: DataStore, path: string
 
 export declare function __internal__testObservabilityClient(client: ObservabilityClient, action: string, metricName: string, value: number, tags?: Record<string, string> | undefined | null): Promise<void>
 
+export declare function __internal__testPersistentStorage(store: PersistentStorage, action: string, key?: string | undefined | null, configName?: string | undefined | null, data?: any | undefined | null): Promise<Record<string, string> | null>
+
 export interface ClientInitResponseOptions {
   hashAlgorithm?: string
   clientSdkKey?: string
@@ -189,6 +191,12 @@ export declare const enum OverrideAdapterType {
 
 export interface ParameterStoreEvaluationOptions {
   disableExposureLogging?: boolean
+}
+
+export interface PersistentStorage {
+  load: (key: string) => Record<string, StickyValues> | null
+  save: (key: string, config_name: string, data: StickyValues) => void
+  delete: (key: string, config_name: string) => void
 }
 
 export interface ProxyConfig {
