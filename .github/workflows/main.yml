@@ -162,6 +162,7 @@ jobs:
       - name: Setup Statsig Node
         run: |
           cd ./artifacts/statsig-node/build
+          ls -al
           pnpm install
 
       - name: Run Verification

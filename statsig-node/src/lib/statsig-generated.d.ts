@@ -194,7 +194,7 @@ export interface ParameterStoreEvaluationOptions {
 }
 
 export interface PersistentStorage {
-  load: (key: string) => Record<string, StickyValues> | null
+  load: (key: string) => UserPersistedValues | null
   save: (key: string, config_name: string, data: StickyValues) => void
   delete: (key: string, config_name: string) => void
 }

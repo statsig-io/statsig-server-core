@@ -17,18 +17,15 @@ import { PublisherOptions } from './publisher-options.js';
   - FILE_GLOB_PATTERN : DESTINATION_FILE_NAME
  */
 const DIR_STRUCTURE = {
+  // ------------------------------------------------------------ [Main Package]
+
   main: {
     'macos-aarch64-apple-darwin-node/**/package.json': 'package.json',
-    'macos-aarch64-apple-darwin-node/**/index.d.ts': 'index.d.ts',
-    'macos-aarch64-apple-darwin-node/**/index.js': 'index.js',
-    'macos-aarch64-apple-darwin-node/**/statsig-generated.js':
-      'statsig-generated.js',
-    'macos-aarch64-apple-darwin-node/**/statsig-generated.d.ts':
-      'statsig-generated.d.ts',
-    'macos-aarch64-apple-darwin-node/**/error_boundary.d.ts':
-      'error-boundary.d.ts',
-    'macos-aarch64-apple-darwin-node/**/error_boundary.js': 'error_boundary.js',
+    'macos-aarch64-apple-darwin-node/**/*.d.ts': '.',
+    'macos-aarch64-apple-darwin-node/**/*.js': '.',
   },
+
+  // ------------------------------------------------------------ [Platform Specific]
   'aarch64-apple-darwin': {
     'macos-aarch64-apple-darwin-node/**/aarch64-apple-darwin.package.json':
       'package.json',
@@ -151,21 +148,23 @@ function alignNodePackage(options: PublisherOptions, distDir: string) {
 
     let allFilesMoved = true;
     Object.entries(files).forEach(([source, destination]) => {
-      const file = listFiles(options.workingDir, source);
-      if (file.length !== 1) {
+      const files = listFiles(options.workingDir, source);
+      if (files.length !== 1 && destination !== '.') {
         allFilesMoved = false;
         Log.stepProgress(
-          `Multiple files matched for ${source}, expected 1, found ${file.length}`,
+          `Multiple files matched for ${source}, expected 1, found ${files.length}`,
           'failure',
         );
         return;
       }
 
-      const sourcePath = file[0];
-      const destinationPath = path.resolve(platformDir, destination);
-      execSync(`cp ${sourcePath} ${destinationPath}`);
+      for (const file of files) {
+        const sourcePath = file;
+        const destinationPath = path.resolve(platformDir, destination);
+        execSync(`cp ${sourcePath} ${destinationPath}`);
 
-      Log.stepProgress(`Copied ${source} to ${platform}/${destination}`);
+        Log.stepProgress(`Copied ${source} to ${platform}/${destination}`);
+      }
     });
 
     if (!allFilesMoved) {
