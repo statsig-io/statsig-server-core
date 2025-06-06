@@ -33,7 +33,7 @@ public class StatsigUser {
     }
   }
 
-  protected StatsigUser(Builder builder) {
+  protected StatsigUser(StatsigUserBuilder builder) {
     this.userID = builder.userID;
     this.customIDs = builder.customIDs;
     this.email = builder.email;
@@ -122,70 +122,9 @@ public class StatsigUser {
   }
 
   // Builder Class
-  public static class Builder {
-    public String userID;
-    public Map<String, String> customIDs;
-    public String email;
-    public String ip;
-    public String locale;
-    public String appVersion;
-    public String userAgent;
-    public String country;
-    public Map<String, String> privateAttributes;
-    public Map<String, Object> custom;
-
-    public Builder setUserID(String userID) {
-      this.userID = userID;
-      return this;
-    }
-
-    public Builder setCustomIDs(Map<String, String> customIDs) {
-      this.customIDs = customIDs;
-      return this;
-    }
-
-    public Builder setEmail(String email) {
-      this.email = email;
-      return this;
-    }
-
-    public Builder setIp(String ip) {
-      this.ip = ip;
-      return this;
-    }
-
-    public Builder setLocale(String locale) {
-      this.locale = locale;
-      return this;
-    }
-
-    public Builder setAppVersion(String appVersion) {
-      this.appVersion = appVersion;
-      return this;
-    }
-
-    public Builder setUserAgent(String userAgent) {
-      this.userAgent = userAgent;
-      return this;
-    }
-
-    public Builder setCountry(String country) {
-      this.country = country;
-      return this;
-    }
-
-    public Builder setPrivateAttributes(Map<String, String> privateAttributes) {
-      this.privateAttributes = privateAttributes;
-      return this;
-    }
-
-    public Builder setCustom(Map<String, Object> custom) {
-      this.custom = custom;
-      return this;
-    }
-
-    public StatsigUser build() {
-      return new StatsigUser(this);
+  public static class Builder extends StatsigUserBuilder {
+    public Builder() {
+      super();
     }
   }
 }

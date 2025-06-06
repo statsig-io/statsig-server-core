@@ -15,8 +15,15 @@ import { CommandBase } from './command_base.js';
 const TEST_COMMANDS: Record<string, string> = {
   java: [
     'cargo build -p statsig_ffi',
+
+    'rm -rf statsig-java/src/main/resources/native',
+
     'mkdir -p statsig-java/src/main/resources/native/linux-gnu-x86_64',
-    'cp target/debug/libstatsig_ffi.so statsig-java/src/main/resources/native/linux-gnu-x86_64',
+    'cp target/debug/libstatsig_ffi.so statsig-java/src/main/resources/native/linux-gnu-x86_64 || true',
+
+    'mkdir -p statsig-java/src/main/resources/native/macos-arm64',
+    'cp target/debug/libstatsig_ffi.dylib statsig-java/src/main/resources/native/macos-arm64 || true',
+
     'cd statsig-java',
     './gradlew test --rerun-tasks --console rich',
   ].join(' && '),
@@ -110,7 +117,7 @@ function runTests(lang: string, options: Options) {
   const dockerImageTag = getDockerImageTag(options.os, options.arch);
 
   Log.title(`Running tests for ${lang}`);
-  process.env.STATSIG_RUNNING_TESTS = "1";
+  process.env.STATSIG_RUNNING_TESTS = '1';
   const dockerCommand = [
     'docker run --rm',
     `--platform ${docker}`,

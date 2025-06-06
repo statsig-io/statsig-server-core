@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 
 public class PerformanceTest {
 
-  // no-op
   @Test
   public void test() throws ExecutionException, InterruptedException {
     StatsigOptions options =
