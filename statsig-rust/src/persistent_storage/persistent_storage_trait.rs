@@ -1,13 +1,14 @@
 use std::{collections::HashMap, sync::Weak};
 
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 
 use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::evaluation_types::BaseEvaluation;
 use crate::event_logging::event_logger::EventLogger;
 use crate::event_logging::exposable_string::ExposableString;
+use crate::log_e;
 use crate::{
     evaluation::evaluation_types::{ExperimentEvaluation, LayerEvaluation},
     statsig_type_factories::{extract_from_experiment_evaluation, make_layer},
@@ -37,6 +38,8 @@ pub fn get_persistent_storage_key(user: &StatsigUserInternal, id_type: &String) 
     })
 }
 
+const TAG: &str = "PersistentStorageTrait";
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct StickyValues {
     pub value: bool,
@@ -47,8 +50,38 @@ pub struct StickyValues {
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
     pub config_delegate: Option<String>,
     pub explicit_parameters: Option<Vec<String>>,
+    #[serde(deserialize_with = "deserialize_safe_timestamp")]
     pub time: Option<u64>,
     pub config_version: Option<u32>,
+}
+
+fn deserialize_safe_timestamp<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Value::deserialize(deserializer)?;
+
+    if value.is_null() {
+        return Ok(None);
+    }
+
+    if let Value::Number(num) = value {
+        if let Some(timestamp) = num.as_u64() {
+            return Ok(Some(timestamp));
+        }
+
+        if let Some(timestamp) = num.as_i64() {
+            return Ok(Some(timestamp as u64));
+        }
+
+        if let Some(timestamp) = num.as_f64() {
+            return Ok(Some(timestamp as u64));
+        }
+    }
+
+    log_e!(TAG, "Non-numeric 'timestamp' field");
+
+    Ok(None)
 }
 
 pub fn make_layer_from_sticky_value(
