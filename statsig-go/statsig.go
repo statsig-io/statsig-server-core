@@ -169,6 +169,30 @@ func (s *Statsig) GetExperiment(user StatsigUser, experimentName string, experim
 	return experiment
 }
 
+func (s *Statsig) GetLayer(user StatsigUser, layerName string, layerOptions *GetLayerOptions) Layer {
+
+	var layer Layer
+
+	if layerOptions == nil {
+		layerOptions = &GetLayerOptions{}
+	}
+
+	layerJson := C.statsig_get_layer(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(layerName), C.CString(utils.ConvertDataToJson(layerOptions)))
+
+	if layerJson != nil {
+		err := json.Unmarshal([]byte(C.GoString(layerJson)), &layer)
+		if err != nil {
+			return Layer{}
+		}
+
+		layer.setStatsigInstance(s)
+		layer.setDisableExposureLogging(layerOptions != nil && layerOptions.DisableExposureLogging)
+	}
+
+	return layer
+
+}
+
 func (s *Statsig) FlushEventsBlocking() {
 	C.statsig_flush_events_blocking(C.ulonglong(s.InnerRef))
 }
