@@ -132,3 +132,43 @@ func (s *Statsig) GetDynamicConfig(user StatsigUser, configName string, dynamicC
 
 	return dynamicConfig
 }
+
+func (s *Statsig) GetExperiment(user StatsigUser, experimentName string, experimentOptions *GetExperimentOptions) Experiment {
+	var experiment Experiment
+	var secondaryExposures []SecondaryExposure
+
+	if experimentOptions == nil {
+		experimentOptions = &GetExperimentOptions{}
+	}
+
+	experimentJson := C.statsig_get_experiment(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(experimentName), C.CString(utils.ConvertDataToJson(experimentOptions)))
+
+	if experimentJson != nil {
+
+		var combinedRes struct {
+			Experiment
+			Evaluation map[string]interface{} `json:"__evaluation"`
+		}
+
+		err := json.Unmarshal([]byte(C.GoString(experimentJson)), &combinedRes)
+		if err != nil {
+			return Experiment{}
+		}
+
+		experiment = combinedRes.Experiment
+		evaluation := combinedRes.Evaluation
+
+		val, _ := json.Marshal(evaluation["secondary_exposures"])
+		err = json.Unmarshal(val, &secondaryExposures)
+
+		if err == nil {
+			experiment.SecondaryExposures = secondaryExposures
+		}
+
+	}
+	return experiment
+}
+
+func (s *Statsig) FlushEventsBlocking() {
+	C.statsig_flush_events_blocking(C.ulonglong(s.InnerRef))
+}
