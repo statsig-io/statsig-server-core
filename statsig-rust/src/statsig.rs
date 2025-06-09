@@ -1273,7 +1273,7 @@ impl Statsig {
     pub fn get_feature_gate_list(&self) -> Vec<String> {
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
-                self.ops_stats.clone(),
+                &self.ops_stats,
                 TAG,
                 StatsigErr::LockFailure(
                     "Failed to acquire read lock for spec store data".to_string()
@@ -1288,7 +1288,7 @@ impl Statsig {
     pub fn get_dynamic_config_list(&self) -> Vec<String> {
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
-                self.ops_stats.clone(),
+                &self.ops_stats,
                 TAG,
                 StatsigErr::LockFailure(
                     "Failed to acquire read lock for spec store data".to_string()
@@ -1305,7 +1305,7 @@ impl Statsig {
     pub fn get_experiment_list(&self) -> Vec<String> {
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
-                self.ops_stats.clone(),
+                &self.ops_stats,
                 TAG,
                 StatsigErr::LockFailure(
                     "Failed to acquire read lock for spec store data".to_string()
@@ -1319,10 +1319,27 @@ impl Statsig {
             .unperformant_keys_entity_filter("experiment")
     }
 
+    pub fn get_autotune_list(&self) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return vec![];
+        });
+
+        data.values
+            .dynamic_configs
+            .unperformant_keys_entity_filter("autotune")
+    }
+
     pub fn get_parameter_store_list(&self) -> Vec<String> {
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
-                self.ops_stats.clone(),
+                &self.ops_stats,
                 TAG,
                 StatsigErr::LockFailure(
                     "Failed to acquire read lock for spec store data".to_string()
@@ -1335,6 +1352,21 @@ impl Statsig {
             Some(param_stores) => param_stores.keys().cloned().collect(),
             None => vec![],
         }
+    }
+
+    pub fn get_layer_list(&self) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return vec![];
+        });
+
+        data.values.layer_configs.unperformant_keys()
     }
 }
 
