@@ -10,7 +10,7 @@ import tempfile
 import json
 
 
-def post_metrics(sdk_type, sdk_version, cpu_p99, mem_p99):
+def post_metrics(sdk_type, sdk_version, cpu_p99, mem_p99_bytes):
     events = [
         {
             "eventName": "sdk_benchmark",
@@ -25,7 +25,7 @@ def post_metrics(sdk_type, sdk_version, cpu_p99, mem_p99):
         },
         {
             "eventName": "sdk_benchmark",
-            "value": mem_p99,
+            "value": mem_p99_bytes,
             "user": {"userID": "gh_profiler"},
             "time": round(time.time() * 1000),
             "metadata": {
@@ -93,6 +93,7 @@ def run_and_monitor(command, interval=0.5):
 
     cpu_p99 = np.percentile(cpu_samples, 99)
     mem_p99 = np.percentile(mem_samples, 99)
+    mem_p99_bytes = mem_p99 * 1024 * 1024
 
     bench_metadata = read_result_file(tmp_path)
 
@@ -105,7 +106,7 @@ def run_and_monitor(command, interval=0.5):
         bench_metadata["sdk_type"],
         bench_metadata["sdk_version"],
         cpu_p99,
-        mem_p99,
+        mem_p99_bytes,
     )
 
 
