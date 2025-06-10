@@ -8,8 +8,14 @@ from statsig_python_core import (
     StatsigOptions,
 )
 from importlib.metadata import version
+import json
 
+sdk_type = "statsig-server-core-python"
 sdk_version = version("statsig-python-core")
+
+metadata_file = os.environ.get("BENCH_METADATA_FILE")
+with open(metadata_file, "w") as f:
+    json.dump({"sdk_type": sdk_type, "sdk_version": sdk_version}, f)
 
 statsig = Statsig(os.getenv("PERF_SDK_KEY"))
 statsig.initialize().wait()
@@ -33,7 +39,7 @@ def log_benchmark(name, p99):
         p99,
         {
             "benchmarkName": name,
-            "sdkType": "statsig-server-core-python",
+            "sdkType": sdk_type,
             "sdkVersion": sdk_version,
         },
     )

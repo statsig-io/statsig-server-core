@@ -1,8 +1,19 @@
+import fs from 'node:fs';
 import Statsig, { StatsigUser } from 'statsig-node';
 import { version } from 'statsig-node/package.json';
 
 const key = process.env.PERF_SDK_KEY!;
 const sdkVersion = version;
+const sdkType = 'statsig-node';
+
+const metadataFile = process.env.BENCH_METADATA_FILE!;
+fs.writeFileSync(
+  metadataFile,
+  JSON.stringify({
+    sdk_type: sdkType,
+    sdk_version: sdkVersion,
+  }),
+);
 
 await Statsig.initialize(key);
 
@@ -45,7 +56,7 @@ const logBenchmark = (name: string, p99: number) => {
 
   Statsig.logEvent(globalUser, 'sdk_benchmark', p99, {
     benchmarkName: name,
-    sdkType: 'statsig-node',
+    sdkType,
     sdkVersion,
   });
 };

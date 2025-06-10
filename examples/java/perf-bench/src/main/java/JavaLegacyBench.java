@@ -9,6 +9,7 @@ public class JavaLegacyBench {
     private static final StatsigUser globalUser = new StatsigUser("global_user");
     private static Map<String, Double> results = new HashMap<>();
     private static Random random = new Random();
+    private static String sdk_type = "java-server";
 
     public static void main(String[] args) throws Exception {
         String key = System.getenv("PERF_SDK_KEY");
@@ -17,6 +18,11 @@ public class JavaLegacyBench {
         Properties props = new Properties();
         props.load(new FileInputStream("build/versions.properties"));
         String version = props.getProperty("legacy.version", "unknown");
+
+        String metadataFile = System.getenv("BENCH_METADATA_FILE");
+        try (FileWriter writer = new FileWriter(metadataFile)) {
+            writer.write(String.format("{\"sdk_type\": \"%s\", \"sdk_version\": \"%s\"}", sdk_type, version));
+        }
 
         System.out.println("Statsig Java Legacy (v" + version + ")");
         System.out.println("--------------------------------");

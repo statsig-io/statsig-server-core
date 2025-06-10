@@ -9,6 +9,7 @@ public class JavaCoreBench {
     private static final StatsigUser globalUser = new StatsigUser.Builder().setUserID("global_user").build();
     private static Map<String, Double> results = new HashMap<>();
     private static Random random = new Random();
+    private static String sdk_type = "statsig-server-core-java";
 
     public static void main(String[] args) throws Exception {
         String key = System.getenv("PERF_SDK_KEY");
@@ -18,6 +19,11 @@ public class JavaCoreBench {
         Properties props = new Properties();
         props.load(new FileInputStream("build/versions.properties"));
         String version = props.getProperty("core.version", "unknown");
+
+        String metadataFile = System.getenv("BENCH_METADATA_FILE");
+        try (FileWriter writer = new FileWriter(metadataFile)) {
+            writer.write(String.format("{\"sdk_type\": \"%s\", \"sdk_version\": \"%s\"}", sdk_type, version));
+        }
 
         System.out.println("Statsig Java Core (v" + version + ")");
         System.out.println("--------------------------------");
@@ -76,7 +82,7 @@ public class JavaCoreBench {
             p99,
             Map.of(
                 "benchmarkName", name,
-                "sdkType", "statsig-server-core-java",
+                "sdkType", sdk_type,
                 "sdkVersion", version
             )
         );

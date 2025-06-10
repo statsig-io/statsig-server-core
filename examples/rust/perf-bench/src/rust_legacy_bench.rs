@@ -2,9 +2,10 @@ use rand::Rng;
 use serde_json::{json, Value};
 use statsig::{Statsig, StatsigEvent, StatsigUser};
 use std::collections::HashMap;
-use std::env;
 use std::time::Instant;
+use std::{env, fs};
 
+const SDK_TYPE: &str = "rust-server";
 const ITERATIONS: usize = 100_000;
 
 fn make_random_user() -> StatsigUser {
@@ -43,7 +44,7 @@ fn log_benchmark(name: &str, version: &str, p99: f64, global_user: &StatsigUser)
         value: Some(json!(p99)),
         metadata: Some(HashMap::from([
             ("benchmarkName".to_string(), json!(name)),
-            ("sdkType".to_string(), json!("rust-server")),
+            ("sdkType".to_string(), json!(SDK_TYPE)),
             ("sdkVersion".to_string(), json!(version)),
         ])),
     };
@@ -64,6 +65,14 @@ pub async fn main() {
         .find(|(name, _)| *name == "statsig")
         .map(|(_, version)| *version)
         .unwrap_or("unknown");
+
+    let metadata_file = env::var("BENCH_METADATA_FILE").expect("BENCH_METADATA_FILE must be set");
+    let metadata = HashMap::from([
+        ("sdk_type".to_string(), SDK_TYPE.to_string()),
+        ("sdk_version".to_string(), statsig_version.to_string()),
+    ]);
+    let metadata_json = serde_json::to_string(&metadata).unwrap();
+    fs::write(metadata_file, metadata_json).unwrap();
 
     let key = env::var("PERF_SDK_KEY").expect("PERF_SDK_KEY must be set");
     if let Some(err) = Statsig::initialize(&key).await {

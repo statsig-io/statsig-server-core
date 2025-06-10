@@ -1,12 +1,14 @@
 name: Scheduled SDK Benchmark
 
 on:
+  push:
   workflow_dispatch:
   schedule:
     - cron: '*/30 * * * *'
   
 env:
   PERF_SDK_KEY: ${{ secrets.PERF_SDK_KEY }}
+  CAPTURE: python $GITHUB_WORKSPACE/.github/benchmark_capture.py
 
 jobs:
   node-bench:
@@ -23,8 +25,11 @@ jobs:
       - name: Run Node Core Bench
         working-directory: examples/node/perf-bench
         run: |
+          pip install psutil numpy
+          
           npm install
-          npm run bench
+          eval ${{ env.CAPTURE }} npm run bench:core
+          eval ${{ env.CAPTURE }} npm run bench:legacy
 
   python-bench:
     runs-on: ubuntu-latest
@@ -40,9 +45,9 @@ jobs:
       - name: Run Python Bench
         working-directory: examples/python/perf-bench
         run: |
-          pip install -r requirements.txt
-          python python-core-bench.py
-          python python-legacy-bench.py
+          pip install psutil -r requirements.txt
+          eval ${{ env.CAPTURE }} python python-core-bench.py
+          eval ${{ env.CAPTURE }} python python-legacy-bench.py
 
   java-bench:
     runs-on: ubuntu-latest
@@ -59,8 +64,9 @@ jobs:
       - name: Run Java Bench
         working-directory: examples/java/perf-bench
         run: |
-          ./gradlew run_core -Prelease
-          ./gradlew run_legacy -Prelease
+          pip install psutil numpy
+          eval ${{ env.CAPTURE }} ./gradlew run_core -Prelease
+          eval ${{ env.CAPTURE }} ./gradlew run_legacy -Prelease
 
   php-bench:
     runs-on: ubuntu-latest
@@ -79,13 +85,15 @@ jobs:
         working-directory: examples/php/perf-bench
         # We remove the opposite SDK to avoid namespace conflicts
         run: |
+          pip install psutil numpy
+          
           composer update
           rm -rf vendor/statsig/statsigsdk
-          php src/PhpCoreBench.php
+          eval ${{ env.CAPTURE }} php src/PhpCoreBench.php
 
           composer update
           rm -rf vendor/statsig/statsig-php-core
-          php src/PhpLegacyBench.php
+          eval ${{ env.CAPTURE }} php src/PhpLegacyBench.php
 
   rust-bench:
     runs-on: ubuntu-latest
@@ -101,8 +109,10 @@ jobs:
       - name: Run Rust Bench
         working-directory: examples/rust/perf-bench
         run: |
-          cargo run --release --bin core_bench
-          cargo run --release --bin legacy_bench
+          pip install psutil numpy
+          
+          eval ${{ env.CAPTURE }} cargo run --release --bin core_bench
+          eval ${{ env.CAPTURE }} cargo run --release --bin legacy_bench
 
   ruby-bench:
     runs-on: ubuntu-latest
@@ -118,7 +128,9 @@ jobs:
       - name: Run Ruby Bench
         working-directory: examples/ruby/perf-bench
         run: |
+          pip install psutil numpy
+          
           bundle update
-          bundle exec ruby ruby-legacy-bench.rb
-        # bundle exec ruby ruby-core-bench.rb
+          eval ${{ env.CAPTURE }} bundle exec ruby ruby-legacy-bench.rb
+        # eval ${{ env.CAPTURE }} bundle exec ruby ruby-core-bench.rb
 

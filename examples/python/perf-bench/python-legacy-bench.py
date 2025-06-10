@@ -3,10 +3,16 @@ import time
 import numpy as np
 import random
 from statsig import statsig, StatsigUser, StatsigEvent
-
+import json
 from importlib.metadata import version
 
 sdk_version = version("statsig")
+sdk_type = "py-server"
+
+metadata_file = os.environ.get("BENCH_METADATA_FILE")
+with open(metadata_file, "w") as f:
+    json.dump({"sdk_type": sdk_type, "sdk_version": sdk_version}, f)
+
 
 statsig.initialize(os.getenv("PERF_SDK_KEY"))
 
@@ -29,7 +35,7 @@ def log_benchmark(name, p99):
         value=p99,
         metadata={
             "benchmarkName": name,
-            "sdkType": "py-server",
+            "sdkType": sdk_type,
             "sdkVersion": sdk_version,
         },
     )

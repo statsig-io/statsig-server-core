@@ -46,7 +46,16 @@ foreach ($installedPackages['packages'] as $package) {
     }
 }
 
-echo "Statsig PHP Legacy (v" . ($statsigCoreVersion ?? 'unknown') . ")\n";
+$sdkType = 'php-server';
+$sdkVersion = $statsigCoreVersion ?? 'unknown';
+
+$metadataFile = getenv("BENCH_METADATA_FILE");
+file_put_contents($metadataFile, json_encode([
+    'sdk_type' => $sdkType,
+    'sdk_version' => $sdkVersion,
+]));
+
+echo "Statsig PHP Legacy (v" . ($sdkVersion) . ")\n";
 echo "--------------------------------\n";
 
 $key = getenv("PERF_SDK_KEY");
@@ -103,15 +112,15 @@ function logBenchmark($name, $p99)
         return;
     }
 
-    global $statsig, $globalUser, $statsigCoreVersion;
+    global $statsig, $globalUser, $sdkType, $sdkVersion;
 
     $event = new StatsigEvent("sdk_benchmark");
     $event->setUser($globalUser);
     $event->setValue($p99);
     $event->setMetadata([
         'benchmarkName' => $name,
-        'sdkType' => 'php-server',
-        'sdkVersion' => $statsigCoreVersion
+        'sdkType' => $sdkType,
+        'sdkVersion' => $sdkVersion
     ]);
 
     $statsig->logEvent($event);

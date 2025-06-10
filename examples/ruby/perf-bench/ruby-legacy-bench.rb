@@ -4,7 +4,15 @@ require 'benchmark'
 
 Statsig.initialize( ENV['PERF_SDK_KEY'])
 
+SDK_TYPE = 'ruby-server'
 SDK_VERSION = Gem.loaded_specs['statsig'].version.to_s
+
+METADATA_FILE = ENV['BENCH_METADATA_FILE']
+File.write(METADATA_FILE, {
+  sdk_type: SDK_TYPE,
+  sdk_version: SDK_VERSION
+}.to_json)
+
 ITERATIONS = 100
 GLOBAL_USER = StatsigUser.new(user_id: "global_user")
 
@@ -23,7 +31,7 @@ def log_benchmark(name, p99)
     p99,
     {
       "benchmarkName" => name,
-      "sdkType" => "ruby-server",
+      "sdkType" => SDK_TYPE,
       "sdkVersion" => SDK_VERSION
     }
   )

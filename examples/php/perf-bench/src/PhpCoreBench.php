@@ -16,7 +16,16 @@ foreach ($installedPackages['packages'] as $package) {
     }
 }
 
-echo "Statsig PHP Core (v" . ($statsigCoreVersion ?? 'unknown') . ")\n";
+$sdkType = 'statsig-server-core-php';
+$sdkVersion = $statsigCoreVersion ?? 'unknown';
+
+$metadataFile = getenv("BENCH_METADATA_FILE");
+file_put_contents($metadataFile, json_encode([
+    'sdk_type' => $sdkType,
+    'sdk_version' => $sdkVersion,
+]));
+
+echo "Statsig PHP Core (v" . ($sdkVersion) . ")\n";
 echo "--------------------------------\n";
 
 $key = getenv("PERF_SDK_KEY");
@@ -59,14 +68,14 @@ function logBenchmark($name, $p99)
         return;
     }
 
-    global $statsig, $globalUser, $statsigCoreVersion;
+    global $statsig, $globalUser, $sdkType, $sdkVersion;
     $statsig->logEvent(new StatsigEventData(
         "sdk_benchmark",
         $p99,
         [
             'benchmarkName' => $name,
-            'sdkType' => 'statsig-server-core-php',
-            'sdkVersion' => $statsigCoreVersion
+            'sdkType' => $sdkType,
+            'sdkVersion' => $sdkVersion
         ]
     ), $globalUser);
 }
