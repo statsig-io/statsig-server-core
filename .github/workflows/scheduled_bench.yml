@@ -1,7 +1,6 @@
 name: Scheduled SDK Benchmark
 
 on:
-  push:
   workflow_dispatch:
   schedule:
     - cron: '*/30 * * * *'
