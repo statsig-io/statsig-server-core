@@ -7,15 +7,15 @@ namespace Statsig
     /// </summary>
     public class StatsigOptions : IDisposable
     {
-        private unsafe byte* _ref;
-        internal unsafe byte* Reference => _ref;
+        private unsafe ulong _ref;
+        internal unsafe ulong Reference => _ref;
 
         public StatsigOptions()
         {
             NativeLibraryLoader.EnsureLoaded();
             unsafe
             {
-                _ref = StatsigFFI.statsig_options_create(null, null, null);
+                _ref = StatsigFFI.statsig_options_create(null, null, 0, 0, null, -1, -1, -1, null, -1, -1, -1, -1);
             }
         }
 
@@ -32,16 +32,7 @@ namespace Statsig
 
         protected virtual void Dispose(bool disposing)
         {
-            unsafe
-            {
-                if (_ref == null)
-                {
-                    return;
-                }
-
-                StatsigFFI.statsig_options_release(_ref);
-                _ref = null;
-            }
+            StatsigFFI.statsig_options_release(_ref);
         }
     }
 }

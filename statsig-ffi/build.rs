@@ -32,6 +32,10 @@ fn run_csharp_bindgen() {
         .csharp_class_name("StatsigFFI")
         .csharp_namespace("Statsig")
         .csharp_dll_name("libstatsig_ffi")
+        .csharp_type_rename(|rust_type_name| match rust_type_name.as_str() {
+            "SafeOptBool" => "int".into(),
+            _ => rust_type_name,
+        })
         .generate_csharp_file("../statsig-dotnet/dotnet-statsig/StatsigFFI.g.cs")
         .unwrap();
 }

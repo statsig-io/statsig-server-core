@@ -5,9 +5,9 @@ namespace Statsig
 {
     public class StatsigUser : IDisposable
     {
-        private unsafe byte* _ref;
+        private unsafe ulong _ref;
 
-        internal unsafe byte* Reference => _ref;
+        internal unsafe ulong Reference => _ref;
 
         public StatsigUser(string userId, string email)
         {
@@ -40,10 +40,6 @@ namespace Statsig
         {
             unsafe
             {
-                if (_ref == null)
-                {
-                    return;
-                }
                 StatsigFFI.statsig_user_release(_ref);
             }
         }

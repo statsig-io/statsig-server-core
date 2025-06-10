@@ -8,7 +8,7 @@ namespace Statsig
 {
     public class Statsig : IDisposable
     {
-        private unsafe byte* _statsigRef;
+        private unsafe ulong _statsigRef;
 
         public Statsig(string sdkKey, StatsigOptions options)
         {
@@ -50,8 +50,8 @@ namespace Statsig
             {
                 fixed (byte* gateNamePtr = gateNameBytes)
                 {
-                    return StatsigFFI.statsig_check_gate(_statsigRef, user.Reference, gateNamePtr);
-                }    
+                    return StatsigFFI.statsig_check_gate(_statsigRef, user.Reference, gateNamePtr, null);
+                }
             }
         }
 
@@ -63,28 +63,28 @@ namespace Statsig
                 fixed (byte* experimentNamePtr = experimentNameBytes)
                 {
                     var jsonStringPtr =
-                        StatsigFFI.statsig_get_experiment(_statsigRef, user.Reference, experimentNamePtr);
+                        StatsigFFI.statsig_get_experiment(_statsigRef, user.Reference, experimentNamePtr, null);
                     var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
                     return JsonConvert.DeserializeObject<Experiment>(jsonString);
                 }
             }
         }
-        
+
         public string GetClientInitializeResponse(StatsigUser user)
         {
             unsafe
             {
-                if (_statsigRef == null)
+                if (_statsigRef == 0)
                 {
                     Console.WriteLine("Failed to get statsig ref");
                 }
 
-                if (user.Reference == null)
+                if (user.Reference == 0)
                 {
                     Console.WriteLine("Failed to get user reference");
                 }
 
-                return StatsigUtils.ReadStringFromPointer(StatsigFFI.statsig_get_client_init_response(_statsigRef, user.Reference));
+                return StatsigUtils.ReadStringFromPointer(StatsigFFI.statsig_get_client_init_response(_statsigRef, user.Reference, null));
             }
         }
 
@@ -98,7 +98,7 @@ namespace Statsig
         {
             unsafe
             {
-                if (_statsigRef == null)
+                if (_statsigRef == 0)
                 {
                     return;
                 }
