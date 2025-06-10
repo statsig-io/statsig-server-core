@@ -152,6 +152,9 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
                 case ~/.*linux.*/:
                     nativeLib = "libstatsig_ffi.so"
                     break
+                case ~/.*centos.*/:
+                    nativeLib = "libstatsig_ffi.so"
+                    break
                 default:
                     nativeLib = null
             }
@@ -189,7 +192,7 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
 createStatsigJar('aarch64-apple-darwin', 'macos-arm64')
 // todo: add support for these platforms
 // createStatsigJar('aarch64-pc-windows-msvc', 'windows-arm64')
-// createStatsigJar('centos7-x86_64', 'centos7-x86_64')
+createStatsigJar('centos7-x86_64', 'centos7-x86_64')
 createStatsigJar('amazonlinux2-arm64', 'amazonlinux2-arm64')
 createStatsigJar('amazonlinux2-x86_64', 'amazonlinux2-x86_64')
 createStatsigJar('amazonlinux2023-arm64', 'amazonlinux2023-arm64')
@@ -205,7 +208,7 @@ createStatsigJar('x86_64-pc-windows-msvc', 'windows-x86_64')
 def expectedTasks = [
     'aarch64-apple-darwinJar',
     // 'aarch64-pc-windows-msvcJar',
-    // 'centos7-x86_64Jar',
+    'centos7-x86_64Jar',
     'amazonlinux2-arm64Jar',
     'amazonlinux2-x86_64Jar',
     'amazonlinux2023-arm64Jar',
