@@ -13,7 +13,9 @@ File.write(METADATA_FILE, {
   sdk_version: SDK_VERSION
 }.to_json)
 
-ITERATIONS = 100
+CORE_ITER = 100_000
+GCIR_ITER = 1000
+
 GLOBAL_USER = StatsigUser.new(user_id: "global_user")
 
 RESULTS = {}
@@ -41,10 +43,10 @@ def make_random_user
   StatsigUser.new(user_id: "user_#{rand(1_000_000)}")
 end
 
-def benchmark(&block)
+def benchmark(iterations, &block)
   durations = []
   
-  ITERATIONS.times do
+  iterations.times do
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     block.call
     end_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -58,7 +60,7 @@ def benchmark(&block)
 end
 
 def run_check_gate
-  p99 = benchmark do
+  p99 = benchmark(CORE_ITER) do
     user = make_random_user
     Statsig.check_gate(user, "test_public")
   end
@@ -66,7 +68,7 @@ def run_check_gate
 end
 
 def run_check_gate_global_user
-  p99 = benchmark do
+  p99 = benchmark(CORE_ITER) do
     Statsig.check_gate(GLOBAL_USER, "test_public")
   end
   RESULTS["check_gate_global_user"] = p99
@@ -89,7 +91,7 @@ end
 # end
 
 def run_get_experiment
-  p99 = benchmark do
+  p99 = benchmark(CORE_ITER) do
     user = make_random_user
     Statsig.get_experiment(user, "an_experiment")
   end
@@ -97,14 +99,14 @@ def run_get_experiment
 end
 
 def run_get_experiment_global_user
-  p99 = benchmark do
+  p99 = benchmark(CORE_ITER) do
     Statsig.get_experiment(GLOBAL_USER, "an_experiment")
   end
   RESULTS["get_experiment_global_user"] = p99
 end
 
 def run_get_client_initialize_response
-  p99 = benchmark do
+  p99 = benchmark(GCIR_ITER) do
     user = make_random_user
     Statsig.get_client_initialize_response(user)
   end
@@ -112,7 +114,7 @@ def run_get_client_initialize_response
 end
 
 def run_get_client_initialize_response_global_user
-  p99 = benchmark do
+  p99 = benchmark(GCIR_ITER) do
     Statsig.get_client_initialize_response(GLOBAL_USER)
   end
   RESULTS["get_client_initialize_response_global_user"] = p99

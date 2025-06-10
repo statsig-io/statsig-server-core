@@ -5,7 +5,8 @@ import java.util.concurrent.*;
 import java.io.*;
 
 public class JavaCoreBench {
-    private static final int ITERATIONS = 100_000;
+    private static final int CORE_ITER = 100_000;
+    private static final int GCIR_ITER = 1000;
     private static final StatsigUser globalUser = new StatsigUser.Builder().setUserID("global_user").build();
     private static Map<String, Double> results = new HashMap<>();
     private static Random random = new Random();
@@ -51,10 +52,10 @@ public class JavaCoreBench {
             .build();
     }
 
-    private static double benchmark(Runnable action) {
+    private static double benchmark(int iterations, Runnable action) {
         List<Double> durations = new ArrayList<>();
         
-        for (int i = 0; i < ITERATIONS; i++) {
+        for (int i = 0; i < iterations; i++) {
             long start = System.nanoTime();
 
             action.run();
@@ -64,7 +65,7 @@ public class JavaCoreBench {
         }
 
         Collections.sort(durations);
-        int p99Index = (int) (ITERATIONS * 0.99);
+        int p99Index = (int) (iterations * 0.99);
         return durations.get(p99Index);
     }
 
@@ -89,7 +90,7 @@ public class JavaCoreBench {
     }
 
     private static void runCheckGate(Statsig statsig) {
-        double p99 = benchmark(() -> {
+        double p99 = benchmark(CORE_ITER, () -> {
             StatsigUser user = makeRandomUser();
             if (!statsig.checkGate(user, "test_public")) {
                 throw new RuntimeException("Gate check failed");
@@ -99,14 +100,14 @@ public class JavaCoreBench {
     }
 
     private static void runCheckGateGlobalUser(Statsig statsig) {
-        double p99 = benchmark(() -> {
+        double p99 = benchmark(CORE_ITER, () -> {
             statsig.checkGate(globalUser, "test_public");
         });
         results.put("check_gate_global_user", p99);
     }
 
     private static void runGetFeatureGate(Statsig statsig) {
-        double p99 = benchmark(() -> {
+        double p99 = benchmark(CORE_ITER, () -> {
             StatsigUser user = makeRandomUser();
             statsig.getFeatureGate(user, "test_public");
         });
@@ -114,14 +115,14 @@ public class JavaCoreBench {
     }
 
     private static void runGetFeatureGateGlobalUser(Statsig statsig) {
-        double p99 = benchmark(() -> {
+        double p99 = benchmark(CORE_ITER, () -> {
             statsig.getFeatureGate(globalUser, "test_public");
         });
         results.put("get_feature_gate_global_user", p99);
     }
 
     private static void runGetExperiment(Statsig statsig) {
-        double p99 = benchmark(() -> {
+        double p99 = benchmark(CORE_ITER, () -> {
             StatsigUser user = makeRandomUser();
             statsig.getExperiment(user, "an_experiment");
         });
@@ -129,14 +130,14 @@ public class JavaCoreBench {
     }
 
     private static void runGetExperimentGlobalUser(Statsig statsig) {
-        double p99 = benchmark(() -> {
+        double p99 = benchmark(CORE_ITER, () -> {
             statsig.getExperiment(globalUser, "an_experiment");
         });
         results.put("get_experiment_global_user", p99);
     }
 
     private static void runGetClientInitializeResponse(Statsig statsig) {
-        double p99 = benchmark(() -> {
+        double p99 = benchmark(GCIR_ITER, () -> {
             StatsigUser user = makeRandomUser();
             statsig.getClientInitializeResponse(user);
         });
@@ -144,7 +145,7 @@ public class JavaCoreBench {
     }
 
     private static void runGetClientInitializeResponseGlobalUser(Statsig statsig) {
-        double p99 = benchmark(() -> {
+        double p99 = benchmark(GCIR_ITER, () -> {
             statsig.getClientInitializeResponse(globalUser);
         });
         results.put("get_client_initialize_response_global_user", p99);

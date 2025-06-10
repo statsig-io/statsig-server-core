@@ -4,7 +4,8 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use std::{env, fs};
 
-const ITERATIONS: usize = 100_000;
+const CORE_ITER: usize = 100_000;
+const GCIR_ITER: usize = 1000;
 const SDK_TYPE: &str = "statsig-server-core-rust";
 
 fn make_random_user() -> StatsigUser {
@@ -12,13 +13,13 @@ fn make_random_user() -> StatsigUser {
     StatsigUser::with_user_id(format!("user_{}", rng.gen::<u32>()))
 }
 
-pub fn run_bench<F>(func: F) -> f64
+pub fn run_bench<F>(iterations: usize, func: F) -> f64
 where
     F: Fn() -> (),
 {
-    let mut durations = Vec::with_capacity(ITERATIONS);
+    let mut durations = Vec::with_capacity(iterations);
 
-    for _ in 0..ITERATIONS {
+    for _ in 0..iterations {
         let start = Instant::now();
         func();
         let duration = start.elapsed();
@@ -26,7 +27,7 @@ where
     }
 
     durations.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    let p99_index = (ITERATIONS as f64 * 0.99) as usize;
+    let p99_index = (iterations as f64 * 0.99) as usize;
     durations[p99_index]
 }
 
@@ -87,53 +88,53 @@ pub async fn main() {
     println!("--------------------------------");
 
     // Check Gate
-    let p99 = run_bench(|| {
+    let p99 = run_bench(CORE_ITER, || {
         let user = make_random_user();
         let _ = statsig.check_gate(&user, "test_public");
     });
     results.insert("check_gate", p99);
 
     // Check Gate Global User
-    let p99 = run_bench(|| {
+    let p99 = run_bench(CORE_ITER, || {
         let _ = statsig.check_gate(&global_user, "test_public");
     });
     results.insert("check_gate_global_user", p99);
 
     // Get Feature Gate
-    let p99 = run_bench(|| {
+    let p99 = run_bench(CORE_ITER, || {
         let user = make_random_user();
         let _ = statsig.get_feature_gate(&user, "test_public");
     });
     results.insert("get_feature_gate", p99);
 
     // Get Feature Gate Global User
-    let p99 = run_bench(|| {
+    let p99 = run_bench(CORE_ITER, || {
         let _ = statsig.get_feature_gate(&global_user, "test_public");
     });
     results.insert("get_feature_gate_global_user", p99);
 
     // Get Experiment
-    let p99 = run_bench(|| {
+    let p99 = run_bench(CORE_ITER, || {
         let user = make_random_user();
         let _ = statsig.get_experiment(&user, "an_experiment");
     });
     results.insert("get_experiment", p99);
 
     // Get Experiment Global User
-    let p99 = run_bench(|| {
+    let p99 = run_bench(CORE_ITER, || {
         let _ = statsig.get_experiment(&global_user, "an_experiment");
     });
     results.insert("get_experiment_global_user", p99);
 
     // Get Client Initialize Response
-    let p99 = run_bench(|| {
+    let p99 = run_bench(GCIR_ITER, || {
         let user = make_random_user();
         let _ = statsig.get_client_init_response(&user);
     });
     results.insert("get_client_initialize_response", p99);
 
     // Get Client Initialize Response Global User
-    let p99 = run_bench(|| {
+    let p99 = run_bench(GCIR_ITER, || {
         let _ = statsig.get_client_init_response(&global_user);
     });
     results.insert("get_client_initialize_response_global_user", p99);

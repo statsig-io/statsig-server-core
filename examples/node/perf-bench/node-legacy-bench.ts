@@ -17,7 +17,9 @@ fs.writeFileSync(
 
 await Statsig.initialize(key);
 
-const iterations = 100_000;
+const CORE_ITER = 100_000;
+const GCIR_ITER = 1000;
+
 const globalUser: StatsigUser = {
   userID: 'global_user',
 };
@@ -30,7 +32,7 @@ const makeRandomUser = () => {
   };
 };
 
-const benchmark = (func: () => void | Promise<void>) => {
+const benchmark = (iterations: number, func: () => void | Promise<void>) => {
   const durations: number[] = [];
 
   for (let i = 0; i < iterations; i++) {
@@ -62,56 +64,56 @@ const logBenchmark = (name: string, p99: number) => {
 };
 
 const runCheckGate = () => {
-  const p99 = benchmark(() => {
+  const p99 = benchmark(CORE_ITER, () => {
     Statsig.checkGate(makeRandomUser(), 'test_public');
   });
   results['check_gate'] = p99;
 };
 
 const runCheckGateGlobalUser = () => {
-  const p99 = benchmark(() => {
+  const p99 = benchmark(CORE_ITER, () => {
     Statsig.checkGate(globalUser, 'test_public');
   });
   results['check_gate_global_user'] = p99;
 };
 
 const runGetFeatureGate = () => {
-  const p99 = benchmark(() => {
+  const p99 = benchmark(CORE_ITER, () => {
     Statsig.getFeatureGate(makeRandomUser(), 'test_public');
   });
   results['get_feature_gate'] = p99;
 };
 
 const runGetFeatureGateGlobalUser = () => {
-  const p99 = benchmark(() => {
+  const p99 = benchmark(CORE_ITER, () => {
     Statsig.getFeatureGate(globalUser, 'test_public');
   });
   results['get_feature_gate_global_user'] = p99;
 };
 
 const runGetExperiment = () => {
-  const p99 = benchmark(() => {
+  const p99 = benchmark(CORE_ITER, () => {
     Statsig.getExperiment(makeRandomUser(), 'an_experiment');
   });
   results['get_experiment'] = p99;
 };
 
 const runGetExperimentGlobalUser = () => {
-  const p99 = benchmark(() => {
+  const p99 = benchmark(CORE_ITER, () => {
     Statsig.getExperiment(globalUser, 'an_experiment');
   });
   results['get_experiment_global_user'] = p99;
 };
 
 const runGetClientInitializeResponse = () => {
-  const p99 = benchmark(() => {
+  const p99 = benchmark(GCIR_ITER, () => {
     Statsig.getClientInitializeResponse(makeRandomUser());
   });
   results['get_client_initialize_response'] = p99;
 };
 
 const runGetClientInitializeResponseGlobalUser = () => {
-  const p99 = benchmark(() => {
+  const p99 = benchmark(GCIR_ITER, () => {
     Statsig.getClientInitializeResponse(globalUser);
   });
   results['get_client_initialize_response_global_user'] = p99;

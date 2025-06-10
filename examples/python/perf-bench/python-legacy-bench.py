@@ -16,7 +16,9 @@ with open(metadata_file, "w") as f:
 
 statsig.initialize(os.getenv("PERF_SDK_KEY"))
 
-iterations = 100_000
+CORE_ITER = 100_000
+GCIR_ITER = 1000
+
 global_user = StatsigUser(user_id="global_user")
 
 results = {}
@@ -46,7 +48,7 @@ def make_random_user():
     return StatsigUser(user_id=f"user_{random.randint(0, 1000000)}")
 
 
-def benchmark(func):
+def benchmark(iterations, func):
     durations = []
 
     for _ in range(iterations):
@@ -63,7 +65,7 @@ def run_check_gate():
         user = make_random_user()
         statsig.check_gate(user, "test_public")
 
-    p99 = benchmark(action)
+    p99 = benchmark(CORE_ITER, action)
     results["check_gate"] = p99
 
 
@@ -71,7 +73,7 @@ def run_check_gate_global_user():
     def action():
         statsig.check_gate(global_user, "test_public")
 
-    p99 = benchmark(action)
+    p99 = benchmark(CORE_ITER, action)
     results["check_gate_global_user"] = p99
 
 
@@ -80,7 +82,7 @@ def run_get_feature_gate():
         user = make_random_user()
         statsig.get_feature_gate(user, "test_public")
 
-    p99 = benchmark(action)
+    p99 = benchmark(CORE_ITER, action)
     results["get_feature_gate"] = p99
 
 
@@ -88,7 +90,7 @@ def run_get_feature_gate_global_user():
     def action():
         statsig.get_feature_gate(global_user, "test_public")
 
-    p99 = benchmark(action)
+    p99 = benchmark(CORE_ITER, action)
     results["get_feature_gate_global_user"] = p99
 
 
@@ -97,7 +99,7 @@ def run_get_experiment():
         user = make_random_user()
         statsig.get_experiment(user, "an_experiment")
 
-    p99 = benchmark(action)
+    p99 = benchmark(CORE_ITER, action)
     results["get_experiment"] = p99
 
 
@@ -105,7 +107,7 @@ def run_get_experiment_global_user():
     def action():
         statsig.get_experiment(global_user, "an_experiment")
 
-    p99 = benchmark(action)
+    p99 = benchmark(CORE_ITER, action)
     results["get_experiment_global_user"] = p99
 
 
@@ -114,7 +116,7 @@ def run_get_client_initialize_response():
         user = make_random_user()
         statsig.get_client_initialize_response(user)
 
-    p99 = benchmark(action)
+    p99 = benchmark(GCIR_ITER, action)
     results["get_client_initialize_response"] = p99
 
 
@@ -122,7 +124,7 @@ def run_get_client_initialize_response_global_user():
     def action():
         statsig.get_client_initialize_response(global_user)
 
-    p99 = benchmark(action)
+    p99 = benchmark(GCIR_ITER, action)
     results["get_client_initialize_response_global_user"] = p99
 
 
