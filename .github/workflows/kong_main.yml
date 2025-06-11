@@ -18,6 +18,7 @@ concurrency:
 
 jobs:
   cache:
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - name: Clone Kong Repo

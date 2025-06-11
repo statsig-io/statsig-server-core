@@ -150,6 +150,7 @@ jobs:
   node-verify:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/common-setup
@@ -180,6 +181,7 @@ jobs:
   python-verify:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/common-setup
@@ -208,6 +210,7 @@ jobs:
   size-report:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/common-setup
@@ -232,6 +235,7 @@ jobs:
     needs: build
     if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

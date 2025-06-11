@@ -12,6 +12,7 @@ jobs:
   # ------------------------------------------------------------ [ Clippy ]
   clippy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -34,6 +35,7 @@ jobs:
   # ------------------------------------------------------------ [ Rust Format ]
   rust-format:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -54,6 +56,7 @@ jobs:
   # ------------------------------------------------------------ [ PHP Code Sniffer ]
   php-code-sniffer:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -71,6 +74,7 @@ jobs:
   # ------------------------------------------------------------ [ Pyo3 Stub Gen ]
   pyo3-stub-gen:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -94,6 +98,7 @@ jobs:
   # ------------------------------------------------------------ [ Java Spotless Check ]
   java-spotless-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4

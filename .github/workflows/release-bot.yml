@@ -10,6 +10,7 @@ on:
 jobs:
   info:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Print Github
         env:
@@ -29,6 +30,7 @@ jobs:
 
   run-publish-action:
     if: contains(github.head_ref, 'betas/') || contains(github.head_ref, 'releases/')
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - name: Install Protoc
