@@ -23,8 +23,6 @@ func BenchmarkOptionsMemoryLeak(b *testing.B) {
 			options := statsig.NewStatsigOptionsBuilder().
 				WithSpecsUrl("https://example.com/specs").
 				WithLogEventUrl("https://example.com/log").
-				WithSpecsAdapterRef("specs_adapter").
-				WithEventLoggingAdapterRef("event_adapter").
 				WithEnvironment("dev").
 				WithEventLoggingFlushIntervalMs(3000).
 				WithEventLoggingMaxQueueSize(10000).

@@ -89,7 +89,7 @@ func (s *Statsig) GetFeatureGate(user StatsigUser, gateName string, featureGateO
 		featureGateOptions = &CheckGateOptions{}
 	}
 
-	featureGateJson := C.statsig_get_feature_gate(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(gateName), C.CString(utils.ConvertDataToJson(featureGateOptions)))
+	featureGateJson := C.statsig_get_feature_gate(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(gateName), C.CString(utils.ConvertJSONToString(featureGateOptions)))
 
 	if featureGateJson != nil {
 		err := json.Unmarshal([]byte(C.GoString(featureGateJson)), &featureGate)
@@ -108,7 +108,7 @@ func (s *Statsig) CheckGate(user StatsigUser, gateName string, gateOptions *Chec
 		gateOptions = &CheckGateOptions{}
 	}
 
-	checkGate := C.statsig_check_gate(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(gateName), C.CString(utils.ConvertDataToJson(gateOptions)))
+	checkGate := C.statsig_check_gate(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(gateName), C.CString(utils.ConvertJSONToString(gateOptions)))
 	return bool(checkGate)
 }
 
@@ -120,7 +120,7 @@ func (s *Statsig) GetDynamicConfig(user StatsigUser, configName string, dynamicC
 		dynamicConfigOptions = &GetDynamicConfigOptions{}
 	}
 
-	dynamicConfigJson := C.statsig_get_dynamic_config(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(configName), C.CString(utils.ConvertDataToJson(dynamicConfigOptions)))
+	dynamicConfigJson := C.statsig_get_dynamic_config(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(configName), C.CString(utils.ConvertJSONToString(dynamicConfigOptions)))
 
 	if dynamicConfigJson != nil {
 		err := json.Unmarshal([]byte(C.GoString(dynamicConfigJson)), &dynamicConfig)
@@ -141,7 +141,7 @@ func (s *Statsig) GetExperiment(user StatsigUser, experimentName string, experim
 		experimentOptions = &GetExperimentOptions{}
 	}
 
-	experimentJson := C.statsig_get_experiment(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(experimentName), C.CString(utils.ConvertDataToJson(experimentOptions)))
+	experimentJson := C.statsig_get_experiment(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(experimentName), C.CString(utils.ConvertJSONToString(experimentOptions)))
 
 	if experimentJson != nil {
 
@@ -177,7 +177,7 @@ func (s *Statsig) GetLayer(user StatsigUser, layerName string, layerOptions *Get
 		layerOptions = &GetLayerOptions{}
 	}
 
-	layerJson := C.statsig_get_layer(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(layerName), C.CString(utils.ConvertDataToJson(layerOptions)))
+	layerJson := C.statsig_get_layer(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(layerName), C.CString(utils.ConvertJSONToString(layerOptions)))
 
 	if layerJson != nil {
 		err := json.Unmarshal([]byte(C.GoString(layerJson)), &layer)
@@ -195,4 +195,14 @@ func (s *Statsig) GetLayer(user StatsigUser, layerName string, layerOptions *Get
 
 func (s *Statsig) FlushEvents() {
 	C.statsig_flush_events_blocking(C.ulonglong(s.InnerRef))
+}
+
+func (s *Statsig) GetClientInitializeResponse(user StatsigUser, gcirOptions *ClientInitResponseOptions) string {
+
+	if gcirOptions == nil {
+		gcirOptions = &ClientInitResponseOptions{}
+	}
+
+	res := C.statsig_get_client_init_response(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(utils.ConvertJSONToString(gcirOptions)))
+	return C.GoString(res)
 }

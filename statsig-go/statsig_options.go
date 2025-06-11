@@ -14,8 +14,6 @@ import (
 type StatsigOptions struct {
 	SpecsUrl                    *string
 	LogEventUrl                 *string
-	SpecsAdapterRef             uint64
-	EventLoggingAdapterRef      uint64
 	Environment                 *string
 	EventLoggingFlushIntervalMs int32
 	EventLoggingMaxQueueSize    int32
@@ -44,8 +42,8 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 	optionsRef := C.statsig_options_create(
 		ResolveDefault(o.statsigOptions.SpecsUrl),
 		ResolveDefault(o.statsigOptions.LogEventUrl),
-		C.ulonglong(o.statsigOptions.SpecsAdapterRef),
-		C.ulonglong(o.statsigOptions.EventLoggingAdapterRef),
+		C.ulonglong(0),
+		C.ulonglong(0),
 		ResolveDefault(o.statsigOptions.Environment),
 		C.int(o.statsigOptions.EventLoggingFlushIntervalMs),
 		C.int(o.statsigOptions.EventLoggingMaxQueueSize),
@@ -88,16 +86,6 @@ func (o *StatsigOptionsBuilder) WithSpecsUrl(specsUrl string) *StatsigOptionsBui
 
 func (o *StatsigOptionsBuilder) WithLogEventUrl(logEventUrl string) *StatsigOptionsBuilder {
 	o.statsigOptions.LogEventUrl = &logEventUrl
-	return o
-}
-
-func (o *StatsigOptionsBuilder) WithSpecsAdapterRef(specsAdapterRef uint64) *StatsigOptionsBuilder {
-	o.statsigOptions.SpecsAdapterRef = specsAdapterRef
-	return o
-}
-
-func (o *StatsigOptionsBuilder) WithEventLoggingAdapterRef(eventLoggingAdapterRef uint64) *StatsigOptionsBuilder {
-	o.statsigOptions.EventLoggingAdapterRef = eventLoggingAdapterRef
 	return o
 }
 

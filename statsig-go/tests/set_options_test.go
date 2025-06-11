@@ -10,8 +10,6 @@ func TestStatsigOptionsBasic(t *testing.T) {
 	options := statsig.NewStatsigOptionsBuilder().
 		WithSpecsUrl("https://example.com/specs").
 		WithLogEventUrl("https://example.com/log").
-		WithSpecsAdapterRef(uint64(12345)).
-		WithEventLoggingAdapterRef(uint64(12345)).
 		WithEnvironment("production").
 		WithEventLoggingFlushIntervalMs(2000).
 		WithEventLoggingMaxQueueSize(5000).
@@ -27,12 +25,6 @@ func TestStatsigOptionsBasic(t *testing.T) {
 	}
 	if *options.LogEventUrl != "https://example.com/log" {
 		t.Errorf("expected LogEventUrl to be 'https://example.com/log', got %v", options.LogEventUrl)
-	}
-	if options.SpecsAdapterRef != uint64(12345) {
-		t.Errorf("expected SpecsAdapterRef to be 'adapter_specs', got %v", options.SpecsAdapterRef)
-	}
-	if options.EventLoggingAdapterRef != uint64(12345) {
-		t.Errorf("expected EventLoggingAdapterRef to be 'adapter_events', got %v", options.EventLoggingAdapterRef)
 	}
 	if *options.Environment != "production" {
 		t.Errorf("expected Environment to be 'production', got %v", options.Environment)
@@ -122,8 +114,6 @@ func TestAllValuesSet(t *testing.T) {
 	options := statsig.NewStatsigOptionsBuilder().
 		WithSpecsUrl("https://example.com/specs").
 		WithLogEventUrl("https://example.com/log").
-		WithSpecsAdapterRef(12345).
-		WithEventLoggingAdapterRef(12345).
 		WithEnvironment("dev").
 		WithEventLoggingFlushIntervalMs(3000).
 		WithEventLoggingMaxQueueSize(10000).

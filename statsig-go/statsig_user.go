@@ -39,15 +39,15 @@ func (u *StatsigUser) GetInnerRef() uint64 {
 func (u *StatsigUserBuilder) Build() *StatsigUser {
 	userRef := C.statsig_user_create(
 		C.CString(u.user.UserID),
-		C.CString(utils.ConvertDataToJson(u.user.CustomIDs)),
+		C.CString(utils.ConvertJSONToString(u.user.CustomIDs)),
 		C.CString(u.user.Email),
 		C.CString(u.user.IpAddress),
 		C.CString(u.user.UserAgent),
 		C.CString(u.user.Country),
 		C.CString(u.user.Locale),
 		C.CString(u.user.AppVersion),
-		C.CString(utils.ConvertDataToJson(u.user.Custom)),
-		C.CString(utils.ConvertDataToJson(u.user.PrivateAttributes)),
+		C.CString(utils.ConvertJSONToString(u.user.Custom)),
+		C.CString(utils.ConvertJSONToString(u.user.PrivateAttributes)),
 	)
 
 	u.user.innerRef = uint64(userRef)
