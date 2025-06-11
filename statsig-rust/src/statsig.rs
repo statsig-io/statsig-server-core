@@ -706,7 +706,7 @@ impl Statsig {
 
         self.event_logger
             .enqueue(EnqueueLayerParamExpoOp::LayerOwned(
-                layer,
+                Box::new(layer),
                 parameter_name,
                 ExposureTrigger::Auto,
             ));
@@ -1564,7 +1564,7 @@ impl Statsig {
 
         self.event_logger
             .enqueue(EnqueueLayerParamExpoOp::LayerOwned(
-                layer,
+                Box::new(layer),
                 parameter_name,
                 ExposureTrigger::Manual,
             ));

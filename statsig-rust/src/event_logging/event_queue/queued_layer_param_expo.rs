@@ -17,7 +17,7 @@ use super::queued_event::{EnqueueOperation, QueuedEvent, QueuedExposure};
 
 pub enum EnqueueLayerParamExpoOp<'a> {
     LayerRef(&'a Layer, &'a str, ExposureTrigger),
-    LayerOwned(Layer, String, ExposureTrigger),
+    LayerOwned(Box<Layer>, String, ExposureTrigger),
 }
 
 impl<'a> EnqueueLayerParamExpoOp<'a> {
@@ -209,7 +209,7 @@ fn extract_from_layer_ref(
 }
 
 fn extract_from_layer_owned(
-    layer: Layer,
+    layer: Box<Layer>,
     parameter_name: String,
     trigger: ExposureTrigger,
     sampling_decision: EvtSamplingDecision,
