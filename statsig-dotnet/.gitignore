@@ -1,0 +1,62 @@
+#################################
+# .NET build artifacts
+#################################
+
+# Build folders
+bin/
+obj/
+TestResults/
+out/
+
+# User-specific files
+*.user
+*.suo
+*.userprefs
+
+# Rider IDE
+.idea/
+*.sln.iml
+
+# Visual Studio Code
+.vscode/
+
+# macOS system files
+.DS_Store
+
+#################################
+# NuGet artifacts
+#################################
+
+# NuGet package files
+*.nupkg
+*.snupkg
+*.nuspec
+
+# NuGet test package outputs (custom)
+**/local-nuget-source/
+**/local-nuget-feed/
+*.nupkg
+*.snupkg
+
+# dotnet CLI pack output
+*.nuspec
+*.nupkg.sha512
+
+#################################
+# Logs and crash dumps
+#################################
+*.log
+*.bak
+*.tmp
+*.swp
+*.swo
+
+# crash dumps
+*.dmp
+*.mdmp
+*.core
+
+#################################
+# Global JSON backup
+#################################
+global.json.lock
