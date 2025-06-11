@@ -14,7 +14,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
-const RETRY_CODES: [u16; 8] = [408, 500, 502, 503, 504, 522, 524, 599];
+const RETRY_CODES: [u16; 9] = [0, 408, 500, 502, 503, 504, 522, 524, 599];
 const SHUTDOWN_ERROR: &str = "Request was aborted because the client is shutting down";
 
 #[derive(PartialEq, Debug, Clone, Serialize)]
