@@ -14,7 +14,6 @@ namespace Statsig
         {
             Console.WriteLine($"Operating System: {RuntimeInformation.OSDescription}");
             Console.WriteLine($"Architecture: {RuntimeInformation.OSArchitecture}");
-            NativeLibraryLoader.EnsureLoaded();
             var sdkKeyBytes = Encoding.UTF8.GetBytes(sdkKey);
             unsafe
             {

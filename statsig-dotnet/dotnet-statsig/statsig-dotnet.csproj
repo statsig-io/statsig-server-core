@@ -1,33 +1,25 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <LangVersion>9</LangVersion>
-    <PackageId>TestApp</PackageId>
+    <PackageId>TestApp</PackageId> <!-- This is a placeholder; the actual package ID will be set in the future. -->
     <RootNamespace>Statsig</RootNamespace>
     <Version>1.0.0</Version>
     <PackageOutputPath>~/local-nuget-source</PackageOutputPath>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="runtimes/**">
-      <Pack>true</Pack>
-      <PackagePath>runtimes/</PackagePath>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <None Include="runtimes/**/*.*" Pack="true" PackagePath="runtimes/" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>dotnet-statsig-tests</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="xunit" Version="2.9.2" />
   </ItemGroup>
-
 </Project>

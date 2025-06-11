@@ -19,7 +19,12 @@
   <ItemGroup>
     <ProjectReference Include="..\dotnet-statsig\statsig-dotnet.csproj" />
   </ItemGroup>
-
+ <Target Name="CopyNativeLibs" AfterTargets="Build">
+    <ItemGroup>
+      <NativeLibs Include="$(ProjectDir)..\dotnet-statsig\runtimes\**\native\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NativeLibs)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
   <!-- Add this ItemGroup to ensure JSON files in the Resources folder are copied to the output directory -->
   <ItemGroup>
     <None Update="Resources\**\*.json">
