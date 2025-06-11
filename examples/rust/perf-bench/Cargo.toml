@@ -15,7 +15,7 @@ serde_json = { version = "1.0.125", features = [
 ] }
 
 [build-dependencies]
-built = { version = "0.4", features = ["git2"] }
+built = { version = "0.8", features = ["cargo-lock"] }
 
 [[bin]]
 name = "core_bench"
