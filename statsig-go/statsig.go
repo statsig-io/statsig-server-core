@@ -193,6 +193,6 @@ func (s *Statsig) GetLayer(user StatsigUser, layerName string, layerOptions *Get
 
 }
 
-func (s *Statsig) FlushEventsBlocking() {
+func (s *Statsig) FlushEvents() {
 	C.statsig_flush_events_blocking(C.ulonglong(s.InnerRef))
 }

@@ -100,7 +100,7 @@ func TestExperimentDisableExposureLoggingIsFalse(t *testing.T) {
 
 	experimentName := "exp_with_obj_and_array"
 	_ = s.GetExperiment(*user, experimentName, experimentOptions)
-	s.FlushEventsBlocking()
+	s.Shutdown()
 
 	if !checkEventNameExists(scrapiServer.fetchLoggedEvents(), "statsig::config_exposure") {
 		t.Errorf("Error occurred, config exposure event was not logged while disable exposure logging was set to false")
@@ -123,7 +123,7 @@ func TestExperimentDisableExposureLoggingIsTrue(t *testing.T) {
 
 	experimentName := "exp_with_obj_and_array"
 	_ = s.GetExperiment(*user, experimentName, experimentOptions)
-	s.FlushEventsBlocking()
+	s.Shutdown()
 
 	if checkEventNameExists(scrapiServer.fetchLoggedEvents(), "statsig::config_exposure") {
 		t.Errorf("Error occurred, config exposure event was logged while disable exposure logging was set to true")
