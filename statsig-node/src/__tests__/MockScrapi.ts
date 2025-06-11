@@ -1,7 +1,11 @@
 import compression from 'compression';
-import { decompress } from '@mongodb-js/zstd';
 import express from 'express';
 import http from 'http';
+import { exec } from 'node:child_process';
+import { readFile, unlink, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { promisify } from 'node:util';
 
 type MockOptions = { status: number; method: 'GET' | 'POST' };
 
@@ -129,17 +133,43 @@ export class MockScrapi {
   }
 }
 
-function decompressZstd(req: express.Request): Promise<boolean> {
-  return new Promise((resolve, _reject) => {
+async function decompressZstd(req: express.Request): Promise<boolean> {
+  return new Promise(async (resolve, _reject) => {
     try {
       const chunks: Buffer[] = [];
       req.on('data', (chunk: Buffer) => chunks.push(chunk));
       req.on('end', async () => {
         const buffer = Buffer.concat(chunks);
-        const decompressed = await decompress(buffer);
-        req.body = JSON.parse(decompressed.toString());
 
-        resolve(true);
+        // Create temporary files for input and output
+        const inputPath = path.join(os.tmpdir(), `zstd-input-${Date.now()}`);
+        const outputPath = path.join(os.tmpdir(), `zstd-output-${Date.now()}`);
+
+        try {
+          // Write compressed data to temp file
+          await writeFile(inputPath, buffer);
+
+          // Decompress using zstd command
+          const execPromise = promisify(exec);
+          await execPromise(`zstd -d ${inputPath} -o ${outputPath}`);
+
+          // Read decompressed data
+          const decompressed = await readFile(outputPath);
+          req.body = JSON.parse(decompressed.toString());
+
+          resolve(true);
+        } catch (error) {
+          console.error('ZSTD decompression failed:', error);
+          resolve(false);
+        } finally {
+          // Clean up temp files
+          try {
+            await unlink(inputPath);
+            await unlink(outputPath);
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+        }
       });
     } catch (error) {
       resolve(false);
