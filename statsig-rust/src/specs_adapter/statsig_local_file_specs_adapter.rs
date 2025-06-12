@@ -66,10 +66,7 @@ impl StatsigLocalFileSpecsAdapter {
                 }
             },
             Err(e) => {
-                return Err(StatsigErr::NetworkError(
-                    e,
-                    Some("No data received".to_string()),
-                ));
+                return Err(StatsigErr::NetworkError(e));
             }
         };
 

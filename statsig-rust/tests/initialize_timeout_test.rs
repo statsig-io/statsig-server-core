@@ -1,5 +1,5 @@
 mod utils;
-use std::{fs, path::PathBuf, sync::Arc, time::Duration};
+use std::{fs, path::PathBuf, sync::Arc};
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
 use statsig_rust::{Statsig, StatsigOptions, StatsigUser};

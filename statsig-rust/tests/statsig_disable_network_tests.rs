@@ -1,9 +1,9 @@
 mod utils;
 
-use std::sync::Arc;
-
 use statsig_rust::{statsig_options::StatsigOptionsBuilder, user::StatsigUserBuilder, Statsig};
+use std::sync::Arc;
 use utils::mock_scrapi::{self, Endpoint, EndpointStub, MockScrapi};
+
 #[tokio::test]
 async fn test_disable_network() {
     let mock_scrapi = MockScrapi::new().await;

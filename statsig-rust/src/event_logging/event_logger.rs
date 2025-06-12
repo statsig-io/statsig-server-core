@@ -274,7 +274,7 @@ impl EventLogger {
                 Ok(())
             }
             Ok(false) => Err(StatsigErr::LogEventError("Unknown Failure".into())),
-            Err(StatsigErr::NetworkError(NetworkError::DisableNetworkOn, _)) => Ok(()),
+            Err(StatsigErr::NetworkError(NetworkError::DisableNetworkOn(_))) => Ok(()),
             Err(e) => Err(e),
         }
     }
@@ -308,7 +308,7 @@ impl EventLogger {
     ) {
         let is_non_retryable = matches!(
             error,
-            StatsigErr::NetworkError(NetworkError::RequestNotRetryable, _)
+            StatsigErr::NetworkError(NetworkError::RequestNotRetryable(_, _, _))
         );
 
         let is_max_retries = batch.attempts > EventLoggerConstants::max_log_event_retries();

@@ -1,60 +1,9 @@
-use statsig_rust::output_logger::{
-    initialize_output_logger, shutdown_output_logger, LogLevel, OutputLogProvider,
-};
+mod utils;
+
+use statsig_rust::output_logger::{initialize_output_logger, shutdown_output_logger, LogLevel};
 use statsig_rust::{log_d, log_e, log_i, log_w, Statsig, StatsigOptions};
 use std::sync::{Arc, Mutex};
-
-#[derive(Debug, PartialEq)]
-enum RecordedLog {
-    Debug(String, String),
-    Info(String, String),
-    Warn(String, String),
-    Error(String, String),
-    Init,
-    Shutdown,
-}
-
-struct MockLogProvider {
-    pub logs: Mutex<Vec<RecordedLog>>,
-}
-
-impl OutputLogProvider for MockLogProvider {
-    fn initialize(&self) {
-        self.logs.lock().unwrap().push(RecordedLog::Init);
-    }
-
-    fn debug(&self, tag: &str, msg: String) {
-        self.logs
-            .lock()
-            .unwrap()
-            .push(RecordedLog::Debug(tag.to_string(), msg));
-    }
-
-    fn info(&self, tag: &str, msg: String) {
-        self.logs
-            .lock()
-            .unwrap()
-            .push(RecordedLog::Info(tag.to_string(), msg));
-    }
-
-    fn warn(&self, tag: &str, msg: String) {
-        self.logs
-            .lock()
-            .unwrap()
-            .push(RecordedLog::Warn(tag.to_string(), msg));
-    }
-
-    fn error(&self, tag: &str, msg: String) {
-        self.logs
-            .lock()
-            .unwrap()
-            .push(RecordedLog::Error(tag.to_string(), msg));
-    }
-
-    fn shutdown(&self) {
-        self.logs.lock().unwrap().push(RecordedLog::Shutdown);
-    }
-}
+use utils::mock_log_provider::{MockLogProvider, RecordedLog};
 
 #[test]
 fn test_custom_log_provider() {

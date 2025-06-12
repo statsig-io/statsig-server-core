@@ -18,3 +18,6 @@ pub mod mock_data_store;
 
 #[allow(dead_code)]
 pub mod mock_observability_client;
+
+#[allow(dead_code)]
+pub mod mock_log_provider;

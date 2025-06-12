@@ -91,8 +91,8 @@ impl StatsigHttpIdListsAdapter {
             }
         };
 
-        if initial_err != NetworkError::RetriesExhausted {
-            return Err(StatsigErr::NetworkError(initial_err, None));
+        if !matches!(initial_err, NetworkError::RetriesExhausted(_, _, _, _)) {
+            return Err(StatsigErr::NetworkError(initial_err));
         }
 
         // attempt fallback
@@ -107,10 +107,7 @@ impl StatsigHttpIdListsAdapter {
             };
         }
 
-        Err(StatsigErr::NetworkError(
-            initial_err,
-            fallback_err.map(|e| format!("Fallback request failed with error {:?}", e).to_string()),
-        ))
+        Err(fallback_err.unwrap_or(StatsigErr::NetworkError(initial_err)))
     }
 
     async fn fetch_individual_id_list_changes_from_network(
@@ -128,10 +125,7 @@ impl StatsigHttpIdListsAdapter {
                 ..RequestArgs::new()
             })
             .await
-            .map_err(|err| {
-                let msg = format!("Failed to fetch ID List changes: {err:?}");
-                StatsigErr::NetworkError(err, Some(msg))
-            })?;
+            .map_err(StatsigErr::NetworkError)?;
 
         let response_body = match response.data.filter(|data| !data.is_empty()) {
             Some(data) => data,
@@ -159,10 +153,7 @@ impl StatsigHttpIdListsAdapter {
         // fallback to cdn, it's a get request
         match self.network.get(request_args.clone()).await {
             Ok(response) => Ok(response),
-            Err(e) => {
-                let msg = format!("Fallback request failed: {e:?}");
-                Err(StatsigErr::NetworkError(e, Some(msg)))
-            }
+            Err(e) => Err(StatsigErr::NetworkError(e)),
         }
     }
     async fn run_background_sync(weak_self: &Weak<Self>) {

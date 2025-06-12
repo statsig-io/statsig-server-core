@@ -92,7 +92,8 @@ pub fn initialize_output_logger(
     level: &Option<LogLevel>,
     provider: Option<Arc<dyn OutputLogProvider>>,
 ) {
-    if INITIALIZED.load(Ordering::SeqCst) {
+    let was_initialized = INITIALIZED.swap(true, Ordering::SeqCst);
+    if was_initialized {
         return;
     }
 
@@ -121,7 +122,6 @@ pub fn initialize_output_logger(
             }
         }
     }
-    INITIALIZED.store(true, Ordering::SeqCst);
 }
 
 pub fn shutdown_output_logger() {

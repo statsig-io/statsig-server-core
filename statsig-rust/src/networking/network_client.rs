@@ -1,44 +1,20 @@
 use chrono::Utc;
-use serde::Serialize;
 
+use super::network_error::NetworkError;
 use super::providers::get_network_provider;
 use super::{HttpMethod, NetworkProvider, RequestArgs, Response};
 use crate::networking::proxy_config::ProxyConfig;
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
-use crate::{log_d, log_i, log_w, StatsigErr, StatsigOptions};
+use crate::{log_d, log_i, log_w, StatsigOptions};
 use std::collections::HashMap;
-use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 const RETRY_CODES: [u16; 9] = [0, 408, 500, 502, 503, 504, 522, 524, 599];
 const SHUTDOWN_ERROR: &str = "Request was aborted because the client is shutting down";
-
-#[derive(PartialEq, Debug, Clone, Serialize)]
-pub enum NetworkError {
-    ShutdownError,
-    RequestFailed,
-    RetriesExhausted,
-    SerializationError(String),
-    DisableNetworkOn,
-    RequestNotRetryable,
-}
-
-impl fmt::Display for NetworkError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            NetworkError::ShutdownError => write!(f, "ShutdownError"),
-            NetworkError::RequestFailed => write!(f, "RequestFailed"),
-            NetworkError::RetriesExhausted => write!(f, "RetriesExhausted"),
-            NetworkError::SerializationError(s) => write!(f, "SerializationError: {s}"),
-            NetworkError::DisableNetworkOn => write!(f, "DisableNetworkOn"),
-            NetworkError::RequestNotRetryable => write!(f, "RequestNotRetryable"),
-        }
-    }
-}
 
 const TAG: &str = stringify!(NetworkClient);
 
@@ -110,7 +86,7 @@ impl NetworkClient {
 
         if self.disable_network {
             log_d!(TAG, "Network is disabled, not making requests");
-            return Err(NetworkError::DisableNetworkOn);
+            return Err(NetworkError::DisableNetworkOn(request_args.url));
         }
 
         request_args.populate_headers(self.headers.clone());
@@ -143,12 +119,18 @@ impl NetworkClient {
             }
             if is_shutdown.load(Ordering::SeqCst) {
                 log_i!(TAG, "{}", SHUTDOWN_ERROR);
-                return Err(NetworkError::ShutdownError);
+                return Err(NetworkError::ShutdownError(request_args.url));
             }
 
             let response = match self.net_provider.upgrade() {
                 Some(net_provider) => net_provider.send(&method, &request_args).await,
-                None => return Err(NetworkError::RequestFailed),
+                None => {
+                    return Err(NetworkError::RequestFailed(
+                        request_args.url,
+                        0,
+                        "Failed to get a NetworkProvider instance".to_string(),
+                    ));
+                }
             };
 
             log_d!(
@@ -168,7 +150,7 @@ impl NetworkClient {
             let error_message = response
                 .error
                 .clone()
-                .unwrap_or_else(|| get_error_message_for_status(status));
+                .unwrap_or_else(|| get_error_message_for_status(status, response.data.as_deref()));
 
             if let Some(key) = request_args.diagnostics_key {
                 let mut end_marker =
@@ -201,27 +183,24 @@ impl NetworkClient {
             }
 
             if !RETRY_CODES.contains(&status) {
-                let msg = format!(
-                    "Network error, not retrying: {} {} {}",
-                    status, error_message, request_args.url
+                let error = NetworkError::RequestNotRetryable(
+                    request_args.url.clone(),
+                    status,
+                    error_message,
                 );
-                self.log_warning(
-                    StatsigErr::NetworkError(NetworkError::RequestNotRetryable, Some(msg)),
-                    &request_args,
-                );
-                return Err(NetworkError::RequestNotRetryable);
+                self.log_warning(&error, &request_args);
+                return Err(error);
             }
 
             if attempt >= request_args.retries {
-                let msg = format!(
-                    "Network error, retries exhausted: {} {}",
-                    status, error_message
+                let error = NetworkError::RetriesExhausted(
+                    request_args.url.clone(),
+                    status,
+                    attempt + 1,
+                    error_message,
                 );
-                self.log_warning(
-                    StatsigErr::NetworkError(NetworkError::RetriesExhausted, Some(msg)),
-                    &request_args,
-                );
-                return Err(NetworkError::RetriesExhausted);
+                self.log_warning(&error, &request_args);
+                return Err(error);
             }
 
             attempt += 1;
@@ -244,15 +223,17 @@ impl NetworkClient {
         self
     }
 
-    fn log_warning(&self, error: StatsigErr, args: &RequestArgs) {
-        log_w!(TAG, "{} {}", args.url, error);
+    fn log_warning(&self, error: &NetworkError, args: &RequestArgs) {
+        let exception = error.name();
+
+        log_w!(TAG, "{}", error);
         if !self.silent_on_network_failure {
             let dedupe_key = format!("{:?}", args.diagnostics_key);
             self.ops_stats.log_error(ErrorBoundaryEvent {
                 tag: TAG.to_string(),
-                exception: error.name().to_string(),
+                exception: exception.to_string(),
                 bypass_dedupe: false,
-                info: serde_json::to_string(&error).unwrap_or_default(),
+                info: serde_json::to_string(error).unwrap_or_default(),
                 dedupe_key: Some(dedupe_key),
                 extra: None,
             });
@@ -260,24 +241,38 @@ impl NetworkClient {
     }
 }
 
-fn get_error_message_for_status(status: u16) -> String {
+fn get_error_message_for_status(status: u16, data: Option<&[u8]>) -> String {
     if (200..300).contains(&status) {
         return String::new();
     }
 
-    match status {
-        400 => "Bad Request".to_string(),
-        401 => "Unauthorized".to_string(),
-        403 => "Forbidden".to_string(),
-        404 => "Not Found".to_string(),
-        405 => "Method Not Allowed".to_string(),
-        406 => "Not Acceptable".to_string(),
-        408 => "Request Timeout".to_string(),
-        500 => "Internal Server Error".to_string(),
-        502 => "Bad Gateway".to_string(),
-        503 => "Service Unavailable".to_string(),
-        504 => "Gateway Timeout".to_string(),
-        0 => "Unknown Error".to_string(),
-        _ => format!("HTTP Error {status}"),
+    let mut message = String::new();
+    if let Some(data) = data {
+        let lossy_str = String::from_utf8_lossy(data);
+        if lossy_str.is_ascii() {
+            message = lossy_str.to_string();
+        }
     }
+
+    let generic_message = match status {
+        400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+        406 => "Not Acceptable",
+        408 => "Request Timeout",
+        500 => "Internal Server Error",
+        502 => "Bad Gateway",
+        503 => "Service Unavailable",
+        504 => "Gateway Timeout",
+        0 => "Unknown Error",
+        _ => return format!("HTTP Error {status}: {}", message),
+    };
+
+    if message.is_empty() {
+        return generic_message.to_string();
+    }
+
+    format!("{}: {}", generic_message, message)
 }

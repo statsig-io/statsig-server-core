@@ -1,8 +1,6 @@
-use std::fmt::{Display, Formatter};
-
+use crate::networking::network_error::NetworkError;
 use serde::Serialize;
-
-use crate::networking::NetworkError;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Serialize)]
 pub enum StatsigErr {
@@ -23,7 +21,7 @@ pub enum StatsigErr {
     DataStoreFailure(String),
 
     // Network
-    NetworkError(NetworkError, Option<String>),
+    NetworkError(NetworkError),
     GrpcError(String),
 
     // Data Format / Serialization / Parsing
@@ -80,7 +78,7 @@ impl Display for StatsigErr {
             }
             StatsigErr::DataStoreFailure(message) => write!(f, "DataStore Error: {message}"),
 
-            StatsigErr::NetworkError(error, msg) => write!(f, "Network error {error}: {msg:?}"),
+            StatsigErr::NetworkError(error) => write!(f, "NetworkError|{error}"),
             StatsigErr::GrpcError(e) => write!(f, "{e}"),
 
             StatsigErr::SerializationError(msg) => write!(f, "Serialization error: {msg}"),
@@ -130,7 +128,7 @@ impl StatsigErr {
             StatsigErr::SpecsAdapterSkipPoll(_) => "SpecsAdapterSkipPoll",
             StatsigErr::DataStoreFailure(_) => "DataStoreFailure",
 
-            StatsigErr::NetworkError(_, _) => "NetworkError",
+            StatsigErr::NetworkError(e) => e.name(),
             StatsigErr::GrpcError(_) => "GrpcError",
 
             StatsigErr::SerializationError(_) => "SerializationError",

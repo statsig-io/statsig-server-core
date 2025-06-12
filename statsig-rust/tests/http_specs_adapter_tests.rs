@@ -2,7 +2,7 @@ mod utils;
 
 use more_asserts::assert_gt;
 use statsig_rust::{output_logger::LogLevel, Statsig, StatsigOptions};
-use std::{fs, path::PathBuf, sync::Arc, time::Duration};
+use std::{fs, path::PathBuf, sync::Arc};
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
 const SDK_KEY: &str = "secret-key";

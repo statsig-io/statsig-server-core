@@ -7,7 +7,6 @@ use statsig_rust::log_event_payload::{LogEventPayload, LogEventRequest};
 use statsig_rust::{EventLoggingAdapter, StatsigLocalFileEventLoggingAdapter};
 use std::fs;
 use std::sync::Arc;
-use std::time::Duration;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
 const SDK_KEY: &str = "server-local-file-events-test";

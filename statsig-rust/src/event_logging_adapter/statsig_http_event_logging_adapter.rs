@@ -85,15 +85,16 @@ impl StatsigHttpEventLoggingAdapter {
                 Some(compressed),
             )
             .await
-            .map_err(|err| StatsigErr::NetworkError(err, Some("Log event failure".into())))?;
+            .map_err(StatsigErr::NetworkError)?;
 
         let response_slice = match response.data {
             Some(data) => data,
             None => {
-                return Err(StatsigErr::NetworkError(
-                    NetworkError::RequestFailed,
-                    Some("Empty response from network".to_string()),
-                ));
+                return Err(StatsigErr::NetworkError(NetworkError::RequestFailed(
+                    self.log_event_url.clone(),
+                    response.status_code,
+                    "Empty response from network".to_string(),
+                )));
             }
         };
 

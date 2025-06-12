@@ -146,7 +146,13 @@ impl StatsigHttpSpecsAdapter {
                 &self.sdk_key,
                 current_specs_info.zstd_dict_id.as_deref(),
             ),
-            None => return Err(NetworkError::RequestFailed),
+            None => {
+                return Err(NetworkError::RequestFailed(
+                    request_args.url.clone(),
+                    0,
+                    "No fallback URL".to_string(),
+                ))
+            }
         };
 
         request_args.url = fallback_url.clone();
@@ -165,10 +171,15 @@ impl StatsigHttpSpecsAdapter {
         &self,
         request_args: RequestArgs,
     ) -> Result<Vec<u8>, NetworkError> {
+        let url = request_args.url.clone();
         let response = self.network.get(request_args).await?;
         match response.data {
             Some(data) => Ok(data),
-            None => Err(NetworkError::RequestFailed),
+            None => Err(NetworkError::RequestFailed(
+                url,
+                0,
+                "No data in response".to_string(),
+            )),
         }
     }
 
@@ -192,7 +203,7 @@ impl StatsigHttpSpecsAdapter {
             .ops_stats
             .set_diagnostics_context(ContextType::ConfigSync);
         if let Err(e) = strong_self.manually_sync_specs(specs_info).await {
-            if let StatsigErr::NetworkError(NetworkError::DisableNetworkOn, _) = e {
+            if let StatsigErr::NetworkError(NetworkError::DisableNetworkOn(_)) = e {
                 return;
             }
             log_e!(TAG, "Background specs sync failed: {}", e);
@@ -233,10 +244,7 @@ impl StatsigHttpSpecsAdapter {
         &self,
         response: Result<NetworkResponse, NetworkError>,
     ) -> Result<(), StatsigErr> {
-        let resp = response.map_err(|e| {
-            let msg = "No specs result from network";
-            StatsigErr::NetworkError(e, Some(msg.to_string()))
-        })?;
+        let resp = response.map_err(StatsigErr::NetworkError)?;
 
         let update = SpecsUpdate {
             data: resp.data,

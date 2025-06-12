@@ -138,7 +138,6 @@ impl MockScrapi {
 
     pub fn url_for_endpoint(&self, endpoint: Endpoint) -> String {
         let result = format!("{}/{}{}", self.mock_server.uri(), self.uuid, endpoint);
-        println!("{}", result);
         result
     }
 

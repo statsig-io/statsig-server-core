@@ -290,8 +290,7 @@ async fn test_non_retryable_failure_drops_events() {
 
     // get into failure backoff
     *logging_adapter.mocked_log_events_result.lock().unwrap() = Err(StatsigErr::NetworkError(
-        NetworkError::RequestNotRetryable,
-        None,
+        NetworkError::RequestNotRetryable("test_url".to_string(), 0, "test error".to_string()),
     ));
 
     let user = StatsigUser::with_user_id("user_1");

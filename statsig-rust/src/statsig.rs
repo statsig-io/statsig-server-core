@@ -571,7 +571,7 @@ impl Statsig {
         let is_config_spec_ready = matches!(specs_info.lcut, Some(v) if v != 0);
 
         let failure_details =
-            if let Some(StatsigErr::NetworkError(NetworkError::DisableNetworkOn, _)) = error {
+            if let Some(StatsigErr::NetworkError(NetworkError::DisableNetworkOn(_))) = error {
                 None
             } else {
                 error.as_ref().map(|e| FailureDetails {

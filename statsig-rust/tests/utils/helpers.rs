@@ -23,7 +23,7 @@ pub fn load_contents(resource_file_name: &str) -> String {
 #[macro_export]
 macro_rules! assert_eventually_eq {
     ($actual:expr, $expected:expr) => {
-        $crate::assert_eventually_eq!($actual, $expected, Duration::from_secs(1))
+        $crate::assert_eventually_eq!($actual, $expected, std::time::Duration::from_secs(1))
     };
 
     ($actual:expr, $expected:expr, $timeout:expr) => {
@@ -34,7 +34,7 @@ macro_rules! assert_eventually_eq {
                 if actual_value == $expected {
                     return;
                 }
-                tokio::time::sleep(Duration::from_millis(10)).await;
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
                 actual_value = $actual();
             }
 
@@ -49,7 +49,7 @@ macro_rules! assert_eventually_eq {
 #[macro_export]
 macro_rules! assert_eventually {
     ($actual:expr) => {
-        $crate::assert_eventually!($actual, Duration::from_secs(1))
+        $crate::assert_eventually!($actual, std::time::Duration::from_secs(1))
     };
 
     ($actual:expr, $timeout:expr) => {
