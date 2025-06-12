@@ -6,7 +6,7 @@ namespace Statsig
 {
     internal static class StatsigUtils
     {
-        internal static unsafe string ReadStringFromPointer(byte* pointer)
+        internal static unsafe string? ReadStringFromPointer(byte* pointer)
         {
             if (pointer == null)
             {

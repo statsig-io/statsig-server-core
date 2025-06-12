@@ -14,9 +14,5 @@ namespace Statsig
             ReceivedAt = receivedAt;
             Reason = reason;
         }
-
-        internal EvaluationDetails()
-        {
-        }
     }
 }

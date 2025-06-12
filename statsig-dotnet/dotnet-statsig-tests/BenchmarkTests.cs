@@ -13,7 +13,10 @@ namespace Statsig.tests
 
             var options = new StatsigOptions();
             var statsigServer = new Statsig("secret-", options);
-            var user = new StatsigUser("admin", "fake@google.com");
+            var user = new StatsigUserBuilder()
+                .SetUserID("admin")
+                .SetEmail("fake@google.com")
+                .Build();
             //var userNotPss = new StatsigUser("123", "weihao@gmail.com");
             var stopwatch = new System.Diagnostics.Stopwatch();
 

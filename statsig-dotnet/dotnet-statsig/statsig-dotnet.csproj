@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
     <LangVersion>9</LangVersion>
     <PackageId>TestApp</PackageId> <!-- This is a placeholder; the actual package ID will be set in the future. -->
     <RootNamespace>Statsig</RootNamespace>
