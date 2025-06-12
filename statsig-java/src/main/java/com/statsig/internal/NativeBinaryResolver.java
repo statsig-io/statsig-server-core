@@ -11,7 +11,6 @@ import java.util.Properties;
 
 public class NativeBinaryResolver {
   static final String TAG = "NativeBinaryResolver";
-  static final String JAVA_CORE_MAVEN_PATH = "https://repo1.maven.org/maven2/com/statsig/javacore";
   static String sdkVersion;
 
   public static String osName = System.getProperty("os.name").toLowerCase();
@@ -33,7 +32,7 @@ public class NativeBinaryResolver {
   public static boolean load() {
     boolean loaded = loadNativeLibraryFromResources();
 
-    if (loaded) {
+    if (!loaded) {
       logNativeLibraryError();
     }
 
@@ -178,6 +177,8 @@ public class NativeBinaryResolver {
             : "amazonlinux2023-x86_64";
       } else if (distro.equals("amazonlinux2")) {
         return normalizedArch.contains("arm64") ? "amazonlinux2-arm64" : "amazonlinux2-x86_64";
+      } else if (distro.equals("centos7")) {
+        return normalizedArch.contains("arm64") ? "centos7-arm64" : "centos7-x86_64";
       } else {
         return normalizedArch.contains("arm64") ? "linux-gnu-arm64" : "linux-gnu-x86_64";
       }
@@ -219,6 +220,10 @@ public class NativeBinaryResolver {
           return "amazonlinux2023";
         } else if ("2".equals(versionId)) {
           return "amazonlinux2";
+        }
+      } else if ("centos".equals(id)) {
+        if ("7".equals(versionId)) {
+          return "centos7";
         }
       }
     } catch (IOException e) {
