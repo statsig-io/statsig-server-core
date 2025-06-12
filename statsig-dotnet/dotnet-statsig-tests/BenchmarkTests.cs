@@ -2,13 +2,15 @@ using Xunit;
 using System;
 using System.Threading.Tasks;
 
-namespace Statsig.tests {
+namespace Statsig.tests
+{
 
-    public class BenchmarkTest {
+    public class BenchmarkTest
+    {
         [Fact]
         public async Task PerfTest()
         {
-            
+
             var options = new StatsigOptions();
             var statsigServer = new Statsig("secret-", options);
             var user = new StatsigUser("admin", "fake@google.com");
@@ -29,7 +31,7 @@ namespace Statsig.tests {
                     Console.WriteLine("GCIR: " + statsigServer.GetClientInitializeResponse(user));
                 }
             }
-            
+
             stopwatch.Stop();
 
             var elapsedTime = stopwatch.ElapsedMilliseconds;

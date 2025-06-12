@@ -20,7 +20,7 @@ namespace Statsig
             GroupName = groupName;
             Details = details;
         }
-        
+
         // empty constructor when deserializing objects
         internal Experiment()
         {

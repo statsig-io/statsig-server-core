@@ -7,13 +7,13 @@ namespace Statsig
     {
         [JsonProperty("name")]
         public string Name { get; }
-        
+
         [JsonProperty("value")]
         public bool EvalValue { get; }
-        
+
         [JsonProperty("rule_id")]
         public string RuleId { get; }
-        
+
         [JsonProperty("details")]
         public EvaluationDetails EvaluationDetails { get; }
         public string RawJson { get; set; }
