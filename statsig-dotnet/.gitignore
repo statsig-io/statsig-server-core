@@ -38,6 +38,9 @@ out/
 *.nupkg
 *.snupkg
 
+# Ignore all files in runtimes/
+runtimes/
+
 # dotnet CLI pack output
 *.nuspec
 *.nupkg.sha512
