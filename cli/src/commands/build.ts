@@ -12,14 +12,16 @@ import { buildJava } from './builders/java-builder.js';
 import { buildNode } from './builders/node-builder.js';
 import { buildPython } from './builders/python-builder.js';
 import { CommandBase } from './command_base.js';
+import { buildDotnet } from './builders/dotnet-builder.js';
 
-const PACKAGES = ['python', 'node', 'java', 'ffi'] as const;
+const PACKAGES = ['python', 'node', 'java', 'ffi', 'dotnet'] as const;
 
 const BUILDERS: Record<Package, (options: BuilderOptions) => void> = {
   python: buildPython,
   node: buildNode,
   java: buildJava,
   ffi: buildFfi,
+  dotnet: buildDotnet
 };
 
 type Package = (typeof PACKAGES)[number];
