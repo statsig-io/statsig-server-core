@@ -7,18 +7,18 @@ namespace Statsig
     public class Experiment
     {
         [JsonProperty("name")] public string Name;
-        [JsonProperty("rule_id")] public string RuleId;
+        [JsonProperty("rule_id")] public string RuleID;
         [JsonProperty("value")] public IReadOnlyDictionary<string, JToken> Value;
         [JsonProperty("group_name")] public string? GroupName;
-        [JsonProperty("details")] public EvaluationDetails? Details;
+        [JsonProperty("details")] public EvaluationDetails EvaluationDetails;
 
         internal Experiment(string name, string? ruleId, IReadOnlyDictionary<string, JToken>? value, string? groupName, EvaluationDetails? details)
         {
             Name = name;
-            RuleId = ruleId ?? string.Empty;
+            RuleID = ruleId ?? string.Empty;
             Value = value ?? new Dictionary<string, JToken>();
             GroupName = groupName;
-            Details = details;
+            EvaluationDetails = details ?? new EvaluationDetails(0, 0, "");
         }
     }
 }
