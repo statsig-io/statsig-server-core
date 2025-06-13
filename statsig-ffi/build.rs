@@ -36,7 +36,7 @@ fn run_csharp_bindgen() {
             "SafeOptBool" => "int".into(),
             _ => rust_type_name,
         })
-        .generate_csharp_file("../statsig-dotnet/dotnet-statsig/StatsigFFI.g.cs")
+        .generate_csharp_file("../statsig-dotnet/src/Statsig/StatsigFFI.g.cs")
         .unwrap();
 }
 

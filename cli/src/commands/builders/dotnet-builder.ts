@@ -18,7 +18,7 @@ const TARGET_MAPPING = {
 
 const DOTNET_DIR= path.resolve(
   BASE_DIR,
-  'statsig-dotnet/dotnet-statsig/runtimes',
+  'statsig-dotnet/runtimes',
 );
 
 export function buildDotnet(options: BuilderOptions) {

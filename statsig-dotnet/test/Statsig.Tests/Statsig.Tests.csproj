@@ -19,22 +19,15 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Statsig\Statsig.csproj" />
   </ItemGroup>
- <Target Name="CopyNativeLibs" AfterTargets="Build">
-    <ItemGroup>
-      <NativeLibs Include="$(ProjectDir)..\dotnet-statsig\runtimes\**\native\*.*" />
-    </ItemGroup>
-    <Copy SourceFiles="@(NativeLibs)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-  </Target>
-  <!-- Add this ItemGroup to ensure JSON files in the Resources folder are copied to the output directory -->
   <ItemGroup>
     <None Update="Resources\**\*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="Moq" />
-    <None Remove="WireMock.Net" />
-  </ItemGroup>
-  
+ <Target Name="CopyNativeLibs" AfterTargets="Build">
+    <ItemGroup>
+      <NativeLibs Include="$(ProjectDir)..\..\runtimes\**\native\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NativeLibs)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
 </Project>
