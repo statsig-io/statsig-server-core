@@ -8,7 +8,7 @@ namespace Statsig
         [JsonProperty("received_at")] public long ReceivedAt = 0;
         [JsonProperty("reason")] public string Reason = "";
 
-        internal EvaluationDetails(long lcut, long receivedAt, string reason)
+        public EvaluationDetails(long lcut, long receivedAt, string reason)
         {
             Lcut = lcut;
             ReceivedAt = receivedAt;
