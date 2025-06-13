@@ -168,7 +168,7 @@ func TestGetRetrievesCorrectParamValue(t *testing.T) {
 
 }
 
-func TestExposureLoggingOccursWithNoOptions(t *testing.T) {
+func TestLayerExposureLoggingOccursNoOptions(t *testing.T) {
 	user := statsig.NewStatsigUserBuilder().
 		WithUserID("a-user").Build()
 
@@ -186,7 +186,7 @@ func TestExposureLoggingOccursWithNoOptions(t *testing.T) {
 	s.Shutdown()
 
 	if !checkEventNameExists(scrapiServer.fetchLoggedEvents(), "statsig::layer_exposure") {
-		t.Errorf("Error occurred, layer exposure event was not logged while disable exposure logging was set to false")
+		t.Errorf("Error occurred, layer exposure event was not logged while options were not supplied")
 	}
 
 }

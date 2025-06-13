@@ -107,3 +107,24 @@ func TestDisableExposureLoggingIsTrue(t *testing.T) {
 	}
 
 }
+
+func TestFeatureGateExposureLoggingNoOptions(t *testing.T) {
+	user := statsig.NewStatsigUserBuilder().
+		WithUserID("a-user").Build()
+
+	scrapiServer := serverSetup("eval_proj_dcs.json")
+
+	options := CreateFeatureGateOptions(scrapiServer)
+
+	s, teardown := statsigSetup(t, options)
+	defer teardown()
+
+	feature_gate := "test_country_partial"
+	_ = s.CheckGate(*user, feature_gate, nil)
+	s.Shutdown()
+
+	if !checkEventNameExists(scrapiServer.fetchLoggedEvents(), "statsig::gate_exposure") {
+		t.Errorf("Error occurred, gate exposure event was not logged when options were not supplied")
+	}
+
+}

@@ -110,3 +110,25 @@ func TestDynamicConfigDisableExposureLoggingIsTrue(t *testing.T) {
 	}
 
 }
+
+func TestDynamicConfiExposureLoggingNoOptions(t *testing.T) {
+	user := statsig.NewStatsigUserBuilder().
+		WithUserID("a-user").Build()
+
+	scrapiServer := serverSetup("eval_proj_dcs.json")
+
+	o := CreateDynamicConfigOptions(scrapiServer)
+
+	s, teardown := statsigSetup(t, o)
+	defer teardown()
+
+	dynamic_config := "test_environment_config"
+	_ = s.GetDynamicConfig(*user, dynamic_config, nil)
+
+	s.Shutdown()
+
+	if !checkEventNameExists(scrapiServer.fetchLoggedEvents(), "statsig::config_exposure") {
+		t.Errorf("Error occurred, config exposure event was not logged when options were not supplied")
+	}
+
+}

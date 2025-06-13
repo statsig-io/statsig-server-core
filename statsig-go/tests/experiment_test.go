@@ -130,3 +130,24 @@ func TestExperimentDisableExposureLoggingIsTrue(t *testing.T) {
 	}
 
 }
+
+func TestExperimentExposureLoggingNoOptions(t *testing.T) {
+	user := statsig.NewStatsigUserBuilder().
+		WithUserID("a-user").Build()
+
+	scrapiServer := serverSetup("eval_proj_dcs.json")
+
+	options := CreateFeatureGateOptions(scrapiServer)
+
+	s, teardown := statsigSetup(t, options)
+	defer teardown()
+
+	experimentName := "exp_with_obj_and_array"
+	_ = s.GetExperiment(*user, experimentName, nil)
+	s.Shutdown()
+
+	if !checkEventNameExists(scrapiServer.fetchLoggedEvents(), "statsig::config_exposure") {
+		t.Errorf("Error occurred, config exposure event was not logged when options were not supplied")
+	}
+
+}
