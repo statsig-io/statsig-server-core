@@ -35,8 +35,8 @@ namespace Statsig
                         null, // outputLogLevel
                         -1, // disableCountryLookup
                         -1, // disableUserAgentParsing
-                        -1, // waitForCountryLookupInit
-                        -1); // waitForUserAgentInit
+                        builder.waitForCountryLookupInit ? 1 : 0, // waitForCountryLookupInit
+                        builder.waitForUserAgentInit ? 1 : 0); // waitForUserAgentInit
                 }
             }
         }
@@ -64,6 +64,8 @@ namespace Statsig
         internal string? logEventURL;
         internal string? environment;
         internal int specsSyncIntervalMs = -1;
+        internal bool waitForCountryLookupInit = false;
+        internal bool waitForUserAgentInit = false;
 
         public StatsigOptionsBuilder SetSpecsURL(string specsURL)
         {
@@ -88,7 +90,16 @@ namespace Statsig
             this.specsSyncIntervalMs = specsSyncIntervalMs;
             return this;
         }
-
+        public StatsigOptionsBuilder SetWaitForCountryLookupInit(bool waitForCountryLookupInit)
+        {
+            this.waitForCountryLookupInit = waitForCountryLookupInit;
+            return this;
+        }
+        public StatsigOptionsBuilder SetWaitForUserAgentInit(bool waitForUserAgentInit)
+        {
+            this.waitForUserAgentInit = waitForUserAgentInit;
+            return this;
+        }
         public StatsigOptions Build()
         {
             return new StatsigOptions(this);

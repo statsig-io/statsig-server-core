@@ -9,22 +9,25 @@ namespace Statsig
         public string Name { get; }
 
         [JsonProperty("value")]
-        public bool EvalValue { get; }
+        public bool Value { get; }
 
         [JsonProperty("rule_id")]
-        public string RuleId { get; }
+        public string RuleID { get; }
+
+        [JsonProperty("id_type")]
+        public string? IDType { get; }
 
         [JsonProperty("details")]
-        public EvaluationDetails EvaluationDetails { get; }
-        public string RawJson { get; set; }
+        public EvaluationDetails? EvaluationDetails { get; }
 
-        internal FeatureGate(string name, bool evalValue, string ruleID, EvaluationDetails evaluationDetails, string rawJson)
+        internal FeatureGate(string rawJson)
         {
-            Name = name;
-            EvalValue = evalValue;
-            RuleId = ruleID;
-            EvaluationDetails = evaluationDetails;
-            RawJson = rawJson;
+            var jsonObject = JObject.Parse(rawJson);
+            Name = jsonObject["name"]?.ToString() ?? string.Empty;
+            Value = jsonObject["value"]?.ToObject<bool>() ?? false;
+            RuleID = jsonObject["rule_id"]?.ToString() ?? string.Empty;
+            EvaluationDetails = jsonObject["details"]?.ToObject<EvaluationDetails>();
+            IDType = jsonObject["id_type"]?.ToString();
         }
     }
 }

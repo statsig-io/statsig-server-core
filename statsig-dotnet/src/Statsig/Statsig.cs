@@ -49,6 +49,21 @@ namespace Statsig
             }
         }
 
+        unsafe public FeatureGate GetFeatureGate(StatsigUser user, string gateName)
+        {
+            var gateNameBytes = Encoding.UTF8.GetBytes(gateName);
+
+            fixed (byte* gateNamePtr = gateNameBytes)
+            {
+                var jsonStringPtr =
+                    StatsigFFI.statsig_get_feature_gate(_statsigRef, user.Reference, gateNamePtr, null);
+                var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
+                return jsonString != null
+                    ? new FeatureGate(jsonString)
+                    : new FeatureGate(string.Empty);
+            }
+        }
+
         unsafe public DynamicConfig GetConfig(StatsigUser user, string configName)
         {
             var configNameBytes = Encoding.UTF8.GetBytes(configName);
@@ -60,10 +75,11 @@ namespace Statsig
                 var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
                 if (jsonString == null)
                 {
-                    return new DynamicConfig(configName, null, null, null);
+                    return new DynamicConfig(string.Empty);
                 }
-                return JsonConvert.DeserializeObject<DynamicConfig>(jsonString) ??
-                       new DynamicConfig(configName, null, null, null);
+                return jsonString != null
+                    ? new DynamicConfig(jsonString)
+                    : new DynamicConfig(string.Empty);
             }
         }
 
@@ -78,10 +94,26 @@ namespace Statsig
                 var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
                 if (jsonString == null)
                 {
-                    return new Experiment(experimentName, null, null, null, null);
+                    return new Experiment(string.Empty);
                 }
-                return JsonConvert.DeserializeObject<Experiment>(jsonString) ??
-                       new Experiment(experimentName, null, null, null, null);
+                return jsonString != null
+                    ? new Experiment(jsonString)
+                    : new Experiment(string.Empty);
+            }
+        }
+
+        unsafe public Layer GetLayer(StatsigUser user, string layerName)
+        {
+            var layerNameBytes = Encoding.UTF8.GetBytes(layerName);
+
+            fixed (byte* layerNamePtr = layerNameBytes)
+            {
+                var jsonStringPtr =
+                    StatsigFFI.statsig_get_layer(_statsigRef, user.Reference, layerNamePtr, null);
+                var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
+                return jsonString != null
+                    ? new Layer(jsonString, _statsigRef)
+                    : new Layer(string.Empty, _statsigRef);
             }
         }
 
@@ -129,14 +161,19 @@ namespace Statsig
             }
         }
 
-        public void FlushEvents()
+        public Task FlushEvents()
         {
             if (_statsigRef == 0)
             {
                 Console.WriteLine("Statsig is not initialized.");
-                return;
+                return Task.CompletedTask;
             }
-            StatsigFFI.statsig_flush_events_blocking(_statsigRef);
+            var source = new TaskCompletionSource<bool>();
+            StatsigFFI.statsig_flush_events(_statsigRef, () =>
+            {
+                source.SetResult(true);
+            });
+            return source.Task;
         }
 
         public void Shutdown()
