@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\dotnet-statsig\statsig-dotnet.csproj" />
+    <ProjectReference Include="..\..\src\Statsig\Statsig.csproj" />
   </ItemGroup>
  <Target Name="CopyNativeLibs" AfterTargets="Build">
     <ItemGroup>
