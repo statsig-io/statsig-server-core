@@ -91,7 +91,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        filter: [common, common-rulesets-based, server]
+        filter: [common, common-rulesets-based, server, server-core]
 
     steps:
       - name: Clone Kong Repo

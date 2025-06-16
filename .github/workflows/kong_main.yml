@@ -76,3 +76,10 @@ jobs:
     secrets: inherit  
     with:
       sdk: core-java
+
+  core-dotnet:
+    needs: cache
+    uses: ./.github/workflows/kong_task.yml
+    secrets: inherit
+    with:
+      sdk: core-dotnet

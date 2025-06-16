@@ -40,23 +40,28 @@ namespace Statsig
             return source.Task;
         }
 
-        unsafe public bool CheckGate(StatsigUser user, string gateName)
+        unsafe public bool CheckGate(StatsigUser user, string gateName, EvaluationOptions? options = null)
         {
             var gateNameBytes = Encoding.UTF8.GetBytes(gateName);
+            var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            var optionsBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
+            fixed (byte* optionsPtr = optionsBytes)
             fixed (byte* gateNamePtr = gateNameBytes)
             {
-                return StatsigFFI.statsig_check_gate(_statsigRef, user.Reference, gateNamePtr, null);
+                return StatsigFFI.statsig_check_gate(_statsigRef, user.Reference, gateNamePtr, optionsPtr);
             }
         }
 
-        unsafe public FeatureGate GetFeatureGate(StatsigUser user, string gateName)
+        unsafe public FeatureGate GetFeatureGate(StatsigUser user, string gateName, EvaluationOptions? options = null)
         {
             var gateNameBytes = Encoding.UTF8.GetBytes(gateName);
-
+            var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            var optionsBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
+            fixed (byte* optionsPtr = optionsBytes)
             fixed (byte* gateNamePtr = gateNameBytes)
             {
                 var jsonStringPtr =
-                    StatsigFFI.statsig_get_feature_gate(_statsigRef, user.Reference, gateNamePtr, null);
+                    StatsigFFI.statsig_get_feature_gate(_statsigRef, user.Reference, gateNamePtr, optionsPtr);
                 var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
                 return jsonString != null
                     ? new FeatureGate(jsonString)
@@ -64,14 +69,16 @@ namespace Statsig
             }
         }
 
-        unsafe public DynamicConfig GetConfig(StatsigUser user, string configName)
+        unsafe public DynamicConfig GetConfig(StatsigUser user, string configName, EvaluationOptions? options = null)
         {
             var configNameBytes = Encoding.UTF8.GetBytes(configName);
-
+            var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            var optionsBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
+            fixed (byte* optionsPtr = optionsBytes)
             fixed (byte* configNamePtr = configNameBytes)
             {
                 var jsonStringPtr =
-                    StatsigFFI.statsig_get_dynamic_config(_statsigRef, user.Reference, configNamePtr, null);
+                    StatsigFFI.statsig_get_dynamic_config(_statsigRef, user.Reference, configNamePtr, optionsPtr);
                 var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
                 if (jsonString == null)
                 {
@@ -83,14 +90,16 @@ namespace Statsig
             }
         }
 
-        unsafe public Experiment GetExperiment(StatsigUser user, string experimentName)
+        unsafe public Experiment GetExperiment(StatsigUser user, string experimentName, EvaluationOptions? options = null)
         {
             var experimentNameBytes = Encoding.UTF8.GetBytes(experimentName);
-
+            var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            var optionsBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
+            fixed (byte* optionsPtr = optionsBytes)
             fixed (byte* experimentNamePtr = experimentNameBytes)
             {
                 var jsonStringPtr =
-                    StatsigFFI.statsig_get_experiment(_statsigRef, user.Reference, experimentNamePtr, null);
+                    StatsigFFI.statsig_get_experiment(_statsigRef, user.Reference, experimentNamePtr, optionsPtr);
                 var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
                 if (jsonString == null)
                 {
@@ -102,18 +111,20 @@ namespace Statsig
             }
         }
 
-        unsafe public Layer GetLayer(StatsigUser user, string layerName)
+        unsafe public Layer GetLayer(StatsigUser user, string layerName, EvaluationOptions? options = null)
         {
             var layerNameBytes = Encoding.UTF8.GetBytes(layerName);
-
+            var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            var optionsBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
+            fixed (byte* optionsPtr = optionsBytes)
             fixed (byte* layerNamePtr = layerNameBytes)
             {
                 var jsonStringPtr =
-                    StatsigFFI.statsig_get_layer(_statsigRef, user.Reference, layerNamePtr, null);
+                    StatsigFFI.statsig_get_layer(_statsigRef, user.Reference, layerNamePtr, optionsPtr);
                 var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
                 return jsonString != null
-                    ? new Layer(jsonString, _statsigRef)
-                    : new Layer(string.Empty, _statsigRef);
+                    ? new Layer(jsonString, _statsigRef, options)
+                    : new Layer(string.Empty, _statsigRef, options);
             }
         }
 

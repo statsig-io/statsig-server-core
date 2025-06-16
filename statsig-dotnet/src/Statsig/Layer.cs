@@ -20,7 +20,9 @@ namespace Statsig
         private ulong _statsigRef = 0;
         private string rawJson;
 
-        internal Layer(string rawJson, ulong statsigRef)
+        private bool disableExposureLogging = false;
+
+        internal Layer(string rawJson, ulong statsigRef, EvaluationOptions? options = null)
         {
             _statsigRef = statsigRef;
             this.rawJson = rawJson;
@@ -32,6 +34,10 @@ namespace Statsig
             IDType = jsonObject["id_type"]?.ToString() ?? string.Empty;
             AllocatedExperimentName = jsonObject["allocated_experiment_name"]?.ToString() ?? string.Empty;
             EvaluationDetails = jsonObject["details"]?.ToObject<EvaluationDetails>();
+            if (options != null)
+            {
+                disableExposureLogging = options.DisableExposureLogging;
+            }
         }
 
         unsafe public T? Get<T>(string key, T? defaultValue = default(T))
@@ -45,6 +51,11 @@ namespace Statsig
             try
             {
                 var result = outVal.ToObject<T>();
+
+                if (disableExposureLogging)
+                {
+                    return result;
+                }
                 var layerJsonBytes = Encoding.UTF8.GetBytes(this.rawJson);
                 var paramNameBytes = Encoding.UTF8.GetBytes(key);
 
