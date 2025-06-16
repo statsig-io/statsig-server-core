@@ -69,6 +69,16 @@ namespace Statsig
             }
         }
 
+        unsafe public void ManuallyLogGateExposure(StatsigUser user, string gateName)
+        {
+            var gateNameBytes = Encoding.UTF8.GetBytes(gateName);
+
+            fixed (byte* gateNamePtr = gateNameBytes)
+            {
+                StatsigFFI.statsig_manually_log_gate_exposure(_statsigRef, user.Reference, gateNamePtr);
+            }
+        }
+
         unsafe public DynamicConfig GetConfig(StatsigUser user, string configName, EvaluationOptions? options = null)
         {
             var configNameBytes = Encoding.UTF8.GetBytes(configName);
@@ -87,6 +97,16 @@ namespace Statsig
                 return jsonString != null
                     ? new DynamicConfig(jsonString)
                     : new DynamicConfig(string.Empty);
+            }
+        }
+
+        unsafe public void ManuallyLogConfigExposure(StatsigUser user, string configName)
+        {
+            var configNameBytes = Encoding.UTF8.GetBytes(configName);
+
+            fixed (byte* configNamePtr = configNameBytes)
+            {
+                StatsigFFI.statsig_manually_log_dynamic_config_exposure(_statsigRef, user.Reference, configNamePtr);
             }
         }
 
@@ -111,6 +131,16 @@ namespace Statsig
             }
         }
 
+        unsafe public void ManuallyLogExperimentExposure(StatsigUser user, string experimentName)
+        {
+            var experimentNameBytes = Encoding.UTF8.GetBytes(experimentName);
+
+            fixed (byte* experimentNamePtr = experimentNameBytes)
+            {
+                StatsigFFI.statsig_manually_log_experiment_exposure(_statsigRef, user.Reference, experimentNamePtr);
+            }
+        }
+
         unsafe public Layer GetLayer(StatsigUser user, string layerName, EvaluationOptions? options = null)
         {
             var layerNameBytes = Encoding.UTF8.GetBytes(layerName);
@@ -125,6 +155,17 @@ namespace Statsig
                 return jsonString != null
                     ? new Layer(jsonString, _statsigRef, options)
                     : new Layer(string.Empty, _statsigRef, options);
+            }
+        }
+
+        unsafe public void ManuallyLogLayerParameterExposure(StatsigUser user, string layerName, string parameterName)
+        {
+            var layerNameBytes = Encoding.UTF8.GetBytes(layerName);
+            var parameterNameBytes = Encoding.UTF8.GetBytes(parameterName);
+            fixed (byte* parameterNamePtr = parameterNameBytes)
+            fixed (byte* layerNamePtr = layerNameBytes)
+            {
+                StatsigFFI.statsig_manually_log_layer_parameter_exposure(_statsigRef, user.Reference, layerNamePtr, parameterNamePtr);
             }
         }
 
@@ -170,6 +211,16 @@ namespace Statsig
             {
                 StatsigFFI.statsig_log_event(_statsigRef, user.Reference, eventPtr);
             }
+        }
+
+        public void Identify(StatsigUser user)
+        {
+            if (_statsigRef == 0)
+            {
+                Console.WriteLine("Statsig is not initialized.");
+                return;
+            }
+            StatsigFFI.statsig_identify(_statsigRef, user.Reference);
         }
 
         public Task FlushEvents()
