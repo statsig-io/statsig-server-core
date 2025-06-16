@@ -3,24 +3,30 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <LangVersion>9</LangVersion>
-    <PackageId>TestApp</PackageId> <!-- This is a placeholder; the actual package ID will be set in the future. -->
+    <OutputType>Library</OutputType>
+    <PackageId>Statsig</PackageId> <!-- This is a placeholder; the actual package ID will be set in the future. -->
     <RootNamespace>Statsig</RootNamespace>
     <Version>1.0.0</Version>
-    <PackageOutputPath>~/local-nuget-source</PackageOutputPath>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PackageOutputPath>../../../../local-nuget-source</PackageOutputPath> <!-- Local NuGet source path for testing -->
     <IsPackable>true</IsPackable>
   </PropertyGroup>
-  <ItemGroup>
-    <None Include="runtimes/**/*.*" Pack="true" PackagePath="runtimes/" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>dotnet-statsig-tests</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
+  <ItemGroup Condition="'$(UseLocalProjects)' != 'true'">
+    <PackageReference Include="Statsig.NativeAssets.osx-arm64" Version="1.0.0" />
+    <PackageReference Include="Statsig.NativeAssets.linux-x64" Version="1.0.0" /><!-- This is a placeholder; the actual version will be set in the future. -->
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="xunit" Version="2.9.2" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseLocalProjects)' == 'true'">
+    <ProjectReference Include="../Native/Statsig.NativeAssets.osx-arm64.csproj" Condition="'$(RuntimeIdentifier)' == 'osx-arm64'" />
+    <ProjectReference Include="../Native/Statsig.NativeAssets.linux-x64.csproj" Condition="'$(RuntimeIdentifier)' == 'linux-x64'" />
   </ItemGroup>
 </Project>

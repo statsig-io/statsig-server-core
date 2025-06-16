@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>Statsig.NativeAssets.linux-x64</PackageId>
+    <Version>1.0.0</Version>
+    <Description>Statsig native library for Linux x64</Description>
+    <PackageType>Dependency</PackageType>
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <PackageOutputPath>../../../../local-nuget-source</PackageOutputPath>
+  </PropertyGroup>
+  
+  <ItemGroup Condition="Exists('../../runtimes/linux-x64/native/libstatsig_ffi.so')">
+    <Content Include="../../runtimes/linux-x64/native/libstatsig_ffi.so">
+      <Pack>true</Pack>
+      <PackagePath>runtimes/linux-x64/native/</PackagePath>
+    </Content>
+  </ItemGroup>
+  
+  <Target Name="FailIfMissingBinary" BeforeTargets="Pack"
+          Condition="!Exists('../../runtimes/linux-x64/native/libstatsig_ffi.so')">
+    <Error Text="Native binary not found at ../../runtimes/linux-x64/native/libstatsig_ffi.so. Packing aborted." />
+  </Target>
+</Project>

@@ -8,6 +8,10 @@ obj/
 TestResults/
 out/
 
+# Ignore temporary extract folders
+tmp_nupkg/
+tmp/
+
 # User-specific files
 *.user
 *.suo
@@ -35,6 +39,8 @@ out/
 # NuGet test package outputs (custom)
 **/local-nuget-source/
 **/local-nuget-feed/
+/local-nuget-source/
+/local-nuget-feed/
 *.nupkg
 *.snupkg
 
