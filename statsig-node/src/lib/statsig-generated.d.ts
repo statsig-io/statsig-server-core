@@ -56,6 +56,7 @@ export declare class StatsigNapiInternal {
   getDynamicConfig(user: StatsigUser, configName: string, options?: DynamicConfigEvaluationOptions | undefined | null): DynamicConfig
   getFieldsNeededForDynamicConfig(configName: string): Array<string>
   getExperiment(user: StatsigUser, experimentName: string, options?: ExperimentEvaluationOptions | undefined | null): Experiment
+  getExperimentByGroupName(experimentName: string, groupName: string): Experiment
   getFieldsNeededForExperiment(experimentName: string): Array<string>
   getLayer(user: StatsigUser, layerName: string, options?: LayerEvaluationOptions | undefined | null): Layer
   getFieldsNeededForLayer(layerName: string): Array<string>
