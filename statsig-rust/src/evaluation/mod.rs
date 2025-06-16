@@ -8,9 +8,9 @@ pub mod evaluator;
 pub mod evaluator_context;
 pub mod evaluator_result;
 pub mod evaluator_value;
+pub mod ua_parser;
 
 pub(crate) mod cmab_evaluator;
 pub(crate) mod comparisons;
 pub(crate) mod country_lookup;
 pub(crate) mod get_unit_id;
-pub(crate) mod ua_parser;

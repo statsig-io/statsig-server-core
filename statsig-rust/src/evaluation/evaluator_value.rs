@@ -1,5 +1,5 @@
 use chrono::{DateTime, NaiveDateTime};
-use regex_lite::Regex;
+use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Value as JsonValue, Value};
 use std::collections::HashMap;
