@@ -211,6 +211,17 @@ impl StatsigNapiInternal {
     }
 
     #[napi]
+    pub fn get_experiment_by_group_name(
+        &self,
+        experiment_name: String,
+        group_name: String,
+    ) -> Experiment {
+        self.inner
+            .get_experiment_by_group_name(&experiment_name, &group_name)
+            .into()
+    }
+
+    #[napi]
     pub fn get_fields_needed_for_experiment(&self, experiment_name: String) -> Vec<String> {
         self.inner
             .get_fields_needed_for_experiment(experiment_name.as_str())

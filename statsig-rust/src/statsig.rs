@@ -1531,6 +1531,63 @@ impl Statsig {
             None => vec![],
         }
     }
+
+    pub fn get_experiment_by_group_name(
+        &self,
+        experiment_name: &str,
+        group_name: &str,
+    ) -> Experiment {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return make_experiment(
+                experiment_name,
+                None,
+                EvaluationDetails::error("Failed to acquire read lock for spec store data"),
+            );
+        });
+
+        let Some(exp) = data.values.dynamic_configs.get(experiment_name) else {
+            return make_experiment(
+                experiment_name,
+                None,
+                EvaluationDetails::unrecognized(&data),
+            );
+        };
+
+        if let Some(rule) = exp
+            .spec
+            .rules
+            .iter()
+            .find(|rule| rule.group_name.as_deref() == Some(group_name))
+        {
+            let value = rule.return_value.get_json().unwrap_or_default();
+            let rule_id = String::from(rule.id.as_str());
+            let id_type = rule.id_type.value.clone();
+            let group_name = rule.group_name.clone();
+
+            return Experiment {
+                name: experiment_name.to_string(),
+                value,
+                rule_id,
+                id_type,
+                group_name,
+                details: EvaluationDetails::recognized_without_eval_result(&data),
+                __evaluation: None,
+            };
+        }
+
+        make_experiment(
+            experiment_name,
+            None,
+            EvaluationDetails::unrecognized(&data),
+        )
+    }
 }
 
 // -------------------------

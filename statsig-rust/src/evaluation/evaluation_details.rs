@@ -15,6 +15,10 @@ impl EvaluationDetails {
         Self::create_from_data(spec_store_data, "Unrecognized", &EvaluatorResult::default())
     }
 
+    pub fn recognized_without_eval_result(spec_store_data: &SpecStoreData) -> Self {
+        Self::create_from_data(spec_store_data, "Recognized", &EvaluatorResult::default())
+    }
+
     pub fn recognized(spec_store_data: &SpecStoreData, eval_result: &EvaluatorResult) -> Self {
         Self::create_from_data(spec_store_data, "Recognized", eval_result)
     }
