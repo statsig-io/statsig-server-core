@@ -154,7 +154,10 @@ uint64_t statsig_options_create(const char *specs_url,
                                 SafeOptBool disable_country_lookup,
                                 SafeOptBool disable_user_agent_parsing,
                                 SafeOptBool wait_for_country_lookup_init,
-                                SafeOptBool wait_for_user_agent_init);
+                                SafeOptBool wait_for_user_agent_init,
+                                SafeOptBool enable_id_lists,
+                                const char *id_lists_url,
+                                int id_lists_sync_interval_ms);
 
 void statsig_options_release(uint64_t options_ref);
 

@@ -35,7 +35,10 @@ class StatsigOptions
             toSafeOptBool($disable_country_lookup),
             toSafeOptBool($disable_user_agent_parsing),
             toSafeOptBool($wait_for_country_lookup_init),
-            toSafeOptBool($wait_for_user_agent_init)
+            toSafeOptBool($wait_for_user_agent_init),
+            -1,
+            null,
+            -1,
         );
     }
 

@@ -17,11 +17,13 @@ namespace Statsig
             var specsURLBytes = builder.specsURL != null ? Encoding.UTF8.GetBytes(builder.specsURL) : null;
             var logEventURLBytes = builder.logEventURL != null ? Encoding.UTF8.GetBytes(builder.logEventURL) : null;
             var environmentBytes = builder.environment != null ? Encoding.UTF8.GetBytes(builder.environment) : null;
+            var idListsURLBytes = builder.idListsURL != null ? Encoding.UTF8.GetBytes(builder.idListsURL) : null;
             unsafe
             {
                 fixed (byte* specsURLPtr = specsURLBytes)
                 fixed (byte* logEventURLPtr = logEventURLBytes)
                 fixed (byte* environmentPtr = environmentBytes)
+                fixed (byte* idListsURLPtr = idListsURLBytes)
                 {
                     _ref = StatsigFFI.statsig_options_create(
                         specsURLPtr,
@@ -36,7 +38,10 @@ namespace Statsig
                         -1, // disableCountryLookup
                         -1, // disableUserAgentParsing
                         builder.waitForCountryLookupInit ? 1 : 0, // waitForCountryLookupInit
-                        builder.waitForUserAgentInit ? 1 : 0); // waitForUserAgentInit
+                        builder.waitForUserAgentInit ? 1 : 0,
+                        builder.enableIDLists ? 1 : 0,
+                        idListsURLPtr,
+                        builder.idListsSyncIntervalMs);
                 }
             }
         }
@@ -66,6 +71,10 @@ namespace Statsig
         internal int specsSyncIntervalMs = -1;
         internal bool waitForCountryLookupInit = false;
         internal bool waitForUserAgentInit = false;
+
+        internal bool enableIDLists = false;
+        internal string? idListsURL;
+        internal int idListsSyncIntervalMs = -1;
 
         public StatsigOptionsBuilder SetSpecsURL(string specsURL)
         {
@@ -98,6 +107,21 @@ namespace Statsig
         public StatsigOptionsBuilder SetWaitForUserAgentInit(bool waitForUserAgentInit)
         {
             this.waitForUserAgentInit = waitForUserAgentInit;
+            return this;
+        }
+        public StatsigOptionsBuilder SetEnableIDLists(bool enableIDLists)
+        {
+            this.enableIDLists = enableIDLists;
+            return this;
+        }
+        public StatsigOptionsBuilder SetIDListsURL(string idListsURL)
+        {
+            this.idListsURL = idListsURL;
+            return this;
+        }
+        public StatsigOptionsBuilder SetIDListsSyncIntervalMs(int idListsSyncIntervalMs)
+        {
+            this.idListsSyncIntervalMs = idListsSyncIntervalMs;
             return this;
         }
         public StatsigOptions Build()

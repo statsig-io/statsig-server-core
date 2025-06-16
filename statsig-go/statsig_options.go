@@ -53,6 +53,9 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 		C.int(convertToSafeOptBool(o.statsigOptions.DisableUserAgentParsing)),
 		C.int(convertToSafeOptBool(o.statsigOptions.WaitForCountryLookupInit)),
 		C.int(convertToSafeOptBool(o.statsigOptions.WaitForUserAgentInit)),
+		C.int(convertToSafeOptBool(nil)), // enableIDLists, not used in this version
+		ResolveDefault(nil), // idListsUrl, not used in this version
+		C.int(-1), // idListsSyncIntervalMs, not used in this version
 	)
 
 	o.statsigOptions.innerRef = uint64(optionsRef)

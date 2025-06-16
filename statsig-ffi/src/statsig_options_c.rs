@@ -27,12 +27,17 @@ pub extern "C" fn statsig_options_create(
     disable_user_agent_parsing: SafeOptBool,
     wait_for_country_lookup_init: SafeOptBool,
     wait_for_user_agent_init: SafeOptBool,
+    enable_id_lists: SafeOptBool,
+    id_lists_url: *const c_char,
+    id_lists_sync_interval_ms: c_int,
 ) -> u64 {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
+    let id_lists_url = c_char_to_string(id_lists_url);
     let environment = c_char_to_string(environment);
     let event_logging_max_queue_size = c_int_to_u32(event_logging_max_queue_size);
     let specs_sync_interval_ms = c_int_to_u32(specs_sync_interval_ms);
+    let id_lists_sync_interval_ms = c_int_to_u32(id_lists_sync_interval_ms);
 
     let specs_adapter = try_get_specs_adapter(specs_adapter_ref);
     let event_logging_adapter = try_get_event_logging_adapter(event_logging_adapter_ref);
@@ -53,6 +58,9 @@ pub extern "C" fn statsig_options_create(
         disable_user_agent_parsing: extract_opt_bool(disable_user_agent_parsing),
         wait_for_country_lookup_init: extract_opt_bool(wait_for_country_lookup_init),
         wait_for_user_agent_init: extract_opt_bool(wait_for_user_agent_init),
+        enable_id_lists: extract_opt_bool(enable_id_lists),
+        id_lists_url,
+        id_lists_sync_interval_ms,
         ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {
