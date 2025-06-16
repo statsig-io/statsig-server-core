@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
+using Newtonsoft.Json;
 
 namespace Statsig
 {
@@ -20,9 +21,9 @@ namespace Statsig
             var countryBytes = builder.country != null ? Encoding.UTF8.GetBytes(builder.country) : Array.Empty<byte>();
             var localeBytes = builder.locale != null ? Encoding.UTF8.GetBytes(builder.locale) : Array.Empty<byte>();
             var appVersionBytes = builder.appVersion != null ? Encoding.UTF8.GetBytes(builder.appVersion) : Array.Empty<byte>();
-            var customIDsJson = builder.customIDs != null ? JsonSerializer.Serialize(builder.customIDs) : null;
-            var customPropertiesJson = builder.customProperties != null ? JsonSerializer.Serialize(builder.customProperties) : null;
-            var privateAttributesJson = builder.privateAttributes != null ? JsonSerializer.Serialize(builder.privateAttributes) : null;
+            var customIDsJson = builder.customIDs != null ? JsonConvert.SerializeObject(builder.customIDs) : null;
+            var customPropertiesJson = builder.customProperties != null ? JsonConvert.SerializeObject(builder.customProperties) : null;
+            var privateAttributesJson = builder.privateAttributes != null ? JsonConvert.SerializeObject(builder.privateAttributes) : null;
 
             unsafe
             {
