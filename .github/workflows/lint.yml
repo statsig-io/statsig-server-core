@@ -115,3 +115,25 @@ jobs:
         working-directory: statsig-java
         run: ./gradlew spotlessCheck
 
+  # ------------------------------------------------------------ [ .NET Format Check ]
+  dotnet-format-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      
+      - name: Restore Dependencies
+        working-directory: statsig-dotnet
+        run: dotnet restore -p:UseLocalProjects=true -r linux-x64
+      
+      - name: Run dotnet format check
+        working-directory: statsig-dotnet
+        run: dotnet format --verify-no-changes --severity info --no-restore

@@ -9,7 +9,7 @@ namespace Statsig
 {
     public class Statsig : IDisposable
     {
-        private unsafe ulong _statsigRef;
+        private readonly unsafe ulong _statsigRef;
 
         public Statsig(string sdkKey, StatsigOptions options)
         {

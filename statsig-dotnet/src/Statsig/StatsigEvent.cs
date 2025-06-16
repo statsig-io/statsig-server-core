@@ -12,12 +12,14 @@ namespace Statsig
     /// </summary>
     internal class StatsigEvent
     {
+#pragma warning disable IDE0052 // Remove unread private members
         [JsonProperty("name")]
-        private string Name;
+        private readonly string Name;
         [JsonProperty("value")]
-        private object? Value;
+        private readonly object? Value;
         [JsonProperty("metadata")]
-        private IReadOnlyDictionary<string, string>? Metadata;
+        private readonly IReadOnlyDictionary<string, string>? Metadata;
+#pragma warning restore IDE0052
 
         internal StatsigEvent(string name, object? value = null, IReadOnlyDictionary<string, string>? metadata = null)
         {

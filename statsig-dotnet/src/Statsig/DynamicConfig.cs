@@ -24,10 +24,9 @@ namespace Statsig
             EvaluationDetails = jsonObject["details"]?.ToObject<EvaluationDetails>();
         }
 
-        public T? Get<T>(string key, T? defaultValue = default(T))
+        public T? Get<T>(string key, T? defaultValue = default)
         {
-            JToken? outVal;
-            if (!this.Value.TryGetValue(key, out outVal))
+            if (!this.Value.TryGetValue(key, out JToken? outVal))
             {
                 return defaultValue;
             }

@@ -9,7 +9,7 @@ namespace Statsig
     /// </summary>
     public class StatsigOptions : IDisposable
     {
-        private unsafe ulong _ref;
+        private readonly unsafe ulong _ref;
         internal unsafe ulong Reference => _ref;
 
         public StatsigOptions(StatsigOptionsBuilder builder)

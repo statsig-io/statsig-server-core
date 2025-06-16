@@ -8,7 +8,7 @@ namespace Statsig
 {
     public class StatsigUser : IDisposable
     {
-        private ulong _ref;
+        private readonly ulong _ref;
 
         internal ulong Reference => _ref;
 
@@ -125,10 +125,7 @@ namespace Statsig
 
         public StatsigUserBuilder AddCustomID(string key, string value)
         {
-            if (customIDs == null)
-            {
-                customIDs = new Dictionary<string, string>();
-            }
+            customIDs ??= new Dictionary<string, string>();
             customIDs[key] = value;
             return this;
         }
@@ -141,10 +138,7 @@ namespace Statsig
 
         public StatsigUserBuilder AddCustomProperty(string key, object value)
         {
-            if (customProperties == null)
-            {
-                customProperties = new Dictionary<string, object>();
-            }
+            customProperties ??= new Dictionary<string, object>();
             customProperties[key] = value;
             return this;
         }
@@ -157,10 +151,7 @@ namespace Statsig
 
         public StatsigUserBuilder AddPrivateAttribute(string key, object value)
         {
-            if (privateAttributes == null)
-            {
-                privateAttributes = new Dictionary<string, object>();
-            }
+            privateAttributes ??= new Dictionary<string, object>();
             privateAttributes[key] = value;
             return this;
         }

@@ -17,10 +17,10 @@ namespace Statsig
         [JsonProperty("allocated_experiment_name")] public string AllocatedExperimentName = "";
         [JsonProperty("details")] public EvaluationDetails? EvaluationDetails { get; }
 
-        private ulong _statsigRef = 0;
-        private string rawJson;
+        private readonly ulong _statsigRef = 0;
+        private readonly string rawJson;
 
-        private bool disableExposureLogging = false;
+        private readonly bool disableExposureLogging = false;
 
         internal Layer(string rawJson, ulong statsigRef, EvaluationOptions? options = null)
         {
@@ -40,10 +40,9 @@ namespace Statsig
             }
         }
 
-        unsafe public T? Get<T>(string key, T? defaultValue = default(T))
+        unsafe public T? Get<T>(string key, T? defaultValue = default)
         {
-            JToken? outVal;
-            if (!this.Value.TryGetValue(key, out outVal))
+            if (!this.Value.TryGetValue(key, out JToken? outVal))
             {
                 return defaultValue;
             }
