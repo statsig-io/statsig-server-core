@@ -2,7 +2,14 @@ use crate::{evaluation::evaluator_value::EvaluatorValue, unwrap_or_return, Dynam
 use chrono::Duration;
 
 pub(crate) fn compare_time(left: &DynamicValue, right: &EvaluatorValue, op: &str) -> bool {
-    let left_ts = unwrap_or_return!(left.timestamp_value.or(left.int_value), false);
+    let raw_left_ts = unwrap_or_return!(left.timestamp_value.or(left.int_value), false);
+    let mut left_ts = raw_left_ts;
+    if left_ts < 1_000_000_000_000 {
+        // Assume left is in seconds, convert to milliseconds
+        left_ts *= 1000;
+    }
+
+    // dcs will always be in milliseconds
     let right_ts = unwrap_or_return!(
         right
             .timestamp_value
