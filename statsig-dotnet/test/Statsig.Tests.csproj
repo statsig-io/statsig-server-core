@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Statsig\Statsig.csproj" />
+    <ProjectReference Include="..\src\Statsig\Statsig.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Resources\**\*.json">
