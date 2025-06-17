@@ -27,6 +27,7 @@ jobs:
           - java
           - rust
           - php
+          - dotnet
 
     runs-on: ubuntu-latest
 

@@ -25,9 +25,10 @@
     </None>
   </ItemGroup>
  <Target Name="CopyNativeLibs" AfterTargets="Build">
-    <ItemGroup>
-      <NativeLibs Include="$(ProjectDir)..\..\runtimes\**\native\*.*" />
-    </ItemGroup>
-    <Copy SourceFiles="@(NativeLibs)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-  </Target>
+  <ItemGroup>
+    <NativeLibs Include="$(ProjectDir)..\runtimes\**\native\*.*" />
+  </ItemGroup>
+  <Copy SourceFiles="@(NativeLibs)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+</Target>
+
 </Project>

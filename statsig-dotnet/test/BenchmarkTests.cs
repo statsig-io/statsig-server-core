@@ -11,7 +11,7 @@ namespace Statsig.tests
         public async Task PerfTest()
         {
 
-            var options = new StatsigOptions();
+            var options = new StatsigOptionsBuilder().Build();
             var statsigServer = new Statsig("secret-", options);
             var user = new StatsigUserBuilder()
                 .SetUserID("admin")

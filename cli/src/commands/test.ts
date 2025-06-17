@@ -13,6 +13,18 @@ import { execSync } from 'child_process';
 import { CommandBase } from './command_base.js';
 
 const TEST_COMMANDS: Record<string, string> = {
+  dotnet: [
+    'cargo build -p statsig_ffi',
+    
+    'rm -rf statsig-dotnet/runtimes',
+    'mkdir -p statsig-dotnet/runtimes/linux-x64/native',
+    'cp target/debug/libstatsig_ffi.so statsig-dotnet/runtimes/linux-x64/native || true',
+
+    'cd statsig-dotnet',
+    'dotnet build test/Statsig.Tests.csproj -p:UseLocalProjects=true -r linux-x64',
+    'dotnet test test/Statsig.Tests.csproj -p:UseLocalProjects=true',
+  ].join(' && '),
+  
   java: [
     'cargo build -p statsig_ffi',
 
