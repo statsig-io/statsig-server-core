@@ -292,7 +292,7 @@ impl StatsigGrpcSpecsAdapter {
             .await
             .map_err(|e| StatsigErr::GrpcError(format!("{}", e)))?;
         let specs_info = self.get_current_specs_info();
-        let zstd_id = specs_info.as_ref().and_then(|s| self.get_dict_id(s));
+        let zstd_id = None;
         let mut stream = self
             .grpc_client
             .get_specs_stream(specs_info.as_ref().and_then(|s| s.lcut), zstd_id)
