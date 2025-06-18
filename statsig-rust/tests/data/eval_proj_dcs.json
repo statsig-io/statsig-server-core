@@ -15822,6 +15822,214 @@
           "idType": "stableID"
       }
   },
+  "param_stores": {
+    "gateParamsStore": {
+        "parameters": {
+            "on_gate_param": {
+                "ref_type": "gate",
+                "gate_name": "test_heavy_nesting",
+                "param_type": "boolean",
+                "pass_value": true,
+                "fail_value": false
+            },
+            "off_gate_param": {
+                "ref_type": "gate",
+                "gate_name": "test_disabled_gate",
+                "param_type": "boolean",
+                "pass_value": true,
+                "fail_value": false
+            }
+        },
+        "targetAppIDs": ["test_app_id"]
+    },
+    "gatedValueParamsStore": {
+        "parameters": {
+            "boolean_gated_value_param": {
+                "ref_type": "gate",
+                "pass_value": true,
+                "fail_value": false,
+                "gate_name": "test_heavy_nesting",
+                "param_type": "boolean"
+            },
+            "string_gated_value_param": {
+                "ref_type": "gate",
+                "pass_value": "pass",
+                "fail_value": "fail",
+                "gate_name": "test_disabled_gate",
+                "param_type": "string"
+            },
+            "number_gated_value_param": {
+                "ref_type": "gate",
+                "pass_value": 10,
+                "fail_value": 7,
+                "gate_name": "test_heavy_nesting",
+                "param_type": "number"
+            },
+            "object_gated_value_param": {
+                "ref_type": "gate",
+                "pass_value": {
+                "key": "value"
+                },
+                "fail_value": {
+                "key": "another_value"
+                },
+                "gate_name": "test_heavy_nesting",
+                "param_type": "object"
+            },
+            "array_gated_value_param": {
+                "ref_type": "gate",
+                "pass_value": [1, 2, 3],
+                "fail_value": [],
+                "gate_name": "test_heavy_nesting",
+                "param_type": "array"
+            }
+        },
+        "targetAppIDs": []
+    },
+    "staticValueParamsStore": {
+        "parameters": {
+            "boolean_static_value_param": {
+                "ref_type": "static",
+                "value": true,
+                "param_type": "boolean"
+            },
+            "string_static_value_param": {
+                "ref_type": "static",
+                "value": "static_string",
+                "param_type": "string"
+            },
+            "number_static_value_param": {
+                "ref_type": "static",
+                "value": 42.0,
+                "param_type": "number"
+            },
+            "object_static_value_param": {
+                "ref_type": "static",
+                "value": {
+                "key": "static_value"
+                },
+                "param_type": "object"
+            },
+            "array_static_value_param": {
+                "ref_type": "static",
+                "value": [1, 2, 3, 4, 5],
+                "param_type": "array"
+            }
+        },
+        "targetAppIDs": ["test_app_id"]
+    },
+    "dynamicConfigParamsStore": {
+        "parameters": {
+            "boolean_dc_param": {
+                "ref_type": "dynamic_config",
+                "config_name": "operating_system_config",
+                "param_name": "bool",
+                "param_type": "boolean"
+            },
+            "string_dc_param": {
+                "ref_type": "dynamic_config",
+                "config_name": "operating_system_config",
+                "param_name": "str",
+                "param_type": "string"
+            },
+            "number_dc_param": {
+                "ref_type": "dynamic_config",
+                "config_name": "operating_system_config",
+                "param_name": "num",
+                "param_type": "number"
+            },
+            "object_dc_param": {
+                "ref_type": "dynamic_config",
+                "config_name": "operating_system_config",
+                "param_name": "obj",
+                "param_type": "object"
+            },
+            "array_dc_param": {
+                "ref_type": "dynamic_config",
+                "config_name": "operating_system_config",
+                "param_name": "arr",
+                "param_type": "array"
+            }
+        },
+        "targetAppIDs": []
+    },
+    "layerParamsStore": {
+        "parameters": {
+            "string_layer_param": {
+                "ref_type": "layer",
+                "layer_name": "layer_with_many_params",
+                "param_name": "a_string",
+                "param_type": "string"
+            },
+            "number_layer_param": {
+                "ref_type": "layer",
+                "layer_name": "layer_with_many_params",
+                "param_name": "a_number",
+                "param_type": "number"
+            },
+            "boolean_layer_param": {
+                "ref_type": "layer",
+                "layer_name": "layer_with_many_params",
+                "param_name": "another_bool",
+                "param_type": "boolean"
+            },
+            "object_layer_param": {
+                "ref_type": "layer",
+                "layer_name": "layer_with_many_params",
+                "param_name": "an_object",
+                "param_type": "object"
+            },
+            "array_layer_param": {
+                "ref_type": "layer",
+                "layer_name": "layer_with_many_params",
+                "param_name": "an_array",
+                "param_type": "array"
+            }
+        },
+        "targetAppIDs": ["test_app_id"]
+    },
+    "experimentParamsStore": {
+        "parameters": {
+            "bool_exp_param": {
+                "ref_type": "experiment",
+                "experiment_name": "test_exp_random_id_allocated",
+                "param_name": "bool",
+                "param_type": "boolean"
+            },
+            "string_exp_param": {
+                "ref_type": "experiment",
+                "experiment_name": "test_exp_random_id_allocated",
+                "param_name": "string",
+                "param_type": "string"
+            },
+            "shared_string_exp_param": {
+                "ref_type": "experiment",
+                "experiment_name": "test_exp_with_layers_targeting_and_holdout",
+                "param_name": "shared_string_param",
+                "param_type": "string"
+            },
+            "shared_number_exp_param": {
+                "ref_type": "experiment",
+                "experiment_name": "test_exp_with_layers_targeting_and_holdout",
+                "param_name": "shared_number_param",
+                "param_type": "number"
+            },
+            "object_exp_param": {
+                "ref_type": "experiment",
+                "experiment_name": "exp_with_obj_and_array",
+                "param_name": "obj_param",
+                "param_type": "object"
+            },
+            "array_exp_param": {
+                "ref_type": "experiment",
+                "experiment_name": "exp_with_obj_and_array",
+                "param_name": "arr_param",
+                "param_type": "array"
+            }
+        },
+        "targetAppIDs": []
+    }
+  },
   "response_format": "dcs-v2",
   "id_lists": {
       "company_id_list": true
