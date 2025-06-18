@@ -197,6 +197,10 @@ func (s *Statsig) FlushEvents() {
 	C.statsig_flush_events_blocking(C.ulonglong(s.InnerRef))
 }
 
+func (s *Statsig) LogEvent(user StatsigUser, eventJson map[string]interface{}) {
+	C.statsig_log_event(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(utils.ConvertJSONToString(eventJson)))
+}
+
 func (s *Statsig) GetClientInitializeResponse(user StatsigUser, gcirOptions *ClientInitResponseOptions) string {
 
 	if gcirOptions == nil {
