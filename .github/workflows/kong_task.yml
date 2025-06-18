@@ -12,6 +12,7 @@ env:
   REPO_PAT: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
   FORCE_COLOR: true
   test_api_key: ${{ secrets.KONG_SERVER_SDK_KEY }}
+  test_client_key: ${{ secrets.KONG_CLIENT_SDK_KEY }}
 
 jobs:
   build:
