@@ -5,6 +5,7 @@
     <PackageId>Statsig.NativeAssets.osx-arm64</PackageId>
     <Description>Statsig native library for macOS arm64</Description>
     <PackageType>Dependency</PackageType>
+    <Version>$(StatsigVersion)</Version>
     <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
     <IncludeBuildOutput>false</IncludeBuildOutput>
   </PropertyGroup>

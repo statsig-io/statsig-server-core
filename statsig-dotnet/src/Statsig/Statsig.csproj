@@ -3,8 +3,9 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <LangVersion>9</LangVersion>
+    <Version>$(StatsigVersion)</Version>
     <OutputType>Library</OutputType>
-    <PackageId>Statsig</PackageId> <!-- This is a placeholder; the actual package ID will be set in the future. -->
+    <PackageId>Statsig.Core</PackageId>
     <RootNamespace>Statsig</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IsPackable>true</IsPackable>
@@ -15,7 +16,7 @@
     </AssemblyAttribute>
   </ItemGroup>
   <ItemGroup Condition="'$(UseLocalProjects)' != 'true'">
-    <PackageReference Include="Statsig.NativeAssets.osx-arm64" Version="1.0.0" />
+    <PackageReference Include="Statsig.NativeAssets.osx-arm64" Version="$(StatsigVersion)"/>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />

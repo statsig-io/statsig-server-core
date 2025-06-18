@@ -24,11 +24,6 @@ namespace Statsig
             EvaluationDetails = jsonObject["details"]?.ToObject<EvaluationDetails>();
         }
 
-        /// <summary>
-        /// Default constructor for deserialization purposes.
-        /// </summary>
-        internal Experiment() { }
-
         public T? Get<T>(string key, T? defaultValue = default)
         {
             if (!this.Value.TryGetValue(key, out JToken? outVal))

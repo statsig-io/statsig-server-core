@@ -5,6 +5,7 @@
     <PackageId>Statsig.NativeAssets.linux-x64</PackageId>
     <Description>Statsig native library for Linux x64</Description>
     <PackageType>Dependency</PackageType>
+    <Version>$(StatsigVersion)</Version>
     <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
     <IncludeBuildOutput>false</IncludeBuildOutput>
   </PropertyGroup>
