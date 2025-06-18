@@ -207,6 +207,9 @@ impl StatsigOptionsBuilder {
     }
 
     #[must_use]
+    #[deprecated(
+        note = "This field is deprecated and will be removed in a future release. It is no longer consumed and can be removed safely."
+    )]
     pub fn config_compression_mode(
         mut self,
         config_compression_mode: Option<ConfigCompressionMode>,

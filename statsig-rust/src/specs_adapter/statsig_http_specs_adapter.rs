@@ -19,7 +19,7 @@ use std::time::Duration;
 use tokio::sync::Notify;
 use tokio::time::sleep;
 
-use super::{ConfigCompressionMode, SpecsInfo};
+use super::SpecsInfo;
 
 pub struct NetworkResponse {
     pub data: Vec<u8>,
@@ -28,6 +28,7 @@ pub struct NetworkResponse {
 
 pub const DEFAULT_SPECS_URL: &str = "https://api.statsigcdn.com/v2/download_config_specs";
 pub const DEFAULT_SYNC_INTERVAL_MS: u32 = 10_000;
+#[allow(unused)]
 pub const INIT_DICT_ID: &str = "null";
 
 const TAG: &str = stringify!(StatsigHttpSpecsAdapter);
@@ -38,7 +39,6 @@ pub struct StatsigHttpSpecsAdapter {
     specs_url: String,
     fallback_url: Option<String>,
     sync_interval_duration: Duration,
-    config_compression_mode: ConfigCompressionMode,
     ops_stats: Arc<OpsStatsForInstance>,
     shutdown_notify: Arc<Notify>,
 }
@@ -86,10 +86,6 @@ impl StatsigHttpSpecsAdapter {
             )),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             shutdown_notify: Arc::new(Notify::new()),
-            config_compression_mode: options_ref
-                .config_compression_mode
-                .clone()
-                .unwrap_or(ConfigCompressionMode::Gzip),
         }
     }
 
@@ -122,7 +118,6 @@ impl StatsigHttpSpecsAdapter {
 
         RequestArgs {
             url: construct_specs_url(
-                &self.config_compression_mode,
                 self.specs_url.as_str(),
                 self.sdk_key.as_str(),
                 current_specs_info.zstd_dict_id.as_deref(),
@@ -141,7 +136,6 @@ impl StatsigHttpSpecsAdapter {
     ) -> Result<NetworkResponse, NetworkError> {
         let fallback_url = match &self.fallback_url {
             Some(url) => construct_specs_url(
-                &self.config_compression_mode,
                 url.as_str(),
                 &self.sdk_key,
                 current_specs_info.zstd_dict_id.as_deref(),
@@ -359,17 +353,13 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
     }
 }
 
-fn construct_specs_url(
-    compression_mode: &ConfigCompressionMode,
-    spec_url: &str,
-    sdk_key: &str,
-    dict_id: Option<&str>,
-) -> String {
-    match compression_mode {
-        ConfigCompressionMode::Gzip => format!("{spec_url}/{sdk_key}.json"),
-        ConfigCompressionMode::Dictionary => {
-            let dict_id = dict_id.unwrap_or(INIT_DICT_ID);
-            format!("{spec_url}/d/{dict_id}/{sdk_key}.json")
-        }
+#[allow(unused)]
+fn construct_specs_url(spec_url: &str, sdk_key: &str, dict_id: Option<&str>) -> String {
+    #[cfg(feature = "with_shared_dict_compression")]
+    {
+        let dict_id = dict_id.unwrap_or(INIT_DICT_ID);
+        format!("{spec_url}/d/{dict_id}/{sdk_key}.json")
     }
+    #[cfg(not(feature = "with_shared_dict_compression"))]
+    format!("{spec_url}/{sdk_key}.json")
 }
