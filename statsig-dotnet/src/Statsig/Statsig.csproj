@@ -6,9 +6,7 @@
     <OutputType>Library</OutputType>
     <PackageId>Statsig</PackageId> <!-- This is a placeholder; the actual package ID will be set in the future. -->
     <RootNamespace>Statsig</RootNamespace>
-    <Version>1.0.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <PackageOutputPath>../../../../local-nuget-source</PackageOutputPath> <!-- Local NuGet source path for testing -->
     <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
@@ -18,7 +16,6 @@
   </ItemGroup>
   <ItemGroup Condition="'$(UseLocalProjects)' != 'true'">
     <PackageReference Include="Statsig.NativeAssets.osx-arm64" Version="1.0.0" />
-    <PackageReference Include="Statsig.NativeAssets.linux-x64" Version="1.0.0" /><!-- This is a placeholder; the actual version will be set in the future. -->
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
