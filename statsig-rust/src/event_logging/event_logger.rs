@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{
     event_logging::event_logger_constants::EventLoggerConstants,
-    log_d, log_w,
+    log_d, log_e, log_w,
     networking::NetworkError,
     observability::ops_stats::{OpsStatsForInstance, OPS_STATS},
     statsig_metadata::StatsigMetadata,
@@ -284,6 +284,10 @@ impl EventLogger {
 
         let dropped_events_count = match self.queue.reconcile_batching() {
             QueueResult::Success => return,
+            QueueResult::LockFailure => {
+                log_e!(TAG, "prepare_event_queue_for_flush lock failure");
+                return;
+            }
             QueueResult::DroppedEvents(dropped_events_count) => dropped_events_count,
         };
 
@@ -321,6 +325,10 @@ impl EventLogger {
         let dropped_events_count = match self.queue.requeue_batch(batch) {
             QueueResult::Success => return,
             QueueResult::DroppedEvents(dropped_events_count) => dropped_events_count,
+            QueueResult::LockFailure => {
+                log_e!(TAG, "try_requeue_failed_batch lock failure");
+                return;
+            }
         };
 
         if dropped_events_count == 0 {

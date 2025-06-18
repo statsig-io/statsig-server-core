@@ -3,7 +3,7 @@ use crate::{get_instance_or_noop_c, get_instance_or_return_c};
 use serde_json::json;
 use serde_json::Value;
 use statsig_rust::{
-    log_d, log_e, unwrap_or_noop, unwrap_or_return, ClientInitResponseOptions,
+    log_d, log_e, unwrap_or_else, unwrap_or_noop, unwrap_or_return, ClientInitResponseOptions,
     DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
     InstanceRegistry, LayerEvaluationOptions, Statsig, StatsigOptions, StatsigUser,
 };
@@ -15,7 +15,11 @@ const TAG: &str = "StatsigC";
 
 #[no_mangle]
 pub extern "C" fn statsig_create(sdk_key: *const c_char, options_ref: u64) -> u64 {
-    let sdk_key = c_char_to_string(sdk_key).unwrap();
+    let sdk_key = unwrap_or_else!(c_char_to_string(sdk_key), {
+        log_e!(TAG, "Failed to convert 'sdk_key' to Rust string");
+        return 0;
+    });
+
     let options = InstanceRegistry::get_with_optional_id::<StatsigOptions>(Some(&options_ref));
 
     let inst = Statsig::new(&sdk_key, options);

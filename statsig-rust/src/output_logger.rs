@@ -97,7 +97,13 @@ pub fn initialize_output_logger(
         return;
     }
 
-    let mut state = LOGGER_STATE.write().unwrap();
+    let mut state = match LOGGER_STATE.write() {
+        Ok(state) => state,
+        Err(e) => {
+            eprintln!("[Statsig] Failed to acquire write lock for logger: {}", e);
+            return;
+        }
+    };
     let level = level.as_ref().unwrap_or(&DEFAULT_LOG_LEVEL).clone();
     state.level = level.clone();
 
@@ -125,10 +131,18 @@ pub fn initialize_output_logger(
 }
 
 pub fn shutdown_output_logger() {
-    let mut state = LOGGER_STATE.write().unwrap();
+    let mut state = match LOGGER_STATE.write() {
+        Ok(state) => state,
+        Err(e) => {
+            eprintln!("[Statsig] Failed to acquire write lock for logger: {}", e);
+            return;
+        }
+    };
+
     if let Some(provider) = &mut state.provider {
         provider.shutdown();
     }
+
     INITIALIZED.store(false, Ordering::SeqCst);
 }
 
@@ -195,7 +209,13 @@ fn sanitize(input: &str) -> String {
 }
 
 pub fn has_valid_log_level(level: &LogLevel) -> bool {
-    let state = LOGGER_STATE.read().unwrap();
+    let state = match LOGGER_STATE.read() {
+        Ok(state) => state,
+        Err(e) => {
+            eprintln!("[Statsig] Failed to acquire read lock for logger: {}", e);
+            return false;
+        }
+    };
     let current_level = &state.level;
     level.to_number() <= current_level.to_number()
 }

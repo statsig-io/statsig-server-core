@@ -2,7 +2,7 @@ use super::event_queue::queued_event::{EnqueueOperation, QueuedExposure};
 use crate::{
     evaluation::evaluation_types::{BaseEvaluation, ExtraExposureInfo},
     global_configs::GlobalConfigs,
-    log_d,
+    log_d, log_e,
     user::user_data::UserData,
     write_lock_or_noop, write_lock_or_return, DynamicValue,
 };
@@ -176,7 +176,17 @@ impl ExposureSampling {
     fn try_reset_exposure_dedupe_set(&self) {
         let now = Utc::now().timestamp_millis() as u64;
         let last_dedupe_reset = self.last_exposure_dedupe_reset.load(Ordering::Relaxed);
-        let mut dedupe_map = self.exposure_dedupe_set.write().unwrap();
+        let mut dedupe_map = match self.exposure_dedupe_set.write() {
+            Ok(map) => map,
+            Err(e) => {
+                log_e!(
+                    TAG,
+                    "Failed to acquire write lock for exposure dedupe set: {}",
+                    e
+                );
+                return;
+            }
+        };
 
         let has_expired = now - last_dedupe_reset > SAMPLING_TTL_MS;
         let is_full = dedupe_map.len() > SAMPLING_MAX_KEYS;

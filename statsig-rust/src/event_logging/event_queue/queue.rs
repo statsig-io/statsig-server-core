@@ -11,6 +11,7 @@ const TAG: &str = stringify!(EventQueue);
 pub enum QueueResult {
     Success,
     DroppedEvents(u64),
+    LockFailure,
 }
 
 pub struct EventQueue {
@@ -79,12 +80,12 @@ impl EventQueue {
     }
 
     pub fn take_all_batches(&self) -> VecDeque<EventBatch> {
-        let mut batches = self.batches.write().unwrap();
+        let mut batches = write_lock_or_return!(TAG, self.batches, VecDeque::new());
         std::mem::take(&mut *batches)
     }
 
     pub fn take_next_batch(&self) -> Option<EventBatch> {
-        let mut batches = self.batches.write().unwrap();
+        let mut batches = write_lock_or_return!(TAG, self.batches, None);
         batches.pop_front()
     }
 
@@ -99,7 +100,7 @@ impl EventQueue {
             return QueueResult::Success;
         }
 
-        let mut batches = self.batches.write().unwrap();
+        let mut batches = write_lock_or_return!(TAG, self.batches, QueueResult::LockFailure);
         let old_batches = std::mem::take(&mut *batches);
 
         let (full_batches, partial_batches): (VecDeque<_>, VecDeque<_>) = old_batches

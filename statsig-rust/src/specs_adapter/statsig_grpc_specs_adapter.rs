@@ -1,7 +1,6 @@
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
-use crate::specs_adapter::statsig_http_specs_adapter::INIT_DICT_ID;
 use crate::{
     log_d, log_error_to_statsig_and_console, log_w, SpecAdapterConfig, SpecsAdapter, SpecsSource,
     SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigOptions, StatsigRuntime,
@@ -16,7 +15,7 @@ use std::time::Duration;
 use tokio::sync::{broadcast, Mutex, Notify};
 use tokio::time::{sleep, timeout};
 
-use super::{ConfigCompressionMode, SpecsInfo, StatsigHttpSpecsAdapter};
+use super::{SpecsInfo, StatsigHttpSpecsAdapter};
 // Todo make those configurable
 const DEFAULT_BACKOFF_INTERVAL_MS: u64 = 3000;
 const DEFAULT_BACKOFF_MULTIPLIER: u64 = 2;
@@ -38,7 +37,6 @@ pub struct StatsigGrpcSpecsAdapter {
     initialization_tx: Arc<broadcast::Sender<Result<(), StatsigErr>>>,
     task_handle_id: Mutex<Option<tokio::task::Id>>,
     grpc_client: StatsigGrpcClient,
-    config_compression_mode: Option<ConfigCompressionMode>,
     retry_state: StreamingRetryState,
     init_timeout: Duration,
     ops_stats: Arc<OpsStatsForInstance>,
@@ -180,7 +178,6 @@ impl StatsigGrpcSpecsAdapter {
                 config.client_key_path.clone(),
                 config.domain_name.clone(),
             ),
-            config_compression_mode: options.and_then(|o| o.config_compression_mode.clone()),
             initialization_tx: Arc::new(init_tx),
             retry_state: StreamingRetryState {
                 backoff_interval_ms: DEFAULT_BACKOFF_INTERVAL_MS.into(),
@@ -375,16 +372,6 @@ impl StatsigGrpcSpecsAdapter {
 
         log_w!(TAG, "Failed to get current lcut");
         None
-    }
-
-    fn get_dict_id(&self, spec_info: &SpecsInfo) -> Option<String> {
-        match self.config_compression_mode {
-            Some(ConfigCompressionMode::Dictionary) => match spec_info.zstd_dict_id.as_ref() {
-                Some(d) => Some(d.clone()),
-                None => Some(INIT_DICT_ID.to_string()),
-            },
-            _ => None,
-        }
     }
 
     fn log_streaming_err(&self, err: StatsigErr, retry_attempts: u64, backoff: u64) {
