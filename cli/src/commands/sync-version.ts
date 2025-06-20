@@ -41,6 +41,7 @@ export class SyncVersion extends CommandBase {
     updateJavaGradleVersion(versionString);
     updateStatsigGrpcDepVersion(versionString);
     updatePhpComposerVersion(versionString);
+    updateDotnetNugetVersion(versionString);
 
     Log.stepBegin('Verifying Cargo Change');
     execSync('cargo update --workspace', { cwd: BASE_DIR });
@@ -105,6 +106,20 @@ function updateNodePackageJsonVersions(version: string) {
   });
 
   Log.stepEnd('Updated all package.json files');
+}
+
+function updateDotnetNugetVersion(version: string) {
+  Log.stepBegin('Updating .NET NuGet version');
+  
+  const path = getRootedPath('statsig-dotnet/Directory.Build.props');
+  const contents = fs.readFileSync(path, 'utf8');
+
+  const was = contents.match(/<Version>([^<]+)<\/Version>/)?.[1];
+  const updated = contents.replace(/<Version>([^<]+)<\/Version>/, `<Version>${version}</Version>`);
+
+  fs.writeFileSync(path, updated, 'utf8');
+
+  Log.stepEnd(`Updated .NET Version: ${chalk.strikethrough(was)} -> ${version}`);
 }
 
 function updateJavaGradleVersion(version: string) {
