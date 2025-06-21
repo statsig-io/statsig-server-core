@@ -114,8 +114,11 @@ function updateDotnetNugetVersion(version: string) {
   const path = getRootedPath('statsig-dotnet/Directory.Build.props');
   const contents = fs.readFileSync(path, 'utf8');
 
-  const was = contents.match(/<Version>([^<]+)<\/Version>/)?.[1];
-  const updated = contents.replace(/<Version>([^<]+)<\/Version>/, `<Version>${version}</Version>`);
+  const was = contents.match(/<StatsigVersion>([^<]+)<\/StatsigVersion>/)?.[1];
+  const updated = contents.replace(
+    /<StatsigVersion>([^<]+)<\/StatsigVersion>/,
+    `<StatsigVersion>${version}</StatsigVersion>`
+  );
 
   fs.writeFileSync(path, updated, 'utf8');
 
