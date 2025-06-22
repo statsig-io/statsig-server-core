@@ -28,6 +28,7 @@ fn run_csharp_bindgen() {
         .input_extern_file("./src/statsig_options_c.rs")
         .input_extern_file("./src/statsig_user_c.rs")
         .input_extern_file("./src/statsig_c.rs")
+        .input_extern_file("./src/statsig_metadata_c.rs")
         .csharp_use_function_pointer(false)
         .csharp_class_name("StatsigFFI")
         .csharp_namespace("Statsig")
