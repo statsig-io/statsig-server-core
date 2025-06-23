@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace Statsig
 {
@@ -13,8 +14,6 @@ namespace Statsig
 
         public Statsig(string sdkKey, StatsigOptions options)
         {
-            Console.WriteLine($"Operating System: {RuntimeInformation.OSDescription}");
-            Console.WriteLine($"Architecture: {RuntimeInformation.OSArchitecture}");
             var sdkKeyBytes = Encoding.UTF8.GetBytes(sdkKey);
             unsafe
             {
@@ -23,6 +22,7 @@ namespace Statsig
                     _statsigRef = StatsigFFI.statsig_create(sdkKeyPtr, options.Reference);
                 }
             }
+            UpdateStatsigMetadata();
         }
 
         ~Statsig()
@@ -262,6 +262,31 @@ namespace Statsig
                 return;
             }
             StatsigFFI.statsig_release(_statsigRef);
+        }
+
+        private unsafe void UpdateStatsigMetadata()
+        {
+            var sdkType = "statsig-server-core-dotnet";
+            var os = RuntimeInformation.OSDescription;
+            var arch = RuntimeInformation.OSArchitecture.ToString();
+            var sdkVersion = Assembly
+                .GetExecutingAssembly()
+                .GetName()
+                .Version?
+                .ToString() ?? "unknown";
+
+            var sdkTypeBytes = Encoding.UTF8.GetBytes(sdkType);
+            var osBytes = Encoding.UTF8.GetBytes(os);
+            var archBytes = Encoding.UTF8.GetBytes(arch);
+            var versionBytes = Encoding.UTF8.GetBytes(sdkVersion);
+
+            fixed (byte* sdkTypePtr = sdkTypeBytes)
+            fixed (byte* osPtr = osBytes)
+            fixed (byte* archPtr = archBytes)
+            fixed (byte* versionPtr = versionBytes)
+            {
+                StatsigFFI.statsig_metadata_update_values(sdkTypePtr, osPtr, archPtr, versionPtr);
+            }
         }
     }
 }
