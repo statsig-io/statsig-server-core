@@ -181,6 +181,101 @@ class Statsig
             $param_name
         );
     }
+
+    /**
+     * Override Functions
+     */
+
+    public function overrideGate(string $gateName, bool $value, ?string $id = null): void
+    {
+        StatsigFFI::get()->statsig_override_gate(
+            $this->__ref,
+            $gateName,
+            $value,
+            $id
+        );
+    }
+
+    public function overrideDynamicConfig(string $configName, array $value, ?string $id = null): void
+    {
+        StatsigFFI::get()->statsig_override_dynamic_config(
+            $this->__ref,
+            $configName,
+            json_encode($value),
+            $id
+        );
+    }
+
+    public function overrideExperiment(string $experimentName, array $value, ?string $id = null): void
+    {
+        StatsigFFI::get()->statsig_override_experiment(
+            $this->__ref,
+            $experimentName,
+            json_encode($value),
+            $id
+        );
+    }
+
+    public function overrideExperimentByGroupName(string $experimentName, string $groupName, ?string $id = null): void
+    {
+        StatsigFFI::get()->statsig_override_experiment_by_group_name(
+            $this->__ref,
+            $experimentName,
+            $groupName,
+            $id
+        );
+    }
+
+    public function overrideLayer(string $layerName, array $value, ?string $id = null): void
+    {
+        StatsigFFI::get()->statsig_override_layer(
+            $this->__ref,
+            $layerName,
+            json_encode($value),
+            $id
+        );
+    }
+
+    public function removeGateOverride(string $gateName, ?string $id = null): void
+    {
+        StatsigFFI::get()->statsig_remove_gate_override(
+            $this->__ref,
+            $gateName,
+            $id
+        );
+    }
+
+    public function removeDynamicConfigOverride(string $configName, ?string $id = null): void
+    {
+        StatsigFFI::get()->statsig_remove_dynamic_config_override(
+            $this->__ref,
+            $configName,
+            $id
+        );
+    }
+
+    public function removeExperimentOverride(string $experimentName, ?string $id = null): void
+    {
+        StatsigFFI::get()->statsig_remove_experiment_override(
+            $this->__ref,
+            $experimentName,
+            $id
+        );
+    }
+
+    public function removeLayerOverride(string $layerName, ?string $id = null): void
+    {
+        StatsigFFI::get()->statsig_remove_layer_override(
+            $this->__ref,
+            $layerName,
+            $id
+        );
+    }
+
+    public function removeAllOverrides(): void
+    {
+        StatsigFFI::get()->statsig_remove_all_overrides($this->__ref);
+    }
 }
 
 function encode_or_null(?array $options): ?string

@@ -103,6 +103,42 @@ void statsig_manually_log_layer_parameter_exposure(uint64_t statsig_ref,
                                                    const char *layer_name,
                                                    const char *param_name);
 
+void statsig_override_gate(uint64_t statsig_ref, const char *gate_name, bool value, const char *id);
+
+void statsig_override_dynamic_config(uint64_t statsig_ref,
+                                     const char *config_name,
+                                     const char *value_json,
+                                     const char *id);
+
+void statsig_override_experiment(uint64_t statsig_ref,
+                                 const char *experiment_name,
+                                 const char *value_json,
+                                 const char *id);
+
+void statsig_override_experiment_by_group_name(uint64_t statsig_ref,
+                                               const char *experiment_name,
+                                               const char *group_name,
+                                               const char *id);
+
+void statsig_override_layer(uint64_t statsig_ref,
+                            const char *layer_name,
+                            const char *value_json,
+                            const char *id);
+
+void statsig_remove_gate_override(uint64_t statsig_ref, const char *gate_name, const char *id);
+
+void statsig_remove_dynamic_config_override(uint64_t statsig_ref,
+                                            const char *config_name,
+                                            const char *id);
+
+void statsig_remove_experiment_override(uint64_t statsig_ref,
+                                        const char *experiment_name,
+                                        const char *id);
+
+void statsig_remove_layer_override(uint64_t statsig_ref, const char *layer_name, const char *id);
+
+void statsig_remove_all_overrides(uint64_t statsig_ref);
+
 uint64_t statsig_http_event_logging_adapter_create(const char *sdk_key, uint64_t options_ref);
 
 void statsig_http_event_logging_adapter_release(uint64_t event_logging_adapter_ref);

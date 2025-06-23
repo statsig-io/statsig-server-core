@@ -411,3 +411,171 @@ pub extern "C" fn statsig_manually_log_layer_parameter_exposure(
 
     statsig.manually_log_layer_parameter_exposure(&user, &layer_name, param_name);
 }
+
+// ------------------------
+// Override Functions
+// ------------------------
+
+#[no_mangle]
+pub extern "C" fn statsig_override_gate(
+    statsig_ref: u64,
+    gate_name: *const c_char,
+    value: bool,
+    id: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let gate_name = unwrap_or_noop!(c_char_to_string(gate_name));
+    let id = c_char_to_string(id);
+
+    statsig.override_gate(&gate_name, value, id.as_deref());
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_override_dynamic_config(
+    statsig_ref: u64,
+    config_name: *const c_char,
+    value_json: *const c_char,
+    id: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let config_name = unwrap_or_noop!(c_char_to_string(config_name));
+    let value_json = unwrap_or_noop!(c_char_to_string(value_json));
+    let id = c_char_to_string(id);
+
+    let value = match serde_json::from_str::<HashMap<String, Value>>(&value_json) {
+        Ok(map) => map,
+        Err(e) => {
+            log_e!(
+                TAG,
+                "Failed to parse value JSON for override_dynamic_config: {}",
+                e
+            );
+            return;
+        }
+    };
+
+    statsig.override_dynamic_config(&config_name, value, id.as_deref());
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_override_experiment(
+    statsig_ref: u64,
+    experiment_name: *const c_char,
+    value_json: *const c_char,
+    id: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let experiment_name = unwrap_or_noop!(c_char_to_string(experiment_name));
+    let value_json = unwrap_or_noop!(c_char_to_string(value_json));
+    let id = c_char_to_string(id);
+
+    let value = match serde_json::from_str::<HashMap<String, Value>>(&value_json) {
+        Ok(map) => map,
+        Err(e) => {
+            log_e!(
+                TAG,
+                "Failed to parse value JSON for override_experiment: {}",
+                e
+            );
+            return;
+        }
+    };
+
+    statsig.override_experiment(&experiment_name, value, id.as_deref());
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_override_experiment_by_group_name(
+    statsig_ref: u64,
+    experiment_name: *const c_char,
+    group_name: *const c_char,
+    id: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let experiment_name = unwrap_or_noop!(c_char_to_string(experiment_name));
+    let group_name = unwrap_or_noop!(c_char_to_string(group_name));
+    let id = c_char_to_string(id);
+
+    statsig.override_experiment_by_group_name(&experiment_name, &group_name, id.as_deref());
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_override_layer(
+    statsig_ref: u64,
+    layer_name: *const c_char,
+    value_json: *const c_char,
+    id: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let layer_name = unwrap_or_noop!(c_char_to_string(layer_name));
+    let value_json = unwrap_or_noop!(c_char_to_string(value_json));
+    let id = c_char_to_string(id);
+
+    let value = match serde_json::from_str::<HashMap<String, Value>>(&value_json) {
+        Ok(map) => map,
+        Err(e) => {
+            log_e!(TAG, "Failed to parse value JSON for override_layer: {}", e);
+            return;
+        }
+    };
+
+    statsig.override_layer(&layer_name, value, id.as_deref());
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_remove_gate_override(
+    statsig_ref: u64,
+    gate_name: *const c_char,
+    id: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let gate_name = unwrap_or_noop!(c_char_to_string(gate_name));
+    let id = c_char_to_string(id);
+
+    statsig.remove_gate_override(&gate_name, id.as_deref());
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_remove_dynamic_config_override(
+    statsig_ref: u64,
+    config_name: *const c_char,
+    id: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let config_name = unwrap_or_noop!(c_char_to_string(config_name));
+    let id = c_char_to_string(id);
+
+    statsig.remove_dynamic_config_override(&config_name, id.as_deref());
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_remove_experiment_override(
+    statsig_ref: u64,
+    experiment_name: *const c_char,
+    id: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let experiment_name = unwrap_or_noop!(c_char_to_string(experiment_name));
+    let id = c_char_to_string(id);
+
+    statsig.remove_experiment_override(&experiment_name, id.as_deref());
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_remove_layer_override(
+    statsig_ref: u64,
+    layer_name: *const c_char,
+    id: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let layer_name = unwrap_or_noop!(c_char_to_string(layer_name));
+    let id = c_char_to_string(id);
+
+    statsig.remove_layer_override(&layer_name, id.as_deref());
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_remove_all_overrides(statsig_ref: u64) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    statsig.remove_all_overrides();
+}
