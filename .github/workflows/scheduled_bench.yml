@@ -118,6 +118,26 @@ jobs:
           eval ${{ env.CAPTURE }} cargo run --release --bin core_bench
           eval ${{ env.CAPTURE }} cargo run --release --bin legacy_bench
 
+  dotnet-bench:
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Run .NET Bench
+        working-directory: examples/dotnet/perf-bench
+        run: |
+          pip install psutil numpy
+          
+          dotnet restore perf-bench.csproj
+          eval ${{ env.CAPTURE }} dotnet run --project perf-bench.csproj --configuration Release --legacy
+
   ruby-bench:
     timeout-minutes: 20
     runs-on: ubuntu-latest
