@@ -12,7 +12,7 @@ use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::evaluator_value::{EvaluatorValue, EvaluatorValueType};
 use crate::evaluation::get_unit_id::get_unit_id;
-use crate::evaluation::ua_parser::UserAgentParser;
+use crate::evaluation::user_agent_parsing::UserAgentParser;
 use crate::event_logging::exposable_string;
 use crate::specs_response::spec_types::{Condition, Rule, Spec};
 use crate::{dyn_value, log_e, unwrap_or_return, StatsigErr};

@@ -1,57 +1,23 @@
+use crate::{dyn_value, log_d, log_e, DynamicValue};
 use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
-
 use uaparser::{Parser, UserAgentParser as ExtUserAgentParser};
-
-use crate::{dyn_value, log_w, DynamicValue};
-use crate::{log_d, log_e, unwrap_or_return_with, user::StatsigUserInternal};
-
-use super::dynamic_string::DynamicString;
 
 lazy_static::lazy_static! {
     static ref PARSER: Arc<RwLock<Option<ExtUserAgentParser>>> = Arc::from(RwLock::from(None));
-    static ref USER_AGENT_STRING: Option<DynamicString> = Some(DynamicString::from("userAgent".to_string()));
 }
 
-const TAG: &str = "UserAgentParser";
-const UNINITIALIZED_REASON: &str = "UAParserNotLoaded";
+const TAG: &str = "ThirdPartyUserAgentParser";
 
-pub struct UserAgentParser;
+pub struct ThirdPartyUserAgentParser;
 
-impl UserAgentParser {
+impl ThirdPartyUserAgentParser {
     pub fn get_value_from_user_agent(
-        user: &StatsigUserInternal,
-        field: &Option<DynamicString>,
-        override_reason: &mut Option<&str>,
-    ) -> Option<DynamicValue> {
-        let field_lowered = match field {
-            Some(f) => f.lowercased_value.as_str(),
-            _ => return None,
-        };
-
-        let user_agent = match user.get_user_value(&USER_AGENT_STRING) {
-            Some(v) => match &v.string_value {
-                Some(s) => &s.value,
-                _ => return None,
-            },
-            None => return None,
-        };
-
-        if user_agent.len() > 1000 {
-            return None;
-        }
-
-        let lock = unwrap_or_return_with!(PARSER.read().ok(), || {
-            *override_reason = Some(UNINITIALIZED_REASON);
-            log_e!(TAG, "Failed to acquire read lock on parser");
-            None
-        });
-
-        let parser = unwrap_or_return_with!(lock.as_ref(), || {
-            *override_reason = Some(UNINITIALIZED_REASON);
-            log_w!(TAG, "Failed to load UA Parser. Did you disable UA Parser or did not wait for user agent to init. Check StatsigOptions configuration");
-            None
-        });
+        field: &str,
+        user_agent: &str,
+    ) -> Result<Option<DynamicValue>, &'static str> {
+        let lock = PARSER.read().map_err(|_| "lock_failure")?;
+        let parser = lock.as_ref().ok_or("parser_not_loaded")?;
 
         fn get_json_version(
             major: Option<Cow<str>>,
@@ -67,7 +33,7 @@ impl UserAgentParser {
             result
         }
 
-        let result = match field_lowered {
+        let result = match field {
             "os_name" | "osname" => {
                 let os = parser.parse_os(user_agent);
                 os.family.to_string()
@@ -84,11 +50,10 @@ impl UserAgentParser {
                 let user_agent = parser.parse_user_agent(user_agent);
                 get_json_version(user_agent.major, user_agent.minor, user_agent.patch)
             }
-            _ => return None,
+            _ => return Ok(None),
         };
 
-        // Some(EvaluatorValue::from(result))
-        Some(dyn_value!(result))
+        Ok(Some(dyn_value!(result)))
     }
 
     pub fn load_parser() {
@@ -107,7 +72,7 @@ impl UserAgentParser {
 
         log_d!(TAG, "Loading User Agent Parser...");
 
-        let bytes = include_bytes!("../../resources/ua_parser_regex_lite.yaml");
+        let bytes = include_bytes!("../../../resources/ua_parser_regex_lite.yaml");
         let parser = match ExtUserAgentParser::from_bytes(bytes) {
             Ok(parser) => parser,
             Err(e) => {

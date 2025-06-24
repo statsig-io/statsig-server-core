@@ -1,7 +1,7 @@
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
-#[allow(unused)]
+#[cfg(feature = "with_shared_dict_compression")]
 use crate::specs_adapter::statsig_http_specs_adapter::INIT_DICT_ID;
 use crate::{
     log_d, log_error_to_statsig_and_console, log_w, SpecAdapterConfig, SpecsAdapter, SpecsSource,
@@ -376,16 +376,16 @@ impl StatsigGrpcSpecsAdapter {
         None
     }
 
-    #[allow(unused)]
+    #[cfg(feature = "with_shared_dict_compression")]
     fn get_dict_id(&self, spec_info: &SpecsInfo) -> Option<String> {
-        #[cfg(feature = "with_shared_dict_compression")]
-        {
-            match spec_info.zstd_dict_id.as_ref() {
-                Some(d) => Some(d.clone()),
-                None => Some(INIT_DICT_ID.to_string()),
-            }
+        match spec_info.zstd_dict_id.as_ref() {
+            Some(d) => Some(d.clone()),
+            None => Some(INIT_DICT_ID.to_string()),
         }
-        #[cfg(not(feature = "with_shared_dict_compression"))]
+    }
+
+    #[cfg(not(feature = "with_shared_dict_compression"))]
+    fn get_dict_id(&self, _spec_info: &SpecsInfo) -> Option<String> {
         None
     }
 

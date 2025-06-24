@@ -9,7 +9,7 @@ use crate::evaluation::evaluator_result::{
     result_to_dynamic_config_eval, result_to_experiment_eval, result_to_gate_eval,
     result_to_layer_eval, EvaluatorResult,
 };
-use crate::evaluation::ua_parser::UserAgentParser;
+use crate::evaluation::user_agent_parsing::UserAgentParser;
 use crate::event_logging::event_logger::{EventLogger, ExposureTrigger};
 use crate::event_logging::event_queue::queued_config_expo::EnqueueConfigExpoOp;
 use crate::event_logging::event_queue::queued_experiment_expo::EnqueueExperimentExpoOp;
