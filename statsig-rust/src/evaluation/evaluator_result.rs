@@ -271,8 +271,8 @@ fn get_id_type_info(id_type: Option<&String>) -> (String, bool) {
     (id_type, is_device_based)
 }
 
-fn get_json_value(result: &EvaluatorResult) -> HashMap<String, Value> {
-    result.json_value.clone().unwrap_or_default()
+fn get_json_value(result: &mut EvaluatorResult) -> HashMap<String, Value> {
+    result.json_value.take().unwrap_or_default()
 }
 
 // todo: remove when 'QueuedExposure' does not use `BaseEvaluation`
