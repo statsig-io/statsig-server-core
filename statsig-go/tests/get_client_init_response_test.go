@@ -18,13 +18,7 @@ func setupStatsigGCIR(t *testing.T, filterType string, filter []string, hash_alg
 		WithLocale("en_US").
 		Build()
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-	options := statsig.NewStatsigOptionsBuilder().
-		WithSpecsUrl(scrapiServer.GetUrlForEndpoint("/v2/download_config_specs")).
-		WithLogEventUrl(scrapiServer.GetUrlForEndpoint("/v1/log_event")).
-		WithOutputLogLevel("DEBUG").
-		WithDisableUserAgentParsing(false).
-		Build()
+	_, _, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
 	gcirOptions := statsig.ClientInitResponseOptions{
 		HashAlgo:     &hash_algo,
@@ -41,7 +35,6 @@ func setupStatsigGCIR(t *testing.T, filterType string, filter []string, hash_alg
 	default:
 	}
 
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	res := s.GetClientInitializeResponse(*user, &gcirOptions)

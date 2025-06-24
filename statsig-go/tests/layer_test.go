@@ -6,24 +6,9 @@ import (
 	"github.com/statsig-io/private-statsig-server-core/statsig-go"
 )
 
-func CreateLayerStatsigOptions(scrapiServer *MockScrapi) *statsig.StatsigOptions {
-	return statsig.NewStatsigOptionsBuilder().
-		WithSpecsUrl(scrapiServer.GetUrlForEndpoint("/v2/download_config_specs")).
-		WithLogEventUrl(scrapiServer.GetUrlForEndpoint("/v1/log_event")).
-		WithOutputLogLevel("DEBUG").
-		Build()
-}
-
 func TestBasicLayer(t *testing.T) {
+	user, _, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
-
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateLayerStatsigOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	layerOptions := &statsig.GetLayerOptions{DisableExposureLogging: false}
@@ -70,14 +55,8 @@ func TestBasicLayer(t *testing.T) {
 }
 
 func TestLayerDisableExposureLoggingIsFalse(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateLayerStatsigOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	layerOptions := &statsig.GetLayerOptions{DisableExposureLogging: false}
@@ -95,14 +74,8 @@ func TestLayerDisableExposureLoggingIsFalse(t *testing.T) {
 }
 
 func TestLayerDisableExposureLoggingIsTrue(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateLayerStatsigOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	layerOptions := &statsig.GetLayerOptions{DisableExposureLogging: true}
@@ -120,14 +93,8 @@ func TestLayerDisableExposureLoggingIsTrue(t *testing.T) {
 }
 
 func TestGetNonexistentParamInLayerWithExposureLogging(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateLayerStatsigOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	layerOptions := &statsig.GetLayerOptions{DisableExposureLogging: false}
@@ -145,14 +112,8 @@ func TestGetNonexistentParamInLayerWithExposureLogging(t *testing.T) {
 }
 
 func TestGetRetrievesCorrectParamValue(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, _, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateLayerStatsigOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	layerOptions := &statsig.GetLayerOptions{DisableExposureLogging: false}
@@ -169,14 +130,8 @@ func TestGetRetrievesCorrectParamValue(t *testing.T) {
 }
 
 func TestLayerExposureLoggingOccursNoOptions(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateLayerStatsigOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	layer_name := "test_layer"

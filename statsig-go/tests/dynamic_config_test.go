@@ -15,14 +15,8 @@ func CreateDynamicConfigOptions(scrapiServer *MockScrapi) *statsig.StatsigOption
 }
 
 func TestEnvironmentConfig(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, _, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	o := CreateDynamicConfigOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, o)
 	defer teardown()
 
 	dynamicConfigOptions := &statsig.GetDynamicConfigOptions{DisableExposureLogging: false}
@@ -63,14 +57,8 @@ func TestEnvironmentConfig(t *testing.T) {
 }
 
 func TestDynamicConfigDisableExposureLoggingIsFalse(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	o := CreateDynamicConfigOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, o)
 	defer teardown()
 
 	dynamicConfigOptions := &statsig.GetDynamicConfigOptions{DisableExposureLogging: false}
@@ -87,14 +75,8 @@ func TestDynamicConfigDisableExposureLoggingIsFalse(t *testing.T) {
 }
 
 func TestDynamicConfigDisableExposureLoggingIsTrue(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	o := CreateDynamicConfigOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, o)
 	defer teardown()
 
 	dynamicConfigOptions := &statsig.GetDynamicConfigOptions{DisableExposureLogging: true}
@@ -112,14 +94,8 @@ func TestDynamicConfigDisableExposureLoggingIsTrue(t *testing.T) {
 }
 
 func TestDynamicConfiExposureLoggingNoOptions(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	o := CreateDynamicConfigOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, o)
 	defer teardown()
 
 	dynamic_config := "test_environment_config"

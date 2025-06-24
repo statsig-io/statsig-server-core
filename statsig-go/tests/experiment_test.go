@@ -17,14 +17,8 @@ func CreateExperimentOptions(scrapiServer *MockScrapi) *statsig.StatsigOptions {
 
 func TestExperimentBasic(t *testing.T) {
 
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, _, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateFeatureGateOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	experimentOptions := &statsig.GetExperimentOptions{DisableExposureLogging: false}
@@ -86,14 +80,8 @@ func TestExperimentBasic(t *testing.T) {
 }
 
 func TestExperimentDisableExposureLoggingIsFalse(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateFeatureGateOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	experimentOptions := &statsig.GetExperimentOptions{DisableExposureLogging: false}
@@ -109,14 +97,8 @@ func TestExperimentDisableExposureLoggingIsFalse(t *testing.T) {
 }
 
 func TestExperimentDisableExposureLoggingIsTrue(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateFeatureGateOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	experimentOptions := &statsig.GetExperimentOptions{DisableExposureLogging: true}
@@ -132,14 +114,8 @@ func TestExperimentDisableExposureLoggingIsTrue(t *testing.T) {
 }
 
 func TestExperimentExposureLoggingNoOptions(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateFeatureGateOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	experimentName := "exp_with_obj_and_array"

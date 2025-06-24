@@ -210,3 +210,43 @@ func (s *Statsig) GetClientInitializeResponse(user StatsigUser, gcirOptions *Cli
 	res := C.statsig_get_client_init_response(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(utils.ConvertJSONToString(gcirOptions)))
 	return C.GoString(res)
 }
+
+func (s *Statsig) OverrideGate(gateName string, gateValue bool, id string) {
+	C.statsig_override_gate(C.ulonglong(s.InnerRef), C.CString(gateName), C.bool(gateValue), C.CString(id))
+}
+
+func (s *Statsig) OverrideLayer(layerName string, layerValue map[string]interface{}, id string) {
+	C.statsig_override_layer(C.ulonglong(s.InnerRef), C.CString(layerName), C.CString(utils.ConvertJSONToString(layerValue)), C.CString(id))
+}
+
+func (s *Statsig) OverrideDynamicConfig(configName string, configValue map[string]interface{}, id string) {
+	C.statsig_override_dynamic_config(C.ulonglong(s.InnerRef), C.CString(configName), C.CString(utils.ConvertJSONToString(configValue)), C.CString(id))
+}
+
+func (s *Statsig) OverrideExperiment(experimentName string, experimentValue map[string]interface{}, id string) {
+	C.statsig_override_experiment(C.ulonglong(s.InnerRef), C.CString(experimentName), C.CString(utils.ConvertJSONToString(experimentValue)), C.CString(id))
+}
+
+func (s *Statsig) OverrideExperimentByGroupName(experimentName string, groupName string, id string) {
+	C.statsig_override_experiment_by_group_name(C.ulonglong(s.InnerRef), C.CString(experimentName), C.CString(groupName), C.CString(id))
+}
+
+func (s *Statsig) RemoveGateOverride(gateName string, id string) {
+	C.statsig_remove_gate_override(C.ulonglong(s.InnerRef), C.CString(gateName), C.CString(id))
+}
+
+func (s *Statsig) RemoveDynamicConfigOverride(configName string, id string) {
+	C.statsig_remove_dynamic_config_override(C.ulonglong(s.InnerRef), C.CString(configName), C.CString(id))
+}
+
+func (s *Statsig) RemoveExperimentOverride(experimentName string, id string) {
+	C.statsig_remove_experiment_override(C.ulonglong(s.InnerRef), C.CString(experimentName), C.CString(id))
+}
+
+func (s *Statsig) RemoveLayerOverride(layerName string, id string) {
+	C.statsig_remove_layer_override(C.ulonglong(s.InnerRef), C.CString(layerName), C.CString(id))
+}
+
+func (s *Statsig) RemoveAllOverrides() {
+	C.statsig_remove_all_overrides(C.ulonglong(s.InnerRef))
+}

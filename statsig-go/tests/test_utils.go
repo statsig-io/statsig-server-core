@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -9,7 +10,10 @@ import (
 
 func LoadTestData(path string) []byte {
 	path_to_rust_data := "../../statsig-rust/tests/data/"
-	data, _ := os.ReadFile(path_to_rust_data + path)
+	data, err := os.ReadFile(path_to_rust_data + path)
+	if err != nil {
+		fmt.Printf("Failed to load test data: %v", err)
+	}
 	return data
 }
 
@@ -23,9 +27,32 @@ func serverSetup(dcs_path string) *MockScrapi {
 	return mock_scrapi
 }
 
-func statsigSetup(t *testing.T, options *statsig.StatsigOptions) (statsig.Statsig, func()) {
+func setupStatsigTest(
+	t *testing.T,
+	jsonFile string,
+	userId string,
+	statsigOptions *statsig.StatsigOptions,
+) (*statsig.StatsigUser, *MockScrapi, *statsig.Statsig, func()) {
+	t.Helper()
 
-	statsig, _ := statsig.NewStatsig("secret-key", *options)
+	user := statsig.NewStatsigUserBuilder().
+		WithUserID(userId).Build()
+
+	scrapi := serverSetup(jsonFile)
+
+	var options statsig.StatsigOptions
+
+	if statsigOptions != nil {
+		options = *statsigOptions
+	} else {
+		options = *statsig.NewStatsigOptionsBuilder().
+			WithSpecsUrl(scrapi.GetUrlForEndpoint("/v2/download_config_specs")).
+			WithLogEventUrl(scrapi.GetUrlForEndpoint("/v1/log_event")).
+			WithOutputLogLevel("DEBUG").
+			Build()
+	}
+
+	statsig, _ := statsig.NewStatsig("secret-key", options)
 
 	_, err := statsig.Initialize()
 
@@ -37,7 +64,7 @@ func statsigSetup(t *testing.T, options *statsig.StatsigOptions) (statsig.Statsi
 		statsig.Shutdown()
 	}
 
-	return *statsig, teardown
+	return user, scrapi, statsig, teardown
 }
 
 func checkEventNameExists(events []statsig.Event, eventName string) bool {

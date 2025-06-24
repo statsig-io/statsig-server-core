@@ -20,7 +20,7 @@ func TestStatsigInitializeWithDetails(t *testing.T) {
 		WithOutputLogLevel("DEBUG").
 		Build()
 
-	s, teardown := statsigSetup(t, o)
+	_, _, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", o)
 	defer teardown()
 	res, _ := s.InitializeWithDetails()
 
@@ -60,7 +60,7 @@ func TestStatsigInitializeWithDetailsFailure(t *testing.T) {
 		WithOutputLogLevel("DEBUG").
 		Build()
 
-	s, teardown := statsigSetup(t, o)
+	_, _, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", o)
 	defer teardown()
 	res, _ := s.InitializeWithDetails()
 

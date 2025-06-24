@@ -2,20 +2,11 @@ package tests
 
 import (
 	"testing"
-
-	"github.com/statsig-io/private-statsig-server-core/statsig-go"
 )
 
 func TestLogEvent(t *testing.T) {
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
-
-	scrapiServer := serverSetup("")
-
-	options := CreateFeatureGateOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	event := map[string]interface{}{

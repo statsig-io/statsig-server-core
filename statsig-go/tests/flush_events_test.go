@@ -7,14 +7,8 @@ import (
 )
 
 func TestFlushEvents(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
-
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateFeatureGateOptions(scrapiServer)
-
-	s, _ := statsigSetup(t, options)
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
+	defer teardown()
 
 	checkGateOptions := &statsig.CheckGateOptions{DisableExposureLogging: false}
 
