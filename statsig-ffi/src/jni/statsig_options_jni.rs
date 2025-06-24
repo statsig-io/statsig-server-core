@@ -1,6 +1,7 @@
 use crate::jni::jni_utils::{
     convert_java_proxy_config_to_rust, jboolean_to_bool, jstring_to_string,
 };
+use crate::jni::statsig_data_store_jni::convert_to_data_store_rust;
 use crate::jni::statsig_observability_client_jni::convert_to_ob_rust;
 use crate::jni::statsig_output_logger_provider_jni::convert_to_output_logger_provider_rust;
 use jni::objects::{JClass, JObject, JString};
@@ -34,6 +35,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     output_logger_level: jint,
     service_name: JString,
     observability_client: JObject,
+    data_store: JObject,
     output_logger_provider: JObject,
     proxy_config: JObject,
     enable_id_lists: jboolean,
@@ -100,6 +102,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     let (strong_ob, weak_ob) = convert_to_ob_rust(&env, observability_client);
     let output_logger_rust = convert_to_output_logger_provider_rust(&env, output_logger_provider);
 
+    let data_store_arc = convert_to_data_store_rust(&env, data_store);
+
     let mut builder = StatsigOptionsBuilder::new();
 
     builder = builder
@@ -112,6 +116,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .id_lists_url(id_lists_url)
         .id_lists_sync_interval_ms(id_lists_sync_interval_ms)
         .observability_client(weak_ob)
+        .data_store(data_store_arc)
         .output_logger_provider(output_logger_rust)
         .proxy_config(proxy_config_rust)
         .enable_id_lists(enable_id_lists)

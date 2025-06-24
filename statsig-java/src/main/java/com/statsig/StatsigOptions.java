@@ -37,6 +37,7 @@ public class StatsigOptions {
             builder.outputLoggerLevel.getValue(),
             builder.serviceName,
             builder.observabilityClient,
+            builder.dataStore,
             builder.outputLoggerProvider,
             builder.proxyConfig,
             builder.enableIDLists,
@@ -67,6 +68,7 @@ public class StatsigOptions {
     private long initTimeoutMs;
     private String environment;
     private ObservabilityClient observabilityClient;
+    private DataStore dataStore;
     private OutputLoggerProvider outputLoggerProvider;
     private ProxyConfig proxyConfig;
     private boolean enableIDLists = false;
@@ -119,6 +121,11 @@ public class StatsigOptions {
     public Builder setEventLoggingMaxPendingBatchQueueSize(
         long eventLoggingMaxPendingBatchQueueSize) {
       this.eventLoggingMaxPendingBatchQueueSize = eventLoggingMaxPendingBatchQueueSize;
+      return this;
+    }
+
+    public Builder setDataStore(DataStore dataStore) {
+      this.dataStore = dataStore;
       return this;
     }
 

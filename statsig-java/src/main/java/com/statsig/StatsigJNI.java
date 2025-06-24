@@ -228,6 +228,7 @@ class StatsigJNI {
       long outputLoggerLevel,
       String serviceName,
       ObservabilityClient observabilityClient,
+      DataStore dataStore,
       OutputLoggerProvider outputLoggerProvider,
       ProxyConfig proxyConfig,
       boolean enableIDLists,

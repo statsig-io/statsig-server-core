@@ -127,6 +127,7 @@
             "version": 2
         }
     },
+    "experiment_to_layer": {},
     "layer_configs": {
         "a_layer": {
             "type": "dynamic_config",
