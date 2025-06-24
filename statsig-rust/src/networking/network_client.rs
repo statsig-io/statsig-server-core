@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
-const RETRY_CODES: [u16; 9] = [0, 408, 500, 502, 503, 504, 522, 524, 599];
+const NON_RETRY_CODES: [u16; 4] = [400, 403, 405, 501];
 const SHUTDOWN_ERROR: &str = "Request was aborted because the client is shutting down";
 
 const TAG: &str = stringify!(NetworkClient);
@@ -182,7 +182,7 @@ impl NetworkClient {
                 return Ok(response);
             }
 
-            if !RETRY_CODES.contains(&status) {
+            if NON_RETRY_CODES.contains(&status) {
                 let error = NetworkError::RequestNotRetryable(
                     request_args.url.clone(),
                     status,
