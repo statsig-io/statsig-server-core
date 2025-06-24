@@ -23,8 +23,8 @@ const OS_NAME_THRESHOLD: f64 = 0.87;
 const OS_VERSION_THRESHOLD: f64 = 0.84;
 
 // todo: bring this up to 1.0
-const BROWSER_NAME_THRESHOLD: f64 = 0.1;
-const BROWSER_VERSION_THRESHOLD: f64 = 0.1;
+const BROWSER_NAME_THRESHOLD: f64 = 0.41;
+const BROWSER_VERSION_THRESHOLD: f64 = 0.31;
 
 const LOG_FAILURES: bool = false;
 
