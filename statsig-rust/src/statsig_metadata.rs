@@ -49,7 +49,7 @@ pub struct StatsigMetadataWithLogEventExtras {
 impl StatsigMetadata {
     fn new() -> Self {
         Self {
-            sdk_version: "0.5.3-beta.2506240239".to_string(),
+            sdk_version: "0.5.3-beta.2506250238".to_string(),
             sdk_type: "statsig-server-core".to_string(),
             session_id: Uuid::new_v4().to_string(),
             os: None,
