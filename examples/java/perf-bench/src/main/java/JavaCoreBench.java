@@ -92,7 +92,7 @@ public class JavaCoreBench {
     private static void runCheckGate(Statsig statsig) {
         double p99 = benchmark(CORE_ITER, () -> {
             StatsigUser user = makeRandomUser();
-            if (!statsig.checkGate(user, "test_public")) {
+            if (!statsig.checkGate(user, "test_advanced")) {
                 throw new RuntimeException("Gate check failed");
             }
         });
@@ -101,7 +101,7 @@ public class JavaCoreBench {
 
     private static void runCheckGateGlobalUser(Statsig statsig) {
         double p99 = benchmark(CORE_ITER, () -> {
-            statsig.checkGate(globalUser, "test_public");
+            statsig.checkGate(globalUser, "test_advanced");
         });
         results.put("check_gate_global_user", p99);
     }
@@ -109,14 +109,14 @@ public class JavaCoreBench {
     private static void runGetFeatureGate(Statsig statsig) {
         double p99 = benchmark(CORE_ITER, () -> {
             StatsigUser user = makeRandomUser();
-            statsig.getFeatureGate(user, "test_public");
+            statsig.getFeatureGate(user, "test_advanced");
         });
         results.put("get_feature_gate", p99);
     }
 
     private static void runGetFeatureGateGlobalUser(Statsig statsig) {
         double p99 = benchmark(CORE_ITER, () -> {
-            statsig.getFeatureGate(globalUser, "test_public");
+            statsig.getFeatureGate(globalUser, "test_advanced");
         });
         results.put("get_feature_gate_global_user", p99);
     }

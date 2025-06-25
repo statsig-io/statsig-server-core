@@ -89,26 +89,26 @@ pub async fn main() {
     // Check Gate
     let p99 = run_bench(CORE_ITER, || {
         let user = make_random_user();
-        let _ = Statsig::check_gate(&user, "test_public");
+        let _ = Statsig::check_gate(&user, "test_advanced");
     });
     results.insert("check_gate", p99);
 
     // Check Gate Global User
     let p99 = run_bench(CORE_ITER, || {
-        let _ = Statsig::check_gate(&global_user, "test_public");
+        let _ = Statsig::check_gate(&global_user, "test_advanced");
     });
     results.insert("check_gate_global_user", p99);
 
     // Get Feature Gate
     let p99 = run_bench(CORE_ITER, || {
         let user = make_random_user();
-        let _ = Statsig::get_feature_gate(&user, "test_public");
+        let _ = Statsig::get_feature_gate(&user, "test_advanced");
     });
     results.insert("get_feature_gate", p99);
 
     // Get Feature Gate Global User
     let p99 = run_bench(CORE_ITER, || {
-        let _ = Statsig::get_feature_gate(&global_user, "test_public");
+        let _ = Statsig::get_feature_gate(&global_user, "test_advanced");
     });
     results.insert("get_feature_gate_global_user", p99);
 

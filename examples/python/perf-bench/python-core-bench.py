@@ -66,7 +66,7 @@ def benchmark(iterations, func):
 def run_check_gate():
     def action():
         user = make_random_user()
-        statsig.check_gate(user, "test_public")
+        statsig.check_gate(user, "test_advanced")
 
     p99 = benchmark(CORE_ITER, action)
     results["check_gate"] = p99
@@ -74,7 +74,7 @@ def run_check_gate():
 
 def run_check_gate_global_user():
     def action():
-        statsig.check_gate(global_user, "test_public")
+        statsig.check_gate(global_user, "test_advanced")
 
     p99 = benchmark(CORE_ITER, action)
     results["check_gate_global_user"] = p99
@@ -83,7 +83,7 @@ def run_check_gate_global_user():
 def run_get_feature_gate():
     def action():
         user = make_random_user()
-        statsig.get_feature_gate(user, "test_public")
+        statsig.get_feature_gate(user, "test_advanced")
 
     p99 = benchmark(CORE_ITER, action)
     results["get_feature_gate"] = p99
@@ -91,7 +91,7 @@ def run_get_feature_gate():
 
 def run_get_feature_gate_global_user():
     def action():
-        statsig.get_feature_gate(global_user, "test_public")
+        statsig.get_feature_gate(global_user, "test_advanced")
 
     p99 = benchmark(CORE_ITER, action)
     results["get_feature_gate_global_user"] = p99

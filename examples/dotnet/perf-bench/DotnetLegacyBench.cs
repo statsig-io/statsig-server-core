@@ -114,7 +114,7 @@ public class DotnetLegacyBench
         Benchmark("check_gate", () =>
         {
             var user = MakeRandomUser();
-            if (!StatsigServer.CheckGateSync(user, "test_public"))
+            if (!StatsigServer.CheckGateSync(user, "test_advanced"))
                 throw new Exception("Gate check failed");
         });
     }
@@ -123,7 +123,7 @@ public class DotnetLegacyBench
     {
         Benchmark("check_gate_global_user", () =>
         {
-            StatsigServer.CheckGateSync(globalUser, "test_public");
+            StatsigServer.CheckGateSync(globalUser, "test_advanced");
         });
     }
 
@@ -132,7 +132,7 @@ public class DotnetLegacyBench
         Benchmark("get_feature_gate", () =>
         {
             var user = MakeRandomUser();
-            StatsigServer.GetFeatureGate(user, "test_public");
+            StatsigServer.GetFeatureGate(user, "test_advanced");
         });
     }
 
@@ -140,7 +140,7 @@ public class DotnetLegacyBench
     {
         Benchmark("get_feature_gate_global_user", () =>
         {
-            StatsigServer.GetFeatureGate(globalUser, "test_public");
+            StatsigServer.GetFeatureGate(globalUser, "test_advanced");
         });
     }
 

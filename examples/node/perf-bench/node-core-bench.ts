@@ -68,28 +68,28 @@ const logBenchmark = (name: string, p99: number) => {
 
 const runCheckGate = () => {
   const p99 = benchmark(CORE_ITER, () => {
-    statsig.checkGate(makeRandomUser(), 'test_public');
+    statsig.checkGate(makeRandomUser(), 'test_advanced');
   });
   results['check_gate'] = p99;
 };
 
 const runCheckGateGlobalUser = () => {
   const p99 = benchmark(CORE_ITER, () => {
-    statsig.checkGate(globalUser, 'test_public');
+    statsig.checkGate(globalUser, 'test_advanced');
   });
   results['check_gate_global_user'] = p99;
 };
 
 const runGetFeatureGate = () => {
   const p99 = benchmark(CORE_ITER, () => {
-    statsig.getFeatureGate(makeRandomUser(), 'test_public');
+    statsig.getFeatureGate(makeRandomUser(), 'test_advanced');
   });
   results['get_feature_gate'] = p99;
 };
 
 const runGetFeatureGateGlobalUser = () => {
   const p99 = benchmark(CORE_ITER, () => {
-    statsig.getFeatureGate(globalUser, 'test_public');
+    statsig.getFeatureGate(globalUser, 'test_advanced');
   });
   results['get_feature_gate_global_user'] = p99;
 };

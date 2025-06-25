@@ -62,14 +62,14 @@ end
 def run_check_gate
   p99 = benchmark(CORE_ITER) do
     user = make_random_user
-    Statsig.check_gate(user, "test_public")
+    Statsig.check_gate(user, "test_advanced")
   end
   RESULTS["check_gate"] = p99
 end
 
 def run_check_gate_global_user
   p99 = benchmark(CORE_ITER) do
-    Statsig.check_gate(GLOBAL_USER, "test_public")
+    Statsig.check_gate(GLOBAL_USER, "test_advanced")
   end
   RESULTS["check_gate_global_user"] = p99
 end
@@ -78,14 +78,14 @@ end
 # def run_get_feature_gate
 #   p99 = benchmark do
 #     user = make_random_user
-#     Statsig.get_feature_gate(user, "test_public")
+#     Statsig.get_feature_gate(user, "test_advanced")
 #   end
 #   RESULTS["get_feature_gate"] = p99
 # end
 #
 # def run_get_feature_gate_global_user
 #   p99 = benchmark do
-#     Statsig.get_feature_gate(GLOBAL_USER, "test_public")
+#     Statsig.get_feature_gate(GLOBAL_USER, "test_advanced")
 #   end
 #   RESULTS["get_feature_gate_global_user"] = p99
 # end

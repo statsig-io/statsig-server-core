@@ -85,7 +85,7 @@ function runCheckGate()
 {
     global $statsig, $results, $CORE_ITER;
     $p99 = benchmark($CORE_ITER, function () use ($statsig) {
-        $statsig->checkGate(makeRandomUser(), 'test_public');
+        $statsig->checkGate(makeRandomUser(), 'test_advanced');
     });
     $results['check_gate'] = $p99;
 }
@@ -94,7 +94,7 @@ function runCheckGateGlobalUser()
 {
     global $statsig, $results, $globalUser, $CORE_ITER;
     $p99 = benchmark($CORE_ITER, function () use ($statsig, $globalUser) {
-        $statsig->checkGate($globalUser, 'test_public');
+        $statsig->checkGate($globalUser, 'test_advanced');
     });
     $results['check_gate_global_user'] = $p99;
 }
@@ -103,7 +103,7 @@ function runGetFeatureGate()
 {
     global $statsig, $results, $CORE_ITER;
     $p99 = benchmark($CORE_ITER, function () use ($statsig) {
-        $statsig->getFeatureGate(makeRandomUser(), 'test_public');
+        $statsig->getFeatureGate(makeRandomUser(), 'test_advanced');
     });
     $results['get_feature_gate'] = $p99;
 }
@@ -112,7 +112,7 @@ function runGetFeatureGateGlobalUser()
 {
     global $statsig, $results, $globalUser, $CORE_ITER;
     $p99 = benchmark($CORE_ITER, function () use ($statsig, $globalUser) {
-        $statsig->getFeatureGate($globalUser, 'test_public');
+        $statsig->getFeatureGate($globalUser, 'test_advanced');
     });
     $results['get_feature_gate_global_user'] = $p99;
 }

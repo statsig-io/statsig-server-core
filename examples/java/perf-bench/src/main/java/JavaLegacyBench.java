@@ -89,7 +89,7 @@ public class JavaLegacyBench {
     private static void runCheckGate() {
         double p99 = benchmark(CORE_ITER, () -> {
             StatsigUser user = makeRandomUser();
-            if (!Statsig.checkGateSync(user, "test_public")) {
+            if (!Statsig.checkGateSync(user, "test_advanced")) {
                 throw new RuntimeException("Gate sync failed");
             }
         });
@@ -98,7 +98,7 @@ public class JavaLegacyBench {
 
     private static void runCheckGateGlobalUser() {
         double p99 = benchmark(CORE_ITER, () -> {
-            Statsig.checkGateSync(globalUser, "test_public");
+            Statsig.checkGateSync(globalUser, "test_advanced");
         });
         results.put("check_gate_global_user", p99);
     }
@@ -106,14 +106,14 @@ public class JavaLegacyBench {
     private static void runGetFeatureGate() {
         double p99 = benchmark(CORE_ITER, () -> {
             StatsigUser user = makeRandomUser();
-            Statsig.getFeatureGate(user, "test_public");
+            Statsig.getFeatureGate(user, "test_advanced");
         });
         results.put("get_feature_gate", p99);
     }
 
     private static void runGetFeatureGateGlobalUser() {
         double p99 = benchmark(CORE_ITER, () -> {
-            Statsig.getFeatureGate(globalUser, "test_public");
+            Statsig.getFeatureGate(globalUser, "test_advanced");
         });
         results.put("get_feature_gate_global_user", p99);
     }
