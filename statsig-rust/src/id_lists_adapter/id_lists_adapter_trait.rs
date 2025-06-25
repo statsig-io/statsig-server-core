@@ -1,6 +1,5 @@
 use crate::{StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
-use std::any::Any;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{collections::HashMap, fmt};
@@ -26,7 +25,7 @@ pub struct IdListUpdate {
 }
 
 #[async_trait]
-pub trait IdListsAdapter: Any + Send + Sync {
+pub trait IdListsAdapter: Send + Sync {
     /// Called during Statsig::initialize. Mostly to attach the listener.
     /// Scheduling background threads should be done in the IdListsAdapter::schedule_background_sync function.
     ///
