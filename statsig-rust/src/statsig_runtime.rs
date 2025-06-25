@@ -253,10 +253,15 @@ impl Drop for StatsigRuntime {
         let inner = match opt_inner {
             Some(inner) => inner,
             None => {
-                log_d!(TAG, "Inner runtime is already dropped");
+                log_d!(TAG, "Runtime owned by tokio");
                 return;
             }
         };
+
+        if Arc::strong_count(&inner) > 1 {
+            // Another instance is still using the Runtime, so we can't drop it
+            return;
+        }
 
         if tokio::runtime::Handle::try_current().is_err() {
             // Not inside the Tokio runtime. Will automatically drop(inner).

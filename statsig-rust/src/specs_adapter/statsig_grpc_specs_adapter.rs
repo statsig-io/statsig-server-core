@@ -4,8 +4,8 @@ use crate::observability::ErrorBoundaryEvent;
 #[cfg(feature = "with_shared_dict_compression")]
 use crate::specs_adapter::statsig_http_specs_adapter::INIT_DICT_ID;
 use crate::{
-    log_d, log_error_to_statsig_and_console, log_w, SpecAdapterConfig, SpecsAdapter, SpecsSource,
-    SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigOptions, StatsigRuntime,
+    log_d, log_e, log_error_to_statsig_and_console, log_w, SpecAdapterConfig, SpecsAdapter,
+    SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigOptions, StatsigRuntime,
 };
 use async_trait::async_trait;
 use chrono::Utc;
@@ -198,11 +198,17 @@ impl StatsigGrpcSpecsAdapter {
         cancel_notify: Arc<Notify>,
         shutdown_notify: Arc<Notify>,
     ) {
+        let weak_http_adapter = Arc::downgrade(&http_spec_adapter);
         tokio::task::spawn(async move {
             loop {
                 tokio::select! {
                     _ = sleep(Duration::from_millis(3000)) => {
-                        StatsigHttpSpecsAdapter::run_background_sync(&Arc::downgrade(&http_spec_adapter)).await;
+                        if let Some(strong_http_adapter) = weak_http_adapter.upgrade() {
+                            StatsigHttpSpecsAdapter::run_background_sync(strong_http_adapter).await;
+                        } else {
+                            log_e!(TAG, "GRPC adapter lost strong reference to StatsigHttpSpecsAdapter. Stopping polling thread");
+                            break;
+                        }
                     }
                     _ = cancel_notify.notified() => {
                         log_d!(TAG, "Cancel grpc fallback background specs sync");

@@ -89,6 +89,10 @@ impl StatsigHttpSpecsAdapter {
         }
     }
 
+    pub fn force_shutdown(&self) {
+        self.shutdown_notify.notify_one();
+    }
+
     pub async fn fetch_specs_from_network(
         &self,
         current_specs_info: SpecsInfo,
@@ -177,15 +181,8 @@ impl StatsigHttpSpecsAdapter {
         }
     }
 
-    pub async fn run_background_sync(weak_self: &Weak<Self>) {
-        let strong_self = if let Some(s) = weak_self.upgrade() {
-            s
-        } else {
-            log_e!(TAG, "No strong reference found");
-            return;
-        };
-
-        let specs_info = match strong_self.listener.read() {
+    pub async fn run_background_sync(self: Arc<Self>) {
+        let specs_info = match self.listener.read() {
             Ok(lock) => match lock.as_ref() {
                 Some(listener) => listener.get_current_specs_info(),
                 None => SpecsInfo::empty(),
@@ -193,16 +190,15 @@ impl StatsigHttpSpecsAdapter {
             Err(_) => SpecsInfo::error(),
         };
 
-        strong_self
-            .ops_stats
+        self.ops_stats
             .set_diagnostics_context(ContextType::ConfigSync);
-        if let Err(e) = strong_self.manually_sync_specs(specs_info).await {
+        if let Err(e) = self.manually_sync_specs(specs_info).await {
             if let StatsigErr::NetworkError(NetworkError::DisableNetworkOn(_)) = e {
                 return;
             }
             log_e!(TAG, "Background specs sync failed: {}", e);
         }
-        strong_self.ops_stats.enqueue_diagnostics_event(
+        self.ops_stats.enqueue_diagnostics_event(
             Some(KeyType::DownloadConfigSpecs),
             Some(ContextType::ConfigSync),
         );
@@ -322,7 +318,12 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
             loop {
                 tokio::select! {
                     () = sleep(interval_duration) => {
-                        Self::run_background_sync(&weak_self).await;
+                        if let Some(strong_self) = weak_self.upgrade() {
+                            Self::run_background_sync(strong_self).await;
+                        } else {
+                            log_e!(TAG, "Strong reference to StatsigHttpSpecsAdapter lost. Stopping background sync");
+                            break;
+                        }
                     }
                     () = rt_shutdown_notify.notified() => {
                         log_d!(TAG, "Runtime shutdown. Shutting down specs background sync");

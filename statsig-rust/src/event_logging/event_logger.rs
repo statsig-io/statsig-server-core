@@ -118,6 +118,10 @@ impl EventLogger {
         result
     }
 
+    pub fn force_shutdown(&self) {
+        self.shutdown_notify.notify_one();
+    }
+
     fn spawn_background_task(self: &Arc<Self>, rt: &Arc<StatsigRuntime>) {
         let me = self.clone();
         let rt_clone = rt.clone();

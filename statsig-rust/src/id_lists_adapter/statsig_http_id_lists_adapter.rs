@@ -71,6 +71,10 @@ impl StatsigHttpIdListsAdapter {
         }
     }
 
+    pub fn force_shutdown(&self) {
+        self.shutdown_notify.notify_one();
+    }
+
     async fn fetch_id_list_manifests_from_network(&self) -> Result<IdListsResponse, StatsigErr> {
         let request_args = RequestArgs {
             url: self.id_lists_manifest_url.clone(),

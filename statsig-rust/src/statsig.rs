@@ -83,9 +83,9 @@ pub struct Statsig {
 
     sdk_key: String,
     event_logger: Arc<EventLogger>,
-    specs_adapter: Arc<dyn SpecsAdapter>,
+    specs_adapter: SpecsAdapterHousing,
     event_logging_adapter: Arc<dyn EventLoggingAdapter>,
-    id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
+    id_lists_adapter: IdListsAdapterHousing,
     override_adapter: Option<Arc<dyn OverrideAdapter>>,
     spec_store: Arc<SpecStore>,
     hashing: Arc<HashUtil>,
@@ -154,6 +154,24 @@ impl InitializeDetails {
             }),
             spec_source_api: None,
         }
+    }
+}
+
+impl Drop for Statsig {
+    fn drop(&mut self) {
+        self.event_logger.force_shutdown();
+
+        if let Some(adapter) = &self.id_lists_adapter.as_default_adapter {
+            adapter.force_shutdown();
+        }
+
+        if let Some(adapter) = &self.specs_adapter.as_default_adapter {
+            adapter.force_shutdown();
+        }
+
+        shutdown_output_logger();
+
+        log_d!(TAG, "Statsig instance dropped");
     }
 }
 
@@ -332,7 +350,7 @@ impl Statsig {
                 ))
             }
             sub_result = async {
-                let id_list_shutdown: Pin<Box<_>> = if let Some(adapter) = &self.id_lists_adapter {
+                let id_list_shutdown: Pin<Box<_>> = if let Some(adapter) = &self.id_lists_adapter.inner {
                     adapter.shutdown(timeout)
                 } else {
                     Box::pin(async { Ok(()) })
@@ -343,7 +361,7 @@ impl Statsig {
                 try_join!(
                     id_list_shutdown,
                     self.event_logger.shutdown(),
-                    self.specs_adapter.shutdown(timeout, &self.statsig_runtime),
+                    self.specs_adapter.inner.shutdown(timeout, &self.statsig_runtime),
                 )
             } => {
                 match sub_result {
@@ -418,8 +436,8 @@ impl Statsig {
         let timeout_future = sleep(timeout);
 
         let statsig_runtime = self.statsig_runtime.clone();
-        let id_lists_adapter = self.id_lists_adapter.clone();
-        let specs_adapter = self.specs_adapter.clone();
+        let id_lists_adapter = self.id_lists_adapter.inner.clone();
+        let specs_adapter = self.specs_adapter.inner.clone();
         let ops_stats = self.ops_stats.clone();
         let background_tasks_started = self.background_tasks_started.clone();
         // Create another clone specifically for the closure
@@ -450,7 +468,7 @@ impl Statsig {
     async fn initialize_impl_with_details(&self) -> Result<InitializeDetails, StatsigErr> {
         let start_time = Instant::now();
         self.spec_store.set_source(SpecsSource::Loading);
-        self.specs_adapter.initialize(self.spec_store.clone());
+        self.specs_adapter.inner.initialize(self.spec_store.clone());
 
         let mut error_message = None;
         let mut id_list_ready = None;
@@ -473,6 +491,7 @@ impl Statsig {
 
         let init_res = match self
             .specs_adapter
+            .inner
             .clone()
             .start(&self.statsig_runtime)
             .await
@@ -485,7 +504,7 @@ impl Statsig {
             }
         };
 
-        if let Some(adapter) = &self.id_lists_adapter {
+        if let Some(adapter) = &self.id_lists_adapter.inner {
             match adapter
                 .clone()
                 .start(&self.statsig_runtime, self.spec_store.clone())
@@ -550,8 +569,8 @@ impl Statsig {
 
         let success = Self::start_background_tasks(
             self.statsig_runtime.clone(),
-            self.id_lists_adapter.clone(),
-            self.specs_adapter.clone(),
+            self.id_lists_adapter.inner.clone(),
+            self.specs_adapter.inner.clone(),
             self.ops_stats.clone(),
             self.background_tasks_started.clone(),
         )
@@ -1931,46 +1950,82 @@ fn initialize_specs_adapter(
     sdk_key: &str,
     options: &StatsigOptions,
     hashing: &HashUtil,
-) -> Arc<dyn SpecsAdapter> {
+) -> SpecsAdapterHousing {
     if let Some(adapter) = options.specs_adapter.clone() {
         log_d!(TAG, "Using provided SpecsAdapter: {}", sdk_key);
-        return adapter;
+        return SpecsAdapterHousing {
+            inner: adapter,
+            as_default_adapter: None,
+        };
     }
 
     if let Some(adapter_config) = options.spec_adapters_config.clone() {
-        return Arc::new(StatsigCustomizedSpecsAdapter::new_from_config(
+        let adapter = Arc::new(StatsigCustomizedSpecsAdapter::new_from_config(
             sdk_key,
             adapter_config,
             options,
             hashing,
         ));
+
+        return SpecsAdapterHousing {
+            inner: adapter,
+            as_default_adapter: None,
+        };
     }
 
     if let Some(data_adapter) = options.data_store.clone() {
-        return Arc::new(StatsigCustomizedSpecsAdapter::new_from_data_store(
+        let adapter = Arc::new(StatsigCustomizedSpecsAdapter::new_from_data_store(
             sdk_key,
             data_adapter,
             options,
             hashing,
         ));
+
+        return SpecsAdapterHousing {
+            inner: adapter,
+            as_default_adapter: None,
+        };
     }
 
-    Arc::new(StatsigHttpSpecsAdapter::new(sdk_key, Some(options), None))
+    let adapter = Arc::new(StatsigHttpSpecsAdapter::new(sdk_key, Some(options), None));
+
+    SpecsAdapterHousing {
+        inner: adapter.clone(),
+        as_default_adapter: Some(adapter),
+    }
 }
 
-fn initialize_id_lists_adapter(
-    sdk_key: &str,
-    options: &StatsigOptions,
-) -> Option<Arc<dyn IdListsAdapter>> {
+fn initialize_id_lists_adapter(sdk_key: &str, options: &StatsigOptions) -> IdListsAdapterHousing {
     if let Some(id_lists_adapter) = options.id_lists_adapter.clone() {
-        return Some(id_lists_adapter);
+        return IdListsAdapterHousing {
+            inner: Some(id_lists_adapter),
+            as_default_adapter: None,
+        };
     }
 
     if options.enable_id_lists.unwrap_or(false) {
-        return Some(Arc::new(StatsigHttpIdListsAdapter::new(sdk_key, options)));
+        let adapter = Arc::new(StatsigHttpIdListsAdapter::new(sdk_key, options));
+
+        return IdListsAdapterHousing {
+            inner: Some(adapter.clone()),
+            as_default_adapter: Some(adapter),
+        };
     }
 
-    None
+    IdListsAdapterHousing {
+        inner: None,
+        as_default_adapter: None,
+    }
+}
+
+struct IdListsAdapterHousing {
+    inner: Option<Arc<dyn IdListsAdapter>>,
+    as_default_adapter: Option<Arc<StatsigHttpIdListsAdapter>>,
+}
+
+struct SpecsAdapterHousing {
+    inner: Arc<dyn SpecsAdapter>,
+    as_default_adapter: Option<Arc<StatsigHttpSpecsAdapter>>,
 }
 
 fn setup_ops_stats(

@@ -1,5 +1,6 @@
 use crate::{StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
+use std::any::Any;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{collections::HashMap, fmt};
@@ -25,20 +26,40 @@ pub struct IdListUpdate {
 }
 
 #[async_trait]
-pub trait IdListsAdapter: Send + Sync {
+pub trait IdListsAdapter: Any + Send + Sync {
+    /// Called during Statsig::initialize. Mostly to attach the listener.
+    /// Scheduling background threads should be done in the IdListsAdapter::schedule_background_sync function.
+    ///
+    /// # Arguments
+    ///
+    /// * `statsig_runtime` - The Statsig runtime instance.
+    /// * `listener` - The listener to push updates to.
     async fn start(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
         listener: Arc<dyn IdListsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr>;
 
+    /// Called during Statsig::shutdown or Statsig::shutdown_with_timeout.
+    /// This function gives some grace period to the adapter to finish its work.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - The timeout for the shutdown.
     async fn shutdown(&self, timeout: Duration) -> Result<(), StatsigErr>;
 
+    /// Called during Statsig::initialize.
+    /// This function is used to schedule the background sync thread and is called just after IdListsAdapter::start
+    ///
+    /// # Arguments
+    ///
+    /// * `statsig_runtime` - The Statsig runtime instance.
     async fn schedule_background_sync(
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr>;
 
+    /// Returns the type name of the adapter. Used for logging and error messages.
     fn get_type_name(&self) -> String;
 }
 

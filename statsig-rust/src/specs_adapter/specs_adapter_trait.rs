@@ -3,6 +3,7 @@ use crate::StatsigRuntime;
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde::Serialize;
+use std::any::Any;
 use std::fmt::{self, Debug};
 use std::sync::Arc;
 use std::time::Duration;
@@ -78,7 +79,7 @@ impl fmt::Display for SpecsSource {
 }
 
 #[async_trait]
-pub trait SpecsAdapter: Send + Sync {
+pub trait SpecsAdapter: Any + Send + Sync {
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>);
 
     async fn start(
