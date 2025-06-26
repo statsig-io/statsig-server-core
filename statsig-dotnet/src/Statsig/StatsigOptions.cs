@@ -41,7 +41,9 @@ namespace Statsig
                         builder.waitForUserAgentInit ? 1 : 0,
                         builder.enableIDLists ? 1 : 0,
                         idListsURLPtr,
-                        builder.idListsSyncIntervalMs);
+                        builder.idListsSyncIntervalMs,
+                        -1 // disableAllLogging
+                    );
                 }
             }
         }

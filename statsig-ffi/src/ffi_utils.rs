@@ -49,11 +49,20 @@ pub fn extract_opt_bool(c_bool: SafeOptBool) -> Option<bool> {
     Some(c_bool == 1)
 }
 
-pub fn string_to_c_char(s: String) -> *const c_char {
+pub fn string_to_c_char(s: String) -> *mut c_char {
     match CString::new(s) {
         Ok(c_string) => c_string.into_raw(),
-        Err(_) => std::ptr::null(),
+        Err(_) => std::ptr::null_mut(),
     }
+}
+
+#[no_mangle]
+pub extern "C" fn free_string(s: *mut c_char) {
+    if s.is_null() {
+        return;
+    }
+    // Retake ownership of the string and drop it.
+    let _ = unsafe { CString::from_raw(s) };
 }
 
 pub fn parse_json_to_map(json_str: Option<String>) -> Option<HashMap<String, DynamicValue>> {

@@ -9,7 +9,7 @@ use statsig_rust::{
 };
 use std::collections::HashMap;
 use std::os::raw::c_char;
-use std::ptr::null;
+use std::ptr::null_mut;
 
 const TAG: &str = "StatsigC";
 
@@ -52,8 +52,8 @@ pub extern "C" fn statsig_initialize(statsig_ref: u64, callback: extern "C" fn()
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_initialize_with_details(statsig_ref: u64) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
+pub extern "C" fn statsig_initialize_with_details(statsig_ref: u64) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
 
     let result = statsig
         .statsig_runtime
@@ -64,7 +64,7 @@ pub extern "C" fn statsig_initialize_with_details(statsig_ref: u64) -> *const c_
         Ok(d) => d,
         Err(e) => {
             log_e!(TAG, "Failed to initialize statsig with details: {}", e);
-            return null();
+            return null_mut();
         }
     };
 
@@ -72,7 +72,7 @@ pub extern "C" fn statsig_initialize_with_details(statsig_ref: u64) -> *const c_
         Ok(s) => s,
         Err(e) => {
             log_e!(TAG, "Failed to initialize statsig with details: {}", e);
-            return null();
+            return null_mut();
         }
     };
 
@@ -127,8 +127,8 @@ pub extern "C" fn statsig_flush_events_blocking(statsig_ref: u64) {
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_get_current_values(statsig_ref: u64) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
+pub extern "C" fn statsig_get_current_values(statsig_ref: u64) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
 
     let values = statsig.get_context().spec_store.get_current_values();
     let data = json!(values).to_string();
@@ -180,23 +180,23 @@ pub extern "C" fn statsig_get_client_init_response(
     statsig_ref: u64,
     user_ref: u64,
     options_json: *const c_char,
-) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
-    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null());
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
 
     let options = match c_char_to_string(options_json) {
         Some(opts) => match serde_json::from_str::<ClientInitResponseOptions>(&opts) {
             Ok(options) => options,
             Err(e) => {
                 log_e!(TAG, "Failed to parse options: {}", e);
-                return null();
+                return null_mut();
             }
         },
         None => ClientInitResponseOptions::default(),
     };
 
-    let result = statsig.get_client_init_response_with_options(&user, &options);
-    string_to_c_char(json!(result).to_string())
+    let result = statsig.get_client_init_response_with_options_as_string(&user, &options);
+    string_to_c_char(result)
 }
 
 // ------------------------
@@ -233,17 +233,17 @@ pub extern "C" fn statsig_get_feature_gate(
     user_ref: u64,
     gate_name: *const c_char,
     options_json: *const c_char,
-) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
-    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null());
-    let gate_name = unwrap_or_return!(c_char_to_string(gate_name), null());
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
+    let gate_name = unwrap_or_return!(c_char_to_string(gate_name), null_mut());
 
     let gate = match c_char_to_string(options_json) {
         Some(opts) => match serde_json::from_str::<FeatureGateEvaluationOptions>(&opts) {
             Ok(options) => statsig.get_feature_gate_with_options(&user, &gate_name, options),
             Err(e) => {
                 log_e!(TAG, "Failed to parse options: {}", e);
-                return null();
+                return null_mut();
             }
         },
         None => statsig.get_feature_gate(&user, &gate_name),
@@ -276,17 +276,17 @@ pub extern "C" fn statsig_get_dynamic_config(
     user_ref: u64,
     config_name: *const c_char,
     options_json: *const c_char,
-) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
-    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null());
-    let config_name = unwrap_or_return!(c_char_to_string(config_name), null());
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
+    let config_name = unwrap_or_return!(c_char_to_string(config_name), null_mut());
 
     let config = match c_char_to_string(options_json) {
         Some(opts) => match serde_json::from_str::<DynamicConfigEvaluationOptions>(&opts) {
             Ok(options) => statsig.get_dynamic_config_with_options(&user, &config_name, options),
             Err(e) => {
                 log_e!(TAG, "Failed to parse options: {}", e);
-                return null();
+                return null_mut();
             }
         },
         None => statsig.get_dynamic_config(&user, &config_name),
@@ -319,17 +319,17 @@ pub extern "C" fn statsig_get_experiment(
     user_ref: u64,
     experiment_name: *const c_char,
     options_json: *const c_char,
-) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
-    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null());
-    let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null());
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
+    let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null_mut());
 
     let experiment = match c_char_to_string(options_json) {
         Some(opts) => match serde_json::from_str::<ExperimentEvaluationOptions>(&opts) {
             Ok(options) => statsig.get_experiment_with_options(&user, &experiment_name, options),
             Err(e) => {
                 log_e!(TAG, "Failed to parse options: {}", e);
-                return null();
+                return null_mut();
             }
         },
         None => statsig.get_experiment(&user, &experiment_name),
@@ -362,17 +362,17 @@ pub extern "C" fn statsig_get_layer(
     user_ref: u64,
     layer_name: *const c_char,
     options_json: *const c_char,
-) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
-    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null());
-    let layer_name = unwrap_or_return!(c_char_to_string(layer_name), null());
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
+    let layer_name = unwrap_or_return!(c_char_to_string(layer_name), null_mut());
 
     let layer = match c_char_to_string(options_json) {
         Some(opts) => match serde_json::from_str::<LayerEvaluationOptions>(&opts) {
             Ok(options) => statsig.get_layer_with_options(&user, &layer_name, options),
             Err(e) => {
                 log_e!(TAG, "Failed to parse options: {}", e);
-                return null();
+                return null_mut();
             }
         },
         None => statsig.get_layer(&user, &layer_name),

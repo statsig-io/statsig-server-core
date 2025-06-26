@@ -30,6 +30,7 @@ pub extern "C" fn statsig_options_create(
     enable_id_lists: SafeOptBool,
     id_lists_url: *const c_char,
     id_lists_sync_interval_ms: c_int,
+    disable_all_logging: SafeOptBool,
 ) -> u64 {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
@@ -61,6 +62,7 @@ pub extern "C" fn statsig_options_create(
         enable_id_lists: extract_opt_bool(enable_id_lists),
         id_lists_url,
         id_lists_sync_interval_ms,
+        disable_all_logging: extract_opt_bool(disable_all_logging),
         ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {

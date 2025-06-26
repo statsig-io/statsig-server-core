@@ -1,6 +1,6 @@
 use std::{
     ffi::{c_char, c_ulong},
-    ptr::null,
+    ptr::null_mut,
     sync::Arc,
 };
 
@@ -60,8 +60,8 @@ pub extern "C" fn specs_update_listener_did_receive_specs_update(
 }
 
 #[no_mangle]
-pub extern "C" fn specs_update_listener_get_current_specs_info(listener_ref: u64) -> *const c_char {
-    let listener = get_instance_or_return_c!(SpecsUpdateListenerC, &listener_ref, null());
+pub extern "C" fn specs_update_listener_get_current_specs_info(listener_ref: u64) -> *mut c_char {
+    let listener = get_instance_or_return_c!(SpecsUpdateListenerC, &listener_ref, null_mut());
 
     let info = listener.inner.get_current_specs_info();
     let result = json!(info).to_string();

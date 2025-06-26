@@ -64,17 +64,20 @@ class Statsig
 
     public function getClientInitializeResponse(StatsigUser $user, ?array $options = null): string
     {
-        return StatsigFFI::get()->statsig_get_client_init_response(
+        $ptr = StatsigFFI::get()->statsig_get_client_init_response(
             $this->__ref,
             $user->__ref,
             encode_or_null($options)
         );
+
+        return StatsigFFI::takeString($ptr);
     }
 
     public function identify(StatsigUser $user): void
     {
         StatsigFFI::get()->statsig_identify($this->__ref, $user->__ref);
     }
+
     /**
      * Feature Gate Functions
      */
@@ -91,12 +94,15 @@ class Statsig
 
     public function getFeatureGate(StatsigUser $user, string $name, ?array $options = null): FeatureGate
     {
-        $raw_result = StatsigFFI::get()->statsig_get_feature_gate(
+        $ptr = StatsigFFI::get()->statsig_get_feature_gate(
             $this->__ref,
             $user->__ref,
             $name,
             encode_or_null($options)
         );
+
+        $raw_result = StatsigFFI::takeString($ptr);
+
         return new FeatureGate($raw_result);
     }
 
@@ -115,12 +121,14 @@ class Statsig
 
     public function getDynamicConfig(StatsigUser $user, string $name, ?array $options = null): DynamicConfig
     {
-        $raw_result = StatsigFFI::get()->statsig_get_dynamic_config(
+        $ptr = StatsigFFI::get()->statsig_get_dynamic_config(
             $this->__ref,
             $user->__ref,
             $name,
             encode_or_null($options)
         );
+
+        $raw_result = StatsigFFI::takeString($ptr);
         return new DynamicConfig($raw_result);
     }
 
@@ -139,12 +147,14 @@ class Statsig
 
     public function getExperiment(StatsigUser $user, string $name, ?array $options = null): Experiment
     {
-        $raw_result = StatsigFFI::get()->statsig_get_experiment(
+        $ptr = StatsigFFI::get()->statsig_get_experiment(
             $this->__ref,
             $user->__ref,
             $name,
             encode_or_null($options)
         );
+
+        $raw_result = StatsigFFI::takeString($ptr);
         return new Experiment($raw_result);
     }
 
@@ -163,12 +173,14 @@ class Statsig
 
     public function getLayer(StatsigUser $user, string $name, ?array $options = null): Layer
     {
-        $raw_result = StatsigFFI::get()->statsig_get_layer(
+        $ptr = StatsigFFI::get()->statsig_get_layer(
             $this->__ref,
             $user->__ref,
             $name,
             encode_or_null($options)
         );
+
+        $raw_result = StatsigFFI::takeString($ptr);
         return new Layer($raw_result, $this->__ref);
     }
 

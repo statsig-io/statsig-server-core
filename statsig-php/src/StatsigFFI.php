@@ -56,6 +56,13 @@ class StatsigFFI
         return self::$ffi;
     }
 
+    public static function takeString($c_char_pointer): string
+    {
+        $php_string = FFI::string($c_char_pointer);
+        self::get()->free_string($c_char_pointer);
+        return $php_string;
+    }
+
     private static function findBinaryInDir(string $dir): ?string
     {
         $file_name = '';

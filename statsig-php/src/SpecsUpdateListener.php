@@ -36,6 +36,7 @@ class SpecsUpdateListener
     public function getCurrentSpecsInfo(): string
     {
         $ffi = StatsigFFI::get();
-        return $ffi->specs_update_listener_get_current_specs_info($this->__ref);
+        $ptr = $ffi->specs_update_listener_get_current_specs_info($this->__ref);
+        return StatsigFFI::takeString($ptr);
     }
 }

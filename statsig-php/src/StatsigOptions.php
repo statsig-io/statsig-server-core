@@ -2,6 +2,10 @@
 
 namespace Statsig;
 
+const IGNORED_ENABLE_ID_LISTS = -1;
+const IGNORED_ID_LISTS_URL = null;
+const IGNORED_ID_LISTS_SYNC_INTERVAL_MS = -1;
+
 class StatsigOptions
 {
     public $__ref = null; // phpcs:ignore
@@ -19,7 +23,8 @@ class StatsigOptions
         ?bool $disable_country_lookup = null,
         ?bool $disable_user_agent_parsing = null,
         ?bool $wait_for_country_lookup_init = null,
-        ?bool $wait_for_user_agent_init = null
+        ?bool $wait_for_user_agent_init = null,
+        ?bool $disable_all_logging = null
     ) {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->statsig_options_create(
@@ -36,9 +41,10 @@ class StatsigOptions
             toSafeOptBool($disable_user_agent_parsing),
             toSafeOptBool($wait_for_country_lookup_init),
             toSafeOptBool($wait_for_user_agent_init),
-            -1,
-            null,
-            -1,
+            IGNORED_ENABLE_ID_LISTS,
+            IGNORED_ID_LISTS_URL,
+            IGNORED_ID_LISTS_SYNC_INTERVAL_MS,
+            toSafeOptBool($disable_all_logging),
         );
     }
 
