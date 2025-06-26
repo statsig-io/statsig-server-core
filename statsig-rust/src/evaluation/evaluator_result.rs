@@ -1,3 +1,4 @@
+use super::dynamic_returnable::DynamicReturnable;
 use super::evaluation_types::ExtraExposureInfo;
 use super::evaluation_types_v2::{
     BaseEvaluationV2, DynamicConfigEvaluationV2, ExperimentEvaluationV2, GateEvaluationV2,
@@ -10,8 +11,6 @@ use crate::evaluation::evaluation_types::{
 use crate::event_logging::exposable_string::{self, ExposableString};
 use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::specs_response::spec_types::Spec;
-use serde_json::Value;
-use std::collections::HashMap;
 
 #[derive(Default, Debug)]
 pub struct EvaluatorResult<'a> {
@@ -23,7 +22,7 @@ pub struct EvaluatorResult<'a> {
     pub is_in_layer: bool,
     pub is_in_experiment: bool,
     pub id_type: Option<&'a String>,
-    pub json_value: Option<HashMap<String, Value>>,
+    pub json_value: Option<DynamicReturnable>,
     pub rule_id: Option<&'a ExposableString>,
     pub rule_id_suffix: Option<&'static str>,
     pub group_name: Option<&'a String>,
@@ -269,8 +268,11 @@ fn get_id_type_info(id_type: Option<&String>) -> (String, bool) {
     (id_type, is_device_based)
 }
 
-fn get_json_value(result: &mut EvaluatorResult) -> HashMap<String, Value> {
-    result.json_value.take().unwrap_or_default()
+fn get_json_value(result: &mut EvaluatorResult) -> DynamicReturnable {
+    result
+        .json_value
+        .take()
+        .unwrap_or_else(DynamicReturnable::empty)
 }
 
 // todo: remove when 'QueuedExposure' does not use `BaseEvaluation`

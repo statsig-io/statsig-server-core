@@ -1,22 +1,22 @@
+use crate::evaluation::dynamic_returnable::DynamicReturnable;
+use crate::evaluation::evaluator_result::EvaluatorResult;
 use crate::event_logging::exposable_string::ExposableString;
+use crate::specs_response::spec_types::Spec;
 use crate::{log_d, read_lock_or_return, write_lock_or_noop, OverrideAdapter, StatsigUser};
+use serde_json::Value;
 use std::{collections::HashMap, sync::RwLock};
 
-use crate::evaluation::evaluator_result::EvaluatorResult;
-use crate::specs_response::spec_types::Spec;
-use serde_json::Value;
-
 enum ExperimentOverrides {
-    Value(HashMap<String, Value>),
+    Value(DynamicReturnable),
     GroupName(String),
 }
 
 #[derive(Default)]
 struct OverrideStore {
     pub gate: HashMap<String, HashMap<String, bool>>,
-    pub config: HashMap<String, HashMap<String, HashMap<String, Value>>>,
+    pub config: HashMap<String, HashMap<String, DynamicReturnable>>,
     pub experiment: HashMap<String, HashMap<String, ExperimentOverrides>>,
-    pub layer: HashMap<String, HashMap<String, HashMap<String, Value>>>,
+    pub layer: HashMap<String, HashMap<String, DynamicReturnable>>,
 }
 
 const TAG: &str = stringify!(StatsigLocalOverrideAdapter);
@@ -157,17 +157,16 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
             .config
             .entry(key.to_string())
             .or_default()
-            .insert(id_str.to_string(), value);
+            .insert(id_str.to_string(), DynamicReturnable::from_map(value));
     }
 
     fn override_experiment(&self, key: &str, value: HashMap<String, Value>, id: Option<&str>) {
         let mut store = write_lock_or_noop!(TAG, self.store);
         let id_str = id.unwrap_or(NO_ID_OVERRIDE);
-        store
-            .experiment
-            .entry(key.to_string())
-            .or_default()
-            .insert(id_str.to_string(), ExperimentOverrides::Value(value));
+        store.experiment.entry(key.to_string()).or_default().insert(
+            id_str.to_string(),
+            ExperimentOverrides::Value(DynamicReturnable::from_map(value)),
+        );
     }
 
     fn override_experiment_by_group_name(&self, key: &str, group_name: &str, id: Option<&str>) {
@@ -186,7 +185,7 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
             .layer
             .entry(key.to_string())
             .or_default()
-            .insert(id_str.to_string(), value);
+            .insert(id_str.to_string(), DynamicReturnable::from_map(value));
     }
 
     fn remove_gate_override(&self, key: &str, id: Option<&str>) {
@@ -363,7 +362,7 @@ where
 fn get_experiment_with_group_name(
     opt_spec: Option<&Spec>,
     group_name: &str,
-) -> Option<HashMap<String, Value>> {
+) -> Option<DynamicReturnable> {
     let spec = opt_spec?;
 
     for rule in &spec.rules {
@@ -373,7 +372,7 @@ fn get_experiment_with_group_name(
         };
 
         if rule_group_name == group_name {
-            return rule.return_value.get_json();
+            return Some(rule.return_value.clone());
         }
     }
 

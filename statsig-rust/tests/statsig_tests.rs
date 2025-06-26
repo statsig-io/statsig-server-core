@@ -121,7 +121,7 @@ async fn test_gcir() {
         None => panic!("Should have values"),
     };
 
-    assert!(!a_config.is_empty());
+    assert!(!a_config.get_json().unwrap().is_empty());
 }
 
 #[tokio::test]

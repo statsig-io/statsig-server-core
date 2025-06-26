@@ -1,8 +1,6 @@
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::collections::HashMap;
-
+use super::dynamic_returnable::DynamicReturnable;
 use crate::event_logging::exposable_string::ExposableString;
+use serde::{Deserialize, Serialize};
 
 pub fn is_false(v: &bool) -> bool {
     !(*v)
@@ -112,7 +110,7 @@ pub struct DynamicConfigEvaluation {
     pub base: BaseEvaluation,
 
     pub id_type: String,
-    pub value: HashMap<String, Value>,
+    pub value: DynamicReturnable,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
     pub group: ExposableString,
@@ -127,7 +125,7 @@ pub struct ExperimentEvaluation {
     pub base: BaseEvaluation,
 
     pub id_type: String,
-    pub value: HashMap<String, Value>,
+    pub value: DynamicReturnable,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
     pub group: ExposableString,
@@ -163,7 +161,7 @@ pub struct LayerEvaluation {
     #[serde(flatten)]
     pub base: BaseEvaluation,
 
-    pub value: HashMap<String, Value>,
+    pub value: DynamicReturnable,
 
     pub id_type: String,
 

@@ -1,10 +1,9 @@
+use super::dynamic_returnable::DynamicReturnable;
 use crate::SecondaryExposure;
 use crate::{
     evaluation::evaluation_types::is_false, event_logging::exposable_string::ExposableString,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BaseEvaluationV2 {
@@ -28,7 +27,7 @@ pub struct DynamicConfigEvaluationV2 {
     pub base: BaseEvaluationV2,
 
     pub id_type: String,
-    pub value: HashMap<String, Value>,
+    pub value: DynamicReturnable,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
     pub group: ExposableString,
@@ -43,7 +42,7 @@ pub struct ExperimentEvaluationV2 {
     pub base: BaseEvaluationV2,
 
     pub id_type: String,
-    pub value: HashMap<String, Value>,
+    pub value: DynamicReturnable,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
     pub group: ExposableString,
@@ -79,7 +78,7 @@ pub struct LayerEvaluationV2 {
     #[serde(flatten)]
     pub base: BaseEvaluationV2,
 
-    pub value: HashMap<String, Value>,
+    pub value: DynamicReturnable,
 
     pub id_type: String,
 

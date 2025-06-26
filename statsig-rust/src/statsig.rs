@@ -1744,6 +1744,7 @@ impl Statsig {
             );
             return make_empty_result(EvaluationDetails::unrecognized_no_data());
         });
+
         let app_id = data.values.app_id.as_ref();
         let mut context = EvaluatorContext::new(
             user_internal,

@@ -1,9 +1,3 @@
-use std::{collections::HashMap, sync::Weak};
-
-use chrono::Utc;
-use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
-
 use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::evaluation_types::BaseEvaluation;
 use crate::event_logging::event_logger::EventLogger;
@@ -17,6 +11,10 @@ use crate::{
     user::StatsigUserInternal,
     EvaluationDetails, SecondaryExposure,
 };
+use chrono::Utc;
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
+use std::{collections::HashMap, sync::Weak};
 
 pub type UserPersistedValues = HashMap<String, StickyValues>;
 
@@ -114,7 +112,7 @@ pub fn make_sticky_value_from_layer(layer: &Layer) -> Option<StickyValues> {
 
     Some(StickyValues {
         value: true,
-        json_value: Some(layer_evaluation.value.clone()),
+        json_value: Some(layer_evaluation.value.get_json().unwrap_or_default()),
         rule_id: Some(layer_evaluation.base.rule_id.clone()),
         group_name: layer_evaluation.group_name.clone(),
         secondary_exposures: layer_evaluation.base.secondary_exposures.clone(),
@@ -141,7 +139,7 @@ pub fn make_experiment_from_sticky_value(
     };
     Experiment {
         name: name.unperformant_to_string(),
-        value,
+        value: value.get_json().unwrap_or_default(),
         rule_id: rule_id.unperformant_to_string(),
         id_type,
         group_name,
@@ -151,20 +149,18 @@ pub fn make_experiment_from_sticky_value(
 }
 
 pub fn make_sticky_value_from_experiment(experiment: &Experiment) -> Option<StickyValues> {
-    let experiment_evaluation = unwrap_or_return!(&experiment.__evaluation, None);
-    let config_version = extract_config_version(&experiment_evaluation.base);
+    let evaluation = unwrap_or_return!(&experiment.__evaluation, None);
+    let config_version = extract_config_version(&evaluation.base);
 
     Some(StickyValues {
         value: true, // For sticky value, if it's being saved, it should always be true
-        json_value: Some(experiment_evaluation.value.clone()),
-        rule_id: Some(experiment_evaluation.base.rule_id.clone()),
-        group_name: experiment_evaluation.group_name.clone(),
-        secondary_exposures: experiment_evaluation.base.secondary_exposures.clone(),
-        undelegated_secondary_exposures: experiment_evaluation
-            .undelegated_secondary_exposures
-            .clone(),
+        json_value: Some(evaluation.value.get_json().unwrap_or_default()),
+        rule_id: Some(evaluation.base.rule_id.clone()),
+        group_name: evaluation.group_name.clone(),
+        secondary_exposures: evaluation.base.secondary_exposures.clone(),
+        undelegated_secondary_exposures: evaluation.undelegated_secondary_exposures.clone(),
         config_delegate: None,
-        explicit_parameters: experiment_evaluation.explicit_parameters.clone(),
+        explicit_parameters: evaluation.explicit_parameters.clone(),
         time: experiment.details.lcut,
         config_version,
     })

@@ -1,6 +1,7 @@
 use std::sync::{Arc, Weak};
 
 use crate::{
+    evaluation::dynamic_returnable::DynamicReturnable,
     evaluation::evaluator_result::{
         eval_result_to_experiment_eval, result_to_layer_eval, EvaluatorResult,
     },
@@ -27,7 +28,9 @@ macro_rules! get_sticky_result {
                     sticky_value_ptr = Some(sticky_value);
                     let sticky_result = EvaluatorResult {
                         bool_value: sticky_value.value,
-                        json_value: sticky_value.json_value.clone(),
+                        json_value: Some(DynamicReturnable::from_map(
+                            sticky_value.json_value.clone().unwrap_or_default(),
+                        )),
                         rule_id: sticky_value.rule_id.as_ref(),
                         group_name: sticky_value.group_name.as_ref(),
                         secondary_exposures: sticky_value.secondary_exposures.clone(),

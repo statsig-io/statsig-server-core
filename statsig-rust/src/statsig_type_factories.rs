@@ -1,3 +1,4 @@
+use crate::evaluation::dynamic_returnable::DynamicReturnable;
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::{
     DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation,
@@ -6,9 +7,6 @@ use crate::event_logging::event_logger::EventLogger;
 use crate::event_logging::exposable_string::{self, ExposableString};
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::user::StatsigUserLoggable;
-
-use serde_json::Value;
-use std::collections::HashMap;
 use std::sync::Weak;
 
 pub fn make_feature_gate(
@@ -33,12 +31,7 @@ pub fn make_feature_gate(
 
 pub fn extract_from_experiment_evaluation(
     evaluation: &Option<ExperimentEvaluation>,
-) -> (
-    HashMap<String, Value>,
-    ExposableString,
-    String,
-    Option<String>,
-) {
+) -> (DynamicReturnable, ExposableString, String, Option<String>) {
     match &evaluation {
         Some(e) => (
             e.value.clone(),
@@ -47,7 +40,7 @@ pub fn extract_from_experiment_evaluation(
             e.group_name.clone(),
         ),
         None => (
-            HashMap::new(),
+            DynamicReturnable::empty(),
             exposable_string::DEFAULT_RULE.clone(),
             String::new(),
             None,
@@ -63,7 +56,7 @@ pub fn make_dynamic_config(
     let (value, rule_id, id_type) = match &evaluation {
         Some(e) => (e.value.clone(), e.base.rule_id.clone(), e.id_type.clone()),
         None => (
-            HashMap::new(),
+            DynamicReturnable::empty(),
             exposable_string::DEFAULT_RULE.clone(),
             String::new(),
         ),
@@ -73,7 +66,7 @@ pub fn make_dynamic_config(
         name: name.to_string(),
         rule_id: rule_id.unperformant_to_string(),
         id_type,
-        value,
+        value: value.get_json().unwrap_or_default(),
         details,
         __evaluation: evaluation,
     }
@@ -90,7 +83,7 @@ pub fn make_experiment(
         name: name.to_string(),
         rule_id: rule_id.unperformant_to_string(),
         id_type,
-        value,
+        value: value.get_json().unwrap_or_default(),
         details: details.clone(),
         group_name,
         __evaluation: evaluation,
@@ -115,7 +108,7 @@ pub fn make_layer(
             e.id_type.clone(),
         ),
         None => (
-            HashMap::new(),
+            DynamicReturnable::empty(),
             exposable_string::DEFAULT_RULE.clone(),
             None,
             None,
@@ -138,7 +131,7 @@ pub fn make_layer(
         details: details.clone(),
         group_name,
         allocated_experiment_name,
-        __value: value,
+        __value: value.get_json().unwrap_or_default(),
         __evaluation: evaluation,
         __user: user,
         __event_logger_ptr: event_logger_ptr,

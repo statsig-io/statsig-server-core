@@ -145,10 +145,10 @@ impl Evaluator {
 
             if did_pass {
                 ctx.result.bool_value = rule.return_value.get_bool() != Some(false);
-                ctx.result.json_value = rule.return_value.get_json();
+                ctx.result.json_value = Some(rule.return_value.clone());
             } else {
                 ctx.result.bool_value = spec.default_value.get_bool() == Some(true);
-                ctx.result.json_value = spec.default_value.get_json();
+                ctx.result.json_value = Some(spec.default_value.clone());
             }
 
             ctx.result.rule_id = Some(&rule.id);
@@ -160,7 +160,7 @@ impl Evaluator {
         }
 
         ctx.result.bool_value = spec.default_value.get_bool() == Some(true);
-        ctx.result.json_value = spec.default_value.get_json();
+        ctx.result.json_value = Some(spec.default_value.clone());
         ctx.result.rule_id = match spec.enabled {
             true => Some(&exposable_string::DEFAULT_RULE),
             false => Some(&exposable_string::DISABLED_RULE),

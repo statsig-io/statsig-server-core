@@ -14,3 +14,6 @@ pub(crate) mod cmab_evaluator;
 pub(crate) mod comparisons;
 pub(crate) mod country_lookup;
 pub(crate) mod get_unit_id;
+
+#[cfg(test)]
+mod __tests__;
