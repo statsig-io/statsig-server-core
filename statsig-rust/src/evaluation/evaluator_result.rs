@@ -1,3 +1,8 @@
+use super::evaluation_types::ExtraExposureInfo;
+use super::evaluation_types_v2::{
+    BaseEvaluationV2, DynamicConfigEvaluationV2, ExperimentEvaluationV2, GateEvaluationV2,
+    LayerEvaluationV2,
+};
 use crate::evaluation::evaluation_types::{
     BaseEvaluation, DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation,
     SecondaryExposure,
@@ -7,13 +12,6 @@ use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::specs_response::spec_types::Spec;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::sync::Arc;
-
-use super::evaluation_types::ExtraExposureInfo;
-use super::evaluation_types_v2::{
-    BaseEvaluationV2, DynamicConfigEvaluationV2, ExperimentEvaluationV2, GateEvaluationV2,
-    LayerEvaluationV2,
-};
 
 #[derive(Default, Debug)]
 pub struct EvaluatorResult<'a> {
@@ -284,7 +282,7 @@ fn get_exposure_name_if_not_hashed(
     if possibly_hashed_name == exposure_name.as_str() {
         exposure_name.clone()
     } else {
-        ExposableString::new(possibly_hashed_name.to_string())
+        ExposableString::from_str_ref(possibly_hashed_name)
     }
 }
 
@@ -341,12 +339,12 @@ fn create_suffixed_rule_id(
     suffix: Option<&str>,
 ) -> ExposableString {
     let id_arc = match &rule_id {
-        Some(rule_id) => rule_id.clone_inner(),
-        None => Arc::new(String::new()),
+        Some(rule_id) => rule_id.as_str(),
+        None => "",
     };
 
     match &suffix {
-        Some(suffix) => ExposableString::new(format!("{id_arc}:{suffix}")),
+        Some(suffix) => ExposableString::from_str_parts(&[id_arc, ":", suffix]),
         None => rule_id.cloned().unwrap_or_default(),
     }
 }

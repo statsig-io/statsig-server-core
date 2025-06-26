@@ -63,7 +63,7 @@ pub fn convert_dict_to_user_persisted_values(
             };
             let sticky_value = StickyValuesActual {
                 value,
-                rule_id: rule_id.map(ExposableString::new),
+                rule_id: rule_id.map(|r| ExposableString::from_str_ref(r.as_str())),
                 group_name,
                 config_delegate,
                 time,
@@ -169,7 +169,7 @@ fn convert_py_dict_to_secondary_exposure(py_dict: &Bound<PyDict>) -> PyResult<Se
     Ok(SecondaryExposure {
         gate,
         gate_value,
-        rule_id: ExposableString::new(rule_id),
+        rule_id: ExposableString::from_str_ref(rule_id.as_str()),
     })
 }
 

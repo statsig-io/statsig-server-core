@@ -24,7 +24,7 @@ const LOCAL_OVERRIDE_REASON: &str = "LocalOverride";
 const NO_ID_OVERRIDE: &str = "__STATSIG_NO_ID__";
 
 lazy_static::lazy_static! {
-    static ref OVERRIDE_RULE_ID: ExposableString = ExposableString::new("override".to_string());
+    static ref OVERRIDE_RULE_ID: ExposableString = ExposableString::from_str_ref("override");
 }
 
 #[derive(Default)]

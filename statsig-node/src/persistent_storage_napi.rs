@@ -158,11 +158,25 @@ pub async fn test_persistent_storage(
         "load" => store.load("test".to_string()).map(|values| {
             values
                 .into_iter()
-                .map(|(key, value)| (key, serde_json::to_string(&value).unwrap()))
+                .map(|(key, value)| {
+                    (
+                        key.clone(),
+                        serde_json::to_string(&value).unwrap_or_else(|e| {
+                            panic!("Failed to serialize sticky values for key: {} {}", key, e);
+                        }),
+                    )
+                })
                 .collect()
         }),
         "save" => {
-            let sticky = serde_json::from_value::<StickyValues>(data.unwrap()).unwrap();
+            let sticky =
+                serde_json::from_value::<StickyValues>(data.unwrap()).unwrap_or_else(|e| {
+                    panic!(
+                        "Failed to deserialize sticky values for key: {} {}",
+                        key.clone().unwrap_or_default(),
+                        e
+                    );
+                });
             store.save(key.unwrap().as_str(), config_name.unwrap().as_str(), sticky);
             None
         }

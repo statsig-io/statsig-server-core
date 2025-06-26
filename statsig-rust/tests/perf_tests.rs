@@ -113,16 +113,25 @@ async fn test_gcir() {
 
     let start = Instant::now();
 
+    let mut durations: Vec<f64> = Vec::new();
     let mut result: Option<String> = None;
     for _ in 0..1000 {
+        let start_inner = Instant::now();
         result = Some(statsig.get_client_init_response_as_string(&user));
+        let duration_inner = start_inner.elapsed();
+        durations.push(duration_inner.as_secs_f64() * 1000.0);
     }
 
     let duration = start.elapsed();
     let result_str = json!(result).to_string();
     println!("Response: {}", &result_str[0..min(200, result_str.len())]);
     // println!("Response: {}", &result_str);
-    println!("Duration {}", duration.as_secs_f64() * 1000.0);
+    println!("Overall {} ms", duration.as_secs_f64() * 1000.0);
+    println!(
+        "Average {} ms",
+        durations.iter().sum::<f64>() / durations.len() as f64
+    );
+    println!("p99 Duration {} ms", durations.get(990).unwrap());
 }
 
 #[tokio::test]

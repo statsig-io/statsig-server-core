@@ -49,7 +49,7 @@ impl<'de> Deserialize<'de> for SpecDirectory {
         let specs = HashMap::<String, Spec>::deserialize(deserializer)?
             .into_iter()
             .map(|(k, v)| {
-                let name = ExposableString::new(k.clone());
+                let name = ExposableString::from_str_ref(k.as_str());
                 let hash = name.hash_value;
                 let addressable = AddressableSpec {
                     name,

@@ -18,9 +18,9 @@ use std::collections::HashMap;
 const EXPLORE_RULE_ID_SUFFIX: &str = "explore";
 
 lazy_static! {
-    static ref NOT_STARTED_RULE: ExposableString = ExposableString::new("prestart".to_string());
+    static ref NOT_STARTED_RULE: ExposableString = ExposableString::from_str_ref("prestart");
     static ref FAILS_TARGETING: ExposableString =
-        ExposableString::new("inlineTargetingRules".to_string());
+        ExposableString::from_str_ref("inlineTargetingRules");
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -77,7 +77,7 @@ pub fn get_cmab_ranked_list(ctx: &mut EvaluatorContext, name: &str) -> Vec<CMABR
             .map(|group| CMABRankedGroup {
                 score: 0.0001,
                 variant_name: group.name.clone(),
-                rule_id: ExposableString::new(format!("{}:explore", group.id.as_str())),
+                rule_id: ExposableString::from_str_parts(&[group.id.as_str(), ":explore"]),
                 value: group.parameter_values.get_json(),
                 cmab_name: name.to_string(),
             })
