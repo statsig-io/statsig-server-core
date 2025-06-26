@@ -204,6 +204,16 @@ describe('Statsig', () => {
       expect(event?.metadata?.config).toEqual('layer_with_many_params');
     });
 
+    it('should expose layer value field directly', async () => {
+      const user = StatsigUser.withUserID('a-user');
+      const layer = statsig.getLayer(user, 'layer_with_many_params');
+      
+      expect(layer.value).toBeDefined();
+      expect(typeof layer.value).toBe('object');
+      expect(layer.value).toHaveProperty('another_string');
+      expect(layer.value.another_string).toEqual('layer_default');
+    });
+
     it('should log statsig metadata', async () => {
       const user = StatsigUser.withUserID('a-user');
       statsig.logEvent(user, 'my_custom_event', 'my_value');

@@ -214,6 +214,7 @@ pub struct Layer {
     pub rule_id: String,
     pub group_name: Option<String>,
     pub allocated_experiment_name: Option<String>,
+    pub value: HashMap<String, Value>,
 
     pub(crate) inner: LayerActual,
 }
@@ -268,6 +269,7 @@ impl From<LayerActual> for Layer {
             rule_id: layer.rule_id.clone(),
             group_name: layer.group_name.clone(),
             allocated_experiment_name: layer.allocated_experiment_name.clone(),
+            value: layer.__value.clone(),
             inner: layer,
         }
     }
