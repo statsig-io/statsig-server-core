@@ -13,7 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@statsig/statsig-node-core": "latest",
+    "@statsig/statsig-node-core": "beta",
     "statsig-node": "latest",
     "tinybench": "^4.0.1",
     "tsx": "^4.19.4",

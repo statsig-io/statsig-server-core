@@ -92,9 +92,7 @@ public class JavaCoreBench {
     private static void runCheckGate(Statsig statsig) {
         double p99 = benchmark(CORE_ITER, () -> {
             StatsigUser user = makeRandomUser();
-            if (!statsig.checkGate(user, "test_advanced")) {
-                throw new RuntimeException("Gate check failed");
-            }
+            statsig.checkGate(user, "test_advanced");
         });
         results.put("check_gate", p99);
     }

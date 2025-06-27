@@ -114,7 +114,8 @@ def run_get_experiment_global_user():
 def run_get_client_initialize_response():
     def action():
         user = make_random_user()
-        statsig.get_client_initialize_response(user)
+        res = statsig.get_client_initialize_response(user)
+        json.dumps(res)
 
     p99 = benchmark(GCIR_ITER, action)
     results["get_client_initialize_response"] = p99
@@ -122,7 +123,8 @@ def run_get_client_initialize_response():
 
 def run_get_client_initialize_response_global_user():
     def action():
-        statsig.get_client_initialize_response(global_user)
+        res = statsig.get_client_initialize_response(global_user)
+        json.dumps(res)
 
     p99 = benchmark(GCIR_ITER, action)
     results["get_client_initialize_response_global_user"] = p99

@@ -107,14 +107,16 @@ const runGetExperimentGlobalUser = () => {
 
 const runGetClientInitializeResponse = () => {
   const p99 = benchmark(GCIR_ITER, () => {
-    Statsig.getClientInitializeResponse(makeRandomUser());
+    const res = Statsig.getClientInitializeResponse(makeRandomUser());
+    JSON.stringify(res);
   });
   results['get_client_initialize_response'] = p99;
 };
 
 const runGetClientInitializeResponseGlobalUser = () => {
   const p99 = benchmark(GCIR_ITER, () => {
-    Statsig.getClientInitializeResponse(globalUser);
+    const res = Statsig.getClientInitializeResponse(globalUser);
+    JSON.stringify(res);
   });
   results['get_client_initialize_response_global_user'] = p99;
 };

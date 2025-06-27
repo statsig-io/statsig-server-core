@@ -1,6 +1,7 @@
 require 'bundler/setup'
 require 'statsig'
 require 'benchmark'
+require 'json'
 
 Statsig.initialize( ENV['PERF_SDK_KEY'])
 
@@ -108,14 +109,16 @@ end
 def run_get_client_initialize_response
   p99 = benchmark(GCIR_ITER) do
     user = make_random_user
-    Statsig.get_client_initialize_response(user)
+    res = Statsig.get_client_initialize_response(user)
+    res.to_json
   end
   RESULTS["get_client_initialize_response"] = p99
 end
 
 def run_get_client_initialize_response_global_user
   p99 = benchmark(GCIR_ITER) do
-    Statsig.get_client_initialize_response(GLOBAL_USER)
+    res = Statsig.get_client_initialize_response(GLOBAL_USER)
+    res.to_json
   end
   RESULTS["get_client_initialize_response_global_user"] = p99
 end

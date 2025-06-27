@@ -15,6 +15,7 @@ dependencies {
     implementation 'com.statsig:javacore:+'
     implementation 'com.statsig:javacore:+:macos-arm64'
     implementation 'com.statsig:javacore:+:linux-gnu-x86_64'
+    implementation 'com.alibaba.fastjson2:fastjson2:2.0.41'
 }
 
 def isRelease = project.hasProperty('release')

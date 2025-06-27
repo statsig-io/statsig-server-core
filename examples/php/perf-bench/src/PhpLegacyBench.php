@@ -186,7 +186,8 @@ function runGetClientInitializeResponse()
 {
     global $statsig, $results, $GCIR_ITER;
     $p99 = benchmark($GCIR_ITER, function () use ($statsig) {
-        $statsig->getClientInitializeResponse(makeRandomUser());
+        $res = $statsig->getClientInitializeResponse(makeRandomUser());
+        json_encode($res);
     });
     $results['get_client_initialize_response'] = $p99;
 }
@@ -195,7 +196,8 @@ function runGetClientInitializeResponseGlobalUser()
 {
     global $statsig, $results, $globalUser, $GCIR_ITER;
     $p99 = benchmark($GCIR_ITER, function () use ($statsig, $globalUser) {
-        $statsig->getClientInitializeResponse($globalUser);
+        $res = $statsig->getClientInitializeResponse($globalUser);
+        json_encode($res);
     });
     $results['get_client_initialize_response_global_user'] = $p99;
 }

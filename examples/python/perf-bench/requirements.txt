@@ -1,3 +1,4 @@
-statsig-python-core
+--pre
+statsig-python-core 
 statsig
 numpy==2.2.6

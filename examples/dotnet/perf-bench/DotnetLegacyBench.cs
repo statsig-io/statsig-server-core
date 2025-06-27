@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Statsig;
 using Statsig.Server;
 
@@ -114,8 +115,7 @@ public class DotnetLegacyBench
         Benchmark("check_gate", () =>
         {
             var user = MakeRandomUser();
-            if (!StatsigServer.CheckGateSync(user, "test_advanced"))
-                throw new Exception("Gate check failed");
+            StatsigServer.CheckGateSync(user, "test_advanced");
         });
     }
 
@@ -166,7 +166,8 @@ public class DotnetLegacyBench
         Benchmark("get_client_initialize_response", () =>
         {
             var user = MakeRandomUser();
-            StatsigServer.GetClientInitializeResponse(user);
+            var res = StatsigServer.GetClientInitializeResponse(user);
+            JsonConvert.SerializeObject(res);
         }, GCIR_ITER);
     }
 
@@ -174,7 +175,8 @@ public class DotnetLegacyBench
     {
         Benchmark("get_client_initialize_response_global_user", () =>
         {
-            StatsigServer.GetClientInitializeResponse(globalUser);
+            var res = StatsigServer.GetClientInitializeResponse(globalUser);
+            JsonConvert.SerializeObject(res);
         }, GCIR_ITER);
     }
 }

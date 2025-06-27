@@ -128,13 +128,15 @@ pub async fn main() {
     // Get Client Initialize Response
     let p99 = run_bench(GCIR_ITER, || {
         let user = make_random_user();
-        let _ = Statsig::get_client_initialize_response(&user);
+        let res = Statsig::get_client_initialize_response(&user).unwrap();
+        serde_json::to_string(&res).unwrap();
     });
     results.insert("get_client_initialize_response", p99);
 
     // Get Client Initialize Response Global User
     let p99 = run_bench(GCIR_ITER, || {
-        let _ = Statsig::get_client_initialize_response(&global_user);
+        let res = Statsig::get_client_initialize_response(&global_user).unwrap();
+        serde_json::to_string(&res).unwrap();
     });
     results.insert("get_client_initialize_response_global_user", p99);
 

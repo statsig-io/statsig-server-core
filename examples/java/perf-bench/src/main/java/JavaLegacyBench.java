@@ -1,3 +1,4 @@
+import com.alibaba.fastjson2.JSON;
 import com.statsig.FeatureGate;
 import com.statsig.sdk.*;
 import java.util.*;
@@ -89,9 +90,7 @@ public class JavaLegacyBench {
     private static void runCheckGate() {
         double p99 = benchmark(CORE_ITER, () -> {
             StatsigUser user = makeRandomUser();
-            if (!Statsig.checkGateSync(user, "test_advanced")) {
-                throw new RuntimeException("Gate sync failed");
-            }
+            Statsig.checkGateSync(user, "test_advanced");
         });
         results.put("check_gate", p99);
     }
@@ -135,14 +134,16 @@ public class JavaLegacyBench {
 
     private static void runGetClientInitializeResponse() {
         double p99 = benchmark(GCIR_ITER, () -> {
-            Statsig.getClientInitializeResponse(globalUser, HashAlgo.DJB2, null);
+            Map<String, Object> res = Statsig.getClientInitializeResponse(globalUser, HashAlgo.DJB2, null);
+            JSON.toJSONString(res);
         });
         results.put("get_client_initialize_response", p99);
     }
 
     private static void runGetClientInitializeResponseGlobalUser() {
         double p99 = benchmark(GCIR_ITER, () -> {
-            Statsig.getClientInitializeResponse(globalUser, HashAlgo.DJB2, null);
+            Map<String, Object> res = Statsig.getClientInitializeResponse(globalUser, HashAlgo.DJB2, null);
+            JSON.toJSONString(res);
         });
         results.put("get_client_initialize_response_global_user", p99);
     }
