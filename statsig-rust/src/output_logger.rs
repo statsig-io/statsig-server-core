@@ -100,7 +100,7 @@ pub fn initialize_output_logger(
     let mut state = match LOGGER_STATE.write() {
         Ok(state) => state,
         Err(e) => {
-            eprintln!("[Statsig] Failed to acquire write lock for logger: {}", e);
+            eprintln!("[Statsig] Failed to acquire write lock for logger: {e}");
             return;
         }
     };
@@ -134,7 +134,7 @@ pub fn shutdown_output_logger() {
     let mut state = match LOGGER_STATE.write() {
         Ok(state) => state,
         Err(e) => {
-            eprintln!("[Statsig] Failed to acquire write lock for logger: {}", e);
+            eprintln!("[Statsig] Failed to acquire write lock for logger: {e}");
             return;
         }
     };
@@ -200,9 +200,9 @@ fn sanitize(input: &str) -> String {
                 let sanitized_key = if key.len() > 5 {
                     format!("{}*****{}", &key[..5], rest)
                 } else {
-                    format!("{}*****{}", key, rest)
+                    format!("{key}*****{rest}")
                 };
-                format!("secret-{}", sanitized_key)
+                format!("secret-{sanitized_key}")
             }
         })
         .collect()
@@ -212,7 +212,7 @@ pub fn has_valid_log_level(level: &LogLevel) -> bool {
     let state = match LOGGER_STATE.read() {
         Ok(state) => state,
         Err(e) => {
-            eprintln!("[Statsig] Failed to acquire read lock for logger: {}", e);
+            eprintln!("[Statsig] Failed to acquire read lock for logger: {e}");
             return false;
         }
     };

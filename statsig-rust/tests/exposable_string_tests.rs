@@ -100,7 +100,7 @@ fn test_exposable_string_hash_value_is_changing() {
     let mut hash = ExposableString::from_str_ref("a_string").hash_value;
 
     for i in 0..10000 {
-        let new_hash = ExposableString::from_str_ref(format!("{}", i).as_str()).hash_value;
+        let new_hash = ExposableString::from_str_ref(format!("{i}").as_str()).hash_value;
         assert_ne!(hash, new_hash);
         assert_gt!(new_hash, 0);
         hash = new_hash;

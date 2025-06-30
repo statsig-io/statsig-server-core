@@ -110,6 +110,6 @@ pub async fn test_observability_client(
         "increment" => client.increment(metric_name, value, tags),
         "gauge" => client.gauge(metric_name, value, tags),
         "dist" => client.dist(metric_name, value, tags),
-        _ => panic!("Invalid action: {}", action),
+        _ => panic!("Invalid action: {action}"),
     }
 }

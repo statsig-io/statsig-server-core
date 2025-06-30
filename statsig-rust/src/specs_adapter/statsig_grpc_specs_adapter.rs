@@ -64,8 +64,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
             Ok(res) => match res {
                 Ok(Ok(())) => Ok(()),
                 Ok(Err(err)) => Err(StatsigErr::GrpcError(format!(
-                    "Failed to initialize from streaming: {}",
-                    err
+                    "Failed to initialize from streaming: {err}"
                 ))),
                 Err(_) => Err(StatsigErr::GrpcError("Failed to get a ".to_string())),
             },
@@ -107,8 +106,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
                     self.ops_stats,
                     TAG,
                     StatsigErr::LockFailure(format!(
-                        "Failed to acquire write lock on listener: {}",
-                        e
+                        "Failed to acquire write lock on listener: {e}"
                     ))
                 );
             }
@@ -237,7 +235,7 @@ impl StatsigGrpcSpecsAdapter {
                         log_error_to_statsig_and_console!(
                             &ops_stats,
                             TAG,
-                            StatsigErr::GrpcError(format!("gRPC streaming thread failed: {}", e))
+                            StatsigErr::GrpcError(format!("gRPC streaming thread failed: {e}"))
                         );
                     }
                 } else {
@@ -260,7 +258,7 @@ impl StatsigGrpcSpecsAdapter {
                     if let Err(err) = result {
                         let attempt = self.retry_state.retry_attempts.fetch_add(1, Ordering::SeqCst);
                         if attempt > RETRY_LIMIT {
-                            log_error_to_statsig_and_console!(&self.ops_stats, TAG, StatsigErr::GrpcError(format!("gRPC stream failure, exhaust retry limit: {:?}", err)));
+                            log_error_to_statsig_and_console!(&self.ops_stats, TAG, StatsigErr::GrpcError(format!("gRPC stream failure, exhaust retry limit: {err:?}")));
                            break;
                         }
                         if attempt == FALL_BACK_TO_POLLING_THREASHOLD {
@@ -295,14 +293,14 @@ impl StatsigGrpcSpecsAdapter {
         self.grpc_client
             .connect_client()
             .await
-            .map_err(|e| StatsigErr::GrpcError(format!("{}", e)))?;
+            .map_err(|e| StatsigErr::GrpcError(format!("{e}")))?;
         let specs_info = self.get_current_specs_info();
         let zstd_id = specs_info.as_ref().and_then(|s| self.get_dict_id(s));
         let mut stream = self
             .grpc_client
             .get_specs_stream(specs_info.as_ref().and_then(|s| s.lcut), zstd_id)
             .await
-            .map_err(|e| StatsigErr::GrpcError(format!("{}", e)))?;
+            .map_err(|e| StatsigErr::GrpcError(format!("{e}")))?;
         loop {
             match stream.message().await {
                 Ok(Some(config_spec)) => {
@@ -333,8 +331,7 @@ impl StatsigGrpcSpecsAdapter {
                 }
                 err => {
                     return Err(StatsigErr::GrpcError(format!(
-                        "Error while receiving stream: {:?}",
-                        err
+                        "Error while receiving stream: {err:?}"
                     )));
                 }
             }

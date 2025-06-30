@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 pub fn load_test_resource(resource_file_name: &str) -> String {
     let base_path = env!("CARGO_MANIFEST_DIR");
     let path = PathBuf::from(format!("{base_path}/{resource_file_name}"));
-    println!("path: {:?}", path);
+    println!("path: {path:?}");
     fs::read_to_string(path).expect("Unable to read resource file")
 }
 

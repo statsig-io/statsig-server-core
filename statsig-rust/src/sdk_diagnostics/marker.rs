@@ -217,8 +217,7 @@ mod tests {
 
         let serialized = serde_json::to_string(&marker).expect("Failed to serialize Marker");
         let expected_json = format!(
-            r#"{{"key":"initialize","action":"start","timestamp":{},"attempt":1,"statusCode":200,"step":"network_request","success":true}}"#,
-            timestamp
+            r#"{{"key":"initialize","action":"start","timestamp":{timestamp},"attempt":1,"statusCode":200,"step":"network_request","success":true}}"#
         );
         assert_eq!(serialized, expected_json);
     }

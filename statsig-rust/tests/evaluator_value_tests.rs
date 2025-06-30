@@ -49,7 +49,7 @@ fn test_own_object_comparison() {
     let left = test_only_make_eval_value!(HashMap::from([("1".to_string(), 2)]));
     let right = test_only_make_eval_value!(HashMap::from([("3".to_string(), 4)]));
 
-    println!("{:?}", right);
+    println!("{right:?}");
 
     assert_eq!(left, left);
     assert_ne!(left, right);

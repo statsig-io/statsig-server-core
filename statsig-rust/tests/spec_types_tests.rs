@@ -81,7 +81,7 @@ fn verify_null_preservation(original: &Value, roundtrip: &Value) {
 
         let round_condition = match round_condition_map.get(condition_id) {
             Some(condition) => condition,
-            None => panic!("Condition {} missing in roundtrip", condition_id),
+            None => panic!("Condition {condition_id} missing in roundtrip"),
         };
 
         let round_condition_obj = match round_condition {
@@ -94,14 +94,12 @@ fn verify_null_preservation(original: &Value, roundtrip: &Value) {
                 if field_value.is_null() {
                     let round_field_value = match round_condition_obj.get(field_name) {
                         Some(value) => value,
-                        None => panic!("{} missing in condition {}", field_name, condition_id),
+                        None => panic!("{field_name} missing in condition {condition_id}"),
                     };
 
                     assert!(
                         round_field_value.is_null(),
-                        "{} should be null in condition {}",
-                        field_name,
-                        condition_id
+                        "{field_name} should be null in condition {condition_id}"
                     );
                 }
             }

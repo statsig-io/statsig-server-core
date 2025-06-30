@@ -247,17 +247,13 @@ fn assert_flushing_interval_and_scheduled_batch(
 
     assert!(
         actual_interval >= expected_threshold_interval,
-        "Expected loggingInterval >= {}, but got {} at index {}",
-        expected_threshold_interval,
-        actual_interval,
-        index
+        "Expected loggingInterval >= {expected_threshold_interval}, but got {actual_interval} at index {index}"
     );
 
     assert_eq!(
         statsig_metadata.get("flushType").and_then(|v| v.as_str()),
         Some("scheduled:max_time"),
-        "Unexpected flushType to be 'scheduled' at index {}",
-        index
+        "Unexpected flushType to be 'scheduled' at index {index}"
     );
 }
 

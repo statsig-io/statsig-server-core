@@ -212,8 +212,7 @@ impl StatsigHttpIdListsAdapter {
                     self.ops_stats.clone(),
                     TAG,
                     StatsigErr::LockFailure(format!(
-                        "Failed to acquire write lock on listener: {}",
-                        e
+                        "Failed to acquire write lock on listener: {e}"
                     ))
                 );
             }
@@ -387,7 +386,7 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
 }
 
 fn make_default_cdn_url(sdk_key: &str) -> String {
-    format!("{}/{}.json", DEFAULT_CDN_ID_LISTS_MANIFEST_URL, sdk_key)
+    format!("{DEFAULT_CDN_ID_LISTS_MANIFEST_URL}/{sdk_key}.json")
 }
 
 #[cfg(test)]

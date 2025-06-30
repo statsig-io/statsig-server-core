@@ -11,7 +11,7 @@ const SDK_KEY: &str = "server-local-specs-test";
 const SPECS_FILE_NAME: &str = "3099846163_specs.json"; // djb2(SDK_KEY)_specs.json
 
 async fn setup(test_name: &str) -> (MockScrapi, String) {
-    let test_path = format!("/tmp/{}", test_name);
+    let test_path = format!("/tmp/{test_name}");
 
     if std::path::Path::new(&test_path).exists() {
         fs::remove_dir_all(&test_path).unwrap();
@@ -41,7 +41,7 @@ async fn test_statsig_local_file_specs_adapter() {
 
     adapter.fetch_and_write_to_file().await.unwrap();
 
-    let out_path = format!("{}/{}", test_path, SPECS_FILE_NAME);
+    let out_path = format!("{test_path}/{SPECS_FILE_NAME}");
     assert!(
         std::path::Path::new(&out_path).exists(),
         "The specs file was not created."

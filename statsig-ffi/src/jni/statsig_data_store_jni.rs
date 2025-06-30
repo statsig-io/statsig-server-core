@@ -48,17 +48,17 @@ impl DataStoreTrait for DataStoreJNI {
                 "()Ljava/util/concurrent/CompletableFuture;",
                 &[],
             )
-            .map_err(|e| DataStoreFailure(format!("initialize() error: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("initialize() error: {e:?}")))?;
 
         let future_obj = method_result
             .l()
-            .map_err(|e| DataStoreFailure(format!("Future cast failed: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("Future cast failed: {e:?}")))?;
 
         let _ = env
             .call_method(&future_obj, "get", "()Ljava/lang/Object;", &[])
-            .map_err(|e| DataStoreFailure(format!("Future.get() failed: {:?}", e)))?
+            .map_err(|e| DataStoreFailure(format!("Future.get() failed: {e:?}")))?
             .l()
-            .map_err(|e| DataStoreFailure(format!("Future.get() unwrap failed: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("Future.get() unwrap failed: {e:?}")))?;
 
         Ok(())
     }
@@ -75,17 +75,17 @@ impl DataStoreTrait for DataStoreJNI {
                 "()Ljava/util/concurrent/CompletableFuture;",
                 &[],
             )
-            .map_err(|e| DataStoreFailure(format!("shutdown() error: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("shutdown() error: {e:?}")))?;
 
         let future_obj = method_result
             .l()
-            .map_err(|e| DataStoreFailure(format!("Future cast failed: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("Future cast failed: {e:?}")))?;
 
         let _ = env
             .call_method(&future_obj, "get", "()Ljava/lang/Object;", &[])
-            .map_err(|e| DataStoreFailure(format!("Future.get() failed: {:?}", e)))?
+            .map_err(|e| DataStoreFailure(format!("Future.get() failed: {e:?}")))?
             .l()
-            .map_err(|e| DataStoreFailure(format!("Future.get() unwrap failed: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("Future.get() unwrap failed: {e:?}")))?;
 
         Ok(())
     }
@@ -98,7 +98,7 @@ impl DataStoreTrait for DataStoreJNI {
 
         let key_str = env
             .new_string(key)
-            .map_err(|e| DataStoreFailure(format!("Failed to create key from string: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("Failed to create key from string: {e:?}")))?;
 
         let method_result = env
             .call_method(
@@ -107,17 +107,17 @@ impl DataStoreTrait for DataStoreJNI {
                 "(Ljava/lang/String;)Ljava/util/concurrent/CompletableFuture;",
                 &[JValue::Object(&key_str)],
             )
-            .map_err(|e| DataStoreFailure(format!("get() error: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("get() error: {e:?}")))?;
 
         let future_obj = method_result
             .l()
-            .map_err(|e| DataStoreFailure(format!("Future cast failed: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("Future cast failed: {e:?}")))?;
 
         let result_obj = env
             .call_method(&future_obj, "get", "()Ljava/lang/Object;", &[])
-            .map_err(|e| DataStoreFailure(format!("Future.get() failed: {:?}", e)))?
+            .map_err(|e| DataStoreFailure(format!("Future.get() failed: {e:?}")))?
             .l()
-            .map_err(|e| DataStoreFailure(format!("Future.get() unwrap failed: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("Future.get() unwrap failed: {e:?}")))?;
 
         let result_string = {
             let result_field = env.get_field(&result_obj, "result", "Ljava/lang/String;");
@@ -153,25 +153,25 @@ impl DataStoreTrait for DataStoreJNI {
 
         let key_str = env
             .new_string(key)
-            .map_err(|e| DataStoreFailure(format!("key conversion failed: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("key conversion failed: {e:?}")))?;
         let value_str = env
             .new_string(value)
-            .map_err(|e| DataStoreFailure(format!("value conversion failed: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("value conversion failed: {e:?}")))?;
 
         let time_obj = match time {
             Some(t) => {
                 let long_class = env
                     .find_class("java/lang/Long")
-                    .map_err(|e| DataStoreFailure(format!("Failed to find Long class: {:?}", e)))?;
+                    .map_err(|e| DataStoreFailure(format!("Failed to find Long class: {e:?}")))?;
                 env.call_static_method(
                     long_class,
                     "valueOf",
                     "(J)Ljava/lang/Long;",
                     &[JValue::Long(t as i64)],
                 )
-                .map_err(|e| DataStoreFailure(format!("Long.valueOf failed: {:?}", e)))?
+                .map_err(|e| DataStoreFailure(format!("Long.valueOf failed: {e:?}")))?
                 .l()
-                .map_err(|e| DataStoreFailure(format!("valueOf unwrap failed: {:?}", e)))?
+                .map_err(|e| DataStoreFailure(format!("valueOf unwrap failed: {e:?}")))?
             }
             None => JObject::null(),
         };
@@ -181,17 +181,17 @@ impl DataStoreTrait for DataStoreJNI {
             "set",
             "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;)Ljava/util/concurrent/CompletableFuture;",
             &[JValue::Object(&key_str), JValue::Object(&value_str), JValue::Object(&time_obj)],
-        ).map_err(|e| DataStoreFailure(format!("set() error: {:?}", e)))?;
+        ).map_err(|e| DataStoreFailure(format!("set() error: {e:?}")))?;
 
         let future_obj = method_result
             .l()
-            .map_err(|e| DataStoreFailure(format!("Future cast failed: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("Future cast failed: {e:?}")))?;
 
         let _ = env
             .call_method(&future_obj, "get", "()Ljava/lang/Object;", &[])
-            .map_err(|e| DataStoreFailure(format!("Future.get() failed: {:?}", e)))?
+            .map_err(|e| DataStoreFailure(format!("Future.get() failed: {e:?}")))?
             .l()
-            .map_err(|e| DataStoreFailure(format!("Future.get() unwrap failed: {:?}", e)))?;
+            .map_err(|e| DataStoreFailure(format!("Future.get() unwrap failed: {e:?}")))?;
 
         Ok(())
     }

@@ -51,7 +51,7 @@ impl NetworkProvider for NetworkProviderNapi {
                 return Response {
                     status_code: 0,
                     data: None,
-                    error: Some(format!("NapiFetchFnInvocationError: {}", e)),
+                    error: Some(format!("NapiFetchFnInvocationError: {e}")),
                     headers: None,
                 };
             }
@@ -63,7 +63,7 @@ impl NetworkProvider for NetworkProviderNapi {
                 return Response {
                     status_code: 0,
                     data: None,
-                    error: Some(format!("NapiFetchFnPromiseRejection: {}", e)),
+                    error: Some(format!("NapiFetchFnPromiseRejection: {e}")),
                     headers: None,
                 };
             }

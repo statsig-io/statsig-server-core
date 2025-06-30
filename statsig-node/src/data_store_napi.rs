@@ -177,7 +177,7 @@ pub async fn test_data_store(
         "/v1/download_config_specs" => RequestPath::RulesetsV1,
         "/v1/get_id_lists" => RequestPath::IDListsV1,
         "id_list" => RequestPath::IDList,
-        _ => panic!("Invalid request path: {}", path),
+        _ => panic!("Invalid request path: {path}"),
     };
 
     let polling_result = store.support_polling_updates_for(path).await;

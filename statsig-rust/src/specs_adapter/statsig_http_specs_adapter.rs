@@ -259,8 +259,7 @@ impl StatsigHttpSpecsAdapter {
             },
             Err(e) => {
                 let err = StatsigErr::LockFailure(format!(
-                    "Failed to acquire read lock on listener: {}",
-                    e
+                    "Failed to acquire read lock on listener: {e}"
                 ));
                 log_error_to_statsig_and_console!(&self.ops_stats, TAG, err.clone());
                 Err(err)

@@ -53,7 +53,7 @@ pub extern "C" fn statsig_http_event_logging_adapter_send_events(
 
     let request = match serde_json::from_str::<LogEventRequest>(&request_json) {
         Ok(req) => req,
-        Err(e) => return handle_error(&format!("Failed to parse request JSON: {}", e)),
+        Err(e) => return handle_error(&format!("Failed to parse request JSON: {e}")),
     };
 
     let statsig_rt = StatsigRuntime::get_runtime();

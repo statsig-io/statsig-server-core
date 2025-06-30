@@ -80,7 +80,7 @@ impl DictionaryDecoder {
                 err
             })?;
         std::io::copy(&mut decoder, &mut decompressed).map_err(|e| {
-            StatsigErr::ZstdError(format!("Unexpected error while decompressing data: {}", e))
+            StatsigErr::ZstdError(format!("Unexpected error while decompressing data: {e}"))
         })?;
 
         Ok(decompressed.into_inner())

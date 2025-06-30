@@ -12,7 +12,7 @@ const DCS_WITH_SAMPLING: &str = "dcs_with_sampling";
 
 async fn setup(dcs_file: &str) -> (Statsig, Arc<MockEventLoggingAdapter>) {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
-    let dcs_path = format!("tests/data/{}.json", dcs_file);
+    let dcs_path = format!("tests/data/{dcs_file}.json");
     let specs_adapter = Arc::new(MockSpecsAdapter::with_data(&dcs_path));
 
     let mut options = StatsigOptions::new();
@@ -21,7 +21,7 @@ async fn setup(dcs_file: &str) -> (Statsig, Arc<MockEventLoggingAdapter>) {
     options.disable_user_agent_parsing = Some(true);
 
     let uuid = uuid::Uuid::new_v4();
-    let statsig = Statsig::new(&format!("secret-{}", uuid), Some(Arc::new(options)));
+    let statsig = Statsig::new(&format!("secret-{uuid}"), Some(Arc::new(options)));
     statsig.initialize().await.unwrap();
 
     (statsig, logging_adapter)
@@ -195,7 +195,7 @@ async fn test_rule_sampling() {
     }
 
     for i in 0..2010 {
-        get_for_user(&statsig, &format!("user_{}", i));
+        get_for_user(&statsig, &format!("user_{i}"));
     }
 
     statsig.shutdown().await.unwrap();

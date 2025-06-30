@@ -28,7 +28,7 @@ lazy_static! {
 }
 
 async fn setup(test_name: &str) -> (MockScrapi, String) {
-    let test_path = format!("/tmp/{}", test_name);
+    let test_path = format!("/tmp/{test_name}");
 
     if std::path::Path::new(&test_path).exists() {
         fs::remove_dir_all(&test_path).unwrap();
@@ -66,7 +66,7 @@ async fn test_writing_to_file() {
         .await
         .unwrap();
 
-    let out_path = format!("{}/{}", tmp_path, EVENTS_FILE_NAME);
+    let out_path = format!("{tmp_path}/{EVENTS_FILE_NAME}");
     assert_eventually!(|| std::path::Path::new(&out_path).exists());
 }
 
@@ -215,7 +215,7 @@ async fn test_sending_events_over_network() {
 
     adapter.send_pending_events().await.unwrap();
 
-    let out_path = format!("{}/{}", tmp_path, EVENTS_FILE_NAME);
+    let out_path = format!("{tmp_path}/{EVENTS_FILE_NAME}");
     assert_eventually!(|| fs::read_to_string(&out_path).unwrap().is_empty());
 }
 

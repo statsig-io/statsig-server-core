@@ -59,7 +59,7 @@ impl CountryLookup {
             let c1 = bytes[i.post_inc()] as char;
             let c2 = bytes[i.post_inc()] as char;
 
-            raw_code_lookup.push(format!("{}{}", c1, c2));
+            raw_code_lookup.push(format!("{c1}{c2}"));
 
             if c1 == '*' {
                 break;

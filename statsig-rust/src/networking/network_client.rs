@@ -267,12 +267,12 @@ fn get_error_message_for_status(status: u16, data: Option<&[u8]>) -> String {
         503 => "Service Unavailable",
         504 => "Gateway Timeout",
         0 => "Unknown Error",
-        _ => return format!("HTTP Error {status}: {}", message),
+        _ => return format!("HTTP Error {status}: {message}"),
     };
 
     if message.is_empty() {
         return generic_message.to_string();
     }
 
-    format!("{}: {}", generic_message, message)
+    format!("{generic_message}: {message}")
 }

@@ -85,13 +85,13 @@ fn try_create_proxy_url(args: &RequestArgs) -> Option<String> {
     let auth_part = proxy
         .proxy_auth
         .as_ref()
-        .map(|auth| format!("{}@", auth))
+        .map(|auth| format!("{auth}@"))
         .unwrap_or_default();
 
     let url = if let Some(port) = port {
-        format!("{}://{}{}:{}", scheme, auth_part, host, port)
+        format!("{scheme}://{auth_part}{host}:{port}")
     } else {
-        format!("{}://{}{}", scheme, auth_part, host)
+        format!("{scheme}://{auth_part}{host}")
     };
 
     Some(url)
@@ -99,8 +99,8 @@ fn try_create_proxy_url(args: &RequestArgs) -> Option<String> {
 
 fn create_error_response(message: &str, e: Option<PyErr>) -> Response {
     let error_message = match e {
-        Some(e) => format!("NetworkProviderPy {}: {}", message, e),
-        None => format!("NetworkProviderPy {}", message),
+        Some(e) => format!("NetworkProviderPy {message}: {e}"),
+        None => format!("NetworkProviderPy {message}"),
     };
 
     Response {

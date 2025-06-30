@@ -415,8 +415,7 @@ impl Statsig {
                 ops_stats,
                 TAG,
                 StatsigErr::SpecsAdapterSkipPoll(format!(
-                    "Failed to schedule specs adapter background job: {}",
-                    e
+                    "Failed to schedule specs adapter background job: {e}"
                 ))
             );
         }
@@ -536,10 +535,7 @@ impl Statsig {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
                 TAG,
-                StatsigErr::UnstartedAdapter(format!(
-                    "Failed to start event logging adapter: {}",
-                    e
-                ))
+                StatsigErr::UnstartedAdapter(format!("Failed to start event logging adapter: {e}"))
             );
         }
 
@@ -1071,7 +1067,7 @@ impl Statsig {
                 Ok(statsig)
             }
             Err(e) => {
-                let message = format!("Statsig::new_shared() mutex error: {}", e);
+                let message = format!("Statsig::new_shared() mutex error: {e}");
                 log_e!(TAG, "{}", message);
                 Err(StatsigErr::SharedInstanceFailure(message))
             }
@@ -1084,7 +1080,7 @@ impl Statsig {
                 *lock = None;
             }
             Err(e) => {
-                log_e!(TAG, "Statsig::remove_shared() mutex error: {}", e);
+                log_e!(TAG, "Statsig::remove_shared() mutex error: {e}");
             }
         }
     }

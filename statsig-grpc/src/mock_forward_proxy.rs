@@ -52,7 +52,7 @@ pub struct MockForwardProxy {
 impl MockForwardProxy {
     pub async fn spawn() -> Arc<MockForwardProxy> {
         let port = PORT_ID.fetch_add(1, Ordering::SeqCst);
-        let proxy_address: SocketAddr = format!("127.0.0.1:{}", port).parse().unwrap();
+        let proxy_address: SocketAddr = format!("127.0.0.1:{port}").parse().unwrap();
 
         let forward_proxy = Arc::new(MockForwardProxy {
             proxy_address,
@@ -80,7 +80,7 @@ impl MockForwardProxy {
         };
 
         if let Err(err) = sender.send(update).await {
-            print!("Failed to send update {}", err)
+            print!("Failed to send update {err}")
         }
     }
 

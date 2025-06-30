@@ -11,7 +11,7 @@ fn main() -> Result<()> {
 
     let stub_file_source = get_relative_path(STUB_FILE_SOURCE);
     if !Path::new(&stub_file_source).exists() {
-        panic!("statsig_python_core.pyi not found at {}", stub_file_source);
+        panic!("statsig_python_core.pyi not found at {stub_file_source}");
     }
 
     let destination = get_relative_path(STUB_FILE_DESTINATION);

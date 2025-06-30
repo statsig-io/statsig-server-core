@@ -7,7 +7,6 @@ fn main() {
 
 fn run_c_bindgen() {
     let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    println!("crate_dir {}", crate_dir);
 
     let mut config: cbindgen::Config = Default::default();
     config.header = Some(

@@ -49,7 +49,7 @@ async fn test_individual_gate_checks() {
 
     let mut result = false;
     for i in 0..100000 {
-        let user = StatsigUser::with_user_id(format!("{}", i));
+        let user = StatsigUser::with_user_id(format!("{i}"));
         result = statsig.check_gate(&user, gate_name);
     }
 

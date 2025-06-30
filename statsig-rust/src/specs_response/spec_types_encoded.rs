@@ -93,9 +93,8 @@ fn select_decompression_dict_for_response(
     }
 
     Err(StatsigErr::ZstdDictCompressionError(format!(
-        "Cannot decompress response compressed with dict_id: {}, \
+        "Cannot decompress response compressed with dict_id: {response_dict_id}, \
                         because the appropriate dictionary is not cached \
-                        and the response does not contain one.",
-        response_dict_id
+                        and the response does not contain one."
     )))
 }

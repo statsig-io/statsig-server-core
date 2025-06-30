@@ -8,7 +8,13 @@ use super::{batch::EventBatch, queued_event::QueuedEvent};
 
 const TAG: &str = stringify!(EventQueue);
 
-pub enum QueueResult {
+pub enum QueueAddResult {
+    Noop,
+    NeedsFlush,
+    NeedsFlushAndDropped(u64),
+}
+
+pub enum QueueReconcileResult {
     Success,
     DroppedEvents(u64),
     LockFailure,
@@ -20,15 +26,20 @@ pub struct EventQueue {
 
     pending_events: RwLock<Vec<QueuedEvent>>,
     batches: RwLock<VecDeque<EventBatch>>,
+    max_pending_events: usize,
 }
 
 impl EventQueue {
     pub fn new(batch_size: u32, max_queue_size: u32) -> Self {
+        let batch_size = batch_size as usize;
+        let max_queue_size = max_queue_size as usize;
+
         Self {
             pending_events: RwLock::new(Vec::new()),
             batches: RwLock::new(VecDeque::new()),
-            batch_size: batch_size as usize,
-            max_pending_batches: max_queue_size as usize,
+            batch_size,
+            max_pending_batches: max_queue_size,
+            max_pending_events: batch_size * max_queue_size,
         }
     }
 
@@ -38,18 +49,32 @@ impl EventQueue {
         pending_len + (batches_len * self.batch_size)
     }
 
-    pub fn add(&self, pending_event: QueuedEvent) -> bool {
-        let mut pending_events = write_lock_or_return!(TAG, self.pending_events, false);
+    pub fn add(&self, pending_event: QueuedEvent) -> QueueAddResult {
+        let mut pending_events =
+            write_lock_or_return!(TAG, self.pending_events, QueueAddResult::Noop);
         pending_events.push(pending_event);
-        pending_events.len() % self.batch_size == 0
+
+        let len = pending_events.len();
+        if len >= self.max_pending_events {
+            let delta = len - self.max_pending_events;
+            pending_events.drain(0..delta);
+            return QueueAddResult::NeedsFlushAndDropped(delta as u64);
+        }
+
+        if len % self.batch_size == 0 {
+            return QueueAddResult::NeedsFlush;
+        }
+
+        QueueAddResult::Noop
     }
 
-    pub fn requeue_batch(&self, batch: EventBatch) -> QueueResult {
+    pub fn requeue_batch(&self, batch: EventBatch) -> QueueReconcileResult {
         let len = batch.events.len() as u64;
-        let mut batches = write_lock_or_return!(TAG, self.batches, QueueResult::DroppedEvents(len));
+        let mut batches =
+            write_lock_or_return!(TAG, self.batches, QueueReconcileResult::DroppedEvents(len));
 
         if batches.len() > self.max_pending_batches {
-            return QueueResult::DroppedEvents(len);
+            return QueueReconcileResult::DroppedEvents(len);
         }
 
         log_d!(
@@ -60,7 +85,7 @@ impl EventQueue {
         );
 
         batches.push_back(batch);
-        QueueResult::Success
+        QueueReconcileResult::Success
     }
 
     pub fn contains_at_least_one_full_batch(&self) -> bool {
@@ -89,7 +114,7 @@ impl EventQueue {
         batches.pop_front()
     }
 
-    pub fn reconcile_batching(&self) -> QueueResult {
+    pub fn reconcile_batching(&self) -> QueueReconcileResult {
         let mut pending_events: Vec<StatsigEventInternal> = self
             .take_all_pending_events()
             .into_iter()
@@ -97,10 +122,11 @@ impl EventQueue {
             .collect();
 
         if pending_events.is_empty() {
-            return QueueResult::Success;
+            return QueueReconcileResult::Success;
         }
 
-        let mut batches = write_lock_or_return!(TAG, self.batches, QueueResult::LockFailure);
+        let mut batches =
+            write_lock_or_return!(TAG, self.batches, QueueReconcileResult::LockFailure);
         let old_batches = std::mem::take(&mut *batches);
 
         let (full_batches, partial_batches): (VecDeque<_>, VecDeque<_>) = old_batches
@@ -118,10 +144,10 @@ impl EventQueue {
 
         let dropped_events_count = self.clamp_batches(&mut batches);
         if dropped_events_count > 0 {
-            return QueueResult::DroppedEvents(dropped_events_count);
+            return QueueReconcileResult::DroppedEvents(dropped_events_count);
         }
 
-        QueueResult::Success
+        QueueReconcileResult::Success
     }
 
     fn take_all_pending_events(&self) -> Vec<QueuedEvent> {
@@ -184,15 +210,15 @@ mod tests {
 
         let queued_event = enqueue_op.into_queued_event(ForceSampled);
 
-        let has_exceeded_limit = queue.add(queued_event);
+        let result = queue.add(queued_event);
 
-        assert!(!has_exceeded_limit);
+        assert!(matches!(result, QueueAddResult::Noop));
         assert_eq!(queue.pending_events.read().unwrap().len(), 1);
     }
 
     #[test]
     fn test_adding_multiple_to_queue() {
-        let (queue, user, gate) = setup(100, 20);
+        let (queue, user, gate) = setup(1000, 20);
         let user_internal = StatsigUserInternal::new(&user, None);
 
         let mut triggered_count = 0;
@@ -205,15 +231,15 @@ mod tests {
                 trigger: ExposureTrigger::Auto,
             };
 
-            let did_trigger = queue.add(enqueue_op.into_queued_event(ForceSampled));
+            let result = queue.add(enqueue_op.into_queued_event(ForceSampled));
 
-            if did_trigger {
+            if let QueueAddResult::NeedsFlush = result {
                 triggered_count += 1;
             }
         }
 
         assert_eq!(queue.pending_events.read().unwrap().len(), 4567);
-        assert_eq!(triggered_count, (4567 / 100) as usize);
+        assert_eq!(triggered_count, (4567 / 1000) as usize);
     }
 
     #[test]

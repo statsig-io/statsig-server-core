@@ -6,9 +6,14 @@ use more_asserts::assert_gt;
 use statsig_rust::networking::NetworkError;
 use statsig_rust::output_logger::LogLevel;
 use statsig_rust::{ObservabilityClient, Statsig, StatsigErr, StatsigOptions, StatsigUser};
+use std::sync::Mutex;
 use std::sync::{atomic::Ordering, Arc};
 use std::time::Duration;
 use utils::mock_event_logging_adapter::MockEventLoggingAdapter;
+
+lazy_static::lazy_static! {
+    static ref TEST_LOCK: Mutex<()> = Mutex::new(());
+}
 
 async fn setup(
     options: StatsigOptions,
@@ -32,7 +37,7 @@ async fn setup(
     options.observability_client = Some(Arc::downgrade(&obs_client_dyn));
 
     let uuid = uuid::Uuid::new_v4();
-    let statsig = Statsig::new(&format!("secret-{}", uuid), Some(Arc::new(options)));
+    let statsig = Statsig::new(&format!("secret-{uuid}"), Some(Arc::new(options)));
     statsig.initialize().await.unwrap();
 
     (statsig, logging_adapter, obs_client)
@@ -50,7 +55,9 @@ async fn teardown(statsig: Option<Statsig>) {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_limit_flushing() {
+    let _lock = TEST_LOCK.lock().unwrap();
     let mut options = StatsigOptions::new();
     options.event_logging_max_queue_size = Some(10);
     options.event_logging_max_pending_batch_queue_size = Some(60);
@@ -78,7 +85,9 @@ async fn test_limit_flushing() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_scheduled_flush_batch_size() {
+    let _lock = TEST_LOCK.lock().unwrap();
     const MAX_EVENTS: usize = 5;
 
     std::env::set_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "1");
@@ -119,7 +128,9 @@ async fn test_scheduled_flush_batch_size() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_scheduled_flush_max_time() {
+    let _lock = TEST_LOCK.lock().unwrap();
     std::env::set_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MAX_FLUSH_INTERVAL_MS", "1");
@@ -162,7 +173,9 @@ async fn test_scheduled_flush_max_time() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_scheduled_flush_failures() {
+    let _lock = TEST_LOCK.lock().unwrap();
     std::env::set_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MAX_FLUSH_INTERVAL_MS", "1");
@@ -196,7 +209,9 @@ async fn test_scheduled_flush_failures() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_requeue_dropped_events() {
+    let _lock = TEST_LOCK.lock().unwrap();
     std::env::set_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MAX_FLUSH_INTERVAL_MS", "1");
@@ -234,7 +249,9 @@ async fn test_requeue_dropped_events() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_high_qps_dropped_events() {
+    let _lock = TEST_LOCK.lock().unwrap();
     let mut options = StatsigOptions::new();
     options.event_logging_max_queue_size = Some(10);
     options.event_logging_max_pending_batch_queue_size = Some(2);
@@ -242,8 +259,8 @@ async fn test_high_qps_dropped_events() {
     let (statsig, logging_adapter, obs_client) = setup(options).await;
 
     for i in 0..1000 {
-        let user = StatsigUser::with_user_id(format!("user_{}", i));
-        let _ = statsig.check_gate(&user, &format!("a_gate_{}", i));
+        let user = StatsigUser::with_user_id(format!("user_{i}"));
+        let _ = statsig.check_gate(&user, &format!("a_gate_{i}"));
     }
 
     statsig.flush_events().await;
@@ -276,7 +293,9 @@ async fn test_high_qps_dropped_events() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_non_retryable_failure_drops_events() {
+    let _lock = TEST_LOCK.lock().unwrap();
     std::env::set_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MAX_FLUSH_INTERVAL_MS", "1");
@@ -318,7 +337,9 @@ async fn test_non_retryable_failure_drops_events() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)]
 async fn test_logging_behavior_when_network_is_disabled() {
+    let _lock = TEST_LOCK.lock().unwrap();
     let mut options = StatsigOptions::new();
     options.event_logging_max_queue_size = Some(5);
     options.disable_network = Some(true);

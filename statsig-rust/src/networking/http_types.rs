@@ -53,12 +53,12 @@ impl RequestArgs {
 
         let query_params_str = query_params
             .iter()
-            .map(|(k, v)| format!("{}={}", k, v))
+            .map(|(k, v)| format!("{k}={v}"))
             .collect::<Vec<_>>()
             .join("&");
 
         if !query_params_str.is_empty() {
-            url.push_str(&format!("?{}", query_params_str));
+            url.push_str(&format!("?{query_params_str}"));
         }
 
         url

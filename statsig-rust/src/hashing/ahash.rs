@@ -45,7 +45,7 @@ mod tests {
     fn test_gets_different_result_for_different_input() {
         let mut seen = HashSet::new();
         for i in 0..100_000 {
-            let result = ahash_str(&format!("iter_{}", i));
+            let result = ahash_str(&format!("iter_{i}"));
             assert!(!seen.contains(&result));
             seen.insert(result);
         }

@@ -32,7 +32,7 @@ pub fn get_persistent_storage_key(user: &StatsigUserInternal, id_type: &String) 
             id_str = id;
         }
 
-        format!("{}:{}", id_str, id_type)
+        format!("{id_str}:{id_type}")
     })
 }
 

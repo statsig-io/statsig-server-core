@@ -162,7 +162,7 @@ pub async fn test_persistent_storage(
                     (
                         key.clone(),
                         serde_json::to_string(&value).unwrap_or_else(|e| {
-                            panic!("Failed to serialize sticky values for key: {} {}", key, e);
+                            panic!("Failed to serialize sticky values for key: {key} {e}");
                         }),
                     )
                 })
