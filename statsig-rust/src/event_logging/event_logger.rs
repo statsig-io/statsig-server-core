@@ -24,7 +24,8 @@ use std::{
 };
 use tokio::sync::{Notify, Semaphore};
 
-const BG_TASK_TAG: &str = "EVENT_LOGGER_BG_TASK";
+const BG_LOOP_TAG: &str = "EVT_LOG_BG_LOOP";
+const LIMIT_FLUSH_TAG: &str = "EVT_LOG_LIMIT_FLUSH";
 const DEFAULT_BATCH_SIZE: u32 = 2000;
 const DEFAULT_PENDING_BATCH_MAX: u32 = 100;
 const MAX_LIMIT_FLUSH_TASKS: usize = 5;
@@ -126,7 +127,7 @@ impl EventLogger {
         let me = self.clone();
         let rt_clone = rt.clone();
 
-        rt.spawn(BG_TASK_TAG, |rt_shutdown_notify| async move {
+        rt.spawn(BG_LOOP_TAG, |rt_shutdown_notify| async move {
             let tick_interval_ms = EventLoggerConstants::tick_interval_ms();
             let tick_interval = Duration::from_millis(tick_interval_ms);
 
@@ -160,7 +161,7 @@ impl EventLogger {
         };
 
         let me = inst.clone();
-        rt.spawn(BG_TASK_TAG, |_| async move {
+        rt.spawn(LIMIT_FLUSH_TAG, |_| async move {
             log_d!(TAG, "Attempting limit flush");
             if !me.flush_next_batch(FlushType::Limit).await {
                 return;
