@@ -40,6 +40,7 @@ pub struct ErrorBoundaryEvent {
 }
 
 const TAG: &str = stringify!(SDKErrorsObserver);
+const MAX_SEEN_ERRORS: usize = 1000;
 
 // Observer to post to scrapi when exception happened
 // If we never see the exception, log to sdk exception
@@ -69,13 +70,19 @@ impl SDKErrorsObserver {
         let key = eb_event
             .dedupe_key
             .clone()
-            .unwrap_or(format!("{}:{}", eb_event.tag, eb_event.info));
+            .unwrap_or(format!("{}:{}", eb_event.tag, eb_event.exception));
         let mut write_guard = self.errors_aggregator.write().await;
+
+        if write_guard.len() >= MAX_SEEN_ERRORS {
+            write_guard.clear();
+        }
+
         let count = write_guard.entry(key).or_default();
         *count += 1;
         if *count > 1 && !eb_event.bypass_dedupe {
             return;
         }
+
         self.log_exception(eb_event).await;
     }
 
