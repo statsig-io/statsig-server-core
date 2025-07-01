@@ -8,6 +8,8 @@ package statsig
 import "C"
 import (
 	"runtime"
+
+	"github.com/statsig-io/private-statsig-server-core/statsig-go/utils"
 )
 
 // TODO(varshaa): add in remaining options that aren't being passed into statsig_options_create rn
@@ -49,13 +51,13 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 		C.int(o.statsigOptions.EventLoggingMaxQueueSize),
 		C.int(o.statsigOptions.SpecsSyncIntervalMs),
 		ResolveDefault(o.statsigOptions.OutputLogLevel),
-		C.int(convertToSafeOptBool(o.statsigOptions.DisableCountryLookup)),
-		C.int(convertToSafeOptBool(o.statsigOptions.DisableUserAgentParsing)),
-		C.int(convertToSafeOptBool(o.statsigOptions.WaitForCountryLookupInit)),
-		C.int(convertToSafeOptBool(o.statsigOptions.WaitForUserAgentInit)),
-		C.int(convertToSafeOptBool(nil)), // enableIDLists, not used in this version
-		ResolveDefault(nil), // idListsUrl, not used in this version
-		C.int(-1), // idListsSyncIntervalMs, not used in this version
+		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableCountryLookup)),
+		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableUserAgentParsing)),
+		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForCountryLookupInit)),
+		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForUserAgentInit)),
+		C.int(utils.ConvertToSafeOptBool(nil)), // enableIDLists, not used in this version
+		ResolveDefault(nil),                    // idListsUrl, not used in this version
+		C.int(-1),                              // idListsSyncIntervalMs, not used in this version
 	)
 
 	o.statsigOptions.innerRef = uint64(optionsRef)
@@ -135,15 +137,4 @@ func (o *StatsigOptionsBuilder) WithWaitForCountryLookupInit(value bool) *Statsi
 func (o *StatsigOptionsBuilder) WithWaitForUserAgentInit(value bool) *StatsigOptionsBuilder {
 	o.statsigOptions.WaitForUserAgentInit = &value
 	return o
-}
-
-func convertToSafeOptBool(val *bool) int {
-	if val == nil {
-		return -1
-	} else if *val {
-		return 1
-	} else {
-		return 0
-	}
-
 }

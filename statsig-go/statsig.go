@@ -227,6 +227,78 @@ func (s *Statsig) GetClientInitializeResponse(user StatsigUser, gcirOptions *Cli
 	return C.GoString(res)
 }
 
+func (s *Statsig) GetParameterStore(user StatsigUser, paramStoreName string, paramStoreOptions *ParameterStoreOptions) ParameterStore {
+	var paramStore ParameterStore
+
+	if paramStoreOptions == nil {
+		paramStoreOptions = &ParameterStoreOptions{}
+	}
+
+	paramStoreJson := C.statsig_get_parameter_store_with_options(C.ulonglong(s.InnerRef), C.CString(paramStoreName), C.CString(utils.ConvertJSONToString(paramStoreOptions)))
+
+	if paramStoreJson != nil {
+		err := json.Unmarshal([]byte(C.GoString(paramStoreJson)), &paramStore)
+
+		if err != nil {
+			return ParameterStore{}
+		}
+
+		paramStore.setStatsigInstance(s)
+		paramStore.setStatsigUser(&user)
+		paramStore.setDisableExposureLogging(paramStoreOptions != nil && paramStoreOptions.DisableExposureLogging)
+	}
+
+	return paramStore
+}
+
+func (s *Statsig) GetStringFromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal string, psOptions *ParameterStoreOptions) string {
+	return C.GoString(C.statsig_get_string_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.CString(defaultVal), C.CString(utils.ConvertJSONToString(psOptions))))
+}
+
+func (s *Statsig) GetBooleanFromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal bool, psOptions *ParameterStoreOptions) bool {
+	return bool(C.statsig_get_bool_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.int(utils.ConvertToSafeOptBool(&defaultVal)), C.CString(utils.ConvertJSONToString(psOptions))))
+}
+
+func (s *Statsig) GetFloat64FromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal float64, psOptions *ParameterStoreOptions) float64 {
+	return float64(C.statsig_get_float64_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.double(defaultVal), C.CString(utils.ConvertJSONToString(psOptions))))
+}
+
+func (s *Statsig) GetInt64FromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal int64, psOptions *ParameterStoreOptions) int64 {
+	return int64(C.statsig_get_int_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.int64_t(defaultVal), C.CString(utils.ConvertJSONToString(psOptions))))
+}
+
+func (s *Statsig) GetIntFromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal int, psOptions *ParameterStoreOptions) int {
+	return int(C.statsig_get_int_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.int64_t(defaultVal), C.CString(utils.ConvertJSONToString(psOptions))))
+}
+
+func (s *Statsig) GetMapFromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal map[string]interface{}, psOptions *ParameterStoreOptions) map[string]interface{} {
+
+	val := C.statsig_get_object_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.CString(utils.ConvertJSONToString(defaultVal)), C.CString(utils.ConvertJSONToString(psOptions)))
+
+	if val != nil {
+		paramStoreMap, err := utils.ConvertStringToJSON[map[string]interface{}](C.GoString(val))
+		if err == nil {
+			return paramStoreMap
+		}
+	}
+
+	return defaultVal
+}
+
+func (s *Statsig) GetInterfaceFromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal []interface{}, psOptions *ParameterStoreOptions) []interface{} {
+
+	val := C.statsig_get_object_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.CString(utils.ConvertJSONToString(defaultVal)), C.CString(utils.ConvertJSONToString(psOptions)))
+
+	if val != nil {
+		paramStoreMap, err := utils.ConvertStringToJSON[[]interface{}](C.GoString(val))
+		if err == nil {
+			return paramStoreMap
+		}
+	}
+
+	return defaultVal
+}
+
 func (s *Statsig) OverrideGate(gateName string, gateValue bool, id string) {
 	C.statsig_override_gate(C.ulonglong(s.InnerRef), C.CString(gateName), C.bool(gateValue), C.CString(id))
 }

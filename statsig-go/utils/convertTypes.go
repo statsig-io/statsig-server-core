@@ -14,8 +14,19 @@ func ConvertJSONToString(data interface{}) string {
 	return string(jsonValue)
 }
 
-func ConvertStringToJSON(jsonStr string) (map[string]interface{}, error) {
-	var result map[string]interface{}
+func ConvertStringToJSON[T any](jsonStr string) (T, error) {
+	var result T
 	err := json.Unmarshal([]byte(jsonStr), &result)
 	return result, err
+}
+
+func ConvertToSafeOptBool(val *bool) int {
+	if val == nil {
+		return -1
+	} else if *val {
+		return 1
+	} else {
+		return 0
+	}
+
 }

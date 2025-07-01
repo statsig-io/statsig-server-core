@@ -39,7 +39,7 @@ func setupStatsigGCIR(t *testing.T, filterType string, filter []string, hash_alg
 
 	res := s.GetClientInitializeResponse(*user, &gcirOptions)
 
-	result, err := utils.ConvertStringToJSON(res)
+	result, err := utils.ConvertStringToJSON[map[string]interface{}](res)
 	if err != nil {
 		return map[string]interface{}{}
 	}

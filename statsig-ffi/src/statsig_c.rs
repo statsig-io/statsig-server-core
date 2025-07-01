@@ -1,11 +1,12 @@
-use crate::ffi_utils::{c_char_to_string, string_to_c_char};
+use crate::ffi_utils::{c_char_to_string, extract_opt_bool, string_to_c_char, SafeOptBool};
 use crate::{get_instance_or_noop_c, get_instance_or_return_c};
 use serde_json::json;
 use serde_json::Value;
 use statsig_rust::{
     log_d, log_e, unwrap_or_else, unwrap_or_noop, unwrap_or_return, ClientInitResponseOptions,
     DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
-    InstanceRegistry, LayerEvaluationOptions, Statsig, StatsigOptions, StatsigUser,
+    InstanceRegistry, LayerEvaluationOptions, ParameterStoreEvaluationOptions, Statsig,
+    StatsigOptions, StatsigUser,
 };
 use std::collections::HashMap;
 use std::os::raw::c_char;
@@ -196,6 +197,266 @@ pub extern "C" fn statsig_get_client_init_response(
     };
 
     let result = statsig.get_client_init_response_with_options_as_string(&user, &options);
+    string_to_c_char(result)
+}
+
+// ------------------------------
+// Get Parameter Store Functions
+// ------------------------------
+
+#[no_mangle]
+pub extern "C" fn statsig_get_parameter_store_with_options(
+    statsig_ref: u64,
+    parameter_store_name: *const c_char,
+    options_json: *const c_char,
+) -> *const c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
+    let param_store_name = unwrap_or_return!(c_char_to_string(parameter_store_name), null());
+
+    let options = match c_char_to_string(options_json) {
+        Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
+            Ok(options) => options,
+            Err(e) => {
+                log_e!(TAG, "Failed to parse options: {}", e);
+                return null();
+            }
+        },
+        None => ParameterStoreEvaluationOptions {
+            disable_exposure_logging: (false),
+        },
+    };
+
+    let result = statsig.get_parameter_store_with_options(&param_store_name, options);
+    string_to_c_char(json!(result).to_string())
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_string_parameter_from_parameter_store(
+    statsig_ref: u64,
+    user_ref: u64,
+    parameter_store_name: *const c_char,
+    param_name: *const c_char,
+    default_value: *const c_char,
+    options_json: *const c_char,
+) -> *const c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, default_value);
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, default_value);
+
+    let parameter_store_name =
+        unwrap_or_return!(c_char_to_string(parameter_store_name), default_value);
+
+    let parameter_name = unwrap_or_return!(c_char_to_string(param_name), default_value);
+
+    let default_value: Option<String> = c_char_to_string(default_value);
+
+    let options = match c_char_to_string(options_json) {
+        Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
+            Ok(options) => Some(options),
+            Err(e) => {
+                log_e!(TAG, "Failed to parse options: {}", e);
+                None
+            }
+        },
+        None => Some(ParameterStoreEvaluationOptions {
+            disable_exposure_logging: (false),
+        }),
+    };
+
+    let result = statsig.get_string_parameter_from_store(
+        &user,
+        &parameter_store_name,
+        &parameter_name,
+        default_value,
+        options,
+    );
+
+    match result {
+        Some(result) => string_to_c_char(result),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_bool_parameter_from_parameter_store(
+    statsig_ref: u64,
+    user_ref: u64,
+    parameter_store_name: *const c_char,
+    param_name: *const c_char,
+    default: SafeOptBool,
+    options_json: *const c_char,
+) -> bool {
+    let default_val = unwrap_or_return!(extract_opt_bool(default), false);
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, default_val);
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, default_val);
+
+    let parameter_store_name =
+        unwrap_or_return!(c_char_to_string(parameter_store_name), default_val);
+
+    let parameter_name = unwrap_or_return!(c_char_to_string(param_name), default_val);
+
+    let default_value: Option<bool> = Some(default_val);
+
+    let options = match c_char_to_string(options_json) {
+        Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
+            Ok(options) => Some(options),
+            Err(e) => {
+                log_e!(TAG, "Failed to parse options: {}", e);
+                None
+            }
+        },
+        None => Some(ParameterStoreEvaluationOptions {
+            disable_exposure_logging: (false),
+        }),
+    };
+
+    let result = statsig.get_boolean_parameter_from_store(
+        &user,
+        &parameter_store_name,
+        &parameter_name,
+        default_value,
+        options,
+    );
+
+    match result {
+        Some(result) => result,
+        None => default_val,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_float64_parameter_from_parameter_store(
+    statsig_ref: u64,
+    user_ref: u64,
+    parameter_store_name: *const c_char,
+    param_name: *const c_char,
+    default: f64,
+    options_json: *const c_char,
+) -> f64 {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, default);
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, default);
+
+    let parameter_store_name = unwrap_or_return!(c_char_to_string(parameter_store_name), default);
+
+    let parameter_name = unwrap_or_return!(c_char_to_string(param_name), default);
+
+    let default_value: Option<f64> = Some(default);
+
+    let options = match c_char_to_string(options_json) {
+        Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
+            Ok(options) => Some(options),
+            Err(e) => {
+                log_e!(TAG, "Failed to parse options: {}", e);
+                None
+            }
+        },
+        None => Some(ParameterStoreEvaluationOptions {
+            disable_exposure_logging: (false),
+        }),
+    };
+
+    let result = statsig.get_float_parameter_from_store(
+        &user,
+        &parameter_store_name,
+        &parameter_name,
+        default_value,
+        options,
+    );
+
+    match result {
+        Some(result) => result,
+        None => default,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_int_parameter_from_parameter_store(
+    statsig_ref: u64,
+    user_ref: u64,
+    parameter_store_name: *const c_char,
+    param_name: *const c_char,
+    default: i64,
+    options_json: *const c_char,
+) -> i64 {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, default);
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, default);
+
+    let parameter_store_name = unwrap_or_return!(c_char_to_string(parameter_store_name), default);
+
+    let parameter_name = unwrap_or_return!(c_char_to_string(param_name), default);
+
+    let default_value: Option<i64> = Some(default);
+
+    let options = match c_char_to_string(options_json) {
+        Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
+            Ok(options) => Some(options),
+            Err(e) => {
+                log_e!(TAG, "Failed to parse options: {}", e);
+                None
+            }
+        },
+        None => Some(ParameterStoreEvaluationOptions {
+            disable_exposure_logging: (false),
+        }),
+    };
+
+    let result = statsig.get_integer_parameter_from_store(
+        &user,
+        &parameter_store_name,
+        &parameter_name,
+        default_value,
+        options,
+    );
+
+    match result {
+        Some(result) => result,
+        None => default,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_object_parameter_from_parameter_store(
+    statsig_ref: u64,
+    user_ref: u64,
+    parameter_store_name: *const c_char,
+    param_name: *const c_char,
+    default: *const c_char,
+    options_json: *const c_char,
+) -> *const c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, std::ptr::null_mut());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, std::ptr::null_mut());
+
+    let parameter_store_name =
+        unwrap_or_return!(c_char_to_string(parameter_store_name), std::ptr::null_mut());
+
+    let parameter_name = unwrap_or_return!(c_char_to_string(param_name), std::ptr::null_mut());
+
+    let default_value_str = unwrap_or_return!(c_char_to_string(default), std::ptr::null_mut());
+
+    let default_value: Option<HashMap<String, Value>> =
+        serde_json::from_str(default_value_str.as_str()).ok();
+
+    let options = match c_char_to_string(options_json) {
+        Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
+            Ok(options) => Some(options),
+            Err(e) => {
+                log_e!(TAG, "Failed to parse options: {}", e);
+                None
+            }
+        },
+        None => Some(ParameterStoreEvaluationOptions {
+            disable_exposure_logging: (false),
+        }),
+    };
+
+    let result = statsig.get_object_parameter_from_store(
+        &user,
+        &parameter_store_name,
+        &parameter_name,
+        default_value,
+        options,
+    );
+
+    let result = json!(result).to_string();
     string_to_c_char(result)
 }
 

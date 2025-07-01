@@ -59,6 +59,45 @@ char *statsig_get_client_init_response(uint64_t statsig_ref,
                                        uint64_t user_ref,
                                        const char *options_json);
 
+const char *statsig_get_parameter_store_with_options(uint64_t statsig_ref,
+                                                     const char *parameter_store_name,
+                                                     const char *options_json);
+
+const char *statsig_get_string_parameter_from_parameter_store(uint64_t statsig_ref,
+                                                              uint64_t user_ref,
+                                                              const char *parameter_store_name,
+                                                              const char *param_name,
+                                                              const char *default_value,
+                                                              const char *options_json);
+
+bool statsig_get_bool_parameter_from_parameter_store(uint64_t statsig_ref,
+                                                     uint64_t user_ref,
+                                                     const char *parameter_store_name,
+                                                     const char *param_name,
+                                                     SafeOptBool default_,
+                                                     const char *options_json);
+
+double statsig_get_float64_parameter_from_parameter_store(uint64_t statsig_ref,
+                                                          uint64_t user_ref,
+                                                          const char *parameter_store_name,
+                                                          const char *param_name,
+                                                          double default_,
+                                                          const char *options_json);
+
+int64_t statsig_get_int_parameter_from_parameter_store(uint64_t statsig_ref,
+                                                       uint64_t user_ref,
+                                                       const char *parameter_store_name,
+                                                       const char *param_name,
+                                                       int64_t default_,
+                                                       const char *options_json);
+
+const char *statsig_get_object_parameter_from_parameter_store(uint64_t statsig_ref,
+                                                              uint64_t user_ref,
+                                                              const char *parameter_store_name,
+                                                              const char *param_name,
+                                                              const char *default_,
+                                                              const char *options_json);
+
 bool statsig_check_gate(uint64_t statsig_ref,
                         uint64_t user_ref,
                         const char *gate_name,
