@@ -75,3 +75,28 @@ func TestFeatureGateExposureLoggingNoOptions(t *testing.T) {
 		t.Errorf("expected gate exposure event to be logged when no options were supplied")
 	}
 }
+
+func TestManualLoggingGate(t *testing.T) {
+	user := statsig.NewStatsigUserBuilder().
+		WithUserID("a-user").Build()
+
+	scrapiServer := serverSetup("eval_proj_dcs.json")
+
+	options := CreateFeatureGateOptions(scrapiServer)
+
+	s, teardown := statsigSetup(t, options)
+	defer teardown()
+
+	checkGateOptions := &statsig.CheckGateOptions{DisableExposureLogging: true}
+
+	feature_gate := "test_country_partial"
+	_ = s.CheckGate(*user, feature_gate, checkGateOptions)
+
+	s.ManuallyLogGateExposure(*user, feature_gate)
+	s.Shutdown()
+
+	if !checkEventNameExists(scrapiServer.fetchLoggedEvents(), "statsig::gate_exposure") {
+		t.Errorf("Error occurred, gate exposure event was not logged")
+	}
+
+}

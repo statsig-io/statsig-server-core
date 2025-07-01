@@ -112,6 +112,10 @@ func (s *Statsig) CheckGate(user StatsigUser, gateName string, gateOptions *Chec
 	return bool(checkGate)
 }
 
+func (s *Statsig) ManuallyLogGateExposure(user StatsigUser, name string) {
+	C.statsig_manually_log_gate_exposure(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(name))
+}
+
 func (s *Statsig) GetDynamicConfig(user StatsigUser, configName string, dynamicConfigOptions *GetDynamicConfigOptions) DynamicConfig {
 
 	var dynamicConfig DynamicConfig
@@ -131,6 +135,10 @@ func (s *Statsig) GetDynamicConfig(user StatsigUser, configName string, dynamicC
 	}
 
 	return dynamicConfig
+}
+
+func (s *Statsig) ManuallyLogDynamicConfigExposure(user StatsigUser, name string) {
+	C.statsig_manually_log_dynamic_config_exposure(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(name))
 }
 
 func (s *Statsig) GetExperiment(user StatsigUser, experimentName string, experimentOptions *GetExperimentOptions) Experiment {
@@ -169,6 +177,10 @@ func (s *Statsig) GetExperiment(user StatsigUser, experimentName string, experim
 	return experiment
 }
 
+func (s *Statsig) ManuallyLogExperimentExposure(user StatsigUser, name string) {
+	C.statsig_manually_log_experiment_exposure(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(name))
+}
+
 func (s *Statsig) GetLayer(user StatsigUser, layerName string, layerOptions *GetLayerOptions) Layer {
 
 	var layer Layer
@@ -191,6 +203,10 @@ func (s *Statsig) GetLayer(user StatsigUser, layerName string, layerOptions *Get
 
 	return layer
 
+}
+
+func (s *Statsig) ManuallyLogLayerParameterExposure(user StatsigUser, layerName string, paramName string) {
+	C.statsig_manually_log_layer_parameter_exposure(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(layerName), C.CString(paramName))
 }
 
 func (s *Statsig) FlushEvents() {

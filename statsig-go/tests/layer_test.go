@@ -145,3 +145,30 @@ func TestLayerExposureLoggingOccursNoOptions(t *testing.T) {
 	}
 
 }
+
+func TestLayerManualLogging(t *testing.T) {
+	user := statsig.NewStatsigUserBuilder().
+		WithUserID("a-user").Build()
+
+	scrapiServer := serverSetup("eval_proj_dcs.json")
+
+	options := CreateLayerStatsigOptions(scrapiServer)
+
+	s, teardown := statsigSetup(t, options)
+	defer teardown()
+
+	layerOptions := &statsig.GetLayerOptions{DisableExposureLogging: true}
+
+	layer_name := "test_layer"
+	param_name := "another_param"
+	layer := s.GetLayer(*user, layer_name, layerOptions)
+
+	_ = layer.Get(user, param_name)
+	s.ManuallyLogLayerParameterExposure(*user, layer_name, param_name)
+	s.Shutdown()
+
+	if !checkEventNameExists(scrapiServer.fetchLoggedEvents(), "statsig::layer_exposure") {
+		t.Errorf("Error occurred, layer exposure event was not logged")
+	}
+
+}
