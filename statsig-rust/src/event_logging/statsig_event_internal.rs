@@ -25,6 +25,7 @@ pub struct StatsigEventInternal {
 
 impl StatsigEventInternal {
     pub fn new(
+        time: u64,
         user: StatsigUserLoggable,
         event: StatsigEvent,
         secondary_exposures: Option<Vec<SecondaryExposure>>,
@@ -32,7 +33,7 @@ impl StatsigEventInternal {
         StatsigEventInternal {
             event_data: event,
             user,
-            time: Utc::now().timestamp_millis() as u64,
+            time,
             secondary_exposures: secondary_exposure_keys_to_expos(secondary_exposures),
         }
     }
@@ -44,6 +45,7 @@ impl StatsigEventInternal {
         metadata: Option<HashMap<String, String>>,
     ) -> Self {
         StatsigEventInternal::new(
+            Utc::now().timestamp_millis() as u64,
             user,
             StatsigEvent {
                 event_name,
@@ -133,6 +135,7 @@ mod statsig_event_internal_tests {
     use crate::event_logging::statsig_event_internal::StatsigEventInternal;
     use crate::user::StatsigUserInternal;
     use crate::StatsigUser;
+    use chrono::Utc;
     use serde_json::{json, Value};
     use std::collections::HashMap;
 
@@ -145,6 +148,7 @@ mod statsig_event_internal_tests {
         sampling_statsig_metadata.insert("shadowLogged".into(), "logged".into());
 
         StatsigEventInternal::new(
+            Utc::now().timestamp_millis() as u64,
             user.to_loggable(),
             StatsigEvent {
                 event_name: "foo".into(),

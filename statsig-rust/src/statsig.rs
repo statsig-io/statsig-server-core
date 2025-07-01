@@ -55,6 +55,7 @@ use crate::{
         LayerEvaluationOptions, ParameterStoreEvaluationOptions,
     },
 };
+use chrono::Utc;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::json;
@@ -721,6 +722,7 @@ impl Statsig {
 
         self.event_logger
             .enqueue(EnqueueLayerParamExpoOp::LayerOwned(
+                Utc::now().timestamp_millis() as u64,
                 Box::new(layer),
                 parameter_name,
                 ExposureTrigger::Auto,
@@ -1017,6 +1019,7 @@ impl Statsig {
         experiment.rule_id = group_id;
 
         self.event_logger.enqueue(EnqueueExperimentExpoOp {
+            exposure_time: Utc::now().timestamp_millis() as u64,
             user: &user_internal,
             experiment: &experiment,
             trigger: ExposureTrigger::Manual,
@@ -1118,6 +1121,7 @@ impl Statsig {
             self.event_logger.increment_non_exposure_checks(gate_name);
         } else {
             self.event_logger.enqueue(EnqueueGateExpoOp {
+                exposure_time: Utc::now().timestamp_millis() as u64,
                 user: &user_internal,
                 queried_gate_name: gate_name,
                 evaluation: evaluation.map(Cow::Owned),
@@ -1148,6 +1152,7 @@ impl Statsig {
             self.event_logger.increment_non_exposure_checks(gate_name);
         } else {
             self.event_logger.enqueue(EnqueueGateExpoOp {
+                exposure_time: Utc::now().timestamp_millis() as u64,
                 user: &user_internal,
                 queried_gate_name: gate_name,
                 evaluation: evaluation.as_ref().map(Cow::Borrowed),
@@ -1163,6 +1168,7 @@ impl Statsig {
         let user_internal = self.internalize_user(user);
         let (details, evaluation) = self.get_gate_evaluation(&user_internal, gate_name);
         self.event_logger.enqueue(EnqueueGateExpoOp {
+            exposure_time: Utc::now().timestamp_millis() as u64,
             user: &user_internal,
             queried_gate_name: gate_name,
             evaluation: evaluation.map(Cow::Owned),
@@ -1422,6 +1428,7 @@ impl Statsig {
                 .increment_non_exposure_checks(dynamic_config_name);
         } else {
             self.event_logger.enqueue(EnqueueConfigExpoOp {
+                exposure_time: Utc::now().timestamp_millis() as u64,
                 user: &user_internal,
                 config: &dynamic_config,
                 trigger: ExposureTrigger::Auto,
@@ -1439,6 +1446,7 @@ impl Statsig {
         let user_internal = self.internalize_user(user);
         let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
         self.event_logger.enqueue(EnqueueConfigExpoOp {
+            exposure_time: Utc::now().timestamp_millis() as u64,
             user: &user_internal,
             config: &dynamic_config,
             trigger: ExposureTrigger::Manual,
@@ -1506,6 +1514,7 @@ impl Statsig {
                 .increment_non_exposure_checks(experiment_name);
         } else {
             self.event_logger.enqueue(EnqueueExperimentExpoOp {
+                exposure_time: Utc::now().timestamp_millis() as u64,
                 user: &user_internal,
                 experiment: &experiment,
                 trigger: ExposureTrigger::Auto,
@@ -1519,6 +1528,7 @@ impl Statsig {
         let user_internal = self.internalize_user(user);
         let experiment = self.get_experiment_impl(&user_internal, experiment_name);
         self.event_logger.enqueue(EnqueueExperimentExpoOp {
+            exposure_time: Utc::now().timestamp_millis() as u64,
             user: &user_internal,
             experiment: &experiment,
             trigger: ExposureTrigger::Manual,
@@ -1636,6 +1646,7 @@ impl Statsig {
 
         self.event_logger
             .enqueue(EnqueueLayerParamExpoOp::LayerOwned(
+                Utc::now().timestamp_millis() as u64,
                 Box::new(layer),
                 parameter_name,
                 ExposureTrigger::Manual,

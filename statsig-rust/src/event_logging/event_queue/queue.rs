@@ -201,6 +201,7 @@ mod tests {
         let user_internal = StatsigUserInternal::new(&user, None);
 
         let enqueue_op = EnqueueGateExpoOp {
+            exposure_time: 1,
             user: &user_internal,
             queried_gate_name: &gate.name,
             evaluation: gate.__evaluation.as_ref().map(Cow::Borrowed),
@@ -224,6 +225,7 @@ mod tests {
         let mut triggered_count = 0;
         for _ in 0..4567 {
             let enqueue_op = EnqueueGateExpoOp {
+                exposure_time: 1,
                 user: &user_internal,
                 queried_gate_name: &gate.name,
                 evaluation: gate.__evaluation.as_ref().map(Cow::Borrowed),
@@ -252,6 +254,7 @@ mod tests {
 
         for _ in 0..4567 {
             let enqueue_op = EnqueueGateExpoOp {
+                exposure_time: 1,
                 user: &user_internal,
                 queried_gate_name: &gate.name,
                 evaluation: gate.__evaluation.as_ref().map(Cow::Borrowed),
@@ -276,6 +279,7 @@ mod tests {
 
         for _ in 0..4567 {
             let enqueue_op = EnqueueGateExpoOp {
+                exposure_time: 1,
                 user: &user_internal,
                 queried_gate_name: &gate.name,
                 evaluation: gate.__evaluation.as_ref().map(Cow::Borrowed),

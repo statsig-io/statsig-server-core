@@ -18,6 +18,7 @@ pub struct EnqueueConfigExpoOp<'a> {
     pub user: &'a StatsigUserInternal<'a, 'a>,
     pub config: &'a DynamicConfig,
     pub trigger: ExposureTrigger,
+    pub exposure_time: u64,
 }
 
 impl EnqueueOperation for EnqueueConfigExpoOp<'_> {
@@ -44,6 +45,7 @@ impl EnqueueOperation for EnqueueConfigExpoOp<'_> {
             exposure_trigger: self.trigger,
             sampling_decision,
             override_config_name,
+            exposure_time: self.exposure_time,
         })
     }
 }
@@ -82,6 +84,7 @@ pub struct QueuedConfigExposureEvent {
     pub exposure_trigger: ExposureTrigger,
     pub sampling_decision: EvtSamplingDecision,
     pub override_config_name: Option<String>,
+    pub exposure_time: u64,
 }
 
 impl QueuedConfigExposureEvent {
@@ -116,6 +119,7 @@ impl QueuedConfigExposureEvent {
         };
 
         StatsigEventInternal::new(
+            self.exposure_time,
             self.user,
             event,
             Some(self.secondary_exposures.unwrap_or_default()),

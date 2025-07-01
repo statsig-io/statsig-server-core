@@ -14,6 +14,10 @@ pub fn enforce_string(value: &Value) -> String {
     value.as_str().unwrap().to_string()
 }
 
+pub fn enforce_u64(value: &Value) -> u64 {
+    value.as_u64().unwrap()
+}
+
 pub fn load_contents(resource_file_name: &str) -> String {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push(format!("tests/data/{resource_file_name}"));

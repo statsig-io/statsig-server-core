@@ -16,22 +16,22 @@ use crate::{
 use super::queued_event::{EnqueueOperation, QueuedEvent, QueuedExposure};
 
 pub enum EnqueueLayerParamExpoOp<'a> {
-    LayerRef(&'a Layer, &'a str, ExposureTrigger),
-    LayerOwned(Box<Layer>, String, ExposureTrigger),
+    LayerRef(u64, &'a Layer, &'a str, ExposureTrigger),
+    LayerOwned(u64, Box<Layer>, String, ExposureTrigger),
 }
 
 impl<'a> EnqueueLayerParamExpoOp<'a> {
     fn get_layer_ref(&'a self) -> &'a Layer {
         match self {
-            EnqueueLayerParamExpoOp::LayerRef(layer, _, _) => layer,
-            EnqueueLayerParamExpoOp::LayerOwned(layer, _, _) => layer,
+            EnqueueLayerParamExpoOp::LayerRef(_, layer, _, _) => layer,
+            EnqueueLayerParamExpoOp::LayerOwned(_, layer, _, _) => layer,
         }
     }
 
     fn get_parameter_name_ref(&'a self) -> &'a str {
         match self {
-            EnqueueLayerParamExpoOp::LayerRef(_, parameter_name, _) => parameter_name,
-            EnqueueLayerParamExpoOp::LayerOwned(_, parameter_name, _) => parameter_name.as_str(),
+            EnqueueLayerParamExpoOp::LayerRef(_, _, parameter_name, _) => parameter_name,
+            EnqueueLayerParamExpoOp::LayerOwned(_, _, parameter_name, _) => parameter_name.as_str(),
         }
     }
 }
@@ -43,11 +43,23 @@ impl EnqueueOperation for EnqueueLayerParamExpoOp<'_> {
 
     fn into_queued_event(self, sampling_decision: EvtSamplingDecision) -> QueuedEvent {
         let event = match self {
-            EnqueueLayerParamExpoOp::LayerRef(layer, parameter_name, trigger) => {
-                extract_from_layer_ref(layer, parameter_name, trigger, sampling_decision)
+            EnqueueLayerParamExpoOp::LayerRef(exposure_time, layer, parameter_name, trigger) => {
+                extract_from_layer_ref(
+                    exposure_time,
+                    layer,
+                    parameter_name,
+                    trigger,
+                    sampling_decision,
+                )
             }
-            EnqueueLayerParamExpoOp::LayerOwned(layer, parameter_name, trigger) => {
-                extract_from_layer_owned(layer, parameter_name, trigger, sampling_decision)
+            EnqueueLayerParamExpoOp::LayerOwned(exposure_time, layer, parameter_name, trigger) => {
+                extract_from_layer_owned(
+                    exposure_time,
+                    layer,
+                    parameter_name,
+                    trigger,
+                    sampling_decision,
+                )
             }
         };
 
@@ -96,6 +108,7 @@ pub struct QueuedLayerParamExposureEvent {
     pub override_config_name: Option<String>,
     pub is_explicit: bool,
     pub allocated_experiment: Option<String>,
+    pub exposure_time: u64,
 }
 
 impl QueuedLayerParamExposureEvent {
@@ -132,6 +145,7 @@ impl QueuedLayerParamExposureEvent {
         };
 
         StatsigEventInternal::new(
+            self.exposure_time,
             self.user,
             event,
             Some(self.secondary_exposures.unwrap_or_default()),
@@ -183,6 +197,7 @@ fn extract_exposure_info(layer: &Layer, parameter_name: &String) -> ExtractFromE
 }
 
 fn extract_from_layer_ref(
+    exposure_time: u64,
     layer: &Layer,
     param_name: &str,
     trigger: ExposureTrigger,
@@ -193,6 +208,7 @@ fn extract_from_layer_ref(
         extract_exposure_info(layer, &parameter_name);
 
     QueuedLayerParamExposureEvent {
+        exposure_time,
         user: layer.__user.clone(),
         layer_name: layer.name.clone(),
         rule_id: layer.rule_id.clone(),
@@ -209,6 +225,7 @@ fn extract_from_layer_ref(
 }
 
 fn extract_from_layer_owned(
+    exposure_time: u64,
     layer: Box<Layer>,
     parameter_name: String,
     trigger: ExposureTrigger,
@@ -218,6 +235,7 @@ fn extract_from_layer_owned(
         extract_exposure_info(&layer, &parameter_name);
 
     QueuedLayerParamExposureEvent {
+        exposure_time,
         user: layer.__user,
         layer_name: layer.name,
         rule_id: layer.rule_id,

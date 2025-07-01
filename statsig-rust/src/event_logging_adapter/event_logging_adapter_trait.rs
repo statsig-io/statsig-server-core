@@ -34,7 +34,7 @@ mod tests {
             statsig_metadata: None,
         };
 
-        let event = StatsigEventInternal::new(user_internal.to_loggable(), event, None);
+        let event = StatsigEventInternal::new(123, user_internal.to_loggable(), event, None);
 
         let payload = LogEventPayload {
             events: json!([event]),

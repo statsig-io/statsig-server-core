@@ -22,6 +22,7 @@ pub struct EnqueueGateExpoOp<'a> {
     pub evaluation: Option<Cow<'a, GateEvaluation>>,
     pub details: EvaluationDetails,
     pub trigger: ExposureTrigger,
+    pub exposure_time: u64,
 }
 
 impl EnqueueOperation for EnqueueGateExpoOp<'_> {
@@ -43,6 +44,7 @@ impl EnqueueOperation for EnqueueGateExpoOp<'_> {
             user: self.user.to_loggable(),
             gate_name,
             value,
+            exposure_time: self.exposure_time,
             version,
             rule_id,
             secondary_exposures,
@@ -83,6 +85,7 @@ pub struct QueuedGateExposureEvent {
     pub exposure_trigger: ExposureTrigger,
     pub sampling_decision: EvtSamplingDecision,
     pub override_config_name: Option<String>,
+    pub exposure_time: u64,
 }
 
 impl QueuedGateExposureEvent {
@@ -116,7 +119,12 @@ impl QueuedGateExposureEvent {
             statsig_metadata: Some(statsig_metadata),
         };
 
-        StatsigEventInternal::new(self.user, event, self.secondary_exposures)
+        StatsigEventInternal::new(
+            self.exposure_time,
+            self.user,
+            event,
+            self.secondary_exposures,
+        )
     }
 }
 

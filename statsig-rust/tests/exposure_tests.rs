@@ -1,8 +1,9 @@
 mod utils;
 
-use crate::utils::helpers::{enforce_array, enforce_object, enforce_string};
+use crate::utils::helpers::{enforce_array, enforce_object, enforce_string, enforce_u64};
 use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
+use chrono::Utc;
 use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
 use std::sync::Arc;
 use std::time::Duration;
@@ -256,6 +257,47 @@ async fn test_exposures_with_environment() {
     let event = enforce_object(&events.events[0]);
     let user = enforce_object(&event["user"]);
     assert_eq!(user["statsigEnvironment"]["tier"], "dev");
+}
+
+#[tokio::test]
+async fn test_exposure_time() {
+    let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
+    let specs_adapter = create_bootrapped_specs_adapter();
+    let user = StatsigUser::with_user_id("user-in-layer-holdout-4");
+
+    let statsig =
+        create_statsig_with_environment(&specs_adapter, &logging_adapter, Some("dev".to_string()));
+    statsig.initialize().await.unwrap();
+
+    let _ = statsig.check_gate(&user, "test_public");
+    let _ = statsig.get_dynamic_config(&user, "test_email_config");
+    let _ = statsig.get_experiment(&user, "test_experiment_no_targeting");
+    let _ = statsig
+        .get_layer(&user, "layer_with_many_params")
+        .get_string("a_string", String::new());
+
+    let was = Utc::now().timestamp_millis() as u64;
+    sleep(Duration::from_millis(100)).await;
+    statsig.flush_events().await;
+
+    let payload = logging_adapter.force_get_received_payloads();
+    let events = enforce_array(&payload.events);
+
+    let gate_expo = enforce_object(&events[0]);
+    assert_eq!(gate_expo["eventName"], "statsig::gate_exposure");
+    assert_eq!(enforce_u64(&gate_expo["time"]), was);
+
+    let config_expo = enforce_object(&events[1]);
+    assert_eq!(config_expo["eventName"], "statsig::config_exposure");
+    assert_eq!(enforce_u64(&config_expo["time"]), was);
+
+    let experiment_expo = enforce_object(&events[2]);
+    assert_eq!(experiment_expo["eventName"], "statsig::config_exposure");
+    assert_eq!(enforce_u64(&experiment_expo["time"]), was);
+
+    let layer_expo = enforce_object(&events[3]);
+    assert_eq!(layer_expo["eventName"], "statsig::layer_exposure");
+    assert_eq!(enforce_u64(&layer_expo["time"]), was);
 }
 
 fn create_bootrapped_specs_adapter() -> Arc<MockSpecsAdapter> {

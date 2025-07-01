@@ -10,6 +10,7 @@ use crate::user::StatsigUserLoggable;
 use crate::Statsig;
 use crate::StatsigUser;
 
+use chrono::Utc;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, Value};
@@ -126,6 +127,7 @@ impl Layer {
         }
 
         logger.enqueue(EnqueueLayerParamExpoOp::LayerRef(
+            Utc::now().timestamp_millis() as u64,
             self,
             param_name,
             ExposureTrigger::Auto,
