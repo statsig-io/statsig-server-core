@@ -59,16 +59,16 @@ char *statsig_get_client_init_response(uint64_t statsig_ref,
                                        uint64_t user_ref,
                                        const char *options_json);
 
-const char *statsig_get_parameter_store_with_options(uint64_t statsig_ref,
-                                                     const char *parameter_store_name,
-                                                     const char *options_json);
+char *statsig_get_parameter_store_with_options(uint64_t statsig_ref,
+                                               const char *parameter_store_name,
+                                               const char *options_json);
 
-const char *statsig_get_string_parameter_from_parameter_store(uint64_t statsig_ref,
-                                                              uint64_t user_ref,
-                                                              const char *parameter_store_name,
-                                                              const char *param_name,
-                                                              const char *default_value,
-                                                              const char *options_json);
+char *statsig_get_string_parameter_from_parameter_store(uint64_t statsig_ref,
+                                                        uint64_t user_ref,
+                                                        const char *parameter_store_name,
+                                                        const char *param_name,
+                                                        char *default_value,
+                                                        const char *options_json);
 
 bool statsig_get_bool_parameter_from_parameter_store(uint64_t statsig_ref,
                                                      uint64_t user_ref,

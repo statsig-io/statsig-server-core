@@ -209,16 +209,16 @@ pub extern "C" fn statsig_get_parameter_store_with_options(
     statsig_ref: u64,
     parameter_store_name: *const c_char,
     options_json: *const c_char,
-) -> *const c_char {
-    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null());
-    let param_store_name = unwrap_or_return!(c_char_to_string(parameter_store_name), null());
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let param_store_name = unwrap_or_return!(c_char_to_string(parameter_store_name), null_mut());
 
     let options = match c_char_to_string(options_json) {
         Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
             Ok(options) => options,
             Err(e) => {
                 log_e!(TAG, "Failed to parse options: {}", e);
-                return null();
+                return null_mut();
             }
         },
         None => ParameterStoreEvaluationOptions {
@@ -236,9 +236,9 @@ pub extern "C" fn statsig_get_string_parameter_from_parameter_store(
     user_ref: u64,
     parameter_store_name: *const c_char,
     param_name: *const c_char,
-    default_value: *const c_char,
+    default_value: *mut c_char,
     options_json: *const c_char,
-) -> *const c_char {
+) -> *mut c_char {
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, default_value);
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, default_value);
 
