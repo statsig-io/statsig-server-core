@@ -33,10 +33,25 @@ namespace Statsig
         public Task Initialize()
         {
             var source = new TaskCompletionSource<bool>();
-            StatsigFFI.statsig_initialize(_statsigRef, () =>
+            GCHandle handle = default;
+
+            StatsigFFI.statsig_initialize_callback_delegate callback = () =>
             {
-                source.SetResult(true);
-            });
+                try
+                {
+                    source.SetResult(true);
+                }
+                finally
+                {
+                    if (handle.IsAllocated)
+                    {
+                        handle.Free();
+                    }
+                }
+            };
+
+            handle = GCHandle.Alloc(callback);
+            StatsigFFI.statsig_initialize(_statsigRef, callback);
             return source.Task;
         }
 
@@ -231,10 +246,25 @@ namespace Statsig
                 return Task.CompletedTask;
             }
             var source = new TaskCompletionSource<bool>();
-            StatsigFFI.statsig_flush_events(_statsigRef, () =>
+            GCHandle handle = default;
+
+            StatsigFFI.statsig_flush_events_callback_delegate callback = () =>
             {
-                source.SetResult(true);
-            });
+                try
+                {
+                    source.SetResult(true);
+                }
+                finally
+                {
+                    if (handle.IsAllocated)
+                    {
+                        handle.Free();
+                    }
+                }
+            };
+
+            handle = GCHandle.Alloc(callback);
+            StatsigFFI.statsig_flush_events(_statsigRef, callback);
             return source.Task;
         }
 

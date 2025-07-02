@@ -79,6 +79,90 @@ namespace Statsig.Tests
             Assert.True(logEventRequests.Any());
         }
 
+        [Fact]
+        public async Task InitializeCallback_WhenCalled_InvokesCallbackSuccessfully()
+        {
+            var options = CreateMockOptions();
+            using var statsig = new Statsig("secret-test-key", options);
+
+            var initializeTask = statsig.Initialize();
+
+            await initializeTask;
+
+            Assert.True(initializeTask.IsCompletedSuccessfully);
+            Assert.False(initializeTask.IsFaulted);
+            Assert.False(initializeTask.IsCanceled);
+        }
+
+        [Fact]
+        public async Task InitializeCallback_WithMultipleCalls_HandlesGracefully()
+        {
+            var options = CreateMockOptions();
+            using var statsig = new Statsig("secret-test-key", options);
+
+            var task1 = statsig.Initialize();
+            var task2 = statsig.Initialize();
+            var task3 = statsig.Initialize();
+
+            await Task.WhenAll(task1, task2, task3);
+
+            Assert.True(task1.IsCompletedSuccessfully);
+            Assert.True(task2.IsCompletedSuccessfully);
+            Assert.True(task3.IsCompletedSuccessfully);
+        }
+
+        [Fact]
+        public async Task InitializeCallback_WithConcurrentCalls_CompletesCorrectly()
+        {
+            var options = CreateMockOptions();
+            using var statsig = new Statsig("secret-test-key", options);
+
+            var tasks = new List<Task>();
+            for (int i = 0; i < 5; i++)
+            {
+                tasks.Add(statsig.Initialize());
+            }
+
+            await Task.WhenAll(tasks);
+
+            foreach (var task in tasks)
+            {
+                Assert.True(task.IsCompletedSuccessfully);
+                Assert.False(task.IsFaulted);
+            }
+        }
+
+        [Fact]
+        public async Task InitializeCallback_TimingVerification_CompletesWithinReasonableTime()
+        {
+            var options = CreateMockOptions();
+            using var statsig = new Statsig("secret-test-key", options);
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            await statsig.Initialize();
+            stopwatch.Stop();
+
+            Assert.True(stopwatch.ElapsedMilliseconds < 5000,
+                $"Initialize took too long: {stopwatch.ElapsedMilliseconds}ms");
+        }
+
+        [Fact]
+        public async Task InitializeCallback_AfterInitialization_AllowsSubsequentOperations()
+        {
+            var options = CreateMockOptions();
+            using var statsig = new Statsig("secret-test-key", options);
+            using var user = new StatsigUserBuilder().SetUserID("test-user").Build();
+
+            await statsig.Initialize();
+
+            var gateResult = statsig.CheckGate(user, "test_gate");
+            statsig.LogEvent(user, "test_event", "test_value");
+
+            var flushTask = statsig.FlushEvents();
+            await flushTask;
+            Assert.True(flushTask.IsCompletedSuccessfully);
+        }
+
         public void Dispose()
         {
             _mockServer?.Stop();
