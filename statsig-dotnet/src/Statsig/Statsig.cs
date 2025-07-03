@@ -223,6 +223,69 @@ namespace Statsig
             }
         }
 
+        unsafe public void OverrideGate(string gateName, bool value, string? id = null)
+        {
+            var gateNameBytes = Encoding.UTF8.GetBytes(gateName);
+            var idBytes = id != null ? Encoding.UTF8.GetBytes(id) : null;
+            fixed (byte* idPtr = idBytes)
+            fixed (byte* gateNamePtr = gateNameBytes)
+            {
+                StatsigFFI.statsig_override_gate(_statsigRef, gateNamePtr, value, idPtr);
+            }
+        }
+
+        unsafe public void OverrideDynamicConfig(string configName, Dictionary<string, object> value, string? id = null)
+        {
+            var configNameBytes = Encoding.UTF8.GetBytes(configName);
+            var jsonBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(value));
+            var idBytes = id != null ? Encoding.UTF8.GetBytes(id) : null;
+            fixed (byte* idPtr = idBytes)
+            fixed (byte* configNamePtr = configNameBytes)
+            fixed (byte* jsonPtr = jsonBytes)
+            {
+                StatsigFFI.statsig_override_dynamic_config(_statsigRef, configNamePtr, jsonPtr, idPtr);
+            }
+        }
+
+        unsafe public void OverrideExperiment(string experimentName, Dictionary<string, object> value, string? id = null)
+        {
+            var experimentNameBytes = Encoding.UTF8.GetBytes(experimentName);
+            var jsonBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(value));
+            var idBytes = id != null ? Encoding.UTF8.GetBytes(id) : null;
+            fixed (byte* idPtr = idBytes)
+            fixed (byte* experimentNamePtr = experimentNameBytes)
+            fixed (byte* jsonPtr = jsonBytes)
+            {
+                StatsigFFI.statsig_override_experiment(_statsigRef, experimentNamePtr, jsonPtr, idPtr);
+            }
+        }
+
+        unsafe public void OverrideExperimentByGroupName(string experimentName, string groupName, string? id = null)
+        {
+            var groupNameBytes = Encoding.UTF8.GetBytes(groupName);
+            var experimentNameBytes = Encoding.UTF8.GetBytes(experimentName);
+            var idBytes = id != null ? Encoding.UTF8.GetBytes(id) : null;
+            fixed (byte* idPtr = idBytes)
+            fixed (byte* groupNamePtr = groupNameBytes)
+            fixed (byte* experimentNamePtr = experimentNameBytes)
+            {
+                StatsigFFI.statsig_override_experiment_by_group_name(_statsigRef, experimentNamePtr, groupNamePtr, idPtr);
+            }
+        }
+
+        unsafe public void OverrideLayer(string layerName, Dictionary<string, object> value, string? id = null)
+        {
+            var layerNameBytes = Encoding.UTF8.GetBytes(layerName);
+            var jsonBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(value));
+            var idBytes = id != null ? Encoding.UTF8.GetBytes(id) : null;
+            fixed (byte* idPtr = idBytes)
+            fixed (byte* layerNamePtr = layerNameBytes)
+            fixed (byte* jsonPtr = jsonBytes)
+            {
+                StatsigFFI.statsig_override_layer(_statsigRef, layerNamePtr, jsonPtr, idPtr);
+            }
+        }
+
         public void LogEvent(StatsigUser user, string eventName, string? value = null, IReadOnlyDictionary<string, string>? metadata = null)
         {
             LogEventInternal(user, eventName, value, metadata);
