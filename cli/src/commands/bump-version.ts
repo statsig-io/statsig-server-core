@@ -25,6 +25,7 @@ type Options = {
   patch?: boolean;
   beta?: boolean;
   betaDate?: boolean;
+  rc?: boolean;
   doNotPush?: boolean;
   createBranch?: boolean;
 };
@@ -39,6 +40,7 @@ export class BumpVersion extends CommandBase {
     this.option('--minor', 'Bump the minor version');
     this.option('--patch', 'Bump the patch version');
     this.option('--beta', 'Bump the beta version');
+    this.option('--rc', 'Bump the rc version');
     this.option(
       '--beta-date',
       'Bump the beta version based on the current date',
@@ -75,11 +77,9 @@ export class BumpVersion extends CommandBase {
         version.patch += 1;
       }
 
-      const date = new Date();
-      // ISO 8601 -> YYMMDDHHMM
-      version.beta = parseInt(
-        date.toISOString().replace(/[-T:]/g, '').slice(2, 12),
-      );
+      version.beta = this.getDateVersion()
+    } else if (options.rc) {
+      version.rc = this.getDateVersion();
     }
 
     if (providedVersion) {
@@ -135,5 +135,11 @@ export class BumpVersion extends CommandBase {
     Log.stepEnd('Changes committed');
 
     Log.conclusion('Successfully Committed and Pushed Changes');
+  }
+
+  getDateVersion() {
+    const date = new Date();
+    // ISO 8601 -> YYMMDDHHMM
+    return parseInt(date.toISOString().replace(/[-T:]/g, '').slice(2, 12));
   }
 }

@@ -14,8 +14,8 @@ jobs:
   CD:
     timeout-minutes: 10
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
+      fail-fast: false
       matrix:
         args:
             # - ["image_tag", "lrs_subdir"]

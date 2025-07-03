@@ -3,6 +3,7 @@ export class SemVer {
   minor: number;
   patch: number;
   beta: number;
+  rc: number;
 
   constructor(version: string) {
     const [major, minor, patch] = version.split('.');
@@ -18,7 +19,7 @@ export class SemVer {
   toString(): string {
     return `${this.major}.${this.minor}.${this.patch}${
       this.isBeta() ? `-beta.${this.beta}` : ''
-    }`;
+    }${this.isRC() ? `-rc.${this.rc}` : ''}`;
   }
 
   toBranch(): string {
@@ -29,5 +30,9 @@ export class SemVer {
 
   isBeta(): boolean {
     return this.beta > 0;
+  }
+
+  isRC(): boolean {
+    return this.rc > 0;
   }
 }
