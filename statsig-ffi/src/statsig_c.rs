@@ -460,6 +460,52 @@ pub extern "C" fn statsig_get_object_parameter_from_parameter_store(
     string_to_c_char(result)
 }
 
+#[no_mangle]
+pub extern "C" fn statsig_get_array_parameter_from_parameter_store(
+    statsig_ref: u64,
+    user_ref: u64,
+    parameter_store_name: *const c_char,
+    param_name: *const c_char,
+    default: *const c_char,
+    options_json: *const c_char,
+) -> *const c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, std::ptr::null_mut());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, std::ptr::null_mut());
+
+    let parameter_store_name =
+        unwrap_or_return!(c_char_to_string(parameter_store_name), std::ptr::null_mut());
+
+    let parameter_name = unwrap_or_return!(c_char_to_string(param_name), std::ptr::null_mut());
+
+    let default_value_str = unwrap_or_return!(c_char_to_string(default), std::ptr::null_mut());
+
+    let default_value: Option<Vec<Value>> = serde_json::from_str(default_value_str.as_str()).ok();
+
+    let options = match c_char_to_string(options_json) {
+        Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
+            Ok(options) => Some(options),
+            Err(e) => {
+                log_e!(TAG, "Failed to parse options: {}", e);
+                None
+            }
+        },
+        None => Some(ParameterStoreEvaluationOptions {
+            disable_exposure_logging: (false),
+        }),
+    };
+
+    let result = statsig.get_array_parameter_from_store(
+        &user,
+        &parameter_store_name,
+        &parameter_name,
+        default_value,
+        options,
+    );
+
+    let result = json!(result).to_string();
+    string_to_c_char(result)
+}
+
 // ------------------------
 // Feature Gate Functions
 // ------------------------

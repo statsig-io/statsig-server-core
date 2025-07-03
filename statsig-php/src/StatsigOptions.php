@@ -45,6 +45,7 @@ class StatsigOptions
             IGNORED_ID_LISTS_URL,
             IGNORED_ID_LISTS_SYNC_INTERVAL_MS,
             toSafeOptBool($disable_all_logging),
+            null, // global custom fields
         );
     }
 

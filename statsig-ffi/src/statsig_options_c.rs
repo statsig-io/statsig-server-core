@@ -6,9 +6,11 @@ use crate::{
     function_based_specs_adapter_c::FunctionBasedSpecsAdapterC,
 };
 use statsig_rust::{
-    log_e, output_logger::LogLevel, EventLoggingAdapter, InstanceRegistry, SpecsAdapter,
-    StatsigLocalFileEventLoggingAdapter, StatsigLocalFileSpecsAdapter, StatsigOptions,
+    log_e, output_logger::LogLevel, DynamicValue, EventLoggingAdapter, InstanceRegistry,
+    SpecsAdapter, StatsigLocalFileEventLoggingAdapter, StatsigLocalFileSpecsAdapter,
+    StatsigOptions,
 };
+use std::collections::HashMap;
 
 const TAG: &str = "StatsigOptionsC";
 
@@ -31,6 +33,7 @@ pub extern "C" fn statsig_options_create(
     id_lists_url: *const c_char,
     id_lists_sync_interval_ms: c_int,
     disable_all_logging: SafeOptBool,
+    global_custom_fields: *const c_char,
 ) -> u64 {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
@@ -39,6 +42,12 @@ pub extern "C" fn statsig_options_create(
     let event_logging_max_queue_size = c_int_to_u32(event_logging_max_queue_size);
     let specs_sync_interval_ms = c_int_to_u32(specs_sync_interval_ms);
     let id_lists_sync_interval_ms = c_int_to_u32(id_lists_sync_interval_ms);
+    let global_custom_field_string = c_char_to_string(global_custom_fields);
+    let global_custom_fields: Option<HashMap<String, DynamicValue>> =
+        match global_custom_field_string {
+            Some(s) => serde_json::from_str(s.as_str()).ok(),
+            None => None,
+        };
 
     let specs_adapter = try_get_specs_adapter(specs_adapter_ref);
     let event_logging_adapter = try_get_event_logging_adapter(event_logging_adapter_ref);
@@ -63,6 +72,7 @@ pub extern "C" fn statsig_options_create(
         id_lists_url,
         id_lists_sync_interval_ms,
         disable_all_logging: extract_opt_bool(disable_all_logging),
+        global_custom_fields,
         ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {

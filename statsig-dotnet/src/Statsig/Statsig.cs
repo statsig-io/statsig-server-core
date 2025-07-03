@@ -184,6 +184,24 @@ namespace Statsig
             }
         }
 
+        unsafe public ParameterStore GetParameterStore(StatsigUser user, string storeName, EvaluationOptions? options = null)
+        {
+            var storeNameBytes = Encoding.UTF8.GetBytes(storeName);
+            var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            var optionsBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
+
+            fixed (byte* optionsPtr = optionsBytes)
+            fixed (byte* storeNamePtr = storeNameBytes)
+            {
+                var jsonStringPtr =
+                    StatsigFFI.statsig_get_parameter_store_with_options(_statsigRef, storeNamePtr, optionsPtr);
+                var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
+                return jsonString != null
+                    ? new ParameterStore(jsonString, _statsigRef, user.Reference, options)
+                    : new ParameterStore(string.Empty, _statsigRef, user.Reference, options);
+            }
+        }
+
         unsafe public string GetClientInitializeResponse(StatsigUser user, ClientInitResponseOptions? options = null)
         {
             if (_statsigRef == 0)

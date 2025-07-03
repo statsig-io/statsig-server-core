@@ -1,6 +1,9 @@
 using System;
 using System.Text;
 using System.Text.Json;
+using System.Collections.Generic;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Statsig
 {
@@ -14,16 +17,21 @@ namespace Statsig
 
         public StatsigOptions(StatsigOptionsBuilder builder)
         {
+            var globalCustomFieldsJson = builder.globalCustomFields != null
+                ? JsonConvert.SerializeObject(builder.globalCustomFields)
+                : null;
             var specsURLBytes = builder.specsURL != null ? Encoding.UTF8.GetBytes(builder.specsURL) : null;
             var logEventURLBytes = builder.logEventURL != null ? Encoding.UTF8.GetBytes(builder.logEventURL) : null;
             var environmentBytes = builder.environment != null ? Encoding.UTF8.GetBytes(builder.environment) : null;
             var idListsURLBytes = builder.idListsURL != null ? Encoding.UTF8.GetBytes(builder.idListsURL) : null;
+            var globalCustomFieldsBytes = globalCustomFieldsJson != null ? Encoding.UTF8.GetBytes(globalCustomFieldsJson) : null;
             unsafe
             {
                 fixed (byte* specsURLPtr = specsURLBytes)
                 fixed (byte* logEventURLPtr = logEventURLBytes)
                 fixed (byte* environmentPtr = environmentBytes)
                 fixed (byte* idListsURLPtr = idListsURLBytes)
+                fixed (byte* globalCustomFieldsPtr = globalCustomFieldsBytes)
                 {
                     _ref = StatsigFFI.statsig_options_create(
                         specsURLPtr,
@@ -32,17 +40,18 @@ namespace Statsig
                         0, // eventLoggingAdapterRef
                         environmentPtr,
                         -1, // _eventLoggingFlushIntervalMs
-                        -1, // eventLoggingMaxQueueSize
+                        builder.eventLoggingMaxQueueSize,
                         builder.specsSyncIntervalMs,
                         null, // outputLogLevel
-                        -1, // disableCountryLookup
-                        -1, // disableUserAgentParsing
-                        builder.waitForCountryLookupInit ? 1 : 0, // waitForCountryLookupInit
+                        builder.disableCountryLookup ? 1 : 0,
+                        builder.disableUserAgentParsing ? 1 : 0,
+                        builder.waitForCountryLookupInit ? 1 : 0,
                         builder.waitForUserAgentInit ? 1 : 0,
                         builder.enableIDLists ? 1 : 0,
                         idListsURLPtr,
                         builder.idListsSyncIntervalMs,
-                        -1 // disableAllLogging
+                        builder.disableAllLogging ? 1 : 0,
+                        globalCustomFieldsPtr
                     );
                 }
             }
@@ -77,6 +86,11 @@ namespace Statsig
         internal bool enableIDLists = false;
         internal string? idListsURL;
         internal int idListsSyncIntervalMs = -1;
+        internal int eventLoggingMaxQueueSize = -1;
+        internal bool disableCountryLookup = false;
+        internal bool disableUserAgentParsing = false;
+        internal bool disableAllLogging = false;
+        internal Dictionary<string, object>? globalCustomFields;
 
         public StatsigOptionsBuilder SetSpecsURL(string specsURL)
         {
@@ -101,6 +115,11 @@ namespace Statsig
             this.specsSyncIntervalMs = specsSyncIntervalMs;
             return this;
         }
+        public StatsigOptionsBuilder SetEventLoggingMaxQueueSize(int eventLoggingMaxQueueSize)
+        {
+            this.eventLoggingMaxQueueSize = eventLoggingMaxQueueSize;
+            return this;
+        }
         public StatsigOptionsBuilder SetWaitForCountryLookupInit(bool waitForCountryLookupInit)
         {
             this.waitForCountryLookupInit = waitForCountryLookupInit;
@@ -109,6 +128,21 @@ namespace Statsig
         public StatsigOptionsBuilder SetWaitForUserAgentInit(bool waitForUserAgentInit)
         {
             this.waitForUserAgentInit = waitForUserAgentInit;
+            return this;
+        }
+        public StatsigOptionsBuilder SetDisableCountryLookup(bool disableCountryLookup)
+        {
+            this.disableCountryLookup = disableCountryLookup;
+            return this;
+        }
+        public StatsigOptionsBuilder SetDisableUserAgentParsing(bool disableUserAgentParsing)
+        {
+            this.disableUserAgentParsing = disableUserAgentParsing;
+            return this;
+        }
+        public StatsigOptionsBuilder SetDisableAllLogging(bool disableAllLogging)
+        {
+            this.disableAllLogging = disableAllLogging;
             return this;
         }
         public StatsigOptionsBuilder SetEnableIDLists(bool enableIDLists)
@@ -124,6 +158,11 @@ namespace Statsig
         public StatsigOptionsBuilder SetIDListsSyncIntervalMs(int idListsSyncIntervalMs)
         {
             this.idListsSyncIntervalMs = idListsSyncIntervalMs;
+            return this;
+        }
+        public StatsigOptionsBuilder SetGlobalCustomFields(Dictionary<string, object> globalCustomFields)
+        {
+            this.globalCustomFields = globalCustomFields;
             return this;
         }
         public StatsigOptions Build()

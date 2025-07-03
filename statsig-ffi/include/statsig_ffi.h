@@ -98,6 +98,13 @@ const char *statsig_get_object_parameter_from_parameter_store(uint64_t statsig_r
                                                               const char *default_,
                                                               const char *options_json);
 
+const char *statsig_get_array_parameter_from_parameter_store(uint64_t statsig_ref,
+                                                             uint64_t user_ref,
+                                                             const char *parameter_store_name,
+                                                             const char *param_name,
+                                                             const char *default_,
+                                                             const char *options_json);
+
 bool statsig_check_gate(uint64_t statsig_ref,
                         uint64_t user_ref,
                         const char *gate_name,
@@ -235,7 +242,8 @@ uint64_t statsig_options_create(const char *specs_url,
                                 SafeOptBool enable_id_lists,
                                 const char *id_lists_url,
                                 int id_lists_sync_interval_ms,
-                                SafeOptBool disable_all_logging);
+                                SafeOptBool disable_all_logging,
+                                const char *global_custom_fields);
 
 void statsig_options_release(uint64_t options_ref);
 

@@ -17,7 +17,7 @@ namespace Statsig
 
 
         [DllImport(__DllName, EntryPoint = "statsig_options_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern ulong statsig_options_create(byte* specs_url, byte* log_event_url, ulong specs_adapter_ref, ulong event_logging_adapter_ref, byte* environment, int _event_logging_flush_interval_ms, int event_logging_max_queue_size, int specs_sync_interval_ms, byte* output_log_level, int disable_country_lookup, int disable_user_agent_parsing, int wait_for_country_lookup_init, int wait_for_user_agent_init, int enable_id_lists, byte* id_lists_url, int id_lists_sync_interval_ms, int disable_all_logging);
+        internal static extern ulong statsig_options_create(byte* specs_url, byte* log_event_url, ulong specs_adapter_ref, ulong event_logging_adapter_ref, byte* environment, int _event_logging_flush_interval_ms, int event_logging_max_queue_size, int specs_sync_interval_ms, byte* output_log_level, int disable_country_lookup, int disable_user_agent_parsing, int wait_for_country_lookup_init, int wait_for_user_agent_init, int enable_id_lists, byte* id_lists_url, int id_lists_sync_interval_ms, int disable_all_logging, byte* global_custom_fields);
 
         [DllImport(__DllName, EntryPoint = "statsig_options_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_options_release(ulong options_ref);
@@ -88,6 +88,9 @@ namespace Statsig
 
         [DllImport(__DllName, EntryPoint = "statsig_get_object_parameter_from_parameter_store", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_object_parameter_from_parameter_store(ulong statsig_ref, ulong user_ref, byte* parameter_store_name, byte* param_name, byte* @default, byte* options_json);
+
+        [DllImport(__DllName, EntryPoint = "statsig_get_array_parameter_from_parameter_store", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_array_parameter_from_parameter_store(ulong statsig_ref, ulong user_ref, byte* parameter_store_name, byte* param_name, byte* @default, byte* options_json);
 
         [DllImport(__DllName, EntryPoint = "statsig_check_gate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
