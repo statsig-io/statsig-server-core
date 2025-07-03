@@ -200,6 +200,7 @@ function publishNodePackages(distDir: string) {
       `--userconfig=${configPath}`,
       `--access public`,
       version.isBeta() ? `--tag beta` : '',
+      version.isRC() ? `--tag rc` : '',
     ];
 
     const command = publish.join(' ');

@@ -12,14 +12,27 @@ export class SemVer {
     this.minor = parseInt(minor);
     this.patch = parseInt(patch);
 
-    const beta = version.split('-')[1];
-    this.beta = beta ? parseInt(beta.replace('beta.', '')) : 0;
+    const nonProd = version.split('-')[1];
+    const parsedNonProd = nonProd ? nonProd.split('.') : null;
+    this.rc = 0;
+    this.beta = 0;
+    if (parsedNonProd != null) {
+      if (parsedNonProd[0] == 'rc') {
+        this.rc = parseInt(parsedNonProd[1]);
+      } else if (parsedNonProd[0] == 'beta') {
+        this.beta = parseInt(parsedNonProd[1]);
+      }
+    }
   }
 
   toString(): string {
-    return `${this.major}.${this.minor}.${this.patch}${
-      this.isBeta() ? `-beta.${this.beta}` : ''
-    }${this.isRC() ? `-rc.${this.rc}` : ''}`;
+    let suffix = '';
+    if (this.isRC()) {
+      suffix = `-rc.${this.rc}`;
+    } else if (this.isBeta()) {
+      suffix = `-beta.${this.beta}`;
+    }
+    return `${this.major}.${this.minor}.${this.patch}${suffix}`;
   }
 
   toBranch(): string {

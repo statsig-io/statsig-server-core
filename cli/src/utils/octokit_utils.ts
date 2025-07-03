@@ -219,7 +219,7 @@ export async function createReleaseForVersion(
       repo,
       tag_name: version.toString(),
       target_commitish: targetSha,
-      prerelease: version.isBeta(),
+      prerelease: version.isBeta() || version.isRC(),
     });
 
     return { result: result.data };
