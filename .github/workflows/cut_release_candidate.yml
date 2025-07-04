@@ -1,0 +1,46 @@
+name: Cut Release Candidate
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 13 * * 1'
+
+env:
+  # GH Octokit (Kong App)
+  GH_APP_ID: '229901'
+  GH_APP_INSTALLATION_ID: '36921303'
+  GH_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
+
+jobs:
+  release_candidate:
+    if: github.event.repository.private
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+    
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+
+      - name: Install CLI Dependencies
+        run: pnpm install --dir cli
+
+      - name: Determine branch to checkout
+        id: find_branch
+        run: ./tore gh-get-latest-beta-branch
+    
+      # - name: Checkout specific branch manually
+      #   run: |
+      #       git fetch origin ${{  steps.find_branch.outputs.branch }}
+      #       git checkout ${{  steps.find_branch.outputs.branch }}
+
+      - name: Bump Version
+        run: ./tore bump-version --create-branch --rc
+
+      - name: Create Release
+        run: ./tore gh-create-release private-statsig-server-core
+
