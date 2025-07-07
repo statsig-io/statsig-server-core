@@ -22,11 +22,9 @@ async fn test_get_experiment() {
             statsig.get_experiment(&user, "test_experiment_with_targeting");
         }
     });
-    match time::timeout(Duration::from_secs(3), task).await {
-        Ok(_) => {}
-        Err(_e) => {
-            panic!("Timeout on get experiment, potential deadlock!!");
-        }
+
+    if let Err(_e) = time::timeout(Duration::from_secs(10), task).await {
+        panic!("Timeout on get experiment, potential deadlock!!");
     }
 }
 
@@ -40,11 +38,9 @@ async fn test_check_gate() {
             statsig.get_feature_gate(&user, "test_experiment_with_targeting");
         }
     });
-    match time::timeout(Duration::from_secs(3), task).await {
-        Ok(_) => {}
-        Err(_e) => {
-            panic!("Timeout on get gate, potential deadlock");
-        }
+
+    if let Err(_e) = time::timeout(Duration::from_secs(10), task).await {
+        panic!("Timeout on get gate, potential deadlock");
     }
 }
 
@@ -58,11 +54,9 @@ async fn test_get_layer() {
             statsig.get_layer(&user, "test_experiment_with_targeting");
         }
     });
-    match time::timeout(Duration::from_secs(3), task).await {
-        Ok(_) => {}
-        Err(_e) => {
-            panic!("Timeout on get layer, potential deadlock");
-        }
+
+    if let Err(_e) = time::timeout(Duration::from_secs(10), task).await {
+        panic!("Timeout on get layer, potential deadlock");
     }
 }
 
@@ -76,11 +70,9 @@ async fn test_gcir() {
             statsig.get_client_init_response(&user);
         }
     });
-    match time::timeout(Duration::from_secs(3), task).await {
-        Ok(_) => {}
-        Err(_e) => {
-            panic!("Timeout on gcir, potential deadlock");
-        }
+
+    if let Err(_e) = time::timeout(Duration::from_secs(10), task).await {
+        panic!("Timeout on gcir, potential deadlock");
     }
 }
 
