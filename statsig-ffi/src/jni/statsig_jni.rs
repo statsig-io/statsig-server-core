@@ -1104,7 +1104,9 @@ fn update_statsig_metadata(env: &mut JNIEnv, metadata: JString) {
     if let Some(m) = parse_json_to_str_map(metadata_str) {
         let os = m.get("os").map_or("unknown".to_string(), |s| s.clone());
         let arch = m.get("arch").map_or("unknown".to_string(), |s| s.clone());
-        let language_version = m.get("arch").map_or("unknown".to_string(), |s| s.clone());
+        let language_version = m
+            .get("languageVersion")
+            .map_or("unknown".to_string(), |s| s.clone());
         StatsigMetadata::update_values(
             "statsig-server-core-java".to_string(),
             os,
