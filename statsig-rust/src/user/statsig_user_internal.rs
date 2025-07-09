@@ -61,8 +61,12 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
             _ => &None,
         };
 
-        if str_value.is_some() {
-            return str_value.as_ref();
+        if let Some(value) = str_value {
+            if let Some(str_val) = &value.string_value {
+                if !str_val.value.is_empty() {
+                    return Some(value);
+                }
+            }
         }
 
         if let Some(custom) = &self.user_ref.data.custom {
