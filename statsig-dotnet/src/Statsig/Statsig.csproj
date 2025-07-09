@@ -5,7 +5,7 @@
     <LangVersion>9</LangVersion>
     <Version>$(StatsigVersion)</Version>
     <OutputType>Library</OutputType>
-    <PackageId>Statsig.Core</PackageId>
+    <PackageId>Statsig.Dotnet</PackageId>
     <RootNamespace>Statsig</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IsPackable>true</IsPackable>
