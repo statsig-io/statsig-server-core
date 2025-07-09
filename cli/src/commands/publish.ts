@@ -17,6 +17,7 @@ import { CommandBase, OptionConfig } from './command_base.js';
 import { analyze } from './publishers/analyze.js';
 import { ffiPublish } from './publishers/ffi-publisher.js';
 import { javaPublish } from './publishers/java-publisher.js';
+import { dotnetPublish } from './publishers/dotnet-publisher.js';
 import { nodePublish } from './publishers/node-publisher.js';
 import { publishPhp } from './publishers/php-publisher.js';
 import { PACKAGES, PublisherOptions } from './publishers/publisher-options.js';
@@ -29,6 +30,7 @@ const PUBLISHERS: Record<string, (options: PublisherOptions) => Promise<void>> =
     ffi: ffiPublish,
     java: javaPublish,
     php: publishPhp,
+    dotnet: dotnetPublish,
     analyze,
   };
 
