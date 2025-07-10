@@ -1,7 +1,7 @@
 use jni::objects::{JObject, JString, JValue};
 use jni::sys::{jboolean, jstring};
 use jni::JNIEnv;
-use serde_json::Value;
+use serde_json::{Number, Value};
 use statsig_rust::networking::proxy_config::ProxyConfig;
 use statsig_rust::{
     log_e, ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
@@ -237,7 +237,7 @@ pub fn jboolean_to_bool_unchecked(input: jboolean) -> bool {
     input != 0
 }
 
-/// Converts a Java `java.util.HashMap<String, String>` into Rust `HashMap<String, Value>`
+/// Converts a Java `java.util.HashMap<String, Object>` into Rust `HashMap<String, Value>`
 pub fn jni_to_rust_json_map(
     env: &mut JNIEnv,
     jmap: JObject,
@@ -272,57 +272,69 @@ pub fn jni_to_rust_json_map(
 }
 
 fn java_object_to_json_value(env: &mut JNIEnv, obj: JObject) -> Result<Value, jni::errors::Error> {
+    // 1) null -> JSON null
     if obj.is_null() {
         return Ok(Value::Null);
     }
-
-    let class = env.get_object_class(&obj)?;
-    let class_name = env
-        .call_method(class, "getName", "()Ljava/lang/String;", &[])?
-        .l()?;
-    let class_str: String = env.get_string(&JString::from(class_name))?.into();
-
-    match class_str.as_str() {
-        "java.lang.String" => {
-            let str_val = env.get_string(&JString::from(obj))?.into();
-            Ok(Value::String(str_val))
-        }
-        "java.lang.Boolean" => {
-            let bool_val = env.call_method(obj, "booleanValue", "()Z", &[])?.z()?;
-            Ok(Value::Bool(bool_val))
-        }
-        "java.lang.Integer" | "java.lang.Long" => {
-            let long_val = env.call_method(obj, "longValue", "()J", &[])?.j()?;
-            Ok(Value::Number(long_val.into()))
-        }
-        "java.lang.Double" | "java.lang.Float" => {
-            let double_val = env.call_method(obj, "doubleValue", "()D", &[])?.d()?;
-            Ok(serde_json::Number::from_f64(double_val)
-                .map(Value::Number)
-                .unwrap_or(Value::Null))
-        }
-        "java.util.Map" => {
-            let inner_map = jni_to_rust_json_map(env, obj)?;
-            let mut json_map = serde_json::Map::new();
-            json_map.extend(inner_map);
-            Ok(Value::Object(json_map))
-        }
-        "java.util.List" => {
-            let list_size = env.call_method(&obj, "size", "()I", &[])?.i()?;
-            let mut list = Vec::with_capacity(list_size as usize);
-            for i in 0..list_size {
-                let item = env
-                    .call_method(&obj, "get", "(I)Ljava/lang/Object;", &[JValue::from(i)])?
-                    .l()?;
-                list.push(java_object_to_json_value(env, item)?);
-            }
-            Ok(Value::Array(list))
-        }
-        _ => {
-            log_e!(TAG, "Unhandled Java object type: {}", class_str);
-            Ok(Value::Null)
-        }
+    // 2) String
+    if env.is_instance_of(&obj, "java/lang/String")? {
+        let jstr = JString::from(obj);
+        let rust_string: String = env.get_string(&jstr)?.into();
+        return Ok(Value::String(rust_string));
     }
+
+    // 3) Boolean
+    if env.is_instance_of(&obj, "java/lang/Boolean")? {
+        let b = env.call_method(obj, "booleanValue", "()Z", &[])?.z()?;
+        return Ok(Value::Bool(b));
+    }
+
+    // 4) Integer/Long
+    if env.is_instance_of(&obj, "java/lang/Integer")?
+        || env.is_instance_of(&obj, "java/lang/Long")?
+    {
+        let n = env.call_method(obj, "longValue", "()J", &[])?.j()?;
+        return Ok(Value::Number(Number::from(n)));
+    }
+
+    // 5) Double/Float
+    if env.is_instance_of(&obj, "java/lang/Double")?
+        || env.is_instance_of(&obj, "java/lang/Float")?
+    {
+        let d = env.call_method(obj, "doubleValue", "()D", &[])?.d()?;
+        return Ok(Number::from_f64(d)
+            .map(Value::Number)
+            .unwrap_or(Value::Null));
+    }
+
+    // 6) Map
+    if env.is_instance_of(&obj, "java/util/Map")? {
+        let hm: HashMap<String, Value> = jni_to_rust_json_map(env, obj)?;
+        let json_map: serde_json::Map<String, Value> = hm.into_iter().collect();
+        return Ok(Value::Object(json_map));
+    }
+
+    // 7) List
+    if env.is_instance_of(&obj, "java/util/List")? {
+        let size = env.call_method(&obj, "size", "()I", &[])?.i()?;
+        let mut vec = Vec::with_capacity(size as usize);
+        for i in 0..size {
+            let element = env
+                .call_method(&obj, "get", "(I)Ljava/lang/Object;", &[JValue::from(i)])?
+                .l()?;
+            vec.push(java_object_to_json_value(env, element)?);
+        }
+        return Ok(Value::Array(vec));
+    }
+
+    // 8) others
+    let cls = env.get_object_class(obj)?;
+    let name_obj = env
+        .call_method(cls, "getName", "()Ljava/lang/String;", &[])?
+        .l()?;
+    let name: String = env.get_string(&JString::from(name_obj))?.into();
+    log_e!(TAG, "Unhandled Java object type: {}", name);
+    Ok(Value::Null)
 }
 
 /// Converts a Java `java.util.HashMap<String, String>` into Rust `HashMap<String, String>`
