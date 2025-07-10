@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>Statsig.NativeAssets.win-x64</PackageId>
+    <Description>Statsig native library for Windows x64</Description>
+    <PackageType>Dependency</PackageType>
+    <Version>$(StatsigVersion)</Version>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('../../runtimes/win-x64/native/libstatsig_ffi.dll')">
+    <Content Include="../../runtimes/win-x64/native/libstatsig_ffi.dll">
+      <Pack>true</Pack>
+      <PackagePath>runtimes/win-x64/native/</PackagePath>
+    </Content>
+  </ItemGroup>
+  
+  <Target Name="FailIfMissingBinary" BeforeTargets="Pack"
+          Condition="!Exists('../../runtimes/win-x64/native/libstatsig_ffi.dll')">
+    <Error Text="Native binary not found at ../../runtimes/win-x64/native/libstatsig_ffi.dll. Packing aborted." />
+  </Target>
+</Project>
