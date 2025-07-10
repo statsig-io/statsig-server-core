@@ -31,6 +31,7 @@ export declare class Layer {
   ruleID: string
   groupName?: string
   allocatedExperimentName?: string
+  value: Record<string, any>
   getValue(param_name: string, fallback: boolean | number | string | object | Array<any> | null): any
   getRuleId(): string
   getGroupName(): string | null
@@ -245,6 +246,7 @@ export interface StatsigOptions {
   configCompressionMode?: 'gzip' | 'dictionary'
   overrideAdapterConfig?: Array<OverrideAdapterConfig>
   serviceName?: string
+  persistentStorage?: PersistentStorage
   specAdaptersConfig?: Array<SpecAdapterConfig>
   specsSyncIntervalMs?: number
   specsUrl?: string
@@ -270,3 +272,19 @@ export interface StatsigUserArgs {
   custom?: Record<string, string | number | boolean | Array<string | number | boolean>>
   privateAttributes?: Record<string, string | number | boolean | Array<string | number | boolean>>
 }
+// ---- Manually defined typing section ----- 
+
+export type StickyValues = {
+  value: boolean;
+  json_value: Record<string, unknown>;
+  rule_id: string;
+  group_name: string | null;
+  secondary_exposures: SecondaryExposure[];
+  undelegated_secondary_exposures: SecondaryExposure[];
+  config_delegate: string | null;
+  explicit_parameters: string[] | null;
+  time: number;
+  configVersion?: number | undefined;
+};
+
+export type UserPersistedValues = Record<string, StickyValues>;

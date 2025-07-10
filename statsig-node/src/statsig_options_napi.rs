@@ -4,6 +4,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
+use crate::persistent_storage_napi::PersistentStorageNapi;
 use crate::{data_store_napi::DataStore, observability_client_napi::ObservabilityClient};
 use statsig_rust::{
     data_store_interface::DataStoreTrait,
@@ -103,6 +104,8 @@ pub struct StatsigOptions {
     pub config_compression_mode: Option<String>,
     pub override_adapter_config: Option<Vec<OverrideAdapterConfig>>,
     pub service_name: Option<String>,
+    #[napi(ts_type = "PersistentStorage")]
+    pub persistent_storage: Option<PersistentStorageNapi>,
 
     pub spec_adapters_config: Option<Vec<SpecAdapterConfig>>,
     pub specs_sync_interval_ms: Option<u32>,

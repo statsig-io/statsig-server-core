@@ -5,7 +5,6 @@ import { ErrorBoundary } from './error_boundary';
 import { StatsigNapiInternal, StatsigOptions } from './statsig-generated';
 
 export * from './statsig-generated';
-export * from './sticky_values';
 
 function createProxyAgent(options?: StatsigOptions) {
   const proxy = options?.proxyConfig;

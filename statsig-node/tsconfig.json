@@ -4,10 +4,9 @@
     "module": "commonjs", // or "esnext", "es6", etc., depending on your needs
     "esModuleInterop": true,
     "strict": true, // enables all strict type-checking options
-    "skipLibCheck": true, // skips type checking of declaration files
     "forceConsistentCasingInFileNames": true, // ensures consistent casing in imports
     "sourceMap": true
   },
-  "include": ["src/**/*"], // adjust the path to match your source files
+  "include": ["src/**/*", "scripts"], // adjust the path to match your source files
   "exclude": ["node_modules", "**/*.spec.ts"] // exclude test files if needed
 }
