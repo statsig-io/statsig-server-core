@@ -202,6 +202,8 @@ createStatsigJar('uber', 'uber')
 createStatsigJar('java-core', null)
 createStatsigJar('linux-gnu-arm64', 'linux-gnu-arm64')
 createStatsigJar('linux-gnu-x86_64', 'linux-gnu-x86_64')
+createStatsigJar('linux-musl-x86_64', 'linux-musl-x86_64')
+createStatsigJar('linux-musl-arm64', 'linux-musl-arm64')
 createStatsigJar('x86_64-apple-darwin', 'macos-x86_64')
 createStatsigJar('x86_64-pc-windows-msvc', 'windows-x86_64')
 
@@ -218,6 +220,8 @@ def expectedTasks = [
     'uberJar',
     'linux-gnu-arm64Jar',
     'linux-gnu-x86_64Jar',
+    'linux-musl-x86_64Jar',
+    'linux-musl-arm64Jar',
     'x86_64-apple-darwinJar',
     'x86_64-pc-windows-msvcJar',
 ]

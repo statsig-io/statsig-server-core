@@ -179,6 +179,8 @@ public class NativeBinaryResolver {
         return normalizedArch.contains("arm64") ? "amazonlinux2-arm64" : "amazonlinux2-x86_64";
       } else if (distro.equals("centos7")) {
         return normalizedArch.contains("arm64") ? "centos7-arm64" : "centos7-x86_64";
+      } else if (distro.equals("alpine")) {
+        return normalizedArch.contains("arm64") ? "linux-musl-arm64" : "linux-musl-x86_64";
       } else {
         return normalizedArch.contains("arm64") ? "linux-gnu-arm64" : "linux-gnu-x86_64";
       }
@@ -225,6 +227,8 @@ public class NativeBinaryResolver {
         if ("7".equals(versionId)) {
           return "centos7";
         }
+      } else if ("alpine".equals(id)) {
+        return "alpine";
       }
     } catch (IOException e) {
       OutputLogger.logError(TAG, "Error while detecting linux distro: " + e.getMessage());

@@ -22,6 +22,8 @@ const TARGET_MAPPING = {
   'macos-x86_64-apple-darwin-ffi': 'macos-x86_64',
   'windows-x86_64-pc-windows-msvc-ffi': 'windows-x86_64',
   'debian-x86_64-unknown-linux-gnu-ffi': 'linux-gnu-x86_64',
+  'alpine-x86_64-unknown-linux-musl-ffi': 'linux-musl-x86_64',
+  'alpine-aarch64-unknown-linux-musl-ffi': 'linux-musl-arm64',
 };
 
 const JAVA_NATIVE_DIR = path.resolve(
