@@ -93,19 +93,23 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
         .new_global_ref(callback)
         .expect("Failed to create global ref");
 
-    statsig.statsig_runtime.get_handle().block_on(async move {
+    let rt_handle = statsig.statsig_runtime.get_handle();
+
+    rt_handle.spawn(async move {
         if let Err(e) = statsig.initialize().await {
             log_e!(TAG, "Failed to initialize statsig: {}", e);
         }
 
-        let mut env = vm.attach_current_thread().unwrap();
-
-        let result = env.call_method(global_callback.as_obj(), "run", "()V", &[]);
-        if result.is_err() {
-            log_e!(TAG, "Failed to call callback");
+        match vm.attach_current_thread() {
+            Ok(mut env) => {
+                if let Err(e) = env.call_method(global_callback.as_obj(), "run", "()V", &[]) {
+                    log_e!(TAG, "Failed to call callback: {:?}", e);
+                }
+            }
+            Err(e) => {
+                log_e!(TAG, "Failed to attach for callback: {:?}", e);
+            }
         }
-
-        drop(global_callback);
     });
 }
 
