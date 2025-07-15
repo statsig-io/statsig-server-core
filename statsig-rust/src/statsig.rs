@@ -459,7 +459,7 @@ impl Statsig {
                             background_tasks_started,
                         ).await;
                     }
-                );
+                )?;
                 Ok(self.timeout_failure(timeout_ms))
             },
         }
@@ -546,20 +546,44 @@ impl Statsig {
         self.set_default_environment_from_server();
 
         if self.options.wait_for_country_lookup_init.unwrap_or(false) {
-            if let Some(task_id) = init_country_lookup {
-                let _ = self
-                    .statsig_runtime
-                    .await_join_handle(INIT_IP_TAG, &task_id)
-                    .await;
+            match init_country_lookup {
+                Some(Ok(task_id)) => {
+                    let _ = self
+                        .statsig_runtime
+                        .await_join_handle(INIT_IP_TAG, &task_id)
+                        .await;
+                }
+                Some(Err(e)) => {
+                    log_error_to_statsig_and_console!(
+                        self.ops_stats.clone(),
+                        TAG,
+                        StatsigErr::UnstartedAdapter(format!(
+                            "Failed to spawn country lookup task: {e}"
+                        ))
+                    );
+                }
+                _ => {}
             }
         }
         if self.options.wait_for_user_agent_init.unwrap_or(false) {
-            if let Some(task_id) = init_ua {
-                let _ = self
-                    .statsig_runtime
-                    .await_join_handle(INIT_UA_TAG, &task_id)
-                    .await;
-            };
+            match init_ua {
+                Some(Ok(task_id)) => {
+                    let _ = self
+                        .statsig_runtime
+                        .await_join_handle(INIT_UA_TAG, &task_id)
+                        .await;
+                }
+                Some(Err(e)) => {
+                    log_error_to_statsig_and_console!(
+                        self.ops_stats.clone(),
+                        TAG,
+                        StatsigErr::UnstartedAdapter(format!(
+                            "Failed to spawn user agent parser task: {e}"
+                        ))
+                    );
+                }
+                _ => {}
+            }
         }
 
         let error = init_res.clone().err();

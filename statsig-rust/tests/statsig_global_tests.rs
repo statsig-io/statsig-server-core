@@ -34,9 +34,11 @@ fn test_fork_resetting_runtime() {
     let original_rt = StatsigRuntime::get_runtime();
     assert_eq!(original_pid, std::process::id());
 
-    original_rt.spawn("test", |_| async {
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    });
+    original_rt
+        .spawn("test", |_| async {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        })
+        .unwrap();
 
     assert!(is_runtime_some());
 
@@ -48,9 +50,11 @@ fn test_fork_resetting_runtime() {
         assert!(is_runtime_none());
 
         let child_rt = StatsigRuntime::get_runtime();
-        child_rt.spawn("test", |_| async {
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-        });
+        child_rt
+            .spawn("test", |_| async {
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            })
+            .unwrap();
 
         assert!(is_runtime_some());
 

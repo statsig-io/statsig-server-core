@@ -228,27 +228,25 @@ impl StatsigGrpcSpecsAdapter {
     ) -> Result<tokio::task::Id, StatsigErr> {
         let weak_self = Arc::downgrade(&self);
 
-        Ok(
-            statsig_runtime.spawn(BG_TASK_TAG, |_shutdown_notify| async move {
-                if let Some(strong_self) = weak_self.upgrade() {
-                    if let Err(e) = strong_self.run_retryable_grpc_stream().await {
-                        log_error_to_statsig_and_console!(
-                            &ops_stats,
-                            TAG,
-                            StatsigErr::GrpcError(format!("gRPC streaming thread failed: {e}"))
-                        );
-                    }
-                } else {
+        statsig_runtime.spawn(BG_TASK_TAG, |_shutdown_notify| async move {
+            if let Some(strong_self) = weak_self.upgrade() {
+                if let Err(e) = strong_self.run_retryable_grpc_stream().await {
                     log_error_to_statsig_and_console!(
                         &ops_stats,
                         TAG,
-                        StatsigErr::GrpcError(
-                            "Failed to upgrade weak reference to strong reference".to_string()
-                        )
+                        StatsigErr::GrpcError(format!("gRPC streaming thread failed: {e}"))
                     );
                 }
-            }),
-        )
+            } else {
+                log_error_to_statsig_and_console!(
+                    &ops_stats,
+                    TAG,
+                    StatsigErr::GrpcError(
+                        "Failed to upgrade weak reference to strong reference".to_string()
+                    )
+                );
+            }
+        })
     }
 
     async fn run_retryable_grpc_stream(&self) -> Result<(), StatsigErr> {

@@ -7,6 +7,7 @@ use crate::jni::jni_utils::{
 };
 use crate::jni::statsig_options_jni::StatsigOptionsJNI;
 use crate::{get_instance_or_noop_c, get_instance_or_return_c};
+use jni::objects::GlobalRef;
 use jni::sys::{jboolean, jclass, jdouble, jlong, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use serde_json::Value;
@@ -15,7 +16,10 @@ use std::collections::HashMap;
 
 use super::jni_utils::serialize_json_to_jstring;
 use crate::jni::jni_utils::{jni_to_rust_hashmap, string_to_jstring};
-use jni::objects::{JClass, JObject, JString};
+use jni::{
+    objects::{JClass, JObject, JString},
+    JavaVM,
+};
 use statsig_rust::{log_d, log_e, InstanceRegistry, Statsig, StatsigUser};
 
 const TAG: &str = "StatsigJNI";
@@ -93,23 +97,21 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
         .new_global_ref(callback)
         .expect("Failed to create global ref");
 
-    let rt_handle = statsig.statsig_runtime.get_handle();
+    let rt_handle = match statsig.statsig_runtime.get_handle() {
+        Ok(handle) => handle,
+        Err(_) => {
+            log_e!(TAG, "Failed to get runtime handle");
+            fire_callback("initialize", &vm, global_callback);
+            return;
+        }
+    };
 
     rt_handle.spawn(async move {
         if let Err(e) = statsig.initialize().await {
             log_e!(TAG, "Failed to initialize statsig: {}", e);
         }
 
-        match vm.attach_current_thread() {
-            Ok(mut env) => {
-                if let Err(e) = env.call_method(global_callback.as_obj(), "run", "()V", &[]) {
-                    log_e!(TAG, "Failed to call callback: {:?}", e);
-                }
-            }
-            Err(e) => {
-                log_e!(TAG, "Failed to attach for callback: {:?}", e);
-            }
-        }
+        fire_callback("initialize", &vm, global_callback);
     });
 }
 
@@ -121,10 +123,15 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitializeWithDetails(
 ) -> jstring {
     let statsig = get_instance_or_return_c!(Statsig, &(statsig_ref as u64), std::ptr::null_mut());
 
-    let result = statsig
-        .statsig_runtime
-        .get_handle()
-        .block_on(async { statsig.initialize_with_details().await });
+    let rt_handle = match statsig.statsig_runtime.get_handle() {
+        Ok(handle) => handle,
+        Err(_) => {
+            log_e!(TAG, "Failed to get runtime handle");
+            return std::ptr::null_mut();
+        }
+    };
+
+    let result = rt_handle.block_on(async { statsig.initialize_with_details().await });
     match result {
         Ok(details) => serialize_json_to_jstring(&mut env, &details),
         Err(e) => {
@@ -160,19 +167,21 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigShutdown(
         .new_global_ref(callback)
         .expect("Failed to create global ref");
 
-    statsig.statsig_runtime.get_handle().block_on(async move {
+    let rt_handle = match statsig.statsig_runtime.get_handle() {
+        Ok(handle) => handle,
+        Err(_) => {
+            log_e!(TAG, "Failed to get runtime handle");
+            fire_callback("shutdown", &vm, global_callback);
+            return;
+        }
+    };
+
+    rt_handle.block_on(async move {
         if let Err(e) = statsig.shutdown().await {
             log_e!(TAG, "Failed to gracefully shutdown Statsig: {}", e);
         }
 
-        let mut env = vm.attach_current_thread().unwrap();
-
-        let result = env.call_method(global_callback.as_obj(), "run", "()V", &[]);
-        if result.is_err() {
-            log_e!(TAG, "Failed to call callback");
-        }
-
-        drop(global_callback);
+        fire_callback("shutdown", &vm, global_callback);
     });
 }
 
@@ -935,17 +944,18 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
         .new_global_ref(callback)
         .expect("Failed to create global ref");
 
-    statsig.statsig_runtime.get_handle().block_on(async move {
+    let rt_handle = match statsig.statsig_runtime.get_handle() {
+        Ok(handle) => handle,
+        Err(_) => {
+            log_e!(TAG, "Failed to get runtime handle");
+            return;
+        }
+    };
+
+    rt_handle.block_on(async move {
         statsig.flush_events().await;
 
-        let mut env = vm.attach_current_thread().unwrap();
-
-        let result = env.call_method(global_callback.as_obj(), "run", "()V", &[]);
-        if result.is_err() {
-            log_e!(TAG, "Failed to call callback");
-        }
-
-        drop(global_callback);
+        fire_callback("flush_events", &vm, global_callback);
     });
 }
 
@@ -1260,4 +1270,22 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRemoveAllOverrides(
 ) {
     let statsig = get_instance_or_noop_c!(Statsig, &(statsig_ref as u64));
     statsig.remove_all_overrides();
+}
+
+fn fire_callback(callback_name: &str, vm: &JavaVM, global_callback: GlobalRef) {
+    let mut env = match vm.attach_current_thread() {
+        Ok(env) => env,
+        Err(e) => {
+            log_e!(TAG, "Failed to attach current thread: {}", e);
+            drop(global_callback);
+            return;
+        }
+    };
+
+    let result = env.call_method(global_callback.as_obj(), "run", "()V", &[]);
+    if result.is_err() {
+        log_e!(TAG, "Failed to call {} callback", callback_name);
+    }
+
+    drop(global_callback);
 }

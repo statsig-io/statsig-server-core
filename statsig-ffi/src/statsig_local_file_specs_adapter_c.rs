@@ -42,11 +42,15 @@ pub extern "C" fn statsig_local_file_specs_adapter_release(specs_adapter_ref: u6
 pub extern "C" fn statsig_local_file_specs_adapter_fetch_and_write_to_file(specs_adapter_ref: u64) {
     let specs_adapter = get_instance_or_noop_c!(StatsigLocalFileSpecsAdapter, &specs_adapter_ref);
 
-    let statsig_rt = StatsigRuntime::get_runtime();
-    let result = statsig_rt
-        .get_handle()
-        .block_on(async move { specs_adapter.fetch_and_write_to_file().await });
+    let rt_handle = match StatsigRuntime::get_runtime().get_handle() {
+        Ok(handle) => handle,
+        Err(e) => {
+            log_e!(TAG, "Failed to get runtime handle: {}", e);
+            return;
+        }
+    };
 
+    let result = rt_handle.block_on(async move { specs_adapter.fetch_and_write_to_file().await });
     if let Err(e) = result {
         log_e!(TAG, "Failed to write to file: {}", e);
     }

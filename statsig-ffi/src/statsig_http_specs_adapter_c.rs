@@ -38,7 +38,13 @@ pub extern "C" fn statsig_http_specs_adapter_fetch_specs_from_network(
     let specs_adapter =
         get_instance_or_return_c!(StatsigHttpSpecsAdapter, &specs_adapter_ref, null_mut());
 
-    let statsig_rt = StatsigRuntime::get_runtime();
+    let rt_handle = match StatsigRuntime::get_runtime().get_handle() {
+        Ok(handle) => handle,
+        Err(e) => {
+            log_e!(TAG, "Failed to get runtime handle: {}", e);
+            return null_mut();
+        }
+    };
 
     let specs_info_str = match c_char_to_string(current_specs_info) {
         Some(s) => s,
@@ -50,7 +56,7 @@ pub extern "C" fn statsig_http_specs_adapter_fetch_specs_from_network(
         Err(_) => return null_mut(),
     };
 
-    let result = statsig_rt.get_handle().block_on(async move {
+    let result = rt_handle.block_on(async move {
         specs_adapter
             .fetch_specs_from_network(parsed_specs_info)
             .await

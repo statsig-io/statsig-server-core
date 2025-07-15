@@ -376,7 +376,8 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
                     }
                 }
             },
-        );
+        )?;
+
         Ok(())
     }
 

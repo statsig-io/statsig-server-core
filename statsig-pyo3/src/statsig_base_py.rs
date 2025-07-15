@@ -13,6 +13,7 @@ use crate::{
     },
     statsig_user_py::StatsigUserPy,
 };
+use pyo3::types::PyTuple;
 use pyo3::{prelude::*, types::PyDict};
 use pyo3_stub_gen::derive::*;
 use statsig_rust::{
@@ -50,7 +51,7 @@ impl StatsigBasePy {
         let (completion_event, event_clone) = get_completion_event(py)?;
 
         let inst = self.inner.clone();
-        self.inner.statsig_runtime.get_handle().spawn(async move {
+        let spawn_result = self.inner.statsig_runtime.spawn(TAG, |_| async move {
             if let Err(e) = inst.initialize().await {
                 log_e!(TAG, "Failed to initialize Statsig: {}", e);
             }
@@ -61,11 +62,14 @@ impl StatsigBasePy {
                     None => return,
                 };
 
-                if let Err(e) = event_clone.call_method0(py, "set") {
-                    log_e!(TAG, "Failed to set event: {}", e);
-                }
+                call_completion_event(&event_clone, py);
             });
         });
+
+        if let Err(e) = spawn_result {
+            log_e!(TAG, "Failed to spawn statsig initialize task: {e}");
+            call_completion_event(&completion_event, py);
+        }
 
         Ok(completion_event)
     }
@@ -74,7 +78,7 @@ impl StatsigBasePy {
         let (future, future_clone) = create_python_future(py)?;
 
         let inst = self.inner.clone();
-        self.inner.statsig_runtime.get_handle().spawn(async move {
+        let spawn_result = self.inner.statsig_runtime.spawn(TAG, |_| async move {
             let result = inst.initialize_with_details().await;
 
             SafeGil::run(|py| {
@@ -83,25 +87,31 @@ impl StatsigBasePy {
                     None => return,
                 };
 
-                let call_result = match result {
+                match result {
                     Ok(details) => {
                         let py_details = InitializeDetailsPy::from(details);
-                        future_clone.call_method1(py, "set_result", (py_details,))
+                        call_completion_future(&future_clone, py, (py_details,));
                     }
                     Err(e) => {
                         let error_details = InitializeDetailsPy::from_error(
                             "initialize_failed",
                             Some(e.to_string()),
                         );
-                        future_clone.call_method1(py, "set_result", (error_details,))
+                        call_completion_future(&future_clone, py, (error_details,));
                     }
                 };
-
-                if let Err(e) = call_result {
-                    log_e!(TAG, "Failed to set initialize result: {}", e);
-                }
             });
         });
+
+        if let Err(e) = spawn_result {
+            log_e!(
+                TAG,
+                "Failed to spawn statsig initialize with details task: {e}"
+            );
+            let error_details =
+                InitializeDetailsPy::from_error("initialize_failed", Some(e.to_string()));
+            call_completion_future(&future, py, (error_details,));
+        }
 
         Ok(future)
     }
@@ -120,7 +130,7 @@ impl StatsigBasePy {
         let (completion_event, event_clone) = get_completion_event(py)?;
 
         let inst = self.inner.clone();
-        self.inner.statsig_runtime.get_handle().spawn(async move {
+        let spawn_result = self.inner.statsig_runtime.spawn(TAG, |_| async move {
             inst.flush_events().await;
 
             SafeGil::run(|py| {
@@ -129,11 +139,14 @@ impl StatsigBasePy {
                     None => return,
                 };
 
-                if let Err(e) = event_clone.call_method0(py, "set") {
-                    log_e!(TAG, "Failed to set event: {}", e);
-                }
+                call_completion_event(&event_clone, py);
             });
         });
+
+        if let Err(e) = spawn_result {
+            log_e!(TAG, "Failed to spawn statsig flush events task: {e}");
+            call_completion_event(&completion_event, py);
+        }
 
         Ok(completion_event)
     }
@@ -142,13 +155,12 @@ impl StatsigBasePy {
         let (completion_event, event_clone) = get_completion_event(py)?;
 
         let inst = self.inner.clone();
-        let rt = self.inner.statsig_runtime.clone();
         let obs_client = match self.observability_client.lock() {
             Ok(mut lock) => lock.take(),
             _ => None,
         };
 
-        rt.get_handle().spawn(async move {
+        let spawn_result = self.inner.statsig_runtime.spawn(TAG, |_| async move {
             if let Err(e) = inst.shutdown().await {
                 log_e!(TAG, "Failed to gracefully shutdown StatsigPy: {}", e);
             }
@@ -159,14 +171,17 @@ impl StatsigBasePy {
                     None => return,
                 };
 
-                if let Err(e) = event_clone.call_method0(py, "set") {
-                    log_e!(TAG, "Failed to set event: {}", e);
-                }
+                call_completion_event(&event_clone, py);
             });
 
             // held until the shutdown is complete
             drop(obs_client);
         });
+
+        if let Err(e) = spawn_result {
+            log_e!(TAG, "Failed to spawn statsig shutdown task: {e}");
+            call_completion_event(&completion_event, py);
+        }
 
         Ok(completion_event)
     }
@@ -582,5 +597,20 @@ fn extract_user_persisted_values(
             );
             None
         }
+    }
+}
+
+fn call_completion_event(event: &PyObject, py: Python) {
+    if let Err(e) = event.call_method0(py, "set") {
+        log_e!(TAG, "Failed to set event: {}", e);
+    }
+}
+
+fn call_completion_future<'py, A>(future: &PyObject, py: Python<'py>, args: A)
+where
+    A: IntoPyObject<'py, Target = PyTuple>,
+{
+    if let Err(e) = future.call_method1(py, "set_result", args) {
+        log_e!(TAG, "Failed to set future result: {}", e);
     }
 }

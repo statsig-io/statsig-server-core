@@ -162,7 +162,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
                     .execute_background_sync(&rt_shutdown_notify)
                     .await;
             },
-        );
+        )?;
 
         Ok(())
     }

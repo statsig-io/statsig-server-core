@@ -276,7 +276,7 @@ impl SpecStore {
 
         let hashed_key = self.hashed_sdk_key.clone();
 
-        self.statsig_runtime.spawn(
+        let spawn_result = self.statsig_runtime.spawn(
             "spec_store_update_data_store",
             move |_shutdown_notif| async move {
                 let data_string = match String::from_utf8(data) {
@@ -296,6 +296,13 @@ impl SpecStore {
                     .await;
             },
         );
+
+        if let Err(e) = spawn_result {
+            log_e!(
+                TAG,
+                "Failed to spawn spec store update data store task: {e}"
+            );
+        }
     }
 
     fn are_current_values_newer(&self, next_values: &SpecsResponseFull) -> bool {

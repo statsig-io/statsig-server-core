@@ -334,7 +334,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
                     }
                 }
             }
-        });
+        })?;
 
         Ok(())
     }

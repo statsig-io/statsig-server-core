@@ -56,8 +56,12 @@ pub extern "C" fn statsig_http_event_logging_adapter_send_events(
         Err(e) => return handle_error(&format!("Failed to parse request JSON: {e}")),
     };
 
-    let statsig_rt = StatsigRuntime::get_runtime();
-    statsig_rt.get_handle().block_on(async move {
+    let rt_handle = match StatsigRuntime::get_runtime().get_handle() {
+        Ok(handle) => handle,
+        Err(e) => return handle_error(&format!("Failed to get runtime handle: {e}")),
+    };
+
+    rt_handle.block_on(async move {
         match event_logging_adapter.send_events_over_http(&request).await {
             Ok(_) => callback(true, null()),
             Err(e) => callback(false, string_to_c_char(e.to_string())),

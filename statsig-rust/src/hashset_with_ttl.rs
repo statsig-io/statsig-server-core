@@ -1,4 +1,5 @@
 use crate::log_d;
+use crate::log_e;
 use crate::StatsigRuntime;
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex, Weak};
@@ -22,7 +23,7 @@ impl HashSetWithTTL {
         let weak_instance = Arc::downgrade(&instance.set);
         let shutdown_notify = instance.shutdown_notify.clone();
 
-        statsig_runtime.spawn(
+        let spawn_result = statsig_runtime.spawn(
             "hashset_with_ttl_worker",
             move |rt_shutdown_notify| async move {
                 Self::run_background_reset(
@@ -34,6 +35,10 @@ impl HashSetWithTTL {
                 .await;
             },
         );
+
+        if let Err(e) = spawn_result {
+            log_e!(TAG, "Failed to spawn hashset with ttl worker: {e}");
+        }
 
         instance
     }

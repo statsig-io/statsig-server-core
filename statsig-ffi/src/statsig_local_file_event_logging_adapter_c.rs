@@ -42,11 +42,15 @@ pub extern "C" fn statsig_local_file_event_logging_adapter_release(event_logging
 pub extern "C" fn statsig_local_file_event_logging_adapter_send_pending_events(adapter_ref: u64) {
     let adapter = get_instance_or_noop_c!(StatsigLocalFileEventLoggingAdapter, &adapter_ref);
 
-    let statsig_rt = StatsigRuntime::get_runtime();
-    let result = statsig_rt
-        .get_handle()
-        .block_on(async move { adapter.send_pending_events().await });
+    let rt_handle = match StatsigRuntime::get_runtime().get_handle() {
+        Ok(handle) => handle,
+        Err(e) => {
+            log_e!(TAG, "Failed to get runtime handle: {}", e);
+            return;
+        }
+    };
 
+    let result = rt_handle.block_on(async move { adapter.send_pending_events().await });
     if let Err(e) = result {
         log_e!(TAG, "Failed to send events: {}", e);
     }

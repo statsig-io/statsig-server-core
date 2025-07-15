@@ -40,26 +40,35 @@ pub extern "C" fn statsig_release(statsig_ref: u64) {
 pub extern "C" fn statsig_initialize(statsig_ref: u64, callback: extern "C" fn()) {
     let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
 
-    statsig
+    let result = statsig
         .statsig_runtime
         .clone()
         .spawn(TAG, move |_| async move {
             if let Err(e) = statsig.initialize().await {
-                log_e!(TAG, "Failed to initialize statsig: {}", e);
+                log_e!(TAG, "Failed to initialize statsig: {e}");
             }
 
             callback();
         });
+
+    if let Err(e) = result {
+        log_e!(TAG, "Failed to spawn statsig initialize task: {e}");
+        callback();
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn statsig_initialize_with_details(statsig_ref: u64) -> *mut c_char {
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let rt_handle = match statsig.statsig_runtime.get_handle() {
+        Ok(handle) => handle,
+        Err(e) => {
+            log_e!(TAG, "Failed to get runtime handle: {}", e);
+            return null_mut();
+        }
+    };
 
-    let result = statsig
-        .statsig_runtime
-        .get_handle()
-        .block_on(async { statsig.initialize_with_details().await });
+    let result = rt_handle.block_on(async { statsig.initialize_with_details().await });
 
     let details = match result {
         Ok(d) => d,
@@ -83,8 +92,15 @@ pub extern "C" fn statsig_initialize_with_details(statsig_ref: u64) -> *mut c_ch
 #[no_mangle]
 pub extern "C" fn statsig_initialize_blocking(statsig_ref: u64) {
     let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let rt_handle = match statsig.statsig_runtime.get_handle() {
+        Ok(handle) => handle,
+        Err(e) => {
+            log_e!(TAG, "Failed to get runtime handle: {}", e);
+            return;
+        }
+    };
 
-    statsig.statsig_runtime.get_handle().block_on(async move {
+    rt_handle.block_on(async move {
         if let Err(e) = statsig.initialize().await {
             log_e!(TAG, "Failed to initialize statsig: {}", e);
         }
@@ -94,8 +110,15 @@ pub extern "C" fn statsig_initialize_blocking(statsig_ref: u64) {
 #[no_mangle]
 pub extern "C" fn statsig_shutdown_blocking(statsig_ref: u64) {
     let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let rt_handle = match statsig.statsig_runtime.get_handle() {
+        Ok(handle) => handle,
+        Err(e) => {
+            log_e!(TAG, "Failed to get runtime handle: {}", e);
+            return;
+        }
+    };
 
-    statsig.statsig_runtime.get_handle().block_on(async move {
+    rt_handle.block_on(async move {
         if let Err(e) = statsig.shutdown().await {
             log_e!(TAG, "Failed to shutdown statsig: {}", e);
         }
@@ -106,7 +129,7 @@ pub extern "C" fn statsig_shutdown_blocking(statsig_ref: u64) {
 pub extern "C" fn statsig_flush_events(statsig_ref: u64, callback: extern "C" fn()) {
     let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
 
-    statsig
+    let result = statsig
         .statsig_runtime
         .clone()
         .spawn(TAG, move |_| async move {
@@ -114,13 +137,26 @@ pub extern "C" fn statsig_flush_events(statsig_ref: u64, callback: extern "C" fn
 
             callback();
         });
+
+    if let Err(e) = result {
+        log_e!(TAG, "Failed to spawn statsig flush events task: {e}");
+        callback();
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn statsig_flush_events_blocking(statsig_ref: u64) {
     let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
 
-    statsig.statsig_runtime.get_handle().block_on(async move {
+    let rt_handle = match statsig.statsig_runtime.get_handle() {
+        Ok(handle) => handle,
+        Err(e) => {
+            log_e!(TAG, "Failed to get runtime handle: {}", e);
+            return;
+        }
+    };
+
+    rt_handle.block_on(async move {
         log_d!(TAG, "Statsig flush events");
         statsig.flush_events().await;
         log_d!(TAG, "Flushed events");

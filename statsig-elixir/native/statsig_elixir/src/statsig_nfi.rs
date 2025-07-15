@@ -51,11 +51,12 @@ pub fn initialize(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
     match statsig.statsig_core.read() {
         Ok(read) => {
             let statsig: Arc<Statsig> = Arc::clone(&read);
-            match statsig
-                .statsig_runtime
-                .get_handle()
-                .block_on(statsig.initialize())
-            {
+            let rt_handle = match statsig.statsig_runtime.get_handle() {
+                Ok(handle) => handle,
+                Err(_) => return Err(Error::RaiseAtom("Failed to get Statsig")),
+            };
+
+            match rt_handle.block_on(statsig.initialize()) {
                 Ok(_) => Ok(()),
                 Err(_) => Err(Error::RaiseAtom("failed to init")),
             }
@@ -177,9 +178,14 @@ pub fn flush(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             let statsig: Arc<Statsig> = Arc::clone(&read_guard);
-            statsig.statsig_runtime.get_handle().block_on(async move {
-                statsig.flush_events().await;
-            });
+
+            let rt_handle = match statsig.statsig_runtime.get_handle() {
+                Ok(handle) => handle,
+                Err(_) => return Err(Error::RaiseAtom("Failed to get Statsig")),
+            };
+
+            rt_handle.block_on(async move { statsig.flush_events().await });
+
             Ok(())
         }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
@@ -192,7 +198,12 @@ pub fn shutdown(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
         Ok(read_guard) => {
             let statsig: Arc<Statsig> = Arc::clone(&read_guard);
 
-            statsig.statsig_runtime.get_handle().block_on(async move {
+            let rt_handle = match statsig.statsig_runtime.get_handle() {
+                Ok(handle) => handle,
+                Err(_) => return Err(Error::RaiseAtom("Failed to get Statsig")),
+            };
+
+            rt_handle.block_on(async move {
                 match statsig.shutdown().await {
                     Ok(_) => Ok(()),
                     Err(_) => Err(Error::RaiseAtom("Failed to shutdown")),

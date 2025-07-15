@@ -23,7 +23,6 @@ pub struct StatsigRuntime {
     spawned_tasks: Arc<Mutex<HashMap<TaskId, JoinHandle<()>>>>,
     shutdown_notify: Arc<Notify>,
     is_shutdown: Arc<AtomicBool>,
-    pid: u32,
 }
 
 impl StatsigRuntime {
@@ -35,31 +34,27 @@ impl StatsigRuntime {
             spawned_tasks: Arc::new(Mutex::new(HashMap::new())),
             shutdown_notify: Arc::new(Notify::new()),
             is_shutdown: Arc::new(AtomicBool::new(false)),
-            pid: std::process::id(),
         })
     }
 
-    pub fn get_handle(&self) -> Handle {
-        // nocommit: remove panics
-        if self.pid != std::process::id() {
-            panic!("StatsigRuntime::get_handle() called from different process");
-        }
-
+    pub fn get_handle(&self) -> Result<Handle, StatsigErr> {
         if let Ok(handle) = Handle::try_current() {
-            return handle;
+            return Ok(handle);
         }
 
         let global = StatsigGlobal::get();
         let rt = global
             .tokio_runtime
             .lock()
-            .expect("Failed to lock StatsigGlobal");
+            .map_err(|e| StatsigErr::LockFailure(e.to_string()))?;
 
         if let Some(rt) = rt.as_ref() {
-            return rt.handle().clone();
+            return Ok(rt.handle().clone());
         }
 
-        panic!("No tokio runtime found");
+        Err(StatsigErr::ThreadFailure(
+            "No tokio runtime found".to_string(),
+        ))
     }
 
     pub fn get_num_active_tasks(&self) -> usize {
@@ -82,7 +77,7 @@ impl StatsigRuntime {
         }
     }
 
-    pub fn spawn<F, Fut>(&self, tag: &str, task: F) -> tokio::task::Id
+    pub fn spawn<F, Fut>(&self, tag: &str, task: F) -> Result<tokio::task::Id, StatsigErr>
     where
         F: FnOnce(Arc<Notify>) -> Fut + Send + 'static,
         Fut: Future<Output = ()> + Send + 'static,
@@ -94,7 +89,7 @@ impl StatsigRuntime {
 
         log_d!(TAG, "Spawning task {}", tag);
 
-        let handle = self.get_handle().spawn(async move {
+        let handle = self.get_handle()?.spawn(async move {
             if is_shutdown.load(std::sync::atomic::Ordering::Relaxed) {
                 return;
             }
@@ -105,7 +100,7 @@ impl StatsigRuntime {
             remove_join_handle_with_id(spawned_tasks, tag_string, &task_id);
         });
 
-        self.insert_join_handle(tag, handle)
+        Ok(self.insert_join_handle(tag, handle))
     }
 
     pub async fn await_tasks_with_tag(&self, tag: &str) {
