@@ -54,14 +54,12 @@ const TEST_COMMANDS: Record<string, string> = {
     'composer test',
   ].join(' && '),
 
-  // nocommit: just for testing
   python: [
     'cd statsig-pyo3',
     'maturin build',
     'pip install pytest-rerunfailures',
     'pip install ../target/wheels/statsig_python_core*.whl --force-reinstall',
-    // 'python3 -m pytest tests --capture=no -v --reruns 3 --ignore=tests/test_forking.py',
-    'python3 -m pytest tests/test_forking.py --capture=no -v',
+    'python3 -m pytest tests --capture=no -v --reruns 3',
   ].join(' && '),
 
   rust: [
