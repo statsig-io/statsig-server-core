@@ -45,6 +45,7 @@ pub mod override_adapter;
 pub mod sdk_diagnostics;
 pub mod specs_response;
 pub mod statsig_core_api_options;
+pub mod statsig_global;
 pub mod statsig_metadata;
 pub mod statsig_options;
 pub mod statsig_types;

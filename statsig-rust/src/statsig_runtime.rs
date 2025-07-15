@@ -2,20 +2,21 @@ use futures::future::join_all;
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Mutex};
 use tokio::runtime::{Builder, Handle, Runtime};
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
 use crate::log_e;
+use crate::statsig_global::StatsigGlobal;
 use crate::StatsigErr;
 use crate::{log_d, log_w};
 
 const TAG: &str = stringify!(StatsigRuntime);
 
-lazy_static::lazy_static! {
-    static ref OWNED_TOKIO_RUNTIME: Mutex<Option<Weak<Runtime>>> = Mutex::new(None);
-}
+// lazy_static::lazy_static! {
+//     static ref OWNED_TOKIO_RUNTIME: Mutex<Option<Weak<Runtime>>> = Mutex::new(None);
+// }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct TaskId {
@@ -215,7 +216,9 @@ fn create_runtime_if_required() -> (Option<Arc<Runtime>>, Handle) {
         return (None, handle);
     }
 
-    let mut lock = OWNED_TOKIO_RUNTIME
+    let global = StatsigGlobal::get();
+    let mut lock = global
+        .tokio_runtime
         .lock()
         .expect("Failed to lock owned tokio runtime");
 
@@ -264,12 +267,14 @@ impl Drop for StatsigRuntime {
         }
 
         if tokio::runtime::Handle::try_current().is_err() {
+            println!("Not inside the Tokio runtime. Will automatically drop(inner).");
             // Not inside the Tokio runtime. Will automatically drop(inner).
             return;
         }
 
         log_w!(TAG, "Attempt to shutdown runtime from inside runtime");
         std::thread::spawn(move || {
+            println!("Dropping inner runtime from outside the Tokio runtime");
             // We should not drop from inside the runtime, but in the odd case we do,
             // moving inner to a new thread will prevent a panic
             drop(inner);

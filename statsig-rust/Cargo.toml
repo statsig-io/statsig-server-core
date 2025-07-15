@@ -8,6 +8,7 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
+arc-swap = "1.7.1"
 ahash = "0.8.11"
 async-trait = "0.1.81"
 base64 = "0.22.1"
@@ -48,6 +49,7 @@ mockito = "1.5.0"
 assert-json-diff = "2.0.2"
 wiremock = "0.6.2"
 more-asserts = "0.3.1"
+libc = "0.2"
 
 [features]
 default = ["reqwest"]
