@@ -74,6 +74,7 @@ jobs:
           - python
           - ffi
           - java
+          - dotnet
 
     timeout-minutes: 25
     runs-on: ${{ matrix.config.runner }}

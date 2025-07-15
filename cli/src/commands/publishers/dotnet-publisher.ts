@@ -13,10 +13,10 @@ import { PublisherOptions } from './publisher-options.js';
 
 const TARGET_MAPPING = {
   'macos-aarch64-apple-darwin-ffi': 'osx-arm64',
-  // 'macos-x86_64-apple-darwin-ffi': 'osx-x86',
-  // 'windows-i686-pc-windows-msvc-ffi': 'win-x86',
-  // 'windows-x86_64-pc-windows-msvc-ffi': 'win-x64',
-  // 'debian-aarch64-unknown-linux-gnu-ffi': 'linux-arm64',
+  'macos-x86_64-apple-darwin-ffi': 'osx-x86',
+  'windows-i686-pc-windows-msvc-ffi': 'win-x86',
+  'windows-x86_64-pc-windows-msvc-ffi': 'win-x64',
+  'debian-aarch64-unknown-linux-gnu-ffi': 'linux-arm64',
   'debian-x86_64-unknown-linux-gnu-ffi': 'linux-x64',
 };
 
@@ -106,7 +106,11 @@ function publishDotnetPackages(options: PublisherOptions) {
   const nativeProjs = [
         'src/Native/Statsig.NativeAssets.linux-x64.csproj',
         'src/Native/Statsig.NativeAssets.osx-arm64.csproj',
-        // TODO: Add more
+        'src/Native/Statsig.NativeAssets.osx-x86.csproj',
+        'src/Native/Statsig.NativeAssets.win-x64.csproj',
+        'src/Native/Statsig.NativeAssets.win-x86.csproj',
+        'src/Native/Statsig.NativeAssets.linux-arm64.csproj',
+        // Add more native projects as needed
     ];
 
   for (const proj of nativeProjs) {
@@ -134,7 +138,6 @@ function publishDotnetPackages(options: PublisherOptions) {
 
 function pushNupkg(fileName: string) {
   const fullPath = path.join(NUPKG_DIR, fileName);
-  // TODO: please change this to a valid NuGet API key
   const pushCommand = `dotnet nuget push ${fullPath} --api-key ${process.env.NUGET_API_KEY} --source https://api.nuget.org/v3/index.json`;
 
   Log.stepProgress(`Pushing package: ${fileName}`);
