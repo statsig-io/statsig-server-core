@@ -30,3 +30,12 @@ func ConvertToSafeOptBool(val *bool) int {
 	}
 
 }
+
+func GetTypedValue[T any](values map[string]interface{}, key string, fallback T) T {
+	if v, ok := values[key]; ok {
+		if typedVal, ok := v.(T); ok {
+			return typedVal
+		}
+	}
+	return fallback
+}

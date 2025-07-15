@@ -110,14 +110,8 @@ func TestDynamicConfiExposureLoggingNoOptions(t *testing.T) {
 }
 
 func TestConfigManualLogging(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	o := CreateDynamicConfigOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, o)
 	defer teardown()
 
 	dynamicConfigOptions := &statsig.GetDynamicConfigOptions{DisableExposureLogging: true}

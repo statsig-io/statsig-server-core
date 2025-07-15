@@ -199,6 +199,7 @@ func (s *Statsig) GetLayer(user StatsigUser, layerName string, layerOptions *Get
 
 		layer.setStatsigInstance(s)
 		layer.setDisableExposureLogging(layerOptions != nil && layerOptions.DisableExposureLogging)
+		layer.setRawResult(C.GoString(layerJson))
 	}
 
 	return layer

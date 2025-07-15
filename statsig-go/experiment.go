@@ -1,5 +1,7 @@
 package statsig
 
+import "github.com/statsig-io/private-statsig-server-core/statsig-go/utils"
+
 /*
 #cgo CFLAGS: -I../statsig-ffi/include
 #include "statsig_ffi.h"
@@ -24,4 +26,24 @@ type SecondaryExposure struct {
 
 func (e *Experiment) setSecondaryExposures(secondaryExposures []SecondaryExposure) {
 	e.SecondaryExposures = secondaryExposures
+}
+
+func (e *Experiment) GetString(key string, fallback string) string {
+	return utils.GetTypedValue(e.Value, key, fallback)
+}
+
+func (e *Experiment) GetNumber(key string, fallback float64) float64 {
+	return utils.GetTypedValue(e.Value, key, fallback)
+}
+
+func (e *Experiment) GetBool(key string, fallback bool) bool {
+	return utils.GetTypedValue(e.Value, key, fallback)
+}
+
+func (e *Experiment) GetSlice(key string, fallback []interface{}) []interface{} {
+	return utils.GetTypedValue(e.Value, key, fallback)
+}
+
+func (e *Experiment) GetMap(key string, fallback map[string]interface{}) map[string]interface{} {
+	return utils.GetTypedValue(e.Value, key, fallback)
 }

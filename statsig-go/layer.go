@@ -8,6 +8,7 @@ package statsig
 import (
 	"C"
 )
+import "github.com/statsig-io/private-statsig-server-core/statsig-go/utils"
 
 type Layer struct {
 	Name                    string                 `json:"name"`
@@ -17,6 +18,7 @@ type Layer struct {
 	IdType                  string                 `json:"id_type"`
 	GroupName               string                 `json:"group_name"`
 	AllocatedExperimentName string                 `json:"allocated_experiment_name"`
+	RawJSON                 string                 `json:"-"`
 	statsigInstance         Statsig
 	disableExposureLogging  bool
 }
@@ -27,6 +29,10 @@ func (l *Layer) setStatsigInstance(statsig *Statsig) {
 
 func (l *Layer) setDisableExposureLogging(disableExposureLogging bool) {
 	l.disableExposureLogging = disableExposureLogging
+}
+
+func (l *Layer) setRawResult(json string) {
+	l.RawJSON = json
 }
 
 func (l *Layer) Get(u *StatsigUser, paramName string) interface{} {
@@ -41,16 +47,34 @@ func (l *Layer) getValueImpl(paramName string, u *StatsigUser) interface{} {
 	}
 
 	if !l.disableExposureLogging {
-		l.manuallyLogLayerParamExposure(u, paramName)
+		l.logLayerParamExposure(paramName)
 	}
 	return val
 }
 
-func (l *Layer) manuallyLogLayerParamExposure(u *StatsigUser, paramName string) {
-	C.statsig_manually_log_layer_parameter_exposure(
+func (l *Layer) logLayerParamExposure(paramName string) {
+	C.statsig_log_layer_param_exposure(
 		C.ulonglong(l.statsigInstance.InnerRef),
-		C.ulonglong(u.innerRef),
-		C.CString(l.Name),
+		C.CString(l.RawJSON),
 		C.CString(paramName),
 	)
+}
+func (l *Layer) GetString(key string, fallback string) string {
+	return utils.GetTypedValue(l.Value, key, fallback)
+}
+
+func (l *Layer) GetNumber(key string, fallback float64) float64 {
+	return utils.GetTypedValue(l.Value, key, fallback)
+}
+
+func (l *Layer) GetBool(key string, fallback bool) bool {
+	return utils.GetTypedValue(l.Value, key, fallback)
+}
+
+func (l *Layer) GetSlice(key string, fallback []interface{}) []interface{} {
+	return utils.GetTypedValue(l.Value, key, fallback)
+}
+
+func (l *Layer) GetMap(key string, fallback map[string]interface{}) map[string]interface{} {
+	return utils.GetTypedValue(l.Value, key, fallback)
 }

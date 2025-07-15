@@ -77,14 +77,8 @@ func TestFeatureGateExposureLoggingNoOptions(t *testing.T) {
 }
 
 func TestManualLoggingGate(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateFeatureGateOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	checkGateOptions := &statsig.CheckGateOptions{DisableExposureLogging: true}

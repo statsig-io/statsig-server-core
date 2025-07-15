@@ -26,6 +26,7 @@ type StatsigOptions struct {
 	DisableUserAgentParsing     *bool
 	WaitForCountryLookupInit    *bool
 	WaitForUserAgentInit        *bool
+	DisableAllLogging           *bool
 }
 
 type StatsigOptionsBuilder struct {
@@ -58,6 +59,8 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 		C.int(utils.ConvertToSafeOptBool(nil)), // enableIDLists, not used in this version
 		ResolveDefault(nil),                    // idListsUrl, not used in this version
 		C.int(-1),                              // idListsSyncIntervalMs, not used in this version
+		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableAllLogging)),
+		ResolveDefault(nil), // idListsUrl, not used in this version
 	)
 
 	o.statsigOptions.innerRef = uint64(optionsRef)
@@ -136,5 +139,10 @@ func (o *StatsigOptionsBuilder) WithWaitForCountryLookupInit(value bool) *Statsi
 
 func (o *StatsigOptionsBuilder) WithWaitForUserAgentInit(value bool) *StatsigOptionsBuilder {
 	o.statsigOptions.WaitForUserAgentInit = &value
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithDisableAllLogging(value bool) *StatsigOptionsBuilder {
+	o.statsigOptions.DisableAllLogging = &value
 	return o
 }

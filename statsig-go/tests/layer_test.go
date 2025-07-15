@@ -92,6 +92,34 @@ func TestLayerDisableExposureLoggingIsTrue(t *testing.T) {
 
 }
 
+func TestLayerLogLayerParamExposure(t *testing.T) {
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
+
+	defer teardown()
+
+	layerOptions := &statsig.GetLayerOptions{}
+
+	layer_name := "test_layer"
+	layer := s.GetLayer(*user, layer_name, layerOptions)
+
+	_ = layer.Get(user, "another_param")
+	s.Shutdown()
+
+	events := scrapiServer.fetchLoggedEvents()
+	if !checkEventNameExists(events, "statsig::layer_exposure") {
+		t.Errorf("Error occurred, layer exposure event was not logged while disable exposure logging was set to true")
+	}
+
+	for _, event := range events {
+		if event.EventName == "statsig::layer_exposure" {
+			if event.Metadata["isManualExposure"] == "true" {
+				t.Errorf("Error occurred, layer exposure event should be logged without manual exposure set to true")
+			}
+		}
+	}
+
+}
+
 func TestGetNonexistentParamInLayerWithExposureLogging(t *testing.T) {
 	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
@@ -147,14 +175,8 @@ func TestLayerExposureLoggingOccursNoOptions(t *testing.T) {
 }
 
 func TestLayerManualLogging(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateLayerStatsigOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	layerOptions := &statsig.GetLayerOptions{DisableExposureLogging: true}

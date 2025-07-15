@@ -129,14 +129,8 @@ func TestExperimentExposureLoggingNoOptions(t *testing.T) {
 }
 
 func TestExperimentManualLogging(t *testing.T) {
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID("a-user").Build()
+	user, scrapiServer, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", nil)
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
-
-	options := CreateFeatureGateOptions(scrapiServer)
-
-	s, teardown := statsigSetup(t, options)
 	defer teardown()
 
 	experimentOptions := &statsig.GetExperimentOptions{DisableExposureLogging: true}
