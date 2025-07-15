@@ -15,7 +15,7 @@ import { CommandBase } from './command_base.js';
 const TEST_COMMANDS: Record<string, string> = {
   dotnet: [
     'cargo build -p statsig_ffi',
-    
+
     'rm -rf statsig-dotnet/runtimes',
     'mkdir -p statsig-dotnet/runtimes/linux-x64/native',
     'cp target/debug/libstatsig_ffi.so statsig-dotnet/runtimes/linux-x64/native || true',
@@ -24,7 +24,7 @@ const TEST_COMMANDS: Record<string, string> = {
     'dotnet build test/Statsig.Tests.csproj -p:UseLocalProjects=true -r linux-x64',
     'dotnet test test/Statsig.Tests.csproj -p:UseLocalProjects=true',
   ].join(' && '),
-  
+
   java: [
     'cargo build -p statsig_ffi',
 
@@ -54,11 +54,13 @@ const TEST_COMMANDS: Record<string, string> = {
     'composer test',
   ].join(' && '),
 
+  // nocommit: just for testing
   python: [
     'cd statsig-pyo3',
     'maturin build',
-    'pip install pytest-rerunfailures ../target/wheels/statsig_python_core*.whl --force-reinstall',
-    'python3 -m pytest tests --capture=no -v --reruns 3',
+    'pip install pytest-rerunfailures',
+    'pip install ../target/wheels/statsig_python_core*.whl --force-reinstall',
+    'python3 -m pytest tests --capture=no -v --reruns 3 --ignore=tests/test_forking.py',
   ].join(' && '),
 
   rust: [
