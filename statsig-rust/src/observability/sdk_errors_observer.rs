@@ -73,7 +73,7 @@ impl SDKErrorsObserver {
             .unwrap_or(format!("{}:{}", eb_event.tag, eb_event.exception));
 
         let write_guard_result = tokio::time::timeout(
-            std::time::Duration::from_secs(1),
+            std::time::Duration::from_secs(5),
             self.errors_aggregator.write(),
         )
         .await;

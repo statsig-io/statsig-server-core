@@ -38,7 +38,7 @@ fn test_fork_resetting_runtime() {
 
     original_rt
         .spawn("test", |_| async {
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            tokio::time::sleep(Duration::from_secs(5)).await;
         })
         .unwrap();
 
@@ -54,7 +54,7 @@ fn test_fork_resetting_runtime() {
         let child_rt = StatsigRuntime::get_runtime();
         child_rt
             .spawn("test", |_| async {
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             })
             .unwrap();
 

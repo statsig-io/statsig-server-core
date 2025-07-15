@@ -18,7 +18,7 @@ impl ThirdPartyUserAgentParser {
         user_agent: &str,
     ) -> Result<Option<DynamicValue>, &'static str> {
         let lock = PARSER
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
             .ok_or("lock_failure")?;
         let parser = lock.as_ref().ok_or("parser_not_loaded")?;
 
@@ -60,7 +60,7 @@ impl ThirdPartyUserAgentParser {
     }
 
     pub fn load_parser() {
-        match PARSER.try_read_for(std::time::Duration::from_secs(1)) {
+        match PARSER.try_read_for(std::time::Duration::from_secs(5)) {
             Some(lock) => {
                 if lock.is_some() {
                     log_d!(TAG, "Parser already loaded");
@@ -87,7 +87,7 @@ impl ThirdPartyUserAgentParser {
             }
         };
 
-        match PARSER.try_write_for(std::time::Duration::from_secs(1)) {
+        match PARSER.try_write_for(std::time::Duration::from_secs(5)) {
             Some(mut lock) => {
                 *lock = Some(parser);
                 log_d!(TAG, "User Agent Parser Successfully Loaded");

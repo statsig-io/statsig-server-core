@@ -15,7 +15,7 @@ pub struct NetworkProviderGlobal;
 
 impl NetworkProviderGlobal {
     pub fn try_get() -> Option<Weak<dyn NetworkProvider>> {
-        let lock = match INSTANCE.try_lock_for(Duration::from_secs(1)) {
+        let lock = match INSTANCE.try_lock_for(Duration::from_secs(5)) {
             Some(lock) => lock,
             None => {
                 log_e!(
@@ -33,7 +33,7 @@ impl NetworkProviderGlobal {
     }
 
     pub fn set(provider: &Arc<dyn NetworkProvider>) {
-        match INSTANCE.try_lock_for(Duration::from_secs(1)) {
+        match INSTANCE.try_lock_for(Duration::from_secs(5)) {
             Some(mut instance) => {
                 *instance = Some(Arc::downgrade(provider));
             }

@@ -31,7 +31,7 @@ impl MemoSha256 {
     }
 
     pub fn compute_hash(&self, input: &String) -> Option<usize> {
-        let mut state = match self.inner.try_lock_for(Duration::from_secs(1)) {
+        let mut state = match self.inner.try_lock_for(Duration::from_secs(5)) {
             Some(state) => state,
             None => {
                 log_e!(
@@ -63,7 +63,7 @@ impl MemoSha256 {
     }
 
     pub fn hash_string(&self, input: &str) -> String {
-        let mut state = match self.inner.try_lock_for(Duration::from_secs(1)) {
+        let mut state = match self.inner.try_lock_for(Duration::from_secs(5)) {
             Some(state) => state,
             None => {
                 log_e!(

@@ -23,7 +23,7 @@ impl StatsigBootstrapSpecsAdapter {
     }
 
     pub fn set_data(&self, data: String) -> Result<(), StatsigErr> {
-        match self.data.try_write_for(std::time::Duration::from_secs(1)) {
+        match self.data.try_write_for(std::time::Duration::from_secs(5)) {
             Some(mut lock) => *lock = data.clone(),
             None => {
                 return Err(StatsigErr::LockFailure(
@@ -36,7 +36,7 @@ impl StatsigBootstrapSpecsAdapter {
     }
 
     fn push_update(&self) -> Result<(), StatsigErr> {
-        let data = match self.data.try_read_for(std::time::Duration::from_secs(1)) {
+        let data = match self.data.try_read_for(std::time::Duration::from_secs(5)) {
             Some(lock) => lock.clone(),
             None => {
                 return Err(StatsigErr::LockFailure(
@@ -47,7 +47,7 @@ impl StatsigBootstrapSpecsAdapter {
 
         match &self
             .listener
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
         {
             Some(lock) => match lock.as_ref() {
                 Some(listener) => listener.did_receive_specs_update(SpecsUpdate {
@@ -77,7 +77,7 @@ impl SpecsAdapter for StatsigBootstrapSpecsAdapter {
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
         match self
             .listener
-            .try_write_for(std::time::Duration::from_secs(1))
+            .try_write_for(std::time::Duration::from_secs(5))
         {
             Some(mut lock) => *lock = Some(listener),
             None => {

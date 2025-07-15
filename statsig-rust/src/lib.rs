@@ -37,7 +37,6 @@ pub mod evaluation;
 pub mod event_logging;
 pub mod global_configs;
 pub mod hashing;
-pub mod hashset_with_ttl;
 pub mod instance_registry;
 pub mod networking;
 pub mod output_logger;

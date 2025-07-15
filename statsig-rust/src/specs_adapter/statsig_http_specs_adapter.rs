@@ -185,7 +185,7 @@ impl StatsigHttpSpecsAdapter {
     pub async fn run_background_sync(self: Arc<Self>) {
         let specs_info = match self
             .listener
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
         {
             Some(lock) => match lock.as_ref() {
                 Some(listener) => listener.get_current_specs_info(),
@@ -211,7 +211,7 @@ impl StatsigHttpSpecsAdapter {
     async fn manually_sync_specs(&self, current_specs_info: SpecsInfo) -> Result<(), StatsigErr> {
         if let Some(lock) = self
             .listener
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
         {
             if lock.is_none() {
                 return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()));
@@ -261,7 +261,7 @@ impl StatsigHttpSpecsAdapter {
 
         let result = match self
             .listener
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
         {
             Some(lock) => match lock.as_ref() {
                 Some(listener) => listener.did_receive_specs_update(update),
@@ -297,7 +297,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
     ) -> Result<(), StatsigErr> {
         let specs_info = match self
             .listener
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
         {
             Some(lock) => match lock.as_ref() {
                 Some(listener) => listener.get_current_specs_info(),
@@ -311,7 +311,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
         match self
             .listener
-            .try_write_for(std::time::Duration::from_secs(1))
+            .try_write_for(std::time::Duration::from_secs(5))
         {
             Some(mut lock) => *lock = Some(listener),
             None => {

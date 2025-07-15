@@ -58,7 +58,7 @@ impl StatsigDataStoreSpecsAdapter {
                     let update = self.data_adapter.get(&self.cache_key).await;
                     match update {
                         Ok(update) => {
-                        match self.listener.try_read_for(std::time::Duration::from_secs(1)) {
+                        match self.listener.try_read_for(std::time::Duration::from_secs(5)) {
                             Some(maybe_listener) => {
                                 match maybe_listener.as_ref() {
                                     Some(listener) => {
@@ -105,7 +105,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         match update.result {
             Some(data) => match &self
                 .listener
-                .try_read_for(std::time::Duration::from_secs(1))
+                .try_read_for(std::time::Duration::from_secs(5))
             {
                 Some(read_lock) => match read_lock.as_ref() {
                     Some(listener) => {
@@ -128,7 +128,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
         match self
             .listener
-            .try_write_for(std::time::Duration::from_secs(1))
+            .try_write_for(std::time::Duration::from_secs(5))
         {
             Some(mut lock) => *lock = Some(listener),
             None => {

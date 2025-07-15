@@ -41,7 +41,7 @@ impl InstanceRegistry {
     }
 
     pub fn get<T: Send + Sync + 'static>(id: &u64) -> Option<Arc<T>> {
-        let registry = match REGISTRY.try_read_for(Duration::from_secs(1)) {
+        let registry = match REGISTRY.try_read_for(Duration::from_secs(5)) {
             Some(guard) => guard,
             None => {
                 log_e!(TAG, "Failed to acquire read lock: Failed to lock REGISTRY");
@@ -65,7 +65,7 @@ impl InstanceRegistry {
     }
 
     pub fn get_raw(id: &u64) -> Option<Arc<dyn Any + Send + Sync>> {
-        let registry = match REGISTRY.try_read_for(Duration::from_secs(1)) {
+        let registry = match REGISTRY.try_read_for(Duration::from_secs(5)) {
             Some(guard) => guard,
             None => {
                 log_e!(TAG, "Failed to acquire read lock: Failed to lock REGISTRY");
@@ -93,7 +93,7 @@ impl InstanceRegistry {
     }
 
     fn get_write_lock() -> Option<RwLockWriteGuard<'static, AHashMap<u64, AnyInstance>>> {
-        match REGISTRY.try_write_for(Duration::from_secs(1)) {
+        match REGISTRY.try_write_for(Duration::from_secs(5)) {
             Some(registry) => Some(registry),
             None => {
                 log_e!(TAG, "Failed to acquire write lock: Failed to lock REGISTRY");

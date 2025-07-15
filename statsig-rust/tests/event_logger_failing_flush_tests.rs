@@ -10,7 +10,7 @@ use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
 use std::{sync::Arc, time::Duration};
 
 fn get_dropped_count(provider: &Arc<MockLogProvider>) -> i64 {
-    let logs = provider.logs.try_lock_for(Duration::from_secs(1)).unwrap();
+    let logs = provider.logs.try_lock_for(Duration::from_secs(5)).unwrap();
     let found = logs.iter().rev().filter(|log| {
         if let RecordedLog::Warn(_, msg) = log {
             return msg.contains("Dropped");

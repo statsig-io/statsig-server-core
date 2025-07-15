@@ -79,7 +79,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        match self.task_handle_id.try_lock_for(Duration::from_secs(1)) {
+        match self.task_handle_id.try_lock_for(Duration::from_secs(5)) {
             Some(lock) => {
                 if lock.is_some() {
                     return Ok(());
@@ -98,7 +98,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
             .spawn_grpc_streaming_thread(statsig_runtime, self.ops_stats.clone())
             .await?;
 
-        match self.task_handle_id.try_lock_for(Duration::from_secs(1)) {
+        match self.task_handle_id.try_lock_for(Duration::from_secs(5)) {
             Some(mut lock) => {
                 *lock = Some(task_id);
             }
@@ -114,7 +114,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
         self.http_specs_adapter.initialize(listener.clone());
         match self
             .listener
-            .try_write_for(std::time::Duration::from_secs(1))
+            .try_write_for(std::time::Duration::from_secs(5))
         {
             Some(mut lock) => *lock = Some(listener),
             None => {
@@ -134,7 +134,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
     ) -> Result<(), StatsigErr> {
         self.shutdown_notify.notify_one();
 
-        let opt_handle_id = match self.task_handle_id.try_lock_for(Duration::from_secs(1)) {
+        let opt_handle_id = match self.task_handle_id.try_lock_for(Duration::from_secs(5)) {
             Some(mut lock) => lock.take(),
             None => {
                 log_w!(TAG, "Failed to lock task_handle_id");
@@ -353,7 +353,7 @@ impl StatsigGrpcSpecsAdapter {
     }
 
     fn set_task_handle_id(&self, handle_id: tokio::task::Id) -> Result<(), StatsigErr> {
-        match self.task_handle_id.try_lock_for(Duration::from_secs(1)) {
+        match self.task_handle_id.try_lock_for(Duration::from_secs(5)) {
             Some(mut lock) => {
                 *lock = Some(handle_id);
                 Ok(())
@@ -370,7 +370,7 @@ impl StatsigGrpcSpecsAdapter {
     fn send_spec_update_to_listener(&self, data: String) -> Result<(), StatsigErr> {
         let listener = self
             .listener
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
             .ok_or_else(|| {
                 StatsigErr::LockFailure("Failed to acquire read lock on listener".to_string())
             })?;
@@ -392,7 +392,7 @@ impl StatsigGrpcSpecsAdapter {
     fn get_current_specs_info(&self) -> Option<SpecsInfo> {
         match self
             .listener
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
         {
             Some(lock) => match lock.as_ref() {
                 Some(listener) => Some(listener.get_current_specs_info()),

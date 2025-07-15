@@ -91,7 +91,7 @@ impl EventQueue {
     pub fn contains_at_least_one_full_batch(&self) -> bool {
         let pending_events_count = self
             .pending_events
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
             .map(|e| e.len())
             .unwrap_or(0);
         if pending_events_count >= self.batch_size {
@@ -221,7 +221,7 @@ mod tests {
         assert_eq!(
             queue
                 .pending_events
-                .try_read_for(std::time::Duration::from_secs(1))
+                .try_read_for(std::time::Duration::from_secs(5))
                 .unwrap()
                 .len(),
             1
@@ -254,7 +254,7 @@ mod tests {
         assert_eq!(
             queue
                 .pending_events
-                .try_read_for(std::time::Duration::from_secs(1))
+                .try_read_for(std::time::Duration::from_secs(5))
                 .unwrap()
                 .len(),
             4567
@@ -314,7 +314,7 @@ mod tests {
         assert_eq!(
             queue
                 .batches
-                .try_read_for(std::time::Duration::from_secs(1))
+                .try_read_for(std::time::Duration::from_secs(5))
                 .unwrap()
                 .len(),
             (max_pending_batches - 1) as usize

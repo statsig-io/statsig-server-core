@@ -89,7 +89,7 @@ impl StatsigLocalFileSpecsAdapter {
 
         match &self
             .listener
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
         {
             Some(lock) => match lock.as_ref() {
                 Some(listener) => listener.did_receive_specs_update(SpecsUpdate {
@@ -152,7 +152,7 @@ impl SpecsAdapter for StatsigLocalFileSpecsAdapter {
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
         match self
             .listener
-            .try_write_for(std::time::Duration::from_secs(1))
+            .try_write_for(std::time::Duration::from_secs(5))
         {
             Some(mut lock) => *lock = Some(listener),
             None => {

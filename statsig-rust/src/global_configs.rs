@@ -27,7 +27,7 @@ pub struct GlobalConfigs {
 
 impl GlobalConfigs {
     pub fn get_instance(sdk_key: &str) -> Arc<GlobalConfigs> {
-        match GLOBAL_CONFIG_INSTANCES.try_read_for(Duration::from_secs(1)) {
+        match GLOBAL_CONFIG_INSTANCES.try_read_for(Duration::from_secs(5)) {
             Some(read_guard) => {
                 if let Some(instance) = read_guard.get(sdk_key) {
                     if let Some(instance) = instance.upgrade() {
@@ -55,7 +55,7 @@ impl GlobalConfigs {
             }),
         });
 
-        match GLOBAL_CONFIG_INSTANCES.try_write_for(Duration::from_secs(1)) {
+        match GLOBAL_CONFIG_INSTANCES.try_write_for(Duration::from_secs(5)) {
             Some(mut write_guard) => {
                 write_guard.insert(sdk_key.into(), Arc::downgrade(&instance));
             }
@@ -71,7 +71,7 @@ impl GlobalConfigs {
     }
 
     pub fn set_sdk_configs(&self, new_configs: HashMap<String, DynamicValue>) {
-        match self.configs.try_write_for(Duration::from_secs(1)) {
+        match self.configs.try_write_for(Duration::from_secs(5)) {
             Some(mut configs_guard) => {
                 for (key, value) in new_configs {
                     configs_guard.sdk_configs.insert(key, value);
@@ -84,7 +84,7 @@ impl GlobalConfigs {
     }
 
     pub fn set_diagnostics_sampling_rates(&self, new_sampling_rate: HashMap<String, f64>) {
-        match self.configs.try_write_for(Duration::from_secs(1)) {
+        match self.configs.try_write_for(Duration::from_secs(5)) {
             Some(mut configs_guard) => {
                 for (key, rate) in new_sampling_rate {
                     let clamped_rate = rate.clamp(0.0, MAX_SAMPLING_RATE);
@@ -104,7 +104,7 @@ impl GlobalConfigs {
         key: &str,
         f: impl FnOnce(Option<&DynamicValue>) -> T,
     ) -> T {
-        match self.configs.try_read_for(Duration::from_secs(1)) {
+        match self.configs.try_read_for(Duration::from_secs(5)) {
             Some(configs_guard) => f(configs_guard.sdk_configs.get(key)),
             None => {
                 log_e!(TAG, "Failed to get read guard: Failed to lock configs");
@@ -118,7 +118,7 @@ impl GlobalConfigs {
         key: &str,
         f: impl FnOnce(Option<&f64>) -> T,
     ) -> T {
-        match self.configs.try_read_for(Duration::from_secs(1)) {
+        match self.configs.try_read_for(Duration::from_secs(5)) {
             Some(configs_guard) => f(configs_guard.diagnostics_sampling_rates.get(key)),
             None => {
                 log_e!(TAG, "Failed to get read guard: Failed to lock configs");

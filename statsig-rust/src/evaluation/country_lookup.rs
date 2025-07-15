@@ -34,7 +34,7 @@ impl UsizeExt for usize {
 
 impl CountryLookup {
     pub fn load_country_lookup() {
-        match COUNTRY_LOOKUP_DATA.try_read_for(std::time::Duration::from_secs(1)) {
+        match COUNTRY_LOOKUP_DATA.try_read_for(std::time::Duration::from_secs(5)) {
             Some(lock) => {
                 if lock.is_some() {
                     log_d!(TAG, "Country Lookup already loaded");
@@ -100,7 +100,7 @@ impl CountryLookup {
             ip_ranges,
         };
 
-        match COUNTRY_LOOKUP_DATA.try_write_for(std::time::Duration::from_secs(1)) {
+        match COUNTRY_LOOKUP_DATA.try_write_for(std::time::Duration::from_secs(5)) {
             Some(mut lock) => {
                 *lock = Some(country_lookup);
                 log_d!(TAG, " Successfully Loaded");
@@ -146,7 +146,7 @@ impl CountryLookup {
         }
 
         let lock = unwrap_or_return_with!(
-            COUNTRY_LOOKUP_DATA.try_read_for(std::time::Duration::from_secs(1)),
+            COUNTRY_LOOKUP_DATA.try_read_for(std::time::Duration::from_secs(5)),
             || {
                 evaluator_context.result.override_reason = Some(UNINITIALIZED_REASON);
                 log_e!(TAG, "Failed to acquire read lock on country lookup");

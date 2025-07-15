@@ -57,7 +57,7 @@ impl Diagnostics {
     }
 
     pub fn set_context(&self, context: &ContextType) {
-        match self.context.try_lock_for(Duration::from_secs(1)) {
+        match self.context.try_lock_for(Duration::from_secs(5)) {
             Some(mut ctx) => {
                 *ctx = *context;
             }
@@ -68,7 +68,7 @@ impl Diagnostics {
     }
 
     pub fn get_markers(&self, context_type: &ContextType) -> Option<Vec<Marker>> {
-        match self.marker_map.try_lock_for(Duration::from_secs(1)) {
+        match self.marker_map.try_lock_for(Duration::from_secs(5)) {
             Some(map) => {
                 if let Some(markers) = map.get(context_type) {
                     return Some(markers.clone());
@@ -85,7 +85,7 @@ impl Diagnostics {
     pub fn add_marker(&self, context_type: Option<&ContextType>, marker: Marker) {
         let context_type = self.get_context(context_type);
 
-        match self.marker_map.try_lock_for(Duration::from_secs(1)) {
+        match self.marker_map.try_lock_for(Duration::from_secs(5)) {
             Some(mut map) => {
                 let entry = map.entry(context_type).or_insert_with(Vec::new);
                 if entry.len() < MAX_MARKER_COUNT {
@@ -99,7 +99,7 @@ impl Diagnostics {
     }
 
     pub fn clear_markers(&self, context_type: &ContextType) {
-        match self.marker_map.try_lock_for(Duration::from_secs(1)) {
+        match self.marker_map.try_lock_for(Duration::from_secs(5)) {
             Some(mut map) => {
                 if let Some(markers) = map.get_mut(context_type) {
                     markers.clear();
@@ -185,7 +185,7 @@ impl Diagnostics {
     fn get_context(&self, maybe_context: Option<&ContextType>) -> ContextType {
         maybe_context
             .copied()
-            .or_else(|| match self.context.try_lock_for(Duration::from_secs(1)) {
+            .or_else(|| match self.context.try_lock_for(Duration::from_secs(5)) {
                 Some(c) => Some(*c),
                 None => {
                     log_w!(TAG, "Failed to lock context");

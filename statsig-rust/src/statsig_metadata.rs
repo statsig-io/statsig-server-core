@@ -60,7 +60,7 @@ impl StatsigMetadata {
     }
 
     pub fn update_values(sdk_type: String, os: String, arch: String, language_version: String) {
-        match STATSIG_METADATA.try_write_for(std::time::Duration::from_secs(1)) {
+        match STATSIG_METADATA.try_write_for(std::time::Duration::from_secs(5)) {
             Some(mut metadata) => {
                 metadata.sdk_type = sdk_type;
                 metadata.os = Some(os);
@@ -77,7 +77,7 @@ impl StatsigMetadata {
     }
 
     pub fn update_service_name(service_name: Option<String>) {
-        match STATSIG_METADATA.try_write_for(std::time::Duration::from_secs(1)) {
+        match STATSIG_METADATA.try_write_for(std::time::Duration::from_secs(5)) {
             Some(mut metadata) => {
                 metadata.service_name = service_name;
             }
@@ -104,7 +104,7 @@ impl StatsigMetadata {
 
     #[must_use]
     pub fn get_metadata() -> StatsigMetadata {
-        match STATSIG_METADATA.try_read_for(std::time::Duration::from_secs(1)) {
+        match STATSIG_METADATA.try_read_for(std::time::Duration::from_secs(5)) {
             Some(metadata) => metadata.clone(),
             None => {
                 log_e!(

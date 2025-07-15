@@ -46,7 +46,7 @@ impl StatsigRuntime {
         let global = StatsigGlobal::get();
         let rt = global
             .tokio_runtime
-            .try_lock_for(Duration::from_secs(1))
+            .try_lock_for(Duration::from_secs(5))
             .ok_or_else(|| StatsigErr::LockFailure("Failed to lock tokio runtime".to_string()))?;
 
         if let Some(rt) = rt.as_ref() {
@@ -59,7 +59,7 @@ impl StatsigRuntime {
     }
 
     pub fn get_num_active_tasks(&self) -> usize {
-        match self.spawned_tasks.try_lock_for(Duration::from_secs(1)) {
+        match self.spawned_tasks.try_lock_for(Duration::from_secs(5)) {
             Some(lock) => lock.len(),
             None => {
                 log_e!(TAG, "Failed to lock spawned tasks for get_num_active_tasks");
@@ -71,7 +71,7 @@ impl StatsigRuntime {
     pub fn shutdown(&self) {
         self.shutdown_notify.notify_waiters();
 
-        match self.spawned_tasks.try_lock_for(Duration::from_secs(1)) {
+        match self.spawned_tasks.try_lock_for(Duration::from_secs(5)) {
             Some(mut lock) => {
                 for (_, task) in lock.drain() {
                     task.abort();
@@ -112,7 +112,7 @@ impl StatsigRuntime {
     pub async fn await_tasks_with_tag(&self, tag: &str) {
         let mut handles = Vec::new();
 
-        match self.spawned_tasks.try_lock_for(Duration::from_secs(1)) {
+        match self.spawned_tasks.try_lock_for(Duration::from_secs(5)) {
             Some(mut lock) => {
                 let keys: Vec<TaskId> = lock.keys().cloned().collect();
                 for key in &keys {
@@ -147,7 +147,7 @@ impl StatsigRuntime {
             tokio_id: *handle_id,
         };
 
-        let handle = match self.spawned_tasks.try_lock_for(Duration::from_secs(1)) {
+        let handle = match self.spawned_tasks.try_lock_for(Duration::from_secs(5)) {
             Some(mut lock) => match lock.remove(&task_id) {
                 Some(handle) => handle,
                 None => {
@@ -178,7 +178,7 @@ impl StatsigRuntime {
             tokio_id: handle_id,
         };
 
-        match self.spawned_tasks.try_lock_for(Duration::from_secs(1)) {
+        match self.spawned_tasks.try_lock_for(Duration::from_secs(5)) {
             Some(mut lock) => {
                 lock.insert(task_id, handle);
             }
@@ -201,7 +201,7 @@ fn remove_join_handle_with_id(
         tokio_id: *handle_id,
     };
 
-    match spawned_tasks.try_lock_for(Duration::from_secs(1)) {
+    match spawned_tasks.try_lock_for(Duration::from_secs(5)) {
         Some(mut lock) => {
             lock.remove(&task_id);
         }
@@ -223,7 +223,7 @@ fn create_runtime_if_required() {
     let global = StatsigGlobal::get();
     let mut lock = global
         .tokio_runtime
-        .try_lock_for(Duration::from_secs(1))
+        .try_lock_for(Duration::from_secs(5))
         .expect("Failed to lock owned tokio runtime");
 
     match lock.as_ref() {

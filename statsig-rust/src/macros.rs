@@ -51,7 +51,7 @@ macro_rules! unwrap_or_noop {
 #[macro_export]
 macro_rules! read_lock_or_else {
     ($lock:expr, $else_block:block) => {
-        match $lock.try_read_for(std::time::Duration::from_secs(1)) {
+        match $lock.try_read_for(std::time::Duration::from_secs(5)) {
             Some(data) => data,
             None => $else_block,
         }
@@ -61,7 +61,7 @@ macro_rules! read_lock_or_else {
 #[macro_export]
 macro_rules! read_lock_or_return {
     ($tag: expr, $lock:expr, $code: expr) => {
-        match $lock.try_read_for(std::time::Duration::from_secs(1)) {
+        match $lock.try_read_for(std::time::Duration::from_secs(5)) {
             Some(data) => data,
             None => {
                 $crate::log_e!($tag, "Failed to acquire read lock");
@@ -74,7 +74,7 @@ macro_rules! read_lock_or_return {
 #[macro_export]
 macro_rules! write_lock_or_noop {
     ($tag: expr, $lock:expr) => {
-        match $lock.try_write_for(std::time::Duration::from_secs(1)) {
+        match $lock.try_write_for(std::time::Duration::from_secs(5)) {
             Some(data) => data,
             None => {
                 $crate::log_e!($tag, "Failed to acquire write lock");
@@ -87,7 +87,7 @@ macro_rules! write_lock_or_noop {
 #[macro_export]
 macro_rules! write_lock_or_return {
     ($tag: expr, $lock:expr, $code: expr) => {
-        match $lock.try_write_for(std::time::Duration::from_secs(1)) {
+        match $lock.try_write_for(std::time::Duration::from_secs(5)) {
             Some(data) => data,
             None => {
                 $crate::log_e!($tag, "Failed to acquire write lock");

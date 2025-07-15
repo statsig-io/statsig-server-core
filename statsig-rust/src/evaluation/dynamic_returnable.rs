@@ -123,7 +123,7 @@ impl Serialize for DynamicReturnable {
 
 impl Drop for DynamicReturnable {
     fn drop(&mut self) {
-        let mut memo = match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(1)) {
+        let mut memo = match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(5)) {
             Some(values) => values,
             None => {
                 log_e!(
@@ -197,7 +197,7 @@ impl MemoizedValue {
 }
 
 fn get_memoized_value(hash: &str) -> Option<Arc<MemoizedValue>> {
-    let mut memoized_values = match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(1)) {
+    let mut memoized_values = match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(5)) {
         Some(values) => values,
         None => {
             log_e!(
@@ -220,7 +220,7 @@ fn get_memoized_value(hash: &str) -> Option<Arc<MemoizedValue>> {
 }
 
 fn set_memoized_value(hash: &str, value: Weak<MemoizedValue>) {
-    match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(1)) {
+    match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(5)) {
         Some(mut values) => {
             values.insert(hash.to_string(), value);
         }

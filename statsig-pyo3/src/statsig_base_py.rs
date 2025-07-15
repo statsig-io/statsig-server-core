@@ -160,7 +160,7 @@ impl StatsigBasePy {
         let inst = self.inner.clone();
         let obs_client = match self
             .observability_client
-            .try_lock_for(Duration::from_secs(1))
+            .try_lock_for(Duration::from_secs(5))
         {
             Some(mut lock) => lock.take(),
             None => {

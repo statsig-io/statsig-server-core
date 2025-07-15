@@ -26,7 +26,7 @@ impl MockLogProvider {
 
     pub fn clear(&self) {
         self.logs
-            .try_lock_for(Duration::from_secs(1))
+            .try_lock_for(Duration::from_secs(5))
             .unwrap()
             .clear();
     }
@@ -35,42 +35,42 @@ impl MockLogProvider {
 impl OutputLogProvider for MockLogProvider {
     fn initialize(&self) {
         self.logs
-            .try_lock_for(Duration::from_secs(1))
+            .try_lock_for(Duration::from_secs(5))
             .unwrap()
             .push(RecordedLog::Init);
     }
 
     fn debug(&self, tag: &str, msg: String) {
         self.logs
-            .try_lock_for(Duration::from_secs(1))
+            .try_lock_for(Duration::from_secs(5))
             .unwrap()
             .push(RecordedLog::Debug(tag.to_string(), msg));
     }
 
     fn info(&self, tag: &str, msg: String) {
         self.logs
-            .try_lock_for(Duration::from_secs(1))
+            .try_lock_for(Duration::from_secs(5))
             .unwrap()
             .push(RecordedLog::Info(tag.to_string(), msg));
     }
 
     fn warn(&self, tag: &str, msg: String) {
         self.logs
-            .try_lock_for(Duration::from_secs(1))
+            .try_lock_for(Duration::from_secs(5))
             .unwrap()
             .push(RecordedLog::Warn(tag.to_string(), msg));
     }
 
     fn error(&self, tag: &str, msg: String) {
         self.logs
-            .try_lock_for(Duration::from_secs(1))
+            .try_lock_for(Duration::from_secs(5))
             .unwrap()
             .push(RecordedLog::Error(tag.to_string(), msg));
     }
 
     fn shutdown(&self) {
         self.logs
-            .try_lock_for(Duration::from_secs(1))
+            .try_lock_for(Duration::from_secs(5))
             .unwrap()
             .push(RecordedLog::Shutdown);
     }

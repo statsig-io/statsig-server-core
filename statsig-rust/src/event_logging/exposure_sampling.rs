@@ -149,7 +149,7 @@ impl ExposureSampling {
 
         match self
             .spec_sampling_set
-            .try_write_for(std::time::Duration::from_secs(1))
+            .try_write_for(std::time::Duration::from_secs(5))
         {
             Some(mut sampling_map) => {
                 sampling_map.insert(sampling_key);
@@ -187,7 +187,7 @@ impl ExposureSampling {
         let last_dedupe_reset = self.last_exposure_dedupe_reset.load(Ordering::Relaxed);
         let mut dedupe_map = match self
             .exposure_dedupe_set
-            .try_write_for(std::time::Duration::from_secs(1))
+            .try_write_for(std::time::Duration::from_secs(5))
         {
             Some(map) => map,
             None => {
@@ -215,7 +215,7 @@ impl ExposureSampling {
     fn sample_key_exists(&self, key: &SpecAndRuleHashTuple) -> bool {
         match self
             .spec_sampling_set
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
         {
             Some(map) => map.contains(key),
             None => false,

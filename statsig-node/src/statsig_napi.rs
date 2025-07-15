@@ -77,7 +77,7 @@ impl StatsigNapiInternal {
 
     #[napi]
     pub async fn shutdown(&self, timeout_ms: Option<u32>) -> StatsigResult {
-        let network_provider = match self.network_provider.try_lock_for(Duration::from_secs(1)) {
+        let network_provider = match self.network_provider.try_lock_for(Duration::from_secs(5)) {
             Some(mut lock) => lock.take(),
             None => {
                 log_e!(TAG, "Failed to lock network provider");
@@ -87,7 +87,7 @@ impl StatsigNapiInternal {
 
         let obs_client = match self
             .observability_client
-            .try_lock_for(Duration::from_secs(1))
+            .try_lock_for(Duration::from_secs(5))
         {
             Some(mut lock) => lock.take(),
             None => {

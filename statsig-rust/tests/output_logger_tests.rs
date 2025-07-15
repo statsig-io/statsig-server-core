@@ -28,7 +28,7 @@ fn test_custom_log_provider() {
 
     shutdown_output_logger();
 
-    let logs = provider.logs.try_lock_for(Duration::from_secs(1)).unwrap();
+    let logs = provider.logs.try_lock_for(Duration::from_secs(5)).unwrap();
     assert_eq!(logs.len(), 6);
 
     assert_eq!(logs[0], RecordedLog::Init);
@@ -69,7 +69,7 @@ fn test_log_level_filtering() {
 
     shutdown_output_logger();
 
-    let logs = provider.logs.try_lock_for(Duration::from_secs(1)).unwrap();
+    let logs = provider.logs.try_lock_for(Duration::from_secs(5)).unwrap();
     assert_eq!(logs.len(), 4); // Init + Warn + Error + Shutdown
 
     assert_eq!(logs[0], RecordedLog::Init);
@@ -98,7 +98,7 @@ fn test_message_truncation() {
     log_d!(test_tag, "{}", long_message);
 
     let logs = {
-        let mut guard = provider.logs.try_lock_for(Duration::from_secs(1)).unwrap();
+        let mut guard = provider.logs.try_lock_for(Duration::from_secs(5)).unwrap();
         std::mem::take(&mut *guard)
     };
     assert_eq!(logs.len(), 2);
@@ -127,7 +127,7 @@ fn test_secret_sanitization() {
     log_d!(test_tag, "{}", message);
 
     let logs = {
-        let mut guard = provider.logs.try_lock_for(Duration::from_secs(1)).unwrap();
+        let mut guard = provider.logs.try_lock_for(Duration::from_secs(5)).unwrap();
         std::mem::take(&mut *guard)
     };
     assert_eq!(logs.len(), 2); // Init + Debug

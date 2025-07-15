@@ -44,7 +44,7 @@ impl StatsigGrpcClient {
     }
 
     pub fn reset_client(&self) {
-        match self.grpc_client.try_lock_for(Duration::from_secs(1)) {
+        match self.grpc_client.try_lock_for(Duration::from_secs(5)) {
             Some(mut lock) => {
                 *lock = None;
             }
@@ -157,7 +157,7 @@ impl StatsigGrpcClient {
         {
             let lock = self
                 .grpc_client
-                .try_lock_for(Duration::from_secs(1))
+                .try_lock_for(Duration::from_secs(5))
                 .ok_or(StatsigGrpcErr::FailedToGetLock)?;
 
             if let Some(client) = lock.as_ref() {
@@ -186,7 +186,7 @@ impl StatsigGrpcClient {
 
         let mut lock = self
             .grpc_client
-            .try_lock_for(Duration::from_secs(1))
+            .try_lock_for(Duration::from_secs(5))
             .ok_or(StatsigGrpcErr::FailedToGetLock)?;
 
         *lock = Some(new_client.clone());

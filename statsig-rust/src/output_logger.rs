@@ -99,7 +99,7 @@ pub fn initialize_output_logger(
         return;
     }
 
-    let mut state = match LOGGER_STATE.try_write_for(Duration::from_secs(1)) {
+    let mut state = match LOGGER_STATE.try_write_for(Duration::from_secs(5)) {
         Some(state) => state,
         None => {
             eprintln!(
@@ -135,7 +135,7 @@ pub fn initialize_output_logger(
 }
 
 pub fn shutdown_output_logger() {
-    let mut state = match LOGGER_STATE.try_write_for(Duration::from_secs(1)) {
+    let mut state = match LOGGER_STATE.try_write_for(Duration::from_secs(5)) {
         Some(state) => state,
         None => {
             eprintln!(
@@ -166,7 +166,7 @@ pub fn log_message(tag: &str, level: LogLevel, msg: String) {
 
     let sanitized_msg = sanitize(&truncated_msg);
 
-    if let Some(state) = LOGGER_STATE.try_read_for(Duration::from_secs(1)) {
+    if let Some(state) = LOGGER_STATE.try_read_for(Duration::from_secs(5)) {
         if let Some(provider) = &state.provider {
             match level {
                 LogLevel::Debug => provider.debug(tag, sanitized_msg),
@@ -217,7 +217,7 @@ fn sanitize(input: &str) -> String {
 }
 
 pub fn has_valid_log_level(level: &LogLevel) -> bool {
-    let state = match LOGGER_STATE.try_read_for(Duration::from_secs(1)) {
+    let state = match LOGGER_STATE.try_read_for(Duration::from_secs(5)) {
         Some(state) => state,
         None => {
             eprintln!(

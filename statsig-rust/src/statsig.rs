@@ -307,7 +307,7 @@ impl Statsig {
         };
         self.log_init_details(&init_details);
         if let Ok(details) = &init_details {
-            match self.initialize_details.try_lock_for(Duration::from_secs(1)) {
+            match self.initialize_details.try_lock_for(Duration::from_secs(5)) {
                 Some(mut curr_init_details) => {
                     *curr_init_details = details.clone();
                 }
@@ -320,7 +320,7 @@ impl Statsig {
     }
 
     pub fn get_initialize_details(&self) -> InitializeDetails {
-        match self.initialize_details.try_lock_for(Duration::from_secs(1)) {
+        match self.initialize_details.try_lock_for(Duration::from_secs(5)) {
             Some(details) => details.clone(),
             None => InitializeDetails::from_error(
                 "Failed to lock initialize_details",
@@ -332,7 +332,7 @@ impl Statsig {
     }
 
     pub fn is_initialized(&self) -> bool {
-        match self.initialize_details.try_lock_for(Duration::from_secs(1)) {
+        match self.initialize_details.try_lock_for(Duration::from_secs(5)) {
             Some(details) => details.init_success,
             None => false,
         }
@@ -1064,7 +1064,7 @@ impl Statsig {
 
 impl Statsig {
     pub fn shared() -> Arc<Statsig> {
-        let lock = match SHARED_INSTANCE.try_lock_for(Duration::from_secs(1)) {
+        let lock = match SHARED_INSTANCE.try_lock_for(Duration::from_secs(5)) {
             Some(lock) => lock,
             None => {
                 log_e!(
@@ -1091,7 +1091,7 @@ impl Statsig {
         sdk_key: &str,
         options: Option<Arc<StatsigOptions>>,
     ) -> Result<Arc<Statsig>, StatsigErr> {
-        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(1)) {
+        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(5)) {
             Some(mut lock) => {
                 if lock.is_some() {
                     let message = "Statsig shared instance already exists. Call Statsig::remove_shared() before creating a new instance.";
@@ -1112,7 +1112,7 @@ impl Statsig {
     }
 
     pub fn remove_shared() {
-        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(1)) {
+        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(5)) {
             Some(mut lock) => {
                 *lock = None;
             }
@@ -1126,7 +1126,7 @@ impl Statsig {
     }
 
     pub fn has_shared_instance() -> bool {
-        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(1)) {
+        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(5)) {
             Some(lock) => lock.is_some(),
             None => false,
         }
@@ -1725,7 +1725,7 @@ impl Statsig {
 
         if let Some(fallback_env) = self
             .fallback_environment
-            .try_lock_for(Duration::from_secs(1))
+            .try_lock_for(Duration::from_secs(5))
         {
             if let Some(env) = &*fallback_env {
                 return env.get(key).cloned();
@@ -1760,7 +1760,7 @@ impl Statsig {
 
         if let Some(fallback_env) = self
             .fallback_environment
-            .try_lock_for(Duration::from_secs(1))
+            .try_lock_for(Duration::from_secs(5))
         {
             if let Some(env) = &*fallback_env {
                 return f(Some(env));
@@ -1937,7 +1937,7 @@ impl Statsig {
 
             match self
                 .fallback_environment
-                .try_lock_for(Duration::from_secs(1))
+                .try_lock_for(Duration::from_secs(5))
             {
                 Some(mut fallback_env) => {
                     *fallback_env = Some(env_map);

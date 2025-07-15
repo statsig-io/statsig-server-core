@@ -38,7 +38,7 @@ impl OpsStats {
     pub fn get_for_instance(&self, sdk_key: &str) -> Arc<OpsStatsForInstance> {
         match self
             .instances_map
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
         {
             Some(read_guard) => {
                 if let Some(instance) = read_guard.get(sdk_key) {
@@ -58,7 +58,7 @@ impl OpsStats {
         let instance = Arc::new(OpsStatsForInstance::new());
         match self
             .instances_map
-            .try_write_for(std::time::Duration::from_secs(1))
+            .try_write_for(std::time::Duration::from_secs(5))
         {
             Some(mut write_guard) => {
                 write_guard.insert(sdk_key.into(), Arc::downgrade(&instance));

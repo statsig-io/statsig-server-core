@@ -207,7 +207,7 @@ impl StatsigHttpIdListsAdapter {
     fn set_listener(&self, listener: Arc<dyn IdListsUpdateListener>) {
         match self
             .listener
-            .try_write_for(std::time::Duration::from_secs(1))
+            .try_write_for(std::time::Duration::from_secs(5))
         {
             Some(mut lock) => *lock = Some(listener),
             None => {
@@ -223,7 +223,7 @@ impl StatsigHttpIdListsAdapter {
     fn get_current_id_list_metadata(&self) -> Result<HashMap<String, IdListMetadata>, StatsigErr> {
         let lock = match self
             .listener
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
         {
             Some(lock) => lock,
             None => {
@@ -305,7 +305,7 @@ impl StatsigHttpIdListsAdapter {
 
         let result = match self
             .listener
-            .try_read_for(std::time::Duration::from_secs(1))
+            .try_read_for(std::time::Duration::from_secs(5))
         {
             Some(lock) => match lock.as_ref() {
                 Some(listener) => {
@@ -421,7 +421,7 @@ mod tests {
         fn does_list_contain_id(&self, list_name: &str, id: &str) -> bool {
             let id_lists = self
                 .id_lists
-                .try_read_for(std::time::Duration::from_secs(1))
+                .try_read_for(std::time::Duration::from_secs(5))
                 .unwrap();
             if let Some(list) = id_lists.get(list_name) {
                 list.ids.contains(id)
@@ -454,7 +454,7 @@ mod tests {
     impl IdListsUpdateListener for TestIdListsUpdateListener {
         fn get_current_id_list_metadata(&self) -> HashMap<String, IdListMetadata> {
             self.id_lists
-                .try_read_for(std::time::Duration::from_secs(1))
+                .try_read_for(std::time::Duration::from_secs(5))
                 .unwrap()
                 .iter()
                 .map(|(key, list)| (key.clone(), list.metadata.clone()))
@@ -464,7 +464,7 @@ mod tests {
         fn did_receive_id_list_updates(&self, updates: HashMap<String, IdListUpdate>) {
             let mut id_lists = self
                 .id_lists
-                .try_write_for(std::time::Duration::from_secs(1))
+                .try_write_for(std::time::Duration::from_secs(5))
                 .unwrap();
 
             // delete any id_lists that are not in the changesets
