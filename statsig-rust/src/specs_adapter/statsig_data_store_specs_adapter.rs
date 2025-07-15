@@ -1,7 +1,3 @@
-use std::sync::RwLock;
-use std::{sync::Arc, time::Duration};
-use tokio::time::{self, sleep};
-
 use super::statsig_http_specs_adapter::DEFAULT_SYNC_INTERVAL_MS;
 use super::{SpecsSource, SpecsUpdate};
 use crate::data_store_interface::{
@@ -12,7 +8,10 @@ use crate::{log_d, log_e, log_w, SpecsAdapter, SpecsUpdateListener};
 use crate::{StatsigErr, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
 use chrono::Utc;
+use parking_lot::RwLock;
+use std::{sync::Arc, time::Duration};
 use tokio::sync::Notify;
+use tokio::time::{self, sleep};
 
 const TAG: &str = stringify!(StatsigDataStoreSpecAdapter);
 
@@ -59,23 +58,23 @@ impl StatsigDataStoreSpecsAdapter {
                     let update = self.data_adapter.get(&self.cache_key).await;
                     match update {
                         Ok(update) => {
-                        match self.listener.read() {
-                            Ok(maybe_listener) => {
-                            match maybe_listener.as_ref() {
-                                Some(listener) => {
-                                    match listener.did_receive_specs_update(SpecsUpdate {
-                                        data: update.result.unwrap_or_default().into_bytes(),
-                                        source: SpecsSource::Adapter("DataStore".to_string()),
-                                        received_at: Utc::now().timestamp_millis() as u64,
-                                        source_api: None,
-                                }) {
-                                    Ok(()) => {},
-                                    Err(_) => log_w!(TAG, "DataStoreAdapter - Failed to capture"),
-                                }},
-                                _ => log_w!(TAG, "DataAdapterSpecAdatper - Failed to capture"),
+                        match self.listener.try_read_for(std::time::Duration::from_secs(1)) {
+                            Some(maybe_listener) => {
+                                match maybe_listener.as_ref() {
+                                    Some(listener) => {
+                                        match listener.did_receive_specs_update(SpecsUpdate {
+                                            data: update.result.unwrap_or_default().into_bytes(),
+                                            source: SpecsSource::Adapter("DataStore".to_string()),
+                                            received_at: Utc::now().timestamp_millis() as u64,
+                                            source_api: None,
+                                    }) {
+                                        Ok(()) => {},
+                                        Err(_) => log_w!(TAG, "DataStoreAdapter - Failed to capture"),
+                                    }},
+                                    _ => log_w!(TAG, "DataAdapterSpecAdatper - Failed to capture"),
+                                }
                             }
-                            },
-                            _ => log_w!(TAG, "DataAdapterSpecAdatper - Failed to capture"),
+                            None => log_w!(TAG, "DataAdapterSpecAdatper - Failed to capture"),
                             }
                         },
                         Err(_) => log_w!(TAG, "DataAdapterSpecAdatper - Failed to capture"),
@@ -104,8 +103,11 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
 
         let update = self.data_adapter.get(&self.cache_key).await?;
         match update.result {
-            Some(data) => match &self.listener.read() {
-                Ok(read_lock) => match read_lock.as_ref() {
+            Some(data) => match &self
+                .listener
+                .try_read_for(std::time::Duration::from_secs(1))
+            {
+                Some(read_lock) => match read_lock.as_ref() {
                     Some(listener) => {
                         listener.did_receive_specs_update(SpecsUpdate {
                             data: data.into_bytes(),
@@ -117,17 +119,20 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
                     }
                     None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
                 },
-                Err(_) => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
+                None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
             None => Err(StatsigErr::DataStoreFailure("Empty result".to_string())),
         }
     }
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
-        match self.listener.write() {
-            Ok(mut lock) => *lock = Some(listener),
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire write lock on listener: {}", e);
+        match self
+            .listener
+            .try_write_for(std::time::Duration::from_secs(1))
+        {
+            Some(mut lock) => *lock = Some(listener),
+            None => {
+                log_e!(TAG, "Failed to acquire write lock on listener");
             }
         }
     }

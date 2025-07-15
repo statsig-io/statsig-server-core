@@ -28,11 +28,16 @@ def test_cycling(httpserver: HTTPServer):
         options.log_event_url = inner_mock_scrapi.url_for_endpoint("/v1/log_event")
         options.output_log_level = "none"
 
+        print("running statsig")
         statsig = Statsig("secret-key", options)
-        statsig.initialize().wait()
+
+        print("initializing statsig")
+        statsig.initialize().wait(timeout=1)
+        print("initialized statsig")
         for i in range(1111):
             statsig.check_gate(StatsigUser("user-{}".format(i)), "test_public")
-        statsig.shutdown().wait()
+        print("shutting down statsig")
+        statsig.shutdown().wait(timeout=1)
 
     threads = []
 
@@ -42,7 +47,7 @@ def test_cycling(httpserver: HTTPServer):
         t.start()
 
     for t in threads:
-        t.join()
+        t.join(timeout=1)
 
     events = mock_scrapi.get_logged_events()
     assert len(events) == 3333
@@ -73,8 +78,8 @@ def test_bg_tasks_shutdown(httpserver: HTTPServer):
     options.id_lists_sync_interval_ms = 1
 
     statsig = Statsig("secret-key", options)
-    statsig.initialize().wait()
-    statsig.shutdown().wait()
+    statsig.initialize().wait(timeout=1)
+    statsig.shutdown().wait(timeout=1)
 
     wait_ms(100)
     mock_scrapi.reset()

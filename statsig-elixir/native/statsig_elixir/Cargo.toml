@@ -9,6 +9,7 @@ name = "statsig_elixir"
 crate-type = ["cdylib"]
 
 [dependencies]
+parking_lot = "0.12.1"
 rustler = "0.36.1"
 statsig-rust = { path = "../../../statsig-rust", features = [
     "with_grpc",

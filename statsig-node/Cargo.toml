@@ -13,6 +13,7 @@ repository.workspace = true
 crate-type = ["cdylib"]
 
 [dependencies]
+parking_lot = "0.12.1"
 statsig-rust = { path = "../statsig-rust", default-features = false, features = [
     "with_grpc",
     "with_zstd",

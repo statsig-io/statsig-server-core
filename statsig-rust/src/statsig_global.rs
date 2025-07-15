@@ -1,6 +1,10 @@
+use crate::log_d;
 use arc_swap::ArcSwap;
-use std::sync::{Arc, Mutex, OnceLock};
+use parking_lot::Mutex;
+use std::sync::{Arc, OnceLock};
 use tokio::runtime::Runtime;
+
+const TAG: &str = "StatsigGlobal";
 
 static ONCE: OnceLock<ArcSwap<StatsigGlobal>> = OnceLock::new();
 
@@ -21,7 +25,7 @@ impl StatsigGlobal {
     }
 
     pub fn reset() {
-        println!("Resetting StatsigGlobal");
+        log_d!(TAG, "Resetting StatsigGlobal");
         let mut did_init = false;
 
         let ptr = ONCE.get_or_init(|| {

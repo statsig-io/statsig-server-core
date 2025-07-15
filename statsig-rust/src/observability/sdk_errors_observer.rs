@@ -6,7 +6,7 @@ use serde_json::Value;
 use tokio::sync::RwLock;
 
 use crate::{
-    log_d,
+    log_d, log_e,
     networking::{NetworkClient, RequestArgs},
     statsig_metadata::StatsigMetadata,
     OpsStatsEventObserver, StatsigOptions,
@@ -71,7 +71,20 @@ impl SDKErrorsObserver {
             .dedupe_key
             .clone()
             .unwrap_or(format!("{}:{}", eb_event.tag, eb_event.exception));
-        let mut write_guard = self.errors_aggregator.write().await;
+
+        let write_guard_result = tokio::time::timeout(
+            std::time::Duration::from_secs(1),
+            self.errors_aggregator.write(),
+        )
+        .await;
+
+        let mut write_guard = match write_guard_result {
+            Ok(guard) => guard,
+            Err(_) => {
+                log_e!(TAG, "Failed to acquire write lock on errors_aggregator");
+                return;
+            }
+        };
 
         if write_guard.len() >= MAX_SEEN_ERRORS {
             write_guard.clear();

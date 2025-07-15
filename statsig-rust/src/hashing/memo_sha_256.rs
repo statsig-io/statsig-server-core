@@ -2,10 +2,11 @@ use crate::log_e;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use core::mem::size_of;
+use parking_lot::Mutex;
 use sha2::digest::Output;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::time::Duration;
 
 const MAX_CACHE_ENTRIES: usize = 10000;
 
@@ -30,10 +31,13 @@ impl MemoSha256 {
     }
 
     pub fn compute_hash(&self, input: &String) -> Option<usize> {
-        let mut state = match self.inner.lock() {
-            Ok(state) => state,
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire lock for Sha256: {}", e);
+        let mut state = match self.inner.try_lock_for(Duration::from_secs(1)) {
+            Some(state) => state,
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to acquire lock for Sha256: Failed to lock inner"
+                );
                 return None;
             }
         };
@@ -59,10 +63,13 @@ impl MemoSha256 {
     }
 
     pub fn hash_string(&self, input: &str) -> String {
-        let mut state = match self.inner.lock() {
-            Ok(state) => state,
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire lock for Sha256: {:?}", e);
+        let mut state = match self.inner.try_lock_for(Duration::from_secs(1)) {
+            Some(state) => state,
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to acquire lock for Sha256: Failed to lock inner"
+                );
                 return "STATSIG_HASH_ERROR".to_string();
             }
         };

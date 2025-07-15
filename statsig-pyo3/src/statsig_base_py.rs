@@ -13,6 +13,7 @@ use crate::{
     },
     statsig_user_py::StatsigUserPy,
 };
+use parking_lot::Mutex;
 use pyo3::types::PyTuple;
 use pyo3::{prelude::*, types::PyDict};
 use pyo3_stub_gen::derive::*;
@@ -23,7 +24,9 @@ use statsig_rust::{
     UserPersistedValues,
 };
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::time::Duration;
+
 const TAG: &str = stringify!(StatsigBasePy);
 
 #[gen_stub_pyclass]
@@ -155,9 +158,15 @@ impl StatsigBasePy {
         let (completion_event, event_clone) = get_completion_event(py)?;
 
         let inst = self.inner.clone();
-        let obs_client = match self.observability_client.lock() {
-            Ok(mut lock) => lock.take(),
-            _ => None,
+        let obs_client = match self
+            .observability_client
+            .try_lock_for(Duration::from_secs(1))
+        {
+            Some(mut lock) => lock.take(),
+            None => {
+                log_e!(TAG, "Failed to lock observability client");
+                None
+            }
         };
 
         let spawn_result = self.inner.statsig_runtime.spawn(TAG, |_| async move {

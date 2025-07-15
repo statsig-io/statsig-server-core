@@ -10,8 +10,9 @@ use crate::{
     log_d, log_error_to_statsig_and_console, log_w, StatsigErr, StatsigOptions, StatsigRuntime,
 };
 use async_trait::async_trait;
+use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock, Weak};
+use std::sync::{Arc, Weak};
 use std::time::Duration;
 use tokio::sync::Notify;
 use tokio::time::sleep;
@@ -204,25 +205,32 @@ impl StatsigHttpIdListsAdapter {
     }
 
     fn set_listener(&self, listener: Arc<dyn IdListsUpdateListener>) {
-        match self.listener.write() {
-            Ok(mut lock) => *lock = Some(listener),
-
-            Err(e) => {
+        match self
+            .listener
+            .try_write_for(std::time::Duration::from_secs(1))
+        {
+            Some(mut lock) => *lock = Some(listener),
+            None => {
                 log_error_to_statsig_and_console!(
                     self.ops_stats.clone(),
                     TAG,
-                    StatsigErr::LockFailure(format!(
-                        "Failed to acquire write lock on listener: {e}"
-                    ))
+                    StatsigErr::LockFailure("Failed to acquire write lock on listener".to_string())
                 );
             }
         }
     }
 
     fn get_current_id_list_metadata(&self) -> Result<HashMap<String, IdListMetadata>, StatsigErr> {
-        let lock = match self.listener.read() {
-            Ok(lock) => lock,
-            Err(e) => return Err(StatsigErr::LockFailure(e.to_string())),
+        let lock = match self
+            .listener
+            .try_read_for(std::time::Duration::from_secs(1))
+        {
+            Some(lock) => lock,
+            None => {
+                return Err(StatsigErr::LockFailure(
+                    "Failed to acquire read lock on listener".to_string(),
+                ))
+            }
         };
 
         match lock.as_ref() {
@@ -295,21 +303,25 @@ impl StatsigHttpIdListsAdapter {
             );
         }
 
-        let result = match self.listener.read() {
-            Ok(lock) => match lock.as_ref() {
+        let result = match self
+            .listener
+            .try_read_for(std::time::Duration::from_secs(1))
+        {
+            Some(lock) => match lock.as_ref() {
                 Some(listener) => {
                     listener.did_receive_id_list_updates(updates);
                     Ok(())
                 }
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
-            Err(e) => {
+            None => {
+                let error = "Failed to acquire read lock on listener".to_string();
                 log_error_to_statsig_and_console!(
                     self.ops_stats.clone(),
                     TAG,
-                    StatsigErr::LockFailure("Failed to acquire read lock on listener".to_string())
+                    StatsigErr::LockFailure(error.clone())
                 );
-                Err(StatsigErr::LockFailure(e.to_string()))
+                Err(StatsigErr::LockFailure(error))
             }
         };
 
@@ -407,7 +419,10 @@ mod tests {
 
     impl TestIdListsUpdateListener {
         fn does_list_contain_id(&self, list_name: &str, id: &str) -> bool {
-            let id_lists = self.id_lists.read().unwrap();
+            let id_lists = self
+                .id_lists
+                .try_read_for(std::time::Duration::from_secs(1))
+                .unwrap();
             if let Some(list) = id_lists.get(list_name) {
                 list.ids.contains(id)
             } else {
@@ -439,7 +454,7 @@ mod tests {
     impl IdListsUpdateListener for TestIdListsUpdateListener {
         fn get_current_id_list_metadata(&self) -> HashMap<String, IdListMetadata> {
             self.id_lists
-                .read()
+                .try_read_for(std::time::Duration::from_secs(1))
                 .unwrap()
                 .iter()
                 .map(|(key, list)| (key.clone(), list.metadata.clone()))
@@ -447,7 +462,10 @@ mod tests {
         }
 
         fn did_receive_id_list_updates(&self, updates: HashMap<String, IdListUpdate>) {
-            let mut id_lists = self.id_lists.write().unwrap();
+            let mut id_lists = self
+                .id_lists
+                .try_write_for(std::time::Duration::from_secs(1))
+                .unwrap();
 
             // delete any id_lists that are not in the changesets
             id_lists.retain(|list_name, _| updates.contains_key(list_name));

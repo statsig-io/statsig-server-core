@@ -56,6 +56,7 @@ use crate::{
     },
 };
 use chrono::Utc;
+use parking_lot::Mutex;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::json;
@@ -63,7 +64,6 @@ use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
 use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
@@ -307,27 +307,34 @@ impl Statsig {
         };
         self.log_init_details(&init_details);
         if let Ok(details) = &init_details {
-            if let Ok(mut curr_init_details) = self.initialize_details.try_lock() {
-                *curr_init_details = details.clone();
+            match self.initialize_details.try_lock_for(Duration::from_secs(1)) {
+                Some(mut curr_init_details) => {
+                    *curr_init_details = details.clone();
+                }
+                None => {
+                    log_e!(TAG, "Failed to lock initialize_details");
+                }
             }
         }
         init_details
     }
 
     pub fn get_initialize_details(&self) -> InitializeDetails {
-        match self.initialize_details.lock() {
-            Ok(details) => details.clone(),
-            Err(poison_error) => InitializeDetails::from_error(
+        match self.initialize_details.try_lock_for(Duration::from_secs(1)) {
+            Some(details) => details.clone(),
+            None => InitializeDetails::from_error(
                 "Failed to lock initialize_details",
-                Some(StatsigErr::LockFailure(poison_error.to_string())),
+                Some(StatsigErr::LockFailure(
+                    "Failed to lock initialize_details".to_string(),
+                )),
             ),
         }
     }
 
     pub fn is_initialized(&self) -> bool {
-        match self.initialize_details.lock() {
-            Ok(details) => details.init_success,
-            Err(_) => false,
+        match self.initialize_details.try_lock_for(Duration::from_secs(1)) {
+            Some(details) => details.init_success,
+            None => false,
         }
     }
 
@@ -1057,10 +1064,13 @@ impl Statsig {
 
 impl Statsig {
     pub fn shared() -> Arc<Statsig> {
-        let lock = match SHARED_INSTANCE.lock() {
-            Ok(lock) => lock,
-            Err(e) => {
-                log_e!(TAG, "Statsig::shared() mutex error: {}", e);
+        let lock = match SHARED_INSTANCE.try_lock_for(Duration::from_secs(1)) {
+            Some(lock) => lock,
+            None => {
+                log_e!(
+                    TAG,
+                    "Statsig::shared() mutex error: Failed to lock SHARED_INSTANCE"
+                );
                 return Arc::new(Statsig::new(ERROR_SDK_KEY, None));
             }
         };
@@ -1081,8 +1091,8 @@ impl Statsig {
         sdk_key: &str,
         options: Option<Arc<StatsigOptions>>,
     ) -> Result<Arc<Statsig>, StatsigErr> {
-        match SHARED_INSTANCE.lock() {
-            Ok(mut lock) => {
+        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(1)) {
+            Some(mut lock) => {
                 if lock.is_some() {
                     let message = "Statsig shared instance already exists. Call Statsig::remove_shared() before creating a new instance.";
                     log_e!(TAG, "{}", message);
@@ -1093,29 +1103,32 @@ impl Statsig {
                 *lock = Some(statsig.clone());
                 Ok(statsig)
             }
-            Err(e) => {
-                let message = format!("Statsig::new_shared() mutex error: {e}");
+            None => {
+                let message = "Statsig::new_shared() mutex error: Failed to lock SHARED_INSTANCE";
                 log_e!(TAG, "{}", message);
-                Err(StatsigErr::SharedInstanceFailure(message))
+                Err(StatsigErr::SharedInstanceFailure(message.to_string()))
             }
         }
     }
 
     pub fn remove_shared() {
-        match SHARED_INSTANCE.lock() {
-            Ok(mut lock) => {
+        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(1)) {
+            Some(mut lock) => {
                 *lock = None;
             }
-            Err(e) => {
-                log_e!(TAG, "Statsig::remove_shared() mutex error: {e}");
+            None => {
+                log_e!(
+                    TAG,
+                    "Statsig::remove_shared() mutex error: Failed to lock SHARED_INSTANCE"
+                );
             }
         }
     }
 
     pub fn has_shared_instance() -> bool {
-        match SHARED_INSTANCE.lock() {
-            Ok(lock) => lock.is_some(),
-            Err(_) => false,
+        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(1)) {
+            Some(lock) => lock.is_some(),
+            None => false,
         }
     }
 }
@@ -1710,7 +1723,10 @@ impl Statsig {
             return env.get(key).cloned();
         }
 
-        if let Ok(fallback_env) = self.fallback_environment.lock() {
+        if let Some(fallback_env) = self
+            .fallback_environment
+            .try_lock_for(Duration::from_secs(1))
+        {
             if let Some(env) = &*fallback_env {
                 return env.get(key).cloned();
             }
@@ -1742,7 +1758,10 @@ impl Statsig {
             return f(Some(env));
         }
 
-        if let Ok(fallback_env) = self.fallback_environment.lock() {
+        if let Some(fallback_env) = self
+            .fallback_environment
+            .try_lock_for(Duration::from_secs(1))
+        {
             if let Some(env) = &*fallback_env {
                 return f(Some(env));
             }
@@ -1916,8 +1935,16 @@ impl Statsig {
         if let Some(default_env) = data.values.default_environment.as_ref() {
             let env_map = HashMap::from([("tier".to_string(), dyn_value!(default_env.as_str()))]);
 
-            if let Ok(mut fallback_env) = self.fallback_environment.lock() {
-                *fallback_env = Some(env_map);
+            match self
+                .fallback_environment
+                .try_lock_for(Duration::from_secs(1))
+            {
+                Some(mut fallback_env) => {
+                    *fallback_env = Some(env_map);
+                }
+                None => {
+                    log_e!(TAG, "Failed to lock fallback_environment");
+                }
             }
         }
     }

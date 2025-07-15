@@ -1,9 +1,9 @@
 use crate::log_e;
 use lazy_static::lazy_static;
+use parking_lot::RwLock;
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::sync::RwLock;
 use uuid::Uuid;
 
 lazy_static! {
@@ -60,26 +60,32 @@ impl StatsigMetadata {
     }
 
     pub fn update_values(sdk_type: String, os: String, arch: String, language_version: String) {
-        match STATSIG_METADATA.write() {
-            Ok(mut metadata) => {
+        match STATSIG_METADATA.try_write_for(std::time::Duration::from_secs(1)) {
+            Some(mut metadata) => {
                 metadata.sdk_type = sdk_type;
                 metadata.os = Some(os);
                 metadata.arch = Some(arch);
                 metadata.language_version = Some(language_version);
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to clone StatsigMetadata: {}", e.to_string());
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to clone StatsigMetadata: Failed to lock STATSIG_METADATA"
+                );
             }
         }
     }
 
     pub fn update_service_name(service_name: Option<String>) {
-        match STATSIG_METADATA.write() {
-            Ok(mut metadata) => {
+        match STATSIG_METADATA.try_write_for(std::time::Duration::from_secs(1)) {
+            Some(mut metadata) => {
                 metadata.service_name = service_name;
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to clone StatsigMetadata: {}", e.to_string());
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to clone StatsigMetadata: Failed to lock STATSIG_METADATA"
+                );
             }
         }
     }
@@ -98,10 +104,13 @@ impl StatsigMetadata {
 
     #[must_use]
     pub fn get_metadata() -> StatsigMetadata {
-        match STATSIG_METADATA.read() {
-            Ok(metadata) => metadata.clone(),
-            Err(e) => {
-                log_e!(TAG, "Failed to clone StatsigMetadata: {}", e.to_string());
+        match STATSIG_METADATA.try_read_for(std::time::Duration::from_secs(1)) {
+            Some(metadata) => metadata.clone(),
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to clone StatsigMetadata: Failed to lock STATSIG_METADATA"
+                );
                 StatsigMetadata::new()
             }
         }

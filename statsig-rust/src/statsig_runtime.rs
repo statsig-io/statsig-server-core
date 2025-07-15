@@ -1,15 +1,16 @@
-use futures::future::join_all;
-use std::collections::HashMap;
-use std::future::Future;
-use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex};
-use tokio::runtime::{Builder, Handle};
-use tokio::sync::Notify;
-use tokio::task::JoinHandle;
-
 use crate::statsig_global::StatsigGlobal;
 use crate::StatsigErr;
 use crate::{log_d, log_e};
+use futures::future::join_all;
+use parking_lot::Mutex;
+use std::collections::HashMap;
+use std::future::Future;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::runtime::{Builder, Handle};
+use tokio::sync::Notify;
+use tokio::task::JoinHandle;
 
 const TAG: &str = stringify!(StatsigRuntime);
 
@@ -45,8 +46,8 @@ impl StatsigRuntime {
         let global = StatsigGlobal::get();
         let rt = global
             .tokio_runtime
-            .lock()
-            .map_err(|e| StatsigErr::LockFailure(e.to_string()))?;
+            .try_lock_for(Duration::from_secs(1))
+            .ok_or_else(|| StatsigErr::LockFailure("Failed to lock tokio runtime".to_string()))?;
 
         if let Some(rt) = rt.as_ref() {
             return Ok(rt.handle().clone());
@@ -58,10 +59,10 @@ impl StatsigRuntime {
     }
 
     pub fn get_num_active_tasks(&self) -> usize {
-        match self.spawned_tasks.lock() {
-            Ok(lock) => lock.len(),
-            Err(e) => {
-                log_e!(TAG, "Failed to lock spawned tasks {}", e);
+        match self.spawned_tasks.try_lock_for(Duration::from_secs(1)) {
+            Some(lock) => lock.len(),
+            None => {
+                log_e!(TAG, "Failed to lock spawned tasks for get_num_active_tasks");
                 0
             }
         }
@@ -70,9 +71,14 @@ impl StatsigRuntime {
     pub fn shutdown(&self) {
         self.shutdown_notify.notify_waiters();
 
-        if let Ok(mut lock) = self.spawned_tasks.lock() {
-            for (_, task) in lock.drain() {
-                task.abort();
+        match self.spawned_tasks.try_lock_for(Duration::from_secs(1)) {
+            Some(mut lock) => {
+                for (_, task) in lock.drain() {
+                    task.abort();
+                }
+            }
+            None => {
+                log_e!(TAG, "Failed to lock spawned tasks for shutdown");
             }
         }
     }
@@ -106,8 +112,8 @@ impl StatsigRuntime {
     pub async fn await_tasks_with_tag(&self, tag: &str) {
         let mut handles = Vec::new();
 
-        match self.spawned_tasks.lock() {
-            Ok(mut lock) => {
+        match self.spawned_tasks.try_lock_for(Duration::from_secs(1)) {
+            Some(mut lock) => {
                 let keys: Vec<TaskId> = lock.keys().cloned().collect();
                 for key in &keys {
                     if key.tag == tag {
@@ -122,8 +128,8 @@ impl StatsigRuntime {
                     }
                 }
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to lock spawned tasks {}", e);
+            None => {
+                log_e!(TAG, "Failed to lock spawned tasks for await_tasks_with_tag");
                 return;
             }
         };
@@ -141,8 +147,8 @@ impl StatsigRuntime {
             tokio_id: *handle_id,
         };
 
-        let handle = match self.spawned_tasks.lock() {
-            Ok(mut lock) => match lock.remove(&task_id) {
+        let handle = match self.spawned_tasks.try_lock_for(Duration::from_secs(1)) {
+            Some(mut lock) => match lock.remove(&task_id) {
                 Some(handle) => handle,
                 None => {
                     return Err(StatsigErr::ThreadFailure(
@@ -150,14 +156,11 @@ impl StatsigRuntime {
                     ));
                 }
             },
-            Err(e) => {
-                log_e!(
-                    TAG,
-                    "An error occurred while getting join handle with id: {}: {}",
-                    handle_id,
-                    e.to_string()
-                );
-                return Err(StatsigErr::ThreadFailure(e.to_string()));
+            None => {
+                log_e!(TAG, "Failed to lock spawned tasks for await_join_handle");
+                return Err(StatsigErr::ThreadFailure(
+                    "Failed to lock spawned tasks".to_string(),
+                ));
             }
         };
 
@@ -175,16 +178,12 @@ impl StatsigRuntime {
             tokio_id: handle_id,
         };
 
-        match self.spawned_tasks.lock() {
-            Ok(mut lock) => {
+        match self.spawned_tasks.try_lock_for(Duration::from_secs(1)) {
+            Some(mut lock) => {
                 lock.insert(task_id, handle);
             }
-            Err(e) => {
-                log_e!(
-                    TAG,
-                    "An error occurred while inserting join handle: {}",
-                    e.to_string()
-                );
+            None => {
+                log_e!(TAG, "Failed to lock spawned tasks for insert_join_handle");
             }
         }
 
@@ -202,15 +201,14 @@ fn remove_join_handle_with_id(
         tokio_id: *handle_id,
     };
 
-    match spawned_tasks.lock() {
-        Ok(mut lock) => {
+    match spawned_tasks.try_lock_for(Duration::from_secs(1)) {
+        Some(mut lock) => {
             lock.remove(&task_id);
         }
-        Err(e) => {
+        None => {
             log_e!(
                 TAG,
-                "An error occurred while removing join handle {}",
-                e.to_string()
+                "Failed to lock spawned tasks for remove_join_handle_with_id"
             );
         }
     }
@@ -225,7 +223,7 @@ fn create_runtime_if_required() {
     let global = StatsigGlobal::get();
     let mut lock = global
         .tokio_runtime
-        .lock()
+        .try_lock_for(Duration::from_secs(1))
         .expect("Failed to lock owned tokio runtime");
 
     match lock.as_ref() {

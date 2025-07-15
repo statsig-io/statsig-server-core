@@ -3,11 +3,11 @@ use crate::specs_adapter::{SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateLi
 use crate::specs_response::spec_types::SpecsResponseFull;
 use crate::specs_response::spec_types_encoded::DecodedSpecsResponse;
 use crate::statsig_err::StatsigErr;
-use crate::{log_w, StatsigOptions, StatsigRuntime};
+use crate::{log_e, log_w, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
 use chrono::Utc;
-
-use std::sync::{Arc, RwLock};
+use parking_lot::RwLock;
+use std::sync::Arc;
 use std::time::Duration;
 
 use super::{SpecsInfo, StatsigHttpSpecsAdapter};
@@ -87,8 +87,11 @@ impl StatsigLocalFileSpecsAdapter {
             }
         };
 
-        match &self.listener.read() {
-            Ok(lock) => match lock.as_ref() {
+        match &self
+            .listener
+            .try_read_for(std::time::Duration::from_secs(1))
+        {
+            Some(lock) => match lock.as_ref() {
                 Some(listener) => listener.did_receive_specs_update(SpecsUpdate {
                     data: data.into_bytes(),
                     source: SpecsSource::Adapter("FileBased".to_owned()),
@@ -97,7 +100,9 @@ impl StatsigLocalFileSpecsAdapter {
                 }),
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
-            Err(e) => Err(StatsigErr::LockFailure(e.to_string())),
+            None => Err(StatsigErr::LockFailure(
+                "Failed to acquire read lock on listener".to_string(),
+            )),
         }
     }
 
@@ -145,8 +150,14 @@ impl SpecsAdapter for StatsigLocalFileSpecsAdapter {
     }
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
-        if let Ok(mut mut_listener) = self.listener.write() {
-            *mut_listener = Some(listener);
+        match self
+            .listener
+            .try_write_for(std::time::Duration::from_secs(1))
+        {
+            Some(mut lock) => *lock = Some(listener),
+            None => {
+                log_e!(TAG, "Failed to acquire write lock on listener");
+            }
         }
     }
 

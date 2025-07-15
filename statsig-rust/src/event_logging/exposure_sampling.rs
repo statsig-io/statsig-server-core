@@ -8,9 +8,10 @@ use crate::{
 };
 use ahash::AHashSet;
 use chrono::Utc;
+use parking_lot::RwLock;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
-    Arc, RwLock,
+    Arc,
 };
 
 const TAG: &str = "ExposureSampling";
@@ -146,8 +147,16 @@ impl ExposureSampling {
             return false;
         }
 
-        if let Ok(mut sampling_map) = self.spec_sampling_set.write() {
-            sampling_map.insert(sampling_key);
+        match self
+            .spec_sampling_set
+            .try_write_for(std::time::Duration::from_secs(1))
+        {
+            Some(mut sampling_map) => {
+                sampling_map.insert(sampling_key);
+            }
+            None => {
+                log_e!(TAG, "Failed to acquire write lock for spec sampling set");
+            }
         }
 
         true
@@ -176,14 +185,13 @@ impl ExposureSampling {
     fn try_reset_exposure_dedupe_set(&self) {
         let now = Utc::now().timestamp_millis() as u64;
         let last_dedupe_reset = self.last_exposure_dedupe_reset.load(Ordering::Relaxed);
-        let mut dedupe_map = match self.exposure_dedupe_set.write() {
-            Ok(map) => map,
-            Err(e) => {
-                log_e!(
-                    TAG,
-                    "Failed to acquire write lock for exposure dedupe set: {}",
-                    e
-                );
+        let mut dedupe_map = match self
+            .exposure_dedupe_set
+            .try_write_for(std::time::Duration::from_secs(1))
+        {
+            Some(map) => map,
+            None => {
+                log_e!(TAG, "Failed to acquire write lock for exposure dedupe set");
                 return;
             }
         };
@@ -205,9 +213,12 @@ impl ExposureSampling {
     }
 
     fn sample_key_exists(&self, key: &SpecAndRuleHashTuple) -> bool {
-        match self.spec_sampling_set.read() {
-            Ok(map) => map.contains(key),
-            _ => false,
+        match self
+            .spec_sampling_set
+            .try_read_for(std::time::Duration::from_secs(1))
+        {
+            Some(map) => map.contains(key),
+            None => false,
         }
     }
 

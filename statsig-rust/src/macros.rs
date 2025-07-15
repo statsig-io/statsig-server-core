@@ -51,9 +51,9 @@ macro_rules! unwrap_or_noop {
 #[macro_export]
 macro_rules! read_lock_or_else {
     ($lock:expr, $else_block:block) => {
-        match $lock.read() {
-            Ok(data) => data,
-            Err(_) => $else_block,
+        match $lock.try_read_for(std::time::Duration::from_secs(1)) {
+            Some(data) => data,
+            None => $else_block,
         }
     };
 }
@@ -61,10 +61,10 @@ macro_rules! read_lock_or_else {
 #[macro_export]
 macro_rules! read_lock_or_return {
     ($tag: expr, $lock:expr, $code: expr) => {
-        match $lock.read() {
-            Ok(data) => data,
-            Err(e) => {
-                $crate::log_e!($tag, "Failed to acquire read lock: {}", e.to_string());
+        match $lock.try_read_for(std::time::Duration::from_secs(1)) {
+            Some(data) => data,
+            None => {
+                $crate::log_e!($tag, "Failed to acquire read lock");
                 return $code;
             }
         }
@@ -74,10 +74,10 @@ macro_rules! read_lock_or_return {
 #[macro_export]
 macro_rules! write_lock_or_noop {
     ($tag: expr, $lock:expr) => {
-        match $lock.write() {
-            Ok(data) => data,
-            Err(e) => {
-                $crate::log_e!($tag, "Failed to acquire write lock: {}", e.to_string());
+        match $lock.try_write_for(std::time::Duration::from_secs(1)) {
+            Some(data) => data,
+            None => {
+                $crate::log_e!($tag, "Failed to acquire write lock");
                 return;
             }
         }
@@ -87,10 +87,10 @@ macro_rules! write_lock_or_noop {
 #[macro_export]
 macro_rules! write_lock_or_return {
     ($tag: expr, $lock:expr, $code: expr) => {
-        match $lock.write() {
-            Ok(data) => data,
-            Err(e) => {
-                $crate::log_e!($tag, "Failed to acquire write lock: {}", e.to_string());
+        match $lock.try_write_for(std::time::Duration::from_secs(1)) {
+            Some(data) => data,
+            None => {
+                $crate::log_e!($tag, "Failed to acquire write lock");
                 return $code;
             }
         }

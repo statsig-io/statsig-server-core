@@ -1,14 +1,3 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
-
-use napi::bindgen_prelude::*;
-use napi_derive::napi;
-use serde_json::Value;
-use statsig_rust::networking::providers::NetworkProviderGlobal;
-use statsig_rust::networking::NetworkProvider;
-use statsig_rust::{log_d, log_e, Statsig as StatsigActual};
-
 use crate::gcir_options_napi::ClientInitResponseOptions;
 use crate::net_provider_napi::{NapiNetworkFunc, NetworkProviderNapi};
 use crate::observability_client_napi::ObservabilityClient;
@@ -22,6 +11,16 @@ use crate::statsig_options_napi::StatsigOptions;
 use crate::statsig_result::StatsigResult;
 use crate::statsig_types_napi::{DynamicConfig, Experiment, FeatureGate, Layer, ParameterStore};
 use crate::statsig_user_napi::StatsigUser;
+use napi::bindgen_prelude::*;
+use napi_derive::napi;
+use parking_lot::Mutex;
+use serde_json::Value;
+use statsig_rust::networking::providers::NetworkProviderGlobal;
+use statsig_rust::networking::NetworkProvider;
+use statsig_rust::{log_d, log_e, Statsig as StatsigActual};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
 
 const TAG: &str = "StatsigNapi";
 
@@ -78,13 +77,23 @@ impl StatsigNapiInternal {
 
     #[napi]
     pub async fn shutdown(&self, timeout_ms: Option<u32>) -> StatsigResult {
-        let network_provider = match self.network_provider.lock() {
-            Ok(mut lock) => lock.take(),
-            _ => None,
+        let network_provider = match self.network_provider.try_lock_for(Duration::from_secs(1)) {
+            Some(mut lock) => lock.take(),
+            None => {
+                log_e!(TAG, "Failed to lock network provider");
+                None
+            }
         };
-        let obs_client = match self.observability_client.lock() {
-            Ok(mut lock) => lock.take(),
-            _ => None,
+
+        let obs_client = match self
+            .observability_client
+            .try_lock_for(Duration::from_secs(1))
+        {
+            Some(mut lock) => lock.take(),
+            None => {
+                log_e!(TAG, "Failed to lock observability client");
+                None
+            }
         };
 
         let timeout = Duration::from_millis(timeout_ms.unwrap_or(3000) as u64);

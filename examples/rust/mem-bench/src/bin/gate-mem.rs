@@ -37,7 +37,7 @@ fn main() {
             .get_context()
             .spec_store
             .data
-            .read()
+            .try_read()
             .expect("Failed to lock spec store data")
             .values
             .feature_gates

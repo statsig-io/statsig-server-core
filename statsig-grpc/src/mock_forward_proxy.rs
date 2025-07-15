@@ -1,7 +1,8 @@
 use lazy_static::lazy_static;
+use parking_lot::Mutex;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicI32, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::Notify;
@@ -75,7 +76,7 @@ impl MockForwardProxy {
 
     pub async fn send_stream_update(&self, update: Result<ConfigSpecResponse, Status>) {
         let sender = {
-            let guard = self.stream_tx.lock().unwrap();
+            let guard = self.stream_tx.try_lock().unwrap();
             guard.as_ref().unwrap().clone()
         };
 
@@ -85,7 +86,7 @@ impl MockForwardProxy {
     }
 
     pub async fn stop(&self) {
-        let handle = self.server_handle.lock().unwrap().take();
+        let handle = self.server_handle.try_lock().unwrap().take();
         if let Some(handle) = handle {
             self.send_stream_update(Err(Status::unavailable("Connection Lost")))
                 .await;
@@ -117,9 +118,9 @@ impl MockForwardProxy {
 
         let (tx, rx) = tokio::sync::mpsc::channel(4);
 
-        *self.stream_tx.lock().unwrap() = Some(tx);
-        *self.stream_rx.lock().unwrap() = Some(rx);
-        *self.server_handle.lock().unwrap() = Some(server_handle);
+        *self.stream_tx.try_lock().unwrap() = Some(tx);
+        *self.stream_rx.try_lock().unwrap() = Some(rx);
+        *self.server_handle.try_lock().unwrap() = Some(server_handle);
 
         wait_one_ms().await; // wait for the update to be applied
     }
@@ -138,7 +139,7 @@ impl StatsigForwardProxy for MockForwardProxyService {
         let response = self
             .proxy
             .stubbed_get_config_spec_response
-            .lock()
+            .try_lock()
             .unwrap()
             .clone();
         Ok(Response::new(response))
@@ -150,7 +151,7 @@ impl StatsigForwardProxy for MockForwardProxyService {
         &self,
         _request: Request<ConfigSpecRequest>,
     ) -> Result<Response<Self::StreamConfigSpecStream>, Status> {
-        let rx = self.proxy.stream_rx.lock().unwrap().take().unwrap();
+        let rx = self.proxy.stream_rx.try_lock().unwrap().take().unwrap();
 
         let stream = ReceiverStream::new(rx);
         Ok(Response::new(stream))

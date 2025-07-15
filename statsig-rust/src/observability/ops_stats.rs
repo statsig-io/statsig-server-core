@@ -1,22 +1,21 @@
-use async_trait::async_trait;
-use lazy_static::lazy_static;
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock, Weak},
+use super::{
+    observability_client_adapter::ObservabilityEvent, sdk_errors_observer::ErrorBoundaryEvent,
+    DiagnosticsEvent,
 };
-use tokio::sync::broadcast::{self, Sender};
-use tokio::sync::Notify;
-
 use crate::sdk_diagnostics::{
     diagnostics::ContextType,
     marker::{KeyType, Marker},
 };
 use crate::{log_e, log_w, StatsigRuntime};
-
-use super::{
-    observability_client_adapter::ObservabilityEvent, sdk_errors_observer::ErrorBoundaryEvent,
-    DiagnosticsEvent,
+use async_trait::async_trait;
+use lazy_static::lazy_static;
+use parking_lot::RwLock;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Weak},
 };
+use tokio::sync::broadcast::{self, Sender};
+use tokio::sync::Notify;
 
 const TAG: &str = stringify!(OpsStats);
 
@@ -37,26 +36,38 @@ impl OpsStats {
     }
 
     pub fn get_for_instance(&self, sdk_key: &str) -> Arc<OpsStatsForInstance> {
-        match self.instances_map.read() {
-            Ok(read_guard) => {
+        match self
+            .instances_map
+            .try_read_for(std::time::Duration::from_secs(1))
+        {
+            Some(read_guard) => {
                 if let Some(instance) = read_guard.get(sdk_key) {
                     if let Some(instance) = instance.upgrade() {
                         return instance.clone();
                     }
                 }
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to get read guard: {}", e);
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to get read guard: Failed to lock instances_map"
+                );
             }
         }
 
         let instance = Arc::new(OpsStatsForInstance::new());
-        match self.instances_map.write() {
-            Ok(mut write_guard) => {
+        match self
+            .instances_map
+            .try_write_for(std::time::Duration::from_secs(1))
+        {
+            Some(mut write_guard) => {
                 write_guard.insert(sdk_key.into(), Arc::downgrade(&instance));
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to get write guard: {}", e);
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to get write guard: Failed to lock instances_map"
+                );
             }
         }
 

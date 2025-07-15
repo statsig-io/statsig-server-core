@@ -2,7 +2,7 @@ use crate::statsig_forward_proxy::config_spec_request::ApiVersion;
 use crate::statsig_forward_proxy::statsig_forward_proxy_client::StatsigForwardProxyClient;
 use crate::statsig_forward_proxy::{ConfigSpecRequest, ConfigSpecResponse};
 use crate::statsig_grpc_err::StatsigGrpcErr;
-use std::sync::Mutex;
+use parking_lot::Mutex;
 use std::time::Duration;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Identity};
 use tonic::Streaming;
@@ -44,9 +44,14 @@ impl StatsigGrpcClient {
     }
 
     pub fn reset_client(&self) {
-        if let Ok(mut lock) = self.grpc_client.lock() {
-            *lock = None;
-        }
+        match self.grpc_client.try_lock_for(Duration::from_secs(1)) {
+            Some(mut lock) => {
+                *lock = None;
+            }
+            None => {
+                eprintln!("Failed to reset grpc client");
+            }
+        };
     }
 
     pub async fn get_specs(
@@ -152,8 +157,8 @@ impl StatsigGrpcClient {
         {
             let lock = self
                 .grpc_client
-                .lock()
-                .map_err(|_| StatsigGrpcErr::FailedToGetLock)?;
+                .try_lock_for(Duration::from_secs(1))
+                .ok_or(StatsigGrpcErr::FailedToGetLock)?;
 
             if let Some(client) = lock.as_ref() {
                 return Ok(client.clone());
@@ -181,8 +186,8 @@ impl StatsigGrpcClient {
 
         let mut lock = self
             .grpc_client
-            .lock()
-            .map_err(|_| StatsigGrpcErr::FailedToGetLock)?;
+            .try_lock_for(Duration::from_secs(1))
+            .ok_or(StatsigGrpcErr::FailedToGetLock)?;
 
         *lock = Some(new_client.clone());
         Ok(new_client)

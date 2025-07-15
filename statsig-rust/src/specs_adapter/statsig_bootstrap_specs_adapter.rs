@@ -3,9 +3,10 @@ use crate::statsig_err::StatsigErr;
 use crate::{log_e, StatsigRuntime};
 use async_trait::async_trait;
 use chrono::Utc;
-
-use std::sync::{Arc, RwLock};
+use parking_lot::RwLock;
+use std::sync::Arc;
 use std::time::Duration;
+
 pub struct StatsigBootstrapSpecsAdapter {
     data: RwLock<String>,
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
@@ -22,22 +23,33 @@ impl StatsigBootstrapSpecsAdapter {
     }
 
     pub fn set_data(&self, data: String) -> Result<(), StatsigErr> {
-        match self.data.write() {
-            Ok(mut lock) => *lock = data.clone(),
-            Err(e) => return Err(StatsigErr::LockFailure(e.to_string())),
+        match self.data.try_write_for(std::time::Duration::from_secs(1)) {
+            Some(mut lock) => *lock = data.clone(),
+            None => {
+                return Err(StatsigErr::LockFailure(
+                    "Failed to acquire write lock on data".to_string(),
+                ))
+            }
         };
 
         self.push_update()
     }
 
     fn push_update(&self) -> Result<(), StatsigErr> {
-        let data = match self.data.read() {
-            Ok(lock) => lock.clone(),
-            Err(e) => return Err(StatsigErr::LockFailure(e.to_string())),
+        let data = match self.data.try_read_for(std::time::Duration::from_secs(1)) {
+            Some(lock) => lock.clone(),
+            None => {
+                return Err(StatsigErr::LockFailure(
+                    "Failed to acquire read lock on data".to_string(),
+                ))
+            }
         };
 
-        match &self.listener.read() {
-            Ok(lock) => match lock.as_ref() {
+        match &self
+            .listener
+            .try_read_for(std::time::Duration::from_secs(1))
+        {
+            Some(lock) => match lock.as_ref() {
                 Some(listener) => listener.did_receive_specs_update(SpecsUpdate {
                     data: data.into_bytes(),
                     source: SpecsSource::Bootstrap,
@@ -46,7 +58,9 @@ impl StatsigBootstrapSpecsAdapter {
                 }),
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
-            Err(e) => Err(StatsigErr::LockFailure(e.to_string())),
+            None => Err(StatsigErr::LockFailure(
+                "Failed to acquire read lock on listener".to_string(),
+            )),
         }
     }
 }
@@ -61,10 +75,13 @@ impl SpecsAdapter for StatsigBootstrapSpecsAdapter {
     }
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
-        match self.listener.write() {
-            Ok(mut lock) => *lock = Some(listener),
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire write lock on listener: {}", e);
+        match self
+            .listener
+            .try_write_for(std::time::Duration::from_secs(1))
+        {
+            Some(mut lock) => *lock = Some(listener),
+            None => {
+                log_e!(TAG, "Failed to acquire write lock on listener");
             }
         }
     }
@@ -111,7 +128,7 @@ mod tests {
     #[async_trait]
     impl SpecsUpdateListener for TestListener {
         fn did_receive_specs_update(&self, update: SpecsUpdate) -> Result<(), StatsigErr> {
-            if let Ok(mut lock) = self.received_update.write() {
+            if let Some(mut lock) = self.received_update.try_write() {
                 *lock = Some(update);
             }
             Ok(())
@@ -138,7 +155,7 @@ mod tests {
         adapter.initialize(listener.clone());
         adapter.clone().start(&statsig_rt).await.unwrap();
 
-        if let Ok(lock) = listener.clone().received_update.read() {
+        if let Some(lock) = listener.clone().received_update.try_read() {
             let update = lock.as_ref().unwrap();
             assert_eq!(update.source, SpecsSource::Bootstrap);
             assert_eq!(update.data, test_data.into_bytes());
@@ -159,7 +176,7 @@ mod tests {
         let result = adapter.set_data(test_data.clone());
         assert!(result.is_ok());
 
-        if let Ok(lock) = listener.clone().received_update.read() {
+        if let Some(lock) = listener.clone().received_update.try_read() {
             let update = lock.as_ref().unwrap();
             assert_eq!(update.source, SpecsSource::Bootstrap);
             assert_eq!(update.data, test_data.into_bytes());

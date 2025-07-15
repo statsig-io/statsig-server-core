@@ -13,8 +13,10 @@ use crate::{
     SpecsUpdateListener, StatsigErr, StatsigRuntime,
 };
 use chrono::Utc;
+use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use std::time::Duration;
 
 pub struct SpecStoreData {
     pub source: SpecsSource,
@@ -65,29 +67,43 @@ impl SpecStore {
     }
 
     pub fn set_source(&self, source: SpecsSource) {
-        if let Ok(mut mut_values) = self.data.write() {
-            mut_values.source = source;
-            log_d!(TAG, "Source Changed ({:?})", mut_values.source);
+        match self.data.try_write_for(Duration::from_secs(1)) {
+            Some(mut data) => {
+                data.source = source;
+                log_d!(TAG, "Source Changed ({:?})", data.source);
+            }
+            None => {
+                log_e!(TAG, "Failed to acquire write lock: Failed to lock data");
+            }
         }
     }
 
     pub fn get_current_values(&self) -> Option<SpecsResponseFull> {
-        let data = self.data.read().ok()?;
+        let data = match self.data.try_read_for(Duration::from_secs(1)) {
+            Some(data) => data,
+            None => {
+                log_e!(TAG, "Failed to acquire read lock: Failed to lock data");
+                return None;
+            }
+        };
         let json = serde_json::to_string(&data.values).ok()?;
         serde_json::from_str::<SpecsResponseFull>(&json).ok()
     }
 
     pub fn set_values(&self, specs_update: SpecsUpdate) -> Result<(), StatsigErr> {
-        let (mut next_values, decompression_dict) = match self.data.write() {
-            Ok(mut data) => (
-                data.next_values.take().unwrap_or_default(),
-                data.decompression_dict.clone(),
-            ),
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire write lock: {}", e);
-                return Err(StatsigErr::LockFailure(e.to_string()));
-            }
-        };
+        let (mut next_values, decompression_dict) =
+            match self.data.try_write_for(Duration::from_secs(1)) {
+                Some(mut data) => (
+                    data.next_values.take().unwrap_or_default(),
+                    data.decompression_dict.clone(),
+                ),
+                None => {
+                    log_e!(TAG, "Failed to acquire write lock: Failed to lock data");
+                    return Err(StatsigErr::LockFailure(
+                        "Failed to acquire write lock: Failed to lock data".to_string(),
+                    ));
+                }
+            };
 
         let decompression_dict =
             match self.parse_specs_response(&specs_update, &mut next_values, decompression_dict) {
@@ -185,8 +201,8 @@ impl SpecStore {
         now: u64,
         source_api: Option<String>,
     ) -> Result<(SpecsSource, u64, u64), StatsigErr> {
-        match self.data.write() {
-            Ok(mut data) => {
+        match self.data.try_write_for(Duration::from_secs(1)) {
+            Some(mut data) => {
                 let prev_source = std::mem::replace(&mut data.source, specs_update.source.clone());
                 let prev_lcut = data.values.time;
 
@@ -199,9 +215,11 @@ impl SpecStore {
                 data.source_api = source_api;
                 Ok((prev_source, prev_lcut, data.values.time))
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire write lock: {}", e);
-                Err(StatsigErr::LockFailure(e.to_string()))
+            None => {
+                log_e!(TAG, "Failed to acquire write lock: Failed to lock data");
+                Err(StatsigErr::LockFailure(
+                    "Failed to acquire write lock: Failed to lock data".to_string(),
+                ))
             }
         }
     }
@@ -306,10 +324,10 @@ impl SpecStore {
     }
 
     fn are_current_values_newer(&self, next_values: &SpecsResponseFull) -> bool {
-        let data = match self.data.read() {
-            Ok(data) => data,
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire read lock: {}", e);
+        let data = match self.data.try_read_for(Duration::from_secs(1)) {
+            Some(data) => data,
+            None => {
+                log_e!(TAG, "Failed to acquire read lock: Failed to lock data");
                 return false;
             }
         };
@@ -345,8 +363,8 @@ impl SpecsUpdateListener for SpecStore {
     }
 
     fn get_current_specs_info(&self) -> SpecsInfo {
-        match self.data.read() {
-            Ok(data) => SpecsInfo {
+        match self.data.try_read_for(Duration::from_secs(1)) {
+            Some(data) => SpecsInfo {
                 lcut: Some(data.values.time),
                 checksum: data.values.checksum.clone(),
                 zstd_dict_id: data
@@ -356,8 +374,8 @@ impl SpecsUpdateListener for SpecStore {
                 source: data.source.clone(),
                 source_api: data.source_api.clone(),
             },
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire read lock: {}", e);
+            None => {
+                log_e!(TAG, "Failed to acquire read lock: Failed to lock data");
                 SpecsInfo {
                     lcut: None,
                     checksum: None,
@@ -376,14 +394,14 @@ impl IdListsUpdateListener for SpecStore {
     fn get_current_id_list_metadata(
         &self,
     ) -> HashMap<String, crate::id_lists_adapter::IdListMetadata> {
-        match self.data.read() {
-            Ok(data) => data
+        match self.data.try_read_for(Duration::from_secs(1)) {
+            Some(data) => data
                 .id_lists
                 .iter()
                 .map(|(key, list)| (key.clone(), list.metadata.clone()))
                 .collect(),
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire read lock: {}", e);
+            None => {
+                log_e!(TAG, "Failed to acquire read lock: Failed to lock data");
                 HashMap::new()
             }
         }
@@ -393,10 +411,10 @@ impl IdListsUpdateListener for SpecStore {
         &self,
         updates: HashMap<String, crate::id_lists_adapter::IdListUpdate>,
     ) {
-        let mut data = match self.data.write() {
-            Ok(data) => data,
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire write lock: {}", e);
+        let mut data = match self.data.try_write_for(Duration::from_secs(1)) {
+            Some(data) => data,
+            None => {
+                log_e!(TAG, "Failed to acquire write lock: Failed to lock data");
                 return;
             }
         };

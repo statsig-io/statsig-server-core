@@ -19,10 +19,8 @@ use crate::{
     statsig_metadata::StatsigMetadata,
     write_lock_or_noop, EventLoggingAdapter, StatsigErr, StatsigOptions, StatsigRuntime,
 };
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use parking_lot::RwLock;
+use std::{collections::HashMap, sync::Arc};
 use std::{
     sync::atomic::{AtomicU64, Ordering},
     time::Duration,

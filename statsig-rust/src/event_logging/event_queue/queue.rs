@@ -1,10 +1,10 @@
+use super::{batch::EventBatch, queued_event::QueuedEvent};
 use crate::{
     event_logging::statsig_event_internal::StatsigEventInternal, log_d, read_lock_or_return,
     write_lock_or_return,
 };
-use std::{collections::VecDeque, sync::RwLock};
-
-use super::{batch::EventBatch, queued_event::QueuedEvent};
+use parking_lot::RwLock;
+use std::collections::VecDeque;
 
 const TAG: &str = stringify!(EventQueue);
 
@@ -89,7 +89,11 @@ impl EventQueue {
     }
 
     pub fn contains_at_least_one_full_batch(&self) -> bool {
-        let pending_events_count = self.pending_events.read().map(|e| e.len()).unwrap_or(0);
+        let pending_events_count = self
+            .pending_events
+            .try_read_for(std::time::Duration::from_secs(1))
+            .map(|e| e.len())
+            .unwrap_or(0);
         if pending_events_count >= self.batch_size {
             return true;
         }
@@ -214,7 +218,14 @@ mod tests {
         let result = queue.add(queued_event);
 
         assert!(matches!(result, QueueAddResult::Noop));
-        assert_eq!(queue.pending_events.read().unwrap().len(), 1);
+        assert_eq!(
+            queue
+                .pending_events
+                .try_read_for(std::time::Duration::from_secs(1))
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -240,7 +251,14 @@ mod tests {
             }
         }
 
-        assert_eq!(queue.pending_events.read().unwrap().len(), 4567);
+        assert_eq!(
+            queue
+                .pending_events
+                .try_read_for(std::time::Duration::from_secs(1))
+                .unwrap()
+                .len(),
+            4567
+        );
         assert_eq!(triggered_count, (4567 / 1000) as usize);
     }
 
@@ -294,7 +312,11 @@ mod tests {
         assert_eq!(batch.unwrap().events.len(), batch_size as usize);
 
         assert_eq!(
-            queue.batches.read().unwrap().len(),
+            queue
+                .batches
+                .try_read_for(std::time::Duration::from_secs(1))
+                .unwrap()
+                .len(),
             (max_pending_batches - 1) as usize
         ); // max minus the one we just took
     }

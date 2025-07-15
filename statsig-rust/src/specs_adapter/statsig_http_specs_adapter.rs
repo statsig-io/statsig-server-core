@@ -12,9 +12,10 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::Utc;
+use parking_lot::RwLock;
 use percent_encoding::percent_encode;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock, Weak};
+use std::sync::{Arc, Weak};
 use std::time::Duration;
 use tokio::sync::Notify;
 use tokio::time::sleep;
@@ -182,12 +183,15 @@ impl StatsigHttpSpecsAdapter {
     }
 
     pub async fn run_background_sync(self: Arc<Self>) {
-        let specs_info = match self.listener.read() {
-            Ok(lock) => match lock.as_ref() {
+        let specs_info = match self
+            .listener
+            .try_read_for(std::time::Duration::from_secs(1))
+        {
+            Some(lock) => match lock.as_ref() {
                 Some(listener) => listener.get_current_specs_info(),
                 None => SpecsInfo::empty(),
             },
-            Err(_) => SpecsInfo::error(),
+            None => SpecsInfo::error(),
         };
 
         self.ops_stats
@@ -205,7 +209,10 @@ impl StatsigHttpSpecsAdapter {
     }
 
     async fn manually_sync_specs(&self, current_specs_info: SpecsInfo) -> Result<(), StatsigErr> {
-        if let Ok(lock) = self.listener.read() {
+        if let Some(lock) = self
+            .listener
+            .try_read_for(std::time::Duration::from_secs(1))
+        {
             if lock.is_none() {
                 return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()));
             }
@@ -252,15 +259,17 @@ impl StatsigHttpSpecsAdapter {
             None,
         );
 
-        let result = match self.listener.read() {
-            Ok(lock) => match lock.as_ref() {
+        let result = match self
+            .listener
+            .try_read_for(std::time::Duration::from_secs(1))
+        {
+            Some(lock) => match lock.as_ref() {
                 Some(listener) => listener.did_receive_specs_update(update),
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
-            Err(e) => {
-                let err = StatsigErr::LockFailure(format!(
-                    "Failed to acquire read lock on listener: {e}"
-                ));
+            None => {
+                let err =
+                    StatsigErr::LockFailure("Failed to acquire read lock on listener".to_string());
                 log_error_to_statsig_and_console!(&self.ops_stats, TAG, err.clone());
                 Err(err)
             }
@@ -286,21 +295,27 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        let specs_info = match self.listener.read() {
-            Ok(lock) => match lock.as_ref() {
+        let specs_info = match self
+            .listener
+            .try_read_for(std::time::Duration::from_secs(1))
+        {
+            Some(lock) => match lock.as_ref() {
                 Some(listener) => listener.get_current_specs_info(),
                 None => SpecsInfo::empty(),
             },
-            Err(_) => SpecsInfo::error(),
+            None => SpecsInfo::error(),
         };
         self.manually_sync_specs(specs_info).await
     }
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
-        match self.listener.write() {
-            Ok(mut lock) => *lock = Some(listener),
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire write lock on listener: {}", e);
+        match self
+            .listener
+            .try_write_for(std::time::Duration::from_secs(1))
+        {
+            Some(mut lock) => *lock = Some(listener),
+            None => {
+                log_e!(TAG, "Failed to acquire write lock on listener");
             }
         }
     }

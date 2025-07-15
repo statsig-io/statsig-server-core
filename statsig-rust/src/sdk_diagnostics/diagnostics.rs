@@ -8,11 +8,13 @@ use crate::global_configs::{GlobalConfigs, MAX_SAMPLING_RATE};
 use crate::log_w;
 
 use crate::event_logging::event_logger::EventLogger;
+use parking_lot::Mutex;
 use rand::Rng;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::time::Duration;
 
 const MAX_MARKER_COUNT: usize = 50;
 pub const DIAGNOSTICS_EVENT: &str = "statsig::diagnostics";
@@ -55,34 +57,56 @@ impl Diagnostics {
     }
 
     pub fn set_context(&self, context: &ContextType) {
-        if let Ok(mut ctx) = self.context.lock() {
-            *ctx = *context;
+        match self.context.try_lock_for(Duration::from_secs(1)) {
+            Some(mut ctx) => {
+                *ctx = *context;
+            }
+            None => {
+                log_w!(TAG, "Failed to set context: Failed to lock context");
+            }
         }
     }
 
     pub fn get_markers(&self, context_type: &ContextType) -> Option<Vec<Marker>> {
-        if let Ok(map) = self.marker_map.lock() {
-            if let Some(markers) = map.get(context_type) {
-                return Some(markers.clone());
+        match self.marker_map.try_lock_for(Duration::from_secs(1)) {
+            Some(map) => {
+                if let Some(markers) = map.get(context_type) {
+                    return Some(markers.clone());
+                }
+            }
+            None => {
+                log_w!(TAG, "Failed to get markers: Failed to lock marker_map");
             }
         }
+
         None
     }
 
     pub fn add_marker(&self, context_type: Option<&ContextType>, marker: Marker) {
         let context_type = self.get_context(context_type);
-        if let Ok(mut map) = self.marker_map.lock() {
-            let entry = map.entry(context_type).or_insert_with(Vec::new);
-            if entry.len() < MAX_MARKER_COUNT {
-                entry.push(marker);
+
+        match self.marker_map.try_lock_for(Duration::from_secs(1)) {
+            Some(mut map) => {
+                let entry = map.entry(context_type).or_insert_with(Vec::new);
+                if entry.len() < MAX_MARKER_COUNT {
+                    entry.push(marker);
+                }
+            }
+            None => {
+                log_w!(TAG, "Failed to add marker: Failed to lock marker_map");
             }
         }
     }
 
     pub fn clear_markers(&self, context_type: &ContextType) {
-        if let Ok(mut map) = self.marker_map.lock() {
-            if let Some(markers) = map.get_mut(context_type) {
-                markers.clear();
+        match self.marker_map.try_lock_for(Duration::from_secs(1)) {
+            Some(mut map) => {
+                if let Some(markers) = map.get_mut(context_type) {
+                    markers.clear();
+                }
+            }
+            None => {
+                log_w!(TAG, "Failed to clear markers: Failed to lock marker_map");
             }
         }
     }
@@ -161,7 +185,13 @@ impl Diagnostics {
     fn get_context(&self, maybe_context: Option<&ContextType>) -> ContextType {
         maybe_context
             .copied()
-            .or_else(|| self.context.try_lock().ok().map(|c| *c))
+            .or_else(|| match self.context.try_lock_for(Duration::from_secs(1)) {
+                Some(c) => Some(*c),
+                None => {
+                    log_w!(TAG, "Failed to lock context");
+                    None
+                }
+            })
             .unwrap_or(ContextType::Unknown)
     }
 }

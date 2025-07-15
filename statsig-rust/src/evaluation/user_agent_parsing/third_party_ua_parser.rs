@@ -1,6 +1,7 @@
 use crate::{dyn_value, log_d, log_e, DynamicValue};
+use parking_lot::RwLock;
 use std::borrow::Cow;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use uaparser::{Parser, UserAgentParser as ExtUserAgentParser};
 
 lazy_static::lazy_static! {
@@ -16,7 +17,9 @@ impl ThirdPartyUserAgentParser {
         field: &str,
         user_agent: &str,
     ) -> Result<Option<DynamicValue>, &'static str> {
-        let lock = PARSER.read().map_err(|_| "lock_failure")?;
+        let lock = PARSER
+            .try_read_for(std::time::Duration::from_secs(1))
+            .ok_or("lock_failure")?;
         let parser = lock.as_ref().ok_or("parser_not_loaded")?;
 
         fn get_json_version(
@@ -57,15 +60,18 @@ impl ThirdPartyUserAgentParser {
     }
 
     pub fn load_parser() {
-        match PARSER.read() {
-            Ok(lock) => {
+        match PARSER.try_read_for(std::time::Duration::from_secs(1)) {
+            Some(lock) => {
                 if lock.is_some() {
                     log_d!(TAG, "Parser already loaded");
                     return;
                 }
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire read lock on parser: {}", e);
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to acquire read lock on parser: Failed to lock PARSER"
+                );
                 return;
             }
         }
@@ -81,13 +87,16 @@ impl ThirdPartyUserAgentParser {
             }
         };
 
-        match PARSER.write() {
-            Ok(mut lock) => {
+        match PARSER.try_write_for(std::time::Duration::from_secs(1)) {
+            Some(mut lock) => {
                 *lock = Some(parser);
                 log_d!(TAG, "User Agent Parser Successfully Loaded");
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire write lock on parser: {}", e);
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to acquire write lock on parser: Failed to lock PARSER"
+                );
             }
         }
     }

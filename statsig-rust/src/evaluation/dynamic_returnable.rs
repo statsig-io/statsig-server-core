@@ -1,4 +1,5 @@
 use crate::{hashing::djb2, log_e};
+use parking_lot::Mutex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{
     value::{to_raw_value, RawValue},
@@ -6,7 +7,8 @@ use serde_json::{
 };
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex, Weak},
+    sync::{Arc, Weak},
+    time::Duration,
 };
 
 const TAG: &str = "DynamicReturnable";
@@ -121,10 +123,13 @@ impl Serialize for DynamicReturnable {
 
 impl Drop for DynamicReturnable {
     fn drop(&mut self) {
-        let mut memo = match MEMOIZED_VALUES.lock() {
-            Ok(values) => values,
-            Err(e) => {
-                log_e!(TAG, "Failed to lock memoized values: {}", e);
+        let mut memo = match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(1)) {
+            Some(values) => values,
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to lock memoized values: Failed to lock MEMOIZED_VALUES"
+                );
                 return;
             }
         };
@@ -192,10 +197,13 @@ impl MemoizedValue {
 }
 
 fn get_memoized_value(hash: &str) -> Option<Arc<MemoizedValue>> {
-    let mut memoized_values = match MEMOIZED_VALUES.lock() {
-        Ok(values) => values,
-        Err(e) => {
-            log_e!(TAG, "Failed to lock memoized values: {}", e);
+    let mut memoized_values = match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(1)) {
+        Some(values) => values,
+        None => {
+            log_e!(
+                TAG,
+                "Failed to lock memoized values: Failed to lock MEMOIZED_VALUES"
+            );
             return None;
         }
     };
@@ -212,12 +220,15 @@ fn get_memoized_value(hash: &str) -> Option<Arc<MemoizedValue>> {
 }
 
 fn set_memoized_value(hash: &str, value: Weak<MemoizedValue>) {
-    match MEMOIZED_VALUES.lock() {
-        Ok(mut values) => {
+    match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(1)) {
+        Some(mut values) => {
             values.insert(hash.to_string(), value);
         }
-        Err(e) => {
-            log_e!(TAG, "Failed to lock memoized values: {}", e);
+        None => {
+            log_e!(
+                TAG,
+                "Failed to lock memoized values: Failed to lock MEMOIZED_VALUES"
+            );
         }
     };
 }

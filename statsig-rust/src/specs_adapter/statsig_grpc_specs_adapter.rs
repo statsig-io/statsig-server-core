@@ -1,3 +1,4 @@
+use super::{SpecsInfo, StatsigHttpSpecsAdapter};
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
@@ -9,15 +10,15 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::Utc;
+use parking_lot::{Mutex, RwLock};
 use sigstat_grpc::statsig_grpc_client::StatsigGrpcClient;
 use std::cmp;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{broadcast, Mutex, Notify};
+use tokio::sync::{broadcast, Notify};
 use tokio::time::{sleep, timeout};
 
-use super::{SpecsInfo, StatsigHttpSpecsAdapter};
 // Todo make those configurable
 const DEFAULT_BACKOFF_INTERVAL_MS: u64 = 3000;
 const DEFAULT_BACKOFF_MULTIPLIER: u64 = 2;
@@ -78,36 +79,49 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        let ops_stats = self.ops_stats.clone();
-        let self_clone = self.clone();
-        let self_clone_clone = self.clone();
+        match self.task_handle_id.try_lock_for(Duration::from_secs(1)) {
+            Some(lock) => {
+                if lock.is_some() {
+                    return Ok(());
+                }
+            }
+            None => {
+                log_w!(TAG, "Failed to lock task_handle_id");
+                return Err(StatsigErr::LockFailure(
+                    "Failed to lock task_handle_id".to_string(),
+                ));
+            }
+        };
 
-        let lock = self_clone.task_handle_id.lock().await;
-        if lock.is_some() {
-            return Ok(());
-        }
-        drop(lock); // Release the lock before spawning
-
-        let task_id = self_clone_clone
-            .spawn_grpc_streaming_thread(statsig_runtime, ops_stats)
+        let task_id = self
+            .clone()
+            .spawn_grpc_streaming_thread(statsig_runtime, self.ops_stats.clone())
             .await?;
 
-        let mut new_lock = self_clone.task_handle_id.lock().await;
-        *new_lock = Some(task_id);
+        match self.task_handle_id.try_lock_for(Duration::from_secs(1)) {
+            Some(mut lock) => {
+                *lock = Some(task_id);
+            }
+            None => {
+                log_w!(TAG, "Failed to lock task_handle_id");
+            }
+        }
+
         Ok(())
     }
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
         self.http_specs_adapter.initialize(listener.clone());
-        match self.listener.write() {
-            Ok(mut lock) => *lock = Some(listener),
-            Err(e) => {
+        match self
+            .listener
+            .try_write_for(std::time::Duration::from_secs(1))
+        {
+            Some(mut lock) => *lock = Some(listener),
+            None => {
                 log_error_to_statsig_and_console!(
                     self.ops_stats,
                     TAG,
-                    StatsigErr::LockFailure(format!(
-                        "Failed to acquire write lock on listener: {e}"
-                    ))
+                    StatsigErr::LockFailure("Failed to acquire write lock on listener".to_string())
                 );
             }
         }
@@ -120,13 +134,15 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
     ) -> Result<(), StatsigErr> {
         self.shutdown_notify.notify_one();
 
-        let opt_handle_id = self
-            .task_handle_id
-            .try_lock()
-            .map_err(|_| {
-                StatsigErr::GrpcError("Failed to acquire lock to running task".to_string())
-            })?
-            .take();
+        let opt_handle_id = match self.task_handle_id.try_lock_for(Duration::from_secs(1)) {
+            Some(mut lock) => lock.take(),
+            None => {
+                log_w!(TAG, "Failed to lock task_handle_id");
+                return Err(StatsigErr::LockFailure(
+                    "Failed to lock task_handle_id".to_string(),
+                ));
+            }
+        };
 
         let handle_id = match opt_handle_id {
             Some(handle_id) => handle_id,
@@ -337,20 +353,27 @@ impl StatsigGrpcSpecsAdapter {
     }
 
     fn set_task_handle_id(&self, handle_id: tokio::task::Id) -> Result<(), StatsigErr> {
-        let mut guard = self
-            .task_handle_id
-            .try_lock()
-            .map_err(|e| StatsigErr::LockFailure(e.to_string()))?;
-
-        *guard = Some(handle_id);
-        Ok(())
+        match self.task_handle_id.try_lock_for(Duration::from_secs(1)) {
+            Some(mut lock) => {
+                *lock = Some(handle_id);
+                Ok(())
+            }
+            None => {
+                log_w!(TAG, "Failed to lock task_handle_id");
+                Err(StatsigErr::LockFailure(
+                    "Failed to lock task_handle_id".to_string(),
+                ))
+            }
+        }
     }
 
     fn send_spec_update_to_listener(&self, data: String) -> Result<(), StatsigErr> {
         let listener = self
             .listener
-            .read()
-            .map_err(|e| StatsigErr::LockFailure(e.to_string()))?;
+            .try_read_for(std::time::Duration::from_secs(1))
+            .ok_or_else(|| {
+                StatsigErr::LockFailure("Failed to acquire read lock on listener".to_string())
+            })?;
 
         if let Some(listener) = listener.as_ref() {
             let update = SpecsUpdate {
@@ -367,14 +390,22 @@ impl StatsigGrpcSpecsAdapter {
     }
 
     fn get_current_specs_info(&self) -> Option<SpecsInfo> {
-        if let Ok(listener) = self.listener.read() {
-            if let Some(listener) = listener.as_ref() {
-                return Some(listener.get_current_specs_info());
+        match self
+            .listener
+            .try_read_for(std::time::Duration::from_secs(1))
+        {
+            Some(lock) => match lock.as_ref() {
+                Some(listener) => Some(listener.get_current_specs_info()),
+                None => {
+                    log_w!(TAG, "Failed to get current lcut");
+                    None
+                }
+            },
+            None => {
+                log_w!(TAG, "Failed to get current lcut");
+                None
             }
         }
-
-        log_w!(TAG, "Failed to get current lcut");
-        None
     }
 
     #[cfg(feature = "with_shared_dict_compression")]

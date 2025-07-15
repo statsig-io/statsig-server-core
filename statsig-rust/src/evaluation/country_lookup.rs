@@ -1,9 +1,9 @@
+use super::{dynamic_string::DynamicString, evaluator_context::EvaluatorContext};
 use crate::{
     dyn_value, log_d, log_e, unwrap_or_return_with, user::StatsigUserInternal, DynamicValue,
 };
-use std::sync::{Arc, RwLock};
-
-use super::{dynamic_string::DynamicString, evaluator_context::EvaluatorContext};
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 pub struct CountryLookup;
 
@@ -34,15 +34,18 @@ impl UsizeExt for usize {
 
 impl CountryLookup {
     pub fn load_country_lookup() {
-        match COUNTRY_LOOKUP_DATA.read() {
-            Ok(lock) => {
+        match COUNTRY_LOOKUP_DATA.try_read_for(std::time::Duration::from_secs(1)) {
+            Some(lock) => {
                 if lock.is_some() {
                     log_d!(TAG, "Country Lookup already loaded");
                     return;
                 }
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire read lock on country lookup: {}", e);
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to acquire read lock on country lookup: Failed to lock COUNTRY_LOOKUP_DATA"
+                );
                 return;
             }
         }
@@ -97,13 +100,16 @@ impl CountryLookup {
             ip_ranges,
         };
 
-        match COUNTRY_LOOKUP_DATA.write() {
-            Ok(mut lock) => {
+        match COUNTRY_LOOKUP_DATA.try_write_for(std::time::Duration::from_secs(1)) {
+            Some(mut lock) => {
                 *lock = Some(country_lookup);
                 log_d!(TAG, " Successfully Loaded");
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to acquire write lock on country_lookup: {}", e);
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to acquire write lock on country_lookup: Failed to lock COUNTRY_LOOKUP_DATA"
+                );
             }
         }
     }
@@ -139,11 +145,14 @@ impl CountryLookup {
             return None;
         }
 
-        let lock = unwrap_or_return_with!(COUNTRY_LOOKUP_DATA.read().ok(), || {
-            evaluator_context.result.override_reason = Some(UNINITIALIZED_REASON);
-            log_e!(TAG, "Failed to acquire read lock on country lookup");
-            None
-        });
+        let lock = unwrap_or_return_with!(
+            COUNTRY_LOOKUP_DATA.try_read_for(std::time::Duration::from_secs(1)),
+            || {
+                evaluator_context.result.override_reason = Some(UNINITIALIZED_REASON);
+                log_e!(TAG, "Failed to acquire read lock on country lookup");
+                None
+            }
+        );
 
         let country_lookup_data = unwrap_or_return_with!(lock.as_ref(), || {
             evaluator_context.result.override_reason = Some(UNINITIALIZED_REASON);

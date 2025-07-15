@@ -1,6 +1,9 @@
-use std::sync::{Arc, Mutex, Weak};
-
 use crate::{log_e, networking::NetworkProvider};
+use parking_lot::Mutex;
+use std::{
+    sync::{Arc, Weak},
+    time::Duration,
+};
 
 lazy_static::lazy_static! {
     static ref INSTANCE: Mutex<Option<Weak<dyn NetworkProvider>>> = Mutex::new(None);
@@ -12,10 +15,13 @@ pub struct NetworkProviderGlobal;
 
 impl NetworkProviderGlobal {
     pub fn try_get() -> Option<Weak<dyn NetworkProvider>> {
-        let lock = match INSTANCE.lock() {
-            Ok(lock) => lock,
-            Err(e) => {
-                log_e!(TAG, "Failed to get network provider: {}", e);
+        let lock = match INSTANCE.try_lock_for(Duration::from_secs(1)) {
+            Some(lock) => lock,
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to get network provider: Failed to lock INSTANCE"
+                );
                 return None;
             }
         };
@@ -27,12 +33,15 @@ impl NetworkProviderGlobal {
     }
 
     pub fn set(provider: &Arc<dyn NetworkProvider>) {
-        match INSTANCE.lock() {
-            Ok(mut instance) => {
+        match INSTANCE.try_lock_for(Duration::from_secs(1)) {
+            Some(mut instance) => {
                 *instance = Some(Arc::downgrade(provider));
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to set network provider: {}", e);
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to set network provider: Failed to lock INSTANCE"
+                );
             }
         }
     }

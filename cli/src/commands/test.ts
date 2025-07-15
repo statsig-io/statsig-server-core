@@ -139,6 +139,7 @@ function runTests(lang: string, options: Options) {
     `-v "/tmp/statsig-server-core/cargo-registry:/usr/local/cargo/registry"`,
     `-e RUST_BACKTRACE=1`,
     `-e FORCE_COLOR=true`,
+    `-e STATSIG_RUNNING_TESTS=1`,
     `-e test_api_key=${process.env.test_api_key}`,
     dockerImageTag,
     `"cd /app && ${TEST_COMMANDS[lang]}"`, // && while true; do sleep 1000; done

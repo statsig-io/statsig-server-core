@@ -1,8 +1,10 @@
 use crate::{log_e, DynamicValue};
 use lazy_static::lazy_static;
+use parking_lot::RwLock;
 use std::{
     collections::HashMap,
-    sync::{Arc, RwLock, Weak},
+    sync::{Arc, Weak},
+    time::Duration,
 };
 
 const TAG: &str = stringify!(GlobalConfigs);
@@ -25,16 +27,19 @@ pub struct GlobalConfigs {
 
 impl GlobalConfigs {
     pub fn get_instance(sdk_key: &str) -> Arc<GlobalConfigs> {
-        match GLOBAL_CONFIG_INSTANCES.read() {
-            Ok(read_guard) => {
+        match GLOBAL_CONFIG_INSTANCES.try_read_for(Duration::from_secs(1)) {
+            Some(read_guard) => {
                 if let Some(instance) = read_guard.get(sdk_key) {
                     if let Some(instance) = instance.upgrade() {
                         return instance.clone();
                     }
                 }
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to get read guard: {}", e);
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to get read guard: Failed to lock GLOBAL_CONFIG_INSTANCES"
+                );
             }
         }
 
@@ -50,12 +55,15 @@ impl GlobalConfigs {
             }),
         });
 
-        match GLOBAL_CONFIG_INSTANCES.write() {
-            Ok(mut write_guard) => {
+        match GLOBAL_CONFIG_INSTANCES.try_write_for(Duration::from_secs(1)) {
+            Some(mut write_guard) => {
                 write_guard.insert(sdk_key.into(), Arc::downgrade(&instance));
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to get write guard: {}", e);
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to get write guard: Failed to lock GLOBAL_CONFIG_INSTANCES"
+                );
             }
         }
 
@@ -63,21 +71,21 @@ impl GlobalConfigs {
     }
 
     pub fn set_sdk_configs(&self, new_configs: HashMap<String, DynamicValue>) {
-        match self.configs.write() {
-            Ok(mut configs_guard) => {
+        match self.configs.try_write_for(Duration::from_secs(1)) {
+            Some(mut configs_guard) => {
                 for (key, value) in new_configs {
                     configs_guard.sdk_configs.insert(key, value);
                 }
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to get write guard: {}", e);
+            None => {
+                log_e!(TAG, "Failed to get write guard: Failed to lock configs");
             }
         }
     }
 
     pub fn set_diagnostics_sampling_rates(&self, new_sampling_rate: HashMap<String, f64>) {
-        match self.configs.write() {
-            Ok(mut configs_guard) => {
+        match self.configs.try_write_for(Duration::from_secs(1)) {
+            Some(mut configs_guard) => {
                 for (key, rate) in new_sampling_rate {
                     let clamped_rate = rate.clamp(0.0, MAX_SAMPLING_RATE);
                     configs_guard
@@ -85,8 +93,8 @@ impl GlobalConfigs {
                         .insert(key, clamped_rate);
                 }
             }
-            Err(e) => {
-                log_e!(TAG, "Failed to get write guard: {}", e);
+            None => {
+                log_e!(TAG, "Failed to get write guard: Failed to lock configs");
             }
         }
     }
@@ -96,10 +104,10 @@ impl GlobalConfigs {
         key: &str,
         f: impl FnOnce(Option<&DynamicValue>) -> T,
     ) -> T {
-        match self.configs.read() {
-            Ok(configs_guard) => f(configs_guard.sdk_configs.get(key)),
-            Err(e) => {
-                log_e!(TAG, "Failed to get read guard: {}", e);
+        match self.configs.try_read_for(Duration::from_secs(1)) {
+            Some(configs_guard) => f(configs_guard.sdk_configs.get(key)),
+            None => {
+                log_e!(TAG, "Failed to get read guard: Failed to lock configs");
                 f(None)
             }
         }
@@ -110,10 +118,10 @@ impl GlobalConfigs {
         key: &str,
         f: impl FnOnce(Option<&f64>) -> T,
     ) -> T {
-        match self.configs.read() {
-            Ok(configs_guard) => f(configs_guard.diagnostics_sampling_rates.get(key)),
-            Err(e) => {
-                log_e!(TAG, "Failed to get read guard: {}", e);
+        match self.configs.try_read_for(Duration::from_secs(1)) {
+            Some(configs_guard) => f(configs_guard.diagnostics_sampling_rates.get(key)),
+            None => {
+                log_e!(TAG, "Failed to get read guard: Failed to lock configs");
                 f(None)
             }
         }

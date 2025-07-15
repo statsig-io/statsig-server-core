@@ -4,13 +4,19 @@ use std::time::Duration;
 
 fn is_runtime_none() -> bool {
     let global = StatsigGlobal::get();
-    let is_none = global.tokio_runtime.lock().unwrap().is_none();
+    let is_none = global
+        .tokio_runtime
+        .try_lock_for(Duration::from_secs(1))
+        .is_none();
     is_none
 }
 
 fn is_runtime_some() -> bool {
     let global = StatsigGlobal::get();
-    let is_some = global.tokio_runtime.lock().unwrap().is_some();
+    let is_some = global
+        .tokio_runtime
+        .try_lock_for(Duration::from_secs(1))
+        .is_some();
     is_some
 }
 

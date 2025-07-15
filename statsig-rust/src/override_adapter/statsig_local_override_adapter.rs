@@ -3,8 +3,9 @@ use crate::evaluation::evaluator_result::EvaluatorResult;
 use crate::event_logging::exposable_string::ExposableString;
 use crate::specs_response::spec_types::Spec;
 use crate::{log_d, read_lock_or_return, write_lock_or_noop, OverrideAdapter, StatsigUser};
+use parking_lot::RwLock;
 use serde_json::Value;
-use std::{collections::HashMap, sync::RwLock};
+use std::collections::HashMap;
 
 enum ExperimentOverrides {
     Value(DynamicReturnable),

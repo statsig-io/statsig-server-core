@@ -1,8 +1,9 @@
 use crate::log_d;
 use crate::log_e;
 use crate::StatsigRuntime;
+use parking_lot::Mutex;
 use std::collections::HashSet;
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Weak};
 use tokio::sync::Notify;
 use tokio::time::{sleep, Duration};
 
@@ -44,19 +45,19 @@ impl HashSetWithTTL {
     }
 
     pub fn add(&self, key: String) -> Result<(), String> {
-        match self.set.lock() {
-            Ok(mut set) => {
+        match self.set.try_lock_for(Duration::from_secs(1)) {
+            Some(mut set) => {
                 set.insert(key);
                 Ok(())
             }
-            Err(e) => Err(format!("Failed to acquire lock: {e}")),
+            None => Err("Failed to acquire lock".to_string()),
         }
     }
 
     pub fn contains(&self, key: &str) -> Result<bool, String> {
-        match self.set.lock() {
-            Ok(set) => Ok(set.contains(key)),
-            Err(e) => Err(format!("Failed to acquire lock: {e}")),
+        match self.set.try_lock_for(Duration::from_secs(1)) {
+            Some(set) => Ok(set.contains(key)),
+            None => Err("Failed to acquire lock".to_string()),
         }
     }
 
@@ -65,12 +66,12 @@ impl HashSetWithTTL {
     }
 
     fn reset(set: &Mutex<HashSet<String>>) -> Result<(), String> {
-        match set.lock() {
-            Ok(mut set) => {
+        match set.try_lock_for(Duration::from_secs(1)) {
+            Some(mut set) => {
                 set.clear();
                 Ok(())
             }
-            Err(e) => Err(format!("Failed to acquire lock: {e}")),
+            None => Err("Failed to acquire lock".to_string()),
         }
     }
 

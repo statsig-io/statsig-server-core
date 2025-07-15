@@ -13,6 +13,7 @@ repository.workspace = true
 tokio = { version = "1.39.1", features = ["full"] }
 async-trait = "0.1.81"
 tonic = { version = "0.12.1", features = ["tls"] }
+parking_lot = "0.12.1"
 prost = "0.13.1"
 tonic-build = "0.12.1"
 log = "0.4.22"
