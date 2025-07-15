@@ -4,20 +4,16 @@ use std::time::Duration;
 
 fn is_runtime_none() -> bool {
     let global = StatsigGlobal::get();
-    let is_none = global
-        .tokio_runtime
-        .try_lock_for(Duration::from_secs(1))
-        .is_none();
-    is_none
+    let rt = &global.tokio_runtime;
+    let lock_result = rt.try_lock().expect("Failed to lock tokio runtime");
+    lock_result.is_none()
 }
 
 fn is_runtime_some() -> bool {
     let global = StatsigGlobal::get();
-    let is_some = global
-        .tokio_runtime
-        .try_lock_for(Duration::from_secs(1))
-        .is_some();
-    is_some
+    let rt = &global.tokio_runtime;
+    let lock_result = rt.try_lock().expect("Failed to lock tokio runtime");
+    lock_result.is_some()
 }
 
 #[test]

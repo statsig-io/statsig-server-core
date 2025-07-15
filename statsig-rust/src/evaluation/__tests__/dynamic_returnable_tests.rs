@@ -1,17 +1,12 @@
 use serde_json::json;
 
 use crate::evaluation::dynamic_returnable::{self, DynamicReturnable};
-use parking_lot::Mutex;
+use serial_test::serial;
 use std::collections::HashMap;
 
-lazy_static::lazy_static! {
-    static ref TEST_LOCK: Mutex<()> = Mutex::new(());
-}
-
 #[test]
+#[serial]
 fn test_jsonify_object_two_ways() {
-    let _lock = TEST_LOCK.try_lock().unwrap();
-
     let raw = r#"{"test":{"key":"value"}}"#;
 
     let deserialized: HashMap<String, DynamicReturnable> = serde_json::from_str(raw).unwrap();
@@ -21,8 +16,8 @@ fn test_jsonify_object_two_ways() {
 }
 
 #[test]
+#[serial]
 fn test_jsonify_bool_two_ways() {
-    let _lock = TEST_LOCK.try_lock().unwrap();
     let raw = r#"{"test":true}"#;
 
     let deserialized: HashMap<String, DynamicReturnable> = serde_json::from_str(raw).unwrap();
@@ -32,8 +27,8 @@ fn test_jsonify_bool_two_ways() {
 }
 
 #[test]
+#[serial]
 fn test_memoization_from_json_object() {
-    let _lock = TEST_LOCK.try_lock().unwrap();
     let raw = r#"{"once":{"key":"value"},"twice":{"key":"value"}}"#;
 
     let deserialized: HashMap<String, DynamicReturnable> = serde_json::from_str(raw).unwrap();
@@ -46,8 +41,8 @@ fn test_memoization_from_json_object() {
 }
 
 #[test]
+#[serial]
 fn test_memoization_from_json_bool() {
-    let _lock = TEST_LOCK.try_lock().unwrap();
     let raw = r#"{"once":true,"twice":true}"#;
 
     let deserialized: HashMap<String, DynamicReturnable> = serde_json::from_str(raw).unwrap();
@@ -60,9 +55,8 @@ fn test_memoization_from_json_bool() {
 }
 
 #[test]
+#[serial]
 fn test_memoization_from_map() {
-    let _lock = TEST_LOCK.try_lock().unwrap();
-
     let value = HashMap::from([("key".to_string(), json!("value"))]);
     let dyn_returnable = DynamicReturnable::from_map(value);
 

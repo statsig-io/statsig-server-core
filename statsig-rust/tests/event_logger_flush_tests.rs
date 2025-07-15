@@ -3,17 +3,13 @@ mod utils;
 use crate::utils::mock_observability_client::MockObservabilityClient;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use more_asserts::assert_gt;
+use serial_test::serial;
 use statsig_rust::networking::NetworkError;
 use statsig_rust::output_logger::LogLevel;
 use statsig_rust::{ObservabilityClient, Statsig, StatsigErr, StatsigOptions, StatsigUser};
-use std::sync::Mutex;
 use std::sync::{atomic::Ordering, Arc};
 use std::time::Duration;
 use utils::mock_event_logging_adapter::MockEventLoggingAdapter;
-
-lazy_static::lazy_static! {
-    static ref TEST_LOCK: Mutex<()> = Mutex::new(());
-}
 
 async fn setup(
     options: StatsigOptions,
@@ -50,14 +46,13 @@ async fn teardown(statsig: Option<Statsig>) {
     std::env::remove_var("STATSIG_TEST_OVERRIDE_MAX_LOG_EVENT_RETRIES");
 
     if let Some(statsig) = statsig {
-        statsig.shutdown().await.unwrap();
+        let _ = statsig.shutdown().await;
     }
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[serial]
 async fn test_limit_flushing() {
-    let _lock = TEST_LOCK.lock().unwrap();
     let mut options = StatsigOptions::new();
     options.event_logging_max_queue_size = Some(10);
     options.event_logging_max_pending_batch_queue_size = Some(60);
@@ -85,9 +80,8 @@ async fn test_limit_flushing() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[serial]
 async fn test_scheduled_flush_batch_size() {
-    let _lock = TEST_LOCK.lock().unwrap();
     const MAX_EVENTS: usize = 5;
 
     std::env::set_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "1");
@@ -128,9 +122,8 @@ async fn test_scheduled_flush_batch_size() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[serial]
 async fn test_scheduled_flush_max_time() {
-    let _lock = TEST_LOCK.lock().unwrap();
     std::env::set_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MAX_FLUSH_INTERVAL_MS", "1");
@@ -173,9 +166,8 @@ async fn test_scheduled_flush_max_time() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[serial]
 async fn test_scheduled_flush_failures() {
-    let _lock = TEST_LOCK.lock().unwrap();
     std::env::set_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MAX_FLUSH_INTERVAL_MS", "1");
@@ -209,9 +201,8 @@ async fn test_scheduled_flush_failures() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[serial]
 async fn test_requeue_dropped_events() {
-    let _lock = TEST_LOCK.lock().unwrap();
     std::env::set_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MAX_FLUSH_INTERVAL_MS", "1");
@@ -249,9 +240,8 @@ async fn test_requeue_dropped_events() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[serial]
 async fn test_high_qps_dropped_events() {
-    let _lock = TEST_LOCK.lock().unwrap();
     let mut options = StatsigOptions::new();
     options.event_logging_max_queue_size = Some(10);
     options.event_logging_max_pending_batch_queue_size = Some(2);
@@ -293,9 +283,8 @@ async fn test_high_qps_dropped_events() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[serial]
 async fn test_non_retryable_failure_drops_events() {
-    let _lock = TEST_LOCK.lock().unwrap();
     std::env::set_var("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "1");
     std::env::set_var("STATSIG_TEST_OVERRIDE_MAX_FLUSH_INTERVAL_MS", "1");
@@ -337,9 +326,8 @@ async fn test_non_retryable_failure_drops_events() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[serial]
 async fn test_logging_behavior_when_network_is_disabled() {
-    let _lock = TEST_LOCK.lock().unwrap();
     let mut options = StatsigOptions::new();
     options.event_logging_max_queue_size = Some(5);
     options.disable_network = Some(true);

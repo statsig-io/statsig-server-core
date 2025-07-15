@@ -95,6 +95,7 @@ pub fn initialize_output_logger(
 ) {
     let was_initialized = INITIALIZED.swap(true, Ordering::SeqCst);
     if was_initialized {
+        println!("Logger already initialized");
         return;
     }
 

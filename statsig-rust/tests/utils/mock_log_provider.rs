@@ -1,5 +1,7 @@
+use std::time::Duration;
+
+use parking_lot::Mutex;
 use statsig_rust::output_logger::OutputLogProvider;
-use std::sync::Mutex;
 
 #[derive(Debug, PartialEq)]
 pub enum RecordedLog {
@@ -23,44 +25,53 @@ impl MockLogProvider {
     }
 
     pub fn clear(&self) {
-        self.logs.lock().unwrap().clear();
+        self.logs
+            .try_lock_for(Duration::from_secs(1))
+            .unwrap()
+            .clear();
     }
 }
 
 impl OutputLogProvider for MockLogProvider {
     fn initialize(&self) {
-        self.logs.lock().unwrap().push(RecordedLog::Init);
+        self.logs
+            .try_lock_for(Duration::from_secs(1))
+            .unwrap()
+            .push(RecordedLog::Init);
     }
 
     fn debug(&self, tag: &str, msg: String) {
         self.logs
-            .lock()
+            .try_lock_for(Duration::from_secs(1))
             .unwrap()
             .push(RecordedLog::Debug(tag.to_string(), msg));
     }
 
     fn info(&self, tag: &str, msg: String) {
         self.logs
-            .lock()
+            .try_lock_for(Duration::from_secs(1))
             .unwrap()
             .push(RecordedLog::Info(tag.to_string(), msg));
     }
 
     fn warn(&self, tag: &str, msg: String) {
         self.logs
-            .lock()
+            .try_lock_for(Duration::from_secs(1))
             .unwrap()
             .push(RecordedLog::Warn(tag.to_string(), msg));
     }
 
     fn error(&self, tag: &str, msg: String) {
         self.logs
-            .lock()
+            .try_lock_for(Duration::from_secs(1))
             .unwrap()
             .push(RecordedLog::Error(tag.to_string(), msg));
     }
 
     fn shutdown(&self) {
-        self.logs.lock().unwrap().push(RecordedLog::Shutdown);
+        self.logs
+            .try_lock_for(Duration::from_secs(1))
+            .unwrap()
+            .push(RecordedLog::Shutdown);
     }
 }

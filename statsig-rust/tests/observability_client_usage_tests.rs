@@ -1,5 +1,6 @@
 mod utils;
 
+use serial_test::serial;
 use statsig_rust::{
     output_logger::LogLevel, ObservabilityClient, OpsStatsEventObserver, Statsig, StatsigOptions,
     StatsigUser,
@@ -130,6 +131,7 @@ impl ObservabilityClient for MockObservabilityClient {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_init_called() {
     let obs_client = Arc::new(MockObservabilityClient {
         calls: Mutex::new(Vec::new()),
@@ -145,6 +147,7 @@ async fn test_init_called() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_sdk_initialization_dist_recorded() {
     let obs_client = Arc::new(MockObservabilityClient {
         calls: Mutex::new(Vec::new()),
@@ -183,6 +186,7 @@ async fn test_sdk_initialization_dist_recorded() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_propagation_dist_recorded() {
     let obs_client = Arc::new(MockObservabilityClient {
         calls: Mutex::new(Vec::new()),
@@ -220,6 +224,7 @@ async fn test_config_propagation_dist_recorded() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_error_callback_called() {
     let obs_client = Arc::new(MockObservabilityClient {
         calls: Mutex::new(Vec::new()),
@@ -249,6 +254,7 @@ async fn test_error_callback_called() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_shutdown_drops() {
     let obs_client = Arc::new(MockObservabilityClient {
         calls: Mutex::new(Vec::new()),
@@ -268,6 +274,7 @@ async fn test_shutdown_drops() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_init_from_network() {
     let obs_client = Arc::new(MockObservabilityClient {
         calls: Mutex::new(Vec::new()),
