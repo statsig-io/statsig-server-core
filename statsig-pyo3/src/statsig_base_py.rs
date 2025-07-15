@@ -50,7 +50,7 @@ impl StatsigBasePy {
         let (completion_event, event_clone) = get_completion_event(py)?;
 
         let inst = self.inner.clone();
-        self.inner.statsig_runtime.runtime_handle.spawn(async move {
+        self.inner.statsig_runtime.get_handle().spawn(async move {
             if let Err(e) = inst.initialize().await {
                 log_e!(TAG, "Failed to initialize Statsig: {}", e);
             }
@@ -74,7 +74,7 @@ impl StatsigBasePy {
         let (future, future_clone) = create_python_future(py)?;
 
         let inst = self.inner.clone();
-        self.inner.statsig_runtime.runtime_handle.spawn(async move {
+        self.inner.statsig_runtime.get_handle().spawn(async move {
             let result = inst.initialize_with_details().await;
 
             SafeGil::run(|py| {
@@ -120,7 +120,7 @@ impl StatsigBasePy {
         let (completion_event, event_clone) = get_completion_event(py)?;
 
         let inst = self.inner.clone();
-        self.inner.statsig_runtime.runtime_handle.spawn(async move {
+        self.inner.statsig_runtime.get_handle().spawn(async move {
             inst.flush_events().await;
 
             SafeGil::run(|py| {

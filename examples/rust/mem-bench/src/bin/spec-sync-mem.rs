@@ -10,7 +10,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
     let statsig_rt = StatsigRuntime::get_runtime();
-    statsig_rt.runtime_handle.block_on(async {
+    statsig_rt.get_handle().block_on(async {
         let specs_adapter = Arc::new(StaticSpecsAdapter::with_data("dcs_data.json"));
         let options = Arc::new(StatsigOptions {
             disable_user_agent_parsing: Some(true),

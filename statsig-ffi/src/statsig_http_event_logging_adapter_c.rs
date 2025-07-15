@@ -57,7 +57,7 @@ pub extern "C" fn statsig_http_event_logging_adapter_send_events(
     };
 
     let statsig_rt = StatsigRuntime::get_runtime();
-    statsig_rt.runtime_handle.block_on(async move {
+    statsig_rt.get_handle().block_on(async move {
         match event_logging_adapter.send_events_over_http(&request).await {
             Ok(_) => callback(true, null()),
             Err(e) => callback(false, string_to_c_char(e.to_string())),

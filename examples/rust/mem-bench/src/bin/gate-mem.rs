@@ -16,7 +16,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
     let statsig_rt = StatsigRuntime::get_runtime();
-    statsig_rt.runtime_handle.block_on(async {
+    statsig_rt.get_handle().block_on(async {
         let options = Arc::new(StatsigOptions {
             wait_for_country_lookup_init: Some(true),
             wait_for_user_agent_init: Some(true),

@@ -2,6 +2,7 @@ from mock_scrapi import MockScrapi
 from pytest_httpserver import HTTPServer
 from utils import get_test_data_resource
 import subprocess
+import os
 
 
 def setup_server(httpserver: HTTPServer):
@@ -30,11 +31,13 @@ def test_forking(httpserver: HTTPServer):
     proc = subprocess.Popen(
         command,
         shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
         universal_newlines=True,
+        env={**os.environ, "RUST_BACKTRACE": "full"},
     )
-    stdout, _ = proc.communicate(timeout=10)
-    print(stdout)
+    try:
+        proc.communicate(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.terminate()
+        proc.wait()
 
     assert proc.returncode == 0

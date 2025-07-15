@@ -44,7 +44,7 @@ pub extern "C" fn statsig_local_file_specs_adapter_fetch_and_write_to_file(specs
 
     let statsig_rt = StatsigRuntime::get_runtime();
     let result = statsig_rt
-        .runtime_handle
+        .get_handle()
         .block_on(async move { specs_adapter.fetch_and_write_to_file().await });
 
     if let Err(e) = result {

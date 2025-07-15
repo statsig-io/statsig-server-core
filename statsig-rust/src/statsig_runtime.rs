@@ -3,20 +3,15 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
-use tokio::runtime::{Builder, Handle, Runtime};
+use tokio::runtime::{Builder, Handle};
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
-use crate::log_e;
 use crate::statsig_global::StatsigGlobal;
 use crate::StatsigErr;
-use crate::{log_d, log_w};
+use crate::{log_d, log_e};
 
 const TAG: &str = stringify!(StatsigRuntime);
-
-// lazy_static::lazy_static! {
-//     static ref OWNED_TOKIO_RUNTIME: Mutex<Option<Weak<Runtime>>> = Mutex::new(None);
-// }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct TaskId {
@@ -25,30 +20,46 @@ struct TaskId {
 }
 
 pub struct StatsigRuntime {
-    pub runtime_handle: Handle,
-    inner_runtime: Mutex<Option<Arc<Runtime>>>,
     spawned_tasks: Arc<Mutex<HashMap<TaskId, JoinHandle<()>>>>,
     shutdown_notify: Arc<Notify>,
     is_shutdown: Arc<AtomicBool>,
+    pid: u32,
 }
 
 impl StatsigRuntime {
     #[must_use]
     pub fn get_runtime() -> Arc<StatsigRuntime> {
-        let (opt_runtime, runtime_handle) = create_runtime_if_required();
-        let shutdown_notify = Notify::new();
+        create_runtime_if_required();
 
         Arc::new(StatsigRuntime {
-            inner_runtime: Mutex::new(opt_runtime),
-            runtime_handle,
             spawned_tasks: Arc::new(Mutex::new(HashMap::new())),
-            shutdown_notify: Arc::new(shutdown_notify),
+            shutdown_notify: Arc::new(Notify::new()),
             is_shutdown: Arc::new(AtomicBool::new(false)),
+            pid: std::process::id(),
         })
     }
 
     pub fn get_handle(&self) -> Handle {
-        self.runtime_handle.clone()
+        // nocommit: remove panics
+        if self.pid != std::process::id() {
+            panic!("StatsigRuntime::get_handle() called from different process");
+        }
+
+        if let Ok(handle) = Handle::try_current() {
+            return handle;
+        }
+
+        let global = StatsigGlobal::get();
+        let rt = global
+            .tokio_runtime
+            .lock()
+            .expect("Failed to lock StatsigGlobal");
+
+        if let Some(rt) = rt.as_ref() {
+            return rt.handle().clone();
+        }
+
+        panic!("No tokio runtime found");
     }
 
     pub fn get_num_active_tasks(&self) -> usize {
@@ -83,7 +94,7 @@ impl StatsigRuntime {
 
         log_d!(TAG, "Spawning task {}", tag);
 
-        let handle = self.runtime_handle.spawn(async move {
+        let handle = self.get_handle().spawn(async move {
             if is_shutdown.load(std::sync::atomic::Ordering::Relaxed) {
                 return;
             }
@@ -210,10 +221,10 @@ fn remove_join_handle_with_id(
     }
 }
 
-fn create_runtime_if_required() -> (Option<Arc<Runtime>>, Handle) {
-    if let Ok(handle) = Handle::try_current() {
-        log_d!(TAG, "Existing tokio runtime found");
-        return (None, handle);
+fn create_runtime_if_required() {
+    if Handle::try_current().is_ok() {
+        log_d!(TAG, "External tokio runtime found");
+        return;
     }
 
     let global = StatsigGlobal::get();
@@ -222,9 +233,12 @@ fn create_runtime_if_required() -> (Option<Arc<Runtime>>, Handle) {
         .lock()
         .expect("Failed to lock owned tokio runtime");
 
-    match lock.as_ref().and_then(|rt| rt.upgrade()) {
-        Some(rt) => (Some(rt.clone()), rt.handle().clone()),
+    match lock.as_ref() {
+        Some(_) => {
+            log_d!(TAG, "Existing StatsigGlobal tokio runtime found");
+        }
         None => {
+            log_d!(TAG, "Creating new tokio runtime for StatsigGlobal");
             let rt = Arc::new(
                 Builder::new_multi_thread()
                     .worker_threads(5)
@@ -234,50 +248,48 @@ fn create_runtime_if_required() -> (Option<Arc<Runtime>>, Handle) {
                     .expect("Failed to find or create a tokio Runtime"),
             );
 
-            let handle = rt.handle().clone();
-            lock.replace(Arc::downgrade(&rt));
-            (Some(rt), handle)
+            lock.replace(rt);
         }
-    }
+    };
 }
 
 impl Drop for StatsigRuntime {
     fn drop(&mut self) {
         self.shutdown();
 
-        let opt_inner = match self.inner_runtime.lock() {
-            Ok(mut inner_runtime) => inner_runtime.take(),
-            Err(e) => {
-                log_e!(TAG, "Failed to lock inner runtime {}", e);
-                None
-            }
-        };
+        // let opt_inner = match self.inner_runtime.lock() {
+        //     Ok(mut inner_runtime) => inner_runtime.take(),
+        //     Err(e) => {
+        //         log_e!(TAG, "Failed to lock inner runtime {}", e);
+        //         None
+        //     }
+        // };
 
-        let inner = match opt_inner {
-            Some(inner) => inner,
-            None => {
-                log_d!(TAG, "Runtime owned by tokio");
-                return;
-            }
-        };
+        // let inner = match opt_inner {
+        //     Some(inner) => inner,
+        //     None => {
+        //         log_d!(TAG, "Runtime owned by tokio");
+        //         return;
+        //     }
+        // };
 
-        if Arc::strong_count(&inner) > 1 {
-            // Another instance is still using the Runtime, so we can't drop it
-            return;
-        }
+        // if Arc::strong_count(&inner) > 1 {
+        //     // Another instance is still using the Runtime, so we can't drop it
+        //     return;
+        // }
 
-        if tokio::runtime::Handle::try_current().is_err() {
-            println!("Not inside the Tokio runtime. Will automatically drop(inner).");
-            // Not inside the Tokio runtime. Will automatically drop(inner).
-            return;
-        }
+        // if tokio::runtime::Handle::try_current().is_err() {
+        //     println!("Not inside the Tokio runtime. Will automatically drop(inner).");
+        //     // Not inside the Tokio runtime. Will automatically drop(inner).
+        //     return;
+        // }
 
-        log_w!(TAG, "Attempt to shutdown runtime from inside runtime");
-        std::thread::spawn(move || {
-            println!("Dropping inner runtime from outside the Tokio runtime");
-            // We should not drop from inside the runtime, but in the odd case we do,
-            // moving inner to a new thread will prevent a panic
-            drop(inner);
-        });
+        // log_w!(TAG, "Attempt to shutdown runtime from inside runtime");
+        // std::thread::spawn(move || {
+        //     println!("Dropping inner runtime from outside the Tokio runtime");
+        //     // We should not drop from inside the runtime, but in the odd case we do,
+        //     // moving inner to a new thread will prevent a panic
+        //     drop(inner);
+        // });
     }
 }

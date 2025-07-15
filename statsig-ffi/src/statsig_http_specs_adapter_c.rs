@@ -50,7 +50,7 @@ pub extern "C" fn statsig_http_specs_adapter_fetch_specs_from_network(
         Err(_) => return null_mut(),
     };
 
-    let result = statsig_rt.runtime_handle.block_on(async move {
+    let result = statsig_rt.get_handle().block_on(async move {
         specs_adapter
             .fetch_specs_from_network(parsed_specs_info)
             .await

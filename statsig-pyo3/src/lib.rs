@@ -15,7 +15,7 @@ mod valid_primitives_py;
 
 use pyo3::prelude::*;
 use pyo3_stub_gen::define_stub_info_gatherer;
-use safe_gil::notify_python_shutdown;
+use safe_gil::{notify_python_fork, notify_python_shutdown};
 
 #[pymodule]
 fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -43,6 +43,7 @@ fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<output_logger_provider_base_py::OutputLoggerProviderBasePy>()?;
     m.add_class::<statsig_options_py::SpecAdapterConfigPy>()?;
     m.add_function(wrap_pyfunction!(notify_python_shutdown, m)?)?;
+    m.add_function(wrap_pyfunction!(notify_python_fork, m)?)?;
 
     Ok(())
 }

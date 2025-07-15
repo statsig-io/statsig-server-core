@@ -357,6 +357,9 @@ class StatsigUser:
         ...
 
 
+def notify_python_fork() -> None:
+    ...
+
 def notify_python_shutdown() -> None:
     ...
 

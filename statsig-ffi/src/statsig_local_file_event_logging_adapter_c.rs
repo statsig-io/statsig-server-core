@@ -44,7 +44,7 @@ pub extern "C" fn statsig_local_file_event_logging_adapter_send_pending_events(a
 
     let statsig_rt = StatsigRuntime::get_runtime();
     let result = statsig_rt
-        .runtime_handle
+        .get_handle()
         .block_on(async move { adapter.send_pending_events().await });
 
     if let Err(e) = result {
