@@ -56,7 +56,7 @@ func (u *StatsigUserBuilder) Build() *StatsigUser {
 
 	// Set finalizer on the Go object
 	runtime.SetFinalizer(user, func(obj *StatsigUser) {
-		C.statsig_user_release(C.ulonglong(obj.innerRef))
+		C.statsig_user_release(C.uint64_t(obj.innerRef))
 	})
 
 	return &u.user

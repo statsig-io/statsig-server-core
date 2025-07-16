@@ -28,6 +28,7 @@ jobs:
           - rust
           - php
           - dotnet
+          - go
 
     runs-on: ubuntu-latest
 

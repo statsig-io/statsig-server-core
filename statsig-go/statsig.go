@@ -32,7 +32,7 @@ type FailureDetails struct {
 }
 
 func NewStatsig(key string, options StatsigOptions) (*Statsig, error) {
-	statsigRef := C.statsig_create(C.CString(key), C.ulonglong(options.innerRef))
+	statsigRef := C.statsig_create(C.CString(key), C.uint64_t(options.innerRef))
 
 	if statsigRef == 0 {
 		return nil, errors.New("error occurred in creating Statsig instance")
@@ -43,7 +43,7 @@ func NewStatsig(key string, options StatsigOptions) (*Statsig, error) {
 	}
 
 	runtime.SetFinalizer(s, func(obj *Statsig) {
-		C.statsig_release(C.ulonglong(obj.InnerRef))
+		C.statsig_release(C.uint64_t(obj.InnerRef))
 	})
 
 	return s, nil
@@ -51,7 +51,7 @@ func NewStatsig(key string, options StatsigOptions) (*Statsig, error) {
 }
 
 func (s *Statsig) Initialize() (bool, error) {
-	C.statsig_initialize_blocking(C.ulonglong(s.InnerRef))
+	C.statsig_initialize_blocking(C.uint64_t(s.InnerRef))
 
 	// TODO: return false if statsig_initialize_blocking is updated to return a value
 	return true, nil
@@ -60,7 +60,7 @@ func (s *Statsig) Initialize() (bool, error) {
 
 func (s *Statsig) InitializeWithDetails() (InitializeWithDetails, error) {
 
-	res := C.statsig_initialize_with_details(C.ulonglong(s.InnerRef))
+	res := C.statsig_initialize_with_details(C.uint64_t(s.InnerRef))
 
 	var details InitializeWithDetails
 
@@ -77,7 +77,7 @@ func (s *Statsig) InitializeWithDetails() (InitializeWithDetails, error) {
 }
 
 func (s *Statsig) Shutdown() {
-	C.statsig_shutdown_blocking(C.ulonglong(s.InnerRef))
+	C.statsig_shutdown_blocking(C.uint64_t(s.InnerRef))
 
 }
 
@@ -89,7 +89,7 @@ func (s *Statsig) GetFeatureGate(user StatsigUser, gateName string, featureGateO
 		featureGateOptions = &CheckGateOptions{}
 	}
 
-	featureGateJson := C.statsig_get_feature_gate(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(gateName), C.CString(utils.ConvertJSONToString(featureGateOptions)))
+	featureGateJson := C.statsig_get_feature_gate(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(gateName), C.CString(utils.ConvertJSONToString(featureGateOptions)))
 
 	if featureGateJson != nil {
 		err := json.Unmarshal([]byte(C.GoString(featureGateJson)), &featureGate)
@@ -108,12 +108,12 @@ func (s *Statsig) CheckGate(user StatsigUser, gateName string, gateOptions *Chec
 		gateOptions = &CheckGateOptions{}
 	}
 
-	checkGate := C.statsig_check_gate(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(gateName), C.CString(utils.ConvertJSONToString(gateOptions)))
+	checkGate := C.statsig_check_gate(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(gateName), C.CString(utils.ConvertJSONToString(gateOptions)))
 	return bool(checkGate)
 }
 
 func (s *Statsig) ManuallyLogGateExposure(user StatsigUser, name string) {
-	C.statsig_manually_log_gate_exposure(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(name))
+	C.statsig_manually_log_gate_exposure(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(name))
 }
 
 func (s *Statsig) GetDynamicConfig(user StatsigUser, configName string, dynamicConfigOptions *GetDynamicConfigOptions) DynamicConfig {
@@ -124,7 +124,7 @@ func (s *Statsig) GetDynamicConfig(user StatsigUser, configName string, dynamicC
 		dynamicConfigOptions = &GetDynamicConfigOptions{}
 	}
 
-	dynamicConfigJson := C.statsig_get_dynamic_config(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(configName), C.CString(utils.ConvertJSONToString(dynamicConfigOptions)))
+	dynamicConfigJson := C.statsig_get_dynamic_config(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(configName), C.CString(utils.ConvertJSONToString(dynamicConfigOptions)))
 
 	if dynamicConfigJson != nil {
 		err := json.Unmarshal([]byte(C.GoString(dynamicConfigJson)), &dynamicConfig)
@@ -138,7 +138,7 @@ func (s *Statsig) GetDynamicConfig(user StatsigUser, configName string, dynamicC
 }
 
 func (s *Statsig) ManuallyLogDynamicConfigExposure(user StatsigUser, name string) {
-	C.statsig_manually_log_dynamic_config_exposure(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(name))
+	C.statsig_manually_log_dynamic_config_exposure(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(name))
 }
 
 func (s *Statsig) GetExperiment(user StatsigUser, experimentName string, experimentOptions *GetExperimentOptions) Experiment {
@@ -149,7 +149,7 @@ func (s *Statsig) GetExperiment(user StatsigUser, experimentName string, experim
 		experimentOptions = &GetExperimentOptions{}
 	}
 
-	experimentJson := C.statsig_get_experiment(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(experimentName), C.CString(utils.ConvertJSONToString(experimentOptions)))
+	experimentJson := C.statsig_get_experiment(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(experimentName), C.CString(utils.ConvertJSONToString(experimentOptions)))
 
 	if experimentJson != nil {
 
@@ -178,7 +178,7 @@ func (s *Statsig) GetExperiment(user StatsigUser, experimentName string, experim
 }
 
 func (s *Statsig) ManuallyLogExperimentExposure(user StatsigUser, name string) {
-	C.statsig_manually_log_experiment_exposure(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(name))
+	C.statsig_manually_log_experiment_exposure(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(name))
 }
 
 func (s *Statsig) GetLayer(user StatsigUser, layerName string, layerOptions *GetLayerOptions) Layer {
@@ -189,7 +189,7 @@ func (s *Statsig) GetLayer(user StatsigUser, layerName string, layerOptions *Get
 		layerOptions = &GetLayerOptions{}
 	}
 
-	layerJson := C.statsig_get_layer(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(layerName), C.CString(utils.ConvertJSONToString(layerOptions)))
+	layerJson := C.statsig_get_layer(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(layerName), C.CString(utils.ConvertJSONToString(layerOptions)))
 
 	if layerJson != nil {
 		err := json.Unmarshal([]byte(C.GoString(layerJson)), &layer)
@@ -207,15 +207,15 @@ func (s *Statsig) GetLayer(user StatsigUser, layerName string, layerOptions *Get
 }
 
 func (s *Statsig) ManuallyLogLayerParameterExposure(user StatsigUser, layerName string, paramName string) {
-	C.statsig_manually_log_layer_parameter_exposure(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(layerName), C.CString(paramName))
+	C.statsig_manually_log_layer_parameter_exposure(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(layerName), C.CString(paramName))
 }
 
 func (s *Statsig) FlushEvents() {
-	C.statsig_flush_events_blocking(C.ulonglong(s.InnerRef))
+	C.statsig_flush_events_blocking(C.uint64_t(s.InnerRef))
 }
 
 func (s *Statsig) LogEvent(user StatsigUser, eventJson map[string]interface{}) {
-	C.statsig_log_event(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(utils.ConvertJSONToString(eventJson)))
+	C.statsig_log_event(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(utils.ConvertJSONToString(eventJson)))
 }
 
 func (s *Statsig) GetClientInitializeResponse(user StatsigUser, gcirOptions *ClientInitResponseOptions) string {
@@ -224,7 +224,7 @@ func (s *Statsig) GetClientInitializeResponse(user StatsigUser, gcirOptions *Cli
 		gcirOptions = &ClientInitResponseOptions{}
 	}
 
-	res := C.statsig_get_client_init_response(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(utils.ConvertJSONToString(gcirOptions)))
+	res := C.statsig_get_client_init_response(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(utils.ConvertJSONToString(gcirOptions)))
 	return C.GoString(res)
 }
 
@@ -235,7 +235,7 @@ func (s *Statsig) GetParameterStore(user StatsigUser, paramStoreName string, par
 		paramStoreOptions = &ParameterStoreOptions{}
 	}
 
-	paramStoreJson := C.statsig_get_parameter_store_with_options(C.ulonglong(s.InnerRef), C.CString(paramStoreName), C.CString(utils.ConvertJSONToString(paramStoreOptions)))
+	paramStoreJson := C.statsig_get_parameter_store_with_options(C.uint64_t(s.InnerRef), C.CString(paramStoreName), C.CString(utils.ConvertJSONToString(paramStoreOptions)))
 
 	if paramStoreJson != nil {
 		err := json.Unmarshal([]byte(C.GoString(paramStoreJson)), &paramStore)
@@ -253,28 +253,28 @@ func (s *Statsig) GetParameterStore(user StatsigUser, paramStoreName string, par
 }
 
 func (s *Statsig) GetStringFromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal string, psOptions *ParameterStoreOptions) string {
-	return C.GoString(C.statsig_get_string_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.CString(defaultVal), C.CString(utils.ConvertJSONToString(psOptions))))
+	return C.GoString(C.statsig_get_string_parameter_from_parameter_store(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.CString(defaultVal), C.CString(utils.ConvertJSONToString(psOptions))))
 }
 
 func (s *Statsig) GetBooleanFromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal bool, psOptions *ParameterStoreOptions) bool {
-	return bool(C.statsig_get_bool_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.int(utils.ConvertToSafeOptBool(&defaultVal)), C.CString(utils.ConvertJSONToString(psOptions))))
+	return bool(C.statsig_get_bool_parameter_from_parameter_store(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.int(utils.ConvertToSafeOptBool(&defaultVal)), C.CString(utils.ConvertJSONToString(psOptions))))
 }
 
 func (s *Statsig) GetFloat64FromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal float64, psOptions *ParameterStoreOptions) float64 {
-	return float64(C.statsig_get_float64_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.double(defaultVal), C.CString(utils.ConvertJSONToString(psOptions))))
+	return float64(C.statsig_get_float64_parameter_from_parameter_store(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.double(defaultVal), C.CString(utils.ConvertJSONToString(psOptions))))
 }
 
 func (s *Statsig) GetInt64FromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal int64, psOptions *ParameterStoreOptions) int64 {
-	return int64(C.statsig_get_int_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.int64_t(defaultVal), C.CString(utils.ConvertJSONToString(psOptions))))
+	return int64(C.statsig_get_int_parameter_from_parameter_store(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.int64_t(defaultVal), C.CString(utils.ConvertJSONToString(psOptions))))
 }
 
 func (s *Statsig) GetIntFromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal int, psOptions *ParameterStoreOptions) int {
-	return int(C.statsig_get_int_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.int64_t(defaultVal), C.CString(utils.ConvertJSONToString(psOptions))))
+	return int(C.statsig_get_int_parameter_from_parameter_store(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.int64_t(defaultVal), C.CString(utils.ConvertJSONToString(psOptions))))
 }
 
 func (s *Statsig) GetMapFromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal map[string]interface{}, psOptions *ParameterStoreOptions) map[string]interface{} {
 
-	val := C.statsig_get_object_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.CString(utils.ConvertJSONToString(defaultVal)), C.CString(utils.ConvertJSONToString(psOptions)))
+	val := C.statsig_get_object_parameter_from_parameter_store(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.CString(utils.ConvertJSONToString(defaultVal)), C.CString(utils.ConvertJSONToString(psOptions)))
 
 	if val != nil {
 		paramStoreMap, err := utils.ConvertStringToJSON[map[string]interface{}](C.GoString(val))
@@ -288,7 +288,7 @@ func (s *Statsig) GetMapFromParameterStore(user StatsigUser, paramStoreName stri
 
 func (s *Statsig) GetInterfaceFromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal []interface{}, psOptions *ParameterStoreOptions) []interface{} {
 
-	val := C.statsig_get_object_parameter_from_parameter_store(C.ulonglong(s.InnerRef), C.ulonglong(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.CString(utils.ConvertJSONToString(defaultVal)), C.CString(utils.ConvertJSONToString(psOptions)))
+	val := C.statsig_get_object_parameter_from_parameter_store(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.CString(utils.ConvertJSONToString(defaultVal)), C.CString(utils.ConvertJSONToString(psOptions)))
 
 	if val != nil {
 		paramStoreMap, err := utils.ConvertStringToJSON[[]interface{}](C.GoString(val))
@@ -301,41 +301,41 @@ func (s *Statsig) GetInterfaceFromParameterStore(user StatsigUser, paramStoreNam
 }
 
 func (s *Statsig) OverrideGate(gateName string, gateValue bool, id string) {
-	C.statsig_override_gate(C.ulonglong(s.InnerRef), C.CString(gateName), C.bool(gateValue), C.CString(id))
+	C.statsig_override_gate(C.uint64_t(s.InnerRef), C.CString(gateName), C.bool(gateValue), C.CString(id))
 }
 
 func (s *Statsig) OverrideLayer(layerName string, layerValue map[string]interface{}, id string) {
-	C.statsig_override_layer(C.ulonglong(s.InnerRef), C.CString(layerName), C.CString(utils.ConvertJSONToString(layerValue)), C.CString(id))
+	C.statsig_override_layer(C.uint64_t(s.InnerRef), C.CString(layerName), C.CString(utils.ConvertJSONToString(layerValue)), C.CString(id))
 }
 
 func (s *Statsig) OverrideDynamicConfig(configName string, configValue map[string]interface{}, id string) {
-	C.statsig_override_dynamic_config(C.ulonglong(s.InnerRef), C.CString(configName), C.CString(utils.ConvertJSONToString(configValue)), C.CString(id))
+	C.statsig_override_dynamic_config(C.uint64_t(s.InnerRef), C.CString(configName), C.CString(utils.ConvertJSONToString(configValue)), C.CString(id))
 }
 
 func (s *Statsig) OverrideExperiment(experimentName string, experimentValue map[string]interface{}, id string) {
-	C.statsig_override_experiment(C.ulonglong(s.InnerRef), C.CString(experimentName), C.CString(utils.ConvertJSONToString(experimentValue)), C.CString(id))
+	C.statsig_override_experiment(C.uint64_t(s.InnerRef), C.CString(experimentName), C.CString(utils.ConvertJSONToString(experimentValue)), C.CString(id))
 }
 
 func (s *Statsig) OverrideExperimentByGroupName(experimentName string, groupName string, id string) {
-	C.statsig_override_experiment_by_group_name(C.ulonglong(s.InnerRef), C.CString(experimentName), C.CString(groupName), C.CString(id))
+	C.statsig_override_experiment_by_group_name(C.uint64_t(s.InnerRef), C.CString(experimentName), C.CString(groupName), C.CString(id))
 }
 
 func (s *Statsig) RemoveGateOverride(gateName string, id string) {
-	C.statsig_remove_gate_override(C.ulonglong(s.InnerRef), C.CString(gateName), C.CString(id))
+	C.statsig_remove_gate_override(C.uint64_t(s.InnerRef), C.CString(gateName), C.CString(id))
 }
 
 func (s *Statsig) RemoveDynamicConfigOverride(configName string, id string) {
-	C.statsig_remove_dynamic_config_override(C.ulonglong(s.InnerRef), C.CString(configName), C.CString(id))
+	C.statsig_remove_dynamic_config_override(C.uint64_t(s.InnerRef), C.CString(configName), C.CString(id))
 }
 
 func (s *Statsig) RemoveExperimentOverride(experimentName string, id string) {
-	C.statsig_remove_experiment_override(C.ulonglong(s.InnerRef), C.CString(experimentName), C.CString(id))
+	C.statsig_remove_experiment_override(C.uint64_t(s.InnerRef), C.CString(experimentName), C.CString(id))
 }
 
 func (s *Statsig) RemoveLayerOverride(layerName string, id string) {
-	C.statsig_remove_layer_override(C.ulonglong(s.InnerRef), C.CString(layerName), C.CString(id))
+	C.statsig_remove_layer_override(C.uint64_t(s.InnerRef), C.CString(layerName), C.CString(id))
 }
 
 func (s *Statsig) RemoveAllOverrides() {
-	C.statsig_remove_all_overrides(C.ulonglong(s.InnerRef))
+	C.statsig_remove_all_overrides(C.uint64_t(s.InnerRef))
 }

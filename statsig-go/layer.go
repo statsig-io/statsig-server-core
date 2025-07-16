@@ -54,7 +54,7 @@ func (l *Layer) getValueImpl(paramName string, u *StatsigUser) interface{} {
 
 func (l *Layer) logLayerParamExposure(paramName string) {
 	C.statsig_log_layer_param_exposure(
-		C.ulonglong(l.statsigInstance.InnerRef),
+		C.uint64_t(l.statsigInstance.InnerRef),
 		C.CString(l.RawJSON),
 		C.CString(paramName),
 	)

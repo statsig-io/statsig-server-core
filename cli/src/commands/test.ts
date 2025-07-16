@@ -66,6 +66,15 @@ const TEST_COMMANDS: Record<string, string> = {
     'cargo nextest run -p statsig-rust --features testing --retries=5',
     'cargo nextest run -p statsig-rust --features "with_zstd,testing" --retries=5',
   ].join(' && '),
+
+  go: [
+    'cargo build -p statsig_ffi --release',
+    'mkdir -p statsig-go/lib',
+    'cp target/release/libstatsig_ffi.so statsig-go/lib || true',
+    'ln -sf ../lib statsig-go/tests/lib',
+    'cd statsig-go/tests',
+    'LD_LIBRARY_PATH=$(pwd)/../lib go test',
+  ].join(' && '),
 };
 
 type Options = {

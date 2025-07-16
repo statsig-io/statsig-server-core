@@ -45,8 +45,8 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 	optionsRef := C.statsig_options_create(
 		ResolveDefault(o.statsigOptions.SpecsUrl),
 		ResolveDefault(o.statsigOptions.LogEventUrl),
-		C.ulonglong(0),
-		C.ulonglong(0),
+		C.uint64_t(0),
+		C.uint64_t(0),
 		ResolveDefault(o.statsigOptions.Environment),
 		C.int(o.statsigOptions.EventLoggingFlushIntervalMs),
 		C.int(o.statsigOptions.EventLoggingMaxQueueSize),
@@ -69,7 +69,7 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 
 	// Set finalizer on the Go object
 	runtime.SetFinalizer(opt, func(obj *StatsigOptions) {
-		C.statsig_options_release(C.ulonglong(obj.innerRef))
+		C.statsig_options_release(C.uint64_t(obj.innerRef))
 
 	})
 
