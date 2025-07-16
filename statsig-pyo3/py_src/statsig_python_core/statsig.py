@@ -1,4 +1,3 @@
-from multiprocessing import process
 import os
 from statsig_python_core import (
     StatsigBasePy,
@@ -15,17 +14,17 @@ def handle_atexit():
     notify_python_shutdown()
 
 
+atexit.register(handle_atexit)
+
+
 def handle_fork():
-    print("Python: Forked child process")
     notify_python_fork()
 
 
-atexit.register(handle_atexit)
-
-os.register_at_fork(
-    before=handle_fork,
-    # after_in_child=handle_fork
-)
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(
+        before=handle_fork,
+    )
 
 
 class Statsig(StatsigBasePy):
