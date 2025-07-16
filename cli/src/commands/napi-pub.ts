@@ -68,7 +68,6 @@ export class NapiPub extends CommandBase {
       `Targets: ${JSON.stringify(packageJson.optionalDependencies, null, 2)}`,
     );
     Log.stepEnd('Synced Napi Targets');
-
     Log.stepBegin('Publishing Npm Packages');
     await publishAllPackages(options.production === true);
     Log.stepEnd('Published Npm Packages');

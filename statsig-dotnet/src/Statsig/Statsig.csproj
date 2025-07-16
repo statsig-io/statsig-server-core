@@ -21,7 +21,6 @@
     <PackageReference Include="Statsig.NativeAssets.linux-x64" Version="$(StatsigVersion)" />
     <PackageReference Include="Statsig.NativeAssets.linux-arm64" Version="$(StatsigVersion)" />
     <PackageReference Include="Statsig.NativeAssets.win-x64"    Version="$(StatsigVersion)" />
-    <PackageReference Include="Statsig.NativeAssets.win-arm64"  Version="$(StatsigVersion)" />
     <PackageReference Include="Statsig.NativeAssets.win-x86"    Version="$(StatsigVersion)" />
   </ItemGroup>
   <ItemGroup>

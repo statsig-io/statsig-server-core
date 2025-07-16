@@ -116,18 +116,22 @@ function publishDotnetPackages(options: PublisherOptions) {
   for (const proj of nativeProjs) {
     packProject(proj);
   }
-  Log.stepProgress('Packed all native projects');
-
-  packProject('src/Statsig/Statsig.csproj');
-  Log.stepProgress('Packed statsig project');
+  Log.stepProgress('Packed all native projects, starting to push all native packages');
 
   const nupkgs = fs.readdirSync(NUPKG_DIR).filter(f => f.endsWith('.nupkg'));
   const nativePkgs = nupkgs.filter(name => name.includes('NativeAssets'));
-  const mainPkgs = nupkgs.filter(name => !name.includes('NativeAssets'));
-  
+
   for (const pkg of nativePkgs) {
     pushNupkg(pkg);
   }
+
+  Log.stepProgress('✅ Finished pushing native packages. Waiting 90 seconds for NuGet to index...');
+  sleepSync(90_000);
+
+  packProject('src/Statsig/Statsig.csproj');
+  Log.stepProgress('⏩ Packed statsig(main) project, starting to push main packages');
+  
+  const mainPkgs = nupkgs.filter(name => !name.includes('NativeAssets'));
 
   for (const pkg of mainPkgs) {
     pushNupkg(pkg);
@@ -159,4 +163,11 @@ function packProject(projectPath: string) {
   });
   
   Log.stepEnd(`Successfully packed: ${projectPath}`);
+}
+
+function sleepSync(ms: number): void {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    // busy-wait
+  }
 }
