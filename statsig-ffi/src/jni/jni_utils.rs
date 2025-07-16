@@ -344,6 +344,10 @@ pub fn jni_to_rust_hashmap(
 ) -> Result<HashMap<String, String>, jni::errors::Error> {
     let mut rust_map = HashMap::new();
 
+    if jmap.is_null() {
+        return Ok(rust_map);
+    }
+
     let entry_set = match env.call_method(jmap, "entrySet", "()Ljava/util/Set;", &[]) {
         Ok(method) => method.l()?,
         Err(e) => {

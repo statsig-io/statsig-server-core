@@ -947,7 +947,13 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEvent(
         }
     };
 
-    let metadata = jni_to_rust_hashmap(env, metadata).ok();
+    let metadata = match jni_to_rust_hashmap(env, metadata) {
+        Ok(m) => Some(m),
+        Err(e) => {
+            log_e!(TAG, "Failed to convert metadata: {:?}", e);
+            return;
+        }
+    };
 
     statsig.log_event(user.as_ref(), &event_name, value, metadata);
 }
@@ -972,7 +978,13 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogEventWithDouble(
 
     let value = Some(value);
 
-    let metadata = jni_to_rust_hashmap(env, metadata).ok();
+    let metadata = match jni_to_rust_hashmap(env, metadata) {
+        Ok(m) => Some(m),
+        Err(e) => {
+            log_e!(TAG, "Failed to convert metadata: {:?}", e);
+            return;
+        }
+    };
 
     statsig.log_event_with_number(user.as_ref(), &event_name, value, metadata);
 }
