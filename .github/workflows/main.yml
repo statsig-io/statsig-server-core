@@ -246,6 +246,7 @@ jobs:
           - java
           - php
           - ffi
+          - dotnet
 
     steps:
       - uses: actions/checkout@v4
