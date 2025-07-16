@@ -2,6 +2,7 @@ package com.statsig;
 
 import com.statsig.internal.NativeBinaryResolver;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 class StatsigJNI {
   private static final boolean LIBRARY_LOADED;
@@ -30,7 +31,8 @@ class StatsigJNI {
 
   public static native void statsigInitialize(long statsigRef, Runnable callback);
 
-  public static native String statsigInitializeWithDetails(long statsigRef);
+  public static native void statsigInitializeWithDetails(
+      long statsigRef, CompletableFuture<String> future);
 
   public static native void statsigShutdown(long statsigRef, Runnable callback);
 

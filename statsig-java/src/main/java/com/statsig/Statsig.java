@@ -226,19 +226,16 @@ public class Statsig {
   }
 
   public CompletableFuture<InitializeDetails> initializeWithDetails() {
-    return CompletableFuture.supplyAsync(
-        () -> {
-          String initDetailsJson = StatsigJNI.statsigInitializeWithDetails(ref);
-          return JacksonUtil.fromJsonWithRawJson(initDetailsJson, InitializeDetails.class);
-        });
+    CompletableFuture<String> future = new CompletableFuture<>();
+
+    StatsigJNI.statsigInitializeWithDetails(ref, future);
+
+    return future.thenApply(json -> JacksonUtil.fromJsonWithRawJson(json, InitializeDetails.class));
   }
 
   public CMABRankedVariant[] getCMABRankedVariants(StatsigUser user, String cmabName) {
     String cmabJson = StatsigJNI.statsigGetCMABRankedVariants(ref, user.getRef(), cmabName);
     CMABRankedVariant[] result = JacksonUtil.fromJson(cmabJson, CMABRankedVariant[].class);
-    for (CMABRankedVariant v : result) {
-      System.out.println("ruleID: " + v.ruleID);
-    }
 
     return result != null ? result : new CMABRankedVariant[0];
   }

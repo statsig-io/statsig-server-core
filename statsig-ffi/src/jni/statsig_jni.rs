@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use super::jni_utils::serialize_json_to_jstring;
 use crate::jni::jni_utils::{jni_to_rust_hashmap, string_to_jstring};
 use jni::{
-    objects::{JClass, JObject, JString},
+    objects::{JClass, JObject, JString, JValue},
     JavaVM,
 };
 use statsig_rust::{log_d, log_e, InstanceRegistry, Statsig, StatsigUser};
@@ -93,9 +93,10 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
         }
     };
 
-    let global_callback = env
-        .new_global_ref(callback)
-        .expect("Failed to create global ref");
+    let global_callback = match try_new_global_ref(&env, callback) {
+        Some(r) => r,
+        None => return,
+    };
 
     let rt_handle = match statsig.statsig_runtime.get_handle() {
         Ok(handle) => handle,
@@ -117,28 +118,88 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitialize(
 
 #[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigInitializeWithDetails(
-    mut env: JNIEnv,
+    env: JNIEnv,
     _class: jclass,
     statsig_ref: jlong,
-) -> jstring {
-    let statsig = get_instance_or_return_c!(Statsig, &(statsig_ref as u64), std::ptr::null_mut());
+    callback: JObject,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &(statsig_ref as u64));
+
+    let vm = match env.get_java_vm() {
+        Ok(vm) => vm,
+        Err(_) => {
+            log_e!(TAG, "Failed to get Java VM");
+            return;
+        }
+    };
 
     let rt_handle = match statsig.statsig_runtime.get_handle() {
         Ok(handle) => handle,
         Err(_) => {
             log_e!(TAG, "Failed to get runtime handle");
-            return std::ptr::null_mut();
+            return;
         }
     };
 
-    let result = rt_handle.block_on(async { statsig.initialize_with_details().await });
-    match result {
-        Ok(details) => serialize_json_to_jstring(&mut env, &details),
-        Err(e) => {
-            log_e!(TAG, "Failed to initialize statsig with details: {}", e);
-            std::ptr::null_mut()
+    let global_callback = match try_new_global_ref(&env, callback) {
+        Some(r) => r,
+        None => return,
+    };
+
+    rt_handle.spawn(async move {
+        let result = statsig.initialize_with_details().await;
+
+        let mut env = match vm.attach_current_thread() {
+            Ok(env) => env,
+            Err(e) => {
+                log_e!(TAG, "Failed to attach thread: {:?}", e);
+                return;
+            }
+        };
+
+        match result {
+            Ok(details) => {
+                let json_str = match serde_json::to_string(&details) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        log_e!(TAG, "Failed to serialize initialization details: {:?}", e);
+                        return;
+                    }
+                };
+
+                let jstr = match env.new_string(json_str) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        log_e!(TAG, "Failed to create JString: {:?}", e);
+                        return;
+                    }
+                };
+
+                let obj = JObject::from(jstr);
+                let arg = JValue::Object(&obj);
+                let _ = env.call_method(
+                    global_callback.as_obj(),
+                    "complete",
+                    "(Ljava/lang/Object;)Z",
+                    &[arg],
+                );
+            }
+            Err(e) => {
+                log_e!(TAG, "initialize with details failed: {:?}", e);
+
+                let error_str = format!("Initialization failed: {e:?}");
+                if let Ok(jstr) = env.new_string(error_str) {
+                    let obj = JObject::from(jstr);
+                    let _ = env.call_method(
+                        global_callback.as_obj(),
+                        "complete",
+                        "(Ljava/lang/Object;)Z",
+                        &[JValue::Object(&obj)],
+                    );
+                }
+            }
         }
-    }
+    });
 }
 
 #[no_mangle]
@@ -163,9 +224,10 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigShutdown(
         }
     };
 
-    let global_callback = env
-        .new_global_ref(callback)
-        .expect("Failed to create global ref");
+    let global_callback = match try_new_global_ref(&env, callback) {
+        Some(r) => r,
+        None => return,
+    };
 
     let rt_handle = match statsig.statsig_runtime.get_handle() {
         Ok(handle) => handle,
@@ -176,12 +238,21 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigShutdown(
         }
     };
 
-    rt_handle.block_on(async move {
+    rt_handle.spawn(async move {
         if let Err(e) = statsig.shutdown().await {
             log_e!(TAG, "Failed to gracefully shutdown Statsig: {}", e);
         }
 
-        fire_callback("shutdown", &vm, global_callback);
+        match vm.attach_current_thread() {
+            Ok(mut env) => {
+                if let Err(e) = env.call_method(global_callback.as_obj(), "run", "()V", &[]) {
+                    log_e!(TAG, "Failed to call callback: {:?}", e);
+                }
+            }
+            Err(e) => {
+                log_e!(TAG, "Failed to attach for callback: {:?}", e);
+            }
+        }
     });
 }
 
@@ -940,9 +1011,10 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
         }
     };
 
-    let global_callback = env
-        .new_global_ref(callback)
-        .expect("Failed to create global ref");
+    let global_callback = match try_new_global_ref(&env, callback) {
+        Some(r) => r,
+        None => return,
+    };
 
     let rt_handle = match statsig.statsig_runtime.get_handle() {
         Ok(handle) => handle,
@@ -952,10 +1024,19 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigFlushEvents(
         }
     };
 
-    rt_handle.block_on(async move {
+    rt_handle.spawn(async move {
         statsig.flush_events().await;
 
-        fire_callback("flush_events", &vm, global_callback);
+        match vm.attach_current_thread() {
+            Ok(mut env) => {
+                if let Err(e) = env.call_method(global_callback.as_obj(), "run", "()V", &[]) {
+                    log_e!(TAG, "Failed to call callback: {:?}", e);
+                }
+            }
+            Err(e) => {
+                log_e!(TAG, "Failed to attach for callback: {:?}", e);
+            }
+        }
     });
 }
 
@@ -1270,6 +1351,17 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRemoveAllOverrides(
 ) {
     let statsig = get_instance_or_noop_c!(Statsig, &(statsig_ref as u64));
     statsig.remove_all_overrides();
+}
+
+/// Attempts to create a GlobalRef from a local JObject. Logs error and returns None if it fails.
+fn try_new_global_ref(env: &JNIEnv, obj: JObject) -> Option<GlobalRef> {
+    match env.new_global_ref(obj) {
+        Ok(r) => Some(r),
+        Err(e) => {
+            log_e!(TAG, "Failed to create global ref: {:?}", e);
+            None
+        }
+    }
 }
 
 fn fire_callback(callback_name: &str, vm: &JavaVM, global_callback: GlobalRef) {
