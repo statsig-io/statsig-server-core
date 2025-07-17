@@ -156,6 +156,9 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_metadata_update_values", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_metadata_update_values(byte* sdk_type, byte* os, byte* arch, byte* language_version);
 
+        [DllImport(__DllName, EntryPoint = "free_string", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void free_string(byte* s);
+
 
     }
 

@@ -21,6 +21,7 @@ namespace Statsig
 
             var responseBytes = new byte[length];
             Marshal.Copy((IntPtr)pointer, responseBytes, 0, length);
+            StatsigFFI.free_string(pointer);
             return Encoding.UTF8.GetString(responseBytes);
         }
     }
