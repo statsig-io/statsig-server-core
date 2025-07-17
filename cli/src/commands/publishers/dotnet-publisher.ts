@@ -125,8 +125,8 @@ function publishDotnetPackages(options: PublisherOptions) {
     pushNupkg(pkg);
   }
 
-  Log.stepProgress('✅ Finished pushing native packages. Waiting 90 seconds for NuGet to index...');
-  sleepSync(90_000);
+  Log.stepProgress('✅ Finished pushing native packages. Waiting 300 seconds for NuGet to index...');
+  sleepSync(300_000);
 
   packProject('src/Statsig/Statsig.csproj');
   Log.stepProgress('⏩ Packed statsig(main) project, starting to push main packages');
