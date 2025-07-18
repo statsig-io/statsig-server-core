@@ -24,10 +24,6 @@ type SecondaryExposure struct {
 	RuleID    string `json:"ruleID"`
 }
 
-func (e *Experiment) setSecondaryExposures(secondaryExposures []SecondaryExposure) {
-	e.SecondaryExposures = secondaryExposures
-}
-
 func (e *Experiment) GetString(key string, fallback string) string {
 	return utils.GetTypedValue(e.Value, key, fallback)
 }

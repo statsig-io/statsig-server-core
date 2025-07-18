@@ -31,7 +31,7 @@ func BenchmarkOptionsMemoryLeak(b *testing.B) {
 				Build()
 			optionsList = append(optionsList, options)
 		}
-		optionsList = nil // drop refs
+		optionsList = nil
 
 		for j := 0; j < 5; j++ {
 			runtime.GC()

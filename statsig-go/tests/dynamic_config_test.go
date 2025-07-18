@@ -80,7 +80,7 @@ func TestDynamicConfigDisableExposureLoggingIsTrue(t *testing.T) {
 	defer teardown()
 
 	dynamicConfigOptions := &statsig.GetDynamicConfigOptions{DisableExposureLogging: true}
-	s.Initialize()
+	_, _ = s.Initialize()
 
 	dynamic_config := "test_environment_config"
 	_ = s.GetDynamicConfig(*user, dynamic_config, dynamicConfigOptions)
@@ -115,7 +115,7 @@ func TestConfigManualLogging(t *testing.T) {
 	defer teardown()
 
 	dynamicConfigOptions := &statsig.GetDynamicConfigOptions{DisableExposureLogging: true}
-	s.Initialize()
+	_, _ = s.Initialize()
 
 	dynamic_config := "test_environment_config"
 	_ = s.GetDynamicConfig(*user, dynamic_config, dynamicConfigOptions)

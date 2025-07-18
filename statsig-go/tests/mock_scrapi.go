@@ -70,10 +70,10 @@ func (scrapi *MockScrapi) Handler(w http.ResponseWriter, r *http.Request) {
 		scrapi.addEvent(r.Header, body)
 	}
 
-	r.Body.Close()
+	_ = r.Body.Close()
 
 	w.WriteHeader(saved_res.StatusCode)
-	w.Write(saved_res.Body)
+	_, _ = w.Write(saved_res.Body)
 
 }
 
@@ -116,7 +116,7 @@ func (scrapi *MockScrapi) addEvent(header http.Header, body []byte) {
 		gz, _ := gzip.NewReader(bytes.NewReader(body))
 		body, _ := io.ReadAll(gz)
 		_ = json.Unmarshal(body, &input)
-		gz.Close()
+		_ = gz.Close()
 	} else {
 		_ = json.Unmarshal(body, &input)
 	}

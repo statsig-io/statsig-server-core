@@ -145,3 +145,28 @@ jobs:
       - name: Run dotnet format check
         working-directory: statsig-dotnet
         run: dotnet format --verify-no-changes --severity info --no-restore
+  
+  # ------------------------------------------------------------ [ Go Format Check ]
+  go-format-check: 
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go SDK
+        uses: actions/setup-go@v3
+        with: 
+          go-version: 1.22
+        
+      - name: Run Go Format Check 
+        uses: golangci/golangci-lint-action@v6
+        with: 
+          version: latest
+          working-directory: statsig-go
+          args: --config=../.github/workflows/.golangci-lint.yml --skip-dirs=benchmark-tests
+        env: 
+          CGO_ENABLED: 1
+          

@@ -46,6 +46,7 @@ func BenchmarkUserMemoryLeak(b *testing.B) {
 				}).
 				Build()
 			users = append(users, user)
+
 		}
 
 		// Drop reference to users to allow GC

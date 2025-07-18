@@ -41,7 +41,7 @@ func TestDisableExposureLoggingIsFalse(t *testing.T) {
 	defer teardown()
 
 	checkGateOptions := &statsig.CheckGateOptions{DisableExposureLogging: false}
-	s.Initialize()
+	_, _ = s.Initialize()
 
 	_ = s.CheckGate(*user, "test_country_partial", checkGateOptions)
 	s.Shutdown()
