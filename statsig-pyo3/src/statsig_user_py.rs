@@ -32,9 +32,9 @@ impl StatsigUserPy {
         locale: Option<String>,
         app_version: Option<String>,
         user_agent: Option<String>,
-        custom: Option<HashMap<String, ValidPrimitivesPy>>,
+        custom: Option<HashMap<String, Option<ValidPrimitivesPy>>>,
         custom_ids: Option<HashMap<String, UnitIdPy>>,
-        private_attributes: Option<HashMap<String, ValidPrimitivesPy>>,
+        private_attributes: Option<HashMap<String, Option<ValidPrimitivesPy>>>,
     ) -> PyResult<Self> {
         if user_id.is_none() && custom_ids.is_none() {
             log_w!(TAG, "Either `user_id` or `custom_ids` must be provided.");
@@ -176,13 +176,21 @@ impl StatsigUserPy {
     }
 
     #[setter]
-    fn set_custom(&mut self, value: Option<HashMap<String, ValidPrimitivesPy>>) {
+    fn set_custom(&mut self, value: Option<HashMap<String, Option<ValidPrimitivesPy>>>) {
         let mut converted: Option<HashMap<String, DynamicValue>> = None;
 
         if let Some(v) = value {
             converted = Some(
                 v.into_iter()
-                    .map(|(k, v)| (k, v.into_dynamic_value()))
+                    .map(|(k, v)| {
+                        (
+                            k,
+                            match v {
+                                Some(v) => v.into_dynamic_value(),
+                                None => DynamicValue::new(),
+                            },
+                        )
+                    })
                     .collect(),
             );
         }
@@ -198,13 +206,24 @@ impl StatsigUserPy {
     }
 
     #[setter]
-    fn set_private_attributes(&mut self, value: Option<HashMap<String, ValidPrimitivesPy>>) {
+    fn set_private_attributes(
+        &mut self,
+        value: Option<HashMap<String, Option<ValidPrimitivesPy>>>,
+    ) {
         let mut converted: Option<HashMap<String, DynamicValue>> = None;
 
         if let Some(v) = value {
             converted = Some(
                 v.into_iter()
-                    .map(|(k, v)| (k, v.into_dynamic_value()))
+                    .map(|(k, v)| {
+                        (
+                            k,
+                            match v {
+                                Some(v) => v.into_dynamic_value(),
+                                None => DynamicValue::new(),
+                            },
+                        )
+                    })
                     .collect(),
             );
         }
