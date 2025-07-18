@@ -42,7 +42,7 @@ export async function dotnetPublish(options: PublisherOptions) {
   Log.stepEnd(`Cleared ${DOTNET_DIR}`);
 
   moveDotnetLibraries(libFiles);
-  publishDotnetPackages(options);
+  await publishDotnetPackages(options);
 }
 
 function moveDotnetLibraries(libFiles: string[]) {
@@ -98,7 +98,7 @@ function isMappedTarget(file: string): boolean {
   return Object.keys(TARGET_MAPPING).some((target) => file.includes(target));
 }
 
-function publishDotnetPackages(options: PublisherOptions) {
+async function publishDotnetPackages(options: PublisherOptions) {
   Log.stepBegin('Publishing Dotnet Packages');
 
   ensureEmptyDir(NUPKG_DIR);
@@ -121,21 +121,31 @@ function publishDotnetPackages(options: PublisherOptions) {
   const nupkgs = fs.readdirSync(NUPKG_DIR).filter(f => f.endsWith('.nupkg'));
   const nativePkgs = nupkgs.filter(name => name.includes('NativeAssets'));
 
+  const version = getVersionFromNupkgList(nativePkgs);
+  Log.stepProgress(`Detected version: ${version}`);
+
   for (const pkg of nativePkgs) {
     pushNupkg(pkg);
   }
 
-  Log.stepProgress('✅ Finished pushing native packages. Waiting 300 seconds for NuGet to index...');
-  sleepSync(300_000);
+  Log.stepProgress('Finished pushing native packages. Waiting for all native packages to be indexed...');
+  const allIndexed = await waitForPackagesIndexed(nativePkgs, version);
+
+  if (!allIndexed) {
+    throw new Error('Timeout waiting for native packages to be indexed');
+  }
 
   packProject('src/Statsig/Statsig.csproj');
-  Log.stepProgress('⏩ Packed statsig(main) project, starting to push main packages');
+  Log.stepProgress('Packed statsig(main) project, starting to push main packages');
   
-  const mainPkgs = nupkgs.filter(name => !name.includes('NativeAssets'));
+  const updatedNupkgs = fs.readdirSync(NUPKG_DIR).filter(f => f.endsWith('.nupkg'));
+  const mainPkgs = updatedNupkgs.filter(name => !name.includes('NativeAssets'));
 
-  for (const pkg of mainPkgs) {
-    pushNupkg(pkg);
+  if (mainPkgs.length !== 1) {
+    throw new Error(`Expected exactly one main package, found ${mainPkgs.length}: ${mainPkgs.join(', ')}`);
   }
+
+  pushNupkg(mainPkgs[0]);
 
   Log.stepEnd('Dotnet packages published successfully');
 }
@@ -165,9 +175,66 @@ function packProject(projectPath: string) {
   Log.stepEnd(`Successfully packed: ${projectPath}`);
 }
 
-function sleepSync(ms: number): void {
-  const end = Date.now() + ms;
-  while (Date.now() < end) {
-    // busy-wait
+// Get current version from nupkg files
+function getVersionFromNupkgList(nupkgs: string[]): string {
+  for (const file of nupkgs) {
+    const match = file.match(/.+\.(\d+\.\d+\.\d+(?:-[\w\d.]+)?)\.nupkg$/);
+    if (match) {
+      return match[1]; // "0.x.x-beta.x"
+    }
+  }
+  throw new Error('Could not determine version from nupkg filenames');
+}
+
+// Check all NATIVE packages are indexed on NuGet
+async function waitForPackagesIndexed(
+  pkgs: string[],
+  version: string,
+  timeoutMs: number = 300_000,
+  intervalMs: number = 10_000
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  const pending = new Set<string>(pkgs);
+
+  Log.stepProgress(`⏳ Waiting for NuGet to index ${pending.size} packages (version ${version})...`);
+
+  while (Date.now() < deadline && pending.size > 0) {
+    for (const pkg of [...pending]) {
+      const name = pkg.replace(/\.\d+\.\d+\.\d+(?:-[\w\d.]+)?\.nupkg$/, '');
+      const url = `https://api.nuget.org/v3-flatcontainer/${name.toLowerCase()}/index.json`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          Log.stepProgress(`❌ Failed to fetch index.json for ${name}: ${res.status}`);
+          return false;
+        }
+
+        const data = await res.json();
+        const exists = data.versions?.some((v: string) => v.toLowerCase() === version.toLowerCase());
+
+        if (exists) {
+          Log.stepProgress(`✅ FlatContainer indexed: ${name}@${version}`);
+          pending.delete(pkg);
+        } else {
+          Log.stepProgress(`⌛ Not yet indexed: ${name}@${version}`);
+        }
+      } catch (e) {
+        Log.stepProgress(`⚠️ Error checking ${name}: ${e}`);
+      }
+    }
+
+    if (pending.size > 0) {
+      Log.stepProgress(`⌛ Still waiting for: ${[...pending].join(', ')}`);
+      await new Promise(res => setTimeout(res, intervalMs));
+    }
+  }
+
+  if (pending.size === 0) {
+    Log.stepEnd(`✅ All native packages indexed on NuGet`);
+    return true;
+  } else {
+    Log.stepProgress(`❌ Timeout: Not all native packages were indexed: ${[...pending].join(', ')}`);
+    return false;
   }
 }
