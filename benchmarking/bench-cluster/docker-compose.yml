@@ -1,0 +1,58 @@
+services:
+  scrapi:
+    build: ./scrapi
+    container_name: scrapi
+    environment:
+      - EVAL_PROJ_SDK_KEY=${EVAL_PROJ_SDK_KEY}
+      - BENCH_CLUSTER_SDK_KEY=${BENCH_CLUSTER_SDK_KEY}
+    image: scrapi:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./shared-volume:/shared-volume
+
+  docker-stats:
+    build: ./docker-stats
+    container_name: docker-stats
+    image: docker-stats:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./shared-volume:/shared-volume
+
+  # ------------------------------------------------------------------------ [ SDKs ]
+
+  node-core:
+    build: ./node
+    container_name: node-core
+    image: node:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=core
+
+  node-legacy:
+    build: ./node
+    container_name: node-legacy
+    image: node:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=legacy
+
+  python-core:
+    build: ./python
+    container_name: python-core
+    image: python:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=core
+  
+  python-legacy:
+    build: ./python
+    container_name: python-legacy
+    image: python:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=legacy

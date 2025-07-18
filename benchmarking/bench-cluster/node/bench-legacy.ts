@@ -1,0 +1,1 @@
+console.log('Bench Legacy');

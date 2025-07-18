@@ -11,6 +11,30 @@ env:
   CAPTURE: python $GITHUB_WORKSPACE/.github/benchmark_capture.py
 
 jobs:
+  bench-cluster:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EVAL_PROJ_SDK_KEY: ${{ secrets.EVAL_PROJ_SDK_KEY }}
+      BENCH_CLUSTER_SDK_KEY: ${{ secrets.BENCH_CLUSTER_SDK_KEY }}
+    strategy:
+      matrix:
+        sdk-service:
+          - node-core
+          # - node-legacy
+          - python-core
+          # - python-legacy
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Bench Cluster
+        run: |
+          cd benchmarking/bench-cluster
+          docker compose up --build scrapi docker-stats ${{ matrix.sdk-service }}
+
+
   node-bench:
     timeout-minutes: 20
     runs-on: ubuntu-latest
