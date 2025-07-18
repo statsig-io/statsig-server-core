@@ -9,7 +9,7 @@ use statsig_rust::{
 
 const TAG: &str = "StatsigUserNapi";
 
-type ValidPrimitives = Either4<String, f64, bool, Vec<Value>>;
+type ValidPrimitives = Option<Either4<String, f64, bool, Vec<Value>>>;
 
 #[napi(object)]
 pub struct StatsigUserArgs {
@@ -25,12 +25,12 @@ pub struct StatsigUserArgs {
     pub app_version: Option<String>,
 
     #[napi(
-        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean>>"
+        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean> | null>"
     )]
     pub custom: Option<HashMap<String, ValidPrimitives>>,
 
     #[napi(
-        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean>>"
+        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean> | null>"
     )]
     pub private_attributes: Option<HashMap<String, ValidPrimitives>>,
 }
@@ -159,10 +159,11 @@ impl StatsigUser {
 
         for (key, value) in map {
             match value {
-                Either4::A(value) => converted.insert(key, dyn_value!(value)),
-                Either4::B(value) => converted.insert(key, dyn_value!(value)),
-                Either4::C(value) => converted.insert(key, dyn_value!(value)),
-                Either4::D(value) => converted.insert(key, dyn_value!(value)),
+                None => converted.insert(key, DynamicValue::new()),
+                Some(Either4::A(value)) => converted.insert(key, dyn_value!(value)),
+                Some(Either4::B(value)) => converted.insert(key, dyn_value!(value)),
+                Some(Either4::C(value)) => converted.insert(key, dyn_value!(value)),
+                Some(Either4::D(value)) => converted.insert(key, dyn_value!(value)),
             };
         }
 
