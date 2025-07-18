@@ -190,7 +190,7 @@ function getVersionFromNupkgList(nupkgs: string[]): string {
 async function waitForPackagesIndexed(
   pkgs: string[],
   version: string,
-  timeoutMs: number = 300_000,
+  timeoutMs: number = 600_000,
   intervalMs: number = 10_000
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
