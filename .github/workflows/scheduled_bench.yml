@@ -13,7 +13,7 @@ env:
 jobs:
   bench-cluster:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       EVAL_PROJ_SDK_KEY: ${{ secrets.EVAL_PROJ_SDK_KEY }}
       BENCH_CLUSTER_SDK_KEY: ${{ secrets.BENCH_CLUSTER_SDK_KEY }}
@@ -21,9 +21,9 @@ jobs:
       matrix:
         sdk-service:
           - node-core
-          # - node-legacy
+          - node-legacy
           - python-core
-          # - python-legacy
+          - python-legacy
 
     steps:
       - name: Checkout code

@@ -5,7 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir aiohttp
+RUN pip install --no-cache-dir statsig
 RUN pip install --no-cache-dir statsig-python-core --pre
 
 COPY . .

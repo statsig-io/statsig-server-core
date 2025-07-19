@@ -17,7 +17,7 @@ sdk_version = version("statsig-python-core")
 
 SCRAPI_URL = "http://scrapi:8000"
 ITER_LITE = 1000
-ITER_HEAVY = 100_000
+ITER_HEAVY = 10_000
 
 
 class BenchmarkResult:
@@ -133,11 +133,8 @@ async def main():
     spec_names = setup()
 
     options = StatsigOptions(
-        specs_url=f"{SCRAPI_URL}/dcs",
-        log_event_url=f"{SCRAPI_URL}/log_event",
-        disable_all_logging=True,
-        disable_network=True,
-        specs_sync_interval_ms=100_000,
+        specs_url=f"{SCRAPI_URL}/v2/download_config_specs",
+        log_event_url=f"{SCRAPI_URL}/v1/log_event",
     )
 
     statsig = Statsig("secret-PYTHON_CORE", options)

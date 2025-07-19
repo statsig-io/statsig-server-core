@@ -1,5 +1,5 @@
 import express from 'express';
-import { chunk, max, min } from 'lodash';
+import _ from 'lodash';
 import fs from 'node:fs';
 
 const evalProjSdkKey: string = process.env.EVAL_PROJ_SDK_KEY ?? '';
@@ -12,13 +12,45 @@ if (!benchmarkSdkKey || benchmarkSdkKey === '') {
   throw new Error('BENCH_CLUSTER_SDK_KEY is not set');
 }
 
-const dcsPromise = fetch(
-  `https://api.statsigcdn.com/v2/download_config_specs/${evalProjSdkKey}.json`,
-).then(async (res) => {
-  const dcs = await res.json();
-  writeSpecNamesToFile(dcs);
-  return dcs;
-});
+const cdnUrl = 'https://api.statsigcdn.com';
+const counters = {};
+
+const dcsV2 = await fetch(
+  `${cdnUrl}/v2/download_config_specs/${evalProjSdkKey}.json`,
+).then((res) => res.json());
+
+writeSpecNamesToFile(dcsV2);
+
+const dcsV1 = await fetch(
+  `${cdnUrl}/v1/download_config_specs/${evalProjSdkKey}.json`,
+).then((res) => res.json());
+
+delete dcsV1.hashed_sdk_key_used;
+
+const idListFiles = {};
+const idListsV1 = await fetch(
+  `${cdnUrl}/v1/get_id_lists/${evalProjSdkKey}.json`,
+)
+  .then((res) => res.json())
+  .then((id_lists) => {
+    const mapped = {};
+    for (const [key, value] of Object.entries(id_lists)) {
+      const data = value as any;
+
+      fetch(data.url)
+        .then((res) => res.text())
+        .then((text) => {
+          idListFiles[key] = text;
+        });
+
+      mapped[key] = {
+        ...data,
+        url: `http://scrapi:8000/v1/download_id_list_file/${key}`,
+      };
+    }
+
+    return mapped;
+  });
 
 const app = express();
 
@@ -30,17 +62,61 @@ app.use((req, _res, next) => {
 
   const sdkType = req.headers?.['statsig-sdk-type'] ?? 'unknown';
   const sdkVersion = req.headers?.['statsig-sdk-version'] ?? 'unknown';
+
+  const key = `req_count_${req.method}_${req.path}_${sdkType}@${sdkVersion}`;
+  const entry = counters[key] ?? {
+    sdkType,
+    sdkVersion,
+    counts: 0,
+  };
+  entry.count += 1;
+  counters[key] = entry;
+
   console.log(`${req.method} ${req.path} from ${sdkType}@${sdkVersion}`);
   next();
 });
 
-app.post('/log_event', (_req, res) => {
+app.post('/v1/log_event', (req, res) => {
+  const sdkType = req.headers?.['statsig-sdk-type'] ?? 'unknown';
+  const sdkVersion = req.headers?.['statsig-sdk-version'] ?? 'unknown';
+  const eventCount = req.headers?.['statsig-event-count'];
+
+  if (!eventCount) {
+    throw new Error('statsig-event-count is required');
+  }
+
+  const eventCountInt = parseInt(eventCount as string);
+  const eventCountKey = `event_count_${sdkType}@${sdkVersion}`;
+  const eventCountEntry = counters[eventCountKey] ?? {
+    sdkType,
+    sdkVersion,
+    counts: [],
+  };
+  eventCountEntry.counts.push(eventCountInt);
+  counters[eventCountKey] = eventCountEntry;
+
   res.status(202).json({ success: true });
 });
 
-app.get('/dcs/:sdk_key', async (_req, res) => {
-  const dcs = await dcsPromise;
-  res.status(200).json(dcs);
+app.get('/v1/download_config_specs/:sdk_key', async (_req, res) => {
+  res.status(200).json(dcsV1);
+});
+
+app.get('/v2/download_config_specs/:sdk_key', async (_req, res) => {
+  res.status(200).json(dcsV2);
+});
+
+app.all('/v1/get_id_lists', (_req, res) => {
+  res.status(200).json(idListsV1);
+});
+
+app.all('/v1/download_id_list_file/:id_list_name', async (req, res) => {
+  const idListName = req.params.id_list_name;
+  if (idListFiles[idListName]) {
+    res.status(200).send(idListFiles[idListName]);
+  } else {
+    res.status(404).json({ error: 'ID list not found' });
+  }
 });
 
 app.all('/alive', (_req, res) => {
@@ -142,8 +218,47 @@ async function postResults() {
   const { events, sdkVersionMapping } = processBenchmarks();
   const dockerEvents = processDockerStats(sdkVersionMapping);
 
-  const allEvents = [...events, ...dockerEvents];
-  const chunks = chunk(allEvents, 900);
+  const counterEvents: any[] = [];
+  for (const [key, value] of Object.entries(counters)) {
+    let metadata: any = {};
+    const data = value as any;
+    if (key.startsWith('req_count_')) {
+      metadata = {
+        type: 'req_count',
+        sdkType: data.sdkType,
+        sdkVersion: data.sdkVersion,
+        numRequests: data.counts,
+      };
+    } else if (key.startsWith('event_count_')) {
+      const sorted = data.counts.sort((a: number, b: number) => a - b);
+      metadata = {
+        type: 'event_count',
+        sdkType: data.sdkType,
+        sdkVersion: data.sdkVersion,
+        p99: sorted[Math.floor(sorted.length * 0.99)],
+        max: sorted[sorted.length - 1],
+        min: sorted[0],
+        median: sorted[Math.floor(sorted.length / 2)],
+        avg: sorted.reduce((a: number, b: number) => a + b, 0) / sorted.length,
+      };
+      console.assert(metadata.min <= metadata.max, 'min <= max');
+    } else {
+      throw new Error(`Unknown counter key: ${key}`);
+    }
+
+    counterEvents.push({
+      eventName: 'sdk_bench_cluster_counter',
+      value: key,
+      user: { userID: 'bench_cluster' },
+      time: Date.now(),
+      metadata,
+    });
+  }
+
+  console.log(JSON.stringify(counterEvents, null, 2));
+
+  const allEvents = [...events, ...dockerEvents, ...counterEvents];
+  const chunks = _.chunk(allEvents, 900);
   await Promise.all(
     chunks.map(async (chunk) => {
       console.log(`Posting ${chunk.length} events`);
@@ -301,14 +416,13 @@ function processDockerStats(sdkVersionMapping: Record<string, string>) {
 }
 
 function getStatsForField(stats: ProcessStats[], field: keyof ProcessStats) {
-  const p99 = stats.sort((a: any, b: any) => a[field] - b[field])[
-    Math.floor(stats.length * 0.99)
-  ];
   const sorted = stats.sort((a: any, b: any) => a[field] - b[field]);
+  const p99 = sorted[Math.floor(stats.length * 0.99)];
   const max = sorted[stats.length - 1];
   const min = sorted[0];
   const median = sorted[Math.floor(stats.length / 2)];
   const avg = stats.reduce((a: any, b: any) => a + b[field], 0) / stats.length;
+  console.assert(min <= max, 'min <= max');
 
   return {
     p99: p99[field],

@@ -1,12 +1,8 @@
-import {
-  Statsig,
-  StatsigOptions,
-  StatsigUser,
-} from '@statsig/statsig-node-core';
-import { version as sdkVersion } from '@statsig/statsig-node-core/package.json';
 import fs from 'node:fs';
+import Statsig, { StatsigOptions } from 'statsig-node';
+import { version as sdkVersion } from 'statsig-node/package.json';
 
-const sdkType = 'statsig-server-core-node';
+const sdkType = 'statsig-node';
 
 const SCRAPI_URL = 'http://scrapi:8000';
 const ITER_LITE = 1000;
@@ -38,12 +34,10 @@ for (let i = 0; i < 10; i++) {
 const specNames = JSON.parse(fs.readFileSync(specNamePath, 'utf8'));
 
 const options: StatsigOptions = {
-  specsUrl: `${SCRAPI_URL}/v2/download_config_specs`,
-  logEventUrl: `${SCRAPI_URL}/v1/log_event`,
+  api: `${SCRAPI_URL}/v1`,
 };
 
-const statsig = new Statsig('secret-NODE_CORE', options);
-await statsig.initialize();
+await Statsig.initialize('secret-NODE_LEGACY', options);
 
 const results: BenchmarkResult[] = [];
 
@@ -91,7 +85,7 @@ const benchmark = async (
 };
 
 const createUser = () => {
-  return new StatsigUser({
+  return {
     userID: Math.random().toString(36).substring(2, 15),
     email: 'user@example.com',
     ip: '127.0.0.1',
@@ -106,71 +100,73 @@ const createUser = () => {
     privateAttributes: {
       isPaid: true,
     },
-  });
+  };
 };
 
 // ------------------------------------------------------------------------ [ Benchmark ]
 
-console.log(`Statsig Node Core (v${sdkVersion})`);
+console.log(`Statsig Node Legacy (v${sdkVersion})`);
 console.log('--------------------------------');
 
-const globalUser = StatsigUser.withUserID('global_user');
+const globalUser = {
+  userID: 'global_user',
+};
 
 for (const gate of specNames.feature_gates) {
   await benchmark('check_gate', gate, ITER_HEAVY, () => {
     const user = createUser();
-    statsig.checkGate(user, gate);
+    Statsig.checkGate(user, gate);
   });
 
   await benchmark('check_gate_global_user', gate, ITER_HEAVY, () => {
-    statsig.checkGate(globalUser, gate);
+    Statsig.checkGate(globalUser, gate);
   });
 
   await benchmark('get_feature_gate', gate, ITER_HEAVY, () => {
     const user = createUser();
-    statsig.getFeatureGate(user, gate);
+    Statsig.getFeatureGate(user, gate);
   });
 
   await benchmark('get_feature_gate_global_user', gate, ITER_HEAVY, () => {
-    statsig.getFeatureGate(globalUser, gate);
+    Statsig.getFeatureGate(globalUser, gate);
   });
 }
 
 for (const config of specNames.dynamic_configs) {
   await benchmark('get_dynamic_config', config, ITER_HEAVY, () => {
     const user = createUser();
-    statsig.getDynamicConfig(user, config);
+    Statsig.getConfig(user, config);
   });
 
   await benchmark('get_dynamic_config_global_user', config, ITER_HEAVY, () => {
-    statsig.getDynamicConfig(globalUser, config);
+    Statsig.getConfig(globalUser, config);
   });
 }
 
 for (const experiment of specNames.experiments) {
   await benchmark('get_experiment', experiment, ITER_HEAVY, () => {
     const user = createUser();
-    statsig.getExperiment(user, experiment);
+    Statsig.getExperiment(user, experiment);
   });
 
   await benchmark('get_experiment_global_user', experiment, ITER_HEAVY, () => {
-    statsig.getExperiment(globalUser, experiment);
+    Statsig.getExperiment(globalUser, experiment);
   });
 }
 
 for (const layer of specNames.layers) {
   await benchmark('get_layer', layer, ITER_HEAVY, () => {
     const user = createUser();
-    statsig.getLayer(user, layer);
+    Statsig.getLayer(user, layer);
   });
 
   await benchmark('get_layer_global_user', layer, ITER_HEAVY, () => {
-    statsig.getLayer(globalUser, layer);
+    Statsig.getLayer(globalUser, layer);
   });
 }
 
 await benchmark('get_client_initialize_response', 'n/a', ITER_LITE, () => {
-  statsig.getClientInitializeResponse(createUser());
+  Statsig.getClientInitializeResponse(createUser());
 });
 
 await benchmark(
@@ -178,13 +174,13 @@ await benchmark(
   'n/a',
   ITER_LITE,
   () => {
-    statsig.getClientInitializeResponse(globalUser);
+    Statsig.getClientInitializeResponse(globalUser);
   },
 );
 
 // ------------------------------------------------------------------------ [ Teardown ]
 
-await statsig.shutdown();
+Statsig.shutdown();
 
 fs.writeFileSync(
   `/shared-volume/${sdkType}-${sdkVersion}-results.json`,

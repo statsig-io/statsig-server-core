@@ -9,5 +9,5 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY . .
 RUN npm config set update-notifier false
 
-CMD ["npx", "tsx", "index.ts"]
+CMD ["npx", "tsx", "index.mts"]
 
