@@ -94,7 +94,7 @@ namespace Statsig
             }
         }
 
-        unsafe public DynamicConfig GetConfig(StatsigUser user, string configName, EvaluationOptions? options = null)
+        unsafe public DynamicConfig GetDynamicConfig(StatsigUser user, string configName, EvaluationOptions? options = null)
         {
             var configNameBytes = Encoding.UTF8.GetBytes(configName);
             var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
@@ -115,7 +115,7 @@ namespace Statsig
             }
         }
 
-        unsafe public void ManuallyLogConfigExposure(StatsigUser user, string configName)
+        unsafe public void ManuallyLogDynamicConfigExposure(StatsigUser user, string configName)
         {
             var configNameBytes = Encoding.UTF8.GetBytes(configName);
 

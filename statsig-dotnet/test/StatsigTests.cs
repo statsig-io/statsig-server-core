@@ -117,7 +117,7 @@ namespace Statsig.Tests
             using var statsig = new Statsig("secret-test-key", options);
             using var user = new StatsigUserBuilder().SetUserID("test_user").Build();
 
-            var result = statsig.GetConfig(user, "test_config");
+            var result = statsig.GetDynamicConfig(user, "test_config");
 
             Assert.NotNull(result);
             Assert.IsType<DynamicConfig>(result);
@@ -131,20 +131,20 @@ namespace Statsig.Tests
             using var user = new StatsigUserBuilder().SetUserID("test_user").Build();
             var evalOptions = new EvaluationOptions(disableExposureLogging: true);
 
-            var result = statsig.GetConfig(user, "test_config", evalOptions);
+            var result = statsig.GetDynamicConfig(user, "test_config", evalOptions);
 
             Assert.NotNull(result);
             Assert.IsType<DynamicConfig>(result);
         }
 
         [Fact]
-        public void Statsig_ManuallyLogConfigExposure_WithValidParameters_DoesNotThrow()
+        public void Statsig_ManuallyLogDynamicConfigExposure_WithValidParameters_DoesNotThrow()
         {
             var options = new StatsigOptionsBuilder().Build();
             using var statsig = new Statsig("secret-test-key", options);
             using var user = new StatsigUserBuilder().SetUserID("test_user").Build();
 
-            statsig.ManuallyLogConfigExposure(user, "test_config");
+            statsig.ManuallyLogDynamicConfigExposure(user, "test_config");
 
             Assert.True(true);
         }
