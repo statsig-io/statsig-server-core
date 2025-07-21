@@ -36,6 +36,14 @@
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.13.0"
   },
+  "overrides": {
+    "eslint": {
+      "@eslint/plugin-kit": "0.3.3"
+    },
+    "@eslint/js": {
+      "@eslint/plugin-kit": "0.3.3"
+    }
+  },
   "devDependencies": {
     "@types/d3": "^7.4.3",
     "@types/d3-dsv": "^3.0.7",
