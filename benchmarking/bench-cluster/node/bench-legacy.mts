@@ -98,7 +98,7 @@ const createUser = () => {
       isAdmin: false,
     },
     privateAttributes: {
-      isPaid: true,
+      isPaid: 'nah',
     },
   };
 };

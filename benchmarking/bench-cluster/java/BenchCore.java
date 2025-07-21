@@ -80,8 +80,22 @@ public class BenchCore {
     }
 
     private static StatsigUser createUser() {
+        Map<String, Object> custom = new HashMap<>();
+        custom.put("isAdmin", false);
+
+        Map<String, String> privateAttributes = new HashMap<>();
+        privateAttributes.put("isPaid", "nah");
+
         return new StatsigUser.Builder()
             .setUserID("user_" + random.nextInt(1000000))
+            .setEmail("user@example.com")
+            .setIp("127.0.0.1")
+            .setLocale("en-US")
+            .setAppVersion("1.0.0")
+            .setCountry("US")
+            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+            .setCustom(custom)
+            .setPrivateAttributes(privateAttributes)
             .build();
     }
 

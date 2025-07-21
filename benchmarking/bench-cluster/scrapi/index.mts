@@ -67,7 +67,7 @@ app.use((req, _res, next) => {
   const entry = counters[key] ?? {
     sdkType,
     sdkVersion,
-    counts: 0,
+    count: 0,
   };
   entry.count += 1;
   counters[key] = entry;
@@ -227,7 +227,7 @@ async function postResults() {
         type: 'req_count',
         sdkType: data.sdkType,
         sdkVersion: data.sdkVersion,
-        numRequests: data.counts,
+        numRequests: data.count,
       };
     } else if (key.startsWith('event_count_')) {
       const sorted = data.counts.sort((a: number, b: number) => a - b);
