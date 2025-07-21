@@ -24,6 +24,8 @@ jobs:
           - node-legacy
           - python-core
           - python-legacy
+          - java-core
+          # - java-legacy
 
     steps:
       - name: Checkout code

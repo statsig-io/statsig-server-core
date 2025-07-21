@@ -7,3 +7,5 @@ package.json
 requirements.txt
 pyproject.toml
 shared-volume/
+.gradle/
+build/

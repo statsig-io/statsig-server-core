@@ -1,0 +1,67 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+mainClassName = 'Main'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+    withSourcesJar()
+}
+
+dependencies {
+    implementation 'com.statsig:serversdk:+'
+    implementation 'com.statsig:javacore:+'
+    implementation 'com.statsig:javacore:+:macos-arm64'
+    implementation 'com.statsig:javacore:+:linux-gnu-x86_64'
+    implementation 'com.alibaba.fastjson2:fastjson2:2.0.41'
+    implementation 'io.javalin:javalin:+'
+    implementation 'org.slf4j:slf4j-simple:+'
+}
+
+tasks.register('write_versions') {
+    def versionsFile = file("$buildDir/versions.properties")
+    versionsFile.parentFile.mkdirs()
+
+    def props = new Properties()
+
+    configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+        if (artifact.moduleVersion.id.group == 'com.statsig' && artifact.moduleVersion.id.name == 'javacore') {
+            props.setProperty('core.version', artifact.moduleVersion.id.version)
+        }
+
+        if (artifact.moduleVersion.id.group == 'com.statsig' && artifact.moduleVersion.id.name == 'serversdk') {
+            props.setProperty('legacy.version', artifact.moduleVersion.id.version)
+        }
+    }
+
+    versionsFile.withWriter { writer ->
+        props.store(writer, 'Dependency versions')
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['.']
+        }
+    }
+}
+
+java {
+    withSourcesJar()
+}
+
+tasks.withType(Jar).configureEach {
+    dependsOn write_versions
+    manifest {
+        attributes 'Main-Class': 'Main'
+    }
+}

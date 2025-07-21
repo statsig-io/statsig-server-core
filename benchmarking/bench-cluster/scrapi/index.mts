@@ -443,6 +443,10 @@ function getSdkTypeForService(name: string) {
       return 'statsig-server-core-python';
     case 'python-legacy':
       return 'py-server';
+    case 'java-core':
+      return 'statsig-server-core-java';
+    case 'java-legacy':
+      return 'java-server';
 
     case 'scrapi':
     case 'docker-stats':

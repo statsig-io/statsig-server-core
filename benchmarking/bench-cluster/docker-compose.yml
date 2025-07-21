@@ -56,3 +56,21 @@ services:
       - ./shared-volume:/shared-volume
     environment:
       - SDK_VARIANT=legacy
+
+  java-core:
+    build: ./java
+    container_name: java-core
+    image: java:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=core
+      
+  java-legacy:
+    build: ./java
+    container_name: java-legacy
+    image: java:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=legacy
