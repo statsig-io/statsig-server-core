@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use napi::bindgen_prelude::{Either3, Either4};
+use napi::bindgen_prelude::{Either3, Either5};
 use napi_derive::napi;
 use serde_json::Value;
 use statsig_rust::{
@@ -9,7 +9,7 @@ use statsig_rust::{
 
 const TAG: &str = "StatsigUserNapi";
 
-type ValidPrimitives = Option<Either4<String, f64, bool, Vec<Value>>>;
+type ValidPrimitives = Option<Either5<String, f64, bool, Vec<Value>, HashMap<String, Value>>>;
 
 #[napi(object)]
 pub struct StatsigUserArgs {
@@ -25,12 +25,12 @@ pub struct StatsigUserArgs {
     pub app_version: Option<String>,
 
     #[napi(
-        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean> | null>"
+        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>"
     )]
     pub custom: Option<HashMap<String, ValidPrimitives>>,
 
     #[napi(
-        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean> | null>"
+        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>"
     )]
     pub private_attributes: Option<HashMap<String, ValidPrimitives>>,
 }
@@ -160,10 +160,11 @@ impl StatsigUser {
         for (key, value) in map {
             match value {
                 None => converted.insert(key, DynamicValue::new()),
-                Some(Either4::A(value)) => converted.insert(key, dyn_value!(value)),
-                Some(Either4::B(value)) => converted.insert(key, dyn_value!(value)),
-                Some(Either4::C(value)) => converted.insert(key, dyn_value!(value)),
-                Some(Either4::D(value)) => converted.insert(key, dyn_value!(value)),
+                Some(Either5::A(value)) => converted.insert(key, dyn_value!(value)),
+                Some(Either5::B(value)) => converted.insert(key, dyn_value!(value)),
+                Some(Either5::C(value)) => converted.insert(key, dyn_value!(value)),
+                Some(Either5::D(value)) => converted.insert(key, dyn_value!(value)),
+                Some(Either5::E(value)) => converted.insert(key, dyn_value!(value)),
             };
         }
 
