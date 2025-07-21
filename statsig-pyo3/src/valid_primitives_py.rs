@@ -2,7 +2,10 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::{PyStubType, TypeInfo};
 use serde_json::Value;
 use statsig_rust::{dyn_value, log_w, DynamicValue};
-use std::{collections::HashSet, str};
+use std::{
+    collections::{HashMap, HashSet},
+    str,
+};
 
 const TAG: &str = stringify!(ValidPrimitivesPy);
 
@@ -40,6 +43,7 @@ pub enum ValidPrimitivesPy {
     Int(i64),
     Array(Vec<ValidArrayItemPy>),
     String(String),
+    Dictionary(HashMap<String, Option<ValidPrimitivesPy>>),
 }
 
 impl<'py> FromPyObject<'py> for ValidPrimitivesPy {
@@ -64,9 +68,13 @@ impl<'py> FromPyObject<'py> for ValidPrimitivesPy {
             return Ok(ValidPrimitivesPy::String(s));
         }
 
+        if let Ok(dict) = ob.extract::<HashMap<String, Option<ValidPrimitivesPy>>>() {
+            return Ok(ValidPrimitivesPy::Dictionary(dict));
+        }
+
         log_w!(
             TAG,
-            "Invalid ValidPrimitivesPy: {:?}. Valid types are: int, float, bool, str, list[str, int, float, bool]. Defaulting to empty string.",
+            "Invalid ValidPrimitivesPy: {:?}. Valid types are: int, float, bool, str, list[str, int, float, bool], dict[str, Union[str, int, float, bool]]. Defaulting to empty string.",
             ob
         );
 
@@ -97,6 +105,21 @@ impl ValidPrimitivesPy {
                     .collect::<Vec<_>>();
                 dyn_value!(mapped)
             }
+            ValidPrimitivesPy::Dictionary(dict) => {
+                let converted: HashMap<String, DynamicValue> = dict
+                    .into_iter()
+                    .map(|(k, v)| {
+                        (
+                            k,
+                            match v {
+                                Some(v) => v.into_dynamic_value(),
+                                None => DynamicValue::new(),
+                            },
+                        )
+                    })
+                    .collect();
+                dyn_value!(converted)
+            }
         }
     }
 }
@@ -108,6 +131,7 @@ pub enum ValidPrimitivesPyRef<'a> {
     Int(i64),
     Array(Vec<ValidArrayItemPyRef<'a>>),
     String(&'a str),
+    Dictionary(HashMap<String, Option<ValidPrimitivesPyRef<'a>>>),
 }
 
 impl PyStubType for ValidPrimitivesPyRef<'_> {
@@ -123,6 +147,10 @@ impl<'a> ValidPrimitivesPyRef<'a> {
     pub fn from_dynamic_value(value: &'a DynamicValue) -> Option<Self> {
         let json_value = &value.json_value;
 
+        ValidPrimitivesPyRef::from_value(json_value)
+    }
+
+    pub fn from_value(json_value: &'a Value) -> Option<Self> {
         if let Value::String(v) = json_value {
             return Some(ValidPrimitivesPyRef::String(v.as_str()));
         }
@@ -146,6 +174,15 @@ impl<'a> ValidPrimitivesPyRef<'a> {
                 .collect::<Vec<_>>();
 
             return Some(ValidPrimitivesPyRef::Array(mapped));
+        }
+
+        if let Value::Object(v) = json_value {
+            let mapped = v
+                .iter()
+                .map(|(k, v)| (k.clone(), ValidPrimitivesPyRef::from_value(v)))
+                .collect::<HashMap<_, _>>();
+
+            return Some(ValidPrimitivesPyRef::Dictionary(mapped));
         }
 
         None

@@ -118,10 +118,8 @@ def test_create_user_with_nested_dict():
         custom={"nested": {"key1": "value1", "key2": 42}},
         private_attributes={"pii": {"email": "hidden@example.com"}},
     )
-
-    # Nested dicts are not supported, so they are converted to empty strings
-    assert user.custom == {"nested": ""}
-    assert user.private_attributes == {"pii": ""}
+    assert user.custom == {"nested": {"key1": "value1", "key2": 42}}
+    assert user.private_attributes == {"pii": {"email": "hidden@example.com"}}
 
 
 def test_create_user_with_py_list():
