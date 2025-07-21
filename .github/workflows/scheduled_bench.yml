@@ -26,6 +26,8 @@ jobs:
           - python-legacy
           - java-core
           - java-legacy
+          # - dotnet-core
+          - dotnet-legacy
 
     steps:
       - name: Checkout code

@@ -74,3 +74,21 @@ services:
       - ./shared-volume:/shared-volume
     environment:
       - SDK_VARIANT=legacy
+
+  dotnet-core:
+    build: ./dotnet
+    container_name: dotnet-core
+    image: dotnet:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=core
+      
+  dotnet-legacy:
+    build: ./dotnet
+    container_name: dotnet-legacy
+    image: dotnet:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=legacy

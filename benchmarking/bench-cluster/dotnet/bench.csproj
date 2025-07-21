@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>bench</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Statsig" Version="2.3.0">
+      <Aliases>StatsigLegacy</Aliases>
+    </PackageReference>
+    <PackageReference Include="Statsig.Dotnet" Version="0.6.2-rc.2507211317">
+      <Aliases>StatsigCore</Aliases>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

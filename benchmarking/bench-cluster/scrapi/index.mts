@@ -447,6 +447,10 @@ function getSdkTypeForService(name: string) {
       return 'statsig-server-core-java';
     case 'java-legacy':
       return 'java-server';
+    case 'dotnet-core':
+      return 'statsig-server-core-dotnet';
+    case 'dotnet-legacy':
+      return 'dotnet-server';
 
     case 'scrapi':
     case 'docker-stats':

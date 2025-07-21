@@ -9,3 +9,7 @@ pyproject.toml
 shared-volume/
 .gradle/
 build/
+Folder.DotSettings.user
+bin
+obj
+.idea
