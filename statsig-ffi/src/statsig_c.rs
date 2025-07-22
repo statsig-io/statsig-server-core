@@ -58,35 +58,41 @@ pub extern "C" fn statsig_initialize(statsig_ref: u64, callback: extern "C" fn()
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_initialize_with_details(statsig_ref: u64) -> *mut c_char {
-    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+pub extern "C" fn statsig_initialize_with_details(
+    statsig_ref: u64,
+    callback: extern "C" fn(result: *mut c_char),
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
     let rt_handle = match statsig.statsig_runtime.get_handle() {
         Ok(handle) => handle,
         Err(e) => {
             log_e!(TAG, "Failed to get runtime handle: {}", e);
-            return null_mut();
+            callback(null_mut());
+            return;
         }
     };
 
-    let result = rt_handle.block_on(async { statsig.initialize_with_details().await });
+    rt_handle.spawn(async move {
+        let details = match statsig.initialize_with_details().await {
+            Ok(d) => d,
+            Err(e) => {
+                log_e!(TAG, "Failed to init statsig with details: {}", e);
+                callback(null_mut());
+                return;
+            }
+        };
 
-    let details = match result {
-        Ok(d) => d,
-        Err(e) => {
-            log_e!(TAG, "Failed to initialize statsig with details: {}", e);
-            return null_mut();
-        }
-    };
+        let json_str = match serde_json::to_string(&details) {
+            Ok(json_str) => json_str,
+            Err(e) => {
+                log_e!(TAG, "Failed to initialize statsig with details: {}", e);
+                callback(null_mut());
+                return;
+            }
+        };
 
-    let json_str = match serde_json::to_string(&details) {
-        Ok(s) => s,
-        Err(e) => {
-            log_e!(TAG, "Failed to initialize statsig with details: {}", e);
-            return null_mut();
-        }
-    };
-
-    string_to_c_char(json_str)
+        callback(string_to_c_char(json_str));
+    });
 }
 
 #[no_mangle]
