@@ -21,6 +21,45 @@ services:
 
   # ------------------------------------------------------------------------ [ SDKs ]
 
+  dotnet-core:
+    build: ./dotnet
+    container_name: dotnet-core
+    image: dotnet:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=core
+      
+  dotnet-legacy:
+    build: ./dotnet
+    container_name: dotnet-legacy
+    image: dotnet:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=legacy
+
+  java-core:
+    build:
+      context: ./java
+      args:
+        - BUILD_FOR_CI=${CI}
+    container_name: java-core
+    image: java:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=core
+      
+  java-legacy:
+    build: ./java
+    container_name: java-legacy
+    image: java:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=legacy
+
   node-core:
     build: ./node
     container_name: node-core
@@ -39,6 +78,25 @@ services:
     environment:
       - SDK_VARIANT=legacy
 
+  php-core:
+    build: ./php
+    container_name: php-core
+    image: php:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=core
+    
+  
+  php-legacy:
+    build: ./php
+    container_name: php-legacy
+    image: php:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=legacy
+
   python-core:
     build: ./python
     container_name: python-core
@@ -52,42 +110,6 @@ services:
     build: ./python
     container_name: python-legacy
     image: python:latest
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=legacy
-
-  java-core:
-    build: ./java
-    container_name: java-core
-    image: java:latest
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=core
-      
-  java-legacy:
-    build: ./java
-    container_name: java-legacy
-    image: java:latest
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=legacy
-
-  dotnet-core:
-    build: ./dotnet
-    container_name: dotnet-core
-    image: dotnet:latest
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=core
-      
-  dotnet-legacy:
-    build: ./dotnet
-    container_name: dotnet-legacy
-    image: dotnet:latest
     volumes:
       - ./shared-volume:/shared-volume
     environment:

@@ -19,8 +19,6 @@ const dcsV2 = await fetch(
   `${cdnUrl}/v2/download_config_specs/${evalProjSdkKey}.json`,
 ).then((res) => res.json());
 
-writeSpecNamesToFile(dcsV2);
-
 const dcsV1 = await fetch(
   `${cdnUrl}/v1/download_config_specs/${evalProjSdkKey}.json`,
 ).then((res) => res.json());
@@ -67,6 +65,7 @@ app.use((req, _res, next) => {
   const entry = counters[key] ?? {
     sdkType,
     sdkVersion,
+    path: req.path,
     count: 0,
   };
   entry.count += 1;
@@ -133,6 +132,7 @@ app.all('/shutdown', (_req, res) => {
 
 app.listen(8000, () => {
   console.log('Server is running on port 8000');
+  writeSpecNamesToFile(dcsV2);
 });
 
 function writeSpecNamesToFile(dcs: any) {
@@ -222,12 +222,16 @@ async function postResults() {
   for (const [key, value] of Object.entries(counters)) {
     let metadata: any = {};
     const data = value as any;
+    let logValue = key;
+
     if (key.startsWith('req_count_')) {
+      logValue = data.path;
       metadata = {
         type: 'req_count',
         sdkType: data.sdkType,
         sdkVersion: data.sdkVersion,
         numRequests: data.count,
+        path: data.path,
       };
     } else if (key.startsWith('event_count_')) {
       const sorted = data.counts.sort((a: number, b: number) => a - b);
@@ -248,7 +252,7 @@ async function postResults() {
 
     counterEvents.push({
       eventName: 'sdk_bench_cluster_counter',
-      value: key,
+      value: logValue,
       user: { userID: 'bench_cluster' },
       time: Date.now(),
       metadata,
@@ -435,26 +439,35 @@ function getStatsForField(stats: ProcessStats[], field: keyof ProcessStats) {
 
 function getSdkTypeForService(name: string) {
   switch (name) {
-    case 'node-core':
-      return 'statsig-server-core-node';
-    case 'node-legacy':
-      return 'statsig-node';
-    case 'python-core':
-      return 'statsig-server-core-python';
-    case 'python-legacy':
-      return 'py-server';
-    case 'java-core':
-      return 'statsig-server-core-java';
-    case 'java-legacy':
-      return 'java-server';
+    case 'scrapi':
+    case 'docker-stats':
+      return null;
+
+    // SDKs
     case 'dotnet-core':
       return 'statsig-server-core-dotnet';
     case 'dotnet-legacy':
       return 'dotnet-server';
 
-    case 'scrapi':
-    case 'docker-stats':
-      return null;
+    case 'java-core':
+      return 'statsig-server-core-java';
+    case 'java-legacy':
+      return 'java-server';
+
+    case 'node-core':
+      return 'statsig-server-core-node';
+    case 'node-legacy':
+      return 'statsig-node';
+
+    case 'php-core':
+      return 'statsig-server-core-php';
+    case 'php-legacy':
+      return 'php-server';
+
+    case 'python-core':
+      return 'statsig-server-core-python';
+    case 'python-legacy':
+      return 'py-server';
   }
 
   throw new Error(`Unknown service: ${name}`);

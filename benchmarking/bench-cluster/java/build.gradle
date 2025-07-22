@@ -19,17 +19,18 @@ java {
 dependencies {
     implementation 'com.statsig:serversdk:+'
     implementation 'com.statsig:javacore:+'
+    implementation 'com.alibaba.fastjson2:fastjson2:2.0.41'
+    implementation 'io.javalin:javalin:+'
+    implementation 'org.slf4j:slf4j-simple:+'
 
-    if (System.env.CI == '1' || System.env.CI == 'true') {
+    def buildForCi = project.getProperty("BUILD_FOR_CI") ?: 'null'
+    println "BUILD_FOR_CI: ${buildForCi}"
+    if (buildForCi == "true" || buildForCi == "1") {
         implementation 'com.statsig:javacore:+:linux-gnu-x86_64'
     } else {
         implementation 'com.statsig:javacore:+:linux-gnu-arm64'
         implementation 'com.statsig:javacore:+:macos-arm64'
     }
-
-    implementation 'com.alibaba.fastjson2:fastjson2:2.0.41'
-    implementation 'io.javalin:javalin:+'
-    implementation 'org.slf4j:slf4j-simple:+'
 }
 
 tasks.register('write_versions') {
