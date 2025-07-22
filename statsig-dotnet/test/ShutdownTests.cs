@@ -9,7 +9,7 @@ namespace Statsig.Tests
         private static readonly string[] ExpectedOrder = ["A", "B", "C"];
 
         [Fact]
-        public async Task ShutdownAsync_OrderIsAthenBthenC()
+        public async Task CorrectExecutionOrder()
         {
             var options = new StatsigOptionsBuilder().Build();
             using var statsig = new Statsig("secret-test-key", options);
