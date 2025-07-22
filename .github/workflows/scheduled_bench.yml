@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         sdk-service:
-          # - dotnet-core
+          - dotnet-core
           - dotnet-legacy
           - java-core
           - java-legacy

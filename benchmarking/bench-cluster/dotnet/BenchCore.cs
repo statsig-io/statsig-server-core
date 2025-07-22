@@ -24,11 +24,11 @@ public class BenchCore
 
     static readonly string sdkVersion = typeof(StatsigCore::Statsig.Statsig).Assembly.GetName().Version?.ToString() ?? "unknown";
     static readonly Random rng = new Random();
-    
+
     const string sdkType = "statsig-server-core-dotnet";
     const string specNamePath = "/shared-volume/spec_names.json";
     const int ITER_LITE = 1000;
-    const int ITER_HEAVY = 10_000;
+    const int ITER_HEAVY = 10_000; // temp: All others SDKs are 10K, but .NET Core is really slow right now
 
 
     static Dictionary<string, List<string>> LoadSpecNames()
@@ -109,38 +109,56 @@ public class BenchCore
         foreach (var gate in specNames["feature_gates"])
         {
             results.Add(RunBenchmark("check_gate", gate, ITER_HEAVY, () => statsig.CheckGate(CreateUser(), gate)));
+            await Task.Delay(1);
+            
             results.Add(RunBenchmark("check_gate_global_user", gate, ITER_HEAVY, () => statsig.CheckGate(globalUser, gate)));
+            await Task.Delay(1);
             
             results.Add(RunBenchmark("get_feature_gate", gate, ITER_HEAVY, () => statsig.GetFeatureGate(CreateUser(), gate)));
+            await Task.Delay(1);
+
             results.Add(RunBenchmark("get_feature_gate_global_user", gate, ITER_HEAVY, () => statsig.GetFeatureGate(globalUser, gate)));
+            await Task.Delay(1);
         }
 
         // Dynamic configs
         foreach (var config in specNames["dynamic_configs"])
         {
             results.Add(RunBenchmark("get_dynamic_config", config, ITER_HEAVY, () => statsig.GetConfig(CreateUser(), config)));
+            await Task.Delay(1);
+     
             results.Add(RunBenchmark("get_dynamic_config_global_user", config, ITER_HEAVY, () => statsig.GetConfig(globalUser, config)));
+            await Task.Delay(1);
         }
 
         // Experiments
         foreach (var experiment in specNames["experiments"])
         {
             results.Add(RunBenchmark("get_experiment", experiment, ITER_HEAVY, () => statsig.GetExperiment(CreateUser(), experiment)));
+            await Task.Delay(1);
+     
             results.Add(RunBenchmark("get_experiment_global_user", experiment, ITER_HEAVY, () => statsig.GetExperiment(globalUser, experiment)));
+            await Task.Delay(1);
         }
 
         // Layers
         foreach (var layer in specNames["layers"])
         {
             results.Add(RunBenchmark("get_layer", layer, ITER_HEAVY, () => statsig.GetLayer(CreateUser(), layer)));
+            await Task.Delay(1);
+      
             results.Add(RunBenchmark("get_layer_global_user", layer, ITER_HEAVY, () => statsig.GetLayer(globalUser, layer)));
+            await Task.Delay(1);
         }
 
         // Client initialize response (if available in .NET SDK)
         results.Add(RunBenchmark("get_client_initialize_response", "n/a", ITER_LITE, () => statsig.GetClientInitializeResponse(CreateUser())));
+        await Task.Delay(1);
+    
         results.Add(RunBenchmark("get_client_initialize_response_global_user", "n/a", ITER_LITE, () => statsig.GetClientInitializeResponse(globalUser)));
+        await Task.Delay(1);
 
-        statsig.Shutdown();
+        statsig.FlushEvents();
 
         var resultsFile = $"/shared-volume/{sdkType}-{sdkVersion}-results.json";
         File.WriteAllText(resultsFile, JsonSerializer.Serialize(new
