@@ -97,11 +97,14 @@ app.post('/v1/log_event', (req, res) => {
   res.status(202).json({ success: true });
 });
 
-app.get('/v1/download_config_specs/:sdk_key', async (_req, res) => {
-  res.status(200).json(dcsV1);
-});
+app.all(
+  ['/v1/download_config_specs/:sdk_key', '/v1/download_config_specs'],
+  async (_req, res) => {
+    res.status(200).json(dcsV1);
+  },
+);
 
-app.get('/v2/download_config_specs/:sdk_key', async (_req, res) => {
+app.all('/v2/download_config_specs/:sdk_key', async (_req, res) => {
   res.status(200).json(dcsV2);
 });
 

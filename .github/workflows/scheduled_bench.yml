@@ -27,7 +27,7 @@ jobs:
           - node-core
           - node-legacy
           - php-core
-          # - php-legacy
+          - php-legacy
           - python-core
           - python-legacy
 
