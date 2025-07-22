@@ -108,6 +108,25 @@ pub extern "C" fn statsig_initialize_blocking(statsig_ref: u64) {
 }
 
 #[no_mangle]
+pub extern "C" fn statsig_shutdown(statsig_ref: u64, callback: extern "C" fn()) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let rt_handle = match statsig.statsig_runtime.get_handle() {
+        Ok(handle) => handle,
+        Err(e) => {
+            log_e!(TAG, "Failed to get runtime handle: {}", e);
+            return;
+        }
+    };
+
+    rt_handle.spawn(async move {
+        if let Err(e) = statsig.shutdown().await {
+            log_e!(TAG, "Failed to gracefully shutdown Statsig: {}", e);
+        }
+        callback();
+    });
+}
+
+#[no_mangle]
 pub extern "C" fn statsig_shutdown_blocking(statsig_ref: u64) {
     let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
     let rt_handle = match statsig.statsig_runtime.get_handle() {

@@ -46,6 +46,12 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_initialize_blocking", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_initialize_blocking(ulong statsig_ref);
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void statsig_shutdown_callback_delegate();
+
+        [DllImport(__DllName, EntryPoint = "statsig_shutdown", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void statsig_shutdown(ulong statsig_ref, statsig_shutdown_callback_delegate callback);
+
         [DllImport(__DllName, EntryPoint = "statsig_shutdown_blocking", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_shutdown_blocking(ulong statsig_ref);
 

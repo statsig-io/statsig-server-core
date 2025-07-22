@@ -349,15 +349,29 @@ namespace Statsig
             return source.Task;
         }
 
-        public void Shutdown()
+        public Task Shutdown()
         {
-            if (_statsigRef == 0)
+            var source = new TaskCompletionSource<bool>();
+            GCHandle handle = default;
+
+            StatsigFFI.statsig_shutdown_callback_delegate callback = () =>
             {
-                Console.WriteLine("Statsig is not initialized.");
-                return;
-            }
-            StatsigFFI.statsig_shutdown_blocking(_statsigRef);
-            this.Dispose();
+                try
+                {
+                    source.SetResult(true);
+                }
+                finally
+                {
+                    if (handle.IsAllocated)
+                    {
+                        handle.Free();
+                    }
+                }
+            };
+
+            handle = GCHandle.Alloc(callback);
+            StatsigFFI.statsig_shutdown(_statsigRef, callback);
+            return source.Task;
         }
 
         public void Dispose()
