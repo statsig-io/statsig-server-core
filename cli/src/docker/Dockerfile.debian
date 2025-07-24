@@ -1,5 +1,9 @@
 FROM debian:10-slim
 
+RUN echo "deb http://archive.debian.org/debian/ buster main" > /etc/apt/sources.list && \
+    echo "deb http://archive.debian.org/debian-security/ buster/updates main" >> /etc/apt/sources.list && \
+    echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
+
 ARG PROTOC_ARCH=aarch_64
 ARG ARM_SUFFIX=-arm
 
@@ -9,6 +13,8 @@ RUN apt-get install -y \
     bash curl zsh default-jre jq pkg-config libssl-dev clang \
     # Python Deps
     python3 python3-pip \
+    # Node Deps
+    zstd \
     # PHP Deps
     php php-curl php-xml composer \
     # Profiling

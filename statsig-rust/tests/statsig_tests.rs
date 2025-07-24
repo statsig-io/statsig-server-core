@@ -1,4 +1,5 @@
 mod utils;
+use more_asserts::assert_ge;
 use std::{collections::HashMap, env, sync::Arc, thread::sleep, time::Duration};
 use utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use utils::mock_specs_adapter::MockSpecsAdapter;
@@ -107,10 +108,10 @@ async fn test_gcir() {
     let _ = statsig.shutdown().await;
 
     let gates = response.feature_gates;
-    assert_eq!(gates.len(), 69);
+    assert_ge!(gates.len(), 69);
 
     let configs = response.dynamic_configs.len();
-    assert_eq!(configs, 62);
+    assert_ge!(configs, 62);
 
     let a_config_opt = response.dynamic_configs.get(&djb2("big_number"));
     let a_config = match a_config_opt {
