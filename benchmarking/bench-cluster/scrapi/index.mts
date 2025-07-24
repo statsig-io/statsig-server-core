@@ -262,9 +262,23 @@ async function postResults() {
     });
   }
 
-  console.log(JSON.stringify(counterEvents, null, 2));
-
   const allEvents = [...events, ...dockerEvents, ...counterEvents];
+
+  const debugEventCounts = allEvents.reduce((acc, event) => {
+    const key = `${event.eventName}@${event.metadata.sdkType}@${event.metadata.sdkVersion}`;
+    const entry = acc[key] ?? {
+      eventName: event.eventName,
+      sdkType: event.metadata.sdkType,
+      sdkVersion: event.metadata.sdkVersion,
+      count: 0,
+    };
+    entry.count += 1;
+    acc[key] = entry;
+    return acc;
+  }, {});
+
+  console.log(JSON.stringify(debugEventCounts, null, 2));
+
   const chunks = _.chunk(allEvents, 900);
   await Promise.all(
     chunks.map(async (chunk) => {
@@ -298,22 +312,26 @@ function processBenchmarks() {
     sdkVersionMapping[data.sdkType] = data.sdkVersion;
 
     for (const result of data.results) {
+      const metadata = {
+        sdkType: data.sdkType,
+        sdkVersion: data.sdkVersion,
+        benchmarkName: result.benchmarkName,
+        specName: result.specName,
+        p99: result.p99,
+        max: result.max,
+        min: result.min,
+        median: result.median,
+        avg: result.avg,
+      };
+
+      validateBenchmarkMetadata(metadata);
+
       events.push({
         eventName: 'sdk_bench_cluster_benchmark',
         value: result.benchmarkName,
         user: { userID: 'bench_cluster' },
         time: Date.now(),
-        metadata: {
-          sdkType: data.sdkType,
-          sdkVersion: data.sdkVersion,
-          benchmarkName: result.benchmarkName,
-          specName: result.specName,
-          p99: result.p99,
-          max: result.max,
-          min: result.min,
-          median: result.median,
-          avg: result.avg,
-        },
+        metadata,
       });
     }
   }
@@ -322,6 +340,56 @@ function processBenchmarks() {
     events,
     sdkVersionMapping,
   };
+}
+
+function validateBenchmarkMetadata(metadata: Record<string, unknown>) {
+  const {
+    sdkType,
+    sdkVersion,
+    benchmarkName,
+    specName,
+    p99,
+    max,
+    min,
+    median,
+    avg,
+  } = metadata;
+
+  if (sdkType == null || sdkType === 'statsig-server-core') {
+    throw new Error(`Invalid SDK type: ${sdkType}`);
+  }
+
+  if (sdkVersion == null || sdkVersion === 'unknown') {
+    throw new Error(`Invalid SDK version: ${sdkVersion}`);
+  }
+
+  if (benchmarkName == null || benchmarkName === 'unknown') {
+    throw new Error(`Invalid benchmark name: ${benchmarkName}`);
+  }
+
+  if (specName == null) {
+    throw new Error(`Invalid spec name: ${specName}`);
+  }
+
+  if (p99 == null || isNaN(parseFloat(p99 as string))) {
+    throw new Error(`Invalid p99: ${p99}`);
+  }
+
+  if (max == null || isNaN(parseFloat(max as string))) {
+    throw new Error(`Invalid max: ${max}`);
+  }
+
+  if (min == null || isNaN(parseFloat(min as string))) {
+    throw new Error(`Invalid min: ${min}`);
+  }
+
+  if (median == null || isNaN(parseFloat(median as string))) {
+    throw new Error(`Invalid median: ${median}`);
+  }
+
+  if (avg == null || isNaN(parseFloat(avg as string))) {
+    throw new Error(`Invalid avg: ${avg}`);
+  }
 }
 
 function processDockerStats(sdkVersionMapping: Record<string, string>) {

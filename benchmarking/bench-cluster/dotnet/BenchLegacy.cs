@@ -2,6 +2,7 @@ extern alias StatsigLegacy;
 
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using StatsigLegacyServer = StatsigLegacy::Statsig.Server.StatsigServer;
 
@@ -11,16 +12,26 @@ public class BenchLegacy
 {
     public class BenchmarkResult
     {
+        [JsonPropertyName("benchmarkName")]
         public string BenchmarkName { get; set; }
+        [JsonPropertyName("p99")]
         public double P99 { get; set; }
+        [JsonPropertyName("max")]
         public double Max { get; set; }
+        [JsonPropertyName("min")]
         public double Min { get; set; }
+        [JsonPropertyName("median")]
         public double Median { get; set; }
+        [JsonPropertyName("avg")]
         public double Avg { get; set; }
+        [JsonPropertyName("specName")]
         public string SpecName { get; set; }
+        [JsonPropertyName("sdkType")]
         public string SdkType { get; set; }
+        [JsonPropertyName("sdkVersion")]
         public string SdkVersion { get; set; }
     }
+
     
     static readonly string sdkVersion = typeof(StatsigLegacyServer).Assembly.GetName().Version?.ToString() ?? "unknown";
     static readonly Random rng = new Random();

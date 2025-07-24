@@ -3,6 +3,7 @@ extern alias StatsigCore;
 using System.Diagnostics;
 using System.Text.Json;
 using StatsigCore::Statsig;
+using System.Text.Json.Serialization;
 
 namespace bench;
 
@@ -11,14 +12,23 @@ public class BenchCore
 {
     public class BenchmarkResult
     {
+        [JsonPropertyName("benchmarkName")]
         public string BenchmarkName { get; set; }
+        [JsonPropertyName("p99")]
         public double P99 { get; set; }
+        [JsonPropertyName("max")]
         public double Max { get; set; }
+        [JsonPropertyName("min")]
         public double Min { get; set; }
+        [JsonPropertyName("median")]
         public double Median { get; set; }
+        [JsonPropertyName("avg")]
         public double Avg { get; set; }
+        [JsonPropertyName("specName")]
         public string SpecName { get; set; }
+        [JsonPropertyName("sdkType")]
         public string SdkType { get; set; }
+        [JsonPropertyName("sdkVersion")]
         public string SdkVersion { get; set; }
     }
 
@@ -28,7 +38,7 @@ public class BenchCore
     const string sdkType = "statsig-server-core-dotnet";
     const string specNamePath = "/shared-volume/spec_names.json";
     const int ITER_LITE = 1000;
-    const int ITER_HEAVY = 10_000; // temp: All others SDKs are 10K, but .NET Core is really slow right now
+    const int ITER_HEAVY = 10_000; 
 
 
     static Dictionary<string, List<string>> LoadSpecNames()
