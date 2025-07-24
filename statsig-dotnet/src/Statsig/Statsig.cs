@@ -400,10 +400,10 @@ namespace Statsig
                 .Version?
                 .ToString() ?? "unknown";
 
-            var sdkTypeBytes = Encoding.UTF8.GetBytes(sdkType);
-            var osBytes = Encoding.UTF8.GetBytes(os);
-            var archBytes = Encoding.UTF8.GetBytes(arch);
-            var versionBytes = Encoding.UTF8.GetBytes(sdkVersion);
+            var sdkTypeBytes = StatsigUtils.ToUtf8NullTerminated(sdkType);
+            var osBytes = StatsigUtils.ToUtf8NullTerminated(os);
+            var archBytes = StatsigUtils.ToUtf8NullTerminated(arch);
+            var versionBytes = StatsigUtils.ToUtf8NullTerminated(sdkVersion);
 
             fixed (byte* sdkTypePtr = sdkTypeBytes)
             fixed (byte* osPtr = osBytes)
