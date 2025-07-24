@@ -134,10 +134,10 @@ public class BenchCore
         // Dynamic configs
         foreach (var config in specNames["dynamic_configs"])
         {
-            results.Add(RunBenchmark("get_dynamic_config", config, ITER_HEAVY, () => statsig.GetConfig(CreateUser(), config)));
+            results.Add(RunBenchmark("get_dynamic_config", config, ITER_HEAVY, () => statsig.GetDynamicConfig(CreateUser(), config)));
             await Task.Delay(1);
      
-            results.Add(RunBenchmark("get_dynamic_config_global_user", config, ITER_HEAVY, () => statsig.GetConfig(globalUser, config)));
+            results.Add(RunBenchmark("get_dynamic_config_global_user", config, ITER_HEAVY, () => statsig.GetDynamicConfig(globalUser, config)));
             await Task.Delay(1);
         }
 

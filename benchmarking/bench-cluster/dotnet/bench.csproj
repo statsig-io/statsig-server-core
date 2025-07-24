@@ -12,7 +12,7 @@
     <PackageReference Include="Statsig" Version="*">
       <Aliases>StatsigLegacy</Aliases>
     </PackageReference>
-    <PackageReference Include="Statsig.Dotnet" Version="0.0.0-*">
+    <PackageReference Include="Statsig.Dotnet" Version="0.0.0-placeholder">
       <Aliases>StatsigCore</Aliases>
     </PackageReference>
   </ItemGroup>
