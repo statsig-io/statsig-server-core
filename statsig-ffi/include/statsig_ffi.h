@@ -39,7 +39,7 @@ void statsig_release(uint64_t statsig_ref);
 
 void statsig_initialize(uint64_t statsig_ref, void (*callback)(void));
 
-char *statsig_initialize_with_details(uint64_t statsig_ref);
+void statsig_initialize_with_details(uint64_t statsig_ref, void (*callback)(char *result));
 
 void statsig_initialize_blocking(uint64_t statsig_ref);
 
