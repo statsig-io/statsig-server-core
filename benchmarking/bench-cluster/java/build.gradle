@@ -23,14 +23,9 @@ dependencies {
     implementation 'io.javalin:javalin:+'
     implementation 'org.slf4j:slf4j-simple:+'
 
-    def buildForCi = project.getProperty("BUILD_FOR_CI") ?: 'null'
-    println "BUILD_FOR_CI: ${buildForCi}"
-    if (buildForCi == "true" || buildForCi == "1") {
-        implementation 'com.statsig:javacore:+:linux-gnu-x86_64'
-    } else {
-        implementation 'com.statsig:javacore:+:linux-gnu-arm64'
-        implementation 'com.statsig:javacore:+:macos-arm64'
-    }
+    implementation 'com.statsig:javacore:+:linux-gnu-x86_64'
+    implementation 'com.statsig:javacore:+:linux-gnu-arm64'
+    implementation 'com.statsig:javacore:+:macos-arm64'
 }
 
 tasks.register('write_versions') {

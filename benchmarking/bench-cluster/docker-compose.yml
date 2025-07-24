@@ -40,10 +40,7 @@ services:
       - SDK_VARIANT=legacy
 
   java-core:
-    build:
-      context: ./java
-      args:
-        - BUILD_FOR_CI=${CI}
+    build: ./java
     container_name: java-core
     image: java:latest
     volumes:
