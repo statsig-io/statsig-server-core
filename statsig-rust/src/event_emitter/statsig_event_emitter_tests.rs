@@ -19,7 +19,7 @@ fn emit(event_emitter: &mut StatsigEventEmitter, event_name: &str) {
         SdkEvent::RULESETS_UPDATED => {
             event_emitter.emit(SdkEvent::RulesetsUpdated {
                 lcut: 0,
-                raw_values: "".to_string(),
+                raw_value: "".to_string(),
             });
         }
         SdkEvent::INIT_SUCCESS => {
@@ -74,7 +74,7 @@ fn test_unsub_by_event_and_id() {
     assert_eq!(second_counter.load(Ordering::SeqCst), 1);
     assert_eq!(third_counter.load(Ordering::SeqCst), 1);
 
-    event_emitter.unsubscribe_by_id(SdkEvent::RULESETS_UPDATED, first_id);
+    event_emitter.unsubscribe_by_id(SdkEvent::RULESETS_UPDATED, &first_id);
     emit(&mut event_emitter, SdkEvent::RULESETS_UPDATED);
     emit(&mut event_emitter, SdkEvent::INIT_SUCCESS);
 

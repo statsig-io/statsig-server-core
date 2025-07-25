@@ -26,7 +26,7 @@ const TAG: &str = "StatsigNapi";
 
 #[napi]
 pub struct StatsigNapiInternal {
-    inner: Arc<StatsigActual>,
+    pub(crate) inner: Arc<StatsigActual>,
     observability_client: Mutex<Option<Arc<ObservabilityClient>>>,
     network_provider: Mutex<Option<Arc<dyn NetworkProvider>>>,
 }

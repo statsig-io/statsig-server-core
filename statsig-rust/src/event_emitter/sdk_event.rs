@@ -3,6 +3,7 @@ use crate::{
     StatsigErr,
 };
 use serde::Serialize;
+use serde_json::json;
 use std::borrow::Cow;
 
 #[derive(Serialize, Clone)]
@@ -17,7 +18,7 @@ pub enum SdkEvent<'a> {
     },
     RulesetsUpdated {
         lcut: u64,
-        raw_values: String,
+        raw_value: String,
     },
     GateEvaluated {
         gate_name: Cow<'a, str>,
@@ -75,5 +76,52 @@ impl<'a> SdkEvent<'a> {
             SdkEvent::ExperimentEvaluated { .. } => SdkEvent::EXPERIMENT_EVALUATED,
             SdkEvent::LayerEvaluated { .. } => SdkEvent::LAYER_EVALUATED,
         }
+    }
+
+    pub fn to_json_map(&self) -> serde_json::Map<String, serde_json::Value> {
+        let name = self.get_name();
+        let mut map = serde_json::Map::new();
+        map.insert("event_name".to_string(), json!(name));
+
+        match self {
+            SdkEvent::InitSuccess { duration } => {
+                map.insert("duration".to_string(), json!(duration));
+            }
+            SdkEvent::InitFailure {
+                reason,
+                duration,
+                error,
+            } => {
+                map.insert("reason".to_string(), json!(reason));
+                map.insert("duration".to_string(), json!(duration));
+                map.insert("error".to_string(), json!(error));
+            }
+            SdkEvent::RulesetsUpdated { lcut, raw_value } => {
+                map.insert("lcut".to_string(), json!(lcut));
+                map.insert("raw_value".to_string(), json!(raw_value));
+            }
+            SdkEvent::GateEvaluated {
+                gate_name,
+                rule_id,
+                value,
+                reason,
+            } => {
+                map.insert("gate_name".to_string(), json!(gate_name));
+                map.insert("value".to_string(), json!(value));
+                map.insert("reason".to_string(), json!(reason));
+                map.insert("rule_id".to_string(), json!(rule_id));
+            }
+            SdkEvent::DynamicConfigEvaluated { dynamic_config } => {
+                map.insert("dynamic_config".to_string(), json!(dynamic_config));
+            }
+            SdkEvent::ExperimentEvaluated { experiment } => {
+                map.insert("experiment".to_string(), json!(experiment));
+            }
+            SdkEvent::LayerEvaluated { layer } => {
+                map.insert("layer".to_string(), json!(layer));
+            }
+        }
+
+        map
     }
 }

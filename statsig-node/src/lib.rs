@@ -3,6 +3,7 @@ pub mod gcir_options_napi;
 pub mod net_provider_napi;
 pub mod observability_client_napi;
 pub mod persistent_storage_napi;
+pub mod sdk_event_emitter_napi;
 pub mod statsig_core_api_options_napi;
 pub mod statsig_napi;
 pub mod statsig_options_napi;

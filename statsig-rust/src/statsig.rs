@@ -82,7 +82,7 @@ lazy_static::lazy_static! {
 pub struct Statsig {
     pub statsig_runtime: Arc<StatsigRuntime>,
     pub options: Arc<StatsigOptions>,
-    pub(crate) event_emitter: StatsigEventEmitter,
+    pub event_emitter: StatsigEventEmitter,
 
     sdk_key: String,
     event_logger: Arc<EventLogger>,

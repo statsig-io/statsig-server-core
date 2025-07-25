@@ -45,14 +45,14 @@ impl StatsigEventEmitter {
         self.listeners.remove(&code);
     }
 
-    pub fn unsubscribe_by_id(&self, event: &str, id: String) {
+    pub fn unsubscribe_by_id(&self, event: &str, subscription_id: &str) {
         let code = SdkEvent::get_code_from_name(event);
         let mut listeners = match self.listeners.get_mut(&code) {
             Some(listeners) => listeners,
             None => return,
         };
 
-        listeners.retain(|listener| listener.id != id);
+        listeners.retain(|listener| listener.id != subscription_id);
     }
 
     pub fn unsubscribe_all(&self) {
