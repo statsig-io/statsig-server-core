@@ -108,6 +108,10 @@ namespace Statsig
         [return: MarshalAs(UnmanagedType.U1)]
         internal static extern bool statsig_check_gate(ulong statsig_ref, ulong user_ref, byte* gate_name, byte* options_json);
 
+        [DllImport(__DllName, EntryPoint = "statsig_check_gate_performance", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool statsig_check_gate_performance(ulong statsig_ref, ulong user_ref, byte* gate_name_ptr, nuint gate_len, byte* options_ptr, nuint options_len);
+
         [DllImport(__DllName, EntryPoint = "statsig_get_feature_gate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_feature_gate(ulong statsig_ref, ulong user_ref, byte* gate_name, byte* options_json);
 

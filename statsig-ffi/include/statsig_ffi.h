@@ -114,6 +114,13 @@ bool statsig_check_gate(uint64_t statsig_ref,
                         const char *gate_name,
                         const char *options_json);
 
+bool statsig_check_gate_performance(uint64_t statsig_ref,
+                                    uint64_t user_ref,
+                                    const uint8_t *gate_name_ptr,
+                                    uintptr_t gate_len,
+                                    const uint8_t *options_ptr,
+                                    uintptr_t options_len);
+
 char *statsig_get_feature_gate(uint64_t statsig_ref,
                                uint64_t user_ref,
                                const char *gate_name,

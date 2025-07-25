@@ -63,7 +63,13 @@ namespace Statsig
             fixed (byte* optionsPtr = optionsBytes)
             fixed (byte* gateNamePtr = gateNameBytes)
             {
-                return StatsigFFI.statsig_check_gate(_statsigRef, user.Reference, gateNamePtr, optionsPtr);
+                return StatsigFFI.statsig_check_gate_performance(
+                    _statsigRef,
+                    user.Reference,
+                    gateNamePtr,
+                    (nuint)gateNameBytes.Length,
+                    optionsPtr,
+                    optionsBytes != null ? (nuint)optionsBytes.Length : 0);
             }
         }
 

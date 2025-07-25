@@ -628,6 +628,53 @@ pub extern "C" fn statsig_check_gate(
 }
 
 #[no_mangle]
+pub extern "C" fn statsig_check_gate_performance(
+    statsig_ref: u64,
+    user_ref: u64,
+    gate_name_ptr: *const u8,
+    gate_len: usize,
+    options_ptr: *const u8,
+    options_len: usize,
+) -> bool {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, false);
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, false);
+
+    if gate_name_ptr.is_null() || gate_len == 0 {
+        log_e!(TAG, "gate_name is null or empty");
+        return false;
+    }
+
+    let gate_bytes = unsafe { std::slice::from_raw_parts(gate_name_ptr, gate_len) };
+    let gate_name = match std::str::from_utf8(gate_bytes) {
+        Ok(s) => s,
+        Err(e) => {
+            log_e!(TAG, "gate_name is not valid UTF-8: {}", e);
+            return false;
+        }
+    };
+
+    if options_ptr.is_null() || options_len == 0 {
+        return statsig.check_gate(&user, gate_name);
+    }
+
+    let options_bytes = unsafe { std::slice::from_raw_parts(options_ptr, options_len) };
+
+    let options: FeatureGateEvaluationOptions = match serde_json::from_slice(options_bytes) {
+        Ok(o) => o,
+        Err(e) => {
+            log_e!(
+                TAG,
+                "failed to parse feature gate evaluation options: {}",
+                e
+            );
+            return false;
+        }
+    };
+
+    statsig.check_gate_with_options(&user, gate_name, options)
+}
+
+#[no_mangle]
 pub extern "C" fn statsig_get_feature_gate(
     statsig_ref: u64,
     user_ref: u64,
