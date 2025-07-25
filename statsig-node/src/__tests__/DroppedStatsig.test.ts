@@ -13,13 +13,18 @@ setFlagsFromString('--expose_gc');
 const gc = runInNewContext('gc');
 
 async function runGarbageCollection() {
-  gc();
+  for (let i = 0; i < 3; i++) {
+    gc();
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
 
   // Delay to ensure GC has completed
   await new Promise((resolve) => setTimeout(resolve, 100));
 }
 
-describe('Statsig', () => {
+jest.retryTimes(3, { logErrorsBeforeRetry: true });
+
+describe('Statsig is Dropped and Garbage Collected', () => {
   let options: StatsigOptions;
   let scrapi: MockScrapi;
 

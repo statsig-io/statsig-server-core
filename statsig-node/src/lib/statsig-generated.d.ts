@@ -269,8 +269,8 @@ export interface StatsigUserArgs {
   country?: string
   locale?: string
   appVersion?: string
-  custom?: Record<string, string | number | boolean | Array<string | number | boolean>>
-  privateAttributes?: Record<string, string | number | boolean | Array<string | number | boolean>>
+  custom?: Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>
+  privateAttributes?: Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>
 }
 // ---- Manually defined typing section ----- 
 
