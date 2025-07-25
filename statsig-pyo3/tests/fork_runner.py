@@ -2,8 +2,6 @@ from statsig_python_core import (
     Statsig,
     StatsigOptions,
     StatsigUser,
-    # pre_fork,
-    # post_fork,
 )
 import os
 import sys
@@ -35,12 +33,9 @@ id_lists_url = sys.argv[3]
 
 
 def fork_and_wait(depth):
-    # pre_fork()
     pid = os.fork()
-    # post_fork()
 
     if pid == 0:
-        # Test Child
         child_statsig = create_statsig(specs_url, log_event_url, id_lists_url)
         child_statsig.initialize().wait()
         check = child_statsig.check_gate(StatsigUser("a-user"), "test_public")
@@ -60,7 +55,6 @@ def fork_and_wait(depth):
 
 
 for _ in range(10):
-    # Test Parent
     statsig = create_statsig(specs_url, log_event_url, id_lists_url)
     statsig.initialize().wait()
     assert statsig.check_gate(StatsigUser("a-user"), "test_public")
