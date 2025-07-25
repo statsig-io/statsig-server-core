@@ -42,26 +42,6 @@ jobs:
           cd benchmarking/bench-cluster
           docker compose up --build scrapi docker-stats ${{ matrix.sdk-service }}
 
-  rust-bench:
-    timeout-minutes: 20
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: Run Rust Bench
-        working-directory: examples/rust/perf-bench
-        run: |
-          pip install psutil numpy
-          
-          eval ${{ env.CAPTURE }} cargo run --release --bin core_bench
-          eval ${{ env.CAPTURE }} cargo run --release --bin legacy_bench
-
   ruby-bench:
     timeout-minutes: 20
     runs-on: ubuntu-latest
