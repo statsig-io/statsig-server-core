@@ -1,5 +1,6 @@
 extern alias StatsigLegacy;
 
+using System.Reflection;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -33,7 +34,7 @@ public class BenchLegacy
     }
 
     
-    static readonly string sdkVersion = typeof(StatsigLegacyServer).Assembly.GetName().Version?.ToString() ?? "unknown";
+    static readonly string sdkVersion = GetVersion();
     static readonly Random rng = new Random();
 
     const string sdkType = "dotnet-server";
@@ -164,5 +165,29 @@ public class BenchLegacy
             sdkVersion,
             results
         }, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    static string GetVersion()
+    {
+        var custom = typeof(StatsigLegacyServer).Assembly.CustomAttributes;
+
+        foreach (var attribute in custom)
+        {
+            if (attribute.AttributeType != typeof(AssemblyInformationalVersionAttribute))
+            {
+                continue;
+            }
+        
+            var value = attribute.ConstructorArguments[0].Value;
+            var version = value?.ToString();
+            if (version == null)
+            {
+                throw new Exception("Version is Null");
+            }
+            var parts = version.Split('+');
+            return parts[0];
+        } 
+        
+        throw new Exception("AssemblyInformationalVersionAttribute not Found");
     }
 }

@@ -1,5 +1,6 @@
 extern alias StatsigCore;
 
+using System.Reflection;
 using System.Diagnostics;
 using System.Text.Json;
 using StatsigCore::Statsig;
@@ -32,7 +33,7 @@ public class BenchCore
         public string SdkVersion { get; set; }
     }
 
-    static readonly string sdkVersion = typeof(StatsigCore::Statsig.Statsig).Assembly.GetName().Version?.ToString() ?? "unknown";
+    static readonly string sdkVersion = GetVersion();
     static readonly Random rng = new Random();
 
     const string sdkType = "statsig-server-core-dotnet";
@@ -52,6 +53,7 @@ public class BenchCore
         var json = File.ReadAllText(specNamePath);
         return JsonSerializer.Deserialize<Dictionary<string, List<string>>>(json);
     }
+
     static StatsigCore::Statsig.StatsigUser CreateUser()
     {
         var user = new StatsigUserBuilder()
@@ -178,4 +180,29 @@ public class BenchCore
             results
         }, new JsonSerializerOptions { WriteIndented = true }));
     }
+
+    static string GetVersion()
+    {
+        var custom = typeof(StatsigCore::Statsig.Statsig).Assembly.CustomAttributes;
+
+        foreach (var attribute in custom)
+        {
+            if (attribute.AttributeType != typeof(AssemblyInformationalVersionAttribute))
+            {
+                continue;
+            }
+        
+            var value = attribute.ConstructorArguments[0].Value;
+            var version = value?.ToString();
+            if (version == null)
+            {
+                throw new Exception("Version is Null");
+            }
+            var parts = version.Split('+');
+            return parts[0];
+        } 
+        
+        throw new Exception("AssemblyInformationalVersionAttribute not Found");
+    }
 }
+
