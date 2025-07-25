@@ -1,10 +1,10 @@
-use crate::event_emitter::{SdkEvent, StatsigEventEmitter};
+use crate::event_emitter::{SdkEvent, SdkEventEmitter};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
 };
 
-fn sub(event_emitter: &mut StatsigEventEmitter, event_name: &str) -> (String, Arc<AtomicUsize>) {
+fn sub(event_emitter: &mut SdkEventEmitter, event_name: &str) -> (String, Arc<AtomicUsize>) {
     let counter = Arc::new(AtomicUsize::new(0));
     let counter_clone = counter.clone();
     let id: String = event_emitter.subscribe(event_name, move |_| {
@@ -14,7 +14,7 @@ fn sub(event_emitter: &mut StatsigEventEmitter, event_name: &str) -> (String, Ar
     (id, counter)
 }
 
-fn emit(event_emitter: &mut StatsigEventEmitter, event_name: &str) {
+fn emit(event_emitter: &mut SdkEventEmitter, event_name: &str) {
     match event_name {
         SdkEvent::RULESETS_UPDATED => {
             event_emitter.emit(SdkEvent::RulesetsUpdated {
@@ -33,7 +33,7 @@ fn emit(event_emitter: &mut StatsigEventEmitter, event_name: &str) {
 
 #[test]
 fn test_unsub_by_event() {
-    let mut event_emitter = StatsigEventEmitter::default();
+    let mut event_emitter = SdkEventEmitter::default();
 
     let (_, first_counter) = sub(&mut event_emitter, SdkEvent::RULESETS_UPDATED);
     let (_, second_counter) = sub(&mut event_emitter, SdkEvent::RULESETS_UPDATED);
@@ -61,7 +61,7 @@ fn test_unsub_by_event() {
 
 #[test]
 fn test_unsub_by_event_and_id() {
-    let mut event_emitter = StatsigEventEmitter::default();
+    let mut event_emitter = SdkEventEmitter::default();
 
     let (first_id, first_counter) = sub(&mut event_emitter, SdkEvent::RULESETS_UPDATED);
     let (_, second_counter) = sub(&mut event_emitter, SdkEvent::RULESETS_UPDATED);
@@ -85,7 +85,7 @@ fn test_unsub_by_event_and_id() {
 
 #[test]
 fn test_unsub_all() {
-    let mut event_emitter = StatsigEventEmitter::default();
+    let mut event_emitter = SdkEventEmitter::default();
 
     let (_, first_counter) = sub(&mut event_emitter, SdkEvent::RULESETS_UPDATED);
     let (_, second_counter) = sub(&mut event_emitter, SdkEvent::RULESETS_UPDATED);
@@ -110,7 +110,7 @@ fn test_unsub_all() {
 
 #[test]
 fn test_sub_all() {
-    let mut event_emitter = StatsigEventEmitter::default();
+    let mut event_emitter = SdkEventEmitter::default();
     let (_, counter) = sub(&mut event_emitter, SdkEvent::ALL);
 
     emit(&mut event_emitter, SdkEvent::RULESETS_UPDATED);

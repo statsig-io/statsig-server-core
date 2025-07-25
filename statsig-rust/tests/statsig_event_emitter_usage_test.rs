@@ -1,4 +1,4 @@
-use statsig_rust::{event_emitter::SdkEvent, Statsig, StatsigUser};
+use statsig_rust::{sdk_event_emitter::SdkEvent, Statsig, StatsigUser};
 use std::{sync::mpsc, time::Duration};
 
 struct ReceivedEvent {
@@ -38,7 +38,6 @@ fn setup(sdk_key: &str) -> (Statsig, StatsigUser, mpsc::Receiver<ReceivedEvent>)
                 result.spec_name = layer.name.to_string();
                 result.eval_reason = layer.details.reason.to_string();
             }
-            _ => {}
         }
 
         tx.send(result).unwrap();
@@ -73,7 +72,7 @@ async fn test_gate_evaluated_event_for_get_feature_gate() {
 
 #[tokio::test]
 async fn test_dynamic_config_evaluated_event() {
-    let (statsig, user, rx) = setup("secret-get_feature_gate");
+    let (statsig, user, rx) = setup("secret-get_dynamic_config");
 
     statsig.get_dynamic_config(&user, "test_config");
 
@@ -85,7 +84,7 @@ async fn test_dynamic_config_evaluated_event() {
 
 #[tokio::test]
 async fn test_experiment_evaluated_event() {
-    let (statsig, user, rx) = setup("secret-get_feature_gate");
+    let (statsig, user, rx) = setup("secret-get_experiment");
 
     statsig.get_experiment(&user, "test_experiment");
 
@@ -97,7 +96,7 @@ async fn test_experiment_evaluated_event() {
 
 #[tokio::test]
 async fn test_layer_evaluated_event() {
-    let (statsig, user, rx) = setup("secret-get_feature_gate");
+    let (statsig, user, rx) = setup("secret-get_layer");
 
     statsig.get_layer(&user, "test_layer");
 

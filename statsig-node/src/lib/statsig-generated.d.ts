@@ -46,9 +46,9 @@ export declare class ParameterStore {
 }
 
 export declare class StatsigNapiInternal {
-  subscribe(eventName: '*' | 'init_success' | 'init_failure' | 'rulesets_updated' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated', callback: (event: any) => void): string
-  unsubscribe(eventName: '*' | 'init_success' | 'init_failure' | 'rulesets_updated' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated'): void
-  unsubscribeById(eventName: '*' | 'init_success' | 'init_failure' | 'rulesets_updated' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated', subscriptionId: string): void
+  subscribe(eventName: '*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated', callback: (event: any) => void): string
+  unsubscribe(eventName: '*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated'): void
+  unsubscribeById(subscriptionId: string): void
   unsubscribeAll(): void
   constructor(networkFunc: unknown, sdkKey: string, options?: StatsigOptions | undefined | null)
   initialize(): Promise<StatsigResult>

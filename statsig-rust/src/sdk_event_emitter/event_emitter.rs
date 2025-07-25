@@ -1,58 +1,99 @@
 use crate::{
-    event_emitter::SdkEvent,
     log_e,
+    sdk_event_emitter::{SdkEvent, SdkEventCode},
     statsig_types::{DynamicConfig, Experiment, Layer},
     Statsig,
 };
 use dashmap::DashMap;
 use std::{borrow::Cow, ops::Deref};
 
-const TAG: &str = "StatsigEventEmitter";
+const TAG: &str = "SdkEventEmitter";
 
 struct Listener {
-    id: String,
+    sub_id_value: String,
     callback: Box<dyn Fn(SdkEvent) + Send + Sync>,
 }
 
-#[derive(Default)]
-pub struct StatsigEventEmitter {
-    listeners: DashMap<usize, Vec<Listener>>,
+#[derive(Clone)]
+pub struct SubscriptionID {
+    value: String,
+    event: String,
 }
 
-impl StatsigEventEmitter {
-    pub fn subscribe<F>(&self, event: &str, callback: F) -> String
+impl SubscriptionID {
+    pub fn new(event: &str) -> Self {
+        Self {
+            value: uuid::Uuid::new_v4().to_string(),
+            event: event.to_string(),
+        }
+    }
+
+    pub fn error() -> Self {
+        Self {
+            value: "ERROR".to_string(),
+            event: "ERROR".to_string(),
+        }
+    }
+
+    pub fn decode(s: &str) -> Option<Self> {
+        let parts: Vec<&str> = s.split('@').collect();
+        if parts.len() != 2 {
+            return None;
+        }
+
+        Some(Self {
+            value: parts[0].to_string(),
+            event: parts[1].to_string(),
+        })
+    }
+
+    pub fn encode(self) -> String {
+        let mut encoded = self.value;
+        encoded.push('@');
+        encoded.push_str(&self.event);
+        encoded
+    }
+}
+
+#[derive(Default)]
+pub struct SdkEventEmitter {
+    listeners: DashMap<u8, Vec<Listener>>,
+}
+
+impl SdkEventEmitter {
+    pub fn subscribe<F>(&self, event: &str, callback: F) -> SubscriptionID
     where
         F: Fn(SdkEvent) + Send + Sync + 'static,
     {
-        let code = SdkEvent::get_code_from_name(event);
+        let code = SdkEventCode::from_name(event).as_raw();
         if code == 0 {
             log_e!(TAG, "Invalid event name: {}", event);
-            return "ERROR".to_string();
+            return SubscriptionID::error();
         }
 
-        let id = uuid::Uuid::new_v4().to_string();
+        let sub_id = SubscriptionID::new(event);
 
         self.listeners.entry(code).or_default().push(Listener {
-            id: id.clone(),
+            sub_id_value: sub_id.value.clone(),
             callback: Box::new(callback),
         });
 
-        id
+        sub_id
     }
 
     pub fn unsubscribe(&self, event: &str) {
-        let code = SdkEvent::get_code_from_name(event);
+        let code = SdkEventCode::from_name(event).as_raw();
         self.listeners.remove(&code);
     }
 
-    pub fn unsubscribe_by_id(&self, event: &str, subscription_id: &str) {
-        let code = SdkEvent::get_code_from_name(event);
+    pub fn unsubscribe_by_id(&self, subscription_id: &SubscriptionID) {
+        let code = SdkEventCode::from_name(&subscription_id.event).as_raw();
         let mut listeners = match self.listeners.get_mut(&code) {
             Some(listeners) => listeners,
             None => return,
         };
 
-        listeners.retain(|listener| listener.id != subscription_id);
+        listeners.retain(|listener| listener.sub_id_value != subscription_id.value);
     }
 
     pub fn unsubscribe_all(&self) {
@@ -60,14 +101,11 @@ impl StatsigEventEmitter {
     }
 
     pub(crate) fn emit(&self, event: SdkEvent) {
-        self.emit_to_listeners(
-            &event,
-            self.listeners
-                .get(&SdkEvent::get_code_from_name(SdkEvent::ALL))
-                .as_deref(),
-        );
+        let all_code = SdkEventCode::from_name(SdkEvent::ALL).as_raw();
+        self.emit_to_listeners(&event, self.listeners.get(&all_code).as_deref());
 
-        self.emit_to_listeners(&event, self.listeners.get(&event.get_code()).as_deref());
+        let event_code = event.get_code().as_raw();
+        self.emit_to_listeners(&event, self.listeners.get(&event_code).as_deref());
     }
 
     fn emit_to_listeners(&self, event: &SdkEvent, listeners: Option<&Vec<Listener>>) {
@@ -83,7 +121,7 @@ impl StatsigEventEmitter {
 }
 
 impl Deref for Statsig {
-    type Target = StatsigEventEmitter;
+    type Target = SdkEventEmitter;
 
     fn deref(&self) -> &Self::Target {
         &self.event_emitter

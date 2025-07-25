@@ -10,7 +10,6 @@ use crate::evaluation::evaluator_result::{
     result_to_layer_eval, EvaluatorResult,
 };
 use crate::evaluation::user_agent_parsing::UserAgentParser;
-use crate::event_emitter::StatsigEventEmitter;
 use crate::event_logging::event_logger::{EventLogger, ExposureTrigger};
 use crate::event_logging::event_queue::queued_config_expo::EnqueueConfigExpoOp;
 use crate::event_logging::event_queue::queued_experiment_expo::EnqueueExperimentExpoOp;
@@ -32,6 +31,7 @@ use crate::output_logger::{initialize_output_logger, shutdown_output_logger};
 use crate::persistent_storage::persistent_values_manager::PersistentValuesManager;
 use crate::sdk_diagnostics::diagnostics::{ContextType, Diagnostics};
 use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker};
+use crate::sdk_event_emitter::SdkEventEmitter;
 use crate::spec_store::SpecStore;
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
 use crate::statsig_err::StatsigErr;
@@ -82,7 +82,7 @@ lazy_static::lazy_static! {
 pub struct Statsig {
     pub statsig_runtime: Arc<StatsigRuntime>,
     pub options: Arc<StatsigOptions>,
-    pub event_emitter: StatsigEventEmitter,
+    pub event_emitter: SdkEventEmitter,
 
     sdk_key: String,
     event_logger: Arc<EventLogger>,
@@ -259,7 +259,7 @@ impl Statsig {
             background_tasks_started: Arc::new(AtomicBool::new(false)),
             persistent_values_manager,
             initialize_details: Mutex::new(InitializeDetails::default()),
-            event_emitter: StatsigEventEmitter::default(),
+            event_emitter: SdkEventEmitter::default(),
         }
     }
 
