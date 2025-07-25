@@ -246,10 +246,12 @@ async function postResults() {
       };
     } else if (key.startsWith('event_count_')) {
       const sorted = data.counts.sort((a: number, b: number) => a - b);
+      const sum = sorted.reduce((a: number, b: number) => a + b, 0);
       metadata = {
         type: 'event_count',
         sdkType: data.sdkType,
         sdkVersion: data.sdkVersion,
+        sum,
         p99: sorted[Math.floor(sorted.length * 0.99)],
         max: sorted[sorted.length - 1],
         min: sorted[0],
