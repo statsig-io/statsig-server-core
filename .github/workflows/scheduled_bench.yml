@@ -30,6 +30,8 @@ jobs:
           - php-legacy
           - python-core
           - python-legacy
+          - rust-core
+          # - rust-legacy
 
     steps:
       - name: Checkout code

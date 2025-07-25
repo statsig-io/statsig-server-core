@@ -1,16 +1,11 @@
 {
-    "name": "statsig/php-bridge",
+    "name": "statsig/php-bench",
     "type": "project",
     "require": {
       "statsig/statsigsdk": "*",
       "statsig/statsig-php-core": "*"
     },
     "license": "Do Not Steal",
-    "autoload": {
-      "psr-4": {
-        "PhpBridge\\": "server/"
-      }
-    },
     "scripts": {
       "post-install-cmd": [
         "cd vendor/statsig/statsig-php-core && php post-install.php"

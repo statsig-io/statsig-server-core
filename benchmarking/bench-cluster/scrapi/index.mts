@@ -539,6 +539,11 @@ function getSdkTypeForService(name: string) {
       return 'statsig-server-core-python';
     case 'python-legacy':
       return 'py-server';
+
+    case 'rust-core':
+      return 'statsig-server-core-rust';
+    case 'rust-legacy':
+      return 'rust-server';
   }
 
   throw new Error(`Unknown service: ${name}`);

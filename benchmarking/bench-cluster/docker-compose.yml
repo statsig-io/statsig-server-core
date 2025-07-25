@@ -24,7 +24,6 @@ services:
   dotnet-core:
     build: ./dotnet
     container_name: dotnet-core
-    image: dotnet:latest
     volumes:
       - ./shared-volume:/shared-volume
     environment:
@@ -33,7 +32,6 @@ services:
   dotnet-legacy:
     build: ./dotnet
     container_name: dotnet-legacy
-    image: dotnet:latest
     volumes:
       - ./shared-volume:/shared-volume
     environment:
@@ -42,7 +40,6 @@ services:
   java-core:
     build: ./java
     container_name: java-core
-    image: java:latest
     volumes:
       - ./shared-volume:/shared-volume
     environment:
@@ -51,7 +48,6 @@ services:
   java-legacy:
     build: ./java
     container_name: java-legacy
-    image: java:latest
     volumes:
       - ./shared-volume:/shared-volume
     environment:
@@ -60,7 +56,6 @@ services:
   node-core:
     build: ./node
     container_name: node-core
-    image: node:latest
     volumes:
       - ./shared-volume:/shared-volume
     environment:
@@ -69,7 +64,6 @@ services:
   node-legacy:
     build: ./node
     container_name: node-legacy
-    image: node:latest
     volumes:
       - ./shared-volume:/shared-volume
     environment:
@@ -78,7 +72,6 @@ services:
   php-core:
     build: ./php
     container_name: php-core
-    image: php:latest
     volumes:
       - ./shared-volume:/shared-volume
     environment:
@@ -88,7 +81,6 @@ services:
   php-legacy:
     build: ./php
     container_name: php-legacy
-    image: php:latest
     volumes:
       - ./shared-volume:/shared-volume
     environment:
@@ -97,7 +89,6 @@ services:
   python-core:
     build: ./python
     container_name: python-core
-    image: python:latest
     volumes:
       - ./shared-volume:/shared-volume
     environment:
@@ -106,7 +97,22 @@ services:
   python-legacy:
     build: ./python
     container_name: python-legacy
-    image: python:latest
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=legacy
+
+  rust-core:
+    build: ./rust
+    container_name: rust-core
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=core
+  
+  rust-legacy:
+    build: ./rust
+    container_name: rust-legacy
     volumes:
       - ./shared-volume:/shared-volume
     environment:
