@@ -31,7 +31,7 @@ jobs:
           - python-core
           - python-legacy
           - rust-core
-          # - rust-legacy
+          - rust-legacy
 
     steps:
       - name: Checkout code

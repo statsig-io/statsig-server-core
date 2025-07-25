@@ -6,13 +6,13 @@ use bench_legacy::BenchLegacy;
 
 #[tokio::main]
 pub async fn main() {
-    // let variant = std::env::var("SDK_VARIANT");
+    let variant = std::env::var("SDK_VARIANT");
 
-    BenchCore::run().await;
-    // if variant == "core" {
-    // } else if variant == "legacy" {
-    //     BenchLegacy::run();
-    // } else {
-    //     panic!("Invalid SDK variant: {}", variant);
-    // }
+    if variant.as_deref() == Ok("core") {
+        BenchCore::run().await;
+    } else if variant.as_deref() == Ok("legacy") {
+        BenchLegacy::run().await;
+    } else {
+        panic!("Invalid SDK variant: {:?}", variant);
+    }
 }

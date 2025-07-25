@@ -52,14 +52,22 @@ const idListsV1 = await fetch(
 
 const app = express();
 
+app.use((req, res, next) => {
+  const shouldParse = req.headers['content-type'] === 'application/json';
+  if (shouldParse) {
+    express.json({ limit: '10mb' })(req, res, next);
+  } else {
+    next();
+  }
+});
+
 app.use((req, _res, next) => {
-  if (!req.headers?.['statsig-sdk-type']) {
+  const { sdkType, sdkVersion } = getSdkInfo(req);
+
+  if (sdkType === 'unknown') {
     console.log(`${req.method} ${req.path}`);
     return next();
   }
-
-  const sdkType = req.headers?.['statsig-sdk-type'] ?? 'unknown';
-  const sdkVersion = req.headers?.['statsig-sdk-version'] ?? 'unknown';
 
   const key = `req_count_${req.method}_${req.path}_${sdkType}@${sdkVersion}`;
   const entry = counters[key] ?? {
@@ -76,9 +84,9 @@ app.use((req, _res, next) => {
 });
 
 app.post('/v1/log_event', (req, res) => {
-  const sdkType = req.headers?.['statsig-sdk-type'] ?? 'unknown';
-  const sdkVersion = req.headers?.['statsig-sdk-version'] ?? 'unknown';
-  const eventCount = req.headers?.['statsig-event-count'];
+  const { sdkType, sdkVersion } = getSdkInfo(req);
+  const eventCount =
+    req.headers?.['statsig-event-count'] ?? req.body?.events?.length;
 
   if (!eventCount) {
     throw new Error('statsig-event-count is required');
@@ -265,7 +273,7 @@ async function postResults() {
   const allEvents = [...events, ...dockerEvents, ...counterEvents];
 
   const debugEventCounts = allEvents.reduce((acc, event) => {
-    const key = `${event.eventName}@${event.metadata.sdkType}@${event.metadata.sdkVersion}`;
+    const key = `${event.eventName}_${event.metadata.sdkType}@${event.metadata.sdkVersion}`;
     const entry = acc[key] ?? {
       eventName: event.eventName,
       sdkType: event.metadata.sdkType,
@@ -591,4 +599,20 @@ function parseMemory(input: string) {
   const [, value, unit] = parts;
   const result = parse(value, unit);
   return Math.round(result);
+}
+
+function getSdkInfo(req: any) {
+  const sdkType =
+    req.headers?.['statsig-sdk-type'] ??
+    req.body?.statsigMetadata?.sdkType ??
+    'unknown';
+  const sdkVersion =
+    req.headers?.['statsig-sdk-version'] ??
+    req.body?.statsigMetadata?.sdkVersion ??
+    'unknown';
+
+  return {
+    sdkType,
+    sdkVersion,
+  };
 }
