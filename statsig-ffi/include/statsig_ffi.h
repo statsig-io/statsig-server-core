@@ -41,6 +41,8 @@ void statsig_initialize(uint64_t statsig_ref, void (*callback)(void));
 
 void statsig_initialize_with_details(uint64_t statsig_ref, void (*callback)(char *result));
 
+char *statsig_initialize_with_details_blocking(uint64_t statsig_ref);
+
 void statsig_initialize_blocking(uint64_t statsig_ref);
 
 void statsig_shutdown(uint64_t statsig_ref, void (*callback)(void));

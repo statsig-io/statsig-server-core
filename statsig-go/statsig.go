@@ -59,8 +59,7 @@ func (s *Statsig) Initialize() (bool, error) {
 }
 
 func (s *Statsig) InitializeWithDetails() (InitializeWithDetails, error) {
-
-	res := C.statsig_initialize_with_details(C.uint64_t(s.InnerRef))
+	res := C.statsig_initialize_with_details_blocking(C.uint64_t(s.InnerRef))
 
 	var details InitializeWithDetails
 
@@ -82,7 +81,6 @@ func (s *Statsig) Shutdown() {
 }
 
 func (s *Statsig) GetFeatureGate(user StatsigUser, gateName string, featureGateOptions *CheckGateOptions) FeatureGate {
-
 	var featureGate FeatureGate
 
 	if featureGateOptions == nil {
@@ -103,7 +101,6 @@ func (s *Statsig) GetFeatureGate(user StatsigUser, gateName string, featureGateO
 }
 
 func (s *Statsig) CheckGate(user StatsigUser, gateName string, gateOptions *CheckGateOptions) bool {
-
 	if gateOptions == nil {
 		gateOptions = &CheckGateOptions{}
 	}
@@ -117,7 +114,6 @@ func (s *Statsig) ManuallyLogGateExposure(user StatsigUser, name string) {
 }
 
 func (s *Statsig) GetDynamicConfig(user StatsigUser, configName string, dynamicConfigOptions *GetDynamicConfigOptions) DynamicConfig {
-
 	var dynamicConfig DynamicConfig
 
 	if dynamicConfigOptions == nil {
@@ -182,7 +178,6 @@ func (s *Statsig) ManuallyLogExperimentExposure(user StatsigUser, name string) {
 }
 
 func (s *Statsig) GetLayer(user StatsigUser, layerName string, layerOptions *GetLayerOptions) Layer {
-
 	var layer Layer
 
 	if layerOptions == nil {
@@ -219,7 +214,6 @@ func (s *Statsig) LogEvent(user StatsigUser, eventJson map[string]interface{}) {
 }
 
 func (s *Statsig) GetClientInitializeResponse(user StatsigUser, gcirOptions *ClientInitResponseOptions) string {
-
 	if gcirOptions == nil {
 		gcirOptions = &ClientInitResponseOptions{}
 	}
@@ -273,7 +267,6 @@ func (s *Statsig) GetIntFromParameterStore(user StatsigUser, paramStoreName stri
 }
 
 func (s *Statsig) GetMapFromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal map[string]interface{}, psOptions *ParameterStoreOptions) map[string]interface{} {
-
 	val := C.statsig_get_object_parameter_from_parameter_store(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.CString(utils.ConvertJSONToString(defaultVal)), C.CString(utils.ConvertJSONToString(psOptions)))
 
 	if val != nil {
@@ -287,7 +280,6 @@ func (s *Statsig) GetMapFromParameterStore(user StatsigUser, paramStoreName stri
 }
 
 func (s *Statsig) GetInterfaceFromParameterStore(user StatsigUser, paramStoreName string, paramName string, defaultVal []interface{}, psOptions *ParameterStoreOptions) []interface{} {
-
 	val := C.statsig_get_object_parameter_from_parameter_store(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(paramStoreName), C.CString(paramName), C.CString(utils.ConvertJSONToString(defaultVal)), C.CString(utils.ConvertJSONToString(psOptions)))
 
 	if val != nil {

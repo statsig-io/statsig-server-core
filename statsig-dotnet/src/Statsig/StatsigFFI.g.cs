@@ -46,6 +46,9 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_initialize_with_details", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_initialize_with_details(ulong statsig_ref, statsig_initialize_with_details_callback_delegate callback);
 
+        [DllImport(__DllName, EntryPoint = "statsig_initialize_with_details_blocking", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_initialize_with_details_blocking(ulong statsig_ref);
+
         [DllImport(__DllName, EntryPoint = "statsig_initialize_blocking", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_initialize_blocking(ulong statsig_ref);
 
