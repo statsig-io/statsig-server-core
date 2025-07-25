@@ -43,25 +43,3 @@ jobs:
         run: |
           cd benchmarking/bench-cluster
           docker compose up --build scrapi docker-stats ${{ matrix.sdk-service }}
-
-  ruby-bench:
-    timeout-minutes: 20
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-
-      - name: Run Ruby Bench
-        working-directory: examples/ruby/perf-bench
-        run: |
-          pip install psutil numpy
-          
-          bundle update
-          eval ${{ env.CAPTURE }} bundle exec ruby ruby-legacy-bench.rb
-        # eval ${{ env.CAPTURE }} bundle exec ruby ruby-core-bench.rb
-
