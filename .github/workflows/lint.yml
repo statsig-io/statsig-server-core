@@ -166,7 +166,7 @@ jobs:
         with: 
           version: latest
           working-directory: statsig-go
-          args: --config=../.github/workflows/.golangci-lint.yml --skip-dirs=benchmark-tests
+          args: --config=.golangci-lint.yml --skip-dirs=benchmark-tests
         env: 
           CGO_ENABLED: 1
           
