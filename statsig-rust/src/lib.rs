@@ -34,6 +34,7 @@ pub use user::{StatsigUser, StatsigUserBuilder};
 pub mod compression;
 pub mod data_store_interface;
 pub mod evaluation;
+pub mod event_emitter;
 pub mod event_logging;
 pub mod global_configs;
 pub mod hashing;
