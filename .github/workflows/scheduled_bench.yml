@@ -30,6 +30,8 @@ jobs:
           - php-legacy
           - python-core
           - python-legacy
+          - ruby-legacy
+          # - ruby-core
           - rust-core
           - rust-legacy
 

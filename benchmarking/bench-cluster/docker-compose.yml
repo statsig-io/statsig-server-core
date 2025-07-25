@@ -117,3 +117,19 @@ services:
       - ./shared-volume:/shared-volume
     environment:
       - SDK_VARIANT=legacy
+
+  ruby-core:
+    build: ./ruby
+    container_name: ruby-core
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=core
+
+  ruby-legacy:
+    build: ./ruby
+    container_name: ruby-legacy
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=legacy

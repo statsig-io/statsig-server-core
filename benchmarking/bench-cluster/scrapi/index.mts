@@ -550,6 +550,11 @@ function getSdkTypeForService(name: string) {
     case 'python-legacy':
       return 'py-server';
 
+    // case 'ruby-core':
+    //   return 'statsig-server-core-ruby';
+    case 'ruby-legacy':
+      return 'ruby-server';
+
     case 'rust-core':
       return 'statsig-server-core-rust';
     case 'rust-legacy':
