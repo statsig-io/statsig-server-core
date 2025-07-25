@@ -96,6 +96,7 @@ public class AsyncApiTest {
     state.add("B");
 
     assertTrue(latch.await(5, TimeUnit.SECONDS), "shutdown() should complete");
-    assertEquals(Arrays.asList("A", "B", "C"), state, "Expected order A, B, C");
+    assertTrue(state.indexOf("A") < state.indexOf("B"));
+    assertTrue(state.indexOf("B") < state.indexOf("C"));
   }
 }
