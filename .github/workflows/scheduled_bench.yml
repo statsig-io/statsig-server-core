@@ -40,95 +40,6 @@ jobs:
           cd benchmarking/bench-cluster
           docker compose up --build scrapi docker-stats ${{ matrix.sdk-service }}
 
-
-  node-bench:
-    timeout-minutes: 20
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-
-      - name: Run Node Core Bench
-        working-directory: examples/node/perf-bench
-        run: |
-          pip install psutil numpy
-          
-          npm install
-          eval ${{ env.CAPTURE }} npm run bench:core
-          eval ${{ env.CAPTURE }} npm run bench:legacy
-
-  python-bench:
-    timeout-minutes: 20
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Run Python Bench
-        working-directory: examples/python/perf-bench
-        run: |
-          pip install psutil -r requirements.txt
-          eval ${{ env.CAPTURE }} python python-core-bench.py
-          eval ${{ env.CAPTURE }} python python-legacy-bench.py
-
-  java-bench:
-    timeout-minutes: 20
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '11'
-          distribution: 'adopt'
-
-      - name: Run Java Bench
-        working-directory: examples/java/perf-bench
-        run: |
-          pip install psutil numpy
-          eval ${{ env.CAPTURE }} ./gradlew run_core -Prelease
-          eval ${{ env.CAPTURE }} ./gradlew run_legacy -Prelease
-
-  php-bench:
-    timeout-minutes: 20
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.3
-          extensions: ffi
-          ini-values: ffi.enable=1
-
-      - name: Run PHP Bench
-        working-directory: examples/php/perf-bench
-        # We remove the opposite SDK to avoid namespace conflicts
-        run: |
-          pip install psutil numpy
-          
-          composer update
-          rm -rf vendor/statsig/statsigsdk
-          eval ${{ env.CAPTURE }} php src/PhpCoreBench.php
-
-          composer update
-          rm -rf vendor/statsig/statsig-php-core
-          eval ${{ env.CAPTURE }} php src/PhpLegacyBench.php
-
   rust-bench:
     timeout-minutes: 20
     runs-on: ubuntu-latest
@@ -148,26 +59,6 @@ jobs:
           
           eval ${{ env.CAPTURE }} cargo run --release --bin core_bench
           eval ${{ env.CAPTURE }} cargo run --release --bin legacy_bench
-
-  dotnet-bench:
-    timeout-minutes: 20
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install .NET SDK
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Run .NET Bench
-        working-directory: examples/dotnet/perf-bench
-        run: |
-          pip install psutil numpy
-          
-          dotnet restore perf-bench.csproj
-          eval ${{ env.CAPTURE }} dotnet run --project perf-bench.csproj --configuration Release --legacy
 
   ruby-bench:
     timeout-minutes: 20
