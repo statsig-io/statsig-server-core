@@ -10,6 +10,7 @@ use crate::evaluation::evaluator_result::{
     result_to_layer_eval, EvaluatorResult,
 };
 use crate::evaluation::user_agent_parsing::UserAgentParser;
+use crate::event_emitter::StatsigEventEmitter;
 use crate::event_logging::event_logger::{EventLogger, ExposureTrigger};
 use crate::event_logging::event_queue::queued_config_expo::EnqueueConfigExpoOp;
 use crate::event_logging::event_queue::queued_experiment_expo::EnqueueExperimentExpoOp;
@@ -81,6 +82,7 @@ lazy_static::lazy_static! {
 pub struct Statsig {
     pub statsig_runtime: Arc<StatsigRuntime>,
     pub options: Arc<StatsigOptions>,
+    pub(crate) event_emitter: StatsigEventEmitter,
 
     sdk_key: String,
     event_logger: Arc<EventLogger>,
@@ -257,6 +259,7 @@ impl Statsig {
             background_tasks_started: Arc::new(AtomicBool::new(false)),
             persistent_values_manager,
             initialize_details: Mutex::new(InitializeDetails::default()),
+            event_emitter: StatsigEventEmitter::default(),
         }
     }
 
@@ -1151,7 +1154,12 @@ impl Statsig {
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
         let (details, evaluation) = self.get_gate_evaluation(&user_internal, gate_name);
+
         let value = evaluation.as_ref().map(|e| e.value).unwrap_or_default();
+        let rule_id = evaluation
+            .as_ref()
+            .map(|e| e.base.rule_id.clone())
+            .unwrap_or_default();
 
         if disable_exposure_logging {
             log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
@@ -1166,6 +1174,8 @@ impl Statsig {
                 trigger: ExposureTrigger::Auto,
             });
         }
+
+        self.emit_gate_evaluated(gate_name, rule_id.as_str(), value, &details.reason);
 
         value
     }
@@ -1198,7 +1208,9 @@ impl Statsig {
             });
         }
 
-        make_feature_gate(gate_name, evaluation, details)
+        let gate = make_feature_gate(gate_name, evaluation, details);
+        self.emit_gate_evaluated(gate_name, &gate.rule_id, gate.value, &gate.details.reason);
+        gate
     }
 
     pub fn manually_log_gate_exposure(&self, user: &StatsigUser, gate_name: &str) {
@@ -1472,6 +1484,8 @@ impl Statsig {
             });
         }
 
+        self.emit_dynamic_config_evaluated(&dynamic_config);
+
         dynamic_config
     }
 
@@ -1557,6 +1571,8 @@ impl Statsig {
                 trigger: ExposureTrigger::Auto,
             });
         }
+
+        self.emit_experiment_evaluated(&experiment);
 
         experiment
     }
@@ -1920,6 +1936,9 @@ impl Statsig {
         }) {
             layer = persisted_layer
         }
+
+        self.emit_layer_evaluated(&layer);
+
         layer
     }
 

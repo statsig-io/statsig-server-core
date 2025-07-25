@@ -1,8 +1,11 @@
-use crate::StatsigErr;
+use crate::{
+    statsig_types::{DynamicConfig, Experiment, Layer},
+    StatsigErr,
+};
 use serde::Serialize;
 use std::borrow::Cow;
 
-#[derive(Clone, Serialize)]
+#[derive(Serialize, Clone)]
 pub enum SdkEvent<'a> {
     InitSuccess {
         duration: f64,
@@ -22,6 +25,15 @@ pub enum SdkEvent<'a> {
         value: bool,
         reason: Cow<'a, str>,
     },
+    DynamicConfigEvaluated {
+        dynamic_config: Cow<'a, DynamicConfig>,
+    },
+    ExperimentEvaluated {
+        experiment: Cow<'a, Experiment>,
+    },
+    LayerEvaluated {
+        layer: Cow<'a, Layer>,
+    },
 }
 
 impl<'a> SdkEvent<'a> {
@@ -30,6 +42,9 @@ impl<'a> SdkEvent<'a> {
     pub const INIT_FAILURE: &'static str = "init_failure";
     pub const RULESETS_UPDATED: &'static str = "rulesets_updated";
     pub const GATE_EVALUATED: &'static str = "gate_evaluated";
+    pub const DYNAMIC_CONFIG_EVALUATED: &'static str = "dynamic_config_evaluated";
+    pub const EXPERIMENT_EVALUATED: &'static str = "experiment_evaluated";
+    pub const LAYER_EVALUATED: &'static str = "layer_evaluated";
 
     pub fn get_code_from_name(name: &str) -> usize {
         match name {
@@ -38,6 +53,9 @@ impl<'a> SdkEvent<'a> {
             SdkEvent::INIT_FAILURE => 3,
             SdkEvent::RULESETS_UPDATED => 4,
             SdkEvent::GATE_EVALUATED => 5,
+            SdkEvent::DYNAMIC_CONFIG_EVALUATED => 6,
+            SdkEvent::EXPERIMENT_EVALUATED => 7,
+            SdkEvent::LAYER_EVALUATED => 8,
             _ => 0,
         }
     }
@@ -53,6 +71,9 @@ impl<'a> SdkEvent<'a> {
             SdkEvent::InitFailure { .. } => SdkEvent::INIT_FAILURE,
             SdkEvent::RulesetsUpdated { .. } => SdkEvent::RULESETS_UPDATED,
             SdkEvent::GateEvaluated { .. } => SdkEvent::GATE_EVALUATED,
+            SdkEvent::DynamicConfigEvaluated { .. } => SdkEvent::DYNAMIC_CONFIG_EVALUATED,
+            SdkEvent::ExperimentEvaluated { .. } => SdkEvent::EXPERIMENT_EVALUATED,
+            SdkEvent::LayerEvaluated { .. } => SdkEvent::LAYER_EVALUATED,
         }
     }
 }

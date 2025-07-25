@@ -1,11 +1,17 @@
-use crate::{event_emitter::SdkEvent, log_e};
+use crate::{
+    event_emitter::SdkEvent,
+    log_e,
+    statsig_types::{DynamicConfig, Experiment, Layer},
+    Statsig,
+};
 use dashmap::DashMap;
+use std::{borrow::Cow, ops::Deref};
 
 const TAG: &str = "StatsigEventEmitter";
 
 struct Listener {
     id: String,
-    callback: Box<dyn Fn(&SdkEvent) + Send + Sync>,
+    callback: Box<dyn Fn(SdkEvent) + Send + Sync>,
 }
 
 #[derive(Default)]
@@ -16,7 +22,7 @@ pub struct StatsigEventEmitter {
 impl StatsigEventEmitter {
     pub fn subscribe<F>(&self, event: &str, callback: F) -> String
     where
-        F: Fn(&SdkEvent) + Send + Sync + 'static,
+        F: Fn(SdkEvent) + Send + Sync + 'static,
     {
         let code = SdkEvent::get_code_from_name(event);
         if code == 0 {
@@ -53,7 +59,6 @@ impl StatsigEventEmitter {
         self.listeners.clear();
     }
 
-    #[allow(dead_code)] // temp: used and removed in next PR
     pub(crate) fn emit(&self, event: SdkEvent) {
         self.emit_to_listeners(
             &event,
@@ -73,6 +78,49 @@ impl StatsigEventEmitter {
 
         listeners
             .iter()
-            .for_each(|listener| (listener.callback)(event));
+            .for_each(|listener| (listener.callback)(event.clone()));
+    }
+}
+
+impl Deref for Statsig {
+    type Target = StatsigEventEmitter;
+
+    fn deref(&self) -> &Self::Target {
+        &self.event_emitter
+    }
+}
+
+impl Statsig {
+    pub(crate) fn emit_gate_evaluated(
+        &self,
+        gate_name: &str,
+        rule_id: &str,
+        value: bool,
+        reason: &str,
+    ) {
+        self.emit(SdkEvent::GateEvaluated {
+            gate_name: gate_name.into(),
+            rule_id: rule_id.into(),
+            value,
+            reason: reason.into(),
+        });
+    }
+
+    pub(crate) fn emit_dynamic_config_evaluated(&self, config: &DynamicConfig) {
+        self.emit(SdkEvent::DynamicConfigEvaluated {
+            dynamic_config: Cow::Borrowed(config),
+        });
+    }
+
+    pub(crate) fn emit_experiment_evaluated(&self, experiment: &Experiment) {
+        self.emit(SdkEvent::ExperimentEvaluated {
+            experiment: Cow::Borrowed(experiment),
+        });
+    }
+
+    pub(crate) fn emit_layer_evaluated(&self, layer: &Layer) {
+        self.emit(SdkEvent::LayerEvaluated {
+            layer: Cow::Borrowed(layer),
+        });
     }
 }
