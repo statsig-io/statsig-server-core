@@ -15,6 +15,7 @@ namespace Statsig
         public Statsig(string sdkKey, StatsigOptions options)
         {
             var sdkKeyBytes = Encoding.UTF8.GetBytes(sdkKey);
+            UpdateStatsigMetadata();
             unsafe
             {
                 fixed (byte* sdkKeyPtr = sdkKeyBytes)
@@ -22,7 +23,6 @@ namespace Statsig
                     _statsigRef = StatsigFFI.statsig_create(sdkKeyPtr, options.Reference);
                 }
             }
-            UpdateStatsigMetadata();
         }
 
         ~Statsig()
