@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Request, type Response } from 'express';
 import { readFileSync } from 'node:fs';
 
 import type { ScrapiState } from '../common';
@@ -22,7 +22,7 @@ app.use((req, _res, next) => {
   next();
 });
 
-app.post('/v1/log_event', (req, res) => {
+app.post('/v1/log_event', async (req, res) => {
   const { sdkType, sdkVersion } = getSdkInfo(req);
   const eventCountStr =
     req.headers?.['statsig-event-count'] ?? req.body?.events?.length;
@@ -34,6 +34,11 @@ app.post('/v1/log_event', (req, res) => {
   const logEventState = state?.logEvent;
   if (logEventState == null) {
     throw new Error('logEvent state not found');
+  }
+
+  const delayMs = logEventState?.response?.delayMs ?? 0;
+  if (delayMs > 0) {
+    await new Promise((r) => setTimeout(r, delayMs));
   }
 
   if (logEventState.response.status > 300) {
@@ -55,34 +60,13 @@ app.post('/v1/log_event', (req, res) => {
     .json(JSON.parse(logEventState.response.payload));
 });
 
-app.all('/v2/download_config_specs/:sdk_key', async (_req, res) => {
-  if (state?.dcs?.response?.status !== 200) {
-    res.status(state?.dcs?.response?.status ?? 500).json({
-      error: 'DCS is not enabled',
-    });
-    return;
-  }
-
-  const payload = state?.dcs?.response?.v2Payload;
-  if (payload == null || payload.length === 0) {
-    res.status(404).json({ error: 'State not initialized' });
-    return;
-  }
-
-  res.status(200).json(JSON.parse(payload));
-});
+app.all('/v2/download_config_specs/:sdk_key', (_req, res) =>
+  handleDcsResponse('v2', res),
+);
 
 app.all(
   ['/v1/download_config_specs/:sdk_key', '/v1/download_config_specs'],
-  async (_req, res) => {
-    const payload = state?.dcs?.response?.v1Payload;
-    if (payload == null || payload.length === 0) {
-      res.status(404).json({ error: 'State not initialized' });
-      return;
-    }
-
-    res.status(200).json(JSON.parse(payload));
-  },
+  (_req, res) => handleDcsResponse('v1', res),
 );
 
 app.all('/v1/get_id_lists', (_req, res) => {
@@ -97,6 +81,31 @@ app.listen(8000, () => {
   console.log('Server is running on port 8000');
   setInterval(update, 1000).unref();
 });
+
+async function handleDcsResponse(type: 'v1' | 'v2', res: Response) {
+  const delayMs = state?.dcs?.response?.delayMs ?? 0;
+  if (delayMs > 0) {
+    await new Promise((r) => setTimeout(r, delayMs));
+  }
+
+  if (state?.dcs?.response?.status !== 200) {
+    res.status(state?.dcs?.response?.status ?? 500).json({
+      error: 'DCS is not enabled',
+    });
+    return;
+  }
+
+  const payload =
+    type === 'v2'
+      ? state?.dcs?.response?.v2Payload
+      : state?.dcs?.response?.v1Payload;
+  if (payload == null || payload.length === 0) {
+    res.status(404).json({ error: 'State not initialized' });
+    return;
+  }
+
+  res.status(200).json(JSON.parse(payload));
+}
 
 function readState(): ScrapiState {
   const stateContents = readFileSync('/shared-volume/state.json', 'utf8');

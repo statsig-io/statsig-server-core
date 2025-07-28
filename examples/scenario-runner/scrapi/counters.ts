@@ -7,7 +7,7 @@ export function incReqCount(
   path: string,
   method: string,
 ) {
-  const key = [sdkType, sdkVersion, path, method].join('_');
+  const key = [sdkType, sdkVersion, path, method].join('|');
   reqCounts[key] = (reqCounts[key] ?? 0) + 1;
 }
 
@@ -16,7 +16,7 @@ export function incEventCount(
   sdkVersion: string,
   count: number,
 ) {
-  const key = [sdkType, sdkVersion].join('_');
+  const key = [sdkType, sdkVersion].join('|');
   eventCounts[key] = (eventCounts[key] ?? 0) + count;
 }
 

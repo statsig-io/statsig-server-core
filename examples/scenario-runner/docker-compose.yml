@@ -37,6 +37,26 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./shared-volume:/shared-volume
 
+  # ------------------------------------------------------------ [ SDKS ]
+
+  java-core:
+    build: ./java
+    container_name: sr-java-core
+    image: sr-java:latest
+    environment:
+      - SDK_VARIANT=core
+    volumes:
+      - ./shared-volume:/shared-volume
+
+  java-legacy:
+    build: ./java
+    container_name: sr-java-legacy
+    image: sr-java:latest
+    environment:
+      - SDK_VARIANT=legacy
+    volumes:
+      - ./shared-volume:/shared-volume
+
   node-core:
     build: ./node
     container_name: sr-node-core
