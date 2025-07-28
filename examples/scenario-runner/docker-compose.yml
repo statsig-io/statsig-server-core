@@ -1,0 +1,74 @@
+# todo:
+# - is sdk_exception blocking the main thread?
+# - high server core CPU when log_event is dead
+
+
+services:
+  dashboard:
+    build: ./dashboard
+    container_name: sr-dashboard
+    image: sr-dashboard:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./shared-volume:/shared-volume
+      - ./dashboard/public:/app/public
+    environment:
+      - EVAL_PROJ_SDK_KEY=${EVAL_PROJ_SDK_KEY}
+
+  scrapi:
+    depends_on:
+      - dashboard
+    build: ./scrapi
+    container_name: sr-scrapi
+    environment:
+      - BENCH_CLUSTER_SDK_KEY=${BENCH_CLUSTER_SDK_KEY}
+    image: sr-scrapi:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./shared-volume:/shared-volume
+
+  docker-stats:
+    build: ./docker-stats
+    container_name: sr-docker-stats
+    image: sr-docker-stats:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./shared-volume:/shared-volume
+
+  node-core:
+    build: ./node
+    container_name: sr-node-core
+    image: sr-node:latest
+    environment:
+      - SDK_VARIANT=core
+    volumes:
+      - ./shared-volume:/shared-volume
+
+  node-legacy:
+    build: ./node
+    container_name: sr-node-legacy
+    image: sr-node:latest
+    environment:
+      - SDK_VARIANT=legacy
+    volumes:
+      - ./shared-volume:/shared-volume
+
+  python-core:
+    build: ./python
+    container_name: sr-python-core
+    image: sr-python:latest
+    environment:
+      - SDK_VARIANT=core
+    volumes:
+      - ./shared-volume:/shared-volume
+
+  python-legacy:
+    build: ./python
+    container_name: sr-python-legacy
+    image: sr-python:latest
+    environment:
+      - SDK_VARIANT=legacy
+    volumes:
+      - ./shared-volume:/shared-volume
