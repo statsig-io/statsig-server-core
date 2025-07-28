@@ -57,19 +57,33 @@ namespace Statsig
 
         unsafe public bool CheckGate(StatsigUser user, string gateName, EvaluationOptions? options = null)
         {
-            var gateNameBytes = Encoding.UTF8.GetBytes(gateName);
-            var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
-            var optionsBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
-            fixed (byte* optionsPtr = optionsBytes)
-            fixed (byte* gateNamePtr = gateNameBytes)
+            const int GateNameStackThreshold = 256;
+            const int OptStackThreshold = 512;
+
+            // Get gate name bytes
+            int nameLen = Encoding.UTF8.GetByteCount(gateName);
+            Span<byte> nameBytes = nameLen <= GateNameStackThreshold ? stackalloc byte[nameLen] : new byte[nameLen];
+            Encoding.UTF8.GetBytes(gateName.AsSpan(), nameBytes);
+
+            // Get options bytes
+            string? optionsJson = options is null ? null : JsonConvert.SerializeObject(options);
+            int optLen = optionsJson is null ? 0 : Encoding.UTF8.GetByteCount(optionsJson);
+            Span<byte> optBytes = optLen <= OptStackThreshold ? stackalloc byte[optLen] : new byte[optLen];
+            if (optLen > 0)
+            {
+                Encoding.UTF8.GetBytes(optionsJson.AsSpan(), optBytes);
+            }
+
+            fixed (byte* namePtr = nameBytes)
+            fixed (byte* optPtr = optBytes)
             {
                 return StatsigFFI.statsig_check_gate_performance(
                     _statsigRef,
                     user.Reference,
-                    gateNamePtr,
-                    (nuint)gateNameBytes.Length,
-                    optionsPtr,
-                    optionsBytes != null ? (nuint)optionsBytes.Length : 0);
+                    namePtr,
+                    (nuint)nameBytes.Length,
+                    optPtr,
+                    (nuint)optBytes.Length);
             }
         }
 
