@@ -120,11 +120,10 @@ public class BenchCore
         // Feature gates
         foreach (var gate in specNames["feature_gates"])
         {
+            // TODO(weihao): remove the delay
+            // Rigth now, we want to make sure check gate works properly
             results.Add(RunBenchmark("check_gate", gate, ITER_HEAVY, () => statsig.CheckGate(CreateUser(), gate)));
-            await Task.Delay(1);
-            
             results.Add(RunBenchmark("check_gate_global_user", gate, ITER_HEAVY, () => statsig.CheckGate(globalUser, gate)));
-            await Task.Delay(1);
             
             results.Add(RunBenchmark("get_feature_gate", gate, ITER_HEAVY, () => statsig.GetFeatureGate(CreateUser(), gate)));
             await Task.Delay(1);
