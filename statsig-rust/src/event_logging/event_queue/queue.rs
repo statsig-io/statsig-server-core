@@ -24,7 +24,7 @@ pub struct EventQueue {
     pub batch_size: usize,
     pub max_pending_batches: usize,
 
-    pending_events: RwLock<Vec<QueuedEvent>>,
+    pending_events: RwLock<VecDeque<QueuedEvent>>,
     batches: RwLock<VecDeque<EventBatch>>,
     max_pending_events: usize,
 }
@@ -35,7 +35,7 @@ impl EventQueue {
         let max_queue_size = max_queue_size as usize;
 
         Self {
-            pending_events: RwLock::new(Vec::new()),
+            pending_events: RwLock::new(VecDeque::new()),
             batches: RwLock::new(VecDeque::new()),
             batch_size,
             max_pending_batches: max_queue_size,
@@ -52,16 +52,19 @@ impl EventQueue {
     pub fn add(&self, pending_event: QueuedEvent) -> QueueAddResult {
         let mut pending_events =
             write_lock_or_return!(TAG, self.pending_events, QueueAddResult::Noop);
-        pending_events.push(pending_event);
+        pending_events.push_back(pending_event);
 
-        let len = pending_events.len();
-        if len >= self.max_pending_events {
-            let delta = len - self.max_pending_events;
-            pending_events.drain(0..delta);
-            return QueueAddResult::NeedsFlushAndDropped(delta as u64);
+        let mut dropped_events = 0;
+        while pending_events.len() > self.max_pending_events {
+            pending_events.pop_front();
+            dropped_events += 1;
         }
 
-        if len % self.batch_size == 0 {
+        if dropped_events > 0 {
+            return QueueAddResult::NeedsFlushAndDropped(dropped_events);
+        }
+
+        if pending_events.len() % self.batch_size == 0 {
             return QueueAddResult::NeedsFlush;
         }
 
@@ -119,7 +122,7 @@ impl EventQueue {
     }
 
     pub fn reconcile_batching(&self) -> QueueReconcileResult {
-        let mut pending_events: Vec<StatsigEventInternal> = self
+        let mut pending_events: VecDeque<StatsigEventInternal> = self
             .take_all_pending_events()
             .into_iter()
             .map(|evt| evt.into_statsig_event_internal())
@@ -154,12 +157,15 @@ impl EventQueue {
         QueueReconcileResult::Success
     }
 
-    fn take_all_pending_events(&self) -> Vec<QueuedEvent> {
-        let mut pending_events = write_lock_or_return!(TAG, self.pending_events, Vec::new());
+    fn take_all_pending_events(&self) -> VecDeque<QueuedEvent> {
+        let mut pending_events = write_lock_or_return!(TAG, self.pending_events, VecDeque::new());
         std::mem::take(&mut *pending_events)
     }
 
-    fn create_batches(&self, mut pending_events: Vec<StatsigEventInternal>) -> Vec<EventBatch> {
+    fn create_batches(
+        &self,
+        mut pending_events: VecDeque<StatsigEventInternal>,
+    ) -> Vec<EventBatch> {
         let mut batches = Vec::new();
         while !pending_events.is_empty() {
             let drain_count = self.batch_size.min(pending_events.len());

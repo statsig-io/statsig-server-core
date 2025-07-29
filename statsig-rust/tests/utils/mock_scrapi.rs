@@ -123,10 +123,12 @@ impl MockScrapi {
 
                     tokio::task::spawn(async move {
                         tokio::time::sleep(Duration::from_millis(stub.delay_ms)).await;
-                        local_logged_events_ptr.fetch_add(count, Ordering::SeqCst);
 
-                        local_no_diagnostics_logged_events_ptr
-                            .fetch_add(non_diag_count, Ordering::SeqCst);
+                        if stub.status >= 200 && stub.status < 300 {
+                            local_logged_events_ptr.fetch_add(count, Ordering::SeqCst);
+                            local_no_diagnostics_logged_events_ptr
+                                .fetch_add(non_diag_count, Ordering::SeqCst);
+                        }
                     });
                 }
 
