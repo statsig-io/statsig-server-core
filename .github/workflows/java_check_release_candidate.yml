@@ -18,7 +18,7 @@ jobs:
       matrix:
         subdir: ['server-core-java-rc']
         platform: ['linux/amd64', 'linux/arm64']
-        base_image: ['alpine', 'amazoncorretto', 'debian', 'openjdk', 'temurin', 'ubuntu']
+        base_image: ['alpine', 'amazoncorretto', 'debian', 'openjdk', 'temurin', 'ubuntu', "centos7","amazonlinux2", "amazonlinux2023"]
     steps:
       - name: Checkout LRS repo
         uses: actions/checkout@v3
