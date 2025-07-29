@@ -170,7 +170,7 @@ public class BenchCore
         results.Add(RunBenchmark("get_client_initialize_response_global_user", "n/a", ITER_LITE, () => statsig.GetClientInitializeResponse(globalUser)));
         await Task.Delay(1);
 
-        statsig.FlushEvents();
+        await statsig.Shutdown();
 
         var resultsFile = $"/shared-volume/{sdkType}-{sdkVersion}-results.json";
         File.WriteAllText(resultsFile, JsonSerializer.Serialize(new
