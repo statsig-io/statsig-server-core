@@ -30,11 +30,11 @@ const TEST_COMMANDS: Record<string, string> = {
 
     'rm -rf statsig-java/src/main/resources/native',
 
-    'mkdir -p statsig-java/src/main/resources/native/linux-gnu-x86_64',
-    'cp target/debug/libstatsig_ffi.so statsig-java/src/main/resources/native/linux-gnu-x86_64 || true',
+    'mkdir -p statsig-java/src/main/resources/native/x86_64-unknown-linux-gnu',
+    'cp target/debug/libstatsig_ffi.so statsig-java/src/main/resources/native/x86_64-unknown-linux-gnu || true',
 
-    'mkdir -p statsig-java/src/main/resources/native/macos-arm64',
-    'cp target/debug/libstatsig_ffi.dylib statsig-java/src/main/resources/native/macos-arm64 || true',
+    'mkdir -p statsig-java/src/main/resources/native/aarch64-apple-darwin',
+    'cp target/debug/libstatsig_ffi.dylib statsig-java/src/main/resources/native/aarch64-apple-darwin || true',
 
     'cd statsig-java',
     './gradlew test --rerun-tasks --console rich',

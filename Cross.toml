@@ -1,0 +1,9 @@
+[build.env]
+passthrough = ["CFLAGS"]
+
+[target.x86_64-unknown-linux-gnu]
+image = "ghcr.io/cross-rs/x86_64-unknown-linux-gnu:0.2.5-centos"
+
+
+[target.aarch64-unknown-linux-gnu]
+image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main-centos"

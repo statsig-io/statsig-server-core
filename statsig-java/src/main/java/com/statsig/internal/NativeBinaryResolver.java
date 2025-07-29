@@ -4,9 +4,6 @@ import com.statsig.OutputLogger;
 import com.statsig.Statsig;
 import java.io.*;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.List;
 import java.util.Properties;
 
 public class NativeBinaryResolver {
@@ -130,7 +127,8 @@ public class NativeBinaryResolver {
     if (normalizedOsName.contains("macos")) {
       addDependency(message, "macOS", arch, "macos");
     } else if (normalizedOsName.contains("linux")) {
-      addDependency(message, "Linux", arch, "linux-gnu", "amazonlinux2", "amazonlinux2023");
+      String dependencyName = detectLibc().equals("musl") ? "linux-musl" : "linux-gnu";
+      addDependency(message, "Linux", arch, dependencyName);
     } else if (normalizedOsName.contains("win")) {
       addDependency(message, "Windows", arch, "windows");
     } else {
@@ -166,23 +164,19 @@ public class NativeBinaryResolver {
 
   private static String genDetectedPlatform() {
     if (osName.contains("win")) {
-      return normalizedArch.contains("64") ? "windows-x86_64" : "windows-i686";
+      return normalizedArch.contains("64") ? "x86_64-pc-windows-msvc" : "i686-pc-windows-msvc";
     } else if (osName.contains("mac")) {
-      return normalizedArch.contains("arm64") ? "macos-arm64" : "macos-x86_64";
+      return normalizedArch.contains("arm64") ? "aarch64-apple-darwin" : "x86_64-apple-darwin";
     } else if (osName.contains("linux")) {
-      String distro = detectLinuxDistro();
-      if (distro.equals("amazonlinux2023")) {
+      String libcName = detectLibc();
+      if (libcName.equals("musl")) {
         return normalizedArch.contains("arm64")
-            ? "amazonlinux2023-arm64"
-            : "amazonlinux2023-x86_64";
-      } else if (distro.equals("amazonlinux2")) {
-        return normalizedArch.contains("arm64") ? "amazonlinux2-arm64" : "amazonlinux2-x86_64";
-      } else if (distro.equals("centos7")) {
-        return normalizedArch.contains("arm64") ? "centos7-arm64" : "centos7-x86_64";
-      } else if (distro.equals("alpine")) {
-        return normalizedArch.contains("arm64") ? "linux-musl-arm64" : "linux-musl-x86_64";
-      } else {
-        return normalizedArch.contains("arm64") ? "linux-gnu-arm64" : "linux-gnu-x86_64";
+            ? "aarch64-unknown-linux-musl"
+            : "x86_64-unknown-linux-musl";
+      } else if (libcName.equals("gnu")) {
+        return normalizedArch.contains("arm64")
+            ? "aarch64-unknown-linux-gnu"
+            : "x86_64-unknown-linux-gnu";
       }
     }
     return null;
@@ -201,38 +195,23 @@ public class NativeBinaryResolver {
     }
   }
 
-  private static String detectLinuxDistro() {
+  private static String detectLibc() {
     try {
-      List<String> lines = Files.readAllLines(Paths.get("/etc/os-release"));
-      String id = null;
-      String versionId = null;
+      Process process = Runtime.getRuntime().exec("ldd --version");
+      BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
 
-      for (String line : lines) {
-        if (line.startsWith("ID=")) {
-          id = line.split("=")[1].replace("\"", "").trim();
-        } else if (line.startsWith("VERSION_ID=")) {
-          versionId = line.split("=")[1].replace("\"", "").trim();
+      String line;
+      while ((line = reader.readLine()) != null) {
+        if (line.toLowerCase().contains("musl")) {
+          return "musl";
+        } else if (line.toLowerCase().contains("gnu libc")
+            || line.toLowerCase().contains("glibc")) {
+          return "gnu";
         }
-      }
-
-      OutputLogger.logInfo(TAG, "Parsed /etc/os-release: ID=" + id + ", VERSION_ID=" + versionId);
-
-      if ("amzn".equals(id)) {
-        if ("2023".equals(versionId)) {
-          return "amazonlinux2023";
-        } else if ("2".equals(versionId)) {
-          return "amazonlinux2";
-        }
-      } else if ("centos".equals(id)) {
-        if ("7".equals(versionId)) {
-          return "centos7";
-        }
-      } else if ("alpine".equals(id)) {
-        return "alpine";
       }
     } catch (IOException e) {
       OutputLogger.logError(TAG, "Error while detecting linux distro: " + e.getMessage());
     }
-    return "linux-gnu";
+    return "gnu";
   }
 }

@@ -100,11 +100,11 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
 
             // Include native libraries for all supported platforms
             def platforms = [
-                "linux-gnu-x86_64" : "libstatsig_ffi.so",
-                "linux-gnu-arm64"  : "libstatsig_ffi.so",
-                "macos-x86_64"     : "libstatsig_ffi.dylib",
-                "macos-arm64"      : "libstatsig_ffi.dylib",
-                "windows-x86_64"   : "statsig_ffi.dll"
+                "aarch64-apple-darwin" : "libstatsig_ffi.dylib",
+                "x86_64-apple-darwin"  : "libstatsig_ffi.dylib",
+                "aarch64-unknown-linux-gnu": "libstatsig_ffi.so",
+                "x86_64-unknown-linux-gnu": "libstatsig_ffi.so",
+                "x86_64-pc-windows-msvc"   : "statsig_ffi.dll"
             ]
 
             dependsOn configurations.runtimeClasspath
@@ -143,16 +143,13 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
         def nativeLib = null
         if (classifierParam) {
             switch (classifierParam) {
-                case ~/.*macos.*/:
+                case ~/.*apple.*/:
                     nativeLib = "libstatsig_ffi.dylib"
                     break
                 case ~/.*windows.*/:
                     nativeLib = "statsig_ffi.dll"
                     break
                 case ~/.*linux.*/:
-                    nativeLib = "libstatsig_ffi.so"
-                    break
-                case ~/.*centos.*/:
                     nativeLib = "libstatsig_ffi.so"
                     break
                 default:
@@ -189,32 +186,26 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
     }
 }
 
-createStatsigJar('aarch64-apple-darwin', 'macos-arm64')
-// todo: add support for these platforms
-// createStatsigJar('aarch64-pc-windows-msvc', 'windows-arm64')
-createStatsigJar('centos7-x86_64', 'centos7-x86_64')
-createStatsigJar('amazonlinux2-arm64', 'amazonlinux2-arm64')
-createStatsigJar('amazonlinux2-x86_64', 'amazonlinux2-x86_64')
-createStatsigJar('amazonlinux2023-arm64', 'amazonlinux2023-arm64')
-createStatsigJar('amazonlinux2023-x86_64', 'amazonlinux2023-x86_64')
-createStatsigJar('i686-pc-windows-msvc', 'windows-i686')
 createStatsigJar('uber', 'uber')
 createStatsigJar('java-core', null)
-createStatsigJar('linux-gnu-arm64', 'linux-gnu-arm64')
-createStatsigJar('linux-gnu-x86_64', 'linux-gnu-x86_64')
-createStatsigJar('linux-musl-x86_64', 'linux-musl-x86_64')
-createStatsigJar('linux-musl-arm64', 'linux-musl-arm64')
-createStatsigJar('x86_64-apple-darwin', 'macos-x86_64')
-createStatsigJar('x86_64-pc-windows-msvc', 'windows-x86_64')
+//macos
+createStatsigJar('aarch64-apple-darwin', 'aarch64-apple-darwin')
+createStatsigJar('x86_64-apple-darwin', 'x86_64-apple-darwin')
+// Linux
+createStatsigJar('aarch64-unknown-linux-gnu', 'aarch64-unknown-linux-gnu')
+createStatsigJar('x86_64-unknown-linux-gnu', 'x86_64-unknown-linux-gnu')
+createStatsigJar('x86_64-unknown-linux-musl', 'x86_64-unknown-linux-musl')
+createStatsigJar('aarch64-unknown-linux-musl', 'aarch64-unknown-linux-musl')
+// Windows
+createStatsigJar('x86_64-pc-windows-msvc', 'x86_64-pc-windows-msvc')
+createStatsigJar('i686-pc-windows-msvc', 'i686-pc-windows-msvc')
+// todo: add support for these platforms
+// createStatsigJar('aarch64-pc-windows-msvc', 'windows-arm64')
 
 def expectedTasks = [
     'aarch64-apple-darwinJar',
     // 'aarch64-pc-windows-msvcJar',
     'centos7-x86_64Jar',
-    'amazonlinux2-arm64Jar',
-    'amazonlinux2-x86_64Jar',
-    'amazonlinux2023-arm64Jar',
-    'amazonlinux2023-x86_64Jar',
     'i686-pc-windows-msvcJar',
     'java-coreJar',
     'uberJar',

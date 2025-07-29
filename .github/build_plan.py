@@ -52,7 +52,7 @@ is_beta_branch = os.getenv("IS_BETA_BRANCH", "false") == "true"
 is_private_repo = os.getenv("IS_PRIVATE_REPO", "false") == "true"
 is_release_trigger = os.getenv("IS_RELEASE_TRIGGER", "false") == "true"
 is_main_branch = os.getenv("IS_MAIN_BRANCH", "false") == "true"
-matrix_file = "./.github/build_matrix.json"
+matrix_file = "./.github/build_matrix_v2.json"
 
 should_build_all = (
     is_release_trigger

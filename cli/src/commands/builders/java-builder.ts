@@ -1,27 +1,11 @@
 import { BuilderOptions } from '@/commands/builders/builder-options.js';
 import { getArchInfo } from '@/utils/docker_utils.js';
-import { buildFfiHelper } from '@/utils/ffi_utils.js';
+import { buildFfiHelper, detectTarget } from '@/utils/ffi_utils.js';
 import { BASE_DIR, listFiles } from '@/utils/file_utils.js';
 import { Log } from '@/utils/terminal_utils.js';
 import fs from 'fs';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
-
-const TARGET_MAPPING = {
-  'macos-aarch64-apple-darwin-java': 'macos-arm64',
-  'debian-aarch64-unknown-linux-gnu-java': 'linux-gnu-arm64',
-  'amazonlinux2-aarch64-unknown-linux-gnu-java': 'amazonlinux2-arm64',
-  'amazonlinux2-x86_64-unknown-linux-gnu-java': 'amazonlinux2-x86_64',
-  'amazonlinux2023-aarch64-unknown-linux-gnu-java': 'amazonlinux2023-arm64',
-  'amazonlinux2023-x86_64-unknown-linux-gnu-java': 'amazonlinux2023-x86_64',
-  'centos7-x86_64-unknown-linux-gnu-java': 'centos7-x86_64',
-  'windows-i686-pc-windows-msvc-java': 'windows-i686',
-  'macos-x86_64-apple-darwin-java': 'macos-x86_64',
-  'windows-x86_64-pc-windows-msvc-java': 'windows-x86_64',
-  'debian-x86_64-unknown-linux-gnu-java': 'linux-gnu-x86_64',
-  'alpine-x86_64-unknown-linux-musl-java': 'linux-musl-x86_64',
-  'alpine-aarch64-unknown-linux-musl-java': 'linux-musl-arm64',
-};
 
 const JAVA_NATIVE_DIR = path.resolve(
   BASE_DIR,
@@ -33,6 +17,7 @@ export function buildJava(options: BuilderOptions) {
 
   options.release = true; // default to true
   options.targetProject = 'statsig_java';
+  options.target = detectTarget(options);
   buildFfiHelper(options);
   Log.stepEnd(`Built statsig-java`);
 
@@ -51,18 +36,8 @@ function moveJavaLibraries(libFiles: string[], options: BuilderOptions) {
   let fileMoved = false;
 
   libFiles.forEach((file) => {
-    if (!file.includes(options.os)) {
-      return;
-    }
-
-    const arch = getArchInfo(options.arch).name;
-    const classifier = resolveClassifierFromOsArch(options.os, arch);
-    if (!classifier) {
-      return;
-    }
-
     const filename = path.basename(file);
-    const destDir = path.resolve(JAVA_NATIVE_DIR, classifier);
+    const destDir = path.resolve(JAVA_NATIVE_DIR, options.target);
     ensureDirExists(destDir);
 
     const destinationPath = path.join(destDir, filename);
@@ -83,17 +58,4 @@ function ensureDirExists(dirPath: string) {
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
   }
-}
-
-function resolveClassifierFromOsArch(os: string, arch: string): string | null {
-  const prefix = `${os}-${arch}`;
-  const matchedEntry = Object.entries(TARGET_MAPPING).find(([key]) =>
-    key.startsWith(prefix),
-  );
-
-  if (matchedEntry) {
-    return matchedEntry[1];
-  }
-
-  return null;
 }

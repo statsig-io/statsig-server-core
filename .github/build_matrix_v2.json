@@ -1,0 +1,66 @@
+{
+  "config": [
+    {
+      "os": "centos7",
+      "arch": "x86_64",
+      "target": "x86_64-unknown-linux-gnu",
+      "runner": "ubuntu-latest",
+      "docker_arch": "amd64",
+      "always_build": true
+    },
+    {
+      "os": "centos7",
+      "arch": "aarch64",
+      "target": "aarch64-unknown-linux-gnu",
+      "runner": "ubuntu-24.04-arm",
+      "docker_arch": "arm64",
+      "always_build": true
+    },
+    {
+      "os": "alpine",
+      "arch": "x86_64",
+      "target": "x86_64-unknown-linux-musl",
+      "runner": "ubuntu-latest",
+      "docker_arch": "amd64",
+      "always_build": true
+    },
+    {
+      "os": "alpine",
+      "arch": "aarch64",
+      "target": "aarch64-unknown-linux-musl",
+      "runner": "ubuntu-24.04-arm",
+      "docker_arch": "arm64",
+      "always_build": true
+    },
+    {
+      "os": "macos",
+      "target": "x86_64-apple-darwin",
+      "runner": "macos-13",
+      "arch": "x86_64",
+      "always_build": true
+    },
+    {
+      "os": "macos",
+      "arch": "aarch64",
+      "target": "aarch64-apple-darwin",
+      "runner": "macos-14",
+      "py_deps_suffix": "--break-system-packages",
+      "always_build": true
+    },
+    {
+      "os": "windows",
+      "arch": "x86_64",
+      "target": "x86_64-pc-windows-msvc",
+      "runner": "windows-latest",
+      "py_arch": "x64",
+      "always_build": true
+    },
+    {
+      "os": "windows",
+      "arch": "x86",
+      "target": "i686-pc-windows-msvc",
+      "runner": "windows-latest",
+      "py_arch": "x86"
+    }
+  ]
+}

@@ -80,7 +80,7 @@ jobs:
           - dotnet
 
     timeout-minutes: 25
-    runs-on: ${{ matrix.config.runner }}
+    runs-on: ${{ (contains(fromJson('["java", "dotnet", "ffi"]'), matrix.package) && contains(matrix.config.target, 'linux')) && 'ubuntu-latest' || matrix.config.runner }}
 
     steps:
       - uses: actions/checkout@v4
@@ -161,7 +161,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: debian-x86_64-unknown-linux-gnu-node
+          name: centos7-x86_64-unknown-linux-gnu-node
           path: artifacts
 
       - name: Setup Statsig Node
@@ -192,7 +192,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: debian-x86_64-unknown-linux-gnu-python
+          name: centos7-x86_64-unknown-linux-gnu-python
           path: artifacts
 
       - name: Setup Statsig Python
