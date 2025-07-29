@@ -16,8 +16,8 @@ export class StatsigWrapper {
       this.statsig = new Statsig('secret-NODE_CORE', {
         specsUrl: `${SCRAPI_URL}/v2/download_config_specs`,
         logEventUrl: `${SCRAPI_URL}/v1/log_event`,
-        disableUserAgentParsing: true,
-        disableCountryLookup: true,
+        // disableUserAgentParsing: true,
+        // disableCountryLookup: true,
       });
 
       await this.statsig.initialize();

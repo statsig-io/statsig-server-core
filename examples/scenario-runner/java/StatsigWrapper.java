@@ -29,7 +29,7 @@ public class StatsigWrapper {
 
             com.statsig.sdk.StatsigOptions options = new com.statsig.sdk.StatsigOptions();
             options.setApi(SCRAPI_URL + "/v1");
-            options.setLogLevel(com.statsig.sdk.LogLevel.DEBUG);
+            // options.setLogLevel(com.statsig.sdk.LogLevel.DEBUG);
 
             com.statsig.sdk.Statsig.initializeAsync("secret-JAVA_LEGACY", options);
         } else {

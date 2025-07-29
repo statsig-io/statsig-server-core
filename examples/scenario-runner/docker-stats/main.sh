@@ -17,7 +17,16 @@ while true; do
         break
     fi
 
-    echo "{\"timestamp\": $timestamp, \"stats\": $stats_json}" >> /shared-volume/docker-stats.log
+    num_lines=$(wc -l /shared-volume/docker-stats.log | awk '{print $1}')
+
+    if [ $num_lines -gt 1000 ]; then
+        # Overwrite the file
+        echo "{\"timestamp\": $timestamp, \"stats\": $stats_json}" > /shared-volume/docker-stats.log
+    else
+        # Append to the file
+        echo "{\"timestamp\": $timestamp, \"stats\": $stats_json}" >> /shared-volume/docker-stats.log
+    fi
+
     echo "{\"timestamp\": $timestamp, \"stats\": $stats_json}"
 done
 

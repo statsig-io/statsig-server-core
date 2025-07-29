@@ -1,18 +1,28 @@
-import express, { type Request, type Response } from 'express';
+import express, { type Response } from 'express';
 import { readFileSync } from 'node:fs';
 
 import type { ScrapiState } from '../common';
 import { incEventCount, incReqCount, takeCounters } from './counters';
-import { getSdkInfo } from './utils';
-
-const benchmarkSdkKey: string = process.env.BENCH_CLUSTER_SDK_KEY ?? '';
-if (!benchmarkSdkKey || benchmarkSdkKey === '') {
-  throw new Error('BENCH_CLUSTER_SDK_KEY is not set');
-}
+import { flushCounters, flushDockerStats, getSdkInfo } from './utils';
 
 const app = express();
 let state: ScrapiState | null = null;
 let lastFlushedAt = new Date();
+
+app.all('/ready', (_req, res) => {
+  const v1Payload = state?.dcs?.response?.v1Payload;
+  const v2Payload = state?.dcs?.response?.v2Payload;
+
+  if (v1Payload == null || v2Payload == null) {
+    res.status(500).json({ error: 'State not initialized' });
+    return;
+  }
+
+  res.status(200).json({
+    v1DcsLength: v1Payload.length,
+    v2DcsLength: v2Payload.length,
+  });
+});
 
 app.use((req, _res, next) => {
   const { sdkType, sdkVersion } = getSdkInfo(req);
@@ -22,12 +32,38 @@ app.use((req, _res, next) => {
   next();
 });
 
+app.use((req, res, next) => {
+  const encoding = req.headers['content-encoding'] ?? '';
+  const shouldParse =
+    req.headers['content-type']?.includes('application/json') &&
+    encoding !== 'zstd';
+
+  if (shouldParse) {
+    express.json({ limit: '50mb' })(req, res, next);
+  } else {
+    next();
+  }
+});
+
 app.post('/v1/log_event', async (req, res) => {
   const { sdkType, sdkVersion } = getSdkInfo(req);
   const eventCountStr =
     req.headers?.['statsig-event-count'] ?? req.body?.events?.length;
 
   if (!eventCountStr) {
+    console.error(
+      'statsig-event-count is required',
+      JSON.stringify(
+        {
+          path: req.path,
+          params: req.params,
+          headers: req.headers,
+          body: req.body,
+        },
+        null,
+        2,
+      ),
+    );
     throw new Error('statsig-event-count is required');
   }
 
@@ -115,17 +151,17 @@ function readState(): ScrapiState {
 function update() {
   state = readState();
 
-  if (Date.now() - lastFlushedAt.getTime() > 10_000) {
-    const counters = takeCounters();
-    if (
-      Object.keys(counters.reqCounts).length > 0 ||
-      Object.keys(counters.eventCounts).length > 0
-    ) {
-      console.log(JSON.stringify(counters, null, 2));
-    }
-
-    lastFlushedAt = new Date();
+  if (Date.now() - lastFlushedAt.getTime() < 30_000) {
+    return;
   }
 
-  // logEventsToStatsig(counters.reqCounts, benchmarkSdkKey);
+  const counters = takeCounters();
+  if (counters.length > 0) {
+    console.log(JSON.stringify(counters, null, 2));
+    flushCounters(counters);
+  }
+
+  flushDockerStats();
+
+  lastFlushedAt = new Date();
 }

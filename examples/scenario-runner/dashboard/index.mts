@@ -1,11 +1,13 @@
 import express from 'express';
 import { execSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { State } from '../common';
 import { INITIAL_STATE } from './initial_state';
+
+await boot();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -44,13 +46,28 @@ app.get('/stats', async (_req, res) => {
 app.listen(80, async () => {
   log('Dashboard server running');
 
-  const state = INITIAL_STATE;
+  const state = readState();
   if (state.scrapi.dcs.syncing.enabled) {
     await syncDcs(state);
   }
 
   setInterval(update, 1000);
 });
+
+async function boot() {
+  if (INITIAL_STATE.scrapi.dcs.syncing.enabled) {
+    await syncDcs(INITIAL_STATE);
+  }
+
+  for (let i = 0; i < 10; i++) {
+    if (existsSync('/shared-volume/docker-stats.log')) {
+      break;
+    }
+
+    console.log('Waiting for docker-stats.log to be ready');
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
 
 function log(message: string, ...args: unknown[]) {
   console.log(`[${new Date().toISOString()}][dashboard] ${message}`, ...args);

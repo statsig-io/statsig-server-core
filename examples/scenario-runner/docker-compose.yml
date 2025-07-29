@@ -12,7 +12,7 @@ services:
       - "80:80"
     volumes:
       - ./shared-volume:/shared-volume
-      - ./dashboard/public:/app/public
+      # - ./dashboard/public:/app/public
     environment:
       - EVAL_PROJ_SDK_KEY=${EVAL_PROJ_SDK_KEY}
 

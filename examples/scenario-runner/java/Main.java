@@ -23,7 +23,7 @@ public class Main {
         for (int i = 0; i < 10; i++) {
             try {
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(StatsigWrapper.SCRAPI_URL + "/v2/download_config_specs/xx"))
+                        .uri(URI.create(StatsigWrapper.SCRAPI_URL + "/ready"))
                         .timeout(Duration.ofSeconds(1))
                         .build();
                 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());

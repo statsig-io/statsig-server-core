@@ -27,7 +27,7 @@ class SdkState(TypedDict):
 # Wait for scrapi to be ready
 for i in range(10):
     try:
-        res = requests.get(f"{SCRAPI_URL}/v2/download_config_specs/xx")
+        res = requests.get(f"{SCRAPI_URL}/ready")
         if res.status_code == 200:
             break
     except:

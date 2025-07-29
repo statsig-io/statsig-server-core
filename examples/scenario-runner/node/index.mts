@@ -6,9 +6,7 @@ import { StatsigWrapper } from './statsig-wrapper';
 const SCRAPI_URL = 'http://scrapi:8000';
 
 for (let i = 0; i < 10; i++) {
-  const res = await fetch(`${SCRAPI_URL}/v2/download_config_specs/xx`).catch(
-    () => null,
-  );
+  const res = await fetch(`${SCRAPI_URL}/ready`).catch(() => null);
   if (res?.status === 200) {
     break;
   }
@@ -24,34 +22,53 @@ function readSdkState(): SdkState {
   return JSON.parse(state).sdk;
 }
 
+function profile(name: string, fn: () => void) {
+  const start = performance.now();
+  fn();
+  const end = performance.now();
+  const duration = (end - start).toFixed(2);
+  console.log(`${name} took ${duration}ms`);
+}
+
 function update() {
   console.log('--------------------------------------- [ Update ]');
 
+  const start = performance.now();
   const state = readSdkState();
 
   console.log('Users: ', Object.keys(state.users).length);
-  console.log(
-    `Gates: count(${state.gate.names.length}) qps(${state.gate.qps})`,
-  );
-  console.log(
-    `Events: count(${state.logEvent.events.length}) qps(${state.logEvent.qps})`,
-  );
 
   for (const userData of state.users) {
     StatsigWrapper.setUser(userData);
 
-    for (const gateName of state.gate.names) {
-      for (let i = 0; i < state.gate.qps; i++) {
-        StatsigWrapper.checkGate(gateName);
-      }
-    }
+    const numGates = state.gate.names.length;
+    profile(
+      `checkGate(${numGates}) qps(${state.gate.qps}) user(${userData.userID})`,
+      () => {
+        for (const gateName of state.gate.names) {
+          for (let i = 0; i < state.gate.qps; i++) {
+            StatsigWrapper.checkGate(gateName);
+          }
+        }
+      },
+    );
 
-    for (const event of state.logEvent.events) {
-      for (let i = 0; i < state.logEvent.qps; i++) {
-        StatsigWrapper.logEvent(event.eventName);
-      }
-    }
+    const numEvents = state.logEvent.events.length;
+    profile(
+      `logEvent(${numEvents}) qps(${state.logEvent.qps}) user(${userData.userID})`,
+      () => {
+        for (const event of state.logEvent.events) {
+          for (let i = 0; i < state.logEvent.qps; i++) {
+            StatsigWrapper.logEvent(event.eventName);
+          }
+        }
+      },
+    );
   }
+
+  const end = performance.now();
+  const duration = (end - start).toFixed(2);
+  console.log(`Overall took ${duration}ms`);
 }
 
 setInterval(update, 1000);

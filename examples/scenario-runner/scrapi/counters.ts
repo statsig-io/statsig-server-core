@@ -1,5 +1,20 @@
-let reqCounts = {};
-let eventCounts = {};
+export type Counter = {
+  sdkType: string;
+  sdkVersion: string;
+  count: number;
+} & (
+  | {
+      kind: 'req';
+      path: string;
+      method: string;
+    }
+  | {
+      kind: 'event';
+    }
+);
+
+let reqCounts: Record<string, Counter> = {};
+let eventCounts: Record<string, Counter> = {};
 
 export function incReqCount(
   sdkType: string,
@@ -8,7 +23,15 @@ export function incReqCount(
   method: string,
 ) {
   const key = [sdkType, sdkVersion, path, method].join('|');
-  reqCounts[key] = (reqCounts[key] ?? 0) + 1;
+  const curr = reqCounts[key]?.count ?? 0;
+  reqCounts[key] = {
+    kind: 'req',
+    sdkType,
+    sdkVersion,
+    path,
+    method,
+    count: curr + 1,
+  };
 }
 
 export function incEventCount(
@@ -17,18 +40,21 @@ export function incEventCount(
   count: number,
 ) {
   const key = [sdkType, sdkVersion].join('|');
-  eventCounts[key] = (eventCounts[key] ?? 0) + count;
+  const curr = eventCounts[key]?.count ?? 0;
+  eventCounts[key] = {
+    kind: 'event',
+    sdkType,
+    sdkVersion,
+    count: curr + count,
+  };
 }
 
-export function takeCounters() {
+export function takeCounters(): Counter[] {
   const localReqCounts = reqCounts;
   reqCounts = {};
 
   const localEventCounts = eventCounts;
   eventCounts = {};
 
-  return {
-    reqCounts: localReqCounts,
-    eventCounts: localEventCounts,
-  };
+  return [...Object.values(localReqCounts), ...Object.values(localEventCounts)];
 }

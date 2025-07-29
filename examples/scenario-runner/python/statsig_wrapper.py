@@ -31,8 +31,8 @@ class StatsigWrapper:
             options = StatsigOptions(
                 specs_url=f"{SCRAPI_URL}/v2/download_config_specs",
                 log_event_url=f"{SCRAPI_URL}/v1/log_event",
-                disable_user_agent_parsing=True,
-                disable_country_lookup=True,
+                # disable_user_agent_parsing=True,
+                # disable_country_lookup=True,
             )
 
             cls._statsig = Statsig("secret-PYTHON_CORE", options)
