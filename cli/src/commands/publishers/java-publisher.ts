@@ -11,29 +11,29 @@ import path from 'node:path';
 import { PublisherOptions } from './publisher-options.js';
 
 const TARGETS = [
-  "aarch64-apple-darwin",
-  "x86_64-apple-darwin",
-  "aarch64-unknown-linux-gnu",
-  "x86_64-unknown-linux-gnu",
-  "x86_64-unknown-linux-musl",
-  "aarch64-unknown-linux-musl",
-  "x86_64-pc-windows-msvc",
-  "i686-pc-windows-msvc",
+  'aarch64-apple-darwin',
+  'x86_64-apple-darwin',
+  'aarch64-unknown-linux-gnu',
+  'x86_64-unknown-linux-gnu',
+  'x86_64-unknown-linux-musl',
+  'aarch64-unknown-linux-musl',
+  'x86_64-pc-windows-msvc',
+  'i686-pc-windows-msvc',
 ];
 
 const JAVA_NATIVE_DIR = path.resolve(
   BASE_DIR,
-  "statsig-java/src/main/resources/native"
+  'statsig-java/src/main/resources/native',
 );
 
 export async function javaPublish(options: PublisherOptions) {
   const libFiles = [
-    ...listFiles(options.workingDir, "**/target/**/release/*.dylib"),
-    ...listFiles(options.workingDir, "**/target/**/release/*.so"),
-    ...listFiles(options.workingDir, "**/target/**/release/*.dll"),
+    ...listFiles(options.workingDir, '**/target/**/release/*.dylib'),
+    ...listFiles(options.workingDir, '**/target/**/release/*.so'),
+    ...listFiles(options.workingDir, '**/target/**/release/*.dll'),
   ].filter(isMappedTarget);
 
-  Log.stepBegin("Clearing Java Native Directory");
+  Log.stepBegin('Clearing Java Native Directory');
   ensureEmptyDir(JAVA_NATIVE_DIR);
   Log.stepEnd(`Cleared ${JAVA_NATIVE_DIR}`);
 
@@ -57,14 +57,14 @@ function getDestination(file: string, destKeys: string[]): string | null {
 }
 
 function moveJavaLibraries(libFiles: string[]) {
-  Log.stepBegin("Moving Java Libraries");
+  Log.stepBegin('Moving Java Libraries');
 
   let allFilesMoved = true;
   let movedFiles = 0;
   libFiles.forEach((file) => {
     const destination = getDestination(file, TARGETS);
     if (!destination) {
-      Log.stepProgress(`No mapping found for: ${file}`, "failure");
+      Log.stepProgress(`No mapping found for: ${file}`, 'failure');
       allFilesMoved = false;
       return;
     }
@@ -75,7 +75,7 @@ function moveJavaLibraries(libFiles: string[]) {
 
     const destinationPath = path.resolve(destDir, filename);
     execSync(`cp ${file} ${destinationPath}`);
-    ++movedFiles
+    ++movedFiles;
     Log.stepProgress(`Copied lib to ${destinationPath}`);
   });
 
@@ -85,8 +85,11 @@ function moveJavaLibraries(libFiles: string[]) {
   }
 
   if (movedFiles < TARGETS.length) {
-    Log.stepEnd(`Moved only ${movedFiles} of ${TARGETS.length} expected files`, "failure");
-    throw new Error("Failed to move all files");
+    Log.stepEnd(
+      `Moved only ${movedFiles} of ${TARGETS.length} expected files`,
+      'failure',
+    );
+    throw new Error('Failed to move all files');
   }
 
   Log.stepEnd('Successfully moved Java Libraries');

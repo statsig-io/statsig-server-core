@@ -33,9 +33,9 @@ const DIR_STRUCTURE = {
       'statsig-node-core.darwin-arm64.node',
   },
   'aarch64-unknown-linux-gnu': {
-    'debian-aarch64-unknown-linux-gnu-node/**/aarch64-unknown-linux-gnu.package.json':
+    'centos7-aarch64-unknown-linux-gnu-node/**/aarch64-unknown-linux-gnu.package.json':
       'package.json',
-    'debian-aarch64-unknown-linux-gnu-node/**/statsig-node-core.linux-arm64-gnu.node':
+    'centos7-aarch64-unknown-linux-gnu-node/**/statsig-node-core.linux-arm64-gnu.node':
       'statsig-node-core.linux-arm64-gnu.node',
   },
   'aarch64-unknown-linux-musl': {
@@ -63,9 +63,9 @@ const DIR_STRUCTURE = {
       'statsig-node-core.win32-x64-msvc.node',
   },
   'x86_64-unknown-linux-gnu': {
-    'debian-x86_64-unknown-linux-gnu-node/**/x86_64-unknown-linux-gnu.package.json':
+    'centos7-x86_64-unknown-linux-gnu-node/**/x86_64-unknown-linux-gnu.package.json':
       'package.json',
-    'debian-x86_64-unknown-linux-gnu-node/**/statsig-node-core.linux-x64-gnu.node':
+    'centos7-x86_64-unknown-linux-gnu-node/**/statsig-node-core.linux-x64-gnu.node':
       'statsig-node-core.linux-x64-gnu.node',
   },
   'x86_64-unknown-linux-musl': {

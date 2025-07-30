@@ -191,9 +191,10 @@ createStatsigJar('java-core', null)
 //macos
 createStatsigJar('aarch64-apple-darwin', 'aarch64-apple-darwin')
 createStatsigJar('x86_64-apple-darwin', 'x86_64-apple-darwin')
-// Linux
+// Linux GNU
 createStatsigJar('aarch64-unknown-linux-gnu', 'aarch64-unknown-linux-gnu')
 createStatsigJar('x86_64-unknown-linux-gnu', 'x86_64-unknown-linux-gnu')
+// Linux MUSL
 createStatsigJar('x86_64-unknown-linux-musl', 'x86_64-unknown-linux-musl')
 createStatsigJar('aarch64-unknown-linux-musl', 'aarch64-unknown-linux-musl')
 // Windows
@@ -203,18 +204,24 @@ createStatsigJar('i686-pc-windows-msvc', 'i686-pc-windows-msvc')
 // createStatsigJar('aarch64-pc-windows-msvc', 'windows-arm64')
 
 def expectedTasks = [
-    'uber',
-    'java-core',
-    //apple
-    'aarch64-apple-darwin',
-    'x86_64-apple-darwin',
-    //linux
-    'aarch64-unknown-linux-gnu',
-    'x86_64-unknown-linux-gnu',
-    'x86_64-unknown-linux-musl',
-    'aarch64-unknown-linux-musl',
-    'x86_64-pc-windows-msvc',
-    'i686-pc-windows-msvc'
+    'java-coreJar',
+    'uberJar',
+
+    // Apple
+    'aarch64-apple-darwinJar',
+    'x86_64-apple-darwinJar',
+
+    // Linux GNU
+    'aarch64-unknown-linux-gnuJar',
+    'x86_64-unknown-linux-gnuJar',
+
+    // Linux MUSL
+    'x86_64-unknown-linux-muslJar',
+    'aarch64-unknown-linux-muslJar',
+
+    // Windows
+    'x86_64-pc-windows-msvcJar',
+    'i686-pc-windows-msvcJar',
 ]
 
 processResources {

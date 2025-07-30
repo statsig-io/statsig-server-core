@@ -10,16 +10,19 @@ const REQUIRED_FILES = [
   'cp37-abi3-macosx_11_0_arm64.whl',
   'cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl',
   'cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl',
-  'cp37-abi3-manylinux_2_27_aarch64.whl',
-  'cp37-abi3-manylinux_2_27_x86_64.whl',
-  'cp37-abi3-manylinux_2_28_aarch64.whl',
-  'cp37-abi3-manylinux_2_28_x86_64.whl',
-  'cp37-abi3-manylinux_2_34_aarch64.whl',
-  'cp37-abi3-manylinux_2_34_x86_64.whl',
   'cp37-abi3-musllinux_1_2_aarch64.whl',
   'cp37-abi3-musllinux_1_2_x86_64.whl',
   'cp37-abi3-win_amd64.whl',
   'cp37-abi3-win32.whl',
+];
+
+const _LEGACY_FILES = [
+  'cp37-abi3-manylinux_2_27_aarch64.whl',
+  'cp37-abi3-manylinux_2_28_aarch64.whl',
+  'cp37-abi3-manylinux_2_34_aarch64.whl',
+  'cp37-abi3-manylinux_2_27_x86_64.whl',
+  'cp37-abi3-manylinux_2_28_x86_64.whl',
+  'cp37-abi3-manylinux_2_34_x86_64.whl',
 ];
 
 export async function publishPython(options: PublisherOptions) {
@@ -54,7 +57,7 @@ export async function publishPython(options: PublisherOptions) {
 
   if (!allValid) {
     Log.stepEnd('Some files were not expected', 'failure');
-    return;
+    process.exit(1);
   }
 
   if (toFind.length > 0) {
@@ -62,7 +65,7 @@ export async function publishPython(options: PublisherOptions) {
       `Not all files were found. Missing: ${toFind.join(', ')}`,
       'failure',
     );
-    return;
+    process.exit(1);
   }
 
   Log.stepEnd('Finished listing files');
@@ -91,7 +94,7 @@ export async function publishPython(options: PublisherOptions) {
 
   if (!source) {
     Log.stepEnd('No source distribution found', 'failure');
-    return;
+    process.exit(1);
   }
 
   Log.stepBegin('Uploading Source Distribution to PyPI');
@@ -104,6 +107,7 @@ export async function publishPython(options: PublisherOptions) {
     source,
   ].join(' ');
 
+  Log.stepProgress(`Running: ${sourceCommand}`);
   execSync(sourceCommand, { cwd: options.workingDir, stdio: 'inherit' });
   Log.stepEnd('Successfully uploaded source distribution to PyPI');
 }

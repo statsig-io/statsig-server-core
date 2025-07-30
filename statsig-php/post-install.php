@@ -7,29 +7,6 @@ if (getenv('SKIP_STATSIG_POST_INSTALL') === 'true') {
     exit(0);
 }
 
-function get_amazon_linux_os()
-{
-    $osFile = '/etc/os-release';
-    if (!file_exists($osFile)) {
-        return null;
-    }
-
-    $osRelease = file_get_contents($osFile);
-    if ($osRelease === false) {
-        return null;
-    }
-
-    if (strpos($osRelease, 'Amazon Linux 2023') !== false) {
-        return 'amazonlinux2023';
-    }
-
-    if (strpos($osRelease, 'Amazon Linux 2') !== false) {
-        return 'amazonlinux2';
-    }
-
-    return null;
-}
-
 function get_os()
 {
     $os = PHP_OS_FAMILY;
@@ -60,10 +37,7 @@ function get_system_info()
         exit(1);
     }
 
-    $os = get_amazon_linux_os();
-    if ($os === null) {
-        $os = get_os();
-    }
+    $os = get_os();
 
     if ($os === null) {
         echo "Unsupported OS: $os\n";
@@ -143,17 +117,11 @@ function download_binary($system_info)
         "macos-aarch64" => "statsig-ffi-" . VERSION . "-aarch64-apple-darwin-shared.zip",
         "macos-x86_64" => "statsig-ffi-" . VERSION . "-x86_64-apple-darwin-shared.zip",
 
-        "linux-aarch64" => "statsig-ffi-" . VERSION . "-debian-aarch64-unknown-linux-gnu-shared.zip",
-        "linux-x86_64" => "statsig-ffi-" . VERSION . "-debian-x86_64-unknown-linux-gnu-shared.zip",
+        "linux-aarch64" => "statsig-ffi-" . VERSION . "-centos7-aarch64-unknown-linux-gnu-shared.zip",
+        "linux-x86_64" => "statsig-ffi-" . VERSION . "-centos7-x86_64-unknown-linux-gnu-shared.zip",
 
         "linux-aarch64-musl" => "statsig-ffi-" . VERSION . "-alpine-aarch64-unknown-linux-musl-shared.zip",
         "linux-x86_64-musl" => "statsig-ffi-" . VERSION . "-alpine-x86_64-unknown-linux-musl-shared.zip",
-
-        "amazonlinux2023-aarch64" => "statsig-ffi-" . VERSION . "-amazonlinux2023-aarch64-unknown-linux-gnu-shared.zip",
-        "amazonlinux2023-x86_64" => "statsig-ffi-" . VERSION . "-amazonlinux2023-x86_64-unknown-linux-gnu-shared.zip",
-
-        "amazonlinux2-aarch64" => "statsig-ffi-" . VERSION . "-amazonlinux2-aarch64-unknown-linux-gnu-shared.zip",
-        "amazonlinux2-x86_64" => "statsig-ffi-" . VERSION . "-amazonlinux2-x86_64-unknown-linux-gnu-shared.zip",
     ];
 
     $system_tag = $system_info[0] . "-" . $system_info[1];

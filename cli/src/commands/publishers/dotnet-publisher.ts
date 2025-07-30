@@ -16,19 +16,13 @@ const TARGET_MAPPING = {
   'macos-x86_64-apple-darwin-ffi': 'osx-x86',
   'windows-i686-pc-windows-msvc-ffi': 'win-x86',
   'windows-x86_64-pc-windows-msvc-ffi': 'win-x64',
-  'debian-aarch64-unknown-linux-gnu-ffi': 'linux-arm64',
-  'debian-x86_64-unknown-linux-gnu-ffi': 'linux-x64',
+  'centos7-aarch64-unknown-linux-gnu-ffi': 'linux-arm64',
+  'centos7-x86_64-unknown-linux-gnu-ffi': 'linux-x64',
 };
 
-const DOTNET_DIR= path.resolve(
-  BASE_DIR,
-  'statsig-dotnet/runtimes',
-);
+const DOTNET_DIR = path.resolve(BASE_DIR, 'statsig-dotnet/runtimes');
 
-const NUPKG_DIR = path.resolve(
-  BASE_DIR,
-  'statsig-dotnet/nupkgs',
-);
+const NUPKG_DIR = path.resolve(BASE_DIR, 'statsig-dotnet/nupkgs');
 
 export async function dotnetPublish(options: PublisherOptions) {
   const libFiles = [
@@ -104,22 +98,24 @@ async function publishDotnetPackages(options: PublisherOptions) {
   ensureEmptyDir(NUPKG_DIR);
 
   const nativeProjs = [
-        'src/Native/Statsig.NativeAssets.linux-x64.csproj',
-        'src/Native/Statsig.NativeAssets.osx-arm64.csproj',
-        'src/Native/Statsig.NativeAssets.osx-x86.csproj',
-        'src/Native/Statsig.NativeAssets.win-x64.csproj',
-        'src/Native/Statsig.NativeAssets.win-x86.csproj',
-        'src/Native/Statsig.NativeAssets.linux-arm64.csproj',
-        // Add more native projects as needed
-    ];
+    'src/Native/Statsig.NativeAssets.linux-x64.csproj',
+    'src/Native/Statsig.NativeAssets.osx-arm64.csproj',
+    'src/Native/Statsig.NativeAssets.osx-x86.csproj',
+    'src/Native/Statsig.NativeAssets.win-x64.csproj',
+    'src/Native/Statsig.NativeAssets.win-x86.csproj',
+    'src/Native/Statsig.NativeAssets.linux-arm64.csproj',
+    // Add more native projects as needed
+  ];
 
   for (const proj of nativeProjs) {
     packProject(proj);
   }
-  Log.stepProgress('Packed all native projects, starting to push all native packages');
+  Log.stepProgress(
+    'Packed all native projects, starting to push all native packages',
+  );
 
-  const nupkgs = fs.readdirSync(NUPKG_DIR).filter(f => f.endsWith('.nupkg'));
-  const nativePkgs = nupkgs.filter(name => name.includes('NativeAssets'));
+  const nupkgs = fs.readdirSync(NUPKG_DIR).filter((f) => f.endsWith('.nupkg'));
+  const nativePkgs = nupkgs.filter((name) => name.includes('NativeAssets'));
 
   const version = getVersionFromNupkgList(nativePkgs);
   Log.stepProgress(`Detected version: ${version}`);
@@ -128,7 +124,9 @@ async function publishDotnetPackages(options: PublisherOptions) {
     pushNupkg(pkg);
   }
 
-  Log.stepProgress('Finished pushing native packages. Waiting for all native packages to be indexed...');
+  Log.stepProgress(
+    'Finished pushing native packages. Waiting for all native packages to be indexed...',
+  );
   const allIndexed = await waitForPackagesIndexed(nativePkgs, version);
 
   if (!allIndexed) {
@@ -136,13 +134,23 @@ async function publishDotnetPackages(options: PublisherOptions) {
   }
 
   packProject('src/Statsig/Statsig.csproj');
-  Log.stepProgress('Packed statsig(main) project, starting to push main packages');
-  
-  const updatedNupkgs = fs.readdirSync(NUPKG_DIR).filter(f => f.endsWith('.nupkg'));
-  const mainPkgs = updatedNupkgs.filter(name => !name.includes('NativeAssets'));
+  Log.stepProgress(
+    'Packed statsig(main) project, starting to push main packages',
+  );
+
+  const updatedNupkgs = fs
+    .readdirSync(NUPKG_DIR)
+    .filter((f) => f.endsWith('.nupkg'));
+  const mainPkgs = updatedNupkgs.filter(
+    (name) => !name.includes('NativeAssets'),
+  );
 
   if (mainPkgs.length !== 1) {
-    throw new Error(`Expected exactly one main package, found ${mainPkgs.length}: ${mainPkgs.join(', ')}`);
+    throw new Error(
+      `Expected exactly one main package, found ${
+        mainPkgs.length
+      }: ${mainPkgs.join(', ')}`,
+    );
   }
 
   pushNupkg(mainPkgs[0]);
@@ -169,9 +177,9 @@ function packProject(projectPath: string) {
 
   execSync(command, {
     cwd: getRootedPath('statsig-dotnet'),
-    stdio: 'inherit' 
+    stdio: 'inherit',
   });
-  
+
   Log.stepEnd(`Successfully packed: ${projectPath}`);
 }
 
@@ -191,12 +199,14 @@ async function waitForPackagesIndexed(
   pkgs: string[],
   version: string,
   timeoutMs: number = 600_000,
-  intervalMs: number = 10_000
+  intervalMs: number = 10_000,
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   const pending = new Set<string>(pkgs);
 
-  Log.stepProgress(`⏳ Waiting for NuGet to index ${pending.size} packages (version ${version})...`);
+  Log.stepProgress(
+    `⏳ Waiting for NuGet to index ${pending.size} packages (version ${version})...`,
+  );
 
   while (Date.now() < deadline && pending.size > 0) {
     for (const pkg of [...pending]) {
@@ -206,12 +216,16 @@ async function waitForPackagesIndexed(
       try {
         const res = await fetch(url);
         if (!res.ok) {
-          Log.stepProgress(`❌ Failed to fetch index.json for ${name}: ${res.status}`);
+          Log.stepProgress(
+            `❌ Failed to fetch index.json for ${name}: ${res.status}`,
+          );
           return false;
         }
 
         const data = await res.json();
-        const exists = data.versions?.some((v: string) => v.toLowerCase() === version.toLowerCase());
+        const exists = data.versions?.some(
+          (v: string) => v.toLowerCase() === version.toLowerCase(),
+        );
 
         if (exists) {
           Log.stepProgress(`✅ FlatContainer indexed: ${name}@${version}`);
@@ -226,7 +240,7 @@ async function waitForPackagesIndexed(
 
     if (pending.size > 0) {
       Log.stepProgress(`⌛ Still waiting for: ${[...pending].join(', ')}`);
-      await new Promise(res => setTimeout(res, intervalMs));
+      await new Promise((res) => setTimeout(res, intervalMs));
     }
   }
 
@@ -234,7 +248,11 @@ async function waitForPackagesIndexed(
     Log.stepEnd(`✅ All native packages indexed on NuGet`);
     return true;
   } else {
-    Log.stepProgress(`❌ Timeout: Not all native packages were indexed: ${[...pending].join(', ')}`);
+    Log.stepProgress(
+      `❌ Timeout: Not all native packages were indexed: ${[...pending].join(
+        ', ',
+      )}`,
+    );
     return false;
   }
 }
