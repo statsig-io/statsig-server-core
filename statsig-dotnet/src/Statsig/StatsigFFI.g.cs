@@ -12,7 +12,12 @@ namespace Statsig
 {
     internal static unsafe partial class StatsigFFI
     {
+#if WINDOWS
+        const string __DllName = "statsig_ffi";
+#else
         const string __DllName = "libstatsig_ffi";
+#endif
+        
 
 
 
