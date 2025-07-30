@@ -16,17 +16,17 @@ type SaveFnArgs = FnArgs<(String, String, Value)>;
 type DeleteFnArgs = FnArgs<(String, String)>;
 type TypedJsFunction<Arg, ReturnVal> = Option<ThreadsafeFunction<Arg, ReturnVal, Arg, false>>;
 
-#[napi(object, object_to_js = false, js_name = "PersistentStorageBase")]
+#[napi(object, object_to_js = false, js_name = "PersistentStorage")]
 pub struct PersistentStorageNapi {
     #[napi(
         js_name = "load",
-        ts_type = "(key: string) => unknown | null"
+        ts_type = "(key: string) => UserPersistedValues | null"
     )]
     pub load_fn: TypedJsFunction<String, Value>,
 
     #[napi(
         js_name = "save",
-        ts_type = "(key: string, config_name: string, data: unknown) => void"
+        ts_type = "(key: string, config_name: string, data: StickyValues) => void"
     )]
     pub save_fn: TypedJsFunction<SaveFnArgs, ()>,
 
