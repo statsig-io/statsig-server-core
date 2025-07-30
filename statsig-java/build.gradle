@@ -203,18 +203,18 @@ createStatsigJar('i686-pc-windows-msvc', 'i686-pc-windows-msvc')
 // createStatsigJar('aarch64-pc-windows-msvc', 'windows-arm64')
 
 def expectedTasks = [
-    'aarch64-apple-darwinJar',
-    // 'aarch64-pc-windows-msvcJar',
-    'centos7-x86_64Jar',
-    'i686-pc-windows-msvcJar',
-    'java-coreJar',
-    'uberJar',
-    'linux-gnu-arm64Jar',
-    'linux-gnu-x86_64Jar',
-    'linux-musl-x86_64Jar',
-    'linux-musl-arm64Jar',
-    'x86_64-apple-darwinJar',
-    'x86_64-pc-windows-msvcJar',
+    'uber',
+    'java-core',
+    //apple
+    'aarch64-apple-darwin',
+    'x86_64-apple-darwin',
+    //linux
+    'aarch64-unknown-linux-gnu',
+    'x86_64-unknown-linux-gnu',
+    'x86_64-unknown-linux-musl',
+    'aarch64-unknown-linux-musl',
+    'x86_64-pc-windows-msvc',
+    'i686-pc-windows-msvc'
 ]
 
 processResources {
