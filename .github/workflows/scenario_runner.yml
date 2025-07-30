@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: "0 0 * * *" # Daily at 12:00 AM
   workflow_dispatch:
-  push:
+  # push:
 
 env:
   VM_NAME_PREFIX: "sdk-scenario-runner"
