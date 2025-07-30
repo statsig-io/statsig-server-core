@@ -2,6 +2,8 @@ using Xunit;
 using Moq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System;
+using System.IO;
 
 namespace Statsig.Tests
 {
@@ -344,6 +346,30 @@ namespace Statsig.Tests
             statsig.Dispose();
 
             Assert.True(true);
+        }
+
+        [Fact]
+        public void Statsig_SharedInstance_Returns_Error_Instance_When_Already_Exists()
+        {
+            Statsig.RemoveSharedInstance();
+            var options = new StatsigOptionsBuilder().Build();
+
+            Assert.NotNull(Statsig.NewShared("secret-singleton", options));
+
+            var errorInstance = Statsig.NewShared("secret-test", options);
+            Assert.NotNull(errorInstance);
+            Assert.NotSame(Statsig.NewShared("secret-singleton", options), errorInstance);
+        }
+
+        [Fact]
+        public void Statsig_SharedInstance_Accessible_After_Creation()
+        {
+            Statsig.RemoveSharedInstance();
+            var options = new StatsigOptionsBuilder().Build();
+            var instance = Statsig.NewShared("singleton-access", options);
+            Assert.NotNull(instance);
+            var shared = Statsig.Shared();
+            Assert.Same(instance, shared);
         }
     }
 }

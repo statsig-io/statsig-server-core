@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Statsig
 {
@@ -12,10 +13,75 @@ namespace Statsig
     {
         private readonly unsafe ulong _statsigRef;
 
-        public Statsig(string sdkKey, StatsigOptions options)
+        // Shared Instance
+        private static Statsig? sharedInstance = null;
+        private static readonly object lockObject = new();
+
+        public static Statsig Shared()
         {
+            if (!HasShared())
+            {
+                Console.Error.WriteLine(
+                    "[Statsig] No shared instance found. Please call NewShared() before accessing the shared instance. Returning an invalid instance.");
+                return CreateErrorStatsigInstance();
+            }
+
+            return sharedInstance;
+        }
+
+        [MemberNotNullWhen(true, nameof(sharedInstance))]
+        public static bool HasShared()
+        {
+            return sharedInstance != null;
+        }
+
+        public static Statsig NewShared(string sdkKey, StatsigOptions options)
+        {
+            lock (lockObject)
+            {
+                if (HasShared())
+                {
+                    Console.Error.WriteLine(
+                        "[Statsig] Shared instance already exists. Call RemoveSharedInstance() before creating a new one. Returning an invalid instance.");
+                    return CreateErrorStatsigInstance();
+                }
+                sharedInstance = new Statsig(sdkKey, options);
+            }
+
+            return sharedInstance;
+        }
+
+        public static Statsig NewShared(string sdkKey)
+        {
+            lock (lockObject)
+            {
+                if (HasShared())
+                {
+                    Console.Error.WriteLine(
+                        "[Statsig] Shared instance already exists. Call RemoveSharedInstance() before creating a new one. Returning an invalid instance.");
+                    return CreateErrorStatsigInstance();
+                }
+                sharedInstance = new Statsig(sdkKey);
+            }
+
+            return sharedInstance;
+        }
+
+        public static void RemoveSharedInstance()
+        {
+            lock (lockObject)
+            {
+                sharedInstance = null;
+            }
+        }
+
+        public Statsig(string sdkKey, StatsigOptions? options = null)
+        {
+            options ??= new StatsigOptions(new StatsigOptionsBuilder());
+
             var sdkKeyBytes = Encoding.UTF8.GetBytes(sdkKey);
             UpdateStatsigMetadata();
+
             unsafe
             {
                 fixed (byte* sdkKeyPtr = sdkKeyBytes)
@@ -407,6 +473,11 @@ namespace Statsig
                 return;
             }
             StatsigFFI.statsig_release(_statsigRef);
+        }
+
+        private static Statsig CreateErrorStatsigInstance()
+        {
+            return new Statsig("Invalid SDK Key");
         }
 
         private unsafe void UpdateStatsigMetadata()
