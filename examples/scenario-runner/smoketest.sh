@@ -24,7 +24,7 @@ function ensure_all_running() {
     NAMES=""
     if [ -n "$RESPONSE" ]; then
         if echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
-            NAMES=$(echo "$RESPONSE" | jq -r '.stats[].Name' 2>/dev/null)
+            NAMES=$(echo "$RESPONSE" | jq -r '.dockerStats.stats[].Name' 2>/dev/null)
         fi
     fi
 
@@ -35,11 +35,11 @@ function ensure_all_running() {
     EXPECTED_NAMES=(
         "sr-scrapi"
         "sr-docker-stats"
-        "sr-java-legacy"
-        "sr-node-legacy"
-        "sr-java-core"
-        "sr-node-core"
         "sr-dashboard"
+        "sr-node-legacy"
+        "sr-node-core"
+        "sr-java-core"
+        "sr-java-legacy"
         "sr-python-legacy"
         "sr-python-core"
     )

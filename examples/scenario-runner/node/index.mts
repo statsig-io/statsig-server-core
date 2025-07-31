@@ -40,24 +40,29 @@ function profile(
     durations.push(duration);
   }
 
-  const sorted = durations.sort((a, b) => a - b);
-
-  const median = sorted[Math.floor(sorted.length / 2)];
-  const p99 = sorted[Math.floor(sorted.length * 0.99)];
-  const min = sorted[0];
-  const max = sorted[sorted.length - 1];
-
-  PROFILE_ARR.push({
+  const result: any = {
     name,
     userID,
     extra,
     qps,
-    median,
-    p99,
-    min,
-    max,
-  });
-  console.log(`${name} took ${p99}ms (p99), ${max}ms (max)`);
+  };
+
+  if (qps > 0) {
+    const sorted = durations.sort((a, b) => a - b);
+
+    const median = sorted[Math.floor(sorted.length / 2)];
+    const p99 = sorted[Math.floor(sorted.length * 0.99)];
+    const min = sorted[0];
+    const max = sorted[sorted.length - 1];
+    result.median = median;
+    result.p99 = p99;
+    result.min = min;
+    result.max = max;
+
+    console.log(`${name} took ${p99}ms (p99), ${max}ms (max)`);
+  }
+
+  PROFILE_ARR.push(result);
 }
 
 function update() {
