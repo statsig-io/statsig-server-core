@@ -4,8 +4,9 @@ import StatsigLegacy, { StatsigUser as StatsigLegacyUser } from 'statsig-node';
 const SCRAPI_URL = 'http://scrapi:8000';
 
 export class StatsigWrapper {
+  static isCore = false;
+
   private static statsig: Statsig;
-  private static isCore = false;
   private static user: StatsigUser | StatsigLegacyUser | null = null;
 
   static async initialize() {
@@ -65,6 +66,17 @@ export class StatsigWrapper {
     } else {
       StatsigLegacy.logEvent(this.user as StatsigLegacyUser, eventName);
     }
+  }
+
+  static getClientInitResponse() {
+    if (this.isCore) {
+      this.validateCoreUser();
+      return this.statsig.getClientInitializeResponse(this.user as StatsigUser);
+    }
+
+    return StatsigLegacy.getClientInitializeResponse(
+      this.user as StatsigLegacyUser,
+    );
   }
 
   private static validateCoreUser() {

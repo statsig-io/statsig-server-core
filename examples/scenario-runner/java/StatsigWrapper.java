@@ -5,8 +5,8 @@ import java.util.Objects;
 
 public class StatsigWrapper {
     public static final String SCRAPI_URL = "http://scrapi:8000";
+    public static boolean isCore;
 
-    private static boolean _isCore;
     private static Statsig _statsig;
     private static StatsigUser _coreUser;
     private static com.statsig.sdk.StatsigUser _legacyUser;
@@ -15,7 +15,7 @@ public class StatsigWrapper {
         String variant = System.getenv("SDK_VARIANT");
 
         if (Objects.equals(variant, "core")) {
-            _isCore = true;
+            isCore = true;
 
             StatsigOptions options = new StatsigOptions.Builder()
                     .setSpecsUrl(SCRAPI_URL + "/v2/download_config_specs")
@@ -25,7 +25,7 @@ public class StatsigWrapper {
             _statsig = new Statsig("secret-JAVA_CORE", options);
             _statsig.initialize().get();
         } else if (Objects.equals(variant, "legacy")) {
-            _isCore = false;
+            isCore = false;
 
             com.statsig.sdk.StatsigOptions options = new com.statsig.sdk.StatsigOptions();
             options.setApi(SCRAPI_URL + "/v1");
@@ -38,7 +38,7 @@ public class StatsigWrapper {
     }
 
     public static void setUser(Map<String, String> userData) throws Exception {
-        if (_isCore) {
+        if (isCore) {
             _coreUser = new StatsigUser.Builder().setUserID("global_user").build();
         } else {
             _legacyUser = new com.statsig.sdk.StatsigUser("global_user");
@@ -46,7 +46,7 @@ public class StatsigWrapper {
     }
 
     public static void checkGate(String gateName) {
-        if (_isCore) {
+        if (isCore) {
             _statsig.checkGate(_coreUser, gateName);
         }  else {
             com.statsig.sdk.Statsig.checkGateSync(_legacyUser, gateName);
@@ -54,10 +54,18 @@ public class StatsigWrapper {
     }
 
     public static void logEvent(String eventName) {
-        if (_isCore) {
+        if (isCore) {
             _statsig.logEvent(_coreUser, eventName);
         }  else {
             com.statsig.sdk.Statsig.logEvent(_legacyUser, eventName);
+        }
+    }
+
+    public static void getClientInitResponse() {
+        if (isCore) {
+            _statsig.getClientInitializeResponse(_coreUser);
+        } else {
+            com.statsig.sdk.Statsig.getClientInitializeResponse(_legacyUser, com.statsig.sdk.HashAlgo.DJB2, null);
         }
     }
 }

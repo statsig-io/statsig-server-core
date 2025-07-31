@@ -4,7 +4,7 @@ import string
 import time
 from typing import List, Dict, Any, Callable
 import os
-from statsig import statsig, StatsigUser, StatsigOptions
+from statsig import statsig, StatsigUser, StatsigOptions, HashingAlgorithm
 from importlib.metadata import version
 import json
 
@@ -234,7 +234,9 @@ async def main():
         "get_client_initialize_response",
         "n/a",
         ITER_LITE,
-        lambda: statsig.get_client_initialize_response(create_user()),
+        lambda: statsig.get_client_initialize_response(
+            create_user(), hash=HashingAlgorithm.DJB2
+        ),
         results,
     )
 
@@ -242,7 +244,9 @@ async def main():
         "get_client_initialize_response_global_user",
         "n/a",
         ITER_LITE,
-        lambda: statsig.get_client_initialize_response(global_user),
+        lambda: statsig.get_client_initialize_response(
+            global_user, hash=HashingAlgorithm.DJB2
+        ),
         results,
     )
 

@@ -39,8 +39,9 @@ app.post('/state', async (req, res) => {
 });
 
 app.get('/stats', async (_req, res) => {
-  const stats = readDockerStats();
-  res.status(200).json(stats);
+  const dockerStats = readDockerStats();
+  const perfStats = readPerfStats();
+  res.status(200).json({ dockerStats, perfStats });
 });
 
 app.listen(80, async () => {
@@ -97,6 +98,27 @@ function readDockerStats() {
     }
   }
   return {};
+}
+
+function readPerfStats() {
+  const services = ['node', 'python', 'java'];
+  const results = {};
+
+  for (const service of services) {
+    for (const variant of ['core', 'legacy']) {
+      try {
+        const contents = readFileSync(
+          `/shared-volume/profile-${service}-${variant}.json`,
+          'utf8',
+        );
+        results[`${service}-${variant}`] = JSON.parse(contents);
+      } catch (error) {
+        continue;
+      }
+    }
+  }
+
+  return results;
 }
 
 async function update() {

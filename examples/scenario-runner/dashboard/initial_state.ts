@@ -39,7 +39,6 @@ export const INITIAL_STATE: State = {
   },
   sdk: {
     users: [
-      { userID: 'a_user' },
       {
         userID: 'big_user',
         appVersion: '1.0.0',
@@ -65,6 +64,9 @@ export const INITIAL_STATE: State = {
         },
       ],
       qps: 1000,
+    },
+    gcir: {
+      qps: 100,
     },
   },
 };

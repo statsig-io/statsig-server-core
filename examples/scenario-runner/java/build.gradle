@@ -23,9 +23,9 @@ dependencies {
     implementation 'io.javalin:javalin:+'
     implementation 'org.slf4j:slf4j-simple:+'
 
-    implementation 'com.statsig:javacore:+:linux-gnu-x86_64'
-    implementation 'com.statsig:javacore:+:linux-gnu-arm64'
-    implementation 'com.statsig:javacore:+:macos-arm64'
+    implementation 'com.statsig:javacore:+:x86_64-unknown-linux-gnu'
+    implementation 'com.statsig:javacore:+:aarch64-unknown-linux-gnu'
+    implementation 'com.statsig:javacore:+:aarch64-apple-darwin'
 }
 
 tasks.register('write_versions') {

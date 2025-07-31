@@ -13,6 +13,7 @@ export type SdkState = {
   }[];
   gate: { names: string[]; qps: number };
   logEvent: { events: { eventName: string }[]; qps: number };
+  gcir: { qps: number };
 };
 
 export type ScrapiState = {

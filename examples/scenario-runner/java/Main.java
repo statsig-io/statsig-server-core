@@ -4,8 +4,11 @@ import java.nio.file.*;
 import java.time.Duration;
 import java.util.*;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONWriter;
 
 public class Main {
+
+    static List<Map<String, Object>> PROFILE_ARR = new ArrayList<>();
 
     public static void main(String[] args) throws Exception {
         waitForScrapi();
@@ -39,9 +42,45 @@ public class Main {
         }
     }
 
+    static void profile(String name, String userID, String extra, int qps, Runnable fn) {
+        double[] durations = new double[qps];
+        for (int i = 0; i < qps; i++) {
+            long start = System.nanoTime();
+            fn.run();
+            long end = System.nanoTime();
+            durations[i] = (end - start) / 1_000_000.0; // ms
+        }
+
+        Arrays.sort(durations);
+
+        Map<String, Object> results = new HashMap<>();
+        results.put("name", name);
+        results.put("userID", userID);
+        results.put("extra", extra);
+        results.put("qps", qps);
+
+        if (qps > 0) {
+            double median = durations[qps / 2];
+            double p99 = durations[qps * 99 / 100];
+            double min = durations[0];
+            double max = durations[qps - 1];
+
+            System.out.println(name + " took " +  p99 + "ms (p99), " +  max + "ms (max)");
+
+            results.put("median", median);
+            results.put("p99", p99);
+            results.put("min", min);
+            results.put("max", max);
+        }
+
+        PROFILE_ARR.add(results);
+    }
+
     static void update() throws Exception {
         System.out.println("--------------------------------------- [ Update ]");
         SdkState state = readState();
+
+        PROFILE_ARR.clear();
 
         int logEventQps = state.logEvent.qps;
         int gateQps = state.gate.qps;
@@ -52,19 +91,19 @@ public class Main {
 
         for (Map<String, String> user : state.users) {
             StatsigWrapper.setUser(user);
-
+    
             for (String gateName : state.gate.names) {
-                for (int i = 0; i < gateQps; i++) {
-                    StatsigWrapper.checkGate(gateName);
-                }
+                profile("check_gate", user.get("userID"), gateName, gateQps, () -> StatsigWrapper.checkGate(gateName));
             }
 
-            for (Map<String, String> event : state.logEvent.events) {   
-                for (int i = 0; i < logEventQps; i++) {
-                    StatsigWrapper.logEvent(event.get("eventName"));
-                }
+            for (Map<String, String> event : state.logEvent.events) {
+                profile("log_event", user.get("userID"), event.get("eventName"), logEventQps, () -> StatsigWrapper.logEvent(event.get("eventName")));
             }
+
+            profile("gcir", user.get("userID"), "", state.gcir.qps, () -> StatsigWrapper.getClientInitResponse());
         }
+
+        writeProfileData();
     }
 
     static SdkState readState() throws Exception {
@@ -72,6 +111,13 @@ public class Main {
 //        String contents = Files.readString(Paths.get("/Users/danielloomb/Projects/kong/bridges/core-napi-bridge/sdk/examples/scenario-runner/shared-volume/state.json"));
 
         return JSON.parseObject(contents, State.class).sdk;
+    }
+
+    static void writeProfileData() throws Exception {
+        String prettyJson = JSON.toJSONString(PROFILE_ARR, JSONWriter.Feature.PrettyFormat);
+        String slug = "profile-java-" + (StatsigWrapper.isCore ? "core" : "legacy");
+        Files.writeString(Paths.get("/shared-volume/" + slug + "-temp.json"), prettyJson);
+        Runtime.getRuntime().exec("mv /shared-volume/" + slug + "-temp.json /shared-volume/" + slug + ".json");
     }
 }
 
@@ -83,6 +129,7 @@ class SdkState {
     public List<Map<String, String>> users;
     public GateConfig gate;
     public LogEventConfig logEvent;
+    public GcirConfig gcir;
 }
 
 class GateConfig {
@@ -95,3 +142,6 @@ class LogEventConfig {
     public int qps;
 }
 
+class GcirConfig {
+    public int qps;
+}
