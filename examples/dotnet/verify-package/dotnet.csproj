@@ -6,9 +6,5 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\..\..\statsig-ffi\bindings\dotnet\statsig-dotnet.csproj" />
-    </ItemGroup>
-
+    
 </Project>
