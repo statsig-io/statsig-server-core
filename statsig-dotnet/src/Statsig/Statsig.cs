@@ -11,6 +11,10 @@ namespace Statsig
 {
     public class Statsig : IDisposable
     {
+        private const int SpecNameStackThreshold = 256;
+        private const int EvalOptStackThreshold = 512;
+        private const int JsonStackThreshold = 1024;
+
         private readonly unsafe ulong _statsigRef;
 
         // Shared Instance
@@ -123,18 +127,15 @@ namespace Statsig
 
         unsafe public bool CheckGate(StatsigUser user, string gateName, EvaluationOptions? options = null)
         {
-            const int GateNameStackThreshold = 256;
-            const int OptStackThreshold = 512;
-
             // Get gate name bytes
             int nameLen = Encoding.UTF8.GetByteCount(gateName);
-            Span<byte> nameBytes = nameLen <= GateNameStackThreshold ? stackalloc byte[nameLen] : new byte[nameLen];
+            Span<byte> nameBytes = nameLen <= SpecNameStackThreshold ? stackalloc byte[nameLen] : new byte[nameLen];
             Encoding.UTF8.GetBytes(gateName.AsSpan(), nameBytes);
 
             // Get options bytes
             string? optionsJson = options is null ? null : JsonConvert.SerializeObject(options);
             int optLen = optionsJson is null ? 0 : Encoding.UTF8.GetByteCount(optionsJson);
-            Span<byte> optBytes = optLen <= OptStackThreshold ? stackalloc byte[optLen] : new byte[optLen];
+            Span<byte> optBytes = optLen <= EvalOptStackThreshold ? stackalloc byte[optLen] : new byte[optLen];
             if (optLen > 0)
             {
                 Encoding.UTF8.GetBytes(optionsJson.AsSpan(), optBytes);
@@ -155,11 +156,16 @@ namespace Statsig
 
         unsafe public FeatureGate GetFeatureGate(StatsigUser user, string gateName, EvaluationOptions? options = null)
         {
-            var gateNameBytes = Encoding.UTF8.GetBytes(gateName);
-            var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
-            var optionsBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
-            fixed (byte* optionsPtr = optionsBytes)
-            fixed (byte* gateNamePtr = gateNameBytes)
+            int nameLen = Encoding.UTF8.GetByteCount(gateName);
+            Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
+            int written = Encoding.UTF8.GetBytes(gateName, nameBytes[..nameLen]);
+            nameBytes[written] = 0;
+
+            string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
+
+            fixed (byte* optionsPtr = optBytes)
+            fixed (byte* gateNamePtr = nameBytes)
             {
                 var jsonStringPtr =
                     StatsigFFI.statsig_get_feature_gate(_statsigRef, user.Reference, gateNamePtr, optionsPtr);
@@ -172,9 +178,11 @@ namespace Statsig
 
         unsafe public void ManuallyLogGateExposure(StatsigUser user, string gateName)
         {
-            var gateNameBytes = Encoding.UTF8.GetBytes(gateName);
-
-            fixed (byte* gateNamePtr = gateNameBytes)
+            int nameLen = Encoding.UTF8.GetByteCount(gateName);
+            Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
+            int written = Encoding.UTF8.GetBytes(gateName, nameBytes[..nameLen]);
+            nameBytes[written] = 0;
+            fixed (byte* gateNamePtr = nameBytes)
             {
                 StatsigFFI.statsig_manually_log_gate_exposure(_statsigRef, user.Reference, gateNamePtr);
             }
@@ -182,11 +190,16 @@ namespace Statsig
 
         unsafe public DynamicConfig GetDynamicConfig(StatsigUser user, string configName, EvaluationOptions? options = null)
         {
-            var configNameBytes = Encoding.UTF8.GetBytes(configName);
-            var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
-            var optionsBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
-            fixed (byte* optionsPtr = optionsBytes)
-            fixed (byte* configNamePtr = configNameBytes)
+            int nameLen = Encoding.UTF8.GetByteCount(configName);
+            Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
+            int written = Encoding.UTF8.GetBytes(configName, nameBytes[..nameLen]);
+            nameBytes[written] = 0;
+
+            string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
+
+            fixed (byte* optionsPtr = optBytes)
+            fixed (byte* configNamePtr = nameBytes)
             {
                 var jsonStringPtr =
                     StatsigFFI.statsig_get_dynamic_config(_statsigRef, user.Reference, configNamePtr, optionsPtr);
@@ -195,17 +208,17 @@ namespace Statsig
                 {
                     return new DynamicConfig(string.Empty);
                 }
-                return jsonString != null
-                    ? new DynamicConfig(jsonString)
-                    : new DynamicConfig(string.Empty);
+                return new DynamicConfig(jsonString);
             }
         }
 
         unsafe public void ManuallyLogDynamicConfigExposure(StatsigUser user, string configName)
         {
-            var configNameBytes = Encoding.UTF8.GetBytes(configName);
-
-            fixed (byte* configNamePtr = configNameBytes)
+            int nameLen = Encoding.UTF8.GetByteCount(configName);
+            Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
+            int written = Encoding.UTF8.GetBytes(configName, nameBytes[..nameLen]);
+            nameBytes[written] = 0;
+            fixed (byte* configNamePtr = nameBytes)
             {
                 StatsigFFI.statsig_manually_log_dynamic_config_exposure(_statsigRef, user.Reference, configNamePtr);
             }
@@ -213,11 +226,16 @@ namespace Statsig
 
         unsafe public Experiment GetExperiment(StatsigUser user, string experimentName, EvaluationOptions? options = null)
         {
-            var experimentNameBytes = Encoding.UTF8.GetBytes(experimentName);
-            var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
-            var optionsBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
-            fixed (byte* optionsPtr = optionsBytes)
-            fixed (byte* experimentNamePtr = experimentNameBytes)
+            int nameLen = Encoding.UTF8.GetByteCount(experimentName);
+            Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
+            int written = Encoding.UTF8.GetBytes(experimentName, nameBytes[..nameLen]);
+            nameBytes[written] = 0;
+
+            string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
+
+            fixed (byte* optionsPtr = optBytes)
+            fixed (byte* experimentNamePtr = nameBytes)
             {
                 var jsonStringPtr =
                     StatsigFFI.statsig_get_experiment(_statsigRef, user.Reference, experimentNamePtr, optionsPtr);
@@ -226,17 +244,17 @@ namespace Statsig
                 {
                     return new Experiment(string.Empty);
                 }
-                return jsonString != null
-                    ? new Experiment(jsonString)
-                    : new Experiment(string.Empty);
+                return new Experiment(jsonString);
             }
         }
 
         unsafe public void ManuallyLogExperimentExposure(StatsigUser user, string experimentName)
         {
-            var experimentNameBytes = Encoding.UTF8.GetBytes(experimentName);
-
-            fixed (byte* experimentNamePtr = experimentNameBytes)
+            int nameLen = Encoding.UTF8.GetByteCount(experimentName);
+            Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
+            int written = Encoding.UTF8.GetBytes(experimentName, nameBytes[..nameLen]);
+            nameBytes[written] = 0;
+            fixed (byte* experimentNamePtr = nameBytes)
             {
                 StatsigFFI.statsig_manually_log_experiment_exposure(_statsigRef, user.Reference, experimentNamePtr);
             }
@@ -244,26 +262,39 @@ namespace Statsig
 
         unsafe public Layer GetLayer(StatsigUser user, string layerName, EvaluationOptions? options = null)
         {
-            var layerNameBytes = Encoding.UTF8.GetBytes(layerName);
-            var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
-            var optionsBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
-            fixed (byte* optionsPtr = optionsBytes)
-            fixed (byte* layerNamePtr = layerNameBytes)
+            int nameLen = Encoding.UTF8.GetByteCount(layerName);
+            Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
+            int written = Encoding.UTF8.GetBytes(layerName, nameBytes[..nameLen]);
+            nameBytes[written] = 0;
+
+            string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
+
+            fixed (byte* optionsPtr = optBytes)
+            fixed (byte* layerNamePtr = nameBytes)
             {
                 var jsonStringPtr =
                     StatsigFFI.statsig_get_layer(_statsigRef, user.Reference, layerNamePtr, optionsPtr);
                 var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
-                return jsonString != null
-                    ? new Layer(jsonString, _statsigRef, options)
-                    : new Layer(string.Empty, _statsigRef, options);
+                if (jsonString == null)
+                {
+                    return new Layer(string.Empty, _statsigRef, options);
+                }
+                return new Layer(jsonString, _statsigRef, options);
             }
         }
 
         unsafe public void ManuallyLogLayerParameterExposure(StatsigUser user, string layerName, string parameterName)
         {
-            var layerNameBytes = Encoding.UTF8.GetBytes(layerName);
-            var parameterNameBytes = Encoding.UTF8.GetBytes(parameterName);
-            fixed (byte* parameterNamePtr = parameterNameBytes)
+            int layerNameLen = Encoding.UTF8.GetByteCount(layerName);
+            Span<byte> layerNameBytes = layerNameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[layerNameLen + 1] : new byte[layerNameLen + 1];
+            int layerWritten = Encoding.UTF8.GetBytes(layerName, layerNameBytes[..layerNameLen]);
+            layerNameBytes[layerWritten] = 0;
+            int paramNameLen = Encoding.UTF8.GetByteCount(parameterName);
+            Span<byte> paramNameBytes = paramNameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[paramNameLen + 1] : new byte[paramNameLen + 1];
+            int paramWritten = Encoding.UTF8.GetBytes(parameterName, paramNameBytes[..paramNameLen]);
+            paramNameBytes[paramWritten] = 0;
+            fixed (byte* parameterNamePtr = paramNameBytes)
             fixed (byte* layerNamePtr = layerNameBytes)
             {
                 StatsigFFI.statsig_manually_log_layer_parameter_exposure(_statsigRef, user.Reference, layerNamePtr, parameterNamePtr);
@@ -290,19 +321,9 @@ namespace Statsig
 
         unsafe public string GetClientInitializeResponse(StatsigUser user, ClientInitResponseOptions? options = null)
         {
-            if (_statsigRef == 0)
-            {
-                Console.WriteLine("Failed to get statsig ref");
-            }
-
-            if (user.Reference == 0)
-            {
-                Console.WriteLine("Failed to get user reference");
-            }
-
-            var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
-
-            fixed (byte* optionsPtr = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null)
+            string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
+            fixed (byte* optionsPtr = optBytes)
             {
                 var resPtr = StatsigFFI.statsig_get_client_init_response(_statsigRef, user.Reference, optionsPtr);
                 return StatsigUtils.ReadStringFromPointer(resPtr) ?? string.Empty;
@@ -376,14 +397,17 @@ namespace Statsig
         {
             LogEventInternal(user, eventName, value, metadata);
         }
+
         public void LogEvent(StatsigUser user, string eventName, int value, IReadOnlyDictionary<string, string>? metadata = null)
         {
             LogEventInternal(user, eventName, value, metadata);
         }
+
         public void LogEvent(StatsigUser user, string eventName, double value, IReadOnlyDictionary<string, string>? metadata = null)
         {
             LogEventInternal(user, eventName, value, metadata);
         }
+
         private unsafe void LogEventInternal(StatsigUser user, string eventName, object? value, IReadOnlyDictionary<string, string>? metadata)
         {
             var statsigEvent = new StatsigEvent(eventName, value, metadata);
