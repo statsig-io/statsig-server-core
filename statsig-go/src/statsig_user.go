@@ -1,15 +1,16 @@
 package statsig
 
 /*
-#cgo CFLAGS: -I../statsig-ffi/include
+#cgo CFLAGS: -I../../statsig-ffi/include
 #include "statsig_ffi.h"
+
 #include <stdlib.h>
 */
 import "C"
 import (
 	"runtime"
 
-	"github.com/statsig-io/private-statsig-server-core/statsig-go/utils"
+	"github.com/statsig-io/private-statsig-server-core/statsig-go/src/utils"
 )
 
 type StatsigUser struct {

@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"sync"
 
-	"github.com/statsig-io/private-statsig-server-core/statsig-go"
+	statsig "github.com/statsig-io/private-statsig-server-core/statsig-go/src"
 )
 
 type MockScrapi struct {

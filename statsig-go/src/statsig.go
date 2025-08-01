@@ -1,17 +1,19 @@
 package statsig
 
 /*
-#cgo CFLAGS: -I../statsig-ffi/include
+#cgo CFLAGS: -I../resources
 #include "statsig_ffi.h"
+
 #include <stdlib.h>
 */
 import "C"
 import (
 	"encoding/json"
 	"errors"
+
 	"runtime"
 
-	"github.com/statsig-io/private-statsig-server-core/statsig-go/utils"
+	"github.com/statsig-io/private-statsig-server-core/statsig-go/src/utils"
 )
 
 type Statsig struct {
@@ -59,17 +61,18 @@ func (s *Statsig) Initialize() (bool, error) {
 }
 
 func (s *Statsig) InitializeWithDetails() (InitializeWithDetails, error) {
-	res := C.statsig_initialize_with_details_blocking(C.uint64_t(s.InnerRef))
+	// res := InitializeWithDetails
+	// res := C.statsig_initialize_with_details_blocking(C.uint64_t(s.InnerRef))
 
 	var details InitializeWithDetails
 
-	if res != nil {
-		res_str := C.GoString(res)
-		err := json.Unmarshal([]byte(res_str), &details)
-		if err != nil {
-			return InitializeWithDetails{}, err
-		}
-	}
+	// if res != nil {
+	// 	res_str := C.GoString(res)
+	// 	err := json.Unmarshal([]byte(res_str), &details)
+	// 	if err != nil {
+	// 		return InitializeWithDetails{}, err
+	// 	}
+	// }
 
 	return details, nil
 

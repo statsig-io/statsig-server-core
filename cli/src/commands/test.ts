@@ -68,12 +68,12 @@ const TEST_COMMANDS: Record<string, string> = {
   ].join(' && '),
 
   go: [
-    'cargo build -p statsig_ffi --release',
-    'mkdir -p statsig-go/lib',
-    'cp target/release/libstatsig_ffi.so statsig-go/lib || true',
-    'ln -sf ../lib statsig-go/tests/lib',
-    'cd statsig-go/tests',
-    'LD_LIBRARY_PATH=$(pwd)/../lib go test',
+    'cd statsig-go',
+    'go run ./cmd/post-install/main.go',
+    'export CGO_CFLAGS="-I$HOME/.cache/statsig/resources"',
+    'export CGO_LDFLAGS="-L$HOME/.cache/statsig/resources"',
+    'export LD_LIBRARY_PATH="$HOME/.cache/statsig/resources"',
+    'go test ./tests',
   ].join(' && '),
 };
 

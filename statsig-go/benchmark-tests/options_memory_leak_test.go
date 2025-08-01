@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/statsig-io/private-statsig-server-core/statsig-go"
+	statsig "github.com/statsig-io/private-statsig-server-core/statsig-go/src"
 )
 
 func BenchmarkOptionsMemoryLeak(b *testing.B) {

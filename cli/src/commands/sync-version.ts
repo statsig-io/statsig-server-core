@@ -42,6 +42,7 @@ export class SyncVersion extends CommandBase {
     updateStatsigGrpcDepVersion(versionString);
     updatePhpComposerVersion(versionString);
     updateDotnetNugetVersion(versionString);
+    updateGoVersion(versionString)
 
     Log.stepBegin('Verifying Cargo Change');
     execSync('cargo update --workspace', { cwd: BASE_DIR });
@@ -166,6 +167,23 @@ function updatePhpComposerVersion(version: string) {
   const updated = contents.replace(
     /const VERSION = "([^"]+)"/,
     `const VERSION = "${version}"`,
+  );
+
+  fs.writeFileSync(path, updated, 'utf8');
+
+  Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`);
+}
+
+function updateGoVersion(version: string) {
+  Log.stepBegin('Updating go version');
+
+  const path = getRootedPath('statsig-go/cmd/post-install/main.go');
+  const contents = fs.readFileSync(path, 'utf8');
+  
+  const was = contents.match(/const version = "([^"]+)"/)?.[1];
+  const updated = contents.replace(
+    /const version = "([^"]+)"/,
+    `const version = "${version}"`,
   );
 
   fs.writeFileSync(path, updated, 'utf8');

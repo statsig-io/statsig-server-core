@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/statsig-io/private-statsig-server-core/statsig-go"
+	statsig "github.com/statsig-io/private-statsig-server-core/statsig-go/src"
 )
 
 func CreateExperimentOptions(scrapiServer *MockScrapi) *statsig.StatsigOptions {
