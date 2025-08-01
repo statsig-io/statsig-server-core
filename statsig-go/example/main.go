@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	statsig "github.com/statsig-io/private-statsig-server-core/statsig-go/src"
+	statsig "github.com/statsig-io/statsig-server-core/statsig-go/src"
 )
 
 func main() {

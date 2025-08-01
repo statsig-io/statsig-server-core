@@ -8,11 +8,11 @@ import (
 	"runtime"
 	"strings"
 
-	fileOps "github.com/statsig-io/private-statsig-server-core/statsig-go/file-ops"
+	fileOps "github.com/statsig-io/statsig-server-core/statsig-go/file-ops"
 )
 
 const (
-	version = "0.6.1"
+	version = "0.6.2-beta.2507301911"
 )
 
 var output_dir string
@@ -202,20 +202,15 @@ func isMusl(os string) bool {
 func download_binary(system_info []string, ops fileOps.FileOps) string {
 
 	binary_map := map[string]string{
+
 		"macos-aarch64": "statsig-ffi-" + version + "-aarch64-apple-darwin-shared.zip",
 		"macos-x86_64":  "statsig-ffi-" + version + "-x86_64-apple-darwin-shared.zip",
 
-		"linux-aarch64": "statsig-ffi-" + version + "-debian-aarch64-unknown-linux-gnu-shared.zip",
-		"linux-x86_64":  "statsig-ffi-" + version + "-debian-x86_64-unknown-linux-gnu-shared.zip",
+		"linux-aarch64": "statsig-ffi-" + version + "-centos7-aarch64-unknown-linux-gnu-shared.zip",
+		"linux-x86_64":  "statsig-ffi-" + version + "-centos7-x86_64-unknown-linux-gnu-shared.zip",
 
 		"linux-aarch64-musl": "statsig-ffi-" + version + "-alpine-aarch64-unknown-linux-musl-shared.zip",
 		"linux-x86_64-musl":  "statsig-ffi-" + version + "-alpine-x86_64-unknown-linux-musl-shared.zip",
-
-		"amazonlinux2023-aarch64": "statsig-ffi-" + version + "-amazonlinux2023-aarch64-unknown-linux-gnu-shared.zip",
-		"amazonlinux2023-x86_64":  "statsig-ffi-" + version + "-amazonlinux2023-x86_64-unknown-linux-gnu-shared.zip",
-
-		"amazonlinux2-aarch64": "statsig-ffi-" + version + "-amazonlinux2-aarch64-unknown-linux-gnu-shared.zip",
-		"amazonlinux2-x86_64":  "statsig-ffi-" + version + "-amazonlinux2-x86_64-unknown-linux-gnu-shared.zip",
 	}
 
 	system_tag := system_info[0] + "-" + system_info[1]

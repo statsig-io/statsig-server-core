@@ -42,7 +42,7 @@ export class SyncVersion extends CommandBase {
     updateStatsigGrpcDepVersion(versionString);
     updatePhpComposerVersion(versionString);
     updateDotnetNugetVersion(versionString);
-    updateGoVersion(versionString)
+    updateGoVersion(versionString);
 
     Log.stepBegin('Verifying Cargo Change');
     execSync('cargo update --workspace', { cwd: BASE_DIR });

@@ -2,49 +2,51 @@ package tests
 
 import (
 	"testing"
+
+	statsig "github.com/statsig-io/statsig-server-core/statsig-go/src"
 )
 
 func TestStatsigInitializeWithDetails(t *testing.T) {
 
-	// scrapiServer := serverSetup("eval_proj_dcs.json")
+	scrapiServer := serverSetup("eval_proj_dcs.json")
 
-	// o := statsig.NewStatsigOptionsBuilder().
-	// 	WithSpecsUrl(scrapiServer.GetUrlForEndpoint("/v2/download_config_specs")).
-	// 	WithLogEventUrl(scrapiServer.GetUrlForEndpoint("/v1/log_event")).
-	// 	WithEnvironment("production").
-	// 	WithEventLoggingFlushIntervalMs(2000).
-	// 	WithEventLoggingMaxQueueSize(5000).
-	// 	WithSpecsSyncIntervalMs(1000).
-	// 	WithOutputLogLevel("DEBUG").
-	// 	Build()
+	o := statsig.NewStatsigOptionsBuilder().
+		WithSpecsUrl(scrapiServer.GetUrlForEndpoint("/v2/download_config_specs")).
+		WithLogEventUrl(scrapiServer.GetUrlForEndpoint("/v1/log_event")).
+		WithEnvironment("production").
+		WithEventLoggingFlushIntervalMs(2000).
+		WithEventLoggingMaxQueueSize(5000).
+		WithSpecsSyncIntervalMs(1000).
+		WithOutputLogLevel("DEBUG").
+		Build()
 
-	// _, _, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", o)
-	// defer teardown()
-	// res, _ := s.InitializeWithDetails()
+	_, _, s, teardown := setupStatsigTest(t, "eval_proj_dcs.json", "a-user", o)
+	defer teardown()
+	res, _ := s.InitializeWithDetails()
 
-	// if !res.IsConfigSpecReady {
-	// 	t.Errorf("expected IsConfigSpecReady to be true, got %v", res.IsConfigSpecReady)
-	// }
+	if !res.IsConfigSpecReady {
+		t.Errorf("expected IsConfigSpecReady to be true, got %v", res.IsConfigSpecReady)
+	}
 
-	// if res.IsIdListReady != nil {
-	// 	t.Errorf("expected IsIdListReady to be nil, got %v", res.IsIdListReady)
-	// }
+	if res.IsIdListReady != nil {
+		t.Errorf("expected IsIdListReady to be nil, got %v", res.IsIdListReady)
+	}
 
-	// if !res.InitSuccess {
-	// 	t.Errorf("expected InitSuccess to be true, got %v", res.InitSuccess)
-	// }
+	if !res.InitSuccess {
+		t.Errorf("expected InitSuccess to be true, got %v", res.InitSuccess)
+	}
 
-	// if res.Duration <= 0 {
-	// 	t.Errorf("expected Duration to be > 0, got %f", res.Duration)
-	// }
+	if res.Duration <= 0 {
+		t.Errorf("expected Duration to be > 0, got %f", res.Duration)
+	}
 
-	// if res.Source != "Network" {
-	// 	t.Errorf("expected Source to be 'Network', got '%s'", res.Source)
-	// }
+	if res.Source != "Network" {
+		t.Errorf("expected Source to be 'Network', got '%s'", res.Source)
+	}
 
-	// if res.FailureDetails != nil {
-	// 	t.Errorf("expected FailureDetails to be nil, got %v", res.FailureDetails)
-	// }
+	if res.FailureDetails != nil {
+		t.Errorf("expected FailureDetails to be nil, got %v", res.FailureDetails)
+	}
 
 }
 

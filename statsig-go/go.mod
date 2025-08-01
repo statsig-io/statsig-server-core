@@ -1,3 +1,3 @@
-module github.com/statsig-io/private-statsig-server-core/statsig-go
+module github.com/statsig-io/statsig-server-core/statsig-go
 
 go 1.22

@@ -13,7 +13,7 @@ import (
 
 	"runtime"
 
-	"github.com/statsig-io/private-statsig-server-core/statsig-go/src/utils"
+	"github.com/statsig-io/statsig-server-core/statsig-go/src/utils"
 )
 
 type Statsig struct {
@@ -61,21 +61,19 @@ func (s *Statsig) Initialize() (bool, error) {
 }
 
 func (s *Statsig) InitializeWithDetails() (InitializeWithDetails, error) {
-	// res := InitializeWithDetails
-	// res := C.statsig_initialize_with_details_blocking(C.uint64_t(s.InnerRef))
+	res := C.statsig_initialize_with_details_blocking(C.uint64_t(s.InnerRef))
 
 	var details InitializeWithDetails
 
-	// if res != nil {
-	// 	res_str := C.GoString(res)
-	// 	err := json.Unmarshal([]byte(res_str), &details)
-	// 	if err != nil {
-	// 		return InitializeWithDetails{}, err
-	// 	}
-	// }
+	if res != nil {
+		res_str := C.GoString(res)
+		err := json.Unmarshal([]byte(res_str), &details)
+		if err != nil {
+			return InitializeWithDetails{}, err
+		}
+	}
 
 	return details, nil
-
 }
 
 func (s *Statsig) Shutdown() {

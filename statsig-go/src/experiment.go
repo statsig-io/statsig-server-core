@@ -1,6 +1,6 @@
 package statsig
 
-import "github.com/statsig-io/private-statsig-server-core/statsig-go/src/utils"
+import "github.com/statsig-io/statsig-server-core/statsig-go/src/utils"
 
 /*
 #cgo CFLAGS: -I../../statsig-ffi/include

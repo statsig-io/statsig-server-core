@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	statsig "github.com/statsig-io/private-statsig-server-core/statsig-go/src"
-	utils "github.com/statsig-io/private-statsig-server-core/statsig-go/src/utils"
+	statsig "github.com/statsig-io/statsig-server-core/statsig-go/src"
+	utils "github.com/statsig-io/statsig-server-core/statsig-go/src/utils"
 )
 
 func setupStatsigGCIR(t *testing.T, filterType string, filter []string, hash_algo statsig.HashAlgo) map[string]interface{} {
