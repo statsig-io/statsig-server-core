@@ -13,6 +13,7 @@ env:
 jobs:
   bench-cluster:
     runs-on: ubuntu-latest
+    if: github.event.repository.private
     timeout-minutes: 30
     env:
       EVAL_PROJ_SDK_KEY: ${{ secrets.EVAL_PROJ_SDK_KEY }}

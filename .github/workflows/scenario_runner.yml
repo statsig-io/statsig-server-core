@@ -13,6 +13,8 @@ env:
 jobs:
   build:
     name: Build 
+    if: github.event.repository.private
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -68,6 +70,8 @@ jobs:
   deploy:
     needs: [build]
     name: Deploy
+    if: github.event.repository.private
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

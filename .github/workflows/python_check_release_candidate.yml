@@ -11,6 +11,7 @@ env:
 
 jobs:
   Test:
+    if: github.event.repository.private
     timeout-minutes: 20
     runs-on: ubuntu-latest
     strategy:
