@@ -48,14 +48,23 @@ impl DynamicValue {
     }
 
     fn try_parse_timestamp(s: &str) -> Option<i64> {
+        // Fast-path: try parsing as integer first
         if let Ok(ts) = s.parse::<i64>() {
             return Some(ts);
         }
 
+        // Fast-reject: if the string is out of range or lacks typical date delimiters
+        if s.len() < 8 || s.len() > 20 || (!s.contains('-') && !s.contains('T') && !s.contains(':'))
+        {
+            return None;
+        }
+
+        // Try RFC3339 (e.g. "2023-01-01T12:00:00Z")
         if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
             return Some(dt.timestamp_millis());
         }
 
+        // Try common datetime format (e.g. "2023-01-01 12:00:00")
         if let Ok(ndt) = NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S") {
             return Some(ndt.and_utc().timestamp_millis());
         }
@@ -101,7 +110,16 @@ impl<'de> Deserialize<'de> for DynamicValue {
 
 impl From<JsonValue> for DynamicValue {
     fn from(json_value: JsonValue) -> Self {
-        let hash_value = ahash_str(&json_value.to_string());
+        // perf optimization: avoid stringifying the json value if it's already a string
+        let mut stringified_json_value = None;
+        let hash_value = if let JsonValue::String(s) = &json_value {
+            ahash_str(s)
+        } else {
+            let actual = json_value.to_string();
+            let hash = ahash_str(&actual);
+            stringified_json_value = Some(actual);
+            hash
+        };
 
         match &json_value {
             JsonValue::Null => DynamicValue {
@@ -126,7 +144,7 @@ impl From<JsonValue> for DynamicValue {
                 let string_value = float_value
                     .map(|f| f.to_string())
                     .or_else(|| int_value.map(|i| i.to_string()))
-                    .or_else(|| Some(json_value.to_string()));
+                    .or(stringified_json_value);
 
                 DynamicValue {
                     float_value,
@@ -155,7 +173,9 @@ impl From<JsonValue> for DynamicValue {
 
             JsonValue::Array(arr) => DynamicValue {
                 array_value: Some(arr.iter().map(|v| DynamicValue::from(v.clone())).collect()),
-                string_value: Some(DynamicString::from(json_value.to_string())),
+                string_value: Some(DynamicString::from(
+                    stringified_json_value.unwrap_or(json_value.to_string()),
+                )),
                 json_value,
                 hash_value,
                 ..DynamicValue::new()
