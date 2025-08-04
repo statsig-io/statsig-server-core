@@ -180,7 +180,7 @@ function updateGoVersion(version: string) {
   const path = getRootedPath('statsig-go/cmd/post-install/main.go');
   const contents = fs.readFileSync(path, 'utf8');
   
-  const was = contents.match(/const version = "([^"]+)"/)?.[1];
+  const was = contents.match(/version = "([^"]+)"/)?.[1];
   const updated = contents.replace(
     /const version = "([^"]+)"/,
     `const version = "${version}"`,
