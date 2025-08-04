@@ -13,7 +13,7 @@ import { PublisherOptions } from './publisher-options.js';
 
 const TARGET_MAPPING = {
   'macos-aarch64-apple-darwin-ffi': 'osx-arm64',
-  'macos-x86_64-apple-darwin-ffi': 'osx-x86',
+  'macos-x86_64-apple-darwin-ffi': 'osx-x64',
   'windows-i686-pc-windows-msvc-ffi': 'win-x86',
   'windows-x86_64-pc-windows-msvc-ffi': 'win-x64',
   'centos7-aarch64-unknown-linux-gnu-ffi': 'linux-arm64',
@@ -53,7 +53,10 @@ function moveDotnetLibraries(libFiles: string[]) {
       return;
     }
 
-    const filename = path.basename(file);
+    const ext = path.extname(file);           // .so / .dylib / .dll
+    const filename  = ext === '.dll'
+      ? 'libstatsig_ffi.dll'
+      : path.basename(file);
     const destDir = path.resolve(DOTNET_DIR, destination, 'native');
     ensureEmptyDir(destDir);
 
@@ -173,6 +176,7 @@ function packProject(projectPath: string) {
   Log.stepBegin(`Packing Dotnet Project: ${projectPath}`);
 
   const command = `dotnet pack ${projectPath} -c Release -o ${NUPKG_DIR}`;
+  
   Log.stepProgress(`Running command: ${command}`);
 
   execSync(command, {

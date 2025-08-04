@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>Statsig.NativeAssets.osx-x64</PackageId>
+    <Description>Statsig native library for macOS x86_64</Description>
+    <PackageType>Dependency</PackageType>
+    <Version>$(StatsigVersion)</Version>
+    <RuntimeIdentifier>osx-x64</RuntimeIdentifier>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('../../runtimes/osx-x64/native/libstatsig_ffi.dylib')">
+    <Content Include="../../runtimes/osx-x64/native/libstatsig_ffi.dylib">
+      <Pack>true</Pack>
+      <PackagePath>runtimes/osx-x64/native/</PackagePath>
+    </Content>
+  </ItemGroup>
+  
+  <Target Name="FailIfMissingBinary" BeforeTargets="Pack"
+          Condition="!Exists('../../runtimes/osx-x64/native/libstatsig_ffi.dylib')">
+    <Error Text="Native binary not found at ../../runtimes/osx-x64/native/libstatsig_ffi.dylib. Packing aborted." />
+  </Target>
+</Project>

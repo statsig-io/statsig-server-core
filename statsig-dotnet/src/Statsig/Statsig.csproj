@@ -10,9 +10,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
-    <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
-  </PropertyGroup>
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>Statsig.Tests</_Parameter1>
@@ -20,7 +17,7 @@
   </ItemGroup>
   <ItemGroup Condition="'$(UseLocalProjects)' != 'true'">
     <PackageReference Include="Statsig.NativeAssets.osx-arm64" Version="$(StatsigVersion)"/>
-    <PackageReference Include="Statsig.NativeAssets.osx-x86" Version="$(StatsigVersion)"/>
+    <PackageReference Include="Statsig.NativeAssets.osx-x64" Version="$(StatsigVersion)"/>
     <PackageReference Include="Statsig.NativeAssets.linux-x64" Version="$(StatsigVersion)" />
     <PackageReference Include="Statsig.NativeAssets.linux-arm64" Version="$(StatsigVersion)" />
     <PackageReference Include="Statsig.NativeAssets.win-x64"    Version="$(StatsigVersion)" />
