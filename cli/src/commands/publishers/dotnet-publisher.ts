@@ -103,7 +103,7 @@ async function publishDotnetPackages(options: PublisherOptions) {
   const nativeProjs = [
     'src/Native/Statsig.NativeAssets.linux-x64.csproj',
     'src/Native/Statsig.NativeAssets.osx-arm64.csproj',
-    'src/Native/Statsig.NativeAssets.osx-x86.csproj',
+    'src/Native/Statsig.NativeAssets.osx-x64.csproj',
     'src/Native/Statsig.NativeAssets.win-x64.csproj',
     'src/Native/Statsig.NativeAssets.win-x86.csproj',
     'src/Native/Statsig.NativeAssets.linux-arm64.csproj',
