@@ -10,7 +10,6 @@ use crate::evaluation::evaluation_types::{
 };
 use crate::event_logging::exposable_string::{self, ExposableString};
 use crate::hashing::{HashAlgorithm, HashUtil};
-use crate::specs_response::spec_types::Spec;
 
 #[derive(Default, Debug)]
 pub struct EvaluatorResult<'a> {
@@ -60,7 +59,7 @@ pub fn result_to_gate_eval_v2(
 
 pub fn result_to_experiment_eval(
     experiment_name: &str,
-    spec: Option<&Spec>,
+    spec_entity: Option<&str>,
     result: &mut EvaluatorResult,
 ) -> ExperimentEvaluation {
     let (id_type, is_device_based) = get_id_type_info(result.id_type);
@@ -68,7 +67,7 @@ pub fn result_to_experiment_eval(
     let mut is_experiment_active = None;
     let mut is_user_in_experiment = None;
 
-    if spec.as_ref().is_none_or(|s| s.entity == "experiment") {
+    if spec_entity.is_none_or(|s| s == "experiment") {
         is_experiment_active = Some(result.is_experiment_active);
         is_user_in_experiment = Some(result.is_experiment_group);
     }
@@ -92,7 +91,7 @@ pub fn result_to_experiment_eval(
 
 pub fn result_to_experiment_eval_v2(
     experiment_name: &str,
-    spec: Option<&Spec>,
+    spec_entity: Option<&str>,
     result: &mut EvaluatorResult,
     hashing: &HashUtil,
 ) -> ExperimentEvaluationV2 {
@@ -101,8 +100,8 @@ pub fn result_to_experiment_eval_v2(
     let mut is_experiment_active = None;
     let mut is_user_in_experiment = None;
 
-    if let Some(spec) = spec {
-        if spec.entity == "experiment" {
+    if let Some(spec_entity) = spec_entity {
+        if spec_entity == "experiment" {
             is_experiment_active = Some(result.is_experiment_active);
             is_user_in_experiment = Some(result.is_experiment_group);
         }

@@ -22,7 +22,7 @@ pub(crate) fn get_layer_evaluations(
     options: &ClientInitResponseOptions,
     sec_expo_hash_memo: &mut HashMap<String, String>,
 ) -> Result<HashMap<String, LayerEvaluation>, StatsigErr> {
-    let factory = |_: &Spec, hashed_name: &str, ctx: &mut EvaluatorContext| {
+    let factory = |_: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
         let mut eval = result_to_layer_eval(hashed_name, &mut ctx.result);
 
         try_hash_allocated_experiment_name(
@@ -50,7 +50,7 @@ pub(crate) fn get_layer_evaluations_v2(
     sec_expo_hash_memo: &mut HashMap<String, String>,
     exposures: &mut HashMap<String, SecondaryExposure>,
 ) -> Result<HashMap<String, LayerEvaluationV2>, StatsigErr> {
-    let factory = |_: &Spec, hashed_name: &str, ctx: &mut EvaluatorContext| {
+    let factory = |_: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
         stringify_sec_exposures(&ctx.result.secondary_exposures, ctx.hashing, exposures);
         if let Some(u) = &ctx.result.undelegated_secondary_exposures {
             stringify_sec_exposures(u, ctx.hashing, exposures);

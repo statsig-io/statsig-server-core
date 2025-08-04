@@ -17,7 +17,7 @@ pub(crate) fn gcir_process_iter<T>(
     sec_expo_hash_memo: &mut HashMap<String, String>,
     spec_directory: &SpecDirectory,
     get_spec_type: impl Fn(&Spec) -> SpecType,
-    mut evaluation_factory: impl FnMut(&Spec, &str, &mut EvaluatorContext) -> T,
+    mut evaluation_factory: impl FnMut(&str, &str, &mut EvaluatorContext) -> T,
 ) -> Result<HashMap<String, T>, StatsigErr> {
     let mut results = HashMap::new();
 
@@ -52,7 +52,7 @@ pub(crate) fn gcir_process_iter<T>(
             sec_expo_hash_memo,
         );
 
-        let eval = evaluation_factory(spec, &hashed_name, context);
+        let eval = evaluation_factory(&spec.entity, &hashed_name, context);
         results.insert(hashed_name, eval);
     }
 
@@ -81,7 +81,7 @@ fn should_filter_entity(spec: &Spec, name: &str, options: &ClientInitResponseOpt
     }
 }
 
-fn hash_secondary_exposures(
+pub fn hash_secondary_exposures(
     result: &mut EvaluatorResult,
     hashing: &HashUtil,
     hash_algorithm: &HashAlgorithm,

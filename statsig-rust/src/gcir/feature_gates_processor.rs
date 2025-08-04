@@ -21,7 +21,7 @@ pub(crate) fn get_gate_evaluations(
     options: &ClientInitResponseOptions,
     sec_expo_hash_memo: &mut HashMap<String, String>,
 ) -> Result<HashMap<String, GateEvaluation>, StatsigErr> {
-    let factory = |_: &Spec, hashed_name: &str, ctx: &mut EvaluatorContext| {
+    let factory = |_: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
         result_to_gate_eval(hashed_name, &mut ctx.result)
     };
 
@@ -41,7 +41,7 @@ pub(crate) fn get_gate_evaluations_v2(
     sec_expo_hash_memo: &mut HashMap<String, String>,
     exposures: &mut HashMap<String, SecondaryExposure>,
 ) -> Result<HashMap<String, GateEvaluationV2>, StatsigErr> {
-    let factory = |_: &Spec, hashed_name: &str, ctx: &mut EvaluatorContext| {
+    let factory = |_: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
         stringify_sec_exposures(&ctx.result.secondary_exposures, ctx.hashing, exposures);
         result_to_gate_eval_v2(hashed_name, &mut ctx.result, ctx.hashing)
     };
