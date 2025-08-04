@@ -91,3 +91,42 @@ jobs:
           composer require statsig/statsig-php-core:${{ matrix.tag == 'beta' && 'dev-main' || '@stable' }}
           composer install
           php verify.php
+
+  dotnet-package-verification:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - windows-latest
+          - ubuntu-latest
+        tag:
+          - beta
+          # - prod # TODO(weihao): uncomment when we have a stable version
+
+    timeout-minutes: 10
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # TODO(weihao): uncomment when we have a stable version and remove the hardcoded version in the example
+      # - name: Pin Statsig package version
+      #   working-directory: examples/dotnet/verify-package
+      #   shell: bash
+      #   run: |
+      #     if [[ "${{ matrix.tag }}" == "beta" ]]; then
+      #       dotnet add package Statsig.Dotnet --prerelease
+      #     else
+      #       dotnet add package Statsig.Dotnet            # prod = latest stable
+      #     fi
+
+      - name: Run example
+        working-directory: examples/dotnet/verify-package
+        shell: bash
+        run: |
+          dotnet restore dotnet.csproj --no-cache
+          dotnet run --configuration Release 
