@@ -1,6 +1,6 @@
 {
 "name": "@statsig/statsig-node-core-linux-x64-gnu",
-"version": "0.7.1-beta.2508020241",
+"version": "0.7.1-beta.2508050249",
     "os": [
       "linux"
     ],
