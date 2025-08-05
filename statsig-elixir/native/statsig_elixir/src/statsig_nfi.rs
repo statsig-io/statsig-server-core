@@ -257,4 +257,4 @@ pub fn layer_get_group_name(layer: ResourceArc<LayerResource>) -> Result<Option<
     }
 }
 
-rustler::init!("Elixir.NativeBindings", load = load);
+rustler::init!("Elixir.Statsig.NativeBindings", load = load);
