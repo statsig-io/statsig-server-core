@@ -182,8 +182,8 @@ function updateGoVersion(version: string) {
   
   const was = contents.match(/version = "([^"]+)"/)?.[1];
   const updated = contents.replace(
-    /const version = "([^"]+)"/,
-    `const version = "${version}"`,
+    /version = "([^"]+)"/,
+    `version = "${version}"`,
   );
 
   fs.writeFileSync(path, updated, 'utf8');
