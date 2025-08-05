@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Text.Json;
 using Statsig;
 
 class Program
@@ -20,6 +21,21 @@ class Program
         bool gate  = statsig.CheckGate(user, "test_public");
 
         Console.WriteLine($"gate 'test_public': {gate}");
+
+        if (!gate)
+        {
+            throw new Exception("\"test_public\" gate is false but should be true");
+        }
+
+        string gcir = statsig.GetClientInitializeResponse(user);
+
+        using (JsonDocument doc = JsonDocument.Parse(gcir))
+        {
+            if (!doc.RootElement.EnumerateObject().Any())
+            {
+                throw new Exception("GCIR is missing required fields");
+            }
+        }
 
         await statsig.Shutdown();
     }

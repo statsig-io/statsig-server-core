@@ -9,11 +9,5 @@
     <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
       <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
     </PropertyGroup>
-    <!--
-      Hardcoded version for now TODO(weihao): remove this once we have a stable version
-    -->
-    <ItemGroup>
-      <PackageReference Include="Statsig.Dotnet" Version="0.7.1-beta.2508020242" />
-    </ItemGroup>
     
 </Project>
