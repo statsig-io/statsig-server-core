@@ -68,13 +68,18 @@ const TEST_COMMANDS: Record<string, string> = {
   ].join(' && '),
 
   go: [
-    'cd statsig-go',
-    'go run ./cmd/post-install/main.go',
+    "cargo build -p statsig_ffi",
+    "mkdir -p $HOME/.cache/statsig/resources",
+    "cp target/debug/libstatsig_ffi.so $HOME/.cache/statsig/resources || cp target/debug/libstatsig_ffi.dylib $HOME/.cache/statsig/resources",
+    "cp statsig-ffi/include/statsig_ffi.h $HOME/.cache/statsig/resources",
+    "cd statsig-go",
+    "export SKIP_STATSIG_POST_INSTALL=true",
+    "go run ./cmd/post-install/main.go",
     'export CGO_CFLAGS="-I$HOME/.cache/statsig/resources"',
     'export CGO_LDFLAGS="-L$HOME/.cache/statsig/resources"',
     'export LD_LIBRARY_PATH="$HOME/.cache/statsig/resources"',
-    'go test ./tests',
-  ].join(' && '),
+    "go test ./tests -v",
+  ].join(" && "),
 };
 
 type Options = {
@@ -88,35 +93,35 @@ export class Test extends CommandBase {
   constructor() {
     super(import.meta.url);
 
-    this.description('Run the tests for all relevant files');
+    this.description("Run the tests for all relevant files");
 
-    this.argument('<language>', 'The language to run tests for, e.g. python');
+    this.argument("<language>", "The language to run tests for, e.g. python");
 
     this.option(
-      '-sdb, --skip-docker-build',
-      'Skip building the docker image',
-      false,
+      "-sdb, --skip-docker-build",
+      "Skip building the docker image",
+      false
     );
 
-    this.option('-n, --no-docker', 'Run the tests locally without docker');
+    this.option("-n, --no-docker", "Run the tests locally without docker");
 
     this.option(
-      '-os, --os <string>',
-      'The OS to run tests for, e.g. debian',
-      'debian',
+      "-os, --os <string>",
+      "The OS to run tests for, e.g. debian",
+      "debian"
     );
 
     this.option(
-      '-a, --arch <string>',
-      'The architecture to run tests for, e.g. amd64',
-      'arm64',
+      "-a, --arch <string>",
+      "The architecture to run tests for, e.g. amd64",
+      "arm64"
     );
   }
 
   override async run(lang: string, options: Options) {
-    Log.title('Running Tests');
+    Log.title("Running Tests");
 
-    Log.stepBegin('Configuration');
+    Log.stepBegin("Configuration");
     Log.stepProgress(`Language: ${lang}`);
     Log.stepProgress(`OS: ${options.os}`);
     Log.stepProgress(`Arch: ${options.arch}`);
@@ -130,7 +135,7 @@ export class Test extends CommandBase {
 
     runTests(lang, options);
 
-    Log.conclusion('Tests Ran');
+    Log.conclusion("Tests Ran");
   }
 }
 
@@ -139,9 +144,9 @@ function runTests(lang: string, options: Options) {
   const dockerImageTag = getDockerImageTag(options.os, options.arch);
 
   Log.title(`Running tests for ${lang}`);
-  process.env.STATSIG_RUNNING_TESTS = '1';
+  process.env.STATSIG_RUNNING_TESTS = "1";
   const dockerCommand = [
-    'docker run --rm',
+    "docker run --rm",
     `--platform ${docker}`,
     `-v "${BASE_DIR}":/app`,
     `-v "/tmp:/tmp"`,
@@ -152,7 +157,7 @@ function runTests(lang: string, options: Options) {
     `-e test_api_key=${process.env.test_api_key}`,
     dockerImageTag,
     `"cd /app && ${TEST_COMMANDS[lang]}"`, // && while true; do sleep 1000; done
-  ].join(' ');
+  ].join(" ");
 
   let command = TEST_COMMANDS[lang];
   if (isLinux(options.os) && options.docker) {
@@ -166,7 +171,7 @@ function runTests(lang: string, options: Options) {
 
   execSync(command, {
     cwd: BASE_DIR,
-    stdio: 'inherit',
-    env: { ...process.env, RUST_BACKTRACE: '1', FORCE_COLOR: 'true' },
+    stdio: "inherit",
+    env: { ...process.env, RUST_BACKTRACE: "1", FORCE_COLOR: "true" },
   });
 }
