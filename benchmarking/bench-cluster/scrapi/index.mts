@@ -530,6 +530,11 @@ function getSdkTypeForService(name: string) {
     case 'dotnet-legacy':
       return 'dotnet-server';
 
+    case 'go-core':
+      return 'statsig-server-core-go';
+    case 'go-legacy':
+      return 'go-sdk';
+
     case 'java-core':
       return 'statsig-server-core-java';
     case 'java-legacy':

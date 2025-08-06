@@ -37,6 +37,22 @@ services:
     environment:
       - SDK_VARIANT=legacy
 
+  go-core:
+    build: ./go
+    container_name: go-core
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=core
+
+  go-legacy:
+    build: ./go
+    container_name: go-legacy
+    volumes:
+      - ./shared-volume:/shared-volume
+    environment:
+      - SDK_VARIANT=legacy
+
   java-core:
     build: ./java
     container_name: java-core
