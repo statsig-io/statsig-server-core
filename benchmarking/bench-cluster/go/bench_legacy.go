@@ -5,11 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	// "net/http"
 	"os"
 	"sort"
-	// "strings"
-	// "sync"
 	"time"
 	"debug/buildinfo"
 
@@ -18,7 +15,7 @@ import (
 
 const (
 	SCAPI_URL    = "http://scrapi:8000"
-	SDK_TYPE     = "statsig-server-core-go"
+	SDK_TYPE     = "go-sdk"
 	ITER_LITE    = 1000
 	ITER_HEAVY   = 10000
 )
