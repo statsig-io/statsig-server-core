@@ -219,6 +219,7 @@ fn apply_random_group<'a>(
     };
     ctx.result.bool_value = true;
     ctx.result.rule_id = Some(&group.id);
+    ctx.result.rule_id_suffix = Some(EXPLORE_RULE_ID_SUFFIX);
     ctx.result.group_name = Some(&group.name);
     ctx.result.json_value = Some(group.parameter_values.clone());
 }
