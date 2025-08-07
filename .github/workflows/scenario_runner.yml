@@ -13,7 +13,7 @@ env:
 jobs:
   build:
     name: Build 
-    if: github.event.repository.private
+    if: github.event.repository.private && false
     timeout-minutes: 20
     runs-on: ubuntu-latest
     strategy:
@@ -70,7 +70,7 @@ jobs:
   deploy:
     needs: [build]
     name: Deploy
-    if: github.event.repository.private
+    if: github.event.repository.private && false
     timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
