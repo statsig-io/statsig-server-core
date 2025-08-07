@@ -1,5 +1,6 @@
 use super::StatsigUserLoggable;
 use crate::evaluation::dynamic_value::DynamicValue;
+use crate::hashing::djb2_number;
 use crate::StatsigUser;
 use crate::{evaluation::dynamic_string::DynamicString, Statsig};
 
@@ -136,5 +137,27 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
         };
 
         StatsigUserLoggable::new(&self.user_ref.data, environment, global_custom)
+    }
+
+    pub fn get_hashed_private_attributes(&self) -> Option<String> {
+        let private_attributes = match &self.user_ref.data.private_attributes {
+            Some(attrs) => attrs,
+            None => return None,
+        };
+
+        if private_attributes.is_empty() {
+            return None;
+        }
+
+        let mut val: i64 = 0;
+        for (key, value) in private_attributes {
+            let hash_key = match value.string_value {
+                Some(ref s) => key.to_owned() + ":" + &s.value,
+                None => key.to_owned() + ":",
+            };
+            val += djb2_number(&hash_key);
+            val &= 0xFFFF_FFFF;
+        }
+        Some(val.to_string())
     }
 }

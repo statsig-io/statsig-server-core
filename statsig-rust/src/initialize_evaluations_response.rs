@@ -32,6 +32,7 @@ pub struct InitializeEvaluationsResponse {
     pub passes_session_recording_targeting: Option<bool>,
     pub session_recording_event_triggers: Option<HashMap<String, SessionReplayTrigger>>,
     pub session_recording_exposure_triggers: Option<HashMap<String, SessionReplayTrigger>>,
+    pub pa_hash: Option<String>,
 }
 
 impl InitializeEvaluationsResponse {
@@ -55,6 +56,7 @@ impl InitializeEvaluationsResponse {
             passes_session_recording_targeting: Default::default(),
             session_recording_event_triggers: Default::default(),
             session_recording_exposure_triggers: Default::default(),
+            pa_hash: Default::default(),
         }
     }
 }

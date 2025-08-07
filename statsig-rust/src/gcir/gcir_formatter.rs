@@ -162,6 +162,7 @@ impl GCIRFormatter {
             has_updates: true,
             hash_used: options.get_hash_algorithm().to_string(),
             user: user_internal.to_loggable(),
+            pa_hash: user_internal.get_hashed_private_attributes(),
             sdk_params: HashMap::new(),
             evaluated_keys,
             sdk_info: get_sdk_info(),
@@ -221,6 +222,7 @@ impl GCIRFormatter {
             session_recording_event_triggers: session_replay_info.session_recording_event_triggers,
             session_recording_exposure_triggers: session_replay_info
                 .session_recording_exposure_triggers,
+            pa_hash: user_internal.get_hashed_private_attributes(),
         })
     }
 
