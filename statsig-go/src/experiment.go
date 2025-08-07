@@ -2,13 +2,6 @@ package statsig
 
 import "github.com/statsig-io/statsig-server-core/statsig-go/src/utils"
 
-/*
-#cgo CFLAGS: -I../../statsig-ffi/include
-#include "statsig_ffi.h"
-
-#include <stdlib.h>
-*/
-
 type Experiment struct {
 	Name               string                 `json:"name"`
 	Value              map[string]interface{} `json:"value"`

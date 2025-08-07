@@ -1,7 +1,6 @@
 package statsig
 
 /*
-#cgo CFLAGS: -I../resources
 #include "statsig_ffi.h"
 
 #include <stdlib.h>
