@@ -1,5 +1,5 @@
 
-defmodule StatsigOptions do
+defmodule Statsig.Options do
   defstruct [
     environment: nil,
     output_log_level: nil,

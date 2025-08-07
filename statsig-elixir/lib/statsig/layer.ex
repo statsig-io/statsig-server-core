@@ -1,8 +1,11 @@
-defmodule Layer do
+defmodule Statsig.Layer do
   @moduledoc """
   Functions to get values, metadata e.g. group_name for layer
   Layer object is not a struct, instead it's a reference to a layer struct defined in statsig-core (Binary library)
   """
+
+  alias Statsig.NativeBindings
+
   def get_name(layer) do
     try do
       {:ok, NativeBindings.layer_get_name(layer)}

@@ -12,7 +12,7 @@ macro_rules! to_value_with_dynamic {
 }
 
 #[derive(NifStruct)]
-#[module = "StatsigUser"]
+#[module = "Statsig.User"]
 pub struct StatsigUser {
     pub user_id: String,
     pub email: Option<String>,

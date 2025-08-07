@@ -6,7 +6,7 @@ use statsig_rust::statsig_types::{
 };
 use statsig_rust::DynamicValue;
 #[derive(NifStruct)]
-#[module = "Experiment"]
+#[module = "Statsig.Experiment"]
 pub struct Experiment {
     pub name: String,
     pub rule_id: String,
@@ -28,7 +28,7 @@ impl From<ExperimentActual> for Experiment {
 }
 
 #[derive(NifStruct)]
-#[module = "DynamicConfig"]
+#[module = "Statsig.DynamicConfig"]
 pub struct DynamicConfig {
     pub name: String,
     pub value: String,
@@ -48,7 +48,7 @@ impl From<DynamicConfigActual> for DynamicConfig {
 }
 
 #[derive(NifStruct)]
-#[module = "FeatureGate"]
+#[module = "Statsig.FeatureGate"]
 pub struct FeatureGate {
     pub name: String,
     pub value: bool,

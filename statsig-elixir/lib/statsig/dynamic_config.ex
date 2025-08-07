@@ -1,4 +1,4 @@
-defmodule DynamicConfig do
+defmodule Statsig.DynamicConfig do
   defstruct [
     :name,
     :value,
