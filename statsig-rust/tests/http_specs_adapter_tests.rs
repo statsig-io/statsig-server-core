@@ -63,7 +63,9 @@ async fn test_request_args() {
         .contains(format!("/v2/download_config_specs/{SDK_KEY}.json").as_str()));
 
     let headers = request.headers.clone();
-    assert_eq!(headers.get("Accept-Encoding").unwrap(), "gzip");
+    let accept_encoding = headers.get("Accept-Encoding").unwrap().to_str().unwrap();
+    assert!(accept_encoding.contains("gzip"));
+    assert!(accept_encoding.contains("br"));
 
     let client_time = headers
         .get("statsig-client-time")
