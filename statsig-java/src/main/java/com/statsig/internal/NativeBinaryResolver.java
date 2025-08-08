@@ -4,6 +4,8 @@ import com.statsig.OutputLogger;
 import com.statsig.Statsig;
 import java.io.*;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Properties;
 
 public class NativeBinaryResolver {
@@ -125,12 +127,12 @@ public class NativeBinaryResolver {
     String normalizedOsName = osName.toLowerCase().replace(" ", "");
 
     if (normalizedOsName.contains("macos")) {
-      addDependency(message, "macOS", arch, "macos");
+      addDepStringToError(message, "macOS", arch, "apple-darwin");
     } else if (normalizedOsName.contains("linux")) {
-      String dependencyName = detectLibc().equals("musl") ? "linux-musl" : "linux-gnu";
-      addDependency(message, "Linux", arch, dependencyName);
+      String dependencyName = isMusl() ? "unknown-linux-musl" : "unknown-linux-gnu";
+      addDepStringToError(message, "Linux", arch, dependencyName);
     } else if (normalizedOsName.contains("win")) {
-      addDependency(message, "Windows", arch, "windows");
+      addDepStringToError(message, "Windows", arch, "pc-windows-msvc");
     } else {
       message.append(String.format("Unsupported OS: %s. Check your environment.\n", osName));
     }
@@ -139,16 +141,13 @@ public class NativeBinaryResolver {
     OutputLogger.logError(TAG, message.toString());
   }
 
-  private static void addDependency(
-      StringBuilder message, String os, String arch, String... platforms) {
+  private static void addDepStringToError(
+      StringBuilder message, String os, String arch, String platform) {
     message.append(
         String.format(
             "For %s with %s architecture, add the following to build.gradle:\n", os, arch));
-    for (String platform : platforms) {
-      message.append(
-          String.format(
-              "  implementation 'com.statsig:javacore:<version>:%s-%s'\n", platform, arch));
-    }
+    message.append(
+        String.format("  implementation 'com.statsig:javacore:<version>:%s-%s'\n", arch, platform));
   }
 
   private static String getLibFileName() {
@@ -164,20 +163,19 @@ public class NativeBinaryResolver {
 
   private static String genDetectedPlatform() {
     if (osName.contains("win")) {
-      return normalizedArch.contains("64") ? "x86_64-pc-windows-msvc" : "i686-pc-windows-msvc";
-    } else if (osName.contains("mac")) {
-      return normalizedArch.contains("arm64") ? "aarch64-apple-darwin" : "x86_64-apple-darwin";
-    } else if (osName.contains("linux")) {
-      String libcName = detectLibc();
-      if (libcName.equals("musl")) {
-        return normalizedArch.contains("arm64")
-            ? "aarch64-unknown-linux-musl"
-            : "x86_64-unknown-linux-musl";
-      } else if (libcName.equals("gnu")) {
-        return normalizedArch.contains("arm64")
-            ? "aarch64-unknown-linux-gnu"
-            : "x86_64-unknown-linux-gnu";
+      return normalizedArch + "-pc-windows-msvc";
+    }
+
+    if (osName.contains("mac")) {
+      return normalizedArch + "-apple-darwin";
+    }
+
+    if (osName.contains("linux")) {
+      if (isMusl()) {
+        return normalizedArch + "-unknown-linux-musl";
       }
+
+      return normalizedArch + "-unknown-linux-gnu";
     }
     return null;
   }
@@ -185,7 +183,7 @@ public class NativeBinaryResolver {
   private static String normalizeArch() {
     String cpuArch = System.getProperty("os.arch").toLowerCase();
     if (cpuArch.contains("aarch64") || cpuArch.contains("arm64")) {
-      return "arm64";
+      return "aarch64";
     } else if (cpuArch.contains("x86_64") || cpuArch.contains("amd64")) {
       return "x86_64";
     } else if (cpuArch.contains("i686")) {
@@ -195,7 +193,25 @@ public class NativeBinaryResolver {
     }
   }
 
-  private static String detectLibc() {
+  private static boolean isMusl() {
+    boolean musl = isMuslFromFilesystem();
+    if (!musl) {
+      musl = isMuslFromChildProcess();
+    }
+
+    return musl;
+  }
+
+  private static boolean isMuslFromFilesystem() {
+    try {
+      String output = new String(Files.readAllBytes(Paths.get("/usr/bin/ldd")));
+      return output.contains("musl");
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
+  private static boolean isMuslFromChildProcess() {
     try {
       Process process = Runtime.getRuntime().exec("ldd --version");
       BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -203,15 +219,13 @@ public class NativeBinaryResolver {
       String line;
       while ((line = reader.readLine()) != null) {
         if (line.toLowerCase().contains("musl")) {
-          return "musl";
-        } else if (line.toLowerCase().contains("gnu libc")
-            || line.toLowerCase().contains("glibc")) {
-          return "gnu";
+          return true;
         }
       }
+
+      return false;
     } catch (IOException e) {
-      OutputLogger.logError(TAG, "Error while detecting linux distro: " + e.getMessage());
+      return false;
     }
-    return "gnu";
   }
 }
