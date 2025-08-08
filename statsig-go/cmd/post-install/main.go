@@ -357,6 +357,27 @@ func ensure_binary_file_exists(system_info []string) bool {
 	}
 }
 
+func fixDylibPath(outputDir string) error {
+	dylibPath := filepath.Join(outputDir, "libstatsig_ffi.dylib")
+
+	libDir := os.Getenv("STATSIG_LIB_DIR")
+	if libDir == "" {
+		libDir = outputDir
+	}
+
+	// force path to reference statsig_lib_dir
+	installName := filepath.Join(libDir, "libstatsig_ffi.dylib")
+
+	cmd := exec.Command("install_name_tool", "-id", installName, dylibPath)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to run install_name_tool: %v, output: %s", err, string(out))
+	}
+
+	fmt.Printf("✅ Patched dylib install name to: %s\n", installName)
+	return nil
+}
+
 func main() {
 
 	find_output_dir()
@@ -387,6 +408,13 @@ func main() {
 	if !header_found || !binary_found {
 		fmt.Println("Missing resources after install!")
 		os.Exit(1)
+	}
+
+	// Fix dylib path on macOS
+	if runtime.GOOS == "darwin" {
+		if err := fixDylibPath(output_dir); err != nil {
+			fmt.Println("Warning: Failed to fix dylib path:", err)
+		}
 	}
 
 	writeEnvSetupScript()
