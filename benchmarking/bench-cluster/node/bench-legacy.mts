@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import Statsig, { StatsigOptions } from 'statsig-node';
+import Statsig, { StatsigOptions, StatsigServer } from 'statsig-node';
 import { version as sdkVersion } from 'statsig-node/package.json';
 
 const sdkType = 'statsig-node';
@@ -41,19 +41,24 @@ await Statsig.initialize('secret-NODE_LEGACY', options);
 
 const results: BenchmarkResult[] = [];
 
-const benchmark = async (
+const benchmark = async <T,>(
   benchName: string,
   specName: string,
   iterations: number,
-  func: () => void | Promise<void>,
+  func: () => Promise<T> | T,
+  cleanup?: (result: T) => void,
 ) => {
   const durations: number[] = [];
 
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    func();
+    const result = await func();
     const end = performance.now();
     durations.push(end - start);
+
+    if (cleanup) {
+      cleanup(result);
+    }
   }
 
   // Calculate p99
@@ -111,6 +116,20 @@ console.log('--------------------------------');
 const globalUser = {
   userID: 'global_user',
 };
+
+await benchmark(
+  'initialize',
+  'n/a',
+  ITER_LITE,
+  async () => {
+    const inst = new StatsigServer('secret-NODE_LEGACY', options);
+    await inst.initializeAsync();
+    return inst;
+  },
+  (inst: StatsigServer) => {
+    inst.shutdown();
+  },
+);
 
 for (const gate of specNames.feature_gates) {
   await benchmark('check_gate', gate, ITER_HEAVY, () => {

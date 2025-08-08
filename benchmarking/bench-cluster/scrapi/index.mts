@@ -53,7 +53,10 @@ const idListsV1 = await fetch(
 const app = express();
 
 app.use((req, res, next) => {
-  const shouldParse = req.headers['content-type'] === 'application/json';
+  const shouldParse =
+    req.headers['content-type'] === 'application/json' &&
+    req.headers['content-encoding'] !== 'zstd';
+
   if (shouldParse) {
     express.json({ limit: '10mb' })(req, res, next);
   } else {
