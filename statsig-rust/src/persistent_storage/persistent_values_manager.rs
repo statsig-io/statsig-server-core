@@ -1,13 +1,14 @@
 use std::sync::{Arc, Weak};
 
 use crate::{
-    evaluation::dynamic_returnable::DynamicReturnable,
-    evaluation::evaluator_result::{
-        eval_result_to_experiment_eval, result_to_layer_eval, EvaluatorResult,
+    evaluation::{
+        dynamic_returnable::DynamicReturnable,
+        evaluator_result::{eval_result_to_experiment_eval, result_to_layer_eval, EvaluatorResult},
     },
     event_logging::event_logger::EventLogger,
     get_persistent_storage_key, log_d, log_e, make_experiment_from_sticky_value,
     make_layer_from_sticky_value, make_sticky_value_from_experiment, make_sticky_value_from_layer,
+    spec_store::SpecStoreData,
     statsig_types::{Experiment, Layer},
     unwrap_or_return,
     user::StatsigUserInternal,
@@ -52,18 +53,21 @@ macro_rules! get_sticky_result {
 }
 
 macro_rules! try_finalize_sticky_storage {
-    ($self: expr, $user: expr, $option:expr, $evaluator_result:expr, $maybe_sticky_result:expr, $sticky_value_ptr: expr,  $make_sticky_value_fn:expr) => {{
+    ($self: expr, $user: expr, $option:expr, $evaluator_result:expr, $maybe_sticky_result:expr, $sticky_value_ptr: expr,  $make_sticky_value_fn:expr, $is_experiment_active:expr) => {{
         let config_name = $evaluator_result.name.as_str();
         let is_in_experiment = $evaluator_result
             .__evaluation
             .as_ref()
             .and_then(|e| e.is_user_in_experiment)
             .unwrap_or_default();
-        let is_experiment_active = $evaluator_result
-            .__evaluation
-            .as_ref()
-            .and_then(|e| e.is_experiment_active)
-            .unwrap_or_default();
+        let is_experiment_active = match $is_experiment_active {
+            Some(active) => active,
+            None => $evaluator_result
+                .__evaluation
+                .as_ref()
+                .and_then(|e| e.is_experiment_active)
+                .unwrap_or_default(),
+        };
         let storage_key = unwrap_or_return!(
             get_persistent_storage_key($user, &$evaluator_result.id_type),
             None
@@ -96,6 +100,11 @@ impl PersistentValuesManager {
     ) -> Option<Experiment> {
         let config_name = evaluator_result.name.as_str();
         let (mut maybe_sticky_result, sticky_value_ptr) = get_sticky_result!(option, config_name);
+        let is_experiment_active = evaluator_result
+            .__evaluation
+            .as_ref()
+            .and_then(|e| e.is_experiment_active)
+            .unwrap_or_default();
         try_finalize_sticky_storage!(
             self,
             user,
@@ -103,7 +112,8 @@ impl PersistentValuesManager {
             evaluator_result,
             maybe_sticky_result,
             sticky_value_ptr,
-            make_sticky_value_from_experiment
+            make_sticky_value_from_experiment,
+            Some(is_experiment_active)
         );
         let sticky_value = unwrap_or_return!(sticky_value_ptr, None).clone();
         maybe_sticky_result
@@ -114,6 +124,20 @@ impl PersistentValuesManager {
             })
     }
 
+    pub fn try_update_sticky_layer_experiment_active<'a>(
+        &self,
+        spec_store_data: &'a SpecStoreData,
+        maybe_sticky_result: &Option<EvaluatorResult<'a>>,
+    ) -> Option<bool> {
+        let sticky_result = unwrap_or_return!(maybe_sticky_result, None);
+        let config_delegate = unwrap_or_return!(sticky_result.config_delegate, Some(false));
+        let delegate_spec = spec_store_data.values.dynamic_configs.get(config_delegate);
+        match delegate_spec {
+            Some(delegate_spec) => Some(delegate_spec.spec.is_active.unwrap_or(false)),
+            None => Some(false),
+        }
+    }
+
     pub fn try_apply_sticky_value_to_layer<'a>(
         &self,
         user: &'a StatsigUserInternal,
@@ -121,9 +145,12 @@ impl PersistentValuesManager {
         evaluator_result: &'a Layer,
         event_logger_ptr: Option<Weak<EventLogger>>,
         disable_exposure: bool,
+        spec_store_data: &'a SpecStoreData,
     ) -> Option<Layer> {
         let config_name = evaluator_result.name.as_str();
         let (mut maybe_sticky_result, sticky_value_ptr) = get_sticky_result!(option, config_name);
+        let is_experiment_active =
+            self.try_update_sticky_layer_experiment_active(spec_store_data, &maybe_sticky_result);
         try_finalize_sticky_storage!(
             self,
             user,
@@ -131,7 +158,8 @@ impl PersistentValuesManager {
             evaluator_result,
             maybe_sticky_result,
             sticky_value_ptr,
-            make_sticky_value_from_layer
+            make_sticky_value_from_layer,
+            is_experiment_active
         );
         let sticky_value = unwrap_or_return!(sticky_value_ptr, None).clone();
         maybe_sticky_result.as_mut().map(|sticky_result| {
