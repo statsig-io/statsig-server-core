@@ -78,6 +78,7 @@ jobs:
           - ffi
           - java
           - dotnet
+          - elixir
 
     timeout-minutes: 25
     runs-on: ${{ (contains(fromJson('["java", "dotnet", "ffi"]'), matrix.package) && contains(matrix.config.target, 'linux')) && 'ubuntu-latest' || matrix.config.runner }}
@@ -125,6 +126,7 @@ jobs:
 
       - name: Build Package
         shell: bash
+        id: build_package
         run: |
           ./tore build ${{ matrix.package }} \
             --os ${{ matrix.config.os }} \
@@ -148,6 +150,10 @@ jobs:
             **/release/statsig_ffi.dll
             **/release/*statsig_ffi.a
             **/release/*statsig_ffi.lib
+            **/release/*statsig_ffi.lib
+            **/release/libstatsig_elixir*.so
+            **/release/libstatsig_elixir*.dylib
+            **/release/libstatsig_elixir*.dll
 
   # -------------------------------------------------------------------- [Verify Node]
 

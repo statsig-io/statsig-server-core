@@ -9,4 +9,6 @@ export type BuilderOptions = {
   skipDockerBuild: boolean;
   target?: string;
   docker: boolean;
+  subProject?: string;
+  envSetupForBuild?: string; // Setup env variable to run build, e.g. RUSTFLAGS=""
 };

@@ -12,7 +12,6 @@ crate-type = ["cdylib"]
 parking_lot = "0.12.1"
 rustler = "0.36.1"
 statsig-rust = { path = "../../../statsig-rust", features = [
-    "with_grpc",
     "with_zstd",
 ] }
 tokio = { version = "1.39.1", features = ["rt", "rt-multi-thread", "macros"] }
