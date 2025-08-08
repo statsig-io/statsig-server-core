@@ -2,9 +2,15 @@ import asyncio
 import random
 import string
 import time
-from typing import List, Dict, Any, Callable
+from typing import List, Dict, Any, Callable, Optional
 import os
-from statsig import statsig, StatsigUser, StatsigOptions, HashingAlgorithm
+from statsig import (
+    statsig,
+    StatsigUser,
+    StatsigOptions,
+    HashingAlgorithm,
+    StatsigServer,
+)
 from importlib.metadata import version
 import json
 
@@ -87,14 +93,17 @@ async def benchmark(
     iterations: int,
     func: Callable,
     results: List[BenchmarkResult],
+    cleanup: Optional[Callable] = None,
 ):
     durations = []
 
     for _ in range(iterations):
         start = time.perf_counter()
-        func()
+        result = func()
         end = time.perf_counter()
         durations.append((end - start) * 1000)
+        if cleanup:
+            cleanup(result)
 
     # Calculate p99
     durations.sort()
@@ -142,6 +151,20 @@ async def main():
     print("--------------------------------")
 
     global_user = StatsigUser(user_id=f"global_user")
+
+    def init_new_statsig(options: StatsigOptions):
+        inst = StatsigServer()
+        inst.initialize("secret-PYTHON_LEGACY", options)
+        return inst
+
+    await benchmark(
+        "initialize",
+        "n/a",
+        ITER_LITE,
+        lambda: init_new_statsig(options),
+        results,
+        cleanup=lambda inst: inst.shutdown(),
+    )
 
     # Benchmark feature gates
     for gate in spec_names["feature_gates"]:
