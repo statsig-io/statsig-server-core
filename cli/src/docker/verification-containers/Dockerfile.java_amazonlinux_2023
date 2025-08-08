@@ -1,0 +1,28 @@
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023
+
+RUN dnf -y update && \
+    dnf -y install \
+      java-21-amazon-corretto-devel \
+      git \
+      unzip \
+      which \
+      tar \
+      gzip \
+      findutils && \
+    dnf clean all
+
+ENV JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto
+
+RUN curl -LO https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
+RUN unzip gradle-8.11.1-bin.zip -d /usr/local/lib/gradle
+RUN rm gradle-8.11.1-bin.zip
+RUN ln -s /usr/local/lib/gradle/gradle-8.11.1/bin/gradle /usr/local/bin/gradle
+
+WORKDIR /app
+
+COPY examples/java/verify-package .
+
+RUN gradle dependencies --no-daemon
+RUN gradle shadowJar --no-daemon
+
+CMD ["java", "-jar", "/app/build/libs/app-all.jar"]

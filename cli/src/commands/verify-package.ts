@@ -1,11 +1,3 @@
-import {
-  OPERATING_SYSTEMS,
-  OS,
-  buildDockerImage,
-  getArchInfo,
-  getDockerImageTag,
-  isLinux,
-} from '@/utils/docker_utils.js';
 import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
 import { Log } from '@/utils/terminal_utils.js';
 import { execSync } from 'node:child_process';
@@ -19,14 +11,12 @@ export class VerifyPackage extends CommandBase {
       description: 'Verifies a the package is valid using a docker container',
       options: [
         {
-          flags: '--tag <string>',
-          description: 'The Dockerfile tag to use. eg amazonlinux2023',
+          flags: '--image-tag <string>',
+          description: 'The docker image to use. eg amazonlinux2023',
           required: true,
         },
-      ],
-      args: [
         {
-          name: '<package>',
+          flags: '--package <string>',
           description: 'The package to verify',
           required: true,
         },
@@ -34,19 +24,21 @@ export class VerifyPackage extends CommandBase {
     });
   }
 
-  override async run(packageName: string, options: { tag: string }) {
+  override async run(opts: { package: string; imageTag: string }) {
     Log.title(`Verifying Package`);
 
     Log.stepBegin('Configuration');
-    Log.stepProgress(`Package: ${packageName}`);
-    Log.stepEnd(`Tag: ${options.tag}`);
+    Log.stepProgress(`Package: ${opts.package}`);
+    Log.stepEnd(`Image Tag: ${opts.imageTag}`);
 
     const dockerfile = getRootedPath(
-      `cli/src/docker/verification-containers/Dockerfile.${packageName}_${options.tag}`,
+      `cli/src/docker/verification-containers/Dockerfile.${opts.package}_${opts.imageTag}`,
     );
 
     if (!fs.existsSync(dockerfile)) {
-      throw new Error(`Dockerfile ${dockerfile} does not exist`);
+      Log.conclusion(`Dockerfile does not exist`, 'failure');
+      Log.stepEnd(`${dockerfile}`);
+      process.exit(1);
     }
 
     const sdkKey = process.env.STATSIG_SERVER_SDK_KEY;
@@ -54,13 +46,11 @@ export class VerifyPackage extends CommandBase {
       throw new Error('STATSIG_SERVER_SDK_KEY is not set');
     }
 
-    const command = [
-      'docker build',
-      `-t server-core-verify-${packageName}-${options.tag}`,
-      `-f ${dockerfile}`,
-      `--build-arg STATSIG_SERVER_SDK_KEY=${sdkKey}`,
-      '.',
-    ].join(' ');
+    const tag = `server-core-verify-${opts.package}-${opts.imageTag}`;
+
+    const command = ['docker build', `-t ${tag}`, `-f ${dockerfile}`, '.'].join(
+      ' ',
+    );
 
     Log.stepBegin('Building Docker Image');
     Log.stepEnd(command);
@@ -69,6 +59,14 @@ export class VerifyPackage extends CommandBase {
       cwd: BASE_DIR,
       stdio: 'inherit',
     });
+
+    execSync(
+      `docker run --rm --name ${tag} -e "STATSIG_SERVER_SDK_KEY=${sdkKey}" ${tag}`,
+      {
+        cwd: BASE_DIR,
+        stdio: 'inherit',
+      },
+    );
 
     Log.title('Package Verified');
   }

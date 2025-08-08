@@ -1,0 +1,13 @@
+FROM amazoncorretto:21-alpine-jdk
+
+RUN apk update && apk add --no-cache gradle
+RUN apk add --no-cache libgcc gcompat
+
+WORKDIR /app
+
+COPY examples/java/verify-package .
+
+RUN gradle dependencies --no-daemon
+RUN gradle shadowJar --no-daemon
+
+CMD ["java", "-jar", "/app/build/libs/app-all.jar"]

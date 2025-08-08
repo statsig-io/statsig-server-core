@@ -4,8 +4,15 @@ export function printTitle(title: string) {
   console.log(chalk.bold(chalk.blue(`\n-------- ${title} --------\n`)));
 }
 
-export function printConclusion(conclusion: string) {
-  console.log(chalk.bold(chalk.green(`\n-------- ${conclusion} --------\n`)));
+export function printConclusion(
+  conclusion: string,
+  kind: 'success' | 'failure' = 'success',
+) {
+  if (kind === 'failure') {
+    console.log(chalk.bold(chalk.red(`\n-------- ${conclusion} --------\n`)));
+  } else {
+    console.log(chalk.bold(chalk.green(`\n-------- ${conclusion} --------\n`)));
+  }
 }
 
 export function printStepBegin(step: string) {

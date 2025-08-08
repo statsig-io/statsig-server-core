@@ -9,6 +9,35 @@ env:
   STATSIG_SERVER_SDK_KEY: ${{ secrets.KONG_SERVER_SDK_KEY }}
 
 jobs:
+  java-package-verification:
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - runner: ubuntu-latest
+            tag: amazoncorretto_21_alpine_jdk
+
+          - runner: ubuntu-latest
+            tag: amazonlinux_2023
+
+    runs-on: ${{ matrix.config.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+
+
+      - name: Install NPM Dependencies
+        run: pnpm install --dir cli
+
+      - name: Run Verification
+        run: ./tore verify-package --package java --image-tag ${{ matrix.config.tag }} 
+
+
   node-package-verification:
     strategy:
       fail-fast: false

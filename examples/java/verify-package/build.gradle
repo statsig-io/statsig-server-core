@@ -1,0 +1,45 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+mainClassName = 'Verify'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+    withSourcesJar()
+}
+
+dependencies {
+    implementation 'com.statsig:javacore:+'
+    implementation 'com.alibaba.fastjson2:fastjson2:2.0.41'
+
+    implementation 'com.statsig:javacore:+:x86_64-unknown-linux-gnu'
+    implementation 'com.statsig:javacore:+:x86_64-unknown-linux-musl'
+    implementation 'com.statsig:javacore:+:aarch64-unknown-linux-gnu'
+    implementation 'com.statsig:javacore:+:aarch64-apple-darwin'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['.']
+        }
+    }
+}
+
+java {
+    withSourcesJar()
+}
+
+tasks.withType(Jar).configureEach {
+    manifest {
+        attributes 'Main-Class': 'Verify'
+    }
+}
