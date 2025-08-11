@@ -43,7 +43,8 @@ export class SyncVersion extends CommandBase {
     updatePhpComposerVersion(versionString);
     updateDotnetNugetVersion(versionString);
     updateGoVersion(versionString);
-
+    updateElixirVersion(versionString);
+    
     Log.stepBegin('Verifying Cargo Change');
     execSync('cargo update --workspace', { cwd: BASE_DIR });
     execSync('cargo check --workspace', {
@@ -189,6 +190,23 @@ function updateGoVersion(version: string) {
   fs.writeFileSync(path, updated, 'utf8');
 
   Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`);
+}
+
+function updateElixirVersion(version: string) {
+  Log.stepBegin('Updating elixir version');
+
+  const path = getRootedPath('statsig-elixir/mix.exs');
+  const contents = fs.readFileSync(path, 'utf8');
+  
+  const was = contents.match(/version: "([^"]+)"/)?.[1];
+  const updated = contents.replace(
+    /version: "([^"]+)"/,
+    `version: "${version}"`,
+  );
+
+  fs.writeFileSync(path, updated, 'utf8');
+
+  Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`)
 }
 
 async function tryCommitAndPushChanges(version: SemVer) {
