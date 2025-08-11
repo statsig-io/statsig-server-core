@@ -69,7 +69,7 @@ macro_rules! try_finalize_sticky_storage {
                 .unwrap_or_default(),
         };
         let storage_key = unwrap_or_return!(
-            get_persistent_storage_key($user, &$evaluator_result.id_type),
+            get_persistent_storage_key($user.user_ref, &$evaluator_result.id_type),
             None
         );
         if $option.user_persisted_values.is_none() || !is_experiment_active {

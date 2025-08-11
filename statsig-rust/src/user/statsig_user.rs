@@ -1,5 +1,5 @@
-use crate::dyn_value;
 use crate::evaluation::dynamic_value::DynamicValue;
+use crate::{dyn_value, evaluation::dynamic_string::DynamicString};
 use std::{collections::HashMap, sync::Arc};
 
 use super::{into_optional::IntoOptional, unit_id::UnitID, user_data::UserData};
@@ -139,6 +139,20 @@ impl StatsigUser {
 
         let mut_data = Arc::make_mut(&mut self.data);
         mut_data.custom_ids = Some(custom_ids);
+    }
+
+    pub fn get_unit_id(&self, id_type: &DynamicString) -> Option<&DynamicValue> {
+        if id_type.lowercased_value.eq("userid") {
+            return self.data.user_id.as_ref();
+        }
+
+        let custom_ids = self.data.custom_ids.as_ref()?;
+
+        if let Some(custom_id) = custom_ids.get(&id_type.value) {
+            return Some(custom_id);
+        }
+
+        custom_ids.get(&id_type.lowercased_value)
     }
 
     string_field_accessor!(self, get_email, set_email, email);

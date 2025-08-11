@@ -2,7 +2,6 @@ use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::evaluation_types::BaseEvaluation;
 use crate::event_logging::event_logger::EventLogger;
 use crate::event_logging::exposable_string::ExposableString;
-use crate::log_e;
 use crate::{
     evaluation::evaluation_types::{ExperimentEvaluation, LayerEvaluation},
     statsig_type_factories::{extract_from_experiment_evaluation, make_layer},
@@ -11,6 +10,7 @@ use crate::{
     user::StatsigUserInternal,
     EvaluationDetails, SecondaryExposure,
 };
+use crate::{log_e, StatsigUser};
 use chrono::Utc;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
@@ -22,9 +22,18 @@ pub trait PersistentStorage: Send + Sync {
     fn load(&self, key: String) -> Option<UserPersistedValues>;
     fn save(&self, key: &str, config_name: &str, data: StickyValues);
     fn delete(&self, key: &str, config_name: &str);
+
+    fn get_values_for_user(
+        &self,
+        user: &StatsigUser,
+        id_type: &String,
+    ) -> Option<UserPersistedValues> {
+        let key = get_persistent_storage_key(user, id_type)?;
+        self.load(key)
+    }
 }
 
-pub fn get_persistent_storage_key(user: &StatsigUserInternal, id_type: &String) -> Option<String> {
+pub fn get_persistent_storage_key(user: &StatsigUser, id_type: &String) -> Option<String> {
     let dyn_str_id_type = DynamicString::from(id_type.clone());
     user.get_unit_id(&dyn_str_id_type).map(|id| {
         let mut id_str = "";
