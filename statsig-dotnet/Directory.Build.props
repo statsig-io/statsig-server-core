@@ -1,5 +1,5 @@
 <Project>
   <PropertyGroup>
-    <StatsigVersion>0.7.4-beta.2508090238</StatsigVersion>
+    <StatsigVersion>0.7.4</StatsigVersion>
   </PropertyGroup>
 </Project>
