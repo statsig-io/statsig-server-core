@@ -1,0 +1,31 @@
+FROM amazonlinux:2
+
+RUN yum update -y && \
+    yum install -y \
+      java-17-amazon-corretto \
+      java-17-amazon-corretto-devel \
+      tar \
+      gzip \
+      wget \
+      unzip \
+      which \
+      shadow-utils \
+      git \
+    && yum clean all
+
+ARG GRADLE_VERSION=8.10.2
+RUN wget https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -P /tmp && \
+    unzip -d /opt/gradle /tmp/gradle-${GRADLE_VERSION}-bin.zip && \
+    rm /tmp/gradle-${GRADLE_VERSION}-bin.zip
+
+ENV GRADLE_HOME=/opt/gradle/gradle-${GRADLE_VERSION}
+ENV PATH=${GRADLE_HOME}/bin:${PATH}
+
+WORKDIR /app
+
+COPY examples/java/verify-package .
+
+RUN gradle dependencies --no-daemon
+RUN gradle shadowJar --no-daemon
+
+CMD ["java", "-jar", "/app/build/libs/app-all.jar"]

@@ -1,0 +1,23 @@
+FROM php:7-cli
+
+RUN apt-get update && apt-get install -y \
+    unzip libzip-dev libffi-dev
+
+RUN docker-php-ext-install zip
+RUN docker-php-ext-install ffi
+
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && \
+    php composer-setup.php --install-dir=/usr/local/bin --filename=composer && \
+    php -r "unlink('composer-setup.php');"
+
+COPY examples/php/verify-package app
+
+WORKDIR /app
+
+RUN echo "ffi.enable=1" > /usr/local/etc/php/conf.d/docker-php-ext-ffi.ini
+RUN echo "extension=ffi.so" >> /usr/local/etc/php/conf.d/docker-php-ext-ffi.ini
+
+RUN composer require statsig/statsig-php-core:dev-main
+
+
+CMD ["php", "verify.php"]

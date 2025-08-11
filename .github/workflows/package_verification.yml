@@ -9,19 +9,47 @@ env:
   STATSIG_SERVER_SDK_KEY: ${{ secrets.KONG_SERVER_SDK_KEY }}
 
 jobs:
-  java-package-verification:
+  docker-based-verification:
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         config:
-          - runner: ubuntu-latest
+          - package: java
             tag: amazoncorretto_21_alpine_jdk
 
-          - runner: ubuntu-latest
+          - package: java
             tag: amazonlinux_2023
 
-    runs-on: ${{ matrix.config.runner }}
+          - package: java
+            tag: amazonlinux_2
+
+          - package: python
+            tag: ubuntu_noble
+
+          - package: python
+            tag: py_3_10_slim
+
+          - package: python
+            tag: py_3_10_alpine
+
+          - package: node
+            tag: node_20_slim
+
+          - package: node
+            tag: node_20_alpine
+
+          - package: php
+            tag: php_7_cli
+
+          # todo: PHP musl support
+          # - package: php
+          #   tag: php_7_alpine
+
+          - package: php
+            tag: debian_11_slim
+
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -30,12 +58,11 @@ jobs:
         with:
           version: 7.32.4
 
-
       - name: Install NPM Dependencies
         run: pnpm install --dir cli
 
       - name: Run Verification
-        run: ./tore verify-package --package java --image-tag ${{ matrix.config.tag }} 
+        run: ./tore verify-package --package ${{ matrix.config.package }} --image-tag ${{ matrix.config.tag }} 
 
 
   node-package-verification:

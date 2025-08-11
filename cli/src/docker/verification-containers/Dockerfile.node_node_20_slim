@@ -1,0 +1,10 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+RUN npm install tsx
+RUN npm install @statsig/statsig-node-core@beta
+
+COPY examples/node/verify-package .
+
+CMD ["npx", "tsx", "verify.ts"]
