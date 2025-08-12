@@ -25,9 +25,11 @@ class StatsigJNI {
 
   // ------------------------------------------------------------------------------------------------------- [Statsig]
 
-  public static native long statsigCreate(String sdkKey, long optionsRef, String statsigMetadata);
+  public static native long statsigCreate(String sdkKey, long optionsRef);
 
   public static native void statsigRelease(long statsigRef);
+
+  public static native void updateStatsigMetadata(String metadata);
 
   public static native void statsigInitialize(long statsigRef, Runnable callback);
 

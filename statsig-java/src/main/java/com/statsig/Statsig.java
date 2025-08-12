@@ -74,8 +74,8 @@ public class Statsig {
    *     Statsig instance.
    */
   public Statsig(String sdkKey, StatsigOptions options) {
-    this.ref =
-        StatsigJNI.statsigCreate(sdkKey, options.getRef(), StatsigMetadata.getSerializedCopy());
+    StatsigJNI.updateStatsigMetadata(StatsigMetadata.getSerializedCopy());
+    this.ref = StatsigJNI.statsigCreate(sdkKey, options.getRef());
 
     ResourceCleaner.register(
         this,
@@ -88,7 +88,8 @@ public class Statsig {
   }
 
   public Statsig(String sdkKey) {
-    this.ref = StatsigJNI.statsigCreate(sdkKey, 0, StatsigMetadata.getSerializedCopy());
+    StatsigJNI.updateStatsigMetadata(StatsigMetadata.getSerializedCopy());
+    this.ref = StatsigJNI.statsigCreate(sdkKey, 0);
 
     ResourceCleaner.register(
         this,

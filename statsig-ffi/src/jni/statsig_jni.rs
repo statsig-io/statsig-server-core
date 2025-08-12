@@ -30,7 +30,6 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
     _class: JClass,
     sdk_key: JString,
     options_ref: jlong,
-    statsig_metadata: JString,
 ) -> jlong {
     let sdk_key: String = match env.get_string(&sdk_key) {
         Ok(s) => s.into(),
@@ -47,7 +46,6 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCreate(
     }
 
     let inst = Statsig::new(&sdk_key, options_jni);
-    update_statsig_metadata(&mut env, statsig_metadata);
 
     match InstanceRegistry::register(inst) {
         Some(id) => {
@@ -1206,8 +1204,13 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideExperimentByGr
     statsig.override_experiment_by_group_name(&exp_name_rust, &group_name_rust, id_rust.as_deref());
 }
 
-fn update_statsig_metadata(env: &mut JNIEnv, metadata: JString) {
-    let metadata_str = jstring_to_string(env, metadata);
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_updateStatsigMetadata(
+    mut env: JNIEnv,
+    _class: JClass,
+    metadata: JString,
+) {
+    let metadata_str = jstring_to_string(&mut env, metadata);
     if let Some(m) = parse_json_to_str_map(metadata_str) {
         let os = m.get("os").map_or("unknown".to_string(), |s| s.clone());
         let arch = m.get("arch").map_or("unknown".to_string(), |s| s.clone());
