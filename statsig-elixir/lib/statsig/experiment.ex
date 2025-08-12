@@ -1,4 +1,4 @@
-defmodule Experiment do
+defmodule Statsig.Experiment do
   @moduledoc """
   Get experiment and it's corresponding serialized values
   """
