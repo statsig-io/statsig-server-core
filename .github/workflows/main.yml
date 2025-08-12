@@ -151,9 +151,7 @@ jobs:
             **/release/*statsig_ffi.a
             **/release/*statsig_ffi.lib
             **/release/*statsig_ffi.lib
-            **/release/libstatsig_elixir*.so
-            **/release/libstatsig_elixir*.dylib
-            **/release/libstatsig_elixir*.dll
+            **/release/*statsig_ffi.so
 
   # -------------------------------------------------------------------- [Verify Node]
 

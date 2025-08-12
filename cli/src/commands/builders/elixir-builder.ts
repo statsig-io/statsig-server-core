@@ -14,24 +14,22 @@ export function buildElixir(options: BuilderOptions) {
   }
   let buildcommand = `cargo build --release -p statsig_elixir --target-dir target/${options.target}`
   execAndLogSync(buildcommand);
-  // Enforce dynamic library
-  // Rename built .dylib file to be statsig_elixir-{version}-{target}
-  // execSync('ls target -l', { cwd: BASE_DIR, stdio: 'inherit' });
-  // execSync('ls target/release -l', { cwd: BASE_DIR, stdio: 'inherit' });
 
-  let binPath = `target/release`;
+  let binPath = `target/${options.target}/release`;
   let isGHAction = process.env.GH_APP_ID != null;
   let version = execAndLogSync("cd statsig-rust && cargo pkgid | cut -d# -f2 | cut -d@ -f2", 'pipe').trim();
   if (isGHAction) {
     let renamedFile = `libstatsig_elixir-v${version}-${NIF_VERSION}-${options.target}.so`; // This is deliberately done, we need .so for Rustler
-    let commandForDylib = `mv **/**/libstatsig_elixir.dylib ${binPath}/${renamedFile}`;
-    let commandForSo = `mv **/**/libstatsig_elixir.so ${binPath}/${renamedFile}`;
-    let commandForDll = `mv **/**/libstatsig_elixir.dll ${binPath}/${renamedFile}`;
+    let commandForDylib = `mv **/**/release/libstatsig_elixir.dylib ${binPath}/${renamedFile}`;
+    let commandForSo = `mv **/**/release/libstatsig_elixir.so ${binPath}/${renamedFile}`;
+    let commandForDll = `mv target/${options.target}/release/**_elixir.dll ${binPath}/${renamedFile}`;
     Log.stepBegin('Rename binary file');
     try {
       execAndLogSync(commandForDll);
-      execAndLogSync(`ls . `);
       execAndLogSync(`echo "file-name=${renamedFile}" >> $GITHUB_OUTPUT`);
+      execAndLogSync(`echo "file-name=${renamedFile}" >> "$(cygpath -u "$GITHUB_OUTPUT")"`);
+      execAndLogSync(`echo "file-name=${renamedFile}" >> "$GITHUB_OUTPUT"`);
+      execAndLogSync(`echo $GITHUB_OUTPUT`);
     } catch (e) {
       console.warn('Skip get dylib file ready: ' + e);
     }
@@ -43,7 +41,7 @@ export function buildElixir(options: BuilderOptions) {
     }
     try {
       execSync(commandForSo, { cwd: BASE_DIR, stdio: 'inherit' });
-      execAndLogSync(`echo "file-name=${renamedFile}" >> $GITHUB_OUTPUT`);
+      execAndLogSync(`echo "file-name=${renamedFile}" >> "$GITHUB_OUTPUT"`);
     } catch (e) {
       console.warn('Skip get so file ready: ' + e);
     }
