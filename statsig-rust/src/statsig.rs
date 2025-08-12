@@ -1656,6 +1656,7 @@ impl Statsig {
                 id_type,
                 group_name,
                 details: EvaluationDetails::recognized_without_eval_result(&data),
+                is_experiment_active: exp.spec.is_active.unwrap_or(false),
                 __evaluation: None,
             };
         }

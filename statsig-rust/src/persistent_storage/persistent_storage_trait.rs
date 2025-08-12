@@ -139,7 +139,7 @@ pub fn make_experiment_from_sticky_value(
 ) -> Experiment {
     let name = evaluation.base.name.clone();
     let maybe_evaluation = Some(evaluation);
-    let (value, rule_id, id_type, group_name) =
+    let (value, rule_id, id_type, group_name, is_experiment_active) =
         extract_from_experiment_evaluation(&maybe_evaluation);
     let details = EvaluationDetails {
         reason: "Persisted".to_owned(),
@@ -153,6 +153,7 @@ pub fn make_experiment_from_sticky_value(
         id_type,
         group_name,
         details,
+        is_experiment_active,
         __evaluation: maybe_evaluation,
     }
 }

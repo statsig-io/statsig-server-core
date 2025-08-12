@@ -27,7 +27,8 @@ fn test_layer_serialization() {
         "group_name": null,
         "id_type": "",
         "name": "test_layer",
-        "rule_id": "override"
+        "rule_id": "override",
+        "is_experiment_active": false
     }"#;
 
     let result = serde_json::from_str::<Layer>(raw_value);

@@ -31,19 +31,27 @@ pub fn make_feature_gate(
 
 pub fn extract_from_experiment_evaluation(
     evaluation: &Option<ExperimentEvaluation>,
-) -> (DynamicReturnable, ExposableString, String, Option<String>) {
+) -> (
+    DynamicReturnable,
+    ExposableString,
+    String,
+    Option<String>,
+    bool,
+) {
     match &evaluation {
         Some(e) => (
             e.value.clone(),
             e.base.rule_id.clone(),
             e.id_type.clone(),
             e.group_name.clone(),
+            e.is_experiment_active.unwrap_or(false),
         ),
         None => (
             DynamicReturnable::empty(),
             exposable_string::DEFAULT_RULE.clone(),
             String::new(),
             None,
+            false,
         ),
     }
 }
@@ -77,7 +85,8 @@ pub fn make_experiment(
     evaluation: Option<ExperimentEvaluation>,
     details: EvaluationDetails,
 ) -> Experiment {
-    let (value, rule_id, id_type, group_name) = extract_from_experiment_evaluation(&evaluation);
+    let (value, rule_id, id_type, group_name, is_experiment_active) =
+        extract_from_experiment_evaluation(&evaluation);
 
     Experiment {
         name: name.to_string(),
@@ -86,6 +95,7 @@ pub fn make_experiment(
         value: value.get_json().unwrap_or_default(),
         details: details.clone(),
         group_name,
+        is_experiment_active,
         __evaluation: evaluation,
     }
 }
@@ -99,22 +109,25 @@ pub fn make_layer(
     event_logger_ptr: Option<Weak<EventLogger>>,
     disable_exposure: bool,
 ) -> Layer {
-    let (value, rule_id, group_name, allocated_experiment_name, id_type) = match &evaluation {
-        Some(e) => (
-            e.value.clone(),
-            e.base.rule_id.clone(),
-            e.group_name.clone(),
-            e.allocated_experiment_name.clone(),
-            e.id_type.clone(),
-        ),
-        None => (
-            DynamicReturnable::empty(),
-            exposable_string::DEFAULT_RULE.clone(),
-            None,
-            None,
-            "".into(),
-        ),
-    };
+    let (value, rule_id, group_name, allocated_experiment_name, id_type, is_experiment_active) =
+        match &evaluation {
+            Some(e) => (
+                e.value.clone(),
+                e.base.rule_id.clone(),
+                e.group_name.clone(),
+                e.allocated_experiment_name.clone(),
+                e.id_type.clone(),
+                e.is_experiment_active.unwrap_or(false),
+            ),
+            None => (
+                DynamicReturnable::empty(),
+                exposable_string::DEFAULT_RULE.clone(),
+                None,
+                None,
+                "".into(),
+                false,
+            ),
+        };
 
     let mut version = None;
     if let Some(exposure_info) = evaluation.as_ref().map(|e| &e.base.exposure_info) {
@@ -131,6 +144,7 @@ pub fn make_layer(
         details: details.clone(),
         group_name,
         allocated_experiment_name,
+        is_experiment_active,
         __value: value.get_json().unwrap_or_default(),
         __evaluation: evaluation,
         __user: user,

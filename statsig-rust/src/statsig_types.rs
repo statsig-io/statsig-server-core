@@ -57,6 +57,7 @@ pub struct Experiment {
     pub id_type: String,
     pub group_name: Option<String>,
     pub details: EvaluationDetails,
+    pub is_experiment_active: bool,
 
     pub __evaluation: Option<ExperimentEvaluation>,
 }
@@ -80,6 +81,7 @@ pub struct Layer {
     pub group_name: Option<String>,
     pub details: EvaluationDetails,
     pub allocated_experiment_name: Option<String>,
+    pub is_experiment_active: bool,
 
     pub __evaluation: Option<LayerEvaluation>,
     pub __value: HashMap<String, Value>,
