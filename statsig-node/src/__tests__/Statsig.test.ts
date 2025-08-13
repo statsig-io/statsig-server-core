@@ -225,7 +225,7 @@ describe('Statsig', () => {
       expect(['aarch64', 'arm64', 'x86_64']).toContain(meta.arch);
 
       expect(meta.sdkType).toEqual('statsig-server-core-node');
-      expect(meta.sdkVersion.replace('-beta.', '')).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(meta.sdkVersion.replace(/-(beta|rc)\.\d+$/, '')).toMatch(/^\d+\.\d+\.\d+$/);
       expect(meta.sessionID).toMatch(
         /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/,
       );
