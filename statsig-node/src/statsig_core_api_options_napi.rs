@@ -3,6 +3,7 @@ use statsig_rust::{
     DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
     LayerEvaluationOptions, ParameterStoreEvaluationOptions,
 };
+use std::collections::HashMap;
 
 // -------------------------
 //   Feature Gate Options
@@ -45,13 +46,16 @@ impl From<DynamicConfigEvaluationOptionsNapi> for DynamicConfigEvaluationOptions
 #[napi(object, js_name = "ExperimentEvaluationOptions")]
 pub struct ExperimentEvaluationOptionsNapi {
     pub disable_exposure_logging: Option<bool>,
+    pub user_persisted_values: Option<HashMap<String, serde_json::Value>>,
 }
 
 impl From<ExperimentEvaluationOptionsNapi> for ExperimentEvaluationOptions {
     fn from(opts: ExperimentEvaluationOptionsNapi) -> Self {
         ExperimentEvaluationOptions {
             disable_exposure_logging: opts.disable_exposure_logging.unwrap_or(false),
-            user_persisted_values: None,
+            user_persisted_values: opts.user_persisted_values.and_then(|values| {
+                serde_json::from_value(serde_json::Value::Object(values.into_iter().collect())).ok()
+            }),
         }
     }
 }
@@ -63,13 +67,16 @@ impl From<ExperimentEvaluationOptionsNapi> for ExperimentEvaluationOptions {
 #[napi(object, js_name = "LayerEvaluationOptions")]
 pub struct LayerEvaluationOptionsNapi {
     pub disable_exposure_logging: Option<bool>,
+    pub user_persisted_values: Option<HashMap<String, serde_json::Value>>,
 }
 
 impl From<LayerEvaluationOptionsNapi> for LayerEvaluationOptions {
     fn from(opts: LayerEvaluationOptionsNapi) -> Self {
         LayerEvaluationOptions {
             disable_exposure_logging: opts.disable_exposure_logging.unwrap_or(false),
-            user_persisted_values: None,
+            user_persisted_values: opts.user_persisted_values.and_then(|values| {
+                serde_json::from_value(serde_json::Value::Object(values.into_iter().collect())).ok()
+            }),
         }
     }
 }
