@@ -1,6 +1,8 @@
 defmodule Statsig do
   use GenServer
 
+  alias Statsig.NativeBindings
+
   def start_link(sdk_key, options) do
     GenServer.start_link(__MODULE__, {sdk_key, options}, name: __MODULE__)
   end
@@ -114,7 +116,7 @@ defmodule Statsig do
     end
   end
 
-  @spec log_event(%StatsigUser{}, String.t(), String.t() | number(), %{String.t() => String.t()}) ::
+  @spec log_event(%Statsig.User{}, String.t(), String.t() | number(), %{String.t() => String.t()}) ::
           any()
   def log_event(statsig_user, event_name, value, metadata) do
     try do

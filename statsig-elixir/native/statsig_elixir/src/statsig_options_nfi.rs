@@ -3,7 +3,7 @@ use serde::Serialize;
 use statsig_rust::statsig_options::StatsigOptions as StatsigOptionsActual;
 
 #[derive(NifStruct, Serialize)]
-#[module = "StatsigOptions"]
+#[module = "Statsig.Options"]
 pub struct StatsigOptions {
     pub environment: Option<String>,
     pub output_log_level: Option<String>,

@@ -1,4 +1,4 @@
-defmodule StatsigUser do
+defmodule Statsig.User do
   defstruct [
     user_id: "",
     email: nil,

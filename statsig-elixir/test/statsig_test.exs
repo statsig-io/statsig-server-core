@@ -2,6 +2,12 @@ defmodule StatsigTest do
   use ExUnit.Case
   doctest Statsig
 
+  alias Statsig.DynamicConfig
+  alias Statsig.Experiment
+  alias Statsig.Layer
+  alias Statsig.Options
+  alias Statsig.User
+
   test "Example usage test" do
     # Initialize Statsig with a test SDK key
     IO.puts("\n=== Starting Statsig Test ===")
@@ -12,12 +18,12 @@ defmodule StatsigTest do
       :ok
     end
 
-    statsig_options = %StatsigOptions{enable_id_lists: true}
+    statsig_options = %Options{enable_id_lists: true}
     IO.puts("Initializing with SDK key: #{sdk_key}")
     Statsig.start_link(sdk_key, statsig_options)
 
     # Create a test user
-    user = %StatsigUser{
+    user = %User{
       user_id: "test_user_123",
       email: "test@email.com",
       custom_ids: %{

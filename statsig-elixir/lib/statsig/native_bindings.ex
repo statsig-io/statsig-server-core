@@ -1,4 +1,4 @@
-defmodule NativeBindings do
+defmodule Statsig.NativeBindings do
   version = Mix.Project.config()[:version] |> to_string()
   use RustlerPrecompiled,
     otp_app: :statsig_elixir,

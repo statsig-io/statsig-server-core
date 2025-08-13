@@ -1,4 +1,4 @@
-defmodule FeatureGate do
+defmodule Statsig.FeatureGate do
   defstruct [
     :name,
     :value,
