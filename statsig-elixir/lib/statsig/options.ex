@@ -16,5 +16,13 @@ defmodule Statsig.Options do
     enable_id_lists: nil,
     id_lists_url: nil,
     id_lists_sync_interval_ms: nil,
+
+    wait_for_country_lookup_init: nil,
+    wait_for_user_agent_init: nil,
+
+    disable_all_logging: nil,
+    disable_country_lookup: nil,
+    disable_network: nil,
+    disable_user_agent_parsing: nil,
   ]
 end

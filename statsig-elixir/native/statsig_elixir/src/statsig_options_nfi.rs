@@ -20,6 +20,14 @@ pub struct StatsigOptions {
     pub enable_id_lists: Option<bool>,
     pub id_lists_sync_interval_ms: Option<u32>,
     pub id_lists_url: Option<String>,
+
+    pub disable_all_logging: Option<bool>,
+    pub disable_country_lookup: Option<bool>,
+    pub disable_network: Option<bool>, // Disable all out-going network including get configs, log_events...
+    pub disable_user_agent_parsing: Option<bool>,
+
+    pub wait_for_country_lookup_init: Option<bool>,
+    pub wait_for_user_agent_init: Option<bool>,
 }
 
 impl From<StatsigOptions> for StatsigOptionsActual {
@@ -33,6 +41,13 @@ impl From<StatsigOptions> for StatsigOptionsActual {
             specs_sync_interval_ms: config.specs_sync_interval_ms,
             specs_url: config.specs_url,
             log_event_url: config.log_event_url,
+            output_log_level: config.output_log_level.map(|o| o.as_str().into()),
+            disable_all_logging: config.disable_all_logging,
+            disable_country_lookup: config.disable_country_lookup,
+            disable_network: config.disable_network,
+            disable_user_agent_parsing: config.disable_user_agent_parsing,
+            wait_for_country_lookup_init: config.wait_for_country_lookup_init,
+            wait_for_user_agent_init: config.wait_for_user_agent_init,
             ..StatsigOptionsActual::default()
         }
     }
