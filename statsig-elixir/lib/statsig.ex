@@ -39,11 +39,11 @@ defmodule Statsig do
     end
   end
 
-  def check_gate(gate_name, statsig_user) do
+  def check_gate(gate_name, statsig_user, options \\nil) do
     try do
       instance = get_statsig_instance()
 
-      {:ok, NativeBindings.check_gate(instance, gate_name, statsig_user)}
+      {:ok, NativeBindings.check_gate(instance, gate_name, statsig_user, options)}
     rescue
       exception -> {:error, Exception.message(exception)}
     catch
@@ -52,11 +52,11 @@ defmodule Statsig do
     end
   end
 
-  def get_feature_gate(gate_name, statsig_user) do
+  def get_feature_gate(gate_name, statsig_user, options \\nil) do
     try do
       instance = get_statsig_instance()
 
-      case NativeBindings.get_feature_gate(instance, gate_name, statsig_user) do
+      case NativeBindings.get_feature_gate(instance, gate_name, statsig_user, options) do
         {:error, e} -> {:error, e}
         gate -> {:ok, gate}
       end
@@ -68,11 +68,11 @@ defmodule Statsig do
     end
   end
 
-  def get_config(config_name, statsig_user) do
+  def get_config(config_name, statsig_user, options \\nil) do
     try do
       instance = get_statsig_instance()
 
-      case NativeBindings.get_config(instance, config_name, statsig_user) do
+      case NativeBindings.get_config(instance, config_name, statsig_user, options) do
         {:error, e} -> {:error, e}
         config -> {:ok, config}
       end
@@ -84,11 +84,11 @@ defmodule Statsig do
     end
   end
 
-  def get_experiment(experiment_name, statsig_user) do
+  def get_experiment(experiment_name, statsig_user, options \\nil) do
     try do
       instance = get_statsig_instance()
 
-      case NativeBindings.get_experiment(instance, experiment_name, statsig_user) do
+      case NativeBindings.get_experiment(instance, experiment_name, statsig_user, options) do
         {:error, e} -> {:error, e}
         exp -> {:ok, exp}
       end
@@ -100,11 +100,11 @@ defmodule Statsig do
     end
   end
 
-  def get_layer(layer_name, statsig_user) do
+  def get_layer(layer_name, statsig_user, options \\nil) do
     try do
       instance = get_statsig_instance()
 
-      case NativeBindings.get_layer(instance, layer_name, statsig_user) do
+      case NativeBindings.get_layer(instance, layer_name, statsig_user, options) do
         {:error, e} -> {:error, e}
         layer -> {:ok, layer}
       end

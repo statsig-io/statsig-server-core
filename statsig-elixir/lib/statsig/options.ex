@@ -26,3 +26,19 @@ defmodule Statsig.Options do
     disable_user_agent_parsing: nil,
   ]
 end
+
+defmodule Statsig.ExperimentEvaluationOptions do
+  defstruct disable_exposure_logging: false
+end
+
+defmodule Statsig.FeatureGateEvaluationOptions do
+  defstruct disable_exposure_logging: false
+end
+
+defmodule Statsig.LayerEvaluationOptions do
+  defstruct disable_exposure_logging: false
+end
+
+defmodule Statsig.DynamicConfigEvaluationOptions do
+  defstruct disable_exposure_logging: false
+end

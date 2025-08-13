@@ -1,5 +1,11 @@
 use rustler::{Decoder, Encoder, Env, NifResult, NifStruct, Term};
 use serde_json::Value;
+use statsig_rust::statsig_core_api_options::{
+    DynamicConfigEvaluationOptions as DynamicConfigEvaluationOptionsActual,
+    ExperimentEvaluationOptions as ExperimentEvaluationOptionsActual,
+    FeatureGateEvaluationOptions as FeatureGateEvaluationOptionsActual,
+    LayerEvaluationOptions as LayerEvaluationOptionsActual,
+};
 use statsig_rust::statsig_types::{
     DynamicConfig as DynamicConfigActual, Experiment as ExperimentActual,
     FeatureGate as FeatureGateActual,
@@ -115,6 +121,64 @@ impl From<AllowedPrimitive> for DynamicValue {
             }
             AllowedPrimitive::Bool(b) => DynamicValue::from(b),
             AllowedPrimitive::Float(f) => DynamicValue::from(f),
+        }
+    }
+}
+
+#[derive(NifStruct)]
+#[module = "Statsig.ExperimentEvaluationOptions"]
+pub struct ExperimentEvaluationOptions {
+    pub disable_exposure_logging: bool,
+}
+
+impl From<ExperimentEvaluationOptions> for ExperimentEvaluationOptionsActual {
+    fn from(option: ExperimentEvaluationOptions) -> Self {
+        ExperimentEvaluationOptionsActual {
+            disable_exposure_logging: option.disable_exposure_logging,
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(NifStruct)]
+#[module = "Statsig.FeatureGateEvaluationOptions"]
+pub struct FeatureGateEvaluationOptions {
+    pub disable_exposure_logging: bool,
+}
+
+impl From<FeatureGateEvaluationOptions> for FeatureGateEvaluationOptionsActual {
+    fn from(option: FeatureGateEvaluationOptions) -> Self {
+        FeatureGateEvaluationOptionsActual {
+            disable_exposure_logging: option.disable_exposure_logging,
+        }
+    }
+}
+
+#[derive(NifStruct)]
+#[module = "Statsig.LayerEvaluationOptions"]
+pub struct LayerEvaluationOptions {
+    pub disable_exposure_logging: bool,
+}
+
+impl From<LayerEvaluationOptions> for LayerEvaluationOptionsActual {
+    fn from(option: LayerEvaluationOptions) -> Self {
+        LayerEvaluationOptionsActual {
+            disable_exposure_logging: option.disable_exposure_logging,
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(NifStruct)]
+#[module = "Statsig.DynamicConfigEvaluationOptions"]
+pub struct DynamicConfigEvaluationOptions {
+    pub disable_exposure_logging: bool,
+}
+
+impl From<DynamicConfigEvaluationOptions> for DynamicConfigEvaluationOptionsActual {
+    fn from(option: DynamicConfigEvaluationOptions) -> Self {
+        DynamicConfigEvaluationOptionsActual {
+            disable_exposure_logging: option.disable_exposure_logging,
         }
     }
 }

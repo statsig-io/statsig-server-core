@@ -7,7 +7,11 @@ use std::{
 
 use crate::{
     statsig_options_nfi::StatsigOptions,
-    statsig_types_nfi::{AllowedPrimitive, DynamicConfig, Experiment, FeatureGate},
+    statsig_types_nfi::{
+        AllowedPrimitive, DynamicConfig, DynamicConfigEvaluationOptions, Experiment,
+        ExperimentEvaluationOptions, FeatureGate, FeatureGateEvaluationOptions,
+        LayerEvaluationOptions,
+    },
     statsig_user_nfi::StatsigUser,
 };
 use serde_json::Value;
@@ -70,10 +74,15 @@ pub fn get_feature_gate(
     statsig: ResourceArc<StatsigResource>,
     gate_name: &str,
     statsig_user: StatsigUser,
+    options: Option<FeatureGateEvaluationOptions>,
 ) -> Result<FeatureGate, Error> {
     match statsig.statsig_core.read() {
         Ok(read_guard) => Ok(read_guard
-            .get_feature_gate(&statsig_user.into(), gate_name)
+            .get_feature_gate_with_options(
+                &statsig_user.into(),
+                gate_name,
+                options.map(|o| o.into()).unwrap_or_default(),
+            )
             .into()),
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
@@ -84,9 +93,14 @@ pub fn check_gate(
     statsig: ResourceArc<StatsigResource>,
     gate_name: &str,
     statsig_user: StatsigUser,
+    options: Option<FeatureGateEvaluationOptions>,
 ) -> Result<bool, Error> {
     match statsig.statsig_core.read() {
-        Ok(read_guard) => Ok(read_guard.check_gate(&statsig_user.into(), gate_name)),
+        Ok(read_guard) => Ok(read_guard.check_gate_with_options(
+            &statsig_user.into(),
+            gate_name,
+            options.map(|o| o.into()).unwrap_or_default(),
+        )),
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
@@ -96,10 +110,15 @@ pub fn get_config(
     statsig: ResourceArc<StatsigResource>,
     config_name: &str,
     statsig_user: StatsigUser,
+    options: Option<DynamicConfigEvaluationOptions>,
 ) -> Result<DynamicConfig, Error> {
     match statsig.statsig_core.read() {
         Ok(read_guard) => Ok(read_guard
-            .get_dynamic_config(&statsig_user.into(), config_name)
+            .get_dynamic_config_with_options(
+                &statsig_user.into(),
+                config_name,
+                options.map(|o| o.into()).unwrap_or_default(),
+            )
             .into()),
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
@@ -110,10 +129,15 @@ pub fn get_experiment(
     statsig: ResourceArc<StatsigResource>,
     experiment_name: &str,
     statsig_user: StatsigUser,
+    options: Option<ExperimentEvaluationOptions>,
 ) -> Result<Experiment, Error> {
     match statsig.statsig_core.read() {
         Ok(read_guard) => Ok(read_guard
-            .get_experiment(&statsig_user.into(), experiment_name)
+            .get_experiment_with_options(
+                &statsig_user.into(),
+                experiment_name,
+                options.map(|o| o.into()).unwrap_or_default(),
+            )
             .into()),
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
@@ -124,10 +148,15 @@ pub fn get_layer(
     statsig: ResourceArc<StatsigResource>,
     layer_name: &str,
     statsig_user: StatsigUser,
+    options: Option<LayerEvaluationOptions>,
 ) -> Result<ResourceArc<LayerResource>, Error> {
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
-            let layer = read_guard.get_layer(&statsig_user.into(), layer_name);
+            let layer = read_guard.get_layer_with_options(
+                &statsig_user.into(),
+                layer_name,
+                options.map(|o| o.into()).unwrap_or_default(),
+            );
             Ok(ResourceArc::new(LayerResource::new(layer)))
         }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),

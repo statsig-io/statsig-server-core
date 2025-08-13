@@ -7,6 +7,10 @@ defmodule StatsigTest do
   alias Statsig.Layer
   alias Statsig.Options
   alias Statsig.User
+  alias Statsig.ExperimentEvaluationOptions
+  alias Statsig.FeatureGateEvaluationOptions
+  alias Statsig.LayerEvaluationOptions
+  alias Statsig.DynamicConfigEvaluationOptions
 
   test "Example usage test" do
     # Initialize Statsig with a test SDK key
@@ -18,7 +22,7 @@ defmodule StatsigTest do
       :ok
     end
 
-    statsig_options = %Options{enable_id_lists: true}
+    statsig_options = %Options{enable_id_lists: true, output_log_level: "debug"}
     IO.puts("Initializing with SDK key: #{sdk_key}")
     Statsig.start_link(sdk_key, statsig_options)
 
@@ -35,12 +39,13 @@ defmodule StatsigTest do
 
     # Check a feature gate
     IO.puts("\nChecking gate 'test_gate'...")
-    check_gate = Statsig.check_gate("test_public", user)
+    {:ok, check_gate} = Statsig.check_gate("test_public", user)
+    {:ok, check_gate} = Statsig.check_gate("test_public", user, %FeatureGateEvaluationOptions{disable_exposure_logging: true})
     assert check_gate
     {:ok, feature_gate} = Statsig.get_feature_gate("test_public", user)
     assert feature_gate.value
     assert feature_gate.name == "test_public"
-    {:ok, config} = Statsig.get_config("test_custom_config", user)
+    {:ok, config} = Statsig.get_config("test_custom_config", user, %DynamicConfigEvaluationOptions{disable_exposure_logging: true})
     IO.inspect(config)
     assert is_binary(config.value)
 
@@ -48,10 +53,10 @@ defmodule StatsigTest do
     param_value = DynamicConfig.get_param_value(config, "header_text")
     assert param_value == "old user test"
     IO.inspect(config)
-    {:ok, experiment} = Statsig.get_experiment("test_custom_config", user)
+    {:ok, experiment} = Statsig.get_experiment("test_custom_config", user, %ExperimentEvaluationOptions{disable_exposure_logging: true})
     param_value = Experiment.get_param_value(experiment, "header_text")
     assert param_value == "old user test"
-    {:ok, layer} = Statsig.get_layer("layer_with_many_params", user)
+    {:ok, layer} = Statsig.get_layer("layer_with_many_params", user, %LayerEvaluationOptions{disable_exposure_logging: true})
     {:ok, a_string_value} = Layer.get(layer, "a_string", "default")
     IO.inspect(a_string_value)
     assert a_string_value == "layer"
