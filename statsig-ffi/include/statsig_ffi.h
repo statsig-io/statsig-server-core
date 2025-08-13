@@ -254,7 +254,8 @@ uint64_t statsig_options_create(const char *specs_url,
                                 const char *id_lists_url,
                                 int id_lists_sync_interval_ms,
                                 SafeOptBool disable_all_logging,
-                                const char *global_custom_fields);
+                                const char *global_custom_fields,
+                                uint64_t observability_client_ref);
 
 void statsig_options_release(uint64_t options_ref);
 
@@ -270,3 +271,26 @@ uint64_t statsig_user_create(const char *user_id,
                              const char *private_attributes_json);
 
 void statsig_user_release(uint64_t user_ref);
+
+uint64_t observability_client_create(void (*init_fn)(uint64_t ob_client_ref),
+                                     void (*increment_fn)(uint64_t ob_client_ref,
+                                                          const char *metric_name,
+                                                          double value,
+                                                          const char *tags),
+                                     void (*gauge_fn)(uint64_t ob_client_ref,
+                                                      const char *metric_name,
+                                                      double value,
+                                                      const char *tags),
+                                     void (*dist_fn)(uint64_t ob_client_ref,
+                                                     const char *metric_name,
+                                                     double value,
+                                                     const char *tags),
+                                     void (*error_fn)(uint64_t ob_client_ref,
+                                                      const char *tag,
+                                                      const char *error),
+                                     bool (*should_enable_high_cardinality_for_this_tag_fn)(uint64_t ob_client_ref,
+                                                                                            const char *tag));
+
+void observability_client_set_ref(uint64_t ob_client_ref, uint64_t id);
+
+void observability_client_release(uint64_t ob_client_ref);

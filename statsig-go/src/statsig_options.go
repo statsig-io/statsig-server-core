@@ -26,6 +26,7 @@ type StatsigOptions struct {
 	WaitForCountryLookupInit    *bool
 	WaitForUserAgentInit        *bool
 	DisableAllLogging           *bool
+	ObservabilityClientRef      uint64
 }
 
 type StatsigOptionsBuilder struct {
@@ -60,6 +61,7 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 		C.int(-1),                              // idListsSyncIntervalMs, not used in this version
 		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableAllLogging)),
 		ResolveDefault(nil), // idListsUrl, not used in this version
+		C.uint64_t(o.statsigOptions.ObservabilityClientRef),
 	)
 
 	o.statsigOptions.innerRef = uint64(optionsRef)
@@ -143,5 +145,10 @@ func (o *StatsigOptionsBuilder) WithWaitForUserAgentInit(value bool) *StatsigOpt
 
 func (o *StatsigOptionsBuilder) WithDisableAllLogging(value bool) *StatsigOptionsBuilder {
 	o.statsigOptions.DisableAllLogging = &value
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithObservabilityClient(observabilityClient ObservabilityClientInterface) *StatsigOptionsBuilder {
+	o.statsigOptions.ObservabilityClientRef = NewObservabilityClient(observabilityClient)
 	return o
 }

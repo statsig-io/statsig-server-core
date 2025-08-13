@@ -2,6 +2,7 @@ mod ffi_utils;
 mod function_based_event_logging_adapter_c;
 mod function_based_specs_adapter_c;
 mod jni;
+mod observability_client_c;
 mod specs_update_listener_c;
 mod statsig_c;
 mod statsig_http_event_logging_adapter_c;

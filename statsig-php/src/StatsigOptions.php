@@ -46,6 +46,7 @@ class StatsigOptions
             IGNORED_ID_LISTS_SYNC_INTERVAL_MS,
             toSafeOptBool($disable_all_logging),
             null, // global custom fields
+            0 // observability client ref - not implemented in PHP
         );
     }
 

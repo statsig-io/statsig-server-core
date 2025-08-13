@@ -4,13 +4,15 @@ use crate::{
     ffi_utils::{c_char_to_string, c_int_to_u32, extract_opt_bool, SafeOptBool},
     function_based_event_logging_adapter_c::FunctionBasedEventLoggingAdapterC,
     function_based_specs_adapter_c::FunctionBasedSpecsAdapterC,
+    observability_client_c::ObservabilityClientC,
 };
 use statsig_rust::{
     log_e, output_logger::LogLevel, DynamicValue, EventLoggingAdapter, InstanceRegistry,
-    SpecsAdapter, StatsigLocalFileEventLoggingAdapter, StatsigLocalFileSpecsAdapter,
-    StatsigOptions,
+    ObservabilityClient, SpecsAdapter, StatsigLocalFileEventLoggingAdapter,
+    StatsigLocalFileSpecsAdapter, StatsigOptions,
 };
 use std::collections::HashMap;
+use std::sync::Weak;
 
 const TAG: &str = "StatsigOptionsC";
 
@@ -34,6 +36,7 @@ pub extern "C" fn statsig_options_create(
     id_lists_sync_interval_ms: c_int,
     disable_all_logging: SafeOptBool,
     global_custom_fields: *const c_char,
+    observability_client_ref: u64,
 ) -> u64 {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
@@ -51,6 +54,7 @@ pub extern "C" fn statsig_options_create(
 
     let specs_adapter = try_get_specs_adapter(specs_adapter_ref);
     let event_logging_adapter = try_get_event_logging_adapter(event_logging_adapter_ref);
+    let observability_client = try_get_observability_client(observability_client_ref);
 
     let output_log_level =
         c_char_to_string(output_log_level).map(|level| LogLevel::from(level.as_str()));
@@ -73,6 +77,7 @@ pub extern "C" fn statsig_options_create(
         id_lists_sync_interval_ms,
         disable_all_logging: extract_opt_bool(disable_all_logging),
         global_custom_fields,
+        observability_client,
         ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {
@@ -114,6 +119,19 @@ fn try_get_event_logging_adapter(
 
     if let Ok(adapter) = raw.clone().downcast::<FunctionBasedEventLoggingAdapterC>() {
         return Some(adapter);
+    }
+
+    None
+}
+
+fn try_get_observability_client(
+    observability_client_ref: u64,
+) -> Option<Weak<dyn ObservabilityClient>> {
+    let raw = InstanceRegistry::get_raw(&observability_client_ref)?;
+
+    if let Ok(client) = raw.clone().downcast::<ObservabilityClientC>() {
+        let weak = Arc::downgrade(&client);
+        return Some(weak);
     }
 
     None
