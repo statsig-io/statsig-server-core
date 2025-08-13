@@ -35,7 +35,7 @@ impl LayerResource {
     }
 }
 
-#[rustler::nif(schedule = "DirtyIo")]
+#[rustler::nif(schedule = "DirtyCpu")]
 pub fn new(
     sdk_key: String,
     options: Option<StatsigOptions>,
