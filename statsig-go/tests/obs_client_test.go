@@ -79,7 +79,7 @@ func (obs *MockObservabilityClient) Error(tag string, error string) {
 }
 
 func TestObservabilityClientUsage(t *testing.T) {
-	scrapi := serverSetup("eval_proj_dcs.json")
+	scrapi := serverSetup("eval_proj_dcs.json", nil)
 
 	observabilityClient := NewMockObservabilityClient()
 
@@ -188,7 +188,7 @@ func TestErrorCallbackUsage(t *testing.T) {
 }
 
 func TestMetricWithHighCardinality(t *testing.T) {
-	scrapi := serverSetup("eval_proj_dcs.json")
+	scrapi := serverSetup("eval_proj_dcs.json", nil)
 
 	observabilityClient := NewMockObservabilityClient()
 

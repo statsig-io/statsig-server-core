@@ -1,3 +1,4 @@
+mod data_store_c;
 mod ffi_utils;
 mod function_based_event_logging_adapter_c;
 mod function_based_specs_adapter_c;

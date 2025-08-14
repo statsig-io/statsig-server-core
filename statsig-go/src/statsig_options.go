@@ -27,6 +27,7 @@ type StatsigOptions struct {
 	WaitForUserAgentInit        *bool
 	DisableAllLogging           *bool
 	ObservabilityClientRef      uint64
+	DataStoreRef                uint64
 }
 
 type StatsigOptionsBuilder struct {
@@ -52,16 +53,17 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 		C.int(o.statsigOptions.EventLoggingMaxQueueSize),
 		C.int(o.statsigOptions.SpecsSyncIntervalMs),
 		ResolveDefault(o.statsigOptions.OutputLogLevel),
-		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableCountryLookup)),
-		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableUserAgentParsing)),
-		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForCountryLookupInit)),
-		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForUserAgentInit)),
-		C.int(utils.ConvertToSafeOptBool(nil)), // enableIDLists, not used in this version
-		ResolveDefault(nil),                    // idListsUrl, not used in this version
-		C.int(-1),                              // idListsSyncIntervalMs, not used in this version
-		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableAllLogging)),
+		C.SafeOptBool(utils.ConvertToSafeOptBool(o.statsigOptions.DisableCountryLookup)),
+		C.SafeOptBool(utils.ConvertToSafeOptBool(o.statsigOptions.DisableUserAgentParsing)),
+		C.SafeOptBool(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForCountryLookupInit)),
+		C.SafeOptBool(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForUserAgentInit)),
+		C.SafeOptBool(utils.ConvertToSafeOptBool(nil)), // enableIDLists, not used in this version
 		ResolveDefault(nil), // idListsUrl, not used in this version
+		C.int(-1),           // idListsSyncIntervalMs, not used in this version
+		C.SafeOptBool(utils.ConvertToSafeOptBool(o.statsigOptions.DisableAllLogging)),
+		ResolveDefault(nil), // global_custom_fields, not used in this version
 		C.uint64_t(o.statsigOptions.ObservabilityClientRef),
+		C.uint64_t(o.statsigOptions.DataStoreRef),
 	)
 
 	o.statsigOptions.innerRef = uint64(optionsRef)
@@ -145,6 +147,11 @@ func (o *StatsigOptionsBuilder) WithWaitForUserAgentInit(value bool) *StatsigOpt
 
 func (o *StatsigOptionsBuilder) WithDisableAllLogging(value bool) *StatsigOptionsBuilder {
 	o.statsigOptions.DisableAllLogging = &value
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithDataStore(dataStore DataStoreInterface) *StatsigOptionsBuilder {
+	o.statsigOptions.DataStoreRef = NewDataStore(dataStore)
 	return o
 }
 

@@ -9,6 +9,20 @@ typedef int StatsigUser;
 
 typedef int SafeOptBool;
 
+uint64_t data_store_create(void (*initialize_fn)(uint64_t data_store_ref),
+                           void (*shutdown_fn)(uint64_t data_store_ref),
+                           const char *(*get_fn)(uint64_t data_store_ref, const char *key),
+                           void (*set_fn)(uint64_t data_store_ref,
+                                          const char *key,
+                                          const char *value,
+                                          const uint64_t *time),
+                           bool (*support_polling_updates_for_fn)(uint64_t data_store_ref,
+                                                                  const char *key));
+
+void data_store_set_ref(uint64_t data_store_ref);
+
+void data_store_release(uint64_t data_store_ref);
+
 void free_string(char *s);
 
 uint64_t function_based_event_logging_adapter_create(void (*start_fn)(void),
@@ -23,6 +37,29 @@ uint64_t function_based_specs_adapter_create(void (*setup_internal_fn)(uint64_t 
                                              void (*schedule_background_sync_fn)(void));
 
 void function_based_specs_adapter_release(uint64_t adapter_ref);
+
+uint64_t observability_client_create(void (*init_fn)(uint64_t ob_client_ref),
+                                     void (*increment_fn)(uint64_t ob_client_ref,
+                                                          const char *metric_name,
+                                                          double value,
+                                                          const char *tags),
+                                     void (*gauge_fn)(uint64_t ob_client_ref,
+                                                      const char *metric_name,
+                                                      double value,
+                                                      const char *tags),
+                                     void (*dist_fn)(uint64_t ob_client_ref,
+                                                     const char *metric_name,
+                                                     double value,
+                                                     const char *tags),
+                                     void (*error_fn)(uint64_t ob_client_ref,
+                                                      const char *tag,
+                                                      const char *error),
+                                     bool (*should_enable_high_cardinality_for_this_tag_fn)(uint64_t ob_client_ref,
+                                                                                            const char *tag));
+
+void observability_client_set_ref(uint64_t ob_client_ref, uint64_t id);
+
+void observability_client_release(uint64_t ob_client_ref);
 
 void specs_update_listener_release(uint64_t listener_ref);
 
@@ -255,7 +292,8 @@ uint64_t statsig_options_create(const char *specs_url,
                                 int id_lists_sync_interval_ms,
                                 SafeOptBool disable_all_logging,
                                 const char *global_custom_fields,
-                                uint64_t observability_client_ref);
+                                uint64_t observability_client_ref,
+                                uint64_t data_store_ref);
 
 void statsig_options_release(uint64_t options_ref);
 
@@ -271,26 +309,3 @@ uint64_t statsig_user_create(const char *user_id,
                              const char *private_attributes_json);
 
 void statsig_user_release(uint64_t user_ref);
-
-uint64_t observability_client_create(void (*init_fn)(uint64_t ob_client_ref),
-                                     void (*increment_fn)(uint64_t ob_client_ref,
-                                                          const char *metric_name,
-                                                          double value,
-                                                          const char *tags),
-                                     void (*gauge_fn)(uint64_t ob_client_ref,
-                                                      const char *metric_name,
-                                                      double value,
-                                                      const char *tags),
-                                     void (*dist_fn)(uint64_t ob_client_ref,
-                                                     const char *metric_name,
-                                                     double value,
-                                                     const char *tags),
-                                     void (*error_fn)(uint64_t ob_client_ref,
-                                                      const char *tag,
-                                                      const char *error),
-                                     bool (*should_enable_high_cardinality_for_this_tag_fn)(uint64_t ob_client_ref,
-                                                                                            const char *tag));
-
-void observability_client_set_ref(uint64_t ob_client_ref, uint64_t id);
-
-void observability_client_release(uint64_t ob_client_ref);

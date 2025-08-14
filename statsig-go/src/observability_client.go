@@ -80,13 +80,13 @@ type ObservabilityClientInterface interface {
 // global registry to store data store implementations indexed by rust data store id
 var (
 	observabilityClientRegistry = make(map[uint64]ObservabilityClientInterface)
-	registryMutex               sync.RWMutex
+	registryMutexObClient       sync.RWMutex
 )
 
 //export go_observability_client_init
 func go_observability_client_init(obClientID C.uint64_t) {
-	registryMutex.RLock()
-	defer registryMutex.RUnlock()
+	registryMutexObClient.RLock()
+	defer registryMutexObClient.RUnlock()
 
 	if obsClient, exists := observabilityClientRegistry[uint64(obClientID)]; exists {
 		err := obsClient.Init()
@@ -98,8 +98,8 @@ func go_observability_client_init(obClientID C.uint64_t) {
 
 //export go_observability_client_increment
 func go_observability_client_increment(obClientID C.uint64_t, metricName *C.char, value C.double, tags *C.char) {
-	registryMutex.RLock()
-	defer registryMutex.RUnlock()
+	registryMutexObClient.RLock()
+	defer registryMutexObClient.RUnlock()
 
 	var tags_map map[string]string
 
@@ -115,8 +115,8 @@ func go_observability_client_increment(obClientID C.uint64_t, metricName *C.char
 
 //export go_observability_client_gauge
 func go_observability_client_gauge(obClientID C.uint64_t, metricName *C.char, value C.double, tags *C.char) {
-	registryMutex.RLock()
-	defer registryMutex.RUnlock()
+	registryMutexObClient.RLock()
+	defer registryMutexObClient.RUnlock()
 
 	var tags_map map[string]string
 
@@ -132,8 +132,8 @@ func go_observability_client_gauge(obClientID C.uint64_t, metricName *C.char, va
 
 //export go_observability_client_dist
 func go_observability_client_dist(obClientID C.uint64_t, metricName *C.char, value C.double, tags *C.char) {
-	registryMutex.RLock()
-	defer registryMutex.RUnlock()
+	registryMutexObClient.RLock()
+	defer registryMutexObClient.RUnlock()
 
 	var tags_map map[string]string
 
@@ -149,8 +149,8 @@ func go_observability_client_dist(obClientID C.uint64_t, metricName *C.char, val
 
 //export go_observability_client_error
 func go_observability_client_error(obClientID C.uint64_t, tag *C.char, error *C.char) {
-	registryMutex.RLock()
-	defer registryMutex.RUnlock()
+	registryMutexObClient.RLock()
+	defer registryMutexObClient.RUnlock()
 
 	if obsClient, exists := observabilityClientRegistry[uint64(obClientID)]; exists {
 		obsClient.Error(C.GoString(tag), C.GoString(error))
@@ -159,8 +159,8 @@ func go_observability_client_error(obClientID C.uint64_t, tag *C.char, error *C.
 
 //export go_observability_client_should_enable_high_cardinality_for_this_tag_fn
 func go_observability_client_should_enable_high_cardinality_for_this_tag_fn(obClientID C.uint64_t, tag *C.char) C.bool {
-	registryMutex.RLock()
-	defer registryMutex.RUnlock()
+	registryMutexObClient.RLock()
+	defer registryMutexObClient.RUnlock()
 
 	if obsClient, exists := observabilityClientRegistry[uint64(obClientID)]; exists {
 		return C.bool(obsClient.ShouldEnableHighCardinalityForThisTag(C.GoString(tag)))
@@ -181,9 +181,9 @@ func NewObservabilityClient(observabilityClient ObservabilityClientInterface) ui
 
 	C.observability_client_set_ref(ob_client_ref, ob_client_ref)
 
-	registryMutex.Lock()
+	registryMutexObClient.Lock()
 	observabilityClientRegistry[uint64(ob_client_ref)] = observabilityClient
-	registryMutex.Unlock()
+	registryMutexObClient.Unlock()
 
 	if impl_ptr, ok := observabilityClient.(interface{}); ok {
 		runtime.SetFinalizer(impl_ptr, func(obj interface{}) {

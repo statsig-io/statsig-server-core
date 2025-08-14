@@ -52,7 +52,8 @@ namespace Statsig
                         builder.idListsSyncIntervalMs,
                         builder.disableAllLogging ? 1 : 0,
                         globalCustomFieldsPtr,
-                        0 // observability client ref - not implemented in .NET
+                        0, // observability client ref - not implemented in .NET
+                        0 // dataStoreRef - not implemented in .NET
                     );
                 }
             }

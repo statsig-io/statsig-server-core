@@ -8,7 +8,7 @@ import (
 
 func TestStatsigInitialize(t *testing.T) {
 
-	scrapiServer := serverSetup("eval_proj_dcs.json")
+	scrapiServer := serverSetup("eval_proj_dcs.json", nil)
 
 	o := statsig.NewStatsigOptionsBuilder().
 		WithSpecsUrl(scrapiServer.GetUrlForEndpoint("/v2/download_config_specs")).

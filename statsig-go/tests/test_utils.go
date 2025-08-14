@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -17,9 +18,20 @@ func LoadTestData(path string) []byte {
 	return data
 }
 
-func serverSetup(dcs_path string) *MockScrapi {
+func serverSetup(dcs_path string, manually_update_dcs *[]byte) *MockScrapi {
 	mock_scrapi := NewMockScrapiServer()
 	dcs_content := LoadTestData(dcs_path)
+
+	if manually_update_dcs != nil {
+		dcs_content = *manually_update_dcs
+	}
+
+	var dcs_content_map map[string]interface{}
+	err := json.Unmarshal(dcs_content, &dcs_content_map)
+
+	if err != nil {
+		fmt.Printf("Failed to unmarshal dcs_content: %v", err)
+	}
 
 	mock_scrapi.Mock("/v2/download_config_specs/secret-key.json", 200, dcs_content)
 	mock_scrapi.Mock("/v1/log_event", 200, []byte(`{"success": true}`))
@@ -38,7 +50,7 @@ func setupStatsigTest(
 	user := statsig.NewStatsigUserBuilder().
 		WithUserID(userId).Build()
 
-	scrapi := serverSetup(jsonFile)
+	scrapi := serverSetup(jsonFile, nil)
 
 	var options statsig.StatsigOptions
 
