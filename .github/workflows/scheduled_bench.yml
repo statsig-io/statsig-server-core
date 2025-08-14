@@ -23,7 +23,7 @@ jobs:
         sdk-service:
           - dotnet-core
           - dotnet-legacy
-          # - go-core
+          - go-core
           - go-legacy
           - java-core
           - java-legacy
