@@ -271,20 +271,12 @@ jobs:
           pip3 install maturin
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
 
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Display structure of downloaded files
-        run: ls -R artifacts
-
       - name: Publish ${{ matrix.package }}
         shell: bash
         run: |
           ./tore publish \
-            --working-dir artifacts \
             --package ${{ matrix.package }} \
             --workflow-id $GITHUB_RUN_ID \
             --release-id ${{ github.event.release.id }} \
             --repository ${{ github.event.repository.name }} \
-            --skip-artifact-download
+            --disregard-workflow-checks

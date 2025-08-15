@@ -13,8 +13,7 @@
       "arch": "aarch64",
       "target": "aarch64-unknown-linux-gnu",
       "runner": "ubuntu-24.04-arm",
-      "docker_arch": "arm64",
-      "always_build": true
+      "docker_arch": "arm64"
     },
     {
       "os": "alpine",
@@ -29,15 +28,13 @@
       "arch": "aarch64",
       "target": "aarch64-unknown-linux-musl",
       "runner": "ubuntu-24.04-arm",
-      "docker_arch": "arm64",
-      "always_build": true
+      "docker_arch": "arm64"
     },
     {
       "os": "macos",
       "target": "x86_64-apple-darwin",
       "runner": "macos-13",
-      "arch": "x86_64",
-      "always_build": true
+      "arch": "x86_64"
     },
     {
       "os": "macos",
