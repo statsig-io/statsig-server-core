@@ -40,6 +40,9 @@ env:
   # Dotnet Publishing
   NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
+  # Elixir Publishing
+  HEX_API_KEY: ${{ secrets.STATSIG_ELIXIR_HEX_API_KEY }}
+
   # GH Octokit (Kong App)
   GH_APP_ID: '229901'
   GH_APP_INSTALLATION_ID: '36921303'
@@ -249,12 +252,13 @@ jobs:
       fail-fast: false
       matrix:
         package:
-          - node
-          - python
-          - java
-          - php
-          - ffi
-          - dotnet
+          # - node
+          # - python
+          # - java
+          # - php
+          # - ffi
+          - elixir
+          # - dotnet
 
     steps:
       - uses: actions/checkout@v4
@@ -265,6 +269,14 @@ jobs:
         with:
           java-version: '11'
           distribution: 'adopt'
+
+      - name: Setup elixir
+        uses: erlef/setup-beam@v1
+        if: ${{  matrix.package == 'elixir' }}
+        with:
+          elixir-version: 1.18.4
+          otp-version: '28.0'
+
 
       - name: Setup
         run: |
