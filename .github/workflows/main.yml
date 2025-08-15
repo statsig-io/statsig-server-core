@@ -252,13 +252,13 @@ jobs:
       fail-fast: false
       matrix:
         package:
-          # - node
-          # - python
-          # - java
-          # - php
-          # - ffi
+          - node
+          - python
+          - java
+          - php
+          - ffi
           - elixir
-          # - dotnet
+          - dotnet
 
     steps:
       - uses: actions/checkout@v4
