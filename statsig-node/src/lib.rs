@@ -13,9 +13,12 @@ pub mod statsig_user_napi;
 
 mod statsig_metadata_napi;
 
-use napi::module_init;
+use napi::{bindgen_prelude::create_custom_tokio_runtime, module_init};
 
 #[module_init]
 fn init() {
     statsig_metadata_napi::update_statsig_metadata(None);
+
+    let rt = statsig_rust::statsig_runtime::create_new_runtime();
+    create_custom_tokio_runtime(rt);
 }

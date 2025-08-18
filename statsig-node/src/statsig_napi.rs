@@ -40,23 +40,25 @@ impl StatsigNapiInternal {
         sdk_key: String,
         options: Option<StatsigOptions>,
     ) -> Self {
-        log_d!(TAG, "StatsigNapi new");
+        within_runtime_if_available(|| {
+            log_d!(TAG, "StatsigNapi new");
 
-        statsig_metadata_napi::update_statsig_metadata(Some(env));
+            statsig_metadata_napi::update_statsig_metadata(Some(env));
 
-        let (inner_opts, obs_client) = options
-            .map(|opts| opts.safe_convert_to_inner())
-            .unwrap_or((None, None));
+            let (inner_opts, obs_client) = options
+                .map(|opts| opts.safe_convert_to_inner())
+                .unwrap_or((None, None));
 
-        let network_provider: Arc<dyn NetworkProvider> =
-            Arc::new(NetworkProviderNapi { network_func });
-        NetworkProviderGlobal::set(&network_provider);
+            let network_provider: Arc<dyn NetworkProvider> =
+                Arc::new(NetworkProviderNapi { network_func });
+            NetworkProviderGlobal::set(&network_provider);
 
-        Self {
-            inner: Arc::new(StatsigActual::new(&sdk_key, inner_opts)),
-            observability_client: Mutex::new(obs_client),
-            network_provider: Mutex::new(Some(network_provider)),
-        }
+            Self {
+                inner: Arc::new(StatsigActual::new(&sdk_key, inner_opts)),
+                observability_client: Mutex::new(obs_client),
+                network_provider: Mutex::new(Some(network_provider)),
+            }
+        })
     }
 
     #[napi]
