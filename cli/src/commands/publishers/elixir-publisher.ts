@@ -1,4 +1,4 @@
-import { getRootedPath } from '@/utils/file_utils.js';
+import { BASE_DIR, getRootedPath } from '@/utils/file_utils.js';
 import {
   GhRelease,
   createReleaseForVersion,
@@ -19,7 +19,7 @@ import { PublisherOptions } from './publisher-options.js';
 const ELIXIR_REPRO_NAME = 'statsig-elixir-core';
 const EXPECTED_ZIPPED_FILES = 6;
 const COMPRESSED_DIR = 'artifacts/elixir_compressed_dir';
-const ELIXIR_DIR = 'statsig-elixir';
+const ELIXIR_DIR = `${BASE_DIR}/statsig-elixir`;
 
 export async function publishElixir(options: PublisherOptions) {
   const octokit = await getOctokit();
@@ -30,7 +30,7 @@ export async function publishElixir(options: PublisherOptions) {
   // step 2. zip path is **/target/**/release/libstatsig_elixir**.so
   const zippedFilesPath = await compressLibraries();
   // step 3. upload
-  for (const path in zippedFilesPath) {
+  for (const path of zippedFilesPath) {
     await uploadRelease(octokit, release, path);
   }
   // step 4. run checksum
@@ -40,23 +40,26 @@ export async function publishElixir(options: PublisherOptions) {
 }
 
 async function publishToHex() {
-    Log.stepBegin("Publish package to hex")
-    execSync(`mix hex.user auth ${process.env.HEX_API_KEY}`, { cwd: ELIXIR_DIR })
-    execSync(`mix hex.publish`, { cwd: ELIXIR_DIR })
+  Log.stepBegin('Publish package to hex');
+  execSync(`HEX_API_KEY=${process.env.HEX_API_KEY} mix hex.publish --yes`, { cwd: ELIXIR_DIR, stdio: 'inherit' });
 }
 
 async function runCheckSum() {
   Log.stepBegin('Setup elixir build environment');
-  execSync('mix local.hex', { cwd: ELIXIR_DIR });
-  execSync('mix local.rebar', { cwd: ELIXIR_DIR });
-  execSync('mix deps.get', { cwd: ELIXIR_DIR });
+  execSync('mix local.hex', { cwd: ELIXIR_DIR, stdio: 'inherit'});
+  execSync('mix local.rebar', { cwd: ELIXIR_DIR, stdio: 'inherit'});
+  execSync('mix deps.get', { cwd: ELIXIR_DIR, stdio: 'inherit'});
   Log.stepEnd('Setup elixir build environment');
 
   Log.stepBegin('Rerun checksum');
-  execSync(
-    `FORCE_STATSIG_NATIVE_BUILD="true" mix rustler_precompiled.download NativeBindings --all --printls`,
-    { cwd: ELIXIR_DIR },
-  );
+  execSync('FORCE_STATSIG_NATIVE_BUILD="true" mix compile', {
+    cwd: ELIXIR_DIR,
+    stdio: 'inherit'
+  });
+  execSync(`mix rustler_precompiled.download Statsig.NativeBindings --all --printls`, {
+    cwd: ELIXIR_DIR,
+    stdio: 'inherit'
+  });
   Log.stepEnd('Rerun checksum');
 }
 
@@ -72,12 +75,11 @@ async function uploadRelease(
   }
 
   Log.stepProgress(`Release upload URL: ${uploadUrl}`);
-
   const { result, error } = await uploadReleaseAsset(
     octokit,
     ELIXIR_REPRO_NAME,
     release.id,
-    COMPRESSED_DIR,
+    path,
   );
 }
 
@@ -105,13 +107,13 @@ async function compressLibraries() {
   const compressedPath = [];
   Log.stepBegin('Compressing: Create tar gz files');
   const matches = await glob(
-    'artifacts/**/target/**/release/libstatsig_elixir**.so',
+    '/tmp/statsig-server-core-publish/**/target/**/release/libstatsig_elixir**.so',
     {
       nodir: true,
     },
   );
 
-  if (matches.length != EXPECTED_ZIPPED_FILES) {
+  if (matches.length < EXPECTED_ZIPPED_FILES) {
     console.error('Found less binaries');
 
     process.exit(1);
@@ -131,7 +133,7 @@ async function compressLibraries() {
     compressedPath.push(tarName);
   }
   Log.stepEnd('Compressing: Create tar gz files');
-  if (compressedPath.length != EXPECTED_ZIPPED_FILES) {
+  if (compressedPath.length <= EXPECTED_ZIPPED_FILES) {
     console.error('Found less zipped files');
     process.exit(1);
   }
