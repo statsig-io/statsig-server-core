@@ -13,7 +13,7 @@ use crate::{
 };
 
 pub trait EnqueueOperation {
-    fn as_exposure(&self) -> Option<&impl QueuedExposure>;
+    fn as_exposure(&self) -> Option<&impl QueuedExposure<'_>>;
     fn into_queued_event(self, sampling_decision: EvtSamplingDecision) -> QueuedEvent;
 }
 

@@ -4,7 +4,7 @@ pub struct Tokenizer;
 
 impl Tokenizer {
     // Ideal UserAgent format: <product>/<product-version> (<os-information>) <engine> (<platform-details>) <optional-details>
-    pub fn run(input: &str) -> TokenizerResult {
+    pub fn run(input: &str) -> TokenizerResult<'_> {
         let mut result = TokenizerResult::default();
         let mut win = WindowIter::new(input);
 

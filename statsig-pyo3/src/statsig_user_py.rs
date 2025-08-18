@@ -171,7 +171,7 @@ impl StatsigUserPy {
     // ---------------------------------------- [Custom]
 
     #[getter]
-    fn get_custom(&self) -> Option<HashMap<&str, Option<ValidPrimitivesPyRef>>> {
+    fn get_custom(&self) -> Option<HashMap<&str, Option<ValidPrimitivesPyRef<'_>>>> {
         get_map_field_ref(&self.inner.data.custom)
     }
 
@@ -201,7 +201,7 @@ impl StatsigUserPy {
     // ---------------------------------------- [Private Attributes]
 
     #[getter]
-    fn get_private_attributes(&self) -> Option<HashMap<&str, Option<ValidPrimitivesPyRef>>> {
+    fn get_private_attributes(&self) -> Option<HashMap<&str, Option<ValidPrimitivesPyRef<'_>>>> {
         get_map_field_ref(&self.inner.data.private_attributes)
     }
 

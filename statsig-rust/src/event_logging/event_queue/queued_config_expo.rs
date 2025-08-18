@@ -22,7 +22,7 @@ pub struct EnqueueConfigExpoOp<'a> {
 }
 
 impl EnqueueOperation for EnqueueConfigExpoOp<'_> {
-    fn as_exposure(&self) -> Option<&impl QueuedExposure> {
+    fn as_exposure(&self) -> Option<&impl QueuedExposure<'_>> {
         Some(self)
     }
 

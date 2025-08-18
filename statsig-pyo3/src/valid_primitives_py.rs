@@ -189,7 +189,7 @@ impl<'a> ValidPrimitivesPyRef<'a> {
     }
 }
 
-fn json_value_to_valid_array_item_py(value: &Value) -> ValidArrayItemPyRef {
+fn json_value_to_valid_array_item_py(value: &Value) -> ValidArrayItemPyRef<'_> {
     match value {
         Value::String(v) => ValidArrayItemPyRef::String(v.as_str()),
         Value::Number(v) => {

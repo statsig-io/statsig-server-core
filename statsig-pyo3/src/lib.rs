@@ -1,5 +1,4 @@
 mod data_store_base_py;
-mod net_provider_py;
 mod observability_client_base_py;
 mod output_logger_provider_base_py;
 mod pyo_utils;

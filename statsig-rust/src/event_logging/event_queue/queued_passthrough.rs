@@ -12,7 +12,7 @@ pub struct EnqueuePassthroughOp {
 }
 
 impl EnqueueOperation for EnqueuePassthroughOp {
-    fn as_exposure(&self) -> Option<&impl QueuedExposure> {
+    fn as_exposure(&self) -> Option<&impl QueuedExposure<'_>> {
         None::<&EnqueueGateExpoOp>
     }
 

@@ -26,7 +26,7 @@ pub struct EnqueueGateExpoOp<'a> {
 }
 
 impl EnqueueOperation for EnqueueGateExpoOp<'_> {
-    fn as_exposure(&self) -> Option<&impl QueuedExposure> {
+    fn as_exposure(&self) -> Option<&impl QueuedExposure<'_>> {
         Some(self)
     }
 

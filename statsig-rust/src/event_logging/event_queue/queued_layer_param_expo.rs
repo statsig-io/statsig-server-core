@@ -37,7 +37,7 @@ impl<'a> EnqueueLayerParamExpoOp<'a> {
 }
 
 impl EnqueueOperation for EnqueueLayerParamExpoOp<'_> {
-    fn as_exposure(&self) -> Option<&impl QueuedExposure> {
+    fn as_exposure(&self) -> Option<&impl QueuedExposure<'_>> {
         Some(self)
     }
 

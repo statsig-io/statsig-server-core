@@ -923,7 +923,7 @@ impl Statsig {
         }
     }
 
-    pub fn get_parameter_store(&self, parameter_store_name: &str) -> ParameterStore {
+    pub fn get_parameter_store(&self, parameter_store_name: &str) -> ParameterStore<'_> {
         self.get_parameter_store_with_options(
             parameter_store_name,
             ParameterStoreEvaluationOptions::default(),
@@ -934,7 +934,7 @@ impl Statsig {
         &self,
         parameter_store_name: &str,
         options: ParameterStoreEvaluationOptions,
-    ) -> ParameterStore {
+    ) -> ParameterStore<'_> {
         self.event_logger
             .increment_non_exposure_checks(parameter_store_name);
 
