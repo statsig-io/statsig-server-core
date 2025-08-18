@@ -156,6 +156,7 @@ export interface EvaluationDetails {
 
 export interface ExperimentEvaluationOptions {
   disableExposureLogging?: boolean
+  userPersistedValues?: Record<string, any>
 }
 
 export interface FeatureGate {
@@ -171,6 +172,7 @@ export interface FeatureGateEvaluationOptions {
 
 export interface LayerEvaluationOptions {
   disableExposureLogging?: boolean
+  userPersistedValues?: Record<string, any>
 }
 
 export interface NapiNetworkFuncResult {

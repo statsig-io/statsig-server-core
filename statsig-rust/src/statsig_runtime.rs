@@ -8,7 +8,7 @@ use std::future::Future;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::runtime::{Builder, Handle};
+use tokio::runtime::{Builder, Handle, Runtime};
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
@@ -191,6 +191,15 @@ impl StatsigRuntime {
     }
 }
 
+pub fn create_new_runtime() -> Runtime {
+    Builder::new_multi_thread()
+        .worker_threads(5)
+        .thread_name("statsig")
+        .enable_all()
+        .build()
+        .expect("Failed to create a tokio Runtime")
+}
+
 fn remove_join_handle_with_id(
     spawned_tasks: Arc<Mutex<HashMap<TaskId, JoinHandle<()>>>>,
     tag: String,
@@ -232,14 +241,7 @@ fn create_runtime_if_required() {
         }
         None => {
             log_d!(TAG, "Creating new tokio runtime for StatsigGlobal");
-            let rt = Arc::new(
-                Builder::new_multi_thread()
-                    .worker_threads(5)
-                    .thread_name("statsig")
-                    .enable_all()
-                    .build()
-                    .expect("Failed to find or create a tokio Runtime"),
-            );
+            let rt = Arc::new(create_new_runtime());
 
             lock.replace(rt);
         }

@@ -48,6 +48,7 @@ pub mod statsig_core_api_options;
 pub mod statsig_global;
 pub mod statsig_metadata;
 pub mod statsig_options;
+pub mod statsig_runtime;
 pub mod statsig_types;
 pub mod user;
 
@@ -64,6 +65,5 @@ mod spec_store;
 mod specs_adapter;
 mod statsig;
 mod statsig_err;
-mod statsig_runtime;
 mod statsig_type_factories;
 mod utils;
