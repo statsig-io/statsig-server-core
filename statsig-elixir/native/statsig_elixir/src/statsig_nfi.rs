@@ -202,6 +202,20 @@ pub fn log_event_with_number(
     }
 }
 
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn get_client_init_response_as_string(
+    statsig: ResourceArc<StatsigResource>,
+    statsig_user: StatsigUser,
+) -> Result<String, Error> {
+    match statsig.statsig_core.read() {
+        Ok(read_guard) => {
+            let response = read_guard.get_client_init_response_as_string(&statsig_user.into());
+            Ok(response)
+        }
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
+    }
+}
+
 #[rustler::nif(schedule = "DirtyIo")]
 pub fn flush(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
     match statsig.statsig_core.read() {
@@ -280,6 +294,7 @@ pub fn layer_get_rule_id(layer: ResourceArc<LayerResource>) -> Result<String, Er
 
 #[rustler::nif]
 pub fn layer_get_group_name(layer: ResourceArc<LayerResource>) -> Result<Option<String>, Error> {
+    println!("get group name");
     match layer.core.read() {
         Ok(read_guard) => Ok(read_guard.group_name.clone()),
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),

@@ -90,6 +90,8 @@ impl<'a> Decoder<'a> for AllowedPrimitive {
             Ok(AllowedPrimitive::Str(s))
         } else if let Ok(b) = bool::decode(term) {
             Ok(AllowedPrimitive::Bool(b))
+        } else if let Ok(f) = f64::decode(term) {
+            Ok(AllowedPrimitive::Float(f))
         } else {
             Err(rustler::Error::BadArg)
         }

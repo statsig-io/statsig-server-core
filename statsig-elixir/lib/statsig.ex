@@ -116,6 +116,22 @@ defmodule Statsig do
     end
   end
 
+  def get_client_init_response_as_string(statsig_user) do
+    try do
+      instance = get_statsig_instance()
+
+      case NativeBindings.get_client_init_response_as_string(instance, statsig_user) do
+        {:error, e} -> {:error, e}
+        response -> {:ok, response}
+      end
+    rescue
+      exception -> {:error, Exception.message(exception)}
+    catch
+      :exit, reason -> {:error, {:exit, reason}}
+      exception -> {:error, Exception.message(exception)}
+    end
+  end
+
   @spec log_event(%Statsig.User{}, String.t(), String.t() | number(), %{String.t() => String.t()}) ::
           any()
   def log_event(statsig_user, event_name, value, metadata) do
@@ -123,7 +139,7 @@ defmodule Statsig do
       instance = get_statsig_instance()
 
       case value do
-        value when is_binary(value) ->
+        value when is_binary(value) or is_nil(value) ->
           NativeBindings.log_event(instance, statsig_user, event_name, value, metadata)
 
         value when is_number(value) ->

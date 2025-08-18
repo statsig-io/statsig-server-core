@@ -12,6 +12,19 @@ defmodule Statsig.User do
     app_version: nil,
   ]
 
+  def new(attrs) when is_map(attrs) do
+    %__MODULE__{}
+    |> struct(attrs)
+    |> validate_presence_of_id()
+  end
+
+  defp validate_presence_of_id(%__MODULE__{user_id: nil, custom_ids: nil}) do
+    raise ArgumentError,
+          "Either `user_id` or `custom_ids` must be set"
+  end
+
+  defp validate_presence_of_id(struct), do: struct
+
   @type custom_value :: String.t() | number() | boolean() | nil
   @type custom_attributes :: %{String.t() => custom_value()}
 

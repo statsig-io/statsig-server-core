@@ -21,6 +21,7 @@ defmodule Statsig.NativeBindings do
   def get_config(_statsig, _config_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
   def get_experiment(_statsig, _experiment_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
   def get_layer(_statsig, _layer_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
+  def get_client_init_response_as_string(_statsig, _statsig_user), do: :erlang.nif_error(:nif_not_loaded)
   def log_event(_statsig, _statsig_user, _event_name,_value, _metadata), do: :erlang.nif_error(:nif_not_loaded)
   def log_event_with_number(_statsig, _statsig_user, _event_name,_value, _metadata), do: :erlang.nif_error(:nif_not_loaded)
   def flush(_statsig), do: :erlang.nif_error(:nif_not_loaded)
