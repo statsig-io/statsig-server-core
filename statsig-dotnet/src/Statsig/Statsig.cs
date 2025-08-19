@@ -284,6 +284,30 @@ namespace Statsig
             }
         }
 
+        unsafe public Layer GetPrompt(StatsigUser user, string promptName, EvaluationOptions? options = null)
+        {
+            int nameLen = Encoding.UTF8.GetByteCount(promptName);
+            Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
+            int written = Encoding.UTF8.GetBytes(promptName, nameBytes[..nameLen]);
+            nameBytes[written] = 0;
+
+            string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
+
+            fixed (byte* optionsPtr = optBytes)
+            fixed (byte* promptNamePtr = nameBytes)
+            {
+                var jsonStringPtr =
+                    StatsigFFI.statsig_get_prompt(_statsigRef, user.Reference, promptNamePtr, optionsPtr);
+                var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
+                if (jsonString == null)
+                {
+                    return new Layer(string.Empty, _statsigRef, options);
+                }
+                return new Layer(jsonString, _statsigRef, options);
+            }
+        }
+
         unsafe public void ManuallyLogLayerParameterExposure(StatsigUser user, string layerName, string parameterName)
         {
             int layerNameLen = Encoding.UTF8.GetByteCount(layerName);

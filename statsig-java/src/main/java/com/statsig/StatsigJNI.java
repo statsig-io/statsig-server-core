@@ -80,6 +80,9 @@ class StatsigJNI {
   public static native String statsigGetLayer(
       long statsigRef, long userRef, String layerName, GetLayerOptions options);
 
+  public static native String statsigGetPrompt(
+      long statsigRef, long userRef, String promptName, GetLayerOptions options);
+
   public static native void statsigManuallyLogLayerParamExposure(
       long statsigRef, long userRef, String layerName, String param);
 

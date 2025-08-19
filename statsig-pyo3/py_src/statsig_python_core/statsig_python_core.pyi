@@ -223,6 +223,9 @@ class StatsigBasePy:
     def get_layer(self, user:StatsigUser, name:builtins.str, options:typing.Optional[LayerEvaluationOptions]=None) -> Layer:
         ...
 
+    def get_prompt(self, user:StatsigUser, name:builtins.str, options:typing.Optional[LayerEvaluationOptions]=None) -> Layer:
+        ...
+
     def manually_log_layer_parameter_exposure(self, user:StatsigUser, name:builtins.str, param_name:builtins.str) -> None:
         ...
 

@@ -201,6 +201,30 @@ func (s *Statsig) GetLayer(user StatsigUser, layerName string, layerOptions *Get
 
 }
 
+func (s *Statsig) GetPrompt(user StatsigUser, promptName string, layerOptions *GetLayerOptions) Layer {
+	var layer Layer
+
+	if layerOptions == nil {
+		layerOptions = &GetLayerOptions{}
+	}
+
+	layerJson := C.statsig_get_prompt(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(promptName), C.CString(utils.ConvertJSONToString(layerOptions)))
+
+	if layerJson != nil {
+		err := json.Unmarshal([]byte(C.GoString(layerJson)), &layer)
+		if err != nil {
+			return Layer{}
+		}
+
+		layer.setStatsigInstance(s)
+		layer.setDisableExposureLogging(layerOptions != nil && layerOptions.DisableExposureLogging)
+		layer.setRawResult(C.GoString(layerJson))
+	}
+
+	return layer
+
+}
+
 func (s *Statsig) ManuallyLogLayerParameterExposure(user StatsigUser, layerName string, paramName string) {
 	C.statsig_manually_log_layer_parameter_exposure(C.uint64_t(s.InnerRef), C.uint64_t(user.innerRef), C.CString(layerName), C.CString(paramName))
 }
