@@ -4,7 +4,7 @@ defmodule Statsig.NativeBindings do
     otp_app: :statsig_elixir,
     crate: "statsig_elixir",
     version: version,
-    base_url: "https://github.com/statsig-io/statsig-server-core/releases/download/#{version}/",
+    base_url: "https://github.com/statsig-io/statsig-elixir-core/releases/download/#{version}/",
     force_build: System.get_env("FORCE_STATSIG_NATIVE_BUILD") in ["1", "true"],
     targets: [
       "aarch64-apple-darwin", # Add other supported targets if needed
