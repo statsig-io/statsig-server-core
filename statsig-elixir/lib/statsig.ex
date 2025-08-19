@@ -9,7 +9,7 @@ defmodule Statsig do
 
   def init({sdk_key, statsig_options}) do
     try do
-      instance = NativeBindings.new(sdk_key, statsig_options)
+      instance = NativeBindings.new(sdk_key, statsig_options,get_system_info())
       {:ok, instance}
     rescue
       exception -> {:error, Exception.message(exception)}
@@ -198,6 +198,28 @@ defmodule Statsig do
     catch
       :exit, reason -> {:error, {:exit, reason}}
       exception -> {:error, Exception.message(exception)}
+    end
+  end
+
+  def get_system_info do
+    try do
+      %{
+        "os"=> :os.type() |> elem(0) |> Atom.to_string(),
+        "arch"=> :erlang.system_info(:system_architecture) |> List.to_string(),
+        "language_version"=> System.version()
+      }
+    rescue
+      _ -> %{
+        "os"=> "unknown",
+        "arch"=> "unknown",
+        "language_version"=> "unknown"
+      }
+    catch
+      _, _ -> %{
+        "os"=> "unknown",
+        "arch"=> "unknown",
+        "language_version"=> "unknown"
+      }
     end
   end
 end

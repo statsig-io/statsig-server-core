@@ -14,7 +14,7 @@ defmodule Statsig.NativeBindings do
       "x86_64-unknown-linux-musl",
       "aarch64-unknown-linux-musl",
     ]
-  def new(_key, _options), do: :erlang.nif_error(:nif_not_loaded)
+  def new(_key, _options, _system_metadata), do: :erlang.nif_error(:nif_not_loaded)
   def initialize(_statsig), do: :erlang.nif_error(:nif_not_loaded)
   def check_gate(_statsig, _gate_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
   def get_feature_gate(_statsig, _gate_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
