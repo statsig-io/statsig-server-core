@@ -9,6 +9,8 @@ import "C"
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"sync"
 
 	"runtime"
 
@@ -18,6 +20,55 @@ import (
 type Statsig struct {
 	InnerRef uint64
 }
+
+var (
+	sharedInstance *Statsig
+	lock           sync.RWMutex
+)
+
+func Shared() *Statsig {
+	lock.RLock()
+	defer lock.RUnlock()
+	if !HasShared() {
+		fmt.Println("[Statsig] No shared instance has been created yet. Call newShared() before using it. Returning an invalid instance")
+		return createErrorStatsigInstance()
+	}
+
+	return sharedInstance
+}
+
+func HasShared() bool {
+	return sharedInstance != nil
+}
+
+func NewShared(sdkKey string, options StatsigOptions) *Statsig {
+	lock.Lock()
+	defer lock.Unlock()
+	if sharedInstance != nil {
+		fmt.Println("[Statsig] Shared instance has been created, call removeShared() if you want to create another one. \nReturning an invalid instance")
+		return createErrorStatsigInstance()
+	} else {
+		fmt.Println("[Statsig] Creating a new shared instance")
+	}
+
+	var err error
+	sharedInstance, err = NewStatsig(sdkKey, options)
+
+	if err != nil {
+		fmt.Println("[Statsig] Error creating shared Statsig instance. \nReturning an invalid instance")
+		return createErrorStatsigInstance()
+	}
+
+	return sharedInstance
+}
+
+func RemoveSharedInstance() {
+	lock.Lock()
+	defer lock.Unlock()
+	sharedInstance = nil
+	fmt.Println("[Statsig] Shared instance successfully removed")
+}
+
 type InitializeWithDetails struct {
 	Duration          float64         `json:"duration"`
 	InitSuccess       bool            `json:"init_success"`
@@ -354,4 +405,9 @@ func (s *Statsig) RemoveLayerOverride(layerName string, id string) {
 
 func (s *Statsig) RemoveAllOverrides() {
 	C.statsig_remove_all_overrides(C.uint64_t(s.InnerRef))
+}
+
+func createErrorStatsigInstance() *Statsig {
+	errStatsig, _ := NewStatsig("INVALID_SECRET_KEY", StatsigOptions{})
+	return errStatsig
 }

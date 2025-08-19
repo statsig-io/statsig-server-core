@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -86,4 +87,20 @@ func checkEventNameExists(events []statsig.Event, eventName string) bool {
 		}
 	}
 	return false
+}
+
+func getOutputStream(f func()) string {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	f()
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	_, _ = buf.ReadFrom(r)
+	return buf.String()
+
 }
