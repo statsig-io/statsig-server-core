@@ -1,18 +1,31 @@
+type User = {
+  userID: string;
+  appVersion?: string;
+  customIDs?: Record<string, string>;
+  privateAttributes?: Record<string, string>;
+  customAttributes?: Record<string, string>;
+  ip?: string;
+  country?: string;
+  email?: string;
+  userAgent?: string;
+  locale?: string;
+};
+
+type Event = {
+  eventName: string;
+  value?: string | number;
+  metadata?: Record<string, string>;
+};
+
 export type SdkState = {
   users: {
-    userID: string;
-    appVersion?: string;
-    customIDs?: Record<string, string>;
-    privateAttributes?: Record<string, string>;
-    customAttributes?: Record<string, string>;
-    ip?: string;
-    country?: string;
-    email?: string;
-    userAgent?: string;
-    locale?: string;
-  }[];
+    [userID: string]: User;
+  };
   gate: { names: string[]; qps: number };
-  logEvent: { events: { eventName: string }[]; qps: number };
+  logEvent: {
+    events: { [eventName: string]: Event };
+    qps: number;
+  };
   gcir: { qps: number };
 };
 
@@ -56,4 +69,5 @@ export type State = {
   };
   scrapi: ScrapiState;
   sdk: SdkState;
+  updatedAt: Date;
 };

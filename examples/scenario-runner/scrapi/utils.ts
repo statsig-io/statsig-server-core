@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import { readFileSync } from 'node:fs';
 
+import { State } from '../common';
 import { Counter } from './counters';
 
 const benchmarkSdkKey: string = process.env.BENCH_CLUSTER_SDK_KEY ?? '';
@@ -24,6 +25,13 @@ export function getSdkInfo(req: Request) {
 }
 
 export async function logEventsToStatsig(events: any[]) {
+  if (process.env.LOG_BENCHMARKS_TO_STATSIG !== 'true') {
+    console.log(
+      `Skipping logging ${events.length} events to Statsig, LOG_BENCHMARKS_TO_STATSIG is '${process.env.LOG_BENCHMARKS_TO_STATSIG}'`,
+    );
+    return;
+  }
+
   const response = await fetch('https://events.statsigapi.net/v1/log_event', {
     method: 'POST',
     body: JSON.stringify({
@@ -46,6 +54,23 @@ export async function logEventsToStatsig(events: any[]) {
 
 export function log(message: string, ...args: unknown[]) {
   console.log(`[${new Date().toISOString()}][scrapi] ${message}`, ...args);
+}
+
+export function logStateChange(state: State) {
+  const metadata = {};
+
+  flattenObjectToEventMetadata(metadata, 'STATE', state);
+
+  const event = {
+    eventName: 'sdk_scenario_runner_state_change',
+    value: JSON.stringify(state),
+    eventTimestamp: Date.now(),
+    metadata,
+  };
+
+  console.log(JSON.stringify(event, null, 2));
+
+  logEventsToStatsig([event]);
 }
 
 export function flushCounters(counters: Counter[]) {
@@ -142,4 +167,30 @@ function parseMemory(input: string) {
 
   const result = parse(value, unit);
   return Math.round(result);
+}
+
+function flattenObjectToEventMetadata(
+  metadata: Record<string, unknown>,
+  baseKey: string,
+  input: Record<string, unknown>,
+) {
+  if (
+    baseKey === 'STATE.sdk.users' ||
+    baseKey === 'STATE.sdk.logEvent.events'
+  ) {
+    metadata[baseKey] = Object.keys(input).join(',');
+    return;
+  }
+
+  for (const [key, value] of Object.entries(input)) {
+    if (typeof value === 'object' && value != null) {
+      flattenObjectToEventMetadata(
+        metadata,
+        `${baseKey}.${key}`,
+        value as Record<string, unknown>,
+      );
+    } else {
+      metadata[`${baseKey}.${key}`] = value;
+    }
+  }
 }

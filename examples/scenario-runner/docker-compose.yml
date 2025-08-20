@@ -23,6 +23,7 @@ services:
     container_name: sr-scrapi
     environment:
       - BENCH_CLUSTER_SDK_KEY=${BENCH_CLUSTER_SDK_KEY}
+      - LOG_BENCHMARKS_TO_STATSIG=${LOG_BENCHMARKS_TO_STATSIG}
     image: sr-scrapi:latest
     ports:
       - "8000:8000"

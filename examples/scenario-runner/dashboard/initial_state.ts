@@ -44,8 +44,11 @@ export const INITIAL_STATE: State = {
     },
   },
   sdk: {
-    users: [
-      {
+    users: {
+      a_user: {
+        userID: 'a_user',
+      },
+      big_user: {
         userID: 'big_user',
         appVersion: '1.0.0',
         customIDs: { custom_id: '123' },
@@ -58,21 +61,29 @@ export const INITIAL_STATE: State = {
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
         locale: 'en_US',
       },
-    ],
+    },
     gate: {
       names: ['test_public'],
       qps: 1000,
     },
     logEvent: {
-      events: [
-        {
+      events: {
+        my_custom_event: {
           eventName: 'my_custom_event',
         },
-      ],
+        event_with_metadata: {
+          eventName: 'event_with_metadata',
+          value: 123,
+          metadata: {
+            key: 'value',
+          },
+        },
+      },
       qps: 1000,
     },
     gcir: {
       qps: 100,
     },
   },
+  updatedAt: new Date(),
 };

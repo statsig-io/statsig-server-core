@@ -1,17 +1,23 @@
 import express, { type Response } from 'express';
 import { createReadStream, readFileSync } from 'node:fs';
 
-import type { ScrapiState } from '../common';
+import type { ScrapiState, State } from '../common';
 import { incEventCount, incReqCount, takeCounters } from './counters';
-import { flushCounters, flushDockerStats, getSdkInfo } from './utils';
+import {
+  flushCounters,
+  flushDockerStats,
+  getSdkInfo,
+  logStateChange,
+} from './utils';
 
 const app = express();
-let state: ScrapiState | null = null;
+let scrapiState: ScrapiState | null = null;
 let lastFlushedAt = new Date();
+let lastStateUpdateAt = new Date(1);
 
 app.all('/ready', (_req, res) => {
-  const v1Filepath = state?.dcs?.response?.v1?.filepath;
-  const v2Filepath = state?.dcs?.response?.v2?.filepath;
+  const v1Filepath = scrapiState?.dcs?.response?.v1?.filepath;
+  const v2Filepath = scrapiState?.dcs?.response?.v2?.filepath;
 
   if (v1Filepath == null || v2Filepath == null) {
     res.status(500).json({ error: 'State not initialized' });
@@ -19,8 +25,8 @@ app.all('/ready', (_req, res) => {
   }
 
   res.status(200).json({
-    v1DcsBytesize: state?.dcs?.response?.v1?.filesize,
-    v2DcsBytesize: state?.dcs?.response?.v2?.filesize,
+    v1DcsBytesize: scrapiState?.dcs?.response?.v1?.filesize,
+    v2DcsBytesize: scrapiState?.dcs?.response?.v2?.filesize,
   });
 });
 
@@ -67,7 +73,7 @@ app.post('/v1/log_event', async (req, res) => {
     throw new Error('statsig-event-count is required');
   }
 
-  const logEventState = state?.logEvent;
+  const logEventState = scrapiState?.logEvent;
   if (logEventState == null) {
     throw new Error('logEvent state not found');
   }
@@ -120,13 +126,13 @@ app.listen(8000, () => {
 });
 
 async function handleDcsResponse(type: 'v1' | 'v2', res: Response) {
-  const delayMs = state?.dcs?.response?.delayMs ?? 0;
+  const delayMs = scrapiState?.dcs?.response?.delayMs ?? 0;
   if (delayMs > 0) {
     await new Promise((r) => setTimeout(r, delayMs));
   }
 
-  if (state?.dcs?.response?.status !== 200) {
-    res.status(state?.dcs?.response?.status ?? 500).json({
+  if (scrapiState?.dcs?.response?.status !== 200) {
+    res.status(scrapiState?.dcs?.response?.status ?? 500).json({
       error: 'DCS is not enabled',
     });
     return;
@@ -134,8 +140,8 @@ async function handleDcsResponse(type: 'v1' | 'v2', res: Response) {
 
   const filepath =
     type === 'v2'
-      ? state?.dcs?.response?.v2?.filepath
-      : state?.dcs?.response?.v1?.filepath;
+      ? scrapiState?.dcs?.response?.v2?.filepath
+      : scrapiState?.dcs?.response?.v1?.filepath;
   if (filepath == null || filepath.length === 0) {
     res.status(404).json({ error: 'State not initialized' });
     return;
@@ -147,13 +153,22 @@ async function handleDcsResponse(type: 'v1' | 'v2', res: Response) {
   stream.pipe(res);
 }
 
-function readState(): ScrapiState {
+function readState(): State {
   const stateContents = readFileSync('/shared-volume/state.json', 'utf8');
-  return JSON.parse(stateContents).scrapi as ScrapiState;
+  return JSON.parse(stateContents);
 }
 
 function update() {
-  state = readState();
+  const state = readState();
+  scrapiState = state.scrapi;
+
+  const updatedAt = new Date(state.updatedAt as unknown as string);
+  if (updatedAt.getTime() != lastStateUpdateAt.getTime()) {
+    console.log('State Changed');
+    logStateChange(state);
+  }
+
+  lastStateUpdateAt = updatedAt;
 
   if (Date.now() - lastFlushedAt.getTime() < 30_000) {
     return;

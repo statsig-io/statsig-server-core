@@ -89,14 +89,14 @@ public class Main {
         System.out.println("Gates: " + state.gate.names.size() + " qps: " + gateQps);
         System.out.println("Events: " + state.logEvent.events.size() + " qps: " + logEventQps);
 
-        for (Map<String, String> user : state.users) {
+        for (Map<String, String> user : state.users.values()) {
             StatsigWrapper.setUser(user);
     
             for (String gateName : state.gate.names) {
                 profile("check_gate", user.get("userID"), gateName, gateQps, () -> StatsigWrapper.checkGate(gateName));
             }
 
-            for (Map<String, String> event : state.logEvent.events) {
+            for (Map<String, String> event : state.logEvent.events.values()) {
                 profile("log_event", user.get("userID"), event.get("eventName"), logEventQps, () -> StatsigWrapper.logEvent(event.get("eventName")));
             }
 
@@ -126,7 +126,7 @@ class State {
 }
 
 class SdkState {
-    public List<Map<String, String>> users;
+    public Map<String, Map<String, String>> users;
     public GateConfig gate;
     public LogEventConfig logEvent;
     public GcirConfig gcir;
@@ -138,7 +138,7 @@ class GateConfig {
 }
 
 class LogEventConfig {
-    public List<Map<String, String>> events;
+    public Map<String, Map<String, String>> events;
     public int qps;
 }
 

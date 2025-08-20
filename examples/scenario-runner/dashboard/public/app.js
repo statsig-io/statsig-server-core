@@ -396,7 +396,7 @@ function Dashboard() {
               style={{ padding: 8, cursor: 'pointer' }}
               onClick={() => {
                 window.open(
-                  'http://localhost:8000/v1/download_config_specs',
+                  `${location.origin}:8000/v1/download_config_specs`,
                   '_blank',
                 );
               }}
@@ -407,7 +407,7 @@ function Dashboard() {
               style={{ padding: 8, cursor: 'pointer' }}
               onClick={() => {
                 window.open(
-                  'http://localhost:8000/v2/download_config_specs',
+                  `${location.origin}:8000/v2/download_config_specs`,
                   '_blank',
                 );
               }}

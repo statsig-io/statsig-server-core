@@ -75,7 +75,7 @@ function update() {
 
   console.log('Users: ', Object.keys(state.users).length);
 
-  for (const userData of state.users) {
+  for (const userData of Object.values(state.users)) {
     StatsigWrapper.setUser(userData);
 
     for (const gateName of state.gate.names) {
@@ -84,7 +84,7 @@ function update() {
       );
     }
 
-    for (const event of state.logEvent.events) {
+    for (const event of Object.values(state.logEvent.events)) {
       profile(
         `log_event`,
         userData.userID,

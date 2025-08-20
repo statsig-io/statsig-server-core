@@ -37,6 +37,7 @@ app.post('/state', async (req, res) => {
   log('Received state', req.body);
   if (req.body && Object.keys(req.body).length > 0) {
     log('Writing state', req.body);
+    req.body.updatedAt = new Date();
     writeState(req.body);
   }
 

@@ -89,7 +89,7 @@ def update():
         f'Events: count({len(state["logEvent"]["events"])}) qps({state["logEvent"]["qps"]})'
     )
 
-    for user_data in state["users"]:
+    for _u, user_data in state["users"].items():
         StatsigWrapper.set_user(user_data)
 
         for gate_name in state["gate"]["names"]:
@@ -101,7 +101,7 @@ def update():
                 lambda: StatsigWrapper.check_gate(gate_name),
             )
 
-        for event in state["logEvent"]["events"]:
+        for _e, event in state["logEvent"]["events"].items():
             profile(
                 "log_event",
                 user_data["userID"],
