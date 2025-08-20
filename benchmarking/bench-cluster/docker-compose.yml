@@ -1,15 +1,34 @@
+# ------------------------------------------------------------------------ [ TEMPLATES ]
+
+x-sdk-base: &sdk-base
+  volumes:
+    - ./shared-volume:/shared-volume
+
+x-dotnet: &dotnet   { build: ./dotnet }
+x-go:     &go       { build: ./go    }
+x-java:   &java     { build: ./java  }
+x-node:   &node     { build: ./node  }
+x-php:    &php      { build: ./php   }
+x-python: &python   { build: ./python}
+x-rust:   &rust     { build: ./rust  }
+x-ruby:   &ruby     { build: ./ruby  }
+
+# Environment anchors for variants TODO: rc in the future
+x-env-core:   &env-core   { SDK_VARIANT: core }
+x-env-legacy: &env-legacy { SDK_VARIANT: legacy }
+
+# ------------------------------------------------------------------------ [ SERVICES ]
 services:
+
   scrapi:
     build: ./scrapi
     container_name: scrapi
     environment:
-      - EVAL_PROJ_SDK_KEY=${EVAL_PROJ_SDK_KEY}
-      - BENCH_CLUSTER_SDK_KEY=${BENCH_CLUSTER_SDK_KEY}
+      EVAL_PROJ_SDK_KEY: ${EVAL_PROJ_SDK_KEY}
+      BENCH_CLUSTER_SDK_KEY: ${BENCH_CLUSTER_SDK_KEY}
     image: scrapi:latest
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./shared-volume:/shared-volume
+    ports: ["8000:8000"]
+    volumes: ["./shared-volume:/shared-volume"]
 
   docker-stats:
     build: ./docker-stats
@@ -19,133 +38,34 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./shared-volume:/shared-volume
 
-  # ------------------------------------------------------------------------ [ SDKs ]
+  # ------------------------------------------------------------------------ [ DOTNET ]
+  dotnet-core:   { <<: [*sdk-base, *dotnet], environment: *env-core }
+  dotnet-legacy: { <<: [*sdk-base, *dotnet], environment: *env-legacy }
 
-  dotnet-core:
-    build: ./dotnet
-    container_name: dotnet-core
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=core
-      
-  dotnet-legacy:
-    build: ./dotnet
-    container_name: dotnet-legacy
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=legacy
+  # ------------------------------------------------------------------------ [ GO ]
+  go-core:       { <<: [*sdk-base, *go],     environment: *env-core }
+  go-legacy:     { <<: [*sdk-base, *go],     environment: *env-legacy }
 
-  go-core:
-    build: ./go
-    container_name: go-core
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=core
+  # ------------------------------------------------------------------------ [ JAVA ]
+  java-core:     { <<: [*sdk-base, *java],   environment: *env-core }
+  java-legacy:   { <<: [*sdk-base, *java],   environment: *env-legacy }
 
-  go-legacy:
-    build: ./go
-    container_name: go-legacy
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=legacy
+  # ------------------------------------------------------------------------ [ NODE ]
+  node-core:     { <<: [*sdk-base, *node],   environment: *env-core }
+  node-legacy:   { <<: [*sdk-base, *node],   environment: *env-legacy }
 
-  java-core:
-    build: ./java
-    container_name: java-core
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=core
-      
-  java-legacy:
-    build: ./java
-    container_name: java-legacy
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=legacy
+  # ------------------------------------------------------------------------ [ PHP ]
+  php-core:      { <<: [*sdk-base, *php],    environment: *env-core }
+  php-legacy:    { <<: [*sdk-base, *php],    environment: *env-legacy }
 
-  node-core:
-    build: ./node
-    container_name: node-core
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=core
+  # ------------------------------------------------------------------------ [ PYTHON ]
+  python-core:   { <<: [*sdk-base, *python], environment: *env-core }
+  python-legacy: { <<: [*sdk-base, *python], environment: *env-legacy }
 
-  node-legacy:
-    build: ./node
-    container_name: node-legacy
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=legacy
+  # ------------------------------------------------------------------------ [ RUST ]
+  rust-core:     { <<: [*sdk-base, *rust],   environment: *env-core }
+  rust-legacy:   { <<: [*sdk-base, *rust],   environment: *env-legacy }
 
-  php-core:
-    build: ./php
-    container_name: php-core
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=core
-    
-  
-  php-legacy:
-    build: ./php
-    container_name: php-legacy
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=legacy
-
-  python-core:
-    build: ./python
-    container_name: python-core
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=core
-  
-  python-legacy:
-    build: ./python
-    container_name: python-legacy
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=legacy
-
-  rust-core:
-    build: ./rust
-    container_name: rust-core
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=core
-  
-  rust-legacy:
-    build: ./rust
-    container_name: rust-legacy
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=legacy
-
-  ruby-core:
-    build: ./ruby
-    container_name: ruby-core
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=core
-
-  ruby-legacy:
-    build: ./ruby
-    container_name: ruby-legacy
-    volumes:
-      - ./shared-volume:/shared-volume
-    environment:
-      - SDK_VARIANT=legacy
+  # ------------------------------------------------------------------------ [ RUBY ]
+  ruby-core:     { <<: [*sdk-base, *ruby],   environment: *env-core }
+  ruby-legacy:   { <<: [*sdk-base, *ruby],   environment: *env-legacy }
