@@ -7,12 +7,13 @@ import { Log } from '@/utils/terminal_utils.js';
 const NIF_VERSION = "nif-2.15"
 export function buildElixir(options: BuilderOptions) {
   options.subProject = 'statsig_elixir';
+  let RUSTFLAGS = ""
   if (options.os == 'windows') {
-    // options.envSetupForBuild = 'set RUSTFLAGS="-C target-cpu=native" &&';
+    // RUSTFLAGS = 'RUSTFLAGS="-C target-cpu=native"';
   } else {
-    options.envSetupForBuild = 'RUSTFLAGS="-C target-feature=-crt-static"';
+    RUSTFLAGS = 'RUSTFLAGS="-C target-feature=-crt-static"';
   }
-  let buildcommand = `cargo build --release -p statsig_elixir --target-dir target/${options.target}`
+  let buildcommand = `${RUSTFLAGS} cargo build --release -p statsig_elixir --target-dir target/${options.target}`
   execAndLogSync(buildcommand);
 
   let binPath = `target/${options.target}/release`;
