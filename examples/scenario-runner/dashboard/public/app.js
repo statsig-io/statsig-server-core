@@ -202,7 +202,7 @@ function StatsSelector({ disabledOptions, setDisabledOptions }) {
 }
 
 function StatsSection({ disabledStats }) {
-  const [dockerStats, setDockerStats] = useState({});
+  const [dockerStats, setDockerStats] = useState([]);
   const [perfStats, setPerfStats] = useState({});
 
   useEffect(() => {
@@ -210,7 +210,10 @@ function StatsSection({ disabledStats }) {
       fetch('/stats', { method: 'GET' })
         .then((res) => res.json())
         .then((res) => {
-          setDockerStats(res.dockerStats);
+          const sortedStats = res.dockerStats.stats.sort((a, b) => {
+            return a.Name.localeCompare(b.Name);
+          });
+          setDockerStats(sortedStats);
           setPerfStats(res.perfStats);
         });
     }, 1000);
@@ -230,7 +233,7 @@ function StatsSection({ disabledStats }) {
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {dockerStats?.stats?.map((dockerStat) => {
+        {dockerStats?.map((dockerStat) => {
           return (
             <ServiceStat
               key={dockerStat.Name}

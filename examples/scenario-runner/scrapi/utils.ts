@@ -95,8 +95,15 @@ export function flushDockerStats() {
 }
 
 function parseMemory(input: string) {
-  const parts = input.match(/^([0-9.]+)([a-zA-Z]+)$/);
-  if (!parts) {
+  let i = input.length - 1;
+  while (input[i].match(/[a-zA-Z]/)) {
+    i--;
+  }
+
+  const value = input.slice(0, i + 1);
+  const unit = input.slice(i + 1);
+
+  if (!value || !unit) {
     throw new Error(`Unknown memory format: ${input}`);
   }
 
@@ -130,10 +137,9 @@ function parseMemory(input: string) {
       return parseFloat(value) * 1024 * 1024 * 1024;
     }
 
-    throw new Error(`Unknown unit: ${unit}`);
+    throw new Error(`Unknown unit: ${unit} for input: ${input}`);
   }
 
-  const [, value, unit] = parts;
   const result = parse(value, unit);
   return Math.round(result);
 }
