@@ -923,7 +923,7 @@ impl Statsig {
         }
     }
 
-    pub fn get_parameter_store(&self, parameter_store_name: &str) -> ParameterStore {
+    pub fn get_parameter_store(&self, parameter_store_name: &str) -> ParameterStore<'_> {
         self.get_parameter_store_with_options(
             parameter_store_name,
             ParameterStoreEvaluationOptions::default(),
@@ -934,7 +934,7 @@ impl Statsig {
         &self,
         parameter_store_name: &str,
         options: ParameterStoreEvaluationOptions,
-    ) -> ParameterStore {
+    ) -> ParameterStore<'_> {
         self.event_logger
             .increment_non_exposure_checks(parameter_store_name);
 
@@ -1686,6 +1686,19 @@ impl Statsig {
     ) -> Layer {
         let user_internal = self.internalize_user(user);
         self.get_layer_impl(user_internal, layer_name, options)
+    }
+
+    pub fn get_prompt(&self, user: &StatsigUser, prompt_name: &str) -> Layer {
+        self.get_layer(user, prompt_name)
+    }
+
+    pub fn get_prompt_with_options(
+        &self,
+        user: &StatsigUser,
+        prompt_name: &str,
+        options: LayerEvaluationOptions,
+    ) -> Layer {
+        self.get_layer_with_options(user, prompt_name, options)
     }
 
     pub fn manually_log_layer_parameter_exposure(

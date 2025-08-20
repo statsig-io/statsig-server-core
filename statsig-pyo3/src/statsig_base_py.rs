@@ -373,6 +373,37 @@ impl StatsigBasePy {
         }
     }
 
+    #[pyo3(signature = (user, name, options=None))]
+    pub fn get_prompt(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+        options: Option<LayerEvaluationOptionsPy>,
+        py: Python,
+    ) -> LayerPy {
+        let mut options_actual = options
+            .as_ref()
+            .map_or(LayerEvaluationOptions::default(), |o| o.into());
+
+        options_actual.user_persisted_values = options
+            .and_then(|o| o.user_persisted_values)
+            .and_then(|v| extract_user_persisted_values(py, name, v));
+
+        let layer = self
+            .inner
+            .get_prompt_with_options(&user.inner, name, options_actual);
+
+        LayerPy {
+            name: layer.name.clone(),
+            rule_id: layer.rule_id.clone(),
+            group_name: layer.group_name.clone(),
+            allocated_experiment_name: layer.allocated_experiment_name.clone(),
+            value: map_to_py_dict(py, &layer.__value),
+            details: layer.details.clone().into(),
+            inner: layer,
+        }
+    }
+
     #[pyo3(signature = (user, name, param_name))]
     pub fn manually_log_layer_parameter_exposure(
         &self,

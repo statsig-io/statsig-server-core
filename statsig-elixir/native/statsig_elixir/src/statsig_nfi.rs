@@ -1,7 +1,5 @@
 use rustler::{Env, Error, ResourceArc, Term};
-use statsig_rust::{
-    statsig_metadata::StatsigMetadata, statsig_types::Layer as LayerActual, Statsig,
-};
+use statsig_rust::{statsig_types::Layer as LayerActual, Statsig};
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
@@ -10,8 +8,8 @@ use std::{
 use crate::{
     statsig_options_nfi::StatsigOptions,
     statsig_types_nfi::{
-        AllowedPrimitive, ClientInitResponseOptions, DynamicConfig, DynamicConfigEvaluationOptions,
-        Experiment, ExperimentEvaluationOptions, FeatureGate, FeatureGateEvaluationOptions,
+        AllowedPrimitive, DynamicConfig, DynamicConfigEvaluationOptions, Experiment,
+        ExperimentEvaluationOptions, FeatureGate, FeatureGateEvaluationOptions,
         LayerEvaluationOptions,
     },
     statsig_user_nfi::StatsigUser,
@@ -45,9 +43,7 @@ impl LayerResource {
 pub fn new(
     sdk_key: String,
     options: Option<StatsigOptions>,
-    system_metadata: HashMap<String, String>,
 ) -> Result<ResourceArc<StatsigResource>, Error> {
-    update_metadata(system_metadata);
     let statsig = Statsig::new(&sdk_key, options.map(|op| Arc::new(op.into())));
     Ok(ResourceArc::new(StatsigResource {
         statsig_core: RwLock::new(Arc::new(statsig)),
@@ -230,17 +226,10 @@ pub fn log_event_with_number(
 pub fn get_client_init_response_as_string(
     statsig: ResourceArc<StatsigResource>,
     statsig_user: StatsigUser,
-    options: Option<ClientInitResponseOptions>,
 ) -> Result<String, Error> {
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
-            let response = match options {
-                Some(o) => read_guard.get_client_init_response_with_options_as_string(
-                    &statsig_user.into(),
-                    &o.into(),
-                ),
-                None => read_guard.get_client_init_response_as_string(&statsig_user.into()),
-            };
+            let response = read_guard.get_client_init_response_as_string(&statsig_user.into());
             Ok(response)
         }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
@@ -330,20 +319,6 @@ pub fn layer_get_group_name(layer: ResourceArc<LayerResource>) -> Result<Option<
         Ok(read_guard) => Ok(read_guard.group_name.clone()),
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
-}
-
-// Util Functions
-fn update_metadata(system_metadata: HashMap<String, String>) {
-    let unknown = "unknown".to_string();
-    let os = system_metadata.get("os").unwrap_or(&unknown);
-    let arch = system_metadata.get("arch").unwrap_or(&unknown);
-    let language_version = system_metadata.get("language_version").unwrap_or(&unknown);
-    StatsigMetadata::update_values(
-        "statsig-server-core-elixir".to_owned(),
-        os.to_string(),
-        arch.to_string(),
-        language_version.to_string(),
-    );
 }
 
 rustler::init!("Elixir.Statsig.NativeBindings", load = load);

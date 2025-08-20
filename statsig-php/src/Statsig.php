@@ -184,6 +184,19 @@ class Statsig
         return new Layer($raw_result, $this->__ref);
     }
 
+    public function getPrompt(StatsigUser $user, string $name, ?array $options = null): Layer
+    {
+        $ptr = StatsigFFI::get()->statsig_get_prompt(
+            $this->__ref,
+            $user->__ref,
+            $name,
+            encode_or_null($options)
+        );
+
+        $raw_result = StatsigFFI::takeString($ptr);
+        return new Layer($raw_result, $this->__ref);
+    }
+
     public function manuallyLogLayerParameterExposure(StatsigUser $user, string $layer_name, string $param_name): void
     {
         StatsigFFI::get()->statsig_manually_log_layer_parameter_exposure(
