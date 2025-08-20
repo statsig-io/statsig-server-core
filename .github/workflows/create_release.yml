@@ -6,6 +6,12 @@ on:
     tags:
       - 'v*.*.*'
 
+env:
+  # GH Octokit (Kong App)
+  GH_APP_ID: '229901'
+  GH_APP_INSTALLATION_ID: '36921303'
+  GH_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
+
 jobs:
   create-release:
     runs-on: ubuntu-latest
