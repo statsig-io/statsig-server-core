@@ -20,6 +20,7 @@ jobs:
         env:
           EVAL_PROJ_SDK_KEY: ${{ secrets.EVAL_PROJ_SDK_KEY }}
           BENCH_CLUSTER_SDK_KEY: ${{ secrets.BENCH_CLUSTER_SDK_KEY }}
+          LOG_BENCHMARKS_TO_STATSIG: true
         run: |
           cd examples/scenario-runner
           docker-compose up --build --detach \
