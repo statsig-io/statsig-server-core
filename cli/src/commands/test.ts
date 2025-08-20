@@ -80,6 +80,11 @@ const TEST_COMMANDS: Record<string, string> = {
     'export LD_LIBRARY_PATH="$HOME/.cache/statsig/resources"',
     "go test ./tests -v",
   ].join(" && "),
+  elixir: [
+    'cd statsig-elixir',
+    'mix deps.get',
+    'FORCE_STATSIG_NATIVE_BUILD="true" mix test',
+  ].join("&& ")
 };
 
 type Options = {
