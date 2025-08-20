@@ -1,5 +1,7 @@
 use rustler::{Env, Error, ResourceArc, Term};
-use statsig_rust::{statsig_types::Layer as LayerActual, Statsig};
+use statsig_rust::{
+    statsig_metadata::StatsigMetadata, statsig_types::Layer as LayerActual, Statsig,
+};
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
@@ -43,7 +45,9 @@ impl LayerResource {
 pub fn new(
     sdk_key: String,
     options: Option<StatsigOptions>,
+    system_metadata: HashMap<String, String>,
 ) -> Result<ResourceArc<StatsigResource>, Error> {
+    update_metadata(system_metadata);
     let statsig = Statsig::new(&sdk_key, options.map(|op| Arc::new(op.into())));
     Ok(ResourceArc::new(StatsigResource {
         statsig_core: RwLock::new(Arc::new(statsig)),
@@ -155,6 +159,26 @@ pub fn get_layer(
             let layer = read_guard.get_layer_with_options(
                 &statsig_user.into(),
                 layer_name,
+                options.map(|o| o.into()).unwrap_or_default(),
+            );
+            Ok(ResourceArc::new(LayerResource::new(layer)))
+        }
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
+    }
+}
+
+#[rustler::nif]
+pub fn get_prompt(
+    statsig: ResourceArc<StatsigResource>,
+    prompt_name: &str,
+    statsig_user: StatsigUser,
+    options: Option<LayerEvaluationOptions>,
+) -> Result<ResourceArc<LayerResource>, Error> {
+    match statsig.statsig_core.read() {
+        Ok(read_guard) => {
+            let layer = read_guard.get_prompt_with_options(
+                &statsig_user.into(),
+                prompt_name,
                 options.map(|o| o.into()).unwrap_or_default(),
             );
             Ok(ResourceArc::new(LayerResource::new(layer)))
@@ -299,6 +323,20 @@ pub fn layer_get_group_name(layer: ResourceArc<LayerResource>) -> Result<Option<
         Ok(read_guard) => Ok(read_guard.group_name.clone()),
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
+}
+
+// Util Functions
+fn update_metadata(system_metadata: HashMap<String, String>) {
+    let unknown = "unknown".to_string();
+    let os = system_metadata.get("os").unwrap_or(&unknown);
+    let arch = system_metadata.get("arch").unwrap_or(&unknown);
+    let language_version = system_metadata.get("language_version").unwrap_or(&unknown);
+    StatsigMetadata::update_values(
+        "statsig-server-core-elixir".to_owned(),
+        os.to_string(),
+        arch.to_string(),
+        language_version.to_string(),
+    );
 }
 
 rustler::init!("Elixir.Statsig.NativeBindings", load = load);
