@@ -14,7 +14,7 @@ fi
 echo "External IP: $EXTERNAL_IP"
 
 function ensure_all_running() {
-    CMD="curl -s http://$EXTERNAL_IP/stats"
+    CMD="curl -s --connect-timeout 2 --max-time 3 http://$EXTERNAL_IP/stats"
     RESPONSE=$($CMD)
 
     if [ -z "$RESPONSE" ]; then
