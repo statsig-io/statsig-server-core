@@ -1,5 +1,5 @@
 import express, { type Response } from 'express';
-import { readFileSync } from 'node:fs';
+import { createReadStream, readFileSync } from 'node:fs';
 
 import type { ScrapiState } from '../common';
 import { incEventCount, incReqCount, takeCounters } from './counters';
@@ -10,17 +10,17 @@ let state: ScrapiState | null = null;
 let lastFlushedAt = new Date();
 
 app.all('/ready', (_req, res) => {
-  const v1Payload = state?.dcs?.response?.v1Payload;
-  const v2Payload = state?.dcs?.response?.v2Payload;
+  const v1Filepath = state?.dcs?.response?.v1?.filepath;
+  const v2Filepath = state?.dcs?.response?.v2?.filepath;
 
-  if (v1Payload == null || v2Payload == null) {
+  if (v1Filepath == null || v2Filepath == null) {
     res.status(500).json({ error: 'State not initialized' });
     return;
   }
 
   res.status(200).json({
-    v1DcsLength: v1Payload.length,
-    v2DcsLength: v2Payload.length,
+    v1DcsBytesize: state?.dcs?.response?.v1?.filesize,
+    v2DcsBytesize: state?.dcs?.response?.v2?.filesize,
   });
 });
 
@@ -96,8 +96,9 @@ app.post('/v1/log_event', async (req, res) => {
     .json(JSON.parse(logEventState.response.payload));
 });
 
-app.all('/v2/download_config_specs/:sdk_key', (_req, res) =>
-  handleDcsResponse('v2', res),
+app.all(
+  ['/v2/download_config_specs/:sdk_key', '/v2/download_config_specs'],
+  (_req, res) => handleDcsResponse('v2', res),
 );
 
 app.all(
@@ -131,16 +132,19 @@ async function handleDcsResponse(type: 'v1' | 'v2', res: Response) {
     return;
   }
 
-  const payload =
+  const filepath =
     type === 'v2'
-      ? state?.dcs?.response?.v2Payload
-      : state?.dcs?.response?.v1Payload;
-  if (payload == null || payload.length === 0) {
+      ? state?.dcs?.response?.v2?.filepath
+      : state?.dcs?.response?.v1?.filepath;
+  if (filepath == null || filepath.length === 0) {
     res.status(404).json({ error: 'State not initialized' });
     return;
   }
 
-  res.status(200).json(JSON.parse(payload));
+  res.setHeader('Content-Type', 'application/json');
+  res.status(200);
+  const stream = createReadStream(filepath);
+  stream.pipe(res);
 }
 
 function readState(): ScrapiState {

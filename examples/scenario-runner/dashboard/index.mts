@@ -1,6 +1,13 @@
 import express from 'express';
 import { execSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  createWriteStream,
+  existsSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -138,21 +145,25 @@ async function syncDcs(state: State) {
   log('Syncing DCS');
   const sdkKey = state.scrapi.dcs.syncing.sdkKey;
   try {
-    const [v2Payload, v1Payload] = await Promise.all([
-      safeFetch(
+    const [v2Filesize, v1Filesize] = await Promise.all([
+      fetchAndWrite(
         `https://api.statsigcdn.com/v2/download_config_specs/${sdkKey}.json`,
+        '/shared-volume/dcs-v2.json',
       ),
-      safeFetch(
+      fetchAndWrite(
         `https://api.statsigcdn.com/v1/download_config_specs/${sdkKey}.json`,
+        '/shared-volume/dcs-v1.json',
       ),
     ]);
 
-    if (v2Payload == null || v1Payload == null) {
+    if (v2Filesize == -1 || v1Filesize == -1) {
       throw new Error('Failed to fetch DCS');
     }
 
-    state.scrapi.dcs.response.v2Payload = v2Payload;
-    state.scrapi.dcs.response.v1Payload = v1Payload;
+    state.scrapi.dcs.response.v2.filesize = v2Filesize;
+    state.scrapi.dcs.response.v1.filesize = v1Filesize;
+    state.scrapi.dcs.response.v2.filepath = '/shared-volume/dcs-v2.json';
+    state.scrapi.dcs.response.v1.filepath = '/shared-volume/dcs-v1.json';
     state.scrapi.dcs.syncing.updatedAt = new Date();
 
     writeState(state);
@@ -163,11 +174,32 @@ async function syncDcs(state: State) {
   }
 }
 
-function safeFetch(url: string) {
-  return fetch(url)
-    .then((res) => res.text())
-    .catch((error) => {
-      log('Error fetching', url, error);
-      return null;
-    });
+async function fetchAndWrite(url: string, filepath: string): Promise<number> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok || !res.body) {
+      throw new Error(`Failed to fetch ${url}: ${res.statusText}`);
+    }
+
+    const tmpPath = `${filepath}.tmp`;
+    const reader = res.body.getReader();
+    const writer = createWriteStream(tmpPath);
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      writer.write(value);
+    }
+
+    writer.end();
+    renameSync(tmpPath, filepath);
+
+    const stats = statSync(filepath);
+    return stats.size;
+  } catch (error) {
+    log('Error fetching and writing', url, error);
+    return -1;
+  }
 }

@@ -19,8 +19,14 @@ export type SdkState = {
 export type ScrapiState = {
   dcs: {
     response: {
-      v2Payload: string;
-      v1Payload: string;
+      v2: {
+        filepath: string;
+        filesize: number;
+      };
+      v1: {
+        filepath: string;
+        filesize: number;
+      };
       status: number;
       delayMs: number;
     };

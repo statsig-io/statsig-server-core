@@ -390,6 +390,31 @@ function Dashboard() {
           />
 
           <StatsSection disabledStats={disabledStats} />
+
+          <div>
+            <button
+              style={{ padding: 8, cursor: 'pointer' }}
+              onClick={() => {
+                window.open(
+                  'http://localhost:8000/v1/download_config_specs',
+                  '_blank',
+                );
+              }}
+            >
+              View DCS v1
+            </button>
+            <button
+              style={{ padding: 8, cursor: 'pointer' }}
+              onClick={() => {
+                window.open(
+                  'http://localhost:8000/v2/download_config_specs',
+                  '_blank',
+                );
+              }}
+            >
+              View DCS v2
+            </button>
+          </div>
         </div>
         <div
           style={{
@@ -406,6 +431,7 @@ function Dashboard() {
             theme="tomorrow"
             style={{
               padding: 16,
+              width: '100%',
             }}
             onEdit={(e) => setState(e.updated_src)}
             onDelete={(e) => setState(e.updated_src)}

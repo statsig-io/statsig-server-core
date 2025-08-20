@@ -16,8 +16,14 @@ export const INITIAL_STATE: State = {
   scrapi: {
     dcs: {
       response: {
-        v2Payload: '',
-        v1Payload: '',
+        v2: {
+          filepath: '',
+          filesize: 0,
+        },
+        v1: {
+          filepath: '',
+          filesize: 0,
+        },
         status: 200,
         delayMs: 0,
       },
