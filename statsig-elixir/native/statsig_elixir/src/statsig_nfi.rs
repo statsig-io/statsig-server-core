@@ -168,26 +168,6 @@ pub fn get_layer(
 }
 
 #[rustler::nif]
-pub fn get_prompt(
-    statsig: ResourceArc<StatsigResource>,
-    prompt_name: &str,
-    statsig_user: StatsigUser,
-    options: Option<LayerEvaluationOptions>,
-) -> Result<ResourceArc<LayerResource>, Error> {
-    match statsig.statsig_core.read() {
-        Ok(read_guard) => {
-            let layer = read_guard.get_prompt_with_options(
-                &statsig_user.into(),
-                prompt_name,
-                options.map(|o| o.into()).unwrap_or_default(),
-            );
-            Ok(ResourceArc::new(LayerResource::new(layer)))
-        }
-        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
-    }
-}
-
-#[rustler::nif]
 pub fn log_event(
     statsig: ResourceArc<StatsigResource>,
     statsig_user: StatsigUser,
