@@ -131,11 +131,11 @@ defmodule Statsig do
     end
   end
 
-  def get_client_init_response_as_string(statsig_user) do
+  def get_client_init_response_as_string(statsig_user, options \\nil) do
     try do
       instance = get_statsig_instance()
 
-      case NativeBindings.get_client_init_response_as_string(instance, statsig_user) do
+      case NativeBindings.get_client_init_response_as_string(instance, statsig_user, options) do
         {:error, e} -> {:error, e}
         response -> {:ok, response}
       end
