@@ -110,7 +110,7 @@ pub fn check_gate(
 }
 
 #[rustler::nif]
-pub fn get_config(
+pub fn get_dynamic_config(
     statsig: ResourceArc<StatsigResource>,
     config_name: &str,
     statsig_user: StatsigUser,

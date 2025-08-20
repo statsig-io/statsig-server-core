@@ -18,7 +18,7 @@ defmodule Statsig.NativeBindings do
   def initialize(_statsig), do: :erlang.nif_error(:nif_not_loaded)
   def check_gate(_statsig, _gate_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
   def get_feature_gate(_statsig, _gate_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
-  def get_config(_statsig, _config_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
+  def get_dynamic_config(_statsig, _config_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
   def get_experiment(_statsig, _experiment_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
   def get_layer(_statsig, _layer_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
   def get_prompt(_statsig, _prompt_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)

@@ -68,11 +68,11 @@ defmodule Statsig do
     end
   end
 
-  def get_config(config_name, statsig_user, options \\nil) do
+  def get_dynamic_config(config_name, statsig_user, options \\nil) do
     try do
       instance = get_statsig_instance()
 
-      case NativeBindings.get_config(instance, config_name, statsig_user, options) do
+      case NativeBindings.get_dynamic_config(instance, config_name, statsig_user, options) do
         {:error, e} -> {:error, e}
         config -> {:ok, config}
       end
