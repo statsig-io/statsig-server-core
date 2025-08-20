@@ -11,6 +11,7 @@ use statsig_rust::statsig_types::{
     FeatureGate as FeatureGateActual,
 };
 use statsig_rust::DynamicValue;
+use statsig_rust::{ClientInitResponseOptions as ClientInitResponseOptionsActual, HashAlgorithm};
 #[derive(NifStruct)]
 #[module = "Statsig.Experiment"]
 pub struct Experiment {
@@ -181,6 +182,27 @@ impl From<DynamicConfigEvaluationOptions> for DynamicConfigEvaluationOptionsActu
     fn from(option: DynamicConfigEvaluationOptions) -> Self {
         DynamicConfigEvaluationOptionsActual {
             disable_exposure_logging: option.disable_exposure_logging,
+        }
+    }
+}
+
+#[derive(NifStruct)]
+#[module = "Statsig.ClientInitResponseOptions"]
+pub struct ClientInitResponseOptions {
+    pub hash_algorithm: Option<String>,
+    pub client_sdk_key: Option<String>,
+    pub include_local_overrides: Option<bool>,
+}
+
+impl From<ClientInitResponseOptions> for ClientInitResponseOptionsActual {
+    fn from(option: ClientInitResponseOptions) -> Self {
+        ClientInitResponseOptionsActual {
+            hash_algorithm: option
+                .hash_algorithm
+                .and_then(|v| HashAlgorithm::from_string(v.as_str())),
+            client_sdk_key: option.client_sdk_key,
+            include_local_overrides: option.include_local_overrides,
+            ..Default::default()
         }
     }
 }

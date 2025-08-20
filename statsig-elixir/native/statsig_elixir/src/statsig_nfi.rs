@@ -10,8 +10,8 @@ use std::{
 use crate::{
     statsig_options_nfi::StatsigOptions,
     statsig_types_nfi::{
-        AllowedPrimitive, DynamicConfig, DynamicConfigEvaluationOptions, Experiment,
-        ExperimentEvaluationOptions, FeatureGate, FeatureGateEvaluationOptions,
+        AllowedPrimitive, ClientInitResponseOptions, DynamicConfig, DynamicConfigEvaluationOptions,
+        Experiment, ExperimentEvaluationOptions, FeatureGate, FeatureGateEvaluationOptions,
         LayerEvaluationOptions,
     },
     statsig_user_nfi::StatsigUser,
@@ -230,10 +230,17 @@ pub fn log_event_with_number(
 pub fn get_client_init_response_as_string(
     statsig: ResourceArc<StatsigResource>,
     statsig_user: StatsigUser,
+    options: Option<ClientInitResponseOptions>,
 ) -> Result<String, Error> {
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
-            let response = read_guard.get_client_init_response_as_string(&statsig_user.into());
+            let response = match options {
+                Some(o) => read_guard.get_client_init_response_with_options_as_string(
+                    &statsig_user.into(),
+                    &o.into(),
+                ),
+                None => read_guard.get_client_init_response_as_string(&statsig_user.into()),
+            };
             Ok(response)
         }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
