@@ -14,15 +14,15 @@ defmodule Statsig.NativeBindings do
       "x86_64-unknown-linux-musl",
       "aarch64-unknown-linux-musl",
     ]
-  def new(_key, _options), do: :erlang.nif_error(:nif_not_loaded)
+  def new(_key, _options, _system_metadata), do: :erlang.nif_error(:nif_not_loaded)
   def initialize(_statsig), do: :erlang.nif_error(:nif_not_loaded)
   def check_gate(_statsig, _gate_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
   def get_feature_gate(_statsig, _gate_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
-  def get_config(_statsig, _config_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
+  def get_dynamic_config(_statsig, _config_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
   def get_experiment(_statsig, _experiment_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
   def get_layer(_statsig, _layer_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
   def get_prompt(_statsig, _prompt_name, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
-  def get_client_init_response_as_string(_statsig, _statsig_user), do: :erlang.nif_error(:nif_not_loaded)
+  def get_client_init_response_as_string(_statsig, _statsig_user, _options), do: :erlang.nif_error(:nif_not_loaded)
   def log_event(_statsig, _statsig_user, _event_name,_value, _metadata), do: :erlang.nif_error(:nif_not_loaded)
   def log_event_with_number(_statsig, _statsig_user, _event_name,_value, _metadata), do: :erlang.nif_error(:nif_not_loaded)
   def flush(_statsig), do: :erlang.nif_error(:nif_not_loaded)

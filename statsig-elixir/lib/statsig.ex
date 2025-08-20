@@ -9,7 +9,7 @@ defmodule Statsig do
 
   def init({sdk_key, statsig_options}) do
     try do
-      instance = NativeBindings.new(sdk_key, statsig_options)
+      instance = NativeBindings.new(sdk_key, statsig_options,get_system_info())
       {:ok, instance}
     rescue
       exception -> {:error, Exception.message(exception)}
@@ -68,11 +68,11 @@ defmodule Statsig do
     end
   end
 
-  def get_config(config_name, statsig_user, options \\nil) do
+  def get_dynamic_config(config_name, statsig_user, options \\nil) do
     try do
       instance = get_statsig_instance()
 
-      case NativeBindings.get_config(instance, config_name, statsig_user, options) do
+      case NativeBindings.get_dynamic_config(instance, config_name, statsig_user, options) do
         {:error, e} -> {:error, e}
         config -> {:ok, config}
       end
@@ -131,11 +131,11 @@ defmodule Statsig do
     end
   end
 
-  def get_client_init_response_as_string(statsig_user) do
+  def get_client_init_response_as_string(statsig_user, options \\nil) do
     try do
       instance = get_statsig_instance()
 
-      case NativeBindings.get_client_init_response_as_string(instance, statsig_user) do
+      case NativeBindings.get_client_init_response_as_string(instance, statsig_user, options) do
         {:error, e} -> {:error, e}
         response -> {:ok, response}
       end
@@ -198,6 +198,28 @@ defmodule Statsig do
     catch
       :exit, reason -> {:error, {:exit, reason}}
       exception -> {:error, Exception.message(exception)}
+    end
+  end
+
+  def get_system_info do
+    try do
+      %{
+        "os"=> :os.type() |> elem(0) |> Atom.to_string(),
+        "arch"=> :erlang.system_info(:system_architecture) |> List.to_string(),
+        "language_version"=> System.version()
+      }
+    rescue
+      _ -> %{
+        "os"=> "unknown",
+        "arch"=> "unknown",
+        "language_version"=> "unknown"
+      }
+    catch
+      _, _ -> %{
+        "os"=> "unknown",
+        "arch"=> "unknown",
+        "language_version"=> "unknown"
+      }
     end
   end
 end
