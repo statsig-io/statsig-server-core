@@ -90,3 +90,10 @@ jobs:
     secrets: inherit
     with: 
       sdk: core-go
+
+  core-elixir: 
+    needs: cache
+    uses: ./.github/workflows/kong_task.yml
+    secrets: inherit
+    with: 
+      sdk: core-elixir
