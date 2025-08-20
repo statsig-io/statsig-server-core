@@ -42,3 +42,11 @@ end
 defmodule Statsig.DynamicConfigEvaluationOptions do
   defstruct disable_exposure_logging: false
 end
+
+defmodule Statsig.ClientInitResponseOptions do
+  defstruct [
+    hash_algorithm: nil,
+    client_sdk_key: nil,
+    include_local_overrides: nil
+  ]
+end
