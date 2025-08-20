@@ -4,207 +4,35 @@ on:
   schedule:
     - cron: "0 0 * * *" # Daily at 12:00 AM
   workflow_dispatch:
-  # push:
-
-env:
-  VM_NAME_PREFIX: "sdk-scenario-runner"
-  ZONE: "us-central1-a"
+  push:
 
 jobs:
-  build:
-    name: Build 
-    if: github.event.repository.private && false
+  main:
+    name: Deploy Scenario Runner
+    if: github.event.repository.private
     timeout-minutes: 20
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service:
-          - dashboard
-          - scrapi
-          - docker-stats
-          - node
-          - python
-          - java
-
+    runs-on: laptop-at-daniels-desk
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: "Login to Docker Hub"
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - uses: docker/setup-buildx-action@v3
-
-      - name: "Cache Docker Layers"
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/.buildx-cache
-          key: ${{ matrix.service }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ matrix.service }}-buildx- 
-
-      - name: "Build and Push Docker Image"
-        uses: docker/build-push-action@v6
-        with:
-          context: examples/scenario-runner/${{ matrix.service }}
-          push: true
-          tags: statsig/sdk-scenario-runner-${{ matrix.service }}:${{ github.sha }}
-          cache-from: |
-            type=local,src=${{ runner.temp }}/.buildx-cache
-            type=registry,ref=statsig/sdk-scenario-runner-${{ matrix.service }}:buildcache
-          cache-to: |
-            type=local,dest=${{ runner.temp }}/.buildx-cache-new,mode=max
-            type=registry,ref=statsig/sdk-scenario-runner-${{ matrix.service }}:buildcache,mode=max
-
-      - # Temp fix
-        # https://github.com/docker/build-push-action/issues/252
-        # https://github.com/moby/buildkit/issues/1896
-        name: "Move Docker Layers Cache"
-        run: |
-          rm -rf ${{ runner.temp }}/.buildx-cache
-          mv ${{ runner.temp }}/.buildx-cache-new ${{ runner.temp }}/.buildx-cache
-
-  deploy:
-    needs: [build]
-    name: Deploy
-    if: github.event.repository.private && false
-    timeout-minutes: 20
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: "Login to Docker Hub"
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Auth with GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.SDK_SCENARIO_GCP_SA_KEY }}
-
-      - name: Setup GCloud
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.SDK_SCENARIO_GCP_PROJ_ID }}
-
-      - name: List Existing Instances
-        id: list_instances
-        run: |
-          num_instances=$(gcloud compute instances list --filter="tags.items=sdk-scenario-runner" --format="value(name)" | wc -l)
-          if [ "$num_instances" -gt 3 ]; then
-            echo "Too many instances: $num_instances"
-            exit 1
-          fi
-
-          gcloud compute instances list --filter="tags.items=sdk-scenario-runner" --format="value(name)" | while read instance; do
-            if [ -n "$instance" ]; then
-              echo "instance=$instance" >> $GITHUB_OUTPUT
-            fi
-          done
-
-      - name: Generate VM Name
-        id: name_gen
-        run: |
-          export vm_name=${VM_NAME_PREFIX}-$(date +'%m%d%H%M')
-          echo "vm_name=$vm_name" >> $GITHUB_OUTPUT
-
-      - name: Create VM
+      - name: Run Scenario Runner
         env:
-          VM_NAME: ${{ steps.name_gen.outputs.vm_name }}
-          PROJECT_ID: ${{ secrets.SDK_SCENARIO_GCP_PROJ_ID }}
+          EVAL_PROJ_SDK_KEY: ${{ secrets.EVAL_PROJ_SDK_KEY }}
+          BENCH_CLUSTER_SDK_KEY: ${{ secrets.BENCH_CLUSTER_SDK_KEY }}
         run: |
-          gcloud compute instances create "$VM_NAME" \
-            --project="$PROJECT_ID" \
-            --zone="$ZONE" \
-            --machine-type="e2-medium" \
-            --image-family="ubuntu-2204-lts" \
-            --image-project="ubuntu-os-cloud" \
-            --tags=sdk-scenario-runner
+          cd examples/scenario-runner
+          docker-compose up --build --detach \
+            scrapi docker-stats dashboard \
+            node-core node-legacy \
+            java-core java-legacy \
+            python-core python-legacy
 
-      - name: Wait for SSH to become available
-        env:
-          VM_NAME: ${{ steps.name_gen.outputs.vm_name }}
+      - name: Run Smoke Test
         run: |
-          for i in {1..10}; do
-            echo "Checking SSH availability..."
-            if gcloud compute ssh "$VM_NAME" --zone="$ZONE" --command "echo VM is ready" --quiet --ssh-flag="-o ConnectTimeout=5"; then
-              break
-            fi
-            echo "SSH not ready yet, retrying in 10s..."
-            sleep 10
-          done
+          cd examples/scenario-runner
+          ./smoketest.sh localhost
 
-      - name: Upload script to VM
-        env:
-          VM_NAME: ${{ steps.name_gen.outputs.vm_name }}
+      - name: Print IP Address
         run: |
-          gcloud compute scp examples/scenario-runner/docker-compose.yml "$VM_NAME":~/docker-compose.yml --zone=$ZONE
-          gcloud compute ssh "$VM_NAME" --zone=$ZONE << 'EOF'
-            set -e
-
-            echo "-- Installing Docker --"
-            sudo apt update
-            sudo apt install -y docker.io
-            sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-            sudo chmod +x /usr/local/bin/docker-compose
-            sudo usermod -aG docker $USER || true
-            exec newgrp docker
-
-            echo "-- Configuring Docker --"
-            sudo mkdir -p /etc/docker
-            echo '{
-              "log-driver": "gcplogs",
-              "log-opts": {
-                "gcp-meta-name": "'"$(hostname)"'"
-              }
-            }' | sudo tee /etc/docker/daemon.json
-
-            sudo systemctl restart docker
-
-            sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin <<< "${{ secrets.DOCKERHUB_TOKEN }}"
-
-            for service in dashboard scrapi docker-stats node python java; do
-              sudo docker pull statsig/sdk-scenario-runner-${service}:${{ github.sha }}
-              sudo docker tag statsig/sdk-scenario-runner-${service}:${{ github.sha }} sr-${service}:latest
-            done
-
-            echo "-- Deploying dashboard --"
-            export EVAL_PROJ_SDK_KEY=${{ secrets.EVAL_PROJ_SDK_KEY }}
-            export BENCH_CLUSTER_SDK_KEY=${{ secrets.BENCH_CLUSTER_SDK_KEY }}
-            sudo -E docker-compose up -d \
-              dashboard scrapi docker-stats \
-              node-core node-legacy \
-              python-core python-legacy \
-              java-core java-legacy
-
-            echo "-- Installing Ops Agent --"
-            curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
-            sudo bash add-google-cloud-ops-agent-repo.sh --also-install
-            sudo systemctl start google-cloud-ops-agent
-
-            echo "-- Done --"
-
-            echo "-- Listing containers --"
-            sudo docker ps
-          EOF
-
-      - name: Smoke Test
-        env:
-          VM_NAME: ${{ steps.name_gen.outputs.vm_name }}
-        run: |
-          EXTERNAL_IP=$(gcloud compute instances describe "$VM_NAME" --zone="$ZONE" --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
-          echo "External IP: $EXTERNAL_IP"
-          ./examples/scenario-runner/smoketest.sh $EXTERNAL_IP
-
-      - name: Delete Previous Instances
-        run: |
-          for instance_name in ${{ join(steps.list_instances.outputs.*, ' ') }}; do
-            echo "Deleting instance: $instance_name"
-            gcloud compute instances delete "$instance_name" --zone="$ZONE" --quiet &
-          done
+          echo "IP Address: $(ifconfig | grep "inet " | grep -v 127.0.0.1 | grep -v ::1 | awk '{print $2}' | head -n 1)"

@@ -18,6 +18,7 @@ function ensure_all_running() {
     RESPONSE=$($CMD)
 
     if [ -z "$RESPONSE" ]; then
+        echo "❌ No response from $EXTERNAL_IP"
         return 1
     fi
 
@@ -29,6 +30,7 @@ function ensure_all_running() {
     fi
 
     if [ -z "$NAMES" ]; then
+        echo "❌ No services are running"
         return 1
     fi
 
@@ -47,6 +49,7 @@ function ensure_all_running() {
     # check that all services are running, regarldess of order
     for NAME in "${EXPECTED_NAMES[@]}"; do
         if ! echo "$NAMES" | grep -q "$NAME"; then
+            echo "❌ $NAME is not running"
             return 1
         fi
     done
