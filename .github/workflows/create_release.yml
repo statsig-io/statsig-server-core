@@ -1,0 +1,26 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/heads/releases/') || startsWith(github.ref, 'refs/heads/betas/')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+
+      - name: Install CLI(Tore) Dependencies
+        run: pnpm install --dir cli
+
+      - name: Create GitHub Release
+        run: ./tore gh-create-release private-statsig-server-core
