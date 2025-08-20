@@ -112,7 +112,9 @@ impl StatsigHttpSpecsAdapter {
     fn get_request_args(&self, current_specs_info: &SpecsInfo) -> RequestArgs {
         let mut params = HashMap::new();
         if let Some(lcut) = current_specs_info.lcut {
-            params.insert("sinceTime".to_string(), lcut.to_string());
+            if lcut > 0 {
+                params.insert("sinceTime".to_string(), lcut.to_string());
+            }
         }
         if let Some(cs) = &current_specs_info.checksum {
             params.insert(
