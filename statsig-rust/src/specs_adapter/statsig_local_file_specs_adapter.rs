@@ -1,4 +1,5 @@
 use crate::hashing::djb2;
+use crate::specs_adapter::statsig_http_specs_adapter::SpecsSyncTrigger;
 use crate::specs_adapter::{SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener};
 use crate::specs_response::spec_types::SpecsResponseFull;
 use crate::specs_response::spec_types_encoded::DecodedSpecsResponse;
@@ -58,7 +59,11 @@ impl StatsigLocalFileSpecsAdapter {
             _ => SpecsInfo::empty(),
         };
 
-        let data = match self.http_adapter.fetch_specs_from_network(specs_info).await {
+        let data = match self
+            .http_adapter
+            .fetch_specs_from_network(specs_info, SpecsSyncTrigger::Manual)
+            .await
+        {
             Ok(response) => match String::from_utf8(response.data) {
                 Ok(data) => data,
                 Err(e) => {

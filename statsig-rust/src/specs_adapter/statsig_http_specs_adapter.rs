@@ -97,8 +97,9 @@ impl StatsigHttpSpecsAdapter {
     pub async fn fetch_specs_from_network(
         &self,
         current_specs_info: SpecsInfo,
+        trigger: SpecsSyncTrigger,
     ) -> Result<NetworkResponse, NetworkError> {
-        let request_args = self.get_request_args(&current_specs_info);
+        let request_args = self.get_request_args(&current_specs_info, trigger);
         let url = request_args.url.clone();
         match self.handle_specs_request(request_args).await {
             Ok(response) => Ok(NetworkResponse {
@@ -109,7 +110,11 @@ impl StatsigHttpSpecsAdapter {
         }
     }
 
-    fn get_request_args(&self, current_specs_info: &SpecsInfo) -> RequestArgs {
+    fn get_request_args(
+        &self,
+        current_specs_info: &SpecsInfo,
+        trigger: SpecsSyncTrigger,
+    ) -> RequestArgs {
         let mut params = HashMap::new();
         if let Some(lcut) = current_specs_info.lcut {
             if lcut > 0 {
@@ -129,6 +134,10 @@ impl StatsigHttpSpecsAdapter {
                 self.sdk_key.as_str(),
                 current_specs_info.zstd_dict_id.as_deref(),
             ),
+            retries: match trigger {
+                SpecsSyncTrigger::Initial | SpecsSyncTrigger::Manual => 0,
+                SpecsSyncTrigger::Background => 3,
+            },
             query_params: Some(params),
             accept_gzip_response: true,
             diagnostics_key: Some(KeyType::DownloadConfigSpecs),
@@ -198,7 +207,10 @@ impl StatsigHttpSpecsAdapter {
 
         self.ops_stats
             .set_diagnostics_context(ContextType::ConfigSync);
-        if let Err(e) = self.manually_sync_specs(specs_info).await {
+        if let Err(e) = self
+            .manually_sync_specs(specs_info, SpecsSyncTrigger::Background)
+            .await
+        {
             if let StatsigErr::NetworkError(NetworkError::DisableNetworkOn(_)) = e {
                 return;
             }
@@ -210,7 +222,11 @@ impl StatsigHttpSpecsAdapter {
         );
     }
 
-    async fn manually_sync_specs(&self, current_specs_info: SpecsInfo) -> Result<(), StatsigErr> {
+    async fn manually_sync_specs(
+        &self,
+        current_specs_info: SpecsInfo,
+        trigger: SpecsSyncTrigger,
+    ) -> Result<(), StatsigErr> {
         if let Some(lock) = self
             .listener
             .try_read_for(std::time::Duration::from_secs(5))
@@ -221,7 +237,7 @@ impl StatsigHttpSpecsAdapter {
         }
 
         let response = self
-            .fetch_specs_from_network(current_specs_info.clone())
+            .fetch_specs_from_network(current_specs_info.clone(), trigger)
             .await;
         let result = self.process_spec_data(response).await;
 
@@ -229,7 +245,7 @@ impl StatsigHttpSpecsAdapter {
             log_d!(TAG, "Falling back to statsig api");
             let response = self
                 .handle_fallback_request(
-                    self.get_request_args(&current_specs_info),
+                    self.get_request_args(&current_specs_info, trigger),
                     current_specs_info,
                 )
                 .await;
@@ -307,7 +323,8 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
             },
             None => SpecsInfo::error(),
         };
-        self.manually_sync_specs(specs_info).await
+        self.manually_sync_specs(specs_info, SpecsSyncTrigger::Initial)
+            .await
     }
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
@@ -379,4 +396,11 @@ fn construct_specs_url(spec_url: &str, sdk_key: &str, dict_id: Option<&str>) -> 
     }
     #[cfg(not(feature = "with_shared_dict_compression"))]
     format!("{spec_url}/{sdk_key}.json")
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpecsSyncTrigger {
+    Initial,
+    Background,
+    Manual,
 }

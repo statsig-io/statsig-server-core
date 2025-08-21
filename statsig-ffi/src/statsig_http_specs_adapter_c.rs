@@ -1,6 +1,8 @@
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 use crate::get_instance_or_return_c;
-use statsig_rust::{log_e, unwrap_or_return, InstanceRegistry, SpecsInfo, StatsigHttpSpecsAdapter};
+use statsig_rust::{
+    log_e, unwrap_or_return, InstanceRegistry, SpecsInfo, SpecsSyncTrigger, StatsigHttpSpecsAdapter,
+};
 use statsig_rust::{StatsigOptions, StatsigRuntime};
 use std::os::raw::c_char;
 use std::ptr::null_mut;
@@ -58,7 +60,7 @@ pub extern "C" fn statsig_http_specs_adapter_fetch_specs_from_network(
 
     let result = rt_handle.block_on(async move {
         specs_adapter
-            .fetch_specs_from_network(parsed_specs_info)
+            .fetch_specs_from_network(parsed_specs_info, SpecsSyncTrigger::Manual)
             .await
     });
     match result {

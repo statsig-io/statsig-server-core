@@ -48,7 +48,6 @@ impl NetworkProvider for NetworkProviderReqwest {
             }
             Err(e) => {
                 let error_message = get_error_message(e);
-                log_w!(TAG, "Request Error: {} {}", &args.url, error_message);
                 error = Some(error_message);
             }
         }

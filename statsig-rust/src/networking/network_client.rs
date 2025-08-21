@@ -206,10 +206,11 @@ impl NetworkClient {
             attempt += 1;
             let backoff_ms = 2_u64.pow(attempt) * 100;
 
-            log_w!(
-                TAG, "Network request failed with status code {} (attempt {}), will retry after {}ms...\n{}",
+            log_i!(
+                TAG, "Network request failed with status code {} (attempt {}/{}), will retry after {}ms...\n{}",
                 status,
                 attempt,
+                request_args.retries + 1,
                 backoff_ms,
                 error_message
             );

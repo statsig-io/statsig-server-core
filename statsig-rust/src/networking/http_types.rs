@@ -11,7 +11,7 @@ use std::{
 pub struct RequestArgs {
     pub url: String,
     pub body: Option<Vec<u8>>,
-    pub retries: u32,
+    pub retries: u32, // 1 initial + N 'retries'
     pub headers: Option<HashMap<String, String>>,
     pub query_params: Option<HashMap<String, String>>,
     pub accept_gzip_response: bool,
