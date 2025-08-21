@@ -9,7 +9,7 @@ defmodule Statsig do
 
   def init({sdk_key, statsig_options}) do
     try do
-      instance = NativeBindings.new(sdk_key, statsig_options,get_system_info())
+      instance = NativeBindings.new(sdk_key, statsig_options, get_system_info())
       {:ok, instance}
     rescue
       exception -> {:error, Exception.message(exception)}

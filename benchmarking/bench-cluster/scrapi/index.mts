@@ -533,6 +533,9 @@ function getSdkTypeForService(name: string) {
     case 'dotnet-legacy':
       return 'dotnet-server';
 
+    case 'elixir-core':
+      return 'statsig-server-core-elixir';
+
     case 'go-core':
       return 'statsig-server-core-go';
     case 'go-legacy':
