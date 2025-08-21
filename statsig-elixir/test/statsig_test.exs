@@ -40,12 +40,22 @@ defmodule StatsigTest do
     # Check a feature gate
     IO.puts("\nChecking gate 'test_gate'...")
     {:ok, check_gate} = Statsig.check_gate("test_public", user)
-    {:ok, check_gate} = Statsig.check_gate("test_public", user, %FeatureGateEvaluationOptions{disable_exposure_logging: true})
+
+    {:ok, check_gate} =
+      Statsig.check_gate("test_public", user, %FeatureGateEvaluationOptions{
+        disable_exposure_logging: true
+      })
+
     assert check_gate
     {:ok, feature_gate} = Statsig.get_feature_gate("test_public", user)
     assert feature_gate.value
     assert feature_gate.name == "test_public"
-    {:ok, config} = Statsig.get_config("test_custom_config", user, %DynamicConfigEvaluationOptions{disable_exposure_logging: true})
+
+    {:ok, config} =
+      Statsig.get_config("test_custom_config", user, %DynamicConfigEvaluationOptions{
+        disable_exposure_logging: true
+      })
+
     IO.inspect(config)
     assert is_binary(config.value)
 
@@ -53,10 +63,20 @@ defmodule StatsigTest do
     param_value = DynamicConfig.get_param_value(config, "header_text")
     assert param_value == "old user test"
     IO.inspect(config)
-    {:ok, experiment} = Statsig.get_experiment("test_custom_config", user, %ExperimentEvaluationOptions{disable_exposure_logging: true})
+
+    {:ok, experiment} =
+      Statsig.get_experiment("test_custom_config", user, %ExperimentEvaluationOptions{
+        disable_exposure_logging: true
+      })
+
     param_value = Experiment.get_param_value(experiment, "header_text")
     assert param_value == "old user test"
-    {:ok, layer} = Statsig.get_layer("layer_with_many_params", user, %LayerEvaluationOptions{disable_exposure_logging: true})
+
+    {:ok, layer} =
+      Statsig.get_layer("layer_with_many_params", user, %LayerEvaluationOptions{
+        disable_exposure_logging: true
+      })
+
     {:ok, a_string_value} = Layer.get(layer, "a_string", "default")
     IO.inspect(a_string_value)
     assert a_string_value == "layer"
@@ -64,7 +84,7 @@ defmodule StatsigTest do
     assert an_object_value == "{\"value\":\"layer_default\"}"
     IO.inspect(an_object_value)
 
-    {:ok, default_value} = Layer.get(layer, "invalid_param", "default");
+    {:ok, default_value} = Layer.get(layer, "invalid_param", "default")
     assert default_value == "default"
 
     IO.puts("\nLog event")
@@ -75,4 +95,4 @@ defmodule StatsigTest do
     # Assert the result is a boolean
     IO.puts("=== Test Complete ===\n")
   end
-  end
+end
