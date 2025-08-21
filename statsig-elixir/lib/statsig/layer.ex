@@ -32,7 +32,7 @@ defmodule Statsig.Layer do
   - `default_value` (String.t() | number() | boolean): Default value if no related param is found. If value is a more complex type, e.g. array, object, it returns json serialized value
 
   ## Returns:
-  - `value` (String.t() | number() | boolean): If the function runs succesfully. It returns
+  - `value` (String.t() | number() | boolean): If the function runs successfully. It returns
   - `{:error, :_}`: If any exception happens when execute this function
   """
   @spec get(any, String.t(), String.t() | boolean | number) :: String.t() | boolean | number

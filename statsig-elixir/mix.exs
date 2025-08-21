@@ -1,4 +1,4 @@
-defmodule Statsigelixir.MixProject do
+defmodule Statsig.MixProject do
   use Mix.Project
 
   def project do

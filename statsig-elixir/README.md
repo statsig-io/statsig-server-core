@@ -1,8 +1,11 @@
-# Statsigelixir
-Statsig Elixir Core is a project that utilize functional programing, calls into pre-built binary files written in rust for all operations.
+# Statsig
+
+Statsig Elixir Core is a project that utilize functional programming, calls into pre-built binary files written in rust for all operations.
 
 More documentation can be found [doc](https://docs.statsig.com/server-core/elixir-core)
+
 ## Release
+
 1. First build binary -- specifically statsig-elixir rust project. 
    a. Utilize build action to build for different targets. After build action being run, libstatsig_elixir-{version}-{nif_version}-{target}.so files will be uploaded 
 2. Have release ready in public repo, and attach all compressed libstatsig_elixir-{version}-{nif_version}-{target}.so.tar.gz should be uploaded to release
@@ -11,6 +14,7 @@ More documentation can be found [doc](https://docs.statsig.com/server-core/elixi
 5. run mix hex.publish
 
 ## Installation
+
 ```elixir
 def deps do
   [
