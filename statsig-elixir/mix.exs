@@ -28,7 +28,7 @@ defmodule Statsig.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, ">= 0.0.0", optional: true},
+      {:rustler, "~> 0.36", runtime: false, optional: true},
       {:rustler_precompiled, "~> 0.8"},
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
     ]
