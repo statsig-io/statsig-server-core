@@ -54,13 +54,7 @@ is_release_trigger = os.getenv("IS_RELEASE_TRIGGER", "false") == "true"
 is_main_branch = os.getenv("IS_MAIN_BRANCH", "false") == "true"
 matrix_file = "./.github/build_matrix_v2.json"
 
-should_build_all = (
-    is_release_trigger
-    or is_release_branch
-    or is_beta_branch
-    or is_merged_pr
-    or is_main_branch
-)
+should_build_all = is_release_trigger or is_release_branch or is_beta_branch
 
 print(f"Is Release Branch: {is_release_branch}")
 print(f"Is Beta Branch: {is_beta_branch}")
