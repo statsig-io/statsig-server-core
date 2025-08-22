@@ -26,13 +26,24 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 7.32.4
+      
+      - name: Config user
+        run: |
+          git config user.name "Xin Li (Bot)"
+          git config user.email ${{ secrets.XIN_GH_EMAIL }}
 
+ 
       - name: Install CLI Dependencies
         run: pnpm install --dir cli
     
       - name: Sync stable with main branch
         run: |
-            ./tore sync-beta-and-main
+            git fetch origin stable
+            git fetch origin main
+            git checkout stable 
+            # TODO(xinli): Add some validation to check merge conflicts are always 
+            git rebase origin/main -X theirs
+            git push
 
       - name: Bump Version
         id: bump_version
