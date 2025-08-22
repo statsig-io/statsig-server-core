@@ -195,6 +195,7 @@ async function fetchAndWrite(url: string, filepath: string): Promise<number> {
     }
 
     writer.end();
+    writer.close();
     renameSync(tmpPath, filepath);
 
     const stats = statSync(filepath);
