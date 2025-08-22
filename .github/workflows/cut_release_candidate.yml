@@ -32,12 +32,7 @@ jobs:
     
       - name: Sync stable with main branch
         run: |
-            git fetch origin stable
-            git fetch origin main
-            git checkout stable 
-            # TODO(xinli): Add some validation to check merge conflicts are always 
-            git rebase origin/main -X theirs
-            git push
+            ./tore sync-beta-and-main
 
       - name: Bump Version
         id: bump_version
