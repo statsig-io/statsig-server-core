@@ -4,6 +4,7 @@ import {
   createBranch,
   getCurrentBranchName,
   getUpstreamRemoteForCurrentBranch,
+  setGitHubOutput,
 } from '@/utils/git_utils.js';
 import { SemVer } from '@/utils/semver.js';
 import {
@@ -18,6 +19,7 @@ import chalk from 'chalk';
 
 import { CommandBase } from './command_base.js';
 import { SyncVersion } from './sync-version.js';
+import { execSync } from 'child_process';
 
 type Options = {
   major?: boolean;
@@ -93,6 +95,10 @@ export class BumpVersion extends CommandBase {
       printStepBegin(`Creating Branch: ${newBranch}`);
       await createBranch(newBranch, isCI ? 'origin' : 'private');
       printStepEnd(`Successfully Created Branch: ${newBranch}`);
+      
+      printStepBegin(`Setting to github_output`);
+      setGitHubOutput("version_branch", newBranch);
+      printStepEnd(`Setting to github_output`);
     }
 
     printStepEnd(`Updated Version: ${version.toString()}`);

@@ -1,9 +1,10 @@
-import { existsSync, rmSync } from 'fs';
+import { appendFileSync, existsSync, rmSync } from 'fs';
 import path from 'path';
 import { SimpleGit, simpleGit } from 'simple-git';
 
 import { BASE_DIR } from './file_utils.js';
 import { getInstallationToken } from './octokit_utils.js';
+import { execSync } from 'child_process';
 
 export function getCurrentCommitHash(): Promise<string> {
   const git = simpleGit(BASE_DIR);
@@ -132,4 +133,13 @@ export async function tryApplyGitConfig(git: SimpleGit) {
   }
 }
 
+export function setGitHubOutput(name: string, value: string) {
+  const githubOutput = process.env.GITHUB_OUTPUT;
+  if (!githubOutput) {
+    console.log("Skip writing to github output")
+    return;
+  }
+  execSync(`echo "${name}=${value}" >> $GITHUB_OUTPUT`);
+  appendFileSync(githubOutput, `${name}=${value}\n`);
+}
 //

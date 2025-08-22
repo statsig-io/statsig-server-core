@@ -33,14 +33,28 @@ jobs:
         id: find_branch
         run: ./tore gh-get-latest-beta-branch
     
-      # - name: Checkout specific branch manually
-      #   run: |
-      #       git fetch origin ${{  steps.find_branch.outputs.branch }}
-      #       git checkout ${{  steps.find_branch.outputs.branch }}
+      - name: Sync stable with main branch
+        run: |
+            git fetch origin stable
+            git fetch origin main
+            git checkout stable 
+            git merge origin/main
+            git push
 
       - name: Bump Version
+        id: bump_version
         run: ./tore bump-version --create-branch --rc
 
       - name: Create Release
         run: ./tore gh-create-release private-statsig-server-core
 
+      - name: Use output
+        run: echo "Branch is ${{ steps.bump_version.outputs.version_branch }}"
+
+      - name: Merge Version Bump Changes to PR
+        run: 
+            git fetch origin stable
+            git checkout stable 
+            git fetch origin ${{ steps.bump_version.outputs.version_branch }}
+            git merge origin/${{ steps.bump_version.outputs.version_branch }}
+            git push
