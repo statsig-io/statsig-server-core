@@ -43,7 +43,7 @@ jobs:
             git checkout stable 
             # TODO(xinli): Add some validation to check merge conflicts are always 
             git rebase origin/main -X theirs
-            git push
+            git push --force
 
       - name: Bump Version
         id: bump_version
