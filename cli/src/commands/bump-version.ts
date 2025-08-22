@@ -16,10 +16,10 @@ import {
 } from '@/utils/terminal_utils.js';
 import { getRootVersion, setRootVersion } from '@/utils/toml_utils.js';
 import chalk from 'chalk';
+import { execSync } from 'child_process';
 
 import { CommandBase } from './command_base.js';
 import { SyncVersion } from './sync-version.js';
-import { execSync } from 'child_process';
 
 type Options = {
   major?: boolean;
@@ -78,10 +78,10 @@ export class BumpVersion extends CommandBase {
       if (version.beta === 0) {
         version.patch += 1;
       }
-
-      version.beta = this.getDateVersion()
+      version.rc = 0;
+      version.beta = this.getDateVersion();
     } else if (options.rc) {
-      version.beta = 0
+      version.beta = 0;
       version.rc = this.getDateVersion();
     }
 
@@ -95,9 +95,9 @@ export class BumpVersion extends CommandBase {
       printStepBegin(`Creating Branch: ${newBranch}`);
       await createBranch(newBranch, isCI ? 'origin' : 'private');
       printStepEnd(`Successfully Created Branch: ${newBranch}`);
-      
+
       printStepBegin(`Setting to github_output`);
-      setGitHubOutput("version_branch", newBranch);
+      setGitHubOutput('version_branch', newBranch);
       printStepEnd(`Setting to github_output`);
     }
 
