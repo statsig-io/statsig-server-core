@@ -21,6 +21,7 @@ pub struct EvaluatorContext<'a> {
     pub app_id: Option<&'a DynamicValue>,
     pub override_adapter: Option<&'a Arc<dyn OverrideAdapter>>,
     pub nested_gate_memo: HashMap<&'a str, (bool, Option<&'a ExposableString>)>,
+    pub use_experimental_ua_parser: bool,
 }
 
 impl<'a> EvaluatorContext<'a> {
@@ -30,6 +31,7 @@ impl<'a> EvaluatorContext<'a> {
         hashing: &'a HashUtil,
         app_id: Option<&'a DynamicValue>,
         override_adapter: Option<&'a Arc<dyn OverrideAdapter>>,
+        use_experimental_ua_parser: bool,
     ) -> Self {
         let result = EvaluatorResult::default();
 
@@ -42,6 +44,7 @@ impl<'a> EvaluatorContext<'a> {
             override_adapter,
             nested_count: 0,
             nested_gate_memo: HashMap::new(),
+            use_experimental_ua_parser,
         }
     }
 

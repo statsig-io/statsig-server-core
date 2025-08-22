@@ -65,6 +65,8 @@ pub struct StatsigOptions {
     pub wait_for_user_agent_init: Option<bool>,
 
     pub proxy_config: Option<ProxyConfig>,
+
+    pub __experimental_ua_parsing_enabled: Option<bool>,
 }
 
 impl StatsigOptions {

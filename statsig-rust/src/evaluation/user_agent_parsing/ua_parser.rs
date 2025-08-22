@@ -1,5 +1,3 @@
-use std::env;
-
 use crate::evaluation::dynamic_string::DynamicString;
 use crate::user::StatsigUserInternal;
 use crate::{log_w, DynamicValue};
@@ -8,7 +6,6 @@ use super::experimental_ua_parser::ExperimentalUserAgentParser;
 use super::third_party_ua_parser::ThirdPartyUserAgentParser;
 
 lazy_static::lazy_static! {
-    static ref USE_EXPERIMENTAL_PARSER: bool = env::var("STATSIG_USE_EXPERIMENTAL_UAPARSER").is_ok_and(|v| v == "true" || v == "1");
     static ref USER_AGENT_STRING: Option<DynamicString> = Some(DynamicString::from("userAgent".to_string()));
 }
 
@@ -22,6 +19,7 @@ impl UserAgentParser {
         user: &StatsigUserInternal,
         field: &Option<DynamicString>,
         override_reason: &mut Option<&str>,
+        use_experimental_ua_parser: bool,
     ) -> Option<DynamicValue> {
         let field_lowered = match field {
             Some(f) => f.lowercased_value.as_str(),
@@ -40,7 +38,7 @@ impl UserAgentParser {
             return None;
         }
 
-        if *USE_EXPERIMENTAL_PARSER {
+        if use_experimental_ua_parser {
             ExperimentalUserAgentParser::get_value_from_user_agent(field_lowered, user_agent)
         } else {
             let result =
@@ -58,10 +56,6 @@ impl UserAgentParser {
     }
 
     pub fn load_parser() {
-        if *USE_EXPERIMENTAL_PARSER {
-            // noop
-        } else {
-            ThirdPartyUserAgentParser::load_parser();
-        }
+        ThirdPartyUserAgentParser::load_parser();
     }
 }

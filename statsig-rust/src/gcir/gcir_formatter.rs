@@ -36,6 +36,7 @@ pub struct GCIRFormatter {
     default_options: ClientInitResponseOptions,
     override_adapter: Option<Arc<dyn OverrideAdapter>>,
     ops_stats: Arc<OpsStatsForInstance>,
+    use_experimental_ua_parser: bool,
 }
 
 #[derive(Deserialize)]
@@ -62,6 +63,7 @@ impl GCIRFormatter {
         spec_store: &Arc<SpecStore>,
         override_adapter: &Option<Arc<dyn OverrideAdapter>>,
         ops_stats: &Arc<OpsStatsForInstance>,
+        use_experimental_ua_parser: bool,
     ) -> Self {
         Self {
             spec_store: spec_store.clone(),
@@ -78,6 +80,7 @@ impl GCIRFormatter {
                 param_store_filter: None,
                 response_format: None,
             },
+            use_experimental_ua_parser,
         }
     }
 
@@ -240,7 +243,14 @@ impl GCIRFormatter {
             _ => None,
         };
 
-        EvaluatorContext::new(user_internal, data, hashing, app_id, override_adapter)
+        EvaluatorContext::new(
+            user_internal,
+            data,
+            hashing,
+            app_id,
+            override_adapter,
+            self.use_experimental_ua_parser,
+        )
     }
 }
 

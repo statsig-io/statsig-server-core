@@ -1,7 +1,5 @@
 mod utils;
 
-use std::env;
-
 use more_asserts::assert_gt;
 use statsig_rust::{
     evaluation::{dynamic_string::DynamicString, user_agent_parsing::UserAgentParser},
@@ -44,8 +42,6 @@ fn log_failure(test_case: &TestCase, field: &str, expected: Option<&str>, got: O
 
 #[test]
 fn test_user_agent_parser_os_name() {
-    env::set_var("STATSIG_USE_EXPERIMENTAL_UAPARSER", "true");
-
     let mut hit = 0;
     let mut miss = 0;
 
@@ -71,8 +67,6 @@ fn test_user_agent_parser_os_name() {
 
 #[test]
 fn test_user_agent_parser_os_version() {
-    env::set_var("STATSIG_USE_EXPERIMENTAL_UAPARSER", "true");
-
     let mut hit = 0;
     let mut miss = 0;
 
@@ -98,8 +92,6 @@ fn test_user_agent_parser_os_version() {
 
 #[test]
 fn test_user_agent_parser_browser_name() {
-    env::set_var("STATSIG_USE_EXPERIMENTAL_UAPARSER", "true");
-
     let mut hit = 0;
     let mut miss = 0;
 
@@ -125,8 +117,6 @@ fn test_user_agent_parser_browser_name() {
 
 #[test]
 fn test_user_agent_parser_browser_version() {
-    env::set_var("STATSIG_USE_EXPERIMENTAL_UAPARSER", "true");
-
     let mut hit = 0;
     let mut miss = 0;
 
@@ -162,6 +152,7 @@ fn extract_field_from_user_agent(user_agent: &str, field: &str) -> Option<String
         &user_internal,
         &Some(field),
         &mut dummy_override_reason,
+        /* use_experimental_ua_parser */ true,
     );
 
     match result {

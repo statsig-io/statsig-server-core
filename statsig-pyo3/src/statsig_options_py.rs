@@ -366,6 +366,7 @@ fn create_inner_statsig_options(
                     .unwrap_or_default(),
             ) as Arc<dyn OutputLogProvider>
         }),
+        __experimental_ua_parsing_enabled: None,
     }
 }
 

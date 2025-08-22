@@ -235,6 +235,8 @@ impl Statsig {
 
         StatsigMetadata::update_service_name(options.service_name.clone());
 
+        let use_experimental_ua_parser = options.__experimental_ua_parsing_enabled.unwrap_or(false);
+
         Statsig {
             sdk_key: sdk_key.to_string(),
             options,
@@ -242,6 +244,7 @@ impl Statsig {
                 &spec_store,
                 &override_adapter,
                 &ops_stats,
+                use_experimental_ua_parser,
             )),
             hashing,
             statsig_environment: environment,
@@ -479,6 +482,7 @@ impl Statsig {
         let start_time = Instant::now();
         self.spec_store.set_source(SpecsSource::Loading);
         self.specs_adapter.inner.initialize(self.spec_store.clone());
+        let use_experimental_ua_parser = self.should_use_experimental_ua_parser();
 
         let mut error_message = None;
         let mut id_list_ready = None;
@@ -491,7 +495,9 @@ impl Statsig {
             None
         };
 
-        let init_ua = if !self.options.disable_user_agent_parsing.unwrap_or_default() {
+        let init_ua = if !self.options.disable_user_agent_parsing.unwrap_or_default()
+            && !use_experimental_ua_parser
+        {
             Some(self.statsig_runtime.spawn(INIT_UA_TAG, |_| async {
                 UserAgentParser::load_parser();
             }))
@@ -1036,6 +1042,7 @@ impl Statsig {
                 &self.hashing,
                 data.values.app_id.as_ref(),
                 self.override_adapter.as_ref(),
+                self.should_use_experimental_ua_parser(),
             ),
             cmab_name,
         )
@@ -1832,6 +1839,7 @@ impl Statsig {
             &self.hashing,
             app_id,
             self.override_adapter.as_ref(),
+            self.should_use_experimental_ua_parser(),
         );
 
         match Evaluator::evaluate_with_details(&mut context, spec_name, spec_type) {
@@ -2037,6 +2045,12 @@ impl Statsig {
         );
         self.ops_stats
             .enqueue_diagnostics_event(None, Some(ContextType::Initialize));
+    }
+
+    fn should_use_experimental_ua_parser(&self) -> bool {
+        self.options
+            .__experimental_ua_parsing_enabled
+            .unwrap_or(false)
     }
 }
 

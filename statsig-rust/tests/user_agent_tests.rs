@@ -118,6 +118,7 @@ fn extract_field_from_user_agent(user_agent: &str, field: &str) -> Option<String
         &user_internal,
         &Some(field),
         &mut dummy_override_reason,
+        /* use_experimental_ua_parser */ false,
     );
 
     match result {

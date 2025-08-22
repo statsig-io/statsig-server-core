@@ -115,6 +115,8 @@ pub struct StatsigOptions {
     pub wait_for_user_agent_init: Option<bool>,
 
     pub proxy_config: Option<ProxyConfig>,
+
+    pub __experimental_ua_parsing_enabled: Option<bool>,
 }
 
 impl StatsigOptions {
@@ -169,6 +171,7 @@ impl StatsigOptions {
             disable_country_lookup: self.disable_country_lookup,
             disable_user_agent_parsing: self.disable_user_agent_parsing,
             proxy_config: self.proxy_config.map(|p| p.into()),
+            __experimental_ua_parsing_enabled: self.__experimental_ua_parsing_enabled,
             ..Default::default()
         };
 
