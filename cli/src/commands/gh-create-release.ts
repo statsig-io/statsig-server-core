@@ -1,5 +1,6 @@
 import {
   createReleaseForVersion,
+  findReleasePR,
   getBranchByVersion,
   getOctokit,
   getReleaseByVersion,
@@ -49,6 +50,14 @@ export class GhCreateRelease extends CommandBase {
 
     Log.stepEnd(`Branch ${branch.ref} exists`);
 
+    Log.stepBegin('Looking up release PR');
+    const pr = await findReleasePR(octokit, repository, version.toBranch());
+    if (pr) {
+      Log.stepEnd(`Found PR: #${pr.number} ${pr.title}`);
+    } else {
+      Log.stepEnd(`No PR found for branch ${version.toBranch()}`);
+    }
+
     Log.stepBegin('Creating release');
 
     const { result: newRelease, error } = await createReleaseForVersion(
@@ -56,6 +65,7 @@ export class GhCreateRelease extends CommandBase {
       repository,
       version,
       branch.object.sha,
+      pr?.body,
     );
 
     if (!newRelease) {
