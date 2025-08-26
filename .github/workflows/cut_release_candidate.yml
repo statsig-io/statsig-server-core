@@ -42,9 +42,7 @@ jobs:
             git checkout stable 
             git merge origin/main -X theirs -m "[Auto] Sync stable with Main"
             git push 
-            git checkout main 
-            git merge stable
-            git push     
+            ./tore merge-to-main
 
       - name: Bump Version In Beta
         id: bump_version
