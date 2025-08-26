@@ -98,6 +98,7 @@ export class BumpVersion extends CommandBase {
 
       printStepBegin(`Setting to github_output`);
       setGitHubOutput('version_branch', newBranch);
+      setGitHubOutput('version', version.toString());
       printStepEnd(`Setting to github_output`);
     }
 

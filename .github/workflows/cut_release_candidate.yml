@@ -63,7 +63,7 @@ jobs:
       - name: Sync version number in main
         run: |
           git checkout main
-          ./tore bump-version "${{ steps.bump_version.outputs.version_branch }}" --create-branch
+          ./tore bump-version "${{ steps.bump_version.outputs.version }}" --create-branch
           
       - name: Merge Back to Main
         run: ./tore merge-to-main
