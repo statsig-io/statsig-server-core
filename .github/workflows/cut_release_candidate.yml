@@ -22,13 +22,18 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-    
+
       - uses: pnpm/action-setup@v4
         with:
           version: 7.32.4
 
       - name: Install CLI Dependencies
         run: pnpm install --dir cli
+
+      - name: Config user
+        run: |
+          git config user.name "Xin Li (Bot)"
+          git config user.email ${{ secrets.XIN_GH_EMAIL }}
     
       - name: Sync stable with main branch
         run: |
