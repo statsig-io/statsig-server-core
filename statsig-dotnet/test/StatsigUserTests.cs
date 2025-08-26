@@ -231,5 +231,89 @@ namespace Statsig.Tests
 
             Assert.True(true);
         }
+
+        [Fact]
+        public void StatsigUser_PublicProperties_MatchBuilderValues()
+        {
+            var builder = new StatsigUserBuilder()
+                .SetUserID("test_user")
+                .SetEmail("test@example.com")
+                .SetIP("192.168.1.1")
+                .SetUserAgent("Mozilla/5.0")
+                .SetCountry("US")
+                .SetLocale("en-US")
+                .SetAppVersion("1.0.0");
+
+            using var user = builder.Build();
+
+            Assert.Equal("test_user", user.UserID);
+            Assert.Equal("test@example.com", user.Email);
+            Assert.Equal("192.168.1.1", user.IP);
+            Assert.Equal("Mozilla/5.0", user.UserAgent);
+            Assert.Equal("US", user.Country);
+            Assert.Equal("en-US", user.Locale);
+            Assert.Equal("1.0.0", user.AppVersion);
+            Assert.Null(user.CustomIDs);
+            Assert.Null(user.CustomProperties);
+            Assert.Null(user.PrivateAttributes);
+        }
+
+        [Fact]
+        public void StatsigUser_AllProperties_DefaultToNull_WhenNotSet()
+        {
+            var builder = new StatsigUserBuilder();
+            using var user = builder.Build();
+
+            Assert.Null(user.UserID);
+            Assert.Null(user.Email);
+            Assert.Null(user.IP);
+            Assert.Null(user.UserAgent);
+            Assert.Null(user.Country);
+            Assert.Null(user.Locale);
+            Assert.Null(user.AppVersion);
+            Assert.Null(user.CustomIDs);
+            Assert.Null(user.CustomProperties);
+            Assert.Null(user.PrivateAttributes);
+        }
+
+        [Fact]
+        public void StatsigUser_WithCustomData_PropertiesMatchBuilderValues()
+        {
+            var customIDs = new Dictionary<string, string>
+            {
+                { "employee_id", "emp_123" },
+                { "company_id", "comp_456" }
+            };
+
+            var customProperties = new Dictionary<string, object>
+            {
+                { "age", 25 },
+                { "is_premium", true },
+                { "score", 95.5 }
+            };
+
+            var privateAttributes = new Dictionary<string, object>
+            {
+                { "ssn", "123-45-6789" },
+                { "internal_id", 12345 }
+            };
+
+            var builder = new StatsigUserBuilder()
+                .SetUserID("test_user")
+                .SetCustomIDs(customIDs)
+                .SetCustomProperties(customProperties)
+                .SetPrivateAttributes(privateAttributes);
+
+            using var user = builder.Build();
+
+            Assert.Equal("test_user", user.UserID);
+            Assert.Same(customIDs, user.CustomIDs);
+            Assert.Same(customProperties, user.CustomProperties);
+            Assert.Same(privateAttributes, user.PrivateAttributes);
+            Assert.True(user.CustomIDs.ContainsKey("employee_id"));
+            Assert.True(user.CustomIDs.ContainsKey("company_id"));
+            Assert.Equal("emp_123", user.CustomIDs["employee_id"]);
+            Assert.Equal("comp_456", user.CustomIDs["company_id"]);
+        }
     }
 }

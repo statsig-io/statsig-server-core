@@ -8,12 +8,35 @@ namespace Statsig
 {
     public class StatsigUser : IDisposable
     {
+        public string? UserID { get; }
+        public string? Email { get; }
+        public string? IP { get; }
+        public string? UserAgent { get; }
+        public string? Country { get; }
+        public string? Locale { get; }
+        public string? AppVersion { get; }
+        public IReadOnlyDictionary<string, string>? CustomIDs { get; }
+        public IReadOnlyDictionary<string, object>? CustomProperties { get; }
+        public IReadOnlyDictionary<string, object>? PrivateAttributes { get; }
+
         private readonly ulong _ref;
 
         internal ulong Reference => _ref;
 
         public StatsigUser(StatsigUserBuilder builder)
         {
+            // Assign public properties from builder so they are accessible to callers
+            UserID = builder.userID;
+            Email = builder.email;
+            IP = builder.ip;
+            UserAgent = builder.userAgent;
+            Country = builder.country;
+            Locale = builder.locale;
+            AppVersion = builder.appVersion;
+            CustomIDs = builder.customIDs;
+            CustomProperties = builder.customProperties;
+            PrivateAttributes = builder.privateAttributes;
+
             var userIdBytes = builder.userID != null ? Encoding.UTF8.GetBytes(builder.userID) : Array.Empty<byte>();
             var emailBytes = builder.email != null ? Encoding.UTF8.GetBytes(builder.email) : Array.Empty<byte>();
             var ipBytes = builder.ip != null ? Encoding.UTF8.GetBytes(builder.ip) : Array.Empty<byte>();
