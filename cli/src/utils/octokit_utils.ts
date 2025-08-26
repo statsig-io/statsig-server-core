@@ -212,7 +212,6 @@ export async function createReleaseForVersion(
   repo: string,
   version: SemVer,
   targetSha?: string,
-  body?: string,
 ): Promise<{ result?: GhRelease; error?: any }> {
   try {
     const result = await octokit.rest.repos.createRelease({
@@ -221,7 +220,6 @@ export async function createReleaseForVersion(
       tag_name: version.toString(),
       target_commitish: targetSha,
       prerelease: version.isBeta() || version.isRC(),
-      body,
     });
 
     return { result: result.data };
@@ -481,21 +479,4 @@ export async function mergePullRequest(
   });
 
   return result.data;
-}
-
-export async function findReleasePR(octokit: Octokit, repository: string, branchRef: string) {
-  const [owner, repo] = repository.split('/');
-
-  const list = await octokit.rest.pulls.list({
-    owner,
-    repo,
-    state: 'closed',
-    head: `${owner}:${branchRef}`,
-    per_page: 10,
-    sort: 'updated',
-    direction: 'desc',
-  });
-
-  const merged = list.data.find((p) => p.merged_at);
-  return merged ?? list.data[0] ?? null;
 }

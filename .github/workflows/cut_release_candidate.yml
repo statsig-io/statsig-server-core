@@ -22,13 +22,18 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-    
+
       - uses: pnpm/action-setup@v4
         with:
           version: 7.32.4
 
       - name: Install CLI Dependencies
         run: pnpm install --dir cli
+
+      - name: Config user
+        run: |
+          git config user.name "Xin Li (Bot)"
+          git config user.email ${{ secrets.XIN_GH_EMAIL }}
     
       - name: Sync stable with main branch
         run: |
@@ -53,14 +58,14 @@ jobs:
             git fetch origin ${{ steps.bump_version.outputs.version_branch }}
             git merge origin/${{ steps.bump_version.outputs.version_branch }}
             git push
+      
+      - name: Print version number
+        run: echo "Branch is ${{ steps.bump_version.outputs.version_branch }}"
 
       - name: Sync version number in main
         run: |
           git checkout main
-          ./tore bump-version ${{ steps.bump_version.outputs.version_branch }} --create-branch
+          ./tore bump-version "${{ steps.bump_version.outputs.version_branch }}" --create-branch
           
       - name: Merge Back to Main
         run: ./tore merge-to-main
-
-      - name: Print version number
-        run: echo "Branch is ${{ steps.bump_version.outputs.version_branch }}"
