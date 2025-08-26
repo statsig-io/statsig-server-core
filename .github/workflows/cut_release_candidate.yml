@@ -26,13 +26,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 7.32.4
-      
-      - name: Config user
-        run: |
-          git config user.name "Xin Li (Bot)"
-          git config user.email ${{ secrets.XIN_GH_EMAIL }}
 
- 
       - name: Install CLI Dependencies
         run: pnpm install --dir cli
     
@@ -41,28 +35,32 @@ jobs:
             git fetch origin stable
             git fetch origin main
             git checkout stable 
-            # TODO(xinli): Add some validation to check merge conflicts are always 
-            git rebase origin/main -X theirs
-            git push --force
+            git merge origin/main -X theirs -m "[Auto] Sync stable with Main"
+            git push 
+            git checkout main 
+            git merge stable
+            git push     
 
-      - name: Bump Version
+      - name: Bump Version In Beta
         id: bump_version
         run: git checkout stable &&
             ./tore bump-version --create-branch --rc
 
-      - name: Create Release
-        run: ./tore gh-create-release private-statsig-server-core
-
-      - name: Merge Back to Main
-        run: ./tore merge-to-main
-
-      - name: Print version number
-        run: echo "Branch is ${{ steps.bump_version.outputs.version_branch }}"
-
       - name: Merge Version Bump Changes to Stable
-        run: 
+        run: |
             git fetch origin stable
             git checkout stable 
             git fetch origin ${{ steps.bump_version.outputs.version_branch }}
             git merge origin/${{ steps.bump_version.outputs.version_branch }}
             git push
+
+      - name: Sync version number in main
+        run: |
+          git checkout main
+          ./tore bump-version ${{ steps.bump_version.outputs.version_branch }} --create-branch
+          
+      - name: Merge Back to Main
+        run: ./tore merge-to-main
+
+      - name: Print version number
+        run: echo "Branch is ${{ steps.bump_version.outputs.version_branch }}"
