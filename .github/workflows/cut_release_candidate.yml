@@ -59,11 +59,7 @@ jobs:
       
       - name: Print version number
         run: echo "Branch is ${{ steps.bump_version.outputs.version_branch }}"
-
-      - name: Sync version number in main
-        run: |
-          git checkout main
-          ./tore bump-version "${{ steps.bump_version.outputs.version }}" --create-branch
           
-      - name: Merge Back to Main
-        run: ./tore merge-to-main
+      - name: Merge Version Bump to Main
+        run: |
+          ./tore merge-to-main
