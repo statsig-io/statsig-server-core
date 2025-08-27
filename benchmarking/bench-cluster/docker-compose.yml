@@ -58,8 +58,9 @@ services:
   go-legacy:     { <<: *sdk-base, build: { <<: *go },     environment: *env-legacy, container_name: go-legacy }
 
   # ------------------------------------------------------------------------ [ JAVA ]
-  java-core:     { <<: *sdk-base, build: { <<: *java },   environment: *env-core, container_name: java-core }
-  java-legacy:   { <<: *sdk-base, build: { <<: *java },   environment: *env-legacy, container_name: java-legacy }
+  java-core-rc:    { <<: *sdk-base, build: { <<: [*java, *rc] },   environment: *env-core, container_name: java-core-rc }
+  java-core-beta:  { <<: *sdk-base, build: { <<: [*java, *beta] },   environment: *env-core, container_name: java-core-beta }
+  java-legacy:     { <<: *sdk-base, build: { <<: *java },   environment: *env-legacy, container_name: java-legacy }
 
   # ------------------------------------------------------------------------ [ NODE ]
   node-core-beta: { <<: *sdk-base, build: { <<: [*node, *beta] }, environment: *env-core, container_name: node-core-beta }
