@@ -574,6 +574,7 @@ public class Statsig {
     StatsigJNI.statsigIdentify(ref, user.getRef());
   }
 
+  /** Private function to log a layer param exposure. */
   void logLayerParamExposure(String layerJson, String param) {
     StatsigJNI.statsigLogLayerParamExposure(ref, layerJson, param);
   }
