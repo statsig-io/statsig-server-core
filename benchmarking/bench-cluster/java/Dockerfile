@@ -2,6 +2,7 @@ FROM gradle:8-jdk11 AS builder
 WORKDIR /app
 
 ARG RELEASE_TAG
+ENV RELEASE_TAG=${RELEASE_TAG}
 COPY build.gradle ./
 
 RUN set -eux; \
