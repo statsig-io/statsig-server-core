@@ -26,7 +26,8 @@ jobs:
           - elixir-core
           - go-core
           - go-legacy
-          - java-core
+          - java-core-beta
+          - java-core-rc
           - java-legacy
           - node-core-beta
           - node-core-rc
