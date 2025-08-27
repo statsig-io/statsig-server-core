@@ -4,19 +4,26 @@ x-sdk-base: &sdk-base
   volumes:
     - ./shared-volume:/shared-volume
 
-x-dotnet: &dotnet   { build: ./dotnet }
-x-elixir: &elixir   { build: ./elixir }
-x-go:     &go       { build: ./go    }
-x-java:   &java     { build: ./java  }
-x-node:   &node     { build: ./node  }
-x-php:    &php      { build: ./php   }
-x-python: &python   { build: ./python}
-x-rust:   &rust     { build: ./rust  }
-x-ruby:   &ruby     { build: ./ruby  }
+# build CONTEXT (only context here; no args to avoid override)
+x-dotnet:  &dotnet  { context: ./dotnet }
+x-elixir:  &elixir  { context: ./elixir }
+x-go:      &go      { context: ./go }
+x-java:    &java    { context: ./java }
+x-node:    &node    { context: ./node }
+x-php:     &php     { context: ./php }
+x-python:  &python  { context: ./python }
+x-rust:    &rust    { context: ./rust }
+x-ruby:    &ruby    { context: ./ruby }
 
-# Environment anchors for variants TODO: rc in the future
+# Environment anchors for variants
 x-env-core:   &env-core   { SDK_VARIANT: core }
 x-env-legacy: &env-legacy { SDK_VARIANT: legacy }
+
+# Build args
+x-beta-val: &beta_val beta
+x-rc-val:   &rc_val   rc
+x-beta: &beta { args: { RELEASE_TAG: *beta_val } }
+x-rc:   &rc   { args: { RELEASE_TAG: *rc_val } }
 
 # ------------------------------------------------------------------------ [ SERVICES ]
 services:
@@ -40,36 +47,37 @@ services:
       - ./shared-volume:/shared-volume
 
   # ------------------------------------------------------------------------ [ DOTNET ]
-  dotnet-core:   { <<: [*sdk-base, *dotnet], environment: *env-core, container_name: dotnet-core }
-  dotnet-legacy: { <<: [*sdk-base, *dotnet], environment: *env-legacy, container_name: dotnet-legacy }
+  dotnet-core:   { <<: *sdk-base, build: { <<: *dotnet }, environment: *env-core, container_name: dotnet-core }
+  dotnet-legacy: { <<: *sdk-base, build: { <<: *dotnet }, environment: *env-legacy, container_name: dotnet-legacy }
 
   # ------------------------------------------------------------------------ [ ELIXIR ]
-  elixir-core:   { <<: [*sdk-base, *elixir], environment: *env-core, container_name: elixir-core }
+  elixir-core:   { <<: *sdk-base, build: { <<: *elixir }, environment: *env-core, container_name: elixir-core }
 
   # ------------------------------------------------------------------------ [ GO ]
-  go-core:       { <<: [*sdk-base, *go],     environment: *env-core, container_name: go-core }
-  go-legacy:     { <<: [*sdk-base, *go],     environment: *env-legacy, container_name: go-legacy }
+  go-core:       { <<: *sdk-base, build: { <<: *go },     environment: *env-core, container_name: go-core }
+  go-legacy:     { <<: *sdk-base, build: { <<: *go },     environment: *env-legacy, container_name: go-legacy }
 
   # ------------------------------------------------------------------------ [ JAVA ]
-  java-core:     { <<: [*sdk-base, *java],   environment: *env-core, container_name: java-core }
-  java-legacy:   { <<: [*sdk-base, *java],   environment: *env-legacy, container_name: java-legacy }
+  java-core:     { <<: *sdk-base, build: { <<: *java },   environment: *env-core, container_name: java-core }
+  java-legacy:   { <<: *sdk-base, build: { <<: *java },   environment: *env-legacy, container_name: java-legacy }
 
   # ------------------------------------------------------------------------ [ NODE ]
-  node-core:     { <<: [*sdk-base, *node],   environment: *env-core, container_name: node-core }
-  node-legacy:   { <<: [*sdk-base, *node],   environment: *env-legacy, container_name: node-legacy }
+  node-core-beta: { <<: *sdk-base, build: { <<: [*node, *beta] }, environment: *env-core, container_name: node-core-beta }
+  node-core-rc:  { <<: *sdk-base, build: { <<: [*node, *rc] },   environment: *env-core, container_name: node-core-rc }
+  node-legacy:   { <<: *sdk-base, build: { <<: *node }, environment: *env-legacy, container_name: node-legacy }
 
   # ------------------------------------------------------------------------ [ PHP ]
-  php-core:      { <<: [*sdk-base, *php],    environment: *env-core, container_name: php-core }
-  php-legacy:    { <<: [*sdk-base, *php],    environment: *env-legacy, container_name: php-legacy }
+  php-core:      { <<: *sdk-base, build: { <<: *php },    environment: *env-core, container_name: php-core }
+  php-legacy:    { <<: *sdk-base, build: { <<: *php },    environment: *env-legacy, container_name: php-legacy }
 
   # ------------------------------------------------------------------------ [ PYTHON ]
-  python-core:   { <<: [*sdk-base, *python], environment: *env-core, container_name: python-core }
-  python-legacy: { <<: [*sdk-base, *python], environment: *env-legacy, container_name: python-legacy }
+  python-core:   { <<: *sdk-base, build: { <<: *python }, environment: *env-core, container_name: python-core }
+  python-legacy: { <<: *sdk-base, build: { <<: *python }, environment: *env-legacy, container_name: python-legacy }
 
   # ------------------------------------------------------------------------ [ RUST ]
-  rust-core:     { <<: [*sdk-base, *rust],   environment: *env-core, container_name: rust-core }
-  rust-legacy:   { <<: [*sdk-base, *rust],   environment: *env-legacy, container_name: rust-legacy }
+  rust-core:     { <<: *sdk-base, build: { <<: *rust },   environment: *env-core, container_name: rust-core }
+  rust-legacy:   { <<: *sdk-base, build: { <<: *rust },   environment: *env-legacy, container_name: rust-legacy }
 
   # ------------------------------------------------------------------------ [ RUBY ]
-  # ruby-core:     { <<: [*sdk-base, *ruby],   environment: *env-core, container_name: ruby-core }
-  ruby-legacy:   { <<: [*sdk-base, *ruby],   environment: *env-legacy, container_name: ruby-legacy }
+  # ruby-core:     { <<: *sdk-base, build: { <<: *ruby },   environment: *env-core, container_name: ruby-core }
+  ruby-legacy:   { <<: *sdk-base, build: { <<: *ruby },   environment: *env-legacy, container_name: ruby-legacy }

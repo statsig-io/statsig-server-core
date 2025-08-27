@@ -522,7 +522,8 @@ function getStatsForField(stats: ProcessStats[], field: keyof ProcessStats) {
 }
 
 function getSdkTypeForService(name: string) {
-  switch (name) {
+  const normalizedName = name.replace(/(-rc|-beta)$/, '');
+  switch (normalizedName) {
     case 'scrapi':
     case 'docker-stats':
       return null;

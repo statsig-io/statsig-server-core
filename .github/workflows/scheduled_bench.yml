@@ -28,7 +28,8 @@ jobs:
           - go-legacy
           - java-core
           - java-legacy
-          - node-core
+          - node-core-beta
+          - node-core-rc
           - node-legacy
           - php-core
           - php-legacy
