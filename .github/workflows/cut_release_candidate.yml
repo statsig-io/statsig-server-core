@@ -56,10 +56,8 @@ jobs:
             git fetch origin ${{ steps.bump_version.outputs.version_branch }}
             git merge origin/${{ steps.bump_version.outputs.version_branch }}
             git push
-      
-      - name: Print version number
-        run: echo "Branch is ${{ steps.bump_version.outputs.version_branch }}"
           
       - name: Merge Version Bump to Main
         run: |
+          ./tore bump-version --rc --create-branch
           ./tore merge-to-main
