@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# install.sh — strictly install latest -beta / -rc of statsig/statsig-php-core
+# install.sh — always install latest -beta / -rc (or stable) of statsig/statsig-php-core
 set -euo pipefail
 
-# ------------------------- Config -------------------------
 : "${WORKDIR:=/app}"
 : "${PHP_CORE_PKG:=statsig/statsig-php-core}"
 : "${RELEASE_TAG:=stable}"
@@ -10,12 +9,11 @@ export COMPOSER_ALLOW_SUPERUSER=1
 
 cd "$WORKDIR" >/dev/null 2>&1 || { echo "WORKDIR $WORKDIR not found"; exit 1; }
 
-composer config prefer-stable true || true
-
-if [ ! -f composer.lock ]; then
-  echo "[init] composer.lock not found — running initial resolve..."
-  composer update --no-interaction --no-progress
+if [ ! -f composer.json ]; then
+  composer init -n --name temp/app >/dev/null
 fi
+
+composer config prefer-stable true || true
 
 TAG="$(echo "$RELEASE_TAG" | tr '[:upper:]' '[:lower:]' | sed 's/^v//')"
 
@@ -26,21 +24,18 @@ elif [[ "$TAG" == "beta" || "$TAG" =~ -beta(\.|$) ]]; then
   CHANNEL="beta"
 fi
 
-# ------------------------- Helpers -------------------------
-have_jq() { command -v jq >/dev/null 2>&1; }
+REQ="*"
+case "$CHANNEL" in
+  rc)   REQ="*@RC" ;;
+  beta) REQ="*@beta" ;;
+  *)    REQ="*" ;;
+esac
 
-refresh_metadata() {
-  composer clear-cache || true
-}
+if composer show "$PHP_CORE_PKG" >/dev/null 2>&1; then
+  composer require --no-interaction --no-progress -W "$PHP_CORE_PKG:$REQ"
+  composer update   --no-interaction --no-progress "$PHP_CORE_PKG"
+else
+  composer require --no-interaction --no-progress -W "$PHP_CORE_PKG:$REQ"
+fi
 
-pick_latest_with_suffix_json() {
-  local pkg="$1" suf="$2"
-  have_jq || { echo ""; return; }
-  composer show "$pkg" --all --format=json 2>/dev/null \
-    | jq -r --arg suf "$suf" '
-        (.versions // .releases // [])
-        | map(select(type == "string"))
-        | map(select(test("(?i)-\($suf)(\\.|$)")))
-        | .[0] // empty
-      '
-}
+composer show "$PHP_CORE_PKG"
