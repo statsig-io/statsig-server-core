@@ -4,21 +4,18 @@ RUN apt-get update && \
     apt-get install -y \
     php php-curl php-xml composer unzip php-cli php-json php-zip php-ffi jq
 
-ARG RELEASE_TAG
-ENV RELEASE_TAG=${RELEASE_TAG}
-
 WORKDIR /app
 
 RUN echo "ffi.enable=1" >> /etc/php/7.4/cli/conf.d/docker-php-ext-ffi.ini
 
-COPY composer.* ./
-
-COPY install.sh .
-RUN chmod +x install.sh && ./install.sh
-
 COPY . .
+ARG RELEASE_TAG
+ENV RELEASE_TAG=${RELEASE_TAG}
 
-RUN composer install --no-interaction --no-progress
+RUN composer install --no-interaction --no-progress --no-scripts
+
+COPY install.sh /usr/local/bin/install.sh
+RUN chmod +x /usr/local/bin/install.sh && /usr/local/bin/install.sh
 RUN php --version
 
 CMD ["php", "main.php"]
