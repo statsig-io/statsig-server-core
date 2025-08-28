@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+if [ ! -f composer.lock ]; then
+  composer update --no-interaction --no-progress
+fi
+
 set -euo pipefail
 
 PKG="${PHP_CORE_PKG:-statsig/statsig-php-core}"
