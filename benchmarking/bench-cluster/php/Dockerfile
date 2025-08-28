@@ -11,9 +11,6 @@ WORKDIR /app
 
 RUN echo "ffi.enable=1" >> /etc/php/7.4/cli/conf.d/docker-php-ext-ffi.ini
 
-COPY install.sh .
-RUN chmod +x install.sh && ./install.sh
-
 COPY . .
 COPY install.sh .
 RUN chmod +x install.sh && ./install.sh
