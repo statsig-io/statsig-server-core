@@ -77,7 +77,8 @@ services:
   python-legacy: { <<: *sdk-base, build: { <<: *python }, environment: *env-legacy, container_name: python-legacy }
 
   # ------------------------------------------------------------------------ [ RUST ]
-  rust-core:     { <<: *sdk-base, build: { <<: *rust },   environment: *env-core, container_name: rust-core }
+  rust-core-beta: { <<: *sdk-base, build: { <<: [*rust, *beta] },   environment: *env-core, container_name: rust-core-beta }
+  rust-core-rc:   { <<: *sdk-base, build: { <<: [*rust, *rc] },   environment: *env-core, container_name: rust-core-rc }
   rust-legacy:   { <<: *sdk-base, build: { <<: *rust },   environment: *env-legacy, container_name: rust-legacy }
 
   # ------------------------------------------------------------------------ [ RUBY ]

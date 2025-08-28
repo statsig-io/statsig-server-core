@@ -39,7 +39,8 @@ jobs:
           - python-legacy
           - ruby-legacy
           # - ruby-core
-          - rust-core
+          - rust-core-beta
+          - rust-core-rc
           - rust-legacy
 
     steps:

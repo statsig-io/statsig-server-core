@@ -1,5 +1,8 @@
 FROM rust:1.88 AS builder
 
+ARG RELEASE_TAG
+ENV RELEASE_TAG=${RELEASE_TAG}
+
 RUN apt-get update && apt-get install -y jq
 
 WORKDIR /app
@@ -7,10 +10,8 @@ WORKDIR /app
 COPY Cargo.toml ./
 COPY src ./src
 COPY build.rs ./build.rs
-
-# Install the latest statsig-rust version
-RUN curl -s "https://crates.io/api/v1/crates/statsig-rust/versions" | jq '.versions | sort_by(.created_at) | reverse | .[0].num' > statsig-rust-version.txt
-RUN cargo add statsig-rust@=$(cat statsig-rust-version.txt | tr -d '"')
+COPY install.sh ./install.sh
+RUN chmod +x ./install.sh && ./install.sh
 
 ENV RUSTFLAGS="--cfg statsig_kong"
 RUN cargo build --release
