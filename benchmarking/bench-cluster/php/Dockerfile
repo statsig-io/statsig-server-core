@@ -15,6 +15,8 @@ COPY install.sh .
 RUN chmod +x install.sh && ./install.sh
 
 COPY . .
+COPY install.sh .
+RUN chmod +x install.sh && ./install.sh
 
 RUN composer install --no-interaction --no-progress
 RUN php --version
