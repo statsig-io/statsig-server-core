@@ -2,7 +2,7 @@ FROM --platform=linux/amd64 debian:11-slim
 
 RUN apt-get update && \
     apt-get install -y \
-    php php-curl php-xml composer unzip php-cli php-json php-zip php-ffi
+    php php-curl php-xml composer unzip php-cli php-json php-zip php-ffi jq
 
 ARG RELEASE_TAG
 ENV RELEASE_TAG=${RELEASE_TAG}
