@@ -1,9 +1,19 @@
 FROM gradle:8-jdk11 AS builder
 WORKDIR /app
+
+ARG RELEASE_TAG
+ENV RELEASE_TAG=${RELEASE_TAG}
 COPY build.gradle ./
-RUN gradle dependencies --no-daemon
+
+RUN set -eux; \
+    CORE_PROP=""; \
+    if [ -n "$RELEASE_TAG" ]; then CORE_PROP="-PcoreTag=$RELEASE_TAG"; fi; \
+    gradle dependencies --no-daemon $CORE_PROP
 COPY . .
-RUN gradle shadowJar --no-daemon
+RUN set -eux; \
+    CORE_PROP=""; \
+    if [ -n "$RELEASE_TAG" ]; then CORE_PROP="-PcoreTag=$RELEASE_TAG"; fi; \
+    gradle shadowJar --no-daemon $CORE_PROP
 
 FROM eclipse-temurin:11
 RUN java --version

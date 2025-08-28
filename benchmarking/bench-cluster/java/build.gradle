@@ -10,6 +10,39 @@ repositories {
     mavenCentral()
 }
 
+// Toggle RC-only resolution with either:
+//  -PcoreTag=rc
+// or
+//  RELEASE_TAG=rc
+def rcOnly = (
+    (findProperty('coreTag') ?: findProperty('CORE_TAG') ?: System.getenv('RELEASE_TAG')) == 'rc'
+)
+
+configurations.all { cfg ->
+    resolutionStrategy {
+        componentSelection {
+            all { ComponentSelection selection ->
+                if (!rcOnly) {
+                    return
+                }
+
+                def candidate = selection.candidate
+                // Only gate RC selection for javacore
+                def isStatsigTarget = candidate.group == 'com.statsig' && candidate.module == 'javacore'
+                if (!isStatsigTarget) {
+                    return
+                }
+
+                def v = candidate.version ?: ''
+                def isRc = (v ==~ /(?i).*[\.-]rc([\.-]?\d+)?([\.-].*)?$/)
+                if (!isRc) {
+                    selection.reject('rc-only mode: rejecting non-rc version')
+                }
+            }
+        }
+    }
+}
+
 java {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11

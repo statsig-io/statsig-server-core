@@ -26,17 +26,22 @@ jobs:
           - elixir-core
           - go-core
           - go-legacy
-          - java-core
+          - java-core-beta
+          - java-core-rc
           - java-legacy
-          - node-core
+          - node-core-beta
+          - node-core-rc
           - node-legacy
-          - php-core
+          - php-core-beta
+          - php-core-rc
           - php-legacy
-          - python-core
+          - python-core-beta
+          - python-core-rc
           - python-legacy
           - ruby-legacy
           # - ruby-core
-          - rust-core
+          - rust-core-beta
+          - rust-core-rc
           - rust-legacy
 
     steps:

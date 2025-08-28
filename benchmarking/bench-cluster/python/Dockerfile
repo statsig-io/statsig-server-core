@@ -5,8 +5,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+ARG RELEASE_TAG
+ENV RELEASE_TAG=${RELEASE_TAG}
+
+COPY install.sh .
+RUN chmod +x install.sh && ./install.sh
+
 RUN pip install --no-cache-dir statsig
-RUN pip install --no-cache-dir statsig-python-core --pre
 
 COPY . .
 
