@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 debian:11-slim
+FROM --platform=linux/amd64 php:8.3-cli
 
 ENV COMPOSER_ALLOW_SUPERUSER=1 COMPOSER_MEMORY_LIMIT=-1
 
