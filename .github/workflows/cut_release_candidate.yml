@@ -59,5 +59,7 @@ jobs:
           
       - name: Merge Version Bump to Main
         run: |
+          git checkout main
+          git pull
           ./tore bump-version --rc --create-branch
           ./tore merge-to-main
