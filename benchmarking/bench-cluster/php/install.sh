@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — strictly pin statsig/statsig-php-core to latest rc/beta/exact/stable
+# install.sh — strictly install latest -beta / -rc of statsig/statsig-php-core
 set -euo pipefail
 
 # ------------------------- Config -------------------------
@@ -8,7 +8,8 @@ set -euo pipefail
 : "${RELEASE_TAG:=stable}"
 export COMPOSER_ALLOW_SUPERUSER=1
 
-cd "$WORKDIR"
+cd "$WORKDIR" >/dev/null 2>&1 || { echo "WORKDIR $WORKDIR not found"; exit 1; }
+
 composer config prefer-stable true || true
 
 if [ ! -f composer.lock ]; then
@@ -26,61 +27,20 @@ elif [[ "$TAG" == "beta" || "$TAG" =~ -beta(\.|$) ]]; then
 fi
 
 # ------------------------- Helpers -------------------------
-pick_latest_with_suffix() {
+have_jq() { command -v jq >/dev/null 2>&1; }
+
+refresh_metadata() {
+  composer clear-cache || true
+}
+
+pick_latest_with_suffix_json() {
   local pkg="$1" suf="$2"
-  composer show "$pkg" --all --format=json \
+  have_jq || { echo ""; return; }
+  composer show "$pkg" --all --format=json 2>/dev/null \
     | jq -r --arg suf "$suf" '
         (.versions // .releases // [])
         | map(select(type == "string"))
-        | map(select(test("^\\d")))
         | map(select(test("(?i)-\($suf)(\\.|$)")))
         | .[0] // empty
       '
 }
-
-dump_versions_for_debug() {
-  local pkg="$1"
-  echo "---------- DEBUG: first 30 available versions ----------"
-  composer show "$pkg" --all --format=json \
-    | jq -r '(.versions // .releases // [])[:30]'
-  echo "--------------------------------------------------------"
-}
-
-require_exact() {
-  local pkg="$1" ver="$2"
-  echo "[core] requiring ${pkg}:${ver}"
-  composer require "${pkg}:${ver}" --no-interaction --no-progress
-}
-
-# ------------------------- Main -------------------------
-if [[ "$CHANNEL" == "rc" ]]; then
-  echo "[core] selecting strict latest RC…"
-  v="$(pick_latest_with_suffix "$PHP_CORE_PKG" "RC")"
-  if [[ -z "${v:-}" ]]; then
-    echo "[error] No RC version found for $PHP_CORE_PKG"
-    dump_versions_for_debug "$PHP_CORE_PKG"
-    exit 1
-  fi
-  require_exact "$PHP_CORE_PKG" "$v"
-
-elif [[ "$CHANNEL" == "beta" ]]; then
-  echo "[core] selecting strict latest BETA…"
-  v="$(pick_latest_with_suffix "$PHP_CORE_PKG" "beta")"
-  if [[ -z "${v:-}" ]]; then
-    echo "[error] No beta version found for $PHP_CORE_PKG"
-    dump_versions_for_debug "$PHP_CORE_PKG"
-    exit 1
-  fi
-  require_exact "$PHP_CORE_PKG" "$v"
-
-else
-  if [[ "$TAG" =~ ^[0-9][0-9A-Za-z\.\-\+]*$ ]]; then
-    echo "[core] exact version requested: ${TAG}"
-    require_exact "$PHP_CORE_PKG" "$TAG"
-  else
-    echo "[core] installing stable for ${PHP_CORE_PKG}"
-    composer require "$PHP_CORE_PKG" --no-interaction --no-progress
-  fi
-fi
-
-echo "[done] ${PHP_CORE_PKG} pinned based on RELEASE_TAG='${RELEASE_TAG}'"
