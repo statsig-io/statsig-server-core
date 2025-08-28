@@ -72,7 +72,8 @@ services:
   php-legacy:    { <<: *sdk-base, build: { <<: *php },    environment: *env-legacy, container_name: php-legacy }
 
   # ------------------------------------------------------------------------ [ PYTHON ]
-  python-core:   { <<: *sdk-base, build: { <<: *python }, environment: *env-core, container_name: python-core }
+  python-core-beta:   { <<: *sdk-base, build: { <<: [*python, *beta] }, environment: *env-core, container_name: python-core-beta }
+  python-core-rc:   { <<: *sdk-base, build: { <<: [*python, *rc] }, environment: *env-core, container_name: python-core-rc }
   python-legacy: { <<: *sdk-base, build: { <<: *python }, environment: *env-legacy, container_name: python-legacy }
 
   # ------------------------------------------------------------------------ [ RUST ]
