@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	version = "0.8.3"
+	version = "0.8.4"
 )
 
 var output_dir string
