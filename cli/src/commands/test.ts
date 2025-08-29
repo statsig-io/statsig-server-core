@@ -44,7 +44,7 @@ const TEST_COMMANDS: Record<string, string> = {
     `pnpm install --dir statsig-node`,
     './tore build node --no-docker',
     'cd statsig-node',
-    'pnpm test',
+    'pnpm test -- --forceExit',
   ].join(' && '),
 
   php: [
