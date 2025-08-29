@@ -5,10 +5,13 @@ use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
 use crate::persistent_storage_napi::PersistentStorageNapi;
-use crate::{data_store_napi::DataStore, observability_client_napi::ObservabilityClient};
+use crate::{
+    data_store_napi::DataStore, observability_client_napi::ObservabilityClient,
+    output_logger_napi::OutputLoggerProvider,
+};
 use statsig_rust::{
     data_store_interface::DataStoreTrait,
-    networking::proxy_config::ProxyConfig as ProxyConfigActual,
+    networking::proxy_config::ProxyConfig as ProxyConfigActual, output_logger::OutputLogProvider,
     statsig_types::OverrideAdapterType as OverrideAdapterTypeActual, DynamicValue,
     ObservabilityClient as ObservabilityClientTrait, OverrideAdapter,
     SpecAdapterConfig as SpecAdapterConfigActual, StatsigLocalOverrideAdapter,
@@ -100,6 +103,9 @@ pub struct StatsigOptions {
 
     #[napi(ts_type = "'none' | 'debug' | 'info' | 'warn' | 'error'")]
     pub output_log_level: Option<String>,
+    #[napi(ts_type = "OutputLoggerProvider")]
+    pub output_logger_provider: Option<OutputLoggerProvider>,
+
     #[napi(ts_type = "'gzip' | 'dictionary'")]
     pub config_compression_mode: Option<String>,
     pub override_adapter_config: Option<Vec<OverrideAdapterConfig>>,
@@ -156,6 +162,9 @@ impl StatsigOptions {
             log_event_url: self.log_event_url,
             observability_client: weak_obs_client,
             output_log_level: self.output_log_level.map(|s| s.as_str().into()),
+            output_logger_provider: self
+                .output_logger_provider
+                .map(|ol| Arc::new(ol) as Arc<dyn OutputLogProvider>),
             config_compression_mode: self.config_compression_mode.map(|s| s.as_str().into()),
             specs_sync_interval_ms: self.specs_sync_interval_ms,
             specs_url: self.specs_url,
