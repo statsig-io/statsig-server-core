@@ -119,6 +119,8 @@ export declare function __internal__testDataStore(store: DataStore, path: string
 
 export declare function __internal__testObservabilityClient(client: ObservabilityClient, action: string, metricName: string, value: number, tags?: Record<string, string> | undefined | null): Promise<void>
 
+export declare function __internal__testOutputLogger(logger: OutputLoggerProvider, action: string, tag?: string | undefined | null, message?: string | undefined | null): Promise<void>
+
 export declare function __internal__testPersistentStorage(store: PersistentStorage, action: string, key?: string | undefined | null, configName?: string | undefined | null, data?: any | undefined | null): Promise<Record<string, string> | null>
 
 export interface ClientInitResponseOptions {
@@ -190,6 +192,15 @@ export interface ObservabilityClient {
   error?: (tag: string, error: string) => void
 }
 
+export interface OutputLoggerProvider {
+  initialize?: () => void
+  debug?: (tag: string, message: string) => void
+  info?: (tag: string, message: string) => void
+  warn?: (tag: string, message: string) => void
+  error?: (tag: string, message: string) => void
+  shutdown?: () => void
+}
+
 export interface OverrideAdapterConfig {
   adapterType: OverrideAdapterType
 }
@@ -250,6 +261,7 @@ export interface StatsigOptions {
   logEventUrl?: string
   observabilityClient?: ObservabilityClient
   outputLogLevel?: 'none' | 'debug' | 'info' | 'warn' | 'error'
+  outputLoggerProvider?: OutputLoggerProvider
   configCompressionMode?: 'gzip' | 'dictionary'
   overrideAdapterConfig?: Array<OverrideAdapterConfig>
   serviceName?: string
@@ -260,6 +272,7 @@ export interface StatsigOptions {
   waitForCountryLookupInit?: boolean
   waitForUserAgentInit?: boolean
   proxyConfig?: ProxyConfig
+  experimentalUaParsingEnabled?: boolean
 }
 
 export interface StatsigResult {
