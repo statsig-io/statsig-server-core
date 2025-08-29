@@ -18,6 +18,11 @@ func TestStatsigOptionsBasic(t *testing.T) {
 		WithDisableCountryLookup(true).
 		WithDisableUserAgentParsing(true).
 		WithWaitForCountryLookupInit(false).
+		WithEnableIdLists(false).
+		WithIdListsUrl("").
+		WithIDListsSyncIntervalMs(-1).
+		WithDisableAllLogging(false).
+		WithGlobalCustomFields("").
 		Build()
 
 	if *options.SpecsUrl != "https://example.com/specs" {
@@ -53,6 +58,21 @@ func TestStatsigOptionsBasic(t *testing.T) {
 	if options.WaitForUserAgentInit != nil {
 		t.Errorf("expected WaitForUserAgentInit to be 'nil', got %v", *options.WaitForUserAgentInit)
 	}
+	if *options.EnableIdLists != false {
+		t.Errorf("expected EnableIdLists to be 'false', got %v", *options.EnableIdLists)
+	}
+	if *options.IdListsUrl != "" {
+		t.Errorf("expected IdListsUrl to be '', got %v", *options.IdListsUrl)
+	}
+	if options.IdListsSyncIntervalMs != -1 {
+		t.Errorf("expected IDListsSyncIntervalMs to be -1, got %d", options.IdListsSyncIntervalMs)
+	}
+	if *options.DisableAllLogging != false {
+		t.Errorf("expected DisableAllLogging to be 'false', got %v", *options.DisableAllLogging)
+	}
+	if *options.GlobalCustomFields != "" {
+		t.Errorf("expected GlobalCustomFields to be '', got %v", *options.GlobalCustomFields)
+	}
 
 }
 
@@ -61,6 +81,7 @@ func TestBuilderSetNumericValues(t *testing.T) {
 		WithSpecsSyncIntervalMs(12345).
 		WithEventLoggingFlushIntervalMs(67890).
 		WithEventLoggingMaxQueueSize(99999).
+		WithIDListsSyncIntervalMs(30000).
 		Build()
 
 	if options.SpecsSyncIntervalMs != 12345 {
@@ -71,6 +92,9 @@ func TestBuilderSetNumericValues(t *testing.T) {
 	}
 	if options.EventLoggingMaxQueueSize != 99999 {
 		t.Errorf("expected EventLoggingMaxQueueSize to be 99999, got %d", options.EventLoggingMaxQueueSize)
+	}
+	if options.IdListsSyncIntervalMs != 30000 {
+		t.Errorf("expected IdListsSyncIntervalMs to be 30000, got %d", options.IdListsSyncIntervalMs)
 	}
 }
 
@@ -102,10 +126,11 @@ func TestBuilderEmptyValues(t *testing.T) {
 		WithLogEventUrl("").
 		WithEnvironment("").
 		WithOutputLogLevel("").
+		WithIdListsUrl("").
 		Build()
 
 	if *options.SpecsUrl != "" || *options.LogEventUrl != "" ||
-		*options.Environment != "" || *options.OutputLogLevel != "" {
+		*options.Environment != "" || *options.OutputLogLevel != "" || *options.IdListsUrl != "" {
 		t.Error("expected all string fields to be empty")
 	}
 }
