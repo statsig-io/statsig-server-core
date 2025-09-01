@@ -68,8 +68,7 @@ services:
   node-legacy:   { <<: *sdk-base, build: { <<: *node }, environment: *env-legacy, container_name: node-legacy }
 
   # ------------------------------------------------------------------------ [ PHP ]
-  php-core-beta: { <<: *sdk-base, build: { <<: [*php, *beta] }, environment: *env-core, container_name: php-core-beta }
-  php-core-rc:   { <<: *sdk-base, build: { <<: [*php, *rc] },   environment: *env-core, container_name: php-core-rc }
+  php-core:   { <<: *sdk-base, build: { <<: *php },   environment: *env-core, container_name: php-core }
   php-legacy:    { <<: *sdk-base, build: { <<: *php },    environment: *env-legacy, container_name: php-legacy }
 
   # ------------------------------------------------------------------------ [ PYTHON ]

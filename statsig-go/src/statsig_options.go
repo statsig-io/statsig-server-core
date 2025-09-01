@@ -11,7 +11,6 @@ import (
 	"github.com/statsig-io/statsig-server-core/statsig-go/src/utils"
 )
 
-// TODO(varshaa): add in remaining options that aren't being passed into statsig_options_create rn
 type StatsigOptions struct {
 	SpecsUrl                    *string
 	LogEventUrl                 *string
@@ -25,7 +24,11 @@ type StatsigOptions struct {
 	DisableUserAgentParsing     *bool
 	WaitForCountryLookupInit    *bool
 	WaitForUserAgentInit        *bool
+	EnableIdLists               *bool
+	IdListsUrl                  *string
+	IdListsSyncIntervalMs       int32
 	DisableAllLogging           *bool
+	GlobalCustomFields          *string
 	ObservabilityClientRef      uint64
 	DataStoreRef                uint64
 }
@@ -53,15 +56,15 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 		C.int(o.statsigOptions.EventLoggingMaxQueueSize),
 		C.int(o.statsigOptions.SpecsSyncIntervalMs),
 		ResolveDefault(o.statsigOptions.OutputLogLevel),
-		C.SafeOptBool(utils.ConvertToSafeOptBool(o.statsigOptions.DisableCountryLookup)),
-		C.SafeOptBool(utils.ConvertToSafeOptBool(o.statsigOptions.DisableUserAgentParsing)),
-		C.SafeOptBool(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForCountryLookupInit)),
-		C.SafeOptBool(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForUserAgentInit)),
-		C.SafeOptBool(utils.ConvertToSafeOptBool(nil)), // enableIDLists, not used in this version
-		ResolveDefault(nil), // idListsUrl, not used in this version
-		C.int(-1),           // idListsSyncIntervalMs, not used in this version
-		C.SafeOptBool(utils.ConvertToSafeOptBool(o.statsigOptions.DisableAllLogging)),
-		ResolveDefault(nil), // global_custom_fields, not used in this version
+		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableCountryLookup)),
+		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableUserAgentParsing)),
+		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForCountryLookupInit)),
+		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForUserAgentInit)),
+		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.EnableIdLists)),
+		ResolveDefault(o.statsigOptions.IdListsUrl),
+		C.int(o.statsigOptions.IdListsSyncIntervalMs),
+		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableAllLogging)),
+		ResolveDefault(o.statsigOptions.GlobalCustomFields),
 		C.uint64_t(o.statsigOptions.ObservabilityClientRef),
 		C.uint64_t(o.statsigOptions.DataStoreRef),
 	)
@@ -86,6 +89,7 @@ func NewStatsigOptionsBuilder() *StatsigOptionsBuilder {
 			EventLoggingMaxQueueSize:    -1,
 			SpecsSyncIntervalMs:         -1,
 			OutputLogLevel:              nil,
+			IdListsSyncIntervalMs:       -1,
 		},
 	}
 }
@@ -147,6 +151,26 @@ func (o *StatsigOptionsBuilder) WithWaitForUserAgentInit(value bool) *StatsigOpt
 
 func (o *StatsigOptionsBuilder) WithDisableAllLogging(value bool) *StatsigOptionsBuilder {
 	o.statsigOptions.DisableAllLogging = &value
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithEnableIdLists(value bool) *StatsigOptionsBuilder {
+	o.statsigOptions.EnableIdLists = &value
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithIdListsUrl(value string) *StatsigOptionsBuilder {
+	o.statsigOptions.IdListsUrl = &value
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithIDListsSyncIntervalMs(value int32) *StatsigOptionsBuilder {
+	o.statsigOptions.IdListsSyncIntervalMs = value
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithGlobalCustomFields(value string) *StatsigOptionsBuilder {
+	o.statsigOptions.GlobalCustomFields = &value
 	return o
 }
 
