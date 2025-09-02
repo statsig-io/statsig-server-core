@@ -17,7 +17,6 @@ defmodule Statsigelixir.MixProject do
     "A performant elixir SDK for Statsig feature gates and experiments using Rustler"
   end
 
-
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
@@ -28,9 +27,9 @@ defmodule Statsigelixir.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, ">= 0.0.0", optional: true},
+      {:rustler, "~> 0.36", runtime: false, optional: true},
       {:rustler_precompiled, "~> 0.8"},
-      {:ex_doc, "~> 0.27", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.27", only: :dev, runtime: false}
     ]
   end
 

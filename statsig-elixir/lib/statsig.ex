@@ -39,7 +39,7 @@ defmodule Statsig do
     end
   end
 
-  def check_gate(gate_name, statsig_user, options \\nil) do
+  def check_gate(gate_name, statsig_user, options \\ nil) do
     try do
       instance = get_statsig_instance()
 
@@ -52,7 +52,7 @@ defmodule Statsig do
     end
   end
 
-  def get_feature_gate(gate_name, statsig_user, options \\nil) do
+  def get_feature_gate(gate_name, statsig_user, options \\ nil) do
     try do
       instance = get_statsig_instance()
 
@@ -68,7 +68,7 @@ defmodule Statsig do
     end
   end
 
-  def get_dynamic_config(config_name, statsig_user, options \\nil) do
+  def get_dynamic_config(config_name, statsig_user, options \\ nil) do
     try do
       instance = get_statsig_instance()
 
@@ -84,7 +84,7 @@ defmodule Statsig do
     end
   end
 
-  def get_experiment(experiment_name, statsig_user, options \\nil) do
+  def get_experiment(experiment_name, statsig_user, options \\ nil) do
     try do
       instance = get_statsig_instance()
 
@@ -100,7 +100,7 @@ defmodule Statsig do
     end
   end
 
-  def get_layer(layer_name, statsig_user, options \\nil) do
+  def get_layer(layer_name, statsig_user, options \\ nil) do
     try do
       instance = get_statsig_instance()
 
@@ -116,9 +116,10 @@ defmodule Statsig do
     end
   end
 
-  def get_prompt(prompt_name, statsig_user, options \\nil) do
+  def get_prompt(prompt_name, statsig_user, options \\ nil) do
     try do
       instance = get_statsig_instance()
+
       case NativeBindings.get_prompt(instance, prompt_name, statsig_user, options) do
         {:error, e} -> {:error, e}
         layer -> {:ok, layer}
@@ -131,7 +132,7 @@ defmodule Statsig do
     end
   end
 
-  def get_client_init_response_as_string(statsig_user, options \\nil) do
+  def get_client_init_response_as_string(statsig_user, options \\ nil) do
     try do
       instance = get_statsig_instance()
 
@@ -204,22 +205,24 @@ defmodule Statsig do
   def get_system_info do
     try do
       %{
-        "os"=> :os.type() |> elem(0) |> Atom.to_string(),
-        "arch"=> :erlang.system_info(:system_architecture) |> List.to_string(),
-        "language_version"=> System.version()
+        "os" => :os.type() |> elem(0) |> Atom.to_string(),
+        "arch" => :erlang.system_info(:system_architecture) |> List.to_string(),
+        "language_version" => System.version()
       }
     rescue
-      _ -> %{
-        "os"=> "unknown",
-        "arch"=> "unknown",
-        "language_version"=> "unknown"
-      }
+      _ ->
+        %{
+          "os" => "unknown",
+          "arch" => "unknown",
+          "language_version" => "unknown"
+        }
     catch
-      _, _ -> %{
-        "os"=> "unknown",
-        "arch"=> "unknown",
-        "language_version"=> "unknown"
-      }
+      _, _ ->
+        %{
+          "os" => "unknown",
+          "arch" => "unknown",
+          "language_version" => "unknown"
+        }
     end
   end
 end

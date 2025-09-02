@@ -21,6 +21,7 @@ defmodule Statsig.Experiment do
 
   def get_param_value(experiment, param_name) do
     config = Jason.decode!(experiment.value)
+
     case config do
       %{^param_name => value} -> value
       _ -> nil
