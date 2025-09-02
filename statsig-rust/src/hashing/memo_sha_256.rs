@@ -1,7 +1,6 @@
 use crate::log_e;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
-use core::mem::size_of;
 use parking_lot::Mutex;
 use sha2::digest::Output;
 use sha2::{Digest, Sha256};
@@ -12,7 +11,7 @@ const MAX_CACHE_ENTRIES: usize = 10000;
 
 struct MemoState {
     sha_hasher: Sha256,
-    user_hash_cache: HashMap<String, usize>,
+    user_hash_cache: HashMap<String, u64>,
 }
 
 const TAG: &str = stringify!(MemoSha256);
@@ -30,7 +29,7 @@ impl MemoSha256 {
         }
     }
 
-    pub fn compute_hash(&self, input: &String) -> Option<usize> {
+    pub fn compute_hash(&self, input: &String) -> Option<u64> {
         let mut state = match self.inner.try_lock_for(Duration::from_secs(5)) {
             Some(state) => state,
             None => {
@@ -52,9 +51,9 @@ impl MemoSha256 {
 
         let hash = self.compute_bytes(&mut state, input);
 
-        match hash.split_at(size_of::<usize>()).0.try_into() {
+        match hash.split_at(size_of::<u64>()).0.try_into() {
             Ok(bytes) => {
-                let u_bytes = usize::from_be_bytes(bytes);
+                let u_bytes = u64::from_be_bytes(bytes);
                 state.user_hash_cache.insert(input.clone(), u_bytes);
                 Some(u_bytes)
             }
