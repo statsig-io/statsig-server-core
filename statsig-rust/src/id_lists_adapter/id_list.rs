@@ -25,12 +25,14 @@ impl IdList {
         }
     }
 
-    pub fn apply_update(&mut self, update: &IdListUpdate) {
-        let changed = &update.new_metadata;
-        let current = &self.metadata;
+    pub fn apply_update(&mut self, update: IdListUpdate) {
+        let updated_meta = update.new_metadata;
+        let current_meta = &self.metadata;
 
-        if changed.file_id != current.file_id && changed.creation_time >= current.creation_time {
-            self.reset();
+        if updated_meta.file_id != current_meta.file_id
+            && updated_meta.creation_time >= current_meta.creation_time
+        {
+            self.update_metadata(updated_meta);
         }
 
         let changeset_data = unwrap_or_noop!(&update.raw_changeset);
@@ -58,7 +60,8 @@ impl IdList {
         self.metadata.size += changeset_data.len() as u64;
     }
 
-    pub fn reset(&mut self) {
+    fn update_metadata(&mut self, metadata: IdListMetadata) {
+        self.metadata = metadata;
         self.metadata.size = 0;
         self.ids.clear();
     }

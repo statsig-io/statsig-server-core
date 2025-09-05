@@ -240,8 +240,8 @@ impl StatsigHttpIdListsAdapter {
     }
 
     async fn sync_id_lists(&self) -> Result<(), StatsigErr> {
-        let manifest = self.fetch_id_list_manifests_from_network().await?;
-        let metadata = self.get_current_id_list_metadata()?;
+        let new_manifest = self.fetch_id_list_manifests_from_network().await?;
+        let curr_manifest = self.get_current_id_list_metadata()?;
 
         let mut changes = HashMap::new();
 
@@ -251,13 +251,18 @@ impl StatsigHttpIdListsAdapter {
                 ActionType::Start,
                 Some(StepType::Process),
             )
-            .with_id_list_count(manifest.len()),
+            .with_id_list_count(new_manifest.len()),
             None,
         );
 
-        for (list_name, entry) in manifest {
-            let (requires_download, range_start) = match metadata.get(&list_name) {
-                Some(current) => (entry.size > current.size, current.size),
+        for (list_name, entry) in new_manifest {
+            let (requires_download, range_start) = match curr_manifest.get(&list_name) {
+                Some(current) => (
+                    entry.size > current.size
+                        || entry.creation_time > current.creation_time
+                        || entry.file_id != current.file_id,
+                    current.size,
+                ),
                 None => (true, 0),
             };
 
@@ -473,11 +478,11 @@ mod tests {
             for (list_name, update) in updates {
                 if let Some(entry) = id_lists.get_mut(&list_name) {
                     // update existing
-                    entry.apply_update(&update);
+                    entry.apply_update(update);
                 } else {
                     // add new
                     let mut list = IdList::new(update.new_metadata.clone());
-                    list.apply_update(&update);
+                    list.apply_update(update);
                     id_lists.insert(list_name.clone(), list);
                 }
             }

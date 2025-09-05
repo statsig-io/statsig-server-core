@@ -425,11 +425,11 @@ impl IdListsUpdateListener for SpecStore {
         for (list_name, update) in updates {
             if let Some(entry) = data.id_lists.get_mut(&list_name) {
                 // update existing
-                entry.apply_update(&update);
+                entry.apply_update(update);
             } else {
                 // add new
                 let mut list = IdList::new(update.new_metadata.clone());
-                list.apply_update(&update);
+                list.apply_update(update);
                 data.id_lists.insert(list_name, list);
             }
         }
