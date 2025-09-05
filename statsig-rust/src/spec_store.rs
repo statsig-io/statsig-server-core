@@ -1,4 +1,3 @@
-use crate::compression::zstd_decompression_dict::DictionaryDecoder;
 use crate::data_store_interface::{get_data_adapter_dcs_key, DataStoreTrait};
 use crate::global_configs::GlobalConfigs;
 use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
@@ -6,7 +5,6 @@ use crate::observability::observability_client_adapter::{MetricType, Observabili
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::specs_response::spec_types::{SpecsResponseFull, SpecsResponseNoUpdates};
-use crate::specs_response::spec_types_encoded::DecodedSpecsResponse;
 use crate::utils::maybe_trim_malloc;
 use crate::{
     log_d, log_e, log_error_to_statsig_and_console, SpecsInfo, SpecsSource, SpecsUpdate,
@@ -14,6 +12,7 @@ use crate::{
 };
 use chrono::Utc;
 use parking_lot::RwLock;
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -24,7 +23,6 @@ pub struct SpecStoreData {
     pub time_received_at: Option<u64>,
     pub values: SpecsResponseFull,
     pub next_values: Option<SpecsResponseFull>,
-    pub decompression_dict: Option<DictionaryDecoder>,
     pub id_lists: HashMap<String, IdList>,
 }
 
@@ -56,7 +54,6 @@ impl SpecStore {
                 time_received_at: None,
                 source: SpecsSource::Uninitialized,
                 source_api: None,
-                decompression_dict: None,
                 id_lists: HashMap::new(),
             })),
             data_store,
@@ -91,31 +88,26 @@ impl SpecStore {
     }
 
     pub fn set_values(&self, specs_update: SpecsUpdate) -> Result<(), StatsigErr> {
-        let (mut next_values, decompression_dict) =
-            match self.data.try_write_for(Duration::from_secs(5)) {
-                Some(mut data) => (
-                    data.next_values.take().unwrap_or_default(),
-                    data.decompression_dict.clone(),
-                ),
-                None => {
-                    log_e!(TAG, "Failed to acquire write lock: Failed to lock data");
-                    return Err(StatsigErr::LockFailure(
-                        "Failed to acquire write lock: Failed to lock data".to_string(),
-                    ));
-                }
-            };
+        let mut next_values = match self.data.try_write_for(Duration::from_secs(5)) {
+            Some(mut data) => data.next_values.take().unwrap_or_default(),
+            None => {
+                log_e!(TAG, "Failed to acquire write lock: Failed to lock data");
+                return Err(StatsigErr::LockFailure(
+                    "Failed to acquire write lock: Failed to lock data".to_string(),
+                ));
+            }
+        };
 
-        let decompression_dict =
-            match self.parse_specs_response(&specs_update, &mut next_values, decompression_dict) {
-                Ok(Some(full)) => full,
-                Ok(None) => {
-                    self.ops_stats_log_no_update(specs_update.source, specs_update.source_api);
-                    return Ok(());
-                }
-                Err(e) => {
-                    return Err(e);
-                }
-            };
+        match self.parse_specs_response(&specs_update, &mut next_values) {
+            Ok(ParseResult::HasUpdates) => (),
+            Ok(ParseResult::NoUpdates) => {
+                self.ops_stats_log_no_update(specs_update.source, specs_update.source_api);
+                return Ok(());
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        };
 
         if self.are_current_values_newer(&next_values) {
             return Ok(());
@@ -127,7 +119,6 @@ impl SpecStore {
         let (prev_source, prev_lcut, curr_values_time) = self.swap_current_with_next(
             next_values,
             &specs_update,
-            decompression_dict,
             now,
             specs_update.source_api.clone(),
         )?;
@@ -157,34 +148,22 @@ impl SpecStore {
         &self,
         values: &SpecsUpdate,
         next_values: &mut SpecsResponseFull,
-        decompression_dict: Option<DictionaryDecoder>,
-    ) -> Result<Option<Option<DictionaryDecoder>>, StatsigErr> {
-        let full_update_decoder_result = DecodedSpecsResponse::from_slice(
-            &values.data,
-            next_values,
-            decompression_dict.as_ref(),
-        );
+    ) -> Result<ParseResult, StatsigErr> {
+        let mut deserializer = serde_json::Deserializer::from_slice(&values.data);
+        let parse_result = SpecsResponseFull::deserialize_in_place(&mut deserializer, next_values);
 
-        if let Ok(result) = full_update_decoder_result {
-            if next_values.has_updates {
-                return Ok(Some(result));
+        if parse_result.is_ok() && next_values.has_updates {
+            return Ok(ParseResult::HasUpdates);
+        }
+
+        let no_updates_result = serde_json::from_slice::<SpecsResponseNoUpdates>(&values.data);
+        if let Ok(result) = no_updates_result {
+            if !result.has_updates {
+                return Ok(ParseResult::NoUpdates);
             }
-
-            return Ok(None);
         }
 
-        let mut next_no_updates = SpecsResponseNoUpdates { has_updates: false };
-        let no_updates_decoder_result = DecodedSpecsResponse::from_slice(
-            &values.data,
-            &mut next_no_updates,
-            decompression_dict.as_ref(),
-        );
-
-        if no_updates_decoder_result.is_ok() && !next_no_updates.has_updates {
-            return Ok(None);
-        }
-
-        let error = full_update_decoder_result.err().map_or_else(
+        let error = parse_result.err().map_or_else(
             || StatsigErr::JsonParseError("SpecsResponse".to_string(), "Unknown error".to_string()),
             |e| StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string()),
         );
@@ -197,7 +176,6 @@ impl SpecStore {
         &self,
         next_values: SpecsResponseFull,
         specs_update: &SpecsUpdate,
-        decompression_dict: Option<DictionaryDecoder>,
         now: u64,
         source_api: Option<String>,
     ) -> Result<(SpecsSource, u64, u64), StatsigErr> {
@@ -211,7 +189,6 @@ impl SpecStore {
                 data.next_values = Some(temp);
 
                 data.time_received_at = Some(now);
-                data.decompression_dict = decompression_dict;
                 data.source_api = source_api;
                 Ok((prev_source, prev_lcut, data.values.time))
             }
@@ -367,10 +344,6 @@ impl SpecsUpdateListener for SpecStore {
             Some(data) => SpecsInfo {
                 lcut: Some(data.values.time),
                 checksum: data.values.checksum.clone(),
-                zstd_dict_id: data
-                    .decompression_dict
-                    .as_ref()
-                    .map(|d| d.get_dict_id().to_string()),
                 source: data.source.clone(),
                 source_api: data.source_api.clone(),
             },
@@ -379,7 +352,6 @@ impl SpecsUpdateListener for SpecStore {
                 SpecsInfo {
                     lcut: None,
                     checksum: None,
-                    zstd_dict_id: None,
                     source: SpecsSource::Error,
                     source_api: None,
                 }
@@ -434,4 +406,9 @@ impl IdListsUpdateListener for SpecStore {
             }
         }
     }
+}
+
+enum ParseResult {
+    HasUpdates,
+    NoUpdates,
 }

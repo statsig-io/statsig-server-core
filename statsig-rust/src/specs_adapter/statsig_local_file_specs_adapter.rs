@@ -2,7 +2,6 @@ use crate::hashing::djb2;
 use crate::specs_adapter::statsig_http_specs_adapter::SpecsSyncTrigger;
 use crate::specs_adapter::{SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener};
 use crate::specs_response::spec_types::SpecsResponseFull;
-use crate::specs_response::spec_types_encoded::DecodedSpecsResponse;
 use crate::statsig_err::StatsigErr;
 use crate::{log_e, log_w, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
@@ -52,7 +51,6 @@ impl StatsigLocalFileSpecsAdapter {
             Ok(Some(specs)) => SpecsInfo {
                 lcut: Some(specs.time),
                 checksum: specs.checksum,
-                zstd_dict_id: None, // For backwards compatibility, we only store uncompressed specs
                 source: SpecsSource::Adapter("FileBased".to_owned()),
                 source_api: None,
             },
@@ -127,9 +125,8 @@ impl StatsigLocalFileSpecsAdapter {
     }
 
     fn parse_specs_data_to_full_response(&self, data: &str) -> Option<SpecsResponseFull> {
-        let mut place = SpecsResponseFull::default();
-        match DecodedSpecsResponse::from_slice(data.as_bytes(), &mut place, None) {
-            Ok(_) => Some(place),
+        match serde_json::from_slice::<SpecsResponseFull>(data.as_bytes()) {
+            Ok(response) => Some(response),
             Err(e) => {
                 log_w!(TAG, "Failed to parse specs data: {}", e);
                 None

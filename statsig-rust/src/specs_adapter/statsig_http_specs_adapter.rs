@@ -129,11 +129,7 @@ impl StatsigHttpSpecsAdapter {
         }
 
         RequestArgs {
-            url: construct_specs_url(
-                self.specs_url.as_str(),
-                self.sdk_key.as_str(),
-                current_specs_info.zstd_dict_id.as_deref(),
-            ),
+            url: construct_specs_url(self.specs_url.as_str(), self.sdk_key.as_str()),
             retries: match trigger {
                 SpecsSyncTrigger::Initial | SpecsSyncTrigger::Manual => 0,
                 SpecsSyncTrigger::Background => 3,
@@ -148,14 +144,9 @@ impl StatsigHttpSpecsAdapter {
     async fn handle_fallback_request(
         &self,
         mut request_args: RequestArgs,
-        current_specs_info: SpecsInfo,
     ) -> Result<NetworkResponse, NetworkError> {
         let fallback_url = match &self.fallback_url {
-            Some(url) => construct_specs_url(
-                url.as_str(),
-                &self.sdk_key,
-                current_specs_info.zstd_dict_id.as_deref(),
-            ),
+            Some(url) => construct_specs_url(url.as_str(), &self.sdk_key),
             None => {
                 return Err(NetworkError::RequestFailed(
                     request_args.url.clone(),
@@ -244,10 +235,7 @@ impl StatsigHttpSpecsAdapter {
         if result.is_err() && self.fallback_url.is_some() {
             log_d!(TAG, "Falling back to statsig api");
             let response = self
-                .handle_fallback_request(
-                    self.get_request_args(&current_specs_info, trigger),
-                    current_specs_info,
-                )
+                .handle_fallback_request(self.get_request_args(&current_specs_info, trigger))
                 .await;
             return self.process_spec_data(response).await;
         }
@@ -388,13 +376,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
 }
 
 #[allow(unused)]
-fn construct_specs_url(spec_url: &str, sdk_key: &str, dict_id: Option<&str>) -> String {
-    #[cfg(feature = "with_shared_dict_compression")]
-    {
-        let dict_id = dict_id.unwrap_or(INIT_DICT_ID);
-        format!("{spec_url}/d/{dict_id}/{sdk_key}.json")
-    }
-    #[cfg(not(feature = "with_shared_dict_compression"))]
+fn construct_specs_url(spec_url: &str, sdk_key: &str) -> String {
     format!("{spec_url}/{sdk_key}.json")
 }
 
