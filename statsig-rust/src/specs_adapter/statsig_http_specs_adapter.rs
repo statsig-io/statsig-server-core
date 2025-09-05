@@ -7,6 +7,7 @@ use crate::specs_adapter::{SpecsAdapter, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
 use crate::utils::get_api_from_url;
+use crate::DEFAULT_INIT_TIMEOUT_MS;
 use crate::{
     log_d, log_e, log_error_to_statsig_and_console, SpecsSource, StatsigOptions, StatsigRuntime,
 };
@@ -29,6 +30,7 @@ pub struct NetworkResponse {
 
 pub const DEFAULT_SPECS_URL: &str = "https://api.statsigcdn.com/v2/download_config_specs";
 pub const DEFAULT_SYNC_INTERVAL_MS: u32 = 10_000;
+
 #[allow(unused)]
 pub const INIT_DICT_ID: &str = "null";
 
@@ -39,6 +41,7 @@ pub struct StatsigHttpSpecsAdapter {
     sdk_key: String,
     specs_url: String,
     fallback_url: Option<String>,
+    init_timeout_ms: u64,
     sync_interval_duration: Duration,
     ops_stats: Arc<OpsStatsForInstance>,
     shutdown_notify: Arc<Notify>,
@@ -53,6 +56,10 @@ impl StatsigHttpSpecsAdapter {
     ) -> Self {
         let default_options = StatsigOptions::default();
         let options_ref = options.unwrap_or(&default_options);
+
+        let init_timeout_ms = options_ref
+            .init_timeout_ms
+            .unwrap_or(DEFAULT_INIT_TIMEOUT_MS);
 
         let specs_url = match override_url {
             Some(url) => url,
@@ -80,6 +87,7 @@ impl StatsigHttpSpecsAdapter {
             sdk_key: sdk_key.to_string(),
             specs_url,
             fallback_url,
+            init_timeout_ms,
             sync_interval_duration: Duration::from_millis(u64::from(
                 options_ref
                     .specs_sync_interval_ms
@@ -121,6 +129,15 @@ impl StatsigHttpSpecsAdapter {
                 params.insert("sinceTime".to_string(), lcut.to_string());
             }
         }
+
+        let is_init_request = trigger == SpecsSyncTrigger::Initial;
+
+        let timeout_ms = if is_init_request && self.init_timeout_ms > 0 {
+            self.init_timeout_ms
+        } else {
+            0
+        };
+
         if let Some(cs) = &current_specs_info.checksum {
             params.insert(
                 "checksum".to_string(),
@@ -137,6 +154,7 @@ impl StatsigHttpSpecsAdapter {
             query_params: Some(params),
             accept_gzip_response: true,
             diagnostics_key: Some(KeyType::DownloadConfigSpecs),
+            timeout_ms,
             ..RequestArgs::new()
         }
     }
