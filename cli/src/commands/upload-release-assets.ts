@@ -24,30 +24,38 @@ const ASSET_MAPPING = {
   // macOS
   'aarch64-apple-darwin': {
     'libstatsig_ffi.dylib': 'shared',
+    'libstatsig_ffi.dylib.sig': 'signature',
   },
   'x86_64-apple-darwin': {
     'libstatsig_ffi.dylib': 'shared',
+    'libstatsig_ffi.dylib.sig': 'signature',
   },
   // Linux GNU
   'x86_64-unknown-linux-gnu': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   'aarch64-unknown-linux-gnu': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   // Linux MUSL
   'x86_64-unknown-linux-musl': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   'aarch64-unknown-linux-musl': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   // Windows
   'x86_64-pc-windows-msvc': {
     'libstatsig_ffi.dll': 'shared',
+    'libstatsig_ffi.dll.sig': 'signature',
   },
   'i686-pc-windows-msvc': {
     'libstatsig_ffi.dll': 'shared',
+    'libstatsig_ffi.dll.sig': 'signature',
   },
 };
 

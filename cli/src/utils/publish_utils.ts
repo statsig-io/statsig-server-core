@@ -1,72 +1,86 @@
 import {
-  ensureEmptyDir,
-  getRootedPath,
-  listFiles,
-  unzip,
-  zipFile,
-} from '@/utils/file_utils.js';
-import {
   GhAsset,
   GhRelease,
   downloadReleaseAsset,
   getAllAssetsForRelease,
   getReleaseByVersion,
 } from '@/utils/octokit_utils.js';
-import { SemVer } from '@/utils/semver.js';
+import {
+  ensureEmptyDir,
+  getRootedPath,
+  listFiles,
+  unzip,
+  zipFile,
+} from '@/utils/file_utils.js';
+
 import { Log } from '@/utils/terminal_utils.js';
+import { Octokit } from 'octokit';
+import { SemVer } from '@/utils/semver.js';
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import path from 'node:path';
-import { Octokit } from 'octokit';
-
 import { getRootVersion } from './toml_utils.js';
+import path from 'node:path';
 
 const ASSET_MAPPING = {
   // macOS
   'aarch64-apple-darwin': {
     'libstatsig_ffi.dylib': 'shared',
+    'libstatsig_ffi.dylib.sig': 'signature',
   },
   'x86_64-apple-darwin': {
     'libstatsig_ffi.dylib': 'shared',
+    'libstatsig_ffi.dylib.sig': 'signature',
   },
   // Linux GNU
   'debian-x86_64-unknown-linux-gnu': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   'debian-aarch64-unknown-linux-gnu': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   'centos7-x86_64-unknown-linux-gnu': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   'centos7-aarch64-unknown-linux-gnu': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   'amazonlinux2-x86_64-unknown-linux-gnu': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   'amazonlinux2-aarch64-unknown-linux-gnu': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   'amazonlinux2023-x86_64-unknown-linux-gnu': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   'amazonlinux2023-aarch64-unknown-linux-gnu': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   // Linux MUSL
   'alpine-x86_64-unknown-linux-musl': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   'alpine-aarch64-unknown-linux-musl': {
     'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
   // Windows
   'x86_64-pc-windows-msvc': {
     'statsig_ffi.dll': 'shared',
+    'statsig_ffi.dll.sig': 'signature',
   },
   'i686-pc-windows-msvc': {
     'statsig_ffi.dll': 'shared',
+    'statsig_ffi.dll.sig': 'signature',
   },
 };
 
@@ -201,8 +215,14 @@ export function mapAssetsToTargets(workingDir: string) {
     ...listFiles(workingDir, '**/target/**/release/*.dll'),
   ];
 
+  const signatures = [
+    ...listFiles(workingDir, '**/target/**/release/*.dylib.sig'),
+    ...listFiles(workingDir, '**/target/**/release/*.so.sig'),
+    ...listFiles(workingDir, '**/target/**/release/*.dll.sig'),
+  ];
+
   let allAssetsMapped = true;
-  const mappedAssets: AssetConfig[] = binaries.map((file) => {
+  const mappedAssets: AssetConfig[] = [...binaries, ...signatures].map((file) => {
     const found = targets.find((t) => file.includes(t));
     if (!found) {
       Log.stepProgress(`No matching asset found for ${file}`, 'failure');

@@ -11,4 +11,5 @@ export type BuilderOptions = {
   docker: boolean;
   subProject?: string;
   envSetupForBuild?: string; // Setup env variable to run build, e.g. RUSTFLAGS=""
+  sign?: boolean;
 };

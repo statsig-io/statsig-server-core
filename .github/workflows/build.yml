@@ -41,6 +41,7 @@ env:
   # Misc
   CARGO_TERM_COLOR: always
   FORCE_COLOR: true
+  OPENSSL_PRIVATE_KEY: ${{ secrets.OPENSSL_PRIVATE_KEY }}
 
 jobs:
   # -------------------------------------------------------------------- [Plan]
@@ -127,7 +128,8 @@ jobs:
             --target ${{ matrix.config.target }} \
             --out-dir build \
             --skip-docker-build \
-            --release
+            --release \
+            --sign
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -141,10 +143,15 @@ jobs:
             **/release/libstatsig_ffi.so
             **/release/libstatsig_ffi.dylib
             **/release/statsig_ffi.dll
+            **/release/libstatsig_ffi.so.sig
+            **/release/libstatsig_ffi.dylib.sig
+            **/release/statsig_ffi.dll.sig
             **/release/*statsig_ffi.a
             **/release/*statsig_ffi.lib
-            **/release/*statsig_ffi.lib
             **/release/*statsig_ffi.so
+            **/release/*statsig_ffi.a.sig
+            **/release/*statsig_ffi.lib.sig
+            **/release/*statsig_ffi.so.sig
             **/release/libstatsig_elixir*.so
 
   # -------------------------------------------------------------------- [Verify Node]
