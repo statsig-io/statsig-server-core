@@ -1,5 +1,11 @@
+import org.gradle.jvm.tasks.Jar
+import org.gradle.api.attributes.Category
+import org.gradle.api.attributes.Bundling
+import org.gradle.api.attributes.Usage
+
 plugins {
     id 'java'
+    id 'java-library'
     id 'maven-publish'
     id 'signing'
     id 'checkstyle'
@@ -48,9 +54,11 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.16.1'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.16.1'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.16.1'
+    api platform('com.fasterxml.jackson:jackson-bom:2.16.1')
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+
     implementation 'org.jetbrains:annotations:24.0.1'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
@@ -81,6 +89,35 @@ tasks.register('javadocJar', Jar) {
     from tasks.javadoc.destinationDir
 }
 
+// So that javaCore jar will not contain any natives
+tasks.named('jar', Jar) {
+    exclude 'native/**'
+    exclude '**/*.so', '**/*.dylib', '**/*.dll'
+}
+
+// To make kong works
+tasks.register('jarDev', Jar) {
+  archiveClassifier.set('dev')
+  from(sourceSets.main.output)
+  from('src/main/resources/native') { into('native') }
+}
+
+configurations {
+  devJar {
+    canBeConsumed = true
+    canBeResolved = false
+    attributes {
+      attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY))
+      attribute(Usage.USAGE_ATTRIBUTE,     objects.named(Usage, Usage.JAVA_RUNTIME))
+      attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
+    }
+  }
+}
+
+artifacts {
+  add('devJar', tasks.named('jarDev'))
+}
+
 javadoc {
     options {
         windowTitle = "Statsig Java SDK"
@@ -106,11 +143,6 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
                 "x86_64-unknown-linux-gnu": "libstatsig_ffi.so",
                 "x86_64-pc-windows-msvc"   : "statsig_ffi.dll"
             ]
-
-            dependsOn configurations.runtimeClasspath
-            from {
-                configurations.runtimeClasspath.findAll { it.name.endsWith("jar") }.collect { zipTree(it) }
-            }
 
             platforms.each { classifier, libName ->
                 def nativeSourceDir = file("src/main/resources/native/${classifier}")
@@ -171,11 +203,6 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
                 include 'com/statsig/**'
                 include 'statsigsdk.properties'
             }
-
-            dependsOn configurations.runtimeClasspath
-            from {
-                configurations.runtimeClasspath.findAll { it.name.endsWith("jar") }.collect { zipTree(it) }
-            }
         }
 
         if (classifierParam != null) {
@@ -188,7 +215,7 @@ ext.createStatsigJar = { String nameParam, String classifierParam ->
 
 createStatsigJar('uber', 'uber')
 createStatsigJar('java-core', null)
-//macos
+// Apple
 createStatsigJar('aarch64-apple-darwin', 'aarch64-apple-darwin')
 createStatsigJar('x86_64-apple-darwin', 'x86_64-apple-darwin')
 // Linux GNU
@@ -253,24 +280,26 @@ publishing {
     publications {
         create('mavenJava', MavenPublication) {
             artifactId = 'javacore'
+            from components.java
 
-            project.ext.artifactTasks.each { taskEntry ->
-                def taskName = taskEntry.taskName
-                def classifier = taskEntry.classifier
-                try {
-                    def task = tasks.named(taskName).get()
-                    artifact(task)
-                } catch (Exception e) {
-                    println "Error: Failed to add artifact task: ${taskName} - ${e.message}"
-                }
-            }
             artifact sourcesJar
             artifact javadocJar
+
+            project.ext.artifactTasks.each { e ->
+                def t = tasks.named(e.taskName).get()
+                if (t.name == 'jar') {
+                    return
+                }
+                if (t.hasProperty('archiveClassifier') && !t.archiveClassifier.getOrNull()) {
+                    t.archiveClassifier.set(e.classifier ?: t.name)
+                }
+                artifact(t)
+            }
 
             pom {
                 name.set("Statsig Java Core SDK")
                 description.set("A feature gating and a/b testing java library for statsig")
-                url.set("https://github.com/statsig-io") // TODO need to change to real repo url
+                url.set("https://github.com/statsig-io/statsig-server-core")
 
                 licenses {
                     license {
