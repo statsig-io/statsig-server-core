@@ -71,7 +71,7 @@ impl HashUtil {
         u64::from_be_bytes(hasher_bytes)
     }
 
-    pub fn evaluation_hash(&self, input: &String) -> Option<usize> {
+    pub fn evaluation_hash(&self, input: &String) -> Option<u64> {
         self.sha_hasher.compute_hash(input)
     }
 }
