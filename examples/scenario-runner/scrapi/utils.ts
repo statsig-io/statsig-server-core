@@ -104,6 +104,7 @@ export function flushDockerStats() {
       netBytesSent: parseMemory(sent),
       diskBytesRead: parseMemory(read),
       diskBytesWritten: parseMemory(write),
+      entireContainerThreadCount: parseInt(stat.PIDs),
     };
 
     return {

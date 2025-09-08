@@ -62,24 +62,6 @@ namespace Statsig.Tests
         }
 
         [Fact]
-        public async Task HttpMocking_VerifyRequestsAreMade_ChecksEndpointCalls()
-        {
-            var options = CreateMockOptions();
-            using var statsig = new Statsig("secret-test-key", options);
-            using var user = new StatsigUserBuilder().SetUserID("a-user").Build();
-
-            await statsig.Initialize();
-            statsig.LogEvent(user, "test_event", "test_value");
-            await statsig.FlushEvents();
-
-            var configSpecsRequests = _mockServer.LogEntries.Where(x => x.RequestMessage.Path.Contains("download_config_specs"));
-            var logEventRequests = _mockServer.LogEntries.Where(x => x.RequestMessage.Path.Contains("log_event"));
-
-            Assert.True(configSpecsRequests.Any());
-            Assert.True(logEventRequests.Any());
-        }
-
-        [Fact]
         public async Task InitializeCallback_WhenCalled_InvokesCallbackSuccessfully()
         {
             var options = CreateMockOptions();

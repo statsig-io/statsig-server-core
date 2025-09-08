@@ -48,6 +48,7 @@ namespace Statsig
                         builder.waitForCountryLookupInit ? 1 : 0,
                         builder.waitForUserAgentInit ? 1 : 0,
                         builder.enableIDLists ? 1 : 0,
+                        builder.disableNetwork ? 1 : 0,
                         idListsURLPtr,
                         builder.idListsSyncIntervalMs,
                         builder.disableAllLogging ? 1 : 0,
@@ -92,6 +93,7 @@ namespace Statsig
         internal bool disableCountryLookup = false;
         internal bool disableUserAgentParsing = false;
         internal bool disableAllLogging = false;
+        internal bool disableNetwork = false;
         internal Dictionary<string, object>? globalCustomFields;
 
         public StatsigOptionsBuilder SetSpecsURL(string specsURL)
@@ -117,6 +119,7 @@ namespace Statsig
             this.specsSyncIntervalMs = specsSyncIntervalMs;
             return this;
         }
+
         public StatsigOptionsBuilder SetEventLoggingMaxQueueSize(int eventLoggingMaxQueueSize)
         {
             this.eventLoggingMaxQueueSize = eventLoggingMaxQueueSize;
@@ -127,21 +130,31 @@ namespace Statsig
             this.waitForCountryLookupInit = waitForCountryLookupInit;
             return this;
         }
+
         public StatsigOptionsBuilder SetWaitForUserAgentInit(bool waitForUserAgentInit)
         {
             this.waitForUserAgentInit = waitForUserAgentInit;
             return this;
         }
+
         public StatsigOptionsBuilder SetDisableCountryLookup(bool disableCountryLookup)
         {
             this.disableCountryLookup = disableCountryLookup;
             return this;
         }
+
         public StatsigOptionsBuilder SetDisableUserAgentParsing(bool disableUserAgentParsing)
         {
             this.disableUserAgentParsing = disableUserAgentParsing;
             return this;
         }
+
+        public StatsigOptionsBuilder SetDisableNetwork(bool disableNetwork)
+        {
+            this.disableNetwork = disableNetwork;
+            return this;
+        }
+
         public StatsigOptionsBuilder SetDisableAllLogging(bool disableAllLogging)
         {
             this.disableAllLogging = disableAllLogging;

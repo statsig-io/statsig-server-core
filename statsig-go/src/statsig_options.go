@@ -28,6 +28,7 @@ type StatsigOptions struct {
 	IdListsUrl                  *string
 	IdListsSyncIntervalMs       int32
 	DisableAllLogging           *bool
+	DisableNetwork              *bool
 	GlobalCustomFields          *string
 	ObservabilityClientRef      uint64
 	DataStoreRef                uint64
@@ -61,6 +62,7 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForCountryLookupInit)),
 		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForUserAgentInit)),
 		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.EnableIdLists)),
+		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableNetwork)),
 		ResolveDefault(o.statsigOptions.IdListsUrl),
 		C.int(o.statsigOptions.IdListsSyncIntervalMs),
 		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableAllLogging)),
@@ -151,6 +153,11 @@ func (o *StatsigOptionsBuilder) WithWaitForUserAgentInit(value bool) *StatsigOpt
 
 func (o *StatsigOptionsBuilder) WithDisableAllLogging(value bool) *StatsigOptionsBuilder {
 	o.statsigOptions.DisableAllLogging = &value
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithDisableNetwork(value bool) *StatsigOptionsBuilder {
+	o.statsigOptions.DisableNetwork = &value
 	return o
 }
 

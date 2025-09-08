@@ -210,7 +210,7 @@ fn is_cmab_started(cmab: &CMABConfig) -> bool {
 fn apply_random_group<'a>(
     ctx: &mut EvaluatorContext<'a>,
     cmab: &'a CMABConfig,
-    user_hash: Option<usize>,
+    user_hash: Option<u64>,
 ) {
     let group_size = 10000.0 / (cmab.groups.len() as f64);
     let group = match user_hash {

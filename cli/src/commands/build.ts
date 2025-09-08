@@ -66,6 +66,11 @@ export class Build extends CommandBase {
           flags: '-n, --no-docker',
           description: 'Prevent docker from being used',
         },
+        {
+          flags: '-s, --sign',
+          description: 'Sign the binary with minisign',
+          defaultValue: false,
+        },
       ],
       args: [
         {
@@ -103,6 +108,7 @@ export class Build extends CommandBase {
     Log.stepProgress(`For Release: ${options.release}`);
     Log.stepProgress(`Out Directory: ${options.outDir ?? 'Not Specified'}`);
     Log.stepProgress(`Docker: ${options.docker}`);
+    Log.stepProgress(`Sign: ${options.sign}`);
     Log.stepEnd(`Skip Docker Build: ${options.skipDockerBuild}`);
 
     printToolingVersionInfo();

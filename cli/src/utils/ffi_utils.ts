@@ -1,17 +1,21 @@
+import { existsSync, unlinkSync, writeFileSync } from 'fs';
+
+import { BASE_DIR } from '@/utils/file_utils.js';
 import { BuilderOptions } from '@/commands/builders/builder-options.js';
+import { Log } from '@/utils/terminal_utils.js';
+import { execSync } from 'child_process';
 import {
   isLinux,
 } from '@/utils/docker_utils.js';
-import { BASE_DIR } from '@/utils/file_utils.js';
-import { Log } from '@/utils/terminal_utils.js';
-import { execSync } from 'child_process';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
 function useCross(options: BuilderOptions): boolean {
   return isLinux(options.os) || options.target.includes("linux")
 }
 
 function getCrossBaseImageCommand(options: BuilderOptions): string | null {
-  let command = "docker pull --platform linux/amd64 "
+  const command = "docker pull --platform linux/amd64 "
   if (options.target == "aarch64-unknown-linux-gnu") {
     return command + 'ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main-centos'
   } else if (options.target == "x86_64-unknown-linux-gnu") {
@@ -60,6 +64,71 @@ export function detectTarget(options: BuilderOptions): string {
   }
 }
 
+function getBinaryFilename(options: BuilderOptions): string {
+  if (options.os === "macos") {
+    return "libstatsig_ffi.dylib";
+  } else if (options.os === "windows") {
+    return "statsig_ffi.dll";
+  } else {
+    return "libstatsig_ffi.so";
+  }
+}
+
+function signBinary(options: BuilderOptions, outDir: string) {
+  Log.stepBegin(`Signing binary with openssl`);
+  const binName = getBinaryFilename(options);
+  const buildType = options.release ? "release" : "debug";
+  if (outDir.includes('..')) {
+    throw new Error("Invalid directory path");
+  }
+  const cleanOutDir = outDir.replace(/\.\./g, '');
+  const binPath = join(
+    BASE_DIR,
+    "target",
+    cleanOutDir,
+    cleanOutDir,
+    buildType,
+    binName
+  );
+  
+  if (!existsSync(binPath)) {
+    Log.stepEnd(`Cannot sign binary; binary file not found: ${binPath}`, "failure");
+    throw new Error(`Cannot sign binary; binary file not found: ${binPath}`);
+  }
+
+  const pemKey = process.env.OPENSSL_PRIVATE_KEY;
+  if (!pemKey) {
+    Log.stepEnd("OPENSSL_PRIVATE_KEY environment variable not set", "failure");
+    throw new Error("OPENSSL_PRIVATE_KEY environment variable not set");
+  }
+
+  const tmpKeyPath = join(tmpdir(), "private.pem");
+  writeFileSync(tmpKeyPath, pemKey, { mode: 0o600 });
+
+  try {
+    Log.stepProgress(`Binary: ${binPath}`);
+
+    const sigPath = `${binPath}.sig`;
+
+    // Use OpenSSL to sign
+    execSync(
+      `openssl dgst -sha256 -sign "${tmpKeyPath}" -out "${sigPath}" "${binPath}"`,
+      { cwd: BASE_DIR, stdio: "inherit" }
+    );
+
+    Log.stepEnd(`Binary signed successfully -> ${sigPath}`, "success");
+  } catch (error) {
+    Log.stepEnd(`Failed to sign binary: ${error}`, "failure");
+    throw new Error(`Failed to sign binary: ${error}`);
+  } finally {
+    unlinkSync(tmpKeyPath);
+    if (existsSync(tmpKeyPath)) {
+      // eslint-disable-next-line no-unsafe-finally
+      throw new Error("Temp PEM key file still exists after attempted delete");
+    }
+    Log.stepEnd("Cleaned up temp PEM key file", "success");
+  }
+}
 
 export function buildFfiHelper(options: BuilderOptions) {
   if (options.target == null) {
@@ -78,7 +147,7 @@ export function buildFfiHelper(options: BuilderOptions) {
       'CARGO_NET_GIT_FETCH_WITH_CLI=true cargo install cross --git https://github.com/cross-rs/cross',
       getCrossBaseImageCommand(options),
       `${getExtraBuildArgs(options)} cross build ${buildConfigs.join(' ')}`
-    ].filter((v, i) => v != null).join(' &&');
+    ].filter((v) => v != null).join(' &&');
   } else {
     command = [
       'cargo build',
@@ -90,4 +159,8 @@ export function buildFfiHelper(options: BuilderOptions) {
   Log.stepProgress(command);
 
   execSync(command, { cwd: BASE_DIR, stdio: 'inherit' });
+
+  if (options.sign) {
+    signBinary(options, outDir);
+  }
 }
