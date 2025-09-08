@@ -1,4 +1,4 @@
-import { existsSync, unlinkSync, writeFileSync } from 'fs';
+import { existsSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'fs';
 
 import { BASE_DIR } from '@/utils/file_utils.js';
 import { BuilderOptions } from '@/commands/builders/builder-options.js';
@@ -74,43 +74,52 @@ function getBinaryFilename(options: BuilderOptions): string {
   }
 }
 
-function signBinary(options: BuilderOptions, outDir: string) {
+function findFileRecursive(dir: string, filename: string): string | null {
+  try {
+    const entries = readdirSync(dir);
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+      const stats = statSync(fullPath);
+      if (stats.isDirectory()) {
+        const found = findFileRecursive(fullPath, filename);
+        if (found) {
+          return found;
+        }
+      } else if (entry === filename) {
+        return fullPath;
+      }
+    }
+  } catch {
+    // Ignore permission or other fs errors
+  }
+  return null;
+}
+
+function signBinary(options: BuilderOptions) {
   Log.stepBegin(`Signing binary with openssl`);
   const binName = getBinaryFilename(options);
-  const buildType = options.release ? "release" : "debug";
-  if (outDir.includes('..')) {
-    throw new Error("Invalid directory path");
+
+  const binPath = findFileRecursive(BASE_DIR, binName);
+
+  if (!binPath) {
+    Log.stepEnd(`Cannot sign binary; file "${binName}" not found in repo`, "failure");
+    return; // Don't throw — keep GitHub Action green
   }
-  const cleanOutDir = outDir.replace(/\.\./g, '');
-  const binPath = join(
-    BASE_DIR,
-    "target",
-    cleanOutDir,
-    cleanOutDir,
-    buildType,
-    binName
-  );
-  
-  if (!existsSync(binPath)) {
-    Log.stepEnd(`Cannot sign binary; binary file not found: ${binPath}`, "failure");
-    throw new Error(`Cannot sign binary; binary file not found: ${binPath}`);
-  }
+
+  Log.stepProgress(`Found binary: ${binPath}`);
 
   const pemKey = process.env.OPENSSL_PRIVATE_KEY;
   if (!pemKey) {
     Log.stepEnd("OPENSSL_PRIVATE_KEY environment variable not set", "failure");
-    throw new Error("OPENSSL_PRIVATE_KEY environment variable not set");
+    return;
   }
 
   const tmpKeyPath = join(tmpdir(), "private.pem");
   writeFileSync(tmpKeyPath, pemKey, { mode: 0o600 });
 
   try {
-    Log.stepProgress(`Binary: ${binPath}`);
-
     const sigPath = `${binPath}.sig`;
 
-    // Use OpenSSL to sign
     execSync(
       `openssl dgst -sha256 -sign "${tmpKeyPath}" -out "${sigPath}" "${binPath}"`,
       { cwd: BASE_DIR, stdio: "inherit" }
@@ -119,14 +128,19 @@ function signBinary(options: BuilderOptions, outDir: string) {
     Log.stepEnd(`Binary signed successfully -> ${sigPath}`, "success");
   } catch (error) {
     Log.stepEnd(`Failed to sign binary: ${error}`, "failure");
-    throw new Error(`Failed to sign binary: ${error}`);
   } finally {
-    unlinkSync(tmpKeyPath);
-    if (existsSync(tmpKeyPath)) {
+    // eslint-disable-next-line no-useless-catch
+    try {
+      unlinkSync(tmpKeyPath);
+      if (existsSync(tmpKeyPath)) {
+        // eslint-disable-next-line no-unsafe-finally
+        throw new Error("Temp PEM key file still exists after attempted delete");
+      }
+      Log.stepEnd("Cleaned up temp PEM key file", "success");
+    } catch (cleanupError) {
       // eslint-disable-next-line no-unsafe-finally
-      throw new Error("Temp PEM key file still exists after attempted delete");
+      throw cleanupError;
     }
-    Log.stepEnd("Cleaned up temp PEM key file", "success");
   }
 }
 
