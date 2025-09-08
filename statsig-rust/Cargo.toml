@@ -14,7 +14,7 @@ async-trait = "0.1.81"
 base64 = "0.22.1"
 chrono = "0.4.40"
 dashmap = "6.1.0"
-file-guard = "0.2.0"
+file-guard = { version = "0.2.0", optional = true }
 flate2 = "1.0.35"
 futures = "0.3.30"
 lazy-regex = "3.4.1"
@@ -56,9 +56,10 @@ libc = "0.2"
 serial_test = "3.2.0"
 
 [features]
-default = ["reqwest"]
+default = ["reqwest", "with_local_file_logging_adapter"]
 custom_network_provider = []
 with_grpc = ["sigstat-grpc"]
 testing = []
 with_zstd = []
 with_shared_dict_compression = []
+with_local_file_logging_adapter = ["file-guard"]

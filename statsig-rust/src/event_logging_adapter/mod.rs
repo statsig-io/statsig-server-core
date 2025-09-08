@@ -1,7 +1,9 @@
 pub use event_logging_adapter_trait::*;
 pub use statsig_http_event_logging_adapter::StatsigHttpEventLoggingAdapter;
+#[cfg(feature = "with_local_file_logging_adapter")]
 pub use statsig_local_file_event_logging_adapter::StatsigLocalFileEventLoggingAdapter;
 pub mod event_logging_adapter_trait;
 pub mod log_event_payload;
 pub mod statsig_http_event_logging_adapter;
+#[cfg(feature = "with_local_file_logging_adapter")]
 pub mod statsig_local_file_event_logging_adapter;
