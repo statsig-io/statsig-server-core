@@ -12,10 +12,12 @@ use crate::{
     log_d, log_e, StatsigErr, StatsigHttpEventLoggingAdapter, StatsigOptions, StatsigRuntime,
 };
 use async_trait::async_trait;
-use file_guard::Lock;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+
+#[cfg(feature = "legacy_file_locking")]
+use file_guard::Lock;
 
 const TAG: &str = stringify!(StatsigLocalFileEventLoggingAdapter);
 #[derive(Serialize, Deserialize)]
@@ -109,17 +111,19 @@ fn read_and_clear_file(file_path: &str) -> Result<Option<String>, StatsigErr> {
         .open(file_path)
         .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
-    let mut lock = file_guard::lock(&mut file, Lock::Exclusive, 0, 1)
+    #[cfg(feature = "legacy_file_locking")] // rust 1.88 and below
+    let mut file = file_guard::lock(&mut file, Lock::Exclusive, 0, 1)
         .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
+    #[cfg(not(feature = "legacy_file_locking"))] // rust 1.89+
+    file.lock().map_err(|e| StatsigErr::FileError(e.to_string()))?;
+
     let mut file_contents = String::new();
-    (*lock)
-        .read_to_string(&mut file_contents)
+    file.read_to_string(&mut file_contents)
         .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
     // Truncate the file to clear its contents
-    (*lock)
-        .set_len(0)
+    file.set_len(0)
         .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
     Ok(Some(file_contents))
@@ -210,16 +214,20 @@ impl EventLoggingAdapter for StatsigLocalFileEventLoggingAdapter {
         let json = request.payload.events.to_string();
 
         let mut file = std::fs::OpenOptions::new()
+            .read(true) // for Windows; see <https://doc.rust-lang.org/1.89.0/std/fs/struct.File.html#method.lock>
             .append(true)
             .create(true)
             .open(&self.file_path)
             .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
-        let mut lock = file_guard::lock(&mut file, Lock::Exclusive, 0, 1)
+        #[cfg(feature = "legacy_file_locking")] // rust 1.88 and below
+        let mut file = file_guard::lock(&mut file, Lock::Exclusive, 0, 1)
             .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
-        (*lock)
-            .write_all(format!("{json}\n").as_bytes())
+        #[cfg(not(feature = "legacy_file_locking"))] // rust 1.89+
+        file.lock().map_err(|e| StatsigErr::FileError(e.to_string()))?;
+
+        file.write_all(format!("{json}\n").as_bytes())
             .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
         Ok(true)
