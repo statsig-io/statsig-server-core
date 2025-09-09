@@ -1,11 +1,13 @@
 [package]
 name = "statsig-rust"
 description = "Statsig Rust SDK for usage in multi-user server environments."
-edition.workspace = true
-license.workspace = true
-version.workspace = true
-homepage.workspace = true
-repository.workspace = true
+edition = { workspace = true }
+license = { workspace = true }
+version = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+authors = { workspace = true }
+readme = { workspace = true }
 
 [dependencies]
 arc-swap = "1.7.1"

@@ -1,13 +1,13 @@
 [package]
 name = "statsig-pyo3"
 description = "Statsig Python bindings for the Statsig Core SDK."
-edition.workspace = true
-license.workspace = true
-version.workspace = true
-authors.workspace = true
-readme.workspace = true
-homepage.workspace = true
-repository.workspace = true
+edition = { workspace = true }
+license = { workspace = true }
+version = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+authors = { workspace = true }
+readme = { workspace = true }
 
 [lib]
 name = "statsig_python_core"
