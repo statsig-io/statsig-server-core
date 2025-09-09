@@ -32,7 +32,7 @@ jobs:
       - name: Check For Changes
         run: |
           last_commit_message=$(git log -1 --pretty=%B)
-          if [[ "$last_commit_message" == "[automated] chore: bump version to"* ]]; then
+          if echo "$last_commit_message" | grep -qE '^\[automated\] chore: bump version to .*-beta\..*'; then
             echo "No changes since last version bump"
             exit 1
           fi
