@@ -32,7 +32,7 @@ reqwest = { version = "0.12.14", features = [
 ], optional = true, default-features = false }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_derive = { version = "1.0.204", features = ["deserialize_in_place"] }
-serde_json = { version = "1.0.125", features = [
+serde_json = { version = "1.0.143", features = [
     "float_roundtrip",
     "raw_value",
 ] }

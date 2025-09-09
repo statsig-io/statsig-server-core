@@ -72,10 +72,7 @@ fn get_memo_len() -> usize {
 
     for (key, value) in memo.iter() {
         let value = value.upgrade().unwrap();
-        println!(
-            "{}: RawValue({:?}), Bool({:?}), Json({:?})",
-            key, value.raw_value, value.bool_value, value.json_value
-        );
+        println!("{}: RawValue({:?})", key, value.raw_value);
     }
 
     memo.len()

@@ -61,6 +61,36 @@ async fn test_individual_gate_checks() {
 }
 
 #[tokio::test]
+async fn test_individual_experiment_gets() {
+    let (_, statsig, _) = setup().await;
+
+    let exp_name = "experiment_with_many_params";
+    let start = Instant::now();
+
+    let mut result = None;
+    let mut durations: Vec<f64> = Vec::new();
+    for i in 0..100000 {
+        let user = StatsigUser::with_user_id(format!("{i}"));
+        let local_start = Instant::now();
+        let exp = statsig.get_experiment(&user, exp_name);
+        let local_duration = local_start.elapsed();
+        durations.push(local_duration.as_secs_f64() * 1000.0);
+        result = Some(exp);
+    }
+
+    let duration = start.elapsed();
+    println!("Result {}", result.unwrap().rule_id);
+    let duration_str = format!("{:.2}", duration.as_secs_f64() * 1000.0);
+    println!("Duration {}", duration_str);
+
+    durations.sort_by(|a, b| b.partial_cmp(a).unwrap());
+    let p99_duration = durations[990];
+    println!("P99 Duration {}", p99_duration);
+
+    statsig.shutdown().await.unwrap();
+}
+
+#[tokio::test]
 async fn test_all_gate_checks() {
     let (user, statsig, _) = setup().await;
 
