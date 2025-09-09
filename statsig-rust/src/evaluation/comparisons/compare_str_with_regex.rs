@@ -1,6 +1,9 @@
-use crate::{evaluation::evaluator_value::EvaluatorValue, unwrap_or_return, DynamicValue};
+use crate::{evaluation::evaluator_value::MemoizedEvaluatorValue, unwrap_or_return, DynamicValue};
 
-pub(crate) fn compare_str_with_regex(value: &DynamicValue, regex_value: &EvaluatorValue) -> bool {
+pub(crate) fn compare_str_with_regex(
+    value: &DynamicValue,
+    regex_value: &MemoizedEvaluatorValue,
+) -> bool {
     let value_str = unwrap_or_return!(&value.string_value, false);
     let regex = unwrap_or_return!(&regex_value.regex_value, false);
     regex.is_match(&value_str.value)

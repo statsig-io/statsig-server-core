@@ -1,6 +1,10 @@
-use crate::{evaluation::evaluator_value::EvaluatorValue, unwrap_or_return, DynamicValue};
+use crate::{evaluation::evaluator_value::MemoizedEvaluatorValue, unwrap_or_return, DynamicValue};
 
-pub(crate) fn compare_versions(left: &DynamicValue, right: &EvaluatorValue, op: &str) -> bool {
+pub(crate) fn compare_versions(
+    left: &DynamicValue,
+    right: &MemoizedEvaluatorValue,
+    op: &str,
+) -> bool {
     let left_dyn_str = unwrap_or_return!(&left.string_value, false);
     let right_dyn_str = unwrap_or_return!(&right.string_value, false);
 

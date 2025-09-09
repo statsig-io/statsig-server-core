@@ -1,7 +1,7 @@
-use crate::{evaluation::evaluator_value::EvaluatorValue, unwrap_or_return, DynamicValue};
+use crate::{evaluation::evaluator_value::MemoizedEvaluatorValue, unwrap_or_return, DynamicValue};
 use chrono::Duration;
 
-pub(crate) fn compare_time(left: &DynamicValue, right: &EvaluatorValue, op: &str) -> bool {
+pub(crate) fn compare_time(left: &DynamicValue, right: &MemoizedEvaluatorValue, op: &str) -> bool {
     let raw_left_ts = unwrap_or_return!(left.timestamp_value.or(left.int_value), false);
     let mut left_ts = raw_left_ts;
     if left_ts < 1_000_000_000_000 {

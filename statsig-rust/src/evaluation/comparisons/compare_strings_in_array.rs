@@ -1,11 +1,11 @@
 use crate::{
-    evaluation::{dynamic_string::DynamicString, evaluator_value::EvaluatorValue},
+    evaluation::{dynamic_string::DynamicString, evaluator_value::MemoizedEvaluatorValue},
     unwrap_or_return, DynamicValue,
 };
 
 pub(crate) fn compare_strings_in_array(
     value: &DynamicValue,
-    target_value: &EvaluatorValue,
+    target_value: &MemoizedEvaluatorValue,
     op: &str,
     ignore_case: bool,
 ) -> bool {

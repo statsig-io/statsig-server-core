@@ -1,6 +1,10 @@
-use crate::{evaluation::evaluator_value::EvaluatorValue, unwrap_or_return, DynamicValue};
+use crate::{evaluation::evaluator_value::MemoizedEvaluatorValue, unwrap_or_return, DynamicValue};
 
-pub(crate) fn compare_numbers(left: &DynamicValue, right: &EvaluatorValue, op: &str) -> bool {
+pub(crate) fn compare_numbers(
+    left: &DynamicValue,
+    right: &MemoizedEvaluatorValue,
+    op: &str,
+) -> bool {
     let left_num = unwrap_or_return!(left.float_value, false);
     let right_num = unwrap_or_return!(right.float_value, false);
 

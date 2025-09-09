@@ -1,21 +1,115 @@
 use chrono::{DateTime, NaiveDateTime};
+use parking_lot::Mutex;
 use regex::Regex;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::{Value as JsonValue, Value};
-use std::collections::HashMap;
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::{value::RawValue, Value as JsonValue, Value};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Weak},
+    time::Duration,
+};
 
-use crate::{unwrap_or_return, DynamicValue};
+use crate::{hashing, log_e, unwrap_or_return, DynamicValue};
 
 use super::dynamic_string::DynamicString;
 
-#[macro_export]
-macro_rules! test_only_make_eval_value {
-    ($x:expr) => {
-        $crate::evaluation::evaluator_value::EvaluatorValue::from(serde_json::json!($x))
+const TAG: &str = "EvaluatorValue";
+
+lazy_static::lazy_static! {
+    pub(crate) static ref MEMOIZED_VALUES: Mutex<HashMap<u64, Weak<MemoizedEvaluatorValue>>> =
+        Mutex::new(HashMap::new());
+
+    pub(crate) static ref EMPTY_EVALUATOR_VALUE: EvaluatorValue = EvaluatorValue {
+        hash: 0,
+        inner: Arc::new(MemoizedEvaluatorValue::new(EvaluatorValueType::Null)),
     };
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug)]
+pub struct EvaluatorValue {
+    pub hash: u64,
+    pub inner: Arc<MemoizedEvaluatorValue>,
+}
+
+impl EvaluatorValue {
+    pub fn empty() -> &'static Self {
+        &EMPTY_EVALUATOR_VALUE
+    }
+
+    pub fn compile_regex(&mut self) {
+        let mut_inner = Arc::make_mut(&mut self.inner);
+        mut_inner.compile_regex();
+    }
+}
+
+impl<'de> Deserialize<'de> for EvaluatorValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw_value_ref: &'de RawValue = Deserialize::deserialize(deserializer)?;
+
+        let raw_value_str = raw_value_ref.get();
+        let hash = hashing::hash_one(raw_value_str);
+
+        if let Some(value) = get_memoized_value(hash) {
+            return Ok(EvaluatorValue { hash, inner: value });
+        }
+
+        let value: MemoizedEvaluatorValue = serde_json::from_str(raw_value_str).map_err(|e| {
+            de::Error::custom(format!("Failed to deserialize EvaluatorValue: {}", e))
+        })?;
+
+        let value_arc = Arc::new(value);
+        set_memoized_value(hash, Arc::downgrade(&value_arc));
+
+        Ok(EvaluatorValue {
+            hash,
+            inner: value_arc,
+        })
+    }
+}
+
+impl Serialize for EvaluatorValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.inner.serialize(serializer)
+    }
+}
+
+impl PartialEq for EvaluatorValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+    }
+}
+
+impl Drop for EvaluatorValue {
+    fn drop(&mut self) {
+        let mut memo = match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(5)) {
+            Some(values) => values,
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to lock memoized values: Failed to lock MEMOIZED_VALUES"
+                );
+                return;
+            }
+        };
+
+        let found = match memo.get(&self.hash) {
+            Some(value) => value,
+            None => return,
+        };
+
+        if found.strong_count() == 1 {
+            memo.remove(&self.hash);
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum EvaluatorValueType {
     Null,
 
@@ -26,8 +120,8 @@ pub enum EvaluatorValueType {
     Object,
 }
 
-#[derive(Debug)]
-pub struct EvaluatorValue {
+#[derive(Debug, Clone)]
+pub struct MemoizedEvaluatorValue {
     pub value_type: EvaluatorValueType,
     pub bool_value: Option<bool>,
     pub float_value: Option<f64>,
@@ -39,7 +133,7 @@ pub struct EvaluatorValue {
     pub object_value: Option<HashMap<String, DynamicString>>,
 }
 
-impl EvaluatorValue {
+impl MemoizedEvaluatorValue {
     pub fn new(value_type: EvaluatorValueType) -> Self {
         Self {
             value_type,
@@ -129,34 +223,34 @@ impl EvaluatorValue {
 
 // Used during evaluation:
 // - ua_parser
-impl From<String> for EvaluatorValue {
+impl From<String> for MemoizedEvaluatorValue {
     fn from(value: String) -> Self {
-        EvaluatorValue {
+        MemoizedEvaluatorValue {
             timestamp_value: try_parse_timestamp(&value),
             float_value: value.parse::<f64>().ok(),
             string_value: Some(DynamicString::from(value)),
-            ..EvaluatorValue::new(EvaluatorValueType::String)
+            ..MemoizedEvaluatorValue::new(EvaluatorValueType::String)
         }
     }
 }
 
 // Used during Deserialization
-impl From<JsonValue> for EvaluatorValue {
+impl From<JsonValue> for MemoizedEvaluatorValue {
     fn from(value: JsonValue) -> Self {
         match value {
-            JsonValue::Null => EvaluatorValue::new(EvaluatorValueType::Null),
+            JsonValue::Null => MemoizedEvaluatorValue::new(EvaluatorValueType::Null),
 
-            JsonValue::Bool(b) => EvaluatorValue {
+            JsonValue::Bool(b) => MemoizedEvaluatorValue {
                 bool_value: Some(b),
-                ..EvaluatorValue::new(EvaluatorValueType::Bool)
+                ..MemoizedEvaluatorValue::new(EvaluatorValueType::Bool)
             },
 
-            JsonValue::Number(n) => EvaluatorValue {
+            JsonValue::Number(n) => MemoizedEvaluatorValue {
                 float_value: n.as_f64(),
-                ..EvaluatorValue::new(EvaluatorValueType::Number)
+                ..MemoizedEvaluatorValue::new(EvaluatorValueType::Number)
             },
 
-            JsonValue::String(s) => EvaluatorValue::from(s),
+            JsonValue::String(s) => MemoizedEvaluatorValue::from(s),
 
             JsonValue::Array(arr) => {
                 let keyed_array: HashMap<String, (usize, String)> = arr
@@ -172,25 +266,25 @@ impl From<JsonValue> for EvaluatorValue {
                     })
                     .collect();
 
-                EvaluatorValue {
+                MemoizedEvaluatorValue {
                     array_value: Some(keyed_array),
-                    ..EvaluatorValue::new(EvaluatorValueType::Array)
+                    ..MemoizedEvaluatorValue::new(EvaluatorValueType::Array)
                 }
             }
 
-            JsonValue::Object(obj) => EvaluatorValue {
+            JsonValue::Object(obj) => MemoizedEvaluatorValue {
                 object_value: Some(
                     obj.into_iter()
                         .map(|(k, v)| (k, DynamicString::from(v)))
                         .collect(),
                 ),
-                ..EvaluatorValue::new(EvaluatorValueType::Object)
+                ..MemoizedEvaluatorValue::new(EvaluatorValueType::Object)
             },
         }
     }
 }
 
-impl Serialize for EvaluatorValue {
+impl Serialize for MemoizedEvaluatorValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -219,17 +313,17 @@ impl Serialize for EvaluatorValue {
     }
 }
 
-impl<'de> Deserialize<'de> for EvaluatorValue {
+impl<'de> Deserialize<'de> for MemoizedEvaluatorValue {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         let json_value = JsonValue::deserialize(deserializer)?;
-        Ok(EvaluatorValue::from(json_value))
+        Ok(MemoizedEvaluatorValue::from(json_value))
     }
 }
 
-impl PartialEq for EvaluatorValue {
+impl PartialEq for MemoizedEvaluatorValue {
     fn eq(&self, other: &Self) -> bool {
         self.value_type == other.value_type
             && self.bool_value == other.bool_value
@@ -254,4 +348,48 @@ fn try_parse_timestamp(s: &str) -> Option<i64> {
     }
 
     None
+}
+
+#[macro_export]
+macro_rules! test_only_make_eval_value {
+    ($x:expr) => {
+        $crate::evaluation::evaluator_value::MemoizedEvaluatorValue::from(serde_json::json!($x))
+    };
+}
+
+fn get_memoized_value(hash: u64) -> Option<Arc<MemoizedEvaluatorValue>> {
+    let mut memoized_values = match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(5)) {
+        Some(values) => values,
+        None => {
+            log_e!(
+                TAG,
+                "Failed to lock memoized values: Failed to lock MEMOIZED_VALUES"
+            );
+            return None;
+        }
+    };
+
+    let found = memoized_values.get(&hash)?;
+
+    match found.upgrade() {
+        Some(value) => Some(value),
+        None => {
+            memoized_values.remove(&hash);
+            None
+        }
+    }
+}
+
+fn set_memoized_value(hash: u64, value: Weak<MemoizedEvaluatorValue>) {
+    match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(5)) {
+        Some(mut values) => {
+            values.insert(hash, value);
+        }
+        None => {
+            log_e!(
+                TAG,
+                "Failed to lock memoized values: Failed to lock MEMOIZED_VALUES"
+            );
+        }
+    };
 }

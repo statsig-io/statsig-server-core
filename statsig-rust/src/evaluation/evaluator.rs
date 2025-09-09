@@ -10,7 +10,7 @@ use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator_context::EvaluatorContext;
-use crate::evaluation::evaluator_value::{EvaluatorValue, EvaluatorValueType};
+use crate::evaluation::evaluator_value::{EvaluatorValue, MemoizedEvaluatorValue};
 use crate::evaluation::get_unit_id::get_unit_id;
 use crate::evaluation::user_agent_parsing::UserAgentParser;
 use crate::event_logging::exposable_string;
@@ -25,8 +25,6 @@ pub struct Evaluator;
 
 lazy_static! {
     static ref EMPTY_STR: String = String::new();
-    static ref EMPTY_EVALUATOR_VALUE: EvaluatorValue =
-        EvaluatorValue::new(EvaluatorValueType::Null);
     static ref EMPTY_DYNAMIC_VALUE: DynamicValue = DynamicValue::new();
 }
 
@@ -303,7 +301,8 @@ fn evaluate_condition<'a>(
     let target_value = condition
         .target_value
         .as_ref()
-        .unwrap_or(&EMPTY_EVALUATOR_VALUE);
+        .map(|v| v.inner.as_ref())
+        .unwrap_or(EvaluatorValue::empty().inner.as_ref());
     let condition_type = &condition.condition_type;
 
     let value: &DynamicValue = match condition_type as &str {
@@ -417,7 +416,7 @@ fn evaluate_condition<'a>(
 fn evaluate_id_list(
     ctx: &mut EvaluatorContext<'_>,
     op: &str,
-    target_value: &EvaluatorValue,
+    target_value: &MemoizedEvaluatorValue,
     value: &DynamicValue,
 ) -> bool {
     let list_name = unwrap_or_return!(&target_value.string_value, false);
@@ -440,7 +439,7 @@ fn evaluate_id_list(
 
 fn evaluate_nested_gate<'a>(
     ctx: &mut EvaluatorContext<'a>,
-    target_value: &'a EvaluatorValue,
+    target_value: &'a MemoizedEvaluatorValue,
     condition_type: &'a String,
 ) -> Result<(), StatsigErr> {
     let gate_name = if let Some(name) = target_value.string_value.as_ref() {
