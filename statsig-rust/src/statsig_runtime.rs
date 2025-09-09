@@ -205,7 +205,7 @@ pub fn create_new_runtime() -> Runtime {
         .thread_name("statsig")
         .enable_all()
         .build()
-        .expect("Failed to create a tokio Runtime");
+        .expect("Failed to create a tokio Runtime (single-threaded for wasm");
 }
 
 fn remove_join_handle_with_id(
