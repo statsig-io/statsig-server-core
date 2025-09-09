@@ -35,24 +35,24 @@ jobs:
           git config user.name "Xin Li (Bot)"
           git config user.email ${{ secrets.XIN_GH_EMAIL }}
     
-      - name: Sync stable with main branch
+      - name: Sync rc branch with main branch
         run: |
-            git fetch origin stable
+            git fetch origin rc
             git fetch origin main
-            git checkout stable 
-            git merge origin/main -X theirs -m "[Auto] Sync stable with Main"
+            git checkout rc 
+            git merge origin/main -X theirs -m "[automated] Sync rc with Main"
             git push 
             ./tore merge-to-main
 
       - name: Bump Version In Beta
         id: bump_version
-        run: git checkout stable &&
+        run: git checkout rc &&
             ./tore bump-version --create-branch --rc
 
       - name: Merge Version Bump Changes to Stable
         run: |
-            git fetch origin stable
-            git checkout stable 
+            git fetch origin rc
+            git checkout rc 
             git fetch origin ${{ steps.bump_version.outputs.version_branch }}
             git merge origin/${{ steps.bump_version.outputs.version_branch }}
             git push
