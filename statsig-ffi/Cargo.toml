@@ -1,13 +1,13 @@
 [package]
 name = "statsig_ffi"
 description = "Statsig FFI bindings for the Statsig Core SDK."
-edition = { workspace = true }
-license = { workspace = true }
-version = { workspace = true }
-homepage = { workspace = true }
-repository = { workspace = true }
-authors = { workspace = true }
-readme = { workspace = true }
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+authors.workspace = true
+readme.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [dependencies]
 statsig-rust = { path = "../statsig-rust" }

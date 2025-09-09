@@ -1,10 +1,8 @@
 [package]
 name = "statsig_elixir"
-edition = { workspace = true }
-license = { workspace = true }
-version = { workspace = true }
-homepage = { workspace = true }
-repository = { workspace = true }
+version.workspace = true
+authors = []
+edition = "2021"
 
 [lib]
 name = "statsig_elixir"

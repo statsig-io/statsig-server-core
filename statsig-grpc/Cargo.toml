@@ -1,13 +1,13 @@
 [package]
 name = "sigstat-grpc"
 description = "Statsig with gRPC support."
-edition = { workspace = true }
-license = { workspace = true }
-version = { workspace = true }
-homepage = { workspace = true }
-repository = { workspace = true }
-authors = { workspace = true }
-readme = { workspace = true }
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+authors.workspace = true
+readme.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [dependencies]
 tokio = { version = "1.39.1", features = ["full"] }
