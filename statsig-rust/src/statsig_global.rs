@@ -17,7 +17,7 @@ impl StatsigGlobal {
     pub fn get() -> Arc<StatsigGlobal> {
         let ptr = ONCE.get_or_init(|| ArcSwap::from_pointee(StatsigGlobal::new()));
 
-        if ptr.load().pid != std::process::id() {
+        if ptr.load().pid != current_pid() {
             ptr.store(Arc::new(StatsigGlobal::new()));
         }
 
@@ -43,7 +43,16 @@ impl StatsigGlobal {
     fn new() -> Self {
         Self {
             tokio_runtime: Mutex::new(None),
-            pid: std::process::id(),
+            pid: current_pid(),
         }
     }
+}
+
+#[inline]
+fn current_pid() -> u32 {
+    #[cfg(not(target_family = "wasm"))]
+    return std::process::id();
+
+    #[cfg(target_family = "wasm")]
+    return 0;
 }
