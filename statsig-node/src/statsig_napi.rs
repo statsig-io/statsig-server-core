@@ -437,4 +437,21 @@ impl StatsigNapiInternal {
     pub fn get_parameter_store_list(&self) -> Vec<String> {
         self.inner.get_parameter_store_list()
     }
+
+    #[napi]
+    pub fn __get_parsed_user_agent_value_for_user(
+        &self,
+        user: &StatsigUser,
+    ) -> Option<HashMap<String, Option<String>>> {
+        self.inner
+            .__get_parsed_user_agent_value(user.as_inner())
+            .map(|v| {
+                HashMap::from([
+                    ("os_name".to_string(), v.os_name),
+                    ("os_version".to_string(), v.os_version),
+                    ("browser_name".to_string(), v.browser_name),
+                    ("browser_version".to_string(), v.browser_version),
+                ])
+            })
+    }
 }

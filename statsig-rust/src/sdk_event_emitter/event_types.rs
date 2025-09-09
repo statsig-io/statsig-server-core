@@ -50,7 +50,7 @@ pub enum SdkEvent<'a> {
     },
 }
 
-impl<'a> SdkEvent<'a> {
+impl SdkEvent<'_> {
     pub const ALL: &'static str = "*";
     pub const GATE_EVALUATED: &'static str = "gate_evaluated";
     pub const DYNAMIC_CONFIG_EVALUATED: &'static str = "dynamic_config_evaluated";
