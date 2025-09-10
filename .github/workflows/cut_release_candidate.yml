@@ -40,7 +40,7 @@ jobs:
             git fetch origin rc
             git fetch origin main
             git checkout rc 
-            git merge origin/main -X theirs -m "[automated] Sync rc with Main"
+            git merge origin/main -X theirs -m "Sync rc with Main"
             git push 
             ./tore merge-to-main
 
