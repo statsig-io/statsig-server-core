@@ -87,6 +87,7 @@ export declare class StatsigNapiInternal {
   getDynamicConfigList(): Array<string>
   getExperimentList(): Array<string>
   getParameterStoreList(): Array<string>
+  getParsedUserAgentValueForUser(user: StatsigUser): Record<string, string | undefined | null> | null
 }
 
 export declare class StatsigUser {
