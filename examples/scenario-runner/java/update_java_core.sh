@@ -20,9 +20,12 @@ FULL_URL="${BASE_URL}?${QUERY_STRING}"
 
 RESULT=$(curl --location "$FULL_URL" --header 'accept: application/json')
 
-LATEST_VERSION=$(echo $RESULT | jq -r '.components | sort_by(.publishedEpochMillis) | .[-1].version')
+LATEST_VERSION=$(echo $RESULT | jq -r '.components | map(select(.version | contains("-beta"))) | sort_by(.publishedEpochMillis) | .[-1].version')
 
-echo "Latest version: ${LATEST_VERSION}"
+echo "Latest beta version: ${LATEST_VERSION}"
 
 # Replace all occurrences of 'com.statsig:javacore:+' with 'com.statsig:javacore:${LATEST_VERSION}' in build.gradle
 sed -i  "s/com.statsig:javacore:+/com.statsig:javacore:${LATEST_VERSION}/g" build.gradle
+
+echo "-------------------------------- BUILD GRADLE --------------------------------"
+cat build.gradle
