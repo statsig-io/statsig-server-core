@@ -18,7 +18,7 @@ use tokio::sync::Notify;
 use tokio::time::sleep;
 
 const DEFAULT_CDN_ID_LISTS_MANIFEST_URL: &str = "https://api.statsigcdn.com/v1/get_id_lists";
-const DEFAULT_ID_LIST_SYNC_INTERVAL_MS: u32 = 10_000;
+const DEFAULT_ID_LIST_SYNC_INTERVAL_MS: u32 = 60_000;
 
 type IdListsResponse = HashMap<String, IdListMetadata>;
 
