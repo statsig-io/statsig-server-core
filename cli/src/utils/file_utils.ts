@@ -1,11 +1,11 @@
-import AdmZip from 'adm-zip';
 import { existsSync, mkdirSync, rmSync, statSync } from 'fs';
-import { glob } from 'glob';
 import fs, { readdirSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'url';
 
+import AdmZip from 'adm-zip';
 import { Log } from './terminal_utils.js';
+import { fileURLToPath } from 'url';
+import { glob } from 'glob';
+import path from 'node:path';
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
@@ -119,7 +119,7 @@ export function unzipFiles(
     keepFiles?: boolean;
   },
 ) {
-  Log.stepBegin('Unzipping files');
+  Log.stepBegin('Unzipping files, # of files: ' + files.length);
 
   files.forEach((file) => {
     const filepath = path.resolve(file);

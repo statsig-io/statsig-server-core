@@ -220,9 +220,18 @@ export function mapAssetsToTargets(workingDir: string) {
     ...listFiles(workingDir, '**/target/**/release/*.so.sig'),
     ...listFiles(workingDir, '**/target/**/release/*.dll.sig'),
   ];
+  
+  Log.stepProgress('signatures:');
+  signatures.forEach((signature) => {
+    Log.stepProgress(signature);
+  });
+  Log.stepProgress('binaries:');
+  binaries.forEach((binary) => {
+    Log.stepProgress(binary);
+  });
 
   let allAssetsMapped = true;
-  const mappedAssets: AssetConfig[] = [...binaries, ...signatures].map((file) => {
+  const mappedAssets: AssetConfig[] = [...signatures, ...binaries].map((file) => {
     const found = targets.find((t) => file.includes(t));
     if (!found) {
       Log.stepProgress(`No matching asset found for ${file}`, 'failure');

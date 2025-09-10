@@ -74,35 +74,41 @@ function getBinaryFilename(options: BuilderOptions): string {
   }
 }
 
-function findFileRecursive(dir: string, filename: string): string | null {
-  try {
-    const entries = readdirSync(dir);
-    for (const entry of entries) {
-      const fullPath = join(dir, entry);
-      const stats = statSync(fullPath);
-      if (stats.isDirectory()) {
-        const found = findFileRecursive(fullPath, filename);
-        if (found) {
-          return found;
-        }
-      } else if (entry === filename) {
-        return fullPath;
-      }
-    }
-  } catch {
-    // Ignore permission or other fs errors
-  }
-  return null;
-}
-
-function signBinary(options: BuilderOptions) {
+function signBinary(options: BuilderOptions, outDir: string) {
   Log.stepBegin(`Signing binary with openssl`);
   const binName = getBinaryFilename(options);
-
-  const binPath = findFileRecursive(BASE_DIR, binName);
-
+  const buildType = options.release ? "release" : "debug";
+  
+  if (outDir.includes('..')) {
+    throw new Error("Invalid directory path");
+  }
+  
+  const cleanOutDir = outDir.replace(/\.\./g, '');
+  
+  // Check both possible binary paths
+  const binPath1 = join(
+    BASE_DIR,
+    "target",
+    cleanOutDir,
+    buildType,
+    binName
+  );
+  
+  const binPath2 = join(
+    BASE_DIR,
+    "target",
+    cleanOutDir,
+    cleanOutDir,
+    buildType,
+    binName
+  );
+  
+  // Use whichever path exists
+  const binPath = existsSync(binPath1) ? binPath1 : 
+                  existsSync(binPath2) ? binPath2 : null;
+  
   if (!binPath) {
-    Log.stepEnd(`Cannot sign binary; file "${binName}" not found in repo`, "failure");
+    Log.stepEnd(`Cannot sign binary; file "${binName}" not found in either path: ${binPath1} or ${binPath2}`, "failure");
     return; // Don't throw — keep GitHub Action green
   }
 
