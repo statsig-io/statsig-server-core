@@ -13,6 +13,7 @@ env:
   FORCE_COLOR: true
   test_api_key: ${{ secrets.KONG_SERVER_SDK_KEY }}
   test_client_key: ${{ secrets.KONG_CLIENT_SDK_KEY }}
+  KONG_OPS_SDK_KEY: ${{ secrets.BENCH_CLUSTER_SDK_KEY }}
 
 jobs:
   build:

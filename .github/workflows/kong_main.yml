@@ -8,6 +8,7 @@ env:
   test_client_key: ${{ secrets.KONG_CLIENT_SDK_KEY }}
   REPO_PAT: ${{ secrets.KONG_FINE_GRAINED_REPO_PAT }}
   FORCE_COLOR: true
+  KONG_OPS_SDK_KEY: ${{ secrets.BENCH_CLUSTER_SDK_KEY }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
