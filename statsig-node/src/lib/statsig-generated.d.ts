@@ -168,6 +168,7 @@ export interface FeatureGate {
   value: boolean
   ruleID: string
   idType: string
+  details: EvaluationDetails
 }
 
 export interface FeatureGateEvaluationOptions {

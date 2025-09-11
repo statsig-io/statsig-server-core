@@ -55,6 +55,7 @@ pub struct FeatureGate {
     #[napi(js_name = "ruleID")]
     pub rule_id: String,
     pub id_type: String,
+    pub details: EvaluationDetails,
 }
 
 impl From<FeatureGateActual> for FeatureGate {
@@ -64,6 +65,7 @@ impl From<FeatureGateActual> for FeatureGate {
             value: feature_gate.value,
             rule_id: feature_gate.rule_id,
             id_type: feature_gate.id_type,
+            details: feature_gate.details.into(),
         }
     }
 }
