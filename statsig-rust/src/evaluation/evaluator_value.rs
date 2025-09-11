@@ -5,7 +5,7 @@ use serde_json::{value::RawValue, Value as JsonValue, Value};
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 use crate::{
-    impl_interned_value, interned_value_store::FromRawValue, unwrap_or_return, DynamicValue,
+    impl_interned_value, interned_value_store::FromRawValue, log_e, unwrap_or_return, DynamicValue,
 };
 
 use super::dynamic_string::DynamicString;
@@ -16,6 +16,8 @@ lazy_static::lazy_static! {
         inner: Arc::new(MemoizedEvaluatorValue::new(EvaluatorValueType::Null)),
     };
 }
+
+const TAG: &str = "EvaluatorValue";
 
 #[derive(Clone, Debug)]
 pub struct EvaluatorValue {
@@ -88,7 +90,17 @@ pub struct MemoizedEvaluatorValue {
 
 impl FromRawValue for MemoizedEvaluatorValue {
     fn from_raw_value(raw_value: Cow<'_, RawValue>) -> Self {
-        serde_json::from_str(raw_value.get()).unwrap()
+        match serde_json::from_str(raw_value.get()) {
+            Ok(value) => value,
+            Err(e) => {
+                log_e!(
+                    TAG,
+                    "Failed to convert raw value to MemoizedEvaluatorValue: {}",
+                    e
+                );
+                Self::null()
+            }
+        }
     }
 }
 
