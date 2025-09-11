@@ -114,14 +114,14 @@ function isMusl($os)
 function download_binary($system_info)
 {
     $binary_map = [
-        "macos-aarch64" => "statsig-ffi-" . VERSION . "-aarch64-apple-darwin-shared.zip",
-        "macos-x86_64" => "statsig-ffi-" . VERSION . "-x86_64-apple-darwin-shared.zip",
+        "macos-aarch64" => "statsig-ffi-" . VERSION . "-aarch64-apple-darwin.zip",
+        "macos-x86_64" => "statsig-ffi-" . VERSION . "-x86_64-apple-darwin.zip",
 
-        "linux-aarch64" => "statsig-ffi-" . VERSION . "-centos7-aarch64-unknown-linux-gnu-shared.zip",
-        "linux-x86_64" => "statsig-ffi-" . VERSION . "-centos7-x86_64-unknown-linux-gnu-shared.zip",
+        "linux-aarch64" => "statsig-ffi-" . VERSION . "-centos7-aarch64-unknown-linux-gnu.zip",
+        "linux-x86_64" => "statsig-ffi-" . VERSION . "-centos7-x86_64-unknown-linux-gnu.zip",
 
-        "linux-aarch64-musl" => "statsig-ffi-" . VERSION . "-alpine-aarch64-unknown-linux-musl-shared.zip",
-        "linux-x86_64-musl" => "statsig-ffi-" . VERSION . "-alpine-x86_64-unknown-linux-musl-shared.zip",
+        "linux-aarch64-musl" => "statsig-ffi-" . VERSION . "-alpine-aarch64-unknown-linux-musl.zip",
+        "linux-x86_64-musl" => "statsig-ffi-" . VERSION . "-alpine-x86_64-unknown-linux-musl.zip",
     ];
 
     $system_tag = $system_info[0] . "-" . $system_info[1];
@@ -160,6 +160,10 @@ function unzip_binary($zip_file_path)
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $filename = $zip->getNameIndex($i);
             if (in_array($filename, ['libstatsig_ffi.dylib', 'statsig_ffi.dll', 'libstatsig_ffi.so'])) {
+                $zip->extractTo(OUTPUT_DIR, $filename);
+                echo " Output Path: " . OUTPUT_DIR . "/" . $filename . "\n";
+            }
+            if (in_array($filename, ['libstatsig_ffi.dylib.sig', 'statsig_ffi.dll.sig', 'libstatsig_ffi.so.sig'])) {
                 $zip->extractTo(OUTPUT_DIR, $filename);
                 echo " Output Path: " . OUTPUT_DIR . "/" . $filename . "\n";
             }
@@ -214,12 +218,21 @@ function ensure_binary_file_exists($system_info)
 
     $dir = OUTPUT_DIR;
     $binary_file = $dir . "/" . $binary_name;
+    $signature_file = $dir . "/" . $binary_name . ".sig";
 
     if (!file_exists($binary_file)) {
         echo "❌ Required binary file $binary_name not found in resources directory\n";
         return false;
     } else {
         echo "✅ Binary file $binary_name found in resources directory\n";
+        return true;
+    }
+    
+    if (!file_exists($signature_file)) {
+        echo "❌ Required signature file $binary_name.sig not found in resources directory\n";
+        return false;
+    } else {
+        echo "✅ Signature file $binary_name.sig found in resources directory\n";
         return true;
     }
 }
@@ -238,6 +251,27 @@ function ensure_ffi_enabled()
     return $ffi_enabled;
 }
 
+function ffi_binary_verification_disabled()
+{
+    $ffi_binary_verification_disabled = ini_get('ffi.binary_verification');
+    return $ffi_binary_verification_disabled === '0' || $ffi_binary_verification_disabled === 'false';
+}
+
+function verify_binary()
+{
+    if (ffi_binary_verification_disabled()) {
+        echo "✅ FFI binary verification is disabled\n";
+        return true;
+    }
+
+    if (!extension_loaded('openssl')) {
+        echo "❌ OpenSSL extension is not loaded, verification will be skipped\n";
+        return true;
+    }
+
+    return true;
+}
+
 $system_info = get_system_info();
 ensure_bin_dir_exists();
 remove_existing_statsig_resources();
@@ -251,8 +285,9 @@ echo "\n-- Ensuring Resources Exist --\n";
 $header_found = ensure_header_file_exists();
 $binary_found = ensure_binary_file_exists($system_info);
 $ffi_enabled = ensure_ffi_enabled();
+$verified = verify_binary();
 echo "-----------------------------------\n";
 
-if (!$header_found || !$binary_found || !$ffi_enabled) {
+if (!$header_found || !$binary_found || !$ffi_enabled || !$verified) {
     exit(1);
 }

@@ -92,7 +92,7 @@ export async function nodePublish(options: PublisherOptions) {
 
   alignNodePackage(options, distDir);
   addOptionalDependenciesToPackageJson(options);
-  publishNodePackages(distDir);
+  publishNodePackages(distDir, options);
 }
 
 function addOptionalDependenciesToPackageJson(options: PublisherOptions) {
@@ -182,7 +182,7 @@ function alignNodePackage(options: PublisherOptions, distDir: string) {
   }
 }
 
-function publishNodePackages(distDir: string) {
+function publishNodePackages(distDir: string, options: PublisherOptions) {
   Log.title('Publishing Node Packages');
 
   let allPackagesPublished = true;
@@ -192,13 +192,14 @@ function publishNodePackages(distDir: string) {
     Log.stepBegin(`Publishing ${platform} package`);
 
     const version = getRootVersion();
+    const isPublicRepository = options.repository === 'statsig-server-core';
 
     const configPath = getRootedPath('.npmrc');
     const publish = [
       `npm publish`,
       `--registry=https://registry.npmjs.org/`,
       `--userconfig=${configPath}`,
-      `--provenance`,
+      isPublicRepository ? '--provenance' : '',
       `--access public`,
       version.isBeta() ? `--tag beta` : '',
       version.isRC() ? `--tag rc` : '',
