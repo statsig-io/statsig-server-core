@@ -83,6 +83,23 @@ export function zipFile(filepath: string, outputZipPath: string) {
   zip.writeZip(outputZipPath);
 }
 
+export function zipDirectory(dirpath: string, outputZipPath: string) {
+  const zip = new AdmZip();
+  
+  const files = readdirSync(dirpath);
+  for (const file of files) {
+    const filePath = path.join(dirpath, file);
+    const stat = statSync(filePath);
+    
+    if (stat.isFile()) {
+      const fileContent = fs.readFileSync(filePath);
+      zip.addFile(file, fileContent);
+    }
+  }
+  
+  zip.writeZip(outputZipPath);
+}
+
 export function listFiles(
   dir: string,
   pattern: string,
