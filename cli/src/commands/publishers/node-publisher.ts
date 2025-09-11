@@ -4,13 +4,13 @@ import {
   listFiles,
   unzip,
 } from '@/utils/file_utils.js';
+
 import { Log } from '@/utils/terminal_utils.js';
-import { getRootVersion } from '@/utils/toml_utils.js';
+import { PublisherOptions } from './publisher-options.js';
 import { execSync } from 'child_process';
 import fs from 'node:fs';
+import { getRootVersion } from '@/utils/toml_utils.js';
 import path from 'node:path';
-
-import { PublisherOptions } from './publisher-options.js';
 
 /**
  DIR_NAME:
@@ -198,6 +198,7 @@ function publishNodePackages(distDir: string) {
       `npm publish`,
       `--registry=https://registry.npmjs.org/`,
       `--userconfig=${configPath}`,
+      `--provenance`,
       `--access public`,
       version.isBeta() ? `--tag beta` : '',
       version.isRC() ? `--tag rc` : '',
