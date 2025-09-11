@@ -68,7 +68,10 @@ fn test_memoization_from_map() {
 }
 
 fn get_memo_len() -> usize {
-    let memo = dynamic_returnable::MEMOIZED_VALUES.try_lock().unwrap();
+    let memo = dynamic_returnable::INTERNED_STORE
+        .values
+        .try_lock()
+        .unwrap();
 
     for (key, value) in memo.iter() {
         let value = value.upgrade().unwrap();

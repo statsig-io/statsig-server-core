@@ -38,6 +38,7 @@ pub mod event_logging;
 pub mod global_configs;
 pub mod hashing;
 pub mod instance_registry;
+pub mod interned_value_store;
 pub mod networking;
 pub mod output_logger;
 pub mod override_adapter;

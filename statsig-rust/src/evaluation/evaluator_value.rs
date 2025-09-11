@@ -1,24 +1,16 @@
 use chrono::{DateTime, NaiveDateTime};
-use parking_lot::Mutex;
 use regex::Regex;
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{value::RawValue, Value as JsonValue, Value};
-use std::{
-    collections::HashMap,
-    sync::{Arc, Weak},
-    time::Duration,
-};
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
-use crate::{hashing, log_e, unwrap_or_return, DynamicValue};
+use crate::{
+    impl_interned_value, interned_value_store::FromRawValue, unwrap_or_return, DynamicValue,
+};
 
 use super::dynamic_string::DynamicString;
 
-const TAG: &str = "EvaluatorValue";
-
 lazy_static::lazy_static! {
-    pub(crate) static ref MEMOIZED_VALUES: Mutex<HashMap<u64, Weak<MemoizedEvaluatorValue>>> =
-        Mutex::new(HashMap::new());
-
     pub(crate) static ref EMPTY_EVALUATOR_VALUE: EvaluatorValue = EvaluatorValue {
         hash: 0,
         inner: Arc::new(MemoizedEvaluatorValue::new(EvaluatorValueType::Null)),
@@ -30,6 +22,8 @@ pub struct EvaluatorValue {
     pub hash: u64,
     pub inner: Arc<MemoizedEvaluatorValue>,
 }
+
+impl_interned_value!(EvaluatorValue, MemoizedEvaluatorValue, "EvaluatorValue");
 
 impl EvaluatorValue {
     pub fn empty() -> &'static Self {
@@ -48,25 +42,8 @@ impl<'de> Deserialize<'de> for EvaluatorValue {
         D: Deserializer<'de>,
     {
         let raw_value_ref: &'de RawValue = Deserialize::deserialize(deserializer)?;
-
-        let raw_value_str = raw_value_ref.get();
-        let hash = hashing::hash_one(raw_value_str);
-
-        if let Some(value) = get_memoized_value(hash) {
-            return Ok(EvaluatorValue { hash, inner: value });
-        }
-
-        let value: MemoizedEvaluatorValue = serde_json::from_str(raw_value_str).map_err(|e| {
-            de::Error::custom(format!("Failed to deserialize EvaluatorValue: {}", e))
-        })?;
-
-        let value_arc = Arc::new(value);
-        set_memoized_value(hash, Arc::downgrade(&value_arc));
-
-        Ok(EvaluatorValue {
-            hash,
-            inner: value_arc,
-        })
+        let (hash, value) = MemoizedEvaluatorValue::get_or_create(Cow::Borrowed(raw_value_ref));
+        Ok(EvaluatorValue { hash, inner: value })
     }
 }
 
@@ -82,30 +59,6 @@ impl Serialize for EvaluatorValue {
 impl PartialEq for EvaluatorValue {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
-    }
-}
-
-impl Drop for EvaluatorValue {
-    fn drop(&mut self) {
-        let mut memo = match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(5)) {
-            Some(values) => values,
-            None => {
-                log_e!(
-                    TAG,
-                    "Failed to lock memoized values: Failed to lock MEMOIZED_VALUES"
-                );
-                return;
-            }
-        };
-
-        let found = match memo.get(&self.hash) {
-            Some(value) => value,
-            None => return,
-        };
-
-        if found.strong_count() == 1 {
-            memo.remove(&self.hash);
-        }
     }
 }
 
@@ -131,6 +84,12 @@ pub struct MemoizedEvaluatorValue {
     // { lower_case_str: (index, str) } -- Keyed by lowercase string so we can lookup with O(1)
     pub array_value: Option<HashMap<String, (usize, String)>>,
     pub object_value: Option<HashMap<String, DynamicString>>,
+}
+
+impl FromRawValue for MemoizedEvaluatorValue {
+    fn from_raw_value(raw_value: Cow<'_, RawValue>) -> Self {
+        serde_json::from_str(raw_value.get()).unwrap()
+    }
 }
 
 impl MemoizedEvaluatorValue {
@@ -354,42 +313,5 @@ fn try_parse_timestamp(s: &str) -> Option<i64> {
 macro_rules! test_only_make_eval_value {
     ($x:expr) => {
         $crate::evaluation::evaluator_value::MemoizedEvaluatorValue::from(serde_json::json!($x))
-    };
-}
-
-fn get_memoized_value(hash: u64) -> Option<Arc<MemoizedEvaluatorValue>> {
-    let mut memoized_values = match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(5)) {
-        Some(values) => values,
-        None => {
-            log_e!(
-                TAG,
-                "Failed to lock memoized values: Failed to lock MEMOIZED_VALUES"
-            );
-            return None;
-        }
-    };
-
-    let found = memoized_values.get(&hash)?;
-
-    match found.upgrade() {
-        Some(value) => Some(value),
-        None => {
-            memoized_values.remove(&hash);
-            None
-        }
-    }
-}
-
-fn set_memoized_value(hash: u64, value: Weak<MemoizedEvaluatorValue>) {
-    match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(5)) {
-        Some(mut values) => {
-            values.insert(hash, value);
-        }
-        None => {
-            log_e!(
-                TAG,
-                "Failed to lock memoized values: Failed to lock MEMOIZED_VALUES"
-            );
-        }
     };
 }

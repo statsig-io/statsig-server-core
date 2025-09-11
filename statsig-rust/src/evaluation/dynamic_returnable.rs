@@ -1,28 +1,23 @@
-use crate::{hashing, log_e};
-use parking_lot::Mutex;
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
+
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{
     value::{to_raw_value, RawValue},
     Value as JsonValue,
 };
-use std::{
-    collections::HashMap,
-    sync::{Arc, Weak},
-    time::Duration,
-};
+
+use crate::{impl_interned_value, interned_value_store::FromRawValue, log_e};
 
 const TAG: &str = "DynamicReturnable";
 
 lazy_static::lazy_static! {
-    pub(crate) static ref MEMOIZED_VALUES: Mutex<HashMap<u64, Weak<MemoizedValue>>> =
-        Mutex::new(HashMap::new());
-
     static ref EMPTY_DYNAMIC_RETURNABLE: DynamicReturnable = DynamicReturnable {
         hash: 0,
         value: Arc::new(MemoizedValue {
             raw_value: RawValue::NULL.to_owned(),
         }),
     };
+
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -30,6 +25,8 @@ pub struct DynamicReturnable {
     hash: u64,
     value: Arc<MemoizedValue>,
 }
+
+impl_interned_value!(DynamicReturnable, MemoizedValue, "DynamicReturnable");
 
 impl DynamicReturnable {
     pub fn empty() -> Self {
@@ -45,17 +42,8 @@ impl DynamicReturnable {
             }
         };
 
-        let hash = hashing::hash_one(raw_value.get());
-
-        if let Some(value) = get_memoized_value(hash) {
-            return DynamicReturnable {
-                hash,
-                value: value.clone(),
-            };
-        }
-
-        let value = MemoizedValue::new(raw_value);
-        Self::new(hash, value)
+        let (hash, value) = MemoizedValue::get_or_create(Cow::Owned(raw_value));
+        Self { hash, value }
     }
 
     pub fn get_bool(&self) -> Option<bool> {
@@ -80,13 +68,6 @@ impl DynamicReturnable {
             }
         }
     }
-
-    fn new(hash: u64, value: Arc<MemoizedValue>) -> Self {
-        let weak_value = Arc::downgrade(&value);
-        set_memoized_value(hash, weak_value);
-
-        Self { hash, value }
-    }
 }
 
 impl<'de> Deserialize<'de> for DynamicReturnable {
@@ -95,19 +76,8 @@ impl<'de> Deserialize<'de> for DynamicReturnable {
         D: Deserializer<'de>,
     {
         let raw_value_ref: &'de RawValue = Deserialize::deserialize(deserializer)?;
-
-        let raw_value_str = raw_value_ref.get();
-        let hash = hashing::hash_one(raw_value_str);
-
-        if let Some(value) = get_memoized_value(hash) {
-            return Ok(DynamicReturnable { hash, value });
-        }
-
-        let raw_value = raw_value_ref.to_owned();
-        let value = MemoizedValue::new(raw_value);
-
-        let new_returnable = DynamicReturnable::new(hash, value);
-        Ok(new_returnable)
+        let (hash, value) = MemoizedValue::get_or_create(Cow::Borrowed(raw_value_ref));
+        Ok(DynamicReturnable { hash, value })
     }
 }
 
@@ -120,80 +90,21 @@ impl Serialize for DynamicReturnable {
     }
 }
 
-impl Drop for DynamicReturnable {
-    fn drop(&mut self) {
-        let mut memo = match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(5)) {
-            Some(values) => values,
-            None => {
-                log_e!(
-                    TAG,
-                    "Failed to lock memoized values: Failed to lock MEMOIZED_VALUES"
-                );
-                return;
-            }
-        };
-
-        let found = match memo.get(&self.hash) {
-            Some(value) => value,
-            None => return,
-        };
-
-        if found.strong_count() == 1 {
-            memo.remove(&self.hash);
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub(crate) struct MemoizedValue {
     pub(crate) raw_value: Box<RawValue>,
+}
+
+impl FromRawValue for MemoizedValue {
+    fn from_raw_value(raw_value: Cow<'_, RawValue>) -> Self {
+        Self {
+            raw_value: raw_value.into_owned(),
+        }
+    }
 }
 
 impl PartialEq for MemoizedValue {
     fn eq(&self, other: &Self) -> bool {
         self.raw_value.get() == other.raw_value.get()
     }
-}
-
-impl MemoizedValue {
-    fn new(raw_value: Box<RawValue>) -> Arc<Self> {
-        Arc::new(Self { raw_value })
-    }
-}
-
-fn get_memoized_value(hash: u64) -> Option<Arc<MemoizedValue>> {
-    let mut memoized_values = match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(5)) {
-        Some(values) => values,
-        None => {
-            log_e!(
-                TAG,
-                "Failed to lock memoized values: Failed to lock MEMOIZED_VALUES"
-            );
-            return None;
-        }
-    };
-
-    let found = memoized_values.get(&hash)?;
-
-    match found.upgrade() {
-        Some(value) => Some(value),
-        None => {
-            memoized_values.remove(&hash);
-            None
-        }
-    }
-}
-
-fn set_memoized_value(hash: u64, value: Weak<MemoizedValue>) {
-    match MEMOIZED_VALUES.try_lock_for(Duration::from_secs(5)) {
-        Some(mut values) => {
-            values.insert(hash, value);
-        }
-        None => {
-            log_e!(
-                TAG,
-                "Failed to lock memoized values: Failed to lock MEMOIZED_VALUES"
-            );
-        }
-    };
 }
