@@ -16,7 +16,7 @@ use crate::event_logging::event_queue::queued_experiment_expo::EnqueueExperiment
 use crate::event_logging::event_queue::queued_gate_expo::EnqueueGateExpoOp;
 use crate::event_logging::event_queue::queued_layer_param_expo::EnqueueLayerParamExpoOp;
 use crate::event_logging::event_queue::queued_passthrough::EnqueuePassthroughOp;
-use crate::event_logging::statsig_event_internal::StatsigEventInternal;
+use crate::event_logging::statsig_event_internal::{StatsigEventInternal, StatsigLogLineLevel};
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
 use crate::gcir::gcir_formatter::GCIRFormatter;
@@ -729,6 +729,24 @@ impl Statsig {
                 user_internal.to_loggable(),
                 event_name.to_string(),
                 value.map(|v| json!(v)),
+                metadata,
+            ),
+        });
+    }
+
+    pub fn forward_log_line_event(
+        &self,
+        user: &StatsigUser,
+        log_level: StatsigLogLineLevel,
+        value: Option<String>,
+        metadata: Option<HashMap<String, String>>,
+    ) {
+        let user_internal = self.internalize_user(user);
+        self.event_logger.enqueue(EnqueuePassthroughOp {
+            event: StatsigEventInternal::new_statsig_log_line_event(
+                user_internal.to_loggable(),
+                log_level,
+                value,
                 metadata,
             ),
         });

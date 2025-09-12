@@ -1,16 +1,40 @@
-use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::sdk_diagnostics::diagnostics::DIAGNOSTICS_EVENT;
 use crate::user::StatsigUserLoggable;
+use crate::{evaluation::evaluation_types::SecondaryExposure, statsig_metadata::StatsigMetadata};
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 
 pub const GATE_EXPOSURE_EVENT_NAME: &str = "statsig::gate_exposure";
 pub const CONFIG_EXPOSURE_EVENT_NAME: &str = "statsig::config_exposure";
 pub const LAYER_EXPOSURE_EVENT_NAME: &str = "statsig::layer_exposure";
+pub const STATSIG_LOG_LINE_EVENT_NAME: &str = "statsig::log_line";
+
+#[derive(Debug)]
+pub enum StatsigLogLineLevel {
+    Trace,
+    Debug,
+    Log,
+    Info,
+    Warn,
+    Error,
+}
+
+impl StatsigLogLineLevel {
+    pub fn to_status_string(&self) -> String {
+        match self {
+            StatsigLogLineLevel::Trace => "trace".to_string(),
+            StatsigLogLineLevel::Debug => "debug".to_string(),
+            StatsigLogLineLevel::Log => "info".to_string(), // info and log map to the same status
+            StatsigLogLineLevel::Info => "info".to_string(),
+            StatsigLogLineLevel::Warn => "warn".to_string(),
+            StatsigLogLineLevel::Error => "error".to_string(),
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -87,6 +111,33 @@ impl StatsigEventInternal {
         StatsigEventInternal {
             event_data: event,
             user: StatsigUserLoggable::null(),
+            time: Utc::now().timestamp_millis() as u64,
+            secondary_exposures: None,
+        }
+    }
+
+    pub fn new_statsig_log_line_event(
+        user: StatsigUserLoggable,
+        log_level: StatsigLogLineLevel,
+        value: Option<String>,
+        metadata: Option<HashMap<String, String>>,
+    ) -> Self {
+        let mut populated_metadata = metadata.unwrap_or_default();
+        populated_metadata.insert("status".to_string(), log_level.to_status_string());
+        populated_metadata.insert(
+            "source".to_string(),
+            StatsigMetadata::get_metadata().sdk_type.to_string(),
+        );
+        populated_metadata.insert("log_level".to_string(), format!("{:?}", log_level));
+
+        StatsigEventInternal {
+            event_data: StatsigEvent {
+                event_name: STATSIG_LOG_LINE_EVENT_NAME.to_string(),
+                value: value.map(|v| json!(v)),
+                metadata: Some(populated_metadata),
+                statsig_metadata: None,
+            },
+            user,
             time: Utc::now().timestamp_millis() as u64,
             secondary_exposures: None,
         }

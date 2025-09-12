@@ -15,6 +15,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use parking_lot::Mutex;
 use serde_json::Value;
+use statsig_rust::event_logging::statsig_event_internal::StatsigLogLineLevel;
 use statsig_rust::networking::providers::NetworkProviderGlobal;
 use statsig_rust::networking::NetworkProvider;
 use statsig_rust::{log_d, log_e, Statsig as StatsigActual};
@@ -146,6 +147,31 @@ impl StatsigNapiInternal {
                 .inner
                 .log_event(user.as_inner(), &event_name, None, metadata),
         }
+    }
+
+    #[napi]
+    pub fn forward_log_line_event(
+        &self,
+        user: &StatsigUser,
+        #[napi(ts_arg_type = "'trace' | 'debug' |'log' | 'info' | 'warn' | 'error'")]
+        log_level: String,
+        value: Option<String>,
+        metadata: Option<HashMap<String, String>>,
+    ) {
+        let level = match log_level.to_lowercase().as_str() {
+            "debug" => StatsigLogLineLevel::Debug,
+            "log" => StatsigLogLineLevel::Log,
+            "trace" => StatsigLogLineLevel::Trace,
+            "info" => StatsigLogLineLevel::Info,
+            "warn" => StatsigLogLineLevel::Warn,
+            "error" => StatsigLogLineLevel::Error,
+            _ => {
+                log_e!(TAG, "Invalid log level: {}", log_level);
+                return;
+            }
+        };
+        self.inner
+            .forward_log_line_event(user.as_inner(), level, value, metadata);
     }
 
     #[napi]
