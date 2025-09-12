@@ -1,44 +1,26 @@
 package com.statsig;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.alibaba.fastjson2.annotation.JSONCreator;
+import com.alibaba.fastjson2.annotation.JSONField;
 import com.statsig.internal.HasRawJson;
 import java.util.List;
 import java.util.Map;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 public abstract class BaseConfig implements HasRawJson {
   public final String name;
-
-  @JsonProperty("rule_id")
   public final String ruleID;
-
-  @JsonProperty("value")
   public final Map<String, Object> value;
-
-  @JsonProperty("details")
   public final EvaluationDetails evaluationDetails;
-
-  @JsonProperty("id_type")
   public final String idType;
+  protected String rawJson;
 
-  @JsonIgnore protected String rawJson;
-
-  protected BaseConfig() {
-    this.name = null;
-    this.value = null;
-    this.ruleID = null;
-    this.evaluationDetails = null;
-    this.idType = null;
-  }
-
+  @JSONCreator
   protected BaseConfig(
-      String name,
-      Map<String, Object> value,
-      String ruleID,
-      EvaluationDetails evaluationDetails,
-      String idType) {
+      @JSONField(name = "name") String name,
+      @JSONField(name = "value") Map<String, Object> value,
+      @JSONField(name = "rule_id") String ruleID,
+      @JSONField(name = "details") EvaluationDetails evaluationDetails,
+      @JSONField(name = "id_type") String idType) {
     this.name = name;
     this.value = value;
     this.ruleID = ruleID;

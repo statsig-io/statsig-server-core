@@ -1,33 +1,27 @@
 package com.statsig;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.statsig.internal.JacksonUtil;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
+import com.alibaba.fastjson2.TypeReference;
+import com.alibaba.fastjson2.annotation.JSONCreator;
+import com.alibaba.fastjson2.annotation.JSONField;
 import java.util.List;
 import java.util.Map;
 
 public class Experiment extends BaseConfig {
-  @JsonProperty("group_name")
   public final String groupName;
-
   public List<Map<String, String>> secondaryExposures;
 
-  public Experiment() {
-    super();
-    this.groupName = null;
-  }
-
+  @JSONCreator
   Experiment(
-      String name,
-      Map<String, Object> value,
-      String ruleID,
-      EvaluationDetails evaluationDetails,
-      String idType,
-      String groupName,
-      List<Map<String, String>> secondaryExposures) {
+      @JSONField(name = "name") String name,
+      @JSONField(name = "value") Map<String, Object> value,
+      @JSONField(name = "rule_id") String ruleID,
+      @JSONField(name = "details") EvaluationDetails evaluationDetails,
+      @JSONField(name = "id_type") String idType,
+      @JSONField(name = "group_name") String groupName) {
     super(name, value, ruleID, evaluationDetails, idType);
     this.groupName = groupName;
-    this.secondaryExposures = secondaryExposures;
   }
 
   public String getGroupName() {
@@ -44,27 +38,21 @@ public class Experiment extends BaseConfig {
     }
 
     try {
-      Experiment experiment = JacksonUtil.fromJsonWithRawJson(json, Experiment.class);
+      Experiment experiment = JSON.parseObject(json, Experiment.class);
       if (experiment == null) {
         return null;
       }
 
-      Map<String, Object> rootMap =
-          JacksonUtil.fromJson(json, new TypeReference<Map<String, Object>>() {});
-      List<Map<String, String>> secondaryExposures = null;
-      if (rootMap != null && rootMap.containsKey("__evaluation")) {
-        Map<String, Object> evaluation = (Map<String, Object>) rootMap.get("__evaluation");
-        if (evaluation != null && evaluation.containsKey("secondary_exposures")) {
-          secondaryExposures =
-              JacksonUtil.getObjectMapper()
-                  .convertValue(
-                      evaluation.get("secondary_exposures"),
-                      new TypeReference<List<Map<String, String>>>() {});
-        }
-      }
+      experiment.setRawJson(json);
 
-      if (secondaryExposures != null) {
-        experiment.secondaryExposures = secondaryExposures;
+      JSONObject root = JSON.parseObject(json);
+      JSONObject evaluation = root.getJSONObject("__evaluation");
+      if (evaluation != null && evaluation.containsKey("secondary_exposures")) {
+        List<Map<String, String>> se =
+            JSON.parseObject(
+                evaluation.get("secondary_exposures").toString(),
+                new TypeReference<List<Map<String, String>>>() {});
+        experiment.secondaryExposures = se;
       }
 
       return experiment;

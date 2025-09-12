@@ -1,7 +1,5 @@
 package com.statsig;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.statsig.internal.JacksonUtil;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,7 +18,6 @@ public class HttpRequestInterceptionTest {
   private Statsig statsig;
   private StatsigUser testUser;
   private String downloadConfigSpecsJson;
-  private final ObjectMapper mapper = JacksonUtil.getObjectMapper();
 
   @BeforeEach
   public void setUp() throws IOException, InterruptedException, ExecutionException {

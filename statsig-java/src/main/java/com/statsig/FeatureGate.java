@@ -1,34 +1,26 @@
 package com.statsig;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.alibaba.fastjson2.annotation.JSONCreator;
+import com.alibaba.fastjson2.annotation.JSONField;
 import com.statsig.internal.HasRawJson;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class FeatureGate implements HasRawJson {
-  public String name;
-  public boolean value;
+  public final String name;
+  public final boolean value;
+  public final String ruleID;
+  public final EvaluationDetails evaluationDetails;
+  public final String idType;
 
-  @JsonProperty("rule_id")
-  public String ruleID;
+  @JSONField(deserialize = false)
+  String rawJson;
 
-  @JsonProperty("details")
-  public EvaluationDetails evaluationDetails;
-
-  @JsonProperty("id_type")
-  public String idType;
-
-  @JsonIgnore String rawJson;
-
-  public FeatureGate() {}
-
+  @JSONCreator
   FeatureGate(
-      String name,
-      boolean value,
-      String ruleID,
-      EvaluationDetails evaluationDetails,
-      String idType) {
+      @JSONField(name = "name") String name,
+      @JSONField(name = "value") boolean value,
+      @JSONField(name = "rule_id") String ruleID,
+      @JSONField(name = "details") EvaluationDetails evaluationDetails,
+      @JSONField(name = "id_type") String idType) {
     this.name = name;
     this.value = value;
     this.ruleID = ruleID;

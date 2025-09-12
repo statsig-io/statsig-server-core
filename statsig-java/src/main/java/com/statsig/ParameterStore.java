@@ -1,23 +1,23 @@
 package com.statsig;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.alibaba.fastjson2.annotation.JSONCreator;
+import com.alibaba.fastjson2.annotation.JSONField;
 import java.util.Map;
 
 public class ParameterStore {
   public String name;
-
-  @JsonProperty("details")
   public EvaluationDetails evaluationDetails;
 
   private Statsig statsigInstance;
   private StatsigUser user;
 
-  ParameterStore(String name, EvaluationDetails evaluationDetails) {
+  @JSONCreator
+  ParameterStore(
+      @JSONField(name = "name") String name,
+      @JSONField(name = "details") EvaluationDetails evaluationDetails) {
     this.name = name;
     this.evaluationDetails = evaluationDetails;
   }
-
-  public ParameterStore() {}
 
   public String getName() {
     return name;

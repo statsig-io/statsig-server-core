@@ -1,7 +1,6 @@
 package com.statsig;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.statsig.internal.JacksonUtil;
+import com.alibaba.fastjson2.JSON;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,10 +11,6 @@ public class StatsigMetadata {
     metadata.put("arch", System.getProperty("os.arch"));
     metadata.put("languageVersion", System.getProperty("java.version"));
 
-    try {
-      return JacksonUtil.getObjectMapper().writeValueAsString(metadata);
-    } catch (JsonProcessingException e) {
-      return "{}";
-    }
+    return JSON.toJSONString(metadata);
   }
 }

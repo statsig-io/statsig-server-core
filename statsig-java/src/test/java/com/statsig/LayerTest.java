@@ -2,19 +2,15 @@ package com.statsig;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.statsig.internal.JacksonUtil;
+import com.alibaba.fastjson2.JSON;
 import java.io.IOException;
 import org.junit.jupiter.api.Test;
 
 public class LayerTest {
-
-  private final ObjectMapper mapper = JacksonUtil.getObjectMapper();
-
   @Test
   public void testLayerDeserialization() throws IOException {
     String json = TestUtils.loadJsonFromFile("layer.json");
-    Layer layer = JacksonUtil.fromJsonWithRawJson(json, Layer.class);
+    Layer layer = JSON.parseObject(json, Layer.class);
 
     assertEquals("FJsjPaDrS4JydcV8A+6bAAH6PKUpax0Uh6WpfV1cltA=", layer.name);
     assertEquals("default", layer.ruleID);

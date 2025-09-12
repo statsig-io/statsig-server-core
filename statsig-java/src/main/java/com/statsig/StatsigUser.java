@@ -1,6 +1,6 @@
 package com.statsig;
 
-import com.statsig.internal.JacksonUtil;
+import com.alibaba.fastjson2.JSON;
 import java.util.Map;
 
 public class StatsigUser {
@@ -50,9 +50,9 @@ public class StatsigUser {
   }
 
   private void initializeRef() {
-    String customIdsJson = JacksonUtil.toJson(customIDs);
-    String customJson = JacksonUtil.toJson(custom);
-    String privateAttributesJson = JacksonUtil.toJson(privateAttributes);
+    String customIdsJson = JSON.toJSONString(customIDs);
+    String customJson = JSON.toJSONString(custom);
+    String privateAttributesJson = JSON.toJSONString(privateAttributes);
 
     // Pass all arguments to the JNI binding
     this.ref =

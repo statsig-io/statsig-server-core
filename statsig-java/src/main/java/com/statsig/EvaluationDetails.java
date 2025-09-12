@@ -1,22 +1,29 @@
 package com.statsig;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.alibaba.fastjson2.annotation.JSONCreator;
+import com.alibaba.fastjson2.annotation.JSONField;
 import java.util.HashMap;
 import java.util.Map;
 
 public class EvaluationDetails {
   /** last config updated time */
-  public long lcut;
+  public final long lcut;
 
   /** The time when we received this config */
-  @JsonProperty("received_at")
-  public long receivedAt;
+  public final long receivedAt;
 
   /** Evaluation reason */
-  public String reason;
+  public final String reason;
 
-  /** Default constructor for Jackson deserialization. */
-  public EvaluationDetails() {}
+  @JSONCreator
+  EvaluationDetails(
+      @JSONField(name = "lcut") long lcut,
+      @JSONField(name = "received_at") long receivedAt,
+      @JSONField(name = "reason") String reason) {
+    this.lcut = lcut;
+    this.receivedAt = receivedAt;
+    this.reason = reason;
+  }
 
   public String getReason() {
     return reason;
@@ -28,12 +35,6 @@ public class EvaluationDetails {
 
   public long getReceivedAt() {
     return receivedAt;
-  }
-
-  EvaluationDetails(long lcut, long receivedAt, String reason) {
-    this.lcut = lcut;
-    this.receivedAt = receivedAt;
-    this.reason = reason;
   }
 
   @Override

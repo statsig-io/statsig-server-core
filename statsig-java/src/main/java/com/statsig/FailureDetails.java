@@ -1,14 +1,18 @@
 package com.statsig;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.alibaba.fastjson2.annotation.JSONCreator;
+import com.alibaba.fastjson2.annotation.JSONField;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class FailureDetails {
-  public String reason;
-  public Object error;
+  public final String reason;
+  public final Object error;
 
-  /** Default constructor for Jackson deserialization. */
-  public FailureDetails() {}
+  @JSONCreator
+  FailureDetails(
+      @JSONField(name = "reason") String reason, @JSONField(name = "error") Object error) {
+    this.reason = reason;
+    this.error = error;
+  }
 
   public String getReason() {
     return reason;

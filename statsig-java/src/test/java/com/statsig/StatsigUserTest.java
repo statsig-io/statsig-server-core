@@ -1,20 +1,15 @@
 package com.statsig;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.statsig.internal.JacksonUtil;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class StatsigUserTest {
-  private ObjectMapper mapper;
   private StatsigUser user;
 
   @BeforeEach
   public void setUp() {
-    mapper = JacksonUtil.getObjectMapper();
-
     Map<String, String> customIDs = new HashMap<>();
     customIDs.put("ID1", "custom1");
     customIDs.put("ID2", "custom2");

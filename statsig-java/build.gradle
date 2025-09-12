@@ -54,11 +54,7 @@ repositories {
 }
 
 dependencies {
-    api platform('com.fasterxml.jackson:jackson-bom:2.16.1')
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
-
+    implementation 'com.alibaba.fastjson2:fastjson2:2.0.58'
     implementation 'org.jetbrains:annotations:24.0.1'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'

@@ -1,38 +1,28 @@
 package com.statsig;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.alibaba.fastjson2.annotation.JSONCreator;
+import com.alibaba.fastjson2.annotation.JSONField;
 import com.statsig.internal.HasRawJson;
 
 public class InitializeDetails implements HasRawJson {
   public double duration;
-
-  @JsonProperty("init_success")
   public boolean initSuccess;
-
-  @JsonProperty("is_config_spec_ready")
   public boolean isConfigSpecReady;
-
-  @JsonProperty("is_id_list_ready")
   public Boolean isIdListReady;
-
   public String source;
-
-  @JsonProperty("failure_details")
   public FailureDetails failureDetails;
 
-  @JsonIgnore private String rawJson;
+  @JSONField(deserialize = false)
+  private String rawJson;
 
-  /** Default constructor for Jackson deserialization. */
-  public InitializeDetails() {}
-
+  @JSONCreator
   InitializeDetails(
-      double duration,
-      boolean initSuccess,
-      boolean isConfigSpecReady,
-      Boolean isIdListReady,
-      String source,
-      FailureDetails failureDetails) {
+      @JSONField(name = "duration") double duration,
+      @JSONField(name = "init_success") boolean initSuccess,
+      @JSONField(name = "is_config_spec_ready") boolean isConfigSpecReady,
+      @JSONField(name = "is_id_list_ready") Boolean isIdListReady,
+      @JSONField(name = "source") String source,
+      @JSONField(name = "failure_details") FailureDetails failureDetails) {
     this.duration = duration;
     this.initSuccess = initSuccess;
     this.isConfigSpecReady = isConfigSpecReady;

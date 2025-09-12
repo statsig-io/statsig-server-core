@@ -1,44 +1,38 @@
 package com.statsig;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.alibaba.fastjson2.annotation.JSONCreator;
+import com.alibaba.fastjson2.annotation.JSONField;
 import com.statsig.internal.HasRawJson;
+import java.util.List;
 import java.util.Map;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class Layer implements HasRawJson {
-  public String name;
+  public final String name;
 
-  @JsonProperty("rule_id")
-  public String ruleID;
+  public final String ruleID;
 
-  @JsonProperty("group_name")
-  public String groupName;
+  public final String groupName;
 
-  @JsonProperty("__value")
-  public Map<String, Object> value;
+  public final Map<String, Object> value;
 
-  @JsonProperty("allocated_experiment_name")
-  public String allocatedExperimentName;
+  public final String allocatedExperimentName;
 
-  @JsonProperty("details")
-  public EvaluationDetails evaluationDetails;
+  public final EvaluationDetails evaluationDetails;
 
-  @JsonIgnore String rawJson;
+  @JSONField(deserialize = false)
+  String rawJson;
 
   private Statsig statsigInstance;
   private boolean disableExposureLogging;
 
-  public Layer() {}
-
+  @JSONCreator
   Layer(
-      String name,
-      String ruleID,
-      String groupName,
-      Map<String, Object> value,
-      String allocatedExperimentName,
-      EvaluationDetails evaluationDetails) {
+      @JSONField(name = "name") String name,
+      @JSONField(name = "rule_id") String ruleID,
+      @JSONField(name = "group_name") String groupName,
+      @JSONField(name = "__value") Map<String, Object> value,
+      @JSONField(name = "allocated_experiment_name") String allocatedExperimentName,
+      @JSONField(name = "details") EvaluationDetails evaluationDetails) {
     this.name = name;
     this.ruleID = ruleID;
     this.groupName = groupName;
@@ -155,6 +149,9 @@ public class Layer implements HasRawJson {
     }
     if (val instanceof Object[]) {
       return (Object[]) val;
+    }
+    if (val instanceof List<?>) {
+      return ((List<?>) val).toArray(new Object[0]);
     }
     return defaultValue;
   }

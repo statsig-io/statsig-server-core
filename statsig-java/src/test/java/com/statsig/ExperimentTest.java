@@ -2,16 +2,12 @@ package com.statsig;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.statsig.internal.JacksonUtil;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 public class ExperimentTest {
-
-  private final ObjectMapper mapper = JacksonUtil.getObjectMapper();
 
   @Test
   public void testDeserialization() throws IOException {

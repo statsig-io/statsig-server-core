@@ -1,8 +1,8 @@
 package com.statsig;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.statsig.internal.JacksonUtil;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONReader;
+import com.alibaba.fastjson2.TypeReference;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -54,8 +54,6 @@ public class Statsig {
   public static void removeSharedInstance() {
     sharedInstance = null;
   }
-
-  private static final ObjectMapper MAPPER = JacksonUtil.getObjectMapper();
 
   private volatile long ref;
   private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -143,18 +141,26 @@ public class Statsig {
 
   public String[] getFieldsNeededForGate(String gateName) {
     String resultJSON = StatsigJNI.statsigGetFieldsNeededForGate(ref, gateName);
-    return JacksonUtil.fromJsonToStringArray(resultJSON);
+    return JSON.parseObject(resultJSON, String[].class);
   }
 
   public Experiment getExperiment(StatsigUser user, String experimentName) {
     String experJson = StatsigJNI.statsigGetExperiment(ref, user.getRef(), experimentName, null);
-    return Experiment.fromJson(experJson);
+    Experiment experiment = Experiment.fromJson(experJson);
+    if (experiment != null) {
+      experiment.setRawJson(experJson);
+    }
+    return experiment;
   }
 
   public Experiment getExperiment(
       StatsigUser user, String experimentName, GetExperimentOptions options) {
     String experJson = StatsigJNI.statsigGetExperiment(ref, user.getRef(), experimentName, options);
-    return Experiment.fromJson(experJson);
+    Experiment experiment = Experiment.fromJson(experJson);
+    if (experiment != null) {
+      experiment.setRawJson(experJson);
+    }
+    return experiment;
   }
 
   public void manuallyLogExperimentExposure(StatsigUser user, String experimentName) {
@@ -163,18 +169,26 @@ public class Statsig {
 
   public String[] getFieldsNeededForExperiment(String experimentName) {
     String resultJSON = StatsigJNI.statsigGetFieldsNeededForExperiment(ref, experimentName);
-    return JacksonUtil.fromJsonToStringArray(resultJSON);
+    return JSON.parseObject(resultJSON, String[].class);
   }
 
   public DynamicConfig getDynamicConfig(StatsigUser user, String configName) {
     String configJson = StatsigJNI.statsigGetDynamicConfig(ref, user.getRef(), configName, null);
-    return JacksonUtil.fromJsonWithRawJson(configJson, DynamicConfig.class);
+    DynamicConfig config = JSON.parseObject(configJson, DynamicConfig.class);
+    if (config != null) {
+      config.setRawJson(configJson);
+    }
+    return config;
   }
 
   public DynamicConfig getDynamicConfig(
       StatsigUser user, String configName, GetDynamicConfigOptions options) {
     String configJson = StatsigJNI.statsigGetDynamicConfig(ref, user.getRef(), configName, options);
-    return JacksonUtil.fromJsonWithRawJson(configJson, DynamicConfig.class);
+    DynamicConfig config = JSON.parseObject(configJson, DynamicConfig.class);
+    if (config != null) {
+      config.setRawJson(configJson);
+    }
+    return config;
   }
 
   public void manuallyLogDynamicConfigExposure(StatsigUser user, String configName) {
@@ -183,14 +197,15 @@ public class Statsig {
 
   public String[] getFieldsNeededForDynamicConfig(String configName) {
     String resultJSON = StatsigJNI.statsigGetFieldsNeededForDynamicConfig(ref, configName);
-    return JacksonUtil.fromJsonToStringArray(resultJSON);
+    return JSON.parseObject(resultJSON, String[].class);
   }
 
   public Layer getLayer(StatsigUser user, String layerName) {
     String layerJson = StatsigJNI.statsigGetLayer(ref, user.getRef(), layerName, null);
-    Layer layer = JacksonUtil.fromJsonWithRawJson(layerJson, Layer.class);
+    Layer layer = JSON.parseObject(layerJson, Layer.class);
     if (layer != null) {
       // Set the Statsig reference in the Layer instance
+      layer.setRawJson(layerJson);
       layer.setStatsigInstance(this);
     }
     return layer;
@@ -198,9 +213,10 @@ public class Statsig {
 
   public Layer getLayer(StatsigUser user, String layerName, GetLayerOptions options) {
     String layerJson = StatsigJNI.statsigGetLayer(ref, user.getRef(), layerName, options);
-    Layer layer = JacksonUtil.fromJsonWithRawJson(layerJson, Layer.class);
+    Layer layer = JSON.parseObject(layerJson, Layer.class);
     if (layer != null) {
       // Set the Statsig reference in the Layer instance
+      layer.setRawJson(layerJson);
       layer.setStatsigInstance(this);
       layer.setDisableExposureLogging(options != null && options.disableExposureLogging);
     }
@@ -209,9 +225,10 @@ public class Statsig {
 
   public Layer getPrompt(StatsigUser user, String promptName) {
     String layerJson = StatsigJNI.statsigGetPrompt(ref, user.getRef(), promptName, null);
-    Layer layer = JacksonUtil.fromJsonWithRawJson(layerJson, Layer.class);
+    Layer layer = JSON.parseObject(layerJson, Layer.class);
     if (layer != null) {
       // Set the Statsig reference in the Layer instance
+      layer.setRawJson(layerJson);
       layer.setStatsigInstance(this);
     }
     return layer;
@@ -219,9 +236,10 @@ public class Statsig {
 
   public Layer getPrompt(StatsigUser user, String promptName, GetLayerOptions options) {
     String layerJson = StatsigJNI.statsigGetPrompt(ref, user.getRef(), promptName, options);
-    Layer layer = JacksonUtil.fromJsonWithRawJson(layerJson, Layer.class);
+    Layer layer = JSON.parseObject(layerJson, Layer.class);
     if (layer != null) {
       // Set the Statsig reference in the Layer instance
+      layer.setRawJson(layerJson);
       layer.setStatsigInstance(this);
       layer.setDisableExposureLogging(options != null && options.disableExposureLogging);
     }
@@ -234,17 +252,25 @@ public class Statsig {
 
   public String[] getFieldsNeededForLayer(String layerName) {
     String resultJSON = StatsigJNI.statsigGetFieldsNeededForLayer(ref, layerName);
-    return JacksonUtil.fromJsonToStringArray(resultJSON);
+    return JSON.parseObject(resultJSON, String[].class);
   }
 
   public FeatureGate getFeatureGate(StatsigUser user, String gateName) {
     String gateJson = StatsigJNI.statsigGetFeatureGate(ref, user.getRef(), gateName, null);
-    return JacksonUtil.fromJsonWithRawJson(gateJson, FeatureGate.class);
+    FeatureGate gate = JSON.parseObject(gateJson, FeatureGate.class);
+    if (gate != null) {
+      gate.setRawJson(gateJson);
+    }
+    return gate;
   }
 
   public FeatureGate getFeatureGate(StatsigUser user, String gateName, CheckGateOptions options) {
     String gateJson = StatsigJNI.statsigGetFeatureGate(ref, user.getRef(), gateName, options);
-    return JacksonUtil.fromJsonWithRawJson(gateJson, FeatureGate.class);
+    FeatureGate gate = JSON.parseObject(gateJson, FeatureGate.class);
+    if (gate != null) {
+      gate.setRawJson(gateJson);
+    }
+    return gate;
   }
 
   public CompletableFuture<InitializeDetails> initializeWithDetails() {
@@ -252,12 +278,12 @@ public class Statsig {
 
     StatsigJNI.statsigInitializeWithDetails(ref, future);
 
-    return future.thenApply(json -> JacksonUtil.fromJsonWithRawJson(json, InitializeDetails.class));
+    return future.thenApply(json -> JSON.parseObject(json, InitializeDetails.class));
   }
 
   public CMABRankedVariant[] getCMABRankedVariants(StatsigUser user, String cmabName) {
     String cmabJson = StatsigJNI.statsigGetCMABRankedVariants(ref, user.getRef(), cmabName);
-    CMABRankedVariant[] result = JacksonUtil.fromJson(cmabJson, CMABRankedVariant[].class);
+    CMABRankedVariant[] result = JSON.parseObject(cmabJson, CMABRankedVariant[].class);
 
     return result != null ? result : new CMABRankedVariant[0];
   }
@@ -268,7 +294,7 @@ public class Statsig {
 
   public ParameterStore getParameterStore(StatsigUser user, String parameterStoreName) {
     String storeJson = StatsigJNI.statsigGetParameterStore(ref, parameterStoreName);
-    ParameterStore store = JacksonUtil.fromJson(storeJson, ParameterStore.class);
+    ParameterStore store = JSON.parseObject(storeJson, ParameterStore.class);
     if (store != null) {
       // Set the Statsig reference in the Layer instance
       store.setStatsigInstance(this);
@@ -313,29 +339,33 @@ public class Statsig {
       String parameterStoreName,
       String parameterName,
       Map<String, Object> defaultValue) {
-    String defaultValueJSON = JacksonUtil.toJson(defaultValue);
+    String defaultValueJSON = JSON.toJSONString(defaultValue);
 
     String result =
         StatsigJNI.statsigGetObjectParameterFromParameterStore(
             ref, user.getRef(), parameterStoreName, parameterName, defaultValueJSON);
+
     if (result == null) {
       return defaultValue;
     }
 
     Map<String, Object> map =
-        JacksonUtil.fromJson(result, new TypeReference<Map<String, Object>>() {});
+        JSON.parseObject(
+            result,
+            new TypeReference<Map<String, Object>>() {},
+            JSONReader.Feature.UseNativeObject);
     return map != null ? map : defaultValue;
   }
 
   public Object[] getArrayFromParameterStore(
       StatsigUser user, String parameterStoreName, String parameterName, Object[] defaultValue) {
-    String defaultValueJSON = JacksonUtil.toJson(defaultValue);
+    String defaultValueJSON = JSON.toJSONString(defaultValue);
 
     String result =
         StatsigJNI.statsigGetArrayParameterFromParameterStore(
             ref, user.getRef(), parameterStoreName, parameterName, defaultValueJSON);
 
-    Object[] array = JacksonUtil.fromJson(result, Object[].class);
+    Object[] array = JSON.parseObject(result, Object[].class);
     return array != null ? array : defaultValue;
   }
 
