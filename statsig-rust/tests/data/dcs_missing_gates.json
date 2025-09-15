@@ -1,0 +1,142 @@
+{
+    "dynamic_configs": {},
+    "feature_gates": {
+        "test_fail_gate_not_found": {
+            "type": "feature_gate",
+            "salt": "some-salt",
+            "enabled": true,
+            "defaultValue": false,
+            "rules": [
+                {
+                    "name": "test_rule",
+                    "passPercentage": 100,
+                    "conditions": [
+                        "cond_fail_gate_not_found"
+                    ],
+                    "returnValue": {},
+                    "id": "test_rule",
+                    "salt": "",
+                    "isDeviceBased": false,
+                    "idType": "userID"
+                }
+            ],
+            "isDeviceBased": false,
+            "idType": "userID",
+            "entity": "feature_gate",
+            "version": 1
+        },
+        "test_fail_gate_not_set": {
+            "type": "feature_gate",
+            "salt": "some-salt",
+            "enabled": true,
+            "defaultValue": false,
+            "rules": [
+                {
+                    "name": "test_rule",
+                    "passPercentage": 100,
+                    "conditions": [
+                        "cond_fail_gate_not_set"
+                    ],
+                    "returnValue": {},
+                    "id": "test_rule",
+                    "salt": "",
+                    "isDeviceBased": false,
+                    "idType": "userID"
+                }
+            ],
+            "isDeviceBased": false,
+            "idType": "userID",
+            "entity": "feature_gate",
+            "version": 1
+        },
+        "test_pass_gate_not_found": {
+            "type": "feature_gate",
+            "salt": "some-salt",
+            "enabled": true,
+            "defaultValue": false,
+            "rules": [
+                {
+                    "name": "test_rule",
+                    "passPercentage": 100,
+                    "conditions": [
+                        "cond_pass_gate_not_found"
+                    ],
+                    "returnValue": {},
+                    "id": "test_rule",
+                    "salt": "",
+                    "isDeviceBased": false,
+                    "idType": "userID"
+                }
+            ],
+            "isDeviceBased": false,
+            "idType": "userID",
+            "entity": "feature_gate",
+            "version": 1
+        },
+        "test_pass_gate_not_set": {
+            "type": "feature_gate",
+            "salt": "some-salt",
+            "enabled": true,
+            "defaultValue": false,
+            "rules": [
+                {
+                    "name": "test_rule",
+                    "passPercentage": 100,
+                    "conditions": [
+                        "cond_pass_gate_not_set"
+                    ],
+                    "returnValue": {},
+                    "id": "test_rule",
+                    "salt": "",
+                    "isDeviceBased": false,
+                    "idType": "userID"
+                }
+            ],
+            "isDeviceBased": false,
+            "idType": "userID",
+            "entity": "feature_gate",
+            "version": 1
+        }
+    },
+    "layer_configs": {},
+    "id_lists": {},
+    "has_updates": true,
+    "time": 1680812313625,
+    "condition_map": {
+        "cond_pass_gate_not_found": {
+            "type": "pass_gate",
+            "targetValue": "non_existent_gate",
+            "operator": null,
+            "field": null,
+            "additionalValues": {},
+            "isDeviceBased": false,
+            "idType": "userID"
+        },
+        "cond_pass_gate_not_set": {
+            "type": "pass_gate",
+            "operator": null,
+            "field": null,
+            "additionalValues": {},
+            "isDeviceBased": false,
+            "idType": "userID"
+        },
+        "cond_fail_gate_not_found": {
+            "type": "fail_gate",
+            "targetValue": "non_existent_gate",
+            "operator": null,
+            "field": null,
+            "additionalValues": {},
+            "isDeviceBased": false,
+            "idType": "userID"
+        },
+        "cond_fail_gate_not_set": {
+            "type": "fail_gate",
+            "operator": null,
+            "field": null,
+            "additionalValues": {},
+            "isDeviceBased": false,
+            "idType": "userID"
+        }
+    },
+    "experiment_to_layer": {}
+}

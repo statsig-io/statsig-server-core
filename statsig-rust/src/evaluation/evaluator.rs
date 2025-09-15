@@ -15,11 +15,9 @@ use crate::evaluation::get_unit_id::get_unit_id;
 use crate::evaluation::user_agent_parsing::UserAgentParser;
 use crate::event_logging::exposable_string;
 use crate::specs_response::spec_types::{Condition, Rule, Spec};
-use crate::{dyn_value, log_e, unwrap_or_return, StatsigErr};
+use crate::{dyn_value, unwrap_or_return, StatsigErr};
 
 use super::country_lookup::CountryLookup;
-
-const TAG: &str = stringify!(Evaluator);
 
 pub struct Evaluator;
 
@@ -36,7 +34,7 @@ pub enum SpecType {
     Layer,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum Recognition {
     Unrecognized,
     Recognized,
@@ -442,41 +440,37 @@ fn evaluate_nested_gate<'a>(
     target_value: &'a MemoizedEvaluatorValue,
     condition_type: &'a String,
 ) -> Result<(), StatsigErr> {
-    let gate_name = if let Some(name) = target_value.string_value.as_ref() {
-        &name.value
-    } else {
-        log_e!(
-            TAG,
-            "Invalid target_value for condition {}, {:?}",
-            condition_type,
-            target_value
-        );
-        ctx.result.unsupported = true;
-        return Ok(());
-    };
+    let gate_name = target_value
+        .string_value
+        .as_ref()
+        .map(|name| name.value.as_str())
+        .unwrap_or_default();
 
-    match ctx.nested_gate_memo.get(gate_name.as_str()) {
+    match ctx.nested_gate_memo.get(gate_name) {
         Some((previous_bool, previous_rule_id)) => {
             ctx.result.bool_value = *previous_bool;
             ctx.result.rule_id = *previous_rule_id;
         }
         None => {
             ctx.prep_for_nested_evaluation()?;
+
             let _ = Evaluator::evaluate(ctx, gate_name, &SpecType::Gate)?;
 
             if ctx.result.unsupported {
                 return Ok(());
             }
 
-            ctx.nested_gate_memo
-                .insert(gate_name, (ctx.result.bool_value, ctx.result.rule_id));
+            if !gate_name.is_empty() {
+                ctx.nested_gate_memo
+                    .insert(gate_name, (ctx.result.bool_value, ctx.result.rule_id));
+            }
         }
     }
 
     if !&gate_name.starts_with("segment:") {
         let res = &ctx.result;
         let expo = SecondaryExposure {
-            gate: gate_name.clone(),
+            gate: gate_name.to_string(),
             gate_value: res.bool_value.to_string(),
             rule_id: res
                 .rule_id
