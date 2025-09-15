@@ -159,3 +159,54 @@ func TestAllValuesSet(t *testing.T) {
 		t.Errorf("expected OutputLogLevel to be 'WARN', got %v", options.OutputLogLevel)
 	}
 }
+
+func TestNewOptionsInitTimeoutMs(t *testing.T) {
+	options := statsig.NewStatsigOptionsBuilder().
+		WithInitTimeoutMs(5000).
+		Build()
+
+	if options.InitTimeoutMs != 5000 {
+		t.Errorf("expected InitTimeoutMs to be 5000, got %d", options.InitTimeoutMs)
+	}
+}
+
+func TestNewOptionsFallbackToStatsigApi(t *testing.T) {
+	options := statsig.NewStatsigOptionsBuilder().
+		WithFallbackToStatsigApi(true).
+		Build()
+
+	if options.FallbackToStatsigApi == nil {
+		t.Error("expected FallbackToStatsigApi to be set, got nil")
+	}
+	if *options.FallbackToStatsigApi != true {
+		t.Errorf("expected FallbackToStatsigApi to be true, got %v", *options.FallbackToStatsigApi)
+	}
+}
+
+func TestNewOptionsBothNewOptions(t *testing.T) {
+	options := statsig.NewStatsigOptionsBuilder().
+		WithInitTimeoutMs(3000).
+		WithFallbackToStatsigApi(false).
+		Build()
+
+	if options.InitTimeoutMs != 3000 {
+		t.Errorf("expected InitTimeoutMs to be 3000, got %d", options.InitTimeoutMs)
+	}
+	if options.FallbackToStatsigApi == nil {
+		t.Error("expected FallbackToStatsigApi to be set, got nil")
+	}
+	if *options.FallbackToStatsigApi != false {
+		t.Errorf("expected FallbackToStatsigApi to be false, got %v", *options.FallbackToStatsigApi)
+	}
+}
+
+func TestNewOptionsDefaults(t *testing.T) {
+	options := statsig.NewStatsigOptionsBuilder().Build()
+
+	if options.InitTimeoutMs != -1 {
+		t.Errorf("expected InitTimeoutMs default to be -1, got %d", options.InitTimeoutMs)
+	}
+	if options.FallbackToStatsigApi != nil {
+		t.Errorf("expected FallbackToStatsigApi default to be nil, got %v", options.FallbackToStatsigApi)
+	}
+}

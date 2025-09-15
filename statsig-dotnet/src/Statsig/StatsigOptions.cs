@@ -54,7 +54,9 @@ namespace Statsig
                         builder.disableAllLogging ? 1 : 0,
                         globalCustomFieldsPtr,
                         0, // observability client ref - not implemented in .NET
-                        0 // dataStoreRef - not implemented in .NET
+                        0, // dataStoreRef - not implemented in .NET
+                        builder.initTimeoutMs,
+                        builder.fallbackToStatsigApi ? 1 : 0
                     );
                 }
             }
@@ -83,6 +85,7 @@ namespace Statsig
         internal string? logEventURL;
         internal string? environment;
         internal int specsSyncIntervalMs = -1;
+        internal int initTimeoutMs = -1;
         internal bool waitForCountryLookupInit = false;
         internal bool waitForUserAgentInit = false;
 
@@ -94,6 +97,7 @@ namespace Statsig
         internal bool disableUserAgentParsing = false;
         internal bool disableAllLogging = false;
         internal bool disableNetwork = false;
+        internal bool fallbackToStatsigApi = false;
         internal Dictionary<string, object>? globalCustomFields;
 
         public StatsigOptionsBuilder SetSpecsURL(string specsURL)
@@ -105,6 +109,18 @@ namespace Statsig
         public StatsigOptionsBuilder SetLogEventURL(string logEventURL)
         {
             this.logEventURL = logEventURL;
+            return this;
+        }
+
+        public StatsigOptionsBuilder SetInitTimeoutMs(int initTimeoutMs)
+        {
+            this.initTimeoutMs = initTimeoutMs;
+            return this;
+        }
+
+        public StatsigOptionsBuilder SetFallbackToStatsigApi(bool fallbackToStatsigApi)
+        {
+            this.fallbackToStatsigApi = fallbackToStatsigApi;
             return this;
         }
 

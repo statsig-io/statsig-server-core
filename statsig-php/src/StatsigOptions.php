@@ -25,7 +25,9 @@ class StatsigOptions
         ?bool $wait_for_country_lookup_init = null,
         ?bool $wait_for_user_agent_init = null,
         ?bool $disable_network = null,
-        ?bool $disable_all_logging = null
+        ?bool $disable_all_logging = null,
+        ?int $init_timeout_ms = null,
+        ?bool $fallback_to_statsig_api = null
     ) {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->statsig_options_create(
@@ -49,7 +51,9 @@ class StatsigOptions
             toSafeOptBool($disable_all_logging),
             null, // global custom fields
             0, // ob client ref - not implemented in PHP
-            0 // data store ref - not implemented in PHP
+            0, // data store ref - not implemented in PHP
+            $init_timeout_ms ?? -1,
+            toSafeOptBool($fallback_to_statsig_api)
         );
     }
 

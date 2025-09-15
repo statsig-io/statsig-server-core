@@ -299,7 +299,9 @@ uint64_t statsig_options_create(const char *specs_url,
                                 SafeOptBool disable_all_logging,
                                 const char *global_custom_fields,
                                 uint64_t observability_client_ref,
-                                uint64_t data_store_ref);
+                                uint64_t data_store_ref,
+                                int init_timeout_ms,
+                                SafeOptBool fallback_to_statsig_api);
 
 void statsig_options_release(uint64_t options_ref);
 

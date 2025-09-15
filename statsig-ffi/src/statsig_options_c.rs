@@ -2,7 +2,7 @@ use std::{os::raw::c_char, os::raw::c_int, sync::Arc};
 
 use crate::{
     data_store_c::DataStoreC,
-    ffi_utils::{c_char_to_string, c_int_to_u32, extract_opt_bool, SafeOptBool},
+    ffi_utils::{c_char_to_string, c_int_to_u32, c_int_to_u64, extract_opt_bool, SafeOptBool},
     function_based_event_logging_adapter_c::FunctionBasedEventLoggingAdapterC,
     function_based_specs_adapter_c::FunctionBasedSpecsAdapterC,
     observability_client_c::ObservabilityClientC,
@@ -40,6 +40,8 @@ pub extern "C" fn statsig_options_create(
     global_custom_fields: *const c_char,
     observability_client_ref: u64,
     data_store_ref: u64,
+    init_timeout_ms: c_int,
+    fallback_to_statsig_api: SafeOptBool,
 ) -> u64 {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
@@ -54,6 +56,7 @@ pub extern "C" fn statsig_options_create(
             Some(s) => serde_json::from_str(s.as_str()).ok(),
             None => None,
         };
+    let init_timeout_ms = c_int_to_u64(init_timeout_ms);
 
     let specs_adapter = try_get_specs_adapter(specs_adapter_ref);
     let event_logging_adapter = try_get_event_logging_adapter(event_logging_adapter_ref);
@@ -84,6 +87,8 @@ pub extern "C" fn statsig_options_create(
         global_custom_fields,
         data_store,
         observability_client,
+        init_timeout_ms,
+        fallback_to_statsig_api: extract_opt_bool(fallback_to_statsig_api),
         ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {

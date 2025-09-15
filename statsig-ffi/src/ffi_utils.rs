@@ -41,6 +41,14 @@ pub fn c_int_to_u32(c_num: c_int) -> Option<u32> {
     Some(c_num as u32)
 }
 
+pub fn c_int_to_u64(c_num: c_int) -> Option<u64> {
+    if c_num < 0 {
+        return None;
+    }
+
+    Some(c_num as u64)
+}
+
 pub fn extract_opt_bool(c_bool: SafeOptBool) -> Option<bool> {
     if c_bool < 0 {
         return None;

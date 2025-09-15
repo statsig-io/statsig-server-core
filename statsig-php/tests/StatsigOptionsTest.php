@@ -47,4 +47,58 @@ class StatsigOptionsTest extends TestCase
 
         $this->assertNull($options->__ref);
     }
+
+    public function testNewOptionsInitTimeoutMs()
+    {
+        $options = new StatsigOptions(
+            init_timeout_ms: 5000,
+        );
+        $this->assertNotNull($options->__ref);
+
+        $options->__destruct();
+
+        $this->assertNull($options->__ref);
+    }
+
+    public function testNewOptionsFallbackToStatsigApi()
+    {
+        $options = new StatsigOptions(
+            fallback_to_statsig_api: true,
+        );
+        $this->assertNotNull($options->__ref);
+
+        $options->__destruct();
+
+        $this->assertNull($options->__ref);
+    }
+
+    public function testNewOptionsBothNewOptions()
+    {
+        $options = new StatsigOptions(
+            init_timeout_ms: 3000,
+            fallback_to_statsig_api: false,
+        );
+        $this->assertNotNull($options->__ref);
+
+        $options->__destruct();
+
+        $this->assertNull($options->__ref);
+    }
+
+    public function testNewOptionsWithExistingOptions()
+    {
+        $options = new StatsigOptions(
+            environment: "staging",
+            output_log_level: "info",
+            disable_country_lookup: true,
+            disable_user_agent_parsing: false,
+            init_timeout_ms: 2000,
+            fallback_to_statsig_api: true,
+        );
+        $this->assertNotNull($options->__ref);
+
+        $options->__destruct();
+
+        $this->assertNull($options->__ref);
+    }
 }

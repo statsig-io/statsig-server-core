@@ -32,6 +32,8 @@ type StatsigOptions struct {
 	GlobalCustomFields          *string
 	ObservabilityClientRef      uint64
 	DataStoreRef                uint64
+	InitTimeoutMs               int32
+	FallbackToStatsigApi        *bool
 }
 
 type StatsigOptionsBuilder struct {
@@ -69,6 +71,8 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 		ResolveDefault(o.statsigOptions.GlobalCustomFields),
 		C.uint64_t(o.statsigOptions.ObservabilityClientRef),
 		C.uint64_t(o.statsigOptions.DataStoreRef),
+		C.int(o.statsigOptions.InitTimeoutMs),
+		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.FallbackToStatsigApi)),
 	)
 
 	o.statsigOptions.innerRef = uint64(optionsRef)
@@ -92,6 +96,7 @@ func NewStatsigOptionsBuilder() *StatsigOptionsBuilder {
 			SpecsSyncIntervalMs:         -1,
 			OutputLogLevel:              nil,
 			IdListsSyncIntervalMs:       -1,
+			InitTimeoutMs:               -1,
 		},
 	}
 }
@@ -188,5 +193,15 @@ func (o *StatsigOptionsBuilder) WithDataStore(dataStore DataStoreInterface) *Sta
 
 func (o *StatsigOptionsBuilder) WithObservabilityClient(observabilityClient ObservabilityClientInterface) *StatsigOptionsBuilder {
 	o.statsigOptions.ObservabilityClientRef = NewObservabilityClient(observabilityClient)
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithInitTimeoutMs(value int32) *StatsigOptionsBuilder {
+	o.statsigOptions.InitTimeoutMs = value
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithFallbackToStatsigApi(value bool) *StatsigOptionsBuilder {
+	o.statsigOptions.FallbackToStatsigApi = &value
 	return o
 }
