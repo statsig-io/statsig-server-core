@@ -2444,6 +2444,7 @@ dependencies = [
  "napi-build",
  "napi-derive",
  "parking_lot",
+ "serde",
  "serde_json",
  "statsig-rust",
 ]

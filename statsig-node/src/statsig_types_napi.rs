@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use napi_derive::napi;
+use serde::Serialize;
 use serde_json::Value;
 use statsig_rust::{
     statsig_types::{
@@ -14,7 +15,7 @@ use statsig_rust::{
 use crate::statsig_user_napi::StatsigUser;
 
 #[napi(object)]
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct EvaluationDetails {
     pub reason: String,
     pub lcut: Option<i64>,
@@ -71,13 +72,18 @@ impl From<FeatureGateActual> for FeatureGate {
 }
 
 #[napi]
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DynamicConfig {
     pub name: String,
     pub value: HashMap<String, Value>,
     #[napi(js_name = "ruleID")]
+    #[serde(rename = "ruleID")]
     pub rule_id: String,
     pub id_type: String,
+    pub details: EvaluationDetails,
 
+    #[serde(skip_serializing)]
     inner: DynamicConfigActual,
 }
 
@@ -88,6 +94,7 @@ impl From<DynamicConfigActual> for DynamicConfig {
             rule_id: config.rule_id.clone(),
             id_type: config.id_type.clone(),
             value: config.value.clone(),
+            details: config.details.clone().into(),
             inner: config,
         }
     }
@@ -137,14 +144,19 @@ impl DynamicConfig {
 }
 
 #[napi]
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Experiment {
     pub name: String,
     pub value: HashMap<String, Value>,
     #[napi(js_name = "ruleID")]
+    #[serde(rename = "ruleID")]
     pub rule_id: String,
     pub id_type: String,
     pub group_name: Option<String>,
+    pub details: EvaluationDetails,
 
+    #[serde(skip_serializing)]
     inner: ExperimentActual,
 }
 
@@ -156,6 +168,7 @@ impl From<ExperimentActual> for Experiment {
             id_type: experiment.id_type.clone(),
             group_name: experiment.group_name.clone(),
             value: experiment.value.clone(),
+            details: experiment.details.clone().into(),
             inner: experiment,
         }
     }
@@ -210,14 +223,19 @@ impl Experiment {
 }
 
 #[napi]
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Layer {
     pub name: String,
     #[napi(js_name = "ruleID")]
+    #[serde(rename = "ruleID")]
     pub rule_id: String,
     pub group_name: Option<String>,
     pub allocated_experiment_name: Option<String>,
     pub value: HashMap<String, Value>,
+    pub details: EvaluationDetails,
 
+    #[serde(skip_serializing)]
     pub(crate) inner: LayerActual,
 }
 
@@ -272,6 +290,7 @@ impl From<LayerActual> for Layer {
             group_name: layer.group_name.clone(),
             allocated_experiment_name: layer.allocated_experiment_name.clone(),
             value: layer.__value.clone(),
+            details: layer.details.clone().into(),
             inner: layer,
         }
     }
@@ -298,3 +317,22 @@ impl ParameterStore<'_> {
         self.inner.details.clone().into()
     }
 }
+
+macro_rules! impl_napi_tojson {
+    ($ty:ty) => {
+        #[napi]
+        impl $ty {
+            #[napi(js_name = "toJSON")]
+            pub fn to_json(&self) -> serde_json::Map<String, serde_json::Value> {
+                match serde_json::to_value(self) {
+                    Ok(serde_json::Value::Object(map)) => map,
+                    _ => serde_json::Map::new(),
+                }
+            }
+        }
+    };
+}
+
+impl_napi_tojson!(DynamicConfig);
+impl_napi_tojson!(Experiment);
+impl_napi_tojson!(Layer);

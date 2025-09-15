@@ -5,11 +5,13 @@ export declare class DynamicConfig {
   value: Record<string, any>
   ruleID: string
   idType: string
+  details: EvaluationDetails
   getValue(param_name: string, fallback: boolean | number | string | object | Array<any> | null): any
   getRuleId(): string
   getIdType(): string
   getEvaluationDetails(): EvaluationDetails
   getSecondaryExposures(): Array<SecondaryExposure> | null
+  toJSON(): Record<string, any>
 }
 
 export declare class Experiment {
@@ -18,12 +20,14 @@ export declare class Experiment {
   ruleID: string
   idType: string
   groupName?: string
+  details: EvaluationDetails
   getValue(param_name: string, fallback: boolean | number | string | object | Array<any> | null): any
   getRuleId(): string
   getIdType(): string
   getGroupName(): string | null
   getEvaluationDetails(): EvaluationDetails
   getSecondaryExposures(): Array<SecondaryExposure> | null
+  toJSON(): Record<string, any>
 }
 
 export declare class Layer {
@@ -32,11 +36,13 @@ export declare class Layer {
   groupName?: string
   allocatedExperimentName?: string
   value: Record<string, any>
+  details: EvaluationDetails
   getValue(param_name: string, fallback: boolean | number | string | object | Array<any> | null): any
   getRuleId(): string
   getGroupName(): string | null
   getEvaluationDetails(): EvaluationDetails
   getSecondaryExposures(): Array<SecondaryExposure> | null
+  toJSON(): Record<string, any>
 }
 
 export declare class ParameterStore {
@@ -55,6 +61,7 @@ export declare class StatsigNapiInternal {
   shutdown(timeoutMs?: number | undefined | null): Promise<StatsigResult>
   flushEvents(): Promise<StatsigResult>
   logEvent(user: StatsigUser, eventName: string, value?: string | number | null, metadata?: Record<string, string> | undefined | null): void
+  forwardLogLineEvent(user: StatsigUser, logLevel: 'trace' | 'debug' |'log' | 'info' | 'warn' | 'error', value?: string | undefined | null, metadata?: Record<string, string> | undefined | null): void
   checkGate(user: StatsigUser, gateName: string, options?: FeatureGateEvaluationOptions | undefined | null): boolean
   getFeatureGate(user: StatsigUser, featureName: string, options?: FeatureGateEvaluationOptions | undefined | null): FeatureGate
   getFieldsNeededForGate(gateName: string): Array<string>
