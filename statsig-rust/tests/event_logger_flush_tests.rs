@@ -297,9 +297,12 @@ async fn test_non_retryable_failure_drops_events() {
     let (statsig, logging_adapter, obs_client) = setup(options).await;
 
     // get into failure backoff
-    *logging_adapter.mocked_log_events_result.lock().unwrap() = Err(StatsigErr::NetworkError(
-        NetworkError::RequestNotRetryable("test_url".to_string(), 0, "test error".to_string()),
-    ));
+    *logging_adapter.mocked_log_events_result.lock().unwrap() =
+        Err(StatsigErr::NetworkError(NetworkError::RequestNotRetryable(
+            "test_url".to_string(),
+            Some(0),
+            "test error".to_string(),
+        )));
 
     let user = StatsigUser::with_user_id("user_1");
     statsig.log_event(&user, "test_event", None, None);

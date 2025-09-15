@@ -82,7 +82,7 @@ impl RequestArgs {
 }
 
 pub struct Response {
-    pub status_code: u16,
+    pub status_code: Option<u16>,
     pub data: Option<Vec<u8>>,
     pub error: Option<String>,
     pub headers: Option<HashMap<String, String>>,

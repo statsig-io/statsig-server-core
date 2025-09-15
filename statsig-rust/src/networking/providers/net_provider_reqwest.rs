@@ -24,7 +24,7 @@ impl NetworkProvider for NetworkProviderReqwest {
         if let Some(is_shutdown) = &args.is_shutdown {
             if is_shutdown.load(std::sync::atomic::Ordering::SeqCst) {
                 return Response {
-                    status_code: 0,
+                    status_code: None,
                     data: None,
                     error: Some("Request was shutdown".to_string()),
                     headers: None,
@@ -35,13 +35,13 @@ impl NetworkProvider for NetworkProviderReqwest {
         let request = self.build_request(method, args);
 
         let error;
-        let mut status_code = 0;
+        let mut status_code = None;
         let mut data = None;
         let mut headers = None;
 
         match request.send().await {
             Ok(response) => {
-                status_code = response.status().as_u16();
+                status_code = Some(response.status().as_u16());
                 headers = get_response_headers(&response);
                 data = response.bytes().await.ok().map(|bytes| bytes.to_vec());
                 error = None;

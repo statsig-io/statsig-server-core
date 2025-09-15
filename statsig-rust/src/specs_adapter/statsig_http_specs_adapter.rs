@@ -168,7 +168,7 @@ impl StatsigHttpSpecsAdapter {
             None => {
                 return Err(NetworkError::RequestFailed(
                     request_args.url.clone(),
-                    0,
+                    None,
                     "No fallback URL".to_string(),
                 ))
             }
@@ -196,7 +196,7 @@ impl StatsigHttpSpecsAdapter {
             Some(data) => Ok(data),
             None => Err(NetworkError::RequestFailed(
                 url,
-                0,
+                None,
                 "No data in response".to_string(),
             )),
         }

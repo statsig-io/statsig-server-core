@@ -127,7 +127,7 @@ impl NetworkClient {
                 None => {
                     return Err(NetworkError::RequestFailed(
                         request_args.url,
-                        0,
+                        None,
                         "Failed to get a NetworkProvider instance".to_string(),
                     ));
                 }
@@ -135,7 +135,7 @@ impl NetworkClient {
 
             log_d!(
                 TAG,
-                "Response ({}): {}",
+                "Response ({}): {:?}",
                 &request_args.url,
                 response.status_code
             );
@@ -145,7 +145,7 @@ impl NetworkClient {
                 .headers
                 .as_ref()
                 .and_then(|h| h.get("x-statsig-region"));
-            let success = (200..300).contains(&status);
+            let success = (200..300).contains(&status.unwrap_or(0));
 
             let error_message = response
                 .error
@@ -157,15 +157,22 @@ impl NetworkClient {
                     Marker::new(key, ActionType::End, Some(StepType::NetworkRequest))
                         .with_attempt(attempt)
                         .with_url(request_args.url.clone())
-                        .with_status_code(status)
                         .with_is_success(success)
                         .with_sdk_region(sdk_region_str.map(|s| s.to_owned()));
+
+                if let Some(status_code) = status {
+                    end_marker = end_marker.with_status_code(status_code);
+                }
 
                 let error_map = if !error_message.is_empty() {
                     let mut map = HashMap::new();
                     map.insert("name".to_string(), "NetworkError".to_string());
                     map.insert("message".to_string(), error_message.clone());
-                    map.insert("code".to_string(), status.to_string());
+                    let status_string = match status {
+                        Some(code) => code.to_string(),
+                        None => "None".to_string(),
+                    };
+                    map.insert("code".to_string(), status_string);
                     Some(map)
                 } else {
                     None
@@ -182,7 +189,7 @@ impl NetworkClient {
                 return Ok(response);
             }
 
-            if NON_RETRY_CODES.contains(&status) {
+            if NON_RETRY_CODES.contains(&status.unwrap_or(0)) {
                 let error = NetworkError::RequestNotRetryable(
                     request_args.url.clone(),
                     status,
@@ -208,7 +215,7 @@ impl NetworkClient {
 
             log_i!(
                 TAG, "Network request failed with status code {} (attempt {}/{}), will retry after {}ms...\n{}",
-                status,
+                status.map_or("unknown".to_string(), |s| s.to_string()),
                 attempt,
                 request_args.retries + 1,
                 backoff_ms,
@@ -242,8 +249,8 @@ impl NetworkClient {
     }
 }
 
-fn get_error_message_for_status(status: u16, data: Option<&[u8]>) -> String {
-    if (200..300).contains(&status) {
+fn get_error_message_for_status(status: Option<u16>, data: Option<&[u8]>) -> String {
+    if (200..300).contains(&status.unwrap_or(0)) {
         return String::new();
     }
 
@@ -255,7 +262,12 @@ fn get_error_message_for_status(status: u16, data: Option<&[u8]>) -> String {
         }
     }
 
-    let generic_message = match status {
+    let status_value = match status {
+        Some(code) => code,
+        None => return format!("HTTP Error None: {message}"),
+    };
+
+    let generic_message = match status_value {
         400 => "Bad Request",
         401 => "Unauthorized",
         403 => "Forbidden",
@@ -268,7 +280,7 @@ fn get_error_message_for_status(status: u16, data: Option<&[u8]>) -> String {
         503 => "Service Unavailable",
         504 => "Gateway Timeout",
         0 => "Unknown Error",
-        _ => return format!("HTTP Error {status}: {message}"),
+        _ => return format!("HTTP Error {status_value}: {message}"),
     };
 
     if message.is_empty() {

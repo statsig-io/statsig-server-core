@@ -9,9 +9,9 @@ pub enum NetworkError {
     DisableNetworkOn(RequestUrl),
     SerializationError(RequestUrl, String),
 
-    RequestFailed(RequestUrl, u16, String),
-    RetriesExhausted(RequestUrl, u16, u32, String),
-    RequestNotRetryable(RequestUrl, u16, String),
+    RequestFailed(RequestUrl, Option<u16>, String),
+    RetriesExhausted(RequestUrl, Option<u16>, u32, String),
+    RequestNotRetryable(RequestUrl, Option<u16>, String),
 }
 
 impl NetworkError {
@@ -35,16 +35,31 @@ impl fmt::Display for NetworkError {
             NetworkError::SerializationError(url, s) => write!(f, "SerializationError: {url} {s}"),
 
             NetworkError::RequestFailed(url, status, message) => {
-                write!(f, "RequestFailed: {url} {status} {message}")
+                let status_display = match status {
+                    Some(code) => code.to_string(),
+                    None => "None".to_string(),
+                };
+                write!(f, "RequestFailed: {url} {status_display} {message}")
             }
             NetworkError::RetriesExhausted(url, status, attempts, message) => {
+                let status_display = match status {
+                    Some(code) => code.to_string(),
+                    None => "None".to_string(),
+                };
                 write!(
                     f,
-                    "RetriesExhausted: {url} status({status}) attempts({attempts}) {message}"
+                    "RetriesExhausted: {url} status({status_display}) attempts({attempts}) {message}"
                 )
             }
             NetworkError::RequestNotRetryable(url, status, message) => {
-                write!(f, "RequestNotRetryable: {url} status({status}) {message}")
+                let status_display = match status {
+                    Some(code) => code.to_string(),
+                    None => "None".to_string(),
+                };
+                write!(
+                    f,
+                    "RequestNotRetryable: {url} status({status_display}) {message}"
+                )
             }
         }
     }
