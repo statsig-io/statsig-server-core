@@ -1,6 +1,6 @@
 {
     "name": "@statsig/statsig-node-core-darwin-x64",
-    "version": "0.8.8-beta.2509130225",
+    "version": "0.8.8-rc.2509151314",
     "os": [
       "darwin"
     ],
