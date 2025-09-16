@@ -1,12 +1,12 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
-use crate::hashing::ahash_str;
+use crate::{hashing::ahash_str, interned_string::InternedString};
 
 #[derive(Clone, Eq, Debug)]
 pub struct DynamicString {
-    pub value: String,
-    pub lowercased_value: String,
+    pub value: InternedString,
+    pub lowercased_value: InternedString,
     pub hash_value: u64,
 }
 
@@ -79,8 +79,8 @@ impl From<String> for DynamicString {
         let lowercased_value = value.to_lowercase();
 
         Self {
-            value,
-            lowercased_value,
+            value: InternedString::from_string(value),
+            lowercased_value: InternedString::from_string(lowercased_value),
             hash_value,
         }
     }

@@ -14,10 +14,13 @@ use crate::evaluation::evaluator_value::{EvaluatorValue, MemoizedEvaluatorValue}
 use crate::evaluation::get_unit_id::get_unit_id;
 use crate::evaluation::user_agent_parsing::UserAgentParser;
 use crate::event_logging::exposable_string;
+use crate::interned_string::InternedString;
 use crate::specs_response::spec_types::{Condition, Rule, Spec};
-use crate::{dyn_value, unwrap_or_return, StatsigErr};
+use crate::{dyn_value, log_w, unwrap_or_return, StatsigErr};
 
 use super::country_lookup::CountryLookup;
+
+const TAG: &str = "Evaluator";
 
 pub struct Evaluator;
 
@@ -100,7 +103,7 @@ impl Evaluator {
         }
 
         if ctx.result.id_type.is_none() {
-            ctx.result.id_type = Some(&spec.id_type);
+            ctx.result.id_type = Some(InternedString::from_str_ref(&spec.id_type));
         }
 
         if ctx.result.version.is_none() {
@@ -148,7 +151,7 @@ impl Evaluator {
             }
 
             ctx.result.rule_id = Some(&rule.id);
-            ctx.result.group_name = rule.group_name.as_ref();
+            ctx.result.group_name = rule.group_name.clone();
             ctx.result.is_experiment_group = rule.is_experiment_group.unwrap_or(false);
             ctx.result.is_experiment_active = spec.is_active.unwrap_or(false);
             ctx.finalize_evaluation(spec, Some(rule));
@@ -190,7 +193,7 @@ fn try_apply_config_mapping(
 
     let spec_salt = match opt_spec {
         Some(spec) => &spec.salt,
-        None => &EMPTY_STR,
+        None => InternedString::empty_ref(),
     };
 
     for mapping in mapping_list {
@@ -274,7 +277,7 @@ fn evaluate_rule<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) -> Result<(
         let condition = if let Some(c) = opt_condition {
             c
         } else {
-            // todo: log condition not found error
+            log_w!(TAG, "Unsupported - Condition not found: {}", condition_hash);
             ctx.result.unsupported = true;
             return Ok(());
         };
@@ -301,9 +304,9 @@ fn evaluate_condition<'a>(
         .as_ref()
         .map(|v| v.inner.as_ref())
         .unwrap_or(EvaluatorValue::empty().inner.as_ref());
-    let condition_type = &condition.condition_type;
+    let condition_type = condition.condition_type.as_str();
 
-    let value: &DynamicValue = match condition_type as &str {
+    let value: &DynamicValue = match condition_type {
         "public" => {
             ctx.result.bool_value = true;
             return Ok(());
@@ -349,6 +352,11 @@ fn evaluate_condition<'a>(
         "target_app" => ctx.app_id,
         "unit_id" => ctx.user.get_unit_id(&condition.id_type),
         _ => {
+            log_w!(
+                TAG,
+                "Unsupported - Unknown condition type: {}",
+                condition_type
+            );
             ctx.result.unsupported = true;
             return Ok(());
         }
@@ -358,14 +366,15 @@ fn evaluate_condition<'a>(
     // println!("Eval Condition {}, {:?}", condition_type, value);
 
     let operator = match &condition.operator {
-        Some(operator) => operator,
+        Some(operator) => operator.as_str(),
         None => {
+            log_w!(TAG, "Unsupported - Operator is None",);
             ctx.result.unsupported = true;
             return Ok(());
         }
     };
 
-    ctx.result.bool_value = match operator as &str {
+    ctx.result.bool_value = match operator {
         // numerical comparisons
         "gt" | "gte" | "lt" | "lte" => compare_numbers(value, target_value, operator),
 
@@ -403,6 +412,7 @@ fn evaluate_condition<'a>(
         | "not_array_contains_all" => compare_arrays(value, target_value, operator),
 
         _ => {
+            log_w!(TAG, "Unsupported - Unknown operator: {}", operator);
             ctx.result.unsupported = true;
             return Ok(());
         }
@@ -420,7 +430,7 @@ fn evaluate_id_list(
     let list_name = unwrap_or_return!(&target_value.string_value, false);
     let id_lists = &ctx.spec_store_data.id_lists;
 
-    let list = unwrap_or_return!(id_lists.get(&list_name.value), false);
+    let list = unwrap_or_return!(id_lists.get(list_name.value.as_str()), false);
 
     let dyn_str = unwrap_or_return!(&value.string_value, false);
     let hashed = ctx.hashing.sha256(&dyn_str.value);
@@ -438,15 +448,15 @@ fn evaluate_id_list(
 fn evaluate_nested_gate<'a>(
     ctx: &mut EvaluatorContext<'a>,
     target_value: &'a MemoizedEvaluatorValue,
-    condition_type: &'a String,
+    condition_type: &'a str,
 ) -> Result<(), StatsigErr> {
     let gate_name = target_value
         .string_value
         .as_ref()
-        .map(|name| name.value.as_str())
-        .unwrap_or_default();
+        .map(|name| &name.value)
+        .unwrap_or(InternedString::empty_ref());
 
-    match ctx.nested_gate_memo.get(gate_name) {
+    match ctx.nested_gate_memo.get(gate_name.as_str()) {
         Some((previous_bool, previous_rule_id)) => {
             ctx.result.bool_value = *previous_bool;
             ctx.result.rule_id = *previous_rule_id;
@@ -454,15 +464,17 @@ fn evaluate_nested_gate<'a>(
         None => {
             ctx.prep_for_nested_evaluation()?;
 
-            let _ = Evaluator::evaluate(ctx, gate_name, &SpecType::Gate)?;
+            let _ = Evaluator::evaluate(ctx, gate_name.as_str(), &SpecType::Gate)?;
 
             if ctx.result.unsupported {
                 return Ok(());
             }
 
-            if !gate_name.is_empty() {
-                ctx.nested_gate_memo
-                    .insert(gate_name, (ctx.result.bool_value, ctx.result.rule_id));
+            if !gate_name.as_str().is_empty() {
+                ctx.nested_gate_memo.insert(
+                    gate_name.as_str(),
+                    (ctx.result.bool_value, ctx.result.rule_id),
+                );
             }
         }
     }
@@ -470,8 +482,8 @@ fn evaluate_nested_gate<'a>(
     if !&gate_name.starts_with("segment:") {
         let res = &ctx.result;
         let expo = SecondaryExposure {
-            gate: gate_name.to_string(),
-            gate_value: res.bool_value.to_string(),
+            gate: gate_name.clone(),
+            gate_value: InternedString::from_bool(res.bool_value),
             rule_id: res
                 .rule_id
                 .unwrap_or(&exposable_string::EMPTY_STRING)
@@ -511,12 +523,16 @@ fn evaluate_config_delegate<'a>(
     }
 
     ctx.result.explicit_parameters = delegate_spec.spec.explicit_parameters.as_ref();
-    ctx.result.config_delegate = rule.config_delegate.as_ref();
+    ctx.result.config_delegate = rule.config_delegate.clone();
 
     Ok(true)
 }
 
-fn evaluate_pass_percentage(ctx: &mut EvaluatorContext, rule: &Rule, spec_salt: &String) -> bool {
+fn evaluate_pass_percentage(
+    ctx: &mut EvaluatorContext,
+    rule: &Rule,
+    spec_salt: &InternedString,
+) -> bool {
     if rule.pass_percentage == 100f64 {
         return true;
     }
@@ -537,10 +553,10 @@ fn evaluate_pass_percentage(ctx: &mut EvaluatorContext, rule: &Rule, spec_salt: 
 fn get_hash_for_user_bucket(ctx: &mut EvaluatorContext, condition: &Condition) -> DynamicValue {
     let unit_id = get_unit_id(ctx, &condition.id_type);
 
-    let mut salt: &String = &EMPTY_STR;
+    let mut salt = InternedString::empty_ref();
 
     if let Some(add_values) = &condition.additional_values {
-        if let Some(v) = add_values.get("salt") {
+        if let Some(v) = add_values.get(InternedString::salt_ref()) {
             salt = v;
         }
     }

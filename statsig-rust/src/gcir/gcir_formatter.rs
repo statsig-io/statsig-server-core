@@ -1,5 +1,6 @@
 use crate::gcir::feature_gates_processor::get_gate_evaluations;
 
+use crate::interned_string::InternedString;
 use crate::observability::ops_stats::OpsStatsForInstance;
 use crate::observability::ErrorBoundaryEvent;
 use crate::specs_response::spec_types::SessionReplayTrigger;
@@ -254,12 +255,14 @@ impl GCIRFormatter {
     }
 }
 
-fn get_evaluated_keys(user_internal: &StatsigUserInternal) -> HashMap<String, String> {
+fn get_evaluated_keys(
+    user_internal: &StatsigUserInternal,
+) -> HashMap<InternedString, InternedString> {
     let mut evaluated_keys = HashMap::new();
 
     if let Some(user_id) = user_internal.user_ref.data.user_id.as_ref() {
         evaluated_keys.insert(
-            "userID".to_string(),
+            InternedString::from_str_ref("userID"),
             user_id
                 .string_value
                 .as_ref()
@@ -271,7 +274,7 @@ fn get_evaluated_keys(user_internal: &StatsigUserInternal) -> HashMap<String, St
     if let Some(custom_ids) = user_internal.user_ref.data.custom_ids.as_ref() {
         for (key, value) in custom_ids {
             evaluated_keys.insert(
-                key.clone(),
+                InternedString::from_str_ref(key.as_str()),
                 value
                     .string_value
                     .as_ref()

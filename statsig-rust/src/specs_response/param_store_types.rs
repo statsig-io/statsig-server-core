@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
+use crate::interned_string::InternedString;
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(untagged)]
 pub enum Parameter {
@@ -16,7 +18,7 @@ pub enum Parameter {
 pub struct ParameterStore {
     pub parameters: HashMap<String, Parameter>,
     #[serde(rename = "targetAppIDs")]
-    pub target_app_ids: Option<Vec<String>>,
+    pub target_app_ids: Option<Vec<InternedString>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]

@@ -1,7 +1,7 @@
 use crate::{
     evaluation::evaluation_types::{AnyConfigEvaluation, GateEvaluation, LayerEvaluation},
-    specs_response::param_store_types::Parameter,
-    specs_response::spec_types::SessionReplayTrigger,
+    interned_string::InternedString,
+    specs_response::{param_store_types::Parameter, spec_types::SessionReplayTrigger},
     user::{StatsigUserInternal, StatsigUserLoggable},
 };
 
@@ -23,7 +23,7 @@ pub struct InitializeResponse {
     pub sdk_info: HashMap<String, String>,
     #[serde(rename = "sdkParams")]
     pub sdk_params: HashMap<String, String>,
-    pub evaluated_keys: HashMap<String, String>,
+    pub evaluated_keys: HashMap<InternedString, InternedString>,
     pub param_stores: HashMap<String, HashMap<String, Parameter>>,
     pub can_record_session: Option<bool>,
     pub session_recording_rate: Option<f64>,

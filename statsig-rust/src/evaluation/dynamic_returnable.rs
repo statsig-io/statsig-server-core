@@ -26,7 +26,7 @@ pub struct DynamicReturnable {
     value: Arc<MemoizedValue>,
 }
 
-impl_interned_value!(DynamicReturnable, MemoizedValue, "DynamicReturnable");
+impl_interned_value!(DynamicReturnable, MemoizedValue);
 
 impl DynamicReturnable {
     pub fn empty() -> Self {
@@ -42,7 +42,7 @@ impl DynamicReturnable {
             }
         };
 
-        let (hash, value) = MemoizedValue::get_or_create(Cow::Owned(raw_value));
+        let (hash, value) = DynamicReturnable::get_or_create_memoized(Cow::Owned(raw_value));
         Self { hash, value }
     }
 
@@ -55,17 +55,17 @@ impl DynamicReturnable {
     }
 
     pub fn get_json(&self) -> Option<HashMap<String, JsonValue>> {
-        match serde_json::from_str(self.value.raw_value.get()) {
-            Ok(json) => Some(json),
-            Err(e) => {
-                log_e!(
-                    TAG,
-                    "Failed to parse json: {}. Error: {}",
-                    self.value.raw_value.get(),
-                    e
-                );
-                None
-            }
+        let raw_json = self.value.raw_value.get();
+
+        match raw_json {
+            "null" | "true" | "false" => None,
+            _ => match serde_json::from_str(raw_json) {
+                Ok(json) => Some(json),
+                Err(e) => {
+                    log_e!(TAG, "Failed to parse json: {}. Error: {}", raw_json, e);
+                    None
+                }
+            },
         }
     }
 }
@@ -75,8 +75,8 @@ impl<'de> Deserialize<'de> for DynamicReturnable {
     where
         D: Deserializer<'de>,
     {
-        let raw_value_ref: &'de RawValue = Deserialize::deserialize(deserializer)?;
-        let (hash, value) = MemoizedValue::get_or_create(Cow::Borrowed(raw_value_ref));
+        let raw_value_ref: Box<RawValue> = Deserialize::deserialize(deserializer)?;
+        let (hash, value) = DynamicReturnable::get_or_create_memoized(Cow::Owned(raw_value_ref));
         Ok(DynamicReturnable { hash, value })
     }
 }

@@ -8,6 +8,7 @@ use crate::{
         statsig_event_internal::{StatsigEventInternal, LAYER_EXPOSURE_EVENT_NAME},
     },
     hashing::ahash_str,
+    interned_string::InternedString,
     statsig_types::Layer,
     user::StatsigUserLoggable,
     EvaluationDetails, SecondaryExposure,
@@ -107,7 +108,7 @@ pub struct QueuedLayerParamExposureEvent {
     pub sampling_decision: EvtSamplingDecision,
     pub override_config_name: Option<String>,
     pub is_explicit: bool,
-    pub allocated_experiment: Option<String>,
+    pub allocated_experiment: Option<InternedString>,
     pub exposure_time: u64,
 }
 
@@ -118,7 +119,9 @@ impl QueuedLayerParamExposureEvent {
         metadata.insert("ruleID".into(), self.rule_id);
         metadata.insert(
             "allocatedExperiment".into(),
-            self.allocated_experiment.unwrap_or_default(),
+            self.allocated_experiment
+                .unwrap_or_default()
+                .unperformant_to_string(),
         );
         metadata.insert("parameterName".into(), self.parameter_name);
         metadata.insert("isExplicitParameter".into(), self.is_explicit.to_string());
@@ -155,19 +158,22 @@ impl QueuedLayerParamExposureEvent {
 
 type ExtractFromEvaluationResult = (
     bool,
-    Option<String>,
+    Option<InternedString>,
     Option<Vec<SecondaryExposure>>,
     Option<u32>,
     Option<String>,
 );
 
-fn extract_exposure_info(layer: &Layer, parameter_name: &String) -> ExtractFromEvaluationResult {
+fn extract_exposure_info(layer: &Layer, parameter_name: &str) -> ExtractFromEvaluationResult {
     let evaluation = match layer.__evaluation.as_ref() {
         Some(eval) => eval,
         None => return (false, None, None, None, None),
     };
 
-    let is_explicit = evaluation.explicit_parameters.contains(parameter_name);
+    let is_explicit = evaluation
+        .explicit_parameters
+        .iter()
+        .any(|p| p == parameter_name);
     let secondary_exposures;
     let mut allocated_experiment = None;
 

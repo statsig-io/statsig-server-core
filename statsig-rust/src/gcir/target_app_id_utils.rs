@@ -1,5 +1,6 @@
 use crate::{
     hashing::HashUtil,
+    interned_string::InternedString,
     specs_response::spec_types::{Spec, SpecsResponseFull},
     ClientInitResponseOptions, DynamicValue, HashAlgorithm,
 };
@@ -33,11 +34,11 @@ pub(crate) fn should_filter_spec_for_app(
     app_id: &Option<&DynamicValue>,
     client_sdk_key: &Option<String>,
 ) -> bool {
-    should_filter_config_for_app(&spec.target_app_ids, app_id, client_sdk_key)
+    should_filter_config_for_app(spec.target_app_ids.as_ref(), app_id, client_sdk_key)
 }
 
 pub(crate) fn should_filter_config_for_app(
-    target_app_ids: &Option<Vec<String>>,
+    target_app_ids: Option<&Vec<InternedString>>,
     app_id: &Option<&DynamicValue>,
     client_sdk_key: &Option<String>,
 ) -> bool {
@@ -61,7 +62,7 @@ pub(crate) fn should_filter_config_for_app(
         None => return true,
     };
 
-    if !target_app_ids.contains(&string_app_id.value) {
+    if !target_app_ids.iter().any(|id| id == &string_app_id.value) {
         return true;
     }
     false

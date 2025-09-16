@@ -15,6 +15,7 @@ use crate::{
         gcir_process_iter::hash_secondary_exposures,
         target_app_id_utils::should_filter_config_for_app,
     },
+    interned_string::InternedString,
     specs_response::spec_types::Spec,
     ClientInitResponseOptions, SecondaryExposure, StatsigErr,
 };
@@ -26,7 +27,7 @@ use super::{
 pub(crate) fn get_dynamic_config_evaluations(
     context: &mut EvaluatorContext,
     options: &ClientInitResponseOptions,
-    sec_expo_hash_memo: &mut HashMap<String, String>,
+    sec_expo_hash_memo: &mut HashMap<InternedString, InternedString>,
 ) -> Result<HashMap<String, AnyConfigEvaluation>, StatsigErr> {
     let factory = |spec_entity: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
         if spec_entity == "dynamic_config" {
@@ -68,7 +69,9 @@ pub(crate) fn get_dynamic_config_evaluations(
             continue;
         }
         if should_filter_config_for_app(
-            &cmab_configs.get(config_name).unwrap().target_app_ids,
+            cmab_configs
+                .get(config_name)
+                .and_then(|c| c.target_app_ids.as_ref()),
             &context.app_id,
             &options.client_sdk_key,
         ) {
@@ -92,7 +95,7 @@ pub(crate) fn get_dynamic_config_evaluations(
 pub(crate) fn get_dynamic_config_evaluations_v2(
     context: &mut EvaluatorContext,
     options: &ClientInitResponseOptions,
-    sec_expo_hash_memo: &mut HashMap<String, String>,
+    sec_expo_hash_memo: &mut HashMap<InternedString, InternedString>,
     exposures: &mut HashMap<String, SecondaryExposure>,
 ) -> Result<HashMap<String, AnyConfigEvaluationV2>, StatsigErr> {
     let factory = |spec_entity: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
@@ -141,11 +144,11 @@ pub(crate) fn get_dynamic_config_evaluations_v2(
         {
             continue;
         }
-        if should_filter_config_for_app(
-            &cmab_configs.get(config_name).unwrap().target_app_ids,
-            &context.app_id,
-            &options.client_sdk_key,
-        ) {
+
+        let target_app_ids = cmab_configs
+            .get(config_name)
+            .and_then(|c| c.target_app_ids.as_ref());
+        if should_filter_config_for_app(target_app_ids, &context.app_id, &options.client_sdk_key) {
             continue;
         }
         context.reset_result();

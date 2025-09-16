@@ -6,10 +6,12 @@ pub mod ua_parser;
 use serde::Serialize;
 pub use ua_parser::UserAgentParser;
 
+use crate::interned_string::InternedString;
+
 #[derive(Serialize, Debug)]
 pub struct ParsedUserAgentValue {
-    pub os_name: Option<String>,
-    pub os_version: Option<String>,
-    pub browser_name: Option<String>,
-    pub browser_version: Option<String>,
+    pub os_name: Option<InternedString>,
+    pub os_version: Option<InternedString>,
+    pub browser_name: Option<InternedString>,
+    pub browser_version: Option<InternedString>,
 }

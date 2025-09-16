@@ -1,13 +1,15 @@
-use crate::evaluation::dynamic_string::DynamicString;
-use crate::evaluation::{dynamic_returnable::DynamicReturnable, evaluator_value::EvaluatorValue};
-use crate::event_logging::exposable_string::ExposableString;
-use crate::DynamicValue;
+use std::collections::HashMap;
+
 use ahash::HashMap as AHashMap;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
-use std::collections::HashMap;
 
-use super::condition_key::ConditionKey;
+use crate::evaluation::dynamic_string::DynamicString;
+use crate::evaluation::{dynamic_returnable::DynamicReturnable, evaluator_value::EvaluatorValue};
+use crate::event_logging::exposable_string::ExposableString;
+use crate::interned_string::InternedString;
+use crate::DynamicValue;
+
 use super::spec_directory::SpecDirectory;
 use super::{cmab_types::CMABConfig, param_store_types::ParameterStore};
 
@@ -19,36 +21,36 @@ use super::{cmab_types::CMABConfig, param_store_types::ParameterStore};
 #[serde(rename_all = "camelCase")]
 pub struct Spec {
     #[serde(rename = "type")]
-    pub _type: String,
-    pub salt: String,
+    pub _type: InternedString,
+    pub salt: InternedString,
     pub default_value: DynamicReturnable,
     pub enabled: bool,
     pub rules: Vec<Rule>,
-    pub id_type: String,
-    pub explicit_parameters: Option<Vec<String>>,
-    pub entity: String,
+    pub id_type: InternedString,
+    pub explicit_parameters: Option<Vec<InternedString>>,
+    pub entity: InternedString,
     pub has_shared_params: Option<bool>,
     pub is_active: Option<bool>,
     pub version: Option<u32>,
     #[serde(rename = "targetAppIDs")]
-    pub target_app_ids: Option<Vec<String>>,
+    pub target_app_ids: Option<Vec<InternedString>>,
     pub forward_all_exposures: Option<bool>,
-    pub fields_used: Option<Vec<String>>,
+    pub fields_used: Option<Vec<InternedString>>,
 }
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 #[serde(rename_all = "camelCase")]
 pub struct Rule {
-    pub name: String,
+    pub name: InternedString,
     pub pass_percentage: f64,
     pub return_value: DynamicReturnable,
     pub id: ExposableString,
-    pub salt: Option<String>,
-    pub conditions: Vec<ConditionKey>,
+    pub salt: Option<InternedString>,
+    pub conditions: Vec<InternedString>,
     pub id_type: DynamicString,
-    pub group_name: Option<String>,
-    pub config_delegate: Option<String>,
+    pub group_name: Option<InternedString>,
+    pub config_delegate: Option<InternedString>,
     pub is_experiment_group: Option<bool>,
     pub sampling_rate: Option<u64>,
 }
@@ -57,11 +59,11 @@ pub struct Rule {
 #[serde(rename_all = "camelCase")]
 pub struct Condition {
     #[serde(rename = "type")]
-    pub condition_type: String,
+    pub condition_type: InternedString,
     pub target_value: Option<EvaluatorValue>,
-    pub operator: Option<String>,
+    pub operator: Option<InternedString>,
     pub field: Option<DynamicString>,
-    pub additional_values: Option<HashMap<String, String>>,
+    pub additional_values: Option<HashMap<InternedString, InternedString>>,
     pub id_type: DynamicString,
 }
 
@@ -104,7 +106,7 @@ pub struct SpecsResponseFull {
     pub feature_gates: SpecDirectory,
     pub dynamic_configs: SpecDirectory,
     pub layer_configs: SpecDirectory,
-    pub condition_map: AHashMap<ConditionKey, Condition>,
+    pub condition_map: AHashMap<InternedString, Condition>,
     pub experiment_to_layer: HashMap<String, String>,
     pub has_updates: bool,
     pub time: u64,
@@ -139,11 +141,11 @@ impl<'de> Deserialize<'de> for Condition {
         #[serde(rename_all = "camelCase")]
         struct ConditionInternal {
             #[serde(rename = "type")]
-            condition_type: String,
+            condition_type: InternedString,
             target_value: Option<EvaluatorValue>,
-            operator: Option<String>,
+            operator: Option<InternedString>,
             field: Option<DynamicString>,
-            additional_values: Option<HashMap<String, String>>,
+            additional_values: Option<HashMap<InternedString, InternedString>>,
             id_type: DynamicString,
         }
 

@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use crate::{
     evaluation::{dynamic_returnable::DynamicReturnable, dynamic_string::DynamicString},
     event_logging::exposable_string::ExposableString,
+    interned_string::InternedString,
 };
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
@@ -11,7 +12,7 @@ use crate::{
 pub struct CMABConfig {
     pub salt: String,
     #[serde(rename = "targetAppIDs")]
-    pub target_app_ids: Option<Vec<String>>,
+    pub target_app_ids: Option<Vec<InternedString>>,
     pub default_value: DynamicReturnable,
     pub id_type: DynamicString,
     pub enabled: bool,
@@ -20,7 +21,7 @@ pub struct CMABConfig {
     pub higher_is_better: bool,
     pub groups: Vec<CMABGroup>,
     pub config: Option<HashMap<String, CMABGroupConfig>>,
-    pub targeting_gate_name: Option<String>,
+    pub targeting_gate_name: Option<InternedString>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]

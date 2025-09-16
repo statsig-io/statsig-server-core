@@ -9,6 +9,7 @@ use crate::{
         evaluator_result::{result_to_layer_eval, result_to_layer_eval_v2},
     },
     hashing::HashUtil,
+    interned_string::InternedString,
     specs_response::spec_types::Spec,
     ClientInitResponseOptions, SecondaryExposure, StatsigErr,
 };
@@ -20,7 +21,7 @@ use super::{
 pub(crate) fn get_layer_evaluations(
     context: &mut EvaluatorContext,
     options: &ClientInitResponseOptions,
-    sec_expo_hash_memo: &mut HashMap<String, String>,
+    sec_expo_hash_memo: &mut HashMap<InternedString, InternedString>,
 ) -> Result<HashMap<String, LayerEvaluation>, StatsigErr> {
     let factory = |_: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
         let mut eval = result_to_layer_eval(hashed_name, &mut ctx.result);
@@ -47,7 +48,7 @@ pub(crate) fn get_layer_evaluations(
 pub(crate) fn get_layer_evaluations_v2(
     context: &mut EvaluatorContext,
     options: &ClientInitResponseOptions,
-    sec_expo_hash_memo: &mut HashMap<String, String>,
+    sec_expo_hash_memo: &mut HashMap<InternedString, InternedString>,
     exposures: &mut HashMap<String, SecondaryExposure>,
 ) -> Result<HashMap<String, LayerEvaluationV2>, StatsigErr> {
     let factory = |_: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
@@ -80,14 +81,15 @@ pub(crate) fn get_layer_evaluations_v2(
 fn try_hash_allocated_experiment_name(
     hashing: &HashUtil,
     options: &ClientInitResponseOptions,
-    allocated_experiment_name: &mut Option<String>,
+    allocated_experiment_name: &mut Option<InternedString>,
 ) {
     let name = match allocated_experiment_name.take() {
         Some(name) => name,
         None => return,
     };
 
-    allocated_experiment_name.replace(hashing.hash(&name, options.get_hash_algorithm()));
+    let hashed_name = hashing.hash(&name, options.get_hash_algorithm());
+    allocated_experiment_name.replace(InternedString::from_string(hashed_name));
 }
 
 fn get_layer_spec_type(_: &Spec) -> SpecType {

@@ -42,8 +42,8 @@ pub struct SecondaryExposure {
 impl From<SecondaryExposureActual> for SecondaryExposure {
     fn from(value: SecondaryExposureActual) -> Self {
         SecondaryExposure {
-            gate: value.gate,
-            gate_value: value.gate_value,
+            gate: value.gate.unperformant_to_string(),
+            gate_value: value.gate_value.unperformant_to_string(),
             rule_id: value.rule_id.unperformant_to_string(),
         }
     }

@@ -4,8 +4,8 @@ use pyo3::{
 };
 use pyo3_stub_gen::derive::*;
 use statsig_rust::{
-    event_logging::exposable_string::ExposableString, log_d, log_e, log_w, PersistentStorage,
-    SecondaryExposure, StickyValues as StickyValuesActual,
+    event_logging::exposable_string::ExposableString, interned_string::InternedString, log_d,
+    log_e, log_w, PersistentStorage, SecondaryExposure, StickyValues as StickyValuesActual,
     UserPersistedValues as UserPersistedValuesActual,
 };
 use std::collections::HashMap;
@@ -137,7 +137,7 @@ fn convert_secondary_exposures_to_py_dict(
         .iter()
         .map(|exposure: &SecondaryExposure| {
             let secondary_exposure_dict = PyDict::new(py);
-            secondary_exposure_dict.set_item("gate", exposure.gate.clone())?;
+            secondary_exposure_dict.set_item("gate", exposure.gate.unperformant_to_string())?;
             secondary_exposure_dict
                 .set_item("gateValue", exposure.gate_value.clone().to_string())?;
             secondary_exposure_dict
@@ -168,8 +168,8 @@ fn convert_py_dict_to_secondary_exposure(py_dict: &Bound<PyDict>) -> PyResult<Se
     let gate_value = get_string_from_py_dict_throw_on_none(py_dict, "gateValue")?;
     let rule_id = get_string_from_py_dict_throw_on_none(py_dict, "ruleID")?;
     Ok(SecondaryExposure {
-        gate,
-        gate_value,
+        gate: InternedString::from_string(gate),
+        gate_value: InternedString::from_string(gate_value),
         rule_id: ExposableString::from_str_ref(rule_id.as_str()),
     })
 }

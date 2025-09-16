@@ -33,17 +33,7 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
     }
 
     pub fn get_unit_id(&self, id_type: &DynamicString) -> Option<&DynamicValue> {
-        if id_type.lowercased_value.eq("userid") {
-            return self.user_ref.data.user_id.as_ref();
-        }
-
-        let custom_ids = self.user_ref.data.custom_ids.as_ref()?;
-
-        if let Some(custom_id) = custom_ids.get(&id_type.value) {
-            return Some(custom_id);
-        }
-
-        custom_ids.get(&id_type.lowercased_value)
+        self.user_ref.get_unit_id(id_type)
     }
 
     pub fn get_user_value(&self, field: &Option<DynamicString>) -> Option<&DynamicValue> {
@@ -71,10 +61,10 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
         }
 
         if let Some(custom) = &self.user_ref.data.custom {
-            if let Some(found) = custom.get(&field.value) {
+            if let Some(found) = custom.get(field.value.as_str()) {
                 return Some(found);
             }
-            if let Some(lowered_found) = custom.get(lowered_field) {
+            if let Some(lowered_found) = custom.get(lowered_field.as_str()) {
                 return Some(lowered_found);
             }
         }
@@ -91,10 +81,10 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
         }
 
         if let Some(private_attributes) = &self.user_ref.data.private_attributes {
-            if let Some(found) = private_attributes.get(&field.value) {
+            if let Some(found) = private_attributes.get(field.value.as_str()) {
                 return Some(found);
             }
-            if let Some(lowered_found) = private_attributes.get(lowered_field) {
+            if let Some(lowered_found) = private_attributes.get(lowered_field.as_str()) {
                 return Some(lowered_found);
             }
         }

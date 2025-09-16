@@ -6,19 +6,43 @@ use crate::{
         evaluator_result::{eval_result_to_experiment_eval, result_to_layer_eval, EvaluatorResult},
     },
     event_logging::event_logger::EventLogger,
-    get_persistent_storage_key, log_d, log_e, make_experiment_from_sticky_value,
-    make_layer_from_sticky_value, make_sticky_value_from_experiment, make_sticky_value_from_layer,
+    get_persistent_storage_key,
+    interned_string::InternedString,
+    log_d, log_e, make_experiment_from_sticky_value, make_layer_from_sticky_value,
+    make_sticky_value_from_experiment, make_sticky_value_from_layer,
     spec_store::SpecStoreData,
     statsig_types::{Experiment, Layer},
     unwrap_or_return,
     user::StatsigUserInternal,
-    ExperimentEvaluationOptions, LayerEvaluationOptions, PersistentStorage,
+    ExperimentEvaluationOptions, LayerEvaluationOptions, PersistentStorage, StickyValues,
 };
 pub struct PersistentValuesManager {
     pub persistent_storage: Arc<dyn PersistentStorage>,
 }
 
 const TAG: &str = "PersistentValuesManager";
+
+fn sticky_value_to_evaluator_result<'a>(sticky_value: &'a StickyValues) -> EvaluatorResult<'a> {
+    EvaluatorResult {
+        bool_value: sticky_value.value,
+        json_value: Some(DynamicReturnable::from_map(
+            sticky_value.json_value.clone().unwrap_or_default(),
+        )),
+        rule_id: sticky_value.rule_id.as_ref(),
+        group_name: sticky_value
+            .group_name
+            .as_ref()
+            .map(|g| InternedString::from_str_ref(g.as_str())),
+        secondary_exposures: sticky_value.secondary_exposures.clone(),
+        undelegated_secondary_exposures: sticky_value.undelegated_secondary_exposures.clone(),
+        config_delegate: sticky_value
+            .config_delegate
+            .as_ref()
+            .map(|g| InternedString::from_str_ref(g.as_str())),
+        version: sticky_value.config_version,
+        ..Default::default()
+    }
+}
 
 macro_rules! get_sticky_result {
     ($option:expr, $config_name:expr) => {{
@@ -27,21 +51,7 @@ macro_rules! get_sticky_result {
             Some(values) => match values.get($config_name) {
                 Some(sticky_value) => {
                     sticky_value_ptr = Some(sticky_value);
-                    let sticky_result = EvaluatorResult {
-                        bool_value: sticky_value.value,
-                        json_value: Some(DynamicReturnable::from_map(
-                            sticky_value.json_value.clone().unwrap_or_default(),
-                        )),
-                        rule_id: sticky_value.rule_id.as_ref(),
-                        group_name: sticky_value.group_name.as_ref(),
-                        secondary_exposures: sticky_value.secondary_exposures.clone(),
-                        undelegated_secondary_exposures: sticky_value
-                            .undelegated_secondary_exposures
-                            .clone(),
-                        config_delegate: sticky_value.config_delegate.as_ref(),
-                        version: sticky_value.config_version,
-                        ..Default::default()
-                    };
+                    let sticky_result = sticky_value_to_evaluator_result(sticky_value);
                     Some(sticky_result)
                 }
                 None => None,
@@ -130,8 +140,11 @@ impl PersistentValuesManager {
         maybe_sticky_result: &Option<EvaluatorResult<'a>>,
     ) -> Option<bool> {
         let sticky_result = unwrap_or_return!(maybe_sticky_result, None);
-        let config_delegate = unwrap_or_return!(sticky_result.config_delegate, Some(false));
-        let delegate_spec = spec_store_data.values.dynamic_configs.get(config_delegate);
+        let config_delegate = unwrap_or_return!(&sticky_result.config_delegate, Some(false));
+        let delegate_spec = spec_store_data
+            .values
+            .dynamic_configs
+            .get(config_delegate.as_str());
         match delegate_spec {
             Some(delegate_spec) => Some(delegate_spec.spec.is_active.unwrap_or(false)),
             None => Some(false),

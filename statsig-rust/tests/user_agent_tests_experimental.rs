@@ -3,6 +3,7 @@ mod utils;
 use more_asserts::assert_gt;
 use statsig_rust::{
     evaluation::{dynamic_string::DynamicString, user_agent_parsing::UserAgentParser},
+    interned_string::InternedString,
     user::StatsigUserInternal,
     StatsigUser,
 };
@@ -48,7 +49,7 @@ fn test_user_agent_parser_os_name() {
     for test_case in TEST_CASES.iter() {
         let name = extract_field_from_user_agent(&test_case.user_agent, "os_name");
 
-        if name == test_case.expected_os_family {
+        if name.as_deref() == test_case.expected_os_family.as_deref() {
             hit += 1;
         } else {
             miss += 1;
@@ -73,7 +74,7 @@ fn test_user_agent_parser_os_version() {
     for test_case in TEST_CASES.iter() {
         let version = extract_field_from_user_agent(&test_case.user_agent, "os_version");
 
-        if version == test_case.expected_os_version {
+        if version.as_deref() == test_case.expected_os_version.as_deref() {
             hit += 1;
         } else {
             miss += 1;
@@ -98,7 +99,7 @@ fn test_user_agent_parser_browser_name() {
     for test_case in TEST_CASES.iter() {
         let name = extract_field_from_user_agent(&test_case.user_agent, "browser_name");
 
-        if name == test_case.expected_browser_family {
+        if name.as_deref() == test_case.expected_browser_family.as_deref() {
             hit += 1;
         } else {
             miss += 1;
@@ -123,7 +124,7 @@ fn test_user_agent_parser_browser_version() {
     for test_case in TEST_CASES.iter() {
         let version = extract_field_from_user_agent(&test_case.user_agent, "browser_version");
 
-        if version == test_case.expected_browser_version {
+        if version.as_deref() == test_case.expected_browser_version.as_deref() {
             hit += 1;
         } else {
             miss += 1;
@@ -140,7 +141,7 @@ fn test_user_agent_parser_browser_version() {
     assert_gt!(score, BROWSER_VERSION_THRESHOLD);
 }
 
-fn extract_field_from_user_agent(user_agent: &str, field: &str) -> Option<String> {
+fn extract_field_from_user_agent(user_agent: &str, field: &str) -> Option<InternedString> {
     let mut user = StatsigUser::with_user_id("");
     user.set_user_agent(user_agent.to_string());
     let user_internal = StatsigUserInternal::new(&user, None);
@@ -156,7 +157,7 @@ fn extract_field_from_user_agent(user_agent: &str, field: &str) -> Option<String
     );
 
     match result {
-        Some(value) => value.string_value.map(|s| s.value),
+        Some(value) => value.string_value.map(|s| s.value.clone()),
         None => None,
     }
 }

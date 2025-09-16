@@ -315,7 +315,7 @@ where
         None => return false,
     };
 
-    let override_value = match overrides.get(id_string) {
+    let override_value = match overrides.get(id_string.as_str()) {
         Some(v) => v,
         None => return false,
     };
@@ -346,7 +346,7 @@ where
             None => continue,
         };
 
-        let override_value = match overrides.get(id_string) {
+        let override_value = match overrides.get(id_string.as_str()) {
             Some(v) => v,
             None => continue,
         };

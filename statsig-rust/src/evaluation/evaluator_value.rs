@@ -5,7 +5,8 @@ use serde_json::{value::RawValue, Value as JsonValue, Value};
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 use crate::{
-    impl_interned_value, interned_value_store::FromRawValue, log_e, unwrap_or_return, DynamicValue,
+    impl_interned_value, interned_string::InternedString, interned_value_store::FromRawValue,
+    log_e, unwrap_or_return, DynamicValue,
 };
 
 use super::dynamic_string::DynamicString;
@@ -25,7 +26,7 @@ pub struct EvaluatorValue {
     pub inner: Arc<MemoizedEvaluatorValue>,
 }
 
-impl_interned_value!(EvaluatorValue, MemoizedEvaluatorValue, "EvaluatorValue");
+impl_interned_value!(EvaluatorValue, MemoizedEvaluatorValue);
 
 impl EvaluatorValue {
     pub fn empty() -> &'static Self {
@@ -43,8 +44,8 @@ impl<'de> Deserialize<'de> for EvaluatorValue {
     where
         D: Deserializer<'de>,
     {
-        let raw_value_ref: &'de RawValue = Deserialize::deserialize(deserializer)?;
-        let (hash, value) = MemoizedEvaluatorValue::get_or_create(Cow::Borrowed(raw_value_ref));
+        let raw_value_ref: Box<RawValue> = Deserialize::deserialize(deserializer)?;
+        let (hash, value) = EvaluatorValue::get_or_create_memoized(Cow::Owned(raw_value_ref));
         Ok(EvaluatorValue { hash, inner: value })
     }
 }
@@ -84,8 +85,8 @@ pub struct MemoizedEvaluatorValue {
     pub regex_value: Option<Regex>,
     pub timestamp_value: Option<i64>,
     // { lower_case_str: (index, str) } -- Keyed by lowercase string so we can lookup with O(1)
-    pub array_value: Option<HashMap<String, (usize, String)>>,
-    pub object_value: Option<HashMap<String, DynamicString>>,
+    pub array_value: Option<HashMap<InternedString, (usize, InternedString)>>,
+    pub object_value: Option<HashMap<InternedString, DynamicString>>,
 }
 
 impl FromRawValue for MemoizedEvaluatorValue {
@@ -179,7 +180,7 @@ impl MemoizedEvaluatorValue {
                 }
 
                 for (k, v) in self_obj {
-                    let other_dyn_val = unwrap_or_return!(other_obj.get(k), false);
+                    let other_dyn_val = unwrap_or_return!(other_obj.get(k.as_str()), false);
                     let other_str_val = unwrap_or_return!(&other_dyn_val.string_value, false);
                     if other_str_val.value != v.value {
                         return false;
@@ -224,7 +225,7 @@ impl From<JsonValue> for MemoizedEvaluatorValue {
             JsonValue::String(s) => MemoizedEvaluatorValue::from(s),
 
             JsonValue::Array(arr) => {
-                let keyed_array: HashMap<String, (usize, String)> = arr
+                let keyed_array: HashMap<InternedString, (usize, InternedString)> = arr
                     .into_iter()
                     .enumerate()
                     .map(|(idx, val)| {
@@ -233,7 +234,11 @@ impl From<JsonValue> for MemoizedEvaluatorValue {
                             None => val.to_string(),  // Value was not a String, but can be made one
                         };
 
-                        (str_value.to_lowercase(), (idx, str_value))
+                        let interned_lowercased_str =
+                            InternedString::from_string(str_value.to_lowercase());
+                        let interned_str = InternedString::from_string(str_value);
+
+                        (interned_lowercased_str, (idx, interned_str))
                     })
                     .collect();
 
@@ -246,7 +251,7 @@ impl From<JsonValue> for MemoizedEvaluatorValue {
             JsonValue::Object(obj) => MemoizedEvaluatorValue {
                 object_value: Some(
                     obj.into_iter()
-                        .map(|(k, v)| (k, DynamicString::from(v)))
+                        .map(|(k, v)| (InternedString::from_string(k), DynamicString::from(v)))
                         .collect(),
                 ),
                 ..MemoizedEvaluatorValue::new(EvaluatorValueType::Object)
@@ -274,7 +279,7 @@ impl Serialize for MemoizedEvaluatorValue {
                 let mut result = vec![String::new(); array_map.len()];
 
                 for (idx, val) in array_map.values() {
-                    result[*idx] = val.clone();
+                    result[*idx] = val.unperformant_to_string();
                 }
 
                 result.serialize(serializer)

@@ -8,7 +8,7 @@ use ahash::HashMap;
 use parking_lot::Mutex;
 use serde_json::value::RawValue;
 
-use crate::{hashing, log_e};
+use crate::log_e;
 
 pub trait FromRawValue {
     fn from_raw_value(raw_value: Cow<'_, RawValue>) -> Self;
@@ -27,10 +27,11 @@ impl<T: FromRawValue> InternedValueStore<T> {
         }
     }
 
-    pub fn get_or_create_interned_value(&self, raw_value: Cow<'_, RawValue>) -> (u64, Arc<T>) {
-        let raw_value_str = raw_value.get();
-        let hash = hashing::hash_one(raw_value_str);
-
+    pub fn get_or_create_interned_value(
+        &self,
+        hash: u64,
+        raw_value: Cow<'_, RawValue>,
+    ) -> (u64, Arc<T>) {
         if let Some(value) = self.try_get_interned_value(hash) {
             return (hash, value);
         }
@@ -58,7 +59,7 @@ impl<T: FromRawValue> InternedValueStore<T> {
         }
     }
 
-    fn set_interned_value(&self, hash: u64, value: &Arc<T>) {
+    pub fn set_interned_value(&self, hash: u64, value: &Arc<T>) {
         let mut memoized_values = match self.values.try_lock_for(Duration::from_secs(5)) {
             Some(values) => values,
             None => return,
@@ -66,7 +67,7 @@ impl<T: FromRawValue> InternedValueStore<T> {
         memoized_values.insert(hash, Arc::downgrade(value));
     }
 
-    fn try_get_interned_value(&self, hash: u64) -> Option<Arc<T>> {
+    pub fn try_get_interned_value(&self, hash: u64) -> Option<Arc<T>> {
         let memoized_values = match self.values.try_lock_for(Duration::from_secs(5)) {
             Some(values) => values,
             None => {
@@ -81,9 +82,9 @@ impl<T: FromRawValue> InternedValueStore<T> {
 
 #[macro_export]
 macro_rules! impl_interned_value {
-    ($struct_name:ident, $memoized_type:ident, $tag:literal) => {
+    ($struct_name:ident, $memoized_type:ident) => {
         lazy_static::lazy_static! {
-            pub(crate) static ref INTERNED_STORE: $crate::interned_value_store::InternedValueStore<$memoized_type> = $crate::interned_value_store::InternedValueStore::new($tag);
+            pub(crate) static ref INTERNED_STORE: $crate::interned_value_store::InternedValueStore<$memoized_type> = $crate::interned_value_store::InternedValueStore::new(stringify!($struct_name));
         }
 
         impl Drop for $struct_name {
@@ -92,9 +93,11 @@ macro_rules! impl_interned_value {
             }
         }
 
-        impl $memoized_type {
-            fn get_or_create(raw_value: Cow<'_, RawValue>) -> (u64, Arc<$memoized_type>) {
-                INTERNED_STORE.get_or_create_interned_value(raw_value)
+        impl $struct_name {
+            #[allow(dead_code)]
+            fn get_or_create_memoized(raw_value: Cow<'_, RawValue>) -> (u64, std::sync::Arc<$memoized_type>) {
+                let hash = $crate::hashing::hash_one(raw_value.get());
+                INTERNED_STORE.get_or_create_interned_value(hash, raw_value)
             }
         }
     };

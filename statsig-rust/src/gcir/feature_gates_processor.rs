@@ -8,6 +8,7 @@ use crate::{
         evaluator_context::EvaluatorContext,
         evaluator_result::{result_to_gate_eval, result_to_gate_eval_v2},
     },
+    interned_string::InternedString,
     specs_response::spec_types::Spec,
     ClientInitResponseOptions, SecondaryExposure, StatsigErr,
 };
@@ -19,7 +20,7 @@ use super::{
 pub(crate) fn get_gate_evaluations(
     context: &mut EvaluatorContext,
     options: &ClientInitResponseOptions,
-    sec_expo_hash_memo: &mut HashMap<String, String>,
+    sec_expo_hash_memo: &mut HashMap<InternedString, InternedString>,
 ) -> Result<HashMap<String, GateEvaluation>, StatsigErr> {
     let factory = |_: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
         result_to_gate_eval(hashed_name, &mut ctx.result)
@@ -38,7 +39,7 @@ pub(crate) fn get_gate_evaluations(
 pub(crate) fn get_gate_evaluations_v2(
     context: &mut EvaluatorContext,
     options: &ClientInitResponseOptions,
-    sec_expo_hash_memo: &mut HashMap<String, String>,
+    sec_expo_hash_memo: &mut HashMap<InternedString, InternedString>,
     exposures: &mut HashMap<String, SecondaryExposure>,
 ) -> Result<HashMap<String, GateEvaluationV2>, StatsigErr> {
     let factory = |_: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {

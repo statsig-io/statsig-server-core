@@ -1,4 +1,5 @@
 use super::dynamic_returnable::DynamicReturnable;
+use crate::interned_string::InternedString;
 use crate::SecondaryExposure;
 use crate::{
     evaluation::evaluation_types::is_false, event_logging::exposable_string::ExposableString,
@@ -17,7 +18,7 @@ pub struct GateEvaluationV2 {
     #[serde(flatten)]
     pub base: BaseEvaluationV2,
 
-    pub id_type: String,
+    pub id_type: InternedString,
     pub value: bool,
 }
 
@@ -26,7 +27,7 @@ pub struct DynamicConfigEvaluationV2 {
     #[serde(flatten)]
     pub base: BaseEvaluationV2,
 
-    pub id_type: String,
+    pub id_type: InternedString,
     pub value: DynamicReturnable,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
@@ -41,7 +42,7 @@ pub struct ExperimentEvaluationV2 {
     #[serde(flatten)]
     pub base: BaseEvaluationV2,
 
-    pub id_type: String,
+    pub id_type: InternedString,
     pub value: DynamicReturnable,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
@@ -52,10 +53,10 @@ pub struct ExperimentEvaluationV2 {
     pub is_in_layer: bool,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub explicit_parameters: Option<Vec<String>>,
+    pub explicit_parameters: Option<Vec<InternedString>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub group_name: Option<String>,
+    pub group_name: Option<InternedString>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_experiment_active: Option<bool>,
@@ -80,14 +81,14 @@ pub struct LayerEvaluationV2 {
 
     pub value: DynamicReturnable,
 
-    pub id_type: String,
+    pub id_type: InternedString,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
     pub group: ExposableString,
     pub is_device_based: bool,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub group_name: Option<String>,
+    pub group_name: Option<InternedString>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_experiment_active: Option<bool>,
@@ -96,8 +97,8 @@ pub struct LayerEvaluationV2 {
     pub is_user_in_experiment: Option<bool>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub allocated_experiment_name: Option<String>,
-    pub explicit_parameters: Vec<String>,
+    pub allocated_experiment_name: Option<InternedString>,
+    pub explicit_parameters: Vec<InternedString>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub undelegated_secondary_exposures: Option<Vec<String>>,
+    pub undelegated_secondary_exposures: Option<Vec<InternedString>>,
 }

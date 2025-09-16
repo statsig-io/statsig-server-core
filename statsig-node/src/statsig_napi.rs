@@ -473,10 +473,22 @@ impl StatsigNapiInternal {
             .__get_parsed_user_agent_value(user.as_inner())
             .map(|v| {
                 HashMap::from([
-                    ("os_name".to_string(), v.os_name),
-                    ("os_version".to_string(), v.os_version),
-                    ("browser_name".to_string(), v.browser_name),
-                    ("browser_version".to_string(), v.browser_version),
+                    (
+                        "os_name".to_string(),
+                        v.os_name.map(|v| v.unperformant_to_string()),
+                    ),
+                    (
+                        "os_version".to_string(),
+                        v.os_version.map(|v| v.unperformant_to_string()),
+                    ),
+                    (
+                        "browser_name".to_string(),
+                        v.browser_name.map(|v| v.unperformant_to_string()),
+                    ),
+                    (
+                        "browser_version".to_string(),
+                        v.browser_version.map(|v| v.unperformant_to_string()),
+                    ),
                 ])
             })
     }

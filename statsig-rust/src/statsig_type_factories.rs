@@ -15,7 +15,11 @@ pub fn make_feature_gate(
     details: EvaluationDetails,
 ) -> FeatureGate {
     let (value, rule_id, id_type) = match &evaluation {
-        Some(e) => (e.value, e.base.rule_id.clone(), e.id_type.clone()),
+        Some(e) => (
+            e.value,
+            e.base.rule_id.clone(),
+            e.id_type.unperformant_to_string(),
+        ),
         None => (false, exposable_string::DEFAULT_RULE.clone(), String::new()),
     };
 
@@ -42,8 +46,8 @@ pub fn extract_from_experiment_evaluation(
         Some(e) => (
             e.value.clone(),
             e.base.rule_id.clone(),
-            e.id_type.clone(),
-            e.group_name.clone(),
+            e.id_type.unperformant_to_string(),
+            e.group_name.as_ref().map(|g| g.unperformant_to_string()),
             e.is_experiment_active.unwrap_or(false),
         ),
         None => (
@@ -62,7 +66,11 @@ pub fn make_dynamic_config(
     details: EvaluationDetails,
 ) -> DynamicConfig {
     let (value, rule_id, id_type) = match &evaluation {
-        Some(e) => (e.value.clone(), e.base.rule_id.clone(), e.id_type.clone()),
+        Some(e) => (
+            e.value.clone(),
+            e.base.rule_id.clone(),
+            e.id_type.unperformant_to_string(),
+        ),
         None => (
             DynamicReturnable::empty(),
             exposable_string::DEFAULT_RULE.clone(),
@@ -114,9 +122,11 @@ pub fn make_layer(
             Some(e) => (
                 e.value.clone(),
                 e.base.rule_id.clone(),
-                e.group_name.clone(),
-                e.allocated_experiment_name.clone(),
-                e.id_type.clone(),
+                e.group_name.as_ref().map(|g| g.unperformant_to_string()),
+                e.allocated_experiment_name
+                    .as_ref()
+                    .map(|g| g.unperformant_to_string()),
+                e.id_type.unperformant_to_string(),
                 e.is_experiment_active.unwrap_or(false),
             ),
             None => (

@@ -5,6 +5,7 @@ use crate::evaluation::evaluator::SpecType;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::get_unit_id::get_unit_id;
 use crate::event_logging::exposable_string::ExposableString;
+use crate::interned_string::InternedString;
 use crate::specs_response::cmab_types::{CMABConfig, CMABGroup, CMABGroupConfig};
 use crate::unwrap_or_return;
 use lazy_static::lazy_static;
@@ -119,7 +120,7 @@ pub(crate) fn evaluate_cmab(
     let cmab = unwrap_or_return!(cmabs.get(spec_name), false);
 
     if !is_cmab_started(cmab) {
-        ctx.result.id_type = Some(&cmab.id_type.value);
+        ctx.result.id_type = Some(InternedString::from_str_ref(&cmab.id_type.value));
         ctx.result.version = Some(cmab.version);
         ctx.result.is_experiment_active = cmab.enabled;
         ctx.result.bool_value = false;
@@ -129,7 +130,7 @@ pub(crate) fn evaluate_cmab(
     }
 
     if !get_passes_targeting(ctx, cmab) {
-        ctx.result.id_type = Some(&cmab.id_type.value);
+        ctx.result.id_type = Some(InternedString::from_dynamic_string(&cmab.id_type));
         ctx.result.version = Some(cmab.version);
         ctx.result.is_experiment_active = cmab.enabled;
         ctx.result.bool_value = false;
@@ -138,7 +139,7 @@ pub(crate) fn evaluate_cmab(
         return true;
     }
 
-    ctx.result.id_type = Some(&cmab.id_type.value);
+    ctx.result.id_type = Some(InternedString::from_dynamic_string(&cmab.id_type));
     ctx.result.version = Some(cmab.version);
     ctx.result.is_experiment_active = cmab.enabled;
 
@@ -187,7 +188,7 @@ fn get_passes_targeting<'a>(ctx: &mut EvaluatorContext<'a>, cmab: &'a CMABConfig
 
     let expo = SecondaryExposure {
         gate: targeting_gate_name.clone(),
-        gate_value: result.to_string(),
+        gate_value: InternedString::from_bool(result),
         rule_id: ctx.result.rule_id.cloned().unwrap_or_default(),
     };
 
@@ -220,7 +221,7 @@ fn apply_random_group<'a>(
     ctx.result.bool_value = true;
     ctx.result.rule_id = Some(&group.id);
     ctx.result.rule_id_suffix = Some(EXPLORE_RULE_ID_SUFFIX);
-    ctx.result.group_name = Some(&group.name);
+    ctx.result.group_name = Some(InternedString::from_str_ref(&group.name));
     ctx.result.json_value = Some(group.parameter_values.clone());
 }
 
@@ -251,7 +252,7 @@ fn apply_sampling_group<'a>(
             ctx.result.rule_id = Some(&group.id);
             ctx.result.rule_id_suffix = Some(EXPLORE_RULE_ID_SUFFIX);
             ctx.result.bool_value = true;
-            ctx.result.group_name = Some(&group.name);
+            ctx.result.group_name = Some(InternedString::from_str_ref(&group.name));
             ctx.result.json_value = Some(group.parameter_values.clone());
             return true;
         }
@@ -292,7 +293,7 @@ fn apply_best_group<'a>(
     }
     ctx.result.bool_value = true;
     ctx.result.rule_id = Some(&best_group.id);
-    ctx.result.group_name = Some(&best_group.name);
+    ctx.result.group_name = Some(InternedString::from_str_ref(&best_group.name));
     ctx.result.json_value = Some(best_group.parameter_values.clone());
 }
 
@@ -317,7 +318,7 @@ fn get_cmab_score_for_group(
             .get_user_value(&Some(DynamicString::from(key.clone())));
         let user_value_string = match user_value {
             Some(v) => match &v.string_value {
-                Some(s) => s.value.clone(),
+                Some(s) => s.value.unperformant_to_string(),
                 None => v.json_value.to_string(),
             },
             None => continue,

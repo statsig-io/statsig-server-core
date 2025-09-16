@@ -6,6 +6,7 @@ use crate::{
         evaluator_result::EvaluatorResult,
     },
     hashing::HashUtil,
+    interned_string::InternedString,
     specs_response::{spec_directory::SpecDirectory, spec_types::Spec},
     ClientInitResponseOptions, HashAlgorithm, SecondaryExposure, StatsigErr,
 };
@@ -14,7 +15,7 @@ use std::collections::{HashMap, HashSet};
 pub(crate) fn gcir_process_iter<T>(
     context: &mut EvaluatorContext,
     options: &ClientInitResponseOptions,
-    sec_expo_hash_memo: &mut HashMap<String, String>,
+    sec_expo_hash_memo: &mut HashMap<InternedString, InternedString>,
     spec_directory: &SpecDirectory,
     get_spec_type: impl Fn(&Spec) -> SpecType,
     mut evaluation_factory: impl FnMut(&str, &str, &mut EvaluatorContext) -> T,
@@ -85,13 +86,13 @@ pub fn hash_secondary_exposures(
     result: &mut EvaluatorResult,
     hashing: &HashUtil,
     hash_algorithm: &HashAlgorithm,
-    memo: &mut HashMap<String, String>,
+    memo: &mut HashMap<InternedString, InternedString>,
 ) {
     fn loop_filter_n_hash(
         exposures: &mut Vec<SecondaryExposure>,
         hashing: &HashUtil,
         hash_algorithm: &HashAlgorithm,
-        memo: &mut HashMap<String, String>,
+        memo: &mut HashMap<InternedString, InternedString>,
     ) {
         let mut seen = HashSet::<String>::with_capacity(exposures.len());
         exposures.retain_mut(|expo| {
@@ -106,9 +107,10 @@ pub fn hash_secondary_exposures(
                     expo.gate = hash.clone();
                 }
                 None => {
-                    let hash = hashing.hash(&expo.gate, hash_algorithm).to_string();
-                    let old = std::mem::replace(&mut expo.gate, hash.clone());
-                    memo.insert(old, hash);
+                    let hash = hashing.hash(&expo.gate, hash_algorithm);
+                    let interned_hash = InternedString::from_string(hash);
+                    let old = std::mem::replace(&mut expo.gate, interned_hash.clone());
+                    memo.insert(old, interned_hash);
                 }
             }
             true

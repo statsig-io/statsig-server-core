@@ -10,6 +10,7 @@ use crate::evaluation::evaluation_types::{
 };
 use crate::event_logging::exposable_string::{self, ExposableString};
 use crate::hashing::{HashAlgorithm, HashUtil};
+use crate::interned_string::InternedString;
 
 #[derive(Default, Debug)]
 pub struct EvaluatorResult<'a> {
@@ -20,13 +21,13 @@ pub struct EvaluatorResult<'a> {
     pub is_experiment_active: bool,
     pub is_in_layer: bool,
     pub is_in_experiment: bool,
-    pub id_type: Option<&'a String>,
+    pub id_type: Option<InternedString>,
     pub json_value: Option<DynamicReturnable>,
     pub rule_id: Option<&'a ExposableString>,
     pub rule_id_suffix: Option<&'static str>,
-    pub group_name: Option<&'a String>,
-    pub explicit_parameters: Option<&'a Vec<String>>,
-    pub config_delegate: Option<&'a String>,
+    pub group_name: Option<InternedString>,
+    pub explicit_parameters: Option<&'a Vec<InternedString>>,
+    pub config_delegate: Option<InternedString>,
     pub secondary_exposures: Vec<SecondaryExposure>,
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
     pub override_reason: Option<&'a str>,
@@ -40,7 +41,7 @@ pub struct EvaluatorResult<'a> {
 pub fn result_to_gate_eval(gate_name: &str, result: &mut EvaluatorResult) -> GateEvaluation {
     GateEvaluation {
         base: result_to_base_eval(gate_name, result),
-        id_type: result.id_type.cloned().unwrap_or_default(),
+        id_type: result.id_type.take().unwrap_or_default(),
         value: result.bool_value,
     }
 }
@@ -52,7 +53,7 @@ pub fn result_to_gate_eval_v2(
 ) -> GateEvaluationV2 {
     GateEvaluationV2 {
         base: result_to_base_eval_v2(gate_name, result, hashing),
-        id_type: result.id_type.cloned().unwrap_or_default(),
+        id_type: result.id_type.take().unwrap_or_default(),
         value: result.bool_value,
     }
 }
@@ -62,7 +63,7 @@ pub fn result_to_experiment_eval(
     spec_entity: Option<&str>,
     result: &mut EvaluatorResult,
 ) -> ExperimentEvaluation {
-    let (id_type, is_device_based) = get_id_type_info(result.id_type);
+    let (id_type, is_device_based) = get_id_type_info(result.id_type.as_ref());
 
     let mut is_experiment_active = None;
     let mut is_user_in_experiment = None;
@@ -79,7 +80,7 @@ pub fn result_to_experiment_eval(
         is_device_based,
         value: get_json_value(result),
         is_in_layer: result.is_in_layer,
-        group_name: result.group_name.cloned(),
+        group_name: result.group_name.take(),
         explicit_parameters: result.explicit_parameters.cloned(),
         is_experiment_active,
         is_user_in_experiment,
@@ -95,7 +96,7 @@ pub fn result_to_experiment_eval_v2(
     result: &mut EvaluatorResult,
     hashing: &HashUtil,
 ) -> ExperimentEvaluationV2 {
-    let (id_type, is_device_based) = get_id_type_info(result.id_type);
+    let (id_type, is_device_based) = get_id_type_info(result.id_type.as_ref());
 
     let mut is_experiment_active = None;
     let mut is_user_in_experiment = None;
@@ -114,7 +115,7 @@ pub fn result_to_experiment_eval_v2(
         is_device_based,
         value: get_json_value(result),
         is_in_layer: result.is_in_layer,
-        group_name: result.group_name.cloned(),
+        group_name: result.group_name.take(),
         explicit_parameters: result.explicit_parameters.cloned(),
         is_experiment_active,
         is_user_in_experiment,
@@ -126,7 +127,7 @@ pub fn eval_result_to_experiment_eval(
     experiment_name: &str,
     result: &mut EvaluatorResult,
 ) -> ExperimentEvaluation {
-    let (id_type, is_device_based) = get_id_type_info(result.id_type);
+    let (id_type, is_device_based) = get_id_type_info(result.id_type.as_ref());
 
     ExperimentEvaluation {
         base: result_to_base_eval(experiment_name, result),
@@ -135,7 +136,7 @@ pub fn eval_result_to_experiment_eval(
         is_device_based,
         value: get_json_value(result),
         is_in_layer: result.is_in_layer,
-        group_name: result.group_name.cloned(),
+        group_name: result.group_name.take(),
         explicit_parameters: result.explicit_parameters.cloned(),
         is_experiment_active: Some(result.is_experiment_active),
         is_user_in_experiment: Some(result.is_experiment_group),
@@ -150,7 +151,7 @@ pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> L
     let mut is_experiment_active = None;
     let mut is_user_in_experiment = None;
 
-    if let Some(config_delegate) = result.config_delegate {
+    if let Some(config_delegate) = result.config_delegate.take() {
         if !config_delegate.is_empty() {
             allocated_experiment_name = Some(config_delegate.clone());
             is_experiment_active = Some(result.is_experiment_active);
@@ -158,18 +159,18 @@ pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> L
         }
     }
 
-    let (id_type, is_device_based) = get_id_type_info(result.id_type);
+    let (id_type, is_device_based) = get_id_type_info(result.id_type.as_ref());
     let undelegated_sec_expos = std::mem::take(&mut result.undelegated_secondary_exposures);
 
     LayerEvaluation {
         base: result_to_base_eval(layer_name, result),
         group: result
             .rule_id
-            .map(|r| r.unperformant_to_string())
+            .map(|r| InternedString::from_str_ref(r.as_str()))
             .unwrap_or_default(),
         value: get_json_value(result),
         is_device_based,
-        group_name: result.group_name.cloned(),
+        group_name: result.group_name.take(),
         is_experiment_active,
         is_user_in_experiment,
         allocated_experiment_name,
@@ -195,7 +196,7 @@ pub fn result_to_layer_eval_v2(
                 exposure.rule_id.as_str()
             );
             let hash = hashing.hash(&key, &HashAlgorithm::Djb2);
-            undelegated_secondary_exposures.push(hash.clone());
+            undelegated_secondary_exposures.push(InternedString::from_string(hash));
         }
     }
 
@@ -203,7 +204,7 @@ pub fn result_to_layer_eval_v2(
     let mut is_experiment_active = None;
     let mut is_user_in_experiment = None;
 
-    if let Some(config_delegate) = result.config_delegate {
+    if let Some(config_delegate) = result.config_delegate.take() {
         if !config_delegate.is_empty() {
             allocated_experiment_name = Some(config_delegate.clone());
             is_experiment_active = Some(result.is_experiment_active);
@@ -211,14 +212,14 @@ pub fn result_to_layer_eval_v2(
         }
     }
 
-    let (id_type, is_device_based) = get_id_type_info(result.id_type);
+    let (id_type, is_device_based) = get_id_type_info(result.id_type.as_ref());
 
     LayerEvaluationV2 {
         base: result_to_base_eval_v2(layer_name, result, hashing),
         group: result.rule_id.cloned().unwrap_or_default(),
         value: get_json_value(result),
         is_device_based,
-        group_name: result.group_name.cloned(),
+        group_name: result.group_name.take(),
         is_experiment_active,
         is_user_in_experiment,
         allocated_experiment_name,
@@ -232,7 +233,7 @@ pub fn result_to_dynamic_config_eval(
     dynamic_config_name: &str,
     result: &mut EvaluatorResult,
 ) -> DynamicConfigEvaluation {
-    let (id_type, is_device_based) = get_id_type_info(result.id_type);
+    let (id_type, is_device_based) = get_id_type_info(result.id_type.as_ref());
 
     DynamicConfigEvaluation {
         base: result_to_base_eval(dynamic_config_name, result),
@@ -249,7 +250,7 @@ pub fn result_to_dynamic_config_eval_v2(
     result: &mut EvaluatorResult,
     hashing: &HashUtil,
 ) -> DynamicConfigEvaluationV2 {
-    let (id_type, is_device_based) = get_id_type_info(result.id_type);
+    let (id_type, is_device_based) = get_id_type_info(result.id_type.as_ref());
 
     DynamicConfigEvaluationV2 {
         base: result_to_base_eval_v2(dynamic_config_name, result, hashing),
@@ -261,7 +262,7 @@ pub fn result_to_dynamic_config_eval_v2(
     }
 }
 
-fn get_id_type_info(id_type: Option<&String>) -> (String, bool) {
+fn get_id_type_info(id_type: Option<&InternedString>) -> (InternedString, bool) {
     let id_type = id_type.cloned().unwrap_or_default();
     let is_device_based = id_type == "stableID" || id_type == "stableid";
     (id_type, is_device_based)

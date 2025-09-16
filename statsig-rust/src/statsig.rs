@@ -1266,7 +1266,7 @@ impl Statsig {
         let gate = data.values.feature_gates.get(gate_name);
         match gate {
             Some(gate) => match &gate.spec.fields_used {
-                Some(fields) => fields.clone(),
+                Some(fields) => fields.iter().map(|f| f.unperformant_to_string()).collect(),
                 None => vec![],
             },
             None => vec![],
@@ -1551,7 +1551,7 @@ impl Statsig {
         let config = data.values.dynamic_configs.get(config_name);
         match config {
             Some(config) => match &config.spec.fields_used {
-                Some(fields) => fields.clone(),
+                Some(fields) => fields.iter().map(|f| f.unperformant_to_string()).collect(),
                 None => vec![],
             },
             None => vec![],
@@ -1635,7 +1635,7 @@ impl Statsig {
         let config = data.values.dynamic_configs.get(experiment_name);
         match config {
             Some(config) => match &config.spec.fields_used {
-                Some(fields) => fields.clone(),
+                Some(fields) => fields.iter().map(|f| f.unperformant_to_string()).collect(),
                 None => vec![],
             },
             None => vec![],
@@ -1678,8 +1678,8 @@ impl Statsig {
         {
             let value = rule.return_value.get_json().unwrap_or_default();
             let rule_id = String::from(rule.id.as_str());
-            let id_type = rule.id_type.value.clone();
-            let group_name = rule.group_name.clone();
+            let id_type = rule.id_type.value.unperformant_to_string();
+            let group_name = rule.group_name.as_ref().map(|g| g.unperformant_to_string());
 
             return Experiment {
                 name: experiment_name.to_string(),
@@ -1767,7 +1767,7 @@ impl Statsig {
         let layer = data.values.layer_configs.get(layer_name);
         match layer {
             Some(layer) => match &layer.spec.fields_used {
-                Some(fields) => fields.clone(),
+                Some(fields) => fields.iter().map(|f| f.unperformant_to_string()).collect(),
                 None => vec![],
             },
             None => vec![],

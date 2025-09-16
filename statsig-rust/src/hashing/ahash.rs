@@ -2,7 +2,7 @@ use ahash::RandomState;
 use std::hash::Hash;
 
 lazy_static::lazy_static! {
-    static ref HASHER: RandomState = RandomState::new();
+    pub static ref HASHER: RandomState = RandomState::new();
 }
 
 /// Uses the ahash crate: https://crates.io/crates/ahash

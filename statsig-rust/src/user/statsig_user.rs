@@ -148,11 +148,11 @@ impl StatsigUser {
 
         let custom_ids = self.data.custom_ids.as_ref()?;
 
-        if let Some(custom_id) = custom_ids.get(&id_type.value) {
+        if let Some(custom_id) = custom_ids.get(id_type.value.as_str()) {
             return Some(custom_id);
         }
 
-        custom_ids.get(&id_type.lowercased_value)
+        custom_ids.get(id_type.lowercased_value.as_str())
     }
 
     string_field_accessor!(self, get_email, set_email, email);

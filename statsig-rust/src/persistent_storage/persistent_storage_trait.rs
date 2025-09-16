@@ -123,11 +123,23 @@ pub fn make_sticky_value_from_layer(layer: &Layer) -> Option<StickyValues> {
         value: true,
         json_value: Some(layer_evaluation.value.get_json().unwrap_or_default()),
         rule_id: Some(layer_evaluation.base.rule_id.clone()),
-        group_name: layer_evaluation.group_name.clone(),
+        group_name: layer_evaluation
+            .group_name
+            .as_ref()
+            .map(|g| g.unperformant_to_string()),
         secondary_exposures: layer_evaluation.base.secondary_exposures.clone(),
         undelegated_secondary_exposures: layer_evaluation.undelegated_secondary_exposures.clone(),
-        config_delegate: layer_evaluation.allocated_experiment_name.clone(),
-        explicit_parameters: Some(layer_evaluation.explicit_parameters.clone()),
+        config_delegate: layer_evaluation
+            .allocated_experiment_name
+            .as_ref()
+            .map(|g| g.unperformant_to_string()),
+        explicit_parameters: Some(
+            layer_evaluation
+                .explicit_parameters
+                .iter()
+                .map(|g| g.unperformant_to_string())
+                .collect(),
+        ),
         time: layer.details.lcut,
         config_version,
     })
@@ -166,11 +178,17 @@ pub fn make_sticky_value_from_experiment(experiment: &Experiment) -> Option<Stic
         value: true, // For sticky value, if it's being saved, it should always be true
         json_value: Some(evaluation.value.get_json().unwrap_or_default()),
         rule_id: Some(evaluation.base.rule_id.clone()),
-        group_name: evaluation.group_name.clone(),
+        group_name: evaluation
+            .group_name
+            .as_ref()
+            .map(|g| g.unperformant_to_string()),
         secondary_exposures: evaluation.base.secondary_exposures.clone(),
         undelegated_secondary_exposures: evaluation.undelegated_secondary_exposures.clone(),
         config_delegate: None,
-        explicit_parameters: evaluation.explicit_parameters.clone(),
+        explicit_parameters: evaluation
+            .explicit_parameters
+            .as_ref()
+            .map(|g| g.iter().map(|g| g.unperformant_to_string()).collect()),
         time: experiment.details.lcut,
         config_version,
     })

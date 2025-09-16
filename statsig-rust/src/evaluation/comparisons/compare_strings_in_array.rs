@@ -3,14 +3,17 @@ use crate::{
     unwrap_or_return, DynamicValue,
 };
 
+lazy_static::lazy_static! {
+    static ref EMPTY_STRING: DynamicString = DynamicString::from(String::new());
+}
+
 pub(crate) fn compare_strings_in_array(
     value: &DynamicValue,
     target_value: &MemoizedEvaluatorValue,
     op: &str,
     ignore_case: bool,
 ) -> bool {
-    let empty_str = DynamicString::from(String::new());
-    let value_str = value.string_value.as_ref().unwrap_or(&empty_str);
+    let value_str = value.string_value.as_ref().unwrap_or(&EMPTY_STRING);
 
     let result = {
         if let Some(keyed_lookup) = &target_value.object_value {
@@ -42,9 +45,9 @@ pub(crate) fn compare_strings_in_array(
 
             comparison_result = match op {
                 "any" | "none" | "any_case_sensitive" | "none_case_sensitive" => left.eq(right),
-                "str_starts_with_any" => left.starts_with(right),
-                "str_ends_with_any" => left.ends_with(right),
-                "str_contains_any" | "str_contains_none" => left.contains(right),
+                "str_starts_with_any" => left.starts_with(right.as_str()),
+                "str_ends_with_any" => left.ends_with(right.as_str()),
+                "str_contains_any" | "str_contains_none" => left.contains(right.as_str()),
                 _ => false, // todo: unsupported?
             };
 

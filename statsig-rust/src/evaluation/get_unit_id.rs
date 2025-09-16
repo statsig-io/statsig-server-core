@@ -11,12 +11,12 @@ lazy_static! {
 pub(crate) fn get_unit_id<'a>(
     ctx: &'a mut EvaluatorContext,
     id_type: &'a DynamicString,
-) -> &'a String {
+) -> &'a str {
     ctx.user
         .get_unit_id(id_type)
         .unwrap_or(&EMPTY_DYNAMIC_VALUE)
         .string_value
         .as_ref()
-        .map(|s| &s.value)
+        .map(|s| s.value.as_str())
         .unwrap_or(&EMPTY_STR)
 }

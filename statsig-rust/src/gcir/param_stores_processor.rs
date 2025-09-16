@@ -26,7 +26,7 @@ pub(crate) fn get_serializeable_param_stores(
 
     for (name, store) in stores {
         if should_filter_config_for_app(
-            &store.target_app_ids,
+            store.target_app_ids.as_ref(),
             &context.app_id,
             &options.client_sdk_key,
         ) {

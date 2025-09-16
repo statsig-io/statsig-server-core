@@ -7,6 +7,25 @@ use statsig_rust::specs_response::spec_types::SpecsResponseFull;
 use crate::utils::helpers::load_contents;
 
 #[test]
+fn test_full_response_serialization_from_str() {
+    let raw_dcs = load_contents("eval_proj_dcs.json");
+
+    let specs_response = serde_json::from_str::<SpecsResponseFull>(&raw_dcs).unwrap();
+
+    assert!(specs_response.has_updates)
+}
+
+#[test]
+fn test_full_response_serialization_from_value() {
+    let raw_dcs_str = load_contents("eval_proj_dcs.json");
+    let raw_dcs = serde_json::from_str::<Value>(&raw_dcs_str).unwrap();
+
+    let specs_response = serde_json::from_value::<SpecsResponseFull>(raw_dcs).unwrap();
+
+    assert!(specs_response.has_updates)
+}
+
+#[test]
 fn test_json_roundtrip() {
     let raw_dcs = load_contents("eval_proj_dcs.json");
 
