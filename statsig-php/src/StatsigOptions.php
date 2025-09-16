@@ -2,10 +2,6 @@
 
 namespace Statsig;
 
-const IGNORED_ENABLE_ID_LISTS = -1;
-const IGNORED_ID_LISTS_URL = null;
-const IGNORED_ID_LISTS_SYNC_INTERVAL_MS = -1;
-
 class StatsigOptions
 {
     public $__ref = null; // phpcs:ignore
@@ -24,7 +20,10 @@ class StatsigOptions
         ?bool $disable_user_agent_parsing = null,
         ?bool $wait_for_country_lookup_init = null,
         ?bool $wait_for_user_agent_init = null,
+        ?bool $enable_id_lists = null,
         ?bool $disable_network = null,
+        ?string $id_lists_url = null,
+        ?int $id_lists_sync_interval_ms = null,
         ?bool $disable_all_logging = null,
         ?int $init_timeout_ms = null,
         ?bool $fallback_to_statsig_api = null
@@ -44,10 +43,10 @@ class StatsigOptions
             toSafeOptBool($disable_user_agent_parsing),
             toSafeOptBool($wait_for_country_lookup_init),
             toSafeOptBool($wait_for_user_agent_init),
-            IGNORED_ENABLE_ID_LISTS,
+            toSafeOptBool($enable_id_lists),
             toSafeOptBool($disable_network),
-            IGNORED_ID_LISTS_URL,
-            IGNORED_ID_LISTS_SYNC_INTERVAL_MS,
+            $id_lists_url,
+            $id_lists_sync_interval_ms ?? -1,
             toSafeOptBool($disable_all_logging),
             null, // global custom fields
             0, // ob client ref - not implemented in PHP

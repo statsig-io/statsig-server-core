@@ -101,4 +101,32 @@ class StatsigOptionsTest extends TestCase
 
         $this->assertNull($options->__ref);
     }
+
+    public function testNewIdListsOptions()
+    {
+        $options = new StatsigOptions(
+            enable_id_lists: true,
+            id_lists_url: "https://custom.statsig.com/id_lists",
+            id_lists_sync_interval_ms: 30000
+        );
+        $this->assertNotNull($options->__ref);
+
+        $options->__destruct();
+        $this->assertNull($options->__ref);
+    }
+
+    public function testIdListsOptionsWithOtherParams()
+    {
+        $options = new StatsigOptions(
+            environment: "staging",
+            enable_id_lists: false,
+            id_lists_url: "https://test.statsig.com/id_lists",
+            id_lists_sync_interval_ms: 15000,
+            init_timeout_ms: 5000
+        );
+        $this->assertNotNull($options->__ref);
+
+        $options->__destruct();
+        $this->assertNull($options->__ref);
+    }
 }
