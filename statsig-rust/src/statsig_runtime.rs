@@ -192,12 +192,20 @@ impl StatsigRuntime {
 }
 
 pub fn create_new_runtime() -> Runtime {
-    Builder::new_multi_thread()
+    #[cfg(not(target_family = "wasm"))]
+    return Builder::new_multi_thread()
         .worker_threads(5)
         .thread_name("statsig")
         .enable_all()
         .build()
-        .expect("Failed to create a tokio Runtime")
+        .expect("Failed to create a tokio Runtime");
+
+    #[cfg(target_family = "wasm")]
+    return Builder::new_current_thread()
+        .thread_name("statsig")
+        .enable_all()
+        .build()
+        .expect("Failed to create a tokio Runtime (single-threaded for wasm");
 }
 
 fn remove_join_handle_with_id(
