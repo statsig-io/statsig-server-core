@@ -4,7 +4,7 @@ defmodule Statsigelixir.MixProject do
   def project do
     [
       app: :statsig_elixir,
-      version: "0.8.9-beta.2509160231",
+      version: "0.8.9-beta.2509161804",
       elixir: "~> 1.0",
       start_permanent: Mix.env() == :prod,
       description: description(),
