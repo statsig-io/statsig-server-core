@@ -34,8 +34,11 @@ jobs:
           @statsig/statsig-node-core-linux-x64-gnu-rc \
           @statsig/statsig-node-core-linux-x64-musl-rc"
           echo "Updating to latest rc for: $pkgs"
-          pnpm -C lib up @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --include=optional
-          pnpm -C lib/node/service-core up @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --include=optional
+
+          cd lib
+          pnpm update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+          cd node/service-core
+          pnpm update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
 
           pnpm install --frozen-lockfile
           echo "Changed files:"
