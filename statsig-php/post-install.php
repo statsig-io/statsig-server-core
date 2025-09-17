@@ -1,6 +1,7 @@
 <?php
 
 const OUTPUT_DIR = "resources";
+const DOMAIN = "pubkey.statsig.com";
 const VERSION = "0.9.2-beta.2509170231";
 
 if (getenv('SKIP_STATSIG_POST_INSTALL') === 'true') {
@@ -192,11 +193,47 @@ function download_header()
     file_put_contents($output_path, file_get_contents($url));
 }
 
+function download_public_key()
+{
+    echo "\n-- Downloading Statsig Public Key --\n";
+    echo " Domain: " . DOMAIN . "\n";
+    echo " Output Path: " . OUTPUT_DIR . "/public.pem\n";
+    echo "-----------------------------------\n";
+
+    $records = dns_get_record(DOMAIN, DNS_TXT);
+
+    if ($records === false) {
+        echo "No TXT records found.\n";
+        return;
+    }
+
+    $allTxt = "";
+
+    for ($i = count($records) - 1; $i >= 0; $i--) {
+        $record = $records[$i];
+        if (isset($record['entries']) && is_array($record['entries'])) {
+            $txtValue = implode('', $record['entries']);
+        } else {
+            $txtValue = $record['txt'];
+        }
+        $allTxt .= str_replace('"', '', $txtValue);
+    }
+
+    $allTxt = trim(str_replace('"', '', $allTxt));
+    $keyBody = chunk_split($allTxt, 64, "\n");
+
+    $pem = "-----BEGIN PUBLIC KEY-----\n" .
+        $keyBody .
+        "-----END PUBLIC KEY-----\n";
+
+    $output_path = OUTPUT_DIR . "/public.pem";
+    file_put_contents($output_path, $pem);
+}
+
 
 function ensure_header_file_exists()
 {
-    $dir = OUTPUT_DIR;
-    $header_file = $dir . "/statsig_ffi.h";
+    $header_file = OUTPUT_DIR . "/statsig_ffi.h";
 
     if (!file_exists($header_file)) {
         echo "❌ Required header file statsig_ffi.h not found in resources directory\n";
@@ -207,7 +244,7 @@ function ensure_header_file_exists()
     }
 }
 
-function ensure_binary_file_exists($system_info)
+function get_binary_name($system_info)
 {
     $binary_name = "libstatsig_ffi.so";
     if ($system_info[0] === "macos") {
@@ -215,10 +252,12 @@ function ensure_binary_file_exists($system_info)
     } else if ($system_info[0] === "windows") {
         $binary_name = "statsig_ffi.dll";
     }
+    return $binary_name;
+}
 
-    $dir = OUTPUT_DIR;
-    $binary_file = $dir . "/" . $binary_name;
-    $signature_file = $dir . "/" . $binary_name . ".sig";
+function ensure_binary_file_exists($binary_name)
+{
+    $binary_file = OUTPUT_DIR . "/" . $binary_name;
 
     if (!file_exists($binary_file)) {
         echo "❌ Required binary file $binary_name not found in resources directory\n";
@@ -227,7 +266,12 @@ function ensure_binary_file_exists($system_info)
         echo "✅ Binary file $binary_name found in resources directory\n";
         return true;
     }
-    
+}
+
+function ensure_signature_file_exists($binary_name)
+{
+    $signature_file = OUTPUT_DIR . "/" . $binary_name . ".sig";
+
     if (!file_exists($signature_file)) {
         echo "❌ Required signature file $binary_name.sig not found in resources directory\n";
         return false;
@@ -236,6 +280,19 @@ function ensure_binary_file_exists($system_info)
         return true;
     }
 }
+
+function ensure_public_key_file_exists()
+{
+    $public_key_file = OUTPUT_DIR . "/public.pem";
+    if (!file_exists($public_key_file)) {
+        echo "❌ Required public key file public.pem not found in resources directory\n";
+        return false;
+    } else {
+        echo "✅ Public key file public.pem found in resources directory\n";
+        return true;
+    }
+}
+
 
 function ensure_ffi_enabled()
 {
@@ -253,20 +310,55 @@ function ensure_ffi_enabled()
 
 function ffi_binary_verification_disabled()
 {
-    $ffi_binary_verification_disabled = ini_get('ffi.binary_verification');
+    $ffi_binary_verification_disabled = ini_get('ini.ffi.statsig_binary_verification');
     return $ffi_binary_verification_disabled === '0' || $ffi_binary_verification_disabled === 'false';
 }
 
-function verify_binary()
+function verify_binary($binary_name)
 {
+    echo "\n-- Verifying FFI Binary --\n";
     if (ffi_binary_verification_disabled()) {
-        echo "✅ FFI binary verification is disabled\n";
+        echo "✅ FFI binary verification is disabled, skipping verification\n";
         return true;
     }
 
     if (!extension_loaded('openssl')) {
-        echo "❌ OpenSSL extension is not loaded, verification will be skipped\n";
+        echo "✅ OpenSSL extension is not loaded, verification will be skipped\n" .
+            "If you would like to verify the binary, please install the openssl extension.\n";
         return true;
+    }
+    // not hard failing verification for now
+    if (!ensure_signature_file_exists($binary_name)) {
+        echo "❌ Signature file not found, verification will be skipped\n";
+        return true;
+    }
+
+    if (!ensure_public_key_file_exists()) {
+        echo "❌ Public key file not found, verification will be skipped\n" .
+            "If you would like to verify the binary, please check that downloading the public key from " . DOMAIN . " was successful.\n";
+        return true;
+    }
+
+    $binary_path = OUTPUT_DIR . "/" . $binary_name;
+    $signature_path = OUTPUT_DIR . "/" . $binary_name . ".sig";
+    $public_key_path = OUTPUT_DIR . "/public.pem";
+
+    $binary = file_get_contents($binary_path);
+    $signature = file_get_contents($signature_path);
+    $publicKey = file_get_contents($public_key_path);
+
+    $pubKeyId = openssl_pkey_get_public($publicKey);
+    if ($pubKeyId === false) {
+        echo "❌ Failed to load public key, verification will be skipped\n";
+        return true;
+    }
+
+    $ok = openssl_verify($binary, $signature, $pubKeyId, OPENSSL_ALGO_SHA256);
+    if ($ok === 1) {
+        echo "✅ FFI binary verification is successful\n";
+    } else {
+        echo "❌ FFI binary verification failed, the binary may be corrupted\n";
+        return false;
     }
 
     return true;
@@ -279,13 +371,15 @@ remove_existing_statsig_resources();
 $zip_file_path = download_binary($system_info);
 unzip_binary($zip_file_path);
 download_header();
+download_public_key();
 
 
 echo "\n-- Ensuring Resources Exist --\n";
 $header_found = ensure_header_file_exists();
-$binary_found = ensure_binary_file_exists($system_info);
+$binary_name = get_binary_name($system_info);
+$binary_found = ensure_binary_file_exists($binary_name);
 $ffi_enabled = ensure_ffi_enabled();
-$verified = verify_binary();
+$verified = verify_binary($binary_name);
 echo "-----------------------------------\n";
 
 if (!$header_found || !$binary_found || !$ffi_enabled || !$verified) {
