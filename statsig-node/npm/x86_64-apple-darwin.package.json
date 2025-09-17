@@ -1,6 +1,6 @@
 {
     "name": "@statsig/statsig-node-core-darwin-x64",
-    "version": "0.9.2-beta.2509170231",
+    "version": "0.9.1-rc.2509171909",
     "repository": "https://github.com/statsig-io/statsig-server-core.git",
     "os": [
       "darwin"
