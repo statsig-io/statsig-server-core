@@ -1,4 +1,4 @@
-name: Update Node Core RC Version within Statsig Repo
+name: Update RC Versions within Statsig Repo
 
 on:
   schedule:
@@ -36,7 +36,7 @@ jobs:
           echo "Updating to latest rc for: $pkgs"
           pnpm -C lib up $pkgs --include=optional
           pnpm -C lib/node/service-core up $pkgs --include=optional
-          pnpm install --lockfile-only
+          pnpm install --frozen-lockfile
           echo "Changed files:"
           git status --porcelain
 
