@@ -19,12 +19,21 @@ jobs:
               day: '2-digit',
             }).format(new Date());
 
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const laYesterday = new Intl.DateTimeFormat('en-CA', {
+              timeZone: 'America/Los_Angeles',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+            }).format(yesterday);
+
             const q = [
               `repo:${owner}/${repo}`,
               `is:pr`,
               `is:merged`,
               `base:rc`,
-              `merged:${laDate}..${laDate}`,
+              `merged:${laYesterday}..${laDate}`,
               `in:title "\[cherrypick\]\[rc\]"`
             ].join(' ');
 
@@ -33,11 +42,11 @@ jobs:
               per_page: 100,
             });
 
-            core.info(`Query: ${q}`);
-            core.info(`Found ${res.data.total_count} PR(s).`);
+            console.log(`Query: ${q}`);
+            console.log(`Found ${res.data.total_count} PR(s).`);
 
             for (const pr of res.data.items) {
-              core.info(
+              console.log(
                 `#${pr.number} | title="${pr.title}" | base=${pr.pull_request?.base?.ref} | merged_at=${pr.pull_request?.merged_at}`
               );
             }
