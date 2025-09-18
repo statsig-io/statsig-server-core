@@ -1,0 +1,48 @@
+name: Nightly RC
+
+on:
+  workflow_dispatch:
+
+jobs:
+  nightly_rc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+
+            const laDate = new Intl.DateTimeFormat('en-CA', {
+              timeZone: 'America/Los_Angeles',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+            }).format(new Date());
+
+            const q = [
+              `repo:${owner}/${repo}`,
+              `is:pr`,
+              `is:merged`,
+              `base:rc`,
+              `merged:${laDate}..${laDate}`,
+              `in:title "\[cherrypick\]\[rc\]"`
+            ].join(' ');
+
+            const res = await github.rest.search.issuesAndPullRequests({
+              q,
+              per_page: 100,
+            });
+
+            core.info(`Query: ${q}`);
+            core.info(`Found ${res.data.total_count} PR(s).`);
+
+            for (const pr of res.data.items) {
+              core.info(
+                `#${pr.number} | title="${pr.title}" | base=${pr.pull_request?.base?.ref} | merged_at=${pr.pull_request?.merged_at}`
+              );
+            }
+
+            if (res.data.total_count === 0) {
+              core.notice('No cherry-pick PRs merged to rc today; exiting early.');
+              process.exit(1);
+            }
