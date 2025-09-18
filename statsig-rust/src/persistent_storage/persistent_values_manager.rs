@@ -22,7 +22,7 @@ pub struct PersistentValuesManager {
 
 const TAG: &str = "PersistentValuesManager";
 
-fn sticky_value_to_evaluator_result<'a>(sticky_value: &'a StickyValues) -> EvaluatorResult<'a> {
+fn sticky_value_to_evaluator_result(sticky_value: &StickyValues) -> EvaluatorResult<'_> {
     EvaluatorResult {
         bool_value: sticky_value.value,
         json_value: Some(DynamicReturnable::from_map(

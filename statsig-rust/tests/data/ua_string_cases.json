@@ -1,0 +1,68 @@
+{
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36": {
+        "osName": "Windows",
+        "osVersion": "10",
+        "browserName": "Chrome",
+        "browserVersion": "140.0.0.0"
+    },
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0": {
+        "osName": "Windows",
+        "osVersion": "10",
+        "browserName": "Edge",
+        "browserVersion": "140.0.0.0"
+    },
+    "ChatGPT/1.2025.245 (iOS 18.6.2; iPhone14,5; build 17507616669)": {
+        "osName": "iOS",
+        "osVersion": "18.6.2",
+        "browserName": "Mobile Safari UI/WKWebView",
+        "browserVersion": "0.0.0"
+    },
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36": {
+        "osName": "Mac OS X",
+        "osVersion": "10.15.7",
+        "browserName": "Chrome",
+        "browserVersion": "140.0.0.0"
+    },
+    "FortniteGame/++Fortnite+Release-37.20-CL-45679055 (http-eventloop) PS5/ (sceHttp2)": {
+        "osName": "Other",
+        "osVersion": "0.0.0",
+        "browserName": "Other",
+        "browserVersion": "0.0.0"
+    },
+    "ChatGPT/1.2025.245 (iOS 18.5; iPhone13,2; build 17507616669)": {
+        "osName": "iOS",
+        "osVersion": "18.5",
+        "browserName": "Mobile Safari UI/WKWebView",
+        "browserVersion": "0.0.0"
+    },
+    "Grindr3/25.14.1.78352.108847401.99 (78352.108847401.99; iPhone17,2; iOS 18.6.2)": {
+        "osName": "iOS",
+        "osVersion": "18.6.2",
+        "browserName": "Mobile Safari UI/WKWebView",
+        "browserVersion": "0.0.0"
+    },
+    "ChatGPT/35.1.2 CFNetwork/3826.400.120 Darwin/24.3.0": {
+        "osName": "iOS",
+        "osVersion": "0.0.0",
+        "browserName": "ChatGPT",
+        "browserVersion": "35.1.2"
+    },
+    "ChatGPT/1.2025.245 (Android 16; Pixel 8a; build 2523822)": {
+        "osName": "Android",
+        "osVersion": "16",
+        "browserName": "Android",
+        "browserVersion": "16"
+    },
+    "axios/1.6.7,6468": {
+        "osName": "Other",
+        "osVersion": "0.0.0",
+        "browserName": "axios",
+        "browserVersion": "1.6.7.6468"
+    },
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/109.0.5414.74 Safari/537.36 Prerender (+https://github.com/prerender/prerender)": {
+        "osName": "Linux",
+        "osVersion": "0.0.0",
+        "browserName": "HeadlessChrome",
+        "browserVersion": "109.0.5414.74"
+    }
+}
