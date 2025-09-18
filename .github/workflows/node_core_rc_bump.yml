@@ -32,15 +32,15 @@ jobs:
           set -euo pipefail
           pkgs="@statsig/statsig-node-core-rc \
           @statsig/statsig-node-core-linux-x64-gnu-rc \
-          @statsig/statsig-node-core-linux-x64-musl-rc"
+          @statsig/statsig-node-core-linux-x64-musl-rc \
+          @statsig/statsig-node-core-darwin-arm64"
           echo "Updating to latest rc for: $pkgs"
 
           cd lib
-          pnpm update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+          pnpm update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc @statsig/statsig-node-core-darwin-arm64 --no-save --force --include=optional
           cd node/service-core
-          pnpm update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+          pnpm update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc @statsig/statsig-node-core-darwin-arm64 --no-save --force --include=optional
 
-          pnpm install --frozen-lockfile
           echo "Changed files:"
           git status --porcelain
 
@@ -52,11 +52,12 @@ jobs:
           title: "[automated][sdk] Bump Statsig Node Core RC deps"
           body: |
             This PR was auto-generated on RC release.
-            - Updated in `lib` and `node/service-core`
+            - Updated in `lib` and `lib/node/service-core`
             - Packages:
               - @statsig/statsig-node-core-rc
               - @statsig/statsig-node-core-linux-x64-gnu-rc
               - @statsig/statsig-node-core-linux-x64-musl-rc
+              - @statsig/statsig-node-core-darwin-arm64
           branch: bump_statsig_rc_sdk_version-${{ github.run_id }}
           delete-branch: true
           labels: automation, rc-bump
