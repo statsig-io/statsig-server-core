@@ -4,13 +4,13 @@ import {
   listFiles,
   unzip,
 } from '@/utils/file_utils.js';
-
 import { Log } from '@/utils/terminal_utils.js';
-import { PublisherOptions } from './publisher-options.js';
+import { getRootVersion } from '@/utils/toml_utils.js';
 import { execSync } from 'child_process';
 import fs from 'node:fs';
-import { getRootVersion } from '@/utils/toml_utils.js';
 import path from 'node:path';
+
+import { PublisherOptions } from './publisher-options.js';
 
 /**
  DIR_NAME:
@@ -185,41 +185,61 @@ function alignNodePackage(options: PublisherOptions, distDir: string) {
 function publishNodePackages(distDir: string, options: PublisherOptions) {
   Log.title('Publishing Node Packages');
 
-  let allPackagesPublished = true;
-  Object.keys(DIR_STRUCTURE).forEach((platform) => {
-    const platformDir = path.resolve(distDir, platform);
+  let allSubPackagesPublished = true;
 
-    Log.stepBegin(`Publishing ${platform} package`);
+  const platforms = Object.keys(DIR_STRUCTURE).filter(
+    (platform) => platform !== 'main',
+  );
 
-    const version = getRootVersion();
-    const isPublicRepository = options.repository === 'statsig-server-core';
-
-    const configPath = getRootedPath('.npmrc');
-    const publish = [
-      `npm publish`,
-      `--registry=https://registry.npmjs.org/`,
-      `--userconfig=${configPath}`,
-      isPublicRepository ? '--provenance' : '',
-      `--access public`,
-      version.isBeta() ? `--tag beta` : '',
-      version.isRC() ? `--tag rc` : '',
-    ];
-
-    const command = publish.join(' ');
-    try {
-      Log.stepProgress(`Running ${command}`);
-      execSync(command, { cwd: platformDir });
-      return null;
-    } catch (error) {
-      allPackagesPublished = false;
-      Log.stepProgress(`Failed to publish ${platform}`, 'failure');
+  platforms.forEach((platform) => {
+    if (!publishIndividual(distDir, platform, options)) {
+      allSubPackagesPublished = false;
     }
   });
 
-  if (!allPackagesPublished) {
+  let mainPackagePublished = false;
+  if (allSubPackagesPublished) {
+    mainPackagePublished = publishIndividual(distDir, 'main', options);
+  }
+
+  if (!mainPackagePublished) {
     Log.stepEnd('Failed to publish all packages', 'failure');
     process.exit(1);
   }
 
   Log.stepEnd('Published all packages', 'success');
+}
+
+function publishIndividual(
+  distDir: string,
+  platform: string,
+  options: PublisherOptions,
+) {
+  const platformDir = path.resolve(distDir, platform);
+
+  Log.stepBegin(`Publishing ${platform} package`);
+
+  const version = getRootVersion();
+  const isPublicRepository = options.repository === 'statsig-server-core';
+
+  const configPath = getRootedPath('.npmrc');
+  const publish = [
+    `npm publish`,
+    `--registry=https://registry.npmjs.org/`,
+    `--userconfig=${configPath}`,
+    isPublicRepository ? '--provenance' : '',
+    `--access public`,
+    version.isBeta() ? `--tag beta` : '',
+    version.isRC() ? `--tag rc` : '',
+  ];
+
+  const command = publish.join(' ');
+  try {
+    Log.stepProgress(`Running ${command}`);
+    execSync(command, { cwd: platformDir });
+    return true;
+  } catch (error) {
+    Log.stepProgress(`Failed to publish ${platform}`, 'failure');
+    return false;
+  }
 }
