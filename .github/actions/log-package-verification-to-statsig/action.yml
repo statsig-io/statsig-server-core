@@ -1,0 +1,50 @@
+name: Logs an Event to Statsig
+description: Logs an Event to Statsig
+
+
+inputs:
+  sdk_key:
+    description: The Statsig API key to use to log the event
+    required: true
+
+  package:
+    description: The name of the event to log
+    required: true
+
+  os_tag:
+    description: The tag to log the event for
+    required: true
+
+  conclusion:
+    description: The metadata to log with the event
+    required: true
+
+
+runs:
+  using: composite
+  steps:
+    - name: Log to Statsig (${{ inputs.event_name }})
+      shell: bash
+      run: |
+        echo "sdk_key: ${{ inputs.sdk_key }}"
+        echo "package: ${{ inputs.package }}"
+        echo "os_tag: ${{ inputs.os_tag }}"
+        echo "conclusion: ${{ inputs.conclusion }}"
+        echo "run_id: ${{ github.run_id }}"
+
+        curl 'https://api.statsig.com/v1/rgstr' \
+          -H 'statsig-api-key: ${{ inputs.sdk_key }}' \
+          -d '{ "events": [ { 
+            "eventName": "sdk_package_verification", 
+            "value": "${{ inputs.conclusion }}", 
+            "metadata": {
+              "package": "${{ inputs.package }}",
+              "os_tag": "${{ inputs.os_tag }}",
+              "run_id": "${{ github.run_id }}"
+            },
+            "user": { "userID": "gh-package-verification" } } 
+          ] }'
+
+# curl 'https://api.statsig.com/v1/rgstr' \
+#   -H 'statsig-api-key: client-•••' \
+#   -d '{ "events": [ { "eventName": "sdk_test_event", "user": { "userID": "github-action" } } ] }'
