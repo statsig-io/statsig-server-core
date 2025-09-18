@@ -3,7 +3,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y jq
 RUN npm install express tsx
 
-ARG CACHE_BUST=1
+ARG CACHE_BUST=$(date +%s)
 
 RUN CORE_VERSION=$(npm view @statsig/statsig-node-core time --json | jq -r 'to_entries | map(select(.key | contains("-beta"))) | .[-1] | "\(.key)"') && \
     npm install @statsig/statsig-node-core@$CORE_VERSION

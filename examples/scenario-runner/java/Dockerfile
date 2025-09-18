@@ -4,7 +4,7 @@ WORKDIR /app
 COPY build.gradle ./
 RUN gradle dependencies --no-daemon
 COPY . .
-ARG CACHE_BUST=1
+ARG CACHE_BUST=$(date +%s)
 RUN ./update_java_core.sh
 RUN gradle shadowJar --no-daemon
 RUN cat build/versions.properties
