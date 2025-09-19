@@ -63,3 +63,6 @@ jobs:
           git pull
           ./tore bump-version --rc --create-branch
           ./tore merge-to-main
+
+      - name: Create Release
+        run: ./tore gh-create-release private-statsig-server-core
