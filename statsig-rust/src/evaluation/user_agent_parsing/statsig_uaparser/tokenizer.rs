@@ -1,3 +1,5 @@
+use crate::unwrap_or_return;
+
 use super::{window_iter::WindowIter, Version};
 
 pub struct Tokenizer;
@@ -6,8 +8,7 @@ impl Tokenizer {
     // Ideal UserAgent format: <product>/<product-version> (<os-information>) <engine> (<platform-details>) <optional-details>
     pub fn run(input: &str) -> TokenizerResult<'_> {
         let mut result = TokenizerResult::default();
-        let mut win = WindowIter::new(input);
-
+        let mut win: WindowIter<'_> = WindowIter::new(input);
         while !win.is_empty() {
             let (curr, next1, next2, next3) = win.get_window();
             let (curr, next1, next2, next3) = (
@@ -38,7 +39,11 @@ impl Tokenizer {
                 win.slide_window_by(2);
             }
             // iPhone OS
-            else if curr == "iPhone" && next1 == Some("OS") {
+            else if curr == "iOS" {
+                result.add_possible_os_tag("iOS", consume_if_numeric(&mut win, next1));
+                result.ios_hint = true;
+                win.slide_window_by(1);
+            } else if curr == "iPhone" && next1 == Some("OS") {
                 result.add_possible_os_tag("iOS", consume_if_numeric(&mut win, next2));
 
                 win.slide_window_by(1);
@@ -211,8 +216,12 @@ impl Tokenizer {
                 else if tag == "Electron" {
                     result.add_possible_browser_tag("Electron", version);
                 }
-                // Bot
-                else if tag.contains("Bot") || tag.contains("bot") {
+                // Bot or crawler
+                else if tag.contains("Bot")
+                    || tag.contains("bot")
+                    || tag.contains("crawler")
+                    || tag.contains("Crawler")
+                {
                     result.add_possible_browser_tag(tag, version);
                 }
                 // Mobile
@@ -226,6 +235,12 @@ impl Tokenizer {
                     result.safari_hint = true;
 
                     result.add_tag("Safari", version);
+                } else if tag == "CFNetwork" {
+                    result.cfnetwork_hint = true;
+                    result.ios_hint = true;
+                } else if tag.contains("crawler") || version.is_some_and(|v| v.contains("crawler"))
+                {
+                    result.crawler_hint = true;
                 }
                 //
                 else {
@@ -256,6 +271,8 @@ pub struct TokenizerResult<'a> {
     pub safari_hint: bool,
     pub playstation_hint: bool,
     pub huawei_hint: bool,
+    pub cfnetwork_hint: bool,
+    pub crawler_hint: bool,
 }
 
 impl<'a> TokenizerResult<'a> {
@@ -305,6 +322,16 @@ impl<'a> TokenizerResult<'a> {
         if version.is_none() {
             return;
         }
+        if self.possible_browser_token.is_some()
+            && (tag.contains(".com")
+                || tag.contains(".net")
+                || tag.contains(".org")
+                || tag.contains(".html")
+                || tag.contains("http://")
+                || tag.contains("https://"))
+        {
+            return;
+        }
 
         self.possible_browser_token = Some(Token {
             position: self.position,
@@ -323,7 +350,7 @@ pub struct Token<'a> {
 
 impl<'a> Token<'a> {
     pub fn get_version(&self) -> Option<Version<'a>> {
-        let version = self.version?;
+        let version = unwrap_or_return!(self.version, Some(Version::major("0.0.0")));
 
         if self.tag == "Windows" {
             let mapped = match version {
@@ -333,7 +360,7 @@ impl<'a> Token<'a> {
                 "6.1" => "7", // lol
                 "6.3" => "8.1",
                 "10.0" => "10",
-                _ => return None,
+                _ => "0.0.0",
             };
 
             return Some(Version::major(mapped));

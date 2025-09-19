@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 pub struct WindowIter<'a> {
-    iter: std::str::SplitWhitespace<'a>,
+    iter: std::str::Split<'a, [char; 2]>,
     window: VecDeque<&'a str>,
 }
 
@@ -14,7 +14,7 @@ type Window<'a> = (
 
 impl<'a> WindowIter<'a> {
     pub fn new(input: &'a str) -> Self {
-        let mut iter = input.split_whitespace();
+        let mut iter: std::str::Split<'_, [char; 2]> = input.split([';', ' ']);
         let mut window = VecDeque::new();
 
         for _ in 0..4 {

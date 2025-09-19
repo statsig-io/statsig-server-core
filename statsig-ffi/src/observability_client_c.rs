@@ -123,7 +123,7 @@ pub extern "C" fn observability_client_create(
         tag: *const c_char,
     ) -> bool,
 ) -> u64 {
-    let ref_id = InstanceRegistry::register(ObservabilityClientC {
+    InstanceRegistry::register(ObservabilityClientC {
         ob_client_ref: Mutex::new(None),
         init_fn,
         increment_fn,
@@ -135,9 +135,7 @@ pub extern "C" fn observability_client_create(
     .unwrap_or_else(|| {
         log_e!(TAG, "Failed to create ObservabilityClientC");
         0
-    });
-
-    ref_id
+    })
 }
 
 #[no_mangle]

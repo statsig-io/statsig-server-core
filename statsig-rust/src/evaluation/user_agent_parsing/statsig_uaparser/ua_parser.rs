@@ -3,7 +3,7 @@ use super::tokenizer::{Token, Tokenizer};
 pub struct UaParser;
 
 impl UaParser {
-    pub fn parse_os<'a>(agent: &'a str) -> ParserResult<'a> {
+    pub fn parse_os(agent: &str) -> ParserResult<'_> {
         let result = Tokenizer::run(agent);
 
         if let Some(token) = &result.possible_os_token {
@@ -15,7 +15,7 @@ impl UaParser {
                 return create_res("ATV OS X", None);
             }
 
-            if token.tag == "iPhone OS" {
+            if token.tag == "iPhone OS" || token.tag == "iOS" {
                 return create_res("iOS", token.get_version());
             }
 
@@ -71,7 +71,7 @@ impl UaParser {
         create_res("Other", None)
     }
 
-    pub fn parse_browser<'a>(agent: &'a str) -> ParserResult<'a> {
+    pub fn parse_browser(agent: &str) -> ParserResult<'_> {
         let result = Tokenizer::run(agent);
 
         if let Some(token) = &result.possible_browser_token {
@@ -105,10 +105,6 @@ impl UaParser {
                 return create_res("Yahoo! Slurp", None);
             }
 
-            if token.tag == "ChatGPT" {
-                return create_res("ChatGPT", token.get_version());
-            }
-
             if token.tag == "Silk" {
                 if result.playstation_hint {
                     return create_res("NetFront NX", None);
@@ -137,6 +133,14 @@ impl UaParser {
                 chrome_token = Some(token);
                 continue;
             }
+
+            if token.tag == "axios" {
+                return create_res("axios", token.get_version());
+            }
+
+            if token.tag == "HeadlessChrome" {
+                return create_res("HeadlessChrome", token.get_version());
+            }
         }
 
         if let Some(token) = chrome_token {
@@ -161,6 +165,13 @@ impl UaParser {
             return create_res("Android", token.get_version());
         }
 
+        if result.cfnetwork_hint {
+            if result.tokens[0].tag == "NetworkingExtension" {
+                return create_res("CFNetwork", result.tokens[1].get_version());
+            }
+            return create_res(result.tokens[0].tag, result.tokens[0].get_version());
+        }
+
         if result.safari_hint {
             let version = version_token.and_then(|t| t.get_version());
 
@@ -175,6 +186,9 @@ impl UaParser {
             return create_res("Mobile Safari UI/WKWebView", None);
         }
 
+        if result.crawler_hint {
+            return create_res("crawler", None);
+        }
         create_res("Other", None)
     }
 }

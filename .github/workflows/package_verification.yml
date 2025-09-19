@@ -7,6 +7,7 @@ env:
   CARGO_TERM_COLOR: always
   FORCE_COLOR: true
   STATSIG_SERVER_SDK_KEY: ${{ secrets.KONG_SERVER_SDK_KEY }}
+  KONG_OPS_SDK_KEY: ${{ secrets.BENCH_CLUSTER_SDK_KEY }}
 
 jobs:
   docker-based-verification:
@@ -62,7 +63,16 @@ jobs:
         run: pnpm install --dir cli
 
       - name: Run Verification
+        id: verification
         run: ./tore verify-package --package ${{ matrix.config.package }} --image-tag ${{ matrix.config.tag }} 
+
+      - uses: ./.github/actions/log-package-verification-to-statsig
+        if: always()
+        with:
+          sdk_key: ${{ env.KONG_OPS_SDK_KEY }}
+          package: ${{ matrix.config.package }}
+          os_tag: ${{ matrix.config.tag }}
+          conclusion: ${{ steps.verification.conclusion }}
 
 
   node-package-verification:
@@ -88,10 +98,19 @@ jobs:
 
       - name: Run Verification
         working-directory: examples/node/verify-package
+        id: verification
         run: |
           pnpm init
           pnpm install @statsig/statsig-node-core@${{ matrix.tag }} typescript tsx @types/node
           pnpm exec tsx verify.ts
+
+      - uses: ./.github/actions/log-package-verification-to-statsig
+        if: always()
+        with:
+          sdk_key: ${{ env.KONG_OPS_SDK_KEY }}
+          package: node-${{ matrix.tag }}
+          os_tag: ${{ matrix.runner }}
+          conclusion: ${{ steps.verification.conclusion }}
 
   python-package-verification:
     strategy:
@@ -112,11 +131,20 @@ jobs:
 
       - name: Run Verification
         working-directory: examples/python/verify-package
+        id: verification
         run: |
           pip3 install ${{ matrix.tag == 'beta' && '--pre' || '' }} --upgrade statsig_python_core
           pip3 install mypy types-requests
           mypy --package statsig_python_core
           python3 verify.py
+
+      - uses: ./.github/actions/log-package-verification-to-statsig
+        if: always()
+        with:
+          sdk_key: ${{ env.KONG_OPS_SDK_KEY }}
+          package: python-${{ matrix.tag }}
+          os_tag: ${{ matrix.runner }}
+          conclusion: ${{ steps.verification.conclusion }}
 
   php-package-verification:
     strategy:
@@ -143,10 +171,19 @@ jobs:
 
       - name: Run Verification
         working-directory: examples/php/verify-package
+        id: verification
         run: |
           composer require statsig/statsig-php-core:${{ matrix.tag == 'beta' && 'dev-main' || '@stable' }}
           composer install
           php verify.php
+
+      - uses: ./.github/actions/log-package-verification-to-statsig
+        if: always()
+        with:
+          sdk_key: ${{ env.KONG_OPS_SDK_KEY }}
+          package: php-${{ matrix.tag }}
+          os_tag: ${{ matrix.runner }}
+          conclusion: ${{ steps.verification.conclusion }}
 
   dotnet-package-verification:
     strategy:
@@ -182,9 +219,18 @@ jobs:
       - name: Run example
         working-directory: examples/dotnet/verify-package
         shell: bash
+        id: verification
         run: |
           dotnet restore dotnet.csproj --no-cache
           dotnet run --configuration Release 
+
+      - uses: ./.github/actions/log-package-verification-to-statsig
+        if: always()
+        with:
+          sdk_key: ${{ env.KONG_OPS_SDK_KEY }}
+          package: dotnet-${{ matrix.tag }}
+          os_tag: ${{ matrix.runner }}
+          conclusion: ${{ steps.verification.conclusion }}
 
   go-package-verification:
     strategy:
@@ -256,7 +302,16 @@ jobs:
 
       - name: Run Small Go Program to Verify the SDK
         working-directory: statsig-go/verify-package
+        id: verification
         run: |
           go mod tidy
           ls $STATSIG_LIB_DIR
           go run main.go
+
+      - uses: ./.github/actions/log-package-verification-to-statsig
+        if: always()
+        with:
+          sdk_key: ${{ env.KONG_OPS_SDK_KEY }}
+          package: go-${{ matrix.tag }}
+          os_tag: ${{ matrix.runner }}
+          conclusion: ${{ steps.verification.conclusion }}

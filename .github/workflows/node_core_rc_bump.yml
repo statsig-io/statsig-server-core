@@ -1,0 +1,62 @@
+name: Update RC Versions within Statsig Repo
+
+on:
+  schedule:
+    - cron: "0 20 * * 1" # Mondays 20:00 UTC (~ 1pm PT in DST, 12pm PT in Standard Time)
+  workflow_dispatch:
+
+jobs:
+  update-node-core-rc-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Statsig Repo
+        uses: actions/checkout@v4
+        with:
+          repository: statsig-io/statsig
+          ref: main
+          token: ${{ secrets.ROIM }}
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "23"
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Bump RC Version
+        shell: bash
+        run: |
+          set -euo pipefail
+          pkgs="@statsig/statsig-node-core-rc \
+          @statsig/statsig-node-core-linux-x64-gnu-rc \
+          @statsig/statsig-node-core-linux-x64-musl-rc"
+          echo "Updating to latest rc for: $pkgs"
+
+          cd lib
+          pnpm update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+          cd node/service-core
+          pnpm update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+
+          echo "Changed files:"
+          git status --porcelain
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.ROIM }}
+          commit-message: "Automator: [automated][sdk] Bump Statsig Node Core RC deps"
+          title: "[automated][sdk] Bump Statsig Node Core RC deps"
+          body: |
+            This PR was auto-generated on RC release.
+            - Updated in `lib` and `lib/node/service-core`
+            - Packages:
+              - @statsig/statsig-node-core-rc
+              - @statsig/statsig-node-core-linux-x64-gnu-rc
+              - @statsig/statsig-node-core-linux-x64-musl-rc
+          branch: bump_statsig_rc_sdk_version-${{ github.run_id }}
+          delete-branch: true
+          labels: automation, rc-bump
+          team-reviewers: sdk

@@ -129,7 +129,14 @@ function readPerfStats() {
   return results;
 }
 
+let isUpdating = false;
 async function update() {
+  if (isUpdating) {
+    return;
+  }
+
+  isUpdating = true;
+
   const state = readState();
   const dcsState = state.scrapi.dcs;
   const now = new Date();
@@ -140,6 +147,8 @@ async function update() {
       await syncDcs(state);
     }
   }
+
+  isUpdating = false;
 }
 
 async function syncDcs(state: State) {
@@ -176,6 +185,7 @@ async function syncDcs(state: State) {
 }
 
 async function fetchAndWrite(url: string, filepath: string): Promise<number> {
+  log('Fetching and writing', url, filepath);
   try {
     const res = await fetch(url);
     if (!res.ok || !res.body) {

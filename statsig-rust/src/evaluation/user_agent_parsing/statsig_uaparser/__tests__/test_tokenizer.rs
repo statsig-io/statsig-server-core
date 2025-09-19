@@ -31,7 +31,7 @@ fn flatten_token<'a>(token: &Token<'a>) -> (&'a str, Option<&'a str>) {
     (token.tag, token.version)
 }
 
-fn print_tokens<'a>(tokens: &[Token<'a>]) {
+fn print_tokens(tokens: &[Token<'_>]) {
     for token in tokens {
         println!("[{}] [{}]", token.tag, token.version.unwrap_or_default());
     }
