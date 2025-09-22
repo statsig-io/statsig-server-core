@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::{BufReader, Seek, SeekFrom, Write};
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -6,9 +7,10 @@ use async_trait::async_trait;
 use crate::{
     log_e, log_w,
     networking::{
-        http_types::{HttpMethod, RequestArgs, Response},
+        http_types::{HttpMethod, RequestArgs, Response, ResponseData},
         NetworkProvider,
     },
+    StatsigErr,
 };
 
 use crate::networking::proxy_config::ProxyConfig;
@@ -34,7 +36,7 @@ impl NetworkProvider for NetworkProviderReqwest {
 
         let request = self.build_request(method, args);
 
-        let error;
+        let mut error = None;
         let mut status_code = None;
         let mut data = None;
         let mut headers = None;
@@ -43,8 +45,13 @@ impl NetworkProvider for NetworkProviderReqwest {
             Ok(response) => {
                 status_code = Some(response.status().as_u16());
                 headers = get_response_headers(&response);
-                data = response.bytes().await.ok().map(|bytes| bytes.to_vec());
-                error = None;
+
+                match Self::write_response_to_temp_file(response).await {
+                    Ok(response_data) => data = Some(response_data),
+                    Err(e) => {
+                        error = Some(e.to_string());
+                    }
+                }
             }
             Err(e) => {
                 let error_message = get_error_message(e);
@@ -150,6 +157,30 @@ impl NetworkProviderReqwest {
         };
 
         client_builder.proxy(proxy.basic_auth(username, password))
+    }
+
+    async fn write_response_to_temp_file(
+        response: reqwest::Response,
+    ) -> Result<ResponseData, StatsigErr> {
+        let mut response = response;
+        let mut temp_file = tempfile::spooled_tempfile(1024 * 1024 * 2); // 2MB
+
+        while let Some(item) = response
+            .chunk()
+            .await
+            .map_err(|e| StatsigErr::FileError(e.to_string()))?
+        {
+            temp_file
+                .write_all(&item)
+                .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+        }
+
+        temp_file
+            .seek(SeekFrom::Start(0))
+            .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+
+        let reader = BufReader::new(temp_file);
+        Ok(ResponseData::from_stream(Box::new(reader)))
     }
 }
 

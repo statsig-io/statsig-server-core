@@ -1,4 +1,5 @@
 use crate::hashing::djb2;
+use crate::networking::ResponseData;
 use crate::specs_adapter::statsig_http_specs_adapter::SpecsSyncTrigger;
 use crate::specs_adapter::{SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener};
 use crate::specs_response::spec_types::SpecsResponseFull;
@@ -62,7 +63,7 @@ impl StatsigLocalFileSpecsAdapter {
             .fetch_specs_from_network(specs_info, SpecsSyncTrigger::Manual)
             .await
         {
-            Ok(response) => match String::from_utf8(response.data) {
+            Ok(mut response) => match response.data.read_to_string() {
                 Ok(data) => data,
                 Err(e) => {
                     return Err(StatsigErr::SerializationError(e.to_string()));
@@ -83,8 +84,8 @@ impl StatsigLocalFileSpecsAdapter {
     }
 
     pub fn resync_from_file(&self) -> Result<(), StatsigErr> {
-        let data = match std::fs::read_to_string(&self.file_path) {
-            Ok(data) => data,
+        let data = match std::fs::read(&self.file_path) {
+            Ok(data) => ResponseData::from_bytes(data),
             Err(e) => {
                 return Err(StatsigErr::FileError(e.to_string()));
             }
@@ -96,7 +97,7 @@ impl StatsigLocalFileSpecsAdapter {
         {
             Some(lock) => match lock.as_ref() {
                 Some(listener) => listener.did_receive_specs_update(SpecsUpdate {
-                    data: data.into_bytes(),
+                    data,
                     source: SpecsSource::Adapter("FileBased".to_owned()),
                     received_at: Utc::now().timestamp_millis() as u64,
                     source_api: None,

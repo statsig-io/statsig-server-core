@@ -1,5 +1,6 @@
 use statsig_rust::{
-    global_configs::GlobalConfigs, SpecStore, SpecsSource, SpecsUpdate, StatsigRuntime,
+    global_configs::GlobalConfigs, networking::ResponseData, SpecStore, SpecsSource, SpecsUpdate,
+    StatsigRuntime,
 };
 use std::fs;
 
@@ -24,7 +25,7 @@ fn test_set_values_and_get_config_num_value() {
     .expect("Unable to parse JSON");
 
     let specs_update = SpecsUpdate {
-        data: json_data.to_string().into_bytes(),
+        data: ResponseData::from_bytes(json_data.to_string().into_bytes()),
         source: SpecsSource::Network,
         received_at: 2000,
         source_api: None,
@@ -70,7 +71,7 @@ fn test_set_values_and_get_config_str_value() {
     .expect("Unable to parse JSON");
 
     let specs_update = SpecsUpdate {
-        data: json_data.to_string().into_bytes(),
+        data: ResponseData::from_bytes(json_data.to_string().into_bytes()),
         source: SpecsSource::Network,
         received_at: 2000,
         source_api: None,
@@ -120,7 +121,7 @@ fn test_set_and_get_sampling_rate() {
     .expect("Unable to parse JSON");
 
     let specs_update = SpecsUpdate {
-        data: json_data.to_string().into_bytes(),
+        data: ResponseData::from_bytes(json_data.to_string().into_bytes()),
         source: SpecsSource::Network,
         received_at: 2000,
         source_api: None,

@@ -1,3 +1,4 @@
+use crate::networking::ResponseData;
 use crate::specs_adapter::{SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener};
 use crate::statsig_err::StatsigErr;
 use crate::{log_e, StatsigRuntime};
@@ -51,7 +52,7 @@ impl StatsigBootstrapSpecsAdapter {
         {
             Some(lock) => match lock.as_ref() {
                 Some(listener) => listener.did_receive_specs_update(SpecsUpdate {
-                    data: data.into_bytes(),
+                    data: ResponseData::from_bytes(data.into_bytes()),
                     source: SpecsSource::Bootstrap,
                     received_at: Utc::now().timestamp_millis() as u64,
                     source_api: None,
@@ -155,11 +156,14 @@ mod tests {
         adapter.initialize(listener.clone());
         adapter.clone().start(&statsig_rt).await.unwrap();
 
-        if let Some(lock) = listener.clone().received_update.try_read() {
-            let update = lock.as_ref().unwrap();
-            assert_eq!(update.source, SpecsSource::Bootstrap);
-            assert_eq!(update.data, test_data.into_bytes());
-        }
+        let mut update = listener
+            .received_update
+            .try_write()
+            .unwrap()
+            .take()
+            .unwrap();
+        assert_eq!(update.source, SpecsSource::Bootstrap);
+        assert_eq!(update.data.read_to_string().unwrap(), test_data);
     }
 
     #[tokio::test]
@@ -176,10 +180,13 @@ mod tests {
         let result = adapter.set_data(test_data.clone());
         assert!(result.is_ok());
 
-        if let Some(lock) = listener.clone().received_update.try_read() {
-            let update = lock.as_ref().unwrap();
-            assert_eq!(update.source, SpecsSource::Bootstrap);
-            assert_eq!(update.data, test_data.into_bytes());
-        }
+        let mut update = listener
+            .received_update
+            .try_write()
+            .unwrap()
+            .take()
+            .unwrap();
+        assert_eq!(update.source, SpecsSource::Bootstrap);
+        assert_eq!(update.data.read_to_string().unwrap(), test_data);
     }
 }

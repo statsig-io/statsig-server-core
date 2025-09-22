@@ -1,4 +1,5 @@
 use super::{SpecsInfo, StatsigHttpSpecsAdapter};
+use crate::networking::ResponseData;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
@@ -374,7 +375,7 @@ impl StatsigGrpcSpecsAdapter {
 
         if let Some(listener) = listener.as_ref() {
             let update = SpecsUpdate {
-                data: data.into_bytes(),
+                data: ResponseData::from_bytes(data.into_bytes()),
                 source: SpecsSource::Adapter("GRPC".to_string()),
                 received_at: Utc::now().timestamp_millis() as u64,
                 source_api: None,

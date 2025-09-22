@@ -2496,6 +2496,7 @@ dependencies = [
  "sha2",
  "sigstat-grpc",
  "simple_logger",
+ "tempfile",
  "tokio",
  "uaparser",
  "uuid",

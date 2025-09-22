@@ -4,6 +4,7 @@ use crate::data_store_interface::{
     get_data_adapter_key, CompressFormat, DataStoreTrait, RequestPath,
 };
 use crate::hashing::HashUtil;
+use crate::networking::ResponseData;
 use crate::{log_d, log_e, log_w, SpecsAdapter, SpecsUpdateListener};
 use crate::{StatsigErr, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
@@ -63,7 +64,7 @@ impl StatsigDataStoreSpecsAdapter {
                                 match maybe_listener.as_ref() {
                                     Some(listener) => {
                                         match listener.did_receive_specs_update(SpecsUpdate {
-                                            data: update.result.unwrap_or_default().into_bytes(),
+                                            data: ResponseData::from_bytes(update.result.unwrap_or_default().into_bytes()),
                                             source: SpecsSource::Adapter("DataStore".to_string()),
                                             received_at: Utc::now().timestamp_millis() as u64,
                                             source_api: None,
@@ -110,7 +111,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
                 Some(read_lock) => match read_lock.as_ref() {
                     Some(listener) => {
                         listener.did_receive_specs_update(SpecsUpdate {
-                            data: data.into_bytes(),
+                            data: ResponseData::from_bytes(data.into_bytes()),
                             source: SpecsSource::Adapter("DataStore".to_string()),
                             received_at: Utc::now().timestamp_millis() as u64,
                             source_api: None,

@@ -1,4 +1,4 @@
-use crate::networking::{NetworkClient, NetworkError, RequestArgs};
+use crate::networking::{NetworkClient, NetworkError, RequestArgs, ResponseData};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::diagnostics::ContextType;
@@ -24,7 +24,7 @@ use tokio::time::sleep;
 use super::SpecsInfo;
 
 pub struct NetworkResponse {
-    pub data: Vec<u8>,
+    pub data: ResponseData,
     pub api: String,
 }
 
@@ -185,11 +185,10 @@ impl StatsigHttpSpecsAdapter {
         })
     }
 
-    // TODO: return a decompressed and parsed SpecsResponse
     async fn handle_specs_request(
         &self,
         request_args: RequestArgs,
-    ) -> Result<Vec<u8>, NetworkError> {
+    ) -> Result<ResponseData, NetworkError> {
         let url = request_args.url.clone();
         let response = self.network.get(request_args).await?;
         match response.data {
