@@ -1,0 +1,102 @@
+name: Nightly RC
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *' # 7pm PST
+
+env:
+  # GH Octokit (Kong App)
+  GH_APP_ID: '229901'
+  GH_APP_INSTALLATION_ID: '36921303'
+  GH_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  nightly_rc:
+    runs-on: ubuntu-latest
+    outputs:
+      has_cherrypick_pr: ${{ steps.check_cherrypick.outputs.has_cherrypick_pr }}
+      la_date: ${{ steps.check_cherrypick.outputs.la_date }}
+      prs_json: ${{ steps.check_cherrypick.outputs.prs_json }}
+     
+    steps:
+      - name: Check if there are cherry-pick PRs merged to rc today
+        id: check_cherrypick
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const laDate = new Intl.DateTimeFormat('en-CA', {
+              timeZone: 'America/Los_Angeles',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+            }).format(new Date());
+            
+            const q = [
+              `repo:${owner}/${repo}`,
+              `is:pr`,
+              `is:merged`,
+              `base:rc`,
+              `merged:${laDate}..${laDate}`,
+              `in:title "\[cherrypick\]\[rc\]"`
+            ].join(' ');
+            
+            const res = await github.rest.search.issuesAndPullRequests({
+              q,
+              per_page: 100,
+            });
+            console.log(`Query: ${q}`);
+            console.log(`Found ${res.data.total_count} PR(s).`);
+
+            core.setOutput('la_date', laDate);
+            core.setOutput('prs_json', JSON.stringify(res.data.items ?? []));
+            core.setOutput('has_cherrypick_pr', String(res.data.total_count > 0));
+            
+            for (const pr of res.data.items) {
+              console.log(
+                `#${pr.number} | title="${pr.title}" | base=${pr.pull_request?.base?.ref} | merged_at=${pr.pull_request?.merged_at}`
+              );
+            }
+        
+  public_rc:
+    needs: nightly_rc
+    if: needs.nightly_rc.outputs.has_cherrypick_pr == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show cherry-pick PRs
+        run: |
+          echo "Cherry-pick PRs:"
+          echo "LA Date: ${{ needs.nightly_rc.outputs.la_date }}"
+          echo "${{ needs.nightly_rc.outputs.prs_json }}"
+      
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+  
+      - name: Install CLI Dependencies
+        run: pnpm install --dir cli
+      
+      - name: Bump Version
+        run: |
+           git fetch origin
+           git checkout rc
+           git pull origin rc
+           ./tore bump-version --create-branch --rc
+
+      - name: Create Release
+        run:
+          ./tore gh-create-release private-statsig-server-core
+      
+      - name: Merge to RC
+        run: ./tore merge-to-rc
+      
