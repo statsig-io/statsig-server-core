@@ -7,13 +7,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-ARG CACHE_BUST=$(date +%s)
+RUN pip install --no-cache-dir requests
+
+# This next line prevent caching of the lines below it
+ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
 
 RUN CORE_VERSION=$(curl -s https://pypi.org/rss/project/statsig-python-core/releases.xml | grep -o '<title>.*b.[0-9].*</title>' | head -1 | sed -E 's#<title>(.*)</title>#\1#') \
     && pip install --no-cache-dir statsig-python-core==$CORE_VERSION
-RUN pip install --no-cache-dir requests statsig
+RUN pip install --no-cache-dir statsig
 
-RUN IN=$CACHE_BUST pip list
+RUN pip list
 
 COPY . .
 

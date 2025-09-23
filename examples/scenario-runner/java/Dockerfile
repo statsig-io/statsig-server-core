@@ -4,11 +4,14 @@ WORKDIR /app
 COPY build.gradle ./
 RUN gradle dependencies --no-daemon
 COPY . .
-ARG CACHE_BUST=$(date +%s)
+
+# This next line prevent caching of the lines below it
+ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
+
 RUN ./update_java_core.sh
 RUN gradle shadowJar --no-daemon
 RUN cat build/versions.properties
-RUN IN=$CACHE_BUST gradle dependencies --configuration compileClasspath
+RUN  gradle dependencies --configuration compileClasspath
 
 FROM eclipse-temurin:11
 WORKDIR /app
