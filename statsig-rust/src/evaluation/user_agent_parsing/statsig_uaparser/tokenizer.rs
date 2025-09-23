@@ -143,7 +143,7 @@ impl Tokenizer {
                 result.add_tag("Mobile", None);
             }
             // Linux
-            else if curr == "Linux" {
+            else if curr == "Linux" || curr == "linux" {
                 result.linux_hint = true;
                 result.add_tag("Linux", None);
             }
@@ -172,6 +172,7 @@ impl Tokenizer {
                 }
                 //
                 else if tag == "CriOS" {
+                    result.ios_hint = true;
                     result.add_possible_browser_tag("Chrome Mobile iOS", version);
                 }
                 //

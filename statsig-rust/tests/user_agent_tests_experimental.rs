@@ -206,7 +206,7 @@ fn parse_test_case(test_case_data: &str) -> TestCase {
 
 fn create_version(major: &str, minor: &str, patch: &str) -> Option<String> {
     if major == "None" {
-        return None;
+        return Some("0.0.0".to_string());
     }
 
     let mut version = String::new();

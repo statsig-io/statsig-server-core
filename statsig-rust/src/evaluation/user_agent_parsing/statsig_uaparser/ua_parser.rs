@@ -35,6 +35,10 @@ impl UaParser {
                 return create_res(token.tag, token.get_version());
             }
 
+            if token.tag.starts_with("Android") {
+                return create_res("Android", None);
+            }
+
             if token.tag == "Chromecast" {
                 return create_res("Chromecast", None);
             }
