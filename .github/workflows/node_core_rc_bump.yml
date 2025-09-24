@@ -1,12 +1,13 @@
 name: Update RC Versions within Statsig Repo
 
 on:
-  schedule:
-    - cron: "0 20 * * 1" # Mondays 20:00 UTC (~ 1pm PT in DST, 12pm PT in Standard Time)
+  release:
+    types: [published]
   workflow_dispatch:
 
 jobs:
   update-node-core-rc-version:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && contains(github.event.release.tag_name, '-rc.'))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Statsig Repo
