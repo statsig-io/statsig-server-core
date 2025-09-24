@@ -2,6 +2,8 @@ use std::{collections::HashMap, fs, sync::Arc};
 
 use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
 
+const DEBUG_LOG: bool = false;
+
 fn load_data() -> HashMap<String, HashMap<String, String>> {
     let base_path = env!("CARGO_MANIFEST_DIR");
     let s = fs::read_to_string(format!("{base_path}/tests/data/ua_string_cases.json")).unwrap();
@@ -25,6 +27,11 @@ async fn test_experiment_ua_parser() {
         user.set_user_agent(ua_string.clone());
         let sdk_ua_value: statsig_rust::evaluation::user_agent_parsing::ParsedUserAgentValue =
             statsig.__get_parsed_user_agent_value(&user).unwrap();
+        if DEBUG_LOG {
+            println!("ua string is {}", ua_string);
+            println!("expected {:?}", expected_value);
+            println!("actual {:?}", sdk_ua_value);
+        }
         assert!(sdk_ua_value.os_name.unwrap_or_default() == *expected_value.get("osName").unwrap());
         assert!(sdk_ua_value.os_version.unwrap() == *expected_value.get("osVersion").unwrap());
         assert!(

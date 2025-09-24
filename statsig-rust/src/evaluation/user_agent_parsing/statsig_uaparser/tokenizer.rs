@@ -29,6 +29,8 @@ impl Tokenizer {
             if curr.starts_with("AppleTV") {
                 result.add_tag("ATV OS X", None);
                 win.slide_window_by(1);
+            } else if curr == "like" && next1 == Some("Mac") && next2 == Some("OS") {
+                win.slide_window_by(3);
             }
             // Mac OS X
             else if curr == "Mac" && next1 == Some("OS") && next2 == Some("X") {
@@ -169,10 +171,22 @@ impl Tokenizer {
                 //
                 else if tag == "FxiOS" {
                     result.add_possible_browser_tag("Firefox iOS", version);
+                } else if tag == "EdgiOS" {
+                    if let Some(os_token) = result.possible_os_token.as_ref() {
+                        if os_token.tag == "Mac OS X" {
+                            result.add_possible_os_tag_override_existing("iOS", None);
+                        }
+                    }
+                    result.add_possible_browser_tag("Edge Mobile", version);
                 }
                 //
                 else if tag == "CriOS" {
                     result.ios_hint = true;
+                    if let Some(os_token) = result.possible_os_token.as_ref() {
+                        if os_token.tag == "Mac OS X" {
+                            result.add_possible_os_tag_override_existing("iOS", None);
+                        }
+                    }
                     result.add_possible_browser_tag("Chrome Mobile iOS", version);
                 }
                 //
@@ -189,7 +203,7 @@ impl Tokenizer {
                 }
                 //
                 else if tag == "OPR" {
-                    result.add_possible_browser_tag("Opera", version);
+                    result.add_tag("Opera", version);
                 }
                 //
                 else if tag == "SamsungBrowser" {
@@ -223,7 +237,7 @@ impl Tokenizer {
                     || tag.contains("crawler")
                     || tag.contains("Crawler")
                 {
-                    result.add_possible_browser_tag(tag, version);
+                    result.add_possible_browser_tag_for_bot(tag, version);
                 }
                 // Mobile
                 else if tag == "Mobile" {
@@ -242,6 +256,9 @@ impl Tokenizer {
                 } else if tag.contains("crawler") || version.is_some_and(|v| v.contains("crawler"))
                 {
                     result.crawler_hint = true;
+                } else if tag == "OculusBrowser" {
+                    // Oculus os is android, but fake to be linux
+                    result.add_possible_os_tag_override_existing("Android", None);
                 }
                 //
                 else {
@@ -298,6 +315,18 @@ impl<'a> TokenizerResult<'a> {
         self.add_tag(tag, version);
     }
 
+    pub fn add_possible_os_tag_override_existing(
+        &mut self,
+        tag: &'a str,
+        version: Option<&'a str>,
+    ) {
+        self.possible_os_token = Some(Token {
+            position: self.position,
+            tag,
+            version,
+        });
+    }
+
     pub fn add_possible_browser_tag(&mut self, tag: &'a str, version: Option<&'a str>) {
         self.add_possible_browser_tag_impl(tag, version);
         self.add_tag(tag, version);
@@ -313,6 +342,24 @@ impl<'a> TokenizerResult<'a> {
         }
 
         self.possible_os_token = Some(Token {
+            position: self.position,
+            tag,
+            version,
+        });
+    }
+
+    fn add_possible_browser_tag_for_bot(&mut self, tag: &'a str, version: Option<&'a str>) {
+        if self.possible_browser_token.is_some()
+            && (tag.contains(".com")
+                || tag.contains(".net")
+                || tag.contains(".org")
+                || tag.contains(".html")
+                || tag.contains("http://")
+                || tag.contains("https://"))
+        {
+            return;
+        }
+        self.possible_browser_token = Some(Token {
             position: self.position,
             tag,
             version,
