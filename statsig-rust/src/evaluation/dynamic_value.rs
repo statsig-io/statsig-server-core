@@ -138,8 +138,19 @@ impl From<JsonValue> for DynamicValue {
             },
 
             JsonValue::Number(n) => {
-                let float_value = n.as_f64();
-                let int_value = n.as_i64();
+                let mut float_value = n.as_f64();
+                let mut int_value = n.as_i64();
+                if let (Some(f), None) = (float_value, int_value) {
+                    let iv = f as i64;
+                    if iv as f64 == f {
+                        int_value = Some(iv);
+                    }
+                } else if let (None, Some(i)) = (float_value, int_value) {
+                    let fv = i as f64;
+                    if fv as i64 == i {
+                        float_value = Some(fv)
+                    }
+                }
 
                 let string_value = float_value
                     .map(|f| f.to_string())
