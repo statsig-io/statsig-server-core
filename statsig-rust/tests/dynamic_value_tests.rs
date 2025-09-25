@@ -86,7 +86,7 @@ fn test_f64_with_no_precision_value() {
         Value::Number(Number::from_f64(1.0).unwrap()),
         null: None,
         bool: None,
-        int: None,
+        int: Some(1),
         float: Some(1.0),
         timestamp: None,
         // We drop the precision when its zero
@@ -311,4 +311,33 @@ fn test_hash_value_is_changing() {
         assert_gt!(new_hash, 0);
         hash = new_hash;
     }
+}
+
+#[test]
+fn test_parse_small_integer_i64() {
+    let dv = dyn_value!(42);
+    assert_eq!(dv.int_value, Some(42));
+    assert_eq!(dv.float_value, Some(42.0));
+}
+
+#[test]
+fn test_parse_small_integer_f64() {
+    let dv = dyn_value!(42.0);
+    assert_eq!(dv.int_value, Some(42));
+    assert_eq!(dv.float_value, Some(42.0));
+}
+
+#[test]
+fn test_parse_float_f64() {
+    let dv = dyn_value!(42.2);
+    assert_eq!(dv.int_value, None);
+    assert_eq!(dv.float_value, Some(42.2));
+}
+
+#[test]
+fn test_larget_integer() {
+    // Rust f64 can actually be greater than i64::max, so still able to convert.
+    let dv = dyn_value!(i64::MAX);
+    assert_eq!(dv.int_value, Some(i64::MAX));
+    assert_eq!(dv.float_value, Some(i64::MAX as f64));
 }
