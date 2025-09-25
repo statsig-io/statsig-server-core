@@ -3,11 +3,7 @@ use chrono::Duration;
 
 pub(crate) fn compare_time(left: &DynamicValue, right: &MemoizedEvaluatorValue, op: &str) -> bool {
     let raw_left_ts = unwrap_or_return!(left.timestamp_value.or(left.int_value), false);
-    let mut left_ts = raw_left_ts;
-    if left_ts < 1_000_000_000_000 {
-        // Assume left is in seconds, convert to milliseconds
-        left_ts *= 1000;
-    }
+    let left_ts = to_millis(raw_left_ts);
 
     // dcs will always be in milliseconds
     let right_ts = unwrap_or_return!(
@@ -25,6 +21,20 @@ pub(crate) fn compare_time(left: &DynamicValue, right: &MemoizedEvaluatorValue, 
                 == Duration::milliseconds(right_ts).num_days()
         }
         _ => false,
+    }
+}
+
+fn to_millis(ts: i64) -> i64 {
+    // calculate the absolute value of the digits
+    let digits = ts.abs();
+
+    // epoch in seconds (milliseconds would be before 1970)
+    if digits < 10_000_000_000 {
+        // seconds to milliseconds
+        ts.saturating_mul(1000)
+    } else {
+        // milliseconds return directly
+        ts
     }
 }
 
