@@ -149,7 +149,7 @@ impl FromRawValue for String {
 
 impl PartialEq for InternedString {
     fn eq(&self, other: &Self) -> bool {
-        self.hash == other.hash
+        self.as_str() == other.as_str()
     }
 }
 
