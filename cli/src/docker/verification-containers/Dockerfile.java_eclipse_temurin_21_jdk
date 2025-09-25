@@ -1,0 +1,15 @@
+FROM eclipse-temurin:21-jdk
+
+WORKDIR /app
+
+COPY examples/java/gradlew ./gradlew
+COPY examples/java/gradle ./gradle
+
+COPY examples/java/settings.gradle.kts ./settings.gradle.kts
+COPY examples/java/verify-package/build.gradle ./build.gradle
+COPY examples/java/verify-package/Verify.java ./src/main/java/Verify.java
+RUN chmod +x ./gradlew
+
+RUN ./gradlew --no-daemon clean shadowJar
+RUN cp build/libs/*-all.jar /app/app-all.jar
+CMD ["java", "-jar", "/app/app-all.jar"]

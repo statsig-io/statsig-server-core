@@ -20,6 +20,21 @@ jobs:
             tag: amazoncorretto_21_alpine_jdk
 
           - package: java
+            tag: amazoncorretto_21
+
+          - package: java
+            tag: azul_zulu_openjdk_21_jdk
+          
+          - package: java
+            tag: azul_zulu_openjdk_21_alpine_jdk
+
+          - package: java
+            tag: eclipse_temurin_21_jdk_alpine
+
+          - package: java
+            tag: eclipse_temurin_21_jdk
+
+          - package: java
             tag: amazonlinux_2023
 
           - package: java

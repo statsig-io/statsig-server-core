@@ -1,0 +1,11 @@
+# ---- Build stage (Debian/Ubuntu base) ----
+FROM gradle:8.10-jdk21 AS build
+WORKDIR /app
+COPY examples/java/verify-package /app
+RUN gradle clean shadowJar --no-daemon
+
+# ---- Runtime stage (Amazon Linux base) ----
+FROM amazoncorretto:21
+WORKDIR /app
+COPY --from=build /app/build/libs/app-all.jar /app/app-all.jar
+ENTRYPOINT ["java", "-jar", "/app/app-all.jar"]
