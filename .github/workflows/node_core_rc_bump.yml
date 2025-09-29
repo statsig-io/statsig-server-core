@@ -7,9 +7,50 @@ on:
 
 jobs:
   update-node-core-rc-version:
+    timeout-minutes: 40
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && contains(github.event.release.tag_name, '-rc.'))
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve RC version from release event
+        id: rc_ver
+        shell: bash
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VER="${TAG#v}"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "Resolved RC version: $VER"
+
+      - name: Verify / Wait for RC version exists on npm
+        env:
+          PKG: "@statsig/statsig-node-core"
+          VER: ${{ steps.rc_ver.outputs.version }}
+          INTERVAL_SEC: "30"   # polling interval (seconds)
+          TIMEOUT_MIN: "30"
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$VER" != *"-rc."* ]]; then
+            echo "::error::Version $VER is not an RC (missing '-rc.'). Aborting."
+            exit 1
+          fi
+
+          echo "Waiting for ${PKG}@${VER} to appear on npm..."
+          deadline=$(( $(date +%s) + TIMEOUT_MIN*60 ))
+          while true; do
+            if npm view "${PKG}@${VER}" version --json >/dev/null 2>&1; then
+              echo "[SUCCESS] Found ${PKG}@${VER} on npm"
+              break
+            fi
+            now=$(date +%s)
+            if [ "$now" -ge "$deadline" ]; then
+              echo "::error::Timed out after ${TIMEOUT_MIN} minutes waiting for ${PKG}@${VER} on npm."
+              exit 1
+            fi
+            echo "…not yet, sleeping ${INTERVAL_SEC}s"
+            sleep "${INTERVAL_SEC}"
+          done
+
       - name: Checkout Statsig Repo
         uses: actions/checkout@v4
         with:
