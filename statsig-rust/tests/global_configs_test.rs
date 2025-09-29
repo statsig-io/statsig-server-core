@@ -19,13 +19,11 @@ fn test_set_values_and_get_config_num_value() {
     let spec_store = create_test_spec_store(sdk_key);
     let global_config_instance = GlobalConfigs::get_instance(sdk_key);
     // Load JSON data from file
-    let json_data: serde_json::Value = serde_json::from_str(
-        &fs::read_to_string("tests/data/dcs_with_sdk_configs.json").expect("Unable to read file"),
-    )
-    .expect("Unable to parse JSON");
+    let data =
+        fs::read_to_string("tests/data/dcs_with_sdk_configs.json").expect("Unable to read file");
 
     let specs_update = SpecsUpdate {
-        data: ResponseData::from_bytes(json_data.to_string().into_bytes()),
+        data: ResponseData::from_bytes(data.into_bytes()),
         source: SpecsSource::Network,
         received_at: 2000,
         source_api: None,
@@ -65,13 +63,11 @@ fn test_set_values_and_get_config_str_value() {
     let spec_store: SpecStore = create_test_spec_store(sdk_key);
     let global_config_instance = GlobalConfigs::get_instance(sdk_key);
 
-    let json_data: serde_json::Value = serde_json::from_str(
-        &fs::read_to_string("tests/data/dcs_with_sdk_configs.json").expect("Unable to read file"),
-    )
-    .expect("Unable to parse JSON");
+    let data =
+        fs::read_to_string("tests/data/dcs_with_sdk_configs.json").expect("Unable to read file");
 
     let specs_update = SpecsUpdate {
-        data: ResponseData::from_bytes(json_data.to_string().into_bytes()),
+        data: ResponseData::from_bytes(data.into_bytes()),
         source: SpecsSource::Network,
         received_at: 2000,
         source_api: None,
@@ -115,13 +111,11 @@ fn test_get_default_diagnostics_sampling_rate() {
 fn test_set_and_get_sampling_rate() {
     let sdk_key = "secret-key-sampling-global-configs-test";
     let spec_store: SpecStore = create_test_spec_store(sdk_key);
-    let json_data: serde_json::Value = serde_json::from_str(
-        &fs::read_to_string("tests/data/dcs_with_sdk_configs.json").expect("Unable to read file"),
-    )
-    .expect("Unable to parse JSON");
+    let data =
+        fs::read_to_string("tests/data/dcs_with_sdk_configs.json").expect("Unable to read file");
 
     let specs_update = SpecsUpdate {
-        data: ResponseData::from_bytes(json_data.to_string().into_bytes()),
+        data: ResponseData::from_bytes(data.into_bytes()),
         source: SpecsSource::Network,
         received_at: 2000,
         source_api: None,
@@ -145,4 +139,54 @@ fn test_set_and_get_sampling_rate() {
     assert_eq!(config_sync_rate, Some(1000.0));
     assert_eq!(dcs_rate, Some(999.0));
     assert_eq!(get_id_list_rate, Some(99.0));
+}
+
+#[test]
+fn test_set_and_get_sdk_flag() {
+    let sdk_key = "secret-key-sampling-global-configs-test";
+    let spec_store: SpecStore = create_test_spec_store(sdk_key);
+    let data =
+        fs::read_to_string("tests/data/dcs_with_sdk_configs.json").expect("Unable to read file");
+    let specs_update = SpecsUpdate {
+        data: ResponseData::from_bytes(data.into_bytes()),
+        source: SpecsSource::Network,
+        received_at: 2000,
+        source_api: None,
+    };
+
+    match spec_store.set_values(specs_update) {
+        Ok(()) => println!("set_values succeeded"),
+        Err(e) => println!("set_values failed: {e:?}"),
+    }
+
+    let global_config_instance = GlobalConfigs::get_instance(sdk_key);
+    let disable_console_capture =
+        global_config_instance.get_sdk_flag_value("disable_console_capture");
+
+    assert!(disable_console_capture);
+}
+
+#[test]
+fn test_set_and_get_sdk_flag_when_dcs_has_no_sdk_flags() {
+    let sdk_key = "secret-key-sampling-global-configs-test";
+    let spec_store: SpecStore = create_test_spec_store(sdk_key);
+    let data = fs::read_to_string("tests/data/eval_proj_dcs.json").expect("Unable to read file");
+
+    let specs_update = SpecsUpdate {
+        data: ResponseData::from_bytes(data.into_bytes()),
+        source: SpecsSource::Network,
+        received_at: 2000,
+        source_api: None,
+    };
+
+    match spec_store.set_values(specs_update) {
+        Ok(()) => println!("set_values succeeded"),
+        Err(e) => println!("set_values failed: {e:?}"),
+    }
+
+    let global_config_instance = GlobalConfigs::get_instance(sdk_key);
+    let disable_console_capture =
+        global_config_instance.get_sdk_flag_value("disable_console_capture");
+
+    assert!(!disable_console_capture);
 }

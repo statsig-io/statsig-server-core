@@ -20,5 +20,8 @@
         "event_logging_interval_seconds": 1,
         "special_case_sampling_rate": 101,
         "sampling_mode": "shadow"
+    },
+    "sdk_flags": {
+        "disable_console_capture": true
     }
 }

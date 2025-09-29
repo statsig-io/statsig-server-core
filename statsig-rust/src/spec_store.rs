@@ -256,6 +256,10 @@ impl SpecStore {
         if let Some(sdk_configs) = &dcs.sdk_configs {
             self.global_configs.set_sdk_configs(sdk_configs.clone());
         }
+
+        if let Some(sdk_flags) = &dcs.sdk_flags {
+            self.global_configs.set_sdk_flags(sdk_flags.clone());
+        }
     }
 
     fn try_update_data_store(&self, source: &SpecsSource, mut data: ResponseData, now: u64) {

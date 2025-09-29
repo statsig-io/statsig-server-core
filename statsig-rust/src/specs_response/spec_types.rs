@@ -117,6 +117,7 @@ pub struct SpecsResponseFull {
     pub diagnostics: Option<HashMap<String, f64>>,
     pub param_stores: Option<HashMap<String, ParameterStore>>,
     pub sdk_configs: Option<HashMap<String, DynamicValue>>,
+    pub sdk_flags: Option<HashMap<String, bool>>,
     pub cmab_configs: Option<HashMap<String, CMABConfig>>,
     pub overrides: Option<HashMap<String, Vec<ConfigMapping>>>,
     pub override_rules: Option<HashMap<String, Rule>>,
