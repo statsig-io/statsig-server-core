@@ -122,6 +122,9 @@ impl Tokenizer {
                 };
 
                 result.add_possible_os_tag("Windows", version);
+            } else if curr == "MSIE" {
+                let version = consume_if_numeric(&mut win, next1);
+                result.add_possible_browser_tag("IE", version);
             }
             // Yahoo Slurp
             else if curr == "Yahoo!" && next1 == Some("Slurp") {
