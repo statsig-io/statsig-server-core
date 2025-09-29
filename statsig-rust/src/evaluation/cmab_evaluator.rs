@@ -4,7 +4,6 @@ use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator::SpecType;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::get_unit_id::get_unit_id;
-use crate::event_logging::exposable_string::ExposableString;
 use crate::interned_string::InternedString;
 use crate::specs_response::cmab_types::{CMABConfig, CMABGroup, CMABGroupConfig};
 use crate::unwrap_or_return;
@@ -19,16 +18,16 @@ use std::collections::HashMap;
 const EXPLORE_RULE_ID_SUFFIX: &str = "explore";
 
 lazy_static! {
-    static ref NOT_STARTED_RULE: ExposableString = ExposableString::from_str_ref("prestart");
-    static ref FAILS_TARGETING: ExposableString =
-        ExposableString::from_str_ref("inlineTargetingRules");
+    static ref NOT_STARTED_RULE: InternedString = InternedString::from_str_ref("prestart");
+    static ref FAILS_TARGETING: InternedString =
+        InternedString::from_str_ref("inlineTargetingRules");
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CMABRankedGroup {
     pub score: f64,
     pub variant_name: String,
-    pub rule_id: ExposableString,
+    pub rule_id: InternedString,
     pub value: Option<HashMap<String, Value>>,
     pub cmab_name: String,
 }
@@ -78,7 +77,7 @@ pub fn get_cmab_ranked_list(ctx: &mut EvaluatorContext, name: &str) -> Vec<CMABR
             .map(|group| CMABRankedGroup {
                 score: 0.0001,
                 variant_name: group.name.clone(),
-                rule_id: ExposableString::from_str_parts(&[group.id.as_str(), ":explore"]),
+                rule_id: InternedString::from_str_parts(&[group.id.as_str(), ":explore"]),
                 value: group.parameter_values.get_json(),
                 cmab_name: name.to_string(),
             })

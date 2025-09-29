@@ -6,7 +6,6 @@ use serde_with::skip_serializing_none;
 
 use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::{dynamic_returnable::DynamicReturnable, evaluator_value::EvaluatorValue};
-use crate::event_logging::exposable_string::ExposableString;
 use crate::interned_string::InternedString;
 use crate::DynamicValue;
 
@@ -45,7 +44,7 @@ pub struct Rule {
     pub name: InternedString,
     pub pass_percentage: f64,
     pub return_value: DynamicReturnable,
-    pub id: ExposableString,
+    pub id: InternedString,
     pub salt: Option<InternedString>,
     pub conditions: Vec<InternedString>,
     pub id_type: DynamicString,

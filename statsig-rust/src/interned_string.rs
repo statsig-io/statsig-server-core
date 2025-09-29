@@ -15,14 +15,13 @@ use crate::{
 };
 
 lazy_static::lazy_static! {
-    static ref EMPTY_STRING: InternedString = InternedString {
+    static ref EMPTY: InternedString = InternedString {
         hash: 0,
         value: Arc::new(String::new()),
     };
 
     static ref TRUE_STRING: InternedString = InternedString::from_string("true".to_string());
     static ref FALSE_STRING: InternedString = InternedString::from_string("false".to_string());
-    static ref SALT_STRING: InternedString = InternedString::from_string("salt".to_string());
 }
 
 const TAG: &str = "InternedString";
@@ -61,6 +60,15 @@ impl InternedString {
         Self { hash, value }
     }
 
+    pub fn from_str_parts(parts: &[&str]) -> Self {
+        let mut value = String::new();
+        for v in parts {
+            value.push_str(v);
+        }
+
+        Self::from_string(value)
+    }
+
     pub fn as_str(&self) -> &str {
         self.value.as_str()
     }
@@ -72,15 +80,11 @@ impl InternedString {
     }
 
     pub fn empty_ref() -> &'static Self {
-        &EMPTY_STRING
+        &EMPTY
     }
 
     pub fn empty() -> Self {
-        EMPTY_STRING.clone()
-    }
-
-    pub fn salt_ref() -> &'static Self {
-        &SALT_STRING
+        EMPTY.clone()
     }
 
     fn get_or_create_memoized_string(hash: u64, input: Cow<'_, str>) -> Arc<String> {
@@ -193,6 +197,6 @@ impl Display for InternedString {
 
 impl Default for InternedString {
     fn default() -> Self {
-        EMPTY_STRING.clone()
+        EMPTY.clone()
     }
 }

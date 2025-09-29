@@ -1,12 +1,14 @@
-use super::spec_types::Spec;
-use crate::{event_logging::exposable_string::ExposableString, hashing::ahash_str};
+use std::sync::Arc;
+
 use ahash::HashMap;
 use serde::{Deserialize, Deserializer, Serialize};
-use std::sync::Arc;
+
+use super::spec_types::Spec;
+use crate::{hashing::ahash_str, interned_string::InternedString};
 
 #[derive(Debug, PartialEq)]
 pub struct AddressableSpec {
-    pub name: ExposableString,
+    pub name: InternedString,
     pub spec: Arc<Spec>,
 }
 
@@ -49,8 +51,8 @@ impl<'de> Deserialize<'de> for SpecDirectory {
         let specs = HashMap::<String, Spec>::deserialize(deserializer)?
             .into_iter()
             .map(|(k, v)| {
-                let name = ExposableString::from_str_ref(k.as_str());
-                let hash = name.hash_value;
+                let name = InternedString::from_str_ref(k.as_str());
+                let hash = name.hash;
                 let addressable = AddressableSpec {
                     name,
                     spec: Arc::new(v),

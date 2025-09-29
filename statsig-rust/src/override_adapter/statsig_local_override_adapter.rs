@@ -1,6 +1,6 @@
 use crate::evaluation::dynamic_returnable::DynamicReturnable;
 use crate::evaluation::evaluator_result::EvaluatorResult;
-use crate::event_logging::exposable_string::ExposableString;
+use crate::interned_string::InternedString;
 use crate::specs_response::spec_types::Spec;
 use crate::{log_d, read_lock_or_return, write_lock_or_noop, OverrideAdapter, StatsigUser};
 use parking_lot::RwLock;
@@ -25,7 +25,7 @@ const LOCAL_OVERRIDE_REASON: &str = "LocalOverride";
 const NO_ID_OVERRIDE: &str = "__STATSIG_NO_ID__";
 
 lazy_static::lazy_static! {
-    static ref OVERRIDE_RULE_ID: ExposableString = ExposableString::from_str_ref("override");
+    static ref OVERRIDE_RULE_ID: InternedString = InternedString::from_str_ref("override");
 }
 
 #[derive(Default)]

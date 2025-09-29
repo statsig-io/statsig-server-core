@@ -1,7 +1,7 @@
 use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::evaluation_types::BaseEvaluation;
 use crate::event_logging::event_logger::EventLogger;
-use crate::event_logging::exposable_string::ExposableString;
+use crate::interned_string::InternedString;
 use crate::{
     evaluation::evaluation_types::{ExperimentEvaluation, LayerEvaluation},
     statsig_type_factories::{extract_from_experiment_evaluation, make_layer},
@@ -51,7 +51,7 @@ const TAG: &str = "PersistentStorageTrait";
 pub struct StickyValues {
     pub value: bool,
     pub json_value: Option<HashMap<String, Value>>,
-    pub rule_id: Option<ExposableString>,
+    pub rule_id: Option<InternedString>,
     pub group_name: Option<String>,
     pub secondary_exposures: Vec<SecondaryExposure>,
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
