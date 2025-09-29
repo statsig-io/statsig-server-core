@@ -243,6 +243,8 @@ impl Tokenizer {
                 //
                 else if tag == "Electron" {
                     result.add_possible_browser_tag("Electron", version);
+                } else if tag == "IEMobile" {
+                    result.add_possible_browser_tag("IE Mobile", version);
                 }
                 // Bot or crawler
                 else if tag.contains("Bot")
@@ -378,16 +380,6 @@ impl<'a> TokenizerResult<'a> {
 
     fn add_possible_browser_tag_impl(&mut self, tag: &'a str, version: Option<&'a str>) {
         if version.is_none() {
-            return;
-        }
-        if self.possible_browser_token.is_some()
-            && (tag.contains(".com")
-                || tag.contains(".net")
-                || tag.contains(".org")
-                || tag.contains(".html")
-                || tag.contains("http://")
-                || tag.contains("https://"))
-        {
             return;
         }
 
