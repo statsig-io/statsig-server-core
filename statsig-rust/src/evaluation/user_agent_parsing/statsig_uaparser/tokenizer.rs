@@ -159,6 +159,16 @@ impl Tokenizer {
                 win.slide_window_by(1);
                 continue;
             }
+            // Bot
+            else if curr == "Better" && next1 == Some("Uptime") && next2 == Some("Bot") {
+                result.add_possible_browser_tag_for_bot("Better Uptime Bot", None);
+            } else if curr == "Radius" && next1 == Some("Compilance") && next2 == Some("Bot") {
+                result.add_possible_browser_tag_for_bot("Radius Compilance Bot", None);
+            } else if curr == "AdsBot-Google-Mobile" {
+                result.add_possible_browser_tag_for_bot("AdsBot-Google", None);
+            } else if curr == "Uptime" && next1 == Some("Monitoring") && next2 == Some("Bot") {
+                result.add_possible_browser_tag_for_bot("Uptime Monitoring Bot", None);
+            }
             // Rest
             else {
                 let parts = curr.split_once(['/', ';', ':']);
@@ -291,6 +301,7 @@ pub struct TokenizerResult<'a> {
     pub huawei_hint: bool,
     pub cfnetwork_hint: bool,
     pub crawler_hint: bool,
+    pub bot_detected: bool,
 }
 
 impl<'a> TokenizerResult<'a> {
@@ -349,16 +360,12 @@ impl<'a> TokenizerResult<'a> {
     }
 
     fn add_possible_browser_tag_for_bot(&mut self, tag: &'a str, version: Option<&'a str>) {
-        if self.possible_browser_token.is_some()
-            && (tag.contains(".com")
-                || tag.contains(".net")
-                || tag.contains(".org")
-                || tag.contains(".html")
-                || tag.contains("http://")
-                || tag.contains("https://"))
-        {
+        if self.bot_detected {
+            // Most of useragent string from bot attaches url
+            // e.g. Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)
             return;
         }
+        self.bot_detected = true;
         self.possible_browser_token = Some(Token {
             position: self.position,
             tag,
@@ -445,7 +452,9 @@ impl<'a> Token<'a> {
 
 fn trim_invalid_chars(s: Option<&str>) -> Option<&str> {
     let trimmed = s.map(|s| {
-        s.trim_matches(|c| c == '(' || c == ')' || c == ';' || c == ',' || c == '+' || c == '_')
+        s.trim_matches(|c| {
+            c == '(' || c == ')' || c == ';' || c == ',' || c == '+' || c == '_' || c == '"'
+        })
     });
 
     match trimmed {

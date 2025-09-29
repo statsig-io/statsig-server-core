@@ -88,5 +88,23 @@
         "osVersion": "18.6.2",
         "browserName": "Edge Mobile",
         "browserVersion": "139.0.3405.125"
+    },
+    "Better Stack Better Uptime Bot Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36": {
+        "osName": "Windows",
+        "osVersion": "10",
+        "browserName": "Better Uptime Bot",
+        "browserVersion": "0.0.0"
+    },
+    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)": {
+        "osName": "Other",
+        "osVersion": "0.0.0",
+        "browserName": "Googlebot",
+        "browserVersion": "2.1"
+    },
+    "node Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.127 Mobile Safari/537.36 (compatible; AdsBot-Google-Mobile; +http://www.google.com/mobile/adsbot.html)": {
+        "osName": "Android",
+        "osVersion": "6.0.1",
+        "browserName": "AdsBot-Google",
+        "browserVersion": "0.0.0"
     }
 }
