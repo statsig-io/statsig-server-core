@@ -188,9 +188,7 @@ jobs:
         working-directory: examples/php/verify-package
         id: verification
         run: |
-          composer require statsig/statsig-php-core:${{ matrix.tag == 'beta' && 'dev-main' || '@stable' }}
-          # Capture composer install output
-          output=$(composer install 2>&1)
+          output=$(composer require statsig/statsig-php-core:${{ matrix.tag == 'beta' && 'dev-main' || '@stable' }} 2>&1)
           echo "$output"
           # Check for the verification success string
           if ! echo "$output" | grep -q "FFI binary verification is successful"; then
