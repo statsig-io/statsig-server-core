@@ -23,6 +23,7 @@ dependencies {
     implementation 'com.statsig:javacore:+:x86_64-unknown-linux-gnu'
     implementation 'com.statsig:javacore:+:x86_64-unknown-linux-musl'
     implementation 'com.statsig:javacore:+:aarch64-unknown-linux-gnu'
+    implementation 'com.statsig:javacore:+:aarch64-unknown-linux-musl'
     implementation 'com.statsig:javacore:+:aarch64-apple-darwin'
 }
 

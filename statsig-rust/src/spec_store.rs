@@ -1,6 +1,7 @@
 use crate::data_store_interface::{get_data_adapter_dcs_key, DataStoreTrait};
 use crate::global_configs::GlobalConfigs;
 use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
+use crate::networking::ResponseData;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
@@ -12,7 +13,6 @@ use crate::{
 };
 use chrono::Utc;
 use parking_lot::RwLock;
-use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -88,6 +88,7 @@ impl SpecStore {
     }
 
     pub fn set_values(&self, specs_update: SpecsUpdate) -> Result<(), StatsigErr> {
+        let mut specs_update = specs_update;
         let mut next_values = match self.data.try_write_for(Duration::from_secs(5)) {
             Some(mut data) => data.next_values.take().unwrap_or_default(),
             None => {
@@ -98,7 +99,7 @@ impl SpecStore {
             }
         };
 
-        match self.parse_specs_response(&specs_update, &mut next_values) {
+        match self.parse_specs_response(&mut specs_update, &mut next_values) {
             Ok(ParseResult::HasUpdates) => (),
             Ok(ParseResult::NoUpdates) => {
                 self.ops_stats_log_no_update(specs_update.source, specs_update.source_api);
@@ -146,27 +147,25 @@ impl SpecStore {
 impl SpecStore {
     fn parse_specs_response(
         &self,
-        values: &SpecsUpdate,
+        values: &mut SpecsUpdate,
         next_values: &mut SpecsResponseFull,
     ) -> Result<ParseResult, StatsigErr> {
-        let mut deserializer = serde_json::Deserializer::from_slice(&values.data);
-        let parse_result = SpecsResponseFull::deserialize_in_place(&mut deserializer, next_values);
+        let parse_result = values.data.deserialize_in_place(next_values);
 
         if parse_result.is_ok() && next_values.has_updates {
             return Ok(ParseResult::HasUpdates);
         }
 
-        let no_updates_result = serde_json::from_slice::<SpecsResponseNoUpdates>(&values.data);
+        let no_updates_result = values.data.deserialize_into::<SpecsResponseNoUpdates>();
         if let Ok(result) = no_updates_result {
             if !result.has_updates {
                 return Ok(ParseResult::NoUpdates);
             }
         }
 
-        let error = parse_result.err().map_or_else(
-            || StatsigErr::JsonParseError("SpecsResponse".to_string(), "Unknown error".to_string()),
-            |e| StatsigErr::JsonParseError("SpecsResponse".to_string(), e.to_string()),
-        );
+        let error = parse_result.err().unwrap_or_else(|| {
+            StatsigErr::JsonParseError("SpecsResponse".to_string(), "Unknown error".to_string())
+        });
 
         log_error_to_statsig_and_console!(self.ops_stats, TAG, error);
         Err(error)
@@ -257,9 +256,13 @@ impl SpecStore {
         if let Some(sdk_configs) = &dcs.sdk_configs {
             self.global_configs.set_sdk_configs(sdk_configs.clone());
         }
+
+        if let Some(sdk_flags) = &dcs.sdk_flags {
+            self.global_configs.set_sdk_flags(sdk_flags.clone());
+        }
     }
 
-    fn try_update_data_store(&self, source: &SpecsSource, data: Vec<u8>, now: u64) {
+    fn try_update_data_store(&self, source: &SpecsSource, mut data: ResponseData, now: u64) {
         if source != &SpecsSource::Network {
             return;
         }
@@ -274,7 +277,7 @@ impl SpecStore {
         let spawn_result = self.statsig_runtime.spawn(
             "spec_store_update_data_store",
             move |_shutdown_notif| async move {
-                let data_string = match String::from_utf8(data) {
+                let data_string = match data.read_to_string() {
                     Ok(s) => s,
                     Err(e) => {
                         log_e!(TAG, "Failed to convert data to string: {}", e);

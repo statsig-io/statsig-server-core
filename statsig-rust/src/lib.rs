@@ -69,3 +69,6 @@ mod statsig;
 mod statsig_err;
 mod statsig_type_factories;
 mod utils;
+
+#[cfg(test)]
+mod __tests__;

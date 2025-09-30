@@ -122,7 +122,7 @@ impl NetworkClient {
                 return Err(NetworkError::ShutdownError(request_args.url));
             }
 
-            let response = match self.net_provider.upgrade() {
+            let mut response = match self.net_provider.upgrade() {
                 Some(net_provider) => net_provider.send(&method, &request_args).await,
                 None => {
                     return Err(NetworkError::RequestFailed(
@@ -150,7 +150,7 @@ impl NetworkClient {
             let error_message = response
                 .error
                 .clone()
-                .unwrap_or_else(|| get_error_message_for_status(status, response.data.as_deref()));
+                .unwrap_or_else(|| get_error_message_for_status(status, response.data.as_mut()));
 
             if let Some(key) = request_args.diagnostics_key {
                 let mut end_marker =
@@ -249,14 +249,17 @@ impl NetworkClient {
     }
 }
 
-fn get_error_message_for_status(status: Option<u16>, data: Option<&[u8]>) -> String {
+fn get_error_message_for_status(
+    status: Option<u16>,
+    data: Option<&mut super::ResponseData>,
+) -> String {
     if (200..300).contains(&status.unwrap_or(0)) {
         return String::new();
     }
 
     let mut message = String::new();
     if let Some(data) = data {
-        let lossy_str = String::from_utf8_lossy(data);
+        let lossy_str = data.read_to_string().unwrap_or_default();
         if lossy_str.is_ascii() {
             message = lossy_str.to_string();
         }

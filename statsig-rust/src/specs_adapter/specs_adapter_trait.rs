@@ -1,3 +1,4 @@
+use crate::networking::ResponseData;
 use crate::statsig_err::StatsigErr;
 use crate::StatsigRuntime;
 use async_trait::async_trait;
@@ -101,7 +102,7 @@ pub trait SpecsAdapter: Send + Sync {
 }
 
 pub struct SpecsUpdate {
-    pub data: Vec<u8>,
+    pub data: ResponseData,
     pub source: SpecsSource,
     pub received_at: u64,
     pub source_api: Option<String>,

@@ -1,14 +1,15 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluator_result::EvaluatorResult;
-use crate::event_logging::exposable_string::ExposableString;
 use crate::hashing::HashUtil;
+use crate::interned_string::InternedString;
 use crate::spec_store::SpecStoreData;
 use crate::specs_response::spec_types::{Rule, Spec};
 use crate::user::StatsigUserInternal;
 use crate::StatsigErr::StackOverflowError;
 use crate::{OverrideAdapter, StatsigErr};
-use std::collections::HashMap;
-use std::sync::Arc;
 
 const MAX_RECURSIVE_DEPTH: u16 = 300;
 
@@ -20,7 +21,7 @@ pub struct EvaluatorContext<'a> {
     pub nested_count: u16,
     pub app_id: Option<&'a DynamicValue>,
     pub override_adapter: Option<&'a Arc<dyn OverrideAdapter>>,
-    pub nested_gate_memo: HashMap<&'a str, (bool, Option<&'a ExposableString>)>,
+    pub nested_gate_memo: HashMap<&'a str, (bool, Option<&'a InternedString>)>,
     pub use_experimental_ua_parser: bool,
 }
 

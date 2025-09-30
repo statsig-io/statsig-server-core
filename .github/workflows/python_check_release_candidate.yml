@@ -2,8 +2,8 @@ name: Python E2E Test Release Candidate
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 */3 * * *'
+  # schedule:
+  #   - cron: '0 */3 * * *'
 
 env:
   api_key: ${{ secrets.LRS_SERVER_KEY }}

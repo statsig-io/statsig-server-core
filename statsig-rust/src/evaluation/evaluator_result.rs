@@ -8,13 +8,12 @@ use crate::evaluation::evaluation_types::{
     BaseEvaluation, DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation,
     SecondaryExposure,
 };
-use crate::event_logging::exposable_string::{self, ExposableString};
 use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::interned_string::InternedString;
 
 #[derive(Default, Debug)]
 pub struct EvaluatorResult<'a> {
-    pub name: Option<&'a ExposableString>,
+    pub name: Option<&'a InternedString>,
     pub bool_value: bool,
     pub unsupported: bool,
     pub is_experiment_group: bool,
@@ -23,7 +22,7 @@ pub struct EvaluatorResult<'a> {
     pub is_in_experiment: bool,
     pub id_type: Option<InternedString>,
     pub json_value: Option<DynamicReturnable>,
-    pub rule_id: Option<&'a ExposableString>,
+    pub rule_id: Option<&'a InternedString>,
     pub rule_id_suffix: Option<&'static str>,
     pub group_name: Option<InternedString>,
     pub explicit_parameters: Option<&'a Vec<InternedString>>,
@@ -278,13 +277,13 @@ fn get_json_value(result: &mut EvaluatorResult) -> DynamicReturnable {
 // todo: remove when 'QueuedExposure' does not use `BaseEvaluation`
 fn get_exposure_name_if_not_hashed(
     possibly_hashed_name: &str,
-    exposure_name: Option<&ExposableString>,
-) -> ExposableString {
-    let exposure_name = exposure_name.unwrap_or(&exposable_string::EMPTY_STRING);
+    exposure_name: Option<&InternedString>,
+) -> InternedString {
+    let exposure_name = exposure_name.unwrap_or(InternedString::empty_ref());
     if possibly_hashed_name == exposure_name.as_str() {
         exposure_name.clone()
     } else {
-        ExposableString::from_str_ref(possibly_hashed_name)
+        InternedString::from_str_ref(possibly_hashed_name)
     }
 }
 
@@ -337,16 +336,16 @@ fn result_to_base_eval_v2(
 }
 
 fn create_suffixed_rule_id(
-    rule_id: Option<&ExposableString>,
+    rule_id: Option<&InternedString>,
     suffix: Option<&str>,
-) -> ExposableString {
+) -> InternedString {
     let id_arc = match &rule_id {
         Some(rule_id) => rule_id.as_str(),
         None => "",
     };
 
     match &suffix {
-        Some(suffix) => ExposableString::from_str_parts(&[id_arc, ":", suffix]),
+        Some(suffix) => InternedString::from_str_parts(&[id_arc, ":", suffix]),
         None => rule_id.cloned().unwrap_or_default(),
     }
 }

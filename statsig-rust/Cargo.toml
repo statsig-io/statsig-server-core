@@ -38,8 +38,9 @@ serde_json = { version = "1.0.143", features = [
 ] }
 serde_with = "3.4.0"
 sha2 = "0.10.8"
-sigstat-grpc = { path = "../statsig-grpc", version = "0.9.3", optional = true }
+sigstat-grpc = { path = "../statsig-grpc", version = "0.9.4-beta.2509252256", optional = true }
 simple_logger = { version = "5.0.0" }
+tempfile = "3.8.1"
 tokio = { version = "1.39.1", features = ["full"] }
 uaparser = "0.6.4"
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
@@ -61,3 +62,7 @@ custom_network_provider = []
 with_grpc = ["sigstat-grpc"]
 testing = []
 with_zstd = []
+
+# [[bin]]
+# name = "sync"
+# path = "tests/bin/sync.rs"

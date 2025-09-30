@@ -92,10 +92,10 @@ pub mod specs_adapter_tests {
 
         mock_listener.wait_for_next_update().await.unwrap();
 
-        let received_update = mock_listener.force_get_most_recent_update();
+        let mut received_update = mock_listener.force_get_most_recent_update();
         assert_eq!(
-            received_update.data,
-            "reconnected_sync".to_string().into_bytes()
+            received_update.data.read_to_string().unwrap(),
+            "reconnected_sync".to_string()
         );
         assert_eq!(
             received_update.source,

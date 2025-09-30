@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use statsig_rust::networking::ResponseData;
 use statsig_rust::{
     SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigRuntime,
 };
@@ -27,7 +28,7 @@ impl StaticSpecsAdapter {
         let data = fs::read(path).expect("Unable to read file");
 
         let update = SpecsUpdate {
-            data,
+            data: ResponseData::from_bytes(data),
             source: SpecsSource::Bootstrap,
             received_at: 1,
             source_api: None,

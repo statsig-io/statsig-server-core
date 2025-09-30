@@ -94,8 +94,8 @@ fn test_user_agent_parser_browser_version() {
     let mut miss = 0;
 
     for test_case in TEST_CASES.iter() {
-        let version = extract_field_from_user_agent(&test_case.user_agent, "browser_version");
-
+        let version: Option<InternedString> =
+            extract_field_from_user_agent(&test_case.user_agent, "browser_version");
         if version.as_deref() == test_case.expected_browser_version.as_deref() {
             hit += 1;
         } else {

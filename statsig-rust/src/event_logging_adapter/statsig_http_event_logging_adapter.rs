@@ -87,7 +87,7 @@ impl StatsigHttpEventLoggingAdapter {
             .await
             .map_err(StatsigErr::NetworkError)?;
 
-        let response_slice = match response.data {
+        let mut res_data = match response.data {
             Some(data) => data,
             None => {
                 return Err(StatsigErr::NetworkError(NetworkError::RequestFailed(
@@ -98,7 +98,8 @@ impl StatsigHttpEventLoggingAdapter {
             }
         };
 
-        let result = serde_json::from_slice::<LogEventResult>(&response_slice)
+        let result = res_data
+            .deserialize_into::<LogEventResult>()
             .map(|result| result.success != Some(false))
             .map_err(|e| {
                 StatsigErr::JsonParseError(stringify!(LogEventResult).to_string(), e.to_string())

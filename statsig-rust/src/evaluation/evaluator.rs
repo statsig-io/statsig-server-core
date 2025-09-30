@@ -13,7 +13,6 @@ use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::evaluator_value::{EvaluatorValue, MemoizedEvaluatorValue};
 use crate::evaluation::get_unit_id::get_unit_id;
 use crate::evaluation::user_agent_parsing::UserAgentParser;
-use crate::event_logging::exposable_string;
 use crate::interned_string::InternedString;
 use crate::specs_response::spec_types::{Condition, Rule, Spec};
 use crate::{dyn_value, log_w, unwrap_or_return, StatsigErr};
@@ -27,6 +26,9 @@ pub struct Evaluator;
 lazy_static! {
     static ref EMPTY_STR: String = String::new();
     static ref EMPTY_DYNAMIC_VALUE: DynamicValue = DynamicValue::new();
+    static ref DEFAULT_RULE: InternedString = InternedString::from_str_ref("default");
+    static ref DISABLED_RULE: InternedString = InternedString::from_str_ref("disabled");
+    static ref SALT: InternedString = InternedString::from_str_ref("salt");
 }
 
 #[derive(Clone)]
@@ -161,8 +163,8 @@ impl Evaluator {
         ctx.result.bool_value = spec.default_value.get_bool() == Some(true);
         ctx.result.json_value = Some(spec.default_value.clone());
         ctx.result.rule_id = match spec.enabled {
-            true => Some(&exposable_string::DEFAULT_RULE),
-            false => Some(&exposable_string::DISABLED_RULE),
+            true => Some(&DEFAULT_RULE),
+            false => Some(&DISABLED_RULE),
         };
         ctx.finalize_evaluation(spec, None);
 
@@ -484,10 +486,7 @@ fn evaluate_nested_gate<'a>(
         let expo = SecondaryExposure {
             gate: gate_name.clone(),
             gate_value: InternedString::from_bool(res.bool_value),
-            rule_id: res
-                .rule_id
-                .unwrap_or(&exposable_string::EMPTY_STRING)
-                .clone(),
+            rule_id: res.rule_id.unwrap_or(InternedString::empty_ref()).clone(),
         };
 
         if res.sampling_rate.is_none() {
@@ -556,7 +555,7 @@ fn get_hash_for_user_bucket(ctx: &mut EvaluatorContext, condition: &Condition) -
     let mut salt = InternedString::empty_ref();
 
     if let Some(add_values) = &condition.additional_values {
-        if let Some(v) = add_values.get(InternedString::salt_ref()) {
+        if let Some(v) = add_values.get(&SALT) {
             salt = v;
         }
     }

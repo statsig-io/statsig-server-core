@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 use crate::{
     evaluation::{dynamic_returnable::DynamicReturnable, dynamic_string::DynamicString},
-    event_logging::exposable_string::ExposableString,
     interned_string::InternedString,
 };
 
@@ -29,7 +28,7 @@ pub struct CMABConfig {
 pub struct CMABGroup {
     pub name: String,
     pub parameter_values: DynamicReturnable,
-    pub id: ExposableString,
+    pub id: InternedString,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]

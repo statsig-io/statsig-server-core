@@ -1,7 +1,10 @@
 use crate::networking::proxy_config::ProxyConfig;
 use crate::sdk_diagnostics::marker::KeyType;
+use crate::StatsigErr;
 use async_trait::async_trait;
 use chrono::Utc;
+use serde::de::DeserializeOwned;
+use std::io::Cursor;
 use std::{
     collections::HashMap,
     sync::{atomic::AtomicBool, Arc},
@@ -83,7 +86,7 @@ impl RequestArgs {
 
 pub struct Response {
     pub status_code: Option<u16>,
-    pub data: Option<Vec<u8>>,
+    pub data: Option<ResponseData>,
     pub error: Option<String>,
     pub headers: Option<HashMap<String, String>>,
 }
@@ -97,4 +100,71 @@ pub enum HttpMethod {
 #[async_trait]
 pub trait NetworkProvider: Sync + Send {
     async fn send(&self, method: &HttpMethod, args: &RequestArgs) -> Response;
+}
+
+pub trait ResponseDataStream: std::io::Read + std::io::Seek + Send + Sync {}
+
+impl<T: std::io::Read + std::io::Seek + Send + Sync> ResponseDataStream for T {}
+
+pub struct ResponseData {
+    stream: Box<dyn ResponseDataStream>,
+}
+
+const RESPONSE_DATA_TAG: &str = "ResponseData";
+
+impl ResponseData {
+    pub fn from_bytes(bytes: Vec<u8>) -> Self {
+        Self {
+            stream: Box::new(Cursor::new(bytes)),
+        }
+    }
+
+    pub fn from_stream(stream: Box<dyn ResponseDataStream>) -> Self {
+        Self { stream }
+    }
+
+    pub fn get_stream_ref(&mut self) -> &mut Box<dyn ResponseDataStream> {
+        &mut self.stream
+    }
+
+    pub fn deserialize_into<T: DeserializeOwned>(&mut self) -> Result<T, StatsigErr> {
+        self.rewind()?;
+
+        let result = serde_json::from_reader(self.stream.as_mut()).map_err(|e| {
+            StatsigErr::JsonParseError(RESPONSE_DATA_TAG.to_string(), e.to_string())
+        })?;
+
+        Ok(result)
+    }
+
+    pub fn deserialize_in_place<T: DeserializeOwned>(
+        &mut self,
+        place: &mut T,
+    ) -> Result<(), StatsigErr> {
+        self.rewind()?;
+
+        let mut deserializer = serde_json::Deserializer::from_reader(self.stream.as_mut());
+
+        T::deserialize_in_place(&mut deserializer, place)
+            .map_err(|e| StatsigErr::JsonParseError(RESPONSE_DATA_TAG.to_string(), e.to_string()))
+    }
+
+    pub fn read_to_string(&mut self) -> Result<String, StatsigErr> {
+        self.rewind()?;
+
+        let mut buf = Vec::new();
+
+        self.stream
+            .read_to_end(&mut buf)
+            .map_err(|e| StatsigErr::SerializationError(e.to_string()))?;
+
+        String::from_utf8(buf)
+            .map_err(|e| StatsigErr::JsonParseError(RESPONSE_DATA_TAG.to_string(), e.to_string()))
+    }
+
+    fn rewind(&mut self) -> Result<(), StatsigErr> {
+        self.stream
+            .rewind()
+            .map_err(|e| StatsigErr::SerializationError(e.to_string()))
+    }
 }

@@ -20,6 +20,21 @@ jobs:
             tag: amazoncorretto_21_alpine_jdk
 
           - package: java
+            tag: amazoncorretto_21
+
+          - package: java
+            tag: azul_zulu_openjdk_21_jdk
+          
+          - package: java
+            tag: azul_zulu_openjdk_21_alpine_jdk
+
+          - package: java
+            tag: eclipse_temurin_21_jdk_alpine
+
+          - package: java
+            tag: eclipse_temurin_21_jdk
+
+          - package: java
             tag: amazonlinux_2023
 
           - package: java
@@ -173,8 +188,13 @@ jobs:
         working-directory: examples/php/verify-package
         id: verification
         run: |
-          composer require statsig/statsig-php-core:${{ matrix.tag == 'beta' && 'dev-main' || '@stable' }}
-          composer install
+          output=$(composer require statsig/statsig-php-core:${{ matrix.tag == 'beta' && 'dev-main' || '@stable' }} 2>&1)
+          echo "$output"
+          # Check for the verification success string
+          if ! echo "$output" | grep -q "FFI binary verification is successful"; then
+            echo "❌ php binary verification failed"
+            exit 1
+          fi
           php verify.php
 
       - uses: ./.github/actions/log-package-verification-to-statsig

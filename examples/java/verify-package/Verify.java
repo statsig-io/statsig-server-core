@@ -10,11 +10,18 @@ import com.statsig.*;
 
 public class Verify {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {  
         String sdkKey = System.getenv("STATSIG_SERVER_SDK_KEY");
         if (sdkKey == null || sdkKey.isEmpty()) {
             throw new Error("STATSIG_SERVER_SDK_KEY is not set");
         }
+
+        Package p = com.statsig.Statsig.class.getPackage();
+        System.out.println(
+                "-------------------------------- Get Version --------------------------------"
+        );
+        System.out.println("Package: " + p.getName());
+        System.out.println("Implementation Version: " + p.getImplementationVersion());
 
         Statsig statsig = new Statsig(sdkKey);
         statsig.initialize().get();

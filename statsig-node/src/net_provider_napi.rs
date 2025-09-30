@@ -7,7 +7,7 @@ use napi::{
 };
 
 use napi_derive::napi;
-use statsig_rust::networking::{HttpMethod, NetworkProvider, RequestArgs, Response};
+use statsig_rust::networking::{HttpMethod, NetworkProvider, RequestArgs, Response, ResponseData};
 
 type NapiNetworkFuncArgs = FnArgs<(String, String, HashMap<String, String>, Option<Vec<u8>>)>;
 
@@ -71,7 +71,7 @@ impl NetworkProvider for NetworkProviderNapi {
 
         Response {
             status_code: Some(result.status as u16),
-            data: result.data,
+            data: result.data.map(ResponseData::from_bytes),
             error: result.error,
             headers: None,
         }

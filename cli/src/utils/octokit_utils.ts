@@ -466,6 +466,27 @@ export async function createPullRequestAgainstMain(
   return result.data;
 }
 
+export async function createPullRequestAgainstRc(
+  octokit: Octokit,
+  options: {
+    repository: string;
+    title: string;
+    body: string;
+    head: string;
+  },
+) {
+  const result = await octokit.rest.pulls.create({
+    owner: 'statsig-io',
+    repo: options.repository,
+    title: options.title,
+    head: options.head,
+    base: 'rc',
+    body: options.body,
+  });
+
+  return result.data;
+}
+
 export async function mergePullRequest(
   octokit: Octokit,
   repository: string,

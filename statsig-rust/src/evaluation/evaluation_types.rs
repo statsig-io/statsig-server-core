@@ -1,5 +1,5 @@
 use super::dynamic_returnable::DynamicReturnable;
-use crate::{event_logging::exposable_string::ExposableString, interned_string::InternedString};
+use crate::interned_string::InternedString;
 use serde::{Deserialize, Serialize};
 
 pub fn is_false(v: &bool) -> bool {
@@ -12,7 +12,7 @@ pub struct SecondaryExposure {
     pub gate: InternedString,
     pub gate_value: InternedString,
     #[serde(rename = "ruleID")]
-    pub rule_id: ExposableString,
+    pub rule_id: InternedString,
 }
 
 impl SecondaryExposure {
@@ -38,8 +38,8 @@ pub struct ExtraExposureInfo {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BaseEvaluation {
-    pub name: ExposableString,
-    pub rule_id: ExposableString,
+    pub name: InternedString,
+    pub rule_id: InternedString,
     pub secondary_exposures: Vec<SecondaryExposure>,
 
     #[serde(skip_serializing)]
@@ -113,7 +113,7 @@ pub struct DynamicConfigEvaluation {
     pub value: DynamicReturnable,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
-    pub group: ExposableString,
+    pub group: InternedString,
     pub is_device_based: bool,
 
     pub passed: bool,
@@ -128,7 +128,7 @@ pub struct ExperimentEvaluation {
     pub value: DynamicReturnable,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
-    pub group: ExposableString,
+    pub group: InternedString,
     pub is_device_based: bool,
 
     #[serde(skip_serializing_if = "is_false")]

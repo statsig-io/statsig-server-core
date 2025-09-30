@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{
-    event_logging::exposable_string::ExposableString, interned_string::InternedString,
-    SecondaryExposure, StickyValues,
-};
+use crate::{interned_string::InternedString, SecondaryExposure, StickyValues};
 
 use serde_json::{json, Value};
 
@@ -78,12 +75,12 @@ fn test_sticky_values_serialization_to_value() {
     let sticky = StickyValues {
         value: true,
         json_value: Some(HashMap::new()),
-        rule_id: Some(ExposableString::from_str_ref("3ZCniK9rvnQyXDQlQ1tGD9")),
+        rule_id: Some(InternedString::from_str_ref("3ZCniK9rvnQyXDQlQ1tGD9")),
         group_name: Some("test_group".to_string()),
         secondary_exposures: vec![SecondaryExposure {
             gate: InternedString::from_str_ref("test_holdout"),
             gate_value: InternedString::from_str_ref("true"),
-            rule_id: ExposableString::from_str_ref("default"),
+            rule_id: InternedString::from_str_ref("default"),
         }],
         undelegated_secondary_exposures: None,
         config_delegate: Some("test_delegate".to_string()),
@@ -107,12 +104,12 @@ fn test_sticky_values_serialization_to_str() {
     let sticky = StickyValues {
         value: true,
         json_value: Some(HashMap::new()),
-        rule_id: Some(ExposableString::from_str_ref("3ZCniK9rvnQyXDQlQ1tGD9")),
+        rule_id: Some(InternedString::from_str_ref("3ZCniK9rvnQyXDQlQ1tGD9")),
         group_name: Some("test_group".to_string()),
         secondary_exposures: vec![SecondaryExposure {
             gate: InternedString::from_str_ref("test_holdout"),
             gate_value: InternedString::from_str_ref("true"),
-            rule_id: ExposableString::from_str_ref("default"),
+            rule_id: InternedString::from_str_ref("default"),
         }],
         undelegated_secondary_exposures: None,
         config_delegate: Some("test_delegate".to_string()),

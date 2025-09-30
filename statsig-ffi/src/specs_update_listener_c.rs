@@ -6,7 +6,8 @@ use std::{
 
 use serde_json::json;
 use statsig_rust::{
-    log_e, unwrap_or_else, InstanceRegistry, SpecsSource, SpecsUpdate, SpecsUpdateListener,
+    log_e, networking::ResponseData, unwrap_or_else, InstanceRegistry, SpecsSource, SpecsUpdate,
+    SpecsUpdateListener,
 };
 
 use crate::{
@@ -48,7 +49,7 @@ pub extern "C" fn specs_update_listener_did_receive_specs_update(
     });
 
     let update = SpecsUpdate {
-        data: data.into_bytes(), // todo: update the c function to take a slice
+        data: ResponseData::from_bytes(data.into_bytes()), // todo: update the c function to take a slice
         source: SpecsSource::new_from_string(&source),
         received_at: received_at.into(),
         source_api: None,

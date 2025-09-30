@@ -1,3 +1,3 @@
 module statsig/verify-go-core
 
-go 1.22
+go 1.24

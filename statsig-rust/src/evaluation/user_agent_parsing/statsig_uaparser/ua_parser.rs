@@ -35,6 +35,10 @@ impl UaParser {
                 return create_res(token.tag, token.get_version());
             }
 
+            if token.tag.starts_with("Android") {
+                return create_res("Android", None);
+            }
+
             if token.tag == "Chromecast" {
                 return create_res("Chromecast", None);
             }
@@ -129,6 +133,13 @@ impl UaParser {
                 return create_res("Edge", token.get_version());
             }
 
+            if token.tag == "Opera" {
+                if result.mobile_hint {
+                    return create_res("Opera Mobile", token.get_version());
+                }
+                return create_res("Opera", token.get_version());
+            }
+
             if token.tag == "Chrome" {
                 chrome_token = Some(token);
                 continue;
@@ -175,7 +186,8 @@ impl UaParser {
         if result.safari_hint {
             let version = version_token.and_then(|t| t.get_version());
 
-            if result.mobile_hint {
+            if result.mobile_hint && !result.macos_hint {
+                // UA string has this “Mobile” flag likely for compatibility or simulation purposes but it's running ins macos
                 return create_res("Mobile Safari", version);
             }
 

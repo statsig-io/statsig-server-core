@@ -1,15 +1,13 @@
 use super::dynamic_returnable::DynamicReturnable;
+use crate::evaluation::evaluation_types::is_false;
 use crate::interned_string::InternedString;
 use crate::SecondaryExposure;
-use crate::{
-    evaluation::evaluation_types::is_false, event_logging::exposable_string::ExposableString,
-};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BaseEvaluationV2 {
     pub name: String,
-    pub rule_id: ExposableString,
+    pub rule_id: InternedString,
     pub secondary_exposures: Vec<String>,
 }
 
@@ -31,7 +29,7 @@ pub struct DynamicConfigEvaluationV2 {
     pub value: DynamicReturnable,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
-    pub group: ExposableString,
+    pub group: InternedString,
     pub is_device_based: bool,
 
     pub passed: bool,
@@ -46,7 +44,7 @@ pub struct ExperimentEvaluationV2 {
     pub value: DynamicReturnable,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
-    pub group: ExposableString,
+    pub group: InternedString,
     pub is_device_based: bool,
 
     #[serde(skip_serializing_if = "is_false")]
@@ -84,7 +82,7 @@ pub struct LayerEvaluationV2 {
     pub id_type: InternedString,
 
     // The 'group' field is identical to 'rule_id'. See group_name instead.
-    pub group: ExposableString,
+    pub group: InternedString,
     pub is_device_based: bool,
 
     #[serde(skip_serializing_if = "Option::is_none")]

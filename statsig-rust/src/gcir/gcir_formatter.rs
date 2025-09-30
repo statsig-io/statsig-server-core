@@ -292,6 +292,7 @@ fn get_sdk_info() -> HashMap<String, String> {
     HashMap::from([
         ("sdkType".to_string(), metadata.sdk_type),
         ("sdkVersion".to_string(), metadata.sdk_version),
+        ("sessionId".to_string(), metadata.session_id),
     ])
 }
 

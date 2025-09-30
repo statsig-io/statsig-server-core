@@ -1,6 +1,6 @@
 use super::IdListMetadata;
 use crate::id_lists_adapter::{IdListUpdate, IdListsAdapter, IdListsUpdateListener};
-use crate::networking::{NetworkClient, NetworkError, RequestArgs, Response};
+use crate::networking::{NetworkClient, NetworkError, RequestArgs, Response, ResponseData};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::diagnostics::ContextType;
@@ -132,7 +132,7 @@ impl StatsigHttpIdListsAdapter {
             .await
             .map_err(StatsigErr::NetworkError)?;
 
-        let response_body = match response.data.filter(|data| !data.is_empty()) {
+        let mut response_body = match response.data {
             Some(data) => data,
             None => {
                 let msg = "No ID List changes from network".to_string();
@@ -140,7 +140,7 @@ impl StatsigHttpIdListsAdapter {
             }
         };
 
-        String::from_utf8(response_body).map_err(|err| {
+        response_body.read_to_string().map_err(|err| {
             let msg = format!("Failed to parse ID List changes: {err:?}");
             StatsigErr::JsonParseError("IdList".to_string(), msg)
         })
@@ -186,8 +186,11 @@ impl StatsigHttpIdListsAdapter {
             .starts_with(DEFAULT_CDN_ID_LISTS_MANIFEST_URL)
     }
 
-    fn parse_response(&self, response: Option<Vec<u8>>) -> Result<IdListsResponse, StatsigErr> {
-        let response = match response.filter(|r| !r.is_empty()) {
+    fn parse_response(
+        &self,
+        response: Option<ResponseData>,
+    ) -> Result<IdListsResponse, StatsigErr> {
+        let mut data = match response {
             Some(r) => r,
             None => {
                 let msg = "No ID List results from network".to_string();
@@ -198,10 +201,11 @@ impl StatsigHttpIdListsAdapter {
             }
         };
 
-        serde_json::from_slice::<IdListsResponse>(&response).map_err(|parse_err| {
-            let msg = format!("Failed to parse JSON: {parse_err}");
-            StatsigErr::JsonParseError(stringify!(IdListsResponse).to_string(), msg)
-        })
+        data.deserialize_into::<IdListsResponse>()
+            .map_err(|parse_err| {
+                let msg = format!("Failed to parse JSON: {parse_err}");
+                StatsigErr::JsonParseError(stringify!(IdListsResponse).to_string(), msg)
+            })
     }
 
     fn set_listener(&self, listener: Arc<dyn IdListsUpdateListener>) {

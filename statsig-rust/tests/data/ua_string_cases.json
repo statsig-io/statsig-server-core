@@ -64,5 +64,53 @@
         "osVersion": "0.0.0",
         "browserName": "HeadlessChrome",
         "browserVersion": "109.0.5414.74"
+    },
+    "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 OPR/83.0.0.0": {
+        "osName": "Android",
+        "osVersion": "10",
+        "browserName": "Opera Mobile",
+        "browserVersion": "83.0.0"
+    },
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/140 Version/11.1.1 Safari/605.1.15": {
+        "osName": "iOS",
+        "osVersion": "0.0.0",
+        "browserName": "Chrome Mobile iOS",
+        "browserVersion": "140"
+    },
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Brave/1 Mobile/15E148 Safari/604.1": {
+        "osName": "iOS",
+        "osVersion": "18.6.2",
+        "browserName": "Mobile Safari",
+        "browserVersion": "0.0.0"
+    },
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/139.0.3405.125 Version/18.0 Mobile/15E148 Safari/604.1": {
+        "osName": "iOS",
+        "osVersion": "18.6.2",
+        "browserName": "Edge Mobile",
+        "browserVersion": "139.0.3405.125"
+    },
+    "Better Stack Better Uptime Bot Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36": {
+        "osName": "Windows",
+        "osVersion": "10",
+        "browserName": "Better Uptime Bot",
+        "browserVersion": "0.0.0"
+    },
+    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)": {
+        "osName": "Other",
+        "osVersion": "0.0.0",
+        "browserName": "Googlebot",
+        "browserVersion": "2.1"
+    },
+    "node Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.127 Mobile Safari/537.36 (compatible; AdsBot-Google-Mobile; +http://www.google.com/mobile/adsbot.html)": {
+        "osName": "Android",
+        "osVersion": "6.0.1",
+        "browserName": "AdsBot-Google",
+        "browserVersion": "0.0.0"
+    },
+    "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; .NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729; AskTbORJ/5.15.4.23821)": {
+        "osName": "Windows",
+        "osVersion": "XP",
+        "browserName": "IE",
+        "browserVersion": "8.0"
     }
 }

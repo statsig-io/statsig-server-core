@@ -1,6 +1,8 @@
 use std::{collections::HashMap, fs, sync::Arc};
 
-use statsig_rust::{interned_string::InternedString, Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
+
+const DEBUG_LOG: bool = false;
 
 fn load_data() -> HashMap<String, HashMap<String, String>> {
     let base_path = env!("CARGO_MANIFEST_DIR");
@@ -25,22 +27,19 @@ async fn test_experiment_ua_parser() {
         user.set_user_agent(ua_string.clone());
         let sdk_ua_value: statsig_rust::evaluation::user_agent_parsing::ParsedUserAgentValue =
             statsig.__get_parsed_user_agent_value(&user).unwrap();
+        if DEBUG_LOG {
+            println!("ua string is {}", ua_string);
+            println!("expected {:?}", expected_value);
+            println!("actual {:?}", sdk_ua_value);
+        }
         assert!(sdk_ua_value.os_name.unwrap_or_default() == *expected_value.get("osName").unwrap());
-        assert!(
-            sdk_ua_value
-                .os_version
-                .unwrap_or(InternedString::from_str_ref("0.0.0"))
-                == *expected_value.get("osVersion").unwrap()
-        );
+        assert!(sdk_ua_value.os_version.unwrap() == *expected_value.get("osVersion").unwrap());
         assert!(
             sdk_ua_value.browser_name.unwrap_or_default()
                 == *expected_value.get("browserName").unwrap()
         );
         assert!(
-            sdk_ua_value
-                .browser_version
-                .unwrap_or(InternedString::from_str_ref("0.0.0"))
-                == *expected_value.get("browserVersion").unwrap()
+            sdk_ua_value.browser_version.unwrap() == *expected_value.get("browserVersion").unwrap()
         );
     }
 }

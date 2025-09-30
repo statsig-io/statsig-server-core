@@ -18,6 +18,7 @@ lazy_static! {
 
 struct Configs {
     sdk_configs: HashMap<String, DynamicValue>,
+    sdk_flags: HashMap<String, bool>,
     diagnostics_sampling_rates: HashMap<String, f64>,
 }
 
@@ -46,6 +47,7 @@ impl GlobalConfigs {
         let instance = Arc::new(GlobalConfigs {
             configs: RwLock::new(Configs {
                 sdk_configs: HashMap::new(),
+                sdk_flags: HashMap::new(),
                 diagnostics_sampling_rates: HashMap::from([
                     ("initialize".to_string(), 10000.0),
                     ("config_sync".to_string(), 1000.0),
@@ -75,6 +77,19 @@ impl GlobalConfigs {
             Some(mut configs_guard) => {
                 for (key, value) in new_configs {
                     configs_guard.sdk_configs.insert(key, value);
+                }
+            }
+            None => {
+                log_e!(TAG, "Failed to get write guard: Failed to lock configs");
+            }
+        }
+    }
+
+    pub fn set_sdk_flags(&self, new_configs: HashMap<String, bool>) {
+        match self.configs.try_write_for(Duration::from_secs(5)) {
+            Some(mut configs_guard) => {
+                for (key, value) in new_configs {
+                    configs_guard.sdk_flags.insert(key, value);
                 }
             }
             None => {
@@ -123,6 +138,16 @@ impl GlobalConfigs {
             None => {
                 log_e!(TAG, "Failed to get read guard: Failed to lock configs");
                 f(None)
+            }
+        }
+    }
+
+    pub fn get_sdk_flag_value(&self, key: &str) -> bool {
+        match self.configs.try_read_for(Duration::from_secs(5)) {
+            Some(configs_guard) => *configs_guard.sdk_flags.get(key).unwrap_or(&false),
+            None => {
+                log_e!(TAG, "Failed to get read guard: Failed to lock configs");
+                false
             }
         }
     }

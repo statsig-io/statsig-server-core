@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use chrono::Utc;
+use statsig_rust::networking::ResponseData;
 use statsig_rust::{
     SpecsAdapter, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigRuntime,
 };
@@ -61,7 +62,7 @@ impl MockSpecsAdapter {
 
         let data = fs::read_to_string(path).expect("Unable to read file");
         let update = SpecsUpdate {
-            data: data.into_bytes(),
+            data: ResponseData::from_bytes(data.into_bytes()),
             source: SpecsSource::Bootstrap,
             received_at: Utc::now().timestamp_millis() as u64,
             source_api: None,

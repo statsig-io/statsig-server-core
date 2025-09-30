@@ -4,7 +4,7 @@ use crate::evaluation::evaluation_types::{
     DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation,
 };
 use crate::event_logging::event_logger::EventLogger;
-use crate::event_logging::exposable_string::{self, ExposableString};
+use crate::interned_string::InternedString;
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use crate::user::StatsigUserLoggable;
 use std::sync::Weak;
@@ -20,7 +20,11 @@ pub fn make_feature_gate(
             e.base.rule_id.clone(),
             e.id_type.unperformant_to_string(),
         ),
-        None => (false, exposable_string::DEFAULT_RULE.clone(), String::new()),
+        None => (
+            false,
+            InternedString::from_str_ref("default"),
+            String::new(),
+        ),
     };
 
     FeatureGate {
@@ -37,7 +41,7 @@ pub fn extract_from_experiment_evaluation(
     evaluation: &Option<ExperimentEvaluation>,
 ) -> (
     DynamicReturnable,
-    ExposableString,
+    InternedString,
     String,
     Option<String>,
     bool,
@@ -52,7 +56,7 @@ pub fn extract_from_experiment_evaluation(
         ),
         None => (
             DynamicReturnable::empty(),
-            exposable_string::DEFAULT_RULE.clone(),
+            InternedString::from_str_ref("default"),
             String::new(),
             None,
             false,
@@ -73,7 +77,7 @@ pub fn make_dynamic_config(
         ),
         None => (
             DynamicReturnable::empty(),
-            exposable_string::DEFAULT_RULE.clone(),
+            InternedString::from_str_ref("default"),
             String::new(),
         ),
     };
@@ -131,7 +135,7 @@ pub fn make_layer(
             ),
             None => (
                 DynamicReturnable::empty(),
-                exposable_string::DEFAULT_RULE.clone(),
+                InternedString::from_str_ref("default"),
                 None,
                 None,
                 "".into(),

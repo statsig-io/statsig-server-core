@@ -15,7 +15,10 @@ impl ExperimentalUserAgentParser {
             }
             "os_version" | "osversion" => {
                 let os = UaParser::parse_os(user_agent);
-                Some(dyn_value!(os.version.get_version_string()))
+                Some(dyn_value!(os
+                    .version
+                    .get_version_string()
+                    .unwrap_or("0.0.0".to_string())))
             }
             "browser_name" | "browsername" => {
                 let browser = UaParser::parse_browser(user_agent);
@@ -23,7 +26,10 @@ impl ExperimentalUserAgentParser {
             }
             "browser_version" | "browserversion" => {
                 let browser = UaParser::parse_browser(user_agent);
-                Some(dyn_value!(browser.version.get_version_string()))
+                Some(dyn_value!(browser
+                    .version
+                    .get_version_string()
+                    .unwrap_or("0.0.0".to_string())))
             }
             _ => {
                 log_w!(TAG, "Unsupported field: {}", field);
