@@ -58,6 +58,7 @@ export function buildDockerImage(os: OS, arch: Arch = 'arm64') {
     `--build-arg PROTOC_ARCH=${name === 'x86_64' ? 'x86_64' : 'aarch_64'}`,
     `--build-arg ARCH=${name}`,
     `--build-arg ARM_SUFFIX=${name === 'x86_64' ? '' : '-arm'}`,
+    `--build-arg GO_ARCH=${name === 'x86_64' ? 'amd64' : 'arm64'}`,
     `--secret id=gh_token_id,env=GH_TOKEN`,
     '.',
   ].join(' ');

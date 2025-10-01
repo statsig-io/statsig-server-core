@@ -1,3 +1,5 @@
-module github.com/statsig-io/statsig-server-core/statsig-go
+module github.com/statsig-io/statsig-go-core
 
-go 1.24
+go 1.18
+
+require github.com/ebitengine/purego v0.9.0

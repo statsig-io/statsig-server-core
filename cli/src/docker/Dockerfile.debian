@@ -4,8 +4,6 @@ RUN echo "deb http://archive.debian.org/debian/ buster main" > /etc/apt/sources.
     echo "deb http://archive.debian.org/debian-security/ buster/updates main" >> /etc/apt/sources.list && \
     echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
 
-ARG PROTOC_ARCH=aarch_64
-ARG ARM_SUFFIX=-arm
 
 RUN apt-get update
 RUN apt-get install -y \
@@ -20,10 +18,6 @@ RUN apt-get install -y \
     # Profiling
     heaptrack valgrind
 
-# Protoc Setup
-RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-${PROTOC_ARCH}.zip && \
-    unzip protoc-29.3-linux-${PROTOC_ARCH}.zip -d /usr/local && \
-    rm protoc-29.3-linux-${PROTOC_ARCH}.zip;
 
 # Python Setup
 RUN pip3 install --upgrade pip setuptools wheel
@@ -35,11 +29,26 @@ RUN bash nodesource_setup.sh && apt-get install -y nodejs
 RUN npm install -g pnpm@7.32.4 typescript@5.7.3
 
 # Rust Setup
+ARG ARM_SUFFIX=-arm
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_TERM_COLOR=always
 RUN rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
 RUN curl -LsSf https://get.nexte.st/latest/linux${ARM_SUFFIX} | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin;
+
+# Protoc Setup
+ARG PROTOC_ARCH=aarch_64
+RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-${PROTOC_ARCH}.zip && \
+    unzip protoc-29.3-linux-${PROTOC_ARCH}.zip -d /usr/local && \
+    rm protoc-29.3-linux-${PROTOC_ARCH}.zip;
+
+# Go Setup
+ARG GO_ARCH=arm64
+RUN curl -fsSL https://go.dev/dl/go1.23.2.linux-${GO_ARCH}.tar.gz \
+    | tar -C /usr/local -xz
+
+# Add Go to PATH
+ENV PATH="/usr/local/go/bin:${PATH}"
 
 # FlameGraph (Profiling)
 RUN git clone https://github.com/brendangregg/FlameGraph.git /opt/FlameGraph
