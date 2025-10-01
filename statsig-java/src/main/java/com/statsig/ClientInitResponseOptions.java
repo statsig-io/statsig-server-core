@@ -7,6 +7,7 @@ public class ClientInitResponseOptions {
   public String clientSDKKey;
   public boolean includeLocalOverrides;
   public GCIRResponseFormat responseFormat = GCIRResponseFormat.Initialize;
+  public boolean removeIDType = false;
   private String hashAlgoInternal; // jni use string type
   private String responseFormatInternal; // jni use string type
 
@@ -60,5 +61,9 @@ public class ClientInitResponseOptions {
   public void setResponseFormat(GCIRResponseFormat responseFormat) {
     this.responseFormat = responseFormat;
     responseFormatInternal = responseFormat.convertToStr();
+  }
+
+  public void setRemoveIDType(boolean removeIDType) {
+    this.removeIDType = removeIDType;
   }
 }

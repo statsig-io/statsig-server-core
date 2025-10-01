@@ -40,7 +40,7 @@ pub struct EvaluatorResult<'a> {
 pub fn result_to_gate_eval(gate_name: &str, result: &mut EvaluatorResult) -> GateEvaluation {
     GateEvaluation {
         base: result_to_base_eval(gate_name, result),
-        id_type: result.id_type.take().unwrap_or_default(),
+        id_type: result.id_type.take(),
         value: result.bool_value,
     }
 }
@@ -52,7 +52,7 @@ pub fn result_to_gate_eval_v2(
 ) -> GateEvaluationV2 {
     GateEvaluationV2 {
         base: result_to_base_eval_v2(gate_name, result, hashing),
-        id_type: result.id_type.take().unwrap_or_default(),
+        id_type: result.id_type.take(),
         value: result.bool_value,
     }
 }
@@ -74,8 +74,7 @@ pub fn result_to_experiment_eval(
 
     ExperimentEvaluation {
         base: result_to_base_eval(experiment_name, result),
-        id_type,
-        group: result.rule_id.cloned().unwrap_or_default(),
+        id_type: Some(id_type),
         is_device_based,
         value: get_json_value(result),
         is_in_layer: result.is_in_layer,
@@ -109,8 +108,7 @@ pub fn result_to_experiment_eval_v2(
 
     ExperimentEvaluationV2 {
         base: result_to_base_eval_v2(experiment_name, result, hashing),
-        id_type,
-        group: result.rule_id.cloned().unwrap_or_default(),
+        id_type: Some(id_type),
         is_device_based,
         value: get_json_value(result),
         is_in_layer: result.is_in_layer,
@@ -130,8 +128,7 @@ pub fn eval_result_to_experiment_eval(
 
     ExperimentEvaluation {
         base: result_to_base_eval(experiment_name, result),
-        id_type,
-        group: result.rule_id.cloned().unwrap_or_default(),
+        id_type: Some(id_type),
         is_device_based,
         value: get_json_value(result),
         is_in_layer: result.is_in_layer,
@@ -163,10 +160,6 @@ pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> L
 
     LayerEvaluation {
         base: result_to_base_eval(layer_name, result),
-        group: result
-            .rule_id
-            .map(|r| InternedString::from_str_ref(r.as_str()))
-            .unwrap_or_default(),
         value: get_json_value(result),
         is_device_based,
         group_name: result.group_name.take(),
@@ -175,7 +168,7 @@ pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> L
         allocated_experiment_name,
         explicit_parameters: result.explicit_parameters.cloned().unwrap_or_default(),
         undelegated_secondary_exposures: Some(undelegated_sec_expos.unwrap_or_default()),
-        id_type,
+        id_type: Some(id_type),
     }
 }
 
@@ -215,7 +208,6 @@ pub fn result_to_layer_eval_v2(
 
     LayerEvaluationV2 {
         base: result_to_base_eval_v2(layer_name, result, hashing),
-        group: result.rule_id.cloned().unwrap_or_default(),
         value: get_json_value(result),
         is_device_based,
         group_name: result.group_name.take(),
@@ -224,7 +216,7 @@ pub fn result_to_layer_eval_v2(
         allocated_experiment_name,
         explicit_parameters: result.explicit_parameters.cloned().unwrap_or_default(),
         undelegated_secondary_exposures: Some(undelegated_secondary_exposures),
-        id_type,
+        id_type: Some(id_type),
     }
 }
 
@@ -236,10 +228,9 @@ pub fn result_to_dynamic_config_eval(
 
     DynamicConfigEvaluation {
         base: result_to_base_eval(dynamic_config_name, result),
-        id_type,
+        id_type: Some(id_type),
         is_device_based,
         value: get_json_value(result),
-        group: result.rule_id.cloned().unwrap_or_default(),
         passed: result.bool_value,
     }
 }
@@ -253,10 +244,9 @@ pub fn result_to_dynamic_config_eval_v2(
 
     DynamicConfigEvaluationV2 {
         base: result_to_base_eval_v2(dynamic_config_name, result, hashing),
-        id_type,
+        id_type: Some(id_type),
         is_device_based,
         value: get_json_value(result),
-        group: result.rule_id.cloned().unwrap_or_default(),
         passed: result.bool_value,
     }
 }

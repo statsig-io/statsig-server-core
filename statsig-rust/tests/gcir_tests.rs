@@ -45,6 +45,7 @@ async fn setup(hash_algorithm: HashAlgorithm) -> Value {
             layer_filter: None,
             param_store_filter: None,
             response_format: None,
+            remove_id_type: Some(false),
         },
     );
     let json = serde_json::to_string(&response).unwrap();
@@ -173,7 +174,6 @@ async fn test_targeted_exp_in_layer_with_holdout() {
                 "layer_val": "layer_default"
             },
             "rule_id": "layerAssignment",
-            "group": "layerAssignment",
             "is_device_based": false,
             "id_type": "userID",
             "is_experiment_active": true,
@@ -211,7 +211,6 @@ async fn test_targeted_exp_in_unlayered_with_holdout() {
     assert_json_eq!(
         config,
         json!({
-          "group": "targetingGate",
           "id_type": "userID",
           "is_device_based": false,
           "is_experiment_active": true,
@@ -256,7 +255,6 @@ async fn test_exp_5050_targeting() {
             "name": "test_exp_5050_targeting",
             "value": {},
             "rule_id": "targetingGate",
-            "group": "targetingGate",
             "is_device_based": false,
             "id_type": "userID",
             "is_experiment_active": true,
@@ -295,7 +293,6 @@ async fn test_targetting_with_capital_letter_gate() {
                 "Result": "This is right"
             },
             "rule_id": "74pyYBYPZ5Xly55E6J3lEq",
-            "group": "74pyYBYPZ5Xly55E6J3lEq",
             "group_name": "Test",
             "is_device_based": false,
             "id_type": "userID",
@@ -347,7 +344,6 @@ async fn test_layer_with_many_params() {
             },
             "id_type": "userID",
             "rule_id": "default",
-            "group": "default",
             "is_device_based": false,
             "explicit_parameters": [],
             "secondary_exposures": [],
@@ -375,7 +371,6 @@ async fn test_layer_with_no_exp() {
             },
             "id_type": "userID",
             "rule_id": "default",
-            "group": "default",
             "is_device_based": false,
             "explicit_parameters": [],
             "secondary_exposures": [],
@@ -400,7 +395,6 @@ async fn test_autotune() {
             "name": "test_autotune",
             "value": {},
             "rule_id": "5380HnrABE4p869fZhtUV9",
-            "group": "5380HnrABE4p869fZhtUV9",
             "group_name": "black",
             "is_device_based": false,
             "id_type": "userID",

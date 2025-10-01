@@ -100,7 +100,8 @@ pub struct GateEvaluation {
     #[serde(flatten)]
     pub base: BaseEvaluation,
 
-    pub id_type: InternedString,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id_type: Option<InternedString>,
     pub value: bool,
 }
 
@@ -109,11 +110,10 @@ pub struct DynamicConfigEvaluation {
     #[serde(flatten)]
     pub base: BaseEvaluation,
 
-    pub id_type: InternedString,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id_type: Option<InternedString>,
     pub value: DynamicReturnable,
 
-    // The 'group' field is identical to 'rule_id'. See group_name instead.
-    pub group: InternedString,
     pub is_device_based: bool,
 
     pub passed: bool,
@@ -124,11 +124,10 @@ pub struct ExperimentEvaluation {
     #[serde(flatten)]
     pub base: BaseEvaluation,
 
-    pub id_type: InternedString,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id_type: Option<InternedString>,
     pub value: DynamicReturnable,
 
-    // The 'group' field is identical to 'rule_id'. See group_name instead.
-    pub group: InternedString,
     pub is_device_based: bool,
 
     #[serde(skip_serializing_if = "is_false")]
@@ -163,10 +162,9 @@ pub struct LayerEvaluation {
 
     pub value: DynamicReturnable,
 
-    pub id_type: InternedString,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id_type: Option<InternedString>,
 
-    // The 'group' field is identical to 'rule_id'. See group_name instead.
-    pub group: InternedString,
     pub is_device_based: bool,
 
     #[serde(skip_serializing_if = "Option::is_none")]

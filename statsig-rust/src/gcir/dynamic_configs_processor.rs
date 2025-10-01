@@ -31,14 +31,18 @@ pub(crate) fn get_dynamic_config_evaluations(
 ) -> Result<HashMap<String, AnyConfigEvaluation>, StatsigErr> {
     let factory = |spec_entity: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
         if spec_entity == "dynamic_config" {
-            return AnyConfigEvaluation::DynamicConfig(result_to_dynamic_config_eval(
-                hashed_name,
-                &mut ctx.result,
-            ));
+            let mut res = result_to_dynamic_config_eval(hashed_name, &mut ctx.result);
+            if options.remove_id_type.unwrap_or(false) {
+                res.id_type = None
+            }
+            return AnyConfigEvaluation::DynamicConfig(res);
         }
 
         let mut evaluation =
             result_to_experiment_eval(hashed_name, Some(spec_entity), &mut ctx.result);
+        if options.remove_id_type.unwrap_or(false) {
+            evaluation.id_type = None
+        }
         evaluation.undelegated_secondary_exposures = None;
         AnyConfigEvaluation::Experiment(evaluation)
     };
@@ -102,11 +106,12 @@ pub(crate) fn get_dynamic_config_evaluations_v2(
         stringify_sec_exposures(&ctx.result.secondary_exposures, ctx.hashing, exposures);
 
         if spec_entity == "dynamic_config" {
-            return AnyConfigEvaluationV2::DynamicConfig(result_to_dynamic_config_eval_v2(
-                hashed_name,
-                &mut ctx.result,
-                ctx.hashing,
-            ));
+            let mut res =
+                result_to_dynamic_config_eval_v2(hashed_name, &mut ctx.result, ctx.hashing);
+            if options.remove_id_type.unwrap_or(false) {
+                res.id_type = None
+            }
+            return AnyConfigEvaluationV2::DynamicConfig(res);
         }
 
         let mut evaluation = result_to_experiment_eval_v2(
@@ -116,6 +121,9 @@ pub(crate) fn get_dynamic_config_evaluations_v2(
             ctx.hashing,
         );
         evaluation.undelegated_secondary_exposures = None;
+        if options.remove_id_type.unwrap_or(false) {
+            evaluation.id_type = None
+        }
         AnyConfigEvaluationV2::Experiment(evaluation)
     };
 
@@ -171,6 +179,9 @@ pub(crate) fn get_dynamic_config_evaluations_v2(
             &mut context.result,
             context.hashing,
         );
+        if options.remove_id_type.unwrap_or(false) {
+            evaluation.id_type = None
+        }
         evaluation.undelegated_secondary_exposures = None;
 
         result.insert(hashed_name, AnyConfigEvaluationV2::Experiment(evaluation));

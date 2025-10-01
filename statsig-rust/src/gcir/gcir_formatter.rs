@@ -80,6 +80,7 @@ impl GCIRFormatter {
                 layer_filter: None,
                 param_store_filter: None,
                 response_format: None,
+                remove_id_type: Some(false),
             },
             use_experimental_ua_parser,
         }

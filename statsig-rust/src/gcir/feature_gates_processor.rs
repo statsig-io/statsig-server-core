@@ -23,7 +23,12 @@ pub(crate) fn get_gate_evaluations(
     sec_expo_hash_memo: &mut HashMap<InternedString, InternedString>,
 ) -> Result<HashMap<String, GateEvaluation>, StatsigErr> {
     let factory = |_: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
-        result_to_gate_eval(hashed_name, &mut ctx.result)
+        let mut res = result_to_gate_eval(hashed_name, &mut ctx.result);
+
+        if options.remove_id_type.unwrap_or(false) {
+            res.id_type = None
+        }
+        res
     };
 
     gcir_process_iter(
@@ -44,7 +49,11 @@ pub(crate) fn get_gate_evaluations_v2(
 ) -> Result<HashMap<String, GateEvaluationV2>, StatsigErr> {
     let factory = |_: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
         stringify_sec_exposures(&ctx.result.secondary_exposures, ctx.hashing, exposures);
-        result_to_gate_eval_v2(hashed_name, &mut ctx.result, ctx.hashing)
+        let mut res = result_to_gate_eval_v2(hashed_name, &mut ctx.result, ctx.hashing);
+        if options.remove_id_type.unwrap_or(false) {
+            res.id_type = None
+        }
+        res
     };
 
     gcir_process_iter(
