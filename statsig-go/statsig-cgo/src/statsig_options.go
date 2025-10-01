@@ -21,7 +21,6 @@ type StatsigOptions struct {
 	OutputLogLevel              *string
 	innerRef                    uint64
 	DisableCountryLookup        *bool
-	DisableUserAgentParsing     *bool
 	WaitForCountryLookupInit    *bool
 	WaitForUserAgentInit        *bool
 	EnableIdLists               *bool
@@ -60,7 +59,6 @@ func (o *StatsigOptionsBuilder) Build() *StatsigOptions {
 		C.int(o.statsigOptions.SpecsSyncIntervalMs),
 		ResolveDefault(o.statsigOptions.OutputLogLevel),
 		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableCountryLookup)),
-		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.DisableUserAgentParsing)),
 		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForCountryLookupInit)),
 		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.WaitForUserAgentInit)),
 		C.int(utils.ConvertToSafeOptBool(o.statsigOptions.EnableIdLists)),
@@ -138,11 +136,6 @@ func (o *StatsigOptionsBuilder) WithOutputLogLevel(outputLogLevel string) *Stats
 
 func (o *StatsigOptionsBuilder) WithDisableCountryLookup(value bool) *StatsigOptionsBuilder {
 	o.statsigOptions.DisableCountryLookup = &value
-	return o
-}
-
-func (o *StatsigOptionsBuilder) WithDisableUserAgentParsing(value bool) *StatsigOptionsBuilder {
-	o.statsigOptions.DisableUserAgentParsing = &value
 	return o
 }
 

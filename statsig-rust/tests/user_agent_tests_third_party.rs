@@ -17,32 +17,16 @@ lazy_static::lazy_static! {
         .collect();
 }
 
-// statsig-uaparser correctness against Python's 'ua-parser'
-const OS_NAME_THRESHOLD: f64 = 0.87;
-const OS_VERSION_THRESHOLD: f64 = 0.84;
-
-// todo: bring this up to 1.0
-const BROWSER_NAME_THRESHOLD: f64 = 0.41;
-const BROWSER_VERSION_THRESHOLD: f64 = 0.31;
-
-const LOG_FAILURES: bool = false;
-
-fn log_failure(test_case: &TestCase, field: &str, expected: Option<&str>, got: Option<&str>) {
-    if !LOG_FAILURES {
-        return;
-    }
-
-    println!(
-        "Field: {}\n Expected: \"{}\"\n Got: \"{}\"\n UA: \"{}\"\n",
-        field,
-        expected.unwrap_or_default(),
-        got.unwrap_or_default(),
-        test_case.user_agent
-    );
-}
+// Rust 'uaparser' crate correctness against Python's 'ua-parser'
+const OS_NAME_THRESHOLD: f64 = 0.99;
+const OS_VERSION_THRESHOLD: f64 = 0.99;
+const BROWSER_NAME_THRESHOLD: f64 = 0.90;
+const BROWSER_VERSION_THRESHOLD: f64 = 0.91;
 
 #[test]
 fn test_user_agent_parser_os_name() {
+    UserAgentParser::load_parser();
+
     let mut hit = 0;
     let mut miss = 0;
 
@@ -53,12 +37,6 @@ fn test_user_agent_parser_os_name() {
             hit += 1;
         } else {
             miss += 1;
-            log_failure(
-                test_case,
-                "os_name",
-                test_case.expected_os_family.as_deref(),
-                name.as_deref(),
-            );
         }
     }
 
@@ -68,6 +46,8 @@ fn test_user_agent_parser_os_name() {
 
 #[test]
 fn test_user_agent_parser_os_version() {
+    UserAgentParser::load_parser();
+
     let mut hit = 0;
     let mut miss = 0;
 
@@ -78,12 +58,6 @@ fn test_user_agent_parser_os_version() {
             hit += 1;
         } else {
             miss += 1;
-            log_failure(
-                test_case,
-                "os_version",
-                test_case.expected_os_version.as_deref(),
-                version.as_deref(),
-            );
         }
     }
 
@@ -93,6 +67,8 @@ fn test_user_agent_parser_os_version() {
 
 #[test]
 fn test_user_agent_parser_browser_name() {
+    UserAgentParser::load_parser();
+
     let mut hit = 0;
     let mut miss = 0;
 
@@ -103,12 +79,6 @@ fn test_user_agent_parser_browser_name() {
             hit += 1;
         } else {
             miss += 1;
-            log_failure(
-                test_case,
-                "browser_name",
-                test_case.expected_browser_family.as_deref(),
-                name.as_deref(),
-            );
         }
     }
 
@@ -118,22 +88,18 @@ fn test_user_agent_parser_browser_name() {
 
 #[test]
 fn test_user_agent_parser_browser_version() {
+    UserAgentParser::load_parser();
+
     let mut hit = 0;
     let mut miss = 0;
 
     for test_case in TEST_CASES.iter() {
-        let version = extract_field_from_user_agent(&test_case.user_agent, "browser_version");
-
+        let version: Option<InternedString> =
+            extract_field_from_user_agent(&test_case.user_agent, "browser_version");
         if version.as_deref() == test_case.expected_browser_version.as_deref() {
             hit += 1;
         } else {
             miss += 1;
-            log_failure(
-                test_case,
-                "browser_version",
-                test_case.expected_browser_version.as_deref(),
-                version.as_deref(),
-            );
         }
     }
 
@@ -153,11 +119,11 @@ fn extract_field_from_user_agent(user_agent: &str, field: &str) -> Option<Intern
         &user_internal,
         &Some(field),
         &mut dummy_override_reason,
-        /* use_experimental_ua_parser */ true,
+        /* use_third_party_ua_parser */ true,
     );
 
     match result {
-        Some(value) => value.string_value.map(|s| s.value.clone()),
+        Some(value) => value.string_value.map(|s| s.value),
         None => None,
     }
 }
@@ -205,23 +171,27 @@ fn parse_test_case(test_case_data: &str) -> TestCase {
 }
 
 fn create_version(major: &str, minor: &str, patch: &str) -> Option<String> {
-    if major == "None" {
-        return Some("0.0.0".to_string());
-    }
-
     let mut version = String::new();
 
-    if major != "None" {
+    if major == "None" {
+        version.push('0');
+    } else {
         version.push_str(major);
     }
 
-    if minor != "None" {
-        version.push('.');
+    version.push('.');
+
+    if minor == "None" {
+        version.push('0');
+    } else {
         version.push_str(minor);
     }
 
-    if patch != "None" {
-        version.push('.');
+    version.push('.');
+
+    if patch == "None" {
+        version.push('0');
+    } else {
         version.push_str(patch);
     }
 

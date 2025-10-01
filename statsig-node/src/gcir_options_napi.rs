@@ -12,6 +12,7 @@ pub struct ClientInitResponseOptions {
     pub dynamic_config_filter: Option<HashSet<String>>,
     pub layer_filter: Option<HashSet<String>>,
     pub param_store_filter: Option<HashSet<String>>,
+    pub remove_id_type: Option<bool>,
 }
 
 impl From<ClientInitResponseOptions> for ClientInitResponseOptionsActual {
@@ -31,6 +32,7 @@ impl From<ClientInitResponseOptions> for ClientInitResponseOptionsActual {
             layer_filter: options.layer_filter,
             param_store_filter: options.param_store_filter,
             response_format: None,
+            remove_id_type: options.remove_id_type,
         }
     }
 }

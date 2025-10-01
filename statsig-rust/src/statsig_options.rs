@@ -27,7 +27,6 @@ pub struct StatsigOptions {
     pub disable_all_logging: Option<bool>,
     pub disable_country_lookup: Option<bool>,
     pub disable_network: Option<bool>, // Disable all out-going network including get configs, log_events...
-    pub disable_user_agent_parsing: Option<bool>,
 
     pub enable_id_lists: Option<bool>,
     pub environment: Option<String>,
@@ -66,7 +65,7 @@ pub struct StatsigOptions {
 
     pub proxy_config: Option<ProxyConfig>,
 
-    pub __experimental_ua_parsing_enabled: Option<bool>,
+    pub use_third_party_ua_parser: Option<bool>,
 }
 
 impl StatsigOptions {
@@ -253,12 +252,6 @@ impl StatsigOptionsBuilder {
     }
 
     #[must_use]
-    pub fn disable_user_agent_parsing(mut self, disable_user_agent_parsing: Option<bool>) -> Self {
-        self.inner.disable_user_agent_parsing = disable_user_agent_parsing;
-        self
-    }
-
-    #[must_use]
     pub fn disable_country_lookup(mut self, disable_country_lookup: Option<bool>) -> Self {
         self.inner.disable_country_lookup = disable_country_lookup;
         self
@@ -287,6 +280,12 @@ impl StatsigOptionsBuilder {
 
     pub fn disable_network(mut self, disable_network: Option<bool>) -> Self {
         self.inner.disable_network = disable_network;
+        self
+    }
+
+    #[must_use]
+    pub fn use_third_party_ua_parser(mut self, use_third_party_ua_parser: Option<bool>) -> Self {
+        self.inner.use_third_party_ua_parser = use_third_party_ua_parser;
         self
     }
 

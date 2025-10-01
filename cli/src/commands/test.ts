@@ -25,6 +25,19 @@ const TEST_COMMANDS: Record<string, string> = {
     'dotnet test test/Statsig.Tests.csproj -p:UseLocalProjects=true',
   ].join(' && '),
 
+  elixir: [
+    'cd statsig-elixir',
+    'mix deps.get',
+    'FORCE_STATSIG_NATIVE_BUILD="true" mix test',
+  ].join('&& '),
+
+  go: [
+    'cargo build -p statsig_ffi',
+    'cp target/debug/libstatsig_ffi.so /usr/local/bin/libstatsig_ffi.so || true',
+    'cd statsig-go',
+    'go test ./test -v',
+  ].join(' && '),
+
   java: [
     'cargo build -p statsig_ffi',
 
@@ -66,25 +79,6 @@ const TEST_COMMANDS: Record<string, string> = {
     'cargo nextest run -p statsig-rust --features testing --retries=5',
     'cargo nextest run -p statsig-rust --features "with_zstd,testing" --retries=5',
   ].join(' && '),
-
-  go: [
-    'cargo build -p statsig_ffi',
-    'mkdir -p $HOME/.cache/statsig/resources',
-    'cp target/debug/libstatsig_ffi.so $HOME/.cache/statsig/resources || cp target/debug/libstatsig_ffi.dylib $HOME/.cache/statsig/resources',
-    'cp statsig-ffi/include/statsig_ffi.h $HOME/.cache/statsig/resources',
-    'cd statsig-go',
-    'export SKIP_STATSIG_POST_INSTALL=true',
-    'go run ./cmd/post-install/main.go',
-    'export CGO_CFLAGS="-I$HOME/.cache/statsig/resources"',
-    'export CGO_LDFLAGS="-L$HOME/.cache/statsig/resources"',
-    'export LD_LIBRARY_PATH="$HOME/.cache/statsig/resources"',
-    'go test ./tests -v',
-  ].join(' && '),
-  elixir: [
-    'cd statsig-elixir',
-    'mix deps.get',
-    'FORCE_STATSIG_NATIVE_BUILD="true" mix test',
-  ].join('&& '),
 };
 
 type Options = {

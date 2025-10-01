@@ -18,7 +18,6 @@ async fn setup(dcs_file: &str) -> (Statsig, Arc<MockEventLoggingAdapter>) {
     let mut options = StatsigOptions::new();
     options.specs_adapter = Some(specs_adapter);
     options.event_logging_adapter = Some(logging_adapter.clone());
-    options.disable_user_agent_parsing = Some(true);
 
     let uuid = uuid::Uuid::new_v4();
     let statsig = Statsig::new(&format!("secret-{uuid}"), Some(Arc::new(options)));

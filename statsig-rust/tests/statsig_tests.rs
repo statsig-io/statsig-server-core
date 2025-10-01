@@ -165,29 +165,6 @@ async fn test_user_agent_and_country_lookup() {
 }
 
 #[tokio::test]
-async fn test_user_agent_disabled() {
-    // Properly disable
-    let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())
-        .email(Some("daniel@statsig.com".to_string()))
-        .user_agent(Some(
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into(),
-        ))
-        .build();
-    let opts_3 = StatsigOptions {
-        output_log_level: Some(LogLevel::Debug),
-        wait_for_country_lookup_init: Some(true),
-        wait_for_user_agent_init: Some(true),
-        disable_user_agent_parsing: Some(true),
-        disable_country_lookup: Some(true),
-        ..StatsigOptions::new()
-    };
-
-    let statsig_3 = Statsig::new(&get_sdk_key(), Some(Arc::new(opts_3)));
-    statsig_3.initialize().await.unwrap();
-    assert!(!statsig_3.check_gate(&user, "test_ua"));
-}
-
-#[tokio::test]
 async fn test_initialize_with_details() {
     let statsig = Statsig::new(&get_sdk_key(), None);
     let details = statsig.initialize_with_details().await.unwrap();

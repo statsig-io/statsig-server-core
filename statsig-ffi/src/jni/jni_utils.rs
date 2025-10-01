@@ -80,6 +80,12 @@ pub fn convert_java_client_init_response_options_to_rust(
             Err(_) => return None,
         };
 
+    let remove_id_type_field: jboolean = match env.get_field(&java_gcir_option, "removeIDType", "Z")
+    {
+        Ok(field) => field.z().unwrap().into(),
+        Err(_) => return None,
+    };
+
     let response_format_field: JString = match env.get_field(
         &java_gcir_option,
         "responseFormatInternal",
@@ -93,6 +99,7 @@ pub fn convert_java_client_init_response_options_to_rust(
     let client_sdk_key = jstring_to_string(env, client_sdk_key_field);
     let include_local_overrides = jboolean_to_bool(include_local_overrides_field);
     let response_format = jstring_to_string(env, response_format_field);
+    let remove_id_type = jboolean_to_bool(remove_id_type_field);
 
     let hash_algo = hash_algo.and_then(|s| HashAlgorithm::from_string(s.as_str()));
     let response_format = response_format.and_then(|s| GCIRResponseFormat::from_string(s.as_str()));
@@ -106,6 +113,7 @@ pub fn convert_java_client_init_response_options_to_rust(
         layer_filter: None,
         param_store_filter: None,
         response_format,
+        remove_id_type,
     })
 }
 

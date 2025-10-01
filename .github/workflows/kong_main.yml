@@ -82,12 +82,12 @@ jobs:
     with:
       sdk: core-dotnet
   
-  core-go: 
-    needs: cache
-    uses: ./.github/workflows/kong_task.yml
-    secrets: inherit
-    with: 
-      sdk: core-go
+  # core-go: 
+  #   needs: cache
+  #   uses: ./.github/workflows/kong_task.yml
+  #   secrets: inherit
+  #   with: 
+  #     sdk: core-go
 
   core-elixir: 
     needs: cache

@@ -27,7 +27,6 @@ async fn setup(
     let mut options = options;
     options.specs_adapter = Some(specs_adapter);
     options.event_logging_adapter = Some(logging_adapter.clone());
-    options.disable_user_agent_parsing = Some(true);
     options.disable_country_lookup = Some(true);
     options.output_log_level = Some(LogLevel::Debug);
     options.observability_client = Some(Arc::downgrade(&obs_client_dyn));

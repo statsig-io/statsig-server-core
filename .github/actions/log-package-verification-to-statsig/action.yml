@@ -26,7 +26,6 @@ runs:
     - name: Log to Statsig (${{ inputs.event_name }})
       shell: bash
       run: |
-        echo "sdk_key: ${{ inputs.sdk_key }}"
         echo "package: ${{ inputs.package }}"
         echo "os_tag: ${{ inputs.os_tag }}"
         echo "conclusion: ${{ inputs.conclusion }}"

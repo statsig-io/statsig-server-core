@@ -257,7 +257,6 @@ export interface StatsigOptions {
   disableAllLogging?: boolean
   disableCountryLookup?: boolean
   disableNetwork?: boolean
-  disableUserAgentParsing?: boolean
   enableIdLists?: boolean
   environment?: string
   eventLoggingFlushIntervalMs?: number
@@ -281,7 +280,7 @@ export interface StatsigOptions {
   waitForCountryLookupInit?: boolean
   waitForUserAgentInit?: boolean
   proxyConfig?: ProxyConfig
-  experimentalUaParsingEnabled?: boolean
+  useThirdPartyUaParser?: boolean
 }
 
 export interface StatsigResult {

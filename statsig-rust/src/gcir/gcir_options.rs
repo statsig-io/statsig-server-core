@@ -14,6 +14,7 @@ pub struct ClientInitResponseOptions {
     pub layer_filter: Option<HashSet<String>>,
     pub param_store_filter: Option<HashSet<String>>,
     pub response_format: Option<GCIRResponseFormat>,
+    pub remove_id_type: Option<bool>,
 }
 
 impl ClientInitResponseOptions {

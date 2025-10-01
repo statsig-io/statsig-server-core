@@ -24,10 +24,11 @@ pub struct StatsigOptions {
     pub disable_all_logging: Option<bool>,
     pub disable_country_lookup: Option<bool>,
     pub disable_network: Option<bool>, // Disable all out-going network including get configs, log_events...
-    pub disable_user_agent_parsing: Option<bool>,
 
     pub wait_for_country_lookup_init: Option<bool>,
     pub wait_for_user_agent_init: Option<bool>,
+
+    pub use_third_party_ua_parser: Option<bool>,
 }
 
 impl From<StatsigOptions> for StatsigOptionsActual {
@@ -45,9 +46,9 @@ impl From<StatsigOptions> for StatsigOptionsActual {
             disable_all_logging: config.disable_all_logging,
             disable_country_lookup: config.disable_country_lookup,
             disable_network: config.disable_network,
-            disable_user_agent_parsing: config.disable_user_agent_parsing,
             wait_for_country_lookup_init: config.wait_for_country_lookup_init,
             wait_for_user_agent_init: config.wait_for_user_agent_init,
+            use_third_party_ua_parser: config.use_third_party_ua_parser,
             ..StatsigOptionsActual::default()
         }
     }

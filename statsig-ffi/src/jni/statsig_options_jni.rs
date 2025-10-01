@@ -44,8 +44,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     wait_for_user_agent_init: jboolean,
     disable_network: jboolean,
     disable_country_lookup: jboolean,
-    disable_user_agent_parsing: jboolean,
     fallback_to_statsig_api: jboolean,
+    use_third_party_ua_parser: jboolean,
 ) -> jlong {
     let specs_url = jstring_to_string(&mut env, specs_url);
     let log_event_url = jstring_to_string(&mut env, log_event_url);
@@ -54,11 +54,11 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     let enable_id_lists = jboolean_to_bool(enable_id_lists);
     let wait_for_country_lookup_init = jboolean_to_bool(wait_for_country_lookup_init);
     let wait_for_user_agent_init = jboolean_to_bool(wait_for_user_agent_init);
-    let disable_user_agent_parsing = jboolean_to_bool(disable_user_agent_parsing);
     let disable_country_lookup = jboolean_to_bool(disable_country_lookup);
     let disable_all_logging = jboolean_to_bool(disable_all_logging);
     let disable_network = jboolean_to_bool(disable_network);
     let fallback_to_statsig_api = jboolean_to_bool(fallback_to_statsig_api);
+    let use_third_party_ua_parser = jboolean_to_bool(use_third_party_ua_parser);
 
     let service_name = jstring_to_string(&mut env, service_name);
 
@@ -127,8 +127,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .wait_for_user_agent_init(wait_for_user_agent_init)
         .disable_network(disable_network)
         .disable_country_lookup(disable_country_lookup)
-        .disable_user_agent_parsing(disable_user_agent_parsing)
         .fallback_to_statsig_api(fallback_to_statsig_api)
+        .use_third_party_ua_parser(use_third_party_ua_parser)
         .init_timeout_ms(init_timeout_ms_option);
 
     let options = builder.build();

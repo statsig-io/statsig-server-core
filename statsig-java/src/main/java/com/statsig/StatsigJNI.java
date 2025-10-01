@@ -244,8 +244,8 @@ class StatsigJNI {
       boolean waitForUserAgentInit,
       boolean disableNetwork,
       boolean disableUserCountry,
-      boolean disableUserAgent,
-      boolean fallbackToStatsigApi);
+      boolean fallbackToStatsigApi,
+      boolean useThirdPartyUAParser);
 
   public static native void statsigOptionsRelease(long optionsRef);
 }

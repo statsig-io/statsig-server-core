@@ -80,6 +80,7 @@ runs:
           PROTOC_ARCH=${{ inputs.platform == 'linux/amd64' && 'x86_64' || 'aarch_64' }}
           ARCH=${{ inputs.platform == 'linux/amd64' && 'x86_64' || 'aarch64' }}
           ARM_SUFFIX=${{ inputs.platform == 'linux/arm64' && '-arm' || '' }}
+          GO_ARCH=${{ inputs.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
         tags: |
           ${{ env.MD5_IMAGE_TAG }}
           ${{ inputs.docker_image_tag }}-latest

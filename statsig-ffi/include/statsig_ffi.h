@@ -289,7 +289,6 @@ uint64_t statsig_options_create(const char *specs_url,
                                 int specs_sync_interval_ms,
                                 const char *output_log_level,
                                 SafeOptBool disable_country_lookup,
-                                SafeOptBool disable_user_agent_parsing,
                                 SafeOptBool wait_for_country_lookup_init,
                                 SafeOptBool wait_for_user_agent_init,
                                 SafeOptBool enable_id_lists,
@@ -301,7 +300,8 @@ uint64_t statsig_options_create(const char *specs_url,
                                 uint64_t observability_client_ref,
                                 uint64_t data_store_ref,
                                 int init_timeout_ms,
-                                SafeOptBool fallback_to_statsig_api);
+                                SafeOptBool fallback_to_statsig_api,
+                                SafeOptBool use_third_party_ua_parser);
 
 void statsig_options_release(uint64_t options_ref);
 

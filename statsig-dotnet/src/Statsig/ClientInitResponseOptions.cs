@@ -17,6 +17,8 @@ namespace Statsig
         public string? ClientSDKKey { get; set; }
         [JsonProperty("include_local_overrides")]
         public bool IncludeLocalOverrides { get; set; }
+        [JsonProperty("remove_id_type")]
+        public bool RemoveIdType { get; set; }
 
         public ClientInitResponseOptions()
         {

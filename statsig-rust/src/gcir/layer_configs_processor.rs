@@ -32,6 +32,10 @@ pub(crate) fn get_layer_evaluations(
             &mut eval.allocated_experiment_name,
         );
 
+        if options.remove_id_type.unwrap_or(false) {
+            eval.id_type = None
+        }
+
         eval
     };
 
@@ -64,6 +68,10 @@ pub(crate) fn get_layer_evaluations_v2(
             options,
             &mut eval.allocated_experiment_name,
         );
+
+        if options.remove_id_type.unwrap_or(false) {
+            eval.id_type = None
+        }
 
         eval
     };

@@ -16,7 +16,6 @@ func TestStatsigOptionsBasic(t *testing.T) {
 		WithSpecsSyncIntervalMs(1000).
 		WithOutputLogLevel("DEBUG").
 		WithDisableCountryLookup(true).
-		WithDisableUserAgentParsing(true).
 		WithWaitForCountryLookupInit(false).
 		WithEnableIdLists(false).
 		WithIdListsUrl("").
@@ -48,9 +47,6 @@ func TestStatsigOptionsBasic(t *testing.T) {
 	}
 	if *options.DisableCountryLookup != true {
 		t.Errorf("expected DisableCountryLookup to be 'true', got %v", *options.DisableCountryLookup)
-	}
-	if *options.DisableUserAgentParsing != true {
-		t.Errorf("expected DisableUserAgentParsing to be 'true', got %v", *options.DisableUserAgentParsing)
 	}
 	if *options.WaitForCountryLookupInit != false {
 		t.Errorf("expected WaitForCountryLookupInit to be 'false', got %v", *options.WaitForCountryLookupInit)

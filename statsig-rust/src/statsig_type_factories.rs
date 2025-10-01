@@ -18,7 +18,10 @@ pub fn make_feature_gate(
         Some(e) => (
             e.value,
             e.base.rule_id.clone(),
-            e.id_type.unperformant_to_string(),
+            match e.id_type {
+                Some(ref id_type) => id_type.unperformant_to_string(),
+                None => "".into(),
+            },
         ),
         None => (
             false,
@@ -50,7 +53,10 @@ pub fn extract_from_experiment_evaluation(
         Some(e) => (
             e.value.clone(),
             e.base.rule_id.clone(),
-            e.id_type.unperformant_to_string(),
+            match e.id_type {
+                Some(ref id_type) => id_type.unperformant_to_string(),
+                None => "".into(),
+            },
             e.group_name.as_ref().map(|g| g.unperformant_to_string()),
             e.is_experiment_active.unwrap_or(false),
         ),
@@ -73,7 +79,10 @@ pub fn make_dynamic_config(
         Some(e) => (
             e.value.clone(),
             e.base.rule_id.clone(),
-            e.id_type.unperformant_to_string(),
+            match e.id_type {
+                Some(ref id_type) => id_type.unperformant_to_string(),
+                None => "".into(),
+            },
         ),
         None => (
             DynamicReturnable::empty(),
@@ -130,7 +139,10 @@ pub fn make_layer(
                 e.allocated_experiment_name
                     .as_ref()
                     .map(|g| g.unperformant_to_string()),
-                e.id_type.unperformant_to_string(),
+                match e.id_type {
+                    Some(ref id_type) => id_type.unperformant_to_string(),
+                    None => "".into(),
+                },
                 e.is_experiment_active.unwrap_or(false),
             ),
             None => (

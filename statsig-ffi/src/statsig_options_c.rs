@@ -29,7 +29,6 @@ pub extern "C" fn statsig_options_create(
     specs_sync_interval_ms: c_int,
     output_log_level: *const c_char,
     disable_country_lookup: SafeOptBool,
-    disable_user_agent_parsing: SafeOptBool,
     wait_for_country_lookup_init: SafeOptBool,
     wait_for_user_agent_init: SafeOptBool,
     enable_id_lists: SafeOptBool,
@@ -42,6 +41,7 @@ pub extern "C" fn statsig_options_create(
     data_store_ref: u64,
     init_timeout_ms: c_int,
     fallback_to_statsig_api: SafeOptBool,
+    use_third_party_ua_parser: SafeOptBool,
 ) -> u64 {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
@@ -76,7 +76,6 @@ pub extern "C" fn statsig_options_create(
         specs_sync_interval_ms,
         output_log_level,
         disable_country_lookup: extract_opt_bool(disable_country_lookup),
-        disable_user_agent_parsing: extract_opt_bool(disable_user_agent_parsing),
         wait_for_country_lookup_init: extract_opt_bool(wait_for_country_lookup_init),
         wait_for_user_agent_init: extract_opt_bool(wait_for_user_agent_init),
         enable_id_lists: extract_opt_bool(enable_id_lists),
@@ -89,6 +88,7 @@ pub extern "C" fn statsig_options_create(
         observability_client,
         init_timeout_ms,
         fallback_to_statsig_api: extract_opt_bool(fallback_to_statsig_api),
+        use_third_party_ua_parser: extract_opt_bool(use_third_party_ua_parser),
         ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {
