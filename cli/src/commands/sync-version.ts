@@ -178,7 +178,7 @@ function updatePhpComposerVersion(version: string) {
 function updateGoVersion(version: string) {
   Log.stepBegin('Updating go version');
 
-  const path = getRootedPath('statsig-go/cmd/post-install/main.go');
+  const path = getRootedPath('statsig-go/statsig-cgo/cmd/post-install/main.go');
   const contents = fs.readFileSync(path, 'utf8');
   
   const was = contents.match(/version = "([^"]+)"/)?.[1];
