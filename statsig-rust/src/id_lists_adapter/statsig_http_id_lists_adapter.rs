@@ -17,6 +17,7 @@ use std::time::Duration;
 use tokio::sync::Notify;
 use tokio::time::sleep;
 
+const STATSIG_CDN_URL: &str = "https://api.statsigcdn.com";
 const DEFAULT_CDN_ID_LISTS_MANIFEST_URL: &str = "https://api.statsigcdn.com/v1/get_id_lists";
 const DEFAULT_ID_LIST_SYNC_INTERVAL_MS: u32 = 60_000;
 
@@ -121,12 +122,18 @@ impl StatsigHttpIdListsAdapter {
         list_size: u64,
     ) -> Result<String, StatsigErr> {
         let headers = HashMap::from([("Range".into(), format!("bytes={list_size}-"))]);
+        let query_params = if list_url.starts_with(STATSIG_CDN_URL) {
+            Some(HashMap::from([("range".into(), format!("{list_size}-"))]))
+        } else {
+            None
+        };
 
         let response = self
             .network
             .get(RequestArgs {
                 url: list_url.to_string(),
                 headers: Some(headers),
+                query_params,
                 ..RequestArgs::new()
             })
             .await
@@ -161,6 +168,7 @@ impl StatsigHttpIdListsAdapter {
             Err(e) => Err(StatsigErr::NetworkError(e)),
         }
     }
+
     async fn run_background_sync(weak_self: &Weak<Self>) {
         let strong_self = match weak_self.upgrade() {
             Some(s) => s,
