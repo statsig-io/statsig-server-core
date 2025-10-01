@@ -44,7 +44,6 @@ namespace Statsig
                         builder.specsSyncIntervalMs,
                         null, // outputLogLevel
                         builder.disableCountryLookup ? 1 : 0,
-                        builder.disableUserAgentParsing ? 1 : 0,
                         builder.waitForCountryLookupInit ? 1 : 0,
                         builder.waitForUserAgentInit ? 1 : 0,
                         builder.enableIDLists ? 1 : 0,
@@ -56,7 +55,8 @@ namespace Statsig
                         0, // observability client ref - not implemented in .NET
                         0, // dataStoreRef - not implemented in .NET
                         builder.initTimeoutMs,
-                        builder.fallbackToStatsigApi ? 1 : 0
+                        builder.fallbackToStatsigApi ? 1 : 0,
+                        builder.useThirdPartyUAParser ? 1 : 0
                     );
                 }
             }
@@ -94,10 +94,10 @@ namespace Statsig
         internal int idListsSyncIntervalMs = -1;
         internal int eventLoggingMaxQueueSize = -1;
         internal bool disableCountryLookup = false;
-        internal bool disableUserAgentParsing = false;
         internal bool disableAllLogging = false;
         internal bool disableNetwork = false;
         internal bool fallbackToStatsigApi = false;
+        internal bool useThirdPartyUAParser = false;
         internal Dictionary<string, object>? globalCustomFields;
 
         public StatsigOptionsBuilder SetSpecsURL(string specsURL)
@@ -159,12 +159,6 @@ namespace Statsig
             return this;
         }
 
-        public StatsigOptionsBuilder SetDisableUserAgentParsing(bool disableUserAgentParsing)
-        {
-            this.disableUserAgentParsing = disableUserAgentParsing;
-            return this;
-        }
-
         public StatsigOptionsBuilder SetDisableNetwork(bool disableNetwork)
         {
             this.disableNetwork = disableNetwork;
@@ -189,6 +183,11 @@ namespace Statsig
         public StatsigOptionsBuilder SetIDListsSyncIntervalMs(int idListsSyncIntervalMs)
         {
             this.idListsSyncIntervalMs = idListsSyncIntervalMs;
+            return this;
+        }
+        public StatsigOptionsBuilder SetUseThirdPartyUAParser(bool useThirdPartyUAParser)
+        {
+            this.useThirdPartyUAParser = useThirdPartyUAParser;
             return this;
         }
         public StatsigOptionsBuilder SetGlobalCustomFields(Dictionary<string, object> globalCustomFields)

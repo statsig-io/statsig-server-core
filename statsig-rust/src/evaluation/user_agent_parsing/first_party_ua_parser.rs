@@ -2,11 +2,11 @@ use crate::{dyn_value, log_w, DynamicValue};
 
 use super::statsig_uaparser::UaParser;
 
-const TAG: &str = "ExperimentalUserAgentParser";
+const TAG: &str = "FirstPartyUserAgentParser";
 
-pub struct ExperimentalUserAgentParser;
+pub struct FirstPartyUserAgentParser;
 
-impl ExperimentalUserAgentParser {
+impl FirstPartyUserAgentParser {
     pub fn get_value_from_user_agent(field: &str, user_agent: &str) -> Option<DynamicValue> {
         match field {
             "os_name" | "osname" => {

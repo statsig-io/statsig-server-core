@@ -11,12 +11,11 @@ fn load_data() -> HashMap<String, HashMap<String, String>> {
 }
 
 #[tokio::test]
-async fn test_experiment_ua_parser() {
+async fn test_first_party_ua_parser() {
     let statsig = Statsig::new(
         "secret-key",
         Some(Arc::new(StatsigOptions {
             wait_for_user_agent_init: Some(true),
-            __experimental_ua_parsing_enabled: Some(true),
             ..Default::default()
         })),
     );
@@ -50,6 +49,7 @@ async fn test_3rd_party_ua_parser() {
         "secret-key",
         Some(Arc::new(StatsigOptions {
             wait_for_user_agent_init: Some(true),
+            use_third_party_ua_parser: Some(true),
             ..Default::default()
         })),
     );

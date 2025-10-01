@@ -6,7 +6,7 @@ use crate::interned_string::InternedString;
 use crate::user::StatsigUserInternal;
 use crate::{log_w, unwrap_or_return, DynamicValue, StatsigOptions, StatsigUser};
 
-use super::experimental_ua_parser::ExperimentalUserAgentParser;
+use super::first_party_ua_parser::FirstPartyUserAgentParser;
 use super::third_party_ua_parser::ThirdPartyUserAgentParser;
 
 lazy_static::lazy_static! {
@@ -19,7 +19,7 @@ const UNINITIALIZED_REASON: &str = "UAParserNotLoaded";
 pub struct UserAgentParser;
 
 fn get_experimental_ua_value(key: &str, ua: &str) -> Option<InternedString> {
-    ExperimentalUserAgentParser::get_value_from_user_agent(key, ua)
+    FirstPartyUserAgentParser::get_value_from_user_agent(key, ua)
         .and_then(|v| v.string_value.map(|s| s.value))
 }
 
@@ -35,7 +35,7 @@ impl UserAgentParser {
         user: &StatsigUserInternal,
         field: &Option<DynamicString>,
         override_reason: &mut Option<&str>,
-        use_experimental_ua_parser: bool,
+        use_third_party_ua_parser: bool,
     ) -> Option<DynamicValue> {
         let field_lowered = match field {
             Some(f) => f.lowercased_value.as_str(),
@@ -54,9 +54,7 @@ impl UserAgentParser {
             return None;
         }
 
-        if use_experimental_ua_parser {
-            ExperimentalUserAgentParser::get_value_from_user_agent(field_lowered, user_agent)
-        } else {
+        if use_third_party_ua_parser {
             let result =
                 ThirdPartyUserAgentParser::get_value_from_user_agent(field_lowered, user_agent);
 
@@ -68,6 +66,8 @@ impl UserAgentParser {
                     None
                 }
             }
+        } else {
+            FirstPartyUserAgentParser::get_value_from_user_agent(field_lowered, user_agent)
         }
     }
 
@@ -80,18 +80,18 @@ impl UserAgentParser {
         options: &Arc<StatsigOptions>,
     ) -> Option<ParsedUserAgentValue> {
         let user_agent_str = unwrap_or_return!(user.get_user_agent(), None);
-        match options.__experimental_ua_parsing_enabled {
-            Some(true) => Some(ParsedUserAgentValue {
-                os_name: get_experimental_ua_value("os_name", user_agent_str),
-                os_version: get_experimental_ua_value("os_version", user_agent_str),
-                browser_name: get_experimental_ua_value("browser_name", user_agent_str),
-                browser_version: get_experimental_ua_value("browser_version", user_agent_str),
-            }),
-            _ => Some(ParsedUserAgentValue {
+        match options.use_third_party_ua_parser {
+            Some(false) => Some(ParsedUserAgentValue {
                 os_name: get_third_party_ua_value("os_name", user_agent_str),
                 os_version: get_third_party_ua_value("os_version", user_agent_str),
                 browser_name: get_third_party_ua_value("browser_name", user_agent_str),
                 browser_version: get_third_party_ua_value("browser_version", user_agent_str),
+            }),
+            _ => Some(ParsedUserAgentValue {
+                os_name: get_experimental_ua_value("os_name", user_agent_str),
+                os_version: get_experimental_ua_value("os_version", user_agent_str),
+                browser_name: get_experimental_ua_value("browser_name", user_agent_str),
+                browser_version: get_experimental_ua_value("browser_version", user_agent_str),
             }),
         }
     }

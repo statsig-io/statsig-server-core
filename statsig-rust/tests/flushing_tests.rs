@@ -202,7 +202,6 @@ async fn test_flushing_backoff_and_metadata() {
             ))),
             log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
             output_log_level: Some(LogLevel::Debug),
-            disable_user_agent_parsing: Some(true),
             disable_country_lookup: Some(true),
             ..StatsigOptions::new()
         })),

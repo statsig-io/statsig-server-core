@@ -68,7 +68,6 @@ def test_bg_tasks_shutdown(httpserver: HTTPServer):
     options.output_log_level = "none"
     options.specs_url = mock_scrapi.url_for_endpoint("/v2/download_config_specs")
     options.specs_sync_interval_ms = 1
-    options.disable_user_agent_parsing = True
     options.disable_country_lookup = True
     options.log_event_url = mock_scrapi.url_for_endpoint("/v1/log_event")
     options.event_logging_flush_interval_ms = 1

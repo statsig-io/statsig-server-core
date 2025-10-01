@@ -324,7 +324,7 @@ fn evaluate_condition<'a>(
                     ctx.user,
                     &condition.field,
                     &mut ctx.result.override_reason,
-                    ctx.use_experimental_ua_parser,
+                    ctx.should_user_third_party_parser,
                 );
                 temp_value.as_ref()
             }

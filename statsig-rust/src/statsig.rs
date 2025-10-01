@@ -235,7 +235,7 @@ impl Statsig {
 
         StatsigMetadata::update_service_name(options.service_name.clone());
 
-        let use_experimental_ua_parser = options.__experimental_ua_parsing_enabled.unwrap_or(false);
+        let use_third_party_ua_parser = options.use_third_party_ua_parser.unwrap_or(false);
 
         Statsig {
             sdk_key: sdk_key.to_string(),
@@ -244,7 +244,7 @@ impl Statsig {
                 &spec_store,
                 &override_adapter,
                 &ops_stats,
-                use_experimental_ua_parser,
+                use_third_party_ua_parser,
             )),
             hashing,
             statsig_environment: environment,
@@ -482,7 +482,7 @@ impl Statsig {
         let start_time = Instant::now();
         self.spec_store.set_source(SpecsSource::Loading);
         self.specs_adapter.inner.initialize(self.spec_store.clone());
-        let use_experimental_ua_parser = self.should_use_experimental_ua_parser();
+        let use_third_party_ua_parser = self.should_user_third_party_parser();
 
         let mut error_message = None;
         let mut id_list_ready = None;
@@ -495,9 +495,7 @@ impl Statsig {
             None
         };
 
-        let init_ua = if !self.options.disable_user_agent_parsing.unwrap_or_default()
-            && !use_experimental_ua_parser
-        {
+        let init_ua = if use_third_party_ua_parser {
             Some(self.statsig_runtime.spawn(INIT_UA_TAG, |_| async {
                 UserAgentParser::load_parser();
             }))
@@ -1060,7 +1058,7 @@ impl Statsig {
                 &self.hashing,
                 data.values.app_id.as_ref(),
                 self.override_adapter.as_ref(),
-                self.should_use_experimental_ua_parser(),
+                self.should_user_third_party_parser(),
             ),
             cmab_name,
         )
@@ -1864,7 +1862,7 @@ impl Statsig {
             &self.hashing,
             app_id,
             self.override_adapter.as_ref(),
-            self.should_use_experimental_ua_parser(),
+            self.should_user_third_party_parser(),
         );
 
         match Evaluator::evaluate_with_details(&mut context, spec_name, spec_type) {
@@ -2072,10 +2070,8 @@ impl Statsig {
             .enqueue_diagnostics_event(None, Some(ContextType::Initialize));
     }
 
-    fn should_use_experimental_ua_parser(&self) -> bool {
-        self.options
-            .__experimental_ua_parsing_enabled
-            .unwrap_or(false)
+    fn should_user_third_party_parser(&self) -> bool {
+        self.options.use_third_party_ua_parser.unwrap_or(false)
     }
 }
 

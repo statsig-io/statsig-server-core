@@ -12,7 +12,6 @@ def create_statsig(specs_url, log_event_url, id_lists_url):
     options.output_log_level = "debug"
 
     options.disable_country_lookup = True
-    options.disable_user_agent_parsing = True
 
     options.specs_url = specs_url
     options.specs_sync_interval_ms = 1

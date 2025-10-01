@@ -46,8 +46,8 @@ public class StatsigOptions {
             builder.waitForUserAgentInit,
             builder.disableNetwork,
             builder.disableUserCountryLookup,
-            builder.disableUserAgentParsing,
-            builder.fallbackToStatsigApi);
+            builder.fallbackToStatsigApi,
+            builder.useThirdPartyUAParser);
 
     ResourceCleaner.register(this, new CleaningAction(ref));
   }
@@ -74,13 +74,13 @@ public class StatsigOptions {
     private boolean enableIDLists = false;
     private boolean waitForUserAgentInit = false;
     private boolean waitForCountryLookupInit = false;
-    private boolean disableUserAgentParsing = false;
     private boolean disableUserCountryLookup = false;
     private boolean disableAllLogging = false;
     private boolean disableNetwork = false;
     private boolean fallbackToStatsigApi = false;
     private OutputLogger.LogLevel outputLoggerLevel = OutputLogger.LogLevel.WARN;
     private String serviceName;
+    private boolean useThirdPartyUAParser;
 
     public Builder setOutputLoggerLevel(OutputLogger.LogLevel level) {
       this.outputLoggerLevel = level;
@@ -189,13 +189,13 @@ public class StatsigOptions {
       return this;
     }
 
-    public Builder setDisableUserAgentParsing(boolean disableUserAgentParsing) {
-      this.disableUserAgentParsing = disableUserAgentParsing;
+    public Builder setDisableUserCountryLookup(boolean disableUserCountryLookup) {
+      this.disableUserCountryLookup = disableUserCountryLookup;
       return this;
     }
 
-    public Builder setDisableUserCountryLookup(boolean disableUserCountryLookup) {
-      this.disableUserCountryLookup = disableUserCountryLookup;
+    public Builder setUseThirdPartyUAParser(boolean useThirdPartyUAParser) {
+      this.useThirdPartyUAParser = useThirdPartyUAParser;
       return this;
     }
 

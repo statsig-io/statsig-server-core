@@ -122,7 +122,7 @@ pub struct StatsigOptions {
 
     pub proxy_config: Option<ProxyConfig>,
 
-    pub __experimental_ua_parsing_enabled: Option<bool>,
+    pub use_third_party_ua_parser: Option<bool>,
 }
 
 impl StatsigOptions {
@@ -178,9 +178,8 @@ impl StatsigOptions {
             override_adapter: Some(create_local_overrides(self.override_adapter_config)),
             global_custom_fields: Self::convert_to_dynamic_value_map(self.global_custom_fields),
             disable_country_lookup: self.disable_country_lookup,
-            disable_user_agent_parsing: self.disable_user_agent_parsing,
             proxy_config: self.proxy_config.map(|p| p.into()),
-            __experimental_ua_parsing_enabled: self.__experimental_ua_parsing_enabled,
+            use_third_party_ua_parser: self.use_third_party_ua_parser,
             ..Default::default()
         };
 

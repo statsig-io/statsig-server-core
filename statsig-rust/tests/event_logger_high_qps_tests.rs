@@ -28,7 +28,6 @@ async fn setup() -> (Arc<Statsig>, StatsigUser, MockScrapi) {
             log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
             environment: Some("development".to_string()),
             disable_country_lookup: Some(true),
-            disable_user_agent_parsing: Some(true),
             event_logging_max_pending_batch_queue_size: Some(2),
             event_logging_max_queue_size: Some(1000),
             ..StatsigOptions::new()

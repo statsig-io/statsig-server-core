@@ -24,7 +24,6 @@ class StatsigOptionsTest extends TestCase
             specs_sync_interval_ms: 1000,
             output_log_level: "debug",
             disable_country_lookup: true,
-            disable_user_agent_parsing: false,
         );
         $this->assertNotNull($options->__ref);
 
@@ -39,7 +38,6 @@ class StatsigOptionsTest extends TestCase
             environment: "production",
             output_log_level: "debug",
             disable_country_lookup: false,
-            disable_user_agent_parsing: false,
         );
         $this->assertNotNull($options->__ref);
 
@@ -91,7 +89,6 @@ class StatsigOptionsTest extends TestCase
             environment: "staging",
             output_log_level: "info",
             disable_country_lookup: true,
-            disable_user_agent_parsing: false,
             init_timeout_ms: 2000,
             fallback_to_statsig_api: true,
         );
