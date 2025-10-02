@@ -79,7 +79,6 @@ pub struct StatsigOptions {
     pub disable_all_logging: Option<bool>,
     pub disable_country_lookup: Option<bool>,
     pub disable_network: Option<bool>,
-    pub disable_user_agent_parsing: Option<bool>,
 
     pub enable_id_lists: Option<bool>,
     pub environment: Option<String>,

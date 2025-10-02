@@ -13,7 +13,6 @@ fn main() {
     statsig_rt.get_handle().unwrap().block_on(async {
         let specs_adapter = Arc::new(StaticSpecsAdapter::with_data("dcs_data.json"));
         let options = Arc::new(StatsigOptions {
-            disable_user_agent_parsing: Some(true),
             disable_country_lookup: Some(true),
             specs_adapter: Some(specs_adapter.clone()),
             event_logging_adapter: Some(Arc::new(NoopEventLoggingAdapter::default())),
