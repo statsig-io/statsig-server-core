@@ -17,6 +17,75 @@ use std::sync::Weak;
 
 const TAG: &str = "StatsigOptionsC";
 
+#[derive(Default, serde::Deserialize)]
+pub struct StatsigOptionsData {
+    specs_url: Option<String>,
+    log_event_url: Option<String>,
+    specs_adapter_ref: Option<u64>,
+    event_logging_adapter_ref: Option<u64>,
+    environment: Option<String>,
+    event_logging_max_queue_size: Option<u32>,
+    specs_sync_interval_ms: Option<u32>,
+    output_log_level: Option<String>,
+    disable_country_lookup: Option<bool>,
+    disable_user_agent_parsing: Option<bool>,
+    wait_for_country_lookup_init: Option<bool>,
+    wait_for_user_agent_init: Option<bool>,
+    enable_id_lists: Option<bool>,
+    disable_network: Option<bool>,
+    id_lists_url: Option<String>,
+    id_lists_sync_interval_ms: Option<u32>,
+    disable_all_logging: Option<bool>,
+    global_custom_fields: Option<HashMap<String, DynamicValue>>,
+    observability_client_ref: Option<u64>,
+    data_store_ref: Option<u64>,
+    init_timeout_ms: Option<u64>,
+    fallback_to_statsig_api: Option<bool>,
+}
+
+impl From<StatsigOptionsData> for StatsigOptions {
+    fn from(data: StatsigOptionsData) -> Self {
+        Self {
+            specs_url: data.specs_url,
+            log_event_url: data.log_event_url,
+            environment: data.environment,
+            event_logging_max_queue_size: data.event_logging_max_queue_size,
+            specs_sync_interval_ms: data.specs_sync_interval_ms,
+            disable_country_lookup: data.disable_country_lookup,
+            wait_for_country_lookup_init: data.wait_for_country_lookup_init,
+            wait_for_user_agent_init: data.wait_for_user_agent_init,
+            enable_id_lists: data.enable_id_lists,
+            disable_network: data.disable_network,
+            ..Default::default()
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_options_create_from_data(json_data: *const c_char) -> u64 {
+    let json_data = match c_char_to_string(json_data) {
+        Some(data) => data,
+        None => {
+            log_e!(TAG, "Failed to convert c_char to string");
+            return 0;
+        }
+    };
+
+    let options: StatsigOptions =
+        match serde_json::from_str::<StatsigOptionsData>(json_data.as_str()) {
+            Ok(data) => data.into(),
+            Err(_) => {
+                log_e!(TAG, "Failed to deserialize StatsigOptionsData");
+                return 0;
+            }
+        };
+
+    InstanceRegistry::register(options).unwrap_or_else(|| {
+        log_e!(TAG, "Failed to create StatsigOptions");
+        0
+    })
+}
+
 #[no_mangle]
 pub extern "C" fn statsig_options_create(
     specs_url: *const c_char,

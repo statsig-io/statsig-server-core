@@ -38,7 +38,7 @@ fn run_csharp_bindgen() {
             _ => rust_type_name,
         })
         .generate_csharp_file("../statsig-dotnet/src/Statsig/StatsigFFI.g.cs")
-        .unwrap();
+        .expect("Statsig Build Error: Failed to generate C# bindings.");
 }
 
 fn run_python_build() {}
