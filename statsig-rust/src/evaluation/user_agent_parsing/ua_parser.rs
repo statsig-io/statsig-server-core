@@ -18,7 +18,7 @@ const UNINITIALIZED_REASON: &str = "UAParserNotLoaded";
 
 pub struct UserAgentParser;
 
-fn get_experimental_ua_value(key: &str, ua: &str) -> Option<InternedString> {
+fn get_first_party_ua_value(key: &str, ua: &str) -> Option<InternedString> {
     FirstPartyUserAgentParser::get_value_from_user_agent(key, ua)
         .and_then(|v| v.string_value.map(|s| s.value))
 }
@@ -81,17 +81,17 @@ impl UserAgentParser {
     ) -> Option<ParsedUserAgentValue> {
         let user_agent_str = unwrap_or_return!(user.get_user_agent(), None);
         match options.use_third_party_ua_parser {
-            Some(false) => Some(ParsedUserAgentValue {
+            Some(true) => Some(ParsedUserAgentValue {
                 os_name: get_third_party_ua_value("os_name", user_agent_str),
                 os_version: get_third_party_ua_value("os_version", user_agent_str),
                 browser_name: get_third_party_ua_value("browser_name", user_agent_str),
                 browser_version: get_third_party_ua_value("browser_version", user_agent_str),
             }),
             _ => Some(ParsedUserAgentValue {
-                os_name: get_experimental_ua_value("os_name", user_agent_str),
-                os_version: get_experimental_ua_value("os_version", user_agent_str),
-                browser_name: get_experimental_ua_value("browser_name", user_agent_str),
-                browser_version: get_experimental_ua_value("browser_version", user_agent_str),
+                os_name: get_first_party_ua_value("os_name", user_agent_str),
+                os_version: get_first_party_ua_value("os_version", user_agent_str),
+                browser_name: get_first_party_ua_value("browser_name", user_agent_str),
+                browser_version: get_first_party_ua_value("browser_version", user_agent_str),
             }),
         }
     }
