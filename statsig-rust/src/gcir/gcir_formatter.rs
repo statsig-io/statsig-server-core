@@ -81,6 +81,7 @@ impl GCIRFormatter {
                 param_store_filter: None,
                 response_format: None,
                 remove_id_type: Some(false),
+                remove_default_value_gates: Some(false),
             },
             use_third_party_ua_parser,
         }

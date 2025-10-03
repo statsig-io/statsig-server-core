@@ -13,6 +13,7 @@ pub struct ClientInitResponseOptions {
     pub layer_filter: Option<HashSet<String>>,
     pub param_store_filter: Option<HashSet<String>>,
     pub remove_id_type: Option<bool>,
+    pub remove_default_value_gates: Option<bool>,
 }
 
 impl From<ClientInitResponseOptions> for ClientInitResponseOptionsActual {
@@ -33,6 +34,7 @@ impl From<ClientInitResponseOptions> for ClientInitResponseOptionsActual {
             param_store_filter: options.param_store_filter,
             response_format: None,
             remove_id_type: options.remove_id_type,
+            remove_default_value_gates: options.remove_default_value_gates,
         }
     }
 }
