@@ -176,9 +176,12 @@ impl UaParser {
             return create_res("Android", token.get_version());
         }
 
-        if result.cfnetwork_hint {
+        if result.cfnetwork_hint && !result.tokens.is_empty() {
             if result.tokens[0].tag == "NetworkingExtension" {
-                return create_res("CFNetwork", result.tokens[1].get_version());
+                return create_res(
+                    "CFNetwork",
+                    result.tokens.get(1).and_then(|t| t.get_version()),
+                );
             }
             return create_res(result.tokens[0].tag, result.tokens[0].get_version());
         }

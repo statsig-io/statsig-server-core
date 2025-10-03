@@ -112,5 +112,11 @@
         "osVersion": "XP",
         "browserName": "IE",
         "browserVersion": "8.0"
+    },
+    "CFNetwork/3826.400.120": {
+        "osName": "iOS",
+        "osVersion": "0.0.0",
+        "browserName": "Mobile Safari UI/WKWebView",
+        "browserVersion": "0.0.0"
     }
 }

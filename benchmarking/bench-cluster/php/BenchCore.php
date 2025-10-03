@@ -28,7 +28,6 @@ class BenchCore {
             /* specs_sync_interval_ms */ null,
             /* output_log_level */ null,
             /* disable_country_lookup */ null,
-            /* disable_user_agent_parsing */ null,
             /* wait_for_country_lookup_init */ null,
             /* wait_for_user_agent_init */ null,
             /* disable_all_logging */ null,
