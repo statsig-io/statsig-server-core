@@ -296,6 +296,6 @@ impl ExposureSamplingKey {
         let final_hash =
             self.spec_name_hash ^ self.rule_id_hash ^ self.user_values_hash ^ self.additional_hash;
 
-        final_hash % sampling_rate == 0
+        final_hash.is_multiple_of(sampling_rate)
     }
 }
