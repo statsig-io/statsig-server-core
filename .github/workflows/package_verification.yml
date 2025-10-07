@@ -48,6 +48,18 @@ jobs:
 
           - package: python
             tag: py_3_10_alpine
+          
+          - package: python
+            tag: py_3_7_slim
+
+          - package: python
+            tag: py_3_7_alpine
+
+          - package: python
+            tag: py_3_8_manglinux_x86_64
+
+          - package: python
+            tag: py_3_7_buster
 
           - package: node
             tag: node_20_slim
