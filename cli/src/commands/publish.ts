@@ -16,13 +16,14 @@ import { getRootVersion } from '@/utils/toml_utils.js';
 import { CommandBase, OptionConfig } from './command_base.js';
 import { analyze } from './publishers/analyze.js';
 import { dotnetPublish } from './publishers/dotnet-publisher.js';
+import { publishElixir } from './publishers/elixir-publisher.js';
 import { ffiPublish } from './publishers/ffi-publisher.js';
+import { publishGo } from './publishers/go-publisher.js';
 import { javaPublish } from './publishers/java-publisher.js';
 import { nodePublish } from './publishers/node-publisher.js';
 import { publishPhp } from './publishers/php-publisher.js';
 import { PACKAGES, PublisherOptions } from './publishers/publisher-options.js';
 import { publishPython } from './publishers/python-publish.js';
-import { publishElixir } from './publishers/elixir-publisher.js';
 
 const PUBLISHERS: Record<string, (options: PublisherOptions) => Promise<void>> =
   {
@@ -33,6 +34,7 @@ const PUBLISHERS: Record<string, (options: PublisherOptions) => Promise<void>> =
     php: publishPhp,
     dotnet: dotnetPublish,
     elixir: publishElixir,
+    go: publishGo,
     analyze,
   };
 
