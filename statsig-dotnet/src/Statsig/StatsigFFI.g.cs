@@ -16,6 +16,9 @@ namespace Statsig
 
 
 
+        [DllImport(__DllName, EntryPoint = "statsig_options_create_from_data", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern ulong statsig_options_create_from_data(byte* json_data);
+
         [DllImport(__DllName, EntryPoint = "statsig_options_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern ulong statsig_options_create(byte* specs_url, byte* log_event_url, ulong specs_adapter_ref, ulong event_logging_adapter_ref, byte* environment, int _event_logging_flush_interval_ms, int event_logging_max_queue_size, int specs_sync_interval_ms, byte* output_log_level, int disable_country_lookup, int wait_for_country_lookup_init, int wait_for_user_agent_init, int enable_id_lists, int disable_network, byte* id_lists_url, int id_lists_sync_interval_ms, int disable_all_logging, byte* global_custom_fields, ulong observability_client_ref, ulong data_store_ref, int init_timeout_ms, int fallback_to_statsig_api, int use_third_party_ua_parser);
 

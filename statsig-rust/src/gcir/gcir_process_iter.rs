@@ -43,6 +43,19 @@ pub(crate) fn gcir_process_iter<T>(
         let spec_type = get_spec_type(spec);
         Evaluator::evaluate(context, spec_addy.name.as_str(), &spec_type)?;
 
+        if options.remove_default_value_gates.unwrap_or(false) && spec.entity == "feature_gate" {
+            match context.result.rule_id {
+                Some(rule_id)
+                    if rule_id == "default"
+                        && !context.result.bool_value
+                        && context.result.secondary_exposures.is_empty() =>
+                {
+                    continue
+                }
+                _ => {}
+            }
+        }
+
         let hashed_name = context
             .hashing
             .hash(spec_addy.name.as_str(), options.get_hash_algorithm());
@@ -54,6 +67,7 @@ pub(crate) fn gcir_process_iter<T>(
         );
 
         let eval = evaluation_factory(&spec.entity, &hashed_name, context);
+
         results.insert(hashed_name, eval);
     }
 

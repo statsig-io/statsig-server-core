@@ -279,6 +279,8 @@ void statsig_metadata_update_values(const char *sdk_type,
                                     const char *arch,
                                     const char *language_version);
 
+uint64_t statsig_options_create_from_data(const char *json_data);
+
 uint64_t statsig_options_create(const char *specs_url,
                                 const char *log_event_url,
                                 uint64_t specs_adapter_ref,

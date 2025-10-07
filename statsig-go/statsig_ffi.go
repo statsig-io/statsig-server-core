@@ -2,6 +2,7 @@ package statsig_go_core
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 
 	"github.com/ebitengine/purego"
@@ -31,11 +32,12 @@ type StatsigFFI struct {
 	lib uintptr
 
 	// StatsigOptions
+	statsig_options_create_from_data func(string) uint64
 	// statsig_options_create  func(string, string, uint64, uint64, string, int, int, int, string, int, int, int, int, int, int, string, int, int, string, uint64, uint64, int, int) uint64
 	// statsig_options_release func(uint64)
 
 	// StatsigUser
-	statsig_user_create  func(string, string, string, string, string, string, string, string, string, string) uint64
+	statsig_user_create  func(string, string, *string, *string, *string, *string, *string, *string, *string, *string) uint64
 	statsig_user_release func(uint64)
 
 	// Statsig Core
@@ -111,10 +113,13 @@ func GetFFI() *StatsigFFI {
 		return instance
 	}
 
-	lib, err := purego.Dlopen(getSystemLibrary(), purego.RTLD_NOW|purego.RTLD_GLOBAL)
+	lib, err := loadLibrary()
 	if err != nil {
 		panic(err)
 	}
+
+	var statsig_options_create_from_data func(string) uint64
+	purego.RegisterLibFunc(&statsig_options_create_from_data, lib, "statsig_options_create_from_data")
 
 	// StatsigOptions
 	// var statsig_options_create func(
@@ -151,14 +156,14 @@ func GetFFI() *StatsigFFI {
 	var statsig_user_create func(
 		string, // user_id
 		string, // custom_ids_json
-		string, // email
-		string, // ip
-		string, // user_agent
-		string, // country
-		string, // locale
-		string, // app_version
-		string, // custom_json
-		string, // private_attributes_json
+		*string, // email
+		*string, // ip
+		*string, // user_agent
+		*string, // country
+		*string, // locale
+		*string, // app_version
+		*string, // custom_json
+		*string, // private_attributes_json
 	) uint64
 	purego.RegisterLibFunc(&statsig_user_create, lib, "statsig_user_create")
 
@@ -314,6 +319,7 @@ func GetFFI() *StatsigFFI {
 		lib: lib,
 
 		// StatsigOptions
+		statsig_options_create_from_data: statsig_options_create_from_data,
 		// statsig_options_create:  statsig_options_create,
 		// statsig_options_release: statsig_options_release,
 
@@ -390,15 +396,23 @@ func GetFFI() *StatsigFFI {
 	return instance
 }
 
-func getSystemLibrary() string {
+func loadLibrary() (uintptr, error) {
+
+	flags := purego.RTLD_NOW | purego.RTLD_GLOBAL
+	path_override := os.Getenv("STATSIG_LIB_PATH")
+	if path_override != "" {
+		return purego.Dlopen(path_override, flags)
+	}
+
 	switch runtime.GOOS {
 
 	case "darwin":
-		return "/usr/local/bin/libstatsig_ffi.dylib"
+		return purego.Dlopen("/usr/local/bin/libstatsig_ffi.dylib", flags)
+
 	case "linux":
-		return "/usr/local/bin/libstatsig_ffi.so"
+		return purego.Dlopen("/usr/local/bin/libstatsig_ffi.so", flags)
 
 	default:
-		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
+		return 0, fmt.Errorf("GOOS=%s is not supported", runtime.GOOS)
 	}
 }

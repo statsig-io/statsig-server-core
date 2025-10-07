@@ -114,6 +114,7 @@ pub fn convert_java_client_init_response_options_to_rust(
         param_store_filter: None,
         response_format,
         remove_id_type,
+        remove_default_value_gates: None,
     })
 }
 
