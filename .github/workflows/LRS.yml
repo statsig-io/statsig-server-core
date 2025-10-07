@@ -2,9 +2,9 @@ name: Long Running SDK CD
 
 on: 
   workflow_dispatch:
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
       
 env:
   api_key: ${{ secrets.LRS_SERVER_KEY }}
