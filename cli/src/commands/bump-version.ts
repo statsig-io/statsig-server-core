@@ -75,7 +75,12 @@ export class BumpVersion extends CommandBase {
     } else if (options.beta) {
       version.beta += 1;
     } else if (options.betaDate) {
-      if (version.beta === 0) {
+      // if the version is a stable release or the first RC, bump the patch version
+      // first rc, see: https://github.com/statsig-io/statsig-publish-sdk-action/blob/main/core/src/back_merge_to_main.ts#L54
+      if (
+        (version.beta === 0 && version.rc === 0) ||  
+        version.rc === 1                             
+      ) {
         version.patch += 1;
       }
       version.rc = 0;
