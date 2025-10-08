@@ -1,3 +1,6 @@
+import asyncio
+
+import uvloop
 from mock_scrapi import MockScrapi
 from pytest_httpserver import HTTPServer
 from utils import get_test_data_resource
@@ -6,7 +9,7 @@ from typing import Generator
 import multiprocessing
 import time
 import datetime
-from statsig_python_core import Statsig, StatsigOptions
+from statsig_python_core import Statsig, StatsigOptions, StatsigUser
 import subprocess
 
 multiprocessing.set_start_method("fork", force=True)
@@ -84,6 +87,20 @@ def test_forking_inline(httpserver: HTTPServer):
             timed_out_procs
         ), f"pid {pid}: timeout detected, killing all processes. Timed out procs: {timed_out_procs}"
 
+def test_uvloop_run_forking(httpserver: HTTPServer):
+    uvloop.run(_run_parent_process_after_fork(httpserver))
+
+async def _run_parent_process_after_fork(httpserver: HTTPServer):
+    mock_scrapi = setup_server(httpserver)
+    specs_url = mock_scrapi.url_for_endpoint("/v2/download_config_specs")
+    log_event_url = mock_scrapi.url_for_endpoint("/v1/log_event")
+    id_lists_url = mock_scrapi.url_for_endpoint("/v1/get_id_lists")
+    statsig = Statsig("secret-key", StatsigOptions(specs_url=specs_url, log_event_url=log_event_url, id_lists_url=id_lists_url))
+    statsig.log_event(StatsigUser("a-user"), "a_event")
+    await asyncio.create_subprocess_exec("sleep", "5")
+    statsig.flush_events().wait()
+    event = mock_scrapi.get_logged_events()
+    assert event[0]['eventName'] == 'a_event'
 
 def _proc_name_generator(start: int) -> Generator:
     num_cpus = os.cpu_count() or 1
