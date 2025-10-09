@@ -35,7 +35,7 @@ const TEST_COMMANDS: Record<string, string> = {
     'cargo build -p statsig_ffi',
     'cp target/debug/libstatsig_ffi.so /usr/local/bin/libstatsig_ffi.so || true',
     'cd statsig-go',
-    'go test ./test -v',
+    'STATSIG_LIB_PATH=/usr/local/bin/libstatsig_ffi.so go test ./test -v',
   ].join(' && '),
 
   java: [

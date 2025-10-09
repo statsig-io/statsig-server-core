@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/ebitengine/purego"
+	"github.com/statsig-io/statsig-go-core/internal"
 )
 
 // string <=> char*
@@ -33,8 +34,7 @@ type StatsigFFI struct {
 
 	// StatsigOptions
 	statsig_options_create_from_data func(string) uint64
-	// statsig_options_create  func(string, string, uint64, uint64, string, int, int, int, string, int, int, int, int, int, int, string, int, int, string, uint64, uint64, int, int) uint64
-	// statsig_options_release func(uint64)
+	statsig_options_release          func(uint64)
 
 	// StatsigUser
 	statsig_user_create  func(string, string, *string, *string, *string, *string, *string, *string, *string, *string) uint64
@@ -118,39 +118,12 @@ func GetFFI() *StatsigFFI {
 		panic(err)
 	}
 
+	// StatsigOptions
 	var statsig_options_create_from_data func(string) uint64
 	purego.RegisterLibFunc(&statsig_options_create_from_data, lib, "statsig_options_create_from_data")
 
-	// StatsigOptions
-	// var statsig_options_create func(
-	// 	string, // specs_url
-	// 	string, // log_event_url
-	// 	uint64, // specs_adapter_ref
-	// 	uint64, // event_logging_adapter_ref
-	// 	string, // environment
-	// 	int, // _event_logging_flush_interval_ms
-	// 	int, // event_logging_max_queue_size
-	// 	int, // specs_sync_interval_ms
-	// 	string, // output_log_level
-	// 	int, // disable_country_lookup
-	// 	int, // disable_user_agent_parsing
-	// 	int, // wait_for_country_lookup_init
-	// 	int, // wait_for_user_agent_init
-	// 	int, // enable_id_lists
-	// 	int, // disable_network
-	// 	string, // id_lists_url
-	// 	int, // id_lists_sync_interval_ms
-	// 	int, // disable_all_logging
-	// 	string, // global_custom_fields
-	// 	uint64, // observability_client_ref
-	// 	uint64, // data_store_ref
-	// 	int, // init_timeout_ms
-	// 	int, // fallback_to_statsig_api
-	// ) uint64
-	// purego.RegisterLibFunc(&statsig_options_create, lib, "statsig_options_create")
-
-	// var statsig_options_release func(uint64)
-	// purego.RegisterLibFunc(&statsig_options_release, lib, "statsig_options_release")
+	var statsig_options_release func(uint64)
+	purego.RegisterLibFunc(&statsig_options_release, lib, "statsig_options_release")
 
 	// StatsigUser
 	var statsig_user_create func(
@@ -320,8 +293,7 @@ func GetFFI() *StatsigFFI {
 
 		// StatsigOptions
 		statsig_options_create_from_data: statsig_options_create_from_data,
-		// statsig_options_create:  statsig_options_create,
-		// statsig_options_release: statsig_options_release,
+		statsig_options_release:          statsig_options_release,
 
 		// StatsigUser
 		statsig_user_create:  statsig_user_create,
@@ -393,26 +365,66 @@ func GetFFI() *StatsigFFI {
 		free_string: free_string,
 	}
 
+	instance.updateStatsigMetadata()
+
 	return instance
 }
 
+func (ffi *StatsigFFI) updateStatsigMetadata() {
+	ffi.statsig_metadata_update_values(
+		"statsig-server-core-go", // sdk_type
+		runtime.GOOS,             // os
+		runtime.GOARCH,           // arch
+		runtime.Version(),        // language_version
+	)
+}
+
 func loadLibrary() (uintptr, error) {
-
 	flags := purego.RTLD_NOW | purego.RTLD_GLOBAL
-	path_override := os.Getenv("STATSIG_LIB_PATH")
-	if path_override != "" {
-		return purego.Dlopen(path_override, flags)
+
+	// Load from STATSIG_LIB_PATH if set
+	override_path := os.Getenv("STATSIG_LIB_PATH")
+	if override_path != "" {
+		handle, err := purego.Dlopen(override_path, flags)
+		if err != nil {
+			return 0, fmt.Errorf("STATSIG_LIB_PATH is set but could not be loaded: %w", err)
+		}
+		return handle, nil
 	}
 
-	switch runtime.GOOS {
-
-	case "darwin":
-		return purego.Dlopen("/usr/local/bin/libstatsig_ffi.dylib", flags)
-
-	case "linux":
-		return purego.Dlopen("/usr/local/bin/libstatsig_ffi.so", flags)
-
-	default:
-		return 0, fmt.Errorf("GOOS=%s is not supported", runtime.GOOS)
+	// Otherwise, load from embedded binary
+	path, err := writeBinaryToTempFile()
+	if err != nil {
+		return 0, fmt.Errorf("failed to write binary to temp file: %w", err)
 	}
+
+	handle, err := purego.Dlopen(*path, flags)
+	if err != nil {
+		return 0, fmt.Errorf("failed to open library: %w", err)
+	}
+
+	if err := os.Remove(*path); err != nil {
+		return 0, fmt.Errorf("failed to remove temp file: %w", err)
+	}
+
+	return handle, nil
+}
+
+func writeBinaryToTempFile() (*string, error) {
+	binaryData := internal.GetLibData()
+
+	file, err := os.CreateTemp("", "statsiglib")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file: %w", err)
+	}
+
+	defer file.Close()
+
+	_, err = file.Write(binaryData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write binary to temp file: %w", err)
+	}
+
+	path := file.Name()
+	return &path, nil
 }

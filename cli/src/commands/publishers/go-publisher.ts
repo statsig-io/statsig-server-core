@@ -5,7 +5,7 @@ import { Log } from '@/utils/terminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
 import { execSync, spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { simpleGit } from 'simple-git';
+import { SimpleGit, simpleGit } from 'simple-git';
 
 import { PublisherOptions } from './publisher-options.js';
 
@@ -150,10 +150,18 @@ async function commitAndPushToRepo(version: SemVer, repo: string) {
   const git = simpleGit(path.resolve(TEMP_PATH, repo));
   await git.add('.');
   await git.commit(`chore: update binaries to version ${versionString}`);
-  await git.tag(['-d', versionString]);
+  await tryGitDelete(git, versionString);
   await git.addTag(versionString);
 
   await git.push(['origin', versionString, '--force']);
 
   Log.stepProgress(`${repo} tagged as ${versionString}`);
+}
+
+async function tryGitDelete(git: SimpleGit, tag: string) {
+  try {
+    await git.tag(['-d', tag]);
+  } catch (error) {
+    console.error(`Failed to delete tag ${tag}: ${error}`);
+  }
 }

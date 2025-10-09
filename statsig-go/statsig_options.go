@@ -126,6 +126,7 @@ func (o *StatsigOptionsBuilder) Build() (*StatsigOptions, error) {
 	options_ref := GetFFI().statsig_options_create_from_data(
 		string(data),
 	)
+
 	if options_ref == 0 {
 		return nil, fmt.Errorf("failed to create StatsigOptions")
 	}
