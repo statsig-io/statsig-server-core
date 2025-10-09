@@ -121,6 +121,7 @@ export declare class StatsigUser {
   set locale(value: any)
   get appVersion(): string | null
   set appVersion(value: any)
+  toJSON(): string
 }
 
 export declare function __internal__testDataStore(store: DataStore, path: string, value: string): Promise<[DataStoreResponse | undefined | null, boolean]>
@@ -140,6 +141,8 @@ export interface ClientInitResponseOptions {
   dynamicConfigFilter?: Set<string>
   layerFilter?: Set<string>
   paramStoreFilter?: Set<string>
+  removeIdType?: boolean
+  removeDefaultValueGates?: boolean
 }
 
 export interface DataStore {
