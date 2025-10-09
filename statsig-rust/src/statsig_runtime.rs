@@ -44,11 +44,13 @@ impl StatsigRuntime {
         }
 
         let global = StatsigGlobal::get();
-        let rt = global
+        let mut rt = global
             .tokio_runtime
             .try_lock_for(Duration::from_secs(5))
             .ok_or_else(|| StatsigErr::LockFailure("Failed to lock tokio runtime".to_string()))?;
-
+        if rt.is_none() {
+            *rt = Some(Arc::new(create_new_runtime()));
+        }
         if let Some(rt) = rt.as_ref() {
             return Ok(rt.handle().clone());
         }
