@@ -77,10 +77,14 @@ jobs:
           @statsig/statsig-node-core-linux-x64-musl-rc"
           echo "Updating to latest rc for: $pkgs"
 
-          cd lib
-          pnpm update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
-          cd node/service-core
-          pnpm update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+          # Update all packages in lib
+          pnpm --dir lib update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+
+          # Update all packages in lib/node/entity
+          pnpm --dir lib/node/entity update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+
+          # Update all packages in lib/node/service-core
+          pnpm --dir lib/node/service-core update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
 
           echo "Changed files:"
           git status --porcelain
