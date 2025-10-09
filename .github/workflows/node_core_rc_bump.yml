@@ -11,7 +11,7 @@ on:
 
 jobs:
   update-node-core-rc-version:
-    timeout-minutes: 40
+    timeout-minutes: 60
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && contains(github.event.release.tag_name, '-rc.'))
     runs-on: ubuntu-latest
     steps:
@@ -110,7 +110,7 @@ jobs:
           title: "[automated][sdk] Bump Statsig Node Core RC deps"
           body: |
             This PR was auto-generated on RC release.
-            - Updated in `lib` and `lib/node/service-core`
+            - Updated in `lib`, `lib/node/entity`, `lib/node/service-core`
             - Packages:
               - @statsig/statsig-node-core-rc
               - @statsig/statsig-node-core-linux-x64-gnu-rc
