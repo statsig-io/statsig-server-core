@@ -90,6 +90,7 @@ jobs:
           git status --porcelain
 
       - name: Create Pull Request
+        id: create_rc_pr
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.ROIM }}
@@ -106,3 +107,37 @@ jobs:
           delete-branch: true
           labels: automation, rc-bump
           team-reviewers: sdk
+
+      - name: Notify Slack about new RC bump PR
+        if: steps.create_rc_pr.outputs.pull-request-url != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SDK_SLACK_WEBHOOK_URL }}
+        run: |
+          pr_url="${{ steps.create_rc_pr.outputs.pull-request-url }}"
+          pr_title="[automated][sdk] Bump Statsig Node Core RC deps"
+          actor="${{ github.actor }}"
+          repo="${{ github.repository }}"
+          branch="bump_statsig_rc_sdk_version-${{ github.run_id }}"
+
+          payload=$(cat <<EOF
+          {
+            "attachments": [
+              {
+                "color": "#4A154B",
+                "title": ":rocket: New RC Bump PR Created!",
+                "text": "*${actor}* just created a new PR in \`${repo}\`:\n<${pr_url}|${pr_title}>\n\n:warning: Please review and merge if safe. If any breaking changes exist, update sdk wrappers accordingly.",
+                "fields": [
+                  { "title": "Branch", "value": "${branch}", "short": true },
+                  { "title": "Repository", "value": "${repo}", "short": true }
+                ],
+                "footer": "Posted by 🚀 SDKbot",
+                "ts": $(date +%s)
+              }
+            ]
+          }
+          EOF
+          )
+
+          curl -X POST -H 'Content-type: application/json' \
+            --data "$payload" \
+            "$SLACK_WEBHOOK_URL"
