@@ -4,9 +4,9 @@ use std::sync::Arc;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluator_result::EvaluatorResult;
 use crate::hashing::HashUtil;
+use crate::id_lists_adapter::IdList;
 use crate::interned_string::InternedString;
-use crate::spec_store::SpecStoreData;
-use crate::specs_response::spec_types::{Rule, Spec};
+use crate::specs_response::spec_types::{Rule, Spec, SpecsResponseFull};
 use crate::user::StatsigUserInternal;
 use crate::StatsigErr::StackOverflowError;
 use crate::{OverrideAdapter, StatsigErr};
@@ -15,7 +15,8 @@ const MAX_RECURSIVE_DEPTH: u16 = 300;
 
 pub struct EvaluatorContext<'a> {
     pub user: &'a StatsigUserInternal<'a, 'a>,
-    pub spec_store_data: &'a SpecStoreData,
+    pub specs_data: &'a SpecsResponseFull,
+    pub id_lists: Option<&'a HashMap<String, IdList>>,
     pub hashing: &'a HashUtil,
     pub result: EvaluatorResult<'a>,
     pub nested_count: u16,
@@ -28,7 +29,8 @@ pub struct EvaluatorContext<'a> {
 impl<'a> EvaluatorContext<'a> {
     pub fn new(
         user: &'a StatsigUserInternal,
-        spec_store_data: &'a SpecStoreData,
+        specs_data: &'a SpecsResponseFull,
+        id_lists: Option<&'a HashMap<String, IdList>>,
         hashing: &'a HashUtil,
         app_id: Option<&'a DynamicValue>,
         override_adapter: Option<&'a Arc<dyn OverrideAdapter>>,
@@ -38,7 +40,8 @@ impl<'a> EvaluatorContext<'a> {
 
         Self {
             user,
-            spec_store_data,
+            specs_data,
+            id_lists,
             hashing,
             app_id,
             result,

@@ -7,7 +7,6 @@ use crate::evaluation::comparisons::{
     compare_time, compare_versions,
 };
 use crate::evaluation::dynamic_value::DynamicValue;
-use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator_context::EvaluatorContext;
 use crate::evaluation::evaluator_value::{EvaluatorValue, MemoizedEvaluatorValue};
@@ -46,40 +45,16 @@ pub enum Recognition {
 }
 
 impl Evaluator {
-    pub fn evaluate_with_details(
-        ctx: &mut EvaluatorContext,
-        spec_name: &str,
-        spec_type: &SpecType,
-    ) -> Result<EvaluationDetails, StatsigErr> {
-        let recognition = Self::evaluate(ctx, spec_name, spec_type)?;
-
-        if recognition == Recognition::Unrecognized {
-            return Ok(EvaluationDetails::unrecognized(ctx.spec_store_data));
-        }
-
-        if let Some(reason) = ctx.result.override_reason {
-            return Ok(EvaluationDetails::recognized_but_overridden(
-                ctx.spec_store_data,
-                reason,
-            ));
-        }
-
-        Ok(EvaluationDetails::recognized(
-            ctx.spec_store_data,
-            &ctx.result,
-        ))
-    }
-
     pub fn evaluate(
         ctx: &mut EvaluatorContext,
         spec_name: &str,
         spec_type: &SpecType,
     ) -> Result<Recognition, StatsigErr> {
         let opt_addressable_spec = match spec_type {
-            SpecType::Gate => ctx.spec_store_data.values.feature_gates.get(spec_name),
-            SpecType::DynamicConfig => ctx.spec_store_data.values.dynamic_configs.get(spec_name),
-            SpecType::Experiment => ctx.spec_store_data.values.dynamic_configs.get(spec_name),
-            SpecType::Layer => ctx.spec_store_data.values.layer_configs.get(spec_name),
+            SpecType::Gate => ctx.specs_data.feature_gates.get(spec_name),
+            SpecType::DynamicConfig => ctx.specs_data.dynamic_configs.get(spec_name),
+            SpecType::Experiment => ctx.specs_data.dynamic_configs.get(spec_name),
+            SpecType::Layer => ctx.specs_data.layer_configs.get(spec_name),
         };
 
         let opt_spec = opt_addressable_spec.map(|a| a.spec.as_ref());
@@ -178,12 +153,12 @@ fn try_apply_config_mapping(
     spec_type: &SpecType,
     opt_spec: Option<&Spec>,
 ) -> bool {
-    let overrides = match &ctx.spec_store_data.values.overrides {
+    let overrides = match &ctx.specs_data.overrides {
         Some(overrides) => overrides,
         None => return false,
     };
 
-    let override_rules = match &ctx.spec_store_data.values.override_rules {
+    let override_rules = match &ctx.specs_data.override_rules {
         Some(override_rules) => override_rules,
         None => return false,
     };
@@ -275,7 +250,7 @@ fn evaluate_rule<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) -> Result<(
     // println!("--- Eval Rule {} ---", rule.id);
     for condition_hash in &rule.conditions {
         // println!("Condition Hash {}", condition_hash);
-        let opt_condition = ctx.spec_store_data.values.condition_map.get(condition_hash);
+        let opt_condition = ctx.specs_data.condition_map.get(condition_hash);
         let condition = if let Some(c) = opt_condition {
             c
         } else {
@@ -430,7 +405,7 @@ fn evaluate_id_list(
     value: &DynamicValue,
 ) -> bool {
     let list_name = unwrap_or_return!(&target_value.string_value, false);
-    let id_lists = &ctx.spec_store_data.id_lists;
+    let id_lists = unwrap_or_return!(ctx.id_lists, false);
 
     let list = unwrap_or_return!(id_lists.get(list_name.value.as_str()), false);
 
@@ -507,10 +482,7 @@ fn evaluate_config_delegate<'a>(
     rule: &'a Rule,
 ) -> Result<bool, StatsigErr> {
     let delegate = unwrap_or_return!(&rule.config_delegate, Ok(false));
-    let delegate_spec = unwrap_or_return!(
-        ctx.spec_store_data.values.dynamic_configs.get(delegate),
-        Ok(false)
-    );
+    let delegate_spec = unwrap_or_return!(ctx.specs_data.dynamic_configs.get(delegate), Ok(false));
 
     ctx.result.undelegated_secondary_exposures = Some(ctx.result.secondary_exposures.clone());
 

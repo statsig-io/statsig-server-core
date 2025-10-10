@@ -43,7 +43,7 @@ pub(crate) fn get_layer_evaluations(
         context,
         options,
         sec_expo_hash_memo,
-        &context.spec_store_data.values.layer_configs,
+        &context.specs_data.layer_configs,
         get_layer_spec_type,
         factory,
     )
@@ -80,7 +80,7 @@ pub(crate) fn get_layer_evaluations_v2(
         context,
         options,
         sec_expo_hash_memo,
-        &context.spec_store_data.values.layer_configs,
+        &context.specs_data.layer_configs,
         get_layer_spec_type,
         factory,
     )

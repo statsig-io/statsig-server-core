@@ -85,12 +85,12 @@ describe('Statsig', () => {
   it('should apply feature gate filter correctly', async () => {
     const user = StatsigUser.withUserID('a-user');
 
-    const responseWithFilter = JSON.parse(
-      statsig.getClientInitializeResponse(user, {
-        hashAlgorithm: 'none',
-        featureGateFilter: new Set(['test_public']),
-      }),
-    );
+    const raw = statsig.getClientInitializeResponse(user, {
+      hashAlgorithm: 'none',
+      featureGateFilter: new Set(['test_public']),
+    });
+
+    const responseWithFilter = JSON.parse(raw);
 
     expect(Object.keys(responseWithFilter.feature_gates)).toEqual(
       expect.arrayContaining(['test_public']),
@@ -207,7 +207,7 @@ describe('Statsig', () => {
     it('should expose layer value field directly', async () => {
       const user = StatsigUser.withUserID('a-user');
       const layer = statsig.getLayer(user, 'layer_with_many_params');
-      
+
       expect(layer.value).toBeDefined();
       expect(typeof layer.value).toBe('object');
       expect(layer.value).toHaveProperty('another_string');
@@ -225,7 +225,9 @@ describe('Statsig', () => {
       expect(['aarch64', 'arm64', 'x86_64']).toContain(meta.arch);
 
       expect(meta.sdkType).toEqual('statsig-server-core-node');
-      expect(meta.sdkVersion.replace(/-(beta|rc)\.\d+$/, '')).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(meta.sdkVersion.replace(/-(beta|rc)\.\d+$/, '')).toMatch(
+        /^\d+\.\d+\.\d+$/,
+      );
       expect(meta.sessionID).toMatch(
         /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/,
       );

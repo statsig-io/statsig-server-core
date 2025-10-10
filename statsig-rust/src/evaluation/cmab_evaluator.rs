@@ -33,7 +33,7 @@ pub struct CMABRankedGroup {
 }
 
 pub fn get_cmab_ranked_list(ctx: &mut EvaluatorContext, name: &str) -> Vec<CMABRankedGroup> {
-    let cmabs = match &ctx.spec_store_data.values.cmab_configs {
+    let cmabs = match &ctx.specs_data.cmab_configs {
         Some(cmabs) => cmabs,
         None => return vec![],
     };
@@ -112,7 +112,7 @@ pub(crate) fn evaluate_cmab(
         _ => return false,
     }
 
-    let cmabs = match &ctx.spec_store_data.values.cmab_configs {
+    let cmabs = match &ctx.specs_data.cmab_configs {
         Some(cmabs) => cmabs,
         None => return false,
     };
