@@ -13,10 +13,15 @@ use crate::{OverrideAdapter, StatsigErr};
 
 const MAX_RECURSIVE_DEPTH: u16 = 300;
 
+pub enum IdListResolution<'a> {
+    MapLookup(&'a HashMap<String, IdList>),
+    Callback(&'a dyn Fn(&str, &str) -> bool),
+}
+
 pub struct EvaluatorContext<'a> {
     pub user: &'a StatsigUserInternal<'a, 'a>,
     pub specs_data: &'a SpecsResponseFull,
-    pub id_lists: Option<&'a HashMap<String, IdList>>,
+    pub id_list_resolver: IdListResolution<'a>,
     pub hashing: &'a HashUtil,
     pub result: EvaluatorResult<'a>,
     pub nested_count: u16,
@@ -30,7 +35,7 @@ impl<'a> EvaluatorContext<'a> {
     pub fn new(
         user: &'a StatsigUserInternal,
         specs_data: &'a SpecsResponseFull,
-        id_lists: Option<&'a HashMap<String, IdList>>,
+        id_list_resolver: IdListResolution<'a>,
         hashing: &'a HashUtil,
         app_id: Option<&'a DynamicValue>,
         override_adapter: Option<&'a Arc<dyn OverrideAdapter>>,
@@ -41,7 +46,7 @@ impl<'a> EvaluatorContext<'a> {
         Self {
             user,
             specs_data,
-            id_lists,
+            id_list_resolver,
             hashing,
             app_id,
             result,

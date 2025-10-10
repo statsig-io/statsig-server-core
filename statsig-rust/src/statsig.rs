@@ -4,7 +4,7 @@ use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::GateEvaluation;
 use crate::evaluation::evaluator::{Evaluator, Recognition, SpecType};
-use crate::evaluation::evaluator_context::EvaluatorContext;
+use crate::evaluation::evaluator_context::{EvaluatorContext, IdListResolution};
 use crate::evaluation::evaluator_result::{
     result_to_dynamic_config_eval, result_to_experiment_eval, result_to_gate_eval,
     result_to_layer_eval, EvaluatorResult,
@@ -1892,7 +1892,7 @@ impl Statsig {
         EvaluatorContext::new(
             user_internal,
             &data.values,
-            Some(&data.id_lists),
+            IdListResolution::MapLookup(&data.id_lists),
             &self.hashing,
             app_id,
             override_adapter,
@@ -1915,7 +1915,7 @@ impl Statsig {
         EvaluatorContext::new(
             user_internal,
             &data.values,
-            Some(&data.id_lists),
+            IdListResolution::MapLookup(&data.id_lists),
             &self.hashing,
             app_id,
             override_adapter,

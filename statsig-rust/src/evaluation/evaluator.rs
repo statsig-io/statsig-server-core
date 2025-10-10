@@ -8,7 +8,7 @@ use crate::evaluation::comparisons::{
 };
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_types::SecondaryExposure;
-use crate::evaluation::evaluator_context::EvaluatorContext;
+use crate::evaluation::evaluator_context::{EvaluatorContext, IdListResolution};
 use crate::evaluation::evaluator_value::{EvaluatorValue, MemoizedEvaluatorValue};
 use crate::evaluation::get_unit_id::get_unit_id;
 use crate::evaluation::user_agent_parsing::UserAgentParser;
@@ -404,22 +404,35 @@ fn evaluate_id_list(
     target_value: &MemoizedEvaluatorValue,
     value: &DynamicValue,
 ) -> bool {
-    let list_name = unwrap_or_return!(&target_value.string_value, false);
-    let id_lists = unwrap_or_return!(ctx.id_lists, false);
-
-    let list = unwrap_or_return!(id_lists.get(list_name.value.as_str()), false);
-
-    let dyn_str = unwrap_or_return!(&value.string_value, false);
-    let hashed = ctx.hashing.sha256(&dyn_str.value);
-    let lookup_id: String = hashed.chars().take(8).collect();
-
-    let is_in_list = list.ids.contains(&lookup_id);
+    let is_in_list = is_in_id_list(ctx, target_value, value);
 
     if op == "not_in_segment_list" {
         return !is_in_list;
     }
 
     is_in_list
+}
+
+fn is_in_id_list(
+    ctx: &mut EvaluatorContext<'_>,
+    target_value: &MemoizedEvaluatorValue,
+    value: &DynamicValue,
+) -> bool {
+    let list_name = unwrap_or_return!(&target_value.string_value, false);
+    let dyn_str = unwrap_or_return!(&value.string_value, false);
+    let hashed = ctx.hashing.sha256(&dyn_str.value);
+    let lookup_id: String = hashed.chars().take(8).collect();
+
+    match ctx.id_list_resolver {
+        IdListResolution::MapLookup(id_lists) => {
+            let list = unwrap_or_return!(id_lists.get(list_name.value.as_str()), false);
+
+            list.ids.contains(&lookup_id)
+        }
+        IdListResolution::Callback(callback) => {
+            callback(list_name.value.as_str(), lookup_id.as_str())
+        }
+    }
 }
 
 fn evaluate_nested_gate<'a>(
