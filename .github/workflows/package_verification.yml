@@ -67,6 +67,21 @@ jobs:
           - package: node
             tag: node_20_alpine
 
+          - package: node
+            tag: node_20_amazonliunx_2023
+
+          - package: node
+            tag: node_20_bookworm
+
+          - package: node
+            tag: node_20_bullseye
+
+          - package: node
+            tag: node_22_bookworm
+
+          - package: node
+            tag: node_22_alpine
+
           - package: php
             tag: php_7_cli
 
