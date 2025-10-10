@@ -234,9 +234,13 @@ pub extern "C" fn statsig_log_event(statsig_ref: u64, user_ref: u64, event_json:
     let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
     let user = get_instance_or_noop_c!(StatsigUser, &user_ref);
     let event_json = unwrap_or_noop!(c_char_to_string(event_json));
+
     let event = match serde_json::from_str::<HashMap<String, Value>>(&event_json) {
         Ok(map) => map,
-        Err(_) => return,
+        Err(err) => {
+            log_e!(TAG, "Failed to parse event json: {}", err);
+            return;
+        }
     };
 
     let event_name = unwrap_or_noop!(event.get("name").and_then(|n| n.as_str()));

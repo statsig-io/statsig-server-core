@@ -1,6 +1,8 @@
 module github.com/statsig-io/statsig-go-core
 
-go 1.18
+go 1.22
+
+toolchain go1.24.5
 
 require (
 	github.com/ebitengine/purego v0.9.0

@@ -33,7 +33,7 @@ type StatsigOptionsBuilder struct {
 	FallbackToStatsigApi        *bool   `json:"fallback_to_statsig_api,omitempty"`
 }
 
-func NewStatsigOptionsBuilder() *StatsigOptionsBuilder {
+func NewOptionsBuilder() *StatsigOptionsBuilder {
 	return &StatsigOptionsBuilder{}
 }
 
@@ -123,16 +123,16 @@ func (o *StatsigOptionsBuilder) Build() (*StatsigOptions, error) {
 		return nil, err
 	}
 
-	options_ref := GetFFI().statsig_options_create_from_data(
+	ref := GetFFI().statsig_options_create_from_data(
 		string(data),
 	)
 
-	if options_ref == 0 {
+	if ref == 0 {
 		return nil, fmt.Errorf("failed to create StatsigOptions")
 	}
 
 	options := &StatsigOptions{
-		ref: options_ref,
+		ref,
 	}
 
 	return options, nil
