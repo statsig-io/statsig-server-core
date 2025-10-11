@@ -1,9 +1,38 @@
 use crate::ffi_utils::{c_char_to_string, parse_json_to_map, parse_json_to_str_map};
-use statsig_rust::StatsigUserBuilder;
-use statsig_rust::{log_e, InstanceRegistry};
+use statsig_rust::{log_e, InstanceRegistry, StatsigUser};
+use statsig_rust::{StatsigUserBuilder, StatsigUserData};
 use std::os::raw::c_char;
+use std::sync::Arc;
 
 const TAG: &str = "StatsigUserC";
+
+#[no_mangle]
+pub extern "C" fn statsig_user_create_from_data(json_data: *const c_char) -> u64 {
+    let json_data = match c_char_to_string(json_data) {
+        Some(data) => data,
+        None => {
+            log_e!(TAG, "Failed to convert c_char to string");
+            return 0;
+        }
+    };
+
+    let user_data = match serde_json::from_str::<StatsigUserData>(json_data.as_str()) {
+        Ok(data) => data,
+        Err(_) => {
+            log_e!(TAG, "Failed to deserialize StatsigUserData");
+            return 0;
+        }
+    };
+
+    let user = StatsigUser {
+        data: Arc::new(user_data),
+    };
+
+    InstanceRegistry::register(user).unwrap_or_else(|| {
+        log_e!(TAG, "Failed to create StatsigUser");
+        0
+    })
+}
 
 #[no_mangle]
 pub extern "C" fn statsig_user_create(

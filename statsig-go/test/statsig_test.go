@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 
@@ -90,6 +91,74 @@ func TestEventLogging(t *testing.T) {
 	}
 }
 
+func TestGetClientInitResponse(t *testing.T) {
+	statsig, _, user := setupStatsig(t)
+
+	hashAlgo := "none"
+	options := statsig_go.ClientInitResponseOptions{
+		HashAlgorithm: &hashAlgo,
+	}
+
+	rawResponse, err := statsig.GetClientInitResponse(user, &options)
+	statsig.Shutdown()
+
+	if err != nil {
+		t.Errorf("error getting client init response: %v", err)
+	}
+
+	if rawResponse == nil {
+		t.Errorf("Response is nil")
+		return
+	}
+
+	response := map[string]any{}
+	err = json.Unmarshal([]byte(*rawResponse), &response)
+	if err != nil {
+		t.Errorf("error unmarshalling client init response: %v", err)
+	}
+
+	if response["feature_gates"] == nil {
+		t.Errorf("Feature gates is nil")
+	}
+
+	gates := response["feature_gates"].(map[string]any)
+	gate := gates["test_public"]
+	if gate == nil {
+		t.Errorf("Test public gate is nil")
+	}
+}
+
+func TestGetClientInitResponseNoOptions(t *testing.T) {
+	statsig, _, user := setupStatsig(t)
+
+	rawResponse, err := statsig.GetClientInitResponse(user, nil)
+	statsig.Shutdown()
+
+	if err != nil {
+		t.Errorf("error getting client init response: %v", err)
+	}
+
+	if rawResponse == nil {
+		t.Errorf("Response is nil")
+		return
+	}
+
+	response := map[string]any{}
+	err = json.Unmarshal([]byte(*rawResponse), &response)
+	if err != nil {
+		t.Errorf("error unmarshalling client init response: %v", err)
+	}
+
+	if response["feature_gates"] == nil {
+		t.Errorf("Feature gates is nil")
+	}
+
+	gates := response["feature_gates"].(map[string]any)
+	if len(gates) == 0 {
+		t.Errorf("Feature gates is empty")
+	}
+}
+
 func setupStatsig(t *testing.T) (*statsig_go.Statsig, *MockScrapi, *statsig_go.StatsigUser) {
 	scrapi := NewMockScrapi()
 
@@ -122,7 +191,11 @@ func setupStatsig(t *testing.T) (*statsig_go.Statsig, *MockScrapi, *statsig_go.S
 		t.Errorf("error creating StatsigUser: %v", err)
 	}
 
-	statsig := statsig_go.NewStatsigWithOptions("secret-123", opts)
+	statsig, err := statsig_go.NewStatsigWithOptions("secret-123", opts)
+	if err != nil {
+		t.Errorf("error creating Statsig: %v", err)
+	}
+
 	statsig.Initialize()
 
 	return statsig, scrapi, user

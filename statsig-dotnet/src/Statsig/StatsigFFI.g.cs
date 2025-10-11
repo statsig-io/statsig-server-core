@@ -25,6 +25,9 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_options_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_options_release(ulong options_ref);
 
+        [DllImport(__DllName, EntryPoint = "statsig_user_create_from_data", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern ulong statsig_user_create_from_data(byte* json_data);
+
         [DllImport(__DllName, EntryPoint = "statsig_user_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern ulong statsig_user_create(byte* user_id, byte* custom_ids_json, byte* email, byte* ip, byte* user_agent, byte* country, byte* locale, byte* app_version, byte* custom_json, byte* private_attributes_json);
 

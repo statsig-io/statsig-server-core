@@ -9,17 +9,21 @@ type StatsigUser struct {
 	ref uint64
 }
 
+// todo: introduce custom type for handling valid JSON primitives only instead of using 'any'
 type StatsigUserBuilder struct {
-	UserID            string
-	CustomIDs         map[string]string
-	Email             *string
-	IpAddress         *string
-	UserAgent         *string
-	Country           *string
-	Locale            *string
-	AppVersion        *string
-	Custom            *map[string]string
-	PrivateAttributes *map[string]string
+	UserID string `json:"userID"`
+	// map[string] string | number
+	CustomIDs  map[string]any `json:"customIDs"`
+	Email      *string        `json:"email"`
+	IpAddress  *string        `json:"ip"`
+	UserAgent  *string        `json:"userAgent"`
+	Country    *string        `json:"country"`
+	Locale     *string        `json:"locale"`
+	AppVersion *string        `json:"appVersion"`
+	// map[string] string | number | boolean | array<string>
+	Custom *map[string]any `json:"custom"`
+	// map[string] string | number | boolean | array<string>
+	PrivateAttributes *map[string]any `json:"privateAttributes"`
 }
 
 func NewUserBuilderWithUserID(userID string) *StatsigUserBuilder {
@@ -28,7 +32,7 @@ func NewUserBuilderWithUserID(userID string) *StatsigUserBuilder {
 	}
 }
 
-func NewUserBuilderWithCustomIDs(customIDs map[string]string) *StatsigUserBuilder {
+func NewUserBuilderWithCustomIDs(customIDs map[string]any) *StatsigUserBuilder {
 	return &StatsigUserBuilder{
 		CustomIDs: customIDs,
 	}
@@ -39,7 +43,7 @@ func (b *StatsigUserBuilder) WithUserID(userID string) *StatsigUserBuilder {
 	return b
 }
 
-func (b *StatsigUserBuilder) WithCustomIDs(customIDs map[string]string) *StatsigUserBuilder {
+func (b *StatsigUserBuilder) WithCustomIDs(customIDs map[string]any) *StatsigUserBuilder {
 	b.CustomIDs = customIDs
 	return b
 }
@@ -74,37 +78,24 @@ func (b *StatsigUserBuilder) WithAppVersion(appVersion string) *StatsigUserBuild
 	return b
 }
 
-func (b *StatsigUserBuilder) WithCustom(custom map[string]string) *StatsigUserBuilder {
+func (b *StatsigUserBuilder) WithCustom(custom map[string]any) *StatsigUserBuilder {
 	b.Custom = &custom
 	return b
 }
 
-func (b *StatsigUserBuilder) WithPrivateAttributes(privateAttributes map[string]string) *StatsigUserBuilder {
+func (b *StatsigUserBuilder) WithPrivateAttributes(privateAttributes map[string]any) *StatsigUserBuilder {
 	b.PrivateAttributes = &privateAttributes
 	return b
 }
 
 func (b *StatsigUserBuilder) Build() (*StatsigUser, error) {
-	customIDsJSON, err := toJsonString(&b.CustomIDs)
+	jsonData, err := json.Marshal(b)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling user.customIDs: %v", err)
+		return nil, fmt.Errorf("error marshalling user: %v", err)
 	}
 
-	customJSON, err := toJsonString(b.Custom)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling user.custom: %v", err)
-	}
-
-	privateAttributesJSON, err := toJsonString(b.PrivateAttributes)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling user.privateAttributes: %v", err)
-	}
-
-	userRef := GetFFI().statsig_user_create(
-		b.UserID,
-		string(customIDsJSON),
-		b.Email, b.IpAddress, b.UserAgent, b.Country, b.Locale, b.AppVersion,
-		&customJSON, &privateAttributesJSON,
+	userRef := GetFFI().statsig_user_create_from_data(
+		string(jsonData),
 	)
 
 	if userRef == 0 {
@@ -116,17 +107,4 @@ func (b *StatsigUserBuilder) Build() (*StatsigUser, error) {
 	}
 
 	return user, nil
-}
-
-func toJsonString(data *map[string]string) (string, error) {
-	if data == nil {
-		return "{}", nil
-	}
-
-	jsonStr, err := json.Marshal(data)
-	if err != nil {
-		return "{}", err
-	}
-
-	return string(jsonStr), nil
 }

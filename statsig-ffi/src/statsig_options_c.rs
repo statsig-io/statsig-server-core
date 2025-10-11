@@ -17,46 +17,104 @@ use std::sync::Weak;
 
 const TAG: &str = "StatsigOptionsC";
 
-#[derive(Default, serde::Deserialize)]
+#[derive(Default, serde::Deserialize, Debug)]
 pub struct StatsigOptionsData {
-    specs_url: Option<String>,
-    log_event_url: Option<String>,
-    specs_adapter_ref: Option<u64>,
-    event_logging_adapter_ref: Option<u64>,
-    environment: Option<String>,
-    event_logging_max_queue_size: Option<u32>,
-    specs_sync_interval_ms: Option<u32>,
-    output_log_level: Option<String>,
+    config_compression_mode: Option<String>,
+    data_store_ref: Option<u64>,
+    disable_all_logging: Option<bool>,
     disable_country_lookup: Option<bool>,
+    disable_network: Option<bool>,
     disable_user_agent_parsing: Option<bool>,
+    enable_id_lists: Option<bool>,
+    environment: Option<String>,
+    event_logging_adapter_ref: Option<u64>,
+    event_logging_max_pending_batch_queue_size: Option<u32>,
+    event_logging_max_queue_size: Option<u32>,
+    fallback_to_statsig_api: Option<bool>,
+    global_custom_fields: Option<HashMap<String, DynamicValue>>,
+    id_lists_sync_interval_ms: Option<u32>,
+    id_lists_url: Option<String>,
+    init_timeout_ms: Option<u64>,
+    log_event_url: Option<String>,
+    observability_client_ref: Option<u64>,
+    output_log_level: Option<String>,
+    service_name: Option<String>,
+    specs_adapter_ref: Option<u64>,
+    specs_sync_interval_ms: Option<u32>,
+    specs_url: Option<String>,
+    use_third_party_ua_parser: Option<bool>,
     wait_for_country_lookup_init: Option<bool>,
     wait_for_user_agent_init: Option<bool>,
-    enable_id_lists: Option<bool>,
-    disable_network: Option<bool>,
-    id_lists_url: Option<String>,
-    id_lists_sync_interval_ms: Option<u32>,
-    disable_all_logging: Option<bool>,
-    global_custom_fields: Option<HashMap<String, DynamicValue>>,
-    observability_client_ref: Option<u64>,
-    data_store_ref: Option<u64>,
-    init_timeout_ms: Option<u64>,
-    fallback_to_statsig_api: Option<bool>,
 }
 
 impl From<StatsigOptionsData> for StatsigOptions {
     fn from(data: StatsigOptionsData) -> Self {
+        let data_store = match data.data_store_ref {
+            Some(ds_ref) => try_get_data_store(ds_ref),
+            None => None,
+        };
+
+        let event_logging_adapter = match data.event_logging_adapter_ref {
+            Some(ela_ref) => try_get_event_logging_adapter(ela_ref),
+            None => None,
+        };
+
+        let observability_client = match data.observability_client_ref {
+            Some(oc_ref) => try_get_observability_client(oc_ref),
+            None => None,
+        };
+
+        let specs_adapter = match data.specs_adapter_ref {
+            Some(sa_ref) => try_get_specs_adapter(sa_ref),
+            None => None,
+        };
+
+        let output_log_level = data
+            .output_log_level
+            .map(|level| LogLevel::from(level.as_str()));
+
+        let config_compression_mode = data
+            .config_compression_mode
+            .map(|mode| mode.as_str().into());
+
+        let event_logging_max_pending_batch_queue_size =
+            data.event_logging_max_pending_batch_queue_size;
+
+        // please keep sorted alphabetically
         Self {
-            specs_url: data.specs_url,
-            log_event_url: data.log_event_url,
-            environment: data.environment,
-            event_logging_max_queue_size: data.event_logging_max_queue_size,
-            specs_sync_interval_ms: data.specs_sync_interval_ms,
+            config_compression_mode,
+            data_store,
+            disable_all_logging: data.disable_all_logging,
             disable_country_lookup: data.disable_country_lookup,
+            disable_network: data.disable_network,
+            enable_id_lists: data.enable_id_lists,
+            environment: data.environment,
+            event_logging_adapter,
+            #[allow(deprecated)]
+            event_logging_flush_interval_ms: None,
+            event_logging_max_pending_batch_queue_size,
+            event_logging_max_queue_size: data.event_logging_max_queue_size,
+            fallback_to_statsig_api: data.fallback_to_statsig_api,
+            global_custom_fields: data.global_custom_fields,
+            id_lists_adapter: None, // todo: add support for id lists adapter
+            id_lists_sync_interval_ms: data.id_lists_sync_interval_ms,
+            id_lists_url: data.id_lists_url,
+            init_timeout_ms: data.init_timeout_ms,
+            log_event_url: data.log_event_url,
+            observability_client,
+            output_log_level,
+            output_logger_provider: None, // todo: add support for output logger provider
+            override_adapter: None,
+            persistent_storage: None,
+            proxy_config: None, // todo: add support for proxy config
+            service_name: data.service_name,
+            spec_adapters_config: None, // todo: add support for spec adapters config
+            specs_adapter,
+            specs_sync_interval_ms: data.specs_sync_interval_ms,
+            specs_url: data.specs_url,
+            use_third_party_ua_parser: data.use_third_party_ua_parser,
             wait_for_country_lookup_init: data.wait_for_country_lookup_init,
             wait_for_user_agent_init: data.wait_for_user_agent_init,
-            enable_id_lists: data.enable_id_lists,
-            disable_network: data.disable_network,
-            ..Default::default()
         }
     }
 }
@@ -71,14 +129,15 @@ pub extern "C" fn statsig_options_create_from_data(json_data: *const c_char) -> 
         }
     };
 
-    let options: StatsigOptions =
-        match serde_json::from_str::<StatsigOptionsData>(json_data.as_str()) {
-            Ok(data) => data.into(),
-            Err(_) => {
-                log_e!(TAG, "Failed to deserialize StatsigOptionsData");
-                return 0;
-            }
-        };
+    let options_data = match serde_json::from_str::<StatsigOptionsData>(json_data.as_str()) {
+        Ok(data) => data,
+        Err(_) => {
+            log_e!(TAG, "Failed to deserialize StatsigOptionsData");
+            return 0;
+        }
+    };
+
+    let options: StatsigOptions = options_data.into();
 
     InstanceRegistry::register(options).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigOptions");

@@ -307,6 +307,8 @@ uint64_t statsig_options_create(const char *specs_url,
 
 void statsig_options_release(uint64_t options_ref);
 
+uint64_t statsig_user_create_from_data(const char *json_data);
+
 uint64_t statsig_user_create(const char *user_id,
                              const char *custom_ids_json,
                              const char *email,

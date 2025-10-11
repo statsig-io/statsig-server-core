@@ -18,8 +18,8 @@ type StatsigFFI struct {
 	statsig_options_release          func(uint64)
 
 	// StatsigUser
-	statsig_user_create  func(string, string, *string, *string, *string, *string, *string, *string, *string, *string) uint64
-	statsig_user_release func(uint64)
+	statsig_user_create_from_data func(string) uint64
+	statsig_user_release          func(uint64)
 
 	// Statsig Core
 	statsig_create                           func(string, uint64) uint64
@@ -47,21 +47,21 @@ type StatsigFFI struct {
 	statsig_get_array_parameter_from_parameter_store   func(uint64, uint64, string, string, string, string) string
 
 	// Gates
-	statsig_check_gate                 func(uint64, uint64, string, *string) bool
+	statsig_check_gate                 func(uint64, uint64, string, string) bool
 	statsig_check_gate_performance     func(uint64, uint64, string, uint, string, uint) bool
-	statsig_get_feature_gate           func(uint64, uint64, string, *string) string
+	statsig_get_feature_gate           func(uint64, uint64, string, string) string
 	statsig_manually_log_gate_exposure func(uint64, uint64, string)
 
 	// Dynamic Configs
-	statsig_get_dynamic_config                   func(uint64, uint64, string, *string) string
+	statsig_get_dynamic_config                   func(uint64, uint64, string, string) string
 	statsig_manually_log_dynamic_config_exposure func(uint64, uint64, string)
 
 	// Experiments
-	statsig_get_experiment                   func(uint64, uint64, string, *string) string
+	statsig_get_experiment                   func(uint64, uint64, string, string) string
 	statsig_manually_log_experiment_exposure func(uint64, uint64, string)
 
 	// Layers
-	statsig_get_layer                             func(uint64, uint64, string, *string) string
+	statsig_get_layer                             func(uint64, uint64, string, string) string
 	statsig_log_layer_param_exposure              func(uint64, string, string)
 	statsig_manually_log_layer_parameter_exposure func(uint64, uint64, string, string)
 
@@ -108,7 +108,7 @@ func GetFFI() *StatsigFFI {
 		purego.RegisterLibFunc(&instance.statsig_options_release, lib, "statsig_options_release")
 
 		// StatsigUser
-		purego.RegisterLibFunc(&instance.statsig_user_create, lib, "statsig_user_create")
+		purego.RegisterLibFunc(&instance.statsig_user_create_from_data, lib, "statsig_user_create_from_data")
 		purego.RegisterLibFunc(&instance.statsig_user_release, lib, "statsig_user_release")
 
 		// Statsig Core

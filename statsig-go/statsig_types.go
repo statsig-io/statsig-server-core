@@ -1,6 +1,8 @@
 package statsig_go_core
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 // ------------------------------------------------------------------------------------- [ Feature Gate ]
 
@@ -9,7 +11,7 @@ type FeatureGate struct {
 	Value  bool   `json:"value"`
 	RuleID string `json:"rule_id"`
 	// EvaluationDetails EvaluationDetails `json:"details"`
-	IdType string `json:"id_type"`
+	IDType string `json:"id_type"`
 }
 
 // ------------------------------------------------------------------------------------- [ Dynamic Config ]
@@ -19,27 +21,27 @@ type DynamicConfig struct {
 	Value  map[string]any `json:"value"`
 	RuleID string         `json:"rule_id"`
 	// EvaluationDetails EvaluationDetails      `json:"details"`
-	IdType string `json:"id_type"`
+	IDType string `json:"id_type"`
 }
 
 func (d *DynamicConfig) GetString(key string, fallback string) string {
-	return getTypedValue(d.Value, key, fallback)
+	return getTypedValue(d.Value, key, fallback, nil)
 }
 
 func (d *DynamicConfig) GetNumber(key string, fallback float64) float64 {
-	return getTypedValue(d.Value, key, fallback)
+	return getTypedValue(d.Value, key, fallback, nil)
 }
 
 func (d *DynamicConfig) GetBool(key string, fallback bool) bool {
-	return getTypedValue(d.Value, key, fallback)
+	return getTypedValue(d.Value, key, fallback, nil)
 }
 
 func (d *DynamicConfig) GetSlice(key string, fallback []any) []any {
-	return getTypedValue(d.Value, key, fallback)
+	return getTypedValue(d.Value, key, fallback, nil)
 }
 
 func (d *DynamicConfig) GetMap(key string, fallback map[string]any) map[string]any {
-	return getTypedValue(d.Value, key, fallback)
+	return getTypedValue(d.Value, key, fallback, nil)
 }
 
 // ------------------------------------------------------------------------------------- [ Experiment ]
@@ -48,27 +50,27 @@ type Experiment struct {
 	Name   string         `json:"name"`
 	Value  map[string]any `json:"value"`
 	RuleID string         `json:"rule_id"`
-	IdType string         `json:"id_type"`
+	IDType string         `json:"id_type"`
 }
 
 func (e *Experiment) GetString(key string, fallback string) string {
-	return getTypedValue(e.Value, key, fallback)
+	return getTypedValue(e.Value, key, fallback, nil)
 }
 
 func (e *Experiment) GetNumber(key string, fallback float64) float64 {
-	return getTypedValue(e.Value, key, fallback)
+	return getTypedValue(e.Value, key, fallback, nil)
 }
 
 func (e *Experiment) GetBool(key string, fallback bool) bool {
-	return getTypedValue(e.Value, key, fallback)
+	return getTypedValue(e.Value, key, fallback, nil)
 }
 
 func (e *Experiment) GetSlice(key string, fallback []any) []any {
-	return getTypedValue(e.Value, key, fallback)
+	return getTypedValue(e.Value, key, fallback, nil)
 }
 
 func (e *Experiment) GetMap(key string, fallback map[string]any) map[string]any {
-	return getTypedValue(e.Value, key, fallback)
+	return getTypedValue(e.Value, key, fallback, nil)
 }
 
 // ------------------------------------------------------------------------------------- [ Layer ]
@@ -76,36 +78,38 @@ func (e *Experiment) GetMap(key string, fallback map[string]any) map[string]any 
 type Layer struct {
 	Name   string `json:"name"`
 	RuleID string `json:"rule_id"`
-	IdType string `json:"id_type"`
+	IDType string `json:"id_type"`
 
-	value map[string]any
+	value      map[string]any
+	rawJson    string
+	statsigRef uint64
 }
 
 func (l *Layer) GetString(key string, fallback string) string {
-	return getTypedValue(l.value, key, fallback)
+	return getTypedValue(l.value, key, fallback, l.logExposure)
 }
 
 func (l *Layer) GetNumber(key string, fallback float64) float64 {
-	return getTypedValue(l.value, key, fallback)
+	return getTypedValue(l.value, key, fallback, l.logExposure)
 }
 
 func (l *Layer) GetBool(key string, fallback bool) bool {
-	return getTypedValue(l.value, key, fallback)
+	return getTypedValue(l.value, key, fallback, l.logExposure)
 }
 
 func (l *Layer) GetSlice(key string, fallback []any) []any {
-	return getTypedValue(l.value, key, fallback)
+	return getTypedValue(l.value, key, fallback, l.logExposure)
 }
 
 func (l *Layer) GetMap(key string, fallback map[string]any) map[string]any {
-	return getTypedValue(l.value, key, fallback)
+	return getTypedValue(l.value, key, fallback, l.logExposure)
 }
 
 func (l *Layer) UnmarshalJSON(b []byte) error {
 	tmp := struct {
 		Name   string         `json:"name"`
 		RuleID string         `json:"rule_id"`
-		IdType string         `json:"id_type"`
+		IDType string         `json:"id_type"`
 		Value  map[string]any `json:"__value"`
 	}{}
 
@@ -115,18 +119,31 @@ func (l *Layer) UnmarshalJSON(b []byte) error {
 
 	l.Name = tmp.Name
 	l.RuleID = tmp.RuleID
-	l.IdType = tmp.IdType
+	l.IDType = tmp.IDType
 	l.value = tmp.Value
+	l.rawJson = string(b)
 	return nil
+}
+
+func (l *Layer) logExposure(key string) {
+	GetFFI().statsig_log_layer_param_exposure(l.statsigRef, l.rawJson, key)
 }
 
 // -------------------------------------------------- [ Helper ]
 
-func getTypedValue[T any](values map[string]any, key string, fallback T) T {
-	if v, ok := values[key]; ok {
-		if typedVal, ok := v.(T); ok {
-			return typedVal
-		}
+func getTypedValue[T any](values map[string]any, key string, fallback T, exposureFunc func(string)) T {
+	v, ok := values[key]
+	if !ok {
+		return fallback
 	}
-	return fallback
+
+	typedVal, ok := v.(T)
+	if !ok {
+		return fallback
+	}
+
+	if exposureFunc != nil {
+		exposureFunc(key)
+	}
+	return typedVal
 }
