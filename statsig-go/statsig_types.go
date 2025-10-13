@@ -2,6 +2,7 @@ package statsig_go_core
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 // ------------------------------------------------------------------------------------- [ Feature Gate ]
@@ -47,10 +48,11 @@ func (d *DynamicConfig) GetMap(key string, fallback map[string]any) map[string]a
 // ------------------------------------------------------------------------------------- [ Experiment ]
 
 type Experiment struct {
-	Name   string         `json:"name"`
-	Value  map[string]any `json:"value"`
-	RuleID string         `json:"rule_id"`
-	IDType string         `json:"id_type"`
+	Name      string         `json:"name"`
+	Value     map[string]any `json:"value"`
+	RuleID    string         `json:"rule_id"`
+	IDType    string         `json:"id_type"`
+	GroupName string         `json:"group_name"`
 }
 
 func (e *Experiment) GetString(key string, fallback string) string {
@@ -76,9 +78,12 @@ func (e *Experiment) GetMap(key string, fallback map[string]any) map[string]any 
 // ------------------------------------------------------------------------------------- [ Layer ]
 
 type Layer struct {
-	Name   string `json:"name"`
-	RuleID string `json:"rule_id"`
-	IDType string `json:"id_type"`
+	Name                    string `json:"name"`
+	RuleID                  string `json:"rule_id"`
+	IDType                  string `json:"id_type"`
+	GroupName               string `json:"group_name"`
+	AllocatedExperimentName string `json:"allocated_experiment_name"`
+	// EvaluationDetails EvaluationDetails `json:"evaluation_details"`
 
 	value      map[string]any
 	rawJson    string
@@ -107,11 +112,15 @@ func (l *Layer) GetMap(key string, fallback map[string]any) map[string]any {
 
 func (l *Layer) UnmarshalJSON(b []byte) error {
 	tmp := struct {
-		Name   string         `json:"name"`
-		RuleID string         `json:"rule_id"`
-		IDType string         `json:"id_type"`
-		Value  map[string]any `json:"__value"`
+		Name                    string         `json:"name"`
+		RuleID                  string         `json:"rule_id"`
+		IDType                  string         `json:"id_type"`
+		Value                   map[string]any `json:"__value"`
+		GroupName               string         `json:"group_name"`
+		AllocatedExperimentName string         `json:"allocated_experiment_name"`
 	}{}
+
+	fmt.Println("tmp", string(b))
 
 	if err := json.Unmarshal(b, &tmp); err != nil {
 		return err
@@ -121,6 +130,8 @@ func (l *Layer) UnmarshalJSON(b []byte) error {
 	l.RuleID = tmp.RuleID
 	l.IDType = tmp.IDType
 	l.value = tmp.Value
+	l.GroupName = tmp.GroupName
+	l.AllocatedExperimentName = tmp.AllocatedExperimentName
 	l.rawJson = string(b)
 	return nil
 }

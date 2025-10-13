@@ -99,12 +99,8 @@ func TestGetClientInitResponse(t *testing.T) {
 		HashAlgorithm: &hashAlgo,
 	}
 
-	rawResponse, err := statsig.GetClientInitResponse(user, &options)
+	rawResponse := statsig.GetClientInitResponseWithOptions(user, &options)
 	statsig.Shutdown()
-
-	if err != nil {
-		t.Errorf("error getting client init response: %v", err)
-	}
 
 	if rawResponse == nil {
 		t.Errorf("Response is nil")
@@ -112,7 +108,7 @@ func TestGetClientInitResponse(t *testing.T) {
 	}
 
 	response := map[string]any{}
-	err = json.Unmarshal([]byte(*rawResponse), &response)
+	err := json.Unmarshal([]byte(*rawResponse), &response)
 	if err != nil {
 		t.Errorf("error unmarshalling client init response: %v", err)
 	}
@@ -131,12 +127,8 @@ func TestGetClientInitResponse(t *testing.T) {
 func TestGetClientInitResponseNoOptions(t *testing.T) {
 	statsig, _, user := setupStatsig(t)
 
-	rawResponse, err := statsig.GetClientInitResponse(user, nil)
+	rawResponse := statsig.GetClientInitResponseWithOptions(user, nil)
 	statsig.Shutdown()
-
-	if err != nil {
-		t.Errorf("error getting client init response: %v", err)
-	}
 
 	if rawResponse == nil {
 		t.Errorf("Response is nil")
@@ -144,7 +136,7 @@ func TestGetClientInitResponseNoOptions(t *testing.T) {
 	}
 
 	response := map[string]any{}
-	err = json.Unmarshal([]byte(*rawResponse), &response)
+	err := json.Unmarshal([]byte(*rawResponse), &response)
 	if err != nil {
 		t.Errorf("error unmarshalling client init response: %v", err)
 	}
