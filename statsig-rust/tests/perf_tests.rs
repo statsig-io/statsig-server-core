@@ -81,11 +81,11 @@ async fn test_individual_experiment_gets() {
     let duration = start.elapsed();
     println!("Result {}", result.unwrap().rule_id);
     let duration_str = format!("{:.2}", duration.as_secs_f64() * 1000.0);
-    println!("Duration {}", duration_str);
+    println!("Duration {duration_str}");
 
     durations.sort_by(|a, b| b.partial_cmp(a).unwrap());
     let p99_duration = durations[990];
-    println!("P99 Duration {}", p99_duration);
+    println!("P99 Duration {p99_duration}");
 
     statsig.shutdown().await.unwrap();
 }

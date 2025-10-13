@@ -30,7 +30,7 @@ fn test_sticky_values_deserialization_from_value() {
     let sticky = match serde_json::from_value::<StickyValues>(raw_values) {
         Ok(sticky) => sticky,
         Err(e) => {
-            panic!("Failed to deserialize sticky values: {}", e);
+            panic!("Failed to deserialize sticky values: {e}");
         }
     };
 
@@ -63,7 +63,7 @@ fn test_sticky_values_deserialization_from_str() {
     let sticky = match serde_json::from_str::<StickyValues>(raw_values) {
         Ok(sticky) => sticky,
         Err(e) => {
-            panic!("Failed to deserialize sticky values: {}", e);
+            panic!("Failed to deserialize sticky values: {e}");
         }
     };
 
@@ -92,7 +92,7 @@ fn test_sticky_values_serialization_to_value() {
     let value = match serde_json::to_value(sticky) {
         Ok(value) => value,
         Err(e) => {
-            panic!("Failed to serialize sticky values: {}", e);
+            panic!("Failed to serialize sticky values: {e}");
         }
     };
 
@@ -121,7 +121,7 @@ fn test_sticky_values_serialization_to_str() {
     let value = match serde_json::to_string(&sticky) {
         Ok(value) => value,
         Err(e) => {
-            panic!("Failed to serialize sticky values: {}", e);
+            panic!("Failed to serialize sticky values: {e}");
         }
     };
 
