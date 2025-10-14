@@ -51,6 +51,8 @@ class StatsigJNI {
 
   public static native void statsigLogGateExposure(long statsigRef, long userRef, String gateName);
 
+  public static native String statsigGetFeatureGateList(long statsigRef);
+
   // -------------------------------------------------------------------------------------------
   // [Statsig: Experiment]
 
