@@ -8,9 +8,10 @@ use crate::{
     observability_client_c::ObservabilityClientC,
 };
 use statsig_rust::{
-    data_store_interface::DataStoreTrait, log_e, output_logger::LogLevel, DynamicValue,
-    EventLoggingAdapter, InstanceRegistry, ObservabilityClient, SpecsAdapter,
-    StatsigLocalFileEventLoggingAdapter, StatsigLocalFileSpecsAdapter, StatsigOptions,
+    data_store_interface::DataStoreTrait, log_e, networking::proxy_config::ProxyConfig,
+    output_logger::LogLevel, DynamicValue, EventLoggingAdapter, InstanceRegistry,
+    ObservabilityClient, SpecsAdapter, StatsigLocalFileEventLoggingAdapter,
+    StatsigLocalFileSpecsAdapter, StatsigOptions,
 };
 use std::collections::HashMap;
 use std::sync::Weak;
@@ -39,6 +40,10 @@ pub struct StatsigOptionsData {
     log_event_url: Option<String>,
     observability_client_ref: Option<u64>,
     output_log_level: Option<String>,
+    proxy_host: Option<String>,
+    proxy_port: Option<u16>,
+    proxy_auth: Option<String>,
+    proxy_protocol: Option<String>,
     service_name: Option<String>,
     specs_adapter_ref: Option<u64>,
     specs_sync_interval_ms: Option<u32>,
@@ -81,6 +86,13 @@ impl From<StatsigOptionsData> for StatsigOptions {
         let event_logging_max_pending_batch_queue_size =
             data.event_logging_max_pending_batch_queue_size;
 
+        let proxy_config = create_proxy_config(
+            data.proxy_host,
+            data.proxy_port,
+            data.proxy_auth,
+            data.proxy_protocol,
+        );
+
         // please keep sorted alphabetically
         Self {
             config_compression_mode,
@@ -108,7 +120,7 @@ impl From<StatsigOptionsData> for StatsigOptions {
             output_logger_provider: None, // todo: add support for output logger provider
             override_adapter: None,
             persistent_storage: None,
-            proxy_config: None, // todo: add support for proxy config
+            proxy_config,
             service_name: data.service_name,
             spec_adapters_config: None, // todo: add support for spec adapters config
             specs_adapter,
@@ -172,6 +184,10 @@ pub extern "C" fn statsig_options_create(
     init_timeout_ms: c_int,
     fallback_to_statsig_api: SafeOptBool,
     use_third_party_ua_parser: SafeOptBool,
+    proxy_host: *const c_char,
+    proxy_port: u16,
+    proxy_auth: *const c_char,
+    proxy_protocol: *const c_char,
 ) -> u64 {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
@@ -196,6 +212,17 @@ pub extern "C" fn statsig_options_create(
     let output_log_level =
         c_char_to_string(output_log_level).map(|level| LogLevel::from(level.as_str()));
 
+    let proxy_config = create_proxy_config(
+        c_char_to_string(proxy_host),
+        if proxy_port > 0 {
+            Some(proxy_port)
+        } else {
+            None
+        },
+        c_char_to_string(proxy_auth),
+        c_char_to_string(proxy_protocol),
+    );
+
     InstanceRegistry::register(StatsigOptions {
         specs_url,
         log_event_url,
@@ -219,6 +246,7 @@ pub extern "C" fn statsig_options_create(
         init_timeout_ms,
         fallback_to_statsig_api: extract_opt_bool(fallback_to_statsig_api),
         use_third_party_ua_parser: extract_opt_bool(use_third_party_ua_parser),
+        proxy_config,
         ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {
@@ -286,4 +314,21 @@ fn try_get_data_store(data_store_ref: u64) -> Option<Arc<dyn DataStoreTrait>> {
     }
 
     None
+}
+
+fn create_proxy_config(
+    proxy_host: Option<String>,
+    proxy_port: Option<u16>,
+    proxy_auth: Option<String>,
+    proxy_protocol: Option<String>,
+) -> Option<ProxyConfig> {
+    // If no host is provided, no proxy config
+    proxy_host.as_ref()?;
+
+    Some(ProxyConfig {
+        proxy_host,
+        proxy_port,
+        proxy_auth,
+        proxy_protocol,
+    })
 }

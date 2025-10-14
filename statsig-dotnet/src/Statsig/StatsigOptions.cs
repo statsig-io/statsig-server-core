@@ -56,7 +56,11 @@ namespace Statsig
                         0, // dataStoreRef - not implemented in .NET
                         builder.initTimeoutMs,
                         builder.fallbackToStatsigApi ? 1 : 0,
-                        builder.useThirdPartyUAParser ? 1 : 0
+                        builder.useThirdPartyUAParser ? 1 : 0,
+                        null, // todo: proxy host
+                        0, // todo: proxy port
+                        null, // todo: proxy auth
+                        null // todo: proxy protocol
                     );
                 }
             }

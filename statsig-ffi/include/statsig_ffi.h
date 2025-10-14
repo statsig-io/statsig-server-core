@@ -293,7 +293,11 @@ uint64_t statsig_options_create(const char *specs_url,
                                 uint64_t data_store_ref,
                                 int init_timeout_ms,
                                 SafeOptBool fallback_to_statsig_api,
-                                SafeOptBool use_third_party_ua_parser);
+                                SafeOptBool use_third_party_ua_parser,
+                                const char *proxy_host,
+                                uint16_t proxy_port,
+                                const char *proxy_auth,
+                                const char *proxy_protocol);
 
 void statsig_options_release(uint64_t options_ref);
 
