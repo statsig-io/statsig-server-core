@@ -2,8 +2,6 @@ defmodule StatsigTest do
   use ExUnit.Case
   doctest Statsig
 
-  alias Statsig.DynamicConfig
-  alias Statsig.Experiment
   alias Statsig.Layer
   alias Statsig.Options
   alias Statsig.User
@@ -58,10 +56,10 @@ defmodule StatsigTest do
       })
 
     IO.inspect(config)
-    assert is_binary(config.value)
+    assert is_map(config.value)
 
     IO.puts("\nGetting a subfield in param value")
-    param_value = DynamicConfig.get_param_value(config, "header_text")
+    param_value = config.value["header_text"]
     assert param_value == "old user test"
     IO.inspect(config)
 
@@ -70,7 +68,7 @@ defmodule StatsigTest do
         disable_exposure_logging: true
       })
 
-    param_value = Experiment.get_param_value(experiment, "header_text")
+    param_value = experiment.value["header_text"]
     assert param_value == "old user test"
 
     {:ok, layer} =
