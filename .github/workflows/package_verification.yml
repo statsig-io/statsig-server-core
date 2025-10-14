@@ -92,6 +92,9 @@ jobs:
           - package: php
             tag: debian_11_slim
 
+          - package: go
+            tag: golang_1_24
+
     runs-on: ubuntu-latest
 
     steps:
