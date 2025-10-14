@@ -42,7 +42,6 @@ export class SyncVersion extends CommandBase {
     updateStatsigGrpcDepVersion(versionString);
     updatePhpComposerVersion(versionString);
     updateDotnetNugetVersion(versionString);
-    updateGoVersion(versionString);
     updateElixirVersion(versionString);
 
     Log.stepBegin('Verifying Cargo Change');
@@ -172,36 +171,6 @@ function updatePhpComposerVersion(version: string) {
     `const VERSION = "${version}"`,
   );
 
-  fs.writeFileSync(path, updated, 'utf8');
-
-  Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`);
-}
-
-function updateGoVersion(version: string) {
-  Log.stepBegin('Updating go version');
-  const path = getRootedPath('statsig-go/go.mod');
-  const contents = fs.readFileSync(path, 'utf8');
-  const was = contents.match(
-    /go-server-core-binaries-linux-gnu v([^\s]+)/,
-  )?.[1];
-
-  if (!was) {
-    Log.stepEnd('No version found', 'failure');
-    process.exit(1);
-  }
-
-  let updated = contents.replace(
-    /go-server-core-binaries-linux-gnu v([^\s]+)/,
-    `go-server-core-binaries-linux-gnu v${version}`,
-  );
-  updated = updated.replace(
-    /go-server-core-binaries-linux-musl v([^\s]+)/,
-    `go-server-core-binaries-linux-musl v${version}`,
-  );
-  updated = updated.replace(
-    /go-server-core-binaries-macos v([^\s]+)/,
-    `go-server-core-binaries-macos v${version}`,
-  );
   fs.writeFileSync(path, updated, 'utf8');
 
   Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`);

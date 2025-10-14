@@ -6,6 +6,7 @@ import {
 } from '@/utils/git_utils.js';
 import {
   GhRelease,
+  createAndMergeVersionBumpPullRequest,
   createPullRequestAgainstMain,
   createReleaseForVersion,
   deleteReleaseAssetWithName,
@@ -56,7 +57,12 @@ export async function publishPhp(options: PublisherOptions) {
     await uploadLibFileToRelease(octokit, release, asset);
   }
 
-  await createAndMergePullRequest(octokit, version, version.toBranch());
+  await createAndMergeVersionBumpPullRequest(
+    octokit,
+    PHP_REPO_NAME,
+    version,
+    version.toBranch(),
+  );
 }
 
 async function verifyBranchDoesNotExist(octokit: Octokit, version: SemVer) {
@@ -199,37 +205,4 @@ async function uploadLibFileToRelease(
   }
 
   Log.stepEnd(`Asset uploaded: ${result.browser_download_url}`);
-}
-
-async function createAndMergePullRequest(
-  octokit: Octokit,
-  version: SemVer,
-  remoteBranch: string,
-) {
-  const title = `chore: sync changes from ${version.toString()}`;
-
-  Log.stepBegin(`Creating pull request against main`);
-  Log.stepProgress(`Title: ${title}`);
-  Log.stepProgress(`Remote Branch: ${remoteBranch}`);
-
-  const pullRequest = await createPullRequestAgainstMain(octokit, {
-    repository: PHP_REPO_NAME,
-    title: `[automated] ${title}`,
-    body: 'Created and merged automatically by T.O.R.E',
-    head: remoteBranch,
-  });
-
-  Log.stepEnd(`Created pull request ${pullRequest.html_url}`, 'success');
-
-  Log.stepBegin(`Merging pull request`);
-  Log.stepProgress(`Pull request number: ${pullRequest.number}`);
-
-  const mergeResult = await mergePullRequest(
-    octokit,
-    PHP_REPO_NAME,
-    pullRequest.number,
-  );
-
-  Log.stepProgress(`Merge result: ${mergeResult.message}`);
-  Log.stepEnd(`Merged pull request ${pullRequest.html_url}`, 'success');
 }

@@ -501,3 +501,37 @@ export async function mergePullRequest(
 
   return result.data;
 }
+
+export async function createAndMergeVersionBumpPullRequest(
+  octokit: Octokit,
+  repository: string,
+  version: SemVer,
+  remoteBranch: string,
+) {
+  const title = `chore: sync changes from ${version.toString()}`;
+
+  Log.stepBegin(`Creating pull request against main`);
+  Log.stepProgress(`Title: ${title}`);
+  Log.stepProgress(`Remote Branch: ${remoteBranch}`);
+
+  const pullRequest = await createPullRequestAgainstMain(octokit, {
+    repository,
+    title: `[automated] ${title}`,
+    body: 'Created and merged automatically by T.O.R.E',
+    head: remoteBranch,
+  });
+
+  Log.stepEnd(`Created pull request ${pullRequest.html_url}`, 'success');
+
+  Log.stepBegin(`Merging pull request`);
+  Log.stepProgress(`Pull request number: ${pullRequest.number}`);
+
+  const mergeResult = await mergePullRequest(
+    octokit,
+    repository,
+    pullRequest.number,
+  );
+
+  Log.stepProgress(`Merge result: ${mergeResult.message}`);
+  Log.stepEnd(`Merged pull request ${pullRequest.html_url}`, 'success');
+}

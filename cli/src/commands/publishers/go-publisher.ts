@@ -1,9 +1,19 @@
-import { ensureEmptyDir, listFiles } from '@/utils/file_utils.js';
-import { getCurrentCommitHash } from '@/utils/git_utils.js';
+import {
+  ensureEmptyDir,
+  getRootedPath,
+  listFiles,
+} from '@/utils/file_utils.js';
+import { getCurrentCommitHash, tryApplyGitConfig } from '@/utils/git_utils.js';
+import {
+  createAndMergeVersionBumpPullRequest,
+  getOctokit,
+} from '@/utils/octokit_utils.js';
 import { SemVer } from '@/utils/semver.js';
 import { Log } from '@/utils/terminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
+import chalk from 'chalk';
 import { execSync, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 import path from 'node:path';
 import { SimpleGit, simpleGit } from 'simple-git';
 
@@ -54,26 +64,31 @@ export async function publishGo(options: PublisherOptions) {
   Log.stepProgress(`Commit Hash: ${commitHash}`);
   Log.stepEnd(`Version: ${version}`);
 
-  await cloneBinaryRepos();
+  await cloneAllRepos();
 
+  // Commit Binary Repos First
   await moveBinaryFiles(options);
+  await commitAndPushBinaryRepos(version);
 
-  await commitAndPush(version);
+  // Commit Go Core Repo Last
+  await moveGoCoreFiles(options, version);
+  await commitAndPushGoCoreRepo(version);
 }
 
-async function cloneBinaryRepos() {
+async function cloneAllRepos() {
   Log.stepBegin('Cloning Go Binary Repos');
 
   ensureEmptyDir(TEMP_PATH);
 
-  await checkoutGoBinaryRepo('go-server-core-binaries-linux-gnu');
-  await checkoutGoBinaryRepo('go-server-core-binaries-linux-musl');
-  await checkoutGoBinaryRepo('go-server-core-binaries-macos');
+  await checkoutRepo('go-server-core-binaries-linux-gnu');
+  await checkoutRepo('go-server-core-binaries-linux-musl');
+  await checkoutRepo('go-server-core-binaries-macos');
+  await checkoutRepo('statsig-go-core');
 
   Log.stepEnd('Cloned Go Binary Repos');
 }
 
-async function checkoutGoBinaryRepo(repo: string) {
+async function checkoutRepo(repo: string) {
   Log.stepProgress(`Cloning Repo:: ${repo}`);
 
   const result = spawnSync(
@@ -132,35 +147,130 @@ async function moveBinaryFiles(options: PublisherOptions) {
   Log.stepEnd('Moved Binary Files');
 }
 
-async function commitAndPush(version: SemVer) {
+async function moveGoCoreFiles(options: PublisherOptions, version: SemVer) {
+  Log.stepBegin('Moving Go Core Files');
+
+  const destPath = `${TEMP_PATH}/statsig-go-core`;
+  const rootPath = getRootedPath('statsig-go');
+  execSync(`cp -r ${rootPath}/* ${destPath}`);
+
+  updateGoVersion(version.toString(), `${destPath}/go.mod`);
+}
+
+function updateGoVersion(version: string, path: string) {
+  Log.stepBegin('Updating go version');
+  const contents = fs.readFileSync(path, 'utf8');
+  const was = contents.match(
+    /go-server-core-binaries-linux-gnu v([^\s]+)/,
+  )?.[1];
+
+  if (!was) {
+    Log.stepEnd('No version found', 'failure');
+    process.exit(1);
+  }
+
+  let updated = contents.replace(
+    /go-server-core-binaries-linux-gnu v([^\s]+)/,
+    `go-server-core-binaries-linux-gnu v${version}`,
+  );
+  updated = updated.replace(
+    /go-server-core-binaries-linux-musl v([^\s]+)/,
+    `go-server-core-binaries-linux-musl v${version}`,
+  );
+  updated = updated.replace(
+    /go-server-core-binaries-macos v([^\s]+)/,
+    `go-server-core-binaries-macos v${version}`,
+  );
+  fs.writeFileSync(path, updated, 'utf8');
+
+  Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`);
+}
+
+async function commitAndPushBinaryRepos(version: SemVer) {
   Log.stepBegin('Committing and Pushing');
 
-  await commitAndPushToRepo(version, 'go-server-core-binaries-linux-gnu');
-  await commitAndPushToRepo(version, 'go-server-core-binaries-linux-musl');
-  await commitAndPushToRepo(version, 'go-server-core-binaries-macos');
+  await commitAndPushToRepo(
+    version,
+    'go-server-core-binaries-linux-gnu',
+    'tag',
+  );
+  await commitAndPushToRepo(
+    version,
+    'go-server-core-binaries-linux-musl',
+    'tag',
+  );
+  await commitAndPushToRepo(version, 'go-server-core-binaries-macos', 'tag');
 
   Log.stepEnd('Committed and Pushed');
 }
 
-async function commitAndPushToRepo(version: SemVer, repo: string) {
+async function commitAndPushGoCoreRepo(version: SemVer) {
+  Log.stepBegin('Committing and Pushing');
+
+  const commitHash = await commitAndPushToRepo(
+    version,
+    'statsig-go-core',
+    'tag-and-branch',
+  );
+
+  Log.stepEnd(`Committed and Pushed: ${commitHash}`);
+
+  Log.stepBegin('Creating and Merging Pull Request');
+
+  const octokit = await getOctokit();
+
+  await createAndMergeVersionBumpPullRequest(
+    octokit,
+    'statsig-go-core',
+    version,
+    version.toBranch(),
+  );
+
+  Log.stepEnd('Committed and Pushed');
+}
+
+async function commitAndPushToRepo(
+  version: SemVer,
+  repo: string,
+  mode: 'tag' | 'tag-and-branch',
+) {
   Log.stepProgress(`Adding ${version.toString()} tag to ${repo}`);
 
-  const versionString = 'v' + version.toString();
+  const versionTag = 'v' + version.toString();
 
   const git = simpleGit(path.resolve(TEMP_PATH, repo));
+  await tryApplyGitConfig(git);
+
+  if (mode === 'tag-and-branch') {
+    await git.pull('origin', 'main');
+
+    const commitResult = await git.log({ maxCount: 1 });
+    const commit = commitResult.latest;
+    Log.stepEnd(`Commit: ${commit.hash} ${commit.message}`);
+
+    await git.checkoutLocalBranch(version.toBranch());
+  }
+
   await git.add('.');
-  await git.commit(`chore: update binaries to version ${versionString}`);
-  await tryGitDelete(git, versionString);
-  await git.addTag(versionString);
+  await git.commit(`chore: update binaries to version ${versionTag}`);
+  await tryGitDelete(git, versionTag);
+  await git.addTag(versionTag);
 
-  await git.push(['origin', versionString, '--force']);
+  await git.push(['origin', versionTag, '--force']);
 
-  Log.stepProgress(`${repo} tagged as ${versionString}`);
+  if (mode === 'tag-and-branch') {
+    await git.push('origin', version.toBranch(), ['--force']);
+  }
+
+  Log.stepProgress(`${repo} tagged as ${versionTag}`);
 }
 
 async function tryGitDelete(git: SimpleGit, tag: string) {
   try {
-    await git.tag(['-d', tag]);
+    const tags = await git.tags();
+    if (tags.all.includes(tag)) {
+      await git.tag(['-d', tag]);
+    }
   } catch (error) {
     console.error(`Failed to delete tag ${tag}: ${error}`);
   }
