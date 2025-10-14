@@ -86,6 +86,12 @@ export class BumpVersion extends CommandBase {
       version.rc = 0;
       version.beta = this.getDateVersion();
     } else if (options.rc) {
+      if (
+        (version.beta === 0 && version.rc === 0) ||  
+        version.rc === 1                             
+      ) {
+        version.patch += 1;
+      }
       version.beta = 0;
       version.rc = this.getDateVersion();
     }
