@@ -36,28 +36,20 @@ uint64_t function_based_specs_adapter_create(void (*setup_internal_fn)(uint64_t 
 
 void function_based_specs_adapter_release(uint64_t adapter_ref);
 
-uint64_t observability_client_create(void (*init_fn)(uint64_t ob_client_ref),
-                                     void (*increment_fn)(uint64_t ob_client_ref,
-                                                          const char *metric_name,
-                                                          double value,
-                                                          const char *tags),
-                                     void (*gauge_fn)(uint64_t ob_client_ref,
-                                                      const char *metric_name,
-                                                      double value,
-                                                      const char *tags),
-                                     void (*dist_fn)(uint64_t ob_client_ref,
-                                                     const char *metric_name,
-                                                     double value,
-                                                     const char *tags),
-                                     void (*error_fn)(uint64_t ob_client_ref,
-                                                      const char *tag,
-                                                      const char *error),
-                                     bool (*should_enable_high_cardinality_for_this_tag_fn)(uint64_t ob_client_ref,
-                                                                                            const char *tag));
+uint64_t observability_client_create(void (*init_fn)(void),
+                                     void (*increment_fn)(const char *args),
+                                     void (*gauge_fn)(const char *args),
+                                     void (*dist_fn)(const char *args),
+                                     void (*error_fn)(const char *args),
+                                     bool (*should_enable_high_cardinality_for_this_tag_fn)(const char *args));
 
-void observability_client_set_ref(uint64_t ob_client_ref, uint64_t id);
+void observability_client_release(uint64_t data_store_ref);
 
-void observability_client_release(uint64_t ob_client_ref);
+void __internal__test_observability_client(uint64_t ob_client_ref,
+                                           const char *action,
+                                           const char *metric_name,
+                                           double value,
+                                           const char *tags);
 
 void specs_update_listener_release(uint64_t listener_ref);
 

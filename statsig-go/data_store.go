@@ -18,9 +18,9 @@ type DataStore struct {
 	ref       uint64
 }
 
-func NewDataStore(dataStore DataStoreFunctions) *DataStore {
+func NewDataStore(functions DataStoreFunctions) *DataStore {
 	store := &DataStore{
-		functions: dataStore,
+		functions: functions,
 		ref:       0,
 	}
 

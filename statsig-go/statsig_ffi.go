@@ -92,6 +92,24 @@ type StatsigFFI struct {
 	data_store_release          func(uint64)
 	__internal__test_data_store func(uint64, string, string) string
 
+	// Observability Client
+	observability_client_create func(
+		init_fn func(),
+		increment_fn func(args *C.char),
+		gauge_fn func(args *C.char),
+		dist_fn func(args *C.char),
+		error_fn func(args *C.char),
+		should_enable_high_cardinality_for_this_tag_fn func(tag *C.char) bool,
+	) uint64
+	observability_client_release          func(uint64)
+	__internal__test_observability_client func(
+		ref uint64,
+		action string,
+		metricName string,
+		value float64,
+		tags string,
+	) string
+
 	// Metadata
 	statsig_metadata_update_values func(string, string, string, string)
 
@@ -186,6 +204,11 @@ func GetFFI() *StatsigFFI {
 		purego.RegisterLibFunc(&instance.data_store_create, lib, "data_store_create")
 		purego.RegisterLibFunc(&instance.data_store_release, lib, "data_store_release")
 		purego.RegisterLibFunc(&instance.__internal__test_data_store, lib, "__internal__test_data_store")
+
+		// Observability Client
+		purego.RegisterLibFunc(&instance.observability_client_create, lib, "observability_client_create")
+		purego.RegisterLibFunc(&instance.observability_client_release, lib, "observability_client_release")
+		purego.RegisterLibFunc(&instance.__internal__test_observability_client, lib, "__internal__test_observability_client")
 
 		// Metadata
 		purego.RegisterLibFunc(&instance.statsig_metadata_update_values, lib, "statsig_metadata_update_values")
