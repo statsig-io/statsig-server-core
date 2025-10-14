@@ -6,6 +6,7 @@ import {
 import { getCurrentCommitHash, tryApplyGitConfig } from '@/utils/git_utils.js';
 import {
   createAndMergeVersionBumpPullRequest,
+  getInstallationToken,
   getOctokit,
 } from '@/utils/octokit_utils.js';
 import { SemVer } from '@/utils/semver.js';
@@ -215,8 +216,6 @@ async function commitAndPushGoCoreRepo(version: SemVer) {
 
   Log.stepEnd(`Committed and Pushed: ${commitHash}`);
 
-  Log.stepBegin('Creating and Merging Pull Request');
-
   const octokit = await getOctokit();
 
   await createAndMergeVersionBumpPullRequest(
@@ -235,14 +234,18 @@ async function commitAndPushToRepo(
   mode: 'tag' | 'tag-and-branch',
 ) {
   Log.stepProgress(`Adding ${version.toString()} tag to ${repo}`);
+  const token = await getInstallationToken();
+  const authUrl = `https://token:${token}@github.com/statsig-io/${repo}`;
 
   const versionTag = 'v' + version.toString();
 
   const git = simpleGit(path.resolve(TEMP_PATH, repo));
   await tryApplyGitConfig(git);
 
+  await git.addRemote('authed-origin', authUrl);
+
   if (mode === 'tag-and-branch') {
-    await git.pull('origin', 'main');
+    await git.pull('authed-origin', 'main');
 
     const commitResult = await git.log({ maxCount: 1 });
     const commit = commitResult.latest;
@@ -256,10 +259,10 @@ async function commitAndPushToRepo(
   await tryGitDelete(git, versionTag);
   await git.addTag(versionTag);
 
-  await git.push(['origin', versionTag, '--force']);
+  await git.push(['authed-origin', versionTag, '--force']);
 
   if (mode === 'tag-and-branch') {
-    await git.push('origin', version.toBranch(), ['--force']);
+    await git.push('authed-origin', version.toBranch(), ['--force']);
   }
 
   Log.stepProgress(`${repo} tagged as ${versionTag}`);
