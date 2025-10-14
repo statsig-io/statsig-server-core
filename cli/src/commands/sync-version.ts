@@ -44,7 +44,7 @@ export class SyncVersion extends CommandBase {
     updateDotnetNugetVersion(versionString);
     updateGoVersion(versionString);
     updateElixirVersion(versionString);
-    
+
     Log.stepBegin('Verifying Cargo Change');
     execSync('cargo update --workspace', { cwd: BASE_DIR });
     execSync('cargo check --workspace', {
@@ -112,19 +112,21 @@ function updateNodePackageJsonVersions(version: string) {
 
 function updateDotnetNugetVersion(version: string) {
   Log.stepBegin('Updating .NET NuGet version');
-  
+
   const path = getRootedPath('statsig-dotnet/Directory.Build.props');
   const contents = fs.readFileSync(path, 'utf8');
 
   const was = contents.match(/<StatsigVersion>([^<]+)<\/StatsigVersion>/)?.[1];
   const updated = contents.replace(
     /<StatsigVersion>([^<]+)<\/StatsigVersion>/,
-    `<StatsigVersion>${version}</StatsigVersion>`
+    `<StatsigVersion>${version}</StatsigVersion>`,
   );
 
   fs.writeFileSync(path, updated, 'utf8');
 
-  Log.stepEnd(`Updated .NET Version: ${chalk.strikethrough(was)} -> ${version}`);
+  Log.stepEnd(
+    `Updated .NET Version: ${chalk.strikethrough(was)} -> ${version}`,
+  );
 }
 
 function updateJavaGradleVersion(version: string) {
@@ -177,16 +179,29 @@ function updatePhpComposerVersion(version: string) {
 
 function updateGoVersion(version: string) {
   Log.stepBegin('Updating go version');
-
-  const path = getRootedPath('statsig-go/statsig-cgo/cmd/post-install/main.go');
+  const path = getRootedPath('statsig-go/go.mod');
   const contents = fs.readFileSync(path, 'utf8');
-  
-  const was = contents.match(/version = "([^"]+)"/)?.[1];
-  const updated = contents.replace(
-    /version = "([^"]+)"/,
-    `version = "${version}"`,
-  );
+  const was = contents.match(
+    /go-server-core-binaries-linux-gnu v([^\s]+)/,
+  )?.[1];
 
+  if (!was) {
+    Log.stepEnd('No version found', 'failure');
+    process.exit(1);
+  }
+
+  let updated = contents.replace(
+    /go-server-core-binaries-linux-gnu v([^\s]+)/,
+    `go-server-core-binaries-linux-gnu v${version}`,
+  );
+  updated = updated.replace(
+    /go-server-core-binaries-linux-musl v([^\s]+)/,
+    `go-server-core-binaries-linux-musl v${version}`,
+  );
+  updated = updated.replace(
+    /go-server-core-binaries-macos v([^\s]+)/,
+    `go-server-core-binaries-macos v${version}`,
+  );
   fs.writeFileSync(path, updated, 'utf8');
 
   Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`);
@@ -197,7 +212,7 @@ function updateElixirVersion(version: string) {
 
   const path = getRootedPath('statsig-elixir/mix.exs');
   const contents = fs.readFileSync(path, 'utf8');
-  
+
   const was = contents.match(/version: "([^"]+)"/)?.[1];
   const updated = contents.replace(
     /version: "([^"]+)"/,
@@ -206,7 +221,7 @@ function updateElixirVersion(version: string) {
 
   fs.writeFileSync(path, updated, 'utf8');
 
-  Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`)
+  Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`);
 }
 
 async function tryCommitAndPushChanges(version: SemVer) {
