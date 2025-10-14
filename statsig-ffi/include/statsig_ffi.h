@@ -51,6 +51,18 @@ void __internal__test_observability_client(uint64_t ob_client_ref,
                                            double value,
                                            const char *tags);
 
+uint64_t persistent_storage_create(char *(*load_fn)(const char *key),
+                                   void (*save_fn)(const char *args),
+                                   void (*delete_fn)(const char *args));
+
+void persistent_storage_release(uint64_t storage_ref);
+
+char *__internal__test_persistent_storage(uint64_t storage_ref,
+                                          const char *action,
+                                          const char *key,
+                                          const char *config_name,
+                                          const char *data);
+
 void specs_update_listener_release(uint64_t listener_ref);
 
 void specs_update_listener_did_receive_specs_update(uint64_t listener_ref,

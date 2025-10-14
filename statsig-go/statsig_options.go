@@ -29,6 +29,7 @@ type StatsigOptionsBuilder struct {
 	GlobalCustomFields          *string `json:"global_custom_fields,omitempty"`
 	ObservabilityClientRef      *uint64 `json:"observability_client_ref,omitempty"`
 	DataStoreRef                *uint64 `json:"data_store_ref,omitempty"`
+	PersistentStorageRef        *uint64 `json:"persistent_storage_ref,omitempty"`
 	InitTimeoutMs               *int32  `json:"init_timeout_ms,omitempty"`
 	FallbackToStatsigApi        *bool   `json:"fallback_to_statsig_api,omitempty"`
 }
@@ -119,6 +120,11 @@ func (o *StatsigOptionsBuilder) WithIdListsSyncIntervalMs(idListsSyncIntervalMs 
 
 func (o *StatsigOptionsBuilder) WithDataStore(dataStore *DataStore) *StatsigOptionsBuilder {
 	o.DataStoreRef = &dataStore.ref
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithPersistentStorage(persistentStorage *PersistentStorage) *StatsigOptionsBuilder {
+	o.PersistentStorageRef = &persistentStorage.ref
 	return o
 }
 

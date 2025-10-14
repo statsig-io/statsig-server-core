@@ -7,50 +7,50 @@ import (
 	statsig_go "github.com/statsig-io/statsig-go-core"
 )
 
-type RecordedCall struct {
+type recordedCall struct {
 	MetricName string
 	Value      float64
 	Tags       map[string]string
 }
 
-type MockObservabilityClient struct {
+type mockObservabilityClient struct {
 	initCalled bool
-	incCall    *RecordedCall
-	gaugeCall  *RecordedCall
-	distCall   *RecordedCall
-	errorCall  *RecordedCall
+	incCall    *recordedCall
+	gaugeCall  *recordedCall
+	distCall   *recordedCall
+	errorCall  *recordedCall
 }
 
-func (m *MockObservabilityClient) Init() {
+func (m *mockObservabilityClient) Init() {
 	m.initCalled = true
 }
 
-func (m *MockObservabilityClient) Increment(metricName string, value float64, tags map[string]string) {
-	m.incCall = &RecordedCall{
+func (m *mockObservabilityClient) Increment(metricName string, value float64, tags map[string]string) {
+	m.incCall = &recordedCall{
 		MetricName: metricName,
 		Value:      value,
 		Tags:       tags,
 	}
 }
 
-func (m *MockObservabilityClient) Gauge(metricName string, value float64, tags map[string]string) {
-	m.gaugeCall = &RecordedCall{
+func (m *mockObservabilityClient) Gauge(metricName string, value float64, tags map[string]string) {
+	m.gaugeCall = &recordedCall{
 		MetricName: metricName,
 		Value:      value,
 		Tags:       tags,
 	}
 }
 
-func (m *MockObservabilityClient) Dist(metricName string, value float64, tags map[string]string) {
-	m.distCall = &RecordedCall{
+func (m *mockObservabilityClient) Dist(metricName string, value float64, tags map[string]string) {
+	m.distCall = &recordedCall{
 		MetricName: metricName,
 		Value:      value,
 		Tags:       tags,
 	}
 }
 
-func (m *MockObservabilityClient) Error(tag string, error string) {
-	m.errorCall = &RecordedCall{
+func (m *mockObservabilityClient) Error(tag string, error string) {
+	m.errorCall = &recordedCall{
 		MetricName: tag,
 		Value:      0,
 		Tags: map[string]string{
@@ -59,11 +59,11 @@ func (m *MockObservabilityClient) Error(tag string, error string) {
 	}
 }
 
-func (m *MockObservabilityClient) ShouldEnableHighCardinalityForThisTag(tag string) bool {
+func (m *mockObservabilityClient) ShouldEnableHighCardinalityForThisTag(tag string) bool {
 	return true
 }
 
-func (m *MockObservabilityClient) GetFunctions() statsig_go.ObservabilityClientFunctions {
+func (m *mockObservabilityClient) GetFunctions() statsig_go.ObservabilityClientFunctions {
 	return statsig_go.ObservabilityClientFunctions{
 		Init:                                  m.Init,
 		Increment:                             m.Increment,
@@ -75,7 +75,7 @@ func (m *MockObservabilityClient) GetFunctions() statsig_go.ObservabilityClientF
 }
 
 func TestObservabilityClientInit(t *testing.T) {
-	mock := &MockObservabilityClient{}
+	mock := &mockObservabilityClient{}
 
 	client := statsig_go.NewObservabilityClient(mock.GetFunctions())
 
@@ -87,7 +87,7 @@ func TestObservabilityClientInit(t *testing.T) {
 }
 
 func TestObservabilityClientIncrement(t *testing.T) {
-	mock := &MockObservabilityClient{}
+	mock := &mockObservabilityClient{}
 
 	client := statsig_go.NewObservabilityClient(mock.GetFunctions())
 
@@ -111,7 +111,7 @@ func TestObservabilityClientIncrement(t *testing.T) {
 }
 
 func TestObservabilityClientGauge(t *testing.T) {
-	mock := &MockObservabilityClient{}
+	mock := &mockObservabilityClient{}
 
 	client := statsig_go.NewObservabilityClient(mock.GetFunctions())
 
@@ -135,7 +135,7 @@ func TestObservabilityClientGauge(t *testing.T) {
 }
 
 func TestObservabilityClientDist(t *testing.T) {
-	mock := &MockObservabilityClient{}
+	mock := &mockObservabilityClient{}
 
 	client := statsig_go.NewObservabilityClient(mock.GetFunctions())
 
@@ -159,7 +159,7 @@ func TestObservabilityClientDist(t *testing.T) {
 }
 
 func TestObservabilityClientError(t *testing.T) {
-	mock := &MockObservabilityClient{}
+	mock := &mockObservabilityClient{}
 
 	client := statsig_go.NewObservabilityClient(mock.GetFunctions())
 
