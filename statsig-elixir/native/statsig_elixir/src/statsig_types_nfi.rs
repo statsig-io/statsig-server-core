@@ -1,7 +1,9 @@
-use rustler::{Decoder, Encoder, Env, NifResult, NifStruct, Term, serde::{Deserializer, Serializer}};
-use serde_json::Value;
+use rustler::{
+    serde::{Deserializer, Serializer},
+    Decoder, Encoder, Env, NifResult, NifStruct, Term,
+};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use serde_json::Value;
 use statsig_rust::statsig_core_api_options::{
     DynamicConfigEvaluationOptions as DynamicConfigEvaluationOptionsActual,
     ExperimentEvaluationOptions as ExperimentEvaluationOptionsActual,
@@ -14,6 +16,7 @@ use statsig_rust::statsig_types::{
 };
 use statsig_rust::DynamicValue;
 use statsig_rust::{ClientInitResponseOptions as ClientInitResponseOptionsActual, HashAlgorithm};
+use std::collections::HashMap;
 
 // Wrapper type for HashMap<String, Value> that can be encoded/decoded via Rustler serde
 #[derive(Clone, Debug)]
@@ -29,8 +32,8 @@ impl Encoder for ValueMap {
 impl Decoder<'_> for ValueMap {
     fn decode(term: Term) -> NifResult<Self> {
         let deserializer = Deserializer::from(term);
-        let map: HashMap<String, Value> = HashMap::deserialize(deserializer)
-            .map_err(|_| rustler::Error::BadArg)?;
+        let map: HashMap<String, Value> =
+            HashMap::deserialize(deserializer).map_err(|_| rustler::Error::BadArg)?;
         Ok(ValueMap(map))
     }
 }

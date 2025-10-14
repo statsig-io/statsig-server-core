@@ -341,7 +341,10 @@ pub fn override_gate(
     id: Option<&str>,
 ) -> Result<(), Error> {
     match statsig.statsig_core.read() {
-        Ok(read_guard) => Ok(read_guard.override_gate(gate_name, value, id)),
+        Ok(read_guard) => {
+            read_guard.override_gate(gate_name, value, id);
+            Ok(())
+        }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
@@ -355,10 +358,13 @@ pub fn override_dynamic_config(
 ) -> Result<(), Error> {
     let deserializer = Deserializer::from(value);
     let map_value: HashMap<String, Value> = HashMap::deserialize(deserializer)
-        .map_err(|e| Error::RaiseTerm(Box::new(format!("Failed to decode map value: {}", e))))?;
+        .map_err(|e| Error::RaiseTerm(Box::new(format!("Failed to decode map value: {e}"))))?;
 
     match statsig.statsig_core.read() {
-        Ok(read_guard) => Ok(read_guard.override_dynamic_config(config_name, map_value, id)),
+        Ok(read_guard) => {
+            read_guard.override_dynamic_config(config_name, map_value, id);
+            Ok(())
+        }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
@@ -372,10 +378,13 @@ pub fn override_experiment(
 ) -> Result<(), Error> {
     let deserializer = Deserializer::from(value);
     let map_value: HashMap<String, Value> = HashMap::deserialize(deserializer)
-        .map_err(|e| Error::RaiseTerm(Box::new(format!("Failed to decode map value: {}", e))))?;
+        .map_err(|e| Error::RaiseTerm(Box::new(format!("Failed to decode map value: {e}"))))?;
 
     match statsig.statsig_core.read() {
-        Ok(read_guard) => Ok(read_guard.override_experiment(experiment_name, map_value, id)),
+        Ok(read_guard) => {
+            read_guard.override_experiment(experiment_name, map_value, id);
+            Ok(())
+        }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
@@ -389,10 +398,13 @@ pub fn override_layer(
 ) -> Result<(), Error> {
     let deserializer = Deserializer::from(value);
     let map_value: HashMap<String, Value> = HashMap::deserialize(deserializer)
-        .map_err(|e| Error::RaiseTerm(Box::new(format!("Failed to decode map value: {}", e))))?;
+        .map_err(|e| Error::RaiseTerm(Box::new(format!("Failed to decode map value: {e}"))))?;
 
     match statsig.statsig_core.read() {
-        Ok(read_guard) => Ok(read_guard.override_layer(layer_name, map_value, id)),
+        Ok(read_guard) => {
+            read_guard.override_layer(layer_name, map_value, id);
+            Ok(())
+        }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
@@ -404,7 +416,10 @@ pub fn remove_gate_override(
     id: Option<&str>,
 ) -> Result<(), Error> {
     match statsig.statsig_core.read() {
-        Ok(read_guard) => Ok(read_guard.remove_gate_override(gate_name, id)),
+        Ok(read_guard) => {
+            read_guard.remove_gate_override(gate_name, id);
+            Ok(())
+        }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
@@ -416,7 +431,10 @@ pub fn remove_dynamic_config_override(
     id: Option<&str>,
 ) -> Result<(), Error> {
     match statsig.statsig_core.read() {
-        Ok(read_guard) => Ok(read_guard.remove_dynamic_config_override(config_name, id)),
+        Ok(read_guard) => {
+            read_guard.remove_dynamic_config_override(config_name, id);
+            Ok(())
+        }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
@@ -428,7 +446,10 @@ pub fn remove_experiment_override(
     id: Option<&str>,
 ) -> Result<(), Error> {
     match statsig.statsig_core.read() {
-        Ok(read_guard) => Ok(read_guard.remove_experiment_override(experiment_name, id)),
+        Ok(read_guard) => {
+            read_guard.remove_experiment_override(experiment_name, id);
+            Ok(())
+        }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
@@ -440,7 +461,10 @@ pub fn remove_layer_override(
     id: Option<&str>,
 ) -> Result<(), Error> {
     match statsig.statsig_core.read() {
-        Ok(read_guard) => Ok(read_guard.remove_layer_override(layer_name, id)),
+        Ok(read_guard) => {
+            read_guard.remove_layer_override(layer_name, id);
+            Ok(())
+        }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
@@ -448,7 +472,10 @@ pub fn remove_layer_override(
 #[rustler::nif]
 pub fn remove_all_overrides(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
     match statsig.statsig_core.read() {
-        Ok(read_guard) => Ok(read_guard.remove_all_overrides()),
+        Ok(read_guard) => {
+            read_guard.remove_all_overrides();
+            Ok(())
+        }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
