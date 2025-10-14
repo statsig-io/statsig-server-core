@@ -26,7 +26,7 @@ class StatsigOptions
         ?bool $disable_all_logging = null,
         ?int $init_timeout_ms = null,
         ?bool $fallback_to_statsig_api = null,
-        ?bool $use_third_party_ua_parser = null,
+        ?bool $use_third_party_ua_parser = null
     ) {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->statsig_options_create(
