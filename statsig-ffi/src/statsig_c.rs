@@ -1,4 +1,6 @@
-use crate::ffi_utils::{c_char_to_string, extract_opt_bool, string_to_c_char, SafeOptBool};
+use crate::ffi_utils::{
+    c_char_to_string, c_char_to_string_non_empty, extract_opt_bool, string_to_c_char, SafeOptBool,
+};
 use crate::{get_instance_or_noop_c, get_instance_or_return_c};
 use serde_json::json;
 use serde_json::Value;
@@ -34,6 +36,7 @@ pub extern "C" fn statsig_create(sdk_key: *const c_char, options_ref: u64) -> u6
 #[no_mangle]
 pub extern "C" fn statsig_release(statsig_ref: u64) {
     InstanceRegistry::remove(&statsig_ref);
+    log_d!(TAG, "Statsig released: {}", statsig_ref);
 }
 
 #[no_mangle]
@@ -234,9 +237,13 @@ pub extern "C" fn statsig_log_event(statsig_ref: u64, user_ref: u64, event_json:
     let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
     let user = get_instance_or_noop_c!(StatsigUser, &user_ref);
     let event_json = unwrap_or_noop!(c_char_to_string(event_json));
+
     let event = match serde_json::from_str::<HashMap<String, Value>>(&event_json) {
         Ok(map) => map,
-        Err(_) => return,
+        Err(err) => {
+            log_e!(TAG, "Failed to parse event json: {}", err);
+            return;
+        }
     };
 
     let event_name = unwrap_or_noop!(event.get("name").and_then(|n| n.as_str()));
@@ -278,14 +285,16 @@ pub extern "C" fn statsig_get_client_init_response(
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
 
-    let options = match c_char_to_string(options_json) {
-        Some(opts) => match serde_json::from_str::<ClientInitResponseOptions>(&opts) {
-            Ok(options) => options,
-            Err(e) => {
-                log_e!(TAG, "Failed to parse options: {}", e);
-                return null_mut();
-            }
-        },
+    let options_json = c_char_to_string_non_empty(options_json)
+        .filter(|opts| !opts.is_empty())
+        .map(|opts| serde_json::from_str::<ClientInitResponseOptions>(&opts));
+
+    let options = match options_json {
+        Some(Ok(options)) => options,
+        Some(Err(e)) => {
+            log_e!(TAG, "Failed to parse options: {}", e);
+            return null_mut();
+        }
         None => ClientInitResponseOptions::default(),
     };
 
@@ -306,7 +315,7 @@ pub extern "C" fn statsig_get_parameter_store_with_options(
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
     let param_store_name = unwrap_or_return!(c_char_to_string(parameter_store_name), null_mut());
 
-    let options = match c_char_to_string(options_json) {
+    let options = match c_char_to_string_non_empty(options_json) {
         Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
             Ok(options) => options,
             Err(e) => {
@@ -342,7 +351,7 @@ pub extern "C" fn statsig_get_string_parameter_from_parameter_store(
 
     let default_value: Option<String> = c_char_to_string(default_value);
 
-    let options = match c_char_to_string(options_json) {
+    let options = match c_char_to_string_non_empty(options_json) {
         Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
             Ok(options) => Some(options),
             Err(e) => {
@@ -389,7 +398,7 @@ pub extern "C" fn statsig_get_bool_parameter_from_parameter_store(
 
     let default_value: Option<bool> = Some(default_val);
 
-    let options = match c_char_to_string(options_json) {
+    let options = match c_char_to_string_non_empty(options_json) {
         Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
             Ok(options) => Some(options),
             Err(e) => {
@@ -434,7 +443,7 @@ pub extern "C" fn statsig_get_float64_parameter_from_parameter_store(
 
     let default_value: Option<f64> = Some(default);
 
-    let options = match c_char_to_string(options_json) {
+    let options = match c_char_to_string_non_empty(options_json) {
         Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
             Ok(options) => Some(options),
             Err(e) => {
@@ -479,7 +488,7 @@ pub extern "C" fn statsig_get_int_parameter_from_parameter_store(
 
     let default_value: Option<i64> = Some(default);
 
-    let options = match c_char_to_string(options_json) {
+    let options = match c_char_to_string_non_empty(options_json) {
         Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
             Ok(options) => Some(options),
             Err(e) => {
@@ -528,7 +537,7 @@ pub extern "C" fn statsig_get_object_parameter_from_parameter_store(
     let default_value: Option<HashMap<String, Value>> =
         serde_json::from_str(default_value_str.as_str()).ok();
 
-    let options = match c_char_to_string(options_json) {
+    let options = match c_char_to_string_non_empty(options_json) {
         Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
             Ok(options) => Some(options),
             Err(e) => {
@@ -574,7 +583,7 @@ pub extern "C" fn statsig_get_array_parameter_from_parameter_store(
 
     let default_value: Option<Vec<Value>> = serde_json::from_str(default_value_str.as_str()).ok();
 
-    let options = match c_char_to_string(options_json) {
+    let options = match c_char_to_string_non_empty(options_json) {
         Some(opts) => match serde_json::from_str::<ParameterStoreEvaluationOptions>(&opts) {
             Ok(options) => Some(options),
             Err(e) => {
@@ -614,7 +623,7 @@ pub extern "C" fn statsig_check_gate(
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, false);
     let gate_name = unwrap_or_return!(c_char_to_string(gate_name), false);
 
-    if let Some(opts) = c_char_to_string(options_json) {
+    if let Some(opts) = c_char_to_string_non_empty(options_json) {
         match serde_json::from_str::<FeatureGateEvaluationOptions>(&opts) {
             Ok(options) => return statsig.check_gate_with_options(&user, &gate_name, options),
             Err(e) => {
@@ -685,7 +694,7 @@ pub extern "C" fn statsig_get_feature_gate(
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
     let gate_name = unwrap_or_return!(c_char_to_string(gate_name), null_mut());
 
-    let gate = match c_char_to_string(options_json) {
+    let gate = match c_char_to_string_non_empty(options_json) {
         Some(opts) => match serde_json::from_str::<FeatureGateEvaluationOptions>(&opts) {
             Ok(options) => statsig.get_feature_gate_with_options(&user, &gate_name, options),
             Err(e) => {
@@ -728,7 +737,7 @@ pub extern "C" fn statsig_get_dynamic_config(
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
     let config_name = unwrap_or_return!(c_char_to_string(config_name), null_mut());
 
-    let config = match c_char_to_string(options_json) {
+    let config = match c_char_to_string_non_empty(options_json) {
         Some(opts) => match serde_json::from_str::<DynamicConfigEvaluationOptions>(&opts) {
             Ok(options) => statsig.get_dynamic_config_with_options(&user, &config_name, options),
             Err(e) => {
@@ -771,7 +780,7 @@ pub extern "C" fn statsig_get_experiment(
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
     let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null_mut());
 
-    let experiment = match c_char_to_string(options_json) {
+    let experiment = match c_char_to_string_non_empty(options_json) {
         Some(opts) => match serde_json::from_str::<ExperimentEvaluationOptions>(&opts) {
             Ok(options) => statsig.get_experiment_with_options(&user, &experiment_name, options),
             Err(e) => {
@@ -814,7 +823,7 @@ pub extern "C" fn statsig_get_layer(
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
     let layer_name = unwrap_or_return!(c_char_to_string(layer_name), null_mut());
 
-    let layer = match c_char_to_string(options_json) {
+    let layer = match c_char_to_string_non_empty(options_json) {
         Some(opts) => match serde_json::from_str::<LayerEvaluationOptions>(&opts) {
             Ok(options) => statsig.get_layer_with_options(&user, &layer_name, options),
             Err(e) => {
@@ -840,7 +849,7 @@ pub extern "C" fn statsig_get_prompt(
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
     let prompt_name = unwrap_or_return!(c_char_to_string(prompt_name), null_mut());
 
-    let layer = match c_char_to_string(options_json) {
+    let layer = match c_char_to_string_non_empty(options_json) {
         Some(opts) => match serde_json::from_str::<LayerEvaluationOptions>(&opts) {
             Ok(options) => statsig.get_prompt_with_options(&user, &prompt_name, options),
             Err(e) => {

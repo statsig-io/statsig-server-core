@@ -3,7 +3,7 @@ use std::collections::HashSet;
 
 use crate::{GCIRResponseFormat, HashAlgorithm};
 
-#[derive(Default, Deserialize)]
+#[derive(Deserialize)]
 pub struct ClientInitResponseOptions {
     pub hash_algorithm: Option<HashAlgorithm>,
     pub client_sdk_key: Option<String>,
@@ -21,5 +21,23 @@ pub struct ClientInitResponseOptions {
 impl ClientInitResponseOptions {
     pub(crate) fn get_hash_algorithm(&self) -> &HashAlgorithm {
         self.hash_algorithm.as_ref().unwrap_or(&HashAlgorithm::Djb2)
+    }
+}
+
+impl Default for ClientInitResponseOptions {
+    fn default() -> Self {
+        Self {
+            hash_algorithm: Some(HashAlgorithm::Djb2),
+            client_sdk_key: None,
+            include_local_overrides: Some(false),
+            feature_gate_filter: None,
+            experiment_filter: None,
+            dynamic_config_filter: None,
+            layer_filter: None,
+            param_store_filter: None,
+            response_format: None,
+            remove_id_type: Some(false),
+            remove_default_value_gates: Some(false),
+        }
     }
 }

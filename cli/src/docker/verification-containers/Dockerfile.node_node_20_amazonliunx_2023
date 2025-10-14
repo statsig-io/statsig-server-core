@@ -1,0 +1,20 @@
+FROM amazonlinux:2023
+
+# Upgrade base packages
+RUN dnf -y upgrade --refresh \
+ && dnf -y install --setopt=install_weak_deps=False \
+      nodejs20 nodejs20-npm \
+      tar gzip ca-certificates curl-minimal \
+ && ln -sf /usr/bin/node-20 /usr/bin/node \
+ && ln -sf /usr/bin/npm-20  /usr/bin/npm \
+ && node -v && npm -v \
+ && dnf clean all
+
+WORKDIR /app
+
+RUN npm install tsx
+RUN npm install @statsig/statsig-node-core@beta
+
+COPY examples/node/verify-package .
+
+CMD ["npx", "tsx", "verify.ts"]

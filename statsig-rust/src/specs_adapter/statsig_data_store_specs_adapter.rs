@@ -185,6 +185,6 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
     }
 
     fn get_type_name(&self) -> String {
-        stringify!(StatsigDatStoreSpecAdapter).to_string()
+        stringify!(StatsigDataStoreSpecAdapter).to_string()
     }
 }

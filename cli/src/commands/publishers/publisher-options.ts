@@ -1,4 +1,13 @@
-export const PACKAGES = ['python', 'node', 'ffi', 'java', 'php', 'dotnet','elixir'] as const;
+export const PACKAGES = [
+  'python',
+  'node',
+  'ffi',
+  'java',
+  'php',
+  'dotnet',
+  'elixir',
+  'go',
+] as const;
 export type Package = (typeof PACKAGES)[number];
 
 export type PublisherOptions = {

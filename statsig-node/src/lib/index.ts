@@ -1,10 +1,30 @@
+// @ts-nocheck
+import { DynamicConfig, Experiment, Layer, ParameterStore, StatsigNapiInternal, StatsigOptions, StatsigUser } from './statsig-generated';
+
+import { ErrorBoundary } from './error_boundary';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import nodeFetch from 'node-fetch';
 
-import { ErrorBoundary } from './error_boundary';
-import { StatsigNapiInternal, StatsigOptions } from './statsig-generated';
-
 export * from './statsig-generated';
+
+
+StatsigUser.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
+  return this.toJSON();
+}
+Experiment.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
+  return this.toJSON();
+}
+DynamicConfig.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
+  return this.toJSON();
+}
+Layer.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
+  return this.toJSON();
+}
+ParameterStore.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
+  return this.toJSON();
+}
+
+export { StatsigUser, Experiment, DynamicConfig, Layer, ParameterStore };
 
 function createProxyAgent(options?: StatsigOptions) {
   const proxy = options?.proxyConfig;

@@ -35,7 +35,7 @@ pub(crate) fn get_gate_evaluations(
         context,
         options,
         sec_expo_hash_memo,
-        &context.spec_store_data.values.feature_gates,
+        &context.specs_data.feature_gates,
         get_gate_spec_type,
         factory,
     )
@@ -60,7 +60,7 @@ pub(crate) fn get_gate_evaluations_v2(
         context,
         options,
         sec_expo_hash_memo,
-        &context.spec_store_data.values.feature_gates,
+        &context.specs_data.feature_gates,
         get_gate_spec_type,
         factory,
     )

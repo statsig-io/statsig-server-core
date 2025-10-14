@@ -1,9 +1,9 @@
-use serde::Deserialize;
+use serde::{de::Error, Deserialize, Deserializer};
 
 use super::{djb2::djb2, memo_sha_256::MemoSha256};
 use std::fmt::Display;
 
-#[derive(Deserialize, Eq, PartialEq)]
+#[derive(Eq, PartialEq)]
 pub enum HashAlgorithm {
     Djb2,
     None,
@@ -14,11 +14,21 @@ impl HashAlgorithm {
     #[must_use]
     pub fn from_string(input: &str) -> Option<Self> {
         match input {
-            "sha256" => Some(HashAlgorithm::Sha256),
-            "djb2" => Some(HashAlgorithm::Djb2),
-            "none" => Some(HashAlgorithm::None),
+            "sha256" | "SHA256" | "Sha256" => Some(HashAlgorithm::Sha256),
+            "djb2" | "DJB2" | "Djb2" => Some(HashAlgorithm::Djb2),
+            "none" | "NONE" | "None" => Some(HashAlgorithm::None),
             _ => None,
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for HashAlgorithm {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        HashAlgorithm::from_string(&s).ok_or_else(|| D::Error::custom("Invalid hash algorithm"))
     }
 }
 

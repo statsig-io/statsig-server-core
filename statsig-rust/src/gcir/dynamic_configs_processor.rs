@@ -51,12 +51,12 @@ pub(crate) fn get_dynamic_config_evaluations(
         context,
         options,
         sec_expo_hash_memo,
-        &context.spec_store_data.values.dynamic_configs,
+        &context.specs_data.dynamic_configs,
         get_dynamic_config_type,
         factory,
     )?;
 
-    let cmab_configs = match &context.spec_store_data.values.cmab_configs {
+    let cmab_configs = match &context.specs_data.cmab_configs {
         Some(cmab_configs) => cmab_configs,
         None => return Ok(result),
     };
@@ -131,12 +131,12 @@ pub(crate) fn get_dynamic_config_evaluations_v2(
         context,
         options,
         sec_expo_hash_memo,
-        &context.spec_store_data.values.dynamic_configs,
+        &context.specs_data.dynamic_configs,
         get_dynamic_config_type,
         factory,
     )?;
 
-    let cmab_configs = match &context.spec_store_data.values.cmab_configs {
+    let cmab_configs = match &context.specs_data.cmab_configs {
         Some(cmab_configs) => cmab_configs,
         None => return Ok(result),
     };

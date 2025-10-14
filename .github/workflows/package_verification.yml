@@ -48,12 +48,39 @@ jobs:
 
           - package: python
             tag: py_3_10_alpine
+          
+          - package: python
+            tag: py_3_7_slim
+
+          - package: python
+            tag: py_3_7_alpine
+
+          - package: python
+            tag: py_3_8_manglinux_x86_64
+
+          - package: python
+            tag: py_3_7_buster
 
           - package: node
             tag: node_20_slim
 
           - package: node
             tag: node_20_alpine
+
+          - package: node
+            tag: node_20_amazonliunx_2023
+
+          - package: node
+            tag: node_20_bookworm
+
+          - package: node
+            tag: node_20_bullseye
+
+          - package: node
+            tag: node_22_bookworm
+
+          - package: node
+            tag: node_22_alpine
 
           - package: php
             tag: php_7_cli

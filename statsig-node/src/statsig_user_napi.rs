@@ -290,3 +290,11 @@ add_string_getter_setter!("userAgent", user_agent, set_user_agent);
 add_string_getter_setter!("country", country, set_country);
 add_string_getter_setter!("locale", locale, set_locale);
 add_string_getter_setter!("appVersion", app_version, set_app_version);
+
+#[napi]
+impl StatsigUser {
+    #[napi(js_name = "toJSON")]
+    pub fn to_json(&self) -> String {
+        serde_json::to_string(self.inner.data.as_ref()).unwrap_or_else(|_| "{}".to_string())
+    }
+}

@@ -1,0 +1,15 @@
+FROM quay.io/pypa/manylinux2014_x86_64:2025.09.19-1@sha256:847f0f664e4957a2d198e84a7a41c21520b3793b9ee77dbeb0a566370239f502
+
+ARG PY_TAG=cp38-cp38
+
+ENV PYBIN=/opt/python/${PY_TAG}/bin
+ENV PATH=${PYBIN}:$PATH
+
+WORKDIR /app
+
+RUN python -m pip install --upgrade pip \
+ && pip install --no-cache-dir --pre statsig-python-core
+
+COPY examples/python/verify-package /app
+
+CMD ["python", "verify.py"]

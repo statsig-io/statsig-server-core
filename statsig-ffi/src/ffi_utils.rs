@@ -33,6 +33,23 @@ pub fn c_char_to_string(c_str: *const c_char) -> Option<String> {
     }
 }
 
+pub fn c_char_to_string_non_empty(c_str: *const c_char) -> Option<String> {
+    if c_str.is_null() {
+        return None;
+    }
+
+    let c_str = match unsafe { CStr::from_ptr(c_str) }.to_str() {
+        Ok(c_str) => c_str,
+        Err(_) => return None,
+    };
+
+    if c_str.is_empty() {
+        return None;
+    }
+
+    Some(c_str.to_owned())
+}
+
 pub fn c_int_to_u32(c_num: c_int) -> Option<u32> {
     if c_num < 0 {
         return None;

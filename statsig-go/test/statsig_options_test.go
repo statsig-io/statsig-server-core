@@ -9,7 +9,7 @@ import (
 
 func TestStatsigOptionsBuilder(t *testing.T) {
 	fmt.Println("TestStatsigOptionsBuilder")
-	_, err := statsig_go.NewStatsigOptionsBuilder().WithSpecsUrl("http://localhost:3000/specs").Build()
+	_, err := statsig_go.NewOptionsBuilder().WithSpecsUrl("http://localhost:3000/specs").Build()
 
 	if err != nil {
 		t.Errorf("error creating StatsigOptions: %v", err)

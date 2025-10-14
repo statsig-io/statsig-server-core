@@ -5,7 +5,7 @@ use crate::{
     ClientInitResponseOptions, DynamicValue, HashAlgorithm,
 };
 
-pub(crate) fn select_app_id<'a>(
+pub(crate) fn select_app_id_for_gcir<'a>(
     options: &'a ClientInitResponseOptions,
     dcs_values: &'a SpecsResponseFull,
     hashing: &HashUtil,

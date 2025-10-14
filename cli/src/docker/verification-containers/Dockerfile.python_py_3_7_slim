@@ -1,0 +1,9 @@
+FROM python:3.7-slim
+
+WORKDIR /app
+
+RUN pip install statsig-python-core --pre --break-system-packages
+
+COPY examples/python/verify-package .
+
+CMD ["python3", "verify.py"]

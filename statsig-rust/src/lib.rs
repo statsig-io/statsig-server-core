@@ -35,6 +35,7 @@ pub mod compression;
 pub mod data_store_interface;
 pub mod evaluation;
 pub mod event_logging;
+pub mod gcir;
 pub mod global_configs;
 pub mod hashing;
 pub mod instance_registry;
@@ -56,7 +57,6 @@ pub mod user;
 
 mod dcs_str;
 mod event_logging_adapter;
-mod gcir;
 mod id_lists_adapter;
 mod initialize_evaluations_response;
 mod initialize_response;

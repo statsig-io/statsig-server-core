@@ -1,13 +1,17 @@
 name: Update RC Versions within Statsig Repo
 
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Enter RC tag manually (e.g. 0.9.2-rc.2509181925)"
+        required: false
   release:
     types: [published]
-  workflow_dispatch:
 
 jobs:
   update-node-core-rc-version:
-    timeout-minutes: 40
+    timeout-minutes: 60
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && contains(github.event.release.tag_name, '-rc.'))
     runs-on: ubuntu-latest
     steps:
@@ -15,7 +19,15 @@ jobs:
         id: rc_ver
         shell: bash
         run: |
-          TAG="${{ github.event.release.tag_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+            if [ -z "$TAG" ]; then
+              echo "❌ No tag provided via workflow_dispatch input."
+              exit 1
+            fi
+          else
+            TAG="${{ github.event.release.tag_name }}"
+          fi
           VER="${TAG#v}"
           echo "version=$VER" >> "$GITHUB_OUTPUT"
           echo "Resolved RC version: $VER"
@@ -77,15 +89,20 @@ jobs:
           @statsig/statsig-node-core-linux-x64-musl-rc"
           echo "Updating to latest rc for: $pkgs"
 
-          cd lib
-          pnpm update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
-          cd node/service-core
-          pnpm update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+          # Update all packages in lib
+          pnpm --dir lib update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+
+          # Update all packages in lib/node/entity
+          pnpm --dir lib/node/entity update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+
+          # Update all packages in lib/node/service-core
+          pnpm --dir lib/node/service-core update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
 
           echo "Changed files:"
           git status --porcelain
 
       - name: Create Pull Request
+        id: create_rc_pr
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.ROIM }}
@@ -93,7 +110,7 @@ jobs:
           title: "[automated][sdk] Bump Statsig Node Core RC deps"
           body: |
             This PR was auto-generated on RC release.
-            - Updated in `lib` and `lib/node/service-core`
+            - Updated in `lib`, `lib/node/entity`, `lib/node/service-core`
             - Packages:
               - @statsig/statsig-node-core-rc
               - @statsig/statsig-node-core-linux-x64-gnu-rc
@@ -102,3 +119,37 @@ jobs:
           delete-branch: true
           labels: automation, rc-bump
           team-reviewers: sdk
+
+      - name: Notify Slack about new RC bump PR
+        if: steps.create_rc_pr.outputs.pull-request-url != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SDK_SLACK_WEBHOOK_URL }}
+        run: |
+          pr_url="${{ steps.create_rc_pr.outputs.pull-request-url }}"
+          pr_title="[automated][sdk] Bump Statsig Node Core RC deps"
+          actor="${{ github.actor }}"
+          repo="statsig-io/statsig"
+          branch="bump_statsig_rc_sdk_version-${{ github.run_id }}"
+    
+          payload=$(cat <<EOF
+          {
+            "attachments": [
+              {
+                "color": "#ff9f00",
+                "title": ":rocket: New RC Bump PR Created!",
+                "text": "*${actor}* just created a new PR in *${repo}*:\n<${pr_url}|${pr_title}>\n\n:warning: Please review and merge if safe.\nIf any breaking changes exist, update SDK wrappers accordingly.",
+                "fields": [
+                  { "title": "Branch", "value": "${branch}", "short": true },
+                  { "title": "Repository", "value": "${repo}", "short": true }
+                ],
+                "footer": "Posted by 🚀 SDKbot",
+                "ts": $(date +%s)
+              }
+            ]
+          }
+          EOF
+          )
+
+          curl -X POST -H 'Content-type: application/json' \
+            --data "$payload" \
+            "$SLACK_WEBHOOK_URL"

@@ -9,19 +9,17 @@ typedef int StatsigUser;
 
 typedef int SafeOptBool;
 
-uint64_t data_store_create(void (*initialize_fn)(uint64_t data_store_ref),
-                           void (*shutdown_fn)(uint64_t data_store_ref),
-                           const char *(*get_fn)(uint64_t data_store_ref, const char *key),
-                           void (*set_fn)(uint64_t data_store_ref,
-                                          const char *key,
-                                          const char *value,
-                                          const uint64_t *time),
-                           bool (*support_polling_updates_for_fn)(uint64_t data_store_ref,
-                                                                  const char *key));
-
-void data_store_set_ref(uint64_t data_store_ref);
+uint64_t data_store_create(void (*initialize_fn)(void),
+                           void (*shutdown_fn)(void),
+                           const char *(*get_fn)(const char *key),
+                           void (*set_fn)(const char *key, const char *value, const uint64_t *time),
+                           bool (*support_polling_updates_for_fn)(const char *key));
 
 void data_store_release(uint64_t data_store_ref);
+
+const char *__internal__test_data_store(uint64_t data_store_ref,
+                                        const char *path,
+                                        const char *value);
 
 void free_string(char *s);
 
@@ -306,6 +304,8 @@ uint64_t statsig_options_create(const char *specs_url,
                                 SafeOptBool use_third_party_ua_parser);
 
 void statsig_options_release(uint64_t options_ref);
+
+uint64_t statsig_user_create_from_data(const char *json_data);
 
 uint64_t statsig_user_create(const char *user_id,
                              const char *custom_ids_json,

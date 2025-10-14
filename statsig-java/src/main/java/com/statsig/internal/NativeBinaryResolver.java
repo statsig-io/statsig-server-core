@@ -29,7 +29,10 @@ public class NativeBinaryResolver {
 
   /** [Internal] Library Loading */
   public static boolean load() {
-    boolean loaded = loadNativeLibraryFromResources();
+    boolean loaded =
+        tryLoadFromSystemPropertyOrEnv()
+            || tryLoadFromLibraryPath()
+            || loadNativeLibraryFromResources();
 
     if (!loaded) {
       logNativeLibraryError();
@@ -70,6 +73,36 @@ public class NativeBinaryResolver {
                   + "Please ensure that the necessary dependencies have been added to your project configuration.\n",
               osName, arch));
       OutputLogger.logError(TAG, e.getMessage());
+      return false;
+    }
+  }
+
+  private static boolean tryLoadFromSystemPropertyOrEnv() {
+    String overridePath = System.getProperty("statsig.native.lib");
+    if (overridePath == null || overridePath.isEmpty()) {
+      overridePath = System.getenv("STATSIG_NATIVE_LIB");
+    }
+
+    if (overridePath == null || overridePath.isEmpty()) {
+      return false;
+    }
+
+    try {
+      OutputLogger.logInfo(TAG, "Loading native library from override path: " + overridePath);
+      System.load(overridePath);
+      return true;
+    } catch (UnsatisfiedLinkError | SecurityException e) {
+      OutputLogger.logError(TAG, "Failed to load native lib from override path: " + e.getMessage());
+      return false;
+    }
+  }
+
+  public static boolean tryLoadFromLibraryPath() {
+    try {
+      OutputLogger.logInfo(TAG, "Attempting to load native library from java.library.path");
+      System.loadLibrary("statsig_ffi");
+      return true;
+    } catch (UnsatisfiedLinkError e) {
       return false;
     }
   }
