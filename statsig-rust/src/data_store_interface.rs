@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
 use crate::StatsigErr;
 
@@ -38,6 +39,7 @@ impl Display for CompressFormat {
     }
 }
 
+#[derive(Deserialize, Serialize)]
 pub struct DataStoreResponse {
     pub result: Option<String>,
     pub time: Option<u64>,

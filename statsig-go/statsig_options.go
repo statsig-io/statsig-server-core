@@ -117,6 +117,11 @@ func (o *StatsigOptionsBuilder) WithIdListsSyncIntervalMs(idListsSyncIntervalMs 
 	return o
 }
 
+func (o *StatsigOptionsBuilder) WithDataStore(dataStore *DataStore) *StatsigOptionsBuilder {
+	o.DataStoreRef = &dataStore.ref
+	return o
+}
+
 func (o *StatsigOptionsBuilder) Build() (*StatsigOptions, error) {
 	data, err := json.Marshal(o)
 	if err != nil {

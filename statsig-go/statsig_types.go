@@ -2,7 +2,6 @@ package statsig_go_core
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 // ------------------------------------------------------------------------------------- [ Feature Gate ]
@@ -119,8 +118,6 @@ func (l *Layer) UnmarshalJSON(b []byte) error {
 		GroupName               string         `json:"group_name"`
 		AllocatedExperimentName string         `json:"allocated_experiment_name"`
 	}{}
-
-	fmt.Println("tmp", string(b))
 
 	if err := json.Unmarshal(b, &tmp); err != nil {
 		return err

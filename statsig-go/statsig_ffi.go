@@ -1,6 +1,7 @@
 package statsig_go_core
 
 import (
+	"C"
 	"fmt"
 	"os"
 	"runtime"
@@ -79,6 +80,17 @@ type StatsigFFI struct {
 	statsig_remove_experiment_override        func(uint64, string, string)
 	statsig_remove_layer_override             func(uint64, string, string)
 	statsig_remove_all_overrides              func(uint64)
+
+	// Data Store
+	data_store_create func(
+		init_fn func(),
+		shutdown_fn func(),
+		get_fn func(key *C.char) *C.char,
+		set_fn func(key *C.char, value *C.char, time *uint64),
+		support_polling_updates_for_fn func(key *C.char) bool,
+	) uint64
+	data_store_release          func(uint64)
+	__internal__test_data_store func(uint64, string, string) string
 
 	// Metadata
 	statsig_metadata_update_values func(string, string, string, string)
@@ -169,6 +181,11 @@ func GetFFI() *StatsigFFI {
 		purego.RegisterLibFunc(&instance.statsig_remove_experiment_override, lib, "statsig_remove_experiment_override")
 		purego.RegisterLibFunc(&instance.statsig_remove_layer_override, lib, "statsig_remove_layer_override")
 		purego.RegisterLibFunc(&instance.statsig_remove_all_overrides, lib, "statsig_remove_all_overrides")
+
+		// Data Store
+		purego.RegisterLibFunc(&instance.data_store_create, lib, "data_store_create")
+		purego.RegisterLibFunc(&instance.data_store_release, lib, "data_store_release")
+		purego.RegisterLibFunc(&instance.__internal__test_data_store, lib, "__internal__test_data_store")
 
 		// Metadata
 		purego.RegisterLibFunc(&instance.statsig_metadata_update_values, lib, "statsig_metadata_update_values")

@@ -97,7 +97,7 @@ impl EvaluationDetails {
         }
 
         Self {
-            reason: format!("{}:{}", source, sub_reason),
+            reason: format!("{source}:{sub_reason}"),
             lcut: Some(lcut),
             received_at,
         }

@@ -273,7 +273,6 @@ jobs:
           elixir-version: 1.18.4
           otp-version: '28.0'
 
-
       - name: Setup
         run: |
           pip3 install maturin
