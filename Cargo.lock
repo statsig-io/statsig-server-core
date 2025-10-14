@@ -2117,6 +2117,7 @@ dependencies = [
  "libloading",
  "regex-lite",
  "rustler_codegen",
+ "serde",
 ]
 
 [[package]]

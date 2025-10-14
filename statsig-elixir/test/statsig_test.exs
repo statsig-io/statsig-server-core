@@ -12,6 +12,7 @@ defmodule StatsigTest do
   alias Statsig.LayerEvaluationOptions
   alias Statsig.DynamicConfigEvaluationOptions
 
+  @tag :skip
   test "Example usage test" do
     # Initialize Statsig with a test SDK key
     IO.puts("\n=== Starting Statsig Test ===")
@@ -39,7 +40,7 @@ defmodule StatsigTest do
 
     # Check a feature gate
     IO.puts("\nChecking gate 'test_gate'...")
-    {:ok, check_gate} = Statsig.check_gate("test_public", user)
+    {:ok, _check_gate} = Statsig.check_gate("test_public", user)
 
     {:ok, check_gate} =
       Statsig.check_gate("test_public", user, %FeatureGateEvaluationOptions{

@@ -1,5 +1,7 @@
-use rustler::{Decoder, Encoder, Env, NifResult, NifStruct, Term};
+use rustler::{Decoder, Encoder, Env, NifResult, NifStruct, Term, serde::{Deserializer, Serializer}};
 use serde_json::Value;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use statsig_rust::statsig_core_api_options::{
     DynamicConfigEvaluationOptions as DynamicConfigEvaluationOptionsActual,
     ExperimentEvaluationOptions as ExperimentEvaluationOptionsActual,
@@ -12,6 +14,27 @@ use statsig_rust::statsig_types::{
 };
 use statsig_rust::DynamicValue;
 use statsig_rust::{ClientInitResponseOptions as ClientInitResponseOptionsActual, HashAlgorithm};
+
+// Wrapper type for HashMap<String, Value> that can be encoded/decoded via Rustler serde
+#[derive(Clone, Debug)]
+pub struct ValueMap(pub HashMap<String, Value>);
+
+impl Encoder for ValueMap {
+    fn encode<'b>(&self, env: Env<'b>) -> Term<'b> {
+        let serializer = Serializer::from(env);
+        self.0.serialize(serializer).unwrap()
+    }
+}
+
+impl Decoder<'_> for ValueMap {
+    fn decode(term: Term) -> NifResult<Self> {
+        let deserializer = Deserializer::from(term);
+        let map: HashMap<String, Value> = HashMap::deserialize(deserializer)
+            .map_err(|_| rustler::Error::BadArg)?;
+        Ok(ValueMap(map))
+    }
+}
+
 #[derive(NifStruct)]
 #[module = "Statsig.Experiment"]
 pub struct Experiment {
@@ -19,14 +42,14 @@ pub struct Experiment {
     pub rule_id: String,
     pub id_type: String,
     pub group_name: Option<String>,
-    pub value: String, // serialized value
+    pub value: ValueMap,
 }
 
 impl From<ExperimentActual> for Experiment {
     fn from(experiment: ExperimentActual) -> Self {
         Experiment {
             name: experiment.name,
-            value: serde_json::to_string(&experiment.value).unwrap_or("".to_string()),
+            value: ValueMap(experiment.value),
             rule_id: experiment.rule_id,
             id_type: experiment.id_type,
             group_name: experiment.group_name,
@@ -38,7 +61,7 @@ impl From<ExperimentActual> for Experiment {
 #[module = "Statsig.DynamicConfig"]
 pub struct DynamicConfig {
     pub name: String,
-    pub value: String,
+    pub value: ValueMap,
     pub rule_id: String,
     pub id_type: String,
 }
@@ -47,7 +70,7 @@ impl From<DynamicConfigActual> for DynamicConfig {
     fn from(config: DynamicConfigActual) -> Self {
         DynamicConfig {
             name: config.name,
-            value: serde_json::to_string(&config.value).unwrap_or("".to_string()),
+            value: ValueMap(config.value),
             rule_id: config.rule_id,
             id_type: config.id_type,
         }
