@@ -128,7 +128,7 @@ impl StatsigEventInternal {
             "source".to_string(),
             StatsigMetadata::get_metadata().sdk_type.to_string(),
         );
-        populated_metadata.insert("log_level".to_string(), format!("{log_level:?}"));
+        populated_metadata.insert("log_level".to_string(), format!("{:?}", log_level));
 
         StatsigEventInternal {
             event_data: StatsigEvent {

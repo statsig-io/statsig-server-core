@@ -30,10 +30,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+
       - uses: Swatinem/rust-cache@v2
 
-      - uses: ./.github/actions/common-setup
+      - name: Install NPM Dependencies
+        run: pnpm install --dir cli
 
       - name: '[Python] Install Dependencies'
         if: matrix.lang == 'python'
