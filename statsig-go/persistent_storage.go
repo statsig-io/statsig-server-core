@@ -10,7 +10,7 @@ import (
 )
 
 type PersistentStorageFunctions struct {
-	Load   func(key string) string
+	Load   func(key string) *UserPersistedValues
 	Save   func(key string, configName string, data StickyValues)
 	Delete func(key string, configName string)
 }
@@ -39,6 +39,8 @@ type StickyValues struct {
 	ConfigVersion                 *int64              `json:"config_version,omitempty"`
 }
 
+type UserPersistedValues map[string]StickyValues
+
 type persistentStorageArgs struct {
 	Key        string        `json:"key"`
 	ConfigName string        `json:"config_name"`
@@ -56,7 +58,18 @@ func NewPersistentStorage(functions PersistentStorageFunctions) *PersistentStora
 		func(key *C.char) *C.char {
 			keyStr := C.GoString(key)
 			result := storage.functions.Load(keyStr)
-			return C.CString(result)
+
+			if result == nil {
+				return nil
+			}
+
+			json, err := json.Marshal(*result)
+			if err != nil {
+				fmt.Println("Error marshalling user persisted values", err)
+				return nil
+			}
+
+			return C.CString(string(json))
 		},
 		// Save
 		func(args *C.char) {

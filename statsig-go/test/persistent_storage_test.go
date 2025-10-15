@@ -2,7 +2,6 @@ package test
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 
@@ -21,47 +20,14 @@ type mockPersistentStorage struct {
 	deleteCall *psRecordedCall
 }
 
-func (m *mockPersistentStorage) Load(key string) string {
+func (m *mockPersistentStorage) Load(key string) *statsig_go.UserPersistedValues {
 	m.loadCall = &key
 
-	json, err := json.Marshal(map[string]statsig_go.StickyValues{
+	values := statsig_go.UserPersistedValues{
 		"test_load": createTestStickyValues(),
-	})
-
-	if err != nil {
-		fmt.Println("Error marshalling sticky values", err)
-		return ""
 	}
 
-	return string(json)
-}
-
-func createTestStickyValues() statsig_go.StickyValues {
-	groupName := "test_group"
-	configDelegate := "test_delegate"
-	configVersion := int64(1)
-	explicitParameters := []string{"test_param"}
-
-	return statsig_go.StickyValues{
-		Value: true,
-		JSONValue: map[string]string{
-			"header_text": "old user test",
-		},
-		RuleID:    "3ZCniK9rvnQyXDQlQ1tGD9",
-		GroupName: &groupName,
-		SecondaryExposures: []statsig_go.SecondaryExposure{
-			{
-				Gate:      "test_holdout",
-				GateValue: "true",
-				RuleID:    "default",
-			},
-		},
-		UndelegatedSecondaryExposures: []statsig_go.SecondaryExposure{},
-		ConfigVersion:                 &configVersion,
-		Time:                          time.Now().Unix(),
-		ConfigDelegate:                &configDelegate,
-		ExplicitParameters:            &explicitParameters,
-	}
+	return &values
 }
 
 func (m *mockPersistentStorage) Save(key string, configName string, data statsig_go.StickyValues) {
@@ -176,5 +142,33 @@ func TestPersistentStorageDelete(t *testing.T) {
 
 	if mock.deleteCall.configName != "test_config" {
 		t.Error("config_name should be test_config")
+	}
+}
+
+func createTestStickyValues() statsig_go.StickyValues {
+	groupName := "test_group"
+	configDelegate := "test_delegate"
+	configVersion := int64(1)
+	explicitParameters := []string{"test_param"}
+
+	return statsig_go.StickyValues{
+		Value: true,
+		JSONValue: map[string]string{
+			"header_text": "old user test",
+		},
+		RuleID:    "3ZCniK9rvnQyXDQlQ1tGD9",
+		GroupName: &groupName,
+		SecondaryExposures: []statsig_go.SecondaryExposure{
+			{
+				Gate:      "test_holdout",
+				GateValue: "true",
+				RuleID:    "default",
+			},
+		},
+		UndelegatedSecondaryExposures: []statsig_go.SecondaryExposure{},
+		ConfigVersion:                 &configVersion,
+		Time:                          time.Now().Unix(),
+		ConfigDelegate:                &configDelegate,
+		ExplicitParameters:            &explicitParameters,
 	}
 }
