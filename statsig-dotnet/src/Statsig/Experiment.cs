@@ -4,7 +4,12 @@ using Newtonsoft.Json.Linq;
 
 namespace Statsig
 {
-    public class Experiment
+    public interface IExperiment
+    {
+        T? Get<T>(string key, T? defaultValue = default);
+    }
+
+    public class Experiment : IExperiment
     {
         [JsonProperty("name")] public string Name;
         [JsonProperty("rule_id")] public string RuleID;

@@ -12,23 +12,23 @@ namespace Statsig
     public interface IStatsig
     {
         Task Initialize();
-        unsafe bool CheckGate(IStatsigUser user, string gateName, EvaluationOptions? options = null);
-        unsafe FeatureGate GetFeatureGate(IStatsigUser user, string gateName, EvaluationOptions? options = null);
-        unsafe void ManuallyLogGateExposure(IStatsigUser user, string gateName);
-        unsafe DynamicConfig GetDynamicConfig(IStatsigUser user, string configName, EvaluationOptions? options = null);
-        unsafe void ManuallyLogDynamicConfigExposure(IStatsigUser user, string configName);
-        unsafe Experiment GetExperiment(IStatsigUser user, string experimentName, EvaluationOptions? options = null);
-        unsafe void ManuallyLogExperimentExposure(IStatsigUser user, string experimentName);
-        unsafe Layer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null);
-        unsafe Layer GetPrompt(IStatsigUser user, string promptName, EvaluationOptions? options = null);
-        unsafe void ManuallyLogLayerParameterExposure(IStatsigUser user, string layerName, string parameterName);
-        unsafe ParameterStore GetParameterStore(IStatsigUser user, string storeName, EvaluationOptions? options = null);
-        unsafe string GetClientInitializeResponse(IStatsigUser user, ClientInitResponseOptions? options = null);
-        unsafe void OverrideGate(string gateName, bool value, string? id = null);
-        unsafe void OverrideDynamicConfig(string configName, Dictionary<string, object> value, string? id = null);
-        unsafe void OverrideExperiment(string experimentName, Dictionary<string, object> value, string? id = null);
-        unsafe void OverrideExperimentByGroupName(string experimentName, string groupName, string? id = null);
-        unsafe void OverrideLayer(string layerName, Dictionary<string, object> value, string? id = null);
+        bool CheckGate(IStatsigUser user, string gateName, EvaluationOptions? options = null);
+        FeatureGate GetFeatureGate(IStatsigUser user, string gateName, EvaluationOptions? options = null);
+        void ManuallyLogGateExposure(IStatsigUser user, string gateName);
+        DynamicConfig GetDynamicConfig(IStatsigUser user, string configName, EvaluationOptions? options = null);
+        void ManuallyLogDynamicConfigExposure(IStatsigUser user, string configName);
+        IExperiment GetExperiment(IStatsigUser user, string experimentName, EvaluationOptions? options = null);
+        void ManuallyLogExperimentExposure(IStatsigUser user, string experimentName);
+        ILayer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null);
+        ILayer GetPrompt(IStatsigUser user, string promptName, EvaluationOptions? options = null);
+        void ManuallyLogLayerParameterExposure(IStatsigUser user, string layerName, string parameterName);
+        ParameterStore GetParameterStore(IStatsigUser user, string storeName, EvaluationOptions? options = null);
+        string GetClientInitializeResponse(IStatsigUser user, ClientInitResponseOptions? options = null);
+        void OverrideGate(string gateName, bool value, string? id = null);
+        void OverrideDynamicConfig(string configName, Dictionary<string, object> value, string? id = null);
+        void OverrideExperiment(string experimentName, Dictionary<string, object> value, string? id = null);
+        void OverrideExperimentByGroupName(string experimentName, string groupName, string? id = null);
+        void OverrideLayer(string layerName, Dictionary<string, object> value, string? id = null);
         void LogEvent(IStatsigUser user, string eventName, string? value = null, IReadOnlyDictionary<string, string>? metadata = null);
         void LogEvent(IStatsigUser user, string eventName, int value, IReadOnlyDictionary<string, string>? metadata = null);
         void LogEvent(IStatsigUser user, string eventName, double value, IReadOnlyDictionary<string, string>? metadata = null);
@@ -44,7 +44,7 @@ namespace Statsig
         private const int EvalOptStackThreshold = 512;
         private const int JsonStackThreshold = 1024;
 
-        private readonly unsafe ulong _statsigRef;
+        private readonly ulong _statsigRef;
 
         // Shared Instance
         private static Statsig? sharedInstance = null;
@@ -253,7 +253,7 @@ namespace Statsig
             }
         }
 
-        unsafe public Experiment GetExperiment(IStatsigUser user, string experimentName, EvaluationOptions? options = null)
+        unsafe public IExperiment GetExperiment(IStatsigUser user, string experimentName, EvaluationOptions? options = null)
         {
             int nameLen = Encoding.UTF8.GetByteCount(experimentName);
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
@@ -289,7 +289,7 @@ namespace Statsig
             }
         }
 
-        unsafe public Layer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null)
+        unsafe public ILayer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null)
         {
             int nameLen = Encoding.UTF8.GetByteCount(layerName);
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
@@ -313,7 +313,7 @@ namespace Statsig
             }
         }
 
-        unsafe public Layer GetPrompt(IStatsigUser user, string promptName, EvaluationOptions? options = null)
+        unsafe public ILayer GetPrompt(IStatsigUser user, string promptName, EvaluationOptions? options = null)
         {
             int nameLen = Encoding.UTF8.GetByteCount(promptName);
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];

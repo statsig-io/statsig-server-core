@@ -1,13 +1,18 @@
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Statsig
 {
-    public class Layer
+    public interface ILayer
+    {
+        string Name { get; }
+        EvaluationDetails? EvaluationDetails { get; }
+        unsafe T? Get<T>(string key, T? defaultValue = default);
+    }
+
+    public class Layer : ILayer
     {
         [JsonProperty("name")] public string Name { get; }
         [JsonProperty("rule_id")] public string RuleID = "";
