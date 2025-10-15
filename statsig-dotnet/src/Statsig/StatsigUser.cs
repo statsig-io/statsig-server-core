@@ -6,7 +6,23 @@ using Newtonsoft.Json;
 
 namespace Statsig
 {
-    public class StatsigUser : IDisposable
+    public interface IStatsigUser
+    {
+        string? UserID { get; }
+        string? Email { get; }
+        string? IP { get; }
+        string? UserAgent { get; }
+        string? Country { get; }
+        string? Locale { get; }
+        string? AppVersion { get; }
+        IReadOnlyDictionary<string, string>? CustomIDs { get; }
+        IReadOnlyDictionary<string, object>? CustomProperties { get; }
+        IReadOnlyDictionary<string, object>? PrivateAttributes { get; }
+        void Dispose();
+        internal ulong Reference { get; }
+    }
+
+    public class StatsigUser : IDisposable, IStatsigUser
     {
         public string? UserID { get; }
         public string? Email { get; }
@@ -22,6 +38,7 @@ namespace Statsig
         private readonly ulong _ref;
 
         internal ulong Reference => _ref;
+        ulong IStatsigUser.Reference => _ref;
 
         public StatsigUser(StatsigUserBuilder builder)
         {

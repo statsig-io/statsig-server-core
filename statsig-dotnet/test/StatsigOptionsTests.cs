@@ -1,6 +1,8 @@
 using Xunit;
 using System.Reflection;
 
+#nullable enable
+
 namespace Statsig.Tests
 {
     public class StatsigOptionsTests

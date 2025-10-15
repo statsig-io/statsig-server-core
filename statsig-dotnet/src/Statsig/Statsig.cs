@@ -9,7 +9,30 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Statsig
 {
-    public class Statsig : IDisposable
+    public interface IStatsig
+    {
+        Task Initialize();
+        bool CheckGate(IStatsigUser user, string gateName, EvaluationOptions? options = null);
+        IFeatureGate GetFeatureGate(IStatsigUser user, string gateName, EvaluationOptions? options = null);
+        void ManuallyLogGateExposure(IStatsigUser user, string gateName);
+        IDynamicConfig GetDynamicConfig(IStatsigUser user, string configName, EvaluationOptions? options = null);
+        void ManuallyLogDynamicConfigExposure(IStatsigUser user, string configName);
+        IExperiment GetExperiment(IStatsigUser user, string experimentName, EvaluationOptions? options = null);
+        void ManuallyLogExperimentExposure(IStatsigUser user, string experimentName);
+        ILayer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null);
+        ILayer GetPrompt(IStatsigUser user, string promptName, EvaluationOptions? options = null);
+        void ManuallyLogLayerParameterExposure(IStatsigUser user, string layerName, string parameterName);
+        IParameterStore GetParameterStore(IStatsigUser user, string storeName, EvaluationOptions? options = null);
+        string GetClientInitializeResponse(IStatsigUser user, ClientInitResponseOptions? options = null);
+        void LogEvent(IStatsigUser user, string eventName, string? value = null, IReadOnlyDictionary<string, string>? metadata = null);
+        void LogEvent(IStatsigUser user, string eventName, int value, IReadOnlyDictionary<string, string>? metadata = null);
+        void LogEvent(IStatsigUser user, string eventName, double value, IReadOnlyDictionary<string, string>? metadata = null);
+        void Identify(IStatsigUser user);
+        Task FlushEvents();
+        Task Shutdown();
+    }
+
+    public class Statsig : IDisposable, IStatsig
     {
         private const int SpecNameStackThreshold = 256;
         private const int EvalOptStackThreshold = 512;
@@ -39,7 +62,7 @@ namespace Statsig
             return sharedInstance != null;
         }
 
-        public static Statsig NewShared(string sdkKey, StatsigOptions options)
+        public static IStatsig NewShared(string sdkKey, StatsigOptions options)
         {
             lock (lockObject)
             {
@@ -55,7 +78,7 @@ namespace Statsig
             return sharedInstance;
         }
 
-        public static Statsig NewShared(string sdkKey)
+        public static IStatsig NewShared(string sdkKey)
         {
             lock (lockObject)
             {
@@ -125,7 +148,11 @@ namespace Statsig
             return source.Task;
         }
 
-        unsafe public bool CheckGate(StatsigUser user, string gateName, EvaluationOptions? options = null)
+        // --------------------------
+        // Check Gate
+        // --------------------------
+
+        unsafe public bool CheckGate(IStatsigUser user, string gateName, EvaluationOptions? options = null)
         {
             // Get gate name bytes
             int nameLen = Encoding.UTF8.GetByteCount(gateName);
@@ -154,7 +181,7 @@ namespace Statsig
             }
         }
 
-        unsafe public FeatureGate GetFeatureGate(StatsigUser user, string gateName, EvaluationOptions? options = null)
+        unsafe public IFeatureGate GetFeatureGate(IStatsigUser user, string gateName, EvaluationOptions? options = null)
         {
             int nameLen = Encoding.UTF8.GetByteCount(gateName);
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
@@ -176,7 +203,7 @@ namespace Statsig
             }
         }
 
-        unsafe public void ManuallyLogGateExposure(StatsigUser user, string gateName)
+        unsafe public void ManuallyLogGateExposure(IStatsigUser user, string gateName)
         {
             int nameLen = Encoding.UTF8.GetByteCount(gateName);
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
@@ -188,7 +215,11 @@ namespace Statsig
             }
         }
 
-        unsafe public DynamicConfig GetDynamicConfig(StatsigUser user, string configName, EvaluationOptions? options = null)
+        // --------------------------
+        // Get Dynamic Config
+        // --------------------------
+
+        unsafe public IDynamicConfig GetDynamicConfig(IStatsigUser user, string configName, EvaluationOptions? options = null)
         {
             int nameLen = Encoding.UTF8.GetByteCount(configName);
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
@@ -212,7 +243,7 @@ namespace Statsig
             }
         }
 
-        unsafe public void ManuallyLogDynamicConfigExposure(StatsigUser user, string configName)
+        unsafe public void ManuallyLogDynamicConfigExposure(IStatsigUser user, string configName)
         {
             int nameLen = Encoding.UTF8.GetByteCount(configName);
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
@@ -224,7 +255,11 @@ namespace Statsig
             }
         }
 
-        unsafe public Experiment GetExperiment(StatsigUser user, string experimentName, EvaluationOptions? options = null)
+        // --------------------------
+        // Get Experiment
+        // --------------------------
+
+        unsafe public IExperiment GetExperiment(IStatsigUser user, string experimentName, EvaluationOptions? options = null)
         {
             int nameLen = Encoding.UTF8.GetByteCount(experimentName);
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
@@ -248,7 +283,7 @@ namespace Statsig
             }
         }
 
-        unsafe public void ManuallyLogExperimentExposure(StatsigUser user, string experimentName)
+        unsafe public void ManuallyLogExperimentExposure(IStatsigUser user, string experimentName)
         {
             int nameLen = Encoding.UTF8.GetByteCount(experimentName);
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
@@ -260,7 +295,11 @@ namespace Statsig
             }
         }
 
-        unsafe public Layer GetLayer(StatsigUser user, string layerName, EvaluationOptions? options = null)
+        // --------------------------
+        // Get Layer
+        // --------------------------
+
+        unsafe public ILayer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null)
         {
             int nameLen = Encoding.UTF8.GetByteCount(layerName);
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
@@ -284,7 +323,7 @@ namespace Statsig
             }
         }
 
-        unsafe public Layer GetPrompt(StatsigUser user, string promptName, EvaluationOptions? options = null)
+        unsafe public ILayer GetPrompt(IStatsigUser user, string promptName, EvaluationOptions? options = null)
         {
             int nameLen = Encoding.UTF8.GetByteCount(promptName);
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
@@ -308,7 +347,11 @@ namespace Statsig
             }
         }
 
-        unsafe public void ManuallyLogLayerParameterExposure(StatsigUser user, string layerName, string parameterName)
+        // --------------------------
+        // Parameter Store
+        // --------------------------
+
+        unsafe public void ManuallyLogLayerParameterExposure(IStatsigUser user, string layerName, string parameterName)
         {
             int layerNameLen = Encoding.UTF8.GetByteCount(layerName);
             Span<byte> layerNameBytes = layerNameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[layerNameLen + 1] : new byte[layerNameLen + 1];
@@ -325,7 +368,7 @@ namespace Statsig
             }
         }
 
-        unsafe public ParameterStore GetParameterStore(StatsigUser user, string storeName, EvaluationOptions? options = null)
+        unsafe public IParameterStore GetParameterStore(IStatsigUser user, string storeName, EvaluationOptions? options = null)
         {
             var storeNameBytes = Encoding.UTF8.GetBytes(storeName);
             var optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
@@ -343,7 +386,11 @@ namespace Statsig
             }
         }
 
-        unsafe public string GetClientInitializeResponse(StatsigUser user, ClientInitResponseOptions? options = null)
+        // --------------------------
+        // Get Client Initialize Response
+        // --------------------------
+
+        unsafe public string GetClientInitializeResponse(IStatsigUser user, ClientInitResponseOptions? options = null)
         {
             string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
             byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
@@ -417,22 +464,22 @@ namespace Statsig
             }
         }
 
-        public void LogEvent(StatsigUser user, string eventName, string? value = null, IReadOnlyDictionary<string, string>? metadata = null)
+        public void LogEvent(IStatsigUser user, string eventName, string? value = null, IReadOnlyDictionary<string, string>? metadata = null)
         {
             LogEventInternal(user, eventName, value, metadata);
         }
 
-        public void LogEvent(StatsigUser user, string eventName, int value, IReadOnlyDictionary<string, string>? metadata = null)
+        public void LogEvent(IStatsigUser user, string eventName, int value, IReadOnlyDictionary<string, string>? metadata = null)
         {
             LogEventInternal(user, eventName, value, metadata);
         }
 
-        public void LogEvent(StatsigUser user, string eventName, double value, IReadOnlyDictionary<string, string>? metadata = null)
+        public void LogEvent(IStatsigUser user, string eventName, double value, IReadOnlyDictionary<string, string>? metadata = null)
         {
             LogEventInternal(user, eventName, value, metadata);
         }
 
-        private unsafe void LogEventInternal(StatsigUser user, string eventName, object? value, IReadOnlyDictionary<string, string>? metadata)
+        private unsafe void LogEventInternal(IStatsigUser user, string eventName, object? value, IReadOnlyDictionary<string, string>? metadata)
         {
             var statsigEvent = new StatsigEvent(eventName, value, metadata);
             var eventJson = JsonConvert.SerializeObject(statsigEvent);
@@ -443,7 +490,7 @@ namespace Statsig
             }
         }
 
-        public void Identify(StatsigUser user)
+        public void Identify(IStatsigUser user)
         {
             if (_statsigRef == 0)
             {

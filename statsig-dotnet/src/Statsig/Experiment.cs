@@ -4,14 +4,25 @@ using Newtonsoft.Json.Linq;
 
 namespace Statsig
 {
-    public class Experiment
+    public interface IExperiment
     {
-        [JsonProperty("name")] public string Name;
-        [JsonProperty("rule_id")] public string RuleID;
-        [JsonProperty("value")] public IReadOnlyDictionary<string, JToken> Value;
-        [JsonProperty("group_name")] public string? GroupName;
-        [JsonProperty("details")] public EvaluationDetails? EvaluationDetails;
-        [JsonProperty("id_type")] public string? IDType;
+        string Name { get; }
+        string RuleID { get; }
+        IReadOnlyDictionary<string, JToken> Value { get; }
+        string? GroupName { get; }
+        EvaluationDetails? EvaluationDetails { get; }
+        string? IDType { get; }
+        T? Get<T>(string key, T? defaultValue = default);
+    }
+
+    public class Experiment : IExperiment
+    {
+        [JsonProperty("name")] public string Name { get; }
+        [JsonProperty("rule_id")] public string RuleID { get; }
+        [JsonProperty("value")] public IReadOnlyDictionary<string, JToken> Value { get; }
+        [JsonProperty("group_name")] public string? GroupName { get; }
+        [JsonProperty("details")] public EvaluationDetails? EvaluationDetails { get; }
+        [JsonProperty("id_type")] public string? IDType { get; }
 
         internal Experiment(string rawJson)
         {

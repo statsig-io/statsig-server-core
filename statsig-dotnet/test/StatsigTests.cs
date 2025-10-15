@@ -83,7 +83,6 @@ namespace Statsig.Tests
             var result = statsig.GetFeatureGate(user, "test_gate");
 
             Assert.NotNull(result);
-            Assert.IsType<FeatureGate>(result);
         }
 
         [Fact]
@@ -97,7 +96,6 @@ namespace Statsig.Tests
             var result = statsig.GetFeatureGate(user, "test_gate", evalOptions);
 
             Assert.NotNull(result);
-            Assert.IsType<FeatureGate>(result);
         }
 
         [Fact]
@@ -122,7 +120,6 @@ namespace Statsig.Tests
             var result = statsig.GetDynamicConfig(user, "test_config");
 
             Assert.NotNull(result);
-            Assert.IsType<DynamicConfig>(result);
         }
 
         [Fact]
@@ -136,7 +133,6 @@ namespace Statsig.Tests
             var result = statsig.GetDynamicConfig(user, "test_config", evalOptions);
 
             Assert.NotNull(result);
-            Assert.IsType<DynamicConfig>(result);
         }
 
         [Fact]
@@ -161,7 +157,6 @@ namespace Statsig.Tests
             var result = statsig.GetExperiment(user, "test_experiment");
 
             Assert.NotNull(result);
-            Assert.IsType<Experiment>(result);
         }
 
         [Fact]
@@ -175,7 +170,6 @@ namespace Statsig.Tests
             var result = statsig.GetExperiment(user, "test_experiment", evalOptions);
 
             Assert.NotNull(result);
-            Assert.IsType<Experiment>(result);
         }
 
         [Fact]
@@ -200,7 +194,6 @@ namespace Statsig.Tests
             var result = statsig.GetLayer(user, "test_layer");
 
             Assert.NotNull(result);
-            Assert.IsType<Layer>(result);
         }
 
         [Fact]
@@ -214,7 +207,6 @@ namespace Statsig.Tests
             var result = statsig.GetLayer(user, "test_layer", evalOptions);
 
             Assert.NotNull(result);
-            Assert.IsType<Layer>(result);
         }
 
         [Fact]
@@ -239,7 +231,6 @@ namespace Statsig.Tests
             var result = statsig.GetClientInitializeResponse(user);
 
             Assert.NotNull(result);
-            Assert.IsType<string>(result);
         }
 
         [Fact]
