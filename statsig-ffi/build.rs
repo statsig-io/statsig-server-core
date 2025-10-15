@@ -3,6 +3,7 @@ fn main() {
     run_c_bindgen();
     run_csharp_bindgen();
     run_python_build();
+    run_cpp_bindgen();
 }
 
 fn run_c_bindgen() {
@@ -39,6 +40,24 @@ fn run_csharp_bindgen() {
         })
         .generate_csharp_file("../statsig-dotnet/src/Statsig/StatsigFFI.g.cs")
         .expect("Statsig Build Error: Failed to generate C# bindings.");
+}
+
+fn run_cpp_bindgen() {
+    let crate_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+
+    let mut config = cbindgen::Config::default();
+
+    // Ensure the generated header is C++-friendly
+    config.language = cbindgen::Language::C; // Still C, but we wrap with extern "C"
+    config.cpp_compat = true; // This enables C++ compatibility
+
+    // Generate the bindings
+    cbindgen::Builder::new()
+        .with_crate(&crate_dir)
+        .with_config(config)
+        .generate()
+        .expect("Unable to generate C bindings.")
+        .write_to_file("../statsig-cpp/include/libstatsig_ffi.h");
 }
 
 fn run_python_build() {}
