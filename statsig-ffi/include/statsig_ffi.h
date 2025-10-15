@@ -11,9 +11,10 @@ typedef int SafeOptBool;
 
 uint64_t data_store_create(void (*initialize_fn)(void),
                            void (*shutdown_fn)(void),
-                           const char *(*get_fn)(const char *key),
-                           void (*set_fn)(const char *key, const char *value, const uint64_t *time),
-                           bool (*support_polling_updates_for_fn)(const char *key));
+                           const char *(*get_fn)(const char *args_ptr, uint64_t args_length),
+                           void (*set_fn)(const char *args_ptr, uint64_t args_length),
+                           bool (*support_polling_updates_for_fn)(const char *args_ptr,
+                                                                  uint64_t args_length));
 
 void data_store_release(uint64_t data_store_ref);
 
@@ -37,11 +38,12 @@ uint64_t function_based_specs_adapter_create(void (*setup_internal_fn)(uint64_t 
 void function_based_specs_adapter_release(uint64_t adapter_ref);
 
 uint64_t observability_client_create(void (*init_fn)(void),
-                                     void (*increment_fn)(const char *args),
-                                     void (*gauge_fn)(const char *args),
-                                     void (*dist_fn)(const char *args),
-                                     void (*error_fn)(const char *args),
-                                     bool (*should_enable_high_cardinality_for_this_tag_fn)(const char *args));
+                                     void (*increment_fn)(const char *args_ptr, uint64_t args_length),
+                                     void (*gauge_fn)(const char *args_ptr, uint64_t args_length),
+                                     void (*dist_fn)(const char *args_ptr, uint64_t args_length),
+                                     void (*error_fn)(const char *args_ptr, uint64_t args_length),
+                                     bool (*should_enable_high_cardinality_for_this_tag_fn)(const char *args_ptr,
+                                                                                            uint64_t args_length));
 
 void observability_client_release(uint64_t data_store_ref);
 
@@ -51,9 +53,9 @@ void __internal__test_observability_client(uint64_t ob_client_ref,
                                            double value,
                                            const char *tags);
 
-uint64_t persistent_storage_create(char *(*load_fn)(const char *key),
-                                   void (*save_fn)(const char *args),
-                                   void (*delete_fn)(const char *args));
+uint64_t persistent_storage_create(char *(*load_fn)(const char *args_ptr, uint64_t args_length),
+                                   void (*save_fn)(const char *args_ptr, uint64_t args_length),
+                                   void (*delete_fn)(const char *args_ptr, uint64_t args_length));
 
 void persistent_storage_release(uint64_t storage_ref);
 

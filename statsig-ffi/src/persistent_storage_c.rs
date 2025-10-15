@@ -19,9 +19,9 @@ struct PersistentStorageArgs<'a> {
 }
 
 pub struct PersistentStorageC {
-    pub load_fn: extern "C" fn(key: *const c_char) -> *mut c_char,
-    pub save_fn: extern "C" fn(args: *const c_char),
-    pub delete_fn: extern "C" fn(args: *const c_char),
+    pub load_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64) -> *mut c_char,
+    pub save_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
+    pub delete_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
 }
 
 // -------------------------------------------------------------------- [ Trait Impl ]
@@ -29,8 +29,9 @@ pub struct PersistentStorageC {
 #[async_trait]
 impl PersistentStorage for PersistentStorageC {
     fn load(&self, key: String) -> Option<UserPersistedValues> {
+        let key_len = key.len() as u64;
         let key_char = string_to_c_char(key);
-        let result = (self.load_fn)(key_char);
+        let result = (self.load_fn)(key_char, key_len);
         let result_str = c_char_to_string(result).filter(|s| !s.is_empty())?;
 
         match serde_json::from_str::<UserPersistedValues>(&result_str) {
@@ -43,21 +44,21 @@ impl PersistentStorage for PersistentStorageC {
     }
 
     fn save(&self, key: &str, config_name: &str, data: StickyValues) {
-        let args = parcel_args("save", key, config_name, &Some(data));
+        let (args, args_len) = parcel_args("save", key, config_name, &Some(data));
         if args.is_null() {
             return;
         }
 
-        (self.save_fn)(args);
+        (self.save_fn)(args, args_len);
     }
 
     fn delete(&self, _key: &str, _config_name: &str) {
-        let args = parcel_args("delete", _key, _config_name, &None);
+        let (args, args_len) = parcel_args("delete", _key, _config_name, &None);
         if args.is_null() {
             return;
         }
 
-        (self.delete_fn)(args);
+        (self.delete_fn)(args, args_len);
     }
 }
 
@@ -65,9 +66,9 @@ impl PersistentStorage for PersistentStorageC {
 
 #[no_mangle]
 pub extern "C" fn persistent_storage_create(
-    load_fn: extern "C" fn(key: *const c_char) -> *mut c_char,
-    save_fn: extern "C" fn(args: *const c_char),
-    delete_fn: extern "C" fn(args: *const c_char),
+    load_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64) -> *mut c_char,
+    save_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
+    delete_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
 ) -> u64 {
     InstanceRegistry::register(PersistentStorageC {
         load_fn,
@@ -130,7 +131,7 @@ fn parcel_args(
     key: &str,
     config_name: &str,
     data: &Option<StickyValues>,
-) -> *mut c_char {
+) -> (*mut c_char, u64) {
     let args = PersistentStorageArgs {
         key,
         config_name,
@@ -145,9 +146,11 @@ fn parcel_args(
                 "Failed to serialize PersistentStorageArgs for '{action}': {}",
                 e
             );
-            return std::ptr::null_mut();
+            return (std::ptr::null_mut(), 0);
         }
     };
 
-    string_to_c_char(json)
+    let json_len = json.len() as u64;
+
+    (string_to_c_char(json), json_len)
 }

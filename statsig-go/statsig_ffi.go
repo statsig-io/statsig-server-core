@@ -1,7 +1,6 @@
 package statsig_go_core
 
 import (
-	"C"
 	"fmt"
 	"os"
 	"runtime"
@@ -85,9 +84,9 @@ type StatsigFFI struct {
 	data_store_create func(
 		init_fn func(),
 		shutdown_fn func(),
-		get_fn func(key *C.char) *C.char,
-		set_fn func(key *C.char, value *C.char, time *uint64),
-		support_polling_updates_for_fn func(key *C.char) bool,
+		get_fn func(argPtr *byte, argLength uint64) *byte,
+		set_fn func(argPtr *byte, argLength uint64),
+		support_polling_updates_for_fn func(argPtr *byte, argLength uint64) bool,
 	) uint64
 	data_store_release          func(uint64)
 	__internal__test_data_store func(uint64, string, string) string
@@ -95,11 +94,11 @@ type StatsigFFI struct {
 	// Observability Client
 	observability_client_create func(
 		init_fn func(),
-		increment_fn func(args *C.char),
-		gauge_fn func(args *C.char),
-		dist_fn func(args *C.char),
-		error_fn func(args *C.char),
-		should_enable_high_cardinality_for_this_tag_fn func(tag *C.char) bool,
+		increment_fn func(argsPtr *byte, argsLength uint64),
+		gauge_fn func(argsPtr *byte, argsLength uint64),
+		dist_fn func(argsPtr *byte, argsLength uint64),
+		error_fn func(argsPtr *byte, argsLength uint64),
+		should_enable_high_cardinality_for_this_tag_fn func(argsPtr *byte, argsLength uint64) bool,
 	) uint64
 	observability_client_release          func(uint64)
 	__internal__test_observability_client func(
@@ -112,12 +111,12 @@ type StatsigFFI struct {
 
 	// Persistent Storage
 	persistent_storage_create func(
-		load_fn func(key *C.char) *C.char,
-		save_fn func(key *C.char),
-		delete_fn func(key *C.char),
+		load_fn func(argsPtr *byte, argsLength uint64) *byte,
+		save_fn func(argsPtr *byte, argsLength uint64),
+		delete_fn func(argsPtr *byte, argsLength uint64),
 	) uint64
 	persistent_storage_release          func(uint64)
-	__internal__test_persistent_storage func(uint64, string, string, string, string) *C.char
+	__internal__test_persistent_storage func(uint64, string, string, string, string) string
 
 	// Metadata
 	statsig_metadata_update_values func(string, string, string, string)

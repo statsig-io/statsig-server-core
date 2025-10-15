@@ -12,11 +12,12 @@ const TAG: &str = "ObservabilityClientC";
 
 pub struct ObservabilityClientC {
     pub init_fn: extern "C" fn(),
-    pub increment_fn: extern "C" fn(args: *const c_char),
-    pub gauge_fn: extern "C" fn(args: *const c_char),
-    pub dist_fn: extern "C" fn(args: *const c_char),
-    pub error_fn: extern "C" fn(args: *const c_char),
-    pub should_enable_high_cardinality_for_this_tag_fn: extern "C" fn(args: *const c_char) -> bool,
+    pub increment_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
+    pub gauge_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
+    pub dist_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
+    pub error_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
+    pub should_enable_high_cardinality_for_this_tag_fn:
+        extern "C" fn(args_ptr: *const c_char, args_length: u64) -> bool,
 }
 
 #[derive(Serialize)]
@@ -41,32 +42,33 @@ impl ObservabilityClient for ObservabilityClientC {
     }
 
     fn increment(&self, metric: String, value: f64, tags: Option<HashMap<String, String>>) {
-        if let Ok(args) = parcel_args("increment", metric, value, tags) {
-            (self.increment_fn)(args);
+        if let Ok((args, args_len)) = parcel_args("increment", metric, value, tags) {
+            (self.increment_fn)(args, args_len);
         }
     }
 
     fn gauge(&self, metric: String, value: f64, tags: Option<HashMap<String, String>>) {
-        if let Ok(args) = parcel_args("gauge", metric, value, tags) {
-            (self.gauge_fn)(args);
+        if let Ok((args, args_len)) = parcel_args("gauge", metric, value, tags) {
+            (self.gauge_fn)(args, args_len);
         }
     }
 
     fn dist(&self, metric: String, value: f64, tags: Option<HashMap<String, String>>) {
-        if let Ok(args) = parcel_args("dist", metric, value, tags) {
-            (self.dist_fn)(args);
+        if let Ok((args, args_len)) = parcel_args("dist", metric, value, tags) {
+            (self.dist_fn)(args, args_len);
         }
     }
 
     fn error(&self, tag: String, error: String) {
-        if let Ok(args) = parcel_error_args("error", tag, error) {
-            (self.error_fn)(args);
+        if let Ok((args, args_len)) = parcel_error_args("error", tag, error) {
+            (self.error_fn)(args, args_len);
         }
     }
 
     fn should_enable_high_cardinality_for_this_tag(&self, tag: String) -> Option<bool> {
+        let tag_len = tag.len() as u64;
         let tag = string_to_c_char(tag);
-        let value = (self.should_enable_high_cardinality_for_this_tag_fn)(tag);
+        let value = (self.should_enable_high_cardinality_for_this_tag_fn)(tag, tag_len);
 
         Some(value)
     }
@@ -83,11 +85,14 @@ impl ObservabilityClient for ObservabilityClientC {
 #[no_mangle]
 pub extern "C" fn observability_client_create(
     init_fn: extern "C" fn(),
-    increment_fn: extern "C" fn(args: *const c_char),
-    gauge_fn: extern "C" fn(args: *const c_char),
-    dist_fn: extern "C" fn(args: *const c_char),
-    error_fn: extern "C" fn(args: *const c_char),
-    should_enable_high_cardinality_for_this_tag_fn: extern "C" fn(args: *const c_char) -> bool,
+    increment_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
+    gauge_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
+    dist_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
+    error_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
+    should_enable_high_cardinality_for_this_tag_fn: extern "C" fn(
+        args_ptr: *const c_char,
+        args_length: u64,
+    ) -> bool,
 ) -> u64 {
     InstanceRegistry::register(ObservabilityClientC {
         init_fn,
@@ -153,7 +158,7 @@ fn parcel_args(
     metric: String,
     value: f64,
     tags: Option<HashMap<String, String>>,
-) -> Result<*mut c_char, ()> {
+) -> Result<(*mut c_char, u64), ()> {
     let args = ObsClientArgs {
         metric,
         value,
@@ -163,13 +168,17 @@ fn parcel_args(
     jsonify_args(action, args)
 }
 
-fn parcel_error_args(action: &'static str, tag: String, error: String) -> Result<*mut c_char, ()> {
+fn parcel_error_args(
+    action: &'static str,
+    tag: String,
+    error: String,
+) -> Result<(*mut c_char, u64), ()> {
     let args = ObsClientErrorArgs { tag, error };
 
     jsonify_args(action, args)
 }
 
-fn jsonify_args<T: Serialize>(action: &'static str, args: T) -> Result<*mut c_char, ()> {
+fn jsonify_args<T: Serialize>(action: &'static str, args: T) -> Result<(*mut c_char, u64), ()> {
     let args_json = match serde_json::to_string(&args) {
         Ok(args_json) => args_json,
         Err(e) => {
@@ -180,6 +189,7 @@ fn jsonify_args<T: Serialize>(action: &'static str, args: T) -> Result<*mut c_ch
             return Err(());
         }
     };
+    let args_json_len = args_json.len() as u64;
 
-    Ok(string_to_c_char(args_json))
+    Ok((string_to_c_char(args_json), args_json_len))
 }

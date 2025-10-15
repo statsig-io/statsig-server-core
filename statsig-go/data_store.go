@@ -1,9 +1,12 @@
 package statsig_go_core
 
 import (
-	"C"
+	"encoding/json"
+	"fmt"
+	"runtime"
+
+	"github.com/statsig-io/statsig-go-core/internal"
 )
-import "runtime"
 
 type DataStoreFunctions struct {
 	Initialize                     func()
@@ -28,21 +31,36 @@ func NewDataStore(functions DataStoreFunctions) *DataStore {
 		store.functions.Initialize,
 		store.functions.Shutdown,
 		// Get
-		func(key *C.char) *C.char {
-			keyStr := C.GoString(key)
-			result := store.functions.Get(keyStr)
-			return C.CString(result)
+		func(argPtr *byte, argLength uint64) *byte {
+			keyStr := internal.GoStringFromPointer(argPtr, argLength)
+			if keyStr == nil {
+				return nil
+			}
+
+			result := []byte(store.functions.Get(*keyStr))
+			return &result[0]
 		},
 		// Set
-		func(key *C.char, value *C.char, time *uint64) {
-			keyStr := C.GoString(key)
-			valueStr := C.GoString(value)
+		func(argPtr *byte, argLength uint64) {
+			data, err := tryMarshalDataStoreSetArgs(argPtr, argLength)
+			if err != nil {
+				fmt.Println("Error marshalling DataStore 'set' args", err)
+				return
+			}
+
+			keyStr := data.Key
+			valueStr := data.Value
+			time := data.Time
 			store.functions.Set(keyStr, valueStr, time)
 		},
 		// ShouldBeUsedForQueryingUpdates
-		func(key *C.char) bool {
-			keyStr := C.GoString(key)
-			return store.functions.ShouldBeUsedForQueryingUpdates(keyStr)
+		func(argPtr *byte, argLength uint64) bool {
+			keyStr := internal.GoStringFromPointer(argPtr, argLength)
+			if keyStr == nil {
+				return false
+			}
+
+			return store.functions.ShouldBeUsedForQueryingUpdates(*keyStr)
 		},
 	)
 
@@ -55,4 +73,22 @@ func NewDataStore(functions DataStoreFunctions) *DataStore {
 
 func (d *DataStore) INTERNAL_testDataStore(path string, value string) string {
 	return GetFFI().__internal__test_data_store(d.ref, path, value)
+}
+
+type dataStoreSetArgs struct {
+	Key   string  `json:"key"`
+	Value string  `json:"value"`
+	Time  *uint64 `json:"time"`
+}
+
+func tryMarshalDataStoreSetArgs(inputPtr *byte, inputLength uint64) (*dataStoreSetArgs, error) {
+	data := internal.GoStringFromPointer(inputPtr, inputLength)
+
+	var args dataStoreSetArgs
+	err := json.Unmarshal([]byte(*data), &args)
+	if err != nil {
+		return nil, err
+	}
+
+	return &args, nil
 }

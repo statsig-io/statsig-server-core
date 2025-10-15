@@ -1,6 +1,7 @@
 use std::{collections::HashMap, ffi::c_char};
 
 use async_trait::async_trait;
+use serde::Serialize;
 use serde_json::json;
 use statsig_rust::{
     data_store_interface::{DataStoreResponse, DataStoreTrait, RequestPath},
@@ -14,18 +15,22 @@ const TAG: &str = "DataStoreC";
 pub struct DataStoreC {
     pub initialize_fn: extern "C" fn(),
     pub shutdown_fn: extern "C" fn(),
-    pub get_fn: extern "C" fn(key: *const c_char) -> *const c_char,
-    pub set_fn: extern "C" fn(key: *const c_char, value: *const c_char, time: *const u64),
-    pub support_polling_updates_for_fn: extern "C" fn(key: *const c_char) -> bool,
+    pub get_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64) -> *const c_char,
+    pub set_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
+    pub support_polling_updates_for_fn:
+        extern "C" fn(args_ptr: *const c_char, args_length: u64) -> bool,
 }
 
 #[no_mangle]
 pub extern "C" fn data_store_create(
     initialize_fn: extern "C" fn(),
     shutdown_fn: extern "C" fn(),
-    get_fn: extern "C" fn(key: *const c_char) -> *const c_char,
-    set_fn: extern "C" fn(key: *const c_char, value: *const c_char, time: *const u64),
-    support_polling_updates_for_fn: extern "C" fn(key: *const c_char) -> bool,
+    get_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64) -> *const c_char,
+    set_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
+    support_polling_updates_for_fn: extern "C" fn(
+        args_ptr: *const c_char,
+        args_length: u64,
+    ) -> bool,
 ) -> u64 {
     InstanceRegistry::register(DataStoreC {
         initialize_fn,
@@ -143,6 +148,7 @@ impl DataStoreTrait for DataStoreC {
     }
 
     async fn get(&self, key: &str) -> Result<DataStoreResponse, StatsigErr> {
+        let key_len = key.len() as u64;
         let key = string_to_c_char(key.to_string());
         if key.is_null() {
             return Err(StatsigErr::DataStoreFailure(
@@ -150,7 +156,7 @@ impl DataStoreTrait for DataStoreC {
             ));
         }
 
-        let raw_result = match c_char_to_string((self.get_fn)(key)) {
+        let raw_result = match c_char_to_string((self.get_fn)(key, key_len)) {
             Some(result) => result,
             None => {
                 return Err(StatsigErr::DataStoreFailure(
@@ -164,37 +170,51 @@ impl DataStoreTrait for DataStoreC {
     }
 
     async fn set(&self, key: &str, value: &str, time: Option<u64>) -> Result<(), StatsigErr> {
-        let key = string_to_c_char(key.to_string());
-        if key.is_null() {
-            return Err(StatsigErr::DataStoreFailure(
-                "Failed to convert key to c_char".to_string(),
-            ));
-        }
-
-        let value = string_to_c_char(value.to_string());
-        if value.is_null() {
-            return Err(StatsigErr::DataStoreFailure(
-                "Failed to convert value to c_char".to_string(),
-            ));
-        }
-
-        let time: *const u64 = match &time {
-            Some(v) => v as *const u64,
-            None => std::ptr::null(),
+        let args = DataStoreSetArgs {
+            key,
+            value,
+            time: &time,
         };
 
-        (self.set_fn)(key, value, time);
+        let args_json = match serde_json::to_string(&args) {
+            Ok(args_json) => args_json,
+            Err(e) => {
+                log_e!(TAG, "Failed to serialize DataStoreSetArgs: {}", e);
+                return Err(StatsigErr::DataStoreFailure(e.to_string()));
+            }
+        };
+
+        let args_len = args_json.len() as u64;
+        let args_cstr = string_to_c_char(args_json);
+        if args_cstr.is_null() {
+            log_e!(TAG, "Failed to convert DataStoreSetArgs to c_char");
+            return Err(StatsigErr::DataStoreFailure(
+                "Failed to convert DataStoreSetArgs to c_char".to_string(),
+            ));
+        }
+
+        (self.set_fn)(args_cstr, args_len);
 
         Ok(())
     }
 
     async fn support_polling_updates_for(&self, path: RequestPath) -> bool {
-        let path = string_to_c_char(path.to_string());
+        let path_string = path.to_string();
+        let path_len = path_string.len() as u64;
+        let path = string_to_c_char(path_string);
+
         if path.is_null() {
             log_e!(TAG, "Failed to convert DataStore RequestPath to c_char");
             return false;
         }
 
-        (self.support_polling_updates_for_fn)(path)
+        (self.support_polling_updates_for_fn)(path, path_len)
     }
+}
+
+#[derive(Serialize)]
+struct DataStoreSetArgs<'a> {
+    key: &'a str,
+    value: &'a str,
+    time: &'a Option<u64>,
 }

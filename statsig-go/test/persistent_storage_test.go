@@ -64,13 +64,13 @@ func TestPersistentStorageLoad(t *testing.T) {
 		t.Error("loadCall should be test_load")
 	}
 
-	if result == nil {
+	if result == "" {
 		t.Error("result should be test_value")
 		return
 	}
 
 	values := map[string]statsig_go.StickyValues{}
-	err := json.Unmarshal([]byte(*result), &values)
+	err := json.Unmarshal([]byte(result), &values)
 	if err != nil {
 		t.Error("Error unmarshalling sticky values", err)
 	}

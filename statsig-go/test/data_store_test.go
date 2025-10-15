@@ -81,7 +81,7 @@ func TestDataStore(t *testing.T) {
 		if setCall.value != "test" {
 			t.Error("Expected set to be called with test")
 		}
-		if *setCall.time == 123 {
+		if *setCall.time != 123 {
 			t.Error("Expected set to be called with time")
 		}
 	}
