@@ -37,5 +37,5 @@ func main() {
 
 	fmt.Println("Gate test_public: ", gate)
 
-	statsig.Shutdown()
+	// statsig.Shutdown()
 }

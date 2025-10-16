@@ -7,4 +7,4 @@ COPY examples/go/verify-package .
 RUN go get -u ./...
 RUN go mod tidy
 
-CMD ["go", "run", "verify.go"]
+CMD ["go", "run", "."]

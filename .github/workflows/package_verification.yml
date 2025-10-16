@@ -95,6 +95,9 @@ jobs:
           - package: go
             tag: golang_1_24
 
+          - package: go
+            tag: golang_1_24_alpine
+
     runs-on: ubuntu-latest
 
     steps:
