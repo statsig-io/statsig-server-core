@@ -309,7 +309,7 @@ uint64_t statsig_options_create(const char *specs_url,
                                 SafeOptBool fallback_to_statsig_api,
                                 SafeOptBool use_third_party_ua_parser,
                                 const char *proxy_host,
-                                uint16_t proxy_port,
+                                int proxy_port,
                                 const char *proxy_auth,
                                 const char *proxy_protocol);
 

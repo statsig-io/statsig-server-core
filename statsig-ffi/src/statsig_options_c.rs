@@ -192,7 +192,7 @@ pub extern "C" fn statsig_options_create(
     fallback_to_statsig_api: SafeOptBool,
     use_third_party_ua_parser: SafeOptBool,
     proxy_host: *const c_char,
-    proxy_port: u16,
+    proxy_port: c_int,
     proxy_auth: *const c_char,
     proxy_protocol: *const c_char,
 ) -> u64 {
@@ -222,7 +222,7 @@ pub extern "C" fn statsig_options_create(
     let proxy_config = create_proxy_config(
         c_char_to_string(proxy_host),
         if proxy_port > 0 {
-            Some(proxy_port)
+            Some(proxy_port as u16)
         } else {
             None
         },
