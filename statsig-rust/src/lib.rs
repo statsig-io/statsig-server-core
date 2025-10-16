@@ -6,6 +6,7 @@ pub use gcir::gcir_formatter::GCIRResponseFormat;
 pub use gcir::gcir_options::ClientInitResponseOptions;
 pub use hashing::HashAlgorithm;
 pub use id_lists_adapter::{IdListsAdapter, StatsigHttpIdListsAdapter};
+pub use init_details::{FailureDetails, InitializeDetails};
 pub use initialize_response::InitializeResponse;
 pub use instance_registry::InstanceRegistry;
 pub use observability::{
@@ -18,8 +19,6 @@ pub use override_adapter::{
 pub use persistent_storage::persistent_storage_trait::*;
 pub use spec_store::SpecStore;
 pub use specs_adapter::*;
-pub use statsig::FailureDetails;
-pub use statsig::InitializeDetails;
 pub use statsig::Statsig;
 pub use statsig_core_api_options::{
     DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
@@ -38,6 +37,7 @@ pub mod event_logging;
 pub mod gcir;
 pub mod global_configs;
 pub mod hashing;
+pub mod init_details;
 pub mod instance_registry;
 pub mod interned_string;
 pub mod interned_value_store;
