@@ -1,8 +1,8 @@
 github.com/ebitengine/purego v0.9.0 h1:mh0zpKBIXDceC63hpvPuGLiJ8ZAa3DfrFTudmfi8A4k=
 github.com/ebitengine/purego v0.9.0/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
-github.com/statsig-io/go-server-core-binaries-linux-gnu v0.10.2-beta.2510142023 h1:FwgwButs/HbrSqHBHafhloPxMjO92/dL0r5rjbsJStA=
-github.com/statsig-io/go-server-core-binaries-linux-gnu v0.10.2-beta.2510142023/go.mod h1:m4N50tANNr1HPESMSyf5xJ3aW1UQBSi2+HW70H8V4g4=
-github.com/statsig-io/go-server-core-binaries-linux-musl v0.10.2-beta.2510142023 h1:g2aZhP8dF9wy+Vo/Ieb982Es+N7rNgMN7UoxL8LA1o0=
-github.com/statsig-io/go-server-core-binaries-linux-musl v0.10.2-beta.2510142023/go.mod h1:5TalRG/lt7BYH8XL7MRCJ5WEYfmpPFmshj/lUI/UBKc=
-github.com/statsig-io/go-server-core-binaries-macos v0.10.2-beta.2510142023 h1:nRddbEn0hEGXj4vgttby1VdLgyVOmDlBUCFc+h0rxr0=
-github.com/statsig-io/go-server-core-binaries-macos v0.10.2-beta.2510142023/go.mod h1:V/ycNDCNy0dLXU2089Lsv2oybH2M+DtBnoJq6p4n5p0=
+github.com/statsig-io/go-server-core-binaries-linux-gnu v0.10.2-beta.2510152125 h1:jHNHdz1BRjzN45NWiWm+gQP9OeqR2jofdqqtF7Ug/38=
+github.com/statsig-io/go-server-core-binaries-linux-gnu v0.10.2-beta.2510152125/go.mod h1:m4N50tANNr1HPESMSyf5xJ3aW1UQBSi2+HW70H8V4g4=
+github.com/statsig-io/go-server-core-binaries-linux-musl v0.10.2-beta.2510152125 h1:WunVm8E9cGHtKmROE7vnvrnn7A90wsdSGuLiZ4oBW1Y=
+github.com/statsig-io/go-server-core-binaries-linux-musl v0.10.2-beta.2510152125/go.mod h1:5TalRG/lt7BYH8XL7MRCJ5WEYfmpPFmshj/lUI/UBKc=
+github.com/statsig-io/go-server-core-binaries-macos v0.10.2-beta.2510152125 h1:ctvcEqbWShKieEOaa3saOZUMybxnWsN+EoBov2PtBvw=
+github.com/statsig-io/go-server-core-binaries-macos v0.10.2-beta.2510152125/go.mod h1:V/ycNDCNy0dLXU2089Lsv2oybH2M+DtBnoJq6p4n5p0=
