@@ -24,10 +24,11 @@ type RecordedRequest struct {
 }
 
 type StubResponse struct {
-	Status int
-	Header http.Header
-	Body   []byte
-	Delay  time.Duration
+	Status    int
+	Header    http.Header
+	Body      []byte
+	Delay     time.Duration
+	IsOneShot *bool
 }
 
 type key struct {
@@ -191,10 +192,12 @@ func (m *MockScrapi) handle(w http.ResponseWriter, r *http.Request) {
 	if len(queue) > 0 {
 		resp = &queue[0]
 		// pop
-		if len(queue) == 1 {
-			delete(m.stubs, k)
-		} else {
-			m.stubs[k] = queue[1:]
+		if resp.IsOneShot != nil && *resp.IsOneShot {
+			if len(queue) == 1 {
+				delete(m.stubs, k)
+			} else {
+				m.stubs[k] = queue[1:]
+			}
 		}
 	} else if m.fallback != nil {
 		resp = m.fallback
