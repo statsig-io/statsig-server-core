@@ -153,6 +153,10 @@ async function moveGoCoreFiles(options: PublisherOptions, version: SemVer) {
 
   const destPath = `${TEMP_PATH}/statsig-go-core`;
   const rootPath = getRootedPath('statsig-go');
+
+  // Remove all files in the destination path
+  execSync(`cd ${destPath} && rm -rf ./*`);
+
   execSync(`cp -r ${rootPath}/* ${destPath}`);
 
   updateGoVersion(version.toString(), `${destPath}/go.mod`);
