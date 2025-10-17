@@ -10,25 +10,31 @@ pub struct FailureDetails {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct InitializeDetails {
-    pub duration: f64,
+    pub duration_ms: u64,
     pub init_success: bool,
     pub is_config_spec_ready: bool,
     pub is_id_list_ready: Option<bool>,
     pub source: SpecsSource,
     pub failure_details: Option<FailureDetails>,
     pub spec_source_api: Option<String>,
+
+    #[deprecated(since = "0.11.0", note = "Use the duration_ms field instead")]
+    pub duration: f64,
 }
 
 impl Default for InitializeDetails {
     fn default() -> Self {
         InitializeDetails {
-            duration: 0.0,
+            duration_ms: 0,
             init_success: false,
             is_config_spec_ready: false,
             is_id_list_ready: None,
             source: SpecsSource::Uninitialized,
             failure_details: None,
             spec_source_api: None,
+
+            #[allow(deprecated)]
+            duration: 0.0,
         }
     }
 }
@@ -36,7 +42,7 @@ impl Default for InitializeDetails {
 impl InitializeDetails {
     pub fn new(
         init_success: bool,
-        duration: f64,
+        duration_ms: u64,
         specs_info: SpecsInfo,
         is_id_list_ready: Option<bool>,
         error: Option<StatsigErr>,
@@ -59,14 +65,17 @@ impl InitializeDetails {
             is_id_list_ready,
             source: specs_info.source.clone(),
             failure_details,
-            duration,
+            duration_ms,
             spec_source_api: specs_info.source_api.clone(),
+
+            #[allow(deprecated)]
+            duration: duration_ms as f64,
         }
     }
 
     pub fn from_error(reason: &str, error: Option<StatsigErr>) -> Self {
         InitializeDetails {
-            duration: 0.0,
+            duration_ms: 0,
             init_success: false,
             is_config_spec_ready: false,
             is_id_list_ready: None,
@@ -76,6 +85,9 @@ impl InitializeDetails {
                 error,
             }),
             spec_source_api: None,
+
+            #[allow(deprecated)]
+            duration: 0.0,
         }
     }
 
@@ -89,8 +101,11 @@ impl InitializeDetails {
                 reason: "Initialization timed out".to_string(),
                 error: None,
             }),
-            duration: timeout_ms as f64,
+            duration_ms: timeout_ms,
             spec_source_api: None,
+
+            #[allow(deprecated)]
+            duration: timeout_ms as f64,
         }
     }
 }

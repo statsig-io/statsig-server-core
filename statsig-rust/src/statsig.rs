@@ -1695,7 +1695,7 @@ impl Statsig {
         }
 
         let spec_info = self.spec_store.get_current_specs_info();
-        let duration = start_time.elapsed().as_millis() as f64;
+        let duration = start_time.elapsed().as_millis() as u64;
 
         self.set_default_environment_from_server();
 
@@ -1766,7 +1766,7 @@ impl Statsig {
                 self.log_init_finish(
                     details.init_success,
                     &None,
-                    &details.duration,
+                    &details.duration_ms,
                     &self.spec_store.get_current_specs_info(),
                 );
                 if let Some(failure) = &details.failure_details {
@@ -2065,7 +2065,7 @@ impl Statsig {
         &self,
         success: bool,
         error_message: &Option<String>,
-        duration: &f64,
+        duration_ms: &u64,
         specs_info: &SpecsInfo,
     ) {
         let is_store_populated = specs_info.source != SpecsSource::NoValues;
@@ -2074,7 +2074,7 @@ impl Statsig {
         let event = ObservabilityEvent::new_event(
             MetricType::Dist,
             "initialization".to_string(),
-            *duration,
+            *duration_ms as f64,
             Some(HashMap::from([
                 ("success".to_owned(), success.to_string()),
                 ("source".to_owned(), source_str.clone()),

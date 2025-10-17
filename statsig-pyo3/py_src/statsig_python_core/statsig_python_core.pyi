@@ -90,6 +90,7 @@ class FeatureGateEvaluationOptions:
 
 class InitializeDetails:
     duration: builtins.float
+    duration_ms: builtins.int
     init_success: builtins.bool
     is_config_spec_ready: builtins.bool
     is_id_list_ready: typing.Optional[builtins.bool]

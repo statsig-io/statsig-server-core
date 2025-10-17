@@ -19,11 +19,15 @@ use crate::pyo_utils::{
 };
 
 const TAG: &str = stringify!(StatsigTypesPy);
+
 #[gen_stub_pyclass]
 #[pyclass(name = "InitializeDetails", module = "statsig_python_core")]
 pub struct InitializeDetailsPy {
     #[pyo3(get)]
-    pub duration: f64,
+    pub duration: f64, // deprecated, this should be removed in the next major version. Use duration_ms instead.
+
+    #[pyo3(get)]
+    pub duration_ms: u64,
 
     #[pyo3(get)]
     pub init_success: bool,
@@ -44,12 +48,15 @@ pub struct InitializeDetailsPy {
 impl From<InitializeDetails> for InitializeDetailsPy {
     fn from(value: InitializeDetails) -> Self {
         InitializeDetailsPy {
-            duration: value.duration,
+            duration_ms: value.duration_ms,
             init_success: value.init_success,
             is_config_spec_ready: value.is_config_spec_ready,
             is_id_list_ready: value.is_id_list_ready,
             source: value.source.to_string(),
             failure_details: value.failure_details.map(FailureDetailsPy::from),
+
+            #[allow(deprecated)]
+            duration: value.duration_ms as f64,
         }
     }
 }
@@ -57,7 +64,7 @@ impl From<InitializeDetails> for InitializeDetailsPy {
 impl InitializeDetailsPy {
     pub fn from_error(reason: &str, error: Option<String>) -> Self {
         InitializeDetailsPy {
-            duration: 0.0,
+            duration_ms: 0,
             init_success: false,
             is_config_spec_ready: false,
             is_id_list_ready: None,
@@ -66,6 +73,9 @@ impl InitializeDetailsPy {
                 reason: reason.to_string(),
                 error,
             }),
+
+            #[allow(deprecated)]
+            duration: 0.0,
         }
     }
 }
