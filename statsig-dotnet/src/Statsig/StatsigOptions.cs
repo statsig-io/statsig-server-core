@@ -70,7 +70,8 @@ namespace Statsig
                         proxyHostPtr,
                         proxyPort,
                         proxyAuthPtr,
-                        proxyProtocolPtr
+                        proxyProtocolPtr,
+                        0 // persistent storage ref - not implemented in .NET
                     );
                 }
             }

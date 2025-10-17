@@ -26,7 +26,8 @@ class StatsigOptions
         ?bool $disable_all_logging = null,
         ?int $init_timeout_ms = null,
         ?bool $fallback_to_statsig_api = null,
-        ?bool $use_third_party_ua_parser = null
+        ?bool $use_third_party_ua_parser = null,
+        ?PersistentStorage $persistent_storage = null
     ) {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->statsig_options_create(
@@ -57,6 +58,7 @@ class StatsigOptions
             0, // todo: proxy port
             null, // todo: proxy auth
             null, // todo: proxy protocol
+            is_null($persistent_storage) ? 0 : $persistent_storage->__ref
         );
     }
 

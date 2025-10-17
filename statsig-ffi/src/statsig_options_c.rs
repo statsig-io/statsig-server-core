@@ -195,6 +195,7 @@ pub extern "C" fn statsig_options_create(
     proxy_port: c_int,
     proxy_auth: *const c_char,
     proxy_protocol: *const c_char,
+    persistent_storage_ref: u64,
 ) -> u64 {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
@@ -215,6 +216,7 @@ pub extern "C" fn statsig_options_create(
     let event_logging_adapter = try_get_event_logging_adapter(event_logging_adapter_ref);
     let data_store = try_get_data_store(data_store_ref);
     let observability_client = try_get_observability_client(observability_client_ref);
+    let persistent_storage = try_get_persistent_storage(persistent_storage_ref);
 
     let output_log_level =
         c_char_to_string(output_log_level).map(|level| LogLevel::from(level.as_str()));
@@ -250,6 +252,7 @@ pub extern "C" fn statsig_options_create(
         global_custom_fields,
         data_store,
         observability_client,
+        persistent_storage,
         init_timeout_ms,
         fallback_to_statsig_api: extract_opt_bool(fallback_to_statsig_api),
         use_third_party_ua_parser: extract_opt_bool(use_third_party_ua_parser),

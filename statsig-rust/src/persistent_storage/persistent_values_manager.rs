@@ -82,6 +82,7 @@ macro_rules! try_finalize_sticky_storage {
             get_persistent_storage_key($user.user_ref, &$evaluator_result.id_type),
             None
         );
+
         if $option.user_persisted_values.is_none() || !is_experiment_active {
             log_d!(TAG, "Delete persisted assignment {}", config_name);
             $self

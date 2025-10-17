@@ -780,17 +780,36 @@ pub extern "C" fn statsig_get_experiment(
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
     let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null_mut());
 
+    println!(
+        "[FFI] statsig_get_experiment called for: {}",
+        experiment_name
+    );
+
     let experiment = match c_char_to_string_non_empty(options_json) {
-        Some(opts) => match serde_json::from_str::<ExperimentEvaluationOptions>(&opts) {
-            Ok(options) => statsig.get_experiment_with_options(&user, &experiment_name, options),
-            Err(e) => {
-                log_e!(TAG, "Failed to parse options: {}", e);
-                return null_mut();
+        Some(opts) => {
+            println!("[FFI] Received options_json: {}", opts);
+            match serde_json::from_str::<ExperimentEvaluationOptions>(&opts) {
+                Ok(options) => {
+                    println!(
+                        "[FFI] Parsed options successfully, user_persisted_values present: {}",
+                        options.user_persisted_values.is_some()
+                    );
+                    statsig.get_experiment_with_options(&user, &experiment_name, options)
+                }
+                Err(e) => {
+                    println!("[FFI] Failed to parse options: {}", e);
+                    log_e!(TAG, "Failed to parse options: {}", e);
+                    return null_mut();
+                }
             }
-        },
-        None => statsig.get_experiment(&user, &experiment_name),
+        }
+        None => {
+            println!("[FFI] No options provided, calling get_experiment without options");
+            statsig.get_experiment(&user, &experiment_name)
+        }
     };
 
+    println!("[FFI] Experiment result: value={:?}", experiment.value);
     let result = json!(experiment).to_string();
     string_to_c_char(result)
 }
@@ -823,14 +842,26 @@ pub extern "C" fn statsig_get_layer(
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
     let layer_name = unwrap_or_return!(c_char_to_string(layer_name), null_mut());
 
+    println!("[FFI] statsig_get_layer called for: {}", layer_name);
+
     let layer = match c_char_to_string_non_empty(options_json) {
-        Some(opts) => match serde_json::from_str::<LayerEvaluationOptions>(&opts) {
-            Ok(options) => statsig.get_layer_with_options(&user, &layer_name, options),
-            Err(e) => {
-                log_e!(TAG, "Failed to parse options: {}", e);
-                return null_mut();
+        Some(opts) => {
+            println!("[FFI] Received options_json: {}", opts);
+            match serde_json::from_str::<LayerEvaluationOptions>(&opts) {
+                Ok(options) => {
+                    println!(
+                        "[FFI] Parsed options successfully, user_persisted_values present: {}",
+                        options.user_persisted_values.is_some()
+                    );
+                    statsig.get_layer_with_options(&user, &layer_name, options)
+                }
+                Err(e) => {
+                    println!("[FFI] Failed to parse options: {}", e);
+                    log_e!(TAG, "Failed to parse options: {}", e);
+                    return null_mut();
+                }
             }
-        },
+        }
         None => statsig.get_layer(&user, &layer_name),
     };
 
