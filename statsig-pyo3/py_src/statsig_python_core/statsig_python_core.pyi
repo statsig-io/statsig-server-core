@@ -41,6 +41,7 @@ class EvaluationDetails:
     reason: builtins.str
     lcut: typing.Optional[builtins.int]
     received_at: typing.Optional[builtins.int]
+    version: typing.Optional[builtins.int]
 
 class Experiment:
     name: builtins.str

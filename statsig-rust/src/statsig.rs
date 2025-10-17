@@ -1885,6 +1885,7 @@ impl Statsig {
                 spec_store_data.values.time,
                 spec_store_data.time_received_at,
                 reason,
+                ctx.result.version,
             ));
         }
 

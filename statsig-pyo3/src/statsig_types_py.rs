@@ -111,6 +111,9 @@ pub struct EvaluationDetailsPy {
 
     #[pyo3(get)]
     pub received_at: Option<u64>,
+
+    #[pyo3(get)]
+    pub version: Option<u32>,
 }
 
 impl From<EvaluationDetails> for EvaluationDetailsPy {
@@ -119,6 +122,7 @@ impl From<EvaluationDetails> for EvaluationDetailsPy {
             reason: value.reason,
             lcut: value.lcut,
             received_at: value.received_at,
+            version: value.version,
         }
     }
 }
