@@ -1,7 +1,5 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.28)
 project(Statsig)
-
-set(CMAKE_CXX_STANDARD 11)
 
 # Wrap the prebuilt dylib as an imported library
 file(GLOB STATSIG_SOURCE_FILES "src/*")
@@ -12,6 +10,16 @@ target_include_directories(Statsig PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+# External Dependency
+include(FetchContent)
+FetchContent_Declare(
+    json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.12.0  
+)
+
+FetchContent_MakeAvailable(json)
+target_link_libraries(Statsig PUBLIC nlohmann_json::nlohmann_json)
 
 # Check if we should use local build file
 if(USE_LOCAL_BUILD_FILE)

@@ -1,6 +1,10 @@
+#pragma once 
+
 #ifndef STATSIG_H
 #define STATSIG_H
 
+#include "types.h"
+#include "layer.h"
 #include "user.h"
 #include <functional>
 #include <memory>
@@ -41,16 +45,21 @@ public:
            const std::unordered_map<std::string, std::string> &event_value = {},
            const std::string &metadata = "");
 
-  // User identification
-  // void identify(const statsig_cpp_core::User& user);
-
   // Feature Gates
   bool checkGate(const statsig_cpp_core::User &user,
                  const std::string &gate_name,
                  const std::string &options_json = "{}");
-  std::string getFeatureGate(const statsig_cpp_core::User &user,
+  FeatureGate getFeatureGate(const statsig_cpp_core::User &user,
                              const std::string &gate_name,
                              const std::string &options_json = "{}");
+
+  Experiment getExperiment(const User &user, const std::string &experiment_name,
+                           const std::string &options_json = "{}");
+  DynamicConfig getConfig(const User &user, const std::string &config_name,
+                          const std::string &options_json = "{}");
+                        
+  Layer getLayer(const User &user, const std::string &layer_name,
+                 const std::string &options_json = "{}");
 
 private:
   uint64_t ref_;

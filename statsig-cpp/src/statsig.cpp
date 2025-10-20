@@ -3,7 +3,6 @@
 #include <cstring>
 #include <iostream>
 #include <sstream>
-
 namespace statsig_cpp_core {
 
 // Statsig implementation
@@ -151,17 +150,53 @@ bool Statsig::checkGate(const User &user, const std::string &gate_name,
                             options_json.c_str());
 }
 
-std::string Statsig::getFeatureGate(const User &user,
+FeatureGate Statsig::getFeatureGate(const User &user,
                                     const std::string &gate_name,
                                     const std::string &options_json) {
   char *result = statsig_get_feature_gate(ref_, user.ref, gate_name.c_str(),
                                           options_json.c_str());
   if (result) {
     std::string result_str(result);
-    free_string(result);
-    return result_str;
+    return FeatureGate(result_str);
   }
-  return "";
+  return FeatureGate();
+}
+
+Experiment Statsig::getExperiment(const User &user,
+                                  const std::string &experiment_name,
+                                  const std::string &options_json) {
+  char *result = statsig_get_experiment(ref_, user.ref, experiment_name.c_str(),
+                                        options_json.c_str());
+  if (result) {
+    std::string result_str(result);
+    return Experiment(result_str);
+  }
+  return Experiment();
+}
+
+DynamicConfig Statsig::getConfig(const User &user,
+                                 const std::string &config_name,
+                                 const std::string &options_json) {
+  char *result = statsig_get_dynamic_config(ref_, user.ref, config_name.c_str(),
+                                            options_json.c_str());
+  if (result) {
+    std::string result_str(result);
+    return DynamicConfig(result_str);
+  }
+  return DynamicConfig();
+}
+
+Layer Statsig::getLayer(const User &user, const std::string &layer_name,
+                        const std::string &options_json) {
+  char *result = statsig_get_layer(ref_, user.ref, layer_name.c_str(),
+                                   options_json.c_str());
+
+  if (result) {
+    std::cout << "Got layer result: " << result << std::endl;
+    std::string result_str(result);
+    return Layer(ref_, result_str);
+  }
+  return Layer();
 }
 
 } // namespace statsig_cpp_core
