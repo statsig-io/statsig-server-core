@@ -7,14 +7,25 @@ using Newtonsoft.Json.Linq;
 
 namespace Statsig
 {
-    public class Layer
+    public interface ILayer
+    {
+        string Name { get; }
+        string RuleID { get; }
+        string GroupName { get; }
+        string IDType { get; }
+        string AllocatedExperimentName { get; }
+        EvaluationDetails? EvaluationDetails { get; }
+        T? Get<T>(string key, T? defaultValue = default);
+    }
+
+    public class Layer : ILayer
     {
         [JsonProperty("name")] public string Name { get; }
-        [JsonProperty("rule_id")] public string RuleID = "";
+        [JsonProperty("rule_id")] public string RuleID { get; }
         [JsonProperty("__value")] internal IReadOnlyDictionary<string, JToken> Value { get; } // TODO this defined as internal in old dotnet
-        [JsonProperty("group_name")] public string GroupName = "";
-        [JsonProperty("id_type")] public string IDType = "";
-        [JsonProperty("allocated_experiment_name")] public string AllocatedExperimentName = "";
+        [JsonProperty("group_name")] public string GroupName { get; }
+        [JsonProperty("id_type")] public string IDType { get; }
+        [JsonProperty("allocated_experiment_name")] public string AllocatedExperimentName { get; }
         [JsonProperty("details")] public EvaluationDetails? EvaluationDetails { get; }
 
         private readonly ulong _statsigRef = 0;

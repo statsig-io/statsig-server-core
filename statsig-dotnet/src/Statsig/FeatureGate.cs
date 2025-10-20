@@ -3,7 +3,16 @@ using Newtonsoft.Json;
 
 namespace Statsig
 {
-    public class FeatureGate
+    public interface IFeatureGate
+    {
+        string Name { get; }
+        bool Value { get; }
+        string RuleID { get; }
+        string? IDType { get; }
+        EvaluationDetails? EvaluationDetails { get; }
+    }
+
+    public class FeatureGate : IFeatureGate
     {
         [JsonProperty("name")]
         public string Name { get; }

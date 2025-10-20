@@ -7,7 +7,19 @@ using Newtonsoft.Json.Linq;
 
 namespace Statsig
 {
-    public class ParameterStore
+    public interface IParameterStore
+    {
+        string Name { get; }
+        EvaluationDetails? EvaluationDetails { get; }
+        string? GetString(string paramName, string? defaultValue = null);
+        long? GetLong(string paramName, long defaultValue);
+        double? GetDouble(string paramName, double defaultValue);
+        bool? GetBool(string paramName, bool? defaultValue = null);
+        Dictionary<string, object> GetDictionary(string paramName, Dictionary<string, object>? defaultValue = null);
+        List<object> GetList(string paramName, List<object>? defaultValue = null);
+    }
+
+    public class ParameterStore : IParameterStore
     {
         [JsonProperty("name")] public string Name { get; }
         [JsonProperty("details")] public EvaluationDetails? EvaluationDetails { get; }
