@@ -196,7 +196,7 @@ impl StatsigHttpSpecsAdapter {
             None => Err(NetworkError::RequestFailed(
                 url,
                 None,
-                response.error.unwrap_or("No data in response".to_string()),
+                "No data in response".to_string(),
             )),
         }
     }

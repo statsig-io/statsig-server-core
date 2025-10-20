@@ -18,22 +18,7 @@ use reqwest::Method;
 
 const TAG: &str = "NetworkProviderReqwest";
 
-pub struct NetworkProviderReqwest {
-    has_file_write_access: bool,
-}
-
-impl NetworkProviderReqwest {
-    pub fn new() -> Self {
-        let has_file_write_access = match tempfile::tempfile() {
-            Ok(_) => true,
-            Err(_) => false,
-        };
-
-        Self {
-            has_file_write_access,
-        }
-    }
-}
+pub struct NetworkProviderReqwest {}
 
 #[async_trait]
 impl NetworkProvider for NetworkProviderReqwest {
@@ -61,14 +46,7 @@ impl NetworkProvider for NetworkProviderReqwest {
                 status_code = Some(response.status().as_u16());
                 headers = get_response_headers(&response);
 
-                let data_result =
-                    if !self.has_file_write_access || args.disable_file_streaming == Some(true) {
-                        Self::write_response_to_in_memory_buffer(response).await
-                    } else {
-                        Self::write_response_to_temp_file(response).await
-                    };
-
-                match data_result {
+                match Self::write_response_to_temp_file(response).await {
                     Ok(response_data) => data = Some(response_data),
                     Err(e) => {
                         error = Some(e.to_string());
@@ -203,17 +181,6 @@ impl NetworkProviderReqwest {
 
         let reader = BufReader::new(temp_file);
         Ok(ResponseData::from_stream(Box::new(reader)))
-    }
-
-    async fn write_response_to_in_memory_buffer(
-        response: reqwest::Response,
-    ) -> Result<ResponseData, StatsigErr> {
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|e| StatsigErr::SerializationError(e.to_string()))?;
-
-        Ok(ResponseData::from_bytes(bytes.to_vec()))
     }
 }
 

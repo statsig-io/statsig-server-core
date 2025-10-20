@@ -17,8 +17,7 @@ defmodule Statsig.Options do
             disable_country_lookup: nil,
             disable_network: nil,
             disable_user_agent_parsing: nil,
-            use_third_party_ua_parser: nil,
-            disable_disk_access: nil
+            use_third_party_ua_parser: nil
 end
 
 defmodule Statsig.ExperimentEvaluationOptions do

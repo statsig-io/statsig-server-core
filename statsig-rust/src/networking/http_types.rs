@@ -22,7 +22,6 @@ pub struct RequestArgs {
     pub is_shutdown: Option<Arc<AtomicBool>>,
     pub diagnostics_key: Option<KeyType>,
     pub proxy_config: Option<ProxyConfig>,
-    pub disable_file_streaming: Option<bool>,
 }
 
 impl Default for RequestArgs {
@@ -45,7 +44,6 @@ impl RequestArgs {
             is_shutdown: None,
             diagnostics_key: None,
             proxy_config: None,
-            disable_file_streaming: None,
         }
     }
 
@@ -104,18 +102,15 @@ pub trait NetworkProvider: Sync + Send {
     async fn send(&self, method: &HttpMethod, args: &RequestArgs) -> Response;
 }
 
-pub trait ResponseDataStream:
-    std::io::Read + std::io::Seek + std::fmt::Debug + Send + Sync
-{
-}
+pub trait ResponseDataStream: std::io::Read + std::io::Seek + Send + Sync {}
 
-impl<T: std::io::Read + std::io::Seek + std::fmt::Debug + Send + Sync> ResponseDataStream for T {}
+impl<T: std::io::Read + std::io::Seek + Send + Sync> ResponseDataStream for T {}
 
 pub struct ResponseData {
     stream: Box<dyn ResponseDataStream>,
 }
 
-const TAG: &str = "ResponseData";
+const RESPONSE_DATA_TAG: &str = "ResponseData";
 
 impl ResponseData {
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
@@ -128,15 +123,16 @@ impl ResponseData {
         Self { stream }
     }
 
-    pub fn get_stream_ref(&self) -> &dyn ResponseDataStream {
-        &self.stream
+    pub fn get_stream_ref(&mut self) -> &mut Box<dyn ResponseDataStream> {
+        &mut self.stream
     }
 
     pub fn deserialize_into<T: DeserializeOwned>(&mut self) -> Result<T, StatsigErr> {
         self.rewind()?;
 
-        let result = serde_json::from_reader(self.stream.as_mut())
-            .map_err(|e| StatsigErr::JsonParseError(TAG.to_string(), e.to_string()))?;
+        let result = serde_json::from_reader(self.stream.as_mut()).map_err(|e| {
+            StatsigErr::JsonParseError(RESPONSE_DATA_TAG.to_string(), e.to_string())
+        })?;
 
         Ok(result)
     }
@@ -150,7 +146,7 @@ impl ResponseData {
         let mut deserializer = serde_json::Deserializer::from_reader(self.stream.as_mut());
 
         T::deserialize_in_place(&mut deserializer, place)
-            .map_err(|e| StatsigErr::JsonParseError(TAG.to_string(), e.to_string()))
+            .map_err(|e| StatsigErr::JsonParseError(RESPONSE_DATA_TAG.to_string(), e.to_string()))
     }
 
     pub fn read_to_string(&mut self) -> Result<String, StatsigErr> {
@@ -163,7 +159,7 @@ impl ResponseData {
             .map_err(|e| StatsigErr::SerializationError(e.to_string()))?;
 
         String::from_utf8(buf)
-            .map_err(|e| StatsigErr::JsonParseError(TAG.to_string(), e.to_string()))
+            .map_err(|e| StatsigErr::JsonParseError(RESPONSE_DATA_TAG.to_string(), e.to_string()))
     }
 
     fn rewind(&mut self) -> Result<(), StatsigErr> {

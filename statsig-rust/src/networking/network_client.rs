@@ -26,7 +26,6 @@ pub struct NetworkClient {
     disable_network: bool,
     proxy_config: Option<ProxyConfig>,
     silent_on_network_failure: bool,
-    disable_file_streaming: bool,
 }
 
 impl NetworkClient {
@@ -54,9 +53,6 @@ impl NetworkClient {
             disable_network,
             proxy_config,
             silent_on_network_failure: false,
-            disable_file_streaming: options
-                .map(|opts| opts.disable_disk_access.unwrap_or(false))
-                .unwrap_or(false),
         }
     }
 
@@ -94,10 +90,6 @@ impl NetworkClient {
         }
 
         request_args.populate_headers(self.headers.clone());
-
-        if request_args.disable_file_streaming.is_none() {
-            request_args.disable_file_streaming = Some(self.disable_file_streaming);
-        }
 
         let mut merged_headers = request_args.headers.unwrap_or_default();
         if !self.headers.is_empty() {

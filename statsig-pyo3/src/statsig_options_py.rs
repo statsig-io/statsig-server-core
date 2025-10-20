@@ -158,8 +158,6 @@ pub struct StatsigOptionsPy {
     pub spec_adapter_configs: Option<Py<PyList>>,
     #[pyo3(get, set)]
     pub use_third_party_ua_parser: Option<bool>,
-    #[pyo3(get, set)]
-    pub disable_disk_access: Option<bool>,
 }
 
 #[gen_stub_pymethods]
@@ -194,7 +192,6 @@ impl StatsigOptionsPy {
         output_logger_provider=None,
         spec_adapter_configs=None,
         use_third_party_ua_parser=None,
-        disable_disk_access=None,
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -225,7 +222,6 @@ impl StatsigOptionsPy {
         output_logger_provider: Option<Py<OutputLoggerProviderBasePy>>,
         spec_adapter_configs: Option<Py<PyList>>,
         use_third_party_ua_parser: Option<bool>,
-        disable_disk_access: Option<bool>,
     ) -> Self {
         Self {
             specs_url,
@@ -255,7 +251,6 @@ impl StatsigOptionsPy {
             output_logger_provider,
             spec_adapter_configs,
             use_third_party_ua_parser,
-            disable_disk_access,
         }
     }
 }
@@ -371,7 +366,6 @@ fn create_inner_statsig_options(
             ) as Arc<dyn OutputLogProvider>
         }),
         use_third_party_ua_parser: opts.use_third_party_ua_parser,
-        disable_disk_access: opts.disable_disk_access,
     }
 }
 
