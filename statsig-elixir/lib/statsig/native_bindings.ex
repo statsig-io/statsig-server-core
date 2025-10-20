@@ -55,4 +55,27 @@ defmodule Statsig.NativeBindings do
   def layer_get_rule_id(_layer), do: :erlang.nif_error(:nif_not_loaded)
   def layer_get(_layer, _param_name, _default_value), do: :erlang.nif_error(:nif_not_loaded)
   def layer_get_group_name(_layer), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Override functions
+
+  def override_gate(_statsig, _gate_name, _value, _id), do: :erlang.nif_error(:nif_not_loaded)
+
+  def override_dynamic_config(_statsig, _config_name, _value, _id),
+    do: :erlang.nif_error(:nif_not_loaded)
+
+  def override_layer(_statsig, _layer_name, _value, _id), do: :erlang.nif_error(:nif_not_loaded)
+
+  def override_experiment(_statsig, _experiment_name, _value, _id),
+    do: :erlang.nif_error(:nif_not_loaded)
+
+  def remove_gate_override(_statsig, _gate_name, _id), do: :erlang.nif_error(:nif_not_loaded)
+
+  def remove_dynamic_config_override(_statsig, _config_name, _id),
+    do: :erlang.nif_error(:nif_not_loaded)
+
+  def remove_experiment_override(_statsig, _experiment_name, _id),
+    do: :erlang.nif_error(:nif_not_loaded)
+
+  def remove_layer_override(_statsig, _layer_name, _id), do: :erlang.nif_error(:nif_not_loaded)
+  def remove_all_overrides(_statsig), do: :erlang.nif_error(:nif_not_loaded)
 end

@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 parking_lot = "0.12.1"
-rustler = "0.36.1"
+rustler = { version = "0.36.1", features = ["serde"] }
 statsig-rust = { path = "../../../statsig-rust", features = [
     "with_zstd",
 ] }
