@@ -16,7 +16,7 @@ lazy_static::lazy_static! {
 
 #[cfg(not(feature = "custom_network_provider"))]
 lazy_static::lazy_static! {
-    static ref REQWEST_NETWORK_PROVIDER: Arc<dyn NetworkProvider> = Arc::new(net_provider_reqwest::NetworkProviderReqwest {});
+    static ref REQWEST_NETWORK_PROVIDER: Arc<dyn NetworkProvider> = Arc::new(net_provider_reqwest::NetworkProviderReqwest::new());
 }
 
 #[cfg(feature = "custom_network_provider")]

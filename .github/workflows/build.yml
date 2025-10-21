@@ -255,6 +255,7 @@ jobs:
           - ffi
           - elixir
           - dotnet
+          - go
 
     steps:
       - uses: actions/checkout@v4

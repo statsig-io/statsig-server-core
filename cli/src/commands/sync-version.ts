@@ -42,9 +42,8 @@ export class SyncVersion extends CommandBase {
     updateStatsigGrpcDepVersion(versionString);
     updatePhpComposerVersion(versionString);
     updateDotnetNugetVersion(versionString);
-    updateGoVersion(versionString);
     updateElixirVersion(versionString);
-    
+
     Log.stepBegin('Verifying Cargo Change');
     execSync('cargo update --workspace', { cwd: BASE_DIR });
     execSync('cargo check --workspace', {
@@ -112,19 +111,21 @@ function updateNodePackageJsonVersions(version: string) {
 
 function updateDotnetNugetVersion(version: string) {
   Log.stepBegin('Updating .NET NuGet version');
-  
+
   const path = getRootedPath('statsig-dotnet/Directory.Build.props');
   const contents = fs.readFileSync(path, 'utf8');
 
   const was = contents.match(/<StatsigVersion>([^<]+)<\/StatsigVersion>/)?.[1];
   const updated = contents.replace(
     /<StatsigVersion>([^<]+)<\/StatsigVersion>/,
-    `<StatsigVersion>${version}</StatsigVersion>`
+    `<StatsigVersion>${version}</StatsigVersion>`,
   );
 
   fs.writeFileSync(path, updated, 'utf8');
 
-  Log.stepEnd(`Updated .NET Version: ${chalk.strikethrough(was)} -> ${version}`);
+  Log.stepEnd(
+    `Updated .NET Version: ${chalk.strikethrough(was)} -> ${version}`,
+  );
 }
 
 function updateJavaGradleVersion(version: string) {
@@ -175,29 +176,12 @@ function updatePhpComposerVersion(version: string) {
   Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`);
 }
 
-function updateGoVersion(version: string) {
-  Log.stepBegin('Updating go version');
-
-  const path = getRootedPath('statsig-go/statsig-cgo/cmd/post-install/main.go');
-  const contents = fs.readFileSync(path, 'utf8');
-  
-  const was = contents.match(/version = "([^"]+)"/)?.[1];
-  const updated = contents.replace(
-    /version = "([^"]+)"/,
-    `version = "${version}"`,
-  );
-
-  fs.writeFileSync(path, updated, 'utf8');
-
-  Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`);
-}
-
 function updateElixirVersion(version: string) {
   Log.stepBegin('Updating elixir version');
 
   const path = getRootedPath('statsig-elixir/mix.exs');
   const contents = fs.readFileSync(path, 'utf8');
-  
+
   const was = contents.match(/version: "([^"]+)"/)?.[1];
   const updated = contents.replace(
     /version: "([^"]+)"/,
@@ -206,7 +190,7 @@ function updateElixirVersion(version: string) {
 
   fs.writeFileSync(path, updated, 'utf8');
 
-  Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`)
+  Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`);
 }
 
 async function tryCommitAndPushChanges(version: SemVer) {

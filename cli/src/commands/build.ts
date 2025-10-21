@@ -14,8 +14,9 @@ import { buildNode } from './builders/node-builder.js';
 import { buildPython } from './builders/python-builder.js';
 import { CommandBase } from './command_base.js';
 import { buildDotnet } from './builders/dotnet-builder.js';
+import { buildCpp } from './builders/cpp-builder.js';
 
-const PACKAGES = ['python', 'node', 'java', 'ffi', 'dotnet', 'elixir'] as const;
+const PACKAGES = ['python', 'node', 'java', 'ffi', 'dotnet', 'elixir', 'cpp'] as const;
 
 const BUILDERS: Record<Package, (options: BuilderOptions) => void> = {
   python: buildPython,
@@ -24,6 +25,7 @@ const BUILDERS: Record<Package, (options: BuilderOptions) => void> = {
   ffi: buildFfi,
   dotnet: buildDotnet,
   elixir: buildElixir,
+  cpp: buildCpp,
 };
 
 type Package = (typeof PACKAGES)[number];

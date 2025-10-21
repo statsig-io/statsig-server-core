@@ -1,7 +1,6 @@
 package statsig_go_core
 
 import (
-	"C"
 	"fmt"
 	"os"
 	"runtime"
@@ -85,12 +84,39 @@ type StatsigFFI struct {
 	data_store_create func(
 		init_fn func(),
 		shutdown_fn func(),
-		get_fn func(key *C.char) *C.char,
-		set_fn func(key *C.char, value *C.char, time *uint64),
-		support_polling_updates_for_fn func(key *C.char) bool,
+		get_fn func(argPtr *byte, argLength uint64) *byte,
+		set_fn func(argPtr *byte, argLength uint64),
+		support_polling_updates_for_fn func(argPtr *byte, argLength uint64) bool,
 	) uint64
 	data_store_release          func(uint64)
 	__internal__test_data_store func(uint64, string, string) string
+
+	// Observability Client
+	observability_client_create func(
+		init_fn func(),
+		increment_fn func(argsPtr *byte, argsLength uint64),
+		gauge_fn func(argsPtr *byte, argsLength uint64),
+		dist_fn func(argsPtr *byte, argsLength uint64),
+		error_fn func(argsPtr *byte, argsLength uint64),
+		should_enable_high_cardinality_for_this_tag_fn func(argsPtr *byte, argsLength uint64) bool,
+	) uint64
+	observability_client_release          func(uint64)
+	__internal__test_observability_client func(
+		ref uint64,
+		action string,
+		metricName string,
+		value float64,
+		tags string,
+	) string
+
+	// Persistent Storage
+	persistent_storage_create func(
+		load_fn func(argsPtr *byte, argsLength uint64) *byte,
+		save_fn func(argsPtr *byte, argsLength uint64),
+		delete_fn func(argsPtr *byte, argsLength uint64),
+	) uint64
+	persistent_storage_release          func(uint64)
+	__internal__test_persistent_storage func(uint64, string, string, string, string) string
 
 	// Metadata
 	statsig_metadata_update_values func(string, string, string, string)
@@ -186,6 +212,16 @@ func GetFFI() *StatsigFFI {
 		purego.RegisterLibFunc(&instance.data_store_create, lib, "data_store_create")
 		purego.RegisterLibFunc(&instance.data_store_release, lib, "data_store_release")
 		purego.RegisterLibFunc(&instance.__internal__test_data_store, lib, "__internal__test_data_store")
+
+		// Observability Client
+		purego.RegisterLibFunc(&instance.observability_client_create, lib, "observability_client_create")
+		purego.RegisterLibFunc(&instance.observability_client_release, lib, "observability_client_release")
+		purego.RegisterLibFunc(&instance.__internal__test_observability_client, lib, "__internal__test_observability_client")
+
+		// Persistent Storage
+		purego.RegisterLibFunc(&instance.persistent_storage_create, lib, "persistent_storage_create")
+		purego.RegisterLibFunc(&instance.persistent_storage_release, lib, "persistent_storage_release")
+		purego.RegisterLibFunc(&instance.__internal__test_persistent_storage, lib, "__internal__test_persistent_storage")
 
 		// Metadata
 		purego.RegisterLibFunc(&instance.statsig_metadata_update_values, lib, "statsig_metadata_update_values")

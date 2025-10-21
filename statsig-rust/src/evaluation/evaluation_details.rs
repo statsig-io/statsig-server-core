@@ -7,6 +7,7 @@ pub struct EvaluationDetails {
     pub reason: String,
     pub lcut: Option<u64>,
     pub received_at: Option<u64>,
+    pub version: Option<u32>,
 }
 
 impl EvaluationDetails {
@@ -47,11 +48,13 @@ impl EvaluationDetails {
         lcut: u64,
         received_at: Option<u64>,
         override_reason: &str,
+        version: Option<u32>,
     ) -> Self {
         Self {
             reason: format!("{override_reason}:Recognized"),
             lcut: Some(lcut),
             received_at,
+            version,
         }
     }
 
@@ -61,6 +64,7 @@ impl EvaluationDetails {
             reason: SpecsSource::NoValues.to_string(),
             lcut: None,
             received_at: None,
+            version: None,
         }
     }
 
@@ -70,6 +74,7 @@ impl EvaluationDetails {
             reason: format!("Error:{sub_reason}"),
             lcut: None,
             received_at: None,
+            version: None,
         }
     }
 
@@ -85,6 +90,7 @@ impl EvaluationDetails {
                 reason: source.to_string(),
                 lcut: None,
                 received_at: None,
+                version: eval_result.version,
             };
         }
 
@@ -93,6 +99,7 @@ impl EvaluationDetails {
                 reason: format!("{source}:Unsupported"),
                 lcut: Some(lcut),
                 received_at,
+                version: eval_result.version,
             };
         }
 
@@ -100,6 +107,7 @@ impl EvaluationDetails {
             reason: format!("{source}:{sub_reason}"),
             lcut: Some(lcut),
             received_at,
+            version: eval_result.version,
         }
     }
 }

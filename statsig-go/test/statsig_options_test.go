@@ -1,14 +1,12 @@
 package test
 
 import (
-	"fmt"
 	"testing"
 
 	statsig_go "github.com/statsig-io/statsig-go-core"
 )
 
 func TestStatsigOptionsBuilder(t *testing.T) {
-	fmt.Println("TestStatsigOptionsBuilder")
 	_, err := statsig_go.NewOptionsBuilder().WithSpecsUrl("http://localhost:3000/specs").Build()
 
 	if err != nil {

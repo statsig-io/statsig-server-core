@@ -24,7 +24,6 @@ use crate::gcir::target_app_id_utils::select_app_id_for_gcir;
 use crate::hashing::HashUtil;
 use crate::initialize_evaluations_response::InitializeEvaluationsResponse;
 use crate::initialize_response::InitializeResponse;
-use crate::networking::NetworkError;
 use crate::observability::diagnostics_observer::DiagnosticsObserver;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
@@ -47,9 +46,9 @@ use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer, Parame
 use crate::user::StatsigUserInternal;
 use crate::{
     dyn_value, log_d, log_e, log_w, read_lock_or_else, ClientInitResponseOptions,
-    GCIRResponseFormat, IdListsAdapter, ObservabilityClient, OpsStatsEventObserver,
-    OverrideAdapter, SpecsAdapter, SpecsInfo, SpecsSource, SpecsUpdateListener,
-    StatsigHttpIdListsAdapter, StatsigLocalOverrideAdapter, StatsigUser,
+    GCIRResponseFormat, IdListsAdapter, InitializeDetails, ObservabilityClient,
+    OpsStatsEventObserver, OverrideAdapter, SpecsAdapter, SpecsInfo, SpecsSource,
+    SpecsUpdateListener, StatsigHttpIdListsAdapter, StatsigLocalOverrideAdapter, StatsigUser,
 };
 use crate::{
     log_error_to_statsig_and_console,
@@ -111,54 +110,6 @@ pub struct StatsigContext {
     pub error_observer: Arc<dyn OpsStatsEventObserver>,
     pub diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
     pub spec_store: Arc<SpecStore>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct FailureDetails {
-    pub reason: String,
-    pub error: Option<StatsigErr>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct InitializeDetails {
-    pub duration: f64,
-    pub init_success: bool,
-    pub is_config_spec_ready: bool,
-    pub is_id_list_ready: Option<bool>,
-    pub source: SpecsSource,
-    pub failure_details: Option<FailureDetails>,
-    pub spec_source_api: Option<String>,
-}
-
-impl Default for InitializeDetails {
-    fn default() -> Self {
-        InitializeDetails {
-            duration: 0.0,
-            init_success: false,
-            is_config_spec_ready: false,
-            is_id_list_ready: None,
-            source: SpecsSource::Uninitialized,
-            failure_details: None,
-            spec_source_api: None,
-        }
-    }
-}
-
-impl InitializeDetails {
-    pub fn from_error(reason: &str, error: Option<StatsigErr>) -> Self {
-        InitializeDetails {
-            duration: 0.0,
-            init_success: false,
-            is_config_spec_ready: false,
-            is_id_list_ready: None,
-            source: SpecsSource::Uninitialized,
-            failure_details: Some(FailureDetails {
-                reason: reason.to_string(),
-                error,
-            }),
-            spec_source_api: None,
-        }
-    }
 }
 
 impl Drop for Statsig {
@@ -259,20 +210,18 @@ impl Statsig {
         }
     }
 
-    /***
-     *  Initializes the Statsig client and returns an error if initialization fails.
-     *
-     *  This method performs the client initialization and returns `Ok(())` if successful.
-     *  If the initialization completes with failure details, it returns a [`StatsigErr`]
-     *  describing the failure.
-     *
-     *  For detailed information about the initialization process—regardless of success or failure—
-     *  use [`initialize_with_details`] instead.
-     *
-     *  # Errors
-     *
-     *  Returns a [`StatsigErr`] if the client fails to initialize successfully.
-     */
+    /// Initializes the Statsig client and returns an error if initialization fails.
+    ///
+    /// This method performs the client initialization and returns `Ok(())` if successful.
+    /// If the initialization completes with failure details, it returns a [`StatsigErr`]
+    /// describing the failure.
+    ///
+    /// For detailed information about the initialization process—regardless of success or failure—
+    /// use [`initialize_with_details`] instead.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`StatsigErr`] if the client fails to initialize successfully.
     pub async fn initialize(&self) -> Result<(), StatsigErr> {
         let details = self.initialize_with_details().await?;
 
@@ -285,14 +234,17 @@ impl Statsig {
         }
     }
 
-    /***
-     *  Initializes the Statsig client and returns detailed information about the process.
-     *
-     *  This method returns a [`StatsigInitializeDetails`] struct, which includes metadata such as
-     *  the success status, initialization source, and any failure details. Even if initialization
-     *  fails, this method does not return an error; instead, the `init_success` field will be `false`
-     *  and `failure_details` may be populated.
-     ***/
+    /// Initializes the Statsig client and returns detailed information about the process.
+    ///
+    /// This method returns a [`InitializeDetails`] struct, which includes metadata such as
+    /// the success status, initialization source, and any failure details. Even if initialization
+    /// fails, this method does not return an error; instead, the `init_success` field will be `false`
+    /// and `failure_details` may be populated.
+    ///
+    /// # Returns
+    ///
+    /// Returns a [`InitializeDetails`] struct, which includes metadata such as
+    /// the success status, initialization source, and any failure details.
     pub async fn initialize_with_details(&self) -> Result<InitializeDetails, StatsigErr> {
         self.ops_stats.add_marker(
             Marker::new(KeyType::Overall, ActionType::Start, None),
@@ -388,295 +340,6 @@ impl Statsig {
         shutdown_result
     }
 
-    async fn start_background_tasks(
-        statsig_runtime: Arc<StatsigRuntime>,
-        id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
-        specs_adapter: Arc<dyn SpecsAdapter>,
-        ops_stats: Arc<OpsStatsForInstance>,
-        bg_tasks_started: Arc<AtomicBool>,
-    ) -> bool {
-        if bg_tasks_started.load(Ordering::SeqCst) {
-            return true;
-        }
-
-        let mut success = true;
-
-        if let Some(adapter) = &id_lists_adapter {
-            if let Err(e) = adapter
-                .clone()
-                .schedule_background_sync(&statsig_runtime)
-                .await
-            {
-                success = false;
-                log_w!(TAG, "Failed to schedule idlist background job {}", e);
-            }
-        }
-
-        if let Err(e) = specs_adapter
-            .clone()
-            .schedule_background_sync(&statsig_runtime)
-            .await
-        {
-            success = false;
-            log_error_to_statsig_and_console!(
-                ops_stats,
-                TAG,
-                StatsigErr::SpecsAdapterSkipPoll(format!(
-                    "Failed to schedule specs adapter background job: {e}"
-                ))
-            );
-        }
-
-        bg_tasks_started.store(true, Ordering::SeqCst);
-
-        success
-    }
-
-    async fn apply_timeout_to_init(
-        &self,
-        timeout_ms: u64,
-    ) -> Result<InitializeDetails, StatsigErr> {
-        let timeout = Duration::from_millis(timeout_ms);
-
-        let init_future = self.initialize_impl_with_details();
-        let timeout_future = sleep(timeout);
-
-        let statsig_runtime = self.statsig_runtime.clone();
-        let id_lists_adapter = self.id_lists_adapter.inner.clone();
-        let specs_adapter = self.specs_adapter.inner.clone();
-        let ops_stats = self.ops_stats.clone();
-        let background_tasks_started = self.background_tasks_started.clone();
-        // Create another clone specifically for the closure
-        let statsig_runtime_for_closure = statsig_runtime.clone();
-
-        tokio::select! {
-            result = init_future => {
-                result
-            },
-            _ = timeout_future => {
-                statsig_runtime.spawn(
-                    "start_background_tasks",
-                    |_shutdown_notify| async move {
-                        Self::start_background_tasks(
-                            statsig_runtime_for_closure,
-                            id_lists_adapter,
-                            specs_adapter,
-                            ops_stats,
-                            background_tasks_started,
-                        ).await;
-                    }
-                )?;
-                Ok(self.timeout_failure(timeout_ms))
-            },
-        }
-    }
-
-    async fn initialize_impl_with_details(&self) -> Result<InitializeDetails, StatsigErr> {
-        let start_time = Instant::now();
-        self.spec_store.set_source(SpecsSource::Loading);
-        self.specs_adapter.inner.initialize(self.spec_store.clone());
-        let use_third_party_ua_parser = self.should_user_third_party_parser();
-
-        let mut error_message = None;
-        let mut id_list_ready = None;
-
-        let init_country_lookup = if !self.options.disable_country_lookup.unwrap_or_default() {
-            Some(self.statsig_runtime.spawn(INIT_IP_TAG, |_| async {
-                CountryLookup::load_country_lookup();
-            }))
-        } else {
-            None
-        };
-
-        let init_ua = if use_third_party_ua_parser {
-            Some(self.statsig_runtime.spawn(INIT_UA_TAG, |_| async {
-                UserAgentParser::load_parser();
-            }))
-        } else {
-            None
-        };
-
-        let init_res = match self
-            .specs_adapter
-            .inner
-            .clone()
-            .start(&self.statsig_runtime)
-            .await
-        {
-            Ok(()) => Ok(()),
-            Err(e) => {
-                self.spec_store.set_source(SpecsSource::NoValues);
-                error_message = Some(format!("Failed to start specs adapter: {e}"));
-                Err(e)
-            }
-        };
-
-        if let Some(adapter) = &self.id_lists_adapter.inner {
-            match adapter
-                .clone()
-                .start(&self.statsig_runtime, self.spec_store.clone())
-                .await
-            {
-                Ok(()) => {
-                    id_list_ready = Some(true);
-                }
-                Err(e) => {
-                    id_list_ready = Some(false);
-                    error_message.get_or_insert_with(|| format!("Failed to sync ID lists: {e}"));
-                }
-            }
-            if let Err(e) = adapter
-                .clone()
-                .schedule_background_sync(&self.statsig_runtime)
-                .await
-            {
-                log_w!(TAG, "Failed to schedule id_list background job {}", e);
-            }
-        }
-
-        if let Err(e) = self
-            .event_logging_adapter
-            .clone()
-            .start(&self.statsig_runtime)
-            .await
-        {
-            log_error_to_statsig_and_console!(
-                self.ops_stats.clone(),
-                TAG,
-                StatsigErr::UnstartedAdapter(format!("Failed to start event logging adapter: {e}"))
-            );
-        }
-
-        let spec_info = self.spec_store.get_current_specs_info();
-        let duration = start_time.elapsed().as_millis() as f64;
-
-        self.set_default_environment_from_server();
-
-        if self.options.wait_for_country_lookup_init.unwrap_or(false) {
-            match init_country_lookup {
-                Some(Ok(task_id)) => {
-                    let _ = self
-                        .statsig_runtime
-                        .await_join_handle(INIT_IP_TAG, &task_id)
-                        .await;
-                }
-                Some(Err(e)) => {
-                    log_error_to_statsig_and_console!(
-                        self.ops_stats.clone(),
-                        TAG,
-                        StatsigErr::UnstartedAdapter(format!(
-                            "Failed to spawn country lookup task: {e}"
-                        ))
-                    );
-                }
-                _ => {}
-            }
-        }
-        if self.options.wait_for_user_agent_init.unwrap_or(false) {
-            match init_ua {
-                Some(Ok(task_id)) => {
-                    let _ = self
-                        .statsig_runtime
-                        .await_join_handle(INIT_UA_TAG, &task_id)
-                        .await;
-                }
-                Some(Err(e)) => {
-                    log_error_to_statsig_and_console!(
-                        self.ops_stats.clone(),
-                        TAG,
-                        StatsigErr::UnstartedAdapter(format!(
-                            "Failed to spawn user agent parser task: {e}"
-                        ))
-                    );
-                }
-                _ => {}
-            }
-        }
-
-        let error = init_res.clone().err();
-
-        let success = Self::start_background_tasks(
-            self.statsig_runtime.clone(),
-            self.id_lists_adapter.inner.clone(),
-            self.specs_adapter.inner.clone(),
-            self.ops_stats.clone(),
-            self.background_tasks_started.clone(),
-        )
-        .await;
-
-        Ok(self.construct_initialize_details(success, duration, spec_info, id_list_ready, error))
-    }
-
-    fn construct_initialize_details(
-        &self,
-        init_success: bool,
-        duration: f64,
-        specs_info: SpecsInfo,
-        is_id_list_ready: Option<bool>,
-        error: Option<StatsigErr>,
-    ) -> InitializeDetails {
-        let is_config_spec_ready = matches!(specs_info.lcut, Some(v) if v != 0);
-
-        let failure_details =
-            if let Some(StatsigErr::NetworkError(NetworkError::DisableNetworkOn(_))) = error {
-                None
-            } else {
-                error.as_ref().map(|e| FailureDetails {
-                    reason: e.to_string(),
-                    error: Some(e.clone()),
-                })
-            };
-
-        InitializeDetails {
-            init_success,
-            is_config_spec_ready,
-            is_id_list_ready,
-            source: specs_info.source.clone(),
-            failure_details,
-            duration,
-            spec_source_api: specs_info.source_api.clone(),
-        }
-    }
-
-    fn timeout_failure(&self, timeout_ms: u64) -> InitializeDetails {
-        InitializeDetails {
-            init_success: false,
-            is_config_spec_ready: false,
-            is_id_list_ready: None,
-            source: SpecsSource::Uninitialized,
-            failure_details: Some(FailureDetails {
-                reason: "Initialization timed out".to_string(),
-                error: None,
-            }),
-            duration: timeout_ms as f64,
-            spec_source_api: None,
-        }
-    }
-
-    fn log_init_details(&self, init_details: &Result<InitializeDetails, StatsigErr>) {
-        match init_details {
-            Ok(details) => {
-                self.log_init_finish(
-                    details.init_success,
-                    &None,
-                    &details.duration,
-                    &self.spec_store.get_current_specs_info(),
-                );
-                if let Some(failure) = &details.failure_details {
-                    log_error_to_statsig_and_console!(
-                        self.ops_stats,
-                        TAG,
-                        StatsigErr::InitializationError(failure.reason.clone())
-                    );
-                }
-            }
-            Err(err) => {
-                // we store errors on init details so we should never return error and thus do not need to log
-                log_w!(TAG, "Initialization error: {:?}", err);
-            }
-        }
-    }
-
     pub fn get_context(&self) -> StatsigContext {
         StatsigContext {
             sdk_key: self.sdk_key.clone(),
@@ -687,7 +350,162 @@ impl Statsig {
             spec_store: self.spec_store.clone(),
         }
     }
+}
 
+// ------------------------------------------------------------------------------- [ Shared Instance ]
+
+impl Statsig {
+    pub fn shared() -> Arc<Statsig> {
+        let lock = match SHARED_INSTANCE.try_lock_for(Duration::from_secs(5)) {
+            Some(lock) => lock,
+            None => {
+                log_e!(
+                    TAG,
+                    "Statsig::shared() mutex error: Failed to lock SHARED_INSTANCE"
+                );
+                return Arc::new(Statsig::new(ERROR_SDK_KEY, None));
+            }
+        };
+
+        match lock.as_ref() {
+            Some(statsig) => statsig.clone(),
+            None => {
+                log_e!(
+                    TAG,
+                    "Statsig::shared() called, but no instance has been set with Statsig::new_shared(...)"
+                );
+                Arc::new(Statsig::new(ERROR_SDK_KEY, None))
+            }
+        }
+    }
+
+    pub fn new_shared(
+        sdk_key: &str,
+        options: Option<Arc<StatsigOptions>>,
+    ) -> Result<Arc<Statsig>, StatsigErr> {
+        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(5)) {
+            Some(mut lock) => {
+                if lock.is_some() {
+                    let message = "Statsig shared instance already exists. Call Statsig::remove_shared() before creating a new instance.";
+                    log_e!(TAG, "{}", message);
+                    return Err(StatsigErr::SharedInstanceFailure(message.to_string()));
+                }
+
+                let statsig = Arc::new(Statsig::new(sdk_key, options));
+                *lock = Some(statsig.clone());
+                Ok(statsig)
+            }
+            None => {
+                let message = "Statsig::new_shared() mutex error: Failed to lock SHARED_INSTANCE";
+                log_e!(TAG, "{}", message);
+                Err(StatsigErr::SharedInstanceFailure(message.to_string()))
+            }
+        }
+    }
+
+    pub fn remove_shared() {
+        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(5)) {
+            Some(mut lock) => {
+                *lock = None;
+            }
+            None => {
+                log_e!(
+                    TAG,
+                    "Statsig::remove_shared() mutex error: Failed to lock SHARED_INSTANCE"
+                );
+            }
+        }
+    }
+
+    pub fn has_shared_instance() -> bool {
+        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(5)) {
+            Some(lock) => lock.is_some(),
+            None => false,
+        }
+    }
+}
+
+// ------------------------------------------------------------------------------- [ Client Init Response ]
+
+impl Statsig {
+    pub fn get_client_init_response(&self, user: &StatsigUser) -> InitializeResponse {
+        self.get_client_init_response_with_options(user, &ClientInitResponseOptions::default())
+    }
+
+    pub fn get_client_init_response_with_options(
+        &self,
+        user: &StatsigUser,
+        options: &ClientInitResponseOptions,
+    ) -> InitializeResponse {
+        let user_internal = self.internalize_user(user);
+
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return InitializeResponse::blank(user_internal);
+        });
+
+        let mut context = self.create_gcir_eval_context(&user_internal, &data, options);
+
+        match GCIRFormatter::generate_v1_format(&mut context, options) {
+            Ok(response) => response,
+            Err(e) => {
+                log_error_to_statsig_and_console!(
+                    &self.ops_stats,
+                    TAG,
+                    StatsigErr::GCIRError(e.to_string())
+                );
+                InitializeResponse::blank(user_internal)
+            }
+        }
+    }
+
+    pub fn get_client_init_response_as_string(&self, user: &StatsigUser) -> String {
+        serde_json::to_string(&self.get_client_init_response(user)).unwrap_or_default()
+    }
+
+    pub fn get_client_init_response_with_options_as_string(
+        &self,
+        user: &StatsigUser,
+        options: &ClientInitResponseOptions,
+    ) -> String {
+        let user_internal = self.internalize_user(user);
+
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return String::new();
+        });
+
+        let mut context = self.create_gcir_eval_context(&user_internal, &data, options);
+
+        match options.response_format {
+            Some(GCIRResponseFormat::InitializeWithSecondaryExposureMapping) => self
+                .stringify_gcir_response(
+                    GCIRFormatter::generate_v2_format(&mut context, options),
+                    || InitializeEvaluationsResponse::blank(user_internal),
+                ),
+            _ => self.stringify_gcir_response(
+                GCIRFormatter::generate_v1_format(&mut context, options),
+                || InitializeResponse::blank(user_internal),
+            ),
+        }
+    }
+}
+
+// ------------------------------------------------------------------------------- [ Logging ]
+
+impl Statsig {
     pub fn log_event(
         &self,
         user: &StatsigUser,
@@ -781,81 +599,11 @@ impl Statsig {
     pub async fn flush_events(&self) {
         let _ = self.event_logger.flush_all_pending_events().await;
     }
+}
 
-    pub fn get_client_init_response(&self, user: &StatsigUser) -> InitializeResponse {
-        self.get_client_init_response_with_options(user, &ClientInitResponseOptions::default())
-    }
+// ------------------------------------------------------------------------------- [ Parameter Store ]
 
-    pub fn get_client_init_response_with_options(
-        &self,
-        user: &StatsigUser,
-        options: &ClientInitResponseOptions,
-    ) -> InitializeResponse {
-        let user_internal = self.internalize_user(user);
-
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return InitializeResponse::blank(user_internal);
-        });
-
-        let mut context = self.create_gcir_eval_context(&user_internal, &data, options);
-
-        match GCIRFormatter::generate_v1_format(&mut context, options) {
-            Ok(response) => response,
-            Err(e) => {
-                log_error_to_statsig_and_console!(
-                    &self.ops_stats,
-                    TAG,
-                    StatsigErr::GCIRError(e.to_string())
-                );
-                InitializeResponse::blank(user_internal)
-            }
-        }
-    }
-
-    pub fn get_client_init_response_as_string(&self, user: &StatsigUser) -> String {
-        serde_json::to_string(&self.get_client_init_response(user)).unwrap_or_default()
-    }
-
-    pub fn get_client_init_response_with_options_as_string(
-        &self,
-        user: &StatsigUser,
-        options: &ClientInitResponseOptions,
-    ) -> String {
-        let user_internal = self.internalize_user(user);
-
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return String::new();
-        });
-
-        let mut context = self.create_gcir_eval_context(&user_internal, &data, options);
-
-        match options.response_format {
-            Some(GCIRResponseFormat::InitializeWithSecondaryExposureMapping) => self
-                .stringify_gcir_response(
-                    GCIRFormatter::generate_v2_format(&mut context, options),
-                    || InitializeEvaluationsResponse::blank(user_internal),
-                ),
-            _ => self.stringify_gcir_response(
-                GCIRFormatter::generate_v1_format(&mut context, options),
-                || InitializeResponse::blank(user_internal),
-            ),
-        }
-    }
-
+impl Statsig {
     pub fn get_string_parameter_from_store(
         &self,
         user: &StatsigUser,
@@ -1051,9 +799,7 @@ impl Statsig {
     }
 }
 
-// -------------------------
-//   User Store Functions
-// -------------------------
+// ------------------------------------------------------------------------------- [ User Store ]
 
 impl Statsig {
     pub fn identify(&self, user: &StatsigUser) {
@@ -1070,9 +816,7 @@ impl Statsig {
     }
 }
 
-// -------------------------
-//   CMAB Functions
-// -------------------------
+// ------------------------------------------------------------------------------- [ CMAB ]
 
 impl Statsig {
     pub fn get_cmab_ranked_groups(
@@ -1122,84 +866,201 @@ impl Statsig {
     }
 }
 
-// -------------------------
-//   Shared Instance Functions
-// -------------------------
+// ------------------------------------------------------------------------------- [ Override ]
 
 impl Statsig {
-    pub fn shared() -> Arc<Statsig> {
-        let lock = match SHARED_INSTANCE.try_lock_for(Duration::from_secs(5)) {
-            Some(lock) => lock,
-            None => {
-                log_e!(
-                    TAG,
-                    "Statsig::shared() mutex error: Failed to lock SHARED_INSTANCE"
-                );
-                return Arc::new(Statsig::new(ERROR_SDK_KEY, None));
-            }
-        };
-
-        match lock.as_ref() {
-            Some(statsig) => statsig.clone(),
-            None => {
-                log_e!(
-                    TAG,
-                    "Statsig::shared() called, but no instance has been set with Statsig::new_shared(...)"
-                );
-                Arc::new(Statsig::new(ERROR_SDK_KEY, None))
-            }
+    pub fn override_gate(&self, gate_name: &str, value: bool, id: Option<&str>) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.override_gate(gate_name, value, id);
         }
     }
 
-    pub fn new_shared(
-        sdk_key: &str,
-        options: Option<Arc<StatsigOptions>>,
-    ) -> Result<Arc<Statsig>, StatsigErr> {
-        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(5)) {
-            Some(mut lock) => {
-                if lock.is_some() {
-                    let message = "Statsig shared instance already exists. Call Statsig::remove_shared() before creating a new instance.";
-                    log_e!(TAG, "{}", message);
-                    return Err(StatsigErr::SharedInstanceFailure(message.to_string()));
-                }
-
-                let statsig = Arc::new(Statsig::new(sdk_key, options));
-                *lock = Some(statsig.clone());
-                Ok(statsig)
-            }
-            None => {
-                let message = "Statsig::new_shared() mutex error: Failed to lock SHARED_INSTANCE";
-                log_e!(TAG, "{}", message);
-                Err(StatsigErr::SharedInstanceFailure(message.to_string()))
-            }
+    pub fn override_dynamic_config(
+        &self,
+        config_name: &str,
+        value: HashMap<String, serde_json::Value>,
+        id: Option<&str>,
+    ) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.override_dynamic_config(config_name, value, id);
         }
     }
 
-    pub fn remove_shared() {
-        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(5)) {
-            Some(mut lock) => {
-                *lock = None;
-            }
-            None => {
-                log_e!(
-                    TAG,
-                    "Statsig::remove_shared() mutex error: Failed to lock SHARED_INSTANCE"
-                );
-            }
+    pub fn override_layer(
+        &self,
+        layer_name: &str,
+        value: HashMap<String, serde_json::Value>,
+        id: Option<&str>,
+    ) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.override_layer(layer_name, value, id);
         }
     }
 
-    pub fn has_shared_instance() -> bool {
-        match SHARED_INSTANCE.try_lock_for(Duration::from_secs(5)) {
-            Some(lock) => lock.is_some(),
-            None => false,
+    pub fn override_experiment(
+        &self,
+        experiment_name: &str,
+        value: HashMap<String, serde_json::Value>,
+        id: Option<&str>,
+    ) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.override_experiment(experiment_name, value, id);
+        }
+    }
+
+    pub fn override_experiment_by_group_name(
+        &self,
+        experiment_name: &str,
+        group_name: &str,
+        id: Option<&str>,
+    ) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.override_experiment_by_group_name(experiment_name, group_name, id);
+        }
+    }
+
+    pub fn remove_gate_override(&self, gate_name: &str, id: Option<&str>) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.remove_gate_override(gate_name, id);
+        }
+    }
+
+    pub fn remove_dynamic_config_override(&self, config_name: &str, id: Option<&str>) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.remove_dynamic_config_override(config_name, id);
+        }
+    }
+
+    pub fn remove_experiment_override(&self, experiment_name: &str, id: Option<&str>) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.remove_experiment_override(experiment_name, id);
+        }
+    }
+
+    pub fn remove_layer_override(&self, layer_name: &str, id: Option<&str>) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.remove_layer_override(layer_name, id);
+        }
+    }
+
+    pub fn remove_all_overrides(&self) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.remove_all_overrides();
         }
     }
 }
 
-// -------------------------
-//   Feature Gate Functions
-// -------------------------
+// ------------------------------------------------------------------------------- [ Debugging ]
+
+impl Statsig {
+    pub fn get_feature_gate_list(&self) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return vec![];
+        });
+
+        data.values.feature_gates.unperformant_keys()
+    }
+
+    pub fn get_dynamic_config_list(&self) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return vec![];
+        });
+
+        data.values
+            .dynamic_configs
+            .unperformant_keys_entity_filter("dynamic_config")
+    }
+
+    pub fn get_experiment_list(&self) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return vec![];
+        });
+
+        data.values
+            .dynamic_configs
+            .unperformant_keys_entity_filter("experiment")
+    }
+
+    pub fn get_autotune_list(&self) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return vec![];
+        });
+
+        data.values
+            .dynamic_configs
+            .unperformant_keys_entity_filter("autotune")
+    }
+
+    pub fn get_parameter_store_list(&self) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return vec![];
+        });
+
+        match &data.values.param_stores {
+            Some(param_stores) => param_stores.keys().cloned().collect(),
+            None => vec![],
+        }
+    }
+
+    pub fn get_layer_list(&self) -> Vec<String> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return vec![];
+        });
+
+        data.values.layer_configs.unperformant_keys()
+    }
+
+    pub fn __get_parsed_user_agent_value(
+        &self,
+        user: &StatsigUser,
+    ) -> Option<ParsedUserAgentValue> {
+        UserAgentParser::get_parsed_user_agent_value_for_user(user, &self.options)
+    }
+}
+
+// ------------------------------------------------------------------------------- [ Feature Gate ]
 
 impl Statsig {
     pub fn check_gate(&self, user: &StatsigUser, gate_name: &str) -> bool {
@@ -1310,207 +1171,7 @@ impl Statsig {
     }
 }
 
-// -------------------------
-//   Override Functions
-// -------------------------
-
-impl Statsig {
-    pub fn override_gate(&self, gate_name: &str, value: bool, id: Option<&str>) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.override_gate(gate_name, value, id);
-        }
-    }
-
-    pub fn override_dynamic_config(
-        &self,
-        config_name: &str,
-        value: HashMap<String, serde_json::Value>,
-        id: Option<&str>,
-    ) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.override_dynamic_config(config_name, value, id);
-        }
-    }
-
-    pub fn override_layer(
-        &self,
-        layer_name: &str,
-        value: HashMap<String, serde_json::Value>,
-        id: Option<&str>,
-    ) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.override_layer(layer_name, value, id);
-        }
-    }
-
-    pub fn override_experiment(
-        &self,
-        experiment_name: &str,
-        value: HashMap<String, serde_json::Value>,
-        id: Option<&str>,
-    ) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.override_experiment(experiment_name, value, id);
-        }
-    }
-
-    pub fn override_experiment_by_group_name(
-        &self,
-        experiment_name: &str,
-        group_name: &str,
-        id: Option<&str>,
-    ) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.override_experiment_by_group_name(experiment_name, group_name, id);
-        }
-    }
-
-    pub fn remove_gate_override(&self, gate_name: &str, id: Option<&str>) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.remove_gate_override(gate_name, id);
-        }
-    }
-
-    pub fn remove_dynamic_config_override(&self, config_name: &str, id: Option<&str>) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.remove_dynamic_config_override(config_name, id);
-        }
-    }
-
-    pub fn remove_experiment_override(&self, experiment_name: &str, id: Option<&str>) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.remove_experiment_override(experiment_name, id);
-        }
-    }
-
-    pub fn remove_layer_override(&self, layer_name: &str, id: Option<&str>) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.remove_layer_override(layer_name, id);
-        }
-    }
-
-    pub fn remove_all_overrides(&self) {
-        if let Some(adapter) = &self.override_adapter {
-            adapter.remove_all_overrides();
-        }
-    }
-}
-
-// -------------------------
-//   Debugging Functions
-// -------------------------
-
-impl Statsig {
-    pub fn get_feature_gate_list(&self) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        data.values.feature_gates.unperformant_keys()
-    }
-
-    pub fn get_dynamic_config_list(&self) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        data.values
-            .dynamic_configs
-            .unperformant_keys_entity_filter("dynamic_config")
-    }
-
-    pub fn get_experiment_list(&self) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        data.values
-            .dynamic_configs
-            .unperformant_keys_entity_filter("experiment")
-    }
-
-    pub fn get_autotune_list(&self) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        data.values
-            .dynamic_configs
-            .unperformant_keys_entity_filter("autotune")
-    }
-
-    pub fn get_parameter_store_list(&self) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        match &data.values.param_stores {
-            Some(param_stores) => param_stores.keys().cloned().collect(),
-            None => vec![],
-        }
-    }
-
-    pub fn get_layer_list(&self) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        data.values.layer_configs.unperformant_keys()
-    }
-
-    pub fn __get_parsed_user_agent_value(
-        &self,
-        user: &StatsigUser,
-    ) -> Option<ParsedUserAgentValue> {
-        UserAgentParser::get_parsed_user_agent_value_for_user(user, &self.options)
-    }
-}
-
-// -------------------------
-//   Dynamic Config Functions
-// -------------------------
+// ------------------------------------------------------------------------------- [ Dynamic Config ]
 
 impl Statsig {
     pub fn get_dynamic_config(
@@ -1595,9 +1256,7 @@ impl Statsig {
     }
 }
 
-// -------------------------
-//   Experiment Functions
-// -------------------------
+// ------------------------------------------------------------------------------- [ Experiment ]
 
 impl Statsig {
     pub fn get_experiment(&self, user: &StatsigUser, experiment_name: &str) -> Experiment {
@@ -1745,9 +1404,7 @@ impl Statsig {
     }
 }
 
-// -------------------------
-//   Layer Functions
-// -------------------------
+// ------------------------------------------------------------------------------- [ Layer ]
 
 impl Statsig {
     pub fn get_layer(&self, user: &StatsigUser, layer_name: &str) -> Layer {
@@ -1819,9 +1476,7 @@ impl Statsig {
     }
 }
 
-// -------------------------
-//   Internal Functions
-// -------------------------
+// ------------------------------------------------------------------------------- [ Internal ]
 
 impl Statsig {
     pub(crate) fn get_from_statsig_env(&self, key: &str) -> Option<DynamicValue> {
@@ -1877,11 +1532,258 @@ impl Statsig {
     }
 }
 
-// -------------------------
-//   Private Functions
-// -------------------------
+// ------------------------------------------------------------------------------- [ Private ]
 
 impl Statsig {
+    async fn start_background_tasks(
+        statsig_runtime: Arc<StatsigRuntime>,
+        id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
+        specs_adapter: Arc<dyn SpecsAdapter>,
+        ops_stats: Arc<OpsStatsForInstance>,
+        bg_tasks_started: Arc<AtomicBool>,
+    ) -> bool {
+        if bg_tasks_started.load(Ordering::SeqCst) {
+            return true;
+        }
+
+        let mut success = true;
+
+        if let Some(adapter) = &id_lists_adapter {
+            if let Err(e) = adapter
+                .clone()
+                .schedule_background_sync(&statsig_runtime)
+                .await
+            {
+                success = false;
+                log_w!(TAG, "Failed to schedule idlist background job {}", e);
+            }
+        }
+
+        if let Err(e) = specs_adapter
+            .clone()
+            .schedule_background_sync(&statsig_runtime)
+            .await
+        {
+            success = false;
+            log_error_to_statsig_and_console!(
+                ops_stats,
+                TAG,
+                StatsigErr::SpecsAdapterSkipPoll(format!(
+                    "Failed to schedule specs adapter background job: {e}"
+                ))
+            );
+        }
+
+        bg_tasks_started.store(true, Ordering::SeqCst);
+
+        success
+    }
+
+    async fn apply_timeout_to_init(
+        &self,
+        timeout_ms: u64,
+    ) -> Result<InitializeDetails, StatsigErr> {
+        let timeout = Duration::from_millis(timeout_ms);
+
+        let init_future = self.initialize_impl_with_details();
+        let timeout_future = sleep(timeout);
+
+        let statsig_runtime = self.statsig_runtime.clone();
+        let id_lists_adapter = self.id_lists_adapter.inner.clone();
+        let specs_adapter = self.specs_adapter.inner.clone();
+        let ops_stats = self.ops_stats.clone();
+        let background_tasks_started = self.background_tasks_started.clone();
+        // Create another clone specifically for the closure
+        let statsig_runtime_for_closure = statsig_runtime.clone();
+
+        tokio::select! {
+            result = init_future => {
+                result
+            },
+            _ = timeout_future => {
+                statsig_runtime.spawn(
+                    "start_background_tasks",
+                    |_shutdown_notify| async move {
+                        Self::start_background_tasks(
+                            statsig_runtime_for_closure,
+                            id_lists_adapter,
+                            specs_adapter,
+                            ops_stats,
+                            background_tasks_started,
+                        ).await;
+                    }
+                )?;
+                Ok(InitializeDetails::from_timeout_failure(timeout_ms))
+            },
+        }
+    }
+
+    async fn initialize_impl_with_details(&self) -> Result<InitializeDetails, StatsigErr> {
+        let start_time = Instant::now();
+        self.spec_store.set_source(SpecsSource::Loading);
+        self.specs_adapter.inner.initialize(self.spec_store.clone());
+        let use_third_party_ua_parser = self.should_user_third_party_parser();
+
+        let mut error_message = None;
+        let mut id_list_ready = None;
+
+        let init_country_lookup = if !self.options.disable_country_lookup.unwrap_or_default() {
+            Some(self.statsig_runtime.spawn(INIT_IP_TAG, |_| async {
+                CountryLookup::load_country_lookup();
+            }))
+        } else {
+            None
+        };
+
+        let init_ua = if use_third_party_ua_parser {
+            Some(self.statsig_runtime.spawn(INIT_UA_TAG, |_| async {
+                UserAgentParser::load_parser();
+            }))
+        } else {
+            None
+        };
+
+        let init_res = match self
+            .specs_adapter
+            .inner
+            .clone()
+            .start(&self.statsig_runtime)
+            .await
+        {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                self.spec_store.set_source(SpecsSource::NoValues);
+                error_message = Some(format!("Failed to start specs adapter: {e}"));
+                Err(e)
+            }
+        };
+
+        if let Some(adapter) = &self.id_lists_adapter.inner {
+            match adapter
+                .clone()
+                .start(&self.statsig_runtime, self.spec_store.clone())
+                .await
+            {
+                Ok(()) => {
+                    id_list_ready = Some(true);
+                }
+                Err(e) => {
+                    id_list_ready = Some(false);
+                    error_message.get_or_insert_with(|| format!("Failed to sync ID lists: {e}"));
+                }
+            }
+            if let Err(e) = adapter
+                .clone()
+                .schedule_background_sync(&self.statsig_runtime)
+                .await
+            {
+                log_w!(TAG, "Failed to schedule id_list background job {}", e);
+            }
+        }
+
+        if let Err(e) = self
+            .event_logging_adapter
+            .clone()
+            .start(&self.statsig_runtime)
+            .await
+        {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                StatsigErr::UnstartedAdapter(format!("Failed to start event logging adapter: {e}"))
+            );
+        }
+
+        let spec_info = self.spec_store.get_current_specs_info();
+        let duration = start_time.elapsed().as_millis() as u64;
+
+        self.set_default_environment_from_server();
+
+        if self.options.wait_for_country_lookup_init.unwrap_or(false) {
+            match init_country_lookup {
+                Some(Ok(task_id)) => {
+                    let _ = self
+                        .statsig_runtime
+                        .await_join_handle(INIT_IP_TAG, &task_id)
+                        .await;
+                }
+                Some(Err(e)) => {
+                    log_error_to_statsig_and_console!(
+                        self.ops_stats.clone(),
+                        TAG,
+                        StatsigErr::UnstartedAdapter(format!(
+                            "Failed to spawn country lookup task: {e}"
+                        ))
+                    );
+                }
+                _ => {}
+            }
+        }
+        if self.options.wait_for_user_agent_init.unwrap_or(false) {
+            match init_ua {
+                Some(Ok(task_id)) => {
+                    let _ = self
+                        .statsig_runtime
+                        .await_join_handle(INIT_UA_TAG, &task_id)
+                        .await;
+                }
+                Some(Err(e)) => {
+                    log_error_to_statsig_and_console!(
+                        self.ops_stats.clone(),
+                        TAG,
+                        StatsigErr::UnstartedAdapter(format!(
+                            "Failed to spawn user agent parser task: {e}"
+                        ))
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        let error = init_res.clone().err();
+
+        let success = Self::start_background_tasks(
+            self.statsig_runtime.clone(),
+            self.id_lists_adapter.inner.clone(),
+            self.specs_adapter.inner.clone(),
+            self.ops_stats.clone(),
+            self.background_tasks_started.clone(),
+        )
+        .await;
+
+        Ok(InitializeDetails::new(
+            success,
+            duration,
+            spec_info,
+            id_list_ready,
+            error,
+        ))
+    }
+
+    fn log_init_details(&self, init_details: &Result<InitializeDetails, StatsigErr>) {
+        match init_details {
+            Ok(details) => {
+                self.log_init_finish(
+                    details.init_success,
+                    &None,
+                    &details.duration_ms,
+                    &self.spec_store.get_current_specs_info(),
+                );
+                if let Some(failure) = &details.failure_details {
+                    log_error_to_statsig_and_console!(
+                        self.ops_stats,
+                        TAG,
+                        StatsigErr::InitializationError(failure.reason.clone())
+                    );
+                }
+            }
+            Err(err) => {
+                // we store errors on init details so we should never return error and thus do not need to log
+                log_w!(TAG, "Initialization error: {:?}", err);
+            }
+        }
+    }
+
     fn create_standard_eval_context<'a>(
         &'a self,
         user_internal: &'a StatsigUserInternal,
@@ -1983,6 +1885,7 @@ impl Statsig {
                 spec_store_data.values.time,
                 spec_store_data.time_received_at,
                 reason,
+                ctx.result.version,
             ));
         }
 
@@ -2163,7 +2066,7 @@ impl Statsig {
         &self,
         success: bool,
         error_message: &Option<String>,
-        duration: &f64,
+        duration_ms: &u64,
         specs_info: &SpecsInfo,
     ) {
         let is_store_populated = specs_info.source != SpecsSource::NoValues;
@@ -2172,7 +2075,7 @@ impl Statsig {
         let event = ObservabilityEvent::new_event(
             MetricType::Dist,
             "initialization".to_string(),
-            *duration,
+            *duration_ms as f64,
             Some(HashMap::from([
                 ("success".to_owned(), success.to_string()),
                 ("source".to_owned(), source_str.clone()),

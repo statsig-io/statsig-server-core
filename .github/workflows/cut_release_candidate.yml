@@ -3,7 +3,7 @@ name: Cut Release Candidate
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 1 * * 2' # Mon 6pm PDT
+    - cron: '0 0 * * 2' #5pm PDT Monday
 
 env:
   # GH Octokit (Kong App)
@@ -40,7 +40,7 @@ jobs:
             git fetch origin rc
             git fetch origin main
             git checkout rc 
-            git merge origin/main -X theirs -m "[automated] Sync rc with main"
+            git merge origin/main -X theirs -m "[automated] sync rc with main"
             git push 
             ./tore merge-to-main
 

@@ -6,11 +6,13 @@ use crate::{
     function_based_event_logging_adapter_c::FunctionBasedEventLoggingAdapterC,
     function_based_specs_adapter_c::FunctionBasedSpecsAdapterC,
     observability_client_c::ObservabilityClientC,
+    persistent_storage_c::PersistentStorageC,
 };
 use statsig_rust::{
-    data_store_interface::DataStoreTrait, log_e, output_logger::LogLevel, DynamicValue,
-    EventLoggingAdapter, InstanceRegistry, ObservabilityClient, SpecsAdapter,
-    StatsigLocalFileEventLoggingAdapter, StatsigLocalFileSpecsAdapter, StatsigOptions,
+    data_store_interface::DataStoreTrait, log_e, networking::proxy_config::ProxyConfig,
+    output_logger::LogLevel, DynamicValue, EventLoggingAdapter, InstanceRegistry,
+    ObservabilityClient, PersistentStorage, SpecsAdapter, StatsigLocalFileEventLoggingAdapter,
+    StatsigLocalFileSpecsAdapter, StatsigOptions,
 };
 use std::collections::HashMap;
 use std::sync::Weak;
@@ -24,6 +26,7 @@ pub struct StatsigOptionsData {
     disable_all_logging: Option<bool>,
     disable_country_lookup: Option<bool>,
     disable_network: Option<bool>,
+    disable_disk_access: Option<bool>,
     disable_user_agent_parsing: Option<bool>,
     enable_id_lists: Option<bool>,
     environment: Option<String>,
@@ -38,6 +41,11 @@ pub struct StatsigOptionsData {
     log_event_url: Option<String>,
     observability_client_ref: Option<u64>,
     output_log_level: Option<String>,
+    persistent_storage_ref: Option<u64>,
+    proxy_host: Option<String>,
+    proxy_port: Option<u16>,
+    proxy_auth: Option<String>,
+    proxy_protocol: Option<String>,
     service_name: Option<String>,
     specs_adapter_ref: Option<u64>,
     specs_sync_interval_ms: Option<u32>,
@@ -64,6 +72,11 @@ impl From<StatsigOptionsData> for StatsigOptions {
             None => None,
         };
 
+        let persistent_storage = match data.persistent_storage_ref {
+            Some(ps_ref) => try_get_persistent_storage(ps_ref),
+            None => None,
+        };
+
         let specs_adapter = match data.specs_adapter_ref {
             Some(sa_ref) => try_get_specs_adapter(sa_ref),
             None => None,
@@ -80,18 +93,26 @@ impl From<StatsigOptionsData> for StatsigOptions {
         let event_logging_max_pending_batch_queue_size =
             data.event_logging_max_pending_batch_queue_size;
 
+        let proxy_config = create_proxy_config(
+            data.proxy_host,
+            data.proxy_port,
+            data.proxy_auth,
+            data.proxy_protocol,
+        );
+
         // please keep sorted alphabetically
         Self {
             config_compression_mode,
             data_store,
             disable_all_logging: data.disable_all_logging,
+            disable_disk_access: data.disable_disk_access,
             disable_country_lookup: data.disable_country_lookup,
             disable_network: data.disable_network,
             enable_id_lists: data.enable_id_lists,
             environment: data.environment,
             event_logging_adapter,
             #[allow(deprecated)]
-            event_logging_flush_interval_ms: None,
+            event_logging_flush_interval_ms: None, // Deprecated
             event_logging_max_pending_batch_queue_size,
             event_logging_max_queue_size: data.event_logging_max_queue_size,
             fallback_to_statsig_api: data.fallback_to_statsig_api,
@@ -104,9 +125,9 @@ impl From<StatsigOptionsData> for StatsigOptions {
             observability_client,
             output_log_level,
             output_logger_provider: None, // todo: add support for output logger provider
-            override_adapter: None,
-            persistent_storage: None,
-            proxy_config: None, // todo: add support for proxy config
+            override_adapter: None,       // todo: add support for override adapter
+            persistent_storage,
+            proxy_config,
             service_name: data.service_name,
             spec_adapters_config: None, // todo: add support for spec adapters config
             specs_adapter,
@@ -170,6 +191,11 @@ pub extern "C" fn statsig_options_create(
     init_timeout_ms: c_int,
     fallback_to_statsig_api: SafeOptBool,
     use_third_party_ua_parser: SafeOptBool,
+    proxy_host: *const c_char,
+    proxy_port: c_int,
+    proxy_auth: *const c_char,
+    proxy_protocol: *const c_char,
+    persistent_storage_ref: u64,
 ) -> u64 {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
@@ -190,9 +216,21 @@ pub extern "C" fn statsig_options_create(
     let event_logging_adapter = try_get_event_logging_adapter(event_logging_adapter_ref);
     let data_store = try_get_data_store(data_store_ref);
     let observability_client = try_get_observability_client(observability_client_ref);
+    let persistent_storage = try_get_persistent_storage(persistent_storage_ref);
 
     let output_log_level =
         c_char_to_string(output_log_level).map(|level| LogLevel::from(level.as_str()));
+
+    let proxy_config = create_proxy_config(
+        c_char_to_string(proxy_host),
+        if proxy_port > 0 {
+            Some(proxy_port as u16)
+        } else {
+            None
+        },
+        c_char_to_string(proxy_auth),
+        c_char_to_string(proxy_protocol),
+    );
 
     InstanceRegistry::register(StatsigOptions {
         specs_url,
@@ -214,9 +252,11 @@ pub extern "C" fn statsig_options_create(
         global_custom_fields,
         data_store,
         observability_client,
+        persistent_storage,
         init_timeout_ms,
         fallback_to_statsig_api: extract_opt_bool(fallback_to_statsig_api),
         use_third_party_ua_parser: extract_opt_bool(use_third_party_ua_parser),
+        proxy_config,
         ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {
@@ -284,4 +324,31 @@ fn try_get_data_store(data_store_ref: u64) -> Option<Arc<dyn DataStoreTrait>> {
     }
 
     None
+}
+
+fn try_get_persistent_storage(persistent_storage_ref: u64) -> Option<Arc<dyn PersistentStorage>> {
+    let raw = InstanceRegistry::get_raw(&persistent_storage_ref)?;
+
+    if let Ok(persistent_storage) = raw.clone().downcast::<PersistentStorageC>() {
+        return Some(persistent_storage);
+    }
+
+    None
+}
+
+fn create_proxy_config(
+    proxy_host: Option<String>,
+    proxy_port: Option<u16>,
+    proxy_auth: Option<String>,
+    proxy_protocol: Option<String>,
+) -> Option<ProxyConfig> {
+    // If no host is provided, no proxy config
+    proxy_host.as_ref()?;
+
+    Some(ProxyConfig {
+        proxy_host,
+        proxy_port,
+        proxy_auth,
+        proxy_protocol,
+    })
 }

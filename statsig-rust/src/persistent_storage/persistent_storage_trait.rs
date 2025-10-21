@@ -103,6 +103,7 @@ pub fn make_layer_from_sticky_value(
         reason: "Persisted".to_owned(),
         lcut: sticky_value.time,
         received_at: Some(Utc::now().timestamp_millis() as u64),
+        version: sticky_value.config_version,
     };
 
     make_layer(
@@ -157,6 +158,7 @@ pub fn make_experiment_from_sticky_value(
         reason: "Persisted".to_owned(),
         lcut: sticky_value.time,
         received_at: Some(Utc::now().timestamp_millis() as u64),
+        version: sticky_value.config_version,
     };
     Experiment {
         name: name.unperformant_to_string(),

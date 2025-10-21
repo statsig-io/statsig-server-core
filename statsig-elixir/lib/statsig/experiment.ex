@@ -16,15 +16,6 @@ defmodule Statsig.Experiment do
           rule_id: String.t(),
           id_type: String.t(),
           group_name: String.t() | nil,
-          value: String.t()
+          value: %{optional(String.t()) => any()}
         }
-
-  def get_param_value(experiment, param_name) do
-    config = Jason.decode!(experiment.value)
-
-    case config do
-      %{^param_name => value} -> value
-      _ -> nil
-    end
-  end
 end

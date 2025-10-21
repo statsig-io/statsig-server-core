@@ -4,24 +4,32 @@ import (
 	"encoding/json"
 )
 
+// ------------------------------------------------------------------------------------- [ Evaluation Details ]
+
+type EvaluationDetails struct {
+	ReceivedAt uint64 `json:"received_at"`
+	LCUT       uint64 `json:"lcut"`
+	Reason     string `json:"reason"`
+}
+
 // ------------------------------------------------------------------------------------- [ Feature Gate ]
 
 type FeatureGate struct {
-	Name   string `json:"name"`
-	Value  bool   `json:"value"`
-	RuleID string `json:"rule_id"`
-	// EvaluationDetails EvaluationDetails `json:"details"`
-	IDType string `json:"id_type"`
+	Name              string            `json:"name"`
+	Value             bool              `json:"value"`
+	RuleID            string            `json:"rule_id"`
+	EvaluationDetails EvaluationDetails `json:"details"`
+	IDType            string            `json:"id_type"`
 }
 
 // ------------------------------------------------------------------------------------- [ Dynamic Config ]
 
 type DynamicConfig struct {
-	Name   string         `json:"name"`
-	Value  map[string]any `json:"value"`
-	RuleID string         `json:"rule_id"`
-	// EvaluationDetails EvaluationDetails      `json:"details"`
-	IDType string `json:"id_type"`
+	Name              string            `json:"name"`
+	Value             map[string]any    `json:"value"`
+	RuleID            string            `json:"rule_id"`
+	EvaluationDetails EvaluationDetails `json:"details"`
+	IDType            string            `json:"id_type"`
 }
 
 func (d *DynamicConfig) GetString(key string, fallback string) string {
@@ -47,11 +55,12 @@ func (d *DynamicConfig) GetMap(key string, fallback map[string]any) map[string]a
 // ------------------------------------------------------------------------------------- [ Experiment ]
 
 type Experiment struct {
-	Name      string         `json:"name"`
-	Value     map[string]any `json:"value"`
-	RuleID    string         `json:"rule_id"`
-	IDType    string         `json:"id_type"`
-	GroupName string         `json:"group_name"`
+	Name              string            `json:"name"`
+	Value             map[string]any    `json:"value"`
+	RuleID            string            `json:"rule_id"`
+	IDType            string            `json:"id_type"`
+	GroupName         *string           `json:"group_name,omitempty"`
+	EvaluationDetails EvaluationDetails `json:"details"`
 }
 
 func (e *Experiment) GetString(key string, fallback string) string {
@@ -77,12 +86,12 @@ func (e *Experiment) GetMap(key string, fallback map[string]any) map[string]any 
 // ------------------------------------------------------------------------------------- [ Layer ]
 
 type Layer struct {
-	Name                    string `json:"name"`
-	RuleID                  string `json:"rule_id"`
-	IDType                  string `json:"id_type"`
-	GroupName               string `json:"group_name"`
-	AllocatedExperimentName string `json:"allocated_experiment_name"`
-	// EvaluationDetails EvaluationDetails `json:"evaluation_details"`
+	Name                    string            `json:"name"`
+	RuleID                  string            `json:"rule_id"`
+	IDType                  string            `json:"id_type"`
+	GroupName               *string           `json:"group_name,omitempty"`
+	AllocatedExperimentName *string           `json:"allocated_experiment_name,omitempty"`
+	EvaluationDetails       EvaluationDetails `json:"details"`
 
 	value      map[string]any
 	rawJson    string
@@ -111,12 +120,13 @@ func (l *Layer) GetMap(key string, fallback map[string]any) map[string]any {
 
 func (l *Layer) UnmarshalJSON(b []byte) error {
 	tmp := struct {
-		Name                    string         `json:"name"`
-		RuleID                  string         `json:"rule_id"`
-		IDType                  string         `json:"id_type"`
-		Value                   map[string]any `json:"__value"`
-		GroupName               string         `json:"group_name"`
-		AllocatedExperimentName string         `json:"allocated_experiment_name"`
+		Name                    string            `json:"name"`
+		RuleID                  string            `json:"rule_id"`
+		IDType                  string            `json:"id_type"`
+		Value                   map[string]any    `json:"__value"`
+		GroupName               *string           `json:"group_name,omitempty"`
+		AllocatedExperimentName *string           `json:"allocated_experiment_name,omitempty"`
+		EvaluationDetails       EvaluationDetails `json:"details"`
 	}{}
 
 	if err := json.Unmarshal(b, &tmp); err != nil {
@@ -129,6 +139,7 @@ func (l *Layer) UnmarshalJSON(b []byte) error {
 	l.value = tmp.Value
 	l.GroupName = tmp.GroupName
 	l.AllocatedExperimentName = tmp.AllocatedExperimentName
+	l.EvaluationDetails = tmp.EvaluationDetails
 	l.rawJson = string(b)
 	return nil
 }

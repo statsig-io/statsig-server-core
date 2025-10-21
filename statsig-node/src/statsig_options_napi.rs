@@ -1,6 +1,7 @@
 use napi::bindgen_prelude::Either4;
 use napi_derive::napi;
 use serde_json::Value;
+use statsig_rust::PersistentStorage;
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
@@ -179,6 +180,9 @@ impl StatsigOptions {
             disable_country_lookup: self.disable_country_lookup,
             proxy_config: self.proxy_config.map(|p| p.into()),
             use_third_party_ua_parser: self.use_third_party_ua_parser,
+            persistent_storage: self
+                .persistent_storage
+                .map(|s| Arc::new(s) as Arc<dyn PersistentStorage>),
             ..Default::default()
         };
 

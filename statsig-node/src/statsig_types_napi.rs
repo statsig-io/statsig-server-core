@@ -20,6 +20,7 @@ pub struct EvaluationDetails {
     pub reason: String,
     pub lcut: Option<i64>,
     pub received_at: Option<i64>,
+    pub version: Option<u32>,
 }
 
 impl From<EvaluationDetailsActual> for EvaluationDetails {
@@ -28,6 +29,7 @@ impl From<EvaluationDetailsActual> for EvaluationDetails {
             reason: value.reason,
             lcut: value.lcut.map(|lcut| lcut as i64),
             received_at: value.received_at.map(|t| t as i64),
+            version: value.version,
         }
     }
 }

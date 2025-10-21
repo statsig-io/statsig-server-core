@@ -3,6 +3,8 @@ package com.statsig;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.TypeReference;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -127,6 +129,9 @@ public class Statsig {
     return future;
   }
 
+  // -------------------------
+  // ----- Feature Gate ------
+  // -------------------------
   public boolean checkGate(StatsigUser user, String gateName) {
     return StatsigJNI.statsigCheckGate(ref, user.getRef(), gateName, null);
   }
@@ -144,6 +149,35 @@ public class Statsig {
     return JSON.parseObject(resultJSON, String[].class);
   }
 
+  public List<String> getFeatureGateList() {
+    String resultJSON = StatsigJNI.statsigGetFeatureGateList(ref);
+    if (resultJSON == null || resultJSON.isEmpty()) {
+      return new ArrayList<>();
+    }
+    return JSON.parseArray(resultJSON, String.class);
+  }
+
+  public FeatureGate getFeatureGate(StatsigUser user, String gateName) {
+    String gateJson = StatsigJNI.statsigGetFeatureGate(ref, user.getRef(), gateName, null);
+    FeatureGate gate = JSON.parseObject(gateJson, FeatureGate.class);
+    if (gate != null) {
+      gate.setRawJson(gateJson);
+    }
+    return gate;
+  }
+
+  public FeatureGate getFeatureGate(StatsigUser user, String gateName, CheckGateOptions options) {
+    String gateJson = StatsigJNI.statsigGetFeatureGate(ref, user.getRef(), gateName, options);
+    FeatureGate gate = JSON.parseObject(gateJson, FeatureGate.class);
+    if (gate != null) {
+      gate.setRawJson(gateJson);
+    }
+    return gate;
+  }
+
+  // -------------------------
+  // ----- Get Experiment ----
+  // -------------------------
   public Experiment getExperiment(StatsigUser user, String experimentName) {
     String experJson = StatsigJNI.statsigGetExperiment(ref, user.getRef(), experimentName, null);
     Experiment experiment = Experiment.fromJson(experJson);
@@ -172,6 +206,10 @@ public class Statsig {
     return JSON.parseObject(resultJSON, String[].class);
   }
 
+  // -------------------------
+  // - Get Dynamic Config ----
+  // -------------------------
+
   public DynamicConfig getDynamicConfig(StatsigUser user, String configName) {
     String configJson = StatsigJNI.statsigGetDynamicConfig(ref, user.getRef(), configName, null);
     DynamicConfig config = JSON.parseObject(configJson, DynamicConfig.class);
@@ -199,6 +237,10 @@ public class Statsig {
     String resultJSON = StatsigJNI.statsigGetFieldsNeededForDynamicConfig(ref, configName);
     return JSON.parseObject(resultJSON, String[].class);
   }
+
+  // -------------------------
+  // ----- Get Layer ---------
+  // -------------------------
 
   public Layer getLayer(StatsigUser user, String layerName) {
     String layerJson = StatsigJNI.statsigGetLayer(ref, user.getRef(), layerName, null);
@@ -253,24 +295,6 @@ public class Statsig {
   public String[] getFieldsNeededForLayer(String layerName) {
     String resultJSON = StatsigJNI.statsigGetFieldsNeededForLayer(ref, layerName);
     return JSON.parseObject(resultJSON, String[].class);
-  }
-
-  public FeatureGate getFeatureGate(StatsigUser user, String gateName) {
-    String gateJson = StatsigJNI.statsigGetFeatureGate(ref, user.getRef(), gateName, null);
-    FeatureGate gate = JSON.parseObject(gateJson, FeatureGate.class);
-    if (gate != null) {
-      gate.setRawJson(gateJson);
-    }
-    return gate;
-  }
-
-  public FeatureGate getFeatureGate(StatsigUser user, String gateName, CheckGateOptions options) {
-    String gateJson = StatsigJNI.statsigGetFeatureGate(ref, user.getRef(), gateName, options);
-    FeatureGate gate = JSON.parseObject(gateJson, FeatureGate.class);
-    if (gate != null) {
-      gate.setRawJson(gateJson);
-    }
-    return gate;
   }
 
   public CompletableFuture<InitializeDetails> initializeWithDetails() {

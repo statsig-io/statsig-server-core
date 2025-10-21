@@ -66,6 +66,7 @@ pub struct StatsigOptions {
     pub proxy_config: Option<ProxyConfig>,
 
     pub use_third_party_ua_parser: Option<bool>,
+    pub disable_disk_access: Option<bool>,
 }
 
 impl StatsigOptions {

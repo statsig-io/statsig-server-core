@@ -91,7 +91,7 @@ func TestObservabilityClientUsage(t *testing.T) {
 		WithOutputLogLevel("ERROR").
 		Build()
 
-	statsigInstance, err := statsig.NewStatsig("secret-key", *options)
+	statsigInstance, err := statsig.NewStatsig("secret-57opW4tch16MeM4rc05", *options)
 	if err != nil {
 		t.Fatalf("Failed to create Statsig instance: %v", err)
 	}

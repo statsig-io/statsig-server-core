@@ -14,7 +14,8 @@
       },
       "rules": [],
       "idType": "userID",
-      "entity": "dynamic_config"
+      "entity": "dynamic_config",
+      "version": 9
     }
   },
   "feature_gates": {},

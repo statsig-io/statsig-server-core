@@ -25,6 +25,13 @@ namespace Statsig
             var environmentBytes = builder.environment != null ? Encoding.UTF8.GetBytes(builder.environment) : null;
             var idListsURLBytes = builder.idListsURL != null ? Encoding.UTF8.GetBytes(builder.idListsURL) : null;
             var globalCustomFieldsBytes = globalCustomFieldsJson != null ? Encoding.UTF8.GetBytes(globalCustomFieldsJson) : null;
+
+            // Proxy config
+            var proxyHostBytes = builder.proxyConfig?.ProxyHost != null ? Encoding.UTF8.GetBytes(builder.proxyConfig.ProxyHost) : null;
+            var proxyAuthBytes = builder.proxyConfig?.ProxyAuth != null ? Encoding.UTF8.GetBytes(builder.proxyConfig.ProxyAuth) : null;
+            var proxyProtocolBytes = builder.proxyConfig?.ProxyProtocol != null ? Encoding.UTF8.GetBytes(builder.proxyConfig.ProxyProtocol) : null;
+            var proxyPort = builder.proxyConfig?.ProxyPort ?? 0;
+
             unsafe
             {
                 fixed (byte* specsURLPtr = specsURLBytes)
@@ -32,6 +39,9 @@ namespace Statsig
                 fixed (byte* environmentPtr = environmentBytes)
                 fixed (byte* idListsURLPtr = idListsURLBytes)
                 fixed (byte* globalCustomFieldsPtr = globalCustomFieldsBytes)
+                fixed (byte* proxyHostPtr = proxyHostBytes)
+                fixed (byte* proxyAuthPtr = proxyAuthBytes)
+                fixed (byte* proxyProtocolPtr = proxyProtocolBytes)
                 {
                     _ref = StatsigFFI.statsig_options_create(
                         specsURLPtr,
@@ -56,7 +66,12 @@ namespace Statsig
                         0, // dataStoreRef - not implemented in .NET
                         builder.initTimeoutMs,
                         builder.fallbackToStatsigApi ? 1 : 0,
-                        builder.useThirdPartyUAParser ? 1 : 0
+                        builder.useThirdPartyUAParser ? 1 : 0,
+                        proxyHostPtr,
+                        proxyPort,
+                        proxyAuthPtr,
+                        proxyProtocolPtr,
+                        0 // persistent storage ref - not implemented in .NET
                     );
                 }
             }
@@ -99,6 +114,7 @@ namespace Statsig
         internal bool fallbackToStatsigApi = false;
         internal bool useThirdPartyUAParser = false;
         internal Dictionary<string, object>? globalCustomFields;
+        internal ProxyConfig? proxyConfig;
 
         public StatsigOptionsBuilder SetSpecsURL(string specsURL)
         {
@@ -195,6 +211,13 @@ namespace Statsig
             this.globalCustomFields = globalCustomFields;
             return this;
         }
+
+        public StatsigOptionsBuilder SetProxyConfig(ProxyConfig proxyConfig)
+        {
+            this.proxyConfig = proxyConfig;
+            return this;
+        }
+
         public StatsigOptions Build()
         {
             return new StatsigOptions(this);

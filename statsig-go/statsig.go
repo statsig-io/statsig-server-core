@@ -58,7 +58,6 @@ func (s *Statsig) Initialize() {
 
 func (s *Statsig) Shutdown() {
 	GetFFI().statsig_shutdown_blocking(s.ref.Load())
-	s.release()
 }
 
 func (s *Statsig) FlushEvents() {
