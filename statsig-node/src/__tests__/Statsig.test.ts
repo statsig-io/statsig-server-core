@@ -242,6 +242,106 @@ describe('Statsig', () => {
       }).not.toThrow();
     });
 
+    it('DynamicConfig supports get and getValue methods', async () => {
+      const user = StatsigUser.withUserID('a-user');
+      const config = statsig.getDynamicConfig(user, 'operating_system_config');
+
+      // String values
+      expect(config.get('str', 'err')).toBe('hello');
+      expect(config.getValue('str', 'err')).toBe('hello');
+
+      // Number values
+      expect(config.get('num', 0)).toBe(13);
+      expect(config.getValue('num', 0)).toBe(13);
+
+      // Boolean values
+      expect(config.get('bool', false)).toBe(true);
+      expect(config.getValue('bool', false)).toBe(true);
+
+      // Array values
+      expect(config.get('arr', [])).toEqual(['hi', 'there']);
+      expect(config.getValue('arr', [])).toEqual(['hi', 'there']);
+
+      // Object values
+      expect(config.get('obj', {})).toEqual({ a: 'bc' });
+      expect(config.getValue('obj', {})).toEqual({ a: 'bc' });
+
+      // Missing keys - both should return fallback
+      expect(config.get('missing_key', 'fallback')).toBe('fallback');
+      expect(config.getValue('missing_key', 'fallback')).toBe('fallback');
+
+      // Type mismatch - get returns fallback, getValue returns actual value
+      expect(config.get('bool', 'fallback')).toBe('fallback');
+      expect(config.getValue('bool', 'fallback')).toBe(true);
+
+      expect(config.get('num', 'fallback')).toBe('fallback');
+      expect(config.getValue('num', 'fallback')).toBe(13);
+
+      expect(config.get('str', 123)).toBe(123);
+      expect(config.getValue('str', 123)).toBe('hello');
+
+      expect(config.get('arr', 'fallback')).toBe('fallback');
+      expect(config.getValue('arr', 'fallback')).toEqual(['hi', 'there']);
+
+      expect(config.get('arr', ['a', 'b', 'c'])).toEqual(['hi', 'there']);
+      expect(config.getValue('arr', ['a', 'b', 'c'])).toEqual(['hi', 'there']);
+      
+      expect(config.get('arr', [1, 'b', 3])).toEqual(['hi', 'there']);
+      expect(config.getValue('arr', [1, 'b', 3])).toEqual(['hi', 'there']);
+
+      expect(config.get('arr', [true, false, true])).toEqual(['hi', 'there']);
+      expect(config.getValue('arr', [true, false, true])).toEqual(['hi', 'there']);
+
+      expect(config.get('obj', 'fallback')).toBe('fallback');
+      expect(config.getValue('obj', 'fallback')).toEqual({ a: 'bc' });
+
+      expect(config.get('obj', { a: 'def' })).toEqual({ a: 'bc' });
+      expect(config.getValue('obj', { a: 'd' })).toEqual({ a: 'bc' });
+    });
+
+    it('Experiment supports get and getValue methods', async () => {
+      const user = StatsigUser.withUserID('a-user');
+      const experiment = statsig.getExperiment(user, 'exp_with_obj_and_array');
+
+      expect(experiment.get('arr_param', [true])).toEqual([true, false, true]);
+      expect(experiment.getValue('arr_param', [true])).toEqual([
+        true,
+        false,
+        true,
+      ]);
+
+      // falls back when types mismatch
+      expect(experiment.get('arr_param', {a: 'b'})).toEqual({a: 'b'});
+      expect(experiment.getValue('arr_param', ['err'])).toEqual([
+        true,
+        false,
+        true,
+      ]);
+
+      // Object param tests
+      expect(experiment.get('obj_param', { key: 'default' })).toEqual({ group: 'test' });
+      expect(experiment.getValue('obj_param', { key: 'default' })).toEqual({ group: 'test' });
+
+      expect(experiment.get('obj_param', { group: 'fallback' })).toEqual({ group: 'test' });
+      expect(experiment.get('obj_param', { group: true })).toEqual({ group: 'test' });
+      expect(experiment.get('obj_param', { group: 1 })).toEqual({ group: 'test' });
+      expect(experiment.getValue('obj_param', { group: 'fallback' })).toEqual({ group: 'test' });
+      expect(experiment.getValue('obj_param', { group: true })).toEqual({ group: 'test' });
+      expect(experiment.getValue('obj_param', { group: 1 })).toEqual({ group: 'test' });
+    });
+
+    it('Layer supports get and getValue methods', async () => {
+      const user = StatsigUser.withUserID('a-user');
+      const layer = statsig.getLayer(user, 'layer_with_many_params');
+
+      expect(layer.get('another_string', 'err')).toBe('layer_default');
+      expect(layer.getValue('another_string', 'err')).toBe('layer_default');
+
+      // falls back when types mismatch
+      expect(layer.get('another_string', 1)).toEqual(1);
+      expect(layer.getValue('another_string', 1)).toEqual("layer_default");
+    });
+
     it('should handle parameter store fallback values correctly', async () => {
       const user = StatsigUser.withUserID('a-user');
 
