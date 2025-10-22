@@ -1,6 +1,6 @@
 use statsig_rust::{
-    global_configs::GlobalConfigs, networking::ResponseData, SpecStore, SpecsSource, SpecsUpdate,
-    StatsigRuntime,
+    global_configs::GlobalConfigs, networking::ResponseData, sdk_event_emitter::SdkEventEmitter,
+    SpecStore, SpecsSource, SpecsUpdate, StatsigRuntime,
 };
 use std::fs;
 
@@ -9,6 +9,7 @@ fn create_test_spec_store(sdk_key: &str) -> SpecStore {
         sdk_key,
         sdk_key.to_string(),
         StatsigRuntime::get_runtime(),
+        std::sync::Arc::new(SdkEventEmitter::default()),
         None,
     )
 }

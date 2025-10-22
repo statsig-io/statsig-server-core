@@ -5,6 +5,7 @@ use crate::networking::ResponseData;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
+use crate::sdk_event_emitter::{SdkEvent, SdkEventEmitter};
 use crate::specs_response::spec_types::{SpecsResponseFull, SpecsResponseNoUpdates};
 use crate::utils::maybe_trim_malloc;
 use crate::{
@@ -36,6 +37,7 @@ pub struct SpecStore {
     statsig_runtime: Arc<StatsigRuntime>,
     ops_stats: Arc<OpsStatsForInstance>,
     global_configs: Arc<GlobalConfigs>,
+    event_emitter: Arc<SdkEventEmitter>,
 }
 
 impl SpecStore {
@@ -44,6 +46,7 @@ impl SpecStore {
         sdk_key: &str,
         hashed_sdk_key: String,
         statsig_runtime: Arc<StatsigRuntime>,
+        event_emitter: Arc<SdkEventEmitter>,
         data_store: Option<Arc<dyn DataStoreTrait>>,
     ) -> SpecStore {
         SpecStore {
@@ -56,6 +59,7 @@ impl SpecStore {
                 source_api: None,
                 id_lists: HashMap::new(),
             })),
+            event_emitter,
             data_store,
             statsig_runtime,
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
@@ -189,6 +193,9 @@ impl SpecStore {
 
                 data.time_received_at = Some(now);
                 data.source_api = source_api;
+
+                self.emit_specs_updated_sdk_event(&data.source, &data.source_api, &data.values);
+
                 Ok((prev_source, prev_lcut, data.values.time))
             }
             None => {
@@ -198,6 +205,19 @@ impl SpecStore {
                 ))
             }
         }
+    }
+
+    fn emit_specs_updated_sdk_event(
+        &self,
+        source: &SpecsSource,
+        source_api: &Option<String>,
+        values: &SpecsResponseFull,
+    ) {
+        self.event_emitter.emit(SdkEvent::SpecsUpdated {
+            source,
+            source_api,
+            values,
+        });
     }
 
     fn ops_stats_log_no_update(&self, source: SpecsSource, source_api: Option<String>) {

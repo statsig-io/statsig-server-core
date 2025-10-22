@@ -4,6 +4,17 @@ import * as path from 'node:path';
 import { Statsig, StatsigOptions, StatsigUser } from '../../build/index.js';
 import { MockScrapi } from './MockScrapi';
 
+function createStatsigInstance(scrapi: MockScrapi) {
+  const specsUrl = scrapi.getUrlForPath('/v2/download_config_specs');
+  const logEventUrl = scrapi.getUrlForPath('/v1/log_event');
+  const options: StatsigOptions = {
+    specsUrl,
+    logEventUrl,
+  };
+
+  return new Statsig('secret-123', options);
+}
+
 describe('SdkEventEmitterUsage', () => {
   const user = StatsigUser.withUserID('a-user');
 
@@ -43,19 +54,10 @@ describe('SdkEventEmitterUsage', () => {
       method: 'POST',
     });
 
-    const specsUrl = scrapi.getUrlForPath('/v2/download_config_specs');
-    const logEventUrl = scrapi.getUrlForPath('/v1/log_event');
-    const options: StatsigOptions = {
-      specsUrl,
-      logEventUrl,
-    };
-
-    statsig = new Statsig('secret-123', options);
+    statsig = createStatsigInstance(scrapi);
     await statsig.initialize();
 
-    statsig.subscribe('*', (event) => {
-      loggedEvents.push(event);
-    });
+    statsig.subscribe('*', (event) => loggedEvents.push(event));
   });
 
   beforeEach(() => {
@@ -163,5 +165,24 @@ describe('SdkEventEmitterUsage', () => {
         }),
       }),
     });
+  });
+
+  it('emits specs updated events for initialize', async () => {
+    const anotherStatsig = createStatsigInstance(scrapi);
+
+    const events: any[] = [];
+    anotherStatsig.subscribe('specs_updated', (event) => events.push(event));
+    await anotherStatsig.initialize();
+
+    expect(events).toEqual([
+      {
+        event_name: 'specs_updated',
+        source: 'Network',
+        source_api: expect.stringContaining('http://localhost'),
+        values: expect.objectContaining({
+          time: expect.any(Number),
+        }),
+      },
+    ]);
   });
 });
