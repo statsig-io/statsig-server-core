@@ -6,7 +6,8 @@ export declare class DynamicConfig {
   ruleID: string
   idType: string
   details: EvaluationDetails
-  getValue(param_name: string, fallback: boolean | number | string | object | Array<any> | null): any
+  getValue(paramName: string, fallback: boolean | number | string | object | Array<any> | null): any
+  get<T>(paramName: string, fallback: T): T
   getRuleId(): string
   getIdType(): string
   getEvaluationDetails(): EvaluationDetails
@@ -21,7 +22,8 @@ export declare class Experiment {
   idType: string
   groupName?: string
   details: EvaluationDetails
-  getValue(param_name: string, fallback: boolean | number | string | object | Array<any> | null): any
+  getValue(paramName: string, fallback: boolean | number | string | object | Array<any> | null): any
+  get<T>(paramName: string, fallback: T): T
   getRuleId(): string
   getIdType(): string
   getGroupName(): string | null
@@ -37,7 +39,8 @@ export declare class Layer {
   allocatedExperimentName?: string
   value: Record<string, any>
   details: EvaluationDetails
-  getValue(param_name: string, fallback: boolean | number | string | object | Array<any> | null): any
+  getValue(paramName: string, fallback: boolean | number | string | object | Array<any> | null): any
+  get<T>(paramName: string, fallback: T): T
   getRuleId(): string
   getGroupName(): string | null
   getEvaluationDetails(): EvaluationDetails
@@ -166,6 +169,7 @@ export interface EvaluationDetails {
   reason: string
   lcut?: number
   receivedAt?: number
+  version?: number
 }
 
 export interface ExperimentEvaluationOptions {

@@ -47,6 +47,10 @@ impl DynamicConfig {
             None => None,
         }
     }
+
+    pub fn get_typed_opt(&self, param_name: &str, fallback: Value) -> Value {
+        extract_matching_type(&self.value, param_name, &fallback).unwrap_or(fallback)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -69,6 +73,10 @@ impl Experiment {
             Some(value) => from_value(value.clone()).ok(),
             None => None,
         }
+    }
+
+    pub fn get_typed_opt(&self, param_name: &str, fallback: Value) -> Value {
+        extract_matching_type(&self.value, param_name, &fallback).unwrap_or(fallback)
     }
 }
 
@@ -107,6 +115,16 @@ impl Layer {
                 Some(value)
             }
             Err(_) => None,
+        }
+    }
+
+    pub fn get_typed_opt(&self, param_name: &str, fallback: Value) -> Value {
+        match extract_matching_type(&self.__value, param_name, &fallback) {
+            Some(value) => {
+                self.log_param_exposure(param_name);
+                value
+            }
+            None => fallback,
         }
     }
 
@@ -304,4 +322,21 @@ impl_common_get_methods!(Layer);
 
 pub enum OverrideAdapterType {
     LocalOverride,
+}
+
+fn extract_matching_type(
+    value: &HashMap<String, Value>,
+    param_name: &str,
+    fallback: &Value,
+) -> Option<Value> {
+    let found = value.get(param_name)?;
+
+    match (fallback, found) {
+        (Value::Bool(_), Value::Bool(_)) => Some(found.clone()),
+        (Value::Number(_), Value::Number(_)) => Some(found.clone()),
+        (Value::String(_), Value::String(_)) => Some(found.clone()),
+        (Value::Array(_), Value::Array(_)) => Some(found.clone()),
+        (Value::Object(_), Value::Object(_)) => Some(found.clone()),
+        _ => None,
+    }
 }
