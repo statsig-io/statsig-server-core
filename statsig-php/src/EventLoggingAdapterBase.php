@@ -10,6 +10,7 @@ abstract class EventLoggingAdapterBase
     {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->function_based_event_logging_adapter_create(
+            "php",
             [$this, 'start'],
             fn($request) => $this->logEvents(new LogEventRequest($request)),
             [$this, 'shutdown'],

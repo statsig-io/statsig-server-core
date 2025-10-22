@@ -24,7 +24,8 @@ const char *__internal__test_data_store(uint64_t data_store_ref,
 
 void free_string(char *s);
 
-uint64_t function_based_event_logging_adapter_create(void (*start_fn)(void),
+uint64_t function_based_event_logging_adapter_create(const char *bindings_language,
+                                                     void (*start_fn)(void),
                                                      SafeOptBool (*log_events_fn)(const char *request_json),
                                                      void (*shutdown_fn)(void));
 

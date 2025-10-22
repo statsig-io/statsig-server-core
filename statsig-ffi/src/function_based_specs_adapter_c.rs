@@ -10,7 +10,7 @@ use async_trait::async_trait;
 const TAG: &str = "FunctionBasedSpecsAdapterC";
 
 const THREAD_ERROR_MESSAGE: &str =
-    "FunctionBasedSpecsAdapterC must be running on the same thread as it was registered on";
+    "Attempted to run FunctionBasedSpecsAdapterC on a thread other than the one it was registered on";
 
 pub struct FunctionBasedSpecsAdapterC {
     pub setup_internal_fn: extern "C" fn(listener_ref: u64),

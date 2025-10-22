@@ -12,10 +12,23 @@ class MockEventLoggingAdapter extends EventLoggingAdapterBase
     public $shutdownCalled = false;
     public ?LogEventRequest $lastRequest = null;
 
+    public $loggedEvents = [];
+
+    public $excludeDiagnostics = false;
+
     public function logEvents(LogEventRequest $request): bool
     {
         $this->logEventsCalled = true;
         $this->lastRequest = $request;
+
+        foreach ($request->payload->events as $event) {
+            if ($this->excludeDiagnostics && $event['eventName'] === 'statsig::diagnostics') {
+                continue;
+            }
+
+            $this->loggedEvents[] = $event;
+        }
+
         return true;
     }
 
