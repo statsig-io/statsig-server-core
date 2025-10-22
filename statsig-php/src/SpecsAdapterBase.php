@@ -10,6 +10,7 @@ abstract class SpecsAdapterBase
     {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->function_based_specs_adapter_create(
+            "php",
             fn(string $listenerRef) => $this->setup(new SpecsUpdateListener($listenerRef)),
             [$this, 'start'],
             [$this, 'shutdown'],
