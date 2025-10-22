@@ -65,8 +65,6 @@ type StatsigFFI struct {
 	statsig_log_layer_param_exposure              func(uint64, string, string)
 	statsig_manually_log_layer_parameter_exposure func(uint64, uint64, string, string)
 
-	// Prompts
-	statsig_get_prompt func(uint64, uint64, string, string) string
 
 	// Overrides
 	statsig_override_gate                     func(uint64, string, bool, string)
@@ -193,8 +191,6 @@ func GetFFI() *StatsigFFI {
 		purego.RegisterLibFunc(&instance.statsig_log_layer_param_exposure, lib, "statsig_log_layer_param_exposure")
 		purego.RegisterLibFunc(&instance.statsig_manually_log_layer_parameter_exposure, lib, "statsig_manually_log_layer_parameter_exposure")
 
-		// Prompts
-		purego.RegisterLibFunc(&instance.statsig_get_prompt, lib, "statsig_get_prompt")
 
 		// Overrides
 		purego.RegisterLibFunc(&instance.statsig_override_gate, lib, "statsig_override_gate")

@@ -215,25 +215,6 @@ func (s *Statsig) ManuallyLogLayerParamExposure(user *StatsigUser, layerName str
 	GetFFI().statsig_manually_log_layer_parameter_exposure(s.ref.Load(), user.ref, layerName, paramName)
 }
 
-func (s *Statsig) GetPrompt(user *StatsigUser, layerName string, options *LayerEvaluationOptions) Layer {
-	layer := Layer{
-		Name:       layerName,
-		statsigRef: s.ref.Load(),
-	}
-
-	optionsJson, err := tryMarshalOrEmpty(options)
-	if err != nil {
-		fmt.Printf("Failed to marshal LayerEvaluationOptions: %v", err)
-		return layer
-	}
-
-	layerJson := GetFFI().statsig_get_prompt(s.ref.Load(), user.ref, layerName, optionsJson)
-	if err := json.Unmarshal([]byte(layerJson), &layer); err != nil {
-		fmt.Printf("Failed to unmarshal Layer: %v", err)
-	}
-
-	return layer
-}
 
 func (s *Statsig) release() {
 	was := s.ref.Swap(0)

@@ -139,9 +139,6 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_get_layer", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_layer(ulong statsig_ref, ulong user_ref, byte* layer_name, byte* options_json);
 
-        [DllImport(__DllName, EntryPoint = "statsig_get_prompt", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_get_prompt(ulong statsig_ref, ulong user_ref, byte* prompt_name, byte* options_json);
-
         [DllImport(__DllName, EntryPoint = "statsig_log_layer_param_exposure", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_log_layer_param_exposure(ulong statsig_ref, byte* layer_json, byte* param_name);
 

@@ -281,22 +281,6 @@ impl StatsigNapiInternal {
     }
 
     #[napi]
-    pub fn get_prompt(
-        &self,
-        user: &StatsigUser,
-        prompt_name: String,
-        options: Option<LayerEvaluationOptionsNapi>,
-    ) -> Layer {
-        self.inner
-            .get_prompt_with_options(
-                user.as_inner(),
-                &prompt_name,
-                options.map(|opts| opts.into()).unwrap_or_default(),
-            )
-            .into()
-    }
-
-    #[napi]
     pub fn get_fields_needed_for_layer(&self, layer_name: String) -> Vec<String> {
         self.inner.get_fields_needed_for_layer(layer_name.as_str())
     }

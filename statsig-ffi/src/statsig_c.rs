@@ -839,32 +839,6 @@ pub extern "C" fn statsig_get_layer(
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_get_prompt(
-    statsig_ref: u64,
-    user_ref: u64,
-    prompt_name: *const c_char,
-    options_json: *const c_char,
-) -> *mut c_char {
-    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
-    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
-    let prompt_name = unwrap_or_return!(c_char_to_string(prompt_name), null_mut());
-
-    let layer = match c_char_to_string_non_empty(options_json) {
-        Some(opts) => match serde_json::from_str::<LayerEvaluationOptions>(&opts) {
-            Ok(options) => statsig.get_prompt_with_options(&user, &prompt_name, options),
-            Err(e) => {
-                log_e!(TAG, "Failed to parse options: {}", e);
-                return null_mut();
-            }
-        },
-        None => statsig.get_prompt(&user, &prompt_name),
-    };
-
-    let result = json!(layer).to_string();
-    string_to_c_char(result)
-}
-
-#[no_mangle]
 pub extern "C" fn statsig_log_layer_param_exposure(
     statsig_ref: u64,
     layer_json: *const c_char,

@@ -20,7 +20,6 @@ namespace Statsig
         IExperiment GetExperiment(IStatsigUser user, string experimentName, EvaluationOptions? options = null);
         void ManuallyLogExperimentExposure(IStatsigUser user, string experimentName);
         ILayer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null);
-        ILayer GetPrompt(IStatsigUser user, string promptName, EvaluationOptions? options = null);
         void ManuallyLogLayerParameterExposure(IStatsigUser user, string layerName, string parameterName);
         IParameterStore GetParameterStore(IStatsigUser user, string storeName, EvaluationOptions? options = null);
         string GetClientInitializeResponse(IStatsigUser user, ClientInitResponseOptions? options = null);
@@ -323,29 +322,6 @@ namespace Statsig
             }
         }
 
-        unsafe public ILayer GetPrompt(IStatsigUser user, string promptName, EvaluationOptions? options = null)
-        {
-            int nameLen = Encoding.UTF8.GetByteCount(promptName);
-            Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
-            int written = Encoding.UTF8.GetBytes(promptName, nameBytes[..nameLen]);
-            nameBytes[written] = 0;
-
-            string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
-            byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
-
-            fixed (byte* optionsPtr = optBytes)
-            fixed (byte* promptNamePtr = nameBytes)
-            {
-                var jsonStringPtr =
-                    StatsigFFI.statsig_get_prompt(_statsigRef, user.Reference, promptNamePtr, optionsPtr);
-                var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
-                if (jsonString == null)
-                {
-                    return new Layer(string.Empty, _statsigRef, options);
-                }
-                return new Layer(jsonString, _statsigRef, options);
-            }
-        }
 
         // --------------------------
         // Parameter Store
