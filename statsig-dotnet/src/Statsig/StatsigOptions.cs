@@ -17,62 +17,45 @@ namespace Statsig
 
         public StatsigOptions(StatsigOptionsBuilder builder)
         {
-            var globalCustomFieldsJson = builder.globalCustomFields != null
-                ? JsonConvert.SerializeObject(builder.globalCustomFields)
-                : null;
-            var specsURLBytes = builder.specsURL != null ? Encoding.UTF8.GetBytes(builder.specsURL) : null;
-            var logEventURLBytes = builder.logEventURL != null ? Encoding.UTF8.GetBytes(builder.logEventURL) : null;
-            var environmentBytes = builder.environment != null ? Encoding.UTF8.GetBytes(builder.environment) : null;
-            var idListsURLBytes = builder.idListsURL != null ? Encoding.UTF8.GetBytes(builder.idListsURL) : null;
-            var globalCustomFieldsBytes = globalCustomFieldsJson != null ? Encoding.UTF8.GetBytes(globalCustomFieldsJson) : null;
+#pragma warning disable IDE0037
+            // Build options data object matching Rust's StatsigOptionsData struct
+            var optionsData = new
+            {
+                specs_url = builder.specsURL,
+                log_event_url = builder.logEventURL,
+                environment = builder.environment,
+                specs_sync_interval_ms = builder.specsSyncIntervalMs > 0 ? (int?)builder.specsSyncIntervalMs : null,
+                init_timeout_ms = builder.initTimeoutMs > 0 ? (int?)builder.initTimeoutMs : null,
+                event_logging_max_queue_size = builder.eventLoggingMaxQueueSize > 0 ? (int?)builder.eventLoggingMaxQueueSize : null,
+                disable_country_lookup = builder.disableCountryLookup ? (bool?)true : null,
+                wait_for_country_lookup_init = builder.waitForCountryLookupInit ? (bool?)true : null,
+                wait_for_user_agent_init = builder.waitForUserAgentInit ? (bool?)true : null,
+                enable_id_lists = builder.enableIDLists ? (bool?)true : null,
+                disable_network = builder.disableNetwork ? (bool?)true : null,
+                id_lists_url = builder.idListsURL,
+                id_lists_sync_interval_ms = builder.idListsSyncIntervalMs > 0 ? (int?)builder.idListsSyncIntervalMs : null,
+                disable_all_logging = builder.disableAllLogging ? (bool?)true : null,
+                global_custom_fields = builder.globalCustomFields,
+                fallback_to_statsig_api = builder.fallbackToStatsigApi ? (bool?)true : null,
+                use_third_party_ua_parser = builder.useThirdPartyUAParser ? (bool?)true : null,
+                proxy_host = builder.proxyConfig?.ProxyHost,
+                proxy_port = builder.proxyConfig?.ProxyPort,
+                proxy_auth = builder.proxyConfig?.ProxyAuth,
+                proxy_protocol = builder.proxyConfig?.ProxyProtocol
+            };
+#pragma warning disable IDE0037
 
-            // Proxy config
-            var proxyHostBytes = builder.proxyConfig?.ProxyHost != null ? Encoding.UTF8.GetBytes(builder.proxyConfig.ProxyHost) : null;
-            var proxyAuthBytes = builder.proxyConfig?.ProxyAuth != null ? Encoding.UTF8.GetBytes(builder.proxyConfig.ProxyAuth) : null;
-            var proxyProtocolBytes = builder.proxyConfig?.ProxyProtocol != null ? Encoding.UTF8.GetBytes(builder.proxyConfig.ProxyProtocol) : null;
-            var proxyPort = builder.proxyConfig?.ProxyPort ?? 0;
+            var jsonData = JsonConvert.SerializeObject(optionsData, new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            });
+            var jsonBytes = Encoding.UTF8.GetBytes(jsonData);
 
             unsafe
             {
-                fixed (byte* specsURLPtr = specsURLBytes)
-                fixed (byte* logEventURLPtr = logEventURLBytes)
-                fixed (byte* environmentPtr = environmentBytes)
-                fixed (byte* idListsURLPtr = idListsURLBytes)
-                fixed (byte* globalCustomFieldsPtr = globalCustomFieldsBytes)
-                fixed (byte* proxyHostPtr = proxyHostBytes)
-                fixed (byte* proxyAuthPtr = proxyAuthBytes)
-                fixed (byte* proxyProtocolPtr = proxyProtocolBytes)
+                fixed (byte* jsonPtr = jsonBytes)
                 {
-                    _ref = StatsigFFI.statsig_options_create(
-                        specsURLPtr,
-                        logEventURLPtr,
-                        0, // specsAdapterRef
-                        0, // eventLoggingAdapterRef
-                        environmentPtr,
-                        -1, // _eventLoggingFlushIntervalMs
-                        builder.eventLoggingMaxQueueSize,
-                        builder.specsSyncIntervalMs,
-                        null, // outputLogLevel
-                        builder.disableCountryLookup ? 1 : 0,
-                        builder.waitForCountryLookupInit ? 1 : 0,
-                        builder.waitForUserAgentInit ? 1 : 0,
-                        builder.enableIDLists ? 1 : 0,
-                        builder.disableNetwork ? 1 : 0,
-                        idListsURLPtr,
-                        builder.idListsSyncIntervalMs,
-                        builder.disableAllLogging ? 1 : 0,
-                        globalCustomFieldsPtr,
-                        0, // observability client ref - not implemented in .NET
-                        0, // dataStoreRef - not implemented in .NET
-                        builder.initTimeoutMs,
-                        builder.fallbackToStatsigApi ? 1 : 0,
-                        builder.useThirdPartyUAParser ? 1 : 0,
-                        proxyHostPtr,
-                        proxyPort,
-                        proxyAuthPtr,
-                        proxyProtocolPtr,
-                        0 // persistent storage ref - not implemented in .NET
-                    );
+                    _ref = StatsigFFI.statsig_options_create_from_data(jsonPtr);
                 }
             }
         }
