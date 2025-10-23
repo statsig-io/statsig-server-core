@@ -24,6 +24,7 @@ import { nodePublish } from './publishers/node-publisher.js';
 import { publishPhp } from './publishers/php-publisher.js';
 import { PACKAGES, PublisherOptions } from './publishers/publisher-options.js';
 import { publishPython } from './publishers/python-publish.js';
+import { publishCpp } from './publishers/cpp-publisher.js';
 
 const PUBLISHERS: Record<string, (options: PublisherOptions) => Promise<void>> =
   {
@@ -35,6 +36,7 @@ const PUBLISHERS: Record<string, (options: PublisherOptions) => Promise<void>> =
     dotnet: dotnetPublish,
     elixir: publishElixir,
     go: publishGo,
+    cpp: publishCpp,
     analyze,
   };
 

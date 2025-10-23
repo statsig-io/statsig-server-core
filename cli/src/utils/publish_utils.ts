@@ -1,11 +1,4 @@
 import {
-  GhAsset,
-  GhRelease,
-  downloadReleaseAsset,
-  getAllAssetsForRelease,
-  getReleaseByVersion,
-} from '@/utils/octokit_utils.js';
-import {
   ensureEmptyDir,
   getRootedPath,
   listFiles,
@@ -13,14 +6,21 @@ import {
   zipDirectory,
   zipFile,
 } from '@/utils/file_utils.js';
-
-import { Log } from '@/utils/terminal_utils.js';
-import { Octokit } from 'octokit';
+import {
+  GhAsset,
+  GhRelease,
+  downloadReleaseAsset,
+  getAllAssetsForRelease,
+  getReleaseByVersion,
+} from '@/utils/octokit_utils.js';
 import { SemVer } from '@/utils/semver.js';
+import { Log } from '@/utils/terminal_utils.js';
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { getRootVersion } from './toml_utils.js';
 import path from 'node:path';
+import { Octokit } from 'octokit';
+
+import { getRootVersion } from './toml_utils.js';
 
 const ASSET_MAPPING = {
   // macOS
@@ -33,35 +33,11 @@ const ASSET_MAPPING = {
     'libstatsig_ffi.dylib.sig': 'signature',
   },
   // Linux GNU
-  'debian-x86_64-unknown-linux-gnu': {
-    'libstatsig_ffi.so': 'shared',
-    'libstatsig_ffi.so.sig': 'signature',
-  },
-  'debian-aarch64-unknown-linux-gnu': {
-    'libstatsig_ffi.so': 'shared',
-    'libstatsig_ffi.so.sig': 'signature',
-  },
   'centos7-x86_64-unknown-linux-gnu': {
     'libstatsig_ffi.so': 'shared',
     'libstatsig_ffi.so.sig': 'signature',
   },
   'centos7-aarch64-unknown-linux-gnu': {
-    'libstatsig_ffi.so': 'shared',
-    'libstatsig_ffi.so.sig': 'signature',
-  },
-  'amazonlinux2-x86_64-unknown-linux-gnu': {
-    'libstatsig_ffi.so': 'shared',
-    'libstatsig_ffi.so.sig': 'signature',
-  },
-  'amazonlinux2-aarch64-unknown-linux-gnu': {
-    'libstatsig_ffi.so': 'shared',
-    'libstatsig_ffi.so.sig': 'signature',
-  },
-  'amazonlinux2023-x86_64-unknown-linux-gnu': {
-    'libstatsig_ffi.so': 'shared',
-    'libstatsig_ffi.so.sig': 'signature',
-  },
-  'amazonlinux2023-aarch64-unknown-linux-gnu': {
     'libstatsig_ffi.so': 'shared',
     'libstatsig_ffi.so.sig': 'signature',
   },
@@ -82,6 +58,31 @@ const ASSET_MAPPING = {
   'i686-pc-windows-msvc': {
     'statsig_ffi.dll': 'shared',
     'statsig_ffi.dll.sig': 'signature',
+  },
+  // Below are deprecated targets, covered by centos7
+  'debian-x86_64-unknown-linux-gnu': {
+    'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
+  },
+  'debian-aarch64-unknown-linux-gnu': {
+    'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
+  },
+  'amazonlinux2-x86_64-unknown-linux-gnu': {
+    'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
+  },
+  'amazonlinux2-aarch64-unknown-linux-gnu': {
+    'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
+  },
+  'amazonlinux2023-x86_64-unknown-linux-gnu': {
+    'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
+  },
+  'amazonlinux2023-aarch64-unknown-linux-gnu': {
+    'libstatsig_ffi.so': 'shared',
+    'libstatsig_ffi.so.sig': 'signature',
   },
 };
 
@@ -180,10 +181,10 @@ export async function downloadAndUnzipAssets(
 export function zipAndMoveAssets(
   mappedAssets: ReturnType<typeof mapAssetsToTargets>,
   workingDir: string,
-  ) {
-    Log.stepBegin('Zipping Assets');
+) {
+  Log.stepBegin('Zipping Assets');
 
-    const outDir = path.resolve(workingDir, 'assets');
+  const outDir = path.resolve(workingDir, 'assets');
   ensureEmptyDir(outDir);
 
   const files: string[] = [];
@@ -194,7 +195,10 @@ export function zipAndMoveAssets(
         execSync(`cp ${config.files[0]} ${outpath}`);
         Log.stepProgress(`Copied ${outpath}`);
       } else {
-        Log.stepProgress(`Error: skipCompression only supported for single files`, 'failure');
+        Log.stepProgress(
+          `Error: skipCompression only supported for single files`,
+          'failure',
+        );
         process.exit(1);
       }
     } else {
@@ -210,15 +214,17 @@ export function zipAndMoveAssets(
         }
         const tempDir = path.resolve(workingDir, `temp_${targetName}`);
         ensureEmptyDir(tempDir);
-        
-        config.files.forEach(file => {
+
+        config.files.forEach((file) => {
           const fileName = path.basename(file);
           execSync(`cp ${file} ${path.resolve(tempDir, fileName)}`);
         });
-        
+
         zipDirectory(tempDir, outpath);
-        Log.stepProgress(`Compressed ${config.files.length} files to ${outpath}`);
-        
+        Log.stepProgress(
+          `Compressed ${config.files.length} files to ${outpath}`,
+        );
+
         execSync(`rm -rf ${tempDir}`);
       }
     }
@@ -247,7 +253,7 @@ export function mapAssetsToTargets(workingDir: string) {
     ...listFiles(workingDir, '**/target/**/release/*.so.sig'),
     ...listFiles(workingDir, '**/target/**/release/*.dll.sig'),
   ];
-  
+
   Log.stepProgress('signatures:');
   signatures.forEach((signature) => {
     Log.stepProgress(signature);
@@ -263,7 +269,7 @@ export function mapAssetsToTargets(workingDir: string) {
   // Group files by target
   const filesByTarget: Record<string, string[]> = {};
   const allFiles = [...signatures, ...binaries];
-  
+
   for (const file of allFiles) {
     const found = targets.find((t) => file.includes(t));
     if (!found) {
@@ -271,7 +277,7 @@ export function mapAssetsToTargets(workingDir: string) {
       allAssetsMapped = false;
       continue;
     }
-    
+
     if (!filesByTarget[found]) {
       filesByTarget[found] = [];
     }
@@ -282,24 +288,31 @@ export function mapAssetsToTargets(workingDir: string) {
   for (const [target, files] of Object.entries(filesByTarget)) {
     const mapping = ASSET_MAPPING[target];
     const expectedFileNames = Object.keys(mapping);
-    
+
     // Check if we have all expected files for this target
-    const foundFileNames = files.map(file => path.basename(file));
-    const missingFiles = expectedFileNames.filter(expected => 
-      !foundFileNames.some(found => found === expected)
+    const foundFileNames = files.map((file) => path.basename(file));
+    const missingFiles = expectedFileNames.filter(
+      (expected) => !foundFileNames.some((found) => found === expected),
     );
-    
+
     if (missingFiles.length > 0) {
-      Log.stepProgress(`Missing files for target ${target}: ${missingFiles.join(', ')}`, 'failure');
+      Log.stepProgress(
+        `Missing files for target ${target}: ${missingFiles.join(', ')}`,
+        'failure',
+      );
       allAssetsMapped = false;
       continue;
     }
 
     // Create asset config for this target with all its files
     const assetName = getAssetNameForTarget(version, target);
-    
-    Log.stepProgress(`Found target ${target} with files: ${files.map(f => path.basename(f)).join(', ')}`);
-    
+
+    Log.stepProgress(
+      `Found target ${target} with files: ${files
+        .map((f) => path.basename(f))
+        .join(', ')}`,
+    );
+
     mappedAssets.push({
       target,
       assetName,
@@ -333,4 +346,3 @@ export function mapAssetsToTargets(workingDir: string) {
 function getAssetNameForTarget(version: string, target: string) {
   return `statsig-ffi-${version}-${target}.zip`;
 }
-
