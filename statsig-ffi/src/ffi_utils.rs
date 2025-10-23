@@ -81,6 +81,15 @@ pub fn string_to_c_char(s: String) -> *mut c_char {
     }
 }
 
+pub fn string_to_c_char_with_inout_len(s: String, inout_len: *mut u64) -> *mut c_char {
+    let len = s.len() as u64;
+    let ptr = string_to_c_char(s);
+    unsafe {
+        *inout_len = len;
+    }
+    ptr
+}
+
 #[no_mangle]
 pub extern "C" fn free_string(s: *mut c_char) {
     if s.is_null() {

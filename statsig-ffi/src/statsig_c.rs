@@ -1,5 +1,6 @@
 use crate::ffi_utils::{
-    c_char_to_string, c_char_to_string_non_empty, extract_opt_bool, string_to_c_char, SafeOptBool,
+    c_char_to_string, c_char_to_string_non_empty, extract_opt_bool, string_to_c_char,
+    string_to_c_char_with_inout_len, SafeOptBool,
 };
 use crate::{get_instance_or_noop_c, get_instance_or_return_c};
 use serde_json::json;
@@ -277,10 +278,11 @@ pub extern "C" fn statsig_identify(statsig_ref: u64, user_ref: u64) {
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_get_client_init_response(
+pub extern "C" fn statsig_get_client_init_response_with_inout_len(
     statsig_ref: u64,
     user_ref: u64,
     options_json: *const c_char,
+    inout_result_len: *mut u64,
 ) -> *mut c_char {
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
@@ -299,7 +301,23 @@ pub extern "C" fn statsig_get_client_init_response(
     };
 
     let result = statsig.get_client_init_response_with_options_as_string(&user, &options);
-    string_to_c_char(result)
+    string_to_c_char_with_inout_len(result, inout_result_len)
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_client_init_response(
+    statsig_ref: u64,
+    user_ref: u64,
+    options_json: *const c_char,
+) -> *mut c_char {
+    let mut unused_len = 0;
+
+    statsig_get_client_init_response_with_inout_len(
+        statsig_ref,
+        user_ref,
+        options_json,
+        &mut unused_len,
+    )
 }
 
 // ------------------------------
@@ -684,11 +702,12 @@ pub extern "C" fn statsig_check_gate_performance(
 }
 
 #[no_mangle]
-pub extern "C" fn statsig_get_feature_gate(
+pub extern "C" fn statsig_get_feature_gate_with_inout_len(
     statsig_ref: u64,
     user_ref: u64,
     gate_name: *const c_char,
     options_json: *const c_char,
+    inout_result_len: *mut u64,
 ) -> *mut c_char {
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
@@ -705,8 +724,32 @@ pub extern "C" fn statsig_get_feature_gate(
         None => statsig.get_feature_gate(&user, &gate_name),
     };
 
-    let result = json!(gate).to_string();
-    string_to_c_char(result)
+    let result = match serde_json::to_string(&gate) {
+        Ok(result) => result,
+        Err(e) => {
+            log_e!(TAG, "Failed to serialize feature gate: {}", e);
+            return null_mut();
+        }
+    };
+
+    string_to_c_char_with_inout_len(result, inout_result_len)
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_feature_gate(
+    statsig_ref: u64,
+    user_ref: u64,
+    gate_name: *const c_char,
+    options_json: *const c_char,
+) -> *mut c_char {
+    let mut unused_len = 0;
+    statsig_get_feature_gate_with_inout_len(
+        statsig_ref,
+        user_ref,
+        gate_name,
+        options_json,
+        &mut unused_len,
+    )
 }
 
 #[no_mangle]
@@ -727,11 +770,12 @@ pub extern "C" fn statsig_manually_log_gate_exposure(
 // ------------------------
 
 #[no_mangle]
-pub extern "C" fn statsig_get_dynamic_config(
+pub extern "C" fn statsig_get_dynamic_config_with_inout_len(
     statsig_ref: u64,
     user_ref: u64,
     config_name: *const c_char,
     options_json: *const c_char,
+    inout_result_len: *mut u64,
 ) -> *mut c_char {
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
@@ -748,8 +792,32 @@ pub extern "C" fn statsig_get_dynamic_config(
         None => statsig.get_dynamic_config(&user, &config_name),
     };
 
-    let result = json!(config).to_string();
-    string_to_c_char(result)
+    let result = match serde_json::to_string(&config) {
+        Ok(result) => result,
+        Err(e) => {
+            log_e!(TAG, "Failed to serialize dynamic config: {}", e);
+            return null_mut();
+        }
+    };
+
+    string_to_c_char_with_inout_len(result, inout_result_len)
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_dynamic_config(
+    statsig_ref: u64,
+    user_ref: u64,
+    config_name: *const c_char,
+    options_json: *const c_char,
+) -> *mut c_char {
+    let mut unused_len = 0;
+    statsig_get_dynamic_config_with_inout_len(
+        statsig_ref,
+        user_ref,
+        config_name,
+        options_json,
+        &mut unused_len,
+    )
 }
 
 #[no_mangle]
@@ -770,11 +838,12 @@ pub extern "C" fn statsig_manually_log_dynamic_config_exposure(
 // ------------------------
 
 #[no_mangle]
-pub extern "C" fn statsig_get_experiment(
+pub extern "C" fn statsig_get_experiment_with_inout_len(
     statsig_ref: u64,
     user_ref: u64,
     experiment_name: *const c_char,
     options_json: *const c_char,
+    inout_result_len: *mut u64,
 ) -> *mut c_char {
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
@@ -791,8 +860,32 @@ pub extern "C" fn statsig_get_experiment(
         None => statsig.get_experiment(&user, &experiment_name),
     };
 
-    let result = json!(experiment).to_string();
-    string_to_c_char(result)
+    let result = match serde_json::to_string(&experiment) {
+        Ok(result) => result,
+        Err(e) => {
+            log_e!(TAG, "Failed to serialize experiment: {}", e);
+            return null_mut();
+        }
+    };
+
+    string_to_c_char_with_inout_len(result, inout_result_len)
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_experiment(
+    statsig_ref: u64,
+    user_ref: u64,
+    experiment_name: *const c_char,
+    options_json: *const c_char,
+) -> *mut c_char {
+    let mut unused_len = 0;
+    statsig_get_experiment_with_inout_len(
+        statsig_ref,
+        user_ref,
+        experiment_name,
+        options_json,
+        &mut unused_len,
+    )
 }
 
 #[no_mangle]
@@ -813,11 +906,12 @@ pub extern "C" fn statsig_manually_log_experiment_exposure(
 // ------------------------
 
 #[no_mangle]
-pub extern "C" fn statsig_get_layer(
+pub extern "C" fn statsig_get_layer_with_inout_len(
     statsig_ref: u64,
     user_ref: u64,
     layer_name: *const c_char,
     options_json: *const c_char,
+    inout_result_len: *mut u64,
 ) -> *mut c_char {
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
@@ -834,8 +928,32 @@ pub extern "C" fn statsig_get_layer(
         None => statsig.get_layer(&user, &layer_name),
     };
 
-    let result = json!(layer).to_string();
-    string_to_c_char(result)
+    let result = match serde_json::to_string(&layer) {
+        Ok(result) => result,
+        Err(e) => {
+            log_e!(TAG, "Failed to serialize layer: {}", e);
+            return null_mut();
+        }
+    };
+
+    string_to_c_char_with_inout_len(result, inout_result_len)
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_layer(
+    statsig_ref: u64,
+    user_ref: u64,
+    layer_name: *const c_char,
+    options_json: *const c_char,
+) -> *mut c_char {
+    let mut unused_len = 0;
+    statsig_get_layer_with_inout_len(
+        statsig_ref,
+        user_ref,
+        layer_name,
+        options_json,
+        &mut unused_len,
+    )
 }
 
 #[no_mangle]
