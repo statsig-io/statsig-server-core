@@ -194,11 +194,6 @@ char *statsig_get_layer(uint64_t statsig_ref,
                         const char *layer_name,
                         const char *options_json);
 
-char *statsig_get_prompt(uint64_t statsig_ref,
-                         uint64_t user_ref,
-                         const char *prompt_name,
-                         const char *options_json);
-
 void statsig_log_layer_param_exposure(uint64_t statsig_ref,
                                       const char *layer_json,
                                       const char *param_name);

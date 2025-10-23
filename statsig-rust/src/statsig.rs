@@ -1421,19 +1421,6 @@ impl Statsig {
         self.get_layer_impl(user_internal, layer_name, options)
     }
 
-    pub fn get_prompt(&self, user: &StatsigUser, prompt_name: &str) -> Layer {
-        self.get_layer(user, prompt_name)
-    }
-
-    pub fn get_prompt_with_options(
-        &self,
-        user: &StatsigUser,
-        prompt_name: &str,
-        options: LayerEvaluationOptions,
-    ) -> Layer {
-        self.get_layer_with_options(user, prompt_name, options)
-    }
-
     pub fn manually_log_layer_parameter_exposure(
         &self,
         user: &StatsigUser,

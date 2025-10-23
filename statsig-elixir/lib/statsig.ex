@@ -116,22 +116,6 @@ defmodule Statsig do
     end
   end
 
-  def get_prompt(prompt_name, statsig_user, options \\ nil) do
-    try do
-      instance = get_statsig_instance()
-
-      case NativeBindings.get_prompt(instance, prompt_name, statsig_user, options) do
-        {:error, e} -> {:error, e}
-        layer -> {:ok, layer}
-      end
-    rescue
-      exception -> {:error, Exception.message(exception)}
-    catch
-      :exit, reason -> {:error, {:exit, reason}}
-      exception -> {:error, Exception.message(exception)}
-    end
-  end
-
   def get_client_init_response_as_string(statsig_user, options \\ nil) do
     try do
       instance = get_statsig_instance()

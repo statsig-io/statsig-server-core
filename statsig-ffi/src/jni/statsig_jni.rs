@@ -448,33 +448,6 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetLayer(
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetPrompt(
-    mut env: JNIEnv,
-    _class: jclass,
-    statsig_ref: jlong,
-    user_ref: jlong,
-    prompt_name: JString,
-    options: JObject,
-) -> jstring {
-    let statsig = get_instance_or_return_c!(Statsig, &(statsig_ref as u64), std::ptr::null_mut());
-    let user = get_instance_or_return_c!(StatsigUser, &(user_ref as u64), std::ptr::null_mut());
-
-    let prompt_name: String = match env.get_string(&prompt_name) {
-        Ok(s) => s.into(),
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    let options = convert_java_get_layer_options_to_rust(&mut env, options);
-
-    let result = match options {
-        Some(options) => statsig.get_prompt_with_options(user.as_ref(), &prompt_name, options),
-        None => statsig.get_prompt(user.as_ref(), &prompt_name),
-    };
-
-    serialize_json_to_jstring(&mut env, &result)
-}
-
-#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFieldsNeededForLayer(
     mut env: JNIEnv,
     _class: jclass,

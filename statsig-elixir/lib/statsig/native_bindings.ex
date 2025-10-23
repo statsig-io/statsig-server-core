@@ -35,9 +35,6 @@ defmodule Statsig.NativeBindings do
   def get_layer(_statsig, _layer_name, _statsig_user, _options),
     do: :erlang.nif_error(:nif_not_loaded)
 
-  def get_prompt(_statsig, _prompt_name, _statsig_user, _options),
-    do: :erlang.nif_error(:nif_not_loaded)
-
   def get_client_init_response_as_string(_statsig, _statsig_user, _options),
     do: :erlang.nif_error(:nif_not_loaded)
 

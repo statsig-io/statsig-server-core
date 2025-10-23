@@ -265,29 +265,6 @@ public class Statsig {
     return layer;
   }
 
-  public Layer getPrompt(StatsigUser user, String promptName) {
-    String layerJson = StatsigJNI.statsigGetPrompt(ref, user.getRef(), promptName, null);
-    Layer layer = JSON.parseObject(layerJson, Layer.class);
-    if (layer != null) {
-      // Set the Statsig reference in the Layer instance
-      layer.setRawJson(layerJson);
-      layer.setStatsigInstance(this);
-    }
-    return layer;
-  }
-
-  public Layer getPrompt(StatsigUser user, String promptName, GetLayerOptions options) {
-    String layerJson = StatsigJNI.statsigGetPrompt(ref, user.getRef(), promptName, options);
-    Layer layer = JSON.parseObject(layerJson, Layer.class);
-    if (layer != null) {
-      // Set the Statsig reference in the Layer instance
-      layer.setRawJson(layerJson);
-      layer.setStatsigInstance(this);
-      layer.setDisableExposureLogging(options != null && options.disableExposureLogging);
-    }
-    return layer;
-  }
-
   public void manuallyLogLayerParamExposure(StatsigUser user, String layerName, String param) {
     StatsigJNI.statsigManuallyLogLayerParamExposure(ref, user.getRef(), layerName, param);
   }
