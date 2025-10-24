@@ -174,7 +174,7 @@ Experiment Statsig::getExperiment(const User &user,
   return Experiment();
 }
 
-DynamicConfig Statsig::getConfig(const User &user,
+DynamicConfig Statsig::getDynamicConfig(const User &user,
                                  const std::string &config_name,
                                  const std::string &options_json) {
   char *result = statsig_get_dynamic_config(ref_, user.ref, config_name.c_str(),

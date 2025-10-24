@@ -37,7 +37,7 @@ TEST(StatsigE2EUsageTest, Core_API) {
   // EXPECT_EQ(e.value["non_exist_key"].get<std::string>(), "");
 
   // Experiment
-  statsig_cpp_core::DynamicConfig config = s.getConfig(user, "big_number");
+  statsig_cpp_core::DynamicConfig config = s.getDynamicConfig(user, "big_number");
   EXPECT_EQ(config.name, "big_number");
   EXPECT_EQ(config.id_type, "userID");
   EXPECT_EQ(config.value["foo"].get<double>(), 1e21);

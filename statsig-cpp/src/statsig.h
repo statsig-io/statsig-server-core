@@ -55,7 +55,7 @@ public:
 
   Experiment getExperiment(const User &user, const std::string &experiment_name,
                            const std::string &options_json = "{}");
-  DynamicConfig getConfig(const User &user, const std::string &config_name,
+  DynamicConfig getDynamicConfig(const User &user, const std::string &config_name,
                           const std::string &options_json = "{}");
                         
   Layer getLayer(const User &user, const std::string &layer_name,

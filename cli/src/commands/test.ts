@@ -81,11 +81,8 @@ const TEST_COMMANDS: Record<string, string> = {
   ].join(' && '),
 
   cpp: [
-    `cargo build -p statsig_ffi --target-dir target/cpp --release`,
-    'mkdir -p statsig-cpp/target',
-    'mv target/cpp/release/libstatsig_ffi.so statsig-cpp/target/libstatsig_ffi.so || true',
-    'mv target/cpp/release/libstatsig_ffi.dylib statsig-cpp/target/libstatsig_ffi.dylib || true',
-    'rm -rf statsig-cpp/build && mkdir statsig-cpp/build && cd statsig-cpp/build && cmake -DENABLE_STATSIG_CPP_UNIT_TEST=true .. && make -b google_tests',
+    `cargo build -p statsig_ffi --release`,
+    'rm -rf statsig-cpp/build && mkdir statsig-cpp/build && cd statsig-cpp/build && cmake -DENABLE_STATSIG_CPP_UNIT_TEST=true -DUSE_LOCAL_BUILD_FILE=true .. && make -b google_tests',
     'ctest --output-on-failure',
   ].join(' && '),
 };
