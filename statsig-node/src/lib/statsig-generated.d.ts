@@ -6,7 +6,7 @@ export declare class DynamicConfig {
   ruleID: string
   idType: string
   details: EvaluationDetails
-  getValue(paramName: string, fallback: boolean | number | string | object | Array<any> | null): any
+  getValue(paramName: string, fallback?: boolean | number | string | object | Array<any> | null): any | null
   get<T>(paramName: string, fallback: T): T
   getRuleId(): string
   getIdType(): string
@@ -22,7 +22,7 @@ export declare class Experiment {
   idType: string
   groupName?: string
   details: EvaluationDetails
-  getValue(paramName: string, fallback: boolean | number | string | object | Array<any> | null): any
+  getValue(paramName: string, fallback?: boolean | number | string | object | Array<any> | null): any | null
   get<T>(paramName: string, fallback: T): T
   getRuleId(): string
   getIdType(): string
@@ -39,7 +39,7 @@ export declare class Layer {
   allocatedExperimentName?: string
   value: Record<string, any>
   details: EvaluationDetails
-  getValue(paramName: string, fallback: boolean | number | string | object | Array<any> | null): any
+  getValue(paramName: string, fallback?: boolean | number | string | object | Array<any> | null): any | null
   get<T>(paramName: string, fallback: T): T
   getRuleId(): string
   getGroupName(): string | null
@@ -55,8 +55,8 @@ export declare class ParameterStore {
 }
 
 export declare class StatsigNapiInternal {
-  subscribe(eventName: '*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated', callback: (event: any) => void): string
-  unsubscribe(eventName: '*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated'): void
+  subscribe(eventName: '*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated' | 'specs_updated', callback: (event: any) => void): string
+  unsubscribe(eventName: '*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated' | 'specs_updated'): void
   unsubscribeById(subscriptionId: string): void
   unsubscribeAll(): void
   constructor(networkFunc: unknown, sdkKey: string, options?: StatsigOptions | undefined | null)

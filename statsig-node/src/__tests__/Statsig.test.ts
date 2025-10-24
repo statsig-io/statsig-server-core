@@ -297,6 +297,30 @@ describe('Statsig', () => {
 
       expect(config.get('obj', { a: 'def' })).toEqual({ a: 'bc' });
       expect(config.getValue('obj', { a: 'd' })).toEqual({ a: 'bc' });
+
+      // undefined fallback should return right value
+      expect(config.get('obj', undefined)).toEqual({ a: 'bc' });
+      expect(config.getValue('obj', undefined)).toEqual({ a: 'bc' });
+      expect(config.get('arr', undefined)).toEqual(['hi', 'there']);
+      expect(config.get('arr', null)).toEqual(['hi', 'there']);
+      expect(config.getValue('arr', undefined)).toEqual(['hi', 'there']);
+      expect(config.getValue('arr', null)).toEqual(['hi', 'there']);
+      expect(config.get('str', undefined)).toEqual('hello');
+      expect(config.get('str', null)).toEqual('hello');
+      expect(config.getValue('str', undefined)).toEqual('hello');
+      expect(config.getValue('str', null)).toEqual('hello');
+      expect(config.get('num', undefined)).toEqual(13);
+      expect(config.get('num', null)).toEqual(13);
+      expect(config.getValue('num', undefined)).toEqual(13);
+      expect(config.getValue('num', null)).toEqual(13);
+      expect(config.get('bool', undefined)).toEqual(true);
+      expect(config.get('bool', null)).toEqual(true);
+      expect(config.getValue('bool', undefined)).toEqual(true);
+      expect(config.getValue('bool', null)).toEqual(true);
+
+      // undefined fallback should return null if we don't have that key in the config
+      expect(config.get('missing_key', undefined)).toBeNull();
+      expect(config.getValue('missing_key', undefined)).toBeNull();
     });
 
     it('Experiment supports get and getValue methods', async () => {
@@ -328,6 +352,16 @@ describe('Statsig', () => {
       expect(experiment.getValue('obj_param', { group: 'fallback' })).toEqual({ group: 'test' });
       expect(experiment.getValue('obj_param', { group: true })).toEqual({ group: 'test' });
       expect(experiment.getValue('obj_param', { group: 1 })).toEqual({ group: 'test' });
+
+      // undefined fallback should return right value
+      expect(experiment.get('obj_param', undefined)).toEqual({ group: 'test' });
+      expect(experiment.getValue('obj_param', undefined)).toEqual({ group: 'test' });
+      expect(experiment.get('obj_param', null)).toEqual({ group: 'test' });
+      expect(experiment.getValue('obj_param', null)).toEqual({ group: 'test' });
+      expect(experiment.get('arr_param', undefined)).toEqual([true, false, true]);
+      expect(experiment.getValue('arr_param', undefined)).toEqual([true, false, true]);
+      expect(experiment.get('arr_param', null)).toEqual([true, false, true]);
+      expect(experiment.getValue('arr_param', null)).toEqual([true, false, true]);
     });
 
     it('Layer supports get and getValue methods', async () => {
@@ -340,6 +374,16 @@ describe('Statsig', () => {
       // falls back when types mismatch
       expect(layer.get('another_string', 1)).toEqual(1);
       expect(layer.getValue('another_string', 1)).toEqual("layer_default");
+
+      // undefined fallback should return right value
+      expect(layer.get('another_string', undefined)).toEqual('layer_default');
+      expect(layer.getValue('another_string', undefined)).toEqual('layer_default');
+      expect(layer.get('another_string', null)).toEqual('layer_default');
+      expect(layer.getValue('another_string', null)).toEqual('layer_default');
+
+      // undefined fallback should return null if we don't have that key in the config
+      expect(layer.get('missing_key', undefined)).toBeNull();
+      expect(layer.getValue('missing_key', undefined)).toBeNull();
     });
 
     it('should handle parameter store fallback values correctly', async () => {
