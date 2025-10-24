@@ -51,6 +51,9 @@ impl From<StatsigOptions> for StatsigOptionsActual {
             wait_for_user_agent_init: config.wait_for_user_agent_init,
             use_third_party_ua_parser: config.use_third_party_ua_parser,
             disable_disk_access: config.disable_disk_access,
+            id_lists_sync_interval_ms: config.id_lists_sync_interval_ms,
+            event_logging_flush_interval_ms: config.event_logging_flush_interval_ms,
+            init_timeout_ms: config.init_timeout_ms,
             ..StatsigOptionsActual::default()
         }
     }
