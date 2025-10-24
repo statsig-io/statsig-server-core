@@ -173,6 +173,21 @@ impl StatsigRuntime {
         Ok(())
     }
 
+    pub fn get_running_task_ids(&self) -> Vec<(String, String)> {
+        let tasks = match self.spawned_tasks.try_lock_for(Duration::from_secs(5)) {
+            Some(lock) => lock,
+            None => {
+                log_e!(TAG, "Failed to lock spawned tasks for get_running_task_ids");
+                return Vec::new();
+            }
+        };
+
+        tasks
+            .keys()
+            .map(|key| (key.tag.clone(), key.tokio_id.to_string()))
+            .collect()
+    }
+
     fn insert_join_handle(&self, tag: &str, handle: JoinHandle<()>) -> tokio::task::Id {
         let handle_id = handle.id();
         let task_id = TaskId {

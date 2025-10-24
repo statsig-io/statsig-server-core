@@ -1659,13 +1659,6 @@ impl Statsig {
                     error_message.get_or_insert_with(|| format!("Failed to sync ID lists: {e}"));
                 }
             }
-            if let Err(e) = adapter
-                .clone()
-                .schedule_background_sync(&self.statsig_runtime)
-                .await
-            {
-                log_w!(TAG, "Failed to schedule id_list background job {}", e);
-            }
         }
 
         if let Err(e) = self
