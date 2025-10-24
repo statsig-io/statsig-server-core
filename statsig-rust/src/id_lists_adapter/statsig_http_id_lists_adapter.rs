@@ -277,12 +277,15 @@ impl StatsigHttpIdListsAdapter {
 
         for (list_name, entry) in new_manifest {
             let (requires_download, range_start) = match curr_manifest.get(&list_name) {
-                Some(current) => (
-                    entry.size > current.size
-                        || entry.creation_time > current.creation_time
-                        || entry.file_id != current.file_id,
-                    current.size,
-                ),
+                Some(current) => {
+                    if entry.creation_time > current.creation_time
+                        || entry.file_id != current.file_id
+                    {
+                        (true, 0u64)
+                    } else {
+                        (entry.size > current.size, current.size)
+                    }
+                }
                 None => (true, 0),
             };
 
