@@ -105,14 +105,14 @@ impl From<DynamicConfigActual> for DynamicConfig {
 #[napi]
 impl DynamicConfig {
     #[napi(
-        ts_args_type = "paramName: string, fallback: boolean | number | string | object | Array<any> | null"
+        ts_args_type = "paramName: string, fallback?: boolean | number | string | object | Array<any> | null"
     )]
-    pub fn get_value(&self, param_name: String, fallback: Value) -> Value {
+    pub fn get_value(&self, param_name: String, fallback: Option<Value>) -> Option<Value> {
         self.inner.get(&param_name, fallback)
     }
 
     #[napi(ts_type = "<T>(paramName: string, fallback: T): T")]
-    pub fn get(&self, param_name: String, fallback: Value) -> Value {
+    pub fn get(&self, param_name: String, fallback: Option<Value>) -> Option<Value> {
         self.inner.get_typed_opt(&param_name, fallback)
     }
 
@@ -184,14 +184,14 @@ impl From<ExperimentActual> for Experiment {
 #[napi]
 impl Experiment {
     #[napi(
-        ts_args_type = "paramName: string, fallback: boolean | number | string | object | Array<any> | null"
+        ts_args_type = "paramName: string, fallback?: boolean | number | string | object | Array<any> | null"
     )]
-    pub fn get_value(&self, param_name: String, fallback: Value) -> Value {
+    pub fn get_value(&self, param_name: String, fallback: Option<Value>) -> Option<Value> {
         self.inner.get(&param_name, fallback)
     }
 
     #[napi(ts_type = "<T>(paramName: string, fallback: T): T")]
-    pub fn get(&self, param_name: String, fallback: Value) -> Value {
+    pub fn get(&self, param_name: String, fallback: Option<Value>) -> Option<Value> {
         self.inner.get_typed_opt(&param_name, fallback)
     }
 
@@ -254,14 +254,14 @@ pub struct Layer {
 #[napi]
 impl Layer {
     #[napi(
-        ts_args_type = "paramName: string, fallback: boolean | number | string | object | Array<any> | null"
+        ts_args_type = "paramName: string, fallback?: boolean | number | string | object | Array<any> | null"
     )]
-    pub fn get_value(&self, param_name: String, fallback: Value) -> Value {
+    pub fn get_value(&self, param_name: String, fallback: Option<Value>) -> Option<Value> {
         self.inner.get(&param_name, fallback)
     }
 
     #[napi(ts_type = "<T>(paramName: string, fallback: T): T")]
-    pub fn get(&self, param_name: String, fallback: Value) -> Value {
+    pub fn get(&self, param_name: String, fallback: Option<Value>) -> Option<Value> {
         self.inner.get_typed_opt(&param_name, fallback)
     }
 

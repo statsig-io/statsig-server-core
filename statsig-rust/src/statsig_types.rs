@@ -48,8 +48,8 @@ impl DynamicConfig {
         }
     }
 
-    pub fn get_typed_opt(&self, param_name: &str, fallback: Value) -> Value {
-        extract_matching_type(&self.value, param_name, &fallback).unwrap_or(fallback)
+    pub fn get_typed_opt(&self, param_name: &str, fallback: Option<Value>) -> Option<Value> {
+        extract_matching_type(&self.value, param_name, &fallback).or(fallback)
     }
 }
 
@@ -75,8 +75,8 @@ impl Experiment {
         }
     }
 
-    pub fn get_typed_opt(&self, param_name: &str, fallback: Value) -> Value {
-        extract_matching_type(&self.value, param_name, &fallback).unwrap_or(fallback)
+    pub fn get_typed_opt(&self, param_name: &str, fallback: Option<Value>) -> Option<Value> {
+        extract_matching_type(&self.value, param_name, &fallback).or(fallback)
     }
 }
 
@@ -118,11 +118,11 @@ impl Layer {
         }
     }
 
-    pub fn get_typed_opt(&self, param_name: &str, fallback: Value) -> Value {
+    pub fn get_typed_opt(&self, param_name: &str, fallback: Option<Value>) -> Option<Value> {
         match extract_matching_type(&self.__value, param_name, &fallback) {
             Some(value) => {
                 self.log_param_exposure(param_name);
-                value
+                Some(value)
             }
             None => fallback,
         }
@@ -327,16 +327,17 @@ pub enum OverrideAdapterType {
 fn extract_matching_type(
     value: &HashMap<String, Value>,
     param_name: &str,
-    fallback: &Value,
+    fallback: &Option<Value>,
 ) -> Option<Value> {
     let found = value.get(param_name)?;
-
     match (fallback, found) {
-        (Value::Bool(_), Value::Bool(_)) => Some(found.clone()),
-        (Value::Number(_), Value::Number(_)) => Some(found.clone()),
-        (Value::String(_), Value::String(_)) => Some(found.clone()),
-        (Value::Array(_), Value::Array(_)) => Some(found.clone()),
-        (Value::Object(_), Value::Object(_)) => Some(found.clone()),
+        (Some(Value::Bool(_)), Value::Bool(_)) => Some(found.clone()),
+        (Some(Value::Number(_)), Value::Number(_)) => Some(found.clone()),
+        (Some(Value::String(_)), Value::String(_)) => Some(found.clone()),
+        (Some(Value::Array(_)), Value::Array(_)) => Some(found.clone()),
+        (Some(Value::Object(_)), Value::Object(_)) => Some(found.clone()),
+        (Some(Value::Null), Value::Null) => Some(found.clone()),
+        (None, value) => Some(value.clone()),
         _ => None,
     }
 }
