@@ -202,6 +202,44 @@ async fn test_initialize_with_details_with_id_lists() {
 }
 
 #[tokio::test]
+async fn test_get_running_task_ids() {
+    let statsig = Statsig::new(
+        &get_sdk_key(),
+        Some(Arc::new(StatsigOptions {
+            enable_id_lists: Some(true),
+            ..StatsigOptions::new()
+        })),
+    );
+
+    fn get_task_ids_str(task_ids: &mut [(String, String)]) -> String {
+        task_ids.sort();
+        task_ids
+            .iter()
+            .map(|a| a.0.clone())
+            .collect::<Vec<String>>()
+            .join(" | ")
+    }
+
+    let mut task_ids_before = statsig.statsig_runtime.get_running_task_ids();
+    let task_ids_before_str = get_task_ids_str(&mut task_ids_before);
+
+    assert_eq!(
+        task_ids_before_str,
+        "EVT_LOG_BG_LOOP | opts_stats_listen_for | opts_stats_listen_for" // the event logger flush job and two subscription to OpsStats
+    );
+
+    statsig.initialize().await.unwrap();
+
+    let mut task_ids_after = statsig.statsig_runtime.get_running_task_ids();
+    let task_ids_after_str = get_task_ids_str(&mut task_ids_after);
+    assert_eq!(
+        task_ids_after_str,
+        // before tasks + id list and specs bg sync jobs
+        "EVT_LOG_BG_LOOP | http_id_list_bg_sync | http_specs_bg_sync | opts_stats_listen_for | opts_stats_listen_for"
+    );
+}
+
+#[tokio::test]
 async fn test_identify() {
     let mock_event_logger = Arc::new(MockEventLoggingAdapter::new());
     let opts = StatsigOptions {
