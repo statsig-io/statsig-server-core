@@ -121,18 +121,26 @@ impl StatsigHttpIdListsAdapter {
         list_url: &str,
         list_size: u64,
     ) -> Result<String, StatsigErr> {
-        let headers = HashMap::from([("Range".into(), format!("bytes={list_size}-"))]);
-        let query_params = if list_url.starts_with(STATSIG_CDN_URL) {
-            Some(HashMap::from([("range".into(), format!("{list_size}-"))]))
+        let (headers, query_params) = if list_url.starts_with(STATSIG_CDN_URL) {
+            (
+                None,
+                Some(HashMap::from([("range".into(), format!("{list_size}-"))])),
+            )
         } else {
-            None
+            (
+                Some(HashMap::from([(
+                    "Range".into(),
+                    format!("bytes={list_size}-"),
+                )])),
+                None,
+            )
         };
 
         let response = self
             .network
             .get(RequestArgs {
                 url: list_url.to_string(),
-                headers: Some(headers),
+                headers,
                 query_params,
                 ..RequestArgs::new()
             })
