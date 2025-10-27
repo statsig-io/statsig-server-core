@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"os"
 
-	statsig "github.com/statsig-io/statsig-server-core/statsig-go/src"
+	statsig "github.com/statsig-io/statsig-go-core"
 )
 
 func BenchCore() {
@@ -17,36 +17,44 @@ func BenchCore() {
 
 	specNames := loadSpecNames()
 
-	options := statsig.NewStatsigOptionsBuilder().
+	options, err := statsig.NewOptionsBuilder().
 		WithSpecsUrl(fmt.Sprintf("%s/v2/download_config_specs", SCAPI_URL)).
 		WithLogEventUrl(fmt.Sprintf("%s/v1/log_event", SCAPI_URL)).
 		Build()
 
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create options: %v", err))
+	}
+
 	var results []BenchmarkResult
 
-	s, _ := statsig.NewStatsig("secret-GO_CORE", *options)
+	s, _ := statsig.NewStatsigWithOptions("secret-GO_CORE", options)
 	s.Initialize()
 
-	globalUser := statsig.NewStatsigUserBuilder().WithUserID("global_user").Build()
+	globalUser, err := statsig.NewUserBuilderWithUserID("global_user").Build()
+
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create global user: %v", err))
+	}
 
 	// Benchmark feature gates
 	for _, gateName := range specNames.FeatureGates {
 		benchmark(&results, "check_gate", gateName, ITER_HEAVY, "statsig-server-core-go", func() {
 			user := createCoreUser()
-			s.CheckGate(user, gateName, nil)
+			s.CheckGate(user, gateName)
 		})
 
 		benchmark(&results, "check_gate_global_user", gateName, ITER_HEAVY, "statsig-server-core-go", func() {
-			s.CheckGate(*globalUser, gateName, nil)
+			s.CheckGate(globalUser, gateName)
 		})
 
 		benchmark(&results, "get_feature_gate", gateName, ITER_HEAVY, "statsig-server-core-go", func() {
 			user := createCoreUser()
-			s.GetFeatureGate(user, gateName, nil)
+			s.GetFeatureGate(user, gateName)
 		})
 
 		benchmark(&results, "get_feature_gate_global_user", gateName, ITER_HEAVY, "statsig-server-core-go", func() {
-			s.GetFeatureGate(*globalUser, gateName, nil)
+			s.GetFeatureGate(globalUser, gateName)
 		})
 	}
 
@@ -54,11 +62,11 @@ func BenchCore() {
 	for _, configName := range specNames.DynamicConfigs {
 		benchmark(&results, "get_dynamic_config", configName, ITER_HEAVY, "statsig-server-core-go", func() {
 			user := createCoreUser()
-			s.GetDynamicConfig(user, configName, nil)
+			s.GetDynamicConfig(user, configName)
 		})
 
 		benchmark(&results, "get_dynamic_config_global_user", configName, ITER_HEAVY, "statsig-server-core-go", func() {
-			s.GetDynamicConfig(*globalUser, configName, nil)
+			s.GetDynamicConfig(globalUser, configName)
 		})
 	}
 
@@ -66,11 +74,11 @@ func BenchCore() {
 	for _, experimentName := range specNames.Experiments {
 		benchmark(&results, "get_experiment", experimentName, ITER_HEAVY, "statsig-server-core-go", func() {
 			user := createCoreUser()
-			s.GetExperiment(user, experimentName, nil)
+			s.GetExperiment(user, experimentName)
 		})
 
 		benchmark(&results, "get_experiment_global_user", experimentName, ITER_HEAVY, "statsig-server-core-go", func() {
-			s.GetExperiment(*globalUser, experimentName, nil)
+			s.GetExperiment(globalUser, experimentName)
 		})
 	}
 
@@ -78,11 +86,11 @@ func BenchCore() {
 	for _, layerName := range specNames.Layers {
 		benchmark(&results, "get_layer", layerName, ITER_HEAVY, "statsig-server-core-go", func() {
 			user := createCoreUser()
-			s.GetLayer(user, layerName, nil)
+			s.GetLayer(user, layerName)
 		})
 
 		benchmark(&results, "get_layer_global_user", layerName, ITER_HEAVY, "statsig-server-core-go", func() {
-			s.GetLayer(*globalUser, layerName, nil)
+			s.GetLayer(globalUser, layerName)
 		})
 	}
 
@@ -98,7 +106,7 @@ func getCoreSdkVersion() string {
 	}
 
 	for _, dep := range info.Deps {
-		if dep.Path == "github.com/statsig-io/statsig-server-core/statsig-go" {
+		if dep.Path == "github.com/statsig-io/statsig-go-core" {
 			return dep.Version
 		}
 	}
@@ -106,10 +114,9 @@ func getCoreSdkVersion() string {
 	panic("Statsig SDK dependency not found")
 }
 
-func createCoreUser() statsig.StatsigUser {
+func createCoreUser() *statsig.StatsigUser {
 	rnd := rand.Intn(1000000)
-	user := statsig.NewStatsigUserBuilder().
-		WithUserID(fmt.Sprintf("user_%d", rnd)).
+	user, err := statsig.NewUserBuilderWithUserID(fmt.Sprintf("user_%d", rnd)).
 		WithEmail("user@example.com").
 		WithIpAddress("127.0.0.1").
 		WithLocale("en-US").
@@ -120,5 +127,9 @@ func createCoreUser() statsig.StatsigUser {
 		WithPrivateAttributes(map[string]interface{}{"isPaid": "nah"}).
 		Build()
 
-	return *user
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create user: %v", err))
+	}
+
+	return user
 }
