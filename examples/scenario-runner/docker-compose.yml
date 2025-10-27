@@ -40,6 +40,24 @@ services:
 
   # ------------------------------------------------------------ [ SDKS ]
 
+  go-core:
+    build: ./go
+    container_name: sr-go-core
+    image: sr-go:latest
+    environment:
+      - SDK_VARIANT=core
+    volumes:
+      - ./shared-volume:/shared-volume
+
+  go-legacy:
+    build: ./go
+    container_name: sr-go-legacy
+    image: sr-go:latest
+    environment:
+      - SDK_VARIANT=legacy
+    volumes:
+      - ./shared-volume:/shared-volume
+
   java-core:
     build: ./java
     container_name: sr-java-core
