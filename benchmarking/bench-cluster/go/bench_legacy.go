@@ -115,6 +115,16 @@ func BenchLegacy() {
 		})
 	}
 
+	// Benchmark client initialize response
+	benchmark(&results, "get_client_initialize_response", "n/a", ITER_LITE, "go-sdk", func() {
+		user := createUser()
+		statsig.GetClientInitializeResponse(user)
+	})
+
+	benchmark(&results, "get_client_initialize_response_global_user", "n/a", ITER_LITE, "go-sdk", func() {
+		statsig.GetClientInitializeResponse(globalUser)
+	})
+
 	statsig.Shutdown()
 
 	writeResults(&results, "go-sdk", sdkVersion)

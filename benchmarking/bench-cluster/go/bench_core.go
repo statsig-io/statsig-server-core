@@ -94,6 +94,15 @@ func BenchCore() {
 		})
 	}
 
+	// Benchmark client initialize response
+	benchmark(&results, "get_client_initialize_response", "n/a", ITER_LITE, "statsig-server-core-go", func() {
+		user := createCoreUser()
+		s.GetClientInitializeResponse(user, nil)
+	})
+	benchmark(&results, "get_client_initialize_response_global_user", "n/a", ITER_LITE, "statsig-server-core-go", func() {
+		s.GetClientInitializeResponse(*globalUser, nil)
+	})
+
 	s.Shutdown()
 
 	writeResults(&results, "statsig-server-core-go", sdkVersion)
