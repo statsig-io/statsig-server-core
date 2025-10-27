@@ -96,7 +96,7 @@ func BenchCore() {
 
 	s.Shutdown()
 
-	writeResults(&results, "statsig-server-core-go")
+	writeResults(&results, "statsig-server-core-go", sdkVersion)
 }
 
 func getCoreSdkVersion() string {

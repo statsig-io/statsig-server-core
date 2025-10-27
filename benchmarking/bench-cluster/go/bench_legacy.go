@@ -117,7 +117,7 @@ func BenchLegacy() {
 
 	statsig.Shutdown()
 
-	writeResults(&results, "go-sdk")
+	writeResults(&results, "go-sdk", sdkVersion)
 }
 
 func loadSpecNames() SpecNames {
@@ -211,23 +211,4 @@ func calculateAverage(values []float64) float64 {
 		sum += v
 	}
 	return sum / float64(len(values))
-}
-
-func writeResults(results *[]BenchmarkResult, sdkType string) {
-	sdkVersion := getSdkVersion()
-	root := map[string]interface{}{
-		"sdkType":    sdkType,
-		"sdkVersion": sdkVersion,
-		"results":    results,
-	}
-
-	jsonData, err := json.MarshalIndent(root, "", "  ")
-	if err != nil {
-		panic(fmt.Sprintf("Failed to marshal results: %v", err))
-	}
-
-	outPath := fmt.Sprintf("/shared-volume/%s-%s-results.json", sdkType, sdkVersion)
-	if err := ioutil.WriteFile(outPath, jsonData, 0644); err != nil {
-		panic(fmt.Sprintf("Failed to write results: %v", err))
-	}
 }
