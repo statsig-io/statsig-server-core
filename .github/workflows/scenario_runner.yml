@@ -27,7 +27,8 @@ jobs:
             scrapi docker-stats dashboard \
             node-core node-legacy \
             java-core java-legacy \
-            python-core python-legacy
+            python-core python-legacy \
+            go-core go-legacy
 
       - name: Run Smoke Test
         run: |

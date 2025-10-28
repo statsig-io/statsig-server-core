@@ -8,7 +8,8 @@ RUN go mod download && go mod verify
 
 RUN go build -o main .
 
-FROM golang:1.24
+FROM debian:12-slim
+
 WORKDIR /app
 COPY --from=builder /app/main /app/main
 

@@ -67,4 +67,10 @@ class SpecsAdapterBaseTest extends TestCase
     {
         $this->assertTrue($this->adapter->schedule_background_sync_called);
     }
+
+    public function testShutdownIsCalled()
+    {
+        $this->statsig->shutdown();
+        $this->assertTrue($this->adapter->shutdown_called);
+    }
 }

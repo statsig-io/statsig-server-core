@@ -55,4 +55,30 @@ class CustomEventLoggingAdapterTest extends TestCase
         $this->assertEquals($event['value'], 1);
         $this->assertEquals($event['metadata']['test_key'], 'test_value');
     }
+
+    public function testLoggingManyEvents()
+    {
+        $adapter = new MockEventLoggingAdapter();
+        $adapter->excludeDiagnostics = true;
+        $options = new StatsigOptions(
+            specs_url: $this->server->getUrl() . '/v2/download_config_specs',
+            event_logging_adapter: $adapter,
+            event_logging_max_queue_size: 10
+        );
+
+        $statsig = new Statsig('secret-key', $options);
+        $statsig->initialize();
+
+        for ($i = 0; $i < 100; $i++) {
+            $statsig->logEvent(new StatsigEventData("test_event", $i, ['test_key' => 'test_value']), $this->user);
+        }
+
+        $statsig->shutdown();
+
+        $this->assertTrue($adapter->logEventsCalled);
+
+        $events = $adapter->loggedEvents;
+
+        $this->assertEquals(100, count($events));
+    }
 }

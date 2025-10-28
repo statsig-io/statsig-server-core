@@ -24,13 +24,15 @@ const char *__internal__test_data_store(uint64_t data_store_ref,
 
 void free_string(char *s);
 
-uint64_t function_based_event_logging_adapter_create(void (*start_fn)(void),
+uint64_t function_based_event_logging_adapter_create(const char *bindings_language,
+                                                     void (*start_fn)(void),
                                                      SafeOptBool (*log_events_fn)(const char *request_json),
                                                      void (*shutdown_fn)(void));
 
 void function_based_event_logging_adapter_release(uint64_t adapter_ref);
 
-uint64_t function_based_specs_adapter_create(void (*setup_internal_fn)(uint64_t listener_ref),
+uint64_t function_based_specs_adapter_create(const char *bindings_language,
+                                             void (*setup_internal_fn)(uint64_t listener_ref),
                                              void (*start_fn)(void),
                                              void (*shutdown_fn)(void),
                                              void (*schedule_background_sync_fn)(void));
@@ -100,6 +102,11 @@ void statsig_log_event(uint64_t statsig_ref, uint64_t user_ref, const char *even
 
 void statsig_identify(uint64_t statsig_ref, uint64_t user_ref);
 
+char *statsig_get_client_init_response_with_inout_len(uint64_t statsig_ref,
+                                                      uint64_t user_ref,
+                                                      const char *options_json,
+                                                      uint64_t *inout_result_len);
+
 char *statsig_get_client_init_response(uint64_t statsig_ref,
                                        uint64_t user_ref,
                                        const char *options_json);
@@ -162,6 +169,12 @@ bool statsig_check_gate_performance(uint64_t statsig_ref,
                                     const uint8_t *options_ptr,
                                     uintptr_t options_len);
 
+char *statsig_get_feature_gate_with_inout_len(uint64_t statsig_ref,
+                                              uint64_t user_ref,
+                                              const char *gate_name,
+                                              const char *options_json,
+                                              uint64_t *inout_result_len);
+
 char *statsig_get_feature_gate(uint64_t statsig_ref,
                                uint64_t user_ref,
                                const char *gate_name,
@@ -170,6 +183,12 @@ char *statsig_get_feature_gate(uint64_t statsig_ref,
 void statsig_manually_log_gate_exposure(uint64_t statsig_ref,
                                         uint64_t user_ref,
                                         const char *gate_name);
+
+char *statsig_get_dynamic_config_with_inout_len(uint64_t statsig_ref,
+                                                uint64_t user_ref,
+                                                const char *config_name,
+                                                const char *options_json,
+                                                uint64_t *inout_result_len);
 
 char *statsig_get_dynamic_config(uint64_t statsig_ref,
                                  uint64_t user_ref,
@@ -180,6 +199,12 @@ void statsig_manually_log_dynamic_config_exposure(uint64_t statsig_ref,
                                                   uint64_t user_ref,
                                                   const char *config_name);
 
+char *statsig_get_experiment_with_inout_len(uint64_t statsig_ref,
+                                            uint64_t user_ref,
+                                            const char *experiment_name,
+                                            const char *options_json,
+                                            uint64_t *inout_result_len);
+
 char *statsig_get_experiment(uint64_t statsig_ref,
                              uint64_t user_ref,
                              const char *experiment_name,
@@ -188,6 +213,12 @@ char *statsig_get_experiment(uint64_t statsig_ref,
 void statsig_manually_log_experiment_exposure(uint64_t statsig_ref,
                                               uint64_t user_ref,
                                               const char *experiment_name);
+
+char *statsig_get_layer_with_inout_len(uint64_t statsig_ref,
+                                       uint64_t user_ref,
+                                       const char *layer_name,
+                                       const char *options_json,
+                                       uint64_t *inout_result_len);
 
 char *statsig_get_layer(uint64_t statsig_ref,
                         uint64_t user_ref,

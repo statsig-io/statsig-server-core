@@ -15,7 +15,7 @@ impl StatsigNapiInternal {
     pub fn subscribe(
         &self,
         #[napi(
-            ts_arg_type = "'*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated'"
+            ts_arg_type = "'*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated' | 'specs_updated'"
         )]
         event_name: String,
         #[napi(ts_arg_type = "(event: any) => void")] callback: Arc<MetricFn>,
@@ -34,7 +34,7 @@ impl StatsigNapiInternal {
     pub fn unsubscribe(
         &self,
         #[napi(
-            ts_arg_type = "'*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated'"
+            ts_arg_type = "'*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated' | 'specs_updated'"
         )]
         event_name: String,
     ) {

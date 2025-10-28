@@ -1,4 +1,4 @@
-module go-bench
+module go-scenario-runner
 
 go 1.24
 

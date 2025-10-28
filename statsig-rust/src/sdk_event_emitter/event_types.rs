@@ -1,4 +1,8 @@
-use crate::statsig_types::{DynamicConfig, Experiment, Layer};
+use crate::{
+    specs_response::spec_types::SpecsResponseFull,
+    statsig_types::{DynamicConfig, Experiment, Layer},
+    SpecsSource,
+};
 use serde::Serialize;
 use serde_json::json;
 use std::borrow::Cow;
@@ -12,6 +16,7 @@ pub enum SdkEventCode {
     DynamicConfigEvaluated = 3,
     ExperimentEvaluated = 4,
     LayerEvaluated = 5,
+    SpecsUpdated = 6,
 }
 
 impl SdkEventCode {
@@ -22,6 +27,7 @@ impl SdkEventCode {
             SdkEvent::DYNAMIC_CONFIG_EVALUATED => SdkEventCode::DynamicConfigEvaluated,
             SdkEvent::EXPERIMENT_EVALUATED => SdkEventCode::ExperimentEvaluated,
             SdkEvent::LAYER_EVALUATED => SdkEventCode::LayerEvaluated,
+            SdkEvent::SPECS_UPDATED => SdkEventCode::SpecsUpdated,
             _ => SdkEventCode::Unknown,
         }
     }
@@ -33,6 +39,11 @@ impl SdkEventCode {
 
 #[derive(Serialize, Clone)]
 pub enum SdkEvent<'a> {
+    SpecsUpdated {
+        source: &'a SpecsSource,
+        source_api: &'a Option<String>,
+        values: &'a SpecsResponseFull,
+    },
     GateEvaluated {
         gate_name: Cow<'a, str>,
         rule_id: Cow<'a, str>,
@@ -56,6 +67,7 @@ impl SdkEvent<'_> {
     pub const DYNAMIC_CONFIG_EVALUATED: &'static str = "dynamic_config_evaluated";
     pub const EXPERIMENT_EVALUATED: &'static str = "experiment_evaluated";
     pub const LAYER_EVALUATED: &'static str = "layer_evaluated";
+    pub const SPECS_UPDATED: &'static str = "specs_updated";
 
     pub fn get_code(&self) -> SdkEventCode {
         match self {
@@ -63,6 +75,7 @@ impl SdkEvent<'_> {
             SdkEvent::DynamicConfigEvaluated { .. } => SdkEventCode::DynamicConfigEvaluated,
             SdkEvent::ExperimentEvaluated { .. } => SdkEventCode::ExperimentEvaluated,
             SdkEvent::LayerEvaluated { .. } => SdkEventCode::LayerEvaluated,
+            SdkEvent::SpecsUpdated { .. } => SdkEventCode::SpecsUpdated,
         }
     }
 
@@ -73,6 +86,7 @@ impl SdkEvent<'_> {
             SdkEventCode::DynamicConfigEvaluated => SdkEvent::DYNAMIC_CONFIG_EVALUATED,
             SdkEventCode::ExperimentEvaluated => SdkEvent::EXPERIMENT_EVALUATED,
             SdkEventCode::LayerEvaluated => SdkEvent::LAYER_EVALUATED,
+            SdkEventCode::SpecsUpdated => SdkEvent::SPECS_UPDATED,
             SdkEventCode::Unknown => "unknown",
         }
     }
@@ -102,6 +116,15 @@ impl SdkEvent<'_> {
             }
             SdkEvent::LayerEvaluated { layer } => {
                 map.insert("layer".to_string(), json!(layer));
+            }
+            SdkEvent::SpecsUpdated {
+                source,
+                source_api,
+                values,
+            } => {
+                map.insert("source".to_string(), json!(source));
+                map.insert("source_api".to_string(), json!(source_api));
+                map.insert("values".to_string(), json!(values));
             }
         }
 

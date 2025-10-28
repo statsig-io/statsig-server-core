@@ -6,6 +6,7 @@ use parking_lot::Mutex;
 use crate::{
     data_store_interface::{DataStoreResponse, DataStoreTrait, RequestPath},
     networking::ResponseData,
+    sdk_event_emitter::SdkEventEmitter,
     SpecStore, SpecsSource, SpecsUpdate, StatsigErr, StatsigRuntime,
 };
 
@@ -65,6 +66,7 @@ async fn test_spec_store_data_store_updates_forwarded_to_data_store() {
         "test",
         "test".to_string(),
         StatsigRuntime::get_runtime(),
+        Arc::new(SdkEventEmitter::default()),
         Some(data_store.clone()),
     );
 
@@ -97,6 +99,7 @@ fn test_failure_to_update() {
         "test",
         "test".to_string(),
         StatsigRuntime::get_runtime(),
+        Arc::new(SdkEventEmitter::default()),
         None,
     );
 
@@ -116,6 +119,7 @@ fn test_no_updates() {
         "test",
         "test".to_string(),
         StatsigRuntime::get_runtime(),
+        Arc::new(SdkEventEmitter::default()),
         None,
     );
 

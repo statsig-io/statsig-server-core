@@ -83,7 +83,7 @@ lazy_static::lazy_static! {
 pub struct Statsig {
     pub statsig_runtime: Arc<StatsigRuntime>,
     pub options: Arc<StatsigOptions>,
-    pub event_emitter: SdkEventEmitter,
+    pub event_emitter: Arc<SdkEventEmitter>,
 
     sdk_key: String,
     event_logger: Arc<EventLogger>,
@@ -167,10 +167,13 @@ impl Statsig {
             &options.observability_client,
         );
 
+        let event_emitter = Arc::new(SdkEventEmitter::default());
+
         let spec_store = Arc::new(SpecStore::new(
             sdk_key,
             hashing.sha256(sdk_key),
             statsig_runtime.clone(),
+            event_emitter.clone(),
             options.data_store.clone(),
         ));
 
@@ -206,7 +209,7 @@ impl Statsig {
             background_tasks_started: Arc::new(AtomicBool::new(false)),
             persistent_values_manager,
             initialize_details: Mutex::new(InitializeDetails::default()),
-            event_emitter: SdkEventEmitter::default(),
+            event_emitter,
         }
     }
 

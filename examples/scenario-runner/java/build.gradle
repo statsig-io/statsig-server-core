@@ -17,7 +17,7 @@ java {
 }
 
 dependencies {
-    implementation 'com.statsig:serversdk:1.36.3'
+    implementation 'com.statsig:serversdk:3.1.1'
     implementation 'com.statsig:javacore:+'
     implementation 'com.alibaba.fastjson2:fastjson2:2.0.41'
     implementation 'io.javalin:javalin:+'

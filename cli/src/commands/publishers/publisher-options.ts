@@ -7,6 +7,7 @@ export const PACKAGES = [
   'dotnet',
   'elixir',
   'go',
+  'cpp',
 ] as const;
 export type Package = (typeof PACKAGES)[number];
 

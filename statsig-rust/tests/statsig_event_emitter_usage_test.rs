@@ -1,42 +1,67 @@
-use statsig_rust::{sdk_event_emitter::SdkEvent, Statsig, StatsigUser};
-use std::{sync::mpsc, time::Duration};
+mod utils;
+
+use crate::utils::mock_specs_adapter::MockSpecsAdapter;
+use statsig_rust::{sdk_event_emitter::SdkEvent, Statsig, StatsigOptions, StatsigUser};
+use std::{
+    sync::{mpsc, Arc},
+    time::Duration,
+};
+
+#[derive(Debug, PartialEq)]
+enum EventData {
+    Evaluation(String, String),
+    SpecsUpdated(String, u64),
+}
 
 struct ReceivedEvent {
     event_name: String,
-    spec_name: String,
-    eval_reason: String,
+    data: EventData,
 }
 
 fn setup(sdk_key: &str) -> (Statsig, StatsigUser, mpsc::Receiver<ReceivedEvent>) {
-    let statsig = Statsig::new(sdk_key, None);
+    let specs_adapter = Arc::new(MockSpecsAdapter::with_data("tests/data/eval_proj_dcs.json"));
+    let options = StatsigOptions {
+        specs_adapter: Some(specs_adapter),
+        ..StatsigOptions::default()
+    };
+    let statsig = Statsig::new(sdk_key, Some(Arc::new(options)));
     let (tx, rx) = mpsc::channel::<ReceivedEvent>();
     let user = StatsigUser::with_user_id("a_user".to_string());
 
     statsig.subscribe(SdkEvent::ALL, move |event| {
         let mut result = ReceivedEvent {
             event_name: event.get_name().to_string(),
-            spec_name: String::new(),
-            eval_reason: String::new(),
+            data: EventData::Evaluation(String::new(), String::new()),
         };
 
         match event {
             SdkEvent::GateEvaluated {
                 gate_name, reason, ..
             } => {
-                result.spec_name = gate_name.to_string();
-                result.eval_reason = reason.to_string();
+                result.data = EventData::Evaluation(gate_name.to_string(), reason.to_string());
             }
             SdkEvent::DynamicConfigEvaluated { dynamic_config } => {
-                result.spec_name = dynamic_config.name.to_string();
-                result.eval_reason = dynamic_config.details.reason.to_string();
+                result.data = EventData::Evaluation(
+                    dynamic_config.name.to_string(),
+                    dynamic_config.details.reason.to_string(),
+                );
             }
             SdkEvent::ExperimentEvaluated { experiment } => {
-                result.spec_name = experiment.name.to_string();
-                result.eval_reason = experiment.details.reason.to_string();
+                result.data = EventData::Evaluation(
+                    experiment.name.to_string(),
+                    experiment.details.reason.to_string(),
+                );
             }
             SdkEvent::LayerEvaluated { layer } => {
-                result.spec_name = layer.name.to_string();
-                result.eval_reason = layer.details.reason.to_string();
+                result.data =
+                    EventData::Evaluation(layer.name.to_string(), layer.details.reason.to_string());
+            }
+            SdkEvent::SpecsUpdated {
+                source,
+                source_api: _,
+                values,
+            } => {
+                result.data = EventData::SpecsUpdated(source.to_string(), values.time);
             }
         }
 
@@ -54,8 +79,10 @@ async fn test_gate_evaluated_event_for_check_gate() {
 
     let event = rx.recv_timeout(Duration::from_secs(1)).unwrap();
     assert_eq!(event.event_name, "gate_evaluated");
-    assert_eq!(event.spec_name, "test_gate");
-    assert_eq!(event.eval_reason, "Uninitialized");
+    assert_eq!(
+        event.data,
+        EventData::Evaluation("test_gate".to_string(), "Uninitialized".to_string())
+    );
 }
 
 #[tokio::test]
@@ -66,8 +93,10 @@ async fn test_gate_evaluated_event_for_get_feature_gate() {
 
     let event = rx.recv_timeout(Duration::from_secs(1)).unwrap();
     assert_eq!(event.event_name, "gate_evaluated");
-    assert_eq!(event.spec_name, "test_gate");
-    assert_eq!(event.eval_reason, "Uninitialized");
+    assert_eq!(
+        event.data,
+        EventData::Evaluation("test_gate".to_string(), "Uninitialized".to_string())
+    );
 }
 
 #[tokio::test]
@@ -78,8 +107,10 @@ async fn test_dynamic_config_evaluated_event() {
 
     let event = rx.recv_timeout(Duration::from_secs(1)).unwrap();
     assert_eq!(event.event_name, "dynamic_config_evaluated");
-    assert_eq!(event.spec_name, "test_config");
-    assert_eq!(event.eval_reason, "Uninitialized");
+    assert_eq!(
+        event.data,
+        EventData::Evaluation("test_config".to_string(), "Uninitialized".to_string())
+    );
 }
 
 #[tokio::test]
@@ -90,8 +121,10 @@ async fn test_experiment_evaluated_event() {
 
     let event = rx.recv_timeout(Duration::from_secs(1)).unwrap();
     assert_eq!(event.event_name, "experiment_evaluated");
-    assert_eq!(event.spec_name, "test_experiment");
-    assert_eq!(event.eval_reason, "Uninitialized");
+    assert_eq!(
+        event.data,
+        EventData::Evaluation("test_experiment".to_string(), "Uninitialized".to_string())
+    );
 }
 
 #[tokio::test]
@@ -102,6 +135,22 @@ async fn test_layer_evaluated_event() {
 
     let event = rx.recv_timeout(Duration::from_secs(1)).unwrap();
     assert_eq!(event.event_name, "layer_evaluated");
-    assert_eq!(event.spec_name, "test_layer");
-    assert_eq!(event.eval_reason, "Uninitialized");
+    assert_eq!(
+        event.data,
+        EventData::Evaluation("test_layer".to_string(), "Uninitialized".to_string())
+    );
+}
+
+#[tokio::test]
+async fn test_specs_updated_event() {
+    let (statsig, _, rx) = setup("secret-get_specs_updated");
+
+    statsig.initialize().await.unwrap();
+
+    let event = rx.recv_timeout(Duration::from_secs(1)).unwrap();
+    assert_eq!(event.event_name, "specs_updated");
+    assert_eq!(
+        event.data,
+        EventData::SpecsUpdated("Bootstrap".to_string(), 1729873603830)
+    );
 }

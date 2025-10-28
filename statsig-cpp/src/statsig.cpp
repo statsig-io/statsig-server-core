@@ -2,12 +2,20 @@
 #include "libstatsig_ffi.h"
 #include <cstring>
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <sstream>
+
+using json = nlohmann::json;
 namespace statsig_cpp_core {
 
 // Statsig implementation
 Statsig::Statsig(const std::string &sdk_key) : sdk_key_(sdk_key) {
   ref_ = statsig_create(sdk_key.c_str(), 0);
+}
+
+Statsig::Statsig(const std::string &sdk_key, const StatsigOptions &options)
+    : sdk_key_(sdk_key) {
+  ref_ = statsig_create(sdk_key.c_str(), options.ref);
 }
 
 Statsig::~Statsig() {
@@ -145,16 +153,31 @@ void Statsig::logEvent(
 
 // Feature Gates
 bool Statsig::checkGate(const User &user, const std::string &gate_name,
-                        const std::string &options_json) {
+                        const std::optional<CheckGateOptions> &options) {
+  std::string serialized_options;
+  if (options) {
+    json options_json = *options;
+    serialized_options = options_json.dump();
+  } else {
+    serialized_options = "{}";
+  }
+
   return statsig_check_gate(ref_, user.ref, gate_name.c_str(),
-                            options_json.c_str());
+                            serialized_options.c_str());
 }
 
-FeatureGate Statsig::getFeatureGate(const User &user,
-                                    const std::string &gate_name,
-                                    const std::string &options_json) {
+FeatureGate
+Statsig::getFeatureGate(const User &user, const std::string &gate_name,
+                        const std::optional<CheckGateOptions> &options) {
+  std::string serialized_options;
+  if (options) {
+    json options_json = *options;
+    serialized_options = options_json.dump();
+  } else {
+    serialized_options = "{}";
+  }
   char *result = statsig_get_feature_gate(ref_, user.ref, gate_name.c_str(),
-                                          options_json.c_str());
+                                          serialized_options.c_str());
   if (result) {
     std::string result_str(result);
     return FeatureGate(result_str);
@@ -162,11 +185,18 @@ FeatureGate Statsig::getFeatureGate(const User &user,
   return FeatureGate();
 }
 
-Experiment Statsig::getExperiment(const User &user,
-                                  const std::string &experiment_name,
-                                  const std::string &options_json) {
+Experiment
+Statsig::getExperiment(const User &user, const std::string &experiment_name,
+                       const std::optional<GetExperimentOptions> &options) {
+  std::string serialized_options;
+  if (options) {
+    json options_json = *options;
+    serialized_options = options_json.dump();
+  } else {
+    serialized_options = "{}";
+  }
   char *result = statsig_get_experiment(ref_, user.ref, experiment_name.c_str(),
-                                        options_json.c_str());
+                                        serialized_options.c_str());
   if (result) {
     std::string result_str(result);
     return Experiment(result_str);
@@ -174,11 +204,18 @@ Experiment Statsig::getExperiment(const User &user,
   return Experiment();
 }
 
-DynamicConfig Statsig::getConfig(const User &user,
-                                 const std::string &config_name,
-                                 const std::string &options_json) {
+DynamicConfig
+Statsig::getDynamicConfig(const User &user, const std::string &config_name,
+                   const std::optional<GetDynamicConfigOptions> &options) {
+  std::string serialized_options;
+  if (options) {
+    json options_json = *options;
+    serialized_options = options_json.dump();
+  } else {
+    serialized_options = "{}";
+  }
   char *result = statsig_get_dynamic_config(ref_, user.ref, config_name.c_str(),
-                                            options_json.c_str());
+                                            serialized_options.c_str());
   if (result) {
     std::string result_str(result);
     return DynamicConfig(result_str);
@@ -187,9 +224,16 @@ DynamicConfig Statsig::getConfig(const User &user,
 }
 
 Layer Statsig::getLayer(const User &user, const std::string &layer_name,
-                        const std::string &options_json) {
+                        const std::optional<GetLayerOptions> &options) {
+  std::string serialized_options;
+  if (options) {
+    json options_json = *options;
+    serialized_options = options_json.dump();
+  } else {
+    serialized_options = "{}";
+  }
   char *result = statsig_get_layer(ref_, user.ref, layer_name.c_str(),
-                                   options_json.c_str());
+                                   serialized_options.c_str());
 
   if (result) {
     std::cout << "Got layer result: " << result << std::endl;

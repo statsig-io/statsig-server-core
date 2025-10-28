@@ -2,7 +2,6 @@ package test
 
 import (
 	"encoding/json"
-	"os"
 	"strconv"
 	"testing"
 
@@ -10,7 +9,7 @@ import (
 )
 
 func TestCheckGateEvaluation(t *testing.T) {
-	statsig, _, user := setupTest(t)
+	statsig, _, user := SetupTest(t)
 
 	gate := statsig.CheckGate(user, "test_public")
 	if !gate {
@@ -21,7 +20,7 @@ func TestCheckGateEvaluation(t *testing.T) {
 }
 
 func TestFeatureGateEvaluation(t *testing.T) {
-	statsig, _, user := setupTest(t)
+	statsig, _, user := SetupTest(t)
 
 	gate := statsig.GetFeatureGate(user, "test_public")
 	if !gate.Value {
@@ -33,7 +32,7 @@ func TestFeatureGateEvaluation(t *testing.T) {
 }
 
 func TestDynamicConfigEvaluation(t *testing.T) {
-	statsig, _, user := setupTest(t)
+	statsig, _, user := SetupTest(t)
 
 	config := statsig.GetDynamicConfig(user, "test_email_config")
 	result := config.GetString("header_text", "err")
@@ -45,7 +44,7 @@ func TestDynamicConfigEvaluation(t *testing.T) {
 }
 
 func TestExperimentEvaluation(t *testing.T) {
-	statsig, _, user := setupTest(t)
+	statsig, _, user := SetupTest(t)
 
 	experiment := statsig.GetExperiment(user, "exp_with_obj_and_array")
 	result := experiment.GetMap("obj_param", map[string]any{})
@@ -57,7 +56,7 @@ func TestExperimentEvaluation(t *testing.T) {
 }
 
 func TestLayerEvaluation(t *testing.T) {
-	statsig, _, user := setupTest(t)
+	statsig, _, user := SetupTest(t)
 
 	layer := statsig.GetLayer(user, "layer_with_many_params")
 	result := layer.GetString("a_string", "err")
@@ -69,7 +68,7 @@ func TestLayerEvaluation(t *testing.T) {
 }
 
 func TestEventLogging(t *testing.T) {
-	statsig, scrapi, user := setupTest(t)
+	statsig, scrapi, user := SetupTest(t)
 
 	statsig.LogEvent(user, statsig_go.EventPayload{
 		EventName: "test_event",
@@ -93,7 +92,7 @@ func TestEventLogging(t *testing.T) {
 }
 
 func TestGetClientInitResponse(t *testing.T) {
-	statsig, _, user := setupTest(t)
+	statsig, _, user := SetupTest(t)
 
 	hashAlgo := "none"
 	options := statsig_go.ClientInitResponseOptions{
@@ -126,7 +125,7 @@ func TestGetClientInitResponse(t *testing.T) {
 }
 
 func TestGetClientInitResponseNoOptions(t *testing.T) {
-	statsig, _, user := setupTest(t)
+	statsig, _, user := SetupTest(t)
 
 	rawResponse := statsig.GetClientInitResponseWithOptions(user, nil)
 	statsig.Shutdown()
@@ -153,10 +152,10 @@ func TestGetClientInitResponseNoOptions(t *testing.T) {
 }
 
 func TestShutdownCycling(t *testing.T) {
-	_, scrapi, _ := setupTest(t)
+	_, scrapi, _ := SetupTest(t)
 
 	for range 25 {
-		statsig, _ := setupStatsig(t, scrapi)
+		statsig, _ := SetupStatsig(t, scrapi)
 		statsig.Initialize()
 
 		for i := range 100 {
@@ -166,53 +165,4 @@ func TestShutdownCycling(t *testing.T) {
 
 		statsig.Shutdown()
 	}
-}
-
-func setupTest(t *testing.T) (*statsig_go.Statsig, *MockScrapi, *statsig_go.StatsigUser) {
-	scrapi := NewMockScrapi()
-
-	resData, err := os.ReadFile("../../statsig-rust/tests/data/eval_proj_dcs.json")
-	if err != nil {
-		t.Errorf("error reading file: %v", err)
-	}
-
-	scrapi.Stub("GET", "/v2/download_config_specs/secret-123.json", StubResponse{
-		Status: 200,
-		Body:   resData,
-	})
-
-	scrapi.Stub("POST", "/v1/log_event", StubResponse{
-		Status: 200,
-		Body:   []byte(`{"success": true}`),
-	})
-
-	statsig, user := setupStatsig(t, scrapi)
-
-	statsig.Initialize()
-
-	return statsig, scrapi, user
-}
-
-func setupStatsig(t *testing.T, scrapi *MockScrapi) (*statsig_go.Statsig, *statsig_go.StatsigUser) {
-	opts, err := statsig_go.NewOptionsBuilder().
-		WithSpecsUrl(scrapi.URL() + "/v2/download_config_specs").
-		WithLogEventUrl(scrapi.URL() + "/v1/log_event").
-		WithEventLoggingMaxQueueSize(10).
-		Build()
-
-	if err != nil {
-		t.Errorf("error creating StatsigOptions: %v", err)
-	}
-
-	user, err := statsig_go.NewUserBuilderWithUserID("user-id").Build()
-	if err != nil {
-		t.Errorf("error creating StatsigUser: %v", err)
-	}
-
-	statsig, err := statsig_go.NewStatsigWithOptions("secret-123", opts)
-	if err != nil {
-		t.Errorf("error creating Statsig: %v", err)
-	}
-
-	return statsig, user
 }

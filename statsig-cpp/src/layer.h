@@ -2,6 +2,7 @@
 
 #include "libstatsig_ffi.h"
 #include "user.h"
+#include "types.h"
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <optional>

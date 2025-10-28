@@ -115,9 +115,19 @@ func BenchLegacy() {
 		})
 	}
 
+	// Benchmark client initialize response
+	benchmark(&results, "get_client_initialize_response", "n/a", ITER_LITE, "go-sdk", func() {
+		user := createUser()
+		statsig.GetClientInitializeResponse(user)
+	})
+
+	benchmark(&results, "get_client_initialize_response_global_user", "n/a", ITER_LITE, "go-sdk", func() {
+		statsig.GetClientInitializeResponse(globalUser)
+	})
+
 	statsig.Shutdown()
 
-	writeResults(&results, "go-sdk")
+	writeResults(&results, "go-sdk", sdkVersion)
 }
 
 func loadSpecNames() SpecNames {
@@ -211,23 +221,4 @@ func calculateAverage(values []float64) float64 {
 		sum += v
 	}
 	return sum / float64(len(values))
-}
-
-func writeResults(results *[]BenchmarkResult, sdkType string) {
-	sdkVersion := getSdkVersion()
-	root := map[string]interface{}{
-		"sdkType":    sdkType,
-		"sdkVersion": sdkVersion,
-		"results":    results,
-	}
-
-	jsonData, err := json.MarshalIndent(root, "", "  ")
-	if err != nil {
-		panic(fmt.Sprintf("Failed to marshal results: %v", err))
-	}
-
-	outPath := fmt.Sprintf("/shared-volume/%s-%s-results.json", sdkType, sdkVersion)
-	if err := ioutil.WriteFile(outPath, jsonData, 0644); err != nil {
-		panic(fmt.Sprintf("Failed to write results: %v", err))
-	}
 }
