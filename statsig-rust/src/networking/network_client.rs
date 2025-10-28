@@ -13,7 +13,14 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
-const NON_RETRY_CODES: [u16; 4] = [400, 403, 405, 501];
+const NON_RETRY_CODES: [u16; 6] = [
+    400, // Bad Request
+    403, // Forbidden
+    413, // Payload Too Large
+    405, // Method Not Allowed
+    429, // Too Many Requests
+    501, // Not Implemented
+];
 const SHUTDOWN_ERROR: &str = "Request was aborted because the client is shutting down";
 
 const TAG: &str = stringify!(NetworkClient);
