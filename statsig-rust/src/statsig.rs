@@ -24,6 +24,7 @@ use crate::gcir::target_app_id_utils::select_app_id_for_gcir;
 use crate::hashing::HashUtil;
 use crate::initialize_evaluations_response::InitializeEvaluationsResponse;
 use crate::initialize_response::InitializeResponse;
+use crate::initialize_v2_response::InitializeV2Response;
 use crate::observability::diagnostics_observer::DiagnosticsObserver;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
@@ -498,6 +499,10 @@ impl Statsig {
                     GCIRFormatter::generate_v2_format(&mut context, options),
                     || InitializeEvaluationsResponse::blank(user_internal),
                 ),
+            Some(GCIRResponseFormat::InitializeV2) => self.stringify_gcir_response(
+                GCIRFormatter::generate_init_v2_format(&mut context, options),
+                || InitializeV2Response::blank(user_internal),
+            ),
             _ => self.stringify_gcir_response(
                 GCIRFormatter::generate_v1_format(&mut context, options),
                 || InitializeResponse::blank(user_internal),
