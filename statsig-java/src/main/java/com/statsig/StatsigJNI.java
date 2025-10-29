@@ -65,6 +65,8 @@ class StatsigJNI {
   public static native String statsigGetFieldsNeededForExperiment(
       long statsigRef, String experimentName);
 
+  public static native String statsigGetExperimentList(long statsigRef);
+
   // ----------------------------------------------------------------------------------------
   // [Statsig: DynamicConfig]
 
@@ -76,6 +78,8 @@ class StatsigJNI {
 
   public static native String statsigGetFieldsNeededForDynamicConfig(
       long statsigRef, String configName);
+
+  public static native String statsigGetDynamicConfigList(long statsigRef);
 
   // ------------------------------------------------------------------------------------------------ [Statsig: Layer]
 
@@ -108,6 +112,8 @@ class StatsigJNI {
   // [Statsig: Param Store]
 
   public static native String statsigGetParameterStore(long statsigRef, String parameterStoreName);
+
+  public static native String statsigGetParameterStoreList(long statsigRef);
 
   public static native String statsigGetStringParameterFromParameterStore(
       long statsigRef,

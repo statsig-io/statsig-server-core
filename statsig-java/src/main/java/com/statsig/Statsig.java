@@ -206,6 +206,14 @@ public class Statsig {
     return JSON.parseObject(resultJSON, String[].class);
   }
 
+  public List<String> getExperimentList() {
+    String resultJSON = StatsigJNI.statsigGetExperimentList(ref);
+    if (resultJSON == null || resultJSON.isEmpty()) {
+      return new ArrayList<>();
+    }
+    return JSON.parseArray(resultJSON, String.class);
+  }
+
   // -------------------------
   // - Get Dynamic Config ----
   // -------------------------
@@ -236,6 +244,14 @@ public class Statsig {
   public String[] getFieldsNeededForDynamicConfig(String configName) {
     String resultJSON = StatsigJNI.statsigGetFieldsNeededForDynamicConfig(ref, configName);
     return JSON.parseObject(resultJSON, String[].class);
+  }
+
+  public List<String> getDynamicConfigList() {
+    String resultJSON = StatsigJNI.statsigGetDynamicConfigList(ref);
+    if (resultJSON == null || resultJSON.isEmpty()) {
+      return new ArrayList<>();
+    }
+    return JSON.parseArray(resultJSON, String.class);
   }
 
   // -------------------------
@@ -293,6 +309,10 @@ public class Statsig {
     StatsigJNI.statsigLogCMABExposure(ref, user.getRef(), cmabName, ruleId);
   }
 
+  // -------------------------
+  // -- Get Parameter Store --
+  // -------------------------
+
   public ParameterStore getParameterStore(StatsigUser user, String parameterStoreName) {
     String storeJson = StatsigJNI.statsigGetParameterStore(ref, parameterStoreName);
     ParameterStore store = JSON.parseObject(storeJson, ParameterStore.class);
@@ -302,6 +322,14 @@ public class Statsig {
       store.setUser(user);
     }
     return store;
+  }
+
+  public List<String> getParameterStoreList() {
+    String resultJSON = StatsigJNI.statsigGetParameterStoreList(ref);
+    if (resultJSON == null || resultJSON.isEmpty()) {
+      return new ArrayList<>();
+    }
+    return JSON.parseArray(resultJSON, String.class);
   }
 
   public String getStringFromParameterStore(
