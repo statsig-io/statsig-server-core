@@ -126,6 +126,7 @@ jobs:
           token: ${{ secrets.ROIM }}
           pull-request-number: ${{ steps.create_rc_pr.outputs.pull-request-number }}
           merge-method: MERGE
+          repository: statsig-io/statsig
 
       - name: Wait for all checks to complete'
         id: wait_for_checks
