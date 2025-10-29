@@ -306,7 +306,6 @@ pub fn layer_get_rule_id(layer: ResourceArc<LayerResource>) -> Result<String, Er
 
 #[rustler::nif]
 pub fn layer_get_group_name(layer: ResourceArc<LayerResource>) -> Result<Option<String>, Error> {
-    println!("get group name");
     match layer.core.read() {
         Ok(read_guard) => Ok(read_guard.group_name.clone()),
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
