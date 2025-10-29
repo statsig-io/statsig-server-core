@@ -107,7 +107,7 @@ jobs:
         with:
           token: ${{ secrets.ROIM }}
           commit-message: "Automator: [automated][sdk] Bump Statsig Node Core RC deps"
-          title: "[automated][sdk] Bump Statsig Node Core RC deps"
+          title: "[automated][sdk] bump statsig node core rc deps"
           body: |
             This PR was auto-generated on RC release.
             - Updated in `lib`, `lib/node/entity`, `lib/node/service-core`
@@ -116,9 +116,43 @@ jobs:
               - @statsig/statsig-node-core-linux-x64-gnu-rc
               - @statsig/statsig-node-core-linux-x64-musl-rc
           branch: bump_statsig_rc_sdk_version-${{ github.run_id }}
-          delete-branch: true
           labels: automation, rc-bump
           team-reviewers: sdk
+
+      - name: Enable auto-merge for PR
+        if: steps.create_rc_pr.outputs.pull-request-number != ''
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.ROIM }}
+          pull-request-number: ${{ steps.create_rc_pr.outputs.pull-request-number }}
+          merge-method: MERGE
+
+      - name: Wait for all checks to complete'
+        id: wait_for_checks
+        if: steps.create_rc_pr.outputs.pull-request-number != ''
+        continue-on-error: true
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: bump_statsig_rc_sdk_version-${{ github.run_id }}
+          repo-token: ${{ secrets.ROIM }}
+          wait-interval: 30
+          running-workflow-name: "RC Auto Bump"
+          allowed-conclusions: success
+
+      - name: Check PR merge result
+        id: check_pr
+        if: steps.create_rc_pr.outputs.pull-request-number != ''
+        run: |
+          pr_number=${{ steps.create_rc_pr.outputs.pull-request-number }}
+          echo "Checking PR #$pr_number status..."
+          merged=$(gh pr view $pr_number --json merged -q '.merged')
+          if [ "$merged" = "true" ]; then
+            echo "merge_result=success" >> $GITHUB_OUTPUT
+          else
+            echo "merge_result=failed" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.ROIM }}
 
       - name: Notify Slack about new RC bump PR
         if: steps.create_rc_pr.outputs.pull-request-url != ''
@@ -126,19 +160,30 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SDK_SLACK_WEBHOOK_URL }}
         run: |
           pr_url="${{ steps.create_rc_pr.outputs.pull-request-url }}"
-          pr_title="[automated][sdk] Bump Statsig Node Core RC deps"
+          pr_title="[automated][sdk] bump statsig node core rc deps"
+          rc_version="${{ steps.rc_ver.outputs.version }}"
           actor="${{ github.actor }}"
           repo="statsig-io/statsig"
           branch="bump_statsig_rc_sdk_version-${{ github.run_id }}"
+          merge_result="${{ steps.check_pr.outputs.merge_result }}"
+
+          if [ "$merge_result" = "success" ]; then
+            color="#36a64f"
+            text="✅ *${actor}*'s RC bump PR for *${rc_version}* passed all checks and was *auto-merged* into *${repo}*."
+          else
+            color="#ff9f00"
+            text="⚠️ *${actor}*'s RC bump PR for *${rc_version}* failed some checks or auto-merge did not occur.\nPlease review manually."
+          fi
     
           payload=$(cat <<EOF
           {
             "attachments": [
               {
-                "color": "#ff9f00",
-                "title": ":rocket: New RC Bump PR Created!",
-                "text": "*${actor}* just created a new PR in *${repo}*:\n<${pr_url}|${pr_title}>\n\n:warning: Please review and merge if safe.\nIf any breaking changes exist, update SDK wrappers accordingly.",
+                "color": "${color}",
+                "title": ":rocket: Node Core RC Bump Status Update",
+                "text": "${text}\n<${pr_url}|View PR>",
                 "fields": [
+                  { "title": "RC Version", "value": "${rc_version}", "short": true },
                   { "title": "Branch", "value": "${branch}", "short": true },
                   { "title": "Repository", "value": "${repo}", "short": true }
                 ],
