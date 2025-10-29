@@ -128,17 +128,30 @@ jobs:
           merge-method: MERGE
           repository: statsig-io/statsig
 
-      - name: Wait for all checks to complete'
+      - name: Wait for all checks to complete (manual via gh api)
         id: wait_for_checks
         if: steps.create_rc_pr.outputs.pull-request-number != ''
         continue-on-error: true
-        uses: lewagon/wait-on-check-action@v1.3.4
-        with:
-          ref: bump_statsig_rc_sdk_version-${{ github.run_id }}
-          repo-token: ${{ secrets.ROIM }}
-          wait-interval: 30
-          running-workflow-name: "RC Auto Bump"
-          allowed-conclusions: success
+        run: |
+          ref="bump_statsig_rc_sdk_version-${{ github.run_id }}"
+          repo="statsig-io/statsig"
+          echo "Waiting for checks on $repo@$ref..."
+          for i in {1..40}; do
+            status=$(gh api /repos/$repo/commits/$ref/check-runs --jq '.check_runs[].status' || echo "")
+            conclusion=$(gh api /repos/$repo/commits/$ref/check-runs --jq '.check_runs[].conclusion' || echo "")
+            if [[ "$status" =~ "in_progress" || "$status" =~ "queued" ]]; then
+              echo "Checks still running... (attempt $i)"
+              sleep 30
+            elif [[ "$conclusion" =~ "success" ]]; then
+              echo "All checks passed ✅"
+              exit 0
+            elif [[ -n "$conclusion" ]]; then
+              echo "Checks failed ❌: $conclusion"
+              exit 1
+            fi
+          done
+          echo "Timeout waiting for checks"
+          exit 1
 
       - name: Check PR merge result
         id: check_pr
@@ -146,7 +159,7 @@ jobs:
         run: |
           pr_number=${{ steps.create_rc_pr.outputs.pull-request-number }}
           echo "Checking PR #$pr_number status..."
-          merged=$(gh pr view $pr_number --json merged -q '.merged')
+          merged=$(gh pr view $pr_number --repo statsig-io/statsig --json merged -q '.merged')
           if [ "$merged" = "true" ]; then
             echo "merge_result=success" >> $GITHUB_OUTPUT
           else
