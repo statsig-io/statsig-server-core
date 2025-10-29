@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::StatsigUserLoggable;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::hashing::djb2_number;
@@ -109,6 +111,12 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
     ) -> Option<DynamicValue> {
         let field = field.as_ref()?;
 
+        if let Some(statsig_environment) = &self.user_ref.data.statsig_environment {
+            if let Some(result) = statsig_environment.get(field.value.as_str()) {
+                return Some(result.clone());
+            }
+        }
+
         if let Some(result) = self.statsig_instance?.get_from_statsig_env(&field.value) {
             return Some(result);
         }
@@ -118,13 +126,15 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
     }
 
     pub fn to_loggable(&self) -> StatsigUserLoggable {
-        let (environment, global_custom) = match self.statsig_instance {
-            Some(statsig) => (
-                statsig.use_statsig_env(|e| e.cloned()),
-                statsig.use_global_custom_fields(|gc| gc.cloned()),
-            ),
-            None => (None, None),
-        };
+        let mut environment = self.user_ref.data.statsig_environment.clone();
+        let mut global_custom: Option<HashMap<String, DynamicValue>> = None;
+
+        if let Some(statsig_instance) = &self.statsig_instance {
+            if environment.is_none() {
+                environment = statsig_instance.use_statsig_env(|e| e.cloned());
+            }
+            global_custom = statsig_instance.use_global_custom_fields(|gc| gc.cloned());
+        }
 
         StatsigUserLoggable::new(&self.user_ref.data, environment, global_custom)
     }

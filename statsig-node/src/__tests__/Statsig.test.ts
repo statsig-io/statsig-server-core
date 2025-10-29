@@ -57,6 +57,7 @@ describe('Statsig', () => {
     const options: StatsigOptions = {
       specsUrl,
       logEventUrl,
+      environment: 'development',
     };
 
     statsig = new Statsig('secret-123', options);
@@ -113,8 +114,11 @@ describe('Statsig', () => {
       expect(event?.value).toEqual('my_value');
     });
 
-    it('should check gates and log exposures', async () => {
-      const user = StatsigUser.withUserID('a-user');
+    it('should check gates and log exposures, and override environment from user', async () => {
+      const user = new StatsigUser({
+        userID: 'a-user',
+        statsigEnvironment: { tier: 'production' },
+      });
       const gate = statsig.checkGate(user, 'test_public');
 
       expect(gate).toBe(true);
@@ -122,9 +126,10 @@ describe('Statsig', () => {
       const event = await getLastLoggedEvent();
       expect(event?.eventName).toEqual('statsig::gate_exposure');
       expect(event?.metadata?.gate).toEqual('test_public');
+      expect(event?.user?.statsigEnvironment?.tier).toEqual('production');
     });
 
-    it('should get feature gates and log exposures', async () => {
+    it('should get feature gates and log exposures and get environment from options', async () => {
       const user = StatsigUser.withUserID('b-user');
       const gate = statsig.getFeatureGate(user, 'test_public');
 
@@ -133,6 +138,7 @@ describe('Statsig', () => {
       const event = await getLastLoggedEvent();
       expect(event?.eventName).toEqual('statsig::gate_exposure');
       expect(event?.metadata?.gate).toEqual('test_public');
+      expect(event?.user?.statsigEnvironment?.tier).toEqual('development');
     });
 
     it('should get dynamic configs and log exposures', async () => {

@@ -23,6 +23,8 @@ pub struct StatsigUserArgs {
     pub country: Option<String>,
     pub locale: Option<String>,
     pub app_version: Option<String>,
+    #[napi(ts_type = "{ tier?: string, [key: string]: string | undefined } | null | undefined")]
+    pub statsig_environment: Option<HashMap<String, String>>,
 
     #[napi(
         ts_type = "Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>"
@@ -93,6 +95,12 @@ impl StatsigUser {
 
         user_data.custom = Self::convert_to_dynamic_value_map(args.custom);
         user_data.private_attributes = Self::convert_to_dynamic_value_map(args.private_attributes);
+
+        // Convert statsig_environment from HashMap<String, String> to HashMap<String, DynamicValue>
+        if let Some(env) = args.statsig_environment {
+            user_data.statsig_environment =
+                Some(env.into_iter().map(|(k, v)| (k, dyn_value!(v))).collect());
+        }
 
         Self {
             inner: StatsigUserActual {
@@ -281,6 +289,12 @@ add_hashmap_getter_setter!(
     private_attributes,
     set_private_attributes,
     "value: Record<string, string | number | boolean | Array<string | number | boolean>> | null"
+);
+add_hashmap_getter_setter!(
+    "statsigEnvironment",
+    statsig_environment,
+    set_statsig_environment,
+    "value: { tier?: string, [key: string]: string | undefined } | null | undefined"
 );
 
 add_string_getter_setter!("userID", user_id, set_user_id);

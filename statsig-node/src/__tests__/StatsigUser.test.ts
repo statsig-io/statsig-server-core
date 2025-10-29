@@ -186,4 +186,138 @@ describe('StatsigUser', () => {
       statsig.checkGate(user, 'test-gate');
     }).not.toThrow();
   });
+
+  describe('statsigEnvironment', () => {
+    it('logs environment from user object', async () => {
+      const user = new StatsigUser({
+        userID: 'env-user',
+        statsigEnvironment: {
+          tier: 'production',
+        },
+      });
+
+      statsig.checkGate(user, 'test-gate');
+
+      const event = await getLastLoggedEvent();
+      expect(event?.eventName).toEqual('statsig::gate_exposure');
+      expect(event?.user?.userID).toEqual('env-user');
+      expect(event?.user?.statsigEnvironment).toBeDefined();
+      expect(event?.user?.statsigEnvironment?.tier).toEqual('production');
+    });
+
+    it('logs no environment when not provided', async () => {
+      const user = new StatsigUser({
+        userID: 'env-user-none',
+      });
+
+      statsig.checkGate(user, 'test-gate');
+
+      const event = await getLastLoggedEvent();
+      expect(event?.eventName).toEqual('statsig::gate_exposure');
+      expect(event?.user?.statsigEnvironment).toBeUndefined();
+    });
+
+    it('logs environment in config exposure events', async () => {
+      const user = new StatsigUser({
+        userID: 'config-env-user',
+        statsigEnvironment: {
+          tier: 'staging',
+        },
+      });
+
+      statsig.getDynamicConfig(user, 'test_email_config');
+
+      const event = await getLastLoggedEvent();
+      expect(event?.eventName).toEqual('statsig::config_exposure');
+      expect(event?.user?.statsigEnvironment).toBeDefined();
+      expect(event?.user?.statsigEnvironment?.tier).toEqual('staging');
+    });
+
+    it('logs environment in layer exposure events', async () => {
+      const user = new StatsigUser({
+        userID: 'layer-env-user',
+        statsigEnvironment: {
+          tier: 'development',
+        },
+      });
+
+      const layer = statsig.getLayer(user, 'test_layer_with_holdout');
+      layer.getValue('shared_number_param', 0);
+
+      const event = await getLastLoggedEvent();
+      expect(event?.eventName).toEqual('statsig::layer_exposure');
+      expect(event?.user?.statsigEnvironment).toBeDefined();
+      expect(event?.user?.statsigEnvironment?.tier).toEqual('development');
+    });
+
+    it('logs environment in custom events', async () => {
+      const user = new StatsigUser({
+        userID: 'custom-env-user',
+        statsigEnvironment: {
+          tier: 'testing',
+        },
+      });
+
+      statsig.logEvent(user, 'custom_event', 'test_value');
+
+      const event = await getLastLoggedEvent();
+      expect(event?.eventName).toEqual('custom_event');
+      expect(event?.user?.statsigEnvironment).toBeDefined();
+      expect(event?.user?.statsigEnvironment?.tier).toEqual('testing');
+    });
+
+    it('handles multiple users with different environments', async () => {
+      const user1 = new StatsigUser({
+        userID: 'multi-user-1',
+        statsigEnvironment: { tier: 'production' },
+      });
+
+      const user2 = new StatsigUser({
+        userID: 'multi-user-2',
+        statsigEnvironment: { tier: 'development' },
+      });
+
+      const user3 = new StatsigUser({
+        userID: 'multi-user-3',
+        // no environment
+      });
+
+      statsig.checkGate(user1, 'test-gate');
+      await statsig.flushEvents();
+      const event1 = scrapi.requests[0].body.events.filter(
+        (e: any) => e.eventName !== 'statsig::diagnostics',
+      )[0];
+
+      scrapi.requests.length = 0;
+      statsig.checkGate(user2, 'test-gate');
+      await statsig.flushEvents();
+      const event2 = scrapi.requests[0].body.events.filter(
+        (e: any) => e.eventName !== 'statsig::diagnostics',
+      )[0];
+
+      scrapi.requests.length = 0;
+      statsig.checkGate(user3, 'test-gate');
+      await statsig.flushEvents();
+      const event3 = scrapi.requests[0].body.events.filter(
+        (e: any) => e.eventName !== 'statsig::diagnostics',
+      )[0];
+
+      expect(event1?.user?.statsigEnvironment?.tier).toEqual('production');
+      expect(event2?.user?.statsigEnvironment?.tier).toEqual('development');
+      expect(event3?.user?.statsigEnvironment).toBeUndefined();
+    });
+
+    it('only accepts tier key in statsigEnvironment', async () => {
+      // The type enforces only "tier" key is allowed
+      const user = new StatsigUser({
+        userID: 'typed-user',
+        statsigEnvironment: { tier: 'production' },
+      });
+
+      statsig.checkGate(user, 'test-gate');
+
+      const event = await getLastLoggedEvent();
+      expect(event?.user?.statsigEnvironment?.tier).toEqual('production');
+    });
+  });
 });
