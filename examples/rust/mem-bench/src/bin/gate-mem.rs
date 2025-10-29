@@ -114,6 +114,10 @@ fn create_user() -> StatsigUser {
                 "test_private_attribute".to_string(),
                 dyn_value!("test_private_attribute_value"),
             )])),
+            statsig_environment: Some(HashMap::from([(
+                "tier".to_string(),
+                dyn_value!("development"),
+            )])),
         }),
     }
 }
