@@ -109,6 +109,8 @@ export declare class StatsigUser {
   set custom(value: Record<string, string | number | boolean | Array<string | number | boolean>> | null)
   get privateAttributes(): Record<string, string> | null
   set privateAttributes(value: Record<string, string | number | boolean | Array<string | number | boolean>> | null)
+  get statsigEnvironment(): Record<string, string> | null
+  set statsigEnvironment(value: { tier?: string, [key: string]: string | undefined } | null | undefined)
   get userID(): string | null
   set userID(value: any)
   get email(): string | null
@@ -303,6 +305,7 @@ export interface StatsigUserArgs {
   country?: string
   locale?: string
   appVersion?: string
+  statsigEnvironment?: { tier?: string, [key: string]: string | undefined } | null | undefined
   custom?: Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>
   privateAttributes?: Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>
 }

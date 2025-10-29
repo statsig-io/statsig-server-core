@@ -18,6 +18,8 @@ pub struct StatsigUserBuilder {
 
     pub custom: Option<HashMap<String, DynamicValue>>,
     pub private_attributes: Option<HashMap<String, DynamicValue>>,
+
+    pub statsig_environment: Option<HashMap<String, DynamicValue>>,
 }
 
 impl StatsigUserBuilder {
@@ -50,6 +52,7 @@ impl StatsigUserBuilder {
             custom: None,
             private_attributes: None,
             custom_ids: None,
+            statsig_environment: None,
         }
     }
 
@@ -117,6 +120,16 @@ impl StatsigUserBuilder {
         self
     }
 
+    pub fn statsig_environment(
+        mut self,
+        statsig_environment: Option<HashMap<String, String>>,
+    ) -> Self {
+        if let Some(statsig_environment) = statsig_environment {
+            self.statsig_environment = Some(convert_str_map_to_dyn_values(statsig_environment));
+        }
+        self
+    }
+
     // todo: support HashMap<String, String | Number | Boolean | Array<String>>
     pub fn custom_from_str_map(mut self, custom: Option<HashMap<String, String>>) -> Self {
         if let Some(custom) = custom {
@@ -164,6 +177,7 @@ impl StatsigUserBuilder {
             app_version: self.app_version,
             custom: self.custom,
             private_attributes: self.private_attributes,
+            statsig_environment: self.statsig_environment,
             custom_ids: self
                 .custom_ids
                 .map(|m| m.into_iter().map(|(k, v)| (k, v.into())).collect()),

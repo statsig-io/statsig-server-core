@@ -20,6 +20,7 @@ pub struct UserData {
     pub country: Option<DynamicValue>,
     pub locale: Option<DynamicValue>,
     pub app_version: Option<DynamicValue>,
+    pub statsig_environment: Option<HashMap<String, DynamicValue>>,
 
     #[serde(skip_serializing)]
     pub private_attributes: Option<HashMap<String, DynamicValue>>,

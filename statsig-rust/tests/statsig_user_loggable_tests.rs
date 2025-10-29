@@ -75,6 +75,10 @@ fn test_full_user_serialization() {
                 "private_attribute_key".to_string(),
                 dyn_value!("a_private_attribute_value"),
             )])),
+            statsig_environment: Some(HashMap::from([(
+                "statsig_environment_key".to_string(),
+                dyn_value!("a_statsig_environment_value"),
+            )])),
         }),
         environment: None,
         global_custom: None,
