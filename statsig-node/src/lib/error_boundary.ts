@@ -33,12 +33,14 @@ export class ErrorBoundary {
   }
 
   private static _onError(tag: string, error: unknown): void {
+    _tryConvertInvalidArgError(error);
+
     console.error(tag, error);
   }
 }
 
 function _getAllInstanceMethodNames(
-  instance: Record<string, unknown>,
+  instance: Record<string, unknown>
 ): string[] {
   const names = new Set<string>();
 
@@ -51,4 +53,28 @@ function _getAllInstanceMethodNames(
   }
 
   return Array.from(names);
+}
+
+function _tryConvertInvalidArgError(error: unknown): void {
+  if (typeof error !== 'object' || error === null) {
+    return;
+  }
+
+  if (!('code' in error) || error.code !== 'InvalidArg') {
+    return;
+  }
+
+  if (!('message' in error) || typeof error.message !== 'string') {
+    return;
+  }
+
+  if (
+    error.message.startsWith(
+      'Failed to recover `StatsigUser` type from napi value'
+    )
+  ) {
+    error.message =
+      'Expected StatsigUser instance, plain javascript object is not supported. Please create a StatsigUser instance using `new StatsigUser(...)` instead.';
+    return;
+  }
 }
