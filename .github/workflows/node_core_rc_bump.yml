@@ -128,41 +128,36 @@ jobs:
           merge-method: MERGE
           repository: statsig-io/statsig
 
-      - name: Wait for all checks to complete (manual via gh api)
-        id: wait_for_checks
-        if: steps.create_rc_pr.outputs.pull-request-number != ''
-        continue-on-error: true
+      - name: Wait for CI checks to complete
         run: |
           ref="bump_statsig_rc_sdk_version-${{ github.run_id }}"
           repo="statsig-io/statsig"
-          echo "Waiting for checks on $repo@$ref..."
+          echo "⏳ Waiting for checks on $repo@$ref..."
           for i in {1..40}; do
-            status=$(gh api /repos/$repo/commits/$ref/check-runs --jq '.check_runs[].status' || echo "")
-            conclusion=$(gh api /repos/$repo/commits/$ref/check-runs --jq '.check_runs[].conclusion' || echo "")
-            if [[ "$status" =~ "in_progress" || "$status" =~ "queued" ]]; then
+            state=$(gh api /repos/$repo/commits/$ref/status --jq '.state' || echo "error")
+            if [[ "$state" == "pending" ]]; then
               echo "Checks still running... (attempt $i)"
               sleep 30
-            elif [[ "$conclusion" =~ "success" ]]; then
-              echo "All checks passed ✅"
+            elif [[ "$state" == "success" ]]; then
+              echo "✅ All checks passed!"
               exit 0
-            elif [[ -n "$conclusion" ]]; then
-              echo "Checks failed ❌: $conclusion"
+            elif [[ "$state" == "failure" || "$state" == "error" ]]; then
+              echo "❌ Some checks failed."
               exit 1
             fi
           done
-          echo "Timeout waiting for checks"
+          echo "⏰ Timeout waiting for checks."
           exit 1
         env:
-          GH_TOKEN: ${{ secrets.ROIM }}  
-        shell: bash 
-
+          GH_TOKEN: ${{ secrets.ROIM }}
+        
       - name: Check PR merge result
         id: check_pr
         if: steps.create_rc_pr.outputs.pull-request-number != ''
         run: |
           pr_number=${{ steps.create_rc_pr.outputs.pull-request-number }}
           echo "Checking PR #$pr_number status..."
-          merged=$(gh pr view $pr_number --repo statsig-io/statsig --json merged -q '.merged')
+          merged=$(gh pr view $pr_number --repo statsig-io/statsig --json mergedAt != null then "true" else "false" end')
           if [ "$merged" = "true" ]; then
             echo "merge_result=success" >> $GITHUB_OUTPUT
           else
