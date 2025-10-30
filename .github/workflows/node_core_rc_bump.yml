@@ -152,6 +152,9 @@ jobs:
           done
           echo "Timeout waiting for checks"
           exit 1
+        env:
+          GH_TOKEN: ${{ secrets.ROIM }}  
+        shell: bash 
 
       - name: Check PR merge result
         id: check_pr
