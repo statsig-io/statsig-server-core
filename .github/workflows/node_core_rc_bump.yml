@@ -127,42 +127,26 @@ jobs:
           pull-request-number: ${{ steps.create_rc_pr.outputs.pull-request-number }}
           merge-method: MERGE
           repository: statsig-io/statsig
-
-      - name: Wait for CI checks to complete
-        run: |
-          ref="bump_statsig_rc_sdk_version-${{ github.run_id }}"
-          repo="statsig-io/statsig"
-          echo "⏳ Waiting for checks on $repo@$ref..."
-          for i in {1..40}; do
-            state=$(gh api /repos/$repo/commits/$ref/status --jq '.state' || echo "error")
-            if [[ "$state" == "pending" ]]; then
-              echo "Checks still running... (attempt $i)"
-              sleep 30
-            elif [[ "$state" == "success" ]]; then
-              echo "✅ All checks passed!"
-              exit 0
-            elif [[ "$state" == "failure" || "$state" == "error" ]]; then
-              echo "❌ Some checks failed."
-              exit 1
-            fi
-          done
-          echo "⏰ Timeout waiting for checks."
-          exit 1
-        env:
-          GH_TOKEN: ${{ secrets.ROIM }}
         
-      - name: Check PR merge result
+      - name: Wait until PR is auto-merged
         id: check_pr
         if: steps.create_rc_pr.outputs.pull-request-number != ''
         run: |
           pr_number=${{ steps.create_rc_pr.outputs.pull-request-number }}
-          echo "Checking PR #$pr_number status..."
-          merged=$(gh pr view $pr_number --repo statsig-io/statsig --json mergedAt != null then "true" else "false" end')
-          if [ "$merged" = "true" ]; then
-            echo "merge_result=success" >> $GITHUB_OUTPUT
-          else
-            echo "merge_result=failed" >> $GITHUB_OUTPUT
-          fi
+          repo="statsig-io/statsig"
+          echo "⏳ Waiting for PR #$pr_number to be auto-merged..."
+          for i in {1..60}; do
+            merged=$(gh pr view $pr_number --repo $repo --json mergedAt,state -q 'if .mergedAt != null or .state=="MERGED" then "true" else "false" end' || echo "false")
+            if [ "$merged" = "true" ]; then
+              echo "✅ PR #$pr_number has been merged!"
+              echo "merge_result=success" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            echo "Still waiting... (attempt $i)"
+            sleep 30
+          done
+          echo "⏰ Timeout waiting for auto-merge."
+          echo "merge_result=timeout" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.ROIM }}
 
