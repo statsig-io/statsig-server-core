@@ -37,6 +37,19 @@ def map_arm64_runners(included):
 
     return included
 
+def filter_windows_arm11_for_public_only(included):
+    """
+    Filter out windows-arm11 (windows + aarch64) config if this is a private repo.
+    windows-arm11 should only run on public repo.
+    """
+    if is_private_repo:
+        included["config"] = [
+            config
+            for config in included["config"]
+            if not (config.get("os") == "windows" and config.get("arch") == "aarch64")
+        ]
+    return included
+
 
 def export_outputs(included):
     with open(os.environ["GITHUB_OUTPUT"], "a") as github_output:
@@ -65,6 +78,7 @@ print(f"Should Build All: {should_build_all}")
 
 included, excluded = partition_targets(should_build_all)
 included = map_arm64_runners(included)
+included = filter_windows_arm11_for_public_only(included)
 export_outputs(included)
 
 print("\n== Included ==")

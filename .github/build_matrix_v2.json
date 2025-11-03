@@ -60,7 +60,7 @@
       "os": "windows",
       "arch": "aarch64",
       "target": "aarch64-pc-windows-msvc",
-      "runner": "windows-latest",
+      "runner": "windows-11-arm",
       "py_arch": "arm64"
     }
   ]
