@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'fs';
+import { existsSync, unlinkSync, writeFileSync } from 'fs';
 
 import { BASE_DIR } from '@/utils/file_utils.js';
 import { BuilderOptions } from '@/commands/builders/builder-options.js';
@@ -58,6 +58,8 @@ export function detectTarget(options: BuilderOptions): string {
   } else if (options.os == "windows") {
     if (options.arch == "x86") {
       return "i686-pc-windows-msvc"
+    } else if (options.arch == "aarch64" || options.arch == "arm64") {
+      return "aarch64-pc-windows-msvc"
     } else {
       return "x86_64-pc-windows-msvc"
     }

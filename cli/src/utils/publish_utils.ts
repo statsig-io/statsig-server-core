@@ -59,6 +59,10 @@ const ASSET_MAPPING = {
     'statsig_ffi.dll': 'shared',
     'statsig_ffi.dll.sig': 'signature',
   },
+  'aarch64-pc-windows-msvc': {
+    'statsig_ffi.dll': 'shared',
+    'statsig_ffi.dll.sig': 'signature',
+  },
   // Below are deprecated targets, covered by centos7
   'debian-x86_64-unknown-linux-gnu': {
     'libstatsig_ffi.so': 'shared',

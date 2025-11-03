@@ -2,7 +2,6 @@ import {
   ensureEmptyDir,
   getRootedPath,
   listFiles,
-  unzip,
 } from '@/utils/file_utils.js';
 import { Log } from '@/utils/terminal_utils.js';
 import { getRootVersion } from '@/utils/toml_utils.js';
@@ -62,6 +61,12 @@ const DIR_STRUCTURE = {
     'windows-x86_64-pc-windows-msvc-node/**/statsig-node-core.win32-x64-msvc.node':
       'statsig-node-core.win32-x64-msvc.node',
   },
+  'aarch64-pc-windows-msvc': {
+    'windows-aarch64-pc-windows-msvc-node/**/aarch64-pc-windows-msvc.package.json':
+      'package.json',
+    'windows-aarch64-pc-windows-msvc-node/**/statsig-node-core.win32-arm64-msvc.node':
+      'statsig-node-core.win32-arm64-msvc.node',
+  },
   'x86_64-unknown-linux-gnu': {
     'centos7-x86_64-unknown-linux-gnu-node/**/x86_64-unknown-linux-gnu.package.json':
       'package.json',
@@ -83,6 +88,7 @@ const PACKAGE_MAPPING = {
   'win32-ia32-msvc': '@statsig/statsig-node-core-win32-ia32-msvc',
   'darwin-x64': '@statsig/statsig-node-core-darwin-x64',
   'win32-x64-msvc': '@statsig/statsig-node-core-win32-x64-msvc',
+  'win32-arm64-msvc': '@statsig/statsig-node-core-win32-arm64-msvc',
   'linux-x64-gnu': '@statsig/statsig-node-core-linux-x64-gnu',
   'linux-x64-musl': '@statsig/statsig-node-core-linux-x64-musl',
 };
