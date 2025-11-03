@@ -59,6 +59,27 @@ public class StatsigInitializeWithDetails {
   }
 
   @Test
+  public void testGetExperimentByGroupName() throws InterruptedException, ExecutionException {
+    StatsigOptions options =
+        new StatsigOptions.Builder()
+            .setSpecsUrl(mockWebServer.url("/v2/download_config_specs").toString())
+            .setLogEventUrl(mockWebServer.url("/v1/log_event").toString())
+            .build();
+
+    Statsig statsig = new Statsig("secret-key", options);
+    statsig.initialize().get();
+    Experiment experiment =
+        statsig.getExperimentByGroupName("test_experiment_no_targeting", "Control");
+    assertNotNull(experiment);
+    assertEquals("test_experiment_no_targeting", experiment.name);
+    assertEquals("Control", experiment.groupName);
+    assertEquals("54QJztEPRLXK7ZCvXeY9q4", experiment.ruleID);
+    assertEquals("userID", experiment.idType);
+    assertEquals("control", experiment.value.get("value"));
+    assertEquals("Network:Recognized", experiment.getEvaluationDetails().reason);
+  }
+
+  @Test
   public void testInitializeWithDetailsFailure() throws InterruptedException, ExecutionException {
     StatsigOptions options =
         new StatsigOptions.Builder()

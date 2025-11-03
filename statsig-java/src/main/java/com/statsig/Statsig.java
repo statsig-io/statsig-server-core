@@ -214,6 +214,15 @@ public class Statsig {
     return JSON.parseArray(resultJSON, String.class);
   }
 
+  public Experiment getExperimentByGroupName(String experimentName, String groupName) {
+    String experJson = StatsigJNI.statsigGetExperimentByGroupName(ref, experimentName, groupName);
+    Experiment experiment = Experiment.fromJson(experJson);
+    if (experiment != null) {
+      experiment.setRawJson(experJson);
+    }
+    return experiment;
+  }
+
   // -------------------------
   // - Get Dynamic Config ----
   // -------------------------

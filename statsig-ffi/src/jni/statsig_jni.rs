@@ -393,6 +393,27 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFieldsNeededForExpe
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperimentByGroupName(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: jlong,
+    exper_name: JString,
+    group_name: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_c!(Statsig, &(statsig_ref as u64), std::ptr::null_mut());
+    let exper_name: String = match env.get_string(&exper_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let group_name: String = match env.get_string(&group_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let result = statsig.get_experiment_by_group_name(&exper_name, &group_name);
+    serialize_json_to_jstring(&mut env, &result)
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigManuallyLogLayerParamExposure(
     mut env: JNIEnv,
     _class: jclass,
