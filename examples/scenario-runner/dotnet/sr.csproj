@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>sr</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Legacy Statsig SDK -->
+    <PackageReference Include="Statsig" Version="*">
+      <Aliases>StatsigLegacy</Aliases>
+    </PackageReference>
+    
+    <!-- Core Statsig SDK -->
+    <PackageReference Include="Statsig.Dotnet" Version="0.0.0-placeholder">
+      <Aliases>StatsigCore</Aliases>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

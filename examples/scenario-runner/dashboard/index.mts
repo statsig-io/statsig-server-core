@@ -109,7 +109,7 @@ function readDockerStats() {
 }
 
 function readPerfStats() {
-  const services = ['node', 'python', 'java', 'go'];
+  const services = ['node', 'python', 'java', 'go', 'dotnet'];
   const results = {};
 
   for (const service of services) {

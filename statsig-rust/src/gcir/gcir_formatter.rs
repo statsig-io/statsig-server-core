@@ -1,5 +1,9 @@
-use crate::gcir::feature_gates_processor::get_gate_evaluations;
+use crate::gcir::dynamic_configs_processor::get_dynamic_config_evaluations_init_v2;
+use crate::gcir::feature_gates_processor::{get_gate_evaluations, get_gate_evaluations_init_v2};
+use crate::gcir::layer_configs_processor::get_layer_evaluations_init_v2;
+use ahash::AHashMap;
 
+use crate::initialize_v2_response::InitializeV2Response;
 use crate::interned_string::InternedString;
 use crate::specs_response::spec_types::SessionReplayTrigger;
 use crate::{
@@ -28,6 +32,7 @@ use super::param_stores_processor::get_serializeable_param_stores;
 pub enum GCIRResponseFormat {
     Initialize,                             // v1
     InitializeWithSecondaryExposureMapping, // v2
+    InitializeV2,                           // v3
 }
 
 impl GCIRResponseFormat {
@@ -36,6 +41,7 @@ impl GCIRResponseFormat {
         match input {
             "v1" => Some(GCIRResponseFormat::Initialize),
             "v2" => Some(GCIRResponseFormat::InitializeWithSecondaryExposureMapping),
+            "init_v2" => Some(GCIRResponseFormat::InitializeV2),
             _ => None,
         }
     }
@@ -130,6 +136,64 @@ impl GCIRFormatter {
             session_recording_event_triggers: session_replay_info.session_recording_event_triggers,
             session_recording_exposure_triggers: session_replay_info
                 .session_recording_exposure_triggers,
+        })
+    }
+
+    pub fn generate_init_v2_format(
+        context: &mut EvaluatorContext,
+        options: &ClientInitResponseOptions,
+    ) -> Result<InitializeV2Response, StatsigErr> {
+        let mut values = HashMap::new();
+        let mut val_map = AHashMap::new();
+        let mut exposure_map = AHashMap::new();
+        let mut exposures = HashMap::new();
+        let param_stores = get_serializeable_param_stores(context, options);
+        let evaluated_keys = get_evaluated_keys(context.user.user_ref);
+        let session_replay_info = get_session_replay_info(context, options);
+
+        Ok(InitializeV2Response {
+            feature_gates: get_gate_evaluations_init_v2(
+                context,
+                options,
+                &mut exposures,
+                &mut exposure_map,
+            )?,
+            dynamic_configs: get_dynamic_config_evaluations_init_v2(
+                context,
+                options,
+                &mut exposures,
+                &mut exposure_map,
+                &mut values,
+                &mut val_map,
+            )?,
+            layer_configs: get_layer_evaluations_init_v2(
+                context,
+                options,
+                &mut exposures,
+                &mut exposure_map,
+                &mut values,
+                &mut val_map,
+            )?,
+            param_stores,
+            time: context.specs_data.time,
+            has_updates: true,
+            hash_used: options.get_hash_algorithm().to_string(),
+            user: context.user.to_loggable(),
+            pa_hash: context.user.get_hashed_private_attributes(),
+            sdk_params: HashMap::new(),
+            evaluated_keys,
+            sdk_info: get_sdk_info(),
+            exposures,
+            can_record_session: session_replay_info.can_record_session,
+            session_recording_rate: session_replay_info.session_recording_rate,
+            recording_blocked: session_replay_info.recording_blocked,
+            passes_session_recording_targeting: session_replay_info
+                .passes_session_recording_targeting,
+            session_recording_event_triggers: session_replay_info.session_recording_event_triggers,
+            session_recording_exposure_triggers: session_replay_info
+                .session_recording_exposure_triggers,
+            values,
+            response_format: "init-v2".to_string(),
         })
     }
 }

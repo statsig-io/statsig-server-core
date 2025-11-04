@@ -40,6 +40,24 @@ services:
 
   # ------------------------------------------------------------ [ SDKS ]
 
+  dotnet-core:
+    build: ./dotnet
+    container_name: sr-dotnet-core
+    image: sr-dotnet:latest
+    environment:
+      - SDK_VARIANT=core
+    volumes:
+      - ./shared-volume:/shared-volume
+
+  dotnet-legacy:
+    build: ./dotnet
+    container_name: sr-dotnet-legacy
+    image: sr-dotnet:latest
+    environment:
+      - SDK_VARIANT=legacy
+    volumes:
+      - ./shared-volume:/shared-volume
+
   go-core:
     build: ./go
     container_name: sr-go-core

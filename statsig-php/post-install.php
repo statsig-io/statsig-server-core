@@ -2,7 +2,7 @@
 
 const OUTPUT_DIR = "resources";
 const DOMAIN = "pubkey.statsig.com";
-const VERSION = "0.11.1";
+const VERSION = "0.11.2-beta.2511032240";
 
 if (getenv('SKIP_STATSIG_POST_INSTALL') === 'true') {
     exit(0);
@@ -207,16 +207,15 @@ function download_public_key()
         return;
     }
 
+    // Sort records by txt length (longest to shortest)
+    usort($records, function($a, $b) {
+        return strlen($b['txt']) - strlen($a['txt']); // Longest first
+    });
+
     $allTxt = "";
 
-    for ($i = count($records) - 1; $i >= 0; $i--) {
-        $record = $records[$i];
-        if (isset($record['entries']) && is_array($record['entries'])) {
-            $txtValue = implode('', $record['entries']);
-        } else {
-            $txtValue = $record['txt'];
-        }
-        $allTxt .= str_replace('"', '', $txtValue);
+    foreach ($records as $record) {
+        $allTxt .= str_replace('"', '', $record['txt']);
     }
 
     $allTxt = trim(str_replace('"', '', $allTxt));

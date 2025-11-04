@@ -1,5 +1,7 @@
 use super::dynamic_returnable::DynamicReturnable;
-use crate::interned_string::InternedString;
+use crate::{
+    evaluation::secondary_exposure_key::SecondaryExposureKey, interned_string::InternedString,
+};
 use serde::{Deserialize, Serialize};
 
 pub fn is_false(v: &bool) -> bool {
@@ -24,6 +26,16 @@ impl SecondaryExposure {
         key += "|";
         key += self.rule_id.as_str();
         key
+    }
+}
+
+impl From<&SecondaryExposure> for SecondaryExposureKey {
+    fn from(val: &SecondaryExposure) -> Self {
+        SecondaryExposureKey {
+            gate_name_hash: val.gate.hash,
+            rule_id_hash: val.rule_id.hash,
+            gate_value_hash: val.gate_value.hash,
+        }
     }
 }
 

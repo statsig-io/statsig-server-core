@@ -68,6 +68,10 @@ impl DynamicReturnable {
             },
         }
     }
+
+    pub fn get_hash(&self) -> u64 {
+        self.hash
+    }
 }
 
 impl<'de> Deserialize<'de> for DynamicReturnable {

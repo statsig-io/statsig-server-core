@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+
+use ahash::AHashMap;
+
 use super::dynamic_returnable::DynamicReturnable;
 use super::evaluation_types::ExtraExposureInfo;
 use super::evaluation_types_v2::{
@@ -8,6 +12,11 @@ use crate::evaluation::evaluation_types::{
     BaseEvaluation, DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation,
     SecondaryExposure,
 };
+use crate::evaluation::evaluation_types_initialize_v2::{
+    BaseEvaluationInitV2, DynamicConfigEvaluationInitV2, ExperimentEvaluationInitV2,
+    GateEvaluationInitV2, LayerEvaluationInitV2,
+};
+use crate::evaluation::secondary_exposure_key::SecondaryExposureKey;
 use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::interned_string::InternedString;
 
@@ -54,6 +63,22 @@ pub fn result_to_gate_eval_v2(
         base: result_to_base_eval_v2(gate_name, result, hashing),
         id_type: result.id_type.take(),
         value: result.bool_value,
+    }
+}
+
+pub fn result_to_gate_eval_init_v2(
+    result: &mut EvaluatorResult,
+    expo_id_to_exposure_map: &mut HashMap<InternedString, SecondaryExposure>,
+    expo_key_to_expo_id_map: &mut AHashMap<SecondaryExposureKey, InternedString>,
+) -> GateEvaluationInitV2 {
+    let value: Option<bool> = match result.bool_value {
+        true => Some(true),
+        _ => None,
+    };
+    GateEvaluationInitV2 {
+        base: result_to_base_eval_init_v2(result, expo_id_to_exposure_map, expo_key_to_expo_id_map),
+        id_type: result.id_type.take(),
+        value,
     }
 }
 
@@ -117,6 +142,40 @@ pub fn result_to_experiment_eval_v2(
         is_experiment_active,
         is_user_in_experiment,
         undelegated_secondary_exposures: result.undelegated_secondary_exposures.clone(),
+    }
+}
+
+pub fn result_to_experiment_eval_init_v2(
+    spec_entity: Option<&str>,
+    result: &mut EvaluatorResult,
+    expo_id_to_exposure_map: &mut HashMap<InternedString, SecondaryExposure>,
+    expo_key_to_expo_id_map: &mut AHashMap<SecondaryExposureKey, InternedString>,
+    value_id_to_value_map: &mut HashMap<InternedString, DynamicReturnable>,
+    value_key_to_value_id: &mut AHashMap<u64, InternedString>,
+) -> ExperimentEvaluationInitV2 {
+    let value: Option<DynamicReturnable> = result.json_value.take();
+
+    let id_type = result.id_type.take();
+
+    let mut is_experiment_active = None;
+    let mut is_user_in_experiment = None;
+
+    if let Some(spec_entity) = spec_entity {
+        if spec_entity == "experiment" {
+            is_experiment_active = Some(result.is_experiment_active);
+            is_user_in_experiment = Some(result.is_experiment_group);
+        }
+    }
+
+    let mapped_value = self::get_mapped_value(value, value_id_to_value_map, value_key_to_value_id);
+
+    ExperimentEvaluationInitV2 {
+        base: result_to_base_eval_init_v2(result, expo_id_to_exposure_map, expo_key_to_expo_id_map),
+        id_type,
+        value: mapped_value,
+        group_name: result.group_name.take(),
+        is_experiment_active,
+        is_user_in_experiment,
     }
 }
 
@@ -220,6 +279,58 @@ pub fn result_to_layer_eval_v2(
     }
 }
 
+pub fn result_to_layer_eval_init_v2(
+    result: &mut EvaluatorResult,
+    expo_id_to_exposure_map: &mut HashMap<InternedString, SecondaryExposure>,
+    expo_key_to_expo_id_map: &mut AHashMap<SecondaryExposureKey, InternedString>,
+    value_id_to_value_map: &mut HashMap<InternedString, DynamicReturnable>,
+    value_key_to_value_id: &mut AHashMap<u64, InternedString>,
+) -> LayerEvaluationInitV2 {
+    let value: Option<DynamicReturnable> = result.json_value.take();
+
+    let mut allocated_experiment_name = None;
+    let mut is_experiment_active = None;
+    let mut is_user_in_experiment = None;
+
+    if let Some(config_delegate) = result.config_delegate.take() {
+        if !config_delegate.is_empty() {
+            allocated_experiment_name = Some(config_delegate.clone());
+            is_experiment_active = Some(result.is_experiment_active);
+            is_user_in_experiment = Some(result.is_experiment_group);
+        }
+    }
+
+    let id_type = result.id_type.take();
+
+    let mapped_exposures: Option<Vec<InternedString>> = match result
+        .undelegated_secondary_exposures
+        .as_mut()
+    {
+        Some(undelegated_secondary_exposures) if !&undelegated_secondary_exposures.is_empty() => {
+            Some(self::map_exposures(
+                undelegated_secondary_exposures,
+                expo_id_to_exposure_map,
+                expo_key_to_expo_id_map,
+            ))
+        }
+        _ => None,
+    };
+
+    let mapped_value = self::get_mapped_value(value, value_id_to_value_map, value_key_to_value_id);
+
+    LayerEvaluationInitV2 {
+        base: result_to_base_eval_init_v2(result, expo_id_to_exposure_map, expo_key_to_expo_id_map),
+        id_type,
+        value: mapped_value,
+        group_name: result.group_name.take(),
+        is_experiment_active,
+        is_user_in_experiment,
+        allocated_experiment_name,
+        explicit_parameters: result.explicit_parameters.cloned(),
+        undelegated_secondary_exposures: mapped_exposures,
+    }
+}
+
 pub fn result_to_dynamic_config_eval(
     dynamic_config_name: &str,
     result: &mut EvaluatorResult,
@@ -248,6 +359,48 @@ pub fn result_to_dynamic_config_eval_v2(
         is_device_based,
         value: get_json_value(result),
         passed: result.bool_value,
+    }
+}
+
+pub fn result_to_dynamic_config_eval_init_v2(
+    result: &mut EvaluatorResult,
+    expo_id_to_exposure_map: &mut HashMap<InternedString, SecondaryExposure>,
+    expo_key_to_expo_id_map: &mut AHashMap<SecondaryExposureKey, InternedString>,
+    value_id_to_value_map: &mut HashMap<InternedString, DynamicReturnable>,
+    value_key_to_value_id: &mut AHashMap<u64, InternedString>,
+) -> DynamicConfigEvaluationInitV2 {
+    let value: Option<DynamicReturnable> = result.json_value.take();
+
+    let id_type = result.id_type.take();
+
+    let mapped_value = self::get_mapped_value(value, value_id_to_value_map, value_key_to_value_id);
+
+    DynamicConfigEvaluationInitV2 {
+        base: result_to_base_eval_init_v2(result, expo_id_to_exposure_map, expo_key_to_expo_id_map),
+        id_type,
+        value: mapped_value,
+        passed: result.bool_value,
+    }
+}
+
+fn get_mapped_value(
+    value: Option<DynamicReturnable>,
+    value_id_to_value_map: &mut HashMap<InternedString, DynamicReturnable>,
+    value_key_to_value_id: &mut AHashMap<u64, InternedString>,
+) -> InternedString {
+    let val = match &value {
+        Some(v) => v,
+        None => &DynamicReturnable::empty(),
+    };
+    let hash = val.get_hash();
+    match value_key_to_value_id.get(&hash) {
+        Some(mapped_key) => mapped_key.clone(),
+        None => {
+            let value_id = InternedString::from_string(value_id_to_value_map.len().to_string());
+            value_id_to_value_map.insert(value_id.clone(), val.clone());
+            value_key_to_value_id.insert(hash, value_id.clone());
+            value_id
+        }
     }
 }
 
@@ -323,6 +476,61 @@ fn result_to_base_eval_v2(
         rule_id,
         secondary_exposures: exposures,
     }
+}
+
+fn result_to_base_eval_init_v2(
+    result: &mut EvaluatorResult,
+    expo_id_to_exposure_map: &mut HashMap<InternedString, SecondaryExposure>,
+    expo_key_to_expo_id_map: &mut AHashMap<SecondaryExposureKey, InternedString>,
+) -> BaseEvaluationInitV2 {
+    let rule_id = create_suffixed_rule_id(result.rule_id, result.rule_id_suffix);
+    let opt_rule_id = match rule_id.as_str() {
+        "default" => None,
+        _ => Some(rule_id),
+    };
+
+    if result.secondary_exposures.is_empty() {
+        return BaseEvaluationInitV2 {
+            rule_id: opt_rule_id,
+            secondary_exposures: None,
+        };
+    }
+
+    BaseEvaluationInitV2 {
+        rule_id: opt_rule_id,
+        secondary_exposures: Some(self::map_exposures(
+            &mut result.secondary_exposures,
+            expo_id_to_exposure_map,
+            expo_key_to_expo_id_map,
+        )),
+    }
+}
+
+fn map_exposures(
+    input_exposures: &mut Vec<SecondaryExposure>,
+    expo_id_to_exposure_map: &mut HashMap<InternedString, SecondaryExposure>,
+    expo_key_to_expo_id_map: &mut AHashMap<SecondaryExposureKey, InternedString>,
+) -> Vec<InternedString> {
+    let my_exposures = std::mem::take(input_exposures);
+    my_exposures
+        .into_iter()
+        .map(|exposure| {
+            let expo_key = SecondaryExposureKey::from(&exposure);
+
+            match expo_key_to_expo_id_map.get(&expo_key) {
+                Some(expo_id) => expo_id.clone(),
+                None => {
+                    let expo_id =
+                        InternedString::from_string(expo_id_to_exposure_map.len().to_string());
+
+                    expo_id_to_exposure_map.insert(expo_id.clone(), exposure);
+                    expo_key_to_expo_id_map.insert(expo_key, expo_id.clone());
+
+                    expo_id
+                }
+            }
+        })
+        .collect()
 }
 
 fn create_suffixed_rule_id(

@@ -11,8 +11,8 @@ use crate::{
 use statsig_rust::{
     data_store_interface::DataStoreTrait, log_e, networking::proxy_config::ProxyConfig,
     output_logger::LogLevel, DynamicValue, EventLoggingAdapter, InstanceRegistry,
-    ObservabilityClient, PersistentStorage, SpecsAdapter, StatsigLocalFileEventLoggingAdapter,
-    StatsigLocalFileSpecsAdapter, StatsigOptions,
+    ObservabilityClient, PersistentStorage, SpecAdapterConfig, SpecsAdapter,
+    StatsigLocalFileEventLoggingAdapter, StatsigLocalFileSpecsAdapter, StatsigOptions,
 };
 use std::collections::HashMap;
 use std::sync::Weak;
@@ -48,6 +48,16 @@ pub struct StatsigOptionsData {
     proxy_protocol: Option<String>,
     service_name: Option<String>,
     specs_adapter_ref: Option<u64>,
+    // -- START STATSIG FORWARD PROXY CONFIG --
+    spec_adapter_type: Option<String>,
+    spec_adapter_url: Option<String>,
+    spec_adapter_init_timeout_ms: Option<u64>,
+    spec_adapter_authentication_mode: Option<String>,
+    spec_adapter_ca_cert_path: Option<String>,
+    spec_adapter_client_cert_path: Option<String>,
+    spec_adapter_client_key_path: Option<String>,
+    spec_adapter_domain_name: Option<String>,
+    // -- END STATSIG FORWARD PROXY CONFIG --
     specs_sync_interval_ms: Option<u32>,
     specs_url: Option<String>,
     use_third_party_ua_parser: Option<bool>,
@@ -100,6 +110,17 @@ impl From<StatsigOptionsData> for StatsigOptions {
             data.proxy_protocol,
         );
 
+        let spec_adapters_config = create_spec_adapters_config(
+            data.spec_adapter_type,
+            data.spec_adapter_url,
+            data.spec_adapter_init_timeout_ms,
+            data.spec_adapter_authentication_mode,
+            data.spec_adapter_ca_cert_path,
+            data.spec_adapter_client_cert_path,
+            data.spec_adapter_client_key_path,
+            data.spec_adapter_domain_name,
+        );
+
         // please keep sorted alphabetically
         Self {
             config_compression_mode,
@@ -129,7 +150,7 @@ impl From<StatsigOptionsData> for StatsigOptions {
             persistent_storage,
             proxy_config,
             service_name: data.service_name,
-            spec_adapters_config: None, // todo: add support for spec adapters config
+            spec_adapters_config,
             specs_adapter,
             specs_sync_interval_ms: data.specs_sync_interval_ms,
             specs_url: data.specs_url,
@@ -331,6 +352,37 @@ fn try_get_persistent_storage(persistent_storage_ref: u64) -> Option<Arc<dyn Per
 
     if let Ok(persistent_storage) = raw.clone().downcast::<PersistentStorageC>() {
         return Some(persistent_storage);
+    }
+
+    None
+}
+
+// This function is used to create a spec adapters config
+// which is used to configure STATSIG FORWARD PROXY
+#[allow(clippy::too_many_arguments)]
+fn create_spec_adapters_config(
+    spec_adapter_type: Option<String>,
+    spec_adapter_url: Option<String>,
+    spec_adapter_init_timeout_ms: Option<u64>,
+    spec_adapter_authentication_mode: Option<String>,
+    spec_adapter_ca_cert_path: Option<String>,
+    spec_adapter_client_cert_path: Option<String>,
+    spec_adapter_client_key_path: Option<String>,
+    spec_adapter_domain_name: Option<String>,
+) -> Option<Vec<SpecAdapterConfig>> {
+    if let (Some(spec_adapter_type), Some(spec_adapter_init_timeout_ms)) =
+        (spec_adapter_type, spec_adapter_init_timeout_ms)
+    {
+        return Some(vec![SpecAdapterConfig {
+            adapter_type: spec_adapter_type.into(),
+            specs_url: spec_adapter_url,
+            init_timeout_ms: spec_adapter_init_timeout_ms,
+            authentication_mode: spec_adapter_authentication_mode,
+            ca_cert_path: spec_adapter_ca_cert_path,
+            client_cert_path: spec_adapter_client_cert_path,
+            client_key_path: spec_adapter_client_key_path,
+            domain_name: spec_adapter_domain_name,
+        }]);
     }
 
     None

@@ -60,6 +60,7 @@ mod event_logging_adapter;
 mod id_lists_adapter;
 mod initialize_evaluations_response;
 mod initialize_response;
+mod initialize_v2_response;
 mod macros;
 mod observability;
 mod persistent_storage;

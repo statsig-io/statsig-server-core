@@ -19,6 +19,7 @@ public:
   std::optional<std::string> log_event_url;
   std::optional<std::string> output_log_level;
   std::optional<std::string> environment;
+  bool enable_id_lists = false;
   bool disable_all_logging = false;
   bool disable_country_lookup = false;
   bool disable_network = false;
@@ -32,6 +33,7 @@ inline void to_json(json &j, const StatsigOptionsBuilder &b) {
            {"log_event_url", b.log_event_url},
            {"environment", b.environment},
            {"output_log_level", b.output_log_level},
+           {"enable_id_lists", b.enable_id_lists},
            {"disable_all_logging", b.disable_all_logging},
            {"disable_country_lookup", b.disable_country_lookup},
            {"disable_network", b.disable_network}};

@@ -43,7 +43,7 @@ function (detect_cpu cpu_arch_var)
     endif()
 endfunction()
 
-function (detect_is_musl, is_musl_var)
+function (detect_is_musl is_musl_var)
     execute_process(
         COMMAND ldd --version
         RESULT_VARIABLE _ldd_result

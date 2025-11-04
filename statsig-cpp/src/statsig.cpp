@@ -204,9 +204,9 @@ Statsig::getExperiment(const User &user, const std::string &experiment_name,
   return Experiment();
 }
 
-DynamicConfig
-Statsig::getDynamicConfig(const User &user, const std::string &config_name,
-                   const std::optional<GetDynamicConfigOptions> &options) {
+DynamicConfig Statsig::getDynamicConfig(
+    const User &user, const std::string &config_name,
+    const std::optional<GetDynamicConfigOptions> &options) {
   std::string serialized_options;
   if (options) {
     json options_json = *options;
@@ -236,7 +236,6 @@ Layer Statsig::getLayer(const User &user, const std::string &layer_name,
                                    serialized_options.c_str());
 
   if (result) {
-    std::cout << "Got layer result: " << result << std::endl;
     std::string result_str(result);
     return Layer(ref_, result_str);
   }

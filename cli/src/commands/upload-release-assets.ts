@@ -57,6 +57,10 @@ const ASSET_MAPPING = {
     'libstatsig_ffi.dll': 'shared',
     'libstatsig_ffi.dll.sig': 'signature',
   },
+  'aarch64-pc-windows-msvc': {
+    'libstatsig_ffi.dll': 'shared',
+    'libstatsig_ffi.dll.sig': 'signature',
+  },
 };
 
 export class UploadReleaseAssets extends CommandBase {

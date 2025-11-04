@@ -1,6 +1,8 @@
 #include "user.h"
 #include "libstatsig_ffi.h"
+#include "types.h"
 #include <cstring>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
 
@@ -21,7 +23,7 @@ UserBuilder::UserBuilder() {
   userID = "";
   customIDs.clear();
   email = "";
-  ipAddress = "";
+  ip = "";
   userAgent = "";
   country = "";
   locale = "";
@@ -46,8 +48,8 @@ UserBuilder &UserBuilder::setEmail(const std::string &email) {
   return *this;
 }
 
-UserBuilder &UserBuilder::setIPAddress(const std::string &ip) {
-  ipAddress = ip;
+UserBuilder &UserBuilder::setIp(const std::string &ip) {
+  this->ip = ip;
   return *this;
 }
 
@@ -72,72 +74,21 @@ UserBuilder &UserBuilder::setAppVersion(const std::string &version) {
 }
 
 UserBuilder &UserBuilder::setCustom(
-    const std::unordered_map<std::string, JSON::any> &custom) {
+    const std::unordered_map<std::string, allowed_type> &custom) {
   this->custom = custom;
   return *this;
 }
 
 UserBuilder &UserBuilder::setPrivateAttribute(
-    const std::unordered_map<std::string, JSON::any> &privateAttr) {
+    const std::unordered_map<std::string, allowed_type> &privateAttr) {
   privateAttribute = privateAttr;
   return *this;
 }
 
 User UserBuilder::build() {
-  // Convert customIDs map to JSON string
-  std::string customIDsJson = "{}";
-  if (!customIDs.empty()) {
-    customIDsJson = "{";
-    bool first = true;
-    for (const auto &pair : customIDs) {
-      if (!first)
-        customIDsJson += ",";
-      customIDsJson += "\"" + pair.first + "\":\"" + pair.second + "\"";
-      first = false;
-    }
-    customIDsJson += "}";
-  }
-
-  // Convert custom map to JSON string
-  std::string customJson = "{}";
-  if (!custom.empty()) {
-    customJson = "{";
-    bool first = true;
-    for (const auto &pair : custom) {
-      if (!first)
-        customJson += ",";
-      customJson +=
-          "\"" + pair.first + "\":\"" + pair.second.as<std::string>() + "\"";
-      first = false;
-    }
-    customJson += "}";
-  }
-
-  // Convert private attributes map to JSON string
-  std::string privateAttributesJson = "{}";
-  if (!privateAttribute.empty()) {
-    privateAttributesJson = "{";
-    bool first = true;
-    for (const auto &pair : privateAttribute) {
-      if (!first)
-        privateAttributesJson += ",";
-      privateAttributesJson +=
-          "\"" + pair.first + "\":\"" + pair.second.as<std::string>() + "\"";
-      first = false;
-    }
-    privateAttributesJson += "}";
-  }
-
-  // Create user using FFI function
-  uint64_t userRef = statsig_user_create(
-      userID.empty() ? nullptr : userID.c_str(), customIDsJson.c_str(),
-      email.empty() ? nullptr : email.c_str(),
-      ipAddress.empty() ? nullptr : ipAddress.c_str(),
-      userAgent.empty() ? nullptr : userAgent.c_str(),
-      country.empty() ? nullptr : country.c_str(),
-      locale.empty() ? nullptr : locale.c_str(),
-      appVersion.empty() ? nullptr : appVersion.c_str(), customJson.c_str(),
-      privateAttributesJson.c_str());
+  // TODO(xinli): Rethink the decision here on serialization
+  json j = *this;
+  uint64_t userRef = statsig_user_create_from_data(j.dump().c_str());
 
   return User(userRef);
 }

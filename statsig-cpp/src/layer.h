@@ -1,8 +1,8 @@
 #pragma once
 
 #include "libstatsig_ffi.h"
-#include "user.h"
 #include "types.h"
+#include "user.h"
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -15,8 +15,11 @@ using json = nlohmann::json;
 
 class Layer {
 public:
+  bool is_experiment_active;
   std::string rule_id;
   std::string id_type;
+  std::string allocated_experiment_name;
+  std::string group_name;
   std::unordered_map<std::string, json> value;
   EvaluationDetails details;
   Layer() = default;
@@ -53,10 +56,27 @@ private:
 
 // from_json function to deserialize JSON into Layer
 inline void from_json(const json &j, Layer &l) {
-  j.at("rule_id").get_to(l.rule_id);
-  j.at("id_type").get_to(l.id_type);
-  j.at("__value").get_to(l.value);
-  j.at("details").get_to(l.details);
+  if (!j.at("rule_id").is_null())
+    j.at("rule_id").get_to(l.rule_id);
+
+  if (!j.at("id_type").is_null())
+    j.at("id_type").get_to(l.id_type);
+
+  if (!j.at("__value").is_null())
+    j.at("__value").get_to(l.value);
+
+  if (!j.at("details").is_null())
+    j.at("details").get_to(l.details);
+
+  if (j.contains("allocated_experiment_name") &&
+      !j["allocated_experiment_name"].is_null())
+    j.at("allocated_experiment_name").get_to(l.allocated_experiment_name);
+
+  if (j.contains("group_name") && !j["group_name"].is_null())
+    j.at("group_name").get_to(l.group_name);
+
+  if (!j.at("is_experiment_active").is_null())
+    j.at("is_experiment_active").get_to(l.is_experiment_active);
 }
 
 inline Layer::Layer(uint64_t statsig_ref, const std::string json_str)
