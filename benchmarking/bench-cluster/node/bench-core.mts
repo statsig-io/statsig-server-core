@@ -166,6 +166,37 @@ for (const config of specNames.dynamic_configs) {
   await benchmark('get_dynamic_config_global_user', config, ITER_HEAVY, () => {
     statsig.getDynamicConfig(globalUser, config);
   });
+
+   // Get parameter names from the actual config
+   const sampleConfig = statsig.getDynamicConfig(globalUser, config);
+   const paramNames = Object.keys(sampleConfig.value);
+   
+   // If no parameters, skip get() benchmarks
+   if (paramNames.length === 0) {
+     continue;
+   }
+ 
+   // Benchmark getValue for each parameter
+   for (const paramName of paramNames) {
+     await benchmark(
+       `get_dynamic_config_getValue_global_user`,
+       `${config}.${paramName}`,
+       ITER_HEAVY,
+       () => {
+         const cfg = statsig.getDynamicConfig(globalUser, config).getValue(paramName);
+       },
+     );
+ 
+     // Test get() method (typed version)
+     await benchmark(
+       `get_dynamic_config_get_global_user`,
+       `${config}.${paramName}`,
+       ITER_HEAVY,
+       () => {
+         const cfg = statsig.getDynamicConfig(globalUser, config).get(paramName, undefined);
+       },
+     );
+   }
 }
 
 for (const experiment of specNames.experiments) {
