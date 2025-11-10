@@ -7,6 +7,9 @@ project(Statsig
 )
 set(PROJECT_VERSION_SUFFIX "-rc.2510210014")
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(STATSIG_CPP_VERSION "${PROJECT_VERSION}${PROJECT_VERSION_SUFFIX}")
 # Wrap the prebuilt dylib as an imported library
 file(GLOB STATSIG_SOURCE_FILES "src/*")
@@ -66,15 +69,15 @@ endfunction()
 function (detect_os_target os_target_var library_suffix_var)
     set(os_name "${CMAKE_SYSTEM_NAME}")
     if(os_name STREQUAL "Darwin")
-        set(os_target "apple-darwin" PARENT_SCOPE)
-        set(library_suffix "dylib" PARENT_SCOPE)
+        set(${os_target_var} "apple-darwin" PARENT_SCOPE)
+        set(${library_suffix_var} "dylib" PARENT_SCOPE)
     elseif(os_name STREQUAL "Linux")
-        set(library_suffix "so" PARENT_SCOPE)
+        set(${library_suffix_var} "so" PARENT_SCOPE)
         detect_is_musl(_is_musl)
         if(_is_musl)
-            set(os_target "linux-musl" PARENT_SCOPE)
+            set(${os_target_var} "linux-musl" PARENT_SCOPE)
         else()
-            set(os_target "linux-gnu" PARENT_SCOPE)
+            set(${os_target_var} "linux-gnu" PARENT_SCOPE)
         endif()
     else()
         message(FATAL_ERROR "Unsupported OS: ${os_name}, Contact Statsig support to add support for it")
@@ -83,7 +86,8 @@ endfunction()
 
 function(generate_target_name version target_var suffix_var)
     # Detect OS
-    detect_os_target(os_target library_suffix)
+    detect_os_target(os_target suffix)
+    message(STATUS "within generate target name and ${os_target}, ${suffix_var}")
     detect_cpu(cpu_target)
    
     # Compose target name
@@ -91,7 +95,7 @@ function(generate_target_name version target_var suffix_var)
 
     # Return value to caller
     set(${target_var} "${target_name}" PARENT_SCOPE)
-    set(${suffix_var} "${library_suffix}" PARENT_SCOPE)
+    set(${suffix_var} "${suffix}" PARENT_SCOPE)
 endfunction()
 #--------------------- End of Helper ---------------------#
 
@@ -101,14 +105,13 @@ if(USE_LOCAL_BUILD_FILE)
     if(NOT FFI_BINARY_PATH)
         message(WARN "USE_LOCAL_BUILD_FILE is true but FFI_BINARY_PATH environment variable is not set, using default")
         detect_os_target(_ os_library_suffix)
-        message(STATUS "Detected OS library suffix: ${os_library_suffix}")
-        set(FFI_BINARY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../target/release/libstatsig_ffi.dylib")
+        set(FFI_BINARY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../target/release/libstatsig_ffi.${os_library_suffix}")
     endif()
     message(STATUS "Using local build file from: ${FFI_BINARY_PATH}")
     target_link_libraries(Statsig PRIVATE ${FFI_BINARY_PATH})
 else()
     # Adjust asset name according to your OS/arch
-    generate_target_name(${STATSIG_CPP_VERSION} ASSET_NAME SUFFIX)
+    generate_target_name(${STATSIG_CPP_VERSION} ASSET_NAME SUFFIX_VAR)
     set(ASSET_URL "https://github.com/statsig-io/statsig-cpp-core/releases/download/${STATSIG_CPP_VERSION}/${ASSET_NAME}")
     set(ASSET_PATH "${ASSET_NAME}")
 
@@ -122,7 +125,7 @@ else()
         COMMAND ${CMAKE_COMMAND} -E tar xvf  "${ASSET_PATH}"
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
     )
-    target_link_libraries(Statsig PRIVATE "${CMAKE_BINARY_DIR}/libstatsig_ffi.${SUFFIX}")
+    target_link_libraries(Statsig PRIVATE "${CMAKE_BINARY_DIR}/libstatsig_ffi.${SUFFIX_VAR}")
 endif()
 
 
