@@ -52,6 +52,7 @@ export declare class ParameterStore {
   name: string
   getValue<T>(paramName: string, fallback?: T): T
   getEvaluationDetails(): EvaluationDetails
+  toJSON(): Record<string, any>
 }
 
 export declare class StatsigNapiInternal {

@@ -333,6 +333,15 @@ impl ParameterStore<'_> {
     pub fn get_evaluation_details(&self) -> EvaluationDetails {
         self.inner.details.clone().into()
     }
+
+    #[napi(js_name = "toJSON")]
+    pub fn to_json(&self) -> serde_json::Map<String, serde_json::Value> {
+        let v = serde_json::to_value(&self.inner);
+        match v {
+            Ok(serde_json::Value::Object(map)) => map,
+            _ => serde_json::Map::new(),
+        }
+    }
 }
 
 macro_rules! impl_napi_tojson {
