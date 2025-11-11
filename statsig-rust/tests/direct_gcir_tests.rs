@@ -132,6 +132,8 @@ fn generate_response(
         None,
         None,
         false,
+        None,
+        true,
     );
 
     let options = ClientInitResponseOptions {

@@ -9,7 +9,7 @@ use crate::interned_string::InternedString;
 use crate::specs_response::spec_types::{Rule, Spec, SpecsResponseFull};
 use crate::user::StatsigUserInternal;
 use crate::StatsigErr::StackOverflowError;
-use crate::{OverrideAdapter, StatsigErr};
+use crate::{OverrideAdapter, Statsig, StatsigErr};
 
 const MAX_RECURSIVE_DEPTH: u16 = 300;
 
@@ -29,9 +29,12 @@ pub struct EvaluatorContext<'a> {
     pub override_adapter: Option<&'a Arc<dyn OverrideAdapter>>,
     pub nested_gate_memo: HashMap<&'a str, (bool, Option<&'a InternedString>)>,
     pub should_user_third_party_parser: bool,
+    pub statsig: Option<&'a Statsig>,
+    pub disable_exposure_logging: bool,
 }
 
 impl<'a> EvaluatorContext<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         user: &'a StatsigUserInternal,
         specs_data: &'a SpecsResponseFull,
@@ -40,6 +43,8 @@ impl<'a> EvaluatorContext<'a> {
         app_id: Option<&'a DynamicValue>,
         override_adapter: Option<&'a Arc<dyn OverrideAdapter>>,
         should_user_third_party_parser: bool,
+        statsig: Option<&'a Statsig>,
+        disable_exposure_logging: bool,
     ) -> Self {
         let result = EvaluatorResult::default();
 
@@ -54,6 +59,8 @@ impl<'a> EvaluatorContext<'a> {
             nested_count: 0,
             nested_gate_memo: HashMap::new(),
             should_user_third_party_parser,
+            statsig,
+            disable_exposure_logging,
         }
     }
 

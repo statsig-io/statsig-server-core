@@ -850,6 +850,7 @@ impl Statsig {
             &data,
             data.values.app_id.as_ref(),
             self.override_adapter.as_ref(),
+            true,
         );
         get_cmab_ranked_list(&mut context, cmab_name)
     }
@@ -862,7 +863,7 @@ impl Statsig {
     ) {
         let user_internal = self.internalize_user(user);
 
-        let mut experiment = self.get_experiment_impl(&user_internal, cmab_name);
+        let mut experiment = self.get_experiment_impl(&user_internal, cmab_name, None);
         experiment.rule_id = group_id;
 
         self.event_logger.enqueue(EnqueueExperimentExpoOp {
@@ -1083,7 +1084,11 @@ impl Statsig {
     ) -> bool {
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
-        let (details, evaluation) = self.get_gate_evaluation(&user_internal, gate_name);
+        let (details, evaluation) = self.get_gate_evaluation(
+            &user_internal,
+            gate_name,
+            Some(options.disable_exposure_logging),
+        );
 
         let value = evaluation.as_ref().map(|e| e.value).unwrap_or_default();
         let rule_id = evaluation
@@ -1122,7 +1127,11 @@ impl Statsig {
     ) -> FeatureGate {
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
-        let (details, evaluation) = self.get_gate_evaluation(&user_internal, gate_name);
+        let (details, evaluation) = self.get_gate_evaluation(
+            &user_internal,
+            gate_name,
+            Some(options.disable_exposure_logging),
+        );
 
         if disable_exposure_logging {
             log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
@@ -1145,7 +1154,7 @@ impl Statsig {
 
     pub fn manually_log_gate_exposure(&self, user: &StatsigUser, gate_name: &str) {
         let user_internal = self.internalize_user(user);
-        let (details, evaluation) = self.get_gate_evaluation(&user_internal, gate_name);
+        let (details, evaluation) = self.get_gate_evaluation(&user_internal, gate_name, None);
         self.event_logger.enqueue(EnqueueGateExpoOp {
             exposure_time: Utc::now().timestamp_millis() as u64,
             user: &user_internal,
@@ -1202,7 +1211,11 @@ impl Statsig {
     ) -> DynamicConfig {
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
-        let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
+        let dynamic_config = self.get_dynamic_config_impl(
+            &user_internal,
+            dynamic_config_name,
+            Some(options.disable_exposure_logging),
+        );
 
         if disable_exposure_logging {
             log_d!(
@@ -1232,7 +1245,8 @@ impl Statsig {
         dynamic_config_name: &str,
     ) {
         let user_internal = self.internalize_user(user);
-        let dynamic_config = self.get_dynamic_config_impl(&user_internal, dynamic_config_name);
+        let dynamic_config =
+            self.get_dynamic_config_impl(&user_internal, dynamic_config_name, None);
         self.event_logger.enqueue(EnqueueConfigExpoOp {
             exposure_time: Utc::now().timestamp_millis() as u64,
             user: &user_internal,
@@ -1283,7 +1297,11 @@ impl Statsig {
     ) -> Experiment {
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
-        let mut experiment = self.get_experiment_impl(&user_internal, experiment_name);
+        let mut experiment = self.get_experiment_impl(
+            &user_internal,
+            experiment_name,
+            Some(options.disable_exposure_logging),
+        );
         if let Some(persisted_experiment) = self.persistent_values_manager.as_ref().and_then(|m| {
             m.try_apply_sticky_value_to_experiment(&user_internal, &options, &experiment)
         }) {
@@ -1314,7 +1332,7 @@ impl Statsig {
 
     pub fn manually_log_experiment_exposure(&self, user: &StatsigUser, experiment_name: &str) {
         let user_internal = self.internalize_user(user);
-        let experiment = self.get_experiment_impl(&user_internal, experiment_name);
+        let experiment = self.get_experiment_impl(&user_internal, experiment_name, None);
         self.event_logger.enqueue(EnqueueExperimentExpoOp {
             exposure_time: Utc::now().timestamp_millis() as u64,
             user: &user_internal,
@@ -1778,6 +1796,7 @@ impl Statsig {
         data: &'a SpecStoreData,
         app_id: Option<&'a DynamicValue>,
         override_adapter: Option<&'a Arc<dyn OverrideAdapter>>,
+        disable_exposure_logging: bool,
     ) -> EvaluatorContext<'a> {
         EvaluatorContext::new(
             user_internal,
@@ -1787,6 +1806,8 @@ impl Statsig {
             app_id,
             override_adapter,
             self.should_user_third_party_parser(),
+            Some(self),
+            disable_exposure_logging,
         )
     }
 
@@ -1810,9 +1831,12 @@ impl Statsig {
             app_id,
             override_adapter,
             self.should_user_third_party_parser(),
+            None,
+            true,
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn evaluate_spec<T>(
         &self,
         user_internal: &StatsigUserInternal,
@@ -1820,6 +1844,7 @@ impl Statsig {
         make_empty_result: impl FnOnce(EvaluationDetails) -> T,
         make_result: impl FnOnce(EvaluatorResult, EvaluationDetails) -> T,
         spec_type: &SpecType,
+        disable_exposure_logging: Option<bool>,
     ) -> T {
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
@@ -1837,6 +1862,7 @@ impl Statsig {
             &data,
             data.values.app_id.as_ref(),
             self.override_adapter.as_ref(),
+            disable_exposure_logging.unwrap_or(false),
         );
 
         match Self::evaluate_with_details(&mut context, &data, spec_name, spec_type) {
@@ -1907,6 +1933,7 @@ impl Statsig {
         &self,
         user_internal: &StatsigUserInternal,
         gate_name: &str,
+        disable_exposure_logging: Option<bool>,
     ) -> (EvaluationDetails, Option<GateEvaluation>) {
         self.evaluate_spec(
             user_internal,
@@ -1917,6 +1944,7 @@ impl Statsig {
                 (eval_details, Some(evaluation))
             },
             &SpecType::Gate,
+            disable_exposure_logging,
         )
     }
 
@@ -1924,6 +1952,7 @@ impl Statsig {
         &self,
         user_internal: &StatsigUserInternal,
         config_name: &str,
+        disable_exposure_logging: Option<bool>,
     ) -> DynamicConfig {
         self.evaluate_spec(
             user_internal,
@@ -1934,6 +1963,7 @@ impl Statsig {
                 make_dynamic_config(config_name, Some(evaluation), eval_details)
             },
             &SpecType::DynamicConfig,
+            disable_exposure_logging,
         )
     }
 
@@ -1941,6 +1971,7 @@ impl Statsig {
         &self,
         user_internal: &StatsigUserInternal,
         experiment_name: &str,
+        disable_exposure_logging: Option<bool>,
     ) -> Experiment {
         self.evaluate_spec(
             user_internal,
@@ -1951,6 +1982,7 @@ impl Statsig {
                 make_experiment(experiment_name, Some(evaluation), eval_details)
             },
             &SpecType::Experiment,
+            disable_exposure_logging,
         )
     }
 
@@ -1993,6 +2025,7 @@ impl Statsig {
                 )
             },
             &SpecType::Layer,
+            Some(evaluation_options.disable_exposure_logging),
         );
 
         let data = read_lock_or_else!(self.spec_store.data, {

@@ -6,6 +6,7 @@ use crate::evaluation::comparisons::{
     compare_arrays, compare_numbers, compare_str_with_regex, compare_strings_in_array,
     compare_time, compare_versions,
 };
+use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluator_context::{EvaluatorContext, IdListResolution};
@@ -14,7 +15,7 @@ use crate::evaluation::get_unit_id::get_unit_id;
 use crate::evaluation::user_agent_parsing::UserAgentParser;
 use crate::interned_string::InternedString;
 use crate::specs_response::spec_types::{Condition, Rule, Spec};
-use crate::{dyn_value, log_w, unwrap_or_return, StatsigErr};
+use crate::{dyn_value, log_w, unwrap_or_return, ExperimentEvaluationOptions, StatsigErr};
 
 use super::country_lookup::CountryLookup;
 
@@ -292,6 +293,16 @@ fn evaluate_condition<'a>(
             evaluate_nested_gate(ctx, target_value, condition_type)?;
             return Ok(());
         }
+        "experiment_group" => {
+            let group_name = evaluate_experiment_group(ctx, &condition.field);
+            match group_name {
+                Some(name) => {
+                    temp_value = Some(DynamicValue::from(name));
+                    temp_value.as_ref()
+                }
+                None => None,
+            }
+        }
         "ua_based" => match ctx.user.get_user_value(&condition.field) {
             Some(value) => Some(value),
             None => {
@@ -433,6 +444,34 @@ fn is_in_id_list(
             callback(list_name.value.as_str(), lookup_id.as_str())
         }
     }
+}
+
+fn evaluate_experiment_group<'a>(
+    ctx: &mut EvaluatorContext<'a>,
+    experiment_name: &Option<DynamicString>,
+) -> Option<String> {
+    let exp_name = match experiment_name {
+        Some(name) => &name.value,
+        None => {
+            return None;
+        }
+    };
+    let statsig = match &ctx.statsig {
+        Some(s) => s,
+        None => {
+            ctx.result.unsupported = true;
+            return None;
+        }
+    };
+    let res = statsig.get_experiment_with_options(
+        ctx.user.user_ref,
+        exp_name.as_str(),
+        ExperimentEvaluationOptions {
+            disable_exposure_logging: ctx.disable_exposure_logging,
+            user_persisted_values: None,
+        },
+    );
+    res.group_name
 }
 
 fn evaluate_nested_gate<'a>(

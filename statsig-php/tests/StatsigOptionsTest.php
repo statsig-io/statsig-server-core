@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Statsig\Tests;
 
 use PHPUnit\Framework\TestCase;
+use Statsig\ProxyConfig;
 use Statsig\StatsigOptions;
 use Statsig\StatsigLocalFileSpecsAdapter;
 use Statsig\StatsigLocalFileEventLoggingAdapter;
@@ -120,6 +121,90 @@ class StatsigOptionsTest extends TestCase
             id_lists_url: "https://test.statsig.com/id_lists",
             id_lists_sync_interval_ms: 15000,
             init_timeout_ms: 5000
+        );
+        $this->assertNotNull($options->__ref);
+
+        $options->__destruct();
+        $this->assertNull($options->__ref);
+    }
+
+    public function testProxyConfigBasic()
+    {
+        $proxyConfig = new ProxyConfig("proxy.example.com", 8080);
+
+        $options = new StatsigOptions(
+            proxy_config: $proxyConfig
+        );
+        $this->assertNotNull($options->__ref);
+
+        $options->__destruct();
+        $this->assertNull($options->__ref);
+    }
+
+    public function testProxyConfigWithFullConfig()
+    {
+        $proxyConfig = new ProxyConfig(
+            "proxy.example.com",
+            8080,
+            "user:password",
+            "http"
+        );
+
+        $options = new StatsigOptions(
+            proxy_config: $proxyConfig
+        );
+        $this->assertNotNull($options->__ref);
+
+        $options->__destruct();
+        $this->assertNull($options->__ref);
+    }
+
+    public function testProxyConfigWithOtherOptions()
+    {
+        $proxyConfig = new ProxyConfig("proxy.example.com", 8080);
+
+        $options = new StatsigOptions(
+            specs_url: "https://custom.statsig.com/v1/download_config_specs",
+            log_event_url: "https://custom.statsig.com/v1/log_event",
+            environment: "test",
+            init_timeout_ms: 10000,
+            proxy_config: $proxyConfig
+        );
+        $this->assertNotNull($options->__ref);
+
+        $options->__destruct();
+        $this->assertNull($options->__ref);
+    }
+
+    public function testProxyConfigWithAllOptions()
+    {
+        $proxyConfig = new ProxyConfig(
+            "proxy.example.com",
+            8080,
+            "user:password",
+            "http"
+        );
+
+        $options = new StatsigOptions(
+            specs_url: "https://api.statsig.com",
+            log_event_url: "https://events.statsig.com",
+            environment: "production",
+            init_timeout_ms: 5000,
+            disable_network: false,
+            disable_all_logging: false,
+            proxy_config: $proxyConfig
+        );
+        $this->assertNotNull($options->__ref);
+
+        $options->__destruct();
+        $this->assertNull($options->__ref);
+    }
+
+    public function testProxyConfigNull()
+    {
+        $options = new StatsigOptions(
+            environment: "staging",
+            proxy_config: null
         );
         $this->assertNotNull($options->__ref);
 
