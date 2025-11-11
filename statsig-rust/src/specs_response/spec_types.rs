@@ -9,7 +9,6 @@ use crate::evaluation::{dynamic_returnable::DynamicReturnable, evaluator_value::
 use crate::interned_string::InternedString;
 use crate::DynamicValue;
 
-use super::spec_directory::SpecDirectory;
 use super::{cmab_types::CMABConfig, param_store_types::ParameterStore};
 
 // DO_NOT_CLONE: Please do not add the Clone trait to this struct. We intentionally
@@ -102,9 +101,9 @@ pub struct SessionReplayInfo {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default)] /* DO_NOT_CLONE */
 pub struct SpecsResponseFull {
     pub company_id: Option<String>,
-    pub feature_gates: SpecDirectory,
-    pub dynamic_configs: SpecDirectory,
-    pub layer_configs: SpecDirectory,
+    pub feature_gates: AHashMap<InternedString, Spec>,
+    pub dynamic_configs: AHashMap<InternedString, Spec>,
+    pub layer_configs: AHashMap<InternedString, Spec>,
     pub condition_map: AHashMap<InternedString, Condition>,
     pub experiment_to_layer: HashMap<String, String>,
     pub has_updates: bool,
@@ -115,7 +114,7 @@ pub struct SpecsResponseFull {
     pub sdk_keys_to_app_ids: Option<HashMap<String, DynamicValue>>,
     pub hashed_sdk_keys_to_app_ids: Option<HashMap<String, DynamicValue>>,
     pub diagnostics: Option<HashMap<String, f64>>,
-    pub param_stores: Option<HashMap<String, ParameterStore>>,
+    pub param_stores: Option<HashMap<InternedString, ParameterStore>>,
     pub sdk_configs: Option<HashMap<String, DynamicValue>>,
     pub sdk_flags: Option<HashMap<String, bool>>,
     pub cmab_configs: Option<HashMap<String, CMABConfig>>,

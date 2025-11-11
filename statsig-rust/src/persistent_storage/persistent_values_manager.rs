@@ -142,12 +142,9 @@ impl PersistentValuesManager {
     ) -> Option<bool> {
         let sticky_result = unwrap_or_return!(maybe_sticky_result, None);
         let config_delegate = unwrap_or_return!(&sticky_result.config_delegate, Some(false));
-        let delegate_spec = spec_store_data
-            .values
-            .dynamic_configs
-            .get(config_delegate.as_str());
+        let delegate_spec = spec_store_data.values.dynamic_configs.get(config_delegate);
         match delegate_spec {
-            Some(delegate_spec) => Some(delegate_spec.spec.is_active.unwrap_or(false)),
+            Some(delegate_spec) => Some(delegate_spec.is_active.unwrap_or(false)),
             None => Some(false),
         }
     }

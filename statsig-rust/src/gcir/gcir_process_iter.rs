@@ -7,7 +7,7 @@ use crate::{
     },
     hashing::HashUtil,
     interned_string::InternedString,
-    specs_response::{spec_directory::SpecDirectory, spec_types::Spec},
+    specs_response::spec_types::Spec,
     ClientInitResponseOptions, HashAlgorithm, SecondaryExposure, StatsigErr,
 };
 use std::collections::{HashMap, HashSet};
@@ -16,16 +16,13 @@ pub(crate) fn gcir_process_iter<T>(
     context: &mut EvaluatorContext,
     options: &ClientInitResponseOptions,
     sec_expo_hash_memo: &mut HashMap<InternedString, InternedString>,
-    spec_directory: &SpecDirectory,
+    specs_map: &ahash::HashMap<InternedString, Spec>,
     get_spec_type: impl Fn(&Spec) -> SpecType,
     mut evaluation_factory: impl FnMut(&str, &str, &mut EvaluatorContext) -> T,
 ) -> Result<HashMap<String, T>, StatsigErr> {
     let mut results = HashMap::new();
 
-    for spec_addy in spec_directory.specs.values() {
-        let spec = &spec_addy.spec;
-        let name = &spec_addy.name;
-
+    for (name, spec) in specs_map.iter() {
         if spec.entity == "segment" || spec.entity == "holdout" {
             continue;
         }
@@ -41,7 +38,7 @@ pub(crate) fn gcir_process_iter<T>(
         context.reset_result();
 
         let spec_type = get_spec_type(spec);
-        Evaluator::evaluate(context, spec_addy.name.as_str(), &spec_type)?;
+        Evaluator::evaluate(context, name.as_str(), &spec_type)?;
 
         if options.remove_default_value_gates.unwrap_or(false) && spec.entity == "feature_gate" {
             match context.result.rule_id {
@@ -58,7 +55,7 @@ pub(crate) fn gcir_process_iter<T>(
 
         let hashed_name = context
             .hashing
-            .hash(spec_addy.name.as_str(), options.get_hash_algorithm());
+            .hash(name.as_str(), options.get_hash_algorithm());
         hash_secondary_exposures(
             &mut context.result,
             context.hashing,

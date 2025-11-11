@@ -25,6 +25,7 @@ use crate::hashing::HashUtil;
 use crate::initialize_evaluations_response::InitializeEvaluationsResponse;
 use crate::initialize_response::InitializeResponse;
 use crate::initialize_v2_response::InitializeV2Response;
+use crate::interned_string::InternedString;
 use crate::observability::diagnostics_observer::DiagnosticsObserver;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
@@ -742,6 +743,8 @@ impl Statsig {
         parameter_store_name: &str,
         options: ParameterStoreEvaluationOptions,
     ) -> ParameterStore<'_> {
+        let store_name_intern = InternedString::from_str_ref(parameter_store_name);
+
         self.event_logger
             .increment_non_exposure_checks(parameter_store_name);
 
@@ -764,7 +767,7 @@ impl Statsig {
 
         let stores = &data.values.param_stores;
         let store = match stores {
-            Some(stores) => stores.get(parameter_store_name),
+            Some(stores) => stores.get(&store_name_intern),
             None => {
                 return ParameterStore {
                     name: parameter_store_name.to_string(),
@@ -963,102 +966,33 @@ impl Statsig {
 
 impl Statsig {
     pub fn get_feature_gate_list(&self) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        data.values.feature_gates.unperformant_keys()
+        self.spec_store
+            .unperformant_keys_entity_filter("feature_gates", "feature_gate")
     }
 
     pub fn get_dynamic_config_list(&self) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        data.values
-            .dynamic_configs
-            .unperformant_keys_entity_filter("dynamic_config")
+        self.spec_store
+            .unperformant_keys_entity_filter("dynamic_configs", "dynamic_config")
     }
 
     pub fn get_experiment_list(&self) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        data.values
-            .dynamic_configs
-            .unperformant_keys_entity_filter("experiment")
+        self.spec_store
+            .unperformant_keys_entity_filter("dynamic_configs", "experiment")
     }
 
     pub fn get_autotune_list(&self) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        data.values
-            .dynamic_configs
-            .unperformant_keys_entity_filter("autotune")
+        self.spec_store
+            .unperformant_keys_entity_filter("dynamic_configs", "autotune")
     }
 
     pub fn get_parameter_store_list(&self) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        match &data.values.param_stores {
-            Some(param_stores) => param_stores.keys().cloned().collect(),
-            None => vec![],
-        }
+        self.spec_store
+            .unperformant_keys_entity_filter("param_stores", "*")
     }
 
     pub fn get_layer_list(&self) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        data.values.layer_configs.unperformant_keys()
+        self.spec_store
+            .unperformant_keys_entity_filter("layer_configs", "*")
     }
 
     pub fn __get_parsed_user_agent_value(
@@ -1166,25 +1100,8 @@ impl Statsig {
     }
 
     pub fn get_fields_needed_for_gate(&self, gate_name: &str) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                self.ops_stats.clone(),
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        let gate = data.values.feature_gates.get(gate_name);
-        match gate {
-            Some(gate) => match &gate.spec.fields_used {
-                Some(fields) => fields.iter().map(|f| f.unperformant_to_string()).collect(),
-                None => vec![],
-            },
-            None => vec![],
-        }
+        self.spec_store
+            .get_fields_used_for_entity(gate_name, SpecType::Gate)
     }
 }
 
@@ -1256,25 +1173,8 @@ impl Statsig {
     }
 
     pub fn get_fields_needed_for_dynamic_config(&self, config_name: &str) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                self.ops_stats.clone(),
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        let config = data.values.dynamic_configs.get(config_name);
-        match config {
-            Some(config) => match &config.spec.fields_used {
-                Some(fields) => fields.iter().map(|f| f.unperformant_to_string()).collect(),
-                None => vec![],
-            },
-            None => vec![],
-        }
+        self.spec_store
+            .get_fields_used_for_entity(config_name, SpecType::DynamicConfig)
     }
 }
 
@@ -1342,25 +1242,8 @@ impl Statsig {
     }
 
     pub fn get_fields_needed_for_experiment(&self, experiment_name: &str) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                self.ops_stats.clone(),
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        let config = data.values.dynamic_configs.get(experiment_name);
-        match config {
-            Some(config) => match &config.spec.fields_used {
-                Some(fields) => fields.iter().map(|f| f.unperformant_to_string()).collect(),
-                None => vec![],
-            },
-            None => vec![],
-        }
+        self.spec_store
+            .get_fields_used_for_entity(experiment_name, SpecType::Experiment)
     }
 
     pub fn get_experiment_by_group_name(
@@ -1383,9 +1266,12 @@ impl Statsig {
             );
         });
 
-        let Some(exp) = data.values.dynamic_configs.get(experiment_name) else {
+        let experiment_name = InternedString::from_str_ref(experiment_name);
+        let experiment = data.values.dynamic_configs.get(&experiment_name);
+
+        let Some(exp) = experiment else {
             return make_experiment(
-                experiment_name,
+                experiment_name.as_str(),
                 None,
                 EvaluationDetails::unrecognized(
                     &data.source,
@@ -1396,7 +1282,6 @@ impl Statsig {
         };
 
         if let Some(rule) = exp
-            .spec
             .rules
             .iter()
             .find(|rule| rule.group_name.as_deref() == Some(group_name))
@@ -1417,13 +1302,13 @@ impl Statsig {
                     data.values.time,
                     data.time_received_at,
                 ),
-                is_experiment_active: exp.spec.is_active.unwrap_or(false),
+                is_experiment_active: exp.is_active.unwrap_or(false),
                 __evaluation: None,
             };
         }
 
         make_experiment(
-            experiment_name,
+            experiment_name.as_str(),
             None,
             EvaluationDetails::unrecognized(&data.source, data.values.time, data.time_received_at),
         )
@@ -1467,25 +1352,8 @@ impl Statsig {
     }
 
     pub fn get_fields_needed_for_layer(&self, layer_name: &str) -> Vec<String> {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                self.ops_stats.clone(),
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return vec![];
-        });
-
-        let layer = data.values.layer_configs.get(layer_name);
-        match layer {
-            Some(layer) => match &layer.spec.fields_used {
-                Some(fields) => fields.iter().map(|f| f.unperformant_to_string()).collect(),
-                None => vec![],
-            },
-            None => vec![],
-        }
+        self.spec_store
+            .get_fields_used_for_entity(layer_name, SpecType::Layer)
     }
 }
 

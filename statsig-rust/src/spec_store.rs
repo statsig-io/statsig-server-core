@@ -1,6 +1,8 @@
 use crate::data_store_interface::{get_data_adapter_dcs_key, DataStoreTrait};
+use crate::evaluation::evaluator::SpecType;
 use crate::global_configs::GlobalConfigs;
 use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
+use crate::interned_string::InternedString;
 use crate::networking::ResponseData;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
@@ -9,8 +11,8 @@ use crate::sdk_event_emitter::{SdkEvent, SdkEventEmitter};
 use crate::specs_response::spec_types::{SpecsResponseFull, SpecsResponseNoUpdates};
 use crate::utils::maybe_trim_malloc;
 use crate::{
-    log_d, log_e, log_error_to_statsig_and_console, SpecsInfo, SpecsSource, SpecsUpdate,
-    SpecsUpdateListener, StatsigErr, StatsigRuntime,
+    log_d, log_e, log_error_to_statsig_and_console, read_lock_or_else, SpecsInfo, SpecsSource,
+    SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigRuntime,
 };
 use chrono::Utc;
 use parking_lot::RwLock;
@@ -89,6 +91,89 @@ impl SpecStore {
         };
         let json = serde_json::to_string(&data.values).ok()?;
         serde_json::from_str::<SpecsResponseFull>(&json).ok()
+    }
+
+    pub fn get_fields_used_for_entity(
+        &self,
+        entity_name: &str,
+        entity_type: SpecType,
+    ) -> Vec<String> {
+        let data = read_lock_or_else!(self.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return vec![];
+        });
+
+        let entities = match entity_type {
+            SpecType::Gate => &data.values.feature_gates,
+            SpecType::DynamicConfig | SpecType::Experiment => &data.values.dynamic_configs,
+            SpecType::Layer => &data.values.layer_configs,
+        };
+
+        let entity_name = InternedString::from_str_ref(entity_name);
+        let entity = entities.get(&entity_name);
+
+        match entity {
+            Some(entity) => match &entity.fields_used {
+                Some(fields) => fields.iter().map(|f| f.unperformant_to_string()).collect(),
+                None => vec![],
+            },
+            None => vec![],
+        }
+    }
+
+    pub fn unperformant_keys_entity_filter(
+        &self,
+        top_level_key: &str,
+        entity_type: &str,
+    ) -> Vec<String> {
+        let data = read_lock_or_else!(self.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return vec![];
+        });
+
+        if top_level_key == "param_stores" {
+            match &data.values.param_stores {
+                Some(param_stores) => {
+                    return param_stores
+                        .keys()
+                        .map(|k| k.unperformant_to_string())
+                        .collect()
+                }
+                None => return vec![],
+            }
+        }
+
+        let values = match top_level_key {
+            "feature_gates" => &data.values.feature_gates,
+            "dynamic_configs" => &data.values.dynamic_configs,
+            "layer_configs" => &data.values.layer_configs,
+            _ => {
+                log_e!(TAG, "Invalid top level key: {}", top_level_key);
+                return vec![];
+            }
+        };
+
+        if entity_type == "*" {
+            return values.keys().map(|k| k.unperformant_to_string()).collect();
+        }
+
+        values
+            .iter()
+            .filter(|(_, v)| v.entity == entity_type)
+            .map(|(k, _)| k.unperformant_to_string())
+            .collect()
     }
 
     pub fn set_values(&self, specs_update: SpecsUpdate) -> Result<(), StatsigErr> {

@@ -22,7 +22,7 @@ use crate::interned_string::InternedString;
 
 #[derive(Default, Debug)]
 pub struct EvaluatorResult<'a> {
-    pub name: Option<&'a InternedString>,
+    pub name: Option<InternedString>,
     pub bool_value: bool,
     pub unsupported: bool,
     pub is_experiment_group: bool,
@@ -420,9 +420,12 @@ fn get_json_value(result: &mut EvaluatorResult) -> DynamicReturnable {
 // todo: remove when 'QueuedExposure' does not use `BaseEvaluation`
 fn get_exposure_name_if_not_hashed(
     possibly_hashed_name: &str,
-    exposure_name: Option<&InternedString>,
+    exposure_name: &Option<InternedString>,
 ) -> InternedString {
-    let exposure_name = exposure_name.unwrap_or(InternedString::empty_ref());
+    let exposure_name = exposure_name
+        .as_ref()
+        .unwrap_or(InternedString::empty_ref());
+
     if possibly_hashed_name == exposure_name.as_str() {
         exposure_name.clone()
     } else {
@@ -441,7 +444,7 @@ fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEva
         version: result.version,
     };
 
-    let name = get_exposure_name_if_not_hashed(spec_name, result.name);
+    let name = get_exposure_name_if_not_hashed(spec_name, &result.name);
 
     BaseEvaluation {
         name,
