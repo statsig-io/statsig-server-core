@@ -116,16 +116,6 @@ export class Statsig extends StatsigNapiInternal {
     return Statsig._sharedInstance;
   }
 
-  public static registerSharedInstance(statsig: Statsig) {
-    if (Statsig.hasShared()) {
-      console.warn(
-        '[Statsig] Shared instance already exists. Call removeSharedInstance() before registering a new one. Returning an invalid instance'
-      );
-      return Statsig._createErrorInstance();
-    }
-    Statsig._sharedInstance = statsig;
-  }
-
   public static removeSharedInstance() {
     Statsig._sharedInstance = null;
   }
