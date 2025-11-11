@@ -1,5 +1,13 @@
 // @ts-nocheck
-import { DynamicConfig, Experiment, Layer, ParameterStore, StatsigNapiInternal, StatsigOptions, StatsigUser } from './statsig-generated';
+import {
+  DynamicConfig,
+  Experiment,
+  Layer,
+  ParameterStore,
+  StatsigNapiInternal,
+  StatsigOptions,
+  StatsigUser,
+} from './statsig-generated';
 
 import { ErrorBoundary } from './error_boundary';
 import { HttpsProxyAgent } from 'https-proxy-agent';
@@ -7,22 +15,23 @@ import nodeFetch from 'node-fetch';
 
 export * from './statsig-generated';
 
-
-StatsigUser.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
+StatsigUser.prototype[Symbol.for('nodejs.util.inspect.custom')] = function () {
   return this.toJSON();
-}
-Experiment.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
+};
+Experiment.prototype[Symbol.for('nodejs.util.inspect.custom')] = function () {
   return this.toJSON();
-}
-DynamicConfig.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
+};
+DynamicConfig.prototype[Symbol.for('nodejs.util.inspect.custom')] =
+  function () {
+    return this.toJSON();
+  };
+Layer.prototype[Symbol.for('nodejs.util.inspect.custom')] = function () {
   return this.toJSON();
-}
-Layer.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
-  return this.toJSON();
-}
-ParameterStore.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
-  return this.toJSON();
-}
+};
+ParameterStore.prototype[Symbol.for('nodejs.util.inspect.custom')] =
+  function () {
+    return this.toJSON();
+  };
 
 export { StatsigUser, Experiment, DynamicConfig, Layer, ParameterStore };
 
@@ -49,7 +58,7 @@ function createFetchFunc(options?: StatsigOptions) {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body?: Uint8Array,
+    body?: Uint8Array
   ) => {
     try {
       const res = await nodeFetch(url, {
@@ -83,7 +92,7 @@ export class Statsig extends StatsigNapiInternal {
   public static shared(): Statsig {
     if (!Statsig.hasShared()) {
       console.warn(
-        '[Statsig] No shared instance has been created yet. Call newShared() before using it. Returning an invalid instance',
+        '[Statsig] No shared instance has been created yet. Call newShared() before using it. Returning an invalid instance'
       );
       return Statsig._createErrorInstance();
     }
@@ -98,13 +107,23 @@ export class Statsig extends StatsigNapiInternal {
     if (Statsig.hasShared()) {
       console.warn(
         '[Statsig] Shared instance has been created, call removeSharedInstance() if you want to create another one. ' +
-          'Returning an invalid instance',
+          'Returning an invalid instance'
       );
       return Statsig._createErrorInstance();
     }
 
     Statsig._sharedInstance = new Statsig(sdkKey, options);
     return Statsig._sharedInstance;
+  }
+
+  public static registerSharedInstance(statsig: Statsig) {
+    if (Statsig.hasShared()) {
+      console.warn(
+        '[Statsig] Shared instance already exists. Call removeSharedInstance() before registering a new one. Returning an invalid instance'
+      );
+      return Statsig._createErrorInstance();
+    }
+    Statsig._sharedInstance = statsig;
   }
 
   public static removeSharedInstance() {
