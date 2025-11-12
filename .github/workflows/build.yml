@@ -79,10 +79,14 @@ jobs:
 
     steps:
       - name: '[Statsig Hosted Windows Only] Setup Git'
-        if: ${{ matrix.config.runner == 'statsig-windows-arm64'}}
+        if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
+        shell: powershell
         run: |
-          echo "Installing Git for Windows runner..."
-          choco install git --version=2.44.0 -y
+          echo "Installing Git for Windows runner (no choco)..."
+          $url = "https://github.com/git-for-windows/git/releases/download/v2.44.0.windows.1/Git-2.44.0-64-bit.exe"
+          $installer = "$env:TEMP\git_installer.exe"
+          Invoke-WebRequest -Uri $url -OutFile $installer
+          Start-Process -FilePath $installer -ArgumentList "/VERYSILENT" -Wait
           git --version
         
       - uses: actions/checkout@v4
