@@ -78,17 +78,29 @@ jobs:
     runs-on: ${{ (contains(fromJson('["java", "dotnet", "ffi"]'), matrix.package) && contains(matrix.config.target, 'linux')) && 'ubuntu-latest' || matrix.config.runner }}
 
     steps:
-      - name: '[Statsig Hosted Windows Only] Setup Git'
+      - name: '[Statsig Hosted Windows Only] Setup Git (Portable)'
         if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
         shell: powershell
         run: |
-          echo "Installing Git for Windows runner (no choco)..."
-          $url = "https://github.com/git-for-windows/git/releases/download/v2.44.0.windows.1/Git-2.44.0-64-bit.exe"
-          $installer = "$env:TEMP\git_installer.exe"
-          Invoke-WebRequest -Uri $url -OutFile $installer
-          Start-Process -FilePath $installer -ArgumentList "/VERYSILENT" -Wait
-          git --version
-        
+          echo "Downloading Portable Git..."
+          $url = "https://github.com/git-for-windows/git/releases/download/v2.44.0.windows.1/PortableGit-2.44.0-64-bit.7z.exe"
+          $dest = "$env:TEMP\PortableGit.exe"
+          Invoke-WebRequest -Uri $url -OutFile $dest
+          echo "Extracting PortableGit to C:\PortableGit..."
+          New-Item -ItemType Directory -Force -Path "C:\PortableGit" | Out-Null
+          Start-Process -FilePath $dest -ArgumentList "-y", "-oC:\PortableGit" -Wait
+          $gitPath = "C:\PortableGit\bin"
+          if (Test-Path $gitPath) {
+            echo "✅ Git path added: $gitPath"
+            # THIS IS REALLY IMPORTANT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            echo "$gitPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          } else {
+            echo "❌ Git extraction failed; directory not found."
+            exit 1
+          }
+          echo "Verifying Git installation..."
+          & "C:\PortableGit\bin\git.exe" --version
+      
       - uses: actions/checkout@v4
         with:
           submodules: recursive
