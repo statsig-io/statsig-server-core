@@ -139,22 +139,22 @@ class OutputLoggerProviderBase:
 
 class ParameterStore:
     name: builtins.str
-    def get_string(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
+    def get_string(self, param_name:builtins.str, fallback:builtins.str) -> typing.Optional[builtins.str]:
         ...
 
-    def get_float(self, param_name:builtins.str, fallback:builtins.float) -> builtins.float:
+    def get_float(self, param_name:builtins.str, fallback:builtins.float) -> typing.Optional[builtins.float]:
         ...
 
-    def get_integer(self, param_name:builtins.str, fallback:builtins.int) -> builtins.int:
+    def get_integer(self, param_name:builtins.str, fallback:builtins.int) -> typing.Optional[builtins.int]:
         ...
 
-    def get_bool(self, param_name:builtins.str, fallback:builtins.bool) -> builtins.bool:
+    def get_bool(self, param_name:builtins.str, fallback:builtins.bool) -> typing.Optional[builtins.bool]:
         ...
 
-    def get_array(self, param_name:builtins.str, fallback:list) -> typing.Any:
+    def get_array(self, param_name:builtins.str, fallback:list) -> typing.Optional[typing.Any]:
         ...
 
-    def get_map(self, param_name:builtins.str, fallback:dict) -> typing.Any:
+    def get_map(self, param_name:builtins.str, fallback:dict) -> typing.Optional[typing.Any]:
         ...
 
 

@@ -229,79 +229,76 @@ pub struct ParameterStorePy {
 #[gen_stub_pymethods]
 #[pymethods]
 impl ParameterStorePy {
-    pub fn get_string(&self, param_name: &str, fallback: String) -> String {
+    pub fn get_string(&self, param_name: &str, fallback: String) -> Option<String> {
         match self.inner_statsig.upgrade() {
-            Some(inner_statsig) => inner_statsig
-                .get_string_parameter_from_store(
-                    &self.user,
-                    &self.name,
-                    param_name,
-                    Some(fallback.clone()),
-                    Some(self.options),
-                )
-                .unwrap_or(fallback),
+            Some(inner_statsig) => inner_statsig.get_string_parameter_from_store(
+                &self.user,
+                &self.name,
+                param_name,
+                Some(fallback),
+                Some(self.options),
+            ),
             None => {
                 log_e!(TAG, "Failed to upgrade Statsig instance");
-                fallback
+                Some(fallback)
             }
         }
     }
 
-    pub fn get_float(&self, param_name: &str, fallback: f64) -> f64 {
+    pub fn get_float(&self, param_name: &str, fallback: f64) -> Option<f64> {
         match self.inner_statsig.upgrade() {
-            Some(inner_statsig) => inner_statsig
-                .get_float_parameter_from_store(
-                    &self.user,
-                    &self.name,
-                    param_name,
-                    Some(fallback),
-                    Some(self.options),
-                )
-                .unwrap_or(fallback),
+            Some(inner_statsig) => inner_statsig.get_float_parameter_from_store(
+                &self.user,
+                &self.name,
+                param_name,
+                Some(fallback),
+                Some(self.options),
+            ),
             None => {
                 log_e!(TAG, "Failed to upgrade Statsig instance");
-                fallback
+                Some(fallback)
             }
         }
     }
 
-    pub fn get_integer(&self, param_name: &str, fallback: i64) -> i64 {
+    pub fn get_integer(&self, param_name: &str, fallback: i64) -> Option<i64> {
         match self.inner_statsig.upgrade() {
-            Some(inner_statsig) => inner_statsig
-                .get_integer_parameter_from_store(
-                    &self.user,
-                    &self.name,
-                    param_name,
-                    Some(fallback),
-                    Some(self.options),
-                )
-                .unwrap_or(fallback),
+            Some(inner_statsig) => inner_statsig.get_integer_parameter_from_store(
+                &self.user,
+                &self.name,
+                param_name,
+                Some(fallback),
+                Some(self.options),
+            ),
             None => {
                 log_e!(TAG, "Failed to upgrade Statsig instance");
-                fallback
+                Some(fallback)
             }
         }
     }
 
-    pub fn get_bool(&self, param_name: &str, fallback: bool) -> bool {
+    pub fn get_bool(&self, param_name: &str, fallback: bool) -> Option<bool> {
         match self.inner_statsig.upgrade() {
-            Some(inner_statsig) => inner_statsig
-                .get_boolean_parameter_from_store(
-                    &self.user,
-                    &self.name,
-                    param_name,
-                    Some(fallback),
-                    Some(self.options),
-                )
-                .unwrap_or(fallback),
+            Some(inner_statsig) => inner_statsig.get_boolean_parameter_from_store(
+                &self.user,
+                &self.name,
+                param_name,
+                Some(fallback),
+                Some(self.options),
+            ),
             None => {
                 log_e!(TAG, "Failed to upgrade Statsig instance");
-                fallback
+                Some(fallback)
             }
         }
     }
 
-    pub fn get_array(&self, py: Python, param_name: &str, fallback: Bound<PyList>) -> PyObject {
+    pub fn get_array(
+        &self,
+        py: Python,
+        param_name: &str,
+        fallback: Bound<PyList>,
+    ) -> Option<PyObject> {
         match self.inner_statsig.upgrade() {
             Some(inner_statsig) => {
                 let result = inner_statsig.get_array_parameter_from_store(
@@ -313,21 +310,26 @@ impl ParameterStorePy {
                 );
                 if let Some(result) = result {
                     match list_of_values_to_py_list(py, &result) {
-                        Ok(list) => list,
-                        Err(_) => fallback.into(),
+                        Ok(list) => Some(list),
+                        Err(_) => Some(fallback.into()),
                     }
                 } else {
-                    fallback.into()
+                    Some(fallback.into())
                 }
             }
             None => {
                 log_e!(TAG, "Failed to upgrade Statsig instance");
-                fallback.into()
+                Some(fallback.into())
             }
         }
     }
 
-    pub fn get_map(&self, py: Python, param_name: &str, fallback: Bound<PyDict>) -> PyObject {
+    pub fn get_map(
+        &self,
+        py: Python,
+        param_name: &str,
+        fallback: Bound<PyDict>,
+    ) -> Option<PyObject> {
         match self.inner_statsig.upgrade() {
             Some(inner_statsig) => {
                 let result = inner_statsig.get_object_parameter_from_store(
@@ -338,14 +340,14 @@ impl ParameterStorePy {
                     Some(self.options),
                 );
                 if let Some(result) = result {
-                    map_to_py_dict(py, &result)
+                    Some(map_to_py_dict(py, &result))
                 } else {
-                    fallback.into()
+                    Some(fallback.into())
                 }
             }
             None => {
                 log_e!(TAG, "Failed to upgrade Statsig instance");
-                fallback.into()
+                Some(fallback.into())
             }
         }
     }
