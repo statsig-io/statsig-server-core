@@ -34,6 +34,7 @@ pub struct Spec {
     pub target_app_ids: Option<Vec<InternedString>>,
     pub forward_all_exposures: Option<bool>,
     pub fields_used: Option<Vec<InternedString>>,
+    pub use_new_layer_eval: Option<bool>,
 }
 
 #[skip_serializing_none]

@@ -44,6 +44,7 @@ pub struct EvaluatorResult<'a> {
     pub forward_all_exposures: Option<bool>,
     pub override_config_name: Option<&'a str>,
     pub has_seen_analytical_gates: Option<bool>,
+    pub parameter_rule_ids: Option<HashMap<InternedString, InternedString>>,
 }
 
 pub fn result_to_gate_eval(gate_name: &str, result: &mut EvaluatorResult) -> GateEvaluation {
@@ -228,6 +229,7 @@ pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> L
         explicit_parameters: result.explicit_parameters.cloned().unwrap_or_default(),
         undelegated_secondary_exposures: Some(undelegated_sec_expos.unwrap_or_default()),
         id_type: Some(id_type),
+        parameter_rule_ids: result.parameter_rule_ids.clone(),
     }
 }
 
