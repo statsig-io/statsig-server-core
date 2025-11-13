@@ -180,6 +180,7 @@ Statsig::getFeatureGate(const User &user, const std::string &gate_name,
                                           serialized_options.c_str());
   if (result) {
     std::string result_str(result);
+    free_string(result);
     return FeatureGate(result_str);
   }
   return FeatureGate();
@@ -199,6 +200,7 @@ Statsig::getExperiment(const User &user, const std::string &experiment_name,
                                         serialized_options.c_str());
   if (result) {
     std::string result_str(result);
+    free_string(result);
     return Experiment(result_str);
   }
   return Experiment();
@@ -218,6 +220,7 @@ DynamicConfig Statsig::getDynamicConfig(
                                             serialized_options.c_str());
   if (result) {
     std::string result_str(result);
+    free_string(result);
     return DynamicConfig(result_str);
   }
   return DynamicConfig();
@@ -237,6 +240,7 @@ Layer Statsig::getLayer(const User &user, const std::string &layer_name,
 
   if (result) {
     std::string result_str(result);
+    free_string(result);
     return Layer(ref_, result_str);
   }
   return Layer();
