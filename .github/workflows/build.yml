@@ -78,7 +78,7 @@ jobs:
     runs-on: ${{ (contains(fromJson('["java", "dotnet", "ffi"]'), matrix.package) && contains(matrix.config.target, 'linux')) && 'ubuntu-latest' || matrix.config.runner }}
 
     steps:
-      - name: '[Statsig Hosted Windows Only] Setup Git (Portable)'
+      - name: '[Statsig Hosted Windows ARM64 Only] Setup Git (Portable)'
         if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
         shell: powershell
         run: |
@@ -100,10 +100,22 @@ jobs:
           }
           echo "Verifying Git installation..."
           & "C:\PortableGit\bin\git.exe" --version
-      
+
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: '[Statsig Hosted Windows ARM64 Only] Set up Node.js'
+        if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: '[Statsig Hosted Windows ARM64 Only] Install pnpm'
+        if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
 
       - uses: ./.github/actions/common-setup
 
