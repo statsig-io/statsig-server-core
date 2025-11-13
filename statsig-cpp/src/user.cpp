@@ -18,19 +18,7 @@ User::~User() {
 }
 
 // UserBuilder implementation
-UserBuilder::UserBuilder() {
-  // Initialize with default values
-  userID = "";
-  customIDs.clear();
-  email = "";
-  ip = "";
-  userAgent = "";
-  country = "";
-  locale = "";
-  appVersion = "";
-  custom.clear();
-  privateAttribute.clear();
-}
+UserBuilder::UserBuilder() {}
 
 UserBuilder &UserBuilder::setUserID(const std::string &id) {
   userID = id;
