@@ -125,15 +125,9 @@ jobs:
 
       - name: '[Non-Linux] Install Protoc'
         uses: arduino/setup-protoc@v3
-        if: ${{ runner.os != 'Linux' }}
+        if: ${{ runner.os != 'Linux' && matrix.config.runner != 'statsig-windows-arm64' }}
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: '[Non-Linux] Install Dependencies'
-        if: ${{ runner.os != 'Linux' }}
-        run: |
-          pip3 install maturin types-requests ${{ format('{0}', matrix.config.py_deps_suffix) }}
-          rustup target add ${{ matrix.config.target }}
 
       - name: '[Windows Only] Setup Python'
         if: ${{ runner.os == 'Windows' }}
@@ -141,6 +135,12 @@ jobs:
         with:
           python-version: 3.x
           architecture: ${{ matrix.config.py_arch }}
+
+      - name: '[Non-Linux] Install Dependencies'
+        if: ${{ runner.os != 'Linux' }}
+        run: |
+          pip3 install maturin types-requests ${{ format('{0}', matrix.config.py_deps_suffix) }}
+          rustup target add ${{ matrix.config.target }}
 
       - name: '[Linux Only] Build Docker Image'
         if: ${{ runner.os == 'Linux' }}
