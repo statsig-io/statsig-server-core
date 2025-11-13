@@ -167,19 +167,19 @@ jobs:
 
           echo "=== Rust installed successfully ==="
 
+      - name: '[Statsig Hosted Windows ARM64 Only] Ensure Rust PATH'
+        if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
+        shell: powershell
+        run: |
+          $cargoBin = "$env:USERPROFILE\.cargo\bin"
+          if (Test-Path $cargoBin) {
+            echo $cargoBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
       - name: '[Non-Linux] Install Dependencies'
         if: ${{ runner.os != 'Linux' }}
         shell: powershell
-        run: |
-          # Windows ARM64 needs PATH override
-          $cargoBin = "$env:USERPROFILE\.cargo\bin"
-          if (Test-Path $cargoBin) {
-            echo "Injecting cargo bin into PATH"
-            $env:PATH = "$cargoBin;$env:PATH"
-          } else {
-            echo "cargo bin not found at $cargoBin"
-          }
-          
+        run: |          
           pip3 install maturin types-requests ${{ format('{0}', matrix.config.py_deps_suffix) }}
           rustup target add ${{ matrix.config.target }}
 
