@@ -136,9 +136,50 @@ jobs:
           python-version: 3.x
           architecture: ${{ matrix.config.py_arch }}
 
+      - name: '[Statsig Hosted Windows ARM64 Only] Install Rustup'
+        if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
+        shell: powershell
+        run: |
+          echo "=== Preparing temp directory ==="
+          $tempDir = "$env:RUNNER_TEMP\rust_install"
+          New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+
+          $installer = "$tempDir\rustup-init.exe"
+          echo "Installer path: $installer"
+
+          echo "=== Downloading Rustup ARM64 Installer ==="
+          Invoke-WebRequest `
+            -Uri "https://static.rust-lang.org/rustup/dist/aarch64-pc-windows-msvc/rustup-init.exe" `
+            -OutFile $installer
+
+          if (!(Test-Path $installer)) {
+            echo "❌ rustup-init download failed"
+            exit 1
+          }
+          echo "✅ rustup-init downloaded"
+
+          echo "=== Running Rustup Installer ==="
+          & $installer -y
+          if ($LASTEXITCODE -ne 0) {
+            echo "❌ rustup-init installer failed"
+            exit $LASTEXITCODE
+          }
+
+          echo "=== Rust installed successfully ==="
+
       - name: '[Non-Linux] Install Dependencies'
         if: ${{ runner.os != 'Linux' }}
+        shell: powershell
         run: |
+          # Windows ARM64 needs PATH override
+          $cargoBin = "$env:USERPROFILE\.cargo\bin"
+          if (Test-Path $cargoBin) {
+            echo "Injecting cargo bin into PATH"
+            $env:PATH = "$cargoBin;$env:PATH"
+          } else {
+            echo "cargo bin not found at $cargoBin"
+          }
+          
           pip3 install maturin types-requests ${{ format('{0}', matrix.config.py_deps_suffix) }}
           rustup target add ${{ matrix.config.target }}
 
