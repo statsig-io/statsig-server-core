@@ -1,6 +1,6 @@
 {
     "name": "@statsig/statsig-node-core-linux-x64-musl",
-    "version": "0.12.1-beta.2511132356",
+    "version": "0.12.1-beta.2511140238",
     "repository": "https://github.com/statsig-io/statsig-server-core.git",
     "os": [
       "linux"
