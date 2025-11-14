@@ -27,7 +27,10 @@ fn test_full_response_serialization_from_value() {
 
 #[test]
 fn test_json_roundtrip() {
-    let raw_dcs = load_contents("eval_proj_dcs.json");
+    let mut raw_dcs = load_contents("eval_proj_dcs.json");
+
+    // The param store has a name for the param that is pointless
+    raw_dcs = raw_dcs.replace(r#""name":"bool_param","#, "");
 
     let specs_response = serde_json::from_str::<SpecsResponseFull>(&raw_dcs).unwrap();
 

@@ -190,8 +190,8 @@ class StatsigTest extends TestCase
         $raw_result = $statsig->getClientInitializeResponse($this->user);
         $result = json_decode($raw_result, true);
 
-        $this->assertCount(62, $result['dynamic_configs']);
-        $this->assertCount(65, $result['feature_gates']);
+        $this->assertCount(63, $result['dynamic_configs']);
+        $this->assertCount(69, $result['feature_gates']);
         $this->assertCount(12, $result['layer_configs']);
     }
 }

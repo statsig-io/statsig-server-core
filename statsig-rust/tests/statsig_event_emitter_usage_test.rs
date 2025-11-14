@@ -151,6 +151,6 @@ async fn test_specs_updated_event() {
     assert_eq!(event.event_name, "specs_updated");
     assert_eq!(
         event.data,
-        EventData::SpecsUpdated("Bootstrap".to_string(), 1729873603830)
+        EventData::SpecsUpdated("Bootstrap".to_string(), 1763138293896)
     );
 }

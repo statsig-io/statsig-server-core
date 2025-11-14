@@ -13,8 +13,12 @@ from statsig_python_core import (
 from pytest_httpserver import HTTPServer
 from utils import get_test_data_resource
 
+known_lcut = 1763138293896
+
 dcs_content = get_test_data_resource("eval_proj_dcs.json")
 json_data = json.loads(dcs_content)
+
+del json_data["checksum"]
 
 updated_dcs_json_data = json_data.copy()
 if "time" in updated_dcs_json_data:
@@ -96,7 +100,7 @@ def test_data_store_usage_get(statsig_setup):
     assert data_store.init_called
     assert gate.details.reason == "Adapter(DataStore):Recognized"
     assert gate.value == True
-    assert gate.details.lcut == 1729873603830
+    assert gate.details.lcut == known_lcut
     assert data_store.get_called_count > 1
 
 
@@ -115,7 +119,7 @@ def test_data_store_usage_set(statsig_setup):
     statsig.flush_events().wait()
 
     assert gate_after.value == True
-    assert gate_after.details.lcut == 1729873603840
+    assert gate_after.details.lcut == known_lcut + 10
     assert data_store.get_called_count == 1
     assert data_store.content_set is not None
     assert json.loads(data_store.content_set) == updated_dcs_json_data
