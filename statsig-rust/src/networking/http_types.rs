@@ -132,6 +132,10 @@ impl ResponseData {
         &self.stream
     }
 
+    pub fn get_stream_mut(&mut self) -> &mut dyn ResponseDataStream {
+        &mut self.stream
+    }
+
     pub fn deserialize_into<T: DeserializeOwned>(&mut self) -> Result<T, StatsigErr> {
         self.rewind()?;
 
