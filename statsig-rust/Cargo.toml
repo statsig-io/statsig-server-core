@@ -68,6 +68,6 @@ with_grpc = ["sigstat-grpc"]
 testing = []
 with_zstd = []
 
-# [[bin]]
-# name = "sync"
-# path = "tests/bin/sync.rs"
+[[bin]]
+name = "sync_test_data"
+path = "tests/bin/sync_test_data.rs"

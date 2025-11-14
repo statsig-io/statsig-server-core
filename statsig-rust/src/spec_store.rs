@@ -329,7 +329,7 @@ impl SpecStore {
         prev_source: &SpecsSource,
         source_api: Option<String>,
     ) {
-        let delay = Utc::now().timestamp_millis() as u64 - lcut;
+        let delay = (Utc::now().timestamp_millis() as u64).saturating_sub(lcut);
         log_d!(TAG, "Updated ({:?})", source);
 
         if *prev_source == SpecsSource::Uninitialized || *prev_source == SpecsSource::Loading {

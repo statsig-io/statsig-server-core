@@ -58,7 +58,7 @@ async fn test_initial_success_with_background_failure() {
 
     assert!(init_result.is_ok());
 
-    mock_scrapi.reset().await;
+    mock_scrapi.clear_stubs().await;
 
     println!(
         "resetting mock scrapi {}",
