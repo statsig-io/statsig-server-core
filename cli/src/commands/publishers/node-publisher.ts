@@ -174,18 +174,17 @@ function alignNodePackage(options: PublisherOptions, distDir: string) {
     });
 
     if (!allFilesMoved) {
+      // Windows ARM64 (aarch64-pc-windows-msvc) alignment failure should not fail the entire process
+      if (platform === 'aarch64-pc-windows-msvc') {
+        Log.stepProgress(
+          `Windows ARM64 files not found (may not be built in private repo), skipping`,
+        );
+        Log.stepEnd(`Skipped ${platform} (files not found)`);
+        return;
+      }
+      
       allPlatformsAligned = false;
       Log.stepEnd(`Failed to move all files for ${platform}`, 'failure');
-      // Windows ARM64 (aarch64-pc-windows-msvc) alignment failure should not fail the entire process
-      // if (platform === 'aarch64-pc-windows-msvc') {
-      //   Log.stepProgress(
-      //     `Windows ARM64 files not found (may not be built in private repo), skipping`,
-      //   );
-      //   Log.stepEnd(`Skipped ${platform} (files not found)`);
-      // } else {
-      //   allPlatformsAligned = false;
-      //   Log.stepEnd(`Failed to move all files for ${platform}`, 'failure');
-      //}
       return;
     }
 
@@ -254,7 +253,7 @@ function publishIndividual(
     Log.stepProgress(`Running ${command}`);
     execSync(command, { cwd: platformDir });
     return true;
-  } catch (error) {
+  } catch {
     Log.stepProgress(`Failed to publish ${platform}`, 'failure');
     return false;
   }
