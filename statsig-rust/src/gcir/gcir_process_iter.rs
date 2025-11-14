@@ -7,7 +7,7 @@ use crate::{
     },
     hashing::HashUtil,
     interned_string::InternedString,
-    specs_response::spec_types::Spec,
+    specs_response::{spec_types::Spec, specs_hash_map::SpecsHashMap},
     ClientInitResponseOptions, HashAlgorithm, SecondaryExposure, StatsigErr,
 };
 use std::collections::{HashMap, HashSet};
@@ -16,13 +16,15 @@ pub(crate) fn gcir_process_iter<T>(
     context: &mut EvaluatorContext,
     options: &ClientInitResponseOptions,
     sec_expo_hash_memo: &mut HashMap<InternedString, InternedString>,
-    specs_map: &ahash::HashMap<InternedString, Spec>,
+    specs_map: &SpecsHashMap,
     get_spec_type: impl Fn(&Spec) -> SpecType,
     mut evaluation_factory: impl FnMut(&str, &str, &mut EvaluatorContext) -> T,
 ) -> Result<HashMap<String, T>, StatsigErr> {
     let mut results = HashMap::new();
 
-    for (name, spec) in specs_map.iter() {
+    for (name, spec_ptr) in specs_map.iter() {
+        let spec = spec_ptr.inner.as_ref();
+
         if spec.entity == "segment" || spec.entity == "holdout" {
             continue;
         }

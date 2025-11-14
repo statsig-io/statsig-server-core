@@ -1282,6 +1282,7 @@ impl Statsig {
         };
 
         if let Some(rule) = exp
+            .inner
             .rules
             .iter()
             .find(|rule| rule.group_name.as_deref() == Some(group_name))
@@ -1302,7 +1303,7 @@ impl Statsig {
                     data.values.time,
                     data.time_received_at,
                 ),
-                is_experiment_active: exp.is_active.unwrap_or(false),
+                is_experiment_active: exp.inner.is_active.unwrap_or(false),
                 __evaluation: None,
             };
         }

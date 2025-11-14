@@ -7,6 +7,7 @@ use serde_with::skip_serializing_none;
 use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::{dynamic_returnable::DynamicReturnable, evaluator_value::EvaluatorValue};
 use crate::interned_string::InternedString;
+use crate::specs_response::specs_hash_map::SpecsHashMap;
 use crate::DynamicValue;
 
 use super::{cmab_types::CMABConfig, param_store_types::ParameterStore};
@@ -102,9 +103,9 @@ pub struct SessionReplayInfo {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default)] /* DO_NOT_CLONE */
 pub struct SpecsResponseFull {
     pub company_id: Option<String>,
-    pub feature_gates: AHashMap<InternedString, Spec>,
-    pub dynamic_configs: AHashMap<InternedString, Spec>,
-    pub layer_configs: AHashMap<InternedString, Spec>,
+    pub feature_gates: SpecsHashMap,
+    pub dynamic_configs: SpecsHashMap,
+    pub layer_configs: SpecsHashMap,
     pub condition_map: AHashMap<InternedString, Condition>,
     pub experiment_to_layer: HashMap<String, String>,
     pub has_updates: bool,
