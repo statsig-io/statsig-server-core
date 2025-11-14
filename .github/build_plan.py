@@ -37,17 +37,13 @@ def map_arm64_runners(included):
 
     return included
 
-def filter_windows_arm11_for_public_only(included):
-    """
-    Filter out windows-arm11 (windows + aarch64) config if this is a private repo.
-    windows-arm11 should only run on public repo.
-    """
-    if is_private_repo:
-        included["config"] = [
-            config
-            for config in included["config"]
-            if not (config.get("os") == "windows" and config.get("arch") == "aarch64")
-        ]
+def map_win_arm64_runner(included):
+    if not is_private_repo:
+        return included
+    
+    for config in included["config"]:
+        if config["runner"] == "windows-11-arm":
+            config["runner"] = "statsig-windows-arm64"
     return included
 
 
@@ -78,7 +74,7 @@ print(f"Should Build All: {should_build_all}")
 
 included, excluded = partition_targets(should_build_all)
 included = map_arm64_runners(included)
-included = filter_windows_arm11_for_public_only(included)
+included = map_win_arm64_runner(included)
 export_outputs(included)
 
 print("\n== Included ==")
