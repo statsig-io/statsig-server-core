@@ -29,11 +29,12 @@ function getCrossBaseImageCommand(options: BuilderOptions): string | null {
 }
 
 function getExtraBuildArgs(options: BuilderOptions): string {
+  let args = [options.envSetupForBuild].filter((v) => v != null && v.length > 0);
   if (options.target == "aarch64-unknown-linux-gnu") {
     // When building within an older version we need this variable
-    return 'CFLAGS="-D__ARM_ARCH=8" '
+    args.push('CFLAGS="-D__ARM_ARCH=8" ')
   }
-  return ''
+  return args.join(' ')
 }
 
 export function detectTarget(options: BuilderOptions): string {
@@ -172,6 +173,7 @@ export function buildFfiHelper(options: BuilderOptions) {
     ].filter((v) => v != null).join(' &&');
   } else {
     command = [
+      getExtraBuildArgs(options),
       'cargo build',
       ...buildConfigs
     ].join(' ');
