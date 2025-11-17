@@ -15,7 +15,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use parking_lot::Mutex;
 use serde_json::Value;
-use statsig_rust::event_logging::statsig_event_internal::StatsigLogLineLevel;
+use statsig_rust::console_capture::console_log_line_levels::StatsigLogLineLevel;
 use statsig_rust::networking::providers::NetworkProviderGlobal;
 use statsig_rust::networking::NetworkProvider;
 use statsig_rust::{log_d, log_e, Statsig as StatsigActual, OPS_STATS};
@@ -26,7 +26,12 @@ use std::time::Duration;
 const TAG: &str = "StatsigNapi";
 
 #[napi]
-pub fn statsig_capture_log_line(level: String, payload: Vec<String>, sdk_key: String) {
+pub fn statsig_capture_log_line(
+    level: String,
+    payload: Vec<String>,
+    sdk_key: String,
+    stack_trace: Option<String>,
+) {
     let op_stats_instance = OPS_STATS.get_weak_instance_for_key(&sdk_key);
     let Some(op_stats_instance) = op_stats_instance else {
         return;
@@ -41,7 +46,7 @@ pub fn statsig_capture_log_line(level: String, payload: Vec<String>, sdk_key: St
         .unwrap_or_default()
         .as_millis() as u64;
 
-    op_stats_instance.enqueue_console_capture_event(level, payload, timestamp);
+    op_stats_instance.enqueue_console_capture_event(level, payload, timestamp, stack_trace);
 }
 
 #[napi]
@@ -177,18 +182,12 @@ impl StatsigNapiInternal {
         value: Option<String>,
         metadata: Option<HashMap<String, String>>,
     ) {
-        let level = match log_level.to_lowercase().as_str() {
-            "debug" => StatsigLogLineLevel::Debug,
-            "log" => StatsigLogLineLevel::Log,
-            "trace" => StatsigLogLineLevel::Trace,
-            "info" => StatsigLogLineLevel::Info,
-            "warn" => StatsigLogLineLevel::Warn,
-            "error" => StatsigLogLineLevel::Error,
-            _ => {
-                log_e!(TAG, "Invalid log level: {}", log_level);
-                return;
-            }
+        let level = StatsigLogLineLevel::from_string(&log_level);
+        let Some(level) = level else {
+            log_e!(TAG, "Invalid log level: {}", log_level);
+            return;
         };
+
         self.inner
             .forward_log_line_event(user.as_inner(), level, value, metadata);
     }

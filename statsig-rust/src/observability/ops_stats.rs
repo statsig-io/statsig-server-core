@@ -172,11 +172,13 @@ impl OpsStatsForInstance {
         level: String,
         payload: Vec<String>,
         timestamp: u64,
+        stack_trace: Option<String>,
     ) {
         self.log(OpsStatsEvent::ConsoleCapture(ConsoleCaptureEvent {
             level,
             payload,
             timestamp,
+            stack_trace,
         }));
     }
 

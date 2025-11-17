@@ -1,4 +1,5 @@
 use crate::console_capture::console_capture_helper::ConsoleCapture;
+use crate::console_capture::console_log_line_levels::StatsigLogLineLevel;
 use crate::evaluation::cmab_evaluator::{get_cmab_ranked_list, CMABRankedGroup};
 use crate::evaluation::country_lookup::CountryLookup;
 use crate::evaluation::dynamic_value::DynamicValue;
@@ -17,7 +18,7 @@ use crate::event_logging::event_queue::queued_experiment_expo::EnqueueExperiment
 use crate::event_logging::event_queue::queued_gate_expo::EnqueueGateExpoOp;
 use crate::event_logging::event_queue::queued_layer_param_expo::EnqueueLayerParamExpoOp;
 use crate::event_logging::event_queue::queued_passthrough::EnqueuePassthroughOp;
-use crate::event_logging::statsig_event_internal::{StatsigEventInternal, StatsigLogLineLevel};
+use crate::event_logging::statsig_event_internal::StatsigEventInternal;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
 use crate::gcir::gcir_formatter::GCIRFormatter;
@@ -576,6 +577,7 @@ impl Statsig {
                 log_level,
                 value,
                 metadata,
+                None,
             ),
         });
     }

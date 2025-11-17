@@ -14,6 +14,7 @@ pub struct ConsoleCaptureEvent {
     pub level: String,
     pub payload: Vec<String>,
     pub timestamp: u64,
+    pub stack_trace: Option<String>,
 }
 pub struct ConsoleCaptureObserver {
     console_capture_handler: Arc<ConsoleCapture>,

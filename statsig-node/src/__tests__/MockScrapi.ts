@@ -1,8 +1,9 @@
+import { readFile, unlink, writeFile } from 'node:fs/promises';
+
 import compression from 'compression';
+import { exec } from 'node:child_process';
 import express from 'express';
 import http from 'http';
-import { exec } from 'node:child_process';
-import { readFile, unlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -108,6 +109,14 @@ export class MockScrapi {
 
   getUrlForPath(path: string) {
     return `http://localhost:${this.port}${path}`;
+  }
+
+  getLogEventRequests() {
+    return this.requests.filter((req: any) => req.path === '/v1/log_event');
+  }
+
+  clearRequests() {
+    this.requests = [];
   }
 
   getServerApi() {

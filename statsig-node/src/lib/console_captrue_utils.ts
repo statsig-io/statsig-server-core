@@ -3,78 +3,130 @@
  */
 
 export function safeStringify(
-    val: unknown,
-    maxKeysCount: number,
-    maxDepth: number,
-    maxLength: number,
-  ): string {
-    try {
-      if (shouldNotStringify(val as object, maxKeysCount, maxDepth)) {
-        return simpleStringify(val as object, maxLength);
-      }
-  
-      if (typeof val === 'string') {
-        return truncateString(val, maxLength);
-      }
-      if (typeof val === 'object' && val !== null) {
-        return truncateString(JSON.stringify(val), maxLength);
-      }
-  
-      return truncateString(String(val), maxLength);
-    } catch {
-      return truncateString('[Unserializable]', maxLength);
+  val: unknown,
+  maxKeysCount: number,
+  maxDepth: number,
+  maxLength: number
+): string {
+  try {
+    if (shouldNotStringify(val as object, maxKeysCount, maxDepth)) {
+      return simpleStringify(val as object, maxLength);
     }
+
+    if (typeof val === 'string') {
+      return truncateString(val, maxLength);
+    }
+    if (typeof val === 'object' && val !== null) {
+      return truncateString(JSON.stringify(val), maxLength);
+    }
+
+    return truncateString(String(val), maxLength);
+  } catch {
+    return truncateString('[Unserializable]', maxLength);
   }
-  
-  export function shouldNotStringify(
-    val: object,
-    maxKeysCount: number,
-    maxDepth: number,
-  ): boolean {
-    if (isPlainObject(val)) {
-      if (Object.keys(val).length > maxKeysCount) {
-        return true;
-      }
-      if (isObjectTooDeep(val, maxDepth)) {
-        return true;
-      }
-    }
-  
-    if (typeof val === 'function') {
+}
+
+export function shouldNotStringify(
+  val: object,
+  maxKeysCount: number,
+  maxDepth: number
+): boolean {
+  if (isPlainObject(val)) {
+    if (Object.keys(val).length > maxKeysCount) {
       return true;
     }
-  
+    if (isObjectTooDeep(val, maxDepth)) {
+      return true;
+    }
+
     return false;
   }
-  
-  export function isPlainObject(obj: unknown): boolean {
-    return Object.prototype.toString.call(obj) === '[object Object]';
+
+  if (typeof val === 'function') {
+    return true;
   }
-  
-  export function isObjectTooDeep(obj: unknown, maxDepth: number): boolean {
-    if (maxDepth <= 0) {
-      return true;
-    }
-    if (typeof obj !== 'object' || obj === null) {
-      return false;
-    }
-    return Object.keys(obj).some((key) =>
-      isObjectTooDeep(obj[key as keyof typeof obj], maxDepth - 1),
+
+  return false;
+}
+
+export function isPlainObject(obj: unknown): boolean {
+  return Object.prototype.toString.call(obj) === '[object Object]';
+}
+
+export function isObjectTooDeep(
+  obj: unknown,
+  maxDepth: number,
+  seen: WeakSet<object> = new WeakSet()
+): boolean {
+  if (maxDepth <= 0) {
+    return true;
+  }
+
+  if (typeof obj !== 'object' || obj === null) {
+    return false; // primitives are never "too deep"
+  }
+
+  if (seen.has(obj)) {
+    return false; // cycle detected
+  }
+
+  seen.add(obj);
+
+  return Object.values(obj).some((value) =>
+    isObjectTooDeep(value, maxDepth - 1, seen)
+  );
+}
+
+export function getStackTrace(): string | null {
+  const stack = new Error().stack;
+  return stack ? stack.split('\n').slice(2, 5).join('\n') : null;
+}
+
+export function truncateString(str: string, maxLength: number): string {
+  if (str.length <= maxLength) {
+    return str;
+  }
+  return str.slice(0, maxLength) + '...';
+}
+
+export function simpleStringify(val: object, maxLength: number): string {
+  return truncateString(val.toString(), maxLength);
+}
+
+export function wrapFunctionWithRestore(
+  targetObject: Record<string, unknown>,
+  functionName: string,
+  wrapperFactory: (
+    original: (...args: unknown[]) => unknown
+  ) => (...args: unknown[]) => unknown
+): () => void {
+  const originalFunction = targetObject[functionName];
+
+  if (typeof originalFunction !== 'function') {
+    return () => {
+      // noop
+    };
+  }
+
+  try {
+    const wrappedFunction = wrapperFactory(
+      originalFunction as (...args: unknown[]) => void
     );
+
+    Object.defineProperty(wrappedFunction, '__statsig_original__', {
+      enumerable: false,
+      value: originalFunction,
+    });
+
+    targetObject[functionName] = wrappedFunction;
+
+    // Restore function
+    return () => {
+      targetObject[functionName] = originalFunction;
+    };
+  } catch {
+    return () => {
+      // noop
+    };
   }
-  
-  export function getStackTrace(): string {
-    const stack = new Error().stack;
-    return stack ? stack.split('\n').slice(2, 5).join('\n') : '';
-  }
-  
-  export function truncateString(str: string, maxLength: number): string {
-    if (str.length <= maxLength) {
-      return str;
-    }
-    return str.slice(0, maxLength) + '...';
-  }
-  
-  export function simpleStringify(val: object, maxLength: number): string {
-    return truncateString(val.toString(), maxLength);
-  }
+}
