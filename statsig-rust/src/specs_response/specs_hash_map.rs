@@ -65,9 +65,29 @@ impl SpecsHashMap {
     pub fn iter(&self) -> impl Iterator<Item = (&InternedString, &SpecPointer)> {
         self.0.iter()
     }
+
+    pub fn insert(&mut self, key: InternedString, value: SpecPointer) {
+        self.0.insert(key, value);
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
+
+    pub fn remove(&mut self, key: &InternedString) -> Option<SpecPointer> {
+        self.0.remove(key)
+    }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone /* Clone Ok because Arc */)]
 pub struct SpecPointer {
     pub inner: Arc<Spec>,
 }
@@ -78,5 +98,13 @@ impl Serialize for SpecPointer {
         S: Serializer,
     {
         self.inner.serialize(serializer)
+    }
+}
+
+impl SpecPointer {
+    pub fn from_spec(spec: Spec) -> Self {
+        Self {
+            inner: Arc::new(spec),
+        }
     }
 }

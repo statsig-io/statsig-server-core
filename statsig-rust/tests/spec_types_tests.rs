@@ -116,7 +116,7 @@ fn verify_null_preservation(original: &Value, roundtrip: &Value) {
                 if field_value.is_null() {
                     let round_field_value = match round_condition_obj.get(field_name) {
                         Some(value) => value,
-                        None => panic!("{field_name} missing in condition {condition_id}"),
+                        None => panic!("'{field_name}' missing in condition {condition_id}"),
                     };
 
                     assert!(

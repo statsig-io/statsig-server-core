@@ -33,6 +33,16 @@ impl DynamicReturnable {
         EMPTY_DYNAMIC_RETURNABLE.clone()
     }
 
+    pub fn from_bool(value: bool) -> Self {
+        let raw_value = match value {
+            true => RawValue::TRUE,
+            false => RawValue::FALSE,
+        };
+
+        let (hash, value) = DynamicReturnable::get_or_create_memoized(Cow::Borrowed(raw_value));
+        Self { hash, value }
+    }
+
     pub fn from_map(value: HashMap<String, JsonValue>) -> Self {
         let raw_value = match to_raw_value(&value) {
             Ok(raw_value) => raw_value,

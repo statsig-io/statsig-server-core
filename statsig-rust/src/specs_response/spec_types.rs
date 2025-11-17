@@ -19,6 +19,7 @@ use super::{cmab_types::CMABConfig, param_store_types::ParameterStore};
 #[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 #[serde(rename_all = "camelCase")]
 pub struct Spec {
+    pub checksum: Option<InternedString>,
     #[serde(rename = "type")]
     pub _type: InternedString,
     pub salt: InternedString,
@@ -97,6 +98,15 @@ pub struct SessionReplayInfo {
     pub recording_blocked: Option<bool>,
     pub session_recording_event_triggers: Option<HashMap<String, SessionReplayTrigger>>,
     pub session_recording_exposure_triggers: Option<HashMap<String, SessionReplayTrigger>>,
+}
+
+#[derive(Deserialize)]
+pub struct SpecsResponsePartial {
+    pub experiment_to_layer: HashMap<String, String>,
+    pub param_stores: Option<HashMap<InternedString, ParameterStore>>,
+    pub session_replay_info: Option<SessionReplayInfo>,
+    pub diagnostics: Option<HashMap<String, f64>>,
+    pub sdk_configs: Option<HashMap<String, DynamicValue>>,
 }
 
 #[skip_serializing_none]

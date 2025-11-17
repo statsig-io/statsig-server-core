@@ -4,6 +4,7 @@ use std::sync::Arc;
 use more_asserts::assert_gt;
 use serde_json::json;
 
+use crate::interned_str;
 use crate::interned_string::InternedString;
 
 #[test]
@@ -21,6 +22,12 @@ fn test_interned_string_from_string() {
 #[test]
 fn test_interned_string_from_bool() {
     let string = InternedString::from_bool(true);
+    assert_eq!(string.as_str(), "true");
+}
+
+#[test]
+fn test_interned_string_from_bool_macro() {
+    let string = interned_str!(bool: true);
     assert_eq!(string.as_str(), "true");
 }
 
