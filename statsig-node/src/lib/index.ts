@@ -76,10 +76,15 @@ function createFetchFunc(options?: StatsigOptions) {
       });
 
       const data = await res.arrayBuffer();
+      const resHeaders = Object.fromEntries(res.headers.entries()) as Record<
+        string,
+        string
+      >;
 
       return {
         status: res.status,
         data: Array.from(new Uint8Array(data)),
+        headers: resHeaders,
       };
     } catch (err: any) {
       return {

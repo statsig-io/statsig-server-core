@@ -90,7 +90,6 @@ pub struct Response {
     pub status_code: Option<u16>,
     pub data: Option<ResponseData>,
     pub error: Option<String>,
-    pub headers: Option<HashMap<String, String>>,
 }
 
 #[derive(PartialEq, Clone)]
@@ -113,19 +112,35 @@ impl<T: std::io::Read + std::io::Seek + std::fmt::Debug + Send + Sync> ResponseD
 
 pub struct ResponseData {
     stream: Box<dyn ResponseDataStream>,
+    headers: Option<HashMap<String, String>>,
 }
 
 const TAG: &str = "ResponseData";
 
 impl ResponseData {
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
+        Self::from_bytes_with_headers(bytes, None)
+    }
+
+    pub fn from_bytes_with_headers(
+        bytes: Vec<u8>,
+        headers: Option<HashMap<String, String>>,
+    ) -> Self {
         Self {
             stream: Box::new(Cursor::new(bytes)),
+            headers,
         }
     }
 
     pub fn from_stream(stream: Box<dyn ResponseDataStream>) -> Self {
-        Self { stream }
+        Self::from_stream_with_headers(stream, None)
+    }
+
+    pub fn from_stream_with_headers(
+        stream: Box<dyn ResponseDataStream>,
+        headers: Option<HashMap<String, String>>,
+    ) -> Self {
+        Self { stream, headers }
     }
 
     pub fn get_stream_ref(&self) -> &dyn ResponseDataStream {
@@ -134,6 +149,10 @@ impl ResponseData {
 
     pub fn get_stream_mut(&mut self) -> &mut dyn ResponseDataStream {
         &mut self.stream
+    }
+
+    pub fn get_header_ref(&self, key: &str) -> Option<&String> {
+        self.headers.as_ref().and_then(|h| h.get(key))
     }
 
     pub fn deserialize_into<T: DeserializeOwned>(&mut self) -> Result<T, StatsigErr> {

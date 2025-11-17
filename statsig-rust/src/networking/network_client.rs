@@ -157,9 +157,9 @@ impl NetworkClient {
 
             let status = response.status_code;
             let sdk_region_str = response
-                .headers
+                .data
                 .as_ref()
-                .and_then(|h| h.get("x-statsig-region"));
+                .and_then(|data| data.get_header_ref("x-statsig-region").cloned());
             let success = (200..300).contains(&status.unwrap_or(0));
 
             let error_message = response
