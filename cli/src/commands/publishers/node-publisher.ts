@@ -207,7 +207,7 @@ function publishNodePackages(distDir: string, options: PublisherOptions) {
   );
 
   platforms.forEach((platform) => {
-    if (platform !== 'aarch64-pc-windows-msvc' && !publishIndividual(distDir, platform, options)) {
+    if (!publishIndividual(distDir, platform, options)) {
       allSubPackagesPublished = false;
     }
   });
