@@ -1,3 +1,4 @@
+use crate::console_capture::console_capture_helper::ConsoleCapture;
 use crate::evaluation::cmab_evaluator::{get_cmab_ranked_list, CMABRankedGroup};
 use crate::evaluation::country_lookup::CountryLookup;
 use crate::evaluation::dynamic_value::DynamicValue;
@@ -26,6 +27,7 @@ use crate::initialize_evaluations_response::InitializeEvaluationsResponse;
 use crate::initialize_response::InitializeResponse;
 use crate::initialize_v2_response::InitializeV2Response;
 use crate::interned_string::InternedString;
+use crate::observability::console_capture_observer::ConsoleCaptureObserver;
 use crate::observability::diagnostics_observer::DiagnosticsObserver;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
@@ -100,6 +102,7 @@ pub struct Statsig {
     ops_stats: Arc<OpsStatsForInstance>,
     error_observer: Arc<dyn OpsStatsEventObserver>,
     diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
+    console_capture_observer: Arc<dyn OpsStatsEventObserver>,
     background_tasks_started: Arc<AtomicBool>,
     persistent_values_manager: Option<Arc<PersistentValuesManager>>,
     initialize_details: Mutex<InitializeDetails>,
@@ -111,6 +114,7 @@ pub struct StatsigContext {
     pub local_override_adapter: Option<Arc<dyn OverrideAdapter>>,
     pub error_observer: Arc<dyn OpsStatsEventObserver>,
     pub diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
+    pub console_capture_observer: Arc<dyn OpsStatsEventObserver>,
     pub spec_store: Arc<SpecStore>,
 }
 
@@ -160,12 +164,16 @@ impl Statsig {
             Arc::new(DiagnosticsObserver::new(diagnostics));
         let error_observer: Arc<dyn OpsStatsEventObserver> =
             Arc::new(SDKErrorsObserver::new(sdk_key, &options));
+        let console_capture = Arc::new(ConsoleCapture::new(event_logger.clone()));
+        let console_capture_observer: Arc<dyn OpsStatsEventObserver> =
+            Arc::new(ConsoleCaptureObserver::new(console_capture));
 
         let ops_stats = setup_ops_stats(
             sdk_key,
             statsig_runtime.clone(),
             &error_observer,
             &diagnostics_observer,
+            &console_capture_observer,
             &options.observability_client,
         );
 
@@ -208,6 +216,7 @@ impl Statsig {
             ops_stats,
             error_observer,
             diagnostics_observer,
+            console_capture_observer,
             background_tasks_started: Arc::new(AtomicBool::new(false)),
             persistent_values_manager,
             initialize_details: Mutex::new(InitializeDetails::default()),
@@ -352,6 +361,7 @@ impl Statsig {
             local_override_adapter: self.override_adapter.clone(),
             error_observer: self.error_observer.clone(),
             diagnostics_observer: self.diagnostics_observer.clone(),
+            console_capture_observer: self.console_capture_observer.clone(),
             spec_store: self.spec_store.clone(),
         }
     }
@@ -2099,6 +2109,7 @@ fn setup_ops_stats(
     statsig_runtime: Arc<StatsigRuntime>,
     error_observer: &Arc<dyn OpsStatsEventObserver>,
     diagnostics_observer: &Arc<dyn OpsStatsEventObserver>,
+    console_capture_observer: &Arc<dyn OpsStatsEventObserver>,
     external_observer: &Option<Weak<dyn ObservabilityClient>>,
 ) -> Arc<OpsStatsForInstance> {
     let ops_stat = OPS_STATS.get_for_instance(sdk_key);
@@ -2107,7 +2118,10 @@ fn setup_ops_stats(
         statsig_runtime.clone(),
         Arc::downgrade(diagnostics_observer),
     );
-
+    ops_stat.subscribe(
+        statsig_runtime.clone(),
+        Arc::downgrade(console_capture_observer),
+    );
     if let Some(ob_client) = external_observer {
         if let Some(client) = ob_client.upgrade() {
             client.init();

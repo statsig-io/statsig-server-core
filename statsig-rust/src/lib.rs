@@ -11,6 +11,7 @@ pub use initialize_response::InitializeResponse;
 pub use instance_registry::InstanceRegistry;
 pub use observability::{
     observability_client_adapter::ObservabilityClient, ops_stats::OpsStatsEventObserver,
+    ops_stats::OPS_STATS,
 };
 pub use override_adapter::{
     override_adapter_trait::OverrideAdapter,
@@ -31,6 +32,7 @@ pub use user::user_data::UserData as StatsigUserData;
 pub use user::{StatsigUser, StatsigUserBuilder};
 
 pub mod compression;
+pub mod console_capture;
 pub mod data_store_interface;
 pub mod evaluation;
 pub mod event_logging;

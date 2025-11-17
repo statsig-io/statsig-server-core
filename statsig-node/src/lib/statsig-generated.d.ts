@@ -262,6 +262,8 @@ export interface SpecAdapterConfig {
   domainName?: string
 }
 
+export declare function statsigCaptureLogLine(level: string, payload: Array<string>, sdkKey: string): void
+
 export interface StatsigOptions {
   dataStore?: DataStore
   disableAllLogging?: boolean
