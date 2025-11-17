@@ -1,7 +1,10 @@
 mod utils;
 use serde_json::json;
 use statsig_rust::{output_logger, Statsig, StatsigOptions, StatsigUser};
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
 use crate::utils::helpers::load_contents;
@@ -164,6 +167,7 @@ async fn setup(key: &str, options_override: Option<StatsigOptions>) -> (MockScra
         Some(Arc::new(StatsigOptions {
             specs_url: Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs)),
             log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
+            experimental_flags: Some(HashSet::from(["enable_proto_spec_support".to_string()])),
             ..options_override.unwrap_or_default()
         })),
     );

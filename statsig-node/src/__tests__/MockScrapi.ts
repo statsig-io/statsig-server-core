@@ -7,10 +7,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
-type MockOptions = { status: number; method: 'GET' | 'POST' };
+type MockOptions = {
+  status: number;
+  method: 'GET' | 'POST';
+  headers?: Record<string, string>;
+};
 
 type Mock = {
-  response: string;
+  response: string | Buffer;
   options: MockOptions | null;
 };
 
@@ -18,6 +22,7 @@ type RecordedRequest = {
   path: string;
   method: string;
   body: any;
+  url: string;
 };
 
 export class MockScrapi {
@@ -61,6 +66,7 @@ export class MockScrapi {
           path: req.path,
           method: req.method,
           body: req.body,
+          url: req.url,
         };
 
         this.requests.push(recorded);
@@ -81,7 +87,10 @@ export class MockScrapi {
         }
 
         const [_, mock] = found;
-        res.status(mock.options?.status ?? 200).send(mock.response);
+        res
+          .status(mock.options?.status ?? 200)
+          .set(mock.options?.headers ?? {})
+          .send(mock.response);
       },
       express.json(),
     );
@@ -105,7 +114,7 @@ export class MockScrapi {
     return `http://localhost:${this.port}`;
   }
 
-  mock(path: string, response: string, options?: MockOptions) {
+  mock(path: string, response: string | Buffer, options?: MockOptions) {
     this.mocks[path] = {
       response,
       options: options ?? null,
