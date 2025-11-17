@@ -113,6 +113,15 @@ impl StatsigOptionsBuilder {
         self
     }
 
+    #[must_use]
+    pub fn spec_adapters_config(
+        mut self,
+        spec_adapters_config: Option<Vec<SpecAdapterConfig>>,
+    ) -> Self {
+        self.inner.spec_adapters_config = spec_adapters_config;
+        self
+    }
+
     // Event Logging
 
     #[must_use]

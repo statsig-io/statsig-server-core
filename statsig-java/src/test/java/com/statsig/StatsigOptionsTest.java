@@ -1,5 +1,6 @@
 package com.statsig;
 
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 public class StatsigOptionsTest {
@@ -124,6 +125,31 @@ public class StatsigOptionsTest {
             .setInitTimeoutMs(6000L)
             .setServiceName("test_service")
             .setOutputLoggerLevel(OutputLogger.LogLevel.DEBUG)
+            .build();
+  }
+
+  @Test
+  void testBuilderWithSpecAdapterConfigs() {
+    SpecAdapterConfig httpConfig =
+        new SpecAdapterConfig()
+            .setAdapterType("http")
+            .setSpecsUrl("https://example.com/http")
+            .setInitTimeoutMs(1234L)
+            .setAuthenticationMode("none");
+    SpecAdapterConfig grpcConfig =
+        new SpecAdapterConfig()
+            .setAdapterType("grpc")
+            .setSpecsUrl("https://example.com/grpc")
+            .setInitTimeoutMs(5678L)
+            .setCaCertPath("/path/ca")
+            .setClientCertPath("/path/client")
+            .setClientKeyPath("/path/key")
+            .setDomainName("example.com");
+
+    StatsigOptions options =
+        new StatsigOptions.Builder()
+            .setSpecAdapterConfigs(Arrays.asList(httpConfig, grpcConfig))
+            .setSpecsUrl("https://fallback.specs")
             .build();
   }
 

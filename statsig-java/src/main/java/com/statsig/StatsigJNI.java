@@ -1,6 +1,7 @@
 package com.statsig;
 
 import com.statsig.internal.NativeBinaryResolver;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -246,6 +247,7 @@ class StatsigJNI {
       DataStore dataStore,
       OutputLoggerProvider outputLoggerProvider,
       ProxyConfig proxyConfig,
+      List<SpecAdapterConfig> specAdapterConfigs,
       boolean enableIDLists,
       boolean waitForCountryLookupInit,
       boolean disableAllLogging,

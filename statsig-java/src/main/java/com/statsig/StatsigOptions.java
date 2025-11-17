@@ -1,5 +1,7 @@
 package com.statsig;
 
+import java.util.List;
+
 public class StatsigOptions {
   private static class CleaningAction implements Runnable {
     private final long ref;
@@ -40,6 +42,7 @@ public class StatsigOptions {
             builder.dataStore,
             builder.outputLoggerProvider,
             builder.proxyConfig,
+            builder.specAdapterConfigs,
             builder.enableIDLists,
             builder.waitForCountryLookupInit,
             builder.disableAllLogging,
@@ -71,6 +74,7 @@ public class StatsigOptions {
     private DataStore dataStore;
     private OutputLoggerProvider outputLoggerProvider;
     private ProxyConfig proxyConfig;
+    private List<SpecAdapterConfig> specAdapterConfigs;
     private boolean enableIDLists = false;
     private boolean waitForUserAgentInit = false;
     private boolean waitForCountryLookupInit = false;
@@ -95,6 +99,11 @@ public class StatsigOptions {
 
     public Builder setProxyConfig(ProxyConfig proxyConfig) {
       this.proxyConfig = proxyConfig;
+      return this;
+    }
+
+    public Builder setSpecAdapterConfigs(List<SpecAdapterConfig> specAdapterConfigs) {
+      this.specAdapterConfigs = specAdapterConfigs;
       return this;
     }
 

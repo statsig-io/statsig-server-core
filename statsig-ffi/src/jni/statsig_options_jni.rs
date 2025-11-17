@@ -1,14 +1,18 @@
 use crate::jni::jni_utils::{
-    convert_java_proxy_config_to_rust, jboolean_to_bool, jstring_to_string,
+    convert_java_proxy_config_to_rust, get_long_field, get_string_field, jboolean_to_bool,
+    jstring_to_string,
 };
 use crate::jni::statsig_data_store_jni::convert_to_data_store_rust;
 use crate::jni::statsig_observability_client_jni::convert_to_ob_rust;
 use crate::jni::statsig_output_logger_provider_jni::convert_to_output_logger_provider_rust;
-use jni::objects::{JClass, JObject, JString};
+use jni::objects::{JClass, JObject, JString, JValue};
 use jni::sys::{jboolean, jint, jlong};
 use jni::JNIEnv;
-use statsig_rust::{log_d, log_e, log_w, statsig_options::StatsigOptionsBuilder};
-use statsig_rust::{InstanceRegistry, ObservabilityClient, StatsigOptions};
+use statsig_rust::{
+    log_d, log_e, log_w, statsig_options::StatsigOptionsBuilder, InstanceRegistry,
+    ObservabilityClient, SpecAdapterConfig, SpecsAdapterType, StatsigOptions,
+    DEFAULT_INIT_TIMEOUT_MS,
+};
 use std::sync::Arc;
 
 const TAG: &str = "StatsigOptionsJNI";
@@ -38,6 +42,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     data_store: JObject,
     output_logger_provider: JObject,
     proxy_config: JObject,
+    spec_adapters_config_list: JObject,
     enable_id_lists: jboolean,
     wait_for_country_lookup_init: jboolean,
     disable_all_logging: jboolean,
@@ -104,6 +109,9 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
 
     let data_store_arc = convert_to_data_store_rust(&env, data_store);
 
+    let spec_adapters_config =
+        convert_java_spec_adapter_configs(&mut env, spec_adapters_config_list);
+
     let mut builder = StatsigOptionsBuilder::new();
 
     builder = builder
@@ -129,7 +137,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .disable_country_lookup(disable_country_lookup)
         .fallback_to_statsig_api(fallback_to_statsig_api)
         .use_third_party_ua_parser(use_third_party_ua_parser)
-        .init_timeout_ms(init_timeout_ms_option);
+        .init_timeout_ms(init_timeout_ms_option)
+        .spec_adapters_config(spec_adapters_config);
 
     let options = builder.build();
 
@@ -148,6 +157,116 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
             0
         }
     }
+}
+
+fn convert_java_spec_adapter_configs(
+    env: &mut JNIEnv,
+    configs: JObject,
+) -> Option<Vec<SpecAdapterConfig>> {
+    if configs.is_null() {
+        return None;
+    }
+
+    let size = match env.call_method(&configs, "size", "()I", &[]) {
+        Ok(value) => match value.i() {
+            Ok(value) => value,
+            Err(e) => {
+                log_w!(TAG, "Failed to read spec adapter list size: {:?}", e);
+                return None;
+            }
+        },
+        Err(e) => {
+            log_w!(
+                TAG,
+                "Failed to call size on spec adapter config list: {:?}",
+                e
+            );
+            return None;
+        }
+    };
+
+    if size <= 0 {
+        return None;
+    }
+
+    let mut result = Vec::with_capacity(size as usize);
+
+    for idx in 0..size {
+        let config_obj = match env.call_method(
+            &configs,
+            "get",
+            "(I)Ljava/lang/Object;",
+            &[JValue::Int(idx)],
+        ) {
+            Ok(value) => match value.l() {
+                Ok(obj) => obj,
+                Err(e) => {
+                    log_w!(TAG, "Failed to get spec adapter entry at {}: {:?}", idx, e);
+                    continue;
+                }
+            },
+            Err(e) => {
+                log_w!(
+                    TAG,
+                    "Failed to call get on spec adapter config list: {:?}",
+                    e
+                );
+                continue;
+            }
+        };
+
+        if let Some(config) = convert_single_spec_adapter_config(env, config_obj) {
+            result.push(config);
+        }
+    }
+
+    if result.is_empty() {
+        None
+    } else {
+        Some(result)
+    }
+}
+
+fn convert_single_spec_adapter_config(
+    env: &mut JNIEnv,
+    config_obj: JObject,
+) -> Option<SpecAdapterConfig> {
+    if config_obj.is_null() {
+        log_w!(TAG, "Spec adapter config entry is null, skipping.");
+        return None;
+    }
+
+    let adapter_type = match get_string_field(env, &config_obj, "adapterType") {
+        Some(value) => value,
+        None => {
+            log_w!(TAG, "Spec adapter config is missing adapterType, skipping.");
+            return None;
+        }
+    };
+
+    let specs_url = get_string_field(env, &config_obj, "specsUrl");
+    let authentication_mode = get_string_field(env, &config_obj, "authenticationMode");
+    let ca_cert_path = get_string_field(env, &config_obj, "caCertPath");
+    let client_cert_path = get_string_field(env, &config_obj, "clientCertPath");
+    let client_key_path = get_string_field(env, &config_obj, "clientKeyPath");
+    let domain_name = get_string_field(env, &config_obj, "domainName");
+
+    let init_timeout_ms = get_long_field(env, &config_obj, "initTimeoutMs")
+        .and_then(|value| u64::try_from(value).ok())
+        .unwrap_or(DEFAULT_INIT_TIMEOUT_MS);
+
+    let adapter_type: SpecsAdapterType = adapter_type.into();
+
+    Some(SpecAdapterConfig {
+        adapter_type,
+        specs_url,
+        init_timeout_ms,
+        authentication_mode,
+        ca_cert_path,
+        client_cert_path,
+        client_key_path,
+        domain_name,
+    })
 }
 
 #[no_mangle]
