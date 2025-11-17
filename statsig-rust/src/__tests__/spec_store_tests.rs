@@ -7,7 +7,7 @@ use crate::{
     data_store_interface::{DataStoreResponse, DataStoreTrait, RequestPath},
     networking::ResponseData,
     sdk_event_emitter::SdkEventEmitter,
-    SpecStore, SpecsSource, SpecsUpdate, StatsigErr, StatsigRuntime,
+    SpecStore, SpecsSource, SpecsUpdate, StatsigErr, StatsigOptions, StatsigRuntime,
 };
 
 struct TestDataStore {
@@ -62,12 +62,17 @@ async fn test_spec_store_data_store_updates_forwarded_to_data_store() {
         calls: Mutex::new(vec![]),
     });
 
+    let options = StatsigOptions {
+        data_store: Some(data_store.clone()),
+        ..StatsigOptions::default()
+    };
+
     let spec_store = SpecStore::new(
         "test",
         "test".to_string(),
         StatsigRuntime::get_runtime(),
         Arc::new(SdkEventEmitter::default()),
-        Some(data_store.clone()),
+        Some(&options),
     );
 
     let contents = include_bytes!("../../tests/data/eval_proj_dcs.json");

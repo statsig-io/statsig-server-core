@@ -148,11 +148,17 @@ impl NetworkClient {
                 }
             };
 
+            let content_type = response
+                .data
+                .as_ref()
+                .and_then(|data| data.get_header_ref("content-type"));
+
             log_d!(
                 TAG,
-                "Response ({}): {:?}",
+                "Response url({}) status({:?}) content-type({:?})",
                 &request_args.url,
-                response.status_code
+                response.status_code,
+                content_type
             );
 
             let status = response.status_code;

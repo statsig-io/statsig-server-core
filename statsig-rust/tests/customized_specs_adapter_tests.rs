@@ -12,7 +12,7 @@ pub mod specs_adapter_tests {
     };
     use std::{fs, path::PathBuf, sync::Arc};
 
-    use crate::utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
+    use crate::utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
     #[tokio::test]
     async fn test_data_store_with_streaming() {
@@ -72,7 +72,7 @@ pub mod specs_adapter_tests {
         mock_scrapi
             .stub(EndpointStub {
                 method: Method::GET,
-                response: dcs,
+                response: StubData::String(dcs),
                 ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
             })
             .await;

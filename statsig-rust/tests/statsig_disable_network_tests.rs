@@ -2,7 +2,7 @@ mod utils;
 
 use statsig_rust::{statsig_options::StatsigOptionsBuilder, user::StatsigUserBuilder, Statsig};
 use std::sync::Arc;
-use utils::mock_scrapi::{self, Endpoint, EndpointStub, MockScrapi};
+use utils::mock_scrapi::{self, Endpoint, EndpointStub, MockScrapi, StubData};
 
 #[tokio::test]
 async fn test_disable_network() {
@@ -10,30 +10,33 @@ async fn test_disable_network() {
     mock_scrapi
         .stub(EndpointStub {
             endpoint: Endpoint::DownloadConfigSpecs,
-            response: "".to_string(),
+            response: StubData::String("".to_string()),
             status: 200,
             method: mock_scrapi::Method::GET,
             delay_ms: 0,
+            res_headers: None,
         })
         .await;
 
     mock_scrapi
         .stub(EndpointStub {
             endpoint: Endpoint::GetIdLists,
-            response: "".to_string(),
+            response: StubData::String("".to_string()),
             status: 200,
             method: mock_scrapi::Method::GET,
             delay_ms: 0,
+            res_headers: None,
         })
         .await;
 
     mock_scrapi
         .stub(EndpointStub {
             endpoint: Endpoint::LogEvent,
-            response: "".to_string(),
+            response: StubData::String("".to_string()),
             status: 200,
             method: mock_scrapi::Method::POST,
             delay_ms: 0,
+            res_headers: None,
         })
         .await;
 

@@ -12,7 +12,7 @@ use crate::{
     log_d, log_w, serialize_if_not_none, ConfigCompressionMode, ObservabilityClient,
     OverrideAdapter, SpecAdapterConfig, SpecsAdapter,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::sync::{Arc, Weak};
 
@@ -67,6 +67,8 @@ pub struct StatsigOptions {
 
     pub use_third_party_ua_parser: Option<bool>,
     pub disable_disk_access: Option<bool>,
+
+    pub experimental_flags: Option<HashSet<String>>,
 }
 
 impl StatsigOptions {

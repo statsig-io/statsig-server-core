@@ -9,17 +9,8 @@ use crate::{
     specs_response::{proto_specs::deserialize_protobuf, spec_types::SpecsResponseFull},
 };
 
-const PROTO_SPECS_BYTES: &[u8] = include_bytes!("test-dcs-v2.pb.br");
-const JSON_SPECS_BYTES: &[u8] = include_bytes!("test-dcs-v2.json");
-
-#[test]
-fn test_all_specs_are_present() {
-    let specs = get_deserialized_specs();
-
-    assert_eq!(specs.feature_gates.len(), 82);
-    assert_eq!(specs.dynamic_configs.len(), 63);
-    assert_eq!(specs.layer_configs.len(), 12);
-}
+const PROTO_SPECS_BYTES: &[u8] = include_bytes!("../../../tests/data/eval_proj_dcs.pb.br");
+const JSON_SPECS_BYTES: &[u8] = include_bytes!("../../../tests/data/eval_proj_dcs.json");
 
 #[test]
 fn test_top_level_json_vs_proto() {

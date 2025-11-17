@@ -1,3 +1,9 @@
+use chrono::Utc;
+use parking_lot::RwLock;
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
+
 use crate::data_store_interface::{get_data_adapter_dcs_key, DataStoreTrait};
 use crate::evaluation::evaluator::SpecType;
 use crate::global_configs::GlobalConfigs;
@@ -8,24 +14,20 @@ use crate::observability::observability_client_adapter::{MetricType, Observabili
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::sdk_event_emitter::{SdkEvent, SdkEventEmitter};
+use crate::specs_response::proto_specs::deserialize_protobuf;
 use crate::specs_response::spec_types::{SpecsResponseFull, SpecsResponseNoUpdates};
 use crate::utils::maybe_trim_malloc;
 use crate::{
     log_d, log_e, log_error_to_statsig_and_console, read_lock_or_else, SpecsInfo, SpecsSource,
-    SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigRuntime,
+    SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigOptions, StatsigRuntime,
 };
-use chrono::Utc;
-use parking_lot::RwLock;
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Duration;
 
 pub struct SpecStoreData {
     pub source: SpecsSource,
     pub source_api: Option<String>,
     pub time_received_at: Option<u64>,
     pub values: SpecsResponseFull,
-    pub next_values: Option<SpecsResponseFull>,
+    pub next_values: SpecsResponseFull,
     pub id_lists: HashMap<String, IdList>,
 }
 
@@ -40,6 +42,7 @@ pub struct SpecStore {
     ops_stats: Arc<OpsStatsForInstance>,
     global_configs: Arc<GlobalConfigs>,
     event_emitter: Arc<SdkEventEmitter>,
+    enable_proto_spec_support: bool,
 }
 
 impl SpecStore {
@@ -49,13 +52,22 @@ impl SpecStore {
         hashed_sdk_key: String,
         statsig_runtime: Arc<StatsigRuntime>,
         event_emitter: Arc<SdkEventEmitter>,
-        data_store: Option<Arc<dyn DataStoreTrait>>,
+        options: Option<&StatsigOptions>,
     ) -> SpecStore {
+        let mut data_store = None;
+        if let Some(options) = options {
+            data_store = options.data_store.clone();
+        }
+
+        let enable_proto_spec_support = options
+            .and_then(|opts| opts.experimental_flags.as_ref())
+            .is_some_and(|flags| flags.contains("enable_proto_spec_support"));
+
         SpecStore {
             hashed_sdk_key,
             data: Arc::new(RwLock::new(SpecStoreData {
                 values: SpecsResponseFull::default(),
-                next_values: Some(SpecsResponseFull::default()),
+                next_values: SpecsResponseFull::default(),
                 time_received_at: None,
                 source: SpecsSource::Uninitialized,
                 source_api: None,
@@ -66,6 +78,7 @@ impl SpecStore {
             statsig_runtime,
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             global_configs: GlobalConfigs::get_instance(sdk_key),
+            enable_proto_spec_support,
         }
     }
 
@@ -178,8 +191,8 @@ impl SpecStore {
 
     pub fn set_values(&self, specs_update: SpecsUpdate) -> Result<(), StatsigErr> {
         let mut specs_update = specs_update;
-        let mut next_values = match self.data.try_write_for(Duration::from_secs(5)) {
-            Some(mut data) => data.next_values.take().unwrap_or_default(),
+        let mut locked_data = match self.data.try_write_for(Duration::from_secs(5)) {
+            Some(data) => data,
             None => {
                 log_e!(TAG, "Failed to acquire write lock: Failed to lock data");
                 return Err(StatsigErr::LockFailure(
@@ -188,7 +201,7 @@ impl SpecStore {
             }
         };
 
-        match self.parse_specs_response(&mut specs_update, &mut next_values) {
+        match self.parse_specs_response(&mut specs_update, &mut locked_data) {
             Ok(ParseResult::HasUpdates) => (),
             Ok(ParseResult::NoUpdates) => {
                 self.ops_stats_log_no_update(specs_update.source, specs_update.source_api);
@@ -199,15 +212,15 @@ impl SpecStore {
             }
         };
 
-        if self.are_current_values_newer(&next_values) {
+        if self.are_current_values_newer(&locked_data) {
             return Ok(());
         }
 
-        self.try_update_global_configs(&next_values);
+        self.try_update_global_configs(&locked_data.next_values);
 
         let now = Utc::now().timestamp_millis() as u64;
         let (prev_source, prev_lcut, curr_values_time) = self.swap_current_with_next(
-            next_values,
+            &mut locked_data,
             &specs_update,
             now,
             specs_update.source_api.clone(),
@@ -237,11 +250,30 @@ impl SpecStore {
     fn parse_specs_response(
         &self,
         values: &mut SpecsUpdate,
-        next_values: &mut SpecsResponseFull,
+        spec_store_data: &mut SpecStoreData,
     ) -> Result<ParseResult, StatsigErr> {
-        let parse_result = values.data.deserialize_in_place(next_values);
+        spec_store_data.next_values.reset();
 
-        if parse_result.is_ok() && next_values.has_updates {
+        let content_type = values.data.get_header_ref("content-type");
+
+        let use_protobuf = self.enable_proto_spec_support
+            && content_type
+                .map(|s| s.as_str().contains("application/octet-stream"))
+                .unwrap_or(false);
+
+        let parse_result = if use_protobuf {
+            deserialize_protobuf(
+                &spec_store_data.values,
+                &mut spec_store_data.next_values,
+                &mut values.data,
+            )
+        } else {
+            values
+                .data
+                .deserialize_in_place(&mut spec_store_data.next_values)
+        };
+
+        if parse_result.is_ok() && spec_store_data.next_values.has_updates {
             return Ok(ParseResult::HasUpdates);
         }
 
@@ -262,34 +294,23 @@ impl SpecStore {
 
     fn swap_current_with_next(
         &self,
-        next_values: SpecsResponseFull,
+        data: &mut SpecStoreData,
         specs_update: &SpecsUpdate,
         now: u64,
         source_api: Option<String>,
     ) -> Result<(SpecsSource, u64, u64), StatsigErr> {
-        match self.data.try_write_for(Duration::from_secs(5)) {
-            Some(mut data) => {
-                let prev_source = std::mem::replace(&mut data.source, specs_update.source.clone());
-                let prev_lcut = data.values.time;
+        let prev_source = std::mem::replace(&mut data.source, specs_update.source.clone());
+        let prev_lcut = data.values.time;
 
-                let mut temp = next_values;
-                std::mem::swap(&mut data.values, &mut temp);
-                data.next_values = Some(temp);
+        std::mem::swap(&mut data.values, &mut data.next_values);
 
-                data.time_received_at = Some(now);
-                data.source_api = source_api;
+        data.time_received_at = Some(now);
+        data.source_api = source_api;
+        data.next_values.reset();
 
-                self.emit_specs_updated_sdk_event(&data.source, &data.source_api, &data.values);
+        self.emit_specs_updated_sdk_event(&data.source, &data.source_api, &data.values);
 
-                Ok((prev_source, prev_lcut, data.values.time))
-            }
-            None => {
-                log_e!(TAG, "Failed to acquire write lock: Failed to lock data");
-                Err(StatsigErr::LockFailure(
-                    "Failed to acquire write lock: Failed to lock data".to_string(),
-                ))
-            }
-        }
+        Ok((prev_source, prev_lcut, data.values.time))
     }
 
     fn emit_specs_updated_sdk_event(
@@ -408,16 +429,9 @@ impl SpecStore {
         }
     }
 
-    fn are_current_values_newer(&self, next_values: &SpecsResponseFull) -> bool {
-        let data = match self.data.try_read_for(Duration::from_secs(5)) {
-            Some(data) => data,
-            None => {
-                log_e!(TAG, "Failed to acquire read lock: Failed to lock data");
-                return false;
-            }
-        };
-
+    fn are_current_values_newer(&self, data: &SpecStoreData) -> bool {
         let curr_values = &data.values;
+        let next_values = &data.next_values;
         let curr_checksum = curr_values.checksum.as_deref().unwrap_or_default();
         let new_checksum = next_values.checksum.as_deref().unwrap_or_default();
 

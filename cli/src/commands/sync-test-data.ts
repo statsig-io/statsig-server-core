@@ -26,20 +26,42 @@ async function downloadJsonAndProtoFor(sdkKey: string, name: string) {
   downloadFromUrlToFile(
     `https://staging.statsigapi.net/v2/download_config_specs/${sdkKey}.json`,
     `${name}.json`,
+    'application/json; charset=utf-8',
   );
   downloadFromUrlToFile(
     `https://staging.statsigapi.net/v2/download_config_specs/${sdkKey}.json?supports_proto=1`,
     `${name}.pb.br`,
+    'application/octet-stream',
   );
 }
 
-async function downloadFromUrlToFile(url: string, filename: string) {
+async function downloadFromUrlToFile(
+  url: string,
+  filename: string,
+  contentType: string,
+) {
   const response = await fetch(url);
-  const data = await response.text();
+
+  if (response.headers.get('Content-Type') !== contentType) {
+    throw new Error(
+      `Expected content type ${contentType} but got ${response.headers.get(
+        'Content-Type',
+      )}`,
+    );
+  }
+
+  const data =
+    contentType === 'application/octet-stream'
+      ? await response.arrayBuffer()
+      : await response.text();
+
   writeToDataDir(filename, data);
 }
 
-function writeToDataDir(filename: string, data: string) {
+function writeToDataDir(filename: string, data: string | ArrayBuffer) {
   const path = getRootedPath(`statsig-rust/tests/data/${filename}`);
-  fs.writeFileSync(path, data);
+  fs.writeFileSync(
+    path,
+    data instanceof ArrayBuffer ? Buffer.from(data) : data,
+  );
 }

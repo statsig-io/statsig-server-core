@@ -10,9 +10,9 @@ use std::{
     path::PathBuf,
     sync::{Arc, Mutex, Weak},
 };
-use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
 
 use crate::utils::helpers::load_contents;
+use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
 const SDK_KEY: &str = "secret-key";
 
@@ -23,7 +23,7 @@ async fn setup(observability_client: &Arc<MockObservabilityClient>) -> (MockScra
     mock_scrapi
         .stub(EndpointStub {
             method: Method::POST,
-            response: "{\"success\": true}".to_string(),
+            response: StubData::String("{\"success\": true}".to_string()),
             ..EndpointStub::with_endpoint(Endpoint::LogEvent)
         })
         .await;
@@ -37,7 +37,7 @@ async fn setup(observability_client: &Arc<MockObservabilityClient>) -> (MockScra
     mock_scrapi
         .stub(EndpointStub {
             method: Method::GET,
-            response: raw_dcs_str,
+            response: StubData::String(raw_dcs_str),
             ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })
         .await;
@@ -298,7 +298,7 @@ async fn test_init_from_network() {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::GET,
-            response: dcs,
+            response: StubData::String(dcs),
             ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })
         .await;
@@ -306,7 +306,7 @@ async fn test_init_from_network() {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::POST,
-            response: "{\"success\": true}".to_string(),
+            response: StubData::String("{\"success\": true}".to_string()),
             ..EndpointStub::with_endpoint(Endpoint::LogEvent)
         })
         .await;

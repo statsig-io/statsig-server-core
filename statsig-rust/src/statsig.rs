@@ -176,7 +176,7 @@ impl Statsig {
             hashing.sha256(sdk_key),
             statsig_runtime.clone(),
             event_emitter.clone(),
-            options.data_store.clone(),
+            Some(&options),
         ));
 
         let environment = options

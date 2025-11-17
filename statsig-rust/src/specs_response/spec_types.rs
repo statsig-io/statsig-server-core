@@ -137,6 +137,21 @@ pub struct SpecsResponseFull {
     pub session_replay_info: Option<SessionReplayInfo>,
 }
 
+impl SpecsResponseFull {
+    pub fn reset(&mut self) {
+        *self = SpecsResponseFull::default();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.checksum.is_none()
+            && self.feature_gates.len() == 0
+            && self.dynamic_configs.len() == 0
+            && self.layer_configs.len() == 0
+            && self.condition_map.len() == 0
+            && self.time == 0
+    }
+}
+
 #[skip_serializing_none]
 #[derive(Deserialize)]
 pub struct SpecsResponseNoUpdates {

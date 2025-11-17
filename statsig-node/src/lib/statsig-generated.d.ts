@@ -199,6 +199,7 @@ export interface LayerEvaluationOptions {
 export interface NapiNetworkFuncResult {
   status: number
   data?: Array<number>
+  headers?: Record<string, string>
   error?: string
 }
 
@@ -290,6 +291,7 @@ export interface StatsigOptions {
   waitForUserAgentInit?: boolean
   proxyConfig?: ProxyConfig
   useThirdPartyUaParser?: boolean
+  experimentalFlags?: Set<string>
 }
 
 export interface StatsigResult {

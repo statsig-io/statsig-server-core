@@ -5,7 +5,7 @@ use statsig_rust::{
     StatsigOptions,
 };
 use std::sync::Arc;
-use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
+use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
 async fn setup() -> MockScrapi {
     let mock_scrapi = MockScrapi::new().await;
@@ -19,7 +19,7 @@ async fn setup() -> MockScrapi {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::POST,
-            response: large_response,
+            response: StubData::String(large_response),
             status: 200,
             ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })

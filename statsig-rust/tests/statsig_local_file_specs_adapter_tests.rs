@@ -5,7 +5,7 @@ use crate::utils::mock_specs_listener::MockSpecsListener;
 use statsig_rust::{SpecsAdapter, SpecsSource, StatsigLocalFileSpecsAdapter, StatsigRuntime};
 use std::fs;
 use std::sync::Arc;
-use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
+use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
 const SDK_KEY: &str = "server-local-specs-test";
 const SPECS_FILE_NAME: &str = "3099846163_specs.json"; // djb2(SDK_KEY)_specs.json
@@ -24,7 +24,7 @@ async fn setup(test_name: &str) -> (MockScrapi, String) {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::GET,
-            response: dcs,
+            response: StubData::String(dcs),
             ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })
         .await;
@@ -104,7 +104,7 @@ async fn test_sending_checksum() {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::GET,
-            response: dcs,
+            response: StubData::String(dcs),
             ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })
         .await;

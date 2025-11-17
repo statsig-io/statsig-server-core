@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Cursor, mem};
+use std::{collections::HashMap, io::Cursor};
 
 use prost::Message;
 use serde_json::json;
@@ -20,16 +20,20 @@ use crate::{
     StatsigErr,
 };
 
-// todo:
-// - add missing top level fields
-// - handle/test mid-parse failure (Delay taking values from existing specs)
-
 pub fn deserialize_protobuf(
-    current_specs: &mut SpecsResponseFull,
+    current_specs: &SpecsResponseFull, /* Intentionally immutable so we can continue using it if parsing fails */
     next_specs: &mut SpecsResponseFull,
     data: &mut ResponseData,
 ) -> Result<(), StatsigErr> {
     let mut reader = ProtoStreamReader::new(data);
+
+    if !next_specs.is_empty() {
+        // We just verify, rather than doing the reset here. The SpecStore is responsible for resetting the next_specs.
+        return Err(StatsigErr::ProtobufParseError(
+            "SpecsResponseFull".to_string(),
+            "Next specs are not empty".to_string(),
+        ));
+    }
 
     loop {
         let proto_msg_bytes = reader.read_next_delimited_proto()?;
@@ -47,9 +51,7 @@ pub fn deserialize_protobuf(
 
         match envelope_kind {
             pb::SpecsEnvelopeKind::Done => return Ok(()),
-            pb::SpecsEnvelopeKind::TopLevel => {
-                next_specs.handle_top_level_update(env, current_specs)?
-            }
+            pb::SpecsEnvelopeKind::TopLevel => next_specs.handle_top_level_update(env)?,
             pb::SpecsEnvelopeKind::FeatureGate => {
                 next_specs.handle_feature_gate_update(env, current_specs)?
             }
@@ -67,15 +69,7 @@ pub fn deserialize_protobuf(
 }
 
 impl SpecsResponseFull {
-    fn handle_top_level_update(
-        &mut self,
-        envelope: pb::SpecsEnvelope,
-        existing: &mut SpecsResponseFull,
-    ) -> Result<(), StatsigErr> {
-        if self.checksum.as_ref() == Some(&envelope.checksum) {
-            return self.populate_top_level_from_existing_specs(existing);
-        }
-
+    fn handle_top_level_update(&mut self, envelope: pb::SpecsEnvelope) -> Result<(), StatsigErr> {
         let envelope_data = validate_envelope_data("TopLevel", envelope.data)?;
         let top_level = pb::SpecsTopLevel::decode(envelope_data)
             .map_err(|e| map_decode_err("SpecsTopLevel", e))?;
@@ -88,12 +82,12 @@ impl SpecsResponseFull {
     fn handle_feature_gate_update(
         &mut self,
         envelope: pb::SpecsEnvelope,
-        existing: &mut SpecsResponseFull,
+        existing: &SpecsResponseFull,
     ) -> Result<(), StatsigErr> {
         Self::handle_individual_spec_update(
             "FeatureGate",
             envelope,
-            &mut existing.feature_gates,
+            &existing.feature_gates,
             &mut self.feature_gates,
         )
     }
@@ -101,12 +95,12 @@ impl SpecsResponseFull {
     fn handle_dynamic_config_update(
         &mut self,
         envelope: pb::SpecsEnvelope,
-        existing: &mut SpecsResponseFull,
+        existing: &SpecsResponseFull,
     ) -> Result<(), StatsigErr> {
         Self::handle_individual_spec_update(
             "DynamicConfig",
             envelope,
-            &mut existing.dynamic_configs,
+            &existing.dynamic_configs,
             &mut self.dynamic_configs,
         )
     }
@@ -114,12 +108,12 @@ impl SpecsResponseFull {
     fn handle_layer_config_update(
         &mut self,
         envelope: pb::SpecsEnvelope,
-        existing: &mut SpecsResponseFull,
+        existing: &SpecsResponseFull,
     ) -> Result<(), StatsigErr> {
         Self::handle_individual_spec_update(
             "LayerConfig",
             envelope,
-            &mut existing.layer_configs,
+            &existing.layer_configs,
             &mut self.layer_configs,
         )
     }
@@ -127,14 +121,14 @@ impl SpecsResponseFull {
     fn handle_individual_spec_update(
         tag: &str,
         envelope: pb::SpecsEnvelope,
-        exiting_map: &mut SpecsHashMap,
+        exiting_map: &SpecsHashMap,
         new_map: &mut SpecsHashMap,
     ) -> Result<(), StatsigErr> {
         let name = InternedString::from_string(envelope.name);
 
-        if let Some(dynamic_config) = exiting_map.get(&name) {
-            if dynamic_config.inner.checksum.as_deref() == Some(&envelope.checksum) {
-                new_map.insert(name, dynamic_config.clone());
+        if let Some(spec_ptr) = exiting_map.get(&name) {
+            if spec_ptr.inner.checksum.as_deref() == Some(&envelope.checksum) {
+                new_map.insert(name, spec_ptr.clone());
                 return Ok(());
             }
         }
@@ -143,40 +137,6 @@ impl SpecsResponseFull {
         let pb_spec = pb::Spec::decode(envelope_data).map_err(|e| map_decode_err(tag, e))?;
         let spec = spec_from_pb(envelope.checksum, pb_spec)?;
         new_map.insert(name, SpecPointer::from_spec(spec));
-
-        Ok(())
-    }
-
-    fn populate_top_level_from_existing_specs(
-        &mut self,
-        existing: &mut SpecsResponseFull,
-    ) -> Result<(), StatsigErr> {
-        if existing.checksum.is_none() {
-            return make_proto_parse_error(
-                "SpecsResponseFull",
-                "Existing specs must have a checksum",
-            );
-        }
-
-        self.checksum = existing.checksum.take();
-        self.condition_map = mem::take(&mut existing.condition_map);
-        self.experiment_to_layer = mem::take(&mut existing.experiment_to_layer);
-        self.hashed_sdk_keys_to_app_ids = mem::take(&mut existing.hashed_sdk_keys_to_app_ids);
-        self.sdk_keys_to_app_ids = mem::take(&mut existing.sdk_keys_to_app_ids);
-        self.sdk_configs = mem::take(&mut existing.sdk_configs);
-        self.sdk_flags = mem::take(&mut existing.sdk_flags);
-        self.cmab_configs = mem::take(&mut existing.cmab_configs);
-        self.overrides = mem::take(&mut existing.overrides);
-        self.override_rules = mem::take(&mut existing.override_rules);
-        self.id_lists = mem::take(&mut existing.id_lists);
-        self.has_updates = existing.has_updates;
-        self.time = existing.time;
-        self.response_format = existing.response_format.take();
-        self.default_environment = existing.default_environment.take();
-        self.app_id = existing.app_id.take();
-        self.diagnostics = existing.diagnostics.take();
-        self.param_stores = existing.param_stores.take();
-        self.session_replay_info = existing.session_replay_info.take();
 
         Ok(())
     }
@@ -418,7 +378,6 @@ fn spec_from_pb(checksum: String, spec: pb::Spec) -> Result<Spec, StatsigErr> {
             ),
         },
         entity: entity_type.to_string_type()?,
-        // todo: add this to the server
         has_shared_params: spec.has_shared_params,
         is_active: spec.is_active,
         version: Some(spec.version),

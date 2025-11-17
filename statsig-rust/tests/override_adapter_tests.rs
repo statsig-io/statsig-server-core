@@ -8,14 +8,14 @@ use statsig_rust::{
 };
 use std::collections::HashMap;
 use std::sync::Arc;
-use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
+use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
 async fn setup() -> (Statsig, StatsigUser, Arc<StatsigLocalOverrideAdapter>) {
     let mock_scrapi = MockScrapi::new().await;
     mock_scrapi
         .stub(EndpointStub {
             method: Method::POST,
-            response: "{\"success\": true}".to_string(),
+            response: StubData::String("{\"success\": true}".to_string()),
             ..EndpointStub::with_endpoint(Endpoint::LogEvent)
         })
         .await;

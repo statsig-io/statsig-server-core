@@ -28,7 +28,7 @@ fn test_reading_json_data() {
 
 // ------------------------------------------------------------ [ Proto Specs Bytes ]
 
-const PROTO_SPECS_BYTES: &[u8] = include_bytes!("test-dcs-v2.pb.br");
+const PROTO_SPECS_BYTES: &[u8] = include_bytes!("../../../tests/data/eval_proj_dcs.pb.br");
 
 #[test]
 fn test_reading_proto_data() {
