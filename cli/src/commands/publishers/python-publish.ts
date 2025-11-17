@@ -45,6 +45,11 @@ export async function publishPython(options: PublisherOptions) {
   let allValid = true;
 
   Object.entries(wheels).forEach(([basename, file]) => {
+    // Skip win_arm64 flavors
+    if (basename.includes('win_arm64')) {
+      Log.stepProgress(`Skipping ${basename} (win_arm64 flavor)`);
+      return;
+    }
     const found = toFind.findIndex((f) => basename.includes(f));
     if (found === -1) {
       Log.stepProgress(`File not expected: ${basename}`, 'failure');
@@ -70,12 +75,17 @@ export async function publishPython(options: PublisherOptions) {
 
   Log.stepEnd('Finished listing files');
 
+  // Filter out win_arm64 wheels before uploading
+  const wheelsToUpload = Object.entries(wheels)
+    .filter(([basename]) => !basename.includes('win_arm64'))
+    .map(([, file]) => file);
+
   const command = [
     'maturin upload',
     '--non-interactive',
     '--skip-existing',
     '--verbose',
-    ...Object.values(wheels).map((file) => `${file}`),
+    ...wheelsToUpload.map((file) => `${file}`),
   ].join(' ');
 
   Log.stepBegin('Uploading Wheels to PyPI');
