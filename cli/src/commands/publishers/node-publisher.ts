@@ -114,11 +114,19 @@ function addOptionalDependenciesToPackageJson(options: PublisherOptions) {
   const json = JSON.parse(contents);
   const version = json['version'];
 
+  const isPublicRepository = options.repository === 'statsig-server-core';
+
   const optionalDependencies = {};
   binaries.forEach((binary) => {
     const platform = path
       .basename(binary)
       .match(/statsig-node-core\.(.*)\.node/)?.[1];
+
+    // Skip win32-arm64-msvc in private repo
+    if (!isPublicRepository && platform === 'win32-arm64-msvc') {
+      Log.stepProgress(`Skipping ${platform} (not published in private repo)`);
+      return;
+    }
 
     const optPackage = PACKAGE_MAPPING[platform];
     if (!optPackage) {
@@ -202,11 +210,19 @@ function publishNodePackages(distDir: string, options: PublisherOptions) {
 
   let allSubPackagesPublished = true;
 
+  const isPublicRepository = options.repository === 'statsig-server-core';
+
   const platforms = Object.keys(DIR_STRUCTURE).filter(
     (platform) => platform !== 'main',
   );
 
   platforms.forEach((platform) => {
+    // Skip aarch64-pc-windows-msvc (win32-arm64-msvc) in private repo
+    if (!isPublicRepository && platform === 'aarch64-pc-windows-msvc') {
+      Log.stepProgress(`Skipping ${platform} (not published in private repo)`);
+      return;
+    }
+
     if (!publishIndividual(distDir, platform, options)) {
       allSubPackagesPublished = false;
     }

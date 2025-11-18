@@ -41,9 +41,11 @@ def map_win_arm64_runner(included):
     if not is_private_repo:
         return included
     
-    for config in included["config"]:
-        if config["runner"] == "windows-11-arm":
-            config["runner"] = "statsig-windows-arm64"
+    # Filter out win_arm64 builds in private repo
+    included["config"] = [
+        config for config in included["config"]
+        if config.get("runner") != "windows-11-arm"
+    ]
     return included
 
 

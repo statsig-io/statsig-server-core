@@ -11,7 +11,7 @@ export function buildCpp(options: BuilderOptions) {
   options.subProject = 'statsig_ffi';
   if (options.os == 'macos') {
     options.envSetupForBuild = `RUSTFLAGS="-C link-args=-Wl,-install_name,@rpath/libstatsig_ffi.dylib"`;
-  } else if (isLinux(options.os)) {
+  } else if (options.os == 'centos7') {
     options.envSetupForBuild = `RUSTFLAGS="-C link-args=-Wl,-soname,libstatsig_ffi.so"`;
   }
   buildFfiHelper(options);
