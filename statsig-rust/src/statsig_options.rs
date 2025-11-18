@@ -12,7 +12,7 @@ use crate::{
     log_d, log_w, serialize_if_not_none, ConfigCompressionMode, ObservabilityClient,
     OverrideAdapter, SpecAdapterConfig, SpecsAdapter,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::sync::{Arc, Weak};
 
@@ -67,6 +67,8 @@ pub struct StatsigOptions {
 
     pub use_third_party_ua_parser: Option<bool>,
     pub disable_disk_access: Option<bool>,
+
+    pub experimental_flags: Option<HashSet<String>>,
 }
 
 impl StatsigOptions {
@@ -110,6 +112,15 @@ impl StatsigOptionsBuilder {
     #[must_use]
     pub fn specs_sync_interval_ms(mut self, specs_sync_interval_ms: Option<u32>) -> Self {
         self.inner.specs_sync_interval_ms = specs_sync_interval_ms;
+        self
+    }
+
+    #[must_use]
+    pub fn spec_adapters_config(
+        mut self,
+        spec_adapters_config: Option<Vec<SpecAdapterConfig>>,
+    ) -> Self {
+        self.inner.spec_adapters_config = spec_adapters_config;
         self
     }
 

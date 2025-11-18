@@ -3,7 +3,7 @@ mod utils;
 use parking_lot::Mutex;
 use statsig_rust::{output_logger::LogLevel, Statsig, StatsigOptions};
 use std::{sync::Arc, time::Duration};
-use utils::mock_scrapi::{self, Endpoint, EndpointStub, MockScrapi};
+use utils::mock_scrapi::{self, Endpoint, EndpointStub, MockScrapi, StubData};
 
 use crate::utils::{
     helpers::load_contents,
@@ -33,10 +33,11 @@ async fn test_initial_success_with_background_failure() {
     mock_scrapi
         .stub(EndpointStub {
             endpoint: Endpoint::DownloadConfigSpecs,
-            response: dcs,
+            response: StubData::String(dcs),
             status: 200,
             method: mock_scrapi::Method::GET,
             delay_ms: 0,
+            res_headers: None,
         })
         .await;
 
@@ -58,7 +59,7 @@ async fn test_initial_success_with_background_failure() {
 
     assert!(init_result.is_ok());
 
-    mock_scrapi.reset().await;
+    mock_scrapi.clear_stubs().await;
 
     println!(
         "resetting mock scrapi {}",
@@ -68,10 +69,11 @@ async fn test_initial_success_with_background_failure() {
     mock_scrapi
         .stub(EndpointStub {
             endpoint: Endpoint::DownloadConfigSpecs,
-            response: "".to_string(),
+            response: StubData::String("".to_string()),
             status: 500,
             method: mock_scrapi::Method::GET,
             delay_ms: 0,
+            res_headers: None,
         })
         .await;
 

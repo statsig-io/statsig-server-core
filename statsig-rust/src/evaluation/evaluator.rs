@@ -1,11 +1,15 @@
+use std::collections::HashMap;
+
 use chrono::Utc;
 use lazy_static::lazy_static;
+use serde_json::Value;
 
 use crate::evaluation::cmab_evaluator::evaluate_cmab;
 use crate::evaluation::comparisons::{
     compare_arrays, compare_numbers, compare_str_with_regex, compare_strings_in_array,
     compare_time, compare_versions,
 };
+use crate::evaluation::dynamic_returnable::DynamicReturnable;
 use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::evaluation::evaluation_types::SecondaryExposure;
@@ -31,7 +35,7 @@ lazy_static! {
     static ref SALT: InternedString = InternedString::from_str_ref("salt");
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum SpecType {
     Gate,
     DynamicConfig,
@@ -51,14 +55,15 @@ impl Evaluator {
         spec_name: &str,
         spec_type: &SpecType,
     ) -> Result<Recognition, StatsigErr> {
-        let opt_addressable_spec = match spec_type {
-            SpecType::Gate => ctx.specs_data.feature_gates.get(spec_name),
-            SpecType::DynamicConfig => ctx.specs_data.dynamic_configs.get(spec_name),
-            SpecType::Experiment => ctx.specs_data.dynamic_configs.get(spec_name),
-            SpecType::Layer => ctx.specs_data.layer_configs.get(spec_name),
-        };
+        let spec_name_intern = InternedString::from_str_ref(spec_name);
 
-        let opt_spec = opt_addressable_spec.map(|a| a.spec.as_ref());
+        let opt_spec = match spec_type {
+            SpecType::Gate => ctx.specs_data.feature_gates.get(&spec_name_intern),
+            SpecType::DynamicConfig => ctx.specs_data.dynamic_configs.get(&spec_name_intern),
+            SpecType::Experiment => ctx.specs_data.dynamic_configs.get(&spec_name_intern),
+            SpecType::Layer => ctx.specs_data.layer_configs.get(&spec_name_intern),
+        }
+        .map(|sp| sp.inner.as_ref());
 
         if try_apply_override(ctx, spec_name, spec_type, opt_spec) {
             return Ok(Recognition::Recognized);
@@ -72,12 +77,10 @@ impl Evaluator {
             return Ok(Recognition::Recognized);
         }
 
-        let addressable_spec =
-            unwrap_or_return!(opt_addressable_spec, Ok(Recognition::Unrecognized));
         let spec = unwrap_or_return!(opt_spec, Ok(Recognition::Unrecognized));
 
         if ctx.result.name.is_none() {
-            ctx.result.name = Some(&addressable_spec.name);
+            ctx.result.name = Some(spec_name_intern);
         }
 
         if ctx.result.id_type.is_none() {
@@ -100,6 +103,10 @@ impl Evaluator {
 
         if let Some(explicit_params) = &spec.explicit_parameters {
             ctx.result.explicit_parameters = Some(explicit_params);
+        }
+
+        if spec.use_new_layer_eval == Some(true) && matches!(spec_type, SpecType::Layer) {
+            return new_layer_eval(ctx, spec);
         }
 
         for rule in &spec.rules {
@@ -145,6 +152,124 @@ impl Evaluator {
         ctx.finalize_evaluation(spec, None);
 
         Ok(Recognition::Recognized)
+    }
+}
+
+fn new_layer_eval<'a>(
+    ctx: &mut EvaluatorContext<'a>,
+    spec: &'a Spec,
+) -> Result<Recognition, StatsigErr> {
+    let mut has_delegate = false;
+    let mut passed = false;
+    let mut rule_id: Option<&'a InternedString> = Some(&DEFAULT_RULE);
+    let mut delegate_name: Option<InternedString> = None;
+    let mut rule_ids: HashMap<InternedString, InternedString> = HashMap::new();
+    let mut value: HashMap<String, Value> = HashMap::new();
+    let mut group_name: Option<InternedString> = None;
+    let mut is_experiment_group = false;
+    let mut explicit_parameters: Option<&Vec<InternedString>> = None;
+    let mut secondary_exposures: Vec<SecondaryExposure> = Vec::new();
+    let mut undelegated_secondary_exposures: Vec<SecondaryExposure> = Vec::new();
+
+    for rule in &spec.rules {
+        evaluate_rule(ctx, rule)?;
+        secondary_exposures.append(&mut ctx.result.secondary_exposures);
+        undelegated_secondary_exposures.append(&mut ctx.result.secondary_exposures);
+        ctx.result.secondary_exposures.clear();
+
+        if ctx.result.unsupported {
+            return Ok(Recognition::Recognized);
+        }
+
+        if !ctx.result.bool_value {
+            continue;
+        }
+
+        let did_pass = evaluate_pass_percentage(ctx, rule, &spec.salt);
+        if !did_pass {
+            continue;
+        }
+
+        if evaluate_config_delegate(ctx, rule)? {
+            if has_delegate {
+                continue;
+            }
+            let delegate_value = match &ctx.result.json_value {
+                Some(val) => val.get_json(),
+                None => continue,
+            };
+            let mut has_reused_parameter = false;
+            if let Some(json_map) = &delegate_value {
+                for k in json_map.keys() {
+                    if value.contains_key(k) {
+                        has_reused_parameter = true;
+                        break;
+                    }
+                }
+            }
+
+            if has_reused_parameter {
+                continue;
+            }
+
+            update_parameter_values(&mut value, &mut rule_ids, delegate_value, &rule.id);
+
+            secondary_exposures.append(&mut ctx.result.secondary_exposures);
+            ctx.result.secondary_exposures.clear();
+
+            has_delegate = true;
+            passed = ctx.result.bool_value;
+            delegate_name = ctx.result.config_delegate.clone();
+            group_name = ctx.result.group_name.clone();
+            rule_id = Some(&rule.id);
+            is_experiment_group = rule.is_experiment_group.unwrap_or(false);
+            explicit_parameters = ctx.result.explicit_parameters;
+        } else {
+            update_parameter_values(
+                &mut value,
+                &mut rule_ids,
+                rule.return_value.get_json(),
+                &rule.id,
+            );
+        }
+    }
+    update_parameter_values(
+        &mut value,
+        &mut rule_ids,
+        spec.default_value.get_json(),
+        &DEFAULT_RULE,
+    );
+    ctx.result.bool_value = passed;
+    ctx.result.config_delegate = delegate_name;
+    ctx.result.group_name = group_name;
+    ctx.result.rule_id = rule_id;
+    ctx.result.json_value = Some(DynamicReturnable::from_map(value));
+    ctx.result.is_experiment_group = is_experiment_group;
+    ctx.result.is_experiment_active = spec.is_active.unwrap_or(false);
+    ctx.result.explicit_parameters = explicit_parameters;
+    ctx.result.secondary_exposures = secondary_exposures;
+    ctx.result.undelegated_secondary_exposures = Some(undelegated_secondary_exposures);
+    ctx.result.parameter_rule_ids = Some(rule_ids);
+    ctx.finalize_evaluation(spec, None);
+    Ok(Recognition::Recognized)
+}
+
+fn update_parameter_values(
+    value: &mut HashMap<String, Value>,
+    rule_ids: &mut HashMap<InternedString, InternedString>,
+    values_to_apply: Option<HashMap<String, Value>>,
+    rule_id: &InternedString,
+) {
+    let json_map = match values_to_apply {
+        Some(map) => map,
+        None => return,
+    };
+    for (k, v) in json_map {
+        let parameter_name = InternedString::from_str_ref(&k);
+        if let std::collections::hash_map::Entry::Vacant(e) = value.entry(k) {
+            e.insert(v);
+            rule_ids.insert(parameter_name.clone(), rule_id.clone());
+        }
     }
 }
 
@@ -545,7 +670,7 @@ fn evaluate_config_delegate<'a>(
         return Ok(false);
     }
 
-    ctx.result.explicit_parameters = delegate_spec.spec.explicit_parameters.as_ref();
+    ctx.result.explicit_parameters = delegate_spec.inner.explicit_parameters.as_ref();
     ctx.result.config_delegate = rule.config_delegate.clone();
 
     Ok(true)

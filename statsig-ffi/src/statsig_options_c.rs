@@ -1,4 +1,8 @@
-use std::{os::raw::c_char, os::raw::c_int, sync::Arc};
+use std::{
+    collections::HashSet,
+    os::raw::{c_char, c_int},
+    sync::Arc,
+};
 
 use crate::{
     data_store_c::DataStoreC,
@@ -63,6 +67,7 @@ pub struct StatsigOptionsData {
     use_third_party_ua_parser: Option<bool>,
     wait_for_country_lookup_init: Option<bool>,
     wait_for_user_agent_init: Option<bool>,
+    experimental_flags: Option<HashSet<String>>,
 }
 
 impl From<StatsigOptionsData> for StatsigOptions {
@@ -157,6 +162,7 @@ impl From<StatsigOptionsData> for StatsigOptions {
             use_third_party_ua_parser: data.use_third_party_ua_parser,
             wait_for_country_lookup_init: data.wait_for_country_lookup_init,
             wait_for_user_agent_init: data.wait_for_user_agent_init,
+            experimental_flags: data.experimental_flags,
         }
     }
 }

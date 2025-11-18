@@ -6,7 +6,12 @@ from typing import Optional, Dict, List, Tuple, Any
 import pytest
 from pytest_httpserver import HTTPServer
 
-from statsig_python_core import ObservabilityClient, StatsigOptions, StatsigUser, Statsig
+from statsig_python_core import (
+    ObservabilityClient,
+    StatsigOptions,
+    StatsigUser,
+    Statsig,
+)
 from utils import get_test_data_resource
 
 
@@ -14,7 +19,9 @@ class MockObservabilityClient(ObservabilityClient):
     init_called = False
     dist_called = False
     error_called = False
-    metrics: List[Tuple[str, str, Any, Optional[Dict[str, str]]]] = []  # Stores (type, metric_name, value, tags)
+    metrics: List[Tuple[str, str, Any, Optional[Dict[str, str]]]] = (
+        []
+    )  # Stores (type, metric_name, value, tags)
 
     def __new__(cls, test_param: str = ""):
         instance = super().__new__(cls)
@@ -25,15 +32,21 @@ class MockObservabilityClient(ObservabilityClient):
         self.init_called = True
         print("Initializing ExampleObservationClient")
 
-    def increment(self, metric_name: str, value: int = 1, tags: Optional[Dict[str, str]] = None) -> None:
+    def increment(
+        self, metric_name: str, value: int = 1, tags: Optional[Dict[str, str]] = None
+    ) -> None:
         print(f"Incrementing {metric_name} by {value} with tags {tags}")
         self.metrics.append(("increment", metric_name, value, tags))
 
-    def gauge(self, metric_name: str, value: float, tags: Optional[Dict[str, str]] = None) -> None:
+    def gauge(
+        self, metric_name: str, value: float, tags: Optional[Dict[str, str]] = None
+    ) -> None:
         print(f"Gauging {metric_name} by {value} with tags {tags}")
         self.metrics.append(("gauge", metric_name, value, tags))
 
-    def dist(self, metric_name: str, value: float, tags: Optional[Dict[str, str]] = None) -> None:
+    def dist(
+        self, metric_name: str, value: float, tags: Optional[Dict[str, str]] = None
+    ) -> None:
         print(f"Distribution {metric_name} by {value} with tags {tags}")
         self.dist_called = True
         self.metrics.append(("distribution", metric_name, value, tags))
@@ -42,7 +55,7 @@ class MockObservabilityClient(ObservabilityClient):
         print(f"Error callback for {tag}: {error}")
         self.error_called = True
         self.metrics.append(("error", tag, error, None))
-    
+
     def should_enable_high_cardinality_for_this_tag(self, tag):
         return True
 
@@ -52,6 +65,7 @@ def statsig_setup(httpserver: HTTPServer):
     dcs_content = get_test_data_resource("eval_proj_dcs.json")
     json_data = json.loads(dcs_content)
     json_data["time"] = json_data["time"]
+    del json_data["checksum"]
     httpserver.expect_request(
         "/v2/download_config_specs/secret-key.json"
     ).respond_with_json(json_data)
@@ -74,6 +88,7 @@ def statsig_setup(httpserver: HTTPServer):
 
     statsig.shutdown().wait()
 
+
 def test_observability_client_usage_with_test_param():
     observability_client = MockObservabilityClient(test_param="test_param")
     assert observability_client.test_param == "test_param"
@@ -91,12 +106,21 @@ def test_observability_client_usage(statsig_setup):
     assert observability_client.init_called, "init() should have been called"
 
     dist_event = next(
-        (m for m in observability_client.metrics if m[0] == "distribution" and m[1] == "statsig.sdk.initialization"),
-        None
+        (
+            m
+            for m in observability_client.metrics
+            if m[0] == "distribution" and m[1] == "statsig.sdk.initialization"
+        ),
+        None,
     )
     assert dist_event is not None, "distribution() should have been called"
     assert isinstance(dist_event[2], float)
-    assert dist_event[3] == {"success": "true", "store_populated": "true", "source": "Network", "spec_source_api": f"http://{httpserver.host}:{httpserver.port}"}
+    assert dist_event[3] == {
+        "success": "true",
+        "store_populated": "true",
+        "source": "Network",
+        "spec_source_api": f"http://{httpserver.host}:{httpserver.port}",
+    }
 
 
 def test_error_callback_usage():
@@ -111,8 +135,7 @@ def test_error_callback_usage():
     sleep(0.2)
 
     error_event = next(
-        (m for m in observability_client.metrics if m[0] == "error"),
-        None
+        (m for m in observability_client.metrics if m[0] == "error"), None
     )
 
     assert len(observability_client.metrics) >= 3
@@ -120,6 +143,7 @@ def test_error_callback_usage():
     assert isinstance(error_event[2], str)
 
     statsig.shutdown().wait()
+
 
 def test_metric_with_high_card(statsig_setup):
     """Test that MockObservabilityClient correctly tracks init(), dist() calls."""
@@ -134,8 +158,12 @@ def test_metric_with_high_card(statsig_setup):
     time.sleep(3)
 
     dist_event = next(
-        (m for m in observability_client.metrics if m[0] == "distribution" and m[1] == "statsig.sdk.config_propagation_diff"),
-        None
+        (
+            m
+            for m in observability_client.metrics
+            if m[0] == "distribution" and m[1] == "statsig.sdk.config_propagation_diff"
+        ),
+        None,
     )
     assert dist_event is not None, "distribution() should have been called"
     assert isinstance(dist_event[2], float)

@@ -7,7 +7,7 @@ use statsig_rust::log_event_payload::{LogEventPayload, LogEventRequest};
 use statsig_rust::{EventLoggingAdapter, StatsigLocalFileEventLoggingAdapter};
 use std::fs;
 use std::sync::Arc;
-use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
+use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
 const SDK_KEY: &str = "server-local-file-events-test";
 const EVENTS_FILE_NAME: &str = "3776104929_events.json"; // djb2(SDK_KEY)_events.json
@@ -20,7 +20,7 @@ const SINGLE_EVENT_DATA: &str = r#"{
     "user":{
         "statsigEnvironment":null,"userID":"a-user"
     },
-    "value":"bar"
+    "value":"bar"   
 }"#;
 
 lazy_static! {
@@ -40,7 +40,7 @@ async fn setup(test_name: &str) -> (MockScrapi, String) {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::POST,
-            response: "{\"success\": true}".to_string(),
+            response: StubData::String("{\"success\": true}".to_string()),
             ..EndpointStub::with_endpoint(Endpoint::LogEvent)
         })
         .await;

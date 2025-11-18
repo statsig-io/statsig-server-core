@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use super::dynamic_returnable::DynamicReturnable;
 use crate::{
     evaluation::secondary_exposure_key::SecondaryExposureKey, interned_string::InternedString,
 };
+
 use serde::{Deserialize, Serialize};
 
 pub fn is_false(v: &bool) -> bool {
@@ -193,4 +196,7 @@ pub struct LayerEvaluation {
     pub explicit_parameters: Vec<InternedString>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parameter_rule_ids: Option<HashMap<InternedString, InternedString>>,
 }

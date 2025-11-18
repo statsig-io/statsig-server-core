@@ -19,6 +19,7 @@ pub struct ParameterStore {
     pub parameters: HashMap<String, Parameter>,
     #[serde(rename = "targetAppIDs")]
     pub target_app_ids: Option<Vec<InternedString>>,
+    pub version: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]

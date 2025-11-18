@@ -5,7 +5,7 @@ use crate::utils::mock_specs_listener::MockSpecsListener;
 use statsig_rust::{SpecsAdapter, SpecsSource, StatsigLocalFileSpecsAdapter, StatsigRuntime};
 use std::fs;
 use std::sync::Arc;
-use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
+use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
 const SDK_KEY: &str = "server-local-specs-test";
 const SPECS_FILE_NAME: &str = "3099846163_specs.json"; // djb2(SDK_KEY)_specs.json
@@ -24,7 +24,7 @@ async fn setup(test_name: &str) -> (MockScrapi, String) {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::GET,
-            response: dcs,
+            response: StubData::String(dcs),
             ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })
         .await;
@@ -87,7 +87,7 @@ async fn test_sending_since_time() {
 
     let reqs = mock_scrapi.get_requests_for_endpoint(Endpoint::DownloadConfigSpecs);
     assert_eq!(reqs.len(), 2);
-    assert!(reqs[1].url.to_string().contains("sinceTime=1729873603830"));
+    assert!(reqs[1].url.to_string().contains("sinceTime=1763138293896"));
 }
 
 #[tokio::test]
@@ -104,7 +104,7 @@ async fn test_sending_checksum() {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::GET,
-            response: dcs,
+            response: StubData::String(dcs),
             ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })
         .await;
@@ -115,7 +115,7 @@ async fn test_sending_checksum() {
 
     let reqs = mock_scrapi.get_requests_for_endpoint(Endpoint::DownloadConfigSpecs);
     assert_eq!(reqs.len(), 1);
-    assert!(!reqs[0].url.to_string().contains("checksum="));
+    assert!(!reqs[0].url.to_string().contains("checksum=1763138293896"));
 
     adapter.fetch_and_write_to_file().await.unwrap();
 

@@ -9,6 +9,8 @@ use utils::{
     mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi},
 };
 
+use crate::utils::mock_scrapi::StubData;
+
 // Context see this pr: https://github.com/statsig-io/private-statsig-server-core/pull/1006
 // Test will hang if there is a deadlock happen
 
@@ -96,7 +98,7 @@ async fn setup_scrapi() -> MockScrapi {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::GET,
-            response: dcs,
+            response: StubData::String(dcs),
             ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })
         .await;

@@ -22,6 +22,7 @@ pub type NapiNetworkFunc = ThreadsafeFunction<
 pub struct NapiNetworkFuncResult {
     pub status: u32,
     pub data: Option<Vec<u8>>,
+    pub headers: Option<HashMap<String, String>>,
     pub error: Option<String>,
 }
 
@@ -52,7 +53,6 @@ impl NetworkProvider for NetworkProviderNapi {
                     status_code: None,
                     data: None,
                     error: Some(format!("NapiFetchFnInvocationError: {e}")),
-                    headers: None,
                 };
             }
         };
@@ -64,16 +64,16 @@ impl NetworkProvider for NetworkProviderNapi {
                     status_code: None,
                     data: None,
                     error: Some(format!("NapiFetchFnPromiseRejection: {e}")),
-                    headers: None,
                 };
             }
         };
 
         Response {
             status_code: Some(result.status as u16),
-            data: result.data.map(ResponseData::from_bytes),
+            data: result
+                .data
+                .map(|data| ResponseData::from_bytes_with_headers(data, result.headers)),
             error: result.error,
-            headers: None,
         }
     }
 }

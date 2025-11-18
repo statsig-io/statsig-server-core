@@ -130,30 +130,39 @@ pub fn make_layer(
     event_logger_ptr: Option<Weak<EventLogger>>,
     disable_exposure: bool,
 ) -> Layer {
-    let (value, rule_id, group_name, allocated_experiment_name, id_type, is_experiment_active) =
-        match &evaluation {
-            Some(e) => (
-                e.value.clone(),
-                e.base.rule_id.clone(),
-                e.group_name.as_ref().map(|g| g.unperformant_to_string()),
-                e.allocated_experiment_name
-                    .as_ref()
-                    .map(|g| g.unperformant_to_string()),
-                match e.id_type {
-                    Some(ref id_type) => id_type.unperformant_to_string(),
-                    None => "".into(),
-                },
-                e.is_experiment_active.unwrap_or(false),
-            ),
-            None => (
-                DynamicReturnable::empty(),
-                InternedString::from_str_ref("default"),
-                None,
-                None,
-                "".into(),
-                false,
-            ),
-        };
+    let (
+        value,
+        rule_id,
+        group_name,
+        allocated_experiment_name,
+        id_type,
+        is_experiment_active,
+        parameter_rule_ids,
+    ) = match &evaluation {
+        Some(e) => (
+            e.value.clone(),
+            e.base.rule_id.clone(),
+            e.group_name.as_ref().map(|g| g.unperformant_to_string()),
+            e.allocated_experiment_name
+                .as_ref()
+                .map(|g| g.unperformant_to_string()),
+            match e.id_type {
+                Some(ref id_type) => id_type.unperformant_to_string(),
+                None => "".into(),
+            },
+            e.is_experiment_active.unwrap_or(false),
+            e.parameter_rule_ids.clone(),
+        ),
+        None => (
+            DynamicReturnable::empty(),
+            InternedString::from_str_ref("default"),
+            None,
+            None,
+            "".into(),
+            false,
+            None,
+        ),
+    };
 
     let mut version = None;
     if let Some(exposure_info) = evaluation.as_ref().map(|e| &e.base.exposure_info) {
@@ -177,5 +186,6 @@ pub fn make_layer(
         __event_logger_ptr: event_logger_ptr,
         __disable_exposure: disable_exposure,
         __version: version,
+        __parameter_rule_ids: parameter_rule_ids,
     }
 }

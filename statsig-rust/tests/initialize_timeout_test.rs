@@ -1,6 +1,6 @@
 mod utils;
 use std::{fs, path::PathBuf, sync::Arc};
-use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
+use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
 use statsig_rust::{
     networking::{NetworkClient, RequestArgs},
@@ -18,7 +18,7 @@ async fn setup() -> MockScrapi {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::GET,
-            response: dcs,
+            response: StubData::String(dcs),
             delay_ms: 3,
             ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })

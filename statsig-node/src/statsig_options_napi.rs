@@ -2,7 +2,7 @@ use napi::bindgen_prelude::Either4;
 use napi_derive::napi;
 use serde_json::Value;
 use statsig_rust::PersistentStorage;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Weak};
 
 use crate::persistent_storage_napi::PersistentStorageNapi;
@@ -123,6 +123,8 @@ pub struct StatsigOptions {
     pub proxy_config: Option<ProxyConfig>,
 
     pub use_third_party_ua_parser: Option<bool>,
+
+    pub experimental_flags: Option<HashSet<String>>,
 }
 
 impl StatsigOptions {
@@ -183,7 +185,16 @@ impl StatsigOptions {
             persistent_storage: self
                 .persistent_storage
                 .map(|s| Arc::new(s) as Arc<dyn PersistentStorage>),
-            ..Default::default()
+            experimental_flags: self.experimental_flags,
+
+            // empty fields
+            event_logging_adapter: None,
+            #[allow(deprecated)]
+            event_logging_flush_interval_ms: None,
+            event_logging_max_pending_batch_queue_size: None,
+            id_lists_adapter: None,
+            specs_adapter: None,
+            disable_disk_access: None,
         };
 
         (Some(Arc::new(inner)), obs_client)

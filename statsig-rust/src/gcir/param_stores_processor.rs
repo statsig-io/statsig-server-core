@@ -34,7 +34,7 @@ pub(crate) fn get_serializeable_param_stores(
         }
 
         if let Some(param_store_filter) = &options.param_store_filter {
-            if !param_store_filter.contains(name) {
+            if !param_store_filter.contains(name.as_str()) {
                 continue;
             }
         }

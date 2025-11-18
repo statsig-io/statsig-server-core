@@ -32,6 +32,30 @@ pub struct InternedString {
     pub value: Arc<String>,
 }
 
+#[macro_export]
+macro_rules! interned_str {
+    // String literal -> from_str_ref
+    ($value:literal) => {
+        InternedString::from_str_ref($value)
+    };
+    // Bool -> from_bool
+    (bool: $value:literal) => {
+        InternedString::from_bool($value)
+    };
+    // String (owned) -> from_string
+    ($value:expr) => {
+        InternedString::from_string($value)
+    };
+    // DynamicString -> from_dynamic_string
+    ($value:expr) => {
+        InternedString::from_dynamic_string($value)
+    };
+    // String parts (slice) -> from_str_parts
+    ( $value:expr) => {
+        InternedString::from_str_parts($value)
+    };
+}
+
 impl InternedString {
     pub fn from_str_ref(value: &str) -> Self {
         let hash = hashing::hash_one(value);

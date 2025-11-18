@@ -375,3 +375,4 @@ module.exports.__internal__testObservabilityClient = nativeBinding.__internal__t
 module.exports.__internal__testOutputLogger = nativeBinding.__internal__testOutputLogger
 module.exports.__internal__testPersistentStorage = nativeBinding.__internal__testPersistentStorage
 module.exports.OverrideAdapterType = nativeBinding.OverrideAdapterType
+module.exports.statsigCaptureLogLine = nativeBinding.statsigCaptureLogLine

@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 
+use crate::log_d;
 use crate::{
     log_e, log_w,
     networking::{
@@ -24,13 +25,8 @@ pub struct NetworkProviderReqwest {
 
 impl NetworkProviderReqwest {
     pub fn new() -> Self {
-        let has_file_write_access = match tempfile::tempfile() {
-            Ok(_) => true,
-            Err(_) => false,
-        };
-
         Self {
-            has_file_write_access,
+            has_file_write_access: tempfile::tempfile().is_ok(),
         }
     }
 }
@@ -44,7 +40,6 @@ impl NetworkProvider for NetworkProviderReqwest {
                     status_code: None,
                     data: None,
                     error: Some("Request was shutdown".to_string()),
-                    headers: None,
                 };
             }
         }
@@ -54,12 +49,10 @@ impl NetworkProvider for NetworkProviderReqwest {
         let mut error = None;
         let mut status_code = None;
         let mut data = None;
-        let mut headers = None;
 
         match request.send().await {
             Ok(response) => {
                 status_code = Some(response.status().as_u16());
-                headers = get_response_headers(&response);
 
                 let data_result =
                     if !self.has_file_write_access || args.disable_file_streaming == Some(true) {
@@ -85,7 +78,6 @@ impl NetworkProvider for NetworkProviderReqwest {
             status_code,
             data,
             error,
-            headers,
         }
     }
 }
@@ -184,14 +176,17 @@ impl NetworkProviderReqwest {
     async fn write_response_to_temp_file(
         response: reqwest::Response,
     ) -> Result<ResponseData, StatsigErr> {
+        let headers = get_response_headers(&response);
         let mut response = response;
         let mut temp_file = tempfile::spooled_tempfile(1024 * 1024 * 2); // 2MB
 
+        let mut total_bytes = 0;
         while let Some(item) = response
             .chunk()
             .await
             .map_err(|e| StatsigErr::FileError(e.to_string()))?
         {
+            total_bytes += item.len();
             temp_file
                 .write_all(&item)
                 .map_err(|e| StatsigErr::FileError(e.to_string()))?;
@@ -202,18 +197,30 @@ impl NetworkProviderReqwest {
             .map_err(|e| StatsigErr::FileError(e.to_string()))?;
 
         let reader = BufReader::new(temp_file);
-        Ok(ResponseData::from_stream(Box::new(reader)))
+
+        log_d!(TAG, "Wrote {} bytes to spooled temp file", total_bytes);
+
+        Ok(ResponseData::from_stream_with_headers(
+            Box::new(reader),
+            headers,
+        ))
     }
 
     async fn write_response_to_in_memory_buffer(
         response: reqwest::Response,
     ) -> Result<ResponseData, StatsigErr> {
+        let headers = get_response_headers(&response);
         let bytes = response
             .bytes()
             .await
             .map_err(|e| StatsigErr::SerializationError(e.to_string()))?;
 
-        Ok(ResponseData::from_bytes(bytes.to_vec()))
+        log_d!(TAG, "Wrote {} bytes to in-memory buffer", bytes.len());
+
+        Ok(ResponseData::from_bytes_with_headers(
+            bytes.to_vec(),
+            headers,
+        ))
     }
 }
 

@@ -1,23 +1,31 @@
 #pragma once
 
+#include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
-
+#include <variant>
 using json = nlohmann::json;
 
+template <typename T>
+std::optional<T> get_optional(const json &j, const std::string &key) {
+  if (j.contains(key) && !j[key].is_null()) {
+    return j[key].get<T>();
+  }
+  return std::nullopt;
+}
 // Function order matters
 
 namespace statsig_cpp_core {
 struct EvaluationDetails {
-  uint64_t lcut;
-  uint64_t receivedAt;
+  std::optional<uint64_t> lcut;
+  std::optional<uint64_t> receivedAt;
   std::string reason;
 };
 
 inline void from_json(const json &j, EvaluationDetails &d) {
-  j.at("lcut").get_to(d.lcut);
-  j.at("received_at").get_to(d.receivedAt);
+  d.lcut = get_optional<uint64_t>(j, "lcut");
+  d.receivedAt = get_optional<uint64_t>(j, "received_at");
   j.at("reason").get_to(d.reason);
 }
 
@@ -36,6 +44,14 @@ struct FeatureGate {
 
   FeatureGate() = default;
   FeatureGate(const std::string &json_str);
+  ~FeatureGate() {
+    // Nothing to manually free here because all members are RAII-safe
+    // Just for demonstration
+    name.clear();
+    rule_id.clear();
+    id_type.clear();
+    // details destructor will be called automatically
+  }
 };
 
 inline void from_json(const json &j, FeatureGate &c) {
@@ -97,7 +113,7 @@ struct Experiment {
   std::unordered_map<std::string, nlohmann::json> value;
   std::string rule_id;
   std::string id_type;
-  std::string group_name;
+  std::optional<std::string> group_name;
   EvaluationDetails details;
   bool is_experiment_active = false;
 
@@ -111,6 +127,7 @@ inline void from_json(const json &j, Experiment &c) {
   j.at("rule_id").get_to(c.rule_id);
   j.at("id_type").get_to(c.id_type);
   j.at("details").get_to(c.details);
+  c.group_name = get_optional<std::string>(j, "group_name");
 }
 
 inline void to_json(json &j, const Experiment &c) {
@@ -127,7 +144,8 @@ inline Experiment::Experiment(const std::string &json_str) {
 }
 
 using allowed_primitive = std::variant<std::string, int64_t, double, bool>;
-using allowed_type = std::variant<allowed_primitive, std::vector<allowed_primitive>>;
+using allowed_type =
+    std::variant<allowed_primitive, std::vector<allowed_primitive>>;
 
 inline void from_json(const json &j, allowed_primitive &p) {
   if (j.is_string()) {
@@ -155,41 +173,43 @@ inline void to_json(nlohmann::json &j, const allowed_primitive &v) {
   }
 }
 
-inline void to_json(json& j, const allowed_type& at) {
-    std::visit([&j](auto&& arg) {
+inline void to_json(json &j, const allowed_type &at) {
+  std::visit(
+      [&j](auto &&arg) {
         using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, allowed_primitive>) {
-            to_json(j, arg);
-        } else if constexpr (std::is_same_v<T, std::vector<allowed_primitive>>) {
-            j = json::array();
-            for (const auto& elem : arg) {
-                json je;
-                to_json(je, elem);
-                j.push_back(je);
-            }
+          to_json(j, arg);
+        } else if constexpr (std::is_same_v<T,
+                                            std::vector<allowed_primitive>>) {
+          j = json::array();
+          for (const auto &elem : arg) {
+            json je;
+            to_json(je, elem);
+            j.push_back(je);
+          }
         }
-    }, at);
+      },
+      at);
 }
 
-inline void from_json(const json& j, allowed_type& at) {
-    if (j.is_array()) {
-        std::vector<allowed_primitive> vec;
-        for (const auto& item : j) {
-            allowed_primitive ap;
-            from_json(item, ap);
-            vec.push_back(ap);
-        }
-        at = vec;
-    } else {
-        allowed_primitive ap;
-        from_json(j, ap);
-        at = ap;
+inline void from_json(const json &j, allowed_type &at) {
+  if (j.is_array()) {
+    std::vector<allowed_primitive> vec;
+    for (const auto &item : j) {
+      allowed_primitive ap;
+      from_json(item, ap);
+      vec.push_back(ap);
     }
+    at = vec;
+  } else {
+    allowed_primitive ap;
+    from_json(j, ap);
+    at = ap;
+  }
 }
 
-inline void
-to_json(nlohmann::json &j,
-        const std::unordered_map<std::string, allowed_type> &m) {
+inline void to_json(nlohmann::json &j,
+                    const std::unordered_map<std::string, allowed_type> &m) {
   j = nlohmann::json::object();
   for (const auto &[key, value] : m) {
     json vj = json{};

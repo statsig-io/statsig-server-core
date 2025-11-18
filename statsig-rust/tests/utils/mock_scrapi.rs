@@ -1,5 +1,6 @@
 use serde_json::Value;
 use std::{
+    collections::HashMap,
     fmt::{Display, Formatter},
     io::Read,
     sync::{
@@ -48,9 +49,15 @@ impl Display for Endpoint {
     }
 }
 
+pub enum StubData {
+    String(String),
+    Bytes(Vec<u8>),
+}
+
 pub struct EndpointStub {
     pub endpoint: Endpoint,
-    pub response: String,
+    pub response: StubData,
+    pub res_headers: Option<HashMap<String, String>>,
     pub status: u16,
     pub delay_ms: u64,
     pub method: Method,
@@ -60,7 +67,8 @@ impl EndpointStub {
     pub fn with_endpoint(endpoint: Endpoint) -> EndpointStub {
         EndpointStub {
             endpoint,
-            response: String::new(),
+            response: StubData::String(String::new()),
+            res_headers: None,
             status: 200,
             delay_ms: 0,
             method: Method::GET,
@@ -89,8 +97,19 @@ impl MockScrapi {
         }
     }
 
-    pub async fn reset(&self) {
+    pub async fn clear_stubs(&self) {
         self.mock_server.reset().await;
+    }
+
+    pub fn clear_requests(&self) {
+        self.requests.lock().unwrap().clear();
+    }
+
+    pub async fn reset_all(&self) {
+        self.mock_server.reset().await;
+        self.requests.lock().unwrap().clear();
+        self.logged_events.store(0, Ordering::SeqCst);
+        self.no_diagnostics_logged_events.store(0, Ordering::SeqCst);
     }
 
     pub async fn stub(&self, stub: EndpointStub) {
@@ -104,7 +123,11 @@ impl MockScrapi {
         builder
             .respond_with(move |req: &Request| {
                 let response_template = ResponseTemplate::new(stub.status)
-                    .set_body_string(stub.response.clone())
+                    .set_body_bytes(match &stub.response {
+                        StubData::String(s) => s.as_bytes().to_vec(),
+                        StubData::Bytes(b) => b.clone(),
+                    })
+                    .append_headers(stub.res_headers.clone().unwrap_or_default())
                     .set_delay(Duration::from_millis(stub.delay_ms));
 
                 reqs.lock().unwrap().push(req.clone());

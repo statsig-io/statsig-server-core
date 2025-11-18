@@ -1,11 +1,12 @@
 use jni::objects::{JObject, JString, JValue};
-use jni::sys::{jboolean, jstring};
+use jni::sys::{jboolean, jlong, jstring};
 use jni::JNIEnv;
 use serde_json::{Number, Value};
 use statsig_rust::networking::proxy_config::ProxyConfig;
 use statsig_rust::{
-    log_e, ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
-    FeatureGateEvaluationOptions, GCIRResponseFormat, HashAlgorithm, LayerEvaluationOptions,
+    log_e, log_w, ClientInitResponseOptions, DynamicConfigEvaluationOptions,
+    ExperimentEvaluationOptions, FeatureGateEvaluationOptions, GCIRResponseFormat, HashAlgorithm,
+    LayerEvaluationOptions,
 };
 use std::collections::HashMap;
 
@@ -278,6 +279,69 @@ pub fn jni_to_rust_json_map(
     }
 
     Ok(rust_map)
+}
+
+pub fn get_string_field(env: &mut JNIEnv, obj: &JObject, field: &str) -> Option<String> {
+    let raw_field = match env.get_field(obj, field, "Ljava/lang/String;") {
+        Ok(value) => value,
+        Err(e) => {
+            log_w!(
+                TAG,
+                "Failed to access string field {} from Java object: {:?}",
+                field,
+                e
+            );
+            return None;
+        }
+    };
+
+    let field_obj = match raw_field.l() {
+        Ok(obj) => obj,
+        Err(e) => {
+            log_w!(
+                TAG,
+                "Failed to read string field {} from Java object: {:?}",
+                field,
+                e
+            );
+            return None;
+        }
+    };
+
+    if field_obj.is_null() {
+        return None;
+    }
+
+    let jstring: JString = field_obj.into();
+    jstring_to_string(env, jstring)
+}
+
+pub fn get_long_field(env: &mut JNIEnv, obj: &JObject, field: &str) -> Option<jlong> {
+    let raw_field = match env.get_field(obj, field, "J") {
+        Ok(value) => value,
+        Err(e) => {
+            log_w!(
+                TAG,
+                "Failed to access long field {} from Java object: {:?}",
+                field,
+                e
+            );
+            return None;
+        }
+    };
+
+    match raw_field.j() {
+        Ok(val) => Some(val),
+        Err(e) => {
+            log_w!(
+                TAG,
+                "Failed to read long field {} from Java object: {:?}",
+                field,
+                e
+            );
+            None
+        }
+    }
 }
 
 fn java_object_to_json_value(env: &mut JNIEnv, obj: JObject) -> Result<Value, jni::errors::Error> {

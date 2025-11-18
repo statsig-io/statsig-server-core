@@ -61,7 +61,7 @@ TEST(StatsigE2EUsageTest, Core_API) {
   statsig_cpp_core::GetDynamicConfigOptions configOptions;
   configOptions.disableExposureLogging = true;
   statsig_cpp_core::DynamicConfig nonExposedConfig =
-      s.getConfig(nonExposedUser, "big_number", configOptions);
+      s.getDynamicConfig(nonExposedUser, "big_number", configOptions);
   EXPECT_EQ(nonExposedConfig.value["foo"].get<double>(), 1e21);
 
   // Layer

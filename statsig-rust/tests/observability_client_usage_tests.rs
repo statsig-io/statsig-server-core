@@ -10,25 +10,35 @@ use std::{
     path::PathBuf,
     sync::{Arc, Mutex, Weak},
 };
-use utils::{
-    mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi},
-    mock_specs_adapter::MockSpecsAdapter,
-};
+
+use crate::utils::helpers::load_contents;
+use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
 const SDK_KEY: &str = "secret-key";
 
-async fn setup(
-    observability_client: &Arc<MockObservabilityClient>,
-) -> (MockScrapi, Statsig, Arc<MockSpecsAdapter>) {
+async fn setup(observability_client: &Arc<MockObservabilityClient>) -> (MockScrapi, Statsig) {
+    std::env::set_var("STATSIG_RUNNING_TESTS", "true");
     let mock_scrapi = MockScrapi::new().await;
-
-    let specs_adapter = Arc::new(MockSpecsAdapter::with_data("tests/data/eval_proj_dcs.json"));
 
     mock_scrapi
         .stub(EndpointStub {
             method: Method::POST,
-            response: "{\"success\": true}".to_string(),
+            response: StubData::String("{\"success\": true}".to_string()),
             ..EndpointStub::with_endpoint(Endpoint::LogEvent)
+        })
+        .await;
+
+    let mut raw_dcs_str = load_contents("eval_proj_dcs.json");
+    raw_dcs_str = raw_dcs_str.replace(
+        r#""checksum":"2556334789679907000""#,
+        r#""IGNORED_CHECKSUM_VALUE":"""#,
+    );
+
+    mock_scrapi
+        .stub(EndpointStub {
+            method: Method::GET,
+            response: StubData::String(raw_dcs_str),
+            ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })
         .await;
 
@@ -38,14 +48,14 @@ async fn setup(
         Some(Arc::new(StatsigOptions {
             observability_client: Some(weak_obs_client),
             log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
-            specs_adapter: Some(specs_adapter.clone()),
+            specs_url: Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs)),
             output_log_level: Some(LogLevel::Debug),
             specs_sync_interval_ms: Some(1),
             ..StatsigOptions::new()
         })),
     );
 
-    (mock_scrapi, statsig, specs_adapter)
+    (mock_scrapi, statsig)
 }
 
 #[derive(Debug, PartialEq)]
@@ -137,7 +147,7 @@ async fn test_init_called() {
         calls: Mutex::new(Vec::new()),
     });
 
-    let (_, statsig, _) = setup(&obs_client).await;
+    let (_, statsig) = setup(&obs_client).await;
 
     statsig.initialize().await.unwrap();
 
@@ -153,7 +163,7 @@ async fn test_sdk_initialization_dist_recorded() {
         calls: Mutex::new(Vec::new()),
     });
 
-    let (_, statsig, _) = setup(&obs_client).await;
+    let (_, statsig) = setup(&obs_client).await;
 
     statsig.initialize().await.unwrap();
     statsig.check_gate(&StatsigUser::with_user_id("test_user"), "test_gate");
@@ -180,7 +190,7 @@ async fn test_sdk_initialization_dist_recorded() {
 
     assert_eq!(found_name, "statsig.sdk.initialization");
     assert_ne!(found_value, 0.0);
-    assert_eq!(tags.get("source"), Some(&"Bootstrap".to_string()));
+    assert_eq!(tags.get("source"), Some(&"Network".to_string()));
     assert_eq!(tags.get("success"), Some(&"true".to_string()));
     assert_eq!(tags.get("store_populated"), Some(&"true".to_string()));
 }
@@ -192,10 +202,9 @@ async fn test_config_propagation_dist_recorded() {
         calls: Mutex::new(Vec::new()),
     });
 
-    let (_, statsig, specs_adapter) = setup(&obs_client).await;
+    let (_, statsig) = setup(&obs_client).await;
 
     statsig.initialize().await.unwrap();
-    specs_adapter.resync().await;
     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
     let calls = obs_client.calls.lock().unwrap();
@@ -219,7 +228,7 @@ async fn test_config_propagation_dist_recorded() {
 
     assert_eq!(found_name, "statsig.sdk.config_propagation_diff");
     assert_ne!(found_value, 0.0);
-    assert_eq!(tags.get("source"), Some(&"Bootstrap".to_string()));
+    assert_eq!(tags.get("source"), Some(&"Network".to_string()));
     assert!(tags.contains_key("lcut"));
 }
 
@@ -260,7 +269,7 @@ async fn test_shutdown_drops() {
         calls: Mutex::new(Vec::new()),
     });
 
-    let (_, statsig, _) = setup(&obs_client).await;
+    let (_, statsig) = setup(&obs_client).await;
 
     statsig.initialize().await.unwrap();
 
@@ -289,7 +298,7 @@ async fn test_init_from_network() {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::GET,
-            response: dcs,
+            response: StubData::String(dcs),
             ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })
         .await;
@@ -297,7 +306,7 @@ async fn test_init_from_network() {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::POST,
-            response: "{\"success\": true}".to_string(),
+            response: StubData::String("{\"success\": true}".to_string()),
             ..EndpointStub::with_endpoint(Endpoint::LogEvent)
         })
         .await;

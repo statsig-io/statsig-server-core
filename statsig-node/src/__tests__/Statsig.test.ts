@@ -78,8 +78,8 @@ describe('Statsig', () => {
     const user = StatsigUser.withUserID('a-user');
     const response = JSON.parse(statsig.getClientInitializeResponse(user));
 
-    expect(Object.keys(response.feature_gates)).toHaveLength(65);
-    expect(Object.keys(response.dynamic_configs)).toHaveLength(62);
+    expect(Object.keys(response.feature_gates)).toHaveLength(69);
+    expect(Object.keys(response.dynamic_configs)).toHaveLength(63);
     expect(Object.keys(response.layer_configs)).toHaveLength(12);
   });
 

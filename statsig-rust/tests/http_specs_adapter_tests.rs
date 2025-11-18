@@ -3,7 +3,7 @@ mod utils;
 use more_asserts::assert_gt;
 use statsig_rust::{output_logger::LogLevel, Statsig, StatsigOptions};
 use std::{fs, path::PathBuf, sync::Arc};
-use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
+use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
 const SDK_KEY: &str = "secret-key";
 
@@ -17,7 +17,7 @@ async fn setup(options: StatsigOptions) -> (MockScrapi, Statsig) {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::GET,
-            response: dcs,
+            response: StubData::String(dcs),
             ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })
         .await;

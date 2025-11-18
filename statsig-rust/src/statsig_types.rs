@@ -4,6 +4,7 @@ use crate::evaluation::evaluation_types::{
 };
 use crate::event_logging::event_logger::{EventLogger, ExposureTrigger};
 use crate::event_logging::event_queue::queued_layer_param_expo::EnqueueLayerParamExpoOp;
+use crate::interned_string::InternedString;
 use crate::specs_response::param_store_types::Parameter;
 use crate::statsig_core_api_options::ParameterStoreEvaluationOptions;
 use crate::user::StatsigUserLoggable;
@@ -91,6 +92,7 @@ pub struct Layer {
     pub allocated_experiment_name: Option<String>,
     pub is_experiment_active: bool,
 
+    pub __parameter_rule_ids: Option<HashMap<InternedString, InternedString>>,
     pub __evaluation: Option<LayerEvaluation>,
     pub __value: HashMap<String, Value>,
     pub __user: StatsigUserLoggable,

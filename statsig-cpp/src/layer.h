@@ -3,6 +3,7 @@
 #include "libstatsig_ffi.h"
 #include "types.h"
 #include "user.h"
+#include "types.h"
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -18,8 +19,8 @@ public:
   bool is_experiment_active;
   std::string rule_id;
   std::string id_type;
-  std::string allocated_experiment_name;
-  std::string group_name;
+  std::optional<std::string> allocated_experiment_name;
+  std::optional<std::string> group_name;
   std::unordered_map<std::string, json> value;
   EvaluationDetails details;
   Layer() = default;
@@ -70,10 +71,11 @@ inline void from_json(const json &j, Layer &l) {
 
   if (j.contains("allocated_experiment_name") &&
       !j["allocated_experiment_name"].is_null())
-    j.at("allocated_experiment_name").get_to(l.allocated_experiment_name);
+    l.allocated_experiment_name =
+        get_optional<std::string>(j, "allocated_experiment_name");
 
   if (j.contains("group_name") && !j["group_name"].is_null())
-    j.at("group_name").get_to(l.group_name);
+    l.group_name = get_optional<std::string>(j, "group_name");
 
   if (!j.at("is_experiment_active").is_null())
     j.at("is_experiment_active").get_to(l.is_experiment_active);

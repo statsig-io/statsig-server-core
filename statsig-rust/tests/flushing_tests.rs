@@ -11,7 +11,7 @@ use std::{
 };
 use tokio::time::sleep;
 use utils::{
-    mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi},
+    mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData},
     mock_specs_adapter::MockSpecsAdapter,
 };
 
@@ -22,7 +22,7 @@ async fn setup(delay_ms: u64, key: String) -> (MockScrapi, Statsig) {
         .stub(EndpointStub {
             delay_ms,
             method: Method::POST,
-            response: "{\"success\": true}".to_string(),
+            response: StubData::String("{\"success\": true}".to_string()),
             ..EndpointStub::with_endpoint(Endpoint::LogEvent)
         })
         .await;

@@ -1,5 +1,6 @@
 mod utils;
 
+use crate::utils::mock_scrapi::StubData;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
 use std::sync::{mpsc, Arc};
@@ -11,7 +12,7 @@ async fn setup() -> (Arc<Statsig>, StatsigUser, MockScrapi) {
     mock_scrapi
         .stub(EndpointStub {
             method: Method::POST,
-            response: "{}".to_string(),
+            response: StubData::String("{}".to_string()),
             status: 500,
             ..EndpointStub::with_endpoint(Endpoint::LogEvent)
         })

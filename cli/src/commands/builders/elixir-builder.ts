@@ -1,24 +1,29 @@
 import { buildFfiHelper } from '@/utils/ffi_utils.js';
 import { BASE_DIR } from '@/utils/file_utils.js';
-import { execSync, StdioOptions } from 'child_process';
+import { Log } from '@/utils/terminal_utils.js';
+import { StdioOptions, execSync } from 'child_process';
 
 import { BuilderOptions } from './builder-options.js';
-import { Log } from '@/utils/terminal_utils.js';
-const NIF_VERSION = "nif-2.15"
+
+const NIF_VERSION = 'nif-2.15';
 export function buildElixir(options: BuilderOptions) {
   options.subProject = 'statsig_elixir';
-  let RUSTFLAGS = ""
+  let RUSTFLAGS = '';
   if (options.os == 'windows') {
     // RUSTFLAGS = 'RUSTFLAGS="-C target-cpu=native"';
   } else {
     RUSTFLAGS = 'RUSTFLAGS="-C target-feature=-crt-static"';
   }
-  let buildcommand = `${RUSTFLAGS} cargo build --release -p statsig_elixir --target-dir target/${options.target}`
+
+  let buildcommand = `${RUSTFLAGS} cargo build --release -p statsig_elixir --target-dir target/${options.target}`;
   execAndLogSync(buildcommand);
 
   let binPath = `target/${options.target}/release`;
   let isGHAction = process.env.GH_APP_ID != null;
-  let version = execAndLogSync("cd statsig-rust && cargo pkgid | cut -d# -f2 | cut -d@ -f2", 'pipe').trim();
+  let version = execAndLogSync(
+    'cd statsig-rust && cargo pkgid | cut -d# -f2 | cut -d@ -f2',
+    'pipe',
+  ).trim();
   if (isGHAction) {
     let renamedFile = `libstatsig_elixir-v${version}-${NIF_VERSION}-${options.target}.so`; // This is deliberately done, we need .so for Rustler
     let commandForDylib = `mv **/**/release/libstatsig_elixir.dylib ${binPath}/${renamedFile}`;
@@ -28,7 +33,9 @@ export function buildElixir(options: BuilderOptions) {
     try {
       execAndLogSync(commandForDll);
       execAndLogSync(`echo "file-name=${renamedFile}" >> $GITHUB_OUTPUT`);
-      execAndLogSync(`echo "file-name=${renamedFile}" >> "$(cygpath -u "$GITHUB_OUTPUT")"`);
+      execAndLogSync(
+        `echo "file-name=${renamedFile}" >> "$(cygpath -u "$GITHUB_OUTPUT")"`,
+      );
       execAndLogSync(`echo "file-name=${renamedFile}" >> "$GITHUB_OUTPUT"`);
       execAndLogSync(`echo $GITHUB_OUTPUT`);
     } catch (e) {
@@ -53,7 +60,10 @@ export function buildElixir(options: BuilderOptions) {
   Log.stepEnd(`Built statsig-elixir`);
 }
 
-function execAndLogSync(command: string, stdio: StdioOptions = 'inherit'): string {
+function execAndLogSync(
+  command: string,
+  stdio: StdioOptions = 'inherit',
+): string {
   Log.stepProgress(command);
   return execSync(command, { cwd: BASE_DIR, stdio: stdio })?.toString();
 }

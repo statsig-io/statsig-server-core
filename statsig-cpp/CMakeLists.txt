@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.5)
 
 project(Statsig
-    VERSION 0.10.3
+    VERSION 0.12.1
     DESCRIPTION "Statsig C++ Core SDK"
     LANGUAGES CXX
 )
-set(PROJECT_VERSION_SUFFIX "-rc.2510210014")
+set(PROJECT_VERSION_SUFFIX "-beta.2511140238")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -38,9 +38,9 @@ message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
 function (detect_cpu cpu_arch_var)
     set(cpu_arch "${CMAKE_SYSTEM_PROCESSOR}")
     if(cpu_arch MATCHES "x86_64|AMD64")
-        set(cpu_arch_var "x86_64" PARENT_SCOPE)
+        set(${cpu_arch_var} "x86_64" PARENT_SCOPE)
     elseif(cpu_arch MATCHES "aarch64|arm64")
-        set(cpu_arch_var "aarch64" PARENT_SCOPE)
+        set(${cpu_arch_var} "aarch64" PARENT_SCOPE)
     else()
         message(FATAL_ERROR "Unsupported CPU architecture: ${cpu_arch}, Contact Statsig support to add support for it")
     endif()
@@ -57,9 +57,9 @@ function (detect_is_musl is_musl_var)
     )
     if(_ldd_result EQUAL 0)
         if(_ldd_output MATCHES "musl")
-            set(is_musl TRUE PARENT_SCOPE)
+            set(${is_musl_var} TRUE PARENT_SCOPE)
         else()
-            set(is_musl FALSE PARENT_SCOPE)
+            set(${is_musl_var} FALSE PARENT_SCOPE)
         endif()
     else()
         message(FATAL_ERROR "Failed to determine libc type: ${_ldd_error}")
@@ -126,6 +126,11 @@ else()
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
     )
     target_link_libraries(Statsig PRIVATE "${CMAKE_BINARY_DIR}/libstatsig_ffi.${SUFFIX_VAR}")
+
+    set_target_properties(Statsig PROPERTIES
+        BUILD_RPATH "@loader_path"
+        INSTALL_RPATH "@loader_path"
+    )
 endif()
 
 

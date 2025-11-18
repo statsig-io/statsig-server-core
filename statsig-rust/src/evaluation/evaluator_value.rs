@@ -1,7 +1,10 @@
 use chrono::{DateTime, NaiveDateTime};
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::{value::RawValue, Value as JsonValue, Value};
+use serde_json::{
+    value::{to_raw_value, RawValue},
+    Value as JsonValue, Value,
+};
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 use crate::{
@@ -31,6 +34,19 @@ impl_interned_value!(EvaluatorValue, MemoizedEvaluatorValue);
 impl EvaluatorValue {
     pub fn empty() -> &'static Self {
         &EMPTY_EVALUATOR_VALUE
+    }
+
+    pub fn from_json_value(value: Value) -> Self {
+        let raw_value = match to_raw_value(&value) {
+            Ok(raw_value) => raw_value,
+            Err(e) => {
+                log_e!(TAG, "Failed to convert map to raw value: {}", e);
+                return Self::empty().clone();
+            }
+        };
+
+        let (hash, value) = EvaluatorValue::get_or_create_memoized(Cow::Owned(raw_value));
+        Self { hash, inner: value }
     }
 
     pub fn compile_regex(&mut self) {

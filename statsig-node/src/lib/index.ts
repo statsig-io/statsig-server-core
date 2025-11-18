@@ -1,28 +1,42 @@
-// @ts-nocheck
-import { DynamicConfig, Experiment, Layer, ParameterStore, StatsigNapiInternal, StatsigOptions, StatsigUser } from './statsig-generated';
-
-import { ErrorBoundary } from './error_boundary';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import nodeFetch from 'node-fetch';
+import { startStatsigConsoleCapture } from './console_capture';
+
+import { ErrorBoundary } from './error_boundary';
+import {
+  DynamicConfig,
+  Experiment,
+  Layer,
+  ParameterStore,
+  StatsigNapiInternal,
+  StatsigOptions,
+  StatsigUser,
+} from './statsig-generated';
 
 export * from './statsig-generated';
 
+const inspectSym = Symbol.for('nodejs.util.inspect.custom');
 
-StatsigUser.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
+// @ts-expect-error - prototype assignment
+StatsigUser.prototype[inspectSym] = function () {
   return this.toJSON();
-}
-Experiment.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
+};
+// @ts-expect-error - prototype assignment
+Experiment.prototype[inspectSym] = function () {
   return this.toJSON();
-}
-DynamicConfig.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
+};
+// @ts-expect-error - prototype assignment
+DynamicConfig.prototype[inspectSym] = function () {
   return this.toJSON();
-}
-Layer.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
+};
+// @ts-expect-error - prototype assignment
+Layer.prototype[inspectSym] = function () {
   return this.toJSON();
-}
-ParameterStore.prototype[Symbol.for('nodejs.util.inspect.custom')] = function() {
+};
+// @ts-expect-error - prototype assignment
+ParameterStore.prototype[inspectSym] = function () {
   return this.toJSON();
-}
+};
 
 export { StatsigUser, Experiment, DynamicConfig, Layer, ParameterStore };
 
@@ -49,7 +63,7 @@ function createFetchFunc(options?: StatsigOptions) {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body?: Uint8Array,
+    body?: Uint8Array
   ) => {
     try {
       const res = await nodeFetch(url, {
@@ -63,10 +77,15 @@ function createFetchFunc(options?: StatsigOptions) {
       });
 
       const data = await res.arrayBuffer();
+      const resHeaders = Object.fromEntries(res.headers.entries()) as Record<
+        string,
+        string
+      >;
 
       return {
         status: res.status,
         data: Array.from(new Uint8Array(data)),
+        headers: resHeaders,
       };
     } catch (err: any) {
       return {
@@ -83,7 +102,7 @@ export class Statsig extends StatsigNapiInternal {
   public static shared(): Statsig {
     if (!Statsig.hasShared()) {
       console.warn(
-        '[Statsig] No shared instance has been created yet. Call newShared() before using it. Returning an invalid instance',
+        '[Statsig] No shared instance has been created yet. Call newShared() before using it. Returning an invalid instance'
       );
       return Statsig._createErrorInstance();
     }
@@ -98,7 +117,7 @@ export class Statsig extends StatsigNapiInternal {
     if (Statsig.hasShared()) {
       console.warn(
         '[Statsig] Shared instance has been created, call removeSharedInstance() if you want to create another one. ' +
-          'Returning an invalid instance',
+          'Returning an invalid instance'
       );
       return Statsig._createErrorInstance();
     }
@@ -122,5 +141,6 @@ export class Statsig extends StatsigNapiInternal {
     super(fetchFunc, sdkKey, options);
 
     ErrorBoundary.wrap(this);
+    startStatsigConsoleCapture(sdkKey);
   }
 }

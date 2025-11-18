@@ -78,9 +78,44 @@ jobs:
     runs-on: ${{ (contains(fromJson('["java", "dotnet", "ffi"]'), matrix.package) && contains(matrix.config.target, 'linux')) && 'ubuntu-latest' || matrix.config.runner }}
 
     steps:
+      - name: '[Statsig Hosted Windows ARM64 Only] Setup Git (Portable)'
+        if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
+        shell: powershell
+        run: |
+          echo "Downloading Portable Git..."
+          $url = "https://github.com/git-for-windows/git/releases/download/v2.44.0.windows.1/PortableGit-2.44.0-64-bit.7z.exe"
+          $dest = "$env:TEMP\PortableGit.exe"
+          Invoke-WebRequest -Uri $url -OutFile $dest
+          echo "Extracting PortableGit to C:\PortableGit..."
+          New-Item -ItemType Directory -Force -Path "C:\PortableGit" | Out-Null
+          Start-Process -FilePath $dest -ArgumentList "-y", "-oC:\PortableGit" -Wait
+          $gitPath = "C:\PortableGit\bin"
+          if (Test-Path $gitPath) {
+            echo "✅ Git path added: $gitPath"
+            # THIS IS REALLY IMPORTANT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            echo "$gitPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          } else {
+            echo "❌ Git extraction failed; directory not found."
+            exit 1
+          }
+          echo "Verifying Git installation..."
+          & "C:\PortableGit\bin\git.exe" --version
+
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: '[Statsig Hosted Windows ARM64 Only] Set up Node.js'
+        if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: '[Statsig Hosted Windows ARM64 Only] Install pnpm'
+        if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
 
       - uses: ./.github/actions/common-setup
 
@@ -88,17 +123,11 @@ jobs:
         with:
           key: ${{ matrix.config.os }}-${{ matrix.config.target }}-${{ matrix.package }}
 
-      - name: '[Non-Linux] Install Protoc'
+      - name: '[Non-Linux or Elixir] Install Protoc'
         uses: arduino/setup-protoc@v3
-        if: ${{ runner.os != 'Linux' }}
+        if: ${{ runner.os != 'Linux' || matrix.config.runner == 'statsig-windows-arm64' || matrix.package == 'elixir' }}
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: '[Non-Linux] Install Dependencies'
-        if: ${{ runner.os != 'Linux' }}
-        run: |
-          pip3 install maturin types-requests ${{ format('{0}', matrix.config.py_deps_suffix) }}
-          rustup target add ${{ matrix.config.target }}
 
       - name: '[Windows Only] Setup Python'
         if: ${{ runner.os == 'Windows' }}
@@ -106,6 +135,53 @@ jobs:
         with:
           python-version: 3.x
           architecture: ${{ matrix.config.py_arch }}
+
+      - name: '[Statsig Hosted Windows ARM64 Only] Install Rustup'
+        if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
+        shell: powershell
+        run: |
+          echo "=== Preparing temp directory ==="
+          $tempDir = "$env:RUNNER_TEMP\rust_install"
+          New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+
+          $installer = "$tempDir\rustup-init.exe"
+          echo "Installer path: $installer"
+
+          echo "=== Downloading Rustup ARM64 Installer ==="
+          Invoke-WebRequest `
+            -Uri "https://static.rust-lang.org/rustup/dist/aarch64-pc-windows-msvc/rustup-init.exe" `
+            -OutFile $installer
+
+          if (!(Test-Path $installer)) {
+            echo "❌ rustup-init download failed"
+            exit 1
+          }
+          echo "✅ rustup-init downloaded"
+
+          echo "=== Running Rustup Installer ==="
+          & $installer -y
+          if ($LASTEXITCODE -ne 0) {
+            echo "❌ rustup-init installer failed"
+            exit $LASTEXITCODE
+          }
+
+          echo "=== Rust installed successfully ==="
+
+      - name: '[Statsig Hosted Windows ARM64 Only] Ensure Rust PATH'
+        if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
+        shell: powershell
+        run: |
+          $cargoBin = "$env:USERPROFILE\.cargo\bin"
+          if (Test-Path $cargoBin) {
+            echo $cargoBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+      - name: '[Non-Linux] Install Dependencies'
+        if: ${{ runner.os != 'Linux' }}
+        shell: powershell
+        run: |          
+          pip3 install maturin types-requests ${{ format('{0}', matrix.config.py_deps_suffix) }}
+          rustup target add ${{ matrix.config.target }}
 
       - name: '[Linux Only] Build Docker Image'
         if: ${{ runner.os == 'Linux' }}

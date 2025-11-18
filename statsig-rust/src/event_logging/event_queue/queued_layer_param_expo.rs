@@ -213,11 +213,19 @@ fn extract_from_layer_ref(
     let (is_explicit, allocated_experiment, secondary_exposures, version, override_config_name) =
         extract_exposure_info(layer, &parameter_name);
 
+    let rule_id = match layer.__parameter_rule_ids {
+        Some(ref rule_ids) => rule_ids
+            .get(&InternedString::from_str_ref(param_name))
+            .map(|s| s.unperformant_to_string())
+            .unwrap_or_else(|| layer.rule_id.clone()),
+        None => layer.rule_id.clone(),
+    };
+
     QueuedLayerParamExposureEvent {
         exposure_time,
         user: layer.__user.clone(),
         layer_name: layer.name.clone(),
-        rule_id: layer.rule_id.clone(),
+        rule_id,
         parameter_name,
         exposure_trigger: trigger,
         evaluation_details: layer.details.clone(),
@@ -240,11 +248,19 @@ fn extract_from_layer_owned(
     let (is_explicit, allocated_experiment, secondary_exposures, version, override_config_name) =
         extract_exposure_info(&layer, &parameter_name);
 
+    let rule_id = match layer.__parameter_rule_ids {
+        Some(ref rule_ids) => rule_ids
+            .get(&InternedString::from_str_ref(parameter_name.as_str()))
+            .map(|s| s.unperformant_to_string())
+            .unwrap_or_else(|| layer.rule_id.clone()),
+        None => layer.rule_id.clone(),
+    };
+
     QueuedLayerParamExposureEvent {
         exposure_time,
         user: layer.__user,
         layer_name: layer.name,
-        rule_id: layer.rule_id,
+        rule_id,
         parameter_name,
         exposure_trigger: trigger,
         evaluation_details: layer.details,
