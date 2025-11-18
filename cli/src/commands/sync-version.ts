@@ -210,7 +210,7 @@ contents = contents.replace(
       `set(PROJECT_VERSION_SUFFIX "${suffix}")`,
     );
   }
-  console.log(contents);
+
   fs.writeFileSync(path, contents, 'utf8');
   Log.stepEnd(`Updated Version to ${version}`);
 }
