@@ -73,9 +73,10 @@ jobs:
           - java
           - dotnet
           - elixir
+          - cpp
 
     timeout-minutes: 25
-    runs-on: ${{ (contains(fromJson('["java", "dotnet", "ffi"]'), matrix.package) && contains(matrix.config.target, 'linux')) && 'ubuntu-latest' || matrix.config.runner }}
+    runs-on: ${{ (contains(fromJson('["java", "dotnet", "ffi", "cpp"]'), matrix.package) && contains(matrix.config.target, 'linux')) && 'ubuntu-latest' || matrix.config.runner }}
 
     steps:
       - name: '[Statsig Hosted Windows ARM64 Only] Setup Git (Portable)'

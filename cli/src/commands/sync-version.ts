@@ -43,6 +43,7 @@ export class SyncVersion extends CommandBase {
     updatePhpComposerVersion(versionString);
     updateDotnetNugetVersion(versionString);
     updateElixirVersion(versionString);
+    updateCppVersion(version);
 
     Log.stepBegin('Verifying Cargo Change');
     execSync('cargo update --workspace', { cwd: BASE_DIR });
@@ -188,6 +189,29 @@ function updateElixirVersion(version: string) {
   fs.writeFileSync(path, updated, 'utf8');
 
   Log.stepEnd(`Updated Version: ${chalk.strikethrough(was)} -> ${version}`);
+}
+
+function updateCppVersion(version: SemVer) {
+  Log.stepBegin('Updating CPP version');
+
+  const path = getRootedPath('statsig-cpp/CMakeLists.txt');
+  let contents = fs.readFileSync(path, 'utf8');
+
+  const versionStr = `${version.major}.${version.minor}.${version.patch}`;
+  contents = contents.replace(
+    /(project\([^\)]+VERSION\s+)"[^"]*"/,
+    `$1${versionStr}`,
+  );
+  if (version.isBeta() || version.isRC()) {
+    const suffix = version.toString().split('-')[1];
+    contents = contents.replace(
+      /set\s*\(\s*PROJECT_VERSION_SUFFIX\s+"[^"]*"\s*\)/,
+      `set(PROJECT_VERSION_SUFFIX "${suffix}")`,
+    );
+  }
+
+  fs.writeFileSync(path, contents, 'utf8');
+  Log.stepEnd(`Updated Version to ${version}`);
 }
 
 async function tryCommitAndPushChanges(version: SemVer) {
