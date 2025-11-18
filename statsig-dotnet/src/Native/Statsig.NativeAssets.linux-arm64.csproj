@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+   <TargetFrameworks>net8.0;net471</TargetFrameworks>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Statsig.NativeAssets.linux-arm64</PackageId>
     <Description>Statsig native library for Linux arm64</Description>
