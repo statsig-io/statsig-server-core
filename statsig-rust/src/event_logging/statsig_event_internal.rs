@@ -1,3 +1,4 @@
+use crate::console_capture::console_log_line_levels::StatsigLogLineLevel;
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::sdk_diagnostics::diagnostics::DIAGNOSTICS_EVENT;
 use crate::user::StatsigUserLoggable;
@@ -12,8 +13,6 @@ pub const GATE_EXPOSURE_EVENT_NAME: &str = "statsig::gate_exposure";
 pub const CONFIG_EXPOSURE_EVENT_NAME: &str = "statsig::config_exposure";
 pub const LAYER_EXPOSURE_EVENT_NAME: &str = "statsig::layer_exposure";
 pub const STATSIG_LOG_LINE_EVENT_NAME: &str = "statsig::log_line";
-
-use crate::console_capture::console_log_line_levels::StatsigLogLineLevel;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -35,7 +35,7 @@ export class ErrorBoundary {
   private static _onError(tag: string, error: unknown): void {
     _tryConvertInvalidArgError(error);
 
-    console.error(tag, error);
+    console.error('Statsig::' + tag, error);
   }
 }
 

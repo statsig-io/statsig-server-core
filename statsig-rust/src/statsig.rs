@@ -1,4 +1,7 @@
-use crate::console_capture::console_capture_helper::ConsoleCapture;
+use crate::console_capture::console_capture_handler::ConsoleCaptureHandler;
+use crate::console_capture::console_capture_instances::{
+    ConsoleCaptureInstance, CONSOLE_CAPTURE_REGISTRY,
+};
 use crate::console_capture::console_log_line_levels::StatsigLogLineLevel;
 use crate::evaluation::cmab_evaluator::{get_cmab_ranked_list, CMABRankedGroup};
 use crate::evaluation::country_lookup::CountryLookup;
@@ -101,6 +104,7 @@ pub struct Statsig {
     statsig_environment: Option<HashMap<String, DynamicValue>>,
     fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
     ops_stats: Arc<OpsStatsForInstance>,
+    console_capture: Arc<ConsoleCaptureInstance>,
     error_observer: Arc<dyn OpsStatsEventObserver>,
     diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
     console_capture_observer: Arc<dyn OpsStatsEventObserver>,
@@ -117,6 +121,7 @@ pub struct StatsigContext {
     pub diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
     pub console_capture_observer: Arc<dyn OpsStatsEventObserver>,
     pub spec_store: Arc<SpecStore>,
+    pub console_capture: Arc<ConsoleCaptureInstance>,
 }
 
 impl Drop for Statsig {
@@ -165,7 +170,7 @@ impl Statsig {
             Arc::new(DiagnosticsObserver::new(diagnostics));
         let error_observer: Arc<dyn OpsStatsEventObserver> =
             Arc::new(SDKErrorsObserver::new(sdk_key, &options));
-        let console_capture = Arc::new(ConsoleCapture::new(event_logger.clone()));
+        let console_capture = Arc::new(ConsoleCaptureHandler::new(event_logger.clone()));
         let console_capture_observer: Arc<dyn OpsStatsEventObserver> =
             Arc::new(ConsoleCaptureObserver::new(console_capture));
 
@@ -201,6 +206,9 @@ impl Statsig {
 
         StatsigMetadata::update_service_name(options.service_name.clone());
 
+        let console_capture =
+            CONSOLE_CAPTURE_REGISTRY.get_for_instance(sdk_key, &options, &environment);
+
         Statsig {
             sdk_key: sdk_key.to_string(),
             options,
@@ -215,6 +223,7 @@ impl Statsig {
             id_lists_adapter,
             statsig_runtime,
             ops_stats,
+            console_capture,
             error_observer,
             diagnostics_observer,
             console_capture_observer,
@@ -364,6 +373,7 @@ impl Statsig {
             diagnostics_observer: self.diagnostics_observer.clone(),
             console_capture_observer: self.console_capture_observer.clone(),
             spec_store: self.spec_store.clone(),
+            console_capture: self.console_capture.clone(),
         }
     }
 }

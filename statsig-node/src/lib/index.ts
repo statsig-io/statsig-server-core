@@ -1,6 +1,10 @@
+import {
+  startStatsigConsoleCapture,
+  stopStatsigConsoleCapture,
+} from './console_capture';
+
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import nodeFetch from 'node-fetch';
-import { startStatsigConsoleCapture } from './console_capture';
 
 import { ErrorBoundary } from './error_boundary';
 import {
@@ -10,6 +14,7 @@ import {
   ParameterStore,
   StatsigNapiInternal,
   StatsigOptions,
+  StatsigResult,
   StatsigUser,
 } from './statsig-generated';
 
@@ -141,6 +146,17 @@ export class Statsig extends StatsigNapiInternal {
     super(fetchFunc, sdkKey, options);
 
     ErrorBoundary.wrap(this);
-    startStatsigConsoleCapture(sdkKey);
+    if (options?.consoleCaptureOptions?.enabled) {
+      startStatsigConsoleCapture(sdkKey, options.consoleCaptureOptions);
+    }
+  }
+
+  public stopConsoleCapture() {
+    stopStatsigConsoleCapture();
+  }
+
+  async shutdown(timeout_ms?: number): Promise<StatsigResult> {
+    stopStatsigConsoleCapture();
+    return super.shutdown(timeout_ms);
   }
 }
