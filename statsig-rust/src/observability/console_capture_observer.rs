@@ -1,27 +1,27 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use serde::Serialize;
 
 use crate::{
-    console_capture::console_capture_helper::ConsoleCapture,
-    observability::ops_stats::OpsStatsEvent, OpsStatsEventObserver,
+    console_capture::console_capture_handler::ConsoleCaptureHandler,
+    observability::ops_stats::OpsStatsEvent, user::StatsigUserLoggable, OpsStatsEventObserver,
 };
 
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone)]
 pub struct ConsoleCaptureEvent {
     pub level: String,
     pub payload: Vec<String>,
     pub timestamp: u64,
+    pub user: StatsigUserLoggable,
+
     pub stack_trace: Option<String>,
 }
 pub struct ConsoleCaptureObserver {
-    console_capture_handler: Arc<ConsoleCapture>,
+    console_capture_handler: Arc<ConsoleCaptureHandler>,
 }
 
 impl ConsoleCaptureObserver {
-    pub fn new(console_capture_handler: Arc<ConsoleCapture>) -> Self {
+    pub fn new(console_capture_handler: Arc<ConsoleCaptureHandler>) -> Self {
         Self {
             console_capture_handler,
         }

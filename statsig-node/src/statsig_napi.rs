@@ -18,7 +18,10 @@ use serde_json::Value;
 use statsig_rust::console_capture::console_log_line_levels::StatsigLogLineLevel;
 use statsig_rust::networking::providers::NetworkProviderGlobal;
 use statsig_rust::networking::NetworkProvider;
-use statsig_rust::{log_d, log_e, Statsig as StatsigActual, OPS_STATS};
+use statsig_rust::{
+    console_capture::console_capture_instances::CONSOLE_CAPTURE_REGISTRY, log_d, log_e,
+    Statsig as StatsigActual,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -32,21 +35,18 @@ pub fn statsig_capture_log_line(
     sdk_key: String,
     stack_trace: Option<String>,
 ) {
-    let op_stats_instance = OPS_STATS.get_weak_instance_for_key(&sdk_key);
-    let Some(op_stats_instance) = op_stats_instance else {
-        return;
-    };
-
-    let Some(op_stats_instance) = op_stats_instance.upgrade() else {
-        return;
-    };
-
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_millis() as u64;
 
-    op_stats_instance.enqueue_console_capture_event(level, payload, timestamp, stack_trace);
+    CONSOLE_CAPTURE_REGISTRY.enqueue_console_capture_event(
+        &sdk_key,
+        level,
+        payload,
+        timestamp,
+        stack_trace,
+    );
 }
 
 #[napi]

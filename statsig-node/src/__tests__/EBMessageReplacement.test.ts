@@ -27,7 +27,7 @@ describe('EBMessageReplacement', () => {
       statsig.getFeatureGate({ userID: 'a-user' }, 'test_gate');
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'getFeatureGate',
+        'Statsig::getFeatureGate',
         expect.objectContaining({
           message:
             'Expected StatsigUser instance, plain javascript object is not supported. Please create a StatsigUser instance using `new StatsigUser(...)` instead.',
@@ -40,7 +40,7 @@ describe('EBMessageReplacement', () => {
       statsig.getDynamicConfig({ userID: 'a-user' }, 'test_config');
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'getDynamicConfig',
+        'Statsig::getDynamicConfig',
         expect.objectContaining({
           message:
             'Expected StatsigUser instance, plain javascript object is not supported. Please create a StatsigUser instance using `new StatsigUser(...)` instead.',
@@ -53,7 +53,7 @@ describe('EBMessageReplacement', () => {
       statsig.getExperiment({ userID: 'a-user' }, 'test_experiment');
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'getExperiment',
+        'Statsig::getExperiment',
         expect.objectContaining({
           message:
             'Expected StatsigUser instance, plain javascript object is not supported. Please create a StatsigUser instance using `new StatsigUser(...)` instead.',
@@ -66,7 +66,7 @@ describe('EBMessageReplacement', () => {
       statsig.getLayer({ userID: 'a-user' }, 'test_layer');
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'getLayer',
+        'Statsig::getLayer',
         expect.objectContaining({
           message:
             'Expected StatsigUser instance, plain javascript object is not supported. Please create a StatsigUser instance using `new StatsigUser(...)` instead.',
@@ -79,7 +79,7 @@ describe('EBMessageReplacement', () => {
       statsig.getFeatureGate(StatsigUser.withUserID('a-user'), null);
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'getFeatureGate',
+        'Statsig::getFeatureGate',
         expect.not.objectContaining({
           message:
             'Expected StatsigUser instance, plain javascript object is not supported. Please create a StatsigUser instance using `new StatsigUser(...)` instead.',

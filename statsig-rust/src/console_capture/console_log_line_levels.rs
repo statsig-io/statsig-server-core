@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StatsigLogLineLevel {
     Trace,
     Debug,

@@ -1,6 +1,7 @@
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
+use crate::console_capture::console_capture_options::ConsoleCaptureOptions;
 use crate::data_store_interface::DataStoreTrait;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::event_logging_adapter::EventLoggingAdapter;
@@ -64,6 +65,8 @@ pub struct StatsigOptions {
     pub wait_for_user_agent_init: Option<bool>,
 
     pub proxy_config: Option<ProxyConfig>,
+
+    pub console_capture_options: Option<ConsoleCaptureOptions>,
 
     pub use_third_party_ua_parser: Option<bool>,
     pub disable_disk_access: Option<bool>,

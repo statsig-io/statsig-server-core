@@ -4,6 +4,7 @@ import {
   wrapFunctionWithRestore,
 } from './console_captrue_utils';
 
+import { ConsoleCaptureOptions } from './statsig-generated';
 import { statsigCaptureLogLine } from '.';
 
 const CAPTURE_LEVELS = [
@@ -22,12 +23,21 @@ const originalConsoleFns: Partial<
 const originalConsoleErrorFn =
   typeof console !== 'undefined' ? console.error : undefined;
 
+const MAX_KEYS = 100;
+const MAX_DEPTH = 10;
+const MAX_LENGTH = 4096;
+
 function captureLog(
   level: CaptureLevel,
   args: unknown[],
-  sdkKey: string
+  sdkKey: string,
+  maxKeys: number,
+  maxDepth: number,
+  maxLength: number
 ): void {
-  const message = args.map((a) => safeStringify(a, 100, 10, 1000));
+  const message = args.map((a) =>
+    safeStringify(a, maxKeys, maxDepth, maxLength)
+  );
 
   if (
     level.toLowerCase() === 'error' &&
@@ -41,7 +51,12 @@ function captureLog(
   statsigCaptureLogLine(level, message, sdkKey, stackTrace);
 }
 
-export function startStatsigConsoleCapture(sdkKey: string): void {
+export function startStatsigConsoleCapture(
+  sdkKey: string,
+  options?: ConsoleCaptureOptions
+): void {
+  stopStatsigConsoleCapture();
+
   for (const level of CAPTURE_LEVELS) {
     const originalFn = console[level];
     if (!originalFn || typeof originalFn !== 'function') {
@@ -60,8 +75,15 @@ export function startStatsigConsoleCapture(sdkKey: string): void {
           if (isCapturing) return;
           isCapturing = true;
 
+          const maxKeys = Math.min(options?.maxKeys ?? MAX_KEYS, MAX_KEYS);
+          const maxDepth = Math.min(options?.maxDepth ?? MAX_DEPTH, MAX_DEPTH);
+          const maxLength = Math.min(
+            options?.maxLength ?? MAX_LENGTH,
+            MAX_LENGTH
+          );
+
           try {
-            captureLog(level, args, sdkKey);
+            captureLog(level, args, sdkKey, maxKeys, maxDepth, maxLength);
           } catch (err) {
             if (
               originalConsoleErrorFn &&
@@ -77,5 +99,19 @@ export function startStatsigConsoleCapture(sdkKey: string): void {
     );
 
     originalConsoleFns[level] = restoreFn;
+  }
+}
+
+export function stopStatsigConsoleCapture(): void {
+  for (const level of CAPTURE_LEVELS) {
+    const restoreFn = originalConsoleFns[level];
+    if (restoreFn && typeof restoreFn === 'function') {
+      restoreFn();
+      delete originalConsoleFns[level];
+    }
+  }
+
+  for (const key of Object.keys(originalConsoleFns)) {
+    delete originalConsoleFns[key as keyof typeof originalConsoleFns];
   }
 }

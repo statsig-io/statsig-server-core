@@ -1,5 +1,5 @@
 use super::user_data::UserData;
-use crate::DynamicValue;
+use crate::{DynamicValue, StatsigUser};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
@@ -28,6 +28,17 @@ impl StatsigUserLoggable {
 
     pub fn null() -> Self {
         Self::default()
+    }
+
+    pub fn default_console_capture_user(
+        environment: Option<HashMap<String, DynamicValue>>,
+        global_custom: Option<HashMap<String, DynamicValue>>,
+    ) -> Self {
+        Self::new(
+            &StatsigUser::with_user_id("console-capture-user").data,
+            environment,
+            global_custom,
+        )
     }
 }
 

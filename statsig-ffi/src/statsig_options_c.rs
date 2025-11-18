@@ -128,6 +128,7 @@ impl From<StatsigOptionsData> for StatsigOptions {
 
         // please keep sorted alphabetically
         Self {
+            console_capture_options: None,
             config_compression_mode,
             data_store,
             disable_all_logging: data.disable_all_logging,
@@ -260,6 +261,7 @@ pub extern "C" fn statsig_options_create(
     );
 
     InstanceRegistry::register(StatsigOptions {
+        console_capture_options: None,
         specs_url,
         log_event_url,
         specs_adapter,

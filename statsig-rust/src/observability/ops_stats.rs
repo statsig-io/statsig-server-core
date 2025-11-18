@@ -2,6 +2,7 @@ use super::{
     observability_client_adapter::ObservabilityEvent, sdk_errors_observer::ErrorBoundaryEvent,
     DiagnosticsEvent,
 };
+use crate::user::StatsigUserLoggable;
 use crate::{log_e, log_w, StatsigRuntime};
 use crate::{
     observability::console_capture_observer::ConsoleCaptureEvent,
@@ -81,16 +82,6 @@ impl OpsStats {
         }
 
         instance
-    }
-
-    pub fn get_weak_instance_for_key(&self, sdk_key: &str) -> Option<Weak<OpsStatsForInstance>> {
-        match self
-            .instances_map
-            .try_read_for(std::time::Duration::from_secs(5))
-        {
-            Some(read_guard) => read_guard.get(sdk_key).cloned(),
-            None => None,
-        }
     }
 }
 
@@ -172,12 +163,14 @@ impl OpsStatsForInstance {
         level: String,
         payload: Vec<String>,
         timestamp: u64,
+        user: StatsigUserLoggable,
         stack_trace: Option<String>,
     ) {
         self.log(OpsStatsEvent::ConsoleCapture(ConsoleCaptureEvent {
             level,
             payload,
             timestamp,
+            user,
             stack_trace,
         }));
     }

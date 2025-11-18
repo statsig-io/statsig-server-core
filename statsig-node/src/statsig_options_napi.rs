@@ -1,16 +1,19 @@
-use napi::bindgen_prelude::Either4;
+use napi::bindgen_prelude::{ClassInstance, Either4};
 use napi_derive::napi;
 use serde_json::Value;
-use statsig_rust::PersistentStorage;
+use statsig_rust::{log_e, PersistentStorage};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Weak};
 
 use crate::persistent_storage_napi::PersistentStorageNapi;
+use crate::statsig_user_napi::StatsigUser;
 use crate::{
     data_store_napi::DataStore, observability_client_napi::ObservabilityClient,
     output_logger_napi::OutputLoggerProvider,
 };
 use statsig_rust::{
+    console_capture::console_capture_options::ConsoleCaptureOptions as ConsoleCaptureOptionsActual,
+    console_capture::console_log_line_levels::StatsigLogLineLevel,
     data_store_interface::DataStoreTrait,
     networking::proxy_config::ProxyConfig as ProxyConfigActual, output_logger::OutputLogProvider,
     statsig_types::OverrideAdapterType as OverrideAdapterTypeActual, DynamicValue,
@@ -21,6 +24,7 @@ use statsig_rust::{
 
 type ValidPrimitives = Either4<String, f64, bool, Vec<Value>>;
 
+const TAG: &str = "StatsigOptionsNapi";
 #[napi(object)]
 pub struct ProxyConfig {
     pub proxy_host: Option<String>,
@@ -36,6 +40,40 @@ impl From<ProxyConfig> for ProxyConfigActual {
             proxy_port: napi.proxy_port,
             proxy_auth: napi.proxy_auth,
             proxy_protocol: napi.proxy_protocol,
+        }
+    }
+}
+
+#[napi(object, object_to_js = false)]
+pub struct ConsoleCaptureOptions<'env> {
+    pub enabled: bool,
+    #[napi(ts_type = "Array<'trace' | 'debug' | 'log' | 'info' | 'warn' | 'error'>")]
+    pub log_levels: Option<Vec<String>>,
+    pub user: Option<ClassInstance<'env, StatsigUser>>,
+    pub max_keys: Option<i64>,
+    pub max_depth: Option<i64>,
+    pub max_length: Option<i64>,
+}
+
+impl<'env> From<ConsoleCaptureOptions<'env>> for ConsoleCaptureOptionsActual {
+    fn from(napi: ConsoleCaptureOptions<'env>) -> Self {
+        let mut parsed_levels = Vec::new();
+        if let Some(levels) = &napi.log_levels {
+            for level in levels {
+                match StatsigLogLineLevel::from_string(level) {
+                    Some(parsed) => parsed_levels.push(parsed),
+                    None => log_e!(TAG, "Could not parse log level: {}", level),
+                }
+            }
+        }
+
+        Self {
+            enabled: napi.enabled,
+            log_levels: Some(parsed_levels),
+            user: napi.user.map(|user| user.as_inner().clone()),
+            max_keys: napi.max_keys.map(|max_keys| max_keys as u64),
+            max_depth: napi.max_depth.map(|max_depth| max_depth as u64),
+            max_length: napi.max_length.map(|max_length| max_length as u64),
         }
     }
 }
@@ -74,7 +112,7 @@ pub struct OverrideAdapterConfig {
 }
 
 #[napi(object, object_to_js = false)]
-pub struct StatsigOptions {
+pub struct StatsigOptions<'a> {
     pub data_store: Option<DataStore>,
 
     pub disable_all_logging: Option<bool>,
@@ -122,12 +160,14 @@ pub struct StatsigOptions {
 
     pub proxy_config: Option<ProxyConfig>,
 
+    pub console_capture_options: Option<ConsoleCaptureOptions<'a>>,
+
     pub use_third_party_ua_parser: Option<bool>,
 
     pub experimental_flags: Option<HashSet<String>>,
 }
 
-impl StatsigOptions {
+impl StatsigOptions<'_> {
     /**
      * There is some reference capture issue around ObservabilityClient and StatsigOptions.
      * By storing the ObservabilityClient in a Weak reference and having the strong
@@ -148,7 +188,6 @@ impl StatsigOptions {
         }
 
         self.observability_client = None;
-
         let inner = StatsigOptionsActual {
             data_store: self
                 .data_store
@@ -181,6 +220,7 @@ impl StatsigOptions {
             global_custom_fields: Self::convert_to_dynamic_value_map(self.global_custom_fields),
             disable_country_lookup: self.disable_country_lookup,
             proxy_config: self.proxy_config.map(|p| p.into()),
+            console_capture_options: self.console_capture_options.map(|c| c.into()),
             use_third_party_ua_parser: self.use_third_party_ua_parser,
             persistent_storage: self
                 .persistent_storage

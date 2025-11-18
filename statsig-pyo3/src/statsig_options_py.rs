@@ -375,6 +375,7 @@ fn create_inner_statsig_options(
                     .unwrap_or_default(),
             ) as Arc<dyn OutputLogProvider>
         }),
+        console_capture_options: None,
         use_third_party_ua_parser: opts.use_third_party_ua_parser,
         disable_disk_access: opts.disable_disk_access,
         experimental_flags: opts.experimental_flags,
