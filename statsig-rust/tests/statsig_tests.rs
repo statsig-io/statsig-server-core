@@ -225,7 +225,8 @@ async fn test_get_running_task_ids() {
 
     assert_eq!(
         task_ids_before_str,
-        "EVT_LOG_BG_LOOP | opts_stats_listen_for | opts_stats_listen_for" // the event logger flush job and two subscription to OpsStats
+        // the event logger flush job and three subscriptions to OpsStats
+        "EVT_LOG_BG_LOOP | opts_stats_listen_for | opts_stats_listen_for | opts_stats_listen_for"
     );
 
     statsig.initialize().await.unwrap();
@@ -235,7 +236,7 @@ async fn test_get_running_task_ids() {
     assert_eq!(
         task_ids_after_str,
         // before tasks + id list and specs bg sync jobs
-        "EVT_LOG_BG_LOOP | http_id_list_bg_sync | http_specs_bg_sync | opts_stats_listen_for | opts_stats_listen_for"
+        "EVT_LOG_BG_LOOP | http_id_list_bg_sync | http_specs_bg_sync | opts_stats_listen_for | opts_stats_listen_for | opts_stats_listen_for"
     );
 }
 
