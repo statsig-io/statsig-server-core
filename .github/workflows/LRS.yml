@@ -37,7 +37,7 @@ jobs:
         with:
           repository: statsig-io/${{  env.sdk_repo  }}
           ref: main
-          token: ${{ secrets.ROIM }}
+          token: ${{ secrets.XIN_PAT_FOR_ACCESS_TOKEN }}
           path: ./${{ matrix.args[1] }}/${{  env.sdk_repo  }}
       
       - uses: pnpm/action-setup@v4
