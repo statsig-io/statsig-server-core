@@ -7,7 +7,7 @@ use crate::sdk_diagnostics::diagnostics::ContextType;
 use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::statsig_metadata::StatsigMetadata;
 use crate::{
-    log_d, log_error_to_statsig_and_console, log_w, StatsigErr, StatsigOptions, StatsigRuntime,
+    log_d, log_e, log_error_to_statsig_and_console, StatsigErr, StatsigOptions, StatsigRuntime,
 };
 use async_trait::async_trait;
 use parking_lot::RwLock;
@@ -188,7 +188,10 @@ impl StatsigHttpIdListsAdapter {
             .set_diagnostics_context(ContextType::ConfigSync);
 
         if let Err(e) = strong_self.sync_id_lists().await {
-            log_w!(TAG, "IDList background sync failed {}", e);
+            if let StatsigErr::NetworkError(NetworkError::DisableNetworkOn(_)) = e {
+                return;
+            }
+            log_e!(TAG, "IDList background sync failed {}", e);
         }
 
         strong_self.ops_stats.enqueue_diagnostics_event(
