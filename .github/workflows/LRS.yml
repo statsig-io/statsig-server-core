@@ -30,7 +30,7 @@ jobs:
         with:
           repository: statsig-io/long-running-sdk
           ref: main
-          token: ${{ secrets.ROIM }}
+          token: ${{ secrets.XIN_PAT_FOR_ACCESS_TOKEN }}
 
       - name: Checkout SDK repo
         uses: actions/checkout@v3

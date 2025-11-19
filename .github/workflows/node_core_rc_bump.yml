@@ -122,7 +122,7 @@ jobs:
 
       - name: Enable auto-merge for PR
         if: steps.create_rc_pr.outputs.pull-request-number != ''
-        uses: peter-evans/enable-pull-request-automerge@a660677 # v3
+        uses: peter-evans/enable-pull-request-automerge@a660677d5469627102a1c1e11409dd063606628d # v3
         with:
           token: ${{ secrets.ROIM }}
           pull-request-number: ${{ steps.create_rc_pr.outputs.pull-request-number }}

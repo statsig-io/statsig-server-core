@@ -23,6 +23,7 @@ jobs:
           - dotnet
           - go
           - elixir
+          - cpp
 
     runs-on: ubuntu-latest
 

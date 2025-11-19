@@ -1,5 +1,9 @@
+
+
 [build.env]
 passthrough = ["CFLAGS", "PROTOC=/usr/local/bin/protoc"]
+
+# ------------------------------------------------------------ [ GNU ]
 
 [target.x86_64-unknown-linux-gnu]
 image = "ghcr.io/cross-rs/x86_64-unknown-linux-gnu:0.2.5-centos"
@@ -15,7 +19,27 @@ pre-build = [
 image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main-centos"
 pre-build = [
     "yum install -y unzip",
-    # centos 7 uses x86_64, even when targeting aarch64
+    "curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip",
+    "unzip protoc-3.20.3-linux-x86_64.zip -d /usr/local",
+    "rm protoc-3.20.3-linux-x86_64.zip",
+]
+
+# ------------------------------------------------------------ [ MUSL ]
+
+[target.x86_64-unknown-linux-musl]
+image = "ghcr.io/cross-rs/x86_64-unknown-linux-musl:0.2.5"
+pre-build = [
+    "apt-get install -y curl unzip",
+    "curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip",
+    "unzip protoc-3.20.3-linux-x86_64.zip -d /usr/local",
+    "rm protoc-3.20.3-linux-x86_64.zip",
+]
+
+
+[target.aarch64-unknown-linux-musl]
+image = "ghcr.io/cross-rs/aarch64-unknown-linux-musl:0.2.5"
+pre-build = [
+    "apt-get install -y curl unzip",
     "curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip",
     "unzip protoc-3.20.3-linux-x86_64.zip -d /usr/local",
     "rm protoc-3.20.3-linux-x86_64.zip",

@@ -198,10 +198,11 @@ function updateCppVersion(version: SemVer) {
   let contents = fs.readFileSync(path, 'utf8');
 
   const versionStr = `${version.major}.${version.minor}.${version.patch}`;
-  contents = contents.replace(
-    /(project\([^\)]+VERSION\s+)"[^"]*"/,
-    `$1${versionStr}`,
-  );
+contents = contents.replace(
+  /(project\s*\(\s*Statsig[\s\S]*?VERSION\s+)([0-9]+\.[0-9]+\.[0-9]+)/,
+  `$1${versionStr}`
+);
+
   if (version.isBeta() || version.isRC()) {
     const suffix = version.toString().split('-')[1];
     contents = contents.replace(

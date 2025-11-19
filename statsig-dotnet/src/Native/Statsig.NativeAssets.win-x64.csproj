@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+   <TargetFrameworks>net8.0;net471</TargetFrameworks>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Statsig.NativeAssets.win-x64</PackageId>
     <Description>Statsig native library for Windows x64</Description>
