@@ -85,6 +85,11 @@ def create_user() -> StatsigUser:
     )
 
 
+def assert_cond(condition: bool, message: str):
+    if not condition:
+        raise Exception(message)
+
+
 async def benchmark(
     bench_name: str,
     spec_name: str,
@@ -166,7 +171,8 @@ async def main():
         cleanup=lambda inst: inst.shutdown().wait(),
     )
 
-    # Benchmark feature gates
+    # ------------------------------------------------------------------------ [ Benchmark Feature Gates ]
+
     for gate in spec_names["feature_gates"]:
         await benchmark(
             "check_gate",
@@ -200,7 +206,8 @@ async def main():
             results,
         )
 
-    # Benchmark dynamic configs
+    # ------------------------------------------------------------------------ [ Benchmark Dynamic Configs ]
+
     for config in spec_names["dynamic_configs"]:
         await benchmark(
             "get_dynamic_config",
@@ -218,7 +225,44 @@ async def main():
             results,
         )
 
-    # Benchmark experiments
+    config = statsig.get_dynamic_config(global_user, "operating_system_config")
+    await benchmark(
+        "get_dynamic_config_params",
+        "string",
+        ITER_HEAVY,
+        lambda: assert_cond(
+            config.get_string("str", "err") != "err", "string value is err"
+        ),
+        results,
+    )
+    await benchmark(
+        "get_dynamic_config_params",
+        "number",
+        ITER_HEAVY,
+        lambda: assert_cond(config.get_integer("num", 0) != 0, "number value is 0"),
+        results,
+    )
+    await benchmark(
+        "get_dynamic_config_params",
+        "object",
+        ITER_HEAVY,
+        lambda: assert_cond(
+            config.get_object_json("obj", "") != "", "object value is empty"
+        ),
+        results,
+    )
+    await benchmark(
+        "get_dynamic_config_params",
+        "array",
+        ITER_HEAVY,
+        lambda: assert_cond(
+            config.get_array_json("arr", "") != "", "array value is empty"
+        ),
+        results,
+    )
+
+    # ------------------------------------------------------------------------ [ Benchmark Experiments ]
+
     for experiment in spec_names["experiments"]:
         await benchmark(
             "get_experiment",
@@ -236,6 +280,38 @@ async def main():
             results,
         )
 
+    experiment = statsig.get_experiment(global_user, "experiment_with_many_params")
+    await benchmark(
+        "get_experiment_params",
+        "string",
+        ITER_HEAVY,
+        lambda: assert_cond(
+            experiment.get_string("a_string", "err") != "err", "string value is err"
+        ),
+        results,
+    )
+    await benchmark(
+        "get_experiment_params",
+        "object",
+        ITER_HEAVY,
+        lambda: assert_cond(
+            experiment.get_object_json("an_object", "") != "",
+            "object value is empty",
+        ),
+        results,
+    )
+    await benchmark(
+        "get_experiment_params",
+        "array",
+        ITER_HEAVY,
+        lambda: assert_cond(
+            experiment.get_array_json("an_array", "") != "", "array value is empty"
+        ),
+        results,
+    )
+
+    # ------------------------------------------------------------------------ [ Benchmark Layers ]
+
     for layer in spec_names["layers"]:
         await benchmark(
             "get_layer",
@@ -252,6 +328,37 @@ async def main():
             lambda l=layer: statsig.get_layer(global_user, l),
             results,
         )
+
+    layer = statsig.get_layer(global_user, "layer_with_many_params")
+    await benchmark(
+        "get_layer_params",
+        "string",
+        ITER_HEAVY,
+        lambda: assert_cond(
+            layer.get_string("a_string", "err") != "err", "string value is err"
+        ),
+        results,
+    )
+    await benchmark(
+        "get_layer_params",
+        "object",
+        ITER_HEAVY,
+        lambda: assert_cond(
+            layer.get_object_json("an_object", "") != "", "object value is empty"
+        ),
+        results,
+    )
+    await benchmark(
+        "get_layer_params",
+        "array",
+        ITER_HEAVY,
+        lambda: assert_cond(
+            layer.get_array_json("an_array", "") != "", "array value is empty"
+        ),
+        results,
+    )
+
+    # ------------------------------------------------------------------------ [ Benchmark GCIR ]
 
     await benchmark(
         "get_client_initialize_response",
