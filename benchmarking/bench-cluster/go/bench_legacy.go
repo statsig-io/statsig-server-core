@@ -58,7 +58,8 @@ func BenchLegacy() {
 		UserID: "global_user",
 	}
 
-	// Benchmark feature gates
+	// ------------------------------------------------------------------------ [ Benchmark Feature Gates ]
+
 	for _, gateName := range specNames.FeatureGates {
 		benchmark(&results, "check_gate", gateName, ITER_HEAVY, "go-sdk", func() {
 			user := createUser()
@@ -79,7 +80,8 @@ func BenchLegacy() {
 		})
 	}
 
-	// Benchmark dynamic configs
+	// ------------------------------------------------------------------------ [ Benchmark Dynamic Configs ]
+
 	for _, configName := range specNames.DynamicConfigs {
 		benchmark(&results, "get_dynamic_config", configName, ITER_HEAVY, "go-sdk", func() {
 			user := createUser()
@@ -91,7 +93,37 @@ func BenchLegacy() {
 		})
 	}
 
-	// Benchmark experiments
+	config := statsig.GetConfig(globalUser, "operating_system_config")
+	benchmarkWithArgs(config, &results, "get_dynamic_config_params", "string", ITER_HEAVY, SDK_TYPE, func(config statsig.DynamicConfig) {
+		v := config.GetString("str", "err")
+		if v == "err" {
+			panic("string value is err")
+		}
+	})
+
+	benchmarkWithArgs(config, &results, "get_dynamic_config_params", "number", ITER_HEAVY, SDK_TYPE, func(config statsig.DynamicConfig) {
+		v := config.GetNumber("num", 0)
+		if v == 0 {
+			panic("number value is 0")
+		}
+	})
+
+	benchmarkWithArgs(config, &results, "get_dynamic_config_params", "object", ITER_HEAVY, SDK_TYPE, func(config statsig.DynamicConfig) {
+		v := config.GetMap("obj", map[string]any{})
+		if len(v) == 0 {
+			panic("object value is nil")
+		}
+	})
+
+	benchmarkWithArgs(config, &results, "get_dynamic_config_params", "array", ITER_HEAVY, SDK_TYPE, func(config statsig.DynamicConfig) {
+		v := config.GetSlice("arr", []any{})
+		if len(v) == 0 {
+			panic("array value is empty")
+		}
+	})
+
+	// ------------------------------------------------------------------------ [ Benchmark Experiments ]
+
 	for _, experimentName := range specNames.Experiments {
 		benchmark(&results, "get_experiment", experimentName, ITER_HEAVY, "go-sdk", func() {
 			user := createUser()
@@ -103,7 +135,30 @@ func BenchLegacy() {
 		})
 	}
 
-	// Benchmark layers
+	experiment := statsig.GetExperiment(globalUser, "experiment_with_many_params")
+	benchmarkWithArgs(experiment, &results, "get_experiment_params", "string", ITER_HEAVY, SDK_TYPE, func(experiment statsig.DynamicConfig) {
+		v := experiment.GetString("a_string", "err")
+		if v == "err" {
+			panic("string value is err")
+		}
+	})
+
+	benchmarkWithArgs(experiment, &results, "get_experiment_params", "object", ITER_HEAVY, SDK_TYPE, func(experiment statsig.DynamicConfig) {
+		v := experiment.GetMap("an_object", map[string]any{})
+		if len(v) == 0 {
+			panic("object value is empty")
+		}
+	})
+
+	benchmarkWithArgs(experiment, &results, "get_experiment_params", "array", ITER_HEAVY, SDK_TYPE, func(experiment statsig.DynamicConfig) {
+		v := experiment.GetSlice("an_array", []any{})
+		if len(v) == 0 {
+			panic("array value is empty")
+		}
+	})
+
+	// ------------------------------------------------------------------------ [ Benchmark Layers ]
+
 	for _, layerName := range specNames.Layers {
 		benchmark(&results, "get_layer", layerName, ITER_HEAVY, "go-sdk", func() {
 			user := createUser()
@@ -115,7 +170,30 @@ func BenchLegacy() {
 		})
 	}
 
-	// Benchmark client initialize response
+	layer := statsig.GetLayer(globalUser, "layer_with_many_params")
+	benchmarkWithArgs(layer, &results, "get_layer_params", "string", ITER_HEAVY, SDK_TYPE, func(layer statsig.Layer) {
+		v := layer.GetString("a_string", "err")
+		if v == "err" {
+			panic("string value is err")
+		}
+	})
+
+	benchmarkWithArgs(layer, &results, "get_layer_params", "object", ITER_HEAVY, SDK_TYPE, func(layer statsig.Layer) {
+		v := layer.GetMap("an_object", map[string]any{})
+		if len(v) == 0 {
+			panic("object value is empty")
+		}
+	})
+
+	benchmarkWithArgs(layer, &results, "get_layer_params", "array", ITER_HEAVY, SDK_TYPE, func(layer statsig.Layer) {
+		v := layer.GetSlice("an_array", []any{})
+		if len(v) == 0 {
+			panic("array value is empty")
+		}
+	})
+
+	// ------------------------------------------------------------------------ [ Benchmark GCIR ]
+
 	benchmark(&results, "get_client_initialize_response", "n/a", ITER_LITE, "go-sdk", func() {
 		user := createUser()
 		statsig.GetClientInitializeResponse(user)
@@ -186,11 +264,17 @@ func createUser() statsig.User {
 }
 
 func benchmark(results *[]BenchmarkResult, benchmarkName, specName string, iterations int, sdkType string, fn func()) {
+	benchmarkWithArgs(nil, results, benchmarkName, specName, iterations, sdkType, func(_ any) {
+		fn()
+	})
+}
+
+func benchmarkWithArgs[T any](args T, results *[]BenchmarkResult, benchmarkName, specName string, iterations int, sdkType string, fn func(args T)) {
 	durations := make([]float64, iterations)
 
 	for i := 0; i < iterations; i++ {
 		start := time.Now()
-		fn()
+		fn(args)
 		duration := time.Since(start)
 		durations[i] = float64(duration.Nanoseconds()) / 1e6 // Convert to milliseconds
 	}
