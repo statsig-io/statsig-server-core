@@ -30,7 +30,8 @@ public class BenchLegacy {
         // Create a global user
         StatsigUser globalUser = new StatsigUser("global_user");
 
-        // Feature gates
+        // ------------------------------------------------------------------------ [ Benchmark Feature Gates ]
+
         for (String gate : specNames.get("feature_gates")) {
             benchmark("check_gate", gate, ITER_HEAVY, () -> Statsig.checkGateSync(createUser(), gate), results, sdkVersion);
             benchmark("check_gate_global_user", gate, ITER_HEAVY, () -> Statsig.checkGateSync(globalUser, gate), results, sdkVersion);
@@ -38,25 +39,65 @@ public class BenchLegacy {
             benchmark("get_feature_gate_global_user", gate, ITER_HEAVY, () -> Statsig.getFeatureGate(globalUser, gate), results, sdkVersion);
         }
 
-        // Dynamic configs
+        // ------------------------------------------------------------------------ [ Benchmark Dynamic Configs ]
+
         for (String config : specNames.get("dynamic_configs")) {
             benchmark("get_dynamic_config", config, ITER_HEAVY, () -> Statsig.getConfigSync(createUser(), config), results, sdkVersion);
             benchmark("get_dynamic_config_global_user", config, ITER_HEAVY, () -> Statsig.getConfigSync(globalUser, config), results, sdkVersion);
         }
+        
+        DynamicConfig config = Statsig.getConfigSync(globalUser, "operating_system_config");
+        benchmark("get_dynamic_config_params", "string", ITER_HEAVY, () -> {
+            if (config.getString("str", "err").equals("err")) { throw new Error("string value is err"); }
+        }, results, sdkVersion);
+        benchmark("get_dynamic_config_params", "number", ITER_HEAVY, () -> {
+            if (config.getInt("num", 0) == 0) { throw new Error("number value is 0"); }
+        }, results, sdkVersion);
+        benchmark("get_dynamic_config_params", "object", ITER_HEAVY, () -> {
+            if (config.getDictionary("obj", null) == null) { throw new Error("object value is empty"); }
+        }, results, sdkVersion);
+        benchmark("get_dynamic_config_params", "array", ITER_HEAVY, () -> {
+            if (config.getArray("arr", null) == null) { throw new Error("array value is empty"); }
+        }, results, sdkVersion);
 
-        // Experiments
+        // ------------------------------------------------------------------------ [ Benchmark Experiments ]
+
         for (String experiment : specNames.get("experiments")) {
             benchmark("get_experiment", experiment, ITER_HEAVY, () -> Statsig.getExperimentSync(createUser(), experiment), results, sdkVersion);
             benchmark("get_experiment_global_user", experiment, ITER_HEAVY, () -> Statsig.getExperimentSync(globalUser, experiment), results, sdkVersion);
         }
 
-        // Layers
+        DynamicConfig experiment = Statsig.getExperimentSync(globalUser, "experiment_with_many_params");
+        benchmark("get_experiment_params", "string", ITER_HEAVY, () -> {
+            if (experiment.getString("a_string", "err").equals("err")) { throw new Error("string value is err"); }
+        }, results, sdkVersion);
+        benchmark("get_experiment_params", "object", ITER_HEAVY, () -> {
+            if (experiment.getDictionary("an_object", null) == null) { throw new Error("object value is empty"); }
+        }, results, sdkVersion);
+        benchmark("get_experiment_params", "array", ITER_HEAVY, () -> {
+            if (experiment.getArray("an_array", null) == null) { throw new Error("array value is empty"); }
+        }, results, sdkVersion);
+
+        // ------------------------------------------------------------------------ [ Benchmark Layers ]
+
         for (String layer : specNames.get("layers")) {
             benchmark("get_layer", layer, ITER_HEAVY, () -> Statsig.getLayerSync(createUser(), layer), results, sdkVersion);
             benchmark("get_layer_global_user", layer, ITER_HEAVY, () -> Statsig.getLayerSync(globalUser, layer), results, sdkVersion);
         }
 
-        // Client initialize response
+        Layer layer = Statsig.getLayerSync(globalUser, "layer_with_many_params");
+        benchmark("get_layer_params", "string", ITER_HEAVY, () -> {
+            if (layer.getString("a_string", "err").equals("err")) { throw new Error("string value is err"); }
+        }, results, sdkVersion);
+        benchmark("get_layer_params", "object", ITER_HEAVY, () -> {
+            if (layer.getDictionary("an_object", null) == null) { throw new Error("object value is empty"); }
+        }, results, sdkVersion);
+        benchmark("get_layer_params", "array", ITER_HEAVY, () -> {
+            if (layer.getArray("an_array", null) == null) { throw new Error("array value is empty"); }
+        }, results, sdkVersion);
+
+        // ------------------------------------------------------------------------ [ Benchmark GCIR ]
+
         benchmark("get_client_initialize_response", "n/a", ITER_LITE, () -> Statsig.getClientInitializeResponse(createUser(), HashAlgo.DJB2, null), results, sdkVersion);
         benchmark("get_client_initialize_response_global_user", "n/a", ITER_LITE, () -> Statsig.getClientInitializeResponse(globalUser, HashAlgo.DJB2, null), results, sdkVersion);
 
