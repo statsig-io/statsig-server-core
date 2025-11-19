@@ -39,6 +39,11 @@ jobs:
           ref: main
           token: ${{ secrets.XIN_PAT_FOR_ACCESS_TOKEN }}
           path: ./${{ matrix.args[1] }}/${{  env.sdk_repo  }}
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+            repo-token: ${{ secrets.GITHUB_TOKEN }}
       
       - uses: pnpm/action-setup@v4
         with:
