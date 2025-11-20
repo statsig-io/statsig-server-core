@@ -1,4 +1,11 @@
 defmodule Statsig.Options do
+  defmodule ProxyConfig do
+    defstruct proxy_host: nil,
+              proxy_port: nil,
+              proxy_auth: nil,
+              proxy_protocol: nil
+  end
+
   defstruct environment: nil,
             output_log_level: nil,
             init_timeout_ms: nil,
@@ -18,7 +25,8 @@ defmodule Statsig.Options do
             disable_network: nil,
             disable_user_agent_parsing: nil,
             use_third_party_ua_parser: nil,
-            disable_disk_access: nil
+            disable_disk_access: nil,
+            proxy_config: nil
 end
 
 defmodule Statsig.ExperimentEvaluationOptions do
