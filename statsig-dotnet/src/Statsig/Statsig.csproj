@@ -26,6 +26,9 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net471'">
+    <PackageReference Include="System.Memory" Version="4.5.5" />
+  </ItemGroup>
   <ItemGroup Condition="'$(UseLocalProjects)' == 'true'">
     <ProjectReference Include="../Native/Statsig.NativeAssets.osx-arm64.csproj" Condition="'$(RuntimeIdentifier)' == 'osx-arm64'" />
     <ProjectReference Include="../Native/Statsig.NativeAssets.linux-x64.csproj" Condition="'$(RuntimeIdentifier)' == 'linux-x64'" />

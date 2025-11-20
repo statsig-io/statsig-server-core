@@ -5,7 +5,6 @@ using WireMock.ResponseBuilders;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System;
-using System.Linq;
 using WireMock.Matchers;
 
 namespace Statsig.Tests

@@ -45,7 +45,7 @@ namespace Statsig
 
         public static Statsig Shared()
         {
-            if (!HasShared())
+            if (!HasShared() || sharedInstance == null)
             {
                 Console.Error.WriteLine(
                     "[Statsig] No shared instance found. Please call NewShared() before accessing the shared instance. Returning an invalid instance.");
@@ -55,7 +55,6 @@ namespace Statsig
             return sharedInstance;
         }
 
-        [MemberNotNullWhen(true, nameof(sharedInstance))]
         public static bool HasShared()
         {
             return sharedInstance != null;
@@ -155,17 +154,32 @@ namespace Statsig
         {
             // Get gate name bytes
             int nameLen = Encoding.UTF8.GetByteCount(gateName);
+#if NET8_0_OR_GREATER
             Span<byte> nameBytes = nameLen <= SpecNameStackThreshold ? stackalloc byte[nameLen] : new byte[nameLen];
             Encoding.UTF8.GetBytes(gateName.AsSpan(), nameBytes);
+#else
+            byte[] nameBytesArray = new byte[nameLen];
+            Encoding.UTF8.GetBytes(gateName, 0, gateName.Length, nameBytesArray, 0);
+            Span<byte> nameBytes = nameBytesArray;
+#endif
 
             // Get options bytes
             string? optionsJson = options is null ? null : JsonConvert.SerializeObject(options);
             int optLen = optionsJson is null ? 0 : Encoding.UTF8.GetByteCount(optionsJson);
+#if NET8_0_OR_GREATER
             Span<byte> optBytes = optLen <= EvalOptStackThreshold ? stackalloc byte[optLen] : new byte[optLen];
             if (optLen > 0)
             {
                 Encoding.UTF8.GetBytes(optionsJson.AsSpan(), optBytes);
             }
+#else
+            byte[] optBytesArray = optLen > 0 ? new byte[optLen] : Array.Empty<byte>();
+            if (optLen > 0)
+            {
+                Encoding.UTF8.GetBytes(optionsJson, 0, optionsJson.Length, optBytesArray, 0);
+            }
+            Span<byte> optBytes = optBytesArray;
+#endif
 
             fixed (byte* namePtr = nameBytes)
             fixed (byte* optPtr = optBytes)
@@ -183,9 +197,16 @@ namespace Statsig
         unsafe public IFeatureGate GetFeatureGate(IStatsigUser user, string gateName, EvaluationOptions? options = null)
         {
             int nameLen = Encoding.UTF8.GetByteCount(gateName);
+#if NET8_0_OR_GREATER
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
             int written = Encoding.UTF8.GetBytes(gateName, nameBytes[..nameLen]);
             nameBytes[written] = 0;
+#else
+            byte[] nameBytesArray = new byte[nameLen + 1];
+            Encoding.UTF8.GetBytes(gateName, 0, gateName.Length, nameBytesArray, 0);
+            nameBytesArray[nameLen] = 0;
+            Span<byte> nameBytes = nameBytesArray;
+#endif
 
             string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
             byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
@@ -205,9 +226,16 @@ namespace Statsig
         unsafe public void ManuallyLogGateExposure(IStatsigUser user, string gateName)
         {
             int nameLen = Encoding.UTF8.GetByteCount(gateName);
+#if NET8_0_OR_GREATER
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
             int written = Encoding.UTF8.GetBytes(gateName, nameBytes[..nameLen]);
             nameBytes[written] = 0;
+#else
+            byte[] nameBytesArray = new byte[nameLen + 1];
+            Encoding.UTF8.GetBytes(gateName, 0, gateName.Length, nameBytesArray, 0);
+            nameBytesArray[nameLen] = 0;
+            Span<byte> nameBytes = nameBytesArray;
+#endif
             fixed (byte* gateNamePtr = nameBytes)
             {
                 StatsigFFI.statsig_manually_log_gate_exposure(_statsigRef, user.Reference, gateNamePtr);
@@ -221,9 +249,16 @@ namespace Statsig
         unsafe public IDynamicConfig GetDynamicConfig(IStatsigUser user, string configName, EvaluationOptions? options = null)
         {
             int nameLen = Encoding.UTF8.GetByteCount(configName);
+#if NET8_0_OR_GREATER
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
             int written = Encoding.UTF8.GetBytes(configName, nameBytes[..nameLen]);
             nameBytes[written] = 0;
+#else
+            byte[] nameBytesArray = new byte[nameLen + 1];
+            Encoding.UTF8.GetBytes(configName, 0, configName.Length, nameBytesArray, 0);
+            nameBytesArray[nameLen] = 0;
+            Span<byte> nameBytes = nameBytesArray;
+#endif
 
             string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
             byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
@@ -245,9 +280,16 @@ namespace Statsig
         unsafe public void ManuallyLogDynamicConfigExposure(IStatsigUser user, string configName)
         {
             int nameLen = Encoding.UTF8.GetByteCount(configName);
+#if NET8_0_OR_GREATER
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
             int written = Encoding.UTF8.GetBytes(configName, nameBytes[..nameLen]);
             nameBytes[written] = 0;
+#else
+            byte[] nameBytesArray = new byte[nameLen + 1];
+            Encoding.UTF8.GetBytes(configName, 0, configName.Length, nameBytesArray, 0);
+            nameBytesArray[nameLen] = 0;
+            Span<byte> nameBytes = nameBytesArray;
+#endif
             fixed (byte* configNamePtr = nameBytes)
             {
                 StatsigFFI.statsig_manually_log_dynamic_config_exposure(_statsigRef, user.Reference, configNamePtr);
@@ -261,9 +303,16 @@ namespace Statsig
         unsafe public IExperiment GetExperiment(IStatsigUser user, string experimentName, EvaluationOptions? options = null)
         {
             int nameLen = Encoding.UTF8.GetByteCount(experimentName);
+#if NET8_0_OR_GREATER
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
             int written = Encoding.UTF8.GetBytes(experimentName, nameBytes[..nameLen]);
             nameBytes[written] = 0;
+#else
+            byte[] nameBytesArray = new byte[nameLen + 1];
+            Encoding.UTF8.GetBytes(experimentName, 0, experimentName.Length, nameBytesArray, 0);
+            nameBytesArray[nameLen] = 0;
+            Span<byte> nameBytes = nameBytesArray;
+#endif
 
             string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
             byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
@@ -285,9 +334,16 @@ namespace Statsig
         unsafe public void ManuallyLogExperimentExposure(IStatsigUser user, string experimentName)
         {
             int nameLen = Encoding.UTF8.GetByteCount(experimentName);
+#if NET8_0_OR_GREATER
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
             int written = Encoding.UTF8.GetBytes(experimentName, nameBytes[..nameLen]);
             nameBytes[written] = 0;
+#else
+            byte[] nameBytesArray = new byte[nameLen + 1];
+            Encoding.UTF8.GetBytes(experimentName, 0, experimentName.Length, nameBytesArray, 0);
+            nameBytesArray[nameLen] = 0;
+            Span<byte> nameBytes = nameBytesArray;
+#endif
             fixed (byte* experimentNamePtr = nameBytes)
             {
                 StatsigFFI.statsig_manually_log_experiment_exposure(_statsigRef, user.Reference, experimentNamePtr);
@@ -301,9 +357,16 @@ namespace Statsig
         unsafe public ILayer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null)
         {
             int nameLen = Encoding.UTF8.GetByteCount(layerName);
+#if NET8_0_OR_GREATER
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
             int written = Encoding.UTF8.GetBytes(layerName, nameBytes[..nameLen]);
             nameBytes[written] = 0;
+#else
+            byte[] nameBytesArray = new byte[nameLen + 1];
+            Encoding.UTF8.GetBytes(layerName, 0, layerName.Length, nameBytesArray, 0);
+            nameBytesArray[nameLen] = 0;
+            Span<byte> nameBytes = nameBytesArray;
+#endif
 
             string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
             byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
@@ -330,13 +393,27 @@ namespace Statsig
         unsafe public void ManuallyLogLayerParameterExposure(IStatsigUser user, string layerName, string parameterName)
         {
             int layerNameLen = Encoding.UTF8.GetByteCount(layerName);
+#if NET8_0_OR_GREATER
             Span<byte> layerNameBytes = layerNameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[layerNameLen + 1] : new byte[layerNameLen + 1];
-            int layerWritten = Encoding.UTF8.GetBytes(layerName, layerNameBytes[..layerNameLen]);
-            layerNameBytes[layerWritten] = 0;
+            int writtenLayer = Encoding.UTF8.GetBytes(layerName, layerNameBytes[..layerNameLen]);
+            layerNameBytes[writtenLayer] = 0;
+#else
+            byte[] layerNameBytesArray = new byte[layerNameLen + 1];
+            Encoding.UTF8.GetBytes(layerName, 0, layerName.Length, layerNameBytesArray, 0);
+            layerNameBytesArray[layerNameLen] = 0;
+            Span<byte> layerNameBytes = layerNameBytesArray;
+#endif
             int paramNameLen = Encoding.UTF8.GetByteCount(parameterName);
+#if NET8_0_OR_GREATER
             Span<byte> paramNameBytes = paramNameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[paramNameLen + 1] : new byte[paramNameLen + 1];
-            int paramWritten = Encoding.UTF8.GetBytes(parameterName, paramNameBytes[..paramNameLen]);
-            paramNameBytes[paramWritten] = 0;
+            int writtenParam = Encoding.UTF8.GetBytes(parameterName, paramNameBytes[..paramNameLen]);
+            paramNameBytes[writtenParam] = 0;
+#else
+            byte[] paramNameBytesArray = new byte[paramNameLen + 1];
+            Encoding.UTF8.GetBytes(parameterName, 0, parameterName.Length, paramNameBytesArray, 0);
+            paramNameBytesArray[paramNameLen] = 0;
+            Span<byte> paramNameBytes = paramNameBytesArray;
+#endif
             fixed (byte* parameterNamePtr = paramNameBytes)
             fixed (byte* layerNamePtr = layerNameBytes)
             {

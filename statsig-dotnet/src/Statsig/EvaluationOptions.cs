@@ -1,6 +1,3 @@
-using System;
-using System.Text;
-using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 
 namespace Statsig
