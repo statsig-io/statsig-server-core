@@ -13,6 +13,9 @@ use crate::{OverrideAdapter, Statsig, StatsigErr};
 
 const MAX_RECURSIVE_DEPTH: u16 = 300;
 
+// (gate_name, (bool_value, rule_id))
+type NestedGateMemo = HashMap<InternedString, (bool, Option<InternedString>)>;
+
 pub enum IdListResolution<'a> {
     MapLookup(&'a HashMap<String, IdList>),
     Callback(&'a dyn Fn(&str, &str) -> bool),
@@ -23,11 +26,11 @@ pub struct EvaluatorContext<'a> {
     pub specs_data: &'a SpecsResponseFull,
     pub id_list_resolver: IdListResolution<'a>,
     pub hashing: &'a HashUtil,
-    pub result: EvaluatorResult<'a>,
+    pub result: EvaluatorResult,
     pub nested_count: u16,
     pub app_id: Option<&'a DynamicValue>,
     pub override_adapter: Option<&'a Arc<dyn OverrideAdapter>>,
-    pub nested_gate_memo: HashMap<&'a str, (bool, Option<&'a InternedString>)>,
+    pub nested_gate_memo: NestedGateMemo,
     pub should_user_third_party_parser: bool,
     pub statsig: Option<&'a Statsig>,
     pub disable_exposure_logging: bool,

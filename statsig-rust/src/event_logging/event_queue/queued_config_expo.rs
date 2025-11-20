@@ -7,6 +7,7 @@ use crate::{
         statsig_event::StatsigEvent,
         statsig_event_internal::{StatsigEventInternal, CONFIG_EXPOSURE_EVENT_NAME},
     },
+    interned_string::InternedString,
     statsig_types::DynamicConfig,
     user::{StatsigUserInternal, StatsigUserLoggable},
     EvaluationDetails, SecondaryExposure,
@@ -83,7 +84,7 @@ pub struct QueuedConfigExposureEvent {
     pub version: Option<u32>,
     pub exposure_trigger: ExposureTrigger,
     pub sampling_decision: EvtSamplingDecision,
-    pub override_config_name: Option<String>,
+    pub override_config_name: Option<InternedString>,
     pub exposure_time: u64,
 }
 
@@ -106,7 +107,10 @@ impl QueuedConfigExposureEvent {
         }
 
         if let Some(override_config_name) = self.override_config_name {
-            metadata.insert("overrideConfigName".into(), override_config_name);
+            metadata.insert(
+                "overrideConfigName".into(),
+                override_config_name.unperformant_to_string(),
+            );
         }
 
         let statsig_metadata = get_statsig_metadata_with_sampling_decision(self.sampling_decision);

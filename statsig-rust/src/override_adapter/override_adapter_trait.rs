@@ -9,21 +9,21 @@ pub trait OverrideAdapter: Send + Sync {
         &self,
         user: &StatsigUser,
         gate_name: &str,
-        result: &mut EvaluatorResult<'_>,
+        result: &mut EvaluatorResult,
     ) -> bool;
 
     fn get_dynamic_config_override(
         &self,
         user: &StatsigUser,
         dynamic_config_name: &str,
-        result: &mut EvaluatorResult<'_>,
+        result: &mut EvaluatorResult,
     ) -> bool;
 
     fn get_experiment_override(
         &self,
         user: &StatsigUser,
         experiment_name: &str,
-        result: &mut EvaluatorResult<'_>,
+        result: &mut EvaluatorResult,
         opt_spec: Option<&Spec>,
     ) -> bool;
 
@@ -31,7 +31,7 @@ pub trait OverrideAdapter: Send + Sync {
         &self,
         user: &StatsigUser,
         layer_name: &str,
-        result: &mut EvaluatorResult<'_>,
+        result: &mut EvaluatorResult,
     ) -> bool;
 
     fn override_gate(&self, key: &str, value: bool, id: Option<&str>);

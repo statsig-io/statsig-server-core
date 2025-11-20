@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{interned_string::InternedString, SecondaryExposure, StickyValues};
+use crate::{
+    interned_string::InternedString, specs_response::explicit_params::ExplicitParameters,
+    SecondaryExposure, StickyValues,
+};
 
 use serde_json::{json, Value};
 
@@ -84,7 +87,7 @@ fn test_sticky_values_serialization_to_value() {
         }],
         undelegated_secondary_exposures: None,
         config_delegate: Some("test_delegate".to_string()),
-        explicit_parameters: Some(vec!["test_param".to_string()]),
+        explicit_parameters: Some(ExplicitParameters::from_vec(vec!["test_param".to_string()])),
         time: Some(1757974789243_u64),
         config_version: Some(1),
     };
@@ -113,7 +116,7 @@ fn test_sticky_values_serialization_to_str() {
         }],
         undelegated_secondary_exposures: None,
         config_delegate: Some("test_delegate".to_string()),
-        explicit_parameters: Some(vec!["test_param".to_string()]),
+        explicit_parameters: Some(ExplicitParameters::from_vec(vec!["test_param".to_string()])),
         time: Some(1757974789243_u64),
         config_version: Some(1),
     };

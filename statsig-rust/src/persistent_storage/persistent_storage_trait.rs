@@ -2,6 +2,7 @@ use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::evaluation_types::BaseEvaluation;
 use crate::event_logging::event_logger::EventLogger;
 use crate::interned_string::InternedString;
+use crate::specs_response::explicit_params::ExplicitParameters;
 use crate::{
     evaluation::evaluation_types::{ExperimentEvaluation, LayerEvaluation},
     statsig_type_factories::{extract_from_experiment_evaluation, make_layer},
@@ -56,7 +57,7 @@ pub struct StickyValues {
     pub secondary_exposures: Vec<SecondaryExposure>,
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
     pub config_delegate: Option<String>,
-    pub explicit_parameters: Option<Vec<String>>,
+    pub explicit_parameters: Option<ExplicitParameters>,
     #[serde(deserialize_with = "deserialize_safe_timestamp")]
     pub time: Option<u64>,
     pub config_version: Option<u32>,
@@ -134,13 +135,7 @@ pub fn make_sticky_value_from_layer(layer: &Layer) -> Option<StickyValues> {
             .allocated_experiment_name
             .as_ref()
             .map(|g| g.unperformant_to_string()),
-        explicit_parameters: Some(
-            layer_evaluation
-                .explicit_parameters
-                .iter()
-                .map(|g| g.unperformant_to_string())
-                .collect(),
-        ),
+        explicit_parameters: Some(layer_evaluation.explicit_parameters.clone()),
         time: layer.details.lcut,
         config_version,
     })
@@ -187,10 +182,7 @@ pub fn make_sticky_value_from_experiment(experiment: &Experiment) -> Option<Stic
         secondary_exposures: evaluation.base.secondary_exposures.clone(),
         undelegated_secondary_exposures: evaluation.undelegated_secondary_exposures.clone(),
         config_delegate: None,
-        explicit_parameters: evaluation
-            .explicit_parameters
-            .as_ref()
-            .map(|g| g.iter().map(|g| g.unperformant_to_string()).collect()),
+        explicit_parameters: evaluation.explicit_parameters.as_ref().cloned(),
         time: experiment.details.lcut,
         config_version,
     })

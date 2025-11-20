@@ -12,6 +12,7 @@ use crate::{
     interned_string::InternedString,
     networking::ResponseData,
     specs_response::{
+        explicit_params::ExplicitParameters,
         proto_stream_reader::ProtoStreamReader,
         spec_types::{Condition, Rule, Spec, SpecsResponseFull, SpecsResponsePartial},
         specs_hash_map::{SpecPointer, SpecsHashMap},
@@ -370,12 +371,7 @@ fn spec_from_pb(checksum: String, spec: pb::Spec) -> Result<Spec, StatsigErr> {
         id_type: id_type_from_pb(spec.id_type)?,
         explicit_parameters: match spec.explicit_parameters.is_empty() {
             true => None,
-            false => Some(
-                spec.explicit_parameters
-                    .into_iter()
-                    .map(InternedString::from_string)
-                    .collect(),
-            ),
+            false => Some(ExplicitParameters::from_vec(spec.explicit_parameters)),
         },
         entity: entity_type.to_string_type()?,
         has_shared_params: spec.has_shared_params,

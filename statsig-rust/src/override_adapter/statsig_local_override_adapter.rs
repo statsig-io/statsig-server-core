@@ -45,7 +45,7 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
         &self,
         user: &StatsigUser,
         gate_name: &str,
-        result: &mut EvaluatorResult<'_>,
+        result: &mut EvaluatorResult,
     ) -> bool {
         let store = read_lock_or_return!(TAG, self.store, false);
 
@@ -70,7 +70,7 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
         &self,
         user: &StatsigUser,
         dynamic_config_name: &str,
-        result: &mut EvaluatorResult<'_>,
+        result: &mut EvaluatorResult,
     ) -> bool {
         let store = read_lock_or_return!(TAG, self.store, false);
 
@@ -93,7 +93,7 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
         &self,
         user: &StatsigUser,
         experiment_name: &str,
-        result: &mut EvaluatorResult<'_>,
+        result: &mut EvaluatorResult,
         opt_spec: Option<&Spec>,
     ) -> bool {
         let store = read_lock_or_return!(TAG, self.store, false);
@@ -122,7 +122,7 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
         &self,
         user: &StatsigUser,
         layer_name: &str,
-        result: &mut EvaluatorResult<'_>,
+        result: &mut EvaluatorResult,
     ) -> bool {
         let store = read_lock_or_return!(TAG, self.store, false);
 
@@ -258,10 +258,10 @@ fn find_override_for_user<T, F>(
     user: &StatsigUser,
     overrides: &HashMap<String, T>,
     apply_override: F,
-    result: &mut EvaluatorResult<'_>,
+    result: &mut EvaluatorResult,
 ) -> bool
 where
-    F: Fn(&T, &mut EvaluatorResult<'_>),
+    F: Fn(&T, &mut EvaluatorResult),
 {
     if check_user_id_override(user, overrides, &apply_override, result) {
         return true;
@@ -274,18 +274,18 @@ where
     check_default_override(overrides, apply_override, result)
 }
 
-fn mark_result_as_override(result: &mut EvaluatorResult<'_>) {
+fn mark_result_as_override(result: &mut EvaluatorResult) {
     result.override_reason = Some(LOCAL_OVERRIDE_REASON);
-    result.rule_id = Some(&OVERRIDE_RULE_ID);
+    result.rule_id = Some(OVERRIDE_RULE_ID.clone());
 }
 
 fn check_default_override<T, F>(
     overrides: &HashMap<String, T>,
     apply_override: F,
-    result: &mut EvaluatorResult<'_>,
+    result: &mut EvaluatorResult,
 ) -> bool
 where
-    F: Fn(&T, &mut EvaluatorResult<'_>),
+    F: Fn(&T, &mut EvaluatorResult),
 {
     if let Some(override_value) = overrides.get(NO_ID_OVERRIDE) {
         log_d!(TAG, "default override found");
@@ -300,10 +300,10 @@ fn check_user_id_override<T, F>(
     user: &StatsigUser,
     overrides: &HashMap<String, T>,
     apply_override: F,
-    result: &mut EvaluatorResult<'_>,
+    result: &mut EvaluatorResult,
 ) -> bool
 where
-    F: Fn(&T, &mut EvaluatorResult<'_>),
+    F: Fn(&T, &mut EvaluatorResult),
 {
     let user_id = match &user.data.user_id {
         Some(id) => id,
@@ -330,10 +330,10 @@ fn check_custom_ids_override<T, F>(
     user: &StatsigUser,
     overrides: &HashMap<String, T>,
     apply_override: F,
-    result: &mut EvaluatorResult<'_>,
+    result: &mut EvaluatorResult,
 ) -> bool
 where
-    F: Fn(&T, &mut EvaluatorResult<'_>),
+    F: Fn(&T, &mut EvaluatorResult),
 {
     let custom_ids = match &user.data.custom_ids {
         Some(ids) => ids,

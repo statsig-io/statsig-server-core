@@ -7,6 +7,7 @@ use serde_with::skip_serializing_none;
 use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::{dynamic_returnable::DynamicReturnable, evaluator_value::EvaluatorValue};
 use crate::interned_string::InternedString;
+use crate::specs_response::explicit_params::ExplicitParameters;
 use crate::specs_response::specs_hash_map::SpecsHashMap;
 use crate::DynamicValue;
 
@@ -27,7 +28,7 @@ pub struct Spec {
     pub enabled: bool,
     pub rules: Vec<Rule>,
     pub id_type: InternedString,
-    pub explicit_parameters: Option<Vec<InternedString>>,
+    pub explicit_parameters: Option<ExplicitParameters>,
     pub entity: InternedString,
     pub has_shared_params: Option<bool>,
     pub is_active: Option<bool>,
@@ -78,7 +79,7 @@ pub struct OverrideRule {
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 pub struct ConfigMapping {
-    pub new_config_name: String,
+    pub new_config_name: InternedString,
     pub rules: Vec<OverrideRule>,
 }
 

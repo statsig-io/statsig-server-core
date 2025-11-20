@@ -19,9 +19,10 @@ use crate::evaluation::evaluation_types_initialize_v2::{
 use crate::evaluation::secondary_exposure_key::SecondaryExposureKey;
 use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::interned_string::InternedString;
+use crate::specs_response::explicit_params::ExplicitParameters;
 
 #[derive(Default, Debug)]
-pub struct EvaluatorResult<'a> {
+pub struct EvaluatorResult {
     pub name: Option<InternedString>,
     pub bool_value: bool,
     pub unsupported: bool,
@@ -31,18 +32,18 @@ pub struct EvaluatorResult<'a> {
     pub is_in_experiment: bool,
     pub id_type: Option<InternedString>,
     pub json_value: Option<DynamicReturnable>,
-    pub rule_id: Option<&'a InternedString>,
+    pub rule_id: Option<InternedString>,
     pub rule_id_suffix: Option<&'static str>,
     pub group_name: Option<InternedString>,
-    pub explicit_parameters: Option<&'a Vec<InternedString>>,
+    pub explicit_parameters: Option<ExplicitParameters>,
     pub config_delegate: Option<InternedString>,
     pub secondary_exposures: Vec<SecondaryExposure>,
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
-    pub override_reason: Option<&'a str>,
+    pub override_reason: Option<&'static str>,
     pub version: Option<u32>,
     pub sampling_rate: Option<u64>,
     pub forward_all_exposures: Option<bool>,
-    pub override_config_name: Option<&'a str>,
+    pub override_config_name: Option<InternedString>,
     pub has_seen_analytical_gates: Option<bool>,
     pub parameter_rule_ids: Option<HashMap<InternedString, InternedString>>,
 }
@@ -105,7 +106,7 @@ pub fn result_to_experiment_eval(
         value: get_json_value(result),
         is_in_layer: result.is_in_layer,
         group_name: result.group_name.take(),
-        explicit_parameters: result.explicit_parameters.cloned(),
+        explicit_parameters: result.explicit_parameters.clone(),
         is_experiment_active,
         is_user_in_experiment,
         undelegated_secondary_exposures: std::mem::take(
@@ -139,7 +140,7 @@ pub fn result_to_experiment_eval_v2(
         value: get_json_value(result),
         is_in_layer: result.is_in_layer,
         group_name: result.group_name.take(),
-        explicit_parameters: result.explicit_parameters.cloned(),
+        explicit_parameters: result.explicit_parameters.clone(),
         is_experiment_active,
         is_user_in_experiment,
         undelegated_secondary_exposures: result.undelegated_secondary_exposures.clone(),
@@ -193,7 +194,7 @@ pub fn eval_result_to_experiment_eval(
         value: get_json_value(result),
         is_in_layer: result.is_in_layer,
         group_name: result.group_name.take(),
-        explicit_parameters: result.explicit_parameters.cloned(),
+        explicit_parameters: result.explicit_parameters.clone(),
         is_experiment_active: Some(result.is_experiment_active),
         is_user_in_experiment: Some(result.is_experiment_group),
         undelegated_secondary_exposures: std::mem::take(
@@ -226,7 +227,7 @@ pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> L
         is_experiment_active,
         is_user_in_experiment,
         allocated_experiment_name,
-        explicit_parameters: result.explicit_parameters.cloned().unwrap_or_default(),
+        explicit_parameters: result.explicit_parameters.clone().unwrap_or_default(),
         undelegated_secondary_exposures: Some(undelegated_sec_expos.unwrap_or_default()),
         id_type: Some(id_type),
         parameter_rule_ids: result.parameter_rule_ids.clone(),
@@ -275,7 +276,7 @@ pub fn result_to_layer_eval_v2(
         is_experiment_active,
         is_user_in_experiment,
         allocated_experiment_name,
-        explicit_parameters: result.explicit_parameters.cloned().unwrap_or_default(),
+        explicit_parameters: result.explicit_parameters.clone().unwrap_or_default(),
         undelegated_secondary_exposures: Some(undelegated_secondary_exposures),
         id_type: Some(id_type),
     }
@@ -328,7 +329,7 @@ pub fn result_to_layer_eval_init_v2(
         is_experiment_active,
         is_user_in_experiment,
         allocated_experiment_name,
-        explicit_parameters: result.explicit_parameters.cloned(),
+        explicit_parameters: result.explicit_parameters.clone(),
         undelegated_secondary_exposures: mapped_exposures,
     }
 }
@@ -436,13 +437,13 @@ fn get_exposure_name_if_not_hashed(
 }
 
 fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEvaluation {
-    let rule_id = create_suffixed_rule_id(result.rule_id, result.rule_id_suffix);
+    let rule_id = create_suffixed_rule_id(result.rule_id.as_ref(), result.rule_id_suffix);
 
     let exposure_info = ExtraExposureInfo {
         sampling_rate: result.sampling_rate,
         forward_all_exposures: result.forward_all_exposures,
         has_seen_analytical_gates: result.has_seen_analytical_gates,
-        override_config_name: result.override_config_name.map(|s| s.to_string()),
+        override_config_name: result.override_config_name.clone(),
         version: result.version,
     };
 
@@ -474,7 +475,7 @@ fn result_to_base_eval_v2(
         exposures.push(hash.clone());
     }
 
-    let rule_id = create_suffixed_rule_id(result.rule_id, result.rule_id_suffix);
+    let rule_id = create_suffixed_rule_id(result.rule_id.as_ref(), result.rule_id_suffix);
 
     BaseEvaluationV2 {
         name: spec_name.to_string(),
@@ -488,7 +489,7 @@ fn result_to_base_eval_init_v2(
     expo_id_to_exposure_map: &mut HashMap<InternedString, SecondaryExposure>,
     expo_key_to_expo_id_map: &mut AHashMap<SecondaryExposureKey, InternedString>,
 ) -> BaseEvaluationInitV2 {
-    let rule_id = create_suffixed_rule_id(result.rule_id, result.rule_id_suffix);
+    let rule_id = create_suffixed_rule_id(result.rule_id.as_ref(), result.rule_id_suffix);
     let opt_rule_id = match rule_id.as_str() {
         "default" => None,
         _ => Some(rule_id),
@@ -542,13 +543,13 @@ fn create_suffixed_rule_id(
     rule_id: Option<&InternedString>,
     suffix: Option<&str>,
 ) -> InternedString {
-    let id_arc = match &rule_id {
+    let rule_id_str = match rule_id {
         Some(rule_id) => rule_id.as_str(),
         None => "",
     };
 
     match &suffix {
-        Some(suffix) => InternedString::from_str_parts(&[id_arc, ":", suffix]),
+        Some(suffix) => InternedString::from_str_parts(&[rule_id_str, ":", suffix]),
         None => rule_id.cloned().unwrap_or_default(),
     }
 }

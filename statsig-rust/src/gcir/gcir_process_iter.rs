@@ -42,17 +42,13 @@ pub(crate) fn gcir_process_iter<T>(
         let spec_type = get_spec_type(spec);
         Evaluator::evaluate(context, name.as_str(), &spec_type)?;
 
-        if options.remove_default_value_gates.unwrap_or(false) && spec.entity == "feature_gate" {
-            match context.result.rule_id {
-                Some(rule_id)
-                    if rule_id == "default"
-                        && !context.result.bool_value
-                        && context.result.secondary_exposures.is_empty() =>
-                {
-                    continue
-                }
-                _ => {}
-            }
+        if options.remove_default_value_gates.unwrap_or(false)
+            && spec.entity == "feature_gate"
+            && context.result.rule_id.as_deref() == Some("default")
+            && !context.result.bool_value
+            && context.result.secondary_exposures.is_empty()
+        {
+            continue;
         }
 
         let hashed_name = context

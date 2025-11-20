@@ -1,4 +1,4 @@
-use crate::interned_string::InternedString;
+use crate::{interned_string::InternedString, specs_response::explicit_params::ExplicitParameters};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
@@ -89,7 +89,7 @@ pub struct LayerEvaluationInitV2 {
     #[serde(rename = "ae")]
     pub allocated_experiment_name: Option<InternedString>,
     #[serde(rename = "ep")]
-    pub explicit_parameters: Option<Vec<InternedString>>,
+    pub explicit_parameters: Option<ExplicitParameters>,
     #[serde(rename = "us")]
     pub undelegated_secondary_exposures: Option<Vec<InternedString>>,
 }
