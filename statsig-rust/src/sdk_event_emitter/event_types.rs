@@ -38,7 +38,6 @@ impl SdkEventCode {
 }
 
 #[derive(Serialize, Clone)]
-#[allow(clippy::large_enum_variant)]
 pub enum SdkEvent<'a> {
     SpecsUpdated {
         source: &'a SpecsSource,
@@ -58,7 +57,7 @@ pub enum SdkEvent<'a> {
         experiment: Cow<'a, Experiment>,
     },
     LayerEvaluated {
-        layer: Cow<'a, Layer>,
+        layer: Box<Cow<'a, Layer>>,
     },
 }
 

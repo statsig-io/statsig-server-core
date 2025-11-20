@@ -158,7 +158,7 @@ impl Statsig {
 
     pub(crate) fn emit_layer_evaluated(&self, layer: &Layer) {
         self.emit(SdkEvent::LayerEvaluated {
-            layer: Cow::Borrowed(layer),
+            layer: Box::new(Cow::Borrowed(layer)),
         });
     }
 }
