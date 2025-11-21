@@ -111,6 +111,10 @@ describe('StatsigUser', () => {
         myCustomID: 'c-custom-id',
       },
       email: 'c-user@example.com',
+      custom: {
+        noneField: undefined,
+        aField: 123,
+      }
     });
 
     statsig.checkGate(user, 'test-gate');
@@ -121,6 +125,8 @@ describe('StatsigUser', () => {
     expect(event?.user?.userID).toEqual('c-user');
     expect(event?.user?.customIDs?.myCustomID).toEqual('c-custom-id');
     expect(event?.user?.email).toEqual('c-user@example.com');
+    expect(event?.user?.custom.aField).toBe(123);
+    expect(event?.user?.custom.noneField).toBeUndefined();
   });
 
   it('creates users with no userID', async () => {

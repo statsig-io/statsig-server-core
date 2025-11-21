@@ -321,7 +321,7 @@ export interface StatsigUserArgs {
   locale?: string
   appVersion?: string
   statsigEnvironment?: { tier?: string, [key: string]: string | undefined } | null | undefined
-  custom?: Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>
+  custom?: Record<string, string | number | boolean | Array<string | number | boolean> | null | undefined | Record<string, unknown>>
   privateAttributes?: Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>
 }
 // ---- Manually defined typing section ----- 
