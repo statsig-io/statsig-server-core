@@ -55,7 +55,8 @@ void __internal__test_observability_client(uint64_t ob_client_ref,
                                            double value,
                                            const char *tags);
 
-uint64_t persistent_storage_create(char *(*load_fn)(const char *args_ptr, uint64_t args_length),
+uint64_t persistent_storage_create(const char *bindings_language,
+                                   char *(*load_fn)(const char *args_ptr, uint64_t args_length),
                                    void (*save_fn)(const char *args_ptr, uint64_t args_length),
                                    void (*delete_fn)(const char *args_ptr, uint64_t args_length));
 

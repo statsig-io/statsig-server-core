@@ -53,6 +53,7 @@ func NewPersistentStorage(functions PersistentStorageFunctions) *PersistentStora
 	}
 
 	storage.ref = GetFFI().persistent_storage_create(
+		"go",
 		// Load
 		func(argsPtr *byte, argsLength uint64) *byte {
 			keyStr := internal.GoStringFromPointer(argsPtr, argsLength)

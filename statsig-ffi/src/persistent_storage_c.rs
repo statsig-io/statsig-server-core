@@ -1,3 +1,4 @@
+use statsig_rust::StatsigErr;
 use std::ffi::c_char;
 
 use async_trait::async_trait;
@@ -10,6 +11,8 @@ use statsig_rust::{
 use crate::ffi_utils::{c_char_to_string, string_to_c_char};
 
 const TAG: &str = "PersistentStorageC";
+const THREAD_ERROR_MESSAGE: &str =
+    "Attempted to run PersistentStorage on a thread other than the one it was registered on";
 
 #[derive(Serialize)]
 struct PersistentStorageArgs<'a> {
@@ -22,6 +25,25 @@ pub struct PersistentStorageC {
     pub load_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64) -> *mut c_char,
     pub save_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
     pub delete_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
+
+    bindings_language: String,
+    registering_thread_id: std::thread::ThreadId,
+}
+
+impl PersistentStorageC {
+    fn verify_thread_requirements(&self) -> Result<(), StatsigErr> {
+        if self.bindings_language != "php" {
+            return Ok(());
+        }
+
+        let current_thread_id = std::thread::current().id();
+        if self.registering_thread_id != current_thread_id {
+            log_e!(TAG, "{THREAD_ERROR_MESSAGE}",);
+            return Err(StatsigErr::ThreadFailure(THREAD_ERROR_MESSAGE.to_string()));
+        }
+
+        Ok(())
+    }
 }
 
 // -------------------------------------------------------------------- [ Trait Impl ]
@@ -29,6 +51,11 @@ pub struct PersistentStorageC {
 #[async_trait]
 impl PersistentStorage for PersistentStorageC {
     fn load(&self, key: String) -> Option<UserPersistedValues> {
+        if let Err(e) = self.verify_thread_requirements() {
+            log_e!(TAG, "Thread verification failed: {}", e);
+            return None;
+        }
+
         let key_len = key.len() as u64;
         let key_char = string_to_c_char(key);
         let result = (self.load_fn)(key_char, key_len);
@@ -44,6 +71,11 @@ impl PersistentStorage for PersistentStorageC {
     }
 
     fn save(&self, key: &str, config_name: &str, data: StickyValues) {
+        if let Err(e) = self.verify_thread_requirements() {
+            log_e!(TAG, "Thread verification failed: {}", e);
+            return;
+        }
+
         let (args, args_len) = parcel_args("save", key, config_name, &Some(data));
         if args.is_null() {
             return;
@@ -53,6 +85,11 @@ impl PersistentStorage for PersistentStorageC {
     }
 
     fn delete(&self, _key: &str, _config_name: &str) {
+        if let Err(e) = self.verify_thread_requirements() {
+            log_e!(TAG, "Thread verification failed: {}", e);
+            return;
+        }
+
         let (args, args_len) = parcel_args("delete", _key, _config_name, &None);
         if args.is_null() {
             return;
@@ -66,14 +103,25 @@ impl PersistentStorage for PersistentStorageC {
 
 #[no_mangle]
 pub extern "C" fn persistent_storage_create(
+    bindings_language: *const c_char,
     load_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64) -> *mut c_char,
     save_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
     delete_fn: extern "C" fn(args_ptr: *const c_char, args_length: u64),
 ) -> u64 {
+    let bindings_language_str = match c_char_to_string(bindings_language) {
+        Some(name) => name,
+        None => {
+            log_e!(TAG, "Failed to convert bindings_language to string");
+            return 0;
+        }
+    };
+
     InstanceRegistry::register(PersistentStorageC {
         load_fn,
         save_fn,
         delete_fn,
+        bindings_language: bindings_language_str,
+        registering_thread_id: std::thread::current().id(),
     })
     .unwrap_or_else(|| {
         log_e!(TAG, "Failed to create PersistentStorageC");
