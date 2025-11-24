@@ -10,11 +10,21 @@ namespace Statsig
     /// </summary>
     public class StatsigOptions : IDisposable
     {
-        private readonly unsafe ulong _ref;
+        private unsafe ulong _ref;
+        private bool _disposed;
+        private readonly PersistentStorage? _persistentStorage;
+
         internal unsafe ulong Reference => _ref;
+        internal IPersistentStorage? PersistentStorage => _persistentStorage;
 
         public StatsigOptions(StatsigOptionsBuilder builder)
         {
+            if (builder.persistentStorage != null)
+            {
+                _persistentStorage = (PersistentStorage)builder.persistentStorage;
+                builder.persistentStorageRef = _persistentStorage.Reference;
+            }
+
             var jsonData = JsonConvert.SerializeObject(builder, new JsonSerializerSettings
             {
                 NullValueHandling = NullValueHandling.Ignore
@@ -27,6 +37,10 @@ namespace Statsig
                 {
                     _ref = StatsigFFI.statsig_options_create_from_data(jsonPtr);
                 }
+            }
+            if (builder.persistentStorage != null)
+            {
+                builder.persistentStorageRef = null;
             }
         }
 
@@ -43,7 +57,18 @@ namespace Statsig
 
         protected virtual void Dispose(bool disposing)
         {
-            StatsigFFI.statsig_options_release(_ref);
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (_ref != 0)
+            {
+                StatsigFFI.statsig_options_release(_ref);
+                _ref = 0;
+            }
+
+            _disposed = true;
         }
     }
 
@@ -81,6 +106,12 @@ namespace Statsig
 
         [JsonProperty("event_logging_max_queue_size")]
         internal int? eventLoggingMaxQueueSize;
+
+        [JsonProperty("persistent_storage_ref")]
+        internal ulong? persistentStorageRef;
+
+        [JsonIgnore]
+        internal IPersistentStorage? persistentStorage;
 
         [JsonProperty("disable_country_lookup")]
         internal bool? disableCountryLookup;
@@ -188,6 +219,13 @@ namespace Statsig
             this.eventLoggingMaxQueueSize = eventLoggingMaxQueueSize;
             return this;
         }
+
+        public StatsigOptionsBuilder SetPersistentStorage(IPersistentStorage persistentStorage)
+        {
+            this.persistentStorage = persistentStorage;
+            return this;
+        }
+
         public StatsigOptionsBuilder SetWaitForCountryLookupInit(bool waitForCountryLookupInit)
         {
             this.waitForCountryLookupInit = waitForCountryLookupInit;

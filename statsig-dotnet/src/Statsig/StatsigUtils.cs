@@ -37,5 +37,18 @@ namespace Statsig
 #endif
             return result;
         }
+
+        internal static IntPtr StringToNativeUtf8(string? value)
+        {
+            return value == null ? IntPtr.Zero : Marshal.StringToCoTaskMemUTF8(value);
+        }
+
+        internal static void FreeNativeUtf8(IntPtr ptr)
+        {
+            if (ptr != IntPtr.Zero)
+            {
+                Marshal.FreeCoTaskMem(ptr);
+            }
+        }
     }
 }

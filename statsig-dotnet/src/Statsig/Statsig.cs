@@ -2,10 +2,11 @@ using System;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Diagnostics.CodeAnalysis;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Statsig
 {
@@ -38,6 +39,7 @@ namespace Statsig
         private const int JsonStackThreshold = 1024;
 
         private readonly unsafe ulong _statsigRef;
+        private readonly StatsigOptions _options;
 
         // Shared Instance
         private static Statsig? sharedInstance = null;
@@ -103,6 +105,7 @@ namespace Statsig
         public Statsig(string sdkKey, StatsigOptions? options = null)
         {
             options ??= new StatsigOptions(new StatsigOptionsBuilder());
+            _options = options;
 
             var sdkKeyBytes = Encoding.UTF8.GetBytes(sdkKey);
             UpdateStatsigMetadata();
@@ -314,7 +317,8 @@ namespace Statsig
             Span<byte> nameBytes = nameBytesArray;
 #endif
 
-            string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            var persistedValues = LoadPersistedAssignments(user);
+            string? optionsJson = BuildEvaluationOptionsJson(options, persistedValues);
             byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
 
             fixed (byte* optionsPtr = optBytes)
@@ -368,7 +372,8 @@ namespace Statsig
             Span<byte> nameBytes = nameBytesArray;
 #endif
 
-            string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
+            var persistedValues = LoadPersistedAssignments(user);
+            string? optionsJson = BuildEvaluationOptionsJson(options, persistedValues);
             byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
 
             fixed (byte* optionsPtr = optBytes)
@@ -437,6 +442,73 @@ namespace Statsig
                     ? new ParameterStore(jsonString, _statsigRef, user.Reference, options)
                     : new ParameterStore(string.Empty, _statsigRef, user.Reference, options);
             }
+        }
+
+        private Dictionary<string, StickyValues>? LoadPersistedAssignments(IStatsigUser user)
+        {
+            var storage = _options.PersistentStorage;
+            if (storage == null)
+            {
+                return null;
+            }
+
+            var merged = new Dictionary<string, StickyValues>(StringComparer.Ordinal);
+
+            foreach (var key in EnumerateStorageKeys(user))
+            {
+                var values = storage.Load(key);
+                if (values == null)
+                {
+                    continue;
+                }
+
+                foreach (var kvp in values)
+                {
+                    if (!merged.ContainsKey(kvp.Key))
+                    {
+                        merged[kvp.Key] = kvp.Value;
+                    }
+                }
+            }
+
+            return merged.Count == 0 ? null : merged;
+        }
+
+        private static IEnumerable<string> EnumerateStorageKeys(IStatsigUser user)
+        {
+            if (!string.IsNullOrEmpty(user.UserID))
+            {
+                yield return $"{user.UserID}:userID";
+            }
+
+            if (user.CustomIDs != null)
+            {
+                foreach (var kvp in user.CustomIDs)
+                {
+                    if (!string.IsNullOrEmpty(kvp.Key) && !string.IsNullOrEmpty(kvp.Value))
+                    {
+                        yield return $"{kvp.Value}:{kvp.Key}";
+                    }
+                }
+            }
+        }
+
+        private static string? BuildEvaluationOptionsJson(EvaluationOptions? options, Dictionary<string, StickyValues>? persistedValues)
+        {
+            var hasPersisted = persistedValues != null && persistedValues.Count > 0;
+            if (options == null && !hasPersisted)
+            {
+                return null;
+            }
+
+            JObject payload = options != null ? JObject.FromObject(options) : new JObject();
+
+            if (hasPersisted && payload["user_persisted_values"] == null)
+            {
+                payload["user_persisted_values"] = JObject.FromObject(persistedValues);
+            }
+
+            return payload.HasValues ? payload.ToString(Formatting.None) : null;
         }
 
         // --------------------------
