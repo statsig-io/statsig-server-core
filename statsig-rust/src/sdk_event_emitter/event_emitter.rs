@@ -5,7 +5,7 @@ use crate::{
     Statsig,
 };
 use dashmap::DashMap;
-use std::{borrow::Cow, ops::Deref};
+use std::ops::Deref;
 
 const TAG: &str = "SdkEventEmitter";
 
@@ -137,28 +137,36 @@ impl Statsig {
         reason: &str,
     ) {
         self.emit(SdkEvent::GateEvaluated {
-            gate_name: gate_name.into(),
-            rule_id: rule_id.into(),
+            gate_name,
+            rule_id,
             value,
-            reason: reason.into(),
+            reason,
         });
     }
 
     pub(crate) fn emit_dynamic_config_evaluated(&self, config: &DynamicConfig) {
         self.emit(SdkEvent::DynamicConfigEvaluated {
-            dynamic_config: Cow::Borrowed(config),
+            config_name: config.name.as_str(),
+            reason: config.details.reason.as_str(),
+            rule_id: Some(config.rule_id.as_str()),
+            value: config.__evaluation.as_ref().map(|e| &e.value),
         });
     }
 
     pub(crate) fn emit_experiment_evaluated(&self, experiment: &Experiment) {
         self.emit(SdkEvent::ExperimentEvaluated {
-            experiment: Cow::Borrowed(experiment),
+            experiment_name: experiment.name.as_str(),
+            reason: experiment.details.reason.as_str(),
+            rule_id: Some(experiment.rule_id.as_str()),
+            value: experiment.__evaluation.as_ref().map(|e| &e.value),
         });
     }
 
     pub(crate) fn emit_layer_evaluated(&self, layer: &Layer) {
         self.emit(SdkEvent::LayerEvaluated {
-            layer: Box::new(Cow::Borrowed(layer)),
+            layer_name: layer.name.as_str(),
+            reason: layer.details.reason.as_str(),
+            rule_id: Some(layer.rule_id.as_str()),
         });
     }
 }

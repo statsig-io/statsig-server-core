@@ -1,17 +1,17 @@
+import { HttpsProxyAgent } from 'https-proxy-agent';
+import nodeFetch from 'node-fetch';
+
 import {
   startStatsigConsoleCapture,
   stopStatsigConsoleCapture,
 } from './console_capture';
-
-import { HttpsProxyAgent } from 'https-proxy-agent';
-import nodeFetch from 'node-fetch';
-
 import { ErrorBoundary } from './error_boundary';
 import {
   DynamicConfig,
   Experiment,
   Layer,
   ParameterStore,
+  SdkEvent,
   StatsigNapiInternal,
   StatsigOptions,
   StatsigResult,
@@ -68,7 +68,7 @@ function createFetchFunc(options?: StatsigOptions) {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body?: Uint8Array
+    body?: Uint8Array,
   ) => {
     try {
       const res = await nodeFetch(url, {
@@ -107,9 +107,9 @@ export class Statsig extends StatsigNapiInternal {
   public static shared(): Statsig {
     if (!Statsig.hasShared()) {
       console.warn(
-        '[Statsig] No shared instance has been created yet. Call newShared() before using it. Returning an invalid instance'
+        '[Statsig] No shared instance has been created yet. Call newShared() before using it. Returning an invalid instance',
       );
-      return Statsig._createErrorInstance();
+      return _createErrorInstance();
     }
     return Statsig._sharedInstance!;
   }
@@ -122,9 +122,9 @@ export class Statsig extends StatsigNapiInternal {
     if (Statsig.hasShared()) {
       console.warn(
         '[Statsig] Shared instance has been created, call removeSharedInstance() if you want to create another one. ' +
-          'Returning an invalid instance'
+          'Returning an invalid instance',
       );
-      return Statsig._createErrorInstance();
+      return _createErrorInstance();
     }
 
     Statsig._sharedInstance = new Statsig(sdkKey, options);
@@ -133,12 +133,6 @@ export class Statsig extends StatsigNapiInternal {
 
   public static removeSharedInstance() {
     Statsig._sharedInstance = null;
-  }
-
-  private static _createErrorInstance(): Statsig {
-    let dummyInstance = new Statsig('INVALID-KEY');
-    dummyInstance.shutdown();
-    return dummyInstance;
   }
 
   constructor(sdkKey: string, options?: StatsigOptions) {
@@ -155,8 +149,27 @@ export class Statsig extends StatsigNapiInternal {
     stopStatsigConsoleCapture();
   }
 
-  async shutdown(timeout_ms?: number): Promise<StatsigResult> {
+  public async shutdown(timeout_ms?: number): Promise<StatsigResult> {
     stopStatsigConsoleCapture();
     return super.shutdown(timeout_ms);
   }
+
+  public subscribe(
+    eventName: SdkEvent,
+    callback: (event: any) => void,
+  ): string {
+    return this.__INTERNAL_subscribe(eventName, (raw) => {
+      try {
+        callback(JSON.parse(raw));
+      } catch (error) {
+        console.error(`Error parsing event: ${error}`);
+      }
+    });
+  }
+}
+
+function _createErrorInstance(): Statsig {
+  let dummyInstance = new Statsig('INVALID-KEY');
+  dummyInstance.shutdown();
+  return dummyInstance;
 }

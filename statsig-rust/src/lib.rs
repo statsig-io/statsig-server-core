@@ -1,3 +1,4 @@
+pub use evaluation::dynamic_returnable::DynamicReturnable;
 pub use evaluation::dynamic_value::DynamicValue;
 pub use evaluation::evaluation_details::EvaluationDetails;
 pub use evaluation::evaluation_types::SecondaryExposure;
