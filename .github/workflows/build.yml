@@ -333,6 +333,7 @@ jobs:
           - elixir
           - dotnet
           - go
+          - cpp
 
     steps:
       - uses: actions/checkout@v4
