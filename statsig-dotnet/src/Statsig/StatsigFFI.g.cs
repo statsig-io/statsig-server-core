@@ -203,7 +203,7 @@ namespace Statsig
         internal delegate void persistent_storage_create_delete_fn_delegate(byte* args_ptr, ulong args_length);
 
         [DllImport(__DllName, EntryPoint = "persistent_storage_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern ulong persistent_storage_create(persistent_storage_create_load_fn_delegate load_fn, persistent_storage_create_save_fn_delegate save_fn, persistent_storage_create_delete_fn_delegate delete_fn);
+        internal static extern ulong persistent_storage_create(byte* bindings_language, persistent_storage_create_load_fn_delegate load_fn, persistent_storage_create_save_fn_delegate save_fn, persistent_storage_create_delete_fn_delegate delete_fn);
 
         [DllImport(__DllName, EntryPoint = "persistent_storage_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void persistent_storage_release(ulong storage_ref);
