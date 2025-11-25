@@ -162,7 +162,7 @@ export class Statsig extends StatsigNapiInternal {
       try {
         callback(JSON.parse(raw));
       } catch (error) {
-        console.error(`Error parsing event: ${error}`);
+        console.error(`[Statsig] Error parsing SDK Event: ${error}`);
       }
     });
   }

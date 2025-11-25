@@ -130,6 +130,7 @@ describe('SdkEventEmitterUsage', () => {
         experiment_name: 'exp_with_obj_and_array',
         rule_id: '23gt15KsgEAbUiwEapclqk',
         reason: 'Network:Recognized',
+        group_name: 'Test',
         value: expect.objectContaining({
           arr_param: [true, false, true],
           obj_param: {

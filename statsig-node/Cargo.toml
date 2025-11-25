@@ -18,6 +18,7 @@ statsig-rust = { path = "../statsig-rust", default-features = false, features = 
     "with_grpc",
     "with_zstd",
     "custom_network_provider",
+    "ffi-support",
 ] }
 async-trait = "0.1.81"
 napi = { version = "3.0.0-alpha.24", features = [

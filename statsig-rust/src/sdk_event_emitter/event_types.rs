@@ -59,6 +59,7 @@ pub enum SdkEvent<'a> {
         reason: &'a str,
         rule_id: Option<&'a str>,
         value: Option<&'a crate::DynamicReturnable>,
+        group_name: Option<&'a str>,
     },
     LayerEvaluated {
         layer_name: &'a str,
