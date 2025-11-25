@@ -13,6 +13,7 @@ abstract class PersistentStorage
         $ffi = StatsigFFI::get();
 
         $this->__ref = $ffi->persistent_storage_create(
+            "php",
             function ($key_ptr, $key_length) {
                 $key = $this->convertCCharToString($key_ptr, $key_length);
                 $result = $this->load($key);

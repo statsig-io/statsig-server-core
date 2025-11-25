@@ -30,8 +30,25 @@ namespace Statsig
             var bytes = Encoding.UTF8.GetBytes(value);
             var result = new byte[bytes.Length + 1];
             Buffer.BlockCopy(bytes, 0, result, 0, bytes.Length);
+#if NET8_0_OR_GREATER
             result[^1] = 0; // null terminator
+#else
+            result[result.Length - 1] = 0; // null terminator
+#endif
             return result;
+        }
+
+        internal static IntPtr StringToNativeUtf8(string? value)
+        {
+            return value == null ? IntPtr.Zero : Marshal.StringToCoTaskMemUTF8(value);
+        }
+
+        internal static void FreeNativeUtf8(IntPtr ptr)
+        {
+            if (ptr != IntPtr.Zero)
+            {
+                Marshal.FreeCoTaskMem(ptr);
+            }
         }
     }
 }

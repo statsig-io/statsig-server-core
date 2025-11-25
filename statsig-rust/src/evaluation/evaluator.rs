@@ -18,6 +18,7 @@ use crate::evaluation::evaluator_value::{EvaluatorValue, MemoizedEvaluatorValue}
 use crate::evaluation::get_unit_id::get_unit_id;
 use crate::evaluation::user_agent_parsing::UserAgentParser;
 use crate::interned_string::InternedString;
+use crate::specs_response::explicit_params::ExplicitParameters;
 use crate::specs_response::spec_types::{Condition, Rule, Spec};
 use crate::{dyn_value, log_w, unwrap_or_return, ExperimentEvaluationOptions, StatsigErr};
 
@@ -102,7 +103,7 @@ impl Evaluator {
         }
 
         if let Some(explicit_params) = &spec.explicit_parameters {
-            ctx.result.explicit_parameters = Some(explicit_params);
+            ctx.result.explicit_parameters = Some(explicit_params.clone());
         }
 
         if spec.use_new_layer_eval == Some(true) && matches!(spec_type, SpecType::Layer) {
@@ -135,7 +136,7 @@ impl Evaluator {
                 ctx.result.json_value = Some(spec.default_value.clone());
             }
 
-            ctx.result.rule_id = Some(&rule.id);
+            ctx.result.rule_id = Some(rule.id.clone());
             ctx.result.group_name = rule.group_name.clone();
             ctx.result.is_experiment_group = rule.is_experiment_group.unwrap_or(false);
             ctx.result.is_experiment_active = spec.is_active.unwrap_or(false);
@@ -146,8 +147,8 @@ impl Evaluator {
         ctx.result.bool_value = spec.default_value.get_bool() == Some(true);
         ctx.result.json_value = Some(spec.default_value.clone());
         ctx.result.rule_id = match spec.enabled {
-            true => Some(&DEFAULT_RULE),
-            false => Some(&DISABLED_RULE),
+            true => Some(DEFAULT_RULE.clone()),
+            false => Some(DISABLED_RULE.clone()),
         };
         ctx.finalize_evaluation(spec, None);
 
@@ -167,7 +168,7 @@ fn new_layer_eval<'a>(
     let mut value: HashMap<String, Value> = HashMap::new();
     let mut group_name: Option<InternedString> = None;
     let mut is_experiment_group = false;
-    let mut explicit_parameters: Option<&Vec<InternedString>> = None;
+    let mut explicit_parameters: Option<ExplicitParameters> = None;
     let mut secondary_exposures: Vec<SecondaryExposure> = Vec::new();
     let mut undelegated_secondary_exposures: Vec<SecondaryExposure> = Vec::new();
 
@@ -223,7 +224,7 @@ fn new_layer_eval<'a>(
             group_name = ctx.result.group_name.clone();
             rule_id = Some(&rule.id);
             is_experiment_group = rule.is_experiment_group.unwrap_or(false);
-            explicit_parameters = ctx.result.explicit_parameters;
+            explicit_parameters = ctx.result.explicit_parameters.clone();
         } else {
             update_parameter_values(
                 &mut value,
@@ -242,7 +243,7 @@ fn new_layer_eval<'a>(
     ctx.result.bool_value = passed;
     ctx.result.config_delegate = delegate_name;
     ctx.result.group_name = group_name;
-    ctx.result.rule_id = rule_id;
+    ctx.result.rule_id = rule_id.cloned();
     ctx.result.json_value = Some(DynamicReturnable::from_map(value));
     ctx.result.is_experiment_group = is_experiment_group;
     ctx.result.is_experiment_active = spec.is_active.unwrap_or(false);
@@ -326,7 +327,7 @@ fn try_apply_config_mapping(
             ctx.reset_result();
             let pass = evaluate_pass_percentage(ctx, rule, spec_salt);
             if pass {
-                ctx.result.override_config_name = Some(&mapping.new_config_name);
+                ctx.result.override_config_name = Some(mapping.new_config_name.clone());
                 match Evaluator::evaluate(ctx, mapping.new_config_name.as_str(), spec_type) {
                     Ok(Recognition::Recognized) => {
                         return true;
@@ -610,10 +611,10 @@ fn evaluate_nested_gate<'a>(
         .map(|name| &name.value)
         .unwrap_or(InternedString::empty_ref());
 
-    match ctx.nested_gate_memo.get(gate_name.as_str()) {
+    match ctx.nested_gate_memo.get(gate_name) {
         Some((previous_bool, previous_rule_id)) => {
             ctx.result.bool_value = *previous_bool;
-            ctx.result.rule_id = *previous_rule_id;
+            ctx.result.rule_id = previous_rule_id.clone();
         }
         None => {
             ctx.prep_for_nested_evaluation()?;
@@ -626,8 +627,8 @@ fn evaluate_nested_gate<'a>(
 
             if !gate_name.as_str().is_empty() {
                 ctx.nested_gate_memo.insert(
-                    gate_name.as_str(),
-                    (ctx.result.bool_value, ctx.result.rule_id),
+                    gate_name.clone(),
+                    (ctx.result.bool_value, ctx.result.rule_id.clone()),
                 );
             }
         }
@@ -638,7 +639,7 @@ fn evaluate_nested_gate<'a>(
         let expo = SecondaryExposure {
             gate: gate_name.clone(),
             gate_value: InternedString::from_bool(res.bool_value),
-            rule_id: res.rule_id.unwrap_or(InternedString::empty_ref()).clone(),
+            rule_id: res.rule_id.clone().unwrap_or_default(),
         };
 
         if res.sampling_rate.is_none() {
@@ -670,7 +671,7 @@ fn evaluate_config_delegate<'a>(
         return Ok(false);
     }
 
-    ctx.result.explicit_parameters = delegate_spec.inner.explicit_parameters.as_ref();
+    ctx.result.explicit_parameters = delegate_spec.inner.explicit_parameters.clone();
     ctx.result.config_delegate = rule.config_delegate.clone();
 
     Ok(true)

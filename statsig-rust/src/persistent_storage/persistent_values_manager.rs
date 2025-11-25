@@ -22,13 +22,13 @@ pub struct PersistentValuesManager {
 
 const TAG: &str = "PersistentValuesManager";
 
-fn sticky_value_to_evaluator_result(sticky_value: &StickyValues) -> EvaluatorResult<'_> {
+fn sticky_value_to_evaluator_result(sticky_value: &StickyValues) -> EvaluatorResult {
     EvaluatorResult {
         bool_value: sticky_value.value,
         json_value: Some(DynamicReturnable::from_map(
             sticky_value.json_value.clone().unwrap_or_default(),
         )),
-        rule_id: sticky_value.rule_id.as_ref(),
+        rule_id: sticky_value.rule_id.clone(),
         group_name: sticky_value
             .group_name
             .as_ref()
@@ -129,16 +129,16 @@ impl PersistentValuesManager {
         let sticky_value = unwrap_or_return!(sticky_value_ptr, None).clone();
         maybe_sticky_result
             .as_mut()
-            .map(|sticky_result: &mut EvaluatorResult<'_>| {
+            .map(|sticky_result: &mut EvaluatorResult| {
                 let eval = eval_result_to_experiment_eval(config_name, sticky_result);
                 make_experiment_from_sticky_value(eval, sticky_value)
             })
     }
 
-    pub fn try_update_sticky_layer_experiment_active<'a>(
+    pub fn try_update_sticky_layer_experiment_active(
         &self,
-        spec_store_data: &'a SpecStoreData,
-        maybe_sticky_result: &Option<EvaluatorResult<'a>>,
+        spec_store_data: &SpecStoreData,
+        maybe_sticky_result: &Option<EvaluatorResult>,
     ) -> Option<bool> {
         let sticky_result = unwrap_or_return!(maybe_sticky_result, None);
         let config_delegate = unwrap_or_return!(&sticky_result.config_delegate, Some(false));

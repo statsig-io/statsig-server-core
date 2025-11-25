@@ -137,6 +137,8 @@ await benchmark(
   },
 );
 
+// ------------------------------------------------------------------------ [ Benchmark Feature Gates ]
+
 for (const gate of specNames.feature_gates) {
   await benchmark('check_gate', gate, ITER_HEAVY, () => {
     const user = createUser();
@@ -157,6 +159,8 @@ for (const gate of specNames.feature_gates) {
   });
 }
 
+// ------------------------------------------------------------------------ [ Benchmark Dynamic Configs ]
+
 for (const config of specNames.dynamic_configs) {
   await benchmark('get_dynamic_config', config, ITER_HEAVY, () => {
     const user = createUser();
@@ -166,38 +170,39 @@ for (const config of specNames.dynamic_configs) {
   await benchmark('get_dynamic_config_global_user', config, ITER_HEAVY, () => {
     statsig.getDynamicConfig(globalUser, config);
   });
-
-   // Get parameter names from the actual config
-   const sampleConfig = statsig.getDynamicConfig(globalUser, config);
-   const paramNames = Object.keys(sampleConfig.value);
-   
-   // If no parameters, skip get() benchmarks
-   if (paramNames.length === 0) {
-     continue;
-   }
- 
-   // Benchmark getValue for each parameter
-   for (const paramName of paramNames) {
-     await benchmark(
-       `get_dynamic_config_getValue_global_user`,
-       `${config}.${paramName}`,
-       ITER_HEAVY,
-       () => {
-         const cfg = statsig.getDynamicConfig(globalUser, config).getValue(paramName);
-       },
-     );
- 
-     // Test get() method (typed version)
-     await benchmark(
-       `get_dynamic_config_get_global_user`,
-       `${config}.${paramName}`,
-       ITER_HEAVY,
-       () => {
-         const cfg = statsig.getDynamicConfig(globalUser, config).get(paramName, undefined);
-       },
-     );
-   }
 }
+
+const config = statsig.getDynamicConfig(globalUser, 'operating_system_config');
+
+await benchmark('get_dynamic_config_params', 'string', ITER_HEAVY, () => {
+  const v = config.get('str', 'err');
+  if (v === 'err') {
+    throw new Error('string value is err');
+  }
+});
+
+await benchmark('get_dynamic_config_params', 'number', ITER_HEAVY, () => {
+  const v = config.get('num', 0);
+  if (v === 0) {
+    throw new Error('number value is 0');
+  }
+});
+
+await benchmark('get_dynamic_config_params', 'object', ITER_HEAVY, () => {
+  const v = config.get('obj', {});
+  if (Object.keys(v).length === 0) {
+    throw new Error('object value is empty');
+  }
+});
+
+await benchmark('get_dynamic_config_params', 'array', ITER_HEAVY, () => {
+  const v = config.get('arr', []);
+  if (v.length === 0) {
+    throw new Error('array value is empty');
+  }
+});
+
+// ------------------------------------------------------------------------ [ Benchmark Experiments ]
 
 for (const experiment of specNames.experiments) {
   await benchmark('get_experiment', experiment, ITER_HEAVY, () => {
@@ -210,6 +215,33 @@ for (const experiment of specNames.experiments) {
   });
 }
 
+const experiment = statsig.getExperiment(
+  globalUser,
+  'experiment_with_many_params',
+);
+await benchmark('get_experiment_params', 'string', ITER_HEAVY, () => {
+  const v = experiment.get('a_string', 'err');
+  if (v === 'err') {
+    throw new Error('string value is err');
+  }
+});
+
+await benchmark('get_experiment_params', 'object', ITER_HEAVY, () => {
+  const v = experiment.get('an_object', {});
+  if (Object.keys(v).length === 0) {
+    throw new Error('object value is empty');
+  }
+});
+
+await benchmark('get_experiment_params', 'array', ITER_HEAVY, () => {
+  const v = experiment.get('an_array', []);
+  if (v.length === 0) {
+    throw new Error('array value is empty');
+  }
+});
+
+// ------------------------------------------------------------------------ [ Benchmark Layers ]
+
 for (const layer of specNames.layers) {
   await benchmark('get_layer', layer, ITER_HEAVY, () => {
     const user = createUser();
@@ -220,6 +252,30 @@ for (const layer of specNames.layers) {
     statsig.getLayer(globalUser, layer);
   });
 }
+
+const layer = statsig.getLayer(globalUser, 'layer_with_many_params');
+await benchmark('get_layer_params', 'string', ITER_HEAVY, () => {
+  const v = layer.get('a_string', 'err');
+  if (v === 'err') {
+    throw new Error('string value is err');
+  }
+});
+
+await benchmark('get_layer_params', 'object', ITER_HEAVY, () => {
+  const v = layer.get('an_object', {});
+  if (Object.keys(v).length === 0) {
+    throw new Error('object value is empty');
+  }
+});
+
+await benchmark('get_layer_params', 'array', ITER_HEAVY, () => {
+  const v = layer.get('an_array', []);
+  if (v.length === 0) {
+    throw new Error('array value is empty');
+  }
+});
+
+// ------------------------------------------------------------------------ [ Benchmark GCIR ]
 
 await benchmark('get_client_initialize_response', 'n/a', ITER_LITE, () => {
   statsig.getClientInitializeResponse(createUser());

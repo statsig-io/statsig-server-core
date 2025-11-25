@@ -95,6 +95,7 @@ type StatsigFFI struct {
 
 	// Persistent Storage
 	persistent_storage_create func(
+		bindingsLanguage string,
 		load_fn func(argsPtr *byte, argsLength uint64) *byte,
 		save_fn func(argsPtr *byte, argsLength uint64),
 		delete_fn func(argsPtr *byte, argsLength uint64),

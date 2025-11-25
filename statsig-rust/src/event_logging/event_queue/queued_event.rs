@@ -1,6 +1,6 @@
 use super::{
     queued_config_expo::QueuedConfigExposureEvent,
-    queued_experiment_expo::QueuedExperimentExposureEvent,
+    queued_experiment_expo::QueuedExperimentExposureEvent, queued_expo::QueuedExposureEvent,
     queued_gate_expo::QueuedGateExposureEvent,
     queued_layer_param_expo::QueuedLayerParamExposureEvent,
 };
@@ -24,21 +24,26 @@ pub trait QueuedExposure<'a> {
 }
 
 pub enum QueuedEvent {
+    Exposure(QueuedExposureEvent),
+    Passthrough(StatsigEventInternal),
+
+    // Deprecated - Remove when rolled into QueuedExposureEvent
     GateExposure(QueuedGateExposureEvent),
     ConfigExposure(QueuedConfigExposureEvent),
     ExperimentExposure(QueuedExperimentExposureEvent),
     LayerParamExposure(QueuedLayerParamExposureEvent),
-    Passthrough(StatsigEventInternal),
 }
 
 impl QueuedEvent {
     pub fn into_statsig_event_internal(self) -> StatsigEventInternal {
         match self {
+            QueuedEvent::Exposure(event) => event.into_statsig_event_internal(),
+            QueuedEvent::Passthrough(event) => event,
+
             QueuedEvent::GateExposure(event) => event.into_statsig_event_internal(),
             QueuedEvent::ConfigExposure(event) => event.into_statsig_event_internal(),
             QueuedEvent::ExperimentExposure(event) => event.into_statsig_event_internal(),
             QueuedEvent::LayerParamExposure(event) => event.into_statsig_event_internal(),
-            QueuedEvent::Passthrough(event) => event,
         }
     }
 }

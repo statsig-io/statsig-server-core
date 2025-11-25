@@ -2,9 +2,9 @@ name: Long Running SDK CD
 
 on: 
   workflow_dispatch:
-  # push:
-  #   branches:
-  #     - main
+  push:
+    branches:
+      - main
       
 env:
   api_key: ${{ secrets.LRS_SERVER_KEY }}
@@ -37,8 +37,15 @@ jobs:
         with:
           repository: statsig-io/${{  env.sdk_repo  }}
           ref: main
-          token: ${{ secrets.ROIM }}
+          token: ${{ secrets.XIN_PAT_FOR_ACCESS_TOKEN }}
           path: ./${{ matrix.args[1] }}/${{  env.sdk_repo  }}
+          submodules: recursive
+
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+            repo-token: ${{ secrets.GITHUB_TOKEN }}
       
       - uses: pnpm/action-setup@v4
         with:

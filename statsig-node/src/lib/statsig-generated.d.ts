@@ -56,8 +56,8 @@ export declare class ParameterStore {
 }
 
 export declare class StatsigNapiInternal {
-  subscribe(eventName: '*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated' | 'specs_updated', callback: (event: any) => void): string
-  unsubscribe(eventName: '*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated' | 'specs_updated'): void
+  __INTERNAL_subscribe(eventName: SdkEvent, callback: (raw: string) => void): string
+  unsubscribe(eventName: SdkEvent): void
   unsubscribeById(subscriptionId: string): void
   unsubscribeAll(): void
   constructor(networkFunc: unknown, sdkKey: string, options?: StatsigOptions | undefined | null)
@@ -321,7 +321,7 @@ export interface StatsigUserArgs {
   locale?: string
   appVersion?: string
   statsigEnvironment?: { tier?: string, [key: string]: string | undefined } | null | undefined
-  custom?: Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>
+  custom?: Record<string, string | number | boolean | Array<string | number | boolean> | null | undefined | Record<string, unknown>>
   privateAttributes?: Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>
 }
 // ---- Manually defined typing section ----- 
@@ -340,3 +340,11 @@ export type StickyValues = {
 };
 
 export type UserPersistedValues = Record<string, StickyValues>;
+
+export type SdkEvent =
+  | '*'
+  | 'gate_evaluated'
+  | 'dynamic_config_evaluated'
+  | 'experiment_evaluated'
+  | 'layer_evaluated'
+  | 'specs_updated';

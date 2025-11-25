@@ -27,7 +27,7 @@ pub struct StatsigUserArgs {
     pub statsig_environment: Option<HashMap<String, String>>,
 
     #[napi(
-        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>"
+        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean> | null | undefined | Record<string, unknown>>"
     )]
     pub custom: Option<HashMap<String, ValidPrimitives>>,
 

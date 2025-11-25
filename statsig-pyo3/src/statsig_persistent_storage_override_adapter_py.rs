@@ -4,7 +4,8 @@ use pyo3::{
 };
 use pyo3_stub_gen::derive::*;
 use statsig_rust::{
-    interned_string::InternedString, log_d, log_e, log_w, PersistentStorage, SecondaryExposure,
+    interned_string::InternedString, log_d, log_e, log_w,
+    specs_response::explicit_params::ExplicitParameters, PersistentStorage, SecondaryExposure,
     StickyValues as StickyValuesActual, UserPersistedValues as UserPersistedValuesActual,
 };
 use std::collections::HashMap;
@@ -72,7 +73,8 @@ pub fn convert_dict_to_user_persisted_values(
                 undelegated_secondary_exposures: Some(convert_py_lists_to_secondary_exposures(
                     &undelegated_secondary_exposures,
                 )?),
-                explicit_parameters: converted_explicit_parameters,
+                explicit_parameters: converted_explicit_parameters
+                    .map(ExplicitParameters::from_vec),
                 config_version,
             };
             user_persisted_value.insert(config_name.to_string(), sticky_value);
@@ -108,7 +110,10 @@ fn convert_stick_value_to_py_obj(
     py_dict.set_item("secondary_exposures", secondary_exposures)?;
     py_dict.set_item(
         "explicit_parameters",
-        sticky_values.explicit_parameters.clone(),
+        sticky_values
+            .explicit_parameters
+            .as_ref()
+            .map(|p| p.unperformant_to_vec()),
     )?;
     py_dict.set_item("config_delegate", sticky_values.config_delegate.clone())?;
     let undelegated_secondary_exposures = match sticky_values.undelegated_secondary_exposures {

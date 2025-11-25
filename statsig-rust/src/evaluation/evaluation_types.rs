@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use super::dynamic_returnable::DynamicReturnable;
 use crate::{
     evaluation::secondary_exposure_key::SecondaryExposureKey, interned_string::InternedString,
+    specs_response::explicit_params::ExplicitParameters,
 };
 
 use serde::{Deserialize, Serialize};
@@ -47,7 +48,7 @@ pub struct ExtraExposureInfo {
     pub sampling_rate: Option<u64>,
     pub forward_all_exposures: Option<bool>,
     pub has_seen_analytical_gates: Option<bool>,
-    pub override_config_name: Option<String>,
+    pub override_config_name: Option<InternedString>,
     pub version: Option<u32>,
 }
 
@@ -149,7 +150,7 @@ pub struct ExperimentEvaluation {
     pub is_in_layer: bool,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub explicit_parameters: Option<Vec<InternedString>>,
+    pub explicit_parameters: Option<ExplicitParameters>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group_name: Option<InternedString>,
@@ -193,7 +194,7 @@ pub struct LayerEvaluation {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub allocated_experiment_name: Option<InternedString>,
-    pub explicit_parameters: Vec<InternedString>,
+    pub explicit_parameters: ExplicitParameters,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
 

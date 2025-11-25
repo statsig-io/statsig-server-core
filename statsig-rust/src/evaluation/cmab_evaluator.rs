@@ -123,7 +123,7 @@ pub(crate) fn evaluate_cmab(
         ctx.result.version = Some(cmab.version);
         ctx.result.is_experiment_active = cmab.enabled;
         ctx.result.bool_value = false;
-        ctx.result.rule_id = Some(&NOT_STARTED_RULE);
+        ctx.result.rule_id = Some(NOT_STARTED_RULE.clone());
         ctx.result.json_value = Some(cmab.default_value.clone());
         return true;
     }
@@ -133,7 +133,7 @@ pub(crate) fn evaluate_cmab(
         ctx.result.version = Some(cmab.version);
         ctx.result.is_experiment_active = cmab.enabled;
         ctx.result.bool_value = false;
-        ctx.result.rule_id = Some(&FAILS_TARGETING);
+        ctx.result.rule_id = Some(FAILS_TARGETING.clone());
         ctx.result.json_value = Some(cmab.default_value.clone());
         return true;
     }
@@ -175,7 +175,7 @@ fn get_passes_targeting<'a>(ctx: &mut EvaluatorContext<'a>, cmab: &'a CMABConfig
         Ok(_) => {}
         Err(_) => {
             ctx.result.bool_value = false;
-            ctx.result.rule_id = Some(&FAILS_TARGETING);
+            ctx.result.rule_id = Some(FAILS_TARGETING.clone());
             return false;
         }
     }
@@ -188,7 +188,7 @@ fn get_passes_targeting<'a>(ctx: &mut EvaluatorContext<'a>, cmab: &'a CMABConfig
     let expo = SecondaryExposure {
         gate: targeting_gate_name.clone(),
         gate_value: InternedString::from_bool(result),
-        rule_id: ctx.result.rule_id.cloned().unwrap_or_default(),
+        rule_id: ctx.result.rule_id.clone().unwrap_or_default(),
     };
 
     ctx.result.secondary_exposures.push(expo);
@@ -218,7 +218,7 @@ fn apply_random_group<'a>(
         None => &cmab.groups[0],
     };
     ctx.result.bool_value = true;
-    ctx.result.rule_id = Some(&group.id);
+    ctx.result.rule_id = Some(group.id.clone());
     ctx.result.rule_id_suffix = Some(EXPLORE_RULE_ID_SUFFIX);
     ctx.result.group_name = Some(InternedString::from_str_ref(&group.name));
     ctx.result.json_value = Some(group.parameter_values.clone());
@@ -248,7 +248,7 @@ fn apply_sampling_group<'a>(
         };
         sum += 1.0 / (cur_count as f64) / total_records;
         if value < sum {
-            ctx.result.rule_id = Some(&group.id);
+            ctx.result.rule_id = Some(group.id.clone());
             ctx.result.rule_id_suffix = Some(EXPLORE_RULE_ID_SUFFIX);
             ctx.result.bool_value = true;
             ctx.result.group_name = Some(InternedString::from_str_ref(&group.name));
@@ -291,7 +291,7 @@ fn apply_best_group<'a>(
         best_group = &cmab.groups[(random * cmab.groups.len() as f64).floor() as usize];
     }
     ctx.result.bool_value = true;
-    ctx.result.rule_id = Some(&best_group.id);
+    ctx.result.rule_id = Some(best_group.id.clone());
     ctx.result.group_name = Some(InternedString::from_str_ref(&best_group.name));
     ctx.result.json_value = Some(best_group.parameter_values.clone());
 }

@@ -1,9 +1,6 @@
 using Xunit;
-using Moq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System;
-using System.IO;
 
 namespace Statsig.Tests
 {

@@ -1,6 +1,5 @@
 using Xunit;
 using System.Collections.Generic;
-using Moq;
 
 namespace Statsig.Tests
 {

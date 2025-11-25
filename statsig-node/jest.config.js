@@ -5,4 +5,5 @@ module.exports = {
     '^.+.tsx?$': ['ts-jest', {}],
   },
   testPathIgnorePatterns: ['/node_modules/', '^((?!\\.test\\.ts$).)*\\.ts$'],
+  setupFilesAfterEnv: ['jest-extended/all'],
 };

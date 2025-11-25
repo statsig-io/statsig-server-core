@@ -1,14 +1,12 @@
+use serde_json::json;
+
 use crate::{
     sdk_event_emitter::{SdkEvent, SdkEventEmitter, SubscriptionID},
-    statsig_type_factories::make_dynamic_config,
-    EvaluationDetails,
+    DynamicReturnable,
 };
-use std::{
-    borrow::Cow,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
 };
 
 fn sub(
@@ -28,18 +26,22 @@ fn emit(event_emitter: &mut SdkEventEmitter, event_name: &str) {
     match event_name {
         SdkEvent::GATE_EVALUATED => {
             event_emitter.emit(SdkEvent::GateEvaluated {
-                gate_name: "test_gate".into(),
-                rule_id: "test_rule_id".into(),
+                gate_name: "test_gate",
+                rule_id: "test_rule_id",
                 value: true,
-                reason: "test_reason".into(),
+                reason: "test_reason",
             });
         }
         SdkEvent::DYNAMIC_CONFIG_EVALUATED => {
             event_emitter.emit(SdkEvent::DynamicConfigEvaluated {
-                dynamic_config: Cow::Borrowed(&make_dynamic_config(
-                    "test_dynamic_config",
-                    None,
-                    EvaluationDetails::unrecognized_no_data(),
+                config_name: "test_dynamic_config",
+                reason: "test_reason",
+                rule_id: Some("test_rule_id"),
+                value: Some(&DynamicReturnable::from_map(
+                    std::collections::HashMap::from([(
+                        "test_param".to_string(),
+                        json!("test_value"),
+                    )]),
                 )),
             });
         }

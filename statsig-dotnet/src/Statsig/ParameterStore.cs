@@ -1,7 +1,5 @@
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -117,7 +115,7 @@ namespace Statsig
                 var res = StatsigFFI.statsig_get_object_parameter_from_parameter_store(_statsigRef, _userRef, storeNamePtr, paramNamePtr, defaultValuePtr, optionsPtr);
                 var jsonString = StatsigUtils.ReadStringFromPointer(res);
                 return jsonString != null
-                    ? JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonString)
+                    ? JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonString) ?? defaultValue ?? new Dictionary<string, object>()
                     : defaultValue ?? new Dictionary<string, object>();
             }
         }
@@ -138,7 +136,7 @@ namespace Statsig
                 var res = StatsigFFI.statsig_get_array_parameter_from_parameter_store(_statsigRef, _userRef, storeNamePtr, paramNamePtr, defaultValuePtr, optionsPtr);
                 var jsonString = StatsigUtils.ReadStringFromPointer(res);
                 return jsonString != null
-                    ? JsonConvert.DeserializeObject<List<object>>(jsonString)
+                    ? JsonConvert.DeserializeObject<List<object>>(jsonString) ?? defaultValue ?? new List<object>()
                     : defaultValue ?? new List<object>();
             }
         }

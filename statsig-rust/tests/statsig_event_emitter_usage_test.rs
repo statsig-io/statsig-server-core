@@ -40,21 +40,29 @@ fn setup(sdk_key: &str) -> (Statsig, StatsigUser, mpsc::Receiver<ReceivedEvent>)
             } => {
                 result.data = EventData::Evaluation(gate_name.to_string(), reason.to_string());
             }
-            SdkEvent::DynamicConfigEvaluated { dynamic_config } => {
-                result.data = EventData::Evaluation(
-                    dynamic_config.name.to_string(),
-                    dynamic_config.details.reason.to_string(),
-                );
+            SdkEvent::DynamicConfigEvaluated {
+                config_name,
+                reason,
+                rule_id: _,
+                value: _,
+            } => {
+                result.data = EventData::Evaluation(config_name.to_string(), reason.to_string());
             }
-            SdkEvent::ExperimentEvaluated { experiment } => {
-                result.data = EventData::Evaluation(
-                    experiment.name.to_string(),
-                    experiment.details.reason.to_string(),
-                );
-            }
-            SdkEvent::LayerEvaluated { layer } => {
+            SdkEvent::ExperimentEvaluated {
+                experiment_name,
+                reason,
+                rule_id: _,
+                value: _,
+            } => {
                 result.data =
-                    EventData::Evaluation(layer.name.to_string(), layer.details.reason.to_string());
+                    EventData::Evaluation(experiment_name.to_string(), reason.to_string());
+            }
+            SdkEvent::LayerEvaluated {
+                layer_name,
+                reason,
+                rule_id: _,
+            } => {
+                result.data = EventData::Evaluation(layer_name.to_string(), reason.to_string());
             }
             SdkEvent::SpecsUpdated {
                 source,

@@ -1,7 +1,9 @@
 use super::dynamic_returnable::DynamicReturnable;
-use crate::evaluation::evaluation_types::is_false;
 use crate::interned_string::InternedString;
 use crate::SecondaryExposure;
+use crate::{
+    evaluation::evaluation_types::is_false, specs_response::explicit_params::ExplicitParameters,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -50,7 +52,7 @@ pub struct ExperimentEvaluationV2 {
     pub is_in_layer: bool,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub explicit_parameters: Option<Vec<InternedString>>,
+    pub explicit_parameters: Option<ExplicitParameters>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group_name: Option<InternedString>,
@@ -94,7 +96,7 @@ pub struct LayerEvaluationV2 {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub allocated_experiment_name: Option<InternedString>,
-    pub explicit_parameters: Vec<InternedString>,
+    pub explicit_parameters: ExplicitParameters,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub undelegated_secondary_exposures: Option<Vec<InternedString>>,
 }

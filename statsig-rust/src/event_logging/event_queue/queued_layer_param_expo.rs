@@ -106,7 +106,7 @@ pub struct QueuedLayerParamExposureEvent {
     pub version: Option<u32>,
     pub exposure_trigger: ExposureTrigger,
     pub sampling_decision: EvtSamplingDecision,
-    pub override_config_name: Option<String>,
+    pub override_config_name: Option<InternedString>,
     pub is_explicit: bool,
     pub allocated_experiment: Option<InternedString>,
     pub exposure_time: u64,
@@ -135,7 +135,10 @@ impl QueuedLayerParamExposureEvent {
         }
 
         if let Some(override_config_name) = self.override_config_name {
-            metadata.insert("overrideConfigName".into(), override_config_name);
+            metadata.insert(
+                "overrideConfigName".into(),
+                override_config_name.unperformant_to_string(),
+            );
         }
 
         let statsig_metadata = get_statsig_metadata_with_sampling_decision(self.sampling_decision);
@@ -161,7 +164,7 @@ type ExtractFromEvaluationResult = (
     Option<InternedString>,
     Option<Vec<SecondaryExposure>>,
     Option<u32>,
-    Option<String>,
+    Option<InternedString>,
 );
 
 fn extract_exposure_info(layer: &Layer, parameter_name: &str) -> ExtractFromEvaluationResult {
@@ -170,10 +173,7 @@ fn extract_exposure_info(layer: &Layer, parameter_name: &str) -> ExtractFromEval
         None => return (false, None, None, None, None),
     };
 
-    let is_explicit = evaluation
-        .explicit_parameters
-        .iter()
-        .any(|p| p == parameter_name);
+    let is_explicit = evaluation.explicit_parameters.contains(parameter_name);
     let secondary_exposures;
     let mut allocated_experiment = None;
 

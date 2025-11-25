@@ -14,3 +14,11 @@ export type StickyValues = {
 };
 
 export type UserPersistedValues = Record<string, StickyValues>;
+
+export type SdkEvent =
+  | '*'
+  | 'gate_evaluated'
+  | 'dynamic_config_evaluated'
+  | 'experiment_evaluated'
+  | 'layer_evaluated'
+  | 'specs_updated';

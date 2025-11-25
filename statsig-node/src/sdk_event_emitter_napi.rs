@@ -4,40 +4,33 @@ use napi_derive::napi;
 use statsig_rust::{log_e, sdk_event_emitter::SubscriptionID};
 use std::sync::Arc;
 
-type MetricFnArgs = serde_json::Map<String, serde_json::Value>;
-type MetricFn = ThreadsafeFunction<MetricFnArgs, (), MetricFnArgs, false, true>;
+type EmitFnArgs = String;
+type EmitFn = ThreadsafeFunction<EmitFnArgs, (), EmitFnArgs, false, true>;
 
 const TAG: &str = "SdkEventEmitterNapi";
 
 #[napi]
 impl StatsigNapiInternal {
-    #[napi]
-    pub fn subscribe(
+    #[napi(js_name = "__INTERNAL_subscribe")]
+    pub fn __internal_subscribe(
         &self,
-        #[napi(
-            ts_arg_type = "'*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated' | 'specs_updated'"
-        )]
-        event_name: String,
-        #[napi(ts_arg_type = "(event: any) => void")] callback: Arc<MetricFn>,
+        #[napi(ts_arg_type = "SdkEvent")] event_name: String,
+        #[napi(ts_arg_type = "(raw: string) => void")] callback: Arc<EmitFn>,
     ) -> String {
         let sub_id = self
             .inner
             .event_emitter
             .subscribe(event_name.as_str(), move |event| {
-                callback.call(event.to_json_map(), ThreadsafeFunctionCallMode::Blocking);
+                if let Some(value) = event.to_raw_json_string() {
+                    callback.call(value, ThreadsafeFunctionCallMode::Blocking);
+                }
             });
 
         sub_id.encode()
     }
 
     #[napi]
-    pub fn unsubscribe(
-        &self,
-        #[napi(
-            ts_arg_type = "'*' | 'gate_evaluated' | 'dynamic_config_evaluated' | 'experiment_evaluated' | 'layer_evaluated' | 'specs_updated'"
-        )]
-        event_name: String,
-    ) {
+    pub fn unsubscribe(&self, #[napi(ts_arg_type = "SdkEvent")] event_name: String) {
         self.inner.event_emitter.unsubscribe(event_name.as_str());
     }
 

@@ -75,10 +75,12 @@ describe('SdkEventEmitterUsage', () => {
 
     expect(event).toEqual({
       event_name: 'gate_evaluated',
-      gate_name: 'test_public',
-      value: true,
-      rule_id: '6X3qJgyfwA81IJ2dxI7lYp',
-      reason: 'Network:Recognized',
+      data: {
+        gate_name: 'test_public',
+        value: true,
+        rule_id: '6X3qJgyfwA81IJ2dxI7lYp',
+        reason: 'Network:Recognized',
+      },
     });
   });
 
@@ -88,10 +90,12 @@ describe('SdkEventEmitterUsage', () => {
 
     expect(event).toEqual({
       event_name: 'gate_evaluated',
-      gate_name: 'test_public',
-      value: true,
-      rule_id: '6X3qJgyfwA81IJ2dxI7lYp',
-      reason: 'Network:Recognized',
+      data: {
+        gate_name: 'test_public',
+        value: true,
+        rule_id: '6X3qJgyfwA81IJ2dxI7lYp',
+        reason: 'Network:Recognized',
+      },
     });
   });
 
@@ -101,20 +105,18 @@ describe('SdkEventEmitterUsage', () => {
 
     expect(event).toEqual({
       event_name: 'dynamic_config_evaluated',
-      dynamic_config: expect.objectContaining({
-        name: 'operating_system_config',
-        value: {
+      data: {
+        config_name: 'operating_system_config',
+        reason: 'Network:Recognized',
+        rule_id: 'default',
+        value: expect.objectContaining({
           num: 13,
           bool: true,
           str: 'hello',
           arr: ['hi', 'there'],
           obj: { a: 'bc' },
-        },
-        rule_id: 'default',
-        details: expect.objectContaining({
-          reason: 'Network:Recognized',
         }),
-      }),
+      },
     });
   });
 
@@ -124,19 +126,17 @@ describe('SdkEventEmitterUsage', () => {
 
     expect(event).toEqual({
       event_name: 'experiment_evaluated',
-      experiment: expect.objectContaining({
-        name: 'exp_with_obj_and_array',
-        value: {
+      data: {
+        experiment_name: 'exp_with_obj_and_array',
+        rule_id: '23gt15KsgEAbUiwEapclqk',
+        reason: 'Network:Recognized',
+        value: expect.objectContaining({
           arr_param: [true, false, true],
           obj_param: {
             group: 'test',
           },
-        },
-        rule_id: '23gt15KsgEAbUiwEapclqk',
-        details: expect.objectContaining({
-          reason: 'Network:Recognized',
         }),
-      }),
+      },
     });
   });
 
@@ -146,24 +146,11 @@ describe('SdkEventEmitterUsage', () => {
 
     expect(event).toEqual({
       event_name: 'layer_evaluated',
-      layer: expect.objectContaining({
-        name: 'layer_with_many_params',
-        __value: {
-          a_bool: false,
-          a_number: 799,
-          a_string: 'layer',
-          an_array: ['layer_default'],
-          an_object: {
-            value: 'layer_default',
-          },
-          another_bool: true,
-          another_number: 0,
-          another_string: 'layer_default',
-        },
-        details: expect.objectContaining({
-          reason: 'Network:Recognized',
-        }),
-      }),
+      data: {
+        layer_name: 'layer_with_many_params',
+        reason: 'Network:Recognized',
+        rule_id: 'default',
+      },
     });
   });
 
@@ -177,11 +164,13 @@ describe('SdkEventEmitterUsage', () => {
     expect(events).toEqual([
       {
         event_name: 'specs_updated',
-        source: 'Network',
-        source_api: expect.stringContaining('http://localhost'),
-        values: expect.objectContaining({
-          time: expect.any(Number),
-        }),
+        data: {
+          source: 'Network',
+          source_api: expect.stringContaining('http://localhost'),
+          values: expect.objectContaining({
+            time: expect.any(Number),
+          }),
+        },
       },
     ]);
   });

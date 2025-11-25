@@ -18,6 +18,7 @@ use crate::evaluation::user_agent_parsing::{ParsedUserAgentValue, UserAgentParse
 use crate::event_logging::event_logger::{EventLogger, ExposureTrigger};
 use crate::event_logging::event_queue::queued_config_expo::EnqueueConfigExpoOp;
 use crate::event_logging::event_queue::queued_experiment_expo::EnqueueExperimentExpoOp;
+use crate::event_logging::event_queue::queued_expo::EnqueueExposureOp;
 use crate::event_logging::event_queue::queued_gate_expo::EnqueueGateExpoOp;
 use crate::event_logging::event_queue::queued_layer_param_expo::EnqueueLayerParamExpoOp;
 use crate::event_logging::event_queue::queued_passthrough::EnqueuePassthroughOp;
@@ -1109,16 +1110,19 @@ impl Statsig {
     }
 
     pub fn manually_log_gate_exposure(&self, user: &StatsigUser, gate_name: &str) {
+        let interned_gate_name = InternedString::from_str_ref(gate_name);
         let user_internal = self.internalize_user(user);
-        let (details, evaluation) = self.get_gate_evaluation(&user_internal, gate_name, None);
-        self.event_logger.enqueue(EnqueueGateExpoOp {
-            exposure_time: Utc::now().timestamp_millis() as u64,
-            user: &user_internal,
-            queried_gate_name: gate_name,
-            evaluation: evaluation.map(Cow::Owned),
-            details: details.clone(),
-            trigger: ExposureTrigger::Manual,
-        });
+
+        let (details, evaluation) =
+            self.evaluate_spec_raw(&user_internal, gate_name, &SpecType::Gate, None);
+
+        self.event_logger.enqueue(EnqueueExposureOp::gate_exposure(
+            &user_internal,
+            &interned_gate_name,
+            ExposureTrigger::Manual,
+            details,
+            evaluation,
+        ));
     }
 
     pub fn get_fields_needed_for_gate(&self, gate_name: &str) -> Vec<String> {
@@ -1183,15 +1187,24 @@ impl Statsig {
         user: &StatsigUser,
         dynamic_config_name: &str,
     ) {
+        let interned_dynamic_config_name = InternedString::from_str_ref(dynamic_config_name);
         let user_internal = self.internalize_user(user);
-        let dynamic_config =
-            self.get_dynamic_config_impl(&user_internal, dynamic_config_name, None);
-        self.event_logger.enqueue(EnqueueConfigExpoOp {
-            exposure_time: Utc::now().timestamp_millis() as u64,
-            user: &user_internal,
-            config: &dynamic_config,
-            trigger: ExposureTrigger::Manual,
-        });
+
+        let (details, evaluation) = self.evaluate_spec_raw(
+            &user_internal,
+            dynamic_config_name,
+            &SpecType::DynamicConfig,
+            None,
+        );
+
+        self.event_logger
+            .enqueue(EnqueueExposureOp::dynamic_config_exposure(
+                &user_internal,
+                &interned_dynamic_config_name,
+                ExposureTrigger::Manual,
+                details,
+                evaluation,
+            ));
     }
 
     pub fn get_fields_needed_for_dynamic_config(&self, config_name: &str) -> Vec<String> {
@@ -1253,14 +1266,19 @@ impl Statsig {
     }
 
     pub fn manually_log_experiment_exposure(&self, user: &StatsigUser, experiment_name: &str) {
+        let interned_experiment_name = InternedString::from_str_ref(experiment_name);
         let user_internal = self.internalize_user(user);
-        let experiment = self.get_experiment_impl(&user_internal, experiment_name, None);
-        self.event_logger.enqueue(EnqueueExperimentExpoOp {
-            exposure_time: Utc::now().timestamp_millis() as u64,
-            user: &user_internal,
-            experiment: &experiment,
-            trigger: ExposureTrigger::Manual,
-        });
+        let (details, evaluation) =
+            self.evaluate_spec_raw(&user_internal, experiment_name, &SpecType::Experiment, None);
+
+        self.event_logger
+            .enqueue(EnqueueExposureOp::experiment_exposure(
+                &user_internal,
+                &interned_experiment_name,
+                ExposureTrigger::Manual,
+                details,
+                evaluation,
+            ));
     }
 
     pub fn get_fields_needed_for_experiment(&self, experiment_name: &str) -> Vec<String> {
@@ -1361,16 +1379,20 @@ impl Statsig {
         layer_name: &str,
         parameter_name: String,
     ) {
+        let interned_layer_name = InternedString::from_str_ref(layer_name);
+        let interned_parameter_name = InternedString::from_string(parameter_name);
         let user_internal = self.internalize_user(user);
-        let layer =
-            self.get_layer_impl(user_internal, layer_name, LayerEvaluationOptions::default());
+        let (details, evaluation) =
+            self.evaluate_spec_raw(&user_internal, layer_name, &SpecType::Layer, None);
 
         self.event_logger
-            .enqueue(EnqueueLayerParamExpoOp::LayerOwned(
-                Utc::now().timestamp_millis() as u64,
-                Box::new(layer),
-                parameter_name,
+            .enqueue(EnqueueExposureOp::layer_param_exposure(
+                &user_internal,
+                &interned_layer_name,
+                interned_parameter_name,
                 ExposureTrigger::Manual,
+                details,
+                evaluation,
             ));
     }
 
@@ -1725,6 +1747,45 @@ impl Statsig {
             None,
             true,
         )
+    }
+
+    fn evaluate_spec_raw(
+        &self,
+        user_internal: &StatsigUserInternal,
+        spec_name: &str,
+        spec_type: &SpecType,
+        disable_exposure_logging: Option<bool>,
+    ) -> (EvaluationDetails, Option<EvaluatorResult>) {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return (EvaluationDetails::unrecognized_no_data(), None);
+        });
+
+        let mut context = self.create_standard_eval_context(
+            user_internal,
+            &data,
+            data.values.app_id.as_ref(),
+            self.override_adapter.as_ref(),
+            disable_exposure_logging.unwrap_or(false),
+        );
+
+        match Self::evaluate_with_details(&mut context, &data, spec_name, spec_type) {
+            Ok(eval_details) => (eval_details, Some(context.result)),
+            Err(e) => {
+                log_error_to_statsig_and_console!(
+                    &self.ops_stats,
+                    TAG,
+                    StatsigErr::EvaluationError(e.to_string())
+                );
+                (EvaluationDetails::error(&e.to_string()), None)
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
