@@ -28,11 +28,15 @@ namespace Statsig
             _saveDelegate = SaveNative;
             _deleteDelegate = DeleteNative;
 
-            _ref = StatsigFFI.persistent_storage_create(_loadDelegate, _saveDelegate, _deleteDelegate);
-            if (_ref == 0)
+            byte[] nameBytes = System.Text.Encoding.UTF8.GetBytes("dotnet\0");
+            fixed (byte* namePtr = nameBytes)
             {
-                Console.Error.WriteLine("[Statsig] Failed to register persistent storage with the native bridge.");
-                return;
+                _ref = StatsigFFI.persistent_storage_create(namePtr, _loadDelegate, _saveDelegate, _deleteDelegate);
+                if (_ref == 0)
+                {
+                    Console.Error.WriteLine("[Statsig] Failed to register persistent storage with the native bridge.");
+                    return;
+                }
             }
         }
 
