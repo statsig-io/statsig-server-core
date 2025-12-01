@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 project(Statsig
-    VERSION 0.12.2
+    VERSION 0.13.0
     DESCRIPTION "Statsig C++ Core SDK"
     LANGUAGES CXX
 )
