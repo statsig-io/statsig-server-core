@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace Statsig
@@ -10,9 +11,13 @@ namespace Statsig
         [JsonProperty("disable_exposure_logging")]
         public bool DisableExposureLogging { get; set; }
 
-        public EvaluationOptions(bool disableExposureLogging = false)
+        [JsonProperty("user_persisted_values", NullValueHandling = NullValueHandling.Ignore)]
+        public Dictionary<string, StickyValues>? UserPersistedValues { get; set; }
+
+        public EvaluationOptions(bool disableExposureLogging = false, Dictionary<string, StickyValues>? userPersistedValues = null)
         {
             DisableExposureLogging = disableExposureLogging;
+            UserPersistedValues = userPersistedValues;
         }
     }
 }
