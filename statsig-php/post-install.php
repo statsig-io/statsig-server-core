@@ -2,7 +2,7 @@
 
 const OUTPUT_DIR = "resources";
 const DOMAIN = "pubkey.statsig.com";
-const VERSION = "0.12.2-beta.2511260239";
+const VERSION = "0.13.0-rc.1";
 
 if (getenv('SKIP_STATSIG_POST_INSTALL') === 'true') {
     exit(0);
