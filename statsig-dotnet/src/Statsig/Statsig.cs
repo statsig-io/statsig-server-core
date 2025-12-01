@@ -4,9 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Diagnostics.CodeAnalysis;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Statsig
 {
@@ -317,8 +315,7 @@ namespace Statsig
             Span<byte> nameBytes = nameBytesArray;
 #endif
 
-            Dictionary<string, StickyValues>? persistedValues = LoadPersistedAssignments(user);
-            string? optionsJson = BuildEvaluationOptionsJson(options, persistedValues);
+            string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
             byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
 
             fixed (byte* optionsPtr = optBytes)
@@ -372,8 +369,7 @@ namespace Statsig
             Span<byte> nameBytes = nameBytesArray;
 #endif
 
-            Dictionary<string, StickyValues>? persistedValues = LoadPersistedAssignments(user);
-            string? optionsJson = BuildEvaluationOptionsJson(options, persistedValues);
+            string? optionsJson = options != null ? JsonConvert.SerializeObject(options) : null;
             byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
 
             fixed (byte* optionsPtr = optBytes)
@@ -442,76 +438,6 @@ namespace Statsig
                     ? new ParameterStore(jsonString, _statsigRef, user.Reference, options)
                     : new ParameterStore(string.Empty, _statsigRef, user.Reference, options);
             }
-        }
-
-        private Dictionary<string, StickyValues>? LoadPersistedAssignments(IStatsigUser user)
-        {
-            var storage = _options.PersistentStorage;
-            if (storage == null)
-            {
-                return null;
-            }
-
-            var merged = new Dictionary<string, StickyValues>(StringComparer.Ordinal);
-
-            foreach (var key in EnumerateStorageKeys(user))
-            {
-                var values = storage.Load(key);
-                if (values == null)
-                {
-                    continue;
-                }
-
-                foreach (var kvp in values)
-                {
-                    if (!merged.ContainsKey(kvp.Key))
-                    {
-                        merged[kvp.Key] = kvp.Value;
-                    }
-                }
-            }
-
-            // Even when there are no stored values, return an empty dictionary so the SDK
-            // knows sticky values are enabled and can persist new assignments.
-            return merged;
-        }
-
-        private static IEnumerable<string> EnumerateStorageKeys(IStatsigUser user)
-        {
-            if (!string.IsNullOrEmpty(user.UserID))
-            {
-                yield return $"{user.UserID}:userID";
-            }
-
-            if (user.CustomIDs != null)
-            {
-                foreach (var kvp in user.CustomIDs)
-                {
-                    if (!string.IsNullOrEmpty(kvp.Key) && !string.IsNullOrEmpty(kvp.Value))
-                    {
-                        yield return $"{kvp.Value}:{kvp.Key}";
-                    }
-                }
-            }
-        }
-
-        private static string? BuildEvaluationOptionsJson(EvaluationOptions? options, Dictionary<string, StickyValues>? persistedValues)
-        {
-            // Presence of a persistedValues object (even if empty) signals sticky values support.
-            var hasPersisted = persistedValues != null;
-            if (options == null && !hasPersisted)
-            {
-                return null;
-            }
-
-            JObject payload = options != null ? JObject.FromObject(options) : new JObject();
-
-            if (hasPersisted && payload["user_persisted_values"] == null)
-            {
-                payload["user_persisted_values"] = JObject.FromObject(persistedValues);
-            }
-
-            return payload.HasValues ? payload.ToString(Formatting.None) : null;
         }
 
         // --------------------------
