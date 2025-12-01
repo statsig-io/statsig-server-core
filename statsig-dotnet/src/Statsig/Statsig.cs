@@ -317,7 +317,7 @@ namespace Statsig
             Span<byte> nameBytes = nameBytesArray;
 #endif
 
-            var persistedValues = LoadPersistedAssignments(user);
+            Dictionary<string, StickyValues>? persistedValues = LoadPersistedAssignments(user);
             string? optionsJson = BuildEvaluationOptionsJson(options, persistedValues);
             byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
 
@@ -372,7 +372,7 @@ namespace Statsig
             Span<byte> nameBytes = nameBytesArray;
 #endif
 
-            var persistedValues = LoadPersistedAssignments(user);
+            Dictionary<string, StickyValues>? persistedValues = LoadPersistedAssignments(user);
             string? optionsJson = BuildEvaluationOptionsJson(options, persistedValues);
             byte[]? optBytes = optionsJson != null ? Encoding.UTF8.GetBytes(optionsJson) : null;
 
@@ -471,7 +471,9 @@ namespace Statsig
                 }
             }
 
-            return merged.Count == 0 ? null : merged;
+            // Even when there are no stored values, return an empty dictionary so the SDK
+            // knows sticky values are enabled and can persist new assignments.
+            return merged;
         }
 
         private static IEnumerable<string> EnumerateStorageKeys(IStatsigUser user)
@@ -495,7 +497,8 @@ namespace Statsig
 
         private static string? BuildEvaluationOptionsJson(EvaluationOptions? options, Dictionary<string, StickyValues>? persistedValues)
         {
-            var hasPersisted = persistedValues != null && persistedValues.Count > 0;
+            // Presence of a persistedValues object (even if empty) signals sticky values support.
+            var hasPersisted = persistedValues != null;
             if (options == null && !hasPersisted)
             {
                 return null;
