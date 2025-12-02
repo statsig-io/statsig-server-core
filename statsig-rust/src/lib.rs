@@ -56,6 +56,7 @@ pub mod statsig_metadata;
 pub mod statsig_options;
 pub mod statsig_runtime;
 pub mod statsig_types;
+pub mod statsig_types_raw;
 pub mod user;
 
 mod dcs_str;

@@ -20,6 +20,10 @@ use crate::evaluation::secondary_exposure_key::SecondaryExposureKey;
 use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::interned_string::InternedString;
 use crate::specs_response::explicit_params::ExplicitParameters;
+use crate::statsig_types_raw::{DynamicConfigRaw, ExperimentRaw, FeatureGateRaw, LayerRaw};
+use crate::{log_e, EvaluationDetails};
+
+const TAG: &str = "EvaluatorResult";
 
 #[derive(Default, Debug)]
 pub struct EvaluatorResult {
@@ -46,6 +50,31 @@ pub struct EvaluatorResult {
     pub override_config_name: Option<InternedString>,
     pub has_seen_analytical_gates: Option<bool>,
     pub parameter_rule_ids: Option<HashMap<InternedString, InternedString>>,
+}
+
+pub fn result_to_gate_raw(
+    gate_name: &str,
+    eval_details: &EvaluationDetails,
+    result: Option<&EvaluatorResult>,
+) -> String {
+    let raw = match result {
+        Some(result) => FeatureGateRaw {
+            name: gate_name,
+            details: eval_details,
+            rule_id: result.rule_id.as_ref(),
+            id_type: result.id_type.as_ref(),
+            value: result.bool_value,
+        },
+        None => FeatureGateRaw::empty(gate_name, eval_details),
+    };
+
+    match serde_json::to_string(&raw) {
+        Ok(raw) => raw,
+        Err(e) => {
+            log_e!(TAG, "Failed to convert FeatureGateRaw to string: {}", e);
+            format!(r#"{{"name": "{}", "value": false}}"#, gate_name)
+        }
+    }
 }
 
 pub fn result_to_gate_eval(gate_name: &str, result: &mut EvaluatorResult) -> GateEvaluation {
@@ -81,6 +110,33 @@ pub fn result_to_gate_eval_init_v2(
         base: result_to_base_eval_init_v2(result, expo_id_to_exposure_map, expo_key_to_expo_id_map),
         id_type: result.id_type.take(),
         value,
+    }
+}
+
+pub fn result_to_experiment_raw(
+    experiment_name: &str,
+    eval_details: &EvaluationDetails,
+    result: Option<&EvaluatorResult>,
+) -> String {
+    let raw = match result {
+        Some(result) => ExperimentRaw {
+            name: experiment_name,
+            value: result.json_value.as_ref(),
+            details: eval_details,
+            rule_id: result.rule_id.as_ref(),
+            id_type: result.id_type.as_ref(),
+            group_name: result.group_name.as_ref(),
+            is_experiment_active: Some(result.is_experiment_active),
+        },
+        None => ExperimentRaw::empty(experiment_name, eval_details),
+    };
+
+    match serde_json::to_string(&raw) {
+        Ok(raw) => raw,
+        Err(e) => {
+            log_e!(TAG, "Failed to convert ExperimentRaw to string: {}", e);
+            format!(r#"{{"name": "{}"}}"#, experiment_name)
+        }
     }
 }
 
@@ -200,6 +256,33 @@ pub fn eval_result_to_experiment_eval(
         undelegated_secondary_exposures: std::mem::take(
             &mut result.undelegated_secondary_exposures,
         ),
+    }
+}
+
+pub fn result_to_layer_raw(
+    layer_name: &str,
+    eval_details: &EvaluationDetails,
+    result: Option<&EvaluatorResult>,
+) -> String {
+    let raw = match result {
+        Some(result) => LayerRaw {
+            name: layer_name,
+            details: eval_details,
+            rule_id: result.rule_id.as_ref(),
+            id_type: result.id_type.as_ref(),
+            group_name: result.group_name.as_ref(),
+            allocated_experiment_name: result.config_delegate.as_ref(),
+            is_experiment_active: Some(result.is_experiment_active),
+        },
+        None => LayerRaw::empty(layer_name, eval_details),
+    };
+
+    match serde_json::to_string(&raw) {
+        Ok(raw) => raw,
+        Err(e) => {
+            log_e!(TAG, "Failed to convert LayerRaw to string: {}", e);
+            format!(r#"{{"name": "{}"}}"#, layer_name)
+        }
     }
 }
 
@@ -331,6 +414,31 @@ pub fn result_to_layer_eval_init_v2(
         allocated_experiment_name,
         explicit_parameters: result.explicit_parameters.clone(),
         undelegated_secondary_exposures: mapped_exposures,
+    }
+}
+
+pub fn result_to_dynamic_config_raw(
+    dynamic_config_name: &str,
+    eval_details: &EvaluationDetails,
+    result: Option<&EvaluatorResult>,
+) -> String {
+    let raw = match result {
+        Some(result) => DynamicConfigRaw {
+            name: dynamic_config_name,
+            value: result.json_value.as_ref(),
+            details: eval_details,
+            rule_id: result.rule_id.as_ref(),
+            id_type: result.id_type.as_ref(),
+        },
+        None => DynamicConfigRaw::empty(dynamic_config_name, eval_details),
+    };
+
+    match serde_json::to_string(&raw) {
+        Ok(raw) => raw,
+        Err(e) => {
+            log_e!(TAG, "Failed to convert DynamicConfigRaw to string: {}", e);
+            format!(r#"{{"name": "{}"}}"#, dynamic_config_name)
+        }
     }
 }
 

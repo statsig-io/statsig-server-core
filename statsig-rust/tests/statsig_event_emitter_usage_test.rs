@@ -53,6 +53,7 @@ fn setup(sdk_key: &str) -> (Statsig, StatsigUser, mpsc::Receiver<ReceivedEvent>)
                 reason,
                 rule_id: _,
                 value: _,
+                group_name: _,
             } => {
                 result.data =
                     EventData::Evaluation(experiment_name.to_string(), reason.to_string());

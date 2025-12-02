@@ -1129,6 +1129,41 @@ impl Statsig {
         self.spec_store
             .get_fields_used_for_entity(gate_name, SpecType::Gate)
     }
+
+    #[cfg(feature = "ffi-support")]
+    pub fn get_raw_gate_with_options(
+        &self,
+        user: &StatsigUser,
+        gate_name: &str,
+        options: FeatureGateEvaluationOptions,
+    ) -> String {
+        use crate::evaluation::evaluator_result::result_to_gate_raw;
+
+        let interned_gate_name = InternedString::from_str_ref(gate_name);
+        let user_internal = self.internalize_user(user);
+
+        let (details, evaluation) =
+            self.evaluate_spec_raw(&user_internal, gate_name, &SpecType::Gate, None);
+
+        let raw = result_to_gate_raw(gate_name, &details, evaluation.as_ref());
+
+        self.emit_gate_evaluated_parts(gate_name, details.reason.as_str(), evaluation.as_ref());
+
+        if options.disable_exposure_logging {
+            log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
+            self.event_logger.increment_non_exposure_checks(gate_name);
+        } else {
+            self.event_logger.enqueue(EnqueueExposureOp::gate_exposure(
+                &user_internal,
+                &interned_gate_name,
+                ExposureTrigger::Auto,
+                details,
+                evaluation,
+            ));
+        }
+
+        raw
+    }
 }
 
 // ------------------------------------------------------------------------------- [ Dynamic Config ]
@@ -1210,6 +1245,56 @@ impl Statsig {
     pub fn get_fields_needed_for_dynamic_config(&self, config_name: &str) -> Vec<String> {
         self.spec_store
             .get_fields_used_for_entity(config_name, SpecType::DynamicConfig)
+    }
+
+    #[cfg(feature = "ffi-support")]
+    pub fn get_raw_dynamic_config_with_options(
+        &self,
+        user: &StatsigUser,
+        dynamic_config_name: &str,
+        options: DynamicConfigEvaluationOptions,
+    ) -> String {
+        use crate::evaluation::evaluator_result::result_to_dynamic_config_raw;
+
+        let interned_dynamic_config_name = InternedString::from_str_ref(dynamic_config_name);
+        let user_internal = self.internalize_user(user);
+        let disable_exposure_logging: bool = options.disable_exposure_logging;
+
+        let (details, evaluation) = self.evaluate_spec_raw(
+            &user_internal,
+            dynamic_config_name,
+            &SpecType::DynamicConfig,
+            Some(disable_exposure_logging),
+        );
+
+        let raw = result_to_dynamic_config_raw(dynamic_config_name, &details, evaluation.as_ref());
+
+        self.emit_dynamic_config_evaluated_parts(
+            dynamic_config_name,
+            details.reason.as_str(),
+            evaluation.as_ref(),
+        );
+
+        if disable_exposure_logging {
+            log_d!(
+                TAG,
+                "Exposure logging is disabled for Dynamic Config {}",
+                dynamic_config_name
+            );
+            self.event_logger
+                .increment_non_exposure_checks(dynamic_config_name);
+        } else {
+            self.event_logger
+                .enqueue(EnqueueExposureOp::dynamic_config_exposure(
+                    &user_internal,
+                    &interned_dynamic_config_name,
+                    ExposureTrigger::Auto,
+                    details,
+                    evaluation,
+                ));
+        }
+
+        raw
     }
 }
 
@@ -1354,6 +1439,56 @@ impl Statsig {
             EvaluationDetails::unrecognized(&data.source, data.values.time, data.time_received_at),
         )
     }
+
+    #[cfg(feature = "ffi-support")]
+    pub fn get_raw_experiment_with_options(
+        &self,
+        user: &StatsigUser,
+        experiment_name: &str,
+        options: ExperimentEvaluationOptions,
+    ) -> String {
+        use crate::evaluation::evaluator_result::result_to_experiment_raw;
+
+        let interned_experiment_name = InternedString::from_str_ref(experiment_name);
+        let user_internal = self.internalize_user(user);
+        let disable_exposure_logging: bool = options.disable_exposure_logging;
+
+        let (details, evaluation) = self.evaluate_spec_raw(
+            &user_internal,
+            experiment_name,
+            &SpecType::Experiment,
+            Some(disable_exposure_logging),
+        );
+
+        let raw = result_to_experiment_raw(experiment_name, &details, evaluation.as_ref());
+
+        self.emit_experiment_evaluated_parts(
+            experiment_name,
+            details.reason.as_str(),
+            evaluation.as_ref(),
+        );
+
+        if disable_exposure_logging {
+            log_d!(
+                TAG,
+                "Exposure logging is disabled for Experiment {}",
+                experiment_name
+            );
+            self.event_logger
+                .increment_non_exposure_checks(experiment_name);
+        } else {
+            self.event_logger
+                .enqueue(EnqueueExposureOp::dynamic_config_exposure(
+                    &user_internal,
+                    &interned_experiment_name,
+                    ExposureTrigger::Auto,
+                    details,
+                    evaluation,
+                ));
+        }
+
+        raw
+    }
 }
 
 // ------------------------------------------------------------------------------- [ Layer ]
@@ -1399,6 +1534,37 @@ impl Statsig {
     pub fn get_fields_needed_for_layer(&self, layer_name: &str) -> Vec<String> {
         self.spec_store
             .get_fields_used_for_entity(layer_name, SpecType::Layer)
+    }
+
+    #[cfg(feature = "ffi-support")]
+    pub fn get_raw_layer_with_options(
+        &self,
+        user: &StatsigUser,
+        layer_name: &str,
+        options: LayerEvaluationOptions,
+    ) -> String {
+        use crate::evaluation::evaluator_result::result_to_layer_raw;
+
+        let user_internal = self.internalize_user(user);
+        let disable_exposure_logging: bool = options.disable_exposure_logging;
+
+        let (details, evaluation) = self.evaluate_spec_raw(
+            &user_internal,
+            layer_name,
+            &SpecType::Experiment,
+            Some(disable_exposure_logging),
+        );
+
+        let raw = result_to_layer_raw(layer_name, &details, evaluation.as_ref());
+
+        self.emit_layer_evaluated_parts(layer_name, details.reason.as_str(), evaluation.as_ref());
+
+        if disable_exposure_logging {
+            log_d!(TAG, "Exposure logging is disabled for Layer {}", layer_name);
+            self.event_logger.increment_non_exposure_checks(layer_name);
+        }
+
+        raw
     }
 }
 
