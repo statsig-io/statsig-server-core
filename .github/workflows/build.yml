@@ -351,6 +351,12 @@ jobs:
         with:
           elixir-version: 1.18.4
           otp-version: '28.0'
+      
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        if: ${{  matrix.package == 'elixir' }}
+        with:
+            repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup
         run: |
