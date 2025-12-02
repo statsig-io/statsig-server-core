@@ -24,6 +24,7 @@ jobs:
             - ["server-core-java", "server-core-java"]
             - ["server_core_rust", "server-core-rust"]
             - ["server_core_python_klaviyo", "server-core-python-klaviyo"]
+            - ["server_core_python_chatgpt", "server-core-python-chatgpt"]
     steps:
       - name: Checkout LRS repo
         uses: actions/checkout@v3
