@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use napi::bindgen_prelude::{Either3, Either5};
 use napi_derive::napi;
-use serde_json::Value;
+use serde_json::{json, Value};
 use statsig_rust::{
     dyn_value, log_w, user::user_data::UserData, DynamicValue, StatsigUser as StatsigUserActual,
 };
@@ -357,7 +357,7 @@ add_string_getter_setter!("appVersion", app_version, set_app_version);
 #[napi]
 impl StatsigUser {
     #[napi(js_name = "toJSON")]
-    pub fn to_json(&self) -> String {
-        serde_json::to_string(self.inner.data.as_ref()).unwrap_or_else(|_| "{}".to_string())
+    pub fn to_json(&self) -> Value {
+        serde_json::to_value(self.inner.data.as_ref()).unwrap_or_else(|_| json!({}))
     }
 }

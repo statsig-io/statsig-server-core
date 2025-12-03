@@ -383,4 +383,39 @@ describe('StatsigUser', () => {
       expect(event?.user?.userID).toEqual('attach-user');
     });
   });
+
+  describe('toJSON', () => {
+    it('should work with JSON.stringify', () => {
+      const user = new StatsigUser({
+        userID: 'test-user',
+        email: 'test@example.com',
+        ip: '192.168.1.1',
+        customIDs: {
+          companyID: 'company-123',
+          orgID: 'org-456',
+        },
+        custom: {
+          server_tier: 'production',
+          is_synthetic: false,
+          serviceVersion: 'v1.0.0',
+        },
+      });
+
+      const stringified = JSON.stringify(user);
+      expect(stringified).toBeDefined();
+      let parsed: any = JSON.parse(stringified);
+      
+      expect(parsed).toBeDefined();
+      expect(parsed.userID).toBe('test-user');
+      expect(parsed.email).toBe('test@example.com');
+      expect(parsed.ip).toBe('192.168.1.1');
+      expect(parsed.customIDs).toBeDefined();
+      expect(parsed.customIDs.companyID).toBe('company-123');
+      expect(parsed.customIDs.orgID).toBe('org-456');
+      expect(parsed.custom).toBeDefined();
+      expect(parsed.custom.server_tier).toBe('production');
+      expect(parsed.custom.is_synthetic).toBe(false);
+      expect(parsed.custom.serviceVersion).toBe('v1.0.0');
+    });
+  });
 });
