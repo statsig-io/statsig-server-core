@@ -40,7 +40,21 @@ namespace Statsig
 
         internal static IntPtr StringToNativeUtf8(string? value)
         {
-            return value == null ? IntPtr.Zero : Marshal.StringToCoTaskMemUTF8(value);
+            if (value == null)
+            {
+                return IntPtr.Zero;
+            }
+
+#if NET8_0_OR_GREATER
+            return Marshal.StringToCoTaskMemUTF8(value);
+#else
+            // For .NET Framework 4.7.1, manually convert to UTF-8 and allocate memory
+            var utf8Bytes = Encoding.UTF8.GetBytes(value);
+            var ptr = Marshal.AllocCoTaskMem(utf8Bytes.Length + 1); // +1 for null terminator
+            Marshal.Copy(utf8Bytes, 0, ptr, utf8Bytes.Length);
+            Marshal.WriteByte(ptr, utf8Bytes.Length, 0); // null terminator
+            return ptr;
+#endif
         }
 
         internal static void FreeNativeUtf8(IntPtr ptr)

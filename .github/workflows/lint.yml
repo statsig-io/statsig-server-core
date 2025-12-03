@@ -140,6 +140,19 @@ jobs:
         working-directory: statsig-dotnet
         run: dotnet restore -p:UseLocalProjects=true -r linux-x64
       
+      - name: Build for net471 verification
+        working-directory: statsig-dotnet
+        run: |
+          # Build main Statsig project for net471
+          dotnet build src/Statsig/Statsig.csproj -c Release -f net471 -p:UseLocalProjects=true
+          # Build all NativeAssets projects for net471
+          dotnet build src/Native/Statsig.NativeAssets.linux-x64.csproj -c Release -f net471
+          dotnet build src/Native/Statsig.NativeAssets.linux-arm64.csproj -c Release -f net471
+          dotnet build src/Native/Statsig.NativeAssets.osx-x64.csproj -c Release -f net471
+          dotnet build src/Native/Statsig.NativeAssets.osx-arm64.csproj -c Release -f net471
+          dotnet build src/Native/Statsig.NativeAssets.win-x64.csproj -c Release -f net471
+          dotnet build src/Native/Statsig.NativeAssets.win-x86.csproj -c Release -f net471
+      
       - name: Run dotnet format check
         working-directory: statsig-dotnet
         run: dotnet format --verify-no-changes --severity info --no-restore
