@@ -1322,11 +1322,13 @@ impl Statsig {
             experiment_name,
             Some(options.disable_exposure_logging),
         );
-        if let Some(persisted_experiment) = self.persistent_values_manager.as_ref().and_then(|m| {
-            m.try_apply_sticky_value_to_experiment(&user_internal, &options, &experiment)
-        }) {
-            experiment = persisted_experiment
-        }
+
+        experiment = PersistentValuesManager::try_apply_sticky_value_to_experiment(
+            &self.persistent_values_manager,
+            &user_internal,
+            &options,
+            experiment,
+        );
 
         if disable_exposure_logging {
             log_d!(
@@ -2146,29 +2148,14 @@ impl Statsig {
             Some(evaluation_options.disable_exposure_logging),
         );
 
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &self.ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return layer;
-        });
-        if let Some(persisted_layer) = self.persistent_values_manager.as_ref().and_then(|p| {
-            let event_logger_ptr = Arc::downgrade(&self.event_logger);
-            p.try_apply_sticky_value_to_layer(
-                &user_internal,
-                &evaluation_options,
-                &layer,
-                Some(event_logger_ptr),
-                disable_exposure_logging,
-                &data,
-            )
-        }) {
-            layer = persisted_layer
-        }
+        layer = PersistentValuesManager::try_apply_sticky_value_to_layer(
+            &self.persistent_values_manager,
+            &user_internal,
+            &evaluation_options,
+            &self.spec_store,
+            &self.ops_stats,
+            layer,
+        );
 
         self.emit_layer_evaluated(&layer);
 

@@ -66,7 +66,7 @@ pub fn convert_dict_to_user_persisted_values(
                 value,
                 rule_id: rule_id.map(InternedString::from_string),
                 group_name,
-                config_delegate,
+                config_delegate: config_delegate.map(InternedString::from_string),
                 time,
                 json_value: json_value.map(|v| py_dict_to_json_value_map(&v)),
                 secondary_exposures: convert_py_lists_to_secondary_exposures(&secondary_exposures)?,
@@ -115,7 +115,13 @@ fn convert_stick_value_to_py_obj(
             .as_ref()
             .map(|p| p.unperformant_to_vec()),
     )?;
-    py_dict.set_item("config_delegate", sticky_values.config_delegate.clone())?;
+    py_dict.set_item(
+        "config_delegate",
+        sticky_values
+            .config_delegate
+            .as_ref()
+            .map(|d| d.unperformant_to_string()),
+    )?;
     let undelegated_secondary_exposures = match sticky_values.undelegated_secondary_exposures {
         Some(exp) => {
             let dict = convert_secondary_exposures_to_py_dict(py, exp)?;
