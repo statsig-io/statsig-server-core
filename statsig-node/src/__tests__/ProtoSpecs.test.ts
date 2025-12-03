@@ -37,6 +37,7 @@ describe('Proto Specs', () => {
         value: true,
         ruleID: '6X3qJgyfwA81IJ2dxI7lYp',
         idType: 'userID',
+        secondaryExposures: [],
         details: {
           reason: 'Network:Recognized',
           lcut: expect.any(Number),
@@ -72,6 +73,7 @@ describe('Proto Specs', () => {
         value: true,
         ruleID: '6X3qJgyfwA81IJ2dxI7lYp',
         idType: 'userID',
+        secondaryExposures: [],
         details: {
           reason: 'Network:Recognized',
           lcut: expect.any(Number),

@@ -20,8 +20,13 @@ use crate::evaluation::secondary_exposure_key::SecondaryExposureKey;
 use crate::hashing::{HashAlgorithm, HashUtil};
 use crate::interned_string::InternedString;
 use crate::specs_response::explicit_params::ExplicitParameters;
-use crate::statsig_types_raw::{DynamicConfigRaw, ExperimentRaw, FeatureGateRaw, LayerRaw};
-use crate::{log_e, EvaluationDetails};
+use crate::specs_response::spec_types::Rule;
+use crate::specs_response::specs_hash_map::SpecPointer;
+use crate::statsig_types_raw::{
+    DynamicConfigRaw, ExperimentRaw, FeatureGateRaw, LayerRaw, SuffixedRuleId,
+};
+use crate::user::StatsigUserInternal;
+use crate::{log_e, EvaluationDetails, LayerEvaluationOptions};
 
 const TAG: &str = "EvaluatorResult";
 
@@ -33,7 +38,6 @@ pub struct EvaluatorResult {
     pub is_experiment_group: bool,
     pub is_experiment_active: bool,
     pub is_in_layer: bool,
-    pub is_in_experiment: bool,
     pub id_type: Option<InternedString>,
     pub json_value: Option<DynamicReturnable>,
     pub rule_id: Option<InternedString>,
@@ -61,7 +65,7 @@ pub fn result_to_gate_raw(
         Some(result) => FeatureGateRaw {
             name: gate_name,
             details: eval_details,
-            rule_id: result.rule_id.as_ref(),
+            rule_id: create_raw_suffixed_rule_id(result),
             id_type: result.id_type.as_ref(),
             value: result.bool_value,
         },
@@ -113,6 +117,38 @@ pub fn result_to_gate_eval_init_v2(
     }
 }
 
+pub fn rule_to_experiment_raw(
+    experiment_name: &str,
+    spec_pointer: Option<&SpecPointer>,
+    rule: Option<&Rule>,
+    eval_details: EvaluationDetails,
+) -> String {
+    let raw = match (spec_pointer, rule) {
+        (Some(spec_pointer), Some(rule)) => ExperimentRaw {
+            name: experiment_name,
+            value: Some(&rule.return_value),
+            details: &eval_details,
+            rule_id: SuffixedRuleId {
+                rule_id: &rule.id,
+                rule_id_suffix: None,
+            },
+            id_type: Some(&rule.id_type.value),
+            group_name: rule.group_name.as_ref(),
+            is_experiment_active: Some(spec_pointer.inner.is_active.unwrap_or(false)),
+            secondary_exposures: None,
+        },
+        _ => ExperimentRaw::empty(experiment_name, &eval_details),
+    };
+
+    match serde_json::to_string(&raw) {
+        Ok(raw) => raw,
+        Err(e) => {
+            log_e!(TAG, "Failed to convert ExperimentRaw to string: {}", e);
+            format!(r#"{{"name": "{}"}}"#, experiment_name)
+        }
+    }
+}
+
 pub fn result_to_experiment_raw(
     experiment_name: &str,
     eval_details: &EvaluationDetails,
@@ -123,10 +159,11 @@ pub fn result_to_experiment_raw(
             name: experiment_name,
             value: result.json_value.as_ref(),
             details: eval_details,
-            rule_id: result.rule_id.as_ref(),
+            rule_id: create_raw_suffixed_rule_id(result),
             id_type: result.id_type.as_ref(),
             group_name: result.group_name.as_ref(),
             is_experiment_active: Some(result.is_experiment_active),
+            secondary_exposures: Some(&result.secondary_exposures),
         },
         None => ExperimentRaw::empty(experiment_name, eval_details),
     };
@@ -260,7 +297,9 @@ pub fn eval_result_to_experiment_eval(
 }
 
 pub fn result_to_layer_raw(
+    user: &StatsigUserInternal,
     layer_name: &str,
+    options: LayerEvaluationOptions,
     eval_details: &EvaluationDetails,
     result: Option<&EvaluatorResult>,
 ) -> String {
@@ -268,11 +307,18 @@ pub fn result_to_layer_raw(
         Some(result) => LayerRaw {
             name: layer_name,
             details: eval_details,
-            rule_id: result.rule_id.as_ref(),
+            rule_id: create_raw_suffixed_rule_id(result),
             id_type: result.id_type.as_ref(),
             group_name: result.group_name.as_ref(),
-            allocated_experiment_name: result.config_delegate.as_ref(),
             is_experiment_active: Some(result.is_experiment_active),
+            value: result.json_value.as_ref(),
+            allocated_experiment_name: result.config_delegate.as_ref(),
+            disable_exposure: options.disable_exposure_logging,
+            user: user.to_loggable(),
+            secondary_exposures: Some(&result.secondary_exposures),
+            undelegated_secondary_exposures: result.undelegated_secondary_exposures.as_ref(),
+            explicit_parameters: result.explicit_parameters.clone(),
+            parameter_rule_ids: result.parameter_rule_ids.as_ref(),
         },
         None => LayerRaw::empty(layer_name, eval_details),
     };
@@ -427,7 +473,7 @@ pub fn result_to_dynamic_config_raw(
             name: dynamic_config_name,
             value: result.json_value.as_ref(),
             details: eval_details,
-            rule_id: result.rule_id.as_ref(),
+            rule_id: create_raw_suffixed_rule_id(result),
             id_type: result.id_type.as_ref(),
         },
         None => DynamicConfigRaw::empty(dynamic_config_name, eval_details),
@@ -645,6 +691,16 @@ fn map_exposures(
             }
         })
         .collect()
+}
+
+fn create_raw_suffixed_rule_id<'a>(result: &'a EvaluatorResult) -> SuffixedRuleId<'a> {
+    SuffixedRuleId {
+        rule_id: result
+            .rule_id
+            .as_ref()
+            .unwrap_or(InternedString::empty_ref()),
+        rule_id_suffix: result.rule_id_suffix,
+    }
 }
 
 fn create_suffixed_rule_id(

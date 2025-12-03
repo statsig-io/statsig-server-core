@@ -58,6 +58,7 @@ describe('Statsig', () => {
       specsUrl,
       logEventUrl,
       environment: 'development',
+      outputLogLevel: 'debug',
     };
 
     statsig = new Statsig('secret-123', options);
@@ -210,16 +211,6 @@ describe('Statsig', () => {
       expect(event?.metadata?.config).toEqual('layer_with_many_params');
     });
 
-    it('should expose layer value field directly', async () => {
-      const user = StatsigUser.withUserID('a-user');
-      const layer = statsig.getLayer(user, 'layer_with_many_params');
-
-      expect(layer.value).toBeDefined();
-      expect(typeof layer.value).toBe('object');
-      expect(layer.value).toHaveProperty('another_string');
-      expect(layer.value.another_string).toEqual('layer_default');
-    });
-
     it('should log statsig metadata', async () => {
       const user = StatsigUser.withUserID('a-user');
       statsig.logEvent(user, 'my_custom_event', 'my_value');
@@ -291,12 +282,15 @@ describe('Statsig', () => {
 
       expect(config.get('arr', ['a', 'b', 'c'])).toEqual(['hi', 'there']);
       expect(config.getValue('arr', ['a', 'b', 'c'])).toEqual(['hi', 'there']);
-      
+
       expect(config.get('arr', [1, 'b', 3])).toEqual(['hi', 'there']);
       expect(config.getValue('arr', [1, 'b', 3])).toEqual(['hi', 'there']);
 
       expect(config.get('arr', [true, false, true])).toEqual(['hi', 'there']);
-      expect(config.getValue('arr', [true, false, true])).toEqual(['hi', 'there']);
+      expect(config.getValue('arr', [true, false, true])).toEqual([
+        'hi',
+        'there',
+      ]);
 
       expect(config.get('obj', 'fallback')).toBe('fallback');
       expect(config.getValue('obj', 'fallback')).toEqual({ a: 'bc' });
@@ -341,7 +335,7 @@ describe('Statsig', () => {
       ]);
 
       // falls back when types mismatch
-      expect(experiment.get('arr_param', {a: 'b'})).toEqual({a: 'b'});
+      expect(experiment.get('arr_param', { a: 'b' })).toEqual({ a: 'b' });
       expect(experiment.getValue('arr_param', ['err'])).toEqual([
         true,
         false,
@@ -349,25 +343,55 @@ describe('Statsig', () => {
       ]);
 
       // Object param tests
-      expect(experiment.get('obj_param', { key: 'default' })).toEqual({ group: 'test' });
-      expect(experiment.getValue('obj_param', { key: 'default' })).toEqual({ group: 'test' });
+      expect(experiment.get('obj_param', { key: 'default' })).toEqual({
+        group: 'test',
+      });
+      expect(experiment.getValue('obj_param', { key: 'default' })).toEqual({
+        group: 'test',
+      });
 
-      expect(experiment.get('obj_param', { group: 'fallback' })).toEqual({ group: 'test' });
-      expect(experiment.get('obj_param', { group: true })).toEqual({ group: 'test' });
-      expect(experiment.get('obj_param', { group: 1 })).toEqual({ group: 'test' });
-      expect(experiment.getValue('obj_param', { group: 'fallback' })).toEqual({ group: 'test' });
-      expect(experiment.getValue('obj_param', { group: true })).toEqual({ group: 'test' });
-      expect(experiment.getValue('obj_param', { group: 1 })).toEqual({ group: 'test' });
+      expect(experiment.get('obj_param', { group: 'fallback' })).toEqual({
+        group: 'test',
+      });
+      expect(experiment.get('obj_param', { group: true })).toEqual({
+        group: 'test',
+      });
+      expect(experiment.get('obj_param', { group: 1 })).toEqual({
+        group: 'test',
+      });
+      expect(experiment.getValue('obj_param', { group: 'fallback' })).toEqual({
+        group: 'test',
+      });
+      expect(experiment.getValue('obj_param', { group: true })).toEqual({
+        group: 'test',
+      });
+      expect(experiment.getValue('obj_param', { group: 1 })).toEqual({
+        group: 'test',
+      });
 
       // undefined fallback should return right value
       expect(experiment.get('obj_param', undefined)).toEqual({ group: 'test' });
-      expect(experiment.getValue('obj_param', undefined)).toEqual({ group: 'test' });
+      expect(experiment.getValue('obj_param', undefined)).toEqual({
+        group: 'test',
+      });
       expect(experiment.get('obj_param', null)).toEqual({ group: 'test' });
       expect(experiment.getValue('obj_param', null)).toEqual({ group: 'test' });
-      expect(experiment.get('arr_param', undefined)).toEqual([true, false, true]);
-      expect(experiment.getValue('arr_param', undefined)).toEqual([true, false, true]);
+      expect(experiment.get('arr_param', undefined)).toEqual([
+        true,
+        false,
+        true,
+      ]);
+      expect(experiment.getValue('arr_param', undefined)).toEqual([
+        true,
+        false,
+        true,
+      ]);
       expect(experiment.get('arr_param', null)).toEqual([true, false, true]);
-      expect(experiment.getValue('arr_param', null)).toEqual([true, false, true]);
+      expect(experiment.getValue('arr_param', null)).toEqual([
+        true,
+        false,
+        true,
+      ]);
     });
 
     it('Layer supports get and getValue methods', async () => {
@@ -379,11 +403,13 @@ describe('Statsig', () => {
 
       // falls back when types mismatch
       expect(layer.get('another_string', 1)).toEqual(1);
-      expect(layer.getValue('another_string', 1)).toEqual("layer_default");
+      expect(layer.getValue('another_string', 1)).toEqual('layer_default');
 
       // undefined fallback should return right value
       expect(layer.get('another_string', undefined)).toEqual('layer_default');
-      expect(layer.getValue('another_string', undefined)).toEqual('layer_default');
+      expect(layer.getValue('another_string', undefined)).toEqual(
+        'layer_default',
+      );
       expect(layer.get('another_string', null)).toEqual('layer_default');
       expect(layer.getValue('another_string', null)).toEqual('layer_default');
 

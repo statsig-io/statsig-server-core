@@ -73,6 +73,56 @@ describe('Persisted Storage Usage', () => {
     scrapi.close();
   });
 
+  describe('persisted experiment with holdout', () => {
+    let experiment: Experiment;
+
+    beforeAll(() => {
+      persistentStorage.data = {};
+      experiment = statsig.getExperiment(
+        user,
+        'running_exp_in_layer_with_holdout',
+        {
+          userPersistedValues: persistentStorage.data,
+        },
+      );
+    });
+
+    it('should have the correct values', () => {
+      expect(experiment.name).toBe('running_exp_in_layer_with_holdout');
+      expect(experiment.groupName).toBe('Test');
+      expect(experiment.ruleID).toBe('FC34CQnbBwlkcpMxdi8MT');
+      expect(experiment.details.reason).toBe('Network:Recognized');
+      expect(experiment.getValue('exp_val')).toBe('running_test');
+      expect(experiment.getValue('layer_val')).toBe('layer_default');
+    });
+
+    it('has the correct secondary exposures', () => {
+      expect(experiment.getSecondaryExposures()?.[0]).toEqual(
+        expect.objectContaining({
+          gate: 'global_holdout',
+          gateValue: 'false',
+          ruleID: '3QoA4ncNdVGBaMt3N1KYjz:0.50:1',
+        }),
+      );
+
+      expect(experiment.getSecondaryExposures()?.[1]).toEqual(
+        expect.objectContaining({
+          gate: 'layer_holdout',
+          gateValue: 'false',
+          ruleID: '2bAVp6R3C85vCYrR6be36n:10.00:5',
+        }),
+      );
+    });
+
+    it('should write values to persistent storage', async () => {
+      await waitFor(() => Object.keys(persistentStorage.data).length > 0);
+
+      expect(persistentStorage.data['user-in-test:userID']).toContainKey(
+        'running_exp_in_layer_with_holdout',
+      );
+    });
+  });
+
   describe('persisted experiments', () => {
     let experiment: Experiment;
 
@@ -88,12 +138,13 @@ describe('Persisted Storage Usage', () => {
         );
       });
 
-      it('should be in the test group', () => {
+      it('should have the correct values', () => {
+        expect(experiment.name).toBe('experiment_with_many_params');
         expect(experiment.groupName).toBe('Test');
-      });
-
-      it('should have the correct reason', () => {
+        expect(experiment.ruleID).toBe('7kGqFaUIGHjHJ5X7SOKJcM');
         expect(experiment.details.reason).toBe('Network:Recognized');
+        expect(experiment.getValue('a_bool')).toBe(false);
+        expect(experiment.getValue('a_string')).toBe('test_1');
       });
 
       it('should write values to persistent storage', async () => {
@@ -115,10 +166,10 @@ describe('Persisted Storage Usage', () => {
               explicit_parameters: ['a_string'],
               group_name: 'FakeGroupName',
               json_value: {
-                a_bool: false,
-                a_string: 'test_1',
+                a_bool: true,
+                a_string: 'sticky_value',
               },
-              rule_id: '7kGqFaUIGHjHJ5X7SOKJcM',
+              rule_id: 'sticky_rule_id',
               secondary_exposures: [],
               time: 1763138293896,
               undelegated_secondary_exposures: null,
@@ -136,12 +187,13 @@ describe('Persisted Storage Usage', () => {
         );
       });
 
-      it('should be in the sticky provided group', () => {
+      it('should have the correct values', () => {
+        expect(experiment.name).toBe('experiment_with_many_params');
         expect(experiment.groupName).toBe('FakeGroupName');
-      });
-
-      it('should have the correct reason', () => {
+        expect(experiment.ruleID).toBe('sticky_rule_id');
         expect(experiment.details.reason).toBe('Persisted');
+        expect(experiment.getValue('a_bool')).toBe(true);
+        expect(experiment.getValue('a_string')).toBe('sticky_value');
       });
 
       it('should leave values in persistent storage unchanged', async () => {
@@ -165,18 +217,19 @@ describe('Persisted Storage Usage', () => {
         });
       });
 
-      it('should be in the test group', () => {
-        expect(layer.groupName).toBe('Test');
-      });
-
-      it('should have the correct reason', () => {
-        expect(layer.details.reason).toBe('Network:Recognized');
+      it('should have the correct values', () => {
+        expect(layer.allocatedExperimentName).toBe(
+          'experiment_with_many_params',
+        );
+        expect(layer.getGroupName()).toBe('Test');
+        expect(layer.getRuleId()).toBe('7kGqFaUIGHjHJ5X7SOKJcM');
+        expect(layer.getEvaluationDetails().reason).toBe('Network:Recognized');
+        expect(layer.getValue('a_bool')).toBe(false);
+        expect(layer.getValue('a_string')).toBe('test_1');
       });
 
       it('should write values to persistent storage', async () => {
         await waitFor(() => Object.keys(persistentStorage.data).length > 0);
-
-        console.log(JSON.stringify(persistentStorage.data, null, 2));
 
         expect(persistentStorage.data['user-in-test:userID']).toContainKey(
           'layer_with_many_params',
@@ -194,8 +247,8 @@ describe('Persisted Storage Usage', () => {
               explicit_parameters: ['a_string'],
               group_name: 'FakeGroupName',
               json_value: {
-                a_bool: false,
-                a_string: 'test_1',
+                a_bool: true,
+                a_string: 'sticky_value',
               },
               rule_id: '7kGqFaUIGHjHJ5X7SOKJcM',
               secondary_exposures: [],
@@ -211,12 +264,15 @@ describe('Persisted Storage Usage', () => {
         });
       });
 
-      it('should be in the sticky provided group', () => {
-        expect(layer.groupName).toBe('FakeGroupName');
-      });
-
-      it('should have the correct reason', () => {
-        expect(layer.details.reason).toBe('Persisted');
+      it('should have the correct values', () => {
+        expect(layer.allocatedExperimentName).toBe(
+          'experiment_with_many_params',
+        );
+        expect(layer.getGroupName()).toBe('FakeGroupName');
+        expect(layer.getRuleId()).toBe('7kGqFaUIGHjHJ5X7SOKJcM');
+        expect(layer.getEvaluationDetails().reason).toBe('Persisted');
+        expect(layer.getValue('a_bool')).toBe(true);
+        expect(layer.getValue('a_string')).toBe('sticky_value');
       });
 
       it('should leave values in persistent storage unchanged', async () => {

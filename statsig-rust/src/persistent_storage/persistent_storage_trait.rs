@@ -2,7 +2,7 @@ use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::evaluation_types::BaseEvaluation;
 use crate::interned_string::InternedString;
 use crate::specs_response::explicit_params::ExplicitParameters;
-use crate::{log_e, StatsigUser};
+use crate::{log_e, DynamicReturnable, StatsigUser};
 use crate::{
     statsig_types::{Experiment, Layer},
     unwrap_or_return, SecondaryExposure,
@@ -45,9 +45,9 @@ const TAG: &str = "PersistentStorageTrait";
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct StickyValues {
     pub value: bool,
-    pub json_value: Option<HashMap<String, Value>>,
+    pub json_value: Option<DynamicReturnable>,
     pub rule_id: Option<InternedString>,
-    pub group_name: Option<String>,
+    pub group_name: Option<InternedString>,
     pub secondary_exposures: Vec<SecondaryExposure>,
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
     pub config_delegate: Option<InternedString>,
@@ -92,12 +92,9 @@ pub fn make_sticky_value_from_layer(layer: &Layer) -> Option<StickyValues> {
 
     Some(StickyValues {
         value: true,
-        json_value: Some(layer_evaluation.value.get_json().unwrap_or_default()),
+        json_value: Some(layer_evaluation.value.clone()),
         rule_id: Some(layer_evaluation.base.rule_id.clone()),
-        group_name: layer_evaluation
-            .group_name
-            .as_ref()
-            .map(|g| g.unperformant_to_string()),
+        group_name: layer_evaluation.group_name.clone(),
         secondary_exposures: layer_evaluation.base.secondary_exposures.clone(),
         undelegated_secondary_exposures: layer_evaluation.undelegated_secondary_exposures.clone(),
         config_delegate: layer_evaluation.allocated_experiment_name.clone(),
@@ -113,12 +110,9 @@ pub fn make_sticky_value_from_experiment(experiment: &Experiment) -> Option<Stic
 
     Some(StickyValues {
         value: true, // For sticky value, if it's being saved, it should always be true
-        json_value: Some(evaluation.value.get_json().unwrap_or_default()),
+        json_value: Some(evaluation.value.clone()),
         rule_id: Some(evaluation.base.rule_id.clone()),
-        group_name: evaluation
-            .group_name
-            .as_ref()
-            .map(|g| g.unperformant_to_string()),
+        group_name: evaluation.group_name.clone(),
         secondary_exposures: evaluation.base.secondary_exposures.clone(),
         undelegated_secondary_exposures: evaluation.undelegated_secondary_exposures.clone(),
         config_delegate: None,

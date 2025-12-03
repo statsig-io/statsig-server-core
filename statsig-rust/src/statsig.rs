@@ -44,6 +44,8 @@ use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker};
 use crate::sdk_event_emitter::SdkEventEmitter;
 use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
+use crate::specs_response::spec_types::Rule;
+use crate::specs_response::specs_hash_map::SpecPointer;
 use crate::statsig_err::StatsigErr;
 use crate::statsig_metadata::StatsigMetadata;
 use crate::statsig_options::StatsigOptions;
@@ -1131,7 +1133,7 @@ impl Statsig {
     }
 
     #[cfg(feature = "ffi-support")]
-    pub fn get_raw_gate_with_options(
+    pub fn get_raw_feature_gate_with_options(
         &self,
         user: &StatsigUser,
         gate_name: &str,
@@ -1378,67 +1380,47 @@ impl Statsig {
         experiment_name: &str,
         group_name: &str,
     ) -> Experiment {
-        let data = read_lock_or_else!(self.spec_store.data, {
-            log_error_to_statsig_and_console!(
-                self.ops_stats.clone(),
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return make_experiment(
-                experiment_name,
-                None,
-                EvaluationDetails::error("Failed to acquire read lock for spec store data"),
-            );
-        });
+        self.get_experiment_by_group_name_impl(
+            experiment_name,
+            group_name,
+            |spec_pointer, rule, details| {
+                if let (Some(spec_pointer), Some(rule)) = (spec_pointer, rule) {
+                    let value = rule.return_value.get_json().unwrap_or_default();
+                    let rule_id = String::from(rule.id.as_str());
+                    let id_type = rule.id_type.value.unperformant_to_string();
+                    let group_name = rule.group_name.as_ref().map(|g| g.unperformant_to_string());
 
-        let experiment_name = InternedString::from_str_ref(experiment_name);
-        let experiment = data.values.dynamic_configs.get(&experiment_name);
+                    return Experiment {
+                        name: experiment_name.to_string(),
+                        value,
+                        rule_id,
+                        id_type,
+                        group_name,
+                        details,
+                        is_experiment_active: spec_pointer.inner.is_active.unwrap_or(false),
+                        __evaluation: None,
+                    };
+                }
 
-        let Some(exp) = experiment else {
-            return make_experiment(
-                experiment_name.as_str(),
-                None,
-                EvaluationDetails::unrecognized(
-                    &data.source,
-                    data.values.time,
-                    data.time_received_at,
-                ),
-            );
-        };
+                make_experiment(experiment_name, None, details)
+            },
+        )
+    }
 
-        if let Some(rule) = exp
-            .inner
-            .rules
-            .iter()
-            .find(|rule| rule.group_name.as_deref() == Some(group_name))
-        {
-            let value = rule.return_value.get_json().unwrap_or_default();
-            let rule_id = String::from(rule.id.as_str());
-            let id_type = rule.id_type.value.unperformant_to_string();
-            let group_name = rule.group_name.as_ref().map(|g| g.unperformant_to_string());
+    #[cfg(feature = "ffi-support")]
+    pub fn get_raw_experiment_by_group_name(
+        &self,
+        experiment_name: &str,
+        group_name: &str,
+    ) -> String {
+        use crate::evaluation::evaluator_result::rule_to_experiment_raw;
 
-            return Experiment {
-                name: experiment_name.to_string(),
-                value,
-                rule_id,
-                id_type,
-                group_name,
-                details: EvaluationDetails::recognized_without_eval_result(
-                    &data.source,
-                    data.values.time,
-                    data.time_received_at,
-                ),
-                is_experiment_active: exp.inner.is_active.unwrap_or(false),
-                __evaluation: None,
-            };
-        }
-
-        make_experiment(
-            experiment_name.as_str(),
-            None,
-            EvaluationDetails::unrecognized(&data.source, data.values.time, data.time_received_at),
+        self.get_experiment_by_group_name_impl(
+            experiment_name,
+            group_name,
+            |spec_pointer, rule, details| {
+                rule_to_experiment_raw(experiment_name, spec_pointer, rule, details)
+            },
         )
     }
 
@@ -1455,19 +1437,27 @@ impl Statsig {
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging: bool = options.disable_exposure_logging;
 
-        let (details, evaluation) = self.evaluate_spec_raw(
+        let (details, result) = self.evaluate_spec_raw(
             &user_internal,
             experiment_name,
             &SpecType::Experiment,
             Some(disable_exposure_logging),
         );
 
-        let raw = result_to_experiment_raw(experiment_name, &details, evaluation.as_ref());
+        let (result, details) = PersistentValuesManager::try_apply_sticky_value_to_raw_experiment(
+            &self.persistent_values_manager,
+            &user_internal,
+            &options,
+            details,
+            result,
+        );
+
+        let raw = result_to_experiment_raw(experiment_name, &details, result.as_ref());
 
         self.emit_experiment_evaluated_parts(
             experiment_name,
             details.reason.as_str(),
-            evaluation.as_ref(),
+            result.as_ref(),
         );
 
         if disable_exposure_logging {
@@ -1485,11 +1475,71 @@ impl Statsig {
                     &interned_experiment_name,
                     ExposureTrigger::Auto,
                     details,
-                    evaluation,
+                    result,
                 ));
         }
 
         raw
+    }
+
+    fn get_experiment_by_group_name_impl<T>(
+        &self,
+        experiment_name: &str,
+        group_name: &str,
+        result_factory: impl FnOnce(Option<&SpecPointer>, Option<&Rule>, EvaluationDetails) -> T,
+    ) -> T {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return result_factory(
+                None,
+                None,
+                EvaluationDetails::error("Failed to acquire read lock for spec store data"),
+            );
+        });
+
+        let experiment_name = InternedString::from_str_ref(experiment_name);
+        let experiment = data.values.dynamic_configs.get(&experiment_name);
+
+        let Some(exp) = experiment else {
+            return result_factory(
+                None,
+                None,
+                EvaluationDetails::unrecognized(
+                    &data.source,
+                    data.values.time,
+                    data.time_received_at,
+                ),
+            );
+        };
+
+        if let Some(rule) = exp
+            .inner
+            .rules
+            .iter()
+            .find(|rule| rule.group_name.as_deref() == Some(group_name))
+        {
+            return result_factory(
+                Some(exp),
+                Some(rule),
+                EvaluationDetails::recognized_without_eval_result(
+                    &data.source,
+                    data.values.time,
+                    data.time_received_at,
+                ),
+            );
+        }
+
+        result_factory(
+            None,
+            None,
+            EvaluationDetails::unrecognized(&data.source, data.values.time, data.time_received_at),
+        )
     }
 }
 
@@ -1550,16 +1600,32 @@ impl Statsig {
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging: bool = options.disable_exposure_logging;
 
-        let (details, evaluation) = self.evaluate_spec_raw(
+        let (details, result) = self.evaluate_spec_raw(
             &user_internal,
             layer_name,
-            &SpecType::Experiment,
+            &SpecType::Layer,
             Some(disable_exposure_logging),
         );
 
-        let raw = result_to_layer_raw(layer_name, &details, evaluation.as_ref());
+        let (result, details) = PersistentValuesManager::try_apply_sticky_value_to_raw_layer(
+            &self.persistent_values_manager,
+            &user_internal,
+            &options,
+            &self.spec_store,
+            &self.ops_stats,
+            details,
+            result,
+        );
 
-        self.emit_layer_evaluated_parts(layer_name, details.reason.as_str(), evaluation.as_ref());
+        let raw = result_to_layer_raw(
+            &user_internal,
+            layer_name,
+            options,
+            &details,
+            result.as_ref(),
+        );
+
+        self.emit_layer_evaluated_parts(layer_name, details.reason.as_str(), result.as_ref());
 
         if disable_exposure_logging {
             log_d!(TAG, "Exposure logging is disabled for Layer {}", layer_name);
@@ -1567,6 +1633,34 @@ impl Statsig {
         }
 
         raw
+    }
+
+    #[cfg(feature = "ffi-support")]
+    pub fn log_layer_param_exposure_from_raw(&self, raw: String, param_name: String) {
+        use crate::statsig_types_raw::PartialLayerRaw;
+
+        let partial_raw = match serde_json::from_str::<PartialLayerRaw>(&raw) {
+            Ok(partial_raw) => partial_raw,
+            Err(e) => {
+                log_e!(TAG, "Failed to parse partial layer raw: {}", e);
+                return;
+            }
+        };
+
+        if partial_raw.disable_exposure {
+            self.event_logger
+                .increment_non_exposure_checks(&partial_raw.name);
+            return;
+        }
+
+        let interned_parameter_name = InternedString::from_string(param_name);
+
+        self.event_logger
+            .enqueue(EnqueueExposureOp::layer_param_exposure_from_partial_raw(
+                interned_parameter_name,
+                ExposureTrigger::Auto,
+                partial_raw,
+            ));
     }
 }
 

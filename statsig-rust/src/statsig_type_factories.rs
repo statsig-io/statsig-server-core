@@ -23,11 +23,7 @@ pub fn make_feature_gate(
                 None => "".into(),
             },
         ),
-        None => (
-            false,
-            InternedString::from_str_ref("default"),
-            String::new(),
-        ),
+        None => (false, InternedString::default_rule_id(), String::new()),
     };
 
     FeatureGate {
@@ -62,7 +58,7 @@ pub fn extract_from_experiment_evaluation(
         ),
         None => (
             DynamicReturnable::empty(),
-            InternedString::from_str_ref("default"),
+            InternedString::default_rule_id(),
             String::new(),
             None,
             false,
@@ -86,7 +82,7 @@ pub fn make_dynamic_config(
         ),
         None => (
             DynamicReturnable::empty(),
-            InternedString::from_str_ref("default"),
+            InternedString::default_rule_id(),
             String::new(),
         ),
     };
@@ -155,7 +151,7 @@ pub fn make_layer(
         ),
         None => (
             DynamicReturnable::empty(),
-            InternedString::from_str_ref("default"),
+            InternedString::default_rule_id(),
             None,
             None,
             "".into(),

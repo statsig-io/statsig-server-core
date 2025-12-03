@@ -16,6 +16,7 @@ use crate::{
     },
     interned_string::InternedString,
     specs_response::explicit_params::ExplicitParameters,
+    statsig_types_raw::PartialLayerRaw,
     user::{StatsigUserInternal, StatsigUserLoggable},
     EvaluationDetails, SecondaryExposure,
 };
@@ -25,8 +26,13 @@ use super::queued_event::{EnqueueOperation, QueuedEvent, QueuedExposure};
 // Flow:
 // IN(EVAL) |> EnqueueOp [sampling]> QueuedEvent [bg thread]> StatsigEventInternal |> OUT(LOGGED)
 
+pub enum UserLoggableOrInternal<'a> {
+    Loggable(StatsigUserLoggable),
+    Internal(&'a StatsigUserInternal<'a, 'a>),
+}
+
 pub struct EnqueueExposureOp<'a> {
-    user: &'a StatsigUserInternal<'a, 'a>,
+    user: UserLoggableOrInternal<'a>,
     data: ExposureData,
 }
 
@@ -69,7 +75,7 @@ impl<'a> EnqueueExposureOp<'a> {
         let gate_value = result.as_ref().is_some_and(|r| r.bool_value);
         let mut op = Self::new(
             GATE_EXPOSURE_EVENT_NAME,
-            user,
+            UserLoggableOrInternal::Internal(user),
             spec_name,
             trigger,
             details,
@@ -91,7 +97,7 @@ impl<'a> EnqueueExposureOp<'a> {
 
         let mut op = Self::new(
             CONFIG_EXPOSURE_EVENT_NAME,
-            user,
+            UserLoggableOrInternal::Internal(user),
             spec_name,
             trigger,
             details,
@@ -112,7 +118,7 @@ impl<'a> EnqueueExposureOp<'a> {
         let is_user_in_experiment = result.as_ref().is_some_and(|r| r.is_experiment_group);
         let mut op = Self::new(
             CONFIG_EXPOSURE_EVENT_NAME,
-            user,
+            UserLoggableOrInternal::Internal(user),
             spec_name,
             trigger,
             details,
@@ -144,7 +150,7 @@ impl<'a> EnqueueExposureOp<'a> {
 
         let mut op = Self::new(
             LAYER_EXPOSURE_EVENT_NAME,
-            user,
+            UserLoggableOrInternal::Internal(user),
             spec_name,
             trigger,
             details,
@@ -159,9 +165,49 @@ impl<'a> EnqueueExposureOp<'a> {
         op
     }
 
+    pub(crate) fn layer_param_exposure_from_partial_raw(
+        parameter_name: InternedString,
+        trigger: ExposureTrigger,
+        partial_raw: PartialLayerRaw,
+    ) -> Self {
+        let version = partial_raw.details.version;
+        let user = UserLoggableOrInternal::Loggable(partial_raw.user);
+
+        let mut rule_id = partial_raw
+            .parameter_rule_ids
+            .as_ref()
+            .and_then(|ids| ids.get(&parameter_name));
+
+        if rule_id.is_none() {
+            rule_id = partial_raw.rule_id.as_ref();
+        }
+
+        let data = ExposureData {
+            event_name: LAYER_EXPOSURE_EVENT_NAME,
+            spec_name: partial_raw.name,
+            rule_id: rule_id.cloned(),
+            exposure_time: Utc::now().timestamp_millis() as u64,
+            trigger,
+            evaluation_details: partial_raw.details,
+            secondary_exposures: partial_raw.secondary_exposures,
+            undelegated_secondary_exposures: partial_raw.undelegated_secondary_exposures,
+            version,
+            override_spec_name: None,
+            rule_passed: None,
+            exposure_info: None,
+            parameter_name: Some(parameter_name),
+            explicit_params: partial_raw.explicit_parameters,
+            allocated_experiment: partial_raw.allocated_experiment_name,
+            is_user_in_experiment: None,
+            gate_value: None,
+        };
+
+        Self { user, data }
+    }
+
     fn new(
         event_name: &'static str,
-        user: &'a StatsigUserInternal<'a, 'a>,
+        user: UserLoggableOrInternal<'a>,
         spec_name: &InternedString,
         trigger: ExposureTrigger,
         details: EvaluationDetails,
@@ -212,8 +258,13 @@ impl EnqueueOperation for EnqueueExposureOp<'_> {
     }
 
     fn into_queued_event(self, sampling_decision: EvtSamplingDecision) -> QueuedEvent {
+        let loggable_user = match self.user {
+            UserLoggableOrInternal::Loggable(loggable) => loggable,
+            UserLoggableOrInternal::Internal(internal) => internal.to_loggable(),
+        };
+
         QueuedEvent::Exposure(QueuedExposureEvent {
-            user: self.user.to_loggable(),
+            user: loggable_user,
             sampling_decision,
             data: self.data,
         })
@@ -224,7 +275,12 @@ impl<'a> QueuedExposure<'a> for EnqueueExposureOp<'a> {
     fn create_exposure_sampling_key(&self) -> ExposureSamplingKey {
         let spec_name_hash = self.data.spec_name.hash;
         let rule_id_hash = self.data.rule_id.as_ref().map_or(0, |id| id.hash);
-        let user_values_hash = self.user.user_ref.data.create_user_values_hash();
+        let user_values_hash = match &self.user {
+            UserLoggableOrInternal::Loggable(loggable) => loggable.data.create_user_values_hash(),
+            UserLoggableOrInternal::Internal(internal) => {
+                internal.user_ref.data.create_user_values_hash()
+            }
+        };
 
         let mut additional_hash = 0u64;
         if let Some(gate_value) = self.data.gate_value {
@@ -265,10 +321,12 @@ impl QueuedExposureEvent {
         let mut data = self.data;
         let mut builder = MetadataBuilder::new();
 
+        let mut should_use_undelegated_secondary_exposures = false;
+
         builder
             .try_add_gate_fields(&mut data)
             .try_add_config_fields(&mut data)
-            .try_add_layer_fields(&mut data)
+            .try_add_layer_fields(&mut data, &mut should_use_undelegated_secondary_exposures)
             .add_eval_details(data.evaluation_details)
             .add_interned_str("ruleID", data.rule_id.as_ref())
             .try_add("configVersion", data.version.as_ref());
@@ -290,12 +348,13 @@ impl QueuedExposureEvent {
             statsig_metadata: Some(statsig_metadata),
         };
 
-        StatsigEventInternal::new(
-            data.exposure_time,
-            self.user,
-            event,
-            Some(data.secondary_exposures.unwrap_or_default()),
-        )
+        let secondary_exposures = if should_use_undelegated_secondary_exposures {
+            data.undelegated_secondary_exposures
+        } else {
+            data.secondary_exposures
+        };
+
+        StatsigEventInternal::new(data.exposure_time, self.user, event, secondary_exposures)
     }
 }
 
@@ -368,7 +427,11 @@ impl MetadataBuilder {
         self
     }
 
-    pub fn try_add_layer_fields(&mut self, data: &mut ExposureData) -> &mut Self {
+    pub fn try_add_layer_fields(
+        &mut self,
+        data: &mut ExposureData,
+        should_use_undelegated_secondary_exposures: &mut bool,
+    ) -> &mut Self {
         if data.event_name != LAYER_EXPOSURE_EVENT_NAME {
             return self;
         }
@@ -387,6 +450,7 @@ impl MetadataBuilder {
             self.add_interned_str("allocatedExperiment", data.allocated_experiment.as_ref());
         } else {
             self.add_interned_str("allocatedExperiment", None);
+            *should_use_undelegated_secondary_exposures = true;
         }
 
         self

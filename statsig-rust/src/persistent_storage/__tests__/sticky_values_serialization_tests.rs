@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     interned_string::InternedString, specs_response::explicit_params::ExplicitParameters,
-    SecondaryExposure, StickyValues,
+    DynamicReturnable, SecondaryExposure, StickyValues,
 };
 
 use serde_json::{json, Value};
@@ -77,13 +77,13 @@ fn test_sticky_values_deserialization_from_str() {
 fn test_sticky_values_serialization_to_value() {
     let sticky = StickyValues {
         value: true,
-        json_value: Some(HashMap::new()),
+        json_value: Some(DynamicReturnable::from_map(HashMap::new())),
         rule_id: Some(InternedString::from_str_ref("3ZCniK9rvnQyXDQlQ1tGD9")),
-        group_name: Some("test_group".to_string()),
+        group_name: Some(InternedString::from_str_ref("test_group")),
         secondary_exposures: vec![SecondaryExposure {
             gate: InternedString::from_str_ref("test_holdout"),
             gate_value: InternedString::from_str_ref("true"),
-            rule_id: InternedString::from_str_ref("default"),
+            rule_id: InternedString::default_rule_id(),
         }],
         undelegated_secondary_exposures: None,
         config_delegate: Some(InternedString::from_str_ref("test_delegate")),
@@ -106,13 +106,13 @@ fn test_sticky_values_serialization_to_value() {
 fn test_sticky_values_serialization_to_str() {
     let sticky = StickyValues {
         value: true,
-        json_value: Some(HashMap::new()),
+        json_value: Some(DynamicReturnable::from_map(HashMap::new())),
         rule_id: Some(InternedString::from_str_ref("3ZCniK9rvnQyXDQlQ1tGD9")),
-        group_name: Some("test_group".to_string()),
+        group_name: Some(InternedString::from_str_ref("test_group")),
         secondary_exposures: vec![SecondaryExposure {
             gate: InternedString::from_str_ref("test_holdout"),
             gate_value: InternedString::from_str_ref("true"),
-            rule_id: InternedString::from_str_ref("default"),
+            rule_id: InternedString::default_rule_id(),
         }],
         undelegated_secondary_exposures: None,
         config_delegate: Some(InternedString::from_str_ref("test_delegate")),

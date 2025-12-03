@@ -364,9 +364,6 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-module.exports.DynamicConfig = nativeBinding.DynamicConfig
-module.exports.Experiment = nativeBinding.Experiment
-module.exports.Layer = nativeBinding.Layer
 module.exports.ParameterStore = nativeBinding.ParameterStore
 module.exports.StatsigNapiInternal = nativeBinding.StatsigNapiInternal
 module.exports.StatsigUser = nativeBinding.StatsigUser

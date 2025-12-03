@@ -3,7 +3,10 @@ use std::sync::Arc;
 use chrono::Utc;
 
 use crate::{
-    evaluation::evaluation_types::{BaseEvaluation, ExperimentEvaluation, LayerEvaluation},
+    evaluation::{
+        evaluation_types::{BaseEvaluation, ExperimentEvaluation, LayerEvaluation},
+        evaluator_result::EvaluatorResult,
+    },
     get_persistent_storage_key,
     interned_string::InternedString,
     log_d, log_error_to_statsig_and_console, make_sticky_value_from_experiment,
@@ -24,6 +27,199 @@ pub struct PersistentValuesManager {
 const TAG: &str = "PersistentValuesManager";
 
 impl PersistentValuesManager {
+    pub fn try_apply_sticky_value_to_raw_layer<'a>(
+        manager: &'a Option<Arc<PersistentValuesManager>>,
+        user: &'a StatsigUserInternal,
+        options: &'a LayerEvaluationOptions,
+        spec_store: &Arc<SpecStore>,
+        ops_stats: &Arc<OpsStatsForInstance>,
+        details: EvaluationDetails,
+        result: Option<EvaluatorResult>,
+    ) -> (Option<EvaluatorResult>, EvaluationDetails) {
+        let manager = match manager {
+            Some(manager) => manager,
+            None => {
+                return (result, details);
+            }
+        };
+
+        let result = match result {
+            Some(result) => result,
+            None => {
+                return (None, details);
+            }
+        };
+
+        let spec_store_data = read_lock_or_else!(spec_store.data, {
+            log_error_to_statsig_and_console!(
+                &ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return (Some(result), details);
+        });
+
+        let (result, details) = manager.try_apply_sticky_value_to_raw_layer_impl(
+            user,
+            options,
+            &spec_store_data,
+            details,
+            result,
+        );
+
+        (Some(result), details)
+    }
+
+    fn try_apply_sticky_value_to_raw_layer_impl<'a>(
+        &self,
+        user: &'a StatsigUserInternal,
+        options: &'a LayerEvaluationOptions,
+        spec_store_data: &'a SpecStoreData,
+        curr_details: EvaluationDetails,
+        curr_result: EvaluatorResult,
+    ) -> (EvaluatorResult, EvaluationDetails) {
+        let id_type = match &curr_result.id_type {
+            Some(id_type) => id_type,
+            None => {
+                return (curr_result, curr_details);
+            }
+        };
+
+        let config_name = match &curr_result.name {
+            Some(name) => name,
+            None => {
+                return (curr_result, curr_details);
+            }
+        };
+
+        let storage_key = match get_persistent_storage_key(user.user_ref, id_type.as_str()) {
+            Some(key) => key,
+            None => {
+                return (curr_result, curr_details);
+            }
+        };
+
+        let sticky_value = options
+            .user_persisted_values
+            .as_ref()
+            .and_then(|values| values.get(config_name.as_str()));
+
+        let is_experiment_active = self.get_sticky_aware_is_experiment_active(
+            curr_result.is_experiment_active,
+            spec_store_data,
+            sticky_value,
+        );
+
+        // Exit Early: Caller does not want sticky, or experiment is not active
+        if options.user_persisted_values.is_none() || !is_experiment_active {
+            self.delete_sticky_value(&storage_key, config_name);
+            return (curr_result, curr_details);
+        }
+
+        // Exit Early: Found a Sticky Value
+        if let Some(found) = sticky_value {
+            let sticky_details = make_evaluation_details_from_sticky_value(found);
+            let sticky_result = make_evaluation_result_from_sticky_value(curr_result, found);
+            return (sticky_result, sticky_details);
+        }
+
+        if curr_result.is_experiment_active && curr_result.is_experiment_group {
+            let new_sticky_value =
+                make_sticky_value_from_evaluation_result(&curr_result, curr_details.lcut);
+
+            self.persistent_storage
+                .save(&storage_key, config_name, new_sticky_value);
+        }
+
+        (curr_result, curr_details)
+    }
+
+    pub fn try_apply_sticky_value_to_raw_experiment<'a>(
+        manager: &'a Option<Arc<PersistentValuesManager>>,
+        user: &'a StatsigUserInternal,
+        options: &'a ExperimentEvaluationOptions,
+        details: EvaluationDetails,
+        result: Option<EvaluatorResult>,
+    ) -> (Option<EvaluatorResult>, EvaluationDetails) {
+        let manager = match manager {
+            Some(manager) => manager,
+            None => {
+                return (result, details);
+            }
+        };
+
+        let result = match result {
+            Some(result) => result,
+            None => {
+                return (None, details);
+            }
+        };
+
+        let (result, details) =
+            manager.try_apply_sticky_value_to_raw_experiment_impl(user, options, details, result);
+
+        (Some(result), details)
+    }
+
+    fn try_apply_sticky_value_to_raw_experiment_impl<'a>(
+        &self,
+        user: &'a StatsigUserInternal,
+        options: &'a ExperimentEvaluationOptions,
+        curr_details: EvaluationDetails,
+        curr_result: EvaluatorResult,
+    ) -> (EvaluatorResult, EvaluationDetails) {
+        let id_type = match &curr_result.id_type {
+            Some(id_type) => id_type,
+            None => {
+                return (curr_result, curr_details);
+            }
+        };
+
+        let config_name = match &curr_result.name {
+            Some(name) => name,
+            None => {
+                return (curr_result, curr_details);
+            }
+        };
+
+        let storage_key = match get_persistent_storage_key(user.user_ref, id_type.as_str()) {
+            Some(key) => key,
+            None => {
+                return (curr_result, curr_details);
+            }
+        };
+
+        // Exit Early: Caller does not want sticky, or experiment is not active
+        if options.user_persisted_values.is_none() || !curr_result.is_experiment_active {
+            self.delete_sticky_value(&storage_key, config_name);
+            return (curr_result, curr_details);
+        }
+
+        let sticky_value = options
+            .user_persisted_values
+            .as_ref()
+            .and_then(|values| values.get(config_name.as_str()));
+
+        // Exit Early: Found a Sticky Value
+        if let Some(found) = sticky_value {
+            let sticky_details = make_evaluation_details_from_sticky_value(found);
+            let sticky_result = make_evaluation_result_from_sticky_value(curr_result, found);
+            return (sticky_result, sticky_details);
+        }
+
+        if curr_result.is_experiment_active && curr_result.is_experiment_group {
+            let new_sticky_value =
+                make_sticky_value_from_evaluation_result(&curr_result, curr_details.lcut);
+
+            self.persistent_storage
+                .save(&storage_key, config_name, new_sticky_value);
+        }
+
+        (curr_result, curr_details)
+    }
+
     pub fn try_apply_sticky_value_to_experiment<'a>(
         manager: &'a Option<Arc<PersistentValuesManager>>,
         user: &'a StatsigUserInternal,
@@ -147,8 +343,11 @@ impl PersistentValuesManager {
             .as_ref()
             .and_then(|values| values.get(config_name));
 
-        let is_experiment_active =
-            self.get_sticky_aware_is_experiment_active(&curr_layer, spec_store_data, sticky_value);
+        let is_experiment_active = self.get_sticky_aware_is_experiment_active(
+            curr_layer.is_experiment_active,
+            spec_store_data,
+            sticky_value,
+        );
 
         // Exit Early: No provided values, or sticky experiment/layer is not active
         if options.user_persisted_values.is_none() || !is_experiment_active {
@@ -186,11 +385,11 @@ impl PersistentValuesManager {
 
     fn get_sticky_aware_is_experiment_active(
         &self,
-        layer: &Layer,
+        layer_is_active: bool,
         spec_store_data: &SpecStoreData,
         sticky_value: Option<&StickyValues>,
     ) -> bool {
-        let fallback = layer.is_experiment_active;
+        let fallback = layer_is_active;
 
         let sticky_values = match sticky_value {
             Some(sticky_value) => sticky_value,
@@ -207,6 +406,72 @@ impl PersistentValuesManager {
             Some(delegate) => delegate.inner.is_active.unwrap_or(fallback),
             None => fallback,
         }
+    }
+}
+
+// -------------------------------------------------------------------------- [ Raw Experiment/Layer Helpers ]
+
+fn make_evaluation_details_from_sticky_value(sticky_value: &StickyValues) -> EvaluationDetails {
+    EvaluationDetails {
+        reason: "Persisted".to_owned(),
+        lcut: sticky_value.time,
+        received_at: Some(Utc::now().timestamp_millis() as u64),
+        version: sticky_value.config_version,
+    }
+}
+
+fn make_evaluation_result_from_sticky_value(
+    curr_result: EvaluatorResult,
+    sticky_value: &StickyValues,
+) -> EvaluatorResult {
+    EvaluatorResult {
+        // transfer from current
+        name: curr_result.name,
+        id_type: curr_result.id_type,
+        bool_value: sticky_value.value,
+
+        // clone from sticky
+        rule_id: sticky_value.rule_id.clone(),
+        group_name: sticky_value.group_name.clone(),
+        json_value: sticky_value.json_value.clone(),
+        version: sticky_value.config_version,
+        config_delegate: sticky_value.config_delegate.clone(),
+        explicit_parameters: sticky_value.explicit_parameters.clone(),
+        secondary_exposures: sticky_value.secondary_exposures.clone(),
+        undelegated_secondary_exposures: sticky_value.undelegated_secondary_exposures.clone(),
+
+        // these are always true for sticky values
+        is_experiment_active: true,
+        is_experiment_group: true,
+
+        // Not yet consumed by raw logic
+        unsupported: false,
+        is_in_layer: false,
+        rule_id_suffix: None,
+        override_reason: None,
+        sampling_rate: None,
+        forward_all_exposures: None,
+        override_config_name: None,
+        has_seen_analytical_gates: None,
+        parameter_rule_ids: None,
+    }
+}
+
+fn make_sticky_value_from_evaluation_result(
+    curr_result: &EvaluatorResult,
+    lcut: Option<u64>,
+) -> StickyValues {
+    StickyValues {
+        value: curr_result.bool_value,
+        json_value: curr_result.json_value.clone(),
+        rule_id: curr_result.rule_id.clone(),
+        group_name: curr_result.group_name.clone(),
+        secondary_exposures: curr_result.secondary_exposures.clone(),
+        undelegated_secondary_exposures: curr_result.undelegated_secondary_exposures.clone(),
+        config_delegate: curr_result.config_delegate.clone(),
+        explicit_parameters: curr_result.explicit_parameters.clone(),
+        time: lcut,
+        config_version: curr_result.version,
     }
 }
 
@@ -233,13 +498,19 @@ fn make_experiment_from_sticky_value(
         sticky_group_name,
     );
 
+    let value = sticky_value
+        .json_value
+        .as_ref()
+        .and_then(|v| v.get_json())
+        .unwrap_or_default();
+
     Experiment {
         // transfer from current
         name: curr_experiment.name,
         id_type: curr_experiment.id_type,
 
         // clone from sticky
-        value: sticky_value.json_value.clone().unwrap_or_default(),
+        value,
         rule_id: sticky_rule_id_string,
         group_name: sticky_group_name_string,
 
@@ -280,7 +551,10 @@ fn sticky_value_to_experiment_evaluation(
             secondary_exposures: sticky_value.secondary_exposures.clone(),
             exposure_info: None,
         },
-        value: DynamicReturnable::from_map(sticky_value.json_value.clone().unwrap_or_default()),
+        value: sticky_value
+            .json_value
+            .clone()
+            .unwrap_or_else(DynamicReturnable::empty),
         explicit_parameters: sticky_value.explicit_parameters.clone(),
         group_name: sticky_group_name,
         undelegated_secondary_exposures: sticky_value.undelegated_secondary_exposures.clone(),
@@ -314,6 +588,12 @@ fn make_layer_from_sticky_value(curr_layer: Layer, sticky_value: &StickyValues) 
         sticky_config_delegate,
     );
 
+    let value = sticky_value
+        .json_value
+        .as_ref()
+        .and_then(|v| v.get_json())
+        .unwrap_or_default();
+
     Layer {
         // transfer from current
         name: curr_layer.name,
@@ -331,7 +611,7 @@ fn make_layer_from_sticky_value(curr_layer: Layer, sticky_value: &StickyValues) 
         // created new
         details,
         is_experiment_active: true,
-        __value: sticky_value.json_value.clone().unwrap_or_default(),
+        __value: value,
         __evaluation: Some(evaluation),
 
         // not yet supported
@@ -367,7 +647,10 @@ fn sticky_value_to_layer_evaluation(
             secondary_exposures: sticky_value.secondary_exposures.clone(),
             exposure_info: None,
         },
-        value: DynamicReturnable::from_map(sticky_value.json_value.clone().unwrap_or_default()),
+        value: sticky_value
+            .json_value
+            .clone()
+            .unwrap_or_else(DynamicReturnable::empty),
         explicit_parameters: sticky_value.explicit_parameters.clone().unwrap_or_default(),
         group_name: sticky_group_name,
         undelegated_secondary_exposures: sticky_value.undelegated_secondary_exposures.clone(),
@@ -395,10 +678,8 @@ fn prep_sticky_group_name(sticky_value: &StickyValues) -> (Option<InternedString
         None => return (None, None),
     };
 
-    (
-        Some(InternedString::from_str_ref(&group_name)),
-        Some(group_name),
-    )
+    let as_string = group_name.unperformant_to_string();
+    (Some(group_name), Some(as_string))
 }
 
 fn prep_sticky_config_delegate(

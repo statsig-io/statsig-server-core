@@ -1,9 +1,9 @@
-import { readFile, unlink, writeFile } from 'node:fs/promises';
-
 import compression from 'compression';
-import { exec } from 'node:child_process';
 import express from 'express';
 import http from 'http';
+import 'jest-extended';
+import { exec } from 'node:child_process';
+import { readFile, unlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -149,6 +149,12 @@ export class MockScrapi {
       this.waiters.push(myWaiter);
     });
   }
+}
+
+export function anyNumericString(): unknown {
+  return expect.toSatisfy(
+    (input) => typeof input === 'string' && /^[0-9]+$/.test(input),
+  );
 }
 
 async function decompressZstd(req: express.Request): Promise<boolean> {
