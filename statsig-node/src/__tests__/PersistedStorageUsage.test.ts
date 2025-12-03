@@ -4,6 +4,7 @@ import * as path from 'node:path';
 
 import {
   Experiment,
+  Layer,
   PersistentStorage,
   Statsig,
   StatsigUser,
@@ -23,7 +24,10 @@ class TestPersistentStorage implements PersistentStorage {
   };
 
   delete = (key: string, config_name: string): void => {
-    delete this.data[key];
+    const found = this.data[key];
+    if (found) {
+      delete found[config_name];
+    }
   };
 }
 
@@ -69,81 +73,159 @@ describe('Persisted Storage Usage', () => {
     scrapi.close();
   });
 
-  describe('getting the experiment with no sticky values', () => {
+  describe('persisted experiments', () => {
     let experiment: Experiment;
 
-    beforeAll(async () => {
-      experiment = statsig.getExperiment(user, 'experiment_with_many_params', {
-        userPersistedValues: persistentStorage.data,
+    describe('getting the experiment with no sticky values', () => {
+      beforeAll(() => {
+        persistentStorage.data = {};
+        experiment = statsig.getExperiment(
+          user,
+          'experiment_with_many_params',
+          {
+            userPersistedValues: persistentStorage.data,
+          },
+        );
+      });
+
+      it('should be in the test group', () => {
+        expect(experiment.groupName).toBe('Test');
+      });
+
+      it('should have the correct reason', () => {
+        expect(experiment.details.reason).toBe('Network:Recognized');
+      });
+
+      it('should write values to persistent storage', async () => {
+        await waitFor(() => Object.keys(persistentStorage.data).length > 0);
+
+        expect(persistentStorage.data['user-in-test:userID']).toContainKey(
+          'experiment_with_many_params',
+        );
       });
     });
 
-    it('should be in the test group', () => {
-      expect(experiment.groupName).toBe('Test');
-    });
+    describe('getting the experiment with sticky values', () => {
+      beforeAll(() => {
+        persistentStorage.data = {
+          'user-in-test:userID': {
+            experiment_with_many_params: {
+              config_delegate: null,
+              config_version: 21,
+              explicit_parameters: ['a_string'],
+              group_name: 'FakeGroupName',
+              json_value: {
+                a_bool: false,
+                a_string: 'test_1',
+              },
+              rule_id: '7kGqFaUIGHjHJ5X7SOKJcM',
+              secondary_exposures: [],
+              time: 1763138293896,
+              undelegated_secondary_exposures: null,
+              value: true,
+            },
+          },
+        } as any;
 
-    it('should write values to persistent storage', async () => {
-      await waitFor(() => Object.keys(persistentStorage.data).length > 0);
+        experiment = statsig.getExperiment(
+          user,
+          'experiment_with_many_params',
+          {
+            userPersistedValues: persistentStorage.data['user-in-test:userID'],
+          },
+        );
+      });
 
-      expect(persistentStorage.data['user-in-test:userID']).toContainKey(
-        'experiment_with_many_params',
-      );
+      it('should be in the sticky provided group', () => {
+        expect(experiment.groupName).toBe('FakeGroupName');
+      });
+
+      it('should have the correct reason', () => {
+        expect(experiment.details.reason).toBe('Persisted');
+      });
+
+      it('should leave values in persistent storage unchanged', async () => {
+        await waitFor(() => Object.keys(persistentStorage.data).length > 0);
+
+        expect(persistentStorage.data['user-in-test:userID']).toContainKey(
+          'experiment_with_many_params',
+        );
+      });
     });
   });
 
-  describe('getting the experiment with sticky values', () => {
-    let experiment: Experiment;
+  describe('persisted layers', () => {
+    let layer: Layer;
 
-    beforeAll(async () => {
-      persistentStorage.data = {
-        'user-in-test:userID': {
-          experiment_with_many_params: {
-            config_delegate: null,
-            config_version: 21,
-            explicit_parameters: [
-              'a_string',
-              'a_number',
-              'an_array',
-              'another_number',
-              'another_bool',
-            ],
-            group_name: 'FakeGroupName',
-            json_value: {
-              a_bool: false,
-              a_number: 2,
-              a_string: 'test_1',
-              an_array: ['test_1'],
-              an_object: {
-                value: 'layer_default',
-              },
-              another_bool: false,
-              another_number: 2,
-              another_string: 'layer_default',
-            },
-            rule_id: '7kGqFaUIGHjHJ5X7SOKJcM',
-            secondary_exposures: [],
-            time: 1763138293896,
-            undelegated_secondary_exposures: null,
-            value: true,
-          },
-        },
-      } as any;
+    describe('getting the layer with no sticky values', () => {
+      beforeAll(() => {
+        persistentStorage.data = {};
+        layer = statsig.getLayer(user, 'layer_with_many_params', {
+          userPersistedValues: persistentStorage.data,
+        });
+      });
 
-      experiment = statsig.getExperiment(user, 'experiment_with_many_params', {
-        userPersistedValues: persistentStorage.data['user-in-test:userID'],
+      it('should be in the test group', () => {
+        expect(layer.groupName).toBe('Test');
+      });
+
+      it('should have the correct reason', () => {
+        expect(layer.details.reason).toBe('Network:Recognized');
+      });
+
+      it('should write values to persistent storage', async () => {
+        await waitFor(() => Object.keys(persistentStorage.data).length > 0);
+
+        console.log(JSON.stringify(persistentStorage.data, null, 2));
+
+        expect(persistentStorage.data['user-in-test:userID']).toContainKey(
+          'layer_with_many_params',
+        );
       });
     });
 
-    it('should be in the sticky provided group', () => {
-      expect(experiment.groupName).toBe('FakeGroupName');
-    });
+    describe('getting the layer with sticky values', () => {
+      beforeAll(() => {
+        persistentStorage.data = {
+          'user-in-test:userID': {
+            layer_with_many_params: {
+              config_delegate: 'experiment_with_many_params',
+              config_version: 19,
+              explicit_parameters: ['a_string'],
+              group_name: 'FakeGroupName',
+              json_value: {
+                a_bool: false,
+                a_string: 'test_1',
+              },
+              rule_id: '7kGqFaUIGHjHJ5X7SOKJcM',
+              secondary_exposures: [],
+              time: 1763138293896,
+              undelegated_secondary_exposures: [],
+              value: true,
+            },
+          },
+        } as any;
 
-    it('should write values to persistent storage', async () => {
-      await waitFor(() => Object.keys(persistentStorage.data).length > 0);
+        layer = statsig.getLayer(user, 'layer_with_many_params', {
+          userPersistedValues: persistentStorage.data['user-in-test:userID'],
+        });
+      });
 
-      expect(persistentStorage.data['user-in-test:userID']).toContainKey(
-        'experiment_with_many_params',
-      );
+      it('should be in the sticky provided group', () => {
+        expect(layer.groupName).toBe('FakeGroupName');
+      });
+
+      it('should have the correct reason', () => {
+        expect(layer.details.reason).toBe('Persisted');
+      });
+
+      it('should leave values in persistent storage unchanged', async () => {
+        await waitFor(() => Object.keys(persistentStorage.data).length > 0);
+
+        expect(persistentStorage.data['user-in-test:userID']).toContainKey(
+          'layer_with_many_params',
+        );
+      });
     });
   });
 });
