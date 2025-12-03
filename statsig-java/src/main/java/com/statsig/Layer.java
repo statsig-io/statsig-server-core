@@ -81,93 +81,98 @@ public class Layer implements HasRawJson {
     this.disableExposureLogging = disableExposureLogging;
   }
 
-  public String getString(String key, String defaultValue) {
-    logLayerExposure(key);
+  public String getString(String key, String fallback) {
     Object val = value.get(key);
     if (val == null) {
-      return defaultValue;
+      return fallback;
     }
-    if (val instanceof String) {
-      return (String) val;
+    if (!(val instanceof String)) {
+      return fallback;
     }
-    return defaultValue;
+    logLayerExposure(key);
+    return (String) val;
   }
 
-  public boolean getBoolean(String key, boolean defaultValue) {
-    logLayerExposure(key);
+  public boolean getBoolean(String key, boolean fallback) {
     Object val = value.get(key);
     if (val == null) {
-      return defaultValue;
+      return fallback;
     }
-    if (val instanceof Boolean) {
-      return (Boolean) val;
+    if (!(val instanceof Boolean)) {
+      return fallback;
     }
-    return defaultValue;
+    logLayerExposure(key);
+    return (boolean) val;
   }
 
-  public double getDouble(String key, double defaultValue) {
-    logLayerExposure(key);
+  public double getDouble(String key, double fallback) {
     Object val = value.get(key);
     if (val == null) {
-      return defaultValue;
+      return fallback;
     }
-    if (val instanceof Number) {
-      return ((Number) val).doubleValue();
+    // If val is not a Number type, return fallback (type mismatch)
+    if (!(val instanceof Number)) {
+      return fallback;
     }
-    return defaultValue;
+    logLayerExposure(key);
+    return ((Number) val).doubleValue();
   }
 
-  public int getInt(String key, int defaultValue) {
-    logLayerExposure(key);
+  public int getInt(String key, int fallback) {
     Object val = value.get(key);
     if (val == null) {
-      return defaultValue;
+      return fallback;
     }
-    if (val instanceof Number) {
-      return ((Number) val).intValue();
+    // If val is not a Number type, return fallback (type mismatch)
+    if (!(val instanceof Number)) {
+      return fallback;
     }
-    return defaultValue;
+    logLayerExposure(key);
+    return ((Number) val).intValue();
   }
 
-  public long getLong(String key, long defaultValue) {
-    logLayerExposure(key);
+  public long getLong(String key, long fallback) {
     Object val = value.get(key);
     if (val == null) {
-      return defaultValue;
+      return fallback;
     }
-    if (val instanceof Number) {
-      return ((Number) val).longValue();
+    // If val is not a Number type, return fallback (type mismatch)
+    if (!(val instanceof Number)) {
+      return fallback;
     }
-    return defaultValue;
+    logLayerExposure(key);
+    return ((Number) val).longValue();
   }
 
-  public Object[] getArray(String key, Object[] defaultValue) {
-    logLayerExposure(key);
+  public Object[] getArray(String key, Object[] fallback) {
     Object val = value.get(key);
     if (val == null) {
-      return defaultValue;
+      return fallback;
     }
+    // If val is not an array or list type, return fallback (type mismatch)
+    if (!(val instanceof Object[]) && !(val instanceof List<?>)) {
+      return fallback;
+    }
+    logLayerExposure(key);
     if (val instanceof Object[]) {
       return (Object[]) val;
     }
-    if (val instanceof List<?>) {
-      return ((List<?>) val).toArray(new Object[0]);
-    }
-    return defaultValue;
+    return ((List<?>) val).toArray(new Object[0]);
   }
 
-  public Map<String, Object> getMap(String key, Map<String, Object> defaultValue) {
-    logLayerExposure(key);
+  public Map<String, Object> getMap(String key, Map<String, Object> fallback) {
     Object val = value.get(key);
     if (val == null) {
-      return defaultValue;
+      return fallback;
     }
-    if (val instanceof Map) {
-      @SuppressWarnings("unchecked")
-      Map<String, Object> map = (Map<String, Object>) val;
-      return map;
+    // If val is not a Map type, return fallback (type mismatch)
+    if (!(val instanceof Map)) {
+      return fallback;
     }
-    return defaultValue;
+    logLayerExposure(key);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> map = (Map<String, Object>) val;
+    return map;
   }
 
   private void logLayerExposure(String key) {
