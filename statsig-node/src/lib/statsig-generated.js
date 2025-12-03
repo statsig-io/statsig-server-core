@@ -374,5 +374,6 @@ module.exports.__internal__testDataStore = nativeBinding.__internal__testDataSto
 module.exports.__internal__testObservabilityClient = nativeBinding.__internal__testObservabilityClient
 module.exports.__internal__testOutputLogger = nativeBinding.__internal__testOutputLogger
 module.exports.__internal__testPersistentStorage = nativeBinding.__internal__testPersistentStorage
+module.exports.GCIRResponseFormat = nativeBinding.GCIRResponseFormat
 module.exports.OverrideAdapterType = nativeBinding.OverrideAdapterType
 module.exports.statsigCaptureLogLine = nativeBinding.statsigCaptureLogLine

@@ -148,6 +148,7 @@ export interface ClientInitResponseOptions {
   paramStoreFilter?: Set<string>
   removeIdType?: boolean
   removeDefaultValueGates?: boolean
+  responseFormat?: GCIRResponseFormat
 }
 
 export interface ConsoleCaptureOptions {
@@ -198,6 +199,12 @@ export interface FeatureGate {
 
 export interface FeatureGateEvaluationOptions {
   disableExposureLogging?: boolean
+}
+
+export declare const enum GCIRResponseFormat {
+  Initialize = 0,
+  InitializeWithSecondaryExposureMapping = 1,
+  InitializeV2 = 2
 }
 
 export interface LayerEvaluationOptions {
