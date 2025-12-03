@@ -240,6 +240,51 @@ macro_rules! add_hashmap_getter_setter {
     };
 }
 
+// Macro for getter/setter that preserves all types (not just strings)
+macro_rules! add_typed_hashmap_getter_setter {
+    ($field_name:expr, $field_accessor:ident, $setter_name:ident, $ts_return_type:expr, $ts_arg_type:expr) => {
+        #[napi]
+        impl StatsigUser {
+            #[napi(getter, js_name = $field_name, ts_return_type = $ts_return_type)]
+            pub fn $field_accessor(&self) -> Option<HashMap<String, Value>> {
+                let value_map = match &self.inner.data.$field_accessor {
+                    Some(value) => value,
+                    _ => return None,
+                };
+
+                let mut result: HashMap<String, Value> = HashMap::new();
+                for (key, dyn_value) in value_map {
+                    // Use the json_value field which preserves the original type
+                    result.insert(key.to_string(), dyn_value.json_value.clone());
+                }
+
+                Some(result)
+            }
+
+            #[napi(setter, js_name = $field_name, ts_args_type = $ts_arg_type)]
+            pub fn $setter_name(&mut self, value: Option<HashMap<String, Value>>) {
+                println!("Received value in setter: {:?}", value);
+                let value = match value {
+                    Some(value) => value,
+                    _ => {
+                        let mut_data = Arc::make_mut(&mut self.inner.data);
+                        mut_data.$field_accessor = None;
+                        return;
+                    }
+                };
+
+                let mut converted: HashMap<String, DynamicValue> = HashMap::new();
+                for (key, value) in value {
+                    converted.insert(key, DynamicValue::from(value));
+                }
+
+                let mut_data = Arc::make_mut(&mut self.inner.data);
+                mut_data.$field_accessor = Some(converted);
+            }
+        }
+    };
+}
+
 macro_rules! add_string_getter_setter {
     ($field_name:expr, $field_accessor:ident, $setter_name:ident) => {
         #[napi]
@@ -278,16 +323,20 @@ add_hashmap_getter_setter!(
     set_custom_ids,
     "value: Record<string, string> | null"
 );
-add_hashmap_getter_setter!(
+
+add_typed_hashmap_getter_setter!(
     "custom",
     custom,
     set_custom,
+    "Record<string, string | number | boolean | Array<string | number | boolean>> | null",
     "value: Record<string, string | number | boolean | Array<string | number | boolean>> | null"
 );
-add_hashmap_getter_setter!(
+
+add_typed_hashmap_getter_setter!(
     "privateAttributes",
     private_attributes,
     set_private_attributes,
+    "Record<string, string | number | boolean | Array<string | number | boolean>> | null",
     "value: Record<string, string | number | boolean | Array<string | number | boolean>> | null"
 );
 add_hashmap_getter_setter!(

@@ -106,9 +106,9 @@ export declare class StatsigUser {
   static withCustomIDs(customIds: Record<string, string>): StatsigUser
   get customIDs(): Record<string, string> | null
   set customIDs(value: Record<string, string> | null)
-  get custom(): Record<string, string> | null
+  get custom(): Record<string, string | number | boolean | Array<string | number | boolean>> | null
   set custom(value: Record<string, string | number | boolean | Array<string | number | boolean>> | null)
-  get privateAttributes(): Record<string, string> | null
+  get privateAttributes(): Record<string, string | number | boolean | Array<string | number | boolean>> | null
   set privateAttributes(value: Record<string, string | number | boolean | Array<string | number | boolean>> | null)
   get statsigEnvironment(): Record<string, string> | null
   set statsigEnvironment(value: { tier?: string, [key: string]: string | undefined } | null | undefined)

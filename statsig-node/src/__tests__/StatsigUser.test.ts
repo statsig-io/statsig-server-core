@@ -325,5 +325,62 @@ describe('StatsigUser', () => {
       const event = await getLastLoggedEvent();
       expect(event?.user?.statsigEnvironment?.tier).toEqual('production');
     });
+
+    it('modify fields after creation', async () => {
+      const user = new StatsigUser({
+        userID: 'modify-user',
+        custom: {
+          age: 25,
+        },
+      });
+
+      // Need to use setter to update internal state, merging with existing custom fields
+      user.custom = {
+        ...(user.custom || {}),
+        mutation: "yes"
+      };
+      
+      statsig.checkGate(user, 'test-gate');
+
+      const event = await getLastLoggedEvent();
+      expect(event?.user?.custom?.age).toEqual(25);
+      expect(event?.user?.custom?.mutation).toEqual('yes');
+    });
+
+    it('modify fields after creation with setter', async () => {
+      const user = new StatsigUser({
+        userID: 'another-user',
+      });
+
+      user.custom = {
+        age: 18,
+        mutation: "entered",
+        isPremium: true,
+      };
+
+      statsig.checkGate(user, 'test-gate');
+
+      const event = await getLastLoggedEvent();
+      expect(event?.user?.custom?.age).toEqual(18);
+      expect(event?.user?.custom?.mutation).toEqual('entered');
+      expect(event?.user?.custom?.isPremium).toEqual(true);
+    });
+
+    it('attach new custom fields after creation', async () => {
+      const user = new StatsigUser({
+        userID: 'attach-user',
+      });
+
+      // Need to use setter to update internal state, not direct property assignment
+      user.custom = {
+        mutation: "yes"
+      };
+
+      statsig.checkGate(user, 'test-gate');
+
+      const event = await getLastLoggedEvent();
+      expect(event?.user?.custom?.mutation).toEqual('yes');
+      expect(event?.user?.userID).toEqual('attach-user');
+    });
   });
 });
