@@ -25,7 +25,7 @@ public class LogEventTest {
     statsig.logEvent(user, "custom_event", 12.2, metadata);
     statsig.logEvent(user, "custom_event", "value");
     statsig.logEvent(user, "custom_event", "value", metadata);
-    
+
     // TODO(weihao): probably need a better unit test framework for java core
     // Assertions.assertFalse(logger.warnLogs.isEmpty());
     for (String msg : logger.errorLogs) {
