@@ -337,6 +337,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+            submodules: recursive
+
       - uses: ./.github/actions/common-setup
 
       - name: Set up JDK 11
