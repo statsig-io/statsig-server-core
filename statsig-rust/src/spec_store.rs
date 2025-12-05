@@ -254,12 +254,7 @@ impl SpecStore {
     ) -> Result<ParseResult, StatsigErr> {
         spec_store_data.next_values.reset();
 
-        let content_type = values.data.get_header_ref("content-type");
-
-        let use_protobuf = self.enable_proto_spec_support
-            && content_type
-                .map(|s| s.as_str().contains("application/octet-stream"))
-                .unwrap_or(false);
+        let use_protobuf = self.is_proto_spec_response(values);
 
         let parse_result = if use_protobuf {
             deserialize_protobuf(
@@ -371,6 +366,24 @@ impl SpecStore {
                 ),
             ])),
         ));
+    }
+
+    fn is_proto_spec_response(&self, update: &SpecsUpdate) -> bool {
+        if !self.enable_proto_spec_support {
+            return false;
+        }
+
+        let content_type = update.data.get_header_ref("content-type");
+        if content_type.map(|s| s.as_str().contains("application/octet-stream")) != Some(true) {
+            return false;
+        }
+
+        let content_encoding = update.data.get_header_ref("content-encoding");
+        if content_encoding.map(|s| s.as_str().contains("statsig-br")) != Some(true) {
+            return false;
+        }
+
+        true
     }
 
     fn try_update_global_configs(&self, dcs: &SpecsResponseFull) {

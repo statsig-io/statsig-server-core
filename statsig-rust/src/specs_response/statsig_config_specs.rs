@@ -10,7 +10,7 @@ pub struct SpecsEnvelope {
     #[prost(bytes = "vec", optional, tag = "4")]
     pub data: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SpecsTopLevel {
     #[prost(bool, tag = "1")]
     pub has_updates: bool,
@@ -22,11 +22,6 @@ pub struct SpecsTopLevel {
     pub response_format: ::prost::alloc::string::String,
     #[prost(string, tag = "5")]
     pub checksum: ::prost::alloc::string::String,
-    #[prost(map = "string, message", tag = "6")]
-    pub condition_map: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        Condition,
-    >,
     #[prost(bytes = "vec", tag = "7")]
     pub rest: ::prost::alloc::vec::Vec<u8>,
 }
@@ -169,6 +164,10 @@ pub enum SpecsEnvelopeKind {
     DynamicConfig = 4,
     /// Spec
     LayerConfig = 5,
+    /// ParamStore
+    ParamStore = 6,
+    /// Condition
+    Condition = 7,
 }
 impl SpecsEnvelopeKind {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -183,6 +182,8 @@ impl SpecsEnvelopeKind {
             Self::FeatureGate => "SPECS_ENVELOPE_KIND_FEATURE_GATE",
             Self::DynamicConfig => "SPECS_ENVELOPE_KIND_DYNAMIC_CONFIG",
             Self::LayerConfig => "SPECS_ENVELOPE_KIND_LAYER_CONFIG",
+            Self::ParamStore => "SPECS_ENVELOPE_KIND_PARAM_STORE",
+            Self::Condition => "SPECS_ENVELOPE_KIND_CONDITION",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -194,6 +195,8 @@ impl SpecsEnvelopeKind {
             "SPECS_ENVELOPE_KIND_FEATURE_GATE" => Some(Self::FeatureGate),
             "SPECS_ENVELOPE_KIND_DYNAMIC_CONFIG" => Some(Self::DynamicConfig),
             "SPECS_ENVELOPE_KIND_LAYER_CONFIG" => Some(Self::LayerConfig),
+            "SPECS_ENVELOPE_KIND_PARAM_STORE" => Some(Self::ParamStore),
+            "SPECS_ENVELOPE_KIND_CONDITION" => Some(Self::Condition),
             _ => None,
         }
     }

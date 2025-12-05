@@ -131,9 +131,14 @@ impl StatsigHttpSpecsAdapter {
         trigger: SpecsSyncTrigger,
     ) -> RequestArgs {
         let mut params = HashMap::new();
+        let mut headers = None;
 
         if self.enable_proto_spec_support {
             params.insert("supports_proto".to_string(), "true".to_string());
+            headers = Some(HashMap::from([(
+                "supports-proto".to_string(),
+                "true".to_string(),
+            )]));
         }
 
         if let Some(lcut) = current_specs_info.lcut {
@@ -167,6 +172,7 @@ impl StatsigHttpSpecsAdapter {
             accept_gzip_response: true,
             diagnostics_key: Some(KeyType::DownloadConfigSpecs),
             timeout_ms,
+            headers,
             ..RequestArgs::new()
         }
     }

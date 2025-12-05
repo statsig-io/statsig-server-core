@@ -20,6 +20,7 @@ pub struct ParameterStore {
     #[serde(rename = "targetAppIDs")]
     pub target_app_ids: Option<Vec<InternedString>>,
     pub version: Option<u32>,
+    pub checksum: Option<InternedString>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]

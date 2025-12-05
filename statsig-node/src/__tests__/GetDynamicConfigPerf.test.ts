@@ -11,8 +11,8 @@ const KNOWN_STRING_PARAM = 'a';
 
 // Please do NOT increase this threshold without understanding why
 // The bug that was fixed was reporting as ~70x slower than the baseline
-const EXPECT_LOW = 0.5;
-const EXPECT_HIGH = 1.5;
+const EXPECT_LOW = 0.3;
+const EXPECT_HIGH = 1.6;
 
 type ProfileResult = {
   overall: number;

@@ -29,7 +29,7 @@ async function downloadJsonAndProtoFor(sdkKey: string, name: string) {
     'application/json; charset=utf-8',
   );
   downloadFromUrlToFile(
-    `https://staging.statsigapi.net/v2/download_config_specs/${sdkKey}.json?supports_proto=1`,
+    `https://staging.statsigapi.net/v2/download_config_specs/${sdkKey}.json?supports_proto=true`,
     `${name}.pb.br`,
     'application/octet-stream',
   );

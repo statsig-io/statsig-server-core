@@ -13,6 +13,7 @@ use crate::{
     networking::ResponseData,
     specs_response::{
         explicit_params::ExplicitParameters,
+        param_store_types::ParameterStore,
         proto_stream_reader::ProtoStreamReader,
         spec_types::{Condition, Rule, Spec, SpecsResponseFull, SpecsResponsePartial},
         specs_hash_map::{SpecPointer, SpecsHashMap},
@@ -61,6 +62,12 @@ pub fn deserialize_protobuf(
             }
             pb::SpecsEnvelopeKind::LayerConfig => {
                 next_specs.handle_layer_config_update(env, current_specs)?
+            }
+            pb::SpecsEnvelopeKind::ParamStore => {
+                next_specs.handle_param_store_update(env, current_specs)?
+            }
+            pb::SpecsEnvelopeKind::Condition => {
+                next_specs.handle_condition_update(env, current_specs)?
             }
             pb::SpecsEnvelopeKind::Unknown => {
                 return make_proto_parse_error("SpecsEnvelope", "Unknown envelope kind");
@@ -150,17 +157,73 @@ impl SpecsResponseFull {
         self.time = top_level.time;
         self.has_updates = top_level.has_updates;
         self.response_format = Some(top_level.response_format);
-        self.condition_map = condition_map_from_pb(top_level.condition_map)?;
         self.company_id = Some(top_level.company_id);
 
         let partial = serde_json::from_slice::<SpecsResponsePartial>(&top_level.rest)
             .map_err(|e| map_serde_json_err("SpecsResponsePartial", e))?;
 
         self.experiment_to_layer = partial.experiment_to_layer;
-        self.param_stores = partial.param_stores;
         self.session_replay_info = partial.session_replay_info;
         self.diagnostics = partial.diagnostics;
         self.sdk_configs = partial.sdk_configs;
+
+        Ok(())
+    }
+
+    fn handle_param_store_update(
+        &mut self,
+        envelope: pb::SpecsEnvelope,
+        existing: &SpecsResponseFull,
+    ) -> Result<(), StatsigErr> {
+        let name = InternedString::from_string(envelope.name);
+
+        let existing_param_store = existing
+            .param_stores
+            .as_ref()
+            .and_then(|param_stores| param_stores.get(&name));
+
+        if let Some(param_store) = existing_param_store {
+            if param_store.checksum.as_deref() == Some(&envelope.checksum) {
+                self.param_stores
+                    .get_or_insert_with(HashMap::default)
+                    .insert(name, param_store.clone());
+                return Ok(());
+            }
+        }
+
+        let envelope_data = validate_envelope_data("ParamStore", envelope.data)?;
+
+        let mut param_store = serde_json::from_slice::<ParameterStore>(envelope_data.get_ref())
+            .map_err(|e| map_serde_json_err("ParameterStore", e))?;
+
+        param_store.checksum = Some(InternedString::from_string(envelope.checksum));
+
+        self.param_stores
+            .get_or_insert_with(HashMap::default)
+            .insert(name, param_store);
+        Ok(())
+    }
+
+    fn handle_condition_update(
+        &mut self,
+        envelope: pb::SpecsEnvelope,
+        existing: &SpecsResponseFull,
+    ) -> Result<(), StatsigErr> {
+        let name = InternedString::from_string(envelope.name);
+
+        if let Some(condition) = existing.condition_map.get(&name) {
+            if condition.checksum.as_deref() == Some(&envelope.checksum) {
+                self.condition_map.insert(name, condition.clone());
+                return Ok(());
+            }
+        }
+
+        let envelope_data = validate_envelope_data("Condition", envelope.data)?;
+        let pb_condition =
+            pb::Condition::decode(envelope_data).map_err(|e| map_decode_err("Condition", e))?;
+        let mut condition = condition_from_pb(pb_condition)?;
+        condition.checksum = Some(InternedString::from_string(envelope.checksum));
+        self.condition_map.insert(name, condition);
 
         Ok(())
     }
@@ -179,36 +242,27 @@ fn validate_envelope_data(
     }
 }
 
-fn condition_map_from_pb(
-    condition_map: HashMap<String, pb::Condition>,
-) -> Result<ahash::HashMap<InternedString, Condition>, StatsigErr> {
-    let map = condition_map
-        .into_iter()
-        .map(|(k, v)| {
-            let key = InternedString::from_string(k);
-            let condition = Condition {
-                condition_type: condition_type_from_pb(
-                    pb::ConditionType::try_from(v.condition_type)
-                        .map_err(|e| map_unknown_enum_value("ConditionType", e))?,
-                )?,
-                target_value: target_value_from_pb(v.target_value)?,
-                operator: match v.operator {
-                    Some(operator) => Some(operator_from_pb(
-                        pb::Operator::try_from(operator)
-                            .map_err(|e| map_unknown_enum_value("Operator", e))?,
-                    )?),
-                    None => None,
-                },
-                field: v.field.map(DynamicString::from),
-                additional_values: additional_values_from_pb(v.additional_values)?,
-                id_type: id_type_from_pb_to_dynamic_string(v.id_type)?,
-            };
+fn condition_from_pb(v: pb::Condition) -> Result<Condition, StatsigErr> {
+    let condition = Condition {
+        condition_type: condition_type_from_pb(
+            pb::ConditionType::try_from(v.condition_type)
+                .map_err(|e| map_unknown_enum_value("ConditionType", e))?,
+        )?,
+        target_value: target_value_from_pb(v.target_value)?,
+        operator: match v.operator {
+            Some(operator) => Some(operator_from_pb(
+                pb::Operator::try_from(operator)
+                    .map_err(|e| map_unknown_enum_value("Operator", e))?,
+            )?),
+            None => None,
+        },
+        field: v.field.map(DynamicString::from),
+        additional_values: additional_values_from_pb(v.additional_values)?,
+        id_type: id_type_from_pb_to_dynamic_string(v.id_type)?,
+        checksum: None,
+    };
 
-            Ok((key, condition))
-        })
-        .collect::<Result<ahash::HashMap<InternedString, Condition>, StatsigErr>>()?;
-
-    Ok(map)
+    Ok(condition)
 }
 
 fn additional_values_from_pb(

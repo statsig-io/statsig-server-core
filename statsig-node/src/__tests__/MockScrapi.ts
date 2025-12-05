@@ -24,6 +24,7 @@ type RecordedRequest = {
   method: string;
   body: any;
   url: string;
+  headers: Record<string, string>;
 };
 
 export class MockScrapi {
@@ -68,6 +69,10 @@ export class MockScrapi {
           method: req.method,
           body: req.body,
           url: req.url,
+          headers: Object.fromEntries(Object.entries(req.headers)) as Record<
+            string,
+            string
+          >,
         };
 
         this.requests.push(recorded);

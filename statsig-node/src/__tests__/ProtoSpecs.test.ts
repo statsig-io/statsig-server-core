@@ -27,6 +27,10 @@ describe('Proto Specs', () => {
       expect(request.url).toContain(
         '/v2/download_config_specs/secret-123.json?supports_proto=true',
       );
+      expect(request.headers).toMatchObject({
+        'accept-encoding': 'gzip, deflate, br',
+        'supports-proto': 'true',
+      });
     });
 
     it('gets correct results from the config specs', async () => {
@@ -103,6 +107,7 @@ async function setup(
       method: 'GET',
       headers: {
         'content-type': 'application/octet-stream',
+        'content-encoding': 'statsig-br',
       },
     });
   } else {
