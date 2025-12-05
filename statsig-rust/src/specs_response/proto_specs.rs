@@ -10,7 +10,10 @@ use crate::{
     },
     interned_str,
     interned_string::InternedString,
+    log_error_to_statsig_and_console,
     networking::ResponseData,
+    observability::ops_stats::OpsStatsForInstance,
+    observability::sdk_errors_observer::ErrorBoundaryEvent,
     specs_response::{
         explicit_params::ExplicitParameters,
         param_store_types::ParameterStore,
@@ -22,7 +25,10 @@ use crate::{
     StatsigErr,
 };
 
+const TAG: &str = "ProtoSpecs";
+
 pub fn deserialize_protobuf(
+    ops_stats: &OpsStatsForInstance,
     current_specs: &SpecsResponseFull, /* Intentionally immutable so we can continue using it if parsing fails */
     next_specs: &mut SpecsResponseFull,
     data: &mut ResponseData,
@@ -43,36 +49,65 @@ pub fn deserialize_protobuf(
         let env: pb::SpecsEnvelope =
             match prost::Message::decode_length_delimited(proto_msg_bytes.as_ref()) {
                 Ok(env) => env,
-                Err(e) => return Err(map_decode_err("SpecsEnvelope", e)),
+                Err(e) => {
+                    let err: StatsigErr = map_decode_err("SpecsEnvelope", e);
+                    log_error_to_statsig_and_console!(ops_stats, TAG, err);
+                    continue;
+                }
             };
 
         let envelope_kind = match pb::SpecsEnvelopeKind::try_from(env.kind) {
             Ok(kind) => kind,
-            Err(e) => return Err(map_unknown_enum_value("SpecsEnvelopeKind", e)),
+            Err(e) => {
+                let err: StatsigErr = map_unknown_enum_value("SpecsEnvelopeKind", e);
+                log_error_to_statsig_and_console!(ops_stats, TAG, err);
+                continue;
+            }
         };
 
         match envelope_kind {
             pb::SpecsEnvelopeKind::Done => return Ok(()),
-            pb::SpecsEnvelopeKind::TopLevel => next_specs.handle_top_level_update(env)?,
+            pb::SpecsEnvelopeKind::TopLevel => {
+                consume_errors(ops_stats, || next_specs.handle_top_level_update(env));
+            }
             pb::SpecsEnvelopeKind::FeatureGate => {
-                next_specs.handle_feature_gate_update(env, current_specs)?
+                consume_errors(ops_stats, || {
+                    next_specs.handle_feature_gate_update(env, current_specs)
+                });
             }
             pb::SpecsEnvelopeKind::DynamicConfig => {
-                next_specs.handle_dynamic_config_update(env, current_specs)?
+                consume_errors(ops_stats, || {
+                    next_specs.handle_dynamic_config_update(env, current_specs)
+                });
             }
             pb::SpecsEnvelopeKind::LayerConfig => {
-                next_specs.handle_layer_config_update(env, current_specs)?
+                consume_errors(ops_stats, || {
+                    next_specs.handle_layer_config_update(env, current_specs)
+                });
             }
             pb::SpecsEnvelopeKind::ParamStore => {
-                next_specs.handle_param_store_update(env, current_specs)?
+                consume_errors(ops_stats, || {
+                    next_specs.handle_param_store_update(env, current_specs)
+                });
             }
             pb::SpecsEnvelopeKind::Condition => {
-                next_specs.handle_condition_update(env, current_specs)?
+                consume_errors(ops_stats, || {
+                    next_specs.handle_condition_update(env, current_specs)
+                });
             }
             pb::SpecsEnvelopeKind::Unknown => {
                 return make_proto_parse_error("SpecsEnvelope", "Unknown envelope kind");
             }
         };
+    }
+}
+
+fn consume_errors<F>(ops_stats: &OpsStatsForInstance, f: F)
+where
+    F: FnOnce() -> Result<(), StatsigErr>,
+{
+    if let Err(e) = f() {
+        log_error_to_statsig_and_console!(ops_stats, TAG, e);
     }
 }
 

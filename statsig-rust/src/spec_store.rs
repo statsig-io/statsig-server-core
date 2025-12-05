@@ -258,6 +258,7 @@ impl SpecStore {
 
         let parse_result = if use_protobuf {
             deserialize_protobuf(
+                &self.ops_stats,
                 &spec_store_data.values,
                 &mut spec_store_data.next_values,
                 &mut values.data,

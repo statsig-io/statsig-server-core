@@ -1,3 +1,4 @@
 mod proto_specs_syncing_tests;
+mod proto_specs_unknown_tests;
 mod proto_specs_vs_json_tests;
 mod proto_stream_reader_tests;

@@ -6,8 +6,13 @@ use serde_json::{json, Value};
 use crate::{
     interned_string::InternedString,
     networking::ResponseData,
+    observability::ops_stats::OpsStatsForInstance,
     specs_response::{proto_specs::deserialize_protobuf, spec_types::SpecsResponseFull},
 };
+
+lazy_static::lazy_static! {
+    static ref OPS_STATS: OpsStatsForInstance = OpsStatsForInstance::new();
+}
 
 const PROTO_SPECS_BYTES: &[u8] = include_bytes!("../../../tests/data/eval_proj_dcs.pb.br");
 const JSON_SPECS_BYTES: &[u8] = include_bytes!("../../../tests/data/eval_proj_dcs.json");
@@ -169,7 +174,7 @@ fn test_a_param_store_json_vs_proto() {
 fn deserialize_from(current_specs: &mut SpecsResponseFull, next_specs: &mut SpecsResponseFull) {
     let bytes = PROTO_SPECS_BYTES.to_vec();
     let mut data = ResponseData::from_bytes(bytes);
-    deserialize_protobuf(current_specs, next_specs, &mut data).unwrap();
+    deserialize_protobuf(&OPS_STATS, current_specs, next_specs, &mut data).unwrap();
 }
 
 fn get_deserialized_specs() -> SpecsResponseFull {
