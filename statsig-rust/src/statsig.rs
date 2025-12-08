@@ -1407,6 +1407,38 @@ impl Statsig {
         )
     }
 
+    pub fn get_experiment_by_group_id_advanced(
+        &self,
+        experiment_name: &str,
+        group_id: &str,
+    ) -> Experiment {
+        self.get_experiment_by_group_id_advanced_impl(
+            experiment_name,
+            group_id,
+            |spec_pointer, rule, details| {
+                if let (Some(spec_pointer), Some(rule)) = (spec_pointer, rule) {
+                    let value = rule.return_value.get_json().unwrap_or_default();
+                    let rule_id = String::from(rule.id.as_str());
+                    let id_type = rule.id_type.value.unperformant_to_string();
+                    let group_name = rule.group_name.as_ref().map(|g| g.unperformant_to_string());
+
+                    return Experiment {
+                        name: experiment_name.to_string(),
+                        value,
+                        rule_id,
+                        id_type,
+                        group_name,
+                        details,
+                        is_experiment_active: spec_pointer.inner.is_active.unwrap_or(false),
+                        __evaluation: None,
+                    };
+                }
+
+                make_experiment(experiment_name, None, details)
+            },
+        )
+    }
+
     #[cfg(feature = "ffi-support")]
     pub fn get_raw_experiment_by_group_name(
         &self,
@@ -1488,6 +1520,35 @@ impl Statsig {
         group_name: &str,
         result_factory: impl FnOnce(Option<&SpecPointer>, Option<&Rule>, EvaluationDetails) -> T,
     ) -> T {
+        self.get_experiment_by_rule_match_impl(
+            experiment_name,
+            |rule| rule.group_name.as_deref() == Some(group_name),
+            result_factory,
+        )
+    }
+
+    fn get_experiment_by_group_id_advanced_impl<T>(
+        &self,
+        experiment_name: &str,
+        rule_id: &str,
+        result_factory: impl FnOnce(Option<&SpecPointer>, Option<&Rule>, EvaluationDetails) -> T,
+    ) -> T {
+        self.get_experiment_by_rule_match_impl(
+            experiment_name,
+            |rule| rule.id.as_str() == rule_id,
+            result_factory,
+        )
+    }
+
+    fn get_experiment_by_rule_match_impl<T, P>(
+        &self,
+        experiment_name: &str,
+        rule_predicate: P,
+        result_factory: impl FnOnce(Option<&SpecPointer>, Option<&Rule>, EvaluationDetails) -> T,
+    ) -> T
+    where
+        P: Fn(&Rule) -> bool,
+    {
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
@@ -1518,12 +1579,7 @@ impl Statsig {
             );
         };
 
-        if let Some(rule) = exp
-            .inner
-            .rules
-            .iter()
-            .find(|rule| rule.group_name.as_deref() == Some(group_name))
-        {
+        if let Some(rule) = exp.inner.rules.iter().find(|rule| rule_predicate(rule)) {
             return result_factory(
                 Some(exp),
                 Some(rule),
