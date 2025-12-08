@@ -153,16 +153,26 @@ async function update() {
 
 async function syncDcs(state: State) {
   log('Syncing DCS');
+  const baseUrl = 'https://latest.statsigapi.net';
   const sdkKey = state.scrapi.dcs.syncing.sdkKey;
+
+  const v2ProtoFilePath = '/shared-volume/dcs-v2-proto.pb.br';
+  const v2FilePath = '/shared-volume/dcs-v2.json';
+  const v1FilePath = '/shared-volume/dcs-v1.json';
+
   try {
-    const [v2Filesize, v1Filesize] = await Promise.all([
+    const [v1Filesize, v2Filesize, v2ProtoFilesize] = await Promise.all([
       fetchAndWrite(
-        `https://api.statsigcdn.com/v2/download_config_specs/${sdkKey}.json`,
-        '/shared-volume/dcs-v2.json',
+        `${baseUrl}/v1/download_config_specs/${sdkKey}.json`,
+        v1FilePath,
       ),
       fetchAndWrite(
-        `https://api.statsigcdn.com/v1/download_config_specs/${sdkKey}.json`,
-        '/shared-volume/dcs-v1.json',
+        `${baseUrl}/v2/download_config_specs/${sdkKey}.json`,
+        v2FilePath,
+      ),
+      fetchAndWrite(
+        `${baseUrl}/v2/download_config_specs/${sdkKey}.json?supports_proto=true`,
+        v2ProtoFilePath,
       ),
     ]);
 
@@ -170,10 +180,15 @@ async function syncDcs(state: State) {
       throw new Error('Failed to fetch DCS');
     }
 
-    state.scrapi.dcs.response.v2.filesize = v2Filesize;
     state.scrapi.dcs.response.v1.filesize = v1Filesize;
-    state.scrapi.dcs.response.v2.filepath = '/shared-volume/dcs-v2.json';
-    state.scrapi.dcs.response.v1.filepath = '/shared-volume/dcs-v1.json';
+    state.scrapi.dcs.response.v1.filepath = v1FilePath;
+
+    state.scrapi.dcs.response.v2.filesize = v2Filesize;
+    state.scrapi.dcs.response.v2.filepath = v2FilePath;
+
+    state.scrapi.dcs.response.v2Proto.filesize = v2ProtoFilesize;
+    state.scrapi.dcs.response.v2Proto.filepath = v2ProtoFilePath;
+
     state.scrapi.dcs.syncing.updatedAt = new Date();
 
     writeState(state);

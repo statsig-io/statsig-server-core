@@ -32,6 +32,10 @@ export type SdkState = {
 export type ScrapiState = {
   dcs: {
     response: {
+      v2Proto: {
+        filepath: string;
+        filesize: number;
+      };
       v2: {
         filepath: string;
         filesize: number;

@@ -27,6 +27,7 @@ app.all('/ready', (_req, res) => {
   res.status(200).json({
     v1DcsBytesize: scrapiState?.dcs?.response?.v1?.filesize,
     v2DcsBytesize: scrapiState?.dcs?.response?.v2?.filesize,
+    v2ProtoDcsBytesize: scrapiState?.dcs?.response?.v2Proto?.filesize,
   });
 });
 
@@ -104,7 +105,13 @@ app.post('/v1/log_event', async (req, res) => {
 
 app.all(
   ['/v2/download_config_specs/:sdk_key', '/v2/download_config_specs'],
-  (_req, res) => handleDcsResponse('v2', res),
+  (req, res) => {
+    if (req.query.supports_proto === 'true') {
+      handleDcsResponse('v2Proto', res);
+    } else {
+      handleDcsResponse('v2', res);
+    }
+  },
 );
 
 app.all(
@@ -125,7 +132,7 @@ app.listen(8000, () => {
   setInterval(update, 1000).unref();
 });
 
-async function handleDcsResponse(type: 'v1' | 'v2', res: Response) {
+async function handleDcsResponse(type: 'v1' | 'v2' | 'v2Proto', res: Response) {
   const delayMs = scrapiState?.dcs?.response?.delayMs ?? 0;
   if (delayMs > 0) {
     await new Promise((r) => setTimeout(r, delayMs));
@@ -138,19 +145,35 @@ async function handleDcsResponse(type: 'v1' | 'v2', res: Response) {
     return;
   }
 
-  const filepath =
-    type === 'v2'
-      ? scrapiState?.dcs?.response?.v2?.filepath
-      : scrapiState?.dcs?.response?.v1?.filepath;
+  const filepath = getDcsResponseFilepath(type);
   if (filepath == null || filepath.length === 0) {
     res.status(404).json({ error: 'State not initialized' });
     return;
   }
 
-  res.setHeader('Content-Type', 'application/json');
+  if (type === 'v2Proto') {
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Encoding', 'statsig-br');
+  } else {
+    res.setHeader('Content-Type', 'application/json');
+  }
+
   res.status(200);
   const stream = createReadStream(filepath);
   stream.pipe(res);
+}
+
+function getDcsResponseFilepath(type: 'v1' | 'v2' | 'v2Proto') {
+  switch (type) {
+    case 'v1':
+      return scrapiState?.dcs?.response?.v1?.filepath;
+    case 'v2':
+      return scrapiState?.dcs?.response?.v2?.filepath;
+    case 'v2Proto':
+      return scrapiState?.dcs?.response?.v2Proto?.filepath;
+    default:
+      throw new Error('Invalid DCS type');
+  }
 }
 
 function readState(): State {
