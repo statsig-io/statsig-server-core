@@ -23,7 +23,7 @@ pub struct StatsigUserArgs {
     pub country: Option<String>,
     pub locale: Option<String>,
     pub app_version: Option<String>,
-    #[napi(ts_type = "{ tier?: string, [key: string]: string | undefined } | null | undefined")]
+    #[napi(ts_type = "{ tier?: string, [key: string]: string | undefined } | undefined")]
     pub statsig_environment: Option<HashMap<String, String>>,
 
     #[napi(
@@ -32,7 +32,7 @@ pub struct StatsigUserArgs {
     pub custom: Option<HashMap<String, ValidPrimitives>>,
 
     #[napi(
-        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>"
+        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean> | Record<string, unknown>>"
     )]
     pub private_attributes: Option<HashMap<String, ValidPrimitives>>,
 }
@@ -186,7 +186,7 @@ impl From<StatsigUserActual> for StatsigUser {
     }
 }
 
-macro_rules! add_hashmap_getter_setter {
+macro_rules! add_string_hashmap_getter_setter {
     ($field_name:expr, $field_accessor:ident, $setter_name:ident, $ts_arg_type:expr) => {
         #[napi]
         impl StatsigUser {
@@ -263,7 +263,6 @@ macro_rules! add_typed_hashmap_getter_setter {
 
             #[napi(setter, js_name = $field_name, ts_args_type = $ts_arg_type)]
             pub fn $setter_name(&mut self, value: Option<HashMap<String, Value>>) {
-                println!("Received value in setter: {:?}", value);
                 let value = match value {
                     Some(value) => value,
                     _ => {
@@ -317,7 +316,7 @@ macro_rules! add_string_getter_setter {
     };
 }
 
-add_hashmap_getter_setter!(
+add_string_hashmap_getter_setter!(
     "customIDs",
     custom_ids,
     set_custom_ids,
@@ -339,11 +338,11 @@ add_typed_hashmap_getter_setter!(
     "Record<string, string | number | boolean | Array<string | number | boolean>> | null",
     "value: Record<string, string | number | boolean | Array<string | number | boolean>> | null"
 );
-add_hashmap_getter_setter!(
+add_string_hashmap_getter_setter!(
     "statsigEnvironment",
     statsig_environment,
     set_statsig_environment,
-    "value: { tier?: string, [key: string]: string | undefined } | null | undefined"
+    "value: { tier?: string, [key: string]: string | undefined } | undefined"
 );
 
 add_string_getter_setter!("userID", user_id, set_user_id);

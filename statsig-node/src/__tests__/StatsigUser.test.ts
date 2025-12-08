@@ -104,6 +104,39 @@ describe('StatsigUser', () => {
     expect(event?.user?.email).toEqual('b-user@example.com');
   });
 
+  it('creates users with undefined fields', async () => {
+    const user = new StatsigUser({
+      userID: 'a-user',
+      email: undefined,
+      custom: undefined,
+      customIDs: undefined,
+      ip: undefined,
+      userAgent: undefined,
+      country: undefined,
+      locale: undefined,
+      appVersion: undefined,
+      statsigEnvironment: undefined,
+      privateAttributes: undefined,
+    });
+
+    statsig.checkGate(user, 'test-gate');
+
+    const event = await getLastLoggedEvent();
+    expect(event?.eventName).toEqual('statsig::gate_exposure');
+    expect(event?.metadata?.gate).toEqual('test-gate');
+    expect(event?.user?.userID).toEqual('a-user');
+    expect(event?.user?.email).toBeUndefined();
+    expect(event?.user?.custom).toBeUndefined();
+    expect(event?.user?.customIDs).toBeUndefined();
+    expect(event?.user?.ip).toBeUndefined();
+    expect(event?.user?.userAgent).toBeUndefined();
+    expect(event?.user?.country).toBeUndefined();
+    expect(event?.user?.locale).toBeUndefined();
+    expect(event?.user?.appVersion).toBeUndefined();
+    expect(event?.user?.statsigEnvironment).toBeUndefined();
+    expect(event?.user?.privateAttributes).toBeUndefined();
+  });
+
   it('creates users with constructor', async () => {
     const user = new StatsigUser({
       userID: 'c-user',
