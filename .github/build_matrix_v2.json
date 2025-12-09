@@ -32,7 +32,7 @@
     {
       "os": "macos",
       "target": "x86_64-apple-darwin",
-      "runner": "macos-14",
+      "runner": "macos-14-large",
       "arch": "x86_64"
     },
     {
