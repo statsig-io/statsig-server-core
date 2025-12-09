@@ -9,9 +9,9 @@ use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
 use crate::utils::helpers::load_contents;
 
-const KNOWN_CHECKSUM: &str = "2556334789679907000" /* eval_proj_dcs.json['checksum'] */;
+const KNOWN_CHECKSUM: &str = "9073779682072068000" /* eval_proj_dcs.json['checksum'] */;
 const EVAL_PROJ_GATE_COUNT: usize = 69 /* eval_proj_dcs.json['feature_gates'].filter(g => g.entity === feature_gate).length */;
-const EVAL_PROJ_DC_COUNT: usize = 7 /* eval_proj_dcs.json['dynamic_configs'].filter(dc => dc.entity === dynamic_config).length */;
+const EVAL_PROJ_DC_COUNT: usize = 9 /* eval_proj_dcs.json['dynamic_configs'].filter(dc => dc.entity === dynamic_config).length */;
 const DEMO_PROJ_GATE_COUNT: usize = 7 /* demo_proj_dcs.json['feature_gates'].filter(g => g.entity === feature_gate).length */;
 
 const EVAL_PROJ_PROTO_BYTES: &[u8] = include_bytes!("../tests/data/eval_proj_dcs.pb.br");

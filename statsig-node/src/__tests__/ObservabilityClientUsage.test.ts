@@ -30,7 +30,7 @@ describe('ObservabilityClient Usage', () => {
     );
 
     dcs = dcs.replace(
-      '"checksum":"2556334789679907000"',
+      '"checksum":"9073779682072068000"',
       '"IGNORED_CHECKSUM_VALUE":""',
     );
 

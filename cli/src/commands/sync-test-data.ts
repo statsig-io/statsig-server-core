@@ -24,12 +24,12 @@ export class SyncTestData extends CommandBase {
 
 async function downloadJsonAndProtoFor(sdkKey: string, name: string) {
   downloadFromUrlToFile(
-    `https://staging.statsigapi.net/v2/download_config_specs/${sdkKey}.json`,
+    `https://latest.statsigapi.net/v2/download_config_specs/${sdkKey}.json`,
     `${name}.json`,
     'application/json; charset=utf-8',
   );
   downloadFromUrlToFile(
-    `https://staging.statsigapi.net/v2/download_config_specs/${sdkKey}.json?supports_proto=true`,
+    `https://latest.statsigapi.net/v2/download_config_specs/${sdkKey}.json?supports_proto=true`,
     `${name}.pb.br`,
     'application/octet-stream',
   );
@@ -46,7 +46,7 @@ async function downloadFromUrlToFile(
     throw new Error(
       `Expected content type ${contentType} but got ${response.headers.get(
         'Content-Type',
-      )}`,
+      )} - ${url}`,
     );
   }
 
