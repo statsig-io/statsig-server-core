@@ -3,7 +3,7 @@ use std::fmt::Display;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use crate::StatsigErr;
+use crate::{hashing::HashUtil, StatsigErr, StatsigOptions};
 
 pub enum RequestPath {
     RulesetsV2,
@@ -55,19 +55,15 @@ pub trait DataStoreTrait: Send + Sync {
 }
 
 #[must_use]
-pub fn get_data_adapter_dcs_key(hashed_key: &str) -> String {
-    get_data_adapter_key(
-        RequestPath::RulesetsV2,
-        CompressFormat::PlainText,
-        hashed_key,
-    )
-}
-
-#[must_use]
 pub fn get_data_adapter_key(
     path: RequestPath,
     compress: CompressFormat,
-    hashed_key: &str,
+    sdk_key: &str,
+    hashing: &HashUtil,
+    _options: &StatsigOptions,
 ) -> String {
-    format!("statsig|{path}|{compress}|{hashed_key}")
+    format!(
+        "statsig|{path}|{compress}|{hashed_key}",
+        hashed_key = &hashing.hash(sdk_key, &crate::HashAlgorithm::Sha256)
+    )
 }

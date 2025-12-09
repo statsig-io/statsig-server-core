@@ -4,7 +4,6 @@ use super::statsig_data_store_specs_adapter::StatsigDataStoreSpecsAdapter;
 use super::StatsigHttpSpecsAdapter;
 use super::{SpecAdapterConfig, SpecsAdapterType};
 use crate::data_store_interface::DataStoreTrait;
-use crate::hashing::HashUtil;
 use crate::{log_i, log_w, SpecsAdapter, SpecsUpdateListener, StatsigOptions};
 use crate::{StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
@@ -24,9 +23,9 @@ pub struct StatsigCustomizedSpecsAdapter {
 impl StatsigCustomizedSpecsAdapter {
     pub fn new_from_config(
         sdk_key: &str,
+        data_adapter_key: &str,
         configs: Vec<SpecAdapterConfig>,
         options: &StatsigOptions,
-        hashing: &HashUtil,
     ) -> Self {
         let mut adapters: Vec<Arc<dyn SpecsAdapter>> = Vec::new();
         for config in &configs {
@@ -47,9 +46,8 @@ impl StatsigCustomizedSpecsAdapter {
                 SpecsAdapterType::DataStore => match options.data_store.clone() {
                     Some(data_store) => {
                         adapters.push(Arc::new(StatsigDataStoreSpecsAdapter::new(
-                            sdk_key,
+                            data_adapter_key,
                             data_store,
-                            hashing,
                             Some(options),
                         )));
                     }
@@ -63,12 +61,12 @@ impl StatsigCustomizedSpecsAdapter {
 
     pub fn new_from_data_store(
         sdk_key: &str,
+        data_adapter_key: &str,
         data_store: Arc<dyn DataStoreTrait>,
         options: &StatsigOptions,
-        hashing: &HashUtil,
     ) -> Self {
         let data_adapter_spec_adapter =
-            StatsigDataStoreSpecsAdapter::new(sdk_key, data_store, hashing, Some(options));
+            StatsigDataStoreSpecsAdapter::new(data_adapter_key, data_store, Some(options));
         let http_adapter = StatsigHttpSpecsAdapter::new(sdk_key, Some(options), None);
         let adapters: Vec<Arc<dyn SpecsAdapter>> =
             vec![Arc::new(data_adapter_spec_adapter), Arc::new(http_adapter)];

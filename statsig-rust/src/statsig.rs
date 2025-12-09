@@ -3,6 +3,7 @@ use crate::console_capture::console_capture_instances::{
     ConsoleCaptureInstance, CONSOLE_CAPTURE_REGISTRY,
 };
 use crate::console_capture::console_log_line_levels::StatsigLogLineLevel;
+use crate::data_store_interface::{get_data_adapter_key, CompressFormat, RequestPath};
 use crate::evaluation::cmab_evaluator::{get_cmab_ranked_list, CMABRankedGroup};
 use crate::evaluation::country_lookup::CountryLookup;
 use crate::evaluation::dynamic_value::DynamicValue;
@@ -157,7 +158,15 @@ impl Statsig {
 
         let hashing = Arc::new(HashUtil::new());
 
-        let specs_adapter = initialize_specs_adapter(sdk_key, &options, &hashing);
+        let data_adapter_key = get_data_adapter_key(
+            RequestPath::RulesetsV2,
+            CompressFormat::PlainText,
+            sdk_key,
+            &hashing,
+            &options,
+        );
+
+        let specs_adapter = initialize_specs_adapter(sdk_key, &data_adapter_key, &options);
         let id_lists_adapter = initialize_id_lists_adapter(sdk_key, &options);
         let event_logging_adapter = initialize_event_logging_adapter(sdk_key, &options);
         let override_adapter = match options.override_adapter.as_ref() {
@@ -190,7 +199,7 @@ impl Statsig {
 
         let spec_store = Arc::new(SpecStore::new(
             sdk_key,
-            hashing.sha256(sdk_key),
+            data_adapter_key,
             statsig_runtime.clone(),
             event_emitter.clone(),
             Some(&options),
@@ -2400,8 +2409,8 @@ fn initialize_event_logging_adapter(
 
 fn initialize_specs_adapter(
     sdk_key: &str,
+    data_adapter_key: &str,
     options: &StatsigOptions,
-    hashing: &HashUtil,
 ) -> SpecsAdapterHousing {
     if let Some(adapter) = options.specs_adapter.clone() {
         log_d!(TAG, "Using provided SpecsAdapter: {}", sdk_key);
@@ -2414,9 +2423,9 @@ fn initialize_specs_adapter(
     if let Some(adapter_config) = options.spec_adapters_config.clone() {
         let adapter = Arc::new(StatsigCustomizedSpecsAdapter::new_from_config(
             sdk_key,
+            data_adapter_key,
             adapter_config,
             options,
-            hashing,
         ));
 
         return SpecsAdapterHousing {
@@ -2428,9 +2437,9 @@ fn initialize_specs_adapter(
     if let Some(data_adapter) = options.data_store.clone() {
         let adapter = Arc::new(StatsigCustomizedSpecsAdapter::new_from_data_store(
             sdk_key,
+            data_adapter_key,
             data_adapter,
             options,
-            hashing,
         ));
 
         return SpecsAdapterHousing {

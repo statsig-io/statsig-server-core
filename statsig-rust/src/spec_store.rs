@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::data_store_interface::{get_data_adapter_dcs_key, DataStoreTrait};
+use crate::data_store_interface::DataStoreTrait;
 use crate::evaluation::evaluator::SpecType;
 use crate::global_configs::GlobalConfigs;
 use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
@@ -36,7 +36,7 @@ const TAG: &str = stringify!(SpecStore);
 pub struct SpecStore {
     pub data: Arc<RwLock<SpecStoreData>>,
 
-    hashed_sdk_key: String,
+    data_adapter_key: String,
     data_store: Option<Arc<dyn DataStoreTrait>>,
     statsig_runtime: Arc<StatsigRuntime>,
     ops_stats: Arc<OpsStatsForInstance>,
@@ -49,7 +49,7 @@ impl SpecStore {
     #[must_use]
     pub fn new(
         sdk_key: &str,
-        hashed_sdk_key: String,
+        data_adapter_key: String,
         statsig_runtime: Arc<StatsigRuntime>,
         event_emitter: Arc<SdkEventEmitter>,
         options: Option<&StatsigOptions>,
@@ -64,7 +64,7 @@ impl SpecStore {
             .is_some_and(|flags| flags.contains("enable_proto_spec_support"));
 
         SpecStore {
-            hashed_sdk_key,
+            data_adapter_key,
             data: Arc::new(RwLock::new(SpecStoreData {
                 values: SpecsResponseFull::default(),
                 next_values: SpecsResponseFull::default(),
@@ -412,7 +412,7 @@ impl SpecStore {
             None => return,
         };
 
-        let hashed_key = self.hashed_sdk_key.clone();
+        let data_adapter_key = self.data_adapter_key.clone();
 
         let spawn_result = self.statsig_runtime.spawn(
             "spec_store_update_data_store",
@@ -426,11 +426,7 @@ impl SpecStore {
                 };
 
                 let _ = data_store
-                    .set(
-                        &get_data_adapter_dcs_key(&hashed_key),
-                        &data_string,
-                        Some(now),
-                    )
+                    .set(&data_adapter_key, &data_string, Some(now))
                     .await;
             },
         );
