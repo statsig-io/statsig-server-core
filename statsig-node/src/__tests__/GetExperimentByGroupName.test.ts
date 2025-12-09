@@ -100,7 +100,7 @@ describe('Get Experiment By Group Name', () => {
       groupName: null,
       idType: '',
       name: 'not_an_experiment',
-      ruleID: 'default',
+      ruleID: '',
       value: {},
     });
   });
@@ -120,7 +120,7 @@ describe('Get Experiment By Group Name', () => {
       groupName: null,
       idType: '',
       name: 'test_experiment_no_targeting',
-      ruleID: 'default',
+      ruleID: '',
       value: {},
     });
   });

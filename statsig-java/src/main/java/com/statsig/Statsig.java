@@ -223,6 +223,16 @@ public class Statsig {
     return experiment;
   }
 
+  public Experiment getExperimentByGroupIdAdvanced(String experimentName, String groupId) {
+    String experJson =
+        StatsigJNI.statsigGetExperimentByGroupIdAdvanced(ref, experimentName, groupId);
+    Experiment experiment = Experiment.fromJson(experJson);
+    if (experiment != null) {
+      experiment.setRawJson(experJson);
+    }
+    return experiment;
+  }
+
   // -------------------------
   // - Get Dynamic Config ----
   // -------------------------

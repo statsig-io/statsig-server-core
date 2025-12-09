@@ -202,10 +202,13 @@ async fn restub_dcs_with_proto(mock_scrapi: &MockScrapi, data: &[u8]) {
         .stub(EndpointStub {
             method: Method::GET,
             response: StubData::Bytes(data.to_vec()),
-            res_headers: Some(HashMap::from([(
-                "Content-Type".to_string(),
-                "application/octet-stream".to_string(),
-            )])),
+            res_headers: Some(HashMap::from([
+                (
+                    "Content-Type".to_string(),
+                    "application/octet-stream".to_string(),
+                ),
+                ("Content-Encoding".to_string(), "statsig-br".to_string()),
+            ])),
             ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })
         .await;

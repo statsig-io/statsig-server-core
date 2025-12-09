@@ -85,6 +85,9 @@ class StatsigJNI {
   public static native String statsigGetExperimentByGroupName(
       long statsigRef, String experimentName, String groupName);
 
+  public static native String statsigGetExperimentByGroupIdAdvanced(
+      long statsigRef, String experimentName, String groupId);
+
   // ------------------------------------------------------------------------------------------------ [Statsig: Layer]
 
   public static native String statsigGetLayer(

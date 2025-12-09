@@ -35,12 +35,13 @@ export class ErrorBoundary {
   private static _onError(tag: string, error: unknown): void {
     _tryConvertInvalidArgError(error);
 
-    console.error('Statsig::' + tag, error);
+    const printableTag = tag.replace('__INTERNAL_', '');
+    console.error('Statsig::' + printableTag, error);
   }
 }
 
 function _getAllInstanceMethodNames(
-  instance: Record<string, unknown>
+  instance: Record<string, unknown>,
 ): string[] {
   const names = new Set<string>();
 
@@ -70,7 +71,7 @@ function _tryConvertInvalidArgError(error: unknown): void {
 
   if (
     error.message.startsWith(
-      'Failed to recover `StatsigUser` type from napi value'
+      'Failed to recover `StatsigUser` type from napi value',
     )
   ) {
     error.message =

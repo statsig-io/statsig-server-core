@@ -9,7 +9,7 @@ use crate::statsig_core_api_options_napi::{
 use crate::statsig_metadata_napi;
 use crate::statsig_options_napi::StatsigOptions;
 use crate::statsig_result::StatsigResult;
-use crate::statsig_types_napi::{DynamicConfig, Experiment, FeatureGate, Layer, ParameterStore};
+use crate::statsig_types_napi::ParameterStore;
 use crate::statsig_user_napi::StatsigUser;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -206,20 +206,18 @@ impl StatsigNapiInternal {
         )
     }
 
-    #[napi]
-    pub fn get_feature_gate(
+    #[napi(js_name = "__INTERNAL_getFeatureGate")]
+    pub fn __internal_get_feature_gate(
         &self,
         user: &StatsigUser,
         feature_name: String,
         options: Option<FeatureGateEvaluationOptionsNapi>,
-    ) -> FeatureGate {
-        self.inner
-            .get_feature_gate_with_options(
-                user.as_inner(),
-                &feature_name,
-                options.map(|opts| opts.into()).unwrap_or_default(),
-            )
-            .into()
+    ) -> String {
+        self.inner.get_raw_feature_gate_with_options(
+            user.as_inner(),
+            &feature_name,
+            options.map(|opts| opts.into()).unwrap_or_default(),
+        )
     }
 
     #[napi]
@@ -227,20 +225,18 @@ impl StatsigNapiInternal {
         self.inner.get_fields_needed_for_gate(gate_name.as_str())
     }
 
-    #[napi]
-    pub fn get_dynamic_config(
+    #[napi(js_name = "__INTERNAL_getDynamicConfig")]
+    pub fn __internal_get_dynamic_config(
         &self,
         user: &StatsigUser,
         config_name: String,
         options: Option<DynamicConfigEvaluationOptionsNapi>,
-    ) -> DynamicConfig {
-        self.inner
-            .get_dynamic_config_with_options(
-                user.as_inner(),
-                &config_name,
-                options.map(|opts| opts.into()).unwrap_or_default(),
-            )
-            .into()
+    ) -> String {
+        self.inner.get_raw_dynamic_config_with_options(
+            user.as_inner(),
+            &config_name,
+            options.map(|opts| opts.into()).unwrap_or_default(),
+        )
     }
 
     #[napi]
@@ -249,31 +245,28 @@ impl StatsigNapiInternal {
             .get_fields_needed_for_dynamic_config(config_name.as_str())
     }
 
-    #[napi]
-    pub fn get_experiment(
+    #[napi(js_name = "__INTERNAL_getExperiment")]
+    pub fn __internal_get_experiment(
         &self,
         user: &StatsigUser,
         experiment_name: String,
         options: Option<ExperimentEvaluationOptionsNapi>,
-    ) -> Experiment {
-        self.inner
-            .get_experiment_with_options(
-                user.as_inner(),
-                &experiment_name,
-                options.map(|opts| opts.into()).unwrap_or_default(),
-            )
-            .into()
+    ) -> String {
+        self.inner.get_raw_experiment_with_options(
+            user.as_inner(),
+            &experiment_name,
+            options.map(|opts| opts.into()).unwrap_or_default(),
+        )
     }
 
-    #[napi]
-    pub fn get_experiment_by_group_name(
+    #[napi(js_name = "__INTERNAL_getExperimentByGroupName")]
+    pub fn __internal_get_experiment_by_group_name(
         &self,
         experiment_name: String,
         group_name: String,
-    ) -> Experiment {
+    ) -> String {
         self.inner
-            .get_experiment_by_group_name(&experiment_name, &group_name)
-            .into()
+            .get_raw_experiment_by_group_name(&experiment_name, &group_name)
     }
 
     #[napi]
@@ -282,20 +275,24 @@ impl StatsigNapiInternal {
             .get_fields_needed_for_experiment(experiment_name.as_str())
     }
 
-    #[napi]
-    pub fn get_layer(
+    #[napi(js_name = "__INTERNAL_getLayer")]
+    pub fn __internal_get_layer(
         &self,
         user: &StatsigUser,
         layer_name: String,
         options: Option<LayerEvaluationOptionsNapi>,
-    ) -> Layer {
+    ) -> String {
+        self.inner.get_raw_layer_with_options(
+            user.as_inner(),
+            &layer_name,
+            options.map(|opts| opts.into()).unwrap_or_default(),
+        )
+    }
+
+    #[napi(js_name = "__INTERNAL_logLayerParamExposure")]
+    pub fn __internal_log_layer_param_exposure(&self, raw: String, param_name: String) {
         self.inner
-            .get_layer_with_options(
-                user.as_inner(),
-                &layer_name,
-                options.map(|opts| opts.into()).unwrap_or_default(),
-            )
-            .into()
+            .log_layer_param_exposure_from_raw(raw, param_name);
     }
 
     #[napi]

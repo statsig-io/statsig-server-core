@@ -31,7 +31,6 @@ pub struct Evaluator;
 lazy_static! {
     static ref EMPTY_STR: String = String::new();
     static ref EMPTY_DYNAMIC_VALUE: DynamicValue = DynamicValue::new();
-    static ref DEFAULT_RULE: InternedString = InternedString::from_str_ref("default");
     static ref DISABLED_RULE: InternedString = InternedString::from_str_ref("disabled");
     static ref SALT: InternedString = InternedString::from_str_ref("salt");
 }
@@ -147,7 +146,7 @@ impl Evaluator {
         ctx.result.bool_value = spec.default_value.get_bool() == Some(true);
         ctx.result.json_value = Some(spec.default_value.clone());
         ctx.result.rule_id = match spec.enabled {
-            true => Some(DEFAULT_RULE.clone()),
+            true => Some(InternedString::default_rule_id()),
             false => Some(DISABLED_RULE.clone()),
         };
         ctx.finalize_evaluation(spec, None);
@@ -162,7 +161,7 @@ fn new_layer_eval<'a>(
 ) -> Result<Recognition, StatsigErr> {
     let mut has_delegate = false;
     let mut passed = false;
-    let mut rule_id: Option<&'a InternedString> = Some(&DEFAULT_RULE);
+    let mut rule_id: Option<&'a InternedString> = Some(InternedString::default_rule_id_ref());
     let mut delegate_name: Option<InternedString> = None;
     let mut rule_ids: HashMap<InternedString, InternedString> = HashMap::new();
     let mut value: HashMap<String, Value> = HashMap::new();
@@ -238,7 +237,7 @@ fn new_layer_eval<'a>(
         &mut value,
         &mut rule_ids,
         spec.default_value.get_json(),
-        &DEFAULT_RULE,
+        InternedString::default_rule_id_ref(),
     );
     ctx.result.bool_value = passed;
     ctx.result.config_delegate = delegate_name;

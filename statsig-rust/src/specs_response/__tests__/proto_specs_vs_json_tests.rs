@@ -6,8 +6,13 @@ use serde_json::{json, Value};
 use crate::{
     interned_string::InternedString,
     networking::ResponseData,
+    observability::ops_stats::OpsStatsForInstance,
     specs_response::{proto_specs::deserialize_protobuf, spec_types::SpecsResponseFull},
 };
+
+lazy_static::lazy_static! {
+    static ref OPS_STATS: OpsStatsForInstance = OpsStatsForInstance::new();
+}
 
 const PROTO_SPECS_BYTES: &[u8] = include_bytes!("../../../tests/data/eval_proj_dcs.pb.br");
 const JSON_SPECS_BYTES: &[u8] = include_bytes!("../../../tests/data/eval_proj_dcs.json");
@@ -19,6 +24,8 @@ fn test_top_level_json_vs_proto() {
     proto_specs.feature_gates.clear();
     proto_specs.dynamic_configs.clear();
     proto_specs.layer_configs.clear();
+    proto_specs.condition_map.clear();
+    proto_specs.param_stores.take();
 
     let proto_specs_string = serde_json::to_string(&proto_specs).unwrap();
     let mut proto_specs_val: serde_json::Map<String, Value> =
@@ -39,6 +46,8 @@ fn test_top_level_json_vs_proto() {
     json_specs.insert("feature_gates".to_string(), json!({}));
     json_specs.insert("dynamic_configs".to_string(), json!({}));
     json_specs.insert("layer_configs".to_string(), json!({}));
+    json_specs.insert("condition_map".to_string(), json!({}));
+    json_specs.remove("param_stores");
 
     normalize_null_condition_fields(&mut json_specs);
     normalize_null_condition_fields(&mut proto_specs_val);
@@ -146,10 +155,26 @@ fn test_a_layer_json_vs_proto_resynced() {
     assert_json_diff::assert_json_matches!(proto_spec, json_spec, get_json_compare_config());
 }
 
+#[test]
+fn test_a_param_store_json_vs_proto() {
+    let mut proto_spec = get_proto_spec_param_store("test_parameter_store");
+    proto_spec.remove("checksum");
+
+    let mut json_spec = get_json_spec("param_stores", "test_parameter_store").clone();
+
+    // the 'name' field is redundant, so we didn't include it in the Protobuf schema
+    json_spec["parameters"]["bool_param"]
+        .as_object_mut()
+        .unwrap()
+        .remove("name");
+
+    assert_json_diff::assert_json_matches!(proto_spec, json_spec, get_json_compare_config());
+}
+
 fn deserialize_from(current_specs: &mut SpecsResponseFull, next_specs: &mut SpecsResponseFull) {
     let bytes = PROTO_SPECS_BYTES.to_vec();
     let mut data = ResponseData::from_bytes(bytes);
-    deserialize_protobuf(current_specs, next_specs, &mut data).unwrap();
+    deserialize_protobuf(&OPS_STATS, current_specs, next_specs, &mut data).unwrap();
 }
 
 fn get_deserialized_specs() -> SpecsResponseFull {
@@ -162,6 +187,7 @@ fn get_deserialized_specs() -> SpecsResponseFull {
 fn get_proto_spec(top_level: &str, name: &str) -> serde_json::Map<String, Value> {
     let name = InternedString::from_str_ref(name);
     let mut proto_specs = get_deserialized_specs();
+
     let ptr = match top_level {
         "feature_gates" => proto_specs.feature_gates.remove(&name).unwrap(),
         "dynamic_configs" => proto_specs.dynamic_configs.remove(&name).unwrap(),
@@ -169,6 +195,16 @@ fn get_proto_spec(top_level: &str, name: &str) -> serde_json::Map<String, Value>
         _ => panic!("Invalid top level: {}", top_level),
     };
 
+    match serde_json::to_value(ptr).expect("Failed to convert SpecPointer to Value") {
+        Value::Object(obj) => obj,
+        _ => panic!("Expected object"),
+    }
+}
+
+fn get_proto_spec_param_store(name: &str) -> serde_json::Map<String, Value> {
+    let name = InternedString::from_str_ref(name);
+    let proto_specs = get_deserialized_specs();
+    let ptr = proto_specs.param_stores.unwrap().remove(&name).unwrap();
     match serde_json::to_value(ptr).expect("Failed to convert SpecPointer to Value") {
         Value::Object(obj) => obj,
         _ => panic!("Expected object"),
@@ -196,14 +232,19 @@ fn get_proto_spec_resynced(top_level: &str, name: &str) -> serde_json::Map<Strin
     }
 }
 
-fn get_json_spec(top_level: &str, name: &str) -> Value {
+fn get_json_spec(top_level: &str, name: &str) -> serde_json::Map<String, Value> {
     let json_specs: HashMap<String, Value> = serde_json::from_slice(JSON_SPECS_BYTES).unwrap();
-    json_specs
+    let value = json_specs
         .get(top_level)
         .unwrap()
         .get(name)
         .unwrap()
-        .clone()
+        .clone();
+
+    match serde_json::to_value(value).expect("Failed to convert Value to Value") {
+        Value::Object(obj) => obj,
+        _ => panic!("Expected object"),
+    }
 }
 
 fn get_json_compare_config() -> Config {

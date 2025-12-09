@@ -414,6 +414,17 @@ function Dashboard() {
             >
               View DCS v2
             </button>
+            <button
+              style={{ padding: 8, cursor: 'pointer' }}
+              onClick={() => {
+                window.open(
+                  `${location.origin}:8000/v2/download_config_specs?supports_proto=true`,
+                  '_blank',
+                );
+              }}
+            >
+              View DCS v2 Proto
+            </button>
           </div>
         </div>
         <div

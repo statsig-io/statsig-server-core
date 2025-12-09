@@ -104,6 +104,39 @@ describe('StatsigUser', () => {
     expect(event?.user?.email).toEqual('b-user@example.com');
   });
 
+  it('creates users with undefined fields', async () => {
+    const user = new StatsigUser({
+      userID: 'a-user',
+      email: undefined,
+      custom: undefined,
+      customIDs: undefined,
+      ip: undefined,
+      userAgent: undefined,
+      country: undefined,
+      locale: undefined,
+      appVersion: undefined,
+      statsigEnvironment: undefined,
+      privateAttributes: undefined,
+    });
+
+    statsig.checkGate(user, 'test-gate');
+
+    const event = await getLastLoggedEvent();
+    expect(event?.eventName).toEqual('statsig::gate_exposure');
+    expect(event?.metadata?.gate).toEqual('test-gate');
+    expect(event?.user?.userID).toEqual('a-user');
+    expect(event?.user?.email).toBeUndefined();
+    expect(event?.user?.custom).toBeUndefined();
+    expect(event?.user?.customIDs).toBeUndefined();
+    expect(event?.user?.ip).toBeUndefined();
+    expect(event?.user?.userAgent).toBeUndefined();
+    expect(event?.user?.country).toBeUndefined();
+    expect(event?.user?.locale).toBeUndefined();
+    expect(event?.user?.appVersion).toBeUndefined();
+    expect(event?.user?.statsigEnvironment).toBeUndefined();
+    expect(event?.user?.privateAttributes).toBeUndefined();
+  });
+
   it('creates users with constructor', async () => {
     const user = new StatsigUser({
       userID: 'c-user',
@@ -324,6 +357,98 @@ describe('StatsigUser', () => {
 
       const event = await getLastLoggedEvent();
       expect(event?.user?.statsigEnvironment?.tier).toEqual('production');
+    });
+
+    it('modify fields after creation', async () => {
+      const user = new StatsigUser({
+        userID: 'modify-user',
+        custom: {
+          age: 25,
+        },
+      });
+
+      // Need to use setter to update internal state, merging with existing custom fields
+      user.custom = {
+        ...(user.custom || {}),
+        mutation: "yes"
+      };
+      
+      statsig.checkGate(user, 'test-gate');
+
+      const event = await getLastLoggedEvent();
+      expect(event?.user?.custom?.age).toEqual(25);
+      expect(event?.user?.custom?.mutation).toEqual('yes');
+    });
+
+    it('modify fields after creation with setter', async () => {
+      const user = new StatsigUser({
+        userID: 'another-user',
+      });
+
+      user.custom = {
+        age: 18,
+        mutation: "entered",
+        isPremium: true,
+      };
+
+      statsig.checkGate(user, 'test-gate');
+
+      const event = await getLastLoggedEvent();
+      expect(event?.user?.custom?.age).toEqual(18);
+      expect(event?.user?.custom?.mutation).toEqual('entered');
+      expect(event?.user?.custom?.isPremium).toEqual(true);
+    });
+
+    it('attach new custom fields after creation', async () => {
+      const user = new StatsigUser({
+        userID: 'attach-user',
+      });
+
+      // Need to use setter to update internal state, not direct property assignment
+      user.custom = {
+        mutation: "yes"
+      };
+
+      statsig.checkGate(user, 'test-gate');
+
+      const event = await getLastLoggedEvent();
+      expect(event?.user?.custom?.mutation).toEqual('yes');
+      expect(event?.user?.userID).toEqual('attach-user');
+    });
+  });
+
+  describe('toJSON', () => {
+    it('should work with JSON.stringify', () => {
+      const user = new StatsigUser({
+        userID: 'test-user',
+        email: 'test@example.com',
+        ip: '192.168.1.1',
+        customIDs: {
+          companyID: 'company-123',
+          orgID: 'org-456',
+        },
+        custom: {
+          server_tier: 'production',
+          is_synthetic: false,
+          serviceVersion: 'v1.0.0',
+        },
+      });
+
+      const stringified = JSON.stringify(user);
+      expect(stringified).toBeDefined();
+      let parsed: any = JSON.parse(stringified);
+      
+      expect(parsed).toBeDefined();
+      expect(parsed.userID).toBe('test-user');
+      expect(parsed.email).toBe('test@example.com');
+      expect(parsed.ip).toBe('192.168.1.1');
+      expect(parsed.customIDs).toBeDefined();
+      expect(parsed.customIDs.companyID).toBe('company-123');
+      expect(parsed.customIDs.orgID).toBe('org-456');
+      expect(parsed.custom).toBeDefined();
+      expect(parsed.custom.server_tier).toBe('production');
+      expect(parsed.custom.is_synthetic).toBe(false);
+      expect(parsed.custom.serviceVersion).toBe('v1.0.0');
     });
   });
 });

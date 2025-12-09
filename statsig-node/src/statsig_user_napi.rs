@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use napi::bindgen_prelude::{Either3, Either5};
 use napi_derive::napi;
-use serde_json::Value;
+use serde_json::{json, Value};
 use statsig_rust::{
     dyn_value, log_w, user::user_data::UserData, DynamicValue, StatsigUser as StatsigUserActual,
 };
@@ -23,7 +23,7 @@ pub struct StatsigUserArgs {
     pub country: Option<String>,
     pub locale: Option<String>,
     pub app_version: Option<String>,
-    #[napi(ts_type = "{ tier?: string, [key: string]: string | undefined } | null | undefined")]
+    #[napi(ts_type = "{ tier?: string, [key: string]: string | undefined } | undefined")]
     pub statsig_environment: Option<HashMap<String, String>>,
 
     #[napi(
@@ -32,7 +32,7 @@ pub struct StatsigUserArgs {
     pub custom: Option<HashMap<String, ValidPrimitives>>,
 
     #[napi(
-        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean> | null | Record<string, unknown>>"
+        ts_type = "Record<string, string | number | boolean | Array<string | number | boolean> | Record<string, unknown>>"
     )]
     pub private_attributes: Option<HashMap<String, ValidPrimitives>>,
 }
@@ -186,7 +186,7 @@ impl From<StatsigUserActual> for StatsigUser {
     }
 }
 
-macro_rules! add_hashmap_getter_setter {
+macro_rules! add_string_hashmap_getter_setter {
     ($field_name:expr, $field_accessor:ident, $setter_name:ident, $ts_arg_type:expr) => {
         #[napi]
         impl StatsigUser {
@@ -240,6 +240,50 @@ macro_rules! add_hashmap_getter_setter {
     };
 }
 
+// Macro for getter/setter that preserves all types (not just strings)
+macro_rules! add_typed_hashmap_getter_setter {
+    ($field_name:expr, $field_accessor:ident, $setter_name:ident, $ts_return_type:expr, $ts_arg_type:expr) => {
+        #[napi]
+        impl StatsigUser {
+            #[napi(getter, js_name = $field_name, ts_return_type = $ts_return_type)]
+            pub fn $field_accessor(&self) -> Option<HashMap<String, Value>> {
+                let value_map = match &self.inner.data.$field_accessor {
+                    Some(value) => value,
+                    _ => return None,
+                };
+
+                let mut result: HashMap<String, Value> = HashMap::new();
+                for (key, dyn_value) in value_map {
+                    // Use the json_value field which preserves the original type
+                    result.insert(key.to_string(), dyn_value.json_value.clone());
+                }
+
+                Some(result)
+            }
+
+            #[napi(setter, js_name = $field_name, ts_args_type = $ts_arg_type)]
+            pub fn $setter_name(&mut self, value: Option<HashMap<String, Value>>) {
+                let value = match value {
+                    Some(value) => value,
+                    _ => {
+                        let mut_data = Arc::make_mut(&mut self.inner.data);
+                        mut_data.$field_accessor = None;
+                        return;
+                    }
+                };
+
+                let mut converted: HashMap<String, DynamicValue> = HashMap::new();
+                for (key, value) in value {
+                    converted.insert(key, DynamicValue::from(value));
+                }
+
+                let mut_data = Arc::make_mut(&mut self.inner.data);
+                mut_data.$field_accessor = Some(converted);
+            }
+        }
+    };
+}
+
 macro_rules! add_string_getter_setter {
     ($field_name:expr, $field_accessor:ident, $setter_name:ident) => {
         #[napi]
@@ -272,29 +316,33 @@ macro_rules! add_string_getter_setter {
     };
 }
 
-add_hashmap_getter_setter!(
+add_string_hashmap_getter_setter!(
     "customIDs",
     custom_ids,
     set_custom_ids,
     "value: Record<string, string> | null"
 );
-add_hashmap_getter_setter!(
+
+add_typed_hashmap_getter_setter!(
     "custom",
     custom,
     set_custom,
+    "Record<string, string | number | boolean | Array<string | number | boolean>> | null",
     "value: Record<string, string | number | boolean | Array<string | number | boolean>> | null"
 );
-add_hashmap_getter_setter!(
+
+add_typed_hashmap_getter_setter!(
     "privateAttributes",
     private_attributes,
     set_private_attributes,
+    "Record<string, string | number | boolean | Array<string | number | boolean>> | null",
     "value: Record<string, string | number | boolean | Array<string | number | boolean>> | null"
 );
-add_hashmap_getter_setter!(
+add_string_hashmap_getter_setter!(
     "statsigEnvironment",
     statsig_environment,
     set_statsig_environment,
-    "value: { tier?: string, [key: string]: string | undefined } | null | undefined"
+    "value: { tier?: string, [key: string]: string | undefined } | undefined"
 );
 
 add_string_getter_setter!("userID", user_id, set_user_id);
@@ -308,7 +356,7 @@ add_string_getter_setter!("appVersion", app_version, set_app_version);
 #[napi]
 impl StatsigUser {
     #[napi(js_name = "toJSON")]
-    pub fn to_json(&self) -> String {
-        serde_json::to_string(self.inner.data.as_ref()).unwrap_or_else(|_| "{}".to_string())
+    pub fn to_json(&self) -> Value {
+        serde_json::to_value(self.inner.data.as_ref()).unwrap_or_else(|_| json!({}))
     }
 }

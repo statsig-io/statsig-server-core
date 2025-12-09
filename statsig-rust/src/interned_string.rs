@@ -22,6 +22,8 @@ lazy_static::lazy_static! {
 
     static ref TRUE_STRING: InternedString = InternedString::from_string("true".to_string());
     static ref FALSE_STRING: InternedString = InternedString::from_string("false".to_string());
+
+    static ref DEFAULT_RULE_ID: InternedString = InternedString::from_str_ref("default");
 }
 
 const TAG: &str = "InternedString";
@@ -57,6 +59,14 @@ macro_rules! interned_str {
 }
 
 impl InternedString {
+    pub fn default_rule_id_ref() -> &'static Self {
+        &DEFAULT_RULE_ID
+    }
+
+    pub fn default_rule_id() -> Self {
+        DEFAULT_RULE_ID.clone()
+    }
+
     pub fn from_str_ref(value: &str) -> Self {
         let hash = hashing::hash_one(value);
         let value = InternedString::get_or_create_memoized_string(hash, Cow::Borrowed(value));
@@ -109,6 +119,10 @@ impl InternedString {
 
     pub fn empty() -> Self {
         EMPTY.clone()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.value.is_empty()
     }
 
     fn get_or_create_memoized_string(hash: u64, input: Cow<'_, str>) -> Arc<String> {

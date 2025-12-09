@@ -57,7 +57,7 @@ pub struct Rule {
     pub sampling_rate: Option<u64>,
 }
 
-#[derive(Serialize, PartialEq, Debug)] /* DO_NOT_CLONE */
+#[derive(Serialize, PartialEq, Debug, Clone /* TEMP: Make this an Arc */)] /* DO_NOT_CLONE */
 #[serde(rename_all = "camelCase")]
 pub struct Condition {
     #[serde(rename = "type")]
@@ -67,6 +67,7 @@ pub struct Condition {
     pub field: Option<DynamicString>,
     pub additional_values: Option<HashMap<InternedString, InternedString>>,
     pub id_type: DynamicString,
+    pub checksum: Option<InternedString>,
 }
 
 #[skip_serializing_none]
@@ -104,7 +105,6 @@ pub struct SessionReplayInfo {
 #[derive(Deserialize)]
 pub struct SpecsResponsePartial {
     pub experiment_to_layer: HashMap<String, String>,
-    pub param_stores: Option<HashMap<InternedString, ParameterStore>>,
     pub session_replay_info: Option<SessionReplayInfo>,
     pub diagnostics: Option<HashMap<String, f64>>,
     pub sdk_configs: Option<HashMap<String, DynamicValue>>,
@@ -193,6 +193,7 @@ impl<'de> Deserialize<'de> for Condition {
             field: internal.field,
             additional_values: internal.additional_values,
             id_type: internal.id_type,
+            checksum: None,
         })
     }
 }

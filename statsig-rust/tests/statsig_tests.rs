@@ -92,6 +92,30 @@ async fn test_get_experiment_by_group_name() {
 }
 
 #[tokio::test]
+async fn test_get_experiment_by_group_id_advanced() {
+    let statsig = Statsig::new(
+        "secret-key",
+        Some(Arc::new(StatsigOptions {
+            specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
+                "tests/data/eval_proj_dcs.json",
+            ))),
+            ..StatsigOptions::new()
+        })),
+    );
+    statsig.initialize().await.unwrap();
+
+    let experiment_name = "test_experiment_no_targeting";
+    let group_id = "54QJztEPRLXK7ZCvXeY9q4";
+    let experiment = statsig.get_experiment_by_group_id_advanced(experiment_name, group_id);
+
+    assert_eq!(experiment.name, experiment_name);
+    assert_eq!(experiment.group_name.as_deref(), Some("Control"));
+    assert_eq!(experiment.rule_id, group_id);
+    assert_eq!(experiment.id_type, "userID");
+    assert_eq!(experiment.value["value"], "control");
+}
+
+#[tokio::test]
 async fn test_gcir() {
     let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())
         .email(Some("daniel@statsig.com".to_string()))

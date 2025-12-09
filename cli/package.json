@@ -28,6 +28,8 @@
     "glob": "^11.1.0",
     "jsdom": "^26.1.0",
     "octokit": "^4.0.2",
+    "protobufjs": "^7.5.4",
+    "protobufjs-cli": "^1.1.3",
     "simple-git": "^3.27.0",
     "smol-toml": "^1.3.0",
     "ts-paths-esm-loader": "^1.4.3",

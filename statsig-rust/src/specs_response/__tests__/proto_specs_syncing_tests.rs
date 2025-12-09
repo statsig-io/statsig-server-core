@@ -1,5 +1,6 @@
 use crate::{
     networking::ResponseData,
+    observability::ops_stats::OpsStatsForInstance,
     specs_response::{proto_specs::deserialize_protobuf, spec_types::SpecsResponseFull},
 };
 
@@ -16,6 +17,10 @@ const DEMO_PROJ_GATE_COUNT: usize = 9 /* demo_proj_dcs.json['feature_gates'].len
 const DEMO_PROJ_DC_COUNT: usize = 7 /* demo_proj_dcs.json['dynamic_configs'].length */;
 const DEMO_PROJ_LAYER_COUNT: usize = 1 /* demo_proj_dcs.json['layer_configs'].length */;
 
+lazy_static::lazy_static! {
+    static ref OPS_STATS: OpsStatsForInstance = OpsStatsForInstance::new();
+}
+
 #[test]
 fn test_deserialize_eval_proj_proto() {
     let left = SpecsResponseFull::default();
@@ -23,7 +28,7 @@ fn test_deserialize_eval_proj_proto() {
 
     let mut data = ResponseData::from_bytes(EVAL_PROJ_PROTO_BYTES.to_vec());
 
-    deserialize_protobuf(&left, &mut right, &mut data).unwrap();
+    deserialize_protobuf(&OPS_STATS, &left, &mut right, &mut data).unwrap();
 
     assert_eq!(right.checksum.as_deref(), Some(EVAL_PROJ_CHECKSUM));
     assert_eq!(right.feature_gates.len(), EVAL_PROJ_GATE_COUNT);
@@ -38,7 +43,7 @@ fn test_deserialize_demo_proj_proto() {
 
     let mut data = ResponseData::from_bytes(DEMO_PROJ_PROTO_BYTES.to_vec());
 
-    deserialize_protobuf(&left, &mut right, &mut data).unwrap();
+    deserialize_protobuf(&OPS_STATS, &left, &mut right, &mut data).unwrap();
 
     assert_eq!(right.checksum.as_deref(), Some(DEMO_PROJ_CHECKSUM));
     assert_eq!(right.feature_gates.len(), DEMO_PROJ_GATE_COUNT);
@@ -54,10 +59,10 @@ fn test_continuous_swapping() {
     for i in 0..10 {
         if i % 4 == 0 {
             let mut data = ResponseData::from_bytes(EVAL_PROJ_PROTO_BYTES.to_vec());
-            deserialize_protobuf(&curr, &mut next, &mut data).unwrap();
+            deserialize_protobuf(&OPS_STATS, &curr, &mut next, &mut data).unwrap();
         } else {
             let mut data = ResponseData::from_bytes(DEMO_PROJ_PROTO_BYTES.to_vec());
-            deserialize_protobuf(&curr, &mut next, &mut data).unwrap();
+            deserialize_protobuf(&OPS_STATS, &curr, &mut next, &mut data).unwrap();
         }
 
         std::mem::swap(&mut curr, &mut next);

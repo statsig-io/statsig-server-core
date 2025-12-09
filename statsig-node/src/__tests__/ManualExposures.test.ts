@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import { Statsig, StatsigOptions, StatsigUser } from '../../build/index.js';
-import { MockScrapi } from './MockScrapi';
+import { MockScrapi, anyNumericString } from './MockScrapi';
 
 const KNOWN_EXP_PARAM = 'exp_val';
 const KNOWN_DEFAULT_PARAM = 'layer_val';
@@ -298,9 +298,3 @@ describe('Manual Exposures', () => {
     });
   });
 });
-
-export function anyNumericString(): unknown {
-  return expect.toSatisfy(
-    (input) => typeof input === 'string' && /^[0-9]+$/.test(input),
-  );
-}

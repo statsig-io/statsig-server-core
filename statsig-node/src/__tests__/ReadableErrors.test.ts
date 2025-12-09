@@ -1,7 +1,7 @@
 import { Statsig, StatsigUser } from '../../build';
 import { MockScrapi } from './MockScrapi';
 
-describe('EBMessageReplacement', () => {
+describe('Readable Errors', () => {
   let statsig: Statsig;
   let consoleErrorSpy: jest.SpyInstance;
   let scrapi: MockScrapi;
@@ -31,11 +31,11 @@ describe('EBMessageReplacement', () => {
         expect.objectContaining({
           message:
             'Expected StatsigUser instance, plain javascript object is not supported. Please create a StatsigUser instance using `new StatsigUser(...)` instead.',
-        })
+        }),
       );
     });
 
-    it('should replace the invalid user argument error message for getConfig', async () => {
+    it('should replace the invalid user argument error message for getDynamicConfig', async () => {
       // @ts-expect-error - we are testing the error boundary
       statsig.getDynamicConfig({ userID: 'a-user' }, 'test_config');
 
@@ -44,7 +44,7 @@ describe('EBMessageReplacement', () => {
         expect.objectContaining({
           message:
             'Expected StatsigUser instance, plain javascript object is not supported. Please create a StatsigUser instance using `new StatsigUser(...)` instead.',
-        })
+        }),
       );
     });
 
@@ -57,7 +57,7 @@ describe('EBMessageReplacement', () => {
         expect.objectContaining({
           message:
             'Expected StatsigUser instance, plain javascript object is not supported. Please create a StatsigUser instance using `new StatsigUser(...)` instead.',
-        })
+        }),
       );
     });
 
@@ -70,7 +70,7 @@ describe('EBMessageReplacement', () => {
         expect.objectContaining({
           message:
             'Expected StatsigUser instance, plain javascript object is not supported. Please create a StatsigUser instance using `new StatsigUser(...)` instead.',
-        })
+        }),
       );
     });
 
@@ -83,7 +83,7 @@ describe('EBMessageReplacement', () => {
         expect.not.objectContaining({
           message:
             'Expected StatsigUser instance, plain javascript object is not supported. Please create a StatsigUser instance using `new StatsigUser(...)` instead.',
-        })
+        }),
       );
     });
   });

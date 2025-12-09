@@ -7,9 +7,10 @@ import {
 } from './console_capture';
 import { ErrorBoundary } from './error_boundary';
 import {
-  DynamicConfig,
-  Experiment,
-  Layer,
+  DynamicConfigEvaluationOptions,
+  ExperimentEvaluationOptions,
+  FeatureGateEvaluationOptions,
+  LayerEvaluationOptions,
   ParameterStore,
   SdkEvent,
   StatsigNapiInternal,
@@ -17,8 +18,10 @@ import {
   StatsigResult,
   StatsigUser,
 } from './statsig-generated';
+import { DynamicConfig, Experiment, FeatureGate, Layer } from './statsig_types';
 
 export * from './statsig-generated';
+export * from './statsig_types';
 
 const inspectSym = Symbol.for('nodejs.util.inspect.custom');
 
@@ -27,23 +30,9 @@ StatsigUser.prototype[inspectSym] = function () {
   return this.toJSON();
 };
 // @ts-expect-error - prototype assignment
-Experiment.prototype[inspectSym] = function () {
-  return this.toJSON();
-};
-// @ts-expect-error - prototype assignment
-DynamicConfig.prototype[inspectSym] = function () {
-  return this.toJSON();
-};
-// @ts-expect-error - prototype assignment
-Layer.prototype[inspectSym] = function () {
-  return this.toJSON();
-};
-// @ts-expect-error - prototype assignment
 ParameterStore.prototype[inspectSym] = function () {
   return this.toJSON();
 };
-
-export { StatsigUser, Experiment, DynamicConfig, Layer, ParameterStore };
 
 function createProxyAgent(options?: StatsigOptions) {
   const proxy = options?.proxyConfig;
@@ -165,6 +154,57 @@ export class Statsig extends StatsigNapiInternal {
         console.error(`[Statsig] Error parsing SDK Event: ${error}`);
       }
     });
+  }
+
+  public getFeatureGate(
+    user: StatsigUser,
+    gateName: string,
+    options?: FeatureGateEvaluationOptions,
+  ): FeatureGate {
+    const raw = this.__INTERNAL_getFeatureGate(user, gateName, options);
+    return new FeatureGate(gateName, raw);
+  }
+
+  public getDynamicConfig(
+    user: StatsigUser,
+    configName: string,
+    options?: DynamicConfigEvaluationOptions,
+  ): DynamicConfig {
+    const raw = this.__INTERNAL_getDynamicConfig(user, configName, options);
+    return new DynamicConfig(configName, raw);
+  }
+
+  public getExperiment(
+    user: StatsigUser,
+    experimentName: string,
+    options?: ExperimentEvaluationOptions,
+  ): Experiment {
+    const raw = this.__INTERNAL_getExperiment(user, experimentName, options);
+    return new Experiment(experimentName, raw);
+  }
+
+  public getExperimentByGroupName(
+    experimentName: string,
+    groupName: string,
+  ): Experiment {
+    const raw = this.__INTERNAL_getExperimentByGroupName(
+      experimentName,
+      groupName,
+    );
+    return new Experiment(experimentName, raw);
+  }
+
+  public getLayer(
+    user: StatsigUser,
+    layerName: string,
+    options?: LayerEvaluationOptions,
+  ): Layer {
+    const raw = this.__INTERNAL_getLayer(user, layerName, options);
+    return new Layer(
+      (param) => this.__INTERNAL_logLayerParamExposure(raw, param),
+      layerName,
+      raw,
+    );
   }
 }
 

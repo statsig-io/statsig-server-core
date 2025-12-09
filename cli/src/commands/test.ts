@@ -12,6 +12,13 @@ import { execSync } from 'child_process';
 
 import { CommandBase } from './command_base.js';
 
+const BUILD_COMMANDS: Record<string, string> = {
+  node: [
+    `pnpm install --dir statsig-node`,
+    './tore build node --no-docker',
+  ].join(' && '),
+};
+
 const TEST_COMMANDS: Record<string, string> = {
   dotnet: [
     'cargo build -p statsig_ffi',
@@ -53,12 +60,7 @@ const TEST_COMMANDS: Record<string, string> = {
     './gradlew test --rerun-tasks --console rich',
   ].join(' && '),
 
-  node: [
-    `pnpm install --dir statsig-node`,
-    './tore build node --no-docker',
-    'cd statsig-node',
-    'pnpm test -- --forceExit',
-  ].join(' && '),
+  node: ['cd statsig-node', 'pnpm test -- --forceExit'].join(' && '),
 
   php: [
     'cargo build -p statsig_ffi',
@@ -92,6 +94,8 @@ type Options = {
   os: OS;
   arch: Arch;
   docker: boolean;
+  build: boolean;
+  focus: string;
 };
 
 export class Test extends CommandBase {
@@ -121,6 +125,10 @@ export class Test extends CommandBase {
       'The architecture to run tests for, e.g. amd64',
       'arm64',
     );
+
+    this.option('--no-build', 'Skip building the sdk project', true);
+
+    this.option('-f, --focus <string>', 'Focus on a specific test', undefined);
   }
 
   override async run(lang: string, options: Options) {
@@ -130,8 +138,9 @@ export class Test extends CommandBase {
     Log.stepProgress(`Language: ${lang}`);
     Log.stepProgress(`OS: ${options.os}`);
     Log.stepProgress(`Arch: ${options.arch}`);
-    Log.stepProgress(`Skip Docker Build: ${options.skipDockerBuild}`);
     Log.stepProgress(`Docker: ${options.docker}`);
+    Log.stepProgress(`SDK Build: ${options.build}`);
+    Log.stepProgress(`Focus: ${options.focus ?? 'Not Specified'}`);
     Log.stepEnd(`Skip Docker Build: ${options.skipDockerBuild}`);
 
     if (!options.skipDockerBuild && options.docker) {
@@ -148,6 +157,18 @@ function runTests(lang: string, options: Options) {
   const { docker } = getArchInfo(options.arch);
   const dockerImageTag = getDockerImageTag(options.os, options.arch);
 
+  let sdkBuildCommand = BUILD_COMMANDS[lang] ?? '';
+  if (!options.build) {
+    sdkBuildCommand = '';
+  }
+
+  if (sdkBuildCommand.length > 0) {
+    sdkBuildCommand = `${sdkBuildCommand} &&`;
+  }
+
+  let command =
+    sdkBuildCommand + TEST_COMMANDS[lang] + ' ' + (options.focus ?? '');
+
   Log.title(`Running tests for ${lang}`);
   process.env.STATSIG_RUNNING_TESTS = '1';
   const dockerCommand = [
@@ -161,16 +182,14 @@ function runTests(lang: string, options: Options) {
     `-e STATSIG_RUNNING_TESTS=1`,
     `-e test_api_key=${process.env.test_api_key}`,
     dockerImageTag,
-    `"cd /app && ${TEST_COMMANDS[lang]}"`, // && while true; do sleep 1000; done
+    `"cd /app && ${command}"`, // && while true; do sleep 1000; done
   ].join(' ');
 
-  let command = TEST_COMMANDS[lang];
   if (isLinux(options.os) && options.docker) {
     Log.stepBegin(`Executing docker command for ${lang}`);
     command = dockerCommand;
   } else {
     Log.stepBegin(`Executing command for ${lang}`);
-    command = TEST_COMMANDS[lang];
   }
   Log.stepProgress(`${command}`);
 
