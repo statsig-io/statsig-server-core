@@ -137,6 +137,15 @@ jobs:
           python-version: 3.x
           architecture: ${{ matrix.config.py_arch }}
 
+      - name: '[Macos 14 Py Only] Install maturin'
+        if: ${{ matrix.config.runner == 'macos-15-intel' && matrix.package == 'python' }}
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.config.target }}
+          args: --release --strip --out build
+          sccache: 'true'
+          working-directory: statsig-pyo3
+
       - name: '[Statsig Hosted Windows ARM64 Only] Install Rustup'
         if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
         shell: powershell
