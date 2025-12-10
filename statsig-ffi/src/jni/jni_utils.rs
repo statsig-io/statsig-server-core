@@ -6,7 +6,7 @@ use statsig_rust::networking::proxy_config::ProxyConfig;
 use statsig_rust::{
     log_e, log_w, ClientInitResponseOptions, DynamicConfigEvaluationOptions,
     ExperimentEvaluationOptions, FeatureGateEvaluationOptions, GCIRResponseFormat, HashAlgorithm,
-    LayerEvaluationOptions,
+    LayerEvaluationOptions, UserPersistedValues,
 };
 use std::collections::HashMap;
 
@@ -175,12 +175,82 @@ pub fn convert_java_get_experiment_options_to_rust(
             Err(_) => return None,
         };
 
-    let disable_exposure_logging = jboolean_to_bool(disable_exposure_logging_field);
+    let disable_exposure_logging = jboolean_to_bool(disable_exposure_logging_field)?;
 
-    disable_exposure_logging.map(|disable_exposure_logging| ExperimentEvaluationOptions {
+    // Get userPersistedValues field (Map<String, StickyValues>)
+    let user_persisted_values =
+        match env.get_field(&options, "userPersistedValues", "Ljava/util/Map;") {
+            Ok(field) => {
+                let map_obj = field.l().ok()?;
+                if map_obj.is_null() {
+                    None
+                } else {
+                    convert_java_map_to_user_persisted_values(env, &map_obj)
+                }
+            }
+            Err(_) => None,
+        };
+
+    Some(ExperimentEvaluationOptions {
         disable_exposure_logging,
-        user_persisted_values: None,
+        user_persisted_values,
     })
+}
+
+/// Converts Java Map<String, StickyValues> to Rust UserPersistedValues via JSON serialization
+fn convert_java_map_to_user_persisted_values(
+    env: &mut JNIEnv,
+    map_obj: &JObject,
+) -> Option<UserPersistedValues> {
+    let json_class = match env.find_class("com/alibaba/fastjson2/JSON") {
+        Ok(cls) => cls,
+        Err(e) => {
+            log_e!(TAG, "Failed to find JSON class: {:?}", e);
+            return None;
+        }
+    };
+
+    let json_str_result = env.call_static_method(
+        json_class,
+        "toJSONString",
+        "(Ljava/lang/Object;)Ljava/lang/String;",
+        &[JValue::Object(map_obj)],
+    );
+
+    let json_str_obj = match json_str_result {
+        Ok(r) => match r.l() {
+            Ok(obj) => obj,
+            Err(e) => {
+                log_e!(TAG, "Failed to get JSON string object: {:?}", e);
+                return None;
+            }
+        },
+        Err(e) => {
+            log_e!(TAG, "Failed to call JSON.toJSONString(): {:?}", e);
+            return None;
+        }
+    };
+
+    let json_str: JString = json_str_obj.into();
+    let json_str: String = match env.get_string(&json_str) {
+        Ok(java_str) => java_str.into(),
+        Err(e) => {
+            log_e!(TAG, "Failed to get string from Java String: {:?}", e);
+            return None;
+        }
+    };
+
+    match serde_json::from_str::<UserPersistedValues>(&json_str) {
+        Ok(values) => Some(values),
+        Err(e) => {
+            log_e!(
+                TAG,
+                "Failed to deserialize JSON to UserPersistedValues: {:?}",
+                e
+            );
+            None
+        }
+    }
 }
 
 pub fn convert_java_get_layer_options_to_rust(
@@ -197,11 +267,25 @@ pub fn convert_java_get_layer_options_to_rust(
             Err(_) => return None,
         };
 
-    let disable_exposure_logging = jboolean_to_bool(disable_exposure_logging_field);
+    let disable_exposure_logging = jboolean_to_bool(disable_exposure_logging_field)?;
 
-    disable_exposure_logging.map(|disable_exposure_logging| LayerEvaluationOptions {
+    // Get userPersistedValues field (Map<String, StickyValues>)
+    let user_persisted_values =
+        match env.get_field(&options, "userPersistedValues", "Ljava/util/Map;") {
+            Ok(field) => {
+                let map_obj = field.l().ok()?;
+                if map_obj.is_null() {
+                    None
+                } else {
+                    convert_java_map_to_user_persisted_values(env, &map_obj)
+                }
+            }
+            Err(_) => None,
+        };
+
+    Some(LayerEvaluationOptions {
         disable_exposure_logging,
-        user_persisted_values: None,
+        user_persisted_values,
     })
 }
 
