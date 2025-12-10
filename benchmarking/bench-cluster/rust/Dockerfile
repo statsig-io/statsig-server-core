@@ -7,6 +7,11 @@ RUN apt-get update && apt-get install -y jq
 
 WORKDIR /app
 
+RUN PROTOC_ARCH=$(if [ "$(uname -m)" = "x86_64" ]; then echo "x86_64"; else echo "aarch_64"; fi) \
+    && curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-${PROTOC_ARCH}.zip && \
+    unzip protoc-29.3-linux-${PROTOC_ARCH}.zip -d /usr/local && \
+    rm protoc-29.3-linux-${PROTOC_ARCH}.zip;
+
 COPY Cargo.toml ./
 COPY src ./src
 COPY build.rs ./build.rs
