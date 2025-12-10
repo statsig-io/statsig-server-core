@@ -247,7 +247,12 @@ async def main():
         "object",
         ITER_HEAVY,
         lambda: assert_cond(
-            config.get_object_json("obj", "") != "", "object value is empty"
+            (
+                config.get_object_json("obj", "") != ""
+                if hasattr(config, "get_object_json")
+                else config.get_object("obj", {}) != {}
+            ),
+            "object value is empty",
         ),
         results,
     )
@@ -256,7 +261,12 @@ async def main():
         "array",
         ITER_HEAVY,
         lambda: assert_cond(
-            config.get_array_json("arr", "") != "", "array value is empty"
+            (
+                config.get_array_json("arr", "") != ""
+                if hasattr(config, "get_array_json")
+                else config.get_array("arr", []) != []
+            ),
+            "array value is empty",
         ),
         results,
     )
@@ -295,7 +305,11 @@ async def main():
         "object",
         ITER_HEAVY,
         lambda: assert_cond(
-            experiment.get_object_json("an_object", "") != "",
+            (
+                experiment.get_object_json("an_object", "") != ""
+                if hasattr(experiment, "get_object_json")
+                else experiment.get_object("an_object", {}) != {}
+            ),
             "object value is empty",
         ),
         results,
@@ -305,7 +319,12 @@ async def main():
         "array",
         ITER_HEAVY,
         lambda: assert_cond(
-            experiment.get_array_json("an_array", "") != "", "array value is empty"
+            (
+                experiment.get_array_json("an_array", "") != ""
+                if hasattr(experiment, "get_array_json")
+                else experiment.get_array("an_array", []) != []
+            ),
+            "array value is empty",
         ),
         results,
     )
@@ -344,7 +363,12 @@ async def main():
         "object",
         ITER_HEAVY,
         lambda: assert_cond(
-            layer.get_object_json("an_object", "") != "", "object value is empty"
+            (
+                layer.get_object_json("an_object", "") != ""
+                if hasattr(layer, "get_object_json")
+                else layer.get_object("an_object", {}) != {}
+            ),
+            "object value is empty",
         ),
         results,
     )
@@ -353,7 +377,12 @@ async def main():
         "array",
         ITER_HEAVY,
         lambda: assert_cond(
-            layer.get_array_json("an_array", "") != "", "array value is empty"
+            (
+                layer.get_array_json("an_array", "") != ""
+                if hasattr(layer, "get_array_json")
+                else layer.get_array("an_array", []) != []
+            ),
+            "array value is empty",
         ),
         results,
     )
