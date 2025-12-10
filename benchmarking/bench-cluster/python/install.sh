@@ -6,31 +6,32 @@ TAG="$RELEASE_TAG"
 
 pip install --no-cache-dir packaging
 
-if [ "$TAG" = "rc" ]; then
-  RC_VER=$(
-    python3 - <<'PY'
-import json, urllib.request
-from packaging.version import Version
+version_json=$( \
+  curl -s https://pypi.org/pypi/statsig-python-core/json \
+  | jq -r '.releases | to_entries | sort_by(.value[0].upload_time) | .[].key' \
+)
 
-url = "https://pypi.org/pypi/statsig-python-core/json"
-d = json.load(urllib.request.urlopen(url))
-rels = d.get("releases") or {}
-rc = [
-    Version(s) for s, fs in rels.items()
-    if fs and any(not f.get("yanked", False) for f in fs)
-    and (lambda v: v.is_prerelease and v.pre and v.pre[0] == "rc")(Version(s))
-]
-print(max(rc) if rc else "")
-PY
-  )
 
-  if [ -n "$RC_VER" ]; then
-    echo "Installing $PKG==$RC_VER (rc)"
-    pip install --no-cache-dir "$PKG==$RC_VER"
-  else
-    echo "No rc found; falling back to --pre"
-    pip install --no-cache-dir --pre "$PKG"
-  fi
+latest_beta=$(echo "$version_json" | grep 'b' | tail -1)
+latest_rc=$(echo "$version_json" | grep 'rc' | tail -1)
+latest_prod=$(echo "$version_json" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | tail -1)
+
+echo "== Found Versions =="
+echo "latest_beta: $latest_beta"
+echo "latest_rc: $latest_rc"
+echo "latest_prod: $latest_prod"
+echo "===================="
+
+
+if [ "$TAG" == "rc" ]; then
+  pip install --no-cache-dir "$PKG==$latest_rc"
+elif [ "$TAG" == "beta" ]; then
+  pip install --no-cache-dir "$PKG==$latest_beta"
 else
-  pip install --no-cache-dir --pre "$PKG"
+  pip install --no-cache-dir "$PKG==$latest_prod"
 fi
+
+
+version=$(pip show statsig-python-core | grep Version | awk '{print $2}')
+echo "Installed statsig-python-core version: $version"
+
