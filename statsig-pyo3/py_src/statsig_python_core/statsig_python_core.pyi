@@ -8,66 +8,9 @@ class DataStoreBase:
     def __new__(cls,): ...
     ...
 
-class DynamicConfig:
-    name: builtins.str
-    rule_id: builtins.str
-    id_type: builtins.str
-    value: typing.Any
-    details: EvaluationDetails
-    def get_bool(self, param_name:builtins.str, fallback:builtins.bool) -> builtins.bool:
-        ...
-
-    def get_float(self, param_name:builtins.str, fallback:builtins.float) -> builtins.float:
-        ...
-
-    def get_integer(self, param_name:builtins.str, fallback:builtins.int) -> builtins.int:
-        ...
-
-    def get_string(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-    def get_array_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-    def get_object_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-
 class DynamicConfigEvaluationOptions:
     disable_exposure_logging: builtins.bool
     def __new__(cls,disable_exposure_logging:builtins.bool=False): ...
-
-class EvaluationDetails:
-    reason: builtins.str
-    lcut: typing.Optional[builtins.int]
-    received_at: typing.Optional[builtins.int]
-    version: typing.Optional[builtins.int]
-
-class Experiment:
-    name: builtins.str
-    rule_id: builtins.str
-    id_type: builtins.str
-    group_name: typing.Optional[builtins.str]
-    value: typing.Any
-    details: EvaluationDetails
-    def get_bool(self, param_name:builtins.str, fallback:builtins.bool) -> builtins.bool:
-        ...
-
-    def get_float(self, param_name:builtins.str, fallback:builtins.float) -> builtins.float:
-        ...
-
-    def get_integer(self, param_name:builtins.str, fallback:builtins.int) -> builtins.int:
-        ...
-
-    def get_string(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-    def get_array_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-    def get_object_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
 
 class ExperimentEvaluationOptions:
     disable_exposure_logging: builtins.bool
@@ -77,13 +20,6 @@ class ExperimentEvaluationOptions:
 class FailureDetails:
     reason: builtins.str
     error: typing.Optional[builtins.str]
-
-class FeatureGate:
-    name: builtins.str
-    value: builtins.bool
-    rule_id: builtins.str
-    id_type: builtins.str
-    details: EvaluationDetails
 
 class FeatureGateEvaluationOptions:
     disable_exposure_logging: builtins.bool
@@ -97,32 +33,6 @@ class InitializeDetails:
     is_id_list_ready: typing.Optional[builtins.bool]
     source: builtins.str
     failure_details: typing.Optional[FailureDetails]
-
-class Layer:
-    name: builtins.str
-    rule_id: builtins.str
-    group_name: typing.Optional[builtins.str]
-    allocated_experiment_name: typing.Optional[builtins.str]
-    value: typing.Any
-    details: EvaluationDetails
-    def get_bool(self, param_name:builtins.str, fallback:builtins.bool) -> builtins.bool:
-        ...
-
-    def get_float(self, param_name:builtins.str, fallback:builtins.float) -> builtins.float:
-        ...
-
-    def get_integer(self, param_name:builtins.str, fallback:builtins.int) -> builtins.int:
-        ...
-
-    def get_string(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-    def get_array_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-    def get_object_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
 
 class LayerEvaluationOptions:
     disable_exposure_logging: builtins.bool
@@ -204,25 +114,28 @@ class StatsigBasePy:
     def check_gate(self, user:StatsigUser, name:builtins.str, options:typing.Optional[FeatureGateEvaluationOptions]=None) -> builtins.bool:
         ...
 
-    def get_feature_gate(self, user:StatsigUser, name:builtins.str, options:typing.Optional[FeatureGateEvaluationOptions]=None) -> FeatureGate:
+    def _INTERNAL_get_feature_gate(self, user:StatsigUser, name:builtins.str, options:typing.Optional[FeatureGateEvaluationOptions]=None) -> builtins.str:
         ...
 
     def manually_log_gate_exposure(self, user:StatsigUser, name:builtins.str) -> None:
         ...
 
-    def get_dynamic_config(self, user:StatsigUser, name:builtins.str, options:typing.Optional[DynamicConfigEvaluationOptions]=None) -> DynamicConfig:
+    def _INTERNAL_get_dynamic_config(self, user:StatsigUser, name:builtins.str, options:typing.Optional[DynamicConfigEvaluationOptions]=None) -> builtins.str:
         ...
 
     def manually_log_dynamic_config_exposure(self, user:StatsigUser, name:builtins.str) -> None:
         ...
 
-    def get_experiment(self, user:StatsigUser, name:builtins.str, options:typing.Optional[ExperimentEvaluationOptions]=None) -> Experiment:
+    def _INTERNAL_get_experiment(self, user:StatsigUser, name:builtins.str, options:typing.Optional[ExperimentEvaluationOptions]=None) -> builtins.str:
         ...
 
     def manually_log_experiment_exposure(self, user:StatsigUser, name:builtins.str) -> None:
         ...
 
-    def get_layer(self, user:StatsigUser, name:builtins.str, options:typing.Optional[LayerEvaluationOptions]=None) -> Layer:
+    def _INTERNAL_get_layer(self, user:StatsigUser, name:builtins.str, options:typing.Optional[LayerEvaluationOptions]=None) -> builtins.str:
+        ...
+
+    def _INTERNAL_log_layer_param_exposure(self, raw:builtins.str, param_name:builtins.str) -> None:
         ...
 
     def manually_log_layer_parameter_exposure(self, user:StatsigUser, name:builtins.str, param_name:builtins.str) -> None:

@@ -12,10 +12,22 @@ import { execSync } from 'child_process';
 
 import { CommandBase } from './command_base.js';
 
+const DEFAULT_FILTER = {
+  python: 'tests/',
+};
+
 const BUILD_COMMANDS: Record<string, string> = {
   node: [
     `pnpm install --dir statsig-node`,
     './tore build node --no-docker',
+  ].join(' && '),
+
+  python: [
+    'cd statsig-pyo3',
+    'maturin build',
+    'pip install pytest-rerunfailures uvloop',
+    'pip install ../target/wheels/statsig_python_core*.whl --force-reinstall',
+    'cd ..',
   ].join(' && '),
 };
 
@@ -71,10 +83,7 @@ const TEST_COMMANDS: Record<string, string> = {
 
   python: [
     'cd statsig-pyo3',
-    'maturin build',
-    'pip install pytest-rerunfailures uvloop',
-    'pip install ../target/wheels/statsig_python_core*.whl --force-reinstall',
-    'python3 -m pytest tests --capture=no -v --reruns 3',
+    'python3 -m pytest --capture=no -v --reruns 3',
   ].join(' && '),
 
   rust: [
@@ -95,7 +104,7 @@ type Options = {
   arch: Arch;
   docker: boolean;
   build: boolean;
-  focus: string;
+  filter: string;
 };
 
 export class Test extends CommandBase {
@@ -128,7 +137,7 @@ export class Test extends CommandBase {
 
     this.option('--no-build', 'Skip building the sdk project', true);
 
-    this.option('-f, --focus <string>', 'Focus on a specific test', undefined);
+    this.option('-f, --filter <string>', 'Focus on a specific test', undefined);
   }
 
   override async run(lang: string, options: Options) {
@@ -140,7 +149,7 @@ export class Test extends CommandBase {
     Log.stepProgress(`Arch: ${options.arch}`);
     Log.stepProgress(`Docker: ${options.docker}`);
     Log.stepProgress(`SDK Build: ${options.build}`);
-    Log.stepProgress(`Focus: ${options.focus ?? 'Not Specified'}`);
+    Log.stepProgress(`Filter: ${options.filter ?? 'Not Specified'}`);
     Log.stepEnd(`Skip Docker Build: ${options.skipDockerBuild}`);
 
     if (!options.skipDockerBuild && options.docker) {
@@ -166,8 +175,13 @@ function runTests(lang: string, options: Options) {
     sdkBuildCommand = `${sdkBuildCommand} &&`;
   }
 
+  const defaultFilter = DEFAULT_FILTER[lang] ?? '';
+
   let command =
-    sdkBuildCommand + TEST_COMMANDS[lang] + ' ' + (options.focus ?? '');
+    sdkBuildCommand +
+    TEST_COMMANDS[lang] +
+    ' ' +
+    (options.filter ?? defaultFilter);
 
   Log.title(`Running tests for ${lang}`);
   process.env.STATSIG_RUNNING_TESTS = '1';

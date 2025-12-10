@@ -5,11 +5,8 @@ use pyo3::{
     types::{PyDict, PyList},
 };
 use pyo3_stub_gen::derive::*;
-use serde_json::{json, Map, Value};
 use statsig_rust::{
-    log_e,
-    statsig_types::{DynamicConfig, Experiment, Layer},
-    DynamicConfigEvaluationOptions, EvaluationDetails, ExperimentEvaluationOptions, FailureDetails,
+    log_e, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FailureDetails,
     FeatureGateEvaluationOptions, InitializeDetails, LayerEvaluationOptions,
     ParameterStoreEvaluationOptions, Statsig, StatsigUser,
 };
@@ -98,121 +95,6 @@ impl From<FailureDetails> for FailureDetailsPy {
             error: value.error.map(|e| e.to_string()),
         }
     }
-}
-#[gen_stub_pyclass]
-#[pyclass(name = "EvaluationDetails", module = "statsig_python_core")]
-#[derive(Clone)]
-pub struct EvaluationDetailsPy {
-    #[pyo3(get)]
-    pub reason: String,
-
-    #[pyo3(get)]
-    pub lcut: Option<u64>,
-
-    #[pyo3(get)]
-    pub received_at: Option<u64>,
-
-    #[pyo3(get)]
-    pub version: Option<u32>,
-}
-
-impl From<EvaluationDetails> for EvaluationDetailsPy {
-    fn from(value: EvaluationDetails) -> Self {
-        EvaluationDetailsPy {
-            reason: value.reason,
-            lcut: value.lcut,
-            received_at: value.received_at,
-            version: value.version,
-        }
-    }
-}
-
-#[gen_stub_pyclass]
-#[pyclass(name = "FeatureGate", module = "statsig_python_core")]
-pub struct FeatureGatePy {
-    #[pyo3(get)]
-    pub name: String,
-
-    #[pyo3(get)]
-    pub value: bool,
-
-    #[pyo3(get)]
-    pub rule_id: String,
-
-    #[pyo3(get)]
-    pub id_type: String,
-
-    #[pyo3(get)]
-    pub details: EvaluationDetailsPy,
-}
-
-#[gen_stub_pyclass]
-#[pyclass(name = "DynamicConfig", module = "statsig_python_core")]
-pub struct DynamicConfigPy {
-    #[pyo3(get)]
-    pub name: String,
-
-    #[pyo3(get)]
-    pub rule_id: String,
-
-    #[pyo3(get)]
-    pub id_type: String,
-
-    #[pyo3(get)]
-    pub value: PyObject,
-
-    #[pyo3(get)]
-    pub details: EvaluationDetailsPy,
-
-    pub inner: DynamicConfig,
-}
-
-#[gen_stub_pyclass]
-#[pyclass(name = "Experiment", module = "statsig_python_core")]
-pub struct ExperimentPy {
-    #[pyo3(get)]
-    pub name: String,
-
-    #[pyo3(get)]
-    pub rule_id: String,
-
-    #[pyo3(get)]
-    pub id_type: String,
-
-    #[pyo3(get)]
-    pub group_name: Option<String>,
-
-    #[pyo3(get)]
-    pub value: PyObject,
-
-    #[pyo3(get)]
-    pub details: EvaluationDetailsPy,
-
-    pub inner: Experiment,
-}
-
-#[gen_stub_pyclass]
-#[pyclass(name = "Layer", module = "statsig_python_core")]
-pub struct LayerPy {
-    #[pyo3(get)]
-    pub name: String,
-
-    #[pyo3(get)]
-    pub rule_id: String,
-
-    #[pyo3(get)]
-    pub group_name: Option<String>,
-
-    #[pyo3(get)]
-    pub allocated_experiment_name: Option<String>,
-
-    #[pyo3(get)]
-    pub value: PyObject,
-
-    #[pyo3(get)]
-    pub details: EvaluationDetailsPy,
-
-    pub inner: Layer,
 }
 
 #[gen_stub_pyclass]
@@ -352,52 +234,6 @@ impl ParameterStorePy {
         }
     }
 }
-
-macro_rules! impl_get_methods {
-    ($struct_name:ident) => {
-        #[gen_stub_pymethods]
-        #[pymethods]
-        impl $struct_name {
-            pub fn get_bool(&self, param_name: &str, fallback: bool) -> bool {
-                self.inner.get(param_name, fallback)
-            }
-
-            pub fn get_float(&self, param_name: &str, fallback: f64) -> f64 {
-                self.inner.get(param_name, fallback)
-            }
-
-            pub fn get_integer(&self, param_name: &str, fallback: i64) -> i64 {
-                self.inner.get(param_name, fallback)
-            }
-
-            pub fn get_string(&self, param_name: &str, fallback: String) -> String {
-                self.inner.get(param_name, fallback)
-            }
-
-            pub fn get_array_json(&self, param_name: &str, fallback: String) -> String {
-                let result = match self.inner.get_opt::<Vec<Value>>(param_name) {
-                    Some(v) => v,
-                    None => return fallback,
-                };
-
-                json!(result).to_string()
-            }
-
-            pub fn get_object_json(&self, param_name: &str, fallback: String) -> String {
-                let result = match self.inner.get_opt::<Map<String, Value>>(param_name) {
-                    Some(v) => v,
-                    None => return fallback,
-                };
-
-                json!(result).to_string()
-            }
-        }
-    };
-}
-
-impl_get_methods!(DynamicConfigPy);
-impl_get_methods!(ExperimentPy);
-impl_get_methods!(LayerPy);
 
 #[gen_stub_pyclass]
 #[pyclass(name = "FeatureGateEvaluationOptions", module = "statsig_python_core")]

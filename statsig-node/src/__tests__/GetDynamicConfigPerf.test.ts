@@ -13,6 +13,7 @@ const KNOWN_STRING_PARAM = 'a';
 // The bug that was fixed was reporting as ~70x slower than the baseline
 const EXPECT_LOW = 0.3;
 const EXPECT_HIGH = 1.6;
+const VERBOSE = true;
 
 type ProfileResult = {
   overall: number;
@@ -80,12 +81,20 @@ describe('Get Dynamic Config Performance', () => {
     scrapi.close();
   });
 
+  it('should get the dynamic config within reasonable time', () => {
+    const result = profile(() => statsig.getDynamicConfig(user, CONFIG_NAME));
+    tryPrintResults('Node getDynamicConfig', result);
+    expect(result.overall).toBeLessThan(10_000);
+  });
+
   it('should read parameter value within reasonable time', () => {
     const config = statsig.getDynamicConfig(user, CONFIG_NAME);
     const result = profile(() => config.getValue(KNOWN_STRING_PARAM, {}));
 
     const overallDelta = result.overall / baseline.overall;
     const p99Delta = result.p99 / baseline.p99;
+
+    tryPrintResults('Node getValue', result);
 
     expect(overallDelta).toBeWithin(EXPECT_LOW, EXPECT_HIGH);
     expect(p99Delta).toBeWithin(EXPECT_LOW, EXPECT_HIGH);
@@ -97,6 +106,8 @@ describe('Get Dynamic Config Performance', () => {
 
     const overallDelta = result.overall / baseline.overall;
     const p99Delta = result.p99 / baseline.p99;
+
+    tryPrintResults('Node value field access', result);
 
     expect(overallDelta).toBeWithin(EXPECT_LOW, EXPECT_HIGH);
     expect(p99Delta).toBeWithin(EXPECT_LOW, EXPECT_HIGH);
@@ -131,4 +142,13 @@ function profile(action: () => void): ProfileResult {
   const max = sortedDurations[sortedDurations.length - 1];
 
   return { overall, median, p99, min, max };
+}
+
+function tryPrintResults(name: string, result: ProfileResult) {
+  if (VERBOSE) {
+    console.log(
+      `${name}(x${ITER}) performance:`,
+      JSON.stringify(result, null, 2),
+    );
+  }
 }
