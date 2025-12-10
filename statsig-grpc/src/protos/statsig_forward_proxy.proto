@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package statsig_forward_proxy;
+option java_package = "grpc.generated.statsig_forward_proxy";
+
+service StatsigForwardProxy {
+    rpc getConfigSpec (ConfigSpecRequest) returns (ConfigSpecResponse);
+    rpc StreamConfigSpec(ConfigSpecRequest) returns (stream ConfigSpecResponse) {}
+}
+
+message ConfigSpecRequest {
+    enum apiVersion {
+        no_version = 0;
+        v1 = 1;
+        v2 = 2;
+    }
+    
+    string sdkKey = 1;
+    optional uint64 sinceTime = 12; // This was a typo but you can't delete it
+    optional apiVersion version = 3;
+    optional string zstdDictId = 4;
+}
+
+message ConfigSpecResponse {
+    string spec = 1;
+    uint64 lastUpdated = 2;
+    optional string zstdDictId = 3;
+}

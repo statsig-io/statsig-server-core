@@ -1,11 +1,14 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // `cargo package` needs the proto to be in the src directory
-    if std::env::var("STATSIG_PUBLISH_RUST").is_ok() {
-        tonic_build::compile_protos("src/protos/statsig_forward_proxy.proto")?;
-    } else {
-        tonic_build::compile_protos(
+    if std::fs::exists("../api-interface-definitions/protos/statsig_forward_proxy.proto")
+        .unwrap_or(false)
+    {
+        std::fs::copy(
             "../api-interface-definitions/protos/statsig_forward_proxy.proto",
+            "src/protos/statsig_forward_proxy.proto",
         )?;
     }
+
+    tonic_build::compile_protos("src/protos/statsig_forward_proxy.proto")?;
+
     Ok(())
 }
