@@ -8,6 +8,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+  STATSIG_PUBLISH_RUST: true
 
 jobs:
   publish:
@@ -28,10 +29,14 @@ jobs:
 
       - name: Publish Statsig Grpc
         run: |
+          mkdir -p statsig-grpc/src/protos
+          cp api-interface-definitions/protos/statsig_forward_proxy.proto statsig-grpc/src/protos/statsig_forward_proxy.proto
           cargo package --allow-dirty --package sigstat-grpc
           cargo publish --allow-dirty --package sigstat-grpc
 
       - name: Publish Statsig Lib
         run: |
+          mkdir -p statsig-rust/src/protos
+          cp api-interface-definitions/protos/config_specs.proto statsig-rust/src/protos/config_specs.proto
           cargo package --allow-dirty --package statsig-rust
           cargo publish --allow-dirty --package statsig-rust
