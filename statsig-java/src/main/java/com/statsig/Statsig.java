@@ -74,6 +74,10 @@ public class Statsig {
    *     Statsig instance.
    */
   public Statsig(String sdkKey, StatsigOptions options) {
+    if (sdkKey == null) {
+      System.err.println("[Statsig] Error: sdkKey cannot be null.");
+      sdkKey = "";
+    }
     StatsigJNI.updateStatsigMetadata(StatsigMetadata.getSerializedCopy());
     this.ref = StatsigJNI.statsigCreate(sdkKey, options.getRef());
 
@@ -87,7 +91,16 @@ public class Statsig {
         });
   }
 
+  /**
+   * Instantiates a new Statsig instance that connects to Statsig Service with default options.
+   *
+   * @param sdkKey secret key to connect to Statsig Service
+   */
   public Statsig(String sdkKey) {
+    if (sdkKey == null) {
+      System.err.println("[Statsig] Error: sdkKey cannot be null.");
+      sdkKey = "";
+    }
     StatsigJNI.updateStatsigMetadata(StatsigMetadata.getSerializedCopy());
     this.ref = StatsigJNI.statsigCreate(sdkKey, 0);
 
