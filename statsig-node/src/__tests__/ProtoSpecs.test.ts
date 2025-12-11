@@ -29,7 +29,7 @@ describe('Proto Specs', () => {
       );
       expect(request.headers).toMatchObject({
         'accept-encoding': 'gzip, deflate, br',
-        'supports-proto': 'true',
+        'statsig-supports-proto': 'true',
       });
     });
 

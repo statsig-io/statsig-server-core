@@ -136,7 +136,7 @@ impl StatsigHttpSpecsAdapter {
         if self.enable_proto_spec_support {
             params.insert("supports_proto".to_string(), "true".to_string());
             headers = Some(HashMap::from([(
-                "supports-proto".to_string(),
+                "statsig-supports-proto".to_string(),
                 "true".to_string(),
             )]));
         }
