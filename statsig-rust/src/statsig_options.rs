@@ -2,7 +2,7 @@ use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
 use crate::console_capture::console_capture_options::ConsoleCaptureOptions;
-use crate::data_store_interface::DataStoreTrait;
+use crate::data_store_interface::{DataStoreKeyVersion, DataStoreTrait};
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::id_lists_adapter::IdListsAdapter;
@@ -24,6 +24,7 @@ const TEST_ENV_FLAG: &str = "STATSIG_RUNNING_TESTS";
 #[derive(Clone, Default)]
 pub struct StatsigOptions {
     pub data_store: Option<Arc<dyn DataStoreTrait>>, // External DataStore
+    pub data_store_key_schema_version: Option<DataStoreKeyVersion>,
 
     pub disable_all_logging: Option<bool>,
     pub disable_country_lookup: Option<bool>,

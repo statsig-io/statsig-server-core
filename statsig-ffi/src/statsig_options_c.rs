@@ -27,6 +27,7 @@ const TAG: &str = "StatsigOptionsC";
 pub struct StatsigOptionsData {
     config_compression_mode: Option<String>,
     data_store_ref: Option<u64>,
+    data_store_key_schema_version: Option<String>,
     disable_all_logging: Option<bool>,
     disable_country_lookup: Option<bool>,
     disable_network: Option<bool>,
@@ -97,6 +98,10 @@ impl From<StatsigOptionsData> for StatsigOptions {
             None => None,
         };
 
+        let data_store_key_schema_version = data
+            .data_store_key_schema_version
+            .map(|v| v.as_str().into());
+
         let output_log_level = data
             .output_log_level
             .map(|level| LogLevel::from(level.as_str()));
@@ -131,6 +136,7 @@ impl From<StatsigOptionsData> for StatsigOptions {
             console_capture_options: None,
             config_compression_mode,
             data_store,
+            data_store_key_schema_version,
             disable_all_logging: data.disable_all_logging,
             disable_disk_access: data.disable_disk_access,
             disable_country_lookup: data.disable_country_lookup,
