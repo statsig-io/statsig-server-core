@@ -98,6 +98,9 @@ jobs:
           - package: go
             tag: golang_1_24_alpine
 
+          - package: rust
+            tag: rust_alpine_3_20
+
     runs-on: ubuntu-latest
 
     steps:

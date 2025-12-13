@@ -19,6 +19,7 @@ exclude = [
     "examples/rust/perf-monitor",
     "examples/rust/mem-bench",
     "examples/rust/perf-bench",
+    "examples/rust/verify-package",
     "benchmarking/bench-cluster",
 ]
 
