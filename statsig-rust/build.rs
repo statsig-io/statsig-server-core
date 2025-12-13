@@ -1,14 +1,12 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    if std::fs::exists("../api-interface-definitions/protos/config_specs.proto").unwrap_or(false) {
-        std::fs::copy(
-            "../api-interface-definitions/protos/config_specs.proto",
-            "src/protos/config_specs.proto",
-        )?;
+    if std::env::var("STATSIG_BUILD_PROTO").unwrap_or_default() == "true" {
+        tonic_prost_build::Config::new()
+            .out_dir("src/specs_response")
+            .compile_protos(
+                &["../api-interface-definitions/protos/config_specs.proto"],
+                &["../api-interface-definitions/protos"],
+            )?;
     }
-
-    tonic_prost_build::Config::new()
-        .out_dir("src/specs_response")
-        .compile_protos(&["src/protos/config_specs.proto"], &["src/protos"])?;
 
     Ok(())
 }
