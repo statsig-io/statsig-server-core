@@ -7,7 +7,7 @@ export type TypedGet = <T = unknown>(
 
 export type UnknownGet = (
   key: string,
-  fallback?: boolean | number | string | object | Array<unknown> | null,
+  fallback?: boolean | number | string | object | Array<any> | null,
 ) => unknown | null;
 
 // prettier-ignore
@@ -15,8 +15,8 @@ export type TypedReturn<T = unknown> =
       T extends string ? string
     : T extends number ? number
     : T extends boolean ? boolean
-    : T extends Array<unknown> ? Array<unknown>
-    : T extends object ? object
+    : T extends readonly unknown[] ? T
+    : T extends object ? T
     : unknown;
 
 class BaseEvaluation {
