@@ -3,7 +3,7 @@ use std::time::Duration;
 use parking_lot::Mutex;
 use statsig_rust::output_logger::OutputLogProvider;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum RecordedLog {
     Debug(String, String),
     Info(String, String),
@@ -29,6 +29,16 @@ impl MockLogProvider {
             .try_lock_for(Duration::from_secs(5))
             .unwrap()
             .clear();
+    }
+
+    pub fn get_error_logs(&self) -> Vec<RecordedLog> {
+        let mut result: Vec<RecordedLog> = Vec::new();
+        for log in self.logs.lock().iter() {
+            if matches!(log, RecordedLog::Error(_, _)) {
+                result.push(log.clone());
+            }
+        }
+        result
     }
 }
 

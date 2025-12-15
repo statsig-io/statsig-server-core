@@ -227,7 +227,11 @@ impl SpecStore {
             specs_update.source_api.clone(),
         )?;
 
-        self.try_update_data_store(&specs_update.source, specs_update.data, now);
+        if !use_protobuf {
+            // protobuf response writes to data store are not current supported
+            self.try_update_data_store(&specs_update.source, specs_update.data, now);
+        }
+
         self.ops_stats_log_config_propagation_diff(
             curr_values_time,
             prev_lcut,
