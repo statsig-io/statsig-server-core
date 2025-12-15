@@ -318,6 +318,15 @@ impl StatsigOptionsBuilder {
     // interface related options
 
     #[must_use]
+    pub fn persistent_storage(
+        mut self,
+        persistent_storage: Option<Arc<dyn PersistentStorage>>,
+    ) -> Self {
+        self.inner.persistent_storage = persistent_storage;
+        self
+    }
+
+    #[must_use]
     pub fn observability_client(mut self, client: Option<Weak<dyn ObservabilityClient>>) -> Self {
         self.inner.observability_client = client;
         self

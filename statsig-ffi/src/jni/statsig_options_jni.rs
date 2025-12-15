@@ -5,6 +5,7 @@ use crate::jni::jni_utils::{
 use crate::jni::statsig_data_store_jni::convert_to_data_store_rust;
 use crate::jni::statsig_observability_client_jni::convert_to_ob_rust;
 use crate::jni::statsig_output_logger_provider_jni::convert_to_output_logger_provider_rust;
+use crate::jni::statsig_persistent_storage_jni::convert_to_persistent_storage_rust;
 use jni::objects::{JClass, JObject, JString, JValue};
 use jni::sys::{jboolean, jint, jlong};
 use jni::JNIEnv;
@@ -38,6 +39,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     environment: JString,
     output_logger_level: jint,
     service_name: JString,
+    persistent_storage: JObject,
     observability_client: JObject,
     data_store: JObject,
     output_logger_provider: JObject,
@@ -109,6 +111,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
 
     let data_store_arc = convert_to_data_store_rust(&env, data_store);
 
+    let persistent_storage_arc = convert_to_persistent_storage_rust(&env, persistent_storage);
+
     let spec_adapters_config =
         convert_java_spec_adapter_configs(&mut env, spec_adapters_config_list);
 
@@ -138,7 +142,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .fallback_to_statsig_api(fallback_to_statsig_api)
         .use_third_party_ua_parser(use_third_party_ua_parser)
         .init_timeout_ms(init_timeout_ms_option)
-        .spec_adapters_config(spec_adapters_config);
+        .spec_adapters_config(spec_adapters_config)
+        .persistent_storage(persistent_storage_arc);
 
     let options = builder.build();
 

@@ -38,6 +38,7 @@ public class StatsigOptions {
             builder.environment,
             builder.outputLoggerLevel.getValue(),
             builder.serviceName,
+            builder.persistentStorage,
             builder.observabilityClient,
             builder.dataStore,
             builder.outputLoggerProvider,
@@ -70,6 +71,7 @@ public class StatsigOptions {
     private long eventLoggingMaxPendingBatchQueueSize;
     private long initTimeoutMs;
     private String environment;
+    private PersistentStorage persistentStorage;
     private ObservabilityClient observabilityClient;
     private DataStore dataStore;
     private OutputLoggerProvider outputLoggerProvider;
@@ -150,6 +152,11 @@ public class StatsigOptions {
 
     public Builder setDisableAllLogging(boolean disableAllLogging) {
       this.disableAllLogging = disableAllLogging;
+      return this;
+    }
+
+    public Builder setPersistentStorage(PersistentStorage persistentStorage) {
+      this.persistentStorage = persistentStorage;
       return this;
     }
 

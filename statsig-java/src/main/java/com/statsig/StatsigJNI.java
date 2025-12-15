@@ -246,6 +246,7 @@ class StatsigJNI {
       String environment,
       long outputLoggerLevel,
       String serviceName,
+      PersistentStorage persistentStorage,
       ObservabilityClient observabilityClient,
       DataStore dataStore,
       OutputLoggerProvider outputLoggerProvider,
