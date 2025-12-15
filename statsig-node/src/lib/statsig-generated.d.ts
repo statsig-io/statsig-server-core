@@ -227,7 +227,6 @@ export declare function statsigCaptureLogLine(level: string, payload: Array<stri
 
 export interface StatsigOptions {
   dataStore?: DataStore
-  dataStoreKeySchemaVersion?: 'v2' | 'v3'
   disableAllLogging?: boolean
   disableCountryLookup?: boolean
   disableNetwork?: boolean
