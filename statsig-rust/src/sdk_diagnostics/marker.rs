@@ -4,6 +4,9 @@ use std::collections::HashMap;
 
 use crate::evaluation::evaluation_details::EvaluationDetails;
 
+pub const TRUE_STR: &str = "true";
+pub const FALSE_STR: &str = "false";
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum KeyType {
     #[serde(rename = "initialize")]
@@ -85,6 +88,12 @@ pub struct Marker {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     source: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    request_supports_proto: Option<&'static str>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    content_type: Option<String>,
 }
 
 impl Marker {
@@ -108,6 +117,8 @@ impl Marker {
             evaluation_details: None,
             config_spec_ready: None,
             source: None,
+            request_supports_proto: None,
+            content_type: None,
         }
     }
 
@@ -179,6 +190,25 @@ impl Marker {
         self
     }
 
+    #[must_use]
+    pub fn with_request_supports_proto(mut self, request_supports_proto: Option<bool>) -> Self {
+        self.request_supports_proto = if let Some(value) = request_supports_proto {
+            if value {
+                Some(TRUE_STR)
+            } else {
+                Some(FALSE_STR)
+            }
+        } else {
+            None
+        };
+        self
+    }
+
+    #[must_use]
+    pub fn with_content_type(mut self, content_type: Option<String>) -> Self {
+        self.content_type = content_type;
+        self
+    }
     // TODO add more as needed
 }
 

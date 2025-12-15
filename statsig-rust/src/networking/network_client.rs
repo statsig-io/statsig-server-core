@@ -120,7 +120,11 @@ impl NetworkClient {
         if let Some(proxy_config) = &self.proxy_config {
             request_args.proxy_config = Some(proxy_config.clone());
         }
-
+        let supports_proto = request_args
+            .headers
+            .as_ref()
+            .and_then(|headers| headers.get("statsig-supports-proto"))
+            .map(|value| value.eq_ignore_ascii_case("true"));
         let mut attempt = 0;
 
         loop {
@@ -128,7 +132,8 @@ impl NetworkClient {
                 self.ops_stats.add_marker(
                     Marker::new(key, ActionType::Start, Some(StepType::NetworkRequest))
                         .with_attempt(attempt)
-                        .with_url(request_args.url.clone()),
+                        .with_url(request_args.url.clone())
+                        .with_request_supports_proto(supports_proto),
                     None,
                 );
             }
@@ -148,6 +153,12 @@ impl NetworkClient {
                 }
             };
 
+            let status = response.status_code;
+            let error_message = response
+                .error
+                .clone()
+                .unwrap_or_else(|| get_error_message_for_status(status, response.data.as_mut()));
+
             let content_type = response
                 .data
                 .as_ref()
@@ -161,17 +172,11 @@ impl NetworkClient {
                 content_type
             );
 
-            let status = response.status_code;
             let sdk_region_str = response
                 .data
                 .as_ref()
                 .and_then(|data| data.get_header_ref("x-statsig-region").cloned());
             let success = (200..300).contains(&status.unwrap_or(0));
-
-            let error_message = response
-                .error
-                .clone()
-                .unwrap_or_else(|| get_error_message_for_status(status, response.data.as_mut()));
 
             if let Some(key) = request_args.diagnostics_key {
                 let mut end_marker =
@@ -179,6 +184,8 @@ impl NetworkClient {
                         .with_attempt(attempt)
                         .with_url(request_args.url.clone())
                         .with_is_success(success)
+                        .with_content_type(content_type.cloned())
+                        .with_request_supports_proto(supports_proto)
                         .with_sdk_region(sdk_region_str.map(|s| s.to_owned()));
 
                 if let Some(status_code) = status {

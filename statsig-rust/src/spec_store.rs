@@ -200,8 +200,9 @@ impl SpecStore {
                 ));
             }
         };
+        let use_protobuf = self.is_proto_spec_response(&specs_update);
 
-        match self.parse_specs_response(&mut specs_update, &mut locked_data) {
+        match self.parse_specs_response(&mut specs_update, &mut locked_data, use_protobuf) {
             Ok(ParseResult::HasUpdates) => (),
             Ok(ParseResult::NoUpdates) => {
                 self.ops_stats_log_no_update(specs_update.source, specs_update.source_api);
@@ -233,6 +234,8 @@ impl SpecStore {
             &specs_update.source,
             &prev_source,
             specs_update.source_api,
+            self.enable_proto_spec_support,
+            use_protobuf,
         );
 
         // Glibc requested more memory than needed when deserializing a big json blob
@@ -251,10 +254,9 @@ impl SpecStore {
         &self,
         values: &mut SpecsUpdate,
         spec_store_data: &mut SpecStoreData,
+        use_protobuf: bool,
     ) -> Result<ParseResult, StatsigErr> {
         spec_store_data.next_values.reset();
-
-        let use_protobuf = self.is_proto_spec_response(values);
 
         let parse_result = if use_protobuf {
             deserialize_protobuf(
@@ -338,6 +340,7 @@ impl SpecStore {
         ));
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn ops_stats_log_config_propagation_diff(
         &self,
         lcut: u64,
@@ -345,6 +348,8 @@ impl SpecStore {
         source: &SpecsSource,
         prev_source: &SpecsSource,
         source_api: Option<String>,
+        request_supports_proto: bool,
+        response_use_proto: bool,
     ) {
         let delay = (Utc::now().timestamp_millis() as u64).saturating_sub(lcut);
         log_d!(TAG, "Updated ({:?})", source);
@@ -364,6 +369,14 @@ impl SpecStore {
                 (
                     "spec_source_api".to_string(),
                     source_api.unwrap_or_default(),
+                ),
+                (
+                    "request_supports_proto".to_string(),
+                    request_supports_proto.to_string(),
+                ),
+                (
+                    "response_use_proto".to_string(),
+                    response_use_proto.to_string(),
                 ),
             ])),
         ));
