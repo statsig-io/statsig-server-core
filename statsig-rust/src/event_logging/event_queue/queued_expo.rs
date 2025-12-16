@@ -16,7 +16,6 @@ use crate::{
     },
     interned_string::InternedString,
     specs_response::explicit_params::ExplicitParameters,
-    statsig_types_raw::PartialLayerRaw,
     user::{StatsigUserInternal, StatsigUserLoggable},
     EvaluationDetails, SecondaryExposure,
 };
@@ -165,46 +164,6 @@ impl<'a> EnqueueExposureOp<'a> {
         op
     }
 
-    pub(crate) fn layer_param_exposure_from_partial_raw(
-        parameter_name: InternedString,
-        trigger: ExposureTrigger,
-        partial_raw: PartialLayerRaw,
-    ) -> Self {
-        let version = partial_raw.details.version;
-        let user = UserLoggableOrInternal::Loggable(partial_raw.user);
-
-        let mut rule_id = partial_raw
-            .parameter_rule_ids
-            .as_ref()
-            .and_then(|ids| ids.get(&parameter_name));
-
-        if rule_id.is_none() {
-            rule_id = partial_raw.rule_id.as_ref();
-        }
-
-        let data = ExposureData {
-            event_name: LAYER_EXPOSURE_EVENT_NAME,
-            spec_name: partial_raw.name,
-            rule_id: rule_id.cloned(),
-            exposure_time: Utc::now().timestamp_millis() as u64,
-            trigger,
-            evaluation_details: partial_raw.details,
-            secondary_exposures: partial_raw.secondary_exposures,
-            undelegated_secondary_exposures: partial_raw.undelegated_secondary_exposures,
-            version,
-            override_spec_name: None,
-            rule_passed: None,
-            exposure_info: None,
-            parameter_name: Some(parameter_name),
-            explicit_params: partial_raw.explicit_parameters,
-            allocated_experiment: partial_raw.allocated_experiment_name,
-            is_user_in_experiment: None,
-            gate_value: None,
-        };
-
-        Self { user, data }
-    }
-
     fn new(
         event_name: &'static str,
         user: UserLoggableOrInternal<'a>,
@@ -247,6 +206,49 @@ impl<'a> EnqueueExposureOp<'a> {
             data.override_spec_name = result.override_config_name;
             data.secondary_exposures = Some(result.secondary_exposures);
         }
+
+        Self { user, data }
+    }
+}
+
+#[cfg(feature = "ffi-support")]
+impl<'a> EnqueueExposureOp<'a> {
+    pub(crate) fn layer_param_exposure_from_partial_raw(
+        parameter_name: InternedString,
+        trigger: ExposureTrigger,
+        partial_raw: crate::statsig_types_raw::PartialLayerRaw,
+    ) -> Self {
+        let version = partial_raw.details.version;
+        let user = UserLoggableOrInternal::Loggable(partial_raw.user);
+
+        let mut rule_id = partial_raw
+            .parameter_rule_ids
+            .as_ref()
+            .and_then(|ids| ids.get(&parameter_name));
+
+        if rule_id.is_none() {
+            rule_id = partial_raw.rule_id.as_ref();
+        }
+
+        let data = ExposureData {
+            event_name: LAYER_EXPOSURE_EVENT_NAME,
+            spec_name: partial_raw.name,
+            rule_id: rule_id.cloned(),
+            exposure_time: Utc::now().timestamp_millis() as u64,
+            trigger,
+            evaluation_details: partial_raw.details,
+            secondary_exposures: partial_raw.secondary_exposures,
+            undelegated_secondary_exposures: partial_raw.undelegated_secondary_exposures,
+            version,
+            override_spec_name: None,
+            rule_passed: None,
+            exposure_info: None,
+            parameter_name: Some(parameter_name),
+            explicit_params: partial_raw.explicit_parameters,
+            allocated_experiment: partial_raw.allocated_experiment_name,
+            is_user_in_experiment: None,
+            gate_value: None,
+        };
 
         Self { user, data }
     }

@@ -84,7 +84,7 @@ async fn test_different_specs_payloads() {
 
             if i % 2 == 0 {
                 let res = generate_response(&eval_proj_dcs, IdListResolution::MapLookup(&id_lists));
-                if res.dynamic_configs.len() == 63 {
+                if res.dynamic_configs.len() == 65 {
                     success_count.fetch_add(1, Ordering::Relaxed);
                 }
             } else {

@@ -63,8 +63,8 @@ function createFetchFunc(options?: StatsigOptions) {
       const res = await nodeFetch(url, {
         method,
         headers: {
-          ...headers,
-          'Accept-Encoding': 'gzip, deflate, br',
+          'accept-encoding': 'gzip, deflate, br', 
+          ...headers, 
         },
         body: body ? Buffer.from(body) : undefined,
         agent: proxyAgent,

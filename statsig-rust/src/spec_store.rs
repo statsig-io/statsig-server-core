@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::data_store_interface::{get_data_adapter_dcs_key, DataStoreTrait};
+use crate::data_store_interface::DataStoreTrait;
 use crate::evaluation::evaluator::SpecType;
 use crate::global_configs::GlobalConfigs;
 use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
@@ -36,7 +36,7 @@ const TAG: &str = stringify!(SpecStore);
 pub struct SpecStore {
     pub data: Arc<RwLock<SpecStoreData>>,
 
-    hashed_sdk_key: String,
+    data_adapter_key: String,
     data_store: Option<Arc<dyn DataStoreTrait>>,
     statsig_runtime: Arc<StatsigRuntime>,
     ops_stats: Arc<OpsStatsForInstance>,
@@ -49,7 +49,7 @@ impl SpecStore {
     #[must_use]
     pub fn new(
         sdk_key: &str,
-        hashed_sdk_key: String,
+        data_adapter_key: String,
         statsig_runtime: Arc<StatsigRuntime>,
         event_emitter: Arc<SdkEventEmitter>,
         options: Option<&StatsigOptions>,
@@ -64,7 +64,7 @@ impl SpecStore {
             .is_some_and(|flags| flags.contains("enable_proto_spec_support"));
 
         SpecStore {
-            hashed_sdk_key,
+            data_adapter_key,
             data: Arc::new(RwLock::new(SpecStoreData {
                 values: SpecsResponseFull::default(),
                 next_values: SpecsResponseFull::default(),
@@ -200,8 +200,9 @@ impl SpecStore {
                 ));
             }
         };
+        let use_protobuf = self.is_proto_spec_response(&specs_update);
 
-        match self.parse_specs_response(&mut specs_update, &mut locked_data) {
+        match self.parse_specs_response(&mut specs_update, &mut locked_data, use_protobuf) {
             Ok(ParseResult::HasUpdates) => (),
             Ok(ParseResult::NoUpdates) => {
                 self.ops_stats_log_no_update(specs_update.source, specs_update.source_api);
@@ -226,13 +227,19 @@ impl SpecStore {
             specs_update.source_api.clone(),
         )?;
 
-        self.try_update_data_store(&specs_update.source, specs_update.data, now);
+        if !use_protobuf {
+            // protobuf response writes to data store are not current supported
+            self.try_update_data_store(&specs_update.source, specs_update.data, now);
+        }
+
         self.ops_stats_log_config_propagation_diff(
             curr_values_time,
             prev_lcut,
             &specs_update.source,
             &prev_source,
             specs_update.source_api,
+            self.enable_proto_spec_support,
+            use_protobuf,
         );
 
         // Glibc requested more memory than needed when deserializing a big json blob
@@ -251,10 +258,9 @@ impl SpecStore {
         &self,
         values: &mut SpecsUpdate,
         spec_store_data: &mut SpecStoreData,
+        use_protobuf: bool,
     ) -> Result<ParseResult, StatsigErr> {
         spec_store_data.next_values.reset();
-
-        let use_protobuf = self.is_proto_spec_response(values);
 
         let parse_result = if use_protobuf {
             deserialize_protobuf(
@@ -338,6 +344,7 @@ impl SpecStore {
         ));
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn ops_stats_log_config_propagation_diff(
         &self,
         lcut: u64,
@@ -345,6 +352,8 @@ impl SpecStore {
         source: &SpecsSource,
         prev_source: &SpecsSource,
         source_api: Option<String>,
+        request_supports_proto: bool,
+        response_use_proto: bool,
     ) {
         let delay = (Utc::now().timestamp_millis() as u64).saturating_sub(lcut);
         log_d!(TAG, "Updated ({:?})", source);
@@ -364,6 +373,14 @@ impl SpecStore {
                 (
                     "spec_source_api".to_string(),
                     source_api.unwrap_or_default(),
+                ),
+                (
+                    "request_supports_proto".to_string(),
+                    request_supports_proto.to_string(),
+                ),
+                (
+                    "response_use_proto".to_string(),
+                    response_use_proto.to_string(),
                 ),
             ])),
         ));
@@ -412,7 +429,7 @@ impl SpecStore {
             None => return,
         };
 
-        let hashed_key = self.hashed_sdk_key.clone();
+        let data_adapter_key = self.data_adapter_key.clone();
 
         let spawn_result = self.statsig_runtime.spawn(
             "spec_store_update_data_store",
@@ -426,11 +443,7 @@ impl SpecStore {
                 };
 
                 let _ = data_store
-                    .set(
-                        &get_data_adapter_dcs_key(&hashed_key),
-                        &data_string,
-                        Some(now),
-                    )
+                    .set(&data_adapter_key, &data_string, Some(now))
                     .await;
             },
         );

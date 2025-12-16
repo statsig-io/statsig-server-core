@@ -25,10 +25,24 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run clippy
+      - name: Run Clippy
+        env:
+          STATSIG_BUILD_PROTO: true
         run: |
           cargo clippy --version
           cargo clippy --workspace --all-features --tests -- -D warnings
+
+      - name: Check for Uncommitted Changes
+        run: |
+          if [[ $(git status --porcelain) ]]; then
+            echo "Git diff showing changes:"
+            git diff | tee /dev/stdout
+            echo "------------------------------"
+            echo "Rust proto check has changes!"
+            echo "Please run build with 'STATSIG_BUILD_PROTO=true' locally and commit the changes."
+            echo "------------------------------"
+            exit 1
+          fi
 
   # ------------------------------------------------------------ [ Rust Format ]
   rust-format:

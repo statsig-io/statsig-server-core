@@ -114,6 +114,8 @@ pub struct OverrideAdapterConfig {
 #[napi(object, object_to_js = false)]
 pub struct StatsigOptions<'a> {
     pub data_store: Option<DataStore>,
+    #[napi(ts_type = "'v2' | 'v3'")]
+    pub data_store_key_schema_version: Option<String>,
 
     pub disable_all_logging: Option<bool>,
     pub disable_country_lookup: Option<bool>,
@@ -192,6 +194,9 @@ impl StatsigOptions<'_> {
             data_store: self
                 .data_store
                 .map(|store| Arc::new(store) as Arc<dyn DataStoreTrait>),
+            data_store_key_schema_version: self
+                .data_store_key_schema_version
+                .map(|v| v.as_str().into()),
             enable_id_lists: self.enable_id_lists,
             wait_for_country_lookup_init: self.wait_for_country_lookup_init,
             wait_for_user_agent_init: self.wait_for_country_lookup_init,

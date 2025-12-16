@@ -30,7 +30,7 @@ describe('ObservabilityClient Usage', () => {
     );
 
     dcs = dcs.replace(
-      '"checksum":"2556334789679907000"',
+      '"checksum":"9073779682072068000"',
       '"IGNORED_CHECKSUM_VALUE":""',
     );
 
@@ -110,7 +110,12 @@ describe('ObservabilityClient Usage', () => {
     expect(observabilityClientSpies.dist).toHaveBeenCalledWith(
       'statsig.sdk.config_propagation_diff',
       expect.any(Number),
-      { source: 'Network', spec_source_api: scrapi.getServerApi() },
+      {
+        source: 'Network',
+        spec_source_api: scrapi.getServerApi(),
+        request_supports_proto: "false",
+        response_use_proto: "false"
+      },
     );
   });
 

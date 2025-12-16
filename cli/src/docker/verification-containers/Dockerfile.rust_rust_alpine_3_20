@@ -1,0 +1,14 @@
+FROM rust:alpine3.20
+
+WORKDIR /app
+
+RUN apk add --no-cache bash curl jq
+
+COPY examples/rust/verify-package/Cargo.toml .
+COPY examples/rust/verify-package/verify.rs .
+COPY benchmarking/bench-cluster/rust/install.sh .
+
+ENV RELEASE_TAG=beta
+RUN chmod +x ./install.sh && ./install.sh
+
+CMD ["cargo", "run", "--bin", "verify"]

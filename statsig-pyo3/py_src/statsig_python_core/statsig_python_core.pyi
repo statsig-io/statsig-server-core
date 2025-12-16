@@ -8,66 +8,9 @@ class DataStoreBase:
     def __new__(cls,): ...
     ...
 
-class DynamicConfig:
-    name: builtins.str
-    rule_id: builtins.str
-    id_type: builtins.str
-    value: typing.Any
-    details: EvaluationDetails
-    def get_bool(self, param_name:builtins.str, fallback:builtins.bool) -> builtins.bool:
-        ...
-
-    def get_float(self, param_name:builtins.str, fallback:builtins.float) -> builtins.float:
-        ...
-
-    def get_integer(self, param_name:builtins.str, fallback:builtins.int) -> builtins.int:
-        ...
-
-    def get_string(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-    def get_array_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-    def get_object_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-
 class DynamicConfigEvaluationOptions:
     disable_exposure_logging: builtins.bool
     def __new__(cls,disable_exposure_logging:builtins.bool=False): ...
-
-class EvaluationDetails:
-    reason: builtins.str
-    lcut: typing.Optional[builtins.int]
-    received_at: typing.Optional[builtins.int]
-    version: typing.Optional[builtins.int]
-
-class Experiment:
-    name: builtins.str
-    rule_id: builtins.str
-    id_type: builtins.str
-    group_name: typing.Optional[builtins.str]
-    value: typing.Any
-    details: EvaluationDetails
-    def get_bool(self, param_name:builtins.str, fallback:builtins.bool) -> builtins.bool:
-        ...
-
-    def get_float(self, param_name:builtins.str, fallback:builtins.float) -> builtins.float:
-        ...
-
-    def get_integer(self, param_name:builtins.str, fallback:builtins.int) -> builtins.int:
-        ...
-
-    def get_string(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-    def get_array_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-    def get_object_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
 
 class ExperimentEvaluationOptions:
     disable_exposure_logging: builtins.bool
@@ -77,13 +20,6 @@ class ExperimentEvaluationOptions:
 class FailureDetails:
     reason: builtins.str
     error: typing.Optional[builtins.str]
-
-class FeatureGate:
-    name: builtins.str
-    value: builtins.bool
-    rule_id: builtins.str
-    id_type: builtins.str
-    details: EvaluationDetails
 
 class FeatureGateEvaluationOptions:
     disable_exposure_logging: builtins.bool
@@ -97,32 +33,6 @@ class InitializeDetails:
     is_id_list_ready: typing.Optional[builtins.bool]
     source: builtins.str
     failure_details: typing.Optional[FailureDetails]
-
-class Layer:
-    name: builtins.str
-    rule_id: builtins.str
-    group_name: typing.Optional[builtins.str]
-    allocated_experiment_name: typing.Optional[builtins.str]
-    value: typing.Any
-    details: EvaluationDetails
-    def get_bool(self, param_name:builtins.str, fallback:builtins.bool) -> builtins.bool:
-        ...
-
-    def get_float(self, param_name:builtins.str, fallback:builtins.float) -> builtins.float:
-        ...
-
-    def get_integer(self, param_name:builtins.str, fallback:builtins.int) -> builtins.int:
-        ...
-
-    def get_string(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-    def get_array_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
-    def get_object_json(self, param_name:builtins.str, fallback:builtins.str) -> builtins.str:
-        ...
-
 
 class LayerEvaluationOptions:
     disable_exposure_logging: builtins.bool
@@ -204,25 +114,28 @@ class StatsigBasePy:
     def check_gate(self, user:StatsigUser, name:builtins.str, options:typing.Optional[FeatureGateEvaluationOptions]=None) -> builtins.bool:
         ...
 
-    def get_feature_gate(self, user:StatsigUser, name:builtins.str, options:typing.Optional[FeatureGateEvaluationOptions]=None) -> FeatureGate:
+    def _INTERNAL_get_feature_gate(self, user:StatsigUser, name:builtins.str, options:typing.Optional[FeatureGateEvaluationOptions]=None) -> builtins.str:
         ...
 
     def manually_log_gate_exposure(self, user:StatsigUser, name:builtins.str) -> None:
         ...
 
-    def get_dynamic_config(self, user:StatsigUser, name:builtins.str, options:typing.Optional[DynamicConfigEvaluationOptions]=None) -> DynamicConfig:
+    def _INTERNAL_get_dynamic_config(self, user:StatsigUser, name:builtins.str, options:typing.Optional[DynamicConfigEvaluationOptions]=None) -> builtins.str:
         ...
 
     def manually_log_dynamic_config_exposure(self, user:StatsigUser, name:builtins.str) -> None:
         ...
 
-    def get_experiment(self, user:StatsigUser, name:builtins.str, options:typing.Optional[ExperimentEvaluationOptions]=None) -> Experiment:
+    def _INTERNAL_get_experiment(self, user:StatsigUser, name:builtins.str, options:typing.Optional[ExperimentEvaluationOptions]=None) -> builtins.str:
         ...
 
     def manually_log_experiment_exposure(self, user:StatsigUser, name:builtins.str) -> None:
         ...
 
-    def get_layer(self, user:StatsigUser, name:builtins.str, options:typing.Optional[LayerEvaluationOptions]=None) -> Layer:
+    def _INTERNAL_get_layer(self, user:StatsigUser, name:builtins.str, options:typing.Optional[LayerEvaluationOptions]=None) -> builtins.str:
+        ...
+
+    def _INTERNAL_log_layer_param_exposure(self, raw:builtins.str, param_name:builtins.str) -> None:
         ...
 
     def manually_log_layer_parameter_exposure(self, user:StatsigUser, name:builtins.str, param_name:builtins.str) -> None:
@@ -303,6 +216,7 @@ class StatsigOptions:
     observability_client: typing.Optional[ObservabilityClientBase]
     output_logger_provider: typing.Optional[OutputLoggerProviderBase]
     data_store: typing.Optional[DataStoreBase]
+    data_store_key_schema_version: typing.Optional[builtins.str]
     persistent_storage: typing.Optional[PersistentStorageBaseClass]
     config_compression_mode: typing.Optional[builtins.str]
     proxy_config: typing.Optional[ProxyConfig]
@@ -310,7 +224,7 @@ class StatsigOptions:
     use_third_party_ua_parser: typing.Optional[builtins.bool]
     disable_disk_access: typing.Optional[builtins.bool]
     experimental_flags: typing.Optional[builtins.set[builtins.str]]
-    def __new__(cls,specs_url:typing.Optional[builtins.str]=None, specs_sync_interval_ms:typing.Optional[builtins.int]=None, init_timeout_ms:typing.Optional[builtins.int]=None, log_event_url:typing.Optional[builtins.str]=None, disable_all_logging:typing.Optional[builtins.bool]=None, disable_network:typing.Optional[builtins.bool]=None, event_logging_flush_interval_ms:typing.Optional[builtins.int]=None, event_logging_max_queue_size:typing.Optional[builtins.int]=None, event_logging_max_pending_batch_queue_size:typing.Optional[builtins.int]=None, enable_id_lists:typing.Optional[builtins.bool]=None, wait_for_user_agent_init:typing.Optional[builtins.bool]=None, wait_for_country_lookup_init:typing.Optional[builtins.bool]=None, disable_country_lookup:typing.Optional[builtins.bool]=None, id_lists_url:typing.Optional[builtins.str]=None, id_lists_sync_interval_ms:typing.Optional[builtins.int]=None, fallback_to_statsig_api:typing.Optional[builtins.bool]=None, environment:typing.Optional[builtins.str]=None, output_log_level:typing.Optional[builtins.str]=None, global_custom_fields:typing.Optional[typing.Mapping[builtins.str, typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]=None, observability_client:typing.Optional[ObservabilityClientBase]=None, data_store:typing.Optional[DataStoreBase]=None, persistent_storage:typing.Optional[PersistentStorageBaseClass]=None, config_compression_mode:typing.Optional[builtins.str]=None, proxy_config:typing.Optional[ProxyConfig]=None, output_logger_provider:typing.Optional[OutputLoggerProviderBase]=None, spec_adapter_configs:typing.Optional[list]=None, use_third_party_ua_parser:typing.Optional[builtins.bool]=None, disable_disk_access:typing.Optional[builtins.bool]=None, experimental_flags:typing.Optional[builtins.set[builtins.str]]=None): ...
+    def __new__(cls,specs_url:typing.Optional[builtins.str]=None, specs_sync_interval_ms:typing.Optional[builtins.int]=None, init_timeout_ms:typing.Optional[builtins.int]=None, log_event_url:typing.Optional[builtins.str]=None, disable_all_logging:typing.Optional[builtins.bool]=None, disable_network:typing.Optional[builtins.bool]=None, event_logging_flush_interval_ms:typing.Optional[builtins.int]=None, event_logging_max_queue_size:typing.Optional[builtins.int]=None, event_logging_max_pending_batch_queue_size:typing.Optional[builtins.int]=None, enable_id_lists:typing.Optional[builtins.bool]=None, wait_for_user_agent_init:typing.Optional[builtins.bool]=None, wait_for_country_lookup_init:typing.Optional[builtins.bool]=None, disable_country_lookup:typing.Optional[builtins.bool]=None, id_lists_url:typing.Optional[builtins.str]=None, id_lists_sync_interval_ms:typing.Optional[builtins.int]=None, fallback_to_statsig_api:typing.Optional[builtins.bool]=None, environment:typing.Optional[builtins.str]=None, output_log_level:typing.Optional[builtins.str]=None, global_custom_fields:typing.Optional[typing.Mapping[builtins.str, typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]=None, observability_client:typing.Optional[ObservabilityClientBase]=None, data_store:typing.Optional[DataStoreBase]=None, data_store_key_schema_version:typing.Optional[builtins.str]=None, persistent_storage:typing.Optional[PersistentStorageBaseClass]=None, config_compression_mode:typing.Optional[builtins.str]=None, proxy_config:typing.Optional[ProxyConfig]=None, output_logger_provider:typing.Optional[OutputLoggerProviderBase]=None, spec_adapter_configs:typing.Optional[list]=None, use_third_party_ua_parser:typing.Optional[builtins.bool]=None, disable_disk_access:typing.Optional[builtins.bool]=None, experimental_flags:typing.Optional[builtins.set[builtins.str]]=None): ...
 
 class StatsigUser:
     user_id: builtins.str

@@ -144,7 +144,36 @@ impl Statsig {
         });
     }
 
-    #[cfg(feature = "ffi-support")]
+    pub(crate) fn emit_dynamic_config_evaluated(&self, config: &DynamicConfig) {
+        self.emit(SdkEvent::DynamicConfigEvaluated {
+            config_name: config.name.as_str(),
+            reason: config.details.reason.as_str(),
+            rule_id: Some(config.rule_id.as_str()),
+            value: config.__evaluation.as_ref().map(|e| &e.value),
+        });
+    }
+
+    pub(crate) fn emit_experiment_evaluated(&self, experiment: &Experiment) {
+        self.emit(SdkEvent::ExperimentEvaluated {
+            experiment_name: experiment.name.as_str(),
+            reason: experiment.details.reason.as_str(),
+            rule_id: Some(experiment.rule_id.as_str()),
+            value: experiment.__evaluation.as_ref().map(|e| &e.value),
+            group_name: experiment.group_name.as_deref(),
+        });
+    }
+
+    pub(crate) fn emit_layer_evaluated(&self, layer: &Layer) {
+        self.emit(SdkEvent::LayerEvaluated {
+            layer_name: layer.name.as_str(),
+            reason: layer.details.reason.as_str(),
+            rule_id: Some(layer.rule_id.as_str()),
+        });
+    }
+}
+
+#[cfg(feature = "ffi-support")]
+impl Statsig {
     pub(crate) fn emit_gate_evaluated_parts(
         &self,
         gate_name: &str,
@@ -167,16 +196,6 @@ impl Statsig {
         });
     }
 
-    pub(crate) fn emit_dynamic_config_evaluated(&self, config: &DynamicConfig) {
-        self.emit(SdkEvent::DynamicConfigEvaluated {
-            config_name: config.name.as_str(),
-            reason: config.details.reason.as_str(),
-            rule_id: Some(config.rule_id.as_str()),
-            value: config.__evaluation.as_ref().map(|e| &e.value),
-        });
-    }
-
-    #[cfg(feature = "ffi-support")]
     pub(crate) fn emit_dynamic_config_evaluated_parts(
         &self,
         config_name: &str,
@@ -199,17 +218,6 @@ impl Statsig {
         });
     }
 
-    pub(crate) fn emit_experiment_evaluated(&self, experiment: &Experiment) {
-        self.emit(SdkEvent::ExperimentEvaluated {
-            experiment_name: experiment.name.as_str(),
-            reason: experiment.details.reason.as_str(),
-            rule_id: Some(experiment.rule_id.as_str()),
-            value: experiment.__evaluation.as_ref().map(|e| &e.value),
-            group_name: experiment.group_name.as_deref(),
-        });
-    }
-
-    #[cfg(feature = "ffi-support")]
     pub(crate) fn emit_experiment_evaluated_parts(
         &self,
         experiment_name: &str,
@@ -235,15 +243,6 @@ impl Statsig {
         });
     }
 
-    pub(crate) fn emit_layer_evaluated(&self, layer: &Layer) {
-        self.emit(SdkEvent::LayerEvaluated {
-            layer_name: layer.name.as_str(),
-            reason: layer.details.reason.as_str(),
-            rule_id: Some(layer.rule_id.as_str()),
-        });
-    }
-
-    #[cfg(feature = "ffi-support")]
     pub(crate) fn emit_layer_evaluated_parts(
         &self,
         layer_name: &str,

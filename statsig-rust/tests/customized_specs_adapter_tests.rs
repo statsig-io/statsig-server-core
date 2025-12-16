@@ -7,7 +7,7 @@ pub mod specs_adapter_tests {
     use sigstat_grpc::mock_forward_proxy::{api::ConfigSpecResponse, MockForwardProxy};
     use statsig_rust::data_store_interface::DataStoreResponse;
     use statsig_rust::{
-        hashing, SpecAdapterConfig, SpecsAdapter, SpecsAdapterType, SpecsSource, Statsig,
+        SpecAdapterConfig, SpecsAdapter, SpecsAdapterType, SpecsSource, Statsig,
         StatsigCustomizedSpecsAdapter, StatsigOptions, StatsigRuntime,
     };
     use std::{fs, path::PathBuf, sync::Arc};
@@ -177,9 +177,9 @@ pub mod specs_adapter_tests {
         options.data_store = Some(data_store.clone());
         let adapter = Arc::new(StatsigCustomizedSpecsAdapter::new_from_config(
             "secret-key",
+            "data-store|secret-key",
             configs,
             &options,
-            &hashing::HashUtil::new(),
         ));
 
         (adapter, mock_proxy, data_store, mock_listener)

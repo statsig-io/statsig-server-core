@@ -3,7 +3,7 @@ name: Cut Release Candidate
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 2' #5pm PDT Monday
+     - cron: '0 1 * * 2' #Weekly: Monday 6pm PT
 
 env:
   # GH Octokit (Kong App)

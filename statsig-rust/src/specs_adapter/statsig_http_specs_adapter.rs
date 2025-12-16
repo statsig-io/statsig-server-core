@@ -135,10 +135,13 @@ impl StatsigHttpSpecsAdapter {
 
         if self.enable_proto_spec_support {
             params.insert("supports_proto".to_string(), "true".to_string());
-            headers = Some(HashMap::from([(
-                "supports-proto".to_string(),
-                "true".to_string(),
-            )]));
+            headers = Some(HashMap::from([
+                ("statsig-supports-proto".to_string(), "true".to_string()),
+                (
+                    "accept-encoding".to_string(),
+                    "statsig-br, gzip, deflate, br".to_string(),
+                ),
+            ]));
         }
 
         if let Some(lcut) = current_specs_info.lcut {

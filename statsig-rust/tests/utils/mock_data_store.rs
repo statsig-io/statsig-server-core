@@ -1,3 +1,8 @@
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
+
 use async_trait::async_trait;
 use statsig_rust::{
     data_store_interface::{DataStoreResponse, DataStoreTrait, RequestPath},
@@ -8,6 +13,8 @@ use tokio::sync::Mutex;
 pub struct MockDataStore {
     response: Mutex<Option<DataStoreResponse>>,
     supports_polling: bool,
+    get_call_count: Arc<AtomicUsize>,
+    set_call_count: Arc<AtomicUsize>,
 }
 
 impl MockDataStore {
@@ -15,12 +22,22 @@ impl MockDataStore {
         Self {
             response: Mutex::new(None),
             supports_polling,
+            get_call_count: Arc::new(AtomicUsize::new(0)),
+            set_call_count: Arc::new(AtomicUsize::new(0)),
         }
     }
 
     pub async fn mock_response(&self, response: DataStoreResponse) {
         let mut lock = self.response.lock().await;
         *lock = Some(response);
+    }
+
+    pub fn num_get_calls(&self) -> usize {
+        self.get_call_count.load(Ordering::SeqCst)
+    }
+
+    pub fn num_set_calls(&self) -> usize {
+        self.set_call_count.load(Ordering::SeqCst)
     }
 }
 
@@ -35,7 +52,7 @@ impl DataStoreTrait for MockDataStore {
     }
 
     async fn get(&self, _key: &str) -> Result<DataStoreResponse, StatsigErr> {
-        println!("calling get data store");
+        self.get_call_count.fetch_add(1, Ordering::SeqCst);
         let response = self.response.lock().await.take();
         match response {
             Some(r) => Ok(r),
@@ -44,6 +61,7 @@ impl DataStoreTrait for MockDataStore {
     }
 
     async fn set(&self, _key: &str, _value: &str, _time: Option<u64>) -> Result<(), StatsigErr> {
+        self.set_call_count.fetch_add(1, Ordering::SeqCst);
         Ok(())
     }
 

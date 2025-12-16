@@ -1,15 +1,14 @@
-use crate::pyo_utils::{map_to_py_dict, py_dict_to_json_value_map};
+use crate::pyo_utils::py_dict_to_json_value_map;
 use crate::safe_gil::SafeGil;
 use crate::statsig_options_py::{safe_convert_to_statsig_options, StatsigOptionsPy};
 use crate::statsig_persistent_storage_override_adapter_py::convert_dict_to_user_persisted_values;
 use crate::statsig_types_py::{
-    DynamicConfigPy, InitializeDetailsPy, LayerPy, ParameterStoreEvaluationOptionsPy,
-    ParameterStorePy,
+    InitializeDetailsPy, ParameterStoreEvaluationOptionsPy, ParameterStorePy,
 };
 use crate::{
     statsig_types_py::{
-        DynamicConfigEvaluationOptionsPy, ExperimentEvaluationOptionsPy, ExperimentPy,
-        FeatureGateEvaluationOptionsPy, FeatureGatePy, LayerEvaluationOptionsPy,
+        DynamicConfigEvaluationOptionsPy, ExperimentEvaluationOptionsPy,
+        FeatureGateEvaluationOptionsPy, LayerEvaluationOptionsPy,
     },
     statsig_user_py::StatsigUserPy,
 };
@@ -238,25 +237,18 @@ impl StatsigBasePy {
         )
     }
 
-    #[pyo3(signature = (user, name, options=None))]
-    pub fn get_feature_gate(
+    #[pyo3(name="_INTERNAL_get_feature_gate", signature = (user, name, options=None))]
+    pub fn _internal_get_feature_gate(
         &self,
         user: &StatsigUserPy,
         name: &str,
         options: Option<FeatureGateEvaluationOptionsPy>,
-    ) -> FeatureGatePy {
-        let gate = self.inner.get_feature_gate_with_options(
+    ) -> String {
+        self.inner.get_raw_feature_gate_with_options(
             &user.inner,
             name,
             options.map_or(FeatureGateEvaluationOptions::default(), |o| o.into()),
-        );
-        FeatureGatePy {
-            name: gate.name,
-            value: gate.value,
-            rule_id: gate.rule_id,
-            id_type: gate.id_type,
-            details: gate.details.into(),
-        }
+        )
     }
 
     #[pyo3(signature = (user, name))]
@@ -265,28 +257,18 @@ impl StatsigBasePy {
         Ok(())
     }
 
-    #[pyo3(signature = (user, name, options=None))]
-    pub fn get_dynamic_config(
+    #[pyo3(name="_INTERNAL_get_dynamic_config", signature = (user, name, options=None))]
+    pub fn _internal_get_dynamic_config(
         &self,
         user: &StatsigUserPy,
         name: &str,
         options: Option<DynamicConfigEvaluationOptionsPy>,
-        py: Python,
-    ) -> DynamicConfigPy {
-        let config = self.inner.get_dynamic_config_with_options(
+    ) -> String {
+        self.inner.get_raw_dynamic_config_with_options(
             &user.inner,
             name,
             options.map_or(DynamicConfigEvaluationOptions::default(), |o| o.into()),
-        );
-
-        DynamicConfigPy {
-            name: config.name.clone(),
-            rule_id: config.rule_id.clone(),
-            id_type: config.id_type.clone(),
-            value: map_to_py_dict(py, &config.value),
-            details: config.details.clone().into(),
-            inner: config,
-        }
+        )
     }
 
     #[pyo3(signature = (user, name))]
@@ -300,14 +282,14 @@ impl StatsigBasePy {
         Ok(())
     }
 
-    #[pyo3(signature = (user, name, options=None))]
-    pub fn get_experiment(
+    #[pyo3(name="_INTERNAL_get_experiment", signature = (user, name, options=None))]
+    pub fn _internal_get_experiment(
         &self,
         user: &StatsigUserPy,
         name: &str,
         options: Option<ExperimentEvaluationOptionsPy>,
         py: Python,
-    ) -> ExperimentPy {
+    ) -> String {
         let mut options_actual = options
             .as_ref()
             .map_or(ExperimentEvaluationOptions::default(), |o| o.into());
@@ -316,19 +298,8 @@ impl StatsigBasePy {
             .and_then(|o| o.user_persisted_values)
             .and_then(|v| extract_user_persisted_values(py, name, v));
 
-        let experiment = self
-            .inner
-            .get_experiment_with_options(&user.inner, name, options_actual);
-
-        ExperimentPy {
-            name: experiment.name.clone(),
-            rule_id: experiment.rule_id.clone(),
-            id_type: experiment.id_type.clone(),
-            group_name: experiment.group_name.clone(),
-            value: map_to_py_dict(py, &experiment.value),
-            details: experiment.details.clone().into(),
-            inner: experiment,
-        }
+        self.inner
+            .get_raw_experiment_with_options(&user.inner, name, options_actual)
     }
 
     #[pyo3(signature = (user, name))]
@@ -342,14 +313,14 @@ impl StatsigBasePy {
         Ok(())
     }
 
-    #[pyo3(signature = (user, name, options=None))]
-    pub fn get_layer(
+    #[pyo3(name="_INTERNAL_get_layer", signature = (user, name, options=None))]
+    pub fn _internal_get_layer(
         &self,
         user: &StatsigUserPy,
         name: &str,
         options: Option<LayerEvaluationOptionsPy>,
         py: Python,
-    ) -> LayerPy {
+    ) -> String {
         let mut options_actual = options
             .as_ref()
             .map_or(LayerEvaluationOptions::default(), |o| o.into());
@@ -358,19 +329,14 @@ impl StatsigBasePy {
             .and_then(|o| o.user_persisted_values)
             .and_then(|v| extract_user_persisted_values(py, name, v));
 
-        let layer = self
-            .inner
-            .get_layer_with_options(&user.inner, name, options_actual);
+        self.inner
+            .get_raw_layer_with_options(&user.inner, name, options_actual)
+    }
 
-        LayerPy {
-            name: layer.name.clone(),
-            rule_id: layer.rule_id.clone(),
-            group_name: layer.group_name.clone(),
-            allocated_experiment_name: layer.allocated_experiment_name.clone(),
-            value: map_to_py_dict(py, &layer.__value),
-            details: layer.details.clone().into(),
-            inner: layer,
-        }
+    #[pyo3(name="_INTERNAL_log_layer_param_exposure", signature = (raw, param_name))]
+    pub fn _internal_log_layer_param_exposure(&self, raw: String, param_name: String) {
+        self.inner
+            .log_layer_param_exposure_from_raw(raw, param_name);
     }
 
     #[pyo3(signature = (user, name, param_name))]

@@ -7,11 +7,13 @@ use std::{
 };
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
-use crate::utils::helpers::load_contents;
+use crate::utils::{
+    helpers::load_contents, mock_data_store::MockDataStore, mock_log_provider::MockLogProvider,
+};
 
-const KNOWN_CHECKSUM: &str = "2556334789679907000" /* eval_proj_dcs.json['checksum'] */;
+const KNOWN_CHECKSUM: &str = "9073779682072068000" /* eval_proj_dcs.json['checksum'] */;
 const EVAL_PROJ_GATE_COUNT: usize = 69 /* eval_proj_dcs.json['feature_gates'].filter(g => g.entity === feature_gate).length */;
-const EVAL_PROJ_DC_COUNT: usize = 7 /* eval_proj_dcs.json['dynamic_configs'].filter(dc => dc.entity === dynamic_config).length */;
+const EVAL_PROJ_DC_COUNT: usize = 9 /* eval_proj_dcs.json['dynamic_configs'].filter(dc => dc.entity === dynamic_config).length */;
 const DEMO_PROJ_GATE_COUNT: usize = 7 /* demo_proj_dcs.json['feature_gates'].filter(g => g.entity === feature_gate).length */;
 
 const EVAL_PROJ_PROTO_BYTES: &[u8] = include_bytes!("../tests/data/eval_proj_dcs.pb.br");
@@ -41,6 +43,29 @@ async fn test_proto_specs_initialize() {
     let user = StatsigUser::with_user_id("a_user");
     let gate = statsig.check_gate(&user, "test_public");
     assert!(gate);
+}
+
+#[tokio::test]
+async fn test_proto_specs_request_accept_encoding_header() {
+    std::env::set_var("STATSIG_RUNNING_TESTS", "true");
+
+    let options = make_statsig_opts(DELAYED_SYNC_INTERVAL_MS);
+    let (mock_scrapi, statsig) = setup("secret-proto-specs-accept-encoding", Some(options)).await;
+
+    statsig.initialize().await.unwrap();
+
+    let requests = mock_scrapi.get_requests_for_endpoint(Endpoint::DownloadConfigSpecs);
+    let request = requests
+        .first()
+        .expect("expected at least one request for download config specs");
+
+    let accept_encoding = request
+        .headers
+        .get("accept-encoding")
+        .and_then(|header| header.to_str().ok())
+        .unwrap_or("");
+
+    assert_eq!(accept_encoding, "statsig-br, gzip, deflate, br");
 }
 
 #[tokio::test]
@@ -147,6 +172,33 @@ async fn test_json_then_proto() {
     assert_eventually!(|| mock_scrapi.times_called_for_endpoint(Endpoint::DownloadConfigSpecs) > 1);
 
     assert_gate_count!(statsig, EVAL_PROJ_GATE_COUNT);
+}
+
+#[tokio::test]
+async fn test_proto_with_data_store() {
+    std::env::set_var("STATSIG_RUNNING_TESTS", "true");
+
+    let log_provider = Arc::new(MockLogProvider::new());
+    let data_store = Arc::new(MockDataStore::new(true));
+
+    let options = StatsigOptions {
+        data_store: Some(data_store.clone()),
+        specs_sync_interval_ms: Some(INSTANT_SYNC_INTERVAL_MS),
+        fallback_to_statsig_api: Some(true),
+        output_log_level: Some(output_logger::LogLevel::Debug),
+        output_logger_provider: Some(log_provider.clone()),
+        ..Default::default()
+    };
+    let (_mock_scrapi, statsig) =
+        setup("secret-proto-then-json-with-data-store", Some(options)).await;
+
+    statsig.initialize().await.unwrap();
+
+    assert_eventually!(|| data_store.num_get_calls() > 3);
+    assert!(data_store.num_set_calls() == 0);
+
+    let error_logs = log_provider.get_error_logs();
+    assert!(error_logs.is_empty());
 }
 
 async fn setup(key: &str, options_override: Option<StatsigOptions>) -> (MockScrapi, Statsig) {

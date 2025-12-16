@@ -1,12 +1,18 @@
 import os
 from statsig_python_core import (
+    DynamicConfigEvaluationOptions,
+    ExperimentEvaluationOptions,
+    FeatureGateEvaluationOptions,
+    LayerEvaluationOptions,
     StatsigBasePy,
     StatsigOptions,
+    StatsigUser,
     notify_python_fork,
     notify_python_shutdown,
 )
 from typing import Optional
 from .error_boundary import ErrorBoundary
+from .statsig_types import DynamicConfig, FeatureGate, Experiment, Layer
 import atexit
 
 
@@ -69,6 +75,46 @@ class Statsig(StatsigBasePy):
         return (
             hasattr(cls, "_statsig_shared_instance")
             and cls._statsig_shared_instance is not None
+        )
+
+    # ------------------------------------------------------------ [ Core APIs ]
+
+    def get_feature_gate(
+        self,
+        user: StatsigUser,
+        name: str,
+        options: Optional[FeatureGateEvaluationOptions] = None,
+    ) -> FeatureGate:
+        raw = super()._INTERNAL_get_feature_gate(user, name, options)
+        return FeatureGate(name, raw)
+
+    def get_dynamic_config(
+        self,
+        user: StatsigUser,
+        name: str,
+        options: Optional[DynamicConfigEvaluationOptions] = None,
+    ) -> DynamicConfig:
+        raw = super()._INTERNAL_get_dynamic_config(user, name, options)
+        return DynamicConfig(name, raw)
+
+    def get_experiment(
+        self,
+        user: StatsigUser,
+        name: str,
+        options: Optional[ExperimentEvaluationOptions] = None,
+    ) -> Experiment:
+        raw = super()._INTERNAL_get_experiment(user, name, options)
+        return Experiment(name, raw)
+
+    def get_layer(
+        self,
+        user: StatsigUser,
+        name: str,
+        options: Optional[LayerEvaluationOptions] = None,
+    ) -> Layer:
+        raw = super()._INTERNAL_get_layer(user, name, options)
+        return Layer(
+            lambda param: self._INTERNAL_log_layer_param_exposure(raw, param), name, raw
         )
 
 

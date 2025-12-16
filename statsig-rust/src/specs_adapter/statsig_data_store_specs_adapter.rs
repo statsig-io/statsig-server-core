@@ -1,9 +1,6 @@
 use super::statsig_http_specs_adapter::DEFAULT_SYNC_INTERVAL_MS;
 use super::{SpecsSource, SpecsUpdate};
-use crate::data_store_interface::{
-    get_data_adapter_key, CompressFormat, DataStoreTrait, RequestPath,
-};
-use crate::hashing::HashUtil;
+use crate::data_store_interface::{DataStoreTrait, RequestPath};
 use crate::networking::ResponseData;
 use crate::{log_d, log_e, log_w, SpecsAdapter, SpecsUpdateListener};
 use crate::{StatsigErr, StatsigOptions, StatsigRuntime};
@@ -26,22 +23,16 @@ pub struct StatsigDataStoreSpecsAdapter {
 
 impl StatsigDataStoreSpecsAdapter {
     pub fn new(
-        sdk_key: &str,
+        data_adapter_key: &str,
         data_adapter: Arc<dyn DataStoreTrait>,
-        hashing: &HashUtil,
         options: Option<&StatsigOptions>,
     ) -> Self {
-        let cache_key = get_data_adapter_key(
-            RequestPath::RulesetsV2,
-            CompressFormat::PlainText,
-            &hashing.hash(sdk_key, &crate::HashAlgorithm::Sha256),
-        );
         let default_options = StatsigOptions::default();
         let options_ref = options.unwrap_or(&default_options);
 
         StatsigDataStoreSpecsAdapter {
             data_adapter,
-            cache_key,
+            cache_key: data_adapter_key.to_string(),
             sync_interval: Duration::from_millis(u64::from(
                 options_ref
                     .specs_sync_interval_ms

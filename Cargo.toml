@@ -19,13 +19,14 @@ exclude = [
     "examples/rust/perf-monitor",
     "examples/rust/mem-bench",
     "examples/rust/perf-bench",
+    "examples/rust/verify-package",
     "benchmarking/bench-cluster",
 ]
 
 [workspace.package]
 edition = "2021"
 license = "ISC"
-version = "0.14.0"
+version = "0.14.0-rc.1"
 homepage = "https://statsig.com/"
 authors = ["Statsig", "Daniel Loomb <daniel@statsig.com>"]
 readme = "README.md"

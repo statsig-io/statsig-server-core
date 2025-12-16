@@ -13,9 +13,11 @@ namespace Statsig
         private unsafe ulong _ref;
         private bool _disposed;
         private readonly PersistentStorage? _persistentStorage;
+        private readonly DataStore? _dataStore;
 
         internal unsafe ulong Reference => _ref;
         internal IPersistentStorage? PersistentStorage => _persistentStorage;
+        internal DataStore? DataStore => _dataStore;
 
         public StatsigOptions(StatsigOptionsBuilder builder)
         {
@@ -23,6 +25,12 @@ namespace Statsig
             {
                 _persistentStorage = (PersistentStorage)builder.persistentStorage;
                 builder.persistentStorageRef = _persistentStorage.Reference;
+            }
+
+            if (builder.dataStore != null)
+            {
+                _dataStore = builder.dataStore;
+                builder.dataStoreRef = _dataStore.Reference;
             }
 
             var jsonData = JsonConvert.SerializeObject(builder, new JsonSerializerSettings
@@ -38,9 +46,14 @@ namespace Statsig
                     _ref = StatsigFFI.statsig_options_create_from_data(jsonPtr);
                 }
             }
+            // Set the refs back to null to avoid double disposal
             if (builder.persistentStorage != null)
             {
                 builder.persistentStorageRef = null;
+            }
+            if (builder.dataStore != null)
+            {
+                builder.dataStoreRef = null;
             }
         }
 
@@ -112,6 +125,12 @@ namespace Statsig
 
         [JsonIgnore]
         internal IPersistentStorage? persistentStorage;
+
+        [JsonProperty("data_store_ref")]
+        internal ulong? dataStoreRef;
+
+        [JsonIgnore]
+        internal DataStore? dataStore;
 
         [JsonProperty("disable_country_lookup")]
         internal bool? disableCountryLookup;
@@ -223,6 +242,12 @@ namespace Statsig
         public StatsigOptionsBuilder SetPersistentStorage(IPersistentStorage persistentStorage)
         {
             this.persistentStorage = persistentStorage;
+            return this;
+        }
+
+        public StatsigOptionsBuilder SetDataStore(DataStore dataStore)
+        {
+            this.dataStore = dataStore;
             return this;
         }
 

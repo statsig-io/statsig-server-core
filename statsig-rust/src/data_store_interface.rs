@@ -3,7 +3,7 @@ use std::fmt::Display;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use crate::StatsigErr;
+use crate::{hashing::HashUtil, StatsigErr, StatsigOptions};
 
 pub enum RequestPath {
     RulesetsV2,
@@ -54,20 +54,43 @@ pub trait DataStoreTrait: Send + Sync {
     async fn support_polling_updates_for(&self, path: RequestPath) -> bool;
 }
 
-#[must_use]
-pub fn get_data_adapter_dcs_key(hashed_key: &str) -> String {
-    get_data_adapter_key(
-        RequestPath::RulesetsV2,
-        CompressFormat::PlainText,
-        hashed_key,
-    )
+#[derive(Clone, Debug, Default)]
+pub enum DataStoreKeyVersion {
+    #[default]
+    V2Hashed,
+    V3HumanReadable,
+}
+
+impl From<&str> for DataStoreKeyVersion {
+    fn from(level: &str) -> Self {
+        match level.to_lowercase().as_str() {
+            "v2" | "2" => DataStoreKeyVersion::V2Hashed,
+            "v3" | "3" => DataStoreKeyVersion::V3HumanReadable,
+            _ => DataStoreKeyVersion::default(),
+        }
+    }
 }
 
 #[must_use]
 pub fn get_data_adapter_key(
     path: RequestPath,
     compress: CompressFormat,
-    hashed_key: &str,
+    sdk_key: &str,
+    hashing: &HashUtil,
+    options: &StatsigOptions,
 ) -> String {
-    format!("statsig|{path}|{compress}|{hashed_key}")
+    let key = match options
+        .data_store_key_schema_version
+        .clone()
+        .unwrap_or_default()
+    {
+        DataStoreKeyVersion::V3HumanReadable => {
+            let mut key = sdk_key.to_string();
+            key.truncate(20);
+            key
+        }
+        DataStoreKeyVersion::V2Hashed => hashing.hash(sdk_key, &crate::HashAlgorithm::Sha256),
+    };
+
+    format!("statsig|{path}|{compress}|{key}")
 }

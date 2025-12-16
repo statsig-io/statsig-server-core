@@ -149,6 +149,8 @@ pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub data_store: Option<Py<DataStoreBasePy>>,
     #[pyo3(get, set)]
+    pub data_store_key_schema_version: Option<String>,
+    #[pyo3(get, set)]
     pub persistent_storage: Option<Py<PersistentStorageBasePy>>,
     #[pyo3(get, set)]
     pub config_compression_mode: Option<String>,
@@ -190,6 +192,7 @@ impl StatsigOptionsPy {
         global_custom_fields=None,
         observability_client=None,
         data_store=None,
+        data_store_key_schema_version=None,
         persistent_storage=None,
         config_compression_mode=None,
         proxy_config=None,
@@ -222,6 +225,7 @@ impl StatsigOptionsPy {
         global_custom_fields: Option<HashMap<String, ValidPrimitivesPy>>,
         observability_client: Option<Py<ObservabilityClientBasePy>>,
         data_store: Option<Py<DataStoreBasePy>>,
+        data_store_key_schema_version: Option<String>,
         persistent_storage: Option<Py<PersistentStorageBasePy>>,
         config_compression_mode: Option<String>,
         proxy_config: Option<Py<ProxyConfigPy>>,
@@ -252,6 +256,7 @@ impl StatsigOptionsPy {
             global_custom_fields,
             observability_client,
             data_store,
+            data_store_key_schema_version,
             disable_network,
             persistent_storage,
             config_compression_mode,
@@ -315,6 +320,9 @@ fn create_inner_statsig_options(
                     None
                 }
             }),
+        data_store_key_schema_version: opts
+            .data_store_key_schema_version
+            .map(|v| v.as_str().into()),
         log_event_url: opts.log_event_url.clone(),
         disable_all_logging: opts.disable_all_logging,
         event_logging_adapter: None,
