@@ -23,7 +23,7 @@ pub struct StatsigCustomizedSpecsAdapter {
 impl StatsigCustomizedSpecsAdapter {
     pub fn new_from_config(
         sdk_key: &str,
-        data_adapter_key: &str,
+        data_store_key: &str,
         configs: Vec<SpecAdapterConfig>,
         options: &StatsigOptions,
     ) -> Self {
@@ -46,7 +46,7 @@ impl StatsigCustomizedSpecsAdapter {
                 SpecsAdapterType::DataStore => match options.data_store.clone() {
                     Some(data_store) => {
                         adapters.push(Arc::new(StatsigDataStoreSpecsAdapter::new(
-                            data_adapter_key,
+                            data_store_key,
                             data_store,
                             Some(options),
                         )));
@@ -61,15 +61,15 @@ impl StatsigCustomizedSpecsAdapter {
 
     pub fn new_from_data_store(
         sdk_key: &str,
-        data_adapter_key: &str,
+        data_store_key: &str,
         data_store: Arc<dyn DataStoreTrait>,
         options: &StatsigOptions,
     ) -> Self {
-        let data_adapter_spec_adapter =
-            StatsigDataStoreSpecsAdapter::new(data_adapter_key, data_store, Some(options));
+        let data_store_spec_adapter =
+            StatsigDataStoreSpecsAdapter::new(data_store_key, data_store, Some(options));
         let http_adapter = StatsigHttpSpecsAdapter::new(sdk_key, Some(options), None);
         let adapters: Vec<Arc<dyn SpecsAdapter>> =
-            vec![Arc::new(data_adapter_spec_adapter), Arc::new(http_adapter)];
+            vec![Arc::new(data_store_spec_adapter), Arc::new(http_adapter)];
         StatsigCustomizedSpecsAdapter { adapters }
     }
 

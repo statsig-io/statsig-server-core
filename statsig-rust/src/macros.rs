@@ -72,6 +72,16 @@ macro_rules! read_lock_or_return {
 }
 
 #[macro_export]
+macro_rules! write_lock_or_else {
+    ($lock:expr, $else_block:block) => {
+        match $lock.try_write_for(std::time::Duration::from_secs(5)) {
+            Some(data) => data,
+            None => $else_block,
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! write_lock_or_noop {
     ($tag: expr, $lock:expr) => {
         match $lock.try_write_for(std::time::Duration::from_secs(5)) {

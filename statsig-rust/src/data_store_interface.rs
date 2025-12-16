@@ -72,7 +72,7 @@ impl From<&str> for DataStoreKeyVersion {
 }
 
 #[must_use]
-pub fn get_data_adapter_key(
+pub fn get_data_store_key(
     path: RequestPath,
     compress: CompressFormat,
     sdk_key: &str,
