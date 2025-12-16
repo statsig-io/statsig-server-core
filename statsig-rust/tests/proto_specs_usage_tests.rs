@@ -46,6 +46,29 @@ async fn test_proto_specs_initialize() {
 }
 
 #[tokio::test]
+async fn test_proto_specs_request_accept_encoding_header() {
+    std::env::set_var("STATSIG_RUNNING_TESTS", "true");
+
+    let options = make_statsig_opts(DELAYED_SYNC_INTERVAL_MS);
+    let (mock_scrapi, statsig) = setup("secret-proto-specs-accept-encoding", Some(options)).await;
+
+    statsig.initialize().await.unwrap();
+
+    let requests = mock_scrapi.get_requests_for_endpoint(Endpoint::DownloadConfigSpecs);
+    let request = requests
+        .first()
+        .expect("expected at least one request for download config specs");
+
+    let accept_encoding = request
+        .headers
+        .get("accept-encoding")
+        .and_then(|header| header.to_str().ok())
+        .unwrap_or("");
+
+    assert_eq!(accept_encoding, "statsig-br, gzip, deflate, br");
+}
+
+#[tokio::test]
 async fn test_proto_specs_syncing() {
     std::env::set_var("STATSIG_RUNNING_TESTS", "true");
 

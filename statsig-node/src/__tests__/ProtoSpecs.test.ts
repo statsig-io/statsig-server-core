@@ -28,7 +28,7 @@ describe('Proto Specs', () => {
         '/v2/download_config_specs/secret-123.json?supports_proto=true',
       );
       expect(request.headers).toMatchObject({
-        'accept-encoding': 'gzip, deflate, br',
+        'accept-encoding': 'statsig-br, gzip, deflate, br',
         'statsig-supports-proto': 'true',
       });
     });
