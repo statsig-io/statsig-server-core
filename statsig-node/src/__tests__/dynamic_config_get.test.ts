@@ -10,7 +10,54 @@ type FakeSettingsType = Record<
   string | number | boolean | SettingsMap | undefined
 >;
 
+// fake use cases2
+type BigQueryTablesConfig = {
+  FAKE_BQ_CONFIG: string | null;
+};
+
+// fake use cases3
+type RetryOptions = {
+  retryDelayMultiplier?: number;
+  totalTimeout?: number;
+  maxRetryDelay?: number;
+  autoRetry?: boolean;
+  maxRetries?: number;
+  missingKey?: number;
+}
+
 describe('DynamicConfig.get typing regressions', () => {
+  it('allows assigning RetryOptions / undefined from get()', () => {
+    const config = new DynamicConfig(
+      'cfg',
+      JSON.stringify({ value: { retryDelayMultiplier: 1.5, totalTimeout: 10000, maxRetryDelay: 1000, autoRetry: true, maxRetries: 3 } }),
+    );
+    const returnVal: RetryOptions = {
+      retryDelayMultiplier: config.get('retryDelayMultiplier', undefined),
+      totalTimeout: config.get('totalTimeout', undefined),
+      maxRetryDelay: config.get('maxRetryDelay', undefined),
+      autoRetry: config.get('autoRetry', undefined),
+      maxRetries: config.get('maxRetries', undefined),
+      missingKey: config.get('missingKey', undefined),
+    };
+    expect(returnVal.retryDelayMultiplier).toBe(1.5);
+    expect(returnVal.totalTimeout).toBe(10000);
+    expect(returnVal.maxRetryDelay).toBe(1000);
+    expect(returnVal.autoRetry).toBe(true);
+    expect(returnVal.maxRetries).toBe(3);
+    expect(returnVal.missingKey).toBeNull();
+  });
+
+  it('allows assigning null to variable type', () => {
+    const config = new DynamicConfig(
+      'cfg',
+      JSON.stringify({ value: { FAKE_BQ_CONFIG: '10' } }),
+    );
+    const returnVal: BigQueryTablesConfig = {
+      FAKE_BQ_CONFIG: config.get('FAKE_BQ_CONFIG', null),
+    }
+    expect(returnVal.FAKE_BQ_CONFIG).toBe('10');
+  });
+
   it('allows assigning Record<string, string[]> from get()', () => {
     const config = new DynamicConfig(
       'cfg',

@@ -318,7 +318,7 @@ describe('Statsig', () => {
       expect(config.getValue('bool', undefined)).toEqual(true);
       expect(config.getValue('bool', null)).toEqual(true);
 
-      // undefined fallback should return null if we don't have that key in the config
+      // same as legacy node behavior
       expect(config.get('missing_key', undefined)).toBeNull();
       expect(config.getValue('missing_key', undefined)).toBeNull();
     });
@@ -413,7 +413,7 @@ describe('Statsig', () => {
       expect(layer.get('another_string', null)).toEqual('layer_default');
       expect(layer.getValue('another_string', null)).toEqual('layer_default');
 
-      // undefined fallback should return null if we don't have that key in the config
+      // same as legacy node behavior
       expect(layer.get('missing_key', undefined)).toBeNull();
       expect(layer.getValue('missing_key', undefined)).toBeNull();
     });

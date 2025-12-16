@@ -2,22 +2,18 @@ import { EvaluationDetails, SecondaryExposure } from './statsig-generated';
 
 export type TypedGet = <T = unknown>(
   key: string,
-  fallback?: T,
-) => TypedReturn<T>;
+  defaultValue: T,
+  typeGuard?: ((value: unknown) => value is T | null) | null,
+) => T;
 
 export type UnknownGet = (
   key: string,
   fallback?: boolean | number | string | object | Array<any> | null,
 ) => unknown | null;
 
-// prettier-ignore
-export type TypedReturn<T = unknown> = 
-      T extends string ? string
-    : T extends number ? number
-    : T extends boolean ? boolean
-    : T extends readonly unknown[] ? T
-    : T extends object ? T
-    : unknown;
+function _getTypeOf(x: unknown): string {
+  return Array.isArray(x) ? 'array' : x === null ? 'null' : typeof x;
+}
 
 class BaseEvaluation {
   readonly name: string;
@@ -148,33 +144,50 @@ function _parseRawEvaluation(raw: string | null): Record<string, unknown> {
   }
 }
 
-function _isTypeMatch<T>(a: unknown, b: unknown): a is T {
-  const typeOf = (x: unknown) =>
-    Array.isArray(x) ? 'array' : x === null ? 'null' : typeof x;
-  return typeOf(a) === typeOf(b);
-}
-
 function _makeTypedGet(
   name: string,
   value: Record<string, unknown>,
   exposeFunc?: (param: string) => void,
 ): TypedGet {
-  return <T = unknown>(param: string, fallback?: T) => {
-    const found = value[param] ?? null;
+  return <T = unknown>(
+    key: string,
+    defaultValue: T,
+    typeGuard: ((value: unknown) => value is T | null) | null = null,
+  ): T => {
+    // @ts-ignore - intentionally matches legacy behavior exactly
+    defaultValue = defaultValue ?? null;
 
-    if (found == null) {
-      return (fallback ?? null) as TypedReturn<T>;
+    // Equivalent to legacy `this.getValue(key, defaultValue)`
+    const val = (value[key] ?? defaultValue) as unknown;
+
+    if (val == null) {
+      return defaultValue;
     }
 
-    if (fallback != null && !_isTypeMatch(found, fallback)) {
+    const expectedType = _getTypeOf(defaultValue);
+    const actualType = _getTypeOf(val);
+
+    if (typeGuard != null) {
+      if (typeGuard(val)) {
+        exposeFunc?.(key);
+        return val as T;
+      }
+
       console.warn(
-        `[Statsig] Parameter type mismatch. '${name}.${param}' was found to be type '${typeof found}' but fallback/return type is '${typeof fallback}'`,
+        `[Statsig] Parameter type mismatch. '${name}.${key}' failed typeGuard. Expected '${expectedType}', got '${actualType}'`,
       );
-      return (fallback ?? null) as TypedReturn<T>;
+      return defaultValue;
     }
 
-    exposeFunc?.(param);
-    return found as TypedReturn<T>;
+    if (defaultValue == null || expectedType === actualType) {
+      exposeFunc?.(key);
+      return val as T;
+    }
+
+    console.warn(
+      `[Statsig] Parameter type mismatch. '${name}.${key}' was found to be type '${actualType}' but fallback/return type is '${expectedType}'`,
+    );
+    return defaultValue;
   };
 }
 
