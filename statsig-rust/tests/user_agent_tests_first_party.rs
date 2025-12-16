@@ -17,6 +17,8 @@ lazy_static::lazy_static! {
         .collect();
 }
 
+// See thirdparty baseline in this PR: https://github.com/statsig-io/private-statsig-server-core/pull/2498
+
 // statsig-uaparser correctness against Python's 'ua-parser'
 const OS_NAME_THRESHOLD: f64 = 0.87;
 const OS_VERSION_THRESHOLD: f64 = 0.84;
