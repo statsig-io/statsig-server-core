@@ -28,6 +28,14 @@ use std::time::Duration;
 
 const TAG: &str = "StatsigNapi";
 
+fn extract_typed_event_metadata(metadata: Option<Value>) -> Option<HashMap<String, Value>> {
+    let Some(Value::Object(map)) = metadata else {
+        return None;
+    };
+
+    Some(map.into_iter().collect())
+}
+
 #[napi]
 pub fn statsig_capture_log_line(
     level: String,
@@ -148,8 +156,10 @@ impl StatsigNapiInternal {
         user: &StatsigUser,
         event_name: String,
         #[napi(ts_arg_type = "string | number | null")] value: Option<serde_json::Value>,
-        metadata: Option<HashMap<String, String>>,
+        #[napi(ts_arg_type = "Record<string, string | number | boolean | null | undefined>")]
+        metadata: Option<serde_json::Value>,
     ) {
+        let metadata = extract_typed_event_metadata(metadata);
         match value {
             Some(Value::Number(num)) => {
                 let num = match num.as_f64() {
@@ -160,16 +170,25 @@ impl StatsigNapiInternal {
                     }
                 };
 
-                self.inner
-                    .log_event_with_number(user.as_inner(), &event_name, Some(num), metadata)
+                self.inner.log_event_with_number_and_typed_metadata(
+                    user.as_inner(),
+                    &event_name,
+                    Some(num),
+                    metadata,
+                )
             }
-            Some(Value::String(s)) => {
-                self.inner
-                    .log_event(user.as_inner(), &event_name, Some(s), metadata)
-            }
-            _ => self
-                .inner
-                .log_event(user.as_inner(), &event_name, None, metadata),
+            Some(Value::String(s)) => self.inner.log_event_with_typed_metadata(
+                user.as_inner(),
+                &event_name,
+                Some(s),
+                metadata,
+            ),
+            _ => self.inner.log_event_with_typed_metadata(
+                user.as_inner(),
+                &event_name,
+                None,
+                metadata,
+            ),
         }
     }
 

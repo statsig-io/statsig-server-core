@@ -230,13 +230,27 @@ describe('Statsig', () => {
       );
     });
 
-    it('should not throw when logging incorrect types', async () => {
+    it('should support metadata primitive types', async () => {
+      const user = StatsigUser.withUserID('a-user');
+
       expect(() => {
-        const user = StatsigUser.withUserID('a-user');
         statsig.logEvent(user, 'my_custom_event', 'my_value', {
           number_val: 1,
-        } as any);
+          bool_val: true,
+          string_val: 'hello',
+          null_val: null,
+          undef_val: undefined,
+        });
       }).not.toThrow();
+
+      const event = await getLastLoggedEvent();
+      expect(event?.eventName).toEqual('my_custom_event');
+      expect(event?.metadata).toEqual({
+        number_val: 1,
+        bool_val: true,
+        string_val: 'hello',
+        null_val: null,
+      });
     });
 
     it('DynamicConfig supports get and getValue methods', async () => {

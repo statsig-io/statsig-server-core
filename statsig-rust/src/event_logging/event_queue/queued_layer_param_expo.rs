@@ -15,6 +15,7 @@ use crate::{
 };
 
 use super::queued_event::{EnqueueOperation, QueuedEvent, QueuedExposure};
+use crate::event_logging::statsig_event::string_metadata_to_value_metadata;
 
 pub enum EnqueueLayerParamExpoOp<'a> {
     LayerRef(u64, &'a Layer, &'a str, ExposureTrigger),
@@ -146,7 +147,7 @@ impl QueuedLayerParamExposureEvent {
         let event = StatsigEvent {
             event_name: LAYER_EXPOSURE_EVENT_NAME.into(),
             value: None,
-            metadata: Some(metadata),
+            metadata: Some(string_metadata_to_value_metadata(metadata)),
             statsig_metadata: Some(statsig_metadata),
         };
 
