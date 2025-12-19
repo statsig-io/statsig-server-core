@@ -156,7 +156,9 @@ impl StatsigNapiInternal {
         user: &StatsigUser,
         event_name: String,
         #[napi(ts_arg_type = "string | number | null")] value: Option<serde_json::Value>,
-        #[napi(ts_arg_type = "Record<string, string | number | boolean | null | undefined>")]
+        #[napi(
+            ts_arg_type = "Record<string, string | number | boolean | null | undefined> | null | undefined"
+        )]
         metadata: Option<serde_json::Value>,
     ) {
         let metadata = extract_typed_event_metadata(metadata);

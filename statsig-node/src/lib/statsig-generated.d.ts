@@ -16,7 +16,7 @@ export declare class StatsigNapiInternal {
   initialize(): Promise<StatsigResult>
   shutdown(timeoutMs?: number | undefined | null): Promise<StatsigResult>
   flushEvents(): Promise<StatsigResult>
-  logEvent(user: StatsigUser, eventName: string, value?: string | number | null, metadata?: Record<string, string | number | boolean | null | undefined>): void
+  logEvent(user: StatsigUser, eventName: string, value?: string | number | null, metadata?: Record<string, string | number | boolean | null | undefined> | null | undefined): void
   forwardLogLineEvent(user: StatsigUser, logLevel: 'trace' | 'debug' |'log' | 'info' | 'warn' | 'error', value?: string | undefined | null, metadata?: Record<string, string> | undefined | null): void
   checkGate(user: StatsigUser, gateName: string, options?: FeatureGateEvaluationOptions | undefined | null): boolean
   __INTERNAL_getFeatureGate(user: StatsigUser, featureName: string, options?: FeatureGateEvaluationOptions | undefined | null): string
