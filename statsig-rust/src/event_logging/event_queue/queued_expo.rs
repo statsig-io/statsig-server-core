@@ -21,6 +21,7 @@ use crate::{
 };
 
 use super::queued_event::{EnqueueOperation, QueuedEvent, QueuedExposure};
+use crate::event_logging::statsig_event::string_metadata_to_value_metadata;
 
 // Flow:
 // IN(EVAL) |> EnqueueOp [sampling]> QueuedEvent [bg thread]> StatsigEventInternal |> OUT(LOGGED)
@@ -346,7 +347,7 @@ impl QueuedExposureEvent {
         let event = StatsigEvent {
             event_name: data.event_name.into(),
             value: None,
-            metadata: Some(builder.build()),
+            metadata: Some(string_metadata_to_value_metadata(builder.build())),
             statsig_metadata: Some(statsig_metadata),
         };
 

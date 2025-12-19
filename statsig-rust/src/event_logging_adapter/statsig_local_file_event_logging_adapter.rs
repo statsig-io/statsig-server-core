@@ -164,23 +164,23 @@ fn process_events(current_requests: &str) -> Vec<StatsigEventInternal> {
 fn create_merge_key(event: &StatsigEventInternal) -> String {
     let mut metadata_parts = Vec::new();
     if let Some(metadata) = &event.event_data.metadata {
-        if let Some(name) = metadata.get("gate") {
+        if let Some(name) = metadata.get("gate").and_then(|v| v.as_str()) {
             metadata_parts.push(format!("g.{name}|"));
         }
 
-        if let Some(name) = metadata.get("config") {
+        if let Some(name) = metadata.get("config").and_then(|v| v.as_str()) {
             metadata_parts.push(format!("c.{name}|"));
         }
 
-        if let Some(name) = metadata.get("parameterName") {
+        if let Some(name) = metadata.get("parameterName").and_then(|v| v.as_str()) {
             metadata_parts.push(format!("pn.{name}|"));
         }
 
-        if let Some(name) = metadata.get("allocatedExperiment") {
+        if let Some(name) = metadata.get("allocatedExperiment").and_then(|v| v.as_str()) {
             metadata_parts.push(format!("ae.{name}|"));
         }
 
-        if let Some(rule_id) = metadata.get("ruleID") {
+        if let Some(rule_id) = metadata.get("ruleID").and_then(|v| v.as_str()) {
             metadata_parts.push(format!("r.{rule_id}|"));
         }
     }

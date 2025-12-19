@@ -1,4 +1,5 @@
 use crate::console_capture::console_log_line_levels::StatsigLogLineLevel;
+use crate::event_logging::statsig_event::string_metadata_to_value_metadata;
 use crate::event_logging::statsig_event::StatsigEvent;
 use crate::sdk_diagnostics::diagnostics::DIAGNOSTICS_EVENT;
 use crate::user::StatsigUserLoggable;
@@ -46,6 +47,26 @@ impl StatsigEventInternal {
         value: Option<Value>,
         metadata: Option<HashMap<String, String>>,
     ) -> Self {
+        let metadata = metadata.map(string_metadata_to_value_metadata);
+        StatsigEventInternal::new(
+            Utc::now().timestamp_millis() as u64,
+            user,
+            StatsigEvent {
+                event_name,
+                value,
+                metadata,
+                statsig_metadata: None,
+            },
+            None,
+        )
+    }
+
+    pub fn new_custom_event_with_typed_metadata(
+        user: StatsigUserLoggable,
+        event_name: String,
+        value: Option<Value>,
+        metadata: Option<HashMap<String, Value>>,
+    ) -> Self {
         StatsigEventInternal::new(
             Utc::now().timestamp_millis() as u64,
             user,
@@ -64,7 +85,7 @@ impl StatsigEventInternal {
             event_data: StatsigEvent {
                 event_name: DIAGNOSTICS_EVENT.to_string(),
                 value: None,
-                metadata: Some(metadata),
+                metadata: Some(string_metadata_to_value_metadata(metadata)),
                 statsig_metadata: None,
             },
             user: StatsigUserLoggable::null(),
@@ -82,7 +103,10 @@ impl StatsigEventInternal {
         let event = StatsigEvent {
             event_name: "statsig::non_exposed_checks".to_string(),
             value: None,
-            metadata: Some(HashMap::from([("checks".into(), checks_json)])),
+            metadata: Some(string_metadata_to_value_metadata(HashMap::from([(
+                "checks".into(),
+                checks_json,
+            )]))),
             statsig_metadata: None,
         };
 
@@ -113,7 +137,7 @@ impl StatsigEventInternal {
             event_data: StatsigEvent {
                 event_name: STATSIG_LOG_LINE_EVENT_NAME.to_string(),
                 value: value.map(|v| json!(v)),
-                metadata: Some(populated_metadata),
+                metadata: Some(string_metadata_to_value_metadata(populated_metadata)),
                 statsig_metadata: None,
             },
             user,
@@ -183,7 +207,10 @@ mod statsig_event_internal_tests {
             StatsigEvent {
                 event_name: "foo".into(),
                 value: Some(json!("bar")),
-                metadata: Some(HashMap::from([("key".into(), "value".into())])),
+                metadata: Some(HashMap::from([(
+                    "key".into(),
+                    Value::String("value".into()),
+                )])),
                 statsig_metadata: Some(sampling_statsig_metadata),
             },
             None,
@@ -197,7 +224,10 @@ mod statsig_event_internal_tests {
 
         assert_eq!(data.event_name, "foo");
         assert_eq!(data.value.unwrap().as_str(), Some("bar"));
-        assert_eq!(data.metadata.unwrap().get("key").unwrap(), "value");
+        assert_eq!(
+            data.metadata.unwrap().get("key").unwrap().as_str(),
+            Some("value")
+        );
     }
 
     #[test]

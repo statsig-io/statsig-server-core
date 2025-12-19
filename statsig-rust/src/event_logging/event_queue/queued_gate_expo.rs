@@ -15,6 +15,7 @@ use crate::{
 };
 
 use super::queued_event::{EnqueueOperation, QueuedEvent, QueuedExposure};
+use crate::event_logging::statsig_event::string_metadata_to_value_metadata;
 
 pub struct EnqueueGateExpoOp<'a> {
     pub user: &'a StatsigUserInternal<'a, 'a>,
@@ -118,7 +119,7 @@ impl QueuedGateExposureEvent {
         let event = StatsigEvent {
             event_name: GATE_EXPOSURE_EVENT_NAME.into(),
             value: None,
-            metadata: Some(metadata),
+            metadata: Some(string_metadata_to_value_metadata(metadata)),
             statsig_metadata: Some(statsig_metadata),
         };
 

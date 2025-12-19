@@ -585,6 +585,44 @@ impl Statsig {
         });
     }
 
+    pub fn log_event_with_typed_metadata(
+        &self,
+        user: &StatsigUser,
+        event_name: &str,
+        value: Option<String>,
+        metadata: Option<HashMap<String, Value>>,
+    ) {
+        let user_internal = self.internalize_user(user);
+
+        self.event_logger.enqueue(EnqueuePassthroughOp {
+            event: StatsigEventInternal::new_custom_event_with_typed_metadata(
+                user_internal.to_loggable(),
+                event_name.to_string(),
+                value.map(|v| json!(v)),
+                metadata,
+            ),
+        });
+    }
+
+    pub fn log_event_with_number_and_typed_metadata(
+        &self,
+        user: &StatsigUser,
+        event_name: &str,
+        value: Option<f64>,
+        metadata: Option<HashMap<String, Value>>,
+    ) {
+        let user_internal = self.internalize_user(user);
+
+        self.event_logger.enqueue(EnqueuePassthroughOp {
+            event: StatsigEventInternal::new_custom_event_with_typed_metadata(
+                user_internal.to_loggable(),
+                event_name.to_string(),
+                value.map(|v| json!(v)),
+                metadata,
+            ),
+        });
+    }
+
     pub fn forward_log_line_event(
         &self,
         user: &StatsigUser,
