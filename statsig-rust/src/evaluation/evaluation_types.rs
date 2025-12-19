@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use super::dynamic_returnable::DynamicReturnable;
 use crate::{
-    evaluation::secondary_exposure_key::SecondaryExposureKey, interned_string::InternedString,
+    evaluation::secondary_exposure_key::SecondaryExposureKey,
+    gcir::gcir_formatter::GCIRHashable,
+    hashing::{self, opt_bool_to_hashable},
+    interned_string::InternedString,
     specs_response::explicit_params::ExplicitParameters,
 };
 
@@ -19,6 +22,13 @@ pub struct SecondaryExposure {
     pub gate_value: InternedString,
     #[serde(rename = "ruleID")]
     pub rule_id: InternedString,
+}
+
+impl GCIRHashable for SecondaryExposure {
+    fn create_hash(&self, name: &InternedString) -> u64 {
+        let hash_array = vec![name.hash, self.gate_value.hash, self.rule_id.hash];
+        hashing::hash_one(hash_array)
+    }
 }
 
 impl SecondaryExposure {
@@ -121,6 +131,18 @@ pub struct GateEvaluation {
     pub value: bool,
 }
 
+impl GCIRHashable for GateEvaluation {
+    fn create_hash(&self, name: &InternedString) -> u64 {
+        let hash_array = vec![
+            name.hash,
+            self.value as u64,
+            self.base.rule_id.hash,
+            hash_secondary_exposures(&self.base.secondary_exposures),
+        ];
+        hashing::hash_one(hash_array)
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct DynamicConfigEvaluation {
     #[serde(flatten)]
@@ -133,6 +155,19 @@ pub struct DynamicConfigEvaluation {
     pub is_device_based: bool,
 
     pub passed: bool,
+}
+
+impl GCIRHashable for DynamicConfigEvaluation {
+    fn create_hash(&self, name: &InternedString) -> u64 {
+        let hash_array = vec![
+            name.hash,
+            self.value.get_hash(),
+            self.base.rule_id.hash,
+            hash_secondary_exposures(&self.base.secondary_exposures),
+            self.passed as u64,
+        ];
+        hashing::hash_one(hash_array)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -164,11 +199,44 @@ pub struct ExperimentEvaluation {
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
 }
 
+impl GCIRHashable for ExperimentEvaluation {
+    fn create_hash(&self, name: &InternedString) -> u64 {
+        let mut hash_array = vec![
+            name.hash,
+            self.value.get_hash(),
+            self.base.rule_id.hash,
+            hash_secondary_exposures(&self.base.secondary_exposures),
+            self.is_in_layer as u64,
+        ];
+        let mut explicit_params_hashes = Vec::new();
+        if let Some(explicit_parameters) = &self.explicit_parameters {
+            for value in explicit_parameters.to_vec_interned() {
+                explicit_params_hashes.push(value.hash);
+            }
+        }
+        hash_array.push(hashing::hash_one(explicit_params_hashes));
+        hash_array.push(self.group_name.as_ref().map_or(0, |g| g.hash));
+        hash_array.push(opt_bool_to_hashable(&self.is_experiment_active));
+        hash_array.push(opt_bool_to_hashable(&self.is_user_in_experiment));
+
+        hashing::hash_one(hash_array)
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum AnyConfigEvaluation {
     DynamicConfig(DynamicConfigEvaluation),
     Experiment(ExperimentEvaluation),
+}
+
+impl GCIRHashable for AnyConfigEvaluation {
+    fn create_hash(&self, name: &InternedString) -> u64 {
+        match self {
+            AnyConfigEvaluation::DynamicConfig(eval) => eval.create_hash(name),
+            AnyConfigEvaluation::Experiment(eval) => eval.create_hash(name),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -200,4 +268,51 @@ pub struct LayerEvaluation {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameter_rule_ids: Option<HashMap<InternedString, InternedString>>,
+}
+
+impl GCIRHashable for LayerEvaluation {
+    fn create_hash(&self, name: &InternedString) -> u64 {
+        let mut hash_array = vec![
+            name.hash,
+            self.value.get_hash(),
+            self.base.rule_id.hash,
+            hash_secondary_exposures(&self.base.secondary_exposures),
+            self.group_name.as_ref().map_or(0, |g| g.hash),
+            opt_bool_to_hashable(&self.is_experiment_active),
+            opt_bool_to_hashable(&self.is_user_in_experiment),
+            self.allocated_experiment_name
+                .as_ref()
+                .map_or(0, |n| n.hash),
+        ];
+        let mut explicit_params_hashes = Vec::new();
+        for value in self.explicit_parameters.to_vec_interned() {
+            explicit_params_hashes.push(value.hash);
+        }
+        hash_array.push(hashing::hash_one(explicit_params_hashes));
+        let mut undelegated_secondary_exposure_hashes = Vec::new();
+        if let Some(undelegated_secondary_exposures) = &self.undelegated_secondary_exposures {
+            for exposure in undelegated_secondary_exposures {
+                undelegated_secondary_exposure_hashes.push(exposure.create_hash(&exposure.gate));
+            }
+        }
+        hash_array.push(hashing::hash_one(undelegated_secondary_exposure_hashes));
+        if let Some(parameter_rule_ids) = &self.parameter_rule_ids {
+            let mut param_rule_ids_hash = Vec::new();
+            for (param_name, rule_id) in parameter_rule_ids {
+                param_rule_ids_hash.push(param_name.hash);
+                param_rule_ids_hash.push(rule_id.hash);
+            }
+            hash_array.push(hashing::hash_one(param_rule_ids_hash));
+        }
+
+        hashing::hash_one(hash_array)
+    }
+}
+
+fn hash_secondary_exposures(exposures: &Vec<SecondaryExposure>) -> u64 {
+    let mut secondary_exposure_hashes = Vec::new();
+    for exposure in exposures {
+        secondary_exposure_hashes.push(exposure.create_hash(&exposure.gate));
+    }
+    hashing::hash_one(secondary_exposure_hashes)
 }

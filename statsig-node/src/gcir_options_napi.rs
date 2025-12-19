@@ -37,6 +37,7 @@ pub struct ClientInitResponseOptions {
     pub remove_id_type: Option<bool>,
     pub remove_default_value_gates: Option<bool>,
     pub response_format: Option<GCIRResponseFormat>,
+    pub previous_response_hash: Option<String>,
 }
 
 impl From<ClientInitResponseOptions> for ClientInitResponseOptionsActual {
@@ -58,6 +59,7 @@ impl From<ClientInitResponseOptions> for ClientInitResponseOptionsActual {
             response_format: options.response_format.map(|f| f.into()),
             remove_id_type: options.remove_id_type,
             remove_default_value_gates: options.remove_default_value_gates,
+            previous_response_hash: options.previous_response_hash,
         }
     }
 }
