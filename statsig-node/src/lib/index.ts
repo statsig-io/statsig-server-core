@@ -1,4 +1,5 @@
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import HttpAgent, { HttpsAgent } from 'agentkeepalive';
+import { HttpProxyAgent, HttpsProxyAgent } from 'hpagent';
 import nodeFetch from 'node-fetch';
 
 import {
@@ -34,7 +35,29 @@ ParameterStore.prototype[inspectSym] = function () {
   return this.toJSON();
 };
 
-function createProxyAgent(options?: StatsigOptions) {
+// Create shared HTTP agents with keep-alive and proper timeout settings
+// agentkeepalive provides freeSocketTimeout support for all Node versions
+// and handles connection pooling more robustly than built-in agents
+const httpAgent = new HttpAgent({
+  // Defaults: keepAlive=true, freeSocketTimeout=4000ms, timeout=8000ms
+  // Bump timeout to match SDK's default request timeout
+  timeout: 30000,
+});
+
+const httpsAgent = new HttpsAgent({
+  timeout: 30000,
+});
+
+// Agent options with keepAlive settings to prevent EPIPE errors
+const agentOptions = {
+  keepAlive: true,
+  keepAliveMsecs: 1000,
+  timeout: 30000,
+  freeSocketTimeout: 15000,
+  scheduling: 'fifo' as const,
+};
+
+function createProxyAgents(options?: StatsigOptions) {
   const proxy = options?.proxyConfig;
   if (proxy?.proxyHost && proxy?.proxyProtocol) {
     const protocol = proxy.proxyProtocol;
@@ -44,14 +67,28 @@ function createProxyAgent(options?: StatsigOptions) {
     const proxyUrl = `${protocol}://${auth}${host}${port}`;
 
     if (protocol === 'http' || protocol === 'https') {
-      return new HttpsProxyAgent(proxyUrl);
+      // hpagent supports all standard agent options including keepAlive/freeSocketTimeout
+      return {
+        http: new HttpProxyAgent({ proxy: proxyUrl, ...agentOptions }),
+        https: new HttpsProxyAgent({ proxy: proxyUrl, ...agentOptions }),
+      };
     }
   }
-  return undefined; // node-fetch agent parameter takes in undefined type instead of null
+  return undefined;
+}
+
+function getAgent(
+  url: string,
+  proxyAgents?: { http: HttpProxyAgent; https: HttpsProxyAgent },
+) {
+  if (proxyAgents) {
+    return url.startsWith('https') ? proxyAgents.https : proxyAgents.http;
+  }
+  return url.startsWith('https') ? httpsAgent : httpAgent;
 }
 
 function createFetchFunc(options?: StatsigOptions) {
-  const proxyAgent = createProxyAgent(options);
+  const proxyAgents = createProxyAgents(options);
 
   return async (
     method: string,
@@ -67,7 +104,7 @@ function createFetchFunc(options?: StatsigOptions) {
           'Accept-Encoding': 'gzip, deflate, br',
         },
         body: body ? Buffer.from(body) : undefined,
-        agent: proxyAgent,
+        agent: getAgent(url, proxyAgents),
       });
 
       const data = await res.arrayBuffer();
@@ -213,3 +250,4 @@ function _createErrorInstance(): Statsig {
   dummyInstance.shutdown();
   return dummyInstance;
 }
+
