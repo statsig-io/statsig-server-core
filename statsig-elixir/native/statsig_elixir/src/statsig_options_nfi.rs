@@ -3,6 +3,15 @@ use serde::Serialize;
 use statsig_rust::statsig_options::StatsigOptions as StatsigOptionsActual;
 
 #[derive(NifStruct, Serialize)]
+#[module = "Statsig.Options.ProxyConfig"]
+pub struct ProxyConfig {
+    pub proxy_host: Option<String>,
+    pub proxy_port: Option<u16>,
+    pub proxy_auth: Option<String>,
+    pub proxy_protocol: Option<String>,
+}
+
+#[derive(NifStruct, Serialize)]
 #[module = "Statsig.Options"]
 pub struct StatsigOptions {
     pub environment: Option<String>,
@@ -30,6 +39,8 @@ pub struct StatsigOptions {
 
     pub use_third_party_ua_parser: Option<bool>,
     pub disable_disk_access: Option<bool>,
+
+    pub proxy_config: Option<ProxyConfig>,
 }
 
 impl From<StatsigOptions> for StatsigOptionsActual {
@@ -55,6 +66,14 @@ impl From<StatsigOptions> for StatsigOptionsActual {
             #[allow(deprecated)]
             event_logging_flush_interval_ms: config.event_logging_flush_interval_ms,
             init_timeout_ms: config.init_timeout_ms,
+            proxy_config: config.proxy_config.map(|p| {
+                statsig_rust::networking::proxy_config::ProxyConfig {
+                    proxy_host: p.proxy_host,
+                    proxy_port: p.proxy_port,
+                    proxy_auth: p.proxy_auth,
+                    proxy_protocol: p.proxy_protocol,
+                }
+            }),
             ..StatsigOptionsActual::default()
         }
     }
