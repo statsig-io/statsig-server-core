@@ -1097,6 +1097,33 @@ pub extern "C" fn statsig_override_layer(
 }
 
 #[no_mangle]
+pub extern "C" fn statsig_override_parameter_store(
+    statsig_ref: u64,
+    param_name: *const c_char,
+    value_json: *const c_char,
+    id: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let param_name = unwrap_or_noop!(c_char_to_string(param_name));
+    let value_json = unwrap_or_noop!(c_char_to_string(value_json));
+    let id = c_char_to_string(id);
+
+    let value = match serde_json::from_str::<HashMap<String, Value>>(&value_json) {
+        Ok(map) => map,
+        Err(e) => {
+            log_e!(
+                TAG,
+                "Failed to parse value JSON for override_parameter_store: {}",
+                e
+            );
+            return;
+        }
+    };
+
+    statsig.override_parameter_store(&param_name, value, id.as_deref());
+}
+
+#[no_mangle]
 pub extern "C" fn statsig_remove_gate_override(
     statsig_ref: u64,
     gate_name: *const c_char,
@@ -1146,6 +1173,19 @@ pub extern "C" fn statsig_remove_layer_override(
     let id = c_char_to_string(id);
 
     statsig.remove_layer_override(&layer_name, id.as_deref());
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_remove_parameter_store_override(
+    statsig_ref: u64,
+    parameter_store_name: *const c_char,
+    id: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let parameter_store_name = unwrap_or_noop!(c_char_to_string(parameter_store_name));
+    let id = c_char_to_string(id);
+
+    statsig.remove_parameter_store_override(&parameter_store_name, id.as_deref());
 }
 
 #[no_mangle]

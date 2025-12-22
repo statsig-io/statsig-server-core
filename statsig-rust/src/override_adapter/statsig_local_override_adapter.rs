@@ -1,6 +1,7 @@
 use crate::evaluation::dynamic_returnable::DynamicReturnable;
 use crate::evaluation::evaluator_result::EvaluatorResult;
 use crate::interned_string::InternedString;
+use crate::specs_response::param_store_types::Parameter;
 use crate::specs_response::spec_types::Spec;
 use crate::{log_d, read_lock_or_return, write_lock_or_noop, OverrideAdapter, StatsigUser};
 use parking_lot::RwLock;
@@ -18,6 +19,7 @@ struct OverrideStore {
     pub config: HashMap<String, HashMap<String, DynamicReturnable>>,
     pub experiment: HashMap<String, HashMap<String, ExperimentOverrides>>,
     pub layer: HashMap<String, HashMap<String, DynamicReturnable>>,
+    pub parameter_store: HashMap<String, HashMap<String, HashMap<String, Parameter>>>,
 }
 
 const TAG: &str = stringify!(StatsigLocalOverrideAdapter);
@@ -141,6 +143,35 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
         )
     }
 
+    fn get_parameter_store_override(
+        &self,
+        user: &StatsigUser,
+        parameter_store_name: &str,
+        result: &mut EvaluatorResult,
+    ) -> bool {
+        let store = read_lock_or_return!(TAG, self.store, false);
+
+        let parameter_store_overrides = match store.parameter_store.get(parameter_store_name) {
+            Some(overrides) => overrides,
+            None => return false,
+        };
+
+        find_override_for_user(
+            user,
+            parameter_store_overrides,
+            |value, res| {
+                let mut serialized = HashMap::with_capacity(value.len());
+                for (param_name, parameter) in value.iter() {
+                    if let Ok(serialized_param) = serde_json::to_value(parameter) {
+                        serialized.insert(param_name.clone(), serialized_param);
+                    }
+                }
+                res.json_value = Some(DynamicReturnable::from_map(serialized));
+            },
+            result,
+        )
+    }
+
     fn override_gate(&self, key: &str, value: bool, id: Option<&str>) {
         let mut store = write_lock_or_noop!(TAG, self.store);
         let id_str = id.unwrap_or(NO_ID_OVERRIDE);
@@ -187,6 +218,24 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
             .entry(key.to_string())
             .or_default()
             .insert(id_str.to_string(), DynamicReturnable::from_map(value));
+    }
+
+    fn override_parameter_store(&self, key: &str, value: HashMap<String, Value>, id: Option<&str>) {
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        let id_str = id.unwrap_or(NO_ID_OVERRIDE);
+        let mut parameters = HashMap::with_capacity(value.len());
+
+        for (param_name, param_value) in value {
+            if let Ok(parameter) = serde_json::from_value::<Parameter>(param_value) {
+                parameters.insert(param_name, parameter);
+            }
+        }
+
+        store
+            .parameter_store
+            .entry(key.to_string())
+            .or_default()
+            .insert(id_str.to_string(), parameters);
     }
 
     fn remove_gate_override(&self, key: &str, id: Option<&str>) {
@@ -245,12 +294,27 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
         }
     }
 
+    fn remove_parameter_store_override(&self, key: &str, id: Option<&str>) {
+        let mut store = write_lock_or_noop!(TAG, self.store);
+        match id {
+            None => {
+                store.parameter_store.remove(key);
+            }
+            Some(id_str) => {
+                if let Some(overrides) = store.parameter_store.get_mut(key) {
+                    overrides.remove(&id_str.to_string());
+                }
+            }
+        }
+    }
+
     fn remove_all_overrides(&self) {
         let mut store = write_lock_or_noop!(TAG, self.store);
         store.gate.clear();
         store.config.clear();
         store.experiment.clear();
         store.layer.clear();
+        store.parameter_store.clear();
     }
 }
 

@@ -1218,6 +1218,41 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideExperiment(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideParameterStore(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: jlong,
+    parameter_store_name: JString,
+    id: JString,
+    value: JObject,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &(statsig_ref as u64));
+
+    let parameter_store_name_rust: String = match env.get_string(&parameter_store_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    let id_rust: Option<String> = match env.get_string(&id) {
+        Ok(s) => Some(s.into()),
+        Err(_) => None,
+    };
+
+    match jni_to_rust_json_map(&mut env, value) {
+        Ok(value_rust) => {
+            statsig.override_parameter_store(
+                &parameter_store_name_rust,
+                value_rust,
+                id_rust.as_deref(),
+            );
+        }
+        Err(e) => {
+            log_e!(TAG, "Override Layer, Failed to convert JSON map: {:?}", e);
+        }
+    }
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOverrideExperimentByGroupName(
     mut env: JNIEnv,
     _class: JClass,
@@ -1398,6 +1433,29 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRemoveLayerOverride(
     };
 
     statsig.remove_layer_override(&layer_name_rust, id_rust.as_deref());
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRemoveParameterStoreOverride(
+    mut env: JNIEnv,
+    _class: JClass,
+    statsig_ref: jlong,
+    parameter_store_name: JString,
+    id: JString,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &(statsig_ref as u64));
+
+    let parameter_store_name_rust: String = match env.get_string(&parameter_store_name) {
+        Ok(s) => s.into(),
+        Err(_) => return,
+    };
+
+    let id_rust: Option<String> = match env.get_string(&id) {
+        Ok(s) => Some(s.into()),
+        Err(_) => None,
+    };
+
+    statsig.remove_parameter_store_override(&parameter_store_name_rust, id_rust.as_deref());
 }
 
 #[no_mangle]

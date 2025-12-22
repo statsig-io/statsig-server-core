@@ -45,6 +45,7 @@ use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker};
 use crate::sdk_event_emitter::SdkEventEmitter;
 use crate::spec_store::{SpecStore, SpecStoreData};
 use crate::specs_adapter::{StatsigCustomizedSpecsAdapter, StatsigHttpSpecsAdapter};
+use crate::specs_response::param_store_types::Parameter;
 use crate::specs_response::spec_types::Rule;
 use crate::specs_response::specs_hash_map::SpecPointer;
 use crate::statsig_err::StatsigErr;
@@ -795,8 +796,11 @@ impl Statsig {
         fallback: Option<T>,
         options: Option<ParameterStoreEvaluationOptions>,
     ) -> Option<T> {
-        let store = self
-            .get_parameter_store_with_options(parameter_store_name, options.unwrap_or_default());
+        let store = self.get_parameter_store_with_user_and_options(
+            Some(user),
+            parameter_store_name,
+            options.unwrap_or_default(),
+        );
         match fallback {
             Some(fallback) => Some(store.get(user, parameter_name, fallback)),
             None => store.get_opt(user, parameter_name),
@@ -812,6 +816,15 @@ impl Statsig {
 
     pub fn get_parameter_store_with_options(
         &self,
+        parameter_store_name: &str,
+        options: ParameterStoreEvaluationOptions,
+    ) -> ParameterStore<'_> {
+        self.get_parameter_store_with_user_and_options(None, parameter_store_name, options)
+    }
+
+    fn get_parameter_store_with_user_and_options(
+        &self,
+        user: Option<&StatsigUser>,
         parameter_store_name: &str,
         options: ParameterStoreEvaluationOptions,
     ) -> ParameterStore<'_> {
@@ -836,6 +849,27 @@ impl Statsig {
                 _statsig_ref: self,
             };
         });
+
+        if let Some(user) = user {
+            if let Some((override_result, parameters)) =
+                self.get_parameter_store_override(user, parameter_store_name)
+            {
+                let details = EvaluationDetails::recognized_but_overridden(
+                    data.values.time,
+                    data.time_received_at,
+                    override_result.override_reason.unwrap_or("Override"),
+                    override_result.version,
+                );
+
+                return ParameterStore {
+                    name: parameter_store_name.to_string(),
+                    parameters,
+                    details,
+                    options,
+                    _statsig_ref: self,
+                };
+            }
+        }
 
         let stores = &data.values.param_stores;
         let store = match stores {
@@ -879,6 +913,32 @@ impl Statsig {
                 _statsig_ref: self,
             },
         }
+    }
+
+    pub(crate) fn get_parameter_store_override(
+        &self,
+        user: &StatsigUser,
+        parameter_store_name: &str,
+    ) -> Option<(EvaluatorResult, HashMap<String, Parameter>)> {
+        let adapter = self.override_adapter.as_ref()?;
+
+        let mut result = EvaluatorResult::default();
+        if !adapter.get_parameter_store_override(user, parameter_store_name, &mut result) {
+            return None;
+        }
+
+        let mut parameters = HashMap::new();
+        if let Some(json_value) = &result.json_value {
+            if let Some(map) = json_value.get_json() {
+                for (param_name, param_value) in map {
+                    if let Ok(parameter) = serde_json::from_value::<Parameter>(param_value) {
+                        parameters.insert(param_name, parameter);
+                    }
+                }
+            }
+        }
+
+        Some((result, parameters))
     }
 }
 
@@ -981,6 +1041,17 @@ impl Statsig {
         }
     }
 
+    pub fn override_parameter_store(
+        &self,
+        param_name: &str,
+        value: HashMap<String, serde_json::Value>,
+        id: Option<&str>,
+    ) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.override_parameter_store(param_name, value, id);
+        }
+    }
+
     pub fn override_experiment(
         &self,
         experiment_name: &str,
@@ -1024,6 +1095,12 @@ impl Statsig {
     pub fn remove_layer_override(&self, layer_name: &str, id: Option<&str>) {
         if let Some(adapter) = &self.override_adapter {
             adapter.remove_layer_override(layer_name, id);
+        }
+    }
+
+    pub fn remove_parameter_store_override(&self, parameter_store_name: &str, id: Option<&str>) {
+        if let Some(adapter) = &self.override_adapter {
+            adapter.remove_parameter_store_override(parameter_store_name, id);
         }
     }
 

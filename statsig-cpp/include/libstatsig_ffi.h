@@ -257,6 +257,11 @@ void statsig_override_layer(uint64_t statsig_ref,
                             const char *value_json,
                             const char *id);
 
+void statsig_override_parameter_store(uint64_t statsig_ref,
+                                      const char *param_name,
+                                      const char *value_json,
+                                      const char *id);
+
 void statsig_remove_gate_override(uint64_t statsig_ref, const char *gate_name, const char *id);
 
 void statsig_remove_dynamic_config_override(uint64_t statsig_ref,
@@ -268,6 +273,10 @@ void statsig_remove_experiment_override(uint64_t statsig_ref,
                                         const char *id);
 
 void statsig_remove_layer_override(uint64_t statsig_ref, const char *layer_name, const char *id);
+
+void statsig_remove_parameter_store_override(uint64_t statsig_ref,
+                                             const char *parameter_store_name,
+                                             const char *id);
 
 void statsig_remove_all_overrides(uint64_t statsig_ref);
 

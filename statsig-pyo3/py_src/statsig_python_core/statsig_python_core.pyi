@@ -159,6 +159,9 @@ class StatsigBasePy:
     def override_layer(self, layer_name:builtins.str, value:dict, id:typing.Optional[builtins.str]=None) -> None:
         ...
 
+    def override_parameter_store(self, parameter_store_name:builtins.str, value:dict, id:typing.Optional[builtins.str]=None) -> None:
+        ...
+
     def override_experiment_by_group_name(self, experiment_name:builtins.str, group_name:builtins.str, id:typing.Optional[builtins.str]=None) -> None:
         ...
 
@@ -172,6 +175,9 @@ class StatsigBasePy:
         ...
 
     def remove_layer_override(self, layer_name:builtins.str, id:typing.Optional[builtins.str]=None) -> None:
+        ...
+
+    def remove_parameter_store_override(self, parameter_store_name:builtins.str, id:typing.Optional[builtins.str]=None) -> None:
         ...
 
     def remove_all_overrides(self) -> None:

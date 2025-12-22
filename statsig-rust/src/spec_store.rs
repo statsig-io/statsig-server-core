@@ -126,6 +126,7 @@ impl SpecStore {
             SpecType::Gate => &data.values.feature_gates,
             SpecType::DynamicConfig | SpecType::Experiment => &data.values.dynamic_configs,
             SpecType::Layer => &data.values.layer_configs,
+            SpecType::ParameterStore => &data.values.parameter_stores,
         };
 
         let entity_name = InternedString::from_str_ref(entity_name);

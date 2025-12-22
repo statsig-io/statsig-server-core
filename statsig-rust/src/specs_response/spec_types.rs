@@ -133,6 +133,8 @@ pub struct SpecsResponseFull {
     pub feature_gates: SpecsHashMap,
     pub dynamic_configs: SpecsHashMap,
     pub layer_configs: SpecsHashMap,
+    #[serde(default, skip_serializing_if = "SpecsHashMap::is_empty")]
+    pub parameter_stores: SpecsHashMap,
     pub condition_map: AHashMap<InternedString, Condition>,
     pub experiment_to_layer: HashMap<String, String>,
     pub has_updates: bool,
