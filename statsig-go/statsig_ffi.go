@@ -34,22 +34,22 @@ type StatsigFFI struct {
 	statsig_get_client_init_response_with_inout_len func(uint64, uint64, string, *uint64) *byte
 
 	// Gates
-	statsig_check_gate                      func(uint64, uint64, string, string) bool
-	statsig_check_gate_performance          func(uint64, uint64, string, uint, string, uint) bool
-	statsig_get_feature_gate_with_inout_len func(uint64, uint64, string, string, *uint64) *byte
-	statsig_manually_log_gate_exposure      func(uint64, uint64, string)
+	statsig_check_gate                 func(uint64, uint64, string, string) bool
+	statsig_check_gate_performance     func(uint64, uint64, string, uint, string, uint) bool
+	statsig_get_raw_feature_gate       func(uint64, uint64, string, string, *uint64) *byte
+	statsig_manually_log_gate_exposure func(uint64, uint64, string)
 
 	// Dynamic Configs
-	statsig_get_dynamic_config_with_inout_len    func(uint64, uint64, string, string, *uint64) *byte
+	statsig_get_raw_dynamic_config               func(uint64, uint64, string, string, *uint64) *byte
 	statsig_manually_log_dynamic_config_exposure func(uint64, uint64, string)
 
 	// Experiments
-	statsig_get_experiment_with_inout_len    func(uint64, uint64, string, string, *uint64) *byte
+	statsig_get_raw_experiment               func(uint64, uint64, string, string, *uint64) *byte
 	statsig_manually_log_experiment_exposure func(uint64, uint64, string)
 
 	// Layers
-	statsig_get_layer_with_inout_len              func(uint64, uint64, string, string, *uint64) *byte
-	statsig_log_layer_param_exposure              func(uint64, string, string)
+	statsig_get_raw_layer                         func(uint64, uint64, string, string, *uint64) *byte
+	log_layer_param_exposure_from_raw             func(uint64, string, string)
 	statsig_manually_log_layer_parameter_exposure func(uint64, uint64, string, string)
 
 	// Overrides
@@ -149,20 +149,20 @@ func GetFFI() *StatsigFFI {
 		// Gates
 		purego.RegisterLibFunc(&instance.statsig_check_gate, lib, "statsig_check_gate")
 		purego.RegisterLibFunc(&instance.statsig_check_gate_performance, lib, "statsig_check_gate_performance")
-		purego.RegisterLibFunc(&instance.statsig_get_feature_gate_with_inout_len, lib, "statsig_get_feature_gate_with_inout_len")
 		purego.RegisterLibFunc(&instance.statsig_manually_log_gate_exposure, lib, "statsig_manually_log_gate_exposure")
+		purego.RegisterLibFunc(&instance.statsig_get_raw_feature_gate, lib, "statsig_get_raw_feature_gate")
 
 		// Dynamic Configs
-		purego.RegisterLibFunc(&instance.statsig_get_dynamic_config_with_inout_len, lib, "statsig_get_dynamic_config_with_inout_len")
 		purego.RegisterLibFunc(&instance.statsig_manually_log_dynamic_config_exposure, lib, "statsig_manually_log_dynamic_config_exposure")
+		purego.RegisterLibFunc(&instance.statsig_get_raw_dynamic_config, lib, "statsig_get_raw_dynamic_config")
 
 		// Experiments
-		purego.RegisterLibFunc(&instance.statsig_get_experiment_with_inout_len, lib, "statsig_get_experiment_with_inout_len")
+		purego.RegisterLibFunc(&instance.statsig_get_raw_experiment, lib, "statsig_get_raw_experiment")
 		purego.RegisterLibFunc(&instance.statsig_manually_log_experiment_exposure, lib, "statsig_manually_log_experiment_exposure")
 
 		// Layers
-		purego.RegisterLibFunc(&instance.statsig_get_layer_with_inout_len, lib, "statsig_get_layer_with_inout_len")
-		purego.RegisterLibFunc(&instance.statsig_log_layer_param_exposure, lib, "statsig_log_layer_param_exposure")
+		purego.RegisterLibFunc(&instance.statsig_get_raw_layer, lib, "statsig_get_raw_layer")
+		purego.RegisterLibFunc(&instance.log_layer_param_exposure_from_raw, lib, "log_layer_param_exposure_from_raw")
 		purego.RegisterLibFunc(&instance.statsig_manually_log_layer_parameter_exposure, lib, "statsig_manually_log_layer_parameter_exposure")
 
 		// Overrides

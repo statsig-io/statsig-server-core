@@ -181,6 +181,12 @@ char *statsig_get_feature_gate(uint64_t statsig_ref,
                                const char *gate_name,
                                const char *options_json);
 
+char *statsig_get_raw_feature_gate(uint64_t statsig_ref,
+                                   uint64_t user_ref,
+                                   const char *gate_name,
+                                   const char *options_json,
+                                   uint64_t *inout_result_len);
+
 void statsig_manually_log_gate_exposure(uint64_t statsig_ref,
                                         uint64_t user_ref,
                                         const char *gate_name);
@@ -200,6 +206,12 @@ void statsig_manually_log_dynamic_config_exposure(uint64_t statsig_ref,
                                                   uint64_t user_ref,
                                                   const char *config_name);
 
+char *statsig_get_raw_dynamic_config(uint64_t statsig_ref,
+                                     uint64_t user_ref,
+                                     const char *config_name,
+                                     const char *options_json,
+                                     uint64_t *inout_result_len);
+
 char *statsig_get_experiment_with_inout_len(uint64_t statsig_ref,
                                             uint64_t user_ref,
                                             const char *experiment_name,
@@ -214,6 +226,12 @@ char *statsig_get_experiment(uint64_t statsig_ref,
 void statsig_manually_log_experiment_exposure(uint64_t statsig_ref,
                                               uint64_t user_ref,
                                               const char *experiment_name);
+
+char *statsig_get_raw_experiment(uint64_t statsig_ref,
+                                 uint64_t user_ref,
+                                 const char *experiment_name,
+                                 const char *options_json,
+                                 uint64_t *inout_result_len);
 
 char *statsig_get_layer_with_inout_len(uint64_t statsig_ref,
                                        uint64_t user_ref,
@@ -234,6 +252,16 @@ void statsig_manually_log_layer_parameter_exposure(uint64_t statsig_ref,
                                                    uint64_t user_ref,
                                                    const char *layer_name,
                                                    const char *param_name);
+
+char *statsig_get_raw_layer(uint64_t statsig_ref,
+                            uint64_t user_ref,
+                            const char *layer_name,
+                            const char *options_json,
+                            uint64_t *inout_result_len);
+
+void log_layer_param_exposure_from_raw(uint64_t statsig_ref,
+                                       const char *layer_json,
+                                       const char *param_name);
 
 void statsig_override_gate(uint64_t statsig_ref, const char *gate_name, bool value, const char *id);
 

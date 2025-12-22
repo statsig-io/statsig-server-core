@@ -64,6 +64,21 @@ func TestLayerEvaluation(t *testing.T) {
 		t.Errorf("Layer a_string is not correct, got '%s'", result)
 	}
 
+	anotherUser, err := statsig_go.NewUserBuilderWithUserID("a_user").Build()
+	if err != nil {
+		t.Errorf("error creating StatsigUser: %v", err)
+	}
+
+	anotherLayer := statsig.GetLayer(anotherUser, "layer_with_many_params")
+	result = anotherLayer.GetString("a_string", "err")
+	if result != "test_2" {
+		t.Errorf("Layer a_string is not correct, got '%s'", result)
+	}
+
+	if anotherLayer.AllocatedExperimentName == nil || *anotherLayer.AllocatedExperimentName != "experiment_with_many_params" {
+		t.Errorf("Layer allocated experiment name is not correct, got '%s'", *anotherLayer.AllocatedExperimentName)
+	}
+
 	statsig.Shutdown()
 }
 
