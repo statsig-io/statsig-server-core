@@ -60,6 +60,9 @@ defmodule Statsig.NativeBindings do
   def override_dynamic_config(_statsig, _config_name, _value, _id),
     do: :erlang.nif_error(:nif_not_loaded)
 
+  def override_parameter_store(_statsig, _parameter_store_name, _value, _id),
+    do: :erlang.nif_error(:nif_not_loaded)
+
   def override_layer(_statsig, _layer_name, _value, _id), do: :erlang.nif_error(:nif_not_loaded)
 
   def override_experiment(_statsig, _experiment_name, _value, _id),
@@ -74,5 +77,9 @@ defmodule Statsig.NativeBindings do
     do: :erlang.nif_error(:nif_not_loaded)
 
   def remove_layer_override(_statsig, _layer_name, _id), do: :erlang.nif_error(:nif_not_loaded)
+
+  def remove_parameter_store_override(_statsig, _parameter_store_name, _id),
+    do: :erlang.nif_error(:nif_not_loaded)
+
   def remove_all_overrides(_statsig), do: :erlang.nif_error(:nif_not_loaded)
 end

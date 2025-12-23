@@ -216,7 +216,12 @@ pub struct ParameterStore<'a> {
 
 impl ParameterStore<'_> {
     pub fn get_opt<T: DeserializeOwned>(&self, user: &StatsigUser, param_name: &str) -> Option<T> {
-        let param = self.parameters.get(param_name)?;
+        let param = self
+            ._statsig_ref
+            .get_parameter_store_override(user, &self.name)
+            .and_then(|(_, overrides)| overrides.get(param_name).cloned())
+            .or_else(|| self.parameters.get(param_name).cloned())?;
+
         match param {
             Parameter::StaticValue(static_value) => from_value(static_value.value.clone()).ok(),
             Parameter::Gate(gate) => {

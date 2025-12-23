@@ -753,6 +753,26 @@ pub extern "C" fn statsig_get_feature_gate(
 }
 
 #[no_mangle]
+pub extern "C" fn statsig_get_raw_feature_gate(
+    statsig_ref: u64,
+    user_ref: u64,
+    gate_name: *const c_char,
+    options_json: *const c_char,
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
+    let gate_name = unwrap_or_return!(c_char_to_string(gate_name), null_mut());
+
+    let options = c_char_to_string_non_empty(options_json)
+        .and_then(|opts| serde_json::from_str::<FeatureGateEvaluationOptions>(&opts).ok())
+        .unwrap_or_default();
+
+    let raw = statsig.get_raw_feature_gate_with_options(&user, gate_name.as_str(), options);
+    string_to_c_char_with_inout_len(raw, inout_result_len)
+}
+
+#[no_mangle]
 pub extern "C" fn statsig_manually_log_gate_exposure(
     statsig_ref: u64,
     user_ref: u64,
@@ -833,6 +853,26 @@ pub extern "C" fn statsig_manually_log_dynamic_config_exposure(
     statsig.manually_log_dynamic_config_exposure(&user, &config_name);
 }
 
+#[no_mangle]
+pub extern "C" fn statsig_get_raw_dynamic_config(
+    statsig_ref: u64,
+    user_ref: u64,
+    config_name: *const c_char,
+    options_json: *const c_char,
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
+    let config_name = unwrap_or_return!(c_char_to_string(config_name), null_mut());
+
+    let options = c_char_to_string_non_empty(options_json)
+        .and_then(|opts| serde_json::from_str::<DynamicConfigEvaluationOptions>(&opts).ok())
+        .unwrap_or_default();
+
+    let raw = statsig.get_raw_dynamic_config_with_options(&user, config_name.as_str(), options);
+    string_to_c_char_with_inout_len(raw, inout_result_len)
+}
+
 // ------------------------
 // Experiment Functions
 // ------------------------
@@ -899,6 +939,26 @@ pub extern "C" fn statsig_manually_log_experiment_exposure(
     let experiment_name = unwrap_or_noop!(c_char_to_string(experiment_name));
 
     statsig.manually_log_experiment_exposure(&user, &experiment_name);
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_raw_experiment(
+    statsig_ref: u64,
+    user_ref: u64,
+    experiment_name: *const c_char,
+    options_json: *const c_char,
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
+    let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null_mut());
+
+    let options = c_char_to_string_non_empty(options_json)
+        .and_then(|opts| serde_json::from_str::<ExperimentEvaluationOptions>(&opts).ok())
+        .unwrap_or_default();
+
+    let raw = statsig.get_raw_experiment_with_options(&user, experiment_name.as_str(), options);
+    string_to_c_char_with_inout_len(raw, inout_result_len)
 }
 
 // ------------------------
@@ -984,6 +1044,38 @@ pub extern "C" fn statsig_manually_log_layer_parameter_exposure(
     let layer_name = unwrap_or_noop!(c_char_to_string(layer_name));
 
     statsig.manually_log_layer_parameter_exposure(&user, &layer_name, param_name);
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_raw_layer(
+    statsig_ref: u64,
+    user_ref: u64,
+    layer_name: *const c_char,
+    options_json: *const c_char,
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, null_mut());
+    let layer_name = unwrap_or_return!(c_char_to_string(layer_name), null_mut());
+
+    let options = c_char_to_string_non_empty(options_json)
+        .and_then(|opts| serde_json::from_str::<LayerEvaluationOptions>(&opts).ok())
+        .unwrap_or_default();
+
+    let raw = statsig.get_raw_layer_with_options(&user, layer_name.as_str(), options);
+    string_to_c_char_with_inout_len(raw, inout_result_len)
+}
+
+#[no_mangle]
+pub extern "C" fn log_layer_param_exposure_from_raw(
+    statsig_ref: u64,
+    layer_json: *const c_char,
+    param_name: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let layer_json = unwrap_or_noop!(c_char_to_string(layer_json));
+    let param_name = unwrap_or_noop!(c_char_to_string(param_name));
+    statsig.log_layer_param_exposure_from_raw(layer_json, param_name);
 }
 
 // ------------------------
@@ -1097,6 +1189,33 @@ pub extern "C" fn statsig_override_layer(
 }
 
 #[no_mangle]
+pub extern "C" fn statsig_override_parameter_store(
+    statsig_ref: u64,
+    param_name: *const c_char,
+    value_json: *const c_char,
+    id: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let param_name = unwrap_or_noop!(c_char_to_string(param_name));
+    let value_json = unwrap_or_noop!(c_char_to_string(value_json));
+    let id = c_char_to_string(id);
+
+    let value = match serde_json::from_str::<HashMap<String, Value>>(&value_json) {
+        Ok(map) => map,
+        Err(e) => {
+            log_e!(
+                TAG,
+                "Failed to parse value JSON for override_parameter_store: {}",
+                e
+            );
+            return;
+        }
+    };
+
+    statsig.override_parameter_store(&param_name, value, id.as_deref());
+}
+
+#[no_mangle]
 pub extern "C" fn statsig_remove_gate_override(
     statsig_ref: u64,
     gate_name: *const c_char,
@@ -1146,6 +1265,19 @@ pub extern "C" fn statsig_remove_layer_override(
     let id = c_char_to_string(id);
 
     statsig.remove_layer_override(&layer_name, id.as_deref());
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_remove_parameter_store_override(
+    statsig_ref: u64,
+    parameter_store_name: *const c_char,
+    id: *const c_char,
+) {
+    let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
+    let parameter_store_name = unwrap_or_noop!(c_char_to_string(parameter_store_name));
+    let id = c_char_to_string(id);
+
+    statsig.remove_parameter_store_override(&parameter_store_name, id.as_deref());
 }
 
 #[no_mangle]

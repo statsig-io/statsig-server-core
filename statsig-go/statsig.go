@@ -105,7 +105,7 @@ func (s *Statsig) GetFeatureGateWithOptions(user *StatsigUser, gateName string, 
 
 	gateJson := UseRustString(func() (*byte, uint64) {
 		len := uint64(0)
-		ptr := GetFFI().statsig_get_feature_gate_with_inout_len(s.ref.Load(), user.ref, gateName, optionsJson, &len)
+		ptr := GetFFI().statsig_get_raw_feature_gate(s.ref.Load(), user.ref, gateName, optionsJson, &len)
 		return ptr, len
 	})
 
@@ -133,12 +133,16 @@ func (s *Statsig) GetDynamicConfigWithOptions(user *StatsigUser, configName stri
 
 	configJson := UseRustString(func() (*byte, uint64) {
 		len := uint64(0)
-		ptr := GetFFI().statsig_get_dynamic_config_with_inout_len(s.ref.Load(), user.ref, configName, optionsJson, &len)
+		ptr := GetFFI().statsig_get_raw_dynamic_config(s.ref.Load(), user.ref, configName, optionsJson, &len)
 		return ptr, len
 	})
 
 	if err := json.Unmarshal([]byte(*configJson), &config); err != nil {
 		fmt.Printf("Failed to unmarshal DynamicConfig: %v", err)
+	}
+
+	if config.Value == nil {
+		config.Value = make(map[string]any)
 	}
 
 	return config
@@ -161,12 +165,16 @@ func (s *Statsig) GetExperimentWithOptions(user *StatsigUser, experimentName str
 
 	experimentJson := UseRustString(func() (*byte, uint64) {
 		len := uint64(0)
-		ptr := GetFFI().statsig_get_experiment_with_inout_len(s.ref.Load(), user.ref, experimentName, optionsJson, &len)
+		ptr := GetFFI().statsig_get_raw_experiment(s.ref.Load(), user.ref, experimentName, optionsJson, &len)
 		return ptr, len
 	})
 
 	if err := json.Unmarshal([]byte(*experimentJson), &experiment); err != nil {
 		fmt.Printf("Failed to unmarshal Experiment: %v", err)
+	}
+
+	if experiment.Value == nil {
+		experiment.Value = make(map[string]any)
 	}
 
 	return experiment
@@ -191,12 +199,16 @@ func (s *Statsig) GetLayerWithOptions(user *StatsigUser, layerName string, optio
 
 	layerJson := UseRustString(func() (*byte, uint64) {
 		len := uint64(0)
-		ptr := GetFFI().statsig_get_layer_with_inout_len(s.ref.Load(), user.ref, layerName, optionsJson, &len)
+		ptr := GetFFI().statsig_get_raw_layer(s.ref.Load(), user.ref, layerName, optionsJson, &len)
 		return ptr, len
 	})
 
 	if err := json.Unmarshal([]byte(*layerJson), &layer); err != nil {
 		fmt.Printf("Failed to unmarshal Layer: %v", err)
+	}
+
+	if layer.value == nil {
+		layer.value = make(map[string]any)
 	}
 
 	return layer

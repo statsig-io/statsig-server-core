@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     evaluation::evaluator_context::EvaluatorContext,
+    gcir::gcir_formatter::GCIRHashable,
+    hashing,
     specs_response::param_store_types::{
         DynamicConfigParameter, ExperimentParameter, GateParameter, LayerParameter, Parameter,
         ParameterStore,
@@ -19,8 +21,15 @@ pub(crate) fn get_serializeable_param_stores(
 ) -> SerializeableParamStore {
     let stores = match &context.specs_data.param_stores {
         Some(stores) => stores,
-        None => return HashMap::new(),
+        None => {
+            if options.previous_response_hash.is_some() {
+                context.gcir_hashes.push(0);
+            }
+            return HashMap::new();
+        }
     };
+
+    let mut hash_array: Vec<u64> = Vec::new();
 
     let mut param_stores = HashMap::new();
 
@@ -39,10 +48,17 @@ pub(crate) fn get_serializeable_param_stores(
             }
         }
 
+        if options.previous_response_hash.is_some() {
+            hash_array.push(store.create_hash(name));
+        }
+
         let hash_algorithm = options.get_hash_algorithm();
         let hashed_name = context.hashing.hash(name, hash_algorithm);
         let parameters = get_parameters_from_store(store, hash_algorithm, context);
         param_stores.insert(hashed_name, parameters);
+    }
+    if options.previous_response_hash.is_some() {
+        context.gcir_hashes.push(hashing::hash_one(hash_array));
     }
 
     param_stores

@@ -41,6 +41,7 @@ pub enum SpecType {
     DynamicConfig,
     Experiment,
     Layer,
+    ParameterStore,
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -62,6 +63,7 @@ impl Evaluator {
             SpecType::DynamicConfig => ctx.specs_data.dynamic_configs.get(&spec_name_intern),
             SpecType::Experiment => ctx.specs_data.dynamic_configs.get(&spec_name_intern),
             SpecType::Layer => ctx.specs_data.layer_configs.get(&spec_name_intern),
+            SpecType::ParameterStore => ctx.specs_data.parameter_stores.get(&spec_name_intern),
         }
         .map(|sp| sp.inner.as_ref());
 
@@ -367,6 +369,10 @@ fn try_apply_override(
 
         SpecType::Layer => {
             adapter.get_layer_override(ctx.user.user_ref, spec_name, &mut ctx.result)
+        }
+
+        SpecType::ParameterStore => {
+            adapter.get_parameter_store_override(ctx.user.user_ref, spec_name, &mut ctx.result)
         }
     }
 }

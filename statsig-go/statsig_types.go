@@ -17,9 +17,9 @@ type EvaluationDetails struct {
 type FeatureGate struct {
 	Name              string            `json:"name"`
 	Value             bool              `json:"value"`
-	RuleID            string            `json:"rule_id"`
+	RuleID            string            `json:"ruleID"`
 	EvaluationDetails EvaluationDetails `json:"details"`
-	IDType            string            `json:"id_type"`
+	IDType            string            `json:"idType"`
 }
 
 // ------------------------------------------------------------------------------------- [ Dynamic Config ]
@@ -27,9 +27,9 @@ type FeatureGate struct {
 type DynamicConfig struct {
 	Name              string            `json:"name"`
 	Value             map[string]any    `json:"value"`
-	RuleID            string            `json:"rule_id"`
+	RuleID            string            `json:"ruleID"`
 	EvaluationDetails EvaluationDetails `json:"details"`
-	IDType            string            `json:"id_type"`
+	IDType            string            `json:"idType"`
 }
 
 func (d *DynamicConfig) GetString(key string, fallback string) string {
@@ -57,9 +57,9 @@ func (d *DynamicConfig) GetMap(key string, fallback map[string]any) map[string]a
 type Experiment struct {
 	Name              string            `json:"name"`
 	Value             map[string]any    `json:"value"`
-	RuleID            string            `json:"rule_id"`
-	IDType            string            `json:"id_type"`
-	GroupName         *string           `json:"group_name,omitempty"`
+	RuleID            string            `json:"ruleID"`
+	IDType            string            `json:"idType"`
+	GroupName         *string           `json:"groupName,omitempty"`
 	EvaluationDetails EvaluationDetails `json:"details"`
 }
 
@@ -87,10 +87,10 @@ func (e *Experiment) GetMap(key string, fallback map[string]any) map[string]any 
 
 type Layer struct {
 	Name                    string            `json:"name"`
-	RuleID                  string            `json:"rule_id"`
-	IDType                  string            `json:"id_type"`
-	GroupName               *string           `json:"group_name,omitempty"`
-	AllocatedExperimentName *string           `json:"allocated_experiment_name,omitempty"`
+	RuleID                  string            `json:"ruleID"`
+	IDType                  string            `json:"idType"`
+	GroupName               *string           `json:"groupName,omitempty"`
+	AllocatedExperimentName *string           `json:"allocatedExperimentName,omitempty"`
 	EvaluationDetails       EvaluationDetails `json:"details"`
 
 	value      map[string]any
@@ -121,11 +121,11 @@ func (l *Layer) GetMap(key string, fallback map[string]any) map[string]any {
 func (l *Layer) UnmarshalJSON(b []byte) error {
 	tmp := struct {
 		Name                    string            `json:"name"`
-		RuleID                  string            `json:"rule_id"`
-		IDType                  string            `json:"id_type"`
-		Value                   map[string]any    `json:"__value"`
-		GroupName               *string           `json:"group_name,omitempty"`
-		AllocatedExperimentName *string           `json:"allocated_experiment_name,omitempty"`
+		RuleID                  string            `json:"ruleID"`
+		IDType                  string            `json:"idType"`
+		Value                   map[string]any    `json:"value"`
+		GroupName               *string           `json:"groupName,omitempty"`
+		AllocatedExperimentName *string           `json:"allocatedExperimentName,omitempty"`
 		EvaluationDetails       EvaluationDetails `json:"details"`
 	}{}
 
@@ -145,7 +145,7 @@ func (l *Layer) UnmarshalJSON(b []byte) error {
 }
 
 func (l *Layer) logExposure(key string) {
-	GetFFI().statsig_log_layer_param_exposure(l.statsigRef, l.rawJson, key)
+	GetFFI().log_layer_param_exposure_from_raw(l.statsigRef, l.rawJson, key)
 }
 
 // -------------------------------------------------- [ Helper ]

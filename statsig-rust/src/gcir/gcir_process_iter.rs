@@ -5,14 +5,15 @@ use crate::{
         evaluator_context::EvaluatorContext,
         evaluator_result::EvaluatorResult,
     },
-    hashing::HashUtil,
+    gcir::gcir_formatter::GCIRHashable,
+    hashing::{self, HashUtil},
     interned_string::InternedString,
     specs_response::{spec_types::Spec, specs_hash_map::SpecsHashMap},
     ClientInitResponseOptions, HashAlgorithm, SecondaryExposure, StatsigErr,
 };
 use std::collections::{HashMap, HashSet};
 
-pub(crate) fn gcir_process_iter<T>(
+pub(crate) fn gcir_process_iter<T: GCIRHashable>(
     context: &mut EvaluatorContext,
     options: &ClientInitResponseOptions,
     sec_expo_hash_memo: &mut HashMap<InternedString, InternedString>,
@@ -21,10 +22,17 @@ pub(crate) fn gcir_process_iter<T>(
     mut evaluation_factory: impl FnMut(&str, &str, &mut EvaluatorContext) -> T,
 ) -> Result<HashMap<String, T>, StatsigErr> {
     let mut results = HashMap::new();
-
-    for (name, spec_ptr) in specs_map.iter() {
+    let mut hashes = Vec::new();
+    let mut keys = specs_map.keys().cloned().collect::<Vec<_>>();
+    if options.previous_response_hash.is_some() {
+        keys.sort_by(|a, b| a.value.cmp(&b.value));
+    }
+    for name in keys {
+        let spec_ptr = match specs_map.get(&name) {
+            Some(s) => s,
+            None => continue,
+        };
         let spec = spec_ptr.inner.as_ref();
-
         if spec.entity == "segment" || spec.entity == "holdout" {
             continue;
         }
@@ -63,7 +71,14 @@ pub(crate) fn gcir_process_iter<T>(
 
         let eval = evaluation_factory(&spec.entity, &hashed_name, context);
 
+        if options.previous_response_hash.is_some() {
+            hashes.push(eval.create_hash(&name));
+        }
         results.insert(hashed_name, eval);
+    }
+
+    if options.previous_response_hash.is_some() {
+        context.gcir_hashes.push(hashing::hash_one(hashes));
     }
 
     Ok(results)

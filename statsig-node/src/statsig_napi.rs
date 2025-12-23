@@ -438,6 +438,17 @@ impl StatsigNapiInternal {
     }
 
     #[napi]
+    pub fn override_parameter_store(
+        &self,
+        parameter_store_name: String,
+        value: HashMap<String, Value>,
+        id: Option<String>,
+    ) {
+        self.inner
+            .override_parameter_store(&parameter_store_name, value, id.as_deref());
+    }
+
+    #[napi]
     pub fn remove_gate_override(&self, gate_name: String, id: Option<String>) {
         self.inner.remove_gate_override(&gate_name, id.as_deref());
     }
@@ -457,6 +468,16 @@ impl StatsigNapiInternal {
     #[napi]
     pub fn remove_layer_override(&self, layer_name: String, id: Option<String>) {
         self.inner.remove_layer_override(&layer_name, id.as_deref());
+    }
+
+    #[napi]
+    pub fn remove_parameter_store_override(
+        &self,
+        parameter_store_name: String,
+        id: Option<String>,
+    ) {
+        self.inner
+            .remove_parameter_store_override(&parameter_store_name, id.as_deref());
     }
 
     #[napi]

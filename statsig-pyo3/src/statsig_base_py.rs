@@ -435,6 +435,19 @@ impl StatsigBasePy {
         Ok(())
     }
 
+    #[pyo3(signature = (parameter_store_name, value, id=None))]
+    pub fn override_parameter_store(
+        &self,
+        parameter_store_name: &str,
+        value: Bound<PyDict>,
+        id: Option<&str>,
+    ) -> PyResult<()> {
+        let value_inner = py_dict_to_json_value_map(&value);
+        self.inner
+            .override_parameter_store(parameter_store_name, value_inner, id);
+        Ok(())
+    }
+
     #[pyo3(signature = (experiment_name, group_name, id=None))]
     pub fn override_experiment_by_group_name(
         &self,
@@ -476,6 +489,17 @@ impl StatsigBasePy {
     #[pyo3(signature = (layer_name, id=None))]
     pub fn remove_layer_override(&self, layer_name: &str, id: Option<&str>) -> PyResult<()> {
         self.inner.remove_layer_override(layer_name, id);
+        Ok(())
+    }
+
+    #[pyo3(signature = (parameter_store_name, id=None))]
+    pub fn remove_parameter_store_override(
+        &self,
+        parameter_store_name: &str,
+        id: Option<&str>,
+    ) -> PyResult<()> {
+        self.inner
+            .remove_parameter_store_override(parameter_store_name, id);
         Ok(())
     }
 

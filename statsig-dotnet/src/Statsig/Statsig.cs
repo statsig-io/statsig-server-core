@@ -518,6 +518,79 @@ namespace Statsig
             }
         }
 
+        unsafe public void OverrideParameterStore(string paramName, Dictionary<string, object> value, string? id = null)
+        {
+            var paramNameBytes = Encoding.UTF8.GetBytes(paramName);
+            var jsonBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(value));
+            var idBytes = id != null ? Encoding.UTF8.GetBytes(id) : null;
+            fixed (byte* idPtr = idBytes)
+            fixed (byte* paramNamePtr = paramNameBytes)
+            fixed (byte* jsonPtr = jsonBytes)
+            {
+                StatsigFFI.statsig_override_parameter_store(_statsigRef, paramNamePtr, jsonPtr, idPtr);
+            }
+        }
+
+        unsafe public void RemoveGateOverride(string gateName, string? id = null)
+        {
+            var gateNameBytes = Encoding.UTF8.GetBytes(gateName);
+            var idBytes = id != null ? Encoding.UTF8.GetBytes(id) : null;
+            fixed (byte* idPtr = idBytes)
+            fixed (byte* gateNamePtr = gateNameBytes)
+            {
+                StatsigFFI.statsig_remove_gate_override(_statsigRef, gateNamePtr, idPtr);
+            }
+        }
+
+        unsafe public void RemoveDynamicConfigOverride(string configName, string? id = null)
+        {
+            var configNameBytes = Encoding.UTF8.GetBytes(configName);
+            var idBytes = id != null ? Encoding.UTF8.GetBytes(id) : null;
+            fixed (byte* idPtr = idBytes)
+            fixed (byte* configNamePtr = configNameBytes)
+            {
+                StatsigFFI.statsig_remove_dynamic_config_override(_statsigRef, configNamePtr, idPtr);
+            }
+        }
+
+        unsafe public void RemoveExperimentOverride(string experimentName, string? id = null)
+        {
+            var experimentNameBytes = Encoding.UTF8.GetBytes(experimentName);
+            var idBytes = id != null ? Encoding.UTF8.GetBytes(id) : null;
+            fixed (byte* idPtr = idBytes)
+            fixed (byte* experimentNamePtr = experimentNameBytes)
+            {
+                StatsigFFI.statsig_remove_experiment_override(_statsigRef, experimentNamePtr, idPtr);
+            }
+        }
+
+        unsafe public void RemoveLayerOverride(string layerName, string? id = null)
+        {
+            var layerNameBytes = Encoding.UTF8.GetBytes(layerName);
+            var idBytes = id != null ? Encoding.UTF8.GetBytes(id) : null;
+            fixed (byte* idPtr = idBytes)
+            fixed (byte* layerNamePtr = layerNameBytes)
+            {
+                StatsigFFI.statsig_remove_layer_override(_statsigRef, layerNamePtr, idPtr);
+            }
+        }
+
+        unsafe public void RemoveParameterStoreOverride(string storeName, string? id = null)
+        {
+            var storeNameBytes = Encoding.UTF8.GetBytes(storeName);
+            var idBytes = id != null ? Encoding.UTF8.GetBytes(id) : null;
+            fixed (byte* idPtr = idBytes)
+            fixed (byte* storeNamePtr = storeNameBytes)
+            {
+                StatsigFFI.statsig_remove_parameter_store_override(_statsigRef, storeNamePtr, idPtr);
+            }
+        }
+
+        public void RemoveAllOverrides()
+        {
+            StatsigFFI.statsig_remove_all_overrides(_statsigRef);
+        }
+
         public void LogEvent(IStatsigUser user, string eventName, string? value = null, IReadOnlyDictionary<string, string>? metadata = null)
         {
             LogEventInternal(user, eventName, value, metadata);

@@ -389,6 +389,26 @@ pub fn override_layer(
 }
 
 #[rustler::nif]
+pub fn override_parameter_store(
+    statsig: ResourceArc<StatsigResource>,
+    parameter_store_name: &str,
+    value: Term,
+    id: Option<&str>,
+) -> Result<(), Error> {
+    let deserializer = Deserializer::from(value);
+    let map_value: HashMap<String, Value> = HashMap::deserialize(deserializer)
+        .map_err(|e| Error::RaiseTerm(Box::new(format!("Failed to decode map value: {e}"))))?;
+
+    match statsig.statsig_core.read() {
+        Ok(read_guard) => {
+            read_guard.override_parameter_store(parameter_store_name, map_value, id);
+            Ok(())
+        }
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
+    }
+}
+
+#[rustler::nif]
 pub fn remove_gate_override(
     statsig: ResourceArc<StatsigResource>,
     gate_name: &str,
@@ -442,6 +462,21 @@ pub fn remove_layer_override(
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             read_guard.remove_layer_override(layer_name, id);
+            Ok(())
+        }
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
+    }
+}
+
+#[rustler::nif]
+pub fn remove_parameter_store_override(
+    statsig: ResourceArc<StatsigResource>,
+    parameter_store_name: &str,
+    id: Option<&str>,
+) -> Result<(), Error> {
+    match statsig.statsig_core.read() {
+        Ok(read_guard) => {
+            read_guard.remove_parameter_store_override(parameter_store_name, id);
             Ok(())
         }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),

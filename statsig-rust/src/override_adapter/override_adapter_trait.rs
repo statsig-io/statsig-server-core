@@ -34,15 +34,24 @@ pub trait OverrideAdapter: Send + Sync {
         result: &mut EvaluatorResult,
     ) -> bool;
 
+    fn get_parameter_store_override(
+        &self,
+        user: &StatsigUser,
+        parameter_store_name: &str,
+        result: &mut EvaluatorResult,
+    ) -> bool;
+
     fn override_gate(&self, key: &str, value: bool, id: Option<&str>);
     fn override_dynamic_config(&self, key: &str, value: HashMap<String, Value>, id: Option<&str>);
     fn override_experiment(&self, key: &str, value: HashMap<String, Value>, id: Option<&str>);
     fn override_experiment_by_group_name(&self, key: &str, group_name: &str, id: Option<&str>);
     fn override_layer(&self, key: &str, value: HashMap<String, Value>, id: Option<&str>);
+    fn override_parameter_store(&self, key: &str, value: HashMap<String, Value>, id: Option<&str>);
 
     fn remove_gate_override(&self, key: &str, id: Option<&str>);
     fn remove_dynamic_config_override(&self, key: &str, id: Option<&str>);
     fn remove_experiment_override(&self, key: &str, id: Option<&str>);
     fn remove_layer_override(&self, key: &str, id: Option<&str>);
+    fn remove_parameter_store_override(&self, key: &str, id: Option<&str>);
     fn remove_all_overrides(&self);
 }

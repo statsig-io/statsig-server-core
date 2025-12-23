@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
-use crate::interned_string::InternedString;
+use crate::{gcir::gcir_formatter::GCIRHashable, hashing, interned_string::InternedString};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(untagged)]
@@ -21,6 +21,13 @@ pub struct ParameterStore {
     pub target_app_ids: Option<Vec<InternedString>>,
     pub version: Option<u32>,
     pub checksum: Option<InternedString>,
+}
+
+impl GCIRHashable for ParameterStore {
+    fn create_hash(&self, name: &InternedString) -> u64 {
+        let hash_array = vec![name.hash, self.version.unwrap_or(0) as u64];
+        hashing::hash_one(hash_array)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]

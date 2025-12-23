@@ -34,6 +34,7 @@ pub struct EvaluatorContext<'a> {
     pub should_user_third_party_parser: bool,
     pub statsig: Option<&'a Statsig>,
     pub disable_exposure_logging: bool,
+    pub gcir_hashes: Vec<u64>,
 }
 
 impl<'a> EvaluatorContext<'a> {
@@ -64,6 +65,7 @@ impl<'a> EvaluatorContext<'a> {
             should_user_third_party_parser,
             statsig,
             disable_exposure_logging,
+            gcir_hashes: Vec::new(),
         }
     }
 

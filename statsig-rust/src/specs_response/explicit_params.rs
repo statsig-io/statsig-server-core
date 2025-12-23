@@ -31,6 +31,10 @@ impl ExplicitParameters {
             .map(|p| p.unperformant_to_string())
             .collect()
     }
+
+    pub fn to_vec_interned(&self) -> Vec<&InternedString> {
+        self.inner.as_ref().iter().collect()
+    }
 }
 
 impl<'de> Deserialize<'de> for ExplicitParameters {

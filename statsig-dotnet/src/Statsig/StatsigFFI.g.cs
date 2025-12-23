@@ -127,6 +127,9 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_get_feature_gate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_feature_gate(ulong statsig_ref, ulong user_ref, byte* gate_name, byte* options_json);
 
+        [DllImport(__DllName, EntryPoint = "statsig_get_raw_feature_gate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_raw_feature_gate(ulong statsig_ref, ulong user_ref, byte* gate_name, byte* options_json, ulong* inout_result_len);
+
         [DllImport(__DllName, EntryPoint = "statsig_manually_log_gate_exposure", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_manually_log_gate_exposure(ulong statsig_ref, ulong user_ref, byte* gate_name);
 
@@ -139,6 +142,9 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_manually_log_dynamic_config_exposure", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_manually_log_dynamic_config_exposure(ulong statsig_ref, ulong user_ref, byte* config_name);
 
+        [DllImport(__DllName, EntryPoint = "statsig_get_raw_dynamic_config", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_raw_dynamic_config(ulong statsig_ref, ulong user_ref, byte* config_name, byte* options_json, ulong* inout_result_len);
+
         [DllImport(__DllName, EntryPoint = "statsig_get_experiment_with_inout_len", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_experiment_with_inout_len(ulong statsig_ref, ulong user_ref, byte* experiment_name, byte* options_json, ulong* inout_result_len);
 
@@ -147,6 +153,9 @@ namespace Statsig
 
         [DllImport(__DllName, EntryPoint = "statsig_manually_log_experiment_exposure", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_manually_log_experiment_exposure(ulong statsig_ref, ulong user_ref, byte* experiment_name);
+
+        [DllImport(__DllName, EntryPoint = "statsig_get_raw_experiment", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_raw_experiment(ulong statsig_ref, ulong user_ref, byte* experiment_name, byte* options_json, ulong* inout_result_len);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_layer_with_inout_len", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_layer_with_inout_len(ulong statsig_ref, ulong user_ref, byte* layer_name, byte* options_json, ulong* inout_result_len);
@@ -159,6 +168,12 @@ namespace Statsig
 
         [DllImport(__DllName, EntryPoint = "statsig_manually_log_layer_parameter_exposure", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_manually_log_layer_parameter_exposure(ulong statsig_ref, ulong user_ref, byte* layer_name, byte* param_name);
+
+        [DllImport(__DllName, EntryPoint = "statsig_get_raw_layer", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_raw_layer(ulong statsig_ref, ulong user_ref, byte* layer_name, byte* options_json, ulong* inout_result_len);
+
+        [DllImport(__DllName, EntryPoint = "log_layer_param_exposure_from_raw", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void log_layer_param_exposure_from_raw(ulong statsig_ref, byte* layer_json, byte* param_name);
 
         [DllImport(__DllName, EntryPoint = "statsig_override_gate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_override_gate(ulong statsig_ref, byte* gate_name, [MarshalAs(UnmanagedType.U1)] bool value, byte* id);
@@ -175,6 +190,9 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_override_layer", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_override_layer(ulong statsig_ref, byte* layer_name, byte* value_json, byte* id);
 
+        [DllImport(__DllName, EntryPoint = "statsig_override_parameter_store", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void statsig_override_parameter_store(ulong statsig_ref, byte* param_name, byte* value_json, byte* id);
+
         [DllImport(__DllName, EntryPoint = "statsig_remove_gate_override", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_remove_gate_override(ulong statsig_ref, byte* gate_name, byte* id);
 
@@ -186,6 +204,9 @@ namespace Statsig
 
         [DllImport(__DllName, EntryPoint = "statsig_remove_layer_override", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_remove_layer_override(ulong statsig_ref, byte* layer_name, byte* id);
+
+        [DllImport(__DllName, EntryPoint = "statsig_remove_parameter_store_override", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void statsig_remove_parameter_store_override(ulong statsig_ref, byte* parameter_store_name, byte* id);
 
         [DllImport(__DllName, EntryPoint = "statsig_remove_all_overrides", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_remove_all_overrides(ulong statsig_ref);

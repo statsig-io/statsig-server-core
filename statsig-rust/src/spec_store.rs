@@ -36,7 +36,7 @@ const TAG: &str = stringify!(SpecStore);
 pub struct SpecStore {
     pub data: Arc<RwLock<SpecStoreData>>,
 
-    data_adapter_key: String,
+    data_store_key: String,
     data_store: Option<Arc<dyn DataStoreTrait>>,
     statsig_runtime: Arc<StatsigRuntime>,
     ops_stats: Arc<OpsStatsForInstance>,
@@ -49,7 +49,7 @@ impl SpecStore {
     #[must_use]
     pub fn new(
         sdk_key: &str,
-        data_adapter_key: String,
+        data_store_key: String,
         statsig_runtime: Arc<StatsigRuntime>,
         event_emitter: Arc<SdkEventEmitter>,
         options: Option<&StatsigOptions>,
@@ -64,7 +64,7 @@ impl SpecStore {
             .is_some_and(|flags| flags.contains("enable_proto_spec_support"));
 
         SpecStore {
-            data_adapter_key,
+            data_store_key,
             data: Arc::new(RwLock::new(SpecStoreData {
                 values: SpecsResponseFull::default(),
                 next_values: SpecsResponseFull::default(),
@@ -126,6 +126,7 @@ impl SpecStore {
             SpecType::Gate => &data.values.feature_gates,
             SpecType::DynamicConfig | SpecType::Experiment => &data.values.dynamic_configs,
             SpecType::Layer => &data.values.layer_configs,
+            SpecType::ParameterStore => &data.values.parameter_stores,
         };
 
         let entity_name = InternedString::from_str_ref(entity_name);
@@ -429,7 +430,7 @@ impl SpecStore {
             None => return,
         };
 
-        let data_adapter_key = self.data_adapter_key.clone();
+        let data_store_key = self.data_store_key.clone();
 
         let spawn_result = self.statsig_runtime.spawn(
             "spec_store_update_data_store",
@@ -443,7 +444,7 @@ impl SpecStore {
                 };
 
                 let _ = data_store
-                    .set(&data_adapter_key, &data_string, Some(now))
+                    .set(&data_store_key, &data_string, Some(now))
                     .await;
             },
         );

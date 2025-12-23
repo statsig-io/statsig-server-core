@@ -32,6 +32,7 @@ pub struct InitializeResponse {
     pub session_recording_event_triggers: Option<HashMap<String, SessionReplayTrigger>>,
     pub session_recording_exposure_triggers: Option<HashMap<String, SessionReplayTrigger>>,
     pub pa_hash: Option<String>,
+    pub full_checksum: Option<String>,
 }
 
 impl InitializeResponse {
@@ -55,6 +56,31 @@ impl InitializeResponse {
             session_recording_event_triggers: Default::default(),
             session_recording_exposure_triggers: Default::default(),
             pa_hash: user.get_hashed_private_attributes(),
+            full_checksum: Default::default(),
+        }
+    }
+
+    pub fn blank_without_user() -> Self {
+        Self {
+            feature_gates: Default::default(),
+            dynamic_configs: Default::default(),
+            layer_configs: Default::default(),
+            time: 0,
+            has_updates: false,
+            hash_used: Default::default(),
+            user: StatsigUserLoggable::default(),
+            sdk_params: Default::default(),
+            evaluated_keys: Default::default(),
+            sdk_info: Default::default(),
+            param_stores: Default::default(),
+            can_record_session: Default::default(),
+            session_recording_rate: Default::default(),
+            recording_blocked: Default::default(),
+            passes_session_recording_targeting: Default::default(),
+            session_recording_event_triggers: Default::default(),
+            session_recording_exposure_triggers: Default::default(),
+            pa_hash: None,
+            full_checksum: Default::default(),
         }
     }
 }

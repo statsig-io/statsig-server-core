@@ -2,7 +2,10 @@ use super::statsig_http_specs_adapter::DEFAULT_SYNC_INTERVAL_MS;
 use super::{SpecsSource, SpecsUpdate};
 use crate::data_store_interface::{DataStoreTrait, RequestPath};
 use crate::networking::ResponseData;
-use crate::{log_d, log_e, log_w, SpecsAdapter, SpecsUpdateListener};
+use crate::{
+    log_d, log_e, log_w, read_lock_or_else, unwrap_or_else, write_lock_or_else, SpecsAdapter,
+    SpecsUpdateListener,
+};
 use crate::{StatsigErr, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
 use chrono::Utc;
@@ -11,10 +14,10 @@ use std::{sync::Arc, time::Duration};
 use tokio::sync::Notify;
 use tokio::time::{self, sleep};
 
-const TAG: &str = stringify!(StatsigDataStoreSpecAdapter);
+const TAG: &str = "StatsigDataStoreSpecsAdapter";
 
 pub struct StatsigDataStoreSpecsAdapter {
-    data_adapter: Arc<dyn DataStoreTrait>,
+    data_store: Arc<dyn DataStoreTrait>,
     cache_key: String,
     sync_interval: Duration,
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
@@ -23,16 +26,16 @@ pub struct StatsigDataStoreSpecsAdapter {
 
 impl StatsigDataStoreSpecsAdapter {
     pub fn new(
-        data_adapter_key: &str,
-        data_adapter: Arc<dyn DataStoreTrait>,
+        data_store_key: &str,
+        data_store: Arc<dyn DataStoreTrait>,
         options: Option<&StatsigOptions>,
     ) -> Self {
         let default_options = StatsigOptions::default();
         let options_ref = options.unwrap_or(&default_options);
 
         StatsigDataStoreSpecsAdapter {
-            data_adapter,
-            cache_key: data_adapter_key.to_string(),
+            data_store,
+            cache_key: data_store_key.to_string(),
             sync_interval: Duration::from_millis(u64::from(
                 options_ref
                     .specs_sync_interval_ms
@@ -46,32 +49,7 @@ impl StatsigDataStoreSpecsAdapter {
     async fn execute_background_sync(&self, rt_shutdown_notify: &Arc<Notify>) {
         loop {
             tokio::select! {
-                () = sleep(self.sync_interval) => {
-                    let update = self.data_adapter.get(&self.cache_key).await;
-                    match update {
-                        Ok(update) => {
-                        match self.listener.try_read_for(std::time::Duration::from_secs(5)) {
-                            Some(maybe_listener) => {
-                                match maybe_listener.as_ref() {
-                                    Some(listener) => {
-                                        match listener.did_receive_specs_update(SpecsUpdate {
-                                            data: ResponseData::from_bytes(update.result.unwrap_or_default().into_bytes()),
-                                            source: SpecsSource::Adapter("DataStore".to_string()),
-                                            received_at: Utc::now().timestamp_millis() as u64,
-                                            source_api: None,
-                                    }) {
-                                        Ok(()) => {},
-                                        Err(_) => log_w!(TAG, "DataStoreAdapter - Failed to capture"),
-                                    }},
-                                    _ => log_w!(TAG, "DataAdapterSpecAdatper - Failed to capture"),
-                                }
-                            }
-                            None => log_w!(TAG, "DataAdapterSpecAdatper - Failed to capture"),
-                            }
-                        },
-                        Err(_) => log_w!(TAG, "DataAdapterSpecAdatper - Failed to capture"),
-                    }
-                }
+                () = sleep(self.sync_interval) => self.execute_background_sync_impl().await,
                 () = rt_shutdown_notify.notified() => {
                     log_d!(TAG, "Runtime shutdown. Shutting down specs background sync");
                     break;
@@ -83,6 +61,35 @@ impl StatsigDataStoreSpecsAdapter {
             }
         }
     }
+
+    async fn execute_background_sync_impl(&self) {
+        let update = match self.data_store.get(&self.cache_key).await {
+            Ok(update) => update,
+            Err(e) => {
+                log_w!(TAG, "Failed to read for data store: {e}");
+                return;
+            }
+        };
+
+        let read_lock = read_lock_or_else!(self.listener, {
+            log_w!(TAG, "Unable to acquire read lock on listener");
+            return;
+        });
+
+        let listener = unwrap_or_else!(read_lock.as_ref(), {
+            log_w!(TAG, "Listener not set");
+            return;
+        });
+
+        if let Err(e) = listener.did_receive_specs_update(SpecsUpdate {
+            data: ResponseData::from_bytes(update.result.unwrap_or_default().into_bytes()),
+            source: SpecsSource::Adapter("DataStore".to_string()),
+            received_at: Utc::now().timestamp_millis() as u64,
+            source_api: None,
+        }) {
+            log_w!(TAG, "Failed to send specs update to listener: {e}");
+        }
+    }
 }
 
 #[async_trait]
@@ -91,42 +98,41 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        self.data_adapter.initialize().await?;
+        self.data_store.initialize().await?;
 
-        let update = self.data_adapter.get(&self.cache_key).await?;
-        match update.result {
-            Some(data) => match &self
-                .listener
-                .try_read_for(std::time::Duration::from_secs(5))
-            {
-                Some(read_lock) => match read_lock.as_ref() {
-                    Some(listener) => {
-                        listener.did_receive_specs_update(SpecsUpdate {
-                            data: ResponseData::from_bytes(data.into_bytes()),
-                            source: SpecsSource::Adapter("DataStore".to_string()),
-                            received_at: Utc::now().timestamp_millis() as u64,
-                            source_api: None,
-                        })?;
-                        Ok(())
-                    }
-                    None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
-                },
-                None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
-            },
-            None => Err(StatsigErr::DataStoreFailure("Empty result".to_string())),
-        }
+        let update = self.data_store.get(&self.cache_key).await?;
+
+        let data = match update.result {
+            Some(data) => data,
+            None => return Err(StatsigErr::DataStoreFailure("Empty result".to_string())),
+        };
+
+        let read_lock = read_lock_or_else!(self.listener, {
+            return Err(StatsigErr::UnstartedAdapter(
+                "Failed to acquire read lock on listener".to_string(),
+            ));
+        });
+
+        let listener = match read_lock.as_ref() {
+            Some(listener) => listener,
+            None => return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
+        };
+
+        listener.did_receive_specs_update(SpecsUpdate {
+            data: ResponseData::from_bytes(data.into_bytes()),
+            source: SpecsSource::Adapter("DataStore".to_string()),
+            received_at: Utc::now().timestamp_millis() as u64,
+            source_api: None,
+        })
     }
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
-        match self
-            .listener
-            .try_write_for(std::time::Duration::from_secs(5))
-        {
-            Some(mut lock) => *lock = Some(listener),
-            None => {
-                log_e!(TAG, "Failed to acquire write lock on listener");
-            }
-        }
+        let mut write_lock = write_lock_or_else!(self.listener, {
+            log_e!(TAG, "Failed to acquire write lock on listener");
+            return;
+        });
+
+        *write_lock = Some(listener);
     }
 
     async fn schedule_background_sync(
@@ -135,7 +141,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
     ) -> Result<(), StatsigErr> {
         // Support polling updates function should be pretty cheap. But we have to make it async
         let should_schedule = self
-            .data_adapter
+            .data_store
             .support_polling_updates_for(RequestPath::RulesetsV2)
             .await;
 
@@ -146,7 +152,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         let weak_self = Arc::downgrade(&self);
 
         statsig_runtime.spawn(
-            "data_adapter_spec_adapter",
+            "data_store_specs_adapter",
             move |rt_shutdown_notify| async move {
                 let strong_self = if let Some(strong_self) = weak_self.upgrade() {
                     strong_self
@@ -170,7 +176,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
         self.shutdown_notify.notify_one();
-        time::timeout(timeout, async { self.data_adapter.shutdown().await })
+        time::timeout(timeout, async { self.data_store.shutdown().await })
             .await
             .map_err(|e| StatsigErr::DataStoreFailure(format!("Failed to shutdown: {e}")))?
     }

@@ -6,10 +6,12 @@ use serde_with::skip_serializing_none;
 
 use crate::evaluation::dynamic_string::DynamicString;
 use crate::evaluation::{dynamic_returnable::DynamicReturnable, evaluator_value::EvaluatorValue};
+use crate::gcir::gcir_formatter::GCIRHashable;
+use crate::hashing::opt_bool_to_hashable;
 use crate::interned_string::InternedString;
 use crate::specs_response::explicit_params::ExplicitParameters;
 use crate::specs_response::specs_hash_map::SpecsHashMap;
-use crate::DynamicValue;
+use crate::{hashing, DynamicValue};
 
 use super::{cmab_types::CMABConfig, param_store_types::ParameterStore};
 
@@ -88,8 +90,22 @@ pub struct ConfigMapping {
 #[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
 pub struct SessionReplayTrigger {
     pub sampling_rate: Option<f64>,
-    pub values: Option<Vec<String>>,
+    pub values: Option<Vec<InternedString>>,
     pub passes_sampling: Option<bool>,
+}
+
+impl GCIRHashable for SessionReplayTrigger {
+    fn create_hash(&self, name: &InternedString) -> u64 {
+        let mut hash_array = Vec::new();
+        hash_array.push(name.hash);
+        hash_array.push(opt_bool_to_hashable(&self.passes_sampling));
+        if let Some(values) = &self.values {
+            for value in values {
+                hash_array.push(value.hash);
+            }
+        }
+        hashing::hash_one(hash_array)
+    }
 }
 
 #[skip_serializing_none]
@@ -98,8 +114,8 @@ pub struct SessionReplayInfo {
     pub sampling_rate: Option<f64>,
     pub targeting_gate: Option<String>,
     pub recording_blocked: Option<bool>,
-    pub session_recording_event_triggers: Option<HashMap<String, SessionReplayTrigger>>,
-    pub session_recording_exposure_triggers: Option<HashMap<String, SessionReplayTrigger>>,
+    pub session_recording_event_triggers: Option<HashMap<InternedString, SessionReplayTrigger>>,
+    pub session_recording_exposure_triggers: Option<HashMap<InternedString, SessionReplayTrigger>>,
 }
 
 #[derive(Deserialize)]
@@ -117,6 +133,8 @@ pub struct SpecsResponseFull {
     pub feature_gates: SpecsHashMap,
     pub dynamic_configs: SpecsHashMap,
     pub layer_configs: SpecsHashMap,
+    #[serde(default, skip_serializing_if = "SpecsHashMap::is_empty")]
+    pub parameter_stores: SpecsHashMap,
     pub condition_map: AHashMap<InternedString, Condition>,
     pub experiment_to_layer: HashMap<String, String>,
     pub has_updates: bool,

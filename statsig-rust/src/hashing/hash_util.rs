@@ -22,6 +22,14 @@ impl HashAlgorithm {
     }
 }
 
+pub fn opt_bool_to_hashable(input: &Option<bool>) -> u64 {
+    match input {
+        Some(true) => 1,
+        Some(false) => 0,
+        None => 2,
+    }
+}
+
 impl<'de> Deserialize<'de> for HashAlgorithm {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
