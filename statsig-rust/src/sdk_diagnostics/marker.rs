@@ -90,9 +90,6 @@ pub struct Marker {
     source: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    request_supports_proto: Option<&'static str>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
     content_type: Option<String>,
 }
 
@@ -117,7 +114,6 @@ impl Marker {
             evaluation_details: None,
             config_spec_ready: None,
             source: None,
-            request_supports_proto: None,
             content_type: None,
         }
     }
@@ -187,20 +183,6 @@ impl Marker {
     #[must_use]
     pub fn with_error(mut self, error: HashMap<String, String>) -> Self {
         self.error = Some(error);
-        self
-    }
-
-    #[must_use]
-    pub fn with_request_supports_proto(mut self, request_supports_proto: Option<bool>) -> Self {
-        self.request_supports_proto = if let Some(value) = request_supports_proto {
-            if value {
-                Some(TRUE_STR)
-            } else {
-                Some(FALSE_STR)
-            }
-        } else {
-            None
-        };
         self
     }
 

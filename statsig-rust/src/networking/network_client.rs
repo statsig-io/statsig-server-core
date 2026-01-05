@@ -120,11 +120,6 @@ impl NetworkClient {
         if let Some(proxy_config) = &self.proxy_config {
             request_args.proxy_config = Some(proxy_config.clone());
         }
-        let supports_proto = request_args
-            .headers
-            .as_ref()
-            .and_then(|headers| headers.get("statsig-supports-proto"))
-            .map(|value| value.eq_ignore_ascii_case("true"));
         let mut attempt = 0;
 
         loop {
@@ -132,8 +127,7 @@ impl NetworkClient {
                 self.ops_stats.add_marker(
                     Marker::new(key, ActionType::Start, Some(StepType::NetworkRequest))
                         .with_attempt(attempt)
-                        .with_url(request_args.url.clone())
-                        .with_request_supports_proto(supports_proto),
+                        .with_url(request_args.url.clone()),
                     None,
                 );
             }
@@ -185,7 +179,6 @@ impl NetworkClient {
                         .with_url(request_args.url.clone())
                         .with_is_success(success)
                         .with_content_type(content_type.cloned())
-                        .with_request_supports_proto(supports_proto)
                         .with_sdk_region(sdk_region_str.map(|s| s.to_owned()));
 
                 if let Some(status_code) = status {
