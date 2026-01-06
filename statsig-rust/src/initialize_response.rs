@@ -1,7 +1,10 @@
 use crate::{
     evaluation::evaluation_types::{AnyConfigEvaluation, GateEvaluation, LayerEvaluation},
     gcir::gcir_formatter::EvaluatedKeys,
-    specs_response::{param_store_types::Parameter, spec_types::{SessionReplayPrivacySetting, SessionReplayTrigger}},
+    specs_response::{
+        param_store_types::Parameter,
+        spec_types::{SessionReplayPrivacySetting, SessionReplayTrigger},
+    },
     user::{StatsigUserInternal, StatsigUserLoggable},
 };
 

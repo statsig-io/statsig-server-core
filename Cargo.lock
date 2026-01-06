@@ -2678,6 +2678,7 @@ dependencies = [
 name = "statsig_elixir"
 version = "0.14.2-rc.2601062017"
 dependencies = [
+ "async-trait",
  "parking_lot",
  "rustler",
  "serde",

@@ -98,7 +98,8 @@ impl GCIRFormatter {
             session_recording_event_triggers: session_replay_info.session_recording_event_triggers,
             session_recording_exposure_triggers: session_replay_info
                 .session_recording_exposure_triggers,
-            session_recording_privacy_settings: session_replay_info.session_recording_privacy_settings,
+            session_recording_privacy_settings: session_replay_info
+                .session_recording_privacy_settings,
             pa_hash: context.user.get_hashed_private_attributes(),
             full_checksum: full_response_hash,
         })
@@ -152,7 +153,8 @@ impl GCIRFormatter {
             session_recording_event_triggers: session_replay_info.session_recording_event_triggers,
             session_recording_exposure_triggers: session_replay_info
                 .session_recording_exposure_triggers,
-            session_recording_privacy_settings: session_replay_info.session_recording_privacy_settings,
+            session_recording_privacy_settings: session_replay_info
+                .session_recording_privacy_settings,
         })
     }
 
@@ -209,7 +211,8 @@ impl GCIRFormatter {
             session_recording_event_triggers: session_replay_info.session_recording_event_triggers,
             session_recording_exposure_triggers: session_replay_info
                 .session_recording_exposure_triggers,
-            session_recording_privacy_settings: session_replay_info.session_recording_privacy_settings,
+            session_recording_privacy_settings: session_replay_info
+                .session_recording_privacy_settings,
             values,
             response_format: "init-v2".to_string(),
         })
@@ -355,7 +358,9 @@ fn get_session_replay_info(
         context.gcir_hashes.push(hashing::hash_one(combined_hashes));
     }
 
-    session_replay_info.session_recording_privacy_settings = session_replay_data.session_recording_privacy_settings.clone();
+    session_replay_info.session_recording_privacy_settings = session_replay_data
+        .session_recording_privacy_settings
+        .clone();
 
     session_replay_info
 }

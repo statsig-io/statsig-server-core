@@ -82,4 +82,7 @@ defmodule Statsig.NativeBindings do
     do: :erlang.nif_error(:nif_not_loaded)
 
   def remove_all_overrides(_statsig), do: :erlang.nif_error(:nif_not_loaded)
+
+  def data_store_reply(_request_ref, _payload), do: :erlang.nif_error(:nif_not_loaded)
+  def data_store_reply_error(_request_ref, _reason), do: :erlang.nif_error(:nif_not_loaded)
 end
