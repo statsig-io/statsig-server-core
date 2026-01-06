@@ -18,7 +18,7 @@ use crate::{
 
 use crate::{hashing, StatsigUser};
 use rand::Rng;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use super::dynamic_configs_processor::{
@@ -66,7 +66,7 @@ impl GCIRFormatter {
         let layers = get_layer_evaluations(context, options, &mut sec_expo_hash_memo)?;
 
         let param_stores = get_serializeable_param_stores(context, options);
-        let evaluated_keys = get_evaluated_keys(context.user.user_ref);
+        let evaluated_keys = EvaluatedKeys::from_user(context.user.user_ref);
         let session_replay_info = get_session_replay_info(context, options);
 
         let mut full_response_hash: Option<String> = None;
@@ -111,7 +111,7 @@ impl GCIRFormatter {
         let mut exposures = HashMap::new();
 
         let param_stores = get_serializeable_param_stores(context, options);
-        let evaluated_keys = get_evaluated_keys(context.user.user_ref);
+        let evaluated_keys = EvaluatedKeys::from_user(context.user.user_ref);
         let session_replay_info = get_session_replay_info(context, options);
 
         Ok(InitializeEvaluationsResponse {
@@ -163,7 +163,7 @@ impl GCIRFormatter {
         let mut exposure_map = AHashMap::new();
         let mut exposures = HashMap::new();
         let param_stores = get_serializeable_param_stores(context, options);
-        let evaluated_keys = get_evaluated_keys(context.user.user_ref);
+        let evaluated_keys = EvaluatedKeys::from_user(context.user.user_ref);
         let session_replay_info = get_session_replay_info(context, options);
 
         Ok(InitializeV2Response {
@@ -211,36 +211,6 @@ impl GCIRFormatter {
             response_format: "init-v2".to_string(),
         })
     }
-}
-
-fn get_evaluated_keys(user: &StatsigUser) -> HashMap<InternedString, InternedString> {
-    let mut evaluated_keys = HashMap::new();
-
-    if let Some(user_id) = user.data.user_id.as_ref() {
-        evaluated_keys.insert(
-            InternedString::from_str_ref("userID"),
-            user_id
-                .string_value
-                .as_ref()
-                .map(|s| s.value.clone())
-                .unwrap_or_default(),
-        );
-    }
-
-    if let Some(custom_ids) = user.data.custom_ids.as_ref() {
-        for (key, value) in custom_ids {
-            evaluated_keys.insert(
-                InternedString::from_str_ref(key.as_str()),
-                value
-                    .string_value
-                    .as_ref()
-                    .map(|s| s.value.clone())
-                    .unwrap_or_default(),
-            );
-        }
-    }
-
-    evaluated_keys
 }
 
 fn get_sdk_info() -> HashMap<String, String> {
@@ -381,4 +351,51 @@ fn get_session_replay_info(
     }
 
     session_replay_info
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct EvaluatedKeys {
+    #[serde(rename = "userID", skip_serializing_if = "Option::is_none")]
+    pub user_id: Option<InternedString>,
+    #[serde(rename = "customIDs", skip_serializing_if = "Option::is_none")]
+    pub custom_ids: Option<HashMap<InternedString, InternedString>>,
+}
+
+impl EvaluatedKeys {
+    pub fn from_user(user: &StatsigUser) -> Self {
+        let user_id = user.data.user_id.as_ref().and_then(|u| {
+            u.string_value.as_ref().and_then(|s| {
+                if s.value.is_empty() {
+                    None
+                } else {
+                    Some(s.value.clone())
+                }
+            })
+        });
+
+        let custom_ids = user.data.custom_ids.as_ref().and_then(|c| {
+            let mut custom_ids = HashMap::new();
+            for (key, value) in c {
+                custom_ids.insert(
+                    InternedString::from_str_ref(key.as_str()),
+                    value
+                        .string_value
+                        .as_ref()
+                        .map(|s| s.value.clone())
+                        .unwrap_or_default(),
+                );
+            }
+
+            if custom_ids.is_empty() {
+                None
+            } else {
+                Some(custom_ids)
+            }
+        });
+
+        Self {
+            user_id,
+            custom_ids,
+        }
+    }
 }

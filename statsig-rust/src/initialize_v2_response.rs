@@ -3,6 +3,7 @@ use crate::evaluation::evaluation_types::SecondaryExposure;
 use crate::evaluation::evaluation_types_initialize_v2::{
     AnyConfigEvaluationInitV2, GateEvaluationInitV2, LayerEvaluationInitV2,
 };
+use crate::gcir::gcir_formatter::EvaluatedKeys;
 use crate::interned_string::InternedString;
 use crate::specs_response::param_store_types::Parameter;
 use crate::specs_response::spec_types::SessionReplayTrigger;
@@ -26,7 +27,7 @@ pub struct InitializeV2Response {
     pub sdk_info: HashMap<String, String>,
     #[serde(rename = "sdkParams")]
     pub sdk_params: HashMap<String, String>,
-    pub evaluated_keys: HashMap<InternedString, InternedString>,
+    pub evaluated_keys: EvaluatedKeys,
     pub exposures: HashMap<InternedString, SecondaryExposure>,
     pub can_record_session: Option<bool>,
     pub session_recording_rate: Option<f64>,

@@ -41,10 +41,12 @@ export declare class StatsigNapiInternal {
   overrideExperiment(experimentName: string, value: Record<string, any>, id?: string | undefined | null): void
   overrideExperimentByGroupName(experimentName: string, groupName: string, id?: string | undefined | null): void
   overrideLayer(layerName: string, value: Record<string, any>, id?: string | undefined | null): void
+  overrideParameterStore(parameterStoreName: string, value: Record<string, any>, id?: string | undefined | null): void
   removeGateOverride(gateName: string, id?: string | undefined | null): void
   removeDynamicConfigOverride(configName: string, id?: string | undefined | null): void
   removeExperimentOverride(experimentName: string, id?: string | undefined | null): void
   removeLayerOverride(layerName: string, id?: string | undefined | null): void
+  removeParameterStoreOverride(parameterStoreName: string, id?: string | undefined | null): void
   removeAllOverrides(): void
   getFeatureGateList(): Array<string>
   getDynamicConfigList(): Array<string>
@@ -102,6 +104,7 @@ export interface ClientInitResponseOptions {
   removeIdType?: boolean
   removeDefaultValueGates?: boolean
   responseFormat?: GCIRResponseFormat
+  previousResponseHash?: string
 }
 
 export interface ConsoleCaptureOptions {
