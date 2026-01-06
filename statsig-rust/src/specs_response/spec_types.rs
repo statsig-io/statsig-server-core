@@ -94,6 +94,15 @@ pub struct SessionReplayTrigger {
     pub passes_sampling: Option<bool>,
 }
 
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)] /* DO_NOT_CLONE */
+pub struct SessionReplayPrivacySetting {
+    pub privacy_mode: InternedString,
+    pub unmasked_elements: Option<Vec<InternedString>>,
+    pub masked_elements: Option<Vec<InternedString>>,
+    pub blocked_elements: Option<Vec<InternedString>>,
+}
+
 impl GCIRHashable for SessionReplayTrigger {
     fn create_hash(&self, name: &InternedString) -> u64 {
         let mut hash_array = Vec::new();
@@ -116,6 +125,7 @@ pub struct SessionReplayInfo {
     pub recording_blocked: Option<bool>,
     pub session_recording_event_triggers: Option<HashMap<InternedString, SessionReplayTrigger>>,
     pub session_recording_exposure_triggers: Option<HashMap<InternedString, SessionReplayTrigger>>,
+    pub session_recording_privacy_settings: Option<SessionReplayPrivacySetting>,
 }
 
 #[derive(Deserialize)]

@@ -6,7 +6,7 @@ use ahash::AHashMap;
 
 use crate::initialize_v2_response::InitializeV2Response;
 use crate::interned_string::InternedString;
-use crate::specs_response::spec_types::SessionReplayTrigger;
+use crate::specs_response::spec_types::{SessionReplayPrivacySetting, SessionReplayTrigger};
 use crate::{
     evaluation::evaluator::{Evaluator, SpecType},
     evaluation::evaluator_context::EvaluatorContext,
@@ -98,6 +98,7 @@ impl GCIRFormatter {
             session_recording_event_triggers: session_replay_info.session_recording_event_triggers,
             session_recording_exposure_triggers: session_replay_info
                 .session_recording_exposure_triggers,
+            session_recording_privacy_settings: session_replay_info.session_recording_privacy_settings,
             pa_hash: context.user.get_hashed_private_attributes(),
             full_checksum: full_response_hash,
         })
@@ -151,6 +152,7 @@ impl GCIRFormatter {
             session_recording_event_triggers: session_replay_info.session_recording_event_triggers,
             session_recording_exposure_triggers: session_replay_info
                 .session_recording_exposure_triggers,
+            session_recording_privacy_settings: session_replay_info.session_recording_privacy_settings,
         })
     }
 
@@ -207,6 +209,7 @@ impl GCIRFormatter {
             session_recording_event_triggers: session_replay_info.session_recording_event_triggers,
             session_recording_exposure_triggers: session_replay_info
                 .session_recording_exposure_triggers,
+            session_recording_privacy_settings: session_replay_info.session_recording_privacy_settings,
             values,
             response_format: "init-v2".to_string(),
         })
@@ -229,6 +232,7 @@ pub struct GCIRSessionReplayInfo {
     pub passes_session_recording_targeting: Option<bool>,
     pub session_recording_event_triggers: Option<HashMap<String, SessionReplayTrigger>>,
     pub session_recording_exposure_triggers: Option<HashMap<String, SessionReplayTrigger>>,
+    pub session_recording_privacy_settings: Option<SessionReplayPrivacySetting>,
 }
 
 impl GCIRHashable for GCIRSessionReplayInfo {
@@ -253,6 +257,7 @@ fn get_session_replay_info(
         passes_session_recording_targeting: None,
         session_recording_event_triggers: None,
         session_recording_exposure_triggers: None,
+        session_recording_privacy_settings: None,
     };
 
     let session_replay_data = match &context.specs_data.session_replay_info {
@@ -349,6 +354,8 @@ fn get_session_replay_info(
         ];
         context.gcir_hashes.push(hashing::hash_one(combined_hashes));
     }
+
+    session_replay_info.session_recording_privacy_settings = session_replay_data.session_recording_privacy_settings.clone();
 
     session_replay_info
 }

@@ -1,7 +1,7 @@
 use crate::{
     evaluation::evaluation_types::{AnyConfigEvaluation, GateEvaluation, LayerEvaluation},
     gcir::gcir_formatter::EvaluatedKeys,
-    specs_response::{param_store_types::Parameter, spec_types::SessionReplayTrigger},
+    specs_response::{param_store_types::Parameter, spec_types::{SessionReplayPrivacySetting, SessionReplayTrigger}},
     user::{StatsigUserInternal, StatsigUserLoggable},
 };
 
@@ -31,6 +31,7 @@ pub struct InitializeResponse {
     pub passes_session_recording_targeting: Option<bool>,
     pub session_recording_event_triggers: Option<HashMap<String, SessionReplayTrigger>>,
     pub session_recording_exposure_triggers: Option<HashMap<String, SessionReplayTrigger>>,
+    pub session_recording_privacy_settings: Option<SessionReplayPrivacySetting>,
     pub pa_hash: Option<String>,
     pub full_checksum: Option<String>,
 }
@@ -55,6 +56,7 @@ impl InitializeResponse {
             passes_session_recording_targeting: Default::default(),
             session_recording_event_triggers: Default::default(),
             session_recording_exposure_triggers: Default::default(),
+            session_recording_privacy_settings: Default::default(),
             pa_hash: user.get_hashed_private_attributes(),
             full_checksum: Default::default(),
         }
@@ -79,6 +81,7 @@ impl InitializeResponse {
             passes_session_recording_targeting: Default::default(),
             session_recording_event_triggers: Default::default(),
             session_recording_exposure_triggers: Default::default(),
+            session_recording_privacy_settings: Default::default(),
             pa_hash: None,
             full_checksum: Default::default(),
         }

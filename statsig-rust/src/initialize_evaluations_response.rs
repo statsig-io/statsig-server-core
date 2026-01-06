@@ -4,7 +4,7 @@ use crate::evaluation::evaluation_types_v2::{
 };
 use crate::gcir::gcir_formatter::EvaluatedKeys;
 use crate::specs_response::param_store_types::Parameter;
-use crate::specs_response::spec_types::SessionReplayTrigger;
+use crate::specs_response::spec_types::{SessionReplayPrivacySetting, SessionReplayTrigger};
 use crate::user::{StatsigUserInternal, StatsigUserLoggable};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -33,6 +33,7 @@ pub struct InitializeEvaluationsResponse {
     pub passes_session_recording_targeting: Option<bool>,
     pub session_recording_event_triggers: Option<HashMap<String, SessionReplayTrigger>>,
     pub session_recording_exposure_triggers: Option<HashMap<String, SessionReplayTrigger>>,
+    pub session_recording_privacy_settings: Option<SessionReplayPrivacySetting>,
     pub pa_hash: Option<String>,
 }
 
@@ -57,6 +58,7 @@ impl InitializeEvaluationsResponse {
             passes_session_recording_targeting: Default::default(),
             session_recording_event_triggers: Default::default(),
             session_recording_exposure_triggers: Default::default(),
+            session_recording_privacy_settings: Default::default(),
             pa_hash: Default::default(),
         }
     }

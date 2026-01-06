@@ -6,7 +6,7 @@ use crate::evaluation::evaluation_types_initialize_v2::{
 use crate::gcir::gcir_formatter::EvaluatedKeys;
 use crate::interned_string::InternedString;
 use crate::specs_response::param_store_types::Parameter;
-use crate::specs_response::spec_types::SessionReplayTrigger;
+use crate::specs_response::spec_types::{SessionReplayPrivacySetting, SessionReplayTrigger};
 use crate::user::{StatsigUserInternal, StatsigUserLoggable};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -35,6 +35,7 @@ pub struct InitializeV2Response {
     pub passes_session_recording_targeting: Option<bool>,
     pub session_recording_event_triggers: Option<HashMap<String, SessionReplayTrigger>>,
     pub session_recording_exposure_triggers: Option<HashMap<String, SessionReplayTrigger>>,
+    pub session_recording_privacy_settings: Option<SessionReplayPrivacySetting>,
     pub pa_hash: Option<String>,
     pub values: HashMap<InternedString, DynamicReturnable>,
     pub response_format: String,
@@ -61,6 +62,7 @@ impl InitializeV2Response {
             passes_session_recording_targeting: Default::default(),
             session_recording_event_triggers: Default::default(),
             session_recording_exposure_triggers: Default::default(),
+            session_recording_privacy_settings: Default::default(),
             pa_hash: Default::default(),
             response_format: "init-v2".to_string(),
             values: Default::default(),
