@@ -49,12 +49,21 @@ jobs:
             git push 
             ./tore merge-to-main
 
-      - name: Bump Version In Beta
+      - name: Wait to avoid RC timestamp collision
+        run: |
+          # waiting until next minute avoids collisions on retries
+          secs=$(date +%S)
+          wait=$((60 - 10#$secs + 2))
+          if [ $wait -lt 2 ]; then wait=2; fi
+          echo "Sleeping for $wait seconds..."
+          sleep $wait
+
+      - name: Bump Version In RC Branch
         id: bump_version
         run: git checkout rc &&
             ./tore bump-version --create-branch --rc
 
-      - name: Merge Version Bump Changes to Stable
+      - name: Merge Version Bump Changes to RC Branch
         run: |
             git fetch origin rc
             git checkout rc 
