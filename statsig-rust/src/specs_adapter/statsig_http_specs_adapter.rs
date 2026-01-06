@@ -45,7 +45,6 @@ pub struct StatsigHttpSpecsAdapter {
     sync_interval_duration: Duration,
     ops_stats: Arc<OpsStatsForInstance>,
     shutdown_notify: Arc<Notify>,
-    enable_proto_spec_support: bool,
 }
 
 impl StatsigHttpSpecsAdapter {
@@ -82,11 +81,6 @@ impl StatsigHttpSpecsAdapter {
 
         let headers = StatsigMetadata::get_constant_request_headers(sdk_key);
 
-        let enable_proto_spec_support = options_ref
-            .experimental_flags
-            .as_ref()
-            .is_some_and(|flags| flags.contains("enable_proto_spec_support"));
-
         Self {
             listener: RwLock::new(None),
             network: NetworkClient::new(sdk_key, Some(headers), Some(options_ref)),
@@ -101,7 +95,6 @@ impl StatsigHttpSpecsAdapter {
             )),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             shutdown_notify: Arc::new(Notify::new()),
-            enable_proto_spec_support,
         }
     }
 
@@ -131,18 +124,15 @@ impl StatsigHttpSpecsAdapter {
         trigger: SpecsSyncTrigger,
     ) -> RequestArgs {
         let mut params = HashMap::new();
-        let mut headers = None;
 
-        if self.enable_proto_spec_support {
-            params.insert("supports_proto".to_string(), "true".to_string());
-            headers = Some(HashMap::from([
-                ("statsig-supports-proto".to_string(), "true".to_string()),
-                (
-                    "accept-encoding".to_string(),
-                    "statsig-br, gzip, deflate, br".to_string(),
-                ),
-            ]));
-        }
+        params.insert("supports_proto".to_string(), "true".to_string());
+        let headers = Some(HashMap::from([
+            ("statsig-supports-proto".to_string(), "true".to_string()),
+            (
+                "accept-encoding".to_string(),
+                "statsig-br, gzip, deflate, br".to_string(),
+            ),
+        ]));
 
         if let Some(lcut) = current_specs_info.lcut {
             if lcut > 0 {

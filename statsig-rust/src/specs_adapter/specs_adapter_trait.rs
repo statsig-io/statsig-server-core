@@ -101,6 +101,20 @@ pub trait SpecsAdapter: Send + Sync {
     fn get_type_name(&self) -> String;
 }
 
+pub enum SpecsFormat {
+    Json,
+    Protobuf,
+}
+
+impl From<&SpecsFormat> for &str {
+    fn from(val: &SpecsFormat) -> Self {
+        match val {
+            SpecsFormat::Json => "JSON",
+            SpecsFormat::Protobuf => "Protobuf",
+        }
+    }
+}
+
 pub struct SpecsUpdate {
     pub data: ResponseData,
     pub source: SpecsSource,
