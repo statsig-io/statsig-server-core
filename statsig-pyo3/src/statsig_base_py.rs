@@ -16,11 +16,11 @@ use parking_lot::Mutex;
 use pyo3::types::PyTuple;
 use pyo3::{prelude::*, types::PyDict};
 use pyo3_stub_gen::derive::*;
+use serde_json::Value;
 use statsig_rust::{
-    log_e, unwrap_or_return, ClientInitResponseOptions, DynamicConfigEvaluationOptions,
-    ExperimentEvaluationOptions, FeatureGateEvaluationOptions, HashAlgorithm,
-    LayerEvaluationOptions, ObservabilityClient, ParameterStoreEvaluationOptions, Statsig,
-    UserPersistedValues,
+    log_e, ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
+    FeatureGateEvaluationOptions, HashAlgorithm, LayerEvaluationOptions, ObservabilityClient,
+    ParameterStoreEvaluationOptions, Statsig, UserPersistedValues,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -205,14 +205,14 @@ impl StatsigBasePy {
         let local_metadata = extract_event_metadata(metadata);
 
         if let Some(num_value) = convert_to_number(value.as_ref()) {
-            self.inner.log_event_with_number(
+            self.inner.log_event_with_number_and_typed_metadata(
                 &user.inner,
                 event_name,
                 Some(num_value),
                 local_metadata,
             );
         } else {
-            self.inner.log_event(
+            self.inner.log_event_with_typed_metadata(
                 &user.inner,
                 event_name,
                 convert_to_string(value.as_ref()),
@@ -564,20 +564,8 @@ fn convert_to_string(value: Option<&Bound<PyAny>>) -> Option<String> {
     value.extract::<String>().ok()
 }
 
-fn extract_event_metadata(metadata: Option<Bound<PyDict>>) -> Option<HashMap<String, String>> {
-    if let Some(m) = metadata {
-        let mut local_map = HashMap::new();
-
-        for (k, v) in m.iter() {
-            let key: String = unwrap_or_return!(k.extract().ok(), None);
-            let value: String = unwrap_or_return!(v.extract().ok(), None);
-            local_map.insert(key, value);
-        }
-
-        return Some(local_map);
-    }
-
-    None
+fn extract_event_metadata(metadata: Option<Bound<PyDict>>) -> Option<HashMap<String, Value>> {
+    metadata.map(|m| py_dict_to_json_value_map(&m))
 }
 
 fn extract_user_persisted_values(

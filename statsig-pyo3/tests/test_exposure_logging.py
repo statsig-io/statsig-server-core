@@ -153,6 +153,41 @@ def test_custom_event_with_string_and_metadata(statsig_setup):
     assert event["metadata"]["some"] == "value"
 
 
+def test_custom_event_with_typed_metadata(statsig_setup):
+    statsig, mock_scrapi = statsig_setup
+
+    metadata = {
+        "an_int": 123,
+        "a_float": 1.5,
+        "a_bool": True,
+        "a_none": None,
+        "an_object": {"nested_int": 7, "nested_str": "x"},
+        "an_array": [1, "a", False, {"k": "v"}],
+    }
+
+    statsig.log_event(
+        StatsigUser("my_user"),
+        "my_custom_event_with_typed_metadata",
+        "value",
+        metadata,
+    )
+    statsig.flush_events().wait()
+
+    events = mock_scrapi.get_logged_events()
+    assert len(events) == 1
+
+    event = events[0]
+    assert event["eventName"] == "my_custom_event_with_typed_metadata"
+    assert event["value"] == "value"
+
+    assert event["metadata"]["an_int"] == 123
+    assert event["metadata"]["a_float"] == 1.5
+    assert event["metadata"]["a_bool"] is True
+    assert "a_none" not in event["metadata"] # we don't send None values
+    assert event["metadata"]["an_object"] == {"nested_int": 7, "nested_str": "x"}
+    assert event["metadata"]["an_array"] == [1, "a", False, {"k": "v"}]
+
+
 def test_statsig_metadata(statsig_setup):
     statsig, mock_scrapi = statsig_setup
 
