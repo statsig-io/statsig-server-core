@@ -30,7 +30,7 @@ async fn setup(observability_client: &Arc<MockObservabilityClient>) -> (MockScra
 
     let mut raw_dcs_str = load_contents("eval_proj_dcs.json");
     raw_dcs_str = raw_dcs_str.replace(
-        r#""checksum":"9073779682072068000""#,
+        r#""checksum":"8506699639233708000""#,
         r#""IGNORED_CHECKSUM_VALUE":"""#,
     );
 
