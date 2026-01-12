@@ -188,19 +188,16 @@ impl SpecsResponseFull {
         &mut self,
         top_level: pb::SpecsTopLevel,
     ) -> Result<(), StatsigErr> {
+        let partial = serde_json::from_slice::<SpecsResponsePartial>(&top_level.rest)
+            .map_err(|e| map_serde_json_err("SpecsResponsePartial", e))?;
+
+        self.merge_from_partial(partial);
+
         self.checksum = Some(top_level.checksum);
         self.time = top_level.time;
         self.has_updates = top_level.has_updates;
         self.response_format = Some(top_level.response_format);
         self.company_id = Some(top_level.company_id);
-
-        let partial = serde_json::from_slice::<SpecsResponsePartial>(&top_level.rest)
-            .map_err(|e| map_serde_json_err("SpecsResponsePartial", e))?;
-
-        self.experiment_to_layer = partial.experiment_to_layer;
-        self.session_replay_info = partial.session_replay_info;
-        self.diagnostics = partial.diagnostics;
-        self.sdk_configs = partial.sdk_configs;
 
         Ok(())
     }
