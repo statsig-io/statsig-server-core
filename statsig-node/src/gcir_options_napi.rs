@@ -60,6 +60,7 @@ impl From<ClientInitResponseOptions> for ClientInitResponseOptionsActual {
             remove_id_type: options.remove_id_type,
             remove_default_value_gates: options.remove_default_value_gates,
             previous_response_hash: options.previous_response_hash,
+            remove_experiments_in_layers: None,
         }
     }
 }
