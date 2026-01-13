@@ -103,9 +103,7 @@ impl StatsigUser {
         }
 
         Self {
-            inner: StatsigUserActual {
-                data: Arc::new(user_data),
-            },
+            inner: StatsigUserActual::new(user_data),
         }
     }
 
@@ -124,12 +122,10 @@ impl StatsigUser {
         >,
     ) -> Self {
         Self {
-            inner: StatsigUserActual {
-                data: Arc::new(UserData {
-                    custom_ids: Some(Self::convert_custom_ids(custom_ids)),
-                    ..UserData::default()
-                }),
-            },
+            inner: StatsigUserActual::new(UserData {
+                custom_ids: Some(Self::convert_custom_ids(custom_ids)),
+                ..UserData::default()
+            }),
         }
     }
 

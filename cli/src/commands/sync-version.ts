@@ -11,7 +11,6 @@ import chalk from 'chalk';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import { glob } from 'glob';
-import path from 'path';
 
 import { CommandBase } from './command_base.js';
 
@@ -63,10 +62,10 @@ function updateStatsigMetadataVersion(version: string) {
   const path = getRootedPath('statsig-rust/src/statsig_metadata.rs');
   const contents = fs.readFileSync(path, 'utf8');
 
-  const was = contents.match(/sdk_version: "([^"]+)"/)?.[1];
+  const was = contents.match(/const SDK_VERSION: &str = "([^"]+)"/)?.[1];
   const updated = contents.replace(
-    /sdk_version: "([^"]+)"/,
-    `sdk_version: "${version}"`,
+    /const SDK_VERSION: &str = "([^"]+)"/,
+    `const SDK_VERSION: &str = "${version}"`,
   );
 
   fs.writeFileSync(path, updated, 'utf8');

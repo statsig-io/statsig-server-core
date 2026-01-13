@@ -10,7 +10,10 @@ lazy_static! {
     static ref STATSIG_METADATA: RwLock<StatsigMetadata> = RwLock::new(StatsigMetadata::new());
 }
 
+pub const SDK_VERSION: &str = "0.14.2-beta.2601100241";
+
 const TAG: &str = stringify!(StatsigMetadata);
+
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StatsigMetadata {
@@ -49,7 +52,7 @@ pub struct StatsigMetadataWithLogEventExtras {
 impl StatsigMetadata {
     fn new() -> Self {
         Self {
-            sdk_version: "0.14.2-beta.2601100241".to_string(),
+            sdk_version: SDK_VERSION.to_string(),
             sdk_type: "statsig-server-core".to_string(),
             session_id: Uuid::new_v4().to_string(),
             os: None,

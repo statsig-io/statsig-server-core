@@ -271,9 +271,7 @@ async fn test_many_rules_ua_parser() {
 async fn test_null_operator() {
     let statsig = setup(None).await;
 
-    let user = StatsigUser {
-        ..StatsigUser::with_user_id("9")
-    };
+    let user = StatsigUser::with_user_id("9");
 
     let gate = statsig.get_feature_gate(&user, "test_null_operator");
     assert!(gate.value);

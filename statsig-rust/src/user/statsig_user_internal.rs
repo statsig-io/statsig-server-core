@@ -1,10 +1,13 @@
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use chrono::Utc;
 
 use super::StatsigUserLoggable;
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::hashing::djb2_number;
-use crate::StatsigUser;
 use crate::{evaluation::dynamic_string::DynamicString, Statsig};
+use crate::{log_w, statsig_metadata, StatsigUser};
 
 pub type FullUserKey = (
     u64,      // app_version
@@ -20,14 +23,21 @@ pub type FullUserKey = (
     Vec<u64>, // statsig_env
 );
 
+const TAG: &str = stringify!(StatsigUserInternal);
+const VERSION_CHECK_THROTTLE_MS: u64 = 60_000;
+
 #[derive(Clone)]
 pub struct StatsigUserInternal<'statsig, 'user> {
     pub user_ref: &'user StatsigUser,
     pub statsig_instance: Option<&'statsig Statsig>,
 }
 
+static LAST_VERSION_CHECK: AtomicU64 = AtomicU64::new(0);
+
 impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
     pub fn new(user: &'user StatsigUser, statsig_instance: Option<&'statsig Statsig>) -> Self {
+        throttled_version_check(user);
+
         Self {
             user_ref: user,
             statsig_instance,
@@ -159,5 +169,38 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
             val &= 0xFFFF_FFFF;
         }
         Some(val.to_string())
+    }
+}
+
+fn throttled_version_check(user: &StatsigUser) {
+    let current_version = statsig_metadata::SDK_VERSION;
+
+    // compare pointers (faster than string comparison)
+    if user.sdk_version.as_ptr() == current_version.as_ptr() {
+        return;
+    }
+
+    // compare the values
+    if user.sdk_version == current_version {
+        return;
+    }
+
+    let now = Utc::now().timestamp_millis() as u64;
+    let last = LAST_VERSION_CHECK.load(Ordering::Relaxed);
+
+    if now.saturating_sub(last) < VERSION_CHECK_THROTTLE_MS {
+        return;
+    }
+
+    if LAST_VERSION_CHECK
+        .compare_exchange(last, now, Ordering::Relaxed, Ordering::Relaxed)
+        .is_ok()
+    {
+        log_w!(
+            TAG,
+            "Multiple SDK versions detected. This may cause unexpected behavior. Expected: {}, Got: {}",
+            statsig_metadata::SDK_VERSION,
+            user.sdk_version
+        );
     }
 }
