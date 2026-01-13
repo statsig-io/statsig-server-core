@@ -6,7 +6,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3_stub_gen::derive::*;
 use statsig_rust::{log_e, log_w, DynamicValue, StatsigUser, StatsigUserData};
-use std::{collections::HashMap, str, sync::Arc};
+use std::{collections::HashMap, str};
 
 const TAG: &str = stringify!(StatsigUserPy);
 
@@ -255,10 +255,7 @@ impl StatsigUserPy {
             }
         };
 
-        let inner = StatsigUser {
-            data: Arc::new(user_data),
-        };
-
+        let inner = StatsigUser::new(user_data);
         *self = StatsigUserPy { inner };
         Ok(())
     }

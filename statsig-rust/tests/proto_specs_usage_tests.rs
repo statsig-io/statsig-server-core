@@ -8,7 +8,7 @@ use crate::utils::{
     helpers::load_contents, mock_data_store::MockDataStore, mock_log_provider::MockLogProvider,
 };
 
-const KNOWN_CHECKSUM: &str = "9073779682072068000" /* eval_proj_dcs.json['checksum'] */;
+const KNOWN_CHECKSUM: &str = "8506699639233708000" /* eval_proj_dcs.json['checksum'] */;
 const EVAL_PROJ_GATE_COUNT: usize = 69 /* eval_proj_dcs.json['feature_gates'].filter(g => g.entity === feature_gate).length */;
 const EVAL_PROJ_DC_COUNT: usize = 9 /* eval_proj_dcs.json['dynamic_configs'].filter(dc => dc.entity === dynamic_config).length */;
 const DEMO_PROJ_GATE_COUNT: usize = 7 /* demo_proj_dcs.json['feature_gates'].filter(g => g.entity === feature_gate).length */;

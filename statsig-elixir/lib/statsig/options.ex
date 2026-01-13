@@ -8,6 +8,7 @@ defmodule Statsig.Options do
             log_event_url: nil,
             specs_sync_interval_ms: nil,
             specs_url: nil,
+            spec_adapter_configs: nil,
             enable_id_lists: nil,
             id_lists_url: nil,
             id_lists_sync_interval_ms: nil,
@@ -18,7 +19,19 @@ defmodule Statsig.Options do
             disable_network: nil,
             disable_user_agent_parsing: nil,
             use_third_party_ua_parser: nil,
-            disable_disk_access: nil
+            disable_disk_access: nil,
+            data_store: nil
+end
+
+defmodule Statsig.SpecAdapterConfig do
+  defstruct adapter_type: nil,
+            specs_url: nil,
+            init_timeout_ms: nil,
+            authentication_mode: nil,
+            ca_cert_path: nil,
+            client_cert_path: nil,
+            client_key_path: nil,
+            domain_name: nil
 end
 
 defmodule Statsig.ExperimentEvaluationOptions do

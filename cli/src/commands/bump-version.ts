@@ -16,7 +16,6 @@ import {
 } from '@/utils/terminal_utils.js';
 import { getRootVersion, setRootVersion } from '@/utils/toml_utils.js';
 import chalk from 'chalk';
-import { execSync } from 'child_process';
 
 import { CommandBase } from './command_base.js';
 import { SyncVersion } from './sync-version.js';

@@ -8,6 +8,7 @@ use std::{
 };
 
 use crate::{
+    data_store_nfi::{DataStoreRequestResource, ManagedEnvGuard},
     statsig_options_nfi::StatsigOptions,
     statsig_types_nfi::{
         AllowedPrimitive, ClientInitResponseOptions, DynamicConfig, DynamicConfigEvaluationOptions,
@@ -27,6 +28,7 @@ struct StatsigResource {
 fn load(env: Env, _: Term) -> bool {
     _ = rustler::resource!(StatsigResource, env);
     _ = rustler::resource!(LayerResource, env);
+    _ = rustler::resource!(DataStoreRequestResource, env);
     true
 }
 
@@ -44,10 +46,12 @@ impl LayerResource {
 
 #[rustler::nif(schedule = "DirtyCpu")]
 pub fn new(
+    env: Env<'_>,
     sdk_key: String,
     options: Option<StatsigOptions>,
     system_metadata: HashMap<String, String>,
 ) -> Result<ResourceArc<StatsigResource>, Error> {
+    let _guard = ManagedEnvGuard::new(env);
     update_metadata(system_metadata);
     let statsig = Statsig::new(&sdk_key, options.map(|op| Arc::new(op.into())));
     Ok(ResourceArc::new(StatsigResource {
@@ -56,7 +60,8 @@ pub fn new(
 }
 
 #[rustler::nif]
-pub fn initialize(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
+pub fn initialize(env: Env<'_>, statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read) => {
             let statsig: Arc<Statsig> = Arc::clone(&read);
@@ -76,11 +81,13 @@ pub fn initialize(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
 
 #[rustler::nif]
 pub fn get_feature_gate(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     gate_name: &str,
     statsig_user: StatsigUser,
     options: Option<FeatureGateEvaluationOptions>,
 ) -> Result<FeatureGate, Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => Ok(read_guard
             .get_feature_gate_with_options(
@@ -95,11 +102,13 @@ pub fn get_feature_gate(
 
 #[rustler::nif]
 pub fn check_gate(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     gate_name: &str,
     statsig_user: StatsigUser,
     options: Option<FeatureGateEvaluationOptions>,
 ) -> Result<bool, Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => Ok(read_guard.check_gate_with_options(
             &statsig_user.into(),
@@ -112,11 +121,13 @@ pub fn check_gate(
 
 #[rustler::nif]
 pub fn get_dynamic_config(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     config_name: &str,
     statsig_user: StatsigUser,
     options: Option<DynamicConfigEvaluationOptions>,
 ) -> Result<DynamicConfig, Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => Ok(read_guard
             .get_dynamic_config_with_options(
@@ -131,11 +142,13 @@ pub fn get_dynamic_config(
 
 #[rustler::nif]
 pub fn get_experiment(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     experiment_name: &str,
     statsig_user: StatsigUser,
     options: Option<ExperimentEvaluationOptions>,
 ) -> Result<Experiment, Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => Ok(read_guard
             .get_experiment_with_options(
@@ -150,11 +163,13 @@ pub fn get_experiment(
 
 #[rustler::nif]
 pub fn get_layer(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     layer_name: &str,
     statsig_user: StatsigUser,
     options: Option<LayerEvaluationOptions>,
 ) -> Result<ResourceArc<LayerResource>, Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             let layer = read_guard.get_layer_with_options(
@@ -170,12 +185,14 @@ pub fn get_layer(
 
 #[rustler::nif]
 pub fn log_event(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     statsig_user: StatsigUser,
     event_name: &str,
     value: Option<&str>,
     metadata: Option<HashMap<String, String>>,
 ) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             read_guard.log_event(
@@ -192,12 +209,14 @@ pub fn log_event(
 
 #[rustler::nif]
 pub fn log_event_with_number(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     statsig_user: StatsigUser,
     event_name: &str,
     value: Option<f64>,
     metadata: Option<HashMap<String, String>>,
 ) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             read_guard.log_event_with_number(&statsig_user.into(), event_name, value, metadata);
@@ -209,10 +228,12 @@ pub fn log_event_with_number(
 
 #[rustler::nif(schedule = "DirtyCpu")]
 pub fn get_client_init_response_as_string(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     statsig_user: StatsigUser,
     options: Option<ClientInitResponseOptions>,
 ) -> Result<String, Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             let response = match options {
@@ -229,7 +250,8 @@ pub fn get_client_init_response_as_string(
 }
 
 #[rustler::nif(schedule = "DirtyIo")]
-pub fn flush(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
+pub fn flush(env: Env<'_>, statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             let statsig: Arc<Statsig> = Arc::clone(&read_guard);
@@ -248,7 +270,8 @@ pub fn flush(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
 }
 
 #[rustler::nif]
-pub fn shutdown(statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
+pub fn shutdown(env: Env<'_>, statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             let statsig: Arc<Statsig> = Arc::clone(&read_guard);
@@ -314,11 +337,13 @@ pub fn layer_get_group_name(layer: ResourceArc<LayerResource>) -> Result<Option<
 
 #[rustler::nif]
 pub fn override_gate(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     gate_name: &str,
     value: bool,
     id: Option<&str>,
 ) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             read_guard.override_gate(gate_name, value, id);
@@ -330,11 +355,13 @@ pub fn override_gate(
 
 #[rustler::nif]
 pub fn override_dynamic_config(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     config_name: &str,
     value: Term,
     id: Option<&str>,
 ) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
     let deserializer = Deserializer::from(value);
     let map_value: HashMap<String, Value> = HashMap::deserialize(deserializer)
         .map_err(|e| Error::RaiseTerm(Box::new(format!("Failed to decode map value: {e}"))))?;
@@ -350,11 +377,13 @@ pub fn override_dynamic_config(
 
 #[rustler::nif]
 pub fn override_experiment(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     experiment_name: &str,
     value: Term,
     id: Option<&str>,
 ) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
     let deserializer = Deserializer::from(value);
     let map_value: HashMap<String, Value> = HashMap::deserialize(deserializer)
         .map_err(|e| Error::RaiseTerm(Box::new(format!("Failed to decode map value: {e}"))))?;
@@ -370,11 +399,13 @@ pub fn override_experiment(
 
 #[rustler::nif]
 pub fn override_layer(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     layer_name: &str,
     value: Term,
     id: Option<&str>,
 ) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
     let deserializer = Deserializer::from(value);
     let map_value: HashMap<String, Value> = HashMap::deserialize(deserializer)
         .map_err(|e| Error::RaiseTerm(Box::new(format!("Failed to decode map value: {e}"))))?;
@@ -410,10 +441,12 @@ pub fn override_parameter_store(
 
 #[rustler::nif]
 pub fn remove_gate_override(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     gate_name: &str,
     id: Option<&str>,
 ) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             read_guard.remove_gate_override(gate_name, id);
@@ -425,10 +458,12 @@ pub fn remove_gate_override(
 
 #[rustler::nif]
 pub fn remove_dynamic_config_override(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     config_name: &str,
     id: Option<&str>,
 ) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             read_guard.remove_dynamic_config_override(config_name, id);
@@ -440,10 +475,12 @@ pub fn remove_dynamic_config_override(
 
 #[rustler::nif]
 pub fn remove_experiment_override(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     experiment_name: &str,
     id: Option<&str>,
 ) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             read_guard.remove_experiment_override(experiment_name, id);
@@ -455,10 +492,12 @@ pub fn remove_experiment_override(
 
 #[rustler::nif]
 pub fn remove_layer_override(
+    env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
     layer_name: &str,
     id: Option<&str>,
 ) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             read_guard.remove_layer_override(layer_name, id);

@@ -2,7 +2,6 @@ use crate::ffi_utils::{c_char_to_string, parse_json_to_map, parse_json_to_str_ma
 use statsig_rust::{log_e, InstanceRegistry, StatsigUser};
 use statsig_rust::{StatsigUserBuilder, StatsigUserData};
 use std::os::raw::c_char;
-use std::sync::Arc;
 
 const TAG: &str = "StatsigUserC";
 
@@ -24,10 +23,7 @@ pub extern "C" fn statsig_user_create_from_data(json_data: *const c_char) -> u64
         }
     };
 
-    let user = StatsigUser {
-        data: Arc::new(user_data),
-    };
-
+    let user = StatsigUser::new(user_data);
     InstanceRegistry::register(user).unwrap_or_else(|| {
         log_e!(TAG, "Failed to create StatsigUser");
         0

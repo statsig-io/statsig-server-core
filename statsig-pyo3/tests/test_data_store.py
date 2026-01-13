@@ -13,7 +13,7 @@ from statsig_python_core import (
 from pytest_httpserver import HTTPServer
 from utils import get_test_data_resource
 
-known_lcut = 1765242332716
+known_lcut = 1767981029384
 
 dcs_content = get_test_data_resource("eval_proj_dcs.json")
 json_data = json.loads(dcs_content)

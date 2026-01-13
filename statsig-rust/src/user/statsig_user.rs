@@ -1,4 +1,5 @@
 use crate::evaluation::dynamic_value::DynamicValue;
+use crate::statsig_metadata;
 use crate::{dyn_value, evaluation::dynamic_string::DynamicString};
 use std::{collections::HashMap, sync::Arc};
 
@@ -7,6 +8,8 @@ use super::{into_optional::IntoOptional, unit_id::UnitID, user_data::UserData};
 #[derive(Clone)]
 pub struct StatsigUser {
     pub data: Arc<UserData>,
+
+    pub(crate) sdk_version: &'static str,
 }
 
 impl StatsigUser {
@@ -36,9 +39,10 @@ impl StatsigUser {
         })
     }
 
-    pub(crate) fn new(inner: UserData) -> Self {
+    pub fn new(inner: UserData) -> Self {
         Self {
             data: Arc::new(inner),
+            sdk_version: statsig_metadata::SDK_VERSION,
         }
     }
 }
