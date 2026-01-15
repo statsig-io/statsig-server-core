@@ -4,8 +4,8 @@ use crate::utils::{
     mock_log_provider::{MockLogProvider, RecordedLog},
     mock_specs_adapter::MockSpecsAdapter,
 };
+use fancy_regex::Regex;
 use parking_lot::Mutex;
-use regex::Regex;
 use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
 use std::{sync::Arc, time::Duration};
 
@@ -23,8 +23,11 @@ fn get_dropped_count(provider: &Arc<MockLogProvider>) -> i64 {
     let mut count = 0;
     for log in found {
         if let RecordedLog::Warn(_, msg) = log {
-            let captures = re.captures(msg).unwrap();
-            count += captures[1].parse::<i64>().unwrap();
+            if let Ok(Some(captures)) = re.captures(msg) {
+                if let Some(matched) = captures.get(1) {
+                    count += matched.as_str().parse::<i64>().unwrap();
+                }
+            }
         }
     }
 

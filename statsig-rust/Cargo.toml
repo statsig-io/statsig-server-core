@@ -17,13 +17,12 @@ dashmap = "6.1.0"
 file-guard = "0.2.0"
 flate2 = "1.0.35"
 futures = "0.3.30"
-lazy-regex = "3.4.1"
 lazy_static = "1.5.0"
 log = "0.4.22"
 parking_lot = "0.12.1"
 percent-encoding = "2.3.1"
 rand = "0.8.4"
-regex = "1.10"
+fancy-regex = "0.17"
 reqwest = { version = "0.12.14", features = [
     "json",
     "gzip",
