@@ -84,6 +84,44 @@ describe('Statsig', () => {
     expect(Object.keys(response.layer_configs)).toHaveLength(12);
   });
 
+  it('should get the proper user object in gcir payload', async () => {
+    const user = new StatsigUser({
+      userID: 'a-user',
+      statsigEnvironment: { tier: 'development' },
+      email: 'whd@statsig.com',
+      ip: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      country: 'US',
+      locale: 'en-US',
+      appVersion: '1.0.0',
+      custom: {
+        os: 'windows',
+      },
+      customIDs: {
+        device: '1234567890',
+      },
+    });
+
+    const response = JSON.parse(statsig.getClientInitializeResponse(user));
+
+    expect(response.user).toMatchObject({
+      userID: 'a-user',
+      statsigEnvironment: { tier: 'development' },
+      email: 'whd@statsig.com',
+      ip: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      country: 'US',
+      locale: 'en-US',
+      appVersion: '1.0.0',
+      custom: {
+        os: 'windows',
+      },
+      customIDs: {
+        device: '1234567890',
+      },
+    });
+  })
+
   it('should apply feature gate filter correctly', async () => {
     const user = StatsigUser.withUserID('a-user');
 
@@ -316,6 +354,7 @@ describe('Statsig', () => {
       expect(config.get('obj', undefined)).toEqual({ a: 'bc' });
       expect(config.getValue('obj', undefined)).toEqual({ a: 'bc' });
       expect(config.get('arr', undefined)).toEqual(['hi', 'there']);
+      expect(config.get<string[]>('arr', [])).toEqual(['hi', 'there']);
       expect(config.get('arr', null)).toEqual(['hi', 'there']);
       expect(config.getValue('arr', undefined)).toEqual(['hi', 'there']);
       expect(config.getValue('arr', null)).toEqual(['hi', 'there']);
