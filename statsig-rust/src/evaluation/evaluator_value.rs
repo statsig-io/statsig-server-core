@@ -1,5 +1,5 @@
 use chrono::{DateTime, NaiveDateTime};
-use regex::Regex;
+use fancy_regex::Regex as FancyRegex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{
     value::{to_raw_value, RawValue},
@@ -98,7 +98,7 @@ pub struct MemoizedEvaluatorValue {
     pub bool_value: Option<bool>,
     pub float_value: Option<f64>,
     pub string_value: Option<DynamicString>,
-    pub regex_value: Option<Regex>,
+    pub regex_value: Option<FancyRegex>,
     pub timestamp_value: Option<i64>,
     // { lower_case_str: (index, str) } -- Keyed by lowercase string so we can lookup with O(1)
     pub array_value: Option<HashMap<InternedString, (usize, InternedString)>>,
@@ -145,7 +145,7 @@ impl MemoizedEvaluatorValue {
             None => return,
         };
 
-        if let Ok(regex) = Regex::new(str_value) {
+        if let Ok(regex) = FancyRegex::new(str_value) {
             self.regex_value = Some(regex);
         }
     }

@@ -5,8 +5,11 @@ pub(crate) fn compare_str_with_regex(
     regex_value: &MemoizedEvaluatorValue,
 ) -> bool {
     let value_str = unwrap_or_return!(&value.string_value, false);
-    let regex = unwrap_or_return!(&regex_value.regex_value, false);
-    regex.is_match(&value_str.value)
+    if let Some(regex) = &regex_value.regex_value {
+        return regex.is_match(&value_str.value).unwrap_or(false);
+    }
+
+    false
 }
 
 #[cfg(test)]
@@ -28,6 +31,15 @@ mod tests {
         let left =
             dyn_value!(r#"{ "name": "Statsig", "version": "4.8.1-beta.32", "license": "ISC" }"#);
         let mut right = test_only_make_eval_value!(r#"version":\s*"4\.8\.\d+"#); // Major.Minor == 4.8
+        right.compile_regex();
+
+        assert!(compare_str_with_regex(&left, &right));
+    }
+
+    #[test]
+    fn test_compare_regex_fancy_fallback() {
+        let left = dyn_value!("foobar");
+        let mut right = test_only_make_eval_value!(r#"(?<=foo)bar"#);
         right.compile_regex();
 
         assert!(compare_str_with_regex(&left, &right));

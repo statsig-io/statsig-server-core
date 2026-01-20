@@ -59,6 +59,13 @@ pub(crate) fn gcir_process_iter<T: GCIRHashable>(
             continue;
         }
 
+        if spec.entity == "experiment"
+            && options.remove_experiments_in_layers.unwrap_or(false)
+            && context.result.is_in_layer
+        {
+            continue;
+        }
+
         let hashed_name = context
             .hashing
             .hash(name.as_str(), options.get_hash_algorithm());

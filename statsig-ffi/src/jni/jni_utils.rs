@@ -117,6 +117,7 @@ pub fn convert_java_client_init_response_options_to_rust(
         remove_id_type,
         remove_default_value_gates: None,
         previous_response_hash: None,
+        remove_experiments_in_layers: None,
     })
 }
 

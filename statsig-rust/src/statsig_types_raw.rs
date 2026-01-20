@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_with::skip_serializing_none;
 
 use crate::evaluation::dynamic_returnable::DynamicReturnable;
@@ -175,8 +175,9 @@ impl<'a> LayerRaw<'a> {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg(feature = "ffi-support")]
 pub(crate) struct PartialLayerRaw {
     pub name: InternedString,
 
