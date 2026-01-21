@@ -452,10 +452,12 @@ describe('Statsig', () => {
       const layer = statsig.getLayer(user, 'layer_with_many_params');
 
       expect(layer.get('another_string', 'err')).toBe('layer_default');
+      expect(layer.get<string>('another_string', 'err')).toBe('layer_default');
       expect(layer.getValue('another_string', 'err')).toBe('layer_default');
 
       // falls back when types mismatch
       expect(layer.get('another_string', 1)).toEqual(1);
+      expect(layer.get<number>('another_string', 1)).toEqual(1);
       expect(layer.getValue('another_string', 1)).toEqual('layer_default');
 
       // undefined fallback should return right value
