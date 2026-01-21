@@ -46,6 +46,7 @@ pub enum StatsigErr {
     // Initialization / Shutdown
     InitializationError(String),
     ShutdownFailure(String),
+    InvalidOperation(String),
 
     // Task Scheduler
     ScheduleFailure(String),
@@ -108,6 +109,7 @@ impl Display for StatsigErr {
                 write!(f, "Initialization Error: {message}")
             }
             StatsigErr::ShutdownFailure(e) => write!(f, "Shutdown failure: {e}"),
+            StatsigErr::InvalidOperation(e) => write!(f, "Invalid operation: {e}"),
 
             StatsigErr::ScheduleFailure(e) => write!(f, "Failed to schedule task: {e}"),
             StatsigErr::TaskShutdownFailure => write!(f, "Failed to shutdown task scheduler"),
@@ -151,6 +153,7 @@ impl StatsigErr {
 
             StatsigErr::InitializationError(_) => "InitializationError",
             StatsigErr::ShutdownFailure(_) => "ShutdownFailure",
+            StatsigErr::InvalidOperation(_) => "InvalidOperation",
 
             StatsigErr::ScheduleFailure(_) => "ScheduleFailure",
             StatsigErr::TaskShutdownFailure => "TaskShutdownFailure",

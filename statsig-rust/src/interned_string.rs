@@ -10,14 +10,14 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::value::RawValue;
 
 use crate::{
-    evaluation::dynamic_string::DynamicString, hashing, impl_interned_value,
-    interned_value_store::FromRawValue, log_e,
+    evaluation::dynamic_string::DynamicString, interned_value_store::FromRawValue,
+    interned_values::InternedStore, log_e,
 };
 
 lazy_static::lazy_static! {
     static ref EMPTY: InternedString = InternedString {
         hash: 0,
-        value: Arc::new(String::new()),
+        value: InternedStringValue::Static(""),
     };
 
     static ref TRUE_STRING: InternedString = InternedString::from_string("true".to_string());
@@ -31,7 +31,28 @@ const TAG: &str = "InternedString";
 #[derive(Clone, Debug, Eq)]
 pub struct InternedString {
     pub hash: u64,
-    pub value: Arc<String>,
+    pub value: InternedStringValue,
+}
+
+#[derive(Clone, Debug, Eq)]
+pub enum InternedStringValue {
+    Pointer(Arc<String>),
+    Static(&'static str),
+}
+
+impl InternedStringValue {
+    pub fn as_str(&self) -> &str {
+        match self {
+            InternedStringValue::Pointer(value) => value.as_str(),
+            InternedStringValue::Static(value) => value,
+        }
+    }
+}
+
+impl PartialEq for InternedStringValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_str() == other.as_str()
+    }
 }
 
 #[macro_export]
@@ -68,15 +89,11 @@ impl InternedString {
     }
 
     pub fn from_str_ref(value: &str) -> Self {
-        let hash = hashing::hash_one(value);
-        let value = InternedString::get_or_create_memoized_string(hash, Cow::Borrowed(value));
-        Self { hash, value }
+        InternedStore::get_or_intern_string(value)
     }
 
     pub fn from_string(value: String) -> Self {
-        let hash = hashing::hash_one(value.as_str());
-        let value = InternedString::get_or_create_memoized_string(hash, Cow::Owned(value));
-        Self { hash, value }
+        InternedStore::get_or_intern_string(value)
     }
 
     pub fn from_bool(value: bool) -> Self {
@@ -88,10 +105,7 @@ impl InternedString {
     }
 
     pub fn from_dynamic_string(value: &DynamicString) -> Self {
-        let hash = value.hash_value;
-        let value =
-            InternedString::get_or_create_memoized_string(hash, Cow::Borrowed(&value.value));
-        Self { hash, value }
+        InternedStore::get_or_intern_string(value.value.as_str())
     }
 
     pub fn from_str_parts(parts: &[&str]) -> Self {
@@ -110,7 +124,7 @@ impl InternedString {
     /// Clones the value out of the Arc. This is not performant.
     /// Please only use this if we are giving a value to a caller outside of this library.
     pub fn unperformant_to_string(&self) -> String {
-        self.value.to_string()
+        self.value.as_str().to_string()
     }
 
     pub fn empty_ref() -> &'static Self {
@@ -122,22 +136,9 @@ impl InternedString {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.value.is_empty()
-    }
-
-    fn get_or_create_memoized_string(hash: u64, input: Cow<'_, str>) -> Arc<String> {
-        if let Some(value) = INTERNED_STORE.try_get_interned_value(hash) {
-            return value;
-        }
-
-        let value = input.to_string();
-        let value_arc = Arc::new(value);
-        INTERNED_STORE.set_interned_value(hash, &value_arc);
-        value_arc
+        self.value.as_str().is_empty()
     }
 }
-
-impl_interned_value!(InternedString, String);
 
 impl<'de> Deserialize<'de> for InternedString {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -154,16 +155,8 @@ impl<'de> Deserialize<'de> for InternedString {
 
         let raw: CowString<'de> = CowString::deserialize(deserializer)?;
         match raw {
-            CowString::Borrowed(raw) => {
-                let hash = hashing::hash_one(raw);
-                let value = InternedString::get_or_create_memoized_string(hash, Cow::Borrowed(raw));
-                Ok(InternedString { hash, value })
-            }
-            CowString::Owned(raw) => {
-                let hash = hashing::hash_one(raw.as_str());
-                let value = InternedString::get_or_create_memoized_string(hash, Cow::Owned(raw));
-                Ok(InternedString { hash, value })
-            }
+            CowString::Borrowed(raw) => Ok(InternedStore::get_or_intern_string(raw)),
+            CowString::Owned(raw) => Ok(InternedStore::get_or_intern_string(raw)),
         }
     }
 }
@@ -173,7 +166,7 @@ impl Serialize for InternedString {
     where
         S: Serializer,
     {
-        self.value.serialize(serializer)
+        serializer.serialize_str(self.value.as_str())
     }
 }
 
@@ -229,7 +222,7 @@ impl Deref for InternedString {
 
 impl Display for InternedString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.value.fmt(f)
+        write!(f, "{}", self.value.as_str())
     }
 }
 

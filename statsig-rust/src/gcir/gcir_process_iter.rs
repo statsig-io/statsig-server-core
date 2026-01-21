@@ -25,7 +25,7 @@ pub(crate) fn gcir_process_iter<T: GCIRHashable>(
     let mut hashes = Vec::new();
     let mut keys = specs_map.keys().cloned().collect::<Vec<_>>();
     if options.previous_response_hash.is_some() {
-        keys.sort_by(|a, b| a.value.cmp(&b.value));
+        keys.sort_by(|a, b| a.as_str().cmp(b.as_str()));
     }
     for name in keys {
         let spec_ptr = match specs_map.get(&name) {
