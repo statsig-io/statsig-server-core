@@ -231,3 +231,10 @@ impl Default for InternedString {
         EMPTY.clone()
     }
 }
+
+impl Drop for InternedString {
+    fn drop(&mut self) {
+        self.value = InternedStringValue::Static("");
+        InternedStore::release_string(self.hash);
+    }
+}

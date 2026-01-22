@@ -6,6 +6,7 @@ use serde_json::json;
 
 use crate::interned_str;
 use crate::interned_string::{InternedString, InternedStringValue};
+use crate::interned_values::InternedStore;
 
 #[test]
 fn test_interned_string() {
@@ -151,4 +152,19 @@ fn test_exposable_string_hash_value_is_changing() {
         assert_gt!(new_hash, 0);
         hash = new_hash;
     }
+}
+
+#[test]
+fn test_removing_strings() {
+    let string = InternedString::from_str_ref("test");
+    assert_eq!(InternedStore::get_memoized_len().0, 1);
+
+    let string2 = InternedString::from_str_ref("test");
+    assert_eq!(InternedStore::get_memoized_len().0, 1);
+
+    drop(string);
+    assert_eq!(InternedStore::get_memoized_len().0, 1);
+
+    drop(string2);
+    assert_eq!(InternedStore::get_memoized_len().0, 0);
 }

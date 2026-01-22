@@ -28,6 +28,7 @@ rusty_fork_test! {
         assert!(matches!(value.value, InternedStringValue::Static(_)));
         assert_eq!(value.as_str(), "value");
     }
+
     #[test]
     fn test_repeated_calls_to_bootstrap() {
         let data = b"{\"test\":\"value\"}";

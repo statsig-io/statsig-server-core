@@ -1,1 +1,2 @@
-mod interned_store_tests;
+mod interned_store_returnable_tests;
+mod interned_store_string_tests;
