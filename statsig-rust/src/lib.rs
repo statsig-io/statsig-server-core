@@ -45,6 +45,7 @@ pub mod instance_registry;
 pub mod interned_string;
 pub mod interned_value_store;
 pub mod interned_values;
+pub mod logging_utils;
 pub mod networking;
 pub mod output_logger;
 pub mod override_adapter;

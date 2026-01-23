@@ -1,6 +1,8 @@
 use serde::Serialize;
 use std::fmt;
 
+use crate::logging_utils::sanitize_secret_key;
+
 type RequestUrl = String;
 
 #[derive(PartialEq, Debug, Clone, Serialize)]
@@ -30,11 +32,23 @@ impl NetworkError {
 impl fmt::Display for NetworkError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            NetworkError::ShutdownError(url) => write!(f, "ShutdownError: {url}"),
-            NetworkError::DisableNetworkOn(url) => write!(f, "DisableNetworkOn: {url}"),
-            NetworkError::SerializationError(url, s) => write!(f, "SerializationError: {url} {s}"),
+            NetworkError::ShutdownError(url) => {
+                let url = sanitize_secret_key(url);
+                write!(f, "ShutdownError: {url}")
+            }
+            NetworkError::DisableNetworkOn(url) => {
+                let url = sanitize_secret_key(url);
+                write!(f, "DisableNetworkOn: {url}")
+            }
+            NetworkError::SerializationError(url, s) => {
+                let url = sanitize_secret_key(url);
+                let s = sanitize_secret_key(s);
+                write!(f, "SerializationError: {url} {s}")
+            }
 
             NetworkError::RequestFailed(url, status, message) => {
+                let url = sanitize_secret_key(url);
+                let message = sanitize_secret_key(message);
                 let status_display = match status {
                     Some(code) => code.to_string(),
                     None => "None".to_string(),
@@ -42,6 +56,8 @@ impl fmt::Display for NetworkError {
                 write!(f, "RequestFailed: {url} {status_display} {message}")
             }
             NetworkError::RetriesExhausted(url, status, attempts, message) => {
+                let url = sanitize_secret_key(url);
+                let message = sanitize_secret_key(message);
                 let status_display = match status {
                     Some(code) => code.to_string(),
                     None => "None".to_string(),
@@ -52,6 +68,8 @@ impl fmt::Display for NetworkError {
                 )
             }
             NetworkError::RequestNotRetryable(url, status, message) => {
+                let url = sanitize_secret_key(url);
+                let message = sanitize_secret_key(message);
                 let status_display = match status {
                     Some(code) => code.to_string(),
                     None => "None".to_string(),
@@ -62,5 +80,25 @@ impl fmt::Display for NetworkError {
                 )
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize_secret_key_in_error_display() {
+        let err = NetworkError::RetriesExhausted(
+            "https://api.statsigcdn.com/v2/download_config_specs/secret-fakeO1234567890.json"
+                .to_string(),
+            None,
+            1,
+            "Invalid array length".to_string(),
+        );
+
+        let message = err.to_string();
+        assert!(message.contains("secret-fakeO*****.json"));
+        assert!(!message.contains("secret-fakeO1234567890"));
     }
 }
