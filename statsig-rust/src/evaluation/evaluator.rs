@@ -411,8 +411,8 @@ fn evaluate_condition<'a>(
     let target_value = condition
         .target_value
         .as_ref()
-        .map(|v| v.inner.as_ref())
-        .unwrap_or(EvaluatorValue::empty().inner.as_ref());
+        .map(|v| v.as_ref())
+        .unwrap_or(EvaluatorValue::empty().as_ref());
     let condition_type = condition.condition_type.as_str();
 
     let value: &DynamicValue = match condition_type {

@@ -50,4 +50,25 @@ rusty_fork_test! {
             serde_json::Value::String("control".to_string()),
         )]));
     }
+
+    #[test]
+    fn test_interned_returnable_dropped() {
+        let returnable = DynamicReturnable::from_map(HashMap::from([(
+            "key".to_string(),
+            serde_json::Value::String("value".to_string()),
+        )]));
+        assert_eq!(InternedStore::get_memoized_len().1, 1);
+
+        let returnable2 = DynamicReturnable::from_map(HashMap::from([(
+            "key".to_string(),
+            serde_json::Value::String("value".to_string()),
+        )]));
+        assert_eq!(InternedStore::get_memoized_len().1, 1);
+
+        drop(returnable);
+        assert_eq!(InternedStore::get_memoized_len().1, 1);
+
+        drop(returnable2);
+        assert_eq!(InternedStore::get_memoized_len().1, 0);
+    }
 }

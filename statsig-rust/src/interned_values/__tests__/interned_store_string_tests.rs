@@ -72,4 +72,19 @@ rusty_fork_test! {
             assert_eq!(libc::WEXITSTATUS(status), 0);
         };
     }
+
+    #[test]
+    fn test_interned_string_dropped() {
+        let string = InternedString::from_str_ref("test");
+        assert_eq!(InternedStore::get_memoized_len().0, 1);
+
+        let string2 = InternedString::from_str_ref("test");
+        assert_eq!(InternedStore::get_memoized_len().0, 1);
+
+        drop(string);
+        assert_eq!(InternedStore::get_memoized_len().0, 1);
+
+        drop(string2);
+        assert_eq!(InternedStore::get_memoized_len().0, 0);
+    }
 }

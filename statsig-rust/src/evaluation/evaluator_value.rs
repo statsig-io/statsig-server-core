@@ -8,8 +8,8 @@ use serde_json::{
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 use crate::{
-    impl_interned_value, interned_string::InternedString, interned_value_store::FromRawValue,
-    log_e, unwrap_or_return, DynamicValue,
+    interned_string::InternedString, interned_values::InternedStore, log_e, unwrap_or_return,
+    DynamicValue,
 };
 
 use super::dynamic_string::DynamicString;
@@ -17,19 +17,23 @@ use super::dynamic_string::DynamicString;
 lazy_static::lazy_static! {
     pub(crate) static ref EMPTY_EVALUATOR_VALUE: EvaluatorValue = EvaluatorValue {
         hash: 0,
-        inner: Arc::new(MemoizedEvaluatorValue::new(EvaluatorValueType::Null)),
+        inner: EvaluatorValueInner::Pointer(Arc::new(MemoizedEvaluatorValue::new(EvaluatorValueType::Null))),
     };
 }
 
 const TAG: &str = "EvaluatorValue";
 
 #[derive(Clone, Debug)]
-pub struct EvaluatorValue {
-    pub hash: u64,
-    pub inner: Arc<MemoizedEvaluatorValue>,
+pub enum EvaluatorValueInner {
+    Pointer(Arc<MemoizedEvaluatorValue>),
+    Static(&'static MemoizedEvaluatorValue),
 }
 
-impl_interned_value!(EvaluatorValue, MemoizedEvaluatorValue);
+#[derive(Clone, Debug)]
+pub struct EvaluatorValue {
+    pub hash: u64,
+    pub inner: EvaluatorValueInner,
+}
 
 impl EvaluatorValue {
     pub fn empty() -> &'static Self {
@@ -45,13 +49,29 @@ impl EvaluatorValue {
             }
         };
 
-        let (hash, value) = EvaluatorValue::get_or_create_memoized(Cow::Owned(raw_value));
-        Self { hash, inner: value }
+        InternedStore::get_or_intern_evaluator_value(Cow::Owned(raw_value))
     }
 
     pub fn compile_regex(&mut self) {
-        let mut_inner = Arc::make_mut(&mut self.inner);
-        mut_inner.compile_regex();
+        match &mut self.inner {
+            EvaluatorValueInner::Pointer(inner) => {
+                let mut_inner = Arc::make_mut(inner);
+                mut_inner.compile_regex();
+            }
+            EvaluatorValueInner::Static(_) => {
+                // static values are immutable and are compiled during `InternedStore::bootstrap(..)`
+                log_e!(TAG, "Cannot compile regex for static EvaluatorValue");
+            }
+        }
+    }
+}
+
+impl AsRef<MemoizedEvaluatorValue> for EvaluatorValue {
+    fn as_ref(&self) -> &MemoizedEvaluatorValue {
+        match &self.inner {
+            EvaluatorValueInner::Pointer(inner) => inner,
+            EvaluatorValueInner::Static(inner) => inner,
+        }
     }
 }
 
@@ -61,8 +81,9 @@ impl<'de> Deserialize<'de> for EvaluatorValue {
         D: Deserializer<'de>,
     {
         let raw_value_ref: Box<RawValue> = Deserialize::deserialize(deserializer)?;
-        let (hash, value) = EvaluatorValue::get_or_create_memoized(Cow::Owned(raw_value_ref));
-        Ok(EvaluatorValue { hash, inner: value })
+        Ok(InternedStore::get_or_intern_evaluator_value(Cow::Owned(
+            raw_value_ref,
+        )))
     }
 }
 
@@ -71,15 +92,36 @@ impl Serialize for EvaluatorValue {
     where
         S: Serializer,
     {
-        self.inner.serialize(serializer)
+        match &self.inner {
+            EvaluatorValueInner::Pointer(inner) => inner.serialize(serializer),
+            EvaluatorValueInner::Static(inner) => inner.serialize(serializer),
+        }
     }
 }
 
 impl PartialEq for EvaluatorValue {
     fn eq(&self, other: &Self) -> bool {
-        self.inner == other.inner
+        let left = match &self.inner {
+            EvaluatorValueInner::Pointer(inner) => inner,
+            EvaluatorValueInner::Static(inner) => *inner,
+        };
+        let right = match &other.inner {
+            EvaluatorValueInner::Pointer(inner) => inner,
+            EvaluatorValueInner::Static(inner) => *inner,
+        };
+
+        left == right
     }
 }
+
+impl Drop for EvaluatorValue {
+    fn drop(&mut self) {
+        self.inner = EMPTY_EVALUATOR_VALUE.inner.clone();
+        InternedStore::release_evaluator_value(self.hash);
+    }
+}
+
+// ------------------------------------------------------------------------------- [ MemoizedEvaluatorValue ]
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum EvaluatorValueType {
@@ -100,13 +142,18 @@ pub struct MemoizedEvaluatorValue {
     pub string_value: Option<DynamicString>,
     pub regex_value: Option<FancyRegex>,
     pub timestamp_value: Option<i64>,
-    // { lower_case_str: (index, str) } -- Keyed by lowercase string so we can lookup with O(1)
-    pub array_value: Option<HashMap<InternedString, (usize, InternedString)>>,
     pub object_value: Option<HashMap<InternedString, DynamicString>>,
+
+    // - Note on Array Value ------------------------------------------------------------
+    // - Keyed by lowercase string so we can lookup with O(1) during evaluation.
+    // - Format is `{ lower_case_str: (index, str) }` i.e: ["Apple", "Banana"] becomes { "apple": (0, "Apple"), "banana": (1, "Banana") }
+    // - The index is what position in the array it is, currently this is only used to serialzie back to the original JSON.
+    // ----------------------------------------------------------------------------------
+    pub array_value: Option<HashMap<InternedString, (usize, InternedString)>>,
 }
 
-impl FromRawValue for MemoizedEvaluatorValue {
-    fn from_raw_value(raw_value: Cow<'_, RawValue>) -> Self {
+impl MemoizedEvaluatorValue {
+    pub fn from_raw_value(raw_value: Cow<'_, RawValue>) -> Self {
         match serde_json::from_str(raw_value.get()) {
             Ok(value) => value,
             Err(e) => {
