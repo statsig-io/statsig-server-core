@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::logging_utils::sanitize_secret_key;
 const MAX_CHARS: usize = 400;
 const TRUNCATED_SUFFIX: &str = "...[TRUNCATED]";
 
@@ -163,7 +164,7 @@ pub fn log_message(tag: &str, level: LogLevel, msg: String) {
         msg
     };
 
-    let sanitized_msg = sanitize(&truncated_msg);
+    let sanitized_msg = sanitize_secret_key(&truncated_msg);
 
     if let Some(state) = LOGGER_STATE.try_read_for(Duration::from_secs(5)) {
         if let Some(provider) = &state.provider {
@@ -192,27 +193,6 @@ pub fn log_message(tag: &str, level: LogLevel, msg: String) {
             _ => {}
         };
     }
-}
-
-fn sanitize(input: &str) -> String {
-    input
-        .split("secret-")
-        .enumerate()
-        .map(|(i, part)| {
-            if i == 0 {
-                part.to_string()
-            } else {
-                let (key, rest) =
-                    part.split_at(part.chars().take_while(|c| c.is_alphanumeric()).count());
-                let sanitized_key = if key.len() > 5 {
-                    format!("{}*****{}", &key[..5], rest)
-                } else {
-                    format!("{key}*****{rest}")
-                };
-                format!("secret-{sanitized_key}")
-            }
-        })
-        .collect()
 }
 
 pub fn has_valid_log_level(level: &LogLevel) -> bool {
@@ -313,7 +293,7 @@ mod tests {
             ]
         );
         for (before, expected) in test_cases {
-            let sanitized = sanitize(before);
+            let sanitized = sanitize_secret_key(before);
             assert!(sanitized == expected);
         }
     }
@@ -321,7 +301,7 @@ mod tests {
     #[test]
     fn test_multiple_secrets() {
         let input = "Multiple secrets: secret-key1 and secret-key2";
-        let sanitized = sanitize(input);
+        let sanitized = sanitize_secret_key(input);
         assert_eq!(
             sanitized,
             "Multiple secrets: secret-key1***** and secret-key2*****"
@@ -331,7 +311,7 @@ mod tests {
     #[test]
     fn test_short_secret() {
         let input = "Short secret: secret-a";
-        let sanitized = sanitize(input);
+        let sanitized = sanitize_secret_key(input);
         assert_eq!(sanitized, "Short secret: secret-a*****");
     }
 }
