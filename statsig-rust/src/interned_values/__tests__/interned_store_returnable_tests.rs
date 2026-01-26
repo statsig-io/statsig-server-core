@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[test]
-fn test_interned_returnable_non_bootstrapped() {
+fn test_interned_returnable_non_preloaded() {
     let bool_res = DynamicReturnable::from_bool(true);
     assert!(matches!(bool_res.value, DynamicReturnableValue::Bool(_)));
 
@@ -27,10 +27,10 @@ fn test_interned_returnable_non_bootstrapped() {
 
 rusty_fork_test! {
     #[test]
-    fn test_interned_returnable_bootstrapped() {
+    fn test_interned_returnable_preloaded() {
         // test_experiment_no_targeting.rules[1]["returnValue"] -> {"value":"control"}
         let data = include_bytes!("../../../tests/data/eval_proj_dcs.json");
-        assert!(InternedStore::bootstrap(data).is_ok());
+        assert!(InternedStore::preload(data).is_ok());
 
         let bool_res = DynamicReturnable::from_bool(true);
         assert!(matches!(bool_res.value, DynamicReturnableValue::Bool(_)));

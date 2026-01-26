@@ -132,6 +132,7 @@ impl SpecsResponseFull {
             envelope,
             &existing.feature_gates,
             &mut self.feature_gates,
+            InternedStore::try_get_preloaded_feature_gate,
         )
     }
 
@@ -145,6 +146,7 @@ impl SpecsResponseFull {
             envelope,
             &existing.dynamic_configs,
             &mut self.dynamic_configs,
+            InternedStore::try_get_preloaded_dynamic_config,
         )
     }
 
@@ -158,6 +160,7 @@ impl SpecsResponseFull {
             envelope,
             &existing.layer_configs,
             &mut self.layer_configs,
+            InternedStore::try_get_preloaded_layer_config,
         )
     }
 
@@ -166,11 +169,19 @@ impl SpecsResponseFull {
         envelope: pb::SpecsEnvelope,
         exiting_map: &SpecsHashMap,
         new_map: &mut SpecsHashMap,
+        preload_fetcher: fn(&InternedString) -> Option<SpecPointer>,
     ) -> Result<(), StatsigErr> {
         let name = InternedString::from_string(envelope.name);
 
+        if let Some(spec) = preload_fetcher(&name) {
+            if spec.as_spec_ref().checksum.as_deref() == Some(&envelope.checksum) {
+                new_map.insert(name, spec);
+                return Ok(());
+            }
+        }
+
         if let Some(spec_ptr) = exiting_map.get(&name) {
-            if spec_ptr.inner.checksum.as_deref() == Some(&envelope.checksum) {
+            if spec_ptr.as_spec_ref().checksum.as_deref() == Some(&envelope.checksum) {
                 new_map.insert(name, spec_ptr.clone());
                 return Ok(());
             }
@@ -338,7 +349,7 @@ fn target_value_from_pb(
     if let Some(any_value) = &target_value {
         if let Some(any_value::Value::RawValue(raw_value)) = &any_value.value {
             if let Some(evaluator_value) =
-                InternedStore::try_get_bootstrapped_evaluator_value(raw_value.as_ref())
+                InternedStore::try_get_preloaded_evaluator_value(raw_value.as_ref())
             {
                 return Ok(Some(evaluator_value));
             }
@@ -539,7 +550,7 @@ fn return_value_from_pb(
         pb::return_value::Value::RawValue(value) => value,
     };
 
-    if let Some(returnable) = InternedStore::try_get_bootstrapped_returnable(bytes.as_ref()) {
+    if let Some(returnable) = InternedStore::try_get_preloaded_returnable(bytes.as_ref()) {
         return Ok(returnable);
     }
 

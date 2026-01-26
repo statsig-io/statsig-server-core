@@ -55,11 +55,16 @@ impl EvaluatorValue {
     pub fn compile_regex(&mut self) {
         match &mut self.inner {
             EvaluatorValueInner::Pointer(inner) => {
+                if inner.regex_value.is_some() {
+                    return;
+                }
+
                 let mut_inner = Arc::make_mut(inner);
                 mut_inner.compile_regex();
+                InternedStore::replace_evaluator_value(self.hash, inner.clone());
             }
             EvaluatorValueInner::Static(_) => {
-                // static values are immutable and are compiled during `InternedStore::bootstrap(..)`
+                // static values are immutable and are compiled during `InternedStore::preload(..)`
                 log_e!(TAG, "Cannot compile regex for static EvaluatorValue");
             }
         }

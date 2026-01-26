@@ -127,7 +127,7 @@ impl SpecStore {
         let entity = entities.get(&entity_name);
 
         match entity {
-            Some(entity) => match &entity.inner.fields_used {
+            Some(entity) => match &entity.as_spec_ref().fields_used {
                 Some(fields) => fields.iter().map(|f| f.unperformant_to_string()).collect(),
                 None => vec![],
             },
@@ -179,7 +179,7 @@ impl SpecStore {
 
         values
             .iter()
-            .filter(|(_, v)| v.inner.entity == entity_type)
+            .filter(|(_, v)| v.as_spec_ref().entity == entity_type)
             .map(|(k, _)| k.unperformant_to_string())
             .collect()
     }

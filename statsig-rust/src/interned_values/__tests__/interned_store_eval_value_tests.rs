@@ -7,7 +7,7 @@ use crate::{
 };
 
 #[test]
-fn test_interned_eval_value_non_bootstrapped() {
+fn test_interned_eval_value_non_preloaded() {
     let eval_value = EvaluatorValue::from_json_value(serde_json::Value::Bool(true));
     assert!(matches!(eval_value.inner, EvaluatorValueInner::Pointer(_)));
 
@@ -21,10 +21,10 @@ fn test_interned_eval_value_non_bootstrapped() {
 
 rusty_fork_test! {
     #[test]
-    fn test_interned_eval_value_bootstrapped() {
+    fn test_interned_eval_value_preloaded() {
         // condition_map["7718260"]["targetValue"] -> ["@statsig","@stotseg"]
         let data = include_bytes!("../../../tests/data/eval_proj_dcs.json");
-        assert!(InternedStore::bootstrap(data).is_ok());
+        assert!(InternedStore::preload(data).is_ok());
 
         let eval_value = EvaluatorValue::from_json_value(serde_json::Value::Array(vec![
             json_string("@statsig"),
@@ -37,12 +37,10 @@ rusty_fork_test! {
             _ => panic!("Expected static"),
         };
 
-        let keys = actual.keys().collect::<Vec<_>>();
-        println!("keys: {:?}", keys);
-
-        assert_eq!(keys[0], &InternedString::from_str_ref("@statsig"));
-        assert_eq!(keys[1], &InternedString::from_str_ref("@stotseg"));
+        assert!(actual.contains_key(&InternedString::from_str_ref("@statsig")));
+        assert!(actual.contains_key(&InternedString::from_str_ref("@stotseg")));
     }
+
 
     #[test]
     fn test_interned_eval_value_dropped() {
@@ -60,9 +58,9 @@ rusty_fork_test! {
     }
 
     #[test]
-    fn test_bootstrapped_compiles_str_matches_conditions() {
+    fn test_preloaded_compiles_str_matches_conditions() {
         let data = include_bytes!("../../../tests/data/eval_proj_dcs.json");
-        assert!(InternedStore::bootstrap(data).is_ok());
+        assert!(InternedStore::preload(data).is_ok());
 
         // condition_map["998446160"]["targetValue"] -> "@.*mail"
         let eval_value = EvaluatorValue::from_json_value(json_string("@.*mail"));
@@ -75,9 +73,9 @@ rusty_fork_test! {
     }
 
     #[test]
-    fn test_bootstrapped_does_not_compile_non_str_matches_conditions() {
+    fn test_preloaded_does_not_compile_non_str_matches_conditions() {
         let data = include_bytes!("../../../tests/data/eval_proj_dcs.json");
-        assert!(InternedStore::bootstrap(data).is_ok());
+        assert!(InternedStore::preload(data).is_ok());
 
         // condition_map["392358526"]["targetValue"] -> "test_email"
         let eval_value = EvaluatorValue::from_json_value(json_string("test_email"));

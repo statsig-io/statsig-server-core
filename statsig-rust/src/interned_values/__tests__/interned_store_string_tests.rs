@@ -5,47 +5,42 @@ use crate::{
     interned_values::InternedStore,
 };
 
+const DATA: &[u8] = include_bytes!("../../../tests/data/eval_proj_dcs.json");
+
 #[test]
-fn test_interned_string_non_bootstrapped() {
-    let result = InternedString::from_str_ref("test");
+fn test_interned_string_non_preloaded() {
+    let result = InternedString::from_str_ref("userID");
 
     assert!(matches!(result.value, InternedStringValue::Pointer(_)));
-    assert_eq!(result.as_str(), "test");
+    assert_eq!(result.as_str(), "userID");
 }
 
 rusty_fork_test! {
     #[test]
-    fn test_interned_string_bootstrapped() {
-        let data = b"{\"test\":\"value\"}";
-        assert!(InternedStore::bootstrap(data).is_ok());
+    fn test_interned_string_preloaded() {
+        assert!(InternedStore::preload(DATA).is_ok());
 
-        let key = InternedString::from_str_ref("test");
+        let key = InternedString::from_str_ref("userID");
 
         assert!(matches!(key.value, InternedStringValue::Static(_)));
-        assert_eq!(key.as_str(), "test");
-
-        let value = InternedString::from_str_ref("value");
-        assert!(matches!(value.value, InternedStringValue::Static(_)));
-        assert_eq!(value.as_str(), "value");
+        assert_eq!(key.as_str(), "userID");
     }
 
     #[test]
-    fn test_repeated_calls_to_bootstrap() {
-        let data = b"{\"test\":\"value\"}";
-        assert!(InternedStore::bootstrap(data).is_ok());
-        assert!(InternedStore::bootstrap(data).is_err());
+    fn test_repeated_calls_to_preload() {
+        assert!(InternedStore::preload(DATA).is_ok());
+        assert!(InternedStore::preload(DATA).is_err());
     }
 
     #[test]
-    fn test_bootstrapping_across_forks() {
-        let data = b"{\"test\":\"value\"}";
-        assert!(InternedStore::bootstrap(data).is_ok());
+    fn test_preloading_across_forks() {
+        assert!(InternedStore::preload(DATA).is_ok());
 
         let pid = unsafe { libc::fork() };
         if pid == 0 {
-            let key = InternedString::from_str_ref("test");
+            let key = InternedString::from_str_ref("userID");
             assert!(matches!(key.value, InternedStringValue::Static(_)));
-            assert_eq!(key.as_str(), "test");
+            assert_eq!(key.as_str(), "userID");
             std::process::exit(0);
         }
 
@@ -57,12 +52,12 @@ rusty_fork_test! {
     }
 
     #[test]
-    fn test_non_bootstrapped_across_forks() {
+    fn test_non_preloaded_across_forks() {
         let pid = unsafe { libc::fork() };
         if pid == 0 {
-            let key = InternedString::from_str_ref("test");
+            let key = InternedString::from_str_ref("userID");
             assert!(matches!(key.value, InternedStringValue::Pointer(_)));
-            assert_eq!(key.as_str(), "test");
+            assert_eq!(key.as_str(), "userID");
             std::process::exit(0);
         }
 
@@ -75,10 +70,10 @@ rusty_fork_test! {
 
     #[test]
     fn test_interned_string_dropped() {
-        let string = InternedString::from_str_ref("test");
+        let string = InternedString::from_str_ref("userID");
         assert_eq!(InternedStore::get_memoized_len().0, 1);
 
-        let string2 = InternedString::from_str_ref("test");
+        let string2 = InternedString::from_str_ref("userID");
         assert_eq!(InternedStore::get_memoized_len().0, 1);
 
         drop(string);

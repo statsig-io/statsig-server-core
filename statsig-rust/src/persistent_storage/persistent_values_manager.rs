@@ -472,7 +472,7 @@ impl PersistentValuesManager {
 
         let delegate = spec_store_data.values.dynamic_configs.get(&config_delegate);
         match delegate {
-            Some(delegate) => delegate.inner.is_active.unwrap_or(fallback),
+            Some(delegate) => delegate.as_spec_ref().is_active.unwrap_or(fallback),
             None => fallback,
         }
     }

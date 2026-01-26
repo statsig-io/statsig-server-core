@@ -32,7 +32,7 @@ pub(crate) fn gcir_process_iter<T: GCIRHashable>(
             Some(s) => s,
             None => continue,
         };
-        let spec = spec_ptr.inner.as_ref();
+        let spec = spec_ptr.as_spec_ref();
         if spec.entity == "segment" || spec.entity == "holdout" {
             continue;
         }

@@ -1436,7 +1436,7 @@ impl Statsig {
                         id_type,
                         group_name,
                         details,
-                        is_experiment_active: spec_pointer.inner.is_active.unwrap_or(false),
+                        is_experiment_active: spec_pointer.as_spec_ref().is_active.unwrap_or(false),
                         __evaluation: None,
                     };
                 }
@@ -1468,7 +1468,7 @@ impl Statsig {
                         id_type,
                         group_name,
                         details,
-                        is_experiment_active: spec_pointer.inner.is_active.unwrap_or(false),
+                        is_experiment_active: spec_pointer.as_spec_ref().is_active.unwrap_or(false),
                         __evaluation: None,
                     };
                 }
@@ -1543,7 +1543,12 @@ impl Statsig {
             );
         };
 
-        if let Some(rule) = exp.inner.rules.iter().find(|rule| rule_predicate(rule)) {
+        if let Some(rule) = exp
+            .as_spec_ref()
+            .rules
+            .iter()
+            .find(|rule| rule_predicate(rule))
+        {
             return result_factory(
                 Some(exp),
                 Some(rule),

@@ -65,7 +65,7 @@ impl Evaluator {
             SpecType::Layer => ctx.specs_data.layer_configs.get(&spec_name_intern),
             SpecType::ParameterStore => ctx.specs_data.parameter_stores.get(&spec_name_intern),
         }
-        .map(|sp| sp.inner.as_ref());
+        .map(|sp| sp.as_spec_ref());
 
         if try_apply_override(ctx, spec_name, spec_type, opt_spec) {
             return Ok(Recognition::Recognized);
@@ -676,7 +676,7 @@ fn evaluate_config_delegate<'a>(
         return Ok(false);
     }
 
-    ctx.result.explicit_parameters = delegate_spec.inner.explicit_parameters.clone();
+    ctx.result.explicit_parameters = delegate_spec.as_spec_ref().explicit_parameters.clone();
     ctx.result.config_delegate = rule.config_delegate.clone();
 
     Ok(true)
