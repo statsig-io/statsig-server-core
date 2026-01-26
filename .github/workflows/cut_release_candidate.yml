@@ -10,6 +10,7 @@ env:
   GH_APP_ID: '229901'
   GH_APP_INSTALLATION_ID: '36921303'
   GH_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
+  PUBLIC_RELEASE_REPO: statsig-io/statsig-server-core
 
 jobs:
   release_candidate:
@@ -39,8 +40,32 @@ jobs:
         run: |
           git config user.name "Xin Li (Bot)"
           git config user.email ${{ secrets.XIN_GH_EMAIL }}
-    
+
+      - name: Check latest stable release
+        id: check_stable_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          latest_stable_date=$(gh api "repos/${PUBLIC_RELEASE_REPO}/releases" --paginate --jq '[.[] | select(.prerelease == false) | .published_at][0]')
+          if [ -z "$latest_stable_date" ] || [ "$latest_stable_date" = "null" ]; then
+            echo "No stable releases found."
+            echo "should_sync=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          now_ts=$(date +%s)
+          release_ts=$(date -d "$latest_stable_date" +%s)
+          diff_days=$(( (now_ts - release_ts) / 86400 ))
+
+          if [ "$diff_days" -le 8 ]; then
+            echo "should_sync=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Latest stable release is ${diff_days} days old."
+            echo "should_sync=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Sync rc branch with main branch
+        if: steps.check_stable_release.outputs.should_sync == 'true'
         run: |
             git fetch origin rc
             git fetch origin main
