@@ -19,7 +19,7 @@ export function buildPython(options: BuilderOptions) {
 
   if (!isCi) {
     Log.stepBegin('Generating Python Stubs');
-    execSync('cargo run --bin stub_gen', {
+    execSync('PYTHONHOME=$(python3 -c "import sys; print(sys.base_prefix)") cargo run --bin stub_gen', {
       cwd: pyDir,
       stdio: 'inherit',
     });
