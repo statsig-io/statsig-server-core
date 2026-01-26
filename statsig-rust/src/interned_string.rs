@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     fmt::Display,
     hash::{Hash, Hasher},
     ops::Deref,
@@ -7,12 +6,8 @@ use std::{
 };
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::value::RawValue;
 
-use crate::{
-    evaluation::dynamic_string::DynamicString, interned_value_store::FromRawValue,
-    interned_values::InternedStore, log_e,
-};
+use crate::{evaluation::dynamic_string::DynamicString, interned_values::InternedStore};
 
 lazy_static::lazy_static! {
     static ref EMPTY: InternedString = InternedString {
@@ -25,8 +20,6 @@ lazy_static::lazy_static! {
 
     static ref DEFAULT_RULE_ID: InternedString = InternedString::from_str_ref("default");
 }
-
-const TAG: &str = "InternedString";
 
 #[derive(Clone, Debug, Eq)]
 pub struct InternedString {
@@ -167,18 +160,6 @@ impl Serialize for InternedString {
         S: Serializer,
     {
         serializer.serialize_str(self.value.as_str())
-    }
-}
-
-impl FromRawValue for String {
-    fn from_raw_value(raw_value: Cow<'_, RawValue>) -> Self {
-        match serde_json::from_str(raw_value.get()) {
-            Ok(value) => value,
-            Err(e) => {
-                log_e!(TAG, "Failed to convert raw value to String: {}", e);
-                String::new()
-            }
-        }
     }
 }
 
