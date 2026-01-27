@@ -1,0 +1,50 @@
+{
+  "company_id": "test-company",
+  "feature_gates": {},
+  "dynamic_configs": {},
+  "layer_configs": {},
+  "parameter_stores": {},
+  "condition_map": {},
+  "experiment_to_layer": {},
+  "has_updates": true,
+  "time": 1,
+  "response_format": "dcs-v2",
+  "param_stores": {
+    "testing123": {
+      "parameters": {
+        "test123": {
+          "name": "test123",
+          "ref_type": "static",
+          "param_type": "boolean",
+          "value": false
+        },
+        "TestObj": {
+          "name": "TestObj",
+          "ref_type": "static",
+          "param_type": "object",
+          "value": {
+            "values": "testingObj",
+            "anothatest": "34",
+            "custom": {
+              "moreTest": "more_tests_string"
+            }
+          }
+        },
+        "TestingBool": {
+          "name": "TestingBool",
+          "ref_type": "static",
+          "param_type": "boolean",
+          "value": false
+        },
+        "TestString": {
+          "name": "TestString",
+          "ref_type": "static",
+          "param_type": "string",
+          "value": "Testing_my_string_value"
+        }
+      },
+      "targetAppIDs": [],
+      "version": 6
+    }
+  }
+}

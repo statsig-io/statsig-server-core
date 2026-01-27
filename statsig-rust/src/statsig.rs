@@ -814,6 +814,18 @@ impl Statsig {
         )
     }
 
+    pub fn get_parameter_store_for_user(
+        &self,
+        user: &StatsigUser,
+        parameter_store_name: &str,
+    ) -> ParameterStore<'_> {
+        self.get_parameter_store_with_user_and_options(
+            Some(user),
+            parameter_store_name,
+            ParameterStoreEvaluationOptions::default(),
+        )
+    }
+
     pub fn get_parameter_store_with_options(
         &self,
         parameter_store_name: &str,

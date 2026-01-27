@@ -190,10 +190,6 @@ response_struct!(SpecsResponseFull, {
     pub response_format: Option<String>,
     pub time: u64,
     // DO NOT add new fields here unless you know how the Protobuf parser handles them.
-
-    // This field was added by mistake and should be 'param_stores' as above
-    #[serde(default, skip_serializing_if = "SpecsHashMap::is_empty")]
-    pub parameter_stores: SpecsHashMap,
 });
 
 // Think of SpecsResponsePartial as the Typescript type Omit<SpecsResponseFull, "checksum" | "company_id" | etc...>
