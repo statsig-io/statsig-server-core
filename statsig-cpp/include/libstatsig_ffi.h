@@ -114,14 +114,16 @@ char *statsig_get_client_init_response(uint64_t statsig_ref,
 
 char *statsig_get_parameter_store_with_options(uint64_t statsig_ref,
                                                const char *parameter_store_name,
-                                               const char *options_json);
+                                               const char *options_json,
+                                               uint64_t *inout_result_len);
 
 char *statsig_get_string_parameter_from_parameter_store(uint64_t statsig_ref,
                                                         uint64_t user_ref,
                                                         const char *parameter_store_name,
                                                         const char *param_name,
                                                         char *default_value,
-                                                        const char *options_json);
+                                                        const char *options_json,
+                                                        uint64_t *inout_result_len);
 
 bool statsig_get_bool_parameter_from_parameter_store(uint64_t statsig_ref,
                                                      uint64_t user_ref,
@@ -144,19 +146,21 @@ int64_t statsig_get_int_parameter_from_parameter_store(uint64_t statsig_ref,
                                                        int64_t default_,
                                                        const char *options_json);
 
-const char *statsig_get_object_parameter_from_parameter_store(uint64_t statsig_ref,
-                                                              uint64_t user_ref,
-                                                              const char *parameter_store_name,
-                                                              const char *param_name,
-                                                              const char *default_,
-                                                              const char *options_json);
+char *statsig_get_object_parameter_from_parameter_store(uint64_t statsig_ref,
+                                                        uint64_t user_ref,
+                                                        const char *parameter_store_name,
+                                                        const char *param_name,
+                                                        const char *default_,
+                                                        const char *options_json,
+                                                        uint64_t *inout_result_len);
 
-const char *statsig_get_array_parameter_from_parameter_store(uint64_t statsig_ref,
-                                                             uint64_t user_ref,
-                                                             const char *parameter_store_name,
-                                                             const char *param_name,
-                                                             const char *default_,
-                                                             const char *options_json);
+char *statsig_get_array_parameter_from_parameter_store(uint64_t statsig_ref,
+                                                       uint64_t user_ref,
+                                                       const char *parameter_store_name,
+                                                       const char *param_name,
+                                                       const char *default_,
+                                                       const char *options_json,
+                                                       uint64_t *inout_result_len);
 
 bool statsig_check_gate(uint64_t statsig_ref,
                         uint64_t user_ref,

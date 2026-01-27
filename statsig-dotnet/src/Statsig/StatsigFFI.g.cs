@@ -92,10 +92,10 @@ namespace Statsig
         internal static extern byte* statsig_get_client_init_response(ulong statsig_ref, ulong user_ref, byte* options_json);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_parameter_store_with_options", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_get_parameter_store_with_options(ulong statsig_ref, byte* parameter_store_name, byte* options_json);
+        internal static extern byte* statsig_get_parameter_store_with_options(ulong statsig_ref, byte* parameter_store_name, byte* options_json, ulong* inout_result_len);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_string_parameter_from_parameter_store", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_get_string_parameter_from_parameter_store(ulong statsig_ref, ulong user_ref, byte* parameter_store_name, byte* param_name, byte* default_value, byte* options_json);
+        internal static extern byte* statsig_get_string_parameter_from_parameter_store(ulong statsig_ref, ulong user_ref, byte* parameter_store_name, byte* param_name, byte* default_value, byte* options_json, ulong* inout_result_len);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_bool_parameter_from_parameter_store", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
@@ -108,10 +108,10 @@ namespace Statsig
         internal static extern long statsig_get_int_parameter_from_parameter_store(ulong statsig_ref, ulong user_ref, byte* parameter_store_name, byte* param_name, long @default, byte* options_json);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_object_parameter_from_parameter_store", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_get_object_parameter_from_parameter_store(ulong statsig_ref, ulong user_ref, byte* parameter_store_name, byte* param_name, byte* @default, byte* options_json);
+        internal static extern byte* statsig_get_object_parameter_from_parameter_store(ulong statsig_ref, ulong user_ref, byte* parameter_store_name, byte* param_name, byte* @default, byte* options_json, ulong* inout_result_len);
 
         [DllImport(__DllName, EntryPoint = "statsig_get_array_parameter_from_parameter_store", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* statsig_get_array_parameter_from_parameter_store(ulong statsig_ref, ulong user_ref, byte* parameter_store_name, byte* param_name, byte* @default, byte* options_json);
+        internal static extern byte* statsig_get_array_parameter_from_parameter_store(ulong statsig_ref, ulong user_ref, byte* parameter_store_name, byte* param_name, byte* @default, byte* options_json, ulong* inout_result_len);
 
         [DllImport(__DllName, EntryPoint = "statsig_check_gate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]

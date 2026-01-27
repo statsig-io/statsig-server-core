@@ -431,9 +431,14 @@ namespace Statsig
             fixed (byte* optionsPtr = optionsBytes)
             fixed (byte* storeNamePtr = storeNameBytes)
             {
-                var jsonStringPtr =
-                    StatsigFFI.statsig_get_parameter_store_with_options(_statsigRef, storeNamePtr, optionsPtr);
-                var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
+                ulong resultLen = 0;
+                var jsonStringPtr = StatsigFFI.statsig_get_parameter_store_with_options(
+                    _statsigRef,
+                    storeNamePtr,
+                    optionsPtr,
+                    &resultLen
+                );
+                var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr, resultLen);
                 return jsonString != null
                     ? new ParameterStore(jsonString, _statsigRef, user.Reference, options)
                     : new ParameterStore(string.Empty, _statsigRef, user.Reference, options);

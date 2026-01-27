@@ -108,6 +108,15 @@ type StatsigFFI struct {
 
 	// Utility
 	free_string func(*byte)
+
+	// Parameter Store
+	statsig_get_parameter_store_with_options             func(uint64, string, string, *uint64) *byte
+	statsig_get_string_parameter_from_parameter_store    func(uint64, uint64, string, string, string, string, *uint64) *byte
+	statsig_get_bool_parameter_from_parameter_store      func(uint64, uint64, string, string, int32, string) bool
+	statsig_get_float64_parameter_from_parameter_store   func(uint64, uint64, string, string, float64, string) float64
+	statsig_get_int_parameter_from_parameter_store       func(uint64, uint64, string, string, int64, string) int64
+	statsig_get_object_parameter_from_parameter_store    func(uint64, uint64, string, string, string, string, *uint64) *byte
+	statsig_get_array_parameter_from_parameter_store     func(uint64, uint64, string, string, string, string, *uint64) *byte
 }
 
 var (
@@ -197,6 +206,15 @@ func GetFFI() *StatsigFFI {
 
 		// Utility
 		purego.RegisterLibFunc(&instance.free_string, lib, "free_string")
+
+		// Parameter Store
+		purego.RegisterLibFunc(&instance.statsig_get_parameter_store_with_options, lib, "statsig_get_parameter_store_with_options")
+		purego.RegisterLibFunc(&instance.statsig_get_string_parameter_from_parameter_store, lib, "statsig_get_string_parameter_from_parameter_store")
+		purego.RegisterLibFunc(&instance.statsig_get_bool_parameter_from_parameter_store, lib, "statsig_get_bool_parameter_from_parameter_store")
+		purego.RegisterLibFunc(&instance.statsig_get_float64_parameter_from_parameter_store, lib, "statsig_get_float64_parameter_from_parameter_store")
+		purego.RegisterLibFunc(&instance.statsig_get_int_parameter_from_parameter_store, lib, "statsig_get_int_parameter_from_parameter_store")
+		purego.RegisterLibFunc(&instance.statsig_get_object_parameter_from_parameter_store, lib, "statsig_get_object_parameter_from_parameter_store")
+		purego.RegisterLibFunc(&instance.statsig_get_array_parameter_from_parameter_store, lib, "statsig_get_array_parameter_from_parameter_store")
 
 		instance.updateStatsigMetadata()
 	})

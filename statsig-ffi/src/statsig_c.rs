@@ -329,7 +329,13 @@ pub extern "C" fn statsig_get_parameter_store_with_options(
     statsig_ref: u64,
     parameter_store_name: *const c_char,
     options_json: *const c_char,
+    inout_result_len: *mut u64,
 ) -> *mut c_char {
+    if !inout_result_len.is_null() {
+        unsafe {
+            *inout_result_len = 0;
+        }
+    }
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
     let param_store_name = unwrap_or_return!(c_char_to_string(parameter_store_name), null_mut());
 
@@ -347,7 +353,7 @@ pub extern "C" fn statsig_get_parameter_store_with_options(
     };
 
     let result = statsig.get_parameter_store_with_options(&param_store_name, options);
-    string_to_c_char(json!(result).to_string())
+    string_to_c_char_with_inout_len(json!(result).to_string(), inout_result_len)
 }
 
 #[no_mangle]
@@ -358,7 +364,13 @@ pub extern "C" fn statsig_get_string_parameter_from_parameter_store(
     param_name: *const c_char,
     default_value: *mut c_char,
     options_json: *const c_char,
+    inout_result_len: *mut u64,
 ) -> *mut c_char {
+    if !inout_result_len.is_null() {
+        unsafe {
+            *inout_result_len = 0;
+        }
+    }
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, default_value);
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, default_value);
 
@@ -391,7 +403,7 @@ pub extern "C" fn statsig_get_string_parameter_from_parameter_store(
     );
 
     match result {
-        Some(result) => string_to_c_char(result),
+        Some(result) => string_to_c_char_with_inout_len(result, inout_result_len),
         None => std::ptr::null_mut(),
     }
 }
@@ -541,7 +553,13 @@ pub extern "C" fn statsig_get_object_parameter_from_parameter_store(
     param_name: *const c_char,
     default: *const c_char,
     options_json: *const c_char,
-) -> *const c_char {
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    if !inout_result_len.is_null() {
+        unsafe {
+            *inout_result_len = 0;
+        }
+    }
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, std::ptr::null_mut());
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, std::ptr::null_mut());
 
@@ -577,7 +595,7 @@ pub extern "C" fn statsig_get_object_parameter_from_parameter_store(
     );
 
     let result = json!(result).to_string();
-    string_to_c_char(result)
+    string_to_c_char_with_inout_len(result, inout_result_len)
 }
 
 #[no_mangle]
@@ -588,7 +606,13 @@ pub extern "C" fn statsig_get_array_parameter_from_parameter_store(
     param_name: *const c_char,
     default: *const c_char,
     options_json: *const c_char,
-) -> *const c_char {
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    if !inout_result_len.is_null() {
+        unsafe {
+            *inout_result_len = 0;
+        }
+    }
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, std::ptr::null_mut());
     let user = get_instance_or_return_c!(StatsigUser, &user_ref, std::ptr::null_mut());
 
@@ -623,7 +647,7 @@ pub extern "C" fn statsig_get_array_parameter_from_parameter_store(
     );
 
     let result = json!(result).to_string();
-    string_to_c_char(result)
+    string_to_c_char_with_inout_len(result, inout_result_len)
 }
 
 // ------------------------

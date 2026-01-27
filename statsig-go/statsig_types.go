@@ -2,6 +2,7 @@ package statsig_go_core
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 // ------------------------------------------------------------------------------------- [ Evaluation Details ]
@@ -146,6 +147,175 @@ func (l *Layer) UnmarshalJSON(b []byte) error {
 
 func (l *Layer) logExposure(key string) {
 	GetFFI().log_layer_param_exposure_from_raw(l.statsigRef, l.rawJson, key)
+}
+
+// ------------------------------------------------------------------------------------- [ Parameter Store ]
+
+type ParameterStore struct {
+	Name              string            `json:"name"`
+	EvaluationDetails EvaluationDetails `json:"details"`
+
+	statsigRef uint64
+	userRef    uint64
+	options    *ParameterStoreEvaluationOptions
+}
+
+func (p *ParameterStore) GetString(key string, fallback string) string {
+	return parameterStoreValue(p, fallback, func(optionsJson string) (string, bool) {
+		result := UseRustString(func() (*byte, uint64) {
+			length := uint64(0)
+			ptr := GetFFI().statsig_get_string_parameter_from_parameter_store(
+				p.statsigRef,
+				p.userRef,
+				p.Name,
+				key,
+				fallback,
+				optionsJson,
+				&length,
+			)
+			return ptr, length
+		})
+		if result == nil {
+			return fallback, false
+		}
+		return *result, true
+	})
+}
+
+func (p *ParameterStore) GetBool(key string, fallback bool) bool {
+	return parameterStoreValue(p, fallback, func(optionsJson string) (bool, bool) {
+		return GetFFI().statsig_get_bool_parameter_from_parameter_store(
+			p.statsigRef,
+			p.userRef,
+			p.Name,
+			key,
+			safeOptBool(fallback),
+			optionsJson,
+		), true
+	})
+}
+
+func (p *ParameterStore) GetNumber(key string, fallback float64) float64 {
+	return parameterStoreValue(p, fallback, func(optionsJson string) (float64, bool) {
+		return GetFFI().statsig_get_float64_parameter_from_parameter_store(
+			p.statsigRef,
+			p.userRef,
+			p.Name,
+			key,
+			fallback,
+			optionsJson,
+		), true
+	})
+}
+
+func (p *ParameterStore) GetInt(key string, fallback int64) int64 {
+	return parameterStoreValue(p, fallback, func(optionsJson string) (int64, bool) {
+		return GetFFI().statsig_get_int_parameter_from_parameter_store(
+			p.statsigRef,
+			p.userRef,
+			p.Name,
+			key,
+			fallback,
+			optionsJson,
+		), true
+	})
+}
+
+func (p *ParameterStore) GetMap(key string, fallback map[string]any) map[string]any {
+	return parameterStoreValue(p, fallback, func(optionsJson string) (map[string]any, bool) {
+		defaultJson, err := json.Marshal(fallback)
+		if err != nil {
+			return fallback, false
+		}
+
+		result := UseRustString(func() (*byte, uint64) {
+			length := uint64(0)
+			ptr := GetFFI().statsig_get_object_parameter_from_parameter_store(
+				p.statsigRef,
+				p.userRef,
+				p.Name,
+				key,
+				string(defaultJson),
+				optionsJson,
+				&length,
+			)
+			return ptr, length
+		})
+		if result == nil {
+			return fallback, false
+		}
+
+		var parsed map[string]any
+		if err := json.Unmarshal([]byte(*result), &parsed); err != nil {
+			return fallback, false
+		}
+		return parsed, true
+	})
+}
+
+func (p *ParameterStore) GetSlice(key string, fallback []any) []any {
+	return parameterStoreValue(p, fallback, func(optionsJson string) ([]any, bool) {
+		defaultJson, err := json.Marshal(fallback)
+		if err != nil {
+			return fallback, false
+		}
+
+		result := UseRustString(func() (*byte, uint64) {
+			length := uint64(0)
+			ptr := GetFFI().statsig_get_array_parameter_from_parameter_store(
+				p.statsigRef,
+				p.userRef,
+				p.Name,
+				key,
+				string(defaultJson),
+				optionsJson,
+				&length,
+			)
+			return ptr, length
+		})
+		if result == nil {
+			return fallback, false
+		}
+
+		var parsed []any
+		if err := json.Unmarshal([]byte(*result), &parsed); err != nil {
+			return fallback, false
+		}
+		return parsed, true
+	})
+}
+
+func (p *ParameterStore) getOptionsJson() (string, bool) {
+	optionsJson, err := tryMarshalOrEmpty(p.options)
+	if err != nil {
+		fmt.Printf("Failed to marshal ParameterStoreEvaluationOptions: %v", err)
+		return "", false
+	}
+	return optionsJson, true
+}
+
+func parameterStoreValue[T any](store *ParameterStore, fallback T, handler func(optionsJson string) (T, bool)) T {
+	if store == nil {
+		return fallback
+	}
+
+	optionsJson, ok := store.getOptionsJson()
+	if !ok {
+		return fallback
+	}
+
+	value, ok := handler(optionsJson)
+	if !ok {
+		return fallback
+	}
+	return value
+}
+
+func safeOptBool(value bool) int32 {
+	if value {
+		return 1
+	}
+	return 0
 }
 
 // -------------------------------------------------- [ Helper ]
