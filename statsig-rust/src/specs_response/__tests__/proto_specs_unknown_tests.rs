@@ -77,15 +77,16 @@ fn test_it_parsed_the_gate_without_unexpected_field() {
         .get(&InternedString::from_str_ref(
             "gate_without_unexpected_field",
         ))
-        .expect("Gate not found");
+        .expect("Gate not found")
+        .as_spec_ref();
 
-    assert_eq!(supported_gate.inner.default_value.get_bool(), Some(true));
-    assert_eq!(supported_gate.inner.entity, "feature_gate");
-    assert_eq!(supported_gate.inner.id_type, "userID");
-    assert_eq!(supported_gate.inner.rules, Vec::new());
-    assert_eq!(supported_gate.inner.version, Some(8));
+    assert_eq!(supported_gate.default_value.get_bool(), Some(true));
+    assert_eq!(supported_gate.entity, "feature_gate");
+    assert_eq!(supported_gate.id_type, "userID");
+    assert_eq!(*supported_gate.rules, Vec::new());
+    assert_eq!(supported_gate.version, Some(8));
     assert_eq!(
-        supported_gate.inner.salt,
+        supported_gate.salt,
         "test_salt_for_gate_without_unexpected_field"
     );
 }

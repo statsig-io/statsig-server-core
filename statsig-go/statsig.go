@@ -214,6 +214,58 @@ func (s *Statsig) GetLayerWithOptions(user *StatsigUser, layerName string, optio
 	return layer
 }
 
+func (s *Statsig) GetParameterStore(user *StatsigUser, storeName string) ParameterStore {
+	return s.GetParameterStoreWithOptions(user, storeName, nil)
+}
+
+func (s *Statsig) GetParameterStoreWithOptions(
+	user *StatsigUser,
+	storeName string,
+	options *ParameterStoreEvaluationOptions,
+) ParameterStore {
+	store := ParameterStore{
+		Name:       storeName,
+		statsigRef: s.ref.Load(),
+		options:    options,
+	}
+	if user != nil {
+		store.userRef = user.ref
+	}
+
+	optionsJson, err := tryMarshalOrEmpty(options)
+	if err != nil {
+		fmt.Printf("Failed to marshal ParameterStoreEvaluationOptions: %v", err)
+		return store
+	}
+
+	storeJson := UseRustString(func() (*byte, uint64) {
+		length := uint64(0)
+		ptr := GetFFI().statsig_get_parameter_store_with_options(
+			s.ref.Load(),
+			storeName,
+			optionsJson,
+			&length,
+		)
+		return ptr, length
+	})
+	if storeJson != nil {
+		if err := json.Unmarshal([]byte(*storeJson), &store); err != nil {
+			fmt.Printf("Failed to unmarshal ParameterStore: %v", err)
+		}
+	}
+
+	if store.Name == "" {
+		store.Name = storeName
+	}
+	store.statsigRef = s.ref.Load()
+	store.options = options
+	if user != nil {
+		store.userRef = user.ref
+	}
+
+	return store
+}
+
 func (s *Statsig) GetClientInitResponse(user *StatsigUser) *string {
 	return s.GetClientInitResponseWithOptions(user, nil)
 }

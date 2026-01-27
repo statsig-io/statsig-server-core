@@ -5,7 +5,7 @@ use more_asserts::assert_gt;
 use serde_json::json;
 
 use crate::interned_str;
-use crate::interned_string::InternedString;
+use crate::interned_string::{InternedString, InternedStringValue};
 
 #[test]
 fn test_interned_string() {
@@ -49,11 +49,11 @@ fn test_comparison_works_with_different_strings() {
 fn test_comparison_ignores_hash() {
     let string = InternedString {
         hash: 1,
-        value: Arc::new("test".to_string()),
+        value: InternedStringValue::Pointer(Arc::new("test".to_string())),
     };
     let string2 = InternedString {
         hash: 2,
-        value: Arc::new("test".to_string()),
+        value: InternedStringValue::Pointer(Arc::new("test".to_string())),
     };
     assert_eq!(string, string2);
 }

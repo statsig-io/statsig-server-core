@@ -3,11 +3,26 @@ use serde_json::Value;
 
 use crate::{hashing::ahash_str, interned_string::InternedString};
 
+lazy_static::lazy_static! {
+    static ref USER_ID: DynamicString = DynamicString::from("userID".to_string());
+    static ref STABLE_ID: DynamicString = DynamicString::from("stableID".to_string());
+}
+
 #[derive(Clone, Eq, Debug)]
 pub struct DynamicString {
     pub value: InternedString,
     pub lowercased_value: InternedString,
     pub hash_value: u64,
+}
+
+impl DynamicString {
+    pub fn user_id() -> Self {
+        USER_ID.clone()
+    }
+
+    pub fn stable_id() -> Self {
+        STABLE_ID.clone()
+    }
 }
 
 // ------------------------------------------------------------------------------- [Serialization]

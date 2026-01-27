@@ -31,12 +31,7 @@ impl<'de> Deserialize<'de> for SpecsHashMap {
                 }
             };
 
-            result.insert(
-                key,
-                SpecPointer {
-                    inner: Arc::new(spec),
-                },
-            );
+            result.insert(key, SpecPointer::Pointer(Arc::new(spec)));
         }
 
         Ok(SpecsHashMap(result))
@@ -88,8 +83,18 @@ impl SpecsHashMap {
 }
 
 #[derive(PartialEq, Debug, Clone /* Clone Ok because Arc */)]
-pub struct SpecPointer {
-    pub inner: Arc<Spec>,
+pub enum SpecPointer {
+    Pointer(Arc<Spec>),
+    Static(&'static Spec),
+}
+
+impl SpecPointer {
+    pub fn as_spec_ref(&self) -> &Spec {
+        match self {
+            Self::Pointer(spec) => spec,
+            Self::Static(spec) => spec,
+        }
+    }
 }
 
 impl Serialize for SpecPointer {
@@ -97,14 +102,15 @@ impl Serialize for SpecPointer {
     where
         S: Serializer,
     {
-        self.inner.serialize(serializer)
+        match self {
+            Self::Pointer(spec) => spec.serialize(serializer),
+            Self::Static(spec) => spec.serialize(serializer),
+        }
     }
 }
 
 impl SpecPointer {
     pub fn from_spec(spec: Spec) -> Self {
-        Self {
-            inner: Arc::new(spec),
-        }
+        Self::Pointer(Arc::new(spec))
     }
 }

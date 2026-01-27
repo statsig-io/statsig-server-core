@@ -63,9 +63,11 @@ impl Evaluator {
             SpecType::DynamicConfig => ctx.specs_data.dynamic_configs.get(&spec_name_intern),
             SpecType::Experiment => ctx.specs_data.dynamic_configs.get(&spec_name_intern),
             SpecType::Layer => ctx.specs_data.layer_configs.get(&spec_name_intern),
-            SpecType::ParameterStore => ctx.specs_data.parameter_stores.get(&spec_name_intern),
+            SpecType::ParameterStore => {
+                return evaluate_param_store_reason(ctx, spec_name.to_string())
+            }
         }
-        .map(|sp| sp.inner.as_ref());
+        .map(|sp| sp.as_spec_ref());
 
         if try_apply_override(ctx, spec_name, spec_type, opt_spec) {
             return Ok(Recognition::Recognized);
@@ -411,8 +413,8 @@ fn evaluate_condition<'a>(
     let target_value = condition
         .target_value
         .as_ref()
-        .map(|v| v.inner.as_ref())
-        .unwrap_or(EvaluatorValue::empty().inner.as_ref());
+        .map(|v| v.as_ref())
+        .unwrap_or(EvaluatorValue::empty().as_ref());
     let condition_type = condition.condition_type.as_str();
 
     let value: &DynamicValue = match condition_type {
@@ -676,7 +678,7 @@ fn evaluate_config_delegate<'a>(
         return Ok(false);
     }
 
-    ctx.result.explicit_parameters = delegate_spec.inner.explicit_parameters.clone();
+    ctx.result.explicit_parameters = delegate_spec.as_spec_ref().explicit_parameters.clone();
     ctx.result.config_delegate = rule.config_delegate.clone();
 
     Ok(true)
@@ -718,4 +720,22 @@ fn get_hash_for_user_bucket(ctx: &mut EvaluatorContext, condition: &Condition) -
     let input = format!("{salt}.{unit_id}");
     let hash = ctx.hashing.evaluation_hash(&input).unwrap_or(1);
     dyn_value!(hash % 1000)
+}
+
+fn evaluate_param_store_reason(
+    ctx: &mut EvaluatorContext,
+    spec_name: String,
+) -> Result<Recognition, StatsigErr> {
+    let spec_name_intern = InternedString::from_str_ref(&spec_name);
+    let has_param_store = ctx
+        .specs_data
+        .param_stores
+        .as_ref()
+        .and_then(|stores| stores.get(&spec_name_intern))
+        .is_some();
+    Ok(if has_param_store {
+        Recognition::Recognized
+    } else {
+        Recognition::Unrecognized
+    })
 }

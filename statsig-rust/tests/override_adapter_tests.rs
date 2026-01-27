@@ -181,6 +181,26 @@ async fn test_get_layer_overrides() {
 }
 
 #[tokio::test]
+async fn test_get_parameter_store_overrides() {
+    let (statsig, user, adapter) = setup().await;
+
+    let store = statsig.get_parameter_store_for_user(&user, "test_parameter_store");
+    assert!(!store.get_bool(&user, "bool_param", false));
+
+    adapter.override_parameter_store(
+        "test_parameter_store",
+        HashMap::from([("bool_param".to_string(), json!(true))]),
+        Some("a_user"),
+    );
+
+    let store = statsig.get_parameter_store_for_user(&user, "test_parameter_store");
+    assert!(store.get_bool(&user, "bool_param", false));
+    assert_eq!(store.details.reason, "LocalOverride:Recognized");
+
+    statsig.shutdown().await.unwrap();
+}
+
+#[tokio::test]
 async fn test_nested_gate_overrides() {
     let (statsig, user, adapter) = setup().await;
 
@@ -730,7 +750,7 @@ async fn test_remove_layer_override() {
     adapter.override_layer(
         "layer_with_many_params",
         HashMap::from([("a_string".to_string(), json!("overridden_value"))]),
-        None,
+        Some("a_user"),
     );
 
     let overridden = statsig.get_layer(&user, "layer_with_many_params");
@@ -740,7 +760,7 @@ async fn test_remove_layer_override() {
     );
     assert_eq!(overridden.details.reason, "LocalOverride:Recognized");
 
-    adapter.remove_layer_override("layer_with_many_params", None);
+    adapter.remove_layer_override("layer_with_many_params", Some("a_user"));
     let layer_after_remove = statsig.get_layer(&user, "layer_with_many_params");
     assert_eq!(
         layer_after_remove.get_string("a_string", "ERR".to_string()),
@@ -786,6 +806,31 @@ async fn test_remove_layer_override_for_id() {
     );
 
     statsig.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_remove_parameter_store_override() {
+    let (statsig, user, adapter) = setup().await;
+
+    let store = statsig.get_parameter_store_for_user(&user, "test_parameter_store");
+    assert!(!store.get_bool(&user, "bool_param", true));
+
+    adapter.override_parameter_store(
+        "test_parameter_store",
+        HashMap::from([("foo".to_string(), json!(-1.23))]),
+        Some("a_user"),
+    );
+
+    let store = statsig.get_parameter_store_for_user(&user, "test_parameter_store");
+    assert_eq!(store.get_f64(&user, "foo", 0.0), -1.23);
+
+    assert!(store.get_bool(&user, "bool_param", true)); // testing that this doesn't exist prior to removing the override
+
+    adapter.remove_parameter_store_override("test_parameter_store", Some("a_user"));
+
+    let store = statsig.get_parameter_store_for_user(&user, "test_parameter_store");
+    assert_eq!(store.get_f64(&user, "foo", 0.0), 0.0); // default value
+    assert!(!store.get_bool(&user, "bool_param", true));
 }
 
 #[tokio::test]

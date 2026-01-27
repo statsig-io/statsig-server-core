@@ -320,7 +320,7 @@ fn get_session_replay_info(
             if options.previous_response_hash.is_some() {
                 event_triggers_hash.push(new_trigger.create_hash(key));
             }
-            new_event_triggers.insert(key.value.to_string(), new_trigger);
+            new_event_triggers.insert(key.unperformant_to_string(), new_trigger);
         }
         session_replay_info.session_recording_event_triggers = Some(new_event_triggers);
     }

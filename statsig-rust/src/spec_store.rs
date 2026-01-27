@@ -120,14 +120,14 @@ impl SpecStore {
             SpecType::Gate => &data.values.feature_gates,
             SpecType::DynamicConfig | SpecType::Experiment => &data.values.dynamic_configs,
             SpecType::Layer => &data.values.layer_configs,
-            SpecType::ParameterStore => &data.values.parameter_stores,
+            SpecType::ParameterStore => return vec![],
         };
 
         let entity_name = InternedString::from_str_ref(entity_name);
         let entity = entities.get(&entity_name);
 
         match entity {
-            Some(entity) => match &entity.inner.fields_used {
+            Some(entity) => match &entity.as_spec_ref().fields_used {
                 Some(fields) => fields.iter().map(|f| f.unperformant_to_string()).collect(),
                 None => vec![],
             },
@@ -179,7 +179,7 @@ impl SpecStore {
 
         values
             .iter()
-            .filter(|(_, v)| v.inner.entity == entity_type)
+            .filter(|(_, v)| v.as_spec_ref().entity == entity_type)
             .map(|(k, _)| k.unperformant_to_string())
             .collect()
     }

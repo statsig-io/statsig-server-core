@@ -1,4 +1,5 @@
 mod data_store_base_py;
+mod interned_store_py;
 mod observability_client_base_py;
 mod output_logger_provider_base_py;
 mod pyo_utils;
@@ -36,6 +37,7 @@ fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<statsig_persistent_storage_override_adapter_py::PersistentStorageBasePy>()?;
     m.add_class::<output_logger_provider_base_py::OutputLoggerProviderBasePy>()?;
     m.add_class::<statsig_options_py::SpecAdapterConfigPy>()?;
+    m.add_class::<interned_store_py::InternedStorePy>()?;
     m.add_function(wrap_pyfunction!(notify_python_shutdown, m)?)?;
     m.add_function(wrap_pyfunction!(notify_python_fork, m)?)?;
 

@@ -34,6 +34,11 @@ class InitializeDetails:
     source: builtins.str
     failure_details: typing.Optional[FailureDetails]
 
+class InternedStore:
+    def preload(self, data:bytes) -> None:
+        ...
+
+
 class LayerEvaluationOptions:
     disable_exposure_logging: builtins.bool
     user_persisted_values: typing.Optional[dict]

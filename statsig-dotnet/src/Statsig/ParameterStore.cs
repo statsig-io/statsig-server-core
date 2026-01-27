@@ -51,8 +51,17 @@ namespace Statsig
             fixed (byte* fallbackPtr = fallbackBytes)
             fixed (byte* optionsPtr = optionsBytes)
             {
-                var res = StatsigFFI.statsig_get_string_parameter_from_parameter_store(_statsigRef, _userRef, storeNamePtr, paramNamePtr, fallbackPtr, optionsPtr);
-                return StatsigUtils.ReadStringFromPointer(res) ?? defaultValue;
+                ulong resultLen = 0;
+                var res = StatsigFFI.statsig_get_string_parameter_from_parameter_store(
+                    _statsigRef,
+                    _userRef,
+                    storeNamePtr,
+                    paramNamePtr,
+                    fallbackPtr,
+                    optionsPtr,
+                    &resultLen
+                );
+                return StatsigUtils.ReadStringFromPointer(res, resultLen) ?? defaultValue;
             }
         }
 
@@ -112,8 +121,17 @@ namespace Statsig
             fixed (byte* optionsPtr = optionsBytes)
             fixed (byte* defaultValuePtr = defaultValueBytes)
             {
-                var res = StatsigFFI.statsig_get_object_parameter_from_parameter_store(_statsigRef, _userRef, storeNamePtr, paramNamePtr, defaultValuePtr, optionsPtr);
-                var jsonString = StatsigUtils.ReadStringFromPointer(res);
+                ulong resultLen = 0;
+                var res = StatsigFFI.statsig_get_object_parameter_from_parameter_store(
+                    _statsigRef,
+                    _userRef,
+                    storeNamePtr,
+                    paramNamePtr,
+                    defaultValuePtr,
+                    optionsPtr,
+                    &resultLen
+                );
+                var jsonString = StatsigUtils.ReadStringFromPointer(res, resultLen);
                 return jsonString != null
                     ? JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonString) ?? defaultValue ?? new Dictionary<string, object>()
                     : defaultValue ?? new Dictionary<string, object>();
@@ -133,8 +151,17 @@ namespace Statsig
             fixed (byte* optionsPtr = optionsBytes)
             fixed (byte* defaultValuePtr = defaultValueBytes)
             {
-                var res = StatsigFFI.statsig_get_array_parameter_from_parameter_store(_statsigRef, _userRef, storeNamePtr, paramNamePtr, defaultValuePtr, optionsPtr);
-                var jsonString = StatsigUtils.ReadStringFromPointer(res);
+                ulong resultLen = 0;
+                var res = StatsigFFI.statsig_get_array_parameter_from_parameter_store(
+                    _statsigRef,
+                    _userRef,
+                    storeNamePtr,
+                    paramNamePtr,
+                    defaultValuePtr,
+                    optionsPtr,
+                    &resultLen
+                );
+                var jsonString = StatsigUtils.ReadStringFromPointer(res, resultLen);
                 return jsonString != null
                     ? JsonConvert.DeserializeObject<List<object>>(jsonString) ?? defaultValue ?? new List<object>()
                     : defaultValue ?? new List<object>();

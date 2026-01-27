@@ -1,7 +1,7 @@
 use crate::evaluation::dynamic_returnable::DynamicReturnable;
 use crate::evaluation::evaluator_result::EvaluatorResult;
 use crate::interned_string::InternedString;
-use crate::specs_response::param_store_types::Parameter;
+use crate::specs_response::param_store_types::{Parameter, StaticValueParameter};
 use crate::specs_response::spec_types::Spec;
 use crate::{log_d, read_lock_or_return, write_lock_or_noop, OverrideAdapter, StatsigUser};
 use parking_lot::RwLock;
@@ -226,9 +226,15 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
         let mut parameters = HashMap::with_capacity(value.len());
 
         for (param_name, param_value) in value {
-            if let Ok(parameter) = serde_json::from_value::<Parameter>(param_value) {
-                parameters.insert(param_name, parameter);
-            }
+            let parameter = match serde_json::from_value::<Parameter>(param_value.clone()) {
+                Ok(parameter) => parameter,
+                Err(_) => Parameter::StaticValue(StaticValueParameter {
+                    ref_type: "static".to_string(),
+                    param_type: infer_param_type(&param_value).to_string(),
+                    value: param_value,
+                }),
+            };
+            parameters.insert(param_name, parameter);
         }
 
         store
@@ -442,4 +448,15 @@ fn get_experiment_with_group_name(
     }
 
     None
+}
+
+fn infer_param_type(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "boolean",
+        Value::Number(_) => "number",
+        Value::String(_) => "string",
+        Value::Array(_) => "array",
+        Value::Object(_) => "object",
+    }
 }

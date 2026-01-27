@@ -25,6 +25,25 @@ namespace Statsig
             return Encoding.UTF8.GetString(responseBytes);
         }
 
+        internal static unsafe string? ReadStringFromPointer(byte* pointer, ulong length)
+        {
+            if (pointer == null)
+            {
+                return null;
+            }
+
+            if (length > int.MaxValue)
+            {
+                StatsigFFI.free_string(pointer);
+                return null;
+            }
+
+            var responseBytes = new byte[(int)length];
+            Marshal.Copy((IntPtr)pointer, responseBytes, 0, (int)length);
+            StatsigFFI.free_string(pointer);
+            return Encoding.UTF8.GetString(responseBytes);
+        }
+
         internal static byte[] ToUtf8NullTerminated(string value)
         {
             var bytes = Encoding.UTF8.GetBytes(value);

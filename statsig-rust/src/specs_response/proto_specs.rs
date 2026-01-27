@@ -10,17 +10,17 @@ use crate::{
     },
     interned_str,
     interned_string::InternedString,
+    interned_values::InternedStore,
     log_error_to_statsig_and_console,
     networking::ResponseData,
-    observability::ops_stats::OpsStatsForInstance,
-    observability::sdk_errors_observer::ErrorBoundaryEvent,
+    observability::{ops_stats::OpsStatsForInstance, sdk_errors_observer::ErrorBoundaryEvent},
     specs_response::{
         explicit_params::ExplicitParameters,
         param_store_types::ParameterStore,
         proto_stream_reader::ProtoStreamReader,
         spec_types::{Condition, Rule, Spec, SpecsResponseFull, SpecsResponsePartial},
         specs_hash_map::{SpecPointer, SpecsHashMap},
-        statsig_config_specs as pb,
+        statsig_config_specs::{self as pb, any_value},
     },
     StatsigErr,
 };
@@ -132,6 +132,7 @@ impl SpecsResponseFull {
             envelope,
             &existing.feature_gates,
             &mut self.feature_gates,
+            InternedStore::try_get_preloaded_feature_gate,
         )
     }
 
@@ -145,6 +146,7 @@ impl SpecsResponseFull {
             envelope,
             &existing.dynamic_configs,
             &mut self.dynamic_configs,
+            InternedStore::try_get_preloaded_dynamic_config,
         )
     }
 
@@ -158,6 +160,7 @@ impl SpecsResponseFull {
             envelope,
             &existing.layer_configs,
             &mut self.layer_configs,
+            InternedStore::try_get_preloaded_layer_config,
         )
     }
 
@@ -166,11 +169,19 @@ impl SpecsResponseFull {
         envelope: pb::SpecsEnvelope,
         exiting_map: &SpecsHashMap,
         new_map: &mut SpecsHashMap,
+        preload_fetcher: fn(&InternedString) -> Option<SpecPointer>,
     ) -> Result<(), StatsigErr> {
         let name = InternedString::from_string(envelope.name);
 
+        if let Some(spec) = preload_fetcher(&name) {
+            if spec.as_spec_ref().checksum.as_deref() == Some(&envelope.checksum) {
+                new_map.insert(name, spec);
+                return Ok(());
+            }
+        }
+
         if let Some(spec_ptr) = exiting_map.get(&name) {
-            if spec_ptr.inner.checksum.as_deref() == Some(&envelope.checksum) {
+            if spec_ptr.as_spec_ref().checksum.as_deref() == Some(&envelope.checksum) {
                 new_map.insert(name, spec_ptr.clone());
                 return Ok(());
             }
@@ -335,6 +346,16 @@ fn any_value_to_json_value(
 fn target_value_from_pb(
     target_value: Option<pb::AnyValue>,
 ) -> Result<Option<EvaluatorValue>, StatsigErr> {
+    if let Some(any_value) = &target_value {
+        if let Some(any_value::Value::RawValue(raw_value)) = &any_value.value {
+            if let Some(evaluator_value) =
+                InternedStore::try_get_preloaded_evaluator_value(raw_value.as_ref())
+            {
+                return Ok(Some(evaluator_value));
+            }
+        }
+    }
+
     match any_value_to_json_value(target_value)? {
         Some(json_value) => {
             let evaluator_value = EvaluatorValue::from_json_value(json_value);
@@ -528,6 +549,10 @@ fn return_value_from_pb(
         }
         pb::return_value::Value::RawValue(value) => value,
     };
+
+    if let Some(returnable) = InternedStore::try_get_preloaded_returnable(bytes.as_ref()) {
+        return Ok(returnable);
+    }
 
     serde_json::from_slice(bytes.as_ref()).map_err(|e| map_serde_json_err("ReturnValue", e))
 }

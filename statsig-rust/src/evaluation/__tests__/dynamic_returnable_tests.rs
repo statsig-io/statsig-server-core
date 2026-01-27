@@ -1,6 +1,4 @@
-use serde_json::json;
-
-use crate::evaluation::dynamic_returnable::{self, DynamicReturnable};
+use crate::{evaluation::dynamic_returnable::DynamicReturnable, interned_values::InternedStore};
 use serial_test::serial;
 use std::collections::HashMap;
 
@@ -46,37 +44,12 @@ fn test_memoization_from_json_bool() {
     let raw = r#"{"once":true,"twice":true}"#;
 
     let deserialized: HashMap<String, DynamicReturnable> = serde_json::from_str(raw).unwrap();
+    let value = deserialized.get("once").unwrap();
+    assert_eq!(value.get_bool(), Some(true));
 
-    assert_eq!(get_memo_len(), 1);
-
-    drop(deserialized);
-
-    assert_eq!(get_memo_len(), 0);
-}
-
-#[test]
-#[serial]
-fn test_memoization_from_map() {
-    let value = HashMap::from([("key".to_string(), json!("value"))]);
-    let dyn_returnable = DynamicReturnable::from_map(value);
-
-    assert_eq!(get_memo_len(), 1);
-
-    drop(dyn_returnable);
-
-    assert_eq!(get_memo_len(), 0);
+    assert_eq!(get_memo_len(), 0, "Bools are not memoized");
 }
 
 fn get_memo_len() -> usize {
-    let memo = dynamic_returnable::INTERNED_STORE
-        .values
-        .try_lock()
-        .unwrap();
-
-    for (key, value) in memo.iter() {
-        let value = value.upgrade().unwrap();
-        println!("{}: RawValue({:?})", key, value.raw_value);
-    }
-
-    memo.len()
+    InternedStore::get_memoized_len().1
 }

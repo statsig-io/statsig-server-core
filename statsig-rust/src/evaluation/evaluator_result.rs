@@ -134,7 +134,7 @@ pub fn rule_to_experiment_raw(
             },
             id_type: Some(&rule.id_type.value),
             group_name: rule.group_name.as_ref(),
-            is_experiment_active: Some(spec_pointer.inner.is_active.unwrap_or(false)),
+            is_experiment_active: Some(spec_pointer.as_spec_ref().is_active.unwrap_or(false)),
             secondary_exposures: None,
         },
         _ => ExperimentRaw::empty(experiment_name, &eval_details),
