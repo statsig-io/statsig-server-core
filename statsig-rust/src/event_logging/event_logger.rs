@@ -27,10 +27,15 @@ use std::{
 };
 use tokio::sync::{Notify, Semaphore};
 
+pub const MIN_BATCH_SIZE: u32 = 10;
+pub const MAX_BATCH_SIZE: u32 = 2000;
+
+pub const MIN_PENDING_BATCH_COUNT: u32 = 1;
+pub const DEFAULT_PENDING_BATCH_COUNT_MAX: u32 = 100;
+
 const BG_LOOP_TAG: &str = "EVT_LOG_BG_LOOP";
 const LIMIT_FLUSH_TAG: &str = "EVT_LOG_LIMIT_FLUSH";
-const DEFAULT_BATCH_SIZE: u32 = 2000;
-const DEFAULT_PENDING_BATCH_MAX: u32 = 100;
+const DEFAULT_BATCH_SIZE: u32 = MAX_BATCH_SIZE;
 const MAX_LIMIT_FLUSH_TASKS: usize = 5;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -69,7 +74,7 @@ impl EventLogger {
                     .unwrap_or(DEFAULT_BATCH_SIZE),
                 options
                     .event_logging_max_pending_batch_queue_size
-                    .unwrap_or(DEFAULT_PENDING_BATCH_MAX),
+                    .unwrap_or(DEFAULT_PENDING_BATCH_COUNT_MAX),
             ),
             event_sampler: ExposureSampling::new(sdk_key),
             flush_interval: FlushInterval::new(),

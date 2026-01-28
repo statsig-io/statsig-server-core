@@ -4,6 +4,7 @@ use serde::{Serialize, Serializer};
 use crate::console_capture::console_capture_options::ConsoleCaptureOptions;
 use crate::data_store_interface::{DataStoreKeyVersion, DataStoreTrait};
 use crate::evaluation::dynamic_value::DynamicValue;
+use crate::event_logging::event_logger;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::id_lists_adapter::IdListsAdapter;
 use crate::networking::proxy_config::ProxyConfig;
@@ -450,6 +451,29 @@ impl StatsigOptions {
             mut_ref.id_lists_sync_interval_ms = None;
         }
 
+        if bounds_check_logging_batch_size(&self.event_logging_max_queue_size) {
+            log_w!(
+                TAG,
+                "Invalid 'event_logging_max_queue_size', value cannot be lower than {} or greater than {}, received {:?}",
+                event_logger::MIN_BATCH_SIZE,
+                event_logger::MAX_BATCH_SIZE,
+                &self.event_logging_max_queue_size
+            );
+            mut_ref.event_logging_max_queue_size = None;
+        }
+
+        if bounds_check_loggging_pending_queue_size(
+            &self.event_logging_max_pending_batch_queue_size,
+        ) {
+            log_w!(
+                TAG,
+                "Invalid 'event_logging_max_pending_batch_queue_size', value cannot be lower than {}, received {:?}",
+                event_logger::MIN_PENDING_BATCH_COUNT,
+                &self.event_logging_max_pending_batch_queue_size
+            );
+            mut_ref.event_logging_max_pending_batch_queue_size = None;
+        }
+
         if should_fix_null_url(&self.specs_url) {
             log_d!(TAG, "Setting specs_url to be default url");
             mut_ref.specs_url = None;
@@ -481,5 +505,20 @@ fn should_fix_null_url(maybe_url: &Option<String>) -> bool {
         return url.is_empty() || url.eq_ignore_ascii_case("null");
     }
 
+    false
+}
+
+fn bounds_check_logging_batch_size(batch_size: &Option<u32>) -> bool {
+    if let Some(batch_size) = batch_size {
+        return *batch_size < event_logger::MIN_BATCH_SIZE
+            || *batch_size > event_logger::MAX_BATCH_SIZE;
+    }
+    false
+}
+
+fn bounds_check_loggging_pending_queue_size(queue_size: &Option<u32>) -> bool {
+    if let Some(queue_size) = queue_size {
+        return *queue_size < event_logger::MIN_PENDING_BATCH_COUNT;
+    }
     false
 }
