@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	statsig_go "github.com/statsig-io/statsig-go-core"
 )
 
 func getRssBytes(t *testing.T) int64 {
@@ -29,13 +31,45 @@ func getRssBytes(t *testing.T) int64 {
 	return bytes * 1024
 }
 
+func longDummyString() string {
+	return strings.Repeat("a", 100_000) + "b"
+}
+
+func createUser(t *testing.T, iter int) *statsig_go.StatsigUser {
+	user, err := statsig_go.NewUserBuilderWithUserID(fmt.Sprintf("user_%d", iter)).
+		WithEmail("user@example.com").
+		WithIpAddress("127.0.0.1").
+		WithLocale("en-US").
+		WithAppVersion("1.0.0").
+		WithCustom(map[string]any{"isAdmin": false, "dummyString": longDummyString()}).
+		Build()
+
+	if err != nil {
+		t.Errorf("error creating StatsigUser: %v", err)
+	}
+
+	return user
+}
+
+func createOptions(t *testing.T) *statsig_go.StatsigOptions {
+	options, err := statsig_go.NewOptionsBuilder().
+		WithSpecsUrl(longDummyString()).
+		Build()
+	if err != nil {
+		t.Errorf("error creating StatsigOptions: %v", err)
+	}
+	return options
+}
+
 func TestMemoryLeak(t *testing.T) {
 	resData := loadLargeDcsData(t)
 	statsig, _, user := SetupTestWithDcsData(t, resData)
 
 	time.Sleep(1 * time.Second)
 
-	for range 10 {
+	for i := range 10 {
+		_ = createUser(t, i)
+		_ = createOptions(t)
 		_ = statsig.GetFeatureGate(user, "test_public")
 		_ = statsig.GetDynamicConfig(user, "test_empty_array")
 		_ = statsig.GetExperiment(user, "exp_with_obj_and_array")
@@ -50,7 +84,9 @@ func TestMemoryLeak(t *testing.T) {
 	initialRss := getRssBytes(t)
 	fmt.Println("Initial RSS: ", humanizeBytes(initialRss))
 
-	for range 100 {
+	for i := range 10000 {
+		_ = createUser(t, i)
+		_ = createOptions(t)
 		_ = statsig.GetFeatureGate(user, "test_public")
 		_ = statsig.GetDynamicConfig(user, "test_empty_array")
 		_ = statsig.GetExperiment(user, "exp_with_obj_and_array")

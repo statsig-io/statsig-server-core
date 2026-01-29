@@ -27,7 +27,6 @@ x-rc:   &rc   { args: { RELEASE_TAG: *rc_val } }
 
 # ------------------------------------------------------------------------ [ SERVICES ]
 services:
-
   scrapi:
     build: ./scrapi
     container_name: scrapi
