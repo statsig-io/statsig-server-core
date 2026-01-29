@@ -222,13 +222,7 @@ fn test_a_param_store_json_vs_proto() {
     let mut proto_spec = get_proto_spec_param_store("test_parameter_store");
     proto_spec.remove("checksum");
 
-    let mut json_spec = get_json_spec("param_stores", "test_parameter_store").clone();
-
-    // the 'name' field is redundant, so we didn't include it in the Protobuf schema
-    json_spec["parameters"]["bool_param"]
-        .as_object_mut()
-        .unwrap()
-        .remove("name");
+    let json_spec = get_json_spec("param_stores", "test_parameter_store").clone();
 
     assert_json_diff::assert_json_matches!(proto_spec, json_spec, get_json_compare_config());
 }

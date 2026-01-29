@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_with::skip_serializing_none;
 use std::collections::HashMap;
 
 use crate::{gcir::gcir_formatter::GCIRHashable, hashing, interned_string::InternedString};
@@ -31,6 +32,7 @@ impl GCIRHashable for ParameterStore {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[skip_serializing_none]
 pub struct StaticValueParameter {
     pub name: Option<String>,
     pub ref_type: String,
@@ -39,6 +41,7 @@ pub struct StaticValueParameter {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[skip_serializing_none]
 pub struct GateParameter {
     pub name: Option<String>,
     pub ref_type: String,
@@ -49,6 +52,7 @@ pub struct GateParameter {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[skip_serializing_none]
 pub struct DynamicConfigParameter {
     pub name: Option<String>,
     pub ref_type: String,
@@ -58,6 +62,7 @@ pub struct DynamicConfigParameter {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[skip_serializing_none]
 pub struct ExperimentParameter {
     pub name: Option<String>,
     pub ref_type: String,
@@ -67,6 +72,7 @@ pub struct ExperimentParameter {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[skip_serializing_none]
 pub struct LayerParameter {
     pub name: Option<String>,
     pub ref_type: String,
