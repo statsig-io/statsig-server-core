@@ -232,6 +232,7 @@ impl OverrideAdapter for StatsigLocalOverrideAdapter {
                     ref_type: "static".to_string(),
                     param_type: infer_param_type(&param_value).to_string(),
                     value: param_value,
+                    name: None,
                 }),
             };
             parameters.insert(param_name, parameter);

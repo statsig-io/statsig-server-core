@@ -32,6 +32,7 @@ impl GCIRHashable for ParameterStore {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct StaticValueParameter {
+    pub name: Option<String>,
     pub ref_type: String,
     pub param_type: String,
     pub value: Value,
@@ -39,6 +40,7 @@ pub struct StaticValueParameter {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct GateParameter {
+    pub name: Option<String>,
     pub ref_type: String,
     pub param_type: String,
     pub gate_name: String,
@@ -48,6 +50,7 @@ pub struct GateParameter {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct DynamicConfigParameter {
+    pub name: Option<String>,
     pub ref_type: String,
     pub param_type: String,
     pub config_name: String,
@@ -56,6 +59,7 @@ pub struct DynamicConfigParameter {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct ExperimentParameter {
+    pub name: Option<String>,
     pub ref_type: String,
     pub param_type: String,
     pub experiment_name: String,
@@ -64,6 +68,7 @@ pub struct ExperimentParameter {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct LayerParameter {
+    pub name: Option<String>,
     pub ref_type: String,
     pub param_type: String,
     pub layer_name: String,
