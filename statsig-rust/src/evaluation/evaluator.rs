@@ -619,12 +619,17 @@ fn evaluate_nested_gate<'a>(
         .unwrap_or(InternedString::empty_ref());
 
     match ctx.nested_gate_memo.get(gate_name) {
-        Some((previous_bool, previous_rule_id)) => {
+        Some((previous_bool, previous_rule_id, previous_secondary_exposures)) => {
             ctx.result.bool_value = *previous_bool;
             ctx.result.rule_id = previous_rule_id.clone();
+            ctx.result
+                .secondary_exposures
+                .extend_from_slice(previous_secondary_exposures);
         }
         None => {
             ctx.prep_for_nested_evaluation()?;
+
+            let mut current_exposures = std::mem::take(&mut ctx.result.secondary_exposures);
 
             let _ = Evaluator::evaluate(ctx, gate_name.as_str(), &SpecType::Gate)?;
 
@@ -635,9 +640,18 @@ fn evaluate_nested_gate<'a>(
             if !gate_name.as_str().is_empty() {
                 ctx.nested_gate_memo.insert(
                     gate_name.clone(),
-                    (ctx.result.bool_value, ctx.result.rule_id.clone()),
+                    (
+                        ctx.result.bool_value,
+                        ctx.result.rule_id.clone(),
+                        ctx.result.secondary_exposures.clone(),
+                    ),
                 );
             }
+
+            std::mem::swap(&mut ctx.result.secondary_exposures, &mut current_exposures);
+            ctx.result
+                .secondary_exposures
+                .extend_from_slice(&current_exposures);
         }
     }
 

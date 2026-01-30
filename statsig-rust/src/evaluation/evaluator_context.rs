@@ -9,12 +9,13 @@ use crate::interned_string::InternedString;
 use crate::specs_response::spec_types::{Rule, Spec, SpecsResponseFull};
 use crate::user::StatsigUserInternal;
 use crate::StatsigErr::StackOverflowError;
-use crate::{OverrideAdapter, Statsig, StatsigErr};
+use crate::{OverrideAdapter, SecondaryExposure, Statsig, StatsigErr};
 
 const MAX_RECURSIVE_DEPTH: u16 = 300;
 
-// (gate_name, (bool_value, rule_id))
-type NestedGateMemo = HashMap<InternedString, (bool, Option<InternedString>)>;
+// (gate_name, (bool_value, rule_id, secondary_exposures))
+type NestedGateMemo =
+    HashMap<InternedString, (bool, Option<InternedString>, Vec<SecondaryExposure>)>;
 
 pub enum IdListResolution<'a> {
     MapLookup(&'a HashMap<String, IdList>),
