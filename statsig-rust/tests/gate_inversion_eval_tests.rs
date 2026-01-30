@@ -38,13 +38,7 @@ async fn test_fail_gate_passes_when_target_gate_does_not_exist() {
 
     assert_json_eq!(
         json!(&logging_adapter.force_get_first_event()["secondaryExposures"]),
-        json!([
-            {
-                "gate": "non_existent_gate",
-                "gateValue": "false",
-                "ruleID": ""
-            }
-        ])
+        json!([])
     );
 }
 
@@ -61,13 +55,7 @@ async fn test_fail_gate_passes_when_target_gate_name_is_empty() {
 
     assert_json_eq!(
         json!(&logging_adapter.force_get_first_event()["secondaryExposures"]),
-        json!([
-            {
-                "gate": "",
-                "gateValue": "false",
-                "ruleID": ""
-            }
-        ])
+        json!([])
     );
 }
 
@@ -84,13 +72,7 @@ async fn test_pass_gate_passes_when_target_gate_does_not_exist() {
 
     assert_json_eq!(
         json!(&logging_adapter.force_get_first_event()["secondaryExposures"]),
-        json!([
-            {
-                "gate": "non_existent_gate",
-                "gateValue": "false",
-                "ruleID": ""
-            }
-        ])
+        json!([])
     );
 }
 
@@ -107,12 +89,6 @@ async fn test_pass_gate_passes_when_target_gate_name_is_empty() {
 
     assert_json_eq!(
         json!(&logging_adapter.force_get_first_event()["secondaryExposures"]),
-        json!([
-            {
-                "gate": "",
-                "gateValue": "false",
-                "ruleID": ""
-            }
-        ])
+        json!([])
     );
 }

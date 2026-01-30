@@ -655,7 +655,12 @@ fn evaluate_nested_gate<'a>(
         }
     }
 
-    if !&gate_name.starts_with("segment:") {
+    let is_empty_rule_id = match &ctx.result.rule_id {
+        Some(id) => id.as_str().is_empty(),
+        None => true,
+    };
+
+    if !&gate_name.starts_with("segment:") && !is_empty_rule_id {
         let res = &ctx.result;
         let expo = SecondaryExposure {
             gate: gate_name.clone(),
