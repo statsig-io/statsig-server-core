@@ -49,47 +49,6 @@ function createProxyAgent(options?: StatsigOptions) {
   }
   return undefined; // node-fetch agent parameter takes in undefined type instead of null
 }
-
-function createFetchFunc(options?: StatsigOptions) {
-  const proxyAgent = createProxyAgent(options);
-
-  return async (
-    method: string,
-    url: string,
-    headers: Record<string, string>,
-    body?: Uint8Array,
-  ) => {
-    try {
-      const res = await nodeFetch(url, {
-        method,
-        headers: {
-          'accept-encoding': 'gzip, deflate, br', 
-          ...headers, 
-        },
-        body: body ? Buffer.from(body) : undefined,
-        agent: proxyAgent,
-      });
-
-      const data = await res.arrayBuffer();
-      const resHeaders = Object.fromEntries(res.headers.entries()) as Record<
-        string,
-        string
-      >;
-
-      return {
-        status: res.status,
-        data: Array.from(new Uint8Array(data)),
-        headers: resHeaders,
-      };
-    } catch (err: any) {
-      return {
-        status: 0,
-        error: 'message' in err ? err.message : 'Unknown Node Fetch Error',
-      };
-    }
-  };
-}
-
 export class Statsig extends StatsigNapiInternal {
   private static _sharedInstance: Statsig | null = null;
 
@@ -125,8 +84,7 @@ export class Statsig extends StatsigNapiInternal {
   }
 
   constructor(sdkKey: string, options?: StatsigOptions) {
-    const fetchFunc = createFetchFunc(options);
-    super(fetchFunc, sdkKey, options);
+    super(sdkKey, options);
 
     ErrorBoundary.wrap(this);
     if (options?.consoleCaptureOptions?.enabled) {
