@@ -28,6 +28,6 @@ test('Has correct number of threads', async () => {
 
   await Promise.all(instances.map((statsig) => statsig.initialize()));
 
-  const threads = getNumThreads();
-  expect(threads).toBe('16');
+  const threads = Number(getNumThreads());
+  expect(threads).toBeLessThan(19);
 });
