@@ -4,6 +4,7 @@ use assert_json_diff::{CompareMode, Config, NumericMode};
 use serde_json::{json, Value};
 
 use crate::{
+    interned_str,
     interned_string::InternedString,
     networking::ResponseData,
     observability::ops_stats::OpsStatsForInstance,
@@ -225,6 +226,33 @@ fn test_a_param_store_json_vs_proto() {
     let json_spec = get_json_spec("param_stores", "test_parameter_store").clone();
 
     assert_json_diff::assert_json_matches!(proto_spec, json_spec, get_json_compare_config());
+}
+
+#[test]
+fn test_regex_compilation() {
+    let proto_specs = get_deserialized_specs(EVAL_PROJ_PROTO_BYTES);
+    let json_specs = serde_json::from_slice::<SpecsResponseFull>(EVAL_PROJ_JSON_BYTES).unwrap();
+
+    // str_matches condition for test_string_comparisons gate
+    let key = interned_str!("998446160");
+    let proto_condition = proto_specs.condition_map.get(&key).unwrap();
+    let json_condition = json_specs.condition_map.get(&key).unwrap();
+
+    assert!(proto_condition
+        .target_value
+        .as_ref()
+        .unwrap()
+        .as_ref()
+        .regex_value
+        .is_some());
+
+    assert!(json_condition
+        .target_value
+        .as_ref()
+        .unwrap()
+        .as_ref()
+        .regex_value
+        .is_some());
 }
 
 fn deserialize_from(
