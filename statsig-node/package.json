@@ -12,7 +12,8 @@
   "repository": "https://github.com/statsig-io/statsig-server-core.git",
   "dependencies": {
     "@octokit/core": "^6",
-    "https-proxy-agent": "^7.0.6",
+    "agentkeepalive": "^4.5.0",
+    "hpagent": "^1.2.0",
     "node-fetch": "2.7.0"
   },
   "devDependencies": {
