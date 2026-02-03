@@ -6,7 +6,7 @@ use crate::{
     hashing,
     specs_response::param_store_types::{
         DynamicConfigParameter, ExperimentParameter, GateParameter, LayerParameter, Parameter,
-        ParameterStore,
+        ParameterStore, StaticValueParameter,
     },
     ClientInitResponseOptions, HashAlgorithm,
 };
@@ -73,12 +73,19 @@ fn get_parameters_from_store(
     let mut parameters: HashMap<String, Parameter> = HashMap::new();
     for (param_name, param) in &store.parameters {
         match param {
-            Parameter::StaticValue(_static_value) => {
-                parameters.insert(param_name.clone(), param.clone());
+            Parameter::StaticValue(static_value) => {
+                let new_param = StaticValueParameter {
+                    name: param_name.clone().into(),
+                    param_type: static_value.param_type.clone(),
+                    ref_type: static_value.ref_type.clone(),
+                    value: static_value.value.clone(),
+                };
+                parameters.insert(param_name.clone(), Parameter::StaticValue(new_param));
             }
 
             Parameter::Gate(gate) => {
                 let new_param = GateParameter {
+                    name: param_name.clone().into(),
                     ref_type: gate.ref_type.clone(),
                     param_type: gate.param_type.clone(),
                     gate_name: context.hashing.hash(&gate.gate_name, hash_used),
@@ -90,6 +97,7 @@ fn get_parameters_from_store(
 
             Parameter::DynamicConfig(dynamic_config) => {
                 let new_param = DynamicConfigParameter {
+                    name: param_name.clone().into(),
                     ref_type: dynamic_config.ref_type.clone(),
                     param_type: dynamic_config.param_type.clone(),
                     config_name: context.hashing.hash(&dynamic_config.config_name, hash_used),
@@ -100,6 +108,7 @@ fn get_parameters_from_store(
 
             Parameter::Experiment(experiment) => {
                 let new_param = ExperimentParameter {
+                    name: param_name.clone().into(),
                     ref_type: experiment.ref_type.clone(),
                     param_type: experiment.param_type.clone(),
                     experiment_name: context.hashing.hash(&experiment.experiment_name, hash_used),
@@ -110,6 +119,7 @@ fn get_parameters_from_store(
 
             Parameter::Layer(layer) => {
                 let new_param = LayerParameter {
+                    name: param_name.clone().into(),
                     ref_type: layer.ref_type.clone(),
                     param_type: layer.param_type.clone(),
                     layer_name: context.hashing.hash(&layer.layer_name, hash_used),

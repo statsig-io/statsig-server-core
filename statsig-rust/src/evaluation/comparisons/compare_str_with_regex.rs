@@ -1,15 +1,26 @@
-use crate::{evaluation::evaluator_value::MemoizedEvaluatorValue, unwrap_or_return, DynamicValue};
+use crate::{
+    evaluation::evaluator_value::MemoizedEvaluatorValue, log_w, unwrap_or_return, DynamicValue,
+};
+
+const TAG: &str = "CompareStrWithRegex";
 
 pub(crate) fn compare_str_with_regex(
     value: &DynamicValue,
     regex_value: &MemoizedEvaluatorValue,
 ) -> bool {
     let value_str = unwrap_or_return!(&value.string_value, false);
-    if let Some(regex) = &regex_value.regex_value {
-        return regex.is_match(&value_str.value).unwrap_or(false);
-    }
+    let regex = match &regex_value.regex_value {
+        Some(regex) => regex,
+        None => {
+            log_w!(
+                TAG,
+                "No regex value found. 'str_matches' operators require a call to EvaluatorValue::compile_regex() on the target value."
+            );
+            return false;
+        }
+    };
 
-    false
+    regex.is_match(&value_str.value).unwrap_or(false)
 }
 
 #[cfg(test)]

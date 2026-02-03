@@ -3,6 +3,7 @@ package statsig_go_core
 import (
 	"encoding/json"
 	"fmt"
+	"runtime"
 )
 
 type StatsigOptions struct {
@@ -145,6 +146,10 @@ func (o *StatsigOptionsBuilder) Build() (*StatsigOptions, error) {
 	options := &StatsigOptions{
 		ref,
 	}
+
+	runtime.SetFinalizer(options, func(obj *StatsigOptions) {
+		GetFFI().statsig_options_release(obj.ref)
+	})
 
 	return options, nil
 }

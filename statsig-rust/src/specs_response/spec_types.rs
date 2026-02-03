@@ -128,6 +128,18 @@ pub struct SessionReplayInfo {
     pub session_recording_privacy_settings: Option<SessionReplayPrivacySetting>,
 }
 
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
+pub struct AutoCaptureSettings {
+    pub disabled_events: HashMap<InternedString, bool>,
+}
+
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, PartialEq, Debug)] /* DO_NOT_CLONE */
+pub struct GCIRConfig {
+    pub remove_default_value_gates: bool,
+}
+
 // All this macro logic is to ensure that new fields that are added are automatically handled by the merge_from_partial method.
 macro_rules! flatten_struct {
     (
@@ -169,7 +181,8 @@ macro_rules! response_struct {
                 pub sdk_flags: Option<HashMap<String, bool>>,
                 pub sdk_keys_to_app_ids: Option<HashMap<String, DynamicValue>>,
                 pub session_replay_info: Option<SessionReplayInfo>,
-
+                pub auto_capture_settings: Option<AutoCaptureSettings>,
+                pub gcir_config: Option<GCIRConfig>,
                 // Add new fields here
             },
             { $( $special )* }

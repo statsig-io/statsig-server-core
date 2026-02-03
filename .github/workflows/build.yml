@@ -34,8 +34,8 @@ env:
   HEX_API_KEY: ${{ secrets.STATSIG_ELIXIR_HEX_API_KEY }}
 
   # GH Octokit (Kong App)
-  GH_APP_ID: '229901'
-  GH_APP_INSTALLATION_ID: '36921303'
+  GH_APP_ID: "229901"
+  GH_APP_INSTALLATION_ID: "36921303"
   GH_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
 
   # Misc
@@ -79,7 +79,7 @@ jobs:
     runs-on: ${{ (contains(fromJson('["java", "dotnet", "ffi", "cpp"]'), matrix.package) && contains(matrix.config.target, 'linux')) && 'ubuntu-latest' || matrix.config.runner }}
 
     steps:
-      - name: '[Statsig Hosted Windows ARM64 Only] Setup Git (Portable)'
+      - name: "[Statsig Hosted Windows ARM64 Only] Setup Git (Portable)"
         if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
         shell: powershell
         run: |
@@ -106,13 +106,13 @@ jobs:
         with:
           submodules: recursive
 
-      - name: '[Statsig Hosted Windows ARM64 Only] Set up Node.js'
+      - name: "[Statsig Hosted Windows ARM64 Only] Set up Node.js"
         if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: '[Statsig Hosted Windows ARM64 Only] Install pnpm'
+      - name: "[Statsig Hosted Windows ARM64 Only] Install pnpm"
         if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
         uses: pnpm/action-setup@v4
         with:
@@ -124,29 +124,29 @@ jobs:
         with:
           key: ${{ matrix.config.os }}-${{ matrix.config.target }}-${{ matrix.package }}
 
-      - name: '[Non-Linux or Elixir] Install Protoc'
+      - name: "[Non-Linux or Elixir] Install Protoc"
         uses: arduino/setup-protoc@v3
         if: ${{ runner.os != 'Linux' || matrix.config.runner == 'statsig-windows-arm64' || matrix.package == 'elixir' }}
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: '[Windows Only] Setup Python'
+      - name: "[Windows Only] Setup Python"
         if: ${{ runner.os == 'Windows' }}
         uses: actions/setup-python@v5
         with:
           python-version: 3.x
           architecture: ${{ matrix.config.py_arch }}
 
-      - name: '[Macos 14 Py Only] Install maturin'
+      - name: "[Macos 14 Py Only] Install maturin"
         if: ${{ matrix.config.runner == 'macos-15-intel' && matrix.package == 'python' }}
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.config.target }}
           args: --release --strip --out build
-          sccache: 'true'
+          sccache: "true"
           working-directory: statsig-pyo3
 
-      - name: '[Statsig Hosted Windows ARM64 Only] Install Rustup'
+      - name: "[Statsig Hosted Windows ARM64 Only] Install Rustup"
         if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
         shell: powershell
         run: |
@@ -177,7 +177,7 @@ jobs:
 
           echo "=== Rust installed successfully ==="
 
-      - name: '[Statsig Hosted Windows ARM64 Only] Ensure Rust PATH'
+      - name: "[Statsig Hosted Windows ARM64 Only] Ensure Rust PATH"
         if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
         shell: powershell
         run: |
@@ -186,14 +186,14 @@ jobs:
             echo $cargoBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           }
 
-      - name: '[Non-Linux] Install Dependencies'
+      - name: "[Non-Linux] Install Dependencies"
         if: ${{ runner.os != 'Linux' }}
         shell: powershell
-        run: |          
+        run: |
           pip3 install maturin types-requests ${{ format('{0}', matrix.config.py_deps_suffix) }}
           rustup target add ${{ matrix.config.target }}
 
-      - name: '[Linux Only] Build Docker Image'
+      - name: "[Linux Only] Build Docker Image"
         if: ${{ runner.os == 'Linux' }}
         uses: ./.github/actions/build-server-core-docker-image
         with:
@@ -298,27 +298,6 @@ jobs:
         env:
           STATSIG_SERVER_SDK_KEY: ${{ secrets.KONG_SERVER_SDK_KEY }}
         run: python3 verify.py
-          
-
-  # -------------------------------------------------------------------- [Size Report]
-
-  size-report:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/common-setup
-
-      - name: Report Binary Sizes
-        shell: bash
-        run: |
-          ./tore size-report \
-            --should-persist ${{ github.event_name == 'release' || github.ref_name == 'main' }} \
-            --working-dir artifacts \
-            --workflow-id $GITHUB_RUN_ID \
-            --repository ${{ github.event.repository.name }} \
-            --disregard-workflow-checks
 
   # -------------------------------------------------------------------- [Publish]
 
@@ -347,28 +326,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-            submodules: recursive
+          submodules: recursive
 
       - uses: ./.github/actions/common-setup
 
       - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
-          java-version: '11'
-          distribution: 'adopt'
+          java-version: "11"
+          distribution: "adopt"
 
       - name: Setup elixir
         uses: erlef/setup-beam@v1
         if: ${{  matrix.package == 'elixir' }}
         with:
           elixir-version: 1.18.4
-          otp-version: '28.0'
-      
+          otp-version: "28.0"
+
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
         if: ${{  matrix.package == 'elixir' }}
         with:
-            repo-token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup
         run: |

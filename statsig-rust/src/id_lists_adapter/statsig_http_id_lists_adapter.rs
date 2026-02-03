@@ -1,6 +1,7 @@
 use super::IdListMetadata;
 use crate::id_lists_adapter::{IdListUpdate, IdListsAdapter, IdListsUpdateListener};
 use crate::networking::{NetworkClient, NetworkError, RequestArgs, Response, ResponseData};
+use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::diagnostics::ContextType;
@@ -85,35 +86,33 @@ impl StatsigHttpIdListsAdapter {
             ..RequestArgs::new()
         };
 
-        let initial_err = if self.is_cdn_url() {
-            match self.network.get(request_args.clone()).await {
-                Ok(response) => return self.parse_response(response.data),
-                Err(e) => e,
-            }
+        let result = if self.is_cdn_url() {
+            self.network.get(request_args.clone()).await
         } else {
-            match self.network.post(request_args.clone(), None).await {
-                Ok(response) => return self.parse_response(response.data),
-                Err(e) => e,
+            self.network.post(request_args.clone(), None).await
+        };
+
+        let result = match result {
+            Ok(response) => self.parse_response(response.data),
+            Err(initial_err) => {
+                self.handle_manifest_network_error(request_args, initial_err)
+                    .await
             }
         };
 
-        if !matches!(initial_err, NetworkError::RetriesExhausted(_, _, _, _)) {
-            return Err(StatsigErr::NetworkError(initial_err));
-        }
+        let (metric_name, metric_value) = if result.is_ok() {
+            ("id_list_manifest_download_success", 1.0)
+        } else {
+            ("id_list_manifest_download_failure", 1.0)
+        };
+        self.ops_stats.log(ObservabilityEvent::new_event(
+            MetricType::Increment,
+            metric_name.to_string(),
+            metric_value,
+            None,
+        ));
 
-        // attempt fallback
-        let mut fallback_err = None;
-        if let Some(fallback_url) = &self.fallback_url {
-            fallback_err = match self
-                .handle_fallback_request(fallback_url, request_args)
-                .await
-            {
-                Ok(response) => return self.parse_response(response.data),
-                Err(e) => Some(e),
-            };
-        }
-
-        Err(fallback_err.unwrap_or(StatsigErr::NetworkError(initial_err)))
+        result
     }
 
     async fn fetch_individual_id_list_changes_from_network(
@@ -142,23 +141,54 @@ impl StatsigHttpIdListsAdapter {
                 url: list_url.to_string(),
                 headers,
                 query_params,
+                diagnostics_key: Some(KeyType::GetIDList),
                 ..RequestArgs::new()
             })
-            .await
-            .map_err(StatsigErr::NetworkError)?;
+            .await;
+
+        let response = match response {
+            Ok(response) => response,
+            Err(err) => {
+                return Err(StatsigErr::NetworkError(err));
+            }
+        };
+
+        self.add_diagnostics_start_marker(
+            KeyType::GetIDList,
+            StepType::Process,
+            None,
+            Some(list_url.to_string()),
+        );
 
         let mut response_body = match response.data {
             Some(data) => data,
             None => {
                 let msg = "No ID List changes from network".to_string();
+                self.add_diagnostics_end_marker(
+                    KeyType::GetIDList,
+                    StepType::Process,
+                    false,
+                    None,
+                    Some(list_url.to_string()),
+                );
                 return Err(StatsigErr::JsonParseError("IdList".to_string(), msg));
             }
         };
 
-        response_body.read_to_string().map_err(|err| {
+        let result = response_body.read_to_string().map_err(|err| {
             let msg = format!("Failed to parse ID List changes: {err:?}");
             StatsigErr::JsonParseError("IdList".to_string(), msg)
-        })
+        });
+
+        self.add_diagnostics_end_marker(
+            KeyType::GetIDList,
+            StepType::Process,
+            result.is_ok(),
+            None,
+            Some(list_url.to_string()),
+        );
+
+        result
     }
 
     async fn handle_fallback_request(
@@ -175,6 +205,28 @@ impl StatsigHttpIdListsAdapter {
             Ok(response) => Ok(response),
             Err(e) => Err(StatsigErr::NetworkError(e)),
         }
+    }
+
+    async fn handle_manifest_network_error(
+        &self,
+        request_args: RequestArgs,
+        initial_err: NetworkError,
+    ) -> Result<IdListsResponse, StatsigErr> {
+        if !matches!(initial_err, NetworkError::RetriesExhausted(_, _, _, _)) {
+            return Err(StatsigErr::NetworkError(initial_err));
+        }
+
+        if let Some(fallback_url) = &self.fallback_url {
+            return match self
+                .handle_fallback_request(fallback_url, request_args)
+                .await
+            {
+                Ok(response) => self.parse_response(response.data),
+                Err(e) => Err(e),
+            };
+        }
+
+        Err(StatsigErr::NetworkError(initial_err))
     }
 
     async fn run_background_sync(weak_self: &Weak<Self>) {
@@ -268,13 +320,10 @@ impl StatsigHttpIdListsAdapter {
 
         let mut changes = HashMap::new();
 
-        self.ops_stats.add_marker(
-            Marker::new(
-                KeyType::GetIDListSources,
-                ActionType::Start,
-                Some(StepType::Process),
-            )
-            .with_id_list_count(new_manifest.len()),
+        self.add_diagnostics_start_marker(
+            KeyType::GetIDListSources,
+            StepType::Process,
+            Some(new_manifest.len()),
             None,
         );
 
@@ -356,17 +405,63 @@ impl StatsigHttpIdListsAdapter {
             }
         };
 
-        self.ops_stats.add_marker(
-            Marker::new(
-                KeyType::GetIDListSources,
-                ActionType::End,
-                Some(StepType::Process),
-            )
-            .with_is_success(result.is_ok()),
+        self.add_diagnostics_end_marker(
+            KeyType::GetIDListSources,
+            StepType::Process,
+            result.is_ok(),
+            None,
             None,
         );
 
+        let (metric_name, metric_value) = if result.is_ok() {
+            ("individual_id_list_download_success", 1.0)
+        } else {
+            ("individual_id_list_download_failure", 1.0)
+        };
+        self.ops_stats.log(ObservabilityEvent::new_event(
+            MetricType::Increment,
+            metric_name.to_string(),
+            metric_value,
+            None,
+        ));
+
         result
+    }
+
+    // ---- Helper functions for monioring ID List ----
+    fn add_diagnostics_start_marker(
+        &self,
+        key: KeyType,
+        step: StepType,
+        id_list_count: Option<usize>,
+        url: Option<String>,
+    ) {
+        let mut marker = Marker::new(key, ActionType::Start, Some(step));
+        if let Some(count) = id_list_count {
+            marker = marker.with_id_list_count(count);
+        }
+        if let Some(url) = url {
+            marker = marker.with_url(url);
+        }
+        self.ops_stats.add_marker(marker, None);
+    }
+
+    fn add_diagnostics_end_marker(
+        &self,
+        key: KeyType,
+        step: StepType,
+        success: bool,
+        status_code: Option<u16>,
+        url: Option<String>,
+    ) {
+        let mut marker = Marker::new(key, ActionType::End, Some(step)).with_is_success(success);
+        if let Some(status_code) = status_code {
+            marker = marker.with_status_code(status_code);
+        }
+        if let Some(url) = url {
+            marker = marker.with_url(url);
+        }
+        self.ops_stats.add_marker(marker, None);
     }
 }
 
@@ -384,7 +479,10 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
         listener: Arc<dyn IdListsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         self.set_listener(listener);
-        self.sync_id_lists().await?;
+        self.ops_stats
+            .set_diagnostics_context(ContextType::Initialize);
+        let result = self.sync_id_lists().await;
+        result?;
         Ok(())
     }
 

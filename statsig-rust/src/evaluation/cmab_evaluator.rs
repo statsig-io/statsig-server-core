@@ -185,13 +185,15 @@ fn get_passes_targeting<'a>(ctx: &mut EvaluatorContext<'a>, cmab: &'a CMABConfig
         Err(_) => false,
     };
 
-    let expo = SecondaryExposure {
-        gate: targeting_gate_name.clone(),
-        gate_value: InternedString::from_bool(result),
-        rule_id: ctx.result.rule_id.clone().unwrap_or_default(),
-    };
+    if !&targeting_gate_name.starts_with("segment:") {
+        let expo = SecondaryExposure {
+            gate: targeting_gate_name.clone(),
+            gate_value: InternedString::from_bool(result),
+            rule_id: ctx.result.rule_id.clone().unwrap_or_default(),
+        };
 
-    ctx.result.secondary_exposures.push(expo);
+        ctx.result.secondary_exposures.push(expo);
+    }
 
     result
 }

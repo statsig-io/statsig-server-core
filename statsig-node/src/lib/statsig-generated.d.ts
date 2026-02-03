@@ -12,7 +12,7 @@ export declare class StatsigNapiInternal {
   unsubscribe(eventName: SdkEvent): void
   unsubscribeById(subscriptionId: string): void
   unsubscribeAll(): void
-  constructor(networkFunc: unknown, sdkKey: string, options?: StatsigOptions | undefined | null)
+  constructor(sdkKey: string, options?: StatsigOptions | undefined | null)
   initialize(): Promise<StatsigResult>
   shutdown(timeoutMs?: number | undefined | null): Promise<StatsigResult>
   flushEvents(): Promise<StatsigResult>
@@ -158,13 +158,6 @@ export declare const enum GCIRResponseFormat {
 export interface LayerEvaluationOptions {
   disableExposureLogging?: boolean
   userPersistedValues?: Record<string, any>
-}
-
-export interface NapiNetworkFuncResult {
-  status: number
-  data?: Array<number>
-  headers?: Record<string, string>
-  error?: string
 }
 
 export interface ObservabilityClient {

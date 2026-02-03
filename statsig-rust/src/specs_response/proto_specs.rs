@@ -286,7 +286,7 @@ fn validate_envelope_data(
 }
 
 fn condition_from_pb(v: pb::Condition) -> Result<Condition, StatsigErr> {
-    let condition = Condition {
+    let mut condition = Condition {
         condition_type: condition_type_from_pb(
             pb::ConditionType::try_from(v.condition_type)
                 .map_err(|e| map_unknown_enum_value("ConditionType", e))?,
@@ -304,6 +304,12 @@ fn condition_from_pb(v: pb::Condition) -> Result<Condition, StatsigErr> {
         id_type: id_type_from_pb_to_dynamic_string(v.id_type)?,
         checksum: None,
     };
+
+    if condition.operator.as_deref() == Some("str_matches") {
+        if let Some(ref mut target_value) = condition.target_value {
+            target_value.compile_regex();
+        }
+    }
 
     Ok(condition)
 }

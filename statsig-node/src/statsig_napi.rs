@@ -1,5 +1,4 @@
 use crate::gcir_options_napi::ClientInitResponseOptions;
-use crate::net_provider_napi::{NapiNetworkFunc, NetworkProviderNapi};
 use crate::observability_client_napi::ObservabilityClient;
 use crate::statsig_core_api_options_napi::{
     DynamicConfigEvaluationOptionsNapi, ExperimentEvaluationOptionsNapi,
@@ -16,8 +15,6 @@ use napi_derive::napi;
 use parking_lot::Mutex;
 use serde_json::Value;
 use statsig_rust::console_capture::console_log_line_levels::StatsigLogLineLevel;
-use statsig_rust::networking::providers::NetworkProviderGlobal;
-use statsig_rust::networking::NetworkProvider;
 use statsig_rust::{
     console_capture::console_capture_instances::CONSOLE_CAPTURE_REGISTRY, log_d, log_e,
     Statsig as StatsigActual,
@@ -61,18 +58,12 @@ pub fn statsig_capture_log_line(
 pub struct StatsigNapiInternal {
     pub(crate) inner: Arc<StatsigActual>,
     observability_client: Mutex<Option<Arc<ObservabilityClient>>>,
-    network_provider: Mutex<Option<Arc<dyn NetworkProvider>>>,
 }
 
 #[napi]
 impl StatsigNapiInternal {
     #[napi(constructor)]
-    pub fn new(
-        env: Env,
-        #[napi(ts_arg_type = "unknown")] network_func: NapiNetworkFunc,
-        sdk_key: String,
-        options: Option<StatsigOptions>,
-    ) -> Self {
+    pub fn new(env: Env, sdk_key: String, options: Option<StatsigOptions>) -> Self {
         within_runtime_if_available(|| {
             log_d!(TAG, "StatsigNapi new");
 
@@ -82,14 +73,9 @@ impl StatsigNapiInternal {
                 .map(|opts| opts.safe_convert_to_inner())
                 .unwrap_or((None, None));
 
-            let network_provider: Arc<dyn NetworkProvider> =
-                Arc::new(NetworkProviderNapi { network_func });
-            NetworkProviderGlobal::set(&network_provider);
-
             Self {
                 inner: Arc::new(StatsigActual::new(&sdk_key, inner_opts)),
                 observability_client: Mutex::new(obs_client),
-                network_provider: Mutex::new(Some(network_provider)),
             }
         })
     }
@@ -112,14 +98,6 @@ impl StatsigNapiInternal {
 
     #[napi]
     pub async fn shutdown(&self, timeout_ms: Option<u32>) -> StatsigResult {
-        let network_provider = match self.network_provider.try_lock_for(Duration::from_secs(5)) {
-            Some(mut lock) => lock.take(),
-            None => {
-                log_e!(TAG, "Failed to lock network provider");
-                None
-            }
-        };
-
         let obs_client = match self
             .observability_client
             .try_lock_for(Duration::from_secs(5))
@@ -138,7 +116,6 @@ impl StatsigNapiInternal {
         };
 
         // held until the shutdown is complete
-        drop(network_provider);
         drop(obs_client);
 
         result
