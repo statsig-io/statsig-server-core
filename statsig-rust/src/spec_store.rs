@@ -506,7 +506,10 @@ impl IdListsUpdateListener for SpecStore {
                 .map(|(key, list)| (key.clone(), list.metadata.clone()))
                 .collect(),
             None => {
-                log_e!(TAG, "Failed to acquire read lock: Failed to lock data");
+                let err = StatsigErr::LockFailure(
+                    "Failed to acquire read lock for id list metadata".to_string(),
+                );
+                log_error_to_statsig_and_console!(self.ops_stats, TAG, err);
                 HashMap::new()
             }
         }
@@ -519,7 +522,10 @@ impl IdListsUpdateListener for SpecStore {
         let mut data = match self.data.try_write_for(Duration::from_secs(5)) {
             Some(data) => data,
             None => {
-                log_e!(TAG, "Failed to acquire write lock: Failed to lock data");
+                let err = StatsigErr::LockFailure(
+                    "Failed to acquire write lock for id list updates".to_string(),
+                );
+                log_error_to_statsig_and_console!(self.ops_stats, TAG, err);
                 return;
             }
         };
