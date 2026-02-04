@@ -322,6 +322,7 @@ function Dashboard() {
             gap: 8,
           }}
         >
+          <h3>== Scrapi State ==</h3>
           <Toggle
             label={`Chaos Agent Enabled`}
             checked={state?.chaosAgent?.active === true}
@@ -358,6 +359,19 @@ function Dashboard() {
               setState(newState);
             }}
           />
+          <Slider
+            label="DCS Delay (ms)"
+            value={state?.scrapi?.dcs?.response?.delayMs ?? 0}
+            max={100_000}
+            onChange={(e) => {
+              const newState = JSON.parse(JSON.stringify(state));
+              newState.scrapi.dcs.response.delayMs = parseInt(e);
+              setState(newState);
+            }}
+          />
+
+          <h3>== SDK State ==</h3>
+
           <Slider
             label="Log Event QPS"
             value={state?.sdk?.logEvent?.qps ?? 0}
