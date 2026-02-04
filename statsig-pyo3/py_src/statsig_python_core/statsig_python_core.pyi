@@ -248,7 +248,8 @@ class StatsigUser:
     custom_ids: typing.Optional[builtins.dict[builtins.str, builtins.str]]
     custom: typing.Optional[builtins.dict[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]
     private_attributes: typing.Optional[builtins.dict[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]
-    def __new__(cls,user_id:typing.Optional[builtins.str]=None, email:typing.Optional[builtins.str]=None, ip:typing.Optional[builtins.str]=None, country:typing.Optional[builtins.str]=None, locale:typing.Optional[builtins.str]=None, app_version:typing.Optional[builtins.str]=None, user_agent:typing.Optional[builtins.str]=None, custom:typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]=None, custom_ids:typing.Optional[typing.Mapping[builtins.str, typing.Union[builtins.str, builtins.int, builtins.float]]]=None, private_attributes:typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]=None): ...
+    statsig_environment: typing.Optional[builtins.dict[builtins.str, builtins.str]]
+    def __new__(cls,user_id:typing.Optional[builtins.str]=None, email:typing.Optional[builtins.str]=None, ip:typing.Optional[builtins.str]=None, country:typing.Optional[builtins.str]=None, locale:typing.Optional[builtins.str]=None, app_version:typing.Optional[builtins.str]=None, user_agent:typing.Optional[builtins.str]=None, custom:typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]=None, custom_ids:typing.Optional[typing.Mapping[builtins.str, typing.Union[builtins.str, builtins.int, builtins.float]]]=None, private_attributes:typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]=None, statsig_environment:typing.Optional[typing.Mapping[builtins.str, builtins.str]]=None): ...
     def set_user_id(self, value:typing.Optional[builtins.str]) -> None:
         ...
 
@@ -277,6 +278,9 @@ class StatsigUser:
         ...
 
     def set_private_attributes(self, value:typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]) -> None:
+        ...
+
+    def set_statsig_environment(self, value:typing.Optional[typing.Mapping[builtins.str, builtins.str]]) -> None:
         ...
 
     def __getstate__(self) -> bytes:

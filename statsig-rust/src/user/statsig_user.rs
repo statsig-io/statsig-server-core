@@ -104,6 +104,8 @@ macro_rules! map_field_accessor {
 }
 
 impl StatsigUser {
+    // ---------------------------------------- [User ID]
+
     pub fn get_user_id(&self) -> Option<&str> {
         self.data
             .user_id
@@ -118,6 +120,8 @@ impl StatsigUser {
         let mut_data = Arc::make_mut(&mut self.data);
         mut_data.user_id = Some(unit_id.into());
     }
+
+    // ---------------------------------------- [Custom IDs]
 
     pub fn get_custom_ids(&self) -> Option<HashMap<&str, &str>> {
         let mapped = self
@@ -145,6 +149,8 @@ impl StatsigUser {
         mut_data.custom_ids = Some(custom_ids);
     }
 
+    // ---------------------------------------- [Unit ID]
+
     pub fn get_unit_id(&self, id_type: &DynamicString) -> Option<&DynamicValue> {
         if id_type.lowercased_value.eq("userid") {
             return self.data.user_id.as_ref();
@@ -159,12 +165,53 @@ impl StatsigUser {
         custom_ids.get(id_type.lowercased_value.as_str())
     }
 
+    // ---------------------------------------- [ Statsig Environment ]
+
+    pub fn get_statsig_environment(&self) -> Option<HashMap<&str, &str>> {
+        let mapped = self
+            .data
+            .statsig_environment
+            .as_ref()?
+            .iter()
+            .map(entry_to_key_value_refs)
+            .collect();
+
+        Some(mapped)
+    }
+
+    pub fn set_statsig_environment<K, U>(&mut self, statsig_environment: Option<HashMap<K, U>>)
+    where
+        K: Into<String>,
+        U: Into<String>,
+    {
+        let mut_data = Arc::make_mut(&mut self.data);
+
+        let statsig_environment = match statsig_environment {
+            Some(v) => v,
+            None => {
+                mut_data.statsig_environment = None;
+                return;
+            }
+        };
+
+        let statsig_environment: HashMap<String, DynamicValue> = statsig_environment
+            .into_iter()
+            .map(|(k, v)| (k.into(), v.into().into()))
+            .collect();
+
+        mut_data.statsig_environment = Some(statsig_environment);
+    }
+
+    // ---------------------------------------- [ String Fields ]
+
     string_field_accessor!(self, get_email, set_email, email);
     string_field_accessor!(self, get_ip, set_ip, ip);
     string_field_accessor!(self, get_user_agent, set_user_agent, user_agent);
     string_field_accessor!(self, get_country, set_country, country);
     string_field_accessor!(self, get_locale, set_locale, locale);
     string_field_accessor!(self, get_app_version, set_app_version, app_version);
+
+    // ---------------------------------------- [ Map Fields ]
 
     map_field_accessor!(self, get_custom, set_custom, custom);
     map_field_accessor!(

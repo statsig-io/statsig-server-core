@@ -21,7 +21,11 @@ pub struct StatsigUserPy {
 impl StatsigUserPy {
     #[new]
     #[pyo3(signature = (
-        user_id=None, email=None, ip=None, country=None, locale=None, app_version=None, user_agent=None, custom=None, custom_ids=None, private_attributes=None
+        user_id=None, email=None, ip=None,
+        country=None, locale=None, app_version=None,
+        user_agent=None,
+        custom=None, custom_ids=None, private_attributes=None,
+        statsig_environment=None
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -35,6 +39,7 @@ impl StatsigUserPy {
         custom: Option<HashMap<String, Option<ValidPrimitivesPy>>>,
         custom_ids: Option<HashMap<String, UnitIdPy>>,
         private_attributes: Option<HashMap<String, Option<ValidPrimitivesPy>>>,
+        statsig_environment: Option<HashMap<String, String>>,
     ) -> PyResult<Self> {
         if user_id.is_none() && custom_ids.is_none() {
             log_w!(TAG, "Either `user_id` or `custom_ids` must be provided.");
@@ -54,7 +59,7 @@ impl StatsigUserPy {
         instance.set_custom_ids(custom_ids);
         instance.set_custom(custom);
         instance.set_private_attributes(private_attributes);
-
+        instance.set_statsig_environment(statsig_environment);
         Ok(instance)
     }
 
@@ -229,6 +234,28 @@ impl StatsigUserPy {
         }
 
         self.inner.set_private_attributes(converted);
+    }
+
+    // ---------------------------------------- [Statsig Environment]
+
+    #[getter]
+    fn get_statsig_environment(&self) -> Option<HashMap<&str, &str>> {
+        let value = self.inner.data.statsig_environment.as_ref()?;
+
+        let mapped = value
+            .iter()
+            .map(|(k, v)| match &v.string_value {
+                Some(dv) => (k.as_str(), dv.value.as_str()),
+                None => (k.as_str(), ""),
+            })
+            .collect();
+
+        Some(mapped)
+    }
+
+    #[setter]
+    fn set_statsig_environment(&mut self, value: Option<HashMap<String, String>>) {
+        self.inner.set_statsig_environment(value);
     }
 
     // ---------------------------------------- [Pickling]

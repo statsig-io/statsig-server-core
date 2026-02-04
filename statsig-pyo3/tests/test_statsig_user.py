@@ -80,7 +80,7 @@ def test_various_custom_attr_types():
     assert isinstance(custom["age"], int)
     assert custom["percent"] == 0.5
     assert isinstance(custom["percent"], float)
-    assert custom["premium"] == True
+    assert custom["premium"]
     assert isinstance(custom["premium"], bool)
     assert custom["arr"] == [True, "2", 3, 4.0]
     assert isinstance(custom["arr"], list)
@@ -156,26 +156,46 @@ def test_user_set_attribute_propagate_to_rust(statsig_setup):
     user = StatsigUser("a-user")
 
     user.email = "user@statsig.com"
-    assert statsig.check_gate(user, "test_email") == True
+    assert statsig.check_gate(user, "test_email")
 
     user.country = "US"
-    assert statsig.check_gate(user, "test_country") == True
+    assert statsig.check_gate(user, "test_country")
 
     user.user_agent = "Mozilla/5.0 (iPhone; iOS 16.6) Safari/604.1"
-    assert statsig.check_gate(user, "test_ua") == True
+    assert statsig.check_gate(user, "test_ua")
 
     user.ip = "1.0.0.0"
-    assert statsig.check_gate(user, "test_ip_field") == True
+    assert statsig.check_gate(user, "test_ip_field")
 
     user.custom = {
         "newUser": False,
     }
-    assert statsig.check_gate(user, "test_custom") == True
+    assert statsig.check_gate(user, "test_custom")
 
     user.custom_ids = {
         "companyID": "12345",
     }
-    assert statsig.check_gate(user, "test_numeric_custom_id") == True
+    assert statsig.check_gate(user, "test_numeric_custom_id")
+
+
+def test_user_set_statsig_environment(statsig_setup):
+    statsig = statsig_setup
+    user = StatsigUser("a-user")
+
+    # test_environment_tier should pass for 'development'
+
+    user.statsig_environment = {
+        "tier": "development",
+    }
+    assert statsig.check_gate(user, "test_environment_tier")
+
+    user.statsig_environment = None
+    assert not statsig.check_gate(user, "test_environment_tier")
+
+    user.statsig_environment = {
+        "tier": "production",
+    }
+    assert not statsig.check_gate(user, "test_environment_tier")
 
 
 @pytest.mark.parametrize(
