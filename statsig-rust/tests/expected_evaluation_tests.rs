@@ -40,6 +40,18 @@ async fn setup(options_overrides: Option<StatsigOptions>) -> Statsig {
     statsig
 }
 
+async fn setup_with_dcs_file(dcs_file: &str) -> Statsig {
+    let options = StatsigOptions {
+        specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(dcs_file))),
+        event_logging_adapter: Some(Arc::new(MockEventLoggingAdapter::new())),
+        ..StatsigOptions::default()
+    };
+
+    let statsig = Statsig::new("secret-key", Some(Arc::new(options)));
+    statsig.initialize().await.unwrap();
+    statsig
+}
+
 #[tokio::test]
 async fn test_string_comparisons_passes() {
     let statsig = setup(None).await;
@@ -278,4 +290,17 @@ async fn test_null_operator() {
     assert_eq!(gate.rule_id, "5kiqP6V3pTnL6GCbm5Vgtg");
 
     statsig.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_none_case_sensitive() {
+    let statsig = setup_with_dcs_file("tests/data/dcs_non_case_sensitive.json").await;
+
+    let user = StatsigUser::with_custom_ids(HashMap::from([("stableID", "a_stable_id")]));
+    let gate = statsig.get_feature_gate(&user, "test_none_case_sensitive");
+    assert!(gate.value);
+
+    let user = StatsigUser::with_user_id("a_user");
+    let gate = statsig.get_feature_gate(&user, "test_none_case_sensitive");
+    assert!(gate.value);
 }

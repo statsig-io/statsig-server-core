@@ -15,54 +15,61 @@ pub(crate) fn compare_strings_in_array(
 ) -> bool {
     let value_str = value.string_value.as_ref().unwrap_or(&EMPTY_STRING);
 
-    let result = {
-        if let Some(keyed_lookup) = &target_value.object_value {
-            if ignore_case && (op == "any" || op == "none") {
-                let contains = keyed_lookup.contains_key(&value_str.lowercased_value);
-                return if op == "none" { !contains } else { contains };
-            }
-        }
-
-        let array_value = unwrap_or_return!(&target_value.array_value, false);
-        if ignore_case && (op == "any" || op == "none") {
-            let contains = array_value.contains_key(&value_str.lowercased_value);
-            return if op == "none" { !contains } else { contains };
-        }
-
-        let mut comparison_result = false;
-        for (lowercase_str, (_, current_str)) in array_value {
-            let left = if ignore_case {
-                &value_str.lowercased_value
-            } else {
-                &value_str.value
-            };
-
-            let right = if ignore_case {
-                lowercase_str
-            } else {
-                current_str
-            };
-
-            comparison_result = match op {
-                "any" | "none" | "any_case_sensitive" | "none_case_sensitive" => left.eq(right),
-                "str_starts_with_any" => left.starts_with(right.as_str()),
-                "str_ends_with_any" => left.ends_with(right.as_str()),
-                "str_contains_any" | "str_contains_none" => left.contains(right.as_str()),
-                _ => false, // todo: unsupported?
-            };
-
-            if comparison_result {
-                break;
-            }
-        }
-
-        comparison_result
-    };
+    let result = compare_strings_in_array_impl(value_str, target_value, op, ignore_case);
 
     if op == "none" || op == "none_case_sensitive" || op == "str_contains_none" {
         return !result;
     }
     result
+}
+
+fn compare_strings_in_array_impl(
+    value_str: &DynamicString,
+    target_value: &MemoizedEvaluatorValue,
+    op: &str,
+    ignore_case: bool,
+) -> bool {
+    if let Some(keyed_lookup) = &target_value.object_value {
+        if ignore_case && (op == "any" || op == "none") {
+            let contains = keyed_lookup.contains_key(&value_str.lowercased_value);
+            return contains;
+        }
+    }
+
+    let array_value = unwrap_or_return!(&target_value.array_value, false);
+    if ignore_case && (op == "any" || op == "none") {
+        let contains = array_value.contains_key(&value_str.lowercased_value);
+        return contains;
+    }
+
+    let mut comparison_result = false;
+    for (lowercase_str, (_, current_str)) in array_value {
+        let left = if ignore_case {
+            &value_str.lowercased_value
+        } else {
+            &value_str.value
+        };
+
+        let right = if ignore_case {
+            lowercase_str
+        } else {
+            current_str
+        };
+
+        comparison_result = match op {
+            "any" | "none" | "any_case_sensitive" | "none_case_sensitive" => left.eq(right),
+            "str_starts_with_any" => left.starts_with(right.as_str()),
+            "str_ends_with_any" => left.ends_with(right.as_str()),
+            "str_contains_any" | "str_contains_none" => left.contains(right.as_str()),
+            _ => false, // todo: unsupported?
+        };
+
+        if comparison_result {
+            break;
+        }
+    }
+
+    comparison_result
 }
 
 #[cfg(test)]
