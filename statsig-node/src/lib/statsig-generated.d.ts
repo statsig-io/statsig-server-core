@@ -228,6 +228,7 @@ export interface StatsigOptions {
   disableCountryLookup?: boolean
   disableNetwork?: boolean
   enableIdLists?: boolean
+  enableDcsDeltas?: boolean
   environment?: string
   eventLoggingFlushIntervalMs?: number
   eventLoggingMaxQueueSize?: number

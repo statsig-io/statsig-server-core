@@ -32,6 +32,7 @@ pub struct StatsigOptions {
     pub disable_network: Option<bool>, // Disable all out-going network including get configs, log_events...
 
     pub enable_id_lists: Option<bool>,
+    pub enable_dcs_deltas: Option<bool>,
     pub environment: Option<String>,
     pub config_compression_mode: Option<ConfigCompressionMode>,
 
@@ -193,6 +194,12 @@ impl StatsigOptionsBuilder {
     }
 
     #[must_use]
+    pub fn enable_dcs_deltas(mut self, enable_dcs_deltas: Option<bool>) -> Self {
+        self.inner.enable_dcs_deltas = enable_dcs_deltas;
+        self
+    }
+
+    #[must_use]
     pub fn id_lists_url(mut self, id_lists_url: Option<String>) -> Self {
         self.inner.id_lists_url = id_lists_url;
         self
@@ -346,7 +353,7 @@ impl Serialize for StatsigOptions {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("StatsigOptions", 20)?;
+        let mut state = serializer.serialize_struct("StatsigOptions", 21)?;
         serialize_if_not_none!(state, "spec_url", &self.specs_url);
         serialize_if_not_none!(
             state,
@@ -369,6 +376,7 @@ impl Serialize for StatsigOptions {
 
         serialize_if_not_none!(state, "id_lists_url", &self.id_lists_url);
         serialize_if_not_none!(state, "enable_id_lists", &self.enable_id_lists);
+        serialize_if_not_none!(state, "enable_dcs_deltas", &self.enable_dcs_deltas);
         serialize_if_not_none!(
             state,
             "wait_for_user_agent_init",

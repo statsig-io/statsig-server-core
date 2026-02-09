@@ -125,6 +125,8 @@ pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub enable_id_lists: Option<bool>,
     #[pyo3(get, set)]
+    pub enable_dcs_deltas: Option<bool>,
+    #[pyo3(get, set)]
     pub wait_for_user_agent_init: Option<bool>,
     #[pyo3(get, set)]
     pub wait_for_country_lookup_init: Option<bool>,
@@ -181,6 +183,7 @@ impl StatsigOptionsPy {
         event_logging_max_queue_size=None,
         event_logging_max_pending_batch_queue_size=None,
         enable_id_lists=None,
+        enable_dcs_deltas=None,
         wait_for_user_agent_init=None,
         wait_for_country_lookup_init=None,
         disable_country_lookup=None,
@@ -214,6 +217,7 @@ impl StatsigOptionsPy {
         event_logging_max_queue_size: Option<u32>,
         event_logging_max_pending_batch_queue_size: Option<u32>,
         enable_id_lists: Option<bool>,
+        enable_dcs_deltas: Option<bool>,
         wait_for_user_agent_init: Option<bool>,
         wait_for_country_lookup_init: Option<bool>,
         disable_country_lookup: Option<bool>,
@@ -245,6 +249,7 @@ impl StatsigOptionsPy {
             event_logging_max_queue_size,
             event_logging_max_pending_batch_queue_size,
             enable_id_lists,
+            enable_dcs_deltas,
             wait_for_user_agent_init,
             wait_for_country_lookup_init,
             disable_country_lookup,
@@ -330,6 +335,7 @@ fn create_inner_statsig_options(
         event_logging_max_queue_size: opts.event_logging_max_queue_size,
         event_logging_max_pending_batch_queue_size: opts.event_logging_max_pending_batch_queue_size,
         enable_id_lists: opts.enable_id_lists,
+        enable_dcs_deltas: opts.enable_dcs_deltas,
         id_lists_url: opts.id_lists_url.clone(),
         id_lists_sync_interval_ms: opts.id_lists_sync_interval_ms,
         fallback_to_statsig_api: opts.fallback_to_statsig_api,

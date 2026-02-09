@@ -253,6 +253,7 @@ class StatsigJNI {
       ProxyConfig proxyConfig,
       List<SpecAdapterConfig> specAdapterConfigs,
       boolean enableIDLists,
+      boolean enableDcsDeltas,
       boolean waitForCountryLookupInit,
       boolean disableAllLogging,
       boolean waitForUserAgentInit,

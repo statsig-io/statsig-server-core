@@ -52,6 +52,7 @@ pub struct StatsigOptions {
     pub spec_adapter_configs: Option<Vec<SpecAdapterConfig>>,
 
     pub enable_id_lists: Option<bool>,
+    pub enable_dcs_deltas: Option<bool>,
     pub id_lists_sync_interval_ms: Option<u32>,
     pub id_lists_url: Option<String>,
 
@@ -72,6 +73,7 @@ impl From<StatsigOptions> for StatsigOptionsActual {
         StatsigOptionsActual {
             environment: config.environment,
             enable_id_lists: config.enable_id_lists,
+            enable_dcs_deltas: config.enable_dcs_deltas,
             id_lists_url: config.id_lists_url,
             event_logging_max_queue_size: config.event_logging_max_queue_size,
             fallback_to_statsig_api: config.fallback_to_statsig_api,

@@ -23,6 +23,7 @@ type StatsigOptionsBuilder struct {
 	WaitForCountryLookupInit    *bool   `json:"wait_for_country_lookup_init,omitempty"`
 	WaitForUserAgentInit        *bool   `json:"wait_for_user_agent_init,omitempty"`
 	EnableIdLists               *bool   `json:"enable_id_lists,omitempty"`
+	EnableDcsDeltas             *bool   `json:"enable_dcs_deltas,omitempty"`
 	IdListsUrl                  *string `json:"id_lists_url,omitempty"`
 	IdListsSyncIntervalMs       *int32  `json:"id_lists_sync_interval_ms,omitempty"`
 	DisableAllLogging           *bool   `json:"disable_all_logging,omitempty"`
@@ -106,6 +107,11 @@ func (o *StatsigOptionsBuilder) WithDisableNetwork(disableNetwork bool) *Statsig
 
 func (o *StatsigOptionsBuilder) WithEnableIdLists(enableIdLists bool) *StatsigOptionsBuilder {
 	o.EnableIdLists = &enableIdLists
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithEnableDcsDeltas(enableDcsDeltas bool) *StatsigOptionsBuilder {
+	o.EnableDcsDeltas = &enableDcsDeltas
 	return o
 }
 

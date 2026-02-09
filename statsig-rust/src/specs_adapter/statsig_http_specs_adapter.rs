@@ -45,6 +45,7 @@ pub struct StatsigHttpSpecsAdapter {
     sync_interval_duration: Duration,
     ops_stats: Arc<OpsStatsForInstance>,
     shutdown_notify: Arc<Notify>,
+    enable_dcs_deltas: bool,
 }
 
 impl StatsigHttpSpecsAdapter {
@@ -79,6 +80,8 @@ impl StatsigHttpSpecsAdapter {
             None
         };
 
+        let enable_dcs_deltas = options_ref.enable_dcs_deltas.unwrap_or(false);
+
         let headers = StatsigMetadata::get_constant_request_headers(sdk_key);
 
         Self {
@@ -95,6 +98,7 @@ impl StatsigHttpSpecsAdapter {
             )),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             shutdown_notify: Arc::new(Notify::new()),
+            enable_dcs_deltas,
         }
     }
 
@@ -153,6 +157,10 @@ impl StatsigHttpSpecsAdapter {
                 "checksum".to_string(),
                 percent_encode(cs.as_bytes(), percent_encoding::NON_ALPHANUMERIC).to_string(),
             );
+        }
+
+        if self.enable_dcs_deltas {
+            params.insert("accept_deltas".to_string(), "true".to_string());
         }
 
         RequestArgs {

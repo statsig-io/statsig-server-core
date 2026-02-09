@@ -10,6 +10,7 @@ defmodule Statsig.Options do
             specs_url: nil,
             spec_adapter_configs: nil,
             enable_id_lists: nil,
+            enable_dcs_deltas: nil,
             id_lists_url: nil,
             id_lists_sync_interval_ms: nil,
             wait_for_country_lookup_init: nil,
