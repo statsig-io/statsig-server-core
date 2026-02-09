@@ -304,3 +304,20 @@ async fn test_none_case_sensitive() {
     let gate = statsig.get_feature_gate(&user, "test_none_case_sensitive");
     assert!(gate.value);
 }
+
+#[tokio::test]
+async fn test_browser_version() {
+    let statsig = setup_with_dcs_file("tests/data/dcs_browser_version.json").await;
+
+    let mut user = StatsigUser::with_user_id("a_user");
+    user.set_user_agent(Some(
+        "ChatGPT/1.2025.315 (Android 15; V2225; build 2531527)",
+    ));
+
+    let gate = statsig.get_feature_gate(&user, "test_browser_version");
+    assert_eq!(gate.rule_id.as_str(), "test_browser_version_rule_id");
+
+    let user = StatsigUser::with_user_id("a_user");
+    let gate = statsig.get_feature_gate(&user, "test_browser_version");
+    assert_eq!(gate.rule_id.as_str(), "default");
+}

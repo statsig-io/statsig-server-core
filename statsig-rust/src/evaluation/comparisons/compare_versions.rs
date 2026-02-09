@@ -23,11 +23,11 @@ pub(crate) fn compare_versions(
             let opt_right_part = right_parts.next();
 
             let opt_left_num = match opt_left_part {
-                Some(s) => s.trim().parse::<i32>().ok(),
+                Some(s) => s.trim().parse::<i128>().ok(),
                 None => None,
             };
             let opt_right_num = match opt_right_part {
-                Some(s) => s.trim().parse::<i32>().ok(),
+                Some(s) => s.trim().parse::<i128>().ok(),
                 None => None,
             };
 
