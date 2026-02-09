@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::io::{BufReader, Seek, SeekFrom, Write};
+use std::path::Path;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -21,12 +22,14 @@ const TAG: &str = "NetworkProviderReqwest";
 
 pub struct NetworkProviderReqwest {
     has_file_write_access: bool,
+    additional_certs: Vec<reqwest::Certificate>,
 }
 
 impl NetworkProviderReqwest {
     pub fn new() -> Self {
         Self {
             has_file_write_access: tempfile::tempfile().is_ok(),
+            additional_certs: load_additional_certs(),
         }
     }
 }
@@ -99,6 +102,10 @@ impl NetworkProviderReqwest {
         // configure proxy if available
         if let Some(proxy_config) = request_args.proxy_config.as_ref() {
             client_builder = Self::configure_proxy(client_builder, proxy_config);
+        }
+
+        for cert in &self.additional_certs {
+            client_builder = client_builder.add_root_certificate(cert.clone());
         }
 
         let client = client_builder.build().unwrap_or_else(|e| {
@@ -236,6 +243,93 @@ fn get_error_message(error: reqwest::Error) -> String {
     }
 
     error_message
+}
+
+fn load_additional_certs() -> Vec<reqwest::Certificate> {
+    let mut certs = Vec::new();
+
+    if let Ok(cert_file) = std::env::var("SSL_CERT_FILE") {
+        let path = Path::new(&cert_file);
+        match std::fs::read(path) {
+            Ok(pem_data) => match reqwest::Certificate::from_pem_bundle(&pem_data) {
+                Ok(file_certs) => {
+                    log_d!(
+                        TAG,
+                        "Loaded {} certificate(s) from SSL_CERT_FILE: {}",
+                        file_certs.len(),
+                        cert_file
+                    );
+                    certs.extend(file_certs);
+                }
+                Err(e) => {
+                    log_w!(
+                        TAG,
+                        "Failed to parse certificates from SSL_CERT_FILE '{}': {}",
+                        cert_file,
+                        e
+                    );
+                }
+            },
+            Err(e) => {
+                log_w!(
+                    TAG,
+                    "Failed to read SSL_CERT_FILE '{}': {}",
+                    cert_file,
+                    e
+                );
+            }
+        }
+    }
+
+    if let Ok(cert_dir) = std::env::var("SSL_CERT_DIR") {
+        let dir_path = Path::new(&cert_dir);
+        match std::fs::read_dir(dir_path) {
+            Ok(entries) => {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if !path.is_file() {
+                        continue;
+                    }
+                    let has_cert_ext = path
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("pem") || ext.eq_ignore_ascii_case("crt"));
+                    if !has_cert_ext {
+                        continue;
+                    }
+                    match std::fs::read(&path) {
+                        Ok(pem_data) => match reqwest::Certificate::from_pem_bundle(&pem_data) {
+                            Ok(file_certs) => {
+                                log_d!(
+                                    TAG,
+                                    "Loaded {} certificate(s) from {}",
+                                    file_certs.len(),
+                                    path.display()
+                                );
+                                certs.extend(file_certs);
+                            }
+                            Err(e) => {
+                                log_w!(
+                                    TAG,
+                                    "Failed to parse certificates from '{}': {}",
+                                    path.display(),
+                                    e
+                                );
+                            }
+                        },
+                        Err(e) => {
+                            log_w!(TAG, "Failed to read '{}': {}", path.display(), e);
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                log_w!(TAG, "Failed to read SSL_CERT_DIR '{}': {}", cert_dir, e);
+            }
+        }
+    }
+
+    certs
 }
 
 fn get_response_headers(response: &reqwest::Response) -> Option<HashMap<String, String>> {
