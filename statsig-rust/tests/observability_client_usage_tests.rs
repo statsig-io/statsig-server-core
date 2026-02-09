@@ -191,7 +191,7 @@ async fn test_sdk_initialization_dist_recorded() {
     assert_eq!(found_name, "statsig.sdk.initialization");
     assert_ne!(found_value, 0.0);
     assert_eq!(tags.get("source"), Some(&"Network".to_string()));
-    assert_eq!(tags.get("success"), Some(&"true".to_string()));
+    assert_eq!(tags.get("init_success"), Some(&"true".to_string()));
     assert_eq!(tags.get("store_populated"), Some(&"true".to_string()));
 }
 
@@ -349,10 +349,10 @@ async fn test_init_from_network() {
     assert_eq!(found_name, "statsig.sdk.initialization");
     assert_ne!(found_value, 0.0);
     assert_eq!(tags.get("source"), Some(&"Network".to_string()));
-    assert_eq!(tags.get("success"), Some(&"true".to_string()));
+    assert_eq!(tags.get("init_success"), Some(&"true".to_string()));
     assert_eq!(tags.get("store_populated"), Some(&"true".to_string()));
     assert_eq!(
-        tags.get("spec_source_api"),
+        tags.get("init_source_api"),
         Some(&mock_scrapi.get_server_api())
     );
 }

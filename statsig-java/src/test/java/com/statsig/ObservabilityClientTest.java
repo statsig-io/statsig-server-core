@@ -95,6 +95,6 @@ public class ObservabilityClientTest {
 
     // todo working on some more tests, but the idea is similar
     assertNotNull(distMetric, "Expected dist metric to be present");
-    assertEquals("true", distMetric.tags.get("success"));
+    assertEquals("true", distMetric.tags.get("init_success"));
   }
 }

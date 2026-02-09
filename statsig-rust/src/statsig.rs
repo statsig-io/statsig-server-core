@@ -2493,11 +2493,11 @@ impl Statsig {
             "initialization".to_string(),
             *duration_ms as f64,
             Some(HashMap::from([
-                ("success".to_owned(), success.to_string()),
+                ("init_success".to_owned(), success.to_string()),
                 ("source".to_owned(), source_str.clone()),
                 ("store_populated".to_owned(), is_store_populated.to_string()),
                 (
-                    "spec_source_api".to_owned(),
+                    "init_source_api".to_owned(),
                     specs_info.source_api.clone().unwrap_or_default(),
                 ),
             ])),

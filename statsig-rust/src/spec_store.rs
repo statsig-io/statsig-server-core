@@ -329,10 +329,7 @@ impl SpecStore {
             1.0,
             Some(HashMap::from([
                 ("source".to_string(), source.to_string()),
-                (
-                    "spec_source_api".to_string(),
-                    source_api.unwrap_or_default(),
-                ),
+                ("source_api".to_string(), source_api.unwrap_or_default()),
             ])),
         ));
     }
@@ -362,10 +359,7 @@ impl SpecStore {
                 ("source".to_string(), source.to_string()),
                 ("lcut".to_string(), lcut.to_string()),
                 ("prev_lcut".to_string(), prev_lcut.to_string()),
-                (
-                    "spec_source_api".to_string(),
-                    source_api.unwrap_or_default(),
-                ),
+                ("source_api".to_string(), source_api.unwrap_or_default()),
                 (
                     "response_format".to_string(),
                     Into::<&str>::into(&response_format).to_string(),
