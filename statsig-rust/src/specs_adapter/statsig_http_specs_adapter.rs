@@ -1,4 +1,5 @@
 use crate::networking::{NetworkClient, NetworkError, RequestArgs, ResponseData};
+use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::diagnostics::ContextType;
@@ -17,7 +18,7 @@ use parking_lot::RwLock;
 use percent_encoding::percent_encode;
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::Notify;
 use tokio::time::sleep;
 
@@ -26,6 +27,11 @@ use super::SpecsInfo;
 pub struct NetworkResponse {
     pub data: ResponseData,
     pub api: String,
+}
+
+enum SyncResult {
+    Primary(String),
+    Fallback(String),
 }
 
 pub const DEFAULT_SPECS_URL: &str = "https://api.statsigcdn.com/v2/download_config_specs";
@@ -221,6 +227,7 @@ impl StatsigHttpSpecsAdapter {
     }
 
     pub async fn run_background_sync(self: Arc<Self>) {
+        let start_time = Instant::now();
         let specs_info = match self
             .listener
             .try_read_for(std::time::Duration::from_secs(5))
@@ -234,15 +241,17 @@ impl StatsigHttpSpecsAdapter {
 
         self.ops_stats
             .set_diagnostics_context(ContextType::ConfigSync);
-        if let Err(e) = self
+        let sync_result = self
             .manually_sync_specs(specs_info, SpecsSyncTrigger::Background)
-            .await
-        {
+            .await;
+        if let Err(e) = sync_result.as_ref() {
             if let StatsigErr::NetworkError(NetworkError::DisableNetworkOn(_)) = e {
                 return;
             }
             log_e!(TAG, "Background specs sync failed: {}", e);
         }
+        let duration_ms = start_time.elapsed().as_millis() as f64;
+        self.log_ob_background_sync_duration("dcs", duration_ms, sync_result);
         self.ops_stats.enqueue_diagnostics_event(
             Some(KeyType::DownloadConfigSpecs),
             Some(ContextType::ConfigSync),
@@ -253,7 +262,9 @@ impl StatsigHttpSpecsAdapter {
         &self,
         current_specs_info: SpecsInfo,
         trigger: SpecsSyncTrigger,
-    ) -> Result<(), StatsigErr> {
+    ) -> Result<SyncResult, StatsigErr> {
+        let request_args = self.get_request_args(&current_specs_info, trigger);
+
         if let Some(lock) = self
             .listener
             .try_read_for(std::time::Duration::from_secs(5))
@@ -266,17 +277,58 @@ impl StatsigHttpSpecsAdapter {
         let response = self
             .fetch_specs_from_network(current_specs_info.clone(), trigger)
             .await;
+        let primary_api = match &response {
+            Ok(resp) => resp.api.clone(),
+            Err(_) => get_api_from_url(&request_args.url),
+        };
         let result = self.process_spec_data(response).await;
 
-        if result.is_err() && self.fallback_url.is_some() {
+        if let Err(err) = result {
+            if self.fallback_url.is_none() {
+                return Err(err);
+            }
             log_d!(TAG, "Falling back to statsig api");
             let response = self
                 .handle_fallback_request(self.get_request_args(&current_specs_info, trigger))
                 .await;
-            return self.process_spec_data(response).await;
+            let fallback_source_api = match &response {
+                Ok(resp) => resp.api.clone(),
+                Err(_) => self
+                    .fallback_url
+                    .as_ref()
+                    .map(|url| get_api_from_url(url))
+                    .unwrap_or_default(),
+            };
+            self.process_spec_data(response).await?;
+            return Ok(SyncResult::Fallback(fallback_source_api));
         }
 
-        result
+        Ok(SyncResult::Primary(primary_api))
+    }
+
+    fn log_ob_background_sync_duration(
+        &self,
+        context: &str,
+        duration_ms: f64,
+        sync_result: Result<SyncResult, StatsigErr>,
+    ) {
+        let (success, source_api, fallback_used) = match sync_result {
+            Ok(SyncResult::Primary(source_api)) => (true, source_api, false),
+            Ok(SyncResult::Fallback(source_api)) => (true, source_api, true),
+            Err(_) => (false, self.specs_url.clone(), false),
+        };
+        self.ops_stats.log(ObservabilityEvent::new_event(
+            MetricType::Dist,
+            "background_sync_duration_ms".to_string(),
+            duration_ms,
+            Some(HashMap::from([
+                ("context".to_string(), context.to_string()),
+                ("source".to_string(), "network".to_string()),
+                ("success".to_string(), success.to_string()),
+                ("source_api".to_string(), source_api),
+                ("fallback_used".to_string(), fallback_used.to_string()),
+            ])),
+        ));
     }
 
     async fn process_spec_data(
@@ -349,6 +401,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
         };
         self.manually_sync_specs(specs_info, SpecsSyncTrigger::Initial)
             .await
+            .map(|_| ())
     }
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
