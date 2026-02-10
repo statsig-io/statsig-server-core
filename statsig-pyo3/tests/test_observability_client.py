@@ -119,7 +119,7 @@ def test_observability_client_usage(statsig_setup):
         "init_success": "true",
         "store_populated": "true",
         "source": "Network",
-        "init_source_api": f"http://{httpserver.host}:{httpserver.port}",
+        "init_source_api": f"http://{httpserver.host}:{httpserver.port}/v2",
     }
 
 
