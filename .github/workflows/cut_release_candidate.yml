@@ -53,14 +53,13 @@ jobs:
             exit 0
           fi
 
-          now_ts=$(date +%s)
-          release_ts=$(date -d "$latest_stable_date" +%s)
-          diff_days=$(( (now_ts - release_ts) / 86400 ))
+          today_pt=$(TZ=America/Los_Angeles date +%F)
+          stable_day_pt=$(TZ=America/Los_Angeles date -d "$latest_stable_date" +%F)
 
-          if [ "$diff_days" -le 8 ]; then
+          if [ "$stable_day_pt" = "$today_pt" ]; then
             echo "should_sync=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Latest stable release is ${diff_days} days old."
+            echo "Latest stable release day (PT) is ${stable_day_pt}, not today (${today_pt})."
             echo "should_sync=false" >> "$GITHUB_OUTPUT"
           fi
 
