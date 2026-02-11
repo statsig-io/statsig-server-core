@@ -91,13 +91,13 @@ jobs:
           echo "Updating to latest rc for: $pkgs"
 
           # Update all packages in lib
-          pnpm --dir lib update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+          pnpm --dir lib update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional --ignore-peer-deps
 
           # Update all packages in lib/node/entity
-          pnpm --dir lib/node/entity update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+          pnpm --dir lib/node/entity update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional --ignore-peer-deps
 
           # Update all packages in lib/node/service-core
-          pnpm --dir lib/node/service-core update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+          pnpm --dir lib/node/service-core update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional --ignore-peer-deps
 
           echo "Changed files:"
           git status --porcelain
