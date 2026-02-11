@@ -143,6 +143,13 @@ fn test_user_agent_parser_browser_version() {
     assert_gt!(score, BROWSER_VERSION_THRESHOLD);
 }
 
+#[test]
+fn test_specific_browser_version() {
+    let user_agent = "ChatGPT/1.2025.322 (iOS 18.6.2; iPhone12,1; build 19585375154)";
+    let version = extract_field_from_user_agent(user_agent, "browser_version");
+    assert_eq!(version.as_deref(), Some("0.0.0"));
+}
+
 fn extract_field_from_user_agent(user_agent: &str, field: &str) -> Option<InternedString> {
     let mut user = StatsigUser::with_user_id("");
     user.set_user_agent(user_agent.to_string());

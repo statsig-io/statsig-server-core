@@ -198,10 +198,7 @@ impl UaParser {
         }
 
         if result.ios_hint {
-            return create_res(
-                "Mobile Safari UI/WKWebView",
-                result.possible_os_token.and_then(|o| o.get_version()),
-            );
+            return create_res("Mobile Safari UI/WKWebView", None);
         }
 
         if result.crawler_hint {

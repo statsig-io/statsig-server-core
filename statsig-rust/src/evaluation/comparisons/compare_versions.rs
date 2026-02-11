@@ -11,47 +11,10 @@ pub(crate) fn compare_versions(
     let left_str = &left_dyn_str.value;
     let right_str = &right_dyn_str.value;
 
-    fn comparison(left_str: &str, right_str: &str) -> i32 {
-        let left_version = left_str.split('-').next().unwrap_or("");
-        let right_version = right_str.split('-').next().unwrap_or("");
-
-        let mut left_parts = left_version.split('.');
-        let mut right_parts = right_version.split('.');
-
-        loop {
-            let opt_left_part = left_parts.next();
-            let opt_right_part = right_parts.next();
-
-            let opt_left_num = match opt_left_part {
-                Some(s) => s.trim().parse::<i128>().ok(),
-                None => None,
-            };
-            let opt_right_num = match opt_right_part {
-                Some(s) => s.trim().parse::<i128>().ok(),
-                None => None,
-            };
-
-            // If both iterators are exhausted, we break the loop
-            if opt_left_num.is_none() && opt_right_num.is_none() {
-                break;
-            }
-
-            let left_num = opt_left_num.unwrap_or_default();
-            let right_num = opt_right_num.unwrap_or_default();
-
-            if left_num < right_num {
-                return -1;
-            }
-
-            if left_num > right_num {
-                return 1;
-            }
-        }
-
-        0
-    }
-
-    let result = comparison(left_str, right_str);
+    let result = match compare_versions_impl(left_str, right_str) {
+        ComparisonResult::Ok(result) => result,
+        ComparisonResult::NumericParseFailure => return false,
+    };
 
     match op {
         "version_gt" => result > 0,
@@ -62,6 +25,52 @@ pub(crate) fn compare_versions(
         "version_neq" => result != 0,
         _ => false,
     }
+}
+
+enum ComparisonResult {
+    NumericParseFailure,
+    Ok(i32),
+}
+
+fn compare_versions_impl(left_str: &str, right_str: &str) -> ComparisonResult {
+    let left_version = left_str.split('-').next().unwrap_or("");
+    let right_version = right_str.split('-').next().unwrap_or("");
+
+    let mut left_parts = left_version.split('.');
+    let mut right_parts = right_version.split('.');
+
+    loop {
+        let left_num = match next_num(left_parts.next()) {
+            Ok(v) => v,
+            Err(_) => return ComparisonResult::NumericParseFailure,
+        };
+
+        let right_num = match next_num(right_parts.next()) {
+            Ok(v) => v,
+            Err(_) => return ComparisonResult::NumericParseFailure,
+        };
+
+        if left_num.is_none() && right_num.is_none() {
+            break;
+        }
+
+        let left_num = left_num.unwrap_or(0);
+        let right_num = right_num.unwrap_or(0);
+
+        if left_num < right_num {
+            return ComparisonResult::Ok(-1);
+        }
+
+        if left_num > right_num {
+            return ComparisonResult::Ok(1);
+        }
+    }
+
+    ComparisonResult::Ok(0)
+}
+
+fn next_num(part: Option<&str>) -> Result<Option<i128>, std::num::ParseIntError> {
+    part.map(|s| s.trim().parse::<i128>()).transpose()
 }
 
 #[cfg(test)]

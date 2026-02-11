@@ -15,7 +15,7 @@
         "osName": "iOS",
         "osVersion": "18.6.2",
         "browserName": "Mobile Safari UI/WKWebView",
-        "browserVersion": "18.6.2"
+        "browserVersion": "0.0.0"
     },
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36": {
         "osName": "Mac OS X",
@@ -33,13 +33,13 @@
         "osName": "iOS",
         "osVersion": "18.5",
         "browserName": "Mobile Safari UI/WKWebView",
-        "browserVersion": "18.5"
+        "browserVersion": "0.0.0"
     },
     "Grindr3/25.14.1.78352.108847401.99 (78352.108847401.99; iPhone17,2; iOS 18.6.2)": {
         "osName": "iOS",
         "osVersion": "18.6.2",
         "browserName": "Mobile Safari UI/WKWebView",
-        "browserVersion": "18.6.2"
+        "browserVersion": "0.0.0"
     },
     "ChatGPT/35.1.2 CFNetwork/3826.400.120 Darwin/24.3.0": {
         "osName": "iOS",

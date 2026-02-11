@@ -1,5 +1,7 @@
+mod utils;
 use std::{collections::HashMap, fs, sync::Arc};
 
+use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
 
 const DEBUG_LOG: bool = false;
@@ -12,20 +14,16 @@ fn load_data() -> HashMap<String, HashMap<String, String>> {
 
 #[tokio::test]
 async fn test_first_party_ua_parser() {
-    let statsig = Statsig::new(
-        "secret-key",
-        Some(Arc::new(StatsigOptions {
-            wait_for_user_agent_init: Some(true),
-            ..Default::default()
-        })),
-    );
-    let _ = statsig.initialize().await;
+    let statsig = Statsig::new("secret-key", None);
+    // we don't actually need to initialize the statsig instance for the first party parser
+
     let test_cases = load_data();
     let mut user = StatsigUser::with_user_id("user1".to_string());
     for (ua_string, expected_value) in test_cases {
         user.set_user_agent(ua_string.clone());
         let sdk_ua_value: statsig_rust::evaluation::user_agent_parsing::ParsedUserAgentValue =
             statsig.__get_parsed_user_agent_value(&user).unwrap();
+
         if DEBUG_LOG {
             println!("ua string is {}", ua_string);
             println!("expected {:?}", expected_value);
@@ -37,8 +35,9 @@ async fn test_first_party_ua_parser() {
             sdk_ua_value.browser_name.unwrap_or_default()
                 == *expected_value.get("browserName").unwrap()
         );
-        assert!(
-            sdk_ua_value.browser_version.unwrap() == *expected_value.get("browserVersion").unwrap()
+        assert_eq!(
+            sdk_ua_value.browser_version.unwrap(),
+            *expected_value.get("browserVersion").unwrap()
         );
     }
 }
@@ -50,6 +49,9 @@ async fn test_3rd_party_ua_parser() {
         Some(Arc::new(StatsigOptions {
             wait_for_user_agent_init: Some(true),
             use_third_party_ua_parser: Some(true),
+            specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
+                "tests/data/check_gate_perf_dcs.json",
+            ))),
             ..Default::default()
         })),
     );
