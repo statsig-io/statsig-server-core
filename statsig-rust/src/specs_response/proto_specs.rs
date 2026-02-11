@@ -95,6 +95,10 @@ pub fn deserialize_protobuf(
                     next_specs.handle_condition_update(env, current_specs)
                 });
             }
+            // TODO impl
+            pb::SpecsEnvelopeKind::Deletions => {}
+            pb::SpecsEnvelopeKind::Checksums => {}
+            pb::SpecsEnvelopeKind::CopyPrev => {}
             pb::SpecsEnvelopeKind::Unknown => {
                 return make_proto_parse_error("SpecsEnvelope", "Unknown envelope kind");
             }
