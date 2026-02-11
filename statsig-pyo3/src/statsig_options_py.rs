@@ -141,6 +141,8 @@ pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub environment: Option<String>,
     #[pyo3(get, set)]
+    pub service_name: Option<String>,
+    #[pyo3(get, set)]
     pub output_log_level: Option<String>,
     #[pyo3(get, set)]
     pub global_custom_fields: Option<HashMap<String, ValidPrimitivesPy>>,
@@ -191,6 +193,7 @@ impl StatsigOptionsPy {
         id_lists_sync_interval_ms=None,
         fallback_to_statsig_api=None,
         environment=None,
+        service_name=None,
         output_log_level=None,
         global_custom_fields=None,
         observability_client=None,
@@ -225,6 +228,7 @@ impl StatsigOptionsPy {
         id_lists_sync_interval_ms: Option<u32>,
         fallback_to_statsig_api: Option<bool>,
         environment: Option<String>,
+        service_name: Option<String>,
         output_log_level: Option<String>,
         global_custom_fields: Option<HashMap<String, ValidPrimitivesPy>>,
         observability_client: Option<Py<ObservabilityClientBasePy>>,
@@ -257,6 +261,7 @@ impl StatsigOptionsPy {
             id_lists_sync_interval_ms,
             fallback_to_statsig_api,
             environment,
+            service_name,
             output_log_level,
             global_custom_fields,
             observability_client,
@@ -340,6 +345,7 @@ fn create_inner_statsig_options(
         id_lists_sync_interval_ms: opts.id_lists_sync_interval_ms,
         fallback_to_statsig_api: opts.fallback_to_statsig_api,
         environment: opts.environment.clone(),
+        service_name: opts.service_name.clone(),
         id_lists_adapter: None,
         override_adapter: None,
         output_log_level: opts
@@ -347,7 +353,6 @@ fn create_inner_statsig_options(
             .as_ref()
             .map(|level| LogLevel::from(level.as_str())),
         observability_client: ob_client_weak,
-        service_name: None,
         wait_for_user_agent_init: opts.wait_for_user_agent_init,
         wait_for_country_lookup_init: opts.wait_for_user_agent_init,
         global_custom_fields,

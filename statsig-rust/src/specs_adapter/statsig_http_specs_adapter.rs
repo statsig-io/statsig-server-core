@@ -86,9 +86,11 @@ impl StatsigHttpSpecsAdapter {
             None
         };
 
+        let headers = StatsigMetadata::get_constant_request_headers(
+            sdk_key,
+            options_ref.service_name.as_deref(),
+        );
         let enable_dcs_deltas = options_ref.enable_dcs_deltas.unwrap_or(false);
-
-        let headers = StatsigMetadata::get_constant_request_headers(sdk_key);
 
         Self {
             listener: RwLock::new(None),

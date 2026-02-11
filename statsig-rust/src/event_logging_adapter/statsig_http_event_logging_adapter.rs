@@ -27,7 +27,10 @@ pub struct StatsigHttpEventLoggingAdapter {
 impl StatsigHttpEventLoggingAdapter {
     #[must_use]
     pub fn new(sdk_key: &str, options: Option<&StatsigOptions>) -> Self {
-        let headers = StatsigMetadata::get_constant_request_headers(sdk_key);
+        let headers = StatsigMetadata::get_constant_request_headers(
+            sdk_key,
+            options.and_then(|opts| opts.service_name.as_deref()),
+        );
 
         let log_event_url = options
             .and_then(|opts| opts.log_event_url.as_ref())
