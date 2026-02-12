@@ -1729,6 +1729,22 @@ impl Statsig {
         )
     }
 
+    pub fn get_raw_experiment_by_group_id_advanced(
+        &self,
+        experiment_name: &str,
+        group_id: &str,
+    ) -> String {
+        use crate::evaluation::evaluator_result::rule_to_experiment_raw;
+
+        self.get_experiment_by_group_id_advanced_impl(
+            experiment_name,
+            group_id,
+            |spec_pointer, rule, details| {
+                rule_to_experiment_raw(experiment_name, spec_pointer, rule, details)
+            },
+        )
+    }
+
     pub fn get_raw_experiment_with_options(
         &self,
         user: &StatsigUser,

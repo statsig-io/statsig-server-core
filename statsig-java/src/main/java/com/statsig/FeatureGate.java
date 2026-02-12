@@ -18,9 +18,9 @@ public class FeatureGate implements HasRawJson {
   FeatureGate(
       @JSONField(name = "name") String name,
       @JSONField(name = "value") boolean value,
-      @JSONField(name = "rule_id") String ruleID,
+      @JSONField(name = "ruleID") String ruleID,
       @JSONField(name = "details") EvaluationDetails evaluationDetails,
-      @JSONField(name = "id_type") String idType) {
+      @JSONField(name = "idType") String idType) {
     this.name = name;
     this.value = value;
     this.ruleID = ruleID;

@@ -18,7 +18,7 @@ public class EvaluationDetails {
   @JSONCreator
   EvaluationDetails(
       @JSONField(name = "lcut") long lcut,
-      @JSONField(name = "received_at") long receivedAt,
+      @JSONField(name = "receivedAt") long receivedAt,
       @JSONField(name = "reason") String reason) {
     this.lcut = lcut;
     this.receivedAt = receivedAt;

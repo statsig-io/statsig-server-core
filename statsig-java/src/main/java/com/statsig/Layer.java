@@ -3,6 +3,7 @@ package com.statsig;
 import com.alibaba.fastjson2.annotation.JSONCreator;
 import com.alibaba.fastjson2.annotation.JSONField;
 import com.statsig.internal.HasRawJson;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -19,6 +20,8 @@ public class Layer implements HasRawJson {
 
   public final EvaluationDetails evaluationDetails;
 
+  public final List<Map<String, String>> secondaryExposures;
+
   @JSONField(deserialize = false)
   String rawJson;
 
@@ -28,17 +31,19 @@ public class Layer implements HasRawJson {
   @JSONCreator
   Layer(
       @JSONField(name = "name") String name,
-      @JSONField(name = "rule_id") String ruleID,
-      @JSONField(name = "group_name") String groupName,
-      @JSONField(name = "__value") Map<String, Object> value,
-      @JSONField(name = "allocated_experiment_name") String allocatedExperimentName,
-      @JSONField(name = "details") EvaluationDetails evaluationDetails) {
+      @JSONField(name = "ruleID") String ruleID,
+      @JSONField(name = "groupName") String groupName,
+      @JSONField(name = "value") Map<String, Object> value,
+      @JSONField(name = "allocatedExperimentName") String allocatedExperimentName,
+      @JSONField(name = "details") EvaluationDetails evaluationDetails,
+      @JSONField(name = "secondaryExposures") List<Map<String, String>> secondaryExposures) {
     this.name = name;
     this.ruleID = ruleID;
     this.groupName = groupName;
-    this.value = value;
+    this.value = value == null ? new HashMap<>() : value;
     this.evaluationDetails = evaluationDetails;
     this.allocatedExperimentName = allocatedExperimentName;
+    this.secondaryExposures = secondaryExposures;
   }
 
   public String getName() {

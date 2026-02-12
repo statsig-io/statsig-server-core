@@ -1,13 +1,6 @@
 {
   "name": "cPaGkTiRBuP1SfwoxRtTvhT6Vxpa4v/342Z1N0pXUlc=",
-  "rule_id": "6X3qJgyfwA81IJ2dxI7lYp17",
-  "id_type": "userID",
-  "secondary_exposures": [
-    {
-      "gate": "global_holdout",
-      "gateValue": "false",
-      "ruleID": "3QoA4ncNdVGBaMt3N1KYjz:0.50:1"
-    }
-  ],
+  "ruleID": "6X3qJgyfwA81IJ2dxI7lYp17",
+  "idType": "userID",
   "value": true
 }

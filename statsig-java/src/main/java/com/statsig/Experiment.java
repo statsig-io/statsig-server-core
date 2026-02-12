@@ -16,12 +16,14 @@ public class Experiment extends BaseConfig {
   Experiment(
       @JSONField(name = "name") String name,
       @JSONField(name = "value") Map<String, Object> value,
-      @JSONField(name = "rule_id") String ruleID,
+      @JSONField(name = "ruleID") String ruleID,
       @JSONField(name = "details") EvaluationDetails evaluationDetails,
-      @JSONField(name = "id_type") String idType,
-      @JSONField(name = "group_name") String groupName) {
+      @JSONField(name = "idType") String idType,
+      @JSONField(name = "groupName") String groupName,
+      @JSONField(name = "secondaryExposures") List<Map<String, String>> secondaryExposures) {
     super(name, value, ruleID, evaluationDetails, idType);
     this.groupName = groupName;
+    this.secondaryExposures = secondaryExposures;
   }
 
   public String getGroupName() {
@@ -46,15 +48,16 @@ public class Experiment extends BaseConfig {
       experiment.setRawJson(json);
 
       JSONObject root = JSON.parseObject(json);
-      JSONObject evaluation = root.getJSONObject("__evaluation");
-      if (evaluation != null && evaluation.containsKey("secondary_exposures")) {
-        List<Map<String, String>> se =
-            JSON.parseObject(
-                evaluation.get("secondary_exposures").toString(),
-                new TypeReference<List<Map<String, String>>>() {});
-        experiment.secondaryExposures = se;
+      if (root != null) {
+        Object rawSecondaryExposures = root.get("secondaryExposures");
+        if (rawSecondaryExposures != null) {
+          List<Map<String, String>> se =
+              JSON.parseObject(
+                  rawSecondaryExposures.toString(),
+                  new TypeReference<List<Map<String, String>>>() {});
+          experiment.secondaryExposures = se;
+        }
       }
-
       return experiment;
     } catch (Exception e) {
       System.err.println("Error deserializing Experiment: " + e.getMessage());

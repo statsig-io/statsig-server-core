@@ -346,12 +346,13 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperiment(
 
     let options = convert_java_get_experiment_options_to_rust(&mut env, options);
 
-    let result = match options {
-        Some(options) => statsig.get_experiment_with_options(user.as_ref(), &exper_name, options),
-        None => statsig.get_experiment(user.as_ref(), &exper_name),
-    };
+    let result = statsig.get_raw_experiment_with_options(
+        user.as_ref(),
+        &exper_name,
+        options.unwrap_or_default(),
+    );
 
-    serialize_json_to_jstring(&mut env, &result)
+    string_to_jstring(&mut env, result)
 }
 
 #[no_mangle]
@@ -409,8 +410,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperimentByGroupNa
         Ok(s) => s.into(),
         Err(_) => return std::ptr::null_mut(),
     };
-    let result = statsig.get_experiment_by_group_name(&exper_name, &group_name);
-    serialize_json_to_jstring(&mut env, &result)
+    let result = statsig.get_raw_experiment_by_group_name(&exper_name, &group_name);
+    string_to_jstring(&mut env, result)
 }
 
 #[no_mangle]
@@ -430,8 +431,8 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperimentByGroupId
         Ok(s) => s.into(),
         Err(_) => return std::ptr::null_mut(),
     };
-    let result = statsig.get_experiment_by_group_id_advanced(&exper_name, &group_id);
-    serialize_json_to_jstring(&mut env, &result)
+    let result = statsig.get_raw_experiment_by_group_id_advanced(&exper_name, &group_id);
+    string_to_jstring(&mut env, result)
 }
 
 #[no_mangle]
@@ -481,12 +482,10 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetLayer(
 
     let options = convert_java_get_layer_options_to_rust(&mut env, options);
 
-    let result = match options {
-        Some(options) => statsig.get_layer_with_options(user.as_ref(), &layer_name, options),
-        None => statsig.get_layer(user.as_ref(), &layer_name),
-    };
+    let result =
+        statsig.get_raw_layer_with_options(user.as_ref(), &layer_name, options.unwrap_or_default());
 
-    serialize_json_to_jstring(&mut env, &result)
+    string_to_jstring(&mut env, result)
 }
 
 #[no_mangle]
@@ -798,12 +797,16 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetDynamicConfig(
 
     let result = match options {
         Some(options) => {
-            statsig.get_dynamic_config_with_options(user.as_ref(), &config_name, options)
+            statsig.get_raw_dynamic_config_with_options(user.as_ref(), &config_name, options)
         }
-        None => statsig.get_dynamic_config(user.as_ref(), &config_name),
+        None => statsig.get_raw_dynamic_config_with_options(
+            user.as_ref(),
+            &config_name,
+            Default::default(),
+        ),
     };
 
-    serialize_json_to_jstring(&mut env, &result)
+    string_to_jstring(&mut env, result)
 }
 
 #[no_mangle]
@@ -860,13 +863,15 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFeatureGate(
         Ok(s) => s.into(),
         Err(_) => return std::ptr::null_mut(),
     };
-    let options = convert_java_check_gate_options_to_rust(&mut env, options);
 
-    let result = match options {
-        Some(options) => statsig.get_feature_gate_with_options(user.as_ref(), &gate_name, options),
-        None => statsig.get_feature_gate(user.as_ref(), &gate_name),
-    };
-    serialize_json_to_jstring(&mut env, &result)
+    let options = convert_java_check_gate_options_to_rust(&mut env, options);
+    let result = statsig.get_raw_feature_gate_with_options(
+        user.as_ref(),
+        &gate_name,
+        options.unwrap_or_default(),
+    );
+
+    string_to_jstring(&mut env, result)
 }
 
 #[no_mangle]
@@ -957,7 +962,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigLogLayerParamExposure(
         }
     };
 
-    statsig.log_layer_param_exposure_with_layer_json(layer_json, parameter_name);
+    statsig.log_layer_param_exposure_from_raw(layer_json, parameter_name);
 }
 
 #[no_mangle]
