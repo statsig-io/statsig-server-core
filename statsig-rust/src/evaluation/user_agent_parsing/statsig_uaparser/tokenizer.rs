@@ -40,6 +40,14 @@ impl Tokenizer {
 
                 win.slide_window_by(2);
             }
+            // Mac OS (no X)
+            else if curr == "Mac" && next1 == Some("OS") {
+                result.macos_hint = true;
+
+                result.add_possible_os_tag("Mac OS X", consume_if_numeric(&mut win, next2));
+
+                win.slide_window_by(2);
+            }
             // iPhone OS
             else if curr == "iOS" {
                 result.add_possible_os_tag("iOS", consume_if_numeric(&mut win, next1));

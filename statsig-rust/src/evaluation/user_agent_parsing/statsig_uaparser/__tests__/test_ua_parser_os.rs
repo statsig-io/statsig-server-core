@@ -61,6 +61,16 @@ fn os_name_parsing_macos() {
 }
 
 #[test]
+fn os_name_parsing_macos_no_x() {
+    let user_agent = "Codex Desktop/0.93.0-alpha.13 (Mac OS 26.2.0; arm64) unknown";
+    let os = UaParser::parse_os(user_agent);
+
+    assert_eq!(os.name, "Mac OS X");
+    let os_version = os.version.get_version_string();
+    assert_eq!(os_version, Some("26.2.0".to_string()));
+}
+
+#[test]
 fn os_name_parsing_ubuntu() {
     let user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/604.1 (KHTML, like Gecko) Version/11.0 Safari/604.1 Ubuntu/17.04 (3.24.1-0ubuntu1) Epiphany/3.24.1"; // |Ubuntu|17|04|None|None|Epiphany|3|24|1|None
     let os = UaParser::parse_os(user_agent);
