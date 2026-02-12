@@ -1,3 +1,5 @@
+pub(crate) const LOCK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
 #[macro_export]
 macro_rules! unwrap_or_return {
     ($res: expr, $code: expr) => {
@@ -51,9 +53,15 @@ macro_rules! unwrap_or_noop {
 #[macro_export]
 macro_rules! read_lock_or_else {
     ($lock:expr, $else_block:block) => {
-        match $lock.try_read_for(std::time::Duration::from_secs(5)) {
+        match $lock.try_read_for($crate::macros::LOCK_TIMEOUT) {
             Some(data) => data,
-            None => $else_block,
+            None => {
+                if cfg!(test) {
+                    panic!("Failed to acquire read lock");
+                } else {
+                    $else_block
+                }
+            }
         }
     };
 }
@@ -61,11 +69,15 @@ macro_rules! read_lock_or_else {
 #[macro_export]
 macro_rules! read_lock_or_return {
     ($tag: expr, $lock:expr, $code: expr) => {
-        match $lock.try_read_for(std::time::Duration::from_secs(5)) {
+        match $lock.try_read_for($crate::macros::LOCK_TIMEOUT) {
             Some(data) => data,
             None => {
-                $crate::log_e!($tag, "Failed to acquire read lock");
-                return $code;
+                if cfg!(test) {
+                    panic!("Failed to acquire read lock");
+                } else {
+                    $crate::log_e!($tag, "Failed to acquire read lock");
+                    return $code;
+                }
             }
         }
     };
@@ -74,9 +86,15 @@ macro_rules! read_lock_or_return {
 #[macro_export]
 macro_rules! write_lock_or_else {
     ($lock:expr, $else_block:block) => {
-        match $lock.try_write_for(std::time::Duration::from_secs(5)) {
+        match $lock.try_write_for($crate::macros::LOCK_TIMEOUT) {
             Some(data) => data,
-            None => $else_block,
+            None => {
+                if cfg!(test) {
+                    panic!("Failed to acquire write lock");
+                } else {
+                    $else_block
+                }
+            }
         }
     };
 }
@@ -84,11 +102,15 @@ macro_rules! write_lock_or_else {
 #[macro_export]
 macro_rules! write_lock_or_noop {
     ($tag: expr, $lock:expr) => {
-        match $lock.try_write_for(std::time::Duration::from_secs(5)) {
+        match $lock.try_write_for($crate::macros::LOCK_TIMEOUT) {
             Some(data) => data,
             None => {
-                $crate::log_e!($tag, "Failed to acquire write lock");
-                return;
+                if cfg!(test) {
+                    panic!("Failed to acquire write lock");
+                } else {
+                    $crate::log_e!($tag, "Failed to acquire write lock");
+                    return;
+                }
             }
         }
     };
@@ -97,11 +119,15 @@ macro_rules! write_lock_or_noop {
 #[macro_export]
 macro_rules! write_lock_or_return {
     ($tag: expr, $lock:expr, $code: expr) => {
-        match $lock.try_write_for(std::time::Duration::from_secs(5)) {
+        match $lock.try_write_for($crate::macros::LOCK_TIMEOUT) {
             Some(data) => data,
             None => {
-                $crate::log_e!($tag, "Failed to acquire write lock");
-                return $code;
+                if cfg!(test) {
+                    panic!("Failed to acquire write lock");
+                } else {
+                    $crate::log_e!($tag, "Failed to acquire write lock");
+                    return $code;
+                }
             }
         }
     };

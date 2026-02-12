@@ -2,7 +2,6 @@ use chrono::Utc;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 
 use crate::data_store_interface::DataStoreTrait;
 use crate::evaluation::evaluator::SpecType;
@@ -18,8 +17,9 @@ use crate::specs_response::proto_specs::deserialize_protobuf;
 use crate::specs_response::spec_types::{SpecsResponseFull, SpecsResponseNoUpdates};
 use crate::utils::maybe_trim_malloc;
 use crate::{
-    log_d, log_e, log_error_to_statsig_and_console, read_lock_or_else, SpecsFormat, SpecsInfo,
-    SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigOptions, StatsigRuntime,
+    log_d, log_e, log_error_to_statsig_and_console, read_lock_or_else, write_lock_or_else,
+    SpecsFormat, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr,
+    StatsigOptions, StatsigRuntime,
 };
 
 pub struct SpecStoreData {
@@ -77,25 +77,21 @@ impl SpecStore {
     }
 
     pub fn set_source(&self, source: SpecsSource) {
-        match self.data.try_write_for(Duration::from_secs(5)) {
-            Some(mut data) => {
-                data.source = source;
-                log_d!(TAG, "Source Changed ({:?})", data.source);
-            }
-            None => {
-                log_e!(TAG, "Failed to acquire write lock: Failed to lock data");
-            }
-        }
+        let mut locked_data = write_lock_or_else!(self.data, {
+            log_e!(TAG, "Failed to acquire write lock: Failed to lock data");
+            return;
+        });
+
+        locked_data.source = source;
+        log_d!(TAG, "Source Changed ({:?})", locked_data.source);
     }
 
     pub fn get_current_values(&self) -> Option<SpecsResponseFull> {
-        let data = match self.data.try_read_for(Duration::from_secs(5)) {
-            Some(data) => data,
-            None => {
-                log_e!(TAG, "Failed to acquire read lock: Failed to lock data");
-                return None;
-            }
-        };
+        let data = read_lock_or_else!(self.data, {
+            log_e!(TAG, "Failed to acquire read lock: Failed to lock data");
+            return None;
+        });
+
         let json = serde_json::to_string(&data.values).ok()?;
         serde_json::from_str::<SpecsResponseFull>(&json).ok()
     }
@@ -186,15 +182,12 @@ impl SpecStore {
 
     pub fn set_values(&self, specs_update: SpecsUpdate) -> Result<(), StatsigErr> {
         let mut specs_update = specs_update;
-        let mut locked_data = match self.data.try_write_for(Duration::from_secs(5)) {
-            Some(data) => data,
-            None => {
-                log_e!(TAG, "Failed to acquire write lock: Failed to lock data");
-                return Err(StatsigErr::LockFailure(
-                    "Failed to acquire write lock: Failed to lock data".to_string(),
-                ));
-            }
-        };
+        let mut locked_data = write_lock_or_else!(self.data, {
+            let msg = "Failed to acquire write lock for set_values";
+            log_e!(TAG, "{}", msg);
+            return Err(StatsigErr::LockFailure(msg.to_string()));
+        });
+
         let response_format = self.get_spec_response_format(&specs_update);
 
         match self.parse_specs_response(&mut specs_update, &mut locked_data, &response_format) {
@@ -467,22 +460,24 @@ impl SpecsUpdateListener for SpecStore {
     }
 
     fn get_current_specs_info(&self) -> SpecsInfo {
-        match self.data.try_read_for(Duration::from_secs(5)) {
-            Some(data) => SpecsInfo {
-                lcut: Some(data.values.time),
-                checksum: data.values.checksum.clone(),
-                source: data.source.clone(),
-                source_api: data.source_api.clone(),
-            },
-            None => {
-                log_e!(TAG, "Failed to acquire read lock: Failed to lock data");
-                SpecsInfo {
-                    lcut: None,
-                    checksum: None,
-                    source: SpecsSource::Error,
-                    source_api: None,
-                }
-            }
+        let data = read_lock_or_else!(self.data, {
+            log_e!(
+                TAG,
+                "Failed to acquire read lock for get_current_specs_info"
+            );
+            return SpecsInfo {
+                lcut: None,
+                checksum: None,
+                source: SpecsSource::Error,
+                source_api: None,
+            };
+        });
+
+        SpecsInfo {
+            lcut: Some(data.values.time),
+            checksum: data.values.checksum.clone(),
+            source: data.source.clone(),
+            source_api: data.source_api.clone(),
         }
     }
 }
@@ -493,36 +488,32 @@ impl IdListsUpdateListener for SpecStore {
     fn get_current_id_list_metadata(
         &self,
     ) -> HashMap<String, crate::id_lists_adapter::IdListMetadata> {
-        match self.data.try_read_for(Duration::from_secs(5)) {
-            Some(data) => data
-                .id_lists
-                .iter()
-                .map(|(key, list)| (key.clone(), list.metadata.clone()))
-                .collect(),
-            None => {
-                let err = StatsigErr::LockFailure(
-                    "Failed to acquire read lock for id list metadata".to_string(),
-                );
-                log_error_to_statsig_and_console!(self.ops_stats, TAG, err);
-                HashMap::new()
-            }
-        }
+        let data = read_lock_or_else!(self.data, {
+            let err = StatsigErr::LockFailure(
+                "Failed to acquire read lock for id list metadata".to_string(),
+            );
+            log_error_to_statsig_and_console!(self.ops_stats, TAG, err);
+            return HashMap::new();
+        });
+
+        data.id_lists
+            .iter()
+            .map(|(key, list)| (key.clone(), list.metadata.clone()))
+            .collect()
     }
 
     fn did_receive_id_list_updates(
         &self,
         updates: HashMap<String, crate::id_lists_adapter::IdListUpdate>,
     ) {
-        let mut data = match self.data.try_write_for(Duration::from_secs(5)) {
-            Some(data) => data,
-            None => {
-                let err = StatsigErr::LockFailure(
-                    "Failed to acquire write lock for id list updates".to_string(),
-                );
-                log_error_to_statsig_and_console!(self.ops_stats, TAG, err);
-                return;
-            }
-        };
+        let mut data = write_lock_or_else!(self.data, {
+            let err = StatsigErr::LockFailure(
+                "Failed to acquire write lock for did_receive_id_list_updates".to_string(),
+            );
+            log_error_to_statsig_and_console!(self.ops_stats, TAG, err);
+
+            return;
+        });
 
         // delete any id_lists that are not in the updates
         data.id_lists.retain(|name, _| updates.contains_key(name));
