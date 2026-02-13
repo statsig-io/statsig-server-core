@@ -85,19 +85,40 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pkgs="@statsig/statsig-node-core-rc \
-          @statsig/statsig-node-core-linux-x64-gnu-rc \
-          @statsig/statsig-node-core-linux-x64-musl-rc"
-          echo "Updating to latest rc for: $pkgs"
+          RC_VER="${{ steps.rc_ver.outputs.version }}"
+          pkgs="@statsig/statsig-node-core-rc@${RC_VER} \
+          @statsig/statsig-node-core-linux-x64-gnu-rc@${RC_VER} \
+          @statsig/statsig-node-core-linux-x64-musl-rc@${RC_VER}"
+          echo "Updating RC package slots only: $pkgs"
 
-          # Update all packages in lib
-          pnpm --dir lib update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional --depth 0
+          for dir in lib lib/node/entity lib/node/service-core; do
+            # Capture current resolved node-core version (if present) so we can keep the first peer slot stable.
+            CORE_VER="$(
+              set +o pipefail
+              pnpm --dir "$dir" list @statsig/statsig-node-core --depth 0 --json 2>/dev/null \
+                | node -e 'const fs=require("fs"); const raw=fs.readFileSync(0,"utf8").trim(); if (!raw) process.exit(0); const data=JSON.parse(raw); const v=data?.[0]?.dependencies?.["@statsig/statsig-node-core"]?.version; if (v) process.stdout.write(String(v));'
+            )"
 
-          # Update all packages in lib/node/entity
-          pnpm --dir lib/node/entity update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional --depth 0
+            # Only bump the RC alias/package side. Do not update @statsig/statsig-node-core here,
+            # so the first peer slot in statsig-ai tuple stays on its existing resolution.
+            pnpm --dir "$dir" update @statsig/statsig-node-core-rc@"${RC_VER}" @statsig/statsig-node-core-linux-x64-gnu-rc@"${RC_VER}" @statsig/statsig-node-core-linux-x64-musl-rc@"${RC_VER}" --no-save --include=optional --depth 0
 
-          # Update all packages in lib/node/service-core
-          pnpm --dir lib/node/service-core update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional --depth 0
+            # Restore existing node-core resolution to avoid collapsing statsig-ai tuple slots.
+            if [ -n "${CORE_VER}" ]; then
+              echo "Preserving ${dir} node-core slot at ${CORE_VER}"
+              pnpm --dir "$dir" update @statsig/statsig-node-core@"${CORE_VER}" --no-save
+
+              FINAL_CORE_VER="$(
+                set +o pipefail
+                pnpm --dir "$dir" list @statsig/statsig-node-core --depth 0 --json 2>/dev/null \
+                  | node -e 'const fs=require("fs"); const raw=fs.readFileSync(0,"utf8").trim(); if (!raw) process.exit(0); const data=JSON.parse(raw); const v=data?.[0]?.dependencies?.["@statsig/statsig-node-core"]?.version; if (v) process.stdout.write(String(v));'
+              )"
+              if [ "${FINAL_CORE_VER}" != "${CORE_VER}" ]; then
+                echo "::error::${dir} node-core slot changed unexpectedly: expected ${CORE_VER}, got ${FINAL_CORE_VER:-<empty>}"
+                exit 1
+              fi
+            fi
+          done
 
           echo "Changed files:"
           git status --porcelain
