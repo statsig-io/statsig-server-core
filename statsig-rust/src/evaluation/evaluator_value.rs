@@ -344,11 +344,12 @@ impl Serialize for MemoizedEvaluatorValue {
                     None => return JsonValue::Null.serialize(serializer),
                 };
 
-                let mut result = vec![String::new(); array_map.len()];
-
-                for (idx, val) in array_map.values() {
-                    result[*idx] = val.unperformant_to_string();
-                }
+                let mut entries: Vec<(usize, String)> = array_map
+                    .values()
+                    .map(|(idx, val)| (*idx, val.unperformant_to_string()))
+                    .collect();
+                entries.sort_by_key(|(idx, _)| *idx);
+                let result: Vec<String> = entries.into_iter().map(|(_, val)| val).collect();
 
                 result.serialize(serializer)
             }
@@ -399,4 +400,17 @@ macro_rules! test_only_make_eval_value {
     ($x:expr) => {
         $crate::evaluation::evaluator_value::MemoizedEvaluatorValue::from(serde_json::json!($x))
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::MemoizedEvaluatorValue;
+    use serde_json::json;
+
+    #[test]
+    fn serialize_array_with_case_collision_is_safe() {
+        let value = MemoizedEvaluatorValue::from(json!(["A", "a"]));
+        let serialized = serde_json::to_value(&value).expect("serialize MemoizedEvaluatorValue");
+        assert_eq!(serialized, json!(["a"]));
+    }
 }
