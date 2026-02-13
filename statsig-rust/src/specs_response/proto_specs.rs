@@ -102,10 +102,17 @@ pub fn deserialize_protobuf(
                     next_specs.handle_condition_update(env, current_specs)
                 });
             }
-            // TODO impl
-            pb::SpecsEnvelopeKind::Deletions => {}
-            pb::SpecsEnvelopeKind::Checksums => {}
-            pb::SpecsEnvelopeKind::CopyPrev => {}
+            pb::SpecsEnvelopeKind::Deletions => {
+                consume_errors(ops_stats, || next_specs.handle_deletions_update(env));
+            }
+            pb::SpecsEnvelopeKind::Checksums => {
+                consume_errors(ops_stats, || next_specs.handle_checksums_update(env));
+            }
+            pb::SpecsEnvelopeKind::CopyPrev => {
+                consume_errors(ops_stats, || {
+                    next_specs.handle_copy_prev_update(current_specs)
+                });
+            }
             pb::SpecsEnvelopeKind::Unknown => {
                 return make_proto_parse_error("SpecsEnvelope", "Unknown envelope kind");
             }
@@ -281,6 +288,172 @@ impl SpecsResponseFull {
 
         Ok(())
     }
+
+    fn handle_deletions_update(&mut self, envelope: pb::SpecsEnvelope) -> Result<(), StatsigErr> {
+        let envelope_data = validate_envelope_data("Deletions", envelope.data)?;
+        let deletions = pb::RulesetsResponseDeletions::decode(envelope_data)
+            .map_err(|e| map_decode_err("RulesetsResponseDeletions", e))?;
+        self.apply_deletions(deletions);
+        Ok(())
+    }
+
+    fn handle_checksums_update(&mut self, envelope: pb::SpecsEnvelope) -> Result<(), StatsigErr> {
+        let envelope_data = validate_envelope_data("Checksums", envelope.data)?;
+        let checksums = pb::RulesetsChecksums::decode(envelope_data)
+            .map_err(|e| map_decode_err("RulesetsChecksums", e))?;
+        let field_checksums = &checksums.field_checksums;
+
+        let condition_map = sum_checksums(self.condition_map.values().map(checksum_for_condition));
+        let dynamic_configs = sum_checksums(self.dynamic_configs.0.values().map(checksum_for_spec));
+        let feature_gates = sum_checksums(self.feature_gates.0.values().map(checksum_for_spec));
+        let layer_configs = sum_checksums(self.layer_configs.0.values().map(checksum_for_spec));
+        let param_stores = sum_checksums(
+            self.param_stores
+                .as_ref()
+                .map(|stores| stores.values().map(checksum_for_param_store))
+                .into_iter()
+                .flatten(),
+        );
+
+        validate_field_checksum("condition_map", field_checksums, condition_map)?;
+        validate_field_checksum("dynamic_configs", field_checksums, dynamic_configs)?;
+        validate_field_checksum("feature_gates", field_checksums, feature_gates)?;
+        validate_field_checksum("layer_configs", field_checksums, layer_configs)?;
+        validate_field_checksum("param_stores", field_checksums, param_stores)?;
+
+        Ok(())
+    }
+
+    fn handle_copy_prev_update(&mut self, existing: &SpecsResponseFull) -> Result<(), StatsigErr> {
+        let partial_value = serde_json::to_value(existing)
+            .map_err(|e| map_serde_json_err("SpecsResponsePartial", e))?;
+        let partial = serde_json::from_value::<SpecsResponsePartial>(partial_value)
+            .map_err(|e| map_serde_json_err("SpecsResponsePartial", e))?;
+        self.merge_from_partial(partial);
+
+        self.checksum = existing.checksum.clone();
+        self.company_id = existing.company_id.clone();
+        self.time = existing.time;
+        self.has_updates = existing.has_updates;
+        self.response_format = existing.response_format.clone();
+
+        self.dynamic_configs = SpecsHashMap(existing.dynamic_configs.0.clone());
+        self.feature_gates = SpecsHashMap(existing.feature_gates.0.clone());
+        self.layer_configs = SpecsHashMap(existing.layer_configs.0.clone());
+        self.condition_map = existing.condition_map.clone();
+        self.param_stores = existing.param_stores.clone();
+        Ok(())
+    }
+
+    fn apply_deletions(&mut self, deletions: pb::RulesetsResponseDeletions) {
+        let pb::RulesetsResponseDeletions {
+            dynamic_configs,
+            feature_gates,
+            layer_configs,
+            experiment_to_layer,
+            condition_map,
+            sdk_configs,
+            param_stores,
+            cmab_configs,
+            override_rules,
+            overrides,
+        } = deletions;
+
+        remove_interned_from_specs_map(&mut self.dynamic_configs, dynamic_configs);
+        remove_interned_from_specs_map(&mut self.feature_gates, feature_gates);
+        remove_interned_from_specs_map(&mut self.layer_configs, layer_configs);
+        remove_string_from_map(&mut self.experiment_to_layer, experiment_to_layer);
+        remove_interned_from_hash(&mut self.condition_map, condition_map);
+        remove_string_from_opt_map(&mut self.sdk_configs, sdk_configs);
+        remove_interned_from_opt_map(&mut self.param_stores, param_stores);
+        remove_string_from_opt_map(&mut self.cmab_configs, cmab_configs);
+        remove_string_from_opt_map(&mut self.override_rules, override_rules);
+        remove_string_from_opt_map(&mut self.overrides, overrides);
+    }
+}
+
+fn remove_interned_from_specs_map(map: &mut SpecsHashMap, names: Vec<String>) {
+    for name in names {
+        map.remove(&InternedString::from_string(name));
+    }
+}
+
+fn remove_interned_from_hash<V, S: std::hash::BuildHasher>(
+    map: &mut HashMap<InternedString, V, S>,
+    names: Vec<String>,
+) {
+    for name in names {
+        map.remove(&InternedString::from_string(name));
+    }
+}
+
+fn remove_string_from_map<V>(map: &mut HashMap<String, V>, names: Vec<String>) {
+    for name in names {
+        map.remove(&name);
+    }
+}
+
+fn remove_interned_from_opt_map<V>(
+    map: &mut Option<HashMap<InternedString, V>>,
+    names: Vec<String>,
+) {
+    let Some(map) = map.as_mut() else {
+        return;
+    };
+    remove_interned_from_hash(map, names)
+}
+
+fn remove_string_from_opt_map<V>(map: &mut Option<HashMap<String, V>>, names: Vec<String>) {
+    let Some(map) = map.as_mut() else {
+        return;
+    };
+    remove_string_from_map(map, names);
+}
+
+fn validate_field_checksum(
+    field: &str,
+    field_checksums: &HashMap<String, u64>,
+    computed: u64,
+) -> Result<(), StatsigErr> {
+    let Some(expected) = field_checksums.get(field) else {
+        return Err(StatsigErr::ProtobufParseError(
+            "proto::RulesetsChecksums".to_string(),
+            format!("Missing checksum for {field}"),
+        ));
+    };
+
+    if *expected != computed {
+        return Err(StatsigErr::ProtobufParseError(
+            "proto::RulesetsChecksums".to_string(),
+            format!("Checksum mismatch for {field}: expected {expected}, got {computed}"),
+        ));
+    }
+
+    Ok(())
+}
+
+fn sum_checksums(checksums: impl Iterator<Item = Option<u32>>) -> u64 {
+    checksums.fold(0u64, |acc, checksum| {
+        acc.wrapping_add(checksum.unwrap_or_default() as u64)
+    })
+}
+
+fn checksum_for_condition(condition: &Condition) -> Option<u32> {
+    checksum_to_u32(condition.checksum.as_ref())
+}
+
+fn checksum_for_spec(pointer: &SpecPointer) -> Option<u32> {
+    let spec: &Spec = pointer.as_spec_ref();
+    checksum_to_u32(spec.checksum.as_ref())
+}
+
+fn checksum_for_param_store(store: &ParameterStore) -> Option<u32> {
+    checksum_to_u32(store.checksum.as_ref())
+}
+
+fn checksum_to_u32(checksum: Option<&InternedString>) -> Option<u32> {
+    let value = checksum?.as_str();
+    value.parse::<u32>().ok()
 }
 
 fn validate_envelope_data(
