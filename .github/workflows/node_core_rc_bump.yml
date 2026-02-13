@@ -86,10 +86,11 @@ jobs:
         run: |
           set -euo pipefail
           RC_VER="${{ steps.rc_ver.outputs.version }}"
-          pkgs="@statsig/statsig-node-core-rc@${RC_VER} \
-          @statsig/statsig-node-core-linux-x64-gnu-rc@${RC_VER} \
-          @statsig/statsig-node-core-linux-x64-musl-rc@${RC_VER}"
+          pkgs="@statsig/statsig-node-core-rc \
+          @statsig/statsig-node-core-linux-x64-gnu-rc \
+          @statsig/statsig-node-core-linux-x64-musl-rc"
           echo "Updating RC package slots only: $pkgs"
+          echo "Target RC version from release event: ${RC_VER}"
 
           for dir in lib lib/node/entity lib/node/service-core; do
             # Capture current resolved node-core version (if present) so we can keep the first peer slot stable.
@@ -101,7 +102,7 @@ jobs:
 
             # Only bump the RC alias/package side. Do not update @statsig/statsig-node-core here,
             # so the first peer slot in statsig-ai tuple stays on its existing resolution.
-            pnpm --dir "$dir" update @statsig/statsig-node-core-rc@"${RC_VER}" @statsig/statsig-node-core-linux-x64-gnu-rc@"${RC_VER}" @statsig/statsig-node-core-linux-x64-musl-rc@"${RC_VER}" --no-save --include=optional --depth 0
+            pnpm --dir "$dir" update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --include=optional
 
             # Restore existing node-core resolution to avoid collapsing statsig-ai tuple slots.
             if [ -n "${CORE_VER}" ]; then
