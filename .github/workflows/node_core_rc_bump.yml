@@ -103,6 +103,7 @@ jobs:
 
           # statsig-ai special handling:
           # restore the first node-core peer slot to its pre-bump value, while allowing the second slot to move.
+          # also restore statsig-ai package dependency '@statsig/statsig-node-core' to pre-bump value.
           # Covers both lockfile forms:
           # 1) package keys: /@statsig/statsig-ai@x(...)(...)
           # 2) importer entries: '@statsig/statsig-ai' -> version: x(...)(...)
@@ -161,6 +162,68 @@ jobs:
             return `${linePrefix}${version}(@statsig/statsig-node-core@${expectedFirst})(@statsig/statsig-node-core@${secondNow})`;
           });
 
+          let depReplaceCount = 0;
+          const lines = curr.split("\n");
+          const packageHeaderRe =
+            /^  (\/?@statsig\/statsig-ai@[^()\s:]+)\(@statsig\/statsig-node-core@[^)]+\)\(@statsig\/statsig-node-core@[^)]+\):\s*$/;
+          const topLevelEntryRe = /^  \S.*:\s*$/;
+          const depKeyRe = /^(\s{6}'@statsig\/statsig-node-core':\s*)(\S+)(\s*)$/;
+
+          for (let i = 0; i < lines.length; i++) {
+            const headerMatch = lines[i].match(packageHeaderRe);
+            if (!headerMatch) {
+              continue;
+            }
+
+            const aiId = headerMatch[1].replace(/^\//, "");
+            const expectedFirst = packageFirstSlotById.get(aiId);
+            if (!expectedFirst) {
+              continue;
+            }
+
+            let blockEnd = i + 1;
+            while (blockEnd < lines.length) {
+              if (topLevelEntryRe.test(lines[blockEnd]) && !lines[blockEnd].startsWith("    ")) {
+                break;
+              }
+              blockEnd += 1;
+            }
+
+            let depStart = -1;
+            for (let j = i + 1; j < blockEnd; j++) {
+              if (/^    dependencies:\s*$/.test(lines[j])) {
+                depStart = j;
+                break;
+              }
+            }
+            if (depStart === -1) {
+              continue;
+            }
+
+            let depEnd = depStart + 1;
+            while (
+              depEnd < blockEnd &&
+              (lines[depEnd].startsWith("      ") || lines[depEnd].trim() === "")
+            ) {
+              depEnd += 1;
+            }
+
+            for (let j = depStart + 1; j < depEnd; j++) {
+              const depMatch = lines[j].match(depKeyRe);
+              if (!depMatch) {
+                continue;
+              }
+
+              const currDep = depMatch[2];
+              if (currDep !== expectedFirst) {
+                depReplaceCount += 1;
+                lines[j] = `${depMatch[1]}${expectedFirst}${depMatch[3]}`;
+              }
+              break;
+            }
+          }
+
+          curr = lines.join("\n");
           fs.writeFileSync(lockPath, curr);
 
           const updated = fs.readFileSync(lockPath, "utf8");
@@ -182,16 +245,82 @@ jobs:
             }
           }
 
+          const dependencyIssues = [];
+          const updatedLines = updated.split("\n");
+          for (let i = 0; i < updatedLines.length; i++) {
+            const headerMatch = updatedLines[i].match(packageHeaderRe);
+            if (!headerMatch) {
+              continue;
+            }
+
+            const aiId = headerMatch[1].replace(/^\//, "");
+            const expectedFirst = packageFirstSlotById.get(aiId);
+            if (!expectedFirst) {
+              continue;
+            }
+
+            let blockEnd = i + 1;
+            while (blockEnd < updatedLines.length) {
+              if (
+                topLevelEntryRe.test(updatedLines[blockEnd]) &&
+                !updatedLines[blockEnd].startsWith("    ")
+              ) {
+                break;
+              }
+              blockEnd += 1;
+            }
+
+            let depStart = -1;
+            for (let j = i + 1; j < blockEnd; j++) {
+              if (/^    dependencies:\s*$/.test(updatedLines[j])) {
+                depStart = j;
+                break;
+              }
+            }
+            if (depStart === -1) {
+              continue;
+            }
+
+            let depEnd = depStart + 1;
+            while (
+              depEnd < blockEnd &&
+              (updatedLines[depEnd].startsWith("      ") || updatedLines[depEnd].trim() === "")
+            ) {
+              depEnd += 1;
+            }
+
+            for (let j = depStart + 1; j < depEnd; j++) {
+              const depMatch = updatedLines[j].match(depKeyRe);
+              if (!depMatch) {
+                continue;
+              }
+
+              if (depMatch[2] !== expectedFirst) {
+                dependencyIssues.push(
+                  `${headerMatch[1]} dependency expected=${expectedFirst} actual=${depMatch[2]}`
+                );
+              }
+              break;
+            }
+          }
+
           console.log(
-            `statsig-ai tuple restore complete: packageEntriesUpdated=${packageReplaceCount}, importerEntriesUpdated=${importerReplaceCount}`
+            `statsig-ai restore complete: packageEntriesUpdated=${packageReplaceCount}, importerEntriesUpdated=${importerReplaceCount}, dependencyEntriesUpdated=${depReplaceCount}`
           );
 
-          if (packageIssues.length > 0 || importerIssues.length > 0) {
+          if (
+            packageIssues.length > 0 ||
+            importerIssues.length > 0 ||
+            dependencyIssues.length > 0
+          ) {
             for (const issue of packageIssues) {
               console.error(`[package] ${issue}`);
             }
             for (const issue of importerIssues) {
               console.error(`[importer] ${issue}`);
+            }
+            for (const issue of dependencyIssues) {
+              console.error(`[dependency] ${issue}`);
             }
             process.exit(1);
           }
