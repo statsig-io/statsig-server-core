@@ -15,7 +15,7 @@ use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::sdk_event_emitter::{SdkEvent, SdkEventEmitter};
 use crate::specs_response::proto_specs::deserialize_protobuf;
 use crate::specs_response::spec_types::{SpecsResponseFull, SpecsResponseNoUpdates};
-use crate::utils::maybe_trim_malloc;
+use crate::utils::try_release_unused_heap_memory;
 use crate::{
     log_d, log_e, log_error_to_statsig_and_console, read_lock_or_else, write_lock_or_else,
     SpecsFormat, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr,
@@ -27,7 +27,6 @@ pub struct SpecStoreData {
     pub source_api: Option<String>,
     pub time_received_at: Option<u64>,
     pub values: SpecsResponseFull,
-    pub next_values: SpecsResponseFull,
     pub id_lists: HashMap<String, IdList>,
 }
 
@@ -62,7 +61,6 @@ impl SpecStore {
             data_store_key,
             data: Arc::new(RwLock::new(SpecStoreData {
                 values: SpecsResponseFull::default(),
-                next_values: SpecsResponseFull::default(),
                 time_received_at: None,
                 source: SpecsSource::Uninitialized,
                 source_api: None,
@@ -180,125 +178,218 @@ impl SpecStore {
             .collect()
     }
 
-    pub fn set_values(&self, specs_update: SpecsUpdate) -> Result<(), StatsigErr> {
-        let mut specs_update = specs_update;
-        let mut locked_data = write_lock_or_else!(self.data, {
-            let msg = "Failed to acquire write lock for set_values";
-            log_e!(TAG, "{}", msg);
-            return Err(StatsigErr::LockFailure(msg.to_string()));
-        });
+    pub fn set_values(&self, mut specs_update: SpecsUpdate) -> Result<(), StatsigErr> {
+        // Updating the spec store is a three step process that interacts with the SpecStoreData lock:
+        // 1. Prep (Read Lock). Deserialize the new data and compare it to the current values.
+        // 2. Apply (Write Lock). Update the spec store with the new values.
+        // 3. Notify (Read Lock). Emit the SDK event and update the data store.
 
-        let response_format = self.get_spec_response_format(&specs_update);
+        // --- Prep ---
 
-        match self.parse_specs_response(&mut specs_update, &mut locked_data, &response_format) {
-            Ok(ParseResult::HasUpdates) => (),
-            Ok(ParseResult::NoUpdates) => {
+        let prep_result = self.specs_update_prep(&mut specs_update).map_err(|e| {
+            log_error_to_statsig_and_console!(self.ops_stats, TAG, e);
+            e
+        })?;
+
+        let (next_values, response_format) = match prep_result {
+            PrepResult::HasUpdates(next_values, response_format) => (next_values, response_format),
+            PrepResult::CurrentValuesNewer => return Ok(()),
+            PrepResult::NoUpdates => {
                 self.ops_stats_log_no_update(specs_update.source, specs_update.source_api);
                 return Ok(());
             }
-            Err(e) => {
-                return Err(e);
-            }
         };
 
-        if self.are_current_values_newer(&locked_data) {
-            return Ok(());
-        }
+        // --- Apply ---
 
-        self.try_update_global_configs(&locked_data.next_values);
+        let apply_result = self
+            .specs_update_apply(next_values, &specs_update)
+            .map_err(|e| {
+                log_error_to_statsig_and_console!(self.ops_stats, TAG, e);
+                e
+            })?;
 
-        let now = Utc::now().timestamp_millis() as u64;
-        let (prev_source, prev_lcut, curr_values_time) = self.swap_current_with_next(
-            &mut locked_data,
-            &specs_update,
-            now,
-            specs_update.source_api.clone(),
-        )?;
+        try_release_unused_heap_memory();
 
-        if let SpecsFormat::Json = response_format {
-            // protobuf response writes to data store are not current supported
-            self.try_update_data_store(&specs_update.source, specs_update.data, now);
-        }
+        // --- Notify ---
 
-        self.ops_stats_log_config_propagation_diff(
-            curr_values_time,
-            prev_lcut,
-            &specs_update.source,
-            &prev_source,
-            specs_update.source_api,
-            response_format,
-        );
-
-        // Glibc requested more memory than needed when deserializing a big json blob
-        // And memory allocator fails to return it.
-        // To prevent service from OOMing, manually unused heap memory.
-        maybe_trim_malloc();
+        self.specs_update_notify(response_format, specs_update, apply_result)
+            .map_err(|e| {
+                log_error_to_statsig_and_console!(self.ops_stats, TAG, e);
+                e
+            })?;
 
         Ok(())
     }
 }
 
-// -------------------------------------------------------------------------------------------- [Private Functions]
+// -------------------------------------------------------------------------------------------- [ Private ]
+
+enum PrepResult {
+    HasUpdates(Box<SpecsResponseFull>, SpecsFormat),
+    NoUpdates,
+    CurrentValuesNewer,
+}
+
+struct ApplyResult {
+    prev_source: SpecsSource,
+    prev_lcut: u64,
+    time_received_at: u64,
+}
 
 impl SpecStore {
-    fn parse_specs_response(
+    fn specs_update_prep(&self, specs_update: &mut SpecsUpdate) -> Result<PrepResult, StatsigErr> {
+        let response_format = self.get_spec_response_format(specs_update);
+
+        let read_data = read_lock_or_else!(self.data, {
+            let msg = "Failed to acquire read lock for extract_response_from_update";
+            log_e!(TAG, "{}", msg);
+            return Err(StatsigErr::LockFailure(msg.to_string()));
+        });
+
+        let current_values = &read_data.values;
+
+        // First, try a Full Specs Response deserialization
+        let first_deserialize_result =
+            self.deserialize_specs_data(current_values, &response_format, &mut specs_update.data);
+
+        let first_deserialize_error = match first_deserialize_result {
+            Ok(next_values) => {
+                if self.are_current_values_newer(&read_data, &next_values) {
+                    return Ok(PrepResult::CurrentValuesNewer);
+                }
+
+                if next_values.has_updates {
+                    return Ok(PrepResult::HasUpdates(
+                        Box::new(next_values),
+                        response_format,
+                    ));
+                }
+
+                None
+            }
+            Err(e) => Some(e),
+        };
+
+        // Second, try a No Updates deserialization
+        let second_deserialize_result = specs_update
+            .data
+            .deserialize_into::<SpecsResponseNoUpdates>();
+
+        let second_deserialize_error = match second_deserialize_result {
+            Ok(result) => {
+                if !result.has_updates {
+                    return Ok(PrepResult::NoUpdates);
+                }
+
+                None
+            }
+            Err(e) => Some(e),
+        };
+
+        let error = first_deserialize_error
+            .or(second_deserialize_error)
+            .unwrap_or_else(|| {
+                StatsigErr::JsonParseError("SpecsResponse".to_string(), "Unknown error".to_string())
+            });
+
+        Err(error)
+    }
+
+    fn specs_update_apply(
         &self,
-        values: &mut SpecsUpdate,
-        spec_store_data: &mut SpecStoreData,
+        next_values: Box<SpecsResponseFull>,
+        specs_update: &SpecsUpdate,
+    ) -> Result<ApplyResult, StatsigErr> {
+        // DANGER: try_update_global_configs contains its own locks
+        self.try_update_global_configs(&next_values);
+
+        let mut data = write_lock_or_else!(self.data, {
+            let msg = "Failed to acquire write lock for swap_current_with_next";
+            log_e!(TAG, "{}", msg);
+            return Err(StatsigErr::LockFailure(msg.to_string()));
+        });
+
+        let prev_source = std::mem::replace(&mut data.source, specs_update.source.clone());
+        let prev_lcut = data.values.time;
+        let time_received_at = Utc::now().timestamp_millis() as u64;
+
+        data.values = *next_values;
+        data.time_received_at = Some(time_received_at);
+        data.source_api = specs_update.source_api.clone();
+
+        Ok(ApplyResult {
+            prev_source,
+            prev_lcut,
+            time_received_at,
+        })
+    }
+
+    fn specs_update_notify(
+        &self,
+        response_format: SpecsFormat,
+        specs_update: SpecsUpdate,
+        apply_result: ApplyResult,
+    ) -> Result<(), StatsigErr> {
+        let current_lcut = {
+            let read_lock = read_lock_or_else!(self.data, {
+                let msg = "Failed to acquire read lock for set_values";
+                log_e!(TAG, "{}", msg);
+                return Err(StatsigErr::LockFailure(msg.to_string()));
+            });
+
+            self.emit_specs_updated_sdk_event(
+                &read_lock.source,
+                &read_lock.source_api,
+                &read_lock.values,
+            );
+
+            read_lock.values.time
+        };
+
+        if let SpecsFormat::Json = response_format {
+            // protobuf response writes to data store are not current supported
+            self.try_update_data_store(
+                &specs_update.source,
+                specs_update.data,
+                apply_result.time_received_at,
+            );
+        }
+
+        self.ops_stats_log_config_propagation_diff(
+            current_lcut,
+            apply_result.prev_lcut,
+            &specs_update.source,
+            &apply_result.prev_source,
+            specs_update.source_api,
+            response_format,
+        );
+
+        Ok(())
+    }
+
+    fn deserialize_specs_data(
+        &self,
+        current_values: &SpecsResponseFull,
         response_format: &SpecsFormat,
-    ) -> Result<ParseResult, StatsigErr> {
-        spec_store_data.next_values.reset();
+        response_data: &mut ResponseData,
+    ) -> Result<SpecsResponseFull, StatsigErr> {
+        let mut next_values = SpecsResponseFull::default();
 
         let parse_result = match response_format {
             SpecsFormat::Protobuf => deserialize_protobuf(
                 &self.ops_stats,
-                &spec_store_data.values,
-                &mut spec_store_data.next_values,
-                &mut values.data,
+                current_values,
+                &mut next_values,
+                response_data,
             ),
-            SpecsFormat::Json => values
-                .data
-                .deserialize_in_place(&mut spec_store_data.next_values),
+            SpecsFormat::Json => response_data.deserialize_in_place(&mut next_values),
         };
 
-        if parse_result.is_ok() && spec_store_data.next_values.has_updates {
-            return Ok(ParseResult::HasUpdates);
+        match parse_result {
+            Ok(()) => Ok(next_values),
+            Err(e) => Err(e),
         }
-
-        let no_updates_result = values.data.deserialize_into::<SpecsResponseNoUpdates>();
-        if let Ok(result) = no_updates_result {
-            if !result.has_updates {
-                return Ok(ParseResult::NoUpdates);
-            }
-        }
-
-        let error = parse_result.err().unwrap_or_else(|| {
-            StatsigErr::JsonParseError("SpecsResponse".to_string(), "Unknown error".to_string())
-        });
-
-        log_error_to_statsig_and_console!(self.ops_stats, TAG, error);
-        Err(error)
-    }
-
-    fn swap_current_with_next(
-        &self,
-        data: &mut SpecStoreData,
-        specs_update: &SpecsUpdate,
-        now: u64,
-        source_api: Option<String>,
-    ) -> Result<(SpecsSource, u64, u64), StatsigErr> {
-        let prev_source = std::mem::replace(&mut data.source, specs_update.source.clone());
-        let prev_lcut = data.values.time;
-
-        std::mem::swap(&mut data.values, &mut data.next_values);
-
-        data.time_received_at = Some(now);
-        data.source_api = source_api;
-        data.next_values.reset();
-
-        self.emit_specs_updated_sdk_event(&data.source, &data.source_api, &data.values);
-
-        Ok((prev_source, prev_lcut, data.values.time))
     }
 
     fn emit_specs_updated_sdk_event(
@@ -312,53 +403,6 @@ impl SpecStore {
             source_api,
             values,
         });
-    }
-
-    fn ops_stats_log_no_update(&self, source: SpecsSource, source_api: Option<String>) {
-        log_d!(TAG, "No Updates");
-        self.ops_stats.log(ObservabilityEvent::new_event(
-            MetricType::Increment,
-            "config_no_update".to_string(),
-            1.0,
-            Some(HashMap::from([
-                ("source".to_string(), source.to_string()),
-                ("source_api".to_string(), source_api.unwrap_or_default()),
-            ])),
-        ));
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn ops_stats_log_config_propagation_diff(
-        &self,
-        lcut: u64,
-        prev_lcut: u64,
-        source: &SpecsSource,
-        prev_source: &SpecsSource,
-        source_api: Option<String>,
-        response_format: SpecsFormat,
-    ) {
-        let delay = (Utc::now().timestamp_millis() as u64).saturating_sub(lcut);
-        log_d!(TAG, "Updated ({:?})", source);
-
-        if *prev_source == SpecsSource::Uninitialized || *prev_source == SpecsSource::Loading {
-            return;
-        }
-
-        self.ops_stats.log(ObservabilityEvent::new_event(
-            MetricType::Dist,
-            "config_propagation_diff".to_string(),
-            delay as f64,
-            Some(HashMap::from([
-                ("source".to_string(), source.to_string()),
-                ("lcut".to_string(), lcut.to_string()),
-                ("prev_lcut".to_string(), prev_lcut.to_string()),
-                ("source_api".to_string(), source_api.unwrap_or_default()),
-                (
-                    "response_format".to_string(),
-                    Into::<&str>::into(&response_format).to_string(),
-                ),
-            ])),
-        ));
     }
 
     fn get_spec_response_format(&self, update: &SpecsUpdate) -> SpecsFormat {
@@ -427,9 +471,12 @@ impl SpecStore {
         }
     }
 
-    fn are_current_values_newer(&self, data: &SpecStoreData) -> bool {
+    fn are_current_values_newer(
+        &self,
+        data: &SpecStoreData,
+        next_values: &SpecsResponseFull,
+    ) -> bool {
         let curr_values = &data.values;
-        let next_values = &data.next_values;
         let curr_checksum = curr_values.checksum.as_deref().unwrap_or_default();
         let new_checksum = next_values.checksum.as_deref().unwrap_or_default();
 
@@ -449,6 +496,57 @@ impl SpecStore {
         }
 
         false
+    }
+}
+
+// -------------------------------------------------------------------------------------------- [ OpsStats Helpers ]
+
+impl SpecStore {
+    fn ops_stats_log_no_update(&self, source: SpecsSource, source_api: Option<String>) {
+        log_d!(TAG, "No Updates");
+        self.ops_stats.log(ObservabilityEvent::new_event(
+            MetricType::Increment,
+            "config_no_update".to_string(),
+            1.0,
+            Some(HashMap::from([
+                ("source".to_string(), source.to_string()),
+                ("source_api".to_string(), source_api.unwrap_or_default()),
+            ])),
+        ));
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn ops_stats_log_config_propagation_diff(
+        &self,
+        lcut: u64,
+        prev_lcut: u64,
+        source: &SpecsSource,
+        prev_source: &SpecsSource,
+        source_api: Option<String>,
+        response_format: SpecsFormat,
+    ) {
+        let delay = (Utc::now().timestamp_millis() as u64).saturating_sub(lcut);
+        log_d!(TAG, "Updated ({:?})", source);
+
+        if *prev_source == SpecsSource::Uninitialized || *prev_source == SpecsSource::Loading {
+            return;
+        }
+
+        self.ops_stats.log(ObservabilityEvent::new_event(
+            MetricType::Dist,
+            "config_propagation_diff".to_string(),
+            delay as f64,
+            Some(HashMap::from([
+                ("source".to_string(), source.to_string()),
+                ("lcut".to_string(), lcut.to_string()),
+                ("prev_lcut".to_string(), prev_lcut.to_string()),
+                ("source_api".to_string(), source_api.unwrap_or_default()),
+                (
+                    "response_format".to_string(),
+                    Into::<&str>::into(&response_format).to_string(),
+                ),
+            ])),
+        ));
     }
 }
 
@@ -530,9 +628,4 @@ impl IdListsUpdateListener for SpecStore {
             }
         }
     }
-}
-
-enum ParseResult {
-    HasUpdates,
-    NoUpdates,
 }

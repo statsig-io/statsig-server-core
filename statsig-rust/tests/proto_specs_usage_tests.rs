@@ -111,17 +111,16 @@ async fn test_response_swapping() {
 
     statsig.initialize().await.unwrap();
 
-    reset_and_get_checksums(&statsig);
+    reset_and_get_checksum(&statsig);
 
     mock_scrapi.clear_requests();
 
     assert_eventually!(|| mock_scrapi.times_called_for_endpoint(Endpoint::DownloadConfigSpecs) > 4);
 
-    let (right, left) = reset_and_get_checksums(&statsig);
+    let checksum = reset_and_get_checksum(&statsig);
 
-    // both current and next should have been overwritten with the correct value at this point
-    assert_eq!(left, KNOWN_CHECKSUM);
-    assert_eq!(right, KNOWN_CHECKSUM);
+    // current should have been overwritten with the correct value at this point
+    assert_eq!(checksum, KNOWN_CHECKSUM);
 }
 
 #[tokio::test]
@@ -271,15 +270,13 @@ fn load_dcs_json_with_time(time: i64) -> String {
     serde_json::to_string(&empty_dcs).unwrap()
 }
 
-fn reset_and_get_checksums(statsig: &Statsig) -> (String, String) {
+fn reset_and_get_checksum(statsig: &Statsig) -> String {
     let ctx = statsig.get_context();
     let mut data = ctx.spec_store.data.write();
 
     let curr_checksum = data.values.checksum.clone().unwrap_or_default();
-    let next_checksum = data.next_values.checksum.clone().unwrap_or_default();
 
     data.values.checksum = Some("__test_curr_values".to_string());
-    data.next_values.checksum = Some("__test_next_values".to_string());
 
-    (curr_checksum, next_checksum)
+    curr_checksum
 }

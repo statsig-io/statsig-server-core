@@ -170,7 +170,7 @@ async fn test_specs_sync() {
 
     let start = Instant::now();
     for _ in 0..100 {
-        specs_adapter.resync().await;
+        specs_adapter.resync().await.unwrap();
     }
 
     let duration = start.elapsed();

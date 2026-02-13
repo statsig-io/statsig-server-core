@@ -44,7 +44,14 @@ pub fn deserialize_protobuf(
     }
 
     loop {
-        let proto_msg_bytes = reader.read_next_delimited_proto()?;
+        let proto_msg_bytes = reader.read_next_delimited_proto().map_err(|e| {
+            let err = StatsigErr::ProtobufParseError(
+                "SpecsEnvelope".to_string(),
+                format!("Error reading next delimited proto: {}", e),
+            );
+            log_error_to_statsig_and_console!(ops_stats, TAG, err);
+            err
+        })?;
 
         let env: pb::SpecsEnvelope =
             match prost::Message::decode_length_delimited(proto_msg_bytes.as_ref()) {

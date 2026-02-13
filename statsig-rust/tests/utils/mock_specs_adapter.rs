@@ -44,8 +44,8 @@ impl MockSpecsAdapter {
         }
     }
 
-    pub async fn resync(&self) {
-        self.manually_sync_specs(None).await.unwrap();
+    pub async fn resync(&self) -> Result<(), StatsigErr> {
+        self.manually_sync_specs(None).await
     }
 
     async fn manually_sync_specs(&self, _current_lcut: Option<u64>) -> Result<(), StatsigErr> {
