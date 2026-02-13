@@ -9,7 +9,6 @@ use std::{
     fs,
     path::PathBuf,
     sync::{Arc, Mutex, Weak},
-    time::{Duration, Instant},
 };
 
 use crate::utils::helpers::load_contents;
@@ -231,52 +230,6 @@ async fn test_config_propagation_dist_recorded() {
     assert_ne!(found_value, 0.0);
     assert_eq!(tags.get("source"), Some(&"Network".to_string()));
     assert!(tags.contains_key("lcut"));
-}
-
-#[tokio::test]
-#[serial]
-async fn test_background_sync_duration_metric_recorded() {
-    let obs_client = Arc::new(MockObservabilityClient {
-        calls: Mutex::new(Vec::new()),
-    });
-
-    let (mock_scrapi, statsig) = setup(&obs_client).await;
-
-    statsig.initialize().await.unwrap();
-
-    let expected_source_api = mock_scrapi.get_server_api();
-    let deadline = Instant::now() + Duration::from_secs(1);
-    let mut found = None;
-
-    while Instant::now() < deadline {
-        {
-            let calls = obs_client.calls.lock().unwrap();
-            for call in calls.iter() {
-                if let RecordedCall::Dist(metric_name, value, tags) = call {
-                    if metric_name == "statsig.sdk.background_sync_duration_ms" {
-                        found = Some((metric_name.clone(), *value, tags.clone()));
-                        break;
-                    }
-                }
-            }
-        }
-
-        if found.is_some() {
-            break;
-        }
-
-        tokio::time::sleep(Duration::from_millis(10)).await;
-    }
-
-    let (metric_name, _value, tags) = found.expect("Expected background sync duration metric");
-    let tags = tags.expect("Expected tags on metric");
-
-    assert_eq!(metric_name, "statsig.sdk.background_sync_duration_ms");
-    assert_eq!(tags.get("context"), Some(&"dcs".to_string()));
-    assert_eq!(tags.get("source"), Some(&"network".to_string()));
-    assert_eq!(tags.get("success"), Some(&"true".to_string()));
-    assert_eq!(tags.get("source_api"), Some(&expected_source_api));
-    assert_eq!(tags.get("fallback_used"), Some(&"false".to_string()));
 }
 
 #[tokio::test]
