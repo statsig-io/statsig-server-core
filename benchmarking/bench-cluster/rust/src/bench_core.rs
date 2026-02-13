@@ -11,6 +11,7 @@ pub mod built_info {
 
 const SCAPI_URL: &str = "http://scrapi:8000";
 const SDK_TYPE: &str = "statsig-server-core-rust";
+const ITER_ULTRA_LITE: u32 = 100;
 const ITER_LITE: u32 = 1000;
 const ITER_HEAVY: u32 = 10_000;
 const SDK_VERSION: Lazy<String> = Lazy::new(|| {
@@ -60,10 +61,25 @@ impl BenchCore {
         benchmark(
             &mut results,
             "initialize",
-            "n/a",
-            ITER_LITE,
+            "proto",
+            ITER_ULTRA_LITE,
             async move || {
-                Statsig::new("secret-RUST_CORE", Some(opts_clone.clone()))
+                Statsig::new("secret-RUST_CORE::BC_USE_PROTO", Some(opts_clone.clone()))
+                    .initialize()
+                    .await
+                    .unwrap()
+            },
+        )
+        .await;
+
+        let opts_clone = options.clone();
+        benchmark(
+            &mut results,
+            "initialize",
+            "json",
+            ITER_ULTRA_LITE,
+            async move || {
+                Statsig::new("secret-RUST_CORE::BC_USE_JSON", Some(opts_clone.clone()))
                     .initialize()
                     .await
                     .unwrap()

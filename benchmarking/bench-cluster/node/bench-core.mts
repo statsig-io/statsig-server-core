@@ -9,6 +9,7 @@ import fs from 'node:fs';
 const sdkType = 'statsig-server-core-node';
 
 const SCRAPI_URL = 'http://scrapi:8000';
+const ITER_ULTRA_LITE = 100;
 const ITER_LITE = 1000;
 const ITER_HEAVY = 10_000;
 
@@ -123,10 +124,26 @@ const globalUser = StatsigUser.withUserID('global_user');
 
 await benchmark(
   'initialize',
-  'n/a',
-  ITER_LITE,
+  'proto',
+  ITER_ULTRA_LITE,
   async () => {
-    const inst = new Statsig('secret-NODE_CORE', options);
+    const inst = new Statsig('secret-NODE_CORE::BC_USE_PROTO', options);
+    await inst.initialize();
+    return inst;
+  },
+  (inst: Statsig) => {
+    inst.shutdown().catch((err) => {
+      console.error(err);
+    });
+  },
+);
+
+await benchmark(
+  'initialize',
+  'json',
+  ITER_ULTRA_LITE,
+  async () => {
+    const inst = new Statsig('secret-NODE_CORE::BC_USE_JSON', options);
     await inst.initialize();
     return inst;
   },

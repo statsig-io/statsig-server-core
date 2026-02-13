@@ -11,6 +11,7 @@ pub mod built_info {
 
 const SCAPI_URL: &str = "http://scrapi:8000";
 const SDK_TYPE: &str = "rust-server";
+const ITER_ULTRA_LITE: u32 = 100;
 const ITER_LITE: u32 = 1000;
 const ITER_HEAVY: u32 = 10_000;
 const ITER_SUPER_LITE: u32 = 100;
@@ -54,10 +55,10 @@ impl BenchLegacy {
         benchmark_with_shutdown(
             &mut results,
             "initialize",
-            "n/a",
-            ITER_SUPER_LITE,
+            "json",
+            ITER_ULTRA_LITE,
             async || {
-                Statsig::initialize_with_options("secret-RUST_LEGACY", create_options()).await;
+                Statsig::initialize_with_options("secret-RUST_LEGACY::BC_USE_JSON", create_options()).await;
             },
             true,
         )

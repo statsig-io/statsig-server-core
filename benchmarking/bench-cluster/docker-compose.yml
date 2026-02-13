@@ -33,6 +33,7 @@ services:
     environment:
       EVAL_PROJ_SDK_KEY: ${EVAL_PROJ_SDK_KEY}
       BENCH_CLUSTER_SDK_KEY: ${BENCH_CLUSTER_SDK_KEY}
+      PERF_SDK_KEY: ${PERF_SDK_KEY}
     image: scrapi:latest
     ports: ["8000:8000"]
     volumes: ["./shared-volume:/shared-volume"]
