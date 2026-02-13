@@ -89,37 +89,22 @@ jobs:
           pkgs="@statsig/statsig-node-core-rc \
           @statsig/statsig-node-core-linux-x64-gnu-rc \
           @statsig/statsig-node-core-linux-x64-musl-rc"
-          echo "Updating RC package slots only: $pkgs"
-          echo "Target RC version from release event: ${RC_VER}"
+          echo "Updating to latest rc for: $pkgs"
+          cp pnpm-lock.yaml pnpm-lock.before-rc-bump.yaml
 
-          for dir in lib lib/node/entity lib/node/service-core; do
-            # Capture current resolved node-core version (if present) so we can keep the first peer slot stable.
-            CORE_VER="$(
-              set +o pipefail
-              pnpm --dir "$dir" list @statsig/statsig-node-core --depth 0 --json 2>/dev/null \
-                | node -e 'const fs=require("fs"); const raw=fs.readFileSync(0,"utf8").trim(); if (!raw) process.exit(0); const data=JSON.parse(raw); const v=data?.[0]?.dependencies?.["@statsig/statsig-node-core"]?.version; if (v) process.stdout.write(String(v));'
-            )"
+          # Update all packages in lib
+          pnpm --dir lib update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
 
-            # Only bump the RC alias/package side. Do not update @statsig/statsig-node-core here,
-            # so the first peer slot in statsig-ai tuple stays on its existing resolution.
-            pnpm --dir "$dir" update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --include=optional
+          # Update all packages in lib/node/entity
+          pnpm --dir lib/node/entity update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
 
-            # Restore existing node-core resolution to avoid collapsing statsig-ai tuple slots.
-            if [ -n "${CORE_VER}" ]; then
-              echo "Preserving ${dir} node-core slot at ${CORE_VER}"
-              pnpm --dir "$dir" update @statsig/statsig-node-core@"${CORE_VER}" --no-save
+          # Update all packages in lib/node/service-core
+          pnpm --dir lib/node/service-core update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
 
-              FINAL_CORE_VER="$(
-                set +o pipefail
-                pnpm --dir "$dir" list @statsig/statsig-node-core --depth 0 --json 2>/dev/null \
-                  | node -e 'const fs=require("fs"); const raw=fs.readFileSync(0,"utf8").trim(); if (!raw) process.exit(0); const data=JSON.parse(raw); const v=data?.[0]?.dependencies?.["@statsig/statsig-node-core"]?.version; if (v) process.stdout.write(String(v));'
-              )"
-              if [ "${FINAL_CORE_VER}" != "${CORE_VER}" ]; then
-                echo "::error::${dir} node-core slot changed unexpectedly: expected ${CORE_VER}, got ${FINAL_CORE_VER:-<empty>}"
-                exit 1
-              fi
-            fi
-          done
+          # statsig-ai special handling:
+          # restore the first node-core peer slot to its pre-bump value, while allowing the second slot to move.
+          node -e 'const fs=require("fs"); const beforePath="pnpm-lock.before-rc-bump.yaml"; const lockPath="pnpm-lock.yaml"; if (!fs.existsSync(beforePath) || !fs.existsSync(lockPath)) process.exit(0); const before=fs.readFileSync(beforePath,"utf8"); let curr=fs.readFileSync(lockPath,"utf8"); const re=/(@statsig\/statsig-ai@[^()\s:]+)\(@statsig\/statsig-node-core@([^)]+)\)\(@statsig\/statsig-node-core@([^)]+)\)/g; const firstSlotByAi=new Map(); let m; while((m=re.exec(before))!==null){ if(!firstSlotByAi.has(m[1])) firstSlotByAi.set(m[1],m[2]); } curr=curr.replace(re,(full,aiId,firstNow,secondNow)=>{ const firstExpected=firstSlotByAi.get(aiId); if(!firstExpected || firstNow===firstExpected) return full; return `${aiId}(@statsig/statsig-node-core@${firstExpected})(@statsig/statsig-node-core@${secondNow})`; }); fs.writeFileSync(lockPath,curr);'
+          rm -f pnpm-lock.before-rc-bump.yaml
 
           echo "Changed files:"
           git status --porcelain
