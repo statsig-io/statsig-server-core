@@ -103,7 +103,99 @@ jobs:
 
           # statsig-ai special handling:
           # restore the first node-core peer slot to its pre-bump value, while allowing the second slot to move.
-          node -e 'const fs=require("fs"); const beforePath="pnpm-lock.before-rc-bump.yaml"; const lockPath="pnpm-lock.yaml"; if (!fs.existsSync(beforePath) || !fs.existsSync(lockPath)) process.exit(0); const before=fs.readFileSync(beforePath,"utf8"); let curr=fs.readFileSync(lockPath,"utf8"); const re=/(@statsig\/statsig-ai@[^()\s:]+)\(@statsig\/statsig-node-core@([^)]+)\)\(@statsig\/statsig-node-core@([^)]+)\)/g; const firstSlotByAi=new Map(); let m; while((m=re.exec(before))!==null){ if(!firstSlotByAi.has(m[1])) firstSlotByAi.set(m[1],m[2]); } curr=curr.replace(re,(full,aiId,firstNow,secondNow)=>{ const firstExpected=firstSlotByAi.get(aiId); if(!firstExpected || firstNow===firstExpected) return full; return `${aiId}(@statsig/statsig-node-core@${firstExpected})(@statsig/statsig-node-core@${secondNow})`; }); fs.writeFileSync(lockPath,curr);'
+          # Covers both lockfile forms:
+          # 1) package keys: /@statsig/statsig-ai@x(...)(...)
+          # 2) importer entries: '@statsig/statsig-ai' -> version: x(...)(...)
+          node <<'NODE'
+          const fs = require("fs");
+
+          const beforePath = "pnpm-lock.before-rc-bump.yaml";
+          const lockPath = "pnpm-lock.yaml";
+          if (!fs.existsSync(beforePath) || !fs.existsSync(lockPath)) process.exit(0);
+
+          const before = fs.readFileSync(beforePath, "utf8");
+          let curr = fs.readFileSync(lockPath, "utf8");
+
+          const packageRe =
+            /(\/?@statsig\/statsig-ai@[^()\s:]+)\(@statsig\/statsig-node-core@([^)]+)\)\(@statsig\/statsig-node-core@([^)]+)\)/g;
+          const importerRe =
+            /((?:'|")?@statsig\/statsig-ai(?:'|")?:\s*\n(?:[ \t]+specifier:[^\n]*\n)?[ \t]+version:\s*)([^()\s]+)\(@statsig\/statsig-node-core@([^)]+)\)\(@statsig\/statsig-node-core@([^)]+)\)/g;
+
+          const packageFirstSlotById = new Map();
+          for (const match of before.matchAll(packageRe)) {
+            const aiId = match[1].replace(/^\//, "");
+            if (!packageFirstSlotById.has(aiId)) {
+              packageFirstSlotById.set(aiId, match[2]);
+            }
+          }
+
+          const importerFirstSlotByVersion = new Map();
+          for (const match of before.matchAll(importerRe)) {
+            const version = match[2];
+            if (!importerFirstSlotByVersion.has(version)) {
+              importerFirstSlotByVersion.set(version, match[3]);
+            }
+          }
+
+          let packageReplaceCount = 0;
+          curr = curr.replace(packageRe, (full, aiIdMaybeSlash, firstNow, secondNow) => {
+            const aiId = aiIdMaybeSlash.replace(/^\//, "");
+            const expectedFirst = packageFirstSlotById.get(aiId);
+            if (!expectedFirst || firstNow === expectedFirst) {
+              return full;
+            }
+
+            packageReplaceCount += 1;
+            const prefix = aiIdMaybeSlash.startsWith("/") ? "/" : "";
+            return `${prefix}${aiId}(@statsig/statsig-node-core@${expectedFirst})(@statsig/statsig-node-core@${secondNow})`;
+          });
+
+          let importerReplaceCount = 0;
+          curr = curr.replace(importerRe, (full, linePrefix, version, firstNow, secondNow) => {
+            const expectedFirst = importerFirstSlotByVersion.get(version);
+            if (!expectedFirst || firstNow === expectedFirst) {
+              return full;
+            }
+
+            importerReplaceCount += 1;
+            return `${linePrefix}${version}(@statsig/statsig-node-core@${expectedFirst})(@statsig/statsig-node-core@${secondNow})`;
+          });
+
+          fs.writeFileSync(lockPath, curr);
+
+          const updated = fs.readFileSync(lockPath, "utf8");
+          const packageIssues = [];
+          for (const match of updated.matchAll(packageRe)) {
+            const aiId = match[1].replace(/^\//, "");
+            const expectedFirst = packageFirstSlotById.get(aiId);
+            if (expectedFirst && match[2] !== expectedFirst) {
+              packageIssues.push(`${match[1]} expected=${expectedFirst} actual=${match[2]}`);
+            }
+          }
+
+          const importerIssues = [];
+          for (const match of updated.matchAll(importerRe)) {
+            const version = match[2];
+            const expectedFirst = importerFirstSlotByVersion.get(version);
+            if (expectedFirst && match[3] !== expectedFirst) {
+              importerIssues.push(`@statsig/statsig-ai@${version} expected=${expectedFirst} actual=${match[3]}`);
+            }
+          }
+
+          console.log(
+            `statsig-ai tuple restore complete: packageEntriesUpdated=${packageReplaceCount}, importerEntriesUpdated=${importerReplaceCount}`
+          );
+
+          if (packageIssues.length > 0 || importerIssues.length > 0) {
+            for (const issue of packageIssues) {
+              console.error(`[package] ${issue}`);
+            }
+            for (const issue of importerIssues) {
+              console.error(`[importer] ${issue}`);
+            }
+            process.exit(1);
+          }
+          NODE
           rm -f pnpm-lock.before-rc-bump.yaml
 
           echo "Changed files:"
