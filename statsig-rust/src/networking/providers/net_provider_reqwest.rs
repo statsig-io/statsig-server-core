@@ -31,6 +31,12 @@ impl NetworkProviderReqwest {
     }
 }
 
+impl Default for NetworkProviderReqwest {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl NetworkProvider for NetworkProviderReqwest {
     async fn send(&self, method: &HttpMethod, args: &RequestArgs) -> Response {

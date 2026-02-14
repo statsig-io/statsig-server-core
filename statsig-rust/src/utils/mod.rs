@@ -28,6 +28,31 @@ pub fn try_release_unused_heap_memory() {
     // No-op only glibc supports malloc_trim function
 }
 
+pub(crate) fn split_host_and_path(url: &str) -> (String, &str) {
+    if let Some((scheme, after_scheme)) = url.split_once("://") {
+        let (host, path) = after_scheme.split_once('/').unwrap_or((after_scheme, ""));
+        return (format!("{scheme}://{host}/"), path);
+    }
+
+    (String::new(), url)
+}
+
+pub(crate) fn strip_query_and_fragment(path: &str) -> &str {
+    let no_query = path.split_once('?').map(|(path, _)| path).unwrap_or(path);
+    no_query
+        .split_once('#')
+        .map(|(path, _)| path)
+        .unwrap_or(no_query)
+}
+
+pub(crate) fn is_version_segment(segment: &str) -> bool {
+    segment.len() > 1
+        && segment.starts_with('v')
+        && segment[1..]
+            .chars()
+            .all(|character| character.is_ascii_digit())
+}
+
 // used for logging into metrics / diagnostics
 pub fn get_api_from_url(url: &str) -> String {
     // 1) Split into base
@@ -62,6 +87,40 @@ pub fn get_api_from_url(url: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_split_host_and_path() {
+        assert_eq!(
+            split_host_and_path("https://api.example.com/v1/specs"),
+            ("https://api.example.com/".to_string(), "v1/specs")
+        );
+        assert_eq!(
+            split_host_and_path("https://api.example.com"),
+            ("https://api.example.com/".to_string(), "")
+        );
+        assert_eq!(
+            split_host_and_path("/v1/specs"),
+            (String::new(), "/v1/specs")
+        );
+    }
+
+    #[test]
+    fn test_strip_query_and_fragment() {
+        assert_eq!(strip_query_and_fragment("v1/specs?x=1"), "v1/specs");
+        assert_eq!(strip_query_and_fragment("v1/specs#frag"), "v1/specs");
+        assert_eq!(strip_query_and_fragment("v1/specs?x=1#frag"), "v1/specs");
+        assert_eq!(strip_query_and_fragment("v1/specs"), "v1/specs");
+    }
+
+    #[test]
+    fn test_is_version_segment() {
+        assert!(is_version_segment("v1"));
+        assert!(is_version_segment("v10"));
+        assert!(!is_version_segment("v"));
+        assert!(!is_version_segment("1"));
+        assert!(!is_version_segment("v1beta"));
+        assert!(!is_version_segment("V1"));
+    }
 
     #[test]
     fn test_get_network_api() {

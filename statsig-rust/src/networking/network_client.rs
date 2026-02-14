@@ -4,14 +4,16 @@ use super::network_error::NetworkError;
 use super::providers::get_network_provider;
 use super::{HttpMethod, NetworkProvider, RequestArgs, Response};
 use crate::networking::proxy_config::ProxyConfig;
+use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
+use crate::utils::{is_version_segment, split_host_and_path, strip_query_and_fragment};
 use crate::{log_d, log_i, log_w, StatsigOptions};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const NON_RETRY_CODES: [u16; 6] = [
     400, // Bad Request
@@ -22,6 +24,18 @@ const NON_RETRY_CODES: [u16; 6] = [
     501, // Not Implemented
 ];
 const SHUTDOWN_ERROR: &str = "Request was aborted because the client is shutting down";
+
+const MAX_REQUEST_PATH_LENGTH: usize = 64;
+const LOGGABLE_KEY_PREFIX_LENGTH: usize = 13;
+const DOWNLOAD_CONFIG_SPECS_ENDPOINT: &str = "download_config_specs";
+const GET_ID_LISTS_ENDPOINT: &str = "get_id_lists";
+const DOWNLOAD_ID_LIST_FILE_ENDPOINT: &str = "download_id_list_file";
+const NETWORK_REQUEST_LATENCY_METRIC: &str = "network_request.latency";
+const REQUEST_PATH_TAG: &str = "request_path";
+const STATUS_CODE_TAG: &str = "status_code";
+const IS_SUCCESS_TAG: &str = "is_success";
+const SDK_KEY_TAG: &str = "sdk_key";
+const SOURCE_SERVICE_TAG: &str = "source_service";
 
 const TAG: &str = stringify!(NetworkClient);
 
@@ -34,6 +48,7 @@ pub struct NetworkClient {
     proxy_config: Option<ProxyConfig>,
     silent_on_network_failure: bool,
     disable_file_streaming: bool,
+    loggable_sdk_key: String,
 }
 
 impl NetworkClient {
@@ -64,6 +79,7 @@ impl NetworkClient {
             disable_file_streaming: options
                 .map(|opts| opts.disable_disk_access.unwrap_or(false))
                 .unwrap_or(false),
+            loggable_sdk_key: get_loggable_sdk_key(sdk_key),
         }
     }
 
@@ -136,6 +152,7 @@ impl NetworkClient {
                 return Err(NetworkError::ShutdownError(request_args.url));
             }
 
+            let request_start = Instant::now();
             let mut response = match self.net_provider.upgrade() {
                 Some(net_provider) => net_provider.send(&method, &request_args).await,
                 None => {
@@ -171,6 +188,8 @@ impl NetworkClient {
                 .as_ref()
                 .and_then(|data| data.get_header_ref("x-statsig-region").cloned());
             let success = (200..300).contains(&status.unwrap_or(0));
+            let duration_ms = request_start.elapsed().as_millis() as f64;
+            self.log_network_request_latency_to_ob(&request_args.url, status, success, duration_ms);
 
             if let Some(key) = request_args.diagnostics_key {
                 let mut end_marker =
@@ -252,6 +271,7 @@ impl NetworkClient {
         self
     }
 
+    // Logging helpers
     fn log_warning(&self, error: &NetworkError, args: &RequestArgs) {
         let exception = error.name();
 
@@ -268,7 +288,131 @@ impl NetworkClient {
             });
         }
     }
+
+    // ------------------------------------------------------------
+    // Observability Logging Helpers (OB only) - START
+    // ------------------------------------------------------------
+    fn log_network_request_latency_to_ob(
+        &self,
+        url: &str,
+        status: Option<u16>,
+        success: bool,
+        duration_ms: f64,
+    ) {
+        if !should_log_network_request_latency(url) {
+            return;
+        }
+
+        let status_code = status
+            .map(|code| code.to_string())
+            .unwrap_or("none".to_string());
+        let (source_service, request_path) = get_source_service_and_request_path(url);
+        self.ops_stats.log(ObservabilityEvent::new_event(
+            MetricType::Dist,
+            NETWORK_REQUEST_LATENCY_METRIC.to_string(),
+            duration_ms,
+            Some(HashMap::from([
+                (REQUEST_PATH_TAG.to_string(), request_path),
+                (STATUS_CODE_TAG.to_string(), status_code),
+                (IS_SUCCESS_TAG.to_string(), success.to_string()),
+                (SDK_KEY_TAG.to_string(), self.loggable_sdk_key.clone()),
+                (SOURCE_SERVICE_TAG.to_string(), source_service),
+            ])),
+        ));
+    }
 }
+
+fn get_loggable_sdk_key(sdk_key: &str) -> String {
+    sdk_key.chars().take(LOGGABLE_KEY_PREFIX_LENGTH).collect()
+}
+
+fn is_latency_loggable_endpoint(endpoint: &str) -> bool {
+    endpoint == DOWNLOAD_CONFIG_SPECS_ENDPOINT
+        || endpoint == GET_ID_LISTS_ENDPOINT
+        || endpoint == DOWNLOAD_ID_LIST_FILE_ENDPOINT
+}
+
+fn get_version_and_endpoint_for_latency<'a>(
+    segments: &'a [&'a str],
+) -> Option<(usize, &'a str, &'a str)> {
+    // Find a known endpoint pattern, then verify the segment right before it is `/v{number}`.
+    segments
+        .iter()
+        .enumerate()
+        .find_map(|(endpoint_index, endpoint_segment)| {
+            if !is_latency_loggable_endpoint(endpoint_segment) || endpoint_index == 0 {
+                return None;
+            }
+
+            let version_index = endpoint_index - 1;
+            let version_segment = segments[version_index];
+            is_version_segment(version_segment).then_some((
+                version_index,
+                version_segment,
+                *endpoint_segment,
+            ))
+        })
+}
+
+fn should_log_network_request_latency(url: &str) -> bool {
+    let (_, raw_path) = split_host_and_path(url);
+    let normalized_path = strip_query_and_fragment(raw_path).trim_start_matches('/');
+    let segments: Vec<&str> = normalized_path
+        .split('/')
+        .filter(|segment| !segment.is_empty())
+        .collect();
+
+    get_version_and_endpoint_for_latency(&segments).is_some()
+}
+
+fn with_host_prefix(host_prefix: &str, path: &str) -> String {
+    if host_prefix.is_empty() {
+        path.to_string()
+    } else {
+        format!("{host_prefix}{path}")
+    }
+}
+
+fn get_source_service_and_request_path(url: &str) -> (String, String) {
+    let (host_prefix, raw_path) = split_host_and_path(url);
+    let normalized_path = strip_query_and_fragment(raw_path).trim_start_matches('/');
+    let segments: Vec<&str> = normalized_path
+        .split('/')
+        .filter(|segment| !segment.is_empty())
+        .collect();
+
+    if let Some((version_index, version_segment, endpoint_segment)) =
+        get_version_and_endpoint_for_latency(&segments)
+    {
+        let request_path = format!("/{version_segment}/{endpoint_segment}");
+        let source_service_suffix = segments[..version_index].join("/");
+        let source_service = with_host_prefix(&host_prefix, &source_service_suffix)
+            .trim_end_matches('/')
+            .to_string();
+        return (source_service, request_path);
+    }
+
+    let fallback_request_path: String = normalized_path
+        .chars()
+        .take(MAX_REQUEST_PATH_LENGTH)
+        .collect();
+    let request_path = if fallback_request_path.is_empty() {
+        "/".to_string()
+    } else {
+        format!("/{fallback_request_path}")
+    };
+    let source_service = host_prefix.trim_end_matches('/').to_string();
+    (source_service, request_path)
+}
+
+#[cfg(test)]
+fn get_request_path(url: &str) -> String {
+    get_source_service_and_request_path(url).1
+}
+
+// ------------------------------------------------------------
+// Observability Logging Helpers (OB only) - END
+// ------------------------------------------------------------
 
 fn get_error_message_for_status(
     status: Option<u16>,
@@ -312,4 +456,59 @@ fn get_error_message_for_status(
     }
 
     format!("{generic_message}: {message}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        get_request_path, get_source_service_and_request_path, should_log_network_request_latency,
+    };
+
+    #[test]
+    fn test_get_request_path_with_sample_urls() {
+        assert_eq!(
+            get_request_path("https://api.statsigcdn.com/v1/download_id_list_file/3wHgh0FhoQH0p"),
+            "/v1/download_id_list_file"
+        );
+        assert_eq!(
+            get_request_path("https://api.statsigcdn.com/v1/download_id_list_file/Q9mXcz7L1P43tRb8kV2dHyw%2FM6nJf0Ae5uTqsrC4Gp9KZ?foo=bar"),
+            "/v1/download_id_list_file"
+        );
+        assert_eq!(
+            get_request_path("https://api.statsig.com/v1/get_id_lists/secret-abcdef"),
+            "/v1/get_id_lists"
+        );
+        assert_eq!(
+            get_request_path("https://api.statsigcdn.com/v2/download_config_specs/secret-123456"),
+            "/v2/download_config_specs"
+        );
+    }
+
+    #[test]
+    fn test_should_log_network_request_latency_for_supported_endpoints() {
+        assert!(!should_log_network_request_latency(
+            "https://api.statsig.com/v1/log_event"
+        ));
+        assert!(!should_log_network_request_latency(
+            "https://api.statsig.com/v1/sdk_exception"
+        ));
+        assert!(should_log_network_request_latency(
+            "https://api.statsig.com/v1/get_id_lists/secret-abcdef"
+        ));
+        assert!(should_log_network_request_latency(
+            "https://api.statsigcdn.com/v2/download_config_specs/secret-123456"
+        ));
+        assert!(should_log_network_request_latency(
+            "https://api.statsigcdn.com/v1/download_id_list_file/3wHgh0FhoQH0p"
+        ));
+    }
+
+    #[test]
+    fn test_get_source_service_and_request_path() {
+        let (source_service, request_path) = get_source_service_and_request_path(
+            "http://127.0.0.1:12345/mock-uuid/v2/download_config_specs/secret-key.json?x=1",
+        );
+        assert_eq!(source_service, "http://127.0.0.1:12345/mock-uuid");
+        assert_eq!(request_path, "/v2/download_config_specs");
+    }
 }

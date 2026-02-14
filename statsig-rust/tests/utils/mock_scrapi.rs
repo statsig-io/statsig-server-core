@@ -37,6 +37,7 @@ pub enum Endpoint {
     LogEvent,
     DownloadConfigSpecs,
     GetIdLists,
+    DownloadIdListFile,
 }
 
 impl Display for Endpoint {
@@ -45,6 +46,7 @@ impl Display for Endpoint {
             Endpoint::LogEvent => write!(f, "/v1/log_event"),
             Endpoint::DownloadConfigSpecs => write!(f, "/v2/download_config_specs"),
             Endpoint::GetIdLists => write!(f, "/v1/get_id_lists"),
+            Endpoint::DownloadIdListFile => write!(f, "/v1/download_id_list_file"),
         }
     }
 }
@@ -207,6 +209,13 @@ impl MockScrapi {
         match endpoint {
             Endpoint::DownloadConfigSpecs => builder.and(path_regex(format!(
                 "^/{}/v2/download_config_specs",
+                self.uuid
+            ))),
+            Endpoint::GetIdLists => {
+                builder.and(path_regex(format!("^/{}/v1/get_id_lists", self.uuid)))
+            }
+            Endpoint::DownloadIdListFile => builder.and(path_regex(format!(
+                "^/{}/v1/download_id_list_file",
                 self.uuid
             ))),
             _ => builder.and(path(format!("/{}{}", self.uuid, endpoint))),
