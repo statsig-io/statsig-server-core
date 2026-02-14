@@ -33,7 +33,6 @@ jobs:
           - node-core-rc
           - node-legacy
           - php-core
-          - php-legacy
           - python-core-beta
           - python-core-rc
           - python-legacy
