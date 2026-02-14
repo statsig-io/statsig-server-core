@@ -16,6 +16,7 @@ use chrono::Utc;
 use parking_lot::RwLock;
 use percent_encoding::percent_encode;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 use tokio::sync::Notify;
@@ -26,6 +27,7 @@ use super::SpecsInfo;
 pub struct NetworkResponse {
     pub data: ResponseData,
     pub api: String,
+    pub requested_deltas: bool,
 }
 
 pub const DEFAULT_SPECS_URL: &str = "https://api.statsigcdn.com/v2/download_config_specs";
@@ -45,7 +47,8 @@ pub struct StatsigHttpSpecsAdapter {
     sync_interval_duration: Duration,
     ops_stats: Arc<OpsStatsForInstance>,
     shutdown_notify: Arc<Notify>,
-    enable_dcs_deltas: bool,
+    allow_dcs_deltas: bool,
+    use_deltas_next_request: AtomicBool,
 }
 
 impl StatsigHttpSpecsAdapter {
@@ -100,7 +103,8 @@ impl StatsigHttpSpecsAdapter {
             )),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             shutdown_notify: Arc::new(Notify::new()),
-            enable_dcs_deltas,
+            allow_dcs_deltas: enable_dcs_deltas,
+            use_deltas_next_request: AtomicBool::new(enable_dcs_deltas),
         }
     }
 
@@ -115,10 +119,12 @@ impl StatsigHttpSpecsAdapter {
     ) -> Result<NetworkResponse, NetworkError> {
         let request_args = self.get_request_args(&current_specs_info, trigger);
         let url = request_args.url.clone();
+        let requested_deltas = request_args.deltas_enabled;
         match self.handle_specs_request(request_args).await {
             Ok(response) => Ok(NetworkResponse {
                 data: response,
                 api: get_api_from_url(&url),
+                requested_deltas,
             }),
             Err(e) => Err(e),
         }
@@ -161,7 +167,8 @@ impl StatsigHttpSpecsAdapter {
             );
         }
 
-        if self.enable_dcs_deltas {
+        let use_deltas_next_req = self.use_deltas_next_request.load(Ordering::SeqCst);
+        if use_deltas_next_req {
             params.insert("accept_deltas".to_string(), "true".to_string());
         }
 
@@ -172,6 +179,7 @@ impl StatsigHttpSpecsAdapter {
                 SpecsSyncTrigger::Background => 3,
             },
             query_params: Some(params),
+            deltas_enabled: use_deltas_next_req,
             accept_gzip_response: true,
             diagnostics_key: Some(KeyType::DownloadConfigSpecs),
             timeout_ms,
@@ -184,6 +192,7 @@ impl StatsigHttpSpecsAdapter {
         &self,
         mut request_args: RequestArgs,
     ) -> Result<NetworkResponse, NetworkError> {
+        let requested_deltas = request_args.deltas_enabled;
         let fallback_url = match &self.fallback_url {
             Some(url) => construct_specs_url(url.as_str(), &self.sdk_key),
             None => {
@@ -203,6 +212,7 @@ impl StatsigHttpSpecsAdapter {
         Ok(NetworkResponse {
             data: response,
             api: get_api_from_url(&fallback_url),
+            requested_deltas,
         })
     }
 
@@ -286,6 +296,7 @@ impl StatsigHttpSpecsAdapter {
         response: Result<NetworkResponse, NetworkError>,
     ) -> Result<(), StatsigErr> {
         let resp = response.map_err(StatsigErr::NetworkError)?;
+        let requested_deltas = resp.requested_deltas;
 
         let update = SpecsUpdate {
             data: resp.data,
@@ -318,6 +329,21 @@ impl StatsigHttpSpecsAdapter {
                 Err(err)
             }
         };
+
+        if matches!(&result, Err(StatsigErr::ChecksumFailure(_))) {
+            let was_deltas_used = self.use_deltas_next_request.swap(false, Ordering::SeqCst);
+            if was_deltas_used {
+                log_d!(TAG, "Disabling delta requests after checksum failure");
+            }
+        } else if result.is_ok() && !requested_deltas && self.allow_dcs_deltas {
+            let was_deltas_used = self.use_deltas_next_request.swap(true, Ordering::SeqCst);
+            if !was_deltas_used {
+                log_d!(
+                    TAG,
+                    "Re-enabling delta requests after successful non-delta specs update"
+                );
+            }
+        }
 
         self.ops_stats.add_marker(
             Marker::new(
@@ -423,4 +449,141 @@ pub enum SpecsSyncTrigger {
     Initial,
     Background,
     Manual,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{networking::ResponseData, specs_adapter::SpecsUpdate, StatsigOptions};
+    use std::sync::atomic::AtomicUsize;
+
+    struct ChecksumFailingListener;
+
+    impl SpecsUpdateListener for ChecksumFailingListener {
+        fn did_receive_specs_update(&self, _update: SpecsUpdate) -> Result<(), StatsigErr> {
+            Err(StatsigErr::ChecksumFailure(
+                "simulated checksum failure".to_string(),
+            ))
+        }
+
+        fn get_current_specs_info(&self) -> SpecsInfo {
+            SpecsInfo::empty()
+        }
+    }
+
+    struct ChecksumFailingThenSuccessListener {
+        calls: AtomicUsize,
+    }
+
+    impl SpecsUpdateListener for ChecksumFailingThenSuccessListener {
+        fn did_receive_specs_update(&self, _update: SpecsUpdate) -> Result<(), StatsigErr> {
+            let curr = self.calls.fetch_add(1, Ordering::SeqCst);
+            if curr == 0 {
+                Err(StatsigErr::ChecksumFailure(
+                    "simulated checksum failure".to_string(),
+                ))
+            } else {
+                Ok(())
+            }
+        }
+
+        fn get_current_specs_info(&self) -> SpecsInfo {
+            SpecsInfo::empty()
+        }
+    }
+
+    #[tokio::test]
+    async fn test_disable_accept_deltas_after_checksum_failure() {
+        let options = StatsigOptions {
+            enable_dcs_deltas: Some(true),
+            ..StatsigOptions::default()
+        };
+        let adapter = StatsigHttpSpecsAdapter::new(
+            "secret-key",
+            Some(&options),
+            Some("https://example.com/v2/download_config_specs".to_string()),
+        );
+        let specs_info = SpecsInfo::empty();
+
+        let request_before = adapter.get_request_args(&specs_info, SpecsSyncTrigger::Manual);
+        assert_eq!(
+            request_before
+                .query_params
+                .as_ref()
+                .and_then(|p| p.get("accept_deltas"))
+                .map(String::as_str),
+            Some("true")
+        );
+
+        adapter.initialize(Arc::new(ChecksumFailingListener));
+        let result = adapter
+            .process_spec_data(Ok(NetworkResponse {
+                data: ResponseData::from_bytes(vec![]),
+                api: "test-api".to_string(),
+                requested_deltas: true,
+            }))
+            .await;
+
+        assert!(matches!(result, Err(StatsigErr::ChecksumFailure(_))));
+
+        let request_after = adapter.get_request_args(&specs_info, SpecsSyncTrigger::Manual);
+        assert!(request_after
+            .query_params
+            .as_ref()
+            .is_none_or(|p| !p.contains_key("accept_deltas")));
+    }
+
+    #[tokio::test]
+    async fn test_reenable_accept_deltas_after_successful_non_delta_update() {
+        let options = StatsigOptions {
+            enable_dcs_deltas: Some(true),
+            ..StatsigOptions::default()
+        };
+        let adapter = StatsigHttpSpecsAdapter::new(
+            "secret-key",
+            Some(&options),
+            Some("https://example.com/v2/download_config_specs".to_string()),
+        );
+        let specs_info = SpecsInfo::empty();
+
+        adapter.initialize(Arc::new(ChecksumFailingThenSuccessListener {
+            calls: AtomicUsize::new(0),
+        }));
+
+        let first_result = adapter
+            .process_spec_data(Ok(NetworkResponse {
+                data: ResponseData::from_bytes(vec![]),
+                api: "test-api".to_string(),
+                requested_deltas: true,
+            }))
+            .await;
+
+        assert!(matches!(first_result, Err(StatsigErr::ChecksumFailure(_))));
+
+        let request_after_failure = adapter.get_request_args(&specs_info, SpecsSyncTrigger::Manual);
+        assert!(request_after_failure
+            .query_params
+            .as_ref()
+            .is_none_or(|p| !p.contains_key("accept_deltas")));
+
+        let second_result = adapter
+            .process_spec_data(Ok(NetworkResponse {
+                data: ResponseData::from_bytes(vec![]),
+                api: "test-api".to_string(),
+                requested_deltas: false,
+            }))
+            .await;
+
+        assert!(second_result.is_ok());
+
+        let request_after_success = adapter.get_request_args(&specs_info, SpecsSyncTrigger::Manual);
+        assert_eq!(
+            request_after_success
+                .query_params
+                .as_ref()
+                .and_then(|p| p.get("accept_deltas"))
+                .map(String::as_str),
+            Some("true")
+        );
+    }
 }

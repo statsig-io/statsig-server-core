@@ -106,7 +106,11 @@ pub fn deserialize_protobuf(
                 consume_errors(ops_stats, || next_specs.handle_deletions_update(env));
             }
             pb::SpecsEnvelopeKind::Checksums => {
-                consume_errors(ops_stats, || next_specs.handle_checksums_update(env));
+                next_specs.handle_checksums_update(env).map_err(|e| {
+                    StatsigErr::ChecksumFailure(format!(
+                        "Failed to apply protobuf checksums update: {e}"
+                    ))
+                })?;
             }
             pb::SpecsEnvelopeKind::CopyPrev => {
                 consume_errors(ops_stats, || {
