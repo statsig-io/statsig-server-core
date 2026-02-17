@@ -35,7 +35,8 @@ public class LayerTest {
     value.put("string_param", 123);
     value.put("boolean_param", "not_a_boolean");
 
-    Layer layer = new Layer("test_layer", "rule_id", "group_name", value, "experiment_name", null);
+    Layer layer =
+        new Layer("test_layer", "rule_id", "group_name", value, "experiment_name", null, null);
 
     setupLayerWithMockStatsig(layer, mockStatsig);
 
@@ -78,7 +79,8 @@ public class LayerTest {
     value.put("string_param", "correct_string");
     value.put("boolean_param", true);
 
-    Layer layer = new Layer("test_layer", "rule_id", "group_name", value, "experiment_name", null);
+    Layer layer =
+        new Layer("test_layer", "rule_id", "group_name", value, "experiment_name", null, null);
 
     setupLayerWithMockStatsig(layer, mockStatsig);
 

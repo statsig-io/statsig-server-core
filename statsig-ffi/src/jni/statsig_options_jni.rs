@@ -46,6 +46,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     proxy_config: JObject,
     spec_adapters_config_list: JObject,
     enable_id_lists: jboolean,
+    enable_dcs_deltas: jboolean,
     wait_for_country_lookup_init: jboolean,
     disable_all_logging: jboolean,
     wait_for_user_agent_init: jboolean,
@@ -59,6 +60,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     let id_lists_url = jstring_to_string(&mut env, id_lists_url);
     let environment = jstring_to_string(&mut env, environment);
     let enable_id_lists = jboolean_to_bool(enable_id_lists);
+    let enable_dcs_deltas = jboolean_to_bool(enable_dcs_deltas);
     let wait_for_country_lookup_init = jboolean_to_bool(wait_for_country_lookup_init);
     let wait_for_user_agent_init = jboolean_to_bool(wait_for_user_agent_init);
     let disable_country_lookup = jboolean_to_bool(disable_country_lookup);
@@ -132,6 +134,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .output_logger_provider(output_logger_rust)
         .proxy_config(proxy_config_rust)
         .enable_id_lists(enable_id_lists)
+        .enable_dcs_deltas(enable_dcs_deltas)
         .disable_all_logging(disable_all_logging)
         .output_log_level(Some(output_logger_level as u32))
         .service_name(service_name)

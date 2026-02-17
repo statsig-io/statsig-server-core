@@ -59,7 +59,10 @@ impl StatsigHttpIdListsAdapter {
 
         let network = NetworkClient::new(
             sdk_key,
-            Some(StatsigMetadata::get_constant_request_headers(sdk_key)),
+            Some(StatsigMetadata::get_constant_request_headers(
+                sdk_key,
+                options.service_name.as_deref(),
+            )),
             Some(options),
         );
 

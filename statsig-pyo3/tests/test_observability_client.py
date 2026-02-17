@@ -116,10 +116,10 @@ def test_observability_client_usage(statsig_setup):
     assert dist_event is not None, "distribution() should have been called"
     assert isinstance(dist_event[2], float)
     assert dist_event[3] == {
-        "success": "true",
+        "init_success": "true",
         "store_populated": "true",
         "source": "Network",
-        "spec_source_api": f"http://{httpserver.host}:{httpserver.port}",
+        "init_source_api": f"http://{httpserver.host}:{httpserver.port}/v2",
     }
 
 

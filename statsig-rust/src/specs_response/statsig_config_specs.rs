@@ -151,6 +151,47 @@ pub mod id_type {
         CustomIdType(::prost::alloc::string::String),
     }
 }
+/// *
+///
+/// Key names to be deleted from the DCS' top-level fields.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RulesetsResponseDeletions {
+    #[prost(string, repeated, tag = "1")]
+    pub dynamic_configs: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag = "2")]
+    pub feature_gates: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag = "3")]
+    pub layer_configs: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag = "4")]
+    pub experiment_to_layer: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag = "5")]
+    pub condition_map: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag = "6")]
+    pub sdk_configs: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag = "7")]
+    pub param_stores: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag = "8")]
+    pub cmab_configs: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag = "9")]
+    pub override_rules: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag = "10")]
+    pub overrides: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RulesetsChecksums {
+    /// Map of checksums, representing all of the entity checksums combined
+    /// e.g.
+    /// {
+    /// "dynamic_configs": 1234,
+    /// "layer_configs": 4567,
+    /// ...
+    /// }
+    #[prost(map = "string, uint64", tag = "1")]
+    pub field_checksums: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        u64,
+    >,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum SpecsEnvelopeKind {
@@ -168,6 +209,11 @@ pub enum SpecsEnvelopeKind {
     ParamStore = 6,
     /// Condition
     Condition = 7,
+    /// RulesetsResponseDeletions
+    Deletions = 8,
+    /// RulesetsChecksums
+    Checksums = 9,
+    CopyPrev = 10,
 }
 impl SpecsEnvelopeKind {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -184,6 +230,9 @@ impl SpecsEnvelopeKind {
             Self::LayerConfig => "SPECS_ENVELOPE_KIND_LAYER_CONFIG",
             Self::ParamStore => "SPECS_ENVELOPE_KIND_PARAM_STORE",
             Self::Condition => "SPECS_ENVELOPE_KIND_CONDITION",
+            Self::Deletions => "SPECS_ENVELOPE_KIND_DELETIONS",
+            Self::Checksums => "SPECS_ENVELOPE_KIND_CHECKSUMS",
+            Self::CopyPrev => "SPECS_ENVELOPE_KIND_COPY_PREV",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -197,6 +246,9 @@ impl SpecsEnvelopeKind {
             "SPECS_ENVELOPE_KIND_LAYER_CONFIG" => Some(Self::LayerConfig),
             "SPECS_ENVELOPE_KIND_PARAM_STORE" => Some(Self::ParamStore),
             "SPECS_ENVELOPE_KIND_CONDITION" => Some(Self::Condition),
+            "SPECS_ENVELOPE_KIND_DELETIONS" => Some(Self::Deletions),
+            "SPECS_ENVELOPE_KIND_CHECKSUMS" => Some(Self::Checksums),
+            "SPECS_ENVELOPE_KIND_COPY_PREV" => Some(Self::CopyPrev),
             _ => None,
         }
     }

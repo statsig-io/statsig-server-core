@@ -1,15 +1,15 @@
 {
   "name": "FJsjPaDrS4JydcV8A+6bAAH6PKUpax0Uh6WpfV1cltA=",
-  "rule_id": "default",
-  "id_type": "userID",
-  "secondary_exposures": [],
-  "__value": {
+  "ruleID": "default",
+  "idType": "userID",
+  "secondaryExposures": [],
+  "value": {
     "a_param": "foo",
     "another_param": 45.6
   },
-  "group_name": "",
-  "is_device_based": false,
-  "allocated_experiment_name": "test_exper_name",
-  "explicit_parameters": [],
-  "undelegated_secondary_exposures": []
+  "groupName": "",
+  "isDeviceBased": false,
+  "allocatedExperimentName": "test_exper_name",
+  "explicitParameters": [],
+  "undelegatedSecondaryExposures": []
 }

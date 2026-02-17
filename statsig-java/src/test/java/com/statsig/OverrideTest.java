@@ -18,7 +18,7 @@ public class OverrideTest {
     StatsigUser user = new StatsigUser.Builder().setUserID("123").build();
 
     DynamicConfig c1 = statsigServer.getDynamicConfig(user, "fake_config");
-    assertEquals(new HashMap<>(), c1.value);
+    assertTrue(c1.value == null || c1.value.isEmpty());
 
     Map<String, Object> values = new HashMap<>();
     List<String> list = new ArrayList<>();

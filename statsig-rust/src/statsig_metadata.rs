@@ -10,7 +10,7 @@ lazy_static! {
     static ref STATSIG_METADATA: RwLock<StatsigMetadata> = RwLock::new(StatsigMetadata::new());
 }
 
-pub const SDK_VERSION: &str = "0.15.2-rc.2602140110";
+pub const SDK_VERSION: &str = "0.15.2-beta.2602150309";
 
 const TAG: &str = stringify!(StatsigMetadata);
 
@@ -94,7 +94,10 @@ impl StatsigMetadata {
     }
 
     #[must_use]
-    pub fn get_constant_request_headers(sdk_key: &str) -> HashMap<String, String> {
+    pub fn get_constant_request_headers(
+        sdk_key: &str,
+        service_name: Option<&str>,
+    ) -> HashMap<String, String> {
         let meta = Self::get_metadata();
 
         HashMap::from([
@@ -102,6 +105,10 @@ impl StatsigMetadata {
             ("STATSIG-SDK-TYPE".to_string(), meta.sdk_type),
             ("STATSIG-SDK-VERSION".to_string(), meta.sdk_version),
             ("STATSIG-SERVER-SESSION-ID".to_string(), meta.session_id),
+            (
+                "x-request-service".to_string(),
+                service_name.unwrap_or("unknown").to_string(),
+            ),
         ])
     }
 

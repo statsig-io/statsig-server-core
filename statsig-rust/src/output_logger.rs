@@ -103,7 +103,7 @@ pub fn initialize_output_logger(
         Some(state) => state,
         None => {
             eprintln!(
-                "[Statsig] Failed to acquire write lock for logger: Failed to lock LOGGER_STATE"
+                "[Statsig] Failed to acquire write lock for initialize_output_logger: Failed to lock LOGGER_STATE"
             );
             return;
         }
@@ -139,7 +139,7 @@ pub fn shutdown_output_logger() {
         Some(state) => state,
         None => {
             eprintln!(
-                "[Statsig] Failed to acquire write lock for logger: Failed to lock LOGGER_STATE"
+                "[Statsig] Failed to acquire write lock for shutdown_output_logger: Failed to lock LOGGER_STATE"
             );
             return;
         }

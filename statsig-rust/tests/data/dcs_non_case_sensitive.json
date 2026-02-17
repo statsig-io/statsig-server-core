@@ -1,0 +1,45 @@
+{
+    "dynamic_configs": {},
+    "feature_gates": {
+        "test_none_case_sensitive": {
+            "type": "feature_gate",
+            "salt": "dummy_salt",
+            "enabled": true,
+            "defaultValue": false,
+            "rules": [
+              {
+                "name": "dummy_rule_name",
+                "passPercentage": 100,
+                "conditions": [
+                  "2158073487"
+                ],
+                "returnValue": true,
+                "id": "dummy_rule_id",
+                "salt": "dummy_salt",
+                "idType": "stableID",
+                "samplingRate": 201
+              }
+            ],
+            "idType": "stableID",
+            "entity": "feature_gate",
+            "version": 3
+          }
+    },
+    "experiment_to_layer": {},
+    "layer_configs": {},
+    "has_updates": true,
+    "time": 1767981029384,
+    "company_id": "dummy_company_id",
+    "condition_map": {
+      "2158073487": {
+        "type": "user_field",
+        "targetValue": null,
+        "operator": "none_case_sensitive",
+        "field": "userID",
+        "additionalValues": {},
+        "idType": "stableID"
+      }
+    },
+    "response_format": "dcs-v2",
+    "checksum": "8506699639233708000"
+}

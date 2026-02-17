@@ -19,6 +19,7 @@ func TestStatsigOptionsBuilderArgs(t *testing.T) {
 		SpecsUrl:                    ptr("http://localhost:3000/specs"),
 		LogEventUrl:                 ptr("http://localhost:3000/events"),
 		Environment:                 ptr("production"),
+		ServiceName:                 ptr("statsig-go-service"),
 		SpecsSyncIntervalMs:         ptr(int32(1000)),
 		EventLoggingFlushIntervalMs: ptr(int32(2000)),
 		EventLoggingMaxQueueSize:    ptr(int32(5000)),

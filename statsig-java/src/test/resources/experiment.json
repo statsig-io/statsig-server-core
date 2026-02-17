@@ -1,28 +1,26 @@
 {
   "name": "Test Experiment",
-  "rule_id": "rule-123",
+  "ruleID": "rule-123",
   "value": {
     "key1": "value1",
     "key2": 2
   },
-  "group_name": "test-group",
+  "groupName": "test-group",
   "details": {
     "reason": "Network:Recognized",
     "lcut": 1740188822154,
-    "received_at": 1741990144165
+    "receivedAt": 1741990144165
   },
-  "__evaluation": {
-    "secondary_exposures": [
-      {
-        "gate": "global_holdout",
-        "gateValue": "false",
-        "ruleID": "3QoA4ncNdVGBaMt3N1KYjz:0.50:12"
-      },
-      {
-        "gate": "exp_holdout",
-        "gateValue": "false",
-        "ruleID": "1rEqLOpCROaRafv7ubGgax111"
-      }
-    ]
-  }
+  "secondaryExposures": [
+    {
+      "gate": "global_holdout",
+      "gateValue": "false",
+      "ruleID": "3QoA4ncNdVGBaMt3N1KYjz:0.50:12"
+    },
+    {
+      "gate": "exp_holdout",
+      "gateValue": "false",
+      "ruleID": "1rEqLOpCROaRafv7ubGgax111"
+    }
+  ]
 }

@@ -3,6 +3,7 @@ package com.statsig;
 import com.alibaba.fastjson2.annotation.JSONCreator;
 import com.alibaba.fastjson2.annotation.JSONField;
 import com.statsig.internal.HasRawJson;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,11 +19,11 @@ public abstract class BaseConfig implements HasRawJson {
   protected BaseConfig(
       @JSONField(name = "name") String name,
       @JSONField(name = "value") Map<String, Object> value,
-      @JSONField(name = "rule_id") String ruleID,
+      @JSONField(name = "ruleID") String ruleID,
       @JSONField(name = "details") EvaluationDetails evaluationDetails,
-      @JSONField(name = "id_type") String idType) {
+      @JSONField(name = "idType") String idType) {
     this.name = name;
-    this.value = value;
+    this.value = value == null ? new HashMap<>() : value;
     this.ruleID = ruleID;
     this.evaluationDetails = evaluationDetails;
     this.idType = idType;

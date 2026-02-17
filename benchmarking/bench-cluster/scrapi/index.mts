@@ -1,6 +1,7 @@
 import express from 'express';
 import _ from 'lodash';
 import fs from 'node:fs';
+import zlib from 'node:zlib';
 
 const evalProjSdkKey: string = process.env.EVAL_PROJ_SDK_KEY ?? '';
 if (!evalProjSdkKey || evalProjSdkKey === '') {
@@ -10,6 +11,11 @@ if (!evalProjSdkKey || evalProjSdkKey === '') {
 const benchmarkSdkKey: string = process.env.BENCH_CLUSTER_SDK_KEY ?? '';
 if (!benchmarkSdkKey || benchmarkSdkKey === '') {
   throw new Error('BENCH_CLUSTER_SDK_KEY is not set');
+}
+
+const largeProjSdkKey: string = process.env.PERF_SDK_KEY ?? '';
+if (!largeProjSdkKey || largeProjSdkKey === '') {
+  throw new Error('PERF_SDK_KEY is not set');
 }
 
 const cdnUrl = 'https://api.statsigcdn.com';
@@ -22,6 +28,16 @@ const dcsV2 = await fetch(
 const dcsV1 = await fetch(
   `${cdnUrl}/v1/download_config_specs/${evalProjSdkKey}.json`,
 ).then((res) => res.json());
+
+const largeProjProtoDcsV2 = await fetch(
+  `${cdnUrl}/v2/download_config_specs/${largeProjSdkKey}.json?supports_proto=true`,
+).then((res) => res.bytes());
+
+const largeProjJsonDcsV2 = await fetch(
+  `${cdnUrl}/v2/download_config_specs/${largeProjSdkKey}.json`,
+)
+  .then((res) => res.text())
+  .then((text) => gzipJsonString(text));
 
 delete dcsV1.hashed_sdk_key_used;
 
@@ -64,8 +80,19 @@ app.use((req, res, next) => {
   }
 });
 
-app.use((req, _res, next) => {
+app.use((req, res, next) => {
   const { sdkType, sdkVersion } = getSdkInfo(req);
+
+  res.on('finish', () => {
+    // May be undefined for chunked/streaming responses.
+    const cl = res.getHeader('content-length');
+    const bytes =
+      typeof cl === 'number' ? cl : cl != null ? Number(String(cl)) : 0;
+
+    console.log(
+      `resp_bytes=${bytes} ${req.method} ${req.path} -> ${res.statusCode} (${sdkType}@${sdkVersion})`,
+    );
+  });
 
   if (sdkType === 'unknown') {
     console.log(`${req.method} ${req.path}`);
@@ -116,7 +143,24 @@ app.all(
 );
 
 app.all('/v2/download_config_specs/:sdk_key', async (_req, res) => {
-  res.status(200).json(dcsV2);
+  if (
+    _req.query.supports_proto === 'true' &&
+    _req.params.sdk_key.includes('::BC_USE_PROTO')
+  ) {
+    res
+      .status(200)
+      .setHeader('Content-Type', 'application/octet-stream')
+      .setHeader('Content-Encoding', 'statsig-br')
+      .send(largeProjProtoDcsV2);
+  } else if (_req.params.sdk_key.includes('::BC_USE_JSON')) {
+    res
+      .status(200)
+      .setHeader('Content-Type', 'application/json')
+      .setHeader('Content-Encoding', 'gzip')
+      .send(largeProjJsonDcsV2);
+  } else {
+    res.status(200).json(dcsV2);
+  }
 });
 
 app.all('/v1/get_id_lists', (_req, res) => {
@@ -634,4 +678,8 @@ function getSdkInfo(req: any) {
     sdkType,
     sdkVersion,
   };
+}
+
+function gzipJsonString(input: string): Buffer {
+  return zlib.gzipSync(input);
 }

@@ -54,7 +54,8 @@ pub struct SDKErrorsObserver {
 
 impl SDKErrorsObserver {
     pub fn new(sdk_key: &str, options: &StatsigOptions) -> Self {
-        let mut headers = StatsigMetadata::get_constant_request_headers(sdk_key);
+        let mut headers =
+            StatsigMetadata::get_constant_request_headers(sdk_key, options.service_name.as_deref());
         headers.insert("Content-Type".to_string(), "application/json".to_string());
         let options_logging_copy = serde_json::to_string(options).unwrap_or_default();
         SDKErrorsObserver {

@@ -1,0 +1,91 @@
+{
+  "dynamic_configs": {},
+  "feature_gates": {
+    "test_browser_version": {
+      "type": "feature_gate",
+      "salt": "test_salt_a",
+      "enabled": true,
+      "defaultValue": false,
+      "rules": [
+        {
+          "name": "test_browser_version_rule_name",
+          "passPercentage": 0,
+          "conditions": [
+            "1881221099",
+            "498343767"
+          ],
+          "returnValue": true,
+          "id": "test_browser_version_rule_id",
+          "salt": "test_salt_b",
+          "idType": "userID",
+          "samplingRate": 201
+        }
+      ],
+      "idType": "userID",
+      "entity": "feature_gate",
+      "version": 40,
+      "targetAppIDs": [
+        "test_target_app_id"
+      ]
+    },
+    "test_os_version": {
+      "type": "feature_gate",
+      "salt": "test_salt_c",
+      "enabled": true,
+      "defaultValue": false,
+      "rules": [
+        {
+          "name": "test_os_version_rule_name",
+          "passPercentage": 0,
+          "conditions": [
+            "2578264222"
+          ],
+          "returnValue": true,
+          "id": "test_os_version_rule_id",
+          "salt": "test_salt_d",
+          "idType": "stableID",
+          "samplingRate": 201
+        }
+      ],
+      "idType": "stableID",
+      "entity": "feature_gate",
+      "version": 15,
+      "targetAppIDs": [
+        "test_target_app_id"
+      ]
+    }
+  },
+  "experiment_to_layer": {},
+  "layer_configs": {},
+  "has_updates": true,
+  "time": 1767981029384,
+  "company_id": "dummy_company_id",
+  "condition_map": {
+    "1881221099": {
+      "type": "ua_based",
+      "targetValue": "16767923682",
+      "operator": "version_lt",
+      "field": "browser_version",
+      "additionalValues": {},
+      "idType": "userID"
+    },
+    "498343767": {
+      "type": "ua_based",
+      "targetValue": "0",
+      "operator": "version_gt",
+      "field": "browser_version",
+      "additionalValues": {},
+      "idType": "userID"
+    },
+    "2578264222": {
+      "type": "ua_based",
+      "targetValue": "26.0",
+      "operator": "version_lt",
+      "field": "os_version",
+      "additionalValues": {},
+      "idType": "stableID"
+    }
+  },
+  "response_format": "dcs-v2",
+  "checksum": "test_checksum"
+}

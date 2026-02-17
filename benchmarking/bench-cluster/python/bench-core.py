@@ -16,6 +16,7 @@ sdk_type = "statsig-server-core-python"
 sdk_version = version("statsig-python-core")
 
 SCRAPI_URL = "http://scrapi:8000"
+ITER_ULTRA_LITE = 100
 ITER_LITE = 1000
 ITER_HEAVY = 10_000
 
@@ -157,16 +158,25 @@ async def main():
 
     global_user = StatsigUser(user_id=f"global_user")
 
-    def init_new_statsig(options: StatsigOptions):
-        inst = Statsig("secret-PYTHON_CORE", options)
+    def init_new_statsig(options: StatsigOptions, sdk_key: str):
+        inst = Statsig(sdk_key, options)
         inst.initialize().wait()
         return inst
 
     await benchmark(
         "initialize",
-        "n/a",
-        ITER_LITE,
-        lambda: init_new_statsig(options),
+        "proto",
+        ITER_ULTRA_LITE,
+        lambda: init_new_statsig(options, "secret-PYTHON_CORE::BC_USE_PROTO"),
+        results,
+        cleanup=lambda inst: inst.shutdown().wait(),
+    )
+
+    await benchmark(
+        "initialize",
+        "json",
+        ITER_ULTRA_LITE,
+        lambda: init_new_statsig(options, "secret-PYTHON_CORE::BC_USE_JSON"),
         results,
         cleanup=lambda inst: inst.shutdown().wait(),
     )

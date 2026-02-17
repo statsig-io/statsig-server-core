@@ -111,6 +111,9 @@ namespace Statsig
         [JsonProperty("enable_id_lists")]
         internal bool? enableIDLists;
 
+        [JsonProperty("enable_dcs_deltas")]
+        internal bool? enableDcsDeltas;
+
         [JsonProperty("id_lists_url")]
         internal string? idListsURL;
 
@@ -283,6 +286,12 @@ namespace Statsig
         public StatsigOptionsBuilder SetEnableIDLists(bool enableIDLists)
         {
             this.enableIDLists = enableIDLists;
+            return this;
+        }
+
+        public StatsigOptionsBuilder SetEnableDcsDeltas(bool enableDcsDeltas)
+        {
+            this.enableDcsDeltas = enableDcsDeltas;
             return this;
         }
         public StatsigOptionsBuilder SetIDListsURL(string idListsURL)

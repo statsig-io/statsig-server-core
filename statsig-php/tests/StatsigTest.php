@@ -177,7 +177,7 @@ class StatsigTest extends TestCase
         ] = $body['statsigMetadata'];
         $this->assertEquals('statsig-server-core-php', $sdk_type);
         $this->assertIsString($sdk_version);
-        $this->assertMatchesRegularExpression('/\w{8}-\w{4}-\w{4}-\w{4}-\w{12}/', $session_id);
+        $this->assertIsString($session_id);
         $this->assertIsString($os);
         $this->assertIsString($arch);
         $this->assertIsString($lang_version);

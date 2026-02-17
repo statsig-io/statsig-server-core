@@ -28,6 +28,7 @@ pub enum StatsigErr {
     SerializationError(String),
     JsonParseError(String, String),
     ProtobufParseError(String, String),
+    ChecksumFailure(String),
 
     // Compression
     ZstdDictCompressionError(String),
@@ -90,6 +91,7 @@ impl Display for StatsigErr {
             StatsigErr::ProtobufParseError(type_name, err_msg) => {
                 write!(f, "Failed to parse Protobuf {type_name} - {err_msg}")
             }
+            StatsigErr::ChecksumFailure(msg) => write!(f, "Checksum failure: {msg}"),
 
             StatsigErr::ZstdDictCompressionError(msg) => {
                 write!(f, "Zstd dictionary compression error: {msg}")
@@ -140,6 +142,7 @@ impl StatsigErr {
             StatsigErr::SerializationError(_) => "SerializationError",
             StatsigErr::JsonParseError(_, _) => "JsonParseError",
             StatsigErr::ProtobufParseError(_, _) => "ProtobufParseError",
+            StatsigErr::ChecksumFailure(_) => "ChecksumFailure",
 
             StatsigErr::ZstdDictCompressionError(_) => "ZstdDictCompressionError",
             StatsigErr::GzipError(_) => "GzipError",

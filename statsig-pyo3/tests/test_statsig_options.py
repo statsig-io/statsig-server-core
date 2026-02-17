@@ -5,6 +5,7 @@ from test_observability_client import MockObservabilityClient
 def test_default_statsig_options():
     options = StatsigOptions()
     assert options.specs_url is None
+    assert options.service_name is None
 
 
 def test_initialize_partial_statsig_options():
@@ -32,6 +33,7 @@ def test_full_statsig_options():
         id_lists_sync_interval_ms=1000,
         fallback_to_statsig_api=False,
         environment="production",
+        service_name="statsig-python-service",
         output_log_level="debug",
         global_custom_fields={"key": "value"},
         observability_client=MockObservabilityClient(),
@@ -40,3 +42,4 @@ def test_full_statsig_options():
     assert options.log_event_url == "https://api.statsig.com/v1/log_event"
     assert options.specs_sync_interval_ms == 1000
     assert options.output_log_level == "debug"
+    assert options.service_name == "statsig-python-service"

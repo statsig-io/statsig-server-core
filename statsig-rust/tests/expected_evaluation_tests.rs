@@ -40,6 +40,20 @@ async fn setup(options_overrides: Option<StatsigOptions>) -> Statsig {
     statsig
 }
 
+async fn setup_with_dcs_file(dcs_file: &str) -> Statsig {
+    let options = StatsigOptions {
+        specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(dcs_file))),
+        event_logging_adapter: Some(Arc::new(MockEventLoggingAdapter::new())),
+        // wait_for_user_agent_init: Some(true),
+        // use_third_party_ua_parser: Some(true),
+        ..StatsigOptions::default()
+    };
+
+    let statsig = Statsig::new("secret-key", Some(Arc::new(options)));
+    statsig.initialize().await.unwrap();
+    statsig
+}
+
 #[tokio::test]
 async fn test_string_comparisons_passes() {
     let statsig = setup(None).await;
@@ -278,4 +292,67 @@ async fn test_null_operator() {
     assert_eq!(gate.rule_id, "5kiqP6V3pTnL6GCbm5Vgtg");
 
     statsig.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_none_case_sensitive() {
+    let statsig = setup_with_dcs_file("tests/data/dcs_non_case_sensitive.json").await;
+
+    let user = StatsigUser::with_custom_ids(HashMap::from([("stableID", "a_stable_id")]));
+    let gate = statsig.get_feature_gate(&user, "test_none_case_sensitive");
+    assert!(gate.value);
+
+    let user = StatsigUser::with_user_id("a_user");
+    let gate = statsig.get_feature_gate(&user, "test_none_case_sensitive");
+    assert!(gate.value);
+}
+
+#[tokio::test]
+async fn test_ua_based_browser_version() {
+    let statsig = setup_with_dcs_file("tests/data/dcs_user_agent_versions.json").await;
+
+    // with User Agent
+
+    let mut user = StatsigUser::with_user_id("a_user");
+    user.set_user_agent(Some(
+        "ChatGPT/1.2025.315 (Android 15; V2225; build 2531527)",
+    ));
+
+    let gate = statsig.get_feature_gate(&user, "test_browser_version");
+    assert_eq!(gate.rule_id.as_str(), "test_browser_version_rule_id");
+
+    // without User Agent
+
+    let user = StatsigUser::with_user_id("a_user");
+    let gate = statsig.get_feature_gate(&user, "test_browser_version");
+    assert_eq!(gate.rule_id.as_str(), "default");
+}
+
+#[tokio::test]
+async fn test_ua_based_os_version() {
+    let statsig = setup_with_dcs_file("tests/data/dcs_user_agent_versions.json").await;
+
+    // with User Agent
+
+    let mut user = StatsigUser::with_user_id("a_user");
+    user.set_user_agent(Some(
+        "ChatGPT/1.2025.315 (Android 15; V2225; build 2531527)",
+    ));
+    user.set_custom(Some(HashMap::from([(
+        "os_version".to_string(),
+        "Android 15".to_string(),
+    )])));
+
+    let gate = statsig.get_feature_gate(&user, "test_os_version");
+    assert_eq!(gate.rule_id.as_str(), "default");
+
+    // without User Agent
+
+    let mut user = StatsigUser::with_user_id("a_user");
+    user.set_custom(Some(HashMap::from([(
+        "os_version".to_string(),
+        "Android 15".to_string(),
+    )])));
+    let gate = statsig.get_feature_gate(&user, "test_os_version");
+    assert_eq!(gate.rule_id.as_str(), "default");
 }

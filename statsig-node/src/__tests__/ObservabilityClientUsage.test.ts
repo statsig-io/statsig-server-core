@@ -98,10 +98,10 @@ describe('ObservabilityClient Usage', () => {
       'statsig.sdk.initialization',
       expect.any(Number),
       {
-        success: 'true',
+        init_success: 'true',
         store_populated: 'true',
         source: 'Network',
-        spec_source_api: scrapi.getServerApi(),
+        init_source_api: scrapi.getServerApi() + '/v2',
       },
     );
   });
@@ -112,7 +112,7 @@ describe('ObservabilityClient Usage', () => {
       expect.any(Number),
       {
         source: 'Network',
-        spec_source_api: scrapi.getServerApi(),
+        source_api: scrapi.getServerApi() + '/v2',
         response_format: 'JSON',
       },
     );
@@ -130,7 +130,7 @@ describe('ObservabilityClient Usage', () => {
     expect(observabilityClientSpies.increment).toHaveBeenCalledWith(
       'statsig.sdk.config_no_update',
       1,
-      { source: 'Network', spec_source_api: scrapi.getServerApi() },
+      { source: 'Network', source_api: scrapi.getServerApi() + '/v2' },
     );
   });
 });

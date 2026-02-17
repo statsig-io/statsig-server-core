@@ -64,3 +64,19 @@ fn test_setting_attr_map_fields() {
     user.set_private_attributes(priv_attr.clone());
     assert_eq!(user.get_private_attributes(), Some(&priv_attr));
 }
+
+#[test]
+fn test_setting_statsig_environment() {
+    let mut user = StatsigUser::with_user_id("".to_string());
+    user.set_statsig_environment(Some(HashMap::from([(
+        "test_environment".to_string(),
+        "test_value".to_string(),
+    )])));
+    assert_eq!(
+        user.get_statsig_environment(),
+        Some(HashMap::from([("test_environment", "test_value")]))
+    );
+
+    user.set_statsig_environment(None::<HashMap<String, String>>);
+    assert_eq!(user.get_statsig_environment(), None);
+}

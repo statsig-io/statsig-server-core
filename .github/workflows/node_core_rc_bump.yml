@@ -85,10 +85,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          RC_VER="${{ steps.rc_ver.outputs.version }}"
           pkgs="@statsig/statsig-node-core-rc \
           @statsig/statsig-node-core-linux-x64-gnu-rc \
           @statsig/statsig-node-core-linux-x64-musl-rc"
           echo "Updating to latest rc for: $pkgs"
+          cp pnpm-lock.yaml pnpm-lock.before-rc-bump.yaml
 
           # Update all packages in lib
           pnpm --dir lib update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
@@ -98,6 +100,232 @@ jobs:
 
           # Update all packages in lib/node/service-core
           pnpm --dir lib/node/service-core update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+
+          # statsig-ai special handling:
+          # restore the first node-core peer slot to its pre-bump value, while allowing the second slot to move.
+          # also restore statsig-ai package dependency '@statsig/statsig-node-core' to pre-bump value.
+          # Covers both lockfile forms:
+          # 1) package keys: /@statsig/statsig-ai@x(...)(...)
+          # 2) importer entries: '@statsig/statsig-ai' -> version: x(...)(...)
+          node <<'NODE'
+          const fs = require("fs");
+
+          const beforePath = "pnpm-lock.before-rc-bump.yaml";
+          const lockPath = "pnpm-lock.yaml";
+          if (!fs.existsSync(beforePath) || !fs.existsSync(lockPath)) process.exit(0);
+
+          const before = fs.readFileSync(beforePath, "utf8");
+          let curr = fs.readFileSync(lockPath, "utf8");
+
+          const packageRe =
+            /(\/?@statsig\/statsig-ai@[^()\s:]+)\(@statsig\/statsig-node-core@([^)]+)\)\(@statsig\/statsig-node-core@([^)]+)\)/g;
+          const importerRe =
+            /((?:'|")?@statsig\/statsig-ai(?:'|")?:\s*\n(?:[ \t]+specifier:[^\n]*\n)?[ \t]+version:\s*)([^()\s]+)\(@statsig\/statsig-node-core@([^)]+)\)\(@statsig\/statsig-node-core@([^)]+)\)/g;
+
+          const packageFirstSlotById = new Map();
+          for (const match of before.matchAll(packageRe)) {
+            const aiId = match[1].replace(/^\//, "");
+            if (!packageFirstSlotById.has(aiId)) {
+              packageFirstSlotById.set(aiId, match[2]);
+            }
+          }
+
+          const importerFirstSlotByVersion = new Map();
+          for (const match of before.matchAll(importerRe)) {
+            const version = match[2];
+            if (!importerFirstSlotByVersion.has(version)) {
+              importerFirstSlotByVersion.set(version, match[3]);
+            }
+          }
+
+          let packageReplaceCount = 0;
+          curr = curr.replace(packageRe, (full, aiIdMaybeSlash, firstNow, secondNow) => {
+            const aiId = aiIdMaybeSlash.replace(/^\//, "");
+            const expectedFirst = packageFirstSlotById.get(aiId);
+            if (!expectedFirst || firstNow === expectedFirst) {
+              return full;
+            }
+
+            packageReplaceCount += 1;
+            const prefix = aiIdMaybeSlash.startsWith("/") ? "/" : "";
+            return `${prefix}${aiId}(@statsig/statsig-node-core@${expectedFirst})(@statsig/statsig-node-core@${secondNow})`;
+          });
+
+          let importerReplaceCount = 0;
+          curr = curr.replace(importerRe, (full, linePrefix, version, firstNow, secondNow) => {
+            const expectedFirst = importerFirstSlotByVersion.get(version);
+            if (!expectedFirst || firstNow === expectedFirst) {
+              return full;
+            }
+
+            importerReplaceCount += 1;
+            return `${linePrefix}${version}(@statsig/statsig-node-core@${expectedFirst})(@statsig/statsig-node-core@${secondNow})`;
+          });
+
+          let depReplaceCount = 0;
+          const lines = curr.split("\n");
+          const packageHeaderRe =
+            /^  (\/?@statsig\/statsig-ai@[^()\s:]+)\(@statsig\/statsig-node-core@[^)]+\)\(@statsig\/statsig-node-core@[^)]+\):\s*$/;
+          const topLevelEntryRe = /^  \S.*:\s*$/;
+          const depKeyRe = /^(\s{6}'@statsig\/statsig-node-core':\s*)(\S+)(\s*)$/;
+
+          for (let i = 0; i < lines.length; i++) {
+            const headerMatch = lines[i].match(packageHeaderRe);
+            if (!headerMatch) {
+              continue;
+            }
+
+            const aiId = headerMatch[1].replace(/^\//, "");
+            const expectedFirst = packageFirstSlotById.get(aiId);
+            if (!expectedFirst) {
+              continue;
+            }
+
+            let blockEnd = i + 1;
+            while (blockEnd < lines.length) {
+              if (topLevelEntryRe.test(lines[blockEnd]) && !lines[blockEnd].startsWith("    ")) {
+                break;
+              }
+              blockEnd += 1;
+            }
+
+            let depStart = -1;
+            for (let j = i + 1; j < blockEnd; j++) {
+              if (/^    dependencies:\s*$/.test(lines[j])) {
+                depStart = j;
+                break;
+              }
+            }
+            if (depStart === -1) {
+              continue;
+            }
+
+            let depEnd = depStart + 1;
+            while (
+              depEnd < blockEnd &&
+              (lines[depEnd].startsWith("      ") || lines[depEnd].trim() === "")
+            ) {
+              depEnd += 1;
+            }
+
+            for (let j = depStart + 1; j < depEnd; j++) {
+              const depMatch = lines[j].match(depKeyRe);
+              if (!depMatch) {
+                continue;
+              }
+
+              const currDep = depMatch[2];
+              if (currDep !== expectedFirst) {
+                depReplaceCount += 1;
+                lines[j] = `${depMatch[1]}${expectedFirst}${depMatch[3]}`;
+              }
+              break;
+            }
+          }
+
+          curr = lines.join("\n");
+          fs.writeFileSync(lockPath, curr);
+
+          const updated = fs.readFileSync(lockPath, "utf8");
+          const packageIssues = [];
+          for (const match of updated.matchAll(packageRe)) {
+            const aiId = match[1].replace(/^\//, "");
+            const expectedFirst = packageFirstSlotById.get(aiId);
+            if (expectedFirst && match[2] !== expectedFirst) {
+              packageIssues.push(`${match[1]} expected=${expectedFirst} actual=${match[2]}`);
+            }
+          }
+
+          const importerIssues = [];
+          for (const match of updated.matchAll(importerRe)) {
+            const version = match[2];
+            const expectedFirst = importerFirstSlotByVersion.get(version);
+            if (expectedFirst && match[3] !== expectedFirst) {
+              importerIssues.push(`@statsig/statsig-ai@${version} expected=${expectedFirst} actual=${match[3]}`);
+            }
+          }
+
+          const dependencyIssues = [];
+          const updatedLines = updated.split("\n");
+          for (let i = 0; i < updatedLines.length; i++) {
+            const headerMatch = updatedLines[i].match(packageHeaderRe);
+            if (!headerMatch) {
+              continue;
+            }
+
+            const aiId = headerMatch[1].replace(/^\//, "");
+            const expectedFirst = packageFirstSlotById.get(aiId);
+            if (!expectedFirst) {
+              continue;
+            }
+
+            let blockEnd = i + 1;
+            while (blockEnd < updatedLines.length) {
+              if (
+                topLevelEntryRe.test(updatedLines[blockEnd]) &&
+                !updatedLines[blockEnd].startsWith("    ")
+              ) {
+                break;
+              }
+              blockEnd += 1;
+            }
+
+            let depStart = -1;
+            for (let j = i + 1; j < blockEnd; j++) {
+              if (/^    dependencies:\s*$/.test(updatedLines[j])) {
+                depStart = j;
+                break;
+              }
+            }
+            if (depStart === -1) {
+              continue;
+            }
+
+            let depEnd = depStart + 1;
+            while (
+              depEnd < blockEnd &&
+              (updatedLines[depEnd].startsWith("      ") || updatedLines[depEnd].trim() === "")
+            ) {
+              depEnd += 1;
+            }
+
+            for (let j = depStart + 1; j < depEnd; j++) {
+              const depMatch = updatedLines[j].match(depKeyRe);
+              if (!depMatch) {
+                continue;
+              }
+
+              if (depMatch[2] !== expectedFirst) {
+                dependencyIssues.push(
+                  `${headerMatch[1]} dependency expected=${expectedFirst} actual=${depMatch[2]}`
+                );
+              }
+              break;
+            }
+          }
+
+          console.log(
+            `statsig-ai restore complete: packageEntriesUpdated=${packageReplaceCount}, importerEntriesUpdated=${importerReplaceCount}, dependencyEntriesUpdated=${depReplaceCount}`
+          );
+
+          if (
+            packageIssues.length > 0 ||
+            importerIssues.length > 0 ||
+            dependencyIssues.length > 0
+          ) {
+            for (const issue of packageIssues) {
+              console.error(`[package] ${issue}`);
+            }
+            for (const issue of importerIssues) {
+              console.error(`[importer] ${issue}`);
+            }
+            for (const issue of dependencyIssues) {
+              console.error(`[dependency] ${issue}`);
+            }
+            process.exit(1);
+          }
+          NODE
+          rm -f pnpm-lock.before-rc-bump.yaml
 
           echo "Changed files:"
           git status --porcelain

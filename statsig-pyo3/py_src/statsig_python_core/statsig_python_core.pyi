@@ -215,6 +215,7 @@ class StatsigOptions:
     event_logging_max_queue_size: typing.Optional[builtins.int]
     event_logging_max_pending_batch_queue_size: typing.Optional[builtins.int]
     enable_id_lists: typing.Optional[builtins.bool]
+    enable_dcs_deltas: typing.Optional[builtins.bool]
     wait_for_user_agent_init: typing.Optional[builtins.bool]
     wait_for_country_lookup_init: typing.Optional[builtins.bool]
     disable_country_lookup: typing.Optional[builtins.bool]
@@ -222,6 +223,7 @@ class StatsigOptions:
     id_lists_sync_interval_ms: typing.Optional[builtins.int]
     fallback_to_statsig_api: typing.Optional[builtins.bool]
     environment: typing.Optional[builtins.str]
+    service_name: typing.Optional[builtins.str]
     output_log_level: typing.Optional[builtins.str]
     global_custom_fields: typing.Optional[builtins.dict[builtins.str, typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]
     observability_client: typing.Optional[ObservabilityClientBase]
@@ -235,7 +237,7 @@ class StatsigOptions:
     use_third_party_ua_parser: typing.Optional[builtins.bool]
     disable_disk_access: typing.Optional[builtins.bool]
     experimental_flags: typing.Optional[builtins.set[builtins.str]]
-    def __new__(cls,specs_url:typing.Optional[builtins.str]=None, specs_sync_interval_ms:typing.Optional[builtins.int]=None, init_timeout_ms:typing.Optional[builtins.int]=None, log_event_url:typing.Optional[builtins.str]=None, disable_all_logging:typing.Optional[builtins.bool]=None, disable_network:typing.Optional[builtins.bool]=None, event_logging_flush_interval_ms:typing.Optional[builtins.int]=None, event_logging_max_queue_size:typing.Optional[builtins.int]=None, event_logging_max_pending_batch_queue_size:typing.Optional[builtins.int]=None, enable_id_lists:typing.Optional[builtins.bool]=None, wait_for_user_agent_init:typing.Optional[builtins.bool]=None, wait_for_country_lookup_init:typing.Optional[builtins.bool]=None, disable_country_lookup:typing.Optional[builtins.bool]=None, id_lists_url:typing.Optional[builtins.str]=None, id_lists_sync_interval_ms:typing.Optional[builtins.int]=None, fallback_to_statsig_api:typing.Optional[builtins.bool]=None, environment:typing.Optional[builtins.str]=None, output_log_level:typing.Optional[builtins.str]=None, global_custom_fields:typing.Optional[typing.Mapping[builtins.str, typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]=None, observability_client:typing.Optional[ObservabilityClientBase]=None, data_store:typing.Optional[DataStoreBase]=None, data_store_key_schema_version:typing.Optional[builtins.str]=None, persistent_storage:typing.Optional[PersistentStorageBaseClass]=None, config_compression_mode:typing.Optional[builtins.str]=None, proxy_config:typing.Optional[ProxyConfig]=None, output_logger_provider:typing.Optional[OutputLoggerProviderBase]=None, spec_adapter_configs:typing.Optional[list]=None, use_third_party_ua_parser:typing.Optional[builtins.bool]=None, disable_disk_access:typing.Optional[builtins.bool]=None, experimental_flags:typing.Optional[builtins.set[builtins.str]]=None): ...
+    def __new__(cls,specs_url:typing.Optional[builtins.str]=None, specs_sync_interval_ms:typing.Optional[builtins.int]=None, init_timeout_ms:typing.Optional[builtins.int]=None, log_event_url:typing.Optional[builtins.str]=None, disable_all_logging:typing.Optional[builtins.bool]=None, disable_network:typing.Optional[builtins.bool]=None, event_logging_flush_interval_ms:typing.Optional[builtins.int]=None, event_logging_max_queue_size:typing.Optional[builtins.int]=None, event_logging_max_pending_batch_queue_size:typing.Optional[builtins.int]=None, enable_id_lists:typing.Optional[builtins.bool]=None, enable_dcs_deltas:typing.Optional[builtins.bool]=None, wait_for_user_agent_init:typing.Optional[builtins.bool]=None, wait_for_country_lookup_init:typing.Optional[builtins.bool]=None, disable_country_lookup:typing.Optional[builtins.bool]=None, id_lists_url:typing.Optional[builtins.str]=None, id_lists_sync_interval_ms:typing.Optional[builtins.int]=None, fallback_to_statsig_api:typing.Optional[builtins.bool]=None, environment:typing.Optional[builtins.str]=None, service_name:typing.Optional[builtins.str]=None, output_log_level:typing.Optional[builtins.str]=None, global_custom_fields:typing.Optional[typing.Mapping[builtins.str, typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]=None, observability_client:typing.Optional[ObservabilityClientBase]=None, data_store:typing.Optional[DataStoreBase]=None, data_store_key_schema_version:typing.Optional[builtins.str]=None, persistent_storage:typing.Optional[PersistentStorageBaseClass]=None, config_compression_mode:typing.Optional[builtins.str]=None, proxy_config:typing.Optional[ProxyConfig]=None, output_logger_provider:typing.Optional[OutputLoggerProviderBase]=None, spec_adapter_configs:typing.Optional[list]=None, use_third_party_ua_parser:typing.Optional[builtins.bool]=None, disable_disk_access:typing.Optional[builtins.bool]=None, experimental_flags:typing.Optional[builtins.set[builtins.str]]=None): ...
 
 class StatsigUser:
     user_id: builtins.str
@@ -248,7 +250,8 @@ class StatsigUser:
     custom_ids: typing.Optional[builtins.dict[builtins.str, builtins.str]]
     custom: typing.Optional[builtins.dict[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]
     private_attributes: typing.Optional[builtins.dict[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]
-    def __new__(cls,user_id:typing.Optional[builtins.str]=None, email:typing.Optional[builtins.str]=None, ip:typing.Optional[builtins.str]=None, country:typing.Optional[builtins.str]=None, locale:typing.Optional[builtins.str]=None, app_version:typing.Optional[builtins.str]=None, user_agent:typing.Optional[builtins.str]=None, custom:typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]=None, custom_ids:typing.Optional[typing.Mapping[builtins.str, typing.Union[builtins.str, builtins.int, builtins.float]]]=None, private_attributes:typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]=None): ...
+    statsig_environment: typing.Optional[builtins.dict[builtins.str, builtins.str]]
+    def __new__(cls,user_id:typing.Optional[builtins.str]=None, email:typing.Optional[builtins.str]=None, ip:typing.Optional[builtins.str]=None, country:typing.Optional[builtins.str]=None, locale:typing.Optional[builtins.str]=None, app_version:typing.Optional[builtins.str]=None, user_agent:typing.Optional[builtins.str]=None, custom:typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]=None, custom_ids:typing.Optional[typing.Mapping[builtins.str, typing.Union[builtins.str, builtins.int, builtins.float]]]=None, private_attributes:typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]=None, statsig_environment:typing.Optional[typing.Mapping[builtins.str, builtins.str]]=None): ...
     def set_user_id(self, value:typing.Optional[builtins.str]) -> None:
         ...
 
@@ -277,6 +280,9 @@ class StatsigUser:
         ...
 
     def set_private_attributes(self, value:typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]]) -> None:
+        ...
+
+    def set_statsig_environment(self, value:typing.Optional[typing.Mapping[builtins.str, builtins.str]]) -> None:
         ...
 
     def __getstate__(self) -> bytes:

@@ -14,6 +14,7 @@ type StatsigOptionsBuilder struct {
 	SpecsUrl                    *string `json:"specs_url,omitempty"`
 	LogEventUrl                 *string `json:"log_event_url,omitempty"`
 	Environment                 *string `json:"environment,omitempty"`
+	ServiceName                 *string `json:"service_name,omitempty"`
 	EventLoggingFlushIntervalMs *int32  `json:"event_logging_flush_interval_ms,omitempty"`
 	EventLoggingMaxQueueSize    *int32  `json:"event_logging_max_queue_size,omitempty"`
 	SpecsSyncIntervalMs         *int32  `json:"specs_sync_interval_ms,omitempty"`
@@ -23,6 +24,7 @@ type StatsigOptionsBuilder struct {
 	WaitForCountryLookupInit    *bool   `json:"wait_for_country_lookup_init,omitempty"`
 	WaitForUserAgentInit        *bool   `json:"wait_for_user_agent_init,omitempty"`
 	EnableIdLists               *bool   `json:"enable_id_lists,omitempty"`
+	EnableDcsDeltas             *bool   `json:"enable_dcs_deltas,omitempty"`
 	IdListsUrl                  *string `json:"id_lists_url,omitempty"`
 	IdListsSyncIntervalMs       *int32  `json:"id_lists_sync_interval_ms,omitempty"`
 	DisableAllLogging           *bool   `json:"disable_all_logging,omitempty"`
@@ -51,6 +53,11 @@ func (o *StatsigOptionsBuilder) WithLogEventUrl(logEventUrl string) *StatsigOpti
 
 func (o *StatsigOptionsBuilder) WithEnvironment(environment string) *StatsigOptionsBuilder {
 	o.Environment = &environment
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithServiceName(serviceName string) *StatsigOptionsBuilder {
+	o.ServiceName = &serviceName
 	return o
 }
 
@@ -106,6 +113,11 @@ func (o *StatsigOptionsBuilder) WithDisableNetwork(disableNetwork bool) *Statsig
 
 func (o *StatsigOptionsBuilder) WithEnableIdLists(enableIdLists bool) *StatsigOptionsBuilder {
 	o.EnableIdLists = &enableIdLists
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithEnableDcsDeltas(enableDcsDeltas bool) *StatsigOptionsBuilder {
+	o.EnableDcsDeltas = &enableDcsDeltas
 	return o
 }
 

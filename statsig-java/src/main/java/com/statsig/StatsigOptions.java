@@ -45,6 +45,7 @@ public class StatsigOptions {
             builder.proxyConfig,
             builder.specAdapterConfigs,
             builder.enableIDLists,
+            builder.enableDcsDeltas,
             builder.waitForCountryLookupInit,
             builder.disableAllLogging,
             builder.waitForUserAgentInit,
@@ -87,6 +88,7 @@ public class StatsigOptions {
     private OutputLogger.LogLevel outputLoggerLevel = OutputLogger.LogLevel.WARN;
     private String serviceName;
     private boolean useThirdPartyUAParser;
+    private boolean enableDcsDeltas = false;
 
     public Builder setOutputLoggerLevel(OutputLogger.LogLevel level) {
       this.outputLoggerLevel = level;
@@ -182,6 +184,11 @@ public class StatsigOptions {
 
     public Builder setEnableIDLists(boolean enableIDLists) {
       this.enableIDLists = enableIDLists;
+      return this;
+    }
+
+    public Builder setEnableDcsDeltas(boolean enableDcsDeltas) {
+      this.enableDcsDeltas = enableDcsDeltas;
       return this;
     }
 

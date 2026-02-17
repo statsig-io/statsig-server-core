@@ -5,6 +5,7 @@ import { version as sdkVersion } from 'statsig-node/package.json';
 const sdkType = 'statsig-node';
 
 const SCRAPI_URL = 'http://scrapi:8000';
+const ITER_ULTRA_LITE = 100;
 const ITER_LITE = 1000;
 const ITER_HEAVY = 10_000;
 
@@ -119,10 +120,10 @@ const globalUser = {
 
 await benchmark(
   'initialize',
-  'n/a',
-  ITER_LITE,
+  'json',
+  ITER_ULTRA_LITE,
   async () => {
-    const inst = new StatsigServer('secret-NODE_LEGACY', options);
+    const inst = new StatsigServer('secret-NODE_LEGACY::BC_USE_JSON', options);
     await inst.initializeAsync();
     return inst;
   },

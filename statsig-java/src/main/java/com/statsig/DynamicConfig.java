@@ -9,9 +9,9 @@ public class DynamicConfig extends BaseConfig {
   DynamicConfig(
       @JSONField(name = "name") String name,
       @JSONField(name = "value") Map<String, Object> value,
-      @JSONField(name = "rule_id") String ruleID,
+      @JSONField(name = "ruleID") String ruleID,
       @JSONField(name = "details") EvaluationDetails evaluationDetails,
-      @JSONField(name = "id_type") String idType) {
+      @JSONField(name = "idType") String idType) {
     super(name, value, ruleID, evaluationDetails, idType);
   }
 }

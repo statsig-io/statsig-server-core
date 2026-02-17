@@ -10,6 +10,7 @@ import java.util.Properties;
 
 public class NativeBinaryResolver {
   static final String TAG = "NativeBinaryResolver";
+  static final String STATSIG_SKIP_MUSL_DETECTION = "STATSIG_SKIP_MUSL_DETECTION";
   static String sdkVersion;
 
   public static String osName = System.getProperty("os.name").toLowerCase();
@@ -227,6 +228,11 @@ public class NativeBinaryResolver {
   }
 
   private static boolean isMusl() {
+    Boolean shouldSkipDetection = readShouldSkipMuslDetectionEnv();
+    if (shouldSkipDetection != null && shouldSkipDetection) {
+      return false;
+    }
+
     boolean musl = isMuslFromFilesystem();
     if (!musl) {
       musl = isMuslFromChildProcess();
@@ -260,5 +266,44 @@ public class NativeBinaryResolver {
     } catch (IOException e) {
       return false;
     }
+  }
+
+  static Boolean readShouldSkipMuslDetectionEnv() {
+    String envValue = System.getenv(STATSIG_SKIP_MUSL_DETECTION);
+    Boolean parsed = parseBooleanOverride(envValue);
+    if (envValue != null && parsed == null) {
+      OutputLogger.logWarning(
+          TAG,
+          String.format(
+              "Invalid value '%s' for %s (skip musl detection). Use true/false/1. Falling back to default musl detection.",
+              envValue, STATSIG_SKIP_MUSL_DETECTION));
+    }
+
+    return parsed;
+  }
+
+  static Boolean parseBooleanOverride(String input) {
+    if (input == null) {
+      return null;
+    }
+
+    String normalized = input.trim();
+    if (normalized.isEmpty()) {
+      return null;
+    }
+
+    if (normalized.equalsIgnoreCase("true")) {
+      return true;
+    }
+
+    if (normalized.equals("1")) {
+      return true;
+    }
+
+    if (normalized.equalsIgnoreCase("false")) {
+      return false;
+    }
+
+    return null;
   }
 }
