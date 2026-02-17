@@ -1,0 +1,82 @@
+name: Cut Release Candidate (Manual)
+
+on:
+  workflow_dispatch:
+
+env:
+  # GH Octokit (Kong App)
+  GH_APP_ID: '229901'
+  GH_APP_INSTALLATION_ID: '36921303'
+  GH_APP_PRIVATE_KEY: ${{ secrets.KONG_APP_KEY_V2 }}
+  PUBLIC_RELEASE_REPO: statsig-io/statsig-server-core
+
+jobs:
+  release_candidate:
+    if: github.event.repository.private
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 7.32.4
+
+      - name: Install CLI Dependencies
+        run: pnpm install --dir cli
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Config user
+        run: |
+          git config user.name "Xin Li (Bot)"
+          git config user.email ${{ secrets.XIN_GH_EMAIL }}
+
+      - name: Sync rc branch with main branch
+        run: |
+          git fetch origin rc
+          git fetch origin main
+          git checkout rc
+          git merge origin/main -X theirs -m "[automated] sync rc with main"
+          git push
+          ./tore merge-to-main
+
+      - name: Bump Version In RC Branch
+        id: bump_version
+        run: |
+          git checkout rc
+          ./tore bump-version --create-branch --rc
+
+      - name: Merge Version Bump Changes to RC Branch
+        run: |
+          git fetch origin rc
+          git checkout rc
+          git fetch origin ${{ steps.bump_version.outputs.version_branch }}
+          git merge origin/${{ steps.bump_version.outputs.version_branch }}
+          git push
+
+      - name: Wait to avoid RC timestamp collision
+        run: |
+          # waiting until next minute avoids collisions on retries
+          secs=$(date +%S)
+          wait=$((60 - 10#$secs + 2))
+          if [ $wait -lt 2 ]; then wait=2; fi
+          echo "Sleeping for $wait seconds..."
+          sleep $wait
+
+      - name: Merge Version Bump to Main
+        run: |
+          git checkout main
+          git pull
+          ./tore bump-version --rc --create-branch
+          ./tore merge-to-main
+
+      - name: Create Release
+        run: ./tore gh-create-release private-statsig-server-core
