@@ -41,7 +41,7 @@ jobs:
           git config user.name "Xin Li (Bot)"
           git config user.email ${{ secrets.XIN_GH_EMAIL }}
 
-      - name: Check latest stable release
+      - name: Check latest stable release For Monday
         id: check_stable_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -75,10 +75,12 @@ jobs:
 
       - name: Bump Version In RC Branch
         id: bump_version
+        if: steps.check_stable_release.outputs.should_sync == 'true'
         run: git checkout rc &&
             ./tore bump-version --create-branch --rc
 
       - name: Merge Version Bump Changes to RC Branch
+        if: steps.check_stable_release.outputs.should_sync == 'true'
         run: |
             git fetch origin rc
             git checkout rc 
@@ -87,6 +89,7 @@ jobs:
             git push
 
       - name: Wait to avoid RC timestamp collision
+        if: steps.check_stable_release.outputs.should_sync == 'true'
         run: |
           # waiting until next minute avoids collisions on retries
           secs=$(date +%S)
@@ -96,6 +99,7 @@ jobs:
           sleep $wait
           
       - name: Merge Version Bump to Main
+        if: steps.check_stable_release.outputs.should_sync == 'true'
         run: |
           git checkout main
           git pull
@@ -103,4 +107,5 @@ jobs:
           ./tore merge-to-main
 
       - name: Create Release
+        if: steps.check_stable_release.outputs.should_sync == 'true'
         run: ./tore gh-create-release private-statsig-server-core
