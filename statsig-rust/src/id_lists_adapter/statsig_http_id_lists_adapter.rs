@@ -11,6 +11,7 @@ use crate::{
     log_d, log_e, log_error_to_statsig_and_console, StatsigErr, StatsigOptions, StatsigRuntime,
 };
 use async_trait::async_trait;
+use chrono::Utc;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
@@ -25,6 +26,10 @@ const DEFAULT_ID_LIST_SYNC_INTERVAL_MS: u32 = 60_000;
 type IdListsResponse = HashMap<String, IdListMetadata>;
 
 const TAG: &str = stringify!(StatsigHttpIdListsAdapter);
+const ID_LISTS_SYNC_OVERALL_LATENCY_METRIC: &str = "id_lists_sync_overall.latency";
+const ID_LISTS_SYNC_OVERALL_MANIFEST_SUCCESS_TAG: &str = "id_list_manifest_success";
+const ID_LISTS_SYNC_OVERALL_SUCCEED_SINGLE_ID_LIST_NUMBER_TAG: &str =
+    "succeed_single_id_list_number";
 
 pub struct StatsigHttpIdListsAdapter {
     id_lists_manifest_url: String,
@@ -318,8 +323,36 @@ impl StatsigHttpIdListsAdapter {
     }
 
     async fn sync_id_lists(&self) -> Result<(), StatsigErr> {
-        let new_manifest = self.fetch_id_list_manifests_from_network().await?;
-        let curr_manifest = self.get_current_id_list_metadata()?;
+        let sync_start_ms = Utc::now().timestamp_millis() as u64;
+        let mut id_list_manifest_success = false;
+        let mut successful_single_id_list_number = 0_u64;
+
+        let new_manifest = match self.fetch_id_list_manifests_from_network().await {
+            Ok(manifest) => {
+                id_list_manifest_success = true;
+                manifest
+            }
+            Err(e) => {
+                self.log_id_lists_sync_overall_latency(
+                    sync_start_ms,
+                    id_list_manifest_success,
+                    successful_single_id_list_number,
+                );
+                return Err(e);
+            }
+        };
+
+        let curr_manifest = match self.get_current_id_list_metadata() {
+            Ok(manifest) => manifest,
+            Err(e) => {
+                self.log_id_lists_sync_overall_latency(
+                    sync_start_ms,
+                    id_list_manifest_success,
+                    successful_single_id_list_number,
+                );
+                return Err(e);
+            }
+        };
 
         let mut changes = HashMap::new();
 
@@ -370,17 +403,30 @@ impl StatsigHttpIdListsAdapter {
                 continue;
             }
 
-            let data = self
+            let single_id_list_download_result = self
                 .fetch_individual_id_list_changes_from_network(
                     &new_metadata.url,
                     changeset.range_start,
                 )
-                .await?;
+                .await;
+
+            let raw_changeset = match single_id_list_download_result {
+                Ok(raw_changeset) => raw_changeset,
+                Err(e) => {
+                    self.log_id_lists_sync_overall_latency(
+                        sync_start_ms,
+                        id_list_manifest_success,
+                        successful_single_id_list_number,
+                    );
+                    return Err(e);
+                }
+            };
+            successful_single_id_list_number += 1;
 
             updates.insert(
                 list_name,
                 IdListUpdate {
-                    raw_changeset: Some(data),
+                    raw_changeset: Some(raw_changeset),
                     new_metadata,
                 },
             );
@@ -416,17 +462,11 @@ impl StatsigHttpIdListsAdapter {
             None,
         );
 
-        let (metric_name, metric_value) = if result.is_ok() {
-            ("individual_id_list_download_success", 1.0)
-        } else {
-            ("individual_id_list_download_failure", 1.0)
-        };
-        self.ops_stats.log(ObservabilityEvent::new_event(
-            MetricType::Increment,
-            metric_name.to_string(),
-            metric_value,
-            None,
-        ));
+        self.log_id_lists_sync_overall_latency(
+            sync_start_ms,
+            id_list_manifest_success,
+            successful_single_id_list_number,
+        );
 
         result
     }
@@ -465,6 +505,31 @@ impl StatsigHttpIdListsAdapter {
             marker = marker.with_url(url);
         }
         self.ops_stats.add_marker(marker, None);
+    }
+
+    fn log_id_lists_sync_overall_latency(
+        &self,
+        sync_start_ms: u64,
+        id_list_manifest_success: bool,
+        successful_single_id_list_number: u64,
+    ) {
+        let latency_ms =
+            (Utc::now().timestamp_millis() as u64).saturating_sub(sync_start_ms) as f64;
+        self.ops_stats.log(ObservabilityEvent::new_event(
+            MetricType::Dist,
+            ID_LISTS_SYNC_OVERALL_LATENCY_METRIC.to_string(),
+            latency_ms,
+            Some(HashMap::from([
+                (
+                    ID_LISTS_SYNC_OVERALL_MANIFEST_SUCCESS_TAG.to_string(),
+                    id_list_manifest_success.to_string(),
+                ),
+                (
+                    ID_LISTS_SYNC_OVERALL_SUCCEED_SINGLE_ID_LIST_NUMBER_TAG.to_string(),
+                    successful_single_id_list_number.to_string(),
+                ),
+            ])),
+        ));
     }
 }
 
