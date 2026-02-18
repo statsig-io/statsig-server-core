@@ -675,3 +675,75 @@ async fn test_init_from_network() {
         Some(&mock_scrapi.get_server_api())
     );
 }
+
+#[tokio::test]
+#[serial]
+async fn test_config_sync_overall_latency_recorded_for_network_error() {
+    let obs_client = Arc::new(MockObservabilityClient {
+        calls: Mutex::new(Vec::new()),
+    });
+
+    let mock_scrapi = MockScrapi::new().await;
+
+    mock_scrapi
+        .stub(EndpointStub {
+            method: Method::GET,
+            response: StubData::String("{\"success\": false}".to_string()),
+            status: 500,
+            ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
+        })
+        .await;
+
+    let weak_obs_client = Arc::downgrade(&obs_client) as Weak<dyn ObservabilityClient>;
+    let statsig = Statsig::new(
+        SDK_KEY,
+        Some(Arc::new(StatsigOptions {
+            observability_client: Some(weak_obs_client),
+            disable_all_logging: Some(true),
+            specs_url: Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs)),
+            output_log_level: Some(LogLevel::Debug),
+            specs_sync_interval_ms: Some(5),
+            ..StatsigOptions::new()
+        })),
+    );
+
+    let _ = statsig.initialize().await;
+    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+
+    let mut found_tags = None;
+    let mut found_value = 0.0;
+
+    let deadline = Instant::now() + Duration::from_secs(1);
+    while Instant::now() < deadline {
+        {
+            let calls = obs_client.calls.lock().unwrap();
+            for call in calls.iter() {
+                if let RecordedCall::Dist(metric_name, value, tags) = call {
+                    if metric_name == "statsig.sdk.config_sync_overall.latency" {
+                        found_tags = tags.clone();
+                        found_value = *value;
+                        break;
+                    }
+                }
+            }
+        }
+        if found_tags.is_some() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+
+    assert!(
+        found_tags.is_some(),
+        "Expected config_sync_overall.latency metric"
+    );
+    let tags = found_tags.unwrap();
+    let error = tags.get("error").cloned().unwrap_or_default();
+
+    assert!(found_value > 0.0);
+    assert_eq!(tags.get("source_api"), Some(&mock_scrapi.get_server_api()));
+    assert_eq!(tags.get("network_success"), Some(&"false".to_string()));
+    assert_eq!(tags.get("process_success"), Some(&"false".to_string()));
+    assert_eq!(tags.get("format"), Some(&"unknown".to_string()));
+    assert!(error.contains("500"));
+}

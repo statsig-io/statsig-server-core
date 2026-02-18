@@ -85,7 +85,7 @@ impl StatsigDataStoreSpecsAdapter {
             data: ResponseData::from_bytes(update.result.unwrap_or_default().into_bytes()),
             source: SpecsSource::Adapter("DataStore".to_string()),
             received_at: Utc::now().timestamp_millis() as u64,
-            source_api: None,
+            source_api: Some("datastore".to_string()),
         }) {
             log_w!(TAG, "Failed to send specs update to listener: {e}");
         }
@@ -122,7 +122,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
             data: ResponseData::from_bytes(data.into_bytes()),
             source: SpecsSource::Adapter("DataStore".to_string()),
             received_at: Utc::now().timestamp_millis() as u64,
-            source_api: None,
+            source_api: Some("datastore".to_string()),
         })
     }
 

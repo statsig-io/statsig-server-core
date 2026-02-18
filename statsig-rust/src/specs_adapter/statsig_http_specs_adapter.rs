@@ -1,4 +1,5 @@
 use crate::networking::{NetworkClient, NetworkError, RequestArgs, ResponseData};
+use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::diagnostics::ContextType;
@@ -26,7 +27,7 @@ use super::SpecsInfo;
 
 pub struct NetworkResponse {
     pub data: ResponseData,
-    pub api: String,
+    pub loggable_api: String,
     pub requested_deltas: bool,
 }
 
@@ -37,6 +38,13 @@ pub const DEFAULT_SYNC_INTERVAL_MS: u32 = 10_000;
 pub const INIT_DICT_ID: &str = "null";
 
 const TAG: &str = stringify!(StatsigHttpSpecsAdapter);
+const CONFIG_SYNC_OVERALL_LATENCY_METRIC: &str = "config_sync_overall.latency";
+const CONFIG_SYNC_OVERALL_FORMAT_TAG: &str = "format";
+const CONFIG_SYNC_OVERALL_SOURCE_API_TAG: &str = "source_api";
+const CONFIG_SYNC_OVERALL_ERROR_TAG: &str = "error";
+const CONFIG_SYNC_OVERALL_NETWORK_SUCCESS_TAG: &str = "network_success";
+const CONFIG_SYNC_OVERALL_PROCESS_SUCCESS_TAG: &str = "process_success";
+
 pub struct StatsigHttpSpecsAdapter {
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
     network: NetworkClient,
@@ -50,6 +58,38 @@ pub struct StatsigHttpSpecsAdapter {
     allow_dcs_deltas: bool,
     use_deltas_next_request: AtomicBool,
 }
+
+// OB client -- START
+// These types are only for the config_sync_overall.latency observability metric added in this change.
+enum ResponseFormat {
+    Json,
+    PlainText,
+    Protobuf,
+    Unknown,
+}
+
+enum NetworkSyncOutcome {
+    Success,
+    Failure,
+}
+
+impl NetworkSyncOutcome {
+    fn as_bool(&self) -> bool {
+        matches!(self, Self::Success)
+    }
+}
+
+impl ResponseFormat {
+    fn as_str(&self) -> &str {
+        match self {
+            ResponseFormat::Json => "json",
+            ResponseFormat::PlainText => "plain_text",
+            ResponseFormat::Protobuf => "protobuf",
+            ResponseFormat::Unknown => "unknown",
+        }
+    }
+}
+// OB client -- END
 
 impl StatsigHttpSpecsAdapter {
     #[must_use]
@@ -123,7 +163,7 @@ impl StatsigHttpSpecsAdapter {
         match self.handle_specs_request(request_args).await {
             Ok(response) => Ok(NetworkResponse {
                 data: response,
-                api: get_api_from_url(&url),
+                loggable_api: get_api_from_url(&url),
                 requested_deltas,
             }),
             Err(e) => Err(e),
@@ -211,7 +251,7 @@ impl StatsigHttpSpecsAdapter {
         let response = self.handle_specs_request(request_args).await?;
         Ok(NetworkResponse {
             data: response,
-            api: get_api_from_url(&fallback_url),
+            loggable_api: get_api_from_url(&fallback_url),
             requested_deltas,
         })
     }
@@ -275,21 +315,138 @@ impl StatsigHttpSpecsAdapter {
             }
         }
 
+        let sync_start_ms = Utc::now().timestamp_millis() as u64;
         let response = self
             .fetch_specs_from_network(current_specs_info.clone(), trigger)
             .await;
-        let result = self.process_spec_data(response).await;
+        let (mut source_api, mut response_format, mut network_success) = match &response {
+            Ok(response) => (
+                response.loggable_api.clone(),
+                Self::get_response_format(&response.data),
+                NetworkSyncOutcome::Success,
+            ),
+            Err(_) => (
+                get_api_from_url(&construct_specs_url(
+                    self.specs_url.as_str(),
+                    self.sdk_key.as_str(),
+                )),
+                ResponseFormat::Unknown,
+                NetworkSyncOutcome::Failure,
+            ),
+        };
+
+        let mut result = self.process_spec_data(response).await;
 
         if result.is_err() && self.fallback_url.is_some() {
             log_d!(TAG, "Falling back to statsig api");
             let response = self
                 .handle_fallback_request(self.get_request_args(&current_specs_info, trigger))
                 .await;
-            return self.process_spec_data(response).await;
+            match &response {
+                Ok(response) => {
+                    source_api = response.loggable_api.clone();
+                    response_format = Self::get_response_format(&response.data);
+                    network_success = NetworkSyncOutcome::Success;
+                }
+                Err(_) => {
+                    // Backup request failed, so no successful network payload was returned.
+                    if let Some(fallback_url) = self.fallback_url.as_ref() {
+                        source_api = get_api_from_url(&construct_specs_url(
+                            fallback_url.as_str(),
+                            self.sdk_key.as_str(),
+                        ));
+                    }
+                    network_success = NetworkSyncOutcome::Failure;
+                }
+            }
+            result = self.process_spec_data(response).await;
         }
+
+        let process_success = !matches!(result.as_ref(), Err(StatsigErr::NetworkError(_)));
+        self.log_config_sync_overall_latency(
+            sync_start_ms,
+            &source_api,
+            response_format.as_str(),
+            network_success.as_bool(),
+            process_success,
+            result
+                .as_ref()
+                .err()
+                .map_or_else(String::new, |e| e.to_string()),
+        );
 
         result
     }
+
+    // --------- START - Observability helpers ---------
+    fn get_response_format(response_data: &ResponseData) -> ResponseFormat {
+        if Self::is_response_protobuf(response_data) {
+            return ResponseFormat::Protobuf;
+        }
+
+        let content_type = match response_data.get_header_ref("content-type") {
+            Some(content_type) => content_type.to_ascii_lowercase(),
+            None => return ResponseFormat::Unknown,
+        };
+
+        if content_type.contains("application/json") || content_type.contains("+json") {
+            return ResponseFormat::Json;
+        }
+
+        if content_type.contains("text/plain") {
+            return ResponseFormat::PlainText;
+        }
+
+        ResponseFormat::Unknown
+    }
+
+    fn is_response_protobuf(response_data: &ResponseData) -> bool {
+        let content_type = response_data.get_header_ref("content-type");
+        if content_type.map(|s| s.as_str().contains("application/octet-stream")) != Some(true) {
+            return false;
+        }
+
+        let content_encoding = response_data.get_header_ref("content-encoding");
+        content_encoding.map(|s| s.as_str().contains("statsig-br")) == Some(true)
+    }
+
+    fn log_config_sync_overall_latency(
+        &self,
+        sync_start_ms: u64,
+        source_api: &str,
+        response_format: &str,
+        network_success: bool,
+        process_success: bool,
+        error: String,
+    ) {
+        let latency_ms =
+            (Utc::now().timestamp_millis() as u64).saturating_sub(sync_start_ms) as f64;
+        self.ops_stats.log(ObservabilityEvent::new_event(
+            MetricType::Dist,
+            CONFIG_SYNC_OVERALL_LATENCY_METRIC.to_string(),
+            latency_ms,
+            Some(HashMap::from([
+                (
+                    CONFIG_SYNC_OVERALL_SOURCE_API_TAG.to_string(),
+                    get_api_from_url(source_api),
+                ),
+                (
+                    CONFIG_SYNC_OVERALL_FORMAT_TAG.to_string(),
+                    response_format.to_string(),
+                ),
+                (CONFIG_SYNC_OVERALL_ERROR_TAG.to_string(), error),
+                (
+                    CONFIG_SYNC_OVERALL_NETWORK_SUCCESS_TAG.to_string(),
+                    network_success.to_string(),
+                ),
+                (
+                    CONFIG_SYNC_OVERALL_PROCESS_SUCCESS_TAG.to_string(),
+                    process_success.to_string(),
+                ),
+            ])),
+        ));
+    }
+    // --------- END - Observability helpers ---------
 
     async fn process_spec_data(
         &self,
@@ -302,7 +459,7 @@ impl StatsigHttpSpecsAdapter {
             data: resp.data,
             source: SpecsSource::Network,
             received_at: Utc::now().timestamp_millis() as u64,
-            source_api: Some(resp.api),
+            source_api: Some(resp.loggable_api),
         };
 
         self.ops_stats.add_marker(
@@ -455,6 +612,7 @@ pub enum SpecsSyncTrigger {
 mod tests {
     use super::*;
     use crate::{networking::ResponseData, specs_adapter::SpecsUpdate, StatsigOptions};
+    use std::collections::HashMap;
     use std::sync::atomic::AtomicUsize;
 
     struct ChecksumFailingListener;
@@ -519,7 +677,7 @@ mod tests {
         let result = adapter
             .process_spec_data(Ok(NetworkResponse {
                 data: ResponseData::from_bytes(vec![]),
-                api: "test-api".to_string(),
+                loggable_api: "test-api".to_string(),
                 requested_deltas: true,
             }))
             .await;
@@ -553,7 +711,7 @@ mod tests {
         let first_result = adapter
             .process_spec_data(Ok(NetworkResponse {
                 data: ResponseData::from_bytes(vec![]),
-                api: "test-api".to_string(),
+                loggable_api: "test-api".to_string(),
                 requested_deltas: true,
             }))
             .await;
@@ -569,7 +727,7 @@ mod tests {
         let second_result = adapter
             .process_spec_data(Ok(NetworkResponse {
                 data: ResponseData::from_bytes(vec![]),
-                api: "test-api".to_string(),
+                loggable_api: "test-api".to_string(),
                 requested_deltas: false,
             }))
             .await;
@@ -585,5 +743,54 @@ mod tests {
                 .map(String::as_str),
             Some("true")
         );
+    }
+
+    #[test]
+    fn test_get_response_format_json() {
+        let mut headers = HashMap::new();
+        headers.insert("content-type".to_string(), "application/json".to_string());
+        let data = ResponseData::from_bytes_with_headers(vec![], Some(headers));
+        assert!(matches!(
+            StatsigHttpSpecsAdapter::get_response_format(&data),
+            ResponseFormat::Json
+        ));
+    }
+
+    #[test]
+    fn test_get_response_format_plain_text() {
+        let mut headers = HashMap::new();
+        headers.insert(
+            "content-type".to_string(),
+            "text/plain; charset=utf-8".to_string(),
+        );
+        let data = ResponseData::from_bytes_with_headers(vec![], Some(headers));
+        assert!(matches!(
+            StatsigHttpSpecsAdapter::get_response_format(&data),
+            ResponseFormat::PlainText
+        ));
+    }
+
+    #[test]
+    fn test_get_response_format_protobuf() {
+        let mut headers = HashMap::new();
+        headers.insert(
+            "content-type".to_string(),
+            "application/octet-stream".to_string(),
+        );
+        headers.insert("content-encoding".to_string(), "statsig-br".to_string());
+        let data = ResponseData::from_bytes_with_headers(vec![], Some(headers));
+        assert!(matches!(
+            StatsigHttpSpecsAdapter::get_response_format(&data),
+            ResponseFormat::Protobuf
+        ));
+    }
+
+    #[test]
+    fn test_get_response_format_unknown_without_content_type() {
+        let data = ResponseData::from_bytes(vec![]);
+        assert!(matches!(
+            StatsigHttpSpecsAdapter::get_response_format(&data),
+            ResponseFormat::Unknown
+        ));
     }
 }
