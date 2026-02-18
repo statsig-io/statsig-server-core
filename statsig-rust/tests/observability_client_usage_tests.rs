@@ -127,6 +127,75 @@ async fn setup_with_id_lists(
     (mock_scrapi, statsig)
 }
 
+async fn setup_with_id_lists_single_list_failure(
+    observability_client: &Arc<MockObservabilityClient>,
+) -> (MockScrapi, Statsig) {
+    std::env::set_var("STATSIG_RUNNING_TESTS", "true");
+    let mock_scrapi = MockScrapi::new().await;
+
+    let mut raw_dcs_str = load_contents("eval_proj_dcs.json");
+    raw_dcs_str = raw_dcs_str.replace(
+        r#""checksum":"8506699639233708000""#,
+        r#""IGNORED_CHECKSUM_VALUE":"""#,
+    );
+
+    mock_scrapi
+        .stub(EndpointStub {
+            method: Method::GET,
+            response: StubData::String(raw_dcs_str),
+            ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
+        })
+        .await;
+
+    let manifest_url = format!(
+        "{}/{}",
+        mock_scrapi.url_for_endpoint(Endpoint::GetIdLists),
+        SDK_KEY
+    );
+    let individual_id_list_url = format!(
+        "{}/{}",
+        mock_scrapi.url_for_endpoint(Endpoint::DownloadIdListFile),
+        "3wHgh0FhoQH0p"
+    );
+    let id_lists_manifest = format!(
+        r#"{{"company_id_list":{{"name":"company_id_list","size":100,"url":"{}","creationTime":1721417546000,"fileID":"4t0BEqak3w1UcidsPcpQXN"}}}}"#,
+        individual_id_list_url
+    );
+
+    mock_scrapi
+        .stub(EndpointStub {
+            method: Method::POST,
+            response: StubData::String(id_lists_manifest),
+            ..EndpointStub::with_endpoint(Endpoint::GetIdLists)
+        })
+        .await;
+
+    mock_scrapi
+        .stub(EndpointStub {
+            method: Method::GET,
+            response: StubData::String("{\"success\": false}".to_string()),
+            status: 500,
+            ..EndpointStub::with_endpoint(Endpoint::DownloadIdListFile)
+        })
+        .await;
+
+    let weak_obs_client = Arc::downgrade(observability_client) as Weak<dyn ObservabilityClient>;
+    let statsig = Statsig::new(
+        SDK_KEY,
+        Some(Arc::new(StatsigOptions {
+            observability_client: Some(weak_obs_client),
+            specs_url: Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs)),
+            enable_id_lists: Some(true),
+            id_lists_url: Some(manifest_url.clone()),
+            disable_all_logging: Some(true),
+            output_log_level: Some(LogLevel::Debug),
+            ..StatsigOptions::new()
+        })),
+    );
+
+    (mock_scrapi, statsig)
+}
+
 #[derive(Debug, PartialEq)]
 enum RecordedCall {
     Init,
@@ -379,6 +448,106 @@ async fn test_network_request_latency_tags_recorded_for_dcs_and_id_lists() {
     assert!(
         found_all_metrics,
         "Expected network_request.latency metrics for DCS, ID list manifest, and individual ID list requests"
+    );
+}
+
+#[tokio::test]
+#[serial]
+async fn test_id_lists_sync_overall_latency_tags_recorded_for_success() {
+    let obs_client = Arc::new(MockObservabilityClient {
+        calls: Mutex::new(Vec::new()),
+    });
+
+    let (_mock_scrapi, statsig) = setup_with_id_lists(&obs_client).await;
+    statsig.initialize().await.unwrap();
+
+    let mut found_tags = None;
+    let mut found_value = 0.0;
+
+    let deadline = Instant::now() + Duration::from_secs(1);
+    while Instant::now() < deadline {
+        {
+            let calls = obs_client.calls.lock().unwrap();
+            for call in calls.iter() {
+                if let RecordedCall::Dist(metric_name, value, tags) = call {
+                    if metric_name == "statsig.sdk.id_lists_sync_overall.latency" {
+                        found_tags = tags.clone();
+                        found_value = *value;
+                        break;
+                    }
+                }
+            }
+        }
+        if found_tags.is_some() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+
+    assert!(
+        found_tags.is_some(),
+        "Expected id_lists_sync_overall.latency metric"
+    );
+    let tags = found_tags.unwrap();
+
+    assert!(found_value > 0.0);
+    assert_eq!(
+        tags.get("id_list_manifest_success"),
+        Some(&"true".to_string())
+    );
+    assert_eq!(
+        tags.get("succeed_single_id_list_number"),
+        Some(&"1".to_string())
+    );
+}
+
+#[tokio::test]
+#[serial]
+async fn test_id_lists_sync_overall_latency_tags_recorded_for_single_list_failure() {
+    let obs_client = Arc::new(MockObservabilityClient {
+        calls: Mutex::new(Vec::new()),
+    });
+
+    let (_mock_scrapi, statsig) = setup_with_id_lists_single_list_failure(&obs_client).await;
+    let _ = statsig.initialize().await;
+
+    let mut found_tags = None;
+    let mut found_value = 0.0;
+
+    let deadline = Instant::now() + Duration::from_secs(1);
+    while Instant::now() < deadline {
+        {
+            let calls = obs_client.calls.lock().unwrap();
+            for call in calls.iter() {
+                if let RecordedCall::Dist(metric_name, value, tags) = call {
+                    if metric_name == "statsig.sdk.id_lists_sync_overall.latency" {
+                        found_tags = tags.clone();
+                        found_value = *value;
+                        break;
+                    }
+                }
+            }
+        }
+        if found_tags.is_some() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+
+    assert!(
+        found_tags.is_some(),
+        "Expected id_lists_sync_overall.latency metric"
+    );
+    let tags = found_tags.unwrap();
+
+    assert!(found_value > 0.0);
+    assert_eq!(
+        tags.get("id_list_manifest_success"),
+        Some(&"true".to_string())
+    );
+    assert_eq!(
+        tags.get("succeed_single_id_list_number"),
+        Some(&"0".to_string())
     );
 }
 
