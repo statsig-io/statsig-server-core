@@ -462,18 +462,6 @@ impl StatsigHttpIdListsAdapter {
             None,
         );
 
-        let (metric_name, metric_value) = if result.is_ok() {
-            ("individual_id_list_download_success", 1.0)
-        } else {
-            ("individual_id_list_download_failure", 1.0)
-        };
-        self.ops_stats.log(ObservabilityEvent::new_event(
-            MetricType::Increment,
-            metric_name.to_string(),
-            metric_value,
-            None,
-        ));
-
         self.log_id_lists_sync_overall_latency(
             sync_start_ms,
             id_list_manifest_success,
