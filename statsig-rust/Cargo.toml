@@ -26,7 +26,8 @@ fancy-regex = "0.17"
 reqwest = { version = "0.12.14", features = [
     "json",
     "gzip",
-    "rustls-tls",
+    "rustls-tls-native-roots",
+    "rustls-tls-webpki-roots",
     "brotli",
 ], optional = true, default-features = false }
 serde = { version = "1.0.204", features = ["derive"] }
