@@ -247,6 +247,7 @@ impl<'de> Deserialize<'de> for Condition {
             field: Option<DynamicString>,
             additional_values: Option<HashMap<InternedString, InternedString>>,
             id_type: DynamicString,
+            checksum: Option<InternedString>,
         }
 
         let mut internal = ConditionInternal::deserialize(deserializer)?;
@@ -266,7 +267,7 @@ impl<'de> Deserialize<'de> for Condition {
             field: internal.field,
             additional_values: internal.additional_values,
             id_type: internal.id_type,
-            checksum: None,
+            checksum: internal.checksum,
         })
     }
 }
