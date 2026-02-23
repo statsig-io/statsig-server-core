@@ -17,6 +17,7 @@ pub struct RequestArgs {
     pub retries: u32, // 1 initial + N 'retries'
     pub headers: Option<HashMap<String, String>>,
     pub query_params: Option<HashMap<String, String>>,
+    pub id_list_file_id: Option<String>, // for logging
     pub deltas_enabled: bool,
     pub accept_gzip_response: bool,
     pub timeout_ms: u64,
@@ -41,6 +42,7 @@ impl RequestArgs {
             retries: 0,
             headers: None,
             query_params: None,
+            id_list_file_id: None,
             deltas_enabled: false,
             accept_gzip_response: false,
             timeout_ms: 0,
