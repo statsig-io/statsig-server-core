@@ -5,6 +5,7 @@ public class ProxyConfig {
   public int proxyPort;
   public String proxyAuth;
   public String proxyProtocol;
+  public String caCertPath;
 
   public String getProxyHost() {
     return proxyHost;
@@ -36,5 +37,13 @@ public class ProxyConfig {
 
   public void setProxyProtocol(String proxyProtocol) {
     this.proxyProtocol = proxyProtocol;
+  }
+
+  public String getCaCertPath() {
+    return caCertPath;
+  }
+
+  public void setCaCertPath(String caCertPath) {
+    this.caCertPath = caCertPath;
   }
 }

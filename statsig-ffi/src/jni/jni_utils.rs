@@ -40,11 +40,18 @@ pub fn convert_java_proxy_config_to_rust(
             Err(_) => return None,
         };
 
+    let ca_cert_path: JString =
+        match env.get_field(java_proxy_config, "caCertPath", "Ljava/lang/String;") {
+            Ok(field) => field.l().unwrap().into(),
+            Err(_) => return None,
+        };
+
     Some(ProxyConfig {
         proxy_host: jstring_to_string(env, proxy_host),
         proxy_port,
         proxy_auth: jstring_to_string(env, proxy_auth),
         proxy_protocol: jstring_to_string(env, proxy_protocol),
+        ca_cert_path: jstring_to_string(env, ca_cert_path),
     })
 }
 

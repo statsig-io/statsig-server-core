@@ -200,6 +200,7 @@ export interface ProxyConfig {
   proxyPort?: number
   proxyAuth?: string
   proxyProtocol?: string
+  caCertPath?: string
 }
 
 export interface SecondaryExposure {

@@ -107,6 +107,17 @@ impl NetworkProviderReqwest {
             client_builder = Self::configure_proxy(client_builder, proxy_config);
         }
 
+        if let Some(ca_cert_pem) = &request_args.ca_cert_pem {
+            match reqwest::Certificate::from_pem(ca_cert_pem) {
+                Ok(cert) => {
+                    client_builder = client_builder.add_root_certificate(cert);
+                }
+                Err(e) => {
+                    log_e!(TAG, "Failed to parse network CA cert PEM: {}", e);
+                }
+            }
+        }
+
         let client = client_builder.build().unwrap_or_else(|e| {
             log_e!(TAG, "Failed to build reqwest client with proxy config: {}. Falling back to default client.", e);
             reqwest::Client::new()

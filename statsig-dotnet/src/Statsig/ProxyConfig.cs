@@ -25,17 +25,27 @@ namespace Statsig
         /// </summary>
         public string? ProxyProtocol { get; set; }
 
+        /// <summary>
+        /// Optional path to a PEM CA bundle to trust for outbound TLS
+        /// </summary>
+        public string? CaCertPath { get; set; }
+
         public ProxyConfig()
         {
         }
 
-        public ProxyConfig(string? proxyHost, int proxyPort, string? proxyAuth = null, string? proxyProtocol = null)
+        public ProxyConfig(
+            string? proxyHost,
+            int proxyPort,
+            string? proxyAuth = null,
+            string? proxyProtocol = null,
+            string? caCertPath = null)
         {
             ProxyHost = proxyHost;
             ProxyPort = proxyPort;
             ProxyAuth = proxyAuth;
             ProxyProtocol = proxyProtocol;
+            CaCertPath = caCertPath;
         }
     }
 }
-

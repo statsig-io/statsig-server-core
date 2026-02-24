@@ -52,6 +52,7 @@ pub struct StatsigOptionsData {
     proxy_port: Option<u16>,
     proxy_auth: Option<String>,
     proxy_protocol: Option<String>,
+    proxy_ca_cert_path: Option<String>,
     service_name: Option<String>,
     specs_adapter_ref: Option<u64>,
     // -- START STATSIG FORWARD PROXY CONFIG --
@@ -119,6 +120,7 @@ impl From<StatsigOptionsData> for StatsigOptions {
             data.proxy_port,
             data.proxy_auth,
             data.proxy_protocol,
+            data.proxy_ca_cert_path,
         );
 
         let spec_adapters_config = create_spec_adapters_config(
@@ -267,6 +269,7 @@ pub extern "C" fn statsig_options_create(
         },
         c_char_to_string(proxy_auth),
         c_char_to_string(proxy_protocol),
+        None,
     );
 
     InstanceRegistry::register(StatsigOptions {
@@ -411,14 +414,18 @@ fn create_proxy_config(
     proxy_port: Option<u16>,
     proxy_auth: Option<String>,
     proxy_protocol: Option<String>,
+    ca_cert_path: Option<String>,
 ) -> Option<ProxyConfig> {
-    // If no host is provided, no proxy config
-    proxy_host.as_ref()?;
+    // Keep proxy config only when proxy_host and/or ca_cert_path are set
+    if proxy_host.is_none() && ca_cert_path.is_none() {
+        return None;
+    }
 
     Some(ProxyConfig {
         proxy_host,
         proxy_port,
         proxy_auth,
         proxy_protocol,
+        ca_cert_path,
     })
 }

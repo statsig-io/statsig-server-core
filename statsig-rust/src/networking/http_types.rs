@@ -24,6 +24,7 @@ pub struct RequestArgs {
     pub is_shutdown: Option<Arc<AtomicBool>>,
     pub diagnostics_key: Option<KeyType>,
     pub proxy_config: Option<ProxyConfig>,
+    pub ca_cert_pem: Option<Vec<u8>>,
     pub disable_file_streaming: Option<bool>,
 }
 
@@ -49,6 +50,7 @@ impl RequestArgs {
             is_shutdown: None,
             diagnostics_key: None,
             proxy_config: None,
+            ca_cert_pem: None,
             disable_file_streaming: None,
         }
     }

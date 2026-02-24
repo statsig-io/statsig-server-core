@@ -198,6 +198,9 @@ namespace Statsig
 
         [JsonProperty("proxy_protocol")]
         internal string? ProxyProtocol => proxyConfig?.ProxyProtocol;
+
+        [JsonProperty("proxy_ca_cert_path")]
+        internal string? ProxyCaCertPath => proxyConfig?.CaCertPath;
         // END: Flattened proxy config fields for serialization
 
         public StatsigOptionsBuilder SetSpecsURL(string specsURL)
