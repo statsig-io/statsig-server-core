@@ -168,30 +168,37 @@ class StatsigJNI {
   // [Statsig: Local Overrides]
 
   public static native void statsigOverrideGate(
-      long statsigRef, String gateName, String id, boolean overrideVal);
+      long statsigRef, String gateName, String userId, boolean overrideVal);
 
   public static native void statsigOverrideDynamicConfig(
-      long statsigRef, String configName, String id, Map<String, Object> overrideVal);
+      long statsigRef, String configName, String userId, Map<String, Object> overrideVal);
 
   public static native void statsigOverrideLayer(
-      long statsigRef, String layerName, String id, Map<String, Object> overrideVal);
+      long statsigRef, String layerName, String userId, Map<String, Object> overrideVal);
 
   public static native void statsigOverrideExperiment(
-      long statsigRef, String experimentName, String id, Map<String, Object> overrideVal);
+      long statsigRef, String experimentName, String userId, Map<String, Object> overrideVal);
 
   public static native void statsigOverrideExperimentByGroupName(
-      long statsigRef, String experimentName, String id, String groupName);
+      long statsigRef, String experimentName, String userId, String groupName);
 
-  public static native void statsigRemoveGateOverride(long statsigRef, String gateName, String id);
+  public static native void statsigOverrideParameterStore(
+      long statsigRef, String parameterStoreName, String userId, Map<String, Object> overrideVal);
+
+  public static native void statsigRemoveGateOverride(
+      long statsigRef, String gateName, String userId);
 
   public static native void statsigRemoveDynamicConfigOverride(
-      long statsigRef, String configName, String id);
+      long statsigRef, String configName, String userId);
 
   public static native void statsigRemoveExperimentOverride(
-      long statsigRef, String experimentName, String id);
+      long statsigRef, String experimentName, String userId);
 
   public static native void statsigRemoveLayerOverride(
-      long statsigRef, String layerName, String id);
+      long statsigRef, String layerName, String userId);
+
+  public static native void statsigRemoveParameterStoreOverride(
+      long statsigRef, String parameterStoreName, String userId);
 
   public static native void statsigRemoveAllOverrides(long statsigRef);
 
