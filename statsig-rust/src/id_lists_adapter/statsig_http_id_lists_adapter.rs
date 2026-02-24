@@ -127,6 +127,7 @@ impl StatsigHttpIdListsAdapter {
         &self,
         list_url: &str,
         list_size: u64,
+        id_list_file_id: Option<String>,
     ) -> Result<String, StatsigErr> {
         let (headers, query_params) = if list_url.starts_with(STATSIG_CDN_URL) {
             (
@@ -149,6 +150,7 @@ impl StatsigHttpIdListsAdapter {
                 url: list_url.to_string(),
                 headers,
                 query_params,
+                id_list_file_id,
                 diagnostics_key: Some(KeyType::GetIDList),
                 ..RequestArgs::new()
             })
@@ -407,6 +409,7 @@ impl StatsigHttpIdListsAdapter {
                 .fetch_individual_id_list_changes_from_network(
                     &new_metadata.url,
                     changeset.range_start,
+                    new_metadata.file_id.clone(),
                 )
                 .await;
 

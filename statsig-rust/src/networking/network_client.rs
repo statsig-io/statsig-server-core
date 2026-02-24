@@ -36,6 +36,7 @@ const STATUS_CODE_TAG: &str = "status_code";
 const IS_SUCCESS_TAG: &str = "is_success";
 const SDK_KEY_TAG: &str = "sdk_key";
 const SOURCE_SERVICE_TAG: &str = "source_service";
+const ID_LIST_FILE_ID_TAG: &str = "id_list_file_id";
 
 const TAG: &str = stringify!(NetworkClient);
 
@@ -189,7 +190,7 @@ impl NetworkClient {
                 .and_then(|data| data.get_header_ref("x-statsig-region").cloned());
             let success = (200..300).contains(&status.unwrap_or(0));
             let duration_ms = request_start.elapsed().as_millis() as f64;
-            self.log_network_request_latency_to_ob(&request_args.url, status, success, duration_ms);
+            self.log_network_request_latency_to_ob(&request_args, status, success, duration_ms);
 
             if let Some(key) = request_args.diagnostics_key {
                 let mut end_marker =
@@ -294,11 +295,12 @@ impl NetworkClient {
     // ------------------------------------------------------------
     fn log_network_request_latency_to_ob(
         &self,
-        url: &str,
+        request_args: &RequestArgs,
         status: Option<u16>,
         success: bool,
         duration_ms: f64,
     ) {
+        let url = request_args.url.as_str();
         if !should_log_network_request_latency(url) {
             return;
         }
@@ -306,20 +308,45 @@ impl NetworkClient {
         let status_code = status
             .map(|code| code.to_string())
             .unwrap_or("none".to_string());
-        let (source_service, request_path) = get_source_service_and_request_path(url);
+        let tags = get_network_request_latency_tags(
+            request_args,
+            status_code,
+            success,
+            self.loggable_sdk_key.clone(),
+        );
+
         self.ops_stats.log(ObservabilityEvent::new_event(
             MetricType::Dist,
             NETWORK_REQUEST_LATENCY_METRIC.to_string(),
             duration_ms,
-            Some(HashMap::from([
-                (REQUEST_PATH_TAG.to_string(), request_path),
-                (STATUS_CODE_TAG.to_string(), status_code),
-                (IS_SUCCESS_TAG.to_string(), success.to_string()),
-                (SDK_KEY_TAG.to_string(), self.loggable_sdk_key.clone()),
-                (SOURCE_SERVICE_TAG.to_string(), source_service),
-            ])),
+            Some(tags),
         ));
     }
+}
+
+fn get_network_request_latency_tags(
+    request_args: &RequestArgs,
+    status_code: String,
+    success: bool,
+    loggable_sdk_key: String,
+) -> HashMap<String, String> {
+    let (source_service, request_path) = get_source_service_and_request_path(&request_args.url);
+    let mut tags = HashMap::from([
+        (REQUEST_PATH_TAG.to_string(), request_path),
+        (STATUS_CODE_TAG.to_string(), status_code),
+        (IS_SUCCESS_TAG.to_string(), success.to_string()),
+        (SDK_KEY_TAG.to_string(), loggable_sdk_key),
+        (SOURCE_SERVICE_TAG.to_string(), source_service),
+    ]);
+    if let Some(id_list_file_id) = request_args
+        .id_list_file_id
+        .as_ref()
+        .filter(|id| !id.is_empty())
+    {
+        tags.insert(ID_LIST_FILE_ID_TAG.to_string(), id_list_file_id.clone());
+    }
+
+    tags
 }
 
 fn get_loggable_sdk_key(sdk_key: &str) -> String {
@@ -461,8 +488,10 @@ fn get_error_message_for_status(
 #[cfg(test)]
 mod tests {
     use super::{
-        get_request_path, get_source_service_and_request_path, should_log_network_request_latency,
+        get_network_request_latency_tags, get_request_path, get_source_service_and_request_path,
+        should_log_network_request_latency, ID_LIST_FILE_ID_TAG, REQUEST_PATH_TAG,
     };
+    use crate::networking::RequestArgs;
 
     #[test]
     fn test_get_request_path_with_sample_urls() {
@@ -510,5 +539,35 @@ mod tests {
         );
         assert_eq!(source_service, "http://127.0.0.1:12345/mock-uuid");
         assert_eq!(request_path, "/v2/download_config_specs");
+    }
+
+    #[test]
+    fn test_network_latency_tags_include_id_list_file_id_only_when_present() {
+        let mut request_args = RequestArgs {
+            url: "https://api.statsigcdn.com/v1/download_id_list_file/file-123".to_string(),
+            id_list_file_id: Some("file-123".to_string()),
+            ..RequestArgs::new()
+        };
+
+        let tags = get_network_request_latency_tags(
+            &request_args,
+            "200".to_string(),
+            true,
+            "client-key-123".to_string(),
+        );
+        assert_eq!(tags.get(ID_LIST_FILE_ID_TAG), Some(&"file-123".to_string()));
+        assert_eq!(
+            tags.get(REQUEST_PATH_TAG),
+            Some(&"/v1/download_id_list_file".to_string())
+        );
+
+        request_args.id_list_file_id = Some(String::new());
+        let tags_without_id = get_network_request_latency_tags(
+            &request_args,
+            "200".to_string(),
+            true,
+            "client-key-123".to_string(),
+        );
+        assert!(!tags_without_id.contains_key(ID_LIST_FILE_ID_TAG));
     }
 }
