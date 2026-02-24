@@ -581,6 +581,29 @@ public class Statsig {
   }
 
   /**
+   * Overrides a parameter store with the specified value.
+   *
+   * @param parameterStoreName The name of the parameter store to override
+   * @param parameterStoreValue The value to override the parameter store with
+   */
+  public void overrideParameterStore(
+      String parameterStoreName, Map<String, Object> parameterStoreValue) {
+    StatsigJNI.statsigOverrideParameterStore(ref, parameterStoreName, null, parameterStoreValue);
+  }
+
+  /**
+   * Overrides a parameter store with the specified value for a specific ID.
+   *
+   * @param parameterStoreName The name of the parameter store to override
+   * @param id The ID to override the parameter store for
+   * @param parameterStoreValue The value to override the parameter store with
+   */
+  public void overrideParameterStore(
+      String parameterStoreName, Map<String, Object> parameterStoreValue, String id) {
+    StatsigJNI.statsigOverrideParameterStore(ref, parameterStoreName, id, parameterStoreValue);
+  }
+
+  /**
    * Removes all overrides for the specified gate.
    *
    * @param gateName The name of the gate to remove overrides for
@@ -654,6 +677,25 @@ public class Statsig {
    */
   public void removeLayerOverride(String layerName, String id) {
     StatsigJNI.statsigRemoveLayerOverride(ref, layerName, id);
+  }
+
+  /**
+   * Removes overrides for the specified parameter store.
+   *
+   * @param parameterStoreName The name of the parameter store to remove overrides for
+   */
+  public void removeParameterStoreOverride(String parameterStoreName) {
+    StatsigJNI.statsigRemoveParameterStoreOverride(ref, parameterStoreName, null);
+  }
+
+  /**
+   * Removes overrides for the specified parameter store and ID.
+   *
+   * @param parameterStoreName The name of the parameter store to remove overrides for
+   * @param id The ID to remove overrides for
+   */
+  public void removeParameterStoreOverride(String parameterStoreName, String id) {
+    StatsigJNI.statsigRemoveParameterStoreOverride(ref, parameterStoreName, id);
   }
 
   /** Removes all overrides for all gates, dynamic configs, experiments, and layers. */

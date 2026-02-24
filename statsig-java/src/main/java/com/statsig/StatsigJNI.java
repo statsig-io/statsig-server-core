@@ -182,6 +182,9 @@ class StatsigJNI {
   public static native void statsigOverrideExperimentByGroupName(
       long statsigRef, String experimentName, String id, String groupName);
 
+  public static native void statsigOverrideParameterStore(
+      long statsigRef, String parameterStoreName, String id, Map<String, Object> overrideVal);
+
   public static native void statsigRemoveGateOverride(long statsigRef, String gateName, String id);
 
   public static native void statsigRemoveDynamicConfigOverride(
@@ -192,6 +195,9 @@ class StatsigJNI {
 
   public static native void statsigRemoveLayerOverride(
       long statsigRef, String layerName, String id);
+
+  public static native void statsigRemoveParameterStoreOverride(
+      long statsigRef, String parameterStoreName, String id);
 
   public static native void statsigRemoveAllOverrides(long statsigRef);
 
