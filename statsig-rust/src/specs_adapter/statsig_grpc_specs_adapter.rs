@@ -381,11 +381,7 @@ impl StatsigGrpcSpecsAdapter {
                 source_api: None,
             };
 
-            let result = listener.did_receive_specs_update(update);
-            if matches!(&result, Err(StatsigErr::ChecksumFailure(_))) {
-                self.ops_stats.log_checksum_miss_count("grpc");
-            }
-            result
+            listener.did_receive_specs_update(update)
         } else {
             Err(StatsigErr::UnstartedAdapter("Listener not set".to_string()))
         }
