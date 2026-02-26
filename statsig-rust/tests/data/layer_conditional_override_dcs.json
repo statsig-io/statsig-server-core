@@ -1,0 +1,227 @@
+{
+  "company_id": "test-company",
+  "has_updates": true,
+  "time": 1700000000000,
+  "response_format": "dcs-v2",
+  "feature_gates": {
+    "segment:test_id_list_segment": {
+      "type": "feature_gate",
+      "salt": "segment-salt",
+      "enabled": true,
+      "defaultValue": false,
+      "rules": [
+        {
+          "name": "id_list_rule",
+          "passPercentage": 100,
+          "conditions": [
+            "cond_in_segment_list"
+          ],
+          "returnValue": true,
+          "id": "id_list_rule",
+          "salt": "",
+          "idType": "userID"
+        }
+      ],
+      "idType": "userID",
+      "entity": "segment",
+      "version": 1
+    },
+    "always_pass_gate": {
+      "type": "feature_gate",
+      "salt": "gate-salt-1",
+      "enabled": true,
+      "defaultValue": false,
+      "rules": [
+        {
+          "name": "public_rule",
+          "passPercentage": 100,
+          "conditions": [
+            "cond_public"
+          ],
+          "returnValue": true,
+          "id": "public_rule",
+          "salt": "",
+          "idType": "userID"
+        }
+      ],
+      "idType": "userID",
+      "entity": "segment",
+      "version": 1
+    }
+  },
+  "dynamic_configs": {
+    "test_experiment": {
+      "type": "dynamic_config",
+      "salt": "experiment-salt",
+      "enabled": true,
+      "defaultValue": {
+        "pricing_treatment_group": "control"
+      },
+      "rules": [
+        {
+          "name": "experimentAssignment",
+          "passPercentage": 100,
+          "conditions": [
+            "cond_public"
+          ],
+          "returnValue": {
+            "pricing_treatment_group": "control"
+          },
+          "id": "experimentAssignment",
+          "salt": "",
+          "idType": "userID"
+        },
+        {
+          "name": "control_group",
+          "groupName": "Control",
+          "passPercentage": 100,
+          "conditions": [
+            "cond_public"
+          ],
+          "returnValue": {
+            "pricing_treatment_group": "control"
+          },
+          "id": "control_group",
+          "salt": "control_group",
+          "idType": "userID",
+          "isExperimentGroup": true
+        }
+      ],
+      "idType": "userID",
+      "entity": "experiment",
+      "hasSharedParams": true,
+      "isActive": true,
+      "version": 1,
+      "explicitParameters": [
+        "pricing_treatment_group"
+      ]
+    },
+    "test_experiment_treatment": {
+      "type": "dynamic_config",
+      "salt": "experiment-treatment-salt",
+      "enabled": true,
+      "defaultValue": {
+        "pricing_treatment_group": "treatment"
+      },
+      "rules": [
+        {
+          "name": "treatment_group",
+          "groupName": "Test",
+          "passPercentage": 100,
+          "conditions": [
+            "cond_public"
+          ],
+          "returnValue": {
+            "pricing_treatment_group": "treatment"
+          },
+          "id": "treatment_group",
+          "salt": "treatment_group",
+          "idType": "userID",
+          "isExperimentGroup": true
+        }
+      ],
+      "idType": "userID",
+      "entity": "experiment",
+      "hasSharedParams": true,
+      "isActive": true,
+      "version": 1,
+      "explicitParameters": [
+        "pricing_treatment_group"
+      ]
+    }
+  },
+  "layer_configs": {
+    "test_layer": {
+      "type": "dynamic_config",
+      "salt": "layer-salt",
+      "enabled": true,
+      "defaultValue": {
+        "pricing_treatment_group": "control"
+      },
+      "rules": [
+        {
+          "name": "experimentAssignment",
+          "passPercentage": 100,
+          "conditions": [
+            "cond_public"
+          ],
+          "returnValue": {
+            "pricing_treatment_group": "control"
+          },
+          "id": "experimentAssignment",
+          "salt": "",
+          "idType": "userID",
+          "configDelegate": "test_experiment"
+        }
+      ],
+      "idType": "userID",
+      "entity": "layer",
+      "version": 1
+    }
+  },
+  "condition_map": {
+    "cond_public": {
+      "type": "public",
+      "targetValue": null,
+      "operator": null,
+      "field": null,
+      "additionalValues": null,
+      "idType": "userID"
+    },
+    "cond_pass_segment_gate": {
+      "type": "pass_gate",
+      "targetValue": "segment:test_id_list_segment",
+      "operator": null,
+      "field": null,
+      "additionalValues": {},
+      "idType": "userID"
+    },
+    "cond_pass_always_gate": {
+      "type": "pass_gate",
+      "targetValue": "always_pass_gate",
+      "operator": null,
+      "field": null,
+      "additionalValues": {},
+      "idType": "userID"
+    },
+    "cond_in_segment_list": {
+      "type": "user_field",
+      "targetValue": [
+        "user_in_segment"
+      ],
+      "operator": "any",
+      "field": "userID",
+      "additionalValues": {},
+      "idType": "userID"
+    }
+  },
+  "experiment_to_layer": {
+    "test_experiment": "test_layer",
+    "test_experiment_treatment": "test_layer"
+  },
+  "overrides": {
+    "test_layer": [
+      {
+        "new_config_name": "test_experiment_treatment",
+        "rules": [
+          {
+            "rule_name": "segment_override_rule"
+          }
+        ]
+      }
+    ]
+  },
+  "override_rules": {
+    "segment_override_rule": {
+      "name": "segment_override_rule",
+      "passPercentage": 100,
+      "conditions": [
+        "cond_pass_always_gate"
+      ],
+      "returnValue": true,
+      "id": "segment_override_rule",
+      "salt": "",
+      "idType": "userID"
+    }
+  }
+}

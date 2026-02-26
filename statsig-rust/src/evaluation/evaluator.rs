@@ -331,7 +331,11 @@ fn try_apply_config_mapping(
             let pass = evaluate_pass_percentage(ctx, rule, spec_salt);
             if pass {
                 ctx.result.override_config_name = Some(mapping.new_config_name.clone());
-                match Evaluator::evaluate(ctx, mapping.new_config_name.as_str(), spec_type) {
+                let resolved_type = match spec_type {
+                    SpecType::Layer => &SpecType::Experiment,
+                    other => other,
+                };
+                match Evaluator::evaluate(ctx, mapping.new_config_name.as_str(), resolved_type) {
                     Ok(Recognition::Recognized) => {
                         return true;
                     }
