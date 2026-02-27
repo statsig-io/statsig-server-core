@@ -40,7 +40,10 @@ impl<'a> ProtoStreamReader<'a> {
                     self.buf.extend_from_slice(&self.scratch[..n]);
                 }
                 Err(e) => {
-                    return Err(new_parse_err(e));
+                    return Err(StatsigErr::ProtobufParseError(
+                        "BrotliDecompressorRead".to_string(),
+                        e.to_string(),
+                    ));
                 }
             }
         }
@@ -48,30 +51,30 @@ impl<'a> ProtoStreamReader<'a> {
         Ok(self.buf.split_to(required_len))
     }
 
+    pub fn sample_current_buf(&self) -> String {
+        let len = std::cmp::min(self.buf.len(), 100);
+        let slice = &self.buf.as_ref()[..len];
+        String::from_utf8(slice.to_vec()).unwrap_or_default()
+    }
+
     fn read_length_delimiter(&mut self) -> Result<usize, StatsigErr> {
         let len_buf = &mut [0u8; 10];
 
-        let read_len = self
-            .brotli_decompressor
-            .read(len_buf)
-            .map_err(new_parse_err)?;
+        let read_len = self.brotli_decompressor.read(len_buf).map_err(|e| {
+            StatsigErr::ProtobufParseError("ReadLengthDelimiter".to_string(), e.to_string())
+        })?;
 
         if read_len > 0 {
             self.buf.extend_from_slice(&len_buf[..read_len]);
         }
 
-        let data_len = prost::decode_length_delimiter(self.buf.as_ref()).map_err(new_parse_err)?;
+        let data_len = prost::decode_length_delimiter(self.buf.as_ref()).map_err(|e| {
+            StatsigErr::ProtobufParseError("DecodeLengthDelimiter".to_string(), e.to_string())
+        })?;
         let required_len = prost::length_delimiter_len(data_len) + data_len;
 
         Ok(required_len)
     }
-}
-
-fn new_parse_err<E>(err_string: E) -> StatsigErr
-where
-    E: std::fmt::Display,
-{
-    StatsigErr::ProtobufParseError("BrotliDecompressor".to_string(), err_string.to_string())
 }
 
 struct StreamBorrower<'a> {
