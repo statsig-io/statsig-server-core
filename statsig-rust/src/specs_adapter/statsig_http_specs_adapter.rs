@@ -488,6 +488,7 @@ impl StatsigHttpSpecsAdapter {
         };
 
         if matches!(&result, Err(StatsigErr::ChecksumFailure(_))) {
+            self.ops_stats.log_checksum_miss_count("http");
             let was_deltas_used = self.use_deltas_next_request.swap(false, Ordering::SeqCst);
             if was_deltas_used {
                 log_d!(TAG, "Disabling delta requests after checksum failure");
