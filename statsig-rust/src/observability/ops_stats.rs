@@ -132,12 +132,15 @@ impl OpsStatsForInstance {
         self.log(OpsStatsEvent::SDKError(error));
     }
 
-    pub fn log_checksum_miss_count(&self, source: &str) {
+    pub fn log_checksum_validation_result(&self, is_success: bool) {
         self.log(ObservabilityEvent::new_event(
             MetricType::Increment,
-            "deltas_checksum_miss.count".to_string(),
+            "deltas_checksum_validation.count".to_string(),
             1.0,
-            Some(HashMap::from([("protocol".to_string(), source.to_string())])),
+            Some(HashMap::from([(
+                "result".to_string(),
+                if is_success { "success" } else { "failure" }.to_string(),
+            )])),
         ));
     }
 

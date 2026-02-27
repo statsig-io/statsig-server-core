@@ -105,13 +105,17 @@ pub fn deserialize_protobuf(
             pb::SpecsEnvelopeKind::Deletions => {
                 consume_errors(ops_stats, || next_specs.handle_deletions_update(env));
             }
-            pb::SpecsEnvelopeKind::Checksums => {
-                next_specs.handle_checksums_update(env).map_err(|e| {
-                    StatsigErr::ChecksumFailure(format!(
+            pb::SpecsEnvelopeKind::Checksums => match next_specs.handle_checksums_update(env) {
+                Ok(()) => {
+                    ops_stats.log_checksum_validation_result(true);
+                }
+                Err(e) => {
+                    ops_stats.log_checksum_validation_result(false);
+                    return Err(StatsigErr::ChecksumFailure(format!(
                         "Failed to apply protobuf checksums update: {e}"
-                    ))
-                })?;
-            }
+                    )));
+                }
+            },
             pb::SpecsEnvelopeKind::CopyPrev => {
                 consume_errors(ops_stats, || {
                     next_specs.handle_copy_prev_update(current_specs)
