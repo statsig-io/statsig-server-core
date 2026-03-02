@@ -58,22 +58,39 @@ impl<'a> ProtoStreamReader<'a> {
     }
 
     fn read_length_delimiter(&mut self) -> Result<usize, StatsigErr> {
-        let len_buf = &mut [0u8; 10];
+        loop {
+            match prost::decode_length_delimiter(self.buf.as_ref()) {
+                Ok(data_len) => {
+                    return Ok(prost::length_delimiter_len(data_len) + data_len);
+                }
+                Err(e) if self.buf.len() >= 10 => {
+                    return Err(StatsigErr::ProtobufParseError(
+                        "DecodeLengthDelimiter".to_string(),
+                        e.to_string(),
+                    ));
+                }
+                Err(_) => {
+                    let read_len =
+                        self.brotli_decompressor
+                            .read(&mut self.scratch)
+                            .map_err(|e| {
+                                StatsigErr::ProtobufParseError(
+                                    "ReadLengthDelimiter".to_string(),
+                                    e.to_string(),
+                                )
+                            })?;
 
-        let read_len = self.brotli_decompressor.read(len_buf).map_err(|e| {
-            StatsigErr::ProtobufParseError("ReadLengthDelimiter".to_string(), e.to_string())
-        })?;
+                    if read_len == 0 {
+                        return Err(StatsigErr::ProtobufParseError(
+                            "ReadLengthDelimiter".to_string(),
+                            "unexpected EOF while reading length delimiter".to_string(),
+                        ));
+                    }
 
-        if read_len > 0 {
-            self.buf.extend_from_slice(&len_buf[..read_len]);
+                    self.buf.extend_from_slice(&self.scratch[..read_len]);
+                }
+            }
         }
-
-        let data_len = prost::decode_length_delimiter(self.buf.as_ref()).map_err(|e| {
-            StatsigErr::ProtobufParseError("DecodeLengthDelimiter".to_string(), e.to_string())
-        })?;
-        let required_len = prost::length_delimiter_len(data_len) + data_len;
-
-        Ok(required_len)
     }
 }
 
