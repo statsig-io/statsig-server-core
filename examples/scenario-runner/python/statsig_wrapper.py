@@ -60,6 +60,36 @@ class StatsigWrapper:
         else:
             cls._user = LegacyStatsigUser(user_id=user_data["userID"])
 
+        if "country" in user_data:
+            cls._user.country = user_data["country"]
+
+        if "ip" in user_data:
+            cls._user.ip = user_data["ip"]
+
+        if "custom" in user_data:
+            cls._user.custom = user_data["custom"]
+
+        if "appVersion" in user_data:
+            cls._user.app_version = user_data["appVersion"]
+
+        if "email" in user_data:
+            cls._user.email = user_data["email"]
+
+        if "locale" in user_data:
+            cls._user.locale = user_data["locale"]
+
+        if "userAgent" in user_data:
+            cls._user.user_agent = user_data["userAgent"]
+
+        if "customIDs" in user_data:
+            cls._user.custom_ids = user_data["customIDs"]
+
+        if "privateAttributes" in user_data:
+            cls._user.private_attributes = user_data["privateAttributes"]
+
+        if "statsigEnvironment" in user_data:
+            cls._user.statsig_environment = user_data["statsigEnvironment"]
+
     @classmethod
     def check_gate(cls, gate_name: str) -> bool:
         if cls.is_core:

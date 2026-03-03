@@ -1,26 +1,28 @@
-import express, { type Response } from 'express';
-import { createReadStream, readFileSync } from 'node:fs';
+import express, { type Response } from "express";
+import { createReadStream, readFileSync, writeFileSync } from "node:fs";
 
-import type { ScrapiState, State } from '../common';
-import { incEventCount, incReqCount, takeCounters } from './counters';
+import type { ScrapiState, State } from "../common";
+import { incEventCount, incReqCount, takeCounters } from "./counters";
 import {
   flushCounters,
   flushDockerStats,
   getSdkInfo,
   logStateChange,
-} from './utils';
+} from "./utils";
+
+const WRITE_EVENTS_TO_FILE = false;
 
 const app = express();
 let scrapiState: ScrapiState | null = null;
 let lastFlushedAt = new Date();
 let lastStateUpdateAt = new Date(1);
 
-app.all('/ready', (_req, res) => {
+app.all("/ready", (_req, res) => {
   const v1Filepath = scrapiState?.dcs?.response?.v1?.filepath;
   const v2Filepath = scrapiState?.dcs?.response?.v2?.filepath;
 
   if (v1Filepath == null || v2Filepath == null) {
-    res.status(500).json({ error: 'State not initialized' });
+    res.status(500).json({ error: "State not initialized" });
     return;
   }
 
@@ -40,43 +42,42 @@ app.use((req, _res, next) => {
 });
 
 app.use((req, res, next) => {
-  const encoding = req.headers['content-encoding'] ?? '';
+  const encoding = req.headers["content-encoding"] ?? "";
   const shouldParse =
-    req.headers['content-type']?.includes('application/json') &&
-    encoding !== 'zstd';
+    req.headers["content-type"]?.includes("application/json") &&
+    encoding !== "zstd";
 
   if (shouldParse) {
-    express.json({ limit: '50mb' })(req, res, next);
+    express.json({ limit: "50mb" })(req, res, next);
   } else {
     next();
   }
 });
 
-app.post('/v1/log_event', async (req, res) => {
+app.post("/v1/log_event", async (req, res) => {
   const { sdkType, sdkVersion } = getSdkInfo(req);
   const eventCountStr =
-    req.headers?.['statsig-event-count'] ?? req.body?.events?.length;
+    req.headers?.["statsig-event-count"] ?? req.body?.events?.length;
+
+  const reqInfoJson = JSON.stringify(
+    {
+      path: req.path,
+      params: req.params,
+      headers: req.headers,
+      body: req.body,
+    },
+    null,
+    2,
+  );
 
   if (!eventCountStr) {
-    console.error(
-      'statsig-event-count is required',
-      JSON.stringify(
-        {
-          path: req.path,
-          params: req.params,
-          headers: req.headers,
-          body: req.body,
-        },
-        null,
-        2,
-      ),
-    );
-    throw new Error('statsig-event-count is required');
+    console.error("statsig-event-count is required", reqInfoJson);
+    throw new Error("statsig-event-count is required");
   }
 
   const logEventState = scrapiState?.logEvent;
   if (logEventState == null) {
-    throw new Error('logEvent state not found');
+    throw new Error("logEvent state not found");
   }
 
   const delayMs = logEventState?.response?.delayMs ?? 0;
@@ -93,10 +94,17 @@ app.post('/v1/log_event', async (req, res) => {
 
   const eventCount = parseInt(eventCountStr);
   if (isNaN(eventCount)) {
-    throw new Error('statsig-event-count is not a number');
+    throw new Error("statsig-event-count is not a number");
   }
 
   incEventCount(sdkType, sdkVersion, eventCount);
+
+  if (WRITE_EVENTS_TO_FILE) {
+    writeFileSync(
+      `/shared-volume/events_${sdkType}_${Date.now()}.json`,
+      reqInfoJson,
+    );
+  }
 
   res
     .status(logEventState.response.status)
@@ -104,35 +112,35 @@ app.post('/v1/log_event', async (req, res) => {
 });
 
 app.all(
-  ['/v2/download_config_specs/:sdk_key', '/v2/download_config_specs'],
+  ["/v2/download_config_specs/:sdk_key", "/v2/download_config_specs"],
   (req, res) => {
-    if (req.query.supports_proto === 'true') {
-      handleDcsResponse('v2Proto', res);
+    if (req.query.supports_proto === "true") {
+      handleDcsResponse("v2Proto", res);
     } else {
-      handleDcsResponse('v2', res);
+      handleDcsResponse("v2", res);
     }
   },
 );
 
 app.all(
-  ['/v1/download_config_specs/:sdk_key', '/v1/download_config_specs'],
-  (_req, res) => handleDcsResponse('v1', res),
+  ["/v1/download_config_specs/:sdk_key", "/v1/download_config_specs"],
+  (_req, res) => handleDcsResponse("v1", res),
 );
 
-app.all('/v1/get_id_lists', (_req, res) => {
+app.all("/v1/get_id_lists", (_req, res) => {
   res.status(200).json({});
 });
 
-app.all('/v1/download_id_list_file/:id_list_name', async (_req, res) => {
-  res.status(404).json({ error: 'ID list not found' });
+app.all("/v1/download_id_list_file/:id_list_name", async (_req, res) => {
+  res.status(404).json({ error: "ID list not found" });
 });
 
 app.listen(8000, () => {
-  console.log('Server is running on port 8000');
+  console.log("Server is running on port 8000");
   setInterval(update, 1000).unref();
 });
 
-async function handleDcsResponse(type: 'v1' | 'v2' | 'v2Proto', res: Response) {
+async function handleDcsResponse(type: "v1" | "v2" | "v2Proto", res: Response) {
   const delayMs = scrapiState?.dcs?.response?.delayMs ?? 0;
   if (delayMs > 0) {
     await new Promise((r) => setTimeout(r, delayMs));
@@ -140,22 +148,22 @@ async function handleDcsResponse(type: 'v1' | 'v2' | 'v2Proto', res: Response) {
 
   if (scrapiState?.dcs?.response?.status !== 200) {
     res.status(scrapiState?.dcs?.response?.status ?? 500).json({
-      error: 'DCS is not enabled',
+      error: "DCS is not enabled",
     });
     return;
   }
 
   const filepath = getDcsResponseFilepath(type);
   if (filepath == null || filepath.length === 0) {
-    res.status(404).json({ error: 'State not initialized' });
+    res.status(404).json({ error: "State not initialized" });
     return;
   }
 
-  if (type === 'v2Proto') {
-    res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader('Content-Encoding', 'statsig-br');
+  if (type === "v2Proto") {
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.setHeader("Content-Encoding", "statsig-br");
   } else {
-    res.setHeader('Content-Type', 'application/json');
+    res.setHeader("Content-Type", "application/json");
   }
 
   res.status(200);
@@ -163,21 +171,21 @@ async function handleDcsResponse(type: 'v1' | 'v2' | 'v2Proto', res: Response) {
   stream.pipe(res);
 }
 
-function getDcsResponseFilepath(type: 'v1' | 'v2' | 'v2Proto') {
+function getDcsResponseFilepath(type: "v1" | "v2" | "v2Proto") {
   switch (type) {
-    case 'v1':
+    case "v1":
       return scrapiState?.dcs?.response?.v1?.filepath;
-    case 'v2':
+    case "v2":
       return scrapiState?.dcs?.response?.v2?.filepath;
-    case 'v2Proto':
+    case "v2Proto":
       return scrapiState?.dcs?.response?.v2Proto?.filepath;
     default:
-      throw new Error('Invalid DCS type');
+      throw new Error("Invalid DCS type");
   }
 }
 
 function readState(): State {
-  const stateContents = readFileSync('/shared-volume/state.json', 'utf8');
+  const stateContents = readFileSync("/shared-volume/state.json", "utf8");
   return JSON.parse(stateContents);
 }
 
@@ -187,7 +195,7 @@ function update() {
 
   const updatedAt = new Date(state.updatedAt as unknown as string);
   if (updatedAt.getTime() != lastStateUpdateAt.getTime()) {
-    console.log('State Changed');
+    console.log("State Changed");
     logStateChange(state);
   }
 

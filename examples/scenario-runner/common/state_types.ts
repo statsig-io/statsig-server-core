@@ -2,8 +2,8 @@ type User = {
   userID: string;
   appVersion?: string;
   customIDs?: Record<string, string>;
-  privateAttributes?: Record<string, string>;
-  customAttributes?: Record<string, string>;
+  privateAttributes?: Record<string, string | number | boolean | string[]>;
+  custom?: Record<string, string | number | boolean | string[]>;
   ip?: string;
   country?: string;
   email?: string;
