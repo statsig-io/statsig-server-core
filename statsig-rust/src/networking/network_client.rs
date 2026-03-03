@@ -8,7 +8,9 @@ use crate::observability::observability_client_adapter::{MetricType, Observabili
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::marker::{ActionType, Marker, StepType};
-use crate::utils::{is_version_segment, split_host_and_path, strip_query_and_fragment};
+use crate::utils::{
+    get_loggable_sdk_key, is_version_segment, split_host_and_path, strip_query_and_fragment,
+};
 use crate::{log_d, log_i, log_w, StatsigOptions};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -26,7 +28,6 @@ const NON_RETRY_CODES: [u16; 6] = [
 const SHUTDOWN_ERROR: &str = "Request was aborted because the client is shutting down";
 
 const MAX_REQUEST_PATH_LENGTH: usize = 64;
-const LOGGABLE_KEY_PREFIX_LENGTH: usize = 13;
 const DOWNLOAD_CONFIG_SPECS_ENDPOINT: &str = "download_config_specs";
 const GET_ID_LISTS_ENDPOINT: &str = "get_id_lists";
 const DOWNLOAD_ID_LIST_FILE_ENDPOINT: &str = "download_id_list_file";
@@ -347,10 +348,6 @@ fn get_network_request_latency_tags(
     }
 
     tags
-}
-
-fn get_loggable_sdk_key(sdk_key: &str) -> String {
-    sdk_key.chars().take(LOGGABLE_KEY_PREFIX_LENGTH).collect()
 }
 
 fn is_latency_loggable_endpoint(endpoint: &str) -> bool {

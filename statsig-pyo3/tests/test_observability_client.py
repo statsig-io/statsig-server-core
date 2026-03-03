@@ -115,12 +115,15 @@ def test_observability_client_usage(statsig_setup):
     )
     assert dist_event is not None, "distribution() should have been called"
     assert isinstance(dist_event[2], float)
-    assert dist_event[3] == {
-        "init_success": "true",
-        "store_populated": "true",
-        "source": "Network",
-        "init_source_api": f"http://{httpserver.host}:{httpserver.port}/v2",
-    }
+    tags = dist_event[3]
+    assert tags is not None
+    assert tags["init_success"] == "true"
+    assert tags["store_populated"] == "true"
+    assert tags["source"] == "Network"
+    assert tags["sdk_key"] == "secret-key"
+    assert tags["sdk_type"] == "statsig-server-core-python"
+    assert tags["sdk_version"]
+    assert tags["init_source_api"] == f"http://{httpserver.host}:{httpserver.port}/v2"
 
 
 def test_error_callback_usage():

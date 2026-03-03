@@ -28,6 +28,12 @@ pub fn try_release_unused_heap_memory() {
     // No-op only glibc supports malloc_trim function
 }
 
+const LOGGABLE_KEY_PREFIX_LENGTH: usize = 13;
+
+pub(crate) fn get_loggable_sdk_key(sdk_key: &str) -> String {
+    sdk_key.chars().take(LOGGABLE_KEY_PREFIX_LENGTH).collect()
+}
+
 pub(crate) fn split_host_and_path(url: &str) -> (String, &str) {
     if let Some((scheme, after_scheme)) = url.split_once("://") {
         let (host, path) = after_scheme.split_once('/').unwrap_or((after_scheme, ""));

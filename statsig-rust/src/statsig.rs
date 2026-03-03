@@ -57,6 +57,7 @@ use crate::statsig_type_factories::{
 };
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer, ParameterStore};
 use crate::user::StatsigUserInternal;
+use crate::utils::get_loggable_sdk_key;
 use crate::{
     dyn_value, log_d, log_e, log_w, read_lock_or_else, ClientInitResponseOptions,
     GCIRResponseFormat, IdListsAdapter, InitializeDetails, ObservabilityClient,
@@ -2503,6 +2504,7 @@ impl Statsig {
     ) {
         let is_store_populated = specs_info.source != SpecsSource::NoValues;
         let source_str = specs_info.source.to_string();
+        let metadata = StatsigMetadata::get_metadata();
 
         let event = ObservabilityEvent::new_event(
             MetricType::Dist,
@@ -2512,6 +2514,12 @@ impl Statsig {
                 ("init_success".to_owned(), success.to_string()),
                 ("source".to_owned(), source_str.clone()),
                 ("store_populated".to_owned(), is_store_populated.to_string()),
+                (
+                    "sdk_key".to_owned(),
+                    get_loggable_sdk_key(self.sdk_key.as_str()),
+                ),
+                ("sdk_type".to_owned(), metadata.sdk_type),
+                ("sdk_version".to_owned(), metadata.sdk_version),
                 (
                     "init_source_api".to_owned(),
                     specs_info.source_api.clone().unwrap_or_default(),

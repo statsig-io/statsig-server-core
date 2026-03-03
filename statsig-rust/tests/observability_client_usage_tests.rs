@@ -16,8 +16,16 @@ use crate::utils::helpers::load_contents;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
 const SDK_KEY: &str = "secret-key";
+const LONG_SDK_KEY: &str = "secret-key-123456789";
 
 async fn setup(observability_client: &Arc<MockObservabilityClient>) -> (MockScrapi, Statsig) {
+    setup_with_sdk_key(observability_client, SDK_KEY).await
+}
+
+async fn setup_with_sdk_key(
+    observability_client: &Arc<MockObservabilityClient>,
+    sdk_key: &str,
+) -> (MockScrapi, Statsig) {
     std::env::set_var("STATSIG_RUNNING_TESTS", "true");
     let mock_scrapi = MockScrapi::new().await;
 
@@ -45,7 +53,7 @@ async fn setup(observability_client: &Arc<MockObservabilityClient>) -> (MockScra
 
     let weak_obs_client = Arc::downgrade(observability_client) as Weak<dyn ObservabilityClient>;
     let statsig = Statsig::new(
-        SDK_KEY,
+        sdk_key,
         Some(Arc::new(StatsigOptions {
             observability_client: Some(weak_obs_client),
             log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
@@ -301,7 +309,7 @@ async fn test_sdk_initialization_dist_recorded() {
         calls: Mutex::new(Vec::new()),
     });
 
-    let (_, statsig) = setup(&obs_client).await;
+    let (_, statsig) = setup_with_sdk_key(&obs_client, LONG_SDK_KEY).await;
 
     statsig.initialize().await.unwrap();
     statsig.check_gate(&StatsigUser::with_user_id("test_user"), "test_gate");
@@ -331,6 +339,12 @@ async fn test_sdk_initialization_dist_recorded() {
     assert_eq!(tags.get("source"), Some(&"Network".to_string()));
     assert_eq!(tags.get("init_success"), Some(&"true".to_string()));
     assert_eq!(tags.get("store_populated"), Some(&"true".to_string()));
+    assert_eq!(tags.get("sdk_key"), Some(&"secret-key-12".to_string()));
+    assert_eq!(
+        tags.get("sdk_type"),
+        Some(&"statsig-server-core".to_string())
+    );
+    assert!(tags.get("sdk_version").is_some_and(|v| !v.is_empty()));
 }
 
 #[tokio::test]
@@ -670,6 +684,12 @@ async fn test_init_from_network() {
     assert_eq!(tags.get("source"), Some(&"Network".to_string()));
     assert_eq!(tags.get("init_success"), Some(&"true".to_string()));
     assert_eq!(tags.get("store_populated"), Some(&"true".to_string()));
+    assert_eq!(tags.get("sdk_key"), Some(&SDK_KEY.to_string()));
+    assert_eq!(
+        tags.get("sdk_type"),
+        Some(&"statsig-server-core".to_string())
+    );
+    assert!(tags.get("sdk_version").is_some_and(|v| !v.is_empty()));
     assert_eq!(
         tags.get("init_source_api"),
         Some(&mock_scrapi.get_server_api())
