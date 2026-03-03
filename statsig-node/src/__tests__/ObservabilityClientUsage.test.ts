@@ -69,7 +69,18 @@ describe('ObservabilityClient Usage', () => {
     await statsig.flushEvents();
 
     await waitFor(
-      () => observabilityClientSpies.dist.mock.calls.length > 1, // init + config prop
+      () =>
+        observabilityClientSpies.dist.mock.calls.some(
+          ([metricName]) => metricName === 'statsig.sdk.initialization',
+        ),
+      5000,
+    );
+
+    await waitFor(
+      () =>
+        observabilityClientSpies.dist.mock.calls.some(
+          ([metricName]) => metricName === 'statsig.sdk.config_propagation_diff',
+        ),
       5000,
     );
 
@@ -94,15 +105,22 @@ describe('ObservabilityClient Usage', () => {
   });
 
   it('logs a dist metric for sdk initialization time', () => {
-    expect(observabilityClientSpies.dist).toHaveBeenCalledWith(
-      'statsig.sdk.initialization',
-      expect.any(Number),
-      {
+    const initCall = observabilityClientSpies.dist.mock.calls.find(
+      ([metricName]) => metricName === 'statsig.sdk.initialization',
+    );
+
+    expect(initCall).toBeDefined();
+    expect(initCall?.[1]).toEqual(expect.any(Number));
+    expect(initCall?.[2]).toEqual(
+      expect.objectContaining({
         init_success: 'true',
         store_populated: 'true',
         source: 'Network',
+        sdk_key: 'secret-123',
+        sdk_type: 'statsig-server-core-node',
+        sdk_version: expect.any(String),
         init_source_api: scrapi.getServerApi() + '/v2',
-      },
+      }),
     );
   });
 
