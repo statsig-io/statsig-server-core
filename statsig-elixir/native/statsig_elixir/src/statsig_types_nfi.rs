@@ -15,6 +15,7 @@ use statsig_rust::statsig_types::{
     FeatureGate as FeatureGateActual,
 };
 use statsig_rust::DynamicValue;
+use statsig_rust::EvaluationDetails as EvaluationDetailsActual;
 use statsig_rust::{ClientInitResponseOptions as ClientInitResponseOptionsActual, HashAlgorithm};
 use std::collections::HashMap;
 
@@ -39,6 +40,26 @@ impl Decoder<'_> for ValueMap {
 }
 
 #[derive(NifStruct)]
+#[module = "Statsig.EvaluationDetails"]
+pub struct EvaluationDetails {
+    pub reason: String,
+    pub lcut: Option<u64>,
+    pub received_at: Option<u64>,
+    pub version: Option<u32>,
+}
+
+impl From<EvaluationDetailsActual> for EvaluationDetails {
+    fn from(details: EvaluationDetailsActual) -> Self {
+        EvaluationDetails {
+            reason: details.reason,
+            lcut: details.lcut,
+            received_at: details.received_at,
+            version: details.version,
+        }
+    }
+}
+
+#[derive(NifStruct)]
 #[module = "Statsig.Experiment"]
 pub struct Experiment {
     pub name: String,
@@ -46,6 +67,7 @@ pub struct Experiment {
     pub id_type: String,
     pub group_name: Option<String>,
     pub value: ValueMap,
+    pub details: EvaluationDetails,
 }
 
 impl From<ExperimentActual> for Experiment {
@@ -56,6 +78,7 @@ impl From<ExperimentActual> for Experiment {
             rule_id: experiment.rule_id,
             id_type: experiment.id_type,
             group_name: experiment.group_name,
+            details: experiment.details.into(),
         }
     }
 }
@@ -67,6 +90,7 @@ pub struct DynamicConfig {
     pub value: ValueMap,
     pub rule_id: String,
     pub id_type: String,
+    pub details: EvaluationDetails,
 }
 
 impl From<DynamicConfigActual> for DynamicConfig {
@@ -76,6 +100,7 @@ impl From<DynamicConfigActual> for DynamicConfig {
             value: ValueMap(config.value),
             rule_id: config.rule_id,
             id_type: config.id_type,
+            details: config.details.into(),
         }
     }
 }
@@ -87,6 +112,7 @@ pub struct FeatureGate {
     pub value: bool,
     pub rule_id: String,
     pub id_type: String,
+    pub details: EvaluationDetails,
 }
 
 impl From<FeatureGateActual> for FeatureGate {
@@ -96,6 +122,7 @@ impl From<FeatureGateActual> for FeatureGate {
             value: feature_gate.value,
             rule_id: feature_gate.rule_id,
             id_type: feature_gate.id_type,
+            details: feature_gate.details.into(),
         }
     }
 }

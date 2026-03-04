@@ -2,6 +2,10 @@ defmodule Statsig.NativeBindingsTest do
   use ExUnit.Case
 
   alias Statsig.DynamicConfig
+  alias Statsig.EvaluationDetails
+  alias Statsig.Experiment
+  alias Statsig.FeatureGate
+  alias Statsig.Layer
   alias Statsig.NativeBindings
   alias Statsig.Options
   alias Statsig.User
@@ -53,6 +57,28 @@ defmodule Statsig.NativeBindingsTest do
 
       refute NativeBindings.check_gate(ref, "my_gate", user1, nil)
       refute NativeBindings.check_gate(ref, "my_gate", user2, nil)
+    end
+
+    test "returns evaluation details for overriden entities" do
+      ref = new()
+      user = user("user1")
+
+      NativeBindings.override_gate(ref, "my_gate", true, user.user_id)
+
+      gate = NativeBindings.get_feature_gate(ref, "my_gate", user, nil)
+
+      assert %FeatureGate{
+               name: "my_gate",
+               value: true,
+               details: %Statsig.EvaluationDetails{reason: "LocalOverride:Recognized"}
+             } = gate
+
+      NativeBindings.override_layer(ref, "my_layer", %{"param" => "value"}, user.user_id)
+
+      layer = NativeBindings.get_layer(ref, "my_layer", user, nil)
+
+      assert {:ok, %Statsig.EvaluationDetails{reason: "LocalOverride:Recognized"}} =
+               Layer.get_evaluation_details(layer)
     end
   end
 
@@ -120,6 +146,20 @@ defmodule Statsig.NativeBindingsTest do
       config = NativeBindings.get_dynamic_config(ref, "complex_config", user1, nil)
       assert %DynamicConfig{name: "complex_config", value: ^complex_value} = config
     end
+
+    test "returns evaluation details for a dynamic config" do
+      ref = new()
+      user = user("user1")
+
+      NativeBindings.override_dynamic_config(ref, "my_config", %{"a" => 1}, user.user_id)
+
+      config = NativeBindings.get_dynamic_config(ref, "my_config", user, nil)
+
+      assert %DynamicConfig{
+               name: "my_config",
+               details: %EvaluationDetails{reason: "LocalOverride:Recognized"}
+             } = config
+    end
   end
 
   describe "override_experiment/4" do
@@ -162,6 +202,25 @@ defmodule Statsig.NativeBindingsTest do
       exp3 = NativeBindings.get_experiment(ref, "my_experiment", user1, nil)
       assert exp3.value != overridden_value
     end
+
+    test "returns evaluation details for an experiment" do
+      ref = new()
+      user = user("user1")
+
+      NativeBindings.override_experiment(
+        ref,
+        "my_experiment",
+        %{"param" => "value"},
+        user.user_id
+      )
+
+      experiment = NativeBindings.get_experiment(ref, "my_experiment", user, nil)
+
+      assert %Experiment{
+               name: "my_experiment",
+               details: %EvaluationDetails{reason: "LocalOverride:Recognized"}
+             } = experiment
+    end
   end
 
   describe "override_layer/4" do
@@ -203,6 +262,21 @@ defmodule Statsig.NativeBindingsTest do
 
       layer3 = NativeBindings.get_layer(ref, "my_layer", user1, nil)
       assert NativeBindings.layer_get(layer3, "param", "default") == "default"
+    end
+
+    test "returns evaluation details for a layer" do
+      ref = new()
+      user = user("user1")
+
+      NativeBindings.override_layer(ref, "my_layer", %{"param" => "overridden"}, user.user_id)
+
+      layer = NativeBindings.get_layer(ref, "my_layer", user, nil)
+
+      assert %EvaluationDetails{reason: "LocalOverride:Recognized"} =
+               NativeBindings.layer_get_evaluation_details(layer)
+
+      assert {:ok, %EvaluationDetails{reason: "LocalOverride:Recognized"}} =
+               Layer.get_evaluation_details(layer)
     end
   end
 

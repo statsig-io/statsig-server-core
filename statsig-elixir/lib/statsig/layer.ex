@@ -53,4 +53,15 @@ defmodule Statsig.Layer do
       exception -> {:error, Exception.message(exception)}
     end
   end
+
+  @spec get_evaluation_details(any()) ::
+          {:ok, Statsig.EvaluationDetails.t()} | {:error, any()}
+  def get_evaluation_details(layer) do
+    try do
+      {:ok, NativeBindings.layer_get_evaluation_details(layer)}
+    catch
+      :exit, reason -> {:error, {:exit, reason}}
+      exception -> {:error, Exception.message(exception)}
+    end
+  end
 end

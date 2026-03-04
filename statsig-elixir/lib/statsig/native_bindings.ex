@@ -52,6 +52,7 @@ defmodule Statsig.NativeBindings do
   def layer_get_rule_id(_layer), do: :erlang.nif_error(:nif_not_loaded)
   def layer_get(_layer, _param_name, _default_value), do: :erlang.nif_error(:nif_not_loaded)
   def layer_get_group_name(_layer), do: :erlang.nif_error(:nif_not_loaded)
+  def layer_get_evaluation_details(_layer), do: :erlang.nif_error(:nif_not_loaded)
 
   # Override functions
 
