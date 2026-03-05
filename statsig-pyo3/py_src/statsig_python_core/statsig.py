@@ -94,7 +94,7 @@ class Statsig(StatsigBasePy):
         name: str,
         options: Optional[DynamicConfigEvaluationOptions] = None,
     ) -> DynamicConfig:
-        raw = super()._INTERNAL_get_dynamic_config(user, name, options)
+        raw = super()._INTERNAL_get_dynamic_config_as_dict(user, name, options)
         return DynamicConfig(name, raw)
 
     def get_experiment(

@@ -129,6 +129,9 @@ class StatsigBasePy:
     def _INTERNAL_get_dynamic_config(self, user:StatsigUser, name:builtins.str, options:typing.Optional[DynamicConfigEvaluationOptions]=None) -> builtins.str:
         ...
 
+    def _INTERNAL_get_dynamic_config_as_dict(self, user:StatsigUser, name:builtins.str, options:typing.Optional[DynamicConfigEvaluationOptions]=None) -> dict:
+        ...
+
     def manually_log_dynamic_config_exposure(self, user:StatsigUser, name:builtins.str) -> None:
         ...
 

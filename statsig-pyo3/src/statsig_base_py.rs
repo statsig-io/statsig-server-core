@@ -1,4 +1,4 @@
-use crate::pyo_utils::py_dict_to_json_value_map;
+use crate::pyo_utils::{map_to_py_dict_direct, py_dict_to_json_value_map};
 use crate::safe_gil::SafeGil;
 use crate::statsig_options_py::{safe_convert_to_statsig_options, StatsigOptionsPy};
 use crate::statsig_persistent_storage_override_adapter_py::convert_dict_to_user_persisted_values;
@@ -17,6 +17,7 @@ use pyo3::types::PyTuple;
 use pyo3::{prelude::*, types::PyDict};
 use pyo3_stub_gen::derive::*;
 use serde_json::Value;
+use statsig_rust::statsig_types::DynamicConfig;
 use statsig_rust::{
     log_e, ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
     FeatureGateEvaluationOptions, HashAlgorithm, LayerEvaluationOptions, ObservabilityClient,
@@ -269,6 +270,23 @@ impl StatsigBasePy {
             name,
             options.map_or(DynamicConfigEvaluationOptions::default(), |o| o.into()),
         )
+    }
+
+    #[pyo3(name="_INTERNAL_get_dynamic_config_as_dict", signature = (user, name, options=None))]
+    pub fn _internal_get_dynamic_config_as_dict(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+        options: Option<DynamicConfigEvaluationOptionsPy>,
+        py: Python,
+    ) -> PyResult<Py<PyDict>> {
+        let config = self.inner.get_dynamic_config_with_options(
+            &user.inner,
+            name,
+            options.map_or(DynamicConfigEvaluationOptions::default(), |o| o.into()),
+        );
+
+        dynamic_config_to_py_dict(py, &config)
     }
 
     #[pyo3(signature = (user, name))]
@@ -562,6 +580,24 @@ fn convert_to_string(value: Option<&Bound<PyAny>>) -> Option<String> {
     let value = value?;
 
     value.extract::<String>().ok()
+}
+
+fn dynamic_config_to_py_dict(py: Python, config: &DynamicConfig) -> PyResult<Py<PyDict>> {
+    let raw = PyDict::new(py);
+    raw.set_item("name", &config.name)?;
+    raw.set_item("value", map_to_py_dict_direct(py, &config.value)?)?;
+    raw.set_item("ruleID", &config.rule_id)?;
+    raw.set_item("idType", &config.id_type)?;
+
+    let details = PyDict::new(py);
+    details.set_item("reason", &config.details.reason)?;
+    details.set_item("lcut", config.details.lcut)?;
+    details.set_item("received_at", config.details.received_at)?;
+    details.set_item("version", config.details.version)?;
+
+    raw.set_item("details", details)?;
+
+    Ok(raw.unbind())
 }
 
 fn extract_event_metadata(metadata: Option<Bound<PyDict>>) -> Option<HashMap<String, Value>> {
