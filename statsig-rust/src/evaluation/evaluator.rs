@@ -163,7 +163,7 @@ fn new_layer_eval<'a>(
     ctx: &mut EvaluatorContext<'a>,
     spec: &'a Spec,
 ) -> Result<Recognition, StatsigErr> {
-    let mut has_delegate = false;
+    let mut has_passed_rule = false;
     let mut passed = false;
     let mut rule_id: Option<&'a InternedString> = Some(InternedString::default_rule_id_ref());
     let mut delegate_name: Option<InternedString> = None;
@@ -195,7 +195,7 @@ fn new_layer_eval<'a>(
         }
 
         if evaluate_config_delegate(ctx, rule)? {
-            if has_delegate {
+            if has_passed_rule {
                 continue;
             }
             let delegate_value = match &ctx.result.json_value {
@@ -220,8 +220,6 @@ fn new_layer_eval<'a>(
 
             secondary_exposures.append(&mut ctx.result.secondary_exposures);
             ctx.result.secondary_exposures.clear();
-
-            has_delegate = true;
             passed = ctx.result.bool_value;
             delegate_name = ctx.result.config_delegate.clone();
             group_name = ctx.result.group_name.clone();
@@ -229,6 +227,7 @@ fn new_layer_eval<'a>(
             is_experiment_group = rule.is_experiment_group.unwrap_or(false);
             explicit_parameters = ctx.result.explicit_parameters.clone();
         } else {
+            passed = ctx.result.bool_value;
             update_parameter_values(
                 &mut value,
                 &mut rule_ids,
@@ -236,6 +235,7 @@ fn new_layer_eval<'a>(
                 &rule.id,
             );
         }
+        has_passed_rule = true;
     }
     update_parameter_values(
         &mut value,
