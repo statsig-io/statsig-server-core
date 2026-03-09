@@ -12,8 +12,8 @@ use crate::{
     statsig_options_nfi::StatsigOptions,
     statsig_types_nfi::{
         AllowedPrimitive, ClientInitResponseOptions, DynamicConfig, DynamicConfigEvaluationOptions,
-        Experiment, ExperimentEvaluationOptions, FeatureGate, FeatureGateEvaluationOptions,
-        LayerEvaluationOptions,
+        EvaluationDetails, Experiment, ExperimentEvaluationOptions, FeatureGate,
+        FeatureGateEvaluationOptions, LayerEvaluationOptions,
     },
     statsig_user_nfi::StatsigUser,
 };
@@ -331,6 +331,16 @@ pub fn layer_get_rule_id(layer: ResourceArc<LayerResource>) -> Result<String, Er
 pub fn layer_get_group_name(layer: ResourceArc<LayerResource>) -> Result<Option<String>, Error> {
     match layer.core.read() {
         Ok(read_guard) => Ok(read_guard.group_name.clone()),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
+    }
+}
+
+#[rustler::nif]
+pub fn layer_get_evaluation_details(
+    layer: ResourceArc<LayerResource>,
+) -> Result<EvaluationDetails, Error> {
+    match layer.core.read() {
+        Ok(read_guard) => Ok(read_guard.details.clone().into()),
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }

@@ -31,6 +31,7 @@ pub struct ProxyConfig {
     pub proxy_port: Option<u16>,
     pub proxy_auth: Option<String>,
     pub proxy_protocol: Option<String>,
+    pub ca_cert_path: Option<String>,
 }
 
 impl From<ProxyConfig> for ProxyConfigActual {
@@ -40,6 +41,7 @@ impl From<ProxyConfig> for ProxyConfigActual {
             proxy_port: napi.proxy_port,
             proxy_auth: napi.proxy_auth,
             proxy_protocol: napi.proxy_protocol,
+            ca_cert_path: napi.ca_cert_path,
         }
     }
 }

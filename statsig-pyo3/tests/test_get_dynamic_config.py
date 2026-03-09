@@ -4,7 +4,7 @@ Verifies that dynamicConfig.value is a valid JSON object (dict) and tests all re
 """
 import json
 import pytest
-from statsig_python_core import Statsig, StatsigOptions, StatsigUser
+from statsig_python_core import DynamicConfig, Statsig, StatsigOptions, StatsigUser
 from pytest_httpserver import HTTPServer
 from utils import get_test_data_resource
 
@@ -58,3 +58,37 @@ def test_dynamic_config_get_methods(statsig_setup):
     assert config.get_integer("rar", 0) == config.value["rar"]
     assert config.get("non_existent_key", "default") == "default"
     assert "non_existent_key" not in config.value
+
+
+def test_dynamic_config_to_py_dict_round_trip_preserves_data(statsig_setup):
+    statsig = statsig_setup
+    user = StatsigUser("my_user")
+    config_name = "operating_system_config"
+
+    # get_dynamic_config performs:
+    # Rust DynamicConfig -> dynamic_config_to_py_dict -> Python DynamicConfig
+    raw_from_json = json.loads(statsig._INTERNAL_get_dynamic_config(user, config_name))
+    expected_rule_id = raw_from_json.get("rule_id", raw_from_json.get("ruleID"))
+    expected_id_type = raw_from_json.get("id_type", raw_from_json.get("idType"))
+    config = statsig.get_dynamic_config(user, config_name)
+
+    expected_payload = {
+        "name": raw_from_json.get("name"),
+        "value": raw_from_json.get("value"),
+        "ruleID": expected_rule_id,
+        "idType": expected_id_type,
+        "details": raw_from_json.get("details"),
+    }
+    expected_config = DynamicConfig(config_name, expected_payload)
+
+    # Backward-compat path for builds where DynamicConfig expects raw JSON string.
+    if expected_config.get_value() == {} and expected_payload["value"] != {}:
+        expected_config = DynamicConfig(config_name, json.dumps(expected_payload))
+
+    assert set(vars(config).keys()) == set(vars(expected_config).keys())
+    for field_name, actual_value in vars(config).items():
+        expected_value = vars(expected_config)[field_name]
+        if hasattr(actual_value, "to_dict") and hasattr(expected_value, "to_dict"):
+            assert actual_value.to_dict() == expected_value.to_dict()
+        else:
+            assert actual_value == expected_value

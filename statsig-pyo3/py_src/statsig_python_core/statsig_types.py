@@ -150,10 +150,9 @@ class BaseConfigEvaluation(BaseEvaluation):
 
 
 class DynamicConfig(BaseConfigEvaluation):
-    def __init__(self, name: str, raw: str):
+    def __init__(self, name: str, raw: dict):
         try:
-            data = json.loads(raw) or {}
-            super().__init__(name, data, "DynamicConfig")
+            super().__init__(name, raw or {}, "DynamicConfig")
         except Exception as error:
             super().__init__(name, {}, "DynamicConfig")
             _log_error("DynamicConfig", f"Failed to parse. {error}")

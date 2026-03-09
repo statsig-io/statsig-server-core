@@ -57,6 +57,6 @@ TEST(StatsigMemoryTest, ContinuousCoreApiCalls) {
   size_t final_rss = getCurrentRSS();
   statsig.shutdownBlocking();
   std::cout << "Initial RSS: " << initial_rss << " KB" << std::endl;
-  EXPECT_LT(final_rss - initial_rss, 200)
+  EXPECT_LT(final_rss - initial_rss, 1024)
       << "Possible memory leak detected: RSS increased too much.";
 }

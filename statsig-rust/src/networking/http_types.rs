@@ -24,6 +24,7 @@ pub struct RequestArgs {
     pub is_shutdown: Option<Arc<AtomicBool>>,
     pub diagnostics_key: Option<KeyType>,
     pub proxy_config: Option<ProxyConfig>,
+    pub ca_cert_pem: Option<Vec<u8>>,
     pub disable_file_streaming: Option<bool>,
 }
 
@@ -49,6 +50,7 @@ impl RequestArgs {
             is_shutdown: None,
             diagnostics_key: None,
             proxy_config: None,
+            ca_cert_pem: None,
             disable_file_streaming: None,
         }
     }
@@ -181,6 +183,13 @@ impl ResponseData {
     }
 
     pub fn read_to_string(&mut self) -> Result<String, StatsigErr> {
+        let buf = self.read_to_bytes()?;
+
+        String::from_utf8(buf)
+            .map_err(|e| StatsigErr::JsonParseError(TAG.to_string(), e.to_string()))
+    }
+
+    pub fn read_to_bytes(&mut self) -> Result<Vec<u8>, StatsigErr> {
         self.rewind()?;
 
         let mut buf = Vec::new();
@@ -189,8 +198,7 @@ impl ResponseData {
             .read_to_end(&mut buf)
             .map_err(|e| StatsigErr::SerializationError(e.to_string()))?;
 
-        String::from_utf8(buf)
-            .map_err(|e| StatsigErr::JsonParseError(TAG.to_string(), e.to_string()))
+        Ok(buf)
     }
 
     fn rewind(&mut self) -> Result<(), StatsigErr> {

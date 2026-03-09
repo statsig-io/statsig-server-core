@@ -86,7 +86,8 @@ class ProxyConfig:
     proxy_port: typing.Optional[builtins.int]
     proxy_auth: typing.Optional[builtins.str]
     proxy_protocol: typing.Optional[builtins.str]
-    def __new__(cls,proxy_host:typing.Optional[builtins.str]=None, proxy_port:typing.Optional[builtins.int]=None, proxy_auth:typing.Optional[builtins.str]=None, proxy_protocol:typing.Optional[builtins.str]=None): ...
+    ca_cert_path: typing.Optional[builtins.str]
+    def __new__(cls,proxy_host:typing.Optional[builtins.str]=None, proxy_port:typing.Optional[builtins.int]=None, proxy_auth:typing.Optional[builtins.str]=None, proxy_protocol:typing.Optional[builtins.str]=None, ca_cert_path:typing.Optional[builtins.str]=None): ...
 
 class SpecAdapterConfig:
     adapter_type: builtins.str
@@ -126,6 +127,9 @@ class StatsigBasePy:
         ...
 
     def _INTERNAL_get_dynamic_config(self, user:StatsigUser, name:builtins.str, options:typing.Optional[DynamicConfigEvaluationOptions]=None) -> builtins.str:
+        ...
+
+    def _INTERNAL_get_dynamic_config_as_dict(self, user:StatsigUser, name:builtins.str, options:typing.Optional[DynamicConfigEvaluationOptions]=None) -> dict:
         ...
 
     def manually_log_dynamic_config_exposure(self, user:StatsigUser, name:builtins.str) -> None:

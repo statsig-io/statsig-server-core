@@ -8,7 +8,8 @@ defmodule Statsig.Experiment do
     :rule_id,
     :id_type,
     :group_name,
-    :value
+    :value,
+    :details
   ]
 
   @type t :: %__MODULE__{
@@ -16,6 +17,7 @@ defmodule Statsig.Experiment do
           rule_id: String.t(),
           id_type: String.t(),
           group_name: String.t() | nil,
-          value: %{optional(String.t()) => any()}
+          value: %{optional(String.t()) => any()},
+          details: Statsig.EvaluationDetails.t()
         }
 end

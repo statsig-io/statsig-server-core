@@ -78,24 +78,28 @@ pub struct ProxyConfigPy {
     pub proxy_auth: Option<String>,
     #[pyo3(get, set)]
     pub proxy_protocol: Option<String>,
+    #[pyo3(get, set)]
+    pub ca_cert_path: Option<String>,
 }
 
 #[gen_stub_pymethods]
 #[pymethods]
 impl ProxyConfigPy {
     #[new]
-    #[pyo3(signature = (proxy_host=None, proxy_port=None, proxy_auth=None, proxy_protocol=None))]
+    #[pyo3(signature = (proxy_host=None, proxy_port=None, proxy_auth=None, proxy_protocol=None, ca_cert_path=None))]
     fn new(
         proxy_host: Option<String>,
         proxy_port: Option<u16>,
         proxy_auth: Option<String>,
         proxy_protocol: Option<String>,
+        ca_cert_path: Option<String>,
     ) -> Self {
         ProxyConfigPy {
             proxy_host,
             proxy_port,
             proxy_auth,
             proxy_protocol,
+            ca_cert_path,
         }
     }
 }
@@ -374,6 +378,7 @@ fn create_inner_statsig_options(
                     proxy_port: cfg.proxy_port,
                     proxy_auth: cfg.proxy_auth,
                     proxy_protocol: cfg.proxy_protocol,
+                    ca_cert_path: cfg.ca_cert_path,
                 }),
                 Err(_) => {
                     log_w!(TAG, "Failed to convert proxy config");

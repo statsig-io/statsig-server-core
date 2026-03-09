@@ -1,6 +1,6 @@
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods, PyList, PyListMethods, PyModule};
-use pyo3::{Bound, PyAny, PyErr, PyObject, PyResult, Python};
+use pyo3::{Bound, Py, PyAny, PyErr, PyObject, PyResult, Python};
 use serde_json::{json, Number, Value};
 use statsig_rust::evaluation::dynamic_string::DynamicString;
 use statsig_rust::{log_e, DynamicValue};
@@ -58,6 +58,16 @@ pub fn map_to_py_dict(py: Python, map: &HashMap<String, Value>) -> PyObject {
     };
 }
 
+pub fn map_to_py_dict_direct(py: Python, map: &HashMap<String, Value>) -> PyResult<Py<PyDict>> {
+    let py_dict = PyDict::new(py);
+
+    for (key, value) in map {
+        set_json_value_in_dict(py, &py_dict, key, value)?;
+    }
+
+    Ok(py_dict.unbind())
+}
+
 pub fn py_list_to_list(py_list: &Bound<PyList>) -> PyResult<Vec<String>> {
     let mut converted_list = Vec::new();
     for value in py_list {
@@ -95,6 +105,85 @@ pub fn list_of_values_to_py_list(py: Python, list: &Vec<Value>) -> PyResult<PyOb
         }
     }
     Ok(py_list.into())
+}
+
+fn json_array_to_py_list(py: Python, values: &Vec<Value>) -> PyResult<PyObject> {
+    let py_list = PyList::empty(py);
+
+    for value in values {
+        append_json_value(py, &py_list, value)?;
+    }
+
+    Ok(py_list.unbind().into())
+}
+
+fn json_object_to_py_dict(py: Python, map: &serde_json::Map<String, Value>) -> PyResult<PyObject> {
+    let py_dict = PyDict::new(py);
+
+    for (key, value) in map {
+        set_json_value_in_dict(py, &py_dict, key, value)?;
+    }
+
+    Ok(py_dict.unbind().into())
+}
+
+fn set_json_value_in_dict(
+    py: Python,
+    py_dict: &Bound<PyDict>,
+    key: &str,
+    value: &Value,
+) -> PyResult<()> {
+    match value {
+        Value::Null => py_dict.set_item(key, py.None())?,
+        Value::Bool(v) => py_dict.set_item(key, *v)?,
+        Value::Number(v) => set_number_in_dict(py_dict, key, v)?,
+        Value::String(v) => py_dict.set_item(key, v)?,
+        Value::Array(v) => py_dict.set_item(key, json_array_to_py_list(py, v)?)?,
+        Value::Object(v) => py_dict.set_item(key, json_object_to_py_dict(py, v)?)?,
+    }
+
+    Ok(())
+}
+
+fn append_json_value(py: Python, py_list: &Bound<PyList>, value: &Value) -> PyResult<()> {
+    match value {
+        Value::Null => py_list.append(py.None())?,
+        Value::Bool(v) => py_list.append(*v)?,
+        Value::Number(v) => append_number(py_list, v)?,
+        Value::String(v) => py_list.append(v)?,
+        Value::Array(v) => py_list.append(json_array_to_py_list(py, v)?)?,
+        Value::Object(v) => py_list.append(json_object_to_py_dict(py, v)?)?,
+    }
+
+    Ok(())
+}
+
+fn set_number_in_dict(py_dict: &Bound<PyDict>, key: &str, value: &Number) -> PyResult<()> {
+    if let Some(v) = value.as_i64() {
+        py_dict.set_item(key, v)?;
+    } else if let Some(v) = value.as_u64() {
+        py_dict.set_item(key, v)?;
+    } else if let Some(v) = value.as_f64() {
+        py_dict.set_item(key, v)?;
+    } else {
+        py_dict.set_item(key, value.to_string())?;
+    }
+
+    Ok(())
+}
+
+fn append_number(py_list: &Bound<PyList>, value: &Number) -> PyResult<()> {
+    if let Some(v) = value.as_i64() {
+        py_list.append(v)?;
+    } else if let Some(v) = value.as_u64() {
+        py_list.append(v)?;
+    } else if let Some(v) = value.as_f64() {
+        py_list.append(v)?;
+    } else {
+        py_list.append(value.to_string())?;
+    }
+
+    Ok(())
 }
 
 pub fn get_string_from_py_dict_throw_on_none(

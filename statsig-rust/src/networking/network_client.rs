@@ -48,6 +48,7 @@ pub struct NetworkClient {
     net_provider: Weak<dyn NetworkProvider>,
     disable_network: bool,
     proxy_config: Option<ProxyConfig>,
+    ca_cert_pem: Option<Vec<u8>>,
     silent_on_network_failure: bool,
     disable_file_streaming: bool,
     loggable_sdk_key: String,
@@ -61,14 +62,36 @@ impl NetworkClient {
         options: Option<&StatsigOptions>,
     ) -> Self {
         let net_provider = get_network_provider();
-        let (disable_network, proxy_config) = options
+        let (disable_network, proxy_config, ca_cert_pem) = options
             .map(|opts| {
+                let ca_cert_pem = opts
+                    .proxy_config
+                    .as_ref()
+                    .and_then(|cfg| cfg.ca_cert_path.as_ref())
+                    .and_then(|path| {
+                        if path.is_empty() {
+                            return None;
+                        }
+                        match std::fs::read(path) {
+                            Ok(bytes) => Some(bytes),
+                            Err(e) => {
+                                log_w!(
+                                    TAG,
+                                    "Failed to read proxy_config.ca_cert_path '{}': {}",
+                                    path,
+                                    e
+                                );
+                                None
+                            }
+                        }
+                    });
                 (
                     opts.disable_network.unwrap_or(false),
                     opts.proxy_config.clone(),
+                    ca_cert_pem,
                 )
             })
-            .unwrap_or((false, None));
+            .unwrap_or((false, None, None));
 
         NetworkClient {
             headers: headers.unwrap_or_default(),
@@ -77,6 +100,7 @@ impl NetworkClient {
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             disable_network,
             proxy_config,
+            ca_cert_pem,
             silent_on_network_failure: false,
             disable_file_streaming: options
                 .map(|opts| opts.disable_disk_access.unwrap_or(false))
@@ -122,6 +146,10 @@ impl NetworkClient {
 
         if request_args.disable_file_streaming.is_none() {
             request_args.disable_file_streaming = Some(self.disable_file_streaming);
+        }
+
+        if request_args.ca_cert_pem.is_none() {
+            request_args.ca_cert_pem = self.ca_cert_pem.clone();
         }
 
         let mut merged_headers = request_args.headers.unwrap_or_default();

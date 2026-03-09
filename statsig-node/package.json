@@ -1,6 +1,6 @@
 {
   "name": "@statsig/statsig-node-core",
-  "version": "0.16.3",
+  "version": "0.16.4-beta.2603060304",
   "main": "index.js",
   "scripts": {
     "test": "jest --colors"
@@ -53,5 +53,10 @@
       "x86_64-unknown-linux-gnu",
       "x86_64-unknown-linux-musl"
     ]
+  },
+  "pnpm": {
+    "overrides": {
+      "minimatch": "10.2.1"
+    }
   }
 }

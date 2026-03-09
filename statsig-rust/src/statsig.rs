@@ -3,7 +3,7 @@ use crate::console_capture::console_capture_instances::{
     ConsoleCaptureInstance, CONSOLE_CAPTURE_REGISTRY,
 };
 use crate::console_capture::console_log_line_levels::StatsigLogLineLevel;
-use crate::data_store_interface::{get_data_store_key, CompressFormat, RequestPath};
+use crate::data_store_interface::{get_data_store_key, RequestPath};
 use crate::evaluation::cmab_evaluator::{get_cmab_ranked_list, CMABRankedGroup};
 use crate::evaluation::country_lookup::CountryLookup;
 use crate::evaluation::dynamic_value::DynamicValue;
@@ -160,13 +160,8 @@ impl Statsig {
 
         let hashing = Arc::new(HashUtil::new());
 
-        let data_store_key = get_data_store_key(
-            RequestPath::RulesetsV2,
-            CompressFormat::PlainText,
-            sdk_key,
-            &hashing,
-            &options,
-        );
+        let data_store_key =
+            get_data_store_key(RequestPath::RulesetsV2, sdk_key, &hashing, &options);
 
         let specs_adapter = initialize_specs_adapter(sdk_key, &data_store_key, &options);
         let id_lists_adapter = initialize_id_lists_adapter(sdk_key, &options);
