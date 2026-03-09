@@ -1,6 +1,6 @@
 use super::statsig_http_specs_adapter::DEFAULT_SYNC_INTERVAL_MS;
 use super::{SpecsSource, SpecsUpdate};
-use crate::data_store_interface::{DataStoreTrait, RequestPath};
+use crate::data_store_interface::{DataStoreBytesResponse, DataStoreTrait, RequestPath};
 use crate::networking::ResponseData;
 use crate::{
     log_d, log_e, log_w, read_lock_or_else, unwrap_or_else, write_lock_or_else, SpecsAdapter,
@@ -10,6 +10,7 @@ use crate::{StatsigErr, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
 use chrono::Utc;
 use parking_lot::RwLock;
+use std::collections::HashMap;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Notify;
 use tokio::time::{self, sleep};
@@ -46,6 +47,25 @@ impl StatsigDataStoreSpecsAdapter {
         }
     }
 
+    async fn load_cached_specs_bytes(&self) -> Result<DataStoreBytesResponse, StatsigErr> {
+        // `get_bytes()` falls back to `get()` by default, so legacy string-backed data stores
+        // continue to work while bytes-capable implementations can override it.
+        self.data_store.get_bytes(&self.cache_key).await
+    }
+
+    fn binary_specs_response_data_from_bytes(bytes: Vec<u8>) -> ResponseData {
+        ResponseData::from_bytes_with_headers(
+            bytes,
+            Some(HashMap::from([
+                (
+                    "content-type".to_string(),
+                    "application/octet-stream".to_string(),
+                ),
+                ("content-encoding".to_string(), "statsig-br".to_string()),
+            ])),
+        )
+    }
+
     async fn execute_background_sync(&self, rt_shutdown_notify: &Arc<Notify>) {
         loop {
             tokio::select! {
@@ -63,7 +83,7 @@ impl StatsigDataStoreSpecsAdapter {
     }
 
     async fn execute_background_sync_impl(&self) {
-        let update = match self.data_store.get(&self.cache_key).await {
+        let update = match self.load_cached_specs_bytes().await {
             Ok(update) => update,
             Err(e) => {
                 log_w!(TAG, "Failed to read for data store: {e}");
@@ -81,8 +101,14 @@ impl StatsigDataStoreSpecsAdapter {
             return;
         });
 
+        let data = if self.data_store.supports_bytes() {
+            Self::binary_specs_response_data_from_bytes(update.result.unwrap_or_default())
+        } else {
+            ResponseData::from_bytes(update.result.unwrap_or_default())
+        };
+
         if let Err(e) = listener.did_receive_specs_update(SpecsUpdate {
-            data: ResponseData::from_bytes(update.result.unwrap_or_default().into_bytes()),
+            data,
             source: SpecsSource::Adapter("DataStore".to_string()),
             received_at: Utc::now().timestamp_millis() as u64,
             source_api: Some("datastore".to_string()),
@@ -100,7 +126,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
     ) -> Result<(), StatsigErr> {
         self.data_store.initialize().await?;
 
-        let update = self.data_store.get(&self.cache_key).await?;
+        let update = self.load_cached_specs_bytes().await?;
 
         let data = match update.result {
             Some(data) => data,
@@ -118,8 +144,14 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
             None => return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
         };
 
+        let data = if self.data_store.supports_bytes() {
+            Self::binary_specs_response_data_from_bytes(data)
+        } else {
+            ResponseData::from_bytes(data)
+        };
+
         listener.did_receive_specs_update(SpecsUpdate {
-            data: ResponseData::from_bytes(data.into_bytes()),
+            data,
             source: SpecsSource::Adapter("DataStore".to_string()),
             received_at: Utc::now().timestamp_millis() as u64,
             source_api: Some("datastore".to_string()),

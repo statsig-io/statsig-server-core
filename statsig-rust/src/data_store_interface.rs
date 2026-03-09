@@ -27,6 +27,7 @@ impl Display for RequestPath {
 pub enum CompressFormat {
     PlainText,
     Gzip,
+    StatsigBr,
 }
 
 impl Display for CompressFormat {
@@ -34,6 +35,7 @@ impl Display for CompressFormat {
         let value = match self {
             CompressFormat::PlainText => "plain_text",
             CompressFormat::Gzip => "gzip",
+            CompressFormat::StatsigBr => "statsig-br",
         };
         write!(f, "{value}")
     }
@@ -45,12 +47,44 @@ pub struct DataStoreResponse {
     pub time: Option<u64>,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct DataStoreBytesResponse {
+    pub result: Option<Vec<u8>>,
+    pub time: Option<u64>,
+}
+
 #[async_trait]
 pub trait DataStoreTrait: Send + Sync {
     async fn initialize(&self) -> Result<(), StatsigErr>;
     async fn shutdown(&self) -> Result<(), StatsigErr>;
     async fn get(&self, key: &str) -> Result<DataStoreResponse, StatsigErr>;
     async fn set(&self, key: &str, value: &str, time: Option<u64>) -> Result<(), StatsigErr>;
+    async fn set_bytes(
+        &self,
+        key: &str,
+        value: &[u8],
+        time: Option<u64>,
+    ) -> Result<(), StatsigErr> {
+        let value = std::str::from_utf8(value).map_err(|e| {
+            StatsigErr::DataStoreFailure(format!("Failed to decode bytes as UTF-8: {e}"))
+        })?;
+        self.set(key, value, time).await
+    }
+
+    async fn get_bytes(&self, key: &str) -> Result<DataStoreBytesResponse, StatsigErr> {
+        let response = self.get(key).await?;
+        Ok(DataStoreBytesResponse {
+            result: response.result.map(|value| value.into_bytes()),
+            time: response.time,
+        })
+    }
+
+    /// Whether this store can natively read/write bytes without UTF-8 conversion.
+    /// Defaults to `false` to preserve the existing string-first behavior.
+    fn supports_bytes(&self) -> bool {
+        false
+    }
+
     async fn support_polling_updates_for(&self, path: RequestPath) -> bool;
 }
 
@@ -72,13 +106,22 @@ impl From<&str> for DataStoreKeyVersion {
 }
 
 #[must_use]
-pub fn get_data_store_key(
+pub(crate) fn get_data_store_key(
     path: RequestPath,
-    compress: CompressFormat,
     sdk_key: &str,
     hashing: &HashUtil,
     options: &StatsigOptions,
 ) -> String {
+    let compress_format = if options
+        .data_store
+        .as_ref()
+        .is_some_and(|data_store| data_store.supports_bytes())
+    {
+        CompressFormat::StatsigBr
+    } else {
+        CompressFormat::PlainText
+    };
+
     let key = match options
         .data_store_key_schema_version
         .clone()
@@ -92,5 +135,5 @@ pub fn get_data_store_key(
         DataStoreKeyVersion::V2Hashed => hashing.hash(sdk_key, &crate::HashAlgorithm::Sha256),
     };
 
-    format!("statsig|{path}|{compress}|{key}")
+    format!("statsig|{path}|{compress_format}|{key}")
 }

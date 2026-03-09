@@ -17,7 +17,7 @@ use crate::specs_response::proto_specs::deserialize_protobuf;
 use crate::specs_response::spec_types::{SpecsResponseFull, SpecsResponseNoUpdates};
 use crate::utils::try_release_unused_heap_memory;
 use crate::{
-    log_d, log_e, log_error_to_statsig_and_console, read_lock_or_else, write_lock_or_else,
+    log_d, log_e, log_error_to_statsig_and_console, log_w, read_lock_or_else, write_lock_or_else,
     SpecsFormat, SpecsInfo, SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr,
     StatsigOptions, StatsigRuntime,
 };
@@ -331,6 +331,13 @@ impl SpecStore {
         specs_update: SpecsUpdate,
         apply_result: ApplyResult,
     ) -> Result<(), StatsigErr> {
+        let SpecsUpdate {
+            data,
+            source,
+            source_api,
+            ..
+        } = specs_update;
+
         let current_lcut = {
             let read_lock = read_lock_or_else!(self.data, {
                 let msg = "Failed to acquire read lock for set_values";
@@ -347,21 +354,15 @@ impl SpecStore {
             read_lock.values.time
         };
 
-        if let SpecsFormat::Json = response_format {
-            // protobuf response writes to data store are not current supported
-            self.try_update_data_store(
-                &specs_update.source,
-                specs_update.data,
-                apply_result.time_received_at,
-            );
-        }
+        // Data store writes now support both legacy JSON payloads and statsig-br protobuf bytes.
+        self.try_update_data_store(&source, data, apply_result.time_received_at);
 
         self.ops_stats_log_config_propagation_diff(
             current_lcut,
             apply_result.prev_lcut,
-            &specs_update.source,
+            &source,
             &apply_result.prev_source,
-            specs_update.source_api,
+            source_api,
             response_format,
         );
 
@@ -445,14 +446,34 @@ impl SpecStore {
         };
 
         let data_store_key = self.data_store_key.clone();
+        let supports_bytes = data_store.supports_bytes();
 
         let spawn_result = self.statsig_runtime.spawn(
             "spec_store_update_data_store",
             move |_shutdown_notif| async move {
+                if supports_bytes {
+                    let data_bytes = match data.read_to_bytes() {
+                        Ok(bytes) => bytes,
+                        Err(e) => {
+                            log_e!(TAG, "Failed to read data as bytes: {}", e);
+                            return;
+                        }
+                    };
+
+                    let _ = data_store
+                        .set_bytes(&data_store_key, &data_bytes, Some(now))
+                        .await;
+                    return;
+                }
+
                 let data_string = match data.read_to_string() {
                     Ok(s) => s,
                     Err(e) => {
-                        log_e!(TAG, "Failed to convert data to string: {}", e);
+                        log_w!(
+                            TAG,
+                            "Skipping data store write because payload is not valid UTF-8 and data store does not support bytes: {}",
+                            e
+                        );
                         return;
                     }
                 };
