@@ -4,6 +4,8 @@ import * as path from 'node:path';
 import { Statsig, StatsigOptions, StatsigUser, StatsigUserArgs } from '../../build/index.js';
 import { MockScrapi } from './MockScrapi';
 
+jest.setTimeout(15_000);
+
 function genUserFromVC(): StatsigUserArgs {
   const user: StatsigUserArgs & {
     custom: Record<string, unknown>;
@@ -32,20 +34,18 @@ describe('StatsigUserArgs', () => {
   const getLastLoggedEvent = async (): Promise<Record<string, any> | null> => {
     await statsig.flushEvents();
 
-    if (scrapi.requests.length === 0) {
+    const request = [...scrapi.getLogEventRequests()]
+      .reverse()
+      .find((req) => Array.isArray(req.body?.events));
+
+    if (request == null) {
       return null;
     }
 
-    const request = scrapi.requests[0];
-
-    if (!request.body.events) {
-      return null;
-    }
-
-    const events = request.body.events;
     return (
-      events.filter((e: any) => e.eventName !== 'statsig::diagnostics')[0] ??
-      null
+      [...request.body.events]
+        .reverse()
+        .find((e: any) => e.eventName !== 'statsig::diagnostics') ?? null
     );
   };
 

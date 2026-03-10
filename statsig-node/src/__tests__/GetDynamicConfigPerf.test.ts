@@ -9,10 +9,10 @@ const ITER = 100_000;
 const CONFIG_NAME = 'big_dc_base64';
 const KNOWN_STRING_PARAM = 'a';
 
-// Please do NOT increase this threshold without understanding why
-// The bug that was fixed was reporting as ~70x slower than the baseline
-const EXPECT_LOW = 0.3;
-const EXPECT_HIGH = 1.6;
+// Please do NOT increase this threshold without understanding why.
+// The bug that was fixed was reporting as ~70x slower than the baseline.
+// Faster-than-baseline runs are acceptable and can happen on noisy CI runners.
+const EXPECT_MAX_DELTA = 1.6;
 const VERBOSE = true;
 
 type ProfileResult = {
@@ -96,8 +96,8 @@ describe('Get Dynamic Config Performance', () => {
 
     tryPrintResults('Node getValue', result);
 
-    expect(overallDelta).toBeWithin(EXPECT_LOW, EXPECT_HIGH);
-    expect(p99Delta).toBeWithin(EXPECT_LOW, EXPECT_HIGH);
+    expect(overallDelta).toBeLessThan(EXPECT_MAX_DELTA);
+    expect(p99Delta).toBeLessThan(EXPECT_MAX_DELTA);
   });
 
   it('should access the value field directly within reasonable time', () => {
@@ -109,8 +109,8 @@ describe('Get Dynamic Config Performance', () => {
 
     tryPrintResults('Node value field access', result);
 
-    expect(overallDelta).toBeWithin(EXPECT_LOW, EXPECT_HIGH);
-    expect(p99Delta).toBeWithin(EXPECT_LOW, EXPECT_HIGH);
+    expect(overallDelta).toBeLessThan(EXPECT_MAX_DELTA);
+    expect(p99Delta).toBeLessThan(EXPECT_MAX_DELTA);
   });
 
   it('should be getting the correct object value', () => {
