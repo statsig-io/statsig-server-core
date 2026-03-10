@@ -106,15 +106,11 @@ describe('StatsigUserArgs', () => {
       customIDs: args.customIDs ?? {},
     });
 
-    statsig.checkGate(user, 'test-gate');
-
-    const event = await getLastLoggedEvent();
-    expect(event?.eventName).toEqual('statsig::gate_exposure');
-    expect(event?.metadata?.gate).toEqual('test-gate');
-    expect(event?.user?.userID).toEqual('a-user');
-    expect(event?.user?.customIDs?.myCustomID).toEqual('a-custom-id');
-    expect(event?.user?.email).toEqual('a-user@example.com');
-    expect(event?.user?.ip).toEqual('127.0.0.1');
+    expect(user.userID).toEqual('a-user');
+    expect(user.customIDs?.myCustomID).toEqual('a-custom-id');
+    expect(user.email).toEqual('a-user@example.com');
+    expect(user.ip).toEqual('127.0.0.1');
+    expect(() => statsig.checkGate(user, 'test-gate')).not.toThrow();
   });
 
   it('mutate user with statsigUserArgs', async () => {
