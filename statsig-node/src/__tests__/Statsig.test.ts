@@ -17,10 +17,10 @@ describe('Statsig', () => {
       return null;
     }
 
-    const events = request.body.events;
     return (
-      events.filter((e: any) => e.eventName !== 'statsig::diagnostics')[0] ??
-      null
+      [...request.body.events]
+        .reverse()
+        .find((e: any) => e.eventName !== 'statsig::diagnostics') ?? null
     );
   };
 

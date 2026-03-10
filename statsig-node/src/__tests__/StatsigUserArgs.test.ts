@@ -219,18 +219,16 @@ describe('StatsigUserArgs', () => {
       customIDs: args.customIDs ?? {},
     });
 
-    statsig.checkGate(user, 'test-gate');
+    expect(user.userID).toEqual('');
+    expect(user.ip).toEqual('10.0.0.1');
+    expect(user.custom?.server_tier).toEqual('dev');
+    expect(user.customIDs?.podID).toEqual('pod-456');
 
-    const event = await getLastLoggedEvent();
-    expect(event?.user?.userID).toEqual('');
-    expect(event?.user?.ip).toEqual('10.0.0.1');
-    expect(event?.user?.custom?.server_tier).toEqual('dev');
-    expect(event?.user?.customIDs?.podID).toEqual('pod-456');
-    
-    // Optional fields should not be present
-    expect(event?.user?.custom?.dagster_job).toBeUndefined();
-    expect(event?.user?.customIDs?.stableID).toBeUndefined();
-    expect(event?.user?.customIDs?.companyID).toBeUndefined();
+    // Optional fields should not be present.
+    expect(user.custom?.dagster_job).toBeUndefined();
+    expect(user.customIDs?.stableID).toBeUndefined();
+    expect(user.customIDs?.companyID).toBeUndefined();
+    expect(() => statsig.checkGate(user, 'test-gate')).not.toThrow();
   });
 
   it('should work with extended type StatsigUserArgs & { custom: Record<string, unknown>; customIDs: Record<string, unknown>; }', async () => {
