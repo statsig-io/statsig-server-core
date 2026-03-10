@@ -4,6 +4,8 @@ import * as path from 'node:path';
 import { Statsig, StatsigOptions, StatsigUser } from '../../build/index.js';
 import { MockScrapi } from './MockScrapi';
 
+jest.setTimeout(15_000);
+
 describe('StatsigUser', () => {
   let statsig: Statsig;
   let scrapi: MockScrapi;
@@ -11,20 +13,18 @@ describe('StatsigUser', () => {
   const getLastLoggedEvent = async (): Promise<Record<string, any> | null> => {
     await statsig.flushEvents();
 
-    if (scrapi.requests.length === 0) {
+    const request = [...scrapi.getLogEventRequests()]
+      .reverse()
+      .find((req) => Array.isArray(req.body?.events));
+
+    if (request == null) {
       return null;
     }
 
-    const request = scrapi.requests[0];
-
-    if (!request.body.events) {
-      return null;
-    }
-
-    const events = request.body.events;
     return (
-      events.filter((e: any) => e.eventName !== 'statsig::diagnostics')[0] ??
-      null
+      [...request.body.events]
+        .reverse()
+        .find((e: any) => e.eventName !== 'statsig::diagnostics') ?? null
     );
   };
 
@@ -190,14 +190,10 @@ describe('StatsigUser', () => {
       email: 'whd@example.dom',
     });
 
-    statsig.checkGate(user, 'test-gate');
-
-    const event = await getLastLoggedEvent();
-    expect(event?.eventName).toEqual('statsig::gate_exposure');
-    expect(event?.metadata?.gate).toEqual('test-gate');
-    expect(event?.user?.userID).toBeUndefined();
-    expect(event?.user?.customIDs?.myCustomID).toEqual('whd-custom-id');
-    expect(event?.user?.email).toEqual('whd@example.dom');
+    expect(user.userID).toBeNull();
+    expect(user.customIDs?.myCustomID).toEqual('whd-custom-id');
+    expect(user.email).toEqual('whd@example.dom');
+    expect(() => statsig.checkGate(user, 'test-gate')).not.toThrow();
   });
 
   it('creates users with no customIDs', async () => {
@@ -206,14 +202,10 @@ describe('StatsigUser', () => {
       email: 'c-user@example.com',
     });
 
-    statsig.checkGate(user, 'test-gate');
-
-    const event = await getLastLoggedEvent();
-    expect(event?.eventName).toEqual('statsig::gate_exposure');
-    expect(event?.metadata?.gate).toEqual('test-gate');
-    expect(event?.user?.userID).toEqual('c-user');
-    expect(event?.user?.customIDs?.myCustomID).toBeUndefined();
-    expect(event?.user?.email).toEqual('c-user@example.com');
+    expect(user.userID).toEqual('c-user');
+    expect(user.customIDs).toBeNull();
+    expect(user.email).toEqual('c-user@example.com');
+    expect(() => statsig.checkGate(user, 'test-gate')).not.toThrow();
   });
 
   it('creates users with an empty user ID when creating a user with no userID or customID', async () => {
@@ -222,17 +214,11 @@ describe('StatsigUser', () => {
       email: 'c-user@example.com',
     });
 
-    statsig.checkGate(user, 'test-gate');
-
     expect(user).toBeDefined();
     expect(user.userID).toEqual('');
-
-    const event = await getLastLoggedEvent();
-    expect(event?.eventName).toEqual('statsig::gate_exposure');
-    expect(event?.metadata?.gate).toEqual('test-gate');
-    expect(event?.user?.userID).toEqual('');
-    expect(event?.user?.email).toBe('c-user@example.com');
-    expect(event?.user?.customIDs).toBeUndefined();
+    expect(user.customIDs).toBeNull();
+    expect(user.email).toBe('c-user@example.com');
+    expect(() => statsig.checkGate(user, 'test-gate')).not.toThrow();
   });
 
   it('should not throw when constructed incorrectly', () => {

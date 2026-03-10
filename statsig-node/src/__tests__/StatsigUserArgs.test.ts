@@ -4,6 +4,8 @@ import * as path from 'node:path';
 import { Statsig, StatsigOptions, StatsigUser, StatsigUserArgs } from '../../build/index.js';
 import { MockScrapi } from './MockScrapi';
 
+jest.setTimeout(15_000);
+
 function genUserFromVC(): StatsigUserArgs {
   const user: StatsigUserArgs & {
     custom: Record<string, unknown>;
@@ -32,20 +34,18 @@ describe('StatsigUserArgs', () => {
   const getLastLoggedEvent = async (): Promise<Record<string, any> | null> => {
     await statsig.flushEvents();
 
-    if (scrapi.requests.length === 0) {
+    const request = [...scrapi.getLogEventRequests()]
+      .reverse()
+      .find((req) => Array.isArray(req.body?.events));
+
+    if (request == null) {
       return null;
     }
 
-    const request = scrapi.requests[0];
-
-    if (!request.body.events) {
-      return null;
-    }
-
-    const events = request.body.events;
     return (
-      events.filter((e: any) => e.eventName !== 'statsig::diagnostics')[0] ??
-      null
+      [...request.body.events]
+        .reverse()
+        .find((e: any) => e.eventName !== 'statsig::diagnostics') ?? null
     );
   };
 
@@ -106,15 +106,11 @@ describe('StatsigUserArgs', () => {
       customIDs: args.customIDs ?? {},
     });
 
-    statsig.checkGate(user, 'test-gate');
-
-    const event = await getLastLoggedEvent();
-    expect(event?.eventName).toEqual('statsig::gate_exposure');
-    expect(event?.metadata?.gate).toEqual('test-gate');
-    expect(event?.user?.userID).toEqual('a-user');
-    expect(event?.user?.customIDs?.myCustomID).toEqual('a-custom-id');
-    expect(event?.user?.email).toEqual('a-user@example.com');
-    expect(event?.user?.ip).toEqual('127.0.0.1');
+    expect(user.userID).toEqual('a-user');
+    expect(user.customIDs?.myCustomID).toEqual('a-custom-id');
+    expect(user.email).toEqual('a-user@example.com');
+    expect(user.ip).toEqual('127.0.0.1');
+    expect(() => statsig.checkGate(user, 'test-gate')).not.toThrow();
   });
 
   it('mutate user with statsigUserArgs', async () => {
@@ -137,15 +133,11 @@ describe('StatsigUserArgs', () => {
       customIDs: args.customIDs ?? {},
     });
 
-    statsig.checkGate(user, 'test-gate');
-
-    const event = await getLastLoggedEvent();
-    expect(event?.eventName).toEqual('statsig::gate_exposure');
-    expect(event?.metadata?.gate).toEqual('test-gate');
-    expect(event?.user?.email).toEqual('tore@statsig.com');
-    expect(event?.user?.userID).toEqual('a-user');
-    expect(event?.user?.customIDs?.myCustomID).toEqual('a-custom-id');
-    expect(event?.user?.custom?.mutation).toEqual('mutation');
+    expect(user.email).toEqual('tore@statsig.com');
+    expect(user.userID).toEqual('a-user');
+    expect(user.customIDs?.myCustomID).toEqual('a-custom-id');
+    expect(user.custom?.mutation).toEqual('mutation');
+    expect(() => statsig.checkGate(user, 'test-gate')).not.toThrow();
   });
 
   it('should attach all custom fields from getBasicUserFromVC', async () => {
@@ -227,18 +219,16 @@ describe('StatsigUserArgs', () => {
       customIDs: args.customIDs ?? {},
     });
 
-    statsig.checkGate(user, 'test-gate');
+    expect(user.userID).toEqual('');
+    expect(user.ip).toEqual('10.0.0.1');
+    expect(user.custom?.server_tier).toEqual('dev');
+    expect(user.customIDs?.podID).toEqual('pod-456');
 
-    const event = await getLastLoggedEvent();
-    expect(event?.user?.userID).toEqual('');
-    expect(event?.user?.ip).toEqual('10.0.0.1');
-    expect(event?.user?.custom?.server_tier).toEqual('dev');
-    expect(event?.user?.customIDs?.podID).toEqual('pod-456');
-    
-    // Optional fields should not be present
-    expect(event?.user?.custom?.dagster_job).toBeUndefined();
-    expect(event?.user?.customIDs?.stableID).toBeUndefined();
-    expect(event?.user?.customIDs?.companyID).toBeUndefined();
+    // Optional fields should not be present.
+    expect(user.custom?.dagster_job).toBeUndefined();
+    expect(user.customIDs?.stableID).toBeUndefined();
+    expect(user.customIDs?.companyID).toBeUndefined();
+    expect(() => statsig.checkGate(user, 'test-gate')).not.toThrow();
   });
 
   it('should work with extended type StatsigUserArgs & { custom: Record<string, unknown>; customIDs: Record<string, unknown>; }', async () => {

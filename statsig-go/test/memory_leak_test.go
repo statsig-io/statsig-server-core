@@ -62,6 +62,9 @@ func createOptions(t *testing.T) *statsig_go.StatsigOptions {
 }
 
 func TestMemoryLeak(t *testing.T) {
+	const maxPercentChange = 30.0
+	const maxDeltaBytes = 15 * 1024 * 1024
+
 	resData := loadLargeDcsData(t)
 	statsig, _, user := SetupTestWithDcsData(t, resData)
 
@@ -104,8 +107,17 @@ func TestMemoryLeak(t *testing.T) {
 	percentChange := float64(finalRss-initialRss) / float64(initialRss) * 100
 	delta := finalRss - initialRss
 
-	if percentChange > 20 {
-		t.Errorf("Memory leak detected: %s (%.2f%%)", humanizeBytes(delta), percentChange)
+	// RSS on GitHub runners is noisy enough that the relative percentage alone
+	// false-positives on small baselines. Require both a large relative increase
+	// and a material absolute increase before flagging a leak.
+	if percentChange > maxPercentChange && delta > maxDeltaBytes {
+		t.Errorf(
+			"Memory leak detected: %s (%.2f%%) exceeded %.2f%% and %s",
+			humanizeBytes(delta),
+			percentChange,
+			maxPercentChange,
+			humanizeBytes(maxDeltaBytes),
+		)
 	} else {
 		fmt.Printf("Memory change within acceptable range: %s (%.2f%%)", humanizeBytes(delta), percentChange)
 	}

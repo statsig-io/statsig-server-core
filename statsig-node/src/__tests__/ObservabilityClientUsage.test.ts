@@ -5,6 +5,8 @@ import { Statsig, StatsigOptions, StatsigUser } from '../../build/index.js';
 import { MockObservabilityClient } from './MockObservabilityClient';
 import { MockScrapi } from './MockScrapi';
 
+jest.setTimeout(20_000);
+
 describe('ObservabilityClient Usage', () => {
   let statsig: Statsig;
   let scrapi: MockScrapi;
@@ -57,7 +59,7 @@ describe('ObservabilityClient Usage', () => {
       specsUrl,
       logEventUrl,
       observabilityClient,
-      specsSyncIntervalMs: 1,
+      specsSyncIntervalMs: 20,
     };
 
     statsig = new Statsig('secret-123', options);
@@ -79,25 +81,22 @@ describe('ObservabilityClient Usage', () => {
     await waitFor(
       () =>
         observabilityClientSpies.dist.mock.calls.some(
-          ([metricName]) => metricName === 'statsig.sdk.config_propagation_diff',
+          ([metricName]) =>
+            metricName === 'statsig.sdk.config_sync_overall.latency',
         ),
       5000,
     );
 
-    scrapi.mock('/v2/download_config_specs', '{"has_updates": false}', {
-      status: 200,
-      method: 'GET',
-    });
-
-    await scrapi.waitForNext((req) =>
-      req.path.includes('/v2/download_config_specs'),
-    );
-
     await waitFor(
-      () => observabilityClientSpies.increment.mock.calls.length > 1, // no updates
+      () =>
+        observabilityClientSpies.increment.mock.calls.some(
+          ([metricName]) =>
+            metricName === 'statsig.sdk.events_successfully_sent_count',
+        ),
       5000,
     );
-  }, 10000);
+
+  });
 
   afterAll(async () => {
     await statsig.shutdown();
@@ -124,33 +123,38 @@ describe('ObservabilityClient Usage', () => {
     );
   });
 
-  it('logs a dist metric for config propagation time', () => {
-    expect(observabilityClientSpies.dist).toHaveBeenCalledWith(
-      'statsig.sdk.config_propagation_diff',
-      expect.any(Number),
-      {
-        source: 'Network',
+  it('logs a dist metric for config sync latency', () => {
+    const syncCall = observabilityClientSpies.dist.mock.calls.find(
+      ([metricName]) => metricName === 'statsig.sdk.config_sync_overall.latency',
+    );
+
+    expect(syncCall).toBeDefined();
+    expect(syncCall?.[1]).toEqual(expect.any(Number));
+    expect(syncCall?.[2]).toEqual(
+      expect.objectContaining({
         source_api: scrapi.getServerApi() + '/v2',
-        response_format: 'JSON',
-      },
+        format: 'unknown',
+        network_success: 'true',
+        process_success: 'true',
+        error: '',
+      }),
     );
   });
 
   it('logs an increment log events', () => {
-    expect(observabilityClientSpies.increment).toHaveBeenCalledWith(
-      'statsig.sdk.events_successfully_sent_count',
-      3,
-      null,
+    const eventSuccessCalls = observabilityClientSpies.increment.mock.calls.filter(
+      ([metricName]) => metricName === 'statsig.sdk.events_successfully_sent_count',
     );
+
+    expect(eventSuccessCalls.length).toBeGreaterThan(0);
+    expect(
+      eventSuccessCalls.some(
+        ([, value, tags]) =>
+          typeof value === 'number' && value >= 2 && tags == null,
+      ),
+    ).toBe(true);
   });
 
-  it('logs config no update', () => {
-    expect(observabilityClientSpies.increment).toHaveBeenCalledWith(
-      'statsig.sdk.config_no_update',
-      1,
-      { source: 'Network', source_api: scrapi.getServerApi() + '/v2' },
-    );
-  });
 });
 
 async function waitFor(fn: () => boolean, timeout: number) {

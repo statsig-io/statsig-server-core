@@ -31,7 +31,7 @@ export class MockScrapi {
   requests: RecordedRequest[] = [];
 
   private app: express.Application;
-  private port: number;
+  private port = 0;
   private server: http.Server;
 
   private mocks: Record<string, Mock> = {};
@@ -39,8 +39,15 @@ export class MockScrapi {
 
   private constructor(onReady: () => void) {
     this.app = express();
-    this.port = Math.floor(Math.random() * 2000) + 4000;
-    this.server = this.app.listen(this.port, onReady);
+    this.server = this.app.listen(0, '127.0.0.1', () => {
+      const address = this.server.address();
+      if (address == null || typeof address === 'string') {
+        throw new Error('MockScrapi failed to bind to a TCP port');
+      }
+
+      this.port = address.port;
+      onReady();
+    });
 
     this.app.use(
       (

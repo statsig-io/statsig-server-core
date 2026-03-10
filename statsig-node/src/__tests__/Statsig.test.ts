@@ -4,6 +4,8 @@ import * as path from 'node:path';
 import { Statsig, StatsigOptions, StatsigUser } from '../../build/index.js';
 import { MockScrapi } from './MockScrapi';
 
+jest.setTimeout(15_000);
+
 describe('Statsig', () => {
   let statsig: Statsig;
   let scrapi: MockScrapi;
@@ -15,20 +17,21 @@ describe('Statsig', () => {
       return null;
     }
 
-    const events = request.body.events;
     return (
-      events.filter((e: any) => e.eventName !== 'statsig::diagnostics')[0] ??
-      null
+      [...request.body.events]
+        .reverse()
+        .find((e: any) => e.eventName !== 'statsig::diagnostics') ?? null
     );
   };
 
   const getLastRequest = async (): Promise<Record<string, any> | null> => {
     await statsig.flushEvents();
-    if (scrapi.requests.length === 0) {
-      return null;
-    }
 
-    return scrapi.requests[0];
+    return (
+      [...scrapi.requests]
+        .reverse()
+        .find((request) => request.path === '/v1/log_event') ?? null
+    );
   };
 
   beforeAll(async () => {
