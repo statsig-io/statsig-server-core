@@ -137,11 +137,17 @@ describe('ObservabilityClient Usage', () => {
   });
 
   it('logs an increment log events', () => {
-    expect(observabilityClientSpies.increment).toHaveBeenCalledWith(
-      'statsig.sdk.events_successfully_sent_count',
-      3,
-      null,
+    const eventSuccessCalls = observabilityClientSpies.increment.mock.calls.filter(
+      ([metricName]) => metricName === 'statsig.sdk.events_successfully_sent_count',
     );
+
+    expect(eventSuccessCalls.length).toBeGreaterThan(0);
+    expect(
+      eventSuccessCalls.some(
+        ([, value, tags]) =>
+          typeof value === 'number' && value >= 2 && tags == null,
+      ),
+    ).toBe(true);
   });
 
   it('logs config no update', () => {

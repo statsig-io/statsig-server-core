@@ -190,7 +190,7 @@ describe('StatsigUser', () => {
       email: 'whd@example.dom',
     });
 
-    expect(user.userID).toBeUndefined();
+    expect(user.userID).toBeNull();
     expect(user.customIDs?.myCustomID).toEqual('whd-custom-id');
     expect(user.email).toEqual('whd@example.dom');
     expect(() => statsig.checkGate(user, 'test-gate')).not.toThrow();

@@ -40,7 +40,9 @@ describe('Manual Exposures', () => {
       return null;
     }
 
-    const request = scrapi.requests[0];
+    const request = [...scrapi.requests]
+      .reverse()
+      .find((entry) => entry.path === '/v1/log_event');
 
     if (!request?.body?.events) {
       return null;
