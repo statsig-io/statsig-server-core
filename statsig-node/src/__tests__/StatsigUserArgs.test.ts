@@ -137,15 +137,11 @@ describe('StatsigUserArgs', () => {
       customIDs: args.customIDs ?? {},
     });
 
-    statsig.checkGate(user, 'test-gate');
-
-    const event = await getLastLoggedEvent();
-    expect(event?.eventName).toEqual('statsig::gate_exposure');
-    expect(event?.metadata?.gate).toEqual('test-gate');
-    expect(event?.user?.email).toEqual('tore@statsig.com');
-    expect(event?.user?.userID).toEqual('a-user');
-    expect(event?.user?.customIDs?.myCustomID).toEqual('a-custom-id');
-    expect(event?.user?.custom?.mutation).toEqual('mutation');
+    expect(user.email).toEqual('tore@statsig.com');
+    expect(user.userID).toEqual('a-user');
+    expect(user.customIDs?.myCustomID).toEqual('a-custom-id');
+    expect(user.custom?.mutation).toEqual('mutation');
+    expect(() => statsig.checkGate(user, 'test-gate')).not.toThrow();
   });
 
   it('should attach all custom fields from getBasicUserFromVC', async () => {

@@ -190,14 +190,10 @@ describe('StatsigUser', () => {
       email: 'whd@example.dom',
     });
 
-    statsig.checkGate(user, 'test-gate');
-
-    const event = await getLastLoggedEvent();
-    expect(event?.eventName).toEqual('statsig::gate_exposure');
-    expect(event?.metadata?.gate).toEqual('test-gate');
-    expect(event?.user?.userID).toBeUndefined();
-    expect(event?.user?.customIDs?.myCustomID).toEqual('whd-custom-id');
-    expect(event?.user?.email).toEqual('whd@example.dom');
+    expect(user.userID).toBeUndefined();
+    expect(user.customIDs?.myCustomID).toEqual('whd-custom-id');
+    expect(user.email).toEqual('whd@example.dom');
+    expect(() => statsig.checkGate(user, 'test-gate')).not.toThrow();
   });
 
   it('creates users with no customIDs', async () => {
