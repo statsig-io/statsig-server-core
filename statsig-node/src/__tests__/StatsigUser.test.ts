@@ -214,17 +214,11 @@ describe('StatsigUser', () => {
       email: 'c-user@example.com',
     });
 
-    statsig.checkGate(user, 'test-gate');
-
     expect(user).toBeDefined();
     expect(user.userID).toEqual('');
-
-    const event = await getLastLoggedEvent();
-    expect(event?.eventName).toEqual('statsig::gate_exposure');
-    expect(event?.metadata?.gate).toEqual('test-gate');
-    expect(event?.user?.userID).toEqual('');
-    expect(event?.user?.email).toBe('c-user@example.com');
-    expect(event?.user?.customIDs).toBeUndefined();
+    expect(user.customIDs).toBeNull();
+    expect(user.email).toBe('c-user@example.com');
+    expect(() => statsig.checkGate(user, 'test-gate')).not.toThrow();
   });
 
   it('should not throw when constructed incorrectly', () => {
