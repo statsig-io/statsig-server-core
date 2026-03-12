@@ -73,7 +73,7 @@ public class BenchCore
         return new StatsigUserBuilder()
             .SetUserID("a_user_id")
             .SetEmail("test@test.com")
-            .SetIPAddress("127.0.0.1")
+            .SetIP("127.0.0.1")
             .SetLocale("en_US")
             .SetCountry("US")
             .SetAppVersion("1.0.0")
