@@ -100,6 +100,7 @@ public class BenchLegacy {
 
         benchmark("get_client_initialize_response", "n/a", ITER_LITE, () -> Statsig.getClientInitializeResponse(createUser(), HashAlgo.DJB2, null), results, sdkVersion);
         benchmark("get_client_initialize_response_global_user", "n/a", ITER_LITE, () -> Statsig.getClientInitializeResponse(globalUser, HashAlgo.DJB2, null), results, sdkVersion);
+        benchmark("user_creation", "n/a", ITER_HEAVY, () -> createUserWithBenchmarkPayload(), results, sdkVersion);
 
         Statsig.shutdown();
 
@@ -130,6 +131,38 @@ public class BenchLegacy {
         user.setCustom(Map.of("isAdmin", false));
         user.setPrivateAttributes(Map.of("isPaid", "nah"));
         return user;
+    }
+
+    private static StatsigUser createUserWithBenchmarkPayload() {
+        Map<String, Object> custom = new HashMap<>();
+        custom.put("custom_attr", "custom_value");
+        custom.put("custom_array", Arrays.asList(1, 2, 3));
+        custom.put("custom_object", Map.of("key", "value"));
+        custom.put("custom_number", 123);
+        custom.put("custom_boolean", true);
+        custom.put("large_custom_string", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
+        Map<String, String> privateAttributes = new HashMap<>();
+        privateAttributes.put("private_attr", "secret");
+        privateAttributes.put("private_array", "1,2,3");
+
+        Map<String, Object> privateAttributeMap = new HashMap<>();
+        privateAttributeMap.put("private_attr", "secret");
+        privateAttributeMap.put("private_array", Arrays.asList(1, 2, 3));
+        privateAttributeMap.put("private_object", Map.of("key", "value"));
+
+        return new StatsigUser.Builder()
+            .setUserID("a_user_id")
+            .setEmail("test@test.com")
+            .setCustomIDs(Map.of("custom_id", "a_long_custom_id_value_goes_here", "employee_id", "456"))
+            .setIp("127.0.0.1")
+            .setLocale("en_US")
+            .setAppVersion("1.0.0")
+            .setCountry("US")
+            .setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36")
+            .setCustom(custom)
+            .setPrivateAttributes(privateAttributeMap)
+            .build();
     }
 
     // --- Benchmarking logic ---

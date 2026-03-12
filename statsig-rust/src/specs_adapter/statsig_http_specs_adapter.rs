@@ -417,6 +417,7 @@ impl StatsigHttpSpecsAdapter {
         content_encoding.map(|s| s.as_str().contains("statsig-br")) == Some(true)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn log_config_sync_overall_latency(
         &self,
         sync_start_ms: u64,

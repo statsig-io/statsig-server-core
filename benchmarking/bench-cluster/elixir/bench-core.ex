@@ -165,6 +165,10 @@ defmodule BenchCore do
     #     sdk_version
     #   )
 
+    results =
+      results
+      |> benchmark("user_creation", "n/a", @iter_heavy, fn -> create_user_with_benchmark_payload() end, sdk_version)
+
     Statsig.shutdown()
     Process.sleep(1000)
 
@@ -213,6 +217,37 @@ defmodule BenchCore do
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
       custom: %{"isAdmin" => false},
       private_attributes: %{"isPaid" => "nah"}
+    }
+  end
+
+  defp create_user_with_benchmark_payload() do
+    %Statsig.User{
+      user_id: "a_user_id",
+      custom_ids: %{
+        "custom_id" => "a_long_custom_id_value_goes_here",
+        "employee_id" => "456"
+      },
+      email: "test@test.com",
+      ip: "127.0.0.1",
+      locale: "en_US",
+      app_version: "1.0.0",
+      country: "US",
+      user_agent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+      custom: %{
+        "custom_attr" => "custom_value",
+        "custom_array" => [1, 2, 3],
+        "custom_object" => %{"key" => "value"},
+        "custom_number" => 123,
+        "custom_boolean" => true,
+        "large_custom_string" =>
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      private_attributes: %{
+        "private_attr" => "secret",
+        "private_array" => [1, 2, 3],
+        "private_object" => %{"key" => "value"}
+      }
     }
   end
 

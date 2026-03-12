@@ -202,6 +202,9 @@ func BenchLegacy() {
 	benchmark(&results, "get_client_initialize_response_global_user", "n/a", ITER_LITE, "go-sdk", func() {
 		statsig.GetClientInitializeResponse(globalUser)
 	})
+	benchmark(&results, "user_creation", "n/a", ITER_HEAVY, "go-sdk", func() {
+		createUserWithBenchmarkPayload()
+	})
 
 	statsig.Shutdown()
 
@@ -258,6 +261,23 @@ func createUser() statsig.User {
 		UserAgent:         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
 		Custom:            map[string]interface{}{"isAdmin": false},
 		PrivateAttributes: map[string]interface{}{"isPaid": "nah"},
+	}
+
+	return user
+}
+
+func createUserWithBenchmarkPayload() statsig.User {
+	user := statsig.User{
+		UserID:            "a_user_id",
+		Email:             "test@test.com",
+		IpAddress:         "127.0.0.1",
+		Locale:            "en_US",
+		AppVersion:        "1.0.0",
+		Country:           "US",
+		UserAgent:         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+		CustomIDs:         map[string]string{"custom_id": "a_long_custom_id_value_goes_here", "employee_id": "456"},
+		Custom:            map[string]interface{}{"custom_attr": "custom_value", "custom_array": []any{1, 2, 3}, "custom_object": map[string]interface{}{"key": "value"}, "custom_number": 123, "custom_boolean": true, "large_custom_string": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+		PrivateAttributes: map[string]interface{}{"private_attr": "secret", "private_array": []any{1, 2, 3}, "private_object": map[string]interface{}{"key": "value"}},
 	}
 
 	return user

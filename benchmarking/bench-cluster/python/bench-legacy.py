@@ -88,6 +88,35 @@ def create_user() -> StatsigUser:
     )
 
 
+def create_user_with_benchmark_payload() -> StatsigUser:
+    return StatsigUser(
+        user_id="a_user_id",
+        app_version="1.0.0",
+        custom_ids={
+            "custom_id": "a_long_custom_id_value_goes_here",
+            "employee_id": "456",
+        },
+        private_attributes={
+            "private_attr": "secret",
+            "private_array": [1, 2, 3],
+            "private_object": {"key": "value"},
+        },
+        custom={
+            "custom_attr": "custom_value",
+            "custom_array": [1, 2, 3],
+            "custom_object": {"key": "value"},
+            "custom_number": 123,
+            "custom_boolean": True,
+            "large_custom_string": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        },
+        ip="127.0.0.1",
+        country="US",
+        email="test@test.com",
+        user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        locale="en_US",
+    )
+
+
 def assert_cond(condition: bool, message: str):
     if not condition:
         raise Exception(message)
@@ -381,6 +410,14 @@ async def main():
         lambda: statsig.get_client_initialize_response(
             global_user, hash=HashingAlgorithm.DJB2
         ),
+        results,
+    )
+
+    await benchmark(
+        "user_creation",
+        "n/a",
+        ITER_HEAVY,
+        lambda: create_user_with_benchmark_payload(),
         results,
     )
 

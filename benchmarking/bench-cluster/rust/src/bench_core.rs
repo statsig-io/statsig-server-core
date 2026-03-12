@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigUser};
 use std::{collections::HashMap, sync::Arc, time::Instant};
 
 pub mod built_info {
@@ -215,6 +215,17 @@ impl BenchCore {
             .await;
         }
 
+        benchmark(
+            &mut results,
+            "user_creation",
+            "n/a",
+            ITER_HEAVY,
+            async || {
+                create_user_with_benchmark_payload();
+            },
+        )
+        .await;
+
         statsig.shutdown().await.unwrap();
 
         write_results(&results);
@@ -246,6 +257,39 @@ fn create_user() -> StatsigUser {
     user.set_user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
     user.set_custom(HashMap::from([("isAdmin".to_string(), false)]));
     user.set_private_attributes(HashMap::from([("isPaid".to_string(), "nah")]));
+    user
+}
+
+fn create_user_with_benchmark_payload() -> StatsigUser {
+    let mut user = StatsigUser::with_user_id("a_user_id");
+    user.set_custom_ids(HashMap::from([
+        ("custom_id".to_string(), "a_long_custom_id_value_goes_here".to_string()),
+        ("employee_id".to_string(), "456".to_string()),
+    ]));
+    user.set_email("test@test.com");
+    user.set_ip("127.0.0.1");
+    user.set_locale("en_US");
+    user.set_app_version("1.0.0");
+    user.set_country("US");
+    user.set_user_agent(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    );
+    user.set_custom(HashMap::from([
+        ("custom_attr".to_string(), dyn_value!("custom_value")),
+        ("custom_array".to_string(), dyn_value!([1, 2, 3])),
+        ("custom_object".to_string(), dyn_value!({"key": "value"})),
+        ("custom_number".to_string(), dyn_value!(123)),
+        ("custom_boolean".to_string(), dyn_value!(true)),
+        (
+            "large_custom_string".to_string(),
+            dyn_value!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+        ),
+    ]));
+    user.set_private_attributes(HashMap::from([
+        ("private_attr".to_string(), dyn_value!("secret")),
+        ("private_array".to_string(), dyn_value!([1, 2, 3])),
+        ("private_object".to_string(), dyn_value!({"key": "value"})),
+    ]));
     user
 }
 

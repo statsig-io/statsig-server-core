@@ -98,6 +98,10 @@ class BenchCore {
             $statsig->getClientInitializeResponse($globalUser);
         });
 
+        $results[] = self::benchmark("user_creation", "n/a", self::$ITER_HEAVY, function() {
+            self::createUserWithBenchmarkPayload();
+        });
+
         $statsig->shutdown();
 
         self::writeResults($results, $sdkVersion);
@@ -132,6 +136,35 @@ class BenchCore {
             ],
             /* private_attributes */ [
                 "isPaid" => "nah",
+            ],
+        );
+    }
+
+    function createUserWithBenchmarkPayload() {
+        return new StatsigUser(
+            /* user_id */ 'a_user_id',
+            /* custom_ids */ [
+                'custom_id' => 'a_long_custom_id_value_goes_here',
+                'employee_id' => '456',
+            ],
+            /* email */ "test@test.com",
+            /* ip */ "127.0.0.1",
+            /* user_agent */ "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+            /* country */ "US",
+            /* locale */ "en_US",
+            /* app_version */ "1.0.0",
+            /* custom */ [
+                "custom_attr" => "custom_value",
+                "custom_array" => [1, 2, 3],
+                "custom_object" => ["key" => "value"],
+                "custom_number" => 123,
+                "custom_boolean" => true,
+                "large_custom_string" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            ],
+            /* private_attributes */ [
+                "private_attr" => "secret",
+                "private_array" => [1, 2, 3],
+                "private_object" => ["key" => "value"],
             ],
         );
     }
@@ -196,6 +229,5 @@ class BenchCore {
         ], JSON_PRETTY_PRINT));
     }
 }
-
 
 

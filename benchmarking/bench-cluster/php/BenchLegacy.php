@@ -118,6 +118,9 @@ class BenchLegacy {
         $results[] = self::benchmark("get_client_initialize_response_global_user", "n/a", self::$ITER_LITE, function() use ($statsig, $globalUser) {
             $statsig->getClientInitializeResponse($globalUser);
         });
+        $results[] = self::benchmark("user_creation", "n/a", self::$ITER_HEAVY, function() {
+            self::createUserWithBenchmarkPayload();
+        });
 
         // $statsig->shutdown();
 
@@ -152,6 +155,46 @@ class BenchLegacy {
             ->setAppVersion("1.0.0")
             ->setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
             ->setIP("127.0.0.1");
+    }
+
+    function createUserWithBenchmarkPayload() {
+        $user = StatsigUser::withUserID("a_user_id")
+            ->setEmail("test@test.com")
+            ->setCustom([
+                "custom_attr" => "custom_value",
+                "custom_array" => [1, 2, 3],
+                "custom_object" => ["key" => "value"],
+                "custom_number" => 123,
+                "custom_boolean" => true,
+                "large_custom_string" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            ])
+            ->setPrivateAttributes([
+                "private_attr" => "secret",
+                "private_array" => [1, 2, 3],
+                "private_object" => ["key" => "value"],
+            ])
+            ->setCountry("US")
+            ->setLocale("en_US")
+            ->setAppVersion("1.0.0")
+            ->setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36")
+            ->setIP("127.0.0.1");
+
+        if (method_exists($user, "setCustomIDs")) {
+            $user->setCustomIDs(["custom_id" => "a_long_custom_id_value_goes_here", "employee_id" => "456"]);
+        }
+        elseif (method_exists($user, "setCustomIds")) {
+            $user->setCustomIds(["custom_id" => "a_long_custom_id_value_goes_here", "employee_id" => "456"]);
+        }
+
+        $userReflection = new ReflectionClass($user);
+        if ($userReflection->hasProperty("custom_ids")) {
+            $customIdProperty = $userReflection->getProperty("custom_ids");
+            if ($customIdProperty->isPublic()) {
+                $customIdProperty->setValue($user, ["custom_id" => "a_long_custom_id_value_goes_here", "employee_id" => "456"]);
+            }
+        }
+
+        return $user;
     }
 
     function benchmark(string $benchmarkName, string $specName, int $iterations, callable $func) {
