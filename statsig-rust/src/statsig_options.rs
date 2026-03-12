@@ -49,6 +49,7 @@ pub struct StatsigOptions {
     pub id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
     pub id_lists_sync_interval_ms: Option<u32>,
     pub id_lists_url: Option<String>,
+    pub download_id_list_file_api: Option<String>,
 
     pub init_timeout_ms: Option<u64>,
     pub log_event_url: Option<String>,
@@ -217,6 +218,12 @@ impl StatsigOptionsBuilder {
         self
     }
 
+    #[must_use]
+    pub fn download_id_list_file_api(mut self, download_id_list_file_api: Option<String>) -> Self {
+        self.inner.download_id_list_file_api = download_id_list_file_api;
+        self
+    }
+
     // Other
 
     #[must_use]
@@ -375,6 +382,11 @@ impl Serialize for StatsigOptions {
         serialize_if_not_none!(state, "disable_network", &self.disable_network);
 
         serialize_if_not_none!(state, "id_lists_url", &self.id_lists_url);
+        serialize_if_not_none!(
+            state,
+            "download_id_list_file_api",
+            &self.download_id_list_file_api
+        );
         serialize_if_not_none!(state, "enable_id_lists", &self.enable_id_lists);
         serialize_if_not_none!(state, "enable_dcs_deltas", &self.enable_dcs_deltas);
         serialize_if_not_none!(
@@ -490,6 +502,11 @@ impl StatsigOptions {
         if should_fix_null_url(&self.id_lists_url) {
             log_d!(TAG, "Setting id_lists_url to be default url");
             mut_ref.id_lists_url = None;
+        }
+
+        if should_fix_null_url(&self.download_id_list_file_api) {
+            log_d!(TAG, "Setting download_id_list_file_api to be default url");
+            mut_ref.download_id_list_file_api = None;
         }
 
         if should_fix_null_url(&self.log_event_url) {

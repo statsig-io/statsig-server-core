@@ -139,6 +139,8 @@ pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub id_lists_url: Option<String>,
     #[pyo3(get, set)]
+    pub download_id_list_file_api: Option<String>,
+    #[pyo3(get, set)]
     pub id_lists_sync_interval_ms: Option<u32>,
     #[pyo3(get, set)]
     pub fallback_to_statsig_api: Option<bool>,
@@ -194,6 +196,7 @@ impl StatsigOptionsPy {
         wait_for_country_lookup_init=None,
         disable_country_lookup=None,
         id_lists_url=None,
+        download_id_list_file_api=None,
         id_lists_sync_interval_ms=None,
         fallback_to_statsig_api=None,
         environment=None,
@@ -229,6 +232,7 @@ impl StatsigOptionsPy {
         wait_for_country_lookup_init: Option<bool>,
         disable_country_lookup: Option<bool>,
         id_lists_url: Option<String>,
+        download_id_list_file_api: Option<String>,
         id_lists_sync_interval_ms: Option<u32>,
         fallback_to_statsig_api: Option<bool>,
         environment: Option<String>,
@@ -262,6 +266,7 @@ impl StatsigOptionsPy {
             wait_for_country_lookup_init,
             disable_country_lookup,
             id_lists_url,
+            download_id_list_file_api,
             id_lists_sync_interval_ms,
             fallback_to_statsig_api,
             environment,
@@ -346,6 +351,7 @@ fn create_inner_statsig_options(
         enable_id_lists: opts.enable_id_lists,
         enable_dcs_deltas: opts.enable_dcs_deltas,
         id_lists_url: opts.id_lists_url.clone(),
+        download_id_list_file_api: opts.download_id_list_file_api.clone(),
         id_lists_sync_interval_ms: opts.id_lists_sync_interval_ms,
         fallback_to_statsig_api: opts.fallback_to_statsig_api,
         environment: opts.environment.clone(),

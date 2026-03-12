@@ -41,6 +41,7 @@ pub struct StatsigOptionsData {
     event_logging_max_queue_size: Option<u32>,
     fallback_to_statsig_api: Option<bool>,
     global_custom_fields: Option<HashMap<String, DynamicValue>>,
+    download_id_list_file_api: Option<String>,
     id_lists_sync_interval_ms: Option<u32>,
     id_lists_url: Option<String>,
     init_timeout_ms: Option<u64>,
@@ -155,6 +156,7 @@ impl From<StatsigOptionsData> for StatsigOptions {
             fallback_to_statsig_api: data.fallback_to_statsig_api,
             global_custom_fields: data.global_custom_fields,
             id_lists_adapter: None, // todo: add support for id lists adapter
+            download_id_list_file_api: data.download_id_list_file_api,
             id_lists_sync_interval_ms: data.id_lists_sync_interval_ms,
             id_lists_url: data.id_lists_url,
             init_timeout_ms: data.init_timeout_ms,
