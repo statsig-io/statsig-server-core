@@ -24,7 +24,7 @@ const BUILD_COMMANDS: Record<string, string> = {
 
   python: [
     'cd statsig-pyo3',
-    'maturin build --release',
+    'maturin build --profile release',
     'pip install pytest-rerunfailures uvloop',
     'pip install ../target/wheels/statsig_python_core*.whl --force-reinstall',
     'cd ..',

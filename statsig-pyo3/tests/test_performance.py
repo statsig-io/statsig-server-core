@@ -3,9 +3,8 @@ from pytest_httpserver import HTTPServer
 import json
 from utils import get_test_data_resource
 import pytest
-import time
+from profile_util import profile
 
-iterations = 100_000
 user = StatsigUser("a-user")
 
 
@@ -73,34 +72,3 @@ def test_getting_the_correct_value(statsig_setup):
     value = config.get_string("a", "err")
 
     assert value.startswith("TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGF")
-
-
-def profile(action):
-    overall_start = time.perf_counter()
-    durations = []
-
-    value = None
-
-    for _ in range(iterations):
-        start = time.perf_counter()
-        value = action()
-        end = time.perf_counter()
-        durations.append((end - start) * 1000)
-
-    overall_end = time.perf_counter()
-    overall = (overall_end - overall_start) * 1000
-    durations.sort()
-
-    p99_index = int(iterations * 0.99)
-
-    p99 = durations[p99_index]
-    min = durations[0]
-    max = durations[-1]
-
-    return {
-        "value": value,
-        "overall": overall,
-        "p99": p99,
-        "min": min,
-        "max": max,
-    }
