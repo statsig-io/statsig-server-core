@@ -58,7 +58,11 @@ impl BenchLegacy {
             "json",
             ITER_ULTRA_LITE,
             async || {
-                Statsig::initialize_with_options("secret-RUST_LEGACY::BC_USE_JSON", create_options()).await;
+                Statsig::initialize_with_options(
+                    "secret-RUST_LEGACY::BC_USE_JSON",
+                    create_options(),
+                )
+                .await;
             },
             true,
         )

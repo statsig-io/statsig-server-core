@@ -263,7 +263,10 @@ fn create_user() -> StatsigUser {
 fn create_user_with_benchmark_payload() -> StatsigUser {
     let mut user = StatsigUser::with_user_id("a_user_id");
     user.set_custom_ids(HashMap::from([
-        ("custom_id".to_string(), "a_long_custom_id_value_goes_here".to_string()),
+        (
+            "custom_id".to_string(),
+            "a_long_custom_id_value_goes_here".to_string(),
+        ),
         ("employee_id".to_string(), "456".to_string()),
     ]));
     user.set_email("test@test.com");
@@ -277,7 +280,10 @@ fn create_user_with_benchmark_payload() -> StatsigUser {
     user.set_custom(HashMap::from([
         ("custom_attr".to_string(), dyn_value!("custom_value")),
         ("custom_array".to_string(), dyn_value!([1, 2, 3])),
-        ("custom_object".to_string(), dyn_value!({"key": "value"})),
+        (
+            "custom_object".to_string(),
+            dyn_value!(HashMap::from([("key".to_string(), "value".to_string())])),
+        ),
         ("custom_number".to_string(), dyn_value!(123)),
         ("custom_boolean".to_string(), dyn_value!(true)),
         (
@@ -288,7 +294,10 @@ fn create_user_with_benchmark_payload() -> StatsigUser {
     user.set_private_attributes(HashMap::from([
         ("private_attr".to_string(), dyn_value!("secret")),
         ("private_array".to_string(), dyn_value!([1, 2, 3])),
-        ("private_object".to_string(), dyn_value!({"key": "value"})),
+        (
+            "private_object".to_string(),
+            dyn_value!(HashMap::from([("key".to_string(), "value".to_string())])),
+        ),
     ]));
     user
 }

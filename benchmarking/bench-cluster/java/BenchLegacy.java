@@ -142,27 +142,22 @@ public class BenchLegacy {
         custom.put("custom_boolean", true);
         custom.put("large_custom_string", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
-        Map<String, String> privateAttributes = new HashMap<>();
-        privateAttributes.put("private_attr", "secret");
-        privateAttributes.put("private_array", "1,2,3");
-
         Map<String, Object> privateAttributeMap = new HashMap<>();
         privateAttributeMap.put("private_attr", "secret");
         privateAttributeMap.put("private_array", Arrays.asList(1, 2, 3));
         privateAttributeMap.put("private_object", Map.of("key", "value"));
 
-        return new StatsigUser.Builder()
-            .setUserID("a_user_id")
-            .setEmail("test@test.com")
-            .setCustomIDs(Map.of("custom_id", "a_long_custom_id_value_goes_here", "employee_id", "456"))
-            .setIp("127.0.0.1")
-            .setLocale("en_US")
-            .setAppVersion("1.0.0")
-            .setCountry("US")
-            .setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36")
-            .setCustom(custom)
-            .setPrivateAttributes(privateAttributeMap)
-            .build();
+        StatsigUser user = new StatsigUser("a_user_id");
+        user.setEmail("test@test.com");
+        user.setCustomIDs(Map.of("custom_id", "a_long_custom_id_value_goes_here", "employee_id", "456"));
+        user.setIp("127.0.0.1");
+        user.setLocale("en_US");
+        user.setAppVersion("1.0.0");
+        user.setCountry("US");
+        user.setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36");
+        user.setCustom(custom);
+        user.setPrivateAttributes(privateAttributeMap);
+        return user;
     }
 
     // --- Benchmarking logic ---

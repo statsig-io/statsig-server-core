@@ -150,10 +150,11 @@ public class BenchCore {
         custom.put("custom_boolean", true);
         custom.put("large_custom_string", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
-        Map<String, Object> privateAttributes = new HashMap<>();
+        Map<String, String> privateAttributes = new HashMap<>();
         privateAttributes.put("private_attr", "secret");
-        privateAttributes.put("private_array", Arrays.asList(1, 2, 3));
-        privateAttributes.put("private_object", Map.of("key", "value"));
+        // todo: support non-string types i private attr
+        // privateAttributes.put("private_array", Arrays.asList(1, 2, 3));
+        // privateAttributes.put("private_object", Map.of("key", "value"));
 
         return new StatsigUser.Builder()
             .setUserID("a_user_id")
