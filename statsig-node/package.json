@@ -1,6 +1,6 @@
 {
   "name": "@statsig/statsig-node-core",
-  "version": "0.16.5-beta.2603130304",
+  "version": "0.16.5-rc.2603131810",
   "main": "index.js",
   "scripts": {
     "test": "jest --colors"
