@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigUser, StatsigUserData};
 use std::{collections::HashMap, sync::Arc, time::Instant};
 
 pub mod built_info {
@@ -215,6 +215,39 @@ impl BenchCore {
             .await;
         }
 
+        benchmark(
+            &mut results,
+            "get_client_initialize_response",
+            "n/a",
+            ITER_LITE,
+            async || {
+                Statsig::shared().get_client_init_response(&create_user());
+            },
+        )
+        .await;
+
+        benchmark(
+            &mut results,
+            "get_client_initialize_response_global_user",
+            "n/a",
+            ITER_LITE,
+            async || {
+                Statsig::shared().get_client_init_response(&global_user);
+            },
+        )
+        .await;
+
+        benchmark(
+            &mut results,
+            "user_creation",
+            "n/a",
+            ITER_HEAVY,
+            async || {
+                create_user_with_benchmark_payload();
+            },
+        )
+        .await;
+
         statsig.shutdown().await.unwrap();
 
         write_results(&results);
@@ -247,6 +280,48 @@ fn create_user() -> StatsigUser {
     user.set_custom(HashMap::from([("isAdmin".to_string(), false)]));
     user.set_private_attributes(HashMap::from([("isPaid".to_string(), "nah")]));
     user
+}
+
+fn create_user_with_benchmark_payload() -> StatsigUser {
+    StatsigUser::new(StatsigUserData {
+        user_id: Some(dyn_value!("a_user_id")),
+        custom_ids: Some(HashMap::from([(
+            "custom_id".to_string(),
+            dyn_value!("a_long_custom_id_value_goes_here"),
+        ), (
+            "employee_id".to_string(),
+            dyn_value!("456"),
+        )])),
+        email: Some(dyn_value!("test@test.com")),
+        ip: Some(dyn_value!("127.0.0.1")),
+        locale: Some(dyn_value!("en_US")),
+        app_version: Some(dyn_value!("1.0.0")),
+        country: Some(dyn_value!("US")),
+        user_agent: Some(dyn_value!("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36")),
+        custom: Some(HashMap::from([
+            ("custom_attr".to_string(), dyn_value!("custom_value")),
+            ("custom_array".to_string(), dyn_value!([1, 2, 3])),
+            (
+                "custom_object".to_string(),
+                dyn_value!(HashMap::from([("key".to_string(), "value".to_string())])),
+            ),
+            ("custom_number".to_string(), dyn_value!(123)),
+            ("custom_boolean".to_string(), dyn_value!(true)),
+            (
+                "large_custom_string".to_string(),
+                dyn_value!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            ),
+        ])),
+        statsig_environment: None,
+        private_attributes: Some(HashMap::from([
+            ("private_attr".to_string(), dyn_value!("secret")),
+            ("private_array".to_string(), dyn_value!([1, 2, 3])),
+            (
+                "private_object".to_string(),
+                dyn_value!(HashMap::from([("key".to_string(), "value".to_string())])),
+            ),
+        ])),
+    })
 }
 
 async fn benchmark<F>(

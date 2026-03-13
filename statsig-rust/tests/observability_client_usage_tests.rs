@@ -413,6 +413,7 @@ async fn test_network_request_latency_tags_recorded_for_dcs_and_id_lists() {
                         && tags.get("request_path").map(String::as_str) == Some(expected_dcs_path)
                         && tags.get("status_code").map(String::as_str) == Some("200")
                         && tags.get("is_success").map(String::as_str) == Some("true")
+                        && tags.get("deltas_used").map(String::as_str) == Some("false")
                         && tags.get("sdk_key").map(String::as_str) == Some("secret-key")
                         && tags.get("source_service").map(String::as_str)
                             == Some(expected_source_service.as_str())
@@ -427,6 +428,7 @@ async fn test_network_request_latency_tags_recorded_for_dcs_and_id_lists() {
                             == Some(expected_manifest_path)
                         && tags.get("status_code").map(String::as_str) == Some("200")
                         && tags.get("is_success").map(String::as_str) == Some("true")
+                        && tags.get("deltas_used").map(String::as_str) == Some("false")
                         && tags.get("sdk_key").map(String::as_str) == Some("secret-key")
                         && tags.get("source_service").map(String::as_str)
                             == Some(expected_source_service.as_str())
@@ -441,6 +443,7 @@ async fn test_network_request_latency_tags_recorded_for_dcs_and_id_lists() {
                             == Some(expected_individual_id_list_path)
                         && tags.get("status_code").map(String::as_str) == Some("200")
                         && tags.get("is_success").map(String::as_str) == Some("true")
+                        && tags.get("deltas_used").map(String::as_str) == Some("false")
                         && tags.get("sdk_key").map(String::as_str) == Some("secret-key")
                         && tags.get("source_service").map(String::as_str)
                             == Some(expected_source_service.as_str())
@@ -764,6 +767,7 @@ async fn test_config_sync_overall_latency_recorded_for_network_error() {
     assert_eq!(tags.get("source_api"), Some(&mock_scrapi.get_server_api()));
     assert_eq!(tags.get("network_success"), Some(&"false".to_string()));
     assert_eq!(tags.get("process_success"), Some(&"false".to_string()));
+    assert_eq!(tags.get("deltas_used"), Some(&"false".to_string()));
     assert_eq!(tags.get("format"), Some(&"unknown".to_string()));
     assert!(error.contains("500"));
 }

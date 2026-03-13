@@ -43,7 +43,8 @@ jobs:
 
       - name: '[Python] Install Dependencies'
         if: matrix.lang == 'python'
-        run: pip3 install pytest maturin patchelf pytest_httpserver pytest-retry
+        # includes legacy python sdk for comparison
+        run: pip3 install pytest maturin patchelf pytest_httpserver pytest-retry statsig
       
       - name: Setup elixir
         uses: erlef/setup-beam@v1

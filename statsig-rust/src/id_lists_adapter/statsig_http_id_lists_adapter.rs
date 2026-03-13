@@ -7,6 +7,7 @@ use crate::observability::sdk_errors_observer::ErrorBoundaryEvent;
 use crate::sdk_diagnostics::diagnostics::ContextType;
 use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::statsig_metadata::StatsigMetadata;
+use crate::utils::split_host_and_path;
 use crate::{
     log_d, log_e, log_error_to_statsig_and_console, StatsigErr, StatsigOptions, StatsigRuntime,
 };
@@ -33,6 +34,7 @@ const ID_LISTS_SYNC_OVERALL_SUCCEED_SINGLE_ID_LIST_NUMBER_TAG: &str =
 
 pub struct StatsigHttpIdListsAdapter {
     id_lists_manifest_url: String,
+    download_id_list_file_api: Option<String>,
     fallback_url: Option<String>,
     listener: RwLock<Option<Arc<dyn IdListsUpdateListener>>>,
     network: NetworkClient,
@@ -73,6 +75,7 @@ impl StatsigHttpIdListsAdapter {
 
         Self {
             id_lists_manifest_url,
+            download_id_list_file_api: options.download_id_list_file_api.clone(),
             fallback_url,
             listener: RwLock::new(None),
             network,
@@ -129,6 +132,7 @@ impl StatsigHttpIdListsAdapter {
         list_size: u64,
         id_list_file_id: Option<String>,
     ) -> Result<String, StatsigErr> {
+        let list_url = self.get_override_id_list_download_url(list_url);
         let (headers, query_params) = if list_url.starts_with(STATSIG_CDN_URL) {
             (
                 None,
@@ -147,7 +151,7 @@ impl StatsigHttpIdListsAdapter {
         let response = self
             .network
             .get(RequestArgs {
-                url: list_url.to_string(),
+                url: list_url.clone(),
                 headers,
                 query_params,
                 id_list_file_id,
@@ -167,7 +171,7 @@ impl StatsigHttpIdListsAdapter {
             KeyType::GetIDList,
             StepType::Process,
             None,
-            Some(list_url.to_string()),
+            Some(list_url.clone()),
         );
 
         let mut response_body = match response.data {
@@ -179,7 +183,7 @@ impl StatsigHttpIdListsAdapter {
                     StepType::Process,
                     false,
                     None,
-                    Some(list_url.to_string()),
+                    Some(list_url.clone()),
                 );
                 return Err(StatsigErr::JsonParseError("IdList".to_string(), msg));
             }
@@ -195,10 +199,23 @@ impl StatsigHttpIdListsAdapter {
             StepType::Process,
             result.is_ok(),
             None,
-            Some(list_url.to_string()),
+            Some(list_url),
         );
 
         result
+    }
+
+    fn get_override_id_list_download_url(&self, list_url: &str) -> String {
+        let Some(override_api) = &self.download_id_list_file_api else {
+            return list_url.to_string();
+        };
+
+        let (_, path) = split_host_and_path(list_url);
+        if path.is_empty() {
+            return override_api.to_string();
+        }
+
+        format!("{override_api}/{path}")
     }
 
     async fn handle_fallback_request(
@@ -759,6 +776,90 @@ mod tests {
             .unwrap();
 
         (server, adapter, listener, statsig_rt)
+    }
+
+    #[tokio::test]
+    async fn test_id_list_download_uses_override_api() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+
+        let id_lists_response_path = PathBuf::from(format!(
+            "{}/tests/data/get_id_lists.json",
+            env!("CARGO_MANIFEST_DIR")
+        ));
+        let id_lists_response = fs::read_to_string(id_lists_response_path).unwrap().replace(
+            "URL_REPLACE",
+            "https://fake-id-list-host/v1/download_id_list_file",
+        );
+
+        let mocked_get_id_lists = manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(id_lists_response)
+            .create();
+
+        let company_ids_response_path = PathBuf::from(format!(
+            "{}/tests/data/company_id_list",
+            env!("CARGO_MANIFEST_DIR")
+        ));
+        let company_ids_response = fs::read_to_string(company_ids_response_path)
+            .unwrap()
+            .replace(
+                "URL_REPLACE",
+                "https://fake-id-list-host/v1/download_id_list_file",
+            );
+
+        let mocked_individual_id_list = download_server
+            .mock("GET", "/v1/download_id_list_file/company_id_list")
+            .match_header("range", "bytes=0-")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(company_ids_response)
+            .create();
+
+        let options = StatsigOptions {
+            id_lists_url: Some(format!("{}/get_id_lists", manifest_server.url())),
+            download_id_list_file_api: Some(download_server.url()),
+            wait_for_country_lookup_init: Some(true),
+            wait_for_user_agent_init: Some(true),
+            ..StatsigOptions::default()
+        };
+
+        let adapter = Arc::new(StatsigHttpIdListsAdapter::new("secret-key", &options));
+        let listener = Arc::new(TestIdListsUpdateListener {
+            id_lists: RwLock::new(HashMap::new()),
+        });
+
+        let statsig_rt = StatsigRuntime::get_runtime();
+        adapter
+            .clone()
+            .start(&statsig_rt, listener.clone())
+            .await
+            .unwrap();
+
+        mocked_get_id_lists.assert();
+        mocked_individual_id_list.assert();
+        assert!(listener.does_list_contain_id("company_id_list", &get_hashed_marcos()));
+    }
+
+    #[test]
+    fn test_override_id_list_download_url_preserves_manifest_path_suffix() {
+        let options = StatsigOptions {
+            download_id_list_file_api: Some("https://download-proxy.example".to_string()),
+            ..StatsigOptions::default()
+        };
+
+        let adapter = StatsigHttpIdListsAdapter::new("secret-key", &options);
+        let manifest_download_url =
+            "https://fake-id-list-host/v1/download_id_list_file/3wHgh0FhoQH0p";
+
+        let actual = adapter.get_override_id_list_download_url(manifest_download_url);
+
+        assert_eq!(
+            actual,
+            "https://download-proxy.example/v1/download_id_list_file/3wHgh0FhoQH0p"
+        );
     }
 
     #[tokio::test]

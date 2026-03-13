@@ -139,6 +139,7 @@ pub struct StatsigOptions<'a> {
 
     pub id_lists_sync_interval_ms: Option<u32>,
     pub id_lists_url: Option<String>,
+    pub download_id_list_file_api: Option<String>,
 
     pub init_timeout_ms: Option<i64>,
     pub log_event_url: Option<String>,
@@ -203,11 +204,12 @@ impl StatsigOptions<'_> {
             enable_id_lists: self.enable_id_lists,
             enable_dcs_deltas: self.enable_dcs_deltas,
             wait_for_country_lookup_init: self.wait_for_country_lookup_init,
-            wait_for_user_agent_init: self.wait_for_country_lookup_init,
+            wait_for_user_agent_init: self.wait_for_user_agent_init,
             environment: self.environment,
             fallback_to_statsig_api: self.fallback_to_statsig_api,
             id_lists_sync_interval_ms: self.id_lists_sync_interval_ms,
             id_lists_url: self.id_lists_url,
+            download_id_list_file_api: self.download_id_list_file_api,
             init_timeout_ms: self.init_timeout_ms.map(|ms| ms as u64),
             log_event_url: self.log_event_url,
             observability_client: weak_obs_client,

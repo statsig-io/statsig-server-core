@@ -68,6 +68,41 @@ public class BenchCore
         return user;
     }
 
+    static StatsigCore::Statsig.StatsigUser CreateUserWithBenchmarkPayload()
+    {
+        return new StatsigUserBuilder()
+            .SetUserID("a_user_id")
+            .SetEmail("test@test.com")
+            .SetIP("127.0.0.1")
+            .SetLocale("en_US")
+            .SetCountry("US")
+            .SetAppVersion("1.0.0")
+            .SetUserAgent(
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+            )
+            .SetCustomIDs(new Dictionary<string, string>
+            {
+                ["custom_id"] = "a_long_custom_id_value_goes_here",
+                ["employee_id"] = "456",
+            })
+            .SetCustomProperties(new Dictionary<string, object>
+            {
+                ["custom_attr"] = "custom_value",
+                ["custom_array"] = new object[] { 1, 2, 3 },
+                ["custom_object"] = new Dictionary<string, object> { ["key"] = "value" },
+                ["custom_number"] = 123,
+                ["custom_boolean"] = true,
+                ["large_custom_string"] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            })
+            .SetPrivateAttributes(new Dictionary<string, object>
+            {
+                ["private_attr"] = "secret",
+                ["private_array"] = new object[] { 1, 2, 3 },
+                ["private_object"] = new Dictionary<string, object> { ["key"] = "value" },
+            })
+            .Build();
+    }
+
     static BenchmarkResult RunBenchmark(string benchName, string specName, int iterations, Action action)
     {
         var durations = new List<double>(iterations);
@@ -155,6 +190,7 @@ public class BenchCore
         // Client initialize response (if available in .NET SDK)
         results.Add(RunBenchmark("get_client_initialize_response", "n/a", ITER_LITE, () => statsig.GetClientInitializeResponse(CreateUser())));
         results.Add(RunBenchmark("get_client_initialize_response_global_user", "n/a", ITER_LITE, () => statsig.GetClientInitializeResponse(globalUser)));
+        results.Add(RunBenchmark("user_creation", "n/a", ITER_HEAVY, () => CreateUserWithBenchmarkPayload()));
 
         await statsig.Shutdown();
 
@@ -191,4 +227,3 @@ public class BenchCore
         throw new Exception("AssemblyInformationalVersionAttribute not Found");
     }
 }
-

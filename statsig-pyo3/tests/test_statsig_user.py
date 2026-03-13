@@ -5,6 +5,7 @@ from typing import Mapping
 from utils import get_test_data_resource
 from pytest_httpserver import HTTPServer
 from utils import get_test_data_resource
+from profile_util import profile
 
 
 @pytest.fixture
@@ -272,3 +273,67 @@ def test_custom_ids_getter_setter():
 
     assert isinstance(user.custom_ids, dict)
     assert len(user.custom_ids) == 0  # defaults to empty dict
+
+
+def test_performance_of_user_creation():
+    user_id = "a-user"
+    custom = {
+        "key": "value",
+        "key2": 123,
+        "key3": 1.23,
+        "key4": True,
+        "key5": ["1", "2", "3"],
+    }
+
+    private_attributes = {
+        "private_key": "value",
+        "private_key2": 123,
+        "private_key3": 1.23,
+        "private_key4": True,
+        "private_key5": ["2", "3", "4"],
+    }
+
+    email = "test@example.com"
+    ip = "1.2.3.4"
+    country = "US"
+    locale = "en-US"
+    app_version = "1.0.0"
+    user_agent = "Mozilla/5.0 (iPhone; iOS 16.6) Safari/604.1"
+
+    # if statsig packge is avaible, run against its StatsigUser
+    try:
+        from statsig import StatsigUser as LegacyStatsigUser
+
+        legacy_results = profile(
+            lambda: LegacyStatsigUser(
+                user_id=user_id,
+                email=email,
+                ip=ip,
+                country=country,
+                locale=locale,
+                app_version=app_version,
+                user_agent=user_agent,
+                custom=custom,
+                private_attributes=private_attributes,
+            )
+        )
+        del legacy_results["value"]
+        print("Legacy StatsigUser: " + json.dumps(legacy_results, indent=2))
+    except ImportError:
+        pass
+
+    results = profile(
+        lambda: StatsigUser(
+            user_id=user_id,
+            email=email,
+            ip=ip,
+            country=country,
+            locale=locale,
+            app_version=app_version,
+            user_agent=user_agent,
+            custom=custom,
+            private_attributes=private_attributes,
+        )
+    )
+    del results["value"]
+    print("Core StatsigUser: " + json.dumps(results, indent=2))

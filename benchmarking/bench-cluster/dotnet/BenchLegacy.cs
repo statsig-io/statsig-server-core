@@ -73,6 +73,56 @@ public class BenchLegacy
         return user;
     }
 
+    static StatsigLegacy::Statsig.StatsigUser CreateUserWithBenchmarkPayload()
+    {
+        var user = new StatsigLegacy::Statsig.StatsigUser
+        {
+            UserID = "a_user_id",
+            Email = "test@test.com",
+            IPAddress = "127.0.0.1",
+            Locale = "en_US",
+            Country = "US",
+            AppVersion = "1.0.0",
+            UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        };
+
+        user.AddCustomProperty("custom_attr", "custom_value");
+        user.AddCustomProperty("custom_array", new object[] { 1, 2, 3 });
+        user.AddCustomProperty("custom_object", new Dictionary<string, object> { ["key"] = "value" });
+        user.AddCustomProperty("custom_number", 123);
+        user.AddCustomProperty("custom_boolean", true);
+        user.AddCustomProperty("large_custom_string", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
+        user.AddPrivateAttribute("private_attr", "secret");
+        user.AddPrivateAttribute("private_array", new object[] { 1, 2, 3 });
+        user.AddPrivateAttribute("private_object", new Dictionary<string, object> { ["key"] = "value" });
+
+        TrySetCustomIDs(user, new Dictionary<string, string>
+        {
+            ["custom_id"] = "a_long_custom_id_value_goes_here",
+            ["employee_id"] = "456",
+        });
+
+        return user;
+    }
+
+    static void TrySetCustomIDs(StatsigLegacy::Statsig.StatsigUser user, Dictionary<string, string> customIDs)
+    {
+        var userType = user.GetType();
+        var setCustomIDs = userType.GetMethod("SetCustomIDs");
+        if (setCustomIDs != null)
+        {
+            setCustomIDs.Invoke(user, new object[] { customIDs });
+            return;
+        }
+
+        var customIDsProperty = userType.GetProperty("CustomIDs");
+        if (customIDsProperty is { CanWrite: true })
+        {
+            customIDsProperty.SetValue(user, customIDs);
+        }
+    }
+
     static BenchmarkResult RunBenchmark(string benchName, string specName, int iterations, Action action)
     {
         var durations = new List<double>(iterations);
@@ -155,6 +205,7 @@ public class BenchLegacy
         // Client initialize response (if available in .NET SDK)
         results.Add(RunBenchmark("get_client_initialize_response", "n/a", ITER_LITE, () => StatsigLegacyServer.GetClientInitializeResponse(CreateUser())));
         results.Add(RunBenchmark("get_client_initialize_response_global_user", "n/a", ITER_LITE, () => StatsigLegacyServer.GetClientInitializeResponse(globalUser)));
+        results.Add(RunBenchmark("user_creation", "n/a", ITER_HEAVY, () => CreateUserWithBenchmarkPayload()));
 
         await StatsigLegacyServer.Shutdown();
 

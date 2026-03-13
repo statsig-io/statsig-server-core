@@ -103,6 +103,7 @@ public class BenchCore {
 
         benchmark("get_client_initialize_response", "n/a", ITER_LITE, () -> statsig.getClientInitializeResponse(createUser()), results, sdkVersion);
         benchmark("get_client_initialize_response_global_user", "n/a", ITER_LITE, () -> statsig.getClientInitializeResponse(globalUser), results, sdkVersion);
+        benchmark("user_creation", "n/a", ITER_HEAVY, () -> createUserWithBenchmarkPayload(), results, sdkVersion);
 
         statsig.shutdown().get();
 
@@ -135,6 +136,35 @@ public class BenchCore {
             .setAppVersion("1.0.0")
             .setCountry("US")
             .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+            .setCustom(custom)
+            .setPrivateAttributes(privateAttributes)
+            .build();
+    }
+
+    private static StatsigUser createUserWithBenchmarkPayload() {
+        Map<String, Object> custom = new HashMap<>();
+        custom.put("custom_attr", "custom_value");
+        custom.put("custom_array", Arrays.asList(1, 2, 3));
+        custom.put("custom_object", Map.of("key", "value"));
+        custom.put("custom_number", 123);
+        custom.put("custom_boolean", true);
+        custom.put("large_custom_string", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
+        Map<String, String> privateAttributes = new HashMap<>();
+        privateAttributes.put("private_attr", "secret");
+        // todo: support non-string types i private attr
+        // privateAttributes.put("private_array", Arrays.asList(1, 2, 3));
+        // privateAttributes.put("private_object", Map.of("key", "value"));
+
+        return new StatsigUser.Builder()
+            .setUserID("a_user_id")
+            .setEmail("test@test.com")
+            .setCustomIDs(Map.of("custom_id", "a_long_custom_id_value_goes_here", "employee_id", "456"))
+            .setIp("127.0.0.1")
+            .setLocale("en_US")
+            .setAppVersion("1.0.0")
+            .setCountry("US")
+            .setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36")
             .setCustom(custom)
             .setPrivateAttributes(privateAttributes)
             .build();

@@ -109,6 +109,37 @@ const createUser = () => {
   };
 };
 
+const createUserWithBenchmarkPayload = () => {
+  return {
+    userID: 'a_user_id',
+    email: 'test@test.com',
+    ip: '127.0.0.1',
+    country: 'US',
+    locale: 'en_US',
+    appVersion: '1.0.0',
+    userAgent:
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    customIDs: {
+      custom_id: 'a_long_custom_id_value_goes_here',
+      employee_id: '456',
+    },
+    privateAttributes: {
+      private_attr: 'secret',
+      private_array: [1, 2, 3],
+      private_object: { key: 'value' },
+    },
+    custom: {
+      custom_attr: 'custom_value',
+      custom_array: [1, 2, 3],
+      custom_object: { key: 'value' },
+      custom_number: 123,
+      custom_boolean: true,
+      large_custom_string:
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    },
+  };
+};
+
 // ------------------------------------------------------------------------ [ Benchmark ]
 
 console.log(`Statsig Node Legacy (v${sdkVersion})`);
@@ -286,6 +317,10 @@ await benchmark(
     Statsig.getClientInitializeResponse(globalUser);
   },
 );
+
+await benchmark('user_creation', 'n/a', ITER_HEAVY, () => {
+  createUserWithBenchmarkPayload();
+});
 
 // ------------------------------------------------------------------------ [ Teardown ]
 

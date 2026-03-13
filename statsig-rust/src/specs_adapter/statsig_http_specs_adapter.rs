@@ -44,6 +44,7 @@ const CONFIG_SYNC_OVERALL_SOURCE_API_TAG: &str = "source_api";
 const CONFIG_SYNC_OVERALL_ERROR_TAG: &str = "error";
 const CONFIG_SYNC_OVERALL_NETWORK_SUCCESS_TAG: &str = "network_success";
 const CONFIG_SYNC_OVERALL_PROCESS_SUCCESS_TAG: &str = "process_success";
+const CONFIG_SYNC_OVERALL_DELTAS_USED_TAG: &str = "deltas_used";
 
 pub struct StatsigHttpSpecsAdapter {
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
@@ -316,6 +317,7 @@ impl StatsigHttpSpecsAdapter {
         }
 
         let sync_start_ms = Utc::now().timestamp_millis() as u64;
+        let mut deltas_used = self.use_deltas_next_request.load(Ordering::SeqCst);
         let response = self
             .fetch_specs_from_network(current_specs_info.clone(), trigger)
             .await;
@@ -334,19 +336,23 @@ impl StatsigHttpSpecsAdapter {
                 NetworkSyncOutcome::Failure,
             ),
         };
+        if let Ok(response) = &response {
+            deltas_used = response.requested_deltas;
+        }
 
         let mut result = self.process_spec_data(response).await;
 
         if result.is_err() && self.fallback_url.is_some() {
             log_d!(TAG, "Falling back to statsig api");
-            let response = self
-                .handle_fallback_request(self.get_request_args(&current_specs_info, trigger))
-                .await;
+            let fallback_args = self.get_request_args(&current_specs_info, trigger);
+            deltas_used = fallback_args.deltas_enabled;
+            let response = self.handle_fallback_request(fallback_args).await;
             match &response {
                 Ok(response) => {
                     source_api = response.loggable_api.clone();
                     response_format = Self::get_response_format(&response.data);
                     network_success = NetworkSyncOutcome::Success;
+                    deltas_used = response.requested_deltas;
                 }
                 Err(_) => {
                     // Backup request failed, so no successful network payload was returned.
@@ -373,6 +379,7 @@ impl StatsigHttpSpecsAdapter {
                 .as_ref()
                 .err()
                 .map_or_else(String::new, |e| e.to_string()),
+            deltas_used,
         );
 
         result
@@ -410,6 +417,7 @@ impl StatsigHttpSpecsAdapter {
         content_encoding.map(|s| s.as_str().contains("statsig-br")) == Some(true)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn log_config_sync_overall_latency(
         &self,
         sync_start_ms: u64,
@@ -418,6 +426,7 @@ impl StatsigHttpSpecsAdapter {
         network_success: bool,
         process_success: bool,
         error: String,
+        deltas_used: bool,
     ) {
         let latency_ms =
             (Utc::now().timestamp_millis() as u64).saturating_sub(sync_start_ms) as f64;
@@ -442,6 +451,10 @@ impl StatsigHttpSpecsAdapter {
                 (
                     CONFIG_SYNC_OVERALL_PROCESS_SUCCESS_TAG.to_string(),
                     process_success.to_string(),
+                ),
+                (
+                    CONFIG_SYNC_OVERALL_DELTAS_USED_TAG.to_string(),
+                    deltas_used.to_string(),
                 ),
             ])),
         ));

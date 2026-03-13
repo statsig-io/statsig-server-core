@@ -183,6 +183,9 @@ func BenchCore() {
 	benchmark(&results, "get_client_initialize_response_global_user", "n/a", ITER_LITE, SDK_TYPE, func() {
 		s.GetClientInitResponse(globalUser)
 	})
+	benchmark(&results, "user_creation", "n/a", ITER_HEAVY, SDK_TYPE, func() {
+		createCoreUserWithBenchmarkPayload()
+	})
 
 	s.Shutdown()
 
@@ -215,6 +218,40 @@ func createCoreUser() *statsig.StatsigUser {
 		WithUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36").
 		WithCustom(map[string]interface{}{"isAdmin": false}).
 		WithPrivateAttributes(map[string]interface{}{"isPaid": "nah"}).
+		Build()
+
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create user: %v", err))
+	}
+
+	return user
+}
+
+func createCoreUserWithBenchmarkPayload() *statsig.StatsigUser {
+	user, err := statsig.NewUserBuilderWithUserID("a_user_id").
+		WithEmail("test@test.com").
+		WithIpAddress("127.0.0.1").
+		WithLocale("en_US").
+		WithAppVersion("1.0.0").
+		WithCountry("US").
+		WithUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36").
+		WithCustomIDs(map[string]interface{}{
+			"custom_id":    "a_long_custom_id_value_goes_here",
+			"employee_id":  "456",
+		}).
+		WithCustom(map[string]interface{}{
+			"custom_attr":         "custom_value",
+			"custom_array":        []any{1, 2, 3},
+			"custom_object":       map[string]interface{}{"key": "value"},
+			"custom_number":       123,
+			"custom_boolean":      true,
+			"large_custom_string": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		}).
+		WithPrivateAttributes(map[string]interface{}{
+			"private_attr":    "secret",
+			"private_array":   []any{1, 2, 3},
+			"private_object":  map[string]interface{}{"key": "value"},
+		}).
 		Build()
 
 	if err != nil {

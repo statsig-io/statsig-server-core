@@ -100,6 +100,7 @@ public class BenchLegacy {
 
         benchmark("get_client_initialize_response", "n/a", ITER_LITE, () -> Statsig.getClientInitializeResponse(createUser(), HashAlgo.DJB2, null), results, sdkVersion);
         benchmark("get_client_initialize_response_global_user", "n/a", ITER_LITE, () -> Statsig.getClientInitializeResponse(globalUser, HashAlgo.DJB2, null), results, sdkVersion);
+        benchmark("user_creation", "n/a", ITER_HEAVY, () -> createUserWithBenchmarkPayload(), results, sdkVersion);
 
         Statsig.shutdown();
 
@@ -129,6 +130,33 @@ public class BenchLegacy {
         user.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
         user.setCustom(Map.of("isAdmin", false));
         user.setPrivateAttributes(Map.of("isPaid", "nah"));
+        return user;
+    }
+
+    private static StatsigUser createUserWithBenchmarkPayload() {
+        Map<String, Object> custom = new HashMap<>();
+        custom.put("custom_attr", "custom_value");
+        custom.put("custom_array", Arrays.asList(1, 2, 3));
+        custom.put("custom_object", Map.of("key", "value"));
+        custom.put("custom_number", 123);
+        custom.put("custom_boolean", true);
+        custom.put("large_custom_string", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
+        Map<String, Object> privateAttributeMap = new HashMap<>();
+        privateAttributeMap.put("private_attr", "secret");
+        privateAttributeMap.put("private_array", Arrays.asList(1, 2, 3));
+        privateAttributeMap.put("private_object", Map.of("key", "value"));
+
+        StatsigUser user = new StatsigUser("a_user_id");
+        user.setEmail("test@test.com");
+        user.setCustomIDs(Map.of("custom_id", "a_long_custom_id_value_goes_here", "employee_id", "456"));
+        user.setIp("127.0.0.1");
+        user.setLocale("en_US");
+        user.setAppVersion("1.0.0");
+        user.setCountry("US");
+        user.setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36");
+        user.setCustom(custom);
+        user.setPrivateAttributes(privateAttributeMap);
         return user;
     }
 

@@ -38,6 +38,7 @@ const IS_SUCCESS_TAG: &str = "is_success";
 const SDK_KEY_TAG: &str = "sdk_key";
 const SOURCE_SERVICE_TAG: &str = "source_service";
 const ID_LIST_FILE_ID_TAG: &str = "id_list_file_id";
+const DELTAS_USED_TAG: &str = "deltas_used";
 
 const TAG: &str = stringify!(NetworkClient);
 
@@ -366,6 +367,10 @@ fn get_network_request_latency_tags(
         (IS_SUCCESS_TAG.to_string(), success.to_string()),
         (SDK_KEY_TAG.to_string(), loggable_sdk_key),
         (SOURCE_SERVICE_TAG.to_string(), source_service),
+        (
+            DELTAS_USED_TAG.to_string(),
+            request_args.deltas_enabled.to_string(),
+        ),
     ]);
     if let Some(id_list_file_id) = request_args
         .id_list_file_id
@@ -514,7 +519,7 @@ fn get_error_message_for_status(
 mod tests {
     use super::{
         get_network_request_latency_tags, get_request_path, get_source_service_and_request_path,
-        should_log_network_request_latency, ID_LIST_FILE_ID_TAG, REQUEST_PATH_TAG,
+        should_log_network_request_latency, DELTAS_USED_TAG, ID_LIST_FILE_ID_TAG, REQUEST_PATH_TAG,
     };
     use crate::networking::RequestArgs;
 
@@ -581,12 +586,14 @@ mod tests {
             "client-key-123".to_string(),
         );
         assert_eq!(tags.get(ID_LIST_FILE_ID_TAG), Some(&"file-123".to_string()));
+        assert_eq!(tags.get(DELTAS_USED_TAG), Some(&"false".to_string()));
         assert_eq!(
             tags.get(REQUEST_PATH_TAG),
             Some(&"/v1/download_id_list_file".to_string())
         );
 
         request_args.id_list_file_id = Some(String::new());
+        request_args.deltas_enabled = true;
         let tags_without_id = get_network_request_latency_tags(
             &request_args,
             "200".to_string(),
@@ -594,5 +601,9 @@ mod tests {
             "client-key-123".to_string(),
         );
         assert!(!tags_without_id.contains_key(ID_LIST_FILE_ID_TAG));
+        assert_eq!(
+            tags_without_id.get(DELTAS_USED_TAG),
+            Some(&"true".to_string())
+        );
     }
 }
