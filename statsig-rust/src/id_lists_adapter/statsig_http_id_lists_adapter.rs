@@ -129,23 +129,22 @@ impl StatsigHttpIdListsAdapter {
     async fn fetch_individual_id_list_changes_from_network(
         &self,
         list_url: &str,
-        list_size: u64,
+        start_index: u64,
+        file_size: Option<u64>,
         id_list_file_id: Option<String>,
     ) -> Result<String, StatsigErr> {
         let list_url = self.get_override_id_list_download_url(list_url);
         let (headers, query_params) = if list_url.starts_with(STATSIG_CDN_URL) {
             (
                 None,
-                Some(HashMap::from([("range".into(), format!("{list_size}-"))])),
+                Some(HashMap::from([("range".into(), format!("{start_index}-"))])),
             )
         } else {
-            (
-                Some(HashMap::from([(
-                    "Range".into(),
-                    format!("bytes={list_size}-"),
-                )])),
-                None,
-            )
+            let mut headers = HashMap::from([("Range".into(), format!("bytes={start_index}-"))]);
+            if let Some(list_size) = file_size {
+                headers.insert("statsig-id-list-file-size".into(), list_size.to_string());
+            }
+            (Some(headers), None)
         };
 
         let response = self
@@ -383,17 +382,21 @@ impl StatsigHttpIdListsAdapter {
         );
 
         for (list_name, entry) in new_manifest {
-            let (requires_download, range_start) = match curr_manifest.get(&list_name) {
+            let (requires_download, range_start, file_size) = match curr_manifest.get(&list_name) {
                 Some(current) => {
                     if entry.creation_time > current.creation_time
                         || entry.file_id != current.file_id
                     {
-                        (true, 0u64)
+                        (true, 0u64, Some(current.size))
                     } else {
-                        (entry.size > current.size, current.size)
+                        if entry.size > current.size {
+                            (true, current.size, Some(current.size))
+                        } else {
+                            (false, 0u64, None)
+                        }
                     }
                 }
-                None => (true, 0),
+                None => (true, 0, None),
             };
 
             changes.insert(
@@ -402,6 +405,7 @@ impl StatsigHttpIdListsAdapter {
                     new_metadata: entry,
                     requires_download,
                     range_start,
+                    file_size,
                 },
             );
         }
@@ -426,6 +430,7 @@ impl StatsigHttpIdListsAdapter {
                 .fetch_individual_id_list_changes_from_network(
                     &new_metadata.url,
                     changeset.range_start,
+                    changeset.file_size,
                     new_metadata.file_id.clone(),
                 )
                 .await;
@@ -557,6 +562,7 @@ struct IdListChangeSet {
     new_metadata: IdListMetadata,
     requires_download: bool,
     range_start: u64,
+    file_size: Option<u64>,
 }
 
 #[async_trait]
@@ -841,6 +847,93 @@ mod tests {
         mocked_get_id_lists.assert();
         mocked_individual_id_list.assert();
         assert!(listener.does_list_contain_id("company_id_list", &get_hashed_marcos()));
+    }
+
+    #[tokio::test]
+    async fn test_id_list_download_passes_file_size_with_range_header() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+
+        let existing_list_size = 10_u64;
+        let existing_creation_time = 1721417546000_i64;
+        let file_id = "4t0BEqak3w1UcidsPcpQXN".to_string();
+        let manifest_download_url = "https://fake-id-list-host/v1/download_id_list_file";
+        let expected_range_start = existing_list_size;
+        let expected_file_size = existing_list_size.to_string();
+        let expected_range_header = format!("bytes={expected_range_start}-");
+
+        let manifest_response = format!(
+            r#"{{
+  "company_id_list": {{
+    "name": "company_id_list",
+    "size": {},
+    "url": "{}/company_id_list",
+    "creationTime": {},
+    "fileID": "{}"
+  }}
+}}"#,
+            existing_list_size + 1,
+            manifest_download_url,
+            existing_creation_time,
+            file_id
+        );
+
+        let mocked_get_id_lists = manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(manifest_response)
+            .create();
+
+        let mocked_individual_id_list = download_server
+            .mock("GET", "/v1/download_id_list_file/company_id_list")
+            .match_header("range", expected_range_header.as_str())
+            .match_header("statsig-id-list-file-size", expected_file_size.as_str())
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body("+2Tv4fIVX\n")
+            .create();
+
+        let options = StatsigOptions {
+            id_lists_url: Some(format!("{}/get_id_lists", manifest_server.url())),
+            download_id_list_file_api: Some(download_server.url()),
+            wait_for_country_lookup_init: Some(true),
+            wait_for_user_agent_init: Some(true),
+            ..StatsigOptions::default()
+        };
+
+        let adapter = Arc::new(StatsigHttpIdListsAdapter::new("secret-key", &options));
+        let listener = Arc::new(TestIdListsUpdateListener {
+            id_lists: RwLock::new(HashMap::new()),
+        });
+
+        {
+            let mut existing_lists = listener
+                .id_lists
+                .try_write_for(std::time::Duration::from_secs(5))
+                .unwrap();
+
+            let mut local_list = IdList::new(IdListMetadata {
+                name: "company_id_list".to_string(),
+                url: format!("{}/company_id_list", manifest_download_url),
+                file_id: Some(file_id),
+                size: existing_list_size,
+                creation_time: existing_creation_time,
+            });
+            local_list.metadata.size = existing_list_size;
+            existing_lists.insert("company_id_list".to_string(), local_list);
+        }
+
+        let statsig_rt = StatsigRuntime::get_runtime();
+        adapter
+            .clone()
+            .start(&statsig_rt, listener.clone())
+            .await
+            .unwrap();
+
+        mocked_get_id_lists.assert();
+        mocked_individual_id_list.assert();
+        assert!(listener.does_list_contain_id("company_id_list", "2Tv4fIVX"));
     }
 
     #[test]
