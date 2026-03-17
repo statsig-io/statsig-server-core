@@ -120,12 +120,20 @@ export interface DataStore {
   initialize?: () => Promise<void>
   shutdown?: () => Promise<void>
   get?: (key: string) => Promise<DataStoreResponse>
+  getBytes?: (key: string) => Promise<DataStoreBytesResponse>
+  supportsBytes?: boolean
   set?: (key: string, value: string, time?: number) => Promise<void>
+  setBytes?: (key: string, value: ArrayBuffer | Uint8Array, time?: number) => Promise<void>
   supportPollingUpdatesFor?: (key: string) => Promise<boolean>
 }
 
 export interface DataStoreResponse {
   result?: string
+  time?: number
+}
+
+export interface DataStoreBytesResponse {
+  result?: Uint8Array
   time?: number
 }
 

@@ -1,11 +1,18 @@
 from statsig_python_core import DataStoreBase
-from typing import Optional, Dict, Tuple
+from typing import Optional
 from dataclasses import dataclass
 
 @dataclass
 class DataStoreResponse:
     result: Optional[str]
     time: Optional[int]
+
+
+@dataclass
+class DataStoreBytesResponse:
+    result: Optional[bytes]
+    time: Optional[int]
+
 
 class DataStore(DataStoreBase):
     def __new__(cls, *args, **kwargs):
@@ -19,6 +26,18 @@ class DataStore(DataStoreBase):
         self.set_fn = self.set
         self.support_polling_updates_for_fn = self.support_polling_updates_for
 
+        if type(self) is not DataStore and type(self).__dict__.get("get_bytes") is not None:
+            self.get_bytes_fn = self.get_bytes
+        else:
+            self.get_bytes_fn = None
+
+        if type(self) is not DataStore and type(self).__dict__.get("set_bytes") is not None:
+            self.set_bytes_fn = self.set_bytes
+        else:
+            self.set_bytes_fn = None
+
+        self.supports_bytes_fn = self.supports_bytes
+
     def initialize(self):
         pass
 
@@ -28,8 +47,17 @@ class DataStore(DataStoreBase):
     def get(self, key: str) -> Optional[DataStoreResponse]:
         pass
 
+    def get_bytes(self, key: str) -> Optional[DataStoreBytesResponse]:
+        pass
+
     def set(self, key: str, value: str, time: Optional[int] = None):
         pass
 
+    def set_bytes(self, key: str, value: bytes, time: Optional[int] = None):
+        pass
+
     def support_polling_updates_for(self, key: str) -> bool:
+        return False
+
+    def supports_bytes(self) -> bool:
         return False

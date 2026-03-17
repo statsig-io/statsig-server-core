@@ -30,6 +30,20 @@ describe('DataStore', () => {
     expect(getResult).toEqual({ result: 'test', time: 123 });
   });
 
+  it('should get bytes from the data store', async () => {
+    const storedBytes = new TextEncoder().encode('binary-test');
+    dataStore.byteData[RULESET_KEY] = {
+      result: storedBytes,
+      time: 456,
+    };
+
+    const spy = jest.spyOn(dataStore, 'getBytes');
+    const getBytesResult = await dataStore.getBytes(RULESET_KEY);
+
+    expect(spy).toHaveBeenCalledWith(RULESET_KEY);
+    expect(getBytesResult).toEqual({ result: storedBytes, time: 456 });
+  });
+
   it('should set values in the data store', async () => {
     const spy = jest.spyOn(dataStore, 'set');
     await testDataStore(dataStore, RULESET_KEY, 'set_value');
@@ -38,6 +52,19 @@ describe('DataStore', () => {
     expect(dataStore.data[RULESET_KEY]).toEqual({
       result: 'set_value',
       time: 0,
+    });
+  });
+
+  it('should set bytes in the data store', async () => {
+    const spy = jest.spyOn(dataStore, 'setBytes');
+    const bytes = new TextEncoder().encode('set-binary-value');
+
+    await dataStore.setBytes(RULESET_KEY, bytes, 789);
+
+    expect(spy).toHaveBeenCalledWith(RULESET_KEY, bytes, 789);
+    expect(dataStore.byteData[RULESET_KEY]).toEqual({
+      result: bytes,
+      time: 789,
     });
   });
 

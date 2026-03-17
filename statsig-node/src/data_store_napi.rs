@@ -6,6 +6,7 @@ use napi_derive::napi;
 use statsig_rust::StatsigErr::DataStoreFailure;
 use statsig_rust::{
     data_store_interface::{
+        DataStoreBytesResponse as DataStoreBytesResponseActual,
         DataStoreResponse as DataStoreResponseActual, DataStoreTrait, RequestPath,
     },
     log_e, StatsigErr,
@@ -19,8 +20,18 @@ pub struct DataStoreResponse {
     pub time: Option<i64>,
 }
 
+#[napi(object)]
+pub struct DataStoreBytesResponse {
+    #[napi(ts_type = "Uint8Array")]
+    pub result: Option<Vec<u8>>,
+    pub time: Option<i64>,
+}
+
 type SetFnArgs = FnArgs<(String, String, Option<i64>)>;
 type SetFn = ThreadsafeFunction<SetFnArgs, Promise<()>, SetFnArgs, false>;
+
+type SetBytesFnArgs = FnArgs<(String, Vec<u8>, Option<i64>)>;
+type SetBytesFn = ThreadsafeFunction<SetBytesFnArgs, Promise<()>, SetBytesFnArgs, false>;
 
 #[napi(object, object_to_js = false)]
 pub struct DataStore {
@@ -37,10 +48,26 @@ pub struct DataStore {
     pub get_fn: Option<ThreadsafeFunction<String, Promise<DataStoreResponse>, String, false>>,
 
     #[napi(
+        js_name = "getBytes",
+        ts_type = "(key: string) => Promise<{ result?: Uint8Array; time?: number }>"
+    )]
+    pub get_bytes_fn:
+        Option<ThreadsafeFunction<String, Promise<DataStoreBytesResponse>, String, false>>,
+
+    #[napi(js_name = "supportsBytes", ts_type = "boolean")]
+    pub supports_bytes: Option<bool>,
+
+    #[napi(
         js_name = "set",
         ts_type = "(key: string, value: string, time?: number) => Promise<void>"
     )]
     pub set_fn: Option<SetFn>,
+
+    #[napi(
+        js_name = "setBytes",
+        ts_type = "(key: string, value: ArrayBuffer | Uint8Array, time?: number) => Promise<void>"
+    )]
+    pub set_bytes_fn: Option<SetBytesFn>,
 
     #[napi(
         js_name = "supportPollingUpdatesFor",
@@ -108,6 +135,32 @@ impl DataStoreTrait for DataStore {
         }
     }
 
+    async fn get_bytes(&self, key: &str) -> Result<DataStoreBytesResponseActual, StatsigErr> {
+        let fnc = match &self.get_bytes_fn {
+            Some(f) => f,
+            None => {
+                let response = self.get(key).await?;
+                return Ok(DataStoreBytesResponseActual {
+                    time: response.time,
+                    result: response.result.map(|value| value.into_bytes()),
+                });
+            }
+        };
+
+        let result = match fnc.call_async(key.to_string()).await {
+            Ok(result) => result.await,
+            Err(err) => return Err(DataStoreFailure(err.to_string())),
+        };
+
+        match result {
+            Ok(response) => Ok(DataStoreBytesResponseActual {
+                time: response.time.map(|t| t as u64),
+                result: response.result,
+            }),
+            Err(err) => Err(DataStoreFailure(err.to_string())),
+        }
+    }
+
     async fn set(&self, key: &str, value: &str, time: Option<u64>) -> Result<(), StatsigErr> {
         let fnc = match &self.set_fn {
             Some(f) => f,
@@ -115,6 +168,31 @@ impl DataStoreTrait for DataStore {
         };
 
         let args = (key.into(), value.into(), time.map(|t| t as i64));
+        let result = match fnc.call_async(args.into()).await {
+            Ok(result) => result.await,
+            Err(err) => return Err(DataStoreFailure(err.to_string())),
+        };
+
+        result.map_err(|e| DataStoreFailure(e.to_string()))
+    }
+
+    async fn set_bytes(
+        &self,
+        key: &str,
+        value: &[u8],
+        time: Option<u64>,
+    ) -> Result<(), StatsigErr> {
+        let fnc = match &self.set_bytes_fn {
+            Some(f) => f,
+            None => {
+                let value = std::str::from_utf8(value).map_err(|e| {
+                    DataStoreFailure(format!("Failed to decode bytes as UTF-8: {e}"))
+                })?;
+                return self.set(key, value, time).await;
+            }
+        };
+
+        let args = (key.to_string(), value.to_vec(), time.map(|t| t as i64));
         let result = match fnc.call_async(args.into()).await {
             Ok(result) => result.await,
             Err(err) => return Err(DataStoreFailure(err.to_string())),
@@ -141,6 +219,10 @@ impl DataStoreTrait for DataStore {
             log_e!(TAG, "supportPollingUpdatesFor error {}", err);
             false
         })
+    }
+
+    fn supports_bytes(&self) -> bool {
+        self.supports_bytes.unwrap_or(false)
     }
 }
 
