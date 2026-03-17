@@ -90,11 +90,10 @@ class BaseEvaluation:
 class FeatureGate(BaseEvaluation):
     value: bool
 
-    def __init__(self, name: str, raw: str):
+    def __init__(self, name: str, raw: dict):
         try:
-            data = json.loads(raw) or {}
-            super().__init__(name, data)
-            self.value = data.get("value") or False
+            super().__init__(name, raw or {})
+            self.value = (raw or {}).get("value") or False
         except Exception as error:
             super().__init__(name, {})
             self.value = False

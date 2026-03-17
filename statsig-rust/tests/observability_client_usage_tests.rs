@@ -570,31 +570,91 @@ async fn test_id_lists_sync_overall_latency_tags_recorded_for_single_list_failur
 
 #[tokio::test]
 #[serial]
-async fn test_error_callback_called() {
+async fn test_sdk_error_capture_uses_real_network_failure() {
     let obs_client = Arc::new(MockObservabilityClient {
         calls: Mutex::new(Vec::new()),
     });
+
+    let mock_scrapi = MockScrapi::new().await;
+    mock_scrapi
+        .stub(EndpointStub {
+            method: Method::GET,
+            response: StubData::String("{\"success\": false}".to_string()),
+            status: 500,
+            ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
+        })
+        .await;
 
     let weak_obs_client = Arc::downgrade(&obs_client) as Weak<dyn ObservabilityClient>;
     let statsig = Statsig::new(
         SDK_KEY,
         Some(Arc::new(StatsigOptions {
             observability_client: Some(weak_obs_client),
+            specs_url: Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs)),
+            disable_all_logging: Some(true),
             output_log_level: Some(LogLevel::Debug),
             ..StatsigOptions::new()
         })),
     );
 
     let _ = statsig.initialize().await;
-    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
-    let calls = obs_client.calls.lock().unwrap();
-    assert!(calls.len() >= 3); // one init, one sdk initialization, and at least one error callback
+    let deadline = Instant::now() + Duration::from_secs(2);
+    let mut found_error_call = false;
+    let mut found_exception_count = false;
+    let mut found_network_exception = false;
+
+    while Instant::now() < deadline {
+        {
+            let calls = obs_client.calls.lock().unwrap();
+            found_error_call = calls.iter().any(|call| match call {
+                RecordedCall::Error(tag, error) => {
+                    tag == "NetworkClient"
+                        && error.contains("RetriesExhausted")
+                        && error.contains("download_config_specs")
+                }
+                _ => false,
+            });
+
+            found_network_exception = calls.iter().any(|call| match call {
+                RecordedCall::Error(tag, error) => {
+                    tag == "NetworkClient" && error.contains("RetriesExhausted")
+                }
+                _ => false,
+            });
+
+            found_exception_count = calls.iter().any(|call| match call {
+                RecordedCall::Increment(metric_name, value, Some(tags)) => {
+                    metric_name == "statsig.sdk.sdk_exception_count"
+                        && *value == 1.0
+                        && tags
+                            == &std::collections::HashMap::from([
+                                ("tag".to_string(), "NetworkClient".to_string()),
+                                ("exception".to_string(), "RetriesExhausted".to_string()),
+                            ])
+                }
+                _ => false,
+            });
+        }
+
+        if found_error_call && found_network_exception && found_exception_count {
+            break;
+        }
+
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+
     assert!(
-        calls
-            .iter()
-            .any(|call| matches!(call, RecordedCall::Error(_, _))),
-        "Expected at least one RecordedCall::Error, but found none"
+        found_error_call,
+        "Expected NetworkClient SDK error callback for a real retry-exhausted request"
+    );
+    assert!(
+        found_network_exception,
+        "Expected captured NetworkClient SDK exception name to be RetriesExhausted"
+    );
+    assert!(
+        found_exception_count,
+        "Expected sdk_exception_count metric for the captured NetworkClient SDK error"
     );
 }
 

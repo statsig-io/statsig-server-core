@@ -17,7 +17,8 @@ use pyo3::types::PyTuple;
 use pyo3::{prelude::*, types::PyDict};
 use pyo3_stub_gen::derive::*;
 use serde_json::Value;
-use statsig_rust::statsig_types::DynamicConfig;
+use statsig_rust::evaluation::evaluation_details::EvaluationDetails;
+use statsig_rust::statsig_types::{DynamicConfig, FeatureGate};
 use statsig_rust::{
     log_e, ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
     FeatureGateEvaluationOptions, HashAlgorithm, LayerEvaluationOptions, ObservabilityClient,
@@ -250,6 +251,23 @@ impl StatsigBasePy {
             name,
             options.map_or(FeatureGateEvaluationOptions::default(), |o| o.into()),
         )
+    }
+
+    #[pyo3(name="_INTERNAL_get_feature_gate_as_dict", signature = (user, name, options=None))]
+    pub fn _internal_get_feature_gate_as_dict(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+        options: Option<FeatureGateEvaluationOptionsPy>,
+        py: Python,
+    ) -> PyResult<Py<PyDict>> {
+        let gate = self.inner.get_feature_gate_with_options(
+            &user.inner,
+            name,
+            options.map_or(FeatureGateEvaluationOptions::default(), |o| o.into()),
+        );
+
+        feature_gate_to_py_dict(py, &gate)
     }
 
     #[pyo3(signature = (user, name))]
@@ -582,20 +600,37 @@ fn convert_to_string(value: Option<&Bound<PyAny>>) -> Option<String> {
     value.extract::<String>().ok()
 }
 
+fn feature_gate_to_py_dict(py: Python, gate: &FeatureGate) -> PyResult<Py<PyDict>> {
+    let raw = PyDict::new(py);
+    raw.set_item("name", &gate.name)?;
+    raw.set_item("value", gate.value)?;
+    raw.set_item("ruleID", &gate.rule_id)?;
+    raw.set_item("idType", &gate.id_type)?;
+    raw.set_item("details", evaluation_details_to_py_dict(py, &gate.details)?)?;
+
+    Ok(raw.unbind())
+}
+
 fn dynamic_config_to_py_dict(py: Python, config: &DynamicConfig) -> PyResult<Py<PyDict>> {
     let raw = PyDict::new(py);
     raw.set_item("name", &config.name)?;
     raw.set_item("value", map_to_py_dict_direct(py, &config.value)?)?;
     raw.set_item("ruleID", &config.rule_id)?;
     raw.set_item("idType", &config.id_type)?;
+    raw.set_item(
+        "details",
+        evaluation_details_to_py_dict(py, &config.details)?,
+    )?;
 
-    let details = PyDict::new(py);
-    details.set_item("reason", &config.details.reason)?;
-    details.set_item("lcut", config.details.lcut)?;
-    details.set_item("received_at", config.details.received_at)?;
-    details.set_item("version", config.details.version)?;
+    Ok(raw.unbind())
+}
 
-    raw.set_item("details", details)?;
+fn evaluation_details_to_py_dict(py: Python, details: &EvaluationDetails) -> PyResult<Py<PyDict>> {
+    let raw = PyDict::new(py);
+    raw.set_item("reason", &details.reason)?;
+    raw.set_item("lcut", details.lcut)?;
+    raw.set_item("received_at", details.received_at)?;
+    raw.set_item("version", details.version)?;
 
     Ok(raw.unbind())
 }

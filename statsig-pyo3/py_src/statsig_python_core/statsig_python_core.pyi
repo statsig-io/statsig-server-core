@@ -123,6 +123,9 @@ class StatsigBasePy:
     def _INTERNAL_get_feature_gate(self, user:StatsigUser, name:builtins.str, options:typing.Optional[FeatureGateEvaluationOptions]=None) -> builtins.str:
         ...
 
+    def _INTERNAL_get_feature_gate_as_dict(self, user:StatsigUser, name:builtins.str, options:typing.Optional[FeatureGateEvaluationOptions]=None) -> dict:
+        ...
+
     def manually_log_gate_exposure(self, user:StatsigUser, name:builtins.str) -> None:
         ...
 

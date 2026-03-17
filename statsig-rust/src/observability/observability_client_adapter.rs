@@ -78,7 +78,16 @@ impl<T: ObservabilityClient> OpsStatsEventObserver for T {
                 };
             }
             OpsStatsEvent::SDKError(error) => {
-                self.error(error.tag, error.info.to_string());
+                self.error(error.tag.clone(), error.info.to_string());
+                let tags = HashMap::from([
+                    ("tag".to_string(), error.tag),
+                    ("exception".to_string(), error.exception),
+                ]);
+                self.increment(
+                    "statsig.sdk.sdk_exception_count".to_string(),
+                    1.0,
+                    Some(tags),
+                );
             }
             _ => {}
         }
