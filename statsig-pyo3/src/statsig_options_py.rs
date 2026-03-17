@@ -21,7 +21,11 @@ use std::sync::{Arc, Weak};
 const TAG: &str = stringify!(StatsigOptionsPy);
 
 #[gen_stub_pyclass]
-#[pyclass(name = "SpecAdapterConfig", module = "statsig_python_core")]
+#[pyclass(
+    name = "SpecAdapterConfig",
+    module = "statsig_python_core",
+    from_py_object
+)]
 #[derive(Clone)]
 pub struct SpecAdapterConfigPy {
     #[pyo3(get, set)]
@@ -67,7 +71,7 @@ impl From<SpecAdapterConfigPy> for SpecAdapterConfig {
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "ProxyConfig", module = "statsig_python_core")]
+#[pyclass(name = "ProxyConfig", module = "statsig_python_core", from_py_object)]
 #[derive(Clone)]
 pub struct ProxyConfigPy {
     #[pyo3(get, set)]

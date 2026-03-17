@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use pyo3::{pyclass, pymethods, FromPyObject, PyObject};
+use pyo3::{prelude::*, pyclass, pymethods, FromPyObject};
 use pyo3_stub_gen::derive::*;
 use statsig_rust::{
     data_store_interface::{DataStoreResponse, DataStoreTrait, RequestPath},
@@ -14,11 +14,11 @@ const TAG: &str = "DataStoreBasey";
 #[pyclass(name = "DataStoreBase", module = "statsig_python_core", subclass)]
 #[derive(FromPyObject, Default)]
 pub struct DataStoreBasePy {
-    initialize_fn: Option<PyObject>,
-    shutdown_fn: Option<PyObject>,
-    get_fn: Option<PyObject>,
-    set_fn: Option<PyObject>,
-    support_polling_updates_for_fn: Option<PyObject>,
+    initialize_fn: Option<Py<PyAny>>,
+    shutdown_fn: Option<Py<PyAny>>,
+    get_fn: Option<Py<PyAny>>,
+    set_fn: Option<Py<PyAny>>,
+    support_polling_updates_for_fn: Option<Py<PyAny>>,
 }
 
 #[gen_stub_pymethods]
@@ -44,7 +44,7 @@ impl DataStoreTrait for DataStoreBasePy {
                 None => return Ok(()),
             };
 
-            initialize_fn.call(py, (), None).map_err(|e| {
+            initialize_fn.as_ref().call0(py).map_err(|e| {
                 log_e!(TAG, "Failed to call DataStoreBasePy.initialize: {:?}", e);
                 StatsigErr::DataStoreFailure("Failed to initialize DataStoreBasePy".to_string())
             })?;
@@ -65,7 +65,7 @@ impl DataStoreTrait for DataStoreBasePy {
                 None => return Ok(()),
             };
 
-            shutdown_fn.call(py, (), None).map_err(|e| {
+            shutdown_fn.as_ref().call0(py).map_err(|e| {
                 log_e!(TAG, "Failed to call DataStoreBasePy.shutdown: {:?}", e);
                 StatsigErr::DataStoreFailure("Failed to shutdown DataStoreBasePy".to_string())
             })?;
@@ -94,7 +94,7 @@ impl DataStoreTrait for DataStoreBasePy {
                 }
             };
 
-            let result = get_fn.call(py, (key.to_string(),), None);
+            let result = get_fn.as_ref().call(py, (key.to_string(),), None);
 
             match result {
                 Ok(py_obj) => {
@@ -119,7 +119,8 @@ impl DataStoreTrait for DataStoreBasePy {
                                     Ok(t) => Some(t),
                                     Err(_) => match time_attr.extract::<i64>(py) {
                                         Ok(t) if t >= 0 => Some(t as u64),
-                                        _ => None,
+                                        Ok(_) => None,
+                                        Err(_) => None,
                                     },
                                 }
                             }
@@ -155,6 +156,7 @@ impl DataStoreTrait for DataStoreBasePy {
             };
 
             set_fn
+                .as_ref()
                 .call(py, (String::from(key), String::from(value), time), None)
                 .map_err(|e| {
                     log_e!(TAG, "Failed to call DataStoreBasePy.set: {:?}", e);
@@ -181,9 +183,12 @@ impl DataStoreTrait for DataStoreBasePy {
                 }
             };
 
-            let result = support_polling_updates_for_fn.call(py, (path.to_string(),), None);
+            let result =
+                support_polling_updates_for_fn
+                    .as_ref()
+                    .call(py, (path.to_string(),), None);
             match result {
-                Ok(value) => value.extract(py).unwrap_or_default(),
+                Ok(value) => value.extract::<bool>(py).unwrap_or_default(),
                 Err(e) => {
                     log_e!(
                         TAG,

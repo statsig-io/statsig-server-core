@@ -13,8 +13,7 @@ use crate::{
     statsig_user_py::StatsigUserPy,
 };
 use parking_lot::Mutex;
-use pyo3::types::PyTuple;
-use pyo3::{prelude::*, types::PyDict};
+use pyo3::{call::PyCallArgs, prelude::*, types::PyDict};
 use pyo3_stub_gen::derive::*;
 use serde_json::Value;
 use statsig_rust::evaluation::evaluation_details::EvaluationDetails;
@@ -51,7 +50,7 @@ impl StatsigBasePy {
         }
     }
 
-    pub fn initialize(&self, py: Python) -> PyResult<PyObject> {
+    pub fn initialize(&self, py: Python) -> PyResult<Py<PyAny>> {
         let (completion_event, event_clone) = get_completion_event(py)?;
 
         let inst = self.inner.clone();
@@ -78,7 +77,7 @@ impl StatsigBasePy {
         Ok(completion_event)
     }
 
-    pub fn initialize_with_details(&self, py: Python) -> PyResult<PyObject> {
+    pub fn initialize_with_details(&self, py: Python) -> PyResult<Py<PyAny>> {
         let (future, future_clone) = create_python_future(py)?;
 
         let inst = self.inner.clone();
@@ -130,7 +129,7 @@ impl StatsigBasePy {
         self.inner.is_initialized()
     }
 
-    pub fn flush_events(&self, py: Python) -> PyResult<PyObject> {
+    pub fn flush_events(&self, py: Python) -> PyResult<Py<PyAny>> {
         let (completion_event, event_clone) = get_completion_event(py)?;
 
         let inst = self.inner.clone();
@@ -155,7 +154,7 @@ impl StatsigBasePy {
         Ok(completion_event)
     }
 
-    pub fn shutdown(&self, py: Python) -> PyResult<PyObject> {
+    pub fn shutdown(&self, py: Python) -> PyResult<Py<PyAny>> {
         let (completion_event, event_clone) = get_completion_event(py)?;
 
         let inst = self.inner.clone();
@@ -572,20 +571,20 @@ impl StatsigBasePy {
     }
 }
 
-fn get_completion_event(py: Python) -> PyResult<(PyObject, PyObject)> {
+fn get_completion_event(py: Python) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
     let threading = PyModule::import(py, "threading")?;
     let event = threading.call_method0("Event")?;
-    let event_clone: PyObject = event.clone().into();
+    let event_clone: Py<PyAny> = event.clone().unbind();
 
-    Ok((event.into(), event_clone))
+    Ok((event.unbind(), event_clone))
 }
 
-fn create_python_future(py: Python) -> PyResult<(PyObject, PyObject)> {
+fn create_python_future(py: Python) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
     let concurrent = PyModule::import(py, "concurrent.futures")?;
     let future = concurrent.getattr("Future")?.call0()?;
-    let future_clone: PyObject = future.clone().into();
+    let future_clone: Py<PyAny> = future.clone().unbind();
 
-    Ok((future.into(), future_clone))
+    Ok((future.unbind(), future_clone))
 }
 
 fn convert_to_number(value: Option<&Bound<PyAny>>) -> Option<f64> {
@@ -658,17 +657,17 @@ fn extract_user_persisted_values(
     }
 }
 
-fn call_completion_event(event: &PyObject, py: Python) {
-    if let Err(e) = event.call_method0(py, "set") {
+fn call_completion_event(event: &Py<PyAny>, py: Python) {
+    if let Err(e) = event.as_ref().call_method0(py, "set") {
         log_e!(TAG, "Failed to set event: {}", e);
     }
 }
 
-fn call_completion_future<'py, A>(future: &PyObject, py: Python<'py>, args: A)
+fn call_completion_future<'py, A>(future: &Py<PyAny>, py: Python<'py>, args: A)
 where
-    A: IntoPyObject<'py, Target = PyTuple>,
+    A: PyCallArgs<'py>,
 {
-    if let Err(e) = future.call_method1(py, "set_result", args) {
+    if let Err(e) = future.as_ref().call_method1(py, "set_result", args) {
         log_e!(TAG, "Failed to set future result: {}", e);
     }
 }

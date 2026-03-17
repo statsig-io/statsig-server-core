@@ -46,8 +46,10 @@ pub enum ValidPrimitivesPy {
     Dictionary(HashMap<String, Option<ValidPrimitivesPy>>),
 }
 
-impl<'py> FromPyObject<'py> for ValidPrimitivesPy {
-    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
+impl<'a, 'py> FromPyObject<'a, 'py> for ValidPrimitivesPy {
+    type Error = pyo3::PyErr;
+
+    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
         if let Ok(b) = ob.extract::<bool>() {
             return Ok(ValidPrimitivesPy::Bool(b));
         }
@@ -86,7 +88,9 @@ impl PyStubType for ValidPrimitivesPy {
     fn type_output() -> TypeInfo {
         TypeInfo {
             name: "typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]".to_string(),
+            source_module: None,
             import: HashSet::from(["builtins".into(), "typing".into()]),
+            type_refs: HashMap::new(),
         }
     }
 }
@@ -138,7 +142,9 @@ impl PyStubType for ValidPrimitivesPyRef<'_> {
     fn type_output() -> TypeInfo {
         TypeInfo {
             name: "typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]".to_string(),
+            source_module: None,
             import: HashSet::from(["builtins".into(), "typing".into()]),
+            type_refs: HashMap::new(),
         }
     }
 }

@@ -78,7 +78,11 @@ impl InitializeDetailsPy {
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "FailureDetails", module = "statsig_python_core")]
+#[pyclass(
+    name = "FailureDetails",
+    module = "statsig_python_core",
+    from_py_object
+)]
 #[derive(Clone)]
 pub struct FailureDetailsPy {
     #[pyo3(get)]
@@ -180,7 +184,7 @@ impl ParameterStorePy {
         py: Python,
         param_name: &str,
         fallback: Bound<PyList>,
-    ) -> Option<PyObject> {
+    ) -> Option<Py<PyAny>> {
         match self.inner_statsig.upgrade() {
             Some(inner_statsig) => {
                 let result = inner_statsig.get_array_parameter_from_store(
@@ -193,15 +197,15 @@ impl ParameterStorePy {
                 if let Some(result) = result {
                     match list_of_values_to_py_list(py, &result) {
                         Ok(list) => Some(list),
-                        Err(_) => Some(fallback.into()),
+                        Err(_) => Some(fallback.unbind().into()),
                     }
                 } else {
-                    Some(fallback.into())
+                    Some(fallback.unbind().into())
                 }
             }
             None => {
                 log_e!(TAG, "Failed to upgrade Statsig instance");
-                Some(fallback.into())
+                Some(fallback.unbind().into())
             }
         }
     }
@@ -211,7 +215,7 @@ impl ParameterStorePy {
         py: Python,
         param_name: &str,
         fallback: Bound<PyDict>,
-    ) -> Option<PyObject> {
+    ) -> Option<Py<PyAny>> {
         match self.inner_statsig.upgrade() {
             Some(inner_statsig) => {
                 let result = inner_statsig.get_object_parameter_from_store(
@@ -224,12 +228,12 @@ impl ParameterStorePy {
                 if let Some(result) = result {
                     Some(map_to_py_dict(py, &result))
                 } else {
-                    Some(fallback.into())
+                    Some(fallback.unbind().into())
                 }
             }
             None => {
                 log_e!(TAG, "Failed to upgrade Statsig instance");
-                Some(fallback.into())
+                Some(fallback.unbind().into())
             }
         }
     }

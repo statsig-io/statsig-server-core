@@ -32,7 +32,7 @@ impl SafeGil {
             return f(None);
         }
 
-        Python::with_gil(move |py| f(Some(py)))
+        Python::attach(move |py| f(Some(py)))
     }
 }
 

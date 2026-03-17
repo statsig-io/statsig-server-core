@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use pyo3_stub_gen::{PyStubType, TypeInfo};
 use statsig_rust::user::unit_id::UnitID;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[derive(FromPyObject, IntoPyObject)]
 pub enum UnitIdPy {
@@ -14,7 +14,9 @@ impl PyStubType for UnitIdPy {
     fn type_output() -> TypeInfo {
         TypeInfo {
             name: "typing.Union[builtins.str, builtins.int, builtins.float]".to_string(),
+            source_module: None,
             import: HashSet::from(["builtins".into(), "typing".into()]),
+            type_refs: HashMap::new(),
         }
     }
 }
