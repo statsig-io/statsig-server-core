@@ -4,7 +4,6 @@ import json
 from typing import Mapping
 from utils import get_test_data_resource
 from pytest_httpserver import HTTPServer
-from utils import get_test_data_resource
 from profile_util import profile
 
 
@@ -139,7 +138,7 @@ def test_create_user_with_py_list():
 def test_create_user_with_both_null_user_id_and_custom_id():
     user = StatsigUser()
     assert user.user_id == ""
-    assert user.custom_ids == {}
+    assert user.custom_ids is None
 
 
 def test_create_user_with_custom_empty():

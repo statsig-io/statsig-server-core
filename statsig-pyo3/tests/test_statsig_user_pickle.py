@@ -1,5 +1,4 @@
 import pickle
-import pytest
 from statsig_python_core import StatsigUser
 
 
@@ -36,7 +35,7 @@ def test_statsig_user_pickle():
     assert unpickled_user.custom_ids == original_user.custom_ids
 
     # Do Not Serialize Private Attributes
-    assert unpickled_user.private_attributes == None
+    assert unpickled_user.private_attributes is None
 
 
 def test_statsig_user_pickle_minimal():
@@ -54,4 +53,4 @@ def test_statsig_user_pickle_minimal():
     assert unpickled_user.email is None
     assert unpickled_user.custom is None
     assert unpickled_user.private_attributes is None
-    assert unpickled_user.custom_ids == {}
+    assert unpickled_user.custom_ids is None

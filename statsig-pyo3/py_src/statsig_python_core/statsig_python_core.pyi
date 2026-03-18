@@ -3,9 +3,13 @@
 
 import builtins
 import typing
+from typing import TypeAlias
 __all__ = [
+    "AttributesDict",
+    "CustomIdsDict",
     "DataStoreBase",
     "DynamicConfigEvaluationOptions",
+    "EnvironmentDict",
     "ExperimentEvaluationOptions",
     "FailureDetails",
     "FeatureGateEvaluationOptions",
@@ -22,10 +26,17 @@ __all__ = [
     "StatsigBasePy",
     "StatsigOptions",
     "StatsigUser",
+    "ValidNestedPrimitives",
+    "ValidPrimitives",
     "notify_python_fork",
     "notify_python_shutdown",
 ]
 
+AttributesDict: TypeAlias = typing.Mapping[builtins.str, ValidNestedPrimitives]
+CustomIdsDict: TypeAlias = typing.Mapping[builtins.str, builtins.str | builtins.int | builtins.float]
+EnvironmentDict: TypeAlias = typing.Mapping[builtins.str, builtins.str]
+ValidNestedPrimitives: TypeAlias = ValidPrimitives | typing.List[ValidPrimitives] | typing.Mapping[builtins.str, ValidPrimitives]
+ValidPrimitives: TypeAlias = builtins.str | builtins.int | builtins.float | builtins.bool
 class DataStoreBase:
     def __new__(cls) -> DataStoreBase: ...
 
@@ -377,7 +388,7 @@ class StatsigUser:
     def statsig_environment(self) -> typing.Optional[builtins.dict[builtins.str, builtins.str]]: ...
     @statsig_environment.setter
     def statsig_environment(self, value: typing.Optional[builtins.dict[builtins.str, builtins.str]]) -> None: ...
-    def __new__(cls, user_id: typing.Optional[builtins.str] = None, email: typing.Optional[builtins.str] = None, ip: typing.Optional[builtins.str] = None, country: typing.Optional[builtins.str] = None, locale: typing.Optional[builtins.str] = None, app_version: typing.Optional[builtins.str] = None, user_agent: typing.Optional[builtins.str] = None, custom: typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]] = None, custom_ids: typing.Optional[typing.Mapping[builtins.str, typing.Union[builtins.str, builtins.int, builtins.float]]] = None, private_attributes: typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]] = None, statsig_environment: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None) -> StatsigUser: ...
+    def __new__(cls, user_id: typing.Optional[builtins.str] = None, email: typing.Optional[builtins.str] = None, ip: typing.Optional[builtins.str] = None, country: typing.Optional[builtins.str] = None, locale: typing.Optional[builtins.str] = None, app_version: typing.Optional[builtins.str] = None, user_agent: typing.Optional[builtins.str] = None, custom: typing.Optional[AttributesDict] = None, custom_ids: typing.Optional[CustomIdsDict] = None, private_attributes: typing.Optional[AttributesDict] = None, statsig_environment: typing.Optional[EnvironmentDict] = None) -> StatsigUser: ...
     def __getstate__(self) -> bytes: ...
     def __setstate__(self, state: bytes) -> None: ...
 

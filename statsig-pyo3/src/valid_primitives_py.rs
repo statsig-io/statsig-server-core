@@ -153,10 +153,6 @@ impl<'a> ValidPrimitivesPyRef<'a> {
     pub fn from_dynamic_value(value: &'a DynamicValue) -> Option<Self> {
         let json_value = &value.json_value;
 
-        ValidPrimitivesPyRef::from_value(json_value)
-    }
-
-    pub fn from_value(json_value: &'a Value) -> Option<Self> {
         if let Value::String(v) = json_value {
             return Some(ValidPrimitivesPyRef::String(v.as_str()));
         }
@@ -173,22 +169,21 @@ impl<'a> ValidPrimitivesPyRef<'a> {
             return Some(ValidPrimitivesPyRef::Bool(*v));
         }
 
-        if let Value::Array(v) = json_value {
-            let mapped = v
-                .iter()
-                .map(|v| json_value_to_valid_array_item_py(v))
-                .collect::<Vec<_>>();
-
+        if let Some(ref value) = value.array_value {
+            let mut mapped: Vec<ValidArrayItemPyRef<'a>> = Vec::with_capacity(value.len());
+            for v in value {
+                mapped.push(json_value_to_valid_array_item_py(&v.json_value));
+            }
             return Some(ValidPrimitivesPyRef::Array(mapped));
         }
 
-        if let Value::Object(v) = json_value {
-            let mapped = v
-                .iter()
-                .map(|(k, v)| (k.clone(), ValidPrimitivesPyRef::from_value(v)))
-                .collect::<HashMap<_, _>>();
-
-            return Some(ValidPrimitivesPyRef::Dictionary(mapped));
+        if let Some(ref value) = value.object_value {
+            return Some(ValidPrimitivesPyRef::Dictionary(
+                value
+                    .iter()
+                    .map(|(k, v)| (k.clone(), ValidPrimitivesPyRef::from_dynamic_value(v)))
+                    .collect(),
+            ));
         }
 
         None
