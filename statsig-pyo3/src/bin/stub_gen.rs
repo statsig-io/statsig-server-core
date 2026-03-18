@@ -1,7 +1,7 @@
 use pyo3_stub_gen::Result;
 use std::{fs, path::Path};
 
-const STUB_FILE_SOURCE: &str = "./statsig-pyo3/py_src/statsig_python_core.pyi";
+const STUB_FILE_SOURCE: &str = "./statsig-pyo3/py_src/statsig_python_core/__init__.pyi";
 const STUB_FILE_DESTINATION: &str =
     "./statsig-pyo3/py_src/statsig_python_core/statsig_python_core.pyi";
 

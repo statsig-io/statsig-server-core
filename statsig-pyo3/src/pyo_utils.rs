@@ -1,6 +1,6 @@
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods, PyList, PyListMethods, PyModule};
-use pyo3::{Bound, Py, PyAny, PyErr, PyObject, PyResult, Python};
+use pyo3::{Bound, Py, PyAny, PyErr, PyResult, Python};
 use serde_json::{json, Number, Value};
 use statsig_rust::evaluation::dynamic_string::DynamicString;
 use statsig_rust::{log_e, DynamicValue};
@@ -32,7 +32,7 @@ pub fn py_dict_to_json_value_map(dict: &Bound<PyDict>) -> HashMap<String, Value>
     hashmap
 }
 
-pub fn map_to_py_dict(py: Python, map: &HashMap<String, Value>) -> PyObject {
+pub fn map_to_py_dict(py: Python, map: &HashMap<String, Value>) -> Py<PyAny> {
     let value = match serde_json::to_string(&map) {
         Ok(v) => v,
         Err(e) => {
@@ -88,7 +88,7 @@ pub fn py_list_to_list_of_values(py_list: &Bound<PyList>) -> PyResult<Vec<Value>
     Ok(converted_list)
 }
 
-pub fn list_of_values_to_py_list(py: Python, list: &Vec<Value>) -> PyResult<PyObject> {
+pub fn list_of_values_to_py_list(py: Python, list: &Vec<Value>) -> PyResult<Py<PyAny>> {
     let py_list = PyList::empty(py);
     for value in list {
         match value {
@@ -107,7 +107,7 @@ pub fn list_of_values_to_py_list(py: Python, list: &Vec<Value>) -> PyResult<PyOb
     Ok(py_list.into())
 }
 
-fn json_array_to_py_list(py: Python, values: &Vec<Value>) -> PyResult<PyObject> {
+fn json_array_to_py_list(py: Python, values: &Vec<Value>) -> PyResult<Py<PyAny>> {
     let py_list = PyList::empty(py);
 
     for value in values {
@@ -117,7 +117,7 @@ fn json_array_to_py_list(py: Python, values: &Vec<Value>) -> PyResult<PyObject> 
     Ok(py_list.unbind().into())
 }
 
-fn json_object_to_py_dict(py: Python, map: &serde_json::Map<String, Value>) -> PyResult<PyObject> {
+fn json_object_to_py_dict(py: Python, map: &serde_json::Map<String, Value>) -> PyResult<Py<PyAny>> {
     let py_dict = PyDict::new(py);
 
     for (key, value) in map {
@@ -213,7 +213,7 @@ pub fn py_any_to_value(value: &Bound<PyAny>) -> PyResult<Value> {
         return Ok(Value::Number(Number::from(val as i64)));
     }
 
-    if let Ok(dict) = value.downcast::<PyDict>() {
+    if let Ok(dict) = value.cast::<PyDict>() {
         let mut hashmap = HashMap::new();
         for (key, val) in dict.iter() {
             let key_str = key.extract::<String>().map_err(|_| {
@@ -224,7 +224,7 @@ pub fn py_any_to_value(value: &Bound<PyAny>) -> PyResult<Value> {
         return Ok(Value::Object(hashmap.into_iter().collect()));
     }
 
-    if let Ok(list) = value.downcast::<PyList>() {
+    if let Ok(list) = value.cast::<PyList>() {
         let mut vec = Vec::new();
         let mut str_vec = Vec::new();
 
@@ -262,7 +262,7 @@ pub fn py_any_to_dynamic_value(value: &Bound<PyAny>) -> PyResult<DynamicValue> {
         return Ok(DynamicValue::from(val));
     }
 
-    if let Ok(dict) = value.downcast::<PyDict>() {
+    if let Ok(dict) = value.cast::<PyDict>() {
         let mut hashmap = HashMap::new();
         for (key, val) in dict.iter() {
             let key_str = key.extract::<String>().map_err(|_| {
@@ -281,7 +281,7 @@ pub fn py_any_to_dynamic_value(value: &Bound<PyAny>) -> PyResult<DynamicValue> {
         });
     }
 
-    if let Ok(list) = value.downcast::<PyList>() {
+    if let Ok(list) = value.cast::<PyList>() {
         let mut vec = Vec::new();
         let mut str_vec = Vec::new();
 

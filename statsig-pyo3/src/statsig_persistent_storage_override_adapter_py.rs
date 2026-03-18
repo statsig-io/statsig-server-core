@@ -173,7 +173,7 @@ fn convert_py_lists_to_secondary_exposures(
             Ok(e) => {
                 exposures.push(convert_py_dict_to_secondary_exposure(&e)?);
             }
-            Err(e) => return Err(e),
+            Err(e) => return Err(e.into()),
         }
     }
 
@@ -199,9 +199,9 @@ fn convert_py_dict_to_secondary_exposure(py_dict: &Bound<PyDict>) -> PyResult<Se
 )]
 #[derive(FromPyObject, Default)]
 pub struct PersistentStorageBasePy {
-    pub load_fn: Option<PyObject>,
-    pub save_fn: Option<PyObject>,
-    pub delete_fn: Option<PyObject>,
+    pub load_fn: Option<Py<PyAny>>,
+    pub save_fn: Option<Py<PyAny>>,
+    pub delete_fn: Option<Py<PyAny>>,
 }
 
 #[gen_stub_pymethods]
@@ -234,7 +234,7 @@ impl PersistentStorage for StatsigPersistentStorageOverrideAdapter {
                         None => return,
                     };
 
-                    match func.call(py, (key,), None) {
+                    match func.as_ref().call(py, (key,), None) {
                         Ok(_) => {
                             // No-op
                             log_w!(TAG, "Calling persistent storage load in rust side. No-op")
@@ -273,7 +273,11 @@ impl PersistentStorage for StatsigPersistentStorageOverrideAdapter {
 
             match convert_stick_value_to_py_obj(py, data) {
                 Ok(sticky_value_py) => {
-                    match save_func.call(py, (key, config_name, sticky_value_py.as_any()), None) {
+                    match save_func.as_ref().call(
+                        py,
+                        (key, config_name, sticky_value_py.clone()),
+                        None,
+                    ) {
                         Ok(_) => log_d!(TAG, "Save persistent storage"),
                         Err(e) => log_e!(TAG, "Failed to save from persistent storage: {:?}", e),
                     }
@@ -301,7 +305,7 @@ impl PersistentStorage for StatsigPersistentStorageOverrideAdapter {
                 None => return,
             };
 
-            match delete_func.call(py, (key, config_name), None) {
+            match delete_func.as_ref().call(py, (key, config_name), None) {
                 Ok(_) => log_d!(TAG, "Delete persistent storage"),
                 Err(e) => log_e!(TAG, "Failed to delete from persistent storage: {:?}", e),
             }

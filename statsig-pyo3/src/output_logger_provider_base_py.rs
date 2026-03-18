@@ -1,4 +1,4 @@
-use pyo3::{pyclass, pymethods, FromPyObject, PyObject};
+use pyo3::{prelude::*, pyclass, pymethods, FromPyObject};
 use pyo3_stub_gen::derive::*;
 use statsig_rust::output_logger::OutputLogProvider;
 
@@ -14,12 +14,12 @@ const TAG: &str = "OutputLoggerProviderBasePy";
 )]
 #[derive(FromPyObject, Default)]
 pub struct OutputLoggerProviderBasePy {
-    pub init_fn: Option<PyObject>,
-    pub debug_fn: Option<PyObject>,
-    pub info_fn: Option<PyObject>,
-    pub warn_fn: Option<PyObject>,
-    pub error_fn: Option<PyObject>,
-    pub shutdown_fn: Option<PyObject>,
+    pub init_fn: Option<Py<PyAny>>,
+    pub debug_fn: Option<Py<PyAny>>,
+    pub info_fn: Option<Py<PyAny>>,
+    pub warn_fn: Option<Py<PyAny>>,
+    pub error_fn: Option<Py<PyAny>>,
+    pub shutdown_fn: Option<Py<PyAny>>,
 }
 
 #[gen_stub_pymethods]
@@ -66,7 +66,7 @@ macro_rules! log_stdout {
     }
 }
 
-fn call_py_function_with_no_args(func_name: &str, func_opt: &Option<PyObject>) {
+fn call_py_function_with_no_args(func_name: &str, func_opt: &Option<Py<PyAny>>) {
     if func_opt.is_none() {
         log_stdout!(TAG, "No function to call for {}", func_name);
         return;
@@ -86,7 +86,7 @@ fn call_py_function_with_no_args(func_name: &str, func_opt: &Option<PyObject>) {
             }
         };
 
-        let result = func.call(py, (), None);
+        let result = func.as_ref().call0(py);
         if let Err(e) = result {
             log_stdout!(
                 TAG,
@@ -100,7 +100,7 @@ fn call_py_function_with_no_args(func_name: &str, func_opt: &Option<PyObject>) {
 
 fn call_py_function_with_two_args(
     func_name: &str,
-    func_opt: &Option<PyObject>,
+    func_opt: &Option<Py<PyAny>>,
     arg1: &str,
     arg2: &str,
 ) {
@@ -118,7 +118,7 @@ fn call_py_function_with_two_args(
             None => return,
         };
 
-        let result = func.call(py, (arg1, arg2), None);
+        let result = func.as_ref().call(py, (arg1, arg2), None);
         if let Err(e) = result {
             log_stdout!(
                 TAG,

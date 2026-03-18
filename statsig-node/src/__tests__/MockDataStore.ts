@@ -1,9 +1,11 @@
-import { DataStore } from '../../build/index.js';
+import { DataStore, DataStoreBytesResponse } from '../../build/index.js';
 
 export class MockDataStore implements DataStore {
   static verbose = false;
   data: Record<string, { result: string; time: number }> = {};
+  byteData: Record<string, DataStoreBytesResponse> = {};
   supportPolling: Record<string, boolean> = {};
+  supportsBytes = true;
 
   readonly initialize = () => {
     this.log('initialize');
@@ -20,9 +22,25 @@ export class MockDataStore implements DataStore {
     return Promise.resolve(this.data[key]);
   };
 
+  readonly getBytes = (key: string) => {
+    this.log('getBytes', key);
+    return Promise.resolve(this.byteData[key]);
+  };
+
   readonly set = (key: string, value: string, time?: number) => {
     this.log('set', key, value.slice(0, 10), time);
     this.data[key] = { result: value, time: time ?? 0 };
+    return Promise.resolve();
+  };
+
+  readonly setBytes = (
+    key: string,
+    value: ArrayBuffer | Uint8Array,
+    time?: number,
+  ) => {
+    const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
+    this.log('setBytes', key, new TextDecoder().decode(bytes.slice(0, 10)), time);
+    this.byteData[key] = { result: bytes, time: time ?? 0 };
     return Promise.resolve();
   };
 
