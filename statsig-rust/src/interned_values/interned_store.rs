@@ -69,6 +69,10 @@ pub struct InternedStore;
 
 impl InternedStore {
     pub fn preload(data: &[u8]) -> Result<(), StatsigErr> {
+        Self::preload_multi(&[data])
+    }
+
+    pub fn preload_multi(data: &[&[u8]]) -> Result<(), StatsigErr> {
         let start_time = Instant::now();
 
         if IMMORTAL_DATA.get().is_some() {
@@ -78,9 +82,12 @@ impl InternedStore {
             ));
         }
 
-        let specs_response = try_parse_as_json(data).or_else(|_| try_parse_as_proto(data))?;
+        let specs_responses = data
+            .iter()
+            .map(|data| try_parse_as_json(data).or_else(|_| try_parse_as_proto(data)))
+            .collect::<Result<Vec<SpecsResponseFull>, StatsigErr>>()?;
 
-        let immortal = mutable_to_immortal(specs_response)?;
+        let immortal = mutable_to_immortal(specs_responses)?;
 
         if IMMORTAL_DATA.set(immortal).is_err() {
             return Err(StatsigErr::LockFailure(
@@ -400,7 +407,9 @@ fn use_mutable_data<T>(reason: &str, f: impl FnOnce(&mut MutableData) -> Option<
     f(&mut data)
 }
 
-fn mutable_to_immortal(specs_res: SpecsResponseFull) -> Result<ImmortalData, StatsigErr> {
+fn mutable_to_immortal(
+    specs_responses: Vec<SpecsResponseFull>,
+) -> Result<ImmortalData, StatsigErr> {
     let mutable_data: MutableData = {
         let mut mutable_data_lock = MUTABLE_DATA.lock();
         std::mem::take(&mut *mutable_data_lock)
@@ -425,9 +434,11 @@ fn mutable_to_immortal(specs_res: SpecsResponseFull) -> Result<ImmortalData, Sta
         immortal.evaluator_values.insert(hash, leaked);
     }
 
-    try_insert_specs(specs_res.feature_gates, &mut immortal.feature_gates);
-    try_insert_specs(specs_res.dynamic_configs, &mut immortal.dynamic_configs);
-    try_insert_specs(specs_res.layer_configs, &mut immortal.layer_configs);
+    for response in specs_responses {
+        try_insert_specs(response.feature_gates, &mut immortal.feature_gates);
+        try_insert_specs(response.dynamic_configs, &mut immortal.dynamic_configs);
+        try_insert_specs(response.layer_configs, &mut immortal.layer_configs);
+    }
 
     Ok(immortal)
 }

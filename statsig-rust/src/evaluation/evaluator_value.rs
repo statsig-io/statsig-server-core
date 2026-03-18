@@ -63,8 +63,12 @@ impl EvaluatorValue {
                 mut_inner.compile_regex();
                 InternedStore::replace_evaluator_value(self.hash, inner.clone());
             }
-            EvaluatorValueInner::Static(_) => {
-                // static values are immutable and are compiled during `InternedStore::preload(..)`
+            EvaluatorValueInner::Static(inner) => {
+                if inner.regex_value.is_some() {
+                    return;
+                }
+
+                // static values are immutable and should already be compiled during `InternedStore::preload(..)`
                 log_e!(TAG, "Cannot compile regex for static EvaluatorValue");
             }
         }

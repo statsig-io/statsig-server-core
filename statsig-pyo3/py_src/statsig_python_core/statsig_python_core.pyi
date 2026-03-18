@@ -89,6 +89,7 @@ class InitializeDetails:
 @typing.final
 class InternedStore:
     def preload(self, data: bytes) -> None: ...
+    def preload_multi(self, data: typing.Sequence[bytes]) -> None: ...
 
 @typing.final
 class LayerEvaluationOptions:

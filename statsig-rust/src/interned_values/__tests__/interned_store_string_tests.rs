@@ -5,7 +5,8 @@ use crate::{
     interned_values::InternedStore,
 };
 
-const DATA: &[u8] = include_bytes!("../../../tests/data/eval_proj_dcs.json");
+const EVAL_PROJ_JSON: &[u8] = include_bytes!("../../../tests/data/eval_proj_dcs.json");
+const DEMO_PROJ_PROTO: &[u8] = include_bytes!("../../../tests/data/demo_proj_dcs.pb.br");
 
 #[test]
 fn test_interned_string_non_preloaded() {
@@ -18,7 +19,7 @@ fn test_interned_string_non_preloaded() {
 rusty_fork_test! {
     #[test]
     fn test_interned_string_preloaded() {
-        assert!(InternedStore::preload(DATA).is_ok());
+        assert!(InternedStore::preload(EVAL_PROJ_JSON).is_ok());
 
         let key = InternedString::from_str_ref("userID");
 
@@ -27,14 +28,27 @@ rusty_fork_test! {
     }
 
     #[test]
+    fn test_interned_string_preloaded_multi_payload_json_and_proto() {
+        assert!(InternedStore::preload_multi(&[EVAL_PROJ_JSON, DEMO_PROJ_PROTO]).is_ok());
+
+        let eval_key = InternedString::from_str_ref("test_experiment_no_targeting");
+        assert!(matches!(eval_key.value, InternedStringValue::Static(_)));
+        assert_eq!(eval_key.as_str(), "test_experiment_no_targeting");
+
+        let proto_key = InternedString::from_str_ref("three_groups");
+        assert!(matches!(proto_key.value, InternedStringValue::Static(_)));
+        assert_eq!(proto_key.as_str(), "three_groups");
+    }
+
+    #[test]
     fn test_repeated_calls_to_preload() {
-        assert!(InternedStore::preload(DATA).is_ok());
-        assert!(InternedStore::preload(DATA).is_err());
+        assert!(InternedStore::preload(EVAL_PROJ_JSON).is_ok());
+        assert!(InternedStore::preload(EVAL_PROJ_JSON).is_err());
     }
 
     #[test]
     fn test_preloading_across_forks() {
-        assert!(InternedStore::preload(DATA).is_ok());
+        assert!(InternedStore::preload(EVAL_PROJ_JSON).is_ok());
 
         let pid = unsafe { libc::fork() };
         if pid == 0 {

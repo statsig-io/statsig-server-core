@@ -25,4 +25,13 @@ impl InternedStorePy {
             log_e!(TAG, "Failed to preload interned store: {}", e);
         }
     }
+
+    #[staticmethod]
+    pub fn preload_multi(data: Vec<Bound<'_, PyBytes>>) {
+        let bytes: Vec<&[u8]> = data.iter().map(|data| data.as_bytes()).collect();
+
+        if let Err(e) = InternedStore::preload_multi(&bytes) {
+            log_e!(TAG, "Failed to preload interned store: {}", e);
+        }
+    }
 }
