@@ -28,7 +28,8 @@ RUN pip3 install pytest maturin patchelf pytest_httpserver --break-system-packag
 RUN npm install -g pnpm@7.32.4 typescript@5.7.3
 
 # Rust Setup
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ARG RUST_VERSION=1.88.0
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${RUST_VERSION}
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_TERM_COLOR=always
 RUN rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl
