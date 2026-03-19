@@ -2706,7 +2706,7 @@ dependencies = [
 
 [[package]]
 name = "sigstat-grpc"
-version = "0.17.1-rc.2603192159"
+version = "0.17.1-rc.2603192200"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2792,7 +2792,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "statsig-node"
-version = "0.17.1-rc.2603192159"
+version = "0.17.1-rc.2603192200"
 dependencies = [
  "async-trait",
  "napi",
@@ -2806,7 +2806,7 @@ dependencies = [
 
 [[package]]
 name = "statsig-pyo3"
-version = "0.17.1-rc.2603192159"
+version = "0.17.1-rc.2603192200"
 dependencies = [
  "async-trait",
  "lazy_static",
@@ -2820,7 +2820,7 @@ dependencies = [
 
 [[package]]
 name = "statsig-rust"
-version = "0.17.1-rc.2603192159"
+version = "0.17.1-rc.2603192200"
 dependencies = [
  "ahash",
  "arc-swap",
@@ -2866,7 +2866,7 @@ dependencies = [
 
 [[package]]
 name = "statsig_elixir"
-version = "0.17.1-rc.2603192159"
+version = "0.17.1-rc.2603192200"
 dependencies = [
  "async-trait",
  "parking_lot",
@@ -2879,7 +2879,7 @@ dependencies = [
 
 [[package]]
 name = "statsig_ffi"
-version = "0.17.1-rc.2603192159"
+version = "0.17.1-rc.2603192200"
 dependencies = [
  "async-trait",
  "cbindgen",
