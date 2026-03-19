@@ -51,6 +51,17 @@ pub(crate) fn strip_query_and_fragment(path: &str) -> &str {
         .unwrap_or(no_query)
 }
 
+#[cfg(any(test, not(feature = "custom_network_provider")))]
+pub(crate) fn url_path_has_suffix(url: &str, expected_suffix: &[&str]) -> bool {
+    let (_, raw_path) = split_host_and_path(url);
+    let segments: Vec<&str> = strip_query_and_fragment(raw_path)
+        .split('/')
+        .filter(|segment| !segment.is_empty())
+        .collect();
+
+    segments.ends_with(expected_suffix)
+}
+
 pub(crate) fn is_version_segment(segment: &str) -> bool {
     segment.len() > 1
         && segment.starts_with('v')
@@ -116,6 +127,32 @@ mod tests {
         assert_eq!(strip_query_and_fragment("v1/specs#frag"), "v1/specs");
         assert_eq!(strip_query_and_fragment("v1/specs?x=1#frag"), "v1/specs");
         assert_eq!(strip_query_and_fragment("v1/specs"), "v1/specs");
+    }
+
+    #[cfg(any(test, not(feature = "custom_network_provider")))]
+    #[test]
+    fn test_url_path_has_suffix() {
+        assert!(url_path_has_suffix(
+            "https://api.example.com/v1/log_event",
+            &["v1", "log_event"]
+        ));
+        assert!(url_path_has_suffix(
+            "https://api.example.com/prefix/v1/log_event?foo=bar",
+            &["v1", "log_event"]
+        ));
+        assert!(url_path_has_suffix(
+            "https://api.example.com/v1/log_event/",
+            &["v1", "log_event"]
+        ));
+
+        assert!(!url_path_has_suffix(
+            "https://api.example.com/v1/log_event/extra",
+            &["v1", "log_event"]
+        ));
+        assert!(!url_path_has_suffix(
+            "https://api.example.com/v1/log_events",
+            &["v1", "log_event"]
+        ));
     }
 
     #[test]

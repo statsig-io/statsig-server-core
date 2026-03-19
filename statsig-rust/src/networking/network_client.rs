@@ -52,6 +52,7 @@ pub struct NetworkClient {
     ca_cert_pem: Option<Vec<u8>>,
     silent_on_network_failure: bool,
     disable_file_streaming: bool,
+    log_event_connection_reuse: bool,
     loggable_sdk_key: String,
 }
 
@@ -63,7 +64,7 @@ impl NetworkClient {
         options: Option<&StatsigOptions>,
     ) -> Self {
         let net_provider = get_network_provider();
-        let (disable_network, proxy_config, ca_cert_pem) = options
+        let (disable_network, proxy_config, ca_cert_pem, log_event_connection_reuse) = options
             .map(|opts| {
                 let ca_cert_pem = opts
                     .proxy_config
@@ -90,9 +91,10 @@ impl NetworkClient {
                     opts.disable_network.unwrap_or(false),
                     opts.proxy_config.clone(),
                     ca_cert_pem,
+                    opts.log_event_connection_reuse.unwrap_or(false),
                 )
             })
-            .unwrap_or((false, None, None));
+            .unwrap_or((false, None, None, false));
 
         NetworkClient {
             headers: headers.unwrap_or_default(),
@@ -106,6 +108,7 @@ impl NetworkClient {
             disable_file_streaming: options
                 .map(|opts| opts.disable_disk_access.unwrap_or(false))
                 .unwrap_or(false),
+            log_event_connection_reuse,
             loggable_sdk_key: get_loggable_sdk_key(sdk_key),
         }
     }
@@ -151,6 +154,10 @@ impl NetworkClient {
 
         if request_args.ca_cert_pem.is_none() {
             request_args.ca_cert_pem = self.ca_cert_pem.clone();
+        }
+
+        if self.log_event_connection_reuse && !request_args.log_event_connection_reuse {
+            request_args.log_event_connection_reuse = true;
         }
 
         let mut merged_headers = request_args.headers.unwrap_or_default();
