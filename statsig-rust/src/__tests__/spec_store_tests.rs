@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -96,6 +97,50 @@ async fn test_spec_store_data_store_updates_forwarded_to_data_store() {
     let call_value = calls[0].1.as_ref().unwrap();
     assert!(call_value.len() > 100);
     assert!(call_value.contains("\"feature_gates\""));
+}
+
+#[tokio::test]
+async fn test_spec_store_skips_data_store_write_for_delta_responses() {
+    let data_store = Arc::new(TestDataStore {
+        get_response: Mutex::new(None),
+        supports_polling: true,
+        calls: Mutex::new(vec![]),
+    });
+
+    let options = StatsigOptions {
+        data_store: Some(data_store.clone()),
+        ..StatsigOptions::default()
+    };
+
+    let spec_store = SpecStore::new(
+        "test",
+        "test".to_string(),
+        StatsigRuntime::get_runtime(),
+        Arc::new(SdkEventEmitter::default()),
+        Some(&options),
+    );
+
+    let contents = include_bytes!("../../tests/data/eval_proj_dcs.json");
+    let update_result = spec_store.set_values(SpecsUpdate {
+        data: ResponseData::from_bytes_with_headers(
+            contents.to_vec(),
+            Some(HashMap::from([(
+                "x-deltas-used".to_string(),
+                "true".to_string(),
+            )])),
+        ),
+        source: SpecsSource::Network,
+        received_at: 2000,
+        source_api: None,
+    });
+
+    assert!(update_result.is_ok());
+
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+    let calls = data_store.calls.lock();
+
+    assert!(calls.is_empty());
 }
 
 #[test]
