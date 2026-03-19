@@ -17,7 +17,7 @@ use chrono::Utc;
 use parking_lot::RwLock;
 use percent_encoding::percent_encode;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 use tokio::sync::Notify;
@@ -45,6 +45,7 @@ const CONFIG_SYNC_OVERALL_ERROR_TAG: &str = "error";
 const CONFIG_SYNC_OVERALL_NETWORK_SUCCESS_TAG: &str = "network_success";
 const CONFIG_SYNC_OVERALL_PROCESS_SUCCESS_TAG: &str = "process_success";
 const CONFIG_SYNC_OVERALL_DELTAS_USED_TAG: &str = "deltas_used";
+const STATSIG_NETWORK_FALLBACK_THRESHOLD: u32 = 5;
 
 pub struct StatsigHttpSpecsAdapter {
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
@@ -58,6 +59,7 @@ pub struct StatsigHttpSpecsAdapter {
     shutdown_notify: Arc<Notify>,
     allow_dcs_deltas: bool,
     use_deltas_next_request: AtomicBool,
+    background_sync_failure_count: AtomicU32,
 }
 
 // OB client -- START
@@ -146,6 +148,7 @@ impl StatsigHttpSpecsAdapter {
             shutdown_notify: Arc::new(Notify::new()),
             allow_dcs_deltas: enable_dcs_deltas,
             use_deltas_next_request: AtomicBool::new(enable_dcs_deltas),
+            background_sync_failure_count: AtomicU32::new(0),
         }
     }
 
@@ -273,6 +276,38 @@ impl StatsigHttpSpecsAdapter {
         }
     }
 
+    fn should_attempt_fallback(
+        &self,
+        trigger: SpecsSyncTrigger,
+        result: &Result<(), StatsigErr>,
+    ) -> bool {
+        if result.is_ok() || self.fallback_url.is_none() {
+            return false;
+        }
+
+        if trigger != SpecsSyncTrigger::Background {
+            return true;
+        }
+
+        let failure_count = self
+            .background_sync_failure_count
+            .fetch_add(1, Ordering::SeqCst)
+            + 1;
+
+        if failure_count.is_multiple_of(STATSIG_NETWORK_FALLBACK_THRESHOLD) {
+            return true;
+        }
+
+        log_d!(
+            TAG,
+            "Skipping fallback on background sync failure {}. Retrying fallback every {} failures.",
+            failure_count,
+            STATSIG_NETWORK_FALLBACK_THRESHOLD
+        );
+
+        false
+    }
+
     pub async fn run_background_sync(self: Arc<Self>) {
         let specs_info = match self
             .listener
@@ -342,7 +377,7 @@ impl StatsigHttpSpecsAdapter {
 
         let mut result = self.process_spec_data(response).await;
 
-        if result.is_err() && self.fallback_url.is_some() {
+        if self.should_attempt_fallback(trigger, &result) {
             log_d!(TAG, "Falling back to statsig api");
             let fallback_args = self.get_request_args(&current_specs_info, trigger);
             deltas_used = fallback_args.deltas_enabled;

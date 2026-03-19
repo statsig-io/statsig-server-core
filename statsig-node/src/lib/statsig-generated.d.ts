@@ -236,6 +236,7 @@ export interface StatsigOptions {
   disableAllLogging?: boolean
   disableCountryLookup?: boolean
   disableNetwork?: boolean
+  logEventConnectionReuse?: boolean
   enableIdLists?: boolean
   enableDcsDeltas?: boolean
   environment?: string

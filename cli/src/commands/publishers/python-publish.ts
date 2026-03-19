@@ -5,24 +5,15 @@ import path from 'node:path';
 
 import { PublisherOptions } from './publisher-options.js';
 
-const REQUIRED_FILES = [
-  'cp37-abi3-macosx_10_12_x86_64.whl',
-  'cp37-abi3-macosx_11_0_arm64.whl',
-  'cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl',
-  'cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl',
-  'cp37-abi3-musllinux_1_2_aarch64.whl',
-  'cp37-abi3-musllinux_1_2_x86_64.whl',
-  'cp37-abi3-win_amd64.whl',
-  'cp37-abi3-win32.whl',
-];
-
-const _LEGACY_FILES = [
-  'cp37-abi3-manylinux_2_27_aarch64.whl',
-  'cp37-abi3-manylinux_2_28_aarch64.whl',
-  'cp37-abi3-manylinux_2_34_aarch64.whl',
-  'cp37-abi3-manylinux_2_27_x86_64.whl',
-  'cp37-abi3-manylinux_2_28_x86_64.whl',
-  'cp37-abi3-manylinux_2_34_x86_64.whl',
+const REQUIRED_WHEEL_SUFFIXES = [
+  'macosx_10_12_x86_64.whl',
+  'macosx_11_0_arm64.whl',
+  'manylinux_2_17_aarch64.manylinux2014_aarch64.whl',
+  'manylinux_2_17_x86_64.manylinux2014_x86_64.whl',
+  'musllinux_1_2_aarch64.whl',
+  'musllinux_1_2_x86_64.whl',
+  'win_amd64.whl',
+  'win32.whl',
 ];
 
 export async function publishPython(options: PublisherOptions) {
@@ -41,7 +32,7 @@ export async function publishPython(options: PublisherOptions) {
     wheels[basename] = file;
   });
 
-  const toFind = [...REQUIRED_FILES];
+  const toFind = [...REQUIRED_WHEEL_SUFFIXES];
   let allValid = true;
 
   Object.entries(wheels).forEach(([basename, file]) => {
@@ -50,8 +41,10 @@ export async function publishPython(options: PublisherOptions) {
       Log.stepProgress(`Skipping ${basename} (win_arm64 flavor)`);
       return;
     }
-    const found = toFind.findIndex((f) => basename.includes(f));
-    if (found === -1) {
+
+    const isAbi3Wheel = /-cp\d+-abi3-/.test(basename);
+    const found = toFind.findIndex((suffix) => basename.endsWith(suffix));
+    if (!isAbi3Wheel || found === -1) {
       Log.stepProgress(`File not expected: ${basename}`, 'failure');
       allValid = false;
     } else {

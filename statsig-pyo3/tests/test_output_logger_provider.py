@@ -1,44 +1,8 @@
-import json
-from typing import List, Tuple
 import pytest
-from pytest_httpserver import HTTPServer
-from statsig_python_core import OutputLoggerProvider, Statsig, StatsigOptions
+from statsig_python_core import Statsig, StatsigOptions
 from statsig_python_core.statsig_python_core import StatsigUser
+from mock_output_logger import MockOutputLoggerProvider
 
-from utils import get_test_data_resource
-
-
-class MockOutputLoggerProvider(OutputLoggerProvider):
-    init_called = False
-    shutdown_called = False
-    logs: List[Tuple[str,str, str]] = [] # (level, tag, msg)
-
-    def __new__(cls, test_param: str = ""):
-        instance = super().__new__(cls)
-        instance.test_param = test_param
-        return instance
-
-    def init(self):
-        self.init_called = True
-    
-    def debug(self, tag: str, msg: str):
-        print(f"DEBUG: {tag}: {msg}")
-        self.logs.append(("DEBUG", tag, msg))
-    
-    def info(self, tag: str, msg: str):
-        print(f"INFO: {tag}: {msg}")
-        self.logs.append(("INFO", tag, msg))
-
-    def warn(self, tag: str, msg: str):
-        print(f"WARN: {tag}: {msg}")
-        self.logs.append(("WARN", tag, msg))
-
-    def error(self, tag: str, msg: str):
-        print(f"ERROR: {tag}: {msg}")
-        self.logs.append(("ERROR", tag, msg))
-
-    def shutdown(self):
-        self.shutdown_called = True
 
 @pytest.fixture
 def statsig_setup():
@@ -52,9 +16,11 @@ def statsig_setup():
 
     yield log_provider, options
 
+
 def test_output_logger_provider_with_test_param(statsig_setup):
     log_provider = MockOutputLoggerProvider(test_param="test_param")
     assert log_provider.test_param == "test_param"
+
 
 def test_output_logger_provider(statsig_setup):
     log_provider, options = statsig_setup
@@ -68,6 +34,7 @@ def test_output_logger_provider(statsig_setup):
     assert len(log_provider.logs) > 0
 
     statsig.shutdown().wait()
+
 
 def test_output_logger_filter_level(statsig_setup):
     log_provider, options = statsig_setup
@@ -89,5 +56,3 @@ def test_output_logger_filter_level(statsig_setup):
 
     assert debug_logs is None
     assert warn_logs is not None
-
-    

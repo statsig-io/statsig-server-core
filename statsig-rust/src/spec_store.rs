@@ -440,6 +440,14 @@ impl SpecStore {
             return;
         }
 
+        if data.get_header_ref("x-deltas-used").is_some() {
+            log_d!(
+                TAG,
+                "Skipping data store write for delta response identified by x-deltas-used header"
+            );
+            return;
+        }
+
         let data_store = match &self.data_store {
             Some(data_store) => data_store.clone(),
             None => return,

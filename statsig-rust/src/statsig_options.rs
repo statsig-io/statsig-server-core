@@ -30,6 +30,7 @@ pub struct StatsigOptions {
     pub disable_all_logging: Option<bool>,
     pub disable_country_lookup: Option<bool>,
     pub disable_network: Option<bool>, // Disable all out-going network including get configs, log_events...
+    pub log_event_connection_reuse: Option<bool>,
 
     pub enable_id_lists: Option<bool>,
     pub enable_dcs_deltas: Option<bool>,
@@ -311,6 +312,12 @@ impl StatsigOptionsBuilder {
 
     pub fn disable_network(mut self, disable_network: Option<bool>) -> Self {
         self.inner.disable_network = disable_network;
+        self
+    }
+
+    #[must_use]
+    pub fn log_event_connection_reuse(mut self, log_event_connection_reuse: Option<bool>) -> Self {
+        self.inner.log_event_connection_reuse = log_event_connection_reuse;
         self
     }
 

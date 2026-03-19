@@ -1,9 +1,13 @@
 use pyo3::exceptions::{PyTypeError, PyValueError};
-use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods, PyList, PyListMethods, PyModule};
-use pyo3::{Bound, Py, PyAny, PyErr, PyResult, Python};
+use pyo3::types::{
+    PyAnyMethods, PyBool, PyDict, PyDictMethods, PyFloat, PyFloatMethods, PyInt, PyList,
+    PyListMethods, PyModule, PyString, PyStringMethods, PyTypeMethods,
+};
+use pyo3::{Bound, Py, PyAny, PyErr, PyResult, PyTypeCheck, Python};
 use serde_json::{json, Number, Value};
 use statsig_rust::evaluation::dynamic_string::DynamicString;
-use statsig_rust::{log_e, DynamicValue};
+use statsig_rust::{log_e, log_w, DynamicValue};
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 const TAG: &str = "PyoUtils";
@@ -307,4 +311,158 @@ pub fn py_any_to_dynamic_value(value: &Bound<PyAny>) -> PyResult<DynamicValue> {
     }
 
     Err(PyValueError::new_err("Unsupported value type"))
+}
+
+// ------------------------------------------------------------------------------- [ Statsig User Creation ]
+
+pub fn opt_py_dict_ref_to_hashmap(
+    data: Option<&Bound<'_, PyDict>>,
+) -> Option<HashMap<String, DynamicValue>> {
+    let data = data?;
+    Some(py_dict_ref_to_hashmap(data))
+}
+
+fn py_any_ref_to_dynamic_value(value: &Bound<'_, PyAny>) -> Option<DynamicValue> {
+    if let Some(dv) = try_as_cow_str(value) {
+        return Some(DynamicValue::from(dv.as_ref()));
+    }
+
+    if let Some(bool) = try_as_bool(value) {
+        return Some(DynamicValue::from(bool));
+    }
+
+    if let Some(float) = try_as_float(value) {
+        return Some(DynamicValue::from(float));
+    }
+
+    if let Some(int) = try_as_int(value) {
+        return Some(DynamicValue::from(int));
+    }
+
+    if let Some(list) = try_as_list(value) {
+        return Some(DynamicValue::from(list));
+    }
+
+    if let Some(dict) = try_as_dict(value) {
+        return Some(DynamicValue::from(dict));
+    }
+
+    match value.get_type().name() {
+        Ok(name) => log_w!(TAG, "Unsupported value type: {} for value: {}", name, value),
+        Err(e) => log_w!(TAG, "Unsupported value type for value: {} - {}", value, e),
+    }
+
+    None
+}
+
+fn py_dict_ref_to_hashmap(dict: &Bound<'_, PyDict>) -> HashMap<String, DynamicValue> {
+    let mut values = HashMap::with_capacity(dict.len());
+
+    for (key, value) in dict.iter() {
+        let dynamic_val = match py_any_ref_to_dynamic_value(&value) {
+            Some(v) => v,
+            None => {
+                log_w!(
+                    TAG,
+                    "Skipping entry: Unsupported value type for key '{}'",
+                    key
+                );
+                continue;
+            }
+        };
+
+        let key_string = match try_as_cow_str(&key) {
+            Some(k) => k.to_string(),
+            None => {
+                log_w!(TAG, "Skipping entry: Non-string key '{}'", key);
+                continue;
+            }
+        };
+
+        values.insert(key_string, dynamic_val);
+    }
+
+    values
+}
+
+fn try_as_cow_str<'py>(value: &'py Bound<'py, PyAny>) -> Option<Cow<'py, str>> {
+    if !PyString::type_check(value) {
+        return None;
+    }
+
+    // SAFETY: This is what the "safe" version does internally, but its faster because we skip the Error creation
+    let py_string = unsafe { value.cast_unchecked::<PyString>() };
+
+    let cow_str = match py_string.to_cow() {
+        Ok(cow_str_ref) => cow_str_ref,
+        Err(e) => {
+            log_w!(TAG, "Failed to convert PyString to Cow<str>: {}", e);
+            return None;
+        }
+    };
+
+    Some(cow_str)
+}
+
+fn try_as_bool<'py>(value: &'py Bound<'py, PyAny>) -> Option<bool> {
+    if !PyBool::type_check(value) {
+        return None;
+    }
+
+    // SAFETY: This is what the "safe" version does internally, but its faster because we skip the Error creation
+    let pybool = unsafe { value.cast_unchecked::<PyBool>() };
+
+    Some(pybool == true)
+}
+
+fn try_as_int<'py>(value: &'py Bound<'py, PyAny>) -> Option<i64> {
+    if !PyInt::type_check(value) {
+        return None;
+    }
+
+    // SAFETY: This is what the "safe" version does internally, but its faster because we skip the Error creation
+    let pyint = unsafe { value.cast_unchecked::<PyInt>() };
+
+    let value = unsafe { pyo3::ffi::PyLong_AsLong(pyint.as_ptr()) };
+    Some(value)
+}
+
+fn try_as_float<'py>(value: &'py Bound<'py, PyAny>) -> Option<f64> {
+    if !PyFloat::type_check(value) {
+        return None;
+    }
+
+    // SAFETY: This is what the "safe" version does internally, but its faster because we skip the Error creation
+    let pyfloat = unsafe { value.cast_unchecked::<PyFloat>() };
+
+    let value = pyfloat.value();
+    Some(value)
+}
+
+fn try_as_list<'py>(value: &'py Bound<'py, PyAny>) -> Option<Vec<DynamicValue>> {
+    if !PyList::type_check(value) {
+        return None;
+    }
+
+    // SAFETY: This is what the "safe" version does internally, but its faster because we skip the Error creation
+    let pylist = unsafe { value.cast_unchecked::<PyList>() };
+    let mut values = Vec::with_capacity(pylist.len());
+    for item in pylist.iter() {
+        match py_any_ref_to_dynamic_value(&item) {
+            Some(dynamic_val) => values.push(dynamic_val),
+            None => log_w!(TAG, "Skipping entry: Unsupported value type for list item"),
+        };
+    }
+
+    Some(values)
+}
+
+fn try_as_dict<'py>(value: &'py Bound<'py, PyAny>) -> Option<HashMap<String, DynamicValue>> {
+    if !PyDict::type_check(value) {
+        return None;
+    }
+
+    // SAFETY: This is what the "safe" version does internally, but its faster because we skip the Error creation
+    let pydict = unsafe { value.cast_unchecked::<PyDict>() };
+    Some(py_dict_ref_to_hashmap(pydict))
 }

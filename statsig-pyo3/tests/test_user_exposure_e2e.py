@@ -2,6 +2,7 @@
 verify the complete structure and correctness of exposure events,
 But specifically for StatsigUser Correctness.
 """
+
 import gzip
 import json
 import pytest
@@ -32,6 +33,95 @@ def statsig_setup(httpserver: HTTPServer):
 
     statsig.shutdown().wait()
 
+
+def test_logged_complex_user_fields(statsig_setup):
+    statsig, mock_scrapi = statsig_setup
+    user = StatsigUser(
+        user_id="dloomb",
+        custom={
+            "is_employee": True,
+            "custom_field": "custom_value",
+            "number_field": 42,
+            "array_field": ["value1", 23, True],
+            "object_field": {
+                "key": "value",
+                "nested": {"key": "nested_value"},
+                "number_field": 123,
+                "array_field": ["item1", "item2"],
+            },
+            "emoji_string": "🚀",
+            "emoji_array": ["🚀", "🚀"],
+            "emoji_object": {"key": "🚀"},
+            "non_english_string": "大",
+            "unpaired_surrogate": "\ud800",
+        },
+        private_attributes={"do_not_log": True},
+        custom_ids={"workID": "a_work_id"},
+    )
+
+    statsig.check_gate(user, "test_public")
+    statsig.flush_events().wait()
+    events = mock_scrapi.get_logged_events()
+
+    assert len(events) == 1
+    event = events[0]
+
+    assert event["eventName"] == "statsig::gate_exposure"
+
+    assert "user" in event
+    user_data = event["user"]
+    assert user_data["userID"] == "dloomb"
+
+    custom = user_data["custom"]
+    assert custom["is_employee"] is True
+    assert custom["custom_field"] == "custom_value"
+    assert custom["number_field"] == 42
+    assert custom["array_field"] == ["value1", 23, True]
+    assert custom["object_field"]["key"] == "value"
+    assert custom["object_field"]["nested"]["key"] == "nested_value"
+    assert custom["object_field"]["number_field"] == 123
+    assert custom["object_field"]["array_field"] == ["item1", "item2"]
+
+    assert custom["emoji_string"] == "🚀"
+    assert custom["emoji_array"] == ["🚀", "🚀"]
+    assert custom["emoji_object"]["key"] == "🚀"
+    assert custom["non_english_string"] == "大"
+    assert custom.get("unpaired_surrogate") is None
+
+    assert user_data.get("privateAttributes") is None
+
+
+def test_accessed_complex_user_fields(statsig_setup):
+    user = StatsigUser(
+        user_id="dloomb",
+        custom={
+            "is_employee": True,
+            "custom_field": "custom_value",
+            "number_field": 42,
+            "array_field": ["value1", 23, True],
+            "object_field": {
+                "key": "value",
+                "nested": {"key": "nested_value"},
+                "number_field": 123,
+                "array_field": ["item1", "item2"],
+            },
+            "emoji_string": "🚀",
+            "emoji_array": ["🚀", "🚀"],
+            "emoji_object": {"key": "🚀"},
+            "non_english_string": "大",
+            "unpaired_surrogate": "\ud800",
+        },
+        private_attributes={"do_not_log": True},
+        custom_ids={"workID": "a_work_id"},
+    )
+
+    assert user.custom["emoji_string"] == "🚀"
+    assert user.custom["emoji_array"] == ["🚀", "🚀"]
+    assert user.custom["emoji_object"]["key"] == "🚀"
+    assert user.custom["non_english_string"] == "大"
+    assert user.custom.get("unpaired_surrogate") is None
+
+
 def test_updating_user_email_via_setter(statsig_setup):
     statsig, mock_scrapi = statsig_setup
     user = StatsigUser("test_user_123", email="test@example.com", country="US")
@@ -58,9 +148,10 @@ def test_updating_user_email_via_setter(statsig_setup):
     events = mock_scrapi.get_logged_events()
     assert len(events) == 2
     event = events[1]
-    assert event["user"]["email"] == "test2@example.com" # should only update the email
+    assert event["user"]["email"] == "test2@example.com"  # should only update the email
     assert event["user"]["country"] == "US"
     assert event["user"]["userID"] == "test_user_123"
+
 
 def test_gate_exposure_with_custom_user_attributes(statsig_setup):
     statsig, mock_scrapi = statsig_setup
@@ -94,6 +185,7 @@ def test_gate_exposure_with_custom_user_attributes(statsig_setup):
 
     events = mock_scrapi.get_logged_events()
     gate_exposures = [e for e in events if e["eventName"] == "statsig::gate_exposure"]
+
 
 def test_exposure_with_empty_user_id(statsig_setup):
     """Test that exposures work correctly with empty user ID."""

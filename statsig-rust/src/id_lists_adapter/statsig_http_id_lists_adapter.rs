@@ -388,12 +388,10 @@ impl StatsigHttpIdListsAdapter {
                         || entry.file_id != current.file_id
                     {
                         (true, 0u64, Some(current.size))
+                    } else if entry.size > current.size {
+                        (true, current.size, Some(current.size))
                     } else {
-                        if entry.size > current.size {
-                            (true, current.size, Some(current.size))
-                        } else {
-                            (false, 0u64, None)
-                        }
+                        (false, 0u64, None)
                     }
                 }
                 None => (true, 0, None),

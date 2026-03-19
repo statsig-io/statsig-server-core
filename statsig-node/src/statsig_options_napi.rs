@@ -122,6 +122,7 @@ pub struct StatsigOptions<'a> {
     pub disable_all_logging: Option<bool>,
     pub disable_country_lookup: Option<bool>,
     pub disable_network: Option<bool>,
+    pub log_event_connection_reuse: Option<bool>,
 
     pub enable_id_lists: Option<bool>,
     pub enable_dcs_deltas: Option<bool>,
@@ -226,6 +227,7 @@ impl StatsigOptions<'_> {
             service_name: self.service_name,
             disable_all_logging: self.disable_all_logging,
             disable_network: self.disable_network,
+            log_event_connection_reuse: self.log_event_connection_reuse,
             event_logging_max_queue_size: self.event_logging_max_queue_size,
             override_adapter: Some(create_local_overrides(self.override_adapter_config)),
             global_custom_fields: Self::convert_to_dynamic_value_map(self.global_custom_fields),

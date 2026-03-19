@@ -3,9 +3,13 @@
 
 import builtins
 import typing
+from typing import TypeAlias
 __all__ = [
+    "AttributesDict",
+    "CustomIdsDict",
     "DataStoreBase",
     "DynamicConfigEvaluationOptions",
+    "EnvironmentDict",
     "ExperimentEvaluationOptions",
     "FailureDetails",
     "FeatureGateEvaluationOptions",
@@ -22,10 +26,17 @@ __all__ = [
     "StatsigBasePy",
     "StatsigOptions",
     "StatsigUser",
+    "ValidNestedPrimitives",
+    "ValidPrimitives",
     "notify_python_fork",
     "notify_python_shutdown",
 ]
 
+AttributesDict: TypeAlias = typing.Mapping[builtins.str, ValidNestedPrimitives]
+CustomIdsDict: TypeAlias = typing.Mapping[builtins.str, builtins.str | builtins.int | builtins.float]
+EnvironmentDict: TypeAlias = typing.Mapping[builtins.str, builtins.str]
+ValidNestedPrimitives: TypeAlias = ValidPrimitives | typing.List[ValidPrimitives] | typing.Mapping[builtins.str, ValidPrimitives]
+ValidPrimitives: TypeAlias = builtins.str | builtins.int | builtins.float | builtins.bool
 class DataStoreBase:
     def __new__(cls) -> DataStoreBase: ...
 
@@ -78,6 +89,7 @@ class InitializeDetails:
 @typing.final
 class InternedStore:
     def preload(self, data: bytes) -> None: ...
+    def preload_multi(self, data: typing.Sequence[bytes]) -> None: ...
 
 @typing.final
 class LayerEvaluationOptions:
@@ -222,6 +234,10 @@ class StatsigOptions:
     @disable_network.setter
     def disable_network(self, value: typing.Optional[builtins.bool]) -> None: ...
     @property
+    def log_event_connection_reuse(self) -> typing.Optional[builtins.bool]: ...
+    @log_event_connection_reuse.setter
+    def log_event_connection_reuse(self, value: typing.Optional[builtins.bool]) -> None: ...
+    @property
     def event_logging_flush_interval_ms(self) -> typing.Optional[builtins.int]: ...
     @event_logging_flush_interval_ms.setter
     def event_logging_flush_interval_ms(self, value: typing.Optional[builtins.int]) -> None: ...
@@ -329,7 +345,7 @@ class StatsigOptions:
     def experimental_flags(self) -> typing.Optional[builtins.set[builtins.str]]: ...
     @experimental_flags.setter
     def experimental_flags(self, value: typing.Optional[builtins.set[builtins.str]]) -> None: ...
-    def __new__(cls, specs_url: typing.Optional[builtins.str] = None, specs_sync_interval_ms: typing.Optional[builtins.int] = None, init_timeout_ms: typing.Optional[builtins.int] = None, log_event_url: typing.Optional[builtins.str] = None, disable_all_logging: typing.Optional[builtins.bool] = None, disable_network: typing.Optional[builtins.bool] = None, event_logging_flush_interval_ms: typing.Optional[builtins.int] = None, event_logging_max_queue_size: typing.Optional[builtins.int] = None, event_logging_max_pending_batch_queue_size: typing.Optional[builtins.int] = None, enable_id_lists: typing.Optional[builtins.bool] = None, enable_dcs_deltas: typing.Optional[builtins.bool] = None, wait_for_user_agent_init: typing.Optional[builtins.bool] = None, wait_for_country_lookup_init: typing.Optional[builtins.bool] = None, disable_country_lookup: typing.Optional[builtins.bool] = None, id_lists_url: typing.Optional[builtins.str] = None, download_id_list_file_api: typing.Optional[builtins.str] = None, id_lists_sync_interval_ms: typing.Optional[builtins.int] = None, fallback_to_statsig_api: typing.Optional[builtins.bool] = None, environment: typing.Optional[builtins.str] = None, service_name: typing.Optional[builtins.str] = None, output_log_level: typing.Optional[builtins.str] = None, global_custom_fields: typing.Optional[typing.Mapping[builtins.str, typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]] = None, observability_client: typing.Optional[ObservabilityClientBase] = None, data_store: typing.Optional[DataStoreBase] = None, data_store_key_schema_version: typing.Optional[builtins.str] = None, persistent_storage: typing.Optional[PersistentStorageBaseClass] = None, config_compression_mode: typing.Optional[builtins.str] = None, proxy_config: typing.Optional[ProxyConfig] = None, output_logger_provider: typing.Optional[OutputLoggerProviderBase] = None, spec_adapter_configs: typing.Optional[list] = None, use_third_party_ua_parser: typing.Optional[builtins.bool] = None, disable_disk_access: typing.Optional[builtins.bool] = None, experimental_flags: typing.Optional[builtins.set[builtins.str]] = None) -> StatsigOptions: ...
+    def __new__(cls, specs_url: typing.Optional[builtins.str] = None, specs_sync_interval_ms: typing.Optional[builtins.int] = None, init_timeout_ms: typing.Optional[builtins.int] = None, log_event_url: typing.Optional[builtins.str] = None, disable_all_logging: typing.Optional[builtins.bool] = None, disable_network: typing.Optional[builtins.bool] = None, log_event_connection_reuse: typing.Optional[builtins.bool] = None, event_logging_flush_interval_ms: typing.Optional[builtins.int] = None, event_logging_max_queue_size: typing.Optional[builtins.int] = None, event_logging_max_pending_batch_queue_size: typing.Optional[builtins.int] = None, enable_id_lists: typing.Optional[builtins.bool] = None, enable_dcs_deltas: typing.Optional[builtins.bool] = None, wait_for_user_agent_init: typing.Optional[builtins.bool] = None, wait_for_country_lookup_init: typing.Optional[builtins.bool] = None, disable_country_lookup: typing.Optional[builtins.bool] = None, id_lists_url: typing.Optional[builtins.str] = None, download_id_list_file_api: typing.Optional[builtins.str] = None, id_lists_sync_interval_ms: typing.Optional[builtins.int] = None, fallback_to_statsig_api: typing.Optional[builtins.bool] = None, environment: typing.Optional[builtins.str] = None, service_name: typing.Optional[builtins.str] = None, output_log_level: typing.Optional[builtins.str] = None, global_custom_fields: typing.Optional[typing.Mapping[builtins.str, typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]] = None, observability_client: typing.Optional[ObservabilityClientBase] = None, data_store: typing.Optional[DataStoreBase] = None, data_store_key_schema_version: typing.Optional[builtins.str] = None, persistent_storage: typing.Optional[PersistentStorageBaseClass] = None, config_compression_mode: typing.Optional[builtins.str] = None, proxy_config: typing.Optional[ProxyConfig] = None, output_logger_provider: typing.Optional[OutputLoggerProviderBase] = None, spec_adapter_configs: typing.Optional[list] = None, use_third_party_ua_parser: typing.Optional[builtins.bool] = None, disable_disk_access: typing.Optional[builtins.bool] = None, experimental_flags: typing.Optional[builtins.set[builtins.str]] = None) -> StatsigOptions: ...
 
 @typing.final
 class StatsigUser:
@@ -377,7 +393,7 @@ class StatsigUser:
     def statsig_environment(self) -> typing.Optional[builtins.dict[builtins.str, builtins.str]]: ...
     @statsig_environment.setter
     def statsig_environment(self, value: typing.Optional[builtins.dict[builtins.str, builtins.str]]) -> None: ...
-    def __new__(cls, user_id: typing.Optional[builtins.str] = None, email: typing.Optional[builtins.str] = None, ip: typing.Optional[builtins.str] = None, country: typing.Optional[builtins.str] = None, locale: typing.Optional[builtins.str] = None, app_version: typing.Optional[builtins.str] = None, user_agent: typing.Optional[builtins.str] = None, custom: typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]] = None, custom_ids: typing.Optional[typing.Mapping[builtins.str, typing.Union[builtins.str, builtins.int, builtins.float]]] = None, private_attributes: typing.Optional[typing.Mapping[builtins.str, typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]]] = None, statsig_environment: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None) -> StatsigUser: ...
+    def __new__(cls, user_id: typing.Optional[builtins.str] = None, email: typing.Optional[builtins.str] = None, ip: typing.Optional[builtins.str] = None, country: typing.Optional[builtins.str] = None, locale: typing.Optional[builtins.str] = None, app_version: typing.Optional[builtins.str] = None, user_agent: typing.Optional[builtins.str] = None, custom: typing.Optional[AttributesDict] = None, custom_ids: typing.Optional[CustomIdsDict] = None, private_attributes: typing.Optional[AttributesDict] = None, statsig_environment: typing.Optional[EnvironmentDict] = None) -> StatsigUser: ...
     def __getstate__(self) -> bytes: ...
     def __setstate__(self, state: bytes) -> None: ...
 

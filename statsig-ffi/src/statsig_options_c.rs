@@ -161,6 +161,7 @@ impl From<StatsigOptionsData> for StatsigOptions {
             id_lists_url: data.id_lists_url,
             init_timeout_ms: data.init_timeout_ms,
             log_event_url: data.log_event_url,
+            log_event_connection_reuse: None,
             observability_client,
             output_log_level,
             output_logger_provider: None, // todo: add support for output logger provider

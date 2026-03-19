@@ -26,6 +26,8 @@ pub struct RequestArgs {
     pub proxy_config: Option<ProxyConfig>,
     pub ca_cert_pem: Option<Vec<u8>>,
     pub disable_file_streaming: Option<bool>,
+    /// Opt-in flag for reusing request-scoped reqwest client for log_event traffic.
+    pub log_event_connection_reuse: bool,
 }
 
 impl Default for RequestArgs {
@@ -52,6 +54,7 @@ impl RequestArgs {
             proxy_config: None,
             ca_cert_pem: None,
             disable_file_streaming: None,
+            log_event_connection_reuse: false,
         }
     }
 

@@ -2,9 +2,12 @@ use rusty_fork::rusty_fork_test;
 
 use crate::{
     evaluation::evaluator_value::{EvaluatorValue, EvaluatorValueInner},
-    interned_string::InternedString,
+    interned_string::{InternedString, InternedStringValue},
     interned_values::InternedStore,
 };
+
+const EVAL_PROJ_JSON: &[u8] = include_bytes!("../../../tests/data/eval_proj_dcs.json");
+const DEMO_PROJ_PROTO: &[u8] = include_bytes!("../../../tests/data/demo_proj_dcs.pb.br");
 
 #[test]
 fn test_interned_eval_value_non_preloaded() {
@@ -23,8 +26,7 @@ rusty_fork_test! {
     #[test]
     fn test_interned_eval_value_preloaded() {
         // condition_map["7718260"]["targetValue"] -> ["@statsig","@stotseg"]
-        let data = include_bytes!("../../../tests/data/eval_proj_dcs.json");
-        assert!(InternedStore::preload(data).is_ok());
+        assert!(InternedStore::preload(EVAL_PROJ_JSON).is_ok());
 
         let eval_value = EvaluatorValue::from_json_value(serde_json::Value::Array(vec![
             json_string("@statsig"),
@@ -39,6 +41,28 @@ rusty_fork_test! {
 
         assert!(actual.contains_key(&InternedString::from_str_ref("@statsig")));
         assert!(actual.contains_key(&InternedString::from_str_ref("@stotseg")));
+    }
+
+    #[test]
+    fn test_interned_eval_value_preloaded_multi_payload_json_and_proto() {
+        assert!(InternedStore::preload_multi(&[EVAL_PROJ_JSON, DEMO_PROJ_PROTO]).is_ok());
+
+        let demo_target_value = EvaluatorValue::from_json_value(serde_json::Value::Array(vec![
+            json_string("1"),
+            json_string("2"),
+            json_string("3"),
+            json_string("4"),
+            json_string("5"),
+        ]));
+        assert!(matches!(demo_target_value.inner, EvaluatorValueInner::Static(_)));
+
+        let from_proto_payload_key = InternedString::from_str_ref("three_groups");
+        assert!(matches!(from_proto_payload_key.value, InternedStringValue::Static(_)));
+        assert_eq!(from_proto_payload_key.as_str(), "three_groups");
+
+        let from_json_payload_key = InternedString::from_str_ref("test_experiment_no_targeting");
+        assert!(matches!(from_json_payload_key.value, InternedStringValue::Static(_)));
+        assert_eq!(from_json_payload_key.as_str(), "test_experiment_no_targeting");
     }
 
 

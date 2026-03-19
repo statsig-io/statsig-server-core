@@ -3,9 +3,14 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value as JsonValue};
 use std::{collections::HashMap, fmt::Debug};
 
-use crate::hashing::ahash_str;
+use crate::{
+    hashing::{self, ahash_str},
+    log_w,
+};
 
 use super::dynamic_string::DynamicString;
+
+const TAG: &str = "DynamicValue";
 
 #[macro_export]
 macro_rules! dyn_value {
@@ -208,48 +213,91 @@ impl From<JsonValue> for DynamicValue {
 
 impl From<String> for DynamicValue {
     fn from(value: String) -> Self {
-        Self::from(json!(value))
+        Self::from(serde_json::Value::String(value))
     }
 }
 
 impl From<&str> for DynamicValue {
     fn from(value: &str) -> Self {
-        Self::from(json!(value))
+        Self::from(serde_json::Value::String(value.to_string()))
     }
 }
 
 impl From<usize> for DynamicValue {
     fn from(value: usize) -> Self {
-        Self::from(json!(value))
+        Self::from(serde_json::Value::Number(serde_json::Number::from(value)))
     }
 }
 
 impl From<i64> for DynamicValue {
     fn from(value: i64) -> Self {
-        Self::from(json!(value))
+        Self::from(serde_json::Value::Number(serde_json::Number::from(value)))
     }
 }
 
 impl From<i32> for DynamicValue {
     fn from(value: i32) -> Self {
-        Self::from(json!(value))
+        Self::from(serde_json::Value::Number(serde_json::Number::from(value)))
     }
 }
 
 impl From<f64> for DynamicValue {
     fn from(value: f64) -> Self {
-        Self::from(json!(value))
+        let num = match serde_json::Number::from_f64(value) {
+            Some(num) => num,
+            None => {
+                log_w!(
+                    TAG,
+                    "Failed to convert f64 to serde_json::Number: {}",
+                    value
+                );
+                serde_json::Number::from(value as i64)
+            }
+        };
+
+        Self::from(serde_json::Value::Number(num))
     }
 }
 
 impl From<bool> for DynamicValue {
     fn from(value: bool) -> Self {
-        Self::from(json!(value))
+        Self::from(serde_json::Value::Bool(value))
     }
 }
 
 impl From<Vec<JsonValue>> for DynamicValue {
     fn from(value: Vec<JsonValue>) -> Self {
-        DynamicValue::from(json!(value))
+        DynamicValue::from(serde_json::Value::Array(value))
+    }
+}
+
+impl From<Vec<DynamicValue>> for DynamicValue {
+    fn from(value: Vec<DynamicValue>) -> Self {
+        let json_value = json!(value);
+        let string_value = DynamicString::from(json_value.to_string());
+        let hash_value = hashing::hash_one(value.iter().map(|v| v.hash_value).collect::<Vec<_>>());
+
+        DynamicValue {
+            hash_value,
+            array_value: Some(value),
+            json_value,
+            string_value: Some(string_value),
+            ..DynamicValue::default()
+        }
+    }
+}
+
+impl From<HashMap<String, DynamicValue>> for DynamicValue {
+    fn from(value: HashMap<String, DynamicValue>) -> Self {
+        let json_value = json!(value);
+        let hash_value =
+            hashing::hash_one(value.values().map(|v| v.hash_value).collect::<Vec<_>>());
+
+        DynamicValue {
+            hash_value,
+            object_value: Some(value),
+            json_value,
+            ..DynamicValue::default()
+        }
     }
 }
