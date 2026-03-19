@@ -1,3 +1,4 @@
+import sys
 import pytest
 from statsig_python_core import StatsigUser, StatsigOptions, Statsig
 import json
@@ -71,7 +72,7 @@ def test_create_user_with_custom_fields():
 def test_various_custom_attr_types():
     user = StatsigUser(
         user_id="user_123",
-        custom={"age": 30, "percent": 0.5, "premium": True, "arr": [True, "2", 3, 4.0]},
+        custom={"age": 30, "percent": 0.5, "premium": True, "arr": [True, "2", 3, 4.0], "big_int": sys.maxsize},
     )
 
     custom = user.custom
@@ -84,6 +85,8 @@ def test_various_custom_attr_types():
     assert isinstance(custom["premium"], bool)
     assert custom["arr"] == [True, "2", 3, 4.0]
     assert isinstance(custom["arr"], list)
+    assert custom["big_int"] == sys.maxsize
+    assert isinstance(custom["big_int"], int)
 
     assert isinstance(custom["arr"][0], bool)
     assert isinstance(custom["arr"][1], str)

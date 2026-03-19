@@ -1,4 +1,5 @@
 use pyo3::exceptions::{PyTypeError, PyValueError};
+use pyo3::ffi::PyLongObject;
 use pyo3::types::{
     PyAnyMethods, PyBool, PyDict, PyDictMethods, PyFloat, PyFloatMethods, PyInt, PyList,
     PyListMethods, PyModule, PyString, PyStringMethods, PyTypeMethods,
@@ -421,9 +422,9 @@ fn try_as_int<'py>(value: &'py Bound<'py, PyAny>) -> Option<i64> {
     }
 
     // SAFETY: This is what the "safe" version does internally, but its faster because we skip the Error creation
-    let pyint = unsafe { value.cast_unchecked::<PyInt>() };
+    let pyint = unsafe { value.cast_unchecked::<PyLongObject>() };
 
-    let value = unsafe { pyo3::ffi::PyLong_AsLong(pyint.as_ptr()) };
+    let value = unsafe { pyo3::ffi::PyLong_AsLong(pyint.as_ptr()) } as i64;
     Some(value)
 }
 
