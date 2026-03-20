@@ -1,8 +1,7 @@
 use pyo3::exceptions::{PyTypeError, PyValueError};
-use pyo3::ffi::PyLongObject;
 use pyo3::types::{
-    PyAnyMethods, PyBool, PyDict, PyDictMethods, PyFloat, PyFloatMethods, PyInt, PyList,
-    PyListMethods, PyModule, PyString, PyStringMethods, PyTypeMethods,
+    PyAnyMethods, PyBool, PyDict, PyDictMethods, PyFloat, PyInt, PyList, PyListMethods, PyModule,
+    PyString, PyStringMethods, PyTypeMethods,
 };
 use pyo3::{Bound, Py, PyAny, PyErr, PyResult, PyTypeCheck, Python};
 use serde_json::{json, Number, Value};
@@ -421,10 +420,11 @@ fn try_as_int<'py>(value: &'py Bound<'py, PyAny>) -> Option<i64> {
         return None;
     }
 
-    // SAFETY: This is what the "safe" version does internally, but its faster because we skip the Error creation
-    let pyint = unsafe { value.cast_unchecked::<PyLongObject>() };
+    let value = match value.extract::<i64>() {
+        Ok(v) => v,
+        Err(_) => return None,
+    };
 
-    let value = unsafe { pyo3::ffi::PyLong_AsLong(pyint.as_ptr()) } as i64;
     Some(value)
 }
 
@@ -433,10 +433,11 @@ fn try_as_float<'py>(value: &'py Bound<'py, PyAny>) -> Option<f64> {
         return None;
     }
 
-    // SAFETY: This is what the "safe" version does internally, but its faster because we skip the Error creation
-    let pyfloat = unsafe { value.cast_unchecked::<PyFloat>() };
+    let value = match value.extract::<f64>() {
+        Ok(v) => v,
+        Err(_) => return None,
+    };
 
-    let value = pyfloat.value();
     Some(value)
 }
 
