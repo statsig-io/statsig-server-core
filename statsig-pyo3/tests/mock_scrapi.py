@@ -3,7 +3,6 @@ from werkzeug import Response, Request
 import threading
 import json
 import gzip
-import time
 
 
 class MockScrapi:
