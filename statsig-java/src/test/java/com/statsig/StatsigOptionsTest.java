@@ -132,15 +132,16 @@ public class StatsigOptionsTest {
   void testBuilderWithSpecAdapterConfigs() {
     SpecAdapterConfig httpConfig =
         new SpecAdapterConfig()
-            .setAdapterType("http")
+            .setAdapterType(SpecAdapterType.NETWORK_HTTP)
             .setSpecsUrl("https://example.com/http")
             .setInitTimeoutMs(1234L)
-            .setAuthenticationMode("none");
+            .setAuthenticationMode(AuthenticationMode.NONE);
     SpecAdapterConfig grpcConfig =
         new SpecAdapterConfig()
-            .setAdapterType("grpc")
+            .setAdapterType(SpecAdapterType.NETWORK_GRPC_WEBSOCKET)
             .setSpecsUrl("https://example.com/grpc")
             .setInitTimeoutMs(5678L)
+            .setAuthenticationMode(AuthenticationMode.MTLS)
             .setCaCertPath("/path/ca")
             .setClientCertPath("/path/client")
             .setClientKeyPath("/path/key")
@@ -151,6 +152,21 @@ public class StatsigOptionsTest {
             .setSpecAdapterConfigs(Arrays.asList(httpConfig, grpcConfig))
             .setSpecsUrl("https://fallback.specs")
             .build();
+  }
+
+  @Test
+  void testBuilderWithGrpcSpecAdapterConfigAndTlsFields() {
+    SpecAdapterConfig grpcConfig =
+        new SpecAdapterConfig()
+            .setAdapterType(SpecAdapterType.NETWORK_GRPC_WEBSOCKET)
+            .setSpecsUrl("https://forward-proxy.example.com")
+            .setInitTimeoutMs(4000L)
+            .setAuthenticationMode(AuthenticationMode.TLS)
+            .setCaCertPath("/path/to/ca.pem")
+            .setDomainName("forward-proxy.example.com");
+
+    StatsigOptions options =
+        new StatsigOptions.Builder().setSpecAdapterConfigs(Arrays.asList(grpcConfig)).build();
   }
 
   @Test

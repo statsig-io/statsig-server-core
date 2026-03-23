@@ -27,11 +27,23 @@ const JAVA_NATIVE_DIR = path.resolve(
 );
 
 export async function javaPublish(options: PublisherOptions) {
-  const libFiles = [
+  const allLibFiles = [
     ...listFiles(options.workingDir, '**/target/**/release/*.dylib'),
     ...listFiles(options.workingDir, '**/target/**/release/*.so'),
     ...listFiles(options.workingDir, '**/target/**/release/*.dll'),
   ].filter(isMappedTarget);
+  const javaLibFiles = allLibFiles.filter(
+    (file) => file.includes('-java/') || file.includes('-java\\'),
+  );
+  const libFiles = javaLibFiles.length > 0 ? javaLibFiles : allLibFiles;
+
+  if (javaLibFiles.length > 0) {
+    Log.stepProgress('Using Java package native artifacts for publishing');
+  } else {
+    Log.stepProgress(
+      'Java package artifacts not found, falling back to generic FFI artifacts',
+    );
+  }
 
   Log.stepBegin('Clearing Java Native Directory');
   ensureEmptyDir(JAVA_NATIVE_DIR);

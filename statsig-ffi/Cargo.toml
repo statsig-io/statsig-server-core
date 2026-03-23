@@ -32,3 +32,4 @@ path = "tests/main.rs"
 
 [features]
 default = []
+with_grpc = ["statsig-rust/with_grpc"]
