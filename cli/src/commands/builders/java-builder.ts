@@ -17,6 +17,7 @@ export function buildJava(options: BuilderOptions) {
 
   options.release = true; // default to true
   options.targetProject = 'statsig_java';
+  options.cargoFeatures = ['with_grpc'];
   options.target = detectTarget(options);
   buildFfiHelper(options);
   Log.stepEnd(`Built statsig-java`);

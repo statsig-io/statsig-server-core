@@ -163,6 +163,9 @@ export function buildFfiHelper(options: BuilderOptions) {
   const buildConfigs = [`-p statsig_ffi`,
     options.release ? '--release' : '',
     `--target-dir target/${outDir}`]
+  if ((options.cargoFeatures?.length ?? 0) > 0) {
+    buildConfigs.push(`--features "${options.cargoFeatures!.join(' ')}"`)
+  }
   let command = "";
   if (shouldUseCross) {
     buildConfigs.push(`--target ${options.target!}`)

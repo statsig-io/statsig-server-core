@@ -58,7 +58,7 @@ const TEST_COMMANDS: Record<string, string> = {
   ].join(' && '),
 
   java: [
-    'cargo build -p statsig_ffi',
+    'cargo build -p statsig_ffi --features with_grpc',
 
     'rm -rf statsig-java/src/main/resources/native',
 
