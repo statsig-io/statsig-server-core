@@ -83,9 +83,9 @@ const TEST_COMMANDS: Record<string, string> = {
   ].join(" && "),
 
   python: [
-    "cd statsig-pyo3",
-    "python3 -m pytest --capture=no -v --reruns 3",
-  ].join(" && "),
+    'cd statsig-pyo3',
+    'python3 -m pytest --capture=no -v --reruns 3',
+  ].join(' && '),
 
   rust: [
     "cargo nextest run -p statsig-rust --features testing --retries=5",

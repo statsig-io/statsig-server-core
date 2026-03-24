@@ -1,13 +1,18 @@
 use std::{
     borrow::Cow,
     collections::hash_map::Entry,
+    fs::{File, OpenOptions},
+    io::Write,
     sync::{Arc, OnceLock},
     time::{Duration, Instant},
 };
 
 use ahash::AHashMap;
 use lazy_static::lazy_static;
+use memmap2::Mmap;
+use ouroboros::self_referencing;
 use parking_lot::Mutex;
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde_json::value::RawValue;
 
 use crate::{
@@ -31,9 +36,25 @@ use crate::{
 const TAG: &str = "InternedStore";
 
 static IMMORTAL_DATA: OnceLock<ImmortalData> = OnceLock::new();
+static MMAP_DATA: OnceLock<LoadedMmapData> = OnceLock::new();
 
 lazy_static! {
     static ref MUTABLE_DATA: Mutex<MutableData> = Mutex::new(MutableData::default());
+}
+
+#[derive(Default, Archive, RkyvDeserialize, RkyvSerialize)]
+struct MmapData {
+    strings: std::collections::HashMap<u64, String>,
+    returnables: std::collections::HashMap<u64, String>,
+}
+
+#[self_referencing]
+struct LoadedMmapData {
+    file: File,
+    mmap: Mmap,
+
+    #[borrows(mmap)]
+    archived: &'this ArchivedMmapData,
 }
 
 /// Immortal vs Mutable Data
@@ -52,7 +73,6 @@ struct ImmortalData {
     dynamic_configs: AHashMap<u64, &'static Spec>,
     layer_configs: AHashMap<u64, &'static Spec>,
 }
-
 #[derive(Default)]
 struct MutableData {
     strings: AHashMap<u64, Arc<String>>,
@@ -105,8 +125,63 @@ impl InternedStore {
         Ok(())
     }
 
+    pub fn write_mmap_data(data: &[&[u8]], path: &str) -> Result<(), StatsigErr> {
+        let mut file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(path)
+            .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+
+        let specs_responses = data
+            .iter()
+            .map(|data| try_parse_as_json(data).or_else(|_| try_parse_as_proto(data)))
+            .collect::<Result<Vec<SpecsResponseFull>, StatsigErr>>()?;
+
+        let mmap_data = mutable_to_mmap_data(specs_responses)?;
+        let archived =
+            rkyv::to_bytes::<rkyv::rancor::Error>(&mmap_data).expect("Failed to archive mmap data");
+
+        file.write_all(&archived)
+            .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+        file.sync_all()
+            .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+
+        log_d!(TAG, "Wrote {} bytes to mmap file", archived.len());
+
+        Ok(())
+    }
+
+    pub fn preload_mmap(path: &str) -> Result<(), StatsigErr> {
+        let file = File::open(path).map_err(|e| StatsigErr::FileError(e.to_string()))?;
+        let mmap = unsafe { Mmap::map(&file).map_err(|e| StatsigErr::FileError(e.to_string()))? };
+
+        let loaded_result = LoadedMmapDataTryBuilder {
+            file,
+            mmap,
+            archived_builder: |mmap| rkyv::access::<ArchivedMmapData, rkyv::rancor::Error>(mmap),
+        }
+        .try_build();
+
+        let loaded = match loaded_result {
+            Ok(loaded) => loaded,
+            Err(e) => {
+                return Err(StatsigErr::SerializationError(e.to_string()));
+            }
+        };
+
+        MMAP_DATA
+            .set(loaded)
+            .map_err(|_| StatsigErr::LockFailure("Failed to set MMAP_DATA".to_string()))
+    }
+
     pub fn get_or_intern_string<T: AsRef<str> + ToString>(value: T) -> InternedString {
         let hash = hashing::hash_one(value.as_ref().as_bytes());
+
+        if let Some(string) = get_string_from_mmap(hash) {
+            return InternedString::from_static(hash, string);
+        }
 
         if let Some(string) = get_string_from_shared(hash) {
             return InternedString::from_static(hash, string);
@@ -126,6 +201,10 @@ impl InternedStore {
         }
 
         let hash = hashing::hash_one(raw_string.as_bytes());
+
+        if let Some(returnable) = get_returnable_from_mmap(hash) {
+            return DynamicReturnable::from_static(hash, returnable);
+        }
 
         if let Some(returnable) = get_returnable_from_shared(hash) {
             return DynamicReturnable::from_static(hash, returnable);
@@ -172,6 +251,11 @@ impl InternedStore {
         }
 
         let hash = hashing::hash_one(bytes);
+
+        if let Some(returnable) = get_returnable_from_mmap(hash) {
+            return Some(DynamicReturnable::from_static(hash, returnable));
+        }
+
         if let Some(returnable) = get_returnable_from_shared(hash) {
             return Some(DynamicReturnable::from_static(hash, returnable));
         }
@@ -275,6 +359,13 @@ fn try_parse_as_proto(data: &[u8]) -> Result<SpecsResponseFull, StatsigErr> {
 
 // ------------------------------------------------------------------------------- [ String ]
 
+fn get_string_from_mmap(hash: u64) -> Option<&'static str> {
+    let data = MMAP_DATA.get()?;
+    let archived_hash = rkyv::primitive::ArchivedU64::from_native(hash);
+    let found = data.borrow_archived().strings.get(&archived_hash);
+    found.map(|s| s.as_str())
+}
+
 fn get_string_from_shared(hash: u64) -> Option<&'static str> {
     match IMMORTAL_DATA.get() {
         Some(shared) => shared.strings.get(&hash).copied(),
@@ -300,6 +391,21 @@ fn get_string_from_local<T: ToString>(hash: u64, value: T) -> Arc<String> {
 }
 
 // ------------------------------------------------------------------------------- [ Returnable ]
+
+fn get_returnable_from_mmap(hash: u64) -> Option<&'static RawValue> {
+    let data = MMAP_DATA.get()?;
+
+    let archived_hash = rkyv::primitive::ArchivedU64::from_native(hash);
+    let found = data.borrow_archived().returnables.get(&archived_hash)?;
+
+    match serde_json::from_str(found) {
+        Ok(raw) => Some(raw),
+        Err(e) => {
+            log_e!(TAG, "Failed to parse returnable from mmap: {}", e);
+            None
+        }
+    }
+}
 
 fn get_returnable_from_shared(hash: u64) -> Option<&'static RawValue> {
     match IMMORTAL_DATA.get() {
@@ -441,6 +547,38 @@ fn mutable_to_immortal(
     }
 
     Ok(immortal)
+}
+
+fn mutable_to_mmap_data(specs_responses: Vec<SpecsResponseFull>) -> Result<MmapData, StatsigErr> {
+    let mutable_data: MutableData = {
+        let mut mutable_data_lock = MUTABLE_DATA.lock();
+        std::mem::take(&mut *mutable_data_lock)
+    };
+    let mut mmap_data = MmapData::default();
+
+    for (hash, arc) in mutable_data.strings.into_iter() {
+        let taken = arc.to_string();
+        mmap_data.strings.insert(hash, taken);
+    }
+
+    for (hash, returnable) in mutable_data.returnables.into_iter() {
+        let raw_string = returnable.get();
+        mmap_data.returnables.insert(hash, raw_string.to_string());
+    }
+
+    // TODO: Add evaluator values to mmap data
+    // for (hash, evaluator_value) in mutable_data.evaluator_values.into_iter() {
+    //     let raw_evaluator_value = Arc::into_raw(evaluator_value);
+    //     let leaked = unsafe { &*raw_evaluator_value };
+    //     mmap_data.evaluator_values.insert(hash, leaked);
+    // }
+
+    // held until after the mmap data is written to the file
+    for response in specs_responses {
+        drop(response);
+    }
+
+    Ok(mmap_data)
 }
 
 fn try_insert_specs(source: SpecsHashMap, destination: &mut AHashMap<u64, &'static Spec>) {
