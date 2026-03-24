@@ -114,9 +114,8 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
                 Err(e) => {
                     log_w!(
                         TAG,
-                        "Failed to initialize from {} adapter: {:?}",
+                        "Failed to initialize from {} adapter: {e}",
                         adapter.get_type_name(),
-                        e
                     );
                     // Carry on
                 }

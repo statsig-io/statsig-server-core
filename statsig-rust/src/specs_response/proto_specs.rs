@@ -723,13 +723,30 @@ fn rules_from_pb(rules: Vec<pb::Rule>) -> Result<Vec<Rule>, StatsigErr> {
 
                 is_experiment_group: pb_rule.is_experiment_group,
 
-                sampling_rate: None,
+                sampling_rate: sampling_rate_from_pb(pb_rule.sampling_rate)?,
                 return_value: return_value_from_pb(pb_rule.return_value)?,
             };
 
             Ok(rule)
         })
         .collect::<Result<Vec<Rule>, StatsigErr>>()
+}
+
+fn sampling_rate_from_pb(sampling_rate: Option<f32>) -> Result<Option<u64>, StatsigErr> {
+    let Some(sampling_rate) = sampling_rate else {
+        return Ok(None);
+    };
+
+    if !sampling_rate.is_finite() || sampling_rate < 0.0 || sampling_rate.fract() != 0.0 {
+        return Err(StatsigErr::ProtobufParseError(
+            "proto::Rule".to_string(),
+            format!(
+                "Expected sampling rate to be a non-negative whole number, got {sampling_rate}"
+            ),
+        ));
+    }
+
+    Ok(Some(sampling_rate as u64))
 }
 
 fn return_value_from_pb(
@@ -869,4 +886,30 @@ fn make_proto_parse_error(tag: &str, message: &str) -> Result<(), StatsigErr> {
         format!("proto::{}", tag),
         message.to_string(),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{pb, rules_from_pb};
+
+    #[test]
+    fn rules_from_pb_preserves_sampling_rate() {
+        let rules = rules_from_pb(vec![pb::Rule {
+            name: "rule".to_string(),
+            pass_percentage: 100,
+            id: "rule-id".to_string(),
+            salt: None,
+            conditions: vec![],
+            id_type: None,
+            return_value: None,
+            group_name: None,
+            config_delegate: None,
+            is_experiment_group: None,
+            is_control_group: None,
+            sampling_rate: Some(201.0),
+        }])
+        .expect("protobuf rule should parse");
+
+        assert_eq!(rules[0].sampling_rate, Some(201));
+    }
 }

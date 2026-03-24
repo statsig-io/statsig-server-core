@@ -20,7 +20,7 @@ def test_cycling(httpserver: HTTPServer):
         "/v2/download_config_specs/secret-key.json", response=dcs_content, method="GET"
     )
 
-    def run_statsig(inner_mock_scrapi: MockScrapi):
+    def run_statsig(inner_mock_scrapi: MockScrapi, thread_id: int):
         options = StatsigOptions()
         options.specs_url = inner_mock_scrapi.url_for_endpoint(
             "/v2/download_config_specs"
@@ -28,21 +28,18 @@ def test_cycling(httpserver: HTTPServer):
         options.log_event_url = inner_mock_scrapi.url_for_endpoint("/v1/log_event")
         options.output_log_level = "none"
 
-        print("running statsig")
         statsig = Statsig("secret-key", options)
 
-        print("initializing statsig")
         statsig.initialize().wait(timeout=1)
-        print("initialized statsig")
         for i in range(1111):
-            statsig.check_gate(StatsigUser("user-{}".format(i)), "test_public")
-        print("shutting down statsig")
+            statsig.check_gate(StatsigUser(f"user-{thread_id}-{i}"), "test_public")
+        wait_ms(1)
         statsig.shutdown().wait(timeout=1)
 
     threads = []
 
-    for _ in range(3):
-        t = threading.Thread(target=run_statsig, args=(mock_scrapi,))
+    for j in range(3):
+        t = threading.Thread(target=run_statsig, args=(mock_scrapi, j))
         threads.append(t)
         t.start()
 
