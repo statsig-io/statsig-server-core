@@ -183,7 +183,8 @@ def test_custom_event_with_typed_metadata(statsig_setup):
     assert event["metadata"]["an_int"] == 123
     assert event["metadata"]["a_float"] == 1.5
     assert event["metadata"]["a_bool"] is True
-    assert "a_none" not in event["metadata"] # we don't send None values
+    assert "a_none" in event["metadata"]
+    assert event["metadata"]["a_none"] is None
     assert event["metadata"]["an_object"] == {"nested_int": 7, "nested_str": "x"}
     assert event["metadata"]["an_array"] == [1, "a", False, {"k": "v"}]
 
