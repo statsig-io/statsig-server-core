@@ -41,7 +41,7 @@ pub enum ValidPrimitivesPy {
     Bool(bool),
     Float(f64),
     Int(i64),
-    Array(Vec<ValidArrayItemPy>),
+    Array(Vec<Option<ValidArrayItemPy>>),
     String(String),
     Dictionary(HashMap<String, Option<ValidPrimitivesPy>>),
 }
@@ -62,7 +62,7 @@ impl<'a, 'py> FromPyObject<'a, 'py> for ValidPrimitivesPy {
             return Ok(ValidPrimitivesPy::Float(f));
         }
 
-        if let Ok(s) = ob.extract::<Vec<ValidArrayItemPy>>() {
+        if let Ok(s) = ob.extract::<Vec<Option<ValidArrayItemPy>>>() {
             return Ok(ValidPrimitivesPy::Array(s));
         }
 
@@ -87,7 +87,7 @@ impl<'a, 'py> FromPyObject<'a, 'py> for ValidPrimitivesPy {
 impl PyStubType for ValidPrimitivesPy {
     fn type_output() -> TypeInfo {
         TypeInfo {
-            name: "typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]".to_string(),
+            name: "typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]".to_string(),
             source_module: None,
             import: HashSet::from(["builtins".into(), "typing".into()]),
             type_refs: HashMap::new(),
@@ -105,7 +105,10 @@ impl ValidPrimitivesPy {
             ValidPrimitivesPy::Array(a) => {
                 let mapped = a
                     .into_iter()
-                    .map(ValidArrayItemPy::into_dynamic_value)
+                    .map(|v| match v {
+                        Some(v) => v.into_dynamic_value(),
+                        None => DynamicValue::new(),
+                    })
                     .collect::<Vec<_>>();
                 dyn_value!(mapped)
             }
@@ -133,7 +136,7 @@ pub enum ValidPrimitivesPyRef<'a> {
     Bool(bool),
     Float(f64),
     Int(i64),
-    Array(Vec<ValidArrayItemPyRef<'a>>),
+    Array(Vec<Option<ValidArrayItemPyRef<'a>>>),
     String(&'a str),
     Dictionary(HashMap<String, Option<ValidPrimitivesPyRef<'a>>>),
 }
@@ -141,7 +144,7 @@ pub enum ValidPrimitivesPyRef<'a> {
 impl PyStubType for ValidPrimitivesPyRef<'_> {
     fn type_output() -> TypeInfo {
         TypeInfo {
-            name: "typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]".to_string(),
+            name: "typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool, typing.List[typing.Optional[typing.Union[builtins.str, builtins.int, builtins.float, builtins.bool]]]]".to_string(),
             source_module: None,
             import: HashSet::from(["builtins".into(), "typing".into()]),
             type_refs: HashMap::new(),
@@ -170,7 +173,7 @@ impl<'a> ValidPrimitivesPyRef<'a> {
         }
 
         if let Some(ref value) = value.array_value {
-            let mut mapped: Vec<ValidArrayItemPyRef<'a>> = Vec::with_capacity(value.len());
+            let mut mapped: Vec<Option<ValidArrayItemPyRef<'a>>> = Vec::with_capacity(value.len());
             for v in value {
                 mapped.push(json_value_to_valid_array_item_py(&v.json_value));
             }
@@ -190,19 +193,20 @@ impl<'a> ValidPrimitivesPyRef<'a> {
     }
 }
 
-fn json_value_to_valid_array_item_py(value: &Value) -> ValidArrayItemPyRef<'_> {
+fn json_value_to_valid_array_item_py(value: &Value) -> Option<ValidArrayItemPyRef<'_>> {
     match value {
-        Value::String(v) => ValidArrayItemPyRef::String(v.as_str()),
+        Value::Null => None,
+        Value::String(v) => Some(ValidArrayItemPyRef::String(v.as_str())),
         Value::Number(v) => {
             if let Some(v) = v.as_i64() {
-                ValidArrayItemPyRef::Int(v)
+                Some(ValidArrayItemPyRef::Int(v))
             } else if let Some(v) = v.as_f64() {
-                ValidArrayItemPyRef::Float(v)
+                Some(ValidArrayItemPyRef::Float(v))
             } else {
-                ValidArrayItemPyRef::String("")
+                Some(ValidArrayItemPyRef::String(""))
             }
         }
-        Value::Bool(v) => ValidArrayItemPyRef::Bool(*v),
-        _ => ValidArrayItemPyRef::String(""),
+        Value::Bool(v) => Some(ValidArrayItemPyRef::Bool(*v)),
+        _ => Some(ValidArrayItemPyRef::String("")),
     }
 }

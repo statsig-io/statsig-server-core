@@ -201,6 +201,10 @@ pub fn get_string_from_py_dict_throw_on_none(
 }
 
 pub fn py_any_to_value(value: &Bound<PyAny>) -> PyResult<Value> {
+    if value.is_none() {
+        return Ok(Value::Null);
+    }
+
     if let Ok(val) = value.extract::<String>() {
         return Ok(Value::String(val));
     }
@@ -250,6 +254,10 @@ pub fn py_any_to_value(value: &Bound<PyAny>) -> PyResult<Value> {
 
 /// order matters in this function, please don't change
 pub fn py_any_to_dynamic_value(value: &Bound<PyAny>) -> PyResult<DynamicValue> {
+    if value.is_none() {
+        return Ok(DynamicValue::new());
+    }
+
     if let Ok(val) = value.extract::<String>() {
         return Ok(DynamicValue::from(val));
     }
@@ -323,6 +331,10 @@ pub fn opt_py_dict_ref_to_hashmap(
 }
 
 fn py_any_ref_to_dynamic_value(value: &Bound<'_, PyAny>) -> Option<DynamicValue> {
+    if value.is_none() {
+        return Some(DynamicValue::new());
+    }
+
     if let Some(dv) = try_as_cow_str(value) {
         return Some(DynamicValue::from(dv.as_ref()));
     }
