@@ -9,6 +9,7 @@ pub mod evaluator;
 pub mod evaluator_context;
 pub mod evaluator_result;
 pub mod evaluator_value;
+pub mod rkyv_value;
 pub mod secondary_exposure_key;
 pub mod user_agent_parsing;
 
