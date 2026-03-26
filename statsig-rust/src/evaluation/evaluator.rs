@@ -742,7 +742,21 @@ fn get_hash_for_user_bucket(ctx: &mut EvaluatorContext, condition: &Condition) -
         .hashing
         .evaluation_hash_parts(&[salt.as_str(), ".", unit_id])
         .unwrap_or(1);
-    DynamicValue::for_int_evaluation((hash % 1000) as i64)
+    let bucket = (hash % 1000) as i64;
+
+    match condition
+        .operator
+        .as_ref()
+        .map(|operator| operator.as_str())
+    {
+        Some("gt" | "gte" | "lt" | "lte") => {
+            DynamicValue::for_numeric_comparison_evaluation(bucket)
+        }
+        Some("any" | "none" | "any_case_sensitive" | "none_case_sensitive") => {
+            DynamicValue::for_string_membership_evaluation(bucket)
+        }
+        _ => DynamicValue::for_int_evaluation(bucket),
+    }
 }
 
 fn evaluate_param_store_reason(
