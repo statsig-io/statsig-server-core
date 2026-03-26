@@ -52,6 +52,17 @@ impl DynamicValue {
         }
     }
 
+    #[must_use]
+    pub(crate) fn for_int_evaluation(value: i64) -> DynamicValue {
+        DynamicValue {
+            int_value: Some(value),
+            float_value: Some(value as f64),
+            string_value: Some(DynamicString::from(value.to_string())),
+            json_value: JsonValue::Number(serde_json::Number::from(value)),
+            ..DynamicValue::default()
+        }
+    }
+
     fn try_parse_timestamp(s: &str) -> Option<i64> {
         // Fast-path: try parsing as integer first
         if let Ok(ts) = s.parse::<i64>() {
@@ -299,5 +310,21 @@ impl From<HashMap<String, DynamicValue>> for DynamicValue {
             json_value,
             ..DynamicValue::default()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DynamicValue;
+
+    #[test]
+    fn for_int_evaluation_matches_generic_number_fields() {
+        let specialized = DynamicValue::for_int_evaluation(123);
+        let generic = DynamicValue::from(123);
+
+        assert_eq!(specialized.int_value, generic.int_value);
+        assert_eq!(specialized.float_value, generic.float_value);
+        assert_eq!(specialized.string_value, generic.string_value);
+        assert_eq!(specialized.json_value, generic.json_value);
     }
 }

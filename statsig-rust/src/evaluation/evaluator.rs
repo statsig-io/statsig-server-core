@@ -20,7 +20,7 @@ use crate::evaluation::user_agent_parsing::UserAgentParser;
 use crate::interned_string::InternedString;
 use crate::specs_response::explicit_params::ExplicitParameters;
 use crate::specs_response::spec_types::{Condition, Rule, Spec};
-use crate::{dyn_value, log_w, unwrap_or_return, ExperimentEvaluationOptions, StatsigErr};
+use crate::{log_w, unwrap_or_return, ExperimentEvaluationOptions, StatsigErr};
 
 use super::country_lookup::CountryLookup;
 
@@ -742,7 +742,7 @@ fn get_hash_for_user_bucket(ctx: &mut EvaluatorContext, condition: &Condition) -
         .hashing
         .evaluation_hash_parts(&[salt.as_str(), ".", unit_id])
         .unwrap_or(1);
-    dyn_value!(hash % 1000)
+    DynamicValue::for_int_evaluation((hash % 1000) as i64)
 }
 
 fn evaluate_param_store_reason(
