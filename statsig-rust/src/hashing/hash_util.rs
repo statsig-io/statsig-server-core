@@ -89,7 +89,11 @@ impl HashUtil {
         u64::from_be_bytes(hasher_bytes)
     }
 
-    pub fn evaluation_hash(&self, input: &String) -> Option<u64> {
+    pub fn evaluation_hash(&self, input: &str) -> Option<u64> {
         self.sha_hasher.compute_hash(input)
+    }
+
+    pub fn evaluation_hash_parts(&self, parts: &[&str]) -> Option<u64> {
+        self.sha_hasher.compute_hash_parts(parts)
     }
 }

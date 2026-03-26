@@ -18,3 +18,14 @@ fn test_evaluation_hash_matches_sha256_prefix() {
         0xD460740C12959D83_u64
     );
 }
+
+#[test]
+fn test_evaluation_hash_parts_matches_joined_string() {
+    let hasher = HashUtil::new();
+    let input = "spec-salt.rule-salt.user-123";
+
+    assert_eq!(
+        hasher.evaluation_hash(input),
+        hasher.evaluation_hash_parts(&["spec-salt", ".", "rule-salt", ".", "user-123"])
+    );
+}
