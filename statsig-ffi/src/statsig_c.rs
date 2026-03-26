@@ -792,8 +792,9 @@ pub extern "C" fn statsig_get_raw_feature_gate(
         .and_then(|opts| serde_json::from_str::<FeatureGateEvaluationOptions>(&opts).ok())
         .unwrap_or_default();
 
-    let raw = statsig.get_raw_feature_gate_with_options(&user, gate_name.as_str(), options);
-    string_to_c_char_with_inout_len(raw, inout_result_len)
+    statsig.use_raw_feature_gate_with_options(&user, gate_name.as_str(), options, |raw| {
+        string_to_c_char_with_inout_len(raw.unperformant_to_json_string(), inout_result_len)
+    })
 }
 
 #[no_mangle]
@@ -893,8 +894,9 @@ pub extern "C" fn statsig_get_raw_dynamic_config(
         .and_then(|opts| serde_json::from_str::<DynamicConfigEvaluationOptions>(&opts).ok())
         .unwrap_or_default();
 
-    let raw = statsig.get_raw_dynamic_config_with_options(&user, config_name.as_str(), options);
-    string_to_c_char_with_inout_len(raw, inout_result_len)
+    statsig.use_raw_dynamic_config_with_options(&user, config_name.as_str(), options, |raw| {
+        string_to_c_char_with_inout_len(raw.unperformant_to_json_string(), inout_result_len)
+    })
 }
 
 // ------------------------
@@ -981,8 +983,9 @@ pub extern "C" fn statsig_get_raw_experiment(
         .and_then(|opts| serde_json::from_str::<ExperimentEvaluationOptions>(&opts).ok())
         .unwrap_or_default();
 
-    let raw = statsig.get_raw_experiment_with_options(&user, experiment_name.as_str(), options);
-    string_to_c_char_with_inout_len(raw, inout_result_len)
+    statsig.use_raw_experiment_with_options(&user, experiment_name.as_str(), options, |raw| {
+        string_to_c_char_with_inout_len(raw.unperformant_to_json_string(), inout_result_len)
+    })
 }
 
 // ------------------------
@@ -1086,8 +1089,9 @@ pub extern "C" fn statsig_get_raw_layer(
         .and_then(|opts| serde_json::from_str::<LayerEvaluationOptions>(&opts).ok())
         .unwrap_or_default();
 
-    let raw = statsig.get_raw_layer_with_options(&user, layer_name.as_str(), options);
-    string_to_c_char_with_inout_len(raw, inout_result_len)
+    statsig.use_raw_layer_with_options(&user, layer_name.as_str(), options, |raw| {
+        string_to_c_char_with_inout_len(raw.unperformant_to_json_string(), inout_result_len)
+    })
 }
 
 #[no_mangle]

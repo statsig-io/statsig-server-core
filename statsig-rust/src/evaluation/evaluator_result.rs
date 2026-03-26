@@ -26,9 +26,7 @@ use crate::statsig_types_raw::{
     DynamicConfigRaw, ExperimentRaw, FeatureGateRaw, LayerRaw, SuffixedRuleId,
 };
 use crate::user::StatsigUserInternal;
-use crate::{log_e, EvaluationDetails, LayerEvaluationOptions};
-
-const TAG: &str = "EvaluatorResult";
+use crate::{EvaluationDetails, LayerEvaluationOptions};
 
 #[derive(Default, Debug)]
 pub struct EvaluatorResult {
@@ -56,12 +54,12 @@ pub struct EvaluatorResult {
     pub parameter_rule_ids: Option<HashMap<InternedString, InternedString>>,
 }
 
-pub fn result_to_gate_raw(
-    gate_name: &str,
-    eval_details: &EvaluationDetails,
-    result: Option<&EvaluatorResult>,
-) -> String {
-    let raw = match result {
+pub fn result_to_gate_raw<'a>(
+    gate_name: &'a str,
+    eval_details: &'a EvaluationDetails,
+    result: Option<&'a EvaluatorResult>,
+) -> FeatureGateRaw<'a> {
+    match result {
         Some(result) => FeatureGateRaw {
             name: gate_name,
             details: eval_details,
@@ -70,14 +68,6 @@ pub fn result_to_gate_raw(
             value: result.bool_value,
         },
         None => FeatureGateRaw::empty(gate_name, eval_details),
-    };
-
-    match serde_json::to_string(&raw) {
-        Ok(raw) => raw,
-        Err(e) => {
-            log_e!(TAG, "Failed to convert FeatureGateRaw to string: {}", e);
-            format!(r#"{{"name": "{}", "value": false}}"#, gate_name)
-        }
     }
 }
 
@@ -117,17 +107,17 @@ pub fn result_to_gate_eval_init_v2(
     }
 }
 
-pub fn rule_to_experiment_raw(
-    experiment_name: &str,
-    spec_pointer: Option<&SpecPointer>,
-    rule: Option<&Rule>,
-    eval_details: EvaluationDetails,
-) -> String {
-    let raw = match (spec_pointer, rule) {
+pub fn rule_to_experiment_raw<'a>(
+    experiment_name: &'a str,
+    spec_pointer: Option<&'a SpecPointer>,
+    rule: Option<&'a Rule>,
+    eval_details: &'a EvaluationDetails,
+) -> ExperimentRaw<'a> {
+    match (spec_pointer, rule) {
         (Some(spec_pointer), Some(rule)) => ExperimentRaw {
             name: experiment_name,
             value: Some(&rule.return_value),
-            details: &eval_details,
+            details: eval_details,
             rule_id: SuffixedRuleId {
                 rule_id: &rule.id,
                 rule_id_suffix: None,
@@ -137,24 +127,16 @@ pub fn rule_to_experiment_raw(
             is_experiment_active: Some(spec_pointer.as_spec_ref().is_active.unwrap_or(false)),
             secondary_exposures: None,
         },
-        _ => ExperimentRaw::empty(experiment_name, &eval_details),
-    };
-
-    match serde_json::to_string(&raw) {
-        Ok(raw) => raw,
-        Err(e) => {
-            log_e!(TAG, "Failed to convert ExperimentRaw to string: {}", e);
-            format!(r#"{{"name": "{}"}}"#, experiment_name)
-        }
+        _ => ExperimentRaw::empty(experiment_name, eval_details),
     }
 }
 
-pub fn result_to_experiment_raw(
-    experiment_name: &str,
-    eval_details: &EvaluationDetails,
-    result: Option<&EvaluatorResult>,
-) -> String {
-    let raw = match result {
+pub fn result_to_experiment_raw<'a>(
+    experiment_name: &'a str,
+    eval_details: &'a EvaluationDetails,
+    result: Option<&'a EvaluatorResult>,
+) -> ExperimentRaw<'a> {
+    match result {
         Some(result) => ExperimentRaw {
             name: experiment_name,
             value: result.json_value.as_ref(),
@@ -166,14 +148,6 @@ pub fn result_to_experiment_raw(
             secondary_exposures: Some(&result.secondary_exposures),
         },
         None => ExperimentRaw::empty(experiment_name, eval_details),
-    };
-
-    match serde_json::to_string(&raw) {
-        Ok(raw) => raw,
-        Err(e) => {
-            log_e!(TAG, "Failed to convert ExperimentRaw to string: {}", e);
-            format!(r#"{{"name": "{}"}}"#, experiment_name)
-        }
     }
 }
 
@@ -296,14 +270,14 @@ pub fn eval_result_to_experiment_eval(
     }
 }
 
-pub fn result_to_layer_raw(
-    user: &StatsigUserInternal,
-    layer_name: &str,
+pub fn result_to_layer_raw<'a>(
+    user: &'a StatsigUserInternal,
+    layer_name: &'a str,
     options: LayerEvaluationOptions,
-    eval_details: &EvaluationDetails,
-    result: Option<&EvaluatorResult>,
-) -> String {
-    let raw = match result {
+    eval_details: &'a EvaluationDetails,
+    result: Option<&'a EvaluatorResult>,
+) -> LayerRaw<'a> {
+    match result {
         Some(result) => LayerRaw {
             name: layer_name,
             details: eval_details,
@@ -321,14 +295,6 @@ pub fn result_to_layer_raw(
             parameter_rule_ids: result.parameter_rule_ids.as_ref(),
         },
         None => LayerRaw::empty(layer_name, eval_details),
-    };
-
-    match serde_json::to_string(&raw) {
-        Ok(raw) => raw,
-        Err(e) => {
-            log_e!(TAG, "Failed to convert LayerRaw to string: {}", e);
-            format!(r#"{{"name": "{}"}}"#, layer_name)
-        }
     }
 }
 
@@ -463,12 +429,12 @@ pub fn result_to_layer_eval_init_v2(
     }
 }
 
-pub fn result_to_dynamic_config_raw(
-    dynamic_config_name: &str,
-    eval_details: &EvaluationDetails,
-    result: Option<&EvaluatorResult>,
-) -> String {
-    let raw = match result {
+pub fn result_to_dynamic_config_raw<'a>(
+    dynamic_config_name: &'a str,
+    eval_details: &'a EvaluationDetails,
+    result: Option<&'a EvaluatorResult>,
+) -> DynamicConfigRaw<'a> {
+    match result {
         Some(result) => DynamicConfigRaw {
             name: dynamic_config_name,
             value: result.json_value.as_ref(),
@@ -477,14 +443,6 @@ pub fn result_to_dynamic_config_raw(
             id_type: result.id_type.as_ref(),
         },
         None => DynamicConfigRaw::empty(dynamic_config_name, eval_details),
-    };
-
-    match serde_json::to_string(&raw) {
-        Ok(raw) => raw,
-        Err(e) => {
-            log_e!(TAG, "Failed to convert DynamicConfigRaw to string: {}", e);
-            format!(r#"{{"name": "{}"}}"#, dynamic_config_name)
-        }
     }
 }
 

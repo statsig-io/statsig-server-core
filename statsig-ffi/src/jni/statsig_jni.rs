@@ -294,17 +294,9 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigCheckGate(
         Err(_) => return JNI_FALSE,
     };
 
-    match options {
-        Some(options) => {
-            match statsig.check_gate_with_options(user.as_ref(), &gate_name, options) {
-                true => JNI_TRUE,
-                false => JNI_FALSE,
-            }
-        }
-        None => match statsig.check_gate(user.as_ref(), &gate_name) {
-            true => JNI_TRUE,
-            false => JNI_FALSE,
-        },
+    match statsig.check_gate_with_options(user.as_ref(), &gate_name, options.unwrap_or_default()) {
+        true => JNI_TRUE,
+        false => JNI_FALSE,
     }
 }
 
@@ -346,13 +338,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperiment(
 
     let options = convert_java_get_experiment_options_to_rust(&mut env, options);
 
-    let result = statsig.get_raw_experiment_with_options(
+    statsig.use_raw_experiment_with_options(
         user.as_ref(),
         &exper_name,
         options.unwrap_or_default(),
-    );
-
-    string_to_jstring(&mut env, result)
+        |raw| string_to_jstring(&mut env, raw.unperformant_to_json_string()),
+    )
 }
 
 #[no_mangle]
@@ -482,10 +473,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetLayer(
 
     let options = convert_java_get_layer_options_to_rust(&mut env, options);
 
-    let result =
-        statsig.get_raw_layer_with_options(user.as_ref(), &layer_name, options.unwrap_or_default());
-
-    string_to_jstring(&mut env, result)
+    statsig.use_raw_layer_with_options(
+        user.as_ref(),
+        &layer_name,
+        options.unwrap_or_default(),
+        |raw| string_to_jstring(&mut env, raw.unperformant_to_json_string()),
+    )
 }
 
 #[no_mangle]
@@ -795,18 +788,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetDynamicConfig(
 
     let options = convert_java_get_dynamic_config_options_to_rust(&mut env, options);
 
-    let result = match options {
-        Some(options) => {
-            statsig.get_raw_dynamic_config_with_options(user.as_ref(), &config_name, options)
-        }
-        None => statsig.get_raw_dynamic_config_with_options(
-            user.as_ref(),
-            &config_name,
-            Default::default(),
-        ),
-    };
-
-    string_to_jstring(&mut env, result)
+    statsig.use_raw_dynamic_config_with_options(
+        user.as_ref(),
+        &config_name,
+        options.unwrap_or_default(),
+        |raw| string_to_jstring(&mut env, raw.unperformant_to_json_string()),
+    )
 }
 
 #[no_mangle]
@@ -865,13 +852,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetFeatureGate(
     };
 
     let options = convert_java_check_gate_options_to_rust(&mut env, options);
-    let result = statsig.get_raw_feature_gate_with_options(
+    statsig.use_raw_feature_gate_with_options(
         user.as_ref(),
         &gate_name,
         options.unwrap_or_default(),
-    );
-
-    string_to_jstring(&mut env, result)
+        |raw| string_to_jstring(&mut env, raw.unperformant_to_json_string()),
+    )
 }
 
 #[no_mangle]
