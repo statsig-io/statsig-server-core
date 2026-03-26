@@ -380,6 +380,19 @@ fn try_apply_override(
 }
 
 fn evaluate_rule<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) -> Result<(), StatsigErr> {
+    if let [condition_hash] = rule.conditions.as_slice() {
+        let condition = if let Some(condition) = ctx.specs_data.condition_map.get(condition_hash) {
+            condition
+        } else {
+            log_w!(TAG, "Unsupported - Condition not found: {}", condition_hash);
+            ctx.result.unsupported = true;
+            return Ok(());
+        };
+
+        evaluate_condition(ctx, condition)?;
+        return Ok(());
+    }
+
     let mut all_conditions_pass = true;
     // println!("--- Eval Rule {} ---", rule.id);
     for condition_hash in &rule.conditions {
