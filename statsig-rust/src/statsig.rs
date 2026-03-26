@@ -1184,8 +1184,10 @@ impl Statsig {
         let value = evaluation.as_ref().map(|e| e.value).unwrap_or_default();
         let rule_id = evaluation
             .as_ref()
-            .map(|e| e.base.rule_id.clone())
+            .map(|e| e.base.rule_id.as_str())
             .unwrap_or_default();
+
+        self.emit_gate_evaluated(gate_name, rule_id, value, &details.reason);
 
         if disable_exposure_logging {
             log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
@@ -1196,12 +1198,10 @@ impl Statsig {
                 user: &user_internal,
                 queried_gate_name: gate_name,
                 evaluation: evaluation.map(Cow::Owned),
-                details: details.clone(),
+                details,
                 trigger: ExposureTrigger::Auto,
             });
         }
-
-        self.emit_gate_evaluated(gate_name, rule_id.as_str(), value, &details.reason);
 
         value
     }
