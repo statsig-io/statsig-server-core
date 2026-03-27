@@ -37,6 +37,18 @@ def statsig_setup(httpserver: HTTPServer):
     statsig.shutdown().wait()
 
 
+def test_get_feature_gate(statsig_setup):
+    statsig, baseline = statsig_setup
+
+    results = profile(lambda: statsig.get_feature_gate(user, "test_public"))
+
+    _config = results["value"]
+    del results["value"]
+
+    print(json.dumps(results, indent=2))
+    assert (results.get("overall") / baseline.get("overall")) < 1000
+
+
 def test_get_dynamic_config(statsig_setup):
     statsig, baseline = statsig_setup
 
