@@ -46,12 +46,11 @@ def test_get_dynamic_config(statsig_setup):
     del results["value"]
 
     print(json.dumps(results, indent=2))
-
     assert (results.get("overall") / baseline.get("overall")) < 1000
 
 
 def test_get_dynamic_config_get_value(statsig_setup):
-    statsig, _baseline = statsig_setup
+    statsig, baseline = statsig_setup
 
     config = statsig.get_dynamic_config(user, "big_dc_base64")
 
@@ -61,10 +60,11 @@ def test_get_dynamic_config_get_value(statsig_setup):
     del results["value"]
     print(json.dumps(results, indent=2))
 
-    assert value is not "err"
+    assert value != "err"
+    assert (results.get("overall") / baseline.get("overall")) < 1000
 
 
-def test_getting_the_correct_value(statsig_setup):
+def test_get_dynamic_config_get_string_correctness(statsig_setup):
     statsig, _baseline = statsig_setup
 
     config = statsig.get_dynamic_config(user, "big_dc_base64")
@@ -72,3 +72,59 @@ def test_getting_the_correct_value(statsig_setup):
     value = config.get_string("a", "err")
 
     assert value.startswith("TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGF")
+
+
+def test_get_experiment(statsig_setup):
+    statsig, _baseline = statsig_setup
+
+    results = profile(
+        lambda: statsig.get_experiment(user, "another_big_expemeriment_nine")
+    )
+
+    _config = results["value"]
+    del results["value"]
+
+    print(json.dumps(results, indent=2))
+
+
+def test_get_experiment_get_value(statsig_setup):
+    statsig, baseline = statsig_setup
+
+    experiment = statsig.get_experiment(user, "another_big_expemeriment_nine")
+
+    results = profile(
+        lambda: experiment.get_string("kanto_pokedex_json", "err"), iterations=10_000
+    )
+
+    value = results["value"]
+    del results["value"]
+    print(json.dumps(results, indent=2))
+
+    assert value != "err"
+    assert (results.get("overall") / baseline.get("overall")) < 1000
+
+
+def test_get_layer(statsig_setup):
+    statsig, _baseline = statsig_setup
+
+    results = profile(lambda: statsig.get_layer(user, "big_layer"), iterations=10_000)
+
+    _config = results["value"]
+    del results["value"]
+
+    print(json.dumps(results, indent=2))
+
+
+def test_get_layer_get_value(statsig_setup):
+    statsig, baseline = statsig_setup
+
+    layer = statsig.get_layer(user, "big_layer")
+
+    results = profile(lambda: layer.get("another_object", dict(err=1)))
+
+    value = results["value"]
+    del results["value"]
+    print(json.dumps(results, indent=2))
+
+    assert value != dict(err=1)
+    assert (results.get("overall") / baseline.get("overall")) < 1000
