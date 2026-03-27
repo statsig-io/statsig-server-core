@@ -88,4 +88,38 @@ rusty_fork_test! {
         drop(returnable2);
         assert_eq!(InternedStore::get_memoized_len().1, 0);
     }
+
+    #[test]
+    fn test_preloading_mmap_across_forks() {
+        let path = "/tmp/statsig-rust-test-mmap.bin";
+        if std::fs::File::open(path).is_ok() {
+            std::fs::remove_file(path).unwrap();
+        }
+
+        assert!(InternedStore::write_mmap_data(&[EVAL_PROJ_JSON], path).is_ok());
+
+        let pid = unsafe { libc::fork() };
+        if pid == 0 {
+            let result = InternedStore::preload_mmap(path);
+            assert!(result.is_ok());
+
+            let json_res = DynamicReturnable::from_map(HashMap::from([(
+                "value".to_string(),
+                serde_json::Value::String("control".to_string()),
+            )]));
+            assert!(matches!(
+                json_res.value,
+                DynamicReturnableValue::JsonStatic(_)
+            ));
+
+            std::process::exit(0);
+        }
+
+        unsafe {
+            let mut status: i32 = 0;
+            libc::waitpid(pid, &mut status, 0);
+            assert_eq!(libc::WEXITSTATUS(status), 0);
+        };
+    }
+
 }

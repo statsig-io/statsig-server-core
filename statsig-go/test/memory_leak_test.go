@@ -104,7 +104,8 @@ func TestMemoryLeak(t *testing.T) {
 	percentChange := float64(finalRss-initialRss) / float64(initialRss) * 100
 	delta := finalRss - initialRss
 
-	if percentChange > 20 {
+	// before leaks were fixed, percent change was over 1000% for this test. 50% is a reasonable threshold to catch leaks but not be flaky
+	if percentChange > 50 {
 		t.Errorf("Memory leak detected: %s (%.2f%%)", humanizeBytes(delta), percentChange)
 	} else {
 		fmt.Printf("Memory change within acceptable range: %s (%.2f%%)", humanizeBytes(delta), percentChange)

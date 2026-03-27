@@ -130,7 +130,7 @@ impl StatsigHttpIdListsAdapter {
         &self,
         list_url: &str,
         start_index: u64,
-        file_size: Option<u64>,
+        new_file_size: u64,
         id_list_file_id: Option<String>,
     ) -> Result<String, StatsigErr> {
         let list_url = self.get_override_id_list_download_url(list_url);
@@ -141,9 +141,10 @@ impl StatsigHttpIdListsAdapter {
             )
         } else {
             let mut headers = HashMap::from([("Range".into(), format!("bytes={start_index}-"))]);
-            if let Some(list_size) = file_size {
-                headers.insert("statsig-id-list-file-size".into(), list_size.to_string());
-            }
+            headers.insert(
+                "statsig-id-list-file-size".into(),
+                new_file_size.to_string(),
+            );
             (Some(headers), None)
         };
 
@@ -382,19 +383,19 @@ impl StatsigHttpIdListsAdapter {
         );
 
         for (list_name, entry) in new_manifest {
-            let (requires_download, range_start, file_size) = match curr_manifest.get(&list_name) {
+            let (requires_download, range_start) = match curr_manifest.get(&list_name) {
                 Some(current) => {
                     if entry.creation_time > current.creation_time
                         || entry.file_id != current.file_id
                     {
-                        (true, 0u64, Some(current.size))
+                        (true, 0u64)
                     } else if entry.size > current.size {
-                        (true, current.size, Some(current.size))
+                        (true, current.size)
                     } else {
-                        (false, 0u64, None)
+                        (false, 0u64)
                     }
                 }
-                None => (true, 0, None),
+                None => (true, 0),
             };
 
             changes.insert(
@@ -403,7 +404,6 @@ impl StatsigHttpIdListsAdapter {
                     new_metadata: entry,
                     requires_download,
                     range_start,
-                    file_size,
                 },
             );
         }
@@ -428,7 +428,7 @@ impl StatsigHttpIdListsAdapter {
                 .fetch_individual_id_list_changes_from_network(
                     &new_metadata.url,
                     changeset.range_start,
-                    changeset.file_size,
+                    new_metadata.size,
                     new_metadata.file_id.clone(),
                 )
                 .await;
@@ -560,7 +560,6 @@ struct IdListChangeSet {
     new_metadata: IdListMetadata,
     requires_download: bool,
     range_start: u64,
-    file_size: Option<u64>,
 }
 
 #[async_trait]
@@ -853,11 +852,12 @@ mod tests {
         let mut download_server = Server::new_async().await;
 
         let existing_list_size = 10_u64;
+        let new_list_size = existing_list_size + 1;
         let existing_creation_time = 1721417546000_i64;
         let file_id = "4t0BEqak3w1UcidsPcpQXN".to_string();
         let manifest_download_url = "https://fake-id-list-host/v1/download_id_list_file";
         let expected_range_start = existing_list_size;
-        let expected_file_size = existing_list_size.to_string();
+        let expected_file_size = new_list_size.to_string();
         let expected_range_header = format!("bytes={expected_range_start}-");
 
         let manifest_response = format!(
@@ -870,10 +870,7 @@ mod tests {
     "fileID": "{}"
   }}
 }}"#,
-            existing_list_size + 1,
-            manifest_download_url,
-            existing_creation_time,
-            file_id
+            new_list_size, manifest_download_url, existing_creation_time, file_id
         );
 
         let mocked_get_id_lists = manifest_server

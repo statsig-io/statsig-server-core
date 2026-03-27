@@ -56,6 +56,8 @@ use crate::statsig_type_factories::{
     make_dynamic_config, make_experiment, make_feature_gate, make_layer,
 };
 use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer, ParameterStore};
+#[cfg(feature = "ffi-support")]
+use crate::statsig_types_raw::{DynamicConfigRaw, ExperimentRaw, FeatureGateRaw, LayerRaw};
 use crate::user::StatsigUserInternal;
 use crate::utils::get_loggable_sdk_key;
 use crate::{
@@ -1626,12 +1628,13 @@ impl Statsig {
 
 #[cfg(feature = "ffi-support")]
 impl Statsig {
-    pub fn get_raw_feature_gate_with_options(
+    pub fn use_raw_feature_gate_with_options<T>(
         &self,
         user: &StatsigUser,
         gate_name: &str,
         options: FeatureGateEvaluationOptions,
-    ) -> String {
+        callback: impl FnOnce(&FeatureGateRaw<'_>) -> T,
+    ) -> T {
         use crate::evaluation::evaluator_result::result_to_gate_raw;
 
         let interned_gate_name = InternedString::from_str_ref(gate_name);
@@ -1641,6 +1644,7 @@ impl Statsig {
             self.evaluate_spec_raw(&user_internal, gate_name, &SpecType::Gate, None);
 
         let raw = result_to_gate_raw(gate_name, &details, evaluation.as_ref());
+        let result = callback(&raw);
 
         self.emit_gate_evaluated_parts(gate_name, details.reason.as_str(), evaluation.as_ref());
 
@@ -1657,15 +1661,16 @@ impl Statsig {
             ));
         }
 
-        raw
+        result
     }
 
-    pub fn get_raw_dynamic_config_with_options(
+    pub fn use_raw_dynamic_config_with_options<T>(
         &self,
         user: &StatsigUser,
         dynamic_config_name: &str,
         options: DynamicConfigEvaluationOptions,
-    ) -> String {
+        callback: impl FnOnce(&DynamicConfigRaw<'_>) -> T,
+    ) -> T {
         use crate::evaluation::evaluator_result::result_to_dynamic_config_raw;
 
         let interned_dynamic_config_name = InternedString::from_str_ref(dynamic_config_name);
@@ -1680,6 +1685,7 @@ impl Statsig {
         );
 
         let raw = result_to_dynamic_config_raw(dynamic_config_name, &details, evaluation.as_ref());
+        let result = callback(&raw);
 
         self.emit_dynamic_config_evaluated_parts(
             dynamic_config_name,
@@ -1706,7 +1712,7 @@ impl Statsig {
                 ));
         }
 
-        raw
+        result
     }
 
     pub fn get_raw_experiment_by_group_name(
@@ -1720,7 +1726,8 @@ impl Statsig {
             experiment_name,
             group_name,
             |spec_pointer, rule, details| {
-                rule_to_experiment_raw(experiment_name, spec_pointer, rule, details)
+                rule_to_experiment_raw(experiment_name, spec_pointer, rule, &details)
+                    .unperformant_to_json_string()
             },
         )
     }
@@ -1736,44 +1743,48 @@ impl Statsig {
             experiment_name,
             group_id,
             |spec_pointer, rule, details| {
-                rule_to_experiment_raw(experiment_name, spec_pointer, rule, details)
+                rule_to_experiment_raw(experiment_name, spec_pointer, rule, &details)
+                    .unperformant_to_json_string()
             },
         )
     }
 
-    pub fn get_raw_experiment_with_options(
+    pub fn use_raw_experiment_with_options<T>(
         &self,
         user: &StatsigUser,
         experiment_name: &str,
         options: ExperimentEvaluationOptions,
-    ) -> String {
+        callback: impl FnOnce(&ExperimentRaw<'_>) -> T,
+    ) -> T {
         use crate::evaluation::evaluator_result::result_to_experiment_raw;
 
         let interned_experiment_name = InternedString::from_str_ref(experiment_name);
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging: bool = options.disable_exposure_logging;
 
-        let (details, result) = self.evaluate_spec_raw(
+        let (details, evaluation) = self.evaluate_spec_raw(
             &user_internal,
             experiment_name,
             &SpecType::Experiment,
             Some(disable_exposure_logging),
         );
 
-        let (result, details) = PersistentValuesManager::try_apply_sticky_value_to_raw_experiment(
-            &self.persistent_values_manager,
-            &user_internal,
-            &options,
-            details,
-            result,
-        );
+        let (evaluation, details) =
+            PersistentValuesManager::try_apply_sticky_value_to_raw_experiment(
+                &self.persistent_values_manager,
+                &user_internal,
+                &options,
+                details,
+                evaluation,
+            );
 
-        let raw = result_to_experiment_raw(experiment_name, &details, result.as_ref());
+        let raw = result_to_experiment_raw(experiment_name, &details, evaluation.as_ref());
+        let result = callback(&raw);
 
         self.emit_experiment_evaluated_parts(
             experiment_name,
             details.reason.as_str(),
-            result.as_ref(),
+            evaluation.as_ref(),
         );
 
         if disable_exposure_logging {
@@ -1791,39 +1802,40 @@ impl Statsig {
                     &interned_experiment_name,
                     ExposureTrigger::Auto,
                     details,
-                    result,
+                    evaluation,
                 ));
         }
 
-        raw
+        result
     }
 
-    pub fn get_raw_layer_with_options(
+    pub fn use_raw_layer_with_options<T>(
         &self,
         user: &StatsigUser,
         layer_name: &str,
         options: LayerEvaluationOptions,
-    ) -> String {
+        callback: impl FnOnce(&LayerRaw<'_>) -> T,
+    ) -> T {
         use crate::evaluation::evaluator_result::result_to_layer_raw;
 
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging: bool = options.disable_exposure_logging;
 
-        let (details, result) = self.evaluate_spec_raw(
+        let (details, evaluation) = self.evaluate_spec_raw(
             &user_internal,
             layer_name,
             &SpecType::Layer,
             Some(disable_exposure_logging),
         );
 
-        let (result, details) = PersistentValuesManager::try_apply_sticky_value_to_raw_layer(
+        let (evaluation, details) = PersistentValuesManager::try_apply_sticky_value_to_raw_layer(
             &self.persistent_values_manager,
             &user_internal,
             &options,
             &self.spec_store,
             &self.ops_stats,
             details,
-            result,
+            evaluation,
         );
 
         let raw = result_to_layer_raw(
@@ -1831,17 +1843,19 @@ impl Statsig {
             layer_name,
             options,
             &details,
-            result.as_ref(),
+            evaluation.as_ref(),
         );
 
-        self.emit_layer_evaluated_parts(layer_name, details.reason.as_str(), result.as_ref());
+        let result = callback(&raw);
+
+        self.emit_layer_evaluated_parts(layer_name, details.reason.as_str(), evaluation.as_ref());
 
         if disable_exposure_logging {
             log_d!(TAG, "Exposure logging is disabled for Layer {}", layer_name);
             self.event_logger.increment_non_exposure_checks(layer_name);
         }
 
-        raw
+        result
     }
 
     pub fn log_layer_param_exposure_from_raw(&self, raw: String, param_name: String) {

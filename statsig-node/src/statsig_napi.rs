@@ -211,10 +211,11 @@ impl StatsigNapiInternal {
         feature_name: String,
         options: Option<FeatureGateEvaluationOptionsNapi>,
     ) -> String {
-        self.inner.get_raw_feature_gate_with_options(
+        self.inner.use_raw_feature_gate_with_options(
             user.as_inner(),
             &feature_name,
             options.map(|opts| opts.into()).unwrap_or_default(),
+            |raw| raw.unperformant_to_json_string(),
         )
     }
 
@@ -230,10 +231,11 @@ impl StatsigNapiInternal {
         config_name: String,
         options: Option<DynamicConfigEvaluationOptionsNapi>,
     ) -> String {
-        self.inner.get_raw_dynamic_config_with_options(
+        self.inner.use_raw_dynamic_config_with_options(
             user.as_inner(),
             &config_name,
             options.map(|opts| opts.into()).unwrap_or_default(),
+            |raw| raw.unperformant_to_json_string(),
         )
     }
 
@@ -250,10 +252,11 @@ impl StatsigNapiInternal {
         experiment_name: String,
         options: Option<ExperimentEvaluationOptionsNapi>,
     ) -> String {
-        self.inner.get_raw_experiment_with_options(
+        self.inner.use_raw_experiment_with_options(
             user.as_inner(),
             &experiment_name,
             options.map(|opts| opts.into()).unwrap_or_default(),
+            |raw| raw.unperformant_to_json_string(),
         )
     }
 
@@ -280,10 +283,11 @@ impl StatsigNapiInternal {
         layer_name: String,
         options: Option<LayerEvaluationOptionsNapi>,
     ) -> String {
-        self.inner.get_raw_layer_with_options(
+        self.inner.use_raw_layer_with_options(
             user.as_inner(),
             &layer_name,
             options.map(|opts| opts.into()).unwrap_or_default(),
+            |raw| raw.unperformant_to_json_string(),
         )
     }
 

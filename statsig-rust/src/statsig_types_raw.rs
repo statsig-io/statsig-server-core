@@ -8,11 +8,13 @@ use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::interned_string::InternedString;
 use crate::specs_response::explicit_params::ExplicitParameters;
 use crate::user::StatsigUserLoggable;
-use crate::SecondaryExposure;
+use crate::{log_e, SecondaryExposure};
+
+const TAG: &str = "SpecTypesRaw";
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct FeatureGateRaw<'a> {
+pub struct FeatureGateRaw<'a> {
     pub name: &'a str,
 
     pub value: bool,
@@ -38,11 +40,21 @@ impl<'a> FeatureGateRaw<'a> {
             id_type: None,
         }
     }
+
+    pub fn unperformant_to_json_string(&self) -> String {
+        match serde_json::to_string(self) {
+            Ok(s) => s,
+            Err(e) => {
+                log_e!(TAG, "Failed to convert FeatureGateRaw to string: {}", e);
+                format!(r#"{{"name": "{}", "value": false}}"#, self.name)
+            }
+        }
+    }
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct DynamicConfigRaw<'a> {
+pub struct DynamicConfigRaw<'a> {
     pub name: &'a str,
 
     pub value: Option<&'a DynamicReturnable>,
@@ -68,11 +80,21 @@ impl<'a> DynamicConfigRaw<'a> {
             id_type: None,
         }
     }
+
+    pub fn unperformant_to_json_string(&self) -> String {
+        match serde_json::to_string(self) {
+            Ok(s) => s,
+            Err(e) => {
+                log_e!(TAG, "Failed to convert DynamicConfigRaw to string: {}", e);
+                format!(r#"{{"name": "{}", "value": null}}"#, self.name)
+            }
+        }
+    }
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct ExperimentRaw<'a> {
+pub struct ExperimentRaw<'a> {
     pub name: &'a str,
 
     pub value: Option<&'a DynamicReturnable>,
@@ -107,6 +129,16 @@ impl<'a> ExperimentRaw<'a> {
             secondary_exposures: None,
         }
     }
+
+    pub fn unperformant_to_json_string(&self) -> String {
+        match serde_json::to_string(self) {
+            Ok(s) => s,
+            Err(e) => {
+                log_e!(TAG, "Failed to convert ExperimentRaw to string: {}", e);
+                format!(r#"{{"name": "{}"}}"#, self.name)
+            }
+        }
+    }
 }
 
 fn is_interned_string_none_or_empty(value: &Option<&InternedString>) -> bool {
@@ -119,7 +151,7 @@ fn is_interned_string_none_or_empty(value: &Option<&InternedString>) -> bool {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 #[skip_serializing_none]
-pub(crate) struct LayerRaw<'a> {
+pub struct LayerRaw<'a> {
     pub name: &'a str,
 
     pub value: Option<&'a DynamicReturnable>,
@@ -173,12 +205,22 @@ impl<'a> LayerRaw<'a> {
             parameter_rule_ids: None,
         }
     }
+
+    pub fn unperformant_to_json_string(&self) -> String {
+        match serde_json::to_string(self) {
+            Ok(s) => s,
+            Err(e) => {
+                log_e!(TAG, "Failed to convert LayerRaw to string: {}", e);
+                format!(r#"{{"name": "{}"}}"#, self.name)
+            }
+        }
+    }
 }
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg(feature = "ffi-support")]
-pub(crate) struct PartialLayerRaw {
+pub struct PartialLayerRaw {
     pub name: InternedString,
 
     #[serde(rename = "ruleID")]

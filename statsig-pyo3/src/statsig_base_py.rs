@@ -245,10 +245,11 @@ impl StatsigBasePy {
         name: &str,
         options: Option<FeatureGateEvaluationOptionsPy>,
     ) -> String {
-        self.inner.get_raw_feature_gate_with_options(
+        self.inner.use_raw_feature_gate_with_options(
             &user.inner,
             name,
             options.map_or(FeatureGateEvaluationOptions::default(), |o| o.into()),
+            |raw| raw.unperformant_to_json_string(),
         )
     }
 
@@ -282,10 +283,11 @@ impl StatsigBasePy {
         name: &str,
         options: Option<DynamicConfigEvaluationOptionsPy>,
     ) -> String {
-        self.inner.get_raw_dynamic_config_with_options(
+        self.inner.use_raw_dynamic_config_with_options(
             &user.inner,
             name,
             options.map_or(DynamicConfigEvaluationOptions::default(), |o| o.into()),
+            |raw| raw.unperformant_to_json_string(),
         )
     }
 
@@ -334,7 +336,9 @@ impl StatsigBasePy {
             .and_then(|v| extract_user_persisted_values(py, name, v));
 
         self.inner
-            .get_raw_experiment_with_options(&user.inner, name, options_actual)
+            .use_raw_experiment_with_options(&user.inner, name, options_actual, |raw| {
+                raw.unperformant_to_json_string()
+            })
     }
 
     #[pyo3(signature = (user, name))]
@@ -365,7 +369,9 @@ impl StatsigBasePy {
             .and_then(|v| extract_user_persisted_values(py, name, v));
 
         self.inner
-            .get_raw_layer_with_options(&user.inner, name, options_actual)
+            .use_raw_layer_with_options(&user.inner, name, options_actual, |raw| {
+                raw.unperformant_to_json_string()
+            })
     }
 
     #[pyo3(name="_INTERNAL_log_layer_param_exposure", signature = (raw, param_name))]
