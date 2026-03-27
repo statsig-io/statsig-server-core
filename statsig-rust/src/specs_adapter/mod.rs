@@ -9,6 +9,8 @@ pub use statsig_grpc_specs_adapter::StatsigGrpcSpecsAdapter;
 pub use statsig_http_specs_adapter::{SpecsSyncTrigger, StatsigHttpSpecsAdapter};
 pub use statsig_local_file_specs_adapter::StatsigLocalFileSpecsAdapter;
 
+mod config_spec_background_sync_metrics;
+mod response_format;
 mod statsig_bootstrap_specs_adapter;
 mod statsig_customized_specs_adapter;
 mod statsig_data_store_specs_adapter;

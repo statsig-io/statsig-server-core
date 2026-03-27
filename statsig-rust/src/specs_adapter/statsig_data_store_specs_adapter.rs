@@ -1,7 +1,10 @@
+use super::config_spec_background_sync_metrics::log_config_sync_overall_latency;
+use super::response_format::get_specs_response_format;
 use super::statsig_http_specs_adapter::DEFAULT_SYNC_INTERVAL_MS;
 use super::{SpecsSource, SpecsUpdate};
 use crate::data_store_interface::{DataStoreBytesResponse, DataStoreTrait, RequestPath};
 use crate::networking::ResponseData;
+use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::{
     log_d, log_e, log_w, read_lock_or_else, unwrap_or_else, write_lock_or_else, SpecsAdapter,
     SpecsUpdateListener,
@@ -21,12 +24,14 @@ pub struct StatsigDataStoreSpecsAdapter {
     data_store: Arc<dyn DataStoreTrait>,
     cache_key: String,
     sync_interval: Duration,
+    ops_stats: Arc<OpsStatsForInstance>,
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
     shutdown_notify: Arc<Notify>,
 }
 
 impl StatsigDataStoreSpecsAdapter {
     pub fn new(
+        sdk_key: &str,
         data_store_key: &str,
         data_store: Arc<dyn DataStoreTrait>,
         options: Option<&StatsigOptions>,
@@ -42,6 +47,7 @@ impl StatsigDataStoreSpecsAdapter {
                     .specs_sync_interval_ms
                     .unwrap_or(DEFAULT_SYNC_INTERVAL_MS),
             )),
+            ops_stats: OPS_STATS.get_for_instance(sdk_key),
             listener: RwLock::new(None),
             shutdown_notify: Arc::new(Notify::new()),
         }
@@ -83,6 +89,7 @@ impl StatsigDataStoreSpecsAdapter {
     }
 
     async fn execute_background_sync_impl(&self) {
+        let sync_start_ms = Utc::now().timestamp_millis() as u64;
         let update = match self.load_cached_specs_bytes().await {
             Ok(update) => update,
             Err(e) => {
@@ -107,15 +114,33 @@ impl StatsigDataStoreSpecsAdapter {
             ResponseData::from_bytes(update.result.unwrap_or_default())
         };
 
-        if let Err(e) = listener.did_receive_specs_update(SpecsUpdate {
+        let response_format = get_specs_response_format(&data);
+        let result = listener.did_receive_specs_update(SpecsUpdate {
             data,
             source: SpecsSource::Adapter("DataStore".to_string()),
             received_at: Utc::now().timestamp_millis() as u64,
             source_api: Some("datastore".to_string()),
-        }) {
+        });
+        log_config_sync_overall_latency(
+            &self.ops_stats,
+            sync_start_ms,
+            "datastore",
+            response_format.as_str(),
+            false,
+            result.is_ok(),
+            result
+                .as_ref()
+                .err()
+                .map_or_else(String::new, |e| e.to_string()),
+            false,
+        );
+
+        if let Err(e) = result {
             log_w!(TAG, "Failed to send specs update to listener: {e}");
         }
     }
+
+    // --------- END - Observability helpers ---------
 }
 
 #[async_trait]
@@ -124,6 +149,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
+        let sync_start_ms = Utc::now().timestamp_millis() as u64;
         self.data_store.initialize().await?;
 
         let update = self.load_cached_specs_bytes().await?;
@@ -149,13 +175,28 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         } else {
             ResponseData::from_bytes(data)
         };
+        let response_format = get_specs_response_format(&data);
 
-        listener.did_receive_specs_update(SpecsUpdate {
+        let result = listener.did_receive_specs_update(SpecsUpdate {
             data,
             source: SpecsSource::Adapter("DataStore".to_string()),
             received_at: Utc::now().timestamp_millis() as u64,
             source_api: Some("datastore".to_string()),
-        })
+        });
+        log_config_sync_overall_latency(
+            &self.ops_stats,
+            sync_start_ms,
+            "datastore",
+            response_format.as_str(),
+            false,
+            result.is_ok(),
+            result
+                .as_ref()
+                .err()
+                .map_or_else(String::new, |e| e.to_string()),
+            false,
+        );
+        result
     }
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
