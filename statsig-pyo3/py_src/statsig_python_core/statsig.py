@@ -103,7 +103,7 @@ class Statsig(StatsigBasePy):
         name: str,
         options: Optional[ExperimentEvaluationOptions] = None,
     ) -> Experiment:
-        raw = super()._INTERNAL_get_experiment(user, name, options)
+        raw = super()._INTERNAL_get_experiment_as_dict(user, name, options)
         return Experiment(name, raw)
 
     def get_layer(
@@ -112,9 +112,13 @@ class Statsig(StatsigBasePy):
         name: str,
         options: Optional[LayerEvaluationOptions] = None,
     ) -> Layer:
-        raw = super()._INTERNAL_get_layer(user, name, options)
+        exposure_raw, raw = super()._INTERNAL_get_layer_exposure_raw_and_dict(
+            user, name, options
+        )
         return Layer(
-            lambda param: self._INTERNAL_log_layer_param_exposure(raw, param), name, raw
+            lambda param: self._INTERNAL_log_layer_param_exposure(exposure_raw, param),
+            name,
+            raw,
         )
 
 

@@ -13,11 +13,13 @@ use crate::{
     statsig_user_py::StatsigUserPy,
 };
 use parking_lot::Mutex;
+use pyo3::exceptions::PyRuntimeError;
 use pyo3::{call::PyCallArgs, prelude::*, types::PyDict};
 use pyo3_stub_gen::derive::*;
+use serde::Serialize;
 use serde_json::Value;
 use statsig_rust::evaluation::evaluation_details::EvaluationDetails;
-use statsig_rust::statsig_types::{DynamicConfig, FeatureGate};
+use statsig_rust::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer};
 use statsig_rust::{
     log_e, ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
     FeatureGateEvaluationOptions, HashAlgorithm, LayerEvaluationOptions, ObservabilityClient,
@@ -337,6 +339,29 @@ impl StatsigBasePy {
             .get_raw_experiment_with_options(&user.inner, name, options_actual)
     }
 
+    #[pyo3(name="_INTERNAL_get_experiment_as_dict", signature = (user, name, options=None))]
+    pub fn _internal_get_experiment_as_dict(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+        options: Option<ExperimentEvaluationOptionsPy>,
+        py: Python,
+    ) -> PyResult<Py<PyDict>> {
+        let mut options_actual = options
+            .as_ref()
+            .map_or(ExperimentEvaluationOptions::default(), |o| o.into());
+
+        options_actual.user_persisted_values = options
+            .and_then(|o| o.user_persisted_values)
+            .and_then(|v| extract_user_persisted_values(py, name, v));
+
+        let experiment = self
+            .inner
+            .get_experiment_with_options(&user.inner, name, options_actual);
+
+        experiment_to_py_dict(py, &experiment)
+    }
+
     #[pyo3(signature = (user, name))]
     pub fn manually_log_experiment_exposure(
         &self,
@@ -366,6 +391,32 @@ impl StatsigBasePy {
 
         self.inner
             .get_raw_layer_with_options(&user.inner, name, options_actual)
+    }
+
+    #[pyo3(
+        name="_INTERNAL_get_layer_exposure_raw_and_dict",
+        signature = (user, name, options=None)
+    )]
+    pub fn _internal_get_layer_exposure_raw_and_dict(
+        &self,
+        user: &StatsigUserPy,
+        name: &str,
+        options: Option<LayerEvaluationOptionsPy>,
+        py: Python,
+    ) -> PyResult<(String, Py<PyDict>)> {
+        let mut options_actual = options
+            .as_ref()
+            .map_or(LayerEvaluationOptions::default(), |o| o.into());
+
+        options_actual.user_persisted_values = options
+            .and_then(|o| o.user_persisted_values)
+            .and_then(|v| extract_user_persisted_values(py, name, v));
+
+        let layer = self
+            .inner
+            .get_layer_with_options(&user.inner, name, options_actual);
+
+        Ok((layer_to_exposure_raw(&layer)?, layer_to_py_dict(py, &layer)?))
     }
 
     #[pyo3(name="_INTERNAL_log_layer_param_exposure", signature = (raw, param_name))]
@@ -622,6 +673,85 @@ fn dynamic_config_to_py_dict(py: Python, config: &DynamicConfig) -> PyResult<Py<
     )?;
 
     Ok(raw.unbind())
+}
+
+fn experiment_to_py_dict(py: Python, experiment: &Experiment) -> PyResult<Py<PyDict>> {
+    let raw = PyDict::new(py);
+    raw.set_item("name", &experiment.name)?;
+    raw.set_item("value", map_to_py_dict_direct(py, &experiment.value)?)?;
+    raw.set_item("ruleID", &experiment.rule_id)?;
+    raw.set_item("idType", &experiment.id_type)?;
+    raw.set_item("groupName", &experiment.group_name)?;
+    raw.set_item(
+        "isExperimentActive",
+        experiment.is_experiment_active,
+    )?;
+    raw.set_item(
+        "details",
+        evaluation_details_to_py_dict(py, &experiment.details)?,
+    )?;
+
+    Ok(raw.unbind())
+}
+
+fn layer_to_py_dict(py: Python, layer: &Layer) -> PyResult<Py<PyDict>> {
+    let raw = PyDict::new(py);
+    raw.set_item("name", &layer.name)?;
+    raw.set_item("value", map_to_py_dict_direct(py, &layer.__value)?)?;
+    raw.set_item("ruleID", &layer.rule_id)?;
+    raw.set_item("idType", &layer.id_type)?;
+    raw.set_item("groupName", &layer.group_name)?;
+    raw.set_item(
+        "isExperimentActive",
+        layer.is_experiment_active,
+    )?;
+    raw.set_item(
+        "allocatedExperimentName",
+        &layer.allocated_experiment_name,
+    )?;
+    raw.set_item("details", evaluation_details_to_py_dict(py, &layer.details)?)?;
+
+    Ok(raw.unbind())
+}
+
+fn layer_to_exposure_raw(layer: &Layer) -> PyResult<String> {
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct LayerExposureRaw<'a> {
+        name: &'a str,
+        #[serde(rename = "ruleID")]
+        rule_id: &'a str,
+        id_type: Option<&'a str>,
+        group_name: Option<&'a str>,
+        details: &'a EvaluationDetails,
+        allocated_experiment_name: Option<&'a str>,
+        disable_exposure: bool,
+        user: &'a statsig_rust::user::StatsigUserLoggable,
+        secondary_exposures: Option<&'a Vec<statsig_rust::SecondaryExposure>>,
+        undelegated_secondary_exposures: Option<&'a Vec<statsig_rust::SecondaryExposure>>,
+        explicit_parameters: Option<&'a statsig_rust::specs_response::explicit_params::ExplicitParameters>,
+        parameter_rule_ids:
+            Option<&'a std::collections::HashMap<statsig_rust::interned_string::InternedString, statsig_rust::interned_string::InternedString>>,
+    }
+
+    let evaluation = layer.__evaluation.as_ref();
+    let raw = LayerExposureRaw {
+        name: &layer.name,
+        rule_id: &layer.rule_id,
+        id_type: (!layer.id_type.is_empty()).then_some(layer.id_type.as_str()),
+        group_name: layer.group_name.as_deref(),
+        details: &layer.details,
+        allocated_experiment_name: layer.allocated_experiment_name.as_deref(),
+        disable_exposure: layer.__disable_exposure,
+        user: &layer.__user,
+        secondary_exposures: evaluation.map(|value| &value.base.secondary_exposures),
+        undelegated_secondary_exposures: evaluation
+            .and_then(|value| value.undelegated_secondary_exposures.as_ref()),
+        explicit_parameters: evaluation.map(|value| &value.explicit_parameters),
+        parameter_rule_ids: layer.__parameter_rule_ids.as_ref(),
+    };
+
+    serde_json::to_string(&raw).map_err(|error| PyRuntimeError::new_err(error.to_string()))
 }
 
 fn evaluation_details_to_py_dict(py: Python, details: &EvaluationDetails) -> PyResult<Py<PyDict>> {
