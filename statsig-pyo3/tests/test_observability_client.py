@@ -19,9 +19,11 @@ class MockObservabilityClient(ObservabilityClient):
     init_called = False
     dist_called = False
     error_called = False
-    metrics: List[Tuple[str, str, Any, Optional[Dict[str, str]]]] = (
-        []
-    )  # Stores (type, metric_name, value, tags)
+    metrics: List[
+        Tuple[str, str, Any, Optional[Dict[str, str]]]
+    ] = []  # Stores (type, metric_name, value, tags)
+
+    VERBOSE = False
 
     def __new__(cls, test_param: str = ""):
         instance = super().__new__(cls)
@@ -30,34 +32,39 @@ class MockObservabilityClient(ObservabilityClient):
 
     def init(self) -> None:
         self.init_called = True
-        print("Initializing ExampleObservationClient")
+
+        self._log("Initializing ExampleObservationClient")
 
     def increment(
         self, metric_name: str, value: int = 1, tags: Optional[Dict[str, str]] = None
     ) -> None:
-        print(f"Incrementing {metric_name} by {value} with tags {tags}")
+        self._log(f"Incrementing {metric_name} by {value} with tags {tags}")
         self.metrics.append(("increment", metric_name, value, tags))
 
     def gauge(
         self, metric_name: str, value: float, tags: Optional[Dict[str, str]] = None
     ) -> None:
-        print(f"Gauging {metric_name} by {value} with tags {tags}")
+        self._log(f"Gauging {metric_name} by {value} with tags {tags}")
         self.metrics.append(("gauge", metric_name, value, tags))
 
     def dist(
         self, metric_name: str, value: float, tags: Optional[Dict[str, str]] = None
     ) -> None:
-        print(f"Distribution {metric_name} by {value} with tags {tags}")
+        self._log(f"Distribution {metric_name} by {value} with tags {tags}")
         self.dist_called = True
         self.metrics.append(("distribution", metric_name, value, tags))
 
     def error(self, tag: str, error: str) -> None:
-        print(f"Error callback for {tag}: {error}")
+        self._log(f"Error callback for {tag}: {error}")
         self.error_called = True
         self.metrics.append(("error", tag, error, None))
 
     def should_enable_high_cardinality_for_this_tag(self, tag):
         return True
+
+    def _log(self, message: str):
+        if self.VERBOSE:
+            print(message)
 
 
 @pytest.fixture
