@@ -20,7 +20,7 @@ use crate::evaluation::user_agent_parsing::UserAgentParser;
 use crate::interned_string::InternedString;
 use crate::specs_response::explicit_params::ExplicitParameters;
 use crate::specs_response::spec_types::{Condition, Rule, Spec};
-use crate::{dyn_value, log_w, unwrap_or_return, ExperimentEvaluationOptions, StatsigErr};
+use crate::{log_w, unwrap_or_return, ExperimentEvaluationOptions, StatsigErr};
 
 use super::country_lookup::CountryLookup;
 
@@ -380,6 +380,19 @@ fn try_apply_override(
 }
 
 fn evaluate_rule<'a>(ctx: &mut EvaluatorContext<'a>, rule: &'a Rule) -> Result<(), StatsigErr> {
+    if let [condition_hash] = rule.conditions.as_slice() {
+        let condition = if let Some(condition) = ctx.specs_data.condition_map.get(condition_hash) {
+            condition
+        } else {
+            log_w!(TAG, "Unsupported - Condition not found: {}", condition_hash);
+            ctx.result.unsupported = true;
+            return Ok(());
+        };
+
+        evaluate_condition(ctx, condition)?;
+        return Ok(());
+    }
+
     let mut all_conditions_pass = true;
     // println!("--- Eval Rule {} ---", rule.id);
     for condition_hash in &rule.conditions {
@@ -718,8 +731,10 @@ fn evaluate_pass_percentage(
 
     let rule_salt = rule.salt.as_deref().unwrap_or(rule.id.as_str());
     let unit_id = get_unit_id(ctx, &rule.id_type);
-    let input = format!("{spec_salt}.{rule_salt}.{unit_id}");
-    match ctx.hashing.evaluation_hash(&input) {
+    match ctx
+        .hashing
+        .evaluation_hash_parts(&[spec_salt.as_str(), ".", rule_salt, ".", unit_id])
+    {
         Some(hash) => ((hash % 10000) as f64) < rule.pass_percentage * 100.0,
         None => false,
     }
@@ -736,9 +751,25 @@ fn get_hash_for_user_bucket(ctx: &mut EvaluatorContext, condition: &Condition) -
         }
     }
 
-    let input = format!("{salt}.{unit_id}");
-    let hash = ctx.hashing.evaluation_hash(&input).unwrap_or(1);
-    dyn_value!(hash % 1000)
+    let hash = ctx
+        .hashing
+        .evaluation_hash_parts(&[salt.as_str(), ".", unit_id])
+        .unwrap_or(1);
+    let bucket = (hash % 1000) as i64;
+
+    match condition
+        .operator
+        .as_ref()
+        .map(|operator| operator.as_str())
+    {
+        Some("gt" | "gte" | "lt" | "lte") => {
+            DynamicValue::for_numeric_comparison_evaluation(bucket)
+        }
+        Some("any" | "none" | "any_case_sensitive" | "none_case_sensitive") => {
+            DynamicValue::for_string_membership_evaluation(bucket)
+        }
+        _ => DynamicValue::for_int_evaluation(bucket),
+    }
 }
 
 fn evaluate_param_store_reason(

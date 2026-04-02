@@ -160,9 +160,9 @@ class DynamicConfig(BaseConfigEvaluation):
 class Experiment(BaseConfigEvaluation):
     group_name: Optional[str]
 
-    def __init__(self, name: str, raw: str):
+    def __init__(self, name: str, raw: dict | str):
         try:
-            data = json.loads(raw) or {}
+            data = raw if isinstance(raw, dict) else json.loads(raw) or {}
             super().__init__(name, data, "Experiment")
             self.group_name = data.get("groupName")
         except Exception as error:
@@ -182,9 +182,9 @@ class Layer(BaseEvaluation):
     __value: dict
     __exposure_func: Optional[Callable]
 
-    def __init__(self, exposure_func: Callable, name: str, raw: str):
+    def __init__(self, exposure_func: Callable, name: str, raw: dict | str):
         try:
-            data = json.loads(raw) or {}
+            data = raw if isinstance(raw, dict) else json.loads(raw) or {}
             super().__init__(name, data)
             self.group_name = data.get("groupName")
             self.allocated_experiment_name = data.get("allocatedExperimentName")

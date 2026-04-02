@@ -29,7 +29,7 @@ impl MemoSha256 {
         }
     }
 
-    pub fn compute_hash(&self, input: &String) -> Option<u64> {
+    pub fn compute_hash(&self, input: &str) -> Option<u64> {
         let mut state = match self.inner.try_lock_for(Duration::from_secs(5)) {
             Some(state) => state,
             None => {
@@ -49,16 +49,24 @@ impl MemoSha256 {
             state.user_hash_cache.clear();
         }
 
-        let hash = self.compute_bytes(&mut state, input);
+        let u_bytes = Self::compute_u64_hash(&mut state.sha_hasher, [input])?;
+        state.user_hash_cache.insert(input.to_owned(), u_bytes);
+        Some(u_bytes)
+    }
 
-        match hash.split_at(size_of::<u64>()).0.try_into() {
-            Ok(bytes) => {
-                let u_bytes = u64::from_be_bytes(bytes);
-                state.user_hash_cache.insert(input.clone(), u_bytes);
-                Some(u_bytes)
+    pub fn compute_hash_parts(&self, parts: &[&str]) -> Option<u64> {
+        let mut state = match self.inner.try_lock_for(Duration::from_secs(5)) {
+            Some(state) => state,
+            None => {
+                log_e!(
+                    TAG,
+                    "Failed to acquire lock for Sha256: Failed to lock inner"
+                );
+                return None;
             }
-            _ => None,
-        }
+        };
+
+        Self::compute_u64_hash(&mut state.sha_hasher, parts.iter().copied())
     }
 
     pub fn hash_string(&self, input: &str) -> String {
@@ -80,5 +88,20 @@ impl MemoSha256 {
     fn compute_bytes(&self, state: &mut MemoState, input: &str) -> Output<Sha256> {
         state.sha_hasher.update(input.as_bytes());
         state.sha_hasher.finalize_reset()
+    }
+
+    fn compute_u64_hash<'a>(
+        hasher: &mut Sha256,
+        parts: impl IntoIterator<Item = &'a str>,
+    ) -> Option<u64> {
+        for part in parts {
+            hasher.update(part.as_bytes());
+        }
+
+        let hash = hasher.finalize_reset();
+        match hash.split_at(size_of::<u64>()).0.try_into() {
+            Ok(bytes) => Some(u64::from_be_bytes(bytes)),
+            _ => None,
+        }
     }
 }
