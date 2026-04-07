@@ -55,14 +55,20 @@ impl<'a> QueuedExposure<'a> for EnqueueExperimentExpoOp<'a> {
     fn create_exposure_sampling_key(&self) -> ExposureSamplingKey {
         let user_data = &self.user.user_ref.data;
         let evaluation = self.experiment.__evaluation.as_ref().map(|e| &e.base);
-
         let in_experiment = self
             .experiment
             .__evaluation
             .as_ref()
             .is_some_and(|e| e.is_user_in_experiment == Some(true));
 
-        ExposureSamplingKey::new(evaluation, user_data.as_ref(), in_experiment as u64)
+        let additional_hash = in_experiment as u64;
+
+        ExposureSamplingKey::new(
+            evaluation,
+            user_data,
+            additional_hash,
+            Some(&self.experiment.id_type),
+        )
     }
 
     fn get_rule_id_ref(&self) -> &'a str {

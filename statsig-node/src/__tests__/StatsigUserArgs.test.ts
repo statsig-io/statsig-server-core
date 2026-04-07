@@ -119,7 +119,7 @@ describe('StatsigUserArgs', () => {
 
   it('mutate user with statsigUserArgs', async () => {
     const args: StatsigUserArgs = {
-      userID: 'a-user',
+      userID: 'a-user-mutated',
       customIDs: {
         myCustomID: 'a-custom-id',
       },
@@ -143,7 +143,7 @@ describe('StatsigUserArgs', () => {
     expect(event?.eventName).toEqual('statsig::gate_exposure');
     expect(event?.metadata?.gate).toEqual('test-gate');
     expect(event?.user?.email).toEqual('tore@statsig.com');
-    expect(event?.user?.userID).toEqual('a-user');
+    expect(event?.user?.userID).toEqual('a-user-mutated');
     expect(event?.user?.customIDs?.myCustomID).toEqual('a-custom-id');
     expect(event?.user?.custom?.mutation).toEqual('mutation');
   });

@@ -75,12 +75,15 @@ impl<'a> QueuedExposure<'a> for EnqueueLayerParamExpoOp<'a> {
 
         let user_data = &layer.__user.data;
         let evaluation = layer.__evaluation.as_ref().map(|e| &e.base);
-
+        let unit_id_type = layer
+            .__evaluation
+            .as_ref()
+            .and_then(|e| e.id_type.as_ref())
+            .map(|id| id.as_str());
         // todo: use Cow and pre-hash the parameter name
         let pname = self.get_parameter_name_ref();
         let pname_hash = ahash_str(pname);
-
-        ExposureSamplingKey::new(evaluation, user_data.as_ref(), pname_hash)
+        ExposureSamplingKey::new(evaluation, user_data, pname_hash, unit_id_type)
     }
 
     fn get_rule_id_ref(&'a self) -> &'a str {
