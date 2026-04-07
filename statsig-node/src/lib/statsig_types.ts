@@ -11,6 +11,8 @@ export type UnknownGet = (
   fallback?: boolean | number | string | object | Array<any> | null,
 ) => unknown | null;
 
+type RawEvaluation = Record<string, unknown> | string | null;
+
 function _getTypeOf(x: unknown): string {
   return Array.isArray(x) ? 'array' : x === null ? 'null' : typeof x;
 }
@@ -53,7 +55,7 @@ class BaseEvaluation {
 export class FeatureGate extends BaseEvaluation {
   readonly value: boolean;
 
-  constructor(name: string, raw: string | null) {
+  constructor(name: string, raw: RawEvaluation) {
     const data = _parseRawEvaluation(raw);
 
     super(name, data);
@@ -68,7 +70,7 @@ export class DynamicConfig extends BaseEvaluation {
   readonly get: TypedGet;
   readonly getValue: UnknownGet;
 
-  constructor(name: string, raw: string) {
+  constructor(name: string, raw: RawEvaluation) {
     const data = _parseRawEvaluation(raw);
 
     super(name, data);
@@ -87,7 +89,7 @@ export class Experiment extends BaseEvaluation {
   readonly get: TypedGet;
   readonly getValue: UnknownGet;
 
-  constructor(name: string, raw: string) {
+  constructor(name: string, raw: RawEvaluation) {
     const data = _parseRawEvaluation(raw);
 
     super(name, data);
@@ -112,7 +114,7 @@ export class Layer extends BaseEvaluation {
   readonly get: TypedGet;
   readonly getValue: UnknownGet;
 
-  constructor(exposeFn: (param: string) => void, name: string, raw: string) {
+  constructor(exposeFn: (param: string) => void, name: string, raw: RawEvaluation) {
     const data = _parseRawEvaluation(raw);
 
     super(name, data);
@@ -135,9 +137,23 @@ export class Layer extends BaseEvaluation {
   }
 }
 
-function _parseRawEvaluation(raw: string | null): Record<string, unknown> {
+function _parseRawEvaluation(
+  raw: RawEvaluation | string,
+): Record<string, unknown> {
+  if (raw == null) {
+    return {};
+  }
+
+  if (typeof raw === 'object' && !Array.isArray(raw)) {
+    return raw;
+  }
+
+  if (typeof raw !== 'string') {
+    return {};
+  }
+
   try {
-    return JSON.parse(raw ?? '{}') as Record<string, unknown>;
+    return JSON.parse(raw) as Record<string, unknown>;
   } catch (error) {
     console.error(`[Statsig] Error parsing BaseEvaluation: ${error}`);
     return {};

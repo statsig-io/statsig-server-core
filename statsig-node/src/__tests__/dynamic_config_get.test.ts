@@ -26,6 +26,29 @@ type RetryOptions = {
 }
 
 describe('DynamicConfig.get typing regressions', () => {
+  it('accepts structured raw evaluation objects', () => {
+    const config = new DynamicConfig('cfg', {
+      details: {
+        lcut: 1,
+        reason: 'Network:Recognized',
+        received_at: 2,
+        version: 3,
+      },
+      idType: 'userID',
+      name: 'cfg',
+      ruleID: 'rule-id',
+      value: { nested: { enabled: true } },
+    });
+
+    expect(config.get('nested', {})).toEqual({ enabled: true });
+    expect(config.getEvaluationDetails()).toMatchObject({
+      lcut: 1,
+      reason: 'Network:Recognized',
+      receivedAt: 2,
+      version: 3,
+    });
+  });
+
   it('allows assigning RetryOptions / undefined from get()', () => {
     const config = new DynamicConfig(
       'cfg',

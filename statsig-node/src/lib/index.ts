@@ -10,6 +10,7 @@ import {
   DynamicConfigEvaluationOptions,
   ExperimentEvaluationOptions,
   FeatureGateEvaluationOptions,
+  LayerParamExposureData,
   LayerEvaluationOptions,
   ParameterStore,
   SdkEvent,
@@ -158,8 +159,13 @@ export class Statsig extends StatsigNapiInternal {
     options?: LayerEvaluationOptions,
   ): Layer {
     const raw = this.__INTERNAL_getLayer(user, layerName, options);
+    const exposure = (raw as { __exposure?: LayerParamExposureData }).__exposure;
     return new Layer(
-      (param) => this.__INTERNAL_logLayerParamExposure(raw, param),
+      (param) => {
+        if (exposure != null) {
+          this.__INTERNAL_logLayerParamExposure(exposure, param);
+        }
+      },
       layerName,
       raw,
     );

@@ -1,5 +1,9 @@
 use crate::gcir_options_napi::ClientInitResponseOptions;
 use crate::observability_client_napi::ObservabilityClient;
+use crate::raw_evaluation_compat_napi::{
+    raw_dynamic_config_to_js_object, raw_experiment_to_js_object, raw_gate_to_js_object,
+    raw_layer_to_js_object, string_to_js_object, LayerParamExposureData,
+};
 use crate::statsig_core_api_options_napi::{
     DynamicConfigEvaluationOptionsNapi, ExperimentEvaluationOptionsNapi,
     FeatureGateEvaluationOptionsNapi, LayerEvaluationOptionsNapi,
@@ -11,6 +15,7 @@ use crate::statsig_result::StatsigResult;
 use crate::statsig_types_napi::ParameterStore;
 use crate::statsig_user_napi::StatsigUser;
 use napi::bindgen_prelude::*;
+use napi::JsObject;
 use napi_derive::napi;
 use parking_lot::Mutex;
 use serde_json::Value;
@@ -204,18 +209,22 @@ impl StatsigNapiInternal {
         )
     }
 
-    #[napi(js_name = "__INTERNAL_getFeatureGate")]
+    #[napi(
+        js_name = "__INTERNAL_getFeatureGate",
+        ts_return_type = "Record<string, unknown>"
+    )]
     pub fn __internal_get_feature_gate(
         &self,
+        env: Env,
         user: &StatsigUser,
         feature_name: String,
         options: Option<FeatureGateEvaluationOptionsNapi>,
-    ) -> String {
+    ) -> napi::Result<JsObject> {
         self.inner.use_raw_feature_gate_with_options(
             user.as_inner(),
             &feature_name,
             options.map(|opts| opts.into()).unwrap_or_default(),
-            |raw| raw.unperformant_to_json_string(),
+            |raw| raw_gate_to_js_object(&env, raw),
         )
     }
 
@@ -224,18 +233,22 @@ impl StatsigNapiInternal {
         self.inner.get_fields_needed_for_gate(gate_name.as_str())
     }
 
-    #[napi(js_name = "__INTERNAL_getDynamicConfig")]
+    #[napi(
+        js_name = "__INTERNAL_getDynamicConfig",
+        ts_return_type = "Record<string, unknown>"
+    )]
     pub fn __internal_get_dynamic_config(
         &self,
+        env: Env,
         user: &StatsigUser,
         config_name: String,
         options: Option<DynamicConfigEvaluationOptionsNapi>,
-    ) -> String {
+    ) -> napi::Result<JsObject> {
         self.inner.use_raw_dynamic_config_with_options(
             user.as_inner(),
             &config_name,
             options.map(|opts| opts.into()).unwrap_or_default(),
-            |raw| raw.unperformant_to_json_string(),
+            |raw| raw_dynamic_config_to_js_object(&env, raw),
         )
     }
 
@@ -245,29 +258,41 @@ impl StatsigNapiInternal {
             .get_fields_needed_for_dynamic_config(config_name.as_str())
     }
 
-    #[napi(js_name = "__INTERNAL_getExperiment")]
+    #[napi(
+        js_name = "__INTERNAL_getExperiment",
+        ts_return_type = "Record<string, unknown>"
+    )]
     pub fn __internal_get_experiment(
         &self,
+        env: Env,
         user: &StatsigUser,
         experiment_name: String,
         options: Option<ExperimentEvaluationOptionsNapi>,
-    ) -> String {
+    ) -> napi::Result<JsObject> {
         self.inner.use_raw_experiment_with_options(
             user.as_inner(),
             &experiment_name,
             options.map(|opts| opts.into()).unwrap_or_default(),
-            |raw| raw.unperformant_to_json_string(),
+            |raw| raw_experiment_to_js_object(&env, raw),
         )
     }
 
-    #[napi(js_name = "__INTERNAL_getExperimentByGroupName")]
+    #[napi(
+        js_name = "__INTERNAL_getExperimentByGroupName",
+        ts_return_type = "Record<string, unknown>"
+    )]
     pub fn __internal_get_experiment_by_group_name(
         &self,
+        env: Env,
         experiment_name: String,
         group_name: String,
-    ) -> String {
-        self.inner
-            .get_raw_experiment_by_group_name(&experiment_name, &group_name)
+    ) -> napi::Result<JsObject> {
+        string_to_js_object(
+            &env,
+            &self
+                .inner
+                .get_raw_experiment_by_group_name(&experiment_name, &group_name),
+        )
     }
 
     #[napi]
@@ -276,25 +301,33 @@ impl StatsigNapiInternal {
             .get_fields_needed_for_experiment(experiment_name.as_str())
     }
 
-    #[napi(js_name = "__INTERNAL_getLayer")]
+    #[napi(
+        js_name = "__INTERNAL_getLayer",
+        ts_return_type = "Record<string, unknown>"
+    )]
     pub fn __internal_get_layer(
         &self,
+        env: Env,
         user: &StatsigUser,
         layer_name: String,
         options: Option<LayerEvaluationOptionsNapi>,
-    ) -> String {
+    ) -> napi::Result<JsObject> {
         self.inner.use_raw_layer_with_options(
             user.as_inner(),
             &layer_name,
             options.map(|opts| opts.into()).unwrap_or_default(),
-            |raw| raw.unperformant_to_json_string(),
+            |raw| raw_layer_to_js_object(&env, raw),
         )
     }
 
     #[napi(js_name = "__INTERNAL_logLayerParamExposure")]
-    pub fn __internal_log_layer_param_exposure(&self, raw: String, param_name: String) {
+    pub fn __internal_log_layer_param_exposure(
+        &self,
+        raw: &LayerParamExposureData,
+        param_name: String,
+    ) {
         self.inner
-            .log_layer_param_exposure_from_raw(raw, param_name);
+            .log_layer_param_exposure_from_partial_raw(raw.inner.clone(), param_name);
     }
 
     #[napi]
