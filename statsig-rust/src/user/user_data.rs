@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::collections::HashMap;
 
-const EMPTY_HASHES: &[u64] = &[0];
-
 #[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -28,46 +26,53 @@ pub struct UserData {
 }
 
 impl UserData {
-    pub fn create_user_values_hash(&self) -> u64 {
-        let hashes = self.get_all_user_hashes();
-        hashing::hash_one(hashes)
+    pub fn create_exposure_dedupe_user_hash(&self, unit_id_type: Option<&str>) -> u64 {
+        let user_id_hash = self
+            .user_id
+            .as_ref()
+            .map_or(0, |user_id| user_id.hash_value);
+        let stable_id_hash = self.get_unit_id_hash("stableID");
+        let unit_type_hash = unit_id_type.map_or(0, |id_type| self.get_unit_id_hash(id_type));
+        let custom_ids_hash_sum = self.sum_custom_id_hashes();
+
+        hashing::hash_one(vec![
+            user_id_hash,
+            stable_id_hash,
+            unit_type_hash,
+            custom_ids_hash_sum,
+        ])
     }
 
-    fn get_all_user_hashes(&self) -> Vec<u64> {
-        let mut hashes = Vec::new();
-        push_string_field_hashes(&mut hashes, &self.user_id);
-        push_map_field_hashes(&mut hashes, &self.custom_ids);
+    pub fn sum_custom_id_hashes(&self) -> u64 {
+        self.custom_ids.as_ref().map_or(0, |custom_ids| {
+            custom_ids
+                .values()
+                .fold(0u64, |acc, value| acc.wrapping_add(value.hash_value))
+        })
+    }
 
-        push_string_field_hashes(&mut hashes, &self.app_version);
-        push_string_field_hashes(&mut hashes, &self.country);
-        push_string_field_hashes(&mut hashes, &self.email);
-        push_string_field_hashes(&mut hashes, &self.ip);
-        push_string_field_hashes(&mut hashes, &self.locale);
-        push_string_field_hashes(&mut hashes, &self.user_agent);
+    pub fn get_unit_id_hash(&self, id_type: &str) -> u64 {
+        if id_type.eq_ignore_ascii_case("userid") {
+            return self
+                .user_id
+                .as_ref()
+                .map_or(0, |user_id| user_id.hash_value);
+        }
 
-        push_map_field_hashes(&mut hashes, &self.custom);
-        push_map_field_hashes(&mut hashes, &self.private_attributes);
+        if let Some(custom_ids) = &self.custom_ids {
+            if let Some(id) = custom_ids.get(id_type) {
+                return id.hash_value;
+            }
 
-        hashes
+            if let Some(id) = custom_ids.get(&id_type.to_lowercase()) {
+                return id.hash_value;
+            }
+        }
+
+        0
     }
 
     pub fn to_bytes(&self) -> Option<Vec<u8>> {
         serde_json::to_vec(self).ok()
-    }
-}
-
-fn push_string_field_hashes(hashes: &mut Vec<u64>, field: &Option<DynamicValue>) {
-    if let Some(field) = field {
-        hashes.push(field.hash_value);
-    } else {
-        hashes.push(0);
-    }
-}
-
-fn push_map_field_hashes(hashes: &mut Vec<u64>, field: &Option<HashMap<String, DynamicValue>>) {
-    if let Some(field) = field {
-        hashes.extend(field.values().map(|id| id.hash_value));
-    } else {
-        hashes.extend(EMPTY_HASHES);
     }
 }

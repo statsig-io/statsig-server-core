@@ -61,9 +61,15 @@ impl<'a> QueuedExposure<'a> for EnqueueGateExpoOp<'a> {
     fn create_exposure_sampling_key(&self) -> ExposureSamplingKey {
         let user_data = &self.user.user_ref.data;
         let evaluation = self.evaluation.as_ref().map(|e| &e.base);
+        let unit_id_type = self
+            .evaluation
+            .as_ref()
+            .and_then(|eval| eval.id_type.as_ref())
+            .map(|id| id.as_str());
         let value = self.evaluation.as_ref().is_some_and(|e| e.value);
+        let additional_hash = value as u64;
 
-        ExposureSamplingKey::new(evaluation, user_data.as_ref(), value as u64)
+        ExposureSamplingKey::new(evaluation, user_data, additional_hash, unit_id_type)
     }
 
     fn get_rule_id_ref(&'a self) -> &'a str {

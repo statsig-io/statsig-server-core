@@ -57,8 +57,15 @@ impl<'a> QueuedExposure<'a> for EnqueueConfigExpoOp<'a> {
         let user_data = &self.user.user_ref.data;
         let evaluation = self.config.__evaluation.as_ref().map(|e| &e.base);
         let passed = self.config.__evaluation.as_ref().is_some_and(|e| e.passed);
+        let unit_id_type = self
+            .config
+            .__evaluation
+            .as_ref()
+            .and_then(|e| e.id_type.as_ref())
+            .map(|id| id.as_str());
+        let additional_hash = passed as u64;
 
-        ExposureSamplingKey::new(evaluation, user_data.as_ref(), passed as u64)
+        ExposureSamplingKey::new(evaluation, user_data, additional_hash, unit_id_type)
     }
 
     fn get_rule_id_ref(&self) -> &'a str {

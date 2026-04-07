@@ -146,9 +146,9 @@ def test_updating_user_email_via_setter(statsig_setup):
     statsig.check_gate(user, "test_public")
     statsig.flush_events().wait()
     events = mock_scrapi.get_logged_events()
-    assert len(events) == 2
-    event = events[1]
-    assert event["user"]["email"] == "test2@example.com"  # should only update the email
+    assert len(events) == 1
+    event = events[0]
+    assert event["user"]["email"] == "test@example.com"  # gate exposures are deduped per user+gate
     assert event["user"]["country"] == "US"
     assert event["user"]["userID"] == "test_user_123"
 

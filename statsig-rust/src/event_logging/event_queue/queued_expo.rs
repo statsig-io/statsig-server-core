@@ -276,15 +276,6 @@ impl EnqueueOperation for EnqueueExposureOp<'_> {
 
 impl<'a> QueuedExposure<'a> for EnqueueExposureOp<'a> {
     fn create_exposure_sampling_key(&self) -> ExposureSamplingKey {
-        let spec_name_hash = self.data.spec_name.hash;
-        let rule_id_hash = self.data.rule_id.as_ref().map_or(0, |id| id.hash);
-        let user_values_hash = match &self.user {
-            UserLoggableOrInternal::Loggable(loggable) => loggable.data.create_user_values_hash(),
-            UserLoggableOrInternal::Internal(internal) => {
-                internal.user_ref.data.create_user_values_hash()
-            }
-        };
-
         let mut additional_hash = 0u64;
         if let Some(gate_value) = self.data.gate_value {
             additional_hash = gate_value as u64;
@@ -296,9 +287,16 @@ impl<'a> QueuedExposure<'a> for EnqueueExposureOp<'a> {
             additional_hash = parameter_name.hash;
         }
 
+        let user_data = match &self.user {
+            UserLoggableOrInternal::Loggable(loggable) => &loggable.data,
+            UserLoggableOrInternal::Internal(internal) => &internal.user_ref.data,
+        };
+
+        let user_values_hash = user_data.create_exposure_dedupe_user_hash(None);
+
         ExposureSamplingKey {
-            spec_name_hash,
-            rule_id_hash,
+            spec_name_hash: self.data.spec_name.hash,
+            rule_id_hash: self.data.rule_id.as_ref().map_or(0, |id| id.hash),
             user_values_hash,
             additional_hash,
         }
