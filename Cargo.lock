@@ -2982,6 +2982,7 @@ dependencies = [
  "parking_lot",
  "pyo3",
  "pyo3-stub-gen",
+ "rkyv",
  "serde",
  "serde_json",
  "statsig-rust",

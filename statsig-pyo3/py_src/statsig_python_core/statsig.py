@@ -113,8 +113,17 @@ class Statsig(StatsigBasePy):
         options: Optional[LayerEvaluationOptions] = None,
     ) -> Layer:
         raw = super()._INTERNAL_get_layer(user, name, options)
+        exposure = raw.get("__exposure") if isinstance(raw, dict) else None
+
+        def exposure_func(param: str):
+            if exposure is None:
+                return
+            return self._INTERNAL_log_layer_param_exposure(exposure, param)
+
         return Layer(
-            lambda param: self._INTERNAL_log_layer_param_exposure(raw, param), name, raw
+            exposure_func,
+            name,
+            raw,
         )
 
 

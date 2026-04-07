@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    collections::hash_map::Entry,
+    collections::{hash_map::Entry, HashMap},
     fs::{File, OpenOptions},
     io::Write,
     sync::{Arc, OnceLock},
@@ -12,13 +12,17 @@ use lazy_static::lazy_static;
 use memmap2::Mmap;
 use ouroboros::self_referencing;
 use parking_lot::Mutex;
-use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
+use rkyv::{
+    collections::swiss_table::ArchivedHashMap, string::ArchivedString, Archive,
+    Deserialize as RkyvDeserialize, Serialize as RkyvSerialize,
+};
 use serde_json::value::RawValue;
 
 use crate::{
     evaluation::{
         dynamic_returnable::DynamicReturnableValue,
         evaluator_value::{EvaluatorValue, EvaluatorValueInner, MemoizedEvaluatorValue},
+        rkyv_value::{ArchivedRkyvValue, RkyvValue},
     },
     hashing,
     interned_string::{InternedString, InternedStringValue},
@@ -45,7 +49,7 @@ lazy_static! {
 #[derive(Default, Archive, RkyvDeserialize, RkyvSerialize)]
 struct MmapData {
     strings: std::collections::HashMap<u64, String>,
-    returnables: std::collections::HashMap<u64, String>,
+    returnables: std::collections::HashMap<u64, HashMap<String, RkyvValue>>,
 }
 
 #[self_referencing]
@@ -67,7 +71,7 @@ struct LoadedMmapData {
 #[derive(Default)]
 struct ImmortalData {
     strings: AHashMap<u64, &'static str>,
-    returnables: AHashMap<u64, &'static RawValue>,
+    returnables: AHashMap<u64, &'static HashMap<String, RkyvValue>>,
     evaluator_values: AHashMap<u64, &'static MemoizedEvaluatorValue>,
     feature_gates: AHashMap<u64, &'static Spec>,
     dynamic_configs: AHashMap<u64, &'static Spec>,
@@ -76,7 +80,7 @@ struct ImmortalData {
 #[derive(Default)]
 struct MutableData {
     strings: AHashMap<u64, Arc<String>>,
-    returnables: AHashMap<u64, Arc<Box<RawValue>>>,
+    returnables: AHashMap<u64, Arc<HashMap<String, RkyvValue>>>,
     evaluator_values: AHashMap<u64, Arc<MemoizedEvaluatorValue>>,
 }
 
@@ -140,8 +144,8 @@ impl InternedStore {
             .collect::<Result<Vec<SpecsResponseFull>, StatsigErr>>()?;
 
         let mmap_data = mutable_to_mmap_data(specs_responses)?;
-        let archived =
-            rkyv::to_bytes::<rkyv::rancor::Error>(&mmap_data).expect("Failed to archive mmap data");
+        let archived = rkyv::to_bytes::<rkyv::rancor::Error>(&mmap_data)
+            .map_err(|e| StatsigErr::SerializationError(e.to_string()))?;
 
         file.write_all(&archived)
             .map_err(|e| StatsigErr::FileError(e.to_string()))?;
@@ -203,7 +207,7 @@ impl InternedStore {
         let hash = hashing::hash_one(raw_string.as_bytes());
 
         if let Some(returnable) = get_returnable_from_mmap(hash) {
-            return DynamicReturnable::from_static(hash, returnable);
+            return DynamicReturnable::from_archived(hash, returnable);
         }
 
         if let Some(returnable) = get_returnable_from_shared(hash) {
@@ -253,7 +257,7 @@ impl InternedStore {
         let hash = hashing::hash_one(bytes);
 
         if let Some(returnable) = get_returnable_from_mmap(hash) {
-            return Some(DynamicReturnable::from_static(hash, returnable));
+            return Some(DynamicReturnable::from_archived(hash, returnable));
         }
 
         if let Some(returnable) = get_returnable_from_shared(hash) {
@@ -392,29 +396,24 @@ fn get_string_from_local<T: ToString>(hash: u64, value: T) -> Arc<String> {
 
 // ------------------------------------------------------------------------------- [ Returnable ]
 
-fn get_returnable_from_mmap(hash: u64) -> Option<&'static RawValue> {
+fn get_returnable_from_mmap(
+    hash: u64,
+) -> Option<&'static ArchivedHashMap<ArchivedString, ArchivedRkyvValue>> {
     let data = MMAP_DATA.get()?;
 
     let archived_hash = rkyv::primitive::ArchivedU64::from_native(hash);
     let found = data.borrow_archived().returnables.get(&archived_hash)?;
-
-    match serde_json::from_str(found) {
-        Ok(raw) => Some(raw),
-        Err(e) => {
-            log_e!(TAG, "Failed to parse returnable from mmap: {}", e);
-            None
-        }
-    }
+    Some(found)
 }
 
-fn get_returnable_from_shared(hash: u64) -> Option<&'static RawValue> {
+fn get_returnable_from_shared(hash: u64) -> Option<&'static HashMap<String, RkyvValue>> {
     match IMMORTAL_DATA.get() {
         Some(shared) => shared.returnables.get(&hash).copied(),
         None => None,
     }
 }
 
-fn get_returnable_from_local(hash: u64, value: Cow<RawValue>) -> Arc<Box<RawValue>> {
+fn get_returnable_from_local(hash: u64, value: Cow<RawValue>) -> Arc<HashMap<String, RkyvValue>> {
     let result = use_mutable_data("intern_returnable", |data| {
         if let Some(returnable) = data.returnables.get(&hash) {
             return Some(returnable.clone());
@@ -427,9 +426,12 @@ fn get_returnable_from_local(hash: u64, value: Cow<RawValue>) -> Arc<Box<RawValu
         return returnable;
     }
 
-    let owned = match value {
-        Cow::Borrowed(value) => value.to_owned(),
-        Cow::Owned(value) => value,
+    let owned: HashMap<String, RkyvValue> = match serde_json::from_str(value.get()) {
+        Ok(owned) => owned,
+        Err(e) => {
+            log_e!(TAG, "Failed to parse returnable from local: {}", e);
+            return Arc::new(HashMap::new());
+        }
     };
 
     let ptr = Arc::new(owned);
@@ -562,8 +564,8 @@ fn mutable_to_mmap_data(specs_responses: Vec<SpecsResponseFull>) -> Result<MmapD
     }
 
     for (hash, returnable) in mutable_data.returnables.into_iter() {
-        let raw_string = returnable.get();
-        mmap_data.returnables.insert(hash, raw_string.to_string());
+        let taken: HashMap<String, RkyvValue> = returnable.as_ref().clone();
+        mmap_data.returnables.insert(hash, taken);
     }
 
     // TODO: Add evaluator values to mmap data
@@ -618,14 +620,24 @@ impl EvaluatorValue {
 }
 
 impl DynamicReturnable {
-    fn from_static(hash: u64, returnable: &'static RawValue) -> Self {
+    fn from_static(hash: u64, returnable: &'static HashMap<String, RkyvValue>) -> Self {
         Self {
             hash,
             value: DynamicReturnableValue::JsonStatic(returnable),
         }
     }
 
-    fn from_pointer(hash: u64, pointer: Arc<Box<RawValue>>) -> Self {
+    fn from_archived(
+        hash: u64,
+        returnable: &'static ArchivedHashMap<ArchivedString, ArchivedRkyvValue>,
+    ) -> Self {
+        Self {
+            hash,
+            value: DynamicReturnableValue::JsonArchived(returnable),
+        }
+    }
+
+    fn from_pointer(hash: u64, pointer: Arc<HashMap<String, RkyvValue>>) -> Self {
         Self {
             hash,
             value: DynamicReturnableValue::JsonPointer(pointer),

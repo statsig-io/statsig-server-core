@@ -1,12 +1,17 @@
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
+use rkyv::{collections::swiss_table::ArchivedHashMap, string::ArchivedString};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{
     value::{to_raw_value, RawValue},
     Value as JsonValue,
 };
 
-use crate::{interned_values::InternedStore, log_e};
+use crate::{
+    evaluation::rkyv_value::{ArchivedRkyvValue, RkyvValue},
+    interned_values::InternedStore,
+    log_e,
+};
 
 const TAG: &str = "DynamicReturnable";
 
@@ -66,35 +71,35 @@ impl DynamicReturnable {
         }
     }
 
-    pub fn get_serde_map(&self) -> Option<serde_json::Map<String, JsonValue>> {
-        let bytes = match &self.value {
-            DynamicReturnableValue::JsonPointer(bytes) => bytes.get().as_bytes(),
-            DynamicReturnableValue::JsonStatic(bytes) => bytes.get().as_bytes(),
-            _ => return None,
-        };
+    pub fn get_json_archived_ref(
+        &self,
+    ) -> Option<&'static ArchivedHashMap<ArchivedString, ArchivedRkyvValue>> {
+        match self.value {
+            DynamicReturnableValue::JsonArchived(v) => Some(v),
+            _ => None,
+        }
+    }
 
-        match serde_json::from_slice(bytes) {
-            Ok(json) => Some(json),
-            Err(e) => {
-                log_e!(TAG, "Failed to parse json. Error: {}", e);
-                None
-            }
+    pub fn get_json_pointer_ref(&self) -> Option<&HashMap<String, RkyvValue>> {
+        match &self.value {
+            DynamicReturnableValue::JsonPointer(v) => Some(v.as_ref()),
+            DynamicReturnableValue::JsonStatic(v) => Some(v),
+            _ => None,
         }
     }
 
     pub fn get_json(&self) -> Option<HashMap<String, JsonValue>> {
-        let bytes = match &self.value {
-            DynamicReturnableValue::JsonPointer(bytes) => bytes.get().as_bytes(),
-            DynamicReturnableValue::JsonStatic(bytes) => bytes.get().as_bytes(),
-            _ => return None,
-        };
-
-        match serde_json::from_slice(bytes) {
-            Ok(json) => Some(json),
-            Err(e) => {
-                log_e!(TAG, "Failed to parse json. Error: {}", e);
-                None
-            }
+        match &self.value {
+            DynamicReturnableValue::JsonPointer(v) => rkyv_hashmap_to_owned_json(v.as_ref()),
+            DynamicReturnableValue::JsonStatic(v) => rkyv_hashmap_to_owned_json(v),
+            DynamicReturnableValue::JsonArchived(v) => archived_hashmap_to_owned(v).map_or_else(
+                |e| {
+                    log_e!(TAG, "Failed to convert archived json. Error: {}", e);
+                    None
+                },
+                Some,
+            ),
+            _ => None,
         }
     }
 
@@ -121,6 +126,10 @@ impl Serialize for DynamicReturnable {
         match &self.value {
             DynamicReturnableValue::JsonPointer(raw) => raw.serialize(serializer),
             DynamicReturnableValue::JsonStatic(raw) => raw.serialize(serializer),
+            DynamicReturnableValue::JsonArchived(raw) => {
+                let owned = archived_hashmap_to_owned(raw).map_err(serde::ser::Error::custom)?;
+                owned.serialize(serializer)
+            }
             DynamicReturnableValue::Null => serializer.serialize_none(),
             DynamicReturnableValue::Bool(value) => serializer.serialize_bool(*value),
         }
@@ -140,26 +149,92 @@ impl Drop for DynamicReturnable {
 pub enum DynamicReturnableValue {
     Null,
     Bool(bool),
-    JsonPointer(Arc<Box<RawValue>>),
-    JsonStatic(&'static RawValue),
-}
-
-impl DynamicReturnableValue {
-    fn raw_string_value(&self) -> Option<&str> {
-        match self {
-            DynamicReturnableValue::JsonPointer(raw) => Some(raw.as_ref().get()),
-            DynamicReturnableValue::JsonStatic(raw) => Some(raw.get()),
-            _ => None,
-        }
-    }
+    JsonPointer(Arc<HashMap<String, RkyvValue>>),
+    JsonStatic(&'static HashMap<String, RkyvValue>),
+    JsonArchived(&'static ArchivedHashMap<ArchivedString, ArchivedRkyvValue>),
 }
 
 impl PartialEq for DynamicReturnableValue {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (DynamicReturnableValue::Null, DynamicReturnableValue::Null) => true,
-            (DynamicReturnableValue::Bool(a), DynamicReturnableValue::Bool(b)) => *a == *b,
-            (left, right) => left.raw_string_value() == right.raw_string_value(),
+            (DynamicReturnableValue::Null, DynamicReturnableValue::Null) => return true,
+            (DynamicReturnableValue::Bool(a), DynamicReturnableValue::Bool(b)) => return *a == *b,
+            _ => {}
+        };
+
+        if let DynamicReturnableValue::JsonPointer(a) = self {
+            match other {
+                DynamicReturnableValue::JsonPointer(b) => return a.as_ref() == b.as_ref(),
+                DynamicReturnableValue::JsonStatic(b) => return a.as_ref() == *b,
+                DynamicReturnableValue::JsonArchived(b) => return eq_check(b, a.as_ref()),
+                _ => return false,
+            }
+        }
+
+        if let DynamicReturnableValue::JsonStatic(a) = self {
+            match other {
+                DynamicReturnableValue::JsonPointer(b) => return *a == b.as_ref(),
+                DynamicReturnableValue::JsonStatic(b) => return a == b,
+                DynamicReturnableValue::JsonArchived(b) => return eq_check(b, a),
+                _ => return false,
+            }
+        }
+
+        if let DynamicReturnableValue::JsonArchived(a) = self {
+            match other {
+                DynamicReturnableValue::JsonPointer(b) => return eq_check(a, b.as_ref()),
+                DynamicReturnableValue::JsonStatic(b) => return eq_check(a, b),
+                DynamicReturnableValue::JsonArchived(b) => return a == b,
+                _ => return false,
+            }
+        }
+
+        false
+    }
+}
+
+// ------------------------------------------------------------------------------- [ Rkyv Helper ]
+
+fn eq_check(
+    left: &ArchivedHashMap<ArchivedString, ArchivedRkyvValue>,
+    right: &HashMap<String, RkyvValue>,
+) -> bool {
+    for (key, value) in left.iter() {
+        match right.get_key_value(key.as_str()) {
+            Some((left_key, left_value)) => {
+                if left_key != key {
+                    return false;
+                }
+                if left_value != value {
+                    return false;
+                }
+            }
+            None => return false,
+        };
+    }
+    true
+}
+
+fn rkyv_hashmap_to_owned_json(
+    raw: &HashMap<String, RkyvValue>,
+) -> Option<HashMap<String, JsonValue>> {
+    match serde_json::to_value(raw) {
+        Ok(JsonValue::Object(o)) => Some(o.into_iter().collect()),
+        Ok(_) => None,
+        Err(e) => {
+            log_e!(TAG, "Failed to convert json. Error: {}", e);
+            None
         }
     }
+}
+
+fn archived_hashmap_to_owned(
+    raw: &'static ArchivedHashMap<ArchivedString, ArchivedRkyvValue>,
+) -> Result<HashMap<String, JsonValue>, serde_json::Error> {
+    let mut taken: HashMap<String, JsonValue> = HashMap::new();
+    for (key, value) in raw.iter() {
+        taken.insert(key.as_str().to_string(), serde_json::to_value(value)?);
+    }
+
+    Ok(taken)
 }

@@ -33,6 +33,7 @@ fn statsig_python_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<statsig_types_py::ParameterStoreEvaluationOptionsPy>()?;
     m.add_class::<statsig_types_py::InitializeDetailsPy>()?;
     m.add_class::<statsig_types_py::FailureDetailsPy>()?;
+    m.add_class::<raw_evaluation_compat_py::LayerParamExposureDataPy>()?;
     m.add_class::<observability_client_base_py::ObservabilityClientBasePy>()?;
     m.add_class::<data_store_base_py::DataStoreBasePy>()?;
     m.add_class::<statsig_persistent_storage_override_adapter_py::PersistentStorageBasePy>()?;

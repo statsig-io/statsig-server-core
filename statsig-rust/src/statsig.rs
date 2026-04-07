@@ -1869,6 +1869,14 @@ impl Statsig {
             }
         };
 
+        self.log_layer_param_exposure_from_partial_raw(partial_raw, param_name);
+    }
+
+    pub fn log_layer_param_exposure_from_partial_raw(
+        &self,
+        partial_raw: crate::statsig_types_raw::PartialLayerRaw,
+        param_name: String,
+    ) {
         if partial_raw.disable_exposure {
             self.event_logger
                 .increment_non_exposure_checks(&partial_raw.name);

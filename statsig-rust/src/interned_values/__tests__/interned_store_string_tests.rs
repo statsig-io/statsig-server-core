@@ -1,4 +1,7 @@
+use std::{borrow::Cow, time::Instant};
+
 use rusty_fork::rusty_fork_test;
+use serde_json::value::RawValue;
 
 use crate::{
     interned_string::{InternedString, InternedStringValue},
@@ -7,6 +10,34 @@ use crate::{
 
 const EVAL_PROJ_JSON: &[u8] = include_bytes!("../../../tests/data/eval_proj_dcs.json");
 const DEMO_PROJ_PROTO: &[u8] = include_bytes!("../../../tests/data/demo_proj_dcs.pb.br");
+
+#[test]
+fn test_interned_string_from_str_ref() {
+    let value = String::from_utf8(EVAL_PROJ_JSON.to_vec()).unwrap();
+    let start = Instant::now();
+    for i in 0..1000 {
+        let raw: Cow<'_, RawValue> = serde_json::from_str(&value).unwrap();
+
+        if i == 0 {
+            let owned: serde_json::Value = serde_json::from_str(raw.get()).unwrap();
+            drop(owned);
+        }
+        drop(raw);
+    }
+    let end = Instant::now();
+    println!("Time taken: {:?}", end.duration_since(start));
+
+    let start = Instant::now();
+    for i in 0..1000 {
+        let raw: &RawValue = unsafe { std::mem::transmute::<&str, &RawValue>(value.as_str()) };
+        if i == 0 {
+            let owned: serde_json::Value = serde_json::from_str(raw.get()).unwrap();
+            drop(owned);
+        }
+    }
+    let end = Instant::now();
+    println!("Time taken: {:?}", end.duration_since(start));
+}
 
 #[test]
 fn test_interned_string_non_preloaded() {
