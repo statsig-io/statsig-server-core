@@ -120,20 +120,20 @@ export interface DataStore {
   initialize?: () => Promise<void>
   shutdown?: () => Promise<void>
   get?: (key: string) => Promise<DataStoreResponse>
-  getBytes?: (key: string) => Promise<DataStoreBytesResponse>
+  getBytes?: (key: string) => Promise<{ result?: Uint8Array; time?: number }>
   supportsBytes?: boolean
   set?: (key: string, value: string, time?: number) => Promise<void>
   setBytes?: (key: string, value: ArrayBuffer | Uint8Array, time?: number) => Promise<void>
   supportPollingUpdatesFor?: (key: string) => Promise<boolean>
 }
 
-export interface DataStoreResponse {
-  result?: string
+export interface DataStoreBytesResponse {
+  result?: Uint8Array
   time?: number
 }
 
-export interface DataStoreBytesResponse {
-  result?: Uint8Array
+export interface DataStoreResponse {
+  result?: string
   time?: number
 }
 
@@ -246,6 +246,7 @@ export interface StatsigOptions {
   globalCustomFields?: Record<string, string | number | boolean | Array<string | number | boolean>>
   idListsSyncIntervalMs?: number
   idListsUrl?: string
+  downloadIdListFileApi?: string
   initTimeoutMs?: number
   logEventUrl?: string
   observabilityClient?: ObservabilityClient

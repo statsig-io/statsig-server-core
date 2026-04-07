@@ -58,16 +58,25 @@ class BenchmarkResult:
         }
 
 
-def setup():
-    # Wait for spec_names.json to be available
-    spec_name_path = "/shared-volume/spec_names.json"
+def try_load_file(path: str) -> Any:
     for i in range(10):
-        if os.path.exists(spec_name_path):
+        if os.path.exists(path):
             break
         time.sleep(1)
 
-    with open(spec_name_path, "r") as f:
+    with open(path, "r") as f:
         return json.load(f)
+
+
+def setup():
+    # Wait for spec_names.json to be available
+    spec_names = try_load_file("/shared-volume/spec_names.json")
+    large_proj_spec_names = try_load_file("/shared-volume/large_proj_spec_names.json")
+
+    return {
+        "spec_names": spec_names,
+        "large_proj_spec_names": large_proj_spec_names,
+    }
 
 
 def create_user() -> StatsigUser:
@@ -166,9 +175,106 @@ async def benchmark(
     await asyncio.sleep(0.001)  # 1ms delay
 
 
+async def benchmark_feature_gates(
+    global_user: StatsigUser,
+    statsig: Statsig,
+    spec_names: Dict[str, List[str]],
+    results: List[BenchmarkResult],
+):
+    for gate in spec_names["feature_gates"]:
+        await benchmark(
+            "check_gate",
+            gate,
+            ITER_HEAVY,
+            lambda g=gate: statsig.check_gate(create_user(), g),
+            results,
+        )
+        await benchmark(
+            "check_gate_global_user",
+            gate,
+            ITER_HEAVY,
+            lambda g=gate: statsig.check_gate(global_user, g),
+            results,
+        )
+
+        await benchmark(
+            "get_feature_gate",
+            gate,
+            ITER_HEAVY,
+            lambda g=gate: statsig.get_feature_gate(create_user(), g),
+            results,
+        )
+
+        await benchmark(
+            "get_feature_gate_global_user",
+            gate,
+            ITER_HEAVY,
+            lambda g=gate: statsig.get_feature_gate(global_user, g),
+            results,
+        )
+
+
+async def benchmark_dynamic_configs(
+    global_user: StatsigUser,
+    statsig: Statsig,
+    spec_names: Dict[str, List[str]],
+    results: List[BenchmarkResult],
+):
+    for config in spec_names["dynamic_configs"]:
+        await benchmark(
+            "get_dynamic_config",
+            config,
+            ITER_HEAVY,
+            lambda c=config: statsig.get_dynamic_config(create_user(), c),
+            results,
+        )
+
+        await benchmark(
+            "get_dynamic_config_global_user",
+            config,
+            ITER_HEAVY,
+            lambda c=config: statsig.get_dynamic_config(global_user, c),
+            results,
+        )
+
+
+async def benchmark_experiments(
+    global_user: StatsigUser,
+    statsig: Statsig,
+    spec_names: Dict[str, List[str]],
+    results: List[BenchmarkResult],
+):
+    for experiment in spec_names["experiments"]:
+        await benchmark(
+            "get_experiment",
+            experiment,
+            ITER_HEAVY,
+            lambda e=experiment: statsig.get_experiment(global_user, e),
+            results,
+        )
+
+
+async def benchmark_layers(
+    global_user: StatsigUser,
+    statsig: Statsig,
+    spec_names: Dict[str, List[str]],
+    results: List[BenchmarkResult],
+):
+    for layer in spec_names["layers"]:
+        await benchmark(
+            "get_layer",
+            layer,
+            ITER_HEAVY,
+            lambda l=layer: statsig.get_layer(global_user, l),
+            results,
+        )
+
+
 async def main():
     # ------------------------------------------------------------------------ [ Setup ]
-    spec_names = setup()
+    setup_data = setup()
+    spec_names = setup_data["spec_names"]
+    large_proj_spec_names = setup_data["large_proj_spec_names"]
 
     options = StatsigOptions(
         specs_url=f"{SCRAPI_URL}/v2/download_config_specs",
@@ -177,6 +283,9 @@ async def main():
 
     statsig = Statsig("secret-PYTHON_CORE", options)
     statsig.initialize().wait()
+
+    large_proj_statsig = Statsig("secret-PYTHON_CORE::BC_USE_JSON", options)
+    large_proj_statsig.initialize().wait()
 
     results = []
 
@@ -212,57 +321,17 @@ async def main():
 
     # ------------------------------------------------------------------------ [ Benchmark Feature Gates ]
 
-    for gate in spec_names["feature_gates"]:
-        await benchmark(
-            "check_gate",
-            gate,
-            ITER_HEAVY,
-            lambda g=gate: statsig.check_gate(create_user(), g),
-            results,
-        )
-
-        await benchmark(
-            "check_gate_global_user",
-            gate,
-            ITER_HEAVY,
-            lambda g=gate: statsig.check_gate(global_user, g),
-            results,
-        )
-
-        await benchmark(
-            "get_feature_gate",
-            gate,
-            ITER_HEAVY,
-            lambda g=gate: statsig.get_feature_gate(create_user(), g),
-            results,
-        )
-
-        await benchmark(
-            "get_feature_gate_global_user",
-            gate,
-            ITER_HEAVY,
-            lambda g=gate: statsig.get_feature_gate(global_user, g),
-            results,
-        )
+    await benchmark_feature_gates(global_user, statsig, spec_names, results)
+    await benchmark_feature_gates(
+        global_user, large_proj_statsig, large_proj_spec_names, results
+    )
 
     # ------------------------------------------------------------------------ [ Benchmark Dynamic Configs ]
 
-    for config in spec_names["dynamic_configs"]:
-        await benchmark(
-            "get_dynamic_config",
-            config,
-            ITER_HEAVY,
-            lambda c=config: statsig.get_dynamic_config(create_user(), c),
-            results,
-        )
-
-        await benchmark(
-            "get_dynamic_config_global_user",
-            config,
-            ITER_HEAVY,
-            lambda c=config: statsig.get_dynamic_config(global_user, c),
-            results,
-        )
+    await benchmark_dynamic_configs(global_user, statsig, spec_names, results)
+    await benchmark_dynamic_configs(
+        global_user, large_proj_statsig, large_proj_spec_names, results
+    )
 
     config = statsig.get_dynamic_config(global_user, "operating_system_config")
     await benchmark(
@@ -312,22 +381,10 @@ async def main():
 
     # ------------------------------------------------------------------------ [ Benchmark Experiments ]
 
-    for experiment in spec_names["experiments"]:
-        await benchmark(
-            "get_experiment",
-            experiment,
-            ITER_HEAVY,
-            lambda e=experiment: statsig.get_experiment(create_user(), e),
-            results,
-        )
-
-        await benchmark(
-            "get_experiment_global_user",
-            experiment,
-            ITER_HEAVY,
-            lambda e=experiment: statsig.get_experiment(global_user, e),
-            results,
-        )
+    await benchmark_experiments(global_user, statsig, spec_names, results)
+    await benchmark_experiments(
+        global_user, large_proj_statsig, large_proj_spec_names, results
+    )
 
     experiment = statsig.get_experiment(global_user, "experiment_with_many_params")
     await benchmark(
@@ -370,22 +427,10 @@ async def main():
 
     # ------------------------------------------------------------------------ [ Benchmark Layers ]
 
-    for layer in spec_names["layers"]:
-        await benchmark(
-            "get_layer",
-            layer,
-            ITER_HEAVY,
-            lambda l=layer: statsig.get_layer(create_user(), l),
-            results,
-        )
-
-        await benchmark(
-            "get_layer_global_user",
-            layer,
-            ITER_HEAVY,
-            lambda l=layer: statsig.get_layer(global_user, l),
-            results,
-        )
+    await benchmark_layers(global_user, statsig, spec_names, results)
+    await benchmark_layers(
+        global_user, large_proj_statsig, large_proj_spec_names, results
+    )
 
     layer = statsig.get_layer(global_user, "layer_with_many_params")
     await benchmark(
@@ -455,6 +500,7 @@ async def main():
     # ------------------------------------------------------------------------ [ Teardown ]
 
     statsig.shutdown().wait()
+    large_proj_statsig.shutdown().wait()
 
     results_file = f"/shared-volume/{sdk_type}-{sdk_version}-results.json"
     with open(results_file, "w") as f:

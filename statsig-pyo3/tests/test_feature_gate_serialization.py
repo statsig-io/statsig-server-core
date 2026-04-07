@@ -47,7 +47,7 @@ def test_feature_gate_to_py_dict_round_trip_preserves_data(statsig_setup):
     user = StatsigUser("a-user")
     gate_name = "test_public"
 
-    raw_from_json = json.loads(statsig._INTERNAL_get_feature_gate(user, gate_name))
+    raw_from_json = statsig._INTERNAL_get_feature_gate(user, gate_name)
     expected_payload = {
         "name": raw_from_json.get("name"),
         "value": raw_from_json.get("value"),
@@ -60,4 +60,3 @@ def test_feature_gate_to_py_dict_round_trip_preserves_data(statsig_setup):
     expected_gate = FeatureGate(gate_name, expected_payload)
 
     assert gate.to_dict() == expected_gate.to_dict()
-

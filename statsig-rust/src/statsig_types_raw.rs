@@ -246,6 +246,25 @@ pub struct SuffixedRuleId<'a> {
     pub rule_id_suffix: Option<&'a str>,
 }
 
+impl SuffixedRuleId<'_> {
+    pub fn try_as_unprefixed_str(&self) -> Option<&str> {
+        if self.rule_id_suffix.is_some() {
+            // cannot return &str if we need to concat the suffix, use unperformant_to_string instead
+            return None;
+        }
+
+        Some(self.rule_id.as_str())
+    }
+
+    pub fn unperformant_to_string(&self) -> String {
+        if let Some(suffix) = self.rule_id_suffix {
+            return format!("{}:{}", self.rule_id.as_str(), suffix);
+        }
+
+        self.rule_id.as_str().to_string()
+    }
+}
+
 impl<'a> std::fmt::Display for SuffixedRuleId<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.rule_id.as_str())?;

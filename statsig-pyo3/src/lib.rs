@@ -3,6 +3,7 @@ mod interned_store_py;
 mod observability_client_base_py;
 mod output_logger_provider_base_py;
 mod pyo_utils;
+mod raw_evaluation_compat_py;
 mod safe_gil;
 mod statsig_base_py;
 mod statsig_metadata_py;

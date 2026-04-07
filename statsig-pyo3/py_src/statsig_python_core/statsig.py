@@ -85,7 +85,7 @@ class Statsig(StatsigBasePy):
         name: str,
         options: Optional[FeatureGateEvaluationOptions] = None,
     ) -> FeatureGate:
-        raw = super()._INTERNAL_get_feature_gate_as_dict(user, name, options)
+        raw = super()._INTERNAL_get_feature_gate(user, name, options)
         return FeatureGate(name, raw)
 
     def get_dynamic_config(
@@ -94,7 +94,7 @@ class Statsig(StatsigBasePy):
         name: str,
         options: Optional[DynamicConfigEvaluationOptions] = None,
     ) -> DynamicConfig:
-        raw = super()._INTERNAL_get_dynamic_config_as_dict(user, name, options)
+        raw = super()._INTERNAL_get_dynamic_config(user, name, options)
         return DynamicConfig(name, raw)
 
     def get_experiment(

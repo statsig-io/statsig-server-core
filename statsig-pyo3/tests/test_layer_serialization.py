@@ -33,10 +33,13 @@ def test_layer_value_is_json_dict(statsig_setup):
 
     value = layer.get_value()
     assert isinstance(value, dict)
+    assert "a_string" in value
+    assert layer.get_string("a_string", "ERR") != "ERR"
 
     json_str = json.dumps(value)
     parsed = json.loads(json_str)
     assert parsed == value
+
 
 def test_layer_to_dict_is_json_serializable(statsig_setup):
     statsig = statsig_setup

@@ -2,6 +2,7 @@
 Tests focused on get_dynamic_config API.
 Verifies that dynamicConfig.value is a valid JSON object (dict) and tests all related functionality.
 """
+
 import json
 import pytest
 from statsig_python_core import DynamicConfig, Statsig, StatsigOptions, StatsigUser
@@ -67,7 +68,7 @@ def test_dynamic_config_to_py_dict_round_trip_preserves_data(statsig_setup):
 
     # get_dynamic_config performs:
     # Rust DynamicConfig -> dynamic_config_to_py_dict -> Python DynamicConfig
-    raw_from_json = json.loads(statsig._INTERNAL_get_dynamic_config(user, config_name))
+    raw_from_json = statsig._INTERNAL_get_dynamic_config(user, config_name)
     expected_rule_id = raw_from_json.get("rule_id", raw_from_json.get("ruleID"))
     expected_id_type = raw_from_json.get("id_type", raw_from_json.get("idType"))
     config = statsig.get_dynamic_config(user, config_name)

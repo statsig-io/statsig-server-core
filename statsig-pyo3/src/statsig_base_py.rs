@@ -1,4 +1,7 @@
-use crate::pyo_utils::{map_to_py_dict_direct, py_dict_to_json_value_map};
+use crate::pyo_utils::py_dict_to_json_value_map;
+use crate::raw_evaluation_compat_py::{
+    raw_dynamic_config_to_py_dict, raw_experiment_to_py_dict, raw_gate_to_py_dict,
+};
 use crate::safe_gil::SafeGil;
 use crate::statsig_options_py::{safe_convert_to_statsig_options, StatsigOptionsPy};
 use crate::statsig_persistent_storage_override_adapter_py::convert_dict_to_user_persisted_values;
@@ -13,11 +16,13 @@ use crate::{
     statsig_user_py::StatsigUserPy,
 };
 use parking_lot::Mutex;
-use pyo3::{call::PyCallArgs, prelude::*, types::PyDict};
+use pyo3::{
+    call::PyCallArgs,
+    prelude::*,
+    types::{PyDict, PyModule},
+};
 use pyo3_stub_gen::derive::*;
 use serde_json::Value;
-use statsig_rust::evaluation::evaluation_details::EvaluationDetails;
-use statsig_rust::statsig_types::{DynamicConfig, FeatureGate};
 use statsig_rust::{
     log_e, ClientInitResponseOptions, DynamicConfigEvaluationOptions, ExperimentEvaluationOptions,
     FeatureGateEvaluationOptions, HashAlgorithm, LayerEvaluationOptions, ObservabilityClient,
@@ -241,33 +246,17 @@ impl StatsigBasePy {
     #[pyo3(name="_INTERNAL_get_feature_gate", signature = (user, name, options=None))]
     pub fn _internal_get_feature_gate(
         &self,
+        py: Python,
         user: &StatsigUserPy,
         name: &str,
         options: Option<FeatureGateEvaluationOptionsPy>,
-    ) -> String {
+    ) -> PyResult<Py<PyDict>> {
         self.inner.use_raw_feature_gate_with_options(
             &user.inner,
             name,
             options.map_or(FeatureGateEvaluationOptions::default(), |o| o.into()),
-            |raw| raw.unperformant_to_json_string(),
+            |raw| raw_gate_to_py_dict(py, raw),
         )
-    }
-
-    #[pyo3(name="_INTERNAL_get_feature_gate_as_dict", signature = (user, name, options=None))]
-    pub fn _internal_get_feature_gate_as_dict(
-        &self,
-        user: &StatsigUserPy,
-        name: &str,
-        options: Option<FeatureGateEvaluationOptionsPy>,
-        py: Python,
-    ) -> PyResult<Py<PyDict>> {
-        let gate = self.inner.get_feature_gate_with_options(
-            &user.inner,
-            name,
-            options.map_or(FeatureGateEvaluationOptions::default(), |o| o.into()),
-        );
-
-        feature_gate_to_py_dict(py, &gate)
     }
 
     #[pyo3(signature = (user, name))]
@@ -279,33 +268,17 @@ impl StatsigBasePy {
     #[pyo3(name="_INTERNAL_get_dynamic_config", signature = (user, name, options=None))]
     pub fn _internal_get_dynamic_config(
         &self,
+        py: Python,
         user: &StatsigUserPy,
         name: &str,
         options: Option<DynamicConfigEvaluationOptionsPy>,
-    ) -> String {
+    ) -> PyResult<Py<PyDict>> {
         self.inner.use_raw_dynamic_config_with_options(
             &user.inner,
             name,
             options.map_or(DynamicConfigEvaluationOptions::default(), |o| o.into()),
-            |raw| raw.unperformant_to_json_string(),
+            |raw| raw_dynamic_config_to_py_dict(py, raw),
         )
-    }
-
-    #[pyo3(name="_INTERNAL_get_dynamic_config_as_dict", signature = (user, name, options=None))]
-    pub fn _internal_get_dynamic_config_as_dict(
-        &self,
-        user: &StatsigUserPy,
-        name: &str,
-        options: Option<DynamicConfigEvaluationOptionsPy>,
-        py: Python,
-    ) -> PyResult<Py<PyDict>> {
-        let config = self.inner.get_dynamic_config_with_options(
-            &user.inner,
-            name,
-            options.map_or(DynamicConfigEvaluationOptions::default(), |o| o.into()),
-        );
-
-        dynamic_config_to_py_dict(py, &config)
     }
 
     #[pyo3(signature = (user, name))]
@@ -326,7 +299,7 @@ impl StatsigBasePy {
         name: &str,
         options: Option<ExperimentEvaluationOptionsPy>,
         py: Python,
-    ) -> String {
+    ) -> PyResult<Py<PyDict>> {
         let mut options_actual = options
             .as_ref()
             .map_or(ExperimentEvaluationOptions::default(), |o| o.into());
@@ -337,7 +310,7 @@ impl StatsigBasePy {
 
         self.inner
             .use_raw_experiment_with_options(&user.inner, name, options_actual, |raw| {
-                raw.unperformant_to_json_string()
+                raw_experiment_to_py_dict(py, raw)
             })
     }
 
@@ -603,41 +576,6 @@ fn convert_to_string(value: Option<&Bound<PyAny>>) -> Option<String> {
     let value = value?;
 
     value.extract::<String>().ok()
-}
-
-fn feature_gate_to_py_dict(py: Python, gate: &FeatureGate) -> PyResult<Py<PyDict>> {
-    let raw = PyDict::new(py);
-    raw.set_item("name", &gate.name)?;
-    raw.set_item("value", gate.value)?;
-    raw.set_item("ruleID", &gate.rule_id)?;
-    raw.set_item("idType", &gate.id_type)?;
-    raw.set_item("details", evaluation_details_to_py_dict(py, &gate.details)?)?;
-
-    Ok(raw.unbind())
-}
-
-fn dynamic_config_to_py_dict(py: Python, config: &DynamicConfig) -> PyResult<Py<PyDict>> {
-    let raw = PyDict::new(py);
-    raw.set_item("name", &config.name)?;
-    raw.set_item("value", map_to_py_dict_direct(py, &config.value)?)?;
-    raw.set_item("ruleID", &config.rule_id)?;
-    raw.set_item("idType", &config.id_type)?;
-    raw.set_item(
-        "details",
-        evaluation_details_to_py_dict(py, &config.details)?,
-    )?;
-
-    Ok(raw.unbind())
-}
-
-fn evaluation_details_to_py_dict(py: Python, details: &EvaluationDetails) -> PyResult<Py<PyDict>> {
-    let raw = PyDict::new(py);
-    raw.set_item("reason", &details.reason)?;
-    raw.set_item("lcut", details.lcut)?;
-    raw.set_item("received_at", details.received_at)?;
-    raw.set_item("version", details.version)?;
-
-    Ok(raw.unbind())
 }
 
 fn extract_event_metadata(metadata: Option<Bound<PyDict>>) -> Option<HashMap<String, Value>> {

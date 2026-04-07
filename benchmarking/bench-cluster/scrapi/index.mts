@@ -1,5 +1,6 @@
 import express from 'express';
 import _ from 'lodash';
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import zlib from 'node:zlib';
 
@@ -190,10 +191,25 @@ app.all('/shutdown', (_req, res) => {
 
 app.listen(8000, () => {
   console.log('Server is running on port 8000');
-  writeSpecNamesToFile(dcsV2);
+
+  fetch(`${cdnUrl}/v2/download_config_specs/${largeProjSdkKey}.json`)
+    .then((res) => res.json())
+    .then((dcs) => {
+      writeSpecNamesToFile(
+        dcs,
+        '/shared-volume/large_proj_spec_names.json',
+        'prefix',
+      );
+    });
+
+  writeSpecNamesToFile(dcsV2, '/shared-volume/spec_names.json', 'none');
 });
 
-function writeSpecNamesToFile(dcs: any) {
+function writeSpecNamesToFile(
+  dcs: any,
+  filePath: string,
+  filter: 'none' | 'prefix',
+) {
   const names: any = {
     feature_gates: [],
     dynamic_configs: [],
@@ -201,13 +217,41 @@ function writeSpecNamesToFile(dcs: any) {
     layers: [],
   };
 
+  const seen = new Set<string>();
+
+  const prefixCheck = (name: string) => {
+    if (filter !== 'prefix') {
+      return true;
+    }
+
+    const parts = name.split('_');
+    const prefix = parts.slice(0, -1).join('_');
+
+    const hasPrefix = seen.has(prefix);
+
+    if (hasPrefix) {
+      return false;
+    }
+
+    seen.add(prefix);
+    return true;
+  };
+
   Object.entries(dcs.feature_gates).forEach(([name, spec]: [string, any]) => {
+    if (!prefixCheck(name)) {
+      return;
+    }
+
     if (spec.entity === 'feature_gate') {
       names.feature_gates.push(name);
     }
   });
 
   Object.entries(dcs.dynamic_configs).forEach(([name, spec]: [string, any]) => {
+    if (!prefixCheck(name)) {
+      return;
+    }
+
     if (spec.entity === 'dynamic_config') {
       names.dynamic_configs.push(name);
     } else if (spec.entity === 'experiment' || spec.entity === 'autotune') {
@@ -216,15 +260,16 @@ function writeSpecNamesToFile(dcs: any) {
   });
 
   Object.entries(dcs.layer_configs).forEach(([name, spec]: [string, any]) => {
+    if (!prefixCheck(name)) {
+      return;
+    }
+
     if (spec.entity === 'layer') {
       names.layers.push(name);
     }
   });
 
-  fs.writeFileSync(
-    '/shared-volume/spec_names.json',
-    JSON.stringify(names, null, 2),
-  );
+  fs.writeFileSync(filePath, JSON.stringify(names, null, 2));
 }
 
 type RawStats = {

@@ -66,6 +66,22 @@ impl DynamicReturnable {
         }
     }
 
+    pub fn get_serde_map(&self) -> Option<serde_json::Map<String, JsonValue>> {
+        let bytes = match &self.value {
+            DynamicReturnableValue::JsonPointer(bytes) => bytes.get().as_bytes(),
+            DynamicReturnableValue::JsonStatic(bytes) => bytes.get().as_bytes(),
+            _ => return None,
+        };
+
+        match serde_json::from_slice(bytes) {
+            Ok(json) => Some(json),
+            Err(e) => {
+                log_e!(TAG, "Failed to parse json. Error: {}", e);
+                None
+            }
+        }
+    }
+
     pub fn get_json(&self) -> Option<HashMap<String, JsonValue>> {
         let bytes = match &self.value {
             DynamicReturnableValue::JsonPointer(bytes) => bytes.get().as_bytes(),

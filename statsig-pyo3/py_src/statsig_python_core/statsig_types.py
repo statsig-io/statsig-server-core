@@ -160,9 +160,9 @@ class DynamicConfig(BaseConfigEvaluation):
 class Experiment(BaseConfigEvaluation):
     group_name: Optional[str]
 
-    def __init__(self, name: str, raw: str):
+    def __init__(self, name: str, raw: dict):
         try:
-            data = json.loads(raw) or {}
+            data = raw or {}
             super().__init__(name, data, "Experiment")
             self.group_name = data.get("groupName")
         except Exception as error:

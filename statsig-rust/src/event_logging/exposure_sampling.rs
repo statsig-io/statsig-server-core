@@ -15,7 +15,7 @@ use std::sync::{
 };
 
 const TAG: &str = "ExposureSampling";
-const SAMPLING_TTL_MS: u64 = 60_000;
+const DEFAULT_EXPOSURE_SAMPLING_TTL_MS: u64 = 60_000;
 const SAMPLING_MAX_KEYS: usize = 100_000;
 
 #[derive(Debug)]
@@ -163,11 +163,12 @@ impl ExposureSampling {
     }
 
     fn try_reset_spec_sampling_set(&self) {
+        let ttl_ms = self.global_configs.get_exposure_spec_sampling_ttl_ms();
         let now = Utc::now().timestamp_millis() as u64;
         let last_sampling_reset = self.last_spec_sampling_reset.load(Ordering::Relaxed);
         let mut sampling_map = write_lock_or_noop!(TAG, self.spec_sampling_set);
 
-        let has_expired = now - last_sampling_reset > SAMPLING_TTL_MS;
+        let has_expired = now - last_sampling_reset > ttl_ms;
         let is_full = sampling_map.len() > SAMPLING_MAX_KEYS;
 
         if has_expired || is_full {
@@ -183,6 +184,7 @@ impl ExposureSampling {
     }
 
     fn try_reset_exposure_dedupe_set(&self) {
+        let ttl_ms = self.global_configs.get_exposure_dedupe_ttl_ms();
         let now = Utc::now().timestamp_millis() as u64;
         let last_dedupe_reset = self.last_exposure_dedupe_reset.load(Ordering::Relaxed);
         let mut dedupe_map = match self
@@ -196,7 +198,7 @@ impl ExposureSampling {
             }
         };
 
-        let has_expired = now - last_dedupe_reset > SAMPLING_TTL_MS;
+        let has_expired = now - last_dedupe_reset > ttl_ms;
         let is_full = dedupe_map.len() > SAMPLING_MAX_KEYS;
 
         if has_expired || is_full {
@@ -261,6 +263,37 @@ impl GlobalConfigs {
             "special_case_sampling_rate",
             parse_special_case_sampling_rate,
         )
+    }
+
+    fn get_exposure_spec_sampling_ttl_ms(&self) -> u64 {
+        fn parse_exposure_spec_sampling_ttl_ms(value: Option<&DynamicValue>) -> u64 {
+            match value {
+                Some(value) => value
+                    .float_value
+                    .map(|ttl_ms| ttl_ms as u64)
+                    .unwrap_or(DEFAULT_EXPOSURE_SAMPLING_TTL_MS),
+                None => DEFAULT_EXPOSURE_SAMPLING_TTL_MS,
+            }
+        }
+
+        self.use_sdk_config_value(
+            "exposure_spec_sampling_ttl_ms",
+            parse_exposure_spec_sampling_ttl_ms,
+        )
+    }
+
+    fn get_exposure_dedupe_ttl_ms(&self) -> u64 {
+        fn parse_exposure_dedupe_ttl_ms(value: Option<&DynamicValue>) -> u64 {
+            match value {
+                Some(value) => value
+                    .float_value
+                    .map(|ttl_ms| ttl_ms as u64)
+                    .unwrap_or(DEFAULT_EXPOSURE_SAMPLING_TTL_MS),
+                None => DEFAULT_EXPOSURE_SAMPLING_TTL_MS,
+            }
+        }
+
+        self.use_sdk_config_value("exposure_dedupe_ttl_ms", parse_exposure_dedupe_ttl_ms)
     }
 }
 

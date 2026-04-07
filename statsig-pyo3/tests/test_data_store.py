@@ -28,6 +28,8 @@ if "time" in updated_dcs_json_data:
 
 
 class MockDataStore(DataStore):
+    VERBOSE = False
+
     def __init__(self, test_param: str = ""):
         super().__init__()
         self.test_param = test_param
@@ -45,28 +47,34 @@ class MockDataStore(DataStore):
 
     def initialize(self):
         self.init_called = True
-        print("Initializing MockDataStore")
+        self._log("Initializing MockDataStore")
 
     def shutdown(self):
-        print("Shutting down MockDataStore")
+        self._log("Shutting down MockDataStore")
 
     def get(self, key: str) -> Optional[DataStoreResponse]:
-        print(f"Getting value for key: {key}")
+        self._log(f"Getting value for key: {key}")
         self.get_called_count += 1
         return DataStoreResponse(result=dcs_content, time=1234567890)
 
     def set(self, key: str, value: str, time: Optional[int] = None):
         self.content_set = value
-        print(f"Setting value for key: {key}")
+        self._log(f"Setting value for key: {key}")
 
     def support_polling_updates_for(self, key: str) -> bool:
-        print(
+        self._log(
             f"Checking if polling updates are supported for key: {key}: should_poll={self.should_poll}"
         )
         return self.should_poll
 
+    def _log(self, message: str):
+        if self.VERBOSE:
+            print(message)
+
 
 class MockBytesDataStore(DataStore):
+    VERBOSE = False
+
     def __init__(self, test_param: str = ""):
         super().__init__()
         self.test_param = test_param
@@ -87,10 +95,10 @@ class MockBytesDataStore(DataStore):
 
     def initialize(self):
         self.init_called = True
-        print("Initializing MockBytesDataStore")
+        self._log("Initializing MockBytesDataStore")
 
     def shutdown(self):
-        print("Shutting down MockBytesDataStore")
+        self._log("Shutting down MockBytesDataStore")
 
     def get(self, key: str) -> Optional[DataStoreResponse]:
         self.get_called_count += 1
@@ -98,26 +106,30 @@ class MockBytesDataStore(DataStore):
 
     def set(self, key: str, value: str, time: Optional[int] = None):
         self.set_called_count += 1
-        print(f"Setting value for key via string path: {key}")
+        self._log(f"Setting value for key via string path: {key}")
 
     def get_bytes(self, key: str) -> Optional[DataStoreBytesResponse]:
-        print(f"Getting bytes for key: {key}")
+        self._log(f"Getting bytes for key: {key}")
         self.get_bytes_called_count += 1
         return DataStoreBytesResponse(result=eval_proj_protobuf, time=1234567890)
 
     def set_bytes(self, key: str, value: bytes, time: Optional[int] = None):
         self.content_set = value
         self.set_bytes_called_count += 1
-        print(f"Setting bytes for key: {key}")
+        self._log(f"Setting bytes for key: {key}")
 
     def supports_bytes(self) -> bool:
         return True
 
     def support_polling_updates_for(self, key: str) -> bool:
-        print(
+        self._log(
             f"Checking if polling updates are supported for key: {key}: should_poll={self.should_poll}"
         )
         return self.should_poll
+
+    def _log(self, message: str):
+        if self.VERBOSE:
+            print(message)
 
 
 @pytest.fixture
