@@ -25,3 +25,4 @@ statsig-rust = { path = "../statsig-rust", features = [
 async-trait = "0.1.81"
 serde = { version = "1.0.204", features = ["derive"] }
 lazy_static = "1.5.0"
+rkyv = "0.8"

@@ -217,7 +217,7 @@ impl<'a> LayerRaw<'a> {
     }
 }
 
-#[derive(serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg(feature = "ffi-support")]
 pub struct PartialLayerRaw {
@@ -239,6 +239,28 @@ pub struct PartialLayerRaw {
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
     pub explicit_parameters: Option<ExplicitParameters>,
     pub parameter_rule_ids: Option<HashMap<InternedString, InternedString>>,
+}
+
+#[cfg(feature = "ffi-support")]
+impl From<&LayerRaw<'_>> for PartialLayerRaw {
+    fn from(raw: &LayerRaw<'_>) -> Self {
+        Self {
+            name: InternedString::from_str_ref(raw.name),
+            rule_id: Some(InternedString::from_string(
+                raw.rule_id.unperformant_to_string(),
+            )),
+            id_type: raw.id_type.cloned(),
+            group_name: raw.group_name.cloned(),
+            details: raw.details.clone(),
+            allocated_experiment_name: raw.allocated_experiment_name.cloned(),
+            disable_exposure: raw.disable_exposure,
+            user: raw.user.clone(),
+            secondary_exposures: raw.secondary_exposures.cloned(),
+            undelegated_secondary_exposures: raw.undelegated_secondary_exposures.cloned(),
+            explicit_parameters: raw.explicit_parameters.clone(),
+            parameter_rule_ids: raw.parameter_rule_ids.cloned(),
+        }
+    }
 }
 
 pub struct SuffixedRuleId<'a> {

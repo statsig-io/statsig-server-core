@@ -19,6 +19,7 @@ jobs:
       EVAL_PROJ_SDK_KEY: ${{ secrets.EVAL_PROJ_SDK_KEY }}
       BENCH_CLUSTER_SDK_KEY: ${{ secrets.BENCH_CLUSTER_SDK_KEY }}
     strategy:
+      fail-fast: false
       matrix:
         sdk-service:
           - dotnet-core

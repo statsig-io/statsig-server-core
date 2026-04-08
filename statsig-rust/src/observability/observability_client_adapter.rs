@@ -84,7 +84,7 @@ impl<T: ObservabilityClient> OpsStatsEventObserver for T {
                     ("exception".to_string(), error.exception),
                 ]);
                 self.increment(
-                    "statsig.sdk.sdk_exception_count".to_string(),
+                    "statsig.sdk.sdk_exceptions_count".to_string(),
                     1.0,
                     Some(tags),
                 );

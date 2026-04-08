@@ -1,6 +1,7 @@
 use crate::pyo_utils::py_dict_to_json_value_map;
 use crate::raw_evaluation_compat_py::{
     raw_dynamic_config_to_py_dict, raw_experiment_to_py_dict, raw_gate_to_py_dict,
+    raw_layer_to_py_dict, LayerParamExposureDataPy,
 };
 use crate::safe_gil::SafeGil;
 use crate::statsig_options_py::{safe_convert_to_statsig_options, StatsigOptionsPy};
@@ -332,7 +333,7 @@ impl StatsigBasePy {
         name: &str,
         options: Option<LayerEvaluationOptionsPy>,
         py: Python,
-    ) -> String {
+    ) -> PyResult<Py<PyDict>> {
         let mut options_actual = options
             .as_ref()
             .map_or(LayerEvaluationOptions::default(), |o| o.into());
@@ -343,14 +344,18 @@ impl StatsigBasePy {
 
         self.inner
             .use_raw_layer_with_options(&user.inner, name, options_actual, |raw| {
-                raw.unperformant_to_json_string()
+                raw_layer_to_py_dict(py, raw)
             })
     }
 
     #[pyo3(name="_INTERNAL_log_layer_param_exposure", signature = (raw, param_name))]
-    pub fn _internal_log_layer_param_exposure(&self, raw: String, param_name: String) {
+    pub fn _internal_log_layer_param_exposure(
+        &self,
+        raw: PyRef<LayerParamExposureDataPy>,
+        param_name: String,
+    ) {
         self.inner
-            .log_layer_param_exposure_from_raw(raw, param_name);
+            .log_layer_param_exposure_from_partial_raw(raw.inner.clone(), param_name);
     }
 
     #[pyo3(signature = (user, name, param_name))]

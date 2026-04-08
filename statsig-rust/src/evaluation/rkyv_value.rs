@@ -6,7 +6,14 @@ use serde::ser::{SerializeMap, SerializeSeq};
 // A bridging layer between Serde and Rkyv.
 // Based on Rkyv Examples: https://github.com/rkyv/rkyv/blob/main/rkyv/examples/json_like_schema.rs
 #[derive(
-    Archive, Debug, rkyv::Deserialize, rkyv::Serialize, Clone, serde::Serialize, serde::Deserialize,
+    Archive,
+    Debug,
+    rkyv::Deserialize,
+    rkyv::Serialize,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
 )]
 #[rkyv(serialize_bounds(
     __S: rkyv::ser::Writer + rkyv::ser::Allocator,
@@ -18,7 +25,7 @@ use serde::ser::{SerializeMap, SerializeSeq};
         __C: rkyv::validation::ArchiveContext,
     )
 ))]
-#[rkyv(derive(Debug))]
+#[rkyv(derive(Debug, PartialEq))]
 #[serde(untagged)]
 pub enum RkyvValue {
     Null,
@@ -59,12 +66,45 @@ impl serde::Serialize for ArchivedRkyvValue {
     }
 }
 
+impl PartialEq<ArchivedRkyvValue> for RkyvValue {
+    fn eq(&self, other: &ArchivedRkyvValue) -> bool {
+        match (self, other) {
+            (RkyvValue::Null, ArchivedRkyvValue::Null) => true,
+            (RkyvValue::Bool(a), ArchivedRkyvValue::Bool(b)) => a == b,
+            (RkyvValue::Number(a), ArchivedRkyvValue::Number(b)) => a == b,
+            (RkyvValue::String(a), ArchivedRkyvValue::String(b)) => a == b.as_str(),
+            (RkyvValue::Array(a), ArchivedRkyvValue::Array(b)) => {
+                a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| a == b)
+            }
+            (RkyvValue::Object(a), ArchivedRkyvValue::Object(b)) => {
+                a.len() == b.len()
+                    && b.iter()
+                        .all(|(key, value)| a.get(key.as_str()).is_some_and(|v| v == value))
+            }
+            _ => false,
+        }
+    }
+}
+
+impl PartialEq<RkyvValue> for ArchivedRkyvValue {
+    fn eq(&self, other: &RkyvValue) -> bool {
+        other == self
+    }
+}
+
 // ------------------------------------------------------------------------------- [ RkyvNumber ]
 
 #[derive(
-    Archive, Debug, rkyv::Deserialize, rkyv::Serialize, Clone, serde::Serialize, serde::Deserialize,
+    Archive,
+    Debug,
+    rkyv::Deserialize,
+    rkyv::Serialize,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
 )]
-#[rkyv(derive(Debug))]
+#[rkyv(derive(Debug, PartialEq))]
 #[serde(untagged)]
 pub enum RkyvNumber {
     PosInt(u64),
@@ -82,5 +122,22 @@ impl serde::Serialize for ArchivedRkyvNumber {
             ArchivedRkyvNumber::NegInt(n) => serializer.serialize_i64(n.to_native()),
             ArchivedRkyvNumber::Float(n) => serializer.serialize_f64(n.to_native()),
         }
+    }
+}
+
+impl PartialEq<ArchivedRkyvNumber> for RkyvNumber {
+    fn eq(&self, other: &ArchivedRkyvNumber) -> bool {
+        match (self, other) {
+            (RkyvNumber::PosInt(a), ArchivedRkyvNumber::PosInt(b)) => a == b,
+            (RkyvNumber::NegInt(a), ArchivedRkyvNumber::NegInt(b)) => a == b,
+            (RkyvNumber::Float(a), ArchivedRkyvNumber::Float(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl PartialEq<RkyvNumber> for ArchivedRkyvNumber {
+    fn eq(&self, other: &RkyvNumber) -> bool {
+        other == self
     }
 }
