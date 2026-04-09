@@ -1,7 +1,8 @@
 [profile.release]
-opt-level = 3
-lto = "thin"
 codegen-units = 1
+lto = true
+opt-level = "z"
+strip = true
 
 [workspace]
 members = [
@@ -25,7 +26,7 @@ exclude = [
 [workspace.package]
 edition = "2021"
 license = "ISC"
-version = "0.18.2-rc.2604080017"
+version = "0.18.2-beta.2604080312"
 homepage = "https://statsig.com/"
 authors = ["Statsig", "Daniel Loomb <daniel@statsig.com>"]
 readme = "README.md"
