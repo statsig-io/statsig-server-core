@@ -10,33 +10,43 @@ repositories {
     mavenCentral()
 }
 
-// Toggle RC-only resolution with either:
-//  -PcoreTag=rc
+// Toggle javacore prerelease channel resolution with either:
+//  -PcoreTag=beta|rc
 // or
-//  RELEASE_TAG=rc
-def rcOnly = (
-    (findProperty('coreTag') ?: findProperty('CORE_TAG') ?: System.getenv('RELEASE_TAG')) == 'rc'
-)
+//  RELEASE_TAG=beta|rc
+def coreTag = (
+    findProperty('coreTag') ?: findProperty('CORE_TAG') ?: System.getenv('RELEASE_TAG') ?: ''
+).toString().trim().toLowerCase()
+
+if (coreTag && !(coreTag in ['beta', 'rc'])) {
+    throw new GradleException("Unsupported coreTag '${coreTag}'. Use 'beta', 'rc', or leave it empty.")
+}
+
+def coreTagRegexes = [
+    beta: /(?i).*(?:^|[.-])beta(?:[.-]?\d+)?(?:[.-].*)?$/,
+    rc: /(?i).*(?:^|[.-])rc(?:[.-]?\d+)?(?:[.-].*)?$/
+]
+def coreTagRegex = coreTagRegexes[coreTag]
 
 configurations.all { cfg ->
     resolutionStrategy {
         componentSelection {
             all { ComponentSelection selection ->
-                if (!rcOnly) {
+                if (!coreTagRegex) {
                     return
                 }
 
                 def candidate = selection.candidate
-                // Only gate RC selection for javacore
+                // Only gate prerelease channel selection for javacore
                 def isStatsigTarget = candidate.group == 'com.statsig' && candidate.module == 'javacore'
                 if (!isStatsigTarget) {
                     return
                 }
 
                 def v = candidate.version ?: ''
-                def isRc = (v ==~ /(?i).*[\.-]rc([\.-]?\d+)?([\.-].*)?$/)
-                if (!isRc) {
-                    selection.reject('rc-only mode: rejecting non-rc version')
+                def isRequestedTag = (v ==~ coreTagRegex)
+                if (!isRequestedTag) {
+                    selection.reject("${coreTag}-only mode: rejecting non-${coreTag} version")
                 }
             }
         }
