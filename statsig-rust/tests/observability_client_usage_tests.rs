@@ -12,6 +12,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use crate::utils::env_var_guard::EnvVarGuard;
 use crate::utils::helpers::load_contents;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
@@ -584,7 +585,18 @@ async fn test_sdk_error_capture_uses_real_network_failure() {
             ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
         })
         .await;
+    mock_scrapi
+        .stub(EndpointStub {
+            method: Method::POST,
+            response: StubData::String("{\"success\": true}".to_string()),
+            ..EndpointStub::with_endpoint(Endpoint::SdkException)
+        })
+        .await;
 
+    let _sdk_exception_url_guard = EnvVarGuard::set(
+        "STATSIG_SDK_EXCEPTION_URL",
+        mock_scrapi.url_for_endpoint(Endpoint::SdkException),
+    );
     let weak_obs_client = Arc::downgrade(&obs_client) as Weak<dyn ObservabilityClient>;
     let statsig = Statsig::new(
         SDK_KEY,
@@ -603,6 +615,7 @@ async fn test_sdk_error_capture_uses_real_network_failure() {
     let mut found_error_call = false;
     let mut found_exception_count = false;
     let mut found_network_exception = false;
+    let mut found_sdk_exception_post = false;
 
     while Instant::now() < deadline {
         {
@@ -625,7 +638,7 @@ async fn test_sdk_error_capture_uses_real_network_failure() {
 
             found_exception_count = calls.iter().any(|call| match call {
                 RecordedCall::Increment(metric_name, value, Some(tags)) => {
-                    metric_name == "statsig.sdk.sdk_exception_count"
+                    metric_name == "statsig.sdk.sdk_exceptions_count"
                         && *value == 1.0
                         && tags
                             == &std::collections::HashMap::from([
@@ -637,7 +650,14 @@ async fn test_sdk_error_capture_uses_real_network_failure() {
             });
         }
 
-        if found_error_call && found_network_exception && found_exception_count {
+        found_sdk_exception_post =
+            mock_scrapi.times_called_for_endpoint(Endpoint::SdkException) > 0;
+
+        if found_error_call
+            && found_network_exception
+            && found_exception_count
+            && found_sdk_exception_post
+        {
             break;
         }
 
@@ -654,7 +674,11 @@ async fn test_sdk_error_capture_uses_real_network_failure() {
     );
     assert!(
         found_exception_count,
-        "Expected sdk_exception_count metric for the captured NetworkClient SDK error"
+        "Expected sdk_exceptions_count metric for the captured NetworkClient SDK error"
+    );
+    assert!(
+        found_sdk_exception_post,
+        "Expected SDK exception post to be routed to MockScrapi"
     );
 }
 

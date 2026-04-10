@@ -38,6 +38,7 @@ pub enum Endpoint {
     DownloadConfigSpecs,
     GetIdLists,
     DownloadIdListFile,
+    SdkException,
 }
 
 impl Display for Endpoint {
@@ -47,6 +48,7 @@ impl Display for Endpoint {
             Endpoint::DownloadConfigSpecs => write!(f, "/v2/download_config_specs"),
             Endpoint::GetIdLists => write!(f, "/v1/get_id_lists"),
             Endpoint::DownloadIdListFile => write!(f, "/v1/download_id_list_file"),
+            Endpoint::SdkException => write!(f, "/v1/sdk_exception"),
         }
     }
 }
