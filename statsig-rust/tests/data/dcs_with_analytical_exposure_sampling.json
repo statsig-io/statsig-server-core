@@ -1,0 +1,170 @@
+{
+  "dynamic_configs": {
+    "parent_config": {
+      "type": "dynamic_config",
+      "salt": "parent-config-salt",
+      "enabled": true,
+      "defaultValue": {},
+      "rules": [
+        {
+          "name": "parent_config_rule",
+          "passPercentage": 100,
+          "conditions": ["pass_analytics_gate"],
+          "returnValue": { "param": "config_value" },
+          "id": "parent_config_rule",
+          "salt": "parent_config_rule",
+          "idType": "userID",
+          "samplingRate": 201
+        }
+      ],
+      "idType": "userID",
+      "entity": "dynamic_config",
+      "version": 1
+    },
+    "parent_experiment": {
+      "type": "dynamic_config",
+      "salt": "parent-experiment-salt",
+      "enabled": true,
+      "defaultValue": {},
+      "rules": [
+        {
+          "name": "parent_experiment_rule",
+          "groupName": "Test",
+          "passPercentage": 100,
+          "conditions": ["pass_analytics_gate"],
+          "returnValue": { "param": "experiment_value" },
+          "id": "parent_experiment_rule",
+          "salt": "parent_experiment_rule",
+          "idType": "userID",
+          "isExperimentGroup": true,
+          "samplingRate": 201
+        }
+      ],
+      "idType": "userID",
+      "entity": "experiment",
+      "version": 1,
+      "isActive": true,
+      "hasSharedParams": false
+    }
+  },
+  "feature_gates": {
+    "analytics_gate": {
+      "type": "feature_gate",
+      "salt": "analytics-gate-salt",
+      "enabled": true,
+      "defaultValue": false,
+      "rules": [
+        {
+          "name": "analytics_gate_rule",
+          "passPercentage": 100,
+          "conditions": ["public"],
+          "returnValue": true,
+          "id": "analytics_gate_rule",
+          "salt": "analytics_gate_rule",
+          "idType": "userID"
+        }
+      ],
+      "idType": "userID",
+      "entity": "feature_gate",
+      "version": 1
+    },
+    "parent_gate": {
+      "type": "feature_gate",
+      "salt": "parent-gate-salt",
+      "enabled": true,
+      "defaultValue": false,
+      "rules": [
+        {
+          "name": "parent_gate_rule",
+          "passPercentage": 100,
+          "conditions": ["pass_analytics_gate"],
+          "returnValue": true,
+          "id": "parent_gate_rule",
+          "salt": "parent_gate_rule",
+          "idType": "userID",
+          "samplingRate": 201
+        }
+      ],
+      "idType": "userID",
+      "entity": "feature_gate",
+      "version": 1
+    }
+  },
+  "layer_configs": {
+    "parent_layer": {
+      "type": "dynamic_config",
+      "salt": "parent-layer-salt",
+      "enabled": true,
+      "defaultValue": { "param": "layer_default" },
+      "rules": [
+        {
+          "name": "parent_layer_rule",
+          "passPercentage": 100,
+          "conditions": ["pass_analytics_gate"],
+          "returnValue": { "param": "layer_value" },
+          "id": "parent_layer_rule",
+          "salt": "parent_layer_rule",
+          "idType": "userID",
+          "samplingRate": 201
+        }
+      ],
+      "idType": "userID",
+      "entity": "layer",
+      "version": 1
+    },
+    "json_sampled_layer": {
+      "type": "dynamic_config",
+      "salt": "json-sampled-layer-salt",
+      "enabled": true,
+      "defaultValue": { "param": "layer_default" },
+      "rules": [
+        {
+          "name": "json_sampled_layer_rule",
+          "passPercentage": 100,
+          "conditions": ["public"],
+          "returnValue": { "param": "layer_value" },
+          "id": "json_sampled_layer_rule",
+          "salt": "json_sampled_layer_rule",
+          "idType": "userID",
+          "samplingRate": 201
+        }
+      ],
+      "idType": "userID",
+      "entity": "layer",
+      "version": 1
+    }
+  },
+  "experiment_to_layer": {},
+  "has_updates": true,
+  "time": 1000,
+  "company_id": null,
+  "condition_map": {
+    "public": {
+      "type": "public",
+      "targetValue": null,
+      "operator": null,
+      "field": null,
+      "additionalValues": {},
+      "idType": "userID"
+    },
+    "pass_analytics_gate": {
+      "type": "pass_gate",
+      "targetValue": "analytics_gate",
+      "operator": null,
+      "field": null,
+      "additionalValues": {},
+      "idType": "userID"
+    }
+  },
+  "diagnostics": {
+    "initialize": 9999,
+    "dcs": 999,
+    "get_id_list": 99
+  },
+  "sdk_configs": {
+    "event_queue_size": 1800,
+    "event_logging_interval_seconds": 1,
+    "special_case_sampling_rate": 101,
+    "sampling_mode": "on"
+  }
+}

@@ -91,12 +91,7 @@ impl<'a> QueuedExposure<'a> for EnqueueLayerParamExpoOp<'a> {
     }
 
     fn get_extra_exposure_info_ref(&'a self) -> Option<&'a ExtraExposureInfo> {
-        self.get_layer_ref()
-            .__evaluation
-            .as_ref()?
-            .base
-            .exposure_info
-            .as_ref()
+        get_layer_exposure_info(self.get_layer_ref())
     }
 }
 
@@ -192,7 +187,7 @@ fn extract_exposure_info(layer: &Layer, parameter_name: &str) -> ExtractFromEval
     let mut version = layer.__version;
     let mut override_config_name = None;
 
-    if let Some(exposure_info) = evaluation.base.exposure_info.as_ref() {
+    if let Some(exposure_info) = get_layer_exposure_info(layer) {
         version = exposure_info.version;
         override_config_name = exposure_info.override_config_name.clone();
     }
@@ -204,6 +199,14 @@ fn extract_exposure_info(layer: &Layer, parameter_name: &str) -> ExtractFromEval
         version,
         override_config_name,
     )
+}
+
+fn get_layer_exposure_info(layer: &Layer) -> Option<&ExtraExposureInfo> {
+    layer
+        .__evaluation
+        .as_ref()
+        .and_then(|eval| eval.base.exposure_info.as_ref())
+        .or(layer.__exposure_info.as_ref())
 }
 
 fn extract_from_layer_ref(

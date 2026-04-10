@@ -160,13 +160,10 @@ pub fn make_layer(
         ),
     };
 
-    let mut version = None;
-    if let Some(exposure_info) = evaluation.as_ref().map(|e| &e.base.exposure_info) {
-        version = exposure_info
-            .as_ref()
-            .map(|info| info.version)
-            .unwrap_or_default();
-    }
+    let exposure_info = evaluation
+        .as_ref()
+        .and_then(|e| e.base.exposure_info.clone());
+    let version = exposure_info.as_ref().and_then(|info| info.version);
 
     Layer {
         name: name.to_string(),
@@ -182,6 +179,7 @@ pub fn make_layer(
         __event_logger_ptr: event_logger_ptr,
         __disable_exposure: disable_exposure,
         __version: version,
+        __exposure_info: exposure_info,
         __parameter_rule_ids: parameter_rule_ids,
     }
 }

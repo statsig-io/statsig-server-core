@@ -3,8 +3,10 @@ use std::collections::HashMap;
 use serde::Serialize;
 use serde_with::skip_serializing_none;
 
-use crate::evaluation::dynamic_returnable::DynamicReturnable;
 use crate::evaluation::evaluation_details::EvaluationDetails;
+use crate::evaluation::{
+    dynamic_returnable::DynamicReturnable, evaluation_types::ExtraExposureInfo,
+};
 use crate::interned_string::InternedString;
 use crate::specs_response::explicit_params::ExplicitParameters;
 use crate::user::StatsigUserLoggable;
@@ -181,6 +183,8 @@ pub struct LayerRaw<'a> {
     pub explicit_parameters: Option<ExplicitParameters>,
 
     pub parameter_rule_ids: Option<&'a HashMap<InternedString, InternedString>>,
+
+    pub exposure_info: Option<ExtraExposureInfo>,
 }
 
 impl<'a> LayerRaw<'a> {
@@ -203,6 +207,7 @@ impl<'a> LayerRaw<'a> {
             undelegated_secondary_exposures: None,
             explicit_parameters: None,
             parameter_rule_ids: None,
+            exposure_info: None,
         }
     }
 
@@ -239,6 +244,7 @@ pub struct PartialLayerRaw {
     pub undelegated_secondary_exposures: Option<Vec<SecondaryExposure>>,
     pub explicit_parameters: Option<ExplicitParameters>,
     pub parameter_rule_ids: Option<HashMap<InternedString, InternedString>>,
+    pub exposure_info: Option<ExtraExposureInfo>,
 }
 
 #[cfg(feature = "ffi-support")]
@@ -259,6 +265,7 @@ impl From<&LayerRaw<'_>> for PartialLayerRaw {
             undelegated_secondary_exposures: raw.undelegated_secondary_exposures.cloned(),
             explicit_parameters: raw.explicit_parameters.clone(),
             parameter_rule_ids: raw.parameter_rule_ids.cloned(),
+            exposure_info: raw.exposure_info.clone(),
         }
     }
 }

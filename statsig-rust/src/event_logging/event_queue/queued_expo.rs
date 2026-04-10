@@ -3,7 +3,10 @@ use std::{collections::HashMap, fmt::Display};
 use chrono::Utc;
 
 use crate::{
-    evaluation::{evaluation_types::ExtraExposureInfo, evaluator_result::EvaluatorResult},
+    evaluation::{
+        evaluation_types::ExtraExposureInfo,
+        evaluator_result::{result_to_extra_exposure_info, EvaluatorResult},
+    },
     event_logging::{
         event_logger::ExposureTrigger,
         exposure_sampling::{EvtSamplingDecision, ExposureSamplingKey},
@@ -194,13 +197,7 @@ impl<'a> EnqueueExposureOp<'a> {
         };
 
         if let Some(result) = result {
-            data.exposure_info = Some(ExtraExposureInfo {
-                sampling_rate: result.sampling_rate,
-                forward_all_exposures: result.forward_all_exposures,
-                has_seen_analytical_gates: result.has_seen_analytical_gates,
-                override_config_name: result.override_config_name.clone(),
-                version: result.version,
-            });
+            data.exposure_info = Some(result_to_extra_exposure_info(&result));
 
             data.rule_id = result.rule_id;
             data.version = result.version;
@@ -243,7 +240,7 @@ impl<'a> EnqueueExposureOp<'a> {
             version,
             override_spec_name: None,
             rule_passed: None,
-            exposure_info: None,
+            exposure_info: partial_raw.exposure_info,
             parameter_name: Some(parameter_name),
             explicit_params: partial_raw.explicit_parameters,
             allocated_experiment: partial_raw.allocated_experiment_name,

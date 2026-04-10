@@ -293,6 +293,7 @@ pub fn result_to_layer_raw<'a>(
             undelegated_secondary_exposures: result.undelegated_secondary_exposures.as_ref(),
             explicit_parameters: result.explicit_parameters.clone(),
             parameter_rule_ids: result.parameter_rule_ids.as_ref(),
+            exposure_info: Some(result_to_extra_exposure_info(result)),
         },
         None => LayerRaw::empty(layer_name, eval_details),
     }
@@ -551,13 +552,7 @@ fn get_exposure_name_if_not_hashed(
 fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEvaluation {
     let rule_id = create_suffixed_rule_id(result.rule_id.as_ref(), result.rule_id_suffix);
 
-    let exposure_info = ExtraExposureInfo {
-        sampling_rate: result.sampling_rate,
-        forward_all_exposures: result.forward_all_exposures,
-        has_seen_analytical_gates: result.has_seen_analytical_gates,
-        override_config_name: result.override_config_name.clone(),
-        version: result.version,
-    };
+    let exposure_info = result_to_extra_exposure_info(result);
 
     let name = get_exposure_name_if_not_hashed(spec_name, &result.name);
 
@@ -566,6 +561,16 @@ fn result_to_base_eval(spec_name: &str, result: &mut EvaluatorResult) -> BaseEva
         rule_id,
         secondary_exposures: std::mem::take(&mut result.secondary_exposures),
         exposure_info: Some(exposure_info),
+    }
+}
+
+pub fn result_to_extra_exposure_info(result: &EvaluatorResult) -> ExtraExposureInfo {
+    ExtraExposureInfo {
+        sampling_rate: result.sampling_rate,
+        forward_all_exposures: result.forward_all_exposures,
+        has_seen_analytical_gates: result.has_seen_analytical_gates,
+        override_config_name: result.override_config_name.clone(),
+        version: result.version,
     }
 }
 
