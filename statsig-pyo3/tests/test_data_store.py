@@ -118,9 +118,6 @@ class MockBytesDataStore(DataStore):
         self.set_bytes_called_count += 1
         self._log(f"Setting bytes for key: {key}")
 
-    def supports_bytes(self) -> bool:
-        return True
-
     def support_polling_updates_for(self, key: str) -> bool:
         self._log(
             f"Checking if polling updates are supported for key: {key}: should_poll={self.should_poll}"

@@ -59,7 +59,7 @@ pub fn new(
     }))
 }
 
-#[rustler::nif]
+#[rustler::nif(schedule = "DirtyIo")]
 pub fn initialize(env: Env<'_>, statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
     let _guard = ManagedEnvGuard::new(env);
     match statsig.statsig_core.read() {

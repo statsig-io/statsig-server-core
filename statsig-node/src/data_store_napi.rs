@@ -54,9 +54,6 @@ pub struct DataStore {
     pub get_bytes_fn:
         Option<ThreadsafeFunction<String, Promise<DataStoreBytesResponse>, String, false>>,
 
-    #[napi(js_name = "supportsBytes", ts_type = "boolean")]
-    pub supports_bytes: Option<bool>,
-
     #[napi(
         js_name = "set",
         ts_type = "(key: string, value: string, time?: number) => Promise<void>"
@@ -138,13 +135,7 @@ impl DataStoreTrait for DataStore {
     async fn get_bytes(&self, key: &str) -> Result<DataStoreBytesResponseActual, StatsigErr> {
         let fnc = match &self.get_bytes_fn {
             Some(f) => f,
-            None => {
-                let response = self.get(key).await?;
-                return Ok(DataStoreBytesResponseActual {
-                    time: response.time,
-                    result: response.result.map(|value| value.into_bytes()),
-                });
-            }
+            None => return Err(StatsigErr::BytesNotImplemented),
         };
 
         let result = match fnc.call_async(key.to_string()).await {
@@ -184,12 +175,7 @@ impl DataStoreTrait for DataStore {
     ) -> Result<(), StatsigErr> {
         let fnc = match &self.set_bytes_fn {
             Some(f) => f,
-            None => {
-                let value = std::str::from_utf8(value).map_err(|e| {
-                    DataStoreFailure(format!("Failed to decode bytes as UTF-8: {e}"))
-                })?;
-                return self.set(key, value, time).await;
-            }
+            None => return Err(StatsigErr::BytesNotImplemented),
         };
 
         let args = (key.to_string(), value.to_vec(), time.map(|t| t as i64));
@@ -219,10 +205,6 @@ impl DataStoreTrait for DataStore {
             log_e!(TAG, "supportPollingUpdatesFor error {}", err);
             false
         })
-    }
-
-    fn supports_bytes(&self) -> bool {
-        self.supports_bytes.unwrap_or(false)
     }
 }
 

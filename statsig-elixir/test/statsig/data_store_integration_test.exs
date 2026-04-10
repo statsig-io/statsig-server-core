@@ -2,6 +2,7 @@ defmodule Statsig.DataStore.IntegrationTest do
   use ExUnit.Case, async: false
 
   alias Statsig.DataStore
+  alias Statsig.DataStore.BytesResponse
   alias Statsig.DataStore.Response
   alias Statsig.User
 
@@ -57,8 +58,35 @@ defmodule Statsig.DataStore.IntegrationTest do
     end
 
     @impl true
+    def handle_get_bytes(key, state) do
+      notify(state, :handle_get_bytes)
+
+      if String.contains?(key, "|statsig-br|") do
+        {:ok, %BytesResponse{result: nil, time: nil}, state}
+      else
+        state = Map.update!(state, :get_count, &(&1 + 1))
+
+        result =
+          if Map.get(state, :return_valid_response, true) do
+            @eval_proj_data
+          else
+            ""
+          end
+
+        {:ok, %BytesResponse{result: result, time: 23}, state}
+      end
+    end
+
+    @impl true
     def handle_set(_key, _value, _time, state) do
       notify(state, :handle_set)
+      state = Map.update!(state, :set_count, &(&1 + 1))
+      {:ok, state}
+    end
+
+    @impl true
+    def handle_set_bytes(_key, _value, _time, state) do
+      notify(state, :handle_set_bytes)
       state = Map.update!(state, :set_count, &(&1 + 1))
       {:ok, state}
     end
@@ -85,6 +113,80 @@ defmodule Statsig.DataStore.IntegrationTest do
         enable_polling: Map.get(module_state, :enable_polling_count, 0)
       }
     end
+
+    def eval_proj_data, do: @eval_proj_data
+  end
+
+  defmodule MockScrapi do
+    defstruct [:pid, :socket, :specs_url]
+
+    def start_link(response_body, test_pid) do
+      {:ok, socket} =
+        :gen_tcp.listen(0, [
+          :binary,
+          active: false,
+          packet: :raw,
+          reuseaddr: true,
+          ip: {127, 0, 0, 1}
+        ])
+
+      {:ok, {{127, 0, 0, 1}, port}} = :inet.sockname(socket)
+      pid = spawn_link(fn -> accept_loop(socket, response_body, test_pid) end)
+
+      {:ok,
+       %__MODULE__{
+         pid: pid,
+         socket: socket,
+         specs_url: "http://127.0.0.1:#{port}/v2/download_config_specs"
+       }}
+    end
+
+    def specs_url(%__MODULE__{specs_url: specs_url}), do: specs_url
+
+    def stop(%__MODULE__{pid: pid, socket: socket}) do
+      :gen_tcp.close(socket)
+
+      if Process.alive?(pid) do
+        Process.unlink(pid)
+        Process.exit(pid, :shutdown)
+      end
+    end
+
+    defp accept_loop(socket, response_body, test_pid) do
+      case :gen_tcp.accept(socket) do
+        {:ok, client} ->
+          handle_client(client, response_body, test_pid)
+          accept_loop(socket, response_body, test_pid)
+
+        {:error, _reason} ->
+          :ok
+      end
+    end
+
+    defp handle_client(client, response_body, test_pid) do
+      case :gen_tcp.recv(client, 0, 5_000) do
+        {:ok, request} ->
+          request_line = request |> String.split("\r\n", parts: 2) |> hd()
+          send(test_pid, {:mock_scrapi_request, request_line})
+          :gen_tcp.send(client, http_response(response_body))
+
+        {:error, _reason} ->
+          :ok
+      end
+
+      :gen_tcp.close(client)
+    end
+
+    defp http_response(response_body) do
+      [
+        "HTTP/1.1 200 OK\r\n",
+        "content-type: application/json\r\n",
+        "content-length: #{byte_size(response_body)}\r\n",
+        "connection: close\r\n",
+        "\r\n",
+        response_body
+      ]
+    end
   end
 
   @tag capture_log: false
@@ -105,7 +207,13 @@ defmodule Statsig.DataStore.IntegrationTest do
       data_store: data_store_ref,
       disable_all_logging: true,
       specs_sync_interval_ms: 1000,
-      output_log_level: "debug"
+      output_log_level: "debug",
+      spec_adapter_configs: [
+        %Statsig.SpecAdapterConfig{
+          adapter_type: "data_store",
+          init_timeout_ms: 3_000
+        }
+      ]
     }
 
     sdk_key = System.get_env("test_api_key")
@@ -148,6 +256,11 @@ defmodule Statsig.DataStore.IntegrationTest do
     end)
 
     assert_receive {:callback, :init}
+    {:ok, mock_scrapi} = MockScrapi.start_link(TestDataStore.eval_proj_data(), parent)
+
+    on_exit(fn ->
+      MockScrapi.stop(mock_scrapi)
+    end)
 
     options = %Statsig.Options{
       data_store: data_store_ref,
@@ -159,8 +272,8 @@ defmodule Statsig.DataStore.IntegrationTest do
           init_timeout_ms: 3_000
         },
         %Statsig.SpecAdapterConfig{
-          adapter_type: "network",
-          specs_url: "https://api.statsigcdn.com/v2/download_config_specs"
+          adapter_type: "network_http",
+          specs_url: MockScrapi.specs_url(mock_scrapi)
         }
       ]
     }
@@ -177,6 +290,8 @@ defmodule Statsig.DataStore.IntegrationTest do
     end)
 
     Statsig.initialize()
+    assert_receive {:mock_scrapi_request, request_line}, 1_000
+    assert String.contains?(request_line, "/v2/download_config_specs/")
 
     user = User.new(%{user_id: "spec-adapter-user"})
     Process.sleep(4_000)

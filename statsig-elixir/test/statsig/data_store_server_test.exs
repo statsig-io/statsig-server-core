@@ -2,6 +2,7 @@ defmodule Statsig.DataStore.ServerTest do
   use ExUnit.Case, async: true
 
   alias Statsig.DataStore
+  alias Statsig.DataStore.BytesResponse
   alias Statsig.DataStore.Response
 
   @request_tag :statsig_data_store_request
@@ -32,6 +33,37 @@ defmodule Statsig.DataStore.ServerTest do
     send(server, {@request_tag, follow_up, :get, "foo"})
 
     assert_receive {:ok, ^follow_up, %Response{result: "baz", time: 123}}
+  end
+
+  test "forwards get_bytes and set_bytes requests", %{server: server} do
+    request = make_ref()
+    send(server, {@request_tag, request, :get_bytes, "foo"})
+
+    assert_receive {:ok, ^request, %BytesResponse{result: "bar", time: nil}}
+
+    update = make_ref()
+    send(server, {@request_tag, update, :set_bytes, {"foo", <<1, 2, 3>>, 123}})
+
+    assert_receive {:ok, ^update, :ok}
+
+    follow_up = make_ref()
+    send(server, {@request_tag, follow_up, :get_bytes, "foo"})
+
+    assert_receive {:ok, ^follow_up, %BytesResponse{result: <<1, 2, 3>>, time: 123}}
+  end
+
+  test "bytes requests report bytes not implemented when callback missing" do
+    {:ok, pid} =
+      Statsig.DataStore.Server.start_link(
+        __MODULE__.BrokenStore,
+        %{},
+        bindings_module: {__MODULE__.Bindings, self()}
+      )
+
+    request = make_ref()
+    send(pid, {@request_tag, request, :get_bytes, "foo"})
+
+    assert_receive {:error, ^request, "BytesNotImplemented"}
   end
 
   test "supports polling request defaults to false when not implemented", %{server: server} do
@@ -91,6 +123,7 @@ defmodule Statsig.DataStore.ServerTest do
 
   defmodule TestStore do
     @behaviour DataStore
+    alias Statsig.DataStore.BytesResponse
     alias Statsig.DataStore.Response
 
     @impl true
@@ -106,7 +139,21 @@ defmodule Statsig.DataStore.ServerTest do
     end
 
     @impl true
+    def handle_get_bytes(key, state) do
+      {:ok,
+       %BytesResponse{
+         result: get_in(state, [:values, key]),
+         time: state.last_time
+       }, state}
+    end
+
+    @impl true
     def handle_set(key, value, time, state) do
+      {:ok, %{state | values: Map.put(state.values, key, value), last_time: time}}
+    end
+
+    @impl true
+    def handle_set_bytes(key, value, time, state) do
       {:ok, %{state | values: Map.put(state.values, key, value), last_time: time}}
     end
 

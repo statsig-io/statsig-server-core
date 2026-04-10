@@ -1,11 +1,16 @@
 use async_trait::async_trait;
 use parking_lot::Mutex;
 use rustler::{
-    env::OwnedEnv, types::atom::Atom, types::local_pid::LocalPid, Encoder, Env, Error, ResourceArc,
-    Term,
+    env::OwnedEnv,
+    types::atom::Atom,
+    types::binary::{Binary, OwnedBinary},
+    types::local_pid::LocalPid,
+    Encoder, Env, Error, ResourceArc, Term,
 };
 use statsig_rust::{
-    data_store_interface::{DataStoreResponse, DataStoreTrait, RequestPath},
+    data_store_interface::{
+        DataStoreBytesResponse, DataStoreResponse, DataStoreTrait, RequestPath,
+    },
     log_d, StatsigErr,
 };
 use std::{cell::RefCell, mem};
@@ -51,7 +56,9 @@ mod atoms {
         initialize,
         shutdown,
         get,
+        get_bytes,
         set,
+        set_bytes,
         support_polling_updates_for,
         no_payload
     }
@@ -67,6 +74,13 @@ pub struct StatsigDataStoreReference {
 #[module = "Statsig.DataStore.Response"]
 pub struct StatsigDataStoreResponse {
     pub result: Option<String>,
+    pub time: Option<u64>,
+}
+
+#[derive(rustler::NifStruct)]
+#[module = "Statsig.DataStore.BytesResponse"]
+pub struct StatsigDataStoreBytesResponse<'a> {
+    pub result: Option<Binary<'a>>,
     pub time: Option<u64>,
 }
 
@@ -106,11 +120,24 @@ impl ElixirDataStore {
         }
     }
 
+    async fn request_bytes_data(
+        &self,
+        request: RequestKind,
+    ) -> Result<DataStoreBytesResponse, StatsigErr> {
+        match self.send_request(request).await? {
+            ResponsePayload::BytesData(value) => Ok(value),
+            _ => Err(StatsigErr::DataStoreFailure(
+                "Unexpected reply from Elixir data store".to_string(),
+            )),
+        }
+    }
+
     async fn send_request(&self, request: RequestKind) -> Result<ResponsePayload, StatsigErr> {
         log_d!(TAG, "Sending data store request to Elixir");
         let (sender, receiver) = oneshot::channel();
         let resource = ResourceArc::new(DataStoreRequestResource::new(
             request.response_kind(),
+            request.is_bytes_request(),
             sender,
         ));
 
@@ -162,11 +189,31 @@ impl DataStoreTrait for ElixirDataStore {
         self.request_data(RequestKind::Get(key.to_string())).await
     }
 
+    async fn get_bytes(&self, key: &str) -> Result<DataStoreBytesResponse, StatsigErr> {
+        self.request_bytes_data(RequestKind::GetBytes(key.to_string()))
+            .await
+    }
+
     async fn set(&self, key: &str, value: &str, time: Option<u64>) -> Result<(), StatsigErr> {
         log_d!(TAG, "Setting key in data store");
         self.request_unit(RequestKind::Set {
             key: key.to_string(),
             value: value.to_string(),
+            time,
+        })
+        .await
+    }
+
+    async fn set_bytes(
+        &self,
+        key: &str,
+        value: &[u8],
+        time: Option<u64>,
+    ) -> Result<(), StatsigErr> {
+        log_d!(TAG, "Setting bytes key in data store");
+        self.request_unit(RequestKind::SetBytes {
+            key: key.to_string(),
+            value: value.to_vec(),
             time,
         })
         .await
@@ -183,9 +230,15 @@ enum RequestKind {
     Initialize,
     Shutdown,
     Get(String),
+    GetBytes(String),
     Set {
         key: String,
         value: String,
+        time: Option<u64>,
+    },
+    SetBytes {
+        key: String,
+        value: Vec<u8>,
         time: Option<u64>,
     },
     SupportPolling(String),
@@ -197,7 +250,9 @@ impl RequestKind {
             RequestKind::Initialize => atoms::initialize(),
             RequestKind::Shutdown => atoms::shutdown(),
             RequestKind::Get(_) => atoms::get(),
+            RequestKind::GetBytes(_) => atoms::get_bytes(),
             RequestKind::Set { .. } => atoms::set(),
+            RequestKind::SetBytes { .. } => atoms::set_bytes(),
             RequestKind::SupportPolling(_) => atoms::support_polling_updates_for(),
         }
     }
@@ -206,8 +261,17 @@ impl RequestKind {
         match self {
             RequestKind::Initialize | RequestKind::Shutdown => atoms::no_payload().encode(env),
             RequestKind::Get(key) => key.encode(env),
+            RequestKind::GetBytes(key) => key.encode(env),
             RequestKind::Set { key, value, time } => {
                 (key.clone(), value.clone(), *time).encode(env)
+            }
+            RequestKind::SetBytes { key, value, time } => {
+                let mut binary =
+                    OwnedBinary::new(value.len()).expect("failed to allocate Elixir binary");
+                binary.copy_from_slice(value);
+                let binary = Binary::from_owned(binary, env);
+
+                (key.clone(), binary, *time).encode(env)
             }
             RequestKind::SupportPolling(path) => path.encode(env),
         }
@@ -215,12 +279,21 @@ impl RequestKind {
 
     fn response_kind(&self) -> ResponseKind {
         match self {
-            RequestKind::Initialize | RequestKind::Shutdown | RequestKind::Set { .. } => {
-                ResponseKind::Unit
-            }
+            RequestKind::Initialize
+            | RequestKind::Shutdown
+            | RequestKind::Set { .. }
+            | RequestKind::SetBytes { .. } => ResponseKind::Unit,
             RequestKind::Get(_) => ResponseKind::Data,
+            RequestKind::GetBytes(_) => ResponseKind::BytesData,
             RequestKind::SupportPolling(_) => ResponseKind::Bool,
         }
+    }
+
+    fn is_bytes_request(&self) -> bool {
+        matches!(
+            self,
+            RequestKind::GetBytes(_) | RequestKind::SetBytes { .. }
+        )
     }
 }
 
@@ -228,27 +301,32 @@ impl RequestKind {
 pub enum ResponseKind {
     Unit,
     Data,
+    BytesData,
     Bool,
 }
 
 pub enum ResponsePayload {
     Unit,
     Data(DataStoreResponse),
+    BytesData(DataStoreBytesResponse),
     Bool(bool),
 }
 
 pub struct DataStoreRequestResource {
     response_kind: ResponseKind,
+    is_bytes_request: bool,
     sender: Mutex<Option<oneshot::Sender<Result<ResponsePayload, StatsigErr>>>>,
 }
 
 impl DataStoreRequestResource {
     pub fn new(
         response_kind: ResponseKind,
+        is_bytes_request: bool,
         sender: oneshot::Sender<Result<ResponsePayload, StatsigErr>>,
     ) -> Self {
         Self {
             response_kind,
+            is_bytes_request,
             sender: Mutex::new(Some(sender)),
         }
     }
@@ -270,6 +348,13 @@ impl DataStoreRequestResource {
                 .map(|resp| ResponsePayload::Data(resp.into()))
                 .map_err(|err| {
                     self.send_err(format!("Failed to decode data payload: {err:?}"));
+                    err
+                }),
+            ResponseKind::BytesData => payload
+                .decode::<StatsigDataStoreBytesResponse>()
+                .map(|resp| ResponsePayload::BytesData(resp.into()))
+                .map_err(|err| {
+                    self.send_err(format!("Failed to decode bytes data payload: {err:?}"));
                     err
                 }),
         };
@@ -296,7 +381,13 @@ impl DataStoreRequestResource {
 
     fn send_err(&self, reason: String) {
         if let Some(sender) = self.sender.lock().take() {
-            let _ = sender.send(Err(StatsigErr::DataStoreFailure(reason)));
+            let error = if self.is_bytes_request && reason == "BytesNotImplemented" {
+                StatsigErr::BytesNotImplemented
+            } else {
+                StatsigErr::DataStoreFailure(reason)
+            };
+
+            let _ = sender.send(Err(error));
         }
     }
 }
@@ -305,6 +396,15 @@ impl From<StatsigDataStoreResponse> for DataStoreResponse {
     fn from(value: StatsigDataStoreResponse) -> Self {
         DataStoreResponse {
             result: value.result,
+            time: value.time,
+        }
+    }
+}
+
+impl From<StatsigDataStoreBytesResponse<'_>> for DataStoreBytesResponse {
+    fn from(value: StatsigDataStoreBytesResponse) -> Self {
+        DataStoreBytesResponse {
+            result: value.result.map(|result| result.as_slice().to_vec()),
             time: value.time,
         }
     }

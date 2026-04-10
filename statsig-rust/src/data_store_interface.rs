@@ -53,6 +53,21 @@ pub struct DataStoreBytesResponse {
     pub time: Option<u64>,
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct DataStoreCacheKeys {
+    pub plain_text: String,
+    pub statsig_br: String,
+}
+
+impl DataStoreCacheKeys {
+    pub(crate) fn from_selected_key(key: &str) -> Self {
+        Self {
+            plain_text: data_store_key_with_compress_format(key, CompressFormat::PlainText),
+            statsig_br: data_store_key_with_compress_format(key, CompressFormat::StatsigBr),
+        }
+    }
+}
+
 #[async_trait]
 pub trait DataStoreTrait: Send + Sync {
     async fn initialize(&self) -> Result<(), StatsigErr>;
@@ -65,24 +80,13 @@ pub trait DataStoreTrait: Send + Sync {
         value: &[u8],
         time: Option<u64>,
     ) -> Result<(), StatsigErr> {
-        let value = std::str::from_utf8(value).map_err(|e| {
-            StatsigErr::DataStoreFailure(format!("Failed to decode bytes as UTF-8: {e}"))
-        })?;
-        self.set(key, value, time).await
+        let _ = (key, value, time);
+        Err(StatsigErr::BytesNotImplemented)
     }
 
     async fn get_bytes(&self, key: &str) -> Result<DataStoreBytesResponse, StatsigErr> {
-        let response = self.get(key).await?;
-        Ok(DataStoreBytesResponse {
-            result: response.result.map(|value| value.into_bytes()),
-            time: response.time,
-        })
-    }
-
-    /// Whether this store can natively read/write bytes without UTF-8 conversion.
-    /// Defaults to `false` to preserve the existing string-first behavior.
-    fn supports_bytes(&self) -> bool {
-        false
+        let _ = key;
+        Err(StatsigErr::BytesNotImplemented)
     }
 
     async fn support_polling_updates_for(&self, path: RequestPath) -> bool;
@@ -112,16 +116,6 @@ pub(crate) fn get_data_store_key(
     hashing: &HashUtil,
     options: &StatsigOptions,
 ) -> String {
-    let compress_format = if options
-        .data_store
-        .as_ref()
-        .is_some_and(|data_store| data_store.supports_bytes())
-    {
-        CompressFormat::StatsigBr
-    } else {
-        CompressFormat::PlainText
-    };
-
     let key = match options
         .data_store_key_schema_version
         .clone()
@@ -135,5 +129,22 @@ pub(crate) fn get_data_store_key(
         DataStoreKeyVersion::V2Hashed => hashing.hash(sdk_key, &crate::HashAlgorithm::Sha256),
     };
 
-    format!("statsig|{path}|{compress_format}|{key}")
+    format!("statsig|{path}|{}|{key}", CompressFormat::PlainText)
+}
+
+fn data_store_key_with_compress_format(key: &str, compress_format: CompressFormat) -> String {
+    let target = format!("|{compress_format}|");
+
+    [
+        CompressFormat::PlainText,
+        CompressFormat::Gzip,
+        CompressFormat::StatsigBr,
+    ]
+    .into_iter()
+    .map(|format| format!("|{format}|"))
+    .find_map(|current| {
+        key.contains(&current)
+            .then(|| key.replacen(&current, &target, 1))
+    })
+    .unwrap_or_else(|| key.to_string())
 }

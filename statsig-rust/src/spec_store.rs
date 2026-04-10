@@ -3,7 +3,7 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::data_store_interface::DataStoreTrait;
+use crate::data_store_interface::{DataStoreCacheKeys, DataStoreTrait};
 use crate::evaluation::evaluator::SpecType;
 use crate::global_configs::GlobalConfigs;
 use crate::id_lists_adapter::{IdList, IdListsUpdateListener};
@@ -35,7 +35,7 @@ const TAG: &str = stringify!(SpecStore);
 pub struct SpecStore {
     pub data: Arc<RwLock<SpecStoreData>>,
 
-    data_store_key: String,
+    data_store_keys: DataStoreCacheKeys,
     data_store: Option<Arc<dyn DataStoreTrait>>,
     statsig_runtime: Arc<StatsigRuntime>,
     ops_stats: Arc<OpsStatsForInstance>,
@@ -58,7 +58,7 @@ impl SpecStore {
         }
 
         SpecStore {
-            data_store_key,
+            data_store_keys: DataStoreCacheKeys::from_selected_key(&data_store_key),
             data: Arc::new(RwLock::new(SpecStoreData {
                 values: SpecsResponseFull::default(),
                 time_received_at: None,
@@ -355,7 +355,12 @@ impl SpecStore {
         };
 
         // Data store writes now support both legacy JSON payloads and statsig-br protobuf bytes.
-        self.try_update_data_store(&source, data, apply_result.time_received_at);
+        self.try_update_data_store(
+            &source,
+            data,
+            apply_result.time_received_at,
+            matches!(response_format, SpecsFormat::Protobuf),
+        );
 
         self.ops_stats_log_config_propagation_diff(
             current_lcut,
@@ -435,7 +440,13 @@ impl SpecStore {
         }
     }
 
-    fn try_update_data_store(&self, source: &SpecsSource, mut data: ResponseData, now: u64) {
+    fn try_update_data_store(
+        &self,
+        source: &SpecsSource,
+        mut data: ResponseData,
+        now: u64,
+        is_protobuf: bool,
+    ) {
         if source != &SpecsSource::Network {
             return;
         }
@@ -453,41 +464,24 @@ impl SpecStore {
             None => return,
         };
 
-        let data_store_key = self.data_store_key.clone();
-        let supports_bytes = data_store.supports_bytes();
+        let data_store_key = if is_protobuf {
+            self.data_store_keys.statsig_br.clone()
+        } else {
+            self.data_store_keys.plain_text.clone()
+        };
 
         let spawn_result = self.statsig_runtime.spawn(
             "spec_store_update_data_store",
             move |_shutdown_notif| async move {
-                if supports_bytes {
-                    let data_bytes = match data.read_to_bytes() {
-                        Ok(bytes) => bytes,
-                        Err(e) => {
-                            log_e!(TAG, "Failed to read data as bytes: {}", e);
-                            return;
-                        }
-                    };
-
-                    let _ = data_store
-                        .set_bytes(&data_store_key, &data_bytes, Some(now))
-                        .await;
-                    return;
-                }
-
-                let data_string = match data.read_to_string() {
-                    Ok(s) => s,
+                let data_bytes = match data.read_to_bytes() {
+                    Ok(bytes) => bytes,
                     Err(e) => {
-                        log_w!(
-                            TAG,
-                            "Skipping data store write because payload is not valid UTF-8 and data store does not support bytes: {}",
-                            e
-                        );
+                        log_e!(TAG, "Failed to read data as bytes: {}", e);
                         return;
                     }
                 };
 
-                let _ = data_store
-                    .set(&data_store_key, &data_string, Some(now))
+                write_specs_to_data_store(data_store, data_store_key, data_bytes, now, is_protobuf)
                     .await;
             },
         );
@@ -525,6 +519,59 @@ impl SpecStore {
         }
 
         false
+    }
+}
+
+async fn write_specs_to_data_store(
+    data_store: Arc<dyn DataStoreTrait>,
+    data_store_key: String,
+    data_bytes: Vec<u8>,
+    now: u64,
+    is_protobuf: bool,
+) {
+    match data_store
+        .set_bytes(&data_store_key, &data_bytes, Some(now))
+        .await
+    {
+        Ok(()) => return,
+        Err(e @ StatsigErr::BytesNotImplemented) if is_protobuf => {
+            log_w!(
+                TAG,
+                "Failed to write protobuf specs to data store as bytes. Protobuf specs cannot fall back to string writes: {}",
+                e
+            );
+            return;
+        }
+        Err(e @ StatsigErr::BytesNotImplemented) => {
+            log_w!(
+                TAG,
+                "Data store bytes write is not implemented. Falling back to string write: {}",
+                e
+            );
+        }
+        Err(e) => {
+            log_w!(TAG, "Failed to write specs to data store as bytes: {}", e);
+            return;
+        }
+    }
+
+    let data_string = match String::from_utf8(data_bytes) {
+        Ok(s) => s,
+        Err(e) => {
+            log_w!(
+                TAG,
+                "Skipping data store string write because payload is not valid UTF-8: {}",
+                e
+            );
+            return;
+        }
+    };
+
+    if let Err(e) = data_store
+        .set(&data_store_key, &data_string, Some(now))
+        .await
+    {
+        log_w!(TAG, "Failed to write specs to data store as string: {}", e);
     }
 }
 

@@ -5,8 +5,6 @@ export class MockDataStore implements DataStore {
   data: Record<string, { result: string; time: number }> = {};
   byteData: Record<string, DataStoreBytesResponse> = {};
   supportPolling: Record<string, boolean> = {};
-  supportsBytes = true;
-
   readonly initialize = () => {
     this.log('initialize');
     return Promise.resolve();

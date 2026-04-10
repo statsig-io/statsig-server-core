@@ -14,7 +14,26 @@ use crate::{
 struct TestDataStore {
     get_response: Mutex<Option<DataStoreResponse>>,
     supports_polling: bool,
+    set_bytes_error: Option<&'static str>,
     calls: Mutex<Vec<(String, Option<String>)>>,
+}
+
+impl TestDataStore {
+    fn new(supports_polling: bool) -> Self {
+        Self {
+            get_response: Mutex::new(None),
+            supports_polling,
+            set_bytes_error: None,
+            calls: Mutex::new(vec![]),
+        }
+    }
+
+    fn new_with_set_bytes_failure(supports_polling: bool) -> Self {
+        Self {
+            set_bytes_error: Some("set_bytes failed"),
+            ..Self::new(supports_polling)
+        }
+    }
 }
 
 #[async_trait]
@@ -46,6 +65,23 @@ impl DataStoreTrait for TestDataStore {
         Ok(())
     }
 
+    async fn set_bytes(
+        &self,
+        key: &str,
+        value: &[u8],
+        time: Option<u64>,
+    ) -> Result<(), StatsigErr> {
+        self.calls.lock().push((
+            "set_bytes".to_string(),
+            Some(format!("{key}:{}:{time:?}", value.len())),
+        ));
+
+        match self.set_bytes_error {
+            Some(message) => Err(StatsigErr::DataStoreFailure(message.to_string())),
+            None => Err(StatsigErr::BytesNotImplemented),
+        }
+    }
+
     async fn support_polling_updates_for(&self, path: RequestPath) -> bool {
         self.calls.lock().push((
             "support_polling_updates_for".to_string(),
@@ -57,11 +93,7 @@ impl DataStoreTrait for TestDataStore {
 
 #[tokio::test]
 async fn test_spec_store_data_store_updates_forwarded_to_data_store() {
-    let data_store = Arc::new(TestDataStore {
-        get_response: Mutex::new(None),
-        supports_polling: true,
-        calls: Mutex::new(vec![]),
-    });
+    let data_store = Arc::new(TestDataStore::new(true));
 
     let options = StatsigOptions {
         data_store: Some(data_store.clone()),
@@ -91,21 +123,56 @@ async fn test_spec_store_data_store_updates_forwarded_to_data_store() {
 
     let calls = data_store.calls.lock();
 
-    assert_eq!(calls.len(), 1);
-    assert_eq!(calls[0].0, "set");
+    assert_eq!(calls.len(), 2);
+    assert_eq!(calls[0].0, "set_bytes");
+    assert_eq!(calls[1].0, "set");
 
-    let call_value = calls[0].1.as_ref().unwrap();
+    let bytes_call_value = calls[0].1.as_ref().unwrap();
+    assert!(bytes_call_value.starts_with("test:"));
+
+    let call_value = calls[1].1.as_ref().unwrap();
     assert!(call_value.len() > 100);
     assert!(call_value.contains("\"feature_gates\""));
 }
 
 #[tokio::test]
-async fn test_spec_store_skips_data_store_write_for_delta_responses() {
-    let data_store = Arc::new(TestDataStore {
-        get_response: Mutex::new(None),
-        supports_polling: true,
-        calls: Mutex::new(vec![]),
+async fn test_spec_store_data_store_string_fallback_requires_bytes_not_implemented() {
+    let data_store = Arc::new(TestDataStore::new_with_set_bytes_failure(true));
+
+    let options = StatsigOptions {
+        data_store: Some(data_store.clone()),
+        ..StatsigOptions::default()
+    };
+
+    let spec_store = SpecStore::new(
+        "test",
+        "test".to_string(),
+        StatsigRuntime::get_runtime(),
+        Arc::new(SdkEventEmitter::default()),
+        Some(&options),
+    );
+
+    let contents = include_bytes!("../../tests/data/eval_proj_dcs.json");
+    let update_result = spec_store.set_values(SpecsUpdate {
+        data: ResponseData::from_bytes(contents.to_vec()),
+        source: SpecsSource::Network,
+        received_at: 2000,
+        source_api: None,
     });
+
+    assert!(update_result.is_ok());
+
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+    let calls = data_store.calls.lock();
+
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].0, "set_bytes");
+}
+
+#[tokio::test]
+async fn test_spec_store_skips_data_store_write_for_delta_responses() {
+    let data_store = Arc::new(TestDataStore::new(true));
 
     let options = StatsigOptions {
         data_store: Some(data_store.clone()),
