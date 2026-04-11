@@ -5,14 +5,14 @@ pub fn djb2(input: &str) -> String {
 
 #[must_use]
 pub fn djb2_number(input: &str) -> i64 {
-    let mut hash: i64 = 0;
+    let mut hash = 0_i32;
 
-    for c in input.chars() {
-        hash = ((hash << 5).wrapping_sub(hash)).wrapping_add(c as i64);
+    for character in input.encode_utf16() {
+        hash = hash
+            .wrapping_shl(5)
+            .wrapping_sub(hash)
+            .wrapping_add(i32::from(character));
     }
 
-    // Convert to unsigned 32-bit integer
-    hash &= 0xFFFF_FFFF;
-
-    hash
+    i64::from(hash as u32)
 }
