@@ -21,7 +21,6 @@ pub struct DataStoreBasePy {
     shutdown_fn: Option<Py<PyAny>>,
     get_fn: Option<Py<PyAny>>,
     get_bytes_fn: Option<Py<PyAny>>,
-    supports_bytes_fn: Option<Py<PyAny>>,
     set_fn: Option<Py<PyAny>>,
     set_bytes_fn: Option<Py<PyAny>>,
     support_polling_updates_for_fn: Option<Py<PyAny>>,
@@ -176,11 +175,7 @@ impl DataStoreTrait for DataStoreBasePy {
 
     async fn get_bytes(&self, key: &str) -> Result<DataStoreBytesResponse, StatsigErr> {
         if self.get_bytes_fn.is_none() {
-            let response = self.get(key).await?;
-            return Ok(DataStoreBytesResponse {
-                result: response.result.map(|value| value.into_bytes()),
-                time: response.time,
-            });
+            return Err(StatsigErr::BytesNotImplemented);
         }
 
         let get_bytes_fn = self.get_bytes_fn.as_ref();
@@ -250,10 +245,7 @@ impl DataStoreTrait for DataStoreBasePy {
         time: Option<u64>,
     ) -> Result<(), StatsigErr> {
         if self.set_bytes_fn.is_none() {
-            let value = std::str::from_utf8(value).map_err(|e| {
-                StatsigErr::DataStoreFailure(format!("Failed to decode bytes as UTF-8: {e}"))
-            })?;
-            return self.set(key, value, time).await;
+            return Err(StatsigErr::BytesNotImplemented);
         }
 
         SafeGil::run(|py| {
@@ -319,28 +311,6 @@ impl DataStoreTrait for DataStoreBasePy {
                     );
                     false
                 }
-            }
-        })
-    }
-
-    fn supports_bytes(&self) -> bool {
-        let supports_bytes_fn = match &self.supports_bytes_fn {
-            Some(f) => f,
-            None => return false,
-        };
-
-        SafeGil::run(|py| {
-            let py = match py {
-                Some(py) => py,
-                None => {
-                    return false;
-                }
-            };
-
-            let result = supports_bytes_fn.call(py, (), None);
-            match result {
-                Ok(value) => value.extract::<bool>(py).unwrap_or_default(),
-                Err(_) => false,
             }
         })
     }

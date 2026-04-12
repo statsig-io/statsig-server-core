@@ -47,8 +47,8 @@ const TEST_COMMANDS: Record<string, string> = {
   elixir: [
     "cd statsig-elixir",
     "mix deps.get",
-    'FORCE_STATSIG_NATIVE_BUILD="true" mix test || true',
-    'for i in {1..3}; do FORCE_STATSIG_NATIVE_BUILD="true" mix test --failed && break; done', // retry any failed tests
+    'FORCE_STATSIG_NATIVE_BUILD="true" mix test --timeout 10000 || true',
+    'for i in {1..3}; do FORCE_STATSIG_NATIVE_BUILD="true" mix test --failed --timeout 10000 && break; done', // retry any failed tests
   ].join("&& "),
 
   go: [

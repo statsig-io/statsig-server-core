@@ -16,6 +16,16 @@ defmodule Statsig.DataStore.Response do
   @type t :: %__MODULE__{result: nil | String.t(), time: nil | non_neg_integer()}
 end
 
+defmodule Statsig.DataStore.BytesResponse do
+  @moduledoc """
+  Response struct returned from `handle_get_bytes/2`.
+  """
+
+  defstruct result: nil, time: nil
+
+  @type t :: %__MODULE__{result: nil | binary(), time: nil | non_neg_integer()}
+end
+
 defmodule Statsig.DataStore do
   @moduledoc """
   Behaviour and helper APIs for implementing a custom Statsig data store in Elixir.
@@ -38,7 +48,13 @@ defmodule Statsig.DataStore do
   @callback handle_get(String.t(), state()) ::
               {:ok, %Statsig.DataStore.Response{}, state()} | {:error, term()}
 
+  @callback handle_get_bytes(String.t(), state()) ::
+              {:ok, %Statsig.DataStore.BytesResponse{}, state()} | {:error, term()}
+
   @callback handle_set(String.t(), String.t(), non_neg_integer() | nil, state()) ::
+              {:ok, state()} | {:error, term()}
+
+  @callback handle_set_bytes(String.t(), binary(), non_neg_integer() | nil, state()) ::
               {:ok, state()} | {:error, term()}
 
   @callback handle_support_polling_updates_for(String.t(), state()) ::
@@ -46,7 +62,9 @@ defmodule Statsig.DataStore do
 
   @optional_callbacks handle_initialize: 1,
                       handle_shutdown: 1,
+                      handle_get_bytes: 2,
                       handle_set: 4,
+                      handle_set_bytes: 4,
                       handle_support_polling_updates_for: 2
 
   @doc """
@@ -78,6 +96,7 @@ defmodule Statsig.DataStore.Server do
   use GenServer
   require Logger
 
+  alias Statsig.DataStore.BytesResponse
   alias Statsig.DataStore.Response
 
   @request_tag :statsig_data_store_request
@@ -116,7 +135,7 @@ defmodule Statsig.DataStore.Server do
   @impl true
   def handle_info(
         {@request_tag, request_ref, request_type, payload},
-        %{module: module} = state
+        state
       ) do
     case dispatch(request_type, payload, state) do
       {:ok, reply_payload, new_module_state} ->
@@ -179,6 +198,25 @@ defmodule Statsig.DataStore.Server do
     end
   end
 
+  defp dispatch(:get_bytes, key, state) do
+    case maybe_call(state.module, :handle_get_bytes, 2, [key, state.module_state], :missing) do
+      :missing ->
+        {:error, :bytes_not_implemented}
+
+      {:ok, %BytesResponse{} = response, new_state} ->
+        {:ok, response, new_state}
+
+      {:ok, %BytesResponse{} = response} ->
+        {:ok, response, state.module_state}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      other ->
+        {:error, {:bad_return, {state.module, :handle_get_bytes, other}}}
+    end
+  end
+
   defp dispatch(:set, {key, value, time}, state) do
     case call_without_value(
            state.module,
@@ -189,6 +227,22 @@ defmodule Statsig.DataStore.Server do
       {:ok, new_state} -> {:ok, :ok, new_state}
       :noop -> {:ok, :ok, state.module_state}
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp dispatch(:set_bytes, {key, value, time}, state) do
+    case maybe_call(
+           state.module,
+           :handle_set_bytes,
+           4,
+           [key, value, time, state.module_state],
+           :missing
+         ) do
+      :missing -> {:error, :bytes_not_implemented}
+      {:ok, new_state} -> {:ok, :ok, new_state}
+      :ok -> {:ok, :ok, state.module_state}
+      {:error, reason} -> {:error, reason}
+      other -> {:error, {:bad_return, {state.module, :handle_set_bytes, other}}}
     end
   end
 
@@ -267,6 +321,8 @@ defmodule Statsig.DataStore.Server do
   end
 
   defp format_reason(reason) when is_binary(reason), do: reason
+
+  defp format_reason(:bytes_not_implemented), do: "BytesNotImplemented"
 
   defp format_reason({:bad_return, {module, fun, value}}),
     do: "Invalid return from #{inspect(module)}.#{fun}: #{inspect(value)}"

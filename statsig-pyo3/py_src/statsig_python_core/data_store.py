@@ -36,8 +36,6 @@ class DataStore(DataStoreBase):
         else:
             self.set_bytes_fn = None
 
-        self.supports_bytes_fn = self.supports_bytes
-
     def initialize(self):
         pass
 
@@ -57,7 +55,4 @@ class DataStore(DataStoreBase):
         pass
 
     def support_polling_updates_for(self, key: str) -> bool:
-        return False
-
-    def supports_bytes(self) -> bool:
         return False

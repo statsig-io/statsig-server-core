@@ -1,6 +1,7 @@
 use crate::evaluation::evaluation_details::EvaluationDetails;
 use crate::evaluation::evaluation_types::{
-    DynamicConfigEvaluation, ExperimentEvaluation, GateEvaluation, LayerEvaluation,
+    DynamicConfigEvaluation, ExperimentEvaluation, ExtraExposureInfo, GateEvaluation,
+    LayerEvaluation,
 };
 use crate::event_logging::event_logger::{EventLogger, ExposureTrigger};
 use crate::event_logging::event_queue::queued_layer_param_expo::EnqueueLayerParamExpoOp;
@@ -99,6 +100,9 @@ pub struct Layer {
     pub __disable_exposure: bool,
 
     pub __version: Option<u32>, // todo: rm when Java/PHP layer exposures are not a JSON round trip
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub __exposure_info: Option<ExtraExposureInfo>,
 
     #[serde(skip_serializing, skip_deserializing)]
     pub __event_logger_ptr: Option<Weak<EventLogger>>,

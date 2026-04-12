@@ -9,6 +9,7 @@ use utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 
 const DCS_EVAL_PROJ: &str = "eval_proj_dcs";
 const DCS_WITH_SAMPLING: &str = "dcs_with_sampling";
+const DCS_ANALYTICAL_EXPOSURE_SAMPLING: &str = "dcs_with_analytical_exposure_sampling";
 
 async fn setup(dcs_file: &str) -> (Statsig, Arc<MockEventLoggingAdapter>) {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
@@ -227,5 +228,61 @@ async fn test_rule_sampling() {
 
     // 2010 exposures. Sampled at 1 in 201. So we expect ~10 events.
     assert_gt!(event_count, 2);
+    assert_lt!(event_count, 20);
+}
+
+#[tokio::test]
+async fn test_analytical_secondary_gate_forces_sampled_parent_exposures() {
+    let (statsig, logging_adapter) = setup(DCS_ANALYTICAL_EXPOSURE_SAMPLING).await;
+
+    let user_count = 40;
+
+    for i in 0..user_count {
+        let user = StatsigUser::with_user_id(format!("user_{i}"));
+        let _ = statsig.check_gate(&user, "parent_gate");
+        let _ = statsig.get_dynamic_config(&user, "parent_config");
+        let _ = statsig.get_experiment(&user, "parent_experiment");
+        let layer = statsig.get_layer(&user, "parent_layer");
+        let _ = layer.get_string("param", String::new());
+    }
+
+    statsig.shutdown().await.unwrap();
+
+    let event_count = logging_adapter
+        .no_diagnostics_logged_event_count
+        .load(Ordering::SeqCst);
+
+    assert_eq!(event_count, user_count * 4);
+}
+
+#[tokio::test]
+async fn test_layer_json_exposure_uses_serialized_sampling_info() {
+    let (statsig, logging_adapter) = setup(DCS_ANALYTICAL_EXPOSURE_SAMPLING).await;
+
+    let analytic_layer = statsig.get_layer(&StatsigUser::with_user_id("single"), "parent_layer");
+    let analytic_layer_json: serde_json::Value =
+        serde_json::from_str(&serde_json::to_string(&analytic_layer).unwrap()).unwrap();
+    assert_eq!(
+        analytic_layer_json["__exposure_info"]["has_seen_analytical_gates"],
+        json!(true)
+    );
+
+    for i in 0..80 {
+        let user = StatsigUser::with_user_id(format!("user_{i}"));
+        let layer = statsig.get_layer(&user, "json_sampled_layer");
+        let layer_json = serde_json::to_string(&layer).unwrap();
+
+        let layer_value: serde_json::Value = serde_json::from_str(&layer_json).unwrap();
+        assert_eq!(layer_value["__exposure_info"]["sampling_rate"], json!(201));
+
+        statsig.log_layer_param_exposure_with_layer_json(layer_json, "param".to_string());
+    }
+
+    statsig.shutdown().await.unwrap();
+
+    let event_count = logging_adapter
+        .no_diagnostics_logged_event_count
+        .load(Ordering::SeqCst);
+
     assert_lt!(event_count, 20);
 }

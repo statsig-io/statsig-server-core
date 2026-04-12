@@ -1,6 +1,7 @@
 package com.statsig;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -55,16 +56,20 @@ class DataStoreTest {
 
     Assertions.assertTrue(dataStore.initCalled);
     Assertions.assertTrue(dataStore.shutdownCalled);
-    Assertions.assertEquals(dataStore.contentSet, downloadConfigSpecsJson);
+    Assertions.assertNull(dataStore.contentSet);
+    Assertions.assertArrayEquals(
+        downloadConfigSpecsJson.getBytes(StandardCharsets.UTF_8), dataStore.contentBytesSet);
   }
 
   static class MockDataStore implements DataStore {
     public boolean initCalled = false;
     public boolean shutdownCalled = false;
     public String contentSet = null;
+    public byte[] contentBytesSet = null;
     public boolean shouldPoll = false;
 
     public Map<String, DataStoreResponse> store = new HashMap<>();
+    public Map<String, DataStoreBytesResponse> bytesStore = new HashMap<>();
     public DataStoreResponse nextSetResponse = null;
 
     @Override
@@ -87,9 +92,22 @@ class DataStoreTest {
     }
 
     @Override
+    public CompletableFuture<DataStoreBytesResponse> getBytes(String key) {
+      return CompletableFuture.completedFuture(
+          bytesStore.getOrDefault(key, new DataStoreBytesResponse(null, null)));
+    }
+
+    @Override
     public CompletableFuture<Void> set(String key, String value, Long time) {
       contentSet = value;
       store.put(key, new DataStoreResponse(value, time != null ? time : 0L));
+      return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletableFuture<Void> setBytes(String key, byte[] value, Long time) {
+      contentBytesSet = value;
+      bytesStore.put(key, new DataStoreBytesResponse(value, time != null ? time : 0L));
       return CompletableFuture.completedFuture(null);
     }
 

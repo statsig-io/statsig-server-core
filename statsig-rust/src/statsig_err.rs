@@ -19,6 +19,7 @@ pub enum StatsigErr {
     IdListsAdapterFailedToInsertIdList,
     SpecsAdapterSkipPoll(String),
     DataStoreFailure(String),
+    BytesNotImplemented,
 
     // Network
     NetworkError(NetworkError),
@@ -80,6 +81,7 @@ impl Display for StatsigErr {
                 write!(f, "{adapter_name} skips scheduling polling")
             }
             StatsigErr::DataStoreFailure(message) => write!(f, "DataStore Error: {message}"),
+            StatsigErr::BytesNotImplemented => write!(f, "Bytes method not implemented"),
 
             StatsigErr::NetworkError(error) => write!(f, "NetworkError|{error}"),
             StatsigErr::GrpcError(e) => write!(f, "gRPC failure: {e}"),
@@ -135,6 +137,7 @@ impl StatsigErr {
             StatsigErr::IdListsAdapterFailedToInsertIdList => "IdListsAdapterFailedToInsertIdList",
             StatsigErr::SpecsAdapterSkipPoll(_) => "SpecsAdapterSkipPoll",
             StatsigErr::DataStoreFailure(_) => "DataStoreFailure",
+            StatsigErr::BytesNotImplemented => "BytesNotImplemented",
 
             StatsigErr::NetworkError(e) => e.name(),
             StatsigErr::GrpcError(_) => "GrpcError",

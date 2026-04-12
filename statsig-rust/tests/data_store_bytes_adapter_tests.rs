@@ -1,269 +1,168 @@
 mod utils;
 
 pub mod data_store_bytes_adapter_tests {
-    use crate::utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
-    use async_trait::async_trait;
-    use statsig_rust::{
-        data_store_interface::{
-            DataStoreBytesResponse, DataStoreResponse, DataStoreTrait, RequestPath,
-        },
-        SpecsSource, Statsig, StatsigErr, StatsigOptions,
+    use crate::assert_eventually;
+    use crate::utils::{
+        helpers::load_contents,
+        mock_data_store::MockDataStore,
+        mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData},
     };
-    use std::collections::HashMap;
-    use std::sync::{Arc, Mutex};
-    use tokio::time::{sleep, Duration};
+    use serde_json::json;
+    use statsig_rust::{SpecAdapterConfig, SpecsAdapterType, SpecsSource, Statsig, StatsigOptions};
+    use std::{collections::HashMap, sync::Arc};
 
     const EVAL_PROJ_PROTO_BYTES: &[u8] = include_bytes!("data/eval_proj_dcs.pb.br");
-    const EVAL_PROJ_JSON: &str = include_str!("data/eval_proj_dcs.json");
+    const BG_SYNC_INTERVAL_MS: u32 = 20;
 
-    struct BytesOnlyDataStore {
-        bytes: Vec<u8>,
-    }
+    #[tokio::test]
+    async fn test_empty_data_store_initializes_from_http_then_caches_proto_and_json() {
+        let data_store = Arc::new(MockDataStore::new_with_byte_cache(false));
+        let (mock_scrapi, statsig) =
+            setup_statsig_with_data_store_http("secret-ds-empty-http-fallback", data_store.clone())
+                .await;
 
-    impl BytesOnlyDataStore {
-        fn new(bytes: Vec<u8>) -> Self {
-            Self { bytes }
-        }
-    }
+        stub_dcs_with_proto(&mock_scrapi, EVAL_PROJ_PROTO_BYTES).await;
 
-    struct RecordingBytesCapableDataStore {
-        use_statsig_br_key: bool,
-        stored_string_key: Mutex<Option<String>>,
-        stored_bytes: Mutex<Option<(String, Vec<u8>)>>,
-    }
+        let init_details = statsig.initialize_with_details().await.unwrap();
+        assert!(init_details.init_success);
+        assert_eq!(init_details.source, SpecsSource::Network);
 
-    impl RecordingBytesCapableDataStore {
-        fn new(use_statsig_br_key: bool) -> Self {
-            Self {
-                use_statsig_br_key,
-                stored_string_key: Mutex::new(None),
-                stored_bytes: Mutex::new(None),
-            }
-        }
+        assert_eventually!(
+            || data_store.stored_proto_bytes().as_deref() == Some(EVAL_PROJ_PROTO_BYTES)
+        );
 
-        fn stored_string_key(&self) -> Option<String> {
-            self.stored_string_key.lock().unwrap().clone()
-        }
+        let next_json = dcs_json_with_time_and_checksum(1_999_999_999_999, "json-after-proto");
+        mock_scrapi.clear_requests();
+        stub_dcs_with_json(&mock_scrapi, next_json.clone()).await;
 
-        fn stored_bytes(&self) -> Option<(String, Vec<u8>)> {
-            self.stored_bytes.lock().unwrap().clone()
-        }
-    }
+        assert_eventually!(
+            || mock_scrapi.times_called_for_endpoint(Endpoint::DownloadConfigSpecs) > 0
+        );
+        assert_eventually!(
+            || data_store.stored_json_bytes().as_deref() == Some(next_json.as_bytes())
+        );
 
-    struct RecordingStringOnlyDataStore {
-        use_statsig_br_key: bool,
-        stored_string_key: Mutex<Option<String>>,
-        bytes_write_attempted: Mutex<bool>,
-    }
-
-    impl RecordingStringOnlyDataStore {
-        fn new(use_statsig_br_key: bool) -> Self {
-            Self {
-                use_statsig_br_key,
-                stored_string_key: Mutex::new(None),
-                bytes_write_attempted: Mutex::new(false),
-            }
-        }
-
-        fn stored_string_key(&self) -> Option<String> {
-            self.stored_string_key.lock().unwrap().clone()
-        }
-
-        fn bytes_write_attempted(&self) -> bool {
-            *self.bytes_write_attempted.lock().unwrap()
-        }
-    }
-
-    #[async_trait]
-    impl DataStoreTrait for BytesOnlyDataStore {
-        async fn initialize(&self) -> Result<(), StatsigErr> {
-            Ok(())
-        }
-
-        async fn shutdown(&self) -> Result<(), StatsigErr> {
-            Ok(())
-        }
-
-        async fn get(&self, _key: &str) -> Result<DataStoreResponse, StatsigErr> {
-            panic!("get() should not be called for bytes-only data store");
-        }
-
-        async fn set(
-            &self,
-            _key: &str,
-            _value: &str,
-            _time: Option<u64>,
-        ) -> Result<(), StatsigErr> {
-            panic!("set() should not be called for bytes-only data store");
-        }
-
-        async fn get_bytes(&self, key: &str) -> Result<DataStoreBytesResponse, StatsigErr> {
-            assert!(key.contains("|statsig-br|"));
-            Ok(DataStoreBytesResponse {
-                result: Some(self.bytes.clone()),
-                time: Some(1),
-            })
-        }
-
-        fn supports_bytes(&self) -> bool {
-            true
-        }
-
-        async fn support_polling_updates_for(&self, _path: RequestPath) -> bool {
-            true
-        }
-    }
-
-    #[async_trait]
-    impl DataStoreTrait for RecordingBytesCapableDataStore {
-        async fn initialize(&self) -> Result<(), StatsigErr> {
-            Ok(())
-        }
-
-        async fn shutdown(&self) -> Result<(), StatsigErr> {
-            Ok(())
-        }
-
-        async fn get(&self, _key: &str) -> Result<DataStoreResponse, StatsigErr> {
-            panic!("get() should not be called for statsig-br data store");
-        }
-
-        async fn set(&self, key: &str, _value: &str, _time: Option<u64>) -> Result<(), StatsigErr> {
-            *self.stored_string_key.lock().unwrap() = Some(key.to_string());
-            Ok(())
-        }
-
-        async fn set_bytes(
-            &self,
-            key: &str,
-            value: &[u8],
-            _time: Option<u64>,
-        ) -> Result<(), StatsigErr> {
-            *self.stored_bytes.lock().unwrap() = Some((key.to_string(), value.to_vec()));
-            Ok(())
-        }
-
-        async fn get_bytes(&self, _key: &str) -> Result<DataStoreBytesResponse, StatsigErr> {
-            Ok(DataStoreBytesResponse {
-                result: None,
-                time: None,
-            })
-        }
-
-        fn supports_bytes(&self) -> bool {
-            self.use_statsig_br_key
-        }
-
-        async fn support_polling_updates_for(&self, _path: RequestPath) -> bool {
-            false
-        }
+        assert!(data_store.num_set_bytes_calls() >= 2);
+        assert_eq!(data_store.num_set_calls(), 0);
     }
 
     #[tokio::test]
-    async fn test_data_store_adapter_uses_get_bytes_via_statsig() {
-        let data_store = Arc::new(BytesOnlyDataStore::new(EVAL_PROJ_PROTO_BYTES.to_vec()));
-        let mut options = StatsigOptions::new();
-        options.data_store = Some(data_store);
+    async fn test_proto_data_store_initializes_then_network_json_replaces_cache() {
+        let data_store = Arc::new(MockDataStore::with_proto_cache(EVAL_PROJ_PROTO_BYTES));
+        let (mock_scrapi, statsig) =
+            setup_statsig_with_data_store_http("secret-ds-proto-to-json", data_store.clone()).await;
 
-        let statsig = Statsig::new("secret-sdk-key", Some(Arc::new(options)));
+        let next_json = dcs_json_with_time_and_checksum(1_999_999_999_999, "json-from-network");
+        stub_dcs_with_json(&mock_scrapi, next_json.clone()).await;
+
         let init_details = statsig.initialize_with_details().await.unwrap();
         assert!(init_details.init_success);
         assert_eq!(
             init_details.source,
             SpecsSource::Adapter("DataStore".to_string())
         );
+        assert_eq!(statsig.get_dynamic_config_list().len(), 9);
+
+        assert_eventually!(
+            || data_store.stored_json_bytes().as_deref() == Some(next_json.as_bytes())
+        );
+        assert_eventually!(|| statsig.get_dynamic_config_list().is_empty());
     }
 
     #[tokio::test]
-    async fn test_string_only_data_store_writes_json_as_string() {
-        let mock_scrapi = MockScrapi::new().await;
-        mock_scrapi
-            .stub(EndpointStub {
-                method: Method::GET,
-                response: StubData::String(EVAL_PROJ_JSON.to_string()),
-                res_headers: Some(HashMap::from([(
-                    "Content-Type".to_string(),
-                    "application/json".to_string(),
-                )])),
-                ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
-            })
-            .await;
-        mock_scrapi
-            .stub(EndpointStub {
-                method: Method::POST,
-                response: StubData::String("{\"success\": true}".to_string()),
-                ..EndpointStub::with_endpoint(Endpoint::LogEvent)
-            })
-            .await;
+    async fn test_json_data_store_initializes_then_network_proto_replaces_cache() {
+        let cached_json = dcs_json_with_time_and_checksum(0, "cached-json");
+        let data_store = Arc::new(MockDataStore::with_json_cache(&cached_json));
+        let (mock_scrapi, statsig) =
+            setup_statsig_with_data_store_http("secret-ds-json-to-proto", data_store.clone()).await;
 
-        let data_store = Arc::new(RecordingStringOnlyDataStore::new(false));
-        let mut options = StatsigOptions::new();
-        options.data_store = Some(data_store.clone());
-        options.specs_url = Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs));
-        options.log_event_url = Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent));
+        stub_dcs_with_proto(&mock_scrapi, EVAL_PROJ_PROTO_BYTES).await;
 
-        let statsig = Statsig::new("secret-sdk-key", Some(Arc::new(options)));
+        let init_details = statsig.initialize_with_details().await.unwrap();
+        assert!(init_details.init_success);
+        assert_eq!(
+            init_details.source,
+            SpecsSource::Adapter("DataStore".to_string())
+        );
+        assert!(statsig.get_dynamic_config_list().is_empty());
+
+        assert_eventually!(
+            || data_store.stored_proto_bytes().as_deref() == Some(EVAL_PROJ_PROTO_BYTES)
+        );
+        assert_eventually!(|| statsig.get_dynamic_config_list().len() == 9);
+    }
+
+    #[tokio::test]
+    async fn test_data_store_bytes_failure_initializes_from_http_without_string_fallback() {
+        let cached_json = dcs_json_with_time_and_checksum(0, "cached-json");
+        let data_store = Arc::new(MockDataStore::with_json_cache(&cached_json));
+        data_store.mock_get_bytes_error("get_bytes failed");
+        let (mock_scrapi, statsig) =
+            setup_statsig_with_data_store_http("secret-ds-bytes-failure", data_store.clone()).await;
+
+        stub_dcs_with_proto(&mock_scrapi, EVAL_PROJ_PROTO_BYTES).await;
+
         let init_details = statsig.initialize_with_details().await.unwrap();
         assert!(init_details.init_success);
         assert_eq!(init_details.source, SpecsSource::Network);
+        assert_eq!(data_store.num_get_calls(), 0);
 
-        sleep(Duration::from_millis(100)).await;
-        assert!(data_store
-            .stored_string_key()
-            .as_deref()
-            .is_some_and(|key| key.contains("|plain_text|")));
-        assert!(!data_store.bytes_write_attempted());
+        assert_eventually!(
+            || data_store.stored_proto_bytes().as_deref() == Some(EVAL_PROJ_PROTO_BYTES)
+        );
     }
 
-    #[tokio::test]
-    async fn test_non_proto_data_store_writes_json_as_string_even_with_set_bytes() {
+    async fn setup_statsig_with_data_store_http(
+        sdk_key: &str,
+        data_store: Arc<MockDataStore>,
+    ) -> (MockScrapi, Statsig) {
+        std::env::set_var("STATSIG_RUNNING_TESTS", "true");
+
         let mock_scrapi = MockScrapi::new().await;
+        stub_log_event(&mock_scrapi).await;
+
+        let options = StatsigOptions {
+            data_store: Some(data_store),
+            specs_sync_interval_ms: Some(BG_SYNC_INTERVAL_MS),
+            spec_adapters_config: Some(vec![
+                SpecAdapterConfig {
+                    adapter_type: SpecsAdapterType::DataStore,
+                    init_timeout_ms: 3000,
+                    specs_url: None,
+                    authentication_mode: None,
+                    ca_cert_path: None,
+                    client_cert_path: None,
+                    client_key_path: None,
+                    domain_name: None,
+                },
+                SpecAdapterConfig {
+                    adapter_type: SpecsAdapterType::NetworkHttp,
+                    init_timeout_ms: 3000,
+                    specs_url: Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs)),
+                    authentication_mode: None,
+                    ca_cert_path: None,
+                    client_cert_path: None,
+                    client_key_path: None,
+                    domain_name: None,
+                },
+            ]),
+            log_event_url: Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent)),
+            ..StatsigOptions::new()
+        };
+
+        let statsig = Statsig::new(sdk_key, Some(Arc::new(options)));
+
+        (mock_scrapi, statsig)
+    }
+
+    async fn stub_dcs_with_proto(mock_scrapi: &MockScrapi, data: &[u8]) {
+        mock_scrapi.clear_stubs().await;
+        stub_log_event(mock_scrapi).await;
+
         mock_scrapi
             .stub(EndpointStub {
                 method: Method::GET,
-                response: StubData::String(EVAL_PROJ_JSON.to_string()),
-                res_headers: Some(HashMap::from([(
-                    "Content-Type".to_string(),
-                    "application/json".to_string(),
-                )])),
-                ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
-            })
-            .await;
-        mock_scrapi
-            .stub(EndpointStub {
-                method: Method::POST,
-                response: StubData::String("{\"success\": true}".to_string()),
-                ..EndpointStub::with_endpoint(Endpoint::LogEvent)
-            })
-            .await;
-
-        let data_store = Arc::new(RecordingBytesCapableDataStore::new(false));
-        let mut options = StatsigOptions::new();
-        options.data_store = Some(data_store.clone());
-        options.specs_url = Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs));
-        options.log_event_url = Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent));
-
-        let statsig = Statsig::new("secret-sdk-key", Some(Arc::new(options)));
-        let init_details = statsig.initialize_with_details().await.unwrap();
-        assert!(init_details.init_success);
-        assert_eq!(init_details.source, SpecsSource::Network);
-
-        sleep(Duration::from_millis(100)).await;
-
-        assert_eq!(data_store.stored_bytes(), None);
-        assert!(data_store
-            .stored_string_key()
-            .as_deref()
-            .is_some_and(|key| key.contains("|plain_text|")));
-    }
-
-    #[tokio::test]
-    async fn test_bytes_capable_statsig_br_data_store_writes_protobuf_bytes() {
-        let mock_scrapi = MockScrapi::new().await;
-        mock_scrapi
-            .stub(EndpointStub {
-                method: Method::GET,
-                response: StubData::Bytes(EVAL_PROJ_PROTO_BYTES.to_vec()),
+                response: StubData::Bytes(data.to_vec()),
                 res_headers: Some(HashMap::from([
                     (
                         "Content-Type".to_string(),
@@ -274,97 +173,26 @@ pub mod data_store_bytes_adapter_tests {
                 ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
             })
             .await;
-        mock_scrapi
-            .stub(EndpointStub {
-                method: Method::POST,
-                response: StubData::String("{\"success\": true}".to_string()),
-                ..EndpointStub::with_endpoint(Endpoint::LogEvent)
-            })
-            .await;
-
-        let data_store = Arc::new(RecordingBytesCapableDataStore::new(true));
-        let mut options = StatsigOptions::new();
-        options.data_store = Some(data_store.clone());
-        options.specs_url = Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs));
-        options.log_event_url = Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent));
-
-        let statsig = Statsig::new("secret-sdk-key", Some(Arc::new(options)));
-        let init_details = statsig.initialize_with_details().await.unwrap();
-        assert!(init_details.init_success);
-        assert_eq!(init_details.source, SpecsSource::Network);
-
-        sleep(Duration::from_millis(100)).await;
-
-        let stored_bytes = data_store.stored_bytes();
-        assert!(stored_bytes.is_some());
-        let (stored_key, stored_value) = stored_bytes.unwrap();
-        assert!(stored_key.contains("|statsig-br|"));
-        assert_eq!(stored_value, EVAL_PROJ_PROTO_BYTES);
-        assert_eq!(data_store.stored_string_key(), None);
     }
 
-    #[async_trait]
-    impl DataStoreTrait for RecordingStringOnlyDataStore {
-        async fn initialize(&self) -> Result<(), StatsigErr> {
-            Ok(())
-        }
+    async fn stub_dcs_with_json(mock_scrapi: &MockScrapi, data: String) {
+        mock_scrapi.clear_stubs().await;
+        stub_log_event(mock_scrapi).await;
 
-        async fn shutdown(&self) -> Result<(), StatsigErr> {
-            Ok(())
-        }
-
-        async fn get(&self, _key: &str) -> Result<DataStoreResponse, StatsigErr> {
-            panic!("get() should not be called for recording data store");
-        }
-
-        async fn set(&self, key: &str, _value: &str, _time: Option<u64>) -> Result<(), StatsigErr> {
-            *self.stored_string_key.lock().unwrap() = Some(key.to_string());
-            Ok(())
-        }
-
-        async fn set_bytes(
-            &self,
-            _key: &str,
-            _value: &[u8],
-            _time: Option<u64>,
-        ) -> Result<(), StatsigErr> {
-            *self.bytes_write_attempted.lock().unwrap() = true;
-            Ok(())
-        }
-
-        async fn get_bytes(&self, _key: &str) -> Result<DataStoreBytesResponse, StatsigErr> {
-            Ok(DataStoreBytesResponse {
-                result: None,
-                time: None,
-            })
-        }
-
-        async fn support_polling_updates_for(&self, _path: RequestPath) -> bool {
-            false
-        }
-
-        fn supports_bytes(&self) -> bool {
-            self.use_statsig_br_key
-        }
-    }
-
-    #[tokio::test]
-    async fn test_non_proto_string_only_data_store_skips_protobuf_network_write() {
-        let mock_scrapi = MockScrapi::new().await;
         mock_scrapi
             .stub(EndpointStub {
                 method: Method::GET,
-                response: StubData::Bytes(EVAL_PROJ_PROTO_BYTES.to_vec()),
-                res_headers: Some(HashMap::from([
-                    (
-                        "Content-Type".to_string(),
-                        "application/octet-stream".to_string(),
-                    ),
-                    ("Content-Encoding".to_string(), "statsig-br".to_string()),
-                ])),
+                response: StubData::String(data),
+                res_headers: Some(HashMap::from([(
+                    "Content-Type".to_string(),
+                    "application/json".to_string(),
+                )])),
                 ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
             })
             .await;
+    }
+
+    async fn stub_log_event(mock_scrapi: &MockScrapi) {
         mock_scrapi
             .stub(EndpointStub {
                 method: Method::POST,
@@ -372,20 +200,14 @@ pub mod data_store_bytes_adapter_tests {
                 ..EndpointStub::with_endpoint(Endpoint::LogEvent)
             })
             .await;
+    }
 
-        let data_store = Arc::new(RecordingStringOnlyDataStore::new(false));
-        let mut options = StatsigOptions::new();
-        options.data_store = Some(data_store.clone());
-        options.specs_url = Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs));
-        options.log_event_url = Some(mock_scrapi.url_for_endpoint(Endpoint::LogEvent));
-
-        let statsig = Statsig::new("secret-sdk-key", Some(Arc::new(options)));
-        let init_details = statsig.initialize_with_details().await.unwrap();
-        assert!(init_details.init_success);
-        assert_eq!(init_details.source, SpecsSource::Network);
-
-        sleep(Duration::from_millis(100)).await;
-        assert_eq!(data_store.stored_string_key(), None);
-        assert!(!data_store.bytes_write_attempted());
+    fn dcs_json_with_time_and_checksum(time: i64, checksum: &str) -> String {
+        let mut dcs: HashMap<String, serde_json::Value> =
+            serde_json::from_str(&load_contents("eval_proj_dcs.json")).unwrap();
+        dcs.insert("time".to_string(), json!(time));
+        dcs.insert("checksum".to_string(), json!(checksum));
+        dcs.insert("dynamic_configs".to_string(), json!({}));
+        serde_json::to_string(&dcs).unwrap()
     }
 }

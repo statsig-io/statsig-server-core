@@ -3,7 +3,9 @@ use std::sync::Arc;
 use chrono::Utc;
 
 use crate::{
-    evaluation::evaluation_types::{BaseEvaluation, ExperimentEvaluation, LayerEvaluation},
+    evaluation::evaluation_types::{
+        BaseEvaluation, ExperimentEvaluation, ExtraExposureInfo, LayerEvaluation,
+    },
     get_persistent_storage_key,
     interned_string::InternedString,
     log_d, log_error_to_statsig_and_console, make_sticky_value_from_experiment,
@@ -256,15 +258,14 @@ impl PersistentValuesManager {
             is_experiment_active: true,
             is_experiment_group: true,
 
-            // Not yet consumed by raw logic
             unsupported: false,
             is_in_layer: false,
             rule_id_suffix: None,
             override_reason: None,
-            sampling_rate: None,
-            forward_all_exposures: None,
-            override_config_name: None,
-            has_seen_analytical_gates: None,
+            sampling_rate: curr_result.sampling_rate,
+            forward_all_exposures: curr_result.forward_all_exposures,
+            override_config_name: curr_result.override_config_name,
+            has_seen_analytical_gates: curr_result.has_seen_analytical_gates,
             parameter_rule_ids: None,
         }
     }
@@ -552,7 +553,10 @@ fn sticky_value_to_experiment_evaluation(
 
             rule_id: sticky_rule_id,
             secondary_exposures: sticky_value.secondary_exposures.clone(),
-            exposure_info: None,
+            exposure_info: curr_experiment
+                .__evaluation
+                .as_ref()
+                .and_then(|eval| eval.base.exposure_info.clone()),
         },
         value: sticky_value
             .json_value
@@ -590,6 +594,7 @@ fn make_layer_from_sticky_value(curr_layer: Layer, sticky_value: &StickyValues) 
         sticky_group_name,
         sticky_config_delegate,
     );
+    let exposure_info = get_current_layer_exposure_info(&curr_layer);
 
     let value = sticky_value
         .json_value
@@ -610,6 +615,7 @@ fn make_layer_from_sticky_value(curr_layer: Layer, sticky_value: &StickyValues) 
         group_name: sticky_group_name_string,
         allocated_experiment_name: sticky_config_delegate_string,
         __version: sticky_value.config_version,
+        __exposure_info: exposure_info,
 
         // created new
         details,
@@ -648,7 +654,7 @@ fn sticky_value_to_layer_evaluation(
 
             rule_id: sticky_rule_id,
             secondary_exposures: sticky_value.secondary_exposures.clone(),
-            exposure_info: None,
+            exposure_info: get_current_layer_exposure_info(curr_layer),
         },
         value: sticky_value
             .json_value
@@ -666,6 +672,14 @@ fn sticky_value_to_layer_evaluation(
         // not yet supported
         parameter_rule_ids: None,
     }
+}
+
+fn get_current_layer_exposure_info(curr_layer: &Layer) -> Option<ExtraExposureInfo> {
+    curr_layer
+        .__evaluation
+        .as_ref()
+        .and_then(|eval| eval.base.exposure_info.clone())
+        .or(curr_layer.__exposure_info.clone())
 }
 
 fn prep_sticky_rule_id(sticky_value: &StickyValues) -> (InternedString, String) {
