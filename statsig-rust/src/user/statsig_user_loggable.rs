@@ -1,6 +1,9 @@
-use super::user_data::UserData;
+use super::user_data::{UserData, UserDataMap};
 use crate::{DynamicValue, StatsigUser};
-use serde::{ser::SerializeStruct, Deserialize, Serialize};
+use serde::{
+    ser::{SerializeMap, SerializeStruct},
+    Deserialize, Serialize,
+};
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
 
@@ -9,14 +12,14 @@ const TAG: &str = "StatsigUserLoggable";
 #[derive(Clone, Default)]
 pub struct StatsigUserLoggable {
     pub data: Arc<UserData>,
-    pub environment: Option<HashMap<String, DynamicValue>>,
+    pub environment: Option<UserDataMap>,
     pub global_custom: Option<HashMap<String, DynamicValue>>,
 }
 
 impl StatsigUserLoggable {
     pub fn new(
         user_inner: &Arc<UserData>,
-        environment: Option<HashMap<String, DynamicValue>>,
+        environment: Option<UserDataMap>,
         global_custom: Option<HashMap<String, DynamicValue>>,
     ) -> Self {
         Self {
@@ -31,7 +34,7 @@ impl StatsigUserLoggable {
     }
 
     pub fn default_console_capture_user(
-        environment: Option<HashMap<String, DynamicValue>>,
+        environment: Option<UserDataMap>,
         global_custom: Option<HashMap<String, DynamicValue>>,
     ) -> Self {
         Self::new(
@@ -81,10 +84,9 @@ impl<'de> Deserialize<'de> for StatsigUserLoggable {
             serde::de::Error::custom(format!("Error deserializing StatsigUserInner: {e}"))
         })?;
 
-        let environment = serde_json::from_value::<Option<HashMap<String, DynamicValue>>>(env)
-            .map_err(|e| {
-                serde::de::Error::custom(format!("Error deserializing StatsigUserInner: {e}"))
-            })?;
+        let environment = serde_json::from_value::<Option<UserDataMap>>(env).map_err(|e| {
+            serde::de::Error::custom(format!("Error deserializing StatsigUserInner: {e}"))
+        })?;
 
         Ok(StatsigUserLoggable {
             data: Arc::new(data),
@@ -111,7 +113,7 @@ where
 
 fn serialize_custom_field<S>(
     state: &mut S,
-    custom: &Option<HashMap<String, DynamicValue>>,
+    custom: &Option<UserDataMap>,
     global_custom: &Option<HashMap<String, DynamicValue>>,
 ) -> Result<(), S::Error>
 where
@@ -121,19 +123,68 @@ where
         return Ok(());
     }
 
-    let mut map = HashMap::new();
+    state.serialize_field(
+        "custom",
+        &MergedCustomFields {
+            custom: custom.as_ref(),
+            global_custom: global_custom.as_ref(),
+        },
+    )
+}
 
-    if let Some(global_custom) = global_custom.as_ref() {
-        for (k, v) in global_custom {
-            map.insert(k, v);
-        }
+struct MergedCustomFields<'a> {
+    custom: Option<&'a UserDataMap>,
+    global_custom: Option<&'a HashMap<String, DynamicValue>>,
+}
+
+impl MergedCustomFields<'_> {
+    fn serialized_len(&self) -> usize {
+        let global_len = self.global_custom.map_or(0, HashMap::len);
+        let custom_only_len = self.custom.map_or(0, |custom| {
+            custom
+                .keys()
+                .filter(|key| {
+                    !self
+                        .global_custom
+                        .is_some_and(|global_custom| global_custom.contains_key(*key))
+                })
+                .count()
+        });
+
+        global_len + custom_only_len
     }
+}
 
-    if let Some(custom) = custom.as_ref() {
-        for (k, v) in custom {
-            map.insert(k, v);
+impl Serialize for MergedCustomFields<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.serialized_len()))?;
+
+        if let Some(global_custom) = self.global_custom {
+            for (key, global_value) in global_custom {
+                let value = self
+                    .custom
+                    .and_then(|custom| custom.get(key))
+                    .unwrap_or(global_value);
+                map.serialize_entry(key, value)?;
+            }
         }
-    }
 
-    serialize_data_field(state, "custom", &Some(map))
+        if let Some(custom) = self.custom {
+            for (key, value) in custom {
+                if self
+                    .global_custom
+                    .is_some_and(|global_custom| global_custom.contains_key(key))
+                {
+                    continue;
+                }
+
+                map.serialize_entry(key, value)?;
+            }
+        }
+
+        map.end()
+    }
 }

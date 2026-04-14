@@ -21,6 +21,7 @@ serde_json = { version = "1.0.125", features = ["float_roundtrip"] }
 statsig-rust = { path = "../statsig-rust", features = [
     "with_grpc",
     "ffi-support",
+    "ordered_user_data_maps",
 ] }
 async-trait = "0.1.81"
 serde = { version = "1.0.204", features = ["derive"] }

@@ -1,6 +1,8 @@
 use crate::statsig_types_nfi::AllowedPrimitive;
 use rustler::NifStruct;
-use statsig_rust::{DynamicValue, StatsigUser as StatsigUserActual, StatsigUserBuilder};
+use statsig_rust::{
+    DynamicValue, StatsigUser as StatsigUserActual, StatsigUserBuilder, StatsigUserDataMap,
+};
 use std::collections::HashMap;
 
 macro_rules! to_value_with_dynamic {
@@ -13,7 +15,7 @@ macro_rules! to_value_with_dynamic {
                 };
                 (key, converted_value)
             })
-            .collect::<HashMap<String, DynamicValue>>()
+            .collect::<StatsigUserDataMap>()
     }};
 }
 

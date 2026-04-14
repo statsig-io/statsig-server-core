@@ -6,7 +6,7 @@ use pyo3::types::{
 use pyo3::{Bound, Py, PyAny, PyErr, PyResult, PyTypeCheck, Python};
 use serde_json::{json, Number, Value};
 use statsig_rust::evaluation::dynamic_string::DynamicString;
-use statsig_rust::{log_e, log_w, DynamicValue};
+use statsig_rust::{log_e, log_w, DynamicValue, StatsigUserDataMap};
 use std::borrow::Cow;
 use std::collections::HashMap;
 
@@ -234,9 +234,7 @@ pub fn py_any_to_dynamic_value(value: &Bound<PyAny>) -> PyResult<DynamicValue> {
 
 // ------------------------------------------------------------------------------- [ Statsig User Creation ]
 
-pub fn opt_py_dict_ref_to_hashmap(
-    data: Option<&Bound<'_, PyDict>>,
-) -> Option<HashMap<String, DynamicValue>> {
+pub fn opt_py_dict_ref_to_hashmap(data: Option<&Bound<'_, PyDict>>) -> Option<StatsigUserDataMap> {
     let data = data?;
     Some(py_dict_ref_to_hashmap(data))
 }
@@ -278,8 +276,8 @@ fn py_any_ref_to_dynamic_value(value: &Bound<'_, PyAny>) -> Option<DynamicValue>
     None
 }
 
-fn py_dict_ref_to_hashmap(dict: &Bound<'_, PyDict>) -> HashMap<String, DynamicValue> {
-    let mut values = HashMap::with_capacity(dict.len());
+fn py_dict_ref_to_hashmap(dict: &Bound<'_, PyDict>) -> StatsigUserDataMap {
+    let mut values = StatsigUserDataMap::with_capacity(dict.len());
 
     for (key, value) in dict.iter() {
         let dynamic_val = match py_any_ref_to_dynamic_value(&value) {
@@ -389,5 +387,5 @@ fn try_as_dict<'py>(value: &'py Bound<'py, PyAny>) -> Option<HashMap<String, Dyn
 
     // SAFETY: This is what the "safe" version does internally, but its faster because we skip the Error creation
     let pydict = unsafe { value.cast_unchecked::<PyDict>() };
-    Some(py_dict_ref_to_hashmap(pydict))
+    Some(py_dict_ref_to_hashmap(pydict).into_iter().collect())
 }

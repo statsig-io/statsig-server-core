@@ -1,7 +1,18 @@
 use crate::{evaluation::dynamic_value::DynamicValue, hashing};
+#[cfg(feature = "ordered_user_data_maps")]
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+#[cfg(not(feature = "ordered_user_data_maps"))]
 use std::collections::HashMap;
+
+#[cfg(feature = "ordered_user_data_maps")]
+pub type UserDataMapOf<T> = IndexMap<String, T>;
+#[cfg(not(feature = "ordered_user_data_maps"))]
+pub type UserDataMapOf<T> = HashMap<String, T>;
+
+pub type UserDataMap = UserDataMapOf<DynamicValue>;
+pub type UserDataStringMap = UserDataMapOf<String>;
 
 #[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Default)]
@@ -10,7 +21,7 @@ pub struct UserData {
     #[serde(rename = "userID")]
     pub user_id: Option<DynamicValue>,
     #[serde(rename = "customIDs")]
-    pub custom_ids: Option<HashMap<String, DynamicValue>>,
+    pub custom_ids: Option<UserDataMap>,
 
     pub email: Option<DynamicValue>,
     pub ip: Option<DynamicValue>,
@@ -18,11 +29,11 @@ pub struct UserData {
     pub country: Option<DynamicValue>,
     pub locale: Option<DynamicValue>,
     pub app_version: Option<DynamicValue>,
-    pub statsig_environment: Option<HashMap<String, DynamicValue>>,
+    pub statsig_environment: Option<UserDataMap>,
 
     #[serde(skip_serializing)]
-    pub private_attributes: Option<HashMap<String, DynamicValue>>,
-    pub custom: Option<HashMap<String, DynamicValue>>,
+    pub private_attributes: Option<UserDataMap>,
+    pub custom: Option<UserDataMap>,
 }
 
 impl UserData {

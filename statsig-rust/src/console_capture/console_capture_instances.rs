@@ -8,8 +8,8 @@ use crate::console_capture::console_log_line_levels::StatsigLogLineLevel;
 use parking_lot::RwLock;
 
 use crate::{
-    log_e, observability::ops_stats::OpsStatsForInstance, user::StatsigUserLoggable, DynamicValue,
-    StatsigOptions, OPS_STATS,
+    log_e, observability::ops_stats::OpsStatsForInstance, user::user_data::UserDataMap,
+    user::StatsigUserLoggable, DynamicValue, StatsigOptions, OPS_STATS,
 };
 
 const TAG: &str = stringify!(ConsoleCaptureRegistry);
@@ -51,12 +51,12 @@ impl ConsoleCaptureInstance {
         let loggable_user = if let Some(console_capture_user) = console_capture_options.user {
             StatsigUserLoggable::new(
                 &console_capture_user.data,
-                environment.clone(),
+                to_user_data_map(environment),
                 statsig_options.global_custom_fields.clone(),
             )
         } else {
             StatsigUserLoggable::default_console_capture_user(
-                environment.clone(),
+                to_user_data_map(environment),
                 statsig_options.global_custom_fields.clone(),
             )
         };
@@ -72,6 +72,15 @@ impl ConsoleCaptureInstance {
     pub fn is_enabled(&self) -> bool {
         self.enabled
     }
+}
+
+fn to_user_data_map(environment: &Option<HashMap<String, DynamicValue>>) -> Option<UserDataMap> {
+    environment.as_ref().map(|environment| {
+        environment
+            .iter()
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect()
+    })
 }
 
 impl ConsoleCaptureRegistry {

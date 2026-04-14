@@ -1,5 +1,5 @@
 use serde_json::Value;
-use statsig_rust::DynamicValue;
+use statsig_rust::{DynamicValue, StatsigUserDataMap, StatsigUserDataStringMap};
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::{os::raw::c_char, os::raw::c_int};
@@ -99,7 +99,7 @@ pub extern "C" fn free_string(s: *mut c_char) {
     let _ = unsafe { CString::from_raw(s) };
 }
 
-pub fn parse_json_to_map(json_str: Option<String>) -> Option<HashMap<String, DynamicValue>> {
+pub fn parse_json_to_map(json_str: Option<String>) -> Option<StatsigUserDataMap> {
     if let Some(json_str) = json_str {
         match serde_json::from_str::<HashMap<String, Value>>(&json_str) {
             Ok(map) => {
@@ -116,6 +116,6 @@ pub fn parse_json_to_map(json_str: Option<String>) -> Option<HashMap<String, Dyn
     }
 }
 
-pub fn parse_json_to_str_map(json_str: Option<String>) -> Option<HashMap<String, String>> {
+pub fn parse_json_to_str_map(json_str: Option<String>) -> Option<StatsigUserDataStringMap> {
     json_str.and_then(|s| serde_json::from_str(&s).ok())
 }
