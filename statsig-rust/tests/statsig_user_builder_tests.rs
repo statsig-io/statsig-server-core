@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use statsig_rust::{dyn_value, evaluation::dynamic_string::DynamicString, StatsigUserBuilder};
 use std::collections::HashMap;
 
@@ -155,7 +156,7 @@ fn test_setting_attr_map_fields() {
 
     assert_eq!(
         user.data.custom,
-        Some(HashMap::from([(
+        Some(IndexMap::from([(
             "test_custom_again".to_string(),
             dyn_value!("a"),
         )]))
@@ -165,8 +166,9 @@ fn test_setting_attr_map_fields() {
     // assert_eq!(user.private_attributes, None);
     assert_eq!(
         user.data.private_attributes,
-        Some(HashMap::from([
-            ("test_private".to_string(), dyn_value!(2),)
-        ]))
+        Some(IndexMap::from([(
+            "test_private".to_string(),
+            dyn_value!(2),
+        )]))
     );
 }

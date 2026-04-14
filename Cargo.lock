@@ -3006,6 +3006,7 @@ dependencies = [
  "file-guard",
  "flate2",
  "futures",
+ "indexmap 2.13.0",
  "lazy_static",
  "libc",
  "log",

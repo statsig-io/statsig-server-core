@@ -1,9 +1,14 @@
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::statsig_metadata;
 use crate::{dyn_value, evaluation::dynamic_string::DynamicString};
-use std::{collections::HashMap, sync::Arc};
+use indexmap::IndexMap;
+use std::sync::Arc;
 
-use super::{into_optional::IntoOptional, unit_id::UnitID, user_data::UserData};
+use super::{
+    into_optional::IntoOptional,
+    unit_id::UnitID,
+    user_data::{IntoOptionalUserDataMap, UserData, UserDataMap},
+};
 
 #[derive(Clone)]
 pub struct StatsigUser {
@@ -23,12 +28,13 @@ impl StatsigUser {
     }
 
     #[must_use]
-    pub fn with_custom_ids<K, U>(custom_ids: HashMap<K, U>) -> Self
+    pub fn with_custom_ids<K, U, I>(custom_ids: I) -> Self
     where
+        I: IntoIterator<Item = (K, U)>,
         K: Into<String>,
         U: Into<UnitID>,
     {
-        let custom_ids: HashMap<String, DynamicValue> = custom_ids
+        let custom_ids: UserDataMap = custom_ids
             .into_iter()
             .map(|(k, v)| (k.into(), v.into().into()))
             .collect();
@@ -75,17 +81,13 @@ macro_rules! string_field_accessor {
 
 macro_rules! map_field_accessor {
     ($self:ident, $getter_name:ident, $setter_name:ident, $field:ident) => {
-        pub fn $getter_name(&self) -> Option<&HashMap<String, DynamicValue>> {
+        pub fn $getter_name(&self) -> Option<&UserDataMap> {
             self.data.$field.as_ref()
         }
 
-        pub fn $setter_name<K, V>(&mut self, value: impl IntoOptional<HashMap<K, V>>)
-        where
-            K: Into<String>,
-            V: Into<DynamicValue>,
-        {
+        pub fn $setter_name(&mut self, value: impl IntoOptionalUserDataMap) {
             let mut_data = Arc::make_mut(&mut self.data);
-            let value = match value.into_optional() {
+            let value = match value.into_optional_user_data_map() {
                 Some(value) => value,
                 None => {
                     mut_data.$field = None;
@@ -93,12 +95,7 @@ macro_rules! map_field_accessor {
                 }
             };
 
-            mut_data.$field = Some(
-                value
-                    .into_iter()
-                    .map(|(k, v)| (k.into(), v.into()))
-                    .collect(),
-            );
+            mut_data.$field = Some(value);
         }
     };
 }
@@ -123,7 +120,7 @@ impl StatsigUser {
 
     // ---------------------------------------- [Custom IDs]
 
-    pub fn get_custom_ids(&self) -> Option<HashMap<&str, &str>> {
+    pub fn get_custom_ids(&self) -> Option<IndexMap<&str, &str>> {
         let mapped = self
             .data
             .custom_ids
@@ -135,8 +132,9 @@ impl StatsigUser {
         Some(mapped)
     }
 
-    pub fn set_custom_ids<K, U>(&mut self, custom_ids: HashMap<K, U>)
+    pub fn set_custom_ids<K, U, I>(&mut self, custom_ids: I)
     where
+        I: IntoIterator<Item = (K, U)>,
         K: Into<String>,
         U: Into<UnitID>,
     {
@@ -167,7 +165,7 @@ impl StatsigUser {
 
     // ---------------------------------------- [ Statsig Environment ]
 
-    pub fn get_statsig_environment(&self) -> Option<HashMap<&str, &str>> {
+    pub fn get_statsig_environment(&self) -> Option<IndexMap<&str, &str>> {
         let mapped = self
             .data
             .statsig_environment
@@ -179,8 +177,9 @@ impl StatsigUser {
         Some(mapped)
     }
 
-    pub fn set_statsig_environment<K, U>(&mut self, statsig_environment: Option<HashMap<K, U>>)
+    pub fn set_statsig_environment<K, U, I>(&mut self, statsig_environment: Option<I>)
     where
+        I: IntoIterator<Item = (K, U)>,
         K: Into<String>,
         U: Into<String>,
     {
@@ -194,7 +193,7 @@ impl StatsigUser {
             }
         };
 
-        let statsig_environment: HashMap<String, DynamicValue> = statsig_environment
+        let statsig_environment: UserDataMap = statsig_environment
             .into_iter()
             .map(|(k, v)| (k.into(), v.into().into()))
             .collect();

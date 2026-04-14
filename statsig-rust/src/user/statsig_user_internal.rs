@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use chrono::Utc;
 
-use super::StatsigUserLoggable;
+use super::{user_data::UserDataMap, StatsigUserLoggable};
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::hashing::djb2_number;
 use crate::{evaluation::dynamic_string::DynamicString, Statsig};
@@ -137,13 +137,14 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
 
     pub fn to_loggable(&self) -> StatsigUserLoggable {
         let mut environment = self.user_ref.data.statsig_environment.clone();
-        let mut global_custom: Option<HashMap<String, DynamicValue>> = None;
+        let mut global_custom: Option<UserDataMap> = None;
 
         if let Some(statsig_instance) = &self.statsig_instance {
             if environment.is_none() {
-                environment = statsig_instance.use_statsig_env(|e| e.cloned());
+                environment = statsig_instance.use_statsig_env(|e| e.map(clone_to_user_data_map));
             }
-            global_custom = statsig_instance.use_global_custom_fields(|gc| gc.cloned());
+            global_custom =
+                statsig_instance.use_global_custom_fields(|gc| gc.map(clone_to_user_data_map));
         }
 
         StatsigUserLoggable::new(&self.user_ref.data, environment, global_custom)
@@ -170,6 +171,10 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
         }
         Some(val.to_string())
     }
+}
+
+fn clone_to_user_data_map(map: &HashMap<String, DynamicValue>) -> UserDataMap {
+    map.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
 }
 
 fn throttled_version_check(user: &StatsigUser) {

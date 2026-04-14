@@ -29,7 +29,10 @@ pub use statsig_core_api_options::{
 pub use statsig_err::StatsigErr;
 pub use statsig_options::StatsigOptions;
 pub use statsig_runtime::StatsigRuntime;
-pub use user::user_data::UserData as StatsigUserData;
+pub use user::user_data::{
+    IntoOptionalUserDataMap, IntoUserDataMap, UserData as StatsigUserData,
+    UserDataMap as StatsigUserDataMap,
+};
 pub use user::{StatsigUser, StatsigUserBuilder};
 
 pub mod compression;

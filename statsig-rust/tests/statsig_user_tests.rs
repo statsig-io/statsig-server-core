@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use statsig_rust::{dyn_value, StatsigUser};
 use std::collections::HashMap;
 
@@ -15,7 +16,7 @@ fn test_creation_with_custom_ids() {
     )]));
     assert_eq!(
         user.data.custom_ids,
-        Some(HashMap::from([(
+        Some(IndexMap::from([(
             "companyID".to_string(),
             dyn_value!("statsig")
         )]))
@@ -53,8 +54,8 @@ fn test_changing_string_fields() {
 
 #[test]
 fn test_setting_attr_map_fields() {
-    let custom = HashMap::from([("test_custom".to_string(), dyn_value!(1))]);
-    let priv_attr = HashMap::from([("test_private".to_string(), dyn_value!(2))]);
+    let custom = IndexMap::from([("test_custom".to_string(), dyn_value!(1))]);
+    let priv_attr = IndexMap::from([("test_private".to_string(), dyn_value!(2))]);
 
     let mut user = StatsigUser::with_user_id("".to_string());
 
@@ -74,7 +75,7 @@ fn test_setting_statsig_environment() {
     )])));
     assert_eq!(
         user.get_statsig_environment(),
-        Some(HashMap::from([("test_environment", "test_value")]))
+        Some(IndexMap::from([("test_environment", "test_value")]))
     );
 
     user.set_statsig_environment(None::<HashMap<String, String>>);

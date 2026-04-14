@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use assert_json_diff::assert_json_eq;
+use indexmap::IndexMap;
 use serde_json::{json, Value};
 use statsig_rust::{
     dyn_value,
@@ -38,7 +39,7 @@ fn test_empty_user_serialization() {
 fn test_private_attributes_serialization() {
     let loggable = StatsigUserLoggable {
         data: Arc::new(UserData {
-            private_attributes: Some(HashMap::from([(
+            private_attributes: Some(IndexMap::from([(
                 "private_attribute_key".to_string(),
                 dyn_value!("a_private_attribute_value"),
             )])),
@@ -57,7 +58,7 @@ fn test_full_user_serialization() {
     let loggable = StatsigUserLoggable {
         data: Arc::new(UserData {
             user_id: Some(dyn_value!("a_user")),
-            custom_ids: Some(HashMap::from([(
+            custom_ids: Some(IndexMap::from([(
                 "custom_id".to_string(),
                 dyn_value!("a_value"),
             )])),
@@ -67,15 +68,15 @@ fn test_full_user_serialization() {
             country: Some(dyn_value!("a_country")),
             locale: Some(dyn_value!("a_locale")),
             app_version: Some(dyn_value!("a_app_version")),
-            custom: Some(HashMap::from([(
+            custom: Some(IndexMap::from([(
                 "custom_key".to_string(),
                 dyn_value!("a_custom_value"),
             )])),
-            private_attributes: Some(HashMap::from([(
+            private_attributes: Some(IndexMap::from([(
                 "private_attribute_key".to_string(),
                 dyn_value!("a_private_attribute_value"),
             )])),
-            statsig_environment: Some(HashMap::from([(
+            statsig_environment: Some(IndexMap::from([(
                 "statsig_environment_key".to_string(),
                 dyn_value!("a_statsig_environment_value"),
             )])),
@@ -109,7 +110,7 @@ fn test_full_user_serialization() {
 fn test_environment_serialization() {
     let loggable = StatsigUserLoggable {
         data: Arc::new(UserData::default()),
-        environment: Some(HashMap::from([(
+        environment: Some(IndexMap::from([(
             "tier".to_string(),
             dyn_value!("a_environment_value"),
         )])),
@@ -131,18 +132,18 @@ fn test_environment_serialization() {
 fn test_user_custom_overrides_global_custom() {
     let loggable = StatsigUserLoggable {
         data: Arc::new(UserData {
-            custom: Some(HashMap::from([(
+            custom: Some(IndexMap::from([(
                 "custom_key".to_string(),
                 dyn_value!("from_local_custom"),
             )])),
-            private_attributes: Some(HashMap::from([(
+            private_attributes: Some(IndexMap::from([(
                 "custom_key".to_string(),
                 dyn_value!("from_private_custom"),
             )])),
             ..Default::default()
         }),
         environment: None,
-        global_custom: Some(HashMap::from([(
+        global_custom: Some(IndexMap::from([(
             "custom_key".to_string(),
             dyn_value!("from_global_custom"),
         )])),
@@ -167,7 +168,7 @@ fn test_global_custom_serialization() {
     let loggable = StatsigUserLoggable {
         data: user.data,
         environment: None,
-        global_custom: Some(HashMap::from([(
+        global_custom: Some(IndexMap::from([(
             "global_custom_key".to_string(),
             dyn_value!("global_custom_value"),
         )])),

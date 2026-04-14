@@ -1,23 +1,23 @@
-use super::user_data::UserData;
-use crate::{DynamicValue, StatsigUser};
+use super::user_data::{UserData, UserDataMap};
+use crate::StatsigUser;
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_json::Value;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 const TAG: &str = "StatsigUserLoggable";
 
 #[derive(Clone, Default)]
 pub struct StatsigUserLoggable {
     pub data: Arc<UserData>,
-    pub environment: Option<HashMap<String, DynamicValue>>,
-    pub global_custom: Option<HashMap<String, DynamicValue>>,
+    pub environment: Option<UserDataMap>,
+    pub global_custom: Option<UserDataMap>,
 }
 
 impl StatsigUserLoggable {
     pub fn new(
         user_inner: &Arc<UserData>,
-        environment: Option<HashMap<String, DynamicValue>>,
-        global_custom: Option<HashMap<String, DynamicValue>>,
+        environment: Option<UserDataMap>,
+        global_custom: Option<UserDataMap>,
     ) -> Self {
         Self {
             data: user_inner.clone(),
@@ -31,8 +31,8 @@ impl StatsigUserLoggable {
     }
 
     pub fn default_console_capture_user(
-        environment: Option<HashMap<String, DynamicValue>>,
-        global_custom: Option<HashMap<String, DynamicValue>>,
+        environment: Option<UserDataMap>,
+        global_custom: Option<UserDataMap>,
     ) -> Self {
         Self::new(
             &StatsigUser::with_user_id("console-capture-user").data,
@@ -81,10 +81,9 @@ impl<'de> Deserialize<'de> for StatsigUserLoggable {
             serde::de::Error::custom(format!("Error deserializing StatsigUserInner: {e}"))
         })?;
 
-        let environment = serde_json::from_value::<Option<HashMap<String, DynamicValue>>>(env)
-            .map_err(|e| {
-                serde::de::Error::custom(format!("Error deserializing StatsigUserInner: {e}"))
-            })?;
+        let environment = serde_json::from_value::<Option<UserDataMap>>(env).map_err(|e| {
+            serde::de::Error::custom(format!("Error deserializing StatsigUserInner: {e}"))
+        })?;
 
         Ok(StatsigUserLoggable {
             data: Arc::new(data),
@@ -111,8 +110,8 @@ where
 
 fn serialize_custom_field<S>(
     state: &mut S,
-    custom: &Option<HashMap<String, DynamicValue>>,
-    global_custom: &Option<HashMap<String, DynamicValue>>,
+    custom: &Option<UserDataMap>,
+    global_custom: &Option<UserDataMap>,
 ) -> Result<(), S::Error>
 where
     S: SerializeStruct,
@@ -121,7 +120,7 @@ where
         return Ok(());
     }
 
-    let mut map = HashMap::new();
+    let mut map = indexmap::IndexMap::new();
 
     if let Some(global_custom) = global_custom.as_ref() {
         for (k, v) in global_custom {

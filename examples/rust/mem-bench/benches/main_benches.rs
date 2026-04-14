@@ -2,13 +2,11 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use mem_bench::noop_event_logging_adapter::NoopEventLoggingAdapter;
 use mem_bench::static_specs_adapter::StaticSpecsAdapter;
 use statsig_rust::user::user_data::UserData;
-use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigUser};
-use std::collections::HashMap;
+use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigUser, StatsigUserDataMap};
 use std::sync::Arc;
 
 fn create_user() -> StatsigUser {
-    StatsigUser {
-      data: Arc::new(UserData {
+    StatsigUser::new(UserData {
         user_id: Some(dyn_value!("a_user")),
         email: Some(dyn_value!("daniel@statsig.com")),
         ip: Some(dyn_value!("127.0.0.1")),
@@ -16,20 +14,20 @@ fn create_user() -> StatsigUser {
         country: Some(dyn_value!("US")),
         locale: Some(dyn_value!("en-US")),
         app_version: Some(dyn_value!("1.0.0")),
-        custom_ids: Some(HashMap::from([
+        custom_ids: Some(StatsigUserDataMap::from([
             ("companyID".into(), dyn_value!("statsig")),
-            ("groupID".to_string(), dyn_value!("sdk_team"),
-        )])),
-        custom: Some(HashMap::from([(
+            ("groupID".to_string(), dyn_value!("sdk_team")),
+        ])),
+        custom: Some(StatsigUserDataMap::from([(
             "test_custom_field".to_string(),
             dyn_value!("test_custom_field_value"),
         )])),
-        private_attributes: Some(HashMap::from([(
+        private_attributes: Some(StatsigUserDataMap::from([(
             "test_private_attribute".to_string(),
             dyn_value!("test_private_attribute_value"),
         )])),
-      })
-    }
+        ..Default::default()
+    })
 }
 
 async fn setup() -> (StatsigUser, Statsig) {

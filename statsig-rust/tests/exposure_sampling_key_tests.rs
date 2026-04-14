@@ -1,5 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
+use indexmap::IndexMap;
 use more_asserts::{assert_gt, assert_lt};
 use serde_json::json;
 use statsig_rust::{
@@ -38,7 +39,7 @@ fn test_is_sampled_single_custom_id_only() {
 
     for i in 0..100_000u64 {
         let user_data = UserData {
-            custom_ids: Some(HashMap::from([("test".to_string(), dyn_value!(i))])),
+            custom_ids: Some(IndexMap::from([("test".to_string(), dyn_value!(i))])),
             ..Default::default()
         };
 
@@ -57,7 +58,7 @@ fn test_is_sampled_multiple_custom_ids_only() {
 
     for i in 0..100_000u64 {
         let user_data = UserData {
-            custom_ids: Some(HashMap::from([
+            custom_ids: Some(IndexMap::from([
                 ("test".to_string(), dyn_value!(i)),
                 ("test2".to_string(), dyn_value!(i.wrapping_mul(i))),
             ])),
@@ -80,7 +81,7 @@ fn test_duplicate_unit_ids() {
     for i in 0..100_000u64 {
         let user_data = UserData {
             user_id: Some(dyn_value!(i)),
-            custom_ids: Some(HashMap::from([("user_id".to_string(), dyn_value!(i))])),
+            custom_ids: Some(IndexMap::from([("user_id".to_string(), dyn_value!(i))])),
             ..Default::default()
         };
 
@@ -97,7 +98,7 @@ fn test_duplicate_unit_ids() {
 fn test_dedupe_key_is_stable_for_repeated_same_user_input() {
     let user_data = UserData {
         user_id: Some(dyn_value!("user-1")),
-        custom_ids: Some(HashMap::from([
+        custom_ids: Some(IndexMap::from([
             ("companyID".to_string(), dyn_value!("company-a")),
             ("teamID".to_string(), dyn_value!(99)),
         ])),
@@ -128,7 +129,7 @@ fn test_dedupe_key_is_stable_for_repeated_same_user_input() {
 fn test_dedupe_key_changes_when_unit_id_changes_for_experiment_id_type() {
     let mut user_data = UserData {
         user_id: Some(dyn_value!("user-1")),
-        custom_ids: Some(HashMap::from([(
+        custom_ids: Some(IndexMap::from([(
             "companyID".to_string(),
             dyn_value!("company-a"),
         )])),
@@ -170,7 +171,7 @@ fn test_dedupe_key_changes_when_custom_ids_hash_scope_changes() {
         Some("companyID"),
     );
 
-    user_data.custom_ids = Some(HashMap::from([
+    user_data.custom_ids = Some(IndexMap::from([
         ("companyID".to_string(), dyn_value!("company-a")),
         ("teamID".to_string(), dyn_value!("team-a")),
     ]));

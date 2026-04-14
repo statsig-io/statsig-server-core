@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use statsig_rust::{dyn_value, StatsigUser};
 use std::collections::HashMap;
 
@@ -21,13 +22,13 @@ fn test_custom_ids_accessor() {
     user.set_custom_ids(HashMap::from([("employeeID", "num1")]));
     assert_eq!(
         user.get_custom_ids(),
-        Some(HashMap::from([("employeeID", "num1")]))
+        Some(IndexMap::from([("employeeID", "num1")]))
     );
 
     user.set_custom_ids(HashMap::from([("employeeID", 1)]));
     assert_eq!(
         user.get_custom_ids(),
-        Some(HashMap::from([("employeeID", "1")]))
+        Some(IndexMap::from([("employeeID", "1")]))
     );
 }
 
@@ -87,18 +88,18 @@ macro_rules! test_map_field_accessor {
             user.$setter_name(HashMap::from([("isAdmin", true)]));
             assert_eq!(
                 user.$getter_name(),
-                Some(&HashMap::from([("isAdmin".to_string(), dyn_value!(true))]))
+                Some(&IndexMap::from([("isAdmin".to_string(), dyn_value!(true))]))
             );
 
             // Option<HashMap<String, bool>>
             user.$setter_name(Some(HashMap::from([("isAdmin", true)])));
             assert_eq!(
                 user.$getter_name(),
-                Some(&HashMap::from([("isAdmin".to_string(), dyn_value!(true))]))
+                Some(&IndexMap::from([("isAdmin".to_string(), dyn_value!(true))]))
             );
 
             // HashMap<String, DynamicValue>
-            let multi_custom = HashMap::from([
+            let multi_custom = IndexMap::from([
                 ("isAdmin".to_string(), dyn_value!(true)),
                 ("powerLevel".to_string(), dyn_value!(10)),
             ]);
