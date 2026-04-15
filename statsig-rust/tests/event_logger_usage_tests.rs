@@ -2,23 +2,40 @@ mod utils;
 
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use more_asserts::{assert_gt, assert_lt};
-use serde_json::json;
+use serde_json::{json, Map, Value};
 use statsig_rust::{FeatureGateEvaluationOptions, Statsig, StatsigOptions, StatsigUser};
+use std::collections::HashSet;
 use std::sync::{atomic::Ordering, Arc};
 use utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 
 const DCS_EVAL_PROJ: &str = "eval_proj_dcs";
 const DCS_WITH_SAMPLING: &str = "dcs_with_sampling";
 const DCS_ANALYTICAL_EXPOSURE_SAMPLING: &str = "dcs_with_analytical_exposure_sampling";
+const SEC_EXPO_AS_PRIMARY_FLAG: &str = "sec_expo_as_primary:abc123";
 
 async fn setup(dcs_file: &str) -> (Statsig, Arc<MockEventLoggingAdapter>) {
+    setup_with_sdk_configs_and_flags(dcs_file, None, None).await
+}
+
+async fn setup_with_sdk_configs_and_flags(
+    dcs_file: &str,
+    sdk_configs: Option<Map<String, Value>>,
+    experimental_flags: Option<HashSet<String>>,
+) -> (Statsig, Arc<MockEventLoggingAdapter>) {
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
     let dcs_path = format!("tests/data/{dcs_file}.json");
-    let specs_adapter = Arc::new(MockSpecsAdapter::with_data(&dcs_path));
+    let specs_adapter = match sdk_configs {
+        Some(sdk_configs) => Arc::new(MockSpecsAdapter::with_data_and_sdk_configs(
+            &dcs_path,
+            sdk_configs,
+        )),
+        None => Arc::new(MockSpecsAdapter::with_data(&dcs_path)),
+    };
 
     let mut options = StatsigOptions::new();
     options.specs_adapter = Some(specs_adapter);
     options.event_logging_adapter = Some(logging_adapter.clone());
+    options.experimental_flags = experimental_flags;
 
     let uuid = uuid::Uuid::new_v4();
     let statsig = Statsig::new(&format!("secret-{uuid}"), Some(Arc::new(options)));
@@ -253,6 +270,49 @@ async fn test_analytical_secondary_gate_forces_sampled_parent_exposures() {
         .load(Ordering::SeqCst);
 
     assert_eq!(event_count, user_count * 4);
+}
+
+#[tokio::test]
+async fn test_sec_expo_as_primary_ignores_analytical_gate_force_sampling() {
+    let sdk_configs =
+        Map::<String, Value>::from_iter([("sec_expo_number".to_string(), json!(1000))]);
+    let (statsig, logging_adapter) = setup_with_sdk_configs_and_flags(
+        DCS_ANALYTICAL_EXPOSURE_SAMPLING,
+        Some(sdk_configs),
+        Some(HashSet::from([SEC_EXPO_AS_PRIMARY_FLAG.to_string()])),
+    )
+    .await;
+
+    let user_count = 40;
+
+    for i in 0..user_count {
+        let user = StatsigUser::with_user_id(format!("user_{i}"));
+        let _ = statsig.check_gate(&user, "parent_gate");
+        let _ = statsig.get_dynamic_config(&user, "parent_config");
+        let _ = statsig.get_experiment(&user, "parent_experiment");
+        let layer = statsig.get_layer(&user, "parent_layer");
+        let _ = layer.get_string("param", String::new());
+    }
+
+    statsig.shutdown().await.unwrap();
+
+    let event_count = logging_adapter
+        .no_diagnostics_logged_event_count
+        .load(Ordering::SeqCst);
+
+    assert_gt!(event_count, 0);
+    assert_lt!(event_count, user_count * 4);
+
+    let payload = logging_adapter.force_get_received_payloads();
+    let events = payload.events.as_array().unwrap();
+    let analytics_gate_event_count = events
+        .iter()
+        .filter(|event| {
+            event["eventName"] == json!("statsig::gate_exposure")
+                && event["metadata"]["gate"] == json!("analytics_gate")
+        })
+        .count();
+    assert_eq!(analytics_gate_event_count, user_count as usize);
 }
 
 #[tokio::test]

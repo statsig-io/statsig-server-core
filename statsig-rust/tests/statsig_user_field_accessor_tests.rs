@@ -1,4 +1,4 @@
-use statsig_rust::{dyn_value, StatsigUser};
+use statsig_rust::{dyn_value, StatsigUser, StatsigUserDataMap};
 use std::collections::HashMap;
 
 #[test]
@@ -87,22 +87,31 @@ macro_rules! test_map_field_accessor {
             user.$setter_name(HashMap::from([("isAdmin", true)]));
             assert_eq!(
                 user.$getter_name(),
-                Some(&HashMap::from([("isAdmin".to_string(), dyn_value!(true))]))
+                Some(&StatsigUserDataMap::from([(
+                    "isAdmin".to_string(),
+                    dyn_value!(true)
+                )]))
             );
 
             // Option<HashMap<String, bool>>
             user.$setter_name(Some(HashMap::from([("isAdmin", true)])));
             assert_eq!(
                 user.$getter_name(),
-                Some(&HashMap::from([("isAdmin".to_string(), dyn_value!(true))]))
+                Some(&StatsigUserDataMap::from([(
+                    "isAdmin".to_string(),
+                    dyn_value!(true)
+                )]))
             );
 
             // HashMap<String, DynamicValue>
-            let multi_custom = HashMap::from([
+            let multi_custom = StatsigUserDataMap::from([
                 ("isAdmin".to_string(), dyn_value!(true)),
                 ("powerLevel".to_string(), dyn_value!(10)),
             ]);
-            user.$setter_name(Some(multi_custom.clone()));
+            user.$setter_name(Some(HashMap::from([
+                ("isAdmin".to_string(), dyn_value!(true)),
+                ("powerLevel".to_string(), dyn_value!(10)),
+            ])));
             assert_eq!(user.$getter_name(), Some(&multi_custom));
 
             // None

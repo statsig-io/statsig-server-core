@@ -23,7 +23,9 @@ use crate::{
     EvaluationDetails, SecondaryExposure,
 };
 
-use super::queued_event::{EnqueueOperation, QueuedEvent, QueuedExposure};
+use super::queued_event::{
+    take_non_empty_secondary_exposures, EnqueueOperation, QueuedEvent, QueuedExposure,
+};
 use crate::event_logging::statsig_event::string_metadata_to_value_metadata;
 
 // Flow:
@@ -315,6 +317,32 @@ pub struct QueuedExposureEvent {
 }
 
 impl QueuedExposureEvent {
+    pub fn take_secondary_exposures_for_primary_logging(&mut self) -> Vec<SecondaryExposure> {
+        if self.should_use_undelegated_secondary_exposures() {
+            return take_non_empty_secondary_exposures(
+                &mut self.data.undelegated_secondary_exposures,
+            );
+        }
+
+        take_non_empty_secondary_exposures(&mut self.data.secondary_exposures)
+    }
+
+    fn should_use_undelegated_secondary_exposures(&self) -> bool {
+        if self.data.event_name != LAYER_EXPOSURE_EVENT_NAME {
+            return false;
+        }
+
+        let Some(parameter_name) = self.data.parameter_name.as_ref() else {
+            return false;
+        };
+
+        !self
+            .data
+            .explicit_params
+            .as_ref()
+            .is_some_and(|params| params.contains(parameter_name.as_str()))
+    }
+
     pub fn into_statsig_event_internal(self) -> StatsigEventInternal {
         let mut data = self.data;
         let mut builder = MetadataBuilder::new();

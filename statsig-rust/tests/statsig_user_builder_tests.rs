@@ -1,4 +1,6 @@
-use statsig_rust::{dyn_value, evaluation::dynamic_string::DynamicString, StatsigUserBuilder};
+use statsig_rust::{
+    dyn_value, evaluation::dynamic_string::DynamicString, StatsigUserBuilder, StatsigUserDataMap,
+};
 use std::collections::HashMap;
 
 macro_rules! map {
@@ -138,15 +140,15 @@ fn test_changing_string_fields() {
 #[test]
 fn test_setting_attr_map_fields() {
     let user = StatsigUserBuilder::new_with_user_id("".to_string())
-        .custom(Some(HashMap::from([(
+        .custom(Some(StatsigUserDataMap::from([(
             "test_custom".to_string(),
             dyn_value!(1),
         )])))
-        .custom(Some(HashMap::from([(
+        .custom(Some(StatsigUserDataMap::from([(
             "test_custom_again".to_string(),
             dyn_value!("a"),
         )])))
-        .private_attributes(Some(HashMap::from([(
+        .private_attributes(Some(StatsigUserDataMap::from([(
             "test_private".to_string(),
             dyn_value!(2),
         )])))
@@ -155,7 +157,7 @@ fn test_setting_attr_map_fields() {
 
     assert_eq!(
         user.data.custom,
-        Some(HashMap::from([(
+        Some(StatsigUserDataMap::from([(
             "test_custom_again".to_string(),
             dyn_value!("a"),
         )]))
@@ -165,8 +167,9 @@ fn test_setting_attr_map_fields() {
     // assert_eq!(user.private_attributes, None);
     assert_eq!(
         user.data.private_attributes,
-        Some(HashMap::from([
-            ("test_private".to_string(), dyn_value!(2),)
-        ]))
+        Some(StatsigUserDataMap::from([(
+            "test_private".to_string(),
+            dyn_value!(2),
+        )]))
     );
 }

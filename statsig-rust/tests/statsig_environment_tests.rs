@@ -2,8 +2,9 @@ mod utils;
 
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use serde_json::json;
-use statsig_rust::{Statsig, StatsigOptions, StatsigUser, StatsigUserBuilder};
-use std::collections::HashMap;
+use statsig_rust::{
+    Statsig, StatsigOptions, StatsigUser, StatsigUserBuilder, StatsigUserDataStringMap,
+};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use utils::mock_event_logging_adapter::MockEventLoggingAdapter;
@@ -63,7 +64,7 @@ async fn test_environment_from_user_overrides_options() {
     // Test Case 2: Set environment on both StatsigOptions and StatsigUser
     let (statsig, logging_adapter) = setup_with_environment(Some("production".to_string())).await;
 
-    let mut user_env = HashMap::new();
+    let mut user_env = StatsigUserDataStringMap::new();
     user_env.insert("tier".to_string(), "development".to_string());
 
     let user = StatsigUserBuilder::new_with_user_id("test_user".to_string())
@@ -104,7 +105,7 @@ async fn test_environment_only_from_user() {
     // Test Case 3: Set environment just on StatsigUser
     let (statsig, logging_adapter) = setup_with_environment(None).await;
 
-    let mut user_env = HashMap::new();
+    let mut user_env = StatsigUserDataStringMap::new();
     user_env.insert("tier".to_string(), "staging".to_string());
 
     let user = StatsigUserBuilder::new_with_user_id("test_user".to_string())
@@ -173,7 +174,7 @@ async fn test_environment_override_behavior() {
     // Test Case 5: StatsigOptions has tier="production", user sets tier="testing"
     let (statsig, logging_adapter) = setup_with_environment(Some("production".to_string())).await;
 
-    let mut user_env = HashMap::new();
+    let mut user_env = StatsigUserDataStringMap::new();
     user_env.insert("tier".to_string(), "testing".to_string());
 
     let user = StatsigUserBuilder::new_with_user_id("test_user".to_string())

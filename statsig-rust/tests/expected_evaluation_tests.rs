@@ -3,7 +3,7 @@ mod utils;
 use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use statsig_rust::StatsigUserBuilder;
-use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigUser, StatsigUserDataMap};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -18,7 +18,10 @@ fn build_full_user() -> StatsigUser {
         .email(Some("a_user@statsig.com".into()))
         .country(Some("US".into()))
         .user_id(Some("a_user".to_string()))
-        .custom(Some(HashMap::from([("level".to_string(), dyn_value!(9))])))
+        .custom(Some(StatsigUserDataMap::from([(
+            "level".to_string(),
+            dyn_value!(9),
+        )])))
         .custom_ids(Some(HashMap::from([
             ("companyID", "123"),
             ("stableID", ""),
@@ -157,7 +160,10 @@ async fn test_custom_number_value_passes() {
     let statsig = setup(None).await;
 
     let user = StatsigUserBuilder::new_with_user_id("a_user".to_string())
-        .custom(Some(HashMap::from([("level".to_string(), dyn_value!(9))])))
+        .custom(Some(StatsigUserDataMap::from([(
+            "level".to_string(),
+            dyn_value!(9),
+        )])))
         .build();
 
     let gate_name = "test_any_with_number_value";

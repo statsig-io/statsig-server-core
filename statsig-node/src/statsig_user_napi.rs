@@ -5,6 +5,7 @@ use napi_derive::napi;
 use serde_json::{json, Value};
 use statsig_rust::{
     dyn_value, log_w, user::user_data::UserData, DynamicValue, StatsigUser as StatsigUserActual,
+    StatsigUserDataMap,
 };
 
 const TAG: &str = "StatsigUserNapi";
@@ -96,7 +97,7 @@ impl StatsigUser {
         user_data.custom = Self::convert_to_dynamic_value_map(args.custom);
         user_data.private_attributes = Self::convert_to_dynamic_value_map(args.private_attributes);
 
-        // Convert statsig_environment from HashMap<String, String> to HashMap<String, DynamicValue>
+        // Convert statsig_environment from HashMap<String, String> to UserDataMap
         if let Some(env) = args.statsig_environment {
             user_data.statsig_environment =
                 Some(env.into_iter().map(|(k, v)| (k, dyn_value!(v))).collect());
@@ -135,7 +136,7 @@ impl StatsigUser {
 
     fn convert_custom_ids(
         custom_ids_arg: HashMap<String, Either3<String, f64, i64>>,
-    ) -> HashMap<String, DynamicValue> {
+    ) -> StatsigUserDataMap {
         custom_ids_arg
             .into_iter()
             .map(|(key, value)| {
@@ -153,13 +154,13 @@ impl StatsigUser {
 
     fn convert_to_dynamic_value_map(
         map: Option<HashMap<String, ValidPrimitives>>,
-    ) -> Option<HashMap<String, DynamicValue>> {
+    ) -> Option<StatsigUserDataMap> {
         let map = match map {
             Some(map) => map,
             _ => return None,
         };
 
-        let mut converted: HashMap<String, DynamicValue> = HashMap::new();
+        let mut converted = StatsigUserDataMap::new();
 
         for (key, value) in map {
             match value {
@@ -215,7 +216,7 @@ macro_rules! add_string_hashmap_getter_setter {
                     }
                 };
 
-                let mut converted: HashMap<String, DynamicValue> = HashMap::new();
+                let mut converted = StatsigUserDataMap::new();
 
                 for (key, value) in value {
                     if $field_name == "customIDs" && !value.is_string() {
@@ -268,7 +269,7 @@ macro_rules! add_typed_hashmap_getter_setter {
                     }
                 };
 
-                let mut converted: HashMap<String, DynamicValue> = HashMap::new();
+                let mut converted = StatsigUserDataMap::new();
                 for (key, value) in value {
                     converted.insert(key, DynamicValue::from(value));
                 }

@@ -6,5 +6,6 @@ pub mod exposure_sampling;
 mod exposure_utils;
 pub mod flush_interval;
 pub mod flush_type;
+mod sec_expo_as_primary_experiment;
 pub mod statsig_event;
 pub mod statsig_event_internal;

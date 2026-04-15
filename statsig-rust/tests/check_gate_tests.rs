@@ -2,7 +2,9 @@ mod utils;
 
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
 use lazy_static::lazy_static;
-use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigUser, StatsigUserBuilder};
+use statsig_rust::{
+    dyn_value, Statsig, StatsigOptions, StatsigUser, StatsigUserBuilder, StatsigUserDataMap,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
@@ -12,7 +14,7 @@ lazy_static! {
         "hubID".to_string(),
         "some-service-123".to_string()
     )]))
-    .custom(Some(HashMap::from([
+    .custom(Some(StatsigUserDataMap::from([
         ("flavor".to_string(), dyn_value!("chocolate")),
         ("region".to_string(), dyn_value!("somewhere")),
         ("service".to_string(), dyn_value!("some-service")),

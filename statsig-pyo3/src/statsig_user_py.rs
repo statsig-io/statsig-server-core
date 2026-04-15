@@ -6,7 +6,7 @@ use crate::{
 use pyo3::types::PyBytes;
 use pyo3::{prelude::*, types::PyDict};
 use pyo3_stub_gen::derive::*;
-use statsig_rust::{log_e, log_w, DynamicValue, StatsigUser, StatsigUserData};
+use statsig_rust::{log_e, log_w, DynamicValue, StatsigUser, StatsigUserData, StatsigUserDataMap};
 use std::{collections::HashMap, str};
 
 const TAG: &str = stringify!(StatsigUserPy);
@@ -321,7 +321,7 @@ impl StatsigUserPy {
 }
 
 fn get_map_field_ref<'a>(
-    field: &'a Option<HashMap<String, DynamicValue>>,
+    field: &'a Option<StatsigUserDataMap>,
 ) -> Option<HashMap<&'a str, Option<ValidPrimitivesPyRef<'a>>>> {
     let value = field.as_ref()?;
 

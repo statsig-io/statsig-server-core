@@ -2,7 +2,9 @@ use once_cell::sync::Lazy;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use statsig_rust::{dyn_value, Statsig, StatsigOptions, StatsigUser, StatsigUserData};
+use statsig_rust::{
+    dyn_value, Statsig, StatsigOptions, StatsigUser, StatsigUserData, StatsigUserDataMap,
+};
 use std::{collections::HashMap, sync::Arc, time::Instant};
 
 pub mod built_info {
@@ -285,7 +287,7 @@ fn create_user() -> StatsigUser {
 fn create_user_with_benchmark_payload() -> StatsigUser {
     StatsigUser::new(StatsigUserData {
         user_id: Some(dyn_value!("a_user_id")),
-        custom_ids: Some(HashMap::from([(
+        custom_ids: Some(StatsigUserDataMap::from([(
             "custom_id".to_string(),
             dyn_value!("a_long_custom_id_value_goes_here"),
         ), (
@@ -298,7 +300,7 @@ fn create_user_with_benchmark_payload() -> StatsigUser {
         app_version: Some(dyn_value!("1.0.0")),
         country: Some(dyn_value!("US")),
         user_agent: Some(dyn_value!("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36")),
-        custom: Some(HashMap::from([
+        custom: Some(StatsigUserDataMap::from([
             ("custom_attr".to_string(), dyn_value!("custom_value")),
             ("custom_array".to_string(), dyn_value!([1, 2, 3])),
             (
@@ -313,7 +315,7 @@ fn create_user_with_benchmark_payload() -> StatsigUser {
             ),
         ])),
         statsig_environment: None,
-        private_attributes: Some(HashMap::from([
+        private_attributes: Some(StatsigUserDataMap::from([
             ("private_attr".to_string(), dyn_value!("secret")),
             ("private_array".to_string(), dyn_value!([1, 2, 3])),
             (

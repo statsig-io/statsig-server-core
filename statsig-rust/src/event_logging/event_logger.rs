@@ -3,10 +3,12 @@ use super::{
         batch::EventBatch,
         queue::{EventQueue, QueueReconcileResult},
         queued_event::{EnqueueOperation, QueuedEvent},
+        queued_secondary_expo::EnqueueSecondaryExposureAsPrimaryOp,
     },
     exposure_sampling::ExposureSampling,
     flush_interval::FlushInterval,
     flush_type::FlushType,
+    sec_expo_as_primary_experiment::SecExpoAsPrimaryExperiment,
     statsig_event_internal::StatsigEventInternal,
 };
 use crate::{
@@ -57,6 +59,7 @@ pub struct EventLogger {
     flush_interval: FlushInterval,
     shutdown_notify: Notify,
     ops_stats: Arc<OpsStatsForInstance>,
+    sec_expo_experiment: SecExpoAsPrimaryExperiment,
     enqueue_dropped_events_count: AtomicU64,
 }
 
@@ -85,6 +88,7 @@ impl EventLogger {
             limit_flush_notify: Notify::new(),
             limit_flush_semaphore: Arc::new(Semaphore::new(MAX_LIMIT_FLUSH_TASKS)),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
+            sec_expo_experiment: SecExpoAsPrimaryExperiment::new(sdk_key, options),
             enqueue_dropped_events_count: AtomicU64::new(0),
         });
 
@@ -97,12 +101,74 @@ impl EventLogger {
             return;
         }
 
-        let decision = self.event_sampler.get_sampling_decision(&operation);
+        let sec_expo_as_primary_active = self.sec_expo_experiment.should_log_as_primary();
+        let decision = self
+            .event_sampler
+            .get_sampling_decision(&operation, sec_expo_as_primary_active);
+
+        if sec_expo_as_primary_active {
+            let should_log_parent = decision.should_log();
+            let pending_event = operation.into_queued_event(decision);
+            self.enqueue_event_with_secondary_exposures_as_primary(
+                pending_event,
+                should_log_parent,
+            );
+            return;
+        }
+
         if !decision.should_log() {
             return;
         }
 
         let pending_event = operation.into_queued_event(decision);
+        self.add_pending_event(pending_event);
+    }
+
+    fn enqueue_event_with_secondary_exposures_as_primary(
+        &self,
+        mut pending_event: QueuedEvent,
+        should_log_parent: bool,
+    ) {
+        let Some(exposure_time) = pending_event.exposure_time() else {
+            if should_log_parent {
+                self.add_pending_event(pending_event);
+            }
+            return;
+        };
+        let secondary_exposures = pending_event.take_secondary_exposures_for_primary_logging();
+        if secondary_exposures.is_empty() {
+            if should_log_parent {
+                self.add_pending_event(pending_event);
+            }
+            return;
+        }
+
+        let Some(user) = pending_event.user_for_secondary_exposures() else {
+            if should_log_parent {
+                self.add_pending_event(pending_event);
+            }
+            return;
+        };
+
+        if should_log_parent {
+            self.add_pending_event(pending_event);
+        }
+
+        for secondary_exposure in secondary_exposures {
+            let operation = EnqueueSecondaryExposureAsPrimaryOp {
+                user: user.clone(),
+                secondary_exposure,
+                exposure_time,
+            };
+
+            let decision = self.event_sampler.get_sampling_decision(&operation, false);
+            if decision.should_log() {
+                self.add_pending_event(operation.into_queued_event(decision));
+            }
+        }
+    }
+
+    fn add_pending_event(&self, pending_event: QueuedEvent) {
         match self.queue.add(pending_event) {
             QueueAddResult::Noop => (),
             QueueAddResult::NeedsFlush => self.limit_flush_notify.notify_one(),

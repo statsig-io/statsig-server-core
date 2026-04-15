@@ -26,14 +26,14 @@ jobs:
             - ["server_core_python_klaviyo", "server-core-python-klaviyo"]
     steps:
       - name: Checkout LRS repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
         with:
           repository: statsig-io/long-running-sdk
           ref: main
           token: ${{ secrets.XIN_PAT_FOR_ACCESS_TOKEN }}
 
       - name: Checkout SDK repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
         with:
           repository: statsig-io/${{  env.sdk_repo  }}
           ref: main
@@ -43,7 +43,7 @@ jobs:
 
 
       - name: Install Protoc
-        uses: arduino/setup-protoc@v3
+        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3
         with:
             repo-token: ${{ secrets.GITHUB_TOKEN }}
       
@@ -59,17 +59,17 @@ jobs:
       - name: Initialize and update submodules recursively
         run: cd ${{matrix.args[1]}}/${{ env.sdk_repo }} && git submodule update --init --recursive
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@27d0a4f181a40b142cce983c5393082c365d1480 # v1
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@f211e3e9ded2d9377c8cadc4489a4e38014bc4c9 # v1
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # v1
         with:
           username: statsig
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and push
         id: docker_build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
         with:
           context: .
           file: ${{ matrix.args[1] }}/Dockerfile

@@ -1,13 +1,12 @@
 use super::unit_id::UnitID;
-use super::user_data::UserData;
+use super::user_data::{UserData, UserDataMap, UserDataMapOf, UserDataStringMap};
 use super::StatsigUser;
 use crate::dyn_value;
 use crate::evaluation::dynamic_value::DynamicValue;
-use std::collections::HashMap;
 
 pub struct StatsigUserBuilder {
     pub user_id: Option<UnitID>,
-    pub custom_ids: Option<HashMap<String, UnitID>>,
+    pub custom_ids: Option<UserDataMapOf<UnitID>>,
 
     pub email: Option<DynamicValue>,
     pub ip: Option<DynamicValue>,
@@ -16,10 +15,10 @@ pub struct StatsigUserBuilder {
     pub locale: Option<DynamicValue>,
     pub app_version: Option<DynamicValue>,
 
-    pub custom: Option<HashMap<String, DynamicValue>>,
-    pub private_attributes: Option<HashMap<String, DynamicValue>>,
+    pub custom: Option<UserDataMap>,
+    pub private_attributes: Option<UserDataMap>,
 
-    pub statsig_environment: Option<HashMap<String, DynamicValue>>,
+    pub statsig_environment: Option<UserDataMap>,
 }
 
 impl StatsigUserBuilder {
@@ -32,8 +31,9 @@ impl StatsigUserBuilder {
     }
 
     #[must_use]
-    pub fn new_with_custom_ids<K, U>(custom_ids: HashMap<K, U>) -> Self
+    pub fn new_with_custom_ids<K, U, I>(custom_ids: I) -> Self
     where
+        I: IntoIterator<Item = (K, U)>,
         K: Into<String>,
         U: Into<UnitID>,
     {
@@ -63,10 +63,12 @@ impl StatsigUserBuilder {
         self
     }
 
-    pub fn custom_ids(
-        mut self,
-        custom_ids: Option<HashMap<impl Into<String>, impl Into<UnitID>>>,
-    ) -> Self {
+    pub fn custom_ids<K, U, I>(mut self, custom_ids: Option<I>) -> Self
+    where
+        I: IntoIterator<Item = (K, U)>,
+        K: Into<String>,
+        U: Into<UnitID>,
+    {
         if let Some(custom_ids) = custom_ids {
             self.custom_ids = Some(
                 custom_ids
@@ -120,10 +122,7 @@ impl StatsigUserBuilder {
         self
     }
 
-    pub fn statsig_environment(
-        mut self,
-        statsig_environment: Option<HashMap<String, String>>,
-    ) -> Self {
+    pub fn statsig_environment(mut self, statsig_environment: Option<UserDataStringMap>) -> Self {
         if let Some(statsig_environment) = statsig_environment {
             self.statsig_environment = Some(convert_str_map_to_dyn_values(statsig_environment));
         }
@@ -131,14 +130,14 @@ impl StatsigUserBuilder {
     }
 
     // todo: support HashMap<String, String | Number | Boolean | Array<String>>
-    pub fn custom_from_str_map(mut self, custom: Option<HashMap<String, String>>) -> Self {
+    pub fn custom_from_str_map(mut self, custom: Option<UserDataStringMap>) -> Self {
         if let Some(custom) = custom {
             self.custom = Some(convert_str_map_to_dyn_values(custom));
         }
         self
     }
 
-    pub fn custom(mut self, custom: Option<HashMap<String, DynamicValue>>) -> Self {
+    pub fn custom(mut self, custom: Option<UserDataMap>) -> Self {
         if let Some(custom) = custom {
             self.custom = Some(custom);
         }
@@ -148,7 +147,7 @@ impl StatsigUserBuilder {
     // todo: support HashMap<String, String | Number | Boolean | Array<String>>
     pub fn private_attributes_from_str_map(
         mut self,
-        private_attributes: Option<HashMap<String, String>>,
+        private_attributes: Option<UserDataStringMap>,
     ) -> Self {
         if let Some(private_attributes) = private_attributes {
             self.private_attributes = Some(convert_str_map_to_dyn_values(private_attributes));
@@ -156,10 +155,7 @@ impl StatsigUserBuilder {
         self
     }
 
-    pub fn private_attributes(
-        mut self,
-        private_attributes: Option<HashMap<String, DynamicValue>>,
-    ) -> Self {
+    pub fn private_attributes(mut self, private_attributes: Option<UserDataMap>) -> Self {
         if let Some(private_attributes) = private_attributes {
             self.private_attributes = Some(private_attributes);
         }
@@ -187,9 +183,7 @@ impl StatsigUserBuilder {
     }
 }
 
-fn convert_str_map_to_dyn_values(
-    custom_ids: HashMap<String, String>,
-) -> HashMap<String, DynamicValue> {
+fn convert_str_map_to_dyn_values(custom_ids: UserDataStringMap) -> UserDataMap {
     custom_ids
         .into_iter()
         .map(|(k, v)| (k, dyn_value!(v)))

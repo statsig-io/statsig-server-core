@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use chrono::Utc;
 
-use super::StatsigUserLoggable;
+use super::{user_data::UserDataMap, StatsigUserLoggable};
 use crate::evaluation::dynamic_value::DynamicValue;
 use crate::hashing::djb2_number;
 use crate::{evaluation::dynamic_string::DynamicString, Statsig};
@@ -141,7 +141,7 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
 
         if let Some(statsig_instance) = &self.statsig_instance {
             if environment.is_none() {
-                environment = statsig_instance.use_statsig_env(|e| e.cloned());
+                environment = statsig_instance.use_statsig_env(hashmap_to_user_data_map);
             }
             global_custom = statsig_instance.use_global_custom_fields(|gc| gc.cloned());
         }
@@ -170,6 +170,14 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
         }
         Some(val.to_string())
     }
+}
+
+fn hashmap_to_user_data_map(map: Option<&HashMap<String, DynamicValue>>) -> Option<UserDataMap> {
+    map.map(|map| {
+        map.iter()
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect()
+    })
 }
 
 fn throttled_version_check(user: &StatsigUser) {

@@ -18,6 +18,7 @@ statsig-rust = { path = "../statsig-rust", default-features = false, features = 
     "with_grpc",
     "with_zstd",
     "ffi-support",
+    "ordered_user_data_maps",
     "reqwest",
 ] }
 async-trait = "0.1.81"

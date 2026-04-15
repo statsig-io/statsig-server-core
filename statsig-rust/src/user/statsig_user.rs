@@ -3,7 +3,11 @@ use crate::statsig_metadata;
 use crate::{dyn_value, evaluation::dynamic_string::DynamicString};
 use std::{collections::HashMap, sync::Arc};
 
-use super::{into_optional::IntoOptional, unit_id::UnitID, user_data::UserData};
+use super::{
+    into_optional::IntoOptional,
+    unit_id::UnitID,
+    user_data::{UserData, UserDataMap},
+};
 
 #[derive(Clone)]
 pub struct StatsigUser {
@@ -28,7 +32,7 @@ impl StatsigUser {
         K: Into<String>,
         U: Into<UnitID>,
     {
-        let custom_ids: HashMap<String, DynamicValue> = custom_ids
+        let custom_ids: UserDataMap = custom_ids
             .into_iter()
             .map(|(k, v)| (k.into(), v.into().into()))
             .collect();
@@ -75,7 +79,7 @@ macro_rules! string_field_accessor {
 
 macro_rules! map_field_accessor {
     ($self:ident, $getter_name:ident, $setter_name:ident, $field:ident) => {
-        pub fn $getter_name(&self) -> Option<&HashMap<String, DynamicValue>> {
+        pub fn $getter_name(&self) -> Option<&UserDataMap> {
             self.data.$field.as_ref()
         }
 
@@ -194,7 +198,7 @@ impl StatsigUser {
             }
         };
 
-        let statsig_environment: HashMap<String, DynamicValue> = statsig_environment
+        let statsig_environment: UserDataMap = statsig_environment
             .into_iter()
             .map(|(k, v)| (k.into(), v.into().into()))
             .collect();
