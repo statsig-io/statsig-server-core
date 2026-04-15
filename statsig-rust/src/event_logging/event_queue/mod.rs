@@ -7,3 +7,4 @@ pub mod queued_expo;
 pub mod queued_gate_expo;
 pub mod queued_layer_param_expo;
 pub mod queued_passthrough;
+pub mod queued_secondary_expo;

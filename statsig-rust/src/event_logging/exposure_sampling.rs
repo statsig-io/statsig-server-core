@@ -67,7 +67,11 @@ impl ExposureSampling {
         }
     }
 
-    pub fn get_sampling_decision(&self, payload: &impl EnqueueOperation) -> EvtSamplingDecision {
+    pub fn get_sampling_decision(
+        &self,
+        payload: &impl EnqueueOperation,
+        ignore_analytical_gate_force_sampling: bool,
+    ) -> EvtSamplingDecision {
         let exposure = match payload.as_exposure() {
             Some(exposure) => exposure,
             None => return EvtSamplingDecision::ForceSampled,
@@ -84,7 +88,8 @@ impl ExposureSampling {
         };
 
         let extra_info = exposure.get_extra_exposure_info_ref();
-        if self.should_sample_based_on_evaluation(extra_info) {
+        if self.should_sample_based_on_evaluation(extra_info, ignore_analytical_gate_force_sampling)
+        {
             return EvtSamplingDecision::ForceSampled;
         }
 
@@ -124,7 +129,11 @@ impl ExposureSampling {
         false
     }
 
-    fn should_sample_based_on_evaluation(&self, extra_info: Option<&ExtraExposureInfo>) -> bool {
+    fn should_sample_based_on_evaluation(
+        &self,
+        extra_info: Option<&ExtraExposureInfo>,
+        ignore_analytical_gate_force_sampling: bool,
+    ) -> bool {
         let exposure_info = match extra_info {
             Some(exposure_info) => exposure_info,
             None => return false,
@@ -134,7 +143,9 @@ impl ExposureSampling {
             return true;
         }
 
-        if exposure_info.has_seen_analytical_gates == Some(true) {
+        if !ignore_analytical_gate_force_sampling
+            && exposure_info.has_seen_analytical_gates == Some(true)
+        {
             return true;
         }
 

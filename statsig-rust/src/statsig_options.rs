@@ -334,6 +334,12 @@ impl StatsigOptionsBuilder {
     }
 
     #[must_use]
+    pub fn experimental_flags(mut self, experimental_flags: Option<HashSet<String>>) -> Self {
+        self.inner.experimental_flags = experimental_flags;
+        self
+    }
+
+    #[must_use]
     pub fn build(self) -> StatsigOptions {
         self.inner
     }
@@ -367,7 +373,7 @@ impl Serialize for StatsigOptions {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("StatsigOptions", 21)?;
+        let mut state = serializer.serialize_struct("StatsigOptions", 22)?;
         serialize_if_not_none!(state, "spec_url", &self.specs_url);
         serialize_if_not_none!(
             state,
@@ -429,6 +435,7 @@ impl Serialize for StatsigOptions {
         );
         serialize_if_not_none!(state, "service_name", &get_if_set(&self.service_name));
         serialize_if_not_none!(state, "global_custom_fields", &self.global_custom_fields);
+        serialize_if_not_none!(state, "experimental_flags", &self.experimental_flags);
 
         state.end()
     }
