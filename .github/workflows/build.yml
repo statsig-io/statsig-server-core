@@ -108,6 +108,7 @@ jobs:
 
       - name: "[Statsig Hosted Windows ARM64 Only] Set up Node.js"
         if: ${{ matrix.config.runner == 'statsig-windows-arm64' }}
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "20"
 
