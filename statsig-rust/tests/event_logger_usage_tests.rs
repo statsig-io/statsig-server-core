@@ -305,10 +305,14 @@ async fn test_sec_expo_as_primary_ignores_analytical_gate_force_sampling() {
 
     let payload = logging_adapter.force_get_received_payloads();
     let events = payload.events.as_array().unwrap();
-    assert!(events.iter().any(|event| {
-        event["eventName"] == json!("statsig::gate_exposure")
-            && event["metadata"]["gate"] == json!("analytics_gate")
-    }));
+    let analytics_gate_event_count = events
+        .iter()
+        .filter(|event| {
+            event["eventName"] == json!("statsig::gate_exposure")
+                && event["metadata"]["gate"] == json!("analytics_gate")
+        })
+        .count();
+    assert_eq!(analytics_gate_event_count, user_count as usize);
 }
 
 #[tokio::test]

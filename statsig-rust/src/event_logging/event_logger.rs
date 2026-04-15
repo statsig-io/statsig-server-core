@@ -105,36 +105,54 @@ impl EventLogger {
         let decision = self
             .event_sampler
             .get_sampling_decision(&operation, sec_expo_as_primary_active);
+
+        if sec_expo_as_primary_active {
+            let should_log_parent = decision.should_log();
+            let pending_event = operation.into_queued_event(decision);
+            self.enqueue_event_with_secondary_exposures_as_primary(
+                pending_event,
+                should_log_parent,
+            );
+            return;
+        }
+
         if !decision.should_log() {
             return;
         }
 
         let pending_event = operation.into_queued_event(decision);
-        if sec_expo_as_primary_active {
-            self.enqueue_event_with_secondary_exposures_as_primary(pending_event);
-            return;
-        }
-
         self.add_pending_event(pending_event);
     }
 
-    fn enqueue_event_with_secondary_exposures_as_primary(&self, mut pending_event: QueuedEvent) {
+    fn enqueue_event_with_secondary_exposures_as_primary(
+        &self,
+        mut pending_event: QueuedEvent,
+        should_log_parent: bool,
+    ) {
         let Some(exposure_time) = pending_event.exposure_time() else {
-            self.add_pending_event(pending_event);
+            if should_log_parent {
+                self.add_pending_event(pending_event);
+            }
             return;
         };
         let secondary_exposures = pending_event.take_secondary_exposures_for_primary_logging();
         if secondary_exposures.is_empty() {
-            self.add_pending_event(pending_event);
+            if should_log_parent {
+                self.add_pending_event(pending_event);
+            }
             return;
         }
 
         let Some(user) = pending_event.user_for_secondary_exposures() else {
-            self.add_pending_event(pending_event);
+            if should_log_parent {
+                self.add_pending_event(pending_event);
+            }
             return;
         };
 
-        self.add_pending_event(pending_event);
+        if should_log_parent {
+            self.add_pending_event(pending_event);
+        }
 
         for secondary_exposure in secondary_exposures {
             let operation = EnqueueSecondaryExposureAsPrimaryOp {
