@@ -37,6 +37,8 @@ jobs:
           version: 7.32.4
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.lang }}
 
       - name: Install NPM Dependencies
         run: pnpm install --dir cli
