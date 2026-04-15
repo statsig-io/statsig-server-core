@@ -25,7 +25,7 @@ jobs:
       - name: Clone Kong Repo
         run: git clone https://oauth2:$REPO_PAT@github.com/statsig-io/kong.git .
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: 'npm'
@@ -60,7 +60,7 @@ jobs:
 
       - name: "[Rebuild] Cache Docker Layers"
         if: steps.check_image.outputs.needs_build == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/.buildx-cache
           key: ${{ inputs.sdk }}-buildx-${{ github.sha }}
@@ -69,7 +69,7 @@ jobs:
 
       - name: "[Rebuild] Build and Push Docker Image"
         if: steps.check_image.outputs.needs_build == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: bridges/${{ inputs.sdk }}-bridge
           push: true
@@ -99,7 +99,7 @@ jobs:
       - name: Clone Kong Repo
         run: git clone https://oauth2:$REPO_PAT@github.com/statsig-io/kong.git .
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: 'npm'
@@ -115,7 +115,7 @@ jobs:
           docker tag statsig/sdk-bridge:${{ needs.build.outputs.hash }} ${{ inputs.sdk }}-bridge
 
       - name: Load Scrapi Responses from Github Cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: /tmp/kong/cache
           key: scrapi-cache-${{ github.run_id }}-${{ github.run_attempt }}

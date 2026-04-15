@@ -49,14 +49,14 @@ jobs:
         run: pip3 install pytest maturin patchelf pytest_httpserver pytest-retry statsig
       
       - name: Setup elixir
-        uses: erlef/setup-beam@v1
+        uses: erlef/setup-beam@8251c48667b97e88a0a24ec512f5b72a039fcea7 # v1
         if: ${{  matrix.lang == 'elixir' }}
         with:
           elixir-version: 1.18.4
           otp-version: '28.0'
 
       - name: Install Protoc
-        uses: arduino/setup-protoc@v3
+        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -69,7 +69,7 @@ jobs:
 
       - name: Upload Artifacts
         if: matrix.lang == 'rust'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ matrix.lang }}-test-outputs
           if-no-files-found: error
