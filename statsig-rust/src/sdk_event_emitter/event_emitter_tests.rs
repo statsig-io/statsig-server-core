@@ -59,6 +59,8 @@ fn test_unsub_by_event() {
     let (_, second_counter) = sub(&mut event_emitter, SdkEvent::GATE_EVALUATED);
     let (_, third_counter) = sub(&mut event_emitter, SdkEvent::DYNAMIC_CONFIG_EVALUATED);
 
+    assert_eq!(event_emitter.listener_count(), 3);
+
     emit(&mut event_emitter, SdkEvent::GATE_EVALUATED);
 
     assert_eq!(first_counter.load(Ordering::SeqCst), 1);
@@ -69,6 +71,7 @@ fn test_unsub_by_event() {
     assert_eq!(third_counter.load(Ordering::SeqCst), 1);
 
     event_emitter.unsubscribe(SdkEvent::GATE_EVALUATED);
+    assert_eq!(event_emitter.listener_count(), 1);
     emit(&mut event_emitter, SdkEvent::GATE_EVALUATED);
 
     assert_eq!(first_counter.load(Ordering::SeqCst), 1);
@@ -87,6 +90,8 @@ fn test_unsub_by_event_and_id() {
     let (_, second_counter) = sub(&mut event_emitter, SdkEvent::GATE_EVALUATED);
     let (_, third_counter) = sub(&mut event_emitter, SdkEvent::DYNAMIC_CONFIG_EVALUATED);
 
+    assert_eq!(event_emitter.listener_count(), 3);
+
     emit(&mut event_emitter, SdkEvent::GATE_EVALUATED);
     emit(&mut event_emitter, SdkEvent::DYNAMIC_CONFIG_EVALUATED);
 
@@ -95,6 +100,7 @@ fn test_unsub_by_event_and_id() {
     assert_eq!(third_counter.load(Ordering::SeqCst), 1);
 
     event_emitter.unsubscribe_by_id(&first_id);
+    assert_eq!(event_emitter.listener_count(), 2);
     emit(&mut event_emitter, SdkEvent::GATE_EVALUATED);
     emit(&mut event_emitter, SdkEvent::DYNAMIC_CONFIG_EVALUATED);
 
@@ -111,6 +117,8 @@ fn test_unsub_all() {
     let (_, second_counter) = sub(&mut event_emitter, SdkEvent::GATE_EVALUATED);
     let (_, third_counter) = sub(&mut event_emitter, SdkEvent::DYNAMIC_CONFIG_EVALUATED);
 
+    assert_eq!(event_emitter.listener_count(), 3);
+
     emit(&mut event_emitter, SdkEvent::GATE_EVALUATED);
     emit(&mut event_emitter, SdkEvent::DYNAMIC_CONFIG_EVALUATED);
 
@@ -119,6 +127,7 @@ fn test_unsub_all() {
     assert_eq!(third_counter.load(Ordering::SeqCst), 1);
 
     event_emitter.unsubscribe_all();
+    assert_eq!(event_emitter.listener_count(), 0);
 
     emit(&mut event_emitter, SdkEvent::GATE_EVALUATED);
     emit(&mut event_emitter, SdkEvent::DYNAMIC_CONFIG_EVALUATED);
@@ -132,6 +141,8 @@ fn test_unsub_all() {
 fn test_sub_all() {
     let mut event_emitter = SdkEventEmitter::default();
     let (_, counter) = sub(&mut event_emitter, SdkEvent::ALL);
+
+    assert_eq!(event_emitter.listener_count(), 1);
 
     emit(&mut event_emitter, SdkEvent::GATE_EVALUATED);
     assert_eq!(counter.load(Ordering::SeqCst), 1);
