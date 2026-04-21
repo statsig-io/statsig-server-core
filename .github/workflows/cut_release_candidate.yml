@@ -1,9 +1,7 @@
 name: Cut Release Candidate
 
-on:
-  workflow_dispatch:
-  schedule:
-     - cron: '0 1 * * 2' #Weekly: Monday 5-6pm PT
+# Disabled: intentionally disabled while release cadence is paused.
+on: []
 
 env:
   # GH Octokit (Kong App)
