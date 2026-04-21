@@ -61,6 +61,17 @@ def test_dynamic_config_get_methods(statsig_setup):
     assert "non_existent_key" not in config.value
 
 
+def test_dynamic_config_typed_get_methods(statsig_setup):
+    statsig = statsig_setup
+    config = statsig.get_dynamic_config(StatsigUser("my_user"), "operating_system_config")
+
+    assert config.get_string("str", "fallback") == "hello"
+    assert config.get_integer("num", 0) == 13
+    assert config.get_bool("bool", False) is True
+    assert config.get_array("arr", []) == ["hi", "there"]
+    assert config.get_object("obj", {}) == {"a": "bc"}
+
+
 def test_dynamic_config_to_py_dict_round_trip_preserves_data(statsig_setup):
     statsig = statsig_setup
     user = StatsigUser("my_user")
