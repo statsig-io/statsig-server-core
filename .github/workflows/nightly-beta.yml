@@ -1,7 +1,8 @@
 name: Nightly Beta
 
 # Disabled: intentionally disabled while nightly beta is paused.
-on: []
+on: 
+  workflow_dispatch:
 
 env:
   # GH Octokit (Kong App)
