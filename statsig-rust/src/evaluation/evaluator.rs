@@ -125,7 +125,7 @@ impl Evaluator {
             }
 
             if evaluate_config_delegate(ctx, rule)? {
-                ctx.finalize_evaluation(spec, Some(rule));
+                ctx.finalize_evaluation(spec, None);
                 return Ok(Recognition::Recognized);
             }
 
