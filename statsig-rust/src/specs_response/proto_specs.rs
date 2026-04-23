@@ -707,7 +707,9 @@ fn rules_from_pb(rules: Vec<pb::Rule>) -> Result<Vec<Rule>, StatsigErr> {
         .map(|pb_rule| {
             let rule = Rule {
                 name: InternedString::from_string(pb_rule.name),
-                pass_percentage: pb_rule.pass_percentage as f64,
+                pass_percentage: pb_rule
+                    .pass_percentage_float
+                    .unwrap_or(pb_rule.pass_percentage as f64),
                 id: InternedString::from_string(pb_rule.id),
                 salt: pb_rule.salt.map(InternedString::from_string),
                 conditions: pb_rule
@@ -907,9 +909,76 @@ mod tests {
             is_experiment_group: None,
             is_control_group: None,
             sampling_rate: Some(201.0),
+            pass_percentage_float: None,
         }])
         .expect("protobuf rule should parse");
 
         assert_eq!(rules[0].sampling_rate, Some(201));
+    }
+
+    #[test]
+    fn rules_from_pb_prefers_float_pass_percentage() {
+        let rules = rules_from_pb(vec![pb::Rule {
+            name: "rule".to_string(),
+            pass_percentage: 0,
+            id: "rule-id".to_string(),
+            salt: None,
+            conditions: vec![],
+            id_type: None,
+            return_value: None,
+            group_name: None,
+            config_delegate: None,
+            is_experiment_group: None,
+            is_control_group: None,
+            sampling_rate: None,
+            pass_percentage_float: Some(0.5),
+        }])
+        .expect("protobuf rule should parse");
+
+        assert_eq!(rules[0].pass_percentage, 0.5);
+    }
+
+    #[test]
+    fn rules_from_pb_respects_explicit_zero_float_pass_percentage() {
+        let rules = rules_from_pb(vec![pb::Rule {
+            name: "rule".to_string(),
+            pass_percentage: 100,
+            id: "rule-id".to_string(),
+            salt: None,
+            conditions: vec![],
+            id_type: None,
+            return_value: None,
+            group_name: None,
+            config_delegate: None,
+            is_experiment_group: None,
+            is_control_group: None,
+            sampling_rate: None,
+            pass_percentage_float: Some(0.0),
+        }])
+        .expect("protobuf rule should parse");
+
+        assert_eq!(rules[0].pass_percentage, 0.0);
+    }
+
+    #[test]
+    fn rules_from_pb_falls_back_to_legacy_pass_percentage() {
+        let rules = rules_from_pb(vec![pb::Rule {
+            name: "rule".to_string(),
+            pass_percentage: 42,
+            id: "rule-id".to_string(),
+            salt: None,
+            conditions: vec![],
+            id_type: None,
+            return_value: None,
+            group_name: None,
+            config_delegate: None,
+            is_experiment_group: None,
+            is_control_group: None,
+            sampling_rate: None,
+            pass_percentage_float: None,
+        }])
+        .expect("protobuf rule should parse");
+
+        assert_eq!(rules[0].pass_percentage, 42.0);
     }
 }

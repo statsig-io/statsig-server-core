@@ -60,6 +60,7 @@ pub struct Spec {
 pub struct Rule {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// Legacy (See pass_percentage_float)
     #[prost(uint32, tag = "2")]
     pub pass_percentage: u32,
     #[prost(string, tag = "3")]
@@ -82,6 +83,8 @@ pub struct Rule {
     pub is_control_group: ::core::option::Option<bool>,
     #[prost(float, optional, tag = "12")]
     pub sampling_rate: ::core::option::Option<f32>,
+    #[prost(double, optional, tag = "13")]
+    pub pass_percentage_float: ::core::option::Option<f64>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Condition {
