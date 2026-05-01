@@ -31,12 +31,12 @@ runs:
         echo "Target: ${{ inputs.target }}"
 
     - name: Install Protoc
-      uses: arduino/setup-protoc@v3
+      uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3
       with:
         repo-token: ${{ inputs.gh_token }}
 
     - name: Setup Node
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
         node-version: 20
         architecture: ${{ inputs.node_arch || '' }}
@@ -46,7 +46,7 @@ runs:
       run: cd cli && pnpm install
 
     - name: Install Rust Tools
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
       with:
         toolchain: stable
         targets: ${{ inputs.target }}
@@ -58,7 +58,7 @@ runs:
 
     - name: "[Linux-Musl] Add Zig Compiler"
       if: ${{ contains(inputs.target, 'musl') }}
-      uses: goto-bus-stop/setup-zig@v2
+      uses: goto-bus-stop/setup-zig@abea47f85e598557f500fa1fd2ab7464fcb39406 # v2
       with:
         version: 0.13.0
 
