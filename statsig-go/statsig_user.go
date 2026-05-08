@@ -12,7 +12,7 @@ type StatsigUser struct {
 
 // todo: introduce custom type for handling valid JSON primitives only instead of using 'any'
 type StatsigUserBuilder struct {
-	UserID string `json:"userID"`
+	UserID *string `json:"userID,omitempty"`
 	// map[string] string | number
 	CustomIDs  map[string]any `json:"customIDs"`
 	Email      *string        `json:"email"`
@@ -29,7 +29,7 @@ type StatsigUserBuilder struct {
 
 func NewUserBuilderWithUserID(userID string) *StatsigUserBuilder {
 	return &StatsigUserBuilder{
-		UserID: userID,
+		UserID: &userID,
 	}
 }
 
@@ -40,7 +40,7 @@ func NewUserBuilderWithCustomIDs(customIDs map[string]any) *StatsigUserBuilder {
 }
 
 func (b *StatsigUserBuilder) WithUserID(userID string) *StatsigUserBuilder {
-	b.UserID = userID
+	b.UserID = &userID
 	return b
 }
 
