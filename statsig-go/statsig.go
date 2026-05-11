@@ -17,7 +17,8 @@ type EventPayload struct {
 }
 
 type Statsig struct {
-	ref atomic.Uint64
+	ref            atomic.Uint64
+	allowNilUserID bool
 }
 
 func NewStatsig(sdkKey string) (*Statsig, error) {
@@ -42,7 +43,7 @@ func NewStatsigWithOptions(sdkKey string, opts *StatsigOptions) (*Statsig, error
 		return nil, fmt.Errorf("error creating Statsig instance")
 	}
 
-	s := &Statsig{ref: atomic.Uint64{}}
+	s := &Statsig{ref: atomic.Uint64{}, allowNilUserID: opts.allowNilUserID}
 	s.ref.Store(ref)
 
 	runtime.SetFinalizer(s, func(obj *Statsig) {
@@ -50,6 +51,18 @@ func NewStatsigWithOptions(sdkKey string, opts *StatsigOptions) (*Statsig, error
 	})
 
 	return s, nil
+}
+
+func (s *Statsig) NewUserBuilderWithUserID(userID string) *StatsigUserBuilder {
+	b := NewUserBuilderWithUserID(userID)
+	b.allowNilUserID = s.allowNilUserID
+	return b
+}
+
+func (s *Statsig) NewUserBuilderWithCustomIDs(customIDs map[string]any) *StatsigUserBuilder {
+	b := NewUserBuilderWithCustomIDs(customIDs)
+	b.allowNilUserID = s.allowNilUserID
+	return b
 }
 
 func (s *Statsig) Initialize() {

@@ -12,7 +12,7 @@ type StatsigUser struct {
 
 // todo: introduce custom type for handling valid JSON primitives only instead of using 'any'
 type StatsigUserBuilder struct {
-	UserID string `json:"userID"`
+	UserID *string `json:"userID,omitempty"`
 	// map[string] string | number
 	CustomIDs  map[string]any `json:"customIDs"`
 	Email      *string        `json:"email"`
@@ -25,11 +25,13 @@ type StatsigUserBuilder struct {
 	Custom *map[string]any `json:"custom"`
 	// map[string] string | number | boolean | array<string>
 	PrivateAttributes *map[string]any `json:"privateAttributes"`
+
+	allowNilUserID bool
 }
 
 func NewUserBuilderWithUserID(userID string) *StatsigUserBuilder {
 	return &StatsigUserBuilder{
-		UserID: userID,
+		UserID: &userID,
 	}
 }
 
@@ -40,7 +42,7 @@ func NewUserBuilderWithCustomIDs(customIDs map[string]any) *StatsigUserBuilder {
 }
 
 func (b *StatsigUserBuilder) WithUserID(userID string) *StatsigUserBuilder {
-	b.UserID = userID
+	b.UserID = &userID
 	return b
 }
 
@@ -90,7 +92,12 @@ func (b *StatsigUserBuilder) WithPrivateAttributes(privateAttributes map[string]
 }
 
 func (b *StatsigUserBuilder) Build() (*StatsigUser, error) {
-	jsonData, err := json.Marshal(b)
+	snapshot := *b
+	if !b.allowNilUserID && snapshot.UserID == nil {
+		empty := ""
+		snapshot.UserID = &empty
+	}
+	jsonData, err := json.Marshal(&snapshot)
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling user: %v", err)
 	}

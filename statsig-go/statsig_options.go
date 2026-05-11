@@ -7,7 +7,8 @@ import (
 )
 
 type StatsigOptions struct {
-	ref uint64
+	ref            uint64
+	allowNilUserID bool
 }
 
 type StatsigOptionsBuilder struct {
@@ -35,6 +36,8 @@ type StatsigOptionsBuilder struct {
 	PersistentStorageRef        *uint64 `json:"persistent_storage_ref,omitempty"`
 	InitTimeoutMs               *int32  `json:"init_timeout_ms,omitempty"`
 	FallbackToStatsigApi        *bool   `json:"fallback_to_statsig_api,omitempty"`
+
+	AllowNilUserID bool `json:"-"`
 }
 
 func NewOptionsBuilder() *StatsigOptionsBuilder {
@@ -141,6 +144,11 @@ func (o *StatsigOptionsBuilder) WithPersistentStorage(persistentStorage *Persist
 	return o
 }
 
+func (o *StatsigOptionsBuilder) WithAllowNilUserID(allow bool) *StatsigOptionsBuilder {
+	o.AllowNilUserID = allow
+	return o
+}
+
 func (o *StatsigOptionsBuilder) Build() (*StatsigOptions, error) {
 	data, err := json.Marshal(o)
 	if err != nil {
@@ -156,7 +164,8 @@ func (o *StatsigOptionsBuilder) Build() (*StatsigOptions, error) {
 	}
 
 	options := &StatsigOptions{
-		ref,
+		ref:            ref,
+		allowNilUserID: o.AllowNilUserID,
 	}
 
 	runtime.SetFinalizer(options, func(obj *StatsigOptions) {
