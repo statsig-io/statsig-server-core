@@ -25,6 +25,8 @@ type StatsigUserBuilder struct {
 	Custom *map[string]any `json:"custom"`
 	// map[string] string | number | boolean | array<string>
 	PrivateAttributes *map[string]any `json:"privateAttributes"`
+
+	allowNilUserID bool
 }
 
 func NewUserBuilderWithUserID(userID string) *StatsigUserBuilder {
@@ -90,7 +92,12 @@ func (b *StatsigUserBuilder) WithPrivateAttributes(privateAttributes map[string]
 }
 
 func (b *StatsigUserBuilder) Build() (*StatsigUser, error) {
-	jsonData, err := json.Marshal(b)
+	snapshot := *b
+	if !b.allowNilUserID && snapshot.UserID == nil {
+		empty := ""
+		snapshot.UserID = &empty
+	}
+	jsonData, err := json.Marshal(&snapshot)
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling user: %v", err)
 	}
