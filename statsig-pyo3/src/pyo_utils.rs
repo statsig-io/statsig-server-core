@@ -260,6 +260,10 @@ fn py_any_ref_to_dynamic_value(value: &Bound<'_, PyAny>) -> Option<DynamicValue>
         return Some(DynamicValue::from(int));
     }
 
+    if let Some(float) = try_as_overflowing_int(value) {
+        return Some(DynamicValue::from(float));
+    }
+
     if let Some(list) = try_as_list(value) {
         return Some(DynamicValue::from(list));
     }
@@ -347,6 +351,17 @@ fn try_as_int<'py>(value: &'py Bound<'py, PyAny>) -> Option<i64> {
     };
 
     Some(value)
+}
+
+// Python ints have arbitrary precision; values above `i64::MAX` fail `try_as_int`. Fall
+// back to f64 (lossy above 2^53) so the entry is preserved instead of dropped — matches
+// the JS bridge, which always uses doubles. Only meaningful after `try_as_int`.
+fn try_as_overflowing_int<'py>(value: &'py Bound<'py, PyAny>) -> Option<f64> {
+    if !PyInt::type_check(value) {
+        return None;
+    }
+
+    value.extract::<f64>().ok()
 }
 
 fn try_as_float<'py>(value: &'py Bound<'py, PyAny>) -> Option<f64> {

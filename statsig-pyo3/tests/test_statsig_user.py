@@ -97,7 +97,9 @@ def test_various_custom_attr_types():
     assert custom["big_int"] == sys.maxsize
     assert isinstance(custom["big_int"], int)
     assert isinstance(custom["too_big_float"], float)
-    assert custom.get("too_big_int") is None
+    # Python ints that overflow i64 are kept as f64 (lossy) rather than dropped.
+    assert isinstance(custom["too_big_int"], float)
+    assert custom["too_big_int"] == float(999999999999999999999999999999)
 
     assert isinstance(custom["arr"][0], bool)
     assert isinstance(custom["arr"][1], str)

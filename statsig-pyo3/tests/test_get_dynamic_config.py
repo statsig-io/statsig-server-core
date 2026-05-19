@@ -61,6 +61,18 @@ def test_dynamic_config_get_methods(statsig_setup):
     assert "non_existent_key" not in config.value
 
 
+def test_get_float_coerces_int_param(statsig_setup):
+    statsig = statsig_setup
+    config = statsig.get_dynamic_config(StatsigUser("my_user"), "big_number")
+
+    # `rar` is stored as an int (9999999999). get_float should coerce to float
+    # rather than returning the fallback. Mirrors the user-reported behavior where
+    # a Statsig param saved as `1` was being skipped by get_float(name, 0.99).
+    result = config.get_float("rar", 0.99)
+    assert result == 9999999999.0
+    assert isinstance(result, float)
+
+
 def test_dynamic_config_typed_get_methods(statsig_setup):
     statsig = statsig_setup
     config = statsig.get_dynamic_config(StatsigUser("my_user"), "operating_system_config")
