@@ -2530,6 +2530,7 @@ checksum = "f04a7b61bf2db5495d6c0d2eb4b3f0f366864d47f2482834656e25d1b25fe290"
 dependencies = [
  "inventory",
  "libloading",
+ "num-bigint",
  "regex-lite",
  "rustler_codegen",
  "serde",

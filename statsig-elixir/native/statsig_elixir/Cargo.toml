@@ -11,7 +11,7 @@ crate-type = ["cdylib"]
 [dependencies]
 async-trait = "0.1.80"
 parking_lot = "0.12.1"
-rustler = { version = "0.36.1", features = ["serde"] }
+rustler = { version = "0.36.1", features = ["serde", "big_integer"] }
 statsig-rust = { path = "../../../statsig-rust", features = [
     "ordered_user_data_maps",
     "with_zstd",
