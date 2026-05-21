@@ -124,23 +124,91 @@ class BaseConfigEvaluation(BaseEvaluation):
         return self._get_typed(self.__tag, self.value, param_name, fallback)
 
     def get_string(self, param_name: str, fallback: str) -> str:
-        return self._get_typed(self.__tag, self.value, param_name, fallback)
+        res = self.value.get(param_name, None)
+        if res is None:
+            return fallback
+
+        if fallback is None or isinstance(fallback, type(res)):
+            return res
+
+        _log_error(
+            self.__tag,
+            f"Type mismatch - '{self.name}.{param_name}'. Expected {type(fallback)}, got {type(res)}",
+        )
+        return fallback
 
     def get_integer(self, param_name: str, fallback: int) -> int:
-        return self._get_typed(self.__tag, self.value, param_name, fallback)
+        res = self.value.get(param_name, None)
+        if res is None:
+            return fallback
+
+        if fallback is None or isinstance(fallback, type(res)):
+            return res
+
+        _log_error(
+            self.__tag,
+            f"Type mismatch - '{self.name}.{param_name}'. Expected {type(fallback)}, got {type(res)}",
+        )
+        return fallback
 
     def get_float(self, param_name: str, fallback: float) -> float:
         actual_fallback = float(fallback) if isinstance(fallback, int) else fallback
-        return self._get_typed(self.__tag, self.value, param_name, actual_fallback)
+        res = self.value.get(param_name, None)
+        if res is None:
+            return actual_fallback
+
+        # Ints stored in Statsig (e.g. a value saved as `1` rather than `1.0`) are valid
+        # floats — coerce them. `bool` subclasses `int` in Python, so exclude it.
+        if isinstance(res, (int, float)) and not isinstance(res, bool):
+            return float(res)
+
+        _log_error(
+            self.__tag,
+            f"Type mismatch - '{self.name}.{param_name}'. Expected {type(actual_fallback)}, got {type(res)}",
+        )
+        return actual_fallback
 
     def get_bool(self, param_name: str, fallback: bool) -> bool:
-        return self._get_typed(self.__tag, self.value, param_name, fallback)
+        res = self.value.get(param_name, None)
+        if res is None:
+            return fallback
+
+        if fallback is None or isinstance(fallback, type(res)):
+            return res
+
+        _log_error(
+            self.__tag,
+            f"Type mismatch - '{self.name}.{param_name}'. Expected {type(fallback)}, got {type(res)}",
+        )
+        return fallback
 
     def get_array(self, param_name: str, fallback: list) -> list:
-        return self._get_typed(self.__tag, self.value, param_name, fallback)
+        res = self.value.get(param_name, None)
+        if res is None:
+            return fallback
+
+        if fallback is None or isinstance(fallback, type(res)):
+            return res
+
+        _log_error(
+            self.__tag,
+            f"Type mismatch - '{self.name}.{param_name}'. Expected {type(fallback)}, got {type(res)}",
+        )
+        return fallback
 
     def get_object(self, param_name: str, fallback: dict) -> dict:
-        return self._get_typed(self.__tag, self.value, param_name, fallback)
+        res = self.value.get(param_name, None)
+        if res is None:
+            return fallback
+
+        if fallback is None or isinstance(fallback, type(res)):
+            return res
+
+        _log_error(
+            self.__tag,
+            f"Type mismatch - '{self.name}.{param_name}'. Expected {type(fallback)}, got {type(res)}",
+        )
+        return fallback
 
     def to_dict(self) -> dict:
         base_dict = super().to_dict()
@@ -223,13 +291,21 @@ class Layer(BaseEvaluation):
 
     def get_float(self, param_name: str, fallback: float) -> float:
         actual_fallback = float(fallback) if isinstance(fallback, int) else fallback
-        return self._get_typed(
+        res = self.__value.get(param_name, None)
+        if res is None:
+            return actual_fallback
+
+        # Ints stored in Statsig (e.g. a value saved as `1` rather than `1.0`) are valid
+        # floats — coerce them. `bool` subclasses `int` in Python, so exclude it.
+        if isinstance(res, (int, float)) and not isinstance(res, bool):
+            self._log_layer_param_exposure(param_name)
+            return float(res)
+
+        _log_error(
             "Layer",
-            self.__value,
-            param_name,
-            actual_fallback,
-            self._log_layer_param_exposure,
+            f"Type mismatch - '{self.name}.{param_name}'. Expected {type(actual_fallback)}, got {type(res)}",
         )
+        return actual_fallback
 
     def get_bool(self, param_name: str, fallback: bool) -> bool:
         return self._get_typed(

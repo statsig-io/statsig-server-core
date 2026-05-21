@@ -89,7 +89,42 @@ impl HashUtil {
         u64::from_be_bytes(hasher_bytes)
     }
 
-    pub fn evaluation_hash(&self, input: &String) -> Option<u64> {
+    pub fn evaluation_hash(&self, input: &str) -> Option<u64> {
         self.sha_hasher.compute_hash(input)
+    }
+
+    pub fn evaluation_hash_dot2(&self, a: &str, b: &str) -> Option<u64> {
+        self.sha_hasher.compute_hash_dot2(a, b)
+    }
+
+    pub fn evaluation_hash_dot3(&self, a: &str, b: &str, c: &str) -> Option<u64> {
+        self.sha_hasher.compute_hash_dot3(a, b, c)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::HashUtil;
+
+    #[test]
+    fn evaluation_hash_dot2_matches_formatted_input() {
+        let hashing = HashUtil::new();
+        let formatted = "salt.user";
+
+        assert_eq!(
+            hashing.evaluation_hash(formatted),
+            hashing.evaluation_hash_dot2("salt", "user")
+        );
+    }
+
+    #[test]
+    fn evaluation_hash_dot3_matches_formatted_input() {
+        let hashing = HashUtil::new();
+        let formatted = "spec.rule.user";
+
+        assert_eq!(
+            hashing.evaluation_hash(formatted),
+            hashing.evaluation_hash_dot3("spec", "rule", "user")
+        );
     }
 }

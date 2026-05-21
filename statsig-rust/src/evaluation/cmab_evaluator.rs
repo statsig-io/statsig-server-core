@@ -62,9 +62,9 @@ pub fn get_cmab_ranked_list(ctx: &mut EvaluatorContext, name: &str) -> Vec<CMABR
         }
     };
 
+    let hashing = ctx.hashing;
     let unit_id = get_unit_id(ctx, &cmab.id_type);
-    let input = format!("{}.{}", cmab.salt, unit_id);
-    let user_hash = ctx.hashing.evaluation_hash(&input);
+    let user_hash = hashing.evaluation_hash_dot2(cmab.salt.as_str(), unit_id);
 
     let should_sample = match user_hash {
         Some(hash) => ((hash % 10000) as f64) < (cmab.sample_rate * 10000.0),
@@ -142,9 +142,9 @@ pub(crate) fn evaluate_cmab(
     ctx.result.version = Some(cmab.version);
     ctx.result.is_experiment_active = cmab.enabled;
 
+    let hashing = ctx.hashing;
     let unit_id = get_unit_id(ctx, &cmab.id_type);
-    let input = format!("{}.{}", cmab.salt, unit_id);
-    let user_hash = ctx.hashing.evaluation_hash(&input);
+    let user_hash = hashing.evaluation_hash_dot2(cmab.salt.as_str(), unit_id);
     let config = match &cmab.config {
         Some(config) => config,
         None => {

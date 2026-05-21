@@ -10,7 +10,11 @@ class ErrorBoundary:
 
                 def create_wrapped(method_name, orig_method):
                     def wrapped(*args, **kwargs):
-                        return ErrorBoundary._capture(method_name, lambda: orig_method(*args, **kwargs))
+                        try:
+                            return orig_method(*args, **kwargs)
+                        except Exception as error:
+                            ErrorBoundary._on_error(method_name, error)
+                            return None
 
                     wrapped._error_boundary_wrapped = True
                     return wrapped

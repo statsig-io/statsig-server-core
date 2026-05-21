@@ -6,6 +6,7 @@ use crate::{
 };
 use dashmap::DashMap;
 use std::ops::Deref;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 const TAG: &str = "SdkEventEmitter";
 
@@ -58,6 +59,7 @@ impl SubscriptionID {
 #[derive(Default)]
 pub struct SdkEventEmitter {
     listeners: DashMap<u8, Vec<Listener>>,
+    listener_count: AtomicUsize,
 }
 
 impl SdkEventEmitter {
@@ -73,6 +75,7 @@ impl SdkEventEmitter {
 
         let sub_id = SubscriptionID::new(event);
 
+        self.listener_count.fetch_add(1, Ordering::Relaxed);
         self.listeners.entry(code).or_default().push(Listener {
             sub_id_value: sub_id.value.clone(),
             callback: Box::new(callback),
@@ -83,7 +86,10 @@ impl SdkEventEmitter {
 
     pub fn unsubscribe(&self, event: &str) {
         let code = SdkEventCode::from_name(event).as_raw();
-        self.listeners.remove(&code);
+        if let Some((_, listeners)) = self.listeners.remove(&code) {
+            self.listener_count
+                .fetch_sub(listeners.len(), Ordering::Relaxed);
+        }
     }
 
     pub fn unsubscribe_by_id(&self, subscription_id: &SubscriptionID) {
@@ -93,14 +99,24 @@ impl SdkEventEmitter {
             None => return,
         };
 
+        let original_len = listeners.len();
         listeners.retain(|listener| listener.sub_id_value != subscription_id.value);
+        let removed = original_len - listeners.len();
+        if removed > 0 {
+            self.listener_count.fetch_sub(removed, Ordering::Relaxed);
+        }
     }
 
     pub fn unsubscribe_all(&self) {
         self.listeners.clear();
+        self.listener_count.store(0, Ordering::Relaxed);
     }
 
     pub(crate) fn emit(&self, event: SdkEvent) {
+        if self.listener_count.load(Ordering::Relaxed) == 0 {
+            return;
+        }
+
         let all_code = SdkEventCode::from_name(SdkEvent::ALL).as_raw();
         self.emit_to_listeners(&event, self.listeners.get(&all_code).as_deref());
 
@@ -117,6 +133,11 @@ impl SdkEventEmitter {
         listeners
             .iter()
             .for_each(|listener| (listener.callback)(event.clone()));
+    }
+
+    #[cfg(test)]
+    pub(crate) fn listener_count(&self) -> usize {
+        self.listener_count.load(Ordering::Relaxed)
     }
 }
 

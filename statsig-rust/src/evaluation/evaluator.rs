@@ -125,7 +125,7 @@ impl Evaluator {
             }
 
             if evaluate_config_delegate(ctx, rule)? {
-                ctx.finalize_evaluation(spec, Some(rule));
+                ctx.finalize_evaluation(spec, None);
                 return Ok(Recognition::Recognized);
             }
 
@@ -717,15 +717,16 @@ fn evaluate_pass_percentage(
     }
 
     let rule_salt = rule.salt.as_deref().unwrap_or(rule.id.as_str());
+    let hashing = ctx.hashing;
     let unit_id = get_unit_id(ctx, &rule.id_type);
-    let input = format!("{spec_salt}.{rule_salt}.{unit_id}");
-    match ctx.hashing.evaluation_hash(&input) {
+    match hashing.evaluation_hash_dot3(spec_salt.as_str(), rule_salt, unit_id) {
         Some(hash) => ((hash % 10000) as f64) < rule.pass_percentage * 100.0,
         None => false,
     }
 }
 
 fn get_hash_for_user_bucket(ctx: &mut EvaluatorContext, condition: &Condition) -> DynamicValue {
+    let hashing = ctx.hashing;
     let unit_id = get_unit_id(ctx, &condition.id_type);
 
     let mut salt = InternedString::empty_ref();
@@ -736,8 +737,9 @@ fn get_hash_for_user_bucket(ctx: &mut EvaluatorContext, condition: &Condition) -
         }
     }
 
-    let input = format!("{salt}.{unit_id}");
-    let hash = ctx.hashing.evaluation_hash(&input).unwrap_or(1);
+    let hash = hashing
+        .evaluation_hash_dot2(salt.as_str(), unit_id)
+        .unwrap_or(1);
     dyn_value!(hash % 1000)
 }
 

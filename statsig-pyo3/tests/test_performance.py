@@ -1,4 +1,4 @@
-from statsig_python_core import Statsig, StatsigOptions, StatsigUser
+from statsig_python_core import DynamicConfig, Statsig, StatsigOptions, StatsigUser
 from pytest_httpserver import HTTPServer
 import json
 from utils import get_test_data_resource
@@ -6,6 +6,28 @@ import pytest
 from profile_util import profile
 
 user = StatsigUser("a-user")
+typed_config = DynamicConfig(
+    "typed_config",
+    {
+        "value": {
+            "a_string": "value",
+            "an_integer": 123,
+            "a_float": 1.5,
+            "a_bool": True,
+            "an_array": ["value"],
+            "an_object": {"key": "value"},
+        }
+    },
+)
+
+typed_config_accessor_cases = [
+    ("get_string", "a_string", "err"),
+    ("get_integer", "an_integer", 0),
+    ("get_float", "a_float", 0.0),
+    ("get_bool", "a_bool", False),
+    ("get_array", "an_array", []),
+    ("get_object", "an_object", {}),
+]
 
 
 @pytest.fixture
@@ -84,6 +106,19 @@ def test_get_dynamic_config_get_string_correctness(statsig_setup):
     value = config.get_string("a", "err")
 
     assert value.startswith("TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGF")
+
+
+@pytest.mark.parametrize("method_name,param_name,fallback", typed_config_accessor_cases)
+def test_typed_config_accessors(method_name, param_name, fallback):
+    method = getattr(typed_config, method_name)
+
+    results = profile(lambda: method(param_name, fallback), iterations=10_000)
+
+    value = results["value"]
+    del results["value"]
+    print(json.dumps(results, indent=2))
+
+    assert value == typed_config.value[param_name]
 
 
 def test_get_experiment(statsig_setup):

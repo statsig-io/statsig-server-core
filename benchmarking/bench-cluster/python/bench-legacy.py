@@ -252,6 +252,14 @@ async def benchmark_experiments(
             "get_experiment",
             experiment,
             ITER_HEAVY,
+            lambda e=experiment: statsig_server.get_experiment(create_user(), e),
+            results,
+        )
+
+        await benchmark(
+            "get_experiment_global_user",
+            experiment,
+            ITER_HEAVY,
             lambda e=experiment: statsig_server.get_experiment(global_user, e),
             results,
         )
@@ -266,6 +274,14 @@ async def benchmark_layers(
     for layer in spec_names["layers"]:
         await benchmark(
             "get_layer",
+            layer,
+            ITER_HEAVY,
+            lambda layer_name=layer: statsig_server.get_layer(create_user(), layer_name),
+            results,
+        )
+
+        await benchmark(
+            "get_layer_global_user",
             layer,
             ITER_HEAVY,
             lambda layer_name=layer: statsig_server.get_layer(global_user, layer_name),

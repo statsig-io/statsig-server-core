@@ -146,10 +146,23 @@ impl<'a> Decoder<'a> for AllowedPrimitive {
             Ok(AllowedPrimitive::Bool(b))
         } else if let Ok(f) = f64::decode(term) {
             Ok(AllowedPrimitive::Float(f))
+        } else if let Some(f) = decode_overflowing_int(term) {
+            Ok(AllowedPrimitive::Float(f))
         } else {
             Err(rustler::Error::BadArg)
         }
     }
+}
+
+// Elixir integers have arbitrary precision; values above i64::MAX fail every numeric
+// decoder above (rustler's f64::decode also falls back through i64). Decode the term as
+// a BigInt and convert via its decimal representation — lossy for magnitudes above 2^53,
+// but preserves the field instead of failing the NIF call. Mirrors `try_as_overflowing_int`
+// in the pyo3 bridge. Returns None for magnitudes outside f64's finite range so callers
+// don't end up with infinities silently serialized as JSON null downstream.
+fn decode_overflowing_int(term: Term) -> Option<f64> {
+    let bi = rustler::BigInt::decode(term).ok()?;
+    bi.to_string().parse::<f64>().ok().filter(|f| f.is_finite())
 }
 
 impl Encoder for AllowedPrimitive {
