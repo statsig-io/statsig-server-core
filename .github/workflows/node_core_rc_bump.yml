@@ -72,6 +72,7 @@ jobs:
           persist-credentials: false
       
       - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "23"
       - name: Install pnpm
@@ -349,6 +350,7 @@ jobs:
 
       - name: Enable auto-merge for PR
         if: steps.create_rc_pr.outputs.pull-request-number != ''
+        uses: peter-evans/enable-pull-request-automerge@a660677d5469627102a1c1e11409dd063606628d # v3
         with:
           token: ${{ secrets.ROIM }}
           pull-request-number: ${{ steps.create_rc_pr.outputs.pull-request-number }}
