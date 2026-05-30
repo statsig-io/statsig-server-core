@@ -19,12 +19,18 @@ import (
 // loadLargeDcsData, SetupTestWithDcsData) with memory_leak_test.go.
 func TestMemoryLeakPerRequestUsers(t *testing.T) {
 	resData := loadLargeDcsData(t)
-	statsig, _, _ := SetupTestWithDcsData(t, resData)
+	statsig, scrapi, _ := SetupTestWithDcsData(t, resData)
+
+	// Stop the mock from retaining every request body and every parsed
+	// log_event payload. Without this, the bulk of measured RSS growth in
+	// this test is the harness storing user payloads (especially the
+	// ~100KB dummyString in createUser), not the SDK's own state.
+	scrapi.DisableRecording()
 
 	time.Sleep(1 * time.Second)
 
 	// Warmup: let background threads / initial allocations settle.
-	for i := range 10 {
+	for i := range 10000 {
 		u := createUser(t, i)
 		_ = statsig.GetFeatureGate(u, "test_public")
 		_ = statsig.GetDynamicConfig(u, "test_empty_array")
@@ -37,13 +43,18 @@ func TestMemoryLeakPerRequestUsers(t *testing.T) {
 	triggerGC()
 
 	initialRss := getRssBytes(t)
-	fmt.Println("Initial RSS: ", humanizeBytes(initialRss))
+	fmt.Println("Initial RSS after warmup: ", humanizeBytes(initialRss))
 
 	// Hot loop: each iteration uses a fresh, unique userID. This is what
 	// stresses any SDK state keyed on userID (exposure queue entries cloning
 	// user objects, per-user evaluation caches, etc.).
-	const iterations = 10000
+	const iterations = 1280001
 	for i := range iterations {
+		if i == 10000 || i == 20000 || i == 40000 || i == 80000 || i == 160000 || i == 320000 || i == 640000 || i == 1280000 {
+			triggerGC()
+			rss := getRssBytes(t)
+			fmt.Println("RSS at iteration ", i, ": ", humanizeBytes(rss))
+		}
 		u := createUser(t, i)
 		_ = statsig.GetFeatureGate(u, "test_public")
 		_ = statsig.GetDynamicConfig(u, "test_empty_array")

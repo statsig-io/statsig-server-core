@@ -43,6 +43,30 @@ type MockScrapi struct {
 	stubs    map[key][]StubResponse // FIFO per key
 	fallback *StubResponse
 	events   []map[string]any
+
+	// When true, handle() does not retain request bodies or parsed events.
+	// Stubs and the response path still work. Use this for high-volume
+	// tests where the harness's per-request retention dominates any SDK-
+	// side memory measurement (e.g. memory leak / load tests).
+	recordingDisabled bool
+}
+
+// DisableRecording stops the mock from storing request bodies and parsed
+// log_event payloads, and drops anything already retained. Stubs and the
+// response path are unaffected.
+//
+// Why: every recorded request is a deep copy of its body and headers, and
+// every parsed log_event payload is fully unmarshalled into a Go map.
+// Across tens of thousands of iterations with non-trivial user payloads,
+// that retention is several orders of magnitude larger than the SDK's
+// own steady-state memory and makes memory leak tests measure the mock,
+// not the SDK.
+func (m *MockScrapi) DisableRecording() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.recordingDisabled = true
+	m.requests = nil
+	m.events = nil
 }
 
 // New creates a running mock server.
@@ -169,23 +193,26 @@ func (m *MockScrapi) handle(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Body:", string(body))
 	}
 
-	if strings.Contains(r.URL.Path, "log_event") {
-		m.tryAddEvents(body)
-	}
+	m.mu.Lock()
+	recordingDisabled := m.recordingDisabled
+	m.mu.Unlock()
 
-	// record
-	rec := RecordedRequest{
-		Method:   r.Method,
-		Path:     r.URL.Path,
-		RawQuery: r.URL.RawQuery,
-		Header:   cloneHeader(r.Header),
-		Body:     append([]byte(nil), body...),
+	if !recordingDisabled && strings.Contains(r.URL.Path, "log_event") {
+		m.tryAddEvents(body)
 	}
 
 	var resp *StubResponse
 
 	m.mu.Lock()
-	m.requests = append(m.requests, rec)
+	if !recordingDisabled {
+		m.requests = append(m.requests, RecordedRequest{
+			Method:   r.Method,
+			Path:     r.URL.Path,
+			RawQuery: r.URL.RawQuery,
+			Header:   cloneHeader(r.Header),
+			Body:     append([]byte(nil), body...),
+		})
+	}
 
 	k := key{method: r.Method, path: r.URL.Path}
 	queue := m.stubs[k]
