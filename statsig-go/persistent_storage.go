@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+	"unsafe"
 
 	"github.com/statsig-io/statsig-go-core/internal"
 )
@@ -55,28 +56,28 @@ func NewPersistentStorage(functions PersistentStorageFunctions) *PersistentStora
 	storage.ref = GetFFI().persistent_storage_create(
 		"go",
 		// Load
-		func(argsPtr *byte, argsLength uint64) *byte {
+		func(argsPtr uintptr, argsLength uint64) uintptr {
 			keyStr := internal.GoStringFromPointer(argsPtr, argsLength)
 			if keyStr == nil {
-				return nil
+				return 0
 			}
 
 			result := storage.functions.Load(*keyStr)
 
 			if result == nil {
-				return nil
+				return 0
 			}
 
 			json, err := json.Marshal(*result)
 			if err != nil {
 				fmt.Println("Error marshalling user persisted values", err)
-				return nil
+				return 0
 			}
 
-			return &json[0]
+			return uintptr(unsafe.Pointer(&json[0]))
 		},
 		// Save
-		func(argsPtr *byte, argsLength uint64) {
+		func(argsPtr uintptr, argsLength uint64) {
 			data, err := tryMarshalPersistentStorageArgs(argsPtr, argsLength)
 			if err != nil {
 				fmt.Println("Error marshalling persistent storage args", err)
@@ -91,7 +92,7 @@ func NewPersistentStorage(functions PersistentStorageFunctions) *PersistentStora
 			storage.functions.Save(data.Key, data.ConfigName, *data.Data)
 		},
 		// Delete
-		func(argsPtr *byte, argsLength uint64) {
+		func(argsPtr uintptr, argsLength uint64) {
 			data, err := tryMarshalPersistentStorageArgs(argsPtr, argsLength)
 			if err != nil {
 				fmt.Println("Error marshalling persistent storage args", err)
@@ -112,7 +113,7 @@ func (c *PersistentStorage) INTERNAL_testPersistentStorage(action string, key st
 	return GetFFI().__internal__test_persistent_storage(c.ref, action, key, configName, data)
 }
 
-func tryMarshalPersistentStorageArgs(inputPtr *byte, inputLength uint64) (*persistentStorageArgs, error) {
+func tryMarshalPersistentStorageArgs(inputPtr uintptr, inputLength uint64) (*persistentStorageArgs, error) {
 	data := internal.GoStringFromPointer(inputPtr, inputLength)
 
 	var args persistentStorageArgs

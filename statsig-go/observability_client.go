@@ -42,7 +42,7 @@ func NewObservabilityClient(functions ObservabilityClientFunctions) *Observabili
 	client.ref = GetFFI().observability_client_create(
 		client.functions.Init,
 		// Increment
-		func(argsPtr *byte, argsLength uint64) {
+		func(argsPtr uintptr, argsLength uint64) {
 			data, err := tryMarshalStandardArgs(argsPtr, argsLength)
 			if err != nil {
 				fmt.Println("Error marshalling observability client args", err)
@@ -52,7 +52,7 @@ func NewObservabilityClient(functions ObservabilityClientFunctions) *Observabili
 			client.functions.Increment(data.Metric, data.Value, data.Tags)
 		},
 		// Gauge
-		func(argsPtr *byte, argsLength uint64) {
+		func(argsPtr uintptr, argsLength uint64) {
 			data, err := tryMarshalStandardArgs(argsPtr, argsLength)
 			if err != nil {
 				fmt.Println("Error marshalling observability client args", err)
@@ -61,7 +61,7 @@ func NewObservabilityClient(functions ObservabilityClientFunctions) *Observabili
 			client.functions.Gauge(data.Metric, data.Value, data.Tags)
 		},
 		// Dist
-		func(argsPtr *byte, argsLength uint64) {
+		func(argsPtr uintptr, argsLength uint64) {
 			data, err := tryMarshalStandardArgs(argsPtr, argsLength)
 			if err != nil {
 				fmt.Println("Error marshalling observability client args", err)
@@ -70,7 +70,7 @@ func NewObservabilityClient(functions ObservabilityClientFunctions) *Observabili
 			client.functions.Dist(data.Metric, data.Value, data.Tags)
 		},
 		// Error
-		func(argsPtr *byte, argsLength uint64) {
+		func(argsPtr uintptr, argsLength uint64) {
 			data, err := tryMarshalErrorArgs(argsPtr, argsLength)
 			if err != nil {
 				fmt.Println("Error marshalling observability client args", err)
@@ -79,7 +79,7 @@ func NewObservabilityClient(functions ObservabilityClientFunctions) *Observabili
 			client.functions.Error(data.Tag, data.Error)
 		},
 		// ShouldEnableHighCardinalityForThisTag
-		func(argsPtr *byte, argsLength uint64) bool {
+		func(argsPtr uintptr, argsLength uint64) bool {
 			tag := internal.GoStringFromPointer(argsPtr, argsLength)
 			return client.functions.ShouldEnableHighCardinalityForThisTag(*tag)
 		},
@@ -96,7 +96,7 @@ func (c *ObservabilityClient) INTERNAL_testObservabilityClient(action string, me
 	GetFFI().__internal__test_observability_client(c.ref, action, metricName, value, tags)
 }
 
-func tryMarshalStandardArgs(inputPtr *byte, inputLength uint64) (*obsClientArgs, error) {
+func tryMarshalStandardArgs(inputPtr uintptr, inputLength uint64) (*obsClientArgs, error) {
 	data := internal.GoStringFromPointer(inputPtr, inputLength)
 
 	var args obsClientArgs
@@ -109,7 +109,7 @@ func tryMarshalStandardArgs(inputPtr *byte, inputLength uint64) (*obsClientArgs,
 	return &args, nil
 }
 
-func tryMarshalErrorArgs(inputPtr *byte, inputLength uint64) (*obsClientErrorArgs, error) {
+func tryMarshalErrorArgs(inputPtr uintptr, inputLength uint64) (*obsClientErrorArgs, error) {
 	data := internal.GoStringFromPointer(inputPtr, inputLength)
 
 	var args obsClientErrorArgs

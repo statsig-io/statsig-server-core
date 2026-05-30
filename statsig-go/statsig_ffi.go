@@ -31,24 +31,24 @@ type StatsigFFI struct {
 	statsig_flush_events_blocking                   func(uint64)
 	statsig_log_event                               func(uint64, uint64, string)
 	statsig_identify                                func(uint64, uint64)
-	statsig_get_client_init_response_with_inout_len func(uint64, uint64, string, *uint64) *byte
+	statsig_get_client_init_response_with_inout_len func(uint64, uint64, string, *uint64) uintptr
 
 	// Gates
 	statsig_check_gate                 func(uint64, uint64, string, string) bool
 	statsig_check_gate_performance     func(uint64, uint64, string, uint, string, uint) bool
-	statsig_get_raw_feature_gate       func(uint64, uint64, string, string, *uint64) *byte
+	statsig_get_raw_feature_gate       func(uint64, uint64, string, string, *uint64) uintptr
 	statsig_manually_log_gate_exposure func(uint64, uint64, string)
 
 	// Dynamic Configs
-	statsig_get_raw_dynamic_config               func(uint64, uint64, string, string, *uint64) *byte
+	statsig_get_raw_dynamic_config               func(uint64, uint64, string, string, *uint64) uintptr
 	statsig_manually_log_dynamic_config_exposure func(uint64, uint64, string)
 
 	// Experiments
-	statsig_get_raw_experiment               func(uint64, uint64, string, string, *uint64) *byte
+	statsig_get_raw_experiment               func(uint64, uint64, string, string, *uint64) uintptr
 	statsig_manually_log_experiment_exposure func(uint64, uint64, string)
 
 	// Layers
-	statsig_get_raw_layer                         func(uint64, uint64, string, string, *uint64) *byte
+	statsig_get_raw_layer                         func(uint64, uint64, string, string, *uint64) uintptr
 	log_layer_param_exposure_from_raw             func(uint64, string, string)
 	statsig_manually_log_layer_parameter_exposure func(uint64, uint64, string, string)
 
@@ -68,9 +68,9 @@ type StatsigFFI struct {
 	data_store_create func(
 		init_fn func(),
 		shutdown_fn func(),
-		get_fn func(argPtr *byte, argLength uint64) *byte,
-		set_fn func(argPtr *byte, argLength uint64),
-		support_polling_updates_for_fn func(argPtr *byte, argLength uint64) bool,
+		get_fn func(argPtr uintptr, argLength uint64) uintptr,
+		set_fn func(argPtr uintptr, argLength uint64),
+		support_polling_updates_for_fn func(argPtr uintptr, argLength uint64) bool,
 	) uint64
 	data_store_release          func(uint64)
 	__internal__test_data_store func(uint64, string, string) string
@@ -78,11 +78,11 @@ type StatsigFFI struct {
 	// Observability Client
 	observability_client_create func(
 		init_fn func(),
-		increment_fn func(argsPtr *byte, argsLength uint64),
-		gauge_fn func(argsPtr *byte, argsLength uint64),
-		dist_fn func(argsPtr *byte, argsLength uint64),
-		error_fn func(argsPtr *byte, argsLength uint64),
-		should_enable_high_cardinality_for_this_tag_fn func(argsPtr *byte, argsLength uint64) bool,
+		increment_fn func(argsPtr uintptr, argsLength uint64),
+		gauge_fn func(argsPtr uintptr, argsLength uint64),
+		dist_fn func(argsPtr uintptr, argsLength uint64),
+		error_fn func(argsPtr uintptr, argsLength uint64),
+		should_enable_high_cardinality_for_this_tag_fn func(argsPtr uintptr, argsLength uint64) bool,
 	) uint64
 	observability_client_release          func(uint64)
 	__internal__test_observability_client func(
@@ -96,9 +96,9 @@ type StatsigFFI struct {
 	// Persistent Storage
 	persistent_storage_create func(
 		bindingsLanguage string,
-		load_fn func(argsPtr *byte, argsLength uint64) *byte,
-		save_fn func(argsPtr *byte, argsLength uint64),
-		delete_fn func(argsPtr *byte, argsLength uint64),
+		load_fn func(argsPtr uintptr, argsLength uint64) uintptr,
+		save_fn func(argsPtr uintptr, argsLength uint64),
+		delete_fn func(argsPtr uintptr, argsLength uint64),
 	) uint64
 	persistent_storage_release          func(uint64)
 	__internal__test_persistent_storage func(uint64, string, string, string, string) string
@@ -107,16 +107,16 @@ type StatsigFFI struct {
 	statsig_metadata_update_values func(string, string, string, string)
 
 	// Utility
-	free_string func(*byte)
+	free_string func(uintptr)
 
 	// Parameter Store
-	statsig_get_parameter_store_with_options             func(uint64, string, string, *uint64) *byte
-	statsig_get_string_parameter_from_parameter_store    func(uint64, uint64, string, string, string, string, *uint64) *byte
+	statsig_get_parameter_store_with_options             func(uint64, string, string, *uint64) uintptr
+	statsig_get_string_parameter_from_parameter_store    func(uint64, uint64, string, string, string, string, *uint64) uintptr
 	statsig_get_bool_parameter_from_parameter_store      func(uint64, uint64, string, string, int32, string) bool
 	statsig_get_float64_parameter_from_parameter_store   func(uint64, uint64, string, string, float64, string) float64
 	statsig_get_int_parameter_from_parameter_store       func(uint64, uint64, string, string, int64, string) int64
-	statsig_get_object_parameter_from_parameter_store    func(uint64, uint64, string, string, string, string, *uint64) *byte
-	statsig_get_array_parameter_from_parameter_store     func(uint64, uint64, string, string, string, string, *uint64) *byte
+	statsig_get_object_parameter_from_parameter_store    func(uint64, uint64, string, string, string, string, *uint64) uintptr
+	statsig_get_array_parameter_from_parameter_store     func(uint64, uint64, string, string, string, string, *uint64) uintptr
 }
 
 var (
@@ -222,9 +222,9 @@ func GetFFI() *StatsigFFI {
 	return instance
 }
 
-func UseRustString(handler func() (*byte, uint64)) *string {
+func UseRustString(handler func() (uintptr, uint64)) *string {
 	ptr, length := handler()
-	if ptr == nil {
+	if ptr == 0 {
 		return nil
 	}
 

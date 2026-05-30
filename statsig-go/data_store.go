@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+	"unsafe"
 
 	"github.com/statsig-io/statsig-go-core/internal"
 )
@@ -31,17 +32,17 @@ func NewDataStore(functions DataStoreFunctions) *DataStore {
 		store.functions.Initialize,
 		store.functions.Shutdown,
 		// Get
-		func(argPtr *byte, argLength uint64) *byte {
+		func(argPtr uintptr, argLength uint64) uintptr {
 			keyStr := internal.GoStringFromPointer(argPtr, argLength)
 			if keyStr == nil {
-				return nil
+				return 0
 			}
 
 			result := []byte(store.functions.Get(*keyStr))
-			return &result[0]
+			return uintptr(unsafe.Pointer(&result[0]))
 		},
 		// Set
-		func(argPtr *byte, argLength uint64) {
+		func(argPtr uintptr, argLength uint64) {
 			data, err := tryMarshalDataStoreSetArgs(argPtr, argLength)
 			if err != nil {
 				fmt.Println("Error marshalling DataStore 'set' args", err)
@@ -54,7 +55,7 @@ func NewDataStore(functions DataStoreFunctions) *DataStore {
 			store.functions.Set(keyStr, valueStr, time)
 		},
 		// ShouldBeUsedForQueryingUpdates
-		func(argPtr *byte, argLength uint64) bool {
+		func(argPtr uintptr, argLength uint64) bool {
 			keyStr := internal.GoStringFromPointer(argPtr, argLength)
 			if keyStr == nil {
 				return false
@@ -81,7 +82,7 @@ type dataStoreSetArgs struct {
 	Time  *uint64 `json:"time"`
 }
 
-func tryMarshalDataStoreSetArgs(inputPtr *byte, inputLength uint64) (*dataStoreSetArgs, error) {
+func tryMarshalDataStoreSetArgs(inputPtr uintptr, inputLength uint64) (*dataStoreSetArgs, error) {
 	data := internal.GoStringFromPointer(inputPtr, inputLength)
 
 	var args dataStoreSetArgs

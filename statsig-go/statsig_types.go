@@ -162,7 +162,7 @@ type ParameterStore struct {
 
 func (p *ParameterStore) GetString(key string, fallback string) string {
 	return parameterStoreValue(p, fallback, func(optionsJson string) (string, bool) {
-		result := UseRustString(func() (*byte, uint64) {
+		result := UseRustString(func() (uintptr, uint64) {
 			length := uint64(0)
 			ptr := GetFFI().statsig_get_string_parameter_from_parameter_store(
 				p.statsigRef,
@@ -228,7 +228,7 @@ func (p *ParameterStore) GetMap(key string, fallback map[string]any) map[string]
 			return fallback, false
 		}
 
-		result := UseRustString(func() (*byte, uint64) {
+		result := UseRustString(func() (uintptr, uint64) {
 			length := uint64(0)
 			ptr := GetFFI().statsig_get_object_parameter_from_parameter_store(
 				p.statsigRef,
@@ -260,7 +260,7 @@ func (p *ParameterStore) GetSlice(key string, fallback []any) []any {
 			return fallback, false
 		}
 
-		result := UseRustString(func() (*byte, uint64) {
+		result := UseRustString(func() (uintptr, uint64) {
 			length := uint64(0)
 			ptr := GetFFI().statsig_get_array_parameter_from_parameter_store(
 				p.statsigRef,

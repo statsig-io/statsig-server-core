@@ -103,7 +103,7 @@ func (s *Statsig) GetFeatureGateWithOptions(user *StatsigUser, gateName string, 
 		return gate
 	}
 
-	gateJson := UseRustString(func() (*byte, uint64) {
+	gateJson := UseRustString(func() (uintptr, uint64) {
 		len := uint64(0)
 		ptr := GetFFI().statsig_get_raw_feature_gate(s.ref.Load(), user.ref, gateName, optionsJson, &len)
 		return ptr, len
@@ -131,7 +131,7 @@ func (s *Statsig) GetDynamicConfigWithOptions(user *StatsigUser, configName stri
 		return config
 	}
 
-	configJson := UseRustString(func() (*byte, uint64) {
+	configJson := UseRustString(func() (uintptr, uint64) {
 		len := uint64(0)
 		ptr := GetFFI().statsig_get_raw_dynamic_config(s.ref.Load(), user.ref, configName, optionsJson, &len)
 		return ptr, len
@@ -163,7 +163,7 @@ func (s *Statsig) GetExperimentWithOptions(user *StatsigUser, experimentName str
 		return experiment
 	}
 
-	experimentJson := UseRustString(func() (*byte, uint64) {
+	experimentJson := UseRustString(func() (uintptr, uint64) {
 		len := uint64(0)
 		ptr := GetFFI().statsig_get_raw_experiment(s.ref.Load(), user.ref, experimentName, optionsJson, &len)
 		return ptr, len
@@ -197,7 +197,7 @@ func (s *Statsig) GetLayerWithOptions(user *StatsigUser, layerName string, optio
 		return layer
 	}
 
-	layerJson := UseRustString(func() (*byte, uint64) {
+	layerJson := UseRustString(func() (uintptr, uint64) {
 		len := uint64(0)
 		ptr := GetFFI().statsig_get_raw_layer(s.ref.Load(), user.ref, layerName, optionsJson, &len)
 		return ptr, len
@@ -238,7 +238,7 @@ func (s *Statsig) GetParameterStoreWithOptions(
 		return store
 	}
 
-	storeJson := UseRustString(func() (*byte, uint64) {
+	storeJson := UseRustString(func() (uintptr, uint64) {
 		length := uint64(0)
 		ptr := GetFFI().statsig_get_parameter_store_with_options(
 			s.ref.Load(),
@@ -278,7 +278,7 @@ func (s *Statsig) GetClientInitResponseWithOptions(user *StatsigUser, options *C
 		return nil
 	}
 
-	return UseRustString(func() (*byte, uint64) {
+	return UseRustString(func() (uintptr, uint64) {
 		len := uint64(0)
 		ptr := GetFFI().statsig_get_client_init_response_with_inout_len(s.ref.Load(), user.ref, optionsJson, &len)
 		return ptr, len
