@@ -19,7 +19,9 @@ esac
 
 fetch_version() {
   local ch="$1"
-  curl -s https://crates.io/api/v1/crates/statsig-rust/versions \
+  curl -s \
+    -H "User-Agent: statsig-server-core-verify (https://github.com/statsig-io/private-statsig-server-core)" \
+    https://crates.io/api/v1/crates/statsig-rust/versions \
   | jq -r --arg ch "$ch" '
       .versions
       | map(select(.yanked == false))
