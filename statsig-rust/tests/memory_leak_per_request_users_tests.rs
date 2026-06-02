@@ -20,6 +20,7 @@ use statsig_rust::{
 use std::sync::Arc;
 
 const ITERATIONS: usize = 10_000;
+const WARMUP_ITERATIONS: usize = 1_000;
 const DEDUPE_CAP: usize = 1_000;
 const MAX_RSS_GROWTH_BYTES: i64 = 50 * 1024 * 1024;
 
@@ -64,28 +65,39 @@ async fn test_memory_leak_per_request_users_bounded() {
     );
     statsig.initialize().await.unwrap();
 
-    {
-        let warmup_user = StatsigUser::with_user_id("warmup");
-        let _ = statsig.check_gate(&warmup_user, GATE_NAME);
+    // Warm-up: run the full operation set so lazy initialization, evaluation
+    // caches, and allocator bucket growth settle before we capture the baseline.
+    // Otherwise first-iteration allocations would be counted as "growth".
+    for i in 0..WARMUP_ITERATIONS {
+        let user = StatsigUser::with_user_id(format!("warmup-{i}"));
+        run_evaluations(&statsig, &user);
     }
 
-    let initial_rss =
-        read_rss_bytes().expect("RSS reading is only supported on Linux");
+    // RSS is only readable on Linux (/proc/self/status). On other platforms we
+    // can't measure, so skip gracefully rather than panicking the CI job.
+    let initial_rss = match read_rss_bytes() {
+        Some(rss) => rss,
+        None => {
+            println!("Skipping RSS assertion: not supported on this platform");
+            let _ = statsig.shutdown().await;
+            return;
+        }
+    };
 
     for i in 0..ITERATIONS {
         let user = StatsigUser::with_user_id(format!("user-{i}"));
-
-        let _ = statsig.check_gate(&user, GATE_NAME);
-        let _ = statsig.get_dynamic_config(&user, CONFIG_NAME);
-        let _ = statsig.get_experiment(&user, EXPERIMENT_NAME);
-        let _ = statsig.get_layer(&user, LAYER_NAME);
-        let _ = statsig.get_client_init_response_with_options(
-            &user,
-            &ClientInitResponseOptions::default(),
-        );
+        run_evaluations(&statsig, &user);
     }
 
-    let final_rss = read_rss_bytes().expect("RSS read after loop");
+    let final_rss = match read_rss_bytes() {
+        Some(rss) => rss,
+        None => {
+            println!("Skipping RSS assertion: could not read RSS after loop");
+            let _ = statsig.shutdown().await;
+            return;
+        }
+    };
+
     let delta = final_rss - initial_rss;
 
     println!(
@@ -100,5 +112,16 @@ async fn test_memory_leak_per_request_users_bounded() {
     assert!(
         delta < MAX_RSS_GROWTH_BYTES,
         "RSS grew by {delta} bytes (> {MAX_RSS_GROWTH_BYTES} bytes); exposure dedupe cache may be unbounded again"
+    );
+}
+
+fn run_evaluations(statsig: &Statsig, user: &StatsigUser) {
+    let _ = statsig.check_gate(user, GATE_NAME);
+    let _ = statsig.get_dynamic_config(user, CONFIG_NAME);
+    let _ = statsig.get_experiment(user, EXPERIMENT_NAME);
+    let _ = statsig.get_layer(user, LAYER_NAME);
+    let _ = statsig.get_client_init_response_with_options(
+        user,
+        &ClientInitResponseOptions::default(),
     );
 }
