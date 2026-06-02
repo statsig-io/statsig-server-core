@@ -14,9 +14,7 @@ mod utils;
 
 use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
-use statsig_rust::{
-    ClientInitResponseOptions, Statsig, StatsigOptions, StatsigUser,
-};
+use statsig_rust::{ClientInitResponseOptions, Statsig, StatsigOptions, StatsigUser};
 use std::sync::Arc;
 
 const ITERATIONS: usize = 10_000;
@@ -49,9 +47,7 @@ fn read_rss_bytes() -> Option<i64> {
 #[tokio::test]
 #[ignore]
 async fn test_memory_leak_per_request_users_bounded() {
-    let specs_adapter = Arc::new(MockSpecsAdapter::with_data(
-        "tests/data/eval_proj_dcs.json",
-    ));
+    let specs_adapter = Arc::new(MockSpecsAdapter::with_data("tests/data/eval_proj_dcs.json"));
     let logging_adapter = Arc::new(MockEventLoggingAdapter::new());
 
     let statsig = Statsig::new(
@@ -120,8 +116,6 @@ fn run_evaluations(statsig: &Statsig, user: &StatsigUser) {
     let _ = statsig.get_dynamic_config(user, CONFIG_NAME);
     let _ = statsig.get_experiment(user, EXPERIMENT_NAME);
     let _ = statsig.get_layer(user, LAYER_NAME);
-    let _ = statsig.get_client_init_response_with_options(
-        user,
-        &ClientInitResponseOptions::default(),
-    );
+    let _ =
+        statsig.get_client_init_response_with_options(user, &ClientInitResponseOptions::default());
 }

@@ -63,11 +63,9 @@ impl ExposureSampling {
     pub fn with_max_keys(sdk_key: &str, max_keys: Option<usize>) -> Self {
         let now = Utc::now().timestamp_millis() as u64;
 
-        let cap = max_keys
-            .and_then(NonZeroUsize::new)
-            .unwrap_or_else(|| {
-                NonZeroUsize::new(SAMPLING_MAX_KEYS).expect("SAMPLING_MAX_KEYS must be non-zero")
-            });
+        let cap = max_keys.and_then(NonZeroUsize::new).unwrap_or_else(|| {
+            NonZeroUsize::new(SAMPLING_MAX_KEYS).expect("SAMPLING_MAX_KEYS must be non-zero")
+        });
 
         Self {
             spec_sampling_set: RwLock::from(AHashSet::default()),
