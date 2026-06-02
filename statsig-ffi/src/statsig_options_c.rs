@@ -39,6 +39,7 @@ pub struct StatsigOptionsData {
     event_logging_adapter_ref: Option<u64>,
     event_logging_max_pending_batch_queue_size: Option<u32>,
     event_logging_max_queue_size: Option<u32>,
+    exposure_dedupe_max_keys: Option<usize>,
     fallback_to_statsig_api: Option<bool>,
     global_custom_fields: Option<HashMap<String, DynamicValue>>,
     download_id_list_file_api: Option<String>,
@@ -153,6 +154,7 @@ impl From<StatsigOptionsData> for StatsigOptions {
             event_logging_flush_interval_ms: None, // Deprecated
             event_logging_max_pending_batch_queue_size,
             event_logging_max_queue_size: data.event_logging_max_queue_size,
+            exposure_dedupe_max_keys: data.exposure_dedupe_max_keys,
             fallback_to_statsig_api: data.fallback_to_statsig_api,
             global_custom_fields: data.global_custom_fields,
             id_lists_adapter: None, // todo: add support for id lists adapter

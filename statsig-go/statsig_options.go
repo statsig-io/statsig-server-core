@@ -17,6 +17,7 @@ type StatsigOptionsBuilder struct {
 	ServiceName                 *string `json:"service_name,omitempty"`
 	EventLoggingFlushIntervalMs *int32  `json:"event_logging_flush_interval_ms,omitempty"`
 	EventLoggingMaxQueueSize    *int32  `json:"event_logging_max_queue_size,omitempty"`
+	ExposureDedupeMaxKeys       *int32  `json:"exposure_dedupe_max_keys,omitempty"`
 	SpecsSyncIntervalMs         *int32  `json:"specs_sync_interval_ms,omitempty"`
 	OutputLogLevel              *string `json:"output_log_level,omitempty"`
 	DisableCountryLookup        *bool   `json:"disable_country_lookup,omitempty"`
@@ -68,6 +69,11 @@ func (o *StatsigOptionsBuilder) WithEventLoggingFlushIntervalMs(eventLoggingFlus
 
 func (o *StatsigOptionsBuilder) WithEventLoggingMaxQueueSize(eventLoggingMaxQueueSize int32) *StatsigOptionsBuilder {
 	o.EventLoggingMaxQueueSize = &eventLoggingMaxQueueSize
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithExposureDedupeMaxKeys(exposureDedupeMaxKeys int32) *StatsigOptionsBuilder {
+	o.ExposureDedupeMaxKeys = &exposureDedupeMaxKeys
 	return o
 }
 
