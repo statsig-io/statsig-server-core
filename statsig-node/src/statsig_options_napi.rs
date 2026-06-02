@@ -245,6 +245,7 @@ impl StatsigOptions<'_> {
             #[allow(deprecated)]
             event_logging_flush_interval_ms: None,
             event_logging_max_pending_batch_queue_size: None,
+            exposure_dedupe_max_keys: None,
             id_lists_adapter: None,
             specs_adapter: None,
             disable_disk_access: None,
