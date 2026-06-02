@@ -17,6 +17,9 @@ env:
   MATURIN_PYPI_TOKEN: ${{ secrets.STATSIG_PYPI_PROD_TOKEN }}
   MATURIN_REPOSITORY: pypi
 
+  # NPM Publishing
+  NPM_TOKEN: ${{ secrets.SIGSTAT_PUBLISH_NPM }}
+
   # Java Publishing
   ORG_GRADLE_PROJECT_MAVEN_USERNAME: ${{ secrets.ORG_GRADLE_PROJECT_MAVEN_USERNAME }}
   ORG_GRADLE_PROJECT_MAVEN_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_MAVEN_PASSWORD }}
@@ -325,16 +328,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Set up Node.js for npm trusted publishing
-        if: ${{ matrix.package == 'node' }}
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: "24"
-
-      - name: Install npm with trusted publishing support
-        if: ${{ matrix.package == 'node' }}
-        run: npm install -g npm@11.15.0
-
       - uses: ./.github/actions/common-setup
 
       - name: Set up JDK 11
@@ -359,7 +352,7 @@ jobs:
       - name: Setup
         run: |
           pip3 install maturin
-          touch .npmrc
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
 
       - name: Publish ${{ matrix.package }}
         shell: bash
