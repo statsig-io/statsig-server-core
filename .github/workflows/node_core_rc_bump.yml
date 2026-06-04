@@ -36,7 +36,7 @@ jobs:
         env:
           PKG: "@statsig/statsig-node-core"
           VER: ${{ steps.rc_ver.outputs.version }}
-          INTERVAL_SEC: "30"   # polling interval (seconds)
+          INTERVAL_SEC: "30" # polling interval (seconds)
           TIMEOUT_MIN: "30"
         shell: bash
         run: |
@@ -70,11 +70,11 @@ jobs:
           ref: main
           token: ${{ secrets.ROIM }}
           persist-credentials: false
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "23"
+          node-version: "24"
       - name: Install pnpm
         run: npm install -g pnpm
 
@@ -93,13 +93,43 @@ jobs:
           cp pnpm-lock.yaml pnpm-lock.before-rc-bump.yaml
 
           # Update all packages in lib
-          pnpm --dir lib update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+          pnpm --dir lib update \
+            "@statsig/statsig-node-core-rc@npm:@statsig/statsig-node-core@${RC_VER}" \
+            "@statsig/statsig-node-core-linux-x64-gnu-rc@npm:@statsig/statsig-node-core-linux-x64-gnu@${RC_VER}" \
+            "@statsig/statsig-node-core-linux-x64-musl-rc@npm:@statsig/statsig-node-core-linux-x64-musl@${RC_VER}" \
+            --no-save \
+            --force \
+            --include=optional \
+            --config.minimum-release-age=4320 \
+            --config.minimum-release-age-exclude=@statsig/statsig-node-core \
+            --config.minimum-release-age-exclude=@statsig/statsig-node-core-linux-x64-gnu \
+            --config.minimum-release-age-exclude=@statsig/statsig-node-core-linux-x64-musl
 
           # Update all packages in lib/node/entity
-          pnpm --dir lib/node/entity update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+          pnpm --dir lib/node/entity update \
+            "@statsig/statsig-node-core-rc@npm:@statsig/statsig-node-core@${RC_VER}" \
+            "@statsig/statsig-node-core-linux-x64-gnu-rc@npm:@statsig/statsig-node-core-linux-x64-gnu@${RC_VER}" \
+            "@statsig/statsig-node-core-linux-x64-musl-rc@npm:@statsig/statsig-node-core-linux-x64-musl@${RC_VER}" \
+            --no-save \
+            --force \
+            --include=optional \
+            --config.minimum-release-age=4320 \
+            --config.minimum-release-age-exclude=@statsig/statsig-node-core \
+            --config.minimum-release-age-exclude=@statsig/statsig-node-core-linux-x64-gnu \
+            --config.minimum-release-age-exclude=@statsig/statsig-node-core-linux-x64-musl
 
           # Update all packages in lib/node/service-core
-          pnpm --dir lib/node/service-core update @statsig/statsig-node-core-rc @statsig/statsig-node-core-linux-x64-gnu-rc @statsig/statsig-node-core-linux-x64-musl-rc --no-save --force --include=optional
+          pnpm --dir lib/node/service-core update \
+            "@statsig/statsig-node-core-rc@npm:@statsig/statsig-node-core@${RC_VER}" \
+            "@statsig/statsig-node-core-linux-x64-gnu-rc@npm:@statsig/statsig-node-core-linux-x64-gnu@${RC_VER}" \
+            "@statsig/statsig-node-core-linux-x64-musl-rc@npm:@statsig/statsig-node-core-linux-x64-musl@${RC_VER}" \
+            --no-save \
+            --force \
+            --include=optional \
+            --config.minimum-release-age=4320 \
+            --config.minimum-release-age-exclude=@statsig/statsig-node-core \
+            --config.minimum-release-age-exclude=@statsig/statsig-node-core-linux-x64-gnu \
+            --config.minimum-release-age-exclude=@statsig/statsig-node-core-linux-x64-musl
 
           # statsig-ai special handling:
           # restore the first node-core peer slot to its pre-bump value, while allowing the second slot to move.
@@ -356,7 +386,7 @@ jobs:
           pull-request-number: ${{ steps.create_rc_pr.outputs.pull-request-number }}
           merge-method: MERGE
           repository: statsig-io/statsig
-        
+
       - name: Wait until PR is auto-merged
         id: check_pr
         if: steps.create_rc_pr.outputs.pull-request-number != ''
@@ -399,7 +429,7 @@ jobs:
             color="#ff9f00"
             text="⚠️ *${actor}*'s RC bump PR for *${rc_version}* failed some checks or auto-merge did not occur.\nPlease review manually."
           fi
-    
+
           payload=$(cat <<EOF
           {
             "attachments": [
