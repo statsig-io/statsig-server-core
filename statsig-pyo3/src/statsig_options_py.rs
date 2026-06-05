@@ -357,6 +357,7 @@ fn create_inner_statsig_options(
         event_logging_flush_interval_ms: None,
         event_logging_max_queue_size: opts.event_logging_max_queue_size,
         event_logging_max_pending_batch_queue_size: opts.event_logging_max_pending_batch_queue_size,
+        exposure_dedupe_max_keys: None,
         enable_id_lists: opts.enable_id_lists,
         enable_dcs_deltas: opts.enable_dcs_deltas,
         id_lists_url: opts.id_lists_url.clone(),

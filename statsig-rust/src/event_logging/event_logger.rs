@@ -79,7 +79,10 @@ impl EventLogger {
                     .event_logging_max_pending_batch_queue_size
                     .unwrap_or(DEFAULT_PENDING_BATCH_COUNT_MAX),
             ),
-            event_sampler: ExposureSampling::new(sdk_key),
+            event_sampler: ExposureSampling::with_max_keys(
+                sdk_key,
+                options.exposure_dedupe_max_keys,
+            ),
             flush_interval: FlushInterval::new(),
             options: options.clone(),
             logging_adapter: event_logging_adapter.clone(),

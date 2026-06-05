@@ -8,7 +8,9 @@ use crate::{
 };
 use ahash::AHashSet;
 use chrono::Utc;
+use lru::LruCache;
 use parking_lot::RwLock;
+use std::num::NonZeroUsize;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
@@ -16,7 +18,7 @@ use std::sync::{
 
 const TAG: &str = "ExposureSampling";
 const DEFAULT_EXPOSURE_SAMPLING_TTL_MS: u64 = 60_000;
-const SAMPLING_MAX_KEYS: usize = 100_000;
+pub const SAMPLING_MAX_KEYS: usize = 100_000;
 
 #[derive(Debug)]
 pub enum EvtSamplingMode {
@@ -46,7 +48,8 @@ pub struct ExposureSampling {
     spec_sampling_set: RwLock<AHashSet<SpecAndRuleHashTuple>>,
     last_spec_sampling_reset: AtomicU64,
 
-    exposure_dedupe_set: RwLock<AHashSet<ExposureSamplingKey>>,
+    exposure_dedupe_set: RwLock<LruCache<ExposureSamplingKey, ()>>,
+    exposure_dedupe_max_keys: NonZeroUsize,
     last_exposure_dedupe_reset: AtomicU64,
 
     global_configs: Arc<GlobalConfigs>,
@@ -54,13 +57,25 @@ pub struct ExposureSampling {
 
 impl ExposureSampling {
     pub fn new(sdk_key: &str) -> Self {
+        Self::with_max_keys(sdk_key, None)
+    }
+
+    pub fn with_max_keys(sdk_key: &str, max_keys: Option<u32>) -> Self {
         let now = Utc::now().timestamp_millis() as u64;
+
+        let cap = max_keys
+            .map(|v| v as usize)
+            .and_then(NonZeroUsize::new)
+            .unwrap_or_else(|| {
+                NonZeroUsize::new(SAMPLING_MAX_KEYS).expect("SAMPLING_MAX_KEYS must be non-zero")
+            });
 
         Self {
             spec_sampling_set: RwLock::from(AHashSet::default()),
             last_spec_sampling_reset: AtomicU64::from(now),
 
-            exposure_dedupe_set: RwLock::from(AHashSet::default()),
+            exposure_dedupe_set: RwLock::from(LruCache::new(cap)),
+            exposure_dedupe_max_keys: cap,
             last_exposure_dedupe_reset: AtomicU64::from(now),
 
             global_configs: GlobalConfigs::get_instance(sdk_key),
@@ -121,11 +136,11 @@ impl ExposureSampling {
 
     fn should_dedupe_exposure(&self, sampling_key: &ExposureSamplingKey) -> bool {
         let mut dedupe_set = write_lock_or_return!(TAG, self.exposure_dedupe_set, false);
-        if dedupe_set.contains(sampling_key) {
+        if dedupe_set.get(sampling_key).is_some() {
             return true;
         }
 
-        dedupe_set.insert(sampling_key.clone());
+        dedupe_set.put(sampling_key.clone(), ());
         false
     }
 
@@ -210,16 +225,10 @@ impl ExposureSampling {
         };
 
         let has_expired = now - last_dedupe_reset > ttl_ms;
-        let is_full = dedupe_map.len() > SAMPLING_MAX_KEYS;
 
-        if has_expired || is_full {
-            log_d!(
-                TAG,
-                "Resetting exposure dedupe set. has_expired: {:?}, is_full: {:?}",
-                has_expired,
-                is_full
-            );
-            dedupe_map.clear();
+        if has_expired {
+            log_d!(TAG, "Resetting exposure dedupe set (ttl expired)");
+            *dedupe_map = LruCache::new(self.exposure_dedupe_max_keys);
             self.last_exposure_dedupe_reset
                 .store(now, Ordering::Relaxed);
         }
@@ -345,5 +354,85 @@ impl ExposureSamplingKey {
             self.spec_name_hash ^ self.rule_id_hash ^ self.user_values_hash ^ self.additional_hash;
 
         final_hash.is_multiple_of(sampling_rate)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_key(unique: u64) -> ExposureSamplingKey {
+        ExposureSamplingKey {
+            spec_name_hash: 1,
+            rule_id_hash: 2,
+            user_values_hash: unique,
+            additional_hash: 0,
+        }
+    }
+
+    /// Deterministic, cross-platform guard for the bounded dedupe cache.
+    ///
+    /// Inserting far more unique keys than the configured cap must leave the
+    /// cache at exactly the cap. On the pre-fix commit the cache was an
+    /// unbounded `HashSet`, so its length would equal the number of unique keys
+    /// inserted (10_000) and this assertion would fail.
+    #[test]
+    fn test_dedupe_set_is_bounded_by_max_keys() {
+        let cap: u32 = 1_000;
+        let sampling = ExposureSampling::with_max_keys("secret-test-bounded", Some(cap));
+
+        for i in 0..10_000u64 {
+            sampling.should_dedupe_exposure(&make_key(i));
+        }
+
+        let len = sampling.exposure_dedupe_set.read().len();
+        assert_eq!(
+            len, cap as usize,
+            "exposure dedupe cache must be bounded at the configured cap"
+        );
+    }
+
+    /// A repeated key is reported as a duplicate on subsequent sightings.
+    #[test]
+    fn test_dedupe_set_dedupes_repeated_key() {
+        let sampling = ExposureSampling::with_max_keys("secret-test-dedupe", Some(10));
+        let key = make_key(42);
+
+        assert!(
+            !sampling.should_dedupe_exposure(&key),
+            "first sighting should not be a duplicate"
+        );
+        assert!(
+            sampling.should_dedupe_exposure(&key),
+            "second sighting should be a duplicate"
+        );
+    }
+
+    /// The cache evicts least-recently-used entries, and `get` (a duplicate
+    /// hit) refreshes recency so frequently-seen keys survive eviction.
+    #[test]
+    fn test_dedupe_set_evicts_least_recently_used() {
+        let cap: u32 = 3;
+        let sampling = ExposureSampling::with_max_keys("secret-test-lru", Some(cap));
+
+        for i in 0..3u64 {
+            assert!(!sampling.should_dedupe_exposure(&make_key(i)));
+        }
+
+        // Refresh key 0 so it becomes most-recently-used; key 1 is now the LRU.
+        assert!(sampling.should_dedupe_exposure(&make_key(0)));
+
+        // Inserting a new key evicts the LRU entry (key 1).
+        assert!(!sampling.should_dedupe_exposure(&make_key(3)));
+
+        assert_eq!(sampling.exposure_dedupe_set.read().len(), cap as usize);
+        assert!(
+            sampling.should_dedupe_exposure(&make_key(0)),
+            "refreshed key should still be present"
+        );
+        assert!(
+            !sampling.should_dedupe_exposure(&make_key(1)),
+            "evicted key should be treated as new again"
+        );
     }
 }
