@@ -13,3 +13,13 @@ func TestStatsigUserBuilder(t *testing.T) {
 		t.Errorf("error creating StatsigUser: %v", err)
 	}
 }
+
+func TestStatsigUserBuilder_WithoutUserID(t *testing.T) {
+	_, err := statsig_go.NewUserBuilderWithCustomIDs(map[string]any{"stableID": "s1"}).
+		WithoutUserID().
+		Build()
+
+	if err != nil {
+		t.Errorf("error creating StatsigUser without userID: %v", err)
+	}
+}
