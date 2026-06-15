@@ -92,6 +92,14 @@ jobs:
           echo "Updating to latest rc for: $pkgs"
           cp pnpm-lock.yaml pnpm-lock.before-rc-bump.yaml
 
+          # minimum-release-age (3d) keeps third-party transitive deps protected
+          # against zero-day supply-chain risk. The exclude glob lets freshly-published
+          # internal packages through: it covers @statsig/statsig-node-core AND all its
+          # platform-specific native binaries (darwin/linux/win32 optional deps), which
+          # are published together on each RC. Quoted to prevent shell glob expansion;
+          # a single non-glob exclude value is silently ignored by pnpm, so the glob is
+          # required (not just convenient).
+
           # Update all packages in lib
           pnpm --dir lib update \
             "@statsig/statsig-node-core-rc@npm:@statsig/statsig-node-core@${RC_VER}" \
@@ -101,9 +109,7 @@ jobs:
             --force \
             --include=optional \
             --config.minimum-release-age=4320 \
-            --config.minimum-release-age-exclude=@statsig/statsig-node-core \
-            --config.minimum-release-age-exclude=@statsig/statsig-node-core-linux-x64-gnu \
-            --config.minimum-release-age-exclude=@statsig/statsig-node-core-linux-x64-musl
+            "--config.minimum-release-age-exclude=@statsig/statsig-node-core*"
 
           # Update all packages in lib/node/entity
           pnpm --dir lib/node/entity update \
@@ -114,9 +120,7 @@ jobs:
             --force \
             --include=optional \
             --config.minimum-release-age=4320 \
-            --config.minimum-release-age-exclude=@statsig/statsig-node-core \
-            --config.minimum-release-age-exclude=@statsig/statsig-node-core-linux-x64-gnu \
-            --config.minimum-release-age-exclude=@statsig/statsig-node-core-linux-x64-musl
+            "--config.minimum-release-age-exclude=@statsig/statsig-node-core*"
 
           # Update all packages in lib/node/service-core
           pnpm --dir lib/node/service-core update \
@@ -127,9 +131,7 @@ jobs:
             --force \
             --include=optional \
             --config.minimum-release-age=4320 \
-            --config.minimum-release-age-exclude=@statsig/statsig-node-core \
-            --config.minimum-release-age-exclude=@statsig/statsig-node-core-linux-x64-gnu \
-            --config.minimum-release-age-exclude=@statsig/statsig-node-core-linux-x64-musl
+            "--config.minimum-release-age-exclude=@statsig/statsig-node-core*"
 
           # statsig-ai special handling:
           # restore the first node-core peer slot to its pre-bump value, while allowing the second slot to move.
