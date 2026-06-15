@@ -194,14 +194,37 @@ impl EventLogger {
         }
     }
 
-    pub async fn flush_all_pending_events(&self) -> Result<(), StatsigErr> {
+    pub async fn flush_all_pending_events(
+        &self,
+        statsig_rt: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
+        // Wait for any background limit-flush tasks that are already in flight.
+        // They dequeue their batch before the network call, so those events are
+        // no longer in the queue and would otherwise not be awaited by a manual
+        // flush. Without this, flush_events() can return while exposures are
+        // still being delivered (or, on shutdown, get aborted and dropped).
+        // Scheduled flushes run inline in the bg loop (not as LIMIT_FLUSH_TAG
+        // tasks), so a manual flush can still return while one is in flight;
+        // shutdown() stops and awaits the bg loop, covering flush-then-shutdown.
+        statsig_rt.await_tasks_with_tag(LIMIT_FLUSH_TAG).await;
+
         self.try_flush_all_pending_events(FlushType::Manual).await
     }
 
-    pub async fn shutdown(&self) -> Result<(), StatsigErr> {
-        let result = self.try_flush_all_pending_events(FlushType::Shutdown).await;
+    pub async fn shutdown(&self, statsig_rt: &Arc<StatsigRuntime>) -> Result<(), StatsigErr> {
+        // Stop the background loop so it won't spawn new limit-flush tasks while
+        // we are draining.
         self.shutdown_notify.notify_one();
-        result
+
+        // Wait for the background loop (which may be mid scheduled-flush) and any
+        // in-flight limit-flush tasks to finish before we let the runtime abort
+        // tasks. Each of these can hold a batch it already dequeued; aborting
+        // them mid network-request silently drops those exposures.
+        statsig_rt.await_tasks_with_tag(BG_LOOP_TAG).await;
+        statsig_rt.await_tasks_with_tag(LIMIT_FLUSH_TAG).await;
+
+        // Finally flush whatever remains in the queue.
+        self.try_flush_all_pending_events(FlushType::Shutdown).await
     }
 
     pub fn force_shutdown(&self) {

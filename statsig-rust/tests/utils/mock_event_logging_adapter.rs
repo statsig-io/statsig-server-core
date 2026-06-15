@@ -5,6 +5,7 @@ use statsig_rust::{EventLoggingAdapter, StatsigErr, StatsigRuntime};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tokio::sync::Notify;
 
 pub struct MockEventLoggingAdapter {
@@ -14,6 +15,9 @@ pub struct MockEventLoggingAdapter {
     pub logged_payloads: Mutex<Vec<LogEventPayload>>,
     pub mocked_log_events_result: Mutex<Result<bool, StatsigErr>>,
     pub on_log_notify: Notify,
+    // When > 0, log_events sleeps this long (simulating a slow network call)
+    // after signalling on_log_notify but before recording the events.
+    pub log_delay_ms: AtomicU64,
 }
 
 impl Default for MockEventLoggingAdapter {
@@ -31,6 +35,7 @@ impl MockEventLoggingAdapter {
             logged_payloads: Mutex::new(Vec::new()),
             mocked_log_events_result: Mutex::new(Ok(true)),
             on_log_notify: Notify::new(),
+            log_delay_ms: AtomicU64::new(0),
         }
     }
 
@@ -98,6 +103,11 @@ impl EventLoggingAdapter for MockEventLoggingAdapter {
     async fn log_events(&self, request: LogEventRequest) -> Result<bool, StatsigErr> {
         self.times_called.fetch_add(1, Ordering::SeqCst);
         self.on_log_notify.notify_one();
+
+        let delay_ms = self.log_delay_ms.load(Ordering::SeqCst);
+        if delay_ms > 0 {
+            tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+        }
 
         let result = self.mocked_log_events_result.lock().unwrap().clone()?;
         let mut payloads = self.logged_payloads.lock().unwrap();
