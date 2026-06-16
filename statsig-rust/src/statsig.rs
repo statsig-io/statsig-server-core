@@ -354,7 +354,7 @@ impl Statsig {
 
                 try_join!(
                     id_list_shutdown,
-                    self.event_logger.shutdown(),
+                    self.event_logger.shutdown(&self.statsig_runtime),
                     self.specs_adapter.inner.shutdown(timeout, &self.statsig_runtime),
                 )
             } => {
@@ -677,7 +677,10 @@ impl Statsig {
     }
 
     pub async fn flush_events(&self) {
-        let _ = self.event_logger.flush_all_pending_events().await;
+        let _ = self
+            .event_logger
+            .flush_all_pending_events(&self.statsig_runtime)
+            .await;
     }
 }
 

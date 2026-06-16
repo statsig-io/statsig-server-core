@@ -80,6 +80,87 @@ async fn test_limit_flushing() {
 
 #[tokio::test]
 #[serial]
+async fn test_shutdown_waits_for_inflight_limit_flush() {
+    let mut options = StatsigOptions::new();
+    options.event_logging_max_queue_size = Some(10);
+    options.event_logging_max_pending_batch_queue_size = Some(60);
+
+    let (statsig, logging_adapter, _) = setup(options).await;
+
+    // Drain any events queued during initialization (e.g. diagnostics) so the
+    // queue is empty before we set up the in-flight scenario.
+    statsig.flush_events().await;
+    logging_adapter
+        .no_diagnostics_logged_event_count
+        .store(0, Ordering::SeqCst);
+
+    // Make the network call slow so the background limit-flush task is still
+    // in flight (it has already dequeued its batch) when we call shutdown.
+    logging_adapter.log_delay_ms.store(500, Ordering::SeqCst);
+
+    // Exactly one full batch triggers exactly one limit flush, which dequeues
+    // all 10 events and leaves the queue empty.
+    let baseline = logging_adapter.times_called.load(Ordering::SeqCst);
+    log_some_events(&statsig, 10);
+
+    // Wait until the limit-flush task has entered the (slow) network call.
+    // Use times_called (incremented before the sleep) rather than on_log_notify,
+    // which can have a stale permit left by the drain flush_events() above.
+    assert_eventually!(|| logging_adapter.times_called.load(Ordering::SeqCst) > baseline);
+
+    // Shutdown while the limit flush is in flight. The queue is empty, so the
+    // only events in the system are the ones held by the in-flight background
+    // task. Before the fix, runtime shutdown aborted that task mid-request and
+    // those 10 exposures were silently dropped.
+    statsig.shutdown().await.unwrap();
+
+    assert_eq!(
+        logging_adapter
+            .no_diagnostics_logged_event_count
+            .load(Ordering::SeqCst),
+        10
+    );
+
+    teardown(Some(statsig)).await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_flush_events_waits_for_inflight_limit_flush() {
+    let mut options = StatsigOptions::new();
+    options.event_logging_max_queue_size = Some(10);
+    options.event_logging_max_pending_batch_queue_size = Some(60);
+
+    let (statsig, logging_adapter, _) = setup(options).await;
+
+    statsig.flush_events().await;
+    logging_adapter
+        .no_diagnostics_logged_event_count
+        .store(0, Ordering::SeqCst);
+
+    logging_adapter.log_delay_ms.store(500, Ordering::SeqCst);
+
+    let baseline = logging_adapter.times_called.load(Ordering::SeqCst);
+    log_some_events(&statsig, 10);
+
+    assert_eventually!(|| logging_adapter.times_called.load(Ordering::SeqCst) > baseline);
+
+    // A manual flush must also await background limit-flush tasks already in
+    // flight, not just the batches currently in the queue.
+    statsig.flush_events().await;
+
+    assert_eq!(
+        logging_adapter
+            .no_diagnostics_logged_event_count
+            .load(Ordering::SeqCst),
+        10
+    );
+
+    teardown(Some(statsig)).await;
+}
+
+#[tokio::test]
+#[serial]
 async fn test_scheduled_flush_batch_size() {
     const MAX_EVENTS: usize = 5;
 
