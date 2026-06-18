@@ -163,7 +163,7 @@ async function publishDotnetPackages(options: PublisherOptions) {
 
 function pushNupkg(fileName: string) {
   const fullPath = path.join(NUPKG_DIR, fileName);
-  const pushCommand = `dotnet nuget push ${fullPath} --api-key ${process.env.NUGET_API_KEY} --source https://api.nuget.org/v3/index.json`;
+  const pushCommand = `dotnet nuget push ${fullPath} --api-key ${process.env.NUGET_API_KEY} --source https://api.nuget.org/v3/index.json --skip-duplicate`;
 
   Log.stepProgress(`Pushing package: ${fileName}`);
   execSync(pushCommand, {
