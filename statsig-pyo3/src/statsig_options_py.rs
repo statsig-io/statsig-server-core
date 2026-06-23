@@ -20,6 +20,14 @@ use std::sync::{Arc, Weak};
 
 const TAG: &str = stringify!(StatsigOptionsPy);
 
+/// Configures how the SDK fetches config specs.
+///
+/// `authentication_mode`, `ca_cert_path`, `client_cert_path`, `client_key_path`,
+/// and `domain_name` apply only to the `network_grpc_websocket` adapter (TLS to a
+/// Statsig Forward Proxy) and are ignored by the HTTP adapter. Set
+/// `authentication_mode="tls"` with `ca_cert_path`, or `"mtls"` to additionally
+/// present `client_cert_path` + `client_key_path`. Leave `authentication_mode`
+/// as `None` (or `"none"`) for a plaintext, unauthenticated connection.
 #[gen_stub_pyclass]
 #[pyclass(
     name = "SpecAdapterConfig",
@@ -36,21 +44,60 @@ pub struct SpecAdapterConfigPy {
 
     #[pyo3(get, set)]
     pub init_timeout_ms: Option<u64>,
+
+    #[pyo3(get, set)]
+    pub authentication_mode: Option<String>,
+
+    #[pyo3(get, set)]
+    pub ca_cert_path: Option<String>,
+
+    #[pyo3(get, set)]
+    pub client_cert_path: Option<String>,
+
+    #[pyo3(get, set)]
+    pub client_key_path: Option<String>,
+
+    #[pyo3(get, set)]
+    pub domain_name: Option<String>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl SpecAdapterConfigPy {
     #[new]
-    #[pyo3(signature = (adapter_type, specs_url=None, init_timeout_ms=None))]
+    #[pyo3(signature = (
+        adapter_type,
+        specs_url=None,
+        init_timeout_ms=None,
+        authentication_mode=None,
+        ca_cert_path=None,
+        client_cert_path=None,
+        client_key_path=None,
+        domain_name=None,
+    ))]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         adapter_type: String,
         specs_url: Option<String>,
         init_timeout_ms: Option<u64>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Literal['none', 'tls', 'mtls']]"
+        ))]
+        authentication_mode: Option<String>,
+        ca_cert_path: Option<String>,
+        client_cert_path: Option<String>,
+        client_key_path: Option<String>,
+        domain_name: Option<String>,
     ) -> Self {
         Self {
             adapter_type,
             specs_url,
             init_timeout_ms,
+            authentication_mode,
+            ca_cert_path,
+            client_cert_path,
+            client_key_path,
+            domain_name,
         }
     }
 }
@@ -61,11 +108,11 @@ impl From<SpecAdapterConfigPy> for SpecAdapterConfig {
             adapter_type: value.adapter_type.into(),
             init_timeout_ms: value.init_timeout_ms.unwrap_or(DEFAULT_INIT_TIMEOUT_MS),
             specs_url: value.specs_url,
-            authentication_mode: None,
-            ca_cert_path: None,
-            client_cert_path: None,
-            domain_name: None,
-            client_key_path: None,
+            authentication_mode: value.authentication_mode,
+            ca_cert_path: value.ca_cert_path,
+            client_cert_path: value.client_cert_path,
+            client_key_path: value.client_key_path,
+            domain_name: value.domain_name,
         }
     }
 }
@@ -450,4 +497,54 @@ fn extract_observability_client(
     }
 
     (ob_client_weak, ob_client_strong)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn spec_adapter_conversion_forwards_all_tls_fields() {
+        let core: SpecAdapterConfig = SpecAdapterConfigPy {
+            adapter_type: "network_grpc_websocket".to_string(),
+            specs_url: Some("grpc://proxy.example.com".to_string()),
+            init_timeout_ms: Some(5000),
+            authentication_mode: Some("mtls".to_string()),
+            ca_cert_path: Some("/certs/ca.pem".to_string()),
+            client_cert_path: Some("/certs/client.pem".to_string()),
+            client_key_path: Some("/certs/client.key".to_string()),
+            domain_name: Some("proxy.example.com".to_string()),
+        }
+        .into();
+
+        assert_eq!(core.specs_url.as_deref(), Some("grpc://proxy.example.com"));
+        assert_eq!(core.init_timeout_ms, 5000);
+        assert_eq!(core.authentication_mode.as_deref(), Some("mtls"));
+        assert_eq!(core.ca_cert_path.as_deref(), Some("/certs/ca.pem"));
+        assert_eq!(core.client_cert_path.as_deref(), Some("/certs/client.pem"));
+        assert_eq!(core.client_key_path.as_deref(), Some("/certs/client.key"));
+        assert_eq!(core.domain_name.as_deref(), Some("proxy.example.com"));
+    }
+
+    #[test]
+    fn spec_adapter_conversion_omits_unset_tls_fields_and_defaults_timeout() {
+        let core: SpecAdapterConfig = SpecAdapterConfigPy {
+            adapter_type: "network_http".to_string(),
+            specs_url: None,
+            init_timeout_ms: None,
+            authentication_mode: None,
+            ca_cert_path: None,
+            client_cert_path: None,
+            client_key_path: None,
+            domain_name: None,
+        }
+        .into();
+
+        assert_eq!(core.init_timeout_ms, DEFAULT_INIT_TIMEOUT_MS);
+        assert!(core.authentication_mode.is_none());
+        assert!(core.ca_cert_path.is_none());
+        assert!(core.client_cert_path.is_none());
+        assert!(core.client_key_path.is_none());
+        assert!(core.domain_name.is_none());
+    }
 }

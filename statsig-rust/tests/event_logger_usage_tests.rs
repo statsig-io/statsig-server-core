@@ -185,6 +185,75 @@ async fn test_non_exposed_checks() {
     assert_eq!(event["eventName"], "statsig::non_exposed_checks");
 }
 
+// Sums the per-gate counts reported across every `statsig::non_exposed_checks`
+// event the adapter received (there may be more than one if the queue flushed
+// multiple times). Used to validate that no increments are lost.
+fn sum_non_exposed_checks(adapter: &MockEventLoggingAdapter, gate_name: &str) -> u64 {
+    let payloads = adapter.logged_payloads.lock().unwrap();
+    let mut total = 0u64;
+
+    for payload in payloads.iter() {
+        let Some(events) = payload.events.as_array() else {
+            continue;
+        };
+        for event in events {
+            if event.get("eventName") != Some(&json!("statsig::non_exposed_checks")) {
+                continue;
+            }
+            let checks_str = event
+                .get("metadata")
+                .and_then(|m| m.get("checks"))
+                .and_then(|c| c.as_str());
+            if let Some(checks_str) = checks_str {
+                if let Ok(map) =
+                    serde_json::from_str::<std::collections::HashMap<String, u64>>(checks_str)
+                {
+                    total += map.get(gate_name).copied().unwrap_or(0);
+                }
+            }
+        }
+    }
+
+    total
+}
+
+// S2SDK-16 regression test (non-exposure counter, high QPS): 16 threads each
+// run 5,000 logging-disabled gate checks concurrently against one shared
+// Statsig instance. The aggregated non_exposed_checks count must equal the
+// total number of checks - i.e. the lock-free sharded counter loses no
+// increments under heavy concurrency.
+#[tokio::test]
+async fn test_non_exposed_checks_high_qps_concurrent() {
+    let (statsig, logging_adapter) = setup(DCS_EVAL_PROJ).await;
+
+    let thread_count = 16usize;
+    let per_thread = 5000usize;
+
+    std::thread::scope(|s| {
+        for t in 0..thread_count {
+            let statsig = &statsig;
+            s.spawn(move || {
+                let user = StatsigUser::with_user_id(format!("user_{t}"));
+                for _ in 0..per_thread {
+                    let _ = statsig.check_gate_with_options(
+                        &user,
+                        "test_public",
+                        FeatureGateEvaluationOptions {
+                            disable_exposure_logging: true,
+                        },
+                    );
+                }
+            });
+        }
+    });
+
+    statsig.shutdown().await.unwrap();
+
+    let expected = (thread_count * per_thread) as u64;
+    let actual = sum_non_exposed_checks(&logging_adapter, "test_public");
+    assert_eq!(actual, expected);
+}
+
 #[tokio::test]
 async fn test_exposure_dedupe() {
     let (statsig, logging_adapter) = setup(DCS_EVAL_PROJ).await;
