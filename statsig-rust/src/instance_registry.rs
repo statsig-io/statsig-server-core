@@ -1,9 +1,7 @@
-use ahash::AHashMap;
+use dashmap::DashMap;
 use lazy_static::lazy_static;
-use parking_lot::{RwLock, RwLockWriteGuard};
 use std::any::Any;
 use std::sync::Arc;
-use std::time::Duration;
 use uuid::Uuid;
 
 use crate::hashing::hash_one;
@@ -11,8 +9,23 @@ use crate::log_e;
 
 type AnyInstance = Arc<dyn Any + Send + Sync>;
 
+// S2SDK-16 fix: the instance registry is on the SDK evaluation hot path. Every
+// check_gate / get_experiment call resolves the Statsig and StatsigUser
+// handles through it, and FFI bindings (e.g. Java/JNI) create + release a
+// StatsigUser per request. The previous design was a single global
+// `RwLock<AHashMap>`: at high QPS the per-request write locks (user
+// create/release) blocked every concurrent eval read lock, serializing an
+// otherwise many-core workload and starving CPU.
+//
+// DashMap is a sharded concurrent map (an array of independently locked
+// buckets keyed by hash), so reads/writes to different ids touch different
+// shards and no longer contend on one global lock. As a bonus it also removes
+// the blanket 5s lock-timeout stalls the old macro-based locking produced
+// under contention.
+type Registry = DashMap<u64, AnyInstance, ahash::RandomState>;
+
 lazy_static! {
-    static ref REGISTRY: RwLock<AHashMap<u64, AnyInstance>> = RwLock::new(AHashMap::default());
+    static ref REGISTRY: Registry = DashMap::with_hasher(ahash::RandomState::new());
 }
 
 const TAG: &str = "InstanceRegistry";
@@ -26,8 +39,8 @@ impl InstanceRegistry {
         let id_tuple = (short_type_name, Uuid::new_v4());
         let id_hash = hash_one(id_tuple);
 
-        let mut registry = Self::get_write_lock()?;
-        registry.insert(id_hash, instance);
+        // Insert only write-locks the single shard this id maps to.
+        REGISTRY.insert(id_hash, instance);
 
         Some(id_hash)
     }
@@ -41,65 +54,39 @@ impl InstanceRegistry {
     }
 
     pub fn get<T: Send + Sync + 'static>(id: &u64) -> Option<Arc<T>> {
-        let registry = match REGISTRY.try_read_for(Duration::from_secs(5)) {
-            Some(guard) => guard,
-            None => {
-                log_e!(TAG, "Failed to acquire read lock: Failed to lock REGISTRY");
-                return None;
-            }
+        // Clone the Arc out and release the shard guard immediately (the Ref
+        // does not outlive this statement) so we never hold a DashMap guard
+        // across other registry calls - that is what could otherwise deadlock
+        // a sharded map.
+        let any_arc = match REGISTRY.get(id) {
+            Some(entry) => entry.value().clone(),
+            None => return None,
         };
 
-        registry
-            .get(id)
-            .and_then(|any_arc| match any_arc.clone().downcast::<T>() {
-                Ok(t) => Some(t),
-                Err(_) => {
-                    log_e!(
-                        TAG,
-                        "Failed to downcast instance with ref '{}' to generic type",
-                        id
-                    );
-                    None
-                }
-            })
-    }
-
-    pub fn get_raw(id: &u64) -> Option<Arc<dyn Any + Send + Sync>> {
-        let registry = match REGISTRY.try_read_for(Duration::from_secs(5)) {
-            Some(guard) => guard,
-            None => {
-                log_e!(TAG, "Failed to acquire read lock: Failed to lock REGISTRY");
-                return None;
-            }
-        };
-
-        registry.get(id).cloned()
-    }
-
-    pub fn remove(id: &u64) {
-        let mut registry = match Self::get_write_lock() {
-            Some(registry) => registry,
-            None => return,
-        };
-        registry.remove(id);
-    }
-
-    pub fn remove_all() {
-        let mut registry = match Self::get_write_lock() {
-            Some(registry) => registry,
-            None => return,
-        };
-        registry.clear();
-    }
-
-    fn get_write_lock() -> Option<RwLockWriteGuard<'static, AHashMap<u64, AnyInstance>>> {
-        match REGISTRY.try_write_for(Duration::from_secs(5)) {
-            Some(registry) => Some(registry),
-            None => {
-                log_e!(TAG, "Failed to acquire write lock: Failed to lock REGISTRY");
+        match any_arc.downcast::<T>() {
+            Ok(t) => Some(t),
+            Err(_) => {
+                log_e!(
+                    TAG,
+                    "Failed to downcast instance with ref '{}' to generic type",
+                    id
+                );
                 None
             }
         }
+    }
+
+    pub fn get_raw(id: &u64) -> Option<Arc<dyn Any + Send + Sync>> {
+        REGISTRY.get(id).map(|entry| entry.value().clone())
+    }
+
+    pub fn remove(id: &u64) {
+        // Only write-locks the single shard this id maps to.
+        REGISTRY.remove(id);
+    }
+
+    pub fn remove_all() {
+        REGISTRY.clear();
     }
 }
 

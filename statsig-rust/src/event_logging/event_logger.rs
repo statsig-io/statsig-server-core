@@ -19,9 +19,9 @@ use crate::{
     networking::NetworkError,
     observability::ops_stats::{OpsStatsForInstance, OPS_STATS},
     statsig_metadata::StatsigMetadata,
-    write_lock_or_noop, EventLoggingAdapter, StatsigErr, StatsigOptions, StatsigRuntime,
+    EventLoggingAdapter, StatsigErr, StatsigOptions, StatsigRuntime,
 };
-use parking_lot::RwLock;
+use dashmap::DashMap;
 use std::{collections::HashMap, sync::Arc};
 use std::{
     sync::atomic::{AtomicU64, Ordering},
@@ -53,7 +53,13 @@ pub struct EventLogger {
     options: Arc<StatsigOptions>,
     logging_adapter: Arc<dyn EventLoggingAdapter>,
     event_sampler: ExposureSampling,
-    non_exposed_checks: RwLock<HashMap<String, u64>>,
+    // S2SDK-16 fix: incremented on (nearly) every evaluation that has exposure
+    // logging disabled - 99.9% of calls for high-QPS customers. A single
+    // global RwLock<HashMap> here serialized the whole multi-core eval
+    // workload behind one write lock. DashMap shards the map and AtomicU64
+    // lets concurrent callers bump an existing gate's counter with only a
+    // shared shard read-lock plus a relaxed atomic add.
+    non_exposed_checks: DashMap<String, AtomicU64>,
     limit_flush_notify: Notify,
     limit_flush_semaphore: Arc<Semaphore>,
     flush_interval: FlushInterval,
@@ -86,7 +92,7 @@ impl EventLogger {
             flush_interval: FlushInterval::new(),
             options: options.clone(),
             logging_adapter: event_logging_adapter.clone(),
-            non_exposed_checks: RwLock::new(HashMap::new()),
+            non_exposed_checks: DashMap::new(),
             shutdown_notify: Notify::new(),
             limit_flush_notify: Notify::new(),
             limit_flush_semaphore: Arc::new(Semaphore::new(MAX_LIMIT_FLUSH_TASKS)),
@@ -184,14 +190,23 @@ impl EventLogger {
     }
 
     pub fn increment_non_exposure_checks(&self, name: &str) {
-        let mut non_exposed_checks = write_lock_or_noop!(TAG, self.non_exposed_checks);
-
-        match non_exposed_checks.get_mut(name) {
-            Some(count) => *count += 1,
-            None => {
-                non_exposed_checks.insert(name.into(), 1);
-            }
+        // Fast path: the counter for this gate already exists. Concurrent
+        // callers share a shard read-lock and only do a relaxed atomic add,
+        // so they no longer serialize on a single global write lock (the core
+        // S2SDK-16 high-QPS hot-path bottleneck).
+        if let Some(counter) = self.non_exposed_checks.get(name) {
+            counter.fetch_add(1, Ordering::Relaxed);
+            return;
         }
+
+        // Slow path: first time seeing this gate name. `entry` briefly
+        // write-locks only the relevant shard to insert the counter; this
+        // happens at most once per distinct gate name, then every subsequent
+        // hit takes the lock-free fast path above.
+        self.non_exposed_checks
+            .entry(name.to_string())
+            .or_insert_with(|| AtomicU64::new(0))
+            .fetch_add(1, Ordering::Relaxed);
     }
 
     pub async fn flush_all_pending_events(
@@ -500,12 +515,28 @@ impl EventLogger {
     }
 
     fn try_add_non_exposed_checks_event(&self) {
-        let mut non_exposed_checks = write_lock_or_noop!(TAG, self.non_exposed_checks);
-        if non_exposed_checks.is_empty() {
+        // Drain by atomically swapping each counter to 0 and collecting the
+        // non-zero counts. Unlike clearing the whole map, swap(0) is atomic
+        // per counter: an increment racing this drain either lands before the
+        // swap (counted now) or after it (left on the counter, rolled into the
+        // next flush) - the increment/drain race itself never loses a count.
+        // (End-to-end delivery is still best-effort: once swapped out, the
+        // counts live only in the event below, so a failed/dropped queue add
+        // can lose that drained batch - same as any other event.) Keys are
+        // retained (cheap, bounded by gate count) so hot gates keep hitting the
+        // lock-free fast path in increment.
+        let mut checks: HashMap<String, u64> = HashMap::new();
+        for entry in self.non_exposed_checks.iter() {
+            let count = entry.value().swap(0, Ordering::Relaxed);
+            if count > 0 {
+                checks.insert(entry.key().clone(), count);
+            }
+        }
+
+        if checks.is_empty() {
             return;
         }
 
-        let checks = std::mem::take(&mut *non_exposed_checks);
         let result = self.queue.add(QueuedEvent::Passthrough(
             StatsigEventInternal::new_non_exposed_checks_event(checks),
         ));
