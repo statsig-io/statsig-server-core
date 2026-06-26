@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Reflection;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Statsig
 {
@@ -18,6 +19,7 @@ namespace Statsig
         void ManuallyLogDynamicConfigExposure(IStatsigUser user, string configName);
         IExperiment GetExperiment(IStatsigUser user, string experimentName, EvaluationOptions? options = null);
         void ManuallyLogExperimentExposure(IStatsigUser user, string experimentName);
+        List<IExperimentGroup> GetExperimentGroups(string experimentName);
         ILayer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null);
         void ManuallyLogLayerParameterExposure(IStatsigUser user, string layerName, string parameterName);
         IParameterStore GetParameterStore(IStatsigUser user, string storeName, EvaluationOptions? options = null);
@@ -329,6 +331,40 @@ namespace Statsig
                     return new Experiment(string.Empty);
                 }
                 return new Experiment(jsonString);
+            }
+        }
+
+        unsafe public List<IExperimentGroup> GetExperimentGroups(string experimentName)
+        {
+            var groups = new List<IExperimentGroup>();
+
+            int nameLen = Encoding.UTF8.GetByteCount(experimentName);
+#if NET8_0_OR_GREATER
+            Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
+            int written = Encoding.UTF8.GetBytes(experimentName, nameBytes[..nameLen]);
+            nameBytes[written] = 0;
+#else
+            byte[] nameBytesArray = new byte[nameLen + 1];
+            Encoding.UTF8.GetBytes(experimentName, 0, experimentName.Length, nameBytesArray, 0);
+            nameBytesArray[nameLen] = 0;
+            Span<byte> nameBytes = nameBytesArray;
+#endif
+
+            fixed (byte* experimentNamePtr = nameBytes)
+            {
+                var jsonStringPtr = StatsigFFI.statsig_get_experiment_groups(_statsigRef, experimentNamePtr);
+                var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
+                if (jsonString == null)
+                {
+                    return groups;
+                }
+
+                var array = JArray.Parse(jsonString);
+                foreach (var token in array)
+                {
+                    groups.Add(new ExperimentGroup(token));
+                }
+                return groups;
             }
         }
 

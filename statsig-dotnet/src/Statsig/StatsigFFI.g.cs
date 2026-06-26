@@ -157,6 +157,9 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_get_raw_experiment", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_raw_experiment(ulong statsig_ref, ulong user_ref, byte* experiment_name, byte* options_json, ulong* inout_result_len);
 
+        [DllImport(__DllName, EntryPoint = "statsig_get_experiment_groups", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_experiment_groups(ulong statsig_ref, byte* experiment_name);
+
         [DllImport(__DllName, EntryPoint = "statsig_get_layer_with_inout_len", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_layer_with_inout_len(ulong statsig_ref, ulong user_ref, byte* layer_name, byte* options_json, ulong* inout_result_len);
 

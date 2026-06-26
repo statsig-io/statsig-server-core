@@ -180,6 +180,27 @@ func (s *Statsig) GetExperimentWithOptions(user *StatsigUser, experimentName str
 	return experiment
 }
 
+// GetExperimentGroups returns the group name and return value for each group in the
+// given experiment, without requiring a user evaluation. It returns an empty slice if
+// the name does not refer to an active experiment.
+func (s *Statsig) GetExperimentGroups(experimentName string) []ExperimentGroup {
+	groups := []ExperimentGroup{}
+
+	groupsJson := UseRustStringNoLen(func() *byte {
+		return GetFFI().statsig_get_experiment_groups(s.ref.Load(), experimentName)
+	})
+
+	if groupsJson == nil {
+		return groups
+	}
+
+	if err := json.Unmarshal([]byte(*groupsJson), &groups); err != nil {
+		fmt.Printf("Failed to unmarshal ExperimentGroups: %v", err)
+	}
+
+	return groups
+}
+
 func (s *Statsig) GetLayer(user *StatsigUser, layerName string) Layer {
 	return s.GetLayerWithOptions(user, layerName, nil)
 

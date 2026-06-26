@@ -45,6 +45,7 @@ type StatsigFFI struct {
 
 	// Experiments
 	statsig_get_raw_experiment               func(uint64, uint64, string, string, *uint64) *byte
+	statsig_get_experiment_groups            func(uint64, string) *byte
 	statsig_manually_log_experiment_exposure func(uint64, uint64, string)
 
 	// Layers
@@ -167,6 +168,7 @@ func GetFFI() *StatsigFFI {
 
 		// Experiments
 		purego.RegisterLibFunc(&instance.statsig_get_raw_experiment, lib, "statsig_get_raw_experiment")
+		purego.RegisterLibFunc(&instance.statsig_get_experiment_groups, lib, "statsig_get_experiment_groups")
 		purego.RegisterLibFunc(&instance.statsig_manually_log_experiment_exposure, lib, "statsig_manually_log_experiment_exposure")
 
 		// Layers
@@ -230,6 +232,18 @@ func UseRustString(handler func() (*byte, uint64)) *string {
 
 	defer instance.free_string(ptr)
 	return internal.GoStringFromPointer(ptr, length)
+}
+
+// UseRustStringNoLen is like UseRustString but for FFI functions that return a
+// null-terminated string without an out-parameter length.
+func UseRustStringNoLen(handler func() *byte) *string {
+	ptr := handler()
+	if ptr == nil {
+		return nil
+	}
+
+	defer instance.free_string(ptr)
+	return internal.UnperformantGoStringFromPointer(ptr)
 }
 
 func (ffi *StatsigFFI) updateStatsigMetadata() {

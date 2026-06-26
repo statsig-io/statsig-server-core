@@ -68,6 +68,8 @@ class StatsigJNI {
 
   public static native String statsigGetExperimentList(long statsigRef);
 
+  public static native String statsigGetExperimentGroups(long statsigRef, String experimentName);
+
   // ----------------------------------------------------------------------------------------
   // [Statsig: DynamicConfig]
 

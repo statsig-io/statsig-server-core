@@ -12,7 +12,7 @@ use crate::{
     statsig_options_nfi::StatsigOptions,
     statsig_types_nfi::{
         AllowedPrimitive, ClientInitResponseOptions, DynamicConfig, DynamicConfigEvaluationOptions,
-        EvaluationDetails, Experiment, ExperimentEvaluationOptions, FeatureGate,
+        EvaluationDetails, Experiment, ExperimentEvaluationOptions, ExperimentGroup, FeatureGate,
         FeatureGateEvaluationOptions, LayerEvaluationOptions,
     },
     statsig_user_nfi::StatsigUser,
@@ -157,6 +157,23 @@ pub fn get_experiment(
                 options.map(|o| o.into()).unwrap_or_default(),
             )
             .into()),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
+    }
+}
+
+#[rustler::nif]
+pub fn get_experiment_groups(
+    env: Env<'_>,
+    statsig: ResourceArc<StatsigResource>,
+    experiment_name: &str,
+) -> Result<Vec<ExperimentGroup>, Error> {
+    let _guard = ManagedEnvGuard::new(env);
+    match statsig.statsig_core.read() {
+        Ok(read_guard) => Ok(read_guard
+            .get_experiment_groups(experiment_name)
+            .into_iter()
+            .map(ExperimentGroup::from)
+            .collect()),
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }

@@ -84,6 +84,13 @@ func (e *Experiment) GetMap(key string, fallback map[string]any) map[string]any 
 	return getTypedValue(e.Value, key, fallback, nil)
 }
 
+// ------------------------------------------------------------------------------------- [ ExperimentGroup ]
+
+type ExperimentGroup struct {
+	GroupName   string         `json:"group_name"`
+	ReturnValue map[string]any `json:"return_value"`
+}
+
 // ------------------------------------------------------------------------------------- [ Layer ]
 
 type Layer struct {

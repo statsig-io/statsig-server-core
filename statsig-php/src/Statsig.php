@@ -4,6 +4,7 @@ namespace Statsig;
 
 use Statsig\EvaluationTypes\DynamicConfig;
 use Statsig\EvaluationTypes\Experiment;
+use Statsig\EvaluationTypes\ExperimentGroup;
 use Statsig\EvaluationTypes\FeatureGate;
 use Statsig\EvaluationTypes\Layer;
 use Statsig\StatsigEventData;
@@ -165,6 +166,34 @@ class Statsig
             $user->__ref,
             $name
         );
+    }
+
+    /**
+     * Returns the group name and return value for each group in the given experiment,
+     * without requiring a user evaluation.
+     *
+     * @return ExperimentGroup[]
+     */
+    public function getExperimentGroups(string $name): array
+    {
+        $ptr = StatsigFFI::get()->statsig_get_experiment_groups(
+            $this->__ref,
+            $name
+        );
+
+        $raw_result = StatsigFFI::takeString($ptr);
+        $decoded = json_decode($raw_result, true);
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        return array_map(function ($group) {
+            return new ExperimentGroup(
+                (string)($group['group_name'] ?? ''),
+                $group['return_value'] ?? []
+            );
+        }, $decoded);
     }
 
     /**

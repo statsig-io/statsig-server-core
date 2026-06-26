@@ -55,7 +55,9 @@ use crate::statsig_runtime::StatsigRuntime;
 use crate::statsig_type_factories::{
     make_dynamic_config, make_experiment, make_feature_gate, make_layer,
 };
-use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer, ParameterStore};
+use crate::statsig_types::{
+    DynamicConfig, Experiment, ExperimentGroup, FeatureGate, Layer, ParameterStore,
+};
 #[cfg(feature = "ffi-support")]
 use crate::statsig_types_raw::{DynamicConfigRaw, ExperimentRaw, FeatureGateRaw, LayerRaw};
 use crate::user::StatsigUserInternal;
@@ -1425,6 +1427,47 @@ impl Statsig {
     pub fn get_fields_needed_for_experiment(&self, experiment_name: &str) -> Vec<String> {
         self.spec_store
             .get_fields_used_for_entity(experiment_name, SpecType::Experiment)
+    }
+
+    /// Returns the group name and return value for each group in the given experiment,
+    /// without requiring a user evaluation.
+    ///
+    /// Returns an empty list if the name does not refer to an active experiment. Rules that
+    /// are not experiment groups (e.g. holdout or sizing rules) are excluded.
+    pub fn get_experiment_groups(&self, experiment_name: &str) -> Vec<ExperimentGroup> {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                self.ops_stats.clone(),
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for spec store data".to_string()
+                )
+            );
+            return Vec::new();
+        });
+
+        let interned_name = InternedString::from_str_ref(experiment_name);
+        let Some(spec_pointer) = data.values.dynamic_configs.get(&interned_name) else {
+            return Vec::new();
+        };
+
+        let spec = spec_pointer.as_spec_ref();
+        if spec.entity.as_str() != "experiment" || spec.is_active != Some(true) {
+            return Vec::new();
+        }
+
+        spec.rules
+            .iter()
+            .filter(|rule| rule.is_experiment_group == Some(true))
+            .map(|rule| ExperimentGroup {
+                group_name: rule
+                    .group_name
+                    .as_ref()
+                    .map(|g| g.unperformant_to_string())
+                    .unwrap_or_default(),
+                return_value: rule.return_value.get_json().unwrap_or_default(),
+            })
+            .collect()
     }
 
     pub fn get_experiment_by_group_name(

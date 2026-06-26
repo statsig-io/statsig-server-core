@@ -2,11 +2,29 @@ use napi_derive::napi;
 use serde::Serialize;
 use serde_json::Value;
 use statsig_rust::{
+    statsig_types::ExperimentGroup as ExperimentGroupActual,
     statsig_types::ParameterStore as ParameterStoreActual,
     EvaluationDetails as EvaluationDetailsActual, SecondaryExposure as SecondaryExposureActual,
 };
+use std::collections::HashMap;
 
 use crate::statsig_user_napi::StatsigUser;
+
+#[napi(object)]
+#[derive(Clone, Serialize)]
+pub struct ExperimentGroup {
+    pub group_name: String,
+    pub return_value: HashMap<String, Value>,
+}
+
+impl From<ExperimentGroupActual> for ExperimentGroup {
+    fn from(value: ExperimentGroupActual) -> Self {
+        ExperimentGroup {
+            group_name: value.group_name,
+            return_value: value.return_value,
+        }
+    }
+}
 
 #[napi(object)]
 #[derive(Clone, Serialize)]

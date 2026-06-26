@@ -1,4 +1,4 @@
-use crate::pyo_utils::py_dict_to_json_value_map;
+use crate::pyo_utils::{map_to_py_dict, py_dict_to_json_value_map};
 use crate::raw_evaluation_compat_py::{
     raw_dynamic_config_to_py_dict, raw_experiment_to_py_dict, raw_gate_to_py_dict,
     raw_layer_to_py_dict, LayerParamExposureDataPy,
@@ -541,6 +541,25 @@ impl StatsigBasePy {
     #[pyo3(name = "get_experiment_list")]
     pub fn get_experiment_list(&self) -> Vec<String> {
         self.inner.get_experiment_list()
+    }
+
+    #[pyo3(name = "get_experiment_groups", signature = (experiment_name))]
+    pub fn get_experiment_groups(
+        &self,
+        experiment_name: &str,
+        py: Python,
+    ) -> PyResult<Vec<Py<PyDict>>> {
+        let groups = self.inner.get_experiment_groups(experiment_name);
+
+        groups
+            .into_iter()
+            .map(|group| {
+                let dict = PyDict::new(py);
+                dict.set_item("group_name", group.group_name)?;
+                dict.set_item("return_value", map_to_py_dict(py, &group.return_value))?;
+                Ok(dict.unbind())
+            })
+            .collect()
     }
 
     #[pyo3(name = "get_parameter_store_list")]

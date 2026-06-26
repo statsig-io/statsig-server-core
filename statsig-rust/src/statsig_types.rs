@@ -83,6 +83,12 @@ impl Experiment {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+pub struct ExperimentGroup {
+    pub group_name: String,
+    pub return_value: HashMap<String, Value>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Layer {
     pub name: String,
     pub rule_id: String,

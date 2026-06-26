@@ -32,6 +32,9 @@ defmodule Statsig.NativeBindings do
   def get_experiment(_statsig, _experiment_name, _statsig_user, _options),
     do: :erlang.nif_error(:nif_not_loaded)
 
+  def get_experiment_groups(_statsig, _experiment_name),
+    do: :erlang.nif_error(:nif_not_loaded)
+
   def get_layer(_statsig, _layer_name, _statsig_user, _options),
     do: :erlang.nif_error(:nif_not_loaded)
 

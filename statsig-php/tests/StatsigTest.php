@@ -113,6 +113,50 @@ class StatsigTest extends TestCase
         $this->assertEquals('layer', $layer->get('a_string', 'err'));
     }
 
+    public function testGetExperimentGroups()
+    {
+        $statsig = $this->getInitializedStatsig();
+
+        $groups = $statsig->getExperimentGroups('test_experiment_no_targeting');
+
+        $groups_by_name = [];
+        foreach ($groups as $group) {
+            $groups_by_name[$group->groupName] = $group->returnValue;
+        }
+
+        // Only the experiment group rules are returned (the layerAssignment rule is excluded).
+        $names = array_keys($groups_by_name);
+        sort($names);
+        $this->assertEquals(['Control', 'Test', 'Test2'], $names);
+        $this->assertEquals(['value' => 'control'], $groups_by_name['Control']);
+        $this->assertEquals(['value' => 'test_1'], $groups_by_name['Test']);
+        $this->assertEquals(['value' => 'test_2'], $groups_by_name['Test2']);
+    }
+
+    public function testGetExperimentGroupsReturnsEmptyForUnknownExperiment()
+    {
+        $statsig = $this->getInitializedStatsig();
+
+        $groups = $statsig->getExperimentGroups('nonexistent_experiment');
+        $this->assertEquals([], $groups);
+    }
+
+    public function testGetExperimentGroupsReturnsEmptyForDynamicConfig()
+    {
+        $statsig = $this->getInitializedStatsig();
+
+        $groups = $statsig->getExperimentGroups('test_max_dynamic_config_size_again');
+        $this->assertEquals([], $groups);
+    }
+
+    public function testGetExperimentGroupsReturnsEmptyForInactiveExperiment()
+    {
+        $statsig = $this->getInitializedStatsig();
+
+        $groups = $statsig->getExperimentGroups('an_experiment1');
+        $this->assertEquals([], $groups);
+    }
+
     public function testExposureLogCounts()
     {
         $statsig = $this->getInitializedStatsig();

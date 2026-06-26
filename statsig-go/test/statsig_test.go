@@ -55,6 +55,66 @@ func TestExperimentEvaluation(t *testing.T) {
 	statsig.Shutdown()
 }
 
+func TestGetExperimentGroups(t *testing.T) {
+	statsig, _, _ := SetupTest(t)
+
+	groups := statsig.GetExperimentGroups("test_experiment_no_targeting")
+
+	groupsByName := map[string]map[string]any{}
+	for _, group := range groups {
+		groupsByName[group.GroupName] = group.ReturnValue
+	}
+
+	// Only the experiment group rules are returned (the layerAssignment rule is excluded).
+	if len(groupsByName) != 3 {
+		t.Errorf("Expected 3 experiment groups, got %d", len(groupsByName))
+	}
+	if groupsByName["Control"]["value"] != "control" {
+		t.Errorf("Control group return value is not correct, got %v", groupsByName["Control"])
+	}
+	if groupsByName["Test"]["value"] != "test_1" {
+		t.Errorf("Test group return value is not correct, got %v", groupsByName["Test"])
+	}
+	if groupsByName["Test2"]["value"] != "test_2" {
+		t.Errorf("Test2 group return value is not correct, got %v", groupsByName["Test2"])
+	}
+
+	statsig.Shutdown()
+}
+
+func TestGetExperimentGroupsReturnsEmptyForUnknownExperiment(t *testing.T) {
+	statsig, _, _ := SetupTest(t)
+
+	groups := statsig.GetExperimentGroups("nonexistent_experiment")
+	if len(groups) != 0 {
+		t.Errorf("Expected empty groups for unknown experiment, got %v", groups)
+	}
+
+	statsig.Shutdown()
+}
+
+func TestGetExperimentGroupsReturnsEmptyForDynamicConfig(t *testing.T) {
+	statsig, _, _ := SetupTest(t)
+
+	groups := statsig.GetExperimentGroups("test_max_dynamic_config_size_again")
+	if len(groups) != 0 {
+		t.Errorf("Expected empty groups for dynamic config, got %v", groups)
+	}
+
+	statsig.Shutdown()
+}
+
+func TestGetExperimentGroupsReturnsEmptyForInactiveExperiment(t *testing.T) {
+	statsig, _, _ := SetupTest(t)
+
+	groups := statsig.GetExperimentGroups("an_experiment1")
+	if len(groups) != 0 {
+		t.Errorf("Expected empty groups for inactive experiment, got %v", groups)
+	}
+
+	statsig.Shutdown()
+}
+
 func TestLayerEvaluation(t *testing.T) {
 	statsig, _, user := SetupTest(t)
 

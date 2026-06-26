@@ -115,6 +115,73 @@ async fn test_get_experiment_by_group_id_advanced() {
     assert_eq!(experiment.value["value"], "control");
 }
 
+async fn get_experiment_groups_statsig() -> Statsig {
+    let statsig = Statsig::new(
+        "secret-key",
+        Some(Arc::new(StatsigOptions {
+            specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
+                "tests/data/eval_proj_dcs.json",
+            ))),
+            ..StatsigOptions::new()
+        })),
+    );
+    statsig.initialize().await.unwrap();
+    statsig
+}
+
+#[tokio::test]
+async fn test_get_experiment_groups() {
+    let statsig = get_experiment_groups_statsig().await;
+
+    let groups = statsig.get_experiment_groups("test_experiment_no_targeting");
+
+    let mut groups_by_name: HashMap<String, _> = groups
+        .into_iter()
+        .map(|group| (group.group_name.clone(), group.return_value))
+        .collect();
+
+    // Only the experiment group rules are returned (the layerAssignment rule is excluded).
+    let mut group_names: Vec<String> = groups_by_name.keys().cloned().collect();
+    group_names.sort();
+    assert_eq!(group_names, vec!["Control", "Test", "Test2"]);
+
+    assert_eq!(
+        groups_by_name.remove("Control").unwrap()["value"],
+        "control"
+    );
+    assert_eq!(groups_by_name.remove("Test").unwrap()["value"], "test_1");
+    assert_eq!(groups_by_name.remove("Test2").unwrap()["value"], "test_2");
+}
+
+#[tokio::test]
+async fn test_get_experiment_groups_returns_empty_for_unknown_experiment() {
+    let statsig = get_experiment_groups_statsig().await;
+
+    let groups = statsig.get_experiment_groups("nonexistent_experiment");
+
+    assert!(groups.is_empty());
+}
+
+#[tokio::test]
+async fn test_get_experiment_groups_returns_empty_for_dynamic_config() {
+    let statsig = get_experiment_groups_statsig().await;
+
+    // Dynamic configs are not experiments; should return an empty list.
+    let groups = statsig.get_experiment_groups("test_max_dynamic_config_size_again");
+
+    assert!(groups.is_empty());
+}
+
+#[tokio::test]
+async fn test_get_experiment_groups_returns_empty_for_inactive_experiment() {
+    let statsig = get_experiment_groups_statsig().await;
+
+    // an_experiment1 has isActive: false; should return an empty list.
+    let groups = statsig.get_experiment_groups("an_experiment1");
+
+    assert!(groups.is_empty());
+}
+
 #[tokio::test]
 async fn test_gcir() {
     let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())

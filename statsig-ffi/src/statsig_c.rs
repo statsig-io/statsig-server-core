@@ -988,6 +988,27 @@ pub extern "C" fn statsig_get_raw_experiment(
     })
 }
 
+#[no_mangle]
+pub extern "C" fn statsig_get_experiment_groups(
+    statsig_ref: u64,
+    experiment_name: *const c_char,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null_mut());
+
+    let groups = statsig.get_experiment_groups(&experiment_name);
+
+    let result = match serde_json::to_string(&groups) {
+        Ok(result) => result,
+        Err(e) => {
+            log_e!(TAG, "Failed to serialize experiment groups: {}", e);
+            return null_mut();
+        }
+    };
+
+    string_to_c_char(result)
+}
+
 // ------------------------
 // Layer Functions
 // ------------------------

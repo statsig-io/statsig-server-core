@@ -100,6 +100,22 @@ defmodule Statsig do
     end
   end
 
+  def get_experiment_groups(experiment_name) do
+    try do
+      instance = get_statsig_instance()
+
+      case NativeBindings.get_experiment_groups(instance, experiment_name) do
+        {:error, e} -> {:error, e}
+        groups -> {:ok, groups}
+      end
+    rescue
+      exception -> {:error, Exception.message(exception)}
+    catch
+      :exit, reason -> {:error, {:exit, reason}}
+      exception -> {:error, Exception.message(exception)}
+    end
+  end
+
   def get_layer(layer_name, statsig_user, options \\ nil) do
     try do
       instance = get_statsig_instance()
