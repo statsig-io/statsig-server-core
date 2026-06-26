@@ -100,6 +100,14 @@ defmodule Statsig do
     end
   end
 
+  @doc """
+  Returns the group name and return value for each group in the given experiment,
+  without requiring a user evaluation.
+
+  Returns `{:ok, []}` if the name does not refer to an **active** experiment (i.e. the
+  experiment is unknown, refers to a dynamic config, or is not active). Rules that are
+  not experiment groups (e.g. holdout or sizing rules) are excluded.
+  """
   def get_experiment_groups(experiment_name) do
     try do
       instance = get_statsig_instance()

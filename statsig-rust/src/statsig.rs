@@ -1432,8 +1432,10 @@ impl Statsig {
     /// Returns the group name and return value for each group in the given experiment,
     /// without requiring a user evaluation.
     ///
-    /// Returns an empty list if the name does not refer to an active experiment. Rules that
-    /// are not experiment groups (e.g. holdout or sizing rules) are excluded.
+    /// Returns an empty list if the name does not refer to an **active** experiment, i.e. if
+    /// the experiment is unknown, the name refers to a dynamic config, or the experiment is
+    /// not active (`isActive != true`). Rules that are not experiment groups (e.g. holdout or
+    /// sizing rules) are excluded.
     pub fn get_experiment_groups(&self, experiment_name: &str) -> Vec<ExperimentGroup> {
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(

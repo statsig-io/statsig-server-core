@@ -182,7 +182,9 @@ func (s *Statsig) GetExperimentWithOptions(user *StatsigUser, experimentName str
 
 // GetExperimentGroups returns the group name and return value for each group in the
 // given experiment, without requiring a user evaluation. It returns an empty slice if
-// the name does not refer to an active experiment.
+// the name does not refer to an active experiment (i.e. the experiment is unknown,
+// refers to a dynamic config, or is not active). Rules that are not experiment groups
+// (e.g. holdout or sizing rules) are excluded.
 func (s *Statsig) GetExperimentGroups(experimentName string) []ExperimentGroup {
 	groups := []ExperimentGroup{}
 

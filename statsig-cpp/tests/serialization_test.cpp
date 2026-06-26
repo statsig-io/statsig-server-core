@@ -226,3 +226,25 @@ TEST(Serialization, Experiment) {
   EXPECT_EQ(experiment.details.receivedAt.value(), 1627847265);
   EXPECT_EQ(experiment.details.reason, "Network:Recognized");
 }
+
+TEST(Serialization, ExperimentGroups) {
+  // Mirrors the JSON array returned by statsig_get_experiment_groups.
+  std::string json_str = R"([
+        {
+            "group_name": "Control",
+            "return_value": {"value": "control"}
+        },
+        {
+            "group_name": "Test",
+            "return_value": {"value": "test_1"}
+        }
+    ])";
+  json j = json::parse(json_str);
+  auto groups = j.get<std::vector<statsig_cpp_core::ExperimentGroup>>();
+
+  EXPECT_EQ(groups.size(), 2);
+  EXPECT_EQ(groups[0].group_name, "Control");
+  EXPECT_EQ(groups[0].return_value["value"], "control");
+  EXPECT_EQ(groups[1].group_name, "Test");
+  EXPECT_EQ(groups[1].return_value["value"], "test_1");
+}

@@ -60,6 +60,12 @@ public:
       const User &user, const std::string &experiment_name,
       const std::optional<GetExperimentOptions> &option = std::nullopt);
 
+  // Returns the group name and return value for each group in the given
+  // experiment, without requiring a user evaluation. Returns an empty vector if
+  // the name does not refer to an active experiment.
+  std::vector<ExperimentGroup>
+  getExperimentGroups(const std::string &experiment_name);
+
   DynamicConfig getDynamicConfig(
       const User &user, const std::string &config_name,
       const std::optional<GetDynamicConfigOptions> &option = std::nullopt);

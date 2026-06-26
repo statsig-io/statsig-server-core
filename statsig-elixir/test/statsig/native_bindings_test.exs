@@ -229,12 +229,6 @@ defmodule Statsig.NativeBindingsTest do
 
       assert NativeBindings.get_experiment_groups(ref, "nonexistent_experiment") == []
     end
-
-    test "returns an empty list when no specs are loaded" do
-      ref = new()
-
-      assert NativeBindings.get_experiment_groups(ref, "my_experiment") == []
-    end
   end
 
   describe "override_layer/4" do

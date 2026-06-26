@@ -143,6 +143,21 @@ inline Experiment::Experiment(const std::string &json_str) {
   *this = j.get<Experiment>();
 }
 
+// ExperimentGroup
+struct ExperimentGroup {
+  std::string group_name;
+  std::unordered_map<std::string, nlohmann::json> return_value;
+};
+
+inline void from_json(const json &j, ExperimentGroup &g) {
+  j.at("group_name").get_to(g.group_name);
+  j.at("return_value").get_to(g.return_value);
+}
+
+inline void to_json(json &j, const ExperimentGroup &g) {
+  j = json{{"group_name", g.group_name}, {"return_value", g.return_value}};
+}
+
 using allowed_primitive = std::variant<std::string, int64_t, double, bool>;
 using allowed_type =
     std::variant<allowed_primitive, std::vector<allowed_primitive>>;

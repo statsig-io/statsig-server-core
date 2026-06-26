@@ -19,6 +19,13 @@ namespace Statsig
         void ManuallyLogDynamicConfigExposure(IStatsigUser user, string configName);
         IExperiment GetExperiment(IStatsigUser user, string experimentName, EvaluationOptions? options = null);
         void ManuallyLogExperimentExposure(IStatsigUser user, string experimentName);
+        /// <summary>
+        /// Returns the group name and return value for each group in the given experiment,
+        /// without requiring a user evaluation. Returns an empty list if the name does not
+        /// refer to an active experiment (i.e. the experiment is unknown, refers to a dynamic
+        /// config, or is not active). Rules that are not experiment groups (e.g. holdout or
+        /// sizing rules) are excluded.
+        /// </summary>
         List<IExperimentGroup> GetExperimentGroups(string experimentName);
         ILayer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null);
         void ManuallyLogLayerParameterExposure(IStatsigUser user, string layerName, string parameterName);
