@@ -180,6 +180,61 @@ func (s *Statsig) GetExperimentWithOptions(user *StatsigUser, experimentName str
 	return experiment
 }
 
+// getExperimentByGroup runs an experiment group-targeting lookup via the given
+// FFI call and unmarshals the resulting JSON into an Experiment. Both public
+// group getters share this; they differ only in which FFI symbol they invoke.
+func (s *Statsig) getExperimentByGroup(
+	experimentName string,
+	ffiCall func(ref uint64, resultLen *uint64) *byte,
+) Experiment {
+	experiment := Experiment{
+		Name: experimentName,
+	}
+
+	experimentJson := UseRustString(func() (*byte, uint64) {
+		length := uint64(0)
+		ptr := ffiCall(s.ref.Load(), &length)
+		return ptr, length
+	})
+
+	if experimentJson != nil {
+		if err := json.Unmarshal([]byte(*experimentJson), &experiment); err != nil {
+			fmt.Printf("Failed to unmarshal Experiment: %v", err)
+		}
+	}
+
+	if experiment.Value == nil {
+		experiment.Value = make(map[string]any)
+	}
+
+	return experiment
+}
+
+// GetExperimentByGroupName returns the experiment for the rule whose group name
+// matches groupName. This is a pure spec lookup and performs no user evaluation,
+// so no exposure is logged.
+func (s *Statsig) GetExperimentByGroupName(experimentName string, groupName string) Experiment {
+	return s.getExperimentByGroup(experimentName, func(ref uint64, resultLen *uint64) *byte {
+		return GetFFI().statsig_get_raw_experiment_by_group_name(ref, experimentName, groupName, resultLen)
+	})
+}
+
+// GetExperimentByGroupIDAdvanced returns the experiment for the rule whose ID
+// matches groupID. This is a pure spec lookup and performs no user evaluation,
+// so no exposure is logged.
+func (s *Statsig) GetExperimentByGroupIDAdvanced(experimentName string, groupID string) Experiment {
+	return s.getExperimentByGroup(experimentName, func(ref uint64, resultLen *uint64) *byte {
+		return GetFFI().statsig_get_raw_experiment_by_group_id_advanced(ref, experimentName, groupID, resultLen)
+	})
+}
+
+// OverrideExperimentByGroupName forces an experiment to resolve to a named group.
+// When id is nil the override applies globally; otherwise it applies only to the
+// provided id (user id or custom id).
+func (s *Statsig) OverrideExperimentByGroupName(experimentName string, groupName string, id *string) {
+	GetFFI().statsig_override_experiment_by_group_name(s.ref.Load(), experimentName, groupName, cString(id))
+}
+
 func (s *Statsig) GetLayer(user *StatsigUser, layerName string) Layer {
 	return s.GetLayerWithOptions(user, layerName, nil)
 

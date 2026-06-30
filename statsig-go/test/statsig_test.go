@@ -55,6 +55,133 @@ func TestExperimentEvaluation(t *testing.T) {
 	statsig.Shutdown()
 }
 
+func TestGetExperimentByGroupName(t *testing.T) {
+	statsig, _, _ := SetupTest(t)
+	defer statsig.Shutdown()
+
+	control := statsig.GetExperimentByGroupName("test_experiment_no_targeting", "Control")
+	if control.GroupName == nil || *control.GroupName != "Control" {
+		t.Errorf("Expected group name 'Control', got %v", control.GroupName)
+	}
+	if control.RuleID != "54QJztEPRLXK7ZCvXeY9q4" {
+		t.Errorf("Expected rule ID '54QJztEPRLXK7ZCvXeY9q4', got '%s'", control.RuleID)
+	}
+	if control.IDType != "userID" {
+		t.Errorf("Expected id type 'userID', got '%s'", control.IDType)
+	}
+	if v := control.GetString("value", "err"); v != "control" {
+		t.Errorf("Expected value 'control', got '%s'", v)
+	}
+
+	test := statsig.GetExperimentByGroupName("test_experiment_no_targeting", "Test")
+	if test.GroupName == nil || *test.GroupName != "Test" {
+		t.Errorf("Expected group name 'Test', got %v", test.GroupName)
+	}
+	if v := test.GetString("value", "err"); v != "test_1" {
+		t.Errorf("Expected value 'test_1', got '%s'", v)
+	}
+}
+
+func TestGetExperimentByGroupNameNotFound(t *testing.T) {
+	statsig, _, _ := SetupTest(t)
+	defer statsig.Shutdown()
+
+	unknownExp := statsig.GetExperimentByGroupName("not_an_experiment", "Control")
+	if unknownExp.GroupName != nil {
+		t.Errorf("Expected nil group name for unknown experiment, got %v", *unknownExp.GroupName)
+	}
+	if unknownExp.RuleID != "" {
+		t.Errorf("Expected empty rule ID for unknown experiment, got '%s'", unknownExp.RuleID)
+	}
+
+	unknownGroup := statsig.GetExperimentByGroupName("test_experiment_no_targeting", "InvalidGroupName")
+	if unknownGroup.GroupName != nil {
+		t.Errorf("Expected nil group name for unknown group, got %v", *unknownGroup.GroupName)
+	}
+	if unknownGroup.RuleID != "" {
+		t.Errorf("Expected empty rule ID for unknown group, got '%s'", unknownGroup.RuleID)
+	}
+}
+
+func TestGetExperimentByGroupIDAdvanced(t *testing.T) {
+	statsig, _, _ := SetupTest(t)
+	defer statsig.Shutdown()
+
+	experiment := statsig.GetExperimentByGroupIDAdvanced("test_experiment_no_targeting", "54QJztEPRLXK7ZCvXeY9q4")
+	if experiment.GroupName == nil || *experiment.GroupName != "Control" {
+		t.Errorf("Expected group name 'Control', got %v", experiment.GroupName)
+	}
+	if experiment.RuleID != "54QJztEPRLXK7ZCvXeY9q4" {
+		t.Errorf("Expected rule ID '54QJztEPRLXK7ZCvXeY9q4', got '%s'", experiment.RuleID)
+	}
+	if experiment.IDType != "userID" {
+		t.Errorf("Expected id type 'userID', got '%s'", experiment.IDType)
+	}
+	if v := experiment.GetString("value", "err"); v != "control" {
+		t.Errorf("Expected value 'control', got '%s'", v)
+	}
+}
+
+func TestOverrideExperimentByGroupNameGlobal(t *testing.T) {
+	statsig, _, user := SetupTest(t)
+	defer statsig.Shutdown()
+
+	// Pick a target group whose value differs from the user's natural bucketing
+	// so the assertion proves the override actually changed the result.
+	baseline := statsig.GetExperiment(user, "test_experiment_no_targeting")
+	baselineValue := baseline.GetString("value", "")
+	targetGroup, targetValue := "Test", "test_1"
+	if baselineValue == "test_1" {
+		targetGroup, targetValue = "Control", "control"
+	}
+
+	statsig.OverrideExperimentByGroupName("test_experiment_no_targeting", targetGroup, nil)
+
+	experiment := statsig.GetExperiment(user, "test_experiment_no_targeting")
+	if v := experiment.GetString("value", ""); v != targetValue {
+		t.Errorf("Expected overridden value '%s' for group '%s', got '%s'", targetValue, targetGroup, v)
+	}
+	if experiment.EvaluationDetails.Reason != "LocalOverride:Recognized" {
+		t.Errorf("Expected reason 'LocalOverride:Recognized', got '%s'", experiment.EvaluationDetails.Reason)
+	}
+}
+
+func TestOverrideExperimentByGroupNameForID(t *testing.T) {
+	statsig, _, user := SetupTest(t)
+	defer statsig.Shutdown()
+
+	otherUser, err := statsig_go.NewUserBuilderWithUserID("other-user").Build()
+	if err != nil {
+		t.Fatalf("error creating StatsigUser: %v", err)
+	}
+
+	// Capture both users' natural bucketing before applying any override.
+	baseline := statsig.GetExperiment(user, "test_experiment_no_targeting")
+	baselineValue := baseline.GetString("value", "")
+	otherBaseline := statsig.GetExperiment(otherUser, "test_experiment_no_targeting")
+	otherBaselineValue := otherBaseline.GetString("value", "")
+
+	targetGroup, targetValue := "Test", "test_1"
+	if baselineValue == "test_1" {
+		targetGroup, targetValue = "Control", "control"
+	}
+
+	userID := "user-id" // matches the user built by SetupTest
+	statsig.OverrideExperimentByGroupName("test_experiment_no_targeting", targetGroup, &userID)
+
+	experiment := statsig.GetExperiment(user, "test_experiment_no_targeting")
+	if v := experiment.GetString("value", ""); v != targetValue {
+		t.Errorf("Expected overridden value '%s' for id '%s', got '%s'", targetValue, userID, v)
+	}
+
+	// A different id must keep its natural bucketing — the per-id override must not leak.
+	otherAfter := statsig.GetExperiment(otherUser, "test_experiment_no_targeting")
+	otherAfterValue := otherAfter.GetString("value", "")
+	if otherAfterValue != otherBaselineValue {
+		t.Errorf("Per-id override leaked to a different id: '%s' -> '%s'", otherBaselineValue, otherAfterValue)
+	}
+}
+
 func TestLayerEvaluation(t *testing.T) {
 	statsig, _, user := SetupTest(t)
 
