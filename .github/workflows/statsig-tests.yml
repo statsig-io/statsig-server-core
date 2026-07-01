@@ -64,6 +64,25 @@ jobs:
         if: matrix.lang == 'rust'
         run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
 
+      # The rust job builds two feature-set variants of the statsig-rust test
+      # binaries back-to-back (full debug info, on top of a restored target/
+      # cache). On ubuntu-latest only ~21GB is free on / where target/ lives,
+      # and the second (with_zstd) set used to exhaust the disk -- lld then
+      # faulted writing its mmap'd output, dying with
+      # "ld terminated with signal 7 [Bus error]". Reclaim the preinstalled
+      # toolchains the rust tests don't use so both sets fit.
+      - name: '[Rust] Free up disk space'
+        if: matrix.lang == 'rust'
+        run: |
+          rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL \
+            /usr/share/swift \
+            /usr/local/share/boost || true
+
       - name: Run Tests
         run: ./tore test ${{ matrix.lang }} --no-docker --arch x86_64 --os debian
 
