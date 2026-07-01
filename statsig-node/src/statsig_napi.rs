@@ -515,6 +515,11 @@ impl StatsigNapiInternal {
     }
 
     #[napi]
+    pub fn get_autotune_list(&self) -> Vec<String> {
+        self.inner.get_autotune_list()
+    }
+
+    #[napi]
     pub fn get_parameter_store_list(&self) -> Vec<String> {
         self.inner.get_parameter_store_list()
     }
