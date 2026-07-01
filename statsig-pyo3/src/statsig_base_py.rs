@@ -543,6 +543,11 @@ impl StatsigBasePy {
         self.inner.get_experiment_list()
     }
 
+    #[pyo3(name = "get_autotune_list")]
+    pub fn get_autotune_list(&self) -> Vec<String> {
+        self.inner.get_autotune_list()
+    }
+
     #[pyo3(name = "get_parameter_store_list")]
     pub fn get_parameter_store_list(&self) -> Vec<String> {
         self.inner.get_parameter_store_list()
