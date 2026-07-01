@@ -249,6 +249,18 @@ pub fn get_client_init_response_as_string(
     }
 }
 
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn get_autotune_list(
+    env: Env<'_>,
+    statsig: ResourceArc<StatsigResource>,
+) -> Result<Vec<String>, Error> {
+    let _guard = ManagedEnvGuard::new(env);
+    match statsig.statsig_core.read() {
+        Ok(read_guard) => Ok(read_guard.get_autotune_list()),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
+    }
+}
+
 #[rustler::nif(schedule = "DirtyIo")]
 pub fn flush(env: Env<'_>, statsig: ResourceArc<StatsigResource>) -> Result<(), Error> {
     let _guard = ManagedEnvGuard::new(env);

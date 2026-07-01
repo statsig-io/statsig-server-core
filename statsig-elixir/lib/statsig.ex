@@ -132,6 +132,22 @@ defmodule Statsig do
     end
   end
 
+  def get_autotune_list() do
+    try do
+      instance = get_statsig_instance()
+
+      case NativeBindings.get_autotune_list(instance) do
+        {:error, e} -> {:error, e}
+        list -> {:ok, list}
+      end
+    rescue
+      exception -> {:error, Exception.message(exception)}
+    catch
+      :exit, reason -> {:error, {:exit, reason}}
+      exception -> {:error, Exception.message(exception)}
+    end
+  end
+
   @spec log_event(%Statsig.User{}, String.t(), String.t() | number(), %{String.t() => String.t()}) ::
           any()
   def log_event(statsig_user, event_name, value, metadata) do

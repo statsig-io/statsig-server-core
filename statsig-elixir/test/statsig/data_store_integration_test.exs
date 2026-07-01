@@ -300,4 +300,48 @@ defmodule Statsig.DataStore.IntegrationTest do
     counts = TestDataStore.counts(data_store_ref)
     assert counts.get == 1
   end
+
+  @tag capture_log: false
+  test "get_autotune_list returns the configured autotunes" do
+    parent = self()
+
+    dcs =
+      File.read!(Path.expand("../../../statsig-rust/tests/data/eval_proj_dcs.json", __DIR__))
+
+    {:ok, mock_scrapi} = MockScrapi.start_link(dcs, parent)
+
+    on_exit(fn ->
+      MockScrapi.stop(mock_scrapi)
+    end)
+
+    options = %Statsig.Options{
+      disable_all_logging: true,
+      specs_sync_interval_ms: 1000,
+      spec_adapter_configs: [
+        %Statsig.SpecAdapterConfig{
+          adapter_type: "network_http",
+          specs_url: MockScrapi.specs_url(mock_scrapi),
+          init_timeout_ms: 3_000
+        }
+      ]
+    }
+
+    sdk_key = System.get_env("test_api_key") || "secret-key"
+    assert {:ok, _pid} = Statsig.start_link(sdk_key, options)
+
+    on_exit(fn ->
+      Statsig.shutdown()
+
+      if pid = Process.whereis(Statsig) do
+        Process.exit(pid, :normal)
+      end
+    end)
+
+    Statsig.initialize()
+    Process.sleep(2_000)
+
+    assert {:ok, autotunes} = Statsig.get_autotune_list()
+    assert "test_autotune" in autotunes
+    assert "test_dub_autotune" in autotunes
+  end
 end
