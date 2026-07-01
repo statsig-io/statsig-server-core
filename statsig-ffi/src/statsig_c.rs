@@ -988,6 +988,36 @@ pub extern "C" fn statsig_get_raw_experiment(
     })
 }
 
+#[no_mangle]
+pub extern "C" fn statsig_get_raw_experiment_by_group_name(
+    statsig_ref: u64,
+    experiment_name: *const c_char,
+    group_name: *const c_char,
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null_mut());
+    let group_name = unwrap_or_return!(c_char_to_string(group_name), null_mut());
+
+    let raw = statsig.get_raw_experiment_by_group_name(&experiment_name, &group_name);
+    string_to_c_char_with_inout_len(raw, inout_result_len)
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_raw_experiment_by_group_id_advanced(
+    statsig_ref: u64,
+    experiment_name: *const c_char,
+    group_id: *const c_char,
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null_mut());
+    let group_id = unwrap_or_return!(c_char_to_string(group_id), null_mut());
+
+    let raw = statsig.get_raw_experiment_by_group_id_advanced(&experiment_name, &group_id);
+    string_to_c_char_with_inout_len(raw, inout_result_len)
+}
+
 // ------------------------
 // Layer Functions
 // ------------------------
