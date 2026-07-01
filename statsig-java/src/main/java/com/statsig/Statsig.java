@@ -227,6 +227,14 @@ public class Statsig {
     return JSON.parseArray(resultJSON, String.class);
   }
 
+  public List<String> getAutotuneList() {
+    String resultJSON = StatsigJNI.statsigGetAutotuneList(ref);
+    if (resultJSON == null || resultJSON.isEmpty()) {
+      return new ArrayList<>();
+    }
+    return JSON.parseArray(resultJSON, String.class);
+  }
+
   public Experiment getExperimentByGroupName(String experimentName, String groupName) {
     String experJson = StatsigJNI.statsigGetExperimentByGroupName(ref, experimentName, groupName);
     Experiment experiment = Experiment.fromJson(experJson);
