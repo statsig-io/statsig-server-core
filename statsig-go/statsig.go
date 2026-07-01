@@ -321,6 +321,51 @@ func (s *Statsig) GetParameterStoreWithOptions(
 	return store
 }
 
+// GetFeatureGateList returns the names of all configured feature gates.
+func (s *Statsig) GetFeatureGateList() []string {
+	return s.getEntityList(GetFFI().statsig_get_feature_gate_list)
+}
+
+// GetDynamicConfigList returns the names of all configured dynamic configs.
+func (s *Statsig) GetDynamicConfigList() []string {
+	return s.getEntityList(GetFFI().statsig_get_dynamic_config_list)
+}
+
+// GetExperimentList returns the names of all configured experiments.
+func (s *Statsig) GetExperimentList() []string {
+	return s.getEntityList(GetFFI().statsig_get_experiment_list)
+}
+
+// GetAutotuneList returns the names of all configured autotunes.
+func (s *Statsig) GetAutotuneList() []string {
+	return s.getEntityList(GetFFI().statsig_get_autotune_list)
+}
+
+// GetParameterStoreList returns the names of all configured parameter stores.
+func (s *Statsig) GetParameterStoreList() []string {
+	return s.getEntityList(GetFFI().statsig_get_parameter_store_list)
+}
+
+func (s *Statsig) getEntityList(ffiFn func(uint64, *uint64) *byte) []string {
+	list := []string{}
+
+	listJson := UseRustString(func() (*byte, uint64) {
+		length := uint64(0)
+		ptr := ffiFn(s.ref.Load(), &length)
+		return ptr, length
+	})
+
+	if listJson == nil {
+		return list
+	}
+
+	if err := json.Unmarshal([]byte(*listJson), &list); err != nil {
+		fmt.Printf("Failed to unmarshal entity list: %v", err)
+	}
+
+	return list
+}
+
 func (s *Statsig) GetClientInitResponse(user *StatsigUser) *string {
 	return s.GetClientInitResponseWithOptions(user, nil)
 }
