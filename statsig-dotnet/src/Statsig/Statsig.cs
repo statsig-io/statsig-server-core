@@ -21,6 +21,7 @@ namespace Statsig
         ILayer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null);
         void ManuallyLogLayerParameterExposure(IStatsigUser user, string layerName, string parameterName);
         IParameterStore GetParameterStore(IStatsigUser user, string storeName, EvaluationOptions? options = null);
+        List<string> GetAutotuneList();
         string GetClientInitializeResponse(IStatsigUser user, ClientInitResponseOptions? options = null);
         void LogEvent(IStatsigUser user, string eventName, string? value = null, IReadOnlyDictionary<string, string>? metadata = null);
         void LogEvent(IStatsigUser user, string eventName, int value, IReadOnlyDictionary<string, string>? metadata = null);
@@ -457,6 +458,25 @@ namespace Statsig
             {
                 var resPtr = StatsigFFI.statsig_get_client_init_response(_statsigRef, user.Reference, optionsPtr);
                 return StatsigUtils.ReadStringFromPointer(resPtr) ?? string.Empty;
+            }
+        }
+
+        unsafe public List<string> GetAutotuneList()
+        {
+            ulong resultLen = 0;
+            var resPtr = StatsigFFI.statsig_get_autotune_list(_statsigRef, &resultLen);
+            var json = StatsigUtils.ReadStringFromPointer(resPtr, resultLen);
+            if (json == null)
+            {
+                return new List<string>();
+            }
+            try
+            {
+                return JsonConvert.DeserializeObject<List<string>>(json) ?? new List<string>();
+            }
+            catch (JsonException)
+            {
+                return new List<string>();
             }
         }
 
