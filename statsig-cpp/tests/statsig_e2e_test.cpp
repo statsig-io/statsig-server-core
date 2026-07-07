@@ -1,9 +1,11 @@
 #include "../src/statsig.h"
+#include <algorithm>
 #include <cassert>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 TEST(StatsigE2EUsageTest, Core_API) {
   const char *sdkKey = std::getenv("test_api_key");
@@ -73,6 +75,23 @@ TEST(StatsigE2EUsageTest, Core_API) {
   statsig_cpp_core::Layer nonExposedLayer =
       s.getLayer(nonExposedUser, "test_layer", layerOptions);
   bool nonExposedLayerBool = nonExposedLayer.get<bool>("another_param", false);
+
+  s.shutdownBlocking();
+}
+
+TEST(StatsigE2EUsageTest, GetAutotuneList) {
+  const char *sdkKey = std::getenv("test_api_key");
+  ASSERT_NE(sdkKey, nullptr) << "test_api_key environment variable must be set";
+  statsig_cpp_core::StatsigOptionsBuilder optionsBuilder;
+  optionsBuilder.specs_url = "https://api.statsig.com/v2/download_config_specs";
+  statsig_cpp_core::Statsig s =
+      statsig_cpp_core::Statsig(sdkKey, optionsBuilder.build());
+  s.initializeBlocking();
+
+  std::vector<std::string> autotunes = s.getAutotuneList();
+  EXPECT_FALSE(autotunes.empty());
+  EXPECT_NE(std::find(autotunes.begin(), autotunes.end(), "test_autotune"),
+            autotunes.end());
 
   s.shutdownBlocking();
 }

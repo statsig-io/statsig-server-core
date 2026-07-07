@@ -67,6 +67,9 @@ public:
   Layer getLayer(const User &user, const std::string &layer_name,
                  const std::optional<GetLayerOptions> &option = std::nullopt);
 
+  // Entity Lists
+  std::vector<std::string> getAutotuneList();
+
 private:
   uint64_t ref_;
   std::string sdk_key_;

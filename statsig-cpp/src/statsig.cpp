@@ -246,4 +246,22 @@ Layer Statsig::getLayer(const User &user, const std::string &layer_name,
   return Layer();
 }
 
+std::vector<std::string> Statsig::getAutotuneList() {
+  uint64_t result_len = 0;
+  char *result = statsig_get_autotune_list(ref_, &result_len);
+  if (result) {
+    std::string result_str(result, result_len);
+    free_string(result);
+    try {
+      json parsed = json::parse(result_str);
+      if (parsed.is_array()) {
+        return parsed.get<std::vector<std::string>>();
+      }
+    } catch (const json::exception &) {
+      // Fall through to an empty list on malformed JSON.
+    }
+  }
+  return {};
+}
+
 } // namespace statsig_cpp_core
