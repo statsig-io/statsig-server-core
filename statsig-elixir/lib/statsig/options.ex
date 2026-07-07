@@ -13,6 +13,7 @@ defmodule Statsig.Options do
             enable_dcs_deltas: nil,
             id_lists_url: nil,
             id_lists_sync_interval_ms: nil,
+            id_lists_request_timeout_ms: nil,
             wait_for_country_lookup_init: nil,
             wait_for_user_agent_init: nil,
             disable_all_logging: nil,

@@ -28,6 +28,7 @@ type StatsigOptionsBuilder struct {
 	EnableDcsDeltas             *bool   `json:"enable_dcs_deltas,omitempty"`
 	IdListsUrl                  *string `json:"id_lists_url,omitempty"`
 	IdListsSyncIntervalMs       *int32  `json:"id_lists_sync_interval_ms,omitempty"`
+	IdListsRequestTimeoutMs     *int64  `json:"id_lists_request_timeout_ms,omitempty"`
 	DisableAllLogging           *bool   `json:"disable_all_logging,omitempty"`
 	DisableNetwork              *bool   `json:"disable_network,omitempty"`
 	GlobalCustomFields          *string `json:"global_custom_fields,omitempty"`
@@ -134,6 +135,15 @@ func (o *StatsigOptionsBuilder) WithIdListsUrl(idListsUrl string) *StatsigOption
 
 func (o *StatsigOptionsBuilder) WithIdListsSyncIntervalMs(idListsSyncIntervalMs int32) *StatsigOptionsBuilder {
 	o.IdListsSyncIntervalMs = &idListsSyncIntervalMs
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithIdListsRequestTimeoutMs(idListsRequestTimeoutMs int64) *StatsigOptionsBuilder {
+	// Negative values can't deserialize into the core's Option<u64>; leave unset
+	// so the network provider's default timeout applies.
+	if idListsRequestTimeoutMs >= 0 {
+		o.IdListsRequestTimeoutMs = &idListsRequestTimeoutMs
+	}
 	return o
 }
 

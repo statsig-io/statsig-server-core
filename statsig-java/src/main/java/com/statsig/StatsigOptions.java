@@ -52,7 +52,8 @@ public class StatsigOptions {
             builder.disableNetwork,
             builder.disableUserCountryLookup,
             builder.fallbackToStatsigApi,
-            builder.useThirdPartyUAParser);
+            builder.useThirdPartyUAParser,
+            builder.idListsRequestTimeoutMs);
 
     ResourceCleaner.register(this, new CleaningAction(ref));
   }
@@ -66,6 +67,7 @@ public class StatsigOptions {
     private String logEventUrl;
     private String idListsUrl;
     private long idListsSyncIntervalMs;
+    private long idListsRequestTimeoutMs;
     private long specsSyncIntervalMs;
     private long eventLoggingFlushIntervalMs;
     private long eventLoggingMaxQueueSize;
@@ -179,6 +181,11 @@ public class StatsigOptions {
 
     public Builder setIdListsSyncIntervalMs(long idListsSyncIntervalMs) {
       this.idListsSyncIntervalMs = idListsSyncIntervalMs;
+      return this;
+    }
+
+    public Builder setIdListsRequestTimeoutMs(long idListsRequestTimeoutMs) {
+      this.idListsRequestTimeoutMs = idListsRequestTimeoutMs;
       return this;
     }
 

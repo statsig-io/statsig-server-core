@@ -249,6 +249,7 @@ export interface StatsigOptions {
   fallbackToStatsigApi?: boolean
   globalCustomFields?: Record<string, string | number | boolean | Array<string | number | boolean>>
   idListsSyncIntervalMs?: number
+  idListsRequestTimeoutMs?: number
   idListsUrl?: string
   downloadIdListFileApi?: string
   initTimeoutMs?: number

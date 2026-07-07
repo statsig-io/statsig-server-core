@@ -269,7 +269,8 @@ class StatsigJNI {
       boolean disableNetwork,
       boolean disableUserCountry,
       boolean fallbackToStatsigApi,
-      boolean useThirdPartyUAParser);
+      boolean useThirdPartyUAParser,
+      long idListsRequestTimeoutMs);
 
   public static native void statsigOptionsRelease(long optionsRef);
 }
