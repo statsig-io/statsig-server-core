@@ -196,6 +196,27 @@ class Statsig
     }
 
     /**
+     * Entity List Functions
+     */
+
+    public function getAutotuneList(): array
+    {
+        $ffi = StatsigFFI::get();
+        // $len satisfies the required uint64_t* out-param; its written value is
+        // unused because takeString reads the NUL-terminated JSON payload.
+        $len = $ffi->new('uint64_t');
+        $ptr = $ffi->statsig_get_autotune_list($this->__ref, \FFI::addr($len));
+
+        if (\FFI::isNull($ptr)) {
+            return [];
+        }
+
+        $raw_result = StatsigFFI::takeString($ptr);
+        $decoded = json_decode($raw_result, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
      * Override Functions
      */
 
