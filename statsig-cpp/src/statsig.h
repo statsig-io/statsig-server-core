@@ -60,6 +60,16 @@ public:
       const User &user, const std::string &experiment_name,
       const std::optional<GetExperimentOptions> &option = std::nullopt);
 
+  // Experiment group-targeting APIs. These are pure spec lookups (no user
+  // evaluation, no exposure logging).
+  Experiment getExperimentByGroupName(const std::string &experiment_name,
+                                      const std::string &group_name);
+  Experiment getExperimentByGroupIdAdvanced(const std::string &experiment_name,
+                                            const std::string &group_id);
+  void overrideExperimentByGroupName(
+      const std::string &experiment_name, const std::string &group_name,
+      const std::optional<std::string> &id = std::nullopt);
+
   DynamicConfig getDynamicConfig(
       const User &user, const std::string &config_name,
       const std::optional<GetDynamicConfigOptions> &option = std::nullopt);

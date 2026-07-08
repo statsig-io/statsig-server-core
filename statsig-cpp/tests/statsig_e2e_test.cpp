@@ -9,6 +9,9 @@
 
 TEST(StatsigE2EUsageTest, Core_API) {
   const char *sdkKey = std::getenv("test_api_key");
+  if (sdkKey == nullptr) {
+    GTEST_SKIP() << "test_api_key env var not set";
+  }
   statsig_cpp_core::StatsigOptionsBuilder optionsBuilder;
   optionsBuilder.specs_url = "https://api.statsig.com/v2/download_config_specs";
   optionsBuilder.output_log_level = "debug";
@@ -75,6 +78,60 @@ TEST(StatsigE2EUsageTest, Core_API) {
   statsig_cpp_core::Layer nonExposedLayer =
       s.getLayer(nonExposedUser, "test_layer", layerOptions);
   bool nonExposedLayerBool = nonExposedLayer.get<bool>("another_param", false);
+
+  s.shutdownBlocking();
+}
+
+TEST(StatsigE2EUsageTest, ExperimentGroupTargeting) {
+  const char *sdkKey = std::getenv("test_api_key");
+  if (sdkKey == nullptr) {
+    GTEST_SKIP() << "test_api_key env var not set";
+  }
+  statsig_cpp_core::StatsigOptionsBuilder optionsBuilder;
+  optionsBuilder.specs_url = "https://api.statsig.com/v2/download_config_specs";
+  optionsBuilder.output_log_level = "debug";
+  statsig_cpp_core::Statsig s =
+      statsig_cpp_core::Statsig(sdkKey, optionsBuilder.build());
+  s.initializeBlocking();
+
+  // getExperimentByGroupName - Control group
+  statsig_cpp_core::Experiment control =
+      s.getExperimentByGroupName("test_experiment_no_targeting", "Control");
+  EXPECT_EQ(control.name, "test_experiment_no_targeting");
+  EXPECT_EQ(control.group_name.value_or(""), "Control");
+  EXPECT_EQ(control.rule_id, "54QJztEPRLXK7ZCvXeY9q4");
+  EXPECT_EQ(control.id_type, "userID");
+  EXPECT_EQ(control.value["value"].get<std::string>(), "control");
+
+  // getExperimentByGroupName - Test group
+  statsig_cpp_core::Experiment test =
+      s.getExperimentByGroupName("test_experiment_no_targeting", "Test");
+  EXPECT_EQ(test.group_name.value_or(""), "Test");
+  EXPECT_EQ(test.value["value"].get<std::string>(), "test_1");
+
+  // getExperimentByGroupIdAdvanced - by rule id
+  statsig_cpp_core::Experiment byId = s.getExperimentByGroupIdAdvanced(
+      "test_experiment_no_targeting", "54QJztEPRLXK7ZCvXeY9q4");
+  EXPECT_EQ(byId.group_name.value_or(""), "Control");
+  EXPECT_EQ(byId.value["value"].get<std::string>(), "control");
+
+  // Unknown group -> empty group / rule
+  statsig_cpp_core::Experiment unknown =
+      s.getExperimentByGroupName("test_experiment_no_targeting", "NotAGroup");
+  EXPECT_FALSE(unknown.group_name.has_value());
+  EXPECT_EQ(unknown.rule_id, "");
+
+  // overrideExperimentByGroupName then getExperiment -> overridden value.
+  // The override sets value/reason but not the result's group name, so we
+  // assert on the value (matching the Go/Rust tests).
+  statsig_cpp_core::UserBuilder userBuilder;
+  userBuilder.setUserID("cpp-core-test-user");
+  statsig_cpp_core::User user = userBuilder.build();
+  s.overrideExperimentByGroupName("test_experiment_no_targeting", "Test");
+  statsig_cpp_core::Experiment overridden =
+      s.getExperiment(user, "test_experiment_no_targeting");
+  EXPECT_EQ(overridden.value["value"].get<std::string>(), "test_1");
+  EXPECT_EQ(overridden.details.reason, "LocalOverride:Recognized");
 
   s.shutdownBlocking();
 }

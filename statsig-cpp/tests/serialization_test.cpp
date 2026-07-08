@@ -226,3 +226,52 @@ TEST(Serialization, Experiment) {
   EXPECT_EQ(experiment.details.receivedAt.value(), 1627847265);
   EXPECT_EQ(experiment.details.reason, "Network:Recognized");
 }
+
+// The group-targeting getters (getExperimentByGroupName /
+// getExperimentByGroupIdAdvanced) return the camelCase ExperimentRaw shape
+// (ruleID / idType / groupName, and a null value when unrecognized), unlike
+// the snake_case shape from the normal getExperiment path. from_json must
+// parse both.
+TEST(Serialization, ExperimentRawGroupShape) {
+  std::string recognized = R"({
+        "name": "test_experiment_no_targeting",
+        "value": {"value": "control"},
+        "ruleID": "54QJztEPRLXK7ZCvXeY9q4",
+        "idType": "userID",
+        "groupName": "Control",
+        "isExperimentActive": true,
+        "details": {
+            "lcut": 1627847261,
+            "received_at": 1627847265,
+            "reason": "Network:Recognized"
+        },
+        "secondaryExposures": null
+    })";
+  statsig_cpp_core::Experiment exp(recognized);
+  EXPECT_EQ(exp.name, "test_experiment_no_targeting");
+  EXPECT_EQ(exp.value["value"].get<std::string>(), "control");
+  EXPECT_EQ(exp.rule_id, "54QJztEPRLXK7ZCvXeY9q4");
+  EXPECT_EQ(exp.id_type, "userID");
+  EXPECT_EQ(exp.group_name.value(), "Control");
+  EXPECT_EQ(exp.is_experiment_active, true);
+  EXPECT_EQ(exp.details.reason, "Network:Recognized");
+
+  // Unrecognized: null value, empty ruleID, null idType/groupName.
+  std::string unrecognized = R"({
+        "name": "test_experiment_no_targeting",
+        "value": null,
+        "ruleID": "",
+        "idType": null,
+        "groupName": null,
+        "isExperimentActive": null,
+        "details": {"reason": "Unrecognized"},
+        "secondaryExposures": null
+    })";
+  statsig_cpp_core::Experiment empty(unrecognized);
+  EXPECT_EQ(empty.name, "test_experiment_no_targeting");
+  EXPECT_TRUE(empty.value.empty());
+  EXPECT_EQ(empty.rule_id, "");
+  EXPECT_EQ(empty.id_type, "");
+  EXPECT_FALSE(empty.group_name.has_value());
+  EXPECT_EQ(empty.is_experiment_active, false);
+}

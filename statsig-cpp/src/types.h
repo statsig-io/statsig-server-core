@@ -122,12 +122,36 @@ struct Experiment {
 };
 
 inline void from_json(const json &j, Experiment &c) {
-  j.at("name").get_to(c.name);
-  j.at("value").get_to(c.value);
-  j.at("rule_id").get_to(c.rule_id);
-  j.at("id_type").get_to(c.id_type);
-  j.at("details").get_to(c.details);
+  // The normal getExperiment path returns the snake_case Experiment shape,
+  // while the group-targeting getters (getExperimentByGroupName /
+  // getExperimentByGroupIdAdvanced) return the camelCase ExperimentRaw shape
+  // (ruleID / idType / groupName, with a null value when unrecognized).
+  // Accept both key styles here.
+  auto pick = [&](const char *snake, const char *camel) -> std::string {
+    if (auto v = get_optional<std::string>(j, snake)) {
+      return *v;
+    }
+    return get_optional<std::string>(j, camel).value_or("");
+  };
+
+  c.name = get_optional<std::string>(j, "name").value_or("");
+  if (j.contains("value") && j.at("value").is_object()) {
+    j.at("value").get_to(c.value);
+  }
+  c.rule_id = pick("rule_id", "ruleID");
+  c.id_type = pick("id_type", "idType");
+  if (j.contains("details")) {
+    j.at("details").get_to(c.details);
+  }
   c.group_name = get_optional<std::string>(j, "group_name");
+  if (!c.group_name) {
+    c.group_name = get_optional<std::string>(j, "groupName");
+  }
+  if (auto active = get_optional<bool>(j, "is_experiment_active")) {
+    c.is_experiment_active = *active;
+  } else {
+    c.is_experiment_active = get_optional<bool>(j, "isExperimentActive").value_or(false);
+  }
 }
 
 inline void to_json(json &j, const Experiment &c) {
