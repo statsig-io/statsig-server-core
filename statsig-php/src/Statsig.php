@@ -2,6 +2,7 @@
 
 namespace Statsig;
 
+use FFI;
 use Statsig\EvaluationTypes\DynamicConfig;
 use Statsig\EvaluationTypes\Experiment;
 use Statsig\EvaluationTypes\FeatureGate;
@@ -156,6 +157,32 @@ class Statsig
 
         $raw_result = StatsigFFI::takeString($ptr);
         return new Experiment($raw_result);
+    }
+
+    public function getExperimentByGroupName(string $experimentName, string $groupName): Experiment
+    {
+        $len = StatsigFFI::get()->new("uint64_t");
+        $ptr = StatsigFFI::get()->statsig_get_raw_experiment_by_group_name(
+            $this->__ref,
+            $experimentName,
+            $groupName,
+            FFI::addr($len)
+        );
+
+        return new Experiment(StatsigFFI::takeString($ptr));
+    }
+
+    public function getExperimentByGroupIdAdvanced(string $experimentName, string $groupId): Experiment
+    {
+        $len = StatsigFFI::get()->new("uint64_t");
+        $ptr = StatsigFFI::get()->statsig_get_raw_experiment_by_group_id_advanced(
+            $this->__ref,
+            $experimentName,
+            $groupId,
+            FFI::addr($len)
+        );
+
+        return new Experiment(StatsigFFI::takeString($ptr));
     }
 
     public function manuallyLogExperimentExposure(StatsigUser $user, string $name): void
