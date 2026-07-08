@@ -29,6 +29,7 @@ export declare class StatsigNapiInternal {
   getFieldsNeededForDynamicConfig(configName: string): Array<string>
   __INTERNAL_getExperiment(user: StatsigUser, experimentName: string, options?: ExperimentEvaluationOptions | undefined | null): Record<string, unknown>
   __INTERNAL_getExperimentByGroupName(experimentName: string, groupName: string): Record<string, unknown>
+  __INTERNAL_getExperimentByGroupIdAdvanced(experimentName: string, groupId: string): Record<string, unknown>
   getFieldsNeededForExperiment(experimentName: string): Array<string>
   __INTERNAL_getLayer(user: StatsigUser, layerName: string, options?: LayerEvaluationOptions | undefined | null): Record<string, unknown>
   __INTERNAL_logLayerParamExposure(raw: LayerParamExposureData, paramName: string): void
