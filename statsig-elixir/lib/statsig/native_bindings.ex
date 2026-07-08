@@ -32,6 +32,12 @@ defmodule Statsig.NativeBindings do
   def get_experiment(_statsig, _experiment_name, _statsig_user, _options),
     do: :erlang.nif_error(:nif_not_loaded)
 
+  def get_experiment_by_group_name(_statsig, _experiment_name, _group_name),
+    do: :erlang.nif_error(:nif_not_loaded)
+
+  def get_experiment_by_group_id_advanced(_statsig, _experiment_name, _group_id),
+    do: :erlang.nif_error(:nif_not_loaded)
+
   def get_layer(_statsig, _layer_name, _statsig_user, _options),
     do: :erlang.nif_error(:nif_not_loaded)
 
@@ -69,6 +75,9 @@ defmodule Statsig.NativeBindings do
   def override_layer(_statsig, _layer_name, _value, _id), do: :erlang.nif_error(:nif_not_loaded)
 
   def override_experiment(_statsig, _experiment_name, _value, _id),
+    do: :erlang.nif_error(:nif_not_loaded)
+
+  def override_experiment_by_group_name(_statsig, _experiment_name, _group_name, _id),
     do: :erlang.nif_error(:nif_not_loaded)
 
   def remove_gate_override(_statsig, _gate_name, _id), do: :erlang.nif_error(:nif_not_loaded)
