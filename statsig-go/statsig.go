@@ -18,6 +18,14 @@ type EventPayload struct {
 
 type Statsig struct {
 	ref atomic.Uint64
+	// obsClient retains a strong reference to the observability client for the
+	// lifetime of this instance. Core holds only a Weak reference to it (the
+	// sole strong Arc lives in the Rust registry, released by the client's Go
+	// finalizer). Today purego also happens to pin the client's FFI callbacks
+	// for the process lifetime, but we do not rely on that: this explicit
+	// reference guarantees the client outlives the instance and mirrors the
+	// strong-owner pattern in the Node and Python bindings.
+	obsClient *ObservabilityClient
 }
 
 func NewStatsig(sdkKey string) (*Statsig, error) {
@@ -44,6 +52,9 @@ func NewStatsigWithOptions(sdkKey string, opts *StatsigOptions) (*Statsig, error
 
 	s := &Statsig{ref: atomic.Uint64{}}
 	s.ref.Store(ref)
+	// Keep the observability client alive for this instance's lifetime; core
+	// only holds a Weak reference to it (see the obsClient field).
+	s.obsClient = opts.obsClient
 
 	runtime.SetFinalizer(s, func(obj *Statsig) {
 		obj.release()
