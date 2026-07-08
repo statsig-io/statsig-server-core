@@ -106,6 +106,26 @@ class Statsig(StatsigBasePy):
         raw = super()._INTERNAL_get_experiment(user, name, options)
         return Experiment(name, raw)
 
+    def get_experiment_by_group_name(
+        self,
+        experiment_name: str,
+        group_name: str,
+    ) -> Experiment:
+        raw = super()._INTERNAL_get_experiment_by_group_name(
+            experiment_name, group_name
+        )
+        return Experiment(experiment_name, raw)
+
+    def get_experiment_by_group_id_advanced(
+        self,
+        experiment_name: str,
+        group_id: str,
+    ) -> Experiment:
+        raw = super()._INTERNAL_get_experiment_by_group_id_advanced(
+            experiment_name, group_id
+        )
+        return Experiment(experiment_name, raw)
+
     def get_layer(
         self,
         user: StatsigUser,
