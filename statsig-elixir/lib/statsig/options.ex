@@ -5,6 +5,7 @@ defmodule Statsig.Options do
             fallback_to_statsig_api: nil,
             event_logging_flush_interval_ms: nil,
             event_logging_max_queue_size: nil,
+            exposure_dedupe_max_keys: nil,
             log_event_url: nil,
             specs_sync_interval_ms: nil,
             specs_url: nil,

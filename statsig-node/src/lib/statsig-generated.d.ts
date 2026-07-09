@@ -247,6 +247,7 @@ export interface StatsigOptions {
   environment?: string
   eventLoggingFlushIntervalMs?: number
   eventLoggingMaxQueueSize?: number
+  exposureDedupeMaxKeys?: number
   fallbackToStatsigApi?: boolean
   globalCustomFields?: Record<string, string | number | boolean | Array<string | number | boolean>>
   idListsSyncIntervalMs?: number

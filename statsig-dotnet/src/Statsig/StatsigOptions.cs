@@ -126,6 +126,9 @@ namespace Statsig
         [JsonProperty("event_logging_max_queue_size")]
         internal int? eventLoggingMaxQueueSize;
 
+        [JsonProperty("exposure_dedupe_max_keys")]
+        internal uint? exposureDedupeMaxKeys;
+
         [JsonProperty("persistent_storage_ref")]
         internal ulong? persistentStorageRef;
 
@@ -245,6 +248,12 @@ namespace Statsig
         public StatsigOptionsBuilder SetEventLoggingMaxQueueSize(int eventLoggingMaxQueueSize)
         {
             this.eventLoggingMaxQueueSize = eventLoggingMaxQueueSize;
+            return this;
+        }
+
+        public StatsigOptionsBuilder SetExposureDedupeMaxKeys(uint exposureDedupeMaxKeys)
+        {
+            this.exposureDedupeMaxKeys = exposureDedupeMaxKeys;
             return this;
         }
 

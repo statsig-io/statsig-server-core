@@ -251,6 +251,7 @@ class StatsigJNI {
       long eventLoggingFlushIntervalMs,
       long eventLoggingMaxQueueSize,
       long eventLoggingMaxPendingBatchQueueSize,
+      long exposureDedupeMaxKeys,
       long initTimeoutMs,
       String environment,
       long outputLoggerLevel,

@@ -72,6 +72,24 @@ TEST(Serialization, User) {
     user_obj.build();
 }
 
+TEST(Serialization, StatsigOptionsExposureDedupeMaxKeys) {
+  // The serialized JSON is passed to statsig_options_create_from_data, which
+  // deserializes exposure_dedupe_max_keys into the core StatsigOptions.
+  statsig_cpp_core::StatsigOptionsBuilder builder;
+  builder.exposure_dedupe_max_keys = 50000;
+
+  json j;
+  to_json(j, builder);
+  EXPECT_EQ(j["exposure_dedupe_max_keys"], 50000);
+
+  // When unset, the field serializes to null so the core falls back to its
+  // default (100,000).
+  statsig_cpp_core::StatsigOptionsBuilder unset_builder;
+  json j_unset;
+  to_json(j_unset, unset_builder);
+  EXPECT_TRUE(j_unset["exposure_dedupe_max_keys"].is_null());
+}
+
 TEST(Serialization, DynamicConfig) {
   std::string json_str = R"({
         "name": "example_config",
