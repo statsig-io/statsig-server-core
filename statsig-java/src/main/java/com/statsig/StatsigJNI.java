@@ -68,6 +68,8 @@ class StatsigJNI {
 
   public static native String statsigGetExperimentList(long statsigRef);
 
+  public static native String statsigGetAutotuneList(long statsigRef);
+
   // ----------------------------------------------------------------------------------------
   // [Statsig: DynamicConfig]
 
@@ -267,7 +269,8 @@ class StatsigJNI {
       boolean disableNetwork,
       boolean disableUserCountry,
       boolean fallbackToStatsigApi,
-      boolean useThirdPartyUAParser);
+      boolean useThirdPartyUAParser,
+      long idListsRequestTimeoutMs);
 
   public static native void statsigOptionsRelease(long optionsRef);
 }

@@ -94,4 +94,144 @@ defmodule StatsigTest do
     # Assert the result is a boolean
     IO.puts("=== Test Complete ===\n")
   end
+
+  defmodule MockScrapi do
+    @moduledoc false
+    defstruct [:pid, :socket, :specs_url]
+
+    def start_link(response_body) do
+      {:ok, socket} =
+        :gen_tcp.listen(0, [
+          :binary,
+          active: false,
+          packet: :raw,
+          reuseaddr: true,
+          ip: {127, 0, 0, 1}
+        ])
+
+      {:ok, {{127, 0, 0, 1}, port}} = :inet.sockname(socket)
+      pid = spawn_link(fn -> accept_loop(socket, response_body) end)
+
+      {:ok,
+       %__MODULE__{
+         pid: pid,
+         socket: socket,
+         specs_url: "http://127.0.0.1:#{port}/v2/download_config_specs"
+       }}
+    end
+
+    def stop(%__MODULE__{pid: pid, socket: socket}) do
+      :gen_tcp.close(socket)
+
+      if Process.alive?(pid) do
+        Process.unlink(pid)
+        Process.exit(pid, :shutdown)
+      end
+    end
+
+    defp accept_loop(socket, response_body) do
+      case :gen_tcp.accept(socket) do
+        {:ok, client} ->
+          _ = :gen_tcp.recv(client, 0, 5_000)
+          :gen_tcp.send(client, http_response(response_body))
+          :gen_tcp.close(client)
+          accept_loop(socket, response_body)
+
+        {:error, _reason} ->
+          :ok
+      end
+    end
+
+    defp http_response(response_body) do
+      [
+        "HTTP/1.1 200 OK\r\n",
+        "content-type: application/json\r\n",
+        "content-length: #{byte_size(response_body)}\r\n",
+        "connection: close\r\n",
+        "\r\n",
+        response_body
+      ]
+    end
+  end
+
+  describe "experiment group targeting" do
+    @eval_proj_dcs File.read!(
+                     Path.expand(
+                       "../../statsig-rust/tests/data/eval_proj_dcs.json",
+                       __DIR__
+                     )
+                   )
+
+    setup do
+      {:ok, mock_scrapi} = MockScrapi.start_link(@eval_proj_dcs)
+
+      options = %Options{
+        specs_url: mock_scrapi.specs_url,
+        disable_all_logging: true,
+        output_log_level: "warn"
+      }
+
+      {:ok, _pid} = Statsig.start_link("secret-key", options)
+      Statsig.initialize()
+
+      on_exit(fn ->
+        Statsig.shutdown()
+
+        if pid = Process.whereis(Statsig) do
+          Process.exit(pid, :normal)
+        end
+
+        MockScrapi.stop(mock_scrapi)
+      end)
+
+      :ok
+    end
+
+    test "get_experiment_by_group_name returns the matching group" do
+      {:ok, control} =
+        Statsig.get_experiment_by_group_name("test_experiment_no_targeting", "Control")
+
+      assert control.group_name == "Control"
+      assert control.rule_id == "54QJztEPRLXK7ZCvXeY9q4"
+      assert control.id_type == "userID"
+      assert control.value["value"] == "control"
+
+      {:ok, test_group} =
+        Statsig.get_experiment_by_group_name("test_experiment_no_targeting", "Test")
+
+      assert test_group.group_name == "Test"
+      assert test_group.value["value"] == "test_1"
+    end
+
+    test "get_experiment_by_group_name returns empty for unknown experiment" do
+      {:ok, exp} = Statsig.get_experiment_by_group_name("not_an_experiment", "Control")
+      assert exp.group_name == nil
+      # The typed core getter returns the default rule id ("default") for an
+      # unrecognized experiment, unlike the raw-string getters used by the
+      # C-ABI SDKs (which return "").
+      assert exp.rule_id == "default"
+      assert exp.value == %{}
+    end
+
+    test "get_experiment_by_group_id_advanced returns the matching group" do
+      {:ok, exp} =
+        Statsig.get_experiment_by_group_id_advanced(
+          "test_experiment_no_targeting",
+          "54QJztEPRLXK7ZCvXeY9q4"
+        )
+
+      assert exp.group_name == "Control"
+      assert exp.value["value"] == "control"
+    end
+
+    test "override_experiment_by_group_name overrides the resolved value" do
+      user = %User{user_id: "test-user"}
+
+      :ok = Statsig.override_experiment_by_group_name("test_experiment_no_targeting", "Test")
+
+      {:ok, exp} = Statsig.get_experiment("test_experiment_no_targeting", user)
+      assert exp.value["value"] == "test_1"
+      assert exp.details.reason == "LocalOverride:Recognized"
+    end
+  end
 end

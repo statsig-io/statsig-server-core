@@ -54,6 +54,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
     disable_country_lookup: jboolean,
     fallback_to_statsig_api: jboolean,
     use_third_party_ua_parser: jboolean,
+    id_lists_request_timeout_ms: jlong,
 ) -> jlong {
     let specs_url = jstring_to_string(&mut env, specs_url);
     let log_event_url = jstring_to_string(&mut env, log_event_url);
@@ -106,6 +107,12 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         None
     };
 
+    let id_lists_request_timeout_ms = if id_lists_request_timeout_ms > 0 {
+        Some(id_lists_request_timeout_ms as u64)
+    } else {
+        None
+    };
+
     let proxy_config_rust = convert_java_proxy_config_to_rust(&mut env, &proxy_config);
 
     let (strong_ob, weak_ob) = convert_to_ob_rust(&env, observability_client);
@@ -129,6 +136,7 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigOptionsCreate(
         .environment(environment)
         .id_lists_url(id_lists_url)
         .id_lists_sync_interval_ms(id_lists_sync_interval_ms)
+        .id_lists_request_timeout_ms(id_lists_request_timeout_ms)
         .observability_client(weak_ob)
         .data_store(data_store_arc)
         .output_logger_provider(output_logger_rust)

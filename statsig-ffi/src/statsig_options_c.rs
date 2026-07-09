@@ -44,6 +44,7 @@ pub struct StatsigOptionsData {
     global_custom_fields: Option<HashMap<String, DynamicValue>>,
     download_id_list_file_api: Option<String>,
     id_lists_sync_interval_ms: Option<u32>,
+    id_lists_request_timeout_ms: Option<u64>,
     id_lists_url: Option<String>,
     init_timeout_ms: Option<u64>,
     log_event_url: Option<String>,
@@ -160,6 +161,7 @@ impl From<StatsigOptionsData> for StatsigOptions {
             id_lists_adapter: None, // todo: add support for id lists adapter
             download_id_list_file_api: data.download_id_list_file_api,
             id_lists_sync_interval_ms: data.id_lists_sync_interval_ms,
+            id_lists_request_timeout_ms: data.id_lists_request_timeout_ms,
             id_lists_url: data.id_lists_url,
             init_timeout_ms: data.init_timeout_ms,
             log_event_url: data.log_event_url,
@@ -240,6 +242,8 @@ pub extern "C" fn statsig_options_create(
     proxy_auth: *const c_char,
     proxy_protocol: *const c_char,
     persistent_storage_ref: u64,
+    // Note: keep new params appended at the end to preserve the positional C ABI.
+    id_lists_request_timeout_ms: c_int,
 ) -> u64 {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
@@ -248,6 +252,7 @@ pub extern "C" fn statsig_options_create(
     let event_logging_max_queue_size = c_int_to_u32(event_logging_max_queue_size);
     let specs_sync_interval_ms = c_int_to_u32(specs_sync_interval_ms);
     let id_lists_sync_interval_ms = c_int_to_u32(id_lists_sync_interval_ms);
+    let id_lists_request_timeout_ms = c_int_to_u64(id_lists_request_timeout_ms);
     let global_custom_field_string = c_char_to_string(global_custom_fields);
     let global_custom_fields: Option<HashMap<String, DynamicValue>> =
         match global_custom_field_string {
@@ -295,6 +300,7 @@ pub extern "C" fn statsig_options_create(
         disable_network: extract_opt_bool(disable_network),
         id_lists_url,
         id_lists_sync_interval_ms,
+        id_lists_request_timeout_ms,
         disable_all_logging: extract_opt_bool(disable_all_logging),
         global_custom_fields,
         data_store,

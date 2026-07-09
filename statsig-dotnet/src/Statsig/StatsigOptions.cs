@@ -120,6 +120,9 @@ namespace Statsig
         [JsonProperty("id_lists_sync_interval_ms")]
         internal int? idListsSyncIntervalMs;
 
+        [JsonProperty("id_lists_request_timeout_ms")]
+        internal long? idListsRequestTimeoutMs;
+
         [JsonProperty("event_logging_max_queue_size")]
         internal int? eventLoggingMaxQueueSize;
 
@@ -305,6 +308,16 @@ namespace Statsig
         public StatsigOptionsBuilder SetIDListsSyncIntervalMs(int idListsSyncIntervalMs)
         {
             this.idListsSyncIntervalMs = idListsSyncIntervalMs;
+            return this;
+        }
+        public StatsigOptionsBuilder SetIDListsRequestTimeoutMs(long idListsRequestTimeoutMs)
+        {
+            // Negative values can't deserialize into the core's Option<u64>; leave unset
+            // so the network provider's default timeout applies.
+            if (idListsRequestTimeoutMs >= 0)
+            {
+                this.idListsRequestTimeoutMs = idListsRequestTimeoutMs;
+            }
             return this;
         }
         public StatsigOptionsBuilder SetUseThirdPartyUAParser(bool useThirdPartyUAParser)

@@ -227,6 +227,9 @@ pub struct StatsigOptionsPy {
     pub disable_disk_access: Option<bool>,
     #[pyo3(get, set)]
     pub experimental_flags: Option<HashSet<String>>,
+    // Kept last to preserve positional-argument compatibility for StatsigOptions(...).
+    #[pyo3(get, set)]
+    pub id_lists_request_timeout_ms: Option<u64>,
 }
 
 #[gen_stub_pymethods]
@@ -268,6 +271,7 @@ impl StatsigOptionsPy {
         use_third_party_ua_parser=None,
         disable_disk_access=None,
         experimental_flags=None,
+        id_lists_request_timeout_ms=None,
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -305,6 +309,7 @@ impl StatsigOptionsPy {
         use_third_party_ua_parser: Option<bool>,
         disable_disk_access: Option<bool>,
         experimental_flags: Option<HashSet<String>>,
+        id_lists_request_timeout_ms: Option<u64>,
     ) -> Self {
         Self {
             specs_url,
@@ -341,6 +346,7 @@ impl StatsigOptionsPy {
             use_third_party_ua_parser,
             disable_disk_access,
             experimental_flags,
+            id_lists_request_timeout_ms,
         }
     }
 }
@@ -410,6 +416,7 @@ fn create_inner_statsig_options(
         id_lists_url: opts.id_lists_url.clone(),
         download_id_list_file_api: opts.download_id_list_file_api.clone(),
         id_lists_sync_interval_ms: opts.id_lists_sync_interval_ms,
+        id_lists_request_timeout_ms: opts.id_lists_request_timeout_ms,
         fallback_to_statsig_api: opts.fallback_to_statsig_api,
         environment: opts.environment.clone(),
         service_name: opts.service_name.clone(),

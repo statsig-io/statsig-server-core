@@ -18,6 +18,14 @@ type EventPayload struct {
 
 type Statsig struct {
 	ref atomic.Uint64
+	// obsClient retains a strong reference to the observability client for the
+	// lifetime of this instance. Core holds only a Weak reference to it (the
+	// sole strong Arc lives in the Rust registry, released by the client's Go
+	// finalizer). Today purego also happens to pin the client's FFI callbacks
+	// for the process lifetime, but we do not rely on that: this explicit
+	// reference guarantees the client outlives the instance and mirrors the
+	// strong-owner pattern in the Node and Python bindings.
+	obsClient *ObservabilityClient
 }
 
 func NewStatsig(sdkKey string) (*Statsig, error) {
@@ -44,6 +52,9 @@ func NewStatsigWithOptions(sdkKey string, opts *StatsigOptions) (*Statsig, error
 
 	s := &Statsig{ref: atomic.Uint64{}}
 	s.ref.Store(ref)
+	// Keep the observability client alive for this instance's lifetime; core
+	// only holds a Weak reference to it (see the obsClient field).
+	s.obsClient = opts.obsClient
 
 	runtime.SetFinalizer(s, func(obj *Statsig) {
 		obj.release()
@@ -319,6 +330,51 @@ func (s *Statsig) GetParameterStoreWithOptions(
 	}
 
 	return store
+}
+
+// GetFeatureGateList returns the names of all configured feature gates.
+func (s *Statsig) GetFeatureGateList() []string {
+	return s.getEntityList(GetFFI().statsig_get_feature_gate_list)
+}
+
+// GetDynamicConfigList returns the names of all configured dynamic configs.
+func (s *Statsig) GetDynamicConfigList() []string {
+	return s.getEntityList(GetFFI().statsig_get_dynamic_config_list)
+}
+
+// GetExperimentList returns the names of all configured experiments.
+func (s *Statsig) GetExperimentList() []string {
+	return s.getEntityList(GetFFI().statsig_get_experiment_list)
+}
+
+// GetAutotuneList returns the names of all configured autotunes.
+func (s *Statsig) GetAutotuneList() []string {
+	return s.getEntityList(GetFFI().statsig_get_autotune_list)
+}
+
+// GetParameterStoreList returns the names of all configured parameter stores.
+func (s *Statsig) GetParameterStoreList() []string {
+	return s.getEntityList(GetFFI().statsig_get_parameter_store_list)
+}
+
+func (s *Statsig) getEntityList(ffiFn func(uint64, *uint64) *byte) []string {
+	list := []string{}
+
+	listJson := UseRustString(func() (*byte, uint64) {
+		length := uint64(0)
+		ptr := ffiFn(s.ref.Load(), &length)
+		return ptr, length
+	})
+
+	if listJson == nil {
+		return list
+	}
+
+	if err := json.Unmarshal([]byte(*listJson), &list); err != nil {
+		fmt.Printf("Failed to unmarshal entity list: %v", err)
+	}
+
+	return list
 }
 
 func (s *Statsig) GetClientInitResponse(user *StatsigUser) *string {

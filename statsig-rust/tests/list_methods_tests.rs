@@ -52,3 +52,14 @@ async fn test_get_parameter_store_list() {
         "Parameter store list should not be empty"
     );
 }
+
+#[tokio::test]
+async fn test_get_autotune_list() {
+    let statsig = Statsig::new(&get_sdk_key(), None);
+    statsig.initialize().await.unwrap();
+
+    let autotune_list = statsig.get_autotune_list();
+
+    assert!(!autotune_list.is_empty());
+    assert!(autotune_list.contains(&"test_autotune".to_string()));
+}

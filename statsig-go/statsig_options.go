@@ -8,6 +8,11 @@ import (
 
 type StatsigOptions struct {
 	ref uint64
+	// obsClient carries the observability client from the builder to the
+	// Statsig instance (see Statsig.obsClient), which is the durable owner.
+	// Core holds only a Weak reference to the client, so an explicit strong
+	// reference on the instance keeps it alive for the instance's lifetime.
+	obsClient *ObservabilityClient
 }
 
 type StatsigOptionsBuilder struct {
@@ -28,6 +33,7 @@ type StatsigOptionsBuilder struct {
 	EnableDcsDeltas             *bool   `json:"enable_dcs_deltas,omitempty"`
 	IdListsUrl                  *string `json:"id_lists_url,omitempty"`
 	IdListsSyncIntervalMs       *int32  `json:"id_lists_sync_interval_ms,omitempty"`
+	IdListsRequestTimeoutMs     *int64  `json:"id_lists_request_timeout_ms,omitempty"`
 	DisableAllLogging           *bool   `json:"disable_all_logging,omitempty"`
 	DisableNetwork              *bool   `json:"disable_network,omitempty"`
 	GlobalCustomFields          *string `json:"global_custom_fields,omitempty"`
@@ -36,6 +42,10 @@ type StatsigOptionsBuilder struct {
 	PersistentStorageRef        *uint64 `json:"persistent_storage_ref,omitempty"`
 	InitTimeoutMs               *int32  `json:"init_timeout_ms,omitempty"`
 	FallbackToStatsigApi        *bool   `json:"fallback_to_statsig_api,omitempty"`
+
+	// observabilityClient is retained (unexported, so it is never marshaled)
+	// solely to keep the client alive; see StatsigOptions.obsClient.
+	observabilityClient *ObservabilityClient
 }
 
 func NewOptionsBuilder() *StatsigOptionsBuilder {
@@ -137,6 +147,28 @@ func (o *StatsigOptionsBuilder) WithIdListsSyncIntervalMs(idListsSyncIntervalMs 
 	return o
 }
 
+func (o *StatsigOptionsBuilder) WithIdListsRequestTimeoutMs(idListsRequestTimeoutMs int64) *StatsigOptionsBuilder {
+	// Negative values can't deserialize into the core's Option<u64>; leave unset
+	// so the network provider's default timeout applies.
+	if idListsRequestTimeoutMs >= 0 {
+		o.IdListsRequestTimeoutMs = &idListsRequestTimeoutMs
+	}
+	return o
+}
+
+func (o *StatsigOptionsBuilder) WithObservabilityClient(observabilityClient *ObservabilityClient) *StatsigOptionsBuilder {
+	if observabilityClient == nil {
+		o.ObservabilityClientRef = nil
+		o.observabilityClient = nil
+		return o
+	}
+	o.ObservabilityClientRef = &observabilityClient.ref
+	// Retain the client so it (and thus the Rust registry's strong Arc) stays
+	// alive; core only holds a Weak reference to it.
+	o.observabilityClient = observabilityClient
+	return o
+}
+
 func (o *StatsigOptionsBuilder) WithDataStore(dataStore *DataStore) *StatsigOptionsBuilder {
 	o.DataStoreRef = &dataStore.ref
 	return o
@@ -162,7 +194,8 @@ func (o *StatsigOptionsBuilder) Build() (*StatsigOptions, error) {
 	}
 
 	options := &StatsigOptions{
-		ref,
+		ref:       ref,
+		obsClient: o.observabilityClient,
 	}
 
 	runtime.SetFinalizer(options, func(obj *StatsigOptions) {

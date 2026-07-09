@@ -100,6 +100,59 @@ defmodule Statsig do
     end
   end
 
+  def get_experiment_by_group_name(experiment_name, group_name) do
+    try do
+      instance = get_statsig_instance()
+
+      case NativeBindings.get_experiment_by_group_name(instance, experiment_name, group_name) do
+        {:error, e} -> {:error, e}
+        exp -> {:ok, exp}
+      end
+    rescue
+      exception -> {:error, Exception.message(exception)}
+    catch
+      :exit, reason -> {:error, {:exit, reason}}
+      exception -> {:error, Exception.message(exception)}
+    end
+  end
+
+  def get_experiment_by_group_id_advanced(experiment_name, group_id) do
+    try do
+      instance = get_statsig_instance()
+
+      case NativeBindings.get_experiment_by_group_id_advanced(instance, experiment_name, group_id) do
+        {:error, e} -> {:error, e}
+        exp -> {:ok, exp}
+      end
+    rescue
+      exception -> {:error, Exception.message(exception)}
+    catch
+      :exit, reason -> {:error, {:exit, reason}}
+      exception -> {:error, Exception.message(exception)}
+    end
+  end
+
+  def override_experiment_by_group_name(experiment_name, group_name, id \\ nil) do
+    try do
+      instance = get_statsig_instance()
+
+      case NativeBindings.override_experiment_by_group_name(
+             instance,
+             experiment_name,
+             group_name,
+             id
+           ) do
+        {:error, e} -> {:error, e}
+        _ -> :ok
+      end
+    rescue
+      exception -> {:error, Exception.message(exception)}
+    catch
+      :exit, reason -> {:error, {:exit, reason}}
+      exception -> {:error, Exception.message(exception)}
+    end
+  end
+
   def get_layer(layer_name, statsig_user, options \\ nil) do
     try do
       instance = get_statsig_instance()
@@ -123,6 +176,22 @@ defmodule Statsig do
       case NativeBindings.get_client_init_response_as_string(instance, statsig_user, options) do
         {:error, e} -> {:error, e}
         response -> {:ok, response}
+      end
+    rescue
+      exception -> {:error, Exception.message(exception)}
+    catch
+      :exit, reason -> {:error, {:exit, reason}}
+      exception -> {:error, Exception.message(exception)}
+    end
+  end
+
+  def get_autotune_list() do
+    try do
+      instance = get_statsig_instance()
+
+      case NativeBindings.get_autotune_list(instance) do
+        {:error, e} -> {:error, e}
+        list -> {:ok, list}
       end
     rescue
       exception -> {:error, Exception.message(exception)}

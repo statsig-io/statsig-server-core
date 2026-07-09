@@ -39,6 +39,7 @@ pub struct StatsigHttpIdListsAdapter {
     listener: RwLock<Option<Arc<dyn IdListsUpdateListener>>>,
     network: NetworkClient,
     sync_interval_duration: Duration,
+    request_timeout_ms: u64,
     ops_stats: Arc<OpsStatsForInstance>,
     shutdown_notify: Arc<Notify>,
 }
@@ -80,6 +81,8 @@ impl StatsigHttpIdListsAdapter {
             listener: RwLock::new(None),
             network,
             sync_interval_duration,
+            // 0 means "use the network provider's default timeout".
+            request_timeout_ms: options.id_lists_request_timeout_ms.unwrap_or(0),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             shutdown_notify: Arc::new(Notify::new()),
         }
@@ -89,13 +92,18 @@ impl StatsigHttpIdListsAdapter {
         self.shutdown_notify.notify_one();
     }
 
-    async fn fetch_id_list_manifests_from_network(&self) -> Result<IdListsResponse, StatsigErr> {
-        let request_args = RequestArgs {
+    fn build_manifest_request_args(&self) -> RequestArgs {
+        RequestArgs {
             url: self.id_lists_manifest_url.clone(),
             accept_gzip_response: true,
             diagnostics_key: Some(KeyType::GetIDListSources),
+            timeout_ms: self.request_timeout_ms,
             ..RequestArgs::new()
-        };
+        }
+    }
+
+    async fn fetch_id_list_manifests_from_network(&self) -> Result<IdListsResponse, StatsigErr> {
+        let request_args = self.build_manifest_request_args();
 
         let result = if self.is_cdn_url() {
             self.network.get(request_args.clone()).await
@@ -126,13 +134,13 @@ impl StatsigHttpIdListsAdapter {
         result
     }
 
-    async fn fetch_individual_id_list_changes_from_network(
+    fn build_id_list_download_request_args(
         &self,
         list_url: &str,
         start_index: u64,
         new_file_size: u64,
         id_list_file_id: Option<String>,
-    ) -> Result<String, StatsigErr> {
+    ) -> RequestArgs {
         let list_url = self.get_override_id_list_download_url(list_url);
         let (headers, query_params) = if list_url.starts_with(STATSIG_CDN_URL) {
             (
@@ -148,17 +156,34 @@ impl StatsigHttpIdListsAdapter {
             (Some(headers), None)
         };
 
-        let response = self
-            .network
-            .get(RequestArgs {
-                url: list_url.clone(),
-                headers,
-                query_params,
-                id_list_file_id,
-                diagnostics_key: Some(KeyType::GetIDList),
-                ..RequestArgs::new()
-            })
-            .await;
+        RequestArgs {
+            url: list_url,
+            headers,
+            query_params,
+            id_list_file_id,
+            diagnostics_key: Some(KeyType::GetIDList),
+            timeout_ms: self.request_timeout_ms,
+            ..RequestArgs::new()
+        }
+    }
+
+    async fn fetch_individual_id_list_changes_from_network(
+        &self,
+        list_url: &str,
+        start_index: u64,
+        new_file_size: u64,
+        id_list_file_id: Option<String>,
+    ) -> Result<String, StatsigErr> {
+        let request_args = self.build_id_list_download_request_args(
+            list_url,
+            start_index,
+            new_file_size,
+            id_list_file_id,
+        );
+        // Resolved (post-override) URL, reused below for diagnostics markers.
+        let list_url = request_args.url.clone();
+
+        let response = self.network.get(request_args).await;
 
         let response = match response {
             Ok(response) => response,
@@ -948,6 +973,55 @@ mod tests {
             actual,
             "https://download-proxy.example/v1/download_id_list_file/3wHgh0FhoQH0p"
         );
+    }
+
+    // Builds a download request against a non-CDN URL so we exercise the
+    // header/range branch while asserting the timeout is applied.
+    fn download_args(adapter: &StatsigHttpIdListsAdapter) -> RequestArgs {
+        adapter.build_id_list_download_request_args(
+            "https://fake-id-list-host/company_id_list",
+            0,
+            10,
+            None,
+        )
+    }
+
+    #[test]
+    fn test_request_timeout_defaults_to_zero_when_unset() {
+        // 0 is the "use the network provider's default timeout" sentinel, so an
+        // unset option must not override the existing default behavior.
+        let adapter = StatsigHttpIdListsAdapter::new("secret-key", &StatsigOptions::default());
+        assert_eq!(adapter.request_timeout_ms, 0);
+        assert_eq!(adapter.build_manifest_request_args().timeout_ms, 0);
+        assert_eq!(download_args(&adapter).timeout_ms, 0);
+    }
+
+    #[test]
+    fn test_request_timeout_explicit_zero_uses_default() {
+        // Some(0) is treated identically to unset: fall back to the default.
+        let options = StatsigOptions {
+            id_lists_request_timeout_ms: Some(0),
+            ..StatsigOptions::default()
+        };
+
+        let adapter = StatsigHttpIdListsAdapter::new("secret-key", &options);
+        assert_eq!(adapter.request_timeout_ms, 0);
+    }
+
+    #[test]
+    fn test_request_timeout_uses_configured_option() {
+        let options = StatsigOptions {
+            id_lists_request_timeout_ms: Some(25_000),
+            ..StatsigOptions::default()
+        };
+
+        let adapter = StatsigHttpIdListsAdapter::new("secret-key", &options);
+        assert_eq!(adapter.request_timeout_ms, 25_000);
+
+        // Both network request types (manifest fetch + per-file download) must
+        // carry the configured timeout onto their RequestArgs.
+        assert_eq!(adapter.build_manifest_request_args().timeout_ms, 25_000);
+        assert_eq!(download_args(&adapter).timeout_ms, 25_000);
     }
 
     #[tokio::test]

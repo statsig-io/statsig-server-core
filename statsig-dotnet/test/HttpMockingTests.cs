@@ -144,6 +144,96 @@ namespace Statsig.Tests
             Assert.True(flushTask.IsCompletedSuccessfully);
         }
 
+        [Fact]
+        public async Task GetExperiment_NormalPath_GroupNameSemantics()
+        {
+            var options = CreateMockOptions();
+            using var statsig = new Statsig("secret-test-key", options);
+            using var user = new StatsigUserBuilder().SetUserID("test-user").Build();
+            await statsig.Initialize();
+
+            // Recognized experiment: the normal (snake_case) path surfaces the
+            // assigned group name as a non-null, non-empty string.
+            var experiment = statsig.GetExperiment(user, "test_experiment_no_targeting");
+            Assert.True(
+                experiment.GroupName is "Control" or "Test",
+                $"Unexpected group name: {experiment.GroupName}");
+
+            // Unrecognized experiment: group_name arrives as JSON null on the
+            // normal path, which must map to C# null (not ""). Locks the
+            // JTokenType.Null handling in Experiment.cs against a regression.
+            var unknown = statsig.GetExperiment(user, "not_a_real_experiment");
+            Assert.Null(unknown.GroupName);
+        }
+
+        [Fact]
+        public async Task GetExperimentByGroupName_ReturnsMatchingGroup()
+        {
+            var options = CreateMockOptions();
+            using var statsig = new Statsig("secret-test-key", options);
+            await statsig.Initialize();
+
+            var control = statsig.GetExperimentByGroupName("test_experiment_no_targeting", "Control");
+            Assert.Equal("Control", control.GroupName);
+            Assert.Equal("54QJztEPRLXK7ZCvXeY9q4", control.RuleID);
+            Assert.Equal("userID", control.IDType);
+            Assert.Equal("control", control.Value["value"].ToString());
+
+            var test = statsig.GetExperimentByGroupName("test_experiment_no_targeting", "Test");
+            Assert.Equal("Test", test.GroupName);
+            Assert.Equal("test_1", test.Value["value"].ToString());
+        }
+
+        [Fact]
+        public async Task GetExperimentByGroupName_Unrecognized_ReturnsEmpty()
+        {
+            var options = CreateMockOptions();
+            using var statsig = new Statsig("secret-test-key", options);
+            await statsig.Initialize();
+
+            var experiment = statsig.GetExperimentByGroupName("not_an_experiment", "Control");
+            Assert.Null(experiment.GroupName);
+            Assert.Equal(string.Empty, experiment.RuleID);
+        }
+
+        [Fact]
+        public async Task GetExperimentByGroupName_UnknownGroup_ReturnsEmpty()
+        {
+            var options = CreateMockOptions();
+            using var statsig = new Statsig("secret-test-key", options);
+            await statsig.Initialize();
+
+            var experiment = statsig.GetExperimentByGroupName("test_experiment_no_targeting", "NotAGroup");
+            Assert.Null(experiment.GroupName);
+            Assert.Equal(string.Empty, experiment.RuleID);
+        }
+
+        [Fact]
+        public async Task GetExperimentByGroupIdAdvanced_ReturnsMatchingGroup()
+        {
+            var options = CreateMockOptions();
+            using var statsig = new Statsig("secret-test-key", options);
+            await statsig.Initialize();
+
+            var experiment = statsig.GetExperimentByGroupIdAdvanced(
+                "test_experiment_no_targeting", "54QJztEPRLXK7ZCvXeY9q4");
+            Assert.Equal("Control", experiment.GroupName);
+            Assert.Equal("control", experiment.Value["value"].ToString());
+        }
+
+        [Fact]
+        public async Task GetExperimentByGroupIdAdvanced_Unrecognized_ReturnsEmpty()
+        {
+            var options = CreateMockOptions();
+            using var statsig = new Statsig("secret-test-key", options);
+            await statsig.Initialize();
+
+            var experiment = statsig.GetExperimentByGroupIdAdvanced(
+                "test_experiment_no_targeting", "not_a_group_id");
+            Assert.Null(experiment.GroupName);
+            Assert.Equal(string.Empty, experiment.RuleID);
+        }
+
         public void Dispose()
         {
             _mockServer?.Stop();

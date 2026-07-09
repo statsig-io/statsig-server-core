@@ -2,6 +2,7 @@
 
 namespace Statsig;
 
+use FFI;
 use Statsig\EvaluationTypes\DynamicConfig;
 use Statsig\EvaluationTypes\Experiment;
 use Statsig\EvaluationTypes\FeatureGate;
@@ -158,6 +159,32 @@ class Statsig
         return new Experiment($raw_result);
     }
 
+    public function getExperimentByGroupName(string $experimentName, string $groupName): Experiment
+    {
+        $len = StatsigFFI::get()->new("uint64_t");
+        $ptr = StatsigFFI::get()->statsig_get_raw_experiment_by_group_name(
+            $this->__ref,
+            $experimentName,
+            $groupName,
+            FFI::addr($len)
+        );
+
+        return new Experiment(StatsigFFI::takeString($ptr));
+    }
+
+    public function getExperimentByGroupIdAdvanced(string $experimentName, string $groupId): Experiment
+    {
+        $len = StatsigFFI::get()->new("uint64_t");
+        $ptr = StatsigFFI::get()->statsig_get_raw_experiment_by_group_id_advanced(
+            $this->__ref,
+            $experimentName,
+            $groupId,
+            FFI::addr($len)
+        );
+
+        return new Experiment(StatsigFFI::takeString($ptr));
+    }
+
     public function manuallyLogExperimentExposure(StatsigUser $user, string $name): void
     {
         StatsigFFI::get()->statsig_manually_log_experiment_exposure(
@@ -193,6 +220,27 @@ class Statsig
             $layer_name,
             $param_name
         );
+    }
+
+    /**
+     * Entity List Functions
+     */
+
+    public function getAutotuneList(): array
+    {
+        $ffi = StatsigFFI::get();
+        // $len satisfies the required uint64_t* out-param; its written value is
+        // unused because takeString reads the NUL-terminated JSON payload.
+        $len = $ffi->new('uint64_t');
+        $ptr = $ffi->statsig_get_autotune_list($this->__ref, \FFI::addr($len));
+
+        if (\FFI::isNull($ptr)) {
+            return [];
+        }
+
+        $raw_result = StatsigFFI::takeString($ptr);
+        $decoded = json_decode($raw_result, true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**
