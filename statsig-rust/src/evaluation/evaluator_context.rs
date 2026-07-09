@@ -36,6 +36,11 @@ pub struct EvaluatorContext<'a> {
     pub statsig: Option<&'a Statsig>,
     pub disable_exposure_logging: bool,
     pub gcir_hashes: Vec<u64>,
+    // When set, a top-level evaluation only considers the corresponding subset of
+    // rules (targeting-only / override-only). Used by persistent-assignment
+    // enforceTargeting / enforceOverrides to decide whether a sticky value still holds.
+    pub only_evaluate_targeting: bool,
+    pub only_evaluate_overrides: bool,
 }
 
 impl<'a> EvaluatorContext<'a> {
@@ -67,6 +72,8 @@ impl<'a> EvaluatorContext<'a> {
             statsig,
             disable_exposure_logging,
             gcir_hashes: Vec::new(),
+            only_evaluate_targeting: false,
+            only_evaluate_overrides: false,
         }
     }
 

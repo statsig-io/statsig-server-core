@@ -203,6 +203,8 @@ pub fn convert_java_get_experiment_options_to_rust(
     Some(ExperimentEvaluationOptions {
         disable_exposure_logging,
         user_persisted_values,
+        // enforceOverrides / enforceTargeting are wired up in S2SDK-115.
+        ..Default::default()
     })
 }
 
@@ -295,6 +297,8 @@ pub fn convert_java_get_layer_options_to_rust(
     Some(LayerEvaluationOptions {
         disable_exposure_logging,
         user_persisted_values,
+        // enforceOverrides / enforceTargeting are wired up in S2SDK-115.
+        ..Default::default()
     })
 }
 

@@ -59,6 +59,21 @@ pub struct Rule {
     pub sampling_rate: Option<u64>,
 }
 
+impl Rule {
+    /// A targeting rule gates whether a user is eligible for an experiment.
+    /// Mirrors the legacy Java server SDK (`APIRule.isTargetingRule`).
+    pub fn is_targeting_rule(&self) -> bool {
+        let id = self.id.as_str();
+        id == "targetingGate" || id == "inlineTargetingRules"
+    }
+
+    /// An override rule is a console-set manual override.
+    /// Mirrors the legacy Java server SDK (`APIRule.isOverrideRule`).
+    pub fn is_override_rule(&self) -> bool {
+        self.id.as_str().ends_with("override")
+    }
+}
+
 #[derive(Serialize, PartialEq, Debug, Clone /* TEMP: Make this an Arc */)] /* DO_NOT_CLONE */
 #[serde(rename_all = "camelCase")]
 pub struct Condition {
@@ -269,5 +284,38 @@ impl<'de> Deserialize<'de> for Condition {
             id_type: internal.id_type,
             checksum: internal.checksum,
         })
+    }
+}
+
+#[cfg(test)]
+mod rule_predicate_tests {
+    use super::Rule;
+
+    fn rule_with_id(id: &str) -> Rule {
+        serde_json::from_value(serde_json::json!({
+            "name": id,
+            "passPercentage": 100.0,
+            "returnValue": {},
+            "id": id,
+            "conditions": [],
+            "idType": "userID",
+        }))
+        .expect("rule should deserialize")
+    }
+
+    #[test]
+    fn test_is_override_rule() {
+        assert!(rule_with_id("6AGyymqmwAOlJ2SevKrX80:userID:id_override").is_override_rule());
+        assert!(rule_with_id("someRuleId:override").is_override_rule());
+        assert!(!rule_with_id("6AGyymqmwAOlJ2SevKrX80").is_override_rule());
+        assert!(!rule_with_id("targetingGate").is_override_rule());
+    }
+
+    #[test]
+    fn test_is_targeting_rule() {
+        assert!(rule_with_id("targetingGate").is_targeting_rule());
+        assert!(rule_with_id("inlineTargetingRules").is_targeting_rule());
+        assert!(!rule_with_id("layerAssignment").is_targeting_rule());
+        assert!(!rule_with_id("6AGyymqmwAOlJ2SevKrX80:userID:id_override").is_targeting_rule());
     }
 }
