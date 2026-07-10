@@ -112,7 +112,10 @@ pub struct Statsig {
     spec_store: Arc<SpecStore>,
     hashing: Arc<HashUtil>,
     statsig_environment: Option<HashMap<String, DynamicValue>>,
-    fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
+    // [S2SDK-140] Read on every rule evaluation but written at most once
+    // (from set_default_environment_from_server). A Mutex here serialized all
+    // concurrent evaluations; ArcSwapOption makes reads lock-free.
+    fallback_environment: arc_swap::ArcSwapOption<HashMap<String, DynamicValue>>,
     ops_stats: Arc<OpsStatsForInstance>,
     console_capture: Arc<ConsoleCaptureInstance>,
     error_observer: Arc<dyn OpsStatsEventObserver>,
@@ -227,7 +230,7 @@ impl Statsig {
             options,
             hashing,
             statsig_environment: environment,
-            fallback_environment: Mutex::new(None),
+            fallback_environment: arc_swap::ArcSwapOption::const_empty(),
             override_adapter,
             spec_store,
             specs_adapter,
@@ -1953,13 +1956,8 @@ impl Statsig {
             return env.get(key).cloned();
         }
 
-        if let Some(fallback_env) = self
-            .fallback_environment
-            .try_lock_for(Duration::from_secs(5))
-        {
-            if let Some(env) = &*fallback_env {
-                return env.get(key).cloned();
-            }
+        if let Some(env) = self.fallback_environment.load().as_ref() {
+            return env.get(key).cloned();
         }
 
         None
@@ -1988,13 +1986,8 @@ impl Statsig {
             return f(Some(env));
         }
 
-        if let Some(fallback_env) = self
-            .fallback_environment
-            .try_lock_for(Duration::from_secs(5))
-        {
-            if let Some(env) = &*fallback_env {
-                return f(Some(env));
-            }
+        if let Some(env) = self.fallback_environment.load().as_ref() {
+            return f(Some(env));
         }
 
         f(None)
@@ -2645,18 +2638,7 @@ impl Statsig {
 
         if let Some(default_env) = data.values.default_environment.as_ref() {
             let env_map = HashMap::from([("tier".to_string(), dyn_value!(default_env.as_str()))]);
-
-            match self
-                .fallback_environment
-                .try_lock_for(Duration::from_secs(5))
-            {
-                Some(mut fallback_env) => {
-                    *fallback_env = Some(env_map);
-                }
-                None => {
-                    log_e!(TAG, "Failed to lock fallback_environment");
-                }
-            }
+            self.fallback_environment.store(Some(Arc::new(env_map)));
         }
     }
 

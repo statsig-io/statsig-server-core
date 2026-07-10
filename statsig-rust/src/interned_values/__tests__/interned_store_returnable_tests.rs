@@ -139,15 +139,24 @@ rusty_fork_test! {
         assert_eq!(InternedStore::get_memoized_len().1, 1);
 
         drop(returnable);
+        InternedStore::run_maintenance();
         assert_eq!(InternedStore::get_memoized_len().1, 1);
 
         drop(returnable2);
+        InternedStore::run_maintenance();
         assert_eq!(InternedStore::get_memoized_len().1, 0);
     }
 
     #[test]
     fn test_preloading_mmap_across_forks() {
-        let path = "/tmp/statsig-rust-test-mmap.bin";
+        // Per-process path: distinct from the string test's file (they run in
+        // parallel) and safe against concurrent runs of this binary on shared
+        // CI runners. Computed before fork, so the child sees the same path.
+        let path_buf = std::env::temp_dir().join(format!(
+            "statsig-rust-test-mmap-returnable-{}.bin",
+            std::process::id()
+        ));
+        let path = path_buf.to_str().unwrap();
         if std::fs::File::open(path).is_ok() {
             std::fs::remove_file(path).unwrap();
         }
@@ -176,6 +185,8 @@ rusty_fork_test! {
             libc::waitpid(pid, &mut status, 0);
             assert_eq!(libc::WEXITSTATUS(status), 0);
         };
+
+        let _ = std::fs::remove_file(path);
     }
 
 }

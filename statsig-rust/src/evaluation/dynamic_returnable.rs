@@ -138,6 +138,11 @@ impl Serialize for DynamicReturnable {
 
 impl Drop for DynamicReturnable {
     fn drop(&mut self) {
+        // Only JsonPointer values live in the mutable store; other variants
+        // (Null/Bool/Static/Archived) have nothing to release.
+        if !matches!(self.value, DynamicReturnableValue::JsonPointer(_)) {
+            return;
+        }
         self.value = DynamicReturnableValue::Null;
         InternedStore::release_returnable(self.hash);
     }
