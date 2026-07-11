@@ -203,9 +203,27 @@ pub fn convert_java_get_experiment_options_to_rust(
     Some(ExperimentEvaluationOptions {
         disable_exposure_logging,
         user_persisted_values,
-        // enforceOverrides / enforceTargeting are wired up in S2SDK-115.
-        ..Default::default()
+        enforce_overrides: get_bool_field_or_false(env, &options, "enforceOverrides"),
+        enforce_targeting: get_bool_field_or_false(env, &options, "enforceTargeting"),
     })
+}
+
+/// Reads a `boolean` field from a Java object, defaulting to `false` when the
+/// field is missing or unreadable.
+fn get_bool_field_or_false(env: &mut JNIEnv, obj: &JObject, field_name: &str) -> bool {
+    match env
+        .get_field(obj, field_name, "Z")
+        .and_then(|field| field.z())
+    {
+        Ok(value) => value,
+        Err(_) => {
+            // A failed field lookup (e.g. NoSuchFieldError from an older class
+            // definition) leaves a pending Java exception; clear it so
+            // subsequent JNI calls are unaffected.
+            let _ = env.exception_clear();
+            false
+        }
+    }
 }
 
 /// Converts Java Map<String, StickyValues> to Rust UserPersistedValues via JSON serialization
@@ -297,8 +315,8 @@ pub fn convert_java_get_layer_options_to_rust(
     Some(LayerEvaluationOptions {
         disable_exposure_logging,
         user_persisted_values,
-        // enforceOverrides / enforceTargeting are wired up in S2SDK-115.
-        ..Default::default()
+        enforce_overrides: get_bool_field_or_false(env, &options, "enforceOverrides"),
+        enforce_targeting: get_bool_field_or_false(env, &options, "enforceTargeting"),
     })
 }
 
