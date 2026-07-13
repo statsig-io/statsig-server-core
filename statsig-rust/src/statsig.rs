@@ -39,7 +39,9 @@ use crate::observability::observability_client_adapter::{MetricType, Observabili
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::sdk_errors_observer::{ErrorBoundaryEvent, SDKErrorsObserver};
 use crate::output_logger::{initialize_output_logger, shutdown_output_logger};
-use crate::persistent_storage::persistent_values_manager::PersistentValuesManager;
+use crate::persistent_storage::persistent_values_manager::{
+    PersistentValuesManager, StickyRuleFilter,
+};
 use crate::sdk_diagnostics::diagnostics::{ContextType, Diagnostics};
 use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker};
 use crate::sdk_event_emitter::SdkEventEmitter;
@@ -110,7 +112,10 @@ pub struct Statsig {
     spec_store: Arc<SpecStore>,
     hashing: Arc<HashUtil>,
     statsig_environment: Option<HashMap<String, DynamicValue>>,
-    fallback_environment: Mutex<Option<HashMap<String, DynamicValue>>>,
+    // [S2SDK-140] Read on every rule evaluation but written at most once
+    // (from set_default_environment_from_server). A Mutex here serialized all
+    // concurrent evaluations; ArcSwapOption makes reads lock-free.
+    fallback_environment: arc_swap::ArcSwapOption<HashMap<String, DynamicValue>>,
     ops_stats: Arc<OpsStatsForInstance>,
     console_capture: Arc<ConsoleCaptureInstance>,
     error_observer: Arc<dyn OpsStatsEventObserver>,
@@ -225,7 +230,7 @@ impl Statsig {
             options,
             hashing,
             statsig_environment: environment,
-            fallback_environment: Mutex::new(None),
+            fallback_environment: arc_swap::ArcSwapOption::const_empty(),
             override_adapter,
             spec_store,
             specs_adapter,
@@ -1377,11 +1382,18 @@ impl Statsig {
             Some(options.disable_exposure_logging),
         );
 
+        // The re-eval closure locks the spec store itself so the common path
+        // (no enforce flags, or no sticky value found) never takes the lock and
+        // never holds it across persistent_storage save/delete calls.
+        let reeval = |name: &str, spec_type: &SpecType, filter: StickyRuleFilter| {
+            self.reeval_sticky_rule_filter(&user_internal, name, spec_type, filter)
+        };
         experiment = PersistentValuesManager::try_apply_sticky_value_to_experiment(
             &self.persistent_values_manager,
             &user_internal,
             &options,
             experiment,
+            &reeval,
         );
 
         if disable_exposure_logging {
@@ -1772,6 +1784,12 @@ impl Statsig {
             Some(disable_exposure_logging),
         );
 
+        // The re-eval closure locks the spec store itself so the common path
+        // (no enforce flags, or no sticky value found) never takes the lock and
+        // never holds it across persistent_storage save/delete calls.
+        let reeval = |name: &str, spec_type: &SpecType, filter: StickyRuleFilter| {
+            self.reeval_sticky_rule_filter(&user_internal, name, spec_type, filter)
+        };
         let (evaluation, details) =
             PersistentValuesManager::try_apply_sticky_value_to_raw_experiment(
                 &self.persistent_values_manager,
@@ -1779,6 +1797,7 @@ impl Statsig {
                 &options,
                 details,
                 evaluation,
+                &reeval,
             );
 
         let raw = result_to_experiment_raw(experiment_name, &details, evaluation.as_ref());
@@ -1831,15 +1850,47 @@ impl Statsig {
             Some(disable_exposure_logging),
         );
 
-        let (evaluation, details) = PersistentValuesManager::try_apply_sticky_value_to_raw_layer(
-            &self.persistent_values_manager,
-            &user_internal,
-            &options,
-            &self.spec_store,
-            &self.ops_stats,
-            details,
-            evaluation,
-        );
+        let (evaluation, details) = if self.persistent_values_manager.is_some() {
+            match self
+                .spec_store
+                .data
+                .try_read_for(crate::macros::LOCK_TIMEOUT)
+            {
+                Some(data) => {
+                    let reeval = |name: &str, spec_type: &SpecType, filter: StickyRuleFilter| {
+                        self.evaluate_rule_filter_bool(
+                            &user_internal,
+                            &data,
+                            name,
+                            spec_type,
+                            filter,
+                        )
+                    };
+                    PersistentValuesManager::try_apply_sticky_value_to_raw_layer(
+                        &self.persistent_values_manager,
+                        &user_internal,
+                        &options,
+                        &data,
+                        details,
+                        evaluation,
+                        &reeval,
+                    )
+                }
+                None => {
+                    log_error_to_statsig_and_console!(
+                        &self.ops_stats,
+                        TAG,
+                        StatsigErr::LockFailure(
+                            "Failed to acquire spec store read lock for layer sticky apply"
+                                .to_string()
+                        )
+                    );
+                    (evaluation, details)
+                }
+            }
+        } else {
+            (evaluation, details)
+        };
 
         let raw = result_to_layer_raw(
             &user_internal,
@@ -1905,13 +1956,8 @@ impl Statsig {
             return env.get(key).cloned();
         }
 
-        if let Some(fallback_env) = self
-            .fallback_environment
-            .try_lock_for(Duration::from_secs(5))
-        {
-            if let Some(env) = &*fallback_env {
-                return env.get(key).cloned();
-            }
+        if let Some(env) = self.fallback_environment.load().as_ref() {
+            return env.get(key).cloned();
         }
 
         None
@@ -1940,13 +1986,8 @@ impl Statsig {
             return f(Some(env));
         }
 
-        if let Some(fallback_env) = self
-            .fallback_environment
-            .try_lock_for(Duration::from_secs(5))
-        {
-            if let Some(env) = &*fallback_env {
-                return f(Some(env));
-            }
+        if let Some(env) = self.fallback_environment.load().as_ref() {
+            return f(Some(env));
         }
 
         f(None)
@@ -2219,6 +2260,74 @@ impl Statsig {
         )
     }
 
+    /// Re-evaluates a spec restricted to a single rule subset (targeting-only or
+    /// override-only) and returns the resulting boolean value. Used by the
+    /// persistent-assignment enforceTargeting / enforceOverrides gate to decide
+    /// whether a sticky value should still be honored. Reuses the already-locked
+    /// `SpecStoreData` so it never re-acquires the spec store lock.
+    fn evaluate_rule_filter_bool(
+        &self,
+        user_internal: &StatsigUserInternal,
+        data: &SpecStoreData,
+        spec_name: &str,
+        spec_type: &SpecType,
+        filter: StickyRuleFilter,
+    ) -> bool {
+        let mut context = self.create_standard_eval_context(
+            user_internal,
+            data,
+            data.values.app_id.as_ref(),
+            self.override_adapter.as_ref(),
+            true, // internal re-eval: never log exposures
+        );
+
+        match filter {
+            StickyRuleFilter::Targeting => context.only_evaluate_targeting = true,
+            StickyRuleFilter::Overrides => context.only_evaluate_overrides = true,
+        }
+
+        match Evaluator::evaluate(&mut context, spec_name, spec_type) {
+            Ok(_) => context.result.bool_value,
+            Err(e) => {
+                log_w!(
+                    TAG,
+                    "enforce sticky re-eval failed for {}: {}",
+                    spec_name,
+                    e
+                );
+                false
+            }
+        }
+    }
+
+    /// Lock-acquiring wrapper around [`Self::evaluate_rule_filter_bool`] for the
+    /// experiment sticky-apply paths, which do not otherwise hold the spec store
+    /// lock. Invoked at most twice per get call, and only when an enforce flag is
+    /// set and a sticky value was found. The layer paths instead reuse the lock
+    /// they already hold — do not call this while holding the spec store lock.
+    fn reeval_sticky_rule_filter(
+        &self,
+        user_internal: &StatsigUserInternal,
+        spec_name: &str,
+        spec_type: &SpecType,
+        filter: StickyRuleFilter,
+    ) -> bool {
+        let data = read_lock_or_else!(self.spec_store.data, {
+            log_error_to_statsig_and_console!(
+                &self.ops_stats,
+                TAG,
+                StatsigErr::LockFailure(
+                    "Failed to acquire spec store read lock for enforce sticky re-eval".to_string()
+                )
+            );
+            // Fail open to the sticky value: "not overridden / not excluded by
+            // targeting" matches the non-enforced behavior.
+            return false;
+        });
+
+        self.evaluate_rule_filter_bool(user_internal, &data, spec_name, spec_type, filter)
+    }
+
     fn create_gcir_eval_context<'a>(
         &'a self,
         user_internal: &'a StatsigUserInternal,
@@ -2475,14 +2584,43 @@ impl Statsig {
             Some(evaluation_options.disable_exposure_logging),
         );
 
-        layer = PersistentValuesManager::try_apply_sticky_value_to_layer(
-            &self.persistent_values_manager,
-            &user_internal,
-            &evaluation_options,
-            &self.spec_store,
-            &self.ops_stats,
-            layer,
-        );
+        if self.persistent_values_manager.is_some() {
+            match self
+                .spec_store
+                .data
+                .try_read_for(crate::macros::LOCK_TIMEOUT)
+            {
+                Some(data) => {
+                    let reeval = |name: &str, spec_type: &SpecType, filter: StickyRuleFilter| {
+                        self.evaluate_rule_filter_bool(
+                            &user_internal,
+                            &data,
+                            name,
+                            spec_type,
+                            filter,
+                        )
+                    };
+                    layer = PersistentValuesManager::try_apply_sticky_value_to_layer(
+                        &self.persistent_values_manager,
+                        &user_internal,
+                        &evaluation_options,
+                        &data,
+                        layer,
+                        &reeval,
+                    );
+                }
+                None => {
+                    log_error_to_statsig_and_console!(
+                        &self.ops_stats,
+                        TAG,
+                        StatsigErr::LockFailure(
+                            "Failed to acquire spec store read lock for layer sticky apply"
+                                .to_string()
+                        )
+                    );
+                }
+            }
+        }
 
         self.emit_layer_evaluated(&layer);
 
@@ -2500,18 +2638,7 @@ impl Statsig {
 
         if let Some(default_env) = data.values.default_environment.as_ref() {
             let env_map = HashMap::from([("tier".to_string(), dyn_value!(default_env.as_str()))]);
-
-            match self
-                .fallback_environment
-                .try_lock_for(Duration::from_secs(5))
-            {
-                Some(mut fallback_env) => {
-                    *fallback_env = Some(env_map);
-                }
-                None => {
-                    log_e!(TAG, "Failed to lock fallback_environment");
-                }
-            }
+            self.fallback_environment.store(Some(Arc::new(env_map)));
         }
     }
 

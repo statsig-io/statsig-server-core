@@ -30,7 +30,8 @@ class StatsigOptions
         ?bool $use_third_party_ua_parser = null,
         ?PersistentStorage $persistent_storage = null,
         ?ProxyConfig $proxy_config = null,
-        ?int $id_lists_request_timeout_ms = null
+        ?int $id_lists_request_timeout_ms = null,
+        ?int $exposure_dedupe_max_keys = null
     ) {
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->statsig_options_create(
@@ -63,7 +64,8 @@ class StatsigOptions
             $proxy_config !== null ? $proxy_config->proxyAuth : null,
             $proxy_config !== null ? $proxy_config->proxyProtocol : null,
             is_null($persistent_storage) ? 0 : $persistent_storage->__ref,
-            $id_lists_request_timeout_ms ?? -1
+            $id_lists_request_timeout_ms ?? -1,
+            $exposure_dedupe_max_keys ?? -1
         );
     }
 

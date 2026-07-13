@@ -131,6 +131,8 @@ pub struct StatsigOptions<'a> {
     pub event_logging_flush_interval_ms: Option<u32>,
     pub event_logging_max_queue_size: Option<u32>,
 
+    pub exposure_dedupe_max_keys: Option<u32>,
+
     pub fallback_to_statsig_api: Option<bool>,
 
     #[napi(
@@ -235,6 +237,7 @@ impl StatsigOptions<'_> {
             disable_network: self.disable_network,
             log_event_connection_reuse: self.log_event_connection_reuse,
             event_logging_max_queue_size: self.event_logging_max_queue_size,
+            exposure_dedupe_max_keys: self.exposure_dedupe_max_keys,
             override_adapter: Some(create_local_overrides(self.override_adapter_config)),
             global_custom_fields: Self::convert_to_dynamic_value_map(self.global_custom_fields),
             disable_country_lookup: self.disable_country_lookup,
@@ -251,7 +254,6 @@ impl StatsigOptions<'_> {
             #[allow(deprecated)]
             event_logging_flush_interval_ms: None,
             event_logging_max_pending_batch_queue_size: None,
-            exposure_dedupe_max_keys: None,
             id_lists_adapter: None,
             specs_adapter: None,
             disable_disk_access: None,

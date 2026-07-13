@@ -27,6 +27,14 @@ pub struct ExperimentEvaluationOptions {
     #[serde(default)]
     pub disable_exposure_logging: bool,
     pub user_persisted_values: Option<UserPersistedValues>,
+    // When a sticky value is applied, let a matching console override rule
+    // take precedence over the persisted value.
+    #[serde(default)]
+    pub enforce_overrides: bool,
+    // When a sticky value is applied, re-check targeting and drop the persisted
+    // value if the user no longer passes targeting.
+    #[serde(default)]
+    pub enforce_targeting: bool,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -34,6 +42,14 @@ pub struct LayerEvaluationOptions {
     #[serde(default)]
     pub disable_exposure_logging: bool,
     pub user_persisted_values: Option<UserPersistedValues>,
+    // When a sticky value is applied, let a matching console override rule
+    // take precedence over the persisted value.
+    #[serde(default)]
+    pub enforce_overrides: bool,
+    // When a sticky value is applied, re-check targeting and drop the persisted
+    // value if the user no longer passes targeting.
+    #[serde(default)]
+    pub enforce_targeting: bool,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, Copy)]
@@ -67,6 +83,8 @@ impl From<ParameterStoreEvaluationOptions> for ExperimentEvaluationOptions {
         ExperimentEvaluationOptions {
             disable_exposure_logging: opts.disable_exposure_logging,
             user_persisted_values: None,
+            enforce_overrides: false,
+            enforce_targeting: false,
         }
     }
 }
@@ -76,6 +94,8 @@ impl From<ParameterStoreEvaluationOptions> for LayerEvaluationOptions {
         LayerEvaluationOptions {
             disable_exposure_logging: opts.disable_exposure_logging,
             user_persisted_values: None,
+            enforce_overrides: false,
+            enforce_targeting: false,
         }
     }
 }

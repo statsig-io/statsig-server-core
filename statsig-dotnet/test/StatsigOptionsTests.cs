@@ -1,5 +1,6 @@
 using Xunit;
 using System.Reflection;
+using Newtonsoft.Json;
 
 #nullable enable
 
@@ -167,6 +168,43 @@ namespace Statsig.Tests
             Assert.Equal(true, GetInternalField(builder, "enableIDLists"));
             Assert.Equal("https://custom.statsig.com/id_lists", GetInternalField(builder, "idListsURL"));
             Assert.Equal(90000, GetInternalField(builder, "idListsSyncIntervalMs"));
+        }
+
+        [Fact]
+        public void StatsigOptionsBuilder_SetExposureDedupeMaxKeys_SetsValueCorrectly()
+        {
+            var builder = new StatsigOptionsBuilder();
+            uint testValue = 50000;
+
+            var result = builder.SetExposureDedupeMaxKeys(testValue);
+
+            Assert.Same(builder, result);
+            Assert.Equal(testValue, GetInternalField(builder, "exposureDedupeMaxKeys"));
+        }
+
+        [Fact]
+        public void StatsigOptionsBuilder_SetExposureDedupeMaxKeys_SerializesToCoreJsonField()
+        {
+            // The builder is serialized to JSON and passed to statsig_options_create_from_data,
+            // which deserializes the `exposure_dedupe_max_keys` field into the core StatsigOptions.
+            var builder = new StatsigOptionsBuilder().SetExposureDedupeMaxKeys(50000);
+
+            var json = JsonConvert.SerializeObject(builder, new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            });
+
+            Assert.Contains("\"exposure_dedupe_max_keys\":50000", json);
+        }
+
+        [Fact]
+        public void StatsigOptionsBuilder_Build_WithExposureDedupeMaxKeys_CreatesStatsigOptionsSuccessfully()
+        {
+            var builder = new StatsigOptionsBuilder().SetExposureDedupeMaxKeys(50000);
+
+            using var options = builder.Build();
+
+            Assert.NotNull(options);
         }
 
         [Fact]

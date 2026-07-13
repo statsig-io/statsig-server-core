@@ -129,6 +129,26 @@ public class StatsigOptionsTest {
   }
 
   @Test
+  void testExposureDedupeMaxKeys() {
+    // Forwarded to the core StatsigOptions across the JNI boundary; an unset or
+    // non-positive value falls back to the core default (100,000).
+    StatsigOptions options1 = new StatsigOptions.Builder().setExposureDedupeMaxKeys(50000L).build();
+
+    StatsigOptions options2 = new StatsigOptions.Builder().setExposureDedupeMaxKeys(0L).build();
+  }
+
+  @Test
+  void testExposureDedupeMaxKeysWithOtherOptions() {
+    StatsigOptions options =
+        new StatsigOptions.Builder()
+            .setSpecsUrl("https://example.com/specs")
+            .setEventLoggingMaxQueueSize(5000L)
+            .setExposureDedupeMaxKeys(250000L)
+            .setEnvironment("staging")
+            .build();
+  }
+
+  @Test
   void testBuilderWithSpecAdapterConfigs() {
     SpecAdapterConfig httpConfig =
         new SpecAdapterConfig()

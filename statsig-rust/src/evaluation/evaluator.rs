@@ -58,6 +58,14 @@ impl Evaluator {
     ) -> Result<Recognition, StatsigErr> {
         let spec_name_intern = InternedString::from_str_ref(spec_name);
 
+        // Persistent-assignment enforceTargeting / enforceOverrides re-run a
+        // top-level evaluation restricted to the targeting-only / override-only
+        // rules of the spec. In that mode we bypass overrides / config mapping /
+        // CMAB and only consider the matching subset of `spec.rules`. Nested
+        // evaluations (nested_count > 0) always see the full rule set.
+        let filter_active =
+            ctx.nested_count == 0 && (ctx.only_evaluate_targeting || ctx.only_evaluate_overrides);
+
         let opt_spec = match spec_type {
             SpecType::Gate => ctx.specs_data.feature_gates.get(&spec_name_intern),
             SpecType::DynamicConfig => ctx.specs_data.dynamic_configs.get(&spec_name_intern),
@@ -69,16 +77,18 @@ impl Evaluator {
         }
         .map(|sp| sp.as_spec_ref());
 
-        if try_apply_override(ctx, spec_name, spec_type, opt_spec) {
-            return Ok(Recognition::Recognized);
-        }
+        if !filter_active {
+            if try_apply_override(ctx, spec_name, spec_type, opt_spec) {
+                return Ok(Recognition::Recognized);
+            }
 
-        if try_apply_config_mapping(ctx, spec_name, spec_type, opt_spec) {
-            return Ok(Recognition::Recognized);
-        }
+            if try_apply_config_mapping(ctx, spec_name, spec_type, opt_spec) {
+                return Ok(Recognition::Recognized);
+            }
 
-        if evaluate_cmab(ctx, spec_name, spec_type) {
-            return Ok(Recognition::Recognized);
+            if evaluate_cmab(ctx, spec_name, spec_type) {
+                return Ok(Recognition::Recognized);
+            }
         }
 
         let spec = unwrap_or_return!(opt_spec, Ok(Recognition::Unrecognized));
@@ -113,7 +123,21 @@ impl Evaluator {
             return new_layer_eval(ctx, spec);
         }
 
+        // In filtered mode, an empty subset means the user is not gated out of
+        // targeting / is not overridden. Mirror the legacy Java server SDK by
+        // returning a false evaluation rather than falling through to the
+        // spec's default value.
+        if filter_active && !spec_has_filtered_rule(ctx, spec) {
+            ctx.result.bool_value = false;
+            ctx.finalize_evaluation(spec, None);
+            return Ok(Recognition::Recognized);
+        }
+
         for rule in &spec.rules {
+            if filter_active && !rule_matches_filter(ctx, rule) {
+                continue;
+            }
+
             evaluate_rule(ctx, rule)?;
 
             if ctx.result.unsupported {
@@ -175,7 +199,19 @@ fn new_layer_eval<'a>(
     let mut secondary_exposures: Vec<SecondaryExposure> = Vec::new();
     let mut undelegated_secondary_exposures: Vec<SecondaryExposure> = Vec::new();
 
+    let filter_active =
+        ctx.nested_count == 0 && (ctx.only_evaluate_targeting || ctx.only_evaluate_overrides);
+    if filter_active && !spec_has_filtered_rule(ctx, spec) {
+        ctx.result.bool_value = false;
+        ctx.finalize_evaluation(spec, None);
+        return Ok(Recognition::Recognized);
+    }
+
     for rule in &spec.rules {
+        if filter_active && !rule_matches_filter(ctx, rule) {
+            continue;
+        }
+
         evaluate_rule(ctx, rule)?;
         secondary_exposures.append(&mut ctx.result.secondary_exposures);
         undelegated_secondary_exposures.append(&mut ctx.result.secondary_exposures);
@@ -256,6 +292,15 @@ fn new_layer_eval<'a>(
     ctx.result.parameter_rule_ids = Some(rule_ids);
     ctx.finalize_evaluation(spec, None);
     Ok(Recognition::Recognized)
+}
+
+fn rule_matches_filter(ctx: &EvaluatorContext, rule: &Rule) -> bool {
+    (ctx.only_evaluate_targeting && rule.is_targeting_rule())
+        || (ctx.only_evaluate_overrides && rule.is_override_rule())
+}
+
+fn spec_has_filtered_rule(ctx: &EvaluatorContext, spec: &Spec) -> bool {
+    spec.rules.iter().any(|rule| rule_matches_filter(ctx, rule))
 }
 
 fn update_parameter_values(
@@ -602,6 +647,8 @@ fn evaluate_experiment_group<'a>(
         ExperimentEvaluationOptions {
             disable_exposure_logging: ctx.disable_exposure_logging,
             user_persisted_values: None,
+            enforce_overrides: false,
+            enforce_targeting: false,
         },
     );
     res.group_name

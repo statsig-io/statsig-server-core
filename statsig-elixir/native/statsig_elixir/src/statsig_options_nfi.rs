@@ -46,6 +46,7 @@ pub struct StatsigOptions {
     pub log_event_url: Option<String>,
     pub event_logging_flush_interval_ms: Option<u32>,
     pub event_logging_max_queue_size: Option<u32>,
+    pub exposure_dedupe_max_keys: Option<u32>,
 
     pub specs_sync_interval_ms: Option<u32>,
     pub specs_url: Option<String>,
@@ -77,6 +78,7 @@ impl From<StatsigOptions> for StatsigOptionsActual {
             enable_dcs_deltas: config.enable_dcs_deltas,
             id_lists_url: config.id_lists_url,
             event_logging_max_queue_size: config.event_logging_max_queue_size,
+            exposure_dedupe_max_keys: config.exposure_dedupe_max_keys,
             fallback_to_statsig_api: config.fallback_to_statsig_api,
             specs_sync_interval_ms: config.specs_sync_interval_ms,
             specs_url: config.specs_url,

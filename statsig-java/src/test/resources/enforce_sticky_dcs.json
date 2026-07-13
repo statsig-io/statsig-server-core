@@ -1,0 +1,134 @@
+{
+    "dynamic_configs": {
+        "enforce_exp": {
+            "type": "dynamic_config",
+            "salt": "enforce-exp-salt",
+            "enabled": true,
+            "defaultValue": { "value": "default_value" },
+            "rules": [
+                {
+                    "name": "override_rule",
+                    "groupName": "Override",
+                    "passPercentage": 100,
+                    "conditions": ["1000000001"],
+                    "returnValue": { "value": "override_value" },
+                    "id": "override_rule:userID:id_override",
+                    "salt": "",
+                    "idType": "userID"
+                },
+                {
+                    "name": "targetingGate",
+                    "passPercentage": 100,
+                    "conditions": ["1000000002"],
+                    "returnValue": {},
+                    "id": "targetingGate",
+                    "salt": "",
+                    "idType": "userID"
+                },
+                {
+                    "name": "experiment_group_rule",
+                    "groupName": "Test",
+                    "passPercentage": 100,
+                    "conditions": ["1000000003"],
+                    "returnValue": { "value": "live_value" },
+                    "id": "experiment_group_rule",
+                    "salt": "experiment_group_rule",
+                    "idType": "userID",
+                    "isExperimentGroup": true
+                }
+            ],
+            "idType": "userID",
+            "entity": "experiment",
+            "version": 1,
+            "isActive": true,
+            "hasSharedParams": false
+        }
+    },
+    "feature_gates": {
+        "targeting_gate": {
+            "type": "feature_gate",
+            "salt": "targeting-gate-salt",
+            "enabled": true,
+            "defaultValue": false,
+            "rules": [
+                {
+                    "name": "targeted_users",
+                    "passPercentage": 100,
+                    "conditions": ["1000000004"],
+                    "returnValue": true,
+                    "id": "targeted_users",
+                    "salt": "",
+                    "idType": "userID"
+                }
+            ],
+            "idType": "userID",
+            "entity": "feature_gate",
+            "version": 1
+        }
+    },
+    "experiment_to_layer": {},
+    "layer_configs": {
+        "enforce_layer": {
+            "type": "dynamic_config",
+            "salt": "enforce-layer-salt",
+            "enabled": true,
+            "defaultValue": { "value": "layer_default" },
+            "rules": [
+                {
+                    "name": "experimentAssignment",
+                    "passPercentage": 100,
+                    "conditions": ["1000000003"],
+                    "returnValue": {},
+                    "id": "experimentAssignment",
+                    "salt": "",
+                    "idType": "userID",
+                    "configDelegate": "enforce_exp"
+                }
+            ],
+            "idType": "userID",
+            "entity": "layer",
+            "version": 1
+        }
+    },
+    "has_updates": true,
+    "time": 1745275698471,
+    "condition_map": {
+        "1000000001": {
+            "type": "user_field",
+            "targetValue": ["override-user"],
+            "operator": "any",
+            "field": "userID",
+            "additionalValues": {},
+            "idType": "userID"
+        },
+        "1000000002": {
+            "type": "fail_gate",
+            "targetValue": "targeting_gate",
+            "operator": null,
+            "field": null,
+            "additionalValues": {},
+            "idType": "userID"
+        },
+        "1000000003": {
+            "type": "public",
+            "targetValue": null,
+            "operator": null,
+            "field": null,
+            "additionalValues": {},
+            "idType": "userID"
+        },
+        "1000000004": {
+            "type": "user_field",
+            "targetValue": ["yes"],
+            "operator": "any",
+            "field": "targeted",
+            "additionalValues": {},
+            "idType": "userID"
+        }
+    },
+    "response_format": "dcs-v2",
+    "default_environment": "production",
+    "id_lists": {},
+    "diagnostics": {},
+    "sdk_configs": {}
+}

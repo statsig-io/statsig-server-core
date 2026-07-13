@@ -56,6 +56,8 @@ impl From<ExperimentEvaluationOptionsNapi> for ExperimentEvaluationOptions {
             user_persisted_values: opts.user_persisted_values.and_then(|values| {
                 serde_json::from_value(serde_json::Value::Object(values.into_iter().collect())).ok()
             }),
+            // enforceOverrides / enforceTargeting are wired up in a follow-up binding sub-issue.
+            ..Default::default()
         }
     }
 }
@@ -77,6 +79,8 @@ impl From<LayerEvaluationOptionsNapi> for LayerEvaluationOptions {
             user_persisted_values: opts.user_persisted_values.and_then(|values| {
                 serde_json::from_value(serde_json::Value::Object(values.into_iter().collect())).ok()
             }),
+            // enforceOverrides / enforceTargeting are wired up in a follow-up binding sub-issue.
+            ..Default::default()
         }
     }
 }

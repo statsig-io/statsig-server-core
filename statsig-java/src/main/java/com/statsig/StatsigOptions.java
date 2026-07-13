@@ -34,6 +34,7 @@ public class StatsigOptions {
             builder.eventLoggingFlushIntervalMs,
             builder.eventLoggingMaxQueueSize,
             builder.eventLoggingMaxPendingBatchQueueSize,
+            builder.exposureDedupeMaxKeys,
             builder.initTimeoutMs,
             builder.environment,
             builder.outputLoggerLevel.getValue(),
@@ -72,6 +73,7 @@ public class StatsigOptions {
     private long eventLoggingFlushIntervalMs;
     private long eventLoggingMaxQueueSize;
     private long eventLoggingMaxPendingBatchQueueSize;
+    private long exposureDedupeMaxKeys;
     private long initTimeoutMs;
     private String environment;
     private PersistentStorage persistentStorage;
@@ -136,6 +138,11 @@ public class StatsigOptions {
     public Builder setEventLoggingMaxPendingBatchQueueSize(
         long eventLoggingMaxPendingBatchQueueSize) {
       this.eventLoggingMaxPendingBatchQueueSize = eventLoggingMaxPendingBatchQueueSize;
+      return this;
+    }
+
+    public Builder setExposureDedupeMaxKeys(long exposureDedupeMaxKeys) {
+      this.exposureDedupeMaxKeys = exposureDedupeMaxKeys;
       return this;
     }
 

@@ -280,6 +280,24 @@ defmodule Statsig.NativeBindingsTest do
     end
   end
 
+  describe "new/3 with exposure_dedupe_max_keys" do
+    test "accepts the option and forwards it to the core options" do
+      ref =
+        NativeBindings.new(
+          "",
+          %Options{disable_network: true, exposure_dedupe_max_keys: 25_000},
+          Statsig.get_system_info()
+        )
+
+      NativeBindings.initialize(ref)
+      on_exit(fn -> NativeBindings.shutdown(ref) end)
+
+      # Decoding the %Options{} struct and forwarding exposure_dedupe_max_keys to
+      # the core StatsigOptions succeeded, so evaluation works as usual.
+      refute NativeBindings.check_gate(ref, "my_gate", user("user1"), nil)
+    end
+  end
+
   describe "remove_all_overrides/1" do
     test "removes all overrides at once" do
       ref = new()

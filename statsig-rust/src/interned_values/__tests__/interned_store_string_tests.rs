@@ -122,9 +122,11 @@ rusty_fork_test! {
         assert_eq!(InternedStore::get_memoized_len().0, 1);
 
         drop(string);
+        InternedStore::run_maintenance();
         assert_eq!(InternedStore::get_memoized_len().0, 1);
 
         drop(string2);
+        InternedStore::run_maintenance();
         assert_eq!(InternedStore::get_memoized_len().0, 0);
     }
 

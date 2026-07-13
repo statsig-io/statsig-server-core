@@ -244,6 +244,7 @@ pub extern "C" fn statsig_options_create(
     persistent_storage_ref: u64,
     // Note: keep new params appended at the end to preserve the positional C ABI.
     id_lists_request_timeout_ms: c_int,
+    exposure_dedupe_max_keys: c_int,
 ) -> u64 {
     let specs_url = c_char_to_string(specs_url);
     let log_event_url = c_char_to_string(log_event_url);
@@ -310,6 +311,7 @@ pub extern "C" fn statsig_options_create(
         fallback_to_statsig_api: extract_opt_bool(fallback_to_statsig_api),
         use_third_party_ua_parser: extract_opt_bool(use_third_party_ua_parser),
         proxy_config,
+        exposure_dedupe_max_keys: c_int_to_u32(exposure_dedupe_max_keys),
         ..StatsigOptions::new()
     })
     .unwrap_or_else(|| {

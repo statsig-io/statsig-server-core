@@ -215,6 +215,11 @@ impl Default for InternedString {
 
 impl Drop for InternedString {
     fn drop(&mut self) {
+        // Static values live in preloaded/mmap data and are never in the mutable
+        // store, so there is nothing to release for them.
+        if matches!(self.value, InternedStringValue::Static(_)) {
+            return;
+        }
         self.value = InternedStringValue::Static("");
         InternedStore::release_string(self.hash);
     }

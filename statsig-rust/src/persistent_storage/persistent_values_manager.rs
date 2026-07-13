@@ -6,17 +6,15 @@ use crate::{
     evaluation::evaluation_types::{
         BaseEvaluation, ExperimentEvaluation, ExtraExposureInfo, LayerEvaluation,
     },
+    evaluation::evaluator::SpecType,
     get_persistent_storage_key,
     interned_string::InternedString,
-    log_d, log_error_to_statsig_and_console, make_sticky_value_from_experiment,
-    make_sticky_value_from_layer,
-    observability::{ops_stats::OpsStatsForInstance, sdk_errors_observer::ErrorBoundaryEvent},
-    read_lock_or_else,
+    log_d, make_sticky_value_from_experiment, make_sticky_value_from_layer,
     spec_store::SpecStoreData,
     statsig_types::{Experiment, Layer},
     user::StatsigUserInternal,
     DynamicReturnable, EvaluationDetails, ExperimentEvaluationOptions, LayerEvaluationOptions,
-    PersistentStorage, SpecStore, StatsigErr, StickyValues,
+    PersistentStorage, StickyValues,
 };
 
 #[cfg(feature = "ffi-support")]
@@ -28,16 +26,101 @@ pub struct PersistentValuesManager {
 
 const TAG: &str = "PersistentValuesManager";
 
+/// Which subset of a spec's rules to consider when re-evaluating to decide
+/// whether a persisted sticky value should still be honored.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StickyRuleFilter {
+    Targeting,
+    Overrides,
+}
+
+/// Re-evaluates a spec (an experiment / dynamic config) restricted to a single
+/// rule subset, returning the resulting boolean value. Supplied by `Statsig` so
+/// the manager can decide whether a persisted sticky value should still win
+/// without holding an evaluator or spec store reference itself.
+pub type StickyReeval<'a> = &'a dyn Fn(&str, &SpecType, StickyRuleFilter) -> bool;
+
+/// Mirrors the legacy Java server SDK `Evaluator.evaluateShouldReturnSticky`.
+///
+/// Returns `true` if the persisted sticky value should be honored, and `false`
+/// if the live evaluation should win instead because the user no longer passes
+/// targeting (`enforce_targeting`) or a matching console override rule applies
+/// (`enforce_overrides`).
+fn should_return_sticky_value(
+    enforce_overrides: bool,
+    enforce_targeting: bool,
+    reeval_spec_name: &str,
+    reeval: StickyReeval,
+) -> bool {
+    if enforce_targeting {
+        let excluded_by_targeting = reeval(
+            reeval_spec_name,
+            &SpecType::Experiment,
+            StickyRuleFilter::Targeting,
+        );
+        if excluded_by_targeting {
+            return false;
+        }
+    }
+
+    if enforce_overrides {
+        let is_overridden = reeval(
+            reeval_spec_name,
+            &SpecType::Experiment,
+            StickyRuleFilter::Overrides,
+        );
+        if is_overridden {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Layer variant of [`should_return_sticky_value`]. A layer's sticky value is
+/// backed by an allocated experiment (`config_delegate`); that experiment is the
+/// spec re-evaluated for override / targeting enforcement. When there is no
+/// delegate there is nothing to re-evaluate, so the sticky value is honored.
+///
+/// Note: honoring a delegate-less sticky value intentionally deviates from the
+/// legacy Java server SDK, which deletes the sticky value and re-evaluates live
+/// when the delegate spec cannot be resolved (`Evaluator.kt`,
+/// `evaluateLayerImpl`). It instead matches the pre-existing Rust behavior
+/// (`get_sticky_aware_is_experiment_active` falls back to the live layer's
+/// active state). The SDK never writes a layer sticky value without a delegate,
+/// so this only affects corrupted or legacy storage entries.
+fn layer_should_return_sticky_value(
+    options: &LayerEvaluationOptions,
+    sticky_value: &StickyValues,
+    reeval: StickyReeval,
+) -> bool {
+    if !(options.enforce_overrides || options.enforce_targeting) {
+        return true;
+    }
+
+    let delegate = match sticky_value.config_delegate.as_ref() {
+        Some(delegate) => delegate,
+        None => return true,
+    };
+
+    should_return_sticky_value(
+        options.enforce_overrides,
+        options.enforce_targeting,
+        delegate.as_str(),
+        reeval,
+    )
+}
+
 #[cfg(feature = "ffi-support")]
 impl PersistentValuesManager {
     pub fn try_apply_sticky_value_to_raw_layer<'a>(
         manager: &'a Option<Arc<PersistentValuesManager>>,
         user: &'a StatsigUserInternal,
         options: &'a LayerEvaluationOptions,
-        spec_store: &Arc<SpecStore>,
-        ops_stats: &Arc<OpsStatsForInstance>,
+        spec_store_data: &SpecStoreData,
         details: EvaluationDetails,
         result: Option<EvaluatorResult>,
+        reeval: StickyReeval,
     ) -> (Option<EvaluatorResult>, EvaluationDetails) {
         let manager = match manager {
             Some(manager) => manager,
@@ -53,23 +136,13 @@ impl PersistentValuesManager {
             }
         };
 
-        let spec_store_data = read_lock_or_else!(spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return (Some(result), details);
-        });
-
         let (result, details) = manager.try_apply_sticky_value_to_raw_layer_impl(
             user,
             options,
-            &spec_store_data,
+            spec_store_data,
             details,
             result,
+            reeval,
         );
 
         (Some(result), details)
@@ -81,6 +154,7 @@ impl PersistentValuesManager {
         options: &'a ExperimentEvaluationOptions,
         details: EvaluationDetails,
         result: Option<EvaluatorResult>,
+        reeval: StickyReeval,
     ) -> (Option<EvaluatorResult>, EvaluationDetails) {
         let manager = match manager {
             Some(manager) => manager,
@@ -96,8 +170,8 @@ impl PersistentValuesManager {
             }
         };
 
-        let (result, details) =
-            manager.try_apply_sticky_value_to_raw_experiment_impl(user, options, details, result);
+        let (result, details) = manager
+            .try_apply_sticky_value_to_raw_experiment_impl(user, options, details, result, reeval);
 
         (Some(result), details)
     }
@@ -108,6 +182,7 @@ impl PersistentValuesManager {
         options: &'a ExperimentEvaluationOptions,
         curr_details: EvaluationDetails,
         curr_result: EvaluatorResult,
+        reeval: StickyReeval,
     ) -> (EvaluatorResult, EvaluationDetails) {
         let id_type = match &curr_result.id_type {
             Some(id_type) => id_type,
@@ -143,9 +218,24 @@ impl PersistentValuesManager {
 
         // Exit Early: Found a Sticky Value
         if let Some(found) = sticky_value {
-            let sticky_details = Self::make_evaluation_details_from_sticky_value(found);
-            let sticky_result = Self::make_evaluation_result_from_sticky_value(curr_result, found);
-            return (sticky_result, sticky_details);
+            let keep_sticky = !(options.enforce_overrides || options.enforce_targeting)
+                || should_return_sticky_value(
+                    options.enforce_overrides,
+                    options.enforce_targeting,
+                    config_name.as_str(),
+                    reeval,
+                );
+
+            if keep_sticky {
+                let sticky_details = Self::make_evaluation_details_from_sticky_value(found);
+                let sticky_result =
+                    Self::make_evaluation_result_from_sticky_value(curr_result, found);
+                return (sticky_result, sticky_details);
+            }
+
+            // enforceOverrides / enforceTargeting: the live evaluation wins, so
+            // return it as-is without persisting a new sticky value.
+            return (curr_result, curr_details);
         }
 
         if curr_result.is_experiment_active && curr_result.is_experiment_group {
@@ -166,6 +256,7 @@ impl PersistentValuesManager {
         spec_store_data: &'a SpecStoreData,
         curr_details: EvaluationDetails,
         curr_result: EvaluatorResult,
+        reeval: StickyReeval,
     ) -> (EvaluatorResult, EvaluationDetails) {
         let id_type = match &curr_result.id_type {
             Some(id_type) => id_type,
@@ -207,6 +298,11 @@ impl PersistentValuesManager {
 
         // Exit Early: Found a Sticky Value
         if let Some(found) = sticky_value {
+            if !layer_should_return_sticky_value(options, found, reeval) {
+                // enforceOverrides / enforceTargeting: the live evaluation wins.
+                return (curr_result, curr_details);
+            }
+
             let sticky_details = Self::make_evaluation_details_from_sticky_value(found);
             let sticky_result = Self::make_evaluation_result_from_sticky_value(curr_result, found);
             return (sticky_result, sticky_details);
@@ -295,13 +391,14 @@ impl PersistentValuesManager {
         user: &'a StatsigUserInternal,
         options: &'a ExperimentEvaluationOptions,
         curr_experiment: Experiment,
+        reeval: StickyReeval,
     ) -> Experiment {
         let manager = match manager {
             Some(manager) => manager,
             None => return curr_experiment,
         };
 
-        manager.try_apply_sticky_value_to_experiment_impl(user, options, curr_experiment)
+        manager.try_apply_sticky_value_to_experiment_impl(user, options, curr_experiment, reeval)
     }
 
     fn try_apply_sticky_value_to_experiment_impl<'a>(
@@ -309,6 +406,7 @@ impl PersistentValuesManager {
         user: &'a StatsigUserInternal,
         options: &'a ExperimentEvaluationOptions,
         curr_experiment: Experiment,
+        reeval: StickyReeval,
     ) -> Experiment {
         // 1. Check if the caller requested sticky, if not, delete and return current
         // 2. Check if current is active, if not, delete and return current
@@ -343,7 +441,21 @@ impl PersistentValuesManager {
 
         // Exit Early: Found a Sticky Value
         if let Some(found) = sticky_value {
-            return make_experiment_from_sticky_value(curr_experiment, found);
+            let keep_sticky = !(options.enforce_overrides || options.enforce_targeting)
+                || should_return_sticky_value(
+                    options.enforce_overrides,
+                    options.enforce_targeting,
+                    config_name,
+                    reeval,
+                );
+
+            if keep_sticky {
+                return make_experiment_from_sticky_value(curr_experiment, found);
+            }
+
+            // enforceOverrides / enforceTargeting: the live evaluation wins, so
+            // return it as-is without persisting a new sticky value.
+            return curr_experiment;
         }
 
         let is_in_experiment = curr_experiment
@@ -369,27 +481,22 @@ impl PersistentValuesManager {
         manager: &'a Option<Arc<PersistentValuesManager>>,
         user: &'a StatsigUserInternal,
         options: &'a LayerEvaluationOptions,
-        spec_store: &Arc<SpecStore>,
-        ops_stats: &Arc<OpsStatsForInstance>,
+        spec_store_data: &SpecStoreData,
         curr_layer: Layer,
+        reeval: StickyReeval,
     ) -> Layer {
         let manager = match manager {
             Some(manager) => manager,
             None => return curr_layer,
         };
 
-        let data = read_lock_or_else!(spec_store.data, {
-            log_error_to_statsig_and_console!(
-                &ops_stats,
-                TAG,
-                StatsigErr::LockFailure(
-                    "Failed to acquire read lock for spec store data".to_string()
-                )
-            );
-            return curr_layer;
-        });
-
-        manager.try_apply_sticky_value_to_layer_impl(user, options, &data, curr_layer)
+        manager.try_apply_sticky_value_to_layer_impl(
+            user,
+            options,
+            spec_store_data,
+            curr_layer,
+            reeval,
+        )
     }
 
     fn try_apply_sticky_value_to_layer_impl<'a>(
@@ -398,6 +505,7 @@ impl PersistentValuesManager {
         options: &'a LayerEvaluationOptions,
         spec_store_data: &'a SpecStoreData,
         curr_layer: Layer,
+        reeval: StickyReeval,
     ) -> Layer {
         // Logic is similar to the experiment flow, but we need to be sure to check if the sticky experiment is still active using the spec store data
 
@@ -427,6 +535,11 @@ impl PersistentValuesManager {
 
         // Exit Early: Found a Sticky Value
         if let Some(found) = sticky_value {
+            if !layer_should_return_sticky_value(options, found, reeval) {
+                // enforceOverrides / enforceTargeting: the live evaluation wins.
+                return curr_layer;
+            }
+
             return make_layer_from_sticky_value(curr_layer, found);
         }
 
@@ -709,4 +822,97 @@ fn prep_sticky_config_delegate(
 
     let as_string = config_delegate.unperformant_to_string();
     (Some(config_delegate), Some(as_string))
+}
+
+#[cfg(test)]
+mod sticky_gate_tests {
+    use super::{layer_should_return_sticky_value, should_return_sticky_value, StickyRuleFilter};
+    use crate::{LayerEvaluationOptions, StickyValues};
+    use std::cell::RefCell;
+
+    #[test]
+    fn test_no_enforcement_keeps_sticky() {
+        // With neither flag set the gate is never consulted; sticky always wins.
+        let reeval = |_: &str, _: &_, _: StickyRuleFilter| panic!("should not re-evaluate");
+        assert!(should_return_sticky_value(false, false, "exp", &reeval));
+    }
+
+    #[test]
+    fn test_enforce_overrides_override_matches_drops_sticky() {
+        let reeval =
+            |_: &str, _: &_, filter: StickyRuleFilter| filter == StickyRuleFilter::Overrides;
+        // Override rule matches -> live evaluation should win.
+        assert!(!should_return_sticky_value(true, false, "exp", &reeval));
+    }
+
+    #[test]
+    fn test_enforce_overrides_no_override_keeps_sticky() {
+        let reeval = |_: &str, _: &_, _: StickyRuleFilter| false;
+        assert!(should_return_sticky_value(true, false, "exp", &reeval));
+    }
+
+    #[test]
+    fn test_enforce_targeting_not_targeted_drops_sticky() {
+        // A truthy targeting evaluation means the user is gated out of targeting.
+        let reeval =
+            |_: &str, _: &_, filter: StickyRuleFilter| filter == StickyRuleFilter::Targeting;
+        assert!(!should_return_sticky_value(false, true, "exp", &reeval));
+    }
+
+    #[test]
+    fn test_enforce_targeting_still_targeted_keeps_sticky() {
+        let reeval = |_: &str, _: &_, _: StickyRuleFilter| false;
+        assert!(should_return_sticky_value(false, true, "exp", &reeval));
+    }
+
+    #[test]
+    fn test_enforce_targeting_short_circuits_before_overrides() {
+        let seen = RefCell::new(Vec::new());
+        let reeval = |_: &str, _: &_, filter: StickyRuleFilter| {
+            seen.borrow_mut().push(filter);
+            // Targeting excludes the user.
+            filter == StickyRuleFilter::Targeting
+        };
+        assert!(!should_return_sticky_value(true, true, "exp", &reeval));
+        // Overrides must not be consulted once targeting already drops the sticky value.
+        assert_eq!(*seen.borrow(), vec![StickyRuleFilter::Targeting]);
+    }
+
+    #[test]
+    fn test_layer_without_delegate_keeps_sticky() {
+        let options = LayerEvaluationOptions {
+            enforce_overrides: true,
+            enforce_targeting: true,
+            ..Default::default()
+        };
+        let sticky = StickyValues {
+            config_delegate: None,
+            ..Default::default()
+        };
+        let reeval = |_: &str, _: &_, _: StickyRuleFilter| panic!("no delegate to re-evaluate");
+        assert!(layer_should_return_sticky_value(&options, &sticky, &reeval));
+    }
+
+    #[test]
+    fn test_layer_with_delegate_defers_to_gate() {
+        let options = LayerEvaluationOptions {
+            enforce_overrides: true,
+            ..Default::default()
+        };
+        let sticky = StickyValues {
+            config_delegate: Some(crate::interned_string::InternedString::from_str_ref(
+                "allocated_experiment",
+            )),
+            ..Default::default()
+        };
+        let seen = RefCell::new(None);
+        let reeval = |name: &str, _: &_, _: StickyRuleFilter| {
+            *seen.borrow_mut() = Some(name.to_string());
+            true // override matches -> drop sticky
+        };
+        assert!(!layer_should_return_sticky_value(
+            &options, &sticky, &reeval
+        ));
+        assert_eq!(seen.borrow().as_deref(), Some("allocated_experiment"));
+    }
 }

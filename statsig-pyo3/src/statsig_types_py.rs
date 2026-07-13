@@ -311,6 +311,8 @@ impl From<&ExperimentEvaluationOptionsPy> for ExperimentEvaluationOptions {
             disable_exposure_logging: val.disable_exposure_logging,
             // For performance consideration, conversion to user persisted values use convert_dict_to_user_persisted_values()
             user_persisted_values: None,
+            // enforce_overrides / enforce_targeting are wired up in a follow-up binding sub-issue.
+            ..Default::default()
         }
     }
 }
@@ -321,6 +323,8 @@ impl From<&LayerEvaluationOptionsPy> for LayerEvaluationOptions {
             disable_exposure_logging: val.disable_exposure_logging,
             // For performance consideration, conversion to user persisted values use convert_dict_to_user_persisted_values()
             user_persisted_values: None,
+            // enforce_overrides / enforce_targeting are wired up in a follow-up binding sub-issue.
+            ..Default::default()
         }
     }
 }

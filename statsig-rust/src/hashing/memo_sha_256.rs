@@ -1,21 +1,13 @@
-use crate::log_e;
 use ahash::AHasher;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
-use parking_lot::Mutex;
+use dashmap::DashMap;
 use sha2::digest::Output;
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::time::Duration;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 const MAX_CACHE_ENTRIES: usize = 10000;
-
-struct MemoState {
-    sha_hasher: Sha256,
-    user_hash_cache: HashMap<u64, Vec<(EvaluationHashKey, u64)>>,
-    user_hash_cache_entries: usize,
-}
 
 enum EvaluationHashKey {
     Raw(String),
@@ -76,19 +68,21 @@ impl<'a> EvaluationHashKeyRef<'a> {
     }
 }
 
-const TAG: &str = stringify!(MemoSha256);
+/// [S2SDK-140] Previously this held a single `Mutex<MemoState>` that
+/// every `evaluate_pass_percentage` call locked, even for cache hits, which
+/// serialized concurrent evaluations. The cache is now a sharded `DashMap`
+/// (hits only take a shard read lock) and misses hash with a stack-local
+/// `Sha256` instead of a shared one behind the mutex.
 pub struct MemoSha256 {
-    inner: Mutex<MemoState>,
+    user_hash_cache: DashMap<u64, Vec<(EvaluationHashKey, u64)>, ahash::RandomState>,
+    user_hash_cache_entries: AtomicUsize,
 }
 
 impl MemoSha256 {
     pub fn new() -> Self {
         Self {
-            inner: Mutex::new(MemoState {
-                sha_hasher: Sha256::new(),
-                user_hash_cache: HashMap::new(),
-                user_hash_cache_entries: 0,
-            }),
+            user_hash_cache: DashMap::with_hasher(ahash::RandomState::default()),
+            user_hash_cache_entries: AtomicUsize::new(0),
         }
     }
 
@@ -105,19 +99,8 @@ impl MemoSha256 {
     }
 
     fn compute_hash_for_key(&self, key: EvaluationHashKeyRef) -> Option<u64> {
-        let mut state = match self.inner.try_lock_for(Duration::from_secs(5)) {
-            Some(state) => state,
-            None => {
-                log_e!(
-                    TAG,
-                    "Failed to acquire lock for Sha256: Failed to lock inner"
-                );
-                return None;
-            }
-        };
-
         let fast_hash = key.fast_hash();
-        if let Some(bucket) = state.user_hash_cache.get(&fast_hash) {
+        if let Some(bucket) = self.user_hash_cache.get(&fast_hash) {
             if let Some((_, value)) = bucket
                 .iter()
                 .find(|(cached_key, _)| cached_key.matches(&key))
@@ -126,22 +109,30 @@ impl MemoSha256 {
             }
         }
 
-        if state.user_hash_cache_entries > MAX_CACHE_ENTRIES {
-            state.user_hash_cache.clear();
-            state.user_hash_cache_entries = 0;
+        // swap(0) elects a single evicting thread: racing callers that also saw
+        // the count above the cap will swap out 0 and skip the clear().
+        if self.user_hash_cache_entries.load(Ordering::Relaxed) > MAX_CACHE_ENTRIES
+            && self.user_hash_cache_entries.swap(0, Ordering::Relaxed) > MAX_CACHE_ENTRIES
+        {
+            self.user_hash_cache.clear();
         }
 
-        let hash = self.compute_bytes_for_key(&mut state, &key);
+        let hash = compute_bytes_for_key(&key);
 
         match hash.split_at(size_of::<u64>()).0.try_into() {
             Ok(bytes) => {
                 let u_bytes = u64::from_be_bytes(bytes);
-                state
-                    .user_hash_cache
-                    .entry(fast_hash)
-                    .or_default()
-                    .push((key.to_owned_key(), u_bytes));
-                state.user_hash_cache_entries += 1;
+                let mut bucket = self.user_hash_cache.entry(fast_hash).or_default();
+                // Re-check under the write guard: a racing thread may have cached
+                // the same key between our lock-free read miss and this point, and
+                // duplicate entries would grow the bucket and inflate the counter.
+                if !bucket
+                    .iter()
+                    .any(|(cached_key, _)| cached_key.matches(&key))
+                {
+                    bucket.push((key.to_owned_key(), u_bytes));
+                    self.user_hash_cache_entries.fetch_add(1, Ordering::Relaxed);
+                }
                 Some(u_bytes)
             }
             _ => None,
@@ -149,48 +140,30 @@ impl MemoSha256 {
     }
 
     pub fn hash_string(&self, input: &str) -> String {
-        let mut state = match self.inner.try_lock_for(Duration::from_secs(5)) {
-            Some(state) => state,
-            None => {
-                log_e!(
-                    TAG,
-                    "Failed to acquire lock for Sha256: Failed to lock inner"
-                );
-                return "STATSIG_HASH_ERROR".to_string();
-            }
-        };
-
-        let hash = self.compute_bytes(&mut state, input);
-        BASE64_STANDARD.encode(hash)
+        let mut hasher = Sha256::new();
+        hasher.update(input.as_bytes());
+        BASE64_STANDARD.encode(hasher.finalize())
     }
+}
 
-    fn compute_bytes(&self, state: &mut MemoState, input: &str) -> Output<Sha256> {
-        state.sha_hasher.update(input.as_bytes());
-        state.sha_hasher.finalize_reset()
-    }
-
-    fn compute_bytes_for_key(
-        &self,
-        state: &mut MemoState,
-        key: &EvaluationHashKeyRef,
-    ) -> Output<Sha256> {
-        match key {
-            EvaluationHashKeyRef::Raw(a) => {
-                state.sha_hasher.update(a.as_bytes());
-            }
-            EvaluationHashKeyRef::Dot2(a, b) => {
-                state.sha_hasher.update(a.as_bytes());
-                state.sha_hasher.update(b".");
-                state.sha_hasher.update(b.as_bytes());
-            }
-            EvaluationHashKeyRef::Dot3(a, b, c) => {
-                state.sha_hasher.update(a.as_bytes());
-                state.sha_hasher.update(b".");
-                state.sha_hasher.update(b.as_bytes());
-                state.sha_hasher.update(b".");
-                state.sha_hasher.update(c.as_bytes());
-            }
+fn compute_bytes_for_key(key: &EvaluationHashKeyRef) -> Output<Sha256> {
+    let mut hasher = Sha256::new();
+    match key {
+        EvaluationHashKeyRef::Raw(a) => {
+            hasher.update(a.as_bytes());
         }
-        state.sha_hasher.finalize_reset()
+        EvaluationHashKeyRef::Dot2(a, b) => {
+            hasher.update(a.as_bytes());
+            hasher.update(b".");
+            hasher.update(b.as_bytes());
+        }
+        EvaluationHashKeyRef::Dot3(a, b, c) => {
+            hasher.update(a.as_bytes());
+            hasher.update(b".");
+            hasher.update(b.as_bytes());
+            hasher.update(b".");
+            hasher.update(c.as_bytes());
+        }
     }
+    hasher.finalize()
 }

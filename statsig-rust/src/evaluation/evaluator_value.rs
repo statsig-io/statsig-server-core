@@ -125,6 +125,10 @@ impl PartialEq for EvaluatorValue {
 
 impl Drop for EvaluatorValue {
     fn drop(&mut self) {
+        // Static values are never in the mutable store; nothing to release.
+        if matches!(self.inner, EvaluatorValueInner::Static(_)) {
+            return;
+        }
         self.inner = EMPTY_EVALUATOR_VALUE.inner.clone();
         InternedStore::release_evaluator_value(self.hash);
     }

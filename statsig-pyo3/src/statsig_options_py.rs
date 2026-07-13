@@ -180,6 +180,8 @@ pub struct StatsigOptionsPy {
     #[pyo3(get, set)]
     pub event_logging_max_pending_batch_queue_size: Option<u32>,
     #[pyo3(get, set)]
+    pub exposure_dedupe_max_keys: Option<u32>,
+    #[pyo3(get, set)]
     pub enable_id_lists: Option<bool>,
     #[pyo3(get, set)]
     pub enable_dcs_deltas: Option<bool>,
@@ -272,6 +274,7 @@ impl StatsigOptionsPy {
         disable_disk_access=None,
         experimental_flags=None,
         id_lists_request_timeout_ms=None,
+        exposure_dedupe_max_keys=None,
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -310,6 +313,7 @@ impl StatsigOptionsPy {
         disable_disk_access: Option<bool>,
         experimental_flags: Option<HashSet<String>>,
         id_lists_request_timeout_ms: Option<u64>,
+        exposure_dedupe_max_keys: Option<u32>,
     ) -> Self {
         Self {
             specs_url,
@@ -321,6 +325,7 @@ impl StatsigOptionsPy {
             event_logging_flush_interval_ms,
             event_logging_max_queue_size,
             event_logging_max_pending_batch_queue_size,
+            exposure_dedupe_max_keys,
             enable_id_lists,
             enable_dcs_deltas,
             wait_for_user_agent_init,
@@ -410,7 +415,7 @@ fn create_inner_statsig_options(
         event_logging_flush_interval_ms: None,
         event_logging_max_queue_size: opts.event_logging_max_queue_size,
         event_logging_max_pending_batch_queue_size: opts.event_logging_max_pending_batch_queue_size,
-        exposure_dedupe_max_keys: None,
+        exposure_dedupe_max_keys: opts.exposure_dedupe_max_keys,
         enable_id_lists: opts.enable_id_lists,
         enable_dcs_deltas: opts.enable_dcs_deltas,
         id_lists_url: opts.id_lists_url.clone(),

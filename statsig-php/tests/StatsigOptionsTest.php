@@ -71,6 +71,32 @@ class StatsigOptionsTest extends TestCase
         $this->assertNull($options->__ref);
     }
 
+    public function testNewOptionsExposureDedupeMaxKeys()
+    {
+        $options = new StatsigOptions(
+            exposure_dedupe_max_keys: 50000,
+        );
+        $this->assertNotNull($options->__ref);
+
+        $options->__destruct();
+
+        $this->assertNull($options->__ref);
+    }
+
+    public function testExposureDedupeMaxKeysWithOtherOptions()
+    {
+        $options = new StatsigOptions(
+            environment: "staging",
+            init_timeout_ms: 2000,
+            exposure_dedupe_max_keys: 250000,
+        );
+        $this->assertNotNull($options->__ref);
+
+        $options->__destruct();
+
+        $this->assertNull($options->__ref);
+    }
+
     public function testNewOptionsBothNewOptions()
     {
         $options = new StatsigOptions(
