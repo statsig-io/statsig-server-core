@@ -1,5 +1,15 @@
 {
     "dynamic_configs": {
+        "test_autotune": {
+            "type": "dynamic_config",
+            "salt": "336cc60d-64cc-4a46-8faa-5651ebe19d02",
+            "enabled": true,
+            "defaultValue": {},
+            "rules": [],
+            "idType": "userID",
+            "entity": "autotune",
+            "version": 5
+        },
         "purchase_experiment": {
             "type": "dynamic_config",
             "salt": "147f7767-fa5d-4080-ae48-bf5335ec6166",

@@ -162,6 +162,38 @@ pub fn get_experiment(
 }
 
 #[rustler::nif]
+pub fn get_experiment_by_group_name(
+    env: Env<'_>,
+    statsig: ResourceArc<StatsigResource>,
+    experiment_name: &str,
+    group_name: &str,
+) -> Result<Experiment, Error> {
+    let _guard = ManagedEnvGuard::new(env);
+    match statsig.statsig_core.read() {
+        Ok(read_guard) => Ok(read_guard
+            .get_experiment_by_group_name(experiment_name, group_name)
+            .into()),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
+    }
+}
+
+#[rustler::nif]
+pub fn get_experiment_by_group_id_advanced(
+    env: Env<'_>,
+    statsig: ResourceArc<StatsigResource>,
+    experiment_name: &str,
+    group_id: &str,
+) -> Result<Experiment, Error> {
+    let _guard = ManagedEnvGuard::new(env);
+    match statsig.statsig_core.read() {
+        Ok(read_guard) => Ok(read_guard
+            .get_experiment_by_group_id_advanced(experiment_name, group_id)
+            .into()),
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
+    }
+}
+
+#[rustler::nif]
 pub fn get_experiment_groups(
     env: Env<'_>,
     statsig: ResourceArc<StatsigResource>,
@@ -260,6 +292,18 @@ pub fn get_client_init_response_as_string(
             };
             Ok(response)
         }
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
+    }
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn get_autotune_list(
+    env: Env<'_>,
+    statsig: ResourceArc<StatsigResource>,
+) -> Result<Vec<String>, Error> {
+    let _guard = ManagedEnvGuard::new(env);
+    match statsig.statsig_core.read() {
+        Ok(read_guard) => Ok(read_guard.get_autotune_list()),
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
     }
 }
@@ -416,6 +460,24 @@ pub fn override_experiment(
     match statsig.statsig_core.read() {
         Ok(read_guard) => {
             read_guard.override_experiment(experiment_name, map_value, id);
+            Ok(())
+        }
+        Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),
+    }
+}
+
+#[rustler::nif]
+pub fn override_experiment_by_group_name(
+    env: Env<'_>,
+    statsig: ResourceArc<StatsigResource>,
+    experiment_name: &str,
+    group_name: &str,
+    id: Option<&str>,
+) -> Result<(), Error> {
+    let _guard = ManagedEnvGuard::new(env);
+    match statsig.statsig_core.read() {
+        Ok(read_guard) => {
+            read_guard.override_experiment_by_group_name(experiment_name, group_name, id);
             Ok(())
         }
         Err(_) => Err(Error::RaiseAtom("Failed to get Statsig")),

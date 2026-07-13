@@ -295,6 +295,24 @@ impl StatsigNapiInternal {
         )
     }
 
+    #[napi(
+        js_name = "__INTERNAL_getExperimentByGroupIdAdvanced",
+        ts_return_type = "Record<string, unknown>"
+    )]
+    pub fn __internal_get_experiment_by_group_id_advanced(
+        &self,
+        env: Env,
+        experiment_name: String,
+        group_id: String,
+    ) -> napi::Result<JsObject> {
+        string_to_js_object(
+            &env,
+            &self
+                .inner
+                .get_raw_experiment_by_group_id_advanced(&experiment_name, &group_id),
+        )
+    }
+
     #[napi]
     pub fn get_fields_needed_for_experiment(&self, experiment_name: String) -> Vec<String> {
         self.inner
@@ -517,6 +535,11 @@ impl StatsigNapiInternal {
     #[napi]
     pub fn get_experiment_list(&self) -> Vec<String> {
         self.inner.get_experiment_list()
+    }
+
+    #[napi]
+    pub fn get_autotune_list(&self) -> Vec<String> {
+        self.inner.get_autotune_list()
     }
 
     #[napi]

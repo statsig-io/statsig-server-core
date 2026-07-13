@@ -54,6 +54,7 @@ pub struct StatsigOptions {
     pub enable_id_lists: Option<bool>,
     pub enable_dcs_deltas: Option<bool>,
     pub id_lists_sync_interval_ms: Option<u32>,
+    pub id_lists_request_timeout_ms: Option<u64>,
     pub id_lists_url: Option<String>,
 
     pub disable_all_logging: Option<bool>,
@@ -92,6 +93,7 @@ impl From<StatsigOptions> for StatsigOptionsActual {
             use_third_party_ua_parser: config.use_third_party_ua_parser,
             disable_disk_access: config.disable_disk_access,
             id_lists_sync_interval_ms: config.id_lists_sync_interval_ms,
+            id_lists_request_timeout_ms: config.id_lists_request_timeout_ms,
             #[allow(deprecated)]
             event_logging_flush_interval_ms: config.event_logging_flush_interval_ms,
             init_timeout_ms: config.init_timeout_ms,

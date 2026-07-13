@@ -20,7 +20,7 @@ namespace Statsig
         internal static extern ulong statsig_options_create_from_data(byte* json_data);
 
         [DllImport(__DllName, EntryPoint = "statsig_options_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern ulong statsig_options_create(byte* specs_url, byte* log_event_url, ulong specs_adapter_ref, ulong event_logging_adapter_ref, byte* environment, int _event_logging_flush_interval_ms, int event_logging_max_queue_size, int specs_sync_interval_ms, byte* output_log_level, int disable_country_lookup, int wait_for_country_lookup_init, int wait_for_user_agent_init, int enable_id_lists, int enable_dcs_deltas, int disable_network, byte* id_lists_url, int id_lists_sync_interval_ms, int disable_all_logging, byte* global_custom_fields, ulong observability_client_ref, ulong data_store_ref, int init_timeout_ms, int fallback_to_statsig_api, int use_third_party_ua_parser, byte* proxy_host, int proxy_port, byte* proxy_auth, byte* proxy_protocol, ulong persistent_storage_ref);
+        internal static extern ulong statsig_options_create(byte* specs_url, byte* log_event_url, ulong specs_adapter_ref, ulong event_logging_adapter_ref, byte* environment, int _event_logging_flush_interval_ms, int event_logging_max_queue_size, int specs_sync_interval_ms, byte* output_log_level, int disable_country_lookup, int wait_for_country_lookup_init, int wait_for_user_agent_init, int enable_id_lists, int enable_dcs_deltas, int disable_network, byte* id_lists_url, int id_lists_sync_interval_ms, int disable_all_logging, byte* global_custom_fields, ulong observability_client_ref, ulong data_store_ref, int init_timeout_ms, int fallback_to_statsig_api, int use_third_party_ua_parser, byte* proxy_host, int proxy_port, byte* proxy_auth, byte* proxy_protocol, ulong persistent_storage_ref, int id_lists_request_timeout_ms);
 
         [DllImport(__DllName, EntryPoint = "statsig_options_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_options_release(ulong options_ref);
@@ -157,6 +157,12 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_get_raw_experiment", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_raw_experiment(ulong statsig_ref, ulong user_ref, byte* experiment_name, byte* options_json, ulong* inout_result_len);
 
+        [DllImport(__DllName, EntryPoint = "statsig_get_raw_experiment_by_group_name", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_raw_experiment_by_group_name(ulong statsig_ref, byte* experiment_name, byte* group_name, ulong* inout_result_len);
+
+        [DllImport(__DllName, EntryPoint = "statsig_get_raw_experiment_by_group_id_advanced", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_raw_experiment_by_group_id_advanced(ulong statsig_ref, byte* experiment_name, byte* group_id, ulong* inout_result_len);
+
         [DllImport(__DllName, EntryPoint = "statsig_get_experiment_groups", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_experiment_groups(ulong statsig_ref, byte* experiment_name);
 
@@ -213,6 +219,21 @@ namespace Statsig
 
         [DllImport(__DllName, EntryPoint = "statsig_remove_all_overrides", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_remove_all_overrides(ulong statsig_ref);
+
+        [DllImport(__DllName, EntryPoint = "statsig_get_feature_gate_list", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_feature_gate_list(ulong statsig_ref, ulong* inout_result_len);
+
+        [DllImport(__DllName, EntryPoint = "statsig_get_dynamic_config_list", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_dynamic_config_list(ulong statsig_ref, ulong* inout_result_len);
+
+        [DllImport(__DllName, EntryPoint = "statsig_get_experiment_list", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_experiment_list(ulong statsig_ref, ulong* inout_result_len);
+
+        [DllImport(__DllName, EntryPoint = "statsig_get_autotune_list", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_autotune_list(ulong statsig_ref, ulong* inout_result_len);
+
+        [DllImport(__DllName, EntryPoint = "statsig_get_parameter_store_list", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_parameter_store_list(ulong statsig_ref, ulong* inout_result_len);
 
         [DllImport(__DllName, EntryPoint = "statsig_metadata_update_values", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_metadata_update_values(byte* sdk_type, byte* os, byte* arch, byte* language_version);

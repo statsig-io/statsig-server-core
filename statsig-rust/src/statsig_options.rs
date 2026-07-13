@@ -54,6 +54,10 @@ pub struct StatsigOptions {
 
     pub id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
     pub id_lists_sync_interval_ms: Option<u32>,
+    /// Per-request timeout (in milliseconds) for ID list network requests (the
+    /// manifest fetch and each per-file download). When unset (or 0), requests
+    /// fall back to the network provider's default timeout.
+    pub id_lists_request_timeout_ms: Option<u64>,
     pub id_lists_url: Option<String>,
     pub download_id_list_file_api: Option<String>,
 
@@ -231,6 +235,12 @@ impl StatsigOptionsBuilder {
     }
 
     #[must_use]
+    pub fn id_lists_request_timeout_ms(mut self, id_lists_request_timeout_ms: Option<u64>) -> Self {
+        self.inner.id_lists_request_timeout_ms = id_lists_request_timeout_ms;
+        self
+    }
+
+    #[must_use]
     pub fn download_id_list_file_api(mut self, download_id_list_file_api: Option<String>) -> Self {
         self.inner.download_id_list_file_api = download_id_list_file_api;
         self
@@ -384,7 +394,7 @@ impl Serialize for StatsigOptions {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("StatsigOptions", 22)?;
+        let mut state = serializer.serialize_struct("StatsigOptions", 24)?;
         serialize_if_not_none!(state, "spec_url", &self.specs_url);
         serialize_if_not_none!(
             state,
@@ -427,6 +437,11 @@ impl Serialize for StatsigOptions {
             state,
             "id_lists_sync_interval",
             &self.id_lists_sync_interval_ms
+        );
+        serialize_if_not_none!(
+            state,
+            "id_lists_request_timeout_ms",
+            &self.id_lists_request_timeout_ms
         );
         serialize_if_not_none!(state, "environment", &self.environment);
         serialize_if_not_none!(

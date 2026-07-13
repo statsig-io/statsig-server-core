@@ -315,4 +315,15 @@ defmodule Statsig.NativeBindingsTest do
       assert config2.value != %{"key" => "value"}
     end
   end
+
+  describe "get_autotune_list/1" do
+    test "returns a list of autotune names" do
+      ref = new()
+
+      result = NativeBindings.get_autotune_list(ref)
+
+      assert is_list(result)
+      assert Enum.all?(result, &is_binary/1)
+    end
+  end
 end

@@ -105,6 +105,52 @@ class StatsigTest extends TestCase
         $this->assertEquals(['group' => 'test'], $experiment->get('obj_param', ['fallback' => '']));
     }
 
+    public function testGetExperimentByGroupName()
+    {
+        $statsig = $this->getInitializedStatsig();
+
+        $control = $statsig->getExperimentByGroupName('test_experiment_no_targeting', 'Control');
+        $this->assertEquals('Control', $control->groupName);
+        $this->assertEquals('54QJztEPRLXK7ZCvXeY9q4', $control->rule_id);
+        $this->assertEquals('userID', $control->id_type);
+        $this->assertEquals(['value' => 'control'], $control->value);
+
+        $test = $statsig->getExperimentByGroupName('test_experiment_no_targeting', 'Test');
+        $this->assertEquals('Test', $test->groupName);
+        $this->assertEquals(['value' => 'test_1'], $test->value);
+    }
+
+    public function testGetExperimentByGroupNameUnrecognized()
+    {
+        $statsig = $this->getInitializedStatsig();
+
+        $experiment = $statsig->getExperimentByGroupName('not_an_experiment', 'Control');
+        $this->assertNull($experiment->groupName);
+        $this->assertEquals('', $experiment->rule_id);
+    }
+
+    public function testGetExperimentByGroupIdAdvanced()
+    {
+        $statsig = $this->getInitializedStatsig();
+
+        $experiment = $statsig->getExperimentByGroupIdAdvanced(
+            'test_experiment_no_targeting',
+            '54QJztEPRLXK7ZCvXeY9q4'
+        );
+        $this->assertEquals('Control', $experiment->groupName);
+        $this->assertEquals('54QJztEPRLXK7ZCvXeY9q4', $experiment->rule_id);
+        $this->assertEquals(['value' => 'control'], $experiment->value);
+    }
+
+    public function testGetExperimentByGroupIdAdvancedUnrecognized()
+    {
+        $statsig = $this->getInitializedStatsig();
+
+        $experiment = $statsig->getExperimentByGroupIdAdvanced('test_experiment_no_targeting', 'not_a_group_id');
+        $this->assertNull($experiment->groupName);
+        $this->assertEquals('', $experiment->rule_id);
+    }
+
     public function testGetLayer()
     {
         $statsig = $this->getInitializedStatsig();

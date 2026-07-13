@@ -206,6 +206,42 @@ Statsig::getExperiment(const User &user, const std::string &experiment_name,
   return Experiment();
 }
 
+Experiment
+Statsig::getExperimentByGroupName(const std::string &experiment_name,
+                                  const std::string &group_name) {
+  uint64_t result_len = 0;
+  char *result = statsig_get_raw_experiment_by_group_name(
+      ref_, experiment_name.c_str(), group_name.c_str(), &result_len);
+  if (result) {
+    std::string result_str(result);
+    free_string(result);
+    return Experiment(result_str);
+  }
+  return Experiment();
+}
+
+Experiment
+Statsig::getExperimentByGroupIdAdvanced(const std::string &experiment_name,
+                                        const std::string &group_id) {
+  uint64_t result_len = 0;
+  char *result = statsig_get_raw_experiment_by_group_id_advanced(
+      ref_, experiment_name.c_str(), group_id.c_str(), &result_len);
+  if (result) {
+    std::string result_str(result);
+    free_string(result);
+    return Experiment(result_str);
+  }
+  return Experiment();
+}
+
+void Statsig::overrideExperimentByGroupName(
+    const std::string &experiment_name, const std::string &group_name,
+    const std::optional<std::string> &id) {
+  statsig_override_experiment_by_group_name(
+      ref_, experiment_name.c_str(), group_name.c_str(),
+      id ? id->c_str() : nullptr);
+}
+
 ExperimentGroupsResult
 Statsig::getExperimentGroups(const std::string &experiment_name) {
   char *result =
@@ -263,6 +299,24 @@ Layer Statsig::getLayer(const User &user, const std::string &layer_name,
     return Layer(ref_, result_str);
   }
   return Layer();
+}
+
+std::vector<std::string> Statsig::getAutotuneList() {
+  uint64_t result_len = 0;
+  char *result = statsig_get_autotune_list(ref_, &result_len);
+  if (result) {
+    std::string result_str(result, result_len);
+    free_string(result);
+    try {
+      json parsed = json::parse(result_str);
+      if (parsed.is_array()) {
+        return parsed.get<std::vector<std::string>>();
+      }
+    } catch (const json::exception &) {
+      // Fall through to an empty list on malformed JSON.
+    }
+  }
+  return {};
 }
 
 } // namespace statsig_cpp_core

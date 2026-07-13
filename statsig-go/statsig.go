@@ -18,6 +18,14 @@ type EventPayload struct {
 
 type Statsig struct {
 	ref atomic.Uint64
+	// obsClient retains a strong reference to the observability client for the
+	// lifetime of this instance. Core holds only a Weak reference to it (the
+	// sole strong Arc lives in the Rust registry, released by the client's Go
+	// finalizer). Today purego also happens to pin the client's FFI callbacks
+	// for the process lifetime, but we do not rely on that: this explicit
+	// reference guarantees the client outlives the instance and mirrors the
+	// strong-owner pattern in the Node and Python bindings.
+	obsClient *ObservabilityClient
 }
 
 func NewStatsig(sdkKey string) (*Statsig, error) {
@@ -44,6 +52,9 @@ func NewStatsigWithOptions(sdkKey string, opts *StatsigOptions) (*Statsig, error
 
 	s := &Statsig{ref: atomic.Uint64{}}
 	s.ref.Store(ref)
+	// Keep the observability client alive for this instance's lifetime; core
+	// only holds a Weak reference to it (see the obsClient field).
+	s.obsClient = opts.obsClient
 
 	runtime.SetFinalizer(s, func(obj *Statsig) {
 		obj.release()
@@ -180,6 +191,61 @@ func (s *Statsig) GetExperimentWithOptions(user *StatsigUser, experimentName str
 	return experiment
 }
 
+// getExperimentByGroup runs an experiment group-targeting lookup via the given
+// FFI call and unmarshals the resulting JSON into an Experiment. Both public
+// group getters share this; they differ only in which FFI symbol they invoke.
+func (s *Statsig) getExperimentByGroup(
+	experimentName string,
+	ffiCall func(ref uint64, resultLen *uint64) *byte,
+) Experiment {
+	experiment := Experiment{
+		Name: experimentName,
+	}
+
+	experimentJson := UseRustString(func() (*byte, uint64) {
+		length := uint64(0)
+		ptr := ffiCall(s.ref.Load(), &length)
+		return ptr, length
+	})
+
+	if experimentJson != nil {
+		if err := json.Unmarshal([]byte(*experimentJson), &experiment); err != nil {
+			fmt.Printf("Failed to unmarshal Experiment: %v", err)
+		}
+	}
+
+	if experiment.Value == nil {
+		experiment.Value = make(map[string]any)
+	}
+
+	return experiment
+}
+
+// GetExperimentByGroupName returns the experiment for the rule whose group name
+// matches groupName. This is a pure spec lookup and performs no user evaluation,
+// so no exposure is logged.
+func (s *Statsig) GetExperimentByGroupName(experimentName string, groupName string) Experiment {
+	return s.getExperimentByGroup(experimentName, func(ref uint64, resultLen *uint64) *byte {
+		return GetFFI().statsig_get_raw_experiment_by_group_name(ref, experimentName, groupName, resultLen)
+	})
+}
+
+// GetExperimentByGroupIDAdvanced returns the experiment for the rule whose ID
+// matches groupID. This is a pure spec lookup and performs no user evaluation,
+// so no exposure is logged.
+func (s *Statsig) GetExperimentByGroupIDAdvanced(experimentName string, groupID string) Experiment {
+	return s.getExperimentByGroup(experimentName, func(ref uint64, resultLen *uint64) *byte {
+		return GetFFI().statsig_get_raw_experiment_by_group_id_advanced(ref, experimentName, groupID, resultLen)
+	})
+}
+
+// OverrideExperimentByGroupName forces an experiment to resolve to a named group.
+// When id is nil the override applies globally; otherwise it applies only to the
+// provided id (user id or custom id).
+func (s *Statsig) OverrideExperimentByGroupName(experimentName string, groupName string, id *string) {
+	GetFFI().statsig_override_experiment_by_group_name(s.ref.Load(), experimentName, groupName, cString(id))
+}
+
 // GetExperimentGroups returns the experiment's active state and the group name, rule
 // id, id type, and return value for each of its groups, without requiring a user
 // evaluation. IsExperimentActive is nil if the name does not refer to an experiment
@@ -288,6 +354,51 @@ func (s *Statsig) GetParameterStoreWithOptions(
 	}
 
 	return store
+}
+
+// GetFeatureGateList returns the names of all configured feature gates.
+func (s *Statsig) GetFeatureGateList() []string {
+	return s.getEntityList(GetFFI().statsig_get_feature_gate_list)
+}
+
+// GetDynamicConfigList returns the names of all configured dynamic configs.
+func (s *Statsig) GetDynamicConfigList() []string {
+	return s.getEntityList(GetFFI().statsig_get_dynamic_config_list)
+}
+
+// GetExperimentList returns the names of all configured experiments.
+func (s *Statsig) GetExperimentList() []string {
+	return s.getEntityList(GetFFI().statsig_get_experiment_list)
+}
+
+// GetAutotuneList returns the names of all configured autotunes.
+func (s *Statsig) GetAutotuneList() []string {
+	return s.getEntityList(GetFFI().statsig_get_autotune_list)
+}
+
+// GetParameterStoreList returns the names of all configured parameter stores.
+func (s *Statsig) GetParameterStoreList() []string {
+	return s.getEntityList(GetFFI().statsig_get_parameter_store_list)
+}
+
+func (s *Statsig) getEntityList(ffiFn func(uint64, *uint64) *byte) []string {
+	list := []string{}
+
+	listJson := UseRustString(func() (*byte, uint64) {
+		length := uint64(0)
+		ptr := ffiFn(s.ref.Load(), &length)
+		return ptr, length
+	})
+
+	if listJson == nil {
+		return list
+	}
+
+	if err := json.Unmarshal([]byte(*listJson), &list); err != nil {
+		fmt.Printf("Failed to unmarshal entity list: %v", err)
+	}
+
+	return list
 }
 
 func (s *Statsig) GetClientInitResponse(user *StatsigUser) *string {

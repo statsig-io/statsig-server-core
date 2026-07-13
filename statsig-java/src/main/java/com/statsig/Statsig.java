@@ -227,6 +227,14 @@ public class Statsig {
     return JSON.parseArray(resultJSON, String.class);
   }
 
+  public List<String> getAutotuneList() {
+    String resultJSON = StatsigJNI.statsigGetAutotuneList(ref);
+    if (resultJSON == null || resultJSON.isEmpty()) {
+      return new ArrayList<>();
+    }
+    return JSON.parseArray(resultJSON, String.class);
+  }
+
   /**
    * Returns the experiment's active state and the group name, rule id, id type, and return value
    * for each of its groups, without requiring a user evaluation.

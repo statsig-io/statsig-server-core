@@ -44,20 +44,29 @@ type StatsigFFI struct {
 	statsig_manually_log_dynamic_config_exposure func(uint64, uint64, string)
 
 	// Experiments
-	statsig_get_raw_experiment               func(uint64, uint64, string, string, *uint64) *byte
-	statsig_get_experiment_groups            func(uint64, string) *byte
-	statsig_manually_log_experiment_exposure func(uint64, uint64, string)
+	statsig_get_raw_experiment                      func(uint64, uint64, string, string, *uint64) *byte
+	statsig_get_raw_experiment_by_group_name        func(uint64, string, string, *uint64) *byte
+	statsig_get_raw_experiment_by_group_id_advanced func(uint64, string, string, *uint64) *byte
+	statsig_get_experiment_groups                   func(uint64, string) *byte
+	statsig_manually_log_experiment_exposure        func(uint64, uint64, string)
 
 	// Layers
 	statsig_get_raw_layer                         func(uint64, uint64, string, string, *uint64) *byte
 	log_layer_param_exposure_from_raw             func(uint64, string, string)
 	statsig_manually_log_layer_parameter_exposure func(uint64, uint64, string, string)
 
+	// Entity Lists
+	statsig_get_feature_gate_list    func(uint64, *uint64) *byte
+	statsig_get_dynamic_config_list  func(uint64, *uint64) *byte
+	statsig_get_experiment_list      func(uint64, *uint64) *byte
+	statsig_get_autotune_list        func(uint64, *uint64) *byte
+	statsig_get_parameter_store_list func(uint64, *uint64) *byte
+
 	// Overrides
 	statsig_override_gate                     func(uint64, string, bool, string)
 	statsig_override_dynamic_config           func(uint64, string, string, string)
 	statsig_override_experiment               func(uint64, string, string, string)
-	statsig_override_experiment_by_group_name func(uint64, string, string, string)
+	statsig_override_experiment_by_group_name func(uint64, string, string, *byte)
 	statsig_override_layer                    func(uint64, string, string, string)
 	statsig_remove_gate_override              func(uint64, string, string)
 	statsig_remove_dynamic_config_override    func(uint64, string, string)
@@ -111,13 +120,13 @@ type StatsigFFI struct {
 	free_string func(*byte)
 
 	// Parameter Store
-	statsig_get_parameter_store_with_options             func(uint64, string, string, *uint64) *byte
-	statsig_get_string_parameter_from_parameter_store    func(uint64, uint64, string, string, string, string, *uint64) *byte
-	statsig_get_bool_parameter_from_parameter_store      func(uint64, uint64, string, string, int32, string) bool
-	statsig_get_float64_parameter_from_parameter_store   func(uint64, uint64, string, string, float64, string) float64
-	statsig_get_int_parameter_from_parameter_store       func(uint64, uint64, string, string, int64, string) int64
-	statsig_get_object_parameter_from_parameter_store    func(uint64, uint64, string, string, string, string, *uint64) *byte
-	statsig_get_array_parameter_from_parameter_store     func(uint64, uint64, string, string, string, string, *uint64) *byte
+	statsig_get_parameter_store_with_options           func(uint64, string, string, *uint64) *byte
+	statsig_get_string_parameter_from_parameter_store  func(uint64, uint64, string, string, string, string, *uint64) *byte
+	statsig_get_bool_parameter_from_parameter_store    func(uint64, uint64, string, string, int32, string) bool
+	statsig_get_float64_parameter_from_parameter_store func(uint64, uint64, string, string, float64, string) float64
+	statsig_get_int_parameter_from_parameter_store     func(uint64, uint64, string, string, int64, string) int64
+	statsig_get_object_parameter_from_parameter_store  func(uint64, uint64, string, string, string, string, *uint64) *byte
+	statsig_get_array_parameter_from_parameter_store   func(uint64, uint64, string, string, string, string, *uint64) *byte
 }
 
 var (
@@ -168,6 +177,8 @@ func GetFFI() *StatsigFFI {
 
 		// Experiments
 		purego.RegisterLibFunc(&instance.statsig_get_raw_experiment, lib, "statsig_get_raw_experiment")
+		purego.RegisterLibFunc(&instance.statsig_get_raw_experiment_by_group_name, lib, "statsig_get_raw_experiment_by_group_name")
+		purego.RegisterLibFunc(&instance.statsig_get_raw_experiment_by_group_id_advanced, lib, "statsig_get_raw_experiment_by_group_id_advanced")
 		purego.RegisterLibFunc(&instance.statsig_get_experiment_groups, lib, "statsig_get_experiment_groups")
 		purego.RegisterLibFunc(&instance.statsig_manually_log_experiment_exposure, lib, "statsig_manually_log_experiment_exposure")
 
@@ -175,6 +186,13 @@ func GetFFI() *StatsigFFI {
 		purego.RegisterLibFunc(&instance.statsig_get_raw_layer, lib, "statsig_get_raw_layer")
 		purego.RegisterLibFunc(&instance.log_layer_param_exposure_from_raw, lib, "log_layer_param_exposure_from_raw")
 		purego.RegisterLibFunc(&instance.statsig_manually_log_layer_parameter_exposure, lib, "statsig_manually_log_layer_parameter_exposure")
+
+		// Entity Lists
+		purego.RegisterLibFunc(&instance.statsig_get_feature_gate_list, lib, "statsig_get_feature_gate_list")
+		purego.RegisterLibFunc(&instance.statsig_get_dynamic_config_list, lib, "statsig_get_dynamic_config_list")
+		purego.RegisterLibFunc(&instance.statsig_get_experiment_list, lib, "statsig_get_experiment_list")
+		purego.RegisterLibFunc(&instance.statsig_get_autotune_list, lib, "statsig_get_autotune_list")
+		purego.RegisterLibFunc(&instance.statsig_get_parameter_store_list, lib, "statsig_get_parameter_store_list")
 
 		// Overrides
 		purego.RegisterLibFunc(&instance.statsig_override_gate, lib, "statsig_override_gate")
@@ -222,6 +240,17 @@ func GetFFI() *StatsigFFI {
 	})
 
 	return instance
+}
+
+// cString converts an optional Go string into a null-terminated C string pointer.
+// A nil input yields a nil pointer so the native layer receives a null pointer
+// (e.g. signalling "no id" for a global override) rather than an empty string.
+func cString(s *string) *byte {
+	if s == nil {
+		return nil
+	}
+	b := append([]byte(*s), 0)
+	return &b[0]
 }
 
 func UseRustString(handler func() (*byte, uint64)) *string {

@@ -26,12 +26,29 @@ namespace Statsig
 
         internal Experiment(string rawJson)
         {
+            if (string.IsNullOrEmpty(rawJson))
+            {
+                Name = string.Empty;
+                RuleID = string.Empty;
+                Value = new Dictionary<string, JToken>();
+                GroupName = null;
+                IDType = string.Empty;
+                EvaluationDetails = null;
+                return;
+            }
+
             var jsonObject = JObject.Parse(rawJson);
             Name = jsonObject["name"]?.ToString() ?? string.Empty;
-            RuleID = jsonObject["rule_id"]?.ToString() ?? string.Empty;
+            // The normal GetExperiment path returns the snake_case shape, while
+            // the group-targeting getters return the camelCase ExperimentRaw
+            // shape (ruleID / idType / groupName). Accept both key styles.
+            RuleID = (jsonObject["rule_id"] ?? jsonObject["ruleID"])?.ToString() ?? string.Empty;
             Value = jsonObject["value"]?.ToObject<Dictionary<string, JToken>>() ?? new Dictionary<string, JToken>();
-            GroupName = jsonObject["group_name"]?.ToString();
-            IDType = jsonObject["id_type"]?.ToString() ?? string.Empty;
+            var groupNameToken = jsonObject["group_name"] ?? jsonObject["groupName"];
+            GroupName = (groupNameToken == null || groupNameToken.Type == JTokenType.Null)
+                ? null
+                : groupNameToken.ToString();
+            IDType = (jsonObject["id_type"] ?? jsonObject["idType"])?.ToString() ?? string.Empty;
             EvaluationDetails = jsonObject["details"]?.ToObject<EvaluationDetails>();
         }
 

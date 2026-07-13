@@ -989,6 +989,36 @@ pub extern "C" fn statsig_get_raw_experiment(
 }
 
 #[no_mangle]
+pub extern "C" fn statsig_get_raw_experiment_by_group_name(
+    statsig_ref: u64,
+    experiment_name: *const c_char,
+    group_name: *const c_char,
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null_mut());
+    let group_name = unwrap_or_return!(c_char_to_string(group_name), null_mut());
+
+    let raw = statsig.get_raw_experiment_by_group_name(&experiment_name, &group_name);
+    string_to_c_char_with_inout_len(raw, inout_result_len)
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_raw_experiment_by_group_id_advanced(
+    statsig_ref: u64,
+    experiment_name: *const c_char,
+    group_id: *const c_char,
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null_mut());
+    let group_id = unwrap_or_return!(c_char_to_string(group_id), null_mut());
+
+    let raw = statsig.get_raw_experiment_by_group_id_advanced(&experiment_name, &group_id);
+    string_to_c_char_with_inout_len(raw, inout_result_len)
+}
+
+#[no_mangle]
 pub extern "C" fn statsig_get_experiment_groups(
     statsig_ref: u64,
     experiment_name: *const c_char,
@@ -1333,4 +1363,65 @@ pub extern "C" fn statsig_remove_parameter_store_override(
 pub extern "C" fn statsig_remove_all_overrides(statsig_ref: u64) {
     let statsig = get_instance_or_noop_c!(Statsig, &statsig_ref);
     statsig.remove_all_overrides();
+}
+
+// ------------------------
+//      Entity Lists
+// ------------------------
+
+fn serialize_entity_list_to_c_char(list: Vec<String>, inout_result_len: *mut u64) -> *mut c_char {
+    let result = match serde_json::to_string(&list) {
+        Ok(result) => result,
+        Err(e) => {
+            log_e!(TAG, "Failed to serialize entity list: {}", e);
+            return null_mut();
+        }
+    };
+
+    string_to_c_char_with_inout_len(result, inout_result_len)
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_feature_gate_list(
+    statsig_ref: u64,
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    serialize_entity_list_to_c_char(statsig.get_feature_gate_list(), inout_result_len)
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_dynamic_config_list(
+    statsig_ref: u64,
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    serialize_entity_list_to_c_char(statsig.get_dynamic_config_list(), inout_result_len)
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_experiment_list(
+    statsig_ref: u64,
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    serialize_entity_list_to_c_char(statsig.get_experiment_list(), inout_result_len)
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_autotune_list(
+    statsig_ref: u64,
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    serialize_entity_list_to_c_char(statsig.get_autotune_list(), inout_result_len)
+}
+
+#[no_mangle]
+pub extern "C" fn statsig_get_parameter_store_list(
+    statsig_ref: u64,
+    inout_result_len: *mut u64,
+) -> *mut c_char {
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
+    serialize_entity_list_to_c_char(statsig.get_parameter_store_list(), inout_result_len)
 }

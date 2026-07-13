@@ -139,6 +139,7 @@ pub struct StatsigOptions<'a> {
     pub global_custom_fields: Option<HashMap<String, ValidPrimitives>>,
 
     pub id_lists_sync_interval_ms: Option<u32>,
+    pub id_lists_request_timeout_ms: Option<i64>,
     pub id_lists_url: Option<String>,
     pub download_id_list_file_api: Option<String>,
 
@@ -209,6 +210,11 @@ impl StatsigOptions<'_> {
             environment: self.environment,
             fallback_to_statsig_api: self.fallback_to_statsig_api,
             id_lists_sync_interval_ms: self.id_lists_sync_interval_ms,
+            // Reject negatives (they would wrap into an enormous u64 timeout);
+            // treat them as unset so the provider default applies.
+            id_lists_request_timeout_ms: self
+                .id_lists_request_timeout_ms
+                .and_then(|ms| u64::try_from(ms).ok()),
             id_lists_url: self.id_lists_url,
             download_id_list_file_api: self.download_id_list_file_api,
             init_timeout_ms: self.init_timeout_ms.map(|ms| ms as u64),

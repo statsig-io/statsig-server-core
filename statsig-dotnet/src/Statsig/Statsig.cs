@@ -18,6 +18,8 @@ namespace Statsig
         IDynamicConfig GetDynamicConfig(IStatsigUser user, string configName, EvaluationOptions? options = null);
         void ManuallyLogDynamicConfigExposure(IStatsigUser user, string configName);
         IExperiment GetExperiment(IStatsigUser user, string experimentName, EvaluationOptions? options = null);
+        IExperiment GetExperimentByGroupName(string experimentName, string groupName);
+        IExperiment GetExperimentByGroupIdAdvanced(string experimentName, string groupId);
         void ManuallyLogExperimentExposure(IStatsigUser user, string experimentName);
         /// <summary>
         /// Returns the experiment's active state and the group name, rule id, id type, and
@@ -31,6 +33,7 @@ namespace Statsig
         ILayer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null);
         void ManuallyLogLayerParameterExposure(IStatsigUser user, string layerName, string parameterName);
         IParameterStore GetParameterStore(IStatsigUser user, string storeName, EvaluationOptions? options = null);
+        List<string> GetAutotuneList();
         string GetClientInitializeResponse(IStatsigUser user, ClientInitResponseOptions? options = null);
         void LogEvent(IStatsigUser user, string eventName, string? value = null, IReadOnlyDictionary<string, string>? metadata = null);
         void LogEvent(IStatsigUser user, string eventName, int value, IReadOnlyDictionary<string, string>? metadata = null);
@@ -342,6 +345,41 @@ namespace Statsig
             }
         }
 
+        // Experiment group-targeting getters. These are pure spec lookups (no
+        // user evaluation, no exposure logging). They call the C-ABI `_raw_`
+        // symbols directly, passing a throwaway inout length (output-only).
+        unsafe public IExperiment GetExperimentByGroupName(string experimentName, string groupName)
+        {
+            byte[] nameBytes = StatsigUtils.ToUtf8NullTerminated(experimentName);
+            byte[] groupBytes = StatsigUtils.ToUtf8NullTerminated(groupName);
+
+            fixed (byte* experimentNamePtr = nameBytes)
+            fixed (byte* groupNamePtr = groupBytes)
+            {
+                ulong resultLen = 0;
+                var jsonStringPtr = StatsigFFI.statsig_get_raw_experiment_by_group_name(
+                    _statsigRef, experimentNamePtr, groupNamePtr, &resultLen);
+                var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr, resultLen);
+                return new Experiment(jsonString ?? string.Empty);
+            }
+        }
+
+        unsafe public IExperiment GetExperimentByGroupIdAdvanced(string experimentName, string groupId)
+        {
+            byte[] nameBytes = StatsigUtils.ToUtf8NullTerminated(experimentName);
+            byte[] groupIdBytes = StatsigUtils.ToUtf8NullTerminated(groupId);
+
+            fixed (byte* experimentNamePtr = nameBytes)
+            fixed (byte* groupIdPtr = groupIdBytes)
+            {
+                ulong resultLen = 0;
+                var jsonStringPtr = StatsigFFI.statsig_get_raw_experiment_by_group_id_advanced(
+                    _statsigRef, experimentNamePtr, groupIdPtr, &resultLen);
+                var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr, resultLen);
+                return new Experiment(jsonString ?? string.Empty);
+            }
+        }
+
         unsafe public IExperimentGroupsResult GetExperimentGroups(string experimentName)
         {
             int nameLen = Encoding.UTF8.GetByteCount(experimentName);
@@ -494,6 +532,25 @@ namespace Statsig
             {
                 var resPtr = StatsigFFI.statsig_get_client_init_response(_statsigRef, user.Reference, optionsPtr);
                 return StatsigUtils.ReadStringFromPointer(resPtr) ?? string.Empty;
+            }
+        }
+
+        unsafe public List<string> GetAutotuneList()
+        {
+            ulong resultLen = 0;
+            var resPtr = StatsigFFI.statsig_get_autotune_list(_statsigRef, &resultLen);
+            var json = StatsigUtils.ReadStringFromPointer(resPtr, resultLen);
+            if (json == null)
+            {
+                return new List<string>();
+            }
+            try
+            {
+                return JsonConvert.DeserializeObject<List<string>>(json) ?? new List<string>();
+            }
+            catch (JsonException)
+            {
+                return new List<string>();
             }
         }
 

@@ -153,6 +153,17 @@ export class Statsig extends StatsigNapiInternal {
     return new Experiment(experimentName, raw);
   }
 
+  public getExperimentByGroupIdAdvanced(
+    experimentName: string,
+    groupId: string,
+  ): Experiment {
+    const raw = this.__INTERNAL_getExperimentByGroupIdAdvanced(
+      experimentName,
+      groupId,
+    );
+    return new Experiment(experimentName, raw);
+  }
+
   public getLayer(
     user: StatsigUser,
     layerName: string,

@@ -1,4 +1,4 @@
-use crate::pyo_utils::{json_string_to_py_dict, py_dict_to_json_value_map};
+use crate::pyo_utils::py_dict_to_json_value_map;
 use crate::raw_evaluation_compat_py::{
     raw_dynamic_config_to_py_dict, raw_experiment_to_py_dict, raw_gate_to_py_dict,
     raw_layer_to_py_dict, LayerParamExposureDataPy,
@@ -316,6 +316,32 @@ impl StatsigBasePy {
             })
     }
 
+    #[pyo3(name="_INTERNAL_get_experiment_by_group_name", signature = (experiment_name, group_name))]
+    pub fn _internal_get_experiment_by_group_name(
+        &self,
+        experiment_name: &str,
+        group_name: &str,
+        py: Python,
+    ) -> PyResult<Py<PyDict>> {
+        let raw = self
+            .inner
+            .get_raw_experiment_by_group_name(experiment_name, group_name);
+        json_string_to_py_dict(py, &raw)
+    }
+
+    #[pyo3(name="_INTERNAL_get_experiment_by_group_id_advanced", signature = (experiment_name, group_id))]
+    pub fn _internal_get_experiment_by_group_id_advanced(
+        &self,
+        experiment_name: &str,
+        group_id: &str,
+        py: Python,
+    ) -> PyResult<Py<PyDict>> {
+        let raw = self
+            .inner
+            .get_raw_experiment_by_group_id_advanced(experiment_name, group_id);
+        json_string_to_py_dict(py, &raw)
+    }
+
     #[pyo3(signature = (user, name))]
     pub fn manually_log_experiment_exposure(
         &self,
@@ -544,15 +570,20 @@ impl StatsigBasePy {
         self.inner.get_experiment_list()
     }
 
+    #[pyo3(name = "get_autotune_list")]
+    pub fn get_autotune_list(&self) -> Vec<String> {
+        self.inner.get_autotune_list()
+    }
+
     #[pyo3(name = "get_experiment_groups", signature = (experiment_name))]
-    pub fn get_experiment_groups(&self, experiment_name: &str, py: Python) -> PyResult<Py<PyAny>> {
+    pub fn get_experiment_groups(&self, experiment_name: &str, py: Python) -> PyResult<Py<PyDict>> {
         let result = self.inner.get_experiment_groups(experiment_name);
 
         let json = serde_json::to_string(&result).map_err(|e| {
             PyValueError::new_err(format!("Failed to serialize experiment groups: {e}"))
         })?;
 
-        Ok(json_string_to_py_dict(py, &json))
+        json_string_to_py_dict(py, &json)
     }
 
     #[pyo3(name = "get_parameter_store_list")]
@@ -597,6 +628,17 @@ fn convert_to_string(value: Option<&Bound<PyAny>>) -> Option<String> {
 
 fn extract_event_metadata(metadata: Option<Bound<PyDict>>) -> Option<HashMap<String, Value>> {
     metadata.map(|m| py_dict_to_json_value_map(&m))
+}
+
+// The group-targeting experiment getters only expose a JSON-string core
+// method (the camelCase ExperimentRaw shape), so parse it into a PyDict here
+// via Python's json module. The resulting keys (ruleID, idType, groupName,
+// value, details) match what the Python Experiment type reads.
+fn json_string_to_py_dict(py: Python, json_str: &str) -> PyResult<Py<PyDict>> {
+    let json_module = PyModule::import(py, "json")?;
+    let parsed = json_module.call_method1("loads", (json_str,))?;
+    let dict = parsed.cast_into::<PyDict>()?;
+    Ok(dict.unbind())
 }
 
 fn extract_user_persisted_values(

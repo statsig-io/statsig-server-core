@@ -29,6 +29,7 @@ export declare class StatsigNapiInternal {
   getFieldsNeededForDynamicConfig(configName: string): Array<string>
   __INTERNAL_getExperiment(user: StatsigUser, experimentName: string, options?: ExperimentEvaluationOptions | undefined | null): Record<string, unknown>
   __INTERNAL_getExperimentByGroupName(experimentName: string, groupName: string): Record<string, unknown>
+  __INTERNAL_getExperimentByGroupIdAdvanced(experimentName: string, groupId: string): Record<string, unknown>
   getFieldsNeededForExperiment(experimentName: string): Array<string>
   getExperimentGroups(experimentName: string): ExperimentGroupsResult
   __INTERNAL_getLayer(user: StatsigUser, layerName: string, options?: LayerEvaluationOptions | undefined | null): Record<string, unknown>
@@ -56,6 +57,7 @@ export declare class StatsigNapiInternal {
   getFeatureGateList(): Array<string>
   getDynamicConfigList(): Array<string>
   getExperimentList(): Array<string>
+  getAutotuneList(): Array<string>
   getParameterStoreList(): Array<string>
   getParsedUserAgentValueForUser(user: StatsigUser): Record<string, string | undefined | null> | null
 }
@@ -265,6 +267,7 @@ export interface StatsigOptions {
   fallbackToStatsigApi?: boolean
   globalCustomFields?: Record<string, string | number | boolean | Array<string | number | boolean>>
   idListsSyncIntervalMs?: number
+  idListsRequestTimeoutMs?: number
   idListsUrl?: string
   downloadIdListFileApi?: string
   initTimeoutMs?: number

@@ -1325,6 +1325,16 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperimentList(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetAutotuneList(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: jlong,
+) -> jstring {
+    let statsig = get_instance_or_return_c!(Statsig, &(statsig_ref as u64), std::ptr::null_mut());
+    serialize_json_to_jstring(&mut env, &statsig.get_autotune_list())
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetParameterStoreList(
     mut env: JNIEnv,
     _class: jclass,
