@@ -152,3 +152,44 @@ TEST(StatsigE2EUsageTest, GetAutotuneList) {
 
   s.shutdownBlocking();
 }
+TEST(StatsigE2EUsageTest, GetExperimentGroups) {
+  const char *sdkKey = std::getenv("test_api_key");
+  if (sdkKey == nullptr) {
+    GTEST_SKIP() << "test_api_key env var not set";
+  }
+  statsig_cpp_core::StatsigOptionsBuilder optionsBuilder;
+  optionsBuilder.specs_url = "https://api.statsig.com/v2/download_config_specs";
+  statsig_cpp_core::Statsig s =
+      statsig_cpp_core::Statsig(sdkKey, optionsBuilder.build());
+  s.initializeBlocking();
+
+  // Known experiment: active state plus each group with its rule metadata.
+  statsig_cpp_core::ExperimentGroupsResult result =
+      s.getExperimentGroups("test_experiment_no_targeting");
+  EXPECT_EQ(result.is_experiment_active, true);
+  EXPECT_EQ(result.groups.size(), 3);
+
+  bool found_control = false;
+  for (const auto &group : result.groups) {
+    if (group.group_name == "Control") {
+      found_control = true;
+      EXPECT_EQ(group.rule_id, "54QJztEPRLXK7ZCvXeY9q4");
+      EXPECT_EQ(group.id_type, "userID");
+      EXPECT_EQ(group.return_value.at("value"), "control");
+    }
+  }
+  EXPECT_TRUE(found_control);
+
+  // The returned rule_id joins to getExperimentByGroupIdAdvanced.
+  statsig_cpp_core::Experiment byId = s.getExperimentByGroupIdAdvanced(
+      "test_experiment_no_targeting", "54QJztEPRLXK7ZCvXeY9q4");
+  EXPECT_EQ(byId.group_name.value_or(""), "Control");
+
+  // Unknown name: null active state, no groups.
+  statsig_cpp_core::ExperimentGroupsResult unknown =
+      s.getExperimentGroups("not_an_experiment");
+  EXPECT_EQ(unknown.is_experiment_active, std::nullopt);
+  EXPECT_TRUE(unknown.groups.empty());
+
+  s.shutdownBlocking();
+}

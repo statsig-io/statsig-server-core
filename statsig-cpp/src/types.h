@@ -176,10 +176,11 @@ struct ExperimentGroup {
 };
 
 inline void from_json(const json &j, ExperimentGroup &g) {
-  j.at("group_name").get_to(g.group_name);
-  j.at("rule_id").get_to(g.rule_id);
-  j.at("id_type").get_to(g.id_type);
-  j.at("return_value").get_to(g.return_value);
+  g.group_name = j.value("group_name", "");
+  g.rule_id = j.value("rule_id", "");
+  g.id_type = j.value("id_type", "");
+  g.return_value = j.value(
+      "return_value", std::unordered_map<std::string, nlohmann::json>{});
 }
 
 inline void to_json(json &j, const ExperimentGroup &g) {

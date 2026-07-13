@@ -575,7 +575,7 @@ impl StatsigBasePy {
         self.inner.get_autotune_list()
     }
 
-    #[pyo3(name = "get_experiment_groups", signature = (experiment_name))]
+    #[pyo3(name = "_INTERNAL_get_experiment_groups", signature = (experiment_name))]
     pub fn get_experiment_groups(&self, experiment_name: &str, py: Python) -> PyResult<Py<PyDict>> {
         let result = self.inner.get_experiment_groups(experiment_name);
 

@@ -91,7 +91,8 @@ namespace Statsig.Tests
             using var statsig = new Statsig("secret-key", options);
             await statsig.Initialize();
 
-            var result = statsig.GetExperimentGroups("test_max_dynamic_config_size_again");
+            // operating_system_config is a dynamic config in the dotnet copy of eval_proj_dcs.json.
+            var result = statsig.GetExperimentGroups("operating_system_config");
             Assert.Null(result.IsExperimentActive);
             Assert.Empty(result.Groups);
         }

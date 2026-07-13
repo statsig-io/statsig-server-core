@@ -186,6 +186,7 @@ func TestOverrideExperimentByGroupNameForID(t *testing.T) {
 
 func TestGetExperimentGroups(t *testing.T) {
 	statsig, _, _ := SetupTest(t)
+	defer statsig.Shutdown()
 
 	result := statsig.GetExperimentGroups("test_experiment_no_targeting")
 
@@ -218,11 +219,11 @@ func TestGetExperimentGroups(t *testing.T) {
 		t.Errorf("Test2 group return value is not correct, got %v", groupsByName["Test2"].ReturnValue)
 	}
 
-	statsig.Shutdown()
 }
 
 func TestGetExperimentGroupsReturnsNilActiveStateForUnknownExperiment(t *testing.T) {
 	statsig, _, _ := SetupTest(t)
+	defer statsig.Shutdown()
 
 	result := statsig.GetExperimentGroups("nonexistent_experiment")
 	if result.IsExperimentActive != nil {
@@ -232,11 +233,11 @@ func TestGetExperimentGroupsReturnsNilActiveStateForUnknownExperiment(t *testing
 		t.Errorf("Expected empty groups for unknown experiment, got %v", result.Groups)
 	}
 
-	statsig.Shutdown()
 }
 
 func TestGetExperimentGroupsReturnsNilActiveStateForDynamicConfig(t *testing.T) {
 	statsig, _, _ := SetupTest(t)
+	defer statsig.Shutdown()
 
 	result := statsig.GetExperimentGroups("test_max_dynamic_config_size_again")
 	if result.IsExperimentActive != nil {
@@ -246,11 +247,11 @@ func TestGetExperimentGroupsReturnsNilActiveStateForDynamicConfig(t *testing.T) 
 		t.Errorf("Expected empty groups for dynamic config, got %v", result.Groups)
 	}
 
-	statsig.Shutdown()
 }
 
 func TestGetExperimentGroupsReturnsGroupsForInactiveExperiment(t *testing.T) {
 	statsig, _, _ := SetupTest(t)
+	defer statsig.Shutdown()
 
 	// test_switchback has isActive: false; groups are still returned along with the flag.
 	result := statsig.GetExperimentGroups("test_switchback")
@@ -268,7 +269,6 @@ func TestGetExperimentGroupsReturnsGroupsForInactiveExperiment(t *testing.T) {
 		t.Errorf("Expected groups Control and Test, got %v", groupNames)
 	}
 
-	statsig.Shutdown()
 }
 
 func TestLayerEvaluation(t *testing.T) {

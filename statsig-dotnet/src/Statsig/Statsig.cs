@@ -382,22 +382,13 @@ namespace Statsig
 
         unsafe public IExperimentGroupsResult GetExperimentGroups(string experimentName)
         {
-            int nameLen = Encoding.UTF8.GetByteCount(experimentName);
-#if NET8_0_OR_GREATER
-            Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
-            int written = Encoding.UTF8.GetBytes(experimentName, nameBytes[..nameLen]);
-            nameBytes[written] = 0;
-#else
-            byte[] nameBytesArray = new byte[nameLen + 1];
-            Encoding.UTF8.GetBytes(experimentName, 0, experimentName.Length, nameBytesArray, 0);
-            nameBytesArray[nameLen] = 0;
-            Span<byte> nameBytes = nameBytesArray;
-#endif
+            byte[] nameBytes = StatsigUtils.ToUtf8NullTerminated(experimentName);
 
             fixed (byte* experimentNamePtr = nameBytes)
             {
-                var jsonStringPtr = StatsigFFI.statsig_get_experiment_groups(_statsigRef, experimentNamePtr);
-                var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
+                ulong resultLen = 0;
+                var jsonStringPtr = StatsigFFI.statsig_get_experiment_groups(_statsigRef, experimentNamePtr, &resultLen);
+                var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr, resultLen);
                 if (jsonString == null)
                 {
                     return new ExperimentGroupsResult();

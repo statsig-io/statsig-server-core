@@ -244,13 +244,14 @@ void Statsig::overrideExperimentByGroupName(
 
 ExperimentGroupsResult
 Statsig::getExperimentGroups(const std::string &experiment_name) {
-  char *result =
-      statsig_get_experiment_groups(ref_, experiment_name.c_str());
+  uint64_t result_len = 0;
+  char *result = statsig_get_experiment_groups(ref_, experiment_name.c_str(),
+                                               &result_len);
   if (!result) {
     return {};
   }
 
-  std::string result_str(result);
+  std::string result_str(result, result_len);
   free_string(result);
 
   json j = json::parse(result_str, nullptr, false);

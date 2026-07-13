@@ -1022,6 +1022,7 @@ pub extern "C" fn statsig_get_raw_experiment_by_group_id_advanced(
 pub extern "C" fn statsig_get_experiment_groups(
     statsig_ref: u64,
     experiment_name: *const c_char,
+    inout_result_len: *mut u64,
 ) -> *mut c_char {
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
     let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null_mut());
@@ -1036,7 +1037,7 @@ pub extern "C" fn statsig_get_experiment_groups(
         }
     };
 
-    string_to_c_char(result)
+    string_to_c_char_with_inout_len(result, inout_result_len)
 }
 
 // ------------------------

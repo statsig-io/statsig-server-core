@@ -247,7 +247,9 @@ char *statsig_get_raw_experiment_by_group_id_advanced(uint64_t statsig_ref,
                                                       const char *group_id,
                                                       uint64_t *inout_result_len);
 
-char *statsig_get_experiment_groups(uint64_t statsig_ref, const char *experiment_name);
+char *statsig_get_experiment_groups(uint64_t statsig_ref,
+                                    const char *experiment_name,
+                                    uint64_t *inout_result_len);
 
 char *statsig_get_layer_with_inout_len(uint64_t statsig_ref,
                                        uint64_t user_ref,

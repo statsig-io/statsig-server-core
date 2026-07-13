@@ -255,8 +255,10 @@ func (s *Statsig) OverrideExperimentByGroupName(experimentName string, groupName
 func (s *Statsig) GetExperimentGroups(experimentName string) ExperimentGroupsResult {
 	result := ExperimentGroupsResult{Groups: []ExperimentGroup{}}
 
-	resultJson := UseRustStringNoLen(func() *byte {
-		return GetFFI().statsig_get_experiment_groups(s.ref.Load(), experimentName)
+	resultJson := UseRustString(func() (*byte, uint64) {
+		length := uint64(0)
+		ptr := GetFFI().statsig_get_experiment_groups(s.ref.Load(), experimentName, &length)
+		return ptr, length
 	})
 
 	if resultJson == nil {

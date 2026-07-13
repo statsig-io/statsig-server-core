@@ -207,9 +207,11 @@ class Statsig
      */
     public function getExperimentGroups(string $name): ExperimentGroupsResult
     {
+        $len = StatsigFFI::get()->new("uint64_t");
         $ptr = StatsigFFI::get()->statsig_get_experiment_groups(
             $this->__ref,
-            $name
+            $name,
+            FFI::addr($len)
         );
 
         $raw_result = StatsigFFI::takeString($ptr);
