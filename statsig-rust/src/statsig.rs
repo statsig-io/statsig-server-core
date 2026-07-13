@@ -56,7 +56,8 @@ use crate::statsig_type_factories::{
     make_dynamic_config, make_experiment, make_feature_gate, make_layer,
 };
 use crate::statsig_types::{
-    DynamicConfig, Experiment, ExperimentGroup, FeatureGate, Layer, ParameterStore,
+    DynamicConfig, Experiment, ExperimentGroup, ExperimentGroupsResult, FeatureGate, Layer,
+    ParameterStore,
 };
 #[cfg(feature = "ffi-support")]
 use crate::statsig_types_raw::{DynamicConfigRaw, ExperimentRaw, FeatureGateRaw, LayerRaw};
@@ -1429,14 +1430,20 @@ impl Statsig {
             .get_fields_used_for_entity(experiment_name, SpecType::Experiment)
     }
 
-    /// Returns the group name and return value for each group in the given experiment,
-    /// without requiring a user evaluation.
+    /// Returns the experiment's active state and the group name, rule id, id type, and
+    /// return value for each of its groups, without requiring a user evaluation.
     ///
-    /// Returns an empty list if the name does not refer to an **active** experiment, i.e. if
-    /// the experiment is unknown, the name refers to a dynamic config, or the experiment is
-    /// not active (`isActive != true`). Rules that are not experiment groups (e.g. holdout or
+    /// `is_experiment_active` is `None` if the name does not refer to an experiment (the
+    /// name is unknown or refers to a dynamic config); otherwise it reflects the
+    /// experiment's `isActive` state, and `groups` contains the experiment's groups
+    /// regardless of that state. Rules that are not experiment groups (e.g. holdout or
     /// sizing rules) are excluded.
-    pub fn get_experiment_groups(&self, experiment_name: &str) -> Vec<ExperimentGroup> {
+    pub fn get_experiment_groups(&self, experiment_name: &str) -> ExperimentGroupsResult {
+        let not_an_experiment = ExperimentGroupsResult {
+            is_experiment_active: None,
+            groups: Vec::new(),
+        };
+
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
@@ -1445,20 +1452,21 @@ impl Statsig {
                     "Failed to acquire read lock for spec store data".to_string()
                 )
             );
-            return Vec::new();
+            return not_an_experiment;
         });
 
         let interned_name = InternedString::from_str_ref(experiment_name);
         let Some(spec_pointer) = data.values.dynamic_configs.get(&interned_name) else {
-            return Vec::new();
+            return not_an_experiment;
         };
 
         let spec = spec_pointer.as_spec_ref();
-        if spec.entity.as_str() != "experiment" || spec.is_active != Some(true) {
-            return Vec::new();
+        if spec.entity.as_str() != "experiment" {
+            return not_an_experiment;
         }
 
-        spec.rules
+        let groups = spec
+            .rules
             .iter()
             .filter(|rule| rule.is_experiment_group == Some(true))
             .map(|rule| ExperimentGroup {
@@ -1467,9 +1475,16 @@ impl Statsig {
                     .as_ref()
                     .map(|g| g.unperformant_to_string())
                     .unwrap_or_default(),
+                rule_id: String::from(rule.id.as_str()),
+                id_type: rule.id_type.value.unperformant_to_string(),
                 return_value: rule.return_value.get_json().unwrap_or_default(),
             })
-            .collect()
+            .collect();
+
+        ExperimentGroupsResult {
+            is_experiment_active: spec.is_active,
+            groups,
+        }
     }
 
     pub fn get_experiment_by_group_name(

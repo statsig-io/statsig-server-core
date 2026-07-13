@@ -996,9 +996,9 @@ pub extern "C" fn statsig_get_experiment_groups(
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
     let experiment_name = unwrap_or_return!(c_char_to_string(experiment_name), null_mut());
 
-    let groups = statsig.get_experiment_groups(&experiment_name);
+    let groups_result = statsig.get_experiment_groups(&experiment_name);
 
-    let result = match serde_json::to_string(&groups) {
+    let result = match serde_json::to_string(&groups_result) {
         Ok(result) => result,
         Err(e) => {
             log_e!(TAG, "Failed to serialize experiment groups: {}", e);

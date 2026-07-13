@@ -3,6 +3,7 @@ use serde::Serialize;
 use serde_json::Value;
 use statsig_rust::{
     statsig_types::ExperimentGroup as ExperimentGroupActual,
+    statsig_types::ExperimentGroupsResult as ExperimentGroupsResultActual,
     statsig_types::ParameterStore as ParameterStoreActual,
     EvaluationDetails as EvaluationDetailsActual, SecondaryExposure as SecondaryExposureActual,
 };
@@ -14,6 +15,8 @@ use crate::statsig_user_napi::StatsigUser;
 #[derive(Clone, Serialize)]
 pub struct ExperimentGroup {
     pub group_name: String,
+    pub rule_id: String,
+    pub id_type: String,
     pub return_value: HashMap<String, Value>,
 }
 
@@ -21,7 +24,31 @@ impl From<ExperimentGroupActual> for ExperimentGroup {
     fn from(value: ExperimentGroupActual) -> Self {
         ExperimentGroup {
             group_name: value.group_name,
+            rule_id: value.rule_id,
+            id_type: value.id_type,
             return_value: value.return_value,
+        }
+    }
+}
+
+#[napi(object)]
+#[derive(Clone, Serialize)]
+pub struct ExperimentGroupsResult {
+    /// Omitted when the name does not refer to an experiment (unknown name or a
+    /// dynamic config); otherwise the experiment's `isActive` state.
+    pub is_experiment_active: Option<bool>,
+    pub groups: Vec<ExperimentGroup>,
+}
+
+impl From<ExperimentGroupsResultActual> for ExperimentGroupsResult {
+    fn from(value: ExperimentGroupsResultActual) -> Self {
+        ExperimentGroupsResult {
+            is_experiment_active: value.is_experiment_active,
+            groups: value
+                .groups
+                .into_iter()
+                .map(ExperimentGroup::from)
+                .collect(),
         }
     }
 }

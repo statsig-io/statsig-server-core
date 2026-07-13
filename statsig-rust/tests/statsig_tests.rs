@@ -133,11 +133,14 @@ async fn get_experiment_groups_statsig() -> Statsig {
 async fn test_get_experiment_groups() {
     let statsig = get_experiment_groups_statsig().await;
 
-    let groups = statsig.get_experiment_groups("test_experiment_no_targeting");
+    let result = statsig.get_experiment_groups("test_experiment_no_targeting");
 
-    let mut groups_by_name: HashMap<String, _> = groups
+    assert_eq!(result.is_experiment_active, Some(true));
+
+    let mut groups_by_name: HashMap<String, _> = result
+        .groups
         .into_iter()
-        .map(|group| (group.group_name.clone(), group.return_value))
+        .map(|group| (group.group_name.clone(), group))
         .collect();
 
     // Only the experiment group rules are returned (the layerAssignment rule is excluded).
@@ -145,41 +148,58 @@ async fn test_get_experiment_groups() {
     group_names.sort();
     assert_eq!(group_names, vec!["Control", "Test", "Test2"]);
 
-    assert_eq!(
-        groups_by_name.remove("Control").unwrap()["value"],
-        "control"
-    );
-    assert_eq!(groups_by_name.remove("Test").unwrap()["value"], "test_1");
-    assert_eq!(groups_by_name.remove("Test2").unwrap()["value"], "test_2");
+    let control = groups_by_name.remove("Control").unwrap();
+    assert_eq!(control.rule_id, "54QJztEPRLXK7ZCvXeY9q4");
+    assert_eq!(control.id_type, "userID");
+    assert_eq!(control.return_value["value"], "control");
+
+    let test = groups_by_name.remove("Test").unwrap();
+    assert_eq!(test.rule_id, "54QJzvjSk47erparymTMJ6");
+    assert_eq!(test.return_value["value"], "test_1");
+
+    let test2 = groups_by_name.remove("Test2").unwrap();
+    assert_eq!(test2.rule_id, "54QJzwYUMmgIKOIn9uPq28");
+    assert_eq!(test2.return_value["value"], "test_2");
 }
 
 #[tokio::test]
-async fn test_get_experiment_groups_returns_empty_for_unknown_experiment() {
+async fn test_get_experiment_groups_returns_none_for_unknown_experiment() {
     let statsig = get_experiment_groups_statsig().await;
 
-    let groups = statsig.get_experiment_groups("nonexistent_experiment");
+    let result = statsig.get_experiment_groups("nonexistent_experiment");
 
-    assert!(groups.is_empty());
+    assert_eq!(result.is_experiment_active, None);
+    assert!(result.groups.is_empty());
 }
 
 #[tokio::test]
-async fn test_get_experiment_groups_returns_empty_for_dynamic_config() {
+async fn test_get_experiment_groups_returns_none_for_dynamic_config() {
     let statsig = get_experiment_groups_statsig().await;
 
-    // Dynamic configs are not experiments; should return an empty list.
-    let groups = statsig.get_experiment_groups("test_max_dynamic_config_size_again");
+    // Dynamic configs are not experiments; is_experiment_active should be None.
+    let result = statsig.get_experiment_groups("test_max_dynamic_config_size_again");
 
-    assert!(groups.is_empty());
+    assert_eq!(result.is_experiment_active, None);
+    assert!(result.groups.is_empty());
 }
 
 #[tokio::test]
-async fn test_get_experiment_groups_returns_empty_for_inactive_experiment() {
+async fn test_get_experiment_groups_returns_groups_for_inactive_experiment() {
     let statsig = get_experiment_groups_statsig().await;
 
-    // an_experiment1 has isActive: false; should return an empty list.
-    let groups = statsig.get_experiment_groups("an_experiment1");
+    // test_switchback has isActive: false; groups are still returned along with the flag.
+    let result = statsig.get_experiment_groups("test_switchback");
 
-    assert!(groups.is_empty());
+    assert_eq!(result.is_experiment_active, Some(false));
+
+    // Only the experiment group rules are returned (non-group rules are excluded).
+    let mut group_names: Vec<String> = result
+        .groups
+        .iter()
+        .map(|group| group.group_name.clone())
+        .collect();
+    group_names.sort();
+    assert_eq!(group_names, vec!["Control", "Test"]);
 }
 
 #[tokio::test]

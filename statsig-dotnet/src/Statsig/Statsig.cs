@@ -20,13 +20,14 @@ namespace Statsig
         IExperiment GetExperiment(IStatsigUser user, string experimentName, EvaluationOptions? options = null);
         void ManuallyLogExperimentExposure(IStatsigUser user, string experimentName);
         /// <summary>
-        /// Returns the group name and return value for each group in the given experiment,
-        /// without requiring a user evaluation. Returns an empty list if the name does not
-        /// refer to an active experiment (i.e. the experiment is unknown, refers to a dynamic
-        /// config, or is not active). Rules that are not experiment groups (e.g. holdout or
-        /// sizing rules) are excluded.
+        /// Returns the experiment's active state and the group name, rule id, id type, and
+        /// return value for each of its groups, without requiring a user evaluation.
+        /// IsExperimentActive is null if the name does not refer to an experiment (unknown
+        /// name or a dynamic config); otherwise it reflects the experiment's isActive state,
+        /// and Groups are returned regardless of that state. Rules that are not experiment
+        /// groups (e.g. holdout or sizing rules) are excluded.
         /// </summary>
-        List<IExperimentGroup> GetExperimentGroups(string experimentName);
+        IExperimentGroupsResult GetExperimentGroups(string experimentName);
         ILayer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null);
         void ManuallyLogLayerParameterExposure(IStatsigUser user, string layerName, string parameterName);
         IParameterStore GetParameterStore(IStatsigUser user, string storeName, EvaluationOptions? options = null);
@@ -341,10 +342,8 @@ namespace Statsig
             }
         }
 
-        unsafe public List<IExperimentGroup> GetExperimentGroups(string experimentName)
+        unsafe public IExperimentGroupsResult GetExperimentGroups(string experimentName)
         {
-            var groups = new List<IExperimentGroup>();
-
             int nameLen = Encoding.UTF8.GetByteCount(experimentName);
 #if NET8_0_OR_GREATER
             Span<byte> nameBytes = nameLen + 1 <= SpecNameStackThreshold ? stackalloc byte[nameLen + 1] : new byte[nameLen + 1];
@@ -363,15 +362,10 @@ namespace Statsig
                 var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr);
                 if (jsonString == null)
                 {
-                    return groups;
+                    return new ExperimentGroupsResult();
                 }
 
-                var array = JArray.Parse(jsonString);
-                foreach (var token in array)
-                {
-                    groups.Add(new ExperimentGroup(token));
-                }
-                return groups;
+                return new ExperimentGroupsResult(JObject.Parse(jsonString));
             }
         }
 

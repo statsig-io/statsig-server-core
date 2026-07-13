@@ -224,10 +224,11 @@ defmodule Statsig.NativeBindingsTest do
   end
 
   describe "get_experiment_groups/2" do
-    test "returns an empty list for an unknown experiment" do
+    test "returns nil active state and no groups for an unknown experiment" do
       ref = new()
 
-      assert NativeBindings.get_experiment_groups(ref, "nonexistent_experiment") == []
+      assert %Statsig.ExperimentGroupsResult{is_experiment_active: nil, groups: []} =
+               NativeBindings.get_experiment_groups(ref, "nonexistent_experiment")
     end
   end
 

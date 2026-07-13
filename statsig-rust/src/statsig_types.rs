@@ -85,7 +85,17 @@ impl Experiment {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ExperimentGroup {
     pub group_name: String,
+    pub rule_id: String,
+    pub id_type: String,
     pub return_value: HashMap<String, Value>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ExperimentGroupsResult {
+    /// `None` when the name does not refer to an experiment (unknown name or a
+    /// dynamic config); otherwise the experiment's `isActive` state.
+    pub is_experiment_active: Option<bool>,
+    pub groups: Vec<ExperimentGroup>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

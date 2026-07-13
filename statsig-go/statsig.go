@@ -180,27 +180,28 @@ func (s *Statsig) GetExperimentWithOptions(user *StatsigUser, experimentName str
 	return experiment
 }
 
-// GetExperimentGroups returns the group name and return value for each group in the
-// given experiment, without requiring a user evaluation. It returns an empty slice if
-// the name does not refer to an active experiment (i.e. the experiment is unknown,
-// refers to a dynamic config, or is not active). Rules that are not experiment groups
-// (e.g. holdout or sizing rules) are excluded.
-func (s *Statsig) GetExperimentGroups(experimentName string) []ExperimentGroup {
-	groups := []ExperimentGroup{}
+// GetExperimentGroups returns the experiment's active state and the group name, rule
+// id, id type, and return value for each of its groups, without requiring a user
+// evaluation. IsExperimentActive is nil if the name does not refer to an experiment
+// (unknown name or a dynamic config); otherwise it reflects the experiment's isActive
+// state, and Groups are returned regardless of that state. Rules that are not
+// experiment groups (e.g. holdout or sizing rules) are excluded.
+func (s *Statsig) GetExperimentGroups(experimentName string) ExperimentGroupsResult {
+	result := ExperimentGroupsResult{Groups: []ExperimentGroup{}}
 
-	groupsJson := UseRustStringNoLen(func() *byte {
+	resultJson := UseRustStringNoLen(func() *byte {
 		return GetFFI().statsig_get_experiment_groups(s.ref.Load(), experimentName)
 	})
 
-	if groupsJson == nil {
-		return groups
+	if resultJson == nil {
+		return result
 	}
 
-	if err := json.Unmarshal([]byte(*groupsJson), &groups); err != nil {
-		fmt.Printf("Failed to unmarshal ExperimentGroups: %v", err)
+	if err := json.Unmarshal([]byte(*resultJson), &result); err != nil {
+		fmt.Printf("Failed to unmarshal ExperimentGroupsResult: %v", err)
 	}
 
-	return groups
+	return result
 }
 
 func (s *Statsig) GetLayer(user *StatsigUser, layerName string) Layer {

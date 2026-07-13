@@ -30,7 +30,7 @@ export declare class StatsigNapiInternal {
   __INTERNAL_getExperiment(user: StatsigUser, experimentName: string, options?: ExperimentEvaluationOptions | undefined | null): Record<string, unknown>
   __INTERNAL_getExperimentByGroupName(experimentName: string, groupName: string): Record<string, unknown>
   getFieldsNeededForExperiment(experimentName: string): Array<string>
-  getExperimentGroups(experimentName: string): Array<ExperimentGroup>
+  getExperimentGroups(experimentName: string): ExperimentGroupsResult
   __INTERNAL_getLayer(user: StatsigUser, layerName: string, options?: LayerEvaluationOptions | undefined | null): Record<string, unknown>
   __INTERNAL_logLayerParamExposure(raw: LayerParamExposureData, paramName: string): void
   getFieldsNeededForLayer(layerName: string): Array<string>
@@ -159,7 +159,18 @@ export interface ExperimentEvaluationOptions {
 
 export interface ExperimentGroup {
   groupName: string
+  ruleId: string
+  idType: string
   returnValue: Record<string, any>
+}
+
+export interface ExperimentGroupsResult {
+  /**
+   * Omitted when the name does not refer to an experiment (unknown name or a
+   * dynamic config); otherwise the experiment's `isActive` state.
+   */
+  isExperimentActive?: boolean
+  groups: Array<ExperimentGroup>
 }
 
 export interface FeatureGateEvaluationOptions {

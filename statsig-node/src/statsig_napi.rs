@@ -12,7 +12,7 @@ use crate::statsig_core_api_options_napi::{
 use crate::statsig_metadata_napi;
 use crate::statsig_options_napi::StatsigOptions;
 use crate::statsig_result::StatsigResult;
-use crate::statsig_types_napi::{ExperimentGroup, ParameterStore};
+use crate::statsig_types_napi::{ExperimentGroupsResult, ParameterStore};
 use crate::statsig_user_napi::StatsigUser;
 use napi::bindgen_prelude::*;
 use napi::JsObject;
@@ -302,12 +302,8 @@ impl StatsigNapiInternal {
     }
 
     #[napi]
-    pub fn get_experiment_groups(&self, experiment_name: String) -> Vec<ExperimentGroup> {
-        self.inner
-            .get_experiment_groups(experiment_name.as_str())
-            .into_iter()
-            .map(ExperimentGroup::from)
-            .collect()
+    pub fn get_experiment_groups(&self, experiment_name: String) -> ExperimentGroupsResult {
+        ExperimentGroupsResult::from(self.inner.get_experiment_groups(experiment_name.as_str()))
     }
 
     #[napi(

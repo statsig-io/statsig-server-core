@@ -1,8 +1,10 @@
 package com.statsig;
 
+import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,11 +53,13 @@ public class GetExperimentGroupsTest {
 
   @Test
   public void testReturnsGroupsForKnownExperiment() {
-    List<ExperimentGroup> groups = statsig.getExperimentGroups("test_experiment_no_targeting");
+    ExperimentGroupsResult result = statsig.getExperimentGroups("test_experiment_no_targeting");
 
-    Map<String, Map<String, Object>> groupsByName = new HashMap<>();
-    for (ExperimentGroup group : groups) {
-      groupsByName.put(group.getGroupName(), group.getReturnValue());
+    assertEquals(Boolean.TRUE, result.getIsExperimentActive());
+
+    Map<String, ExperimentGroup> groupsByName = new HashMap<>();
+    for (ExperimentGroup group : result.getGroups()) {
+      groupsByName.put(group.getGroupName(), group);
     }
 
     // Only the experiment group rules are returned (the layerAssignment rule is excluded).
@@ -63,33 +67,40 @@ public class GetExperimentGroupsTest {
     assertTrue(groupsByName.containsKey("Control"));
     assertTrue(groupsByName.containsKey("Test"));
     assertTrue(groupsByName.containsKey("Test2"));
-    assertEquals("control", groupsByName.get("Control").get("value"));
-    assertEquals("test_1", groupsByName.get("Test").get("value"));
-    assertEquals("test_2", groupsByName.get("Test2").get("value"));
+    assertEquals("control", groupsByName.get("Control").getReturnValue().get("value"));
+    assertEquals("54QJztEPRLXK7ZCvXeY9q4", groupsByName.get("Control").getRuleID());
+    assertEquals("userID", groupsByName.get("Control").getIDType());
+    assertEquals("test_1", groupsByName.get("Test").getReturnValue().get("value"));
+    assertEquals("test_2", groupsByName.get("Test2").getReturnValue().get("value"));
   }
 
   @Test
-  public void testReturnsEmptyListForUnknownExperiment() {
-    List<ExperimentGroup> groups = statsig.getExperimentGroups("nonexistent_experiment");
+  public void testReturnsNullActiveStateForUnknownExperiment() {
+    ExperimentGroupsResult result = statsig.getExperimentGroups("nonexistent_experiment");
 
-    assertNotNull(groups);
-    assertTrue(groups.isEmpty());
+    assertNull(result.getIsExperimentActive());
+    assertTrue(result.getGroups().isEmpty());
   }
 
   @Test
-  public void testReturnsEmptyListForDynamicConfig() {
-    List<ExperimentGroup> groups =
+  public void testReturnsNullActiveStateForDynamicConfig() {
+    ExperimentGroupsResult result =
         statsig.getExperimentGroups("test_max_dynamic_config_size_again");
 
-    assertNotNull(groups);
-    assertTrue(groups.isEmpty());
+    assertNull(result.getIsExperimentActive());
+    assertTrue(result.getGroups().isEmpty());
   }
 
   @Test
-  public void testReturnsEmptyListForInactiveExperiment() {
-    List<ExperimentGroup> groups = statsig.getExperimentGroups("an_experiment1");
+  public void testReturnsGroupsForInactiveExperiment() {
+    // test_switchback has isActive: false; groups are still returned along with the flag.
+    ExperimentGroupsResult result = statsig.getExperimentGroups("test_switchback");
 
-    assertNotNull(groups);
-    assertTrue(groups.isEmpty());
+    assertEquals(Boolean.FALSE, result.getIsExperimentActive());
+
+    // Only the experiment group rules are returned (non-group rules are excluded).
+    List<String> groupNames =
+        result.getGroups().stream().map(ExperimentGroup::getGroupName).sorted().collect(toList());
+    assertEquals(Arrays.asList("Control", "Test"), groupNames);
   }
 }

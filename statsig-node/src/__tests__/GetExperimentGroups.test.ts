@@ -46,36 +46,47 @@ describe('Get Experiment Groups', () => {
   });
 
   it('should return the groups for a known experiment', async () => {
-    const groups = statsig.getExperimentGroups('test_experiment_no_targeting');
+    const result = statsig.getExperimentGroups('test_experiment_no_targeting');
+
+    expect(result.isExperimentActive).toBe(true);
 
     const groupsByName = Object.fromEntries(
-      groups.map((group) => [group.groupName, group.returnValue]),
+      result.groups.map((group) => [group.groupName, group]),
     );
 
     // Only the experiment group rules are returned (the layerAssignment rule is excluded).
     expect(Object.keys(groupsByName).sort()).toEqual(['Control', 'Test', 'Test2']);
-    expect(groupsByName['Control']).toEqual({ value: 'control' });
-    expect(groupsByName['Test']).toEqual({ value: 'test_1' });
-    expect(groupsByName['Test2']).toEqual({ value: 'test_2' });
+    expect(groupsByName['Control'].returnValue).toEqual({ value: 'control' });
+    expect(groupsByName['Control'].ruleId).toBe('54QJztEPRLXK7ZCvXeY9q4');
+    expect(groupsByName['Control'].idType).toBe('userID');
+    expect(groupsByName['Test'].returnValue).toEqual({ value: 'test_1' });
+    expect(groupsByName['Test2'].returnValue).toEqual({ value: 'test_2' });
   });
 
-  it('should return an empty list for an unknown experiment', async () => {
-    const groups = statsig.getExperimentGroups('not_an_experiment');
+  it('should return undefined active state for an unknown experiment', async () => {
+    const result = statsig.getExperimentGroups('not_an_experiment');
 
-    expect(groups).toEqual([]);
+    expect(result.isExperimentActive).toBeUndefined();
+    expect(result.groups).toEqual([]);
   });
 
-  it('should return an empty list for a dynamic config', async () => {
-    const groups = statsig.getExperimentGroups(
+  it('should return undefined active state for a dynamic config', async () => {
+    const result = statsig.getExperimentGroups(
       'test_max_dynamic_config_size_again',
     );
 
-    expect(groups).toEqual([]);
+    expect(result.isExperimentActive).toBeUndefined();
+    expect(result.groups).toEqual([]);
   });
 
-  it('should return an empty list for an inactive experiment', async () => {
-    const groups = statsig.getExperimentGroups('an_experiment1');
+  it('should return the groups for an inactive experiment', async () => {
+    // test_switchback has isActive: false; groups are still returned along with the flag.
+    const result = statsig.getExperimentGroups('test_switchback');
 
-    expect(groups).toEqual([]);
+    expect(result.isExperimentActive).toBe(false);
+
+    // Only the experiment group rules are returned (non-group rules are excluded).
+    const groupNames = result.groups.map((group) => group.groupName).sort();
+    expect(groupNames).toEqual(['Control', 'Test']);
   });
 });

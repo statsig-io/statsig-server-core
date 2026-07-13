@@ -101,12 +101,14 @@ defmodule Statsig do
   end
 
   @doc """
-  Returns the group name and return value for each group in the given experiment,
-  without requiring a user evaluation.
+  Returns the experiment's active state and the group name, rule id, id type, and
+  return value for each of its groups, without requiring a user evaluation.
 
-  Returns `{:ok, []}` if the name does not refer to an **active** experiment (i.e. the
-  experiment is unknown, refers to a dynamic config, or is not active). Rules that are
-  not experiment groups (e.g. holdout or sizing rules) are excluded.
+  Returns `{:ok, %Statsig.ExperimentGroupsResult{}}` where `is_experiment_active` is
+  `nil` if the name does not refer to an experiment (unknown name or a dynamic config),
+  and otherwise reflects the experiment's `isActive` state; `groups` contains the
+  experiment's groups regardless of that state. Rules that are not experiment groups
+  (e.g. holdout or sizing rules) are excluded.
   """
   def get_experiment_groups(experiment_name) do
     try do
@@ -114,7 +116,7 @@ defmodule Statsig do
 
       case NativeBindings.get_experiment_groups(instance, experiment_name) do
         {:error, e} -> {:error, e}
-        groups -> {:ok, groups}
+        result -> {:ok, result}
       end
     rescue
       exception -> {:error, Exception.message(exception)}

@@ -12,7 +12,8 @@ use statsig_rust::statsig_core_api_options::{
 };
 use statsig_rust::statsig_types::{
     DynamicConfig as DynamicConfigActual, Experiment as ExperimentActual,
-    ExperimentGroup as ExperimentGroupActual, FeatureGate as FeatureGateActual,
+    ExperimentGroup as ExperimentGroupActual,
+    ExperimentGroupsResult as ExperimentGroupsResultActual, FeatureGate as FeatureGateActual,
 };
 use statsig_rust::DynamicValue;
 use statsig_rust::EvaluationDetails as EvaluationDetailsActual;
@@ -87,6 +88,8 @@ impl From<ExperimentActual> for Experiment {
 #[module = "Statsig.ExperimentGroup"]
 pub struct ExperimentGroup {
     pub group_name: String,
+    pub rule_id: String,
+    pub id_type: String,
     pub return_value: ValueMap,
 }
 
@@ -94,7 +97,29 @@ impl From<ExperimentGroupActual> for ExperimentGroup {
     fn from(group: ExperimentGroupActual) -> Self {
         ExperimentGroup {
             group_name: group.group_name,
+            rule_id: group.rule_id,
+            id_type: group.id_type,
             return_value: ValueMap(group.return_value),
+        }
+    }
+}
+
+#[derive(NifStruct)]
+#[module = "Statsig.ExperimentGroupsResult"]
+pub struct ExperimentGroupsResult {
+    pub is_experiment_active: Option<bool>,
+    pub groups: Vec<ExperimentGroup>,
+}
+
+impl From<ExperimentGroupsResultActual> for ExperimentGroupsResult {
+    fn from(result: ExperimentGroupsResultActual) -> Self {
+        ExperimentGroupsResult {
+            is_experiment_active: result.is_experiment_active,
+            groups: result
+                .groups
+                .into_iter()
+                .map(ExperimentGroup::from)
+                .collect(),
         }
     }
 }

@@ -206,7 +206,7 @@ Statsig::getExperiment(const User &user, const std::string &experiment_name,
   return Experiment();
 }
 
-std::vector<ExperimentGroup>
+ExperimentGroupsResult
 Statsig::getExperimentGroups(const std::string &experiment_name) {
   char *result =
       statsig_get_experiment_groups(ref_, experiment_name.c_str());
@@ -218,11 +218,11 @@ Statsig::getExperimentGroups(const std::string &experiment_name) {
   free_string(result);
 
   json j = json::parse(result_str, nullptr, false);
-  if (j.is_discarded() || !j.is_array()) {
+  if (j.is_discarded() || !j.is_object()) {
     return {};
   }
 
-  return j.get<std::vector<ExperimentGroup>>();
+  return j.get<ExperimentGroupsResult>();
 }
 
 DynamicConfig Statsig::getDynamicConfig(

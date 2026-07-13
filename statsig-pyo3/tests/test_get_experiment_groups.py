@@ -32,44 +32,58 @@ def statsig_setup(httpserver: HTTPServer):
 
 def test_get_experiment_groups(statsig_setup):
     statsig = statsig_setup
-    groups = statsig.get_experiment_groups("test_experiment_no_targeting")
+    result = statsig.get_experiment_groups("test_experiment_no_targeting")
 
-    groups_by_name = {group["group_name"]: group["return_value"] for group in groups}
+    assert result["is_experiment_active"] is True
+
+    groups_by_name = {group["group_name"]: group for group in result["groups"]}
 
     # Only the experiment group rules are returned (the layerAssignment rule is excluded).
     assert sorted(groups_by_name.keys()) == ["Control", "Test", "Test2"]
-    assert groups_by_name["Control"] == {"value": "control"}
-    assert groups_by_name["Test"] == {"value": "test_1"}
-    assert groups_by_name["Test2"] == {"value": "test_2"}
+    assert groups_by_name["Control"]["return_value"] == {"value": "control"}
+    assert groups_by_name["Control"]["rule_id"] == "54QJztEPRLXK7ZCvXeY9q4"
+    assert groups_by_name["Control"]["id_type"] == "userID"
+    assert groups_by_name["Test"]["return_value"] == {"value": "test_1"}
+    assert groups_by_name["Test2"]["return_value"] == {"value": "test_2"}
 
 
 def test_get_experiment_groups_shape(statsig_setup):
     statsig = statsig_setup
-    groups = statsig.get_experiment_groups("test_experiment_no_targeting")
+    result = statsig.get_experiment_groups("test_experiment_no_targeting")
 
-    for group in groups:
+    assert "is_experiment_active" in result
+    for group in result["groups"]:
         assert "group_name" in group
+        assert "rule_id" in group
+        assert "id_type" in group
         assert "return_value" in group
+        assert group["id_type"] == "userID"
 
 
-def test_get_experiment_groups_returns_empty_for_unknown_experiment(statsig_setup):
+def test_get_experiment_groups_returns_none_for_unknown_experiment(statsig_setup):
     statsig = statsig_setup
-    groups = statsig.get_experiment_groups("nonexistent_experiment")
+    result = statsig.get_experiment_groups("nonexistent_experiment")
 
-    assert groups == []
+    assert result["is_experiment_active"] is None
+    assert result["groups"] == []
 
 
-def test_get_experiment_groups_returns_empty_for_dynamic_config(statsig_setup):
+def test_get_experiment_groups_returns_none_for_dynamic_config(statsig_setup):
     statsig = statsig_setup
-    # Dynamic configs are not experiments; should return an empty list.
-    groups = statsig.get_experiment_groups("test_max_dynamic_config_size_again")
+    # Dynamic configs are not experiments; is_experiment_active should be None.
+    result = statsig.get_experiment_groups("test_max_dynamic_config_size_again")
 
-    assert groups == []
+    assert result["is_experiment_active"] is None
+    assert result["groups"] == []
 
 
-def test_get_experiment_groups_returns_empty_for_inactive_experiment(statsig_setup):
+def test_get_experiment_groups_returns_groups_for_inactive_experiment(statsig_setup):
     statsig = statsig_setup
-    # an_experiment1 has isActive: false; should return an empty list.
-    groups = statsig.get_experiment_groups("an_experiment1")
+    # test_switchback has isActive: false; groups are still returned along with the flag.
+    result = statsig.get_experiment_groups("test_switchback")
 
-    assert groups == []
+    assert result["is_experiment_active"] is False
+
+    # Only the experiment group rules are returned (non-group rules are excluded).
+    group_names = sorted(group["group_name"] for group in result["groups"])
+    assert group_names == ["Control", "Test"]

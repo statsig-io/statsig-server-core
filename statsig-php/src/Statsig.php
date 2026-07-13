@@ -5,6 +5,7 @@ namespace Statsig;
 use Statsig\EvaluationTypes\DynamicConfig;
 use Statsig\EvaluationTypes\Experiment;
 use Statsig\EvaluationTypes\ExperimentGroup;
+use Statsig\EvaluationTypes\ExperimentGroupsResult;
 use Statsig\EvaluationTypes\FeatureGate;
 use Statsig\EvaluationTypes\Layer;
 use Statsig\StatsigEventData;
@@ -169,16 +170,15 @@ class Statsig
     }
 
     /**
-     * Returns the group name and return value for each group in the given experiment,
-     * without requiring a user evaluation.
+     * Returns the experiment's active state and the group name, rule id, id type, and
+     * return value for each of its groups, without requiring a user evaluation.
      *
-     * Returns an empty array if the name does not refer to an active experiment (i.e. the
-     * experiment is unknown, refers to a dynamic config, or is not active). Rules that are
-     * not experiment groups (e.g. holdout or sizing rules) are excluded.
-     *
-     * @return ExperimentGroup[]
+     * `isExperimentActive` is null if the name does not refer to an experiment (unknown
+     * name or a dynamic config); otherwise it reflects the experiment's isActive state,
+     * and `groups` contains the experiment's groups regardless of that state. Rules that
+     * are not experiment groups (e.g. holdout or sizing rules) are excluded.
      */
-    public function getExperimentGroups(string $name): array
+    public function getExperimentGroups(string $name): ExperimentGroupsResult
     {
         $ptr = StatsigFFI::get()->statsig_get_experiment_groups(
             $this->__ref,
@@ -189,15 +189,19 @@ class Statsig
         $decoded = json_decode($raw_result, true);
 
         if (!is_array($decoded)) {
-            return [];
+            return new ExperimentGroupsResult(null, []);
         }
 
-        return array_map(function ($group) {
+        $groups = array_map(function ($group) {
             return new ExperimentGroup(
                 (string)($group['group_name'] ?? ''),
+                (string)($group['rule_id'] ?? ''),
+                (string)($group['id_type'] ?? ''),
                 $group['return_value'] ?? []
             );
-        }, $decoded);
+        }, $decoded['groups'] ?? []);
+
+        return new ExperimentGroupsResult($decoded['is_experiment_active'] ?? null, $groups);
     }
 
     /**

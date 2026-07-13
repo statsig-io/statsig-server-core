@@ -45,6 +45,10 @@ pub fn map_to_py_dict(py: Python, map: &HashMap<String, Value>) -> Py<PyAny> {
         }
     };
 
+    json_string_to_py_dict(py, &value)
+}
+
+pub fn json_string_to_py_dict(py: Python, json_string: &str) -> Py<PyAny> {
     let json = match PyModule::import(py, "json") {
         Ok(j) => j,
         Err(e) => {
@@ -53,13 +57,13 @@ pub fn map_to_py_dict(py: Python, map: &HashMap<String, Value>) -> Py<PyAny> {
         }
     };
 
-    return match json.call_method1("loads", (value.clone(),)) {
+    match json.call_method1("loads", (json_string,)) {
         Ok(d) => d.unbind(),
         Err(e) => {
             log_e!(TAG, "Failed to call json.loads: {}", e);
-            return PyDict::new(py).unbind().into();
+            PyDict::new(py).unbind().into()
         }
-    };
+    }
 }
 
 pub fn py_list_to_list(py_list: &Bound<PyList>) -> PyResult<Vec<String>> {

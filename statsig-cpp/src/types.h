@@ -146,16 +146,41 @@ inline Experiment::Experiment(const std::string &json_str) {
 // ExperimentGroup
 struct ExperimentGroup {
   std::string group_name;
+  std::string rule_id;
+  std::string id_type;
   std::unordered_map<std::string, nlohmann::json> return_value;
 };
 
 inline void from_json(const json &j, ExperimentGroup &g) {
   j.at("group_name").get_to(g.group_name);
+  j.at("rule_id").get_to(g.rule_id);
+  j.at("id_type").get_to(g.id_type);
   j.at("return_value").get_to(g.return_value);
 }
 
 inline void to_json(json &j, const ExperimentGroup &g) {
-  j = json{{"group_name", g.group_name}, {"return_value", g.return_value}};
+  j = json{{"group_name", g.group_name},
+           {"rule_id", g.rule_id},
+           {"id_type", g.id_type},
+           {"return_value", g.return_value}};
+}
+
+// ExperimentGroupsResult
+struct ExperimentGroupsResult {
+  // std::nullopt when the name does not refer to an experiment (unknown name
+  // or a dynamic config); otherwise the experiment's isActive state.
+  std::optional<bool> is_experiment_active;
+  std::vector<ExperimentGroup> groups;
+};
+
+inline void from_json(const json &j, ExperimentGroupsResult &r) {
+  r.is_experiment_active = get_optional<bool>(j, "is_experiment_active");
+  r.groups = j.value("groups", std::vector<ExperimentGroup>{});
+}
+
+inline void to_json(json &j, const ExperimentGroupsResult &r) {
+  j = json{{"is_experiment_active", r.is_experiment_active},
+           {"groups", r.groups}};
 }
 
 using allowed_primitive = std::variant<std::string, int64_t, double, bool>;

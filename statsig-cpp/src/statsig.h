@@ -60,10 +60,13 @@ public:
       const User &user, const std::string &experiment_name,
       const std::optional<GetExperimentOptions> &option = std::nullopt);
 
-  // Returns the group name and return value for each group in the given
-  // experiment, without requiring a user evaluation. Returns an empty vector if
-  // the name does not refer to an active experiment.
-  std::vector<ExperimentGroup>
+  // Returns the experiment's active state and the group name, rule id, id
+  // type, and return value for each of its groups, without requiring a user
+  // evaluation. is_experiment_active is nullopt if the name does not refer to
+  // an experiment (unknown name or a dynamic config); otherwise it reflects
+  // the experiment's isActive state, and groups are returned regardless of
+  // that state.
+  ExperimentGroupsResult
   getExperimentGroups(const std::string &experiment_name);
 
   DynamicConfig getDynamicConfig(
