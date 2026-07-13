@@ -95,7 +95,8 @@ type ExperimentGroup struct {
 
 type ExperimentGroupsResult struct {
 	// IsExperimentActive is nil when the name does not refer to an experiment
-	// (unknown name or a dynamic config); otherwise it reflects the experiment's
+	// (unknown name or a non-experiment entity like a dynamic config or
+	// autotune); otherwise it reflects the experiment's
 	// isActive state.
 	IsExperimentActive *bool             `json:"is_experiment_active"`
 	Groups             []ExperimentGroup `json:"groups"`

@@ -152,6 +152,7 @@ TEST(StatsigE2EUsageTest, GetAutotuneList) {
 
   s.shutdownBlocking();
 }
+
 TEST(StatsigE2EUsageTest, GetExperimentGroups) {
   const char *sdkKey = std::getenv("test_api_key");
   if (sdkKey == nullptr) {

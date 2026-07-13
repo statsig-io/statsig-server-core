@@ -169,7 +169,8 @@ export interface ExperimentGroup {
 export interface ExperimentGroupsResult {
   /**
    * Omitted when the name does not refer to an experiment (unknown name or a
-   * dynamic config); otherwise the experiment's `isActive` state.
+   * non-experiment entity like a dynamic config or autotune); otherwise the
+   * experiment's `isActive` state.
    */
   isExperimentActive?: boolean
   groups: Array<ExperimentGroup>

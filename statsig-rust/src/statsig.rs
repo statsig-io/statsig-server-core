@@ -1434,7 +1434,8 @@ impl Statsig {
     /// return value for each of its groups, without requiring a user evaluation.
     ///
     /// `is_experiment_active` is `None` if the name does not refer to an experiment (the
-    /// name is unknown or refers to a dynamic config); otherwise it reflects the
+    /// name is unknown or refers to a non-experiment entity like a dynamic config or
+    /// autotune); otherwise it reflects the
     /// experiment's `isActive` state, and `groups` contains the experiment's groups
     /// regardless of that state. Rules that are not experiment groups (e.g. holdout or
     /// sizing rules) are excluded.

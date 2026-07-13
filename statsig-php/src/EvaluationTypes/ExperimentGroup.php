@@ -9,11 +9,11 @@ class ExperimentGroup
     public string $idType;
     public array $returnValue;
 
-    public function __construct(string $group_name, string $rule_id, string $id_type, array $return_value)
+    public function __construct(array $group)
     {
-        $this->groupName = $group_name;
-        $this->ruleId = $rule_id;
-        $this->idType = $id_type;
-        $this->returnValue = $return_value;
+        $this->groupName = (string)($group['group_name'] ?? '');
+        $this->ruleId = (string)($group['rule_id'] ?? '');
+        $this->idType = (string)($group['id_type'] ?? '');
+        $this->returnValue = $group['return_value'] ?? [];
     }
 }

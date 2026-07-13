@@ -54,8 +54,13 @@ describe('Get Experiment Groups', () => {
       result.groups.map((group) => [group.groupName, group]),
     );
 
-    // Only the experiment group rules are returned (the layerAssignment rule is excluded).
-    expect(Object.keys(groupsByName).sort()).toEqual(['Control', 'Test', 'Test2']);
+    // Only the experiment group rules are returned (the layerAssignment
+    // rule is excluded).
+    expect(Object.keys(groupsByName).sort()).toEqual([
+      'Control',
+      'Test',
+      'Test2',
+    ]);
     expect(groupsByName['Control'].returnValue).toEqual({ value: 'control' });
     expect(groupsByName['Control'].ruleId).toBe('54QJztEPRLXK7ZCvXeY9q4');
     expect(groupsByName['Control'].idType).toBe('userID');
@@ -63,12 +68,15 @@ describe('Get Experiment Groups', () => {
     expect(groupsByName['Test2'].returnValue).toEqual({ value: 'test_2' });
   });
 
-  it('should return undefined active state for an unknown experiment', async () => {
-    const result = statsig.getExperimentGroups('not_an_experiment');
+  it(
+    'should return undefined active state for an unknown experiment',
+    async () => {
+      const result = statsig.getExperimentGroups('not_an_experiment');
 
-    expect(result.isExperimentActive).toBeUndefined();
-    expect(result.groups).toEqual([]);
-  });
+      expect(result.isExperimentActive).toBeUndefined();
+      expect(result.groups).toEqual([]);
+    },
+  );
 
   it('should return undefined active state for a dynamic config', async () => {
     const result = statsig.getExperimentGroups(
@@ -80,12 +88,14 @@ describe('Get Experiment Groups', () => {
   });
 
   it('should return the groups for an inactive experiment', async () => {
-    // test_switchback has isActive: false; groups are still returned along with the flag.
+    // test_switchback has isActive: false; groups are still returned along
+    // with the flag.
     const result = statsig.getExperimentGroups('test_switchback');
 
     expect(result.isExperimentActive).toBe(false);
 
-    // Only the experiment group rules are returned (non-group rules are excluded).
+    // Only the experiment group rules are returned (non-group rules are
+    // excluded).
     const groupNames = result.groups.map((group) => group.groupName).sort();
     expect(groupNames).toEqual(['Control', 'Test']);
   });

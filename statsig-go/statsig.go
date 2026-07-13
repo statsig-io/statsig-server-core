@@ -249,7 +249,8 @@ func (s *Statsig) OverrideExperimentByGroupName(experimentName string, groupName
 // GetExperimentGroups returns the experiment's active state and the group name, rule
 // id, id type, and return value for each of its groups, without requiring a user
 // evaluation. IsExperimentActive is nil if the name does not refer to an experiment
-// (unknown name or a dynamic config); otherwise it reflects the experiment's isActive
+// (unknown name or a non-experiment entity like a dynamic config or autotune);
+// otherwise it reflects the experiment's isActive
 // state, and Groups are returned regardless of that state. Rules that are not
 // experiment groups (e.g. holdout or sizing rules) are excluded.
 func (s *Statsig) GetExperimentGroups(experimentName string) ExperimentGroupsResult {

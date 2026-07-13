@@ -4,7 +4,8 @@ defmodule Statsig.ExperimentGroupsResult do
   requiring a user evaluation.
 
   `is_experiment_active` is `nil` when the name does not refer to an experiment
-  (unknown name or a dynamic config); otherwise it reflects the experiment's
+  (unknown name or a non-experiment entity like a dynamic config or autotune);
+  otherwise it reflects the experiment's
   `isActive` state.
   """
 

@@ -158,7 +158,8 @@ defmodule Statsig do
   return value for each of its groups, without requiring a user evaluation.
 
   Returns `{:ok, %Statsig.ExperimentGroupsResult{}}` where `is_experiment_active` is
-  `nil` if the name does not refer to an experiment (unknown name or a dynamic config),
+  `nil` if the name does not refer to an experiment (unknown name or a non-experiment
+  entity like a dynamic config or autotune),
   and otherwise reflects the experiment's `isActive` state; `groups` contains the
   experiment's groups regardless of that state. Rules that are not experiment groups
   (e.g. holdout or sizing rules) are excluded.

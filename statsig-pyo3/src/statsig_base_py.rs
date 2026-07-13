@@ -342,6 +342,21 @@ impl StatsigBasePy {
         json_string_to_py_dict(py, &raw)
     }
 
+    #[pyo3(name="_INTERNAL_get_experiment_groups", signature = (experiment_name))]
+    pub fn _internal_get_experiment_groups(
+        &self,
+        experiment_name: &str,
+        py: Python,
+    ) -> PyResult<Py<PyDict>> {
+        let result = self.inner.get_experiment_groups(experiment_name);
+
+        let json = serde_json::to_string(&result).map_err(|e| {
+            PyValueError::new_err(format!("Failed to serialize experiment groups: {e}"))
+        })?;
+
+        json_string_to_py_dict(py, &json)
+    }
+
     #[pyo3(signature = (user, name))]
     pub fn manually_log_experiment_exposure(
         &self,
@@ -573,17 +588,6 @@ impl StatsigBasePy {
     #[pyo3(name = "get_autotune_list")]
     pub fn get_autotune_list(&self) -> Vec<String> {
         self.inner.get_autotune_list()
-    }
-
-    #[pyo3(name = "_INTERNAL_get_experiment_groups", signature = (experiment_name))]
-    pub fn get_experiment_groups(&self, experiment_name: &str, py: Python) -> PyResult<Py<PyDict>> {
-        let result = self.inner.get_experiment_groups(experiment_name);
-
-        let json = serde_json::to_string(&result).map_err(|e| {
-            PyValueError::new_err(format!("Failed to serialize experiment groups: {e}"))
-        })?;
-
-        json_string_to_py_dict(py, &json)
     }
 
     #[pyo3(name = "get_parameter_store_list")]

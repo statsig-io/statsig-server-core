@@ -35,7 +35,8 @@ impl From<ExperimentGroupActual> for ExperimentGroup {
 #[derive(Clone, Serialize)]
 pub struct ExperimentGroupsResult {
     /// Omitted when the name does not refer to an experiment (unknown name or a
-    /// dynamic config); otherwise the experiment's `isActive` state.
+    /// non-experiment entity like a dynamic config or autotune); otherwise the
+    /// experiment's `isActive` state.
     pub is_experiment_active: Option<bool>,
     pub groups: Vec<ExperimentGroup>,
 }

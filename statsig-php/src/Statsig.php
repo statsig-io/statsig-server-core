@@ -201,36 +201,21 @@ class Statsig
      * return value for each of its groups, without requiring a user evaluation.
      *
      * `isExperimentActive` is null if the name does not refer to an experiment (unknown
-     * name or a dynamic config); otherwise it reflects the experiment's isActive state,
-     * and `groups` contains the experiment's groups regardless of that state. Rules that
-     * are not experiment groups (e.g. holdout or sizing rules) are excluded.
+     * name or a non-experiment entity like a dynamic config or autotune); otherwise it
+     * reflects the experiment's isActive state, and `groups` contains the experiment's
+     * groups regardless of that state. Rules that are not experiment groups (e.g.
+     * holdout or sizing rules) are excluded.
      */
-    public function getExperimentGroups(string $name): ExperimentGroupsResult
+    public function getExperimentGroups(string $experimentName): ExperimentGroupsResult
     {
         $len = StatsigFFI::get()->new("uint64_t");
         $ptr = StatsigFFI::get()->statsig_get_experiment_groups(
             $this->__ref,
-            $name,
+            $experimentName,
             FFI::addr($len)
         );
 
-        $raw_result = StatsigFFI::takeString($ptr);
-        $decoded = json_decode($raw_result, true);
-
-        if (!is_array($decoded)) {
-            return new ExperimentGroupsResult(null, []);
-        }
-
-        $groups = array_map(function ($group) {
-            return new ExperimentGroup(
-                (string)($group['group_name'] ?? ''),
-                (string)($group['rule_id'] ?? ''),
-                (string)($group['id_type'] ?? ''),
-                $group['return_value'] ?? []
-            );
-        }, $decoded['groups'] ?? []);
-
-        return new ExperimentGroupsResult($decoded['is_experiment_active'] ?? null, $groups);
+        return new ExperimentGroupsResult(StatsigFFI::takeString($ptr));
     }
 
     /**

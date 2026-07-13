@@ -73,7 +73,8 @@ public:
   // Returns the experiment's active state and the group name, rule id, id
   // type, and return value for each of its groups, without requiring a user
   // evaluation. is_experiment_active is nullopt if the name does not refer to
-  // an experiment (unknown name or a dynamic config); otherwise it reflects
+  // an experiment (unknown name or a non-experiment entity like a dynamic
+  // config or autotune); otherwise it reflects
   // the experiment's isActive state, and groups are returned regardless of
   // that state.
   ExperimentGroupsResult

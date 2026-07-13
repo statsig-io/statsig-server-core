@@ -193,7 +193,8 @@ inline void to_json(json &j, const ExperimentGroup &g) {
 // ExperimentGroupsResult
 struct ExperimentGroupsResult {
   // std::nullopt when the name does not refer to an experiment (unknown name
-  // or a dynamic config); otherwise the experiment's isActive state.
+  // or a non-experiment entity like a dynamic config or autotune); otherwise
+  // the experiment's isActive state.
   std::optional<bool> is_experiment_active;
   std::vector<ExperimentGroup> groups;
 };

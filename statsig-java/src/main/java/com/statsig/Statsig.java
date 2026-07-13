@@ -240,9 +240,9 @@ public class Statsig {
    * for each of its groups, without requiring a user evaluation.
    *
    * <p>{@code isExperimentActive} is null if the name does not refer to an experiment (unknown name
-   * or a dynamic config); otherwise it reflects the experiment's isActive state, and {@code groups}
-   * contains the experiment's groups regardless of that state. Rules that are not experiment groups
-   * (e.g. holdout or sizing rules) are excluded.
+   * or a non-experiment entity like a dynamic config or autotune); otherwise it reflects the
+   * experiment's isActive state, and {@code groups} contains the experiment's groups regardless of
+   * that state. Rules that are not experiment groups (e.g. holdout or sizing rules) are excluded.
    */
   public ExperimentGroupsResult getExperimentGroups(String experimentName) {
     String resultJSON = StatsigJNI.statsigGetExperimentGroups(ref, experimentName);
