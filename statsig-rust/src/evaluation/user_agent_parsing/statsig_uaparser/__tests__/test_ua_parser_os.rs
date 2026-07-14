@@ -71,6 +71,16 @@ fn os_name_parsing_macos_no_x() {
 }
 
 #[test]
+fn os_name_parsing_ipados() {
+    let user_agent = "Whatnot v26.26.0 (42), iPadOS 26.5, iPad13,19";
+    let os = UaParser::parse_os(user_agent);
+
+    assert_eq!(os.name, "iOS");
+    let os_version = os.version.get_version_string();
+    assert_eq!(os_version, Some("26.5".to_string()));
+}
+
+#[test]
 fn os_name_parsing_ubuntu() {
     let user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/604.1 (KHTML, like Gecko) Version/11.0 Safari/604.1 Ubuntu/17.04 (3.24.1-0ubuntu1) Epiphany/3.24.1"; // |Ubuntu|17|04|None|None|Epiphany|3|24|1|None
     let os = UaParser::parse_os(user_agent);
