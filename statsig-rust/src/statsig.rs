@@ -492,7 +492,9 @@ impl Statsig {
             return InitializeResponse::blank(user_internal);
         });
 
-        let mut context = self.create_gcir_eval_context(&user_internal, &data, options);
+        let app_id = select_app_id_for_gcir(options, &data.values, &self.hashing);
+        let mut context =
+            self.create_gcir_eval_context(&user_internal, &data, options, app_id.as_ref());
 
         match GCIRFormatter::generate_v1_format(&mut context, options) {
             Ok(response) => response,
@@ -529,7 +531,9 @@ impl Statsig {
             return String::new();
         });
 
-        let mut context = self.create_gcir_eval_context(&user_internal, &data, options);
+        let app_id = select_app_id_for_gcir(options, &data.values, &self.hashing);
+        let mut context =
+            self.create_gcir_eval_context(&user_internal, &data, options, app_id.as_ref());
 
         match options.response_format {
             Some(GCIRResponseFormat::InitializeWithSecondaryExposureMapping) => self
@@ -2333,8 +2337,8 @@ impl Statsig {
         user_internal: &'a StatsigUserInternal,
         data: &'a SpecStoreData,
         options: &'a ClientInitResponseOptions,
+        app_id: Option<&'a DynamicValue>,
     ) -> EvaluatorContext<'a> {
-        let app_id = select_app_id_for_gcir(options, &data.values, &self.hashing);
         let override_adapter = match options.include_local_overrides {
             Some(true) => self.override_adapter.as_ref(),
             _ => None,

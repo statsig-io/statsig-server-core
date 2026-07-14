@@ -50,6 +50,7 @@ impl From<ClientInitResponseOptions> for ClientInitResponseOptionsActual {
         ClientInitResponseOptionsActual {
             hash_algorithm,
             client_sdk_key: options.client_sdk_key,
+            target_app_id: None,
             include_local_overrides: options.include_local_overrides,
             feature_gate_filter: options.feature_gate_filter,
             experiment_filter: options.experiment_filter,

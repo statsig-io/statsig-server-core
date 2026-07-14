@@ -114,6 +114,7 @@ pub fn convert_java_client_init_response_options_to_rust(
     Some(ClientInitResponseOptions {
         hash_algorithm: hash_algo,
         client_sdk_key,
+        target_app_id: None,
         include_local_overrides,
         feature_gate_filter: None, // TODO(weihao)
         experiment_filter: None,   // TODO(weihao)

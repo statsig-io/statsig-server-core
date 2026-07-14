@@ -41,7 +41,7 @@ pub(crate) fn gcir_process_iter<T: GCIRHashable>(
             continue;
         }
 
-        if should_filter_spec_for_app(spec, &context.app_id, &options.client_sdk_key) {
+        if should_filter_spec_for_app(spec, &context.app_id, options) {
             continue;
         }
 

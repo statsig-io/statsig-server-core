@@ -38,6 +38,7 @@ async fn setup(hash_algorithm: HashAlgorithm) -> Value {
         &ClientInitResponseOptions {
             hash_algorithm: Some(hash_algorithm),
             client_sdk_key: None,
+            target_app_id: None,
             include_local_overrides: Some(false),
             feature_gate_filter: None,
             experiment_filter: None,

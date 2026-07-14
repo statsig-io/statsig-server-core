@@ -82,7 +82,7 @@ pub(crate) fn get_dynamic_config_evaluations(
                 .get(config_name)
                 .and_then(|c| c.target_app_ids.as_ref()),
             &context.app_id,
-            &options.client_sdk_key,
+            options,
         ) {
             continue;
         }
@@ -161,7 +161,7 @@ pub(crate) fn get_dynamic_config_evaluations_v2(
         let target_app_ids = cmab_configs
             .get(config_name)
             .and_then(|c| c.target_app_ids.as_ref());
-        if should_filter_config_for_app(target_app_ids, &context.app_id, &options.client_sdk_key) {
+        if should_filter_config_for_app(target_app_ids, &context.app_id, options) {
             continue;
         }
         context.reset_result();
@@ -261,7 +261,7 @@ pub(crate) fn get_dynamic_config_evaluations_init_v2(
         let target_app_ids = cmab_configs
             .get(config_name)
             .and_then(|c| c.target_app_ids.as_ref());
-        if should_filter_config_for_app(target_app_ids, &context.app_id, &options.client_sdk_key) {
+        if should_filter_config_for_app(target_app_ids, &context.app_id, options) {
             continue;
         }
         context.reset_result();
