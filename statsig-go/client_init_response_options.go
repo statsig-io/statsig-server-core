@@ -3,6 +3,7 @@ package statsig_go_core
 type ClientInitResponseOptions struct {
 	HashAlgorithm           *string   `json:"hash_algorithm,omitempty"`
 	ClientSDKKey            *string   `json:"client_sdk_key,omitempty"`
+	TargetAppID             *string   `json:"target_app_id,omitempty"`
 	IncludeLocalOverrides   *bool     `json:"include_local_overrides,omitempty"`
 	ResponseFormat          *string   `json:"response_format,omitempty"`
 	FeatureGateFilter       *[]string `json:"feature_gate_filter,omitempty"`
