@@ -110,9 +110,9 @@ pub struct Layer {
 
 impl Layer {
     pub fn get_opt<T: DeserializeOwned>(&self, param_name: &str) -> Option<T> {
-        let value = match self.__value.get(param_name) {
-            Some(value) => value.clone(),
-            None => return None,
+        let value = {
+            let value = self.__value.get(param_name)?;
+            value.clone()
         };
 
         match from_value(value.clone()) {

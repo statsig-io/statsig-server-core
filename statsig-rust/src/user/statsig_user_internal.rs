@@ -150,10 +150,7 @@ impl<'statsig, 'user> StatsigUserInternal<'statsig, 'user> {
     }
 
     pub fn get_hashed_private_attributes(&self) -> Option<String> {
-        let private_attributes = match &self.user_ref.data.private_attributes {
-            Some(attrs) => attrs,
-            None => return None,
-        };
+        let private_attributes = self.user_ref.data.private_attributes.as_ref()?;
 
         if private_attributes.is_empty() {
             return None;

@@ -169,12 +169,8 @@ fn convert_py_lists_to_secondary_exposures(
 ) -> PyResult<Vec<SecondaryExposure>> {
     let mut exposures = Vec::new();
     for item in py_list {
-        match item.extract::<Bound<PyDict>>() {
-            Ok(e) => {
-                exposures.push(convert_py_dict_to_secondary_exposure(&e)?);
-            }
-            Err(e) => return Err(e.into()),
-        }
+        let e = item.extract::<Bound<PyDict>>()?;
+        exposures.push(convert_py_dict_to_secondary_exposure(&e)?);
     }
 
     Ok(exposures)

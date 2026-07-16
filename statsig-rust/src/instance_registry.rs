@@ -58,9 +58,9 @@ impl InstanceRegistry {
         // does not outlive this statement) so we never hold a DashMap guard
         // across other registry calls - that is what could otherwise deadlock
         // a sharded map.
-        let any_arc = match REGISTRY.get(id) {
-            Some(entry) => entry.value().clone(),
-            None => return None,
+        let any_arc = {
+            let entry = REGISTRY.get(id)?;
+            entry.value().clone()
         };
 
         match any_arc.downcast::<T>() {

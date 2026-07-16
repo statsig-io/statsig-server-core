@@ -65,10 +65,7 @@ pub fn map_to_py_dict(py: Python, map: &HashMap<String, Value>) -> Py<PyAny> {
 pub fn py_list_to_list(py_list: &Bound<PyList>) -> PyResult<Vec<String>> {
     let mut converted_list = Vec::new();
     for value in py_list {
-        match value.extract::<String>() {
-            Ok(s) => converted_list.push(s),
-            Err(e) => return Err(e),
-        }
+        converted_list.push(value.extract::<String>()?);
     }
     Ok(converted_list)
 }
