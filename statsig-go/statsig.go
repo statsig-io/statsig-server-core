@@ -120,8 +120,10 @@ func (s *Statsig) GetFeatureGateWithOptions(user *StatsigUser, gateName string, 
 		return ptr, len
 	})
 
-	if err := json.Unmarshal([]byte(*gateJson), &gate); err != nil {
-		fmt.Printf("Failed to unmarshal FeatureGate: %v", err)
+	if gateJson != nil {
+		if err := json.Unmarshal([]byte(*gateJson), &gate); err != nil {
+			fmt.Printf("Failed to unmarshal FeatureGate: %v", err)
+		}
 	}
 
 	return gate
@@ -148,8 +150,10 @@ func (s *Statsig) GetDynamicConfigWithOptions(user *StatsigUser, configName stri
 		return ptr, len
 	})
 
-	if err := json.Unmarshal([]byte(*configJson), &config); err != nil {
-		fmt.Printf("Failed to unmarshal DynamicConfig: %v", err)
+	if configJson != nil {
+		if err := json.Unmarshal([]byte(*configJson), &config); err != nil {
+			fmt.Printf("Failed to unmarshal DynamicConfig: %v", err)
+		}
 	}
 
 	if config.Value == nil {
@@ -180,8 +184,10 @@ func (s *Statsig) GetExperimentWithOptions(user *StatsigUser, experimentName str
 		return ptr, len
 	})
 
-	if err := json.Unmarshal([]byte(*experimentJson), &experiment); err != nil {
-		fmt.Printf("Failed to unmarshal Experiment: %v", err)
+	if experimentJson != nil {
+		if err := json.Unmarshal([]byte(*experimentJson), &experiment); err != nil {
+			fmt.Printf("Failed to unmarshal Experiment: %v", err)
+		}
 	}
 
 	if experiment.Value == nil {
@@ -269,8 +275,10 @@ func (s *Statsig) GetLayerWithOptions(user *StatsigUser, layerName string, optio
 		return ptr, len
 	})
 
-	if err := json.Unmarshal([]byte(*layerJson), &layer); err != nil {
-		fmt.Printf("Failed to unmarshal Layer: %v", err)
+	if layerJson != nil {
+		if err := json.Unmarshal([]byte(*layerJson), &layer); err != nil {
+			fmt.Printf("Failed to unmarshal Layer: %v", err)
+		}
 	}
 
 	if layer.value == nil {
