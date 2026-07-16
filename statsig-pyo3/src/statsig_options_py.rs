@@ -479,6 +479,8 @@ fn create_inner_statsig_options(
         use_third_party_ua_parser: opts.use_third_party_ua_parser,
         disable_disk_access: opts.disable_disk_access,
         experimental_flags: opts.experimental_flags,
+        // Not exposed via the Python binding yet; defaults to the core value.
+        dcs_delta_no_progress_threshold: None,
     }
 }
 

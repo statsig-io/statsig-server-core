@@ -42,12 +42,12 @@ impl UserAgentParser {
             _ => return None,
         };
 
-        let user_agent = match user.get_user_value(&USER_AGENT_STRING) {
-            Some(v) => match &v.string_value {
+        let user_agent = {
+            let v = user.get_user_value(&USER_AGENT_STRING)?;
+            match &v.string_value {
                 Some(s) => &s.value,
                 _ => return None,
-            },
-            None => return None,
+            }
         };
 
         if user_agent.len() > 1000 {

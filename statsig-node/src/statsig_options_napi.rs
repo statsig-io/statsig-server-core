@@ -254,6 +254,8 @@ impl StatsigOptions<'_> {
             #[allow(deprecated)]
             event_logging_flush_interval_ms: None,
             event_logging_max_pending_batch_queue_size: None,
+            // Not exposed via the Node binding yet; defaults to the core value.
+            dcs_delta_no_progress_threshold: None,
             id_lists_adapter: None,
             specs_adapter: None,
             disable_disk_access: None,
