@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <variant>
+#include <vector>
 using json = nlohmann::json;
 
 template <typename T>
@@ -165,6 +166,48 @@ inline void to_json(json &j, const Experiment &c) {
 inline Experiment::Experiment(const std::string &json_str) {
   json j = json::parse(json_str);
   *this = j.get<Experiment>();
+}
+
+// ExperimentGroup
+struct ExperimentGroup {
+  std::string group_name;
+  std::string rule_id;
+  std::string id_type;
+  std::unordered_map<std::string, nlohmann::json> return_value;
+};
+
+inline void from_json(const json &j, ExperimentGroup &g) {
+  g.group_name = j.value("group_name", "");
+  g.rule_id = j.value("rule_id", "");
+  g.id_type = j.value("id_type", "");
+  g.return_value = j.value(
+      "return_value", std::unordered_map<std::string, nlohmann::json>{});
+}
+
+inline void to_json(json &j, const ExperimentGroup &g) {
+  j = json{{"group_name", g.group_name},
+           {"rule_id", g.rule_id},
+           {"id_type", g.id_type},
+           {"return_value", g.return_value}};
+}
+
+// ExperimentGroupsResult
+struct ExperimentGroupsResult {
+  // std::nullopt when the name does not refer to an experiment (unknown name
+  // or a non-experiment entity like a dynamic config or autotune); otherwise
+  // the experiment's isActive state.
+  std::optional<bool> is_experiment_active;
+  std::vector<ExperimentGroup> groups;
+};
+
+inline void from_json(const json &j, ExperimentGroupsResult &r) {
+  r.is_experiment_active = get_optional<bool>(j, "is_experiment_active");
+  r.groups = j.value("groups", std::vector<ExperimentGroup>{});
+}
+
+inline void to_json(json &j, const ExperimentGroupsResult &r) {
+  j = json{{"is_experiment_active", r.is_experiment_active},
+           {"groups", r.groups}};
 }
 
 using allowed_primitive = std::variant<std::string, int64_t, double, bool>;

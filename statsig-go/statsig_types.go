@@ -84,6 +84,23 @@ func (e *Experiment) GetMap(key string, fallback map[string]any) map[string]any 
 	return getTypedValue(e.Value, key, fallback, nil)
 }
 
+// ------------------------------------------------------------------------------------- [ ExperimentGroup ]
+
+type ExperimentGroup struct {
+	GroupName   string         `json:"group_name"`
+	RuleID      string         `json:"rule_id"`
+	IDType      string         `json:"id_type"`
+	ReturnValue map[string]any `json:"return_value"`
+}
+
+type ExperimentGroupsResult struct {
+	// IsExperimentActive is nil when the name does not refer to an experiment
+	// (unknown name or a non-experiment entity like a dynamic config or
+	// autotune); otherwise it reflects the experiment's isActive state.
+	IsExperimentActive *bool             `json:"is_experiment_active"`
+	Groups             []ExperimentGroup `json:"groups"`
+}
+
 // ------------------------------------------------------------------------------------- [ Layer ]
 
 type Layer struct {

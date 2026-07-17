@@ -5,6 +5,7 @@ namespace Statsig;
 use FFI;
 use Statsig\EvaluationTypes\DynamicConfig;
 use Statsig\EvaluationTypes\Experiment;
+use Statsig\EvaluationTypes\ExperimentGroupsResult;
 use Statsig\EvaluationTypes\FeatureGate;
 use Statsig\EvaluationTypes\Layer;
 use Statsig\StatsigEventData;
@@ -192,6 +193,32 @@ class Statsig
             $user->__ref,
             $name
         );
+    }
+
+    /**
+     * Returns the experiment's active state and the group name, rule id, id type, and
+     * return value for each of its groups, without requiring a user evaluation.
+     *
+     * `isExperimentActive` is null if the name does not refer to an experiment (unknown
+     * name or a non-experiment entity like a dynamic config or autotune); otherwise it
+     * reflects the experiment's isActive state, and `groups` contains the experiment's
+     * groups regardless of that state. Rules that are not experiment groups (e.g.
+     * holdout or sizing rules) are excluded.
+     */
+    public function getExperimentGroups(string $experimentName): ExperimentGroupsResult
+    {
+        $len = StatsigFFI::get()->new("uint64_t");
+        $ptr = StatsigFFI::get()->statsig_get_experiment_groups(
+            $this->__ref,
+            $experimentName,
+            FFI::addr($len)
+        );
+
+        if (\FFI::isNull($ptr)) {
+            return new ExperimentGroupsResult('');
+        }
+
+        return new ExperimentGroupsResult(StatsigFFI::takeString($ptr));
     }
 
     /**

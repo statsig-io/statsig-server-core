@@ -2,6 +2,8 @@ package test
 
 import (
 	"encoding/json"
+	"reflect"
+	"sort"
 	"strconv"
 	"testing"
 
@@ -179,6 +181,89 @@ func TestOverrideExperimentByGroupNameForID(t *testing.T) {
 	otherAfterValue := otherAfter.GetString("value", "")
 	if otherAfterValue != otherBaselineValue {
 		t.Errorf("Per-id override leaked to a different id: '%s' -> '%s'", otherBaselineValue, otherAfterValue)
+	}
+}
+
+func TestGetExperimentGroups(t *testing.T) {
+	statsig, _, _ := SetupTest(t)
+	defer statsig.Shutdown()
+
+	result := statsig.GetExperimentGroups("test_experiment_no_targeting")
+
+	if result.IsExperimentActive == nil || !*result.IsExperimentActive {
+		t.Errorf("Expected IsExperimentActive to be true, got %v", result.IsExperimentActive)
+	}
+
+	groupsByName := map[string]statsig_go.ExperimentGroup{}
+	for _, group := range result.Groups {
+		groupsByName[group.GroupName] = group
+	}
+
+	// Only the experiment group rules are returned (the layerAssignment rule is excluded).
+	if len(groupsByName) != 3 {
+		t.Errorf("Expected 3 experiment groups, got %d", len(groupsByName))
+	}
+	if groupsByName["Control"].ReturnValue["value"] != "control" {
+		t.Errorf("Control group return value is not correct, got %v", groupsByName["Control"].ReturnValue)
+	}
+	if groupsByName["Control"].RuleID != "54QJztEPRLXK7ZCvXeY9q4" {
+		t.Errorf("Control group rule id is not correct, got %v", groupsByName["Control"].RuleID)
+	}
+	if groupsByName["Control"].IDType != "userID" {
+		t.Errorf("Control group id type is not correct, got %v", groupsByName["Control"].IDType)
+	}
+	if groupsByName["Test"].ReturnValue["value"] != "test_1" {
+		t.Errorf("Test group return value is not correct, got %v", groupsByName["Test"].ReturnValue)
+	}
+	if groupsByName["Test2"].ReturnValue["value"] != "test_2" {
+		t.Errorf("Test2 group return value is not correct, got %v", groupsByName["Test2"].ReturnValue)
+	}
+}
+
+func TestGetExperimentGroupsReturnsNilActiveStateForUnknownExperiment(t *testing.T) {
+	statsig, _, _ := SetupTest(t)
+	defer statsig.Shutdown()
+
+	result := statsig.GetExperimentGroups("nonexistent_experiment")
+	if result.IsExperimentActive != nil {
+		t.Errorf("Expected nil IsExperimentActive for unknown experiment, got %v", *result.IsExperimentActive)
+	}
+	if len(result.Groups) != 0 {
+		t.Errorf("Expected empty groups for unknown experiment, got %v", result.Groups)
+	}
+}
+
+func TestGetExperimentGroupsReturnsNilActiveStateForDynamicConfig(t *testing.T) {
+	statsig, _, _ := SetupTest(t)
+	defer statsig.Shutdown()
+
+	result := statsig.GetExperimentGroups("test_max_dynamic_config_size_again")
+	if result.IsExperimentActive != nil {
+		t.Errorf("Expected nil IsExperimentActive for dynamic config, got %v", *result.IsExperimentActive)
+	}
+	if len(result.Groups) != 0 {
+		t.Errorf("Expected empty groups for dynamic config, got %v", result.Groups)
+	}
+}
+
+func TestGetExperimentGroupsReturnsGroupsForInactiveExperiment(t *testing.T) {
+	statsig, _, _ := SetupTest(t)
+	defer statsig.Shutdown()
+
+	// test_switchback has isActive: false; groups are still returned along with the flag.
+	result := statsig.GetExperimentGroups("test_switchback")
+	if result.IsExperimentActive == nil || *result.IsExperimentActive {
+		t.Errorf("Expected IsExperimentActive to be false, got %v", result.IsExperimentActive)
+	}
+
+	// Only the experiment group rules are returned (non-group rules are excluded).
+	groupNames := []string{}
+	for _, group := range result.Groups {
+		groupNames = append(groupNames, group.GroupName)
+	}
+	sort.Strings(groupNames)
+	if !reflect.DeepEqual(groupNames, []string{"Control", "Test"}) {
+		t.Errorf("Expected groups Control and Test, got %v", groupNames)
 	}
 }
 

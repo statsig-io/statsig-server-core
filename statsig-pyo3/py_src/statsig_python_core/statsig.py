@@ -12,7 +12,13 @@ from statsig_python_core import (
 )
 from typing import Optional
 from .error_boundary import ErrorBoundary
-from .statsig_types import DynamicConfig, FeatureGate, Experiment, Layer
+from .statsig_types import (
+    DynamicConfig,
+    Experiment,
+    ExperimentGroupsResult,
+    FeatureGate,
+    Layer,
+)
 import atexit
 
 
@@ -125,6 +131,10 @@ class Statsig(StatsigBasePy):
             experiment_name, group_id
         )
         return Experiment(experiment_name, raw)
+
+    def get_experiment_groups(self, experiment_name: str) -> ExperimentGroupsResult:
+        raw = super()._INTERNAL_get_experiment_groups(experiment_name)
+        return ExperimentGroupsResult(raw)
 
     def get_layer(
         self,

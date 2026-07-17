@@ -115,6 +115,105 @@ async fn test_get_experiment_by_group_id_advanced() {
     assert_eq!(experiment.value["value"], "control");
 }
 
+async fn get_experiment_groups_statsig() -> Statsig {
+    let statsig = Statsig::new(
+        "secret-key",
+        Some(Arc::new(StatsigOptions {
+            specs_adapter: Some(Arc::new(MockSpecsAdapter::with_data(
+                "tests/data/eval_proj_dcs.json",
+            ))),
+            ..StatsigOptions::new()
+        })),
+    );
+    statsig.initialize().await.unwrap();
+    statsig
+}
+
+#[tokio::test]
+async fn test_get_experiment_groups() {
+    let statsig = get_experiment_groups_statsig().await;
+
+    let result = statsig.get_experiment_groups("test_experiment_no_targeting");
+
+    assert_eq!(result.is_experiment_active, Some(true));
+
+    let mut groups_by_name: HashMap<String, _> = result
+        .groups
+        .into_iter()
+        .map(|group| (group.group_name.clone(), group))
+        .collect();
+
+    // Only the experiment group rules are returned (the layerAssignment rule is excluded).
+    let mut group_names: Vec<String> = groups_by_name.keys().cloned().collect();
+    group_names.sort();
+    assert_eq!(group_names, vec!["Control", "Test", "Test2"]);
+
+    let control = groups_by_name.remove("Control").unwrap();
+    assert_eq!(control.rule_id, "54QJztEPRLXK7ZCvXeY9q4");
+    assert_eq!(control.id_type, "userID");
+    assert_eq!(control.return_value["value"], "control");
+
+    let test = groups_by_name.remove("Test").unwrap();
+    assert_eq!(test.rule_id, "54QJzvjSk47erparymTMJ6");
+    assert_eq!(test.return_value["value"], "test_1");
+
+    let test2 = groups_by_name.remove("Test2").unwrap();
+    assert_eq!(test2.rule_id, "54QJzwYUMmgIKOIn9uPq28");
+    assert_eq!(test2.return_value["value"], "test_2");
+}
+
+#[tokio::test]
+async fn test_get_experiment_groups_returns_none_for_unknown_experiment() {
+    let statsig = get_experiment_groups_statsig().await;
+
+    let result = statsig.get_experiment_groups("nonexistent_experiment");
+
+    assert_eq!(result.is_experiment_active, None);
+    assert!(result.groups.is_empty());
+}
+
+#[tokio::test]
+async fn test_get_experiment_groups_returns_none_for_dynamic_config() {
+    let statsig = get_experiment_groups_statsig().await;
+
+    // Dynamic configs are not experiments; is_experiment_active should be None.
+    let result = statsig.get_experiment_groups("test_max_dynamic_config_size_again");
+
+    assert_eq!(result.is_experiment_active, None);
+    assert!(result.groups.is_empty());
+}
+
+#[tokio::test]
+async fn test_get_experiment_groups_returns_none_for_autotune() {
+    let statsig = get_experiment_groups_statsig().await;
+
+    // Autotune configs live in the same map as experiments but have a different
+    // entity; is_experiment_active should be None.
+    let result = statsig.get_experiment_groups("test_autotune");
+
+    assert_eq!(result.is_experiment_active, None);
+    assert!(result.groups.is_empty());
+}
+
+#[tokio::test]
+async fn test_get_experiment_groups_returns_groups_for_inactive_experiment() {
+    let statsig = get_experiment_groups_statsig().await;
+
+    // test_switchback has isActive: false; groups are still returned along with the flag.
+    let result = statsig.get_experiment_groups("test_switchback");
+
+    assert_eq!(result.is_experiment_active, Some(false));
+
+    // Only the experiment group rules are returned (non-group rules are excluded).
+    let mut group_names: Vec<String> = result
+        .groups
+        .iter()
+        .map(|group| group.group_name.clone())
+        .collect();
+    group_names.sort();
+    assert_eq!(group_names, vec!["Control", "Test"]);
+}
+
 #[tokio::test]
 async fn test_gcir() {
     let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())

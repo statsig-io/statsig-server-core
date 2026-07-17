@@ -235,6 +235,26 @@ public class Statsig {
     return JSON.parseArray(resultJSON, String.class);
   }
 
+  /**
+   * Returns the experiment's active state and the group name, rule id, id type, and return value
+   * for each of its groups, without requiring a user evaluation.
+   *
+   * <p>{@code isExperimentActive} is null if the name does not refer to an experiment (unknown name
+   * or a non-experiment entity like a dynamic config or autotune); otherwise it reflects the
+   * experiment's isActive state, and {@code groups} contains the experiment's groups regardless of
+   * that state. Rules that are not experiment groups (e.g. holdout or sizing rules) are excluded.
+   *
+   * @param experimentName the name of the experiment
+   * @return the experiment's active state and its groups
+   */
+  public ExperimentGroupsResult getExperimentGroups(String experimentName) {
+    String resultJSON = StatsigJNI.statsigGetExperimentGroups(ref, experimentName);
+    if (resultJSON == null || resultJSON.isEmpty()) {
+      return new ExperimentGroupsResult(null, new ArrayList<>());
+    }
+    return JSON.parseObject(resultJSON, ExperimentGroupsResult.class);
+  }
+
   public Experiment getExperimentByGroupName(String experimentName, String groupName) {
     String experJson = StatsigJNI.statsigGetExperimentByGroupName(ref, experimentName, groupName);
     Experiment experiment = Experiment.fromJson(experJson);
