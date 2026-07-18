@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Reflection;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Statsig
 {
@@ -20,6 +21,16 @@ namespace Statsig
         IExperiment GetExperimentByGroupName(string experimentName, string groupName);
         IExperiment GetExperimentByGroupIdAdvanced(string experimentName, string groupId);
         void ManuallyLogExperimentExposure(IStatsigUser user, string experimentName);
+        /// <summary>
+        /// Returns the experiment's active state and the group name, rule id, id type, and
+        /// return value for each of its groups, without requiring a user evaluation.
+        /// IsExperimentActive is null if the name does not refer to an experiment (unknown
+        /// name or a non-experiment entity like a dynamic config or autotune); otherwise it
+        /// reflects the experiment's isActive state,
+        /// and Groups are returned regardless of that state. Rules that are not experiment
+        /// groups (e.g. holdout or sizing rules) are excluded.
+        /// </summary>
+        IExperimentGroupsResult GetExperimentGroups(string experimentName);
         ILayer GetLayer(IStatsigUser user, string layerName, EvaluationOptions? options = null);
         void ManuallyLogLayerParameterExposure(IStatsigUser user, string layerName, string parameterName);
         IParameterStore GetParameterStore(IStatsigUser user, string storeName, EvaluationOptions? options = null);
@@ -367,6 +378,24 @@ namespace Statsig
                     _statsigRef, experimentNamePtr, groupIdPtr, &resultLen);
                 var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr, resultLen);
                 return new Experiment(jsonString ?? string.Empty);
+            }
+        }
+
+        unsafe public IExperimentGroupsResult GetExperimentGroups(string experimentName)
+        {
+            byte[] nameBytes = StatsigUtils.ToUtf8NullTerminated(experimentName);
+
+            fixed (byte* experimentNamePtr = nameBytes)
+            {
+                ulong resultLen = 0;
+                var jsonStringPtr = StatsigFFI.statsig_get_experiment_groups(_statsigRef, experimentNamePtr, &resultLen);
+                var jsonString = StatsigUtils.ReadStringFromPointer(jsonStringPtr, resultLen);
+                if (jsonString == null)
+                {
+                    return new ExperimentGroupsResult();
+                }
+
+                return new ExperimentGroupsResult(JObject.Parse(jsonString));
             }
         }
 

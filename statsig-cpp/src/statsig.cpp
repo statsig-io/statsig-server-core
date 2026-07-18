@@ -242,6 +242,26 @@ void Statsig::overrideExperimentByGroupName(
       id ? id->c_str() : nullptr);
 }
 
+ExperimentGroupsResult
+Statsig::getExperimentGroups(const std::string &experiment_name) {
+  uint64_t result_len = 0;
+  char *result = statsig_get_experiment_groups(ref_, experiment_name.c_str(),
+                                               &result_len);
+  if (!result) {
+    return {};
+  }
+
+  std::string result_str(result, result_len);
+  free_string(result);
+
+  json j = json::parse(result_str, nullptr, false);
+  if (j.is_discarded() || !j.is_object()) {
+    return {};
+  }
+
+  return j.get<ExperimentGroupsResult>();
+}
+
 DynamicConfig Statsig::getDynamicConfig(
     const User &user, const std::string &config_name,
     const std::optional<GetDynamicConfigOptions> &options) {

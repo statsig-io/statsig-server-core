@@ -223,6 +223,15 @@ defmodule Statsig.NativeBindingsTest do
     end
   end
 
+  describe "get_experiment_groups/2" do
+    test "returns nil active state and no groups for an unknown experiment" do
+      ref = new()
+
+      assert %Statsig.ExperimentGroupsResult{is_experiment_active: nil, groups: []} =
+               NativeBindings.get_experiment_groups(ref, "nonexistent_experiment")
+    end
+  end
+
   describe "override_layer/4" do
     test "overrides a layer for a user, but not others" do
       ref = new()

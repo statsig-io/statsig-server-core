@@ -19,6 +19,7 @@ use crate::{
 use parking_lot::Mutex;
 use pyo3::{
     call::PyCallArgs,
+    exceptions::PyValueError,
     prelude::*,
     types::{PyDict, PyModule},
 };
@@ -339,6 +340,21 @@ impl StatsigBasePy {
             .inner
             .get_raw_experiment_by_group_id_advanced(experiment_name, group_id);
         json_string_to_py_dict(py, &raw)
+    }
+
+    #[pyo3(name="_INTERNAL_get_experiment_groups", signature = (experiment_name))]
+    pub fn _internal_get_experiment_groups(
+        &self,
+        experiment_name: &str,
+        py: Python,
+    ) -> PyResult<Py<PyDict>> {
+        let result = self.inner.get_experiment_groups(experiment_name);
+
+        let json = serde_json::to_string(&result).map_err(|e| {
+            PyValueError::new_err(format!("Failed to serialize experiment groups: {e}"))
+        })?;
+
+        json_string_to_py_dict(py, &json)
     }
 
     #[pyo3(signature = (user, name))]

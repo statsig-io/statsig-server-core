@@ -293,3 +293,70 @@ TEST(Serialization, ExperimentRawGroupShape) {
   EXPECT_FALSE(empty.group_name.has_value());
   EXPECT_EQ(empty.is_experiment_active, false);
 }
+
+TEST(Serialization, ExperimentGroups) {
+  // Mirrors the JSON object returned by statsig_get_experiment_groups.
+  std::string json_str = R"({
+        "is_experiment_active": true,
+        "groups": [
+            {
+                "group_name": "Control",
+                "rule_id": "rule_1",
+                "id_type": "userID",
+                "return_value": {"value": "control"}
+            },
+            {
+                "group_name": "Test",
+                "rule_id": "rule_2",
+                "id_type": "userID",
+                "return_value": {"value": "test_1"}
+            }
+        ]
+    })";
+  json j = json::parse(json_str);
+  auto result = j.get<statsig_cpp_core::ExperimentGroupsResult>();
+
+  EXPECT_EQ(result.is_experiment_active, true);
+  EXPECT_EQ(result.groups.size(), 2);
+  EXPECT_EQ(result.groups[0].group_name, "Control");
+  EXPECT_EQ(result.groups[0].rule_id, "rule_1");
+  EXPECT_EQ(result.groups[0].id_type, "userID");
+  EXPECT_EQ(result.groups[0].return_value["value"], "control");
+  EXPECT_EQ(result.groups[1].group_name, "Test");
+  EXPECT_EQ(result.groups[1].return_value["value"], "test_1");
+}
+
+TEST(Serialization, ExperimentGroupsInactiveExperiment) {
+  // Decided/inactive experiment: is_experiment_active is false, groups are
+  // still returned.
+  std::string json_str = R"({
+        "is_experiment_active": false,
+        "groups": [
+            {
+                "group_name": "Control",
+                "rule_id": "rule_1",
+                "id_type": "userID",
+                "return_value": {"value": "control"}
+            }
+        ]
+    })";
+  json j = json::parse(json_str);
+  auto result = j.get<statsig_cpp_core::ExperimentGroupsResult>();
+
+  EXPECT_EQ(result.is_experiment_active, false);
+  EXPECT_EQ(result.groups.size(), 1);
+  EXPECT_EQ(result.groups[0].group_name, "Control");
+}
+
+TEST(Serialization, ExperimentGroupsNullActiveState) {
+  // Unknown name / dynamic config: is_experiment_active is null.
+  std::string json_str = R"({
+        "is_experiment_active": null,
+        "groups": []
+    })";
+  json j = json::parse(json_str);
+  auto result = j.get<statsig_cpp_core::ExperimentGroupsResult>();
+
+  EXPECT_EQ(result.is_experiment_active, std::nullopt);
+  EXPECT_TRUE(result.groups.empty());
+}

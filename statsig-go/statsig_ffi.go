@@ -47,6 +47,7 @@ type StatsigFFI struct {
 	statsig_get_raw_experiment                      func(uint64, uint64, string, string, *uint64) *byte
 	statsig_get_raw_experiment_by_group_name        func(uint64, string, string, *uint64) *byte
 	statsig_get_raw_experiment_by_group_id_advanced func(uint64, string, string, *uint64) *byte
+	statsig_get_experiment_groups                   func(uint64, string, *uint64) *byte
 	statsig_manually_log_experiment_exposure        func(uint64, uint64, string)
 
 	// Layers
@@ -178,6 +179,7 @@ func GetFFI() *StatsigFFI {
 		purego.RegisterLibFunc(&instance.statsig_get_raw_experiment, lib, "statsig_get_raw_experiment")
 		purego.RegisterLibFunc(&instance.statsig_get_raw_experiment_by_group_name, lib, "statsig_get_raw_experiment_by_group_name")
 		purego.RegisterLibFunc(&instance.statsig_get_raw_experiment_by_group_id_advanced, lib, "statsig_get_raw_experiment_by_group_id_advanced")
+		purego.RegisterLibFunc(&instance.statsig_get_experiment_groups, lib, "statsig_get_experiment_groups")
 		purego.RegisterLibFunc(&instance.statsig_manually_log_experiment_exposure, lib, "statsig_manually_log_experiment_exposure")
 
 		// Layers
