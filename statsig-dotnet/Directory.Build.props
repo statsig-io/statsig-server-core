@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <StatsigVersion>0.20.2-beta.2607180300</StatsigVersion>
+    <StatsigVersion>0.20.2-rc.2607201627</StatsigVersion>
     <PackageLicenseExpression>ISC</PackageLicenseExpression>
   </PropertyGroup>
 </Project>
