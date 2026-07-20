@@ -5,16 +5,20 @@ use crate::{
     ClientInitResponseOptions, DynamicValue, HashAlgorithm,
 };
 
-pub(crate) fn select_app_id_for_gcir<'a>(
-    options: &'a ClientInitResponseOptions,
-    dcs_values: &'a SpecsResponseFull,
+pub(crate) fn select_app_id_for_gcir(
+    options: &ClientInitResponseOptions,
+    dcs_values: &SpecsResponseFull,
     hashing: &HashUtil,
-) -> Option<&'a DynamicValue> {
+) -> Option<DynamicValue> {
+    if let Some(target_app_id) = options.get_target_app_id() {
+        return Some(DynamicValue::from(target_app_id.clone()));
+    }
+
     let mut app_id = dcs_values.app_id.as_ref();
 
     let client_sdk_key = match options.client_sdk_key.as_ref() {
         Some(client_sdk_key) => client_sdk_key,
-        None => return app_id,
+        None => return app_id.cloned(),
     };
 
     if let Some(app_id_value) = &dcs_values.sdk_keys_to_app_ids {
@@ -26,26 +30,25 @@ pub(crate) fn select_app_id_for_gcir<'a>(
         app_id = app_id_value.get(hashed_key);
     }
 
-    app_id
+    app_id.cloned()
 }
 
 pub(crate) fn should_filter_spec_for_app(
     spec: &Spec,
     app_id: &Option<&DynamicValue>,
-    client_sdk_key: &Option<String>,
+    options: &ClientInitResponseOptions,
 ) -> bool {
-    should_filter_config_for_app(spec.target_app_ids.as_ref(), app_id, client_sdk_key)
+    should_filter_config_for_app(spec.target_app_ids.as_ref(), app_id, options)
 }
 
 pub(crate) fn should_filter_config_for_app(
     target_app_ids: Option<&Vec<InternedString>>,
     app_id: &Option<&DynamicValue>,
-    client_sdk_key: &Option<String>,
+    options: &ClientInitResponseOptions,
 ) -> bool {
-    let _client_sdk_key = match client_sdk_key {
-        Some(client_sdk_key) => client_sdk_key,
-        None => return false,
-    };
+    if options.client_sdk_key.is_none() && options.get_target_app_id().is_none() {
+        return false;
+    }
 
     let app_id = match app_id {
         Some(app_id) => app_id,

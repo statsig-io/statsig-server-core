@@ -1,0 +1,65 @@
+{
+  "feature_gates": {
+    "gate_app_a": {
+      "type": "feature_gate",
+      "salt": "salt-gate-app-a",
+      "enabled": true,
+      "defaultValue": false,
+      "rules": [
+        {
+          "name": "public_a",
+          "passPercentage": 100,
+          "conditions": ["public_cond"],
+          "returnValue": true,
+          "id": "rule_gate_app_a",
+          "salt": "salt-rule-gate-app-a",
+          "idType": "userID"
+        }
+      ],
+      "idType": "userID",
+      "entity": "feature_gate",
+      "targetAppIDs": ["app_a"],
+      "version": 1
+    },
+    "gate_app_b": {
+      "type": "feature_gate",
+      "salt": "salt-gate-app-b",
+      "enabled": true,
+      "defaultValue": false,
+      "rules": [
+        {
+          "name": "public_b",
+          "passPercentage": 100,
+          "conditions": ["public_cond"],
+          "returnValue": true,
+          "id": "rule_gate_app_b",
+          "salt": "salt-rule-gate-app-b",
+          "idType": "userID"
+        }
+      ],
+      "idType": "userID",
+      "entity": "feature_gate",
+      "targetAppIDs": ["app_b"],
+      "version": 1
+    }
+  },
+  "dynamic_configs": {},
+  "layer_configs": {},
+  "experiment_to_layer": {},
+  "condition_map": {
+    "public_cond": {
+      "type": "public",
+      "targetValue": null,
+      "operator": "none",
+      "field": null,
+      "additionalValues": null,
+      "idType": "userID"
+    }
+  },
+  "has_updates": true,
+  "time": 1,
+  "response_format": "dcs-v2",
+  "hashed_sdk_keys_to_app_ids": {
+    "3172774401": "app_b"
+  }
+}

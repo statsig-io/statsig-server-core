@@ -57,7 +57,10 @@ use crate::statsig_runtime::StatsigRuntime;
 use crate::statsig_type_factories::{
     make_dynamic_config, make_experiment, make_feature_gate, make_layer,
 };
-use crate::statsig_types::{DynamicConfig, Experiment, FeatureGate, Layer, ParameterStore};
+use crate::statsig_types::{
+    DynamicConfig, Experiment, ExperimentGroup, ExperimentGroupsResult, FeatureGate, Layer,
+    ParameterStore,
+};
 #[cfg(feature = "ffi-support")]
 use crate::statsig_types_raw::{DynamicConfigRaw, ExperimentRaw, FeatureGateRaw, LayerRaw};
 use crate::user::StatsigUserInternal;
@@ -492,7 +495,9 @@ impl Statsig {
             return InitializeResponse::blank(user_internal);
         });
 
-        let mut context = self.create_gcir_eval_context(&user_internal, &data, options);
+        let app_id = select_app_id_for_gcir(options, &data.values, &self.hashing);
+        let mut context =
+            self.create_gcir_eval_context(&user_internal, &data, options, app_id.as_ref());
 
         match GCIRFormatter::generate_v1_format(&mut context, options) {
             Ok(response) => response,
@@ -529,7 +534,9 @@ impl Statsig {
             return String::new();
         });
 
-        let mut context = self.create_gcir_eval_context(&user_internal, &data, options);
+        let app_id = select_app_id_for_gcir(options, &data.values, &self.hashing);
+        let mut context =
+            self.create_gcir_eval_context(&user_internal, &data, options, app_id.as_ref());
 
         match options.response_format {
             Some(GCIRResponseFormat::InitializeWithSecondaryExposureMapping) => self
@@ -1439,6 +1446,45 @@ impl Statsig {
             .get_fields_used_for_entity(experiment_name, SpecType::Experiment)
     }
 
+    /// Returns the experiment's active state and the group name, rule id, id type, and
+    /// return value for each of its groups, without requiring a user evaluation.
+    ///
+    /// `is_experiment_active` is `None` if the name does not refer to an experiment
+    /// (the name is unknown or refers to a non-experiment entity like a dynamic config
+    /// or autotune); otherwise it reflects the experiment's `isActive` state (`false`
+    /// if unset), and `groups` contains the experiment's groups regardless of that
+    /// state. Rules that are not experiment groups (e.g. holdout or sizing rules) are
+    /// excluded.
+    pub fn get_experiment_groups(&self, experiment_name: &str) -> ExperimentGroupsResult {
+        self.use_dynamic_config_spec(experiment_name, |lookup| {
+            let none_result = ExperimentGroupsResult {
+                is_experiment_active: None,
+                groups: Vec::new(),
+            };
+
+            let Some((_, Some(spec_pointer))) = lookup else {
+                return none_result;
+            };
+
+            let spec = spec_pointer.as_spec_ref();
+            if spec.entity != "experiment" {
+                return none_result;
+            }
+
+            let groups = spec
+                .rules
+                .iter()
+                .filter(|rule| rule.is_experiment_group == Some(true))
+                .map(ExperimentGroup::from_rule)
+                .collect();
+
+            ExperimentGroupsResult {
+                is_experiment_active: Some(spec.is_active.unwrap_or(false)),
+                groups,
+            }
+        })
+    }
+
     pub fn get_experiment_by_group_name(
         &self,
         experiment_name: &str,
@@ -1448,25 +1494,7 @@ impl Statsig {
             experiment_name,
             group_name,
             |spec_pointer, rule, details| {
-                if let (Some(spec_pointer), Some(rule)) = (spec_pointer, rule) {
-                    let value = rule.return_value.get_json().unwrap_or_default();
-                    let rule_id = String::from(rule.id.as_str());
-                    let id_type = rule.id_type.value.unperformant_to_string();
-                    let group_name = rule.group_name.as_ref().map(|g| g.unperformant_to_string());
-
-                    return Experiment {
-                        name: experiment_name.to_string(),
-                        value,
-                        rule_id,
-                        id_type,
-                        group_name,
-                        details,
-                        is_experiment_active: spec_pointer.as_spec_ref().is_active.unwrap_or(false),
-                        __evaluation: None,
-                    };
-                }
-
-                make_experiment(experiment_name, None, details)
+                Self::experiment_from_rule_match(experiment_name, spec_pointer, rule, details)
             },
         )
     }
@@ -1480,27 +1508,33 @@ impl Statsig {
             experiment_name,
             group_id,
             |spec_pointer, rule, details| {
-                if let (Some(spec_pointer), Some(rule)) = (spec_pointer, rule) {
-                    let value = rule.return_value.get_json().unwrap_or_default();
-                    let rule_id = String::from(rule.id.as_str());
-                    let id_type = rule.id_type.value.unperformant_to_string();
-                    let group_name = rule.group_name.as_ref().map(|g| g.unperformant_to_string());
-
-                    return Experiment {
-                        name: experiment_name.to_string(),
-                        value,
-                        rule_id,
-                        id_type,
-                        group_name,
-                        details,
-                        is_experiment_active: spec_pointer.as_spec_ref().is_active.unwrap_or(false),
-                        __evaluation: None,
-                    };
-                }
-
-                make_experiment(experiment_name, None, details)
+                Self::experiment_from_rule_match(experiment_name, spec_pointer, rule, details)
             },
         )
+    }
+
+    fn experiment_from_rule_match(
+        experiment_name: &str,
+        spec_pointer: Option<&SpecPointer>,
+        rule: Option<&Rule>,
+        details: EvaluationDetails,
+    ) -> Experiment {
+        if let (Some(spec_pointer), Some(rule)) = (spec_pointer, rule) {
+            let group = ExperimentGroup::from_rule(rule);
+
+            return Experiment {
+                name: experiment_name.to_string(),
+                value: group.return_value,
+                rule_id: group.rule_id,
+                id_type: group.id_type,
+                group_name: rule.group_name.as_ref().map(|g| g.unperformant_to_string()),
+                details,
+                is_experiment_active: spec_pointer.as_spec_ref().is_active.unwrap_or(false),
+                __evaluation: None,
+            };
+        }
+
+        make_experiment(experiment_name, None, details)
     }
 
     fn get_experiment_by_group_name_impl<T>(
@@ -1538,6 +1572,65 @@ impl Statsig {
     where
         P: Fn(&Rule) -> bool,
     {
+        self.use_dynamic_config_spec(experiment_name, |lookup| {
+            let Some((data, config)) = lookup else {
+                return result_factory(
+                    None,
+                    None,
+                    EvaluationDetails::error("Failed to acquire read lock for spec store data"),
+                );
+            };
+
+            let Some(exp) = config else {
+                return result_factory(
+                    None,
+                    None,
+                    EvaluationDetails::unrecognized(
+                        &data.source,
+                        data.values.time,
+                        data.time_received_at,
+                    ),
+                );
+            };
+
+            if let Some(rule) = exp
+                .as_spec_ref()
+                .rules
+                .iter()
+                .find(|rule| rule_predicate(rule))
+            {
+                return result_factory(
+                    Some(exp),
+                    Some(rule),
+                    EvaluationDetails::recognized_without_eval_result(
+                        &data.source,
+                        data.values.time,
+                        data.time_received_at,
+                    ),
+                );
+            }
+
+            result_factory(
+                None,
+                None,
+                EvaluationDetails::unrecognized(
+                    &data.source,
+                    data.values.time,
+                    data.time_received_at,
+                ),
+            )
+        })
+    }
+
+    /// Runs `callback` with the named config's spec pointer while holding the
+    /// spec-store read lock. The callback receives `None` on lock failure
+    /// (already logged), `Some((data, None))` when the name is unknown, and
+    /// `Some((data, Some(spec)))` when the config exists.
+    fn use_dynamic_config_spec<T>(
+        &self,
+        config_name: &str,
+        callback: impl FnOnce(Option<(&SpecStoreData, Option<&SpecPointer>)>) -> T,
+    ) -> T {
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
@@ -1546,50 +1639,15 @@ impl Statsig {
                     "Failed to acquire read lock for spec store data".to_string()
                 )
             );
-            return result_factory(
-                None,
-                None,
-                EvaluationDetails::error("Failed to acquire read lock for spec store data"),
-            );
+            return callback(None);
         });
 
-        let experiment_name = InternedString::from_str_ref(experiment_name);
-        let experiment = data.values.dynamic_configs.get(&experiment_name);
-
-        let Some(exp) = experiment else {
-            return result_factory(
-                None,
-                None,
-                EvaluationDetails::unrecognized(
-                    &data.source,
-                    data.values.time,
-                    data.time_received_at,
-                ),
-            );
-        };
-
-        if let Some(rule) = exp
-            .as_spec_ref()
-            .rules
-            .iter()
-            .find(|rule| rule_predicate(rule))
-        {
-            return result_factory(
-                Some(exp),
-                Some(rule),
-                EvaluationDetails::recognized_without_eval_result(
-                    &data.source,
-                    data.values.time,
-                    data.time_received_at,
-                ),
-            );
-        }
-
-        result_factory(
-            None,
-            None,
-            EvaluationDetails::unrecognized(&data.source, data.values.time, data.time_received_at),
-        )
+        let interned_name = InternedString::from_str_ref(config_name);
+        let data_ref: &SpecStoreData = &data;
+        callback(Some((
+            data_ref,
+            data_ref.values.dynamic_configs.get(&interned_name),
+        )))
     }
 }
 
@@ -2333,8 +2391,8 @@ impl Statsig {
         user_internal: &'a StatsigUserInternal,
         data: &'a SpecStoreData,
         options: &'a ClientInitResponseOptions,
+        app_id: Option<&'a DynamicValue>,
     ) -> EvaluatorContext<'a> {
-        let app_id = select_app_id_for_gcir(options, &data.values, &self.hashing);
         let override_adapter = match options.include_local_overrides {
             Some(true) => self.override_adapter.as_ref(),
             _ => None,

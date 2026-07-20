@@ -1,5 +1,5 @@
 import json
-from typing import Any, Callable, Optional
+from typing import Any, Callable, List, Optional
 
 
 def _log_error(tag: str, message: str):
@@ -334,3 +334,55 @@ class Layer(BaseEvaluation):
             return
 
         self.__exposure_func(param_name)
+
+
+class ExperimentGroup:
+    group_name: str
+    rule_id: str
+    id_type: str
+    return_value: dict
+
+    def __init__(self, raw: dict):
+        try:
+            data = raw or {}
+            self.group_name = data.get("group_name") or ""
+            self.rule_id = data.get("rule_id") or ""
+            self.id_type = data.get("id_type") or ""
+            self.return_value = data.get("return_value") or {}
+        except Exception as error:
+            self.group_name = ""
+            self.rule_id = ""
+            self.id_type = ""
+            self.return_value = {}
+            _log_error("ExperimentGroup", f"Failed to parse. {error}")
+
+    def to_dict(self) -> dict:
+        return {
+            "group_name": self.group_name,
+            "rule_id": self.rule_id,
+            "id_type": self.id_type,
+            "return_value": self.return_value,
+        }
+
+
+class ExperimentGroupsResult:
+    is_experiment_active: Optional[bool]
+    groups: List[ExperimentGroup]
+
+    def __init__(self, raw: dict):
+        try:
+            data = raw or {}
+            self.is_experiment_active = data.get("is_experiment_active")
+            self.groups = [
+                ExperimentGroup(group) for group in data.get("groups") or []
+            ]
+        except Exception as error:
+            self.is_experiment_active = None
+            self.groups = []
+            _log_error("ExperimentGroupsResult", f"Failed to parse. {error}")
+
+    def to_dict(self) -> dict:
+        return {
+            "is_experiment_active": self.is_experiment_active,
+            "groups": [group.to_dict() for group in self.groups],
+        }

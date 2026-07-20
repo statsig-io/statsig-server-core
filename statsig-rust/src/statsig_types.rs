@@ -7,6 +7,7 @@ use crate::event_logging::event_logger::{EventLogger, ExposureTrigger};
 use crate::event_logging::event_queue::queued_layer_param_expo::EnqueueLayerParamExpoOp;
 use crate::interned_string::InternedString;
 use crate::specs_response::param_store_types::Parameter;
+use crate::specs_response::spec_types::Rule;
 use crate::statsig_core_api_options::ParameterStoreEvaluationOptions;
 use crate::user::StatsigUserLoggable;
 use crate::Statsig;
@@ -80,6 +81,38 @@ impl Experiment {
     pub fn get_typed_opt(&self, param_name: &str, fallback: Option<Value>) -> Option<Value> {
         extract_matching_type(&self.value, param_name, &fallback).or(fallback)
     }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ExperimentGroup {
+    pub group_name: String,
+    pub rule_id: String,
+    pub id_type: String,
+    pub return_value: HashMap<String, Value>,
+}
+
+impl ExperimentGroup {
+    pub(crate) fn from_rule(rule: &Rule) -> Self {
+        ExperimentGroup {
+            group_name: rule
+                .group_name
+                .as_ref()
+                .map(|g| g.unperformant_to_string())
+                .unwrap_or_default(),
+            rule_id: String::from(rule.id.as_str()),
+            id_type: rule.id_type.value.unperformant_to_string(),
+            return_value: rule.return_value.get_json().unwrap_or_default(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ExperimentGroupsResult {
+    /// `None` when the name does not refer to an experiment (unknown name or a
+    /// non-experiment entity like a dynamic config or autotune); otherwise the
+    /// experiment's `isActive` state (`false` if unset).
+    pub is_experiment_active: Option<bool>,
+    pub groups: Vec<ExperimentGroup>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

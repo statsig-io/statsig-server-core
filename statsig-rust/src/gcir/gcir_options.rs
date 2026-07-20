@@ -7,6 +7,7 @@ use crate::{GCIRResponseFormat, HashAlgorithm};
 pub struct ClientInitResponseOptions {
     pub hash_algorithm: Option<HashAlgorithm>,
     pub client_sdk_key: Option<String>,
+    pub target_app_id: Option<String>,
     pub include_local_overrides: Option<bool>,
     pub feature_gate_filter: Option<HashSet<String>>,
     pub experiment_filter: Option<HashSet<String>>,
@@ -24,6 +25,13 @@ impl ClientInitResponseOptions {
     pub(crate) fn get_hash_algorithm(&self) -> &HashAlgorithm {
         self.hash_algorithm.as_ref().unwrap_or(&HashAlgorithm::Djb2)
     }
+
+    // Empty string means unset: bindings without nullable strings (e.g. Go) send "".
+    pub(crate) fn get_target_app_id(&self) -> Option<&String> {
+        self.target_app_id
+            .as_ref()
+            .filter(|target_app_id| !target_app_id.is_empty())
+    }
 }
 
 impl Default for ClientInitResponseOptions {
@@ -31,6 +39,7 @@ impl Default for ClientInitResponseOptions {
         Self {
             hash_algorithm: Some(HashAlgorithm::Djb2),
             client_sdk_key: None,
+            target_app_id: None,
             include_local_overrides: Some(false),
             feature_gate_filter: None,
             experiment_filter: None,

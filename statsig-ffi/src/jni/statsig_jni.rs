@@ -1345,6 +1345,21 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetParameterStoreList(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperimentGroups(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: jlong,
+    exper_name: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_c!(Statsig, &(statsig_ref as u64), std::ptr::null_mut());
+    let exper_name: String = match env.get_string(&exper_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+    serialize_json_to_jstring(&mut env, &statsig.get_experiment_groups(&exper_name))
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigRemoveGateOverride(
     mut env: JNIEnv,
     _class: JClass,

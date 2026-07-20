@@ -34,6 +34,14 @@ pub struct StatsigOptions {
 
     pub enable_id_lists: Option<bool>,
     pub enable_dcs_deltas: Option<bool>,
+
+    /// Number of consecutive background delta syncs that receive updates yet make
+    /// no LCUT progress before the adapter forces a single full (non-delta)
+    /// resync to recover a wedged delta stream. When unset (`None`), defaults to
+    /// [`crate::specs_adapter::DEFAULT_DCS_DELTA_NO_PROGRESS_THRESHOLD`] (10) —
+    /// recovery is on by default. Set to `Some(0)` to disable the recovery.
+    pub dcs_delta_no_progress_threshold: Option<u32>,
+
     pub environment: Option<String>,
     pub config_compression_mode: Option<ConfigCompressionMode>,
 
@@ -213,6 +221,15 @@ impl StatsigOptionsBuilder {
     #[must_use]
     pub fn enable_dcs_deltas(mut self, enable_dcs_deltas: Option<bool>) -> Self {
         self.inner.enable_dcs_deltas = enable_dcs_deltas;
+        self
+    }
+
+    #[must_use]
+    pub fn dcs_delta_no_progress_threshold(
+        mut self,
+        dcs_delta_no_progress_threshold: Option<u32>,
+    ) -> Self {
+        self.inner.dcs_delta_no_progress_threshold = dcs_delta_no_progress_threshold;
         self
     }
 
@@ -423,6 +440,11 @@ impl Serialize for StatsigOptions {
         );
         serialize_if_not_none!(state, "enable_id_lists", &self.enable_id_lists);
         serialize_if_not_none!(state, "enable_dcs_deltas", &self.enable_dcs_deltas);
+        serialize_if_not_none!(
+            state,
+            "dcs_delta_no_progress_threshold",
+            &self.dcs_delta_no_progress_threshold
+        );
         serialize_if_not_none!(
             state,
             "wait_for_user_agent_init",

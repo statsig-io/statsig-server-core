@@ -19,6 +19,7 @@ use crate::{
 use parking_lot::Mutex;
 use pyo3::{
     call::PyCallArgs,
+    exceptions::PyValueError,
     prelude::*,
     types::{PyDict, PyModule},
 };
@@ -341,6 +342,21 @@ impl StatsigBasePy {
         json_string_to_py_dict(py, &raw)
     }
 
+    #[pyo3(name="_INTERNAL_get_experiment_groups", signature = (experiment_name))]
+    pub fn _internal_get_experiment_groups(
+        &self,
+        experiment_name: &str,
+        py: Python,
+    ) -> PyResult<Py<PyDict>> {
+        let result = self.inner.get_experiment_groups(experiment_name);
+
+        let json = serde_json::to_string(&result).map_err(|e| {
+            PyValueError::new_err(format!("Failed to serialize experiment groups: {e}"))
+        })?;
+
+        json_string_to_py_dict(py, &json)
+    }
+
     #[pyo3(signature = (user, name))]
     pub fn manually_log_experiment_exposure(
         &self,
@@ -618,10 +634,11 @@ fn extract_event_metadata(metadata: Option<Bound<PyDict>>) -> Option<HashMap<Str
     metadata.map(|m| py_dict_to_json_value_map(&m))
 }
 
-// The group-targeting experiment getters only expose a JSON-string core
-// method (the camelCase ExperimentRaw shape), so parse it into a PyDict here
-// via Python's json module. The resulting keys (ruleID, idType, groupName,
-// value, details) match what the Python Experiment type reads.
+// Parses a JSON string from the core into a PyDict via Python's json module.
+// Used by the group-targeting getters (camelCase ExperimentRaw shape, whose
+// keys ruleID/idType/groupName/value/details match what the Python Experiment
+// type reads) and by get_experiment_groups (snake_case ExperimentGroupsResult
+// shape read by the Python ExperimentGroupsResult type).
 fn json_string_to_py_dict(py: Python, json_str: &str) -> PyResult<Py<PyDict>> {
     let json_module = PyModule::import(py, "json")?;
     let parsed = json_module.call_method1("loads", (json_str,))?;

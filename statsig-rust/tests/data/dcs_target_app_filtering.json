@@ -1,0 +1,192 @@
+{
+  "app_id": "global_app",
+  "feature_gates": {
+    "gate_app_a": {
+      "type": "feature_gate",
+      "salt": "salt-gate-app-a",
+      "enabled": true,
+      "defaultValue": false,
+      "rules": [
+        {
+          "name": "public_a",
+          "passPercentage": 100,
+          "conditions": ["public_cond"],
+          "returnValue": true,
+          "id": "rule_gate_app_a",
+          "salt": "salt-rule-gate-app-a",
+          "idType": "userID"
+        }
+      ],
+      "idType": "userID",
+      "entity": "feature_gate",
+      "targetAppIDs": ["app_a"],
+      "version": 1
+    },
+    "gate_app_b": {
+      "type": "feature_gate",
+      "salt": "salt-gate-app-b",
+      "enabled": true,
+      "defaultValue": false,
+      "rules": [
+        {
+          "name": "public_b",
+          "passPercentage": 100,
+          "conditions": ["public_cond"],
+          "returnValue": true,
+          "id": "rule_gate_app_b",
+          "salt": "salt-rule-gate-app-b",
+          "idType": "userID"
+        }
+      ],
+      "idType": "userID",
+      "entity": "feature_gate",
+      "targetAppIDs": ["app_b"],
+      "version": 1
+    },
+    "gate_no_target": {
+      "type": "feature_gate",
+      "salt": "salt-gate-no-target",
+      "enabled": true,
+      "defaultValue": false,
+      "rules": [
+        {
+          "name": "public_nt",
+          "passPercentage": 100,
+          "conditions": ["public_cond"],
+          "returnValue": true,
+          "id": "rule_gate_no_target",
+          "salt": "salt-rule-gate-no-target",
+          "idType": "userID"
+        }
+      ],
+      "idType": "userID",
+      "entity": "feature_gate",
+      "version": 1
+    }
+  },
+  "dynamic_configs": {
+    "config_app_a": {
+      "type": "dynamic_config",
+      "salt": "salt-config-app-a",
+      "enabled": true,
+      "defaultValue": { "app": "a" },
+      "rules": [],
+      "idType": "userID",
+      "entity": "dynamic_config",
+      "targetAppIDs": ["app_a"],
+      "version": 1
+    },
+    "config_app_b": {
+      "type": "dynamic_config",
+      "salt": "salt-config-app-b",
+      "enabled": true,
+      "defaultValue": { "app": "b" },
+      "rules": [],
+      "idType": "userID",
+      "entity": "dynamic_config",
+      "targetAppIDs": ["app_b"],
+      "version": 1
+    },
+    "exp_app_a": {
+      "type": "dynamic_config",
+      "salt": "salt-exp-app-a",
+      "enabled": true,
+      "defaultValue": { "group": "control" },
+      "rules": [],
+      "idType": "userID",
+      "entity": "experiment",
+      "isActive": true,
+      "targetAppIDs": ["app_a"],
+      "version": 1
+    },
+    "exp_app_b": {
+      "type": "dynamic_config",
+      "salt": "salt-exp-app-b",
+      "enabled": true,
+      "defaultValue": { "group": "control" },
+      "rules": [],
+      "idType": "userID",
+      "entity": "experiment",
+      "isActive": true,
+      "targetAppIDs": ["app_b"],
+      "version": 1
+    }
+  },
+  "layer_configs": {
+    "layer_app_a": {
+      "type": "dynamic_config",
+      "salt": "salt-layer-app-a",
+      "enabled": true,
+      "defaultValue": { "param": "a" },
+      "rules": [],
+      "idType": "userID",
+      "entity": "layer",
+      "targetAppIDs": ["app_a"],
+      "version": 1
+    },
+    "layer_app_b": {
+      "type": "dynamic_config",
+      "salt": "salt-layer-app-b",
+      "enabled": true,
+      "defaultValue": { "param": "b" },
+      "rules": [],
+      "idType": "userID",
+      "entity": "layer",
+      "targetAppIDs": ["app_b"],
+      "version": 1
+    }
+  },
+  "param_stores": {
+    "ps_app_a": {
+      "parameters": {},
+      "targetAppIDs": ["app_a"],
+      "version": 1
+    },
+    "ps_app_b": {
+      "parameters": {},
+      "targetAppIDs": ["app_b"],
+      "version": 1
+    }
+  },
+  "cmab_configs": {
+    "cmab_app_a": {
+      "salt": "salt-cmab-app-a",
+      "targetAppIDs": ["app_a"],
+      "defaultValue": { "arm": "a" },
+      "idType": "userID",
+      "enabled": true,
+      "version": 1,
+      "sampleRate": 1.0,
+      "higherIsBetter": false,
+      "groups": []
+    },
+    "cmab_app_b": {
+      "salt": "salt-cmab-app-b",
+      "targetAppIDs": ["app_b"],
+      "defaultValue": { "arm": "b" },
+      "idType": "userID",
+      "enabled": true,
+      "version": 1,
+      "sampleRate": 1.0,
+      "higherIsBetter": false,
+      "groups": []
+    }
+  },
+  "experiment_to_layer": {},
+  "condition_map": {
+    "public_cond": {
+      "type": "public",
+      "targetValue": null,
+      "operator": "none",
+      "field": null,
+      "additionalValues": null,
+      "idType": "userID"
+    }
+  },
+  "has_updates": true,
+  "time": 1,
+  "response_format": "dcs-v2",
+  "sdk_keys_to_app_ids": {
+    "client-super-key": "app_a"
+  }
+}

@@ -159,6 +159,62 @@ class StatsigTest extends TestCase
         $this->assertEquals('layer', $layer->get('a_string', 'err'));
     }
 
+    public function testGetExperimentGroups()
+    {
+        $statsig = $this->getInitializedStatsig();
+
+        $result = $statsig->getExperimentGroups('test_experiment_no_targeting');
+
+        $this->assertTrue($result->isExperimentActive);
+
+        $groups_by_name = [];
+        foreach ($result->groups as $group) {
+            $groups_by_name[$group->groupName] = $group;
+        }
+
+        // Only the experiment group rules are returned (the layerAssignment rule is excluded).
+        $names = array_keys($groups_by_name);
+        sort($names);
+        $this->assertEquals(['Control', 'Test', 'Test2'], $names);
+        $this->assertEquals(['value' => 'control'], $groups_by_name['Control']->returnValue);
+        $this->assertEquals('54QJztEPRLXK7ZCvXeY9q4', $groups_by_name['Control']->ruleId);
+        $this->assertEquals('userID', $groups_by_name['Control']->idType);
+        $this->assertEquals(['value' => 'test_1'], $groups_by_name['Test']->returnValue);
+        $this->assertEquals(['value' => 'test_2'], $groups_by_name['Test2']->returnValue);
+    }
+
+    public function testGetExperimentGroupsReturnsNullActiveStateForUnknownExperiment()
+    {
+        $statsig = $this->getInitializedStatsig();
+
+        $result = $statsig->getExperimentGroups('nonexistent_experiment');
+        $this->assertNull($result->isExperimentActive);
+        $this->assertEquals([], $result->groups);
+    }
+
+    public function testGetExperimentGroupsReturnsNullActiveStateForDynamicConfig()
+    {
+        $statsig = $this->getInitializedStatsig();
+
+        $result = $statsig->getExperimentGroups('test_max_dynamic_config_size_again');
+        $this->assertNull($result->isExperimentActive);
+        $this->assertEquals([], $result->groups);
+    }
+
+    public function testGetExperimentGroupsReturnsGroupsForInactiveExperiment()
+    {
+        $statsig = $this->getInitializedStatsig();
+
+        // test_switchback has isActive: false; groups are still returned along with the flag.
+        $result = $statsig->getExperimentGroups('test_switchback');
+        $this->assertFalse($result->isExperimentActive);
+
+        // Only the experiment group rules are returned (non-group rules are excluded).
+        $group_names = array_map(fn ($group) => $group->groupName, $result->groups);
+        sort($group_names);
+        $this->assertEquals(['Control', 'Test'], $group_names);
+    }
+
     public function testExposureLogCounts()
     {
         $statsig = $this->getInitializedStatsig();

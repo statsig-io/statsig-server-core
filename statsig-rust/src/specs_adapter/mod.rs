@@ -6,7 +6,9 @@ pub use statsig_bootstrap_specs_adapter::StatsigBootstrapSpecsAdapter;
 pub use statsig_customized_specs_adapter::StatsigCustomizedSpecsAdapter;
 #[cfg(feature = "with_grpc")]
 pub use statsig_grpc_specs_adapter::StatsigGrpcSpecsAdapter;
-pub use statsig_http_specs_adapter::{SpecsSyncTrigger, StatsigHttpSpecsAdapter};
+pub use statsig_http_specs_adapter::{
+    SpecsSyncTrigger, StatsigHttpSpecsAdapter, DEFAULT_DCS_DELTA_NO_PROGRESS_THRESHOLD,
+};
 pub use statsig_local_file_specs_adapter::StatsigLocalFileSpecsAdapter;
 
 mod config_spec_background_sync_metrics;

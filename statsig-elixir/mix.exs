@@ -4,14 +4,18 @@ defmodule Statsigelixir.MixProject do
   def project do
     [
       app: :statsig_elixir,
-      version: "0.20.1",
+      version: "0.20.2-beta.2607180300",
       elixir: "~> 1.0",
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       description: description(),
       deps: deps(),
       package: package()
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   defp description() do
     "A performant elixir SDK for Statsig feature gates and experiments using Rustler"

@@ -143,6 +143,8 @@ impl From<StatsigOptionsData> for StatsigOptions {
             config_compression_mode,
             data_store,
             data_store_key_schema_version,
+            // Not exposed via the FFI binding yet; defaults to the core value.
+            dcs_delta_no_progress_threshold: None,
             disable_all_logging: data.disable_all_logging,
             disable_disk_access: data.disable_disk_access,
             disable_country_lookup: data.disable_country_lookup,

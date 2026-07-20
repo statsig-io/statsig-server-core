@@ -58,6 +58,12 @@ impl Tokenizer {
 
                 win.slide_window_by(1);
             }
+            // iPadOS
+            else if curr == "iPadOS" {
+                result.add_possible_os_tag("iOS", consume_if_numeric(&mut win, next1));
+                result.ios_hint = true;
+                win.slide_window_by(1);
+            }
             // iPad
             else if curr.starts_with("iPad") {
                 result.ios_hint = true;

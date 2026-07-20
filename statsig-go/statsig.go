@@ -252,6 +252,33 @@ func (s *Statsig) OverrideExperimentByGroupName(experimentName string, groupName
 	GetFFI().statsig_override_experiment_by_group_name(s.ref.Load(), experimentName, groupName, cString(id))
 }
 
+// GetExperimentGroups returns the experiment's active state and the group name, rule
+// id, id type, and return value for each of its groups, without requiring a user
+// evaluation. IsExperimentActive is nil if the name does not refer to an experiment
+// (unknown name or a non-experiment entity like a dynamic config or autotune);
+// otherwise it reflects the experiment's isActive state, and Groups are returned
+// regardless of that state. Rules that are not experiment groups (e.g. holdout or
+// sizing rules) are excluded.
+func (s *Statsig) GetExperimentGroups(experimentName string) ExperimentGroupsResult {
+	result := ExperimentGroupsResult{Groups: []ExperimentGroup{}}
+
+	resultJson := UseRustString(func() (*byte, uint64) {
+		length := uint64(0)
+		ptr := GetFFI().statsig_get_experiment_groups(s.ref.Load(), experimentName, &length)
+		return ptr, length
+	})
+
+	if resultJson == nil {
+		return result
+	}
+
+	if err := json.Unmarshal([]byte(*resultJson), &result); err != nil {
+		fmt.Printf("Failed to unmarshal ExperimentGroupsResult: %v", err)
+	}
+
+	return result
+}
+
 func (s *Statsig) GetLayer(user *StatsigUser, layerName string) Layer {
 	return s.GetLayerWithOptions(user, layerName, nil)
 
