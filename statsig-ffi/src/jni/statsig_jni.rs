@@ -1345,6 +1345,28 @@ pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetParameterStoreList(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetParameterNamesFromParameterStore(
+    mut env: JNIEnv,
+    _class: jclass,
+    statsig_ref: jlong,
+    user_ref: jlong,
+    parameter_store_name: JString,
+) -> jstring {
+    let statsig = get_instance_or_return_c!(Statsig, &(statsig_ref as u64), std::ptr::null_mut());
+    let user = get_instance_or_return_c!(StatsigUser, &(user_ref as u64), std::ptr::null_mut());
+
+    let parameter_store_name: String = match env.get_string(&parameter_store_name) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    serialize_json_to_jstring(
+        &mut env,
+        &statsig.get_parameter_names_from_store(&user, &parameter_store_name),
+    )
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_statsig_StatsigJNI_statsigGetExperimentGroups(
     mut env: JNIEnv,
     _class: jclass,

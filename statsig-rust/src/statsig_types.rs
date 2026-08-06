@@ -252,6 +252,16 @@ pub struct ParameterStore<'a> {
 }
 
 impl ParameterStore<'_> {
+    /// Returns the names of every parameter in this Parameter Store, sorted
+    /// alphabetically. Parameters are not evaluated, so no exposures are logged.
+    /// Returns an empty Vec for an unrecognized Parameter Store.
+    #[must_use]
+    pub fn get_parameter_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.parameters.keys().cloned().collect();
+        names.sort();
+        names
+    }
+
     pub fn get_opt<T: DeserializeOwned>(&self, user: &StatsigUser, param_name: &str) -> Option<T> {
         let param = self.parameters.get(param_name)?;
         match param {

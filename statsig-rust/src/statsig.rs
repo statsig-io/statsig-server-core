@@ -820,6 +820,25 @@ impl Statsig {
         }
     }
 
+    /// Returns the names of every parameter within the given Parameter Store,
+    /// sorted alphabetically. This resolves the store against the given user so
+    /// that any Parameter Store overrides are respected. No parameters are
+    /// evaluated, so no exposures are logged. Returns an empty Vec if the
+    /// Parameter Store is unrecognized.
+    #[must_use]
+    pub fn get_parameter_names_from_store(
+        &self,
+        user: &StatsigUser,
+        parameter_store_name: &str,
+    ) -> Vec<String> {
+        self.get_parameter_store_with_user_and_options(
+            Some(user),
+            parameter_store_name,
+            ParameterStoreEvaluationOptions::default(),
+        )
+        .get_parameter_names()
+    }
+
     pub fn get_parameter_store(&self, parameter_store_name: &str) -> ParameterStore<'_> {
         self.get_parameter_store_with_options(
             parameter_store_name,

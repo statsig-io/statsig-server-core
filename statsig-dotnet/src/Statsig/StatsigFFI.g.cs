@@ -235,6 +235,9 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_get_parameter_store_list", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern byte* statsig_get_parameter_store_list(ulong statsig_ref, ulong* inout_result_len);
 
+        [DllImport(__DllName, EntryPoint = "statsig_get_parameter_names_from_store", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern byte* statsig_get_parameter_names_from_store(ulong statsig_ref, ulong user_ref, byte* parameter_store_name, ulong* inout_result_len);
+
         [DllImport(__DllName, EntryPoint = "statsig_metadata_update_values", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_metadata_update_values(byte* sdk_type, byte* os, byte* arch, byte* language_version);
 
