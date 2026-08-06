@@ -392,6 +392,22 @@ public class Statsig {
     return JSON.parseArray(resultJSON, String.class);
   }
 
+  public List<String> getParameterNamesFromParameterStore(
+      StatsigUser user, String parameterStoreName) {
+    String resultJSON =
+        StatsigJNI.statsigGetParameterNamesFromParameterStore(
+            ref, user.getRef(), parameterStoreName);
+    if (resultJSON == null || resultJSON.isEmpty()) {
+      return new ArrayList<>();
+    }
+    try {
+      List<String> parameterNames = JSON.parseArray(resultJSON, String.class);
+      return parameterNames != null ? parameterNames : new ArrayList<>();
+    } catch (Exception e) {
+      return new ArrayList<>();
+    }
+  }
+
   public String getStringFromParameterStore(
       StatsigUser user, String parameterStoreName, String parameterName, String defaultValue) {
     return StatsigJNI.statsigGetStringParameterFromParameterStore(

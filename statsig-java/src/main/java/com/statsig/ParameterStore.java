@@ -2,6 +2,8 @@ package com.statsig;
 
 import com.alibaba.fastjson2.annotation.JSONCreator;
 import com.alibaba.fastjson2.annotation.JSONField;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class ParameterStore {
@@ -33,6 +35,14 @@ public class ParameterStore {
 
   void setUser(StatsigUser user) {
     this.user = user;
+  }
+
+  public List<String> getParameterList() {
+    List<String> parameterNames = statsigInstance.getParameterNamesFromParameterStore(user, name);
+    if (parameterNames == null) {
+      return new ArrayList<>();
+    }
+    return parameterNames;
   }
 
   public String getString(String parameterName, String defaultValue) {
