@@ -8,7 +8,7 @@ use std::sync::Arc;
 fn create_user() -> StatsigUser {
     StatsigUser::new(UserData {
         user_id: Some(dyn_value!("a_user")),
-        email: Some(dyn_value!("daniel@statsig.com")),
+        email: Some(dyn_value!("user@example.com")),
         ip: Some(dyn_value!("127.0.0.1")),
         user_agent: Some("Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into()),
         country: Some(dyn_value!("US")),

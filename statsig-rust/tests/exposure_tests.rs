@@ -324,7 +324,7 @@ async fn test_gate_dynamic_config_experiment_and_layer_log_secondary_exposures_a
     assert_secondary_exposures_logged_as_primary_for_eval(
         "secret-shhh-sec-expo-experiment-kind",
         StatsigUserBuilder::new_with_user_id("a-user".to_string())
-            .email(Some("daniel@statsig.com".to_string()))
+            .email(Some("user@example.com".to_string()))
             .build(),
         |statsig, user| {
             let _ = statsig.get_experiment(user, "running_exp_in_unlayered_with_holdout");

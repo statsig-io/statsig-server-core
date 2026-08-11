@@ -13,7 +13,7 @@ for (var i = 0; i < 1000; i++)
     var user = new StatsigUser()
     {
         UserID = "user_" + i,
-        Email = "daniel@statsig.com"
+        Email = "user@example.com"
     };
     result = StatsigServer.GetClientInitializeResponse(user);
 }

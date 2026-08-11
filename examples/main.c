@@ -27,7 +27,7 @@ const char* statsig_get_client_init_response(Statsig* statsig, CUser* user);
 
 int main() {
     const char* name = "Dan Smith";
-    const char* email = "daniel@statsig.com";
+    const char* email = "user@example.com";
 
     CUser* user = create_user(name, email);
 

@@ -1,7 +1,7 @@
 const Statsig = require("statsig-node");
 
 const name = "Dan";
-const email = "daniel@statsig.com";
+const email = "user@example.com";
 
 const user = { userID: name, email };
 

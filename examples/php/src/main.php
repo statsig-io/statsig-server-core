@@ -24,7 +24,7 @@ function main()
     $statsig = new Statsig($secret_key, $options);
     $statsig->initialize();
 
-    $user = new StatsigUser("a-user", [], "daniel@statsig.com");
+    $user = new StatsigUser("a-user", [], "user@example.com");
     $gcir = $statsig->getClientInitializeResponse($user);
 
     echo time() . "\n";

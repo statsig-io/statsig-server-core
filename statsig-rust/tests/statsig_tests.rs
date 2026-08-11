@@ -19,7 +19,7 @@ fn get_sdk_key() -> String {
 #[tokio::test]
 async fn test_check_gate() {
     let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())
-        .email(Some("daniel@statsig.com".to_string()))
+        .email(Some("user@example.com".to_string()))
         .build();
 
     let statsig = Statsig::new(&get_sdk_key(), None);
@@ -55,7 +55,7 @@ async fn test_check_gate_id_list() {
 #[tokio::test]
 async fn test_get_experiment() {
     let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())
-        .email(Some("daniel@statsig.com".to_string()))
+        .email(Some("user@example.com".to_string()))
         .build();
 
     let statsig = Statsig::new(&get_sdk_key(), None);
@@ -217,7 +217,7 @@ async fn test_get_experiment_groups_returns_groups_for_inactive_experiment() {
 #[tokio::test]
 async fn test_gcir() {
     let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())
-        .email(Some("daniel@statsig.com".to_string()))
+        .email(Some("user@example.com".to_string()))
         .build();
     let opts = StatsigOptions {
         output_log_level: Some(LogLevel::Debug),
@@ -252,7 +252,7 @@ async fn test_gcir() {
 async fn test_user_agent_and_country_lookup() {
     // Default behavior
     let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())
-        .email(Some("daniel@statsig.com".to_string()))
+        .email(Some("user@example.com".to_string()))
         .user_agent(Some(
             "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into(),
         ))
@@ -270,7 +270,7 @@ async fn test_user_agent_and_country_lookup() {
 
     // Wait for ua and ip to initialize
     let user = StatsigUserBuilder::new_with_user_id("a-user".to_string())
-        .email(Some("daniel@statsig.com".to_string()))
+        .email(Some("user@example.com".to_string()))
         .user_agent(Some(
             "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1".into(),
         ))

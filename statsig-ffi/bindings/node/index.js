@@ -204,7 +204,7 @@ function statsig_check_gate(statsigRef, userRef, gateName) {
 const gates = [];
 
 statsig_initialize(statsig).then(() => {
-  const user = statsig_user_create('dan', 'daniel@statsig.com');
+  const user = statsig_user_create('dan', 'user@example.com');
 
   const allStart = performance.now();
   const times = {};

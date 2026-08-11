@@ -104,7 +104,7 @@ def _assert_exposure(event, event_name, metadata):
         ),
         pytest.param(
             lambda statsig: statsig.get_experiment(
-                StatsigUser("a-user", email="daniel@statsig.com"),
+                StatsigUser("a-user", email="user@example.com"),
                 "running_exp_in_unlayered_with_holdout",
             ),
             (

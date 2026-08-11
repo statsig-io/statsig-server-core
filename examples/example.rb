@@ -2,7 +2,7 @@ require_relative '../build/ruby/statsig'
 require 'benchmark'
 
 name = "Dan Smith"
-email = "daniel@statsig.com"
+email = "user@example.com"
 
 user = User.create(name, email)
 statsig = Statsig.for_user(user, ENV['test_api_key'])

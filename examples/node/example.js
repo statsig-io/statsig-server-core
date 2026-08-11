@@ -50,7 +50,7 @@ work();
 //   const start = performance.now();
 //   let result = "";
 //   for (let i = 0; i < 1000; i++) {
-//     const user = new StatsigUser("user_" + i, "daniel@statsig.com");
+//     const user = new StatsigUser("user_" + i, "user@example.com");
 //     result = statsig.getClientInitializeResponse(user);
 //   }
 //   const end = performance.now();
