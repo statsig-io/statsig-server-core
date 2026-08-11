@@ -2,7 +2,7 @@ name: Scenario Runner
 
 on:
   schedule:
-    - cron: "0 0 * * *" # Daily at 12:00 AM
+    - cron: "0 0 * JAN-DEC *" # Daily at 12:00 AM
   workflow_dispatch:
   # push:
 
