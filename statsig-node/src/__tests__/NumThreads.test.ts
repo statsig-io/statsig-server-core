@@ -18,12 +18,8 @@ function getNumThreads() {
 }
 
 test('Has correct number of threads', async () => {
-  // Baseline includes Node/V8/libuv threads (GC, inspector, libuv threadpool,
-  // etc.) which vary by machine, OS, and Node version - that's why this test's
-  // absolute threshold has repeatedly been bumped (16 -> 19 -> 20) as CI
-  // runners changed. What we actually want to guard against is a regression
-  // of the shared tokio runtime (see statsig_global.rs) back into a
-  // per-instance runtime, which would scale threads with instance count.
+  // Baseline captures Node/V8/libuv threads that exist before any extra
+  // Statsig instances are created.
   const baseline = new Statsig('secret-num-threads-test', {
     disableNetwork: true,
   });
