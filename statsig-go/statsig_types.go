@@ -3,6 +3,8 @@ package statsig_go_core
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 )
 
 // ------------------------------------------------------------------------------------- [ Evaluation Details ]
@@ -11,6 +13,22 @@ type EvaluationDetails struct {
 	ReceivedAt uint64 `json:"received_at"`
 	LCUT       uint64 `json:"lcut"`
 	Reason     string `json:"reason"`
+}
+
+// IsRecognized reports whether the entity this detail describes — a feature gate,
+// dynamic config, experiment, layer, or parameter store — was found in the loaded
+// Statsig configuration. When false the name is unknown to Statsig (or no config
+// has loaded yet), so any value you read is the fallback/default, not a real one.
+//
+// Reason has the form "<source>:<subreason>" (e.g. "Network:Recognized"); an
+// unknown entity carries the "Unrecognized" subreason, and the "Uninitialized"/
+// "NoValues" sources mean nothing could be recognized yet.
+func (d EvaluationDetails) IsRecognized() bool {
+	switch d.Reason {
+	case "", "Unrecognized", "Uninitialized", "NoValues":
+		return false
+	}
+	return !strings.HasSuffix(d.Reason, ":Unrecognized")
 }
 
 // ------------------------------------------------------------------------------------- [ Feature Gate ]
@@ -53,6 +71,15 @@ func (d *DynamicConfig) GetMap(key string, fallback map[string]any) map[string]a
 	return getTypedValue(d.Value, key, fallback, nil)
 }
 
+// Contains reports whether key exists in the config's value. It lets you tell a
+// genuinely missing key from one whose value happens to equal the fallback passed
+// to a getter. It reports presence only: a key present with an unexpected type
+// still makes the typed getter return its fallback.
+func (d *DynamicConfig) Contains(key string) bool {
+	_, ok := d.Value[key]
+	return ok
+}
+
 // ------------------------------------------------------------------------------------- [ Experiment ]
 
 type Experiment struct {
@@ -82,6 +109,13 @@ func (e *Experiment) GetSlice(key string, fallback []any) []any {
 
 func (e *Experiment) GetMap(key string, fallback map[string]any) map[string]any {
 	return getTypedValue(e.Value, key, fallback, nil)
+}
+
+// Contains reports whether key exists in the experiment's value. See
+// DynamicConfig.Contains for the semantics.
+func (e *Experiment) Contains(key string) bool {
+	_, ok := e.Value[key]
+	return ok
 }
 
 // ------------------------------------------------------------------------------------- [ ExperimentGroup ]
@@ -136,6 +170,13 @@ func (l *Layer) GetMap(key string, fallback map[string]any) map[string]any {
 	return getTypedValue(l.value, key, fallback, l.logExposure)
 }
 
+// Contains reports whether key exists in the layer's value. It logs no exposure —
+// it is a pure presence check. See DynamicConfig.Contains for the semantics.
+func (l *Layer) Contains(key string) bool {
+	_, ok := l.value[key]
+	return ok
+}
+
 func (l *Layer) UnmarshalJSON(b []byte) error {
 	tmp := struct {
 		Name                    string            `json:"name"`
@@ -175,6 +216,41 @@ type ParameterStore struct {
 	statsigRef uint64
 	userRef    uint64
 	options    *ParameterStoreEvaluationOptions
+	parameters map[string]json.RawMessage
+}
+
+func (p *ParameterStore) UnmarshalJSON(b []byte) error {
+	tmp := struct {
+		Name              string                     `json:"name"`
+		EvaluationDetails EvaluationDetails          `json:"details"`
+		Parameters        map[string]json.RawMessage `json:"parameters"`
+	}{}
+	if err := json.Unmarshal(b, &tmp); err != nil {
+		return err
+	}
+	p.Name = tmp.Name
+	p.EvaluationDetails = tmp.EvaluationDetails
+	p.parameters = tmp.Parameters
+	return nil
+}
+
+// GetParameterList returns the sorted names of the parameters defined in this
+// store, or an empty slice for an unrecognized store.
+func (p *ParameterStore) GetParameterList() []string {
+	names := make([]string, 0, len(p.parameters))
+	for name := range p.parameters {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// Contains reports whether the store defines a parameter named key. It lets you
+// tell a genuinely missing parameter from one whose value equals the fallback
+// passed to a getter.
+func (p *ParameterStore) Contains(key string) bool {
+	_, ok := p.parameters[key]
+	return ok
 }
 
 func (p *ParameterStore) GetString(key string, fallback string) string {
