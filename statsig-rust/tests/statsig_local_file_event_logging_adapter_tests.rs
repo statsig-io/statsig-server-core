@@ -20,7 +20,18 @@ const SINGLE_EVENT_DATA: &str = r#"{
     "user":{
         "statsigEnvironment":null,"userID":"a-user"
     },
-    "value":"bar"   
+    "value":"bar"
+}"#;
+
+const DIAGNOSTICS_EVENT_DATA: &str = r#"{
+    "eventName":"statsig::diagnostics",
+    "metadata":{"context":"initialize","markers":"[]"},
+    "secondaryExposures":null,
+    "time":1734476293616,
+    "user":{
+        "statsigEnvironment":null,"userID":"a-user"
+    },
+    "value":null
 }"#;
 
 lazy_static! {
@@ -303,4 +314,106 @@ async fn test_concurrent_usage() {
     join_all(task).await;
 
     assert_eq!(mock_scrapi.get_logged_event_count(), 10);
+}
+
+// Regression test for the PHP/kong parity gap (STADXP-238): this adapter is used by
+// per-request runtimes (PHP) that re-initialize on every request, so a diagnostics event
+// gets independently, aggressively dampened on top of whatever sampling rate the server
+// already applied upstream. Left at its default, a single diagnostics event is dropped
+// the overwhelming majority of the time - this documents that magnitude without asserting
+// on a single random draw (which would be flaky).
+#[tokio::test]
+async fn test_default_diagnostics_sampling_is_aggressive() {
+    let (mock_scrapi, tmp_path) = setup("test_default_diagnostics_sampling_is_aggressive").await;
+    let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
+
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url), false);
+
+    for _ in 0..2000 {
+        adapter
+            .log_events(LogEventRequest {
+                payload: LogEventPayload {
+                    events: from_str(&format!("[{DIAGNOSTICS_EVENT_DATA}]")).unwrap(),
+                    statsig_metadata: json!("{}"),
+                },
+                event_count: 1,
+                retries: 0,
+            })
+            .await
+            .unwrap();
+    }
+
+    adapter.send_pending_events().await.unwrap();
+
+    // Expected survivors ~ Binomial(2000, 1/10_000), mean 0.2. Bounding at 20 keeps this
+    // from ever flaking (P(X > 20) is effectively zero) while still proving the default
+    // is aggressive dampening, not "diagnostics always kept".
+    assert!(mock_scrapi.get_logged_event_count() <= 20);
+}
+
+// The fix: callers that need deterministic diagnostics (e.g. kong's parity tests, which
+// assert an exact marker sequence after a single initialize/shutdown cycle) can disable the
+// extra dampening entirely via `with_diagnostics_sample_rate_per_10_000(10_000)`, relying on
+// the upstream server-controlled sampling decision alone - matching every other core binding.
+#[tokio::test]
+async fn test_diagnostics_sample_rate_override_keeps_diagnostics_deterministically() {
+    let (mock_scrapi, tmp_path) = setup(
+        "test_diagnostics_sample_rate_override_keeps_diagnostics_deterministically",
+    )
+    .await;
+    let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
+
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url), false)
+        .with_diagnostics_sample_rate_per_10_000(10_000);
+
+    adapter
+        .log_events(LogEventRequest {
+            payload: LogEventPayload {
+                events: from_str(&format!("[{DIAGNOSTICS_EVENT_DATA}]")).unwrap(),
+                statsig_metadata: json!("{}"),
+            },
+            event_count: 1,
+            retries: 0,
+        })
+        .await
+        .unwrap();
+
+    adapter.send_pending_events().await.unwrap();
+
+    assert_eq!(mock_scrapi.get_logged_event_count(), 1);
+}
+
+// A rate of 0 drops every diagnostics event deterministically, while leaving regular
+// (non-diagnostic) events completely unaffected - proving the sample rate only ever gates
+// events where `is_diagnostic_event()` is true.
+#[tokio::test]
+async fn test_diagnostics_sample_rate_zero_only_affects_diagnostic_events() {
+    let (mock_scrapi, tmp_path) = setup(
+        "test_diagnostics_sample_rate_zero_only_affects_diagnostic_events",
+    )
+    .await;
+    let url = mock_scrapi.url_for_endpoint(Endpoint::LogEvent);
+
+    let adapter = StatsigLocalFileEventLoggingAdapter::new(SDK_KEY, &tmp_path, Some(url), false)
+        .with_diagnostics_sample_rate_per_10_000(0);
+
+    adapter
+        .log_events(LogEventRequest {
+            payload: LogEventPayload {
+                events: from_str(&format!(
+                    "[{DIAGNOSTICS_EVENT_DATA}, {SINGLE_EVENT_DATA}]"
+                ))
+                .unwrap(),
+                statsig_metadata: json!("{}"),
+            },
+            event_count: 2,
+            retries: 0,
+        })
+        .await
+        .unwrap();
+
+    adapter.send_pending_events().await.unwrap();
+
+    assert_eq!(mock_scrapi.get_logged_event_count(), 1);
+    assert_eq!(mock_scrapi.get_non_diagnostics_logged_event_count(), 1);
 }

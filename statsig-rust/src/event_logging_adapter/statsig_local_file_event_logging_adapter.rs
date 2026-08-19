@@ -23,9 +23,14 @@ pub struct PendingLogRequests {
     requests: Vec<LogEventRequest>,
 }
 
+// Out of 10_000. Matches the historical hardcoded 1-in-10_000 rate this adapter has always
+// used, kept as the default so existing callers (e.g. the PHP binding) see no behavior change.
+const DEFAULT_DIAGNOSTICS_SAMPLE_RATE_PER_10_000: u32 = 1;
+
 pub struct StatsigLocalFileEventLoggingAdapter {
     file_path: String,
     http_adapter: StatsigHttpEventLoggingAdapter,
+    diagnostics_sample_rate_per_10_000: u32,
 }
 
 impl StatsigLocalFileEventLoggingAdapter {
@@ -48,7 +53,23 @@ impl StatsigLocalFileEventLoggingAdapter {
         Self {
             file_path,
             http_adapter: StatsigHttpEventLoggingAdapter::new(sdk_key, Some(&options)),
+            diagnostics_sample_rate_per_10_000: DEFAULT_DIAGNOSTICS_SAMPLE_RATE_PER_10_000,
         }
+    }
+
+    /// Overrides how many diagnostics events survive a flush, out of 10_000 (default: 1).
+    ///
+    /// This adapter is built for per-request runtimes (PHP) that re-initialize on every
+    /// request, so without dampening, a diagnostics event would be produced on every single
+    /// request. That dampening happens here, independently of and in addition to the normal
+    /// server-controlled diagnostics sampling rate (which already gated the event before it
+    /// reached this adapter) - so tests or callers that need deterministic diagnostics (e.g.
+    /// asserting an exact marker sequence) should set this to 10_000 to disable the extra
+    /// dampening and rely on the upstream sampling decision alone.
+    #[must_use]
+    pub fn with_diagnostics_sample_rate_per_10_000(mut self, rate: u32) -> Self {
+        self.diagnostics_sample_rate_per_10_000 = rate.min(10_000);
+        self
     }
 
     pub async fn send_pending_events(&self) -> Result<(), StatsigErr> {
@@ -60,7 +81,8 @@ impl StatsigLocalFileEventLoggingAdapter {
             return Ok(());
         };
 
-        let processed_events = process_events(&current_requests);
+        let processed_events =
+            process_events(&current_requests, self.diagnostics_sample_rate_per_10_000);
         let chunks = processed_events.chunks(1000);
         let tasks = chunks.map(|chunk| async move {
             let request = LogEventRequest {
@@ -125,7 +147,10 @@ fn read_and_clear_file(file_path: &str) -> Result<Option<String>, StatsigErr> {
     Ok(Some(file_contents))
 }
 
-fn process_events(current_requests: &str) -> Vec<StatsigEventInternal> {
+fn process_events(
+    current_requests: &str,
+    diagnostics_sample_rate_per_10_000: u32,
+) -> Vec<StatsigEventInternal> {
     let mut seen_exposures = HashSet::new();
     let mut processed_events = vec![];
 
@@ -139,7 +164,9 @@ fn process_events(current_requests: &str) -> Vec<StatsigEventInternal> {
         };
 
         for event in events {
-            if event.is_diagnostic_event() && !should_sample_sdk_diagnostics() {
+            if event.is_diagnostic_event()
+                && !should_sample_sdk_diagnostics(diagnostics_sample_rate_per_10_000)
+            {
                 continue;
             }
 
@@ -193,11 +220,9 @@ fn create_merge_key(event: &StatsigEventInternal) -> String {
     )
 }
 
-// PHP initializes per request, so we get a diagnostics event per request.
-// This samples quite aggressively to compensate for that
-fn should_sample_sdk_diagnostics() -> bool {
+fn should_sample_sdk_diagnostics(rate_per_10_000: u32) -> bool {
     let random_number = rand::thread_rng().gen_range(0..10000);
-    random_number < 1
+    random_number < rate_per_10_000
 }
 
 #[async_trait]
