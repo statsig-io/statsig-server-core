@@ -18,8 +18,20 @@ function getNumThreads() {
 }
 
 test('Has correct number of threads', async () => {
-  const instances = [];
-  for (let i = 0; i < 10; i++) {
+  // Baseline includes Node/V8/libuv threads (GC, inspector, libuv threadpool,
+  // etc.) which vary by machine, OS, and Node version - that's why this test's
+  // absolute threshold has repeatedly been bumped (16 -> 19 -> 20) as CI
+  // runners changed. What we actually want to guard against is a regression
+  // of the shared tokio runtime (see statsig_global.rs) back into a
+  // per-instance runtime, which would scale threads with instance count.
+  const baseline = new Statsig('secret-num-threads-test', {
+    disableNetwork: true,
+  });
+  await baseline.initialize();
+  const baselineThreads = Number(getNumThreads());
+
+  const instances = [baseline];
+  for (let i = 0; i < 9; i++) {
     const statsig = new Statsig('secret-num-threads-test', {
       disableNetwork: true,
     });
@@ -29,5 +41,5 @@ test('Has correct number of threads', async () => {
   await Promise.all(instances.map((statsig) => statsig.initialize()));
 
   const threads = Number(getNumThreads());
-  expect(threads).toBeLessThanOrEqual(20);
+  expect(threads - baselineThreads).toBeLessThanOrEqual(3);
 });
