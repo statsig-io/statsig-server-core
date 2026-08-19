@@ -2,6 +2,7 @@ name: Tests
 
 on:
   workflow_call:
+  workflow_dispatch: # TEMP: for manually re-running just the node NumThreads test; revert before merge
 
 env:
   CARGO_TERM_COLOR: always
@@ -15,15 +16,17 @@ jobs:
       fail-fast: false
       matrix:
         lang:
-          - python
+          # TEMP: other langs commented out to save CI minutes while re-running
+          # just the flaky NumThreads test in isolation; revert before merge
+          # - python
           - node
-          - java
-          - rust
-          - php
-          - dotnet
-          - go
-          - elixir
-          - cpp
+          # - java
+          # - rust
+          # - php
+          # - dotnet
+          # - go
+          # - elixir
+          # - cpp
 
     runs-on: ubuntu-latest
 
@@ -84,7 +87,8 @@ jobs:
             /usr/local/share/boost || true
 
       - name: Run Tests
-        run: ./tore test ${{ matrix.lang }} --no-docker --arch x86_64 --os debian
+        # TEMP: --filter narrows to just NumThreads.test.ts; revert before merge
+        run: ./tore test ${{ matrix.lang }} --no-docker --arch x86_64 --os debian --filter NumThreads
 
       - name: Upload Artifacts
         if: matrix.lang == 'rust'
