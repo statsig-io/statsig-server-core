@@ -3,7 +3,6 @@ package statsig_go_core
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 )
 
@@ -15,9 +14,6 @@ type EvaluationDetails struct {
 	Reason     string `json:"reason"`
 }
 
-// IsRecognized reports whether Statsig found this entity and gave back a real
-// value. When false, whatever you read is the fallback/default: the name is
-// unknown, nothing has loaded yet, or evaluation errored out.
 func (d EvaluationDetails) IsRecognized() bool {
 	return d.Reason == "Persisted" || strings.HasSuffix(d.Reason, ":Recognized")
 }
@@ -62,7 +58,6 @@ func (d *DynamicConfig) GetMap(key string, fallback map[string]any) map[string]a
 	return getTypedValue(d.Value, key, fallback, nil)
 }
 
-// Contains distinguishes a missing key from one whose value equals a getter's fallback.
 func (d *DynamicConfig) Contains(key string) bool {
 	_, ok := d.Value[key]
 	return ok
@@ -156,7 +151,6 @@ func (l *Layer) GetMap(key string, fallback map[string]any) map[string]any {
 	return getTypedValue(l.value, key, fallback, l.logExposure)
 }
 
-// Contains is a presence check only; unlike the getters it logs no exposure.
 func (l *Layer) Contains(key string) bool {
 	_, ok := l.value[key]
 	return ok
@@ -219,13 +213,11 @@ func (p *ParameterStore) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// GetParameterList returns the parameter names, sorted. Empty for an unrecognized store.
 func (p *ParameterStore) GetParameterList() []string {
 	names := make([]string, 0, len(p.parameters))
 	for name := range p.parameters {
 		names = append(names, name)
 	}
-	sort.Strings(names)
 	return names
 }
 
