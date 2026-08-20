@@ -59,6 +59,9 @@ func TestParameterStoreContains(t *testing.T) {
 
 	store := statsig.GetParameterStore(user, "test_parameter_store")
 
+	if !store.EvaluationDetails.IsRecognized() {
+		t.Errorf("test_parameter_store should be recognized, reason '%s'", store.EvaluationDetails.Reason)
+	}
 	if !store.Contains("bool_param") {
 		t.Errorf("store should contain bool_param, parameters: %v", store.GetParameterList())
 	}
@@ -88,6 +91,9 @@ func TestUnrecognizedEntitiesAreNotRecognized(t *testing.T) {
 	}
 
 	store := statsig.GetParameterStore(user, "not_a_real_store")
+	if store.EvaluationDetails.IsRecognized() {
+		t.Errorf("unknown store should not be recognized, reason '%s'", store.EvaluationDetails.Reason)
+	}
 	if store.Contains("anything") {
 		t.Errorf("unknown store should not contain any parameter")
 	}
