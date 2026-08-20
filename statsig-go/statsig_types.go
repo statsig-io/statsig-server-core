@@ -3,7 +3,6 @@ package statsig_go_core
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 )
 
 // ------------------------------------------------------------------------------------- [ Evaluation Details ]
@@ -12,10 +11,6 @@ type EvaluationDetails struct {
 	ReceivedAt uint64 `json:"received_at"`
 	LCUT       uint64 `json:"lcut"`
 	Reason     string `json:"reason"`
-}
-
-func (d EvaluationDetails) IsRecognized() bool {
-	return d.Reason == "Persisted" || strings.HasSuffix(d.Reason, ":Recognized")
 }
 
 // ------------------------------------------------------------------------------------- [ Feature Gate ]
