@@ -1,5 +1,7 @@
 package com.statsig;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
@@ -171,6 +173,63 @@ public class StatsigOptionsTest {
             .setSpecAdapterConfigs(Arrays.asList(httpConfig, grpcConfig))
             .setSpecsUrl("https://fallback.specs")
             .build();
+  }
+
+  @Test
+  void testBuilderWithGrpcWebsocketSpecAdapterConfig() {
+    // gRPC websocket streaming to the Forward Proxy. Requires the native library
+    // to be built with the `with_grpc` feature; building the options only maps the
+    // config across the JNI boundary (the adapter is instantiated later at init).
+    SpecAdapterConfig grpcConfig =
+        new SpecAdapterConfig()
+            .setAdapterType(SpecAdapterType.NETWORK_GRPC_WEBSOCKET)
+            .setSpecsUrl("http://localhost:50051")
+            .setInitTimeoutMs(3000L);
+
+    StatsigOptions options =
+        new StatsigOptions.Builder().setSpecAdapterConfigs(Arrays.asList(grpcConfig)).build();
+    assertNotNull(options);
+  }
+
+  @Test
+  void testBuilderWithGrpcWebsocketMtlsSpecAdapterConfig() {
+    // mTLS variant: exercises every TLS-related field on the config.
+    SpecAdapterConfig grpcConfig =
+        new SpecAdapterConfig()
+            .setAdapterType(SpecAdapterType.NETWORK_GRPC_WEBSOCKET)
+            .setSpecsUrl("https://proxy.example.com:443")
+            .setInitTimeoutMs(5000L)
+            .setAuthenticationMode(AuthenticationMode.MTLS)
+            .setCaCertPath("/certs/ca.pem")
+            .setClientCertPath("/certs/client.pem")
+            .setClientKeyPath("/certs/client.key")
+            .setDomainName("proxy.example.com");
+
+    StatsigOptions options =
+        new StatsigOptions.Builder().setSpecAdapterConfigs(Arrays.asList(grpcConfig)).build();
+    assertNotNull(options);
+  }
+
+  @Test
+  void testBuilderWithGrpcAndHttpFallbackSpecAdapterConfigs() {
+    // Ordered adapter list: gRPC websocket first, HTTP as fallback.
+    SpecAdapterConfig grpcConfig =
+        new SpecAdapterConfig()
+            .setAdapterType(SpecAdapterType.NETWORK_GRPC_WEBSOCKET)
+            .setSpecsUrl("http://localhost:50051")
+            .setInitTimeoutMs(3000L);
+    SpecAdapterConfig httpConfig =
+        new SpecAdapterConfig()
+            .setAdapterType(SpecAdapterType.NETWORK_HTTP)
+            .setSpecsUrl("https://example.com/specs")
+            .setInitTimeoutMs(3000L);
+
+    StatsigOptions options =
+        new StatsigOptions.Builder()
+            .setSpecAdapterConfigs(Arrays.asList(grpcConfig, httpConfig))
+            .setSpecsUrl("https://fallback.specs")
+            .build();
+    assertNotNull(options);
   }
 
   @Test
