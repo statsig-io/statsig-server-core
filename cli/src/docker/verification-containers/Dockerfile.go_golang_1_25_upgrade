@@ -1,0 +1,12 @@
+FROM golang:1.25
+
+WORKDIR /app
+
+COPY examples/go/verify-package .
+
+# Upgrade every dependency past the example's pins, so a transitive release that
+# breaks consumers shows up here.
+RUN go get -u ./...
+RUN go mod tidy
+
+CMD ["go", "run", "."]

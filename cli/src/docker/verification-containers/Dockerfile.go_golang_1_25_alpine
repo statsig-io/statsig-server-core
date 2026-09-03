@@ -1,4 +1,6 @@
-FROM golang:1.24
+FROM golang:1.25-alpine
+
+RUN apk add --no-cache alpine-sdk
 
 WORKDIR /app
 
@@ -9,4 +11,4 @@ COPY examples/go/verify-package .
 RUN go get github.com/statsig-io/statsig-go-core@latest
 RUN go mod tidy
 
-CMD ["go", "run", "."]
+CMD ["go", "run", "-tags", "musl", "."]

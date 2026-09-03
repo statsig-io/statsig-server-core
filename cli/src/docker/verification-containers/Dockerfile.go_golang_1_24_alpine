@@ -6,9 +6,9 @@ WORKDIR /app
 
 COPY examples/go/verify-package .
 
-RUN cat go.sum
-
-RUN go get -u ./...
+# Resolve dependencies the way a consumer does: pin our package to latest and
+# let its own go.mod supply everything else.
+RUN go get github.com/statsig-io/statsig-go-core@latest
 RUN go mod tidy
 
 CMD ["go", "run", "-tags", "musl", "."]
