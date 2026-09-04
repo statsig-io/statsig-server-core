@@ -10,7 +10,7 @@ lazy_static! {
     static ref STATSIG_METADATA: RwLock<StatsigMetadata> = RwLock::new(StatsigMetadata::new());
 }
 
-pub const SDK_VERSION: &str = "0.22.0-beta.2609030212";
+pub const SDK_VERSION: &str = "0.22.0-beta.2609040206";
 
 const TAG: &str = stringify!(StatsigMetadata);
 
