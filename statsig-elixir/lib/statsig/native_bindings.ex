@@ -110,4 +110,7 @@ defmodule Statsig.NativeBindings do
 
   def data_store_reply(_request_ref, _payload), do: :erlang.nif_error(:nif_not_loaded)
   def data_store_reply_error(_request_ref, _reason), do: :erlang.nif_error(:nif_not_loaded)
+
+  def __internal__test_observability_client(_reference, _action, _metric_name, _value, _tags),
+    do: :erlang.nif_error(:nif_not_loaded)
 end

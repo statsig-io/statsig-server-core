@@ -1,6 +1,17 @@
 FROM debian:11-slim
 
-RUN apt-get update
+# Debian 11 (bullseye) is EOL: packages moved to archive.debian.org and the
+# bullseye-security pool has been pruned from the live mirrors (while its index
+# is still served), so plain apt installs 404 mid-download. Point apt at the
+# archive and pin it above installed versions: the base image ships security
+# versions newer than the archive's final point release (e.g. perl-base), so
+# aligning the system to the archive via a downgrade dist-upgrade is required
+# for dependency resolution. Check-Valid-Until is disabled because archived
+# Release files stop being refreshed.
+RUN echo "deb http://archive.debian.org/debian bullseye main" > /etc/apt/sources.list \
+    && printf "Package: *\nPin: release o=Debian\nPin-Priority: 1001\n" > /etc/apt/preferences.d/archive \
+    && apt-get -o Acquire::Check-Valid-Until=false update \
+    && apt-get -y --allow-downgrades dist-upgrade
 RUN apt-get install -y \
     php php-curl php-xml composer unzip php-cli php-json php-zip php-ffi
 

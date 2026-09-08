@@ -24,6 +24,7 @@ defmodule Statsig.Options do
             use_third_party_ua_parser: nil,
             disable_disk_access: nil,
             data_store: nil,
+            observability_client: nil,
             persistent_storage: nil
 end
 
