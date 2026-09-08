@@ -67,6 +67,24 @@ namespace Statsig
         [DllImport(__DllName, EntryPoint = "statsig_shutdown_blocking", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void statsig_shutdown_blocking(ulong statsig_ref);
 
+        /// <summary>
+        ///  Stops the shared tokio runtime and joins its worker threads.
+        ///
+        ///  Bindings that unload this library while the host process keeps running --
+        ///  PHP unloads it at the end of every request -- must call this first.
+        ///  Otherwise the runtime's worker threads are still executing inside the
+        ///  module when it is unmapped, which faults.
+        ///
+        ///  Shut down every Statsig instance before calling this: the runtime is
+        ///  dropped here, and any work still queued on it is abandoned.
+        ///
+        ///  Returns false without doing anything when called from a runtime thread,
+        ///  where dropping the runtime would panic.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "statsig_shutdown_shared_runtime", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool statsig_shutdown_shared_runtime();
+
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void statsig_flush_events_callback_delegate();
 

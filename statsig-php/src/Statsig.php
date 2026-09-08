@@ -16,12 +16,21 @@ class Statsig
 
     protected $is_shutdown = false;
 
+    /** @var array<int, int> native refs of instances that have not been released yet */
+    private static $live_refs = [];
+
+    private static $teardown_registered = false;
+
+    private static $runtime_released = false;
+
     public function __construct(string $sdk_key, ?StatsigOptions $options = null)
     {
         $options_ref = $options ? $options->__ref : (new StatsigOptions())->__ref;
 
         $ffi = StatsigFFI::get();
         $this->__ref = $ffi->statsig_create($sdk_key, $options_ref);
+
+        self::trackForTeardown($this->__ref);
     }
 
     public function __destruct()
@@ -30,10 +39,60 @@ class Statsig
             return;
         }
 
+        // The teardown hook already shut this instance down and released it.
+        if (self::$runtime_released) {
+            $this->__ref = null;
+            return;
+        }
+
         $this->shutdown();
 
         StatsigFFI::get()->statsig_release($this->__ref);
+        unset(self::$live_refs[$this->__ref]);
         $this->__ref = null;
+    }
+
+    /**
+     * The shared tokio runtime outlives every instance, so releasing an
+     * instance is not enough: PHP unloads the FFI library at the end of each
+     * request, and on Windows that unmaps the module while the runtime's
+     * worker threads are still running inside it. Stopping the runtime during
+     * request teardown is what keeps those threads from outliving the module.
+     */
+    private static function trackForTeardown($ref): void
+    {
+        self::$live_refs[$ref] = $ref;
+
+        if (self::$teardown_registered) {
+            return;
+        }
+
+        self::$teardown_registered = true;
+        register_shutdown_function(function () {
+            self::releaseSharedRuntime();
+        });
+    }
+
+    private static function releaseSharedRuntime(): void
+    {
+        if (self::$runtime_released) {
+            return;
+        }
+
+        self::$runtime_released = true;
+        $ffi = StatsigFFI::get();
+
+        // Shutdown callbacks run before object destructors, so any instance
+        // still alive has not flushed yet. Flush it here, before the runtime
+        // that would do the flushing is stopped below.
+        foreach (self::$live_refs as $ref) {
+            $ffi->statsig_shutdown_blocking($ref);
+            $ffi->statsig_release($ref);
+        }
+
+        self::$live_refs = [];
+
+        $ffi->statsig_shutdown_shared_runtime();
     }
 
     public function initialize(): void
