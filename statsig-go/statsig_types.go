@@ -53,6 +53,11 @@ func (d *DynamicConfig) GetMap(key string, fallback map[string]any) map[string]a
 	return getTypedValue(d.Value, key, fallback, nil)
 }
 
+func (d *DynamicConfig) Contains(key string) bool {
+	_, ok := d.Value[key]
+	return ok
+}
+
 // ------------------------------------------------------------------------------------- [ Experiment ]
 
 type Experiment struct {
@@ -82,6 +87,11 @@ func (e *Experiment) GetSlice(key string, fallback []any) []any {
 
 func (e *Experiment) GetMap(key string, fallback map[string]any) map[string]any {
 	return getTypedValue(e.Value, key, fallback, nil)
+}
+
+func (e *Experiment) Contains(key string) bool {
+	_, ok := e.Value[key]
+	return ok
 }
 
 // ------------------------------------------------------------------------------------- [ ExperimentGroup ]
@@ -136,6 +146,11 @@ func (l *Layer) GetMap(key string, fallback map[string]any) map[string]any {
 	return getTypedValue(l.value, key, fallback, l.logExposure)
 }
 
+func (l *Layer) Contains(key string) bool {
+	_, ok := l.value[key]
+	return ok
+}
+
 func (l *Layer) UnmarshalJSON(b []byte) error {
 	tmp := struct {
 		Name                    string            `json:"name"`
@@ -175,6 +190,35 @@ type ParameterStore struct {
 	statsigRef uint64
 	userRef    uint64
 	options    *ParameterStoreEvaluationOptions
+	parameters map[string]json.RawMessage
+}
+
+func (p *ParameterStore) UnmarshalJSON(b []byte) error {
+	tmp := struct {
+		Name              string                     `json:"name"`
+		EvaluationDetails EvaluationDetails          `json:"details"`
+		Parameters        map[string]json.RawMessage `json:"parameters"`
+	}{}
+	if err := json.Unmarshal(b, &tmp); err != nil {
+		return err
+	}
+	p.Name = tmp.Name
+	p.EvaluationDetails = tmp.EvaluationDetails
+	p.parameters = tmp.Parameters
+	return nil
+}
+
+func (p *ParameterStore) GetParameterList() []string {
+	names := make([]string, 0, len(p.parameters))
+	for name := range p.parameters {
+		names = append(names, name)
+	}
+	return names
+}
+
+func (p *ParameterStore) Contains(key string) bool {
+	_, ok := p.parameters[key]
+	return ok
 }
 
 func (p *ParameterStore) GetString(key string, fallback string) string {

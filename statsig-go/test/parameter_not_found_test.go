@@ -1,0 +1,80 @@
+package test
+
+import "testing"
+
+func TestDynamicConfigContains(t *testing.T) {
+	statsig, _, user := SetupTest(t)
+	defer statsig.Shutdown()
+
+	config := statsig.GetDynamicConfig(user, "test_email_config")
+
+	if !config.Contains("header_text") {
+		t.Errorf("config should contain header_text")
+	}
+	if config.Contains("not_a_real_key") {
+		t.Errorf("config should not contain not_a_real_key")
+	}
+}
+
+func TestExperimentContains(t *testing.T) {
+	statsig, _, user := SetupTest(t)
+	defer statsig.Shutdown()
+
+	experiment := statsig.GetExperiment(user, "exp_with_obj_and_array")
+
+	if !experiment.Contains("obj_param") {
+		t.Errorf("experiment should contain obj_param")
+	}
+	if experiment.Contains("not_a_real_key") {
+		t.Errorf("experiment should not contain not_a_real_key")
+	}
+}
+
+func TestLayerContains(t *testing.T) {
+	statsig, _, user := SetupTest(t)
+	defer statsig.Shutdown()
+
+	layer := statsig.GetLayer(user, "layer_with_many_params")
+
+	if !layer.Contains("a_string") {
+		t.Errorf("layer should contain a_string")
+	}
+	if layer.Contains("not_a_real_key") {
+		t.Errorf("layer should not contain not_a_real_key")
+	}
+}
+
+func TestParameterStoreContains(t *testing.T) {
+	statsig, _, user := SetupTest(t)
+	defer statsig.Shutdown()
+
+	store := statsig.GetParameterStore(user, "test_parameter_store")
+
+	if !store.Contains("bool_param") {
+		t.Errorf("store should contain bool_param, parameters: %v", store.GetParameterList())
+	}
+	if store.Contains("missing_param") {
+		t.Errorf("store should not contain missing_param")
+	}
+	if len(store.GetParameterList()) == 0 {
+		t.Errorf("store parameter list should not be empty")
+	}
+}
+
+func TestUnrecognizedEntitiesContainNothing(t *testing.T) {
+	statsig, _, user := SetupTest(t)
+	defer statsig.Shutdown()
+
+	config := statsig.GetDynamicConfig(user, "not_a_real_config")
+	if config.Contains("anything") {
+		t.Errorf("unknown config should not contain any key")
+	}
+
+	store := statsig.GetParameterStore(user, "not_a_real_store")
+	if store.Contains("anything") {
+		t.Errorf("unknown store should not contain any parameter")
+	}
+	if len(store.GetParameterList()) != 0 {
+		t.Errorf("unknown store parameter list should be empty, got %v", store.GetParameterList())
+	}
+}
