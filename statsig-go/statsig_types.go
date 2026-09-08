@@ -3,6 +3,7 @@ package statsig_go_core
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 )
 
 // ------------------------------------------------------------------------------------- [ Evaluation Details ]
@@ -53,6 +54,13 @@ func (d *DynamicConfig) GetMap(key string, fallback map[string]any) map[string]a
 	return getTypedValue(d.Value, key, fallback, nil)
 }
 
+// Contains reports whether the config has a value configured for key,
+// regardless of that value.
+func (d *DynamicConfig) Contains(key string) bool {
+	_, ok := d.Value[key]
+	return ok
+}
+
 // ------------------------------------------------------------------------------------- [ Experiment ]
 
 type Experiment struct {
@@ -82,6 +90,13 @@ func (e *Experiment) GetSlice(key string, fallback []any) []any {
 
 func (e *Experiment) GetMap(key string, fallback map[string]any) map[string]any {
 	return getTypedValue(e.Value, key, fallback, nil)
+}
+
+// Contains reports whether the experiment has a value configured for key,
+// regardless of that value.
+func (e *Experiment) Contains(key string) bool {
+	_, ok := e.Value[key]
+	return ok
 }
 
 // ------------------------------------------------------------------------------------- [ ExperimentGroup ]
@@ -136,6 +151,14 @@ func (l *Layer) GetMap(key string, fallback map[string]any) map[string]any {
 	return getTypedValue(l.value, key, fallback, l.logExposure)
 }
 
+// Contains reports whether the layer has a value configured for key,
+// regardless of that value. This does not log a parameter exposure: an
+// existence check asks about layer metadata, not about a parameter value.
+func (l *Layer) Contains(key string) bool {
+	_, ok := l.value[key]
+	return ok
+}
+
 func (l *Layer) UnmarshalJSON(b []byte) error {
 	tmp := struct {
 		Name                    string            `json:"name"`
@@ -172,9 +195,10 @@ type ParameterStore struct {
 	Name              string            `json:"name"`
 	EvaluationDetails EvaluationDetails `json:"details"`
 
-	statsigRef uint64
-	userRef    uint64
-	options    *ParameterStoreEvaluationOptions
+	statsigRef     uint64
+	userRef        uint64
+	options        *ParameterStoreEvaluationOptions
+	parameterNames []string
 }
 
 func (p *ParameterStore) GetString(key string, fallback string) string {
@@ -300,6 +324,27 @@ func (p *ParameterStore) GetSlice(key string, fallback []any) []any {
 		}
 		return parsed, true
 	})
+}
+
+// GetParameterList returns the names of the parameters configured in the store,
+// sorted by name. The names are captured when the store is fetched, so this
+// costs no FFI call and describes the store as it was at that moment. It returns
+// an empty slice for a nil store and for a store with no parameters.
+func (p *ParameterStore) GetParameterList() []string {
+	if p == nil || len(p.parameterNames) == 0 {
+		return []string{}
+	}
+	return slices.Clone(p.parameterNames)
+}
+
+// Contains reports whether the store has a parameter configured for key,
+// regardless of that parameter's value. It reads the names captured at fetch
+// time, so a loop over many keys makes no FFI calls.
+func (p *ParameterStore) Contains(key string) bool {
+	if p == nil {
+		return false
+	}
+	return slices.Contains(p.parameterNames, key)
 }
 
 func (p *ParameterStore) getOptionsJson() (string, bool) {

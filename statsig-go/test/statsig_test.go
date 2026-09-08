@@ -45,6 +45,24 @@ func TestDynamicConfigEvaluation(t *testing.T) {
 	statsig.Shutdown()
 }
 
+func TestDynamicConfigContains(t *testing.T) {
+	statsig, _, user := SetupTest(t)
+	defer statsig.Shutdown()
+
+	config := statsig.GetDynamicConfig(user, "test_email_config")
+	if !config.Contains("header_text") {
+		t.Errorf("Dynamic config should contain header_text")
+	}
+	if config.Contains("not_a_real_key") {
+		t.Errorf("Dynamic config should not contain not_a_real_key")
+	}
+
+	unknown := statsig.GetDynamicConfig(user, "not_a_real_config")
+	if unknown.Contains("header_text") {
+		t.Errorf("Unknown dynamic config should not contain any key")
+	}
+}
+
 func TestExperimentEvaluation(t *testing.T) {
 	statsig, _, user := SetupTest(t)
 
@@ -55,6 +73,24 @@ func TestExperimentEvaluation(t *testing.T) {
 	}
 
 	statsig.Shutdown()
+}
+
+func TestExperimentContains(t *testing.T) {
+	statsig, _, user := SetupTest(t)
+	defer statsig.Shutdown()
+
+	experiment := statsig.GetExperiment(user, "exp_with_obj_and_array")
+	if !experiment.Contains("obj_param") {
+		t.Errorf("Experiment should contain obj_param")
+	}
+	if experiment.Contains("not_a_real_key") {
+		t.Errorf("Experiment should not contain not_a_real_key")
+	}
+
+	unknown := statsig.GetExperiment(user, "not_a_real_experiment")
+	if unknown.Contains("obj_param") {
+		t.Errorf("Unknown experiment should not contain any key")
+	}
 }
 
 func TestGetExperimentByGroupName(t *testing.T) {
@@ -292,6 +328,41 @@ func TestLayerEvaluation(t *testing.T) {
 	}
 
 	statsig.Shutdown()
+}
+
+func TestLayerContains(t *testing.T) {
+	statsig, _, user := SetupTest(t)
+	defer statsig.Shutdown()
+
+	layer := statsig.GetLayer(user, "layer_with_many_params")
+	if !layer.Contains("a_string") {
+		t.Errorf("Layer should contain a_string")
+	}
+	if layer.Contains("not_a_real_key") {
+		t.Errorf("Layer should not contain not_a_real_key")
+	}
+
+	unknown := statsig.GetLayer(user, "not_a_real_layer")
+	if unknown.Contains("a_string") {
+		t.Errorf("Unknown layer should not contain any key")
+	}
+}
+
+func TestLayerContainsDoesNotLogExposure(t *testing.T) {
+	statsig, scrapi, user := SetupTest(t)
+
+	layer := statsig.GetLayer(user, "layer_with_many_params")
+	if !layer.Contains("a_string") {
+		t.Errorf("Layer should contain a_string")
+	}
+
+	statsig.Shutdown()
+
+	for _, event := range scrapi.Events() {
+		if event["eventName"] == "statsig::layer_exposure" {
+			t.Errorf("Layer.Contains should not log a parameter exposure, got %v", event)
+		}
+	}
 }
 
 func TestEventLogging(t *testing.T) {
