@@ -201,7 +201,12 @@ impl<'a> EnqueueExposureOp<'a> {
         if let Some(result) = result {
             data.exposure_info = Some(result_to_extra_exposure_info(&result));
 
-            data.rule_id = result.rule_id;
+            data.rule_id = match result.rule_id_suffix {
+                Some(suffix) => result.rule_id.as_ref().map(|rule_id| {
+                    InternedString::from_str_parts(&[rule_id.as_str(), ":", suffix])
+                }),
+                None => result.rule_id,
+            };
             data.version = result.version;
             data.override_spec_name = result.override_config_name;
             data.secondary_exposures = Some(result.secondary_exposures);
