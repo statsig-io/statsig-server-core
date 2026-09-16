@@ -1,8 +1,8 @@
-use crate::log_d;
+use crate::{log_d, log_e};
 use arc_swap::ArcSwap;
 use parking_lot::Mutex;
 use std::sync::{Arc, OnceLock};
-use tokio::runtime::Runtime;
+use tokio::runtime::{Handle, Runtime};
 
 const TAG: &str = "StatsigGlobal";
 
@@ -38,6 +38,29 @@ impl StatsigGlobal {
         }
 
         ptr.store(Arc::new(StatsigGlobal::new()));
+    }
+
+    /// Stops the shared tokio runtime, joining its worker threads.
+    ///
+    /// Per-instance shutdown deliberately leaves the shared runtime running so
+    /// later instances can reuse it. Callers that unload this library while the
+    /// process keeps running need those threads gone first, and this is the
+    /// only thing that stops them.
+    ///
+    /// Returns false without resetting when called from a runtime thread.
+    /// Dropping a runtime from inside itself panics, and binding teardown can
+    /// reach this from one, so the guard lives here rather than in callers.
+    pub fn shutdown_shared_runtime() -> bool {
+        if Handle::try_current().is_ok() {
+            log_e!(
+                TAG,
+                "Refusing to shut down the shared runtime from inside a runtime thread"
+            );
+            return false;
+        }
+
+        Self::reset();
+        true
     }
 
     fn new() -> Self {

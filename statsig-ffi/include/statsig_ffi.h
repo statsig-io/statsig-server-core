@@ -93,6 +93,22 @@ void statsig_shutdown(uint64_t statsig_ref, void (*callback)(void));
 
 void statsig_shutdown_blocking(uint64_t statsig_ref);
 
+/**
+ * Stops the shared tokio runtime and joins its worker threads.
+ *
+ * Bindings that unload this library while the host process keeps running --
+ * PHP unloads it at the end of every request -- must call this first.
+ * Otherwise the runtime's worker threads are still executing inside the
+ * module when it is unmapped, which faults.
+ *
+ * Shut down every Statsig instance before calling this: the runtime is
+ * dropped here, and any work still queued on it is abandoned.
+ *
+ * Returns false without doing anything when called from a runtime thread,
+ * where dropping the runtime would panic.
+ */
+bool statsig_shutdown_shared_runtime(void);
+
 void statsig_flush_events(uint64_t statsig_ref, void (*callback)(void));
 
 void statsig_flush_events_blocking(uint64_t statsig_ref);

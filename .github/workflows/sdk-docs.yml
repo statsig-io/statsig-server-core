@@ -1,0 +1,141 @@
+name: SDK Docs
+
+# Verification runs automatically with read-only permissions. Applying fixes is
+# explicit: a maintainer adds the `sdk-docs:apply` label. pull_request_target is
+# used so the write-capable job definition always comes from the trusted base
+# branch; consequently, apply becomes available only after this workflow lands
+# on the target branch. Remove and re-add the label for a later manual retry.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_target:
+    types: [labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify private inline documentation
+    if: >-
+      github.event.repository.private &&
+      github.event_name != 'pull_request_target' &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Server Core
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.24"
+
+      - name: Verify inline documentation
+        uses: statsig-io/sdk-docs-tooling@8047b66f2480f84c6a26c436922da9ca5762a3e4
+        with:
+          sdk-root: ${{ github.workspace }}
+          bindings: node,python-pyo3,python-py,go
+          strict: "false"
+          mode: check
+
+  apply:
+    name: Apply private inline documentation
+    if: >-
+      github.event.repository.private &&
+      github.event_name == 'pull_request_target' &&
+      github.event.label.name == 'sdk-docs:apply' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # pull_request_target supplies a write-capable token, so this job uses the
+      # trusted base-branch workflow and checks out the same-repository PR's exact
+      # head SHA. It never executes build scripts or other PR-controlled code.
+      - name: Checkout exact PR head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Reject symlinks in managed source trees
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files -s -- \
+            statsig-node/src \
+            statsig-pyo3/src \
+            statsig-pyo3/py_src \
+            statsig-go \
+            | awk '$1 == "120000" { found = 1 } END { exit !found }'; then
+            echo "Managed documentation trees must not contain symlinks." >&2
+            exit 1
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.24"
+
+      - name: Apply inline documentation
+        uses: statsig-io/sdk-docs-tooling@8047b66f2480f84c6a26c436922da9ca5762a3e4
+        with:
+          sdk-root: ${{ github.workspace }}
+          bindings: node,python-pyo3,python-py,go
+          strict: "false"
+          mode: apply
+
+      - name: Validate, commit, and push generated changes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+
+          while IFS= read -r path; do
+            case "$path" in
+              statsig-node/src/*|statsig-pyo3/src/*|statsig-pyo3/py_src/*|statsig-go/*) ;;
+              *)
+                echo "Tool modified a path outside the managed documentation trees: $path" >&2
+                exit 1
+                ;;
+            esac
+          done < <(git diff --name-only)
+
+          git add -- \
+            statsig-node/src \
+            statsig-pyo3/src \
+            statsig-pyo3/py_src \
+            statsig-go
+
+          if git diff --cached --quiet; then
+            echo "No generated documentation changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Docs: apply generated inline documentation [sdk-docs]"
+
+          # Credentials are introduced only after generation is complete. A normal
+          # (non-force) push preserves concurrent PR-author updates by failing if
+          # the branch advanced after checkout.
+          gh auth setup-git
+          git push origin "HEAD:$HEAD_REF"
+
+          echo "Committed generated inline documentation to the PR branch."
+
+      # This job runs only for the labeled event, not synchronize. A bot push
+      # therefore cannot re-enter apply, and the generator is independently
+      # idempotent: an already-correct tree produces no staged diff or empty commit.

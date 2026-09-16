@@ -6,6 +6,7 @@ use statsig_rust::{
 use std::sync::Arc;
 
 use crate::data_store_nfi::{ElixirDataStore, StatsigDataStoreReference};
+use crate::observability_client_nfi::StatsigObservabilityClientReference;
 use crate::persistent_storage_nfi::{ElixirPersistentStorage, StatsigPersistentStorageReference};
 
 #[derive(NifStruct)]
@@ -69,6 +70,10 @@ pub struct StatsigOptions {
     pub use_third_party_ua_parser: Option<bool>,
     pub disable_disk_access: Option<bool>,
     pub data_store: Option<StatsigDataStoreReference>,
+    // NOT handled by the From impl below: the client must outlive Statsig::new
+    // as a strong Arc while the core holds a Weak, so the wiring lives in
+    // statsig_nfi::new. A new conversion site must handle this field itself.
+    pub observability_client: Option<StatsigObservabilityClientReference>,
     pub persistent_storage: Option<StatsigPersistentStorageReference>,
 }
 

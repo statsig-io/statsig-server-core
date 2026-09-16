@@ -5,6 +5,7 @@ use crate::ffi_utils::{
 use crate::{get_instance_or_noop_c, get_instance_or_return_c};
 use serde_json::json;
 use serde_json::Value;
+use statsig_rust::statsig_global::StatsigGlobal;
 use statsig_rust::{
     log_d, log_e, unwrap_or_else, unwrap_or_noop, unwrap_or_return, ClientInitResponseOptions,
     DynamicConfigEvaluationOptions, ExperimentEvaluationOptions, FeatureGateEvaluationOptions,
@@ -184,6 +185,23 @@ pub extern "C" fn statsig_shutdown_blocking(statsig_ref: u64) {
             log_e!(TAG, "Failed to shutdown statsig: {}", e);
         }
     });
+}
+
+/// Stops the shared tokio runtime and joins its worker threads.
+///
+/// Bindings that unload this library while the host process keeps running --
+/// PHP unloads it at the end of every request -- must call this first.
+/// Otherwise the runtime's worker threads are still executing inside the
+/// module when it is unmapped, which faults.
+///
+/// Shut down every Statsig instance before calling this: the runtime is
+/// dropped here, and any work still queued on it is abandoned.
+///
+/// Returns false without doing anything when called from a runtime thread,
+/// where dropping the runtime would panic.
+#[no_mangle]
+pub extern "C" fn statsig_shutdown_shared_runtime() -> bool {
+    StatsigGlobal::shutdown_shared_runtime()
 }
 
 #[no_mangle]

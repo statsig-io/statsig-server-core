@@ -331,6 +331,8 @@ func (s *Statsig) GetParameterStoreWithOptions(
 	}
 	if user != nil {
 		store.userRef = user.ref
+	} else {
+		fmt.Printf("GetParameterStore called with a nil StatsigUser for store '%s': parameters cannot be evaluated, so every getter returns its fallback and the parameter list is empty", storeName)
 	}
 
 	optionsJson, err := tryMarshalOrEmpty(options)
@@ -363,8 +365,41 @@ func (s *Statsig) GetParameterStoreWithOptions(
 	if user != nil {
 		store.userRef = user.ref
 	}
+	store.parameterNames = fetchParameterNames(store.statsigRef, store.userRef, storeName)
 
 	return store
+}
+
+// fetchParameterNames reads a store's parameter names through the FFI once, when
+// the store is fetched, so Contains and GetParameterList answer from local state.
+// The names keep the sort order rust-core applies in get_parameter_names.
+func fetchParameterNames(statsigRef uint64, userRef uint64, storeName string) []string {
+	if userRef == 0 {
+		return nil
+	}
+
+	namesJson := UseRustString(func() (*byte, uint64) {
+		length := uint64(0)
+		ptr := GetFFI().statsig_get_parameter_names_from_store(
+			statsigRef,
+			userRef,
+			storeName,
+			&length,
+		)
+		return ptr, length
+	})
+	if namesJson == nil {
+		fmt.Printf("Failed to read the parameter names for store '%s'", storeName)
+		return nil
+	}
+
+	var names []string
+	if err := json.Unmarshal([]byte(*namesJson), &names); err != nil {
+		fmt.Printf("Failed to unmarshal the parameter name list for store '%s': %v", storeName, err)
+		return nil
+	}
+
+	return names
 }
 
 // GetFeatureGateList returns the names of all configured feature gates.

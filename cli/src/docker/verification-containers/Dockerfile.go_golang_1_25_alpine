@@ -1,0 +1,14 @@
+FROM golang:1.25-alpine
+
+RUN apk add --no-cache alpine-sdk
+
+WORKDIR /app
+
+COPY examples/go/verify-package .
+
+# Resolve dependencies the way a consumer does: pin our package to latest and
+# let its own go.mod supply everything else.
+RUN go get github.com/statsig-io/statsig-go-core@latest
+RUN go mod tidy
+
+CMD ["go", "run", "-tags", "musl", "."]

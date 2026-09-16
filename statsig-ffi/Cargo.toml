@@ -13,6 +13,7 @@ repository.workspace = true
 statsig-rust = { path = "../statsig-rust", features = [
     "ffi-support",
     "ordered_user_data_maps",
+    "with_grpc",
 ] }
 serde_json = "1.0.120"
 tokio = "1.39.1"

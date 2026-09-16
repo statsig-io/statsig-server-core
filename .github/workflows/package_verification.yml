@@ -98,6 +98,15 @@ jobs:
           - package: go
             tag: golang_1_24_alpine
 
+          - package: go
+            tag: golang_1_25
+
+          - package: go
+            tag: golang_1_25_alpine
+
+          - package: go
+            tag: golang_1_25_upgrade
+
           - package: rust
             tag: rust_alpine_3_20
 

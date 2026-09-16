@@ -3,15 +3,16 @@ package com.statsig;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
 
 public class OutputLoggerProviderTest {
 
   public static class MockOutputLoggerProvider implements OutputLoggerProvider {
-    public List<String> calledMethods = new ArrayList<>();
-    public List<LogMessage> logMessages = new ArrayList<>();
+    // Appended from native logging threads while the test thread reads them.
+    public List<String> calledMethods = new CopyOnWriteArrayList<>();
+    public List<LogMessage> logMessages = new CopyOnWriteArrayList<>();
 
     public static class LogMessage {
       public final String level;

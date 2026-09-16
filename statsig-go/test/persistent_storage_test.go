@@ -2,6 +2,8 @@ package test
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -142,6 +144,66 @@ func TestPersistentStorageDelete(t *testing.T) {
 
 	if mock.deleteCall.configName != "test_config" {
 		t.Error("config_name should be test_config")
+	}
+}
+
+// Every load/save/delete callback is handed ownership of a native-allocated
+// args buffer that it must free. The payloads here are large enough that
+// failing to free them dwarfs everything else the loop allocates.
+func TestPersistentStorageCallbacksDoNotLeakArgs(t *testing.T) {
+	const iterations = 500
+
+	// ~200KB of args per callback, so the loop leaks ~300MB if the args are
+	// never freed.
+	bigKey := strings.Repeat("k", 200_000)
+	bigValues := createTestStickyValues()
+	bigValues.JSONValue = map[string]string{"header_text": strings.Repeat("v", 200_000)}
+	bigData, err := json.Marshal(bigValues)
+	if err != nil {
+		t.Fatalf("error marshalling sticky values: %v", err)
+	}
+
+	// Load returns nil so the only large buffer crossing the boundary is the
+	// args payload we are measuring.
+	loads := 0
+	storage := statsig_go.NewPersistentStorage(statsig_go.PersistentStorageFunctions{
+		Load: func(key string) *statsig_go.UserPersistedValues {
+			loads++
+			return nil
+		},
+		Save:   func(key string, configName string, data statsig_go.StickyValues) {},
+		Delete: func(key string, configName string) {},
+	})
+
+	runCallbacks := func(count int) {
+		for range count {
+			storage.INTERNAL_testPersistentStorage("load", bigKey, "", "")
+			storage.INTERNAL_testPersistentStorage("save", bigKey, "test_config", string(bigData))
+			storage.INTERNAL_testPersistentStorage("delete", bigKey, "test_config", "")
+		}
+	}
+
+	runCallbacks(10)
+	triggerGC()
+	initialRss := getRssBytes(t)
+
+	runCallbacks(iterations)
+	triggerGC()
+	finalRss := getRssBytes(t)
+
+	if loads != iterations+10 {
+		t.Fatalf("expected %d load callbacks, got %d", iterations+10, loads)
+	}
+
+	delta := finalRss - initialRss
+	fmt.Printf("RSS grew by %s (%s -> %s)\n", humanizeBytes(delta), humanizeBytes(initialRss), humanizeBytes(finalRss))
+
+	// An absolute threshold rather than a percentage: the baseline here is only
+	// tens of MB, so ordinary heap growth swamps any percentage that would
+	// still leave room for the ~300MB leak this test is looking for.
+	const maxGrowthBytes = 100 * 1024 * 1024
+	if delta > maxGrowthBytes {
+		t.Errorf("persistent storage args leak detected: RSS grew by %s", humanizeBytes(delta))
 	}
 }
 

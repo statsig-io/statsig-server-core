@@ -1,14 +1,16 @@
 use rustler::{serde::Deserializer, Env, Error, ResourceArc, Term};
 use statsig_rust::{
-    statsig_metadata::StatsigMetadata, statsig_types::Layer as LayerActual, Statsig,
+    statsig_metadata::StatsigMetadata, statsig_options::StatsigOptions as StatsigOptionsActual,
+    statsig_types::Layer as LayerActual, ObservabilityClient, Statsig,
 };
 use std::{
     collections::HashMap,
-    sync::{Arc, RwLock},
+    sync::{Arc, RwLock, Weak},
 };
 
 use crate::{
     data_store_nfi::{DataStoreRequestResource, ManagedEnvGuard},
+    observability_client_nfi::ElixirObservabilityClient,
     statsig_options_nfi::StatsigOptions,
     statsig_types_nfi::{
         AllowedPrimitive, ClientInitResponseOptions, DynamicConfig, DynamicConfigEvaluationOptions,
@@ -22,6 +24,9 @@ use serde_json::Value;
 
 struct StatsigResource {
     pub statsig_core: RwLock<Arc<Statsig>>,
+    // The core only holds a Weak reference to the observability client, so we
+    // keep the strong Arc alive here for the lifetime of the Statsig instance.
+    _observability_client: Option<Arc<ElixirObservabilityClient>>,
 }
 
 #[allow(non_local_definitions)]
@@ -53,9 +58,32 @@ pub fn new(
 ) -> Result<ResourceArc<StatsigResource>, Error> {
     let _guard = ManagedEnvGuard::new(env);
     update_metadata(system_metadata);
-    let statsig = Statsig::new(&sdk_key, options.map(|op| Arc::new(op.into())));
+
+    // Build the observability client (if provided) up front so we can hold a
+    // strong Arc alive; the core stores only a Weak reference to it.
+    let observability_client = options
+        .as_ref()
+        .and_then(|op| op.observability_client.as_ref())
+        .map(|reference| {
+            Arc::new(ElixirObservabilityClient::new(
+                reference.pid,
+                reference.high_cardinality_tags.clone(),
+            ))
+        });
+
+    let options_actual = options.map(|op| {
+        let mut actual: StatsigOptionsActual = op.into();
+        if let Some(client) = &observability_client {
+            actual.observability_client =
+                Some(Arc::downgrade(client) as Weak<dyn ObservabilityClient>);
+        }
+        Arc::new(actual)
+    });
+
+    let statsig = Statsig::new(&sdk_key, options_actual);
     Ok(ResourceArc::new(StatsigResource {
         statsig_core: RwLock::new(Arc::new(statsig)),
+        _observability_client: observability_client,
     }))
 }
 

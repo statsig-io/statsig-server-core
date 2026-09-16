@@ -18,8 +18,16 @@ function getNumThreads() {
 }
 
 test('Has correct number of threads', async () => {
-  const instances = [];
-  for (let i = 0; i < 10; i++) {
+  // Baseline captures Node/V8/libuv threads that exist before any extra
+  // Statsig instances are created.
+  const baseline = new Statsig('secret-num-threads-test', {
+    disableNetwork: true,
+  });
+  await baseline.initialize();
+  const baselineThreads = Number(getNumThreads());
+
+  const instances = [baseline];
+  for (let i = 0; i < 9; i++) {
     const statsig = new Statsig('secret-num-threads-test', {
       disableNetwork: true,
     });
@@ -29,5 +37,5 @@ test('Has correct number of threads', async () => {
   await Promise.all(instances.map((statsig) => statsig.initialize()));
 
   const threads = Number(getNumThreads());
-  expect(threads).toBeLessThanOrEqual(20);
+  expect(threads - baselineThreads).toBeLessThanOrEqual(3);
 });

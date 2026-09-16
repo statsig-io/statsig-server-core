@@ -47,6 +47,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
+      - name: Build PHP benchmark image
+        if: matrix.sdk-service == 'php-core'
+        working-directory: benchmarking/bench-cluster
+        run: docker compose build --pull php-core
+
       - name: Run Bench Cluster
         run: |
           cd benchmarking/bench-cluster

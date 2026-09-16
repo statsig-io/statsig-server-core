@@ -275,7 +275,10 @@ fn convert_single_spec_adapter_config(
     let client_key_path = get_string_field(env, &config_obj, "clientKeyPath");
     let domain_name = get_string_field(env, &config_obj, "domainName");
 
+    // `initTimeoutMs` is a primitive `long` on the Java side, so an unset field reads as 0.
+    // Treat that as unset rather than an instant timeout, which would fail every start.
     let init_timeout_ms = get_long_field(env, &config_obj, "initTimeoutMs")
+        .filter(|value| *value > 0)
         .and_then(|value| u64::try_from(value).ok())
         .unwrap_or(DEFAULT_INIT_TIMEOUT_MS);
 

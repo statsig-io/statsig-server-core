@@ -63,6 +63,8 @@ type StatsigFFI struct {
 	statsig_get_parameter_store_list func(uint64, *uint64) *byte
 	statsig_get_layer_list           func(uint64, *uint64) *byte
 
+	statsig_get_parameter_names_from_store func(uint64, uint64, string, *uint64) *byte
+
 	// Overrides
 	statsig_override_gate                     func(uint64, string, bool, string)
 	statsig_override_dynamic_config           func(uint64, string, string, string)
@@ -195,6 +197,7 @@ func GetFFI() *StatsigFFI {
 		purego.RegisterLibFunc(&instance.statsig_get_autotune_list, lib, "statsig_get_autotune_list")
 		purego.RegisterLibFunc(&instance.statsig_get_parameter_store_list, lib, "statsig_get_parameter_store_list")
 		purego.RegisterLibFunc(&instance.statsig_get_layer_list, lib, "statsig_get_layer_list")
+		purego.RegisterLibFunc(&instance.statsig_get_parameter_names_from_store, lib, "statsig_get_parameter_names_from_store")
 
 		// Overrides
 		purego.RegisterLibFunc(&instance.statsig_override_gate, lib, "statsig_override_gate")

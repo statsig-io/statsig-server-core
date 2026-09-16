@@ -3,7 +3,9 @@
 $sdkVariant = getenv('SDK_VARIANT');
 
 if ($sdkVariant == 'core') {
-    require_once __DIR__ . '/vendor/autoload.php';
+    $loader = require __DIR__ . '/vendor/autoload.php';
+    // Both SDKs export Statsig\\ classes; explicitly select the core namespace.
+    $loader->setPsr4('Statsig\\', __DIR__ . '/vendor/statsig/statsig-php-core/src');
     require_once __DIR__ . '/BenchCore.php';
     BenchCore::run();
 } else {
