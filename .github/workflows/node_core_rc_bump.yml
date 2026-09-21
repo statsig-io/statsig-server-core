@@ -14,6 +14,13 @@ jobs:
     timeout-minutes: 60
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && contains(github.event.release.tag_name, '-rc.'))
     runs-on: ubuntu-latest
+    # pnpm 10.33.2 runs on Node, and resolving this 34-project workspace with
+    # `pnpm update --force` exhausted V8's default ~1.9 GB heap in run
+    # 35287609253. The runner has 16 GB, so the default cap was the binding
+    # limit, not the machine. Set at job level so it also covers the lockfile
+    # rewrite script in "Bump RC Version".
+    env:
+      NODE_OPTIONS: --max-old-space-size=8192
     steps:
       - name: Resolve RC version from release event
         id: rc_ver
@@ -63,6 +70,24 @@ jobs:
             sleep "${INTERVAL_SEC}"
           done
 
+      # "Bump RC Version" below runs `pnpm update` three times, and pnpm 10.33.2
+      # materialises the whole workspace on every one of them, because `pnpm
+      # update` silently ignores --lockfile-only. Reclaim the prebuilt
+      # toolchains this job never touches so that tree fits.
+      #
+      # Must run before "Set up Node.js": it clears the hosted tool cache, and
+      # setup-node reinstalls Node there afterwards. Run it later and it deletes
+      # the Node that Corepack just put the pnpm shim into.
+      - name: Free disk space on runner
+        run: |
+          df -h /
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/share/boost /usr/local/share/powershell || true
+          if [ -n "${AGENT_TOOLSDIRECTORY:-}" ]; then
+            sudo rm -rf "$AGENT_TOOLSDIRECTORY" || true
+          fi
+          df -h /
+
       - name: Checkout Statsig Repo
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -75,9 +100,17 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
-      - name: Install pnpm
-        run: npm install -g pnpm
 
+      # Runs after "Checkout Statsig Repo": corepack install reads the
+      # packageManager pin from the checked-out monorepo's package.json.
+      - name: Install pnpm
+        run: corepack enable pnpm && corepack install
+
+      # Keep this a full install. --lockfile-only produces an identical
+      # lockfile, but `pnpm update` in "Bump RC Version" triggers lib's
+      # postinstall (`ts-node postinstall.ts`), which imports axios and resolves
+      # it out of the hoisted root node_modules that only a full install builds.
+      # Run 35288465300 failed there with "Cannot find module 'axios'".
       - name: Install dependencies
         run: pnpm install
 
@@ -355,6 +388,9 @@ jobs:
           }
           NODE
           rm -f pnpm-lock.before-rc-bump.yaml
+
+          echo "Disk after bump:"
+          df -h /
 
           echo "Changed files:"
           git status --porcelain
