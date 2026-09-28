@@ -13,7 +13,7 @@ jobs:
   update-node-core-rc-version:
     timeout-minutes: 60
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && contains(github.event.release.tag_name, '-rc.'))
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - name: Resolve RC version from release event
         id: rc_ver

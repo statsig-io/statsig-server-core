@@ -14,7 +14,7 @@ env:
 
 jobs:
   create-release:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     if: startsWith(github.ref, 'refs/heads/releases/') || startsWith(github.ref, 'refs/heads/betas/')
     steps:
       - name: Checkout code

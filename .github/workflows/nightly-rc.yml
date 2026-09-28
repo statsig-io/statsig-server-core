@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   nightly_rc:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     outputs:
       has_cherrypick_pr: ${{ steps.check_cherrypick.outputs.has_cherrypick_pr }}
       la_date: ${{ steps.check_cherrypick.outputs.la_date }}
@@ -66,7 +66,7 @@ jobs:
   public_rc:
     needs: nightly_rc
     if: needs.nightly_rc.outputs.has_cherrypick_pr == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - name: Show cherry-pick PRs
         run: |
