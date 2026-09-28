@@ -9,7 +9,7 @@ env:
 jobs:
   # ------------------------------------------------------------ [ Clippy ]
   clippy:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 20
 
     steps:
@@ -46,7 +46,7 @@ jobs:
 
   # ------------------------------------------------------------ [ Rust Format ]
   rust-format:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 20
 
     steps:
@@ -67,7 +67,7 @@ jobs:
 
   # ------------------------------------------------------------ [ PHP Code Sniffer ]
   php-code-sniffer:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 20
 
     steps:
@@ -85,7 +85,7 @@ jobs:
 
   # ------------------------------------------------------------ [ Pyo3 Stub Gen ]
   pyo3-stub-gen:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 20
 
     steps:
@@ -117,7 +117,7 @@ jobs:
 
   # ------------------------------------------------------------ [ Java Spotless Check ]
   java-spotless-check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 20
 
     steps:
@@ -137,7 +137,7 @@ jobs:
 
   # ------------------------------------------------------------ [ .NET Format Check ]
   dotnet-format-check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 20
 
     steps:
@@ -197,7 +197,7 @@ jobs:
 
   # ------------------------------------------------------------ [ Elixir Format Check ]
   elixir-format-check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 20
 
     steps:

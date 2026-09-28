@@ -15,7 +15,7 @@ jobs:
   nightly_beta:
     if: github.event.repository.private
     timeout-minutes: 20
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
 
     steps:
       - uses: actions/checkout@v4

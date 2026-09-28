@@ -110,7 +110,7 @@ jobs:
           - package: rust
             tag: rust_alpine_3_20
 
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
 
     steps:
       - uses: actions/checkout@v4
@@ -147,7 +147,7 @@ jobs:
           - latest # prod
 
     timeout-minutes: 10
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ fromJSON('{"windows-latest":"blacksmith-2vcpu-windows-2025","ubuntu-latest":"blacksmith-2vcpu-ubuntu-2404"}')[matrix.runner] }}
 
     steps:
       - uses: actions/checkout@v4
@@ -184,7 +184,7 @@ jobs:
           - prod
 
     timeout-minutes: 10
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ fromJSON('{"windows-latest":"blacksmith-2vcpu-windows-2025","ubuntu-latest":"blacksmith-2vcpu-ubuntu-2404"}')[matrix.runner] }}
 
     steps:
       - uses: actions/checkout@v4
@@ -218,7 +218,7 @@ jobs:
           - prod
 
     timeout-minutes: 10
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ fromJSON('{"ubuntu-latest":"blacksmith-2vcpu-ubuntu-2404"}')[matrix.runner] }}
 
     steps:
       - uses: actions/checkout@v4
@@ -262,7 +262,7 @@ jobs:
           - prod
 
     timeout-minutes: 10
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ fromJSON('{"windows-latest":"blacksmith-2vcpu-windows-2025","ubuntu-latest":"blacksmith-2vcpu-ubuntu-2404"}')[matrix.runner] }}
 
     steps:
       - uses: actions/checkout@v4

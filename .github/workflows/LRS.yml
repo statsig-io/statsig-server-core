@@ -13,7 +13,7 @@ env:
 jobs:
   CD:
     timeout-minutes: 10
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     strategy:
       fail-fast: false
       matrix:

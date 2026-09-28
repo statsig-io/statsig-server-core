@@ -48,7 +48,7 @@ jobs:
 
   plan:
     timeout-minutes: 15
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     outputs:
       build_matrix: ${{ steps.plan.outputs.build_matrix }}
     steps:
@@ -76,7 +76,7 @@ jobs:
           - cpp
 
     timeout-minutes: 25
-    runs-on: ${{ (contains(fromJson('["java", "dotnet", "ffi", "cpp"]'), matrix.package) && contains(matrix.config.target, 'linux')) && 'ubuntu-latest' || matrix.config.runner }}
+    runs-on: ${{ fromJSON('{"ubuntu-latest":"blacksmith-2vcpu-ubuntu-2404","ubuntu-24.04-arm":"blacksmith-4vcpu-ubuntu-2404-arm","macos-15-intel":"macos-15-intel","macos-14":"blacksmith-6vcpu-macos-15","windows-latest":"blacksmith-2vcpu-windows-2025","windows-11-arm":"windows-11-arm","statsig-ubuntu-arm64":"blacksmith-4vcpu-ubuntu-2204-arm"}')[(contains(fromJson('["java", "dotnet", "ffi", "cpp"]'), matrix.package) && contains(matrix.config.target, 'linux')) && 'ubuntu-latest' || matrix.config.runner] }}
 
     steps:
       - name: "[Statsig Hosted Windows ARM64 Only] Setup Git (Portable)"
@@ -244,7 +244,7 @@ jobs:
 
   node-verify:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -275,7 +275,7 @@ jobs:
 
   python-verify:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -304,7 +304,7 @@ jobs:
   publish:
     needs: build
     if: ${{ github.event_name == 'release' }}
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
       contents: read
       id-token: write
