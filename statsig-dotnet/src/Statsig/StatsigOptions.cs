@@ -185,7 +185,7 @@ namespace Statsig
         [JsonProperty("spec_adapter_type")]
         internal string? SpecAdapterType => specAdapterConfig?.AdapterType;
 
-        [JsonProperty("spec_adapter_specs_url")]
+        [JsonProperty("spec_adapter_url")]
         internal string? SpecAdapterSpecsUrl => specAdapterConfig?.SpecsUrl;
 
         [JsonProperty("spec_adapter_init_timeout_ms")]

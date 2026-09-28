@@ -100,6 +100,24 @@ namespace Statsig.Tests
             Assert.Same(specAdapterConfig, GetInternalField(builder, "specAdapterConfig"));
         }
 
+        [Theory]
+        [InlineData(SpecAdapterType.NetworkHttp)]
+        [InlineData(SpecAdapterType.NetworkGrpcWebsocket)]
+        public void StatsigOptionsBuilder_SetSpecAdapterConfig_SerializesUrlForNativeCore(string adapterType)
+        {
+            const string specsUrl = "http://localhost:8080/v2/download_config_specs";
+            var builder = new StatsigOptionsBuilder()
+                .SetSpecAdapterConfig(new SpecAdapterConfig(adapterType, specsUrl: specsUrl));
+
+            var json = JsonConvert.SerializeObject(builder, new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            });
+
+            Assert.Contains($"\"spec_adapter_url\":\"{specsUrl}\"", json);
+            Assert.DoesNotContain("spec_adapter_specs_url", json);
+        }
+
         private static object? GetInternalField(object obj, string fieldName)
         {
             var field = obj.GetType().GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
