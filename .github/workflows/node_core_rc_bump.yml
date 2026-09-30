@@ -14,11 +14,11 @@ jobs:
     timeout-minutes: 60
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && contains(github.event.release.tag_name, '-rc.'))
     runs-on: ubuntu-latest
-    # pnpm 10.33.2 runs on Node, and resolving this 34-project workspace with
-    # `pnpm update --force` exhausted V8's default ~1.9 GB heap in run
-    # 35287609253. The runner has 16 GB, so the default cap was the binding
-    # limit, not the machine. Set at job level so it also covers the lockfile
-    # rewrite script in "Bump RC Version".
+    # pnpm 10.33.2 runs on Node, and resolving this 34-project workspace
+    # exhausted V8's default ~1.9 GB heap in run 35287609253. The runner has
+    # 16 GB, so the default cap was the binding limit, not the machine. Set at
+    # job level so it covers every pnpm resolve and install in this job,
+    # including the lockfile-only resolve in "Bump RC Version".
     env:
       NODE_OPTIONS: --max-old-space-size=8192
     steps:
@@ -70,10 +70,9 @@ jobs:
             sleep "${INTERVAL_SEC}"
           done
 
-      # "Bump RC Version" below runs `pnpm update` three times, and pnpm 10.33.2
-      # materialises the whole workspace on every one of them, because `pnpm
-      # update` silently ignores --lockfile-only. Reclaim the prebuilt
-      # toolchains this job never touches so that tree fits.
+      # "Install dependencies" and the final frozen install in "Bump RC Version"
+      # each materialise the whole workspace. Reclaim the prebuilt toolchains
+      # this job never touches so that tree fits.
       #
       # Must run before "Set up Node.js": it clears the hosted tool cache, and
       # setup-node reinstalls Node there afterwards. Run it later and it deletes
@@ -106,294 +105,103 @@ jobs:
       - name: Install pnpm
         run: corepack enable pnpm && corepack install
 
-      # Keep this a full install. --lockfile-only produces an identical
-      # lockfile, but `pnpm update` in "Bump RC Version" triggers lib's
-      # postinstall (`ts-node postinstall.ts`), which imports axios and resolves
-      # it out of the hoisted root node_modules that only a full install builds.
-      # Run 35288465300 failed there with "Cannot find module 'axios'".
+      # "Bump RC Version" no longer needs this install: it resolves with
+      # --lockfile-only --ignore-scripts and runs its own frozen install. The
+      # step is kept for now.
       - name: Install dependencies
         run: pnpm install
 
       - name: Bump RC Version
+        id: bump_rc
         shell: bash
+        env:
+          RC_VER: ${{ steps.rc_ver.outputs.version }}
         run: |
           set -euo pipefail
-          RC_VER="${{ steps.rc_ver.outputs.version }}"
-          pkgs="@statsig/statsig-node-core-rc \
-          @statsig/statsig-node-core-linux-x64-gnu-rc \
-          @statsig/statsig-node-core-linux-x64-musl-rc"
-          echo "Updating to latest rc for: $pkgs"
-          cp pnpm-lock.yaml pnpm-lock.before-rc-bump.yaml
-
-          # minimum-release-age (3d) keeps third-party transitive deps protected
-          # against zero-day supply-chain risk. The exclude glob lets freshly-published
-          # internal packages through: it covers @statsig/statsig-node-core AND all its
-          # platform-specific native binaries (darwin/linux/win32 optional deps), which
-          # are published together on each RC. Quoted to prevent shell glob expansion;
-          # a single non-glob exclude value is silently ignored by pnpm, so the glob is
-          # required (not just convenient).
-
-          # Update all packages in lib
-          pnpm --dir lib update \
-            "@statsig/statsig-node-core-rc@npm:@statsig/statsig-node-core@${RC_VER}" \
-            "@statsig/statsig-node-core-linux-x64-gnu-rc@npm:@statsig/statsig-node-core-linux-x64-gnu@${RC_VER}" \
-            "@statsig/statsig-node-core-linux-x64-musl-rc@npm:@statsig/statsig-node-core-linux-x64-musl@${RC_VER}" \
-            --no-save \
-            --force \
-            --config.minimum-release-age=4320 \
-            "--config.minimum-release-age-exclude=@statsig/statsig-node-core*"
-
-          # Update all packages in lib/node/entity
-          pnpm --dir lib/node/entity update \
-            "@statsig/statsig-node-core-rc@npm:@statsig/statsig-node-core@${RC_VER}" \
-            "@statsig/statsig-node-core-linux-x64-gnu-rc@npm:@statsig/statsig-node-core-linux-x64-gnu@${RC_VER}" \
-            "@statsig/statsig-node-core-linux-x64-musl-rc@npm:@statsig/statsig-node-core-linux-x64-musl@${RC_VER}" \
-            --no-save \
-            --force \
-            --config.minimum-release-age=4320 \
-            "--config.minimum-release-age-exclude=@statsig/statsig-node-core*"
-
-          # Update all packages in lib/node/service-core
-          pnpm --dir lib/node/service-core update \
-            "@statsig/statsig-node-core-rc@npm:@statsig/statsig-node-core@${RC_VER}" \
-            "@statsig/statsig-node-core-linux-x64-gnu-rc@npm:@statsig/statsig-node-core-linux-x64-gnu@${RC_VER}" \
-            "@statsig/statsig-node-core-linux-x64-musl-rc@npm:@statsig/statsig-node-core-linux-x64-musl@${RC_VER}" \
-            --no-save \
-            --force \
-            --config.minimum-release-age=4320 \
-            "--config.minimum-release-age-exclude=@statsig/statsig-node-core*"
-
-          # statsig-ai special handling:
-          # restore the first node-core peer slot to its pre-bump value, while allowing the second slot to move.
-          # also restore statsig-ai package dependency '@statsig/statsig-node-core' to pre-bump value.
-          # Covers both lockfile forms:
-          # 1) package keys: /@statsig/statsig-ai@x(...)(...)
-          # 2) importer entries: '@statsig/statsig-ai' -> version: x(...)(...)
+          : "${RC_VER:?Set RC_VER to the triggering release version}"
+          export RC_VER
+          before_dir=$(mktemp -d)
+          dirs=(lib lib/node/entity lib/node/service-core)
+          restore_manifests() {
+            for dir in "${dirs[@]}"; do
+              cp "$before_dir/$dir/package.json" "$dir/package.json"
+            done
+          }
+          trap 'restore_manifests; rm -rf "$before_dir"' EXIT
+          cp pnpm-lock.yaml "$before_dir/pnpm-lock.yaml"
+          for dir in "${dirs[@]}"; do
+            mkdir -p "$before_dir/$dir"
+            cp "$dir/package.json" "$before_dir/$dir/package.json"
+          done
           node <<'NODE'
-          const fs = require("fs");
-
-          const beforePath = "pnpm-lock.before-rc-bump.yaml";
-          const lockPath = "pnpm-lock.yaml";
-          if (!fs.existsSync(beforePath) || !fs.existsSync(lockPath)) process.exit(0);
-
-          const before = fs.readFileSync(beforePath, "utf8");
-          let curr = fs.readFileSync(lockPath, "utf8");
-
-          const packageRe =
-            /(\/?@statsig\/statsig-ai@[^()\s:]+)\(@statsig\/statsig-node-core@([^)]+)\)\(@statsig\/statsig-node-core@([^)]+)\)/g;
-          const importerRe =
-            /((?:'|")?@statsig\/statsig-ai(?:'|")?:\s*\n(?:[ \t]+specifier:[^\n]*\n)?[ \t]+version:\s*)([^()\s]+)\(@statsig\/statsig-node-core@([^)]+)\)\(@statsig\/statsig-node-core@([^)]+)\)/g;
-
-          const packageFirstSlotById = new Map();
-          for (const match of before.matchAll(packageRe)) {
-            const aiId = match[1].replace(/^\//, "");
-            if (!packageFirstSlotById.has(aiId)) {
-              packageFirstSlotById.set(aiId, match[2]);
-            }
-          }
-
-          const importerFirstSlotByVersion = new Map();
-          for (const match of before.matchAll(importerRe)) {
-            const version = match[2];
-            if (!importerFirstSlotByVersion.has(version)) {
-              importerFirstSlotByVersion.set(version, match[3]);
-            }
-          }
-
-          let packageReplaceCount = 0;
-          curr = curr.replace(packageRe, (full, aiIdMaybeSlash, firstNow, secondNow) => {
-            const aiId = aiIdMaybeSlash.replace(/^\//, "");
-            const expectedFirst = packageFirstSlotById.get(aiId);
-            if (!expectedFirst || firstNow === expectedFirst) {
-              return full;
-            }
-
-            packageReplaceCount += 1;
-            const prefix = aiIdMaybeSlash.startsWith("/") ? "/" : "";
-            return `${prefix}${aiId}(@statsig/statsig-node-core@${expectedFirst})(@statsig/statsig-node-core@${secondNow})`;
-          });
-
-          let importerReplaceCount = 0;
-          curr = curr.replace(importerRe, (full, linePrefix, version, firstNow, secondNow) => {
-            const expectedFirst = importerFirstSlotByVersion.get(version);
-            if (!expectedFirst || firstNow === expectedFirst) {
-              return full;
-            }
-
-            importerReplaceCount += 1;
-            return `${linePrefix}${version}(@statsig/statsig-node-core@${expectedFirst})(@statsig/statsig-node-core@${secondNow})`;
-          });
-
-          let depReplaceCount = 0;
-          const lines = curr.split("\n");
-          const packageHeaderRe =
-            /^  (\/?@statsig\/statsig-ai@[^()\s:]+)\(@statsig\/statsig-node-core@[^)]+\)\(@statsig\/statsig-node-core@[^)]+\):\s*$/;
-          const topLevelEntryRe = /^  \S.*:\s*$/;
-          const depKeyRe = /^(\s{6}'@statsig\/statsig-node-core':\s*)(\S+)(\s*)$/;
-
-          for (let i = 0; i < lines.length; i++) {
-            const headerMatch = lines[i].match(packageHeaderRe);
-            if (!headerMatch) {
-              continue;
-            }
-
-            const aiId = headerMatch[1].replace(/^\//, "");
-            const expectedFirst = packageFirstSlotById.get(aiId);
-            if (!expectedFirst) {
-              continue;
-            }
-
-            let blockEnd = i + 1;
-            while (blockEnd < lines.length) {
-              if (topLevelEntryRe.test(lines[blockEnd]) && !lines[blockEnd].startsWith("    ")) {
-                break;
+          const fs = require('fs');
+          const version = process.env.RC_VER;
+          if (!/^\d+\.\d+\.\d+-rc\.\d+$/.test(version)) throw new Error('Invalid RC version');
+          for (const dir of ['lib', 'lib/node/entity', 'lib/node/service-core']) {
+            const path = `${dir}/package.json`;
+            const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
+            for (const suffix of ['', '-linux-x64-gnu', '-linux-x64-musl']) {
+              const pkg = `@statsig/statsig-node-core${suffix}`;
+              if (manifest.dependencies?.[`${pkg}-rc`] !== `npm:${pkg}@rc`) {
+                throw new Error(`Unexpected RC alias: ${path} ${pkg}-rc`);
               }
-              blockEnd += 1;
+              manifest.dependencies[`${pkg}-rc`] = `npm:${pkg}@${version}`;
             }
-
-            let depStart = -1;
-            for (let j = i + 1; j < blockEnd; j++) {
-              if (/^    dependencies:\s*$/.test(lines[j])) {
-                depStart = j;
-                break;
-              }
-            }
-            if (depStart === -1) {
-              continue;
-            }
-
-            let depEnd = depStart + 1;
-            while (
-              depEnd < blockEnd &&
-              (lines[depEnd].startsWith("      ") || lines[depEnd].trim() === "")
-            ) {
-              depEnd += 1;
-            }
-
-            for (let j = depStart + 1; j < depEnd; j++) {
-              const depMatch = lines[j].match(depKeyRe);
-              if (!depMatch) {
-                continue;
-              }
-
-              const currDep = depMatch[2];
-              if (currDep !== expectedFirst) {
-                depReplaceCount += 1;
-                lines[j] = `${depMatch[1]}${expectedFirst}${depMatch[3]}`;
-              }
-              break;
-            }
-          }
-
-          curr = lines.join("\n");
-          fs.writeFileSync(lockPath, curr);
-
-          const updated = fs.readFileSync(lockPath, "utf8");
-          const packageIssues = [];
-          for (const match of updated.matchAll(packageRe)) {
-            const aiId = match[1].replace(/^\//, "");
-            const expectedFirst = packageFirstSlotById.get(aiId);
-            if (expectedFirst && match[2] !== expectedFirst) {
-              packageIssues.push(`${match[1]} expected=${expectedFirst} actual=${match[2]}`);
-            }
-          }
-
-          const importerIssues = [];
-          for (const match of updated.matchAll(importerRe)) {
-            const version = match[2];
-            const expectedFirst = importerFirstSlotByVersion.get(version);
-            if (expectedFirst && match[3] !== expectedFirst) {
-              importerIssues.push(`@statsig/statsig-ai@${version} expected=${expectedFirst} actual=${match[3]}`);
-            }
-          }
-
-          const dependencyIssues = [];
-          const updatedLines = updated.split("\n");
-          for (let i = 0; i < updatedLines.length; i++) {
-            const headerMatch = updatedLines[i].match(packageHeaderRe);
-            if (!headerMatch) {
-              continue;
-            }
-
-            const aiId = headerMatch[1].replace(/^\//, "");
-            const expectedFirst = packageFirstSlotById.get(aiId);
-            if (!expectedFirst) {
-              continue;
-            }
-
-            let blockEnd = i + 1;
-            while (blockEnd < updatedLines.length) {
-              if (
-                topLevelEntryRe.test(updatedLines[blockEnd]) &&
-                !updatedLines[blockEnd].startsWith("    ")
-              ) {
-                break;
-              }
-              blockEnd += 1;
-            }
-
-            let depStart = -1;
-            for (let j = i + 1; j < blockEnd; j++) {
-              if (/^    dependencies:\s*$/.test(updatedLines[j])) {
-                depStart = j;
-                break;
-              }
-            }
-            if (depStart === -1) {
-              continue;
-            }
-
-            let depEnd = depStart + 1;
-            while (
-              depEnd < blockEnd &&
-              (updatedLines[depEnd].startsWith("      ") || updatedLines[depEnd].trim() === "")
-            ) {
-              depEnd += 1;
-            }
-
-            for (let j = depStart + 1; j < depEnd; j++) {
-              const depMatch = updatedLines[j].match(depKeyRe);
-              if (!depMatch) {
-                continue;
-              }
-
-              if (depMatch[2] !== expectedFirst) {
-                dependencyIssues.push(
-                  `${headerMatch[1]} dependency expected=${expectedFirst} actual=${depMatch[2]}`
-                );
-              }
-              break;
-            }
-          }
-
-          console.log(
-            `statsig-ai restore complete: packageEntriesUpdated=${packageReplaceCount}, importerEntriesUpdated=${importerReplaceCount}, dependencyEntriesUpdated=${depReplaceCount}`
-          );
-
-          if (
-            packageIssues.length > 0 ||
-            importerIssues.length > 0 ||
-            dependencyIssues.length > 0
-          ) {
-            for (const issue of packageIssues) {
-              console.error(`[package] ${issue}`);
-            }
-            for (const issue of importerIssues) {
-              console.error(`[importer] ${issue}`);
-            }
-            for (const issue of dependencyIssues) {
-              console.error(`[dependency] ${issue}`);
-            }
-            process.exit(1);
+            fs.writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n');
           }
           NODE
-          rm -f pnpm-lock.before-rc-bump.yaml
-
-          echo "Disk after bump:"
-          df -h /
-
-          echo "Changed files:"
-          git status --porcelain
+          pnpm install --lockfile-only --ignore-scripts --no-frozen-lockfile \
+            --config.minimum-release-age=4320 \
+            '--config.minimum-release-age-exclude=@statsig/statsig-node-core*'
+          node - "$before_dir/pnpm-lock.yaml" pnpm-lock.yaml "$RC_VER" <<'NODE'
+          const fs = require('fs');
+          const [beforePath, candidatePath, version] = process.argv.slice(2);
+          const before = fs.readFileSync(beforePath, 'utf8');
+          const candidate = fs.readFileSync(candidatePath, 'utf8');
+          if (!/^\d+\.\d+\.\d+-rc\.\d+$/.test(version)) throw new Error('Invalid RC version');
+          const esc = s => s.replaceAll('.', '\\.');
+          const oldVersions = new Set([...before.matchAll(/version: '@statsig\/statsig-node-core@(\d+\.\d+\.\d+-rc\.\d+)'/g)].map(m => m[1]));
+          if (oldVersions.size !== 1) throw new Error('Expected one existing SDK RC version');
+          const [oldVersion] = oldVersions;
+          const oldVersionRe = new RegExp(esc(oldVersion) + '(?![0-9])', 'g');
+          for (const line of before.split('\n')) {
+            if (line.search(oldVersionRe) >= 0 && !line.includes('@statsig/statsig-node-core')) {
+              throw new Error('RC version occurs outside SDK references: ' + line);
+            }
+          }
+          let output = before.replace(oldVersionRe, version);
+          const sdkKey = new RegExp("^'@statsig/statsig-node-core(?:-[^@]+)?@" + esc(version) + "'$" );
+          for (const section of ['packages', 'snapshots']) {
+            const marker = '\n' + section + ':\n';
+            const start = output.indexOf(marker) + marker.length;
+            if (start < marker.length) throw new Error('Missing section: ' + section);
+            const rest = output.slice(start);
+            const endOffset = rest.search(/^\S/m);
+            const end = endOffset < 0 ? output.length : start + endOffset;
+            const candidateStart = candidate.indexOf(marker) + marker.length;
+            const candidateRest = candidate.slice(candidateStart);
+            const candidateEnd = candidateRest.search(/^\S/m);
+            const source = candidateEnd < 0 ? candidateRest : candidateRest.slice(0, candidateEnd);
+            const blockRe = /^  ([^\n]+?):[^\n]*\n(?:(?:^    [^\n]*|^)\n)*/gm;
+            const blocks = new Map([...source.matchAll(blockRe)].filter(m => sdkKey.test(m[1])).map(m => [m[1], m[0]]));
+            if (!blocks.size) throw new Error('No resolved SDK blocks in ' + section);
+            const body = output.slice(start, end).replace(blockRe, (block, key) => {
+              if (!sdkKey.test(key)) return block;
+              const resolved = blocks.get(key);
+              if (!resolved) throw new Error('SDK package set changed; inspect dependency closure: ' + key);
+              if (section === 'snapshots' && resolved !== block) {
+                throw new Error('SDK dependency graph changed; inspect dependency closure: ' + key);
+              }
+              blocks.delete(key);
+              return resolved;
+            });
+            if (blocks.size) throw new Error('SDK package set expanded; inspect dependency closure');
+            output = output.slice(0, start) + body + output.slice(end);
+          }
+          fs.writeFileSync(candidatePath, output);
+          NODE
+          restore_manifests
+          pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Create Pull Request
         id: create_rc_pr
@@ -476,6 +284,38 @@ jobs:
                   { "title": "RC Version", "value": "${rc_version}", "short": true },
                   { "title": "Branch", "value": "${branch}", "short": true },
                   { "title": "Repository", "value": "${repo}", "short": true }
+                ],
+                "footer": "Posted by 🚀 SDKbot",
+                "ts": $(date +%s)
+              }
+            ]
+          }
+          EOF
+          )
+
+          curl -X POST -H 'Content-type: application/json' \
+            --data "$payload" \
+            "$SLACK_WEBHOOK_URL"
+
+      - name: Notify Slack about failed RC bump
+        if: failure() && steps.bump_rc.outcome == 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SDK_SLACK_WEBHOOK_URL }}
+          RC_VERSION: ${{ steps.rc_ver.outputs.version }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          text="❌ The RC bump for *${RC_VERSION}* failed in the Bump RC Version step. No PR was opened. If the SDK's own dependencies changed, update the lockfile by hand."
+
+          payload=$(cat <<EOF
+          {
+            "attachments": [
+              {
+                "color": "#d00000",
+                "title": ":rotating_light: Node Core RC Bump Failed",
+                "text": "${text}\n<${RUN_URL}|View run>",
+                "fields": [
+                  { "title": "RC Version", "value": "${RC_VERSION}", "short": true },
+                  { "title": "Repository", "value": "statsig-io/statsig", "short": true }
                 ],
                 "footer": "Posted by 🚀 SDKbot",
                 "ts": $(date +%s)
