@@ -61,6 +61,44 @@ namespace Statsig.Tests
         }
 
         [Fact]
+        public async Task Initialize_WithHttpSpecAdapter_UsesConfiguredProxyUrl()
+        {
+            const string proxyPath = "/forward-proxy/specs";
+            const string sdkKey = "secret-spec-adapter-test";
+            _mockServer
+                .Given(Request.Create()
+                    .WithPath($"{proxyPath}/{sdkKey}.json")
+                    .UsingGet())
+                .RespondWith(Response.Create()
+                    .WithStatusCode(200)
+                    .WithHeader("Content-Type", "application/json")
+                    .WithBody(_testData));
+
+            using var options = new StatsigOptionsBuilder()
+                // Keep the fallback local and distinct so losing the adapter URL
+                // cannot accidentally satisfy the proxy request assertion.
+                .SetSpecsURL($"{_mockServer.Urls[0]}/fallback-specs")
+                .SetSpecAdapterConfig(new SpecAdapterConfig(
+                    SpecAdapterType.NetworkHttp,
+                    specsUrl: $"{_mockServer.Urls[0]}{proxyPath}"))
+                .SetDisableAllLogging(true)
+                .Build();
+            using var statsig = new Statsig(sdkKey, options);
+
+            await statsig.Initialize();
+
+            Assert.Contains(_mockServer.LogEntries,
+                entry => entry.RequestMessage.Path == $"{proxyPath}/{sdkKey}.json");
+            Assert.DoesNotContain(_mockServer.LogEntries,
+                entry => entry.RequestMessage.Path == $"/fallback-specs/{sdkKey}.json");
+            var experiment = statsig.GetExperimentByGroupName("test_experiment_no_targeting", "Control");
+            Assert.Equal("Control", experiment.GroupName);
+            Assert.Equal("control", experiment.Value["value"].ToString());
+
+            await statsig.Shutdown();
+        }
+
+        [Fact]
         public async Task InitializeCallback_WhenCalled_InvokesCallbackSuccessfully()
         {
             var options = CreateMockOptions();
