@@ -1,6 +1,6 @@
 {
     "name": "@statsig/statsig-node-core-win32-arm64-msvc",
-    "version": "0.23.2-beta.2610010218",
+    "version": "0.23.2-beta.2610020212",
     "repository": "https://github.com/statsig-io/statsig-server-core.git",
     "os": [
       "win32"
