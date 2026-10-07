@@ -45,6 +45,16 @@ public class ParameterStore {
     return parameterNames;
   }
 
+  /**
+   * Returns each parameter name mapped to its type label. Usual labels are {@code boolean}, {@code
+   * number}, {@code string}, {@code array}, and {@code object}, taken from the type declared in the
+   * console. Other labels can appear, including {@code null} when an override value is null. Keys
+   * are returned in sorted order.
+   */
+  public Map<String, String> getParameterTypes() {
+    return statsigInstance.getParameterTypesFromParameterStore(user, name);
+  }
+
   public String getString(String parameterName, String defaultValue) {
     String value =
         statsigInstance.getStringFromParameterStore(user, name, parameterName, defaultValue);

@@ -17,7 +17,7 @@ use chrono::Utc;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, Value};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Weak;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -257,6 +257,14 @@ impl ParameterStore<'_> {
         let mut names: Vec<String> = self.parameters.keys().cloned().collect();
         names.sort();
         names
+    }
+
+    #[must_use]
+    pub fn get_parameter_types(&self) -> BTreeMap<String, String> {
+        self.parameters
+            .iter()
+            .map(|(name, parameter)| (name.clone(), parameter.param_type().to_string()))
+            .collect()
     }
 
     pub fn get_opt<T: DeserializeOwned>(&self, user: &StatsigUser, param_name: &str) -> Option<T> {

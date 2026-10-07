@@ -15,6 +15,18 @@ pub enum Parameter {
     Layer(LayerParameter),
 }
 
+impl Parameter {
+    pub fn param_type(&self) -> &str {
+        match self {
+            Self::StaticValue(parameter) => &parameter.param_type,
+            Self::Gate(parameter) => &parameter.param_type,
+            Self::DynamicConfig(parameter) => &parameter.param_type,
+            Self::Experiment(parameter) => &parameter.param_type,
+            Self::Layer(parameter) => &parameter.param_type,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct ParameterStore {
     pub parameters: HashMap<String, Parameter>,
