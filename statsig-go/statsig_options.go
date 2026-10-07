@@ -6,6 +6,24 @@ import (
 	"runtime"
 )
 
+const defaultSpecAdapterInitTimeoutMs uint64 = 3000
+
+// Spec adapter types accepted by SpecAdapterConfig.AdapterType. Core treats an
+// unrecognized value as SpecAdapterTypeNetworkHttp.
+const (
+	SpecAdapterTypeNetworkGrpcWebsocket = "network_grpc_websocket"
+	SpecAdapterTypeNetworkHttp          = "network_http"
+	SpecAdapterTypeDataStore            = "data_store"
+)
+
+// Authentication modes accepted by SpecAdapterConfig.AuthenticationMode. Only
+// the gRPC websocket adapter uses these.
+const (
+	AuthenticationModeNone = "none"
+	AuthenticationModeTls  = "tls"
+	AuthenticationModeMtls = "mtls"
+)
+
 type StatsigOptions struct {
 	ref uint64
 	// obsClient carries the observability client from the builder to the
@@ -13,6 +31,29 @@ type StatsigOptions struct {
 	// Core holds only a Weak reference to the client, so an explicit strong
 	// reference on the instance keeps it alive for the instance's lifetime.
 	obsClient *ObservabilityClient
+}
+
+// SpecAdapterConfig configures the single spec source used by this SDK.
+// Go accepts one adapter and does not fall back to HTTP. If that source is
+// down at startup, initialization fails with "Failed to start any adapters".
+type SpecAdapterConfig struct {
+	// AdapterType is required. Use one of the SpecAdapterType* constants.
+	// An empty or unrecognized value is treated as network_http by core.
+	AdapterType string
+	// SpecsUrl is required for SpecAdapterTypeNetworkGrpcWebsocket, for example
+	// the Forward Proxy address. An empty value becomes "INVALID" in core.
+	SpecsUrl string
+	// InitTimeoutMs bounds the initial sync. 0 uses the SDK default of 3000 ms.
+	InitTimeoutMs uint64
+	// AuthenticationMode is one of the AuthenticationMode* constants.
+	AuthenticationMode string
+	// CaCertPath is used for tls and mtls.
+	CaCertPath string
+	// ClientCertPath and ClientKeyPath are used for mtls.
+	ClientCertPath string
+	ClientKeyPath  string
+	// DomainName overrides the TLS server name for certificate verification.
+	DomainName string
 }
 
 type StatsigOptionsBuilder struct {
@@ -43,6 +84,15 @@ type StatsigOptionsBuilder struct {
 	InitTimeoutMs               *int32  `json:"init_timeout_ms,omitempty"`
 	FallbackToStatsigApi        *bool   `json:"fallback_to_statsig_api,omitempty"`
 
+	SpecAdapterType               *string `json:"spec_adapter_type,omitempty"`
+	SpecAdapterUrl                *string `json:"spec_adapter_url,omitempty"`
+	SpecAdapterInitTimeoutMs      *uint64 `json:"spec_adapter_init_timeout_ms,omitempty"`
+	SpecAdapterAuthenticationMode *string `json:"spec_adapter_authentication_mode,omitempty"`
+	SpecAdapterCaCertPath         *string `json:"spec_adapter_ca_cert_path,omitempty"`
+	SpecAdapterClientCertPath     *string `json:"spec_adapter_client_cert_path,omitempty"`
+	SpecAdapterClientKeyPath      *string `json:"spec_adapter_client_key_path,omitempty"`
+	SpecAdapterDomainName         *string `json:"spec_adapter_domain_name,omitempty"`
+
 	// observabilityClient is retained (unexported, so it is never marshaled)
 	// solely to keep the client alive; see StatsigOptions.obsClient.
 	observabilityClient *ObservabilityClient
@@ -55,6 +105,31 @@ func NewOptionsBuilder() *StatsigOptionsBuilder {
 func (o *StatsigOptionsBuilder) WithSpecsUrl(specsUrl string) *StatsigOptionsBuilder {
 	o.SpecsUrl = &specsUrl
 	return o
+}
+
+// WithSpecAdapterConfig sets the spec adapter and its optional connection settings.
+func (o *StatsigOptionsBuilder) WithSpecAdapterConfig(config SpecAdapterConfig) *StatsigOptionsBuilder {
+	initTimeoutMs := config.InitTimeoutMs
+	if initTimeoutMs == 0 {
+		initTimeoutMs = defaultSpecAdapterInitTimeoutMs
+	}
+
+	o.SpecAdapterType = &config.AdapterType
+	o.SpecAdapterInitTimeoutMs = &initTimeoutMs
+	o.SpecAdapterUrl = optionalString(config.SpecsUrl)
+	o.SpecAdapterAuthenticationMode = optionalString(config.AuthenticationMode)
+	o.SpecAdapterCaCertPath = optionalString(config.CaCertPath)
+	o.SpecAdapterClientCertPath = optionalString(config.ClientCertPath)
+	o.SpecAdapterClientKeyPath = optionalString(config.ClientKeyPath)
+	o.SpecAdapterDomainName = optionalString(config.DomainName)
+	return o
+}
+
+func optionalString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }
 
 func (o *StatsigOptionsBuilder) WithLogEventUrl(logEventUrl string) *StatsigOptionsBuilder {
