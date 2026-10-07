@@ -14,6 +14,7 @@ parking_lot = "0.12.1"
 rustler = { version = "0.36.1", features = ["serde", "big_integer"] }
 statsig-rust = { path = "../../../statsig-rust", features = [
     "ordered_user_data_maps",
+    "with_grpc",
     "with_zstd",
 ] }
 tokio = { version = "1.39.1", features = ["rt", "rt-multi-thread", "macros"] }

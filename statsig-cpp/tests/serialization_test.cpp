@@ -90,6 +90,96 @@ TEST(Serialization, StatsigOptionsExposureDedupeMaxKeys) {
   EXPECT_TRUE(j_unset["exposure_dedupe_max_keys"].is_null());
 }
 
+TEST(Serialization, SpecAdapterConfigFullTls) {
+  // Flattened spec_adapter_* keys MUST match StatsigOptionsData in
+  // statsig-ffi/src/statsig_options_c.rs, or the core silently drops them.
+  // Fields are set by name so the six string arguments cannot be swapped.
+  statsig_cpp_core::SpecAdapterConfig config(
+      statsig_cpp_core::SpecAdapterConfig::TYPE_NETWORK_GRPC_WEBSOCKET);
+  config.specs_url = "http://localhost:50051";
+  config.init_timeout_ms = 5000;
+  config.authentication_mode = statsig_cpp_core::SpecAdapterConfig::AUTH_MTLS;
+  config.ca_cert_path = "/certs/ca.pem";
+  config.client_cert_path = "/certs/client.pem";
+  config.client_key_path = "/certs/client.key";
+  config.domain_name = "proxy.example.com";
+
+  statsig_cpp_core::StatsigOptionsBuilder builder;
+  builder.set_spec_adapter_config(config);
+
+  json j;
+  to_json(j, builder);
+  EXPECT_EQ(j["spec_adapter_type"], "network_grpc_websocket");
+  EXPECT_EQ(j["spec_adapter_url"], "http://localhost:50051");
+  EXPECT_EQ(j["spec_adapter_init_timeout_ms"], 5000);
+  EXPECT_EQ(j["spec_adapter_authentication_mode"], "mtls");
+  EXPECT_EQ(j["spec_adapter_ca_cert_path"], "/certs/ca.pem");
+  EXPECT_EQ(j["spec_adapter_client_cert_path"], "/certs/client.pem");
+  EXPECT_EQ(j["spec_adapter_client_key_path"], "/certs/client.key");
+  EXPECT_EQ(j["spec_adapter_domain_name"], "proxy.example.com");
+  // Regression guard: the core expects spec_adapter_url, not
+  // spec_adapter_specs_url.
+  EXPECT_FALSE(j.contains("spec_adapter_specs_url"));
+}
+
+TEST(Serialization, SpecAdapterConfigMinimalGrpcDefaultsTimeout) {
+  statsig_cpp_core::StatsigOptionsBuilder builder;
+  builder.set_spec_adapter_config(statsig_cpp_core::SpecAdapterConfig(
+      statsig_cpp_core::SpecAdapterConfig::TYPE_NETWORK_GRPC_WEBSOCKET,
+      "http://localhost:50051"));
+
+  json j;
+  to_json(j, builder);
+  EXPECT_EQ(j["spec_adapter_type"], "network_grpc_websocket");
+  EXPECT_EQ(j["spec_adapter_url"], "http://localhost:50051");
+  EXPECT_EQ(j["spec_adapter_init_timeout_ms"],
+            statsig_cpp_core::SpecAdapterConfig::DEFAULT_INIT_TIMEOUT_MS);
+  EXPECT_TRUE(j["spec_adapter_authentication_mode"].is_null());
+  EXPECT_TRUE(j["spec_adapter_ca_cert_path"].is_null());
+  EXPECT_TRUE(j["spec_adapter_client_cert_path"].is_null());
+  EXPECT_TRUE(j["spec_adapter_client_key_path"].is_null());
+  EXPECT_TRUE(j["spec_adapter_domain_name"].is_null());
+}
+
+TEST(Serialization, SpecAdapterConfigAbsentWhenUnset) {
+  // Missing spec_adapter_* keys deserialize as None. Writing explicit nulls
+  // is unnecessary.
+  statsig_cpp_core::StatsigOptionsBuilder builder;
+  json j;
+  to_json(j, builder);
+  EXPECT_FALSE(j.contains("spec_adapter_type"));
+  EXPECT_FALSE(j.contains("spec_adapter_url"));
+  EXPECT_FALSE(j.contains("spec_adapter_init_timeout_ms"));
+}
+
+TEST(Serialization, SpecAdapterConfigClosedPortInit) {
+  // Building options only proves the JSON parsed. A closed port must still
+  // construct StatsigGrpcSpecsAdapter and wait out init_timeout. A dropped
+  // adapter returns immediately.
+  statsig_cpp_core::StatsigOptionsBuilder builder;
+  builder.disable_all_logging = true;
+  builder.set_spec_adapter_config(statsig_cpp_core::SpecAdapterConfig(
+      statsig_cpp_core::SpecAdapterConfig::TYPE_NETWORK_GRPC_WEBSOCKET,
+      "http://127.0.0.1:59999", 1000));
+
+  statsig_cpp_core::Statsig statsig("secret-key", builder.build());
+  std::string details = statsig.initializeWithDetailsBlocking();
+  statsig.shutdownBlocking();
+
+  json parsed = json::parse(details);
+  // init_success follows background-task startup. The adapter failure is
+  // recorded on failure_details, and duration_ms shows the timeout was honored.
+  EXPECT_GE(parsed["duration_ms"].get<uint64_t>(), 700u);
+  EXPECT_FALSE(parsed["is_config_spec_ready"].get<bool>());
+  ASSERT_TRUE(parsed["failure_details"].is_object()) << details;
+  const std::string reason =
+      parsed["failure_details"]["reason"].get<std::string>();
+  const bool saw_adapter_failure =
+      reason.find("Failed to start any adapters") != std::string::npos ||
+      reason.find("Start Timeout") != std::string::npos;
+  EXPECT_TRUE(saw_adapter_failure) << details;
+}
+
 TEST(Serialization, DynamicConfig) {
   std::string json_str = R"({
         "name": "example_config",

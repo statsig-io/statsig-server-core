@@ -14,6 +14,61 @@ struct StatsigOptions {
   StatsigOptions(const uint64_t ref) { this->ref = ref; }
   ~StatsigOptions();
 };
+
+// Configuration for a specs adapter (e.g. gRPC websocket to the Forward Proxy).
+// Flattened into spec_adapter_* keys for statsig_options_create_from_data.
+// The FFI path configures this one adapter only. If the gRPC proxy is down at
+// startup, initialization fails after init_timeout. There is no HTTP specs
+// fallback.
+struct SpecAdapterConfig {
+  static constexpr const char *TYPE_NETWORK_GRPC_WEBSOCKET =
+      "network_grpc_websocket";
+  static constexpr const char *TYPE_NETWORK_HTTP = "network_http";
+
+  static constexpr const char *AUTH_NONE = "none";
+  static constexpr const char *AUTH_TLS = "tls";
+  static constexpr const char *AUTH_MTLS = "mtls";
+
+  static constexpr uint64_t DEFAULT_INIT_TIMEOUT_MS = 3000;
+
+  std::string adapter_type;
+  std::optional<std::string> specs_url;
+  uint64_t init_timeout_ms;
+  std::optional<std::string> authentication_mode;
+  std::optional<std::string> ca_cert_path;
+  std::optional<std::string> client_cert_path;
+  std::optional<std::string> client_key_path;
+  std::optional<std::string> domain_name;
+
+  // Prefer assigning optional fields by name after construction. Positional
+  // order is adapter_type, specs_url, init_timeout_ms, authentication_mode,
+  // ca_cert_path, client_cert_path, client_key_path, domain_name.
+  //
+  // SpecAdapterConfig config(SpecAdapterConfig::TYPE_NETWORK_GRPC_WEBSOCKET);
+  // config.specs_url = "http://127.0.0.1:50051";
+  // config.authentication_mode = SpecAdapterConfig::AUTH_MTLS;
+  // config.ca_cert_path = "/certs/ca.pem";
+  // config.client_cert_path = "/certs/client.pem";
+  // config.client_key_path = "/certs/client.key";
+  // config.domain_name = "proxy.example.com";
+  explicit SpecAdapterConfig(
+      std::string adapter_type,
+      std::optional<std::string> specs_url = std::nullopt,
+      std::optional<uint64_t> init_timeout_ms = std::nullopt,
+      std::optional<std::string> authentication_mode = std::nullopt,
+      std::optional<std::string> ca_cert_path = std::nullopt,
+      std::optional<std::string> client_cert_path = std::nullopt,
+      std::optional<std::string> client_key_path = std::nullopt,
+      std::optional<std::string> domain_name = std::nullopt)
+      : adapter_type(std::move(adapter_type)), specs_url(std::move(specs_url)),
+        init_timeout_ms(init_timeout_ms.value_or(DEFAULT_INIT_TIMEOUT_MS)),
+        authentication_mode(std::move(authentication_mode)),
+        ca_cert_path(std::move(ca_cert_path)),
+        client_cert_path(std::move(client_cert_path)),
+        client_key_path(std::move(client_key_path)),
+        domain_name(std::move(domain_name)) {}
+};
+
 struct StatsigOptionsBuilder {
 public:
   std::optional<std::string> specs_url;
@@ -35,6 +90,7 @@ public:
   // Non-owning: the caller owns the ObservabilityClient and must keep it alive
   // for the lifetime of the resulting Statsig instance.
   std::optional<uint64_t> observability_client_ref;
+  std::optional<SpecAdapterConfig> spec_adapter_config;
   StatsigOptionsBuilder() = default;
   StatsigOptionsBuilder &
   set_persistent_storage(const PersistentStorage &storage) {
@@ -58,6 +114,11 @@ public:
     }
     return *this;
   }
+  StatsigOptionsBuilder &
+  set_spec_adapter_config(const SpecAdapterConfig &config) {
+    spec_adapter_config = config;
+    return *this;
+  }
   StatsigOptions build();
 };
 
@@ -75,6 +136,20 @@ inline void to_json(json &j, const StatsigOptionsBuilder &b) {
            {"exposure_dedupe_max_keys", b.exposure_dedupe_max_keys},
            {"persistent_storage_ref", b.persistent_storage_ref},
            {"observability_client_ref", b.observability_client_ref}};
+  // Flatten SpecAdapterConfig into the flat spec_adapter_* keys expected by
+  // StatsigOptionsData in statsig_options_create_from_data. Both type and
+  // init_timeout_ms must be present or the core silently drops the adapter.
+  if (b.spec_adapter_config.has_value()) {
+    const SpecAdapterConfig &c = b.spec_adapter_config.value();
+    j["spec_adapter_type"] = c.adapter_type;
+    j["spec_adapter_url"] = c.specs_url;
+    j["spec_adapter_init_timeout_ms"] = c.init_timeout_ms;
+    j["spec_adapter_authentication_mode"] = c.authentication_mode;
+    j["spec_adapter_ca_cert_path"] = c.ca_cert_path;
+    j["spec_adapter_client_cert_path"] = c.client_cert_path;
+    j["spec_adapter_client_key_path"] = c.client_key_path;
+    j["spec_adapter_domain_name"] = c.domain_name;
+  }
 }
 
 struct CheckGateOptions {

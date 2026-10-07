@@ -6,7 +6,7 @@ use serde_json::json;
 use statsig_rust::{
     OverrideAdapter, Statsig, StatsigLocalOverrideAdapter, StatsigOptions, StatsigUser,
 };
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -69,6 +69,20 @@ async fn test_get_parameter_names_from_store_all_ref_types() {
     let names = statsig.get_parameter_names_from_store(&user, MIXED_STORE_NAME);
 
     assert_eq!(names, EXPECTED_MIXED_STORE_PARAM_NAMES.to_vec());
+
+    let types = statsig
+        .get_parameter_store_for_user(&user, MIXED_STORE_NAME)
+        .get_parameter_types();
+    let expected_types = BTreeMap::from([
+        ("a_bool_param".to_string(), "boolean".to_string()),
+        ("a_num_param".to_string(), "number".to_string()),
+        ("a_string_param".to_string(), "string".to_string()),
+        ("an_array_param".to_string(), "array".to_string()),
+        ("an_object_param".to_string(), "object".to_string()),
+        ("another_string_param".to_string(), "string".to_string()),
+        ("brock_an_object_param".to_string(), "object".to_string()),
+    ]);
+    assert_eq!(types, expected_types);
 
     statsig.shutdown().await.unwrap();
 }

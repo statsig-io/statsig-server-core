@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.TypeReference;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -413,6 +414,23 @@ public class Statsig {
       return parameterNames != null ? parameterNames : new ArrayList<>();
     } catch (Exception e) {
       return new ArrayList<>();
+    }
+  }
+
+  public Map<String, String> getParameterTypesFromParameterStore(
+      StatsigUser user, String parameterStoreName) {
+    String resultJSON =
+        StatsigJNI.statsigGetParameterTypesFromParameterStore(
+            ref, user.getRef(), parameterStoreName);
+    if (resultJSON == null || resultJSON.isEmpty()) {
+      return new LinkedHashMap<>();
+    }
+    try {
+      LinkedHashMap<String, String> parameterTypes =
+          JSON.parseObject(resultJSON, new TypeReference<LinkedHashMap<String, String>>() {});
+      return parameterTypes != null ? parameterTypes : new LinkedHashMap<>();
+    } catch (Exception e) {
+      return new LinkedHashMap<>();
     }
   }
 
