@@ -155,6 +155,10 @@ pub struct DynamicConfigEvaluation {
     pub is_device_based: bool,
 
     pub passed: bool,
+
+    // Legacy GCIR v1 alias of rule_id. Not the human-readable group_name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<InternedString>,
 }
 
 impl GCIRHashable for DynamicConfigEvaluation {
@@ -186,6 +190,10 @@ pub struct ExperimentEvaluation {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub explicit_parameters: Option<ExplicitParameters>,
+
+    // Legacy GCIR v1 alias of rule_id. Not the human-readable group_name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<InternedString>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group_name: Option<InternedString>,
@@ -250,6 +258,10 @@ pub struct LayerEvaluation {
     pub id_type: Option<InternedString>,
 
     pub is_device_based: bool,
+
+    // Legacy GCIR v1 alias of rule_id. Not the human-readable group_name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<InternedString>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group_name: Option<InternedString>,

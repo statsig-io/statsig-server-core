@@ -167,6 +167,7 @@ pub fn result_to_experiment_eval(
     }
 
     ExperimentEvaluation {
+        group: None,
         base: result_to_base_eval(experiment_name, result),
         id_type: Some(id_type),
         is_device_based,
@@ -255,6 +256,7 @@ pub fn eval_result_to_experiment_eval(
     let (id_type, is_device_based) = get_id_type_info(result.id_type.as_ref());
 
     ExperimentEvaluation {
+        group: None,
         base: result_to_base_eval(experiment_name, result),
         id_type: Some(id_type),
         is_device_based,
@@ -316,6 +318,7 @@ pub fn result_to_layer_eval(layer_name: &str, result: &mut EvaluatorResult) -> L
     let undelegated_sec_expos = std::mem::take(&mut result.undelegated_secondary_exposures);
 
     LayerEvaluation {
+        group: None,
         base: result_to_base_eval(layer_name, result),
         value: get_json_value(result),
         is_device_based,
@@ -454,6 +457,7 @@ pub fn result_to_dynamic_config_eval(
     let (id_type, is_device_based) = get_id_type_info(result.id_type.as_ref());
 
     DynamicConfigEvaluation {
+        group: None,
         base: result_to_base_eval(dynamic_config_name, result),
         id_type: Some(id_type),
         is_device_based,
