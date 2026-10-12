@@ -18,12 +18,16 @@ impl StatsigGlobal {
         let ptr = ONCE.get_or_init(|| ArcSwap::from_pointee(StatsigGlobal::new()));
 
         if ptr.load().pid != current_pid() {
-            ptr.store(Arc::new(StatsigGlobal::new()));
+            let stale = ptr.swap(Arc::new(StatsigGlobal::new()));
+            leak_stale_runtime(stale);
         }
 
         ptr.load().clone()
     }
 
+    /// Quiesces the runtime while its worker threads still exist. This is the
+    /// safe pre-fork path: dropping the runtime joins those threads before the
+    /// process memory is copied.
     pub fn reset() {
         log_d!(TAG, "Resetting StatsigGlobal");
         let mut did_init = false;
@@ -34,6 +38,12 @@ impl StatsigGlobal {
         });
 
         if did_init {
+            return;
+        }
+
+        if ptr.load().pid != current_pid() {
+            let stale = ptr.swap(Arc::new(StatsigGlobal::new()));
+            leak_stale_runtime(stale);
             return;
         }
 
@@ -71,8 +81,20 @@ impl StatsigGlobal {
     }
 }
 
+/// A runtime inherited by a forked child refers to worker threads and an I/O
+/// driver that do not exist in that process. Dropping it can panic or hang, so
+/// the child intentionally leaks only that stale runtime while replacing the
+/// surrounding global state.
+fn leak_stale_runtime(stale: Arc<StatsigGlobal>) {
+    if let Ok(inner) = Arc::try_unwrap(stale) {
+        if let Some(runtime) = inner.tokio_runtime.into_inner() {
+            std::mem::forget(runtime);
+        }
+    }
+}
+
 #[inline]
-fn current_pid() -> u32 {
+pub(crate) fn current_pid() -> u32 {
     #[cfg(not(target_family = "wasm"))]
     return std::process::id();
 
