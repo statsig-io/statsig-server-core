@@ -51,6 +51,7 @@ use crate::specs_response::param_store_types::Parameter;
 use crate::specs_response::spec_types::Rule;
 use crate::specs_response::specs_hash_map::SpecPointer;
 use crate::statsig_err::StatsigErr;
+use crate::statsig_global::{current_pid, current_runtime_epoch, StatsigGlobal};
 use crate::statsig_metadata::StatsigMetadata;
 use crate::statsig_options::StatsigOptions;
 use crate::statsig_runtime::StatsigRuntime;
@@ -86,7 +87,7 @@ use serde_json::json;
 use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
@@ -96,6 +97,59 @@ const TAG: &str = stringify!(Statsig);
 const ERROR_SDK_KEY: &str = "__STATSIG_ERROR_SDK_KEY__";
 const INIT_IP_TAG: &str = "INIT_COUNTRY_LOOKUP";
 const INIT_UA_TAG: &str = "INIT_UA";
+const NO_BACKGROUND_TASKS_RESTART_EPOCH: u64 = u64::MAX;
+
+struct BackgroundTasksRestartGuard {
+    restarting_epoch: Arc<AtomicU64>,
+    claimed_epoch: u64,
+}
+
+impl Drop for BackgroundTasksRestartGuard {
+    fn drop(&mut self) {
+        // A recovery cancelled by a runtime reset must release its claim, but
+        // it must not clear a newer runtime generation's replacement claim.
+        let _ = self.restarting_epoch.compare_exchange(
+            self.claimed_epoch,
+            NO_BACKGROUND_TASKS_RESTART_EPOCH,
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        );
+    }
+}
+
+#[cfg(test)]
+mod background_tasks_restart_guard_tests {
+    use super::{BackgroundTasksRestartGuard, NO_BACKGROUND_TASKS_RESTART_EPOCH};
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    #[test]
+    fn drop_releases_its_epoch_claim() {
+        let restarting_epoch = Arc::new(AtomicU64::new(7));
+
+        drop(BackgroundTasksRestartGuard {
+            restarting_epoch: restarting_epoch.clone(),
+            claimed_epoch: 7,
+        });
+
+        assert_eq!(
+            restarting_epoch.load(Ordering::SeqCst),
+            NO_BACKGROUND_TASKS_RESTART_EPOCH
+        );
+    }
+
+    #[test]
+    fn stale_drop_preserves_a_newer_epoch_claim() {
+        let restarting_epoch = Arc::new(AtomicU64::new(8));
+
+        drop(BackgroundTasksRestartGuard {
+            restarting_epoch: restarting_epoch.clone(),
+            claimed_epoch: 7,
+        });
+
+        assert_eq!(restarting_epoch.load(Ordering::SeqCst), 8);
+    }
+}
 
 lazy_static::lazy_static! {
     static ref SHARED_INSTANCE: Mutex<Option<Arc<Statsig>>> = Mutex::new(None);
@@ -124,7 +178,17 @@ pub struct Statsig {
     error_observer: Arc<dyn OpsStatsEventObserver>,
     diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
     console_capture_observer: Arc<dyn OpsStatsEventObserver>,
-    background_tasks_started: Arc<AtomicBool>,
+    /// PID that started the background loops, or 0 if none have started.
+    /// A forked child inherits this value but not the worker threads.
+    background_tasks_started_pid: Arc<AtomicU32>,
+    /// Statsig-owned runtime generation used because Tokio exposes no runtime
+    /// identity. It detects parent-side resets, where the PID does not change.
+    background_tasks_started_epoch: Arc<AtomicU64>,
+    /// Runtime epoch currently restarting background loops. Using the epoch as
+    /// the claim lets a newer runtime replace a recovery future it cancelled.
+    background_tasks_restarting_epoch: Arc<AtomicU64>,
+    /// Prevents fork recovery from restarting an explicitly shut-down instance.
+    has_been_shutdown: Arc<AtomicBool>,
     persistent_values_manager: Option<Arc<PersistentValuesManager>>,
     initialize_details: Mutex<InitializeDetails>,
 }
@@ -246,7 +310,12 @@ impl Statsig {
             error_observer,
             diagnostics_observer,
             console_capture_observer,
-            background_tasks_started: Arc::new(AtomicBool::new(false)),
+            background_tasks_started_pid: Arc::new(AtomicU32::new(0)),
+            background_tasks_started_epoch: Arc::new(AtomicU64::new(u64::MAX)),
+            background_tasks_restarting_epoch: Arc::new(AtomicU64::new(
+                NO_BACKGROUND_TASKS_RESTART_EPOCH,
+            )),
+            has_been_shutdown: Arc::new(AtomicBool::new(false)),
             persistent_values_manager,
             initialize_details: Mutex::new(InitializeDetails::default()),
             event_emitter,
@@ -379,7 +448,13 @@ impl Statsig {
             }
         };
 
+        self.has_been_shutdown.store(true, Ordering::SeqCst);
         self.statsig_runtime.shutdown();
+        self.background_tasks_started_pid.store(0, Ordering::SeqCst);
+        self.background_tasks_started_epoch
+            .store(u64::MAX, Ordering::SeqCst);
+        self.background_tasks_restarting_epoch
+            .store(NO_BACKGROUND_TASKS_RESTART_EPOCH, Ordering::SeqCst);
         shutdown_result
     }
 
@@ -566,6 +641,8 @@ impl Statsig {
         value: Option<String>,
         metadata: Option<HashMap<String, String>>,
     ) {
+        self.ensure_background_tasks_running();
+
         let user_internal = self.internalize_user(user);
 
         self.event_logger.enqueue(EnqueuePassthroughOp {
@@ -1194,6 +1271,77 @@ impl Statsig {
 // ------------------------------------------------------------------------------- [ Feature Gate ]
 
 impl Statsig {
+    /// Restarts background loops after runtime replacement. PID detects a
+    /// forked child; the runtime epoch detects a reset in the unchanged parent.
+    /// The common path returns after atomic state checks.
+    fn ensure_background_tasks_running(&self) {
+        if self.has_been_shutdown.load(Ordering::SeqCst) {
+            return;
+        }
+
+        let current_pid = current_pid();
+        if self.background_tasks_started_pid.load(Ordering::SeqCst) != current_pid {
+            // Refresh StatsigGlobal before reading the epoch in a forked child.
+            // StatsigGlobal::get detects the PID change and bumps the epoch.
+            drop(StatsigGlobal::get());
+        }
+        let current_epoch = current_runtime_epoch();
+
+        if self.background_tasks_started_pid.load(Ordering::SeqCst) == current_pid
+            && self.background_tasks_started_epoch.load(Ordering::SeqCst) == current_epoch
+        {
+            return;
+        }
+
+        // Let one caller restart the loops for this runtime generation. A
+        // newer epoch may replace a stale claim left by a cancelled future.
+        loop {
+            let claimed_epoch = self
+                .background_tasks_restarting_epoch
+                .load(Ordering::SeqCst);
+            if claimed_epoch == current_epoch {
+                return;
+            }
+            if self
+                .background_tasks_restarting_epoch
+                .compare_exchange(
+                    claimed_epoch,
+                    current_epoch,
+                    Ordering::SeqCst,
+                    Ordering::SeqCst,
+                )
+                .is_ok()
+            {
+                break;
+            }
+        }
+
+        let statsig_runtime = self.statsig_runtime.clone();
+        let runtime_for_closure = statsig_runtime.clone();
+        let id_lists_adapter = self.id_lists_adapter.inner.clone();
+        let specs_adapter = self.specs_adapter.inner.clone();
+        let ops_stats = self.ops_stats.clone();
+        let started_pid = self.background_tasks_started_pid.clone();
+        let started_epoch = self.background_tasks_started_epoch.clone();
+        let restart_guard = BackgroundTasksRestartGuard {
+            restarting_epoch: self.background_tasks_restarting_epoch.clone(),
+            claimed_epoch: current_epoch,
+        };
+
+        let _ = statsig_runtime.spawn("restart_background_tasks", move |_shutdown| async move {
+            let _restart_guard = restart_guard;
+            Self::start_background_tasks(
+                runtime_for_closure,
+                id_lists_adapter,
+                specs_adapter,
+                ops_stats,
+                started_pid,
+                started_epoch,
+            )
+            .await;
+        });
+    }
+
     pub fn check_gate(&self, user: &StatsigUser, gate_name: &str) -> bool {
         self.check_gate_with_options(user, gate_name, FeatureGateEvaluationOptions::default())
     }
@@ -1204,6 +1352,8 @@ impl Statsig {
         gate_name: &str,
         options: FeatureGateEvaluationOptions,
     ) -> bool {
+        self.ensure_background_tasks_running();
+
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
         let (details, evaluation) = self.get_gate_evaluation(
@@ -2074,9 +2224,14 @@ impl Statsig {
         id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
         specs_adapter: Arc<dyn SpecsAdapter>,
         ops_stats: Arc<OpsStatsForInstance>,
-        bg_tasks_started: Arc<AtomicBool>,
+        bg_tasks_started_pid: Arc<AtomicU32>,
+        bg_tasks_started_epoch: Arc<AtomicU64>,
     ) -> bool {
-        if bg_tasks_started.load(Ordering::SeqCst) {
+        let current_pid = current_pid();
+        let current_epoch = current_runtime_epoch();
+        if bg_tasks_started_pid.load(Ordering::SeqCst) == current_pid
+            && bg_tasks_started_epoch.load(Ordering::SeqCst) == current_epoch
+        {
             return true;
         }
 
@@ -2108,7 +2263,8 @@ impl Statsig {
             );
         }
 
-        bg_tasks_started.store(true, Ordering::SeqCst);
+        bg_tasks_started_pid.store(current_pid, Ordering::SeqCst);
+        bg_tasks_started_epoch.store(current_epoch, Ordering::SeqCst);
 
         success
     }
@@ -2126,7 +2282,8 @@ impl Statsig {
         let id_lists_adapter = self.id_lists_adapter.inner.clone();
         let specs_adapter = self.specs_adapter.inner.clone();
         let ops_stats = self.ops_stats.clone();
-        let background_tasks_started = self.background_tasks_started.clone();
+        let background_tasks_started_pid = self.background_tasks_started_pid.clone();
+        let background_tasks_started_epoch = self.background_tasks_started_epoch.clone();
         // Create another clone specifically for the closure
         let statsig_runtime_for_closure = statsig_runtime.clone();
 
@@ -2143,7 +2300,8 @@ impl Statsig {
                             id_lists_adapter,
                             specs_adapter,
                             ops_stats,
-                            background_tasks_started,
+                            background_tasks_started_pid,
+                            background_tasks_started_epoch,
                         ).await;
                     }
                 )?;
@@ -2153,6 +2311,9 @@ impl Statsig {
     }
 
     async fn initialize_impl_with_details(&self) -> Result<InitializeDetails, StatsigErr> {
+        // Explicit initialization may revive a shut-down instance.
+        self.has_been_shutdown.store(false, Ordering::SeqCst);
+
         let start_time = Instant::now();
         self.spec_store.set_source(SpecsSource::Loading);
         self.specs_adapter.inner.initialize(self.spec_store.clone());
@@ -2274,7 +2435,8 @@ impl Statsig {
             self.id_lists_adapter.inner.clone(),
             self.specs_adapter.inner.clone(),
             self.ops_stats.clone(),
-            self.background_tasks_started.clone(),
+            self.background_tasks_started_pid.clone(),
+            self.background_tasks_started_epoch.clone(),
         )
         .await;
 

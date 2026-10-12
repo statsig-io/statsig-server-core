@@ -7,8 +7,10 @@ use statsig_rust::{
 };
 use std::fs;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
+use tokio::sync::Notify;
 
 pub struct MockSpecsAdapter {
     json_data_path: String,
@@ -16,6 +18,9 @@ pub struct MockSpecsAdapter {
     delay_ms: Option<u64>,
     sdk_configs: Option<Map<String, Value>>,
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
+    background_sync_calls: AtomicUsize,
+    blocked_background_sync_call: Option<usize>,
+    background_sync_release: Notify,
 }
 
 impl MockSpecsAdapter {
@@ -26,6 +31,9 @@ impl MockSpecsAdapter {
             delay_ms: None,
             sdk_configs: None,
             listener: RwLock::new(None),
+            background_sync_calls: AtomicUsize::new(0),
+            blocked_background_sync_call: None,
+            background_sync_release: Notify::new(),
         }
     }
 
@@ -36,6 +44,9 @@ impl MockSpecsAdapter {
             delay_ms: None,
             sdk_configs: Some(sdk_configs),
             listener: RwLock::new(None),
+            background_sync_calls: AtomicUsize::new(0),
+            blocked_background_sync_call: None,
+            background_sync_release: Notify::new(),
         }
     }
 
@@ -46,6 +57,9 @@ impl MockSpecsAdapter {
             delay_ms: None,
             sdk_configs: None,
             listener: RwLock::new(None),
+            background_sync_calls: AtomicUsize::new(0),
+            blocked_background_sync_call: None,
+            background_sync_release: Notify::new(),
         }
     }
 
@@ -56,7 +70,31 @@ impl MockSpecsAdapter {
             delay_ms: Some(delay_ms),
             sdk_configs: None,
             listener: RwLock::new(None),
+            background_sync_calls: AtomicUsize::new(0),
+            blocked_background_sync_call: None,
+            background_sync_release: Notify::new(),
         }
+    }
+
+    pub fn with_blocked_background_sync(path: &str, call: usize) -> Self {
+        Self {
+            json_data_path: path.to_string(),
+            should_throw: false,
+            delay_ms: None,
+            sdk_configs: None,
+            listener: RwLock::new(None),
+            background_sync_calls: AtomicUsize::new(0),
+            blocked_background_sync_call: Some(call),
+            background_sync_release: Notify::new(),
+        }
+    }
+
+    pub fn background_sync_calls(&self) -> usize {
+        self.background_sync_calls.load(Ordering::SeqCst)
+    }
+
+    pub fn release_background_sync(&self) {
+        self.background_sync_release.notify_waiters();
     }
 
     pub async fn resync(&self) -> Result<(), StatsigErr> {
@@ -144,6 +182,11 @@ impl SpecsAdapter for MockSpecsAdapter {
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
+        let call = self.background_sync_calls.fetch_add(1, Ordering::SeqCst) + 1;
+        if self.blocked_background_sync_call == Some(call) {
+            tokio::task::yield_now().await;
+            self.background_sync_release.notified().await;
+        }
         Ok(())
     }
 

@@ -1,12 +1,27 @@
 use crate::{log_d, log_e};
 use arc_swap::ArcSwap;
 use parking_lot::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock};
 use tokio::runtime::{Handle, Runtime};
 
 const TAG: &str = "StatsigGlobal";
 
 static ONCE: OnceLock<ArcSwap<StatsigGlobal>> = OnceLock::new();
+
+/// Statsig-owned runtime generation; Tokio exposes no runtime identity.
+/// Unlike a PID, this changes when the parent resets its runtime before a fork.
+static RUNTIME_EPOCH: AtomicU64 = AtomicU64::new(0);
+
+#[inline]
+pub(crate) fn current_runtime_epoch() -> u64 {
+    RUNTIME_EPOCH.load(AtomicOrdering::SeqCst)
+}
+
+#[inline]
+fn bump_runtime_epoch() {
+    RUNTIME_EPOCH.fetch_add(1, AtomicOrdering::SeqCst);
+}
 
 pub struct StatsigGlobal {
     pub tokio_runtime: Mutex<Option<Arc<Runtime>>>,
@@ -19,15 +34,17 @@ impl StatsigGlobal {
 
         if ptr.load().pid != current_pid() {
             let stale = ptr.swap(Arc::new(StatsigGlobal::new()));
+            bump_runtime_epoch();
             leak_stale_runtime(stale);
         }
 
         ptr.load().clone()
     }
 
-    /// Quiesces the runtime while its worker threads still exist. This is the
-    /// safe pre-fork path: dropping the runtime joins those threads before the
-    /// process memory is copied.
+    /// Quiesces the runtime before a fork while its worker threads still exist.
+    /// Normal drop joins them before the heap is copied, so the child cannot
+    /// inherit locks whose owning threads disappeared. The runtime is rebuilt
+    /// lazily on the next SDK call.
     pub fn reset() {
         log_d!(TAG, "Resetting StatsigGlobal");
         let mut did_init = false;
@@ -43,11 +60,13 @@ impl StatsigGlobal {
 
         if ptr.load().pid != current_pid() {
             let stale = ptr.swap(Arc::new(StatsigGlobal::new()));
+            bump_runtime_epoch();
             leak_stale_runtime(stale);
             return;
         }
 
         ptr.store(Arc::new(StatsigGlobal::new()));
+        bump_runtime_epoch();
     }
 
     /// Stops the shared tokio runtime, joining its worker threads.
@@ -81,16 +100,17 @@ impl StatsigGlobal {
     }
 }
 
-/// A runtime inherited by a forked child refers to worker threads and an I/O
-/// driver that do not exist in that process. Dropping it can panic or hang, so
-/// the child intentionally leaks only that stale runtime while replacing the
-/// surrounding global state.
+/// Leaks only the child's stale post-fork runtime. Its worker threads and I/O
+/// driver no longer exist, so dropping it can panic or hang while signaling or
+/// joining them. This is a one-time cost per fork; pre-fork `reset()` drops the
+/// live runtime normally.
 fn leak_stale_runtime(stale: Arc<StatsigGlobal>) {
     if let Ok(inner) = Arc::try_unwrap(stale) {
         if let Some(runtime) = inner.tokio_runtime.into_inner() {
             std::mem::forget(runtime);
         }
     }
+    // If another reference exists, leave it alone rather than force a drop.
 }
 
 #[inline]
