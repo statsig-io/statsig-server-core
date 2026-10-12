@@ -98,6 +98,9 @@ const ERROR_SDK_KEY: &str = "__STATSIG_ERROR_SDK_KEY__";
 const INIT_IP_TAG: &str = "INIT_COUNTRY_LOOKUP";
 const INIT_UA_TAG: &str = "INIT_UA";
 const NO_BACKGROUND_TASKS_RESTART_EPOCH: u64 = u64::MAX;
+// Celery terminates worker-process-init handlers that block for roughly four
+// seconds. Keep explicit post-fork recovery inside that startup budget.
+const POST_FORK_RESTART_TIMEOUT: Duration = Duration::from_secs(3);
 
 struct BackgroundTasksRestartGuard {
     restarting_epoch: Arc<AtomicU64>,
@@ -1277,28 +1280,41 @@ impl Statsig {
     /// forked child; the runtime epoch detects a reset in the unchanged parent.
     /// The common path returns after atomic state checks.
     fn ensure_background_tasks_running(&self) {
-        self.restart_background_tasks(false);
+        self.restart_background_tasks(false, None);
     }
 
     /// Restores this instance's background loops after a process fork and
     /// waits only until those loops have been scheduled. Any config or ID-list
     /// network work continues asynchronously on the new runtime.
     pub fn restart_background_tasks_after_fork(&self) -> bool {
-        self.restart_background_tasks(true)
+        self.restart_background_tasks(true, Some(POST_FORK_RESTART_TIMEOUT))
     }
 
-    fn restart_background_tasks(&self, after_fork: bool) -> bool {
+    /// Variant used by host lifecycle integrations that share one deadline
+    /// across multiple live SDK instances.
+    pub fn restart_background_tasks_after_fork_with_timeout(&self, timeout: Duration) -> bool {
+        self.restart_background_tasks(true, Some(timeout))
+    }
+
+    fn restart_background_tasks(
+        &self,
+        after_fork: bool,
+        scheduling_timeout: Option<Duration>,
+    ) -> bool {
         if self.has_been_shutdown.load(Ordering::SeqCst) {
             return true;
         }
 
         let current_pid = current_pid();
-        if self.background_tasks_started_pid.load(Ordering::SeqCst) != current_pid {
+        let process_changed =
+            self.background_tasks_started_pid.load(Ordering::SeqCst) != current_pid;
+        if process_changed {
             // Refresh StatsigGlobal before reading the epoch in a forked child.
             // StatsigGlobal::get detects the PID change and bumps the epoch.
             drop(StatsigGlobal::get());
         }
         let current_epoch = current_runtime_epoch();
+        let schedule_immediate_refresh = after_fork || process_changed;
 
         if self.background_tasks_started_pid.load(Ordering::SeqCst) == current_pid
             && self.background_tasks_started_epoch.load(Ordering::SeqCst) == current_epoch
@@ -1313,8 +1329,9 @@ impl Statsig {
                 .background_tasks_restarting_epoch
                 .load(Ordering::SeqCst);
             if claimed_epoch == current_epoch {
-                return !after_fork
-                    || self.wait_for_background_task_restart(current_pid, current_epoch);
+                return scheduling_timeout.is_none_or(|timeout| {
+                    self.wait_for_background_task_restart(current_pid, current_epoch, timeout)
+                });
             }
             if self
                 .background_tasks_restarting_epoch
@@ -1341,7 +1358,7 @@ impl Statsig {
             restarting_epoch: self.background_tasks_restarting_epoch.clone(),
             claimed_epoch: current_epoch,
         };
-        let (scheduled_tx, scheduled_rx) = if after_fork {
+        let (scheduled_tx, scheduled_rx) = if scheduling_timeout.is_some() {
             let (tx, rx) = mpsc::sync_channel(1);
             (Some(tx), Some(rx))
         } else {
@@ -1358,7 +1375,7 @@ impl Statsig {
                     ops_stats,
                     started_pid,
                     started_epoch,
-                    after_fork,
+                    schedule_immediate_refresh,
                 )
                 .await;
                 if let Some(tx) = scheduled_tx {
@@ -1370,11 +1387,19 @@ impl Statsig {
             return false;
         }
 
-        scheduled_rx.is_none_or(|rx| rx.recv_timeout(Duration::from_secs(5)).unwrap_or(false))
+        scheduled_rx.is_none_or(|rx| {
+            rx.recv_timeout(scheduling_timeout.unwrap_or_default())
+                .unwrap_or(false)
+        })
     }
 
-    fn wait_for_background_task_restart(&self, current_pid: u32, current_epoch: u64) -> bool {
-        let deadline = Instant::now() + Duration::from_secs(5);
+    fn wait_for_background_task_restart(
+        &self,
+        current_pid: u32,
+        current_epoch: u64,
+        timeout: Duration,
+    ) -> bool {
+        let deadline = Instant::now() + timeout;
         while Instant::now() < deadline {
             if self.background_tasks_started_pid.load(Ordering::SeqCst) == current_pid
                 && self.background_tasks_started_epoch.load(Ordering::SeqCst) == current_epoch

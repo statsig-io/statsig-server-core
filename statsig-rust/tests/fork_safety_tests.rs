@@ -6,7 +6,8 @@ use statsig_rust::statsig_global::StatsigGlobal;
 use statsig_rust::{SpecsUpdateListener, Statsig, StatsigOptions, StatsigUser};
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Barrier};
+use std::thread;
 use std::time::{Duration, Instant};
 use utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
@@ -51,6 +52,14 @@ fn wait_for_sync_calls(adapter: &MockSpecsAdapter, expected: usize) -> bool {
         std::thread::sleep(Duration::from_millis(10));
     }
     adapter.background_sync_calls() >= expected
+}
+
+fn wait_for_post_fork_sync_calls(adapter: &MockSpecsAdapter, expected: usize) -> bool {
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while adapter.post_fork_background_sync_calls() < expected && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    adapter.post_fork_background_sync_calls() >= expected
 }
 
 fn shutdown(statsig: &Statsig) {
@@ -143,7 +152,7 @@ fn forked_child_replaces_an_inherited_in_flight_restart_claim() {
 
     if child_pid == 0 {
         let _ = statsig.check_gate(&user, "test_public");
-        let exit_code = if wait_for_sync_calls(&specs_adapter, 3) {
+        let exit_code = if wait_for_post_fork_sync_calls(&specs_adapter, 1) {
             0
         } else {
             1
@@ -173,6 +182,61 @@ fn explicit_postfork_restart_schedules_tasks_without_an_evaluation() {
 
     assert_eq!(specs_adapter.background_sync_calls(), 1);
     assert_eq!(specs_adapter.post_fork_background_sync_calls(), 1);
+    shutdown(&statsig);
+}
+
+#[test]
+#[serial]
+fn repeated_explicit_and_lazy_recovery_schedule_one_postfork_sync() {
+    let (statsig, specs_adapter, user) = setup();
+
+    StatsigGlobal::reset();
+    assert!(statsig.restart_background_tasks_after_fork());
+
+    let barrier = Arc::new(Barrier::new(9));
+    thread::scope(|scope| {
+        for _ in 0..8 {
+            let statsig = statsig.clone();
+            let user = user.clone();
+            let barrier = barrier.clone();
+            scope.spawn(move || {
+                barrier.wait();
+                assert!(statsig.restart_background_tasks_after_fork());
+                let _ = statsig.check_gate(&user, "test_public");
+            });
+        }
+        barrier.wait();
+    });
+
+    assert_eq!(specs_adapter.background_sync_calls(), 1);
+    assert_eq!(specs_adapter.post_fork_background_sync_calls(), 1);
+    shutdown(&statsig);
+}
+
+#[test]
+#[serial]
+fn concurrent_lazy_recovery_schedules_one_background_sync() {
+    let (statsig, specs_adapter, user) = setup();
+
+    StatsigGlobal::reset();
+    let barrier = Arc::new(Barrier::new(17));
+    thread::scope(|scope| {
+        for _ in 0..16 {
+            let statsig = statsig.clone();
+            let user = user.clone();
+            let barrier = barrier.clone();
+            scope.spawn(move || {
+                barrier.wait();
+                let _ = statsig.check_gate(&user, "test_public");
+            });
+        }
+        barrier.wait();
+    });
+
+    assert!(wait_for_sync_calls(&specs_adapter, 2));
+    thread::sleep(Duration::from_millis(100));
+    assert_eq!(specs_adapter.background_sync_calls(), 2);
+    assert_eq!(specs_adapter.post_fork_background_sync_calls(), 0);
     shutdown(&statsig);
 }
 
@@ -325,7 +389,7 @@ fn forked_child_rebuilds_runtime_for_an_inherited_instance() {
 
     if child_pid == 0 {
         let _ = statsig.check_gate(&user, "test_public");
-        let exit_code = if wait_for_sync_calls(&specs_adapter, 2) {
+        let exit_code = if wait_for_post_fork_sync_calls(&specs_adapter, 1) {
             0
         } else {
             1
