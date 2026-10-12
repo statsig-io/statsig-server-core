@@ -192,31 +192,39 @@ impl OpsStatsForInstance {
         &self,
         runtime: Arc<StatsigRuntime>,
         observer: Weak<dyn OpsStatsEventObserver>,
-    ) {
+    ) -> bool {
         let mut rx = self.sender.subscribe();
         let shutdown_notify = self.shutdown_notify.clone();
-        let _ = runtime.spawn("opts_stats_listen_for", |rt_shutdown_notify| async move {
-            loop {
-                tokio::select! {
-                    event = rx.recv() => {
-                        let observer = match observer.upgrade() {
-                            Some(observer) => observer,
-                            None => break,
-                        };
+        let spawn_result =
+            runtime.spawn("opts_stats_listen_for", |rt_shutdown_notify| async move {
+                loop {
+                    tokio::select! {
+                        event = rx.recv() => {
+                            let observer = match observer.upgrade() {
+                                Some(observer) => observer,
+                                None => break,
+                            };
 
-                        if let Ok(event) = event {
-                            observer.handle_event(event).await;
+                            if let Ok(event) = event {
+                                observer.handle_event(event).await;
+                            }
+                        }
+                        () = rt_shutdown_notify.notified() => {
+                            break;
+                        }
+                        () = shutdown_notify.notified() => {
+                            break;
                         }
                     }
-                    () = rt_shutdown_notify.notified() => {
-                        break;
-                    }
-                    () = shutdown_notify.notified() => {
-                        break;
-                    }
                 }
-            }
-        });
+            });
+
+        if let Err(e) = spawn_result {
+            log_e!(TAG, "Failed to spawn OpsStats observer task: {e}");
+            return false;
+        }
+
+        true
     }
 }
 

@@ -216,6 +216,25 @@ impl StatsigRuntime {
             .collect()
     }
 
+    #[cfg(feature = "with_grpc")]
+    pub(crate) fn has_running_task(&self, tag: &str, handle_id: &tokio::task::Id) -> bool {
+        let spawned_tasks = self.current_spawned_tasks();
+        let tasks = match spawned_tasks.try_lock_for(Duration::from_secs(5)) {
+            Some(lock) => lock,
+            None => {
+                log_e!(TAG, "Failed to lock spawned tasks for has_running_task");
+                return false;
+            }
+        };
+
+        tasks
+            .get(&TaskId {
+                tag: tag.to_string(),
+                tokio_id: *handle_id,
+            })
+            .is_some_and(|handle| !handle.is_finished())
+    }
+
     fn insert_join_handle(&self, tag: &str, handle: JoinHandle<()>) -> tokio::task::Id {
         let handle_id = handle.id();
         let task_id = TaskId {

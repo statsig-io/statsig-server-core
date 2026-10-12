@@ -22,6 +22,7 @@ pub struct MockSpecsAdapter {
     blocked_background_sync_call: Option<usize>,
     background_sync_release: Notify,
     post_fork_background_sync_calls: AtomicUsize,
+    post_fork_background_sync_failures_remaining: AtomicUsize,
 }
 
 impl MockSpecsAdapter {
@@ -36,6 +37,7 @@ impl MockSpecsAdapter {
             blocked_background_sync_call: None,
             background_sync_release: Notify::new(),
             post_fork_background_sync_calls: AtomicUsize::new(0),
+            post_fork_background_sync_failures_remaining: AtomicUsize::new(0),
         }
     }
 
@@ -50,6 +52,7 @@ impl MockSpecsAdapter {
             blocked_background_sync_call: None,
             background_sync_release: Notify::new(),
             post_fork_background_sync_calls: AtomicUsize::new(0),
+            post_fork_background_sync_failures_remaining: AtomicUsize::new(0),
         }
     }
 
@@ -64,6 +67,7 @@ impl MockSpecsAdapter {
             blocked_background_sync_call: None,
             background_sync_release: Notify::new(),
             post_fork_background_sync_calls: AtomicUsize::new(0),
+            post_fork_background_sync_failures_remaining: AtomicUsize::new(0),
         }
     }
 
@@ -78,6 +82,7 @@ impl MockSpecsAdapter {
             blocked_background_sync_call: None,
             background_sync_release: Notify::new(),
             post_fork_background_sync_calls: AtomicUsize::new(0),
+            post_fork_background_sync_failures_remaining: AtomicUsize::new(0),
         }
     }
 
@@ -92,6 +97,7 @@ impl MockSpecsAdapter {
             blocked_background_sync_call: Some(call),
             background_sync_release: Notify::new(),
             post_fork_background_sync_calls: AtomicUsize::new(0),
+            post_fork_background_sync_failures_remaining: AtomicUsize::new(0),
         }
     }
 
@@ -105,6 +111,11 @@ impl MockSpecsAdapter {
 
     pub fn post_fork_background_sync_calls(&self) -> usize {
         self.post_fork_background_sync_calls.load(Ordering::SeqCst)
+    }
+
+    pub fn fail_next_post_fork_background_sync(&self) {
+        self.post_fork_background_sync_failures_remaining
+            .store(1, Ordering::SeqCst);
     }
 
     pub async fn resync(&self) -> Result<(), StatsigErr> {
@@ -206,6 +217,15 @@ impl SpecsAdapter for MockSpecsAdapter {
     ) -> Result<(), StatsigErr> {
         self.post_fork_background_sync_calls
             .fetch_add(1, Ordering::SeqCst);
+        if self
+            .post_fork_background_sync_failures_remaining
+            .swap(0, Ordering::SeqCst)
+            > 0
+        {
+            return Err(StatsigErr::CustomError(
+                "post-fork background sync failed".to_string(),
+            ));
+        }
         Ok(())
     }
 

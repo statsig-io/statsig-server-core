@@ -15,6 +15,7 @@ use async_trait::async_trait;
 use chrono::Utc;
 use parking_lot::RwLock;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 use tokio::sync::Notify;
@@ -42,6 +43,7 @@ pub struct StatsigHttpIdListsAdapter {
     request_timeout_ms: u64,
     ops_stats: Arc<OpsStatsForInstance>,
     shutdown_notify: Arc<Notify>,
+    shutdown_generation: AtomicU64,
 }
 
 impl StatsigHttpIdListsAdapter {
@@ -85,10 +87,17 @@ impl StatsigHttpIdListsAdapter {
             request_timeout_ms: options.id_lists_request_timeout_ms.unwrap_or(0),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             shutdown_notify: Arc::new(Notify::new()),
+            shutdown_generation: AtomicU64::new(0),
         }
     }
 
     pub fn force_shutdown(&self) {
+        self.signal_shutdown();
+    }
+
+    fn signal_shutdown(&self) {
+        self.shutdown_generation.fetch_add(1, Ordering::SeqCst);
+        self.shutdown_notify.notify_waiters();
         self.shutdown_notify.notify_one();
     }
 
@@ -603,7 +612,7 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
     }
 
     async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
-        self.shutdown_notify.notify_one();
+        self.signal_shutdown();
         Ok(())
     }
 
@@ -613,6 +622,7 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
     ) -> Result<(), StatsigErr> {
         let weak_self = Arc::downgrade(&self);
         let interval_duration = self.sync_interval_duration;
+        let shutdown_generation = self.shutdown_generation.load(Ordering::SeqCst);
 
         statsig_runtime.spawn(
             "http_id_list_bg_sync",
@@ -627,8 +637,12 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
                             break;
                         },
                         () = self.shutdown_notify.notified() => {
-                            log_d!(TAG, "Shutting down id list background sync");
-                            break;
+                            if self.shutdown_generation.load(Ordering::SeqCst)
+                                != shutdown_generation
+                            {
+                                log_d!(TAG, "Shutting down id list background sync");
+                                break;
+                            }
                         }
                     }
                 }

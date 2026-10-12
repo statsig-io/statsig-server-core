@@ -16,6 +16,7 @@ use async_trait::async_trait;
 use chrono::Utc;
 use parking_lot::RwLock;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Notify;
 use tokio::time::{self, sleep};
@@ -29,6 +30,7 @@ pub struct StatsigDataStoreSpecsAdapter {
     ops_stats: Arc<OpsStatsForInstance>,
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
     shutdown_notify: Arc<Notify>,
+    shutdown_generation: AtomicU64,
 }
 
 struct CachedSpecs {
@@ -57,6 +59,7 @@ impl StatsigDataStoreSpecsAdapter {
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             listener: RwLock::new(None),
             shutdown_notify: Arc::new(Notify::new()),
+            shutdown_generation: AtomicU64::new(0),
         }
     }
 }
@@ -121,6 +124,8 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         timeout: Duration,
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
+        self.shutdown_generation.fetch_add(1, Ordering::SeqCst);
+        self.shutdown_notify.notify_waiters();
         self.shutdown_notify.notify_one();
         time::timeout(timeout, async { self.data_store.shutdown().await })
             .await
@@ -149,6 +154,7 @@ impl StatsigDataStoreSpecsAdapter {
         }
 
         let weak_self = Arc::downgrade(&self);
+        let shutdown_generation = self.shutdown_generation.load(Ordering::SeqCst);
 
         statsig_runtime.spawn(
             "data_store_specs_adapter",
@@ -161,7 +167,11 @@ impl StatsigDataStoreSpecsAdapter {
                 };
 
                 strong_self
-                    .execute_background_sync(&rt_shutdown_notify, sync_immediately)
+                    .execute_background_sync(
+                        &rt_shutdown_notify,
+                        sync_immediately,
+                        shutdown_generation,
+                    )
                     .await;
             },
         )?;
@@ -305,6 +315,7 @@ impl StatsigDataStoreSpecsAdapter {
         &self,
         rt_shutdown_notify: &Arc<Notify>,
         sync_immediately: bool,
+        shutdown_generation: u64,
     ) {
         if sync_immediately {
             self.execute_background_sync_impl().await;
@@ -318,8 +329,10 @@ impl StatsigDataStoreSpecsAdapter {
                     break;
                 }
                 () = self.shutdown_notify.notified() => {
-                    log_d!(TAG, "Shutting down specs background sync");
-                    break;
+                    if self.shutdown_generation.load(Ordering::SeqCst) != shutdown_generation {
+                        log_d!(TAG, "Shutting down specs background sync");
+                        break;
+                    }
                 }
             }
         }

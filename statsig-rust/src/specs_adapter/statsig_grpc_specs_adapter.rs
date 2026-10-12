@@ -7,9 +7,10 @@ use crate::{
     log_d, log_e, log_error_to_statsig_and_console, log_w, SpecAdapterConfig, SpecsAdapter,
     SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigOptions, StatsigRuntime,
 };
+use arc_swap::ArcSwapOption;
 use async_trait::async_trait;
 use chrono::Utc;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use sigstat_grpc::statsig_grpc_client::StatsigGrpcClient;
 use std::cmp;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -30,14 +31,20 @@ struct StreamingRetryState {
     is_retrying: AtomicBool,
 }
 
+struct ProcessLocalGrpcTask {
+    pid: u32,
+    handle_id: tokio::task::Id,
+}
+
 const TAG: &str = stringify!(StatsigGrpcSpecsAdapter);
 const BG_TASK_TAG: &str = "grpc_streaming";
 
 pub struct StatsigGrpcSpecsAdapter {
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
     shutdown_notify: Arc<Notify>,
+    shutdown_generation: Arc<AtomicU64>,
     initialization_tx: Arc<broadcast::Sender<Result<(), StatsigErr>>>,
-    task_handle_id: Mutex<Option<tokio::task::Id>>,
+    task_handle: ArcSwapOption<ProcessLocalGrpcTask>,
     grpc_client: StatsigGrpcClient,
     retry_state: StreamingRetryState,
     init_timeout: Duration,
@@ -58,7 +65,7 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
             .spawn_grpc_streaming_thread(statsig_runtime, self.ops_stats.clone())
             .await?;
 
-        self.set_task_handle_id(handle_id)?;
+        self.set_task_handle(handle_id);
         let mut rx = self.initialization_tx.subscribe();
         match timeout(self.init_timeout, rx.recv()).await {
             Ok(res) => match res {
@@ -78,33 +85,19 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        match self.task_handle_id.try_lock_for(Duration::from_secs(5)) {
-            Some(lock) => {
-                if lock.is_some() {
-                    return Ok(());
-                }
-            }
-            None => {
-                log_w!(TAG, "Failed to lock task_handle_id");
-                return Err(StatsigErr::LockFailure(
-                    "Failed to lock task_handle_id".to_string(),
-                ));
-            }
-        };
+        if self.task_handle.load_full().is_some_and(|task| {
+            task.pid == std::process::id()
+                && statsig_runtime.has_running_task(BG_TASK_TAG, &task.handle_id)
+        }) {
+            return Ok(());
+        }
 
         let task_id = self
             .clone()
             .spawn_grpc_streaming_thread(statsig_runtime, self.ops_stats.clone())
             .await?;
 
-        match self.task_handle_id.try_lock_for(Duration::from_secs(5)) {
-            Some(mut lock) => {
-                *lock = Some(task_id);
-            }
-            None => {
-                log_w!(TAG, "Failed to lock task_handle_id");
-            }
-        }
+        self.set_task_handle(task_id);
 
         Ok(())
     }
@@ -131,23 +124,18 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
         timeout: Duration,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        self.shutdown_notify.notify_one();
+        self.signal_shutdown();
 
-        let opt_handle_id = match self.task_handle_id.try_lock_for(Duration::from_secs(5)) {
-            Some(mut lock) => lock.take(),
-            None => {
-                log_w!(TAG, "Failed to lock task_handle_id");
-                return Err(StatsigErr::LockFailure(
-                    "Failed to lock task_handle_id".to_string(),
-                ));
-            }
-        };
-
-        let handle_id = match opt_handle_id {
-            Some(handle_id) => handle_id,
+        let handle_id = match self.task_handle.swap(None) {
+            Some(task) if task.pid == std::process::id() => task.handle_id,
             None => {
                 return Err(StatsigErr::ThreadFailure(
                     "No running task found".to_string(),
+                ));
+            }
+            Some(_) => {
+                return Err(StatsigErr::ThreadFailure(
+                    "No running task found for this process".to_string(),
                 ));
             }
         };
@@ -183,7 +171,8 @@ impl StatsigGrpcSpecsAdapter {
         Self {
             listener: RwLock::new(None),
             shutdown_notify: Arc::new(Notify::new()),
-            task_handle_id: Mutex::new(None),
+            shutdown_generation: Arc::new(AtomicU64::new(0)),
+            task_handle: ArcSwapOption::empty(),
             grpc_client: StatsigGrpcClient::new(
                 sdk_key,
                 &config.specs_url.clone().unwrap_or("INVALID".to_owned()),
@@ -210,6 +199,8 @@ impl StatsigGrpcSpecsAdapter {
         http_spec_adapter: Arc<StatsigHttpSpecsAdapter>,
         cancel_notify: Arc<Notify>,
         shutdown_notify: Arc<Notify>,
+        shutdown_generation: Arc<AtomicU64>,
+        current_shutdown_generation: u64,
     ) {
         let weak_http_adapter = Arc::downgrade(&http_spec_adapter);
         tokio::task::spawn(async move {
@@ -228,8 +219,12 @@ impl StatsigGrpcSpecsAdapter {
                         break;
                     }
                     _ = shutdown_notify.notified() => {
-                        log_d!(TAG, "Shutting down grpc fallback specs background sync");
-                        break;
+                        if shutdown_generation.load(Ordering::SeqCst)
+                            != current_shutdown_generation
+                        {
+                            log_d!(TAG, "Shutting down grpc fallback specs background sync");
+                            break;
+                        }
                     }
                 }
             }
@@ -242,10 +237,14 @@ impl StatsigGrpcSpecsAdapter {
         ops_stats: Arc<OpsStatsForInstance>,
     ) -> Result<tokio::task::Id, StatsigErr> {
         let weak_self = Arc::downgrade(&self);
+        let shutdown_generation = self.shutdown_generation.load(Ordering::SeqCst);
 
-        statsig_runtime.spawn(BG_TASK_TAG, |_shutdown_notify| async move {
+        statsig_runtime.spawn(BG_TASK_TAG, move |_shutdown_notify| async move {
             if let Some(strong_self) = weak_self.upgrade() {
-                if let Err(e) = strong_self.run_retryable_grpc_stream().await {
+                if let Err(e) = strong_self
+                    .run_retryable_grpc_stream(shutdown_generation)
+                    .await
+                {
                     log_error_to_statsig_and_console!(
                         &ops_stats,
                         TAG,
@@ -264,7 +263,7 @@ impl StatsigGrpcSpecsAdapter {
         })
     }
 
-    async fn run_retryable_grpc_stream(&self) -> Result<(), StatsigErr> {
+    async fn run_retryable_grpc_stream(&self, shutdown_generation: u64) -> Result<(), StatsigErr> {
         loop {
             tokio::select! {
                 result = self.handle_grpc_request_stream() => {
@@ -276,7 +275,13 @@ impl StatsigGrpcSpecsAdapter {
                         }
                         if attempt == FALL_BACK_TO_POLLING_THREASHOLD {
                             log_d!(TAG, "SFP is not reachable after {} tries: Falling back to polling from statsig", FALL_BACK_TO_POLLING_THREASHOLD);
-                            Self::spawn_poll_from_statsig_thread(self.http_specs_adapter.clone(), self.cancel_poll_notify.clone(), self.shutdown_notify.clone());
+                            Self::spawn_poll_from_statsig_thread(
+                                self.http_specs_adapter.clone(),
+                                self.cancel_poll_notify.clone(),
+                                self.shutdown_notify.clone(),
+                                self.shutdown_generation.clone(),
+                                shutdown_generation,
+                            );
                         }
                         self.grpc_client.reset_client();
 
@@ -294,12 +299,20 @@ impl StatsigGrpcSpecsAdapter {
                     }
                 },
                 _ = self.shutdown_notify.notified() => {
-                    log_d!(TAG, "Received shutdown signal, stopping stream listener.");
-                    break;
+                    if self.shutdown_generation.load(Ordering::SeqCst) != shutdown_generation {
+                        log_d!(TAG, "Received shutdown signal, stopping stream listener.");
+                        break;
+                    }
                 }
             }
         }
         Ok(())
+    }
+
+    fn signal_shutdown(&self) {
+        self.shutdown_generation.fetch_add(1, Ordering::SeqCst);
+        self.shutdown_notify.notify_waiters();
+        self.shutdown_notify.notify_one();
     }
 
     async fn handle_grpc_request_stream(&self) -> Result<(), StatsigErr> {
@@ -350,19 +363,11 @@ impl StatsigGrpcSpecsAdapter {
         }
     }
 
-    fn set_task_handle_id(&self, handle_id: tokio::task::Id) -> Result<(), StatsigErr> {
-        match self.task_handle_id.try_lock_for(Duration::from_secs(5)) {
-            Some(mut lock) => {
-                *lock = Some(handle_id);
-                Ok(())
-            }
-            None => {
-                log_w!(TAG, "Failed to lock task_handle_id");
-                Err(StatsigErr::LockFailure(
-                    "Failed to lock task_handle_id".to_string(),
-                ))
-            }
-        }
+    fn set_task_handle(&self, handle_id: tokio::task::Id) {
+        self.task_handle.store(Some(Arc::new(ProcessLocalGrpcTask {
+            pid: std::process::id(),
+            handle_id,
+        })));
     }
 
     fn send_spec_update_to_listener(&self, data: String) -> Result<(), StatsigErr> {

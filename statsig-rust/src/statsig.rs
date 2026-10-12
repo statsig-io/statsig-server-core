@@ -98,6 +98,7 @@ const ERROR_SDK_KEY: &str = "__STATSIG_ERROR_SDK_KEY__";
 const INIT_IP_TAG: &str = "INIT_COUNTRY_LOOKUP";
 const INIT_UA_TAG: &str = "INIT_UA";
 const NO_BACKGROUND_TASKS_RESTART_EPOCH: u64 = u64::MAX;
+const EVENT_QUEUE_OWNERSHIP_TRANSITIONING: u32 = 0;
 // Celery terminates worker-process-init handlers that block for roughly four
 // seconds. Keep explicit post-fork recovery inside that startup budget.
 const POST_FORK_RESTART_TIMEOUT: Duration = Duration::from_secs(3);
@@ -105,6 +106,35 @@ const POST_FORK_RESTART_TIMEOUT: Duration = Duration::from_secs(3);
 struct BackgroundTasksRestartGuard {
     restarting_epoch: Arc<AtomicU64>,
     claimed_epoch: u64,
+}
+
+struct BackgroundTaskEpochs {
+    event_logger: AtomicU64,
+    ops_stats: AtomicU64,
+    id_lists: AtomicU64,
+    specs: AtomicU64,
+}
+
+impl BackgroundTaskEpochs {
+    fn new(current_epoch: u64) -> Self {
+        Self {
+            event_logger: AtomicU64::new(current_epoch),
+            ops_stats: AtomicU64::new(current_epoch),
+            id_lists: AtomicU64::new(NO_BACKGROUND_TASKS_RESTART_EPOCH),
+            specs: AtomicU64::new(NO_BACKGROUND_TASKS_RESTART_EPOCH),
+        }
+    }
+
+    fn reset(&self) {
+        self.event_logger
+            .store(NO_BACKGROUND_TASKS_RESTART_EPOCH, Ordering::SeqCst);
+        self.ops_stats
+            .store(NO_BACKGROUND_TASKS_RESTART_EPOCH, Ordering::SeqCst);
+        self.id_lists
+            .store(NO_BACKGROUND_TASKS_RESTART_EPOCH, Ordering::SeqCst);
+        self.specs
+            .store(NO_BACKGROUND_TASKS_RESTART_EPOCH, Ordering::SeqCst);
+    }
 }
 
 impl Drop for BackgroundTasksRestartGuard {
@@ -190,6 +220,12 @@ pub struct Statsig {
     /// Runtime epoch currently restarting background loops. Using the epoch as
     /// the claim lets a newer runtime replace a recovery future it cancelled.
     background_tasks_restarting_epoch: Arc<AtomicU64>,
+    /// Per-component runtime generations prevent partial recovery retries from
+    /// spawning duplicate loops that already restarted successfully.
+    background_task_epochs: Arc<BackgroundTaskEpochs>,
+    /// Process that owns the in-memory event queue. A child must discard the
+    /// parent's copied events exactly once before any child operation proceeds.
+    event_queue_owner_pid: AtomicU32,
     /// Prevents fork recovery from restarting an explicitly shut-down instance.
     has_been_shutdown: Arc<AtomicBool>,
     persistent_values_manager: Option<Arc<PersistentValuesManager>>,
@@ -318,6 +354,8 @@ impl Statsig {
             background_tasks_restarting_epoch: Arc::new(AtomicU64::new(
                 NO_BACKGROUND_TASKS_RESTART_EPOCH,
             )),
+            background_task_epochs: Arc::new(BackgroundTaskEpochs::new(current_runtime_epoch())),
+            event_queue_owner_pid: AtomicU32::new(current_pid()),
             has_been_shutdown: Arc::new(AtomicBool::new(false)),
             persistent_values_manager,
             initialize_details: Mutex::new(InitializeDetails::default()),
@@ -409,6 +447,7 @@ impl Statsig {
     }
 
     pub async fn shutdown_with_timeout(&self, timeout: Duration) -> Result<(), StatsigErr> {
+        self.prepare_event_queue_for_current_process();
         log_d!(
             TAG,
             "Shutting down Statsig with timeout {}ms",
@@ -458,6 +497,7 @@ impl Statsig {
             .store(u64::MAX, Ordering::SeqCst);
         self.background_tasks_restarting_epoch
             .store(NO_BACKGROUND_TASKS_RESTART_EPOCH, Ordering::SeqCst);
+        self.background_task_epochs.reset();
         shutdown_result
     }
 
@@ -754,6 +794,8 @@ impl Statsig {
     }
 
     pub fn log_layer_param_exposure_with_layer(&self, layer: Layer, parameter_name: String) {
+        self.ensure_background_tasks_running();
+
         if layer.__disable_exposure {
             self.event_logger.increment_non_exposure_checks(&layer.name);
             return;
@@ -769,6 +811,7 @@ impl Statsig {
     }
 
     pub async fn flush_events(&self) {
+        self.ensure_background_tasks_running();
         let _ = self
             .event_logger
             .flush_all_pending_events(&self.statsig_runtime)
@@ -1088,6 +1131,10 @@ impl Statsig {
         user: &StatsigUser,
         cmab_name: &str,
     ) -> Vec<CMABRankedGroup> {
+        // Internalize first so a forked child restores process-local runtime,
+        // event-logger, and queue ownership before touching their state or the
+        // inherited spec-store lock.
+        let user_internal = self.internalize_user(user);
         self.event_logger.increment_non_exposure_checks(cmab_name);
 
         let data = read_lock_or_else!(self.spec_store.data, {
@@ -1100,7 +1147,6 @@ impl Statsig {
             );
             return vec![];
         });
-        let user_internal = self.internalize_user(user);
         let mut context = self.create_standard_eval_context(
             &user_internal,
             &data,
@@ -1315,6 +1361,7 @@ impl Statsig {
         }
         let current_epoch = current_runtime_epoch();
         let schedule_immediate_refresh = after_fork || process_changed;
+        let scheduling_deadline = scheduling_timeout.map(|timeout| Instant::now() + timeout);
 
         if self.background_tasks_started_pid.load(Ordering::SeqCst) == current_pid
             && self.background_tasks_started_epoch.load(Ordering::SeqCst) == current_epoch
@@ -1329,8 +1376,25 @@ impl Statsig {
                 .background_tasks_restarting_epoch
                 .load(Ordering::SeqCst);
             if claimed_epoch == current_epoch {
-                return scheduling_timeout.is_none_or(|timeout| {
-                    self.wait_for_background_task_restart(current_pid, current_epoch, timeout)
+                if self.event_queue_owner_pid.load(Ordering::SeqCst) != current_pid
+                    && !self.wait_for_event_queue_ownership(
+                        current_pid,
+                        current_epoch,
+                        scheduling_deadline
+                            .map(|deadline| deadline.saturating_duration_since(Instant::now()))
+                            .unwrap_or(POST_FORK_RESTART_TIMEOUT),
+                    )
+                {
+                    return false;
+                }
+                return scheduling_deadline.is_none_or(|deadline| {
+                    let remaining = deadline.saturating_duration_since(Instant::now());
+                    !remaining.is_zero()
+                        && self.wait_for_background_task_restart(
+                            current_pid,
+                            current_epoch,
+                            remaining,
+                        )
                 });
             }
             if self
@@ -1347,11 +1411,19 @@ impl Statsig {
             }
         }
 
+        self.prepare_event_queue_for_current_process();
+
         let statsig_runtime = self.statsig_runtime.clone();
         let runtime_for_closure = statsig_runtime.clone();
         let id_lists_adapter = self.id_lists_adapter.inner.clone();
         let specs_adapter = self.specs_adapter.inner.clone();
+        let event_logger = self.event_logger.clone();
         let ops_stats = self.ops_stats.clone();
+        let error_observer = self.error_observer.clone();
+        let diagnostics_observer = self.diagnostics_observer.clone();
+        let console_capture_observer = self.console_capture_observer.clone();
+        let external_observer = self.options.observability_client.clone();
+        let task_epochs = self.background_task_epochs.clone();
         let started_pid = self.background_tasks_started_pid.clone();
         let started_epoch = self.background_tasks_started_epoch.clone();
         let restart_guard = BackgroundTasksRestartGuard {
@@ -1372,7 +1444,13 @@ impl Statsig {
                     runtime_for_closure,
                     id_lists_adapter,
                     specs_adapter,
+                    event_logger,
                     ops_stats,
+                    error_observer,
+                    diagnostics_observer,
+                    console_capture_observer,
+                    external_observer,
+                    task_epochs,
                     started_pid,
                     started_epoch,
                     schedule_immediate_refresh,
@@ -1388,8 +1466,12 @@ impl Statsig {
         }
 
         scheduled_rx.is_none_or(|rx| {
-            rx.recv_timeout(scheduling_timeout.unwrap_or_default())
-                .unwrap_or(false)
+            rx.recv_timeout(
+                scheduling_deadline
+                    .map(|deadline| deadline.saturating_duration_since(Instant::now()))
+                    .unwrap_or_default(),
+            )
+            .unwrap_or(false)
         })
     }
 
@@ -1416,6 +1498,60 @@ impl Statsig {
             std::thread::sleep(Duration::from_millis(1));
         }
         false
+    }
+
+    fn wait_for_event_queue_ownership(
+        &self,
+        current_pid: u32,
+        current_epoch: u64,
+        timeout: Duration,
+    ) -> bool {
+        let deadline = Instant::now() + timeout;
+        while Instant::now() < deadline {
+            if self.event_queue_owner_pid.load(Ordering::SeqCst) == current_pid {
+                return true;
+            }
+            if self
+                .background_tasks_restarting_epoch
+                .load(Ordering::SeqCst)
+                != current_epoch
+            {
+                return false;
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        false
+    }
+
+    // The parent owns all events and non-exposure counters accumulated before a
+    // fork. Do this before every lifecycle path that can flush or publish a
+    // child runtime, not only while restarting background tasks.
+    fn prepare_event_queue_for_current_process(&self) {
+        let pid = current_pid();
+        loop {
+            let owner_pid = self.event_queue_owner_pid.load(Ordering::SeqCst);
+            if owner_pid == pid {
+                return;
+            }
+            if owner_pid == EVENT_QUEUE_OWNERSHIP_TRANSITIONING {
+                std::thread::yield_now();
+                continue;
+            }
+            if self
+                .event_queue_owner_pid
+                .compare_exchange(
+                    owner_pid,
+                    EVENT_QUEUE_OWNERSHIP_TRANSITIONING,
+                    Ordering::SeqCst,
+                    Ordering::SeqCst,
+                )
+                .is_ok()
+            {
+                self.event_logger.discard_inherited_events_after_fork();
+                self.event_queue_owner_pid.store(pid, Ordering::SeqCst);
+                return;
+            }
+        }
     }
 
     pub fn check_gate(&self, user: &StatsigUser, gate_name: &str) -> bool {
@@ -1871,6 +2007,7 @@ impl Statsig {
         config_name: &str,
         callback: impl FnOnce(Option<(&SpecStoreData, Option<&SpecPointer>)>) -> T,
     ) -> T {
+        self.ensure_background_tasks_running();
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
                 self.ops_stats.clone(),
@@ -2229,6 +2366,8 @@ impl Statsig {
         partial_raw: crate::statsig_types_raw::PartialLayerRaw,
         param_name: String,
     ) {
+        self.ensure_background_tasks_running();
+
         if partial_raw.disable_exposure {
             self.event_logger
                 .increment_non_exposure_checks(&partial_raw.name);
@@ -2295,11 +2434,18 @@ impl Statsig {
 // ------------------------------------------------------------------------------- [ Private ]
 
 impl Statsig {
+    #[allow(clippy::too_many_arguments)]
     async fn start_background_tasks(
         statsig_runtime: Arc<StatsigRuntime>,
         id_lists_adapter: Option<Arc<dyn IdListsAdapter>>,
         specs_adapter: Arc<dyn SpecsAdapter>,
+        event_logger: Arc<EventLogger>,
         ops_stats: Arc<OpsStatsForInstance>,
+        error_observer: Arc<dyn OpsStatsEventObserver>,
+        diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
+        console_capture_observer: Arc<dyn OpsStatsEventObserver>,
+        external_observer: Option<Weak<dyn ObservabilityClient>>,
+        task_epochs: Arc<BackgroundTaskEpochs>,
         bg_tasks_started_pid: Arc<AtomicU32>,
         bg_tasks_started_epoch: Arc<AtomicU64>,
         after_fork: bool,
@@ -2314,42 +2460,95 @@ impl Statsig {
 
         let mut success = true;
 
-        if let Some(adapter) = &id_lists_adapter {
-            if let Err(e) = adapter
-                .clone()
-                .schedule_background_sync(&statsig_runtime)
-                .await
-            {
+        if task_epochs.id_lists.load(Ordering::SeqCst) != current_epoch {
+            let id_lists_success = if let Some(adapter) = &id_lists_adapter {
+                match adapter
+                    .clone()
+                    .schedule_background_sync(&statsig_runtime)
+                    .await
+                {
+                    Ok(()) => true,
+                    Err(e) => {
+                        log_w!(TAG, "Failed to schedule idlist background job {}", e);
+                        false
+                    }
+                }
+            } else {
+                true
+            };
+
+            if id_lists_success {
+                task_epochs.id_lists.store(current_epoch, Ordering::SeqCst);
+            } else {
                 success = false;
-                log_w!(TAG, "Failed to schedule idlist background job {}", e);
             }
         }
 
-        let specs_result = if after_fork {
-            specs_adapter
-                .clone()
-                .schedule_background_sync_after_fork(&statsig_runtime)
-                .await
-        } else {
-            specs_adapter
-                .clone()
-                .schedule_background_sync(&statsig_runtime)
-                .await
-        };
+        if task_epochs.specs.load(Ordering::SeqCst) != current_epoch {
+            let specs_result = if after_fork {
+                specs_adapter
+                    .clone()
+                    .schedule_background_sync_after_fork(&statsig_runtime)
+                    .await
+            } else {
+                specs_adapter
+                    .clone()
+                    .schedule_background_sync(&statsig_runtime)
+                    .await
+            };
 
-        if let Err(e) = specs_result {
-            success = false;
-            log_error_to_statsig_and_console!(
-                ops_stats,
-                TAG,
-                StatsigErr::SpecsAdapterSkipPoll(format!(
-                    "Failed to schedule specs adapter background job: {e}"
-                ))
-            );
+            match specs_result {
+                Ok(()) => task_epochs.specs.store(current_epoch, Ordering::SeqCst),
+                Err(e) => {
+                    success = false;
+                    log_error_to_statsig_and_console!(
+                        ops_stats,
+                        TAG,
+                        StatsigErr::SpecsAdapterSkipPoll(format!(
+                            "Failed to schedule specs adapter background job: {e}"
+                        ))
+                    );
+                }
+            }
         }
 
-        bg_tasks_started_pid.store(current_pid, Ordering::SeqCst);
-        bg_tasks_started_epoch.store(current_epoch, Ordering::SeqCst);
+        // Do not start persistent event or observability loops until adapters
+        // are ready. A partial adapter failure can then retry without creating
+        // duplicate consumers in the same runtime generation.
+        if !success {
+            return false;
+        }
+
+        if task_epochs.event_logger.load(Ordering::SeqCst) != current_epoch {
+            if event_logger.spawn_background_task(&statsig_runtime) {
+                task_epochs
+                    .event_logger
+                    .store(current_epoch, Ordering::SeqCst);
+            } else {
+                success = false;
+            }
+        }
+
+        if task_epochs.ops_stats.load(Ordering::SeqCst) != current_epoch {
+            if subscribe_ops_stats(
+                statsig_runtime,
+                &ops_stats,
+                &error_observer,
+                &diagnostics_observer,
+                &console_capture_observer,
+                &external_observer,
+                false,
+            ) {
+                task_epochs.ops_stats.store(current_epoch, Ordering::SeqCst);
+            } else {
+                success = false;
+            }
+        }
+
+        if success {
+            bg_tasks_started_pid.store(current_pid, Ordering::SeqCst);
+            bg_tasks_started_epoch.store(current_epoch, Ordering::SeqCst);
+        }
 
         success
     }
@@ -2366,7 +2565,13 @@ impl Statsig {
         let statsig_runtime = self.statsig_runtime.clone();
         let id_lists_adapter = self.id_lists_adapter.inner.clone();
         let specs_adapter = self.specs_adapter.inner.clone();
+        let event_logger = self.event_logger.clone();
         let ops_stats = self.ops_stats.clone();
+        let error_observer = self.error_observer.clone();
+        let diagnostics_observer = self.diagnostics_observer.clone();
+        let console_capture_observer = self.console_capture_observer.clone();
+        let external_observer = self.options.observability_client.clone();
+        let background_task_epochs = self.background_task_epochs.clone();
         let background_tasks_started_pid = self.background_tasks_started_pid.clone();
         let background_tasks_started_epoch = self.background_tasks_started_epoch.clone();
         // Create another clone specifically for the closure
@@ -2384,7 +2589,13 @@ impl Statsig {
                             statsig_runtime_for_closure,
                             id_lists_adapter,
                             specs_adapter,
+                            event_logger,
                             ops_stats,
+                            error_observer,
+                            diagnostics_observer,
+                            console_capture_observer,
+                            external_observer,
+                            background_task_epochs,
                             background_tasks_started_pid,
                             background_tasks_started_epoch,
                             false,
@@ -2397,6 +2608,7 @@ impl Statsig {
     }
 
     async fn initialize_impl_with_details(&self) -> Result<InitializeDetails, StatsigErr> {
+        self.prepare_event_queue_for_current_process();
         // Explicit initialization may revive a shut-down instance.
         self.has_been_shutdown.store(false, Ordering::SeqCst);
 
@@ -2520,7 +2732,13 @@ impl Statsig {
             self.statsig_runtime.clone(),
             self.id_lists_adapter.inner.clone(),
             self.specs_adapter.inner.clone(),
+            self.event_logger.clone(),
             self.ops_stats.clone(),
+            self.error_observer.clone(),
+            self.diagnostics_observer.clone(),
+            self.console_capture_observer.clone(),
+            self.options.observability_client.clone(),
+            self.background_task_epochs.clone(),
             self.background_tasks_started_pid.clone(),
             self.background_tasks_started_epoch.clone(),
             false,
@@ -2953,6 +3171,10 @@ impl Statsig {
     }
 
     fn internalize_user<'s, 'u>(&'s self, user: &'u StatsigUser) -> StatsigUserInternal<'s, 'u> {
+        // This is the shared entry point for user-scoped evaluations and
+        // event logging. Recover before any operation can touch inherited
+        // spec or event-queue state in a forked child.
+        self.ensure_background_tasks_running();
         StatsigUserInternal::new(user, Some(self))
     }
 
@@ -3125,22 +3347,48 @@ fn setup_ops_stats(
     external_observer: &Option<Weak<dyn ObservabilityClient>>,
 ) -> Arc<OpsStatsForInstance> {
     let ops_stat = OPS_STATS.get_for_instance(sdk_key);
-    ops_stat.subscribe(statsig_runtime.clone(), Arc::downgrade(error_observer));
-    ops_stat.subscribe(
+    subscribe_ops_stats(
+        statsig_runtime,
+        &ops_stat,
+        error_observer,
+        diagnostics_observer,
+        console_capture_observer,
+        external_observer,
+        true,
+    );
+
+    ops_stat
+}
+
+#[allow(clippy::too_many_arguments)]
+fn subscribe_ops_stats(
+    statsig_runtime: Arc<StatsigRuntime>,
+    ops_stat: &Arc<OpsStatsForInstance>,
+    error_observer: &Arc<dyn OpsStatsEventObserver>,
+    diagnostics_observer: &Arc<dyn OpsStatsEventObserver>,
+    console_capture_observer: &Arc<dyn OpsStatsEventObserver>,
+    external_observer: &Option<Weak<dyn ObservabilityClient>>,
+    initialize_external_client: bool,
+) -> bool {
+    let mut success = true;
+    success &= ops_stat.subscribe(statsig_runtime.clone(), Arc::downgrade(error_observer));
+    success &= ops_stat.subscribe(
         statsig_runtime.clone(),
         Arc::downgrade(diagnostics_observer),
     );
-    ops_stat.subscribe(
+    success &= ops_stat.subscribe(
         statsig_runtime.clone(),
         Arc::downgrade(console_capture_observer),
     );
     if let Some(ob_client) = external_observer {
         if let Some(client) = ob_client.upgrade() {
-            client.init();
+            if initialize_external_client {
+                client.init();
+            }
             let as_observer = client.to_ops_stats_event_observer();
-            ops_stat.subscribe(statsig_runtime, Arc::downgrade(&as_observer));
+            success &= ops_stat.subscribe(statsig_runtime, Arc::downgrade(&as_observer));
         }
     }
 
-    ops_stat
+    success
 }

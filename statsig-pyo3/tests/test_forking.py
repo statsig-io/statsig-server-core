@@ -273,6 +273,169 @@ def test_recovery_uses_one_callback_wide_deadline(monkeypatch):
     sys.platform == "darwin",
     reason="thread creation in a multi-threaded fork child traps on macOS",
 )
+def test_automatic_event_flush_recovers_in_parent_and_child_after_fork(
+    httpserver: HTTPServer,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "50")
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "50")
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_MAX_FLUSH_INTERVAL_MS", "50")
+
+    mock_scrapi = setup_server(httpserver)
+    statsig = _new_statsig(mock_scrapi, specs_sync_interval_ms=60_000)
+    process = None
+
+    try:
+        statsig.initialize().wait()
+        process = multiprocessing.Process(
+            target=_log_event_and_wait_for_automatic_flush,
+            args=(statsig, "child-auto-flush"),
+        )
+        process.start()
+
+        statsig.log_event(StatsigUser("parent-user"), "parent-auto-flush")
+
+        _wait_for_logged_event_names(
+            mock_scrapi,
+            {"parent-auto-flush", "child-auto-flush"},
+        )
+        process.join(timeout=5)
+        assert not process.is_alive(), "forked child did not exit"
+        assert process.exitcode == 0
+    finally:
+        if process is not None and process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+        statsig.shutdown().wait()
+
+
+def test_prefork_queued_events_remain_owned_by_parent(
+    httpserver: HTTPServer,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "60000")
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "60000")
+
+    mock_scrapi = setup_server(httpserver)
+    statsig = _new_statsig(mock_scrapi, specs_sync_interval_ms=60_000)
+    process = None
+    expected_names = {f"prefork-event-{index}" for index in range(5)}
+
+    try:
+        statsig.initialize().wait()
+        for event_name in expected_names:
+            statsig.log_event(StatsigUser("prefork-user"), event_name)
+
+        process = multiprocessing.Process(target=_flush_events, args=(statsig,))
+        process.start()
+        process.join(timeout=5)
+        assert not process.is_alive(), "forked child did not exit"
+        assert process.exitcode == 0
+
+        statsig.flush_events().wait()
+        observed_names = [
+            event.get("eventName") for event in mock_scrapi.get_logged_events()
+        ]
+        assert set(observed_names) == expected_names
+        assert len(observed_names) == len(expected_names), (
+            "events queued before fork were delivered by more than one process"
+        )
+    finally:
+        if process is not None and process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+        statsig.shutdown().wait()
+
+
+@pytest.mark.skipif(
+    sys.platform == "darwin",
+    reason="lazy event recovery is validated in Linux worker children",
+)
+def test_first_child_log_event_survives_explicit_flush(
+    httpserver: HTTPServer,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "60000")
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "60000")
+
+    mock_scrapi = setup_server(httpserver)
+    statsig = _new_statsig(mock_scrapi, specs_sync_interval_ms=60_000)
+    process = None
+
+    try:
+        statsig.initialize().wait()
+        statsig.log_event(StatsigUser("parent-user"), "parent-prefork-event")
+
+        process = multiprocessing.Process(
+            target=_log_event_and_flush,
+            args=(statsig, "child-first-event"),
+        )
+        process.start()
+        process.join(timeout=5)
+        assert not process.is_alive(), "forked child did not exit"
+        assert process.exitcode == 0
+
+        statsig.flush_events().wait()
+        observed_names = [
+            event.get("eventName") for event in mock_scrapi.get_logged_events()
+        ]
+        assert set(observed_names) == {
+            "parent-prefork-event",
+            "child-first-event",
+        }
+        assert len(observed_names) == 2
+    finally:
+        if process is not None and process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+        statsig.shutdown().wait()
+
+
+@pytest.mark.skipif(
+    sys.platform == "darwin",
+    reason="deferred eager recovery is validated in Linux worker children",
+)
+def test_repeated_child_recovery_does_not_discard_child_events(
+    httpserver: HTTPServer,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "60000")
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "60000")
+
+    mock_scrapi = setup_server(httpserver)
+    statsig = _new_statsig(mock_scrapi, specs_sync_interval_ms=60_000)
+    process = None
+
+    try:
+        statsig.initialize().wait()
+        statsig.log_event(StatsigUser("parent-user"), "parent-prefork-event")
+
+        process = multiprocessing.Process(
+            target=_recover_log_retry_and_flush,
+            args=(statsig,),
+        )
+        process.start()
+        process.join(timeout=5)
+        assert not process.is_alive(), "forked child did not exit"
+        assert process.exitcode == 0
+
+        statsig.flush_events().wait()
+        observed_names = [
+            event.get("eventName") for event in mock_scrapi.get_logged_events()
+        ]
+        assert set(observed_names) == {"parent-prefork-event", "child-event"}
+        assert len(observed_names) == 2
+    finally:
+        if process is not None and process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+        statsig.shutdown().wait()
+
+
+@pytest.mark.skipif(
+    sys.platform == "darwin",
+    reason="deferred eager recovery is validated in Linux worker children",
+)
 def test_deferred_postfork_sync_is_nonblocking_and_refreshes_parent_and_child(
     httpserver: HTTPServer,
 ):
@@ -641,6 +804,29 @@ def _wait_for_endpoint_calls(
     )
 
 
+def _wait_for_logged_event_names(
+    mock_scrapi: MockScrapi,
+    expected_names: set[str],
+    timeout_seconds: float = 4,
+) -> None:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        observed_names = {
+            event.get("eventName") for event in mock_scrapi.get_logged_events()
+        }
+        if expected_names <= observed_names:
+            return
+        time.sleep(0.05)
+
+    observed_names = {
+        event.get("eventName") for event in mock_scrapi.get_logged_events()
+    }
+    raise AssertionError(
+        f"timed out waiting for automatically flushed events {expected_names}; "
+        f"observed {observed_names}"
+    )
+
+
 def _proc_name_generator(start: int) -> Generator:
     num_cpus = os.cpu_count() or 1
     num_concurrent_workers = max(num_cpus - 1, 1)
@@ -663,6 +849,29 @@ def _recover_and_sleep_task() -> None:
     if sys.platform != "darwin":
         assert recover_after_fork()
     time.sleep(1)
+
+
+def _log_event_and_wait_for_automatic_flush(statsig: Statsig, event_name: str) -> None:
+    statsig.log_event(StatsigUser("child-user"), event_name)
+    # The assertion runs against the parent-hosted HTTP server. Keep the child
+    # alive long enough for its recovered scheduled-flush loop to deliver.
+    time.sleep(2)
+
+
+def _flush_events(statsig: Statsig) -> None:
+    statsig.flush_events().wait()
+
+
+def _log_event_and_flush(statsig: Statsig, event_name: str) -> None:
+    statsig.log_event(StatsigUser("child-user"), event_name)
+    statsig.flush_events().wait()
+
+
+def _recover_log_retry_and_flush(statsig: Statsig) -> None:
+    assert recover_after_fork()
+    statsig.log_event(StatsigUser("child-user"), "child-event")
+    assert statsig._INTERNAL_restart_background_tasks_after_fork()
+    statsig.flush_events().wait()
 
 
 def _evaluate_while_postfork_refresh_is_blocked(

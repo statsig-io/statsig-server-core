@@ -75,6 +75,7 @@ pub struct StatsigHttpSpecsAdapter {
     sync_interval_duration: Duration,
     ops_stats: Arc<OpsStatsForInstance>,
     shutdown_notify: Arc<Notify>,
+    shutdown_generation: Arc<AtomicU64>,
     allow_dcs_deltas: bool,
     use_deltas_next_request: AtomicBool,
     background_sync_failure_count: AtomicU32,
@@ -112,6 +113,8 @@ impl StatsigHttpSpecsAdapter {
         let weak_self: Weak<StatsigHttpSpecsAdapter> = Arc::downgrade(&self);
         let interval_duration = self.sync_interval_duration;
         let shutdown_notify = self.shutdown_notify.clone();
+        let shutdown_generation = self.shutdown_generation.clone();
+        let current_shutdown_generation = shutdown_generation.load(Ordering::SeqCst);
 
         statsig_runtime.spawn("http_specs_bg_sync", move |rt_shutdown_notify| async move {
             if sync_immediately {
@@ -138,8 +141,12 @@ impl StatsigHttpSpecsAdapter {
                         break;
                     },
                     () = shutdown_notify.notified() => {
-                        log_d!(TAG, "Shutting down specs background sync");
-                        break;
+                        if shutdown_generation.load(Ordering::SeqCst)
+                            != current_shutdown_generation
+                        {
+                            log_d!(TAG, "Shutting down specs background sync");
+                            break;
+                        }
                     }
                 }
             }
@@ -205,6 +212,7 @@ impl StatsigHttpSpecsAdapter {
             )),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             shutdown_notify: Arc::new(Notify::new()),
+            shutdown_generation: Arc::new(AtomicU64::new(0)),
             allow_dcs_deltas: enable_dcs_deltas,
             use_deltas_next_request: AtomicBool::new(enable_dcs_deltas),
             background_sync_failure_count: AtomicU32::new(0),
@@ -215,6 +223,12 @@ impl StatsigHttpSpecsAdapter {
     }
 
     pub fn force_shutdown(&self) {
+        self.signal_shutdown();
+    }
+
+    fn signal_shutdown(&self) {
+        self.shutdown_generation.fetch_add(1, Ordering::SeqCst);
+        self.shutdown_notify.notify_waiters();
         self.shutdown_notify.notify_one();
     }
 
@@ -739,7 +753,7 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
         _timeout: Duration,
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        self.shutdown_notify.notify_one();
+        self.signal_shutdown();
         Ok(())
     }
 
