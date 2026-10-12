@@ -269,6 +269,21 @@ def test_recovery_uses_one_callback_wide_deadline(monkeypatch):
     assert statsig_module._child_recovery_pending
 
 
+def test_worker_lifecycle_hook_uses_platform_neutral_public_recovery(monkeypatch):
+    import statsig_python_core.statsig as statsig_module
+
+    calls = []
+
+    def recover() -> bool:
+        calls.append("recover")
+        return True
+
+    monkeypatch.setattr(statsig_module, "recover_after_fork", recover)
+    statsig_module.handle_worker_process_init()
+
+    assert calls == ["recover"]
+
+
 @pytest.mark.skipif(
     sys.platform == "darwin",
     reason="thread creation in a multi-threaded fork child traps on macOS",
