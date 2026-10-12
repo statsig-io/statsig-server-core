@@ -138,6 +138,11 @@ impl StatsigBasePy {
         self.inner.is_initialized()
     }
 
+    #[pyo3(name = "_INTERNAL_restart_background_tasks_after_fork")]
+    pub fn restart_background_tasks_after_fork(&self) -> bool {
+        self.inner.restart_background_tasks_after_fork()
+    }
+
     pub fn flush_events(&self, py: Python) -> PyResult<Py<PyAny>> {
         let (completion_event, event_clone) = get_completion_event(py)?;
 

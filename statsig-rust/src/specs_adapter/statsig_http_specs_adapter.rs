@@ -104,6 +104,50 @@ impl NetworkSyncOutcome {
 // OB client -- END
 
 impl StatsigHttpSpecsAdapter {
+    fn schedule_sync_loop(
+        self: Arc<Self>,
+        statsig_runtime: &Arc<StatsigRuntime>,
+        sync_immediately: bool,
+    ) -> Result<(), StatsigErr> {
+        let weak_self: Weak<StatsigHttpSpecsAdapter> = Arc::downgrade(&self);
+        let interval_duration = self.sync_interval_duration;
+        let shutdown_notify = self.shutdown_notify.clone();
+
+        statsig_runtime.spawn("http_specs_bg_sync", move |rt_shutdown_notify| async move {
+            if sync_immediately {
+                if let Some(strong_self) = weak_self.upgrade() {
+                    Self::run_background_sync(strong_self).await;
+                } else {
+                    log_e!(TAG, "Strong reference to StatsigHttpSpecsAdapter lost. Stopping background sync");
+                    return;
+                }
+            }
+
+            loop {
+                tokio::select! {
+                    () = sleep(interval_duration) => {
+                        if let Some(strong_self) = weak_self.upgrade() {
+                            Self::run_background_sync(strong_self).await;
+                        } else {
+                            log_e!(TAG, "Strong reference to StatsigHttpSpecsAdapter lost. Stopping background sync");
+                            break;
+                        }
+                    }
+                    () = rt_shutdown_notify.notified() => {
+                        log_d!(TAG, "Runtime shutdown. Shutting down specs background sync");
+                        break;
+                    },
+                    () = shutdown_notify.notified() => {
+                        log_d!(TAG, "Shutting down specs background sync");
+                        break;
+                    }
+                }
+            }
+        })?;
+
+        Ok(())
+    }
+
     #[must_use]
     pub fn new(
         sdk_key: &str,
@@ -680,34 +724,14 @@ impl SpecsAdapter for StatsigHttpSpecsAdapter {
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        let weak_self: Weak<StatsigHttpSpecsAdapter> = Arc::downgrade(&self);
-        let interval_duration = self.sync_interval_duration;
-        let shutdown_notify = self.shutdown_notify.clone();
+        self.schedule_sync_loop(statsig_runtime, false)
+    }
 
-        statsig_runtime.spawn("http_specs_bg_sync", move |rt_shutdown_notify| async move {
-            loop {
-                tokio::select! {
-                    () = sleep(interval_duration) => {
-                        if let Some(strong_self) = weak_self.upgrade() {
-                            Self::run_background_sync(strong_self).await;
-                        } else {
-                            log_e!(TAG, "Strong reference to StatsigHttpSpecsAdapter lost. Stopping background sync");
-                            break;
-                        }
-                    }
-                    () = rt_shutdown_notify.notified() => {
-                        log_d!(TAG, "Runtime shutdown. Shutting down specs background sync");
-                        break;
-                    },
-                    () = shutdown_notify.notified() => {
-                        log_d!(TAG, "Shutting down specs background sync");
-                        break;
-                    }
-                }
-            }
-        })?;
-
-        Ok(())
+    async fn schedule_background_sync_after_fork(
+        self: Arc<Self>,
+        statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
+        self.schedule_sync_loop(statsig_runtime, true)
     }
 
     async fn shutdown(

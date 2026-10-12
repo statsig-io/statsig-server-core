@@ -21,6 +21,7 @@ pub struct MockSpecsAdapter {
     background_sync_calls: AtomicUsize,
     blocked_background_sync_call: Option<usize>,
     background_sync_release: Notify,
+    post_fork_background_sync_calls: AtomicUsize,
 }
 
 impl MockSpecsAdapter {
@@ -34,6 +35,7 @@ impl MockSpecsAdapter {
             background_sync_calls: AtomicUsize::new(0),
             blocked_background_sync_call: None,
             background_sync_release: Notify::new(),
+            post_fork_background_sync_calls: AtomicUsize::new(0),
         }
     }
 
@@ -47,6 +49,7 @@ impl MockSpecsAdapter {
             background_sync_calls: AtomicUsize::new(0),
             blocked_background_sync_call: None,
             background_sync_release: Notify::new(),
+            post_fork_background_sync_calls: AtomicUsize::new(0),
         }
     }
 
@@ -60,6 +63,7 @@ impl MockSpecsAdapter {
             background_sync_calls: AtomicUsize::new(0),
             blocked_background_sync_call: None,
             background_sync_release: Notify::new(),
+            post_fork_background_sync_calls: AtomicUsize::new(0),
         }
     }
 
@@ -73,6 +77,7 @@ impl MockSpecsAdapter {
             background_sync_calls: AtomicUsize::new(0),
             blocked_background_sync_call: None,
             background_sync_release: Notify::new(),
+            post_fork_background_sync_calls: AtomicUsize::new(0),
         }
     }
 
@@ -86,6 +91,7 @@ impl MockSpecsAdapter {
             background_sync_calls: AtomicUsize::new(0),
             blocked_background_sync_call: Some(call),
             background_sync_release: Notify::new(),
+            post_fork_background_sync_calls: AtomicUsize::new(0),
         }
     }
 
@@ -95,6 +101,10 @@ impl MockSpecsAdapter {
 
     pub fn release_background_sync(&self) {
         self.background_sync_release.notify_waiters();
+    }
+
+    pub fn post_fork_background_sync_calls(&self) -> usize {
+        self.post_fork_background_sync_calls.load(Ordering::SeqCst)
     }
 
     pub async fn resync(&self) -> Result<(), StatsigErr> {
@@ -187,6 +197,15 @@ impl SpecsAdapter for MockSpecsAdapter {
             tokio::task::yield_now().await;
             self.background_sync_release.notified().await;
         }
+        Ok(())
+    }
+
+    async fn schedule_background_sync_after_fork(
+        self: Arc<Self>,
+        _statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
+        self.post_fork_background_sync_calls
+            .fetch_add(1, Ordering::SeqCst);
         Ok(())
     }
 

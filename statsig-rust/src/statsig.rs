@@ -88,7 +88,7 @@ use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
-use std::sync::{Arc, Weak};
+use std::sync::{mpsc, Arc, Weak};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 use tokio::try_join;
@@ -1277,8 +1277,19 @@ impl Statsig {
     /// forked child; the runtime epoch detects a reset in the unchanged parent.
     /// The common path returns after atomic state checks.
     fn ensure_background_tasks_running(&self) {
+        self.restart_background_tasks(false);
+    }
+
+    /// Restores this instance's background loops after a process fork and
+    /// waits only until those loops have been scheduled. Any config or ID-list
+    /// network work continues asynchronously on the new runtime.
+    pub fn restart_background_tasks_after_fork(&self) -> bool {
+        self.restart_background_tasks(true)
+    }
+
+    fn restart_background_tasks(&self, after_fork: bool) -> bool {
         if self.has_been_shutdown.load(Ordering::SeqCst) {
-            return;
+            return true;
         }
 
         let current_pid = current_pid();
@@ -1292,7 +1303,7 @@ impl Statsig {
         if self.background_tasks_started_pid.load(Ordering::SeqCst) == current_pid
             && self.background_tasks_started_epoch.load(Ordering::SeqCst) == current_epoch
         {
-            return;
+            return true;
         }
 
         // Let one caller restart the loops for this runtime generation. A
@@ -1302,7 +1313,8 @@ impl Statsig {
                 .background_tasks_restarting_epoch
                 .load(Ordering::SeqCst);
             if claimed_epoch == current_epoch {
-                return;
+                return !after_fork
+                    || self.wait_for_background_task_restart(current_pid, current_epoch);
             }
             if self
                 .background_tasks_restarting_epoch
@@ -1329,19 +1341,56 @@ impl Statsig {
             restarting_epoch: self.background_tasks_restarting_epoch.clone(),
             claimed_epoch: current_epoch,
         };
+        let (scheduled_tx, scheduled_rx) = if after_fork {
+            let (tx, rx) = mpsc::sync_channel(1);
+            (Some(tx), Some(rx))
+        } else {
+            (None, None)
+        };
 
-        let _ = statsig_runtime.spawn("restart_background_tasks", move |_shutdown| async move {
-            let _restart_guard = restart_guard;
-            Self::start_background_tasks(
-                runtime_for_closure,
-                id_lists_adapter,
-                specs_adapter,
-                ops_stats,
-                started_pid,
-                started_epoch,
-            )
-            .await;
-        });
+        let spawn_result =
+            statsig_runtime.spawn("restart_background_tasks", move |_shutdown| async move {
+                let _restart_guard = restart_guard;
+                let success = Self::start_background_tasks(
+                    runtime_for_closure,
+                    id_lists_adapter,
+                    specs_adapter,
+                    ops_stats,
+                    started_pid,
+                    started_epoch,
+                    after_fork,
+                )
+                .await;
+                if let Some(tx) = scheduled_tx {
+                    let _ = tx.send(success);
+                }
+            });
+
+        if spawn_result.is_err() {
+            return false;
+        }
+
+        scheduled_rx.is_none_or(|rx| rx.recv_timeout(Duration::from_secs(5)).unwrap_or(false))
+    }
+
+    fn wait_for_background_task_restart(&self, current_pid: u32, current_epoch: u64) -> bool {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while Instant::now() < deadline {
+            if self.background_tasks_started_pid.load(Ordering::SeqCst) == current_pid
+                && self.background_tasks_started_epoch.load(Ordering::SeqCst) == current_epoch
+            {
+                return true;
+            }
+            if self
+                .background_tasks_restarting_epoch
+                .load(Ordering::SeqCst)
+                != current_epoch
+            {
+                return false;
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        false
     }
 
     pub fn check_gate(&self, user: &StatsigUser, gate_name: &str) -> bool {
@@ -2228,6 +2277,7 @@ impl Statsig {
         ops_stats: Arc<OpsStatsForInstance>,
         bg_tasks_started_pid: Arc<AtomicU32>,
         bg_tasks_started_epoch: Arc<AtomicU64>,
+        after_fork: bool,
     ) -> bool {
         let current_pid = current_pid();
         let current_epoch = current_runtime_epoch();
@@ -2250,11 +2300,19 @@ impl Statsig {
             }
         }
 
-        if let Err(e) = specs_adapter
-            .clone()
-            .schedule_background_sync(&statsig_runtime)
-            .await
-        {
+        let specs_result = if after_fork {
+            specs_adapter
+                .clone()
+                .schedule_background_sync_after_fork(&statsig_runtime)
+                .await
+        } else {
+            specs_adapter
+                .clone()
+                .schedule_background_sync(&statsig_runtime)
+                .await
+        };
+
+        if let Err(e) = specs_result {
             success = false;
             log_error_to_statsig_and_console!(
                 ops_stats,
@@ -2304,6 +2362,7 @@ impl Statsig {
                             ops_stats,
                             background_tasks_started_pid,
                             background_tasks_started_epoch,
+                            false,
                         ).await;
                     }
                 )?;
@@ -2439,6 +2498,7 @@ impl Statsig {
             self.ops_stats.clone(),
             self.background_tasks_started_pid.clone(),
             self.background_tasks_started_epoch.clone(),
+            false,
         )
         .await;
 

@@ -104,6 +104,40 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
+        self.schedule_background_sync_impl(statsig_runtime, false)
+            .await
+    }
+
+    async fn schedule_background_sync_after_fork(
+        self: Arc<Self>,
+        statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
+        self.schedule_background_sync_impl(statsig_runtime, true)
+            .await
+    }
+
+    async fn shutdown(
+        &self,
+        timeout: Duration,
+        _statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
+        self.shutdown_notify.notify_one();
+        time::timeout(timeout, async { self.data_store.shutdown().await })
+            .await
+            .map_err(|e| StatsigErr::DataStoreFailure(format!("Failed to shutdown: {e}")))?
+    }
+
+    fn get_type_name(&self) -> String {
+        stringify!(StatsigDataStoreSpecAdapter).to_string()
+    }
+}
+
+impl StatsigDataStoreSpecsAdapter {
+    async fn schedule_background_sync_impl(
+        self: Arc<Self>,
+        statsig_runtime: &Arc<StatsigRuntime>,
+        sync_immediately: bool,
+    ) -> Result<(), StatsigErr> {
         // Support polling updates function should be pretty cheap. But we have to make it async
         let should_schedule = self
             .data_store
@@ -127,31 +161,13 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
                 };
 
                 strong_self
-                    .execute_background_sync(&rt_shutdown_notify)
+                    .execute_background_sync(&rt_shutdown_notify, sync_immediately)
                     .await;
             },
         )?;
 
         Ok(())
     }
-
-    async fn shutdown(
-        &self,
-        timeout: Duration,
-        _statsig_runtime: &Arc<StatsigRuntime>,
-    ) -> Result<(), StatsigErr> {
-        self.shutdown_notify.notify_one();
-        time::timeout(timeout, async { self.data_store.shutdown().await })
-            .await
-            .map_err(|e| StatsigErr::DataStoreFailure(format!("Failed to shutdown: {e}")))?
-    }
-
-    fn get_type_name(&self) -> String {
-        stringify!(StatsigDataStoreSpecAdapter).to_string()
-    }
-}
-
-impl StatsigDataStoreSpecsAdapter {
     async fn load_cached_specs(&self) -> Result<CachedSpecs, StatsigErr> {
         if let Some(update) = self.load_statsig_br_cache().await? {
             return Ok(update);
@@ -285,7 +301,15 @@ impl StatsigDataStoreSpecsAdapter {
         );
     }
 
-    async fn execute_background_sync(&self, rt_shutdown_notify: &Arc<Notify>) {
+    async fn execute_background_sync(
+        &self,
+        rt_shutdown_notify: &Arc<Notify>,
+        sync_immediately: bool,
+    ) {
+        if sync_immediately {
+            self.execute_background_sync_impl().await;
+        }
+
         loop {
             tokio::select! {
                 () = sleep(self.sync_interval) => self.execute_background_sync_impl().await,

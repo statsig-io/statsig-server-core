@@ -1,11 +1,15 @@
 mod utils;
 
+use serde_json::Value;
 use serial_test::serial;
 use statsig_rust::statsig_global::StatsigGlobal;
-use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{SpecsUpdateListener, Statsig, StatsigOptions, StatsigUser};
+use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use utils::mock_event_logging_adapter::MockEventLoggingAdapter;
+use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 use utils::mock_specs_adapter::MockSpecsAdapter;
 
 fn setup() -> (Arc<Statsig>, Arc<MockSpecsAdapter>, StatsigUser) {
@@ -70,6 +74,7 @@ fn check_gate_rearms_shared_background_tasks_after_runtime_reset() {
         wait_for_sync_calls(&specs_adapter, 2),
         "check_gate did not re-arm shared background tasks"
     );
+    assert_eq!(specs_adapter.post_fork_background_sync_calls(), 0);
     shutdown(&statsig);
 }
 
@@ -156,6 +161,101 @@ fn forked_child_replaces_an_inherited_in_flight_restart_claim() {
 
     specs_adapter.release_background_sync();
     shutdown(&statsig);
+}
+
+#[test]
+#[serial]
+fn explicit_postfork_restart_schedules_tasks_without_an_evaluation() {
+    let (statsig, specs_adapter, _) = setup();
+
+    StatsigGlobal::reset();
+    assert!(statsig.restart_background_tasks_after_fork());
+
+    assert_eq!(specs_adapter.background_sync_calls(), 1);
+    assert_eq!(specs_adapter.post_fork_background_sync_calls(), 1);
+    shutdown(&statsig);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial]
+async fn explicit_postfork_restart_refreshes_http_specs_immediately() {
+    // Ensure reset advances the runtime epoch even though this test supplies
+    // its own Tokio runtime.
+    drop(StatsigGlobal::get());
+
+    let mock_scrapi = MockScrapi::new().await;
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("tests/data/demo_proj_dcs.json");
+    let dcs = fs::read_to_string(path).expect("Unable to read DCS fixture");
+    mock_scrapi
+        .stub(EndpointStub {
+            method: Method::GET,
+            response: StubData::String(dcs.clone()),
+            ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
+        })
+        .await;
+
+    let statsig = Statsig::new(
+        "secret-fork-safety-http-test",
+        Some(Arc::new(StatsigOptions {
+            specs_url: Some(mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs)),
+            specs_sync_interval_ms: Some(60_000),
+            event_logging_adapter: Some(Arc::new(MockEventLoggingAdapter::new())),
+            disable_country_lookup: Some(true),
+            ..StatsigOptions::new()
+        })),
+    );
+    statsig.initialize().await.expect("Statsig must initialize");
+    let user = StatsigUser::with_user_id("postfork-http-user");
+    assert!(statsig.check_gate(&user, "test_public"));
+
+    let initial_lcut = statsig
+        .get_context()
+        .spec_store
+        .get_current_specs_info()
+        .lcut
+        .expect("initial DCS must provide an LCUT");
+    let updated_lcut = initial_lcut + 1;
+    let mut updated_dcs: Value = serde_json::from_str(&dcs).expect("DCS fixture must be JSON");
+    updated_dcs["time"] = Value::from(updated_lcut);
+    updated_dcs["checksum"] = Value::from("postfork-refresh-checksum");
+    updated_dcs["feature_gates"]["test_public"]["enabled"] = Value::from(false);
+    updated_dcs["feature_gates"]["test_public"]["rules"] = Value::Array(Vec::new());
+
+    mock_scrapi.clear_stubs().await;
+    mock_scrapi.clear_requests();
+    mock_scrapi
+        .stub(EndpointStub {
+            method: Method::GET,
+            response: StubData::String(
+                serde_json::to_string(&updated_dcs).expect("updated DCS must serialize"),
+            ),
+            ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
+        })
+        .await;
+
+    tokio::task::spawn_blocking(StatsigGlobal::reset)
+        .await
+        .expect("runtime reset must complete");
+    assert!(statsig.restart_background_tasks_after_fork());
+
+    tokio::time::timeout(Duration::from_secs(1), async {
+        while mock_scrapi.times_called_for_endpoint(Endpoint::DownloadConfigSpecs) == 0
+            || statsig
+                .get_context()
+                .spec_store
+                .get_current_specs_info()
+                .lcut
+                != Some(updated_lcut)
+        {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("post-fork refresh did not request and apply the new DCS before the polling interval");
+    assert!(!statsig.check_gate(&user, "test_public"));
+
+    statsig.shutdown().await.expect("Statsig must shut down");
 }
 
 #[test]
