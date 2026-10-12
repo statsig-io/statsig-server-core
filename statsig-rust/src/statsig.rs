@@ -944,6 +944,8 @@ impl Statsig {
         parameter_store_name: &str,
         options: ParameterStoreEvaluationOptions,
     ) -> ParameterStore<'_> {
+        self.ensure_background_tasks_running();
+
         let store_name_intern = InternedString::from_str_ref(parameter_store_name);
 
         self.event_logger
@@ -2594,6 +2596,8 @@ impl Statsig {
         spec_type: &SpecType,
         disable_exposure_logging: Option<bool>,
     ) -> (EvaluationDetails, Option<EvaluatorResult>) {
+        self.ensure_background_tasks_running();
+
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
                 &self.ops_stats,
@@ -2636,6 +2640,8 @@ impl Statsig {
         spec_type: &SpecType,
         disable_exposure_logging: Option<bool>,
     ) -> T {
+        self.ensure_background_tasks_running();
+
         let data = read_lock_or_else!(self.spec_store.data, {
             log_error_to_statsig_and_console!(
                 &self.ops_stats,

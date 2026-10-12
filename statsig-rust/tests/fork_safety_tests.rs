@@ -160,6 +160,33 @@ fn forked_child_replaces_an_inherited_in_flight_restart_claim() {
 
 #[test]
 #[serial]
+fn every_evaluation_family_rearms_background_tasks() {
+    let (statsig, specs_adapter, user) = setup();
+    let mut expected_sync_calls = 2;
+
+    StatsigGlobal::reset();
+    let _ = statsig.get_dynamic_config(&user, "missing-dynamic-config");
+    assert!(wait_for_sync_calls(&specs_adapter, expected_sync_calls));
+
+    expected_sync_calls += 1;
+    StatsigGlobal::reset();
+    let _ = statsig.get_experiment(&user, "missing-experiment");
+    assert!(wait_for_sync_calls(&specs_adapter, expected_sync_calls));
+
+    expected_sync_calls += 1;
+    StatsigGlobal::reset();
+    let _ = statsig.get_layer(&user, "missing-layer");
+    assert!(wait_for_sync_calls(&specs_adapter, expected_sync_calls));
+
+    expected_sync_calls += 1;
+    StatsigGlobal::reset();
+    let _ = statsig.get_parameter_store("missing-parameter-store");
+    assert!(wait_for_sync_calls(&specs_adapter, expected_sync_calls));
+    shutdown(&statsig);
+}
+
+#[test]
+#[serial]
 fn explicit_shutdown_prevents_runtime_reset_from_rearming_tasks() {
     let (statsig, specs_adapter, user) = setup();
 
