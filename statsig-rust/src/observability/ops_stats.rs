@@ -234,6 +234,10 @@ impl Drop for OpsStatsForInstance {
     }
 }
 
+#[allow(
+    clippy::double_must_use,
+    reason = "async_trait adds must_use to methods returning an already-must-use boxed Future"
+)]
 #[async_trait]
 pub trait OpsStatsEventObserver: Send + Sync + 'static {
     async fn handle_event(&self, event: OpsStatsEvent);
