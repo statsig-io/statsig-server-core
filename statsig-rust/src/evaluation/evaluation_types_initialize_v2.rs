@@ -87,9 +87,6 @@ pub struct ExperimentEvaluationInitV2 {
     #[serde(rename = "v")]
     pub value: InternedString,
 
-    #[serde(rename = "ep")]
-    pub explicit_parameters: Option<ExplicitParameters>,
-
     #[serde(rename = "gn")]
     pub group_name: Option<InternedString>,
 
@@ -102,7 +99,7 @@ pub struct ExperimentEvaluationInitV2 {
 
 impl GCIRHashable for ExperimentEvaluationInitV2 {
     fn create_hash(&self, name: &InternedString) -> u64 {
-        let mut hash_array = vec![
+        let hash_array = vec![
             name.hash,
             self.value.hash,
             match self.base.rule_id {
@@ -110,17 +107,10 @@ impl GCIRHashable for ExperimentEvaluationInitV2 {
                 None => 0,
             },
             hash_secondary_exposures(&self.base.secondary_exposures),
+            self.group_name.as_ref().map_or(0, |g| g.hash),
+            opt_bool_to_hashable(&self.is_experiment_active),
+            opt_bool_to_hashable(&self.is_user_in_experiment),
         ];
-        let mut explicit_params_hashes = Vec::new();
-        if let Some(explicit_parameters) = &self.explicit_parameters {
-            for value in explicit_parameters.to_vec_interned() {
-                explicit_params_hashes.push(value.hash);
-            }
-        }
-        hash_array.push(hashing::hash_one(explicit_params_hashes));
-        hash_array.push(self.group_name.as_ref().map_or(0, |g| g.hash));
-        hash_array.push(opt_bool_to_hashable(&self.is_experiment_active));
-        hash_array.push(opt_bool_to_hashable(&self.is_user_in_experiment));
 
         hashing::hash_one(hash_array)
     }

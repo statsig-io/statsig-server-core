@@ -6,6 +6,7 @@ use ahash::AHashMap;
 
 use crate::initialize_v2_response::InitializeV2Response;
 use crate::interned_string::InternedString;
+use crate::specs_response::explicit_params::ExplicitParameters;
 use crate::specs_response::spec_types::{SessionReplayPrivacySetting, SessionReplayTrigger};
 use crate::{
     evaluation::evaluator::{Evaluator, SpecType},
@@ -18,7 +19,7 @@ use crate::{
 
 use crate::{hashing, StatsigUser};
 use rand::Rng;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use std::collections::HashMap;
 
 use super::dynamic_configs_processor::{
@@ -53,6 +54,56 @@ impl GCIRResponseFormat {
 }
 
 pub struct GCIRFormatter;
+
+pub(crate) struct InitializeV2ResponseWithExperimentExplicitParameters {
+    response: InitializeV2Response,
+    experiment_explicit_parameters: HashMap<String, ExplicitParameters>,
+}
+
+impl InitializeV2ResponseWithExperimentExplicitParameters {
+    pub(crate) fn blank(user: crate::user::StatsigUserInternal) -> Self {
+        Self {
+            response: InitializeV2Response::blank(user),
+            experiment_explicit_parameters: HashMap::new(),
+        }
+    }
+}
+
+impl Serialize for InitializeV2ResponseWithExperimentExplicitParameters {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.experiment_explicit_parameters.is_empty() {
+            return self.response.serialize(serializer);
+        }
+
+        let mut response = serde_json::to_value(&self.response)
+            .map_err(<S::Error as serde::ser::Error>::custom)?;
+        let dynamic_configs = response
+            .get_mut("dynamic_configs")
+            .and_then(serde_json::Value::as_object_mut)
+            .ok_or_else(|| <S::Error as serde::ser::Error>::custom("missing dynamic configs"))?;
+
+        for (name, explicit_parameters) in &self.experiment_explicit_parameters {
+            let evaluation = dynamic_configs
+                .get_mut(name)
+                .and_then(serde_json::Value::as_object_mut)
+                .ok_or_else(|| {
+                    <S::Error as serde::ser::Error>::custom(
+                        "missing experiment evaluation for explicit parameters",
+                    )
+                })?;
+            evaluation.insert(
+                "ep".to_string(),
+                serde_json::to_value(explicit_parameters)
+                    .map_err(<S::Error as serde::ser::Error>::custom)?,
+            );
+        }
+
+        response.serialize(serializer)
+    }
+}
 
 impl GCIRFormatter {
     pub fn generate_v1_format(
@@ -162,60 +213,87 @@ impl GCIRFormatter {
         context: &mut EvaluatorContext,
         options: &ClientInitResponseOptions,
     ) -> Result<InitializeV2Response, StatsigErr> {
+        Self::generate_init_v2_response(context, options).map(|(response, _)| response)
+    }
+
+    pub(crate) fn generate_init_v2_format_with_experiment_explicit_parameters(
+        context: &mut EvaluatorContext,
+        options: &ClientInitResponseOptions,
+    ) -> Result<InitializeV2ResponseWithExperimentExplicitParameters, StatsigErr> {
+        Self::generate_init_v2_response(context, options).map(
+            |(response, experiment_explicit_parameters)| {
+                InitializeV2ResponseWithExperimentExplicitParameters {
+                    response,
+                    experiment_explicit_parameters,
+                }
+            },
+        )
+    }
+
+    fn generate_init_v2_response(
+        context: &mut EvaluatorContext,
+        options: &ClientInitResponseOptions,
+    ) -> Result<(InitializeV2Response, HashMap<String, ExplicitParameters>), StatsigErr> {
         let mut values = HashMap::new();
         let mut val_map = AHashMap::new();
         let mut exposure_map = AHashMap::new();
         let mut exposures = HashMap::new();
+        let mut experiment_explicit_parameters = HashMap::new();
         let param_stores = get_serializeable_param_stores(context, options);
         let evaluated_keys = EvaluatedKeys::from_user(context.user.user_ref);
         let session_replay_info = get_session_replay_info(context, options);
 
-        Ok(InitializeV2Response {
-            feature_gates: get_gate_evaluations_init_v2(
-                context,
-                options,
-                &mut exposures,
-                &mut exposure_map,
-            )?,
-            dynamic_configs: get_dynamic_config_evaluations_init_v2(
-                context,
-                options,
-                &mut exposures,
-                &mut exposure_map,
-                &mut values,
-                &mut val_map,
-            )?,
-            layer_configs: get_layer_evaluations_init_v2(
-                context,
-                options,
-                &mut exposures,
-                &mut exposure_map,
-                &mut values,
-                &mut val_map,
-            )?,
-            param_stores,
-            time: context.specs_data.time,
-            has_updates: true,
-            hash_used: options.get_hash_algorithm().to_string(),
-            user: context.user.to_loggable(),
-            pa_hash: context.user.get_hashed_private_attributes(),
-            sdk_params: HashMap::new(),
-            evaluated_keys,
-            sdk_info: get_sdk_info(),
-            exposures,
-            can_record_session: session_replay_info.can_record_session,
-            session_recording_rate: session_replay_info.session_recording_rate,
-            recording_blocked: session_replay_info.recording_blocked,
-            passes_session_recording_targeting: session_replay_info
-                .passes_session_recording_targeting,
-            session_recording_event_triggers: session_replay_info.session_recording_event_triggers,
-            session_recording_exposure_triggers: session_replay_info
-                .session_recording_exposure_triggers,
-            session_recording_privacy_settings: session_replay_info
-                .session_recording_privacy_settings,
-            values,
-            response_format: "init-v2".to_string(),
-        })
+        Ok((
+            InitializeV2Response {
+                feature_gates: get_gate_evaluations_init_v2(
+                    context,
+                    options,
+                    &mut exposures,
+                    &mut exposure_map,
+                )?,
+                dynamic_configs: get_dynamic_config_evaluations_init_v2(
+                    context,
+                    options,
+                    &mut exposures,
+                    &mut exposure_map,
+                    &mut values,
+                    &mut val_map,
+                    &mut experiment_explicit_parameters,
+                )?,
+                layer_configs: get_layer_evaluations_init_v2(
+                    context,
+                    options,
+                    &mut exposures,
+                    &mut exposure_map,
+                    &mut values,
+                    &mut val_map,
+                )?,
+                param_stores,
+                time: context.specs_data.time,
+                has_updates: true,
+                hash_used: options.get_hash_algorithm().to_string(),
+                user: context.user.to_loggable(),
+                pa_hash: context.user.get_hashed_private_attributes(),
+                sdk_params: HashMap::new(),
+                evaluated_keys,
+                sdk_info: get_sdk_info(),
+                exposures,
+                can_record_session: session_replay_info.can_record_session,
+                session_recording_rate: session_replay_info.session_recording_rate,
+                recording_blocked: session_replay_info.recording_blocked,
+                passes_session_recording_targeting: session_replay_info
+                    .passes_session_recording_targeting,
+                session_recording_event_triggers: session_replay_info
+                    .session_recording_event_triggers,
+                session_recording_exposure_triggers: session_replay_info
+                    .session_recording_exposure_triggers,
+                session_recording_privacy_settings: session_replay_info
+                    .session_recording_privacy_settings,
+                values,
+                response_format: "init-v2".to_string(),
+            },
+            experiment_explicit_parameters,
+        ))
     }
 }
 

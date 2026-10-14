@@ -21,6 +21,7 @@ use crate::{
         target_app_id_utils::should_filter_config_for_app,
     },
     interned_string::InternedString,
+    specs_response::explicit_params::ExplicitParameters,
     specs_response::spec_types::Spec,
     ClientInitResponseOptions, SecondaryExposure, StatsigErr,
 };
@@ -202,8 +203,9 @@ pub(crate) fn get_dynamic_config_evaluations_init_v2(
     expo_key_to_expo_id_map: &mut AHashMap<SecondaryExposureKey, InternedString>,
     value_id_to_value_map: &mut HashMap<InternedString, DynamicReturnable>,
     value_key_to_value_id: &mut AHashMap<u64, InternedString>,
+    experiment_explicit_parameters: &mut HashMap<String, ExplicitParameters>,
 ) -> Result<HashMap<String, AnyConfigEvaluationInitV2>, StatsigErr> {
-    let factory = |spec_entity: &str, _: &str, ctx: &mut EvaluatorContext| {
+    let factory = |spec_entity: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
         if spec_entity == "dynamic_config" {
             let mut res = result_to_dynamic_config_eval_init_v2(
                 &mut ctx.result,
@@ -228,6 +230,11 @@ pub(crate) fn get_dynamic_config_evaluations_init_v2(
         );
         if options.remove_id_type.unwrap_or(false) {
             evaluation.id_type = None
+        }
+        if let Some(explicit_parameters) = ctx.result.explicit_parameters.clone() {
+            if !explicit_parameters.to_vec_interned().is_empty() {
+                experiment_explicit_parameters.insert(hashed_name.to_string(), explicit_parameters);
+            }
         }
         AnyConfigEvaluationInitV2::Experiment(evaluation)
     };
@@ -277,6 +284,11 @@ pub(crate) fn get_dynamic_config_evaluations_init_v2(
         );
         if options.remove_id_type.unwrap_or(false) {
             evaluation.id_type = None
+        }
+        if let Some(explicit_parameters) = context.result.explicit_parameters.clone() {
+            if !explicit_parameters.to_vec_interned().is_empty() {
+                experiment_explicit_parameters.insert(hashed_name.clone(), explicit_parameters);
+            }
         }
 
         result.insert(

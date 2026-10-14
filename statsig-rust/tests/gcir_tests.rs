@@ -31,6 +31,14 @@ async fn setup_with_response_format(
     hash_algorithm: HashAlgorithm,
     response_format: Option<GCIRResponseFormat>,
 ) -> Value {
+    setup_with_response_options(hash_algorithm, response_format, None).await
+}
+
+async fn setup_with_response_options(
+    hash_algorithm: HashAlgorithm,
+    response_format: Option<GCIRResponseFormat>,
+    previous_response_hash: Option<String>,
+) -> Value {
     let mut options = StatsigOptions::new();
     options.specs_adapter = Some(Arc::new(MockSpecsAdapter::with_data(
         "tests/data/eval_proj_dcs.json",
@@ -55,7 +63,7 @@ async fn setup_with_response_format(
             response_format,
             remove_id_type: Some(false),
             remove_default_value_gates: Some(false),
-            previous_response_hash: None,
+            previous_response_hash,
             remove_experiments_in_layers: Some(false),
         },
     );
@@ -72,6 +80,56 @@ async fn test_init_v2_preserves_experiment_explicit_parameters() {
         json_obj["dynamic_configs"]["targeted_exp_in_layer_with_holdout"]["ep"],
         json!(["exp_val"])
     );
+}
+
+#[tokio::test]
+async fn test_init_v2_only_serializes_nonempty_experiment_explicit_parameters() {
+    let init_v2 =
+        setup_with_response_format(HashAlgorithm::None, Some(GCIRResponseFormat::InitializeV2))
+            .await;
+    let dynamic_configs = init_v2["dynamic_configs"].as_object().unwrap();
+
+    assert!(dynamic_configs
+        .values()
+        .any(|evaluation| evaluation.get("ep").is_some()));
+    assert!(dynamic_configs
+        .values()
+        .any(|evaluation| evaluation.get("ep").is_none()));
+
+    for response_format in [
+        None,
+        Some(GCIRResponseFormat::InitializeWithSecondaryExposureMapping),
+    ] {
+        let response = setup_with_response_format(HashAlgorithm::None, response_format).await;
+        assert!(response["dynamic_configs"]
+            .as_object()
+            .unwrap()
+            .values()
+            .all(|evaluation| evaluation.get("ep").is_none()));
+    }
+}
+
+#[tokio::test]
+async fn test_init_v2_previous_response_hash_does_not_change_the_compact_payload() {
+    let without_previous =
+        setup_with_response_format(HashAlgorithm::None, Some(GCIRResponseFormat::InitializeV2))
+            .await;
+    let with_previous = setup_with_response_options(
+        HashAlgorithm::None,
+        Some(GCIRResponseFormat::InitializeV2),
+        Some("not-an-init-v2-checksum".to_string()),
+    )
+    .await;
+
+    assert_json_eq!(
+        without_previous["dynamic_configs"]["targeted_exp_in_layer_with_holdout"]["ep"],
+        with_previous["dynamic_configs"]["targeted_exp_in_layer_with_holdout"]["ep"]
+    );
+    assert_eq!(
+        without_previous["has_updates"],
+        with_previous["has_updates"]
+    );
+    assert!(without_previous.get("full_checksum").is_none());
 }
 
 #[tokio::test]

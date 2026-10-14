@@ -26,12 +26,13 @@ use crate::event_logging::event_queue::queued_passthrough::EnqueuePassthroughOp;
 use crate::event_logging::statsig_event_internal::StatsigEventInternal;
 use crate::event_logging_adapter::EventLoggingAdapter;
 use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
-use crate::gcir::gcir_formatter::GCIRFormatter;
+use crate::gcir::gcir_formatter::{
+    GCIRFormatter, InitializeV2ResponseWithExperimentExplicitParameters,
+};
 use crate::gcir::target_app_id_utils::select_app_id_for_gcir;
 use crate::hashing::HashUtil;
 use crate::initialize_evaluations_response::InitializeEvaluationsResponse;
 use crate::initialize_response::InitializeResponse;
-use crate::initialize_v2_response::InitializeV2Response;
 use crate::interned_string::InternedString;
 use crate::observability::console_capture_observer::ConsoleCaptureObserver;
 use crate::observability::diagnostics_observer::DiagnosticsObserver;
@@ -545,8 +546,11 @@ impl Statsig {
                     || InitializeEvaluationsResponse::blank(user_internal),
                 ),
             Some(GCIRResponseFormat::InitializeV2) => self.stringify_gcir_response(
-                GCIRFormatter::generate_init_v2_format(&mut context, options),
-                || InitializeV2Response::blank(user_internal),
+                GCIRFormatter::generate_init_v2_format_with_experiment_explicit_parameters(
+                    &mut context,
+                    options,
+                ),
+                || InitializeV2ResponseWithExperimentExplicitParameters::blank(user_internal),
             ),
             _ => self.stringify_gcir_response(
                 GCIRFormatter::generate_v1_format(&mut context, options),
