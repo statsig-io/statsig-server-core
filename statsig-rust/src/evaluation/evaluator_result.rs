@@ -242,6 +242,7 @@ pub fn result_to_experiment_eval_init_v2(
         base: result_to_base_eval_init_v2(result, expo_id_to_exposure_map, expo_key_to_expo_id_map),
         id_type,
         value: mapped_value,
+        explicit_parameters: result.explicit_parameters.clone(),
         group_name: result.group_name.take(),
         is_experiment_active,
         is_user_in_experiment,

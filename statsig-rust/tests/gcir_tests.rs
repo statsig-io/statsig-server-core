@@ -8,8 +8,8 @@ use assert_json_diff::assert_json_eq;
 use lazy_static::lazy_static;
 use serde_json::{json, Value};
 use statsig_rust::{
-    ClientInitResponseOptions, HashAlgorithm, Statsig, StatsigOptions, StatsigUser,
-    StatsigUserBuilder,
+    ClientInitResponseOptions, GCIRResponseFormat, HashAlgorithm, Statsig, StatsigOptions,
+    StatsigUser, StatsigUserBuilder,
 };
 
 lazy_static! {
@@ -24,6 +24,13 @@ lazy_static! {
 }
 
 async fn setup(hash_algorithm: HashAlgorithm) -> Value {
+    setup_with_response_format(hash_algorithm, None).await
+}
+
+async fn setup_with_response_format(
+    hash_algorithm: HashAlgorithm,
+    response_format: Option<GCIRResponseFormat>,
+) -> Value {
     let mut options = StatsigOptions::new();
     options.specs_adapter = Some(Arc::new(MockSpecsAdapter::with_data(
         "tests/data/eval_proj_dcs.json",
@@ -33,7 +40,7 @@ async fn setup(hash_algorithm: HashAlgorithm) -> Value {
     let statsig = Statsig::new("secret-key", Some(Arc::new(options)));
     statsig.initialize().await.unwrap();
 
-    let response = statsig.get_client_init_response_with_options(
+    let response = statsig.get_client_init_response_with_options_as_string(
         &USER,
         &ClientInitResponseOptions {
             hash_algorithm: Some(hash_algorithm),
@@ -45,15 +52,26 @@ async fn setup(hash_algorithm: HashAlgorithm) -> Value {
             dynamic_config_filter: None,
             layer_filter: None,
             param_store_filter: None,
-            response_format: None,
+            response_format,
             remove_id_type: Some(false),
             remove_default_value_gates: Some(false),
             previous_response_hash: None,
             remove_experiments_in_layers: Some(false),
         },
     );
-    let json = serde_json::to_string(&response).unwrap();
-    serde_json::from_str(&json).unwrap()
+    serde_json::from_str(&response).unwrap()
+}
+
+#[tokio::test]
+async fn test_init_v2_preserves_experiment_explicit_parameters() {
+    let json_obj =
+        setup_with_response_format(HashAlgorithm::None, Some(GCIRResponseFormat::InitializeV2))
+            .await;
+
+    assert_json_eq!(
+        json_obj["dynamic_configs"]["targeted_exp_in_layer_with_holdout"]["ep"],
+        json!(["exp_val"])
+    );
 }
 
 #[tokio::test]
