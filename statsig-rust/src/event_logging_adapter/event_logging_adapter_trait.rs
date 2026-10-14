@@ -4,6 +4,10 @@ use crate::log_event_payload::LogEventRequest;
 use crate::{StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
 
+#[allow(
+    clippy::double_must_use,
+    reason = "async_trait adds must_use to methods returning an already-must-use boxed Future"
+)]
 #[async_trait]
 pub trait EventLoggingAdapter: Send + Sync {
     async fn start(&self, statsig_runtime: &Arc<StatsigRuntime>) -> Result<(), StatsigErr>;

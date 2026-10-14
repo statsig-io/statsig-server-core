@@ -78,6 +78,10 @@ impl fmt::Display for SpecsSource {
     }
 }
 
+#[allow(
+    clippy::double_must_use,
+    reason = "async_trait adds must_use to methods returning an already-must-use boxed Future"
+)]
 #[async_trait]
 pub trait SpecsAdapter: Send + Sync {
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>);
@@ -97,6 +101,17 @@ pub trait SpecsAdapter: Send + Sync {
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr>;
+
+    /// Re-schedules synchronization after a process fork. Adapters whose
+    /// normal loop waits before its first poll may override this to begin one
+    /// asynchronous refresh immediately. The caller waits only for the task
+    /// to be scheduled, never for that refresh to complete.
+    async fn schedule_background_sync_after_fork(
+        self: Arc<Self>,
+        statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
+        self.schedule_background_sync(statsig_runtime).await
+    }
 
     fn get_type_name(&self) -> String;
 }
