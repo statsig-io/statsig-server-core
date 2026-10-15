@@ -52,7 +52,7 @@ jobs:
     outputs:
       build_matrix: ${{ steps.plan.outputs.build_matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Make Plan
         id: plan
         run: python3 .github/build_plan.py
@@ -102,7 +102,7 @@ jobs:
           echo "Verifying Git installation..."
           & "C:\PortableGit\bin\git.exe" --version
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           submodules: recursive
 
@@ -120,7 +120,7 @@ jobs:
 
       - uses: ./.github/actions/common-setup
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2
         with:
           key: ${{ matrix.config.os }}-${{ matrix.config.target }}-${{ matrix.package }}
 
@@ -247,10 +247,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: ./.github/actions/common-setup
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: centos7-x86_64-unknown-linux-gnu-node
           path: artifacts
@@ -278,10 +278,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: ./.github/actions/common-setup
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: centos7-x86_64-unknown-linux-gnu-python
           path: artifacts
@@ -324,7 +324,7 @@ jobs:
           - cpp
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           submodules: recursive
 
