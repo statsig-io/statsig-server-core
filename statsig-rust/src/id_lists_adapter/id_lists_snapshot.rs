@@ -186,11 +186,11 @@ fn parse_complete_child(
     }
 
     let mut ids = HashSet::new();
-    let lines: Vec<_> = child.split('\n').collect();
-    for (index, raw_line) in lines.iter().enumerate() {
+    let mut lines = child.split('\n').enumerate().peekable();
+    while let Some((index, raw_line)) = lines.next() {
         let line = raw_line.strip_suffix('\r').unwrap_or(raw_line);
         if line.is_empty() {
-            if index + 1 == lines.len() {
+            if lines.peek().is_none() {
                 continue;
             }
             return Err(snapshot_error(format!(
@@ -290,6 +290,7 @@ mod tests {
             "+abc xyz",
             "+short7!",
             "+2Tv4fIVX\n\n+34jaY4Sb",
+            "+2Tv4fIVX\n\n",
             "+2Tv4fIVX\n+2Tv4fIVX",
         ] {
             let children = HashMap::from([("a".into(), child.into())]);

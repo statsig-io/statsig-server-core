@@ -676,6 +676,18 @@ impl IdListsUpdateListener for SpecStore {
             .collect()
     }
 
+    fn get_current_id_lists_snapshot(&self) -> Result<HashMap<String, IdList>, StatsigErr> {
+        let data = self
+            .data
+            .try_read_for(std::time::Duration::from_secs(5))
+            .ok_or_else(|| {
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for ID-list snapshot".to_string(),
+                )
+            })?;
+        Ok(data.id_lists.clone())
+    }
+
     fn did_receive_id_list_updates(
         &self,
         updates: HashMap<String, crate::id_lists_adapter::IdListUpdate>,

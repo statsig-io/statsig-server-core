@@ -3391,17 +3391,17 @@ fn initialize_id_lists_adapter(
     hashing: Arc<HashUtil>,
     options: &StatsigOptions,
 ) -> IdListsAdapterHousing {
-    if let Some(id_lists_adapter) = options.id_lists_adapter.clone() {
+    if !options.enable_id_lists.unwrap_or(false) {
         return IdListsAdapterHousing {
-            inner: Some(id_lists_adapter),
+            inner: None,
             as_default_adapter: None,
             as_data_store_adapter: None,
         };
     }
 
-    if !options.enable_id_lists.unwrap_or(false) {
+    if let Some(id_lists_adapter) = options.id_lists_adapter.clone() {
         return IdListsAdapterHousing {
-            inner: None,
+            inner: Some(id_lists_adapter),
             as_default_adapter: None,
             as_data_store_adapter: None,
         };

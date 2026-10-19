@@ -5,6 +5,7 @@ pub use statsig_http_id_lists_adapter::*;
 
 mod id_list;
 mod id_lists_adapter_trait;
+mod id_lists_data_store_writer;
 pub(crate) mod id_lists_snapshot;
 mod statsig_data_store_id_lists_adapter;
 mod statsig_http_id_lists_adapter;

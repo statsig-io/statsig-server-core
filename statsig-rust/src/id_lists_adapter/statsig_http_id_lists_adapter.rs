@@ -1,4 +1,6 @@
+use super::id_lists_data_store_writer::IdListsDataStoreWriter;
 use super::IdListMetadata;
+use crate::data_store_interface::DataStoreTrait;
 use crate::id_lists_adapter::{IdList, IdListUpdate, IdListsAdapter, IdListsUpdateListener};
 use crate::networking::{NetworkClient, NetworkError, RequestArgs, Response, ResponseData};
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
@@ -48,6 +50,7 @@ pub struct StatsigHttpIdListsAdapter {
     network: NetworkClient,
     sync_interval_duration: Duration,
     request_timeout_ms: u64,
+    data_store_writer: RwLock<Option<Arc<IdListsDataStoreWriter>>>,
     ops_stats: Arc<OpsStatsForInstance>,
     shutdown_notify: Arc<Notify>,
     shutdown_generation: AtomicU64,
@@ -82,7 +85,6 @@ impl StatsigHttpIdListsAdapter {
             )),
             Some(options),
         );
-
         Self {
             id_lists_manifest_url,
             download_id_list_file_api: options.download_id_list_file_api.clone(),
@@ -92,6 +94,7 @@ impl StatsigHttpIdListsAdapter {
             sync_interval_duration,
             // 0 means "use the network provider's default timeout".
             request_timeout_ms: options.id_lists_request_timeout_ms.unwrap_or(0),
+            data_store_writer: RwLock::new(None),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             shutdown_notify: Arc::new(Notify::new()),
             shutdown_generation: AtomicU64::new(0),
@@ -106,6 +109,21 @@ impl StatsigHttpIdListsAdapter {
         self.shutdown_generation.fetch_add(1, Ordering::SeqCst);
         self.shutdown_notify.notify_waiters();
         self.shutdown_notify.notify_one();
+    }
+
+    pub(crate) fn enable_data_store_writer(
+        &self,
+        sdk_key: &str,
+        options: &StatsigOptions,
+        data_store: Arc<dyn DataStoreTrait>,
+    ) {
+        self.data_store_writer.write().get_or_insert_with(|| {
+            Arc::new(IdListsDataStoreWriter::new(sdk_key, options, data_store))
+        });
+    }
+
+    pub(crate) fn disable_data_store_writer(&self) {
+        self.data_store_writer.write().take();
     }
 
     fn build_manifest_request_args(&self) -> RequestArgs {
@@ -466,6 +484,8 @@ impl StatsigHttpIdListsAdapter {
                 return Err(e);
             }
         };
+        let writer = self.data_store_writer.read().clone();
+        let manifest_for_write = writer.as_ref().map(|_| new_manifest.clone());
 
         let mut changes = HashMap::new();
 
@@ -610,8 +630,8 @@ impl StatsigHttpIdListsAdapter {
             }
         };
 
-        // The lists that downloaded were applied above. Surface a download error on init, or when
-        // every download failed, so total outages still show up as a failed sync.
+        // Preserve HTTP-only initialization/background failure reporting before
+        // considering persistence. DataStore-backed refreshes remain atomic.
         let all_failed = successful_single_id_list_number == 0;
         let result = match (result, first_download_error) {
             (Ok(()), Some(err))
@@ -626,6 +646,29 @@ impl StatsigHttpIdListsAdapter {
             }
             (result, _) => result,
         };
+
+        if let (Ok(()), Some(writer), Some(manifest)) =
+            (&result, writer.as_ref(), manifest_for_write.as_ref())
+        {
+            let write_result = writer
+                .write_if_changed(manifest, || {
+                    self.listener
+                        .read()
+                        .as_ref()
+                        .ok_or_else(|| StatsigErr::UnstartedAdapter("Listener not set".to_string()))
+                        .and_then(|listener| listener.get_current_id_lists_snapshot())
+                })
+                .await;
+            if let Err(error) = write_result {
+                log_w!(TAG, "Failed to publish ID lists to DataStore: {error}");
+                self.ops_stats.log(ObservabilityEvent::new_event(
+                    MetricType::Increment,
+                    "id_list_data_store_write_failure".to_string(),
+                    1.0,
+                    None,
+                ));
+            }
+        }
 
         self.add_diagnostics_end_marker(
             KeyType::GetIDListSources,
@@ -798,6 +841,7 @@ fn validate_id_list_changes(body: String) -> Result<String, StatsigErr> {
 
 #[cfg(test)]
 mod tests {
+    use crate::data_store_interface::{DataStoreResponse, DataStoreTrait, RequestPath};
     use crate::hashing::HashUtil;
     use crate::id_lists_adapter::IdList;
 
@@ -806,6 +850,40 @@ mod tests {
     use mockito::{Mock, Server, ServerGuard};
     use std::fs;
     use std::path::PathBuf;
+
+    #[derive(Default)]
+    struct RecordingDataStore {
+        writes: parking_lot::Mutex<Vec<(String, String)>>,
+    }
+
+    #[async_trait]
+    impl DataStoreTrait for RecordingDataStore {
+        async fn initialize(&self) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn shutdown(&self) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn get(&self, _key: &str) -> Result<DataStoreResponse, StatsigErr> {
+            Ok(DataStoreResponse {
+                result: None,
+                time: None,
+            })
+        }
+
+        async fn set(&self, key: &str, value: &str, _time: Option<u64>) -> Result<(), StatsigErr> {
+            self.writes
+                .lock()
+                .push((key.to_string(), value.to_string()));
+            Ok(())
+        }
+
+        async fn support_polling_updates_for(&self, _path: RequestPath) -> bool {
+            false
+        }
+    }
 
     struct TestIdListsUpdateListener {
         id_lists: RwLock<HashMap<String, IdList>>,
@@ -853,6 +931,10 @@ mod tests {
                 .iter()
                 .map(|(key, list)| (key.clone(), list.metadata.clone()))
                 .collect()
+        }
+
+        fn get_current_id_lists_snapshot(&self) -> Result<HashMap<String, IdList>, StatsigErr> {
+            Ok(self.id_lists.read().clone())
         }
 
         fn did_receive_id_list_updates(&self, updates: HashMap<String, IdListUpdate>) {
@@ -953,6 +1035,63 @@ mod tests {
             .unwrap();
 
         (server, adapter, listener, statsig_rt)
+    }
+
+    #[tokio::test]
+    async fn network_sync_writes_complete_legacy_snapshot_when_enabled() {
+        let (server, manifest_request, child_request) = setup_mock_server().await;
+        let store = Arc::new(RecordingDataStore::default());
+        let options = StatsigOptions {
+            data_store: Some(store.clone()),
+            enable_id_lists: Some(true),
+            id_lists_url: Some(format!("{}/get_id_lists", server.url())),
+            ..StatsigOptions::default()
+        };
+        let adapter = Arc::new(StatsigHttpIdListsAdapter::new("secret-key", &options));
+        adapter.enable_data_store_writer("secret-key", &options, store.clone());
+        let listener = Arc::new(TestIdListsUpdateListener {
+            id_lists: RwLock::new(HashMap::new()),
+        });
+        let runtime = StatsigRuntime::get_runtime();
+
+        adapter.start(&runtime, listener.clone()).await.unwrap();
+
+        manifest_request.assert();
+        child_request.assert();
+        let writes = store.writes.lock();
+        assert_eq!(writes.len(), 2);
+        assert!(writes[0].0.contains("id_list::company_id_list"));
+        assert!(writes[0].1.lines().all(|line| line.starts_with('+')));
+        assert!(writes[1].0.contains("/v1/get_id_lists"));
+        let saved_manifest: HashMap<String, IdListMetadata> =
+            serde_json::from_str(&writes[1].1).unwrap();
+        assert_eq!(
+            saved_manifest["company_id_list"].size,
+            listener.get_current_id_list_metadata()["company_id_list"].size
+        );
+    }
+
+    #[tokio::test]
+    async fn network_sync_does_not_write_id_lists_to_data_store_by_default() {
+        let (server, _, _) = setup_mock_server().await;
+        let store = Arc::new(RecordingDataStore::default());
+        let options = StatsigOptions {
+            data_store: Some(store.clone()),
+            enable_id_lists: Some(true),
+            id_lists_url: Some(format!("{}/get_id_lists", server.url())),
+            ..StatsigOptions::default()
+        };
+        let adapter = Arc::new(StatsigHttpIdListsAdapter::new("secret-key", &options));
+        let listener = Arc::new(TestIdListsUpdateListener {
+            id_lists: RwLock::new(HashMap::new()),
+        });
+
+        adapter
+            .start(&StatsigRuntime::get_runtime(), listener)
+            .await
+            .unwrap();
+
+        assert!(store.writes.lock().is_empty());
     }
 
     #[tokio::test]

@@ -75,7 +75,7 @@ pub struct DataStore {
 
     #[napi(
         js_name = "supportsFeature",
-        ts_type = "(feature: 'config_specs' | 'id_list_snapshot') => Promise<boolean>"
+        ts_type = "(feature: 'config_specs' | 'id_list_snapshot' | 'id_list_snapshot_write') => Promise<boolean>"
     )]
     pub supports_feature_fn: Option<ThreadsafeFunction<String, Promise<bool>, String, false>>,
 }
@@ -296,7 +296,7 @@ pub async fn test_data_store(
 }
 
 #[napi(js_name = "__internal__testDataStoreFeature")]
-pub async fn test_data_store_feature(store: DataStore) -> (bool, bool, Option<bool>) {
+pub async fn test_data_store_feature(store: DataStore) -> (bool, bool, Option<bool>, bool) {
     (
         store.supports_feature(DataStoreFeature::ConfigSpecs).await,
         store
@@ -304,6 +304,9 @@ pub async fn test_data_store_feature(store: DataStore) -> (bool, bool, Option<bo
             .await,
         store
             .support_polling_updates_for_feature(DataStoreFeature::IDListSnapshot)
+            .await,
+        store
+            .supports_feature(DataStoreFeature::IDListSnapshotWrite)
             .await,
     )
 }

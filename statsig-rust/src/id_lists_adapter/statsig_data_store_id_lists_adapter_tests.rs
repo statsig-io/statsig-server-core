@@ -17,11 +17,18 @@ struct SnapshotDataStore {
     requested_keys: Mutex<Vec<String>>,
     polling_override: Option<bool>,
     supports_snapshot: bool,
+    supports_snapshot_write: AtomicBool,
+    set_attempts: AtomicUsize,
     block_next_get: AtomicBool,
     active_get: AtomicBool,
     get_started: Notify,
+    block_next_set: AtomicBool,
+    active_set: AtomicBool,
+    set_started: Notify,
     shutdowns: AtomicUsize,
     fail_initialize: AtomicBool,
+    writes: Mutex<Vec<(String, String)>>,
+    fail_writes: AtomicBool,
 }
 
 impl SnapshotDataStore {
@@ -35,12 +42,24 @@ impl SnapshotDataStore {
             requested_keys: Mutex::new(Vec::new()),
             polling_override: Some(supports_polling),
             supports_snapshot: true,
+            supports_snapshot_write: AtomicBool::new(false),
+            set_attempts: AtomicUsize::new(0),
             block_next_get: AtomicBool::new(false),
             active_get: AtomicBool::new(false),
             get_started: Notify::new(),
+            block_next_set: AtomicBool::new(false),
+            active_set: AtomicBool::new(false),
+            set_started: Notify::new(),
             shutdowns: AtomicUsize::new(0),
             fail_initialize: AtomicBool::new(false),
+            writes: Mutex::new(Vec::new()),
+            fail_writes: AtomicBool::new(false),
         }
+    }
+
+    fn with_snapshot_write_support(self) -> Self {
+        self.supports_snapshot_write.store(true, Ordering::SeqCst);
+        self
     }
 
     fn without_snapshot_support(mut self) -> Self {
@@ -50,6 +69,11 @@ impl SnapshotDataStore {
 
     fn without_polling_override(mut self) -> Self {
         self.polling_override = None;
+        self
+    }
+
+    fn with_failed_initialize(self) -> Self {
+        self.fail_initialize.store(true, Ordering::SeqCst);
         self
     }
 
@@ -64,6 +88,9 @@ impl DataStoreTrait for SnapshotDataStore {
         match feature {
             DataStoreFeature::ConfigSpecs => true,
             DataStoreFeature::IDListSnapshot => self.supports_snapshot,
+            DataStoreFeature::IDListSnapshotWrite => {
+                self.supports_snapshot_write.load(Ordering::SeqCst)
+            }
         }
     }
 
@@ -82,6 +109,7 @@ impl DataStoreTrait for SnapshotDataStore {
 
     async fn shutdown(&self) -> Result<(), StatsigErr> {
         assert!(!self.active_get.load(Ordering::SeqCst));
+        assert!(!self.active_set.load(Ordering::SeqCst));
         self.shutdowns.fetch_add(1, Ordering::SeqCst);
         Ok(())
     }
@@ -120,7 +148,29 @@ impl DataStoreTrait for SnapshotDataStore {
         })
     }
 
-    async fn set(&self, key: &str, _value: &str, _time: Option<u64>) -> Result<(), StatsigErr> {
+    async fn set(&self, key: &str, value: &str, _time: Option<u64>) -> Result<(), StatsigErr> {
+        self.set_attempts.fetch_add(1, Ordering::SeqCst);
+        if self.block_next_set.swap(false, Ordering::SeqCst) {
+            struct ActiveSet<'a>(&'a AtomicBool);
+            impl Drop for ActiveSet<'_> {
+                fn drop(&mut self) {
+                    self.0.store(false, Ordering::SeqCst);
+                }
+            }
+            self.active_set.store(true, Ordering::SeqCst);
+            let _active = ActiveSet(&self.active_set);
+            self.set_started.notify_one();
+            std::future::pending::<()>().await;
+        }
+        if self.fail_writes.load(Ordering::SeqCst) {
+            return Err(StatsigErr::DataStoreFailure("write denied".to_string()));
+        }
+        self.values
+            .lock()
+            .insert(key.to_string(), value.to_string());
+        self.writes
+            .lock()
+            .push((key.to_string(), value.to_string()));
         self.written_keys.lock().push(key.to_string());
         Ok(())
     }
@@ -195,6 +245,10 @@ impl IdListsUpdateListener for TestIdListsListener {
             .collect()
     }
 
+    fn get_current_id_lists_snapshot(&self) -> Result<HashMap<String, IdList>, StatsigErr> {
+        Ok(self.id_lists.read().clone())
+    }
+
     fn did_receive_id_list_updates(&self, updates: HashMap<String, IdListUpdate>) {
         let mut lists = self.id_lists.write();
         lists.retain(|name, _| updates.contains_key(name));
@@ -236,6 +290,124 @@ fn complete_snapshot_values(
     ])
 }
 
+#[tokio::test]
+async fn id_list_write_back_requires_both_read_and_write_capabilities() {
+    for (read, write) in [(false, false), (false, true), (true, false), (true, true)] {
+        for polling in [false, true] {
+            let mut server = Server::new_async().await;
+            let mut manifest = serde_json::json!({"remote": {
+                "name": "remote", "url": format!("{}/remote", server.url()),
+                "fileID": "file-1", "size": 10, "creationTime": 1
+            }});
+            let manifest_request = server
+                .mock("POST", "/get_id_lists")
+                .with_status(200)
+                .with_body(manifest.to_string())
+                .expect(1)
+                .create_async()
+                .await;
+            let child_request = server
+                .mock("GET", "/remote")
+                .with_status(206)
+                .with_body("+AAAAAAAA\n")
+                .expect(1)
+                .create_async()
+                .await;
+            let options = StatsigOptions {
+                id_lists_url: Some(format!("{}/get_id_lists", server.url())),
+                ..Default::default()
+            };
+            let mut store = SnapshotDataStore::new(HashMap::new(), polling);
+            store.supports_snapshot = read;
+            store.supports_snapshot_write.store(write, Ordering::SeqCst);
+            let store = Arc::new(store);
+            let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
+                "secret-key",
+                Arc::new(HashUtil::new()),
+                &options,
+                store.clone(),
+            ));
+            let listener = Arc::new(TestIdListsListener {
+                id_lists: RwLock::new(HashMap::new()),
+            });
+            adapter
+                .clone()
+                .start(&StatsigRuntime::get_runtime(), listener.clone())
+                .await
+                .unwrap();
+            assert!(listener.contains("remote", "AAAAAAAA"));
+            let initial_attempts = store.set_attempts.load(Ordering::SeqCst);
+            assert_eq!(
+                initial_attempts,
+                if read && write { 2 } else { 0 },
+                "read={read}, write={write}"
+            );
+            manifest_request.assert_async().await;
+            manifest_request.remove_async().await;
+            manifest["remote"]["size"] = 20.into();
+            let changed_manifest = server
+                .mock("POST", "/get_id_lists")
+                .with_status(200)
+                .with_body(manifest.to_string())
+                .expect(1)
+                .create_async()
+                .await;
+            let changed_child = server
+                .mock("GET", "/remote")
+                .match_header("range", "bytes=10-")
+                .with_status(206)
+                .with_body("+BBBBBBBB\n")
+                .expect(1)
+                .create_async()
+                .await;
+            store.set_values(HashMap::new());
+            adapter.sync_scheduled_tick().await.unwrap();
+            assert!(listener.contains("remote", "AAAAAAAA"));
+            assert!(listener.contains("remote", "BBBBBBBB"));
+            assert_eq!(
+                store.set_attempts.load(Ordering::SeqCst),
+                if read && write { 4 } else { 0 }
+            );
+            if !read {
+                assert!(store.requested_keys.lock().is_empty());
+            }
+            changed_manifest.assert_async().await;
+            changed_child.assert_async().await;
+            child_request.assert_async().await;
+            if read && write {
+                changed_manifest.remove_async().await;
+                store.supports_snapshot_write.store(false, Ordering::SeqCst);
+                manifest["remote"]["size"] = 30.into();
+                let readonly_manifest = server
+                    .mock("POST", "/get_id_lists")
+                    .with_status(200)
+                    .with_body(manifest.to_string())
+                    .expect(1)
+                    .create_async()
+                    .await;
+                let readonly_child = server
+                    .mock("GET", "/remote")
+                    .match_header("range", "bytes=20-")
+                    .with_status(206)
+                    .with_body("+CCCCCCCC\n")
+                    .expect(1)
+                    .create_async()
+                    .await;
+                store.set_values(HashMap::new());
+                adapter.sync_scheduled_tick().await.unwrap();
+                assert!(listener.contains("remote", "CCCCCCCC"));
+                assert_eq!(
+                    store.set_attempts.load(Ordering::SeqCst),
+                    4,
+                    "withdrawn write capability must disable the existing writer"
+                );
+                readonly_manifest.assert_async().await;
+                readonly_child.assert_async().await;
+            }
+        }
+    }
+}
+
 // Legacy may publish a remote cursor even if its condensed child was not updated.
 // Parseability is not proof that the cached members cover the remote cursor.
 #[tokio::test]
@@ -250,7 +422,9 @@ async fn stale_legacy_child_is_fully_reconciled_before_incremental_http() {
                     id_lists_url: Some(format!("{}/get_id_lists", server.url())),
                     ..Default::default()
                 };
-                let store = Arc::new(SnapshotDataStore::new(HashMap::new(), polling));
+                let store = Arc::new(
+                    SnapshotDataStore::new(HashMap::new(), polling).with_snapshot_write_support(),
+                );
                 let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
                     "secret-key",
                     Arc::new(HashUtil::new()),
@@ -365,7 +539,9 @@ async fn get_errors_use_atomic_http_fallback_and_recover_to_cache() {
                 id_lists_url: Some(format!("{}/get_id_lists", server.url())),
                 ..Default::default()
             };
-            let store = Arc::new(SnapshotDataStore::new(HashMap::new(), true));
+            let store = Arc::new(
+                SnapshotDataStore::new(HashMap::new(), true).with_snapshot_write_support(),
+            );
             let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
                 "secret-key",
                 Arc::new(HashUtil::new()),
@@ -506,7 +682,8 @@ async fn superseded_refresh_cannot_publish_or_fall_through_to_http() {
         id_lists_url: Some(format!("{}/get_id_lists", server.url())),
         ..Default::default()
     };
-    let store = Arc::new(SnapshotDataStore::new(HashMap::new(), true));
+    let store =
+        Arc::new(SnapshotDataStore::new(HashMap::new(), true).with_snapshot_write_support());
     let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
         "secret-key",
         Arc::new(HashUtil::new()),
@@ -727,6 +904,66 @@ async fn absent_feature_opt_in_uses_http_without_reading_id_list_keys() {
 
     assert!(!adapter.supports_snapshot());
     assert!(store.requested_keys.lock().is_empty());
+    assert!(store.writes.lock().is_empty());
+    manifest_request.assert_async().await;
+}
+
+#[tokio::test]
+async fn failed_store_initialization_falls_back_to_http_without_write_back() {
+    let mut server = Server::new_async().await;
+    let manifest_request = server
+        .mock("POST", "/get_id_lists")
+        .with_status(200)
+        .with_body("{}")
+        .expect(2)
+        .create_async()
+        .await;
+    let options = StatsigOptions {
+        id_lists_url: Some(format!("{}/get_id_lists", server.url())),
+        ..StatsigOptions::default()
+    };
+    let store = Arc::new(
+        SnapshotDataStore::new(HashMap::new(), true)
+            .with_snapshot_write_support()
+            .with_failed_initialize(),
+    );
+    let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
+        "secret-key",
+        Arc::new(HashUtil::new()),
+        &options,
+        store.clone(),
+    ));
+    let listener = Arc::new(TestIdListsListener {
+        id_lists: RwLock::new(HashMap::new()),
+    });
+
+    adapter
+        .clone()
+        .start(&StatsigRuntime::get_runtime(), listener.clone())
+        .await
+        .unwrap();
+
+    assert!(adapter.supports_snapshot());
+    assert!(store.requested_keys.lock().is_empty());
+    assert!(store.writes.lock().is_empty());
+    store.fail_initialize.store(false, Ordering::SeqCst);
+    store.set_values(complete_snapshot_values(
+        &adapter,
+        "paid-users",
+        "+2Tv4fIVX\n",
+        10,
+    ));
+    adapter.sync_scheduled_tick().await.unwrap();
+
+    assert!(listener.contains("paid-users", "2Tv4fIVX"));
+    // GET already proves read recovery. This slice must also activate the writer
+    // after readiness recovers, without allowing writes during the failed init.
+    store.set_values(HashMap::new());
+    adapter.sync_scheduled_tick().await.unwrap();
+    assert_eq!(
+        *store.writes.lock(),
+        vec![(adapter.manifest_key.clone(), "{}".into())]
+    );
     manifest_request.assert_async().await;
 }
 
@@ -878,7 +1115,7 @@ async fn shutdown_cancels_in_flight_id_list_poll_before_shared_store_shutdown() 
 }
 
 #[tokio::test]
-async fn invalid_startup_cache_falls_back_to_a_whole_http_refresh() {
+async fn shutdown_cancels_in_flight_id_list_write_before_shared_store_shutdown() {
     let mut server = Server::new_async().await;
     let manifest = format!(
         r#"{{"remote":{{"name":"remote","url":"{}/remote","fileID":"file-1","size":10,"creationTime":1}}}}"#,
@@ -899,15 +1136,109 @@ async fn invalid_startup_cache_falls_back_to_a_whole_http_refresh() {
         .create_async()
         .await;
     let options = StatsigOptions {
+        id_lists_sync_interval_ms: Some(1),
         id_lists_url: Some(format!("{}/get_id_lists", server.url())),
         ..StatsigOptions::default()
     };
-    let store = Arc::new(SnapshotDataStore::new(HashMap::new(), true));
+    let store =
+        Arc::new(SnapshotDataStore::new(HashMap::new(), true).with_snapshot_write_support());
+    let shared = Arc::new(SharedDataStore::new(store.clone()));
     let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
         "secret-key",
         Arc::new(HashUtil::new()),
         &options,
-        store,
+        shared.clone(),
+    ));
+    store.set_values(complete_snapshot_values(
+        &adapter,
+        "paid-users",
+        "+2Tv4fIVX\n",
+        10,
+    ));
+    let listener = Arc::new(TestIdListsListener {
+        id_lists: RwLock::new(HashMap::new()),
+    });
+    let runtime = StatsigRuntime::get_runtime();
+    adapter
+        .clone()
+        .start(&runtime, listener.clone())
+        .await
+        .unwrap();
+    store.set_values(HashMap::from([(
+        adapter.manifest_key.clone(),
+        "{invalid".to_string(),
+    )]));
+    store.block_next_set.store(true, Ordering::SeqCst);
+    adapter
+        .clone()
+        .schedule_background_sync(&runtime)
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(2), store.set_started.notified())
+        .await
+        .unwrap();
+
+    store.set_values(complete_snapshot_values(
+        &adapter,
+        "cached",
+        "+BBBBBBBB\n",
+        30,
+    ));
+    let mut queued_cache = Box::pin(adapter.sync_scheduled_tick());
+    assert!(futures::poll!(&mut queued_cache).is_pending());
+    assert!(listener.contains("remote", "2Tv4fIVX"));
+    assert!(!listener.contains("cached", "BBBBBBBB"));
+
+    tokio::time::timeout(Duration::from_secs(1), async {
+        let (shutdown, queued_cache) =
+            tokio::join!(adapter.shutdown(Duration::from_secs(1)), queued_cache);
+        shutdown.unwrap();
+        assert!(queued_cache.is_err());
+        Ok::<(), StatsigErr>(())
+    })
+    .await
+    .unwrap()
+    .unwrap();
+    shared.shutdown().await.unwrap();
+    assert_eq!(store.shutdowns.load(Ordering::SeqCst), 1);
+    assert!(store.writes.lock().is_empty());
+    manifest_request.assert_async().await;
+    child_request.assert_async().await;
+}
+
+#[tokio::test]
+async fn invalid_startup_cache_falls_back_to_a_whole_http_refresh() {
+    let mut server = Server::new_async().await;
+    let manifest = format!(
+        r#"{{"remote":{{"name":"remote","url":"{}/remote","fileID":"file-1","size":10,"creationTime":1}}}}"#,
+        server.url()
+    );
+    let manifest_request = server
+        .mock("POST", "/get_id_lists")
+        .with_status(200)
+        .with_body(manifest)
+        .expect(1)
+        .create_async()
+        .await;
+    let child_request = server
+        .mock("GET", "/remote")
+        .with_status(200)
+        .with_body("+2Tv4fIVX\n")
+        .expect(1)
+        .create_async()
+        .await;
+    let store =
+        Arc::new(SnapshotDataStore::new(HashMap::new(), true).with_snapshot_write_support());
+    let options = StatsigOptions {
+        data_store: Some(store.clone()),
+        id_lists_url: Some(format!("{}/get_id_lists", server.url())),
+        ..StatsigOptions::default()
+    };
+    let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
+        "secret-key",
+        Arc::new(HashUtil::new()),
+        &options,
+        store.clone(),
     ));
     let listener = Arc::new(TestIdListsListener {
         id_lists: RwLock::new(HashMap::new()),
@@ -920,6 +1251,181 @@ async fn invalid_startup_cache_falls_back_to_a_whole_http_refresh() {
         .unwrap();
 
     assert!(listener.contains("remote", "2Tv4fIVX"));
+    {
+        let writes = store.writes.lock();
+        assert_eq!(writes.len(), 2);
+        assert!(writes[0].0.contains("id_list::remote"));
+        assert!(writes[1].0.contains("/v1/get_id_lists"));
+    }
+    adapter.sync_scheduled_tick().await.unwrap();
+    assert!(listener.contains("remote", "2Tv4fIVX"));
+    manifest_request.assert_async().await;
+    child_request.assert_async().await;
+}
+
+#[tokio::test]
+async fn writer_checkpoint_skips_unchanged_http_and_resets_after_cache_or_capability_changes() {
+    let mut server = Server::new_async().await;
+    let manifest_request = server
+        .mock("POST", "/get_id_lists")
+        .with_status(200)
+        .with_body(
+            serde_json::json!({"remote": {
+                "name": "remote", "url": format!("{}/remote", server.url()),
+                "fileID": "file-1", "size": 10, "creationTime": 1
+            }})
+            .to_string(),
+        )
+        .expect(8)
+        .create_async()
+        .await;
+    let child_request = server
+        .mock("GET", "/remote")
+        .with_status(206)
+        .with_body("+AAAAAAAA\n")
+        .expect(2)
+        .create_async()
+        .await;
+    let store =
+        Arc::new(SnapshotDataStore::new(HashMap::new(), false).with_snapshot_write_support());
+    let options = StatsigOptions {
+        id_lists_url: Some(format!("{}/get_id_lists", server.url())),
+        ..Default::default()
+    };
+    let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
+        "secret-key",
+        Arc::new(HashUtil::new()),
+        &options,
+        store.clone(),
+    ));
+    let listener = Arc::new(TestIdListsListener {
+        id_lists: RwLock::new(HashMap::new()),
+    });
+    adapter
+        .clone()
+        .start(&StatsigRuntime::get_runtime(), listener.clone())
+        .await
+        .unwrap();
+    assert_eq!(store.set_attempts.load(Ordering::SeqCst), 2);
+    adapter.sync_scheduled_tick().await.unwrap();
+    assert_eq!(
+        store.set_attempts.load(Ordering::SeqCst),
+        2,
+        "unchanged tick must not write"
+    );
+
+    store.supports_snapshot_write.store(false, Ordering::SeqCst);
+    adapter.sync_scheduled_tick().await.unwrap();
+    assert_eq!(store.set_attempts.load(Ordering::SeqCst), 2);
+    store.supports_snapshot_write.store(true, Ordering::SeqCst);
+    adapter.sync_scheduled_tick().await.unwrap();
+    assert_eq!(
+        store.set_attempts.load(Ordering::SeqCst),
+        4,
+        "re-enabled writer must republish"
+    );
+
+    // A cache snapshot can replace the IDs while retaining the same cursor.
+    store.set_values(complete_snapshot_values(
+        &adapter,
+        "remote",
+        "+BBBBBBBB\n",
+        10,
+    ));
+    adapter.sync_id_lists().await.unwrap();
+    assert!(listener.contains("remote", "BBBBBBBB"));
+    adapter.sync_scheduled_tick().await.unwrap();
+    assert_eq!(store.set_attempts.load(Ordering::SeqCst), 6);
+    assert!(listener.contains("remote", "AAAAAAAA"));
+    assert!(!listener.contains("remote", "BBBBBBBB"));
+    assert_eq!(
+        store.values.lock()[&adapter.child_key("remote")],
+        "+AAAAAAAA\n"
+    );
+    adapter.sync_scheduled_tick().await.unwrap();
+    assert_eq!(store.set_attempts.load(Ordering::SeqCst), 6);
+
+    // A missing cache must be repaired even though remote/in-memory state agrees.
+    store.set_values(HashMap::new());
+    adapter
+        .sync_cache_or_http(current_runtime_epoch(), false)
+        .await
+        .unwrap();
+    assert_eq!(store.set_attempts.load(Ordering::SeqCst), 8);
+    adapter.sync_scheduled_tick().await.unwrap();
+    assert_eq!(store.set_attempts.load(Ordering::SeqCst), 8);
+    manifest_request.assert_async().await;
+    child_request.assert_async().await;
+}
+
+#[tokio::test]
+async fn write_failure_does_not_discard_a_valid_http_update() {
+    let mut server = Server::new_async().await;
+    let manifest = format!(
+        r#"{{"remote":{{"name":"remote","url":"{}/remote","fileID":"file-1","size":10,"creationTime":1}}}}"#,
+        server.url()
+    );
+    let manifest_request = server
+        .mock("POST", "/get_id_lists")
+        .with_status(200)
+        .with_body(manifest)
+        .expect(3)
+        .create_async()
+        .await;
+    let child_request = server
+        .mock("GET", "/remote")
+        .with_status(200)
+        .with_body("+2Tv4fIVX\n")
+        .expect(1)
+        .create_async()
+        .await;
+    let store =
+        Arc::new(SnapshotDataStore::new(HashMap::new(), true).with_snapshot_write_support());
+    store.fail_writes.store(true, Ordering::SeqCst);
+    let options = StatsigOptions {
+        data_store: Some(store.clone()),
+        id_lists_url: Some(format!("{}/get_id_lists", server.url())),
+        ..StatsigOptions::default()
+    };
+    let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
+        "secret-key",
+        Arc::new(HashUtil::new()),
+        &options,
+        store.clone(),
+    ));
+    let listener = Arc::new(TestIdListsListener {
+        id_lists: RwLock::new(HashMap::new()),
+    });
+
+    adapter
+        .clone()
+        .start(&StatsigRuntime::get_runtime(), listener.clone())
+        .await
+        .unwrap();
+
+    assert!(listener.contains("remote", "2Tv4fIVX"));
+    assert!(store.writes.lock().is_empty());
+    assert!(store.set_attempts.load(Ordering::SeqCst) > 0);
+    store.fail_writes.store(false, Ordering::SeqCst);
+    adapter
+        .sync_http(current_runtime_epoch(), false)
+        .await
+        .unwrap();
+    assert_eq!(
+        store.writes.lock().len(),
+        2,
+        "unchanged HTTP must retry failed persistence"
+    );
+    let attempts = store.set_attempts.load(Ordering::SeqCst);
+    adapter
+        .sync_http(current_runtime_epoch(), false)
+        .await
+        .unwrap();
+    assert_eq!(
+        store.set_attempts.load(Ordering::SeqCst),
+        attempts,
+        "successful retry establishes checkpoint"
+    );
     manifest_request.assert_async().await;
     child_request.assert_async().await;
 }
@@ -1090,7 +1596,7 @@ async fn incomplete_http_startup_is_atomic_only_for_opted_in_snapshots() {
             id_lists_url: Some(format!("{}/get_id_lists", server.url())),
             ..Default::default()
         };
-        let mut store = SnapshotDataStore::new(HashMap::new(), true);
+        let mut store = SnapshotDataStore::new(HashMap::new(), true).with_snapshot_write_support();
         store.supports_snapshot = supported;
         store
             .fail_initialize
@@ -1115,6 +1621,10 @@ async fn incomplete_http_startup_is_atomic_only_for_opted_in_snapshots() {
             "snapshot opt-in={supported}, initializer failure={initialize_fails}"
         );
         assert!(!listener.contains("b", "2Tv4fIVX"));
+        assert!(
+            store.writes.lock().is_empty(),
+            "a partial candidate must never be written"
+        );
         manifest.assert_async().await;
         a.assert_async().await;
         b.assert_async().await;
@@ -1185,7 +1695,8 @@ async fn incomplete_http_refresh_preserves_all_memberships_and_cursors_until_com
             id_lists_url: Some(format!("{}/get_id_lists", server.url())),
             ..Default::default()
         };
-        let store = Arc::new(SnapshotDataStore::new(HashMap::new(), polling));
+        let store =
+            Arc::new(SnapshotDataStore::new(HashMap::new(), polling).with_snapshot_write_support());
         let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
             "secret-key",
             Arc::new(HashUtil::new()),
@@ -1239,6 +1750,10 @@ async fn incomplete_http_refresh_preserves_all_memberships_and_cursors_until_com
             before,
             "partial fallback must preserve all A/B/C metadata and IDs (polling={polling})"
         );
+        assert!(
+            store.writes.lock().is_empty(),
+            "failed A/B must not publish children or manifest"
+        );
         b_failed.assert_async().await;
         b_failed.remove_async().await;
         let b = server
@@ -1256,6 +1771,14 @@ async fn incomplete_http_refresh_preserves_all_memberships_and_cursors_until_com
             assert_eq!(listener.id_lists.read()[name].metadata.size, 10);
         }
         assert!(!listener.id_lists.read().contains_key("c"));
+        let writes = store.writes.lock().clone();
+        assert_eq!(writes.len(), 3);
+        assert_eq!(writes[0].0, adapter.child_key("a"));
+        assert_eq!(writes[1].0, adapter.child_key("b"));
+        assert_eq!(writes[2].0, adapter.manifest_key);
+        let published: serde_json::Value = serde_json::from_str(&writes[2].1).unwrap();
+        assert!(published.get("c").is_none());
+        assert_eq!(published["b"]["fileID"], "new-b");
         manifest.assert_async().await;
         a.assert_async().await;
         b.assert_async().await;

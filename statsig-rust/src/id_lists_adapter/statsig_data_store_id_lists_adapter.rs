@@ -36,6 +36,7 @@ pub struct StatsigDataStoreIdListsAdapter {
     polling_task: DataStorePollingTask,
     http_fallback: StatsigHttpIdListsAdapter,
     snapshot_supported: AtomicBool,
+    snapshot_write_supported: AtomicBool,
     // Legacy manifest cursors do not prove that condensed children are complete.
     needs_http_reconciliation: AtomicBool,
 }
@@ -65,6 +66,7 @@ impl StatsigDataStoreIdListsAdapter {
             polling_task: DataStorePollingTask::new(),
             http_fallback: StatsigHttpIdListsAdapter::new(sdk_key, options),
             snapshot_supported: AtomicBool::new(false),
+            snapshot_write_supported: AtomicBool::new(false),
             needs_http_reconciliation: AtomicBool::new(false),
         }
     }
@@ -77,9 +79,22 @@ impl StatsigDataStoreIdListsAdapter {
         self.snapshot_supported.load(Ordering::Acquire)
     }
 
-    async fn initialize_store_if_needed(&self) -> Result<(), StatsigErr> {
+    async fn initialize_store_if_needed(&self, epoch: u64) -> Result<(), StatsigErr> {
         // SharedDataStore serializes initialization and caches only success.
-        self.data_store.initialize().await
+        let initialized = self.data_store.initialize().await;
+        let write_supported = initialized.is_ok()
+            && self
+                .data_store
+                .supports_feature(DataStoreFeature::IDListSnapshotWrite)
+                .await;
+        if self.polling_task.is_stopped_in_epoch(epoch) {
+            return Err(StatsigErr::ShutdownFailure(
+                "ID-list writer setup superseded".into(),
+            ));
+        }
+        self.snapshot_write_supported
+            .store(write_supported, Ordering::Release);
+        initialized
     }
 
     fn child_key(&self, list_name: &str) -> String {
@@ -127,6 +142,9 @@ impl StatsigDataStoreIdListsAdapter {
             StatsigErr::UnstartedAdapter("ID-list listener is not set".to_string())
         })?;
         listener.replace_id_lists_snapshot(snapshot.lists)?;
+        // The cache may replace members without changing its cursor. Recreate
+        // the writer checkpoint after the next full HTTP reconciliation.
+        self.http_fallback.disable_data_store_writer();
         self.needs_http_reconciliation
             .store(true, Ordering::Release);
         Ok(())
@@ -138,6 +156,17 @@ impl StatsigDataStoreIdListsAdapter {
             return Err(StatsigErr::ShutdownFailure(
                 "ID-list HTTP refresh superseded".into(),
             ));
+        }
+        // Configure at the serialized HTTP boundary, not before cache reads:
+        // a slow HTTP refresh must not prevent concurrent cache I/O.
+        if self.supports_snapshot() && self.snapshot_write_supported.load(Ordering::Acquire) {
+            self.http_fallback.enable_data_store_writer(
+                &self.sdk_key,
+                &self.options,
+                self.data_store.clone(),
+            );
+        } else {
+            self.http_fallback.disable_data_store_writer();
         }
         let reconcile = self.needs_http_reconciliation.load(Ordering::Acquire);
         let should_publish = || !self.polling_task.is_stopped_in_epoch(epoch);
@@ -177,6 +206,12 @@ impl StatsigDataStoreIdListsAdapter {
                         "ID-list refresh superseded".into(),
                     ));
                 }
+                {
+                    let _refresh = self.polling_task.lock_refresh().await;
+                    // Missing/corrupt cache data must be repaired even if HTTP
+                    // returns the manifest this writer previously persisted.
+                    self.http_fallback.disable_data_store_writer();
+                }
                 log_w!(
                     TAG,
                     "DataStore ID-list refresh failed: {cache_error}; trying HTTP"
@@ -207,7 +242,7 @@ impl StatsigDataStoreIdListsAdapter {
             return self.sync_http(epoch, false).await;
         }
 
-        if let Err(cache_error) = self.initialize_store_if_needed().await {
+        if let Err(cache_error) = self.initialize_store_if_needed(epoch).await {
             return self.sync_http(epoch, false).await.map_err(|http_error| Self::fallback_error(cache_error, http_error, "initialization"));
         }
 
@@ -311,9 +346,10 @@ impl IdListsAdapter for StatsigDataStoreIdListsAdapter {
         }
         self.snapshot_supported.store(supported, Ordering::Release);
         if !supported {
+            self.snapshot_write_supported.store(false, Ordering::Release);
             return self.sync_http(epoch, true).await;
         }
-        if let Err(cache_error) = self.initialize_store_if_needed().await {
+        if let Err(cache_error) = self.initialize_store_if_needed(epoch).await {
             log_w!(
                 TAG,
                 "DataStore ID-list initialization failed: {cache_error}; trying HTTP"

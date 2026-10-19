@@ -18,6 +18,7 @@ pub enum RequestPath {
 pub enum DataStoreFeature {
     ConfigSpecs,
     IDListSnapshot,
+    IDListSnapshotWrite,
 }
 
 impl Display for DataStoreFeature {
@@ -25,6 +26,7 @@ impl Display for DataStoreFeature {
         let value = match self {
             Self::ConfigSpecs => "config_specs",
             Self::IDListSnapshot => "id_list_snapshot",
+            Self::IDListSnapshotWrite => "id_list_snapshot_write",
         };
         write!(f, "{value}")
     }
@@ -114,8 +116,8 @@ pub trait DataStoreTrait: Send + Sync {
     async fn support_polling_updates_for(&self, path: RequestPath) -> bool;
 
     /// Existing adapters support config specs but must explicitly opt in to
-    /// the complete ID-list snapshot key schema before the SDK reads or writes
-    /// any ID-list keys in their DataStore.
+    /// the complete ID-list snapshot key schema before the SDK reads any ID-list
+    /// keys. HTTP snapshot write-back additionally requires IDListSnapshotWrite.
     async fn supports_feature(&self, feature: DataStoreFeature) -> bool {
         matches!(feature, DataStoreFeature::ConfigSpecs)
     }
@@ -181,7 +183,6 @@ fn get_data_store_key_for_path(
 }
 
 #[must_use]
-#[allow(dead_code)] // Wired into the DataStore ID-list adapter in the dependent slice.
 pub(crate) fn get_id_lists_manifest_data_store_key(
     sdk_key: &str,
     hashing: &HashUtil,
@@ -196,7 +197,6 @@ pub(crate) fn get_id_lists_manifest_data_store_key(
 /// on the fully formatted cache key. This distinction is observable for both
 /// the V2 hashed and V3 human-readable key schemas.
 #[must_use]
-#[allow(dead_code)] // Wired into the DataStore ID-list adapter in the dependent slice.
 pub(crate) fn get_id_list_data_store_key(
     list_name: &str,
     sdk_key: &str,
@@ -274,6 +274,11 @@ mod tests {
                 .supports_feature(DataStoreFeature::IDListSnapshot)
                 .await
         );
+        assert!(
+            !store
+                .supports_feature(DataStoreFeature::IDListSnapshotWrite)
+                .await
+        );
         assert_eq!(
             store
                 .support_polling_updates_for_feature(DataStoreFeature::IDListSnapshot)
@@ -284,6 +289,10 @@ mod tests {
         assert_eq!(
             DataStoreFeature::IDListSnapshot.to_string(),
             "id_list_snapshot"
+        );
+        assert_eq!(
+            DataStoreFeature::IDListSnapshotWrite.to_string(),
+            "id_list_snapshot_write"
         );
     }
 

@@ -54,8 +54,30 @@ The fixed-key manifest/children format is not transactional: reading every child
 and atomically installing the in-memory candidate cannot prove that an external
 writer published all keys in one generation. Fail-closed/no-Statsig-fallback mode
 is deferred; this phase intentionally retains HTTP fallback. Do not treat config
-specs fallback settings as an ID-list no-network guarantee. ID-list write-back is
-a separate follow-up to this read-through change.
+specs fallback settings as an ID-list no-network guarantee.
+
+Read support does not grant write permission. To enable write-back, explicitly
+return `true` from both `supportsFeature('id_list_snapshot')` and
+`supportsFeature('id_list_snapshot_write')`. The write capability defaults to
+`false`; read-only adapters and adapters without the callback receive no ID-list
+writes. `enableIdLists` remains required, and the polling preference controls
+refresh ownership, not permission to write. Unknown feature names should return
+`false` rather than being accepted by a catch-all capability callback.
+
+With both capabilities enabled, a validated HTTP refresh writes condensed
+children and then the manifest back through DataStore. Cache reads do not echo
+writes. Write-back is best-effort: a failed write is reported through SDK logging
+and metrics without discarding the fresh in-memory snapshot. Manifest-last writes
+reduce partial publication, but do not make the fixed-key format transactional.
+
+After a complete successful write, unchanged ID-list manifests skip snapshot
+copying, serialization and DataStore writes. This compares ID-list metadata, not
+DCS LCUT. Failed or cancelled publications remain retryable, including a return
+to a previously persisted manifest after a partial write. Cache replacement or
+cache-read failure, and disabling then re-enabling write support, invalidate the
+checkpoint. Unchanged ticks do not renew DataStore timestamps or adapter-defined
+TTLs; this is change-driven persistence, not a periodic cache lease or a guarantee
+that externally evicted keys are detected without reading them.
 
 ### Fork limitation
 

@@ -6,7 +6,7 @@ use std::{collections::HashMap, fmt};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct IdListMetadata {
     #[serde(alias = "key")]
@@ -77,6 +77,14 @@ pub trait IdListsAdapter: Send + Sync {
 
 pub trait IdListsUpdateListener: Send + Sync {
     fn get_current_id_list_metadata(&self) -> HashMap<String, IdListMetadata>;
+
+    /// Returns the complete, already-applied membership for DataStore write-through.
+    /// Custom listeners remain source-compatible and simply cannot be written through.
+    fn get_current_id_lists_snapshot(&self) -> Result<HashMap<String, IdList>, StatsigErr> {
+        Err(StatsigErr::InvalidOperation(
+            "ID-list snapshot reads are not supported by this listener".to_string(),
+        ))
+    }
 
     fn did_receive_id_list_updates(&self, updates: HashMap<String, IdListUpdate>);
 

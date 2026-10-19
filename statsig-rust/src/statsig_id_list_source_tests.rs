@@ -289,6 +289,25 @@ fn custom_id_list_adapter_takes_precedence() {
 }
 
 #[test]
+fn disabled_id_lists_do_not_select_a_store_or_custom_adapter() {
+    let options = StatsigOptions {
+        data_store: Some(Arc::new(NoopDataStore)),
+        enable_id_lists: Some(false),
+        id_lists_adapter: Some(Arc::new(StatsigHttpIdListsAdapter::new(
+            "secret-key",
+            &StatsigOptions::default(),
+        ))),
+        ..StatsigOptions::default()
+    };
+
+    let housing = initialize_id_lists_adapter("secret-key", Arc::new(HashUtil::new()), &options);
+
+    assert!(housing.inner.is_none());
+    assert!(housing.as_default_adapter.is_none());
+    assert!(housing.as_data_store_adapter.is_none());
+}
+
+#[test]
 fn custom_specs_adapter_can_coexist_with_id_list_store() {
     let options = StatsigOptions {
         data_store: Some(Arc::new(NoopDataStore)),
