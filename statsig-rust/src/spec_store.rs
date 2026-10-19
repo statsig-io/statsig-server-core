@@ -704,4 +704,20 @@ impl IdListsUpdateListener for SpecStore {
             }
         }
     }
+
+    fn replace_id_lists_snapshot(
+        &self,
+        snapshot: HashMap<String, IdList>,
+    ) -> Result<(), StatsigErr> {
+        let mut data = write_lock_or_else!(self.data, {
+            let err = StatsigErr::LockFailure(
+                "Failed to acquire write lock for replace_id_lists_snapshot".to_string(),
+            );
+            log_error_to_statsig_and_console!(self.ops_stats, TAG, err.clone());
+            return Err(err);
+        });
+
+        data.id_lists = snapshot;
+        Ok(())
+    }
 }

@@ -1,4 +1,4 @@
-use crate::{StatsigErr, StatsigRuntime};
+use crate::{id_lists_adapter::IdList, StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
 use std::sync::Arc;
 use std::time::Duration;
@@ -71,6 +71,19 @@ pub trait IdListsUpdateListener: Send + Sync {
     fn get_current_id_list_metadata(&self) -> HashMap<String, IdListMetadata>;
 
     fn did_receive_id_list_updates(&self, updates: HashMap<String, IdListUpdate>);
+
+    /// Atomically publishes a fully validated ID-list snapshot.
+    ///
+    /// The default keeps existing listener implementations source-compatible;
+    /// snapshot-capable stores override it with a single-commit replacement.
+    fn replace_id_lists_snapshot(
+        &self,
+        _snapshot: HashMap<String, IdList>,
+    ) -> Result<(), StatsigErr> {
+        Err(StatsigErr::InvalidOperation(
+            "ID-list snapshot replacement is not supported by this listener".to_string(),
+        ))
+    }
 }
 
 impl fmt::Debug for dyn IdListsAdapter {

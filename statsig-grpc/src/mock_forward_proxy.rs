@@ -1,3 +1,7 @@
+// This file is also a standalone binary, so the library crate lint allowance
+// does not cover its Tonic-generated async_trait methods.
+#![allow(clippy::double_must_use)]
+
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use std::net::SocketAddr;

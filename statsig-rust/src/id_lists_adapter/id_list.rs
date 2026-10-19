@@ -60,6 +60,11 @@ impl IdList {
         self.metadata.size += changeset_data.len() as u64;
     }
 
+    #[allow(dead_code)] // Used by the staged DataStore snapshot parser before adapter wiring.
+    pub(crate) fn from_complete_snapshot(metadata: IdListMetadata, ids: HashSet<String>) -> Self {
+        Self { metadata, ids }
+    }
+
     fn update_metadata(&mut self, metadata: IdListMetadata) {
         self.metadata = metadata;
         self.metadata.size = 0;

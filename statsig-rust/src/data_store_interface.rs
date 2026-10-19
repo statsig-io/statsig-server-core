@@ -12,6 +12,24 @@ pub enum RequestPath {
     IDList,
 }
 
+/// Logical DataStore schemas, not the HTTP paths or individual cache keys.
+/// `IDListSnapshot` includes the manifest and every named child list.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DataStoreFeature {
+    ConfigSpecs,
+    IDListSnapshot,
+}
+
+impl Display for DataStoreFeature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let value = match self {
+            Self::ConfigSpecs => "config_specs",
+            Self::IDListSnapshot => "id_list_snapshot",
+        };
+        write!(f, "{value}")
+    }
+}
+
 impl Display for RequestPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let value = match self {
@@ -94,6 +112,23 @@ pub trait DataStoreTrait: Send + Sync {
     }
 
     async fn support_polling_updates_for(&self, path: RequestPath) -> bool;
+
+    /// Existing adapters support config specs but must explicitly opt in to
+    /// the complete ID-list snapshot key schema before the SDK reads or writes
+    /// any ID-list keys in their DataStore.
+    async fn supports_feature(&self, feature: DataStoreFeature) -> bool {
+        matches!(feature, DataStoreFeature::ConfigSpecs)
+    }
+
+    /// `None` means the adapter has no ID-list polling preference. An opted-in
+    /// snapshot then polls the DataStore by default; `Some(false)` explicitly
+    /// assigns scheduled refreshes to HTTP while startup still tries the cache.
+    async fn support_polling_updates_for_feature(
+        &self,
+        _feature: DataStoreFeature,
+    ) -> Option<bool> {
+        None
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -120,6 +155,15 @@ pub(crate) fn get_data_store_key(
     hashing: &HashUtil,
     options: &StatsigOptions,
 ) -> String {
+    get_data_store_key_for_path(&path.to_string(), sdk_key, hashing, options)
+}
+
+fn get_data_store_key_for_path(
+    path: &str,
+    sdk_key: &str,
+    hashing: &HashUtil,
+    options: &StatsigOptions,
+) -> String {
     let key = match options
         .data_store_key_schema_version
         .clone()
@@ -134,6 +178,37 @@ pub(crate) fn get_data_store_key(
     };
 
     format!("statsig|{path}|{}|{key}", CompressFormat::PlainText)
+}
+
+#[must_use]
+#[allow(dead_code)] // Wired into the DataStore ID-list adapter in the dependent slice.
+pub(crate) fn get_id_lists_manifest_data_store_key(
+    sdk_key: &str,
+    hashing: &HashUtil,
+    options: &StatsigOptions,
+) -> String {
+    get_data_store_key(RequestPath::IDListsV1, sdk_key, hashing, options)
+}
+
+/// Builds the key used by Legacy Node for a complete cached ID-list snapshot.
+///
+/// The list name is part of the path (`id_list::<name>`), rather than a suffix
+/// on the fully formatted cache key. This distinction is observable for both
+/// the V2 hashed and V3 human-readable key schemas.
+#[must_use]
+#[allow(dead_code)] // Wired into the DataStore ID-list adapter in the dependent slice.
+pub(crate) fn get_id_list_data_store_key(
+    list_name: &str,
+    sdk_key: &str,
+    hashing: &HashUtil,
+    options: &StatsigOptions,
+) -> String {
+    get_data_store_key_for_path(
+        &format!("{}::{list_name}", RequestPath::IDList),
+        sdk_key,
+        hashing,
+        options,
+    )
 }
 
 fn data_store_key_with_compress_format(key: &str, compress_format: CompressFormat) -> String {
@@ -151,4 +226,101 @@ fn data_store_key_with_compress_format(key: &str, compress_format: CompressForma
             .then(|| key.replacen(&current, &target, 1))
     })
     .unwrap_or_else(|| key.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct LegacyConfigSpecsDataStore;
+
+    #[async_trait]
+    impl DataStoreTrait for LegacyConfigSpecsDataStore {
+        async fn initialize(&self) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn shutdown(&self) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn get(&self, _key: &str) -> Result<DataStoreResponse, StatsigErr> {
+            Ok(DataStoreResponse {
+                result: None,
+                time: None,
+            })
+        }
+
+        async fn set(
+            &self,
+            _key: &str,
+            _value: &str,
+            _time: Option<u64>,
+        ) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn support_polling_updates_for(&self, _path: RequestPath) -> bool {
+            false
+        }
+    }
+
+    #[tokio::test]
+    async fn old_data_store_defaults_to_config_specs_only() {
+        let store = LegacyConfigSpecsDataStore;
+        assert!(store.supports_feature(DataStoreFeature::ConfigSpecs).await);
+        assert!(
+            !store
+                .supports_feature(DataStoreFeature::IDListSnapshot)
+                .await
+        );
+        assert_eq!(
+            store
+                .support_polling_updates_for_feature(DataStoreFeature::IDListSnapshot)
+                .await,
+            None
+        );
+        assert_eq!(DataStoreFeature::ConfigSpecs.to_string(), "config_specs");
+        assert_eq!(
+            DataStoreFeature::IDListSnapshot.to_string(),
+            "id_list_snapshot"
+        );
+    }
+
+    #[test]
+    fn id_list_keys_match_legacy_v2_contract() {
+        let hashing = HashUtil::new();
+        let options = StatsigOptions::default();
+        let sdk_key = "secret-key";
+        let legacy_hash = "hdvhXXXvkwjHrg8zx6MkzG9L9Rmi7S8wJ70zwUCk+ao=";
+
+        assert_eq!(
+            get_id_lists_manifest_data_store_key(sdk_key, &hashing, &options),
+            format!("statsig|/v1/get_id_lists|plain_text|{legacy_hash}")
+        );
+        assert_eq!(
+            get_id_list_data_store_key("paid-users", sdk_key, &hashing, &options),
+            format!("statsig|id_list::paid-users|plain_text|{legacy_hash}")
+        );
+    }
+
+    #[test]
+    fn id_list_keys_follow_existing_v3_schema() {
+        let hashing = HashUtil::new();
+        let options = StatsigOptions {
+            data_store_key_schema_version: Some(DataStoreKeyVersion::V3HumanReadable),
+            ..StatsigOptions::default()
+        };
+        let sdk_key = "secret-key-with-more-than-twenty-characters";
+        let expected_key_component = "secret-key-with-more";
+
+        assert_eq!(
+            get_id_lists_manifest_data_store_key(sdk_key, &hashing, &options),
+            format!("statsig|/v1/get_id_lists|plain_text|{expected_key_component}")
+        );
+        assert_eq!(
+            get_id_list_data_store_key("paid-users", sdk_key, &hashing, &options),
+            format!("statsig|id_list::paid-users|plain_text|{expected_key_component}")
+        );
+    }
 }
