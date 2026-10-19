@@ -2,14 +2,18 @@ mod utils;
 
 use serde_json::Value;
 use serial_test::serial;
+use statsig_rust::data_store_interface::{
+    DataStoreFeature, DataStoreKeyVersion, DataStoreResponse, DataStoreTrait, RequestPath,
+};
+use statsig_rust::hashing::HashUtil;
 use statsig_rust::statsig_global::StatsigGlobal;
 use statsig_rust::{
-    ObservabilityClient, SpecsUpdateListener, Statsig, StatsigOptions, StatsigUser,
+    ObservabilityClient, SpecsUpdateListener, Statsig, StatsigErr, StatsigOptions, StatsigUser,
 };
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Barrier, Weak};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -17,6 +21,215 @@ use utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use utils::mock_observability_client::MockObservabilityClient;
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 use utils::mock_specs_adapter::MockSpecsAdapter;
+
+#[derive(Default)]
+struct ForkDataStore {
+    updated: AtomicBool,
+    fail_initialize: AtomicBool,
+    ready: AtomicBool,
+    block_reads: AtomicBool,
+    active_reads: AtomicUsize,
+    shutdowns: AtomicUsize,
+}
+
+struct ActiveDataStoreRead<'a>(&'a AtomicUsize);
+
+impl Drop for ActiveDataStoreRead<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
+#[async_trait::async_trait]
+impl DataStoreTrait for ForkDataStore {
+    async fn initialize(&self) -> Result<(), StatsigErr> {
+        if self.fail_initialize.load(Ordering::SeqCst) {
+            return Err(StatsigErr::DataStoreFailure("unavailable".into()));
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        self.ready.store(true, Ordering::SeqCst);
+        Ok(())
+    }
+
+    async fn get(&self, key: &str) -> Result<DataStoreResponse, StatsigErr> {
+        assert!(
+            self.ready.load(Ordering::SeqCst),
+            "read before initialization"
+        );
+        self.active_reads.fetch_add(1, Ordering::SeqCst);
+        let _active = ActiveDataStoreRead(&self.active_reads);
+        if self.block_reads.load(Ordering::SeqCst) {
+            std::future::pending::<()>().await;
+        }
+        let updated = self.updated.load(Ordering::SeqCst);
+        let user = if updated { "after" } else { "before" };
+        let child = format!("+{}\n", &HashUtil::new().sha256(user)[..8]);
+        let result = if key.contains("download_config_specs") {
+            serde_json::json!({
+                "has_updates": true, "time": if updated { 2 } else { 1 },
+                "dynamic_configs": {}, "layer_configs": {}, "experiment_to_layer": {},
+                "feature_gates": {"membership": {
+                    "name": "membership", "type": "feature_gate", "entity": "feature_gate",
+                    "salt": "s", "enabled": true, "defaultValue": false, "idType": "userID",
+                    "rules": [{"id": "r", "name": "r", "salt": "s", "passPercentage": 100,
+                        "returnValue": true, "idType": "userID", "conditions": ["member"]}]
+                }},
+                "condition_map": {"member": {"type": "unit_id", "operator": "in_segment_list",
+                    "targetValue": "list_a", "idType": "userID"}}
+            })
+            .to_string()
+        } else if key.contains("get_id_lists") {
+            serde_json::json!({"list_a": {
+                "name": "list_a", "size": child.len(), "url": "", "fileID": "a", "creationTime": 1
+            }})
+            .to_string()
+        } else {
+            child
+        };
+        Ok(DataStoreResponse {
+            result: Some(result),
+            time: Some(if updated { 2 } else { 1 }),
+        })
+    }
+
+    async fn set(&self, _key: &str, _value: &str, _time: Option<u64>) -> Result<(), StatsigErr> {
+        Ok(())
+    }
+
+    async fn shutdown(&self) -> Result<(), StatsigErr> {
+        assert_eq!(self.active_reads.load(Ordering::SeqCst), 0);
+        self.shutdowns.fetch_add(1, Ordering::SeqCst);
+        Ok(())
+    }
+
+    async fn supports_feature(&self, _feature: DataStoreFeature) -> bool {
+        true
+    }
+
+    async fn support_polling_updates_for(&self, _path: RequestPath) -> bool {
+        true
+    }
+}
+
+fn data_store_client(store: Arc<ForkDataStore>) -> (Statsig, Arc<MockEventLoggingAdapter>) {
+    let events = Arc::new(MockEventLoggingAdapter::new());
+    let statsig = Statsig::new(
+        "secret-fork-data-store",
+        Some(Arc::new(StatsigOptions {
+            data_store: Some(store),
+            data_store_key_schema_version: Some(DataStoreKeyVersion::V3HumanReadable),
+            enable_id_lists: Some(true),
+            specs_sync_interval_ms: Some(60_000),
+            id_lists_sync_interval_ms: Some(60_000),
+            specs_url: Some("http://127.0.0.1:1/specs".into()),
+            id_lists_url: Some("http://127.0.0.1:1/id_lists".into()),
+            init_timeout_ms: Some(1000),
+            event_logging_adapter: Some(events.clone()),
+            disable_country_lookup: Some(true),
+            ..StatsigOptions::new()
+        })),
+    );
+    (statsig, events)
+}
+
+fn assert_data_store_pollers(statsig: &Statsig, previous_ids: &HashSet<String>) {
+    let tasks = statsig.statsig_runtime.get_running_task_ids();
+    for expected in ["data_store_specs_adapter", "data_store_id_list_bg_sync"] {
+        assert_eq!(
+            tasks
+                .iter()
+                .filter(|(tag, id)| tag == expected && !previous_ids.contains(id))
+                .count(),
+            1,
+            "{tasks:?}"
+        );
+    }
+}
+
+#[test]
+#[serial]
+fn failed_data_store_startup_has_one_recovery_loop_per_replacement_runtime() {
+    let store = Arc::new(ForkDataStore::default());
+    store.fail_initialize.store(true, Ordering::SeqCst);
+    let (statsig, _) = data_store_client(store.clone());
+    assert!(statsig
+        .statsig_runtime
+        .get_handle()
+        .unwrap()
+        .block_on(statsig.initialize())
+        .is_err());
+    let initial_details = serde_json::to_value(statsig.get_initialize_details()).unwrap();
+    for updated in [true, false] {
+        store.fail_initialize.store(false, Ordering::SeqCst);
+        store.updated.store(updated, Ordering::SeqCst);
+        // The task registry retains IDs whose runtime was aborted; count only
+        // replacement-generation registrations, as the existing fork tests do.
+        let previous_ids = statsig
+            .statsig_runtime
+            .get_running_task_ids()
+            .into_iter()
+            .map(|(_, id)| id)
+            .collect();
+        StatsigGlobal::reset();
+        assert!(statsig.restart_background_tasks_after_fork());
+        let user = StatsigUser::with_user_id(if updated { "after" } else { "before" });
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while !statsig.check_gate(&user, "membership") {
+            assert!(Instant::now() < deadline, "cache did not recover");
+            thread::sleep(Duration::from_millis(5));
+        }
+        for _ in 0..10 {
+            assert!(statsig.check_gate(&user, "membership"));
+        }
+        assert_data_store_pollers(&statsig, &previous_ids);
+        assert_eq!(
+            serde_json::to_value(statsig.get_initialize_details()).unwrap(),
+            initial_details
+        );
+    }
+    shutdown(&statsig);
+    assert_eq!(store.shutdowns.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+#[serial]
+fn shutdown_drains_both_immediate_data_store_reads_despite_event_flush_error() {
+    let store = Arc::new(ForkDataStore::default());
+    let (statsig, events) = data_store_client(store.clone());
+    statsig
+        .statsig_runtime
+        .get_handle()
+        .unwrap()
+        .block_on(statsig.initialize())
+        .unwrap();
+    store.block_reads.store(true, Ordering::SeqCst);
+    StatsigGlobal::reset();
+    assert!(statsig.restart_background_tasks_after_fork());
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while store.active_reads.load(Ordering::SeqCst) != 2 {
+        assert!(Instant::now() < deadline, "both immediate reads must start");
+        thread::sleep(Duration::from_millis(5));
+    }
+    *events.mocked_log_events_result.lock().unwrap() =
+        Err(StatsigErr::DataStoreFailure("event flush failed".into()));
+    statsig.log_event(
+        &StatsigUser::with_user_id("shutdown"),
+        "pending",
+        None,
+        None,
+    );
+    let result = statsig
+        .statsig_runtime
+        .get_handle()
+        .unwrap()
+        .block_on(statsig.shutdown());
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("event flush failed"));
+    assert_eq!(store.active_reads.load(Ordering::SeqCst), 0);
+    assert_eq!(store.shutdowns.load(Ordering::SeqCst), 1);
+}
 
 fn setup() -> (Arc<Statsig>, Arc<MockSpecsAdapter>, StatsigUser) {
     let specs_adapter = Arc::new(MockSpecsAdapter::with_data("tests/data/demo_proj_dcs.json"));

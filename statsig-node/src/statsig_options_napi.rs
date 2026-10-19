@@ -25,6 +25,7 @@ use statsig_rust::{
 type ValidPrimitives = Either4<String, f64, bool, Vec<Value>>;
 
 const TAG: &str = "StatsigOptionsNapi";
+
 #[napi(object)]
 pub struct ProxyConfig {
     pub proxy_host: Option<String>,
@@ -254,7 +255,6 @@ impl StatsigOptions<'_> {
             #[allow(deprecated)]
             event_logging_flush_interval_ms: None,
             event_logging_max_pending_batch_queue_size: None,
-            // Not exposed via the Node binding yet; defaults to the core value.
             dcs_delta_no_progress_threshold: None,
             id_lists_adapter: None,
             specs_adapter: None,

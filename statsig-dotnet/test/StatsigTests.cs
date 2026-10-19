@@ -1,4 +1,6 @@
 using Xunit;
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
@@ -336,6 +338,15 @@ namespace Statsig.Tests
             Assert.True(true);
         }
 
+    }
+
+    // These tests require the process-global instance to remain unchanged between calls.
+    [CollectionDefinition(nameof(SharedInstanceCollection), DisableParallelization = true)]
+    public class SharedInstanceCollection { }
+
+    [Collection(nameof(SharedInstanceCollection))]
+    public class SharedInstanceTests
+    {
         [Fact]
         public void Statsig_SharedInstance_Returns_Error_Instance_When_Already_Exists()
         {
@@ -358,6 +369,50 @@ namespace Statsig.Tests
             Assert.NotNull(instance);
             var shared = Statsig.Shared();
             Assert.Same(instance, shared);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task NewShared_Does_Not_Return_Null_During_Concurrent_Removal(bool withOptions)
+        {
+            using var options = new StatsigOptionsBuilder().SetDisableNetwork(true).Build();
+            using var stop = new CancellationTokenSource();
+            using var started = new ManualResetEventSlim();
+            var remover = Task.Factory.StartNew(() =>
+            {
+                started.Set();
+                while (!stop.IsCancellationRequested)
+                {
+                    Statsig.RemoveSharedInstance();
+                }
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+
+            var nullCount = 0;
+            try
+            {
+                started.Wait();
+                for (var i = 0; i < 1000; i++)
+                {
+                    Statsig.RemoveSharedInstance();
+                    var instance = withOptions
+                        ? Statsig.NewShared("secret-singleton-race", options)
+                        : Statsig.NewShared("secret-singleton-race");
+                    if (instance == null)
+                    {
+                        nullCount++;
+                    }
+                    (instance as IDisposable)?.Dispose();
+                }
+            }
+            finally
+            {
+                stop.Cancel();
+                await remover;
+                Statsig.RemoveSharedInstance();
+            }
+
+            Assert.Equal(0, nullCount);
         }
     }
 }

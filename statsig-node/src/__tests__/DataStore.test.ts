@@ -1,4 +1,7 @@
-import { __internal__testDataStore as testDataStore } from '../../build/index.js';
+import {
+  __internal__testDataStore as testDataStore,
+  __internal__testDataStoreFeature as testDataStoreFeature,
+} from '../../build/index.js';
 import { MockDataStore } from './MockDataStore';
 
 const RULESET_KEY = '/v2/download_config_specs';
@@ -18,6 +21,45 @@ describe('DataStore', () => {
 
     expect(spy).toHaveBeenCalledWith(RULESET_KEY);
     expect(pollingResult).toBe(true);
+  });
+
+  it('defaults legacy adapters to config specs only', async () => {
+    const legacy = { ...dataStore, supportPollingUpdatesFor: undefined };
+
+    expect(await testDataStoreFeature(legacy)).toEqual([true, false, null]);
+  });
+
+  it('passes the logical feature name to capability and polling callbacks', async () => {
+    const supportsFeature = jest.fn(async (feature: string) =>
+      feature === 'id_list_snapshot',
+    );
+    dataStore.supportPolling['id_list_snapshot'] = true;
+    const polling = jest.spyOn(dataStore, 'supportPollingUpdatesFor');
+
+    expect(
+      await testDataStoreFeature({ ...dataStore, supportsFeature }),
+    ).toEqual([false, true, true]);
+    expect(supportsFeature).toHaveBeenCalledWith('config_specs');
+    expect(supportsFeature).toHaveBeenCalledWith('id_list_snapshot');
+    expect(polling).toHaveBeenCalledWith('id_list_snapshot');
+  });
+
+  it.each([
+    ['missing', undefined, null],
+    ['true', async () => true, true],
+    ['false', async () => false, false],
+    ['rejected promise', async () => Promise.reject(new Error('polling failed')), null],
+    ['invalid return', async () => 'invalid', null],
+  ])('handles %s ID-list polling callback', async (_, callback, expected) => {
+    const supportsFeature = async (feature: string) =>
+      feature === 'id_list_snapshot';
+    const store = {
+      ...dataStore,
+      supportsFeature,
+      supportPollingUpdatesFor: callback,
+    } as unknown as MockDataStore;
+
+    expect(await testDataStoreFeature(store)).toEqual([false, true, expected]);
   });
 
   it('should get values from the data store', async () => {

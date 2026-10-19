@@ -13,7 +13,6 @@ pub(crate) struct IdListsSnapshot {
 
 struct ManifestEntry {
     metadata: IdListMetadata,
-    declared_size: Option<u64>,
     permits_empty_child: bool,
 }
 
@@ -29,6 +28,10 @@ struct ObjectManifestMetadata {
 }
 
 impl IdListsSnapshot {
+    pub(crate) fn list_names(manifest: &str) -> Result<Vec<String>, StatsigErr> {
+        Ok(parse_manifest(manifest)?.into_keys().collect())
+    }
+
     pub(crate) fn parse(
         manifest: &str,
         children: &HashMap<String, String>,
@@ -36,24 +39,15 @@ impl IdListsSnapshot {
         let entries = parse_manifest(manifest)?;
         let mut lists = HashMap::with_capacity(entries.len());
 
-        for (name, mut entry) in entries {
+        for (name, entry) in entries {
             let child = children.get(&name).ok_or_else(|| {
                 snapshot_error(format!(
                     "ID-list child is missing for manifest entry '{name}'"
                 ))
             })?;
-            if let Some(declared_size) = entry.declared_size {
-                if child.len() as u64 != declared_size {
-                    return Err(snapshot_error(format!(
-                        "ID-list child '{name}' has {} bytes, expected {declared_size}",
-                        child.len()
-                    )));
-                }
-            }
+            // Legacy's manifest size is the remote append-only file cursor, not
+            // the byte length of its condensed '+'-only DataStore child.
             let ids = parse_complete_child(&name, child, entry.permits_empty_child)?;
-            if entry.declared_size.is_none() {
-                entry.metadata.size = child.len() as u64;
-            }
             lists.insert(name, IdList::from_complete_snapshot(entry.metadata, ids));
         }
 
@@ -114,7 +108,6 @@ impl<'de> Visitor<'de> for ManifestVisitor {
                     name.clone(),
                     ManifestEntry {
                         metadata,
-                        declared_size: None,
                         permits_empty_child: false,
                     },
                 )
@@ -148,13 +141,12 @@ impl<'de> Visitor<'de> for ManifestVisitor {
                     )));
                 }
             }
-            let declared_size = wire_metadata.size;
-            let permits_empty_child = declared_size == Some(0);
+            let remote_size = wire_metadata.size;
             let metadata = IdListMetadata {
                 name: name.clone(),
                 url: wire_metadata.url.unwrap_or_default(),
                 file_id: wire_metadata.file_id,
-                size: declared_size.unwrap_or(0),
+                size: remote_size.unwrap_or(0),
                 creation_time: wire_metadata.creation_time.unwrap_or(0),
             };
             if entries
@@ -162,8 +154,9 @@ impl<'de> Visitor<'de> for ManifestVisitor {
                     name.clone(),
                     ManifestEntry {
                         metadata,
-                        declared_size,
-                        permits_empty_child,
+                        // A Legacy producer can write an empty materialized
+                        // snapshot even when its remote log has nonzero size.
+                        permits_empty_child: true,
                     },
                 )
                 .is_some()
@@ -187,7 +180,7 @@ fn parse_complete_child(
             Ok(HashSet::new())
         } else {
             Err(snapshot_error(format!(
-                "Empty ID-list child for '{name}' is ambiguous without size 0 metadata"
+                "Empty ID-list child for '{name}' is ambiguous without object metadata"
             )))
         };
     }
@@ -226,7 +219,7 @@ fn parse_complete_child(
 
     if ids.is_empty() && !permits_empty_child {
         return Err(snapshot_error(format!(
-            "Empty ID-list child for '{name}' is ambiguous without size 0 metadata"
+            "Empty ID-list child for '{name}' is ambiguous without object metadata"
         )));
     }
     Ok(ids)
@@ -259,10 +252,7 @@ mod tests {
 
         let array = IdListsSnapshot::parse(r#"["list-a"]"#, &children).unwrap();
         assert_eq!(array.lists["list-a"].ids.len(), 2);
-        assert_eq!(
-            array.lists["list-a"].metadata.size,
-            children["list-a"].len() as u64
-        );
+        assert_eq!(array.lists["list-a"].metadata.size, 0);
 
         let object = IdListsSnapshot::parse(&object_manifest(22), &children).unwrap();
         assert_eq!(
@@ -311,32 +301,33 @@ mod tests {
     }
 
     #[test]
-    fn only_object_metadata_with_zero_size_allows_empty_child() {
+    fn object_manifest_allows_present_empty_child_independent_of_remote_size() {
         let children = HashMap::from([("list-a".into(), String::new())]);
         assert!(IdListsSnapshot::parse(r#"["list-a"]"#, &children).is_err());
+        assert!(IdListsSnapshot::parse(&object_manifest(42), &HashMap::new()).is_err());
 
-        let snapshot = IdListsSnapshot::parse(&object_manifest(0), &children).unwrap();
-        assert!(snapshot.lists["list-a"].ids.is_empty());
+        for remote_size in [0, 42] {
+            let snapshot =
+                IdListsSnapshot::parse(&object_manifest(remote_size), &children).unwrap();
+            assert!(snapshot.lists["list-a"].ids.is_empty());
+            assert_eq!(snapshot.lists["list-a"].metadata.size, remote_size);
+        }
     }
 
     #[test]
-    fn accepts_legacy_object_optional_metadata_and_enforces_declared_size() {
+    fn accepts_legacy_object_metadata_without_confusing_remote_and_cached_size() {
         let child = "+2Tv4fIVX\n";
         let children = HashMap::from([("list-a".into(), child.into())]);
 
         let snapshot = IdListsSnapshot::parse(r#"{"list-a":{}}"#, &children).unwrap();
         assert_eq!(snapshot.lists["list-a"].metadata.name, "list-a");
-        assert_eq!(snapshot.lists["list-a"].metadata.size, child.len() as u64);
+        assert_eq!(snapshot.lists["list-a"].metadata.size, 0);
 
-        for manifest in [
-            r#"{"list-a":{"size":1}}"#,
-            r#"{"list-a":{"size":99}}"#,
-            r#"{"list-a":{"size":0}}"#,
-        ] {
-            assert!(
-                IdListsSnapshot::parse(manifest, &children).is_err(),
-                "{manifest}"
-            );
+        for remote_size in [0, 1, 99] {
+            let manifest = object_manifest(remote_size);
+            let snapshot = IdListsSnapshot::parse(&manifest, &children).unwrap();
+            assert_eq!(snapshot.lists["list-a"].metadata.size, remote_size);
+            assert_eq!(snapshot.lists["list-a"].ids.len(), 1);
         }
     }
 }

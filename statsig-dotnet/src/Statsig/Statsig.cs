@@ -90,9 +90,8 @@ namespace Statsig
                     return CreateErrorStatsigInstance();
                 }
                 sharedInstance = new Statsig(sdkKey, options);
+                return sharedInstance;
             }
-
-            return sharedInstance;
         }
 
         public static IStatsig NewShared(string sdkKey)
@@ -106,9 +105,8 @@ namespace Statsig
                     return CreateErrorStatsigInstance();
                 }
                 sharedInstance = new Statsig(sdkKey);
+                return sharedInstance;
             }
-
-            return sharedInstance;
         }
 
         public static void RemoveSharedInstance()

@@ -41,6 +41,7 @@ pub use user::{StatsigUser, StatsigUserBuilder};
 pub mod compression;
 pub mod console_capture;
 pub mod data_store_interface;
+mod data_store_lifecycle;
 pub mod evaluation;
 pub mod event_logging;
 pub mod gcir;

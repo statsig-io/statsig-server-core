@@ -3,12 +3,14 @@ use super::response_format::get_specs_response_format;
 use super::statsig_http_specs_adapter::DEFAULT_SYNC_INTERVAL_MS;
 use super::{SpecsSource, SpecsUpdate};
 use crate::data_store_interface::{
-    DataStoreBytesResponse, DataStoreCacheKeys, DataStoreResponse, DataStoreTrait, RequestPath,
+    DataStoreBytesResponse, DataStoreCacheKeys, DataStoreFeature, DataStoreResponse,
+    DataStoreTrait, RequestPath,
 };
+use crate::data_store_lifecycle::DataStorePollingTask;
 use crate::networking::ResponseData;
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::{
-    log_d, log_e, log_w, read_lock_or_else, unwrap_or_else, write_lock_or_else, SpecsAdapter,
+    log_e, log_w, read_lock_or_else, unwrap_or_else, write_lock_or_else, SpecsAdapter,
     SpecsUpdateListener,
 };
 use crate::{StatsigErr, StatsigOptions, StatsigRuntime};
@@ -16,10 +18,9 @@ use async_trait::async_trait;
 use chrono::Utc;
 use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::{sync::Arc, time::Duration};
-use tokio::sync::Notify;
-use tokio::time::{self, sleep};
+use tokio::sync::{watch, Notify};
+use tokio::time::sleep;
 
 const TAG: &str = "StatsigDataStoreSpecsAdapter";
 
@@ -29,8 +30,7 @@ pub struct StatsigDataStoreSpecsAdapter {
     sync_interval: Duration,
     ops_stats: Arc<OpsStatsForInstance>,
     listener: RwLock<Option<Arc<dyn SpecsUpdateListener>>>,
-    shutdown_notify: Arc<Notify>,
-    shutdown_generation: AtomicU64,
+    polling_task: DataStorePollingTask,
 }
 
 struct CachedSpecs {
@@ -58,8 +58,7 @@ impl StatsigDataStoreSpecsAdapter {
             )),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             listener: RwLock::new(None),
-            shutdown_notify: Arc::new(Notify::new()),
-            shutdown_generation: AtomicU64::new(0),
+            polling_task: DataStorePollingTask::new(),
         }
     }
 }
@@ -70,28 +69,45 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
         self: Arc<Self>,
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        let sync_start_ms = Utc::now().timestamp_millis() as u64;
-        self.data_store.initialize().await?;
+        let (mut stop, _completion) = self.polling_task.begin()?;
+        let work = async {
+            if !self
+                .data_store
+                .supports_feature(DataStoreFeature::ConfigSpecs)
+                .await
+            {
+                return Err(StatsigErr::SpecsAdapterSkipPoll(self.get_type_name()));
+            }
+            let sync_start_ms = Utc::now().timestamp_millis() as u64;
+            self.data_store.initialize().await?;
 
-        let update = self.load_cached_specs().await?;
-        if update.result.is_none() {
-            return Err(StatsigErr::DataStoreFailure("Empty result".to_string()));
-        }
+            let update = self.load_cached_specs().await?;
+            if update.result.is_none() {
+                return Err(StatsigErr::DataStoreFailure("Empty result".to_string()));
+            }
 
-        let read_lock = read_lock_or_else!(self.listener, {
-            return Err(StatsigErr::UnstartedAdapter(
-                "Failed to acquire read lock on listener".to_string(),
-            ));
-        });
+            let read_lock = read_lock_or_else!(self.listener, {
+                return Err(StatsigErr::UnstartedAdapter(
+                    "Failed to acquire read lock on listener".to_string(),
+                ));
+            });
 
-        let listener = match read_lock.as_ref() {
-            Some(listener) => listener,
-            None => return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
+            let listener = match read_lock.as_ref() {
+                Some(listener) => listener,
+                None => return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
+            };
+
+            let (result, response_format) = self.send_specs_update_to_listener(listener, update);
+            self.log_data_store_sync_result(sync_start_ms, &response_format, &result);
+            result
         };
-
-        let (result, response_format) = self.send_specs_update_to_listener(listener, update);
-        self.log_data_store_sync_result(sync_start_ms, &response_format, &result);
-        result
+        tokio::select! {
+            biased;
+            _ = stop.changed() => Err(StatsigErr::ShutdownFailure(
+                "DataStore specs initialization was cancelled".to_string(),
+            )),
+            result = work => result,
+        }
     }
 
     fn initialize(&self, listener: Arc<dyn SpecsUpdateListener>) {
@@ -121,15 +137,11 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
 
     async fn shutdown(
         &self,
-        timeout: Duration,
+        _timeout: Duration,
         _statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        self.shutdown_generation.fetch_add(1, Ordering::SeqCst);
-        self.shutdown_notify.notify_waiters();
-        self.shutdown_notify.notify_one();
-        time::timeout(timeout, async { self.data_store.shutdown().await })
-            .await
-            .map_err(|e| StatsigErr::DataStoreFailure(format!("Failed to shutdown: {e}")))?
+        self.polling_task.stop_and_wait().await;
+        Ok(())
     }
 
     fn get_type_name(&self) -> String {
@@ -154,11 +166,14 @@ impl StatsigDataStoreSpecsAdapter {
         }
 
         let weak_self = Arc::downgrade(&self);
-        let shutdown_generation = self.shutdown_generation.load(Ordering::SeqCst);
+        let Some((stop, completion)) = self.polling_task.begin_loop()? else {
+            return Ok(());
+        };
 
         statsig_runtime.spawn(
             "data_store_specs_adapter",
             move |rt_shutdown_notify| async move {
+                let _completion = completion;
                 let strong_self = if let Some(strong_self) = weak_self.upgrade() {
                     strong_self
                 } else {
@@ -167,11 +182,7 @@ impl StatsigDataStoreSpecsAdapter {
                 };
 
                 strong_self
-                    .execute_background_sync(
-                        &rt_shutdown_notify,
-                        sync_immediately,
-                        shutdown_generation,
-                    )
+                    .execute_background_sync(&rt_shutdown_notify, sync_immediately, stop)
                     .await;
             },
         )?;
@@ -315,31 +326,40 @@ impl StatsigDataStoreSpecsAdapter {
         &self,
         rt_shutdown_notify: &Arc<Notify>,
         sync_immediately: bool,
-        shutdown_generation: u64,
+        mut stop: watch::Receiver<bool>,
     ) {
-        if sync_immediately {
-            self.execute_background_sync_impl().await;
-        }
-
+        let mut immediate = sync_immediately;
         loop {
+            if *stop.borrow() {
+                break;
+            }
+            if !immediate {
+                tokio::select! {
+                    biased;
+                    _ = stop.changed() => break,
+                    () = rt_shutdown_notify.notified() => break,
+                    () = sleep(self.sync_interval) => {},
+                }
+            }
+            immediate = false;
             tokio::select! {
-                () = sleep(self.sync_interval) => self.execute_background_sync_impl().await,
-                () = rt_shutdown_notify.notified() => {
-                    log_d!(TAG, "Runtime shutdown. Shutting down specs background sync");
-                    break;
-                }
-                () = self.shutdown_notify.notified() => {
-                    if self.shutdown_generation.load(Ordering::SeqCst) != shutdown_generation {
-                        log_d!(TAG, "Shutting down specs background sync");
-                        break;
-                    }
-                }
+                biased;
+                _ = stop.changed() => break,
+                () = rt_shutdown_notify.notified() => break,
+                () = self.execute_background_sync_impl() => {},
             }
         }
     }
 
     async fn execute_background_sync_impl(&self) {
         let sync_start_ms = Utc::now().timestamp_millis() as u64;
+        if let Err(e) = self.data_store.initialize().await {
+            log_w!(
+                TAG,
+                "Failed to initialize data store for specs refresh: {e}"
+            );
+            return;
+        }
         let update = match self.load_cached_specs().await {
             Ok(update) => update,
             Err(e) => {
@@ -381,5 +401,135 @@ fn cached_specs_from_string_response(response: DataStoreResponse) -> CachedSpecs
     CachedSpecs {
         result: response.result.map(String::into_bytes),
         is_protobuf: false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data_store_lifecycle::SharedDataStore;
+    use crate::specs_adapter::SpecsInfo;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
+    struct BlockingSpecsStore {
+        block_next_get: AtomicBool,
+        active_get: AtomicBool,
+        get_started: Notify,
+        shutdowns: AtomicUsize,
+    }
+
+    #[async_trait]
+    impl DataStoreTrait for BlockingSpecsStore {
+        async fn initialize(&self) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn shutdown(&self) -> Result<(), StatsigErr> {
+            assert!(!self.active_get.load(Ordering::SeqCst));
+            self.shutdowns.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        }
+
+        async fn get(&self, _key: &str) -> Result<DataStoreResponse, StatsigErr> {
+            if self.block_next_get.swap(false, Ordering::SeqCst) {
+                struct ActiveGet<'a>(&'a AtomicBool);
+                impl Drop for ActiveGet<'_> {
+                    fn drop(&mut self) {
+                        self.0.store(false, Ordering::SeqCst);
+                    }
+                }
+                self.active_get.store(true, Ordering::SeqCst);
+                let _active = ActiveGet(&self.active_get);
+                self.get_started.notify_one();
+                std::future::pending::<()>().await;
+            }
+            Ok(DataStoreResponse {
+                result: Some("{}".to_string()),
+                time: None,
+            })
+        }
+
+        async fn set(
+            &self,
+            _key: &str,
+            _value: &str,
+            _time: Option<u64>,
+        ) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn support_polling_updates_for(&self, _path: RequestPath) -> bool {
+            true
+        }
+    }
+
+    struct AcceptSpecs;
+
+    impl SpecsUpdateListener for AcceptSpecs {
+        fn did_receive_specs_update(&self, _update: SpecsUpdate) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        fn get_current_specs_info(&self) -> SpecsInfo {
+            SpecsInfo {
+                lcut: None,
+                checksum: None,
+                source: SpecsSource::NoValues,
+                source_api: None,
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn shutdown_cancels_in_flight_specs_poll_before_shared_store_shutdown() {
+        for after_fork in [false, true] {
+            let store = Arc::new(BlockingSpecsStore {
+                block_next_get: AtomicBool::new(false),
+                active_get: AtomicBool::new(false),
+                get_started: Notify::new(),
+                shutdowns: AtomicUsize::new(0),
+            });
+            let shared = Arc::new(SharedDataStore::new(store.clone()));
+            let options = StatsigOptions {
+                specs_sync_interval_ms: Some(if after_fork { 60_000 } else { 1 }),
+                ..StatsigOptions::default()
+            };
+            let adapter = Arc::new(StatsigDataStoreSpecsAdapter::new(
+                "secret-key",
+                "secret-key",
+                shared.clone(),
+                Some(&options),
+            ));
+            let runtime = StatsigRuntime::get_runtime();
+            adapter.initialize(Arc::new(AcceptSpecs));
+            adapter.clone().start(&runtime).await.unwrap();
+            store.block_next_get.store(true, Ordering::SeqCst);
+            if after_fork {
+                adapter
+                    .clone()
+                    .schedule_background_sync_after_fork(&runtime)
+                    .await
+                    .unwrap();
+            } else {
+                adapter
+                    .clone()
+                    .schedule_background_sync(&runtime)
+                    .await
+                    .unwrap();
+            }
+            tokio::time::timeout(Duration::from_secs(1), store.get_started.notified())
+                .await
+                .unwrap();
+
+            tokio::time::timeout(
+                Duration::from_secs(1),
+                adapter.shutdown(Duration::from_secs(1), &runtime),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+            shared.shutdown().await.unwrap();
+            assert_eq!(store.shutdowns.load(Ordering::SeqCst), 1);
+        }
     }
 }

@@ -3,7 +3,8 @@ use crate::console_capture::console_capture_instances::{
     ConsoleCaptureInstance, CONSOLE_CAPTURE_REGISTRY,
 };
 use crate::console_capture::console_log_line_levels::StatsigLogLineLevel;
-use crate::data_store_interface::{get_data_store_key, RequestPath};
+use crate::data_store_interface::{get_data_store_key, DataStoreTrait, RequestPath};
+use crate::data_store_lifecycle::{DataStorePollingTask, SharedDataStore};
 use crate::evaluation::cmab_evaluator::{get_cmab_ranked_list, CMABRankedGroup};
 use crate::evaluation::country_lookup::CountryLookup;
 use crate::evaluation::dynamic_value::DynamicValue;
@@ -29,6 +30,7 @@ use crate::event_logging_adapter::StatsigHttpEventLoggingAdapter;
 use crate::gcir::gcir_formatter::GCIRFormatter;
 use crate::gcir::target_app_id_utils::select_app_id_for_gcir;
 use crate::hashing::HashUtil;
+use crate::id_lists_adapter::StatsigDataStoreIdListsAdapter;
 use crate::initialize_evaluations_response::InitializeEvaluationsResponse;
 use crate::initialize_response::InitializeResponse;
 use crate::initialize_v2_response::InitializeV2Response;
@@ -91,7 +93,6 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Weak};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
-use tokio::try_join;
 
 const TAG: &str = stringify!(Statsig);
 const ERROR_SDK_KEY: &str = "__STATSIG_ERROR_SDK_KEY__";
@@ -113,6 +114,7 @@ struct BackgroundTaskEpochs {
     ops_stats: AtomicU64,
     id_lists: AtomicU64,
     specs: AtomicU64,
+    scheduling: DataStorePollingTask,
 }
 
 impl BackgroundTaskEpochs {
@@ -122,6 +124,7 @@ impl BackgroundTaskEpochs {
             ops_stats: AtomicU64::new(current_epoch),
             id_lists: AtomicU64::new(NO_BACKGROUND_TASKS_RESTART_EPOCH),
             specs: AtomicU64::new(NO_BACKGROUND_TASKS_RESTART_EPOCH),
+            scheduling: DataStorePollingTask::new(),
         }
     }
 
@@ -198,6 +201,7 @@ pub struct Statsig {
     specs_adapter: SpecsAdapterHousing,
     event_logging_adapter: Arc<dyn EventLoggingAdapter>,
     id_lists_adapter: IdListsAdapterHousing,
+    shared_data_store: Option<Arc<SharedDataStore>>,
     override_adapter: Option<Arc<dyn OverrideAdapter>>,
     spec_store: Arc<SpecStore>,
     hashing: Arc<HashUtil>,
@@ -250,6 +254,9 @@ impl Drop for Statsig {
         if let Some(adapter) = &self.id_lists_adapter.as_default_adapter {
             adapter.force_shutdown();
         }
+        if let Some(adapter) = &self.id_lists_adapter.as_data_store_adapter {
+            adapter.force_shutdown();
+        }
 
         if let Some(adapter) = &self.specs_adapter.as_default_adapter {
             adapter.force_shutdown();
@@ -265,6 +272,14 @@ impl Statsig {
     pub fn new(sdk_key: &str, options: Option<Arc<StatsigOptions>>) -> Self {
         let statsig_runtime = StatsigRuntime::get_runtime();
         let options = options.map(|o| o.validate_and_fix()).unwrap_or_default();
+        let (options, shared_data_store) = if let Some(data_store) = &options.data_store {
+            let shared = Arc::new(SharedDataStore::new(data_store.clone()));
+            let mut options = (*options).clone();
+            options.data_store = Some(shared.clone());
+            (Arc::new(options), Some(shared))
+        } else {
+            (options, None)
+        };
 
         initialize_output_logger(
             &options.output_log_level,
@@ -277,7 +292,7 @@ impl Statsig {
             get_data_store_key(RequestPath::RulesetsV2, sdk_key, &hashing, &options);
 
         let specs_adapter = initialize_specs_adapter(sdk_key, &data_store_key, &options);
-        let id_lists_adapter = initialize_id_lists_adapter(sdk_key, &options);
+        let id_lists_adapter = initialize_id_lists_adapter(sdk_key, hashing.clone(), &options);
         let event_logging_adapter = initialize_event_logging_adapter(sdk_key, &options);
         let override_adapter = match options.override_adapter.as_ref() {
             Some(adapter) => Some(Arc::clone(adapter)),
@@ -334,6 +349,7 @@ impl Statsig {
         Statsig {
             sdk_key: sdk_key.to_string(),
             options,
+            shared_data_store,
             hashing,
             statsig_environment: environment,
             fallback_environment: arc_swap::ArcSwapOption::const_empty(),
@@ -447,6 +463,12 @@ impl Statsig {
     }
 
     pub async fn shutdown_with_timeout(&self, timeout: Duration) -> Result<(), StatsigErr> {
+        let _shutdown_guard = self
+            .background_task_epochs
+            .scheduling
+            .close_for_shutdown(|| {
+                self.has_been_shutdown.store(true, Ordering::SeqCst);
+            });
         self.prepare_event_queue_for_current_process();
         log_d!(
             TAG,
@@ -463,6 +485,7 @@ impl Statsig {
                 ))
             }
             sub_result = async {
+                self.background_task_epochs.scheduling.stop_and_wait().await;
                 let id_list_shutdown: Pin<Box<_>> = if let Some(adapter) = &self.id_lists_adapter.inner {
                     adapter.shutdown(timeout)
                 } else {
@@ -471,11 +494,19 @@ impl Statsig {
 
                 shutdown_output_logger();
 
-                try_join!(
+                // A sibling error must not drop an in-flight ID-list drain before
+                // shutting down the shared backend. Preserve errors after all finish.
+                let (id_lists, events, specs) = tokio::join!(
                     id_list_shutdown,
                     self.event_logger.shutdown(&self.statsig_runtime),
                     self.specs_adapter.inner.shutdown(timeout, &self.statsig_runtime),
-                )
+                );
+                let adapters = id_lists.and(events).and(specs);
+                let data_store = match &self.shared_data_store {
+                    Some(data_store) => data_store.shutdown().await,
+                    None => Ok(()),
+                };
+                adapters.and(data_store)
             } => {
                 match sub_result {
                     Ok(_) => {
@@ -2452,105 +2483,129 @@ impl Statsig {
     ) -> bool {
         let current_pid = current_pid();
         let current_epoch = current_runtime_epoch();
-        if bg_tasks_started_pid.load(Ordering::SeqCst) == current_pid
-            && bg_tasks_started_epoch.load(Ordering::SeqCst) == current_epoch
-        {
-            return true;
-        }
+        let Ok((mut stop, completion)) = task_epochs.scheduling.begin() else {
+            return false;
+        };
+        let work = async {
+            let _scheduling = completion.lock_scheduling().await;
+            if completion.is_stopped() || current_epoch != current_runtime_epoch() {
+                return false;
+            }
+            if bg_tasks_started_pid.load(Ordering::SeqCst) == current_pid
+                && bg_tasks_started_epoch.load(Ordering::SeqCst) == current_epoch
+            {
+                return true;
+            }
 
-        let mut success = true;
+            let mut success = true;
 
-        if task_epochs.id_lists.load(Ordering::SeqCst) != current_epoch {
-            let id_lists_success = if let Some(adapter) = &id_lists_adapter {
-                match adapter
-                    .clone()
-                    .schedule_background_sync(&statsig_runtime)
-                    .await
-                {
-                    Ok(()) => true,
+            if task_epochs.id_lists.load(Ordering::SeqCst) != current_epoch {
+                let id_lists_success = if let Some(adapter) = &id_lists_adapter {
+                    let result = if after_fork {
+                        adapter
+                            .clone()
+                            .schedule_background_sync_after_fork(&statsig_runtime)
+                            .await
+                    } else {
+                        adapter
+                            .clone()
+                            .schedule_background_sync(&statsig_runtime)
+                            .await
+                    };
+                    match result {
+                        Ok(()) => true,
+                        Err(e) => {
+                            log_w!(TAG, "Failed to schedule idlist background job {}", e);
+                            false
+                        }
+                    }
+                } else {
+                    true
+                };
+
+                if id_lists_success {
+                    task_epochs.id_lists.store(current_epoch, Ordering::SeqCst);
+                } else {
+                    success = false;
+                }
+            }
+
+            if task_epochs.specs.load(Ordering::SeqCst) != current_epoch {
+                let specs_result = if after_fork {
+                    specs_adapter
+                        .clone()
+                        .schedule_background_sync_after_fork(&statsig_runtime)
+                        .await
+                } else {
+                    specs_adapter
+                        .clone()
+                        .schedule_background_sync(&statsig_runtime)
+                        .await
+                };
+
+                match specs_result {
+                    Ok(()) => task_epochs.specs.store(current_epoch, Ordering::SeqCst),
                     Err(e) => {
-                        log_w!(TAG, "Failed to schedule idlist background job {}", e);
-                        false
+                        if matches!(e, StatsigErr::SpecsAdapterSkipPoll(_)) {
+                            task_epochs.specs.store(current_epoch, Ordering::SeqCst);
+                        }
+                        success = false;
+                        log_error_to_statsig_and_console!(
+                            ops_stats,
+                            TAG,
+                            StatsigErr::SpecsAdapterSkipPoll(format!(
+                                "Failed to schedule specs adapter background job: {e}"
+                            ))
+                        );
                     }
                 }
-            } else {
-                true
-            };
-
-            if id_lists_success {
-                task_epochs.id_lists.store(current_epoch, Ordering::SeqCst);
-            } else {
-                success = false;
             }
-        }
 
-        if task_epochs.specs.load(Ordering::SeqCst) != current_epoch {
-            let specs_result = if after_fork {
-                specs_adapter
-                    .clone()
-                    .schedule_background_sync_after_fork(&statsig_runtime)
-                    .await
-            } else {
-                specs_adapter
-                    .clone()
-                    .schedule_background_sync(&statsig_runtime)
-                    .await
-            };
+            // Do not start persistent event or observability loops until adapters
+            // are ready. A partial adapter failure can then retry without creating
+            // duplicate consumers in the same runtime generation.
+            if !success {
+                return false;
+            }
 
-            match specs_result {
-                Ok(()) => task_epochs.specs.store(current_epoch, Ordering::SeqCst),
-                Err(e) => {
+            if task_epochs.event_logger.load(Ordering::SeqCst) != current_epoch {
+                if event_logger.spawn_background_task(&statsig_runtime) {
+                    task_epochs
+                        .event_logger
+                        .store(current_epoch, Ordering::SeqCst);
+                } else {
                     success = false;
-                    log_error_to_statsig_and_console!(
-                        ops_stats,
-                        TAG,
-                        StatsigErr::SpecsAdapterSkipPoll(format!(
-                            "Failed to schedule specs adapter background job: {e}"
-                        ))
-                    );
                 }
             }
-        }
 
-        // Do not start persistent event or observability loops until adapters
-        // are ready. A partial adapter failure can then retry without creating
-        // duplicate consumers in the same runtime generation.
-        if !success {
-            return false;
-        }
-
-        if task_epochs.event_logger.load(Ordering::SeqCst) != current_epoch {
-            if event_logger.spawn_background_task(&statsig_runtime) {
-                task_epochs
-                    .event_logger
-                    .store(current_epoch, Ordering::SeqCst);
-            } else {
-                success = false;
+            if task_epochs.ops_stats.load(Ordering::SeqCst) != current_epoch {
+                if subscribe_ops_stats(
+                    statsig_runtime,
+                    &ops_stats,
+                    &error_observer,
+                    &diagnostics_observer,
+                    &console_capture_observer,
+                    &external_observer,
+                    false,
+                ) {
+                    task_epochs.ops_stats.store(current_epoch, Ordering::SeqCst);
+                } else {
+                    success = false;
+                }
             }
-        }
 
-        if task_epochs.ops_stats.load(Ordering::SeqCst) != current_epoch {
-            if subscribe_ops_stats(
-                statsig_runtime,
-                &ops_stats,
-                &error_observer,
-                &diagnostics_observer,
-                &console_capture_observer,
-                &external_observer,
-                false,
-            ) {
-                task_epochs.ops_stats.store(current_epoch, Ordering::SeqCst);
-            } else {
-                success = false;
+            if success {
+                bg_tasks_started_pid.store(current_pid, Ordering::SeqCst);
+                bg_tasks_started_epoch.store(current_epoch, Ordering::SeqCst);
             }
-        }
 
-        if success {
-            bg_tasks_started_pid.store(current_pid, Ordering::SeqCst);
-            bg_tasks_started_epoch.store(current_epoch, Ordering::SeqCst);
+            success
+        };
+        tokio::select! {
+            biased;
+            _ = stop.changed() => false,
+            success = work => success,
         }
-
-        success
     }
 
     async fn apply_timeout_to_init(
@@ -2608,9 +2663,11 @@ impl Statsig {
     }
 
     async fn initialize_impl_with_details(&self) -> Result<InitializeDetails, StatsigErr> {
+        // Admission and the shutdown marker share the gate's process-local lock.
+        self.background_task_epochs.scheduling.reopen(|| {
+            self.has_been_shutdown.store(false, Ordering::SeqCst);
+        })?;
         self.prepare_event_queue_for_current_process();
-        // Explicit initialization may revive a shut-down instance.
-        self.has_been_shutdown.store(false, Ordering::SeqCst);
 
         let start_time = Instant::now();
         self.spec_store.set_source(SpecsSource::Loading);
@@ -2619,6 +2676,7 @@ impl Statsig {
 
         let mut error_message = None;
         let mut id_list_ready = None;
+        let mut id_list_start_error = None;
 
         let init_country_lookup = if !self.options.disable_country_lookup.unwrap_or_default() {
             Some(self.statsig_runtime.spawn(INIT_IP_TAG, |_| async {
@@ -2661,8 +2719,19 @@ impl Statsig {
                     id_list_ready = Some(true);
                 }
                 Err(e) => {
+                    if matches!(e, StatsigErr::ShutdownFailure(_)) {
+                        return Err(e);
+                    }
                     id_list_ready = Some(false);
                     error_message.get_or_insert_with(|| format!("Failed to sync ID lists: {e}"));
+                    if self
+                        .id_lists_adapter
+                        .as_data_store_adapter
+                        .as_ref()
+                        .is_some_and(|adapter| adapter.supports_snapshot())
+                    {
+                        id_list_start_error = Some(e);
+                    }
                 }
             }
         }
@@ -2726,7 +2795,17 @@ impl Statsig {
             }
         }
 
-        let error = init_res.clone().err();
+        let is_data_store_snapshot = self
+            .id_lists_adapter
+            .as_data_store_adapter
+            .as_ref()
+            .is_some_and(|adapter| adapter.supports_snapshot());
+        let id_lists_failed = id_list_start_error.is_some();
+        let error = if is_data_store_snapshot {
+            id_list_start_error.or(init_res.clone().err())
+        } else {
+            init_res.clone().err()
+        };
 
         let success = Self::start_background_tasks(
             self.statsig_runtime.clone(),
@@ -2745,8 +2824,10 @@ impl Statsig {
         )
         .await;
 
+        let init_success = success && !(is_data_store_snapshot && id_lists_failed);
+
         Ok(InitializeDetails::new(
-            success,
+            init_success,
             duration,
             spec_info,
             id_list_ready,
@@ -3305,32 +3386,51 @@ fn initialize_specs_adapter(
     }
 }
 
-fn initialize_id_lists_adapter(sdk_key: &str, options: &StatsigOptions) -> IdListsAdapterHousing {
+fn initialize_id_lists_adapter(
+    sdk_key: &str,
+    hashing: Arc<HashUtil>,
+    options: &StatsigOptions,
+) -> IdListsAdapterHousing {
     if let Some(id_lists_adapter) = options.id_lists_adapter.clone() {
         return IdListsAdapterHousing {
             inner: Some(id_lists_adapter),
             as_default_adapter: None,
+            as_data_store_adapter: None,
         };
     }
 
-    if options.enable_id_lists.unwrap_or(false) {
-        let adapter = Arc::new(StatsigHttpIdListsAdapter::new(sdk_key, options));
+    if !options.enable_id_lists.unwrap_or(false) {
+        return IdListsAdapterHousing {
+            inner: None,
+            as_default_adapter: None,
+            as_data_store_adapter: None,
+        };
+    }
 
+    if let Some(data_store) = options.data_store.clone() {
+        let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
+            sdk_key, hashing, options, data_store,
+        ));
         return IdListsAdapterHousing {
             inner: Some(adapter.clone()),
-            as_default_adapter: Some(adapter),
+            as_default_adapter: None,
+            as_data_store_adapter: Some(adapter),
         };
     }
 
+    let adapter = Arc::new(StatsigHttpIdListsAdapter::new(sdk_key, options));
+
     IdListsAdapterHousing {
-        inner: None,
-        as_default_adapter: None,
+        inner: Some(adapter.clone()),
+        as_default_adapter: Some(adapter),
+        as_data_store_adapter: None,
     }
 }
 
 struct IdListsAdapterHousing {
     inner: Option<Arc<dyn IdListsAdapter>>,
     as_default_adapter: Option<Arc<StatsigHttpIdListsAdapter>>,
+    as_data_store_adapter: Option<Arc<StatsigDataStoreIdListsAdapter>>,
 }
 
 struct SpecsAdapterHousing {
@@ -3392,3 +3492,11 @@ fn subscribe_ops_stats(
 
     success
 }
+
+#[cfg(test)]
+#[path = "statsig_id_list_source_tests.rs"]
+mod id_list_source_tests;
+
+#[cfg(test)]
+#[path = "statsig_id_list_recovery_tests.rs"]
+mod id_list_recovery_tests;

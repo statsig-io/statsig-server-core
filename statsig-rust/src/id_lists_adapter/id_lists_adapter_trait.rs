@@ -63,6 +63,14 @@ pub trait IdListsAdapter: Send + Sync {
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr>;
 
+    /// Re-arms synchronization after fork; adapters may refresh immediately.
+    async fn schedule_background_sync_after_fork(
+        self: Arc<Self>,
+        statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
+        self.schedule_background_sync(statsig_runtime).await
+    }
+
     /// Returns the type name of the adapter. Used for logging and error messages.
     fn get_type_name(&self) -> String;
 }

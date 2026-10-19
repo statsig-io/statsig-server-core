@@ -6,7 +6,7 @@ use napi_derive::napi;
 use statsig_rust::StatsigErr::DataStoreFailure;
 use statsig_rust::{
     data_store_interface::{
-        DataStoreBytesResponse as DataStoreBytesResponseActual,
+        DataStoreBytesResponse as DataStoreBytesResponseActual, DataStoreFeature,
         DataStoreResponse as DataStoreResponseActual, DataStoreTrait, RequestPath,
     },
     log_e, StatsigErr,
@@ -72,10 +72,52 @@ pub struct DataStore {
     )]
     pub support_polling_updates_for_fn:
         Option<ThreadsafeFunction<String, Promise<bool>, String, false>>,
+
+    #[napi(
+        js_name = "supportsFeature",
+        ts_type = "(feature: 'config_specs' | 'id_list_snapshot') => Promise<boolean>"
+    )]
+    pub supports_feature_fn: Option<ThreadsafeFunction<String, Promise<bool>, String, false>>,
 }
 
 #[async_trait]
 impl DataStoreTrait for DataStore {
+    async fn supports_feature(&self, feature: DataStoreFeature) -> bool {
+        let Some(fnc) = &self.supports_feature_fn else {
+            return matches!(feature, DataStoreFeature::ConfigSpecs);
+        };
+        match fnc.call_async(feature.to_string()).await {
+            Ok(result) => match result.await {
+                Ok(supported) => supported,
+                Err(err) => {
+                    log_e!(TAG, "supportsFeature error {}", err);
+                    false
+                }
+            },
+            Err(err) => {
+                log_e!(TAG, "supportsFeature error {}", err);
+                false
+            }
+        }
+    }
+
+    async fn support_polling_updates_for_feature(&self, feature: DataStoreFeature) -> Option<bool> {
+        let fnc = self.support_polling_updates_for_fn.as_ref()?;
+        match fnc.call_async(feature.to_string()).await {
+            Ok(result) => match result.await {
+                Ok(enabled) => Some(enabled),
+                Err(err) => {
+                    log_e!(TAG, "supportPollingUpdatesFor error {}", err);
+                    None
+                }
+            },
+            Err(err) => {
+                log_e!(TAG, "supportPollingUpdatesFor error {}", err);
+                None
+            }
+        }
+    }
+
     async fn initialize(&self) -> Result<(), StatsigErr> {
         let fnc = match &self.initialize_fn {
             Some(f) => f,
@@ -251,4 +293,17 @@ pub async fn test_data_store(
     });
 
     (get_result, polling_result)
+}
+
+#[napi(js_name = "__internal__testDataStoreFeature")]
+pub async fn test_data_store_feature(store: DataStore) -> (bool, bool, Option<bool>) {
+    (
+        store.supports_feature(DataStoreFeature::ConfigSpecs).await,
+        store
+            .supports_feature(DataStoreFeature::IDListSnapshot)
+            .await,
+        store
+            .support_polling_updates_for_feature(DataStoreFeature::IDListSnapshot)
+            .await,
+    )
 }

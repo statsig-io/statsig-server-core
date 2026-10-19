@@ -717,7 +717,9 @@ impl IdListsUpdateListener for SpecStore {
             return Err(err);
         });
 
-        data.id_lists = snapshot;
+        let previous = std::mem::replace(&mut data.id_lists, snapshot);
+        drop(data);
+        drop(previous);
         Ok(())
     }
 }

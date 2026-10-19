@@ -1,5 +1,5 @@
 use super::IdListMetadata;
-use crate::id_lists_adapter::{IdListUpdate, IdListsAdapter, IdListsUpdateListener};
+use crate::id_lists_adapter::{IdList, IdListUpdate, IdListsAdapter, IdListsUpdateListener};
 use crate::networking::{NetworkClient, NetworkError, RequestArgs, Response, ResponseData};
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
@@ -34,6 +34,11 @@ const ID_LISTS_SYNC_OVERALL_MANIFEST_SUCCESS_TAG: &str = "id_list_manifest_succe
 const ID_LISTS_SYNC_OVERALL_SUCCEED_SINGLE_ID_LIST_NUMBER_TAG: &str =
     "succeed_single_id_list_number";
 const ID_LISTS_SYNC_OVERALL_FAILED_SINGLE_ID_LIST_NUMBER_TAG: &str = "failed_single_id_list_number";
+
+enum IdListsSyncPolicy {
+    Http { fail_on_any_download_error: bool },
+    Atomic,
+}
 
 pub struct StatsigHttpIdListsAdapter {
     id_lists_manifest_url: String,
@@ -350,7 +355,7 @@ impl StatsigHttpIdListsAdapter {
             })
     }
 
-    fn set_listener(&self, listener: Arc<dyn IdListsUpdateListener>) {
+    pub(crate) fn set_listener(&self, listener: Arc<dyn IdListsUpdateListener>) {
         match self
             .listener
             .try_write_for(std::time::Duration::from_secs(5))
@@ -385,10 +390,45 @@ impl StatsigHttpIdListsAdapter {
         }
     }
 
-    // `fail_on_any_download_error`: init passes true so `initialize()` reports a missing list;
-    // background sync passes false so one stuck list doesn't fail the whole sync. Either way,
-    // the lists that downloaded are applied.
+    // HTTP initialization reports any failed download; background refresh only
+    // reports total failure. Both publish the lists that downloaded successfully.
     async fn sync_id_lists(&self, fail_on_any_download_error: bool) -> Result<(), StatsigErr> {
+        self.sync_id_lists_with_publication_check(fail_on_any_download_error, || true)
+            .await
+    }
+
+    pub(crate) async fn sync_id_lists_with_publication_check(
+        &self,
+        fail_on_any_download_error: bool,
+        should_publish: impl Fn() -> bool + Send + Sync,
+    ) -> Result<(), StatsigErr> {
+        self.sync_id_lists_with_policy(
+            false,
+            should_publish,
+            IdListsSyncPolicy::Http {
+                fail_on_any_download_error,
+            },
+        )
+        .await
+    }
+
+    // Internal publication policy: DataStore fallback never publishes a partial
+    // candidate. Reconciliation also distrusts all cached members and cursors.
+    pub(crate) async fn sync_id_lists_with_reconciliation(
+        &self,
+        reconcile: bool,
+        should_publish: impl Fn() -> bool + Send + Sync,
+    ) -> Result<(), StatsigErr> {
+        self.sync_id_lists_with_policy(reconcile, should_publish, IdListsSyncPolicy::Atomic)
+            .await
+    }
+
+    async fn sync_id_lists_with_policy(
+        &self,
+        reconcile: bool,
+        should_publish: impl Fn() -> bool + Send + Sync,
+        policy: IdListsSyncPolicy,
+    ) -> Result<(), StatsigErr> {
         let sync_start_ms = Utc::now().timestamp_millis() as u64;
         let mut id_list_manifest_success = false;
         let mut successful_single_id_list_number = 0_u64;
@@ -410,7 +450,11 @@ impl StatsigHttpIdListsAdapter {
             }
         };
 
-        let curr_manifest = match self.get_current_id_list_metadata() {
+        let curr_manifest = match if reconcile {
+            Ok(HashMap::new())
+        } else {
+            self.get_current_id_list_metadata()
+        } {
             Ok(manifest) => manifest,
             Err(e) => {
                 self.log_id_lists_sync_overall_latency(
@@ -489,6 +533,16 @@ impl StatsigHttpIdListsAdapter {
             let raw_changeset = match single_id_list_download_result {
                 Ok(raw_changeset) => raw_changeset,
                 Err(e) => {
+                    failed_single_id_list_number += 1;
+                    if matches!(policy, IdListsSyncPolicy::Atomic) {
+                        self.log_id_lists_sync_overall_latency(
+                            sync_start_ms,
+                            id_list_manifest_success,
+                            successful_single_id_list_number,
+                            failed_single_id_list_number,
+                        );
+                        return Err(e);
+                    }
                     // One failed list must not block the others. Keep this list as it is and
                     // retry next sync. The listener deletes lists missing from `updates`, so an
                     // existing list is re-sent with its current metadata (no reset, no size
@@ -503,7 +557,6 @@ impl StatsigHttpIdListsAdapter {
                             },
                         );
                     }
-                    failed_single_id_list_number += 1;
                     first_download_error.get_or_insert(e);
                     continue;
                 }
@@ -525,8 +578,24 @@ impl StatsigHttpIdListsAdapter {
         {
             Some(lock) => match lock.as_ref() {
                 Some(listener) => {
-                    listener.did_receive_id_list_updates(updates);
-                    Ok(())
+                    if !should_publish() {
+                        Err(StatsigErr::ShutdownFailure(
+                            "ID-list refresh superseded before publication".into(),
+                        ))
+                    } else if reconcile {
+                        let snapshot = updates
+                            .into_iter()
+                            .map(|(name, update)| {
+                                let mut list = IdList::new(update.new_metadata.clone());
+                                list.apply_update(update);
+                                (name, list)
+                            })
+                            .collect();
+                        listener.replace_id_lists_snapshot(snapshot)
+                    } else {
+                        listener.did_receive_id_list_updates(updates);
+                        Ok(())
+                    }
                 }
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
@@ -545,7 +614,16 @@ impl StatsigHttpIdListsAdapter {
         // every download failed, so total outages still show up as a failed sync.
         let all_failed = successful_single_id_list_number == 0;
         let result = match (result, first_download_error) {
-            (Ok(()), Some(err)) if fail_on_any_download_error || all_failed => Err(err),
+            (Ok(()), Some(err))
+                if matches!(
+                    policy,
+                    IdListsSyncPolicy::Http {
+                        fail_on_any_download_error: true
+                    }
+                ) || all_failed =>
+            {
+                Err(err)
+            }
             (result, _) => result,
         };
 

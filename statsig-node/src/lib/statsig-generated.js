@@ -369,6 +369,7 @@ module.exports.ParameterStore = nativeBinding.ParameterStore
 module.exports.StatsigNapiInternal = nativeBinding.StatsigNapiInternal
 module.exports.StatsigUser = nativeBinding.StatsigUser
 module.exports.__internal__testDataStore = nativeBinding.__internal__testDataStore
+module.exports.__internal__testDataStoreFeature = nativeBinding.__internal__testDataStoreFeature
 module.exports.__internal__testObservabilityClient = nativeBinding.__internal__testObservabilityClient
 module.exports.__internal__testOutputLogger = nativeBinding.__internal__testOutputLogger
 module.exports.__internal__testPersistentStorage = nativeBinding.__internal__testPersistentStorage
