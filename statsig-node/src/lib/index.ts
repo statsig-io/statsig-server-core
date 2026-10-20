@@ -1,6 +1,3 @@
-import { HttpsProxyAgent } from 'https-proxy-agent';
-import nodeFetch from 'node-fetch';
-
 import {
   startStatsigConsoleCapture,
   stopStatsigConsoleCapture,
@@ -35,21 +32,6 @@ ParameterStore.prototype[inspectSym] = function () {
   return this.toJSON();
 };
 
-function createProxyAgent(options?: StatsigOptions) {
-  const proxy = options?.proxyConfig;
-  if (proxy?.proxyHost && proxy?.proxyProtocol) {
-    const protocol = proxy.proxyProtocol;
-    const host = proxy.proxyHost;
-    const port = proxy.proxyPort ? `:${proxy.proxyPort}` : '';
-    const auth = proxy.proxyAuth ? `${proxy.proxyAuth}@` : '';
-    const proxyUrl = `${protocol}://${auth}${host}${port}`;
-
-    if (protocol === 'http' || protocol === 'https') {
-      return new HttpsProxyAgent(proxyUrl);
-    }
-  }
-  return undefined; // node-fetch agent parameter takes in undefined type instead of null
-}
 export class Statsig extends StatsigNapiInternal {
   private static _sharedInstance: Statsig | null = null;
 
