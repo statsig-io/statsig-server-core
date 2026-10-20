@@ -138,6 +138,16 @@ impl StatsigBasePy {
         self.inner.is_initialized()
     }
 
+    #[pyo3(name = "_INTERNAL_restart_background_tasks_after_fork")]
+    #[pyo3(signature = (timeout_ms = 3000))]
+    pub fn restart_background_tasks_after_fork(&self, py: Python<'_>, timeout_ms: u64) -> bool {
+        let inner = self.inner.clone();
+        py.detach(move || {
+            inner
+                .restart_background_tasks_after_fork_with_timeout(Duration::from_millis(timeout_ms))
+        })
+    }
+
     pub fn flush_events(&self, py: Python) -> PyResult<Py<PyAny>> {
         let (completion_event, event_clone) = get_completion_event(py)?;
 

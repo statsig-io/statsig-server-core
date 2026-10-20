@@ -676,6 +676,18 @@ impl IdListsUpdateListener for SpecStore {
             .collect()
     }
 
+    fn get_current_id_lists_snapshot(&self) -> Result<HashMap<String, IdList>, StatsigErr> {
+        let data = self
+            .data
+            .try_read_for(std::time::Duration::from_secs(5))
+            .ok_or_else(|| {
+                StatsigErr::LockFailure(
+                    "Failed to acquire read lock for ID-list snapshot".to_string(),
+                )
+            })?;
+        Ok(data.id_lists.clone())
+    }
+
     fn did_receive_id_list_updates(
         &self,
         updates: HashMap<String, crate::id_lists_adapter::IdListUpdate>,
@@ -703,5 +715,23 @@ impl IdListsUpdateListener for SpecStore {
                 data.id_lists.insert(list_name, list);
             }
         }
+    }
+
+    fn replace_id_lists_snapshot(
+        &self,
+        snapshot: HashMap<String, IdList>,
+    ) -> Result<(), StatsigErr> {
+        let mut data = write_lock_or_else!(self.data, {
+            let err = StatsigErr::LockFailure(
+                "Failed to acquire write lock for replace_id_lists_snapshot".to_string(),
+            );
+            log_error_to_statsig_and_console!(self.ops_stats, TAG, err.clone());
+            return Err(err);
+        });
+
+        let previous = std::mem::replace(&mut data.id_lists, snapshot);
+        drop(data);
+        drop(previous);
+        Ok(())
     }
 }

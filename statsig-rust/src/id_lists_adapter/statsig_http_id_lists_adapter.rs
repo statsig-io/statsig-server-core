@@ -1,5 +1,7 @@
+use super::id_lists_data_store_writer::IdListsDataStoreWriter;
 use super::IdListMetadata;
-use crate::id_lists_adapter::{IdListUpdate, IdListsAdapter, IdListsUpdateListener};
+use crate::data_store_interface::DataStoreTrait;
+use crate::id_lists_adapter::{IdList, IdListUpdate, IdListsAdapter, IdListsUpdateListener};
 use crate::networking::{NetworkClient, NetworkError, RequestArgs, Response, ResponseData};
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
@@ -9,12 +11,14 @@ use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::statsig_metadata::StatsigMetadata;
 use crate::utils::split_host_and_path;
 use crate::{
-    log_d, log_e, log_error_to_statsig_and_console, StatsigErr, StatsigOptions, StatsigRuntime,
+    log_d, log_e, log_error_to_statsig_and_console, log_w, StatsigErr, StatsigOptions,
+    StatsigRuntime,
 };
 use async_trait::async_trait;
 use chrono::Utc;
 use parking_lot::RwLock;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 use tokio::sync::Notify;
@@ -31,6 +35,12 @@ const ID_LISTS_SYNC_OVERALL_LATENCY_METRIC: &str = "id_lists_sync_overall.latenc
 const ID_LISTS_SYNC_OVERALL_MANIFEST_SUCCESS_TAG: &str = "id_list_manifest_success";
 const ID_LISTS_SYNC_OVERALL_SUCCEED_SINGLE_ID_LIST_NUMBER_TAG: &str =
     "succeed_single_id_list_number";
+const ID_LISTS_SYNC_OVERALL_FAILED_SINGLE_ID_LIST_NUMBER_TAG: &str = "failed_single_id_list_number";
+
+enum IdListsSyncPolicy {
+    Http { fail_on_any_download_error: bool },
+    Atomic,
+}
 
 pub struct StatsigHttpIdListsAdapter {
     id_lists_manifest_url: String,
@@ -40,8 +50,10 @@ pub struct StatsigHttpIdListsAdapter {
     network: NetworkClient,
     sync_interval_duration: Duration,
     request_timeout_ms: u64,
+    data_store_writer: RwLock<Option<Arc<IdListsDataStoreWriter>>>,
     ops_stats: Arc<OpsStatsForInstance>,
     shutdown_notify: Arc<Notify>,
+    shutdown_generation: AtomicU64,
 }
 
 impl StatsigHttpIdListsAdapter {
@@ -73,7 +85,6 @@ impl StatsigHttpIdListsAdapter {
             )),
             Some(options),
         );
-
         Self {
             id_lists_manifest_url,
             download_id_list_file_api: options.download_id_list_file_api.clone(),
@@ -83,13 +94,36 @@ impl StatsigHttpIdListsAdapter {
             sync_interval_duration,
             // 0 means "use the network provider's default timeout".
             request_timeout_ms: options.id_lists_request_timeout_ms.unwrap_or(0),
+            data_store_writer: RwLock::new(None),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             shutdown_notify: Arc::new(Notify::new()),
+            shutdown_generation: AtomicU64::new(0),
         }
     }
 
     pub fn force_shutdown(&self) {
+        self.signal_shutdown();
+    }
+
+    fn signal_shutdown(&self) {
+        self.shutdown_generation.fetch_add(1, Ordering::SeqCst);
+        self.shutdown_notify.notify_waiters();
         self.shutdown_notify.notify_one();
+    }
+
+    pub(crate) fn enable_data_store_writer(
+        &self,
+        sdk_key: &str,
+        options: &StatsigOptions,
+        data_store: Arc<dyn DataStoreTrait>,
+    ) {
+        self.data_store_writer.write().get_or_insert_with(|| {
+            Arc::new(IdListsDataStoreWriter::new(sdk_key, options, data_store))
+        });
+    }
+
+    pub(crate) fn disable_data_store_writer(&self) {
+        self.data_store_writer.write().take();
     }
 
     fn build_manifest_request_args(&self) -> RequestArgs {
@@ -142,7 +176,12 @@ impl StatsigHttpIdListsAdapter {
         id_list_file_id: Option<String>,
     ) -> RequestArgs {
         let list_url = self.get_override_id_list_download_url(list_url);
-        let (headers, query_params) = if list_url.starts_with(STATSIG_CDN_URL) {
+        // Full downloads (start 0) from the CDN send the range as a header, so Cloudflare caches
+        // the file and serves it from cache (STADXP-549). The cached copy can be up to the edge
+        // TTL old; the next sync picks up the missing tail below. Incremental downloads keep the
+        // `range` query param, which bypasses the cache and goes to origin, so appended IDs stay
+        // fresh and a stale cached copy can never answer them with a 416.
+        let (headers, query_params) = if list_url.starts_with(STATSIG_CDN_URL) && start_index > 0 {
             (
                 None,
                 Some(HashMap::from([("range".into(), format!("{start_index}-"))])),
@@ -214,10 +253,13 @@ impl StatsigHttpIdListsAdapter {
             }
         };
 
-        let result = response_body.read_to_string().map_err(|err| {
-            let msg = format!("Failed to parse ID List changes: {err:?}");
-            StatsigErr::JsonParseError("IdList".to_string(), msg)
-        });
+        let result = response_body
+            .read_to_string()
+            .map_err(|err| {
+                let msg = format!("Failed to parse ID List changes: {err:?}");
+                StatsigErr::JsonParseError("IdList".to_string(), msg)
+            })
+            .and_then(validate_id_list_changes);
 
         self.add_diagnostics_end_marker(
             KeyType::GetIDList,
@@ -291,7 +333,7 @@ impl StatsigHttpIdListsAdapter {
             .ops_stats
             .set_diagnostics_context(ContextType::ConfigSync);
 
-        if let Err(e) = strong_self.sync_id_lists().await {
+        if let Err(e) = strong_self.sync_id_lists(false).await {
             if let StatsigErr::NetworkError(NetworkError::DisableNetworkOn(_)) = e {
                 return;
             }
@@ -331,7 +373,7 @@ impl StatsigHttpIdListsAdapter {
             })
     }
 
-    fn set_listener(&self, listener: Arc<dyn IdListsUpdateListener>) {
+    pub(crate) fn set_listener(&self, listener: Arc<dyn IdListsUpdateListener>) {
         match self
             .listener
             .try_write_for(std::time::Duration::from_secs(5))
@@ -366,10 +408,49 @@ impl StatsigHttpIdListsAdapter {
         }
     }
 
-    async fn sync_id_lists(&self) -> Result<(), StatsigErr> {
+    // HTTP initialization reports any failed download; background refresh only
+    // reports total failure. Both publish the lists that downloaded successfully.
+    async fn sync_id_lists(&self, fail_on_any_download_error: bool) -> Result<(), StatsigErr> {
+        self.sync_id_lists_with_publication_check(fail_on_any_download_error, || true)
+            .await
+    }
+
+    pub(crate) async fn sync_id_lists_with_publication_check(
+        &self,
+        fail_on_any_download_error: bool,
+        should_publish: impl Fn() -> bool + Send + Sync,
+    ) -> Result<(), StatsigErr> {
+        self.sync_id_lists_with_policy(
+            false,
+            should_publish,
+            IdListsSyncPolicy::Http {
+                fail_on_any_download_error,
+            },
+        )
+        .await
+    }
+
+    // Internal publication policy: DataStore fallback never publishes a partial
+    // candidate. Reconciliation also distrusts all cached members and cursors.
+    pub(crate) async fn sync_id_lists_with_reconciliation(
+        &self,
+        reconcile: bool,
+        should_publish: impl Fn() -> bool + Send + Sync,
+    ) -> Result<(), StatsigErr> {
+        self.sync_id_lists_with_policy(reconcile, should_publish, IdListsSyncPolicy::Atomic)
+            .await
+    }
+
+    async fn sync_id_lists_with_policy(
+        &self,
+        reconcile: bool,
+        should_publish: impl Fn() -> bool + Send + Sync,
+        policy: IdListsSyncPolicy,
+    ) -> Result<(), StatsigErr> {
         let sync_start_ms = Utc::now().timestamp_millis() as u64;
         let mut id_list_manifest_success = false;
         let mut successful_single_id_list_number = 0_u64;
+        let mut failed_single_id_list_number = 0_u64;
 
         let new_manifest = match self.fetch_id_list_manifests_from_network().await {
             Ok(manifest) => {
@@ -381,22 +462,30 @@ impl StatsigHttpIdListsAdapter {
                     sync_start_ms,
                     id_list_manifest_success,
                     successful_single_id_list_number,
+                    failed_single_id_list_number,
                 );
                 return Err(e);
             }
         };
 
-        let curr_manifest = match self.get_current_id_list_metadata() {
+        let curr_manifest = match if reconcile {
+            Ok(HashMap::new())
+        } else {
+            self.get_current_id_list_metadata()
+        } {
             Ok(manifest) => manifest,
             Err(e) => {
                 self.log_id_lists_sync_overall_latency(
                     sync_start_ms,
                     id_list_manifest_success,
                     successful_single_id_list_number,
+                    failed_single_id_list_number,
                 );
                 return Err(e);
             }
         };
+        let writer = self.data_store_writer.read().clone();
+        let manifest_for_write = writer.as_ref().map(|_| new_manifest.clone());
 
         let mut changes = HashMap::new();
 
@@ -413,14 +502,16 @@ impl StatsigHttpIdListsAdapter {
                     if entry.creation_time > current.creation_time
                         || entry.file_id != current.file_id
                     {
-                        (true, 0u64)
+                        // An empty file has nothing to download. The update still goes out
+                        // without data, so a rotation to an empty file resets the list.
+                        (entry.size > 0, 0u64)
                     } else if entry.size > current.size {
                         (true, current.size)
                     } else {
                         (false, 0u64)
                     }
                 }
-                None => (true, 0),
+                None => (entry.size > 0, 0), // size 0: add an empty list, like legacy
             };
 
             changes.insert(
@@ -434,6 +525,7 @@ impl StatsigHttpIdListsAdapter {
         }
 
         let mut updates = HashMap::new();
+        let mut first_download_error: Option<StatsigErr> = None;
         // todo: map this into futures then run them in parallel
         for (list_name, changeset) in changes {
             let new_metadata = changeset.new_metadata;
@@ -461,12 +553,32 @@ impl StatsigHttpIdListsAdapter {
             let raw_changeset = match single_id_list_download_result {
                 Ok(raw_changeset) => raw_changeset,
                 Err(e) => {
-                    self.log_id_lists_sync_overall_latency(
-                        sync_start_ms,
-                        id_list_manifest_success,
-                        successful_single_id_list_number,
-                    );
-                    return Err(e);
+                    failed_single_id_list_number += 1;
+                    if matches!(policy, IdListsSyncPolicy::Atomic) {
+                        self.log_id_lists_sync_overall_latency(
+                            sync_start_ms,
+                            id_list_manifest_success,
+                            successful_single_id_list_number,
+                            failed_single_id_list_number,
+                        );
+                        return Err(e);
+                    }
+                    // One failed list must not block the others. Keep this list as it is and
+                    // retry next sync. The listener deletes lists missing from `updates`, so an
+                    // existing list is re-sent with its current metadata (no reset, no size
+                    // change); a new list is left out, as it doesn't exist locally yet.
+                    log_w!(TAG, "Failed to download ID list {}: {}", list_name, e);
+                    if let Some(current) = curr_manifest.get(&list_name) {
+                        updates.insert(
+                            list_name,
+                            IdListUpdate {
+                                raw_changeset: None,
+                                new_metadata: current.clone(),
+                            },
+                        );
+                    }
+                    first_download_error.get_or_insert(e);
+                    continue;
                 }
             };
             successful_single_id_list_number += 1;
@@ -486,8 +598,24 @@ impl StatsigHttpIdListsAdapter {
         {
             Some(lock) => match lock.as_ref() {
                 Some(listener) => {
-                    listener.did_receive_id_list_updates(updates);
-                    Ok(())
+                    if !should_publish() {
+                        Err(StatsigErr::ShutdownFailure(
+                            "ID-list refresh superseded before publication".into(),
+                        ))
+                    } else if reconcile {
+                        let snapshot = updates
+                            .into_iter()
+                            .map(|(name, update)| {
+                                let mut list = IdList::new(update.new_metadata.clone());
+                                list.apply_update(update);
+                                (name, list)
+                            })
+                            .collect();
+                        listener.replace_id_lists_snapshot(snapshot)
+                    } else {
+                        listener.did_receive_id_list_updates(updates);
+                        Ok(())
+                    }
                 }
                 None => Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             },
@@ -502,6 +630,46 @@ impl StatsigHttpIdListsAdapter {
             }
         };
 
+        // Preserve HTTP-only initialization/background failure reporting before
+        // considering persistence. DataStore-backed refreshes remain atomic.
+        let all_failed = successful_single_id_list_number == 0;
+        let result = match (result, first_download_error) {
+            (Ok(()), Some(err))
+                if matches!(
+                    policy,
+                    IdListsSyncPolicy::Http {
+                        fail_on_any_download_error: true
+                    }
+                ) || all_failed =>
+            {
+                Err(err)
+            }
+            (result, _) => result,
+        };
+
+        if let (Ok(()), Some(writer), Some(manifest)) =
+            (&result, writer.as_ref(), manifest_for_write.as_ref())
+        {
+            let write_result = writer
+                .write_if_changed(manifest, || {
+                    self.listener
+                        .read()
+                        .as_ref()
+                        .ok_or_else(|| StatsigErr::UnstartedAdapter("Listener not set".to_string()))
+                        .and_then(|listener| listener.get_current_id_lists_snapshot())
+                })
+                .await;
+            if let Err(error) = write_result {
+                log_w!(TAG, "Failed to publish ID lists to DataStore: {error}");
+                self.ops_stats.log(ObservabilityEvent::new_event(
+                    MetricType::Increment,
+                    "id_list_data_store_write_failure".to_string(),
+                    1.0,
+                    None,
+                ));
+            }
+        }
+
         self.add_diagnostics_end_marker(
             KeyType::GetIDListSources,
             StepType::Process,
@@ -514,6 +682,7 @@ impl StatsigHttpIdListsAdapter {
             sync_start_ms,
             id_list_manifest_success,
             successful_single_id_list_number,
+            failed_single_id_list_number,
         );
 
         result
@@ -560,6 +729,7 @@ impl StatsigHttpIdListsAdapter {
         sync_start_ms: u64,
         id_list_manifest_success: bool,
         successful_single_id_list_number: u64,
+        failed_single_id_list_number: u64,
     ) {
         let latency_ms =
             (Utc::now().timestamp_millis() as u64).saturating_sub(sync_start_ms) as f64;
@@ -575,6 +745,10 @@ impl StatsigHttpIdListsAdapter {
                 (
                     ID_LISTS_SYNC_OVERALL_SUCCEED_SINGLE_ID_LIST_NUMBER_TAG.to_string(),
                     successful_single_id_list_number.to_string(),
+                ),
+                (
+                    ID_LISTS_SYNC_OVERALL_FAILED_SINGLE_ID_LIST_NUMBER_TAG.to_string(),
+                    failed_single_id_list_number.to_string(),
                 ),
             ])),
         ));
@@ -597,13 +771,13 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
         self.set_listener(listener);
         self.ops_stats
             .set_diagnostics_context(ContextType::Initialize);
-        let result = self.sync_id_lists().await;
+        let result = self.sync_id_lists(true).await;
         result?;
         Ok(())
     }
 
     async fn shutdown(&self, _timeout: Duration) -> Result<(), StatsigErr> {
-        self.shutdown_notify.notify_one();
+        self.signal_shutdown();
         Ok(())
     }
 
@@ -613,6 +787,7 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
     ) -> Result<(), StatsigErr> {
         let weak_self = Arc::downgrade(&self);
         let interval_duration = self.sync_interval_duration;
+        let shutdown_generation = self.shutdown_generation.load(Ordering::SeqCst);
 
         statsig_runtime.spawn(
             "http_id_list_bg_sync",
@@ -627,8 +802,12 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
                             break;
                         },
                         () = self.shutdown_notify.notified() => {
-                            log_d!(TAG, "Shutting down id list background sync");
-                            break;
+                            if self.shutdown_generation.load(Ordering::SeqCst)
+                                != shutdown_generation
+                            {
+                                log_d!(TAG, "Shutting down id list background sync");
+                                break;
+                            }
                         }
                     }
                 }
@@ -647,8 +826,22 @@ fn make_default_cdn_url(sdk_key: &str) -> String {
     format!("{DEFAULT_CDN_ID_LISTS_MANIFEST_URL}/{sdk_key}.json")
 }
 
+// Rejects bodies that aren't ID list changes (an error page, an empty body). The local size grows
+// by the body length, so accepting one would throw every later range request off. Leading
+// whitespace is allowed: a file without a trailing newline makes the next range start with '\n'.
+fn validate_id_list_changes(body: String) -> Result<String, StatsigErr> {
+    let first = body.trim_start().chars().next();
+    if first != Some('+') && first != Some('-') {
+        let msg = "ID List changes must start with '+' or '-'".to_string();
+        return Err(StatsigErr::JsonParseError("IdList".to_string(), msg));
+    }
+
+    Ok(body)
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::data_store_interface::{DataStoreResponse, DataStoreTrait, RequestPath};
     use crate::hashing::HashUtil;
     use crate::id_lists_adapter::IdList;
 
@@ -657,6 +850,40 @@ mod tests {
     use mockito::{Mock, Server, ServerGuard};
     use std::fs;
     use std::path::PathBuf;
+
+    #[derive(Default)]
+    struct RecordingDataStore {
+        writes: parking_lot::Mutex<Vec<(String, String)>>,
+    }
+
+    #[async_trait]
+    impl DataStoreTrait for RecordingDataStore {
+        async fn initialize(&self) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn shutdown(&self) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn get(&self, _key: &str) -> Result<DataStoreResponse, StatsigErr> {
+            Ok(DataStoreResponse {
+                result: None,
+                time: None,
+            })
+        }
+
+        async fn set(&self, key: &str, value: &str, _time: Option<u64>) -> Result<(), StatsigErr> {
+            self.writes
+                .lock()
+                .push((key.to_string(), value.to_string()));
+            Ok(())
+        }
+
+        async fn support_polling_updates_for(&self, _path: RequestPath) -> bool {
+            false
+        }
+    }
 
     struct TestIdListsUpdateListener {
         id_lists: RwLock<HashMap<String, IdList>>,
@@ -704,6 +931,10 @@ mod tests {
                 .iter()
                 .map(|(key, list)| (key.clone(), list.metadata.clone()))
                 .collect()
+        }
+
+        fn get_current_id_lists_snapshot(&self) -> Result<HashMap<String, IdList>, StatsigErr> {
+            Ok(self.id_lists.read().clone())
         }
 
         fn did_receive_id_list_updates(&self, updates: HashMap<String, IdListUpdate>) {
@@ -804,6 +1035,63 @@ mod tests {
             .unwrap();
 
         (server, adapter, listener, statsig_rt)
+    }
+
+    #[tokio::test]
+    async fn network_sync_writes_complete_legacy_snapshot_when_enabled() {
+        let (server, manifest_request, child_request) = setup_mock_server().await;
+        let store = Arc::new(RecordingDataStore::default());
+        let options = StatsigOptions {
+            data_store: Some(store.clone()),
+            enable_id_lists: Some(true),
+            id_lists_url: Some(format!("{}/get_id_lists", server.url())),
+            ..StatsigOptions::default()
+        };
+        let adapter = Arc::new(StatsigHttpIdListsAdapter::new("secret-key", &options));
+        adapter.enable_data_store_writer("secret-key", &options, store.clone());
+        let listener = Arc::new(TestIdListsUpdateListener {
+            id_lists: RwLock::new(HashMap::new()),
+        });
+        let runtime = StatsigRuntime::get_runtime();
+
+        adapter.start(&runtime, listener.clone()).await.unwrap();
+
+        manifest_request.assert();
+        child_request.assert();
+        let writes = store.writes.lock();
+        assert_eq!(writes.len(), 2);
+        assert!(writes[0].0.contains("id_list::company_id_list"));
+        assert!(writes[0].1.lines().all(|line| line.starts_with('+')));
+        assert!(writes[1].0.contains("/v1/get_id_lists"));
+        let saved_manifest: HashMap<String, IdListMetadata> =
+            serde_json::from_str(&writes[1].1).unwrap();
+        assert_eq!(
+            saved_manifest["company_id_list"].size,
+            listener.get_current_id_list_metadata()["company_id_list"].size
+        );
+    }
+
+    #[tokio::test]
+    async fn network_sync_does_not_write_id_lists_to_data_store_by_default() {
+        let (server, _, _) = setup_mock_server().await;
+        let store = Arc::new(RecordingDataStore::default());
+        let options = StatsigOptions {
+            data_store: Some(store.clone()),
+            enable_id_lists: Some(true),
+            id_lists_url: Some(format!("{}/get_id_lists", server.url())),
+            ..StatsigOptions::default()
+        };
+        let adapter = Arc::new(StatsigHttpIdListsAdapter::new("secret-key", &options));
+        let listener = Arc::new(TestIdListsUpdateListener {
+            id_lists: RwLock::new(HashMap::new()),
+        });
+
+        adapter
+            .start(&StatsigRuntime::get_runtime(), listener)
+            .await
+            .unwrap();
+
+        assert!(store.writes.lock().is_empty());
     }
 
     #[tokio::test]
@@ -1028,7 +1316,7 @@ mod tests {
     async fn test_syncing_new_id_lists() {
         let (_server, adapter, listener, _statsig_rt) = setup(None).await;
 
-        adapter.sync_id_lists().await.unwrap();
+        adapter.sync_id_lists(false).await.unwrap();
 
         let result = listener.does_list_contain_id("company_id_list", &get_hashed_marcos());
         assert!(result);
@@ -1038,7 +1326,7 @@ mod tests {
     async fn test_syncing_deleting_id_lists() {
         let (mut server, adapter, listener, _statsig_rt) = setup(None).await;
 
-        adapter.sync_id_lists().await.unwrap();
+        adapter.sync_id_lists(false).await.unwrap();
 
         server
             .mock("POST", "/get_id_lists")
@@ -1047,7 +1335,7 @@ mod tests {
             .with_body("{}")
             .create();
 
-        adapter.sync_id_lists().await.unwrap();
+        adapter.sync_id_lists(false).await.unwrap();
 
         let result = listener.does_list_contain_id("company_id_list", &get_hashed_marcos());
         assert!(!result);
@@ -1085,6 +1373,606 @@ mod tests {
         assert!(result);
     }
 
-    // todo:
-    // - test update id list
+    // ---- STADXP-549: hybrid range requests and per-list failure isolation ----
+
+    const CDN_LIST_URL: &str = "https://api.statsigcdn.com/v1/download_id_list_file/list_a";
+
+    #[test]
+    fn test_cdn_full_download_uses_range_header() {
+        let adapter = StatsigHttpIdListsAdapter::new("secret-key", &StatsigOptions::default());
+        let args = adapter.build_id_list_download_request_args(CDN_LIST_URL, 0, 50_000, None);
+
+        assert!(args.query_params.is_none());
+        let headers = args.headers.expect("full CDN download sends headers");
+        assert_eq!(headers.get("Range").map(String::as_str), Some("bytes=0-"));
+        assert_eq!(
+            headers.get("statsig-id-list-file-size").map(String::as_str),
+            Some("50000")
+        );
+    }
+
+    #[test]
+    fn test_cdn_incremental_download_uses_range_query_param() {
+        let adapter = StatsigHttpIdListsAdapter::new("secret-key", &StatsigOptions::default());
+        let args = adapter.build_id_list_download_request_args(CDN_LIST_URL, 25_000, 50_000, None);
+
+        assert!(args.headers.is_none());
+        let query_params = args
+            .query_params
+            .expect("incremental CDN download sends ?range=");
+        assert_eq!(
+            query_params.get("range").map(String::as_str),
+            Some("25000-")
+        );
+    }
+
+    #[test]
+    fn test_validate_rejects_body_that_is_not_id_list_changes() {
+        assert!(validate_id_list_changes("<html>error</html>".into()).is_err());
+        assert!(validate_id_list_changes(String::new()).is_err());
+        assert!(validate_id_list_changes("\n".into()).is_err());
+        assert!(validate_id_list_changes("+aaaaa\n-bbbbb\n".into()).is_ok());
+        // Range starting right after a last line with no trailing newline.
+        assert!(validate_id_list_changes("\n-aaaaa\n+zzzzz".into()).is_ok());
+    }
+
+    fn two_list_manifest(download_url: &str, list_a_size: u64) -> String {
+        format!(
+            r#"{{
+  "list_a": {{"name": "list_a", "size": {list_a_size}, "url": "{download_url}/list_a", "creationTime": 1, "fileID": "file_a"}},
+  "list_b": {{"name": "list_b", "size": 7, "url": "{download_url}/list_b", "creationTime": 1, "fileID": "file_b"}}
+}}"#
+        )
+    }
+
+    // list_a exists locally with "+aaaaa\n" (7 bytes); list_b is new.
+    async fn start_with_existing_list_a(
+        manifest: String,
+        download_server: &ServerGuard,
+        manifest_server: &mut ServerGuard,
+    ) -> (Result<(), StatsigErr>, Arc<TestIdListsUpdateListener>) {
+        manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_body(manifest)
+            .create();
+
+        let options = StatsigOptions {
+            id_lists_url: Some(format!("{}/get_id_lists", manifest_server.url())),
+            download_id_list_file_api: Some(download_server.url()),
+            wait_for_country_lookup_init: Some(true),
+            wait_for_user_agent_init: Some(true),
+            ..StatsigOptions::default()
+        };
+        let adapter = Arc::new(StatsigHttpIdListsAdapter::new("secret-key", &options));
+
+        let mut list_a = IdList::new(IdListMetadata {
+            name: "list_a".to_string(),
+            url: format!("{}/v1/download_id_list_file/list_a", download_server.url()),
+            file_id: Some("file_a".to_string()),
+            size: 7,
+            creation_time: 1,
+        });
+        list_a.apply_update(IdListUpdate {
+            raw_changeset: Some("+aaaaa\n".to_string()),
+            new_metadata: list_a.metadata.clone(),
+        });
+        let listener = Arc::new(TestIdListsUpdateListener {
+            id_lists: RwLock::new(HashMap::from([("list_a".to_string(), list_a)])),
+        });
+
+        let result = adapter
+            .start(&StatsigRuntime::get_runtime(), listener.clone())
+            .await;
+        (result, listener)
+    }
+
+    #[tokio::test]
+    async fn test_one_failed_download_keeps_that_list_and_applies_the_others() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        let download_url = format!("{}/v1/download_id_list_file", download_server.url());
+
+        // list_a grew, but its incremental download fails.
+        let failed_a = download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .with_status(416)
+            .create();
+        let ok_b = download_server
+            .mock("GET", "/v1/download_id_list_file/list_b")
+            .with_status(200)
+            .with_body("+bbbbb\n")
+            .create();
+
+        let (result, listener) = start_with_existing_list_a(
+            two_list_manifest(&download_url, 14),
+            &download_server,
+            &mut manifest_server,
+        )
+        .await;
+
+        failed_a.assert();
+        ok_b.assert();
+        assert!(result.is_err(), "init reports the failed list");
+        assert!(
+            listener.does_list_contain_id("list_a", "aaaaa"),
+            "list_a kept"
+        );
+        assert!(
+            listener.does_list_contain_id("list_b", "bbbbb"),
+            "list_b applied"
+        );
+        let metadata = listener.get_current_id_list_metadata();
+        assert_eq!(
+            metadata["list_a"].size, 7,
+            "list_a size unchanged, so it retries"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_invalid_body_is_treated_as_failed_download() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        let download_url = format!("{}/v1/download_id_list_file", download_server.url());
+
+        download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .with_status(206)
+            .with_header("content-range", "bytes 7-13/14")
+            .with_body("<html>")
+            .create();
+        download_server
+            .mock("GET", "/v1/download_id_list_file/list_b")
+            .with_status(200)
+            .with_body("+bbbbb\n")
+            .create();
+
+        let (result, listener) = start_with_existing_list_a(
+            two_list_manifest(&download_url, 14),
+            &download_server,
+            &mut manifest_server,
+        )
+        .await;
+
+        assert!(result.is_err(), "init reports the invalid body");
+        assert_eq!(listener.get_current_id_list_metadata()["list_a"].size, 7);
+        assert!(listener.does_list_contain_id("list_b", "bbbbb"));
+    }
+
+    #[tokio::test]
+    async fn test_all_downloads_failing_returns_error_and_keeps_existing_lists() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        let download_url = format!("{}/v1/download_id_list_file", download_server.url());
+
+        download_server
+            .mock("GET", mockito::Matcher::Any)
+            .with_status(500)
+            .create();
+
+        let (result, listener) = start_with_existing_list_a(
+            two_list_manifest(&download_url, 14),
+            &download_server,
+            &mut manifest_server,
+        )
+        .await;
+
+        assert!(result.is_err());
+        assert!(
+            listener.does_list_contain_id("list_a", "aaaaa"),
+            "list_a kept"
+        );
+        assert!(
+            !listener
+                .get_current_id_list_metadata()
+                .contains_key("list_b"),
+            "new list that failed is not added"
+        );
+    }
+
+    // ---- PR #3236 review: required tests ----
+
+    fn adapter_for(
+        manifest_server: &ServerGuard,
+        download_server: &ServerGuard,
+    ) -> Arc<StatsigHttpIdListsAdapter> {
+        let options = StatsigOptions {
+            id_lists_url: Some(format!("{}/get_id_lists", manifest_server.url())),
+            download_id_list_file_api: Some(download_server.url()),
+            ..StatsigOptions::default()
+        };
+        Arc::new(StatsigHttpIdListsAdapter::new("secret-key", &options))
+    }
+
+    fn empty_listener() -> Arc<TestIdListsUpdateListener> {
+        Arc::new(TestIdListsUpdateListener {
+            id_lists: RwLock::new(HashMap::new()),
+        })
+    }
+
+    fn one_list_manifest(
+        download_server: &ServerGuard,
+        name: &str,
+        size: u64,
+        file_id: &str,
+        creation_time: i64,
+    ) -> String {
+        format!(
+            r#"{{"{name}": {{"name": "{name}", "size": {size}, "url": "{}/v1/download_id_list_file/{name}", "creationTime": {creation_time}, "fileID": "{file_id}"}}}}"#,
+            download_server.url()
+        )
+    }
+
+    // A full download served from a stale cache (7 of 21 bytes) is caught up by the next sync,
+    // from exactly the local size, with no double count.
+    #[tokio::test]
+    async fn test_stale_full_download_is_caught_up_by_next_sync() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_body(one_list_manifest(
+                &download_server,
+                "list_a",
+                21,
+                "file_a",
+                1,
+            ))
+            .create();
+        let full = download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .match_header("range", "bytes=0-")
+            .with_status(200)
+            .with_body("+aaaaa\n")
+            .expect(1)
+            .create();
+        let tail = download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .match_header("range", "bytes=7-")
+            .with_status(206)
+            .with_body("+bbbbb\n-aaaaa\n")
+            .expect(1)
+            .create();
+        let adapter = adapter_for(&manifest_server, &download_server);
+        let listener = empty_listener();
+
+        adapter
+            .clone()
+            .start(&StatsigRuntime::get_runtime(), listener.clone())
+            .await
+            .unwrap();
+        assert_eq!(listener.get_current_id_list_metadata()["list_a"].size, 7);
+
+        adapter.sync_id_lists(false).await.unwrap();
+        assert_eq!(listener.get_current_id_list_metadata()["list_a"].size, 21);
+        assert!(listener.does_list_contain_id("list_a", "bbbbb"));
+        assert!(!listener.does_list_contain_id("list_a", "aaaaa"));
+
+        adapter.sync_id_lists(false).await.unwrap(); // caught up: no more downloads
+        full.assert();
+        tail.assert();
+    }
+
+    // A file with no trailing newline makes the next range start with '\n'. The '\n' is file
+    // bytes, so it counts toward the local size.
+    #[tokio::test]
+    async fn test_incremental_after_missing_trailing_newline_keeps_size_in_step() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        let first = manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_body(one_list_manifest(
+                &download_server,
+                "list_a",
+                6,
+                "file_a",
+                1,
+            ))
+            .create();
+        download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .match_header("range", "bytes=0-")
+            .with_status(200)
+            .with_body("+aaaaa")
+            .create();
+        let adapter = adapter_for(&manifest_server, &download_server);
+        let listener = empty_listener();
+        adapter
+            .clone()
+            .start(&StatsigRuntime::get_runtime(), listener.clone())
+            .await
+            .unwrap();
+
+        first.remove();
+        manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_body(one_list_manifest(
+                &download_server,
+                "list_a",
+                20,
+                "file_a",
+                1,
+            ))
+            .create();
+        download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .match_header("range", "bytes=6-")
+            .with_status(206)
+            .with_body("\n-aaaaa\n+zzzzz")
+            .create();
+        adapter.sync_id_lists(false).await.unwrap();
+
+        assert_eq!(listener.get_current_id_list_metadata()["list_a"].size, 20);
+        assert!(!listener.does_list_contain_id("list_a", "aaaaa"));
+        assert!(listener.does_list_contain_id("list_a", "zzzzz"));
+    }
+
+    #[test]
+    fn test_validate_rejects_whitespace_only_and_padded_error_pages() {
+        assert!(validate_id_list_changes("   \t\n".into()).is_err());
+        assert!(validate_id_list_changes("\n<html>error</html>".into()).is_err());
+        assert!(validate_id_list_changes("\r\n+aaaaa\n".into()).is_ok());
+    }
+
+    // A failed full download of a rotated file keeps the old file's IDs and metadata, and the
+    // next sync retries the full download.
+    #[tokio::test]
+    async fn test_failed_rotation_keeps_old_list_and_retries_full_download() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        let first = manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_body(one_list_manifest(
+                &download_server,
+                "list_a",
+                7,
+                "file_a",
+                1,
+            ))
+            .create();
+        let old_file = download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .with_status(200)
+            .with_body("+aaaaa\n")
+            .create();
+        let adapter = adapter_for(&manifest_server, &download_server);
+        let listener = empty_listener();
+        adapter
+            .clone()
+            .start(&StatsigRuntime::get_runtime(), listener.clone())
+            .await
+            .unwrap();
+
+        first.remove();
+        old_file.remove();
+        manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_body(one_list_manifest(
+                &download_server,
+                "list_a",
+                7,
+                "file_a2",
+                2,
+            ))
+            .create();
+        let failed = download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .with_status(500)
+            .create();
+        let _ = adapter.sync_id_lists(false).await;
+
+        let metadata = &listener.get_current_id_list_metadata()["list_a"];
+        assert_eq!(metadata.file_id.as_deref(), Some("file_a"));
+        assert!(listener.does_list_contain_id("list_a", "aaaaa"));
+
+        failed.remove();
+        let retried = download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .match_header("range", "bytes=0-")
+            .with_status(200)
+            .with_body("+ccccc\n")
+            .create();
+        adapter.sync_id_lists(false).await.unwrap();
+        retried.assert();
+        assert_eq!(
+            listener.get_current_id_list_metadata()["list_a"]
+                .file_id
+                .as_deref(),
+            Some("file_a2")
+        );
+        assert!(listener.does_list_contain_id("list_a", "ccccc"));
+        assert!(!listener.does_list_contain_id("list_a", "aaaaa"));
+    }
+
+    // Ask 2: a size-0 list is added without a download, like legacy.
+    #[tokio::test]
+    async fn test_size_zero_new_list_is_added_without_download() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_body(one_list_manifest(
+                &download_server,
+                "empty_list",
+                0,
+                "file_e",
+                1,
+            ))
+            .create();
+        let download = download_server
+            .mock("GET", "/v1/download_id_list_file/empty_list")
+            .expect(0)
+            .create();
+        let adapter = adapter_for(&manifest_server, &download_server);
+        let listener = empty_listener();
+
+        adapter
+            .clone()
+            .start(&StatsigRuntime::get_runtime(), listener.clone())
+            .await
+            .unwrap();
+
+        download.assert();
+        assert_eq!(
+            listener.get_current_id_list_metadata()["empty_list"].size,
+            0
+        );
+    }
+
+    // Ask 1: init reports a failed list as not ready, but still applies the lists that worked.
+    #[tokio::test]
+    async fn test_init_reports_not_ready_when_any_download_fails() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        let download_url = format!("{}/v1/download_id_list_file", download_server.url());
+        download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .with_status(416)
+            .create();
+        download_server
+            .mock("GET", "/v1/download_id_list_file/list_b")
+            .with_status(200)
+            .with_body("+bbbbb\n")
+            .create();
+
+        let (init, listener) = start_with_existing_list_a(
+            two_list_manifest(&download_url, 14),
+            &download_server,
+            &mut manifest_server,
+        )
+        .await;
+
+        assert!(init.is_err(), "init reports the failed list");
+        assert!(
+            listener.does_list_contain_id("list_a", "aaaaa"),
+            "list_a kept"
+        );
+        assert!(
+            listener.does_list_contain_id("list_b", "bbbbb"),
+            "list_b applied"
+        );
+    }
+
+    // Ask 1: background sync keeps partial success.
+    #[tokio::test]
+    async fn test_background_sync_succeeds_when_some_downloads_fail() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        let url = download_server.url();
+        let manifest = |size: u64| {
+            format!(
+                r#"{{"a": {{"name": "a", "size": {size}, "url": "{url}/v1/download_id_list_file/a", "creationTime": 1, "fileID": "fa"}},
+                "b": {{"name": "b", "size": {size}, "url": "{url}/v1/download_id_list_file/b", "creationTime": 1, "fileID": "fb"}}}}"#
+            )
+        };
+        let first = manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_body(manifest(7))
+            .create();
+        let a_full = download_server
+            .mock("GET", "/v1/download_id_list_file/a")
+            .with_status(200)
+            .with_body("+aaaaa\n")
+            .create();
+        let b_full = download_server
+            .mock("GET", "/v1/download_id_list_file/b")
+            .with_status(200)
+            .with_body("+bbbbb\n")
+            .create();
+        let adapter = adapter_for(&manifest_server, &download_server);
+        let listener = empty_listener();
+        adapter
+            .clone()
+            .start(&StatsigRuntime::get_runtime(), listener.clone())
+            .await
+            .unwrap();
+
+        first.remove();
+        a_full.remove();
+        b_full.remove();
+        manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_body(manifest(14))
+            .create();
+        download_server
+            .mock("GET", "/v1/download_id_list_file/a")
+            .with_status(500)
+            .create();
+        download_server
+            .mock("GET", "/v1/download_id_list_file/b")
+            .with_status(206)
+            .with_body("+ccccc\n")
+            .create();
+
+        assert!(adapter.sync_id_lists(false).await.is_ok());
+        assert_eq!(
+            listener.get_current_id_list_metadata()["a"].size,
+            7,
+            "a retries next sync"
+        );
+        assert!(listener.does_list_contain_id("b", "ccccc"));
+    }
+
+    // Ask 2, rotation case: a new fileID with size 0 resets the list without a download.
+    #[tokio::test]
+    async fn test_rotation_to_empty_file_resets_list_without_download() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        let first = manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_body(one_list_manifest(
+                &download_server,
+                "list_a",
+                7,
+                "file_a",
+                1,
+            ))
+            .create();
+        let old_file = download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .with_status(200)
+            .with_body("+aaaaa\n")
+            .create();
+        let adapter = adapter_for(&manifest_server, &download_server);
+        let listener = empty_listener();
+        adapter
+            .clone()
+            .start(&StatsigRuntime::get_runtime(), listener.clone())
+            .await
+            .unwrap();
+
+        first.remove();
+        old_file.remove();
+        manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_body(one_list_manifest(
+                &download_server,
+                "list_a",
+                0,
+                "file_a2",
+                2,
+            ))
+            .create();
+        let download = download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .expect(0)
+            .create();
+        adapter.sync_id_lists(false).await.unwrap();
+
+        download.assert();
+        let metadata = &listener.get_current_id_list_metadata()["list_a"];
+        assert_eq!(metadata.file_id.as_deref(), Some("file_a2"));
+        assert_eq!(metadata.size, 0);
+        assert!(!listener.does_list_contain_id("list_a", "aaaaa"));
+    }
 }

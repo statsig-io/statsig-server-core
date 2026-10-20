@@ -1,4 +1,4 @@
-use crate::{StatsigErr, StatsigRuntime};
+use crate::{id_lists_adapter::IdList, StatsigErr, StatsigRuntime};
 use async_trait::async_trait;
 use std::sync::Arc;
 use std::time::Duration;
@@ -6,7 +6,7 @@ use std::{collections::HashMap, fmt};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct IdListMetadata {
     #[serde(alias = "key")]
@@ -63,6 +63,14 @@ pub trait IdListsAdapter: Send + Sync {
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr>;
 
+    /// Re-arms synchronization after fork; adapters may refresh immediately.
+    async fn schedule_background_sync_after_fork(
+        self: Arc<Self>,
+        statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
+        self.schedule_background_sync(statsig_runtime).await
+    }
+
     /// Returns the type name of the adapter. Used for logging and error messages.
     fn get_type_name(&self) -> String;
 }
@@ -70,7 +78,28 @@ pub trait IdListsAdapter: Send + Sync {
 pub trait IdListsUpdateListener: Send + Sync {
     fn get_current_id_list_metadata(&self) -> HashMap<String, IdListMetadata>;
 
+    /// Returns the complete, already-applied membership for DataStore write-through.
+    /// Custom listeners remain source-compatible and simply cannot be written through.
+    fn get_current_id_lists_snapshot(&self) -> Result<HashMap<String, IdList>, StatsigErr> {
+        Err(StatsigErr::InvalidOperation(
+            "ID-list snapshot reads are not supported by this listener".to_string(),
+        ))
+    }
+
     fn did_receive_id_list_updates(&self, updates: HashMap<String, IdListUpdate>);
+
+    /// Atomically publishes a fully validated ID-list snapshot.
+    ///
+    /// The default keeps existing listener implementations source-compatible;
+    /// snapshot-capable stores override it with a single-commit replacement.
+    fn replace_id_lists_snapshot(
+        &self,
+        _snapshot: HashMap<String, IdList>,
+    ) -> Result<(), StatsigErr> {
+        Err(StatsigErr::InvalidOperation(
+            "ID-list snapshot replacement is not supported by this listener".to_string(),
+        ))
+    }
 }
 
 impl fmt::Debug for dyn IdListsAdapter {

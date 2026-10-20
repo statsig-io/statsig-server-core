@@ -655,6 +655,7 @@ fn sticky_value_to_experiment_evaluation(
     }
 
     ExperimentEvaluation {
+        group: None,
         // transfer from current
         is_device_based,
         is_in_layer,
@@ -757,6 +758,7 @@ fn sticky_value_to_layer_evaluation(
     }
 
     LayerEvaluation {
+        group: None,
         // transfer from current
         id_type: Some(id_type),
         is_device_based,

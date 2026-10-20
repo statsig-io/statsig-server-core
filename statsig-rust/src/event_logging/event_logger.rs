@@ -64,6 +64,7 @@ pub struct EventLogger {
     limit_flush_semaphore: Arc<Semaphore>,
     flush_interval: FlushInterval,
     shutdown_notify: Notify,
+    shutdown_generation: AtomicU64,
     ops_stats: Arc<OpsStatsForInstance>,
     sec_expo_experiment: SecExpoAsPrimaryExperiment,
     enqueue_dropped_events_count: AtomicU64,
@@ -94,6 +95,7 @@ impl EventLogger {
             logging_adapter: event_logging_adapter.clone(),
             non_exposed_checks: DashMap::new(),
             shutdown_notify: Notify::new(),
+            shutdown_generation: AtomicU64::new(0),
             limit_flush_notify: Notify::new(),
             limit_flush_semaphore: Arc::new(Semaphore::new(MAX_LIMIT_FLUSH_TASKS)),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
@@ -229,6 +231,8 @@ impl EventLogger {
     pub async fn shutdown(&self, statsig_rt: &Arc<StatsigRuntime>) -> Result<(), StatsigErr> {
         // Stop the background loop so it won't spawn new limit-flush tasks while
         // we are draining.
+        self.shutdown_generation.fetch_add(1, Ordering::SeqCst);
+        self.shutdown_notify.notify_waiters();
         self.shutdown_notify.notify_one();
 
         // Wait for the background loop (which may be mid scheduled-flush) and any
@@ -243,14 +247,22 @@ impl EventLogger {
     }
 
     pub fn force_shutdown(&self) {
+        self.shutdown_generation.fetch_add(1, Ordering::SeqCst);
+        self.shutdown_notify.notify_waiters();
         self.shutdown_notify.notify_one();
     }
 
-    fn spawn_background_task(self: &Arc<Self>, rt: &Arc<StatsigRuntime>) {
+    pub(crate) fn discard_inherited_events_after_fork(&self) {
+        self.queue.clear();
+        self.non_exposed_checks.clear();
+    }
+
+    pub(crate) fn spawn_background_task(self: &Arc<Self>, rt: &Arc<StatsigRuntime>) -> bool {
         let me = self.clone();
         let rt_clone = rt.clone();
+        let shutdown_generation = self.shutdown_generation.load(Ordering::SeqCst);
 
-        let spawn_result = rt.spawn(BG_LOOP_TAG, |rt_shutdown_notify| async move {
+        let spawn_result = rt.spawn(BG_LOOP_TAG, move |rt_shutdown_notify| async move {
             let tick_interval_ms = EventLoggerConstants::tick_interval_ms();
             let tick_interval = Duration::from_millis(tick_interval_ms);
 
@@ -265,7 +277,11 @@ impl EventLogger {
                         return; // Runtime Shutdown
                     }
                     _ = me.shutdown_notify.notified() => {
-                        return; // EvtLogger Shutdown
+                        if me.shutdown_generation.load(Ordering::SeqCst) != shutdown_generation {
+                            return; // EvtLogger Shutdown
+                        }
+                        // A retained permit from an earlier generation must not
+                        // stop a loop created by explicit reinitialization.
                     }
                     _ = me.limit_flush_notify.notified(), if can_limit_flush => {
                         Self::spawn_new_limit_flush_task(&me, &rt_clone);
@@ -278,7 +294,10 @@ impl EventLogger {
 
         if let Err(e) = spawn_result {
             log_e!(TAG, "Failed to spawn background task: {e}");
+            return false;
         }
+
+        true
     }
 
     fn spawn_new_limit_flush_task(inst: &Arc<Self>, rt: &Arc<StatsigRuntime>) {

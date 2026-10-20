@@ -6,6 +6,7 @@ pub mod specs_adapter_tests {
     use mock_forward_proxy::{api::ConfigSpecResponse, wait_one_ms, MockForwardProxy};
     use sigstat_grpc::*;
     use statsig_rust::output_logger::{initialize_output_logger, LogLevel};
+    use statsig_rust::statsig_global::StatsigGlobal;
     use statsig_rust::{
         SpecAdapterConfig, SpecsAdapter, SpecsAdapterType, SpecsSource, StatsigGrpcSpecsAdapter,
         StatsigRuntime,
@@ -61,6 +62,84 @@ pub mod specs_adapter_tests {
 
         let received_update = mock_listener.nullable_get_most_recent_update();
         assert!(received_update.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_start_after_shutdown_without_running_task_ignores_stale_signal() {
+        let statsig_rt = StatsigRuntime::get_runtime();
+        let (mock_proxy, mock_listener, adapter) = setup().await;
+
+        assert!(adapter
+            .shutdown(Duration::from_millis(1), &statsig_rt)
+            .await
+            .is_err());
+
+        mock_proxy
+            .send_stream_update(Ok(ConfigSpecResponse {
+                spec: "started_after_stale_shutdown".to_string(),
+                last_updated: 123,
+                zstd_dict_id: None,
+            }))
+            .await;
+
+        adapter.clone().start(&statsig_rt).await.unwrap();
+
+        let mut received_update = mock_listener.force_get_most_recent_update();
+        assert_eq!(
+            received_update.data.read_to_string().unwrap(),
+            "started_after_stale_shutdown"
+        );
+
+        adapter
+            .shutdown(Duration::from_secs(1), &statsig_rt)
+            .await
+            .unwrap();
+    }
+
+    #[test]
+    fn test_runtime_replacement_reschedules_grpc_stream() {
+        StatsigGlobal::reset();
+        let first_runtime = StatsigRuntime::get_runtime();
+        let first_handle = first_runtime.get_handle().unwrap();
+        let (mock_proxy, mock_listener, adapter) = first_handle.block_on(setup());
+
+        first_handle.block_on(async {
+            mock_proxy
+                .send_stream_update(Ok(ConfigSpecResponse {
+                    spec: "before_runtime_replacement".to_string(),
+                    last_updated: 123,
+                    zstd_dict_id: None,
+                }))
+                .await;
+            adapter.clone().start(&first_runtime).await.unwrap();
+            let mut initial_update = mock_listener.force_get_most_recent_update();
+            assert_eq!(
+                initial_update.data.read_to_string().unwrap(),
+                "before_runtime_replacement"
+            );
+        });
+
+        StatsigGlobal::reset();
+        let replacement_runtime = StatsigRuntime::get_runtime();
+        let replacement_handle = replacement_runtime.get_handle().unwrap();
+        replacement_handle.block_on(async {
+            adapter
+                .clone()
+                .schedule_background_sync(&replacement_runtime)
+                .await
+                .unwrap();
+            assert_eq!(
+                replacement_runtime
+                    .get_running_task_ids()
+                    .into_iter()
+                    .filter(|(tag, _)| tag == "grpc_streaming")
+                    .count(),
+                1,
+                "replacement runtime must own exactly one new gRPC stream"
+            );
+        });
+        replacement_runtime.shutdown();
+        StatsigGlobal::reset();
     }
 
     #[tokio::test]
