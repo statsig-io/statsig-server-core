@@ -543,7 +543,8 @@ async fn write_specs_to_data_store(
             return;
         }
         Err(e @ StatsigErr::BytesNotImplemented) => {
-            log_w!(
+            // JSON can be persisted by string-only stores without losing data.
+            log_d!(
                 TAG,
                 "Data store bytes write is not implemented. Falling back to string write: {}",
                 e
