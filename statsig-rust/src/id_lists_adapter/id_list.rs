@@ -27,12 +27,17 @@ impl IdList {
 
     pub fn apply_update(&mut self, update: IdListUpdate) {
         let updated_meta = update.new_metadata;
-        let current_meta = &self.metadata;
 
-        if updated_meta.file_id != current_meta.file_id
-            && updated_meta.creation_time >= current_meta.creation_time
-        {
+        if updated_meta.file_id != self.metadata.file_id {
+            if updated_meta.creation_time < self.metadata.creation_time {
+                return; // older file from a stale manifest
+            }
             self.update_metadata(updated_meta);
+        } else {
+            // Same file: take the manifest's creationTime and URL, keep the bytes already read.
+            let size = self.metadata.size;
+            self.metadata = updated_meta;
+            self.metadata.size = size;
         }
 
         let changeset_data = unwrap_or_noop!(&update.raw_changeset);
