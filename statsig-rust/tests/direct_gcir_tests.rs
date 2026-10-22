@@ -60,6 +60,37 @@ fn test_id_list_resolution_via_callback() {
     assert!(gate.value);
 }
 
+#[test]
+fn test_enriched_id_list_memberships_are_authoritative_for_gcir() {
+    let specs_data = load_specs_data("eval_proj_dcs.json");
+    let always_false = |_: &str, _: &str| false;
+
+    let mut member = StatsigUser::with_user_id("dan_1");
+    member.set_custom_ids(HashMap::from([(
+        "companyID".to_string(),
+        "123".to_string(),
+    )]));
+    Arc::make_mut(&mut member.data).id_list_memberships = Some(HashMap::from([(
+        "pmWkWSBC".to_string(),
+        HashSet::from(["company_id_list".to_string()]),
+    )]));
+
+    let response = generate_response_for_user(
+        &specs_data,
+        &member,
+        IdListResolution::Callback(&always_false),
+    );
+    assert!(response.feature_gates["test_id_list"].value);
+
+    Arc::make_mut(&mut member.data).id_list_memberships = Some(HashMap::new());
+    let response = generate_response_for_user(
+        &specs_data,
+        &member,
+        IdListResolution::Callback(&|_, _| true),
+    );
+    assert!(!response.feature_gates["test_id_list"].value);
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_different_specs_payloads() {
     let id_lists = Arc::new(HashMap::new());
@@ -118,8 +149,16 @@ fn generate_response(
         "companyID".to_string(),
         "123".to_string(),
     )]));
+    generate_response_for_user(specs_data, &user, id_list_resolution)
+}
+
+fn generate_response_for_user(
+    specs_data: &SpecsResponseFull,
+    user: &StatsigUser,
+    id_list_resolution: IdListResolution,
+) -> InitializeResponse {
     let user_internal = StatsigUserInternal {
-        user_ref: &user,
+        user_ref: user,
         statsig_instance: None,
     };
     let hashing = HashUtil::new();

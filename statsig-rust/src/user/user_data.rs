@@ -3,8 +3,7 @@ use crate::{evaluation::dynamic_value::DynamicValue, hashing};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-#[cfg(not(feature = "ordered_user_data_maps"))]
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[cfg(feature = "ordered_user_data_maps")]
 pub type UserDataMapOf<T> = IndexMap<String, T>;
@@ -34,6 +33,20 @@ pub struct UserData {
     #[serde(skip_serializing)]
     pub private_attributes: Option<UserDataMap>,
     pub custom: Option<UserDataMap>,
+
+    /// Resolved ID-list memberships keyed by
+    /// `base64(sha256(unit_id))[..8]`, then by ID-list name.
+    ///
+    /// When present, this map is authoritative for every ID-list condition:
+    /// a missing lookup or list means the user is not in that list. `None`
+    /// means enrichment was not attempted or failed, so evaluation falls back
+    /// to the configured in-memory ID-list resolver.
+    ///
+    /// This is skipped in both serialization directions so enrichment cannot
+    /// be injected through user JSON and cannot affect event payloads, user
+    /// hashes, or exposure-deduplication keys.
+    #[serde(skip)]
+    pub id_list_memberships: Option<HashMap<String, HashSet<String>>>,
 }
 
 impl UserData {

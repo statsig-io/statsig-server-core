@@ -323,6 +323,7 @@ fn create_user_with_benchmark_payload() -> StatsigUser {
                 dyn_value!(HashMap::from([("key".to_string(), "value".to_string())])),
             ),
         ])),
+        id_list_memberships: None,
     })
 }
 

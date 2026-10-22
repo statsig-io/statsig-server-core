@@ -363,6 +363,7 @@ impl PersistentValuesManager {
             override_config_name: curr_result.override_config_name,
             has_seen_analytical_gates: curr_result.has_seen_analytical_gates,
             parameter_rule_ids: None,
+            id_list_source: curr_result.id_list_source,
         }
     }
 

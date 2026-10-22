@@ -17,6 +17,7 @@ use crate::evaluation::evaluator_context::{EvaluatorContext, IdListResolution};
 use crate::evaluation::evaluator_value::{EvaluatorValue, MemoizedEvaluatorValue};
 use crate::evaluation::get_unit_id::get_unit_id;
 use crate::evaluation::user_agent_parsing::UserAgentParser;
+use crate::hashing::HashUtil;
 use crate::interned_string::InternedString;
 use crate::specs_response::explicit_params::ExplicitParameters;
 use crate::specs_response::spec_types::{Condition, Rule, Spec};
@@ -372,12 +373,19 @@ fn try_apply_config_mapping(
                 ctx.reset_result();
                 continue;
             }
+            // The mapping rule already answered an ID-list condition. reset_result
+            // starts the destination evaluation clean, so keep that source when the
+            // destination itself has no ID-list condition.
+            let mapping_id_list_source = ctx.result.id_list_source;
             ctx.reset_result();
             let pass = evaluate_pass_percentage(ctx, rule, spec_salt);
             if pass {
                 ctx.result.override_config_name = Some(mapping.new_config_name.clone());
                 match Evaluator::evaluate(ctx, mapping.new_config_name.as_str(), spec_type) {
                     Ok(Recognition::Recognized) => {
+                        if ctx.result.id_list_source.is_none() {
+                            ctx.result.id_list_source = mapping_id_list_source;
+                        }
                         return true;
                     }
                     _ => {
@@ -609,19 +617,31 @@ fn is_in_id_list(
 ) -> bool {
     let list_name = unwrap_or_return!(&target_value.string_value, false);
     let dyn_str = unwrap_or_return!(&value.string_value, false);
-    let hashed = ctx.hashing.sha256(&dyn_str.value);
-    let lookup_id: String = hashed.chars().take(8).collect();
+    let lookup_id = id_list_lookup_id(ctx.hashing, &dyn_str.value);
+
+    if let Some(memberships) = &ctx.user.user_ref.data.id_list_memberships {
+        ctx.result.id_list_source = Some("IdListEnriched");
+        return memberships
+            .get(lookup_id.as_str())
+            .is_some_and(|lists| lists.contains(list_name.value.as_str()));
+    }
 
     match ctx.id_list_resolver {
         IdListResolution::MapLookup(id_lists) => {
+            ctx.result.id_list_source = Some("IdListInMemory");
             let list = unwrap_or_return!(id_lists.get(list_name.value.as_str()), false);
 
             list.ids.contains(&lookup_id)
         }
         IdListResolution::Callback(callback) => {
+            ctx.result.id_list_source = Some("IdListInMemory");
             callback(list_name.value.as_str(), lookup_id.as_str())
         }
     }
+}
+
+pub(crate) fn id_list_lookup_id(hashing: &HashUtil, unit_id: &str) -> String {
+    hashing.sha256(unit_id).chars().take(8).collect()
 }
 
 fn evaluate_experiment_group<'a>(
@@ -666,12 +686,18 @@ fn evaluate_nested_gate<'a>(
         .unwrap_or(InternedString::empty_ref());
 
     match ctx.nested_gate_memo.get(gate_name) {
-        Some((previous_bool, previous_rule_id, previous_secondary_exposures)) => {
+        Some((
+            previous_bool,
+            previous_rule_id,
+            previous_secondary_exposures,
+            previous_id_list_source,
+        )) => {
             ctx.result.bool_value = *previous_bool;
             ctx.result.rule_id = previous_rule_id.clone();
             ctx.result
                 .secondary_exposures
                 .extend_from_slice(previous_secondary_exposures);
+            ctx.result.id_list_source = *previous_id_list_source;
         }
         None => {
             ctx.prep_for_nested_evaluation()?;
@@ -691,6 +717,7 @@ fn evaluate_nested_gate<'a>(
                         ctx.result.bool_value,
                         ctx.result.rule_id.clone(),
                         ctx.result.secondary_exposures.clone(),
+                        ctx.result.id_list_source,
                     ),
                 );
             }

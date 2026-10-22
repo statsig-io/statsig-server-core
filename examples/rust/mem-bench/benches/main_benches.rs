@@ -27,6 +27,7 @@ fn create_user() -> StatsigUser {
             dyn_value!("test_private_attribute_value"),
         )])),
         statsig_environment: None,
+        id_list_memberships: None,
     })
 }
 
