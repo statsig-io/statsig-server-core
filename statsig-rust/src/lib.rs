@@ -1,3 +1,4 @@
+pub use amplitude::{Amplitude, AmplitudeError, AmplitudeEvent, AmplitudeOptions};
 pub use evaluation::dynamic_returnable::DynamicReturnable;
 pub use evaluation::dynamic_value::DynamicValue;
 pub use evaluation::evaluation_details::EvaluationDetails;
@@ -64,6 +65,7 @@ pub mod statsig_types;
 pub mod statsig_types_raw;
 pub mod user;
 
+mod amplitude;
 mod dcs_str;
 mod event_logging_adapter;
 mod id_lists_adapter;
