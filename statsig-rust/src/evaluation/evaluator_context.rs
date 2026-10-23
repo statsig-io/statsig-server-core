@@ -13,9 +13,16 @@ use crate::{OverrideAdapter, SecondaryExposure, Statsig, StatsigErr};
 
 const MAX_RECURSIVE_DEPTH: u16 = 300;
 
-// (gate_name, (bool_value, rule_id, secondary_exposures))
-type NestedGateMemo =
-    HashMap<InternedString, (bool, Option<InternedString>, Vec<SecondaryExposure>)>;
+// (gate_name, (bool_value, rule_id, secondary_exposures, id_list_source))
+type NestedGateMemo = HashMap<
+    InternedString,
+    (
+        bool,
+        Option<InternedString>,
+        Vec<SecondaryExposure>,
+        Option<&'static str>,
+    ),
+>;
 
 pub enum IdListResolution<'a> {
     MapLookup(&'a HashMap<String, IdList>),

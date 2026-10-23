@@ -499,15 +499,19 @@ impl StatsigHttpIdListsAdapter {
         for (list_name, entry) in new_manifest {
             let (requires_download, range_start) = match curr_manifest.get(&list_name) {
                 Some(current) => {
-                    if entry.creation_time > current.creation_time
-                        || entry.file_id != current.file_id
-                    {
-                        // An empty file has nothing to download. The update still goes out
-                        // without data, so a rotation to an empty file resets the list.
-                        (entry.size > 0, 0u64)
+                    if entry.file_id != current.file_id {
+                        if entry.creation_time >= current.creation_time {
+                            // New file, e.g. a recreate, which can be smaller. An empty file has
+                            // nothing to download; the update still goes out and resets the list.
+                            (entry.size > 0, 0u64)
+                        } else {
+                            (false, 0u64) // older file from a stale manifest: keep ours
+                        }
                     } else if entry.size > current.size {
                         (true, current.size)
                     } else {
+                        // The server moves creationTime on every append, so it alone is not a
+                        // reason to download; appends show up as a bigger size.
                         (false, 0u64)
                     }
                 }
@@ -1974,5 +1978,198 @@ mod tests {
         assert_eq!(metadata.file_id.as_deref(), Some("file_a2"));
         assert_eq!(metadata.size, 0);
         assert!(!listener.does_list_contain_id("list_a", "aaaaa"));
+    }
+
+    // ---- STADXP-576: creationTime moves on every append; only fileID and size decide downloads ----
+
+    fn listener_with_list_a(
+        download_server: &ServerGuard,
+        ids: &str,
+        creation_time: i64,
+    ) -> Arc<TestIdListsUpdateListener> {
+        let mut list = IdList::new(IdListMetadata {
+            name: "list_a".to_string(),
+            url: format!("{}/v1/download_id_list_file/list_a", download_server.url()),
+            file_id: Some("file_a".to_string()),
+            size: 0,
+            creation_time,
+        });
+        let metadata = list.metadata.clone();
+        list.apply_update(IdListUpdate {
+            raw_changeset: Some(ids.to_string()),
+            new_metadata: metadata,
+        });
+        Arc::new(TestIdListsUpdateListener {
+            id_lists: RwLock::new(HashMap::from([("list_a".to_string(), list)])),
+        })
+    }
+
+    fn list_a_manifest(
+        manifest_server: &mut ServerGuard,
+        download_server: &ServerGuard,
+        size: u64,
+        file_id: &str,
+        creation_time: i64,
+    ) {
+        manifest_server
+            .mock("POST", "/get_id_lists")
+            .with_status(200)
+            .with_body(one_list_manifest(
+                download_server,
+                "list_a",
+                size,
+                file_id,
+                creation_time,
+            ))
+            .create();
+    }
+
+    #[tokio::test]
+    async fn test_append_with_bumped_creation_time_downloads_only_new_bytes() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        list_a_manifest(&mut manifest_server, &download_server, 14, "file_a", 2);
+        let whole_file = download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .match_header("range", "bytes=0-")
+            .expect(0)
+            .create();
+        let tail = download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .match_header("range", "bytes=7-")
+            .with_status(206)
+            .with_body("+bbbbb\n")
+            .expect(1)
+            .create();
+        let adapter = adapter_for(&manifest_server, &download_server);
+        let listener = listener_with_list_a(&download_server, "+aaaaa\n", 1);
+
+        adapter
+            .clone()
+            .start(&StatsigRuntime::get_runtime(), listener.clone())
+            .await
+            .unwrap();
+        adapter.sync_id_lists(false).await.unwrap(); // nothing new: no request
+
+        whole_file.assert();
+        tail.assert();
+        let metadata = &listener.get_current_id_list_metadata()["list_a"];
+        assert_eq!(metadata.size, 14);
+        assert_eq!(metadata.creation_time, 2, "new creationTime is recorded");
+        assert!(listener.does_list_contain_id("list_a", "aaaaa"));
+        assert!(listener.does_list_contain_id("list_a", "bbbbb"));
+    }
+
+    #[tokio::test]
+    async fn test_creation_time_only_change_does_not_download() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        list_a_manifest(&mut manifest_server, &download_server, 7, "file_a", 3);
+        let download = download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .expect(0)
+            .create();
+        let adapter = adapter_for(&manifest_server, &download_server);
+        let listener = listener_with_list_a(&download_server, "+aaaaa\n", 1);
+
+        adapter
+            .clone()
+            .start(&StatsigRuntime::get_runtime(), listener.clone())
+            .await
+            .unwrap();
+
+        download.assert();
+        let metadata = &listener.get_current_id_list_metadata()["list_a"];
+        assert_eq!(metadata.size, 7);
+        assert_eq!(metadata.creation_time, 3);
+    }
+
+    // The case #1809 fixed: a recreate gives a new fileID whose file can be smaller.
+    #[tokio::test]
+    async fn test_new_smaller_file_downloads_whole_file() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        list_a_manifest(&mut manifest_server, &download_server, 7, "file_b", 2);
+        let whole_file = download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .match_header("range", "bytes=0-")
+            .with_status(200)
+            .with_body("+ccccc\n")
+            .expect(1)
+            .create();
+        let adapter = adapter_for(&manifest_server, &download_server);
+        let listener = listener_with_list_a(&download_server, "+aaaaa\n+bbbbb\n", 1);
+
+        adapter
+            .clone()
+            .start(&StatsigRuntime::get_runtime(), listener.clone())
+            .await
+            .unwrap();
+
+        whole_file.assert();
+        let metadata = &listener.get_current_id_list_metadata()["list_a"];
+        assert_eq!(metadata.file_id.as_deref(), Some("file_b"));
+        assert_eq!(metadata.size, 7);
+        assert!(listener.does_list_contain_id("list_a", "ccccc"));
+        assert!(!listener.does_list_contain_id("list_a", "aaaaa"));
+    }
+
+    #[tokio::test]
+    async fn test_older_file_from_stale_manifest_is_ignored() {
+        let mut manifest_server = Server::new_async().await;
+        let mut download_server = Server::new_async().await;
+        list_a_manifest(&mut manifest_server, &download_server, 20, "file_old", 1);
+        let download = download_server
+            .mock("GET", "/v1/download_id_list_file/list_a")
+            .expect(0)
+            .create();
+        let adapter = adapter_for(&manifest_server, &download_server);
+        let listener = listener_with_list_a(&download_server, "+aaaaa\n", 5);
+
+        adapter
+            .clone()
+            .start(&StatsigRuntime::get_runtime(), listener.clone())
+            .await
+            .unwrap();
+
+        download.assert();
+        let metadata = &listener.get_current_id_list_metadata()["list_a"];
+        assert_eq!(metadata.file_id.as_deref(), Some("file_a"));
+        assert_eq!(metadata.creation_time, 5);
+        assert_eq!(metadata.size, 7);
+        assert!(listener.does_list_contain_id("list_a", "aaaaa"));
+    }
+
+    #[test]
+    fn test_apply_update_same_file_keeps_bytes_read_and_takes_metadata() {
+        let metadata = |file_id: &str, size: u64, creation_time: i64, url: &str| IdListMetadata {
+            name: "list_a".to_string(),
+            url: url.to_string(),
+            file_id: Some(file_id.to_string()),
+            size,
+            creation_time,
+        };
+        let mut list = IdList::new(metadata("file_a", 0, 1, "u1"));
+        list.apply_update(IdListUpdate {
+            raw_changeset: Some("+aaaaa\n".to_string()),
+            new_metadata: metadata("file_a", 7, 1, "u1"),
+        });
+
+        // Same file, new creationTime and URL, no data: size stays at bytes read.
+        list.apply_update(IdListUpdate {
+            raw_changeset: None,
+            new_metadata: metadata("file_a", 99, 2, "u2"),
+        });
+        assert_eq!(list.metadata.size, 7);
+        assert_eq!(list.metadata.creation_time, 2);
+        assert_eq!(list.metadata.url, "u2");
+
+        // Older file: ignored entirely, including its data.
+        list.apply_update(IdListUpdate {
+            raw_changeset: Some("+zzzzz\n".to_string()),
+            new_metadata: metadata("file_old", 7, 0, "u0"),
+        });
+        assert_eq!(list.metadata.file_id.as_deref(), Some("file_a"));
+        assert!(!list.ids.contains("zzzzz"));
     }
 }

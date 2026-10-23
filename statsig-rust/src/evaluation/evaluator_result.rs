@@ -52,6 +52,8 @@ pub struct EvaluatorResult {
     pub override_config_name: Option<InternedString>,
     pub has_seen_analytical_gates: Option<bool>,
     pub parameter_rule_ids: Option<HashMap<InternedString, InternedString>>,
+    /// Records which source answered an ID-list condition during evaluation.
+    pub id_list_source: Option<&'static str>,
 }
 
 pub fn result_to_gate_raw<'a>(
