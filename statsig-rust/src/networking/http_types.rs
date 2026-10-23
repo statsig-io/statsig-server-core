@@ -28,6 +28,8 @@ pub struct RequestArgs {
     pub disable_file_streaming: Option<bool>,
     /// Opt-in flag for reusing request-scoped reqwest client for log_event traffic.
     pub log_event_connection_reuse: bool,
+    /// Explicit direct connection semantics for clients such as Amplitude-Java.
+    pub disable_system_proxy: bool,
 }
 
 impl Default for RequestArgs {
@@ -55,6 +57,7 @@ impl RequestArgs {
             ca_cert_pem: None,
             disable_file_streaming: None,
             log_event_connection_reuse: false,
+            disable_system_proxy: false,
         }
     }
 

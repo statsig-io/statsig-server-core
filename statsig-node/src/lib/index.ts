@@ -22,6 +22,7 @@ import {
 import { DynamicConfig, Experiment, FeatureGate, Layer } from './statsig_types';
 
 export * from './statsig-generated';
+export { Amplitude } from './amplitude';
 export * from './statsig_types';
 
 const inspectSym = Symbol.for('nodejs.util.inspect.custom');

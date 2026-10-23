@@ -364,6 +364,8 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
+module.exports.AmplitudeMiddlewareNext = nativeBinding.AmplitudeMiddlewareNext
+module.exports.AmplitudeNapi = nativeBinding.AmplitudeNapi
 module.exports.LayerParamExposureData = nativeBinding.LayerParamExposureData
 module.exports.ParameterStore = nativeBinding.ParameterStore
 module.exports.StatsigNapiInternal = nativeBinding.StatsigNapiInternal

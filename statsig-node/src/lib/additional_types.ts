@@ -1,4 +1,4 @@
-import { SecondaryExposure } from './statsig-generated';
+import { SecondaryExposure, AmplitudeEvent } from './statsig-generated';
 
 export type StickyValues = {
   value: boolean;
@@ -22,3 +22,18 @@ export type SdkEvent =
   | 'experiment_evaluated'
   | 'layer_evaluated'
   | 'specs_updated';
+
+
+export type AmplitudeMiddlewarePayload = {
+  event: AmplitudeEvent;
+  extra: unknown;
+};
+
+export type AmplitudeCallbacks =
+  | ((event: AmplitudeEvent, status: number, message: string) => void)
+  | { onLogEventServerResponse(event: AmplitudeEvent, status: number, message: string): void };
+
+export type AmplitudeMiddleware = (
+  payload: AmplitudeMiddlewarePayload,
+  next: (payload?: AmplitudeMiddlewarePayload) => Promise<AmplitudeMiddlewarePayload | null>,
+) => unknown | Promise<unknown>;

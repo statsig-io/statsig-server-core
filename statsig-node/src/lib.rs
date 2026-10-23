@@ -1,3 +1,4 @@
+pub mod amplitude_napi;
 pub mod data_store_napi;
 pub mod gcir_options_napi;
 pub mod observability_client_napi;

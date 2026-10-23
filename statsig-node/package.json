@@ -3,7 +3,8 @@
   "version": "0.23.2",
   "main": "index.js",
   "scripts": {
-    "test": "jest --colors"
+    "test": "jest --colors",
+    "amplitude:kitchen-sink": "node scripts/amplitude-kitchen-sink.cjs"
   },
   "keywords": [],
   "author": "",

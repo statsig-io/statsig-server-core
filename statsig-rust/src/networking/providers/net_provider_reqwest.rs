@@ -33,6 +33,7 @@ struct CachedClient {
     ssl_cert_file: Option<OsString>,
     ssl_cert_dir: Option<OsString>,
     disable_reuse: bool,
+    disable_system_proxy: bool,
     client: reqwest::Client,
 }
 
@@ -196,6 +197,7 @@ impl NetworkProviderReqwest {
                 && cached.ssl_cert_file == ssl_cert_file
                 && cached.ssl_cert_dir == ssl_cert_dir
                 && cached.disable_reuse == disable_reuse
+                && cached.disable_system_proxy == request_args.disable_system_proxy
             {
                 return Ok(cached.client.clone());
             }
@@ -214,6 +216,7 @@ impl NetworkProviderReqwest {
                 ssl_cert_file,
                 ssl_cert_dir,
                 disable_reuse,
+                disable_system_proxy: request_args.disable_system_proxy,
                 client: client.clone(),
             },
         );
@@ -225,6 +228,9 @@ impl NetworkProviderReqwest {
         disable_connection_reuse: bool,
     ) -> Result<reqwest::Client, String> {
         let mut client_builder = reqwest::Client::builder();
+        if request_args.disable_system_proxy {
+            client_builder = client_builder.no_proxy();
+        }
 
         if disable_connection_reuse {
             client_builder = client_builder.pool_max_idle_per_host(0);
@@ -400,6 +406,7 @@ fn client_cache_key(request_args: &RequestArgs, disable_reuse: bool) -> u64 {
         std::env::var_os("SSL_CERT_FILE"),
         std::env::var_os("SSL_CERT_DIR"),
         disable_reuse,
+        request_args.disable_system_proxy,
     ))
 }
 
