@@ -25,6 +25,24 @@ Statsig helps you move faster with feature gates (feature flags), and/or dynamic
 
 Read through the Node [Documentation](https://docs.statsig.com/server-core/node-core?ref=gh_server_core) or check out the [Samples](https://github.com/statsig-io/statsig-server-core/tree/main/examples/node).
 
+## Amplitude Analytics
+
+```typescript
+import { Amplitude } from '@statsig/statsig-node-core';
+
+const amplitude = new Amplitude();
+amplitude.init('AMPLITUDE_API_KEY');
+await amplitude.track({
+  eventType: 'Song Played',
+  userId: 'user-123',
+  eventProperties: { title: 'Hello' },
+});
+```
+
+`init` configures the client locally and accepts optional `serverUrl` and `timeoutMs` settings. `track` returns a promise that resolves when Amplitude's HTTP V2 API accepts the event and rejects on validation, network, or API errors. Provide `userId` or `deviceId` (Amplitude defaults to a five-character minimum). Optional fields include `eventProperties`, `userProperties`, `time` (milliseconds since epoch), `insertId`, and `sessionId`.
+
+This first iteration sends immediately without buffering or automatic retries. Await tracking before exiting; reuse an explicit `insertId` if retrying. See the [Rust implementation notes](../statsig-rust/AMPLITUDE.md) and [Amplitude-Java reference](https://github.com/amplitude/Amplitude-Java/tree/main).
+
 ## Packages
 
 Bindings
