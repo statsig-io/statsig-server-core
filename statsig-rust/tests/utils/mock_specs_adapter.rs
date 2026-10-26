@@ -14,6 +14,7 @@ use tokio::sync::Notify;
 
 pub struct MockSpecsAdapter {
     json_data_path: String,
+    json_data: Option<String>,
     should_throw: bool,
     delay_ms: Option<u64>,
     sdk_configs: Option<Map<String, Value>>,
@@ -29,6 +30,23 @@ impl MockSpecsAdapter {
     pub fn with_data(path: &str) -> Self {
         Self {
             json_data_path: path.to_string(),
+            json_data: None,
+            should_throw: false,
+            delay_ms: None,
+            sdk_configs: None,
+            listener: RwLock::new(None),
+            background_sync_calls: AtomicUsize::new(0),
+            blocked_background_sync_call: None,
+            background_sync_release: Notify::new(),
+            post_fork_background_sync_calls: AtomicUsize::new(0),
+            post_fork_background_sync_failures_remaining: AtomicUsize::new(0),
+        }
+    }
+
+    pub fn with_json_data(data: String) -> Self {
+        Self {
+            json_data_path: String::new(),
+            json_data: Some(data),
             should_throw: false,
             delay_ms: None,
             sdk_configs: None,
@@ -44,6 +62,7 @@ impl MockSpecsAdapter {
     pub fn with_data_and_sdk_configs(path: &str, sdk_configs: Map<String, Value>) -> Self {
         Self {
             json_data_path: path.to_string(),
+            json_data: None,
             should_throw: false,
             delay_ms: None,
             sdk_configs: Some(sdk_configs),
@@ -59,6 +78,7 @@ impl MockSpecsAdapter {
     pub fn throwing() -> Self {
         Self {
             json_data_path: String::new(),
+            json_data: None,
             should_throw: true,
             delay_ms: None,
             sdk_configs: None,
@@ -74,6 +94,7 @@ impl MockSpecsAdapter {
     pub fn delayed(path: &str, delay_ms: u64) -> Self {
         Self {
             json_data_path: path.to_string(),
+            json_data: None,
             should_throw: false,
             delay_ms: Some(delay_ms),
             sdk_configs: None,
@@ -89,6 +110,7 @@ impl MockSpecsAdapter {
     pub fn with_blocked_background_sync(path: &str, call: usize) -> Self {
         Self {
             json_data_path: path.to_string(),
+            json_data: None,
             should_throw: false,
             delay_ms: None,
             sdk_configs: None,
@@ -131,10 +153,14 @@ impl MockSpecsAdapter {
             tokio::time::sleep(Duration::from_millis(delay)).await;
         }
 
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push(self.json_data_path.as_str());
-
-        let mut data = fs::read_to_string(path).expect("Unable to read file");
+        let mut data = match &self.json_data {
+            Some(data) => data.clone(),
+            None => {
+                let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+                path.push(self.json_data_path.as_str());
+                fs::read_to_string(path).expect("Unable to read file")
+            }
+        };
         if let Some(sdk_configs) = &self.sdk_configs {
             data = apply_sdk_configs(data, sdk_configs);
         }

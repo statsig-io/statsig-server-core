@@ -11,6 +11,12 @@ pub mod mock_event_logging_adapter;
 pub mod helpers;
 
 #[allow(dead_code)]
+pub mod gcir;
+
+#[allow(dead_code)]
+pub mod gcir_experiment_group_fixtures;
+
+#[allow(dead_code)]
 pub mod mock_scrapi;
 
 #[allow(dead_code)]
