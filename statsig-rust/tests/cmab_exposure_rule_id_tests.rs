@@ -84,3 +84,16 @@ async fn raw_ffi_cmab_exploit_rule_id_remains_bare() {
     assert_eq!(returned_rule_id, "treatment-group-id");
     assert_eq!(get_logged_rule_id(&adapter), returned_rule_id);
 }
+
+#[tokio::test]
+async fn typed_cmab_exploit_rule_id_remains_bare() {
+    let (statsig, adapter) = setup().await;
+    let user = StatsigUser::with_user_id("typed-exploit-user".to_string());
+
+    let experiment = statsig.get_experiment(&user, "cmab_never_explore");
+    let returned_rule_id = experiment.rule_id.clone();
+    statsig.shutdown().await.unwrap();
+
+    assert_eq!(returned_rule_id, "treatment-group-id");
+    assert_eq!(get_logged_rule_id(&adapter), returned_rule_id);
+}

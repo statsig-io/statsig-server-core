@@ -1,0 +1,86 @@
+{
+  "dynamic_configs": {},
+  "feature_gates": {},
+  "layer_configs": {},
+  "cmab_configs": {
+    "cmab_always_explore": {
+      "salt": "cmab-always-explore-salt",
+      "defaultValue": {"arm": "default"},
+      "idType": "userID",
+      "enabled": true,
+      "version": 1,
+      "sampleRate": 1.0,
+      "higherIsBetter": true,
+      "groups": [
+        {
+          "name": "control",
+          "parameterValues": {"arm": "control"},
+          "id": "control-group-id"
+        },
+        {
+          "name": "treatment",
+          "parameterValues": {"arm": "treatment"},
+          "id": "treatment-group-id"
+        }
+      ],
+      "config": {
+        "control-group-id": {
+          "alpha": 1.0,
+          "intercept": 0.0,
+          "records": 1,
+          "weightsNumerical": {"unused": 0.0},
+          "weightsCategorical": {}
+        },
+        "treatment-group-id": {
+          "alpha": 1.0,
+          "intercept": 1.0,
+          "records": 1,
+          "weightsNumerical": {"unused": 0.0},
+          "weightsCategorical": {}
+        }
+      }
+    },
+    "cmab_never_explore": {
+      "salt": "cmab-never-explore-salt",
+      "defaultValue": {"arm": "default"},
+      "idType": "userID",
+      "enabled": true,
+      "version": 1,
+      "sampleRate": 0.0,
+      "higherIsBetter": true,
+      "groups": [
+        {
+          "name": "control",
+          "parameterValues": {"arm": "control"},
+          "id": "control-group-id"
+        },
+        {
+          "name": "treatment",
+          "parameterValues": {"arm": "treatment"},
+          "id": "treatment-group-id"
+        }
+      ],
+      "config": {
+        "control-group-id": {
+          "alpha": 1.0,
+          "intercept": 0.0,
+          "records": 1,
+          "weightsNumerical": {"unused": 0.0},
+          "weightsCategorical": {}
+        },
+        "treatment-group-id": {
+          "alpha": 1.0,
+          "intercept": 1.0,
+          "records": 1,
+          "weightsNumerical": {"unused": 0.0},
+          "weightsCategorical": {}
+        }
+      }
+    }
+  },
+  "condition_map": {},
+  "experiment_to_layer": {},
+  "param_stores": {},
+  "time": 1,
+  "has_updates": true
+}
