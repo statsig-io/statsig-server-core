@@ -1,18 +1,66 @@
 import asyncio
+import datetime
+import json
+import multiprocessing
+import os
+import subprocess
+import sys
+import threading
+import time
+from pathlib import Path
+from typing import Generator
 
+import pytest
 import uvloop
 from mock_scrapi import MockScrapi
 from pytest_httpserver import HTTPServer
+from statsig_python_core import (
+    DataStore,
+    DataStoreResponse,
+    Statsig,
+    StatsigOptions,
+    StatsigUser,
+    handle_fork,
+    handle_after_fork_in_child,
+    recover_after_fork,
+)
 from utils import get_test_data_resource
-import os
-from typing import Generator
-import multiprocessing
-import time
-import datetime
-from statsig_python_core import Statsig, StatsigOptions, StatsigUser
-import subprocess
 
 multiprocessing.set_start_method("fork", force=True)
+
+DCS_URL_ENDPOINT = "/v2/download_config_specs"
+SYNC_TEST_SDK_KEY = "secret-forking-sync-test"
+SYNC_TEST_DCS_ENDPOINT = f"{DCS_URL_ENDPOINT}/{SYNC_TEST_SDK_KEY}.json"
+SPECS_SYNC_INTERVAL_MS = 1000
+SPECS_SYNC_TIMEOUT_SECONDS = 4
+EAGER_POSTFORK_PROCESS_COUNT = 1 if sys.platform == "darwin" else 2
+
+
+class PollingForkDataStore(DataStore):
+    def __init__(self):
+        super().__init__()
+        self.initialize_fn = self.initialize
+        self.shutdown_fn = self.shutdown
+        self.get_fn = self.get
+        self.set_fn = self.set
+        self.support_polling_updates_for_fn = self.support_polling_updates_for
+
+    def initialize(self):
+        pass
+
+    def shutdown(self):
+        pass
+
+    def get(self, _key):
+        return DataStoreResponse(
+            result=get_test_data_resource("eval_proj_dcs.json"), time=1
+        )
+
+    def set(self, _key, _value, _time=None):
+        pass
+
+    def support_polling_updates_for(self, _key):
+        return True
 
 
 def setup_server(httpserver: HTTPServer):
@@ -21,6 +69,11 @@ def setup_server(httpserver: HTTPServer):
     dcs_content = get_test_data_resource("eval_proj_dcs.json")
     mock_scrapi.stub(
         "/v2/download_config_specs/secret-forking-test.json",
+        response=dcs_content,
+        method="GET",
+    )
+    mock_scrapi.stub(
+        SYNC_TEST_DCS_ENDPOINT,
         response=dcs_content,
         method="GET",
     )
@@ -36,11 +89,16 @@ def test_forking(httpserver: HTTPServer):
     log_event_url = mock_scrapi.url_for_endpoint("/v1/log_event")
     id_lists_url = mock_scrapi.url_for_endpoint("/v1/get_id_lists")
 
-    command = f"python tests/fork_runner.py {specs_url} {log_event_url} {id_lists_url}"
+    command = [
+        sys.executable,
+        str(Path(__file__).with_name("fork_runner.py")),
+        specs_url,
+        log_event_url,
+        id_lists_url,
+    ]
     print("Running command: ", command)
     proc = subprocess.Popen(
         command,
-        shell=True,
         universal_newlines=True,
         env={**os.environ, "RUST_BACKTRACE": "full"},
     )
@@ -51,6 +109,549 @@ def test_forking(httpserver: HTTPServer):
         proc.wait()
 
     assert proc.returncode == 0
+
+
+def test_background_specs_sync_recovers_after_inline_fork(httpserver: HTTPServer):
+    mock_scrapi = setup_server(httpserver)
+    _assert_background_specs_sync_recovers_after_fork(mock_scrapi)
+
+
+def test_polling_data_store_recovery_releases_gil_for_all_live_instances(httpserver: HTTPServer):
+    # Polling callbacks reacquire the GIL while recovery waits for scheduling.
+    stores = [PollingForkDataStore(), PollingForkDataStore()]
+    instances = [
+        Statsig(
+            f"secret-polling-fork-{index}",
+            StatsigOptions(
+                specs_url=httpserver.url_for(DCS_URL_ENDPOINT),
+                data_store=store,
+                disable_network=True,
+            ),
+        )
+        for index, store in enumerate(stores)
+    ]
+    try:
+        for instance in instances:
+            instance.initialize().wait()
+
+        handle_fork()
+        started = time.monotonic()
+        assert recover_after_fork()
+        assert time.monotonic() - started < 1, "post-fork recovery held the GIL"
+    finally:
+        for instance in instances:
+            instance.shutdown().wait()
+
+
+def test_raw_child_hook_only_marks_deferred_recovery(monkeypatch):
+    import statsig_python_core.statsig as statsig_module
+
+    class ForkHookProbe:
+        def __init__(self):
+            self.call_count = 0
+            self.schedule_count = 0
+            self.recovered = False
+
+        def _INTERNAL_restart_background_tasks_after_fork(
+            self, _timeout_ms: int
+        ) -> bool:
+            self.call_count += 1
+            if not self.recovered:
+                self.schedule_count += 1
+                self.recovered = True
+            return True
+
+    probe = ForkHookProbe()
+    monkeypatch.setattr(statsig_module, "_live_statsig_instances", {probe})
+    monkeypatch.setattr(statsig_module, "_child_recovery_pending", False)
+
+    threads_before = threading.active_count()
+    handle_after_fork_in_child()
+
+    assert statsig_module._child_recovery_pending
+    assert probe.call_count == 0
+    assert probe.schedule_count == 0
+    assert threading.active_count() == threads_before
+
+    assert recover_after_fork()
+    assert not statsig_module._child_recovery_pending
+    assert probe.call_count == 1
+    assert probe.schedule_count == 1
+
+    assert recover_after_fork()
+    assert probe.call_count == 2
+    assert probe.schedule_count == 1
+
+
+def test_failed_deferred_child_recovery_remains_pending(monkeypatch):
+    import statsig_python_core.statsig as statsig_module
+
+    class ForkHookProbe:
+        def __init__(self):
+            self.restart_results = iter([False, True])
+            self.restart_count = 0
+
+        def _INTERNAL_restart_background_tasks_after_fork(
+            self, _timeout_ms: int
+        ) -> bool:
+            self.restart_count += 1
+            return next(self.restart_results)
+
+    probe = ForkHookProbe()
+    monkeypatch.setattr(statsig_module, "_live_statsig_instances", {probe})
+    monkeypatch.setattr(statsig_module, "_child_recovery_pending", True)
+
+    assert not recover_after_fork()
+    assert statsig_module._child_recovery_pending
+    assert recover_after_fork()
+    assert not statsig_module._child_recovery_pending
+    assert probe.restart_count == 2
+
+
+def test_failed_instances_do_not_block_later_live_instance_recovery(monkeypatch):
+    import statsig_python_core.statsig as statsig_module
+
+    calls: list[str] = []
+
+    class Probe:
+        def __init__(self, name: str, result: bool | Exception):
+            self.name = name
+            self.result = result
+
+        def _INTERNAL_restart_background_tasks_after_fork(
+            self, _timeout_ms: int
+        ) -> bool:
+            calls.append(self.name)
+            if isinstance(self.result, Exception):
+                raise self.result
+            return self.result
+
+    probes = [
+        Probe("failed", False),
+        Probe("raised", RuntimeError("recovery failed")),
+        Probe("later-live", True),
+    ]
+    monkeypatch.setattr(statsig_module, "_live_statsig_instances", probes)
+    monkeypatch.setattr(statsig_module, "_child_recovery_pending", True)
+
+    assert not recover_after_fork()
+    assert calls == ["failed", "raised", "later-live"]
+    assert statsig_module._child_recovery_pending
+
+
+def test_recovery_uses_one_callback_wide_deadline(monkeypatch):
+    import statsig_python_core.statsig as statsig_module
+
+    class SlowProbe:
+        def __init__(self):
+            self.timeouts: list[int] = []
+
+        def _INTERNAL_restart_background_tasks_after_fork(
+            self, timeout_ms: int
+        ) -> bool:
+            self.timeouts.append(timeout_ms)
+            time.sleep((timeout_ms + 10) / 1000)
+            return False
+
+    first = SlowProbe()
+    skipped = SlowProbe()
+    monkeypatch.setattr(statsig_module, "_live_statsig_instances", [first, skipped])
+    monkeypatch.setattr(statsig_module, "POST_FORK_RECOVERY_BUDGET_SECONDS", 0.05)
+    monkeypatch.setattr(statsig_module, "_child_recovery_pending", True)
+
+    started = time.monotonic()
+    assert not recover_after_fork()
+    elapsed = time.monotonic() - started
+
+    assert first.timeouts and first.timeouts[0] <= 50
+    assert skipped.timeouts == []
+    assert elapsed < 0.2
+    assert statsig_module._child_recovery_pending
+
+
+def test_worker_lifecycle_hook_uses_platform_neutral_public_recovery(monkeypatch):
+    import statsig_python_core.statsig as statsig_module
+
+    calls = []
+
+    def recover() -> bool:
+        calls.append("recover")
+        return True
+
+    monkeypatch.setattr(statsig_module, "recover_after_fork", recover)
+    statsig_module.handle_worker_process_init()
+
+    assert calls == ["recover"]
+
+
+@pytest.mark.skipif(
+    sys.platform == "darwin",
+    reason="thread creation in a multi-threaded fork child traps on macOS",
+)
+def test_automatic_event_flush_recovers_in_parent_and_child_after_fork(
+    httpserver: HTTPServer,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "50")
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "50")
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_MAX_FLUSH_INTERVAL_MS", "50")
+
+    mock_scrapi = setup_server(httpserver)
+    statsig = _new_statsig(mock_scrapi, specs_sync_interval_ms=60_000)
+    process = None
+
+    try:
+        statsig.initialize().wait()
+        process = multiprocessing.Process(
+            target=_log_event_and_wait_for_automatic_flush,
+            args=(statsig, "child-auto-flush"),
+        )
+        process.start()
+
+        statsig.log_event(StatsigUser("parent-user"), "parent-auto-flush")
+
+        _wait_for_logged_event_names(
+            mock_scrapi,
+            {"parent-auto-flush", "child-auto-flush"},
+        )
+        process.join(timeout=5)
+        assert not process.is_alive(), "forked child did not exit"
+        assert process.exitcode == 0
+    finally:
+        if process is not None and process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+        statsig.shutdown().wait()
+
+
+def test_prefork_queued_events_remain_owned_by_parent(
+    httpserver: HTTPServer,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "60000")
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "60000")
+
+    mock_scrapi = setup_server(httpserver)
+    statsig = _new_statsig(mock_scrapi, specs_sync_interval_ms=60_000)
+    process = None
+    expected_names = {f"prefork-event-{index}" for index in range(5)}
+
+    try:
+        statsig.initialize().wait()
+        for event_name in expected_names:
+            statsig.log_event(StatsigUser("prefork-user"), event_name)
+
+        process = multiprocessing.Process(target=_flush_events, args=(statsig,))
+        process.start()
+        process.join(timeout=5)
+        assert not process.is_alive(), "forked child did not exit"
+        assert process.exitcode == 0
+
+        statsig.flush_events().wait()
+        observed_names = [
+            event.get("eventName") for event in mock_scrapi.get_logged_events()
+        ]
+        assert set(observed_names) == expected_names
+        assert len(observed_names) == len(expected_names), (
+            "events queued before fork were delivered by more than one process"
+        )
+    finally:
+        if process is not None and process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+        statsig.shutdown().wait()
+
+
+@pytest.mark.skipif(
+    sys.platform == "darwin",
+    reason="lazy event recovery is validated in Linux worker children",
+)
+def test_first_child_log_event_survives_explicit_flush(
+    httpserver: HTTPServer,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "60000")
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "60000")
+
+    mock_scrapi = setup_server(httpserver)
+    statsig = _new_statsig(mock_scrapi, specs_sync_interval_ms=60_000)
+    process = None
+
+    try:
+        statsig.initialize().wait()
+        statsig.log_event(StatsigUser("parent-user"), "parent-prefork-event")
+
+        process = multiprocessing.Process(
+            target=_log_event_and_flush,
+            args=(statsig, "child-first-event"),
+        )
+        process.start()
+        process.join(timeout=5)
+        assert not process.is_alive(), "forked child did not exit"
+        assert process.exitcode == 0
+
+        statsig.flush_events().wait()
+        observed_names = [
+            event.get("eventName") for event in mock_scrapi.get_logged_events()
+        ]
+        assert set(observed_names) == {
+            "parent-prefork-event",
+            "child-first-event",
+        }
+        assert len(observed_names) == 2
+    finally:
+        if process is not None and process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+        statsig.shutdown().wait()
+
+
+@pytest.mark.skipif(
+    sys.platform == "darwin",
+    reason="deferred eager recovery is validated in Linux worker children",
+)
+def test_repeated_child_recovery_does_not_discard_child_events(
+    httpserver: HTTPServer,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_TICK_INTERVAL_MS", "60000")
+    monkeypatch.setenv("STATSIG_TEST_OVERRIDE_MIN_FLUSH_INTERVAL_MS", "60000")
+
+    mock_scrapi = setup_server(httpserver)
+    statsig = _new_statsig(mock_scrapi, specs_sync_interval_ms=60_000)
+    process = None
+
+    try:
+        statsig.initialize().wait()
+        statsig.log_event(StatsigUser("parent-user"), "parent-prefork-event")
+
+        process = multiprocessing.Process(
+            target=_recover_log_retry_and_flush,
+            args=(statsig,),
+        )
+        process.start()
+        process.join(timeout=5)
+        assert not process.is_alive(), "forked child did not exit"
+        assert process.exitcode == 0
+
+        statsig.flush_events().wait()
+        observed_names = [
+            event.get("eventName") for event in mock_scrapi.get_logged_events()
+        ]
+        assert set(observed_names) == {"parent-prefork-event", "child-event"}
+        assert len(observed_names) == 2
+    finally:
+        if process is not None and process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+        statsig.shutdown().wait()
+
+
+@pytest.mark.skipif(
+    sys.platform == "darwin",
+    reason="deferred eager recovery is validated in Linux worker children",
+)
+def test_deferred_postfork_sync_is_nonblocking_and_refreshes_parent_and_child(
+    httpserver: HTTPServer,
+):
+    mock_scrapi = MockScrapi(httpserver)
+    mock_scrapi.stub("/v1/log_event", response='{"success": true}', method="POST")
+    mock_scrapi.stub("/v1/get_id_lists", response="{}", method="POST")
+
+    original = json.loads(get_test_data_resource("eval_proj_dcs.json"))
+    updated = json.loads(json.dumps(original))
+    updated["time"] = original["time"] + 1
+    updated["checksum"] = "post-fork-refresh"
+    updated_gate = updated["feature_gates"]["test_public"]
+    updated_gate["enabled"] = False
+    updated_gate["rules"] = []
+    updated_gate["version"] += 1
+
+    block_postfork_responses = threading.Event()
+    release_postfork_responses = threading.Event()
+
+    def specs_response(_request):
+        if block_postfork_responses.is_set():
+            release_postfork_responses.wait(timeout=5)
+            return json.dumps(updated)
+        return json.dumps(original)
+
+    mock_scrapi.stub(SYNC_TEST_DCS_ENDPOINT, response=specs_response, method="GET")
+
+    statsig = _new_statsig(mock_scrapi, specs_sync_interval_ms=60_000)
+    user = StatsigUser("fork-refresh-user")
+    allow_child_evaluation = multiprocessing.Event()
+    child_result, child_sender = multiprocessing.Pipe(duplex=False)
+    process = multiprocessing.Process(
+        target=_evaluate_while_postfork_refresh_is_blocked,
+        args=(statsig, user, allow_child_evaluation, child_sender),
+    )
+
+    try:
+        statsig.initialize().wait()
+        assert statsig.check_gate(user, "test_public")
+
+        requests_before_fork = mock_scrapi.times_called_for_endpoint(
+            SYNC_TEST_DCS_ENDPOINT
+        )
+        block_postfork_responses.set()
+
+        fork_started = time.monotonic()
+        process.start()
+        assert time.monotonic() - fork_started < 2
+
+        # At least one automatic post-fork refresh reaches the deliberately
+        # blocked single-threaded server. The fork itself remains nonblocking.
+        _wait_for_endpoint_calls(
+            mock_scrapi,
+            SYNC_TEST_DCS_ENDPOINT,
+            requests_before_fork + 1,
+        )
+
+        allow_child_evaluation.set()
+        assert child_result.poll(2), "child did not reach its first evaluation"
+        child_value, child_evaluation_seconds = child_result.recv()
+        assert child_value is True
+        assert child_evaluation_seconds < 1
+
+        parent_evaluation_started = time.monotonic()
+        assert statsig.check_gate(user, "test_public")
+        assert time.monotonic() - parent_evaluation_started < 1
+
+        release_postfork_responses.set()
+
+        # The mock server serializes request handlers, so the second process's
+        # request cannot enter the handler until the first response is released.
+        # Both requests completing proves parent and child independently began
+        # their automatic refresh without an SDK evaluation triggering either.
+        _wait_for_endpoint_calls(
+            mock_scrapi,
+            SYNC_TEST_DCS_ENDPOINT,
+            requests_before_fork + EAGER_POSTFORK_PROCESS_COUNT,
+        )
+
+        assert _wait_for_gate_value(statsig, user, False)
+        assert child_result.poll(3), "child did not apply refreshed config"
+        assert child_result.recv() is False
+
+        process.join(timeout=5)
+        assert process.exitcode == 0
+    finally:
+        release_postfork_responses.set()
+        allow_child_evaluation.set()
+        if process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+        statsig.shutdown().wait()
+
+
+@pytest.mark.skipif(
+    sys.platform == "darwin",
+    reason="thread creation in a multi-threaded fork child traps on macOS",
+)
+def test_public_recovery_handles_multiple_live_and_shutdown_instances(
+    httpserver: HTTPServer,
+):
+    mock_scrapi = MockScrapi(httpserver)
+    dcs_content = get_test_data_resource("eval_proj_dcs.json")
+    sdk_keys = [
+        "secret-fork-instance-a",
+        "secret-fork-instance-b",
+        "secret-fork-instance-shutdown",
+    ]
+    endpoints = [f"{DCS_URL_ENDPOINT}/{key}.json" for key in sdk_keys]
+    for endpoint in endpoints:
+        mock_scrapi.stub(endpoint, response=dcs_content, method="GET")
+    mock_scrapi.stub("/v1/log_event", response='{"success": true}', method="POST")
+    mock_scrapi.stub("/v1/get_id_lists", response="{}", method="POST")
+
+    instances = [
+        _new_statsig(mock_scrapi, sdk_key=key, specs_sync_interval_ms=60_000)
+        for key in sdk_keys
+    ]
+    process = None
+
+    try:
+        for instance in instances:
+            instance.initialize().wait()
+        instances[-1].shutdown().wait()
+        baselines = [
+            mock_scrapi.times_called_for_endpoint(endpoint) for endpoint in endpoints
+        ]
+
+        process = multiprocessing.Process(target=_recover_and_sleep_task)
+        process.start()
+        process.join(timeout=5)
+        assert process.exitcode == 0
+
+        for endpoint, baseline in zip(endpoints[:-1], baselines[:-1]):
+            _wait_for_endpoint_calls(
+                mock_scrapi,
+                endpoint,
+                baseline + EAGER_POSTFORK_PROCESS_COUNT,
+            )
+        time.sleep(0.2)
+        assert (
+            mock_scrapi.times_called_for_endpoint(endpoints[-1]) == baselines[-1]
+        )
+    finally:
+        if process is not None and process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+        for instance in instances:
+            instance.shutdown().wait()
+
+
+def test_shutdown_instance_is_not_restarted_after_fork(httpserver: HTTPServer):
+    mock_scrapi = setup_server(httpserver)
+    statsig = _new_statsig(mock_scrapi)
+    process = None
+
+    statsig.initialize().wait()
+    _wait_for_next_specs_sync(mock_scrapi)
+    statsig.shutdown().wait()
+    calls_after_shutdown = mock_scrapi.times_called_for_endpoint(SYNC_TEST_DCS_ENDPOINT)
+
+    try:
+        process = multiprocessing.Process(target=_pass_through_task)
+        process.start()
+        process.join(timeout=5)
+        assert process.exitcode == 0
+
+        time.sleep((SPECS_SYNC_INTERVAL_MS / 1000) * 1.5)
+        assert (
+            mock_scrapi.times_called_for_endpoint(SYNC_TEST_DCS_ENDPOINT)
+            == calls_after_shutdown
+        )
+    finally:
+        if process is not None and process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+
+
+@pytest.mark.skipif(
+    sys.platform == "darwin",
+    reason="thread creation in a multi-threaded fork child traps on macOS",
+)
+def test_repeated_forks_keep_parent_sync_alive(httpserver: HTTPServer):
+    mock_scrapi = setup_server(httpserver)
+    statsig = _new_statsig(mock_scrapi, specs_sync_interval_ms=60_000)
+
+    try:
+        statsig.initialize().wait()
+        for _ in range(3):
+            baseline = mock_scrapi.times_called_for_endpoint(SYNC_TEST_DCS_ENDPOINT)
+            process = multiprocessing.Process(target=_recover_and_sleep_task)
+            process.start()
+            process.join(timeout=5)
+            assert process.exitcode == 0
+            _wait_for_endpoint_calls(
+                mock_scrapi,
+                SYNC_TEST_DCS_ENDPOINT,
+                baseline + EAGER_POSTFORK_PROCESS_COUNT,
+            )
+    finally:
+        statsig.shutdown().wait()
 
 
 def test_forking_inline(httpserver: HTTPServer):
@@ -87,20 +688,159 @@ def test_forking_inline(httpserver: HTTPServer):
             timed_out_procs
         ), f"pid {pid}: timeout detected, killing all processes. Timed out procs: {timed_out_procs}"
 
+
 def test_uvloop_run_forking(httpserver: HTTPServer):
     uvloop.run(_run_parent_process_after_fork(httpserver))
 
+
 async def _run_parent_process_after_fork(httpserver: HTTPServer):
     mock_scrapi = setup_server(httpserver)
-    specs_url = mock_scrapi.url_for_endpoint("/v2/download_config_specs")
-    log_event_url = mock_scrapi.url_for_endpoint("/v1/log_event")
-    id_lists_url = mock_scrapi.url_for_endpoint("/v1/get_id_lists")
-    statsig = Statsig("secret-key", StatsigOptions(specs_url=specs_url, log_event_url=log_event_url, id_lists_url=id_lists_url))
-    statsig.log_event(StatsigUser("a-user"), "a_event")
-    await asyncio.create_subprocess_exec("sleep", "5")
-    statsig.flush_events().wait()
-    event = mock_scrapi.get_logged_events()
-    assert event[0]['eventName'] == 'a_event'
+    statsig = _new_statsig(mock_scrapi)
+
+    try:
+        statsig.initialize().wait()
+        _wait_for_next_specs_sync(mock_scrapi)
+
+        statsig.log_event(StatsigUser("a-user"), "a_event")
+        process = await asyncio.create_subprocess_exec("sleep", "0.1")
+        assert await process.wait() == 0
+
+        _assert_specs_sync_is_ticking_without_sdk_call(mock_scrapi)
+
+        statsig.flush_events().wait()
+        events = mock_scrapi.get_logged_events()
+        assert events[0]["eventName"] == "a_event"
+    finally:
+        statsig.shutdown().wait()
+
+
+def _assert_background_specs_sync_recovers_after_fork(
+    mock_scrapi: MockScrapi,
+) -> None:
+    statsig = _new_statsig(mock_scrapi)
+    process = None
+
+    try:
+        statsig.initialize().wait()
+        _wait_for_next_specs_sync(mock_scrapi)
+
+        process = multiprocessing.Process(target=_pass_through_task)
+        process.start()
+        process.join(timeout=5)
+
+        assert not process.is_alive(), "forked child did not exit"
+        assert process.exitcode == 0
+
+        _assert_specs_sync_is_ticking_without_sdk_call(mock_scrapi)
+    finally:
+        if process is not None and process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+        statsig.shutdown().wait()
+
+
+def _new_statsig(
+    mock_scrapi: MockScrapi,
+    sdk_key: str = SYNC_TEST_SDK_KEY,
+    specs_sync_interval_ms: int = SPECS_SYNC_INTERVAL_MS,
+) -> Statsig:
+    options = StatsigOptions(
+        specs_url=mock_scrapi.url_for_endpoint(DCS_URL_ENDPOINT),
+        log_event_url=mock_scrapi.url_for_endpoint("/v1/log_event"),
+        id_lists_url=mock_scrapi.url_for_endpoint("/v1/get_id_lists"),
+        specs_sync_interval_ms=specs_sync_interval_ms,
+    )
+    options.output_log_level = "none"
+    return Statsig(sdk_key, options)
+
+
+def _assert_specs_sync_is_ticking_without_sdk_call(
+    mock_scrapi: MockScrapi,
+) -> None:
+    calls_before_recovery = mock_scrapi.times_called_for_endpoint(
+        SYNC_TEST_DCS_ENDPOINT
+    )
+
+    calls_after_first_tick = _wait_for_endpoint_calls(
+        mock_scrapi,
+        SYNC_TEST_DCS_ENDPOINT,
+        calls_before_recovery + 1,
+    )
+
+    # No SDK operation occurs after deferred recovery. Two requests prove that
+    # recovery started a recurring sync loop rather than merely performing a
+    # one-time fetch.
+    _wait_for_endpoint_calls(
+        mock_scrapi,
+        SYNC_TEST_DCS_ENDPOINT,
+        calls_after_first_tick + 1,
+    )
+
+
+def _wait_for_next_specs_sync(mock_scrapi: MockScrapi) -> int:
+    current_calls = mock_scrapi.times_called_for_endpoint(SYNC_TEST_DCS_ENDPOINT)
+    return _wait_for_endpoint_calls(
+        mock_scrapi,
+        SYNC_TEST_DCS_ENDPOINT,
+        current_calls + 1,
+    )
+
+
+def _wait_for_gate_value(
+    statsig: Statsig,
+    user: StatsigUser,
+    expected: bool,
+    timeout_seconds: float = 3,
+) -> bool:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        if statsig.check_gate(user, "test_public") is expected:
+            return True
+        time.sleep(0.05)
+    return False
+
+
+def _wait_for_endpoint_calls(
+    mock_scrapi: MockScrapi,
+    endpoint: str,
+    minimum_calls: int,
+) -> int:
+    deadline = time.monotonic() + SPECS_SYNC_TIMEOUT_SECONDS
+    while time.monotonic() < deadline:
+        calls = mock_scrapi.times_called_for_endpoint(endpoint)
+        if calls >= minimum_calls:
+            return calls
+        time.sleep(0.05)
+
+    calls = mock_scrapi.times_called_for_endpoint(endpoint)
+    raise AssertionError(
+        f"timed out waiting for {endpoint} to reach {minimum_calls} calls; "
+        f"observed {calls}"
+    )
+
+
+def _wait_for_logged_event_names(
+    mock_scrapi: MockScrapi,
+    expected_names: set[str],
+    timeout_seconds: float = 4,
+) -> None:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        observed_names = {
+            event.get("eventName") for event in mock_scrapi.get_logged_events()
+        }
+        if expected_names <= observed_names:
+            return
+        time.sleep(0.05)
+
+    observed_names = {
+        event.get("eventName") for event in mock_scrapi.get_logged_events()
+    }
+    raise AssertionError(
+        f"timed out waiting for automatically flushed events {expected_names}; "
+        f"observed {observed_names}"
+    )
+
 
 def _proc_name_generator(start: int) -> Generator:
     num_cpus = os.cpu_count() or 1
@@ -113,6 +853,63 @@ def _proc_name_generator(start: int) -> Generator:
 def _pass_through_task() -> None:
     """Do nothing."""
     pass
+
+
+def _sleep_task() -> None:
+    """Keep the child alive long enough for its async refresh to begin."""
+    time.sleep(1)
+
+
+def _recover_and_sleep_task() -> None:
+    if sys.platform != "darwin":
+        assert recover_after_fork()
+    time.sleep(1)
+
+
+def _log_event_and_wait_for_automatic_flush(statsig: Statsig, event_name: str) -> None:
+    statsig.log_event(StatsigUser("child-user"), event_name)
+    # The assertion runs against the parent-hosted HTTP server. Keep the child
+    # alive long enough for its recovered scheduled-flush loop to deliver.
+    time.sleep(2)
+
+
+def _flush_events(statsig: Statsig) -> None:
+    statsig.flush_events().wait()
+
+
+def _log_event_and_flush(statsig: Statsig, event_name: str) -> None:
+    statsig.log_event(StatsigUser("child-user"), event_name)
+    statsig.flush_events().wait()
+
+
+def _recover_log_retry_and_flush(statsig: Statsig) -> None:
+    assert recover_after_fork()
+    statsig.log_event(StatsigUser("child-user"), "child-event")
+    assert statsig._INTERNAL_restart_background_tasks_after_fork()
+    statsig.flush_events().wait()
+
+
+def _evaluate_while_postfork_refresh_is_blocked(
+    statsig: Statsig,
+    user: StatsigUser,
+    allow_evaluation,
+    result_sender,
+) -> None:
+    if not recover_after_fork():
+        result_sender.close()
+        return
+
+    if not allow_evaluation.wait(timeout=5):
+        result_sender.close()
+        return
+
+    evaluation_started = time.monotonic()
+    value = statsig.check_gate(user, "test_public")
+    result_sender.send((value, time.monotonic() - evaluation_started))
+
+    refreshed = _wait_for_gate_value(statsig, user, False)
+    result_sender.send(False if refreshed else None)
+    result_sender.close()
 
 
 class ForkableStatsigWrapper:

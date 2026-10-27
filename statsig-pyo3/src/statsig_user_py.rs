@@ -88,6 +88,7 @@ impl StatsigUserPy {
             custom_ids: opt_py_dict_ref_to_hashmap(custom_ids),
             private_attributes: opt_py_dict_ref_to_hashmap(private_attributes),
             statsig_environment: opt_py_dict_ref_to_hashmap(statsig_environment),
+            id_list_memberships: None,
         };
 
         let user = StatsigUser::new(user_data);

@@ -31,6 +31,7 @@ pub(crate) fn get_layer_evaluations(
 ) -> Result<HashMap<String, LayerEvaluation>, StatsigErr> {
     let factory = |_: &str, hashed_name: &str, ctx: &mut EvaluatorContext| {
         let mut eval = result_to_layer_eval(hashed_name, &mut ctx.result);
+        eval.group = Some(eval.base.rule_id.clone());
 
         try_hash_allocated_experiment_name(
             ctx.hashing,

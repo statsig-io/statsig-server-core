@@ -1,6 +1,6 @@
 {
   "name": "@statsig/statsig-node-core",
-  "version": "0.23.2",
+  "version": "0.24.0",
   "main": "index.js",
   "scripts": {
     "test": "jest --colors"
@@ -10,11 +10,7 @@
   "license": "ISC",
   "description": "",
   "repository": "https://github.com/statsig-io/statsig-server-core.git",
-  "dependencies": {
-    "@octokit/core": "^6",
-    "https-proxy-agent": "^7.0.6",
-    "node-fetch": "2.7.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@babel/helpers": "7.26.10",
     "@napi-rs/cli": "3.0.0-alpha.65",

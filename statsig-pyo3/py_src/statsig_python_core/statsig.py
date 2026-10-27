@@ -1,5 +1,8 @@
+import atexit
 import json
 import os
+import time
+import weakref
 from statsig_python_core import (
     DynamicConfigEvaluationOptions,
     ExperimentEvaluationOptions,
@@ -20,7 +23,13 @@ from .statsig_types import (
     FeatureGate,
     Layer,
 )
-import atexit
+
+_live_statsig_instances: weakref.WeakSet[Any] = weakref.WeakSet()
+_child_recovery_pending = False
+# Celery allows only a short worker-process initialization window. Apply one
+# budget to the whole callback rather than spending a full Rust-side timeout
+# on every live instance. Instances not reached remain recoverable lazily.
+POST_FORK_RECOVERY_BUDGET_SECONDS = 3.0
 
 SdkEventName = Literal[
     "*",
@@ -43,10 +52,83 @@ def handle_fork():
     notify_python_fork()
 
 
+def _recover_live_instances_after_fork() -> bool:
+    deadline = time.monotonic() + POST_FORK_RECOVERY_BUDGET_SECONDS
+    recovered = True
+    for instance in list(_live_statsig_instances):
+        remaining_seconds = deadline - time.monotonic()
+        if remaining_seconds <= 0:
+            return False
+        try:
+            remaining_ms = max(1, int(remaining_seconds * 1000))
+            recovered = (
+                instance._INTERNAL_restart_background_tasks_after_fork(remaining_ms)
+                and recovered
+            )
+        except Exception:
+            # Fork recovery must never prevent the parent or child from
+            # continuing. Every SDK operation retains a lazy retry path.
+            recovered = False
+    return recovered
+
+
+def handle_after_fork_in_parent():
+    recover_after_fork()
+
+
+def handle_after_fork_in_child():
+    # The process has only the thread that called fork(). Do not touch SDK
+    # locks, create a runtime, start threads, or perform network work here.
+    global _child_recovery_pending
+    _child_recovery_pending = True
+
+
+def recover_after_fork() -> bool:
+    """Recover live SDK instances from a safe post-fork lifecycle hook.
+
+    Prefork frameworks without built-in integration should call this after the
+    child process is fully created. Recovery is PID-aware and idempotent, and
+    immediate DCS refresh is scheduled without waiting for network I/O.
+    """
+    global _child_recovery_pending
+    recovered = _recover_live_instances_after_fork()
+    if recovered:
+        _child_recovery_pending = False
+    return recovered
+
+
+# Compatibility for users of the draft-only helper name. Both names invoke
+# the same platform-neutral recovery routine.
+recover_after_fork_in_child = recover_after_fork
+
+
+def handle_worker_process_init(**_kwargs: Any) -> None:
+    # Celery emits this in the fully-created worker child before it accepts
+    # tasks, where starting threads and scheduling async work is safe.
+    recover_after_fork()
+
+
+def _register_celery_worker_process_init() -> None:
+    try:
+        from celery.signals import worker_process_init  # type: ignore[import-not-found]
+    except ImportError:
+        return
+
+    worker_process_init.connect(handle_worker_process_init, weak=False)
+
+
 if hasattr(os, "register_at_fork"):
+    # Quiesce Tokio before forking so the child cannot inherit locks held by
+    # vanished worker threads. The raw child callback only marks recovery as
+    # pending; Celery worker initialization or an SDK call performs recovery.
     os.register_at_fork(
         before=handle_fork,
+        after_in_parent=handle_after_fork_in_parent,
+        after_in_child=handle_after_fork_in_child,
     )
+
+
+_register_celery_worker_process_init()
 
 
 class Statsig(StatsigBasePy):
@@ -55,6 +137,7 @@ class Statsig(StatsigBasePy):
     def __new__(cls, sdk_key: str, options: Optional[StatsigOptions] = None):
         instance = super().__new__(cls, sdk_key, options)
         ErrorBoundary.wrap(instance)
+        _live_statsig_instances.add(instance)
         return instance
 
     # ----------------------------
@@ -80,6 +163,7 @@ class Statsig(StatsigBasePy):
             )
 
         cls._statsig_shared_instance = super().__new__(cls, sdk_key, options)
+        _live_statsig_instances.add(cls._statsig_shared_instance)
         return cls._statsig_shared_instance
 
     @classmethod

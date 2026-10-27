@@ -46,7 +46,13 @@ jobs:
       - name: '[Python] Install Dependencies'
         if: matrix.lang == 'python'
         # includes legacy python sdk for comparison
-        run: pip3 install pytest maturin patchelf pytest_httpserver pytest-retry statsig
+        run: pip3 install pytest maturin patchelf pytest_httpserver pytest-retry statsig celery redis
+
+      - name: '[Python] Install Redis'
+        if: matrix.lang == 'python'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes redis-server
       
       - name: Setup elixir
         uses: erlef/setup-beam@8251c48667b97e88a0a24ec512f5b72a039fcea7 # v1
@@ -85,6 +91,13 @@ jobs:
 
       - name: Run Tests
         run: ./tore test ${{ matrix.lang }} --no-docker --arch x86_64 --os debian
+
+      - name: '[Python] Run Celery Prefork Integration'
+        if: matrix.lang == 'python'
+        working-directory: statsig-pyo3
+        env:
+          STATSIG_RUN_CELERY_PREFORK_TESTS: '1'
+        run: python3 -m pytest --capture=no -v tests/integration/celery_prefork
 
       - name: Upload Artifacts
         if: matrix.lang == 'rust'

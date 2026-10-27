@@ -40,6 +40,7 @@ pub(crate) fn get_dynamic_config_evaluations(
             if options.remove_id_type.unwrap_or(false) {
                 res.id_type = None
             }
+            res.group = Some(res.base.rule_id.clone());
             return AnyConfigEvaluation::DynamicConfig(res);
         }
 
@@ -48,6 +49,7 @@ pub(crate) fn get_dynamic_config_evaluations(
         if options.remove_id_type.unwrap_or(false) {
             evaluation.id_type = None
         }
+        evaluation.group = Some(evaluation.base.rule_id.clone());
         evaluation.undelegated_secondary_exposures = None;
         AnyConfigEvaluation::Experiment(evaluation)
     };

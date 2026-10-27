@@ -6,10 +6,51 @@ use parking_lot::Mutex;
 
 use crate::{
     data_store_interface::{DataStoreResponse, DataStoreTrait, RequestPath},
+    id_lists_adapter::{id_lists_snapshot::IdListsSnapshot, IdListsUpdateListener},
     networking::ResponseData,
     sdk_event_emitter::SdkEventEmitter,
     SpecStore, SpecsSource, SpecsUpdate, StatsigErr, StatsigOptions, StatsigRuntime,
 };
+
+#[test]
+fn test_complete_id_list_snapshot_atomically_replaces_lists_and_members() {
+    let spec_store = SpecStore::new(
+        "test",
+        "test".to_string(),
+        StatsigRuntime::get_runtime(),
+        Arc::new(SdkEventEmitter::default()),
+        None,
+    );
+
+    let initial = IdListsSnapshot::parse(
+        r#"["kept","stale"]"#,
+        &HashMap::from([
+            ("kept".to_string(), "+2Tv4fIVX\n+34jaY4Sb".to_string()),
+            ("stale".to_string(), "+0K9jH6PG".to_string()),
+        ]),
+    )
+    .unwrap();
+    spec_store.replace_id_lists_snapshot(initial.lists).unwrap();
+
+    let replacement = IdListsSnapshot::parse(
+        r#"["kept","new"]"#,
+        &HashMap::from([
+            ("kept".to_string(), "+34jaY4Sb".to_string()),
+            ("new".to_string(), "+oFMo1RZH".to_string()),
+        ]),
+    )
+    .unwrap();
+    spec_store
+        .replace_id_lists_snapshot(replacement.lists)
+        .unwrap();
+
+    let data = spec_store.data.read();
+    assert_eq!(data.id_lists.len(), 2);
+    assert!(!data.id_lists.contains_key("stale"));
+    assert!(!data.id_lists["kept"].ids.contains("2Tv4fIVX"));
+    assert!(data.id_lists["kept"].ids.contains("34jaY4Sb"));
+    assert!(data.id_lists["new"].ids.contains("oFMo1RZH"));
+}
 
 struct TestDataStore {
     get_response: Mutex<Option<DataStoreResponse>>,

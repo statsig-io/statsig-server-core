@@ -103,8 +103,12 @@ impl EvaluationDetails {
             };
         }
 
+        let id_list_source = eval_result
+            .id_list_source
+            .map_or(String::new(), |source| format!(":{source}"));
+
         Self {
-            reason: format!("{source}:{sub_reason}"),
+            reason: format!("{source}:{sub_reason}{id_list_source}"),
             lcut: Some(lcut),
             received_at,
             version: eval_result.version,

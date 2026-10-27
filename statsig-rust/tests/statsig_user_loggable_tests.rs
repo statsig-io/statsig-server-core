@@ -79,6 +79,7 @@ fn test_full_user_serialization() {
                 "statsig_environment_key".to_string(),
                 dyn_value!("a_statsig_environment_value"),
             )])),
+            id_list_memberships: None,
         }),
         environment: None,
         global_custom: None,
