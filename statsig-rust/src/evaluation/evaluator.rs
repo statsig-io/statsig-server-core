@@ -214,11 +214,12 @@ fn new_layer_eval<'a>(
         }
 
         evaluate_rule(ctx, rule)?;
+        undelegated_secondary_exposures.extend(ctx.result.secondary_exposures.iter().cloned());
         secondary_exposures.append(&mut ctx.result.secondary_exposures);
-        undelegated_secondary_exposures.append(&mut ctx.result.secondary_exposures);
-        ctx.result.secondary_exposures.clear();
 
         if ctx.result.unsupported {
+            ctx.result.secondary_exposures = secondary_exposures;
+            ctx.result.undelegated_secondary_exposures = Some(undelegated_secondary_exposures);
             return Ok(Recognition::Recognized);
         }
 
@@ -480,7 +481,7 @@ fn evaluate_condition<'a>(
             return Ok(());
         }
         "experiment_group" => {
-            let group_name = evaluate_experiment_group(ctx, &condition.field);
+            let group_name = evaluate_experiment_group(ctx, &condition.field)?;
             match group_name {
                 Some(name) => {
                     temp_value = Some(DynamicValue::from(name));
@@ -647,31 +648,54 @@ pub(crate) fn id_list_lookup_id(hashing: &HashUtil, unit_id: &str) -> String {
 fn evaluate_experiment_group<'a>(
     ctx: &mut EvaluatorContext<'a>,
     experiment_name: &Option<DynamicString>,
-) -> Option<String> {
+) -> Result<Option<String>, StatsigErr> {
     let exp_name = match experiment_name {
         Some(name) => &name.value,
         None => {
-            return None;
+            return Ok(None);
         }
     };
-    let statsig = match &ctx.statsig {
-        Some(s) => s,
-        None => {
-            ctx.result.unsupported = true;
-            return None;
-        }
+
+    if let Some(statsig) = ctx.statsig {
+        let res = statsig.get_experiment_with_options(
+            ctx.user.user_ref,
+            exp_name.as_str(),
+            ExperimentEvaluationOptions {
+                disable_exposure_logging: ctx.disable_exposure_logging,
+                user_persisted_values: None,
+                enforce_overrides: false,
+                enforce_targeting: false,
+            },
+        );
+        return Ok(res.group_name);
+    }
+
+    // GCIR intentionally has no live Statsig handle because it evaluates a
+    // single immutable specs snapshot while the store read lock is held.
+    // Isolate the nested result while retaining the same snapshot, memo, and
+    // no-log context so the referenced experiment cannot replace the outer
+    // experiment or gate.
+    // A group reference only needs the referenced experiment's group name. A
+    // recursive re-entry therefore has no resolvable group; it must not rely
+    // on the depth backstop, whose error would blank the whole GCIR response.
+    // Keep this set path-local so independent sequential references are not
+    // mistaken for a cycle.
+    let _resolution_guard = match ctx.enter_experiment_group_resolution(exp_name.clone()) {
+        Some(guard) => guard,
+        None => return Ok(None),
     };
-    let res = statsig.get_experiment_with_options(
-        ctx.user.user_ref,
-        exp_name.as_str(),
-        ExperimentEvaluationOptions {
-            disable_exposure_logging: ctx.disable_exposure_logging,
-            user_persisted_values: None,
-            enforce_overrides: false,
-            enforce_targeting: false,
-        },
-    );
-    res.group_name
+
+    let (recognition, child_result) = ctx.evaluate_with_isolated_result(|child| {
+        Evaluator::evaluate(child, exp_name.as_str(), &SpecType::Experiment)
+    })?;
+
+    // A referenced experiment that cannot be evaluated has no group, matching
+    // the existing Statsig-backed path's observable condition behavior.
+    if recognition == Recognition::Unrecognized || child_result.unsupported {
+        return Ok(None);
+    }
+
+    Ok(child_result.group_name.map(|name| name.as_str().to_owned()))
 }
 
 fn evaluate_nested_gate<'a>(
@@ -685,7 +709,7 @@ fn evaluate_nested_gate<'a>(
         .map(|name| &name.value)
         .unwrap_or(InternedString::empty_ref());
 
-    match ctx.nested_gate_memo.get(gate_name) {
+    let nested_is_analytical = match ctx.nested_gate_memo.get(gate_name) {
         Some((
             previous_bool,
             previous_rule_id,
@@ -697,42 +721,74 @@ fn evaluate_nested_gate<'a>(
             ctx.result
                 .secondary_exposures
                 .extend_from_slice(previous_secondary_exposures);
-            ctx.result.id_list_source = *previous_id_list_source;
+            ctx.result.id_list_source = previous_id_list_source.or(ctx.result.id_list_source);
+            // Only nested gates without analytical or override metadata are
+            // memoized, so a cache hit cannot change the parent's metadata.
+            false
         }
         None => {
-            ctx.prep_for_nested_evaluation()?;
+            let (_, child_result) = ctx.evaluate_with_isolated_result(|child| {
+                Evaluator::evaluate(child, gate_name.as_str(), &SpecType::Gate)
+            })?;
 
-            let mut current_exposures = std::mem::take(&mut ctx.result.secondary_exposures);
-
-            let _ = Evaluator::evaluate(ctx, gate_name.as_str(), &SpecType::Gate)?;
-
-            if ctx.result.unsupported {
+            // An isolated child starts without the parent's provenance. Keep
+            // an earlier ID-list source when this child did not consult a list.
+            ctx.result.id_list_source = child_result.id_list_source.or(ctx.result.id_list_source);
+            if child_result.unsupported {
+                ctx.result
+                    .secondary_exposures
+                    .extend(child_result.secondary_exposures);
+                if child_result.has_seen_analytical_gates == Some(true) {
+                    ctx.result.has_seen_analytical_gates = Some(true);
+                }
+                ctx.result.unsupported = true;
                 return Ok(());
             }
 
-            if !gate_name.as_str().is_empty() {
+            // Segment specs do not carry their own sampling rate. Their
+            // analytical state comes from gates evaluated inside the segment.
+            let is_analytical = child_result.has_seen_analytical_gates == Some(true)
+                || (!gate_name.starts_with("segment:") && child_result.sampling_rate.is_none());
+
+            // Keep main's bool/rule/exposures/ID-list-source memo tuple.
+            // Re-evaluate gates whose result carries
+            // analytical or release-pipeline override metadata so cache hits
+            // never drop fields that must be propagated to the parent.
+            if !gate_name.as_str().is_empty()
+                && !is_analytical
+                && child_result.override_config_name.is_none()
+            {
                 ctx.nested_gate_memo.insert(
                     gate_name.clone(),
                     (
-                        ctx.result.bool_value,
-                        ctx.result.rule_id.clone(),
-                        ctx.result.secondary_exposures.clone(),
-                        ctx.result.id_list_source,
+                        child_result.bool_value,
+                        child_result.rule_id.clone(),
+                        child_result.secondary_exposures.clone(),
+                        child_result.id_list_source,
                     ),
                 );
             }
 
-            std::mem::swap(&mut ctx.result.secondary_exposures, &mut current_exposures);
+            ctx.result.bool_value = child_result.bool_value;
+            ctx.result.rule_id = child_result.rule_id;
+            if child_result.override_config_name.is_some() {
+                ctx.result.override_config_name = child_result.override_config_name;
+            }
             ctx.result
                 .secondary_exposures
-                .extend_from_slice(&current_exposures);
+                .extend(child_result.secondary_exposures);
+            is_analytical
         }
-    }
+    };
 
     let is_empty_rule_id = match &ctx.result.rule_id {
         Some(id) => id.as_str().is_empty(),
         None => true,
     };
+
+    if nested_is_analytical {
+        ctx.result.has_seen_analytical_gates = Some(true);
+    }
 
     if !&gate_name.starts_with("segment:") && !is_empty_rule_id {
         let res = &ctx.result;
@@ -741,11 +797,6 @@ fn evaluate_nested_gate<'a>(
             gate_value: InternedString::from_bool(res.bool_value),
             rule_id: res.rule_id.clone().unwrap_or_default(),
         };
-
-        if res.sampling_rate.is_none() {
-            ctx.result.has_seen_analytical_gates = Option::from(true);
-        }
-
         ctx.result.secondary_exposures.push(expo);
     }
 
