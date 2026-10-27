@@ -1,3 +1,6 @@
+// async_trait-generated futures trigger this lint on Rust 1.99.
+#![allow(clippy::double_must_use)]
+
 pub use evaluation::dynamic_returnable::DynamicReturnable;
 pub use evaluation::dynamic_value::DynamicValue;
 pub use evaluation::evaluation_details::EvaluationDetails;
@@ -38,6 +41,7 @@ pub use user::{StatsigUser, StatsigUserBuilder};
 pub mod compression;
 pub mod console_capture;
 pub mod data_store_interface;
+mod data_store_lifecycle;
 pub mod evaluation;
 pub mod event_logging;
 pub mod gcir;

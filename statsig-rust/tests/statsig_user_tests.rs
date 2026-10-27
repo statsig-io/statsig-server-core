@@ -42,6 +42,7 @@ fn test_statsig_user_data_accepts_hashmap_fields_by_default() {
         statsig_environment: Some(statsig_environment.clone()),
         private_attributes: Some(private_attributes.clone()),
         custom: Some(custom.clone()),
+        id_list_memberships: None,
     });
 
     assert_eq!(user.data.custom_ids, Some(custom_ids));

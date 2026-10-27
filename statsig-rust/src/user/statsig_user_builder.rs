@@ -3,6 +3,7 @@ use super::user_data::{UserData, UserDataMap, UserDataMapOf, UserDataStringMap};
 use super::StatsigUser;
 use crate::dyn_value;
 use crate::evaluation::dynamic_value::DynamicValue;
+use std::collections::{HashMap, HashSet};
 
 pub struct StatsigUserBuilder {
     pub user_id: Option<UnitID>,
@@ -19,6 +20,7 @@ pub struct StatsigUserBuilder {
     pub private_attributes: Option<UserDataMap>,
 
     pub statsig_environment: Option<UserDataMap>,
+    pub id_list_memberships: Option<HashMap<String, HashSet<String>>>,
 }
 
 impl StatsigUserBuilder {
@@ -53,6 +55,7 @@ impl StatsigUserBuilder {
             private_attributes: None,
             custom_ids: None,
             statsig_environment: None,
+            id_list_memberships: None,
         }
     }
 
@@ -162,6 +165,12 @@ impl StatsigUserBuilder {
         self
     }
 
+    /// Sets authoritative, pre-resolved ID-list memberships for this user.
+    pub fn id_list_memberships(mut self, memberships: HashMap<String, HashSet<String>>) -> Self {
+        self.id_list_memberships = Some(memberships);
+        self
+    }
+
     pub fn build(self) -> StatsigUser {
         let data = UserData {
             user_id: self.user_id.map(|u| u.into()),
@@ -177,6 +186,7 @@ impl StatsigUserBuilder {
             custom_ids: self
                 .custom_ids
                 .map(|m| m.into_iter().map(|(k, v)| (k, v.into())).collect()),
+            id_list_memberships: self.id_list_memberships,
         };
 
         StatsigUser::new(data)

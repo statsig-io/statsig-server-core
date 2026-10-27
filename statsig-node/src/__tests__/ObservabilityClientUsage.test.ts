@@ -5,7 +5,9 @@ import { Statsig, StatsigOptions, StatsigUser } from '../../build/index.js';
 import { MockObservabilityClient } from './MockObservabilityClient';
 import { MockScrapi } from './MockScrapi';
 
-describe('ObservabilityClient Usage', () => {
+const TITLE = 'ObservabilityClient Usage (split batches: %s)';
+
+describe.each([false, true])(TITLE, (splitBatches) => {
   let statsig: Statsig;
   let scrapi: MockScrapi;
   let observabilityClient: MockObservabilityClient;
@@ -63,10 +65,39 @@ describe('ObservabilityClient Usage', () => {
     statsig = new Statsig('secret-123', options);
     await statsig.initialize();
 
+    const flushUntilDiagnostic = () =>
+      waitFor(async () => {
+        await statsig.flushEvents();
+        return scrapi
+          .getLogEventRequests()
+          .some((request) =>
+            request.body.events.some(
+              (event: { eventName: string }) =>
+                event.eventName === 'statsig::diagnostics',
+            ),
+          );
+      }, 5000);
+
+    if (splitBatches) {
+      await flushUntilDiagnostic();
+    }
+
     statsig.checkGate(StatsigUser.withUserID('test-user'), 'test-gate');
     statsig.logEvent(StatsigUser.withUserID('b-user'), 'my_event');
 
-    await statsig.flushEvents();
+    // Initialization diagnostics reach the event queue through an async observer;
+    // initialize() need not put them in the same batch as the explicit events.
+    await flushUntilDiagnostic();
+
+    await waitFor(
+      () =>
+        observabilityClientSpies.increment.mock.calls
+          .filter(
+            ([name]) => name === 'statsig.sdk.events_successfully_sent_count',
+          )
+          .reduce((sum, [, count]) => sum + count, 0) === 3,
+      5000,
+    );
 
     await waitFor(
       () =>
@@ -79,7 +110,8 @@ describe('ObservabilityClient Usage', () => {
     await waitFor(
       () =>
         observabilityClientSpies.dist.mock.calls.some(
-          ([metricName]) => metricName === 'statsig.sdk.config_propagation_diff',
+          ([metricName]) =>
+            metricName === 'statsig.sdk.config_propagation_diff',
         ),
       5000,
     );
@@ -94,7 +126,10 @@ describe('ObservabilityClient Usage', () => {
     );
 
     await waitFor(
-      () => observabilityClientSpies.increment.mock.calls.length > 1, // no updates
+      () =>
+        observabilityClientSpies.increment.mock.calls.some(
+          ([name]) => name === 'statsig.sdk.config_no_update',
+        ),
       5000,
     );
   }, 10000);
@@ -137,11 +172,25 @@ describe('ObservabilityClient Usage', () => {
   });
 
   it('logs an increment log events', () => {
-    expect(observabilityClientSpies.increment).toHaveBeenCalledWith(
-      'statsig.sdk.events_successfully_sent_count',
-      3,
-      null,
+    const events = scrapi
+      .getLogEventRequests()
+      .flatMap((request) => request.body.events);
+    expect(events.map((event) => event.eventName).sort()).toEqual(
+      ['statsig::gate_exposure', 'my_event', 'statsig::diagnostics'].sort(),
     );
+    if (splitBatches) {
+      expect(scrapi.getLogEventRequests().length).toBeGreaterThanOrEqual(2);
+    }
+
+    const sentCounts = observabilityClientSpies.increment.mock.calls.filter(
+      ([name]) => name === 'statsig.sdk.events_successfully_sent_count',
+    );
+    expect(sentCounts.reduce((sum, [, count]) => sum + count, 0)).toBe(
+      events.length,
+    );
+    for (const [, , tags] of sentCounts) {
+      expect(tags).toBeNull();
+    }
   });
 
   it('logs config no update', () => {
@@ -153,9 +202,13 @@ describe('ObservabilityClient Usage', () => {
   });
 });
 
-async function waitFor(fn: () => boolean, timeout: number) {
+async function waitFor(fn: () => boolean | Promise<boolean>, timeout: number) {
   const startTime = Date.now();
-  while (!fn() && Date.now() - startTime < timeout) {
+  while (Date.now() - startTime < timeout) {
+    if (await fn()) {
+      return;
+    }
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
+  throw new Error(`Timed out waiting for observability after ${timeout}ms`);
 }

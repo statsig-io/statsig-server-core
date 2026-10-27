@@ -94,6 +94,8 @@ export declare class StatsigUser {
 
 export declare function __internal__testDataStore(store: DataStore, path: string, value: string): Promise<[DataStoreResponse | undefined | null, boolean]>
 
+export declare function __internal__testDataStoreFeature(store: DataStore): Promise<[boolean, boolean, boolean | undefined | null, boolean]>
+
 export declare function __internal__testObservabilityClient(client: ObservabilityClient, action: string, metricName: string, value: number, tags?: Record<string, string> | undefined | null): Promise<void>
 
 export declare function __internal__testOutputLogger(logger: OutputLoggerProvider, action: string, tag?: string | undefined | null, message?: string | undefined | null): Promise<void>
@@ -132,6 +134,7 @@ export interface DataStore {
   set?: (key: string, value: string, time?: number) => Promise<void>
   setBytes?: (key: string, value: ArrayBuffer | Uint8Array, time?: number) => Promise<void>
   supportPollingUpdatesFor?: (key: string) => Promise<boolean>
+  supportsFeature?: (feature: 'config_specs' | 'id_list_snapshot' | 'id_list_snapshot_write') => Promise<boolean>
 }
 
 export interface DataStoreBytesResponse {

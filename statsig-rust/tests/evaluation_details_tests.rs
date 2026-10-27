@@ -2,7 +2,10 @@ mod utils;
 
 use crate::utils::mock_event_logging_adapter::MockEventLoggingAdapter;
 use crate::utils::mock_specs_adapter::MockSpecsAdapter;
-use statsig_rust::{Statsig, StatsigOptions, StatsigUser};
+use statsig_rust::{
+    evaluation::evaluator_result::EvaluatorResult, EvaluationDetails, SpecsSource, Statsig,
+    StatsigOptions, StatsigUser,
+};
 use std::sync::Arc;
 
 async fn setup() -> Statsig {
@@ -27,4 +30,15 @@ async fn test_dynamic_config_getters() {
 
     assert_eq!(evaluation_details.version, Some(9));
     assert_eq!(evaluation_details.lcut, Some(1724303781428));
+}
+
+#[test]
+fn test_id_list_source_is_appended_to_evaluation_reason() {
+    let result = EvaluatorResult {
+        id_list_source: Some("IdListEnriched"),
+        ..Default::default()
+    };
+
+    let details = EvaluationDetails::recognized(&SpecsSource::Network, 1, Some(2), &result);
+    assert_eq!(details.reason, "Network:Recognized:IdListEnriched");
 }

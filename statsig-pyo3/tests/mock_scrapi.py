@@ -27,7 +27,8 @@ class MockScrapi:
                     req_json = json.loads(json_str)
                     self.logged_events.extend(req_json["events"])
 
-            return Response(response, status=status)
+            response_body = response(req) if callable(response) else response
+            return Response(response_body, status=status)
 
         self.httpserver.expect_request(endpoint, method=method).respond_with_handler(
             handler

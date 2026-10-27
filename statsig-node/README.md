@@ -25,6 +25,68 @@ Statsig helps you move faster with feature gates (feature flags), and/or dynamic
 
 Read through the Node [Documentation](https://docs.statsig.com/server-core/node-core?ref=gh_server_core) or check out the [Samples](https://github.com/statsig-io/statsig-server-core/tree/main/examples/node).
 
+## Migrating ID-list DataStore snapshots
+
+Core defaults ID lists off, unlike Legacy Node. Set `enableIdLists: true` and
+have the existing DataStore explicitly return `true` from
+`supportsFeature('id_list_snapshot')` to enable snapshot reads. Config-spec
+support alone does not opt an adapter into ID-list keys.
+
+Initialization reads the manifest and every referenced child before installing
+the complete candidate. `supportPollingUpdatesFor('id_list_snapshot')` returning
+`true`, or having no preference, reloads that cache on `idListsSyncIntervalMs`.
+An explicit `false` still allows cache-first initialization but assigns later
+refreshes to HTTP. Missing values, malformed snapshots, or rejected reads cause
+whole-refresh HTTP fallback; no partial cache or HTTP candidate is installed.
+If both sources fail, refresh retains the previous complete snapshot, and an
+initialization failure is observable through the ordinary initialization result.
+
+Legacy-compatible children contain condensed `+hash` entries. The manifest's
+`size` is the original remote change-log byte cursor, **not** the condensed child
+length or member count. A parseable Legacy cache may still be stale relative to
+that cursor after a failed Legacy download. The first HTTP reconciliation after
+accepting a cache snapshot therefore downloads complete lists from byte zero and
+replaces membership atomically. Only a successful reconciliation establishes
+cursors for later incremental HTTP requests. Failed reconciliation leaves the
+previous snapshot intact and retries from zero.
+
+The fixed-key manifest/children format is not transactional: reading every child
+and atomically installing the in-memory candidate cannot prove that an external
+writer published all keys in one generation. Fail-closed/no-Statsig-fallback mode
+is deferred; this phase intentionally retains HTTP fallback. Do not treat config
+specs fallback settings as an ID-list no-network guarantee.
+
+Read support does not grant write permission. To enable write-back, explicitly
+return `true` from both `supportsFeature('id_list_snapshot')` and
+`supportsFeature('id_list_snapshot_write')`. The write capability defaults to
+`false`; read-only adapters and adapters without the callback receive no ID-list
+writes. `enableIdLists` remains required, and the polling preference controls
+refresh ownership, not permission to write. Unknown feature names should return
+`false` rather than being accepted by a catch-all capability callback.
+
+With both capabilities enabled, a validated HTTP refresh writes condensed
+children and then the manifest back through DataStore. Cache reads do not echo
+writes. Write-back is best-effort: a failed write is reported through SDK logging
+and metrics without discarding the fresh in-memory snapshot. Manifest-last writes
+reduce partial publication, but do not make the fixed-key format transactional.
+
+After a complete successful write, unchanged ID-list manifests skip snapshot
+copying, serialization and DataStore writes. This compares ID-list metadata, not
+DCS LCUT. Failed or cancelled publications remain retryable, including a return
+to a previously persisted manifest after a partial write. Cache replacement or
+cache-read failure, and disabling then re-enabling write support, invalidate the
+checkpoint. Unchanged ticks do not renew DataStore timestamps or adapter-defined
+TTLs; this is change-driven persistence, not a periodic cache lease or a guarantee
+that externally evicted keys are detected without reading them.
+
+### Fork limitation
+
+Automatic post-fork refresh of DataStore-backed ID lists is not supported in this
+change. Fork before constructing and initializing the SDK and DataStore in each
+worker; recovery of an already-initialized, inherited DataStore-backed instance
+is deferred. Existing best-effort restart logic is not a fork-safety guarantee.
+Ordinary non-fork reads, polling, HTTP fallback, and shutdown remain in scope.
+
 ## Packages
 
 Bindings

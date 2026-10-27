@@ -158,6 +158,29 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
         Ok(())
     }
 
+    async fn schedule_background_sync_after_fork(
+        self: Arc<Self>,
+        statsig_runtime: &Arc<StatsigRuntime>,
+    ) -> Result<(), StatsigErr> {
+        for adapter in &self.adapters {
+            match adapter
+                .to_owned()
+                .schedule_background_sync_after_fork(statsig_runtime)
+                .await
+            {
+                Ok(()) => return Ok(()),
+                Err(_) => {
+                    log_i!(
+                        TAG,
+                        "Skipping post-fork bg sync for {}",
+                        adapter.get_type_name()
+                    );
+                }
+            }
+        }
+        Ok(())
+    }
+
     async fn shutdown(
         &self,
         timeout: Duration,

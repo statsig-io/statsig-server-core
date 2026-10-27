@@ -40,6 +40,7 @@ async fn test_check_gate_id_list() {
         .build();
 
     let mut opts = StatsigOptions::new();
+    opts.enable_id_lists = Some(true);
 
     let adapter = Arc::new(StatsigHttpIdListsAdapter::new(&get_sdk_key(), &opts));
     opts.id_lists_adapter = Some(adapter);

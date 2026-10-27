@@ -10,24 +10,24 @@ use std::{
 };
 
 use futures::future::join_all;
-use statsig_rust::{
-    evaluation::evaluator_context::{EvaluatorContext, IdListResolution},
-    gcir::gcir_formatter::GCIRFormatter,
-    hashing::HashUtil,
-    specs_response::spec_types::SpecsResponseFull,
-    user::StatsigUserInternal,
-    ClientInitResponseOptions, HashAlgorithm, InitializeResponse, StatsigUser,
-};
+use statsig_rust::{evaluation::evaluator_context::IdListResolution, StatsigUser};
 use tokio::time::Instant;
 
-use crate::utils::helpers::load_contents;
+use crate::utils::gcir::{generate_v1_response, load_specs_data};
 
 #[test]
 fn test_gcir() {
     let specs_data = load_specs_data("eval_proj_dcs.json");
 
     let id_lists = HashMap::new();
-    let response = generate_response(&specs_data, IdListResolution::MapLookup(&id_lists));
+    let user = direct_gcir_user();
+    let response = generate_v1_response(
+        &user,
+        &specs_data,
+        IdListResolution::MapLookup(&id_lists),
+        None,
+    )
+    .expect("should have a response");
 
     let gate = response
         .feature_gates
@@ -51,13 +51,55 @@ fn test_id_list_resolution_via_callback() {
         None => false,
     };
 
-    let response = generate_response(&specs_data, IdListResolution::Callback(&id_lists_callback));
+    let user = direct_gcir_user();
+    let response = generate_v1_response(
+        &user,
+        &specs_data,
+        IdListResolution::Callback(&id_lists_callback),
+        None,
+    )
+    .expect("should have a response");
     let gate = response
         .feature_gates
         .get("test_id_list")
         .expect("should have a gate");
 
     assert!(gate.value);
+}
+
+#[test]
+fn test_enriched_id_list_memberships_are_authoritative_for_gcir() {
+    let specs_data = load_specs_data("eval_proj_dcs.json");
+    let always_false = |_: &str, _: &str| false;
+
+    let mut member = StatsigUser::with_user_id("dan_1");
+    member.set_custom_ids(HashMap::from([(
+        "companyID".to_string(),
+        "123".to_string(),
+    )]));
+    Arc::make_mut(&mut member.data).id_list_memberships = Some(HashMap::from([(
+        "pmWkWSBC".to_string(),
+        HashSet::from(["company_id_list".to_string()]),
+    )]));
+
+    let response = generate_v1_response(
+        &member,
+        &specs_data,
+        IdListResolution::Callback(&always_false),
+        None,
+    )
+    .expect("should have a response");
+    assert!(response.feature_gates["test_id_list"].value);
+
+    Arc::make_mut(&mut member.data).id_list_memberships = Some(HashMap::new());
+    let response = generate_v1_response(
+        &member,
+        &specs_data,
+        IdListResolution::Callback(&|_, _| true),
+        None,
+    )
+    .expect("should have a response");
+    assert!(!response.feature_gates["test_id_list"].value);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -81,15 +123,27 @@ async fn test_different_specs_payloads() {
         let task = tokio::spawn(async move {
             // ensure all tasks are queued up before we start generating responses
             tokio::time::sleep_until(deadline).await;
+            let user = direct_gcir_user();
 
             if i % 2 == 0 {
-                let res = generate_response(&eval_proj_dcs, IdListResolution::MapLookup(&id_lists));
+                let res = generate_v1_response(
+                    &user,
+                    &eval_proj_dcs,
+                    IdListResolution::MapLookup(&id_lists),
+                    None,
+                )
+                .expect("should have a response");
                 if res.dynamic_configs.len() == 65 {
                     success_count.fetch_add(1, Ordering::Relaxed);
                 }
             } else {
-                let res =
-                    generate_response(&big_number_dcs, IdListResolution::MapLookup(&id_lists));
+                let res = generate_v1_response(
+                    &user,
+                    &big_number_dcs,
+                    IdListResolution::MapLookup(&id_lists),
+                    None,
+                )
+                .expect("should have a response");
                 if res.dynamic_configs.len() == 1 {
                     success_count.fetch_add(1, Ordering::Relaxed);
                 }
@@ -104,42 +158,11 @@ async fn test_different_specs_payloads() {
     assert_eq!(success_count.load(Ordering::SeqCst), 100);
 }
 
-fn load_specs_data(path: &str) -> SpecsResponseFull {
-    let contents = load_contents(path);
-    serde_json::from_str::<SpecsResponseFull>(&contents).expect("should parse specs data")
-}
-
-fn generate_response(
-    specs_data: &SpecsResponseFull,
-    id_list_resolution: IdListResolution,
-) -> InitializeResponse {
+fn direct_gcir_user() -> StatsigUser {
     let mut user = StatsigUser::with_user_id("dan_1");
     user.set_custom_ids(HashMap::from([(
         "companyID".to_string(),
         "123".to_string(),
     )]));
-    let user_internal = StatsigUserInternal {
-        user_ref: &user,
-        statsig_instance: None,
-    };
-    let hashing = HashUtil::new();
-
-    let mut ctx = EvaluatorContext::new(
-        &user_internal,
-        specs_data,
-        id_list_resolution,
-        &hashing,
-        None,
-        None,
-        false,
-        None,
-        true,
-    );
-
-    let options = ClientInitResponseOptions {
-        hash_algorithm: Some(HashAlgorithm::None),
-        ..Default::default()
-    };
-
-    GCIRFormatter::generate_v1_format(&mut ctx, &options).expect("should have a response")
+    user
 }

@@ -1,7 +1,7 @@
 use statsig_rust::{
     dyn_value, evaluation::dynamic_string::DynamicString, StatsigUserBuilder, StatsigUserDataMap,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 macro_rules! map {
     ($($key:expr => $value:expr),+ $(,)?) => {{
@@ -172,4 +172,18 @@ fn test_setting_attr_map_fields() {
             dyn_value!(2),
         )]))
     );
+}
+
+#[test]
+fn test_setting_id_list_memberships() {
+    let memberships = HashMap::from([(
+        "pmWkWSBC".to_string(),
+        HashSet::from(["company_id_list".to_string()]),
+    )]);
+
+    let user = StatsigUserBuilder::new_with_user_id("user")
+        .id_list_memberships(memberships.clone())
+        .build();
+
+    assert_eq!(user.data.id_list_memberships, Some(memberships));
 }

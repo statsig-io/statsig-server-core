@@ -201,6 +201,11 @@ impl EventQueue {
         batches.pop_front()
     }
 
+    pub(crate) fn clear(&self) {
+        let _ = self.take_all_pending_events();
+        let _ = self.take_all_batches();
+    }
+
     pub fn reconcile_batching(&self) -> QueueReconcileResult {
         let mut pending_events: VecDeque<StatsigEventInternal> = self
             .take_all_pending_events()

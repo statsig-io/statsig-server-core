@@ -1,6 +1,7 @@
-use crate::statsig_global::StatsigGlobal;
+use crate::statsig_global::{current_pid, StatsigGlobal};
 use crate::StatsigErr;
 use crate::{log_d, log_e};
+use arc_swap::{ArcSwap, Guard};
 use futures::future::join_all;
 use parking_lot::Mutex;
 use std::collections::HashMap;
@@ -21,9 +22,23 @@ struct TaskId {
 }
 
 pub struct StatsigRuntime {
-    spawned_tasks: Arc<Mutex<HashMap<TaskId, JoinHandle<()>>>>,
+    spawned_tasks: Arc<ArcSwap<ProcessLocalTasks>>,
     shutdown_notify: Arc<Notify>,
     is_shutdown: Arc<AtomicBool>,
+}
+
+struct ProcessLocalTasks {
+    pid: u32,
+    tasks: Arc<Mutex<HashMap<TaskId, JoinHandle<()>>>>,
+}
+
+impl ProcessLocalTasks {
+    fn new() -> Self {
+        Self {
+            pid: current_pid(),
+            tasks: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
 }
 
 impl StatsigRuntime {
@@ -32,7 +47,7 @@ impl StatsigRuntime {
         create_runtime_if_required();
 
         Arc::new(StatsigRuntime {
-            spawned_tasks: Arc::new(Mutex::new(HashMap::new())),
+            spawned_tasks: Arc::new(ArcSwap::from_pointee(ProcessLocalTasks::new())),
             shutdown_notify: Arc::new(Notify::new()),
             is_shutdown: Arc::new(AtomicBool::new(false)),
         })
@@ -61,7 +76,10 @@ impl StatsigRuntime {
     }
 
     pub fn get_num_active_tasks(&self) -> usize {
-        match self.spawned_tasks.try_lock_for(Duration::from_secs(5)) {
+        match self
+            .current_spawned_tasks()
+            .try_lock_for(Duration::from_secs(5))
+        {
             Some(lock) => lock.len(),
             None => {
                 log_e!(TAG, "Failed to lock spawned tasks for get_num_active_tasks");
@@ -73,7 +91,10 @@ impl StatsigRuntime {
     pub fn shutdown(&self) {
         self.shutdown_notify.notify_waiters();
 
-        match self.spawned_tasks.try_lock_for(Duration::from_secs(5)) {
+        match self
+            .current_spawned_tasks()
+            .try_lock_for(Duration::from_secs(5))
+        {
             Some(mut lock) => {
                 for (_, task) in lock.drain() {
                     task.abort();
@@ -92,7 +113,7 @@ impl StatsigRuntime {
     {
         let tag_string = tag.to_string();
         let shutdown_notify = self.shutdown_notify.clone();
-        let spawned_tasks = self.spawned_tasks.clone();
+        let spawned_tasks = self.current_spawned_tasks();
         let is_shutdown = self.is_shutdown.clone();
 
         log_d!(TAG, "Spawning task {}", tag);
@@ -114,7 +135,10 @@ impl StatsigRuntime {
     pub async fn await_tasks_with_tag(&self, tag: &str) {
         let mut handles = Vec::new();
 
-        match self.spawned_tasks.try_lock_for(Duration::from_secs(5)) {
+        match self
+            .current_spawned_tasks()
+            .try_lock_for(Duration::from_secs(5))
+        {
             Some(mut lock) => {
                 let keys: Vec<TaskId> = lock.keys().cloned().collect();
                 for key in &keys {
@@ -149,7 +173,10 @@ impl StatsigRuntime {
             tokio_id: *handle_id,
         };
 
-        let handle = match self.spawned_tasks.try_lock_for(Duration::from_secs(5)) {
+        let handle = match self
+            .current_spawned_tasks()
+            .try_lock_for(Duration::from_secs(5))
+        {
             Some(mut lock) => match lock.remove(&task_id) {
                 Some(handle) => handle,
                 None => {
@@ -174,7 +201,8 @@ impl StatsigRuntime {
     }
 
     pub fn get_running_task_ids(&self) -> Vec<(String, String)> {
-        let tasks = match self.spawned_tasks.try_lock_for(Duration::from_secs(5)) {
+        let spawned_tasks = self.current_spawned_tasks();
+        let tasks = match spawned_tasks.try_lock_for(Duration::from_secs(5)) {
             Some(lock) => lock,
             None => {
                 log_e!(TAG, "Failed to lock spawned tasks for get_running_task_ids");
@@ -188,6 +216,25 @@ impl StatsigRuntime {
             .collect()
     }
 
+    #[cfg(feature = "with_grpc")]
+    pub(crate) fn has_running_task(&self, tag: &str, handle_id: &tokio::task::Id) -> bool {
+        let spawned_tasks = self.current_spawned_tasks();
+        let tasks = match spawned_tasks.try_lock_for(Duration::from_secs(5)) {
+            Some(lock) => lock,
+            None => {
+                log_e!(TAG, "Failed to lock spawned tasks for has_running_task");
+                return false;
+            }
+        };
+
+        tasks
+            .get(&TaskId {
+                tag: tag.to_string(),
+                tokio_id: *handle_id,
+            })
+            .is_some_and(|handle| !handle.is_finished())
+    }
+
     fn insert_join_handle(&self, tag: &str, handle: JoinHandle<()>) -> tokio::task::Id {
         let handle_id = handle.id();
         let task_id = TaskId {
@@ -195,7 +242,10 @@ impl StatsigRuntime {
             tokio_id: handle_id,
         };
 
-        match self.spawned_tasks.try_lock_for(Duration::from_secs(5)) {
+        match self
+            .current_spawned_tasks()
+            .try_lock_for(Duration::from_secs(5))
+        {
             Some(mut lock) => {
                 lock.insert(task_id, handle);
             }
@@ -205,6 +255,28 @@ impl StatsigRuntime {
         }
 
         handle_id
+    }
+
+    fn current_spawned_tasks(&self) -> Arc<Mutex<HashMap<TaskId, JoinHandle<()>>>> {
+        let pid = current_pid();
+        loop {
+            let current = self.spawned_tasks.load_full();
+            if current.pid == pid {
+                return current.tasks.clone();
+            }
+
+            let replacement = Arc::new(ProcessLocalTasks::new());
+            let previous = Guard::into_inner(
+                self.spawned_tasks
+                    .compare_and_swap(&current, replacement.clone()),
+            );
+            if Arc::ptr_eq(&previous, &current) {
+                // The inherited task registry may be locked by a parent thread
+                // that does not exist in this child. Never lock or drop it.
+                std::mem::forget(previous);
+                return replacement.tasks.clone();
+            }
+        }
     }
 }
 
@@ -311,5 +383,67 @@ impl Drop for StatsigRuntime {
         //     // moving inner to a new thread will prevent a panic
         //     drop(inner);
         // });
+    }
+}
+
+#[cfg(all(test, unix))]
+mod fork_tests {
+    use super::*;
+    use serial_test::serial;
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    #[serial]
+    fn forked_child_does_not_wait_on_inherited_spawned_tasks_lock() {
+        let runtime = StatsigRuntime::get_runtime();
+        let tasks = runtime.current_spawned_tasks();
+        let (locked_tx, locked_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+
+        let holder = thread::spawn(move || {
+            let _guard = tasks.lock();
+            locked_tx.send(()).unwrap();
+            release_rx.recv().unwrap();
+        });
+        locked_rx.recv_timeout(Duration::from_secs(1)).unwrap();
+
+        let child_pid = unsafe { libc::fork() };
+        assert!(child_pid >= 0, "fork failed");
+
+        if child_pid == 0 {
+            let count = runtime.get_num_active_tasks();
+            let exit_code = if count == 0 { 0 } else { 1 };
+            unsafe { libc::_exit(exit_code) };
+        }
+
+        let status = wait_for_child(child_pid, Duration::from_secs(1));
+        release_tx.send(()).unwrap();
+        holder.join().unwrap();
+
+        assert!(libc::WIFEXITED(status), "child did not exit normally");
+        assert_eq!(libc::WEXITSTATUS(status), 0);
+        StatsigGlobal::reset();
+    }
+
+    fn wait_for_child(child_pid: libc::pid_t, timeout: Duration) -> libc::c_int {
+        let deadline = Instant::now() + timeout;
+        loop {
+            let mut status = 0;
+            let result = unsafe { libc::waitpid(child_pid, &mut status, libc::WNOHANG) };
+            assert!(result >= 0, "waitpid failed");
+            if result == child_pid {
+                return status;
+            }
+            if Instant::now() >= deadline {
+                unsafe {
+                    libc::kill(child_pid, libc::SIGKILL);
+                    libc::waitpid(child_pid, &mut status, 0);
+                }
+                return status;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
     }
 }
