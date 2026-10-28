@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 
+include("${CMAKE_CURRENT_LIST_DIR}/version_metadata_test.cmake")
+
 FetchContent_Declare(googletest
   GIT_REPOSITORY    https://github.com/google/googletest.git
   GIT_TAG           v1.12.0
