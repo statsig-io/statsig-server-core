@@ -248,9 +248,10 @@ impl StatsigDataStoreSpecsAdapter {
         bytes_error: Option<StatsigErr>,
     ) -> Result<CachedSpecs, StatsigErr> {
         if let Some(e) = bytes_error {
-            log_w!(
+            // Byte methods are optional; string-only stores are a supported configuration.
+            log_d!(
                 TAG,
-                "Failed to read specs from data store as bytes. Falling back to string read: {}",
+                "Data store bytes read is not implemented. Falling back to string read: {}",
                 e
             );
         }

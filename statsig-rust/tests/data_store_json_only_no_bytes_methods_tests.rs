@@ -3,12 +3,17 @@ mod utils;
 use async_trait::async_trait;
 use statsig_rust::{
     data_store_interface::{DataStoreResponse, DataStoreTrait, RequestPath},
+    output_logger::LogLevel,
     SpecsSource, Statsig, StatsigErr, StatsigOptions,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::time::{sleep, Duration};
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
+use utils::{
+    mock_data_store::MockDataStore,
+    mock_log_provider::{MockLogProvider, RecordedLog},
+};
 
 const EVAL_PROJ_JSON: &str = include_str!("data/eval_proj_dcs.json");
 
@@ -82,6 +87,7 @@ impl DataStoreTrait for StringOnlyDataStore {
 
 #[tokio::test]
 async fn test_json_path_works_without_explicit_bytes_methods() {
+    let log_provider = Arc::new(MockLogProvider::new());
     let mock_scrapi = MockScrapi::new().await;
     let data_store = Arc::new(StringOnlyDataStore::new());
     let specs_url = mock_scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs);
@@ -108,6 +114,8 @@ async fn test_json_path_works_without_explicit_bytes_methods() {
 
     {
         let mut options = StatsigOptions::new();
+        options.output_log_level = Some(LogLevel::Debug);
+        options.output_logger_provider = Some(log_provider.clone());
         options.data_store = Some(data_store.clone());
         options.specs_url = Some(specs_url.clone());
         options.log_event_url = Some(log_event_url.clone());
@@ -154,6 +162,8 @@ async fn test_json_path_works_without_explicit_bytes_methods() {
 
     let init_details = {
         let mut options = StatsigOptions::new();
+        options.output_log_level = Some(LogLevel::Debug);
+        options.output_logger_provider = Some(log_provider.clone());
         options.data_store = Some(data_store.clone());
         options.specs_url = Some(specs_url.clone());
         options.log_event_url = Some(log_event_url.clone());
@@ -177,4 +187,45 @@ async fn test_json_path_works_without_explicit_bytes_methods() {
         data_store.value_for_key(&json_key),
         Some(EVAL_PROJ_JSON.to_string())
     );
+
+    {
+        let logs = log_provider.logs.lock();
+        for tag in ["StatsigDataStoreSpecsAdapter", "SpecStore"] {
+            assert!(
+                logs.iter().any(|entry| matches!(entry,
+                    RecordedLog::Debug(log_tag, message)
+                        if log_tag == tag && message.contains("Bytes method not implemented")
+                )),
+                "Expected debug-level string fallback for {tag}"
+            );
+        }
+        assert!(
+            !logs.iter().any(|entry| matches!(entry,
+                RecordedLog::Warn(_, message) | RecordedLog::Error(_, message)
+                    if message.contains("Bytes method not implemented")
+            )),
+            "Optional byte methods must not warn when string fallback is supported"
+        );
+    }
+
+    // A real storage failure must still be visible at warning level.
+    log_provider.clear();
+    let failing_store = Arc::new(MockDataStore::new_with_byte_cache(false));
+    failing_store.mock_get_bytes_error("simulated storage failure");
+    let statsig = Statsig::new(
+        "secret-storage-failure",
+        Some(Arc::new(StatsigOptions {
+            data_store: Some(failing_store),
+            disable_network: Some(true),
+            output_log_level: Some(LogLevel::Debug),
+            output_logger_provider: Some(log_provider.clone()),
+            ..Default::default()
+        })),
+    );
+    let _ = statsig.initialize().await;
+    assert!(statsig.shutdown().await.is_ok());
+    assert!(log_provider.logs.lock().iter().any(|entry| matches!(entry,
+        RecordedLog::Warn(tag, message)
+            if tag == "StatsigDataStoreSpecsAdapter" && message.contains("simulated storage failure")
+    )));
 }
