@@ -25,6 +25,22 @@ Statsig helps you move faster with feature gates (feature flags), and/or dynamic
 
 Read through the Node [Documentation](https://docs.statsig.com/server-core/node-core?ref=gh_server_core) or check out the [Samples](https://github.com/statsig-io/statsig-server-core/tree/main/examples/node).
 
+## Experimental forward-proxy enrichment
+
+Import forward-proxy enrichment APIs from the experimental entry point:
+
+```typescript
+import {
+  ForwardProxyUserEnrichmentProvider,
+  StatsigFPUserBuilder,
+} from '@statsig/statsig-node-core/experimental';
+```
+
+These APIs are unstable and may change or be removed without notice. The FP
+classes are also grouped under the explicit `experimental` namespace on the
+main module; they are not top-level exports of the main module. `build()`
+returns a regular `StatsigUser` for use with the standard evaluation methods.
+
 ## Migrating ID-list DataStore snapshots
 
 Core defaults ID lists off, unlike Legacy Node. Set `enableIdLists: true` and

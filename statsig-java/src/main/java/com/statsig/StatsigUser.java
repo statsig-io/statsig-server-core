@@ -33,6 +33,12 @@ public class StatsigUser {
   }
 
   protected StatsigUser(StatsigUser.Builder builder) {
+    copyFields(builder);
+    initializeRef();
+    ResourceCleaner.register(this, new CleaningAction(this.ref));
+  }
+
+  private void copyFields(StatsigUser.Builder builder) {
     this.userID = builder.userID;
     this.customIDs = builder.customIDs;
     this.email = builder.email;
@@ -43,9 +49,6 @@ public class StatsigUser {
     this.country = builder.country;
     this.privateAttributes = builder.privateAttributes;
     this.custom = builder.custom;
-
-    initializeRef();
-    ResourceCleaner.register(this, new CleaningAction(this.ref));
   }
 
   private void initializeRef() {
@@ -119,6 +122,12 @@ public class StatsigUser {
 
   long getRef() {
     return ref;
+  }
+
+  StatsigUser(long ref, StatsigUser.Builder builder) {
+    copyFields(builder);
+    this.ref = ref;
+    ResourceCleaner.register(this, new CleaningAction(this.ref));
   }
 
   // Builder Class

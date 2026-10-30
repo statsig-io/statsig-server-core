@@ -11,6 +11,7 @@ pub mod statsig_options_napi;
 pub mod statsig_result;
 pub mod statsig_types_napi;
 pub mod statsig_user_napi;
+pub mod user_enrichment_napi;
 
 mod statsig_metadata_napi;
 

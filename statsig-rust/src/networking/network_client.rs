@@ -52,6 +52,7 @@ pub struct NetworkClient {
     proxy_config: Option<ProxyConfig>,
     ca_cert_pem: Option<Vec<u8>>,
     silent_on_network_failure: bool,
+    fail_fast_on_client_error: bool,
     disable_file_streaming: bool,
     log_event_connection_reuse: bool,
     loggable_sdk_key: String,
@@ -106,6 +107,7 @@ impl NetworkClient {
             proxy_config,
             ca_cert_pem,
             silent_on_network_failure: false,
+            fail_fast_on_client_error: false,
             disable_file_streaming: options
                 .map(|opts| opts.disable_disk_access.unwrap_or(false))
                 .unwrap_or(false),
@@ -219,7 +221,16 @@ impl NetworkClient {
                 }
             };
 
-            let status = response.status_code;
+            // Enrichment retries successful headers followed by a failed body read.
+            // Keep other clients' historical response handling unchanged.
+            let body_failed = self.fail_fast_on_client_error
+                && response.error.is_some()
+                && (200..300).contains(&response.status_code.unwrap_or(0));
+            let status = if body_failed {
+                None
+            } else {
+                response.status_code
+            };
             let raw_error_message = response
                 .error
                 .clone()
@@ -299,7 +310,12 @@ impl NetworkClient {
                 return Err(error);
             }
 
-            if NON_RETRY_CODES.contains(&status.unwrap_or(0)) {
+            let status_code = status.unwrap_or(0);
+            if NON_RETRY_CODES.contains(&status_code)
+                || (self.fail_fast_on_client_error
+                    && (400..500).contains(&status_code)
+                    && status_code != 408)
+            {
                 let error = NetworkError::RequestNotRetryable(
                     request_args.url.clone(),
                     status,
@@ -310,12 +326,17 @@ impl NetworkClient {
             }
 
             if attempt >= request_args.retries {
-                let error = NetworkError::RetriesExhausted(
-                    request_args.url.clone(),
-                    status,
-                    attempt + 1,
-                    error_message,
-                );
+                let error =
+                    if self.fail_fast_on_client_error && response.is_timeout && status.is_none() {
+                        NetworkError::RequestTimedOut(request_args.url.clone())
+                    } else {
+                        NetworkError::RetriesExhausted(
+                            request_args.url.clone(),
+                            status,
+                            attempt + 1,
+                            error_message,
+                        )
+                    };
                 self.log_warning(&error, &request_args);
                 return Err(error);
             }
@@ -338,6 +359,13 @@ impl NetworkClient {
 
     pub fn mute_network_error_log(mut self) -> Self {
         self.silent_on_network_failure = true;
+        self
+    }
+
+    /// Opt in to failing immediately on client errors, except request timeouts.
+    /// Other clients retain the existing retry policy.
+    pub(crate) fn fail_fast_on_client_error(mut self) -> Self {
+        self.fail_fast_on_client_error = true;
         self
     }
 

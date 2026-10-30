@@ -8,6 +8,7 @@ type RequestUrl = String;
 #[derive(PartialEq, Debug, Clone, Serialize)]
 pub enum NetworkError {
     ShutdownError(RequestUrl),
+    RequestTimedOut(RequestUrl),
     DisableNetworkOn(RequestUrl),
     SerializationError(RequestUrl, String),
 
@@ -19,6 +20,7 @@ pub enum NetworkError {
 impl NetworkError {
     pub fn name(&self) -> &'static str {
         match self {
+            NetworkError::RequestTimedOut(_) => "RequestTimedOut",
             NetworkError::ShutdownError(_) => "ShutdownError",
             NetworkError::DisableNetworkOn(_) => "DisableNetworkOn",
             NetworkError::SerializationError(_, _) => "SerializationError",
@@ -32,6 +34,9 @@ impl NetworkError {
 impl fmt::Display for NetworkError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            NetworkError::RequestTimedOut(url) => {
+                write!(f, "RequestTimedOut: {}", sanitize_secret_key(url))
+            }
             NetworkError::ShutdownError(url) => {
                 let url = sanitize_secret_key(url);
                 write!(f, "ShutdownError: {url}")

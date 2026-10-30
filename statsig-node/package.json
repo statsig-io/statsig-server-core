@@ -54,5 +54,13 @@
     "overrides": {
       "minimatch": "10.2.1"
     }
+  },
+  "exports": {
+    ".": "./index.js",
+    "./experimental": {
+      "types": "./experimental.d.ts",
+      "default": "./experimental.js"
+    },
+    "./*": "./*"
   }
 }

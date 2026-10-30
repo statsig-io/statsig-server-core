@@ -96,6 +96,8 @@ impl RequestArgs {
 }
 
 pub struct Response {
+    /// Transport timeout reported by the HTTP implementation, never inferred from error text.
+    pub is_timeout: bool,
     pub status_code: Option<u16>,
     pub data: Option<ResponseData>,
     pub error: Option<String>,

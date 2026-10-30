@@ -376,3 +376,4 @@ module.exports.__internal__testPersistentStorage = nativeBinding.__internal__tes
 module.exports.GCIRResponseFormat = nativeBinding.GCIRResponseFormat
 module.exports.OverrideAdapterType = nativeBinding.OverrideAdapterType
 module.exports.statsigCaptureLogLine = nativeBinding.statsigCaptureLogLine
+module.exports.experimental = nativeBinding.experimental
