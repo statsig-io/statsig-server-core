@@ -1617,7 +1617,7 @@ async fn incomplete_http_startup_is_atomic_only_for_opted_in_snapshots() {
             .await
             .is_err());
         assert!(
-            listener.contains("a", "2Tv4fIVX") == !supported,
+            listener.contains("a", "2Tv4fIVX") != supported,
             "snapshot opt-in={supported}, initializer failure={initialize_fails}"
         );
         assert!(!listener.contains("b", "2Tv4fIVX"));

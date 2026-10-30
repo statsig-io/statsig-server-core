@@ -253,6 +253,16 @@ class StatsigJNI {
 
   public static native void statsigUserRelease(long userRef);
 
+  public static native long statsigFpEnrichmentProviderCreate(
+      String sdkKey, String url, long timeoutMs, long retries, ProxyConfig proxyConfig);
+
+  public static native void statsigFpEnrichmentProviderRelease(long providerRef);
+
+  public static native String statsigFpUserBuilderBuildBlocking(long providerRef, String jsonData);
+
+  public static native boolean statsigFpUserBuilderBuildAsync(
+      long providerRef, String jsonData, java.util.function.Consumer<String> callback);
+
   // ------------------------------------------------------------------------------------------------ [StatsigOptions]
 
   /**

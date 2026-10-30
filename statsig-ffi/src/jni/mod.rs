@@ -6,3 +6,4 @@ mod statsig_options_jni;
 mod statsig_output_logger_provider_jni;
 mod statsig_persistent_storage_jni;
 mod statsig_user_jni;
+mod user_enrichment_jni;

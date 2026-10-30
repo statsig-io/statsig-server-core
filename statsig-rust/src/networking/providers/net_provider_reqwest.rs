@@ -67,6 +67,7 @@ impl NetworkProvider for NetworkProviderReqwest {
         if let Some(is_shutdown) = &args.is_shutdown {
             if is_shutdown.load(std::sync::atomic::Ordering::SeqCst) {
                 return Response {
+                    is_timeout: false,
                     status_code: None,
                     data: None,
                     error: Some("Request was shutdown".to_string()),
@@ -79,6 +80,7 @@ impl NetworkProvider for NetworkProviderReqwest {
             Err(message) => {
                 log_e!(TAG, "{}", message);
                 return Response {
+                    is_timeout: false,
                     status_code: None,
                     data: None,
                     error: Some(format!("{CLIENT_CONFIG_ERROR_PREFIX}{message}")),
@@ -87,6 +89,7 @@ impl NetworkProvider for NetworkProviderReqwest {
         };
 
         let mut error = None;
+        let mut is_timeout = false;
         let mut status_code = None;
         let mut data = None;
 
@@ -103,18 +106,21 @@ impl NetworkProvider for NetworkProviderReqwest {
 
                 match data_result {
                     Ok(response_data) => data = Some(response_data),
-                    Err(e) => {
+                    Err((e, timed_out)) => {
+                        is_timeout = timed_out;
                         error = Some(e.to_string());
                     }
                 }
             }
             Err(e) => {
+                is_timeout = e.is_timeout();
                 let error_message = get_error_message(e);
                 error = Some(error_message);
             }
         }
 
         Response {
+            is_timeout,
             status_code,
             data,
             error,
@@ -303,26 +309,25 @@ impl NetworkProviderReqwest {
 
     async fn write_response_to_temp_file(
         response: reqwest::Response,
-    ) -> Result<ResponseData, StatsigErr> {
+    ) -> Result<ResponseData, (StatsigErr, bool)> {
         let headers = get_response_headers(&response);
         let mut response = response;
         let mut temp_file = tempfile::spooled_tempfile(1024 * 1024 * 2); // 2MB
 
         let mut total_bytes = 0;
-        while let Some(item) = response
-            .chunk()
-            .await
-            .map_err(|e| StatsigErr::FileError(e.to_string()))?
-        {
+        while let Some(item) = response.chunk().await.map_err(|e| {
+            let timed_out = e.is_timeout();
+            (StatsigErr::FileError(get_error_message(e)), timed_out)
+        })? {
             total_bytes += item.len();
             temp_file
                 .write_all(&item)
-                .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+                .map_err(|e| (StatsigErr::FileError(e.to_string()), false))?;
         }
 
         temp_file
             .seek(SeekFrom::Start(0))
-            .map_err(|e| StatsigErr::FileError(e.to_string()))?;
+            .map_err(|e| (StatsigErr::FileError(e.to_string()), false))?;
 
         let reader = BufReader::new(temp_file);
 
@@ -336,12 +341,15 @@ impl NetworkProviderReqwest {
 
     async fn write_response_to_in_memory_buffer(
         response: reqwest::Response,
-    ) -> Result<ResponseData, StatsigErr> {
+    ) -> Result<ResponseData, (StatsigErr, bool)> {
         let headers = get_response_headers(&response);
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|e| StatsigErr::SerializationError(e.to_string()))?;
+        let bytes = response.bytes().await.map_err(|e| {
+            let timed_out = e.is_timeout();
+            (
+                StatsigErr::SerializationError(get_error_message(e)),
+                timed_out,
+            )
+        })?;
 
         log_d!(TAG, "Wrote {} bytes to in-memory buffer", bytes.len());
 

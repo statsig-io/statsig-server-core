@@ -48,6 +48,7 @@ dependencies {
 }
 
 test {
+    systemProperty "statsig.test.classpath", sourceSets.test.runtimeClasspath.asPath
     useJUnitPlatform()
 
     testLogging {

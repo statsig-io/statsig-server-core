@@ -334,6 +334,30 @@ export interface StatsigUserArgs {
   custom?: Record<string, string | number | boolean | Array<string | number | boolean> | null | undefined | Record<string, unknown>>
   privateAttributes?: Record<string, string | number | boolean | Array<string | number | boolean> | Record<string, unknown>>
 }
+
+export declare namespace experimental {
+  /** **Experimental.** Resolves ID-list memberships through a Statsig forward proxy. */
+  export class ForwardProxyUserEnrichmentProvider {
+    static create(sdkKey: string, options: ForwardProxyEnrichmentOptions): ForwardProxyUserEnrichmentProvider
+  }
+  export type ForwardProxyUserEnrichmentProviderNapi = ForwardProxyUserEnrichmentProvider
+  /**
+   * **Experimental.** Builds a `StatsigUser` whose ID-list memberships were
+   * resolved through a forward proxy. `build()` returns a normal `StatsigUser`.
+   */
+  export class StatsigFPUserBuilder {
+    constructor(provider: ForwardProxyUserEnrichmentProvider, args?: StatsigUserArgs | undefined | null)
+    build(): Promise<StatsigUser>
+  }
+  export type StatsigFPUserBuilderNapi = StatsigFPUserBuilder
+  /** **Experimental.** Options for `ForwardProxyUserEnrichmentProvider`. */
+  export interface ForwardProxyEnrichmentOptions {
+    url: string
+    timeoutMs?: number
+    retries?: number
+    proxyConfig?: ProxyConfig
+  }
+}
 // ---- Manually defined typing section ----- 
 
 export type StickyValues = {

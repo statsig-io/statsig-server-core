@@ -1,6 +1,6 @@
 {
   "name": "@statsig/statsig-node-core",
-  "version": "0.24.0",
+  "version": "0.24.1-beta.2610290204",
   "main": "index.js",
   "scripts": {
     "test": "jest --colors"
@@ -54,5 +54,13 @@
     "overrides": {
       "minimatch": "10.2.1"
     }
+  },
+  "exports": {
+    ".": "./index.js",
+    "./experimental": {
+      "types": "./experimental.d.ts",
+      "default": "./experimental.js"
+    },
+    "./*": "./*"
   }
 }

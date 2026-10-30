@@ -44,6 +44,7 @@ pub mod data_store_interface;
 mod data_store_lifecycle;
 pub mod evaluation;
 pub mod event_logging;
+pub mod experimental;
 pub mod gcir;
 pub mod global_configs;
 pub mod hashing;
