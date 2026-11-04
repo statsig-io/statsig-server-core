@@ -222,6 +222,17 @@ impl StatsigHttpSpecsAdapter {
         }
     }
 
+    /// Overrides the init-request timeout taken from `StatsigOptions`.
+    /// Background sync does not use this value.
+    pub fn set_init_timeout_ms(&mut self, timeout_ms: u64) {
+        self.init_timeout_ms = timeout_ms;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn init_timeout_ms(&self) -> u64 {
+        self.init_timeout_ms
+    }
+
     pub fn force_shutdown(&self) {
         self.signal_shutdown();
     }

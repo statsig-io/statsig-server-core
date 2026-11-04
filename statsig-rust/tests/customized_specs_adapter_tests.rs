@@ -185,3 +185,156 @@ pub mod specs_adapter_tests {
         (adapter, mock_proxy, data_store, mock_listener)
     }
 }
+
+mod http_init_timeout_tests {
+    use crate::utils::mock_data_store::MockDataStore;
+    use crate::utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
+    use statsig_rust::{
+        InitializeDetails, SpecAdapterConfig, SpecsAdapterType, SpecsSource, Statsig,
+        StatsigOptions,
+    };
+    use std::sync::Arc;
+
+    const DCS: &str = include_str!("data/eval_proj_dcs.json");
+
+    fn adapter_config(
+        adapter_type: SpecsAdapterType,
+        init_timeout_ms: u64,
+        specs_url: Option<String>,
+    ) -> SpecAdapterConfig {
+        SpecAdapterConfig {
+            adapter_type,
+            init_timeout_ms,
+            specs_url,
+            authentication_mode: None,
+            ca_cert_path: None,
+            client_cert_path: None,
+            client_key_path: None,
+            domain_name: None,
+        }
+    }
+
+    async fn scrapi_with_dcs(status: u16, delay_ms: u64) -> MockScrapi {
+        let mock_scrapi = MockScrapi::new().await;
+        mock_scrapi
+            .stub(EndpointStub {
+                method: Method::GET,
+                response: StubData::String(DCS.to_string()),
+                status,
+                delay_ms,
+                ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
+            })
+            .await;
+        mock_scrapi
+    }
+
+    async fn initialize(
+        scrapi: &MockScrapi,
+        data_store: Arc<MockDataStore>,
+        network_timeout_ms: u64,
+        global_timeout_ms: u64,
+    ) -> InitializeDetails {
+        std::env::set_var("STATSIG_RUNNING_TESTS", "true");
+        let options = StatsigOptions {
+            data_store: Some(data_store),
+            disable_all_logging: Some(true),
+            disable_country_lookup: Some(true),
+            enable_id_lists: Some(false),
+            init_timeout_ms: Some(global_timeout_ms),
+            spec_adapters_config: Some(vec![
+                adapter_config(
+                    SpecsAdapterType::NetworkHttp,
+                    network_timeout_ms,
+                    Some(scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs)),
+                ),
+                adapter_config(SpecsAdapterType::DataStore, 15_000, None),
+            ]),
+            ..StatsigOptions::new()
+        };
+        let statsig = Statsig::new("secret-http-init-timeout", Some(Arc::new(options)));
+        let details = statsig.initialize_with_details().await.unwrap();
+        statsig.shutdown().await.unwrap();
+        details
+    }
+
+    fn data_store_was_read(data_store: &MockDataStore) -> bool {
+        data_store.num_get_calls() + data_store.num_get_bytes_calls() > 0
+    }
+
+    #[tokio::test]
+    async fn explicit_http_init_timeout_falls_back_to_data_store_when_network_stalls() {
+        let scrapi = scrapi_with_dcs(200, 3_000).await;
+        let data_store = Arc::new(MockDataStore::with_json_cache(DCS));
+
+        let details = initialize(&scrapi, data_store.clone(), 200, 10_000).await;
+
+        assert!(details.init_success);
+        assert_eq!(
+            details.source,
+            SpecsSource::Adapter("DataStore".to_string())
+        );
+        // The request gives up at the 200ms adapter timeout, so init finishes
+        // before the 3s stall would have completed.
+        assert!(
+            details.duration_ms < 3_000,
+            "init took {}ms",
+            details.duration_ms
+        );
+        assert!(data_store_was_read(&data_store));
+        assert!(scrapi.times_called_for_endpoint(Endpoint::DownloadConfigSpecs) >= 1);
+    }
+
+    #[tokio::test]
+    async fn zero_http_adapter_timeout_does_not_fall_back_early() {
+        let scrapi = scrapi_with_dcs(200, 300).await;
+        let data_store = Arc::new(MockDataStore::with_json_cache(DCS));
+
+        let details = initialize(&scrapi, data_store.clone(), 0, 2_000).await;
+
+        assert!(details.init_success);
+        assert_eq!(details.source, SpecsSource::Network);
+        assert!(!data_store_was_read(&data_store));
+    }
+
+    #[tokio::test]
+    async fn zero_http_adapter_timeout_uses_default_instead_of_global() {
+        let scrapi = scrapi_with_dcs(200, 5_000).await;
+        let data_store = Arc::new(MockDataStore::with_json_cache(DCS));
+
+        let details = initialize(&scrapi, data_store.clone(), 0, 10_000).await;
+
+        assert!(details.init_success);
+        assert_eq!(
+            details.source,
+            SpecsSource::Adapter("DataStore".to_string())
+        );
+        // The request gives up at the 3000ms default, not the 10s global timeout,
+        // so init finishes before the 5s stall would have completed.
+        assert!(
+            details.duration_ms < 5_000,
+            "init took {}ms",
+            details.duration_ms
+        );
+        assert!(data_store_was_read(&data_store));
+    }
+
+    #[tokio::test]
+    async fn immediate_http_error_still_falls_back_to_data_store() {
+        let scrapi = scrapi_with_dcs(503, 0).await;
+        let data_store = Arc::new(MockDataStore::with_json_cache(DCS));
+
+        let details = initialize(&scrapi, data_store.clone(), 10_000, 5_000).await;
+
+        assert!(details.init_success);
+        assert_eq!(
+            details.source,
+            SpecsSource::Adapter("DataStore".to_string())
+        );
+        assert!(data_store_was_read(&data_store));
+        assert!(
+            details.duration_ms < 5_000,
+            "init took {}ms",
+            details.duration_ms
+        );
+    }
+}

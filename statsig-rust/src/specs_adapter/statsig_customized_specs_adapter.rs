@@ -36,11 +36,8 @@ impl StatsigCustomizedSpecsAdapter {
                     }
                 }
                 SpecsAdapterType::NetworkHttp => {
-                    // Since strategies is an order list, we will just use i
-                    adapters.push(Arc::new(StatsigHttpSpecsAdapter::new(
-                        sdk_key,
-                        Some(options),
-                        config.specs_url.clone(),
+                    adapters.push(Arc::new(Self::http_adapter_from_config(
+                        sdk_key, options, config,
                     )));
                 }
                 SpecsAdapterType::DataStore => match options.data_store.clone() {
@@ -72,6 +69,22 @@ impl StatsigCustomizedSpecsAdapter {
         let adapters: Vec<Arc<dyn SpecsAdapter>> =
             vec![Arc::new(data_store_spec_adapter), Arc::new(http_adapter)];
         StatsigCustomizedSpecsAdapter { adapters }
+    }
+
+    fn http_adapter_from_config(
+        sdk_key: &str,
+        options: &StatsigOptions,
+        config: &SpecAdapterConfig,
+    ) -> StatsigHttpSpecsAdapter {
+        let mut adapter =
+            StatsigHttpSpecsAdapter::new(sdk_key, Some(options), config.specs_url.clone());
+        // The request layer treats 0 as "no init timeout", so 0 must not reach it.
+        adapter.set_init_timeout_ms(if config.init_timeout_ms > 0 {
+            config.init_timeout_ms
+        } else {
+            super::DEFAULT_INIT_TIMEOUT_MS
+        });
+        adapter
     }
 
     #[cfg(feature = "with_grpc")]
@@ -197,5 +210,52 @@ impl SpecsAdapter for StatsigCustomizedSpecsAdapter {
 
     fn get_type_name(&self) -> String {
         stringify!(StatsigCustomizedSpecsAdapter).to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::StatsigOptions;
+
+    fn network_config(init_timeout_ms: u64) -> SpecAdapterConfig {
+        SpecAdapterConfig {
+            adapter_type: SpecsAdapterType::NetworkHttp,
+            init_timeout_ms,
+            specs_url: None,
+            authentication_mode: None,
+            ca_cert_path: None,
+            client_cert_path: None,
+            client_key_path: None,
+            domain_name: None,
+        }
+    }
+
+    #[test]
+    fn explicit_per_adapter_timeout_overrides_global() {
+        let options = StatsigOptions {
+            init_timeout_ms: Some(30_000),
+            ..StatsigOptions::default()
+        };
+        let adapter = StatsigCustomizedSpecsAdapter::http_adapter_from_config(
+            "secret-key",
+            &options,
+            &network_config(10_000),
+        );
+        assert_eq!(adapter.init_timeout_ms(), 10_000);
+    }
+
+    #[test]
+    fn zero_per_adapter_timeout_uses_default() {
+        let options = StatsigOptions {
+            init_timeout_ms: Some(30_000),
+            ..StatsigOptions::default()
+        };
+        let adapter = StatsigCustomizedSpecsAdapter::http_adapter_from_config(
+            "secret-key",
+            &options,
+            &network_config(0),
+        );
+        assert_eq!(adapter.init_timeout_ms(), crate::DEFAULT_INIT_TIMEOUT_MS);
     }
 }

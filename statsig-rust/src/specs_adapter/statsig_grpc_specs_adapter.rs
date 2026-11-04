@@ -188,7 +188,11 @@ impl StatsigGrpcSpecsAdapter {
                 retry_attempts: 0.into(),
                 is_retrying: false.into(),
             },
-            init_timeout: Duration::from_millis(config.init_timeout_ms),
+            init_timeout: Duration::from_millis(if config.init_timeout_ms > 0 {
+                config.init_timeout_ms
+            } else {
+                super::DEFAULT_INIT_TIMEOUT_MS
+            }),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
             http_specs_adapter: Arc::new(fallback_adapter),
             cancel_poll_notify: Arc::new(Notify::new()),

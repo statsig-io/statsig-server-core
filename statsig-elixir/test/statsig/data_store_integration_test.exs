@@ -120,7 +120,9 @@ defmodule Statsig.DataStore.IntegrationTest do
   defmodule MockScrapi do
     defstruct [:pid, :socket, :specs_url]
 
-    def start_link(response_body, test_pid) do
+    # Pass `stall_ms: n` to send the headers and half the body, then hold the
+    # connection open for `n` ms before closing it.
+    def start_link(response_body, test_pid, opts \\ []) do
       {:ok, socket} =
         :gen_tcp.listen(0, [
           :binary,
@@ -131,7 +133,8 @@ defmodule Statsig.DataStore.IntegrationTest do
         ])
 
       {:ok, {{127, 0, 0, 1}, port}} = :inet.sockname(socket)
-      pid = spawn_link(fn -> accept_loop(socket, response_body, test_pid) end)
+      stall_ms = Keyword.get(opts, :stall_ms)
+      pid = spawn_link(fn -> accept_loop(socket, response_body, test_pid, stall_ms) end)
 
       {:ok,
        %__MODULE__{
@@ -152,23 +155,23 @@ defmodule Statsig.DataStore.IntegrationTest do
       end
     end
 
-    defp accept_loop(socket, response_body, test_pid) do
+    defp accept_loop(socket, response_body, test_pid, stall_ms) do
       case :gen_tcp.accept(socket) do
         {:ok, client} ->
-          handle_client(client, response_body, test_pid)
-          accept_loop(socket, response_body, test_pid)
+          handle_client(client, response_body, test_pid, stall_ms)
+          accept_loop(socket, response_body, test_pid, stall_ms)
 
         {:error, _reason} ->
           :ok
       end
     end
 
-    defp handle_client(client, response_body, test_pid) do
+    defp handle_client(client, response_body, test_pid, stall_ms) do
       case :gen_tcp.recv(client, 0, 5_000) do
         {:ok, request} ->
           request_line = request |> String.split("\r\n", parts: 2) |> hd()
           send(test_pid, {:mock_scrapi_request, request_line})
-          :gen_tcp.send(client, http_response(response_body))
+          send_response(client, response_body, stall_ms)
 
         {:error, _reason} ->
           :ok
@@ -177,14 +180,27 @@ defmodule Statsig.DataStore.IntegrationTest do
       :gen_tcp.close(client)
     end
 
+    defp send_response(client, response_body, nil) do
+      :gen_tcp.send(client, http_response(response_body))
+    end
+
+    defp send_response(client, response_body, stall_ms) do
+      partial = binary_part(response_body, 0, div(byte_size(response_body), 2))
+      :gen_tcp.send(client, [http_headers(response_body), partial])
+      Process.sleep(stall_ms)
+    end
+
     defp http_response(response_body) do
+      [http_headers(response_body), response_body]
+    end
+
+    defp http_headers(response_body) do
       [
         "HTTP/1.1 200 OK\r\n",
         "content-type: application/json\r\n",
         "content-length: #{byte_size(response_body)}\r\n",
         "connection: close\r\n",
-        "\r\n",
-        response_body
+        "\r\n"
       ]
     end
   end
@@ -299,6 +315,72 @@ defmodule Statsig.DataStore.IntegrationTest do
 
     counts = TestDataStore.counts(data_store_ref)
     assert counts.get == 1
+  end
+
+  @tag capture_log: false
+  test "a stalled network adapter falls back to the data store within its own init timeout" do
+    parent = self()
+
+    {:ok, data_store_ref} = DataStore.start_link(TestDataStore, %{test_pid: parent})
+
+    on_exit(fn ->
+      if Process.alive?(data_store_ref.pid) do
+        DataStore.stop(data_store_ref)
+      end
+    end)
+
+    assert_receive {:callback, :init}
+
+    {:ok, mock_scrapi} =
+      MockScrapi.start_link(TestDataStore.eval_proj_data(), parent, stall_ms: 10_000)
+
+    on_exit(fn ->
+      MockScrapi.stop(mock_scrapi)
+    end)
+
+    options = %Statsig.Options{
+      data_store: data_store_ref,
+      disable_all_logging: true,
+      init_timeout_ms: 5_000,
+      spec_adapter_configs: [
+        %Statsig.SpecAdapterConfig{
+          adapter_type: "network_http",
+          specs_url: MockScrapi.specs_url(mock_scrapi),
+          init_timeout_ms: 300
+        },
+        %Statsig.SpecAdapterConfig{
+          adapter_type: "data_store",
+          init_timeout_ms: 3_000
+        }
+      ]
+    }
+
+    sdk_key = System.get_env("test_api_key") || "secret-key"
+    assert {:ok, _pid} = Statsig.start_link(sdk_key, options)
+
+    on_exit(fn ->
+      Statsig.shutdown()
+
+      if pid = Process.whereis(Statsig) do
+        Process.exit(pid, :normal)
+      end
+    end)
+
+    {elapsed_us, _result} = :timer.tc(fn -> Statsig.initialize() end)
+    elapsed_ms = div(elapsed_us, 1_000)
+
+    assert_receive {:mock_scrapi_request, request_line}, 1_000
+    assert String.contains?(request_line, "/v2/download_config_specs/")
+
+    # Before the fix the stalled request used the 5s global timeout, so init
+    # timed out before the data store was tried.
+    assert elapsed_ms < 4_000, "initialize took #{elapsed_ms}ms"
+
+    counts = TestDataStore.counts(data_store_ref)
+    assert counts.get == 1
+
+    user = User.new(%{user_id: "stalled-network-user"})
+    assert {:ok, true} = Statsig.check_gate("test_public", user)
   end
 
   @tag capture_log: false
