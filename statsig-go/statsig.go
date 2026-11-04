@@ -76,6 +76,7 @@ func (s *Statsig) FlushEvents() {
 }
 
 func (s *Statsig) LogEvent(user *StatsigUser, event EventPayload) {
+	defer runtime.KeepAlive(user)
 	eventJson, err := json.Marshal(event)
 	if err != nil {
 		log.Printf("Failed to marshal Statsig event: %v", err)
@@ -90,6 +91,7 @@ func (s *Statsig) CheckGate(user *StatsigUser, gateName string) bool {
 }
 
 func (s *Statsig) CheckGateWithOptions(user *StatsigUser, gateName string, options *FeatureGateEvaluationOptions) bool {
+	defer runtime.KeepAlive(user)
 	optionsJson, err := tryMarshalOrEmpty(options)
 	if err != nil {
 		fmt.Printf("Failed to marshal FeatureGateEvaluationOptions: %v", err)
@@ -104,6 +106,7 @@ func (s *Statsig) GetFeatureGate(user *StatsigUser, gateName string) FeatureGate
 }
 
 func (s *Statsig) GetFeatureGateWithOptions(user *StatsigUser, gateName string, options *FeatureGateEvaluationOptions) FeatureGate {
+	defer runtime.KeepAlive(user)
 	gate := FeatureGate{
 		Name: gateName,
 	}
@@ -134,6 +137,7 @@ func (s *Statsig) GetDynamicConfig(user *StatsigUser, configName string) Dynamic
 }
 
 func (s *Statsig) GetDynamicConfigWithOptions(user *StatsigUser, configName string, options *DynamicConfigEvaluationOptions) DynamicConfig {
+	defer runtime.KeepAlive(user)
 	config := DynamicConfig{
 		Name: configName,
 	}
@@ -168,6 +172,7 @@ func (s *Statsig) GetExperiment(user *StatsigUser, experimentName string) Experi
 }
 
 func (s *Statsig) GetExperimentWithOptions(user *StatsigUser, experimentName string, options *ExperimentEvaluationOptions) Experiment {
+	defer runtime.KeepAlive(user)
 	experiment := Experiment{
 		Name: experimentName,
 	}
@@ -285,6 +290,7 @@ func (s *Statsig) GetLayer(user *StatsigUser, layerName string) Layer {
 }
 
 func (s *Statsig) GetLayerWithOptions(user *StatsigUser, layerName string, options *LayerEvaluationOptions) Layer {
+	defer runtime.KeepAlive(user)
 	layer := Layer{
 		Name:       layerName,
 		statsigRef: s.ref.Load(),
@@ -324,6 +330,7 @@ func (s *Statsig) GetParameterStoreWithOptions(
 	storeName string,
 	options *ParameterStoreEvaluationOptions,
 ) ParameterStore {
+	defer runtime.KeepAlive(user)
 	store := ParameterStore{
 		Name:       storeName,
 		statsigRef: s.ref.Load(),
@@ -364,6 +371,7 @@ func (s *Statsig) GetParameterStoreWithOptions(
 	store.options = options
 	if user != nil {
 		store.userRef = user.ref
+		store.user = user
 	}
 	store.parameterNames = fetchParameterNames(store.statsigRef, store.userRef, storeName)
 
@@ -457,6 +465,7 @@ func (s *Statsig) GetClientInitResponse(user *StatsigUser) *string {
 }
 
 func (s *Statsig) GetClientInitResponseWithOptions(user *StatsigUser, options *ClientInitResponseOptions) *string {
+	defer runtime.KeepAlive(user)
 	optionsJson, err := tryMarshalOrEmpty(options)
 
 	if err != nil {
@@ -473,18 +482,22 @@ func (s *Statsig) GetClientInitResponseWithOptions(user *StatsigUser, options *C
 }
 
 func (s *Statsig) ManuallyLogFeatureGateExposure(user *StatsigUser, gateName string) {
+	defer runtime.KeepAlive(user)
 	GetFFI().statsig_manually_log_gate_exposure(s.ref.Load(), user.ref, gateName)
 }
 
 func (s *Statsig) ManuallyLogDynamicConfigExposure(user *StatsigUser, configName string) {
+	defer runtime.KeepAlive(user)
 	GetFFI().statsig_manually_log_dynamic_config_exposure(s.ref.Load(), user.ref, configName)
 }
 
 func (s *Statsig) ManuallyLogExperimentExposure(user *StatsigUser, experimentName string) {
+	defer runtime.KeepAlive(user)
 	GetFFI().statsig_manually_log_experiment_exposure(s.ref.Load(), user.ref, experimentName)
 }
 
 func (s *Statsig) ManuallyLogLayerParamExposure(user *StatsigUser, layerName string, paramName string) {
+	defer runtime.KeepAlive(user)
 	GetFFI().statsig_manually_log_layer_parameter_exposure(s.ref.Load(), user.ref, layerName, paramName)
 }
 

@@ -3,6 +3,7 @@ package statsig_go_core
 import (
 	"encoding/json"
 	"fmt"
+	"runtime"
 	"slices"
 )
 
@@ -197,6 +198,7 @@ type ParameterStore struct {
 
 	statsigRef     uint64
 	userRef        uint64
+	user           *StatsigUser // keeps userRef valid while the store is in use
 	options        *ParameterStoreEvaluationOptions
 	parameterNames []string
 }
@@ -357,9 +359,10 @@ func (p *ParameterStore) getOptionsJson() (string, bool) {
 }
 
 func parameterStoreValue[T any](store *ParameterStore, fallback T, handler func(optionsJson string) (T, bool)) T {
-	if store == nil {
+	if store == nil || store.userRef == 0 {
 		return fallback
 	}
+	defer runtime.KeepAlive(store.user)
 
 	optionsJson, ok := store.getOptionsJson()
 	if !ok {

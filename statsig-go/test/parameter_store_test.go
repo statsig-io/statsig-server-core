@@ -121,6 +121,21 @@ func TestParameterStoreWithNilUser(t *testing.T) {
 	if store.GetBool("bool_param", true) != true {
 		t.Errorf("a store fetched with a nil user should return the fallback")
 	}
+	if got := store.GetString("bool_param", "fallback"); got != "fallback" {
+		t.Errorf("GetString with a nil user = %q, want fallback", got)
+	}
+	if got := store.GetNumber("bool_param", 1.5); got != 1.5 {
+		t.Errorf("GetNumber with a nil user = %v, want fallback", got)
+	}
+	if got := store.GetInt("bool_param", 7); got != 7 {
+		t.Errorf("GetInt with a nil user = %v, want fallback", got)
+	}
+	if got := store.GetMap("bool_param", map[string]any{"k": "v"}); got["k"] != "v" {
+		t.Errorf("GetMap with a nil user = %v, want fallback", got)
+	}
+	if got := store.GetSlice("bool_param", []any{"v"}); len(got) != 1 || got[0] != "v" {
+		t.Errorf("GetSlice with a nil user = %v, want fallback", got)
+	}
 }
 
 // A configured value that happens to equal the caller's fallback is
