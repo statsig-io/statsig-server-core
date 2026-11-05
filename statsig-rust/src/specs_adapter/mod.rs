@@ -30,6 +30,7 @@ const TAG: &str = "SpecAdapterConfig";
 #[derive(Debug, Clone, Serialize)]
 pub struct SpecAdapterConfig {
     pub adapter_type: SpecsAdapterType,
+    /// `0` means `DEFAULT_INIT_TIMEOUT_MS` for HTTP and gRPC adapters.
     pub init_timeout_ms: u64,
 
     pub specs_url: Option<String>,

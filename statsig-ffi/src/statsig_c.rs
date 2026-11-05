@@ -389,13 +389,14 @@ pub extern "C" fn statsig_get_string_parameter_from_parameter_store(
             *inout_result_len = 0;
         }
     }
-    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, default_value);
-    let user = get_instance_or_return_c!(StatsigUser, &user_ref, default_value);
+    // Never return `default_value` here: it is caller-owned, and callers free the returned pointer.
+    let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, std::ptr::null_mut());
+    let user = get_instance_or_return_c!(StatsigUser, &user_ref, std::ptr::null_mut());
 
     let parameter_store_name =
-        unwrap_or_return!(c_char_to_string(parameter_store_name), default_value);
+        unwrap_or_return!(c_char_to_string(parameter_store_name), std::ptr::null_mut());
 
-    let parameter_name = unwrap_or_return!(c_char_to_string(param_name), default_value);
+    let parameter_name = unwrap_or_return!(c_char_to_string(param_name), std::ptr::null_mut());
 
     let default_value: Option<String> = c_char_to_string(default_value);
 
@@ -1471,4 +1472,56 @@ pub extern "C" fn statsig_get_layer_list(
 ) -> *mut c_char {
     let statsig = get_instance_or_return_c!(Statsig, &statsig_ref, null_mut());
     serialize_entity_list_to_c_char(statsig.get_layer_list(), inout_result_len)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::CString;
+
+    fn get_string_param(statsig_ref: u64, user_ref: u64, param_name: *const c_char) -> *mut c_char {
+        let store_name = CString::new("a_store").unwrap();
+        let fallback = CString::new("fallback").unwrap();
+        let mut len: u64 = 123;
+
+        let result = statsig_get_string_parameter_from_parameter_store(
+            statsig_ref,
+            user_ref,
+            store_name.as_ptr(),
+            param_name,
+            fallback.as_ptr() as *mut c_char,
+            std::ptr::null(),
+            &mut len,
+        );
+
+        assert_eq!(len, 0);
+        result
+    }
+
+    #[test]
+    fn test_get_string_parameter_returns_null_when_lookup_fails() {
+        let statsig_ref = InstanceRegistry::register(Statsig::new("secret-key", None)).unwrap();
+        let user_ref = InstanceRegistry::register(StatsigUser::with_user_id("a_user")).unwrap();
+        let param_name = CString::new("a_param").unwrap();
+        let invalid_utf8 = [0xffu8, 0];
+
+        let cases = [
+            ("missing statsig", 0, user_ref, param_name.as_ptr()),
+            ("missing user", statsig_ref, 0, param_name.as_ptr()),
+            (
+                "invalid param name",
+                statsig_ref,
+                user_ref,
+                invalid_utf8.as_ptr() as *const c_char,
+            ),
+        ];
+
+        for (name, statsig_ref, user_ref, param_name) in cases {
+            let result = get_string_param(statsig_ref, user_ref, param_name);
+            assert!(result.is_null(), "{name}: expected null");
+        }
+
+        InstanceRegistry::remove(&user_ref);
+        InstanceRegistry::remove(&statsig_ref);
+    }
 }
