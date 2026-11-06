@@ -7,6 +7,29 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  workflow-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.2.2
+
+      - name: Validate GitHub workflows
+        shell: bash
+        run: |
+          validator_dir=$(mktemp -d)
+          trap 'rm -rf "$validator_dir"' EXIT
+          curl --fail --silent --show-error --location --retry 3 \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.11/actionlint_1.7.11_linux_amd64.tar.gz \
+            --output "$validator_dir/actionlint.tar.gz"
+          echo "900919a84f2229bac68ca9cd4103ea297abc35e9689ebb842c6e34a3d1b01b0a  $validator_dir/actionlint.tar.gz" | sha256sum --check
+          tar -xzf "$validator_dir/actionlint.tar.gz" -C "$validator_dir" actionlint
+          "$validator_dir/actionlint" -shellcheck= -pyflakes= .github/workflows/*.yml
+
+      - name: Validate release build planning
+        run: python3 -m unittest discover -s .github/tests -p 'test_*.py'
+
   # ------------------------------------------------------------ [ Clippy ]
   clippy:
     runs-on: ubuntu-latest
