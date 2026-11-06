@@ -2,8 +2,8 @@ import compression from 'compression';
 import express from 'express';
 import http from 'http';
 import 'jest-extended';
-import { exec } from 'node:child_process';
-import { readFile, unlink, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -39,8 +39,16 @@ export class MockScrapi {
 
   private constructor(onReady: () => void) {
     this.app = express();
-    this.port = Math.floor(Math.random() * 2000) + 4000;
-    this.server = this.app.listen(this.port, onReady);
+    this.port = 0;
+    this.server = this.app.listen(0, () => {
+      const address = this.server.address();
+      if (address && typeof address !== 'string') {
+        this.port = address.port;
+      }
+      onReady();
+    });
+
+    const jsonParser = express.json();
 
     this.app.use(
       (
@@ -59,9 +67,21 @@ export class MockScrapi {
           return compression.filter(req, res);
         },
       }),
+      (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        // body-parser cannot decode zstd; other JSON requests must be parsed
+        // before the recording/response handler below consumes them.
+        if (req.headers['content-encoding'] === 'zstd') {
+          next();
+        } else {
+          jsonParser(req, res, next);
+        }
+      },
       async (req: express.Request, res: express.Response) => {
         if (req.headers['content-encoding'] === 'zstd') {
-          await decompressZstd(req);
+          if (!(await decompressZstd(req))) {
+            res.status(400).send('Invalid zstd request');
+            return;
+          }
         }
 
         const recorded = {
@@ -98,7 +118,6 @@ export class MockScrapi {
           .set(mock.options?.headers ?? {})
           .send(mock.response);
       },
-      express.json(),
     );
   }
 
@@ -163,45 +182,28 @@ export function anyNumericString(): unknown {
 }
 
 async function decompressZstd(req: express.Request): Promise<boolean> {
-  return new Promise(async (resolve, _reject) => {
-    try {
-      const chunks: Buffer[] = [];
-      req.on('data', (chunk: Buffer) => chunks.push(chunk));
-      req.on('end', async () => {
-        const buffer = Buffer.concat(chunks);
-
-        // Create temporary files for input and output
-        const inputPath = path.join(os.tmpdir(), `zstd-input-${Date.now()}`);
-        const outputPath = path.join(os.tmpdir(), `zstd-output-${Date.now()}`);
-
-        try {
-          // Write compressed data to temp file
-          await writeFile(inputPath, buffer);
-
-          // Decompress using zstd command
-          const execPromise = promisify(exec);
-          await execPromise(`zstd -d ${inputPath} -o ${outputPath}`);
-
-          // Read decompressed data
-          const decompressed = await readFile(outputPath);
-          req.body = JSON.parse(decompressed.toString());
-
-          resolve(true);
-        } catch (error) {
-          console.error('ZSTD decompression failed:', error);
-          resolve(false);
-        } finally {
-          // Clean up temp files
-          try {
-            await unlink(inputPath);
-            await unlink(outputPath);
-          } catch (e) {
-            // Ignore cleanup errors
-          }
-        }
-      });
-    } catch (error) {
-      resolve(false);
+  let temporaryDirectory: string | undefined;
+  try {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
-  });
+
+    // Requests in different Jest workers can arrive in the same millisecond.
+    // Each decode owns its directory so it cannot overwrite another request.
+    temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'statsig-zstd-'));
+    const inputPath = path.join(temporaryDirectory, 'input');
+    const outputPath = path.join(temporaryDirectory, 'output');
+    await writeFile(inputPath, Buffer.concat(chunks));
+    await promisify(execFile)('zstd', ['-d', inputPath, '-o', outputPath]);
+    req.body = JSON.parse(await readFile(outputPath, 'utf8'));
+    return true;
+  } catch (error) {
+    console.error('ZSTD decompression failed:', error);
+    return false;
+  } finally {
+    if (temporaryDirectory) {
+      await rm(temporaryDirectory, { recursive: true, force: true }).catch(() => {});
+    }
+  }
 }

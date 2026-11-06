@@ -12,7 +12,8 @@ env:
 
 jobs:
   CD:
-    timeout-minutes: 10
+    # Cold image builds need headroom for registry upload and cleanup.
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

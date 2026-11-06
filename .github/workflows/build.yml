@@ -2,6 +2,11 @@ name: Build
 
 on:
   workflow_call:
+    inputs:
+      full_build:
+        description: Build all targets during a manual release preflight
+        type: boolean
+        default: false
 
 env:
   # Planning Inputs
@@ -12,26 +17,7 @@ env:
   IS_MERGED_PR: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
   IS_NEW_RELEASE: ${{ github.event_name == 'release' }}
   IS_MAIN_BRANCH: ${{ github.ref_name == 'main' }}
-
-  # Python Publishing
-  MATURIN_PYPI_TOKEN: ${{ secrets.STATSIG_PYPI_PROD_TOKEN }}
-  MATURIN_REPOSITORY: pypi
-
-  # NPM Publishing
-  NPM_TOKEN: ${{ secrets.SIGSTAT_PUBLISH_NPM }}
-
-  # Java Publishing
-  ORG_GRADLE_PROJECT_MAVEN_USERNAME: ${{ secrets.ORG_GRADLE_PROJECT_MAVEN_USERNAME }}
-  ORG_GRADLE_PROJECT_MAVEN_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_MAVEN_PASSWORD }}
-  ORG_GRADLE_PROJECT_SIGNING_KEY_ID: ${{ secrets.ORG_GRADLE_PROJECT_SIGNING_KEY_ID }}
-  ORG_GRADLE_PROJECT_SIGNING_KEY: ${{ secrets.ORG_GRADLE_PROJECT_SIGNING_KEY }}
-  ORG_GRADLE_PROJECT_SIGNING_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_SIGNING_PASSWORD }}
-
-  # Dotnet Publishing
-  NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-
-  # Elixir Publishing
-  HEX_API_KEY: ${{ secrets.STATSIG_ELIXIR_HEX_API_KEY }}
+  FORCE_FULL_BUILD: ${{ inputs.full_build }}
 
   # GH Octokit (Kong App)
   GH_APP_ID: "229901"
@@ -304,6 +290,27 @@ jobs:
   publish:
     needs: build
     if: ${{ github.event_name == 'release' }}
+    # Keep registry credentials off build and preflight job environments.
+    env:
+      # Python Publishing
+      MATURIN_PYPI_TOKEN: ${{ secrets.STATSIG_PYPI_PROD_TOKEN }}
+      MATURIN_REPOSITORY: pypi
+
+      # NPM Publishing
+      NPM_TOKEN: ${{ secrets.SIGSTAT_PUBLISH_NPM }}
+
+      # Java Publishing
+      ORG_GRADLE_PROJECT_MAVEN_USERNAME: ${{ secrets.ORG_GRADLE_PROJECT_MAVEN_USERNAME }}
+      ORG_GRADLE_PROJECT_MAVEN_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_MAVEN_PASSWORD }}
+      ORG_GRADLE_PROJECT_SIGNING_KEY_ID: ${{ secrets.ORG_GRADLE_PROJECT_SIGNING_KEY_ID }}
+      ORG_GRADLE_PROJECT_SIGNING_KEY: ${{ secrets.ORG_GRADLE_PROJECT_SIGNING_KEY }}
+      ORG_GRADLE_PROJECT_SIGNING_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_SIGNING_PASSWORD }}
+
+      # Dotnet Publishing
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+      # Elixir Publishing
+      HEX_API_KEY: ${{ secrets.STATSIG_ELIXIR_HEX_API_KEY }}
     # Keep Elixir publishing on an OS supported by the pinned setup-beam action.
     runs-on: ${{ matrix.package == 'elixir' && 'ubuntu-24.04' || 'ubuntu-latest' }}
     permissions:

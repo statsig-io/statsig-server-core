@@ -87,7 +87,7 @@
       "os": "macos",
       "arch": "aarch64",
       "target": "aarch64-apple-darwin",
-      "runner": "macos-14",
+      "runner": "macos-15",
       "py_deps_suffix": "--break-system-packages"
     },
 

@@ -2,6 +2,11 @@ name: Main
 
 on:
   workflow_dispatch:
+    inputs:
+      full_build:
+        description: Build all targets available to this repository without publishing
+        type: boolean
+        default: false
   push:
     branches: [main]
   pull_request:
@@ -22,6 +27,8 @@ jobs:
   build:
     needs: lint
     uses: ./.github/workflows/build.yml
+    with:
+      full_build: ${{ github.event_name == 'workflow_dispatch' && inputs.full_build }}
     secrets: inherit
 
   package-verification:

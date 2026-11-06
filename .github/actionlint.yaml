@@ -1,0 +1,9 @@
+self-hosted-runner:
+  labels:
+    - laptop-at-daniels-desk
+
+paths:
+  .github/workflows/statsig-tests.yml:
+    ignore:
+      # The existing performance-report job is intentionally disabled.
+      - 'constant expression "false" in condition'
