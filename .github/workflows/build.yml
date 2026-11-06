@@ -304,7 +304,8 @@ jobs:
   publish:
     needs: build
     if: ${{ github.event_name == 'release' }}
-    runs-on: ubuntu-latest
+    # Keep Elixir publishing on an OS supported by the pinned setup-beam action.
+    runs-on: ${{ matrix.package == 'elixir' && 'ubuntu-24.04' || 'ubuntu-latest' }}
     permissions:
       contents: read
       id-token: write
