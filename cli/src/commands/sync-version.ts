@@ -202,13 +202,14 @@ contents = contents.replace(
   `$1${versionStr}`
 );
 
-  if (version.isBeta() || version.isRC()) {
-    const suffix = version.toString().split('-')[1];
-    contents = contents.replace(
-      /set\s*\(\s*PROJECT_VERSION_SUFFIX\s+"[^"]*"\s*\)/,
-      `set(PROJECT_VERSION_SUFFIX "${suffix}")`,
-    );
-  }
+  const suffix =
+    version.isBeta() || version.isRC()
+      ? version.toString().split('-')[1]
+      : '';
+  contents = contents.replace(
+    /set\s*\(\s*PROJECT_VERSION_SUFFIX\s+"[^"]*"\s*\)/,
+    `set(PROJECT_VERSION_SUFFIX "${suffix}")`,
+  );
 
   fs.writeFileSync(path, contents, 'utf8');
   Log.stepEnd(`Updated Version to ${version}`);
