@@ -26,7 +26,7 @@ exclude = [
 [workspace.package]
 edition = "2021"
 license = "ISC"
-version = "0.24.1-beta.2611050204"
+version = "0.24.1-rc.2611052320"
 homepage = "https://statsig.com/"
 authors = ["Statsig"]
 readme = "README.md"
