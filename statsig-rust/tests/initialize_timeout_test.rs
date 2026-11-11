@@ -1,56 +1,48 @@
 mod utils;
-use std::{fs, path::PathBuf, sync::Arc};
-use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
+use std::sync::Arc;
+use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi};
+use utils::mock_specs_adapter::MockSpecsAdapter;
 
 use statsig_rust::{
     networking::{NetworkClient, RequestArgs},
-    Statsig, StatsigOptions, StatsigUser,
+    Statsig, StatsigErr, StatsigOptions, StatsigUser,
 };
 
 const SDK_KEY: &str = "secret-key";
-async fn setup() -> MockScrapi {
-    let mock_scrapi = MockScrapi::new().await;
-
-    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.push("tests/data/eval_proj_dcs.json");
-    let dcs = fs::read_to_string(path).expect("Unable to read file");
-
-    mock_scrapi
-        .stub(EndpointStub {
-            method: Method::GET,
-            response: StubData::String(dcs),
-            delay_ms: 3,
-            ..EndpointStub::with_endpoint(Endpoint::DownloadConfigSpecs)
-        })
-        .await;
-
-    mock_scrapi
-}
 
 #[tokio::test]
 async fn test_initialize_timeout() {
     let user = StatsigUser::with_user_id("my_user".to_string());
-    let scrapi = setup().await;
+    // Isolate the initialization deadline from the HTTP request timeout.
+    let specs_adapter = Arc::new(MockSpecsAdapter::delayed(
+        "tests/data/eval_proj_dcs.json",
+        60_000,
+    ));
     let statsig = Statsig::new(
         SDK_KEY,
         Some(Arc::new(StatsigOptions {
-            specs_url: Some(scrapi.url_for_endpoint(Endpoint::DownloadConfigSpecs)),
+            specs_adapter: Some(specs_adapter.clone()),
+            disable_all_logging: Some(true),
+            disable_country_lookup: Some(true),
             environment: Some("development".to_string()),
-            init_timeout_ms: Some(2),
+            init_timeout_ms: Some(10),
             specs_sync_interval_ms: Some(1),
             output_log_level: Some(statsig_rust::output_logger::LogLevel::Debug),
             ..StatsigOptions::new()
         })),
     );
 
-    let res = statsig.initialize().await;
-    assert!(res.is_err());
-    let err = res.unwrap_err();
-    assert!(err.to_string().contains("Initialization Error"));
+    let err = statsig.initialize().await.unwrap_err();
+    assert!(matches!(
+        err,
+        StatsigErr::InitializationError(reason) if reason == "Initialization timed out"
+    ));
 
     let result = statsig.get_feature_gate(&user, "public_dev_only");
 
-    assert!(result.details.reason == "Loading:Unrecognized");
+    assert_eq!(result.details.reason, "Loading:Unrecognized");
+    assert_eventually!(|| specs_adapter.background_sync_calls() == 1);
+    statsig.shutdown().await.unwrap();
 }
 
 #[tokio::test]
