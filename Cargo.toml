@@ -6,6 +6,8 @@ strip = true
 
 [workspace]
 members = [
+    "amplitude-rust",
+    "statsig-amplitude",
     "statsig-rust",
     "statsig-ffi",
     "statsig-grpc",

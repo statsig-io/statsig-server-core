@@ -43,6 +43,12 @@ Bindings
 
 
 
+## Optional Rust integrations
+
+The unpublished [amplitude-rust](amplitude-rust/README.md) library provides an
+independent Amplitude event client. [statsig-amplitude](statsig-amplitude/README.md)
+adds opt-in event forwarding alongside an existing Statsig event logging adapter.
+
 ## Community
 
 If you need any assitance or just have a question, feel free to reach out to us on [Slack](https://statsig.com/community?ref=gh_server_core).
