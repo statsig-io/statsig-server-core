@@ -646,6 +646,7 @@ fn condition_type_from_pb(condition_type: pb::ConditionType) -> Result<InternedS
         pb::ConditionType::UserBucket => Ok(interned_str!("user_bucket")),
         pb::ConditionType::TargetApp => Ok(interned_str!("target_app")),
         pb::ConditionType::UnitId => Ok(interned_str!("unit_id")),
+        pb::ConditionType::ExperimentGroup => Ok(interned_str!("experiment_group")),
     }
 }
 
@@ -892,7 +893,42 @@ fn make_proto_parse_error(tag: &str, message: &str) -> Result<(), StatsigErr> {
 
 #[cfg(test)]
 mod tests {
-    use super::{pb, rules_from_pb};
+    use prost::Message;
+    use serde_json::json;
+
+    use super::{condition_from_pb, pb, rules_from_pb};
+
+    #[test]
+    fn experiment_group_condition_matches_json() {
+        let condition = pb::Condition {
+            condition_type: 12,
+            field: Some("source_experiment".to_string()),
+            operator: Some(pb::Operator::Any as i32),
+            target_value: Some(pb::AnyValue {
+                value: Some(pb::any_value::Value::RawValue(
+                    serde_json::to_vec(&json!(["Control", "Test"])).unwrap(),
+                )),
+            }),
+            id_type: Some(pb::IdType {
+                id_type: Some(pb::id_type::IdType::KnownIdType(
+                    pb::KnownIdType::UserId as i32,
+                )),
+            }),
+            ..Default::default()
+        };
+        let decoded = pb::Condition::decode(condition.encode_to_vec().as_slice()).unwrap();
+        let proto_condition = condition_from_pb(decoded).unwrap();
+        let json_condition = serde_json::from_value(json!({
+            "type": "experiment_group",
+            "field": "source_experiment",
+            "operator": "any",
+            "targetValue": ["Control", "Test"],
+            "idType": "userID"
+        }))
+        .unwrap();
+
+        assert_eq!(proto_condition, json_condition);
+    }
 
     #[test]
     fn rules_from_pb_preserves_sampling_rate() {

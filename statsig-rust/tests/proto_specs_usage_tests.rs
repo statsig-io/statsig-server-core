@@ -1,7 +1,9 @@
 mod utils;
+use prost::Message;
 use serde_json::json;
+use statsig_rust::specs_response::statsig_config_specs as pb;
 use statsig_rust::{output_logger, Statsig, StatsigOptions, StatsigUser};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, io::Write, sync::Arc};
 use utils::mock_scrapi::{Endpoint, EndpointStub, Method, MockScrapi, StubData};
 
 use crate::utils::{
@@ -195,6 +197,153 @@ async fn test_proto_with_data_store() {
 
     let error_logs = log_provider.get_error_logs();
     assert!(error_logs.is_empty());
+}
+
+#[tokio::test]
+async fn test_proto_experiment_group_condition_initialize_and_sync() {
+    let options = StatsigOptions {
+        disable_all_logging: Some(true),
+        ..make_statsig_opts(DELAYED_SYNC_INTERVAL_MS)
+    };
+    let (mock_scrapi, statsig) = setup("secret-proto-experiment-group", Some(options)).await;
+    restub_dcs_with_proto(&mock_scrapi, &make_experiment_group_proto("Control", 1)).await;
+
+    statsig.initialize().await.unwrap();
+    let user = StatsigUser::with_user_id("a_user");
+    assert_eq!(
+        statsig
+            .get_experiment(&user, "source_experiment")
+            .group_name
+            .as_deref(),
+        Some("Control")
+    );
+    assert!(statsig.check_gate(&user, "group_gate"));
+
+    restub_dcs_with_proto(&mock_scrapi, &make_experiment_group_proto("Test", 2)).await;
+    assert_eventually!(|| {
+        let gate = statsig.get_feature_gate(&user, "group_gate");
+        !gate.value && gate.details.lcut == Some(2) && !gate.details.reason.contains("Unsupported")
+    });
+    assert_eq!(
+        statsig
+            .get_experiment(&user, "source_experiment")
+            .group_name
+            .as_deref(),
+        Some("Control")
+    );
+    statsig.shutdown().await.unwrap();
+}
+
+fn make_experiment_group_proto(target_group: &str, time: u64) -> Vec<u8> {
+    let id_type = Some(pb::IdType {
+        id_type: Some(pb::id_type::IdType::KnownIdType(
+            pb::KnownIdType::UserId as i32,
+        )),
+    });
+    let top_level = pb::SpecsTopLevel {
+        has_updates: true,
+        time,
+        checksum: time.to_string(),
+        rest: serde_json::to_vec(&json!({"experiment_to_layer": {}})).unwrap(),
+        ..Default::default()
+    };
+    let public = pb::Condition {
+        condition_type: pb::ConditionType::Public as i32,
+        ..Default::default()
+    };
+    let group_condition = pb::Condition {
+        condition_type: pb::ConditionType::ExperimentGroup as i32,
+        field: Some("source_experiment".to_string()),
+        operator: Some(pb::Operator::Any as i32),
+        target_value: Some(pb::AnyValue {
+            value: Some(pb::any_value::Value::RawValue(
+                serde_json::to_vec(&json!([target_group])).unwrap(),
+            )),
+        }),
+        id_type: id_type.clone(),
+        ..Default::default()
+    };
+    let experiment = pb::Spec {
+        enabled: true,
+        entity: pb::EntityType::EntityExperiment as i32,
+        is_active: Some(true),
+        id_type: id_type.clone(),
+        rules: vec![pb::Rule {
+            id: "control".to_string(),
+            name: "control".to_string(),
+            pass_percentage: 100,
+            conditions: vec!["public".to_string()],
+            group_name: Some("Control".to_string()),
+            is_experiment_group: Some(true),
+            id_type: id_type.clone(),
+            ..Default::default()
+        }],
+        ..Default::default()
+    };
+    let gate = pb::Spec {
+        enabled: true,
+        entity: pb::EntityType::EntityFeatureGate as i32,
+        id_type: id_type.clone(),
+        rules: vec![pb::Rule {
+            id: "group_rule".to_string(),
+            name: "group_rule".to_string(),
+            pass_percentage: 100,
+            conditions: vec!["experiment_group".to_string()],
+            return_value: Some(pb::ReturnValue {
+                value: Some(pb::return_value::Value::BoolValue(true)),
+            }),
+            id_type,
+            ..Default::default()
+        }],
+        default_value: Some(pb::ReturnValue {
+            value: Some(pb::return_value::Value::BoolValue(false)),
+        }),
+        ..Default::default()
+    };
+    let mut bytes = Vec::new();
+    for (kind, name, data) in [
+        (
+            pb::SpecsEnvelopeKind::TopLevel,
+            "TOP_LEVEL",
+            top_level.encode_to_vec(),
+        ),
+        (
+            pb::SpecsEnvelopeKind::Condition,
+            "public",
+            public.encode_to_vec(),
+        ),
+        (
+            pb::SpecsEnvelopeKind::Condition,
+            "experiment_group",
+            group_condition.encode_to_vec(),
+        ),
+        (
+            pb::SpecsEnvelopeKind::DynamicConfig,
+            "source_experiment",
+            experiment.encode_to_vec(),
+        ),
+        (
+            pb::SpecsEnvelopeKind::FeatureGate,
+            "group_gate",
+            gate.encode_to_vec(),
+        ),
+        (pb::SpecsEnvelopeKind::Done, "DONE", vec![]),
+    ] {
+        pb::SpecsEnvelope {
+            kind: kind as i32,
+            name: name.to_string(),
+            checksum: time.to_string(),
+            data: Some(data),
+        }
+        .encode_length_delimited(&mut bytes)
+        .unwrap();
+    }
+    let mut compressed = Vec::new();
+    {
+        let mut writer = brotli::CompressorWriter::new(&mut compressed, 4096, 4, 22);
+        writer.write_all(&bytes).unwrap();
+    }
+    compressed
 }
 
 async fn setup(key: &str, options_override: Option<StatsigOptions>) -> (MockScrapi, Statsig) {
