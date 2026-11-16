@@ -10,13 +10,17 @@ use crate::{
     function_based_event_logging_adapter_c::FunctionBasedEventLoggingAdapterC,
     function_based_specs_adapter_c::FunctionBasedSpecsAdapterC,
     observability_client_c::ObservabilityClientC,
+    output_logger_provider_c::OutputLoggerProviderC,
     persistent_storage_c::PersistentStorageC,
 };
 use statsig_rust::{
-    data_store_interface::DataStoreTrait, log_e, networking::proxy_config::ProxyConfig,
-    output_logger::LogLevel, DynamicValue, EventLoggingAdapter, InstanceRegistry,
-    ObservabilityClient, PersistentStorage, SpecAdapterConfig, SpecsAdapter,
-    StatsigLocalFileEventLoggingAdapter, StatsigLocalFileSpecsAdapter, StatsigOptions,
+    data_store_interface::DataStoreTrait,
+    log_e,
+    networking::proxy_config::ProxyConfig,
+    output_logger::{LogLevel, OutputLogProvider},
+    DynamicValue, EventLoggingAdapter, InstanceRegistry, ObservabilityClient, PersistentStorage,
+    SpecAdapterConfig, SpecsAdapter, StatsigLocalFileEventLoggingAdapter,
+    StatsigLocalFileSpecsAdapter, StatsigOptions,
 };
 use std::collections::HashMap;
 use std::sync::Weak;
@@ -50,6 +54,7 @@ pub struct StatsigOptionsData {
     log_event_url: Option<String>,
     observability_client_ref: Option<u64>,
     output_log_level: Option<String>,
+    output_logger_provider_ref: Option<u64>,
     persistent_storage_ref: Option<u64>,
     proxy_host: Option<String>,
     proxy_port: Option<u16>,
@@ -90,6 +95,11 @@ impl From<StatsigOptionsData> for StatsigOptions {
 
         let observability_client = match data.observability_client_ref {
             Some(oc_ref) => try_get_observability_client(oc_ref),
+            None => None,
+        };
+
+        let output_logger_provider = match data.output_logger_provider_ref {
+            Some(olp_ref) => try_get_output_logger_provider(olp_ref),
             None => None,
         };
 
@@ -170,8 +180,8 @@ impl From<StatsigOptionsData> for StatsigOptions {
             log_event_connection_reuse: None,
             observability_client,
             output_log_level,
-            output_logger_provider: None, // todo: add support for output logger provider
-            override_adapter: None,       // todo: add support for override adapter
+            output_logger_provider,
+            override_adapter: None, // todo: add support for override adapter
             persistent_storage,
             proxy_config,
             service_name: data.service_name,
@@ -368,6 +378,18 @@ fn try_get_observability_client(
     if let Ok(client) = raw.clone().downcast::<ObservabilityClientC>() {
         let weak = Arc::downgrade(&client);
         return Some(weak);
+    }
+
+    None
+}
+
+fn try_get_output_logger_provider(
+    output_logger_provider_ref: u64,
+) -> Option<Arc<dyn OutputLogProvider>> {
+    let raw = InstanceRegistry::get_raw(&output_logger_provider_ref)?;
+
+    if let Ok(provider) = raw.clone().downcast::<OutputLoggerProviderC>() {
+        return Some(provider);
     }
 
     None

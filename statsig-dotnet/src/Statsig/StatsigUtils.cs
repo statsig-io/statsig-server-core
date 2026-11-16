@@ -44,6 +44,26 @@ namespace Statsig
             return Encoding.UTF8.GetString(responseBytes);
         }
 
+        /// <summary>
+        /// Decodes a UTF-8 buffer of known length. Does NOT free the pointer.
+        /// </summary>
+        internal static unsafe string? Utf8PointerToString(byte* ptr, ulong length)
+        {
+            if (ptr == null || length == 0 || length > int.MaxValue)
+            {
+                return null;
+            }
+
+#if NET8_0_OR_GREATER
+            return Encoding.UTF8.GetString(new ReadOnlySpan<byte>(ptr, (int)length));
+#else
+            var len = (int)length;
+            var buffer = new byte[len];
+            Marshal.Copy((IntPtr)ptr, buffer, 0, len);
+            return Encoding.UTF8.GetString(buffer);
+#endif
+        }
+
         internal static byte[] ToUtf8NullTerminated(string value)
         {
             var bytes = Encoding.UTF8.GetBytes(value);
