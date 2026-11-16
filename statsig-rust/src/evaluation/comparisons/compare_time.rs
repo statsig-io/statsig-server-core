@@ -77,6 +77,27 @@ mod tests {
     }
 
     #[test]
+    fn test_rfc3339_fractional_seconds_and_offsets() {
+        for (timestamp, expected_millis) in [
+            ("2026-11-13T00:00:00.123Z", 1794528000123_i64),
+            ("2026-11-13T00:00:00+00:00", 1794528000000),
+            ("2026-11-13T05:30:00.123+05:30", 1794528000123),
+            ("2026-11-12T16:00:00.123456789-08:00", 1794528000123),
+        ] {
+            let value = create_str_value(timestamp);
+            let before = test_only_make_eval_value!(1794527999999_i64);
+            let after = test_only_make_eval_value!(1794528001000_i64);
+            let same_day = test_only_make_eval_value!(1794528000000_i64);
+
+            assert_eq!(value.timestamp_value, Some(expected_millis), "{timestamp}");
+            assert!(compare_time(&value, &before, "after"), "{timestamp}");
+            assert!(compare_time(&value, &after, "before"), "{timestamp}");
+            assert!(compare_time(&value, &same_day, "on"), "{timestamp}");
+            assert!(!compare_time(&value, &after, "after"), "{timestamp}");
+        }
+    }
+
+    #[test]
     fn test_custom_datetime_format() {
         let test_eval_value = test_only_make_eval_value!("2023-01-02 00:00:00");
         assert!(compare_time(
@@ -119,10 +140,14 @@ mod tests {
     #[test]
     fn test_invalid_input() {
         let test_eval_value = test_only_make_eval_value!(1672617600000_i64);
-        assert!(!compare_time(
-            &create_str_value("invalid-date"),
-            &test_eval_value,
-            "before"
-        ));
+        for timestamp in [
+            "invalid-date",
+            "2026-11-13T00:00:00.123+25:00",
+            "2026-11-13T00:00:00.123456789-08:00junk",
+        ] {
+            let value = create_str_value(timestamp);
+            assert_eq!(value.timestamp_value, None, "{timestamp}");
+            assert!(!compare_time(&value, &test_eval_value, "before"));
+        }
     }
 }
