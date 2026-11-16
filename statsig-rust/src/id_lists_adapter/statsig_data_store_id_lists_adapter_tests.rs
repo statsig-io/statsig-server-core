@@ -1784,3 +1784,52 @@ async fn incomplete_http_refresh_preserves_all_memberships_and_cursors_until_com
         b.assert_async().await;
     }
 }
+
+#[tokio::test]
+async fn startup_from_cache_adds_initialize_diagnostics_markers() {
+    use crate::sdk_diagnostics::test_utils::{summarize_marker, RecordingDiagnosticsObserver};
+
+    let sdk_key = "secret-key-id-list-init-diagnostics";
+    let recorder = RecordingDiagnosticsObserver::subscribe(sdk_key);
+    let options = StatsigOptions::default();
+    let store = Arc::new(SnapshotDataStore::new(HashMap::new(), true));
+    let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
+        sdk_key,
+        Arc::new(HashUtil::new()),
+        &options,
+        store.clone(),
+    ));
+    store.set_values(complete_snapshot_values(
+        &adapter,
+        "paid-users",
+        "+2Tv4fIVX\n",
+        10,
+    ));
+    let listener = Arc::new(TestIdListsListener {
+        id_lists: RwLock::new(HashMap::new()),
+    });
+
+    adapter
+        .clone()
+        .start(&StatsigRuntime::get_runtime(), listener)
+        .await
+        .unwrap();
+
+    let markers = recorder.wait_for_markers(4).await;
+    let summaries: Vec<String> = markers.iter().map(|(_, m)| summarize_marker(m)).collect();
+    assert_eq!(
+        summaries,
+        vec![
+            "get_id_list_sources:data_store_read:start",
+            "get_id_list_sources:data_store_read:end",
+            "get_id_list_sources:process:start",
+            "get_id_list_sources:process:end",
+        ]
+    );
+    for (context, marker) in &markers {
+        assert_eq!(context.as_deref(), Some("initialize"));
+        assert_eq!(marker["source"], "Adapter(DataStore)");
+    }
+    assert_eq!(markers[1].1["success"], true);
+    assert_eq!(markers[3].1["success"], true);
+}

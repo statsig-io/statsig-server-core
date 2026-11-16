@@ -33,3 +33,6 @@ pub mod mock_log_provider;
 
 #[allow(dead_code)]
 pub mod tls_test_server;
+
+#[allow(dead_code)]
+pub mod diagnostics_helpers;

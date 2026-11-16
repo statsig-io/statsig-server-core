@@ -9,6 +9,8 @@ use crate::data_store_interface::{
 use crate::data_store_lifecycle::DataStorePollingTask;
 use crate::networking::ResponseData;
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
+use crate::sdk_diagnostics::diagnostics::ContextType;
+use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::{
     log_e, log_w, read_lock_or_else, unwrap_or_else, write_lock_or_else, SpecsAdapter,
     SpecsUpdateListener,
@@ -79,12 +81,28 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
                 return Err(StatsigErr::SpecsAdapterSkipPoll(self.get_type_name()));
             }
             let sync_start_ms = Utc::now().timestamp_millis() as u64;
-            self.data_store.initialize().await?;
-
-            let update = self.load_cached_specs().await?;
-            if update.result.is_none() {
-                return Err(StatsigErr::DataStoreFailure("Empty result".to_string()));
+            self.add_diagnostics_marker(
+                ContextType::Initialize,
+                ActionType::Start,
+                StepType::DataStoreRead,
+                None,
+            );
+            let read_result = async {
+                self.data_store.initialize().await?;
+                let update = self.load_cached_specs().await?;
+                if update.result.is_none() {
+                    return Err(StatsigErr::DataStoreFailure("Empty result".to_string()));
+                }
+                Ok(update)
             }
+            .await;
+            self.add_diagnostics_marker(
+                ContextType::Initialize,
+                ActionType::End,
+                StepType::DataStoreRead,
+                Some(read_result.is_ok()),
+            );
+            let update = read_result?;
 
             let read_lock = read_lock_or_else!(self.listener, {
                 return Err(StatsigErr::UnstartedAdapter(
@@ -97,7 +115,19 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
                 None => return Err(StatsigErr::UnstartedAdapter("Listener not set".to_string())),
             };
 
+            self.add_diagnostics_marker(
+                ContextType::Initialize,
+                ActionType::Start,
+                StepType::Process,
+                None,
+            );
             let (result, response_format) = self.send_specs_update_to_listener(listener, update);
+            self.add_diagnostics_marker(
+                ContextType::Initialize,
+                ActionType::End,
+                StepType::Process,
+                Some(result.is_ok()),
+            );
             self.log_data_store_sync_result(sync_start_ms, &response_format, &result);
             result
         };
@@ -293,12 +323,27 @@ impl StatsigDataStoreSpecsAdapter {
 
         let result = listener.did_receive_specs_update(SpecsUpdate {
             data,
-            source: SpecsSource::Adapter("DataStore".to_string()),
+            source: data_store_specs_source(),
             received_at: Utc::now().timestamp_millis() as u64,
             source_api: Some("datastore".to_string()),
         });
 
         (result, response_format.as_str().to_string())
+    }
+
+    fn add_diagnostics_marker(
+        &self,
+        context: ContextType,
+        action: ActionType,
+        step: StepType,
+        success: Option<bool>,
+    ) {
+        let mut marker = Marker::new(KeyType::DownloadConfigSpecs, action, Some(step))
+            .with_source(data_store_specs_source().to_string());
+        if let Some(success) = success {
+            marker = marker.with_is_success(success);
+        }
+        self.ops_stats.add_marker(marker, Some(context));
     }
 
     fn log_data_store_sync_result(
@@ -385,6 +430,10 @@ impl StatsigDataStoreSpecsAdapter {
             log_w!(TAG, "Failed to send specs update to listener: {e}");
         }
     }
+}
+
+fn data_store_specs_source() -> SpecsSource {
+    SpecsSource::Adapter("DataStore".to_string())
 }
 
 fn cached_specs_from_bytes_response(

@@ -8,6 +8,9 @@ use crate::data_store_interface::{
 };
 use crate::data_store_lifecycle::DataStorePollingTask;
 use crate::hashing::HashUtil;
+use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
+use crate::sdk_diagnostics::diagnostics::ContextType;
+use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::statsig_global::current_runtime_epoch;
 use crate::{log_w, StatsigErr, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
@@ -20,6 +23,7 @@ use tokio::time::sleep;
 
 const TAG: &str = "StatsigDataStoreIdListsAdapter";
 const DEFAULT_ID_LIST_SYNC_INTERVAL_MS: u32 = 60_000;
+const DATA_STORE_SOURCE: &str = "Adapter(DataStore)";
 
 /// Reads complete ID-list snapshots from a DataStore, with an HTTP fallback.
 ///
@@ -39,6 +43,7 @@ pub struct StatsigDataStoreIdListsAdapter {
     snapshot_write_supported: AtomicBool,
     // Legacy manifest cursors do not prove that condensed children are complete.
     needs_http_reconciliation: AtomicBool,
+    ops_stats: Arc<OpsStatsForInstance>,
 }
 
 impl StatsigDataStoreIdListsAdapter {
@@ -68,6 +73,7 @@ impl StatsigDataStoreIdListsAdapter {
             snapshot_supported: AtomicBool::new(false),
             snapshot_write_supported: AtomicBool::new(false),
             needs_http_reconciliation: AtomicBool::new(false),
+            ops_stats: OPS_STATS.get_for_instance(sdk_key),
         }
     }
 
@@ -97,16 +103,73 @@ impl StatsigDataStoreIdListsAdapter {
         initialized
     }
 
+    fn add_diagnostics_marker(
+        &self,
+        context: Option<ContextType>,
+        action: ActionType,
+        step: StepType,
+        success: Option<bool>,
+    ) {
+        let Some(context) = context else {
+            return;
+        };
+        let mut marker = Marker::new(KeyType::GetIDListSources, action, Some(step))
+            .with_source(DATA_STORE_SOURCE.to_string());
+        if let Some(success) = success {
+            marker = marker.with_is_success(success);
+        }
+        self.ops_stats.add_marker(marker, Some(context));
+    }
+
     fn child_key(&self, list_name: &str) -> String {
         get_id_list_data_store_key(list_name, &self.sdk_key, &self.hashing, &self.options)
     }
 
     #[cfg(test)]
     async fn sync_id_lists(&self) -> Result<(), StatsigErr> {
-        self.sync_id_lists_in_epoch(current_runtime_epoch()).await
+        self.sync_id_lists_in_epoch(current_runtime_epoch(), None)
+            .await
     }
 
-    async fn sync_id_lists_in_epoch(&self, epoch: u64) -> Result<(), StatsigErr> {
+    async fn sync_id_lists_in_epoch(
+        &self,
+        epoch: u64,
+        diagnostics_context: Option<ContextType>,
+    ) -> Result<(), StatsigErr> {
+        self.add_diagnostics_marker(
+            diagnostics_context,
+            ActionType::Start,
+            StepType::DataStoreRead,
+            None,
+        );
+        let read_result = self.read_snapshot_from_store().await;
+        self.add_diagnostics_marker(
+            diagnostics_context,
+            ActionType::End,
+            StepType::DataStoreRead,
+            Some(read_result.is_ok()),
+        );
+        let (manifest, children) = read_result?;
+
+        self.add_diagnostics_marker(
+            diagnostics_context,
+            ActionType::Start,
+            StepType::Process,
+            None,
+        );
+        let result = self.publish_snapshot(epoch, &manifest, &children).await;
+        self.add_diagnostics_marker(
+            diagnostics_context,
+            ActionType::End,
+            StepType::Process,
+            Some(result.is_ok()),
+        );
+        result
+    }
+
+    async fn read_snapshot_from_store(
+        &self,
+    ) -> Result<(String, HashMap<String, String>), StatsigErr> {
         let manifest = self
             .data_store
             .get(&self.manifest_key)
@@ -129,7 +192,16 @@ impl StatsigDataStoreIdListsAdapter {
             children.insert(list_name, child);
         }
 
-        let snapshot = IdListsSnapshot::parse(&manifest, &children)?;
+        Ok((manifest, children))
+    }
+
+    async fn publish_snapshot(
+        &self,
+        epoch: u64,
+        manifest: &str,
+        children: &HashMap<String, String>,
+    ) -> Result<(), StatsigErr> {
+        let snapshot = IdListsSnapshot::parse(manifest, children)?;
         // Reads may overlap a slow public retry. Only publication must exclude
         // HTTP cursor selection/download/write-back and listener rebinding.
         let _refresh = self.polling_task.lock_refresh().await;
@@ -198,7 +270,11 @@ impl StatsigDataStoreIdListsAdapter {
     }
 
     async fn sync_cache_or_http(&self, epoch: u64, initializing: bool) -> Result<(), StatsigErr> {
-        match self.sync_id_lists_in_epoch(epoch).await {
+        let diagnostics_context = initializing.then_some(ContextType::Initialize);
+        match self
+            .sync_id_lists_in_epoch(epoch, diagnostics_context)
+            .await
+        {
             Ok(()) => Ok(()),
             Err(cache_error) => {
                 if self.polling_task.is_stopped_in_epoch(epoch) {
