@@ -96,12 +96,7 @@ impl SpecsAdapter for StatsigDataStoreSpecsAdapter {
                 Ok(update)
             }
             .await;
-            self.add_diagnostics_marker(
-                ContextType::Initialize,
-                ActionType::End,
-                StepType::DataStoreRead,
-                Some(read_result.is_ok()),
-            );
+            self.add_read_end_marker(ContextType::Initialize, read_result.as_ref().err());
             let update = read_result?;
 
             let read_lock = read_lock_or_else!(self.listener, {
@@ -343,7 +338,21 @@ impl StatsigDataStoreSpecsAdapter {
         if let Some(success) = success {
             marker = marker.with_is_success(success);
         }
-        self.ops_stats.add_marker(marker, Some(context));
+        self.ops_stats.add_marker(marker, context);
+    }
+
+    fn add_read_end_marker(&self, context: ContextType, error: Option<&StatsigErr>) {
+        let mut marker = Marker::new(
+            KeyType::DownloadConfigSpecs,
+            ActionType::End,
+            Some(StepType::DataStoreRead),
+        )
+        .with_source(data_store_specs_source().to_string())
+        .with_is_success(error.is_none());
+        if let Some(error) = error {
+            marker = marker.with_statsig_error(error);
+        }
+        self.ops_stats.add_marker(marker, context);
     }
 
     fn log_data_store_sync_result(
@@ -397,18 +406,30 @@ impl StatsigDataStoreSpecsAdapter {
     }
 
     async fn execute_background_sync_impl(&self) {
+        self.sync_from_data_store().await;
+        self.ops_stats
+            .enqueue_diagnostics_event(Some(KeyType::DownloadConfigSpecs), ContextType::ConfigSync);
+    }
+
+    async fn sync_from_data_store(&self) {
         let sync_start_ms = Utc::now().timestamp_millis() as u64;
-        if let Err(e) = self.data_store.initialize().await {
-            log_w!(
-                TAG,
-                "Failed to initialize data store for specs refresh: {e}"
-            );
-            return;
+        // The read span includes initialize, so reconnect failures are recorded too.
+        self.add_diagnostics_marker(
+            ContextType::ConfigSync,
+            ActionType::Start,
+            StepType::DataStoreRead,
+            None,
+        );
+        let read_result = async {
+            self.data_store.initialize().await?;
+            self.load_cached_specs().await
         }
-        let update = match self.load_cached_specs().await {
+        .await;
+        self.add_read_end_marker(ContextType::ConfigSync, read_result.as_ref().err());
+        let update = match read_result {
             Ok(update) => update,
             Err(e) => {
-                log_w!(TAG, "Failed to read for data store: {e}");
+                log_w!(TAG, "Failed to refresh specs from data store: {e}");
                 return;
             }
         };
@@ -423,7 +444,19 @@ impl StatsigDataStoreSpecsAdapter {
             return;
         });
 
+        self.add_diagnostics_marker(
+            ContextType::ConfigSync,
+            ActionType::Start,
+            StepType::Process,
+            None,
+        );
         let (result, response_format) = self.send_specs_update_to_listener(listener, update);
+        self.add_diagnostics_marker(
+            ContextType::ConfigSync,
+            ActionType::End,
+            StepType::Process,
+            Some(result.is_ok()),
+        );
         self.log_data_store_sync_result(sync_start_ms, &response_format, &result);
 
         if let Err(e) = result {
@@ -579,6 +612,121 @@ mod tests {
             .unwrap();
             shared.shutdown().await.unwrap();
             assert_eq!(store.shutdowns.load(Ordering::SeqCst), 1);
+        }
+    }
+
+    #[tokio::test]
+    async fn background_sync_adds_config_sync_markers() {
+        use crate::sdk_diagnostics::test_utils::{summarize_marker, RecordingDiagnosticsObserver};
+
+        let sdk_key = "secret-data-store-specs-polling-diagnostics";
+        let recorder = RecordingDiagnosticsObserver::subscribe(sdk_key);
+        let store = Arc::new(BlockingSpecsStore {
+            block_next_get: AtomicBool::new(false),
+            active_get: AtomicBool::new(false),
+            get_started: Notify::new(),
+            shutdowns: AtomicUsize::new(0),
+        });
+        let adapter = StatsigDataStoreSpecsAdapter::new(sdk_key, sdk_key, store, None);
+        adapter.initialize(Arc::new(AcceptSpecs));
+
+        adapter.execute_background_sync_impl().await;
+
+        let markers = recorder.wait_for_markers(4).await;
+        let summaries: Vec<String> = markers.iter().map(|(_, m)| summarize_marker(m)).collect();
+        assert_eq!(
+            summaries,
+            vec![
+                "download_config_specs:data_store_read:start",
+                "download_config_specs:data_store_read:end",
+                "download_config_specs:process:start",
+                "download_config_specs:process:end",
+            ]
+        );
+        for (context, marker) in &markers {
+            assert_eq!(context, "config_sync");
+            assert_eq!(marker["source"], "Adapter(DataStore)");
+        }
+        assert_eq!(markers[1].1["success"], true);
+        assert_eq!(markers[3].1["success"], true);
+    }
+
+    struct FailingSpecsStore {
+        fail_initialize: bool,
+    }
+
+    #[async_trait]
+    impl DataStoreTrait for FailingSpecsStore {
+        async fn initialize(&self) -> Result<(), StatsigErr> {
+            if self.fail_initialize {
+                return Err(StatsigErr::DataStoreFailure("connection refused".into()));
+            }
+            Ok(())
+        }
+
+        async fn shutdown(&self) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn get(&self, _key: &str) -> Result<DataStoreResponse, StatsigErr> {
+            Err(StatsigErr::DataStoreFailure("read timed out".into()))
+        }
+
+        async fn set(
+            &self,
+            _key: &str,
+            _value: &str,
+            _time: Option<u64>,
+        ) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        async fn support_polling_updates_for(&self, _path: RequestPath) -> bool {
+            true
+        }
+    }
+
+    #[tokio::test]
+    async fn background_sync_failures_add_failed_read_markers() {
+        use crate::sdk_diagnostics::test_utils::{summarize_marker, RecordingDiagnosticsObserver};
+
+        for (sdk_key, fail_initialize, message) in [
+            (
+                "secret-data-store-specs-init-failure",
+                true,
+                "connection refused",
+            ),
+            (
+                "secret-data-store-specs-read-failure",
+                false,
+                "read timed out",
+            ),
+        ] {
+            let recorder = RecordingDiagnosticsObserver::subscribe(sdk_key);
+            let store = Arc::new(FailingSpecsStore { fail_initialize });
+            let adapter = StatsigDataStoreSpecsAdapter::new(sdk_key, sdk_key, store, None);
+            adapter.initialize(Arc::new(AcceptSpecs));
+
+            adapter.execute_background_sync_impl().await;
+
+            recorder.wait_for_markers(2).await;
+            // give a stray process marker a chance to arrive before asserting there is none
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            let markers = recorder.markers();
+            let summaries: Vec<String> = markers.iter().map(|(_, m)| summarize_marker(m)).collect();
+            assert_eq!(
+                summaries,
+                vec![
+                    "download_config_specs:data_store_read:start",
+                    "download_config_specs:data_store_read:end",
+                ],
+                "{sdk_key}"
+            );
+            let end = &markers[1].1;
+            assert_eq!(markers[1].0, "config_sync");
+            assert_eq!(end["success"], false);
+            assert_eq!(end["error"]["name"], "DataStoreFailure");
+            assert!(end["error"]["message"].as_str().unwrap().contains(message));
         }
     }
 }

@@ -417,7 +417,7 @@ impl Statsig {
     pub async fn initialize_with_details(&self) -> Result<InitializeDetails, StatsigErr> {
         self.ops_stats.add_marker(
             Marker::new(KeyType::Overall, ActionType::Start, None),
-            Some(ContextType::Initialize),
+            ContextType::Initialize,
         );
 
         let init_details = if let Some(timeout_ms) = self.options.init_timeout_ms {
@@ -3316,10 +3316,10 @@ impl Statsig {
                     marker
                 }
             },
-            Some(ContextType::Initialize),
+            ContextType::Initialize,
         );
         self.ops_stats
-            .enqueue_diagnostics_event(None, Some(ContextType::Initialize));
+            .enqueue_diagnostics_event(None, ContextType::Initialize);
     }
 
     fn should_user_third_party_parser(&self) -> bool {

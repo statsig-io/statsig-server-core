@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::evaluation::evaluation_details::EvaluationDetails;
+use crate::StatsigErr;
 
 pub const TRUE_STR: &str = "true";
 pub const FALSE_STR: &str = "false";
@@ -186,6 +187,15 @@ impl Marker {
     pub fn with_error(mut self, error: HashMap<String, String>) -> Self {
         self.error = Some(error);
         self
+    }
+
+    /// Records a failed step's error, in the same shape as network errors.
+    #[must_use]
+    pub fn with_statsig_error(self, error: &StatsigErr) -> Self {
+        self.with_error(HashMap::from([
+            ("name".to_string(), error.name().to_string()),
+            ("message".to_string(), error.to_string()),
+        ]))
     }
 
     #[must_use]

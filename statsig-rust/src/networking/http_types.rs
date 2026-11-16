@@ -1,4 +1,5 @@
 use crate::networking::proxy_config::ProxyConfig;
+use crate::sdk_diagnostics::diagnostics::ContextType;
 use crate::sdk_diagnostics::marker::KeyType;
 use crate::StatsigErr;
 use async_trait::async_trait;
@@ -23,6 +24,8 @@ pub struct RequestArgs {
     pub timeout_ms: u64,
     pub is_shutdown: Option<Arc<AtomicBool>>,
     pub diagnostics_key: Option<KeyType>,
+    /// Network markers are only added when both this and `diagnostics_key` are set.
+    pub diagnostics_context: Option<ContextType>,
     pub proxy_config: Option<ProxyConfig>,
     pub ca_cert_pem: Option<Vec<u8>>,
     pub disable_file_streaming: Option<bool>,
@@ -51,6 +54,7 @@ impl RequestArgs {
             timeout_ms: 0,
             is_shutdown: None,
             diagnostics_key: None,
+            diagnostics_context: None,
             proxy_config: None,
             ca_cert_pem: None,
             disable_file_streaming: None,

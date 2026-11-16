@@ -422,7 +422,7 @@ impl StatsigGrpcSpecsAdapter {
 
         if context == ContextType::ConfigSync {
             self.ops_stats
-                .enqueue_diagnostics_event(Some(KeyType::DownloadConfigSpecs), Some(context));
+                .enqueue_diagnostics_event(Some(KeyType::DownloadConfigSpecs), context);
         }
         result
     }
@@ -450,7 +450,7 @@ impl StatsigGrpcSpecsAdapter {
         if let Some(success) = success {
             marker = marker.with_is_success(success);
         }
-        self.ops_stats.add_marker(marker, Some(context));
+        self.ops_stats.add_marker(marker, context);
     }
 
     fn send_spec_update_to_listener(&self, data: String) -> Result<(), StatsigErr> {
@@ -549,16 +549,10 @@ mod tests {
         adapter
     }
 
-    fn summarize(markers: &[(Option<String>, serde_json::Value)]) -> Vec<String> {
+    fn summarize(markers: &[(String, serde_json::Value)]) -> Vec<String> {
         markers
             .iter()
-            .map(|(context, m)| {
-                format!(
-                    "{} {}",
-                    context.as_deref().unwrap_or("-"),
-                    summarize_marker(m)
-                )
-            })
+            .map(|(context, m)| format!("{context} {}", summarize_marker(m)))
             .collect()
     }
 

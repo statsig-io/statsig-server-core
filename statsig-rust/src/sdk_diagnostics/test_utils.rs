@@ -11,7 +11,7 @@ use crate::{OpsStatsEventObserver, StatsigRuntime};
 /// Records every diagnostics marker added for one SDK key, as
 /// (context, serialized marker).
 pub struct RecordingDiagnosticsObserver {
-    markers: Mutex<Vec<(Option<String>, Value)>>,
+    markers: Mutex<Vec<(String, Value)>>,
     // OPS_STATS only holds a Weak per SDK key, and dropping a StatsigRuntime
     // stops its tasks. Keep both alive so the subscription keeps receiving.
     subscription: Mutex<Option<(Arc<OpsStatsForInstance>, Arc<StatsigRuntime>)>>,
@@ -33,12 +33,12 @@ impl RecordingDiagnosticsObserver {
         observer
     }
 
-    pub fn markers(&self) -> Vec<(Option<String>, Value)> {
+    pub fn markers(&self) -> Vec<(String, Value)> {
         self.markers.lock().clone()
     }
 
     /// Waits until at least `count` markers have arrived; events are delivered asynchronously.
-    pub async fn wait_for_markers(&self, count: usize) -> Vec<(Option<String>, Value)> {
+    pub async fn wait_for_markers(&self, count: usize) -> Vec<(String, Value)> {
         for _ in 0..500 {
             if self.markers.lock().len() >= count {
                 break;
@@ -58,7 +58,7 @@ impl OpsStatsEventObserver for RecordingDiagnosticsObserver {
         let Some(marker) = event.marker else {
             return;
         };
-        let context = event.context.map(|c| c.to_string());
+        let context = event.context.to_string();
         let marker = serde_json::to_value(&marker).unwrap_or_default();
         self.markers.lock().push((context, marker));
     }

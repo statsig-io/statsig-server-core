@@ -194,14 +194,17 @@ impl NetworkClient {
             request_args.proxy_config = Some(proxy_config.clone());
         }
         let mut attempt = 0;
+        let diagnostics = request_args
+            .diagnostics_key
+            .zip(request_args.diagnostics_context);
 
         loop {
-            if let Some(key) = request_args.diagnostics_key {
+            if let Some((key, context)) = diagnostics {
                 self.ops_stats.add_marker(
                     Marker::new(key, ActionType::Start, Some(StepType::NetworkRequest))
                         .with_attempt(attempt)
                         .with_url(request_args.url.clone()),
-                    None,
+                    context,
                 );
             }
             if is_shutdown.load(Ordering::SeqCst) {
@@ -262,7 +265,7 @@ impl NetworkClient {
             let duration_ms = request_start.elapsed().as_millis() as f64;
             self.log_network_request_latency_to_ob(&request_args, status, success, duration_ms);
 
-            if let Some(key) = request_args.diagnostics_key {
+            if let Some((key, context)) = diagnostics {
                 let mut end_marker =
                     Marker::new(key, ActionType::End, Some(StepType::NetworkRequest))
                         .with_attempt(attempt)
@@ -293,7 +296,7 @@ impl NetworkClient {
                     end_marker = end_marker.with_error(error_map);
                 }
 
-                self.ops_stats.add_marker(end_marker, None);
+                self.ops_stats.add_marker(end_marker, context);
             }
 
             if success {

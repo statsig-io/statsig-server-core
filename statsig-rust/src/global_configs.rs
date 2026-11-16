@@ -50,7 +50,6 @@ impl GlobalConfigs {
                 sdk_flags: HashMap::new(),
                 diagnostics_sampling_rates: HashMap::from([
                     ("initialize".to_string(), 10000.0),
-                    ("config_sync".to_string(), 1000.0),
                     ("dcs".to_string(), 1000.0),
                     ("get_id_list".to_string(), 100.0), // default sampling rates
                 ]),

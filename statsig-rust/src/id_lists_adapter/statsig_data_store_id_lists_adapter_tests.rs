@@ -726,7 +726,7 @@ async fn superseded_refresh_cannot_publish_or_fall_through_to_http() {
     assert!(matches!(
         adapter
             .http_fallback
-            .sync_id_lists_with_reconciliation(true, || false)
+            .sync_id_lists_with_reconciliation(true, false, || false)
             .await,
         Err(StatsigErr::ShutdownFailure(_))
     ));
@@ -1827,9 +1827,130 @@ async fn startup_from_cache_adds_initialize_diagnostics_markers() {
         ]
     );
     for (context, marker) in &markers {
-        assert_eq!(context.as_deref(), Some("initialize"));
+        assert_eq!(context, "initialize");
         assert_eq!(marker["source"], "Adapter(DataStore)");
     }
     assert_eq!(markers[1].1["success"], true);
     assert_eq!(markers[3].1["success"], true);
+}
+
+#[tokio::test]
+async fn scheduled_refresh_from_cache_adds_config_sync_diagnostics_markers() {
+    use crate::sdk_diagnostics::test_utils::{summarize_marker, RecordingDiagnosticsObserver};
+
+    let sdk_key = "secret-key-id-list-polling-diagnostics";
+    let options = StatsigOptions::default();
+    let store = Arc::new(SnapshotDataStore::new(HashMap::new(), true));
+    let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
+        sdk_key,
+        Arc::new(HashUtil::new()),
+        &options,
+        store.clone(),
+    ));
+    store.set_values(complete_snapshot_values(
+        &adapter,
+        "paid-users",
+        "+2Tv4fIVX\n",
+        10,
+    ));
+    let listener = Arc::new(TestIdListsListener {
+        id_lists: RwLock::new(HashMap::new()),
+    });
+    adapter
+        .clone()
+        .start(&StatsigRuntime::get_runtime(), listener)
+        .await
+        .unwrap();
+
+    // subscribe after startup so only the scheduled refresh is recorded
+    let recorder = RecordingDiagnosticsObserver::subscribe(sdk_key);
+    StatsigDataStoreIdListsAdapter::run_background_sync(&Arc::downgrade(&adapter)).await;
+
+    let markers = recorder.wait_for_markers(4).await;
+    let summaries: Vec<String> = markers.iter().map(|(_, m)| summarize_marker(m)).collect();
+    assert_eq!(
+        summaries,
+        vec![
+            "get_id_list_sources:data_store_read:start",
+            "get_id_list_sources:data_store_read:end",
+            "get_id_list_sources:process:start",
+            "get_id_list_sources:process:end",
+        ]
+    );
+    for (context, _) in &markers {
+        assert_eq!(context, "config_sync");
+    }
+}
+
+#[tokio::test]
+async fn failed_store_initialization_adds_failed_read_markers_before_http_fallback() {
+    use crate::sdk_diagnostics::test_utils::{summarize_marker, RecordingDiagnosticsObserver};
+
+    let mut server = Server::new_async().await;
+    let _manifest_request = server
+        .mock("POST", "/get_id_lists")
+        .with_status(200)
+        .with_body("{}")
+        .create_async()
+        .await;
+    let sdk_key = "secret-key-id-list-init-failure-diagnostics";
+    let recorder = RecordingDiagnosticsObserver::subscribe(sdk_key);
+    let options = StatsigOptions {
+        id_lists_url: Some(format!("{}/get_id_lists", server.url())),
+        ..StatsigOptions::default()
+    };
+    let store = Arc::new(SnapshotDataStore::new(HashMap::new(), true).with_failed_initialize());
+    let adapter = Arc::new(StatsigDataStoreIdListsAdapter::new(
+        sdk_key,
+        Arc::new(HashUtil::new()),
+        &options,
+        store.clone(),
+    ));
+    let listener = Arc::new(TestIdListsListener {
+        id_lists: RwLock::new(HashMap::new()),
+    });
+
+    // startup: store initialize fails, HTTP fallback succeeds
+    adapter
+        .clone()
+        .start(&StatsigRuntime::get_runtime(), listener)
+        .await
+        .unwrap();
+    // a scheduled refresh hits the same failure
+    adapter.sync_scheduled_tick().await.unwrap();
+
+    // each sync: a failed store read (2) + HTTP manifest request (2) + process (2)
+    let markers = recorder.wait_for_markers(12).await;
+    let store_markers: Vec<(String, String)> = markers
+        .iter()
+        .filter(|(_, m)| m["source"] == "Adapter(DataStore)")
+        .map(|(context, m)| (context.clone(), summarize_marker(m)))
+        .collect();
+    let read = |context: &str, action: &str| {
+        (
+            context.to_string(),
+            format!("get_id_list_sources:data_store_read:{action}"),
+        )
+    };
+    assert_eq!(
+        store_markers,
+        vec![
+            read("initialize", "start"),
+            read("initialize", "end"),
+            read("config_sync", "start"),
+            read("config_sync", "end"),
+        ]
+    );
+    for (_, marker) in markers
+        .iter()
+        .filter(|(_, m)| m["source"] == "Adapter(DataStore)" && m["action"] == "end")
+    {
+        assert_eq!(marker["success"], false);
+        assert_eq!(marker["error"]["name"], "DataStoreFailure");
+    }
+    // the HTTP fallback's own markers follow each failure
+    assert!(markers.iter().any(|(context, m)| context == "initialize"
+        && summarize_marker(m) == "get_id_list_sources:network_request:end"));
+    assert!(markers.iter().any(|(context, m)| context == "config_sync"
+        && summarize_marker(m) == "get_id_list_sources:network_request:end"));
 }

@@ -103,7 +103,7 @@ fn test_get_default_diagnostics_sampling_rate() {
         global_config_instance.use_diagnostics_sampling_rate("get_id_list", |x| x.cloned());
 
     assert_eq!(init_rate, Some(10000.0));
-    assert_eq!(config_sync_rate, Some(1000.0));
+    assert_eq!(config_sync_rate, None); // config_sync events are sampled by dcs / get_id_list
     assert_eq!(dcs_rate, Some(1000.0));
     assert_eq!(get_id_list_rate, Some(100.0));
 }
@@ -137,7 +137,7 @@ fn test_set_and_get_sampling_rate() {
         global_config_instance.use_diagnostics_sampling_rate("get_id_list", |x| x.cloned());
 
     assert_eq!(init_rate, Some(9999.0));
-    assert_eq!(config_sync_rate, Some(1000.0));
+    assert_eq!(config_sync_rate, None); // config_sync events are sampled by dcs / get_id_list
     assert_eq!(dcs_rate, Some(999.0));
     assert_eq!(get_id_list_rate, Some(99.0));
 }

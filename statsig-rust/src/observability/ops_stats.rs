@@ -144,7 +144,7 @@ impl OpsStatsForInstance {
         ));
     }
 
-    pub fn add_marker(&self, marker: Marker, context: Option<ContextType>) {
+    pub fn add_marker(&self, marker: Marker, context: ContextType) {
         self.log(OpsStatsEvent::Diagnostics(DiagnosticsEvent {
             marker: Some(marker),
             context,
@@ -153,16 +153,7 @@ impl OpsStatsForInstance {
         }));
     }
 
-    pub fn set_diagnostics_context(&self, context: ContextType) {
-        self.log(OpsStatsEvent::Diagnostics(DiagnosticsEvent {
-            marker: None,
-            context: Some(context),
-            key: None,
-            should_enqueue: false,
-        }));
-    }
-
-    pub fn enqueue_diagnostics_event(&self, key: Option<KeyType>, context: Option<ContextType>) {
+    pub fn enqueue_diagnostics_event(&self, key: Option<KeyType>, context: ContextType) {
         self.log(OpsStatsEvent::Diagnostics(DiagnosticsEvent {
             marker: None,
             context,
