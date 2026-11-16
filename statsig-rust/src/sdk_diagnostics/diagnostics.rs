@@ -1,3 +1,4 @@
+use super::api_call_diagnostics::ApiCallDiagnostics;
 use super::diagnostics_utils::DiagnosticsUtils;
 use super::marker::{KeyType, Marker};
 
@@ -23,6 +24,7 @@ pub const DIAGNOSTICS_EVENT: &str = "statsig::diagnostics";
 pub enum ContextType {
     Initialize,
     ConfigSync,
+    ApiCall,
 }
 
 impl fmt::Display for ContextType {
@@ -30,6 +32,7 @@ impl fmt::Display for ContextType {
         match self {
             ContextType::Initialize => write!(f, "initialize"),
             ContextType::ConfigSync => write!(f, "config_sync"),
+            ContextType::ApiCall => write!(f, "api_call"),
         }
     }
 }
@@ -38,7 +41,7 @@ impl fmt::Display for ContextType {
 /// not a marker list, so one operation's send never takes another's markers.
 #[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
 enum MarkerGroup {
-    /// Everything in the context is sent as one event (initialize).
+    /// Everything in the context is sent as one event (initialize, api_call).
     All,
     ConfigSpecs,
     IdLists,
@@ -46,14 +49,14 @@ enum MarkerGroup {
 
 impl MarkerGroup {
     fn new(context: ContextType, key: Option<KeyType>) -> Self {
-        if context == ContextType::Initialize {
+        if context != ContextType::ConfigSync {
             return MarkerGroup::All;
         }
 
         match key {
             Some(KeyType::DownloadConfigSpecs) => MarkerGroup::ConfigSpecs,
             Some(KeyType::GetIDList | KeyType::GetIDListSources) => MarkerGroup::IdLists,
-            Some(KeyType::Overall) | None => MarkerGroup::All,
+            _ => MarkerGroup::All,
         }
     }
 }
@@ -67,6 +70,7 @@ pub struct Diagnostics {
     marker_map: Mutex<HashMap<MarkerBucket, Vec<Marker>>>,
     event_logger: Arc<EventLogger>,
     global_configs: Arc<GlobalConfigs>,
+    api_call_diagnostics: Arc<ApiCallDiagnostics>,
 }
 
 impl Diagnostics {
@@ -75,7 +79,12 @@ impl Diagnostics {
             event_logger,
             marker_map: Mutex::new(HashMap::new()),
             global_configs: GlobalConfigs::get_instance(sdk_key),
+            api_call_diagnostics: Arc::new(ApiCallDiagnostics::new()),
         }
+    }
+
+    pub fn api_call_diagnostics(&self) -> Arc<ApiCallDiagnostics> {
+        self.api_call_diagnostics.clone()
     }
 
     pub fn add_marker(&self, context: ContextType, marker: Marker) {
@@ -94,8 +103,30 @@ impl Diagnostics {
         }
     }
 
+    /// For api_call, called on every event logger tick: sends the window's
+    /// markers only when the window ends, then starts the next window.
     pub fn enqueue_diagnostics_event(&self, context: ContextType, key: Option<KeyType>) {
+        if context == ContextType::ApiCall
+            && !self
+                .api_call_diagnostics
+                .try_rotate_window(&self.global_configs)
+        {
+            return;
+        }
+
         let Some(metadata) = self.take_event_metadata(context, key) else {
+            return;
+        };
+
+        self.event_logger.enqueue(EnqueuePassthroughOp {
+            event: StatsigEventInternal::new_diagnostic_event(metadata),
+        });
+    }
+
+    /// Sends the current api_call window's markers now, without starting a
+    /// new window. Used at shutdown so a sampled window is not lost.
+    pub fn send_api_call_markers(&self) {
+        let Some(metadata) = self.take_event_metadata(ContextType::ApiCall, None) else {
             return;
         };
 
@@ -148,6 +179,11 @@ impl Diagnostics {
             return self
                 .global_configs
                 .use_diagnostics_sampling_rate("initialize", check_sampling_rate);
+        }
+
+        if *context == ContextType::ApiCall {
+            // Sampled when the window started; only sampled windows have markers.
+            return true;
         }
 
         if let Some(key) = key {

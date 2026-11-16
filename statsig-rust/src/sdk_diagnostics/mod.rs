@@ -1,3 +1,4 @@
+pub mod api_call_diagnostics;
 pub mod diagnostics;
 pub mod diagnostics_utils;
 pub mod marker;

@@ -44,6 +44,7 @@ use crate::output_logger::{initialize_output_logger, shutdown_output_logger};
 use crate::persistent_storage::persistent_values_manager::{
     PersistentValuesManager, StickyRuleFilter,
 };
+use crate::sdk_diagnostics::api_call_diagnostics::ApiCallDiagnostics;
 use crate::sdk_diagnostics::diagnostics::{ContextType, Diagnostics};
 use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker};
 use crate::sdk_event_emitter::SdkEventEmitter;
@@ -211,6 +212,8 @@ pub struct Statsig {
     // concurrent evaluations; ArcSwapOption makes reads lock-free.
     fallback_environment: arc_swap::ArcSwapOption<HashMap<String, DynamicValue>>,
     ops_stats: Arc<OpsStatsForInstance>,
+    diagnostics: Arc<Diagnostics>,
+    api_call_diagnostics: Arc<ApiCallDiagnostics>,
     console_capture: Arc<ConsoleCaptureInstance>,
     error_observer: Arc<dyn OpsStatsEventObserver>,
     diagnostics_observer: Arc<dyn OpsStatsEventObserver>,
@@ -303,8 +306,9 @@ impl Statsig {
             EventLogger::new(sdk_key, &options, &event_logging_adapter, &statsig_runtime);
 
         let diagnostics = Arc::new(Diagnostics::new(event_logger.clone(), sdk_key));
+        let api_call_diagnostics = diagnostics.api_call_diagnostics();
         let diagnostics_observer: Arc<dyn OpsStatsEventObserver> =
-            Arc::new(DiagnosticsObserver::new(diagnostics));
+            Arc::new(DiagnosticsObserver::new(diagnostics.clone()));
         let error_observer: Arc<dyn OpsStatsEventObserver> =
             Arc::new(SDKErrorsObserver::new(sdk_key, &options));
         let console_capture = Arc::new(ConsoleCaptureHandler::new(event_logger.clone()));
@@ -361,6 +365,8 @@ impl Statsig {
             id_lists_adapter,
             statsig_runtime,
             ops_stats,
+            diagnostics,
+            api_call_diagnostics,
             console_capture,
             error_observer,
             diagnostics_observer,
@@ -475,6 +481,8 @@ impl Statsig {
             "Shutting down Statsig with timeout {}ms",
             timeout.as_millis()
         );
+        // A sampled api_call window is otherwise only sent when the next one starts.
+        self.diagnostics.send_api_call_markers();
 
         let start = Instant::now();
         let shutdown_result = tokio::select! {
@@ -631,6 +639,28 @@ impl Statsig {
         user: &StatsigUser,
         options: &ClientInitResponseOptions,
     ) -> InitializeResponse {
+        let api_call = self.start_api_call(KeyType::GetClientInitializeResponse, "");
+        let (response, generated) = self.generate_client_init_response(user, options);
+        self.end_api_call_with_success(api_call, generated);
+        response
+    }
+
+    pub fn get_client_init_response_as_string(&self, user: &StatsigUser) -> String {
+        // Serialization is part of this call's latency, so the marker ends after it.
+        let api_call = self.start_api_call(KeyType::GetClientInitializeResponse, "");
+        let (response, generated) =
+            self.generate_client_init_response(user, &ClientInitResponseOptions::default());
+        let serialized = serde_json::to_string(&response);
+        self.end_api_call_with_success(api_call, generated && serialized.is_ok());
+        serialized.unwrap_or_default()
+    }
+
+    /// Returns the response and whether it was generated (false means a blank fallback).
+    fn generate_client_init_response(
+        &self,
+        user: &StatsigUser,
+        options: &ClientInitResponseOptions,
+    ) -> (InitializeResponse, bool) {
         let user_internal = self.internalize_user(user);
 
         let data = read_lock_or_else!(self.spec_store.data, {
@@ -641,7 +671,7 @@ impl Statsig {
                     "Failed to acquire read lock for spec store data".to_string()
                 )
             );
-            return InitializeResponse::blank(user_internal);
+            return (InitializeResponse::blank(user_internal), false);
         });
 
         let app_id = select_app_id_for_gcir(options, &data.values, &self.hashing);
@@ -649,20 +679,16 @@ impl Statsig {
             self.create_gcir_eval_context(&user_internal, &data, options, app_id.as_ref());
 
         match GCIRFormatter::generate_v1_format(&mut context, options) {
-            Ok(response) => response,
+            Ok(response) => (response, true),
             Err(e) => {
                 log_error_to_statsig_and_console!(
                     &self.ops_stats,
                     TAG,
                     StatsigErr::GCIRError(e.to_string())
                 );
-                InitializeResponse::blank(user_internal)
+                (InitializeResponse::blank(user_internal), false)
             }
         }
-    }
-
-    pub fn get_client_init_response_as_string(&self, user: &StatsigUser) -> String {
-        serde_json::to_string(&self.get_client_init_response(user)).unwrap_or_default()
     }
 
     pub fn get_client_init_response_with_options_as_string(
@@ -670,6 +696,7 @@ impl Statsig {
         user: &StatsigUser,
         options: &ClientInitResponseOptions,
     ) -> String {
+        let api_call = self.start_api_call(KeyType::GetClientInitializeResponse, "");
         let user_internal = self.internalize_user(user);
 
         let data = read_lock_or_else!(self.spec_store.data, {
@@ -680,6 +707,7 @@ impl Statsig {
                     "Failed to acquire read lock for spec store data".to_string()
                 )
             );
+            self.end_api_call_with_success(api_call, false);
             return String::new();
         });
 
@@ -692,15 +720,76 @@ impl Statsig {
                 .stringify_gcir_response(
                     GCIRFormatter::generate_v2_format(&mut context, options),
                     || InitializeEvaluationsResponse::blank(user_internal),
+                    api_call,
                 ),
             Some(GCIRResponseFormat::InitializeV2) => self.stringify_gcir_response(
                 GCIRFormatter::generate_init_v2_format(&mut context, options),
                 || InitializeV2Response::blank(user_internal),
+                api_call,
             ),
             _ => self.stringify_gcir_response(
                 GCIRFormatter::generate_v1_format(&mut context, options),
                 || InitializeResponse::blank(user_internal),
+                api_call,
             ),
+        }
+    }
+}
+
+// ------------------------------------------------------------------------------- [ API Call Diagnostics ]
+
+/// A recorded evaluation call: pairs its start and end markers.
+struct ApiCallMarker {
+    key: KeyType,
+    config_name: String,
+    marker_id: String,
+}
+
+impl Statsig {
+    /// Adds an api_call start marker if this call falls in a sampled window.
+    /// Unsampled calls (nearly all of them) cost one atomic load.
+    fn start_api_call(&self, key: KeyType, config_name: &str) -> Option<ApiCallMarker> {
+        let marker_id = self.api_call_diagnostics.try_record_call()?;
+        let call = ApiCallMarker {
+            key,
+            config_name: config_name.to_string(),
+            marker_id,
+        };
+        self.ops_stats
+            .add_marker(call.marker(ActionType::Start), ContextType::ApiCall);
+        Some(call)
+    }
+
+    fn end_api_call(&self, api_call: Option<ApiCallMarker>, details: Option<&EvaluationDetails>) {
+        let Some(call) = api_call else {
+            return;
+        };
+        let success = details.is_none_or(|d| !d.reason.starts_with("Error"));
+        let mut marker = call.marker(ActionType::End).with_is_success(success);
+        if let Some(details) = details {
+            marker = marker.with_eval_details(details.clone());
+        }
+        self.ops_stats.add_marker(marker, ContextType::ApiCall);
+    }
+
+    fn end_api_call_with_success(&self, api_call: Option<ApiCallMarker>, success: bool) {
+        let Some(call) = api_call else {
+            return;
+        };
+        self.ops_stats.add_marker(
+            call.marker(ActionType::End).with_is_success(success),
+            ContextType::ApiCall,
+        );
+    }
+}
+
+impl ApiCallMarker {
+    fn marker(&self, action: ActionType) -> Marker {
+        let marker = Marker::new(self.key, action, None).with_marker_id(self.marker_id.clone());
+        if self.config_name.is_empty() {
+            marker
+        } else {
+            marker.with_config_name(self.config_name.clone())
         }
     }
 }
@@ -1597,6 +1686,7 @@ impl Statsig {
     ) -> bool {
         self.ensure_background_tasks_running();
 
+        let api_call = self.start_api_call(KeyType::CheckGate, gate_name);
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
         let (details, evaluation) = self.get_gate_evaluation(
@@ -1604,6 +1694,7 @@ impl Statsig {
             gate_name,
             Some(options.disable_exposure_logging),
         );
+        self.end_api_call(api_call, Some(&details));
 
         let value = evaluation.as_ref().map(|e| e.value).unwrap_or_default();
         let rule_id = evaluation
@@ -1640,6 +1731,7 @@ impl Statsig {
         gate_name: &str,
         options: FeatureGateEvaluationOptions,
     ) -> FeatureGate {
+        let api_call = self.start_api_call(KeyType::CheckGate, gate_name);
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
         let (details, evaluation) = self.get_gate_evaluation(
@@ -1647,6 +1739,7 @@ impl Statsig {
             gate_name,
             Some(options.disable_exposure_logging),
         );
+        self.end_api_call(api_call, Some(&details));
 
         if disable_exposure_logging {
             log_d!(TAG, "Exposure logging is disabled for gate {}", gate_name);
@@ -1710,6 +1803,7 @@ impl Statsig {
         dynamic_config_name: &str,
         options: DynamicConfigEvaluationOptions,
     ) -> DynamicConfig {
+        let api_call = self.start_api_call(KeyType::GetDynamicConfig, dynamic_config_name);
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
         let dynamic_config = self.get_dynamic_config_impl(
@@ -1717,6 +1811,7 @@ impl Statsig {
             dynamic_config_name,
             Some(options.disable_exposure_logging),
         );
+        self.end_api_call(api_call, Some(&dynamic_config.details));
 
         if disable_exposure_logging {
             log_d!(
@@ -1788,6 +1883,7 @@ impl Statsig {
         experiment_name: &str,
         options: ExperimentEvaluationOptions,
     ) -> Experiment {
+        let api_call = self.start_api_call(KeyType::GetExperiment, experiment_name);
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging = options.disable_exposure_logging;
         let mut experiment = self.get_experiment_impl(
@@ -1809,6 +1905,7 @@ impl Statsig {
             experiment,
             &reeval,
         );
+        self.end_api_call(api_call, Some(&experiment.details));
 
         if disable_exposure_logging {
             log_d!(
@@ -2072,8 +2169,11 @@ impl Statsig {
         layer_name: &str,
         options: LayerEvaluationOptions,
     ) -> Layer {
+        let api_call = self.start_api_call(KeyType::GetLayer, layer_name);
         let user_internal = self.internalize_user(user);
-        self.get_layer_impl(user_internal, layer_name, options)
+        let layer = self.get_layer_impl(user_internal, layer_name, options);
+        self.end_api_call(api_call, Some(&layer.details));
+        layer
     }
 
     pub fn manually_log_layer_parameter_exposure(
@@ -2118,11 +2218,13 @@ impl Statsig {
     ) -> T {
         use crate::evaluation::evaluator_result::result_to_gate_raw;
 
+        let api_call = self.start_api_call(KeyType::CheckGate, gate_name);
         let interned_gate_name = InternedString::from_str_ref(gate_name);
         let user_internal = self.internalize_user(user);
 
         let (details, evaluation) =
             self.evaluate_spec_raw(&user_internal, gate_name, &SpecType::Gate, None);
+        self.end_api_call(api_call, Some(&details));
 
         let raw = result_to_gate_raw(gate_name, &details, evaluation.as_ref());
         let result = callback(&raw);
@@ -2154,6 +2256,7 @@ impl Statsig {
     ) -> T {
         use crate::evaluation::evaluator_result::result_to_dynamic_config_raw;
 
+        let api_call = self.start_api_call(KeyType::GetDynamicConfig, dynamic_config_name);
         let interned_dynamic_config_name = InternedString::from_str_ref(dynamic_config_name);
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging: bool = options.disable_exposure_logging;
@@ -2164,6 +2267,7 @@ impl Statsig {
             &SpecType::DynamicConfig,
             Some(disable_exposure_logging),
         );
+        self.end_api_call(api_call, Some(&details));
 
         let raw = result_to_dynamic_config_raw(dynamic_config_name, &details, evaluation.as_ref());
         let result = callback(&raw);
@@ -2239,6 +2343,7 @@ impl Statsig {
     ) -> T {
         use crate::evaluation::evaluator_result::result_to_experiment_raw;
 
+        let api_call = self.start_api_call(KeyType::GetExperiment, experiment_name);
         let interned_experiment_name = InternedString::from_str_ref(experiment_name);
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging: bool = options.disable_exposure_logging;
@@ -2266,6 +2371,7 @@ impl Statsig {
                 &reeval,
             );
 
+        self.end_api_call(api_call, Some(&details));
         let raw = result_to_experiment_raw(experiment_name, &details, evaluation.as_ref());
         let result = callback(&raw);
 
@@ -2306,6 +2412,7 @@ impl Statsig {
     ) -> T {
         use crate::evaluation::evaluator_result::result_to_layer_raw;
 
+        let api_call = self.start_api_call(KeyType::GetLayer, layer_name);
         let user_internal = self.internalize_user(user);
         let disable_exposure_logging: bool = options.disable_exposure_logging;
 
@@ -2358,6 +2465,7 @@ impl Statsig {
             (evaluation, details)
         };
 
+        self.end_api_call(api_call, Some(&details));
         let raw = result_to_layer_raw(
             &user_internal,
             layer_name,
@@ -3095,18 +3203,24 @@ impl Statsig {
         &self,
         input: Result<T, StatsigErr>,
         fallback: impl FnOnce() -> T,
+        api_call: Option<ApiCallMarker>,
     ) -> String {
-        match input {
-            Ok(value) => serde_json::to_string(&value).unwrap_or_default(),
+        let generated = input.is_ok();
+        let value = match input {
+            Ok(value) => value,
             Err(e) => {
                 log_error_to_statsig_and_console!(
                     &self.ops_stats,
                     TAG,
                     StatsigErr::GCIRError(e.to_string())
                 );
-                serde_json::to_string(&fallback()).unwrap_or_default()
+                fallback()
             }
-        }
+        };
+        // Serialization is part of this call's latency, so the marker ends after it.
+        let serialized = serde_json::to_string(&value);
+        self.end_api_call_with_success(api_call, generated && serialized.is_ok());
+        serialized.unwrap_or_default()
     }
 
     fn get_gate_evaluation(

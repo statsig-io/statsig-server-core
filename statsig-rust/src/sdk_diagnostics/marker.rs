@@ -18,6 +18,16 @@ pub enum KeyType {
     GetIDList,
     #[serde(rename = "get_id_list_sources")]
     GetIDListSources,
+    #[serde(rename = "check_gate")]
+    CheckGate,
+    #[serde(rename = "get_dynamic_config")]
+    GetDynamicConfig,
+    #[serde(rename = "get_experiment")]
+    GetExperiment,
+    #[serde(rename = "get_layer")]
+    GetLayer,
+    #[serde(rename = "get_client_initialize_response")]
+    GetClientInitializeResponse,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -148,6 +158,18 @@ impl Marker {
     #[must_use]
     pub fn with_message(mut self, message: String) -> Self {
         self.message = Some(message);
+        self
+    }
+
+    #[must_use]
+    pub fn with_config_name(mut self, config_name: String) -> Self {
+        self.config_name = Some(config_name);
+        self
+    }
+
+    #[must_use]
+    pub fn with_marker_id(mut self, marker_id: String) -> Self {
+        self.marker_id = Some(marker_id);
         self
     }
 
