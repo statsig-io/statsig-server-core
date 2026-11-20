@@ -262,7 +262,7 @@ fn new_layer_eval<'a>(
             delegate_name = ctx.result.config_delegate.clone();
             group_name = ctx.result.group_name.clone();
             rule_id = Some(&rule.id);
-            is_experiment_group = rule.is_experiment_group.unwrap_or(false);
+            is_experiment_group = ctx.result.is_experiment_group;
             explicit_parameters = ctx.result.explicit_parameters.clone();
         } else {
             passed = ctx.result.bool_value;
