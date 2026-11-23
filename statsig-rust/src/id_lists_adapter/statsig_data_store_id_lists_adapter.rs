@@ -8,6 +8,9 @@ use crate::data_store_interface::{
 };
 use crate::data_store_lifecycle::DataStorePollingTask;
 use crate::hashing::HashUtil;
+use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
+use crate::sdk_diagnostics::diagnostics::ContextType;
+use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::statsig_global::current_runtime_epoch;
 use crate::{log_w, StatsigErr, StatsigOptions, StatsigRuntime};
 use async_trait::async_trait;
@@ -20,6 +23,7 @@ use tokio::time::sleep;
 
 const TAG: &str = "StatsigDataStoreIdListsAdapter";
 const DEFAULT_ID_LIST_SYNC_INTERVAL_MS: u32 = 60_000;
+const DATA_STORE_SOURCE: &str = "Adapter(DataStore)";
 
 /// Reads complete ID-list snapshots from a DataStore, with an HTTP fallback.
 ///
@@ -39,6 +43,7 @@ pub struct StatsigDataStoreIdListsAdapter {
     snapshot_write_supported: AtomicBool,
     // Legacy manifest cursors do not prove that condensed children are complete.
     needs_http_reconciliation: AtomicBool,
+    ops_stats: Arc<OpsStatsForInstance>,
 }
 
 impl StatsigDataStoreIdListsAdapter {
@@ -68,6 +73,7 @@ impl StatsigDataStoreIdListsAdapter {
             snapshot_supported: AtomicBool::new(false),
             snapshot_write_supported: AtomicBool::new(false),
             needs_http_reconciliation: AtomicBool::new(false),
+            ops_stats: OPS_STATS.get_for_instance(sdk_key),
         }
     }
 
@@ -97,16 +103,103 @@ impl StatsigDataStoreIdListsAdapter {
         initialized
     }
 
+    fn add_diagnostics_marker(
+        &self,
+        context: ContextType,
+        action: ActionType,
+        step: StepType,
+        success: Option<bool>,
+    ) {
+        let mut marker = Marker::new(KeyType::GetIDListSources, action, Some(step))
+            .with_source(DATA_STORE_SOURCE.to_string());
+        if let Some(success) = success {
+            marker = marker.with_is_success(success);
+        }
+        self.ops_stats.add_marker(marker, context);
+    }
+
+    fn add_read_end_marker(&self, context: ContextType, error: Option<&StatsigErr>) {
+        let mut marker = Marker::new(
+            KeyType::GetIDListSources,
+            ActionType::End,
+            Some(StepType::DataStoreRead),
+        )
+        .with_source(DATA_STORE_SOURCE.to_string())
+        .with_is_success(error.is_none());
+        if let Some(error) = error {
+            marker = marker.with_statsig_error(error);
+        }
+        self.ops_stats.add_marker(marker, context);
+    }
+
+    /// Store initialization runs before the snapshot read span. Its markers are
+    /// only added when it fails, so a failure that falls back to HTTP is still
+    /// visible without adding a span to every successful sync.
+    async fn initialize_store_with_diagnostics(
+        &self,
+        epoch: u64,
+        context: ContextType,
+    ) -> Result<(), StatsigErr> {
+        let start_marker = Marker::new(
+            KeyType::GetIDListSources,
+            ActionType::Start,
+            Some(StepType::DataStoreRead),
+        )
+        .with_source(DATA_STORE_SOURCE.to_string());
+        let result = self.initialize_store_if_needed(epoch).await;
+        if let Err(error) = &result {
+            if !matches!(error, StatsigErr::ShutdownFailure(_)) {
+                self.ops_stats.add_marker(start_marker, context);
+                self.add_read_end_marker(context, Some(error));
+            }
+        }
+        result
+    }
+
     fn child_key(&self, list_name: &str) -> String {
         get_id_list_data_store_key(list_name, &self.sdk_key, &self.hashing, &self.options)
     }
 
     #[cfg(test)]
     async fn sync_id_lists(&self) -> Result<(), StatsigErr> {
-        self.sync_id_lists_in_epoch(current_runtime_epoch()).await
+        self.sync_id_lists_in_epoch(current_runtime_epoch(), ContextType::ConfigSync)
+            .await
     }
 
-    async fn sync_id_lists_in_epoch(&self, epoch: u64) -> Result<(), StatsigErr> {
+    async fn sync_id_lists_in_epoch(
+        &self,
+        epoch: u64,
+        diagnostics_context: ContextType,
+    ) -> Result<(), StatsigErr> {
+        self.add_diagnostics_marker(
+            diagnostics_context,
+            ActionType::Start,
+            StepType::DataStoreRead,
+            None,
+        );
+        let read_result = self.read_snapshot_from_store().await;
+        self.add_read_end_marker(diagnostics_context, read_result.as_ref().err());
+        let (manifest, children) = read_result?;
+
+        self.add_diagnostics_marker(
+            diagnostics_context,
+            ActionType::Start,
+            StepType::Process,
+            None,
+        );
+        let result = self.publish_snapshot(epoch, &manifest, &children).await;
+        self.add_diagnostics_marker(
+            diagnostics_context,
+            ActionType::End,
+            StepType::Process,
+            Some(result.is_ok()),
+        );
+        result
+    }
+
+    async fn read_snapshot_from_store(
+        &self,
+    ) -> Result<(String, HashMap<String, String>), StatsigErr> {
         let manifest = self
             .data_store
             .get(&self.manifest_key)
@@ -129,7 +222,16 @@ impl StatsigDataStoreIdListsAdapter {
             children.insert(list_name, child);
         }
 
-        let snapshot = IdListsSnapshot::parse(&manifest, &children)?;
+        Ok((manifest, children))
+    }
+
+    async fn publish_snapshot(
+        &self,
+        epoch: u64,
+        manifest: &str,
+        children: &HashMap<String, String>,
+    ) -> Result<(), StatsigErr> {
+        let snapshot = IdListsSnapshot::parse(manifest, children)?;
         // Reads may overlap a slow public retry. Only publication must exclude
         // HTTP cursor selection/download/write-back and listener rebinding.
         let _refresh = self.polling_task.lock_refresh().await;
@@ -172,7 +274,7 @@ impl StatsigDataStoreIdListsAdapter {
         let should_publish = || !self.polling_task.is_stopped_in_epoch(epoch);
         if self.supports_snapshot() {
             self.http_fallback
-                .sync_id_lists_with_reconciliation(reconcile, should_publish)
+                .sync_id_lists_with_reconciliation(reconcile, initializing, should_publish)
                 .await?;
         } else {
             // Unsupported stores remain HTTP-only, including partial-success
@@ -198,7 +300,15 @@ impl StatsigDataStoreIdListsAdapter {
     }
 
     async fn sync_cache_or_http(&self, epoch: u64, initializing: bool) -> Result<(), StatsigErr> {
-        match self.sync_id_lists_in_epoch(epoch).await {
+        let diagnostics_context = if initializing {
+            ContextType::Initialize
+        } else {
+            ContextType::ConfigSync
+        };
+        match self
+            .sync_id_lists_in_epoch(epoch, diagnostics_context)
+            .await
+        {
             Ok(()) => Ok(()),
             Err(cache_error) => {
                 if self.polling_task.is_stopped_in_epoch(epoch) {
@@ -242,7 +352,10 @@ impl StatsigDataStoreIdListsAdapter {
             return self.sync_http(epoch, false).await;
         }
 
-        if let Err(cache_error) = self.initialize_store_if_needed(epoch).await {
+        if let Err(cache_error) = self
+            .initialize_store_with_diagnostics(epoch, ContextType::ConfigSync)
+            .await
+        {
             return self.sync_http(epoch, false).await.map_err(|http_error| Self::fallback_error(cache_error, http_error, "initialization"));
         }
 
@@ -268,6 +381,9 @@ impl StatsigDataStoreIdListsAdapter {
         if let Err(error) = adapter.sync_scheduled_tick().await {
             log_w!(TAG, "ID-list refresh failed: {error}");
         }
+        adapter
+            .ops_stats
+            .enqueue_diagnostics_event(Some(KeyType::GetIDListSources), ContextType::ConfigSync);
     }
 
     fn schedule_background_sync_impl(
@@ -349,7 +465,10 @@ impl IdListsAdapter for StatsigDataStoreIdListsAdapter {
             self.snapshot_write_supported.store(false, Ordering::Release);
             return self.sync_http(epoch, true).await;
         }
-        if let Err(cache_error) = self.initialize_store_if_needed(epoch).await {
+        if let Err(cache_error) = self
+            .initialize_store_with_diagnostics(epoch, ContextType::Initialize)
+            .await
+        {
             log_w!(
                 TAG,
                 "DataStore ID-list initialization failed: {cache_error}; trying HTTP"

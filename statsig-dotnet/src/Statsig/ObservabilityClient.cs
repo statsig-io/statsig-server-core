@@ -190,7 +190,7 @@ namespace Statsig
             try
             {
                 // The core passes the tag as a raw (non-JSON) string here.
-                var tag = Utf8PointerToString(argsPtr, argsLength);
+                var tag = StatsigUtils.Utf8PointerToString(argsPtr, argsLength);
                 if (string.IsNullOrEmpty(tag))
                 {
                     return false;
@@ -212,27 +212,9 @@ namespace Statsig
             }
         }
 
-        private static unsafe string? Utf8PointerToString(byte* ptr, ulong length)
-        {
-            // Callers free ptr in their finally blocks, so it's safe to bail here.
-            if (ptr == null || length == 0 || length > int.MaxValue)
-            {
-                return null;
-            }
-
-#if NET8_0_OR_GREATER
-            return Encoding.UTF8.GetString(new ReadOnlySpan<byte>(ptr, (int)length));
-#else
-            var len = (int)length;
-            var buffer = new byte[len];
-            Marshal.Copy((IntPtr)ptr, buffer, 0, len);
-            return Encoding.UTF8.GetString(buffer);
-#endif
-        }
-
         private static unsafe T? DeserializeFromPointer<T>(byte* ptr, ulong length)
         {
-            var json = Utf8PointerToString(ptr, length);
+            var json = StatsigUtils.Utf8PointerToString(ptr, length);
             if (string.IsNullOrEmpty(json))
             {
                 return default;

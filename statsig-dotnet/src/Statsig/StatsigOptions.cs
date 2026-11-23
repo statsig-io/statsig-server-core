@@ -15,11 +15,13 @@ namespace Statsig
         private readonly PersistentStorage? _persistentStorage;
         private readonly DataStore? _dataStore;
         private readonly ObservabilityClient? _observabilityClient;
+        private readonly OutputLoggerProvider? _outputLoggerProvider;
 
         internal unsafe ulong Reference => _ref;
         internal IPersistentStorage? PersistentStorage => _persistentStorage;
         internal DataStore? DataStore => _dataStore;
         internal ObservabilityClient? ObservabilityClient => _observabilityClient;
+        internal OutputLoggerProvider? OutputLoggerProvider => _outputLoggerProvider;
 
         public StatsigOptions(StatsigOptionsBuilder builder)
         {
@@ -39,6 +41,19 @@ namespace Statsig
             {
                 _observabilityClient = builder.observabilityClient;
                 builder.observabilityClientRef = _observabilityClient.Reference;
+            }
+
+            if (builder.outputLoggerProvider != null && builder.outputLoggerProvider.Reference == 0)
+            {
+                Console.Error.WriteLine(
+                    "[Statsig] The output logger provider was disposed or failed to register; SDK logs will use the default console logger.");
+            }
+            else if (builder.outputLoggerProvider != null)
+            {
+                _outputLoggerProvider = builder.outputLoggerProvider;
+                // The core may call the provider for the rest of the process lifetime.
+                _outputLoggerProvider.RootForProcessLifetime();
+                builder.outputLoggerProviderRef = _outputLoggerProvider.Reference;
             }
 
             var jsonData = JsonConvert.SerializeObject(builder, new JsonSerializerSettings
@@ -66,6 +81,10 @@ namespace Statsig
             if (builder.observabilityClient != null)
             {
                 builder.observabilityClientRef = null;
+            }
+            if (builder.outputLoggerProvider != null)
+            {
+                builder.outputLoggerProviderRef = null;
             }
         }
 
@@ -158,6 +177,15 @@ namespace Statsig
 
         [JsonIgnore]
         internal ObservabilityClient? observabilityClient;
+
+        [JsonProperty("output_log_level")]
+        internal string? outputLogLevel;
+
+        [JsonProperty("output_logger_provider_ref")]
+        internal ulong? outputLoggerProviderRef;
+
+        [JsonIgnore]
+        internal OutputLoggerProvider? outputLoggerProvider;
 
         [JsonProperty("disable_country_lookup")]
         internal bool? disableCountryLookup;
@@ -290,6 +318,36 @@ namespace Statsig
         public StatsigOptionsBuilder SetObservabilityClient(ObservabilityClient observabilityClient)
         {
             this.observabilityClient = observabilityClient;
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the minimum level of SDK log messages that are written out
+        /// (to the console, or to the provider set via <see cref="SetOutputLoggerProvider"/>).
+        /// Defaults to <see cref="OutputLogLevel.Warn"/>.
+        /// </summary>
+        public StatsigOptionsBuilder SetOutputLogLevel(OutputLogLevel outputLogLevel)
+        {
+            this.outputLogLevel = outputLogLevel switch
+            {
+                OutputLogLevel.None => "none",
+                OutputLogLevel.Error => "error",
+                OutputLogLevel.Warn => "warn",
+                OutputLogLevel.Info => "info",
+                OutputLogLevel.Debug => "debug",
+                _ => null, // unknown values fall back to the SDK default
+            };
+            return this;
+        }
+
+        /// <summary>
+        /// Routes the SDK's log messages to a custom provider instead of the console,
+        /// for example to forward them to Microsoft.Extensions.Logging.
+        /// See <see cref="OutputLoggerProvider"/> for threading and lifetime rules.
+        /// </summary>
+        public StatsigOptionsBuilder SetOutputLoggerProvider(OutputLoggerProvider outputLoggerProvider)
+        {
+            this.outputLoggerProvider = outputLoggerProvider;
             return this;
         }
 

@@ -313,6 +313,7 @@ impl StatsigHttpSpecsAdapter {
             deltas_enabled: use_deltas_next_req,
             accept_gzip_response: true,
             diagnostics_key: Some(KeyType::DownloadConfigSpecs),
+            diagnostics_context: Some(trigger.diagnostics_context()),
             timeout_ms,
             headers,
             ..RequestArgs::new()
@@ -511,8 +512,6 @@ impl StatsigHttpSpecsAdapter {
     pub async fn run_background_sync(self: Arc<Self>) {
         let specs_info = self.read_current_specs_info();
 
-        self.ops_stats
-            .set_diagnostics_context(ContextType::ConfigSync);
         if let Err(e) = self
             .manually_sync_specs(specs_info, SpecsSyncTrigger::Background)
             .await
@@ -522,10 +521,8 @@ impl StatsigHttpSpecsAdapter {
             }
             log_e!(TAG, "Background specs sync failed: {}", e);
         }
-        self.ops_stats.enqueue_diagnostics_event(
-            Some(KeyType::DownloadConfigSpecs),
-            Some(ContextType::ConfigSync),
-        );
+        self.ops_stats
+            .enqueue_diagnostics_event(Some(KeyType::DownloadConfigSpecs), ContextType::ConfigSync);
     }
 
     async fn manually_sync_specs(
@@ -569,7 +566,9 @@ impl StatsigHttpSpecsAdapter {
         let ProcessSpecDataOutcome {
             mut result,
             mut had_updates,
-        } = self.process_spec_data(response).await;
+        } = self
+            .process_spec_data(response, trigger.diagnostics_context())
+            .await;
 
         if self.should_attempt_fallback(trigger, &result) {
             log_d!(TAG, "Falling back to statsig api");
@@ -594,7 +593,9 @@ impl StatsigHttpSpecsAdapter {
                     network_success = NetworkSyncOutcome::Failure;
                 }
             }
-            let outcome = self.process_spec_data(response).await;
+            let outcome = self
+                .process_spec_data(response, trigger.diagnostics_context())
+                .await;
             result = outcome.result;
             had_updates = outcome.had_updates;
         }
@@ -628,6 +629,7 @@ impl StatsigHttpSpecsAdapter {
     async fn process_spec_data(
         &self,
         response: Result<NetworkResponse, NetworkError>,
+        diagnostics_context: ContextType,
     ) -> ProcessSpecDataOutcome {
         let mut resp = match response {
             Ok(resp) => resp,
@@ -671,7 +673,7 @@ impl StatsigHttpSpecsAdapter {
                 ActionType::Start,
                 Some(StepType::Process),
             ),
-            None,
+            diagnostics_context,
         );
 
         let result = match self
@@ -712,7 +714,7 @@ impl StatsigHttpSpecsAdapter {
                 Some(StepType::Process),
             )
             .with_is_success(result.is_ok()),
-            None,
+            diagnostics_context,
         );
 
         ProcessSpecDataOutcome {
@@ -820,6 +822,15 @@ pub enum SpecsSyncTrigger {
     Manual,
 }
 
+impl SpecsSyncTrigger {
+    fn diagnostics_context(self) -> ContextType {
+        match self {
+            SpecsSyncTrigger::Initial => ContextType::Initialize,
+            SpecsSyncTrigger::Background | SpecsSyncTrigger::Manual => ContextType::ConfigSync,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -887,11 +898,14 @@ mod tests {
 
         adapter.initialize(Arc::new(ChecksumFailingListener));
         let result = adapter
-            .process_spec_data(Ok(NetworkResponse {
-                data: ResponseData::from_bytes(vec![]),
-                loggable_api: "test-api".to_string(),
-                requested_deltas: true,
-            }))
+            .process_spec_data(
+                Ok(NetworkResponse {
+                    data: ResponseData::from_bytes(vec![]),
+                    loggable_api: "test-api".to_string(),
+                    requested_deltas: true,
+                }),
+                ContextType::ConfigSync,
+            )
             .await
             .result;
 
@@ -922,11 +936,14 @@ mod tests {
         }));
 
         let first_result = adapter
-            .process_spec_data(Ok(NetworkResponse {
-                data: ResponseData::from_bytes(vec![]),
-                loggable_api: "test-api".to_string(),
-                requested_deltas: true,
-            }))
+            .process_spec_data(
+                Ok(NetworkResponse {
+                    data: ResponseData::from_bytes(vec![]),
+                    loggable_api: "test-api".to_string(),
+                    requested_deltas: true,
+                }),
+                ContextType::ConfigSync,
+            )
             .await
             .result;
 
@@ -939,11 +956,14 @@ mod tests {
             .is_none_or(|p| !p.contains_key("accept_deltas")));
 
         let second_result = adapter
-            .process_spec_data(Ok(NetworkResponse {
-                data: ResponseData::from_bytes(vec![]),
-                loggable_api: "test-api".to_string(),
-                requested_deltas: false,
-            }))
+            .process_spec_data(
+                Ok(NetworkResponse {
+                    data: ResponseData::from_bytes(vec![]),
+                    loggable_api: "test-api".to_string(),
+                    requested_deltas: false,
+                }),
+                ContextType::ConfigSync,
+            )
             .await
             .result;
 
@@ -1058,11 +1078,14 @@ mod tests {
 
         // A successful full (non-delta) sync re-enables deltas.
         let reenable = adapter
-            .process_spec_data(Ok(NetworkResponse {
-                data: ResponseData::from_bytes(vec![]),
-                loggable_api: "test-api".to_string(),
-                requested_deltas: false,
-            }))
+            .process_spec_data(
+                Ok(NetworkResponse {
+                    data: ResponseData::from_bytes(vec![]),
+                    loggable_api: "test-api".to_string(),
+                    requested_deltas: false,
+                }),
+                ContextType::ConfigSync,
+            )
             .await
             .result;
         assert!(reenable.is_ok());
@@ -1360,5 +1383,103 @@ mod tests {
             get_specs_response_format(&data),
             SpecsResponseFormat::Unknown
         ));
+    }
+
+    // Regression: contexts used to come from one global "current context", so a
+    // background sync starting mid-initialize moved initialize's later markers
+    // into config_sync.
+    #[tokio::test]
+    async fn test_overlapping_initialize_and_background_sync_keep_their_contexts() {
+        use crate::sdk_diagnostics::test_utils::{summarize_marker, RecordingDiagnosticsObserver};
+
+        let sdk_key = "secret-http-specs-overlapping-contexts";
+        let recorder = RecordingDiagnosticsObserver::subscribe(sdk_key);
+
+        let mut slow_server = mockito::Server::new_async().await;
+        let _slow = slow_server
+            .mock("GET", mockito::Matcher::Any)
+            .with_body_from_request(|_| {
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                b"{}".to_vec()
+            })
+            .create_async()
+            .await;
+        let mut fast_server = mockito::Server::new_async().await;
+        let _fast = fast_server
+            .mock("GET", mockito::Matcher::Any)
+            .with_body("{}")
+            .create_async()
+            .await;
+
+        let adapter_for = |url: &str| {
+            let options = StatsigOptions {
+                specs_url: Some(url.to_string()),
+                ..StatsigOptions::default()
+            };
+            let adapter = Arc::new(StatsigHttpSpecsAdapter::new(sdk_key, Some(&options), None));
+            adapter.initialize(Arc::new(AcceptAllListener));
+            adapter
+        };
+        let initializing = adapter_for(&slow_server.url());
+        let polling = adapter_for(&fast_server.url());
+
+        let init_sync =
+            initializing.manually_sync_specs(SpecsInfo::empty(), SpecsSyncTrigger::Initial);
+        let background_sync = async {
+            // start once initialize is already waiting on its response
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            StatsigHttpSpecsAdapter::run_background_sync(polling.clone()).await;
+        };
+        let _ = tokio::join!(init_sync, background_sync);
+
+        let markers = recorder.wait_for_markers(8).await;
+        let in_context = |context: &str| -> Vec<&serde_json::Value> {
+            markers
+                .iter()
+                .filter(|(c, _)| c == context)
+                .map(|(_, m)| m)
+                .collect()
+        };
+        let initialize = in_context("initialize");
+        let config_sync = in_context("config_sync");
+        let steps = |markers: &[&serde_json::Value]| -> Vec<String> {
+            markers.iter().map(|m| summarize_marker(m)).collect()
+        };
+        let expected_steps = vec![
+            "download_config_specs:network_request:start",
+            "download_config_specs:network_request:end",
+            "download_config_specs:process:start",
+            "download_config_specs:process:end",
+        ];
+        assert_eq!(steps(&initialize), expected_steps);
+        assert_eq!(steps(&config_sync), expected_steps);
+
+        // network markers carry the URL, which identifies the sync they came from
+        for marker in &initialize[..2] {
+            assert!(marker["url"]
+                .as_str()
+                .unwrap()
+                .starts_with(&slow_server.url()));
+        }
+        for marker in &config_sync[..2] {
+            assert!(marker["url"]
+                .as_str()
+                .unwrap()
+                .starts_with(&fast_server.url()));
+        }
+        // initialize finished after the background sync, and still kept its context
+        assert!(initialize[3]["timestamp"].as_u64() > config_sync[3]["timestamp"].as_u64());
+    }
+
+    struct AcceptAllListener;
+
+    impl SpecsUpdateListener for AcceptAllListener {
+        fn did_receive_specs_update(&self, _update: SpecsUpdate) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        fn get_current_specs_info(&self) -> SpecsInfo {
+            SpecsInfo::empty()
+        }
     }
 }

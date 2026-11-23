@@ -3,14 +3,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::evaluation::evaluation_details::EvaluationDetails;
+use crate::StatsigErr;
 
 pub const TRUE_STR: &str = "true";
 pub const FALSE_STR: &str = "false";
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum KeyType {
-    #[serde(rename = "initialize")]
-    Initialize,
     #[serde(rename = "overall")]
     Overall,
     #[serde(rename = "download_config_specs")]
@@ -19,6 +18,16 @@ pub enum KeyType {
     GetIDList,
     #[serde(rename = "get_id_list_sources")]
     GetIDListSources,
+    #[serde(rename = "check_gate")]
+    CheckGate,
+    #[serde(rename = "get_dynamic_config")]
+    GetDynamicConfig,
+    #[serde(rename = "get_experiment")]
+    GetExperiment,
+    #[serde(rename = "get_layer")]
+    GetLayer,
+    #[serde(rename = "get_client_initialize_response")]
+    GetClientInitializeResponse,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -27,6 +36,10 @@ pub enum StepType {
     Process,
     #[serde(rename = "network_request")]
     NetworkRequest,
+    /// Reading from a customer data store, which may be in memory, on local
+    /// disk, or across the network.
+    #[serde(rename = "data_store_read")]
+    DataStoreRead,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -149,6 +162,18 @@ impl Marker {
     }
 
     #[must_use]
+    pub fn with_config_name(mut self, config_name: String) -> Self {
+        self.config_name = Some(config_name);
+        self
+    }
+
+    #[must_use]
+    pub fn with_marker_id(mut self, marker_id: String) -> Self {
+        self.marker_id = Some(marker_id);
+        self
+    }
+
+    #[must_use]
     pub fn with_eval_details(mut self, details: EvaluationDetails) -> Self {
         self.evaluation_details = Some(details);
         self
@@ -186,6 +211,15 @@ impl Marker {
         self
     }
 
+    /// Records a failed step's error, in the same shape as network errors.
+    #[must_use]
+    pub fn with_statsig_error(self, error: &StatsigErr) -> Self {
+        self.with_error(HashMap::from([
+            ("name".to_string(), error.name().to_string()),
+            ("message".to_string(), error.to_string()),
+        ]))
+    }
+
     #[must_use]
     pub fn with_content_type(mut self, content_type: Option<String>) -> Self {
         self.content_type = content_type;
@@ -202,12 +236,12 @@ mod tests {
     fn test_marker_new() {
         let timestamp: u64 = Utc::now().timestamp_millis() as u64;
         let marker = Marker::new(
-            KeyType::Initialize,
+            KeyType::DownloadConfigSpecs,
             ActionType::Start,
             Some(StepType::Process),
         );
 
-        assert_eq!(marker.key, KeyType::Initialize);
+        assert_eq!(marker.key, KeyType::DownloadConfigSpecs);
         assert_eq!(marker.action, ActionType::Start);
         assert_eq!(marker.step, Some(StepType::Process));
         assert_eq!(marker.success, None);
@@ -219,7 +253,7 @@ mod tests {
     fn test_marker_serialization() {
         let timestamp: u64 = Utc::now().timestamp_millis() as u64;
         let marker = Marker::new(
-            KeyType::Initialize,
+            KeyType::DownloadConfigSpecs,
             ActionType::Start,
             Some(StepType::NetworkRequest),
         )
@@ -229,7 +263,7 @@ mod tests {
 
         let serialized = serde_json::to_string(&marker).expect("Failed to serialize Marker");
         let expected_json = format!(
-            r#"{{"key":"initialize","action":"start","timestamp":{timestamp},"attempt":1,"statusCode":200,"step":"network_request","success":true}}"#
+            r#"{{"key":"download_config_specs","action":"start","timestamp":{timestamp},"attempt":1,"statusCode":200,"step":"network_request","success":true}}"#
         );
         assert_eq!(serialized, expected_json);
     }

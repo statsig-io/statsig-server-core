@@ -3,6 +3,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define OUTPUT_LOG_LEVEL_ERROR 1
+
+#define OUTPUT_LOG_LEVEL_WARN 2
+
+#define OUTPUT_LOG_LEVEL_INFO 3
+
+#define OUTPUT_LOG_LEVEL_DEBUG 4
+
 typedef int SafeOptBool;
 
 #ifdef __cplusplus
@@ -54,6 +62,21 @@ void __internal__test_observability_client(uint64_t ob_client_ref,
                                            const char *metric_name,
                                            double value,
                                            const char *tags);
+
+uint64_t output_logger_provider_create(void (*init_fn)(void),
+                                       void (*log_fn)(uint32_t level,
+                                                      const char *tag_ptr,
+                                                      uint64_t tag_length,
+                                                      const char *msg_ptr,
+                                                      uint64_t msg_length),
+                                       void (*shutdown_fn)(void));
+
+void output_logger_provider_release(uint64_t provider_ref);
+
+void __internal__test_output_logger_provider(uint64_t provider_ref,
+                                             const char *action,
+                                             const char *tag,
+                                             const char *message);
 
 uint64_t persistent_storage_create(const char *bindings_language,
                                    char *(*load_fn)(const char *args_ptr, uint64_t args_length),

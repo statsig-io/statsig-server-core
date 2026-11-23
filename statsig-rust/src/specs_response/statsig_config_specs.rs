@@ -271,6 +271,7 @@ pub enum ConditionType {
     UserBucket = 9,
     TargetApp = 10,
     UnitId = 11,
+    ExperimentGroup = 12,
 }
 impl ConditionType {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -291,6 +292,7 @@ impl ConditionType {
             Self::UserBucket => "CONDITION_TYPE_USER_BUCKET",
             Self::TargetApp => "CONDITION_TYPE_TARGET_APP",
             Self::UnitId => "CONDITION_TYPE_UNIT_ID",
+            Self::ExperimentGroup => "CONDITION_TYPE_EXPERIMENT_GROUP",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -308,6 +310,7 @@ impl ConditionType {
             "CONDITION_TYPE_USER_BUCKET" => Some(Self::UserBucket),
             "CONDITION_TYPE_TARGET_APP" => Some(Self::TargetApp),
             "CONDITION_TYPE_UNIT_ID" => Some(Self::UnitId),
+            "CONDITION_TYPE_EXPERIMENT_GROUP" => Some(Self::ExperimentGroup),
             _ => None,
         }
     }

@@ -172,12 +172,16 @@ func (s *Statsig) GetExperiment(user *StatsigUser, experimentName string) Experi
 }
 
 func (s *Statsig) GetExperimentWithOptions(user *StatsigUser, experimentName string, options *ExperimentEvaluationOptions) Experiment {
+	return s.getExperimentWithOptions(user, experimentName, options)
+}
+
+func (s *Statsig) getExperimentWithOptions(user *StatsigUser, experimentName string, options any) Experiment {
 	defer runtime.KeepAlive(user)
 	experiment := Experiment{
 		Name: experimentName,
 	}
 
-	optionsJson, err := tryMarshalOrEmpty(options)
+	optionsJson, err := marshalPersistentEvaluationOptions(options)
 	if err != nil {
 		fmt.Printf("Failed to marshal ExperimentEvaluationOptions: %v", err)
 		return experiment
@@ -290,13 +294,17 @@ func (s *Statsig) GetLayer(user *StatsigUser, layerName string) Layer {
 }
 
 func (s *Statsig) GetLayerWithOptions(user *StatsigUser, layerName string, options *LayerEvaluationOptions) Layer {
+	return s.getLayerWithOptions(user, layerName, options)
+}
+
+func (s *Statsig) getLayerWithOptions(user *StatsigUser, layerName string, options any) Layer {
 	defer runtime.KeepAlive(user)
 	layer := Layer{
 		Name:       layerName,
 		statsigRef: s.ref.Load(),
 	}
 
-	optionsJson, err := tryMarshalOrEmpty(options)
+	optionsJson, err := marshalPersistentEvaluationOptions(options)
 	if err != nil {
 		fmt.Printf("Failed to marshal LayerEvaluationOptions: %v", err)
 		return layer

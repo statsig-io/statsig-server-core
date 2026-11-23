@@ -58,8 +58,8 @@ impl DynamicValue {
             return Some(ts);
         }
 
-        // Fast-reject: if the string is out of range or lacks typical date delimiters
-        if s.len() < 8 || s.len() > 20 || (!s.contains('-') && !s.contains('T') && !s.contains(':'))
+        // RFC3339 with nanosecond precision and a timezone offset takes 35 characters.
+        if s.len() < 8 || s.len() > 35 || (!s.contains('-') && !s.contains('T') && !s.contains(':'))
         {
             return None;
         }

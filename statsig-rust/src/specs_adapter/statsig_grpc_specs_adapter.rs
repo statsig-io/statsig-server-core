@@ -3,6 +3,8 @@ use crate::networking::ResponseData;
 use crate::observability::observability_client_adapter::{MetricType, ObservabilityEvent};
 use crate::observability::ops_stats::{OpsStatsForInstance, OPS_STATS};
 use crate::observability::ErrorBoundaryEvent;
+use crate::sdk_diagnostics::diagnostics::ContextType;
+use crate::sdk_diagnostics::marker::{ActionType, KeyType, Marker, StepType};
 use crate::{
     log_d, log_e, log_error_to_statsig_and_console, log_w, SpecAdapterConfig, SpecsAdapter,
     SpecsSource, SpecsUpdate, SpecsUpdateListener, StatsigErr, StatsigOptions, StatsigRuntime,
@@ -49,6 +51,9 @@ pub struct StatsigGrpcSpecsAdapter {
     retry_state: StreamingRetryState,
     init_timeout: Duration,
     ops_stats: Arc<OpsStatsForInstance>,
+    // Set while initialize waits for the first streamed spec, so that message
+    // closes the initialize network marker exactly once.
+    awaiting_init_message: AtomicBool,
     // For fallback to poll job behavior
     http_specs_adapter: Arc<StatsigHttpSpecsAdapter>,
     cancel_poll_notify: Arc<Notify>,
@@ -60,14 +65,29 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
         self: Arc<Self>,
         statsig_runtime: &Arc<StatsigRuntime>,
     ) -> Result<(), StatsigErr> {
-        let handle_id = self
+        self.awaiting_init_message.store(true, Ordering::SeqCst);
+        self.add_diagnostics_marker(
+            ContextType::Initialize,
+            ActionType::Start,
+            StepType::NetworkRequest,
+            None,
+        );
+        // Subscribe before spawning so the first streamed result cannot be missed.
+        let mut rx = self.initialization_tx.subscribe();
+        let handle_id = match self
             .clone()
             .spawn_grpc_streaming_thread(statsig_runtime, self.ops_stats.clone())
-            .await?;
+            .await
+        {
+            Ok(handle_id) => handle_id,
+            Err(e) => {
+                self.end_init_network_marker_on_failure();
+                return Err(e);
+            }
+        };
 
         self.set_task_handle(handle_id);
-        let mut rx = self.initialization_tx.subscribe();
-        match timeout(self.init_timeout, rx.recv()).await {
+        let result = match timeout(self.init_timeout, rx.recv()).await {
             Ok(res) => match res {
                 Ok(Ok(())) => Ok(()),
                 Ok(Err(err)) => Err(StatsigErr::GrpcError(format!(
@@ -78,7 +98,9 @@ impl SpecsAdapter for StatsigGrpcSpecsAdapter {
             Err(_) => Err(StatsigErr::GrpcError(
                 "Start Timeout to get a response".to_string(),
             )),
-        }
+        };
+        self.end_init_network_marker_on_failure();
+        result
     }
 
     async fn schedule_background_sync(
@@ -194,6 +216,7 @@ impl StatsigGrpcSpecsAdapter {
                 super::DEFAULT_INIT_TIMEOUT_MS
             }),
             ops_stats: OPS_STATS.get_for_instance(sdk_key),
+            awaiting_init_message: AtomicBool::new(false),
             http_specs_adapter: Arc::new(fallback_adapter),
             cancel_poll_notify: Arc::new(Notify::new()),
         }
@@ -350,7 +373,7 @@ impl StatsigGrpcSpecsAdapter {
                     }
                     let _ = self
                         .initialization_tx
-                        .send(self.send_spec_update_to_listener(config_spec.spec));
+                        .send(self.handle_streamed_spec(config_spec.spec));
                     self.ops_stats.log(ObservabilityEvent::new_event(
                         MetricType::Increment,
                         "grpc_received_message".to_string(),
@@ -374,6 +397,62 @@ impl StatsigGrpcSpecsAdapter {
         })));
     }
 
+    fn handle_streamed_spec(&self, data: String) -> Result<(), StatsigErr> {
+        let context = if self.awaiting_init_message.swap(false, Ordering::SeqCst) {
+            self.add_diagnostics_marker(
+                ContextType::Initialize,
+                ActionType::End,
+                StepType::NetworkRequest,
+                Some(true),
+            );
+            ContextType::Initialize
+        } else {
+            // Later messages are pushes, not requests, so they only get process markers.
+            ContextType::ConfigSync
+        };
+
+        self.add_diagnostics_marker(context, ActionType::Start, StepType::Process, None);
+        let result = self.send_spec_update_to_listener(data);
+        self.add_diagnostics_marker(
+            context,
+            ActionType::End,
+            StepType::Process,
+            Some(result.is_ok()),
+        );
+
+        if context == ContextType::ConfigSync {
+            self.ops_stats
+                .enqueue_diagnostics_event(Some(KeyType::DownloadConfigSpecs), context);
+        }
+        result
+    }
+
+    fn end_init_network_marker_on_failure(&self) {
+        if self.awaiting_init_message.swap(false, Ordering::SeqCst) {
+            self.add_diagnostics_marker(
+                ContextType::Initialize,
+                ActionType::End,
+                StepType::NetworkRequest,
+                Some(false),
+            );
+        }
+    }
+
+    fn add_diagnostics_marker(
+        &self,
+        context: ContextType,
+        action: ActionType,
+        step: StepType,
+        success: Option<bool>,
+    ) {
+        let mut marker = Marker::new(KeyType::DownloadConfigSpecs, action, Some(step))
+            .with_source(grpc_specs_source().to_string());
+        if let Some(success) = success {
+            marker = marker.with_is_success(success);
+        }
+        self.ops_stats.add_marker(marker, context);
+    }
+
     fn send_spec_update_to_listener(&self, data: String) -> Result<(), StatsigErr> {
         let listener = self
             .listener
@@ -385,7 +464,7 @@ impl StatsigGrpcSpecsAdapter {
         if let Some(listener) = listener.as_ref() {
             let update = SpecsUpdate {
                 data: ResponseData::from_bytes(data.into_bytes()),
-                source: SpecsSource::Adapter("GRPC".to_string()),
+                source: grpc_specs_source(),
                 received_at: Utc::now().timestamp_millis() as u64,
                 source_api: None,
             };
@@ -429,5 +508,110 @@ impl StatsigGrpcSpecsAdapter {
             backoff,
             err
         );
+    }
+}
+
+fn grpc_specs_source() -> SpecsSource {
+    SpecsSource::Adapter("GRPC".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sdk_diagnostics::test_utils::{summarize_marker, RecordingDiagnosticsObserver};
+    use crate::SpecsAdapterType;
+
+    struct AcceptSpecs;
+
+    impl SpecsUpdateListener for AcceptSpecs {
+        fn did_receive_specs_update(&self, _update: SpecsUpdate) -> Result<(), StatsigErr> {
+            Ok(())
+        }
+
+        fn get_current_specs_info(&self) -> SpecsInfo {
+            SpecsInfo::empty()
+        }
+    }
+
+    fn create_adapter(sdk_key: &str) -> StatsigGrpcSpecsAdapter {
+        let config = SpecAdapterConfig {
+            adapter_type: SpecsAdapterType::NetworkGrpcWebsocket,
+            specs_url: Some("http://localhost:1".to_string()),
+            init_timeout_ms: 3000,
+            authentication_mode: None,
+            ca_cert_path: None,
+            client_cert_path: None,
+            client_key_path: None,
+            domain_name: None,
+        };
+        let adapter = StatsigGrpcSpecsAdapter::new(sdk_key, &config, None);
+        adapter.initialize(Arc::new(AcceptSpecs));
+        adapter
+    }
+
+    fn summarize(markers: &[(String, serde_json::Value)]) -> Vec<String> {
+        markers
+            .iter()
+            .map(|(context, m)| format!("{context} {}", summarize_marker(m)))
+            .collect()
+    }
+
+    #[tokio::test]
+    async fn test_first_streamed_spec_is_initialize_and_later_ones_are_config_sync() {
+        let sdk_key = "secret-grpc-init-diagnostics";
+        let recorder = RecordingDiagnosticsObserver::subscribe(sdk_key);
+        let adapter = create_adapter(sdk_key);
+        adapter.awaiting_init_message.store(true, Ordering::SeqCst);
+
+        adapter.handle_streamed_spec("{}".to_string()).unwrap();
+        adapter.handle_streamed_spec("{}".to_string()).unwrap();
+        // initialize already resolved, so a late failure must not add another end marker
+        adapter.end_init_network_marker_on_failure();
+
+        let markers = recorder.wait_for_markers(5).await;
+        assert_eq!(
+            summarize(&markers),
+            vec![
+                "initialize download_config_specs:network_request:end",
+                "initialize download_config_specs:process:start",
+                "initialize download_config_specs:process:end",
+                // pushes are not requests, so only process markers
+                "config_sync download_config_specs:process:start",
+                "config_sync download_config_specs:process:end",
+            ]
+        );
+        for (_, marker) in &markers {
+            assert_eq!(marker["source"], "Adapter(GRPC)");
+        }
+        assert_eq!(markers[0].1["success"], true);
+        assert_eq!(markers[2].1["success"], true);
+        assert_eq!(markers[4].1["success"], true);
+    }
+
+    #[tokio::test]
+    async fn test_initialize_failure_ends_network_marker_once() {
+        let sdk_key = "secret-grpc-init-failure-diagnostics";
+        let recorder = RecordingDiagnosticsObserver::subscribe(sdk_key);
+        let adapter = create_adapter(sdk_key);
+        adapter.awaiting_init_message.store(true, Ordering::SeqCst);
+
+        adapter.end_init_network_marker_on_failure();
+        adapter.end_init_network_marker_on_failure();
+        // a message arriving after initialize gave up is a config_sync push
+        adapter.handle_streamed_spec("{}".to_string()).unwrap();
+
+        recorder.wait_for_markers(3).await;
+        // give any stray markers a chance to arrive before asserting there are none
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        let markers = recorder.markers();
+        assert_eq!(
+            summarize(&markers),
+            vec![
+                "initialize download_config_specs:network_request:end",
+                "config_sync download_config_specs:process:start",
+                "config_sync download_config_specs:process:end",
+            ]
+        );
+        assert_eq!(markers[0].1["success"], false);
     }
 }

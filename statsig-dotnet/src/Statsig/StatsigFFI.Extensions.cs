@@ -71,5 +71,27 @@ namespace Statsig
 
         [DllImport(__DllName, EntryPoint = "__internal__test_observability_client", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void __internal__test_observability_client(ulong observabilityClientRef, byte* action, byte* metricName, double value, byte* tags);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void output_logger_provider_init_fn_delegate();
+
+        // tagPtr / messagePtr are borrowed, non-null-terminated UTF-8 buffers owned by the native core.
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void output_logger_provider_log_fn_delegate(uint level, byte* tagPtr, ulong tagLength, byte* messagePtr, ulong messageLength);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void output_logger_provider_shutdown_fn_delegate();
+
+        [DllImport(__DllName, EntryPoint = "output_logger_provider_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern ulong output_logger_provider_create(
+            output_logger_provider_init_fn_delegate initFn,
+            output_logger_provider_log_fn_delegate logFn,
+            output_logger_provider_shutdown_fn_delegate shutdownFn);
+
+        [DllImport(__DllName, EntryPoint = "output_logger_provider_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void output_logger_provider_release(ulong outputLoggerProviderRef);
+
+        [DllImport(__DllName, EntryPoint = "__internal__test_output_logger_provider", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void __internal__test_output_logger_provider(ulong outputLoggerProviderRef, byte* action, byte* tag, byte* message);
     }
 }

@@ -136,8 +136,12 @@ impl StatsigHttpIdListsAdapter {
         }
     }
 
-    async fn fetch_id_list_manifests_from_network(&self) -> Result<IdListsResponse, StatsigErr> {
-        let request_args = self.build_manifest_request_args();
+    async fn fetch_id_list_manifests_from_network(
+        &self,
+        diagnostics_context: ContextType,
+    ) -> Result<IdListsResponse, StatsigErr> {
+        let mut request_args = self.build_manifest_request_args();
+        request_args.diagnostics_context = Some(diagnostics_context);
 
         let result = if self.is_cdn_url() {
             self.network.get(request_args.clone()).await
@@ -212,13 +216,15 @@ impl StatsigHttpIdListsAdapter {
         start_index: u64,
         new_file_size: u64,
         id_list_file_id: Option<String>,
+        diagnostics_context: ContextType,
     ) -> Result<String, StatsigErr> {
-        let request_args = self.build_id_list_download_request_args(
+        let mut request_args = self.build_id_list_download_request_args(
             list_url,
             start_index,
             new_file_size,
             id_list_file_id,
         );
+        request_args.diagnostics_context = Some(diagnostics_context);
         // Resolved (post-override) URL, reused below for diagnostics markers.
         let list_url = request_args.url.clone();
 
@@ -232,6 +238,7 @@ impl StatsigHttpIdListsAdapter {
         };
 
         self.add_diagnostics_start_marker(
+            diagnostics_context,
             KeyType::GetIDList,
             StepType::Process,
             None,
@@ -243,6 +250,7 @@ impl StatsigHttpIdListsAdapter {
             None => {
                 let msg = "No ID List changes from network".to_string();
                 self.add_diagnostics_end_marker(
+                    diagnostics_context,
                     KeyType::GetIDList,
                     StepType::Process,
                     false,
@@ -262,6 +270,7 @@ impl StatsigHttpIdListsAdapter {
             .and_then(validate_id_list_changes);
 
         self.add_diagnostics_end_marker(
+            diagnostics_context,
             KeyType::GetIDList,
             StepType::Process,
             result.is_ok(),
@@ -329,10 +338,6 @@ impl StatsigHttpIdListsAdapter {
             None => return,
         };
 
-        strong_self
-            .ops_stats
-            .set_diagnostics_context(ContextType::ConfigSync);
-
         if let Err(e) = strong_self.sync_id_lists(false).await {
             if let StatsigErr::NetworkError(NetworkError::DisableNetworkOn(_)) = e {
                 return;
@@ -340,10 +345,9 @@ impl StatsigHttpIdListsAdapter {
             log_e!(TAG, "IDList background sync failed {}", e);
         }
 
-        strong_self.ops_stats.enqueue_diagnostics_event(
-            Some(KeyType::GetIDListSources),
-            Some(ContextType::ConfigSync),
-        );
+        strong_self
+            .ops_stats
+            .enqueue_diagnostics_event(Some(KeyType::GetIDListSources), ContextType::ConfigSync);
     }
 
     fn is_cdn_url(&self) -> bool {
@@ -410,22 +414,23 @@ impl StatsigHttpIdListsAdapter {
 
     // HTTP initialization reports any failed download; background refresh only
     // reports total failure. Both publish the lists that downloaded successfully.
-    async fn sync_id_lists(&self, fail_on_any_download_error: bool) -> Result<(), StatsigErr> {
-        self.sync_id_lists_with_publication_check(fail_on_any_download_error, || true)
+    async fn sync_id_lists(&self, initializing: bool) -> Result<(), StatsigErr> {
+        self.sync_id_lists_with_publication_check(initializing, || true)
             .await
     }
 
     pub(crate) async fn sync_id_lists_with_publication_check(
         &self,
-        fail_on_any_download_error: bool,
+        initializing: bool,
         should_publish: impl Fn() -> bool + Send + Sync,
     ) -> Result<(), StatsigErr> {
         self.sync_id_lists_with_policy(
             false,
             should_publish,
             IdListsSyncPolicy::Http {
-                fail_on_any_download_error,
+                fail_on_any_download_error: initializing,
             },
+            diagnostics_context(initializing),
         )
         .await
     }
@@ -435,10 +440,16 @@ impl StatsigHttpIdListsAdapter {
     pub(crate) async fn sync_id_lists_with_reconciliation(
         &self,
         reconcile: bool,
+        initializing: bool,
         should_publish: impl Fn() -> bool + Send + Sync,
     ) -> Result<(), StatsigErr> {
-        self.sync_id_lists_with_policy(reconcile, should_publish, IdListsSyncPolicy::Atomic)
-            .await
+        self.sync_id_lists_with_policy(
+            reconcile,
+            should_publish,
+            IdListsSyncPolicy::Atomic,
+            diagnostics_context(initializing),
+        )
+        .await
     }
 
     async fn sync_id_lists_with_policy(
@@ -446,13 +457,17 @@ impl StatsigHttpIdListsAdapter {
         reconcile: bool,
         should_publish: impl Fn() -> bool + Send + Sync,
         policy: IdListsSyncPolicy,
+        diagnostics_context: ContextType,
     ) -> Result<(), StatsigErr> {
         let sync_start_ms = Utc::now().timestamp_millis() as u64;
         let mut id_list_manifest_success = false;
         let mut successful_single_id_list_number = 0_u64;
         let mut failed_single_id_list_number = 0_u64;
 
-        let new_manifest = match self.fetch_id_list_manifests_from_network().await {
+        let new_manifest = match self
+            .fetch_id_list_manifests_from_network(diagnostics_context)
+            .await
+        {
             Ok(manifest) => {
                 id_list_manifest_success = true;
                 manifest
@@ -490,6 +505,7 @@ impl StatsigHttpIdListsAdapter {
         let mut changes = HashMap::new();
 
         self.add_diagnostics_start_marker(
+            diagnostics_context,
             KeyType::GetIDListSources,
             StepType::Process,
             Some(new_manifest.len()),
@@ -551,6 +567,7 @@ impl StatsigHttpIdListsAdapter {
                     changeset.range_start,
                     new_metadata.size,
                     new_metadata.file_id.clone(),
+                    diagnostics_context,
                 )
                 .await;
 
@@ -675,6 +692,7 @@ impl StatsigHttpIdListsAdapter {
         }
 
         self.add_diagnostics_end_marker(
+            diagnostics_context,
             KeyType::GetIDListSources,
             StepType::Process,
             result.is_ok(),
@@ -695,6 +713,7 @@ impl StatsigHttpIdListsAdapter {
     // ---- Helper functions for monioring ID List ----
     fn add_diagnostics_start_marker(
         &self,
+        context: ContextType,
         key: KeyType,
         step: StepType,
         id_list_count: Option<usize>,
@@ -707,11 +726,12 @@ impl StatsigHttpIdListsAdapter {
         if let Some(url) = url {
             marker = marker.with_url(url);
         }
-        self.ops_stats.add_marker(marker, None);
+        self.ops_stats.add_marker(marker, context);
     }
 
     fn add_diagnostics_end_marker(
         &self,
+        context: ContextType,
         key: KeyType,
         step: StepType,
         success: bool,
@@ -725,7 +745,7 @@ impl StatsigHttpIdListsAdapter {
         if let Some(url) = url {
             marker = marker.with_url(url);
         }
-        self.ops_stats.add_marker(marker, None);
+        self.ops_stats.add_marker(marker, context);
     }
 
     fn log_id_lists_sync_overall_latency(
@@ -773,8 +793,6 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
         listener: Arc<dyn IdListsUpdateListener + Send + Sync>,
     ) -> Result<(), StatsigErr> {
         self.set_listener(listener);
-        self.ops_stats
-            .set_diagnostics_context(ContextType::Initialize);
         let result = self.sync_id_lists(true).await;
         result?;
         Ok(())
@@ -823,6 +841,14 @@ impl IdListsAdapter for StatsigHttpIdListsAdapter {
 
     fn get_type_name(&self) -> String {
         TAG.to_string()
+    }
+}
+
+fn diagnostics_context(initializing: bool) -> ContextType {
+    if initializing {
+        ContextType::Initialize
+    } else {
+        ContextType::ConfigSync
     }
 }
 

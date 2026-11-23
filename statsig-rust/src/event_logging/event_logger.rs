@@ -11,6 +11,7 @@ use super::{
     sec_expo_as_primary_experiment::SecExpoAsPrimaryExperiment,
     statsig_event_internal::StatsigEventInternal,
 };
+use crate::sdk_diagnostics::diagnostics::ContextType;
 use crate::{
     event_logging::{
         event_logger_constants::EventLoggerConstants, event_queue::queue::QueueAddResult,
@@ -289,6 +290,9 @@ impl EventLogger {
                 }
 
                 me.event_sampler.try_reset_all_sampling();
+                // Lets diagnostics end the current api_call window once it is due.
+                me.ops_stats
+                    .enqueue_diagnostics_event(None, ContextType::ApiCall);
             }
         });
 
