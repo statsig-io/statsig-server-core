@@ -65,8 +65,7 @@ func NewPersistentStorage(functions PersistentStorageFunctions) *PersistentStora
 		ref:       0,
 	}
 
-	storage.ref = GetFFI().persistent_storage_create(
-		"go",
+	return registerPersistentStorage(storage,
 		// Load
 		func(argsPtr *byte, argsLength uint64) *byte {
 			// The args payload is the raw storage key (not JSON).
@@ -114,7 +113,11 @@ func NewPersistentStorage(functions PersistentStorageFunctions) *PersistentStora
 			storage.functions.Delete(data.Key, data.ConfigName)
 		},
 	)
+}
 
+// registerPersistentStorage shares native registration and ownership across API versions.
+func registerPersistentStorage(storage *PersistentStorage, load func(*byte, uint64) *byte, save func(*byte, uint64), deleteValue func(*byte, uint64)) *PersistentStorage {
+	storage.ref = GetFFI().persistent_storage_create("go", load, save, deleteValue)
 	runtime.SetFinalizer(storage, func(obj *PersistentStorage) {
 		GetFFI().persistent_storage_release(obj.ref)
 	})
@@ -152,9 +155,17 @@ func consumePersistentStorageArgs(inputPtr *byte, inputLength uint64) *string {
 		return nil
 	}
 
-	data := internal.GoStringFromPointer(inputPtr, inputLength)
-	GetFFI().free_string(inputPtr)
+	return consumePersistentStorageArgsWithRelease(inputPtr, inputLength, GetFFI().free_string)
+}
 
+// The release seam permits testing malformed callback ownership without handing
+// Go memory to the native allocator or sending invalid JSON into Rust.
+func consumePersistentStorageArgsWithRelease(inputPtr *byte, inputLength uint64, release func(*byte)) *string {
+	if inputPtr == nil {
+		return nil
+	}
+	data := internal.GoStringFromPointer(inputPtr, inputLength)
+	release(inputPtr)
 	return data
 }
 
