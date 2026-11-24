@@ -1,0 +1,18 @@
+[package]
+name = "statsig-amplitude"
+description = "Opt-in Amplitude event logging adapter for Statsig"
+version = "0.1.0"
+edition = "2021"
+license = "ISC"
+publish = false
+
+[dependencies]
+amplitude-rust = { path = "../amplitude-rust" }
+async-trait = "0.1.81"
+serde_json = "1.0.143"
+sha2 = "0.10.8"
+statsig-rust = { path = "../statsig-rust" }
+
+[dev-dependencies]
+tokio = { version = "1.39.1", features = ["rt", "macros"] }
+wiremock = "0.6.2"
