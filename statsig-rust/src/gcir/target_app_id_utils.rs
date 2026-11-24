@@ -65,8 +65,5 @@ pub(crate) fn should_filter_config_for_app(
         None => return true,
     };
 
-    if !target_app_ids.iter().any(|id| id == &string_app_id.value) {
-        return true;
-    }
-    false
+    !target_app_ids.iter().any(|id| id == &string_app_id.value)
 }
