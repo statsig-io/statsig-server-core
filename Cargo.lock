@@ -67,6 +67,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
+name = "amplitude-rust"
+version = "0.24.4"
+dependencies = [
+ "chrono",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uuid",
+ "wiremock",
+]
+
+[[package]]
+name = "amplitude_ruby_ffi"
+version = "0.24.4"
+dependencies = [
+ "amplitude-rust",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
