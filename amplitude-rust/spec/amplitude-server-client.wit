@@ -1,0 +1,193 @@
+package amplitude:analytics@0.1.0;
+
+interface types {
+    type json-value = string;
+    type json-object = string;
+
+    record plan {
+        branch: option<string>,
+        source: option<string>,
+        version: option<string>,
+        version-id: option<string>,
+    }
+
+    record ingestion-metadata {
+        source-name: option<string>,
+        source-version: option<string>,
+    }
+
+    enum server-zone {
+        us,
+        eu,
+    }
+
+    enum event-log-level {
+        none,
+        debug,
+        info,
+        warn,
+        error
+    }
+
+    enum plugin-type {
+        before,
+        enrichment,
+        destination,
+        observe,
+    }
+
+    type plugin-id = u64;
+    type callback-id = u64;
+    record config {
+        flush-queue-size: option<u32>,
+        flush-interval-millis: option<u64>,
+        flush-max-retries: option<u32>,
+        min-id-length: option<u32>,
+        server-zone: option<server-zone>,
+        use-batch: option<bool>,
+        server-url: option<string>,
+        opt-out: option<bool>,
+        plan: option<plan>,
+        ingestion-metadata: option<ingestion-metadata>,
+        event-log-level: option<event-log-level>,
+        callback: option<callback-id>,
+    }
+
+    record event-options {
+        user-id: option<string>,
+        device-id: option<string>,
+        time: option<s64>,
+        app-version: option<string>,
+        platform: option<string>,
+        os-name: option<string>,
+        os-version: option<string>,
+        device-brand: option<string>,
+        device-manufacturer: option<string>,
+        device-model: option<string>,
+        carrier: option<string>,
+        country: option<string>,
+        region: option<string>,
+        city: option<string>,
+        dma: option<string>,
+        language: option<string>,
+        price: option<f64>,
+        quantity: option<s64>,
+        revenue: option<f64>,
+        product-id: option<string>,
+        revenue-type: option<string>,
+        currency: option<string>,
+        location-lat: option<f64>,
+        location-lng: option<f64>,
+        ip: option<string>,
+        idfa: option<string>,
+        idfv: option<string>,
+        adid: option<string>,
+        android-id: option<string>,
+        event-id: option<s64>,
+        session-id: option<s64>,
+        insert-id: option<string>,
+        plan: option<plan>,
+        ingestion-metadata: option<ingestion-metadata>,
+        partner-id: option<string>,
+        version-name: option<string>,
+        user-agent: option<string>,
+        callback: option<callback-id>,
+    }
+
+    variant group-name {
+        single(string),
+        multiple(list<string>),
+    }
+
+    record base-event {
+        event-type: string,
+        options: event-options,
+        event-properties: option<json-object>,
+        user-properties: option<json-object>,
+        groups: option<list<tuple<string, group-name>>>,
+        group-properties: option<json-object>,
+        library: option<string>,
+    }
+
+    record property-value {
+        key: string,
+        value: json-value,
+    }
+
+    record property-increment {
+        key: string,
+        value: f64,
+    }
+
+    variant identify-operation {
+        set(property-value),
+        set-once(property-value),
+        append(property-value),
+        prepend(property-value),
+        pre-insert(property-value),
+        post-insert(property-value),
+        remove(property-value),
+        add(property-increment),
+        unset(string),
+        clear-all,
+    }
+
+    type identify = list<identify-operation>;
+
+    record revenue {
+        price: f64,
+        quantity: option<s64>,
+        product-id: option<string>,
+        revenue-type: option<string>,
+        receipt: option<string>,
+        receipt-sig: option<string>,
+        properties: option<json-object>,
+        revenue: option<f64>,
+        currency: option<string>,
+    }
+}
+
+interface hooks {
+    use types.{base-event, callback-id, config, plugin-id, plugin-type};
+    setup-plugin: func(plugin: plugin-id, stage: plugin-type, configuration: config) -> result<_, string>;
+    process-event: func(plugin: plugin-id, event: base-event) -> result<option<base-event>, string>;
+    send-event: func(plugin: plugin-id, event: base-event) -> result<_, string>;
+    flush-destination: func(plugin: plugin-id) -> option<result<_, string>>;
+    shutdown-destination: func(plugin: plugin-id);
+    delivery-callback: func(callback: callback-id, event: base-event, status-code: s32, message: option<string>);
+}
+
+interface client {
+    use types.{base-event, config, event-options, group-name, identify, json-object, plugin-id, plugin-type, revenue};
+    resource flush-task {
+        wait: func() -> result<_, string>;
+    }
+    resource amplitude {
+        constructor(api-key: string, configuration: option<config>);
+        configuration: func() -> config;
+        set-configuration: func(configuration: config);
+        api-key: func() -> string;
+        set-api-key: func(api-key: string);
+        track: func(event: base-event);
+        identify: func(operations: identify, options: event-options, event-properties: option<json-object>);
+        group-identify: func(
+            group-type: string,
+            group: string,
+            operations: identify,
+            options: option<event-options>,
+            event-properties: option<json-object>,
+            user-properties: option<json-object>,
+        );
+        revenue: func(transaction: revenue, options: event-options);
+        set-group: func(group-type: string, group: group-name, options: event-options);
+        flush: func() -> list<flush-task>;
+        add: func(plugin: plugin-id, stage: plugin-type) -> result<_, string>;
+        remove: func(plugin: plugin-id);
+        shutdown: func();
+    }
+}
+
+world amplitude-sdk {
+    import hooks;
+    export client;
+}
