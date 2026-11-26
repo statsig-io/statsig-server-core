@@ -66,6 +66,19 @@ class ClientTest < Minitest::Test
     assert_match(/\A[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\z/, event.fetch('insert_id'))
   end
 
+  def test_track_reports_ingestion_errors_for_device_only_events
+    _, payload = with_ingestion_server(400) do |client|
+      error = assert_raises(Amplitude::Error) { client.track('App Opened', device_id: 'device-123') }
+      assert_equal 'Amplitude returned HTTP 400', error.message
+    end
+
+    event = payload.fetch('events').fetch(0)
+    assert_equal 'device-123', event.fetch('device_id')
+    refute event.key?('user_id')
+    assert_operator event.fetch('time'), :>, 0
+    assert_match(/\A[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\z/, event.fetch('insert_id'))
+  end
+
   def test_identifies_through_the_native_client
     request, payload = with_ingestion_server(200) do |client|
       operations = Amplitude::Identify.new
