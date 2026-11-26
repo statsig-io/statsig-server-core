@@ -66,7 +66,10 @@ unsafe extern "C" fn amplitude_client_track(
 ) -> *mut c_char {
     unsafe {
         call_with_client(client, |client| {
-            let event: BaseEvent = read_json(event_json)?;
+            let mut event: BaseEvent = read_json(event_json)?;
+            event.library.get_or_insert_with(|| {
+                concat!("amplitude-ruby-core/", env!("CARGO_PKG_VERSION")).into()
+            });
             client
                 .runtime
                 .block_on(client.amplitude.track(event))

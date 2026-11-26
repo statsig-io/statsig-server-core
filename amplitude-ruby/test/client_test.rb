@@ -12,17 +12,25 @@ class ClientTest < Minitest::Test
         'Purchase Completed',
         user_id: 'user-123',
         event_properties: { total: 29.99, items: ['shirt'] },
-        user_properties: { plan: 'free' }
+        user_properties: { plan: 'free' },
+        time: 1_234_567_890_000,
+        insert_id: 'event-123',
+        session_id: 1_234_567_890_000
       )
     end
 
     assert_equal "POST /2/httpapi HTTP/1.1\r\n", request
     assert_equal 'test-api-key', payload.fetch('api_key')
+    assert_equal 1, payload.fetch('events').length
     event = payload.fetch('events').fetch(0)
     assert_equal 'Purchase Completed', event.fetch('event_type')
+    assert_match(%r{\Aamplitude-ruby-core/\d+\.\d+\.\d+(?:[-+][\w.+-]+)?\z}, event.fetch('library'))
     assert_equal 'user-123', event.fetch('user_id')
     assert_equal({ 'total' => 29.99, 'items' => ['shirt'] }, event.fetch('event_properties'))
     assert_equal({ 'plan' => 'free' }, event.fetch('user_properties'))
+    assert_equal 1_234_567_890_000, event.fetch('time')
+    assert_equal 1_234_567_890_000, event.fetch('session_id')
+    assert_equal 'event-123', event.fetch('insert_id')
   end
 
   def test_tracks_using_a_wit_event_hash
@@ -31,7 +39,8 @@ class ClientTest < Minitest::Test
         {
           'event_type' => 'Purchase Completed',
           'options' => { device_id: 'device-123', insert_id: 'event-123' },
-          'groups' => { team: %w[north south] }
+          'groups' => { team: %w[north south] },
+          'library' => 'custom-sdk/1.0'
         },
         insert_id: 'override-123'
       )
@@ -41,6 +50,20 @@ class ClientTest < Minitest::Test
     assert_equal 'device-123', event.fetch('device_id')
     assert_equal 'override-123', event.fetch('insert_id')
     assert_equal({ 'team' => %w[north south] }, event.fetch('groups'))
+    assert_equal 'custom-sdk/1.0', event.fetch('library')
+  end
+
+  def test_track_reports_ingestion_errors_for_device_only_events
+    _, payload = with_ingestion_server(400) do |client|
+      error = assert_raises(Amplitude::Error) { client.track('App Opened', device_id: 'device-123') }
+      assert_equal 'Amplitude returned HTTP 400', error.message
+    end
+
+    event = payload.fetch('events').fetch(0)
+    assert_equal 'device-123', event.fetch('device_id')
+    refute event.key?('user_id')
+    assert_operator event.fetch('time'), :>, 0
+    assert_match(/\A[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\z/, event.fetch('insert_id'))
   end
 
   def test_identifies_through_the_native_client
