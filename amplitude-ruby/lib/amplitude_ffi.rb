@@ -10,10 +10,10 @@ class Amplitude
     ffi_lib ENV.fetch('AMPLITUDE_LIB_PATH') { File.expand_path("../../target/debug/#{library}", __dir__) }
 
     attach_function :amplitude_client_new, %i[string pointer], :pointer
-    attach_function :amplitude_client_track, %i[pointer string], :pointer, blocking: true
-    attach_function :amplitude_client_identify, %i[pointer string], :pointer, blocking: true
+    attach_function :amplitude_client_track_with_completion, %i[pointer string pointer], :pointer, blocking: true
+    attach_function :amplitude_client_identify_with_completion, %i[pointer string pointer], :pointer, blocking: true
     attach_function :amplitude_client_free, [:pointer], :void
-    attach_function :amplitude_error_free, [:pointer], :void
+    attach_function :amplitude_string_free, [:pointer], :void
 
     class Client < FFI::AutoPointer
       def self.release(pointer)

@@ -33,7 +33,7 @@ class ClientTest < Minitest::Test
     assert_equal 'event-123', event.fetch('insert_id')
   end
 
-  def test_tracks_using_a_wit_event_hash
+  def test_tracks_using_an_event_hash
     _, payload = with_ingestion_server(200) do |client|
       assert_nil client.track(
         {
@@ -53,10 +53,16 @@ class ClientTest < Minitest::Test
     assert_equal 'custom-sdk/1.0', event.fetch('library')
   end
 
-  def test_track_reports_ingestion_errors_for_device_only_events
+  def test_track_reports_ingestion_errors_to_the_callback
     _, payload = with_ingestion_server(400) do |client|
-      error = assert_raises(Amplitude::Error) { client.track('App Opened', device_id: 'device-123') }
+      completions = []
+      error = assert_raises(Amplitude::Error) do
+        client.track('App Opened', device_id: 'device-123', callback: ->(*args) { completions << args })
+      end
       assert_equal 'Amplitude returned HTTP 400', error.message
+      assert_equal [
+        [{ 'event_type' => 'App Opened', 'options' => { 'device_id' => 'device-123' } }, 400, error.message]
+      ], completions
     end
 
     event = payload.fetch('events').fetch(0)
@@ -91,16 +97,23 @@ class ClientTest < Minitest::Test
         .remove('flags', 'legacy')
         .add('logins', 2.5)
         .unset('old_plan')
-      assert_nil client.identify(
+      completions = []
+      assert_nil(client.identify(
         operations,
         { app_version: '1.2' },
         user_id: 'user-123',
         event_properties: { source: 'account' },
         time: 1_234_567_890_000,
         insert_id: 'event-123',
-        session_id: 1_234_567_890_000,
-        callback: 3
-      )
+        session_id: 1_234_567_890_000
+      ) { |*args| completions << args })
+      assert_equal 1, completions.size
+      event, status, message = completions.first
+      assert_equal '$identify', event.fetch('event_type')
+      assert_equal 'user-123', event.fetch('options').fetch('user_id')
+      assert_equal({ 'plan' => 'pro' }, event.fetch('user_properties').fetch('$set'))
+      assert_equal 200, status
+      assert_nil message
     end
 
     assert_equal "POST /2/httpapi HTTP/1.1\r\n", request
@@ -128,7 +141,6 @@ class ClientTest < Minitest::Test
     assert_equal 1_234_567_890_000, event.fetch('session_id')
     assert_equal 'event-123', event.fetch('insert_id')
     assert_equal '1.2', event.fetch('app_version')
-    refute event.key?('callback')
   end
 
   def test_reports_ingestion_errors_and_supports_device_only_events
@@ -156,31 +168,30 @@ class ClientTest < Minitest::Test
     assert_raises(Amplitude::Error) { client.identify(operations.clear_all, user_id: 'user-123') }
   end
 
-  def test_other_client_methods_raise_not_implemented
-    client = Amplitude.new('test-api-key')
-    stubs = {
-      configuration: [],
-      'configuration=': [{}],
-      api_key: [],
-      'api_key=': ['next-api-key'],
-      group_identify: ['company', 'example', Amplitude::Identify.new],
-      revenue: [{ price: 2.5 }],
-      set_group: ['company', ['example']],
-      flush: [],
-      add: [1, :before],
-      remove: [1],
-      shutdown: []
-    }
-    stubs.each do |name, args|
-      error = assert_raises(NotImplementedError) { client.public_send(name, *args) }
-      assert_equal 'Not implemented', error.message
+  def test_client_exposes_track_and_identify
+    assert_equal %i[identify track], Amplitude.public_instance_methods(false).sort
+  end
+
+  def test_opt_out_completes_without_http_status
+    client = Amplitude.new('test-api-key', opt_out: true)
+    completion = nil
+    assert_nil(client.track('App Opened') { |*args| completion = args })
+    assert_equal [{ 'event_type' => 'App Opened', 'options' => {} }, 0, nil], completion
+  end
+
+  def test_queue_settings_batch_concurrent_calls
+    _, payload = with_ingestion_server(200, flush_interval_millis: 3_000, flush_queue_size: 2) do |client|
+      calls = %w[First Second].map do |name|
+        Thread.new { client.track(name, device_id: 'device-123') }
+      end
+      calls.each { |call| assert_nil call.value }
     end
-    assert_raises(NotImplementedError) { Amplitude::FlushTask.new.wait }
+    assert_equal %w[First Second], payload.fetch('events').map { |event| event.fetch('event_type') }.sort
   end
 
   private
 
-  def with_ingestion_server(status)
+  def with_ingestion_server(status, **configuration)
     server = TCPServer.new('127.0.0.1', 0)
     worker = Thread.new do
       socket = server.accept
@@ -196,7 +207,12 @@ class ClientTest < Minitest::Test
     ensure
       socket&.close
     end
-    client = Amplitude.new('test-api-key', server_url: "http://127.0.0.1:#{server.addr[1]}/2/httpapi", timeout_ms: 3_000)
+    client = Amplitude.new(
+      'test-api-key',
+      server_url: "http://127.0.0.1:#{server.addr[1]}/2/httpapi",
+      timeout_ms: 3_000,
+      **configuration
+    )
     yield client
     Timeout.timeout(5) { worker.value }
   ensure

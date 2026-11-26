@@ -4,8 +4,6 @@ use std::collections::BTreeMap;
 
 pub use serde_json::Value as JsonValue;
 pub type JsonObject = serde_json::Map<String, JsonValue>;
-pub type PluginId = u64;
-pub type CallbackId = u64;
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -31,40 +29,53 @@ pub enum ServerZone {
     Eu,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EventLogLevel {
-    None,
-    Debug,
-    Info,
-    Warn,
-    Error,
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, PartialOrd, Serialize)]
+#[serde(try_from = "u8", into = "u8")]
+#[repr(u8)]
+pub enum LogLevel {
+    #[default]
+    None = 0,
+    Error = 1,
+    Warn = 2,
+    Verbose = 3,
+    Debug = 4,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum PluginType {
-    Before,
-    Enrichment,
-    Destination,
-    Observe,
+impl TryFrom<u8> for LogLevel {
+    type Error = &'static str;
+
+    fn try_from(value: u8) -> Result<Self, &'static str> {
+        match value {
+            0 => Ok(Self::None),
+            1 => Ok(Self::Error),
+            2 => Ok(Self::Warn),
+            3 => Ok(Self::Verbose),
+            4 => Ok(Self::Debug),
+            _ => Err("log_level must be between 0 and 4"),
+        }
+    }
+}
+
+impl From<LogLevel> for u8 {
+    fn from(level: LogLevel) -> Self {
+        level as Self
+    }
 }
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Config {
-    pub flush_queue_size: Option<u32>,
-    pub flush_interval_millis: Option<u64>,
-    pub flush_max_retries: Option<u32>,
-    pub min_id_length: Option<u32>,
+    pub flush_interval_millis: Option<f64>,
+    pub flush_max_retries: Option<f64>,
+    pub flush_queue_size: Option<f64>,
+    pub instance_name: Option<String>,
+    pub log_level: Option<LogLevel>,
     pub server_zone: Option<ServerZone>,
     pub use_batch: Option<bool>,
     pub server_url: Option<String>,
     pub opt_out: Option<bool>,
     pub plan: Option<Plan>,
     pub ingestion_metadata: Option<IngestionMetadata>,
-    pub event_log_level: Option<EventLogLevel>,
-    pub callback: Option<CallbackId>,
     /// HTTP request timeout in milliseconds. Defaults to 10,000.
     pub timeout_ms: Option<u64>,
 }
@@ -91,9 +102,9 @@ pub struct EventOptions {
     pub price: Option<f64>,
     pub quantity: Option<i64>,
     pub revenue: Option<f64>,
-    #[serde(rename(serialize = "productId"), alias = "productId")]
+    #[serde(alias = "productId")]
     pub product_id: Option<String>,
-    #[serde(rename(serialize = "revenueType"), alias = "revenueType")]
+    #[serde(alias = "revenueType")]
     pub revenue_type: Option<String>,
     pub currency: Option<String>,
     pub location_lat: Option<f64>,
@@ -111,9 +122,6 @@ pub struct EventOptions {
     pub partner_id: Option<String>,
     pub version_name: Option<String>,
     pub user_agent: Option<String>,
-    /// Local delivery hook identifier.
-    #[serde(skip_serializing)]
-    pub callback: Option<CallbackId>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -125,9 +133,8 @@ pub enum GroupName {
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct BaseEvent {
+pub struct Event {
     pub event_type: String,
-    #[serde(flatten)]
     pub options: EventOptions,
     pub event_properties: Option<JsonObject>,
     pub user_properties: Option<JsonObject>,
@@ -136,7 +143,7 @@ pub struct BaseEvent {
     pub library: Option<String>,
 }
 
-impl BaseEvent {
+impl Event {
     pub fn new(event_type: impl Into<String>) -> Self {
         Self {
             event_type: event_type.into(),
@@ -145,16 +152,4 @@ impl BaseEvent {
     }
 }
 
-#[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Revenue {
-    pub price: f64,
-    pub quantity: Option<i64>,
-    pub product_id: Option<String>,
-    pub revenue_type: Option<String>,
-    pub receipt: Option<String>,
-    pub receipt_sig: Option<String>,
-    pub properties: Option<JsonObject>,
-    pub revenue: Option<f64>,
-    pub currency: Option<String>,
-}
+pub type BaseEvent = Event;

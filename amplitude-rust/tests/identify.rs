@@ -1,6 +1,5 @@
 use amplitude_rust::{
-    Amplitude, AmplitudeError, Config, EventOptions, FlushTask, GroupName, IdentifyOperation,
-    IngestionMetadata, Plan, PluginType, Revenue,
+    Amplitude, AmplitudeError, Config, EventOptions, IdentifyOperation, IngestionMetadata, Plan,
 };
 use serde_json::{json, Value};
 use uuid::Uuid;
@@ -14,7 +13,6 @@ async fn sends_an_identify_event_with_all_property_operations() {
         .and(path("/2/httpapi"))
         .and(body_json(json!({
             "api_key": "test-api-key",
-            "options": {"min_id_length": 3},
             "events": [{
                 "event_type": "$identify",
                 "user_id": "abc",
@@ -47,7 +45,6 @@ async fn sends_an_identify_event_with_all_property_operations() {
         "test-api-key",
         Some(Config {
             server_url: Some(format!("{}/2/httpapi", server.uri())),
-            min_id_length: Some(3),
             plan: Some(Plan {
                 branch: Some("main".into()),
                 ..Plan::default()
@@ -104,7 +101,6 @@ async fn sends_an_identify_event_with_all_property_operations() {
         session_id: Some(1234567890000),
         insert_id: Some("event-123".into()),
         app_version: Some("1.2".into()),
-        callback: Some(1),
         ingestion_metadata: Some(IngestionMetadata {
             source_name: Some("account".into()),
             ..IngestionMetadata::default()
@@ -192,48 +188,4 @@ async fn rejects_invalid_identify_requests_before_sending() {
         ));
     }
     assert!(server.received_requests().await.unwrap().is_empty());
-}
-
-#[tokio::test]
-async fn other_client_methods_report_not_implemented() {
-    fn assert_stub<T>(result: Result<T, AmplitudeError>) {
-        assert!(matches!(result, Err(AmplitudeError::NotImplemented)));
-    }
-
-    let mut client = Amplitude::new("test-api-key", None).unwrap();
-    assert_stub(client.configuration());
-    assert_stub(client.set_configuration(Config::default()));
-    assert_stub(client.api_key());
-    assert_stub(client.set_api_key("next-api-key"));
-    assert_stub(
-        client
-            .group_identify("company", "example", vec![], None, None, None)
-            .await,
-    );
-    let transaction = Revenue {
-        price: 2.5,
-        quantity: None,
-        product_id: None,
-        revenue_type: None,
-        receipt: None,
-        receipt_sig: None,
-        properties: None,
-        revenue: None,
-        currency: None,
-    };
-    assert_stub(client.revenue(transaction, EventOptions::default()).await);
-    assert_stub(
-        client
-            .set_group(
-                "company",
-                GroupName::Single("example".into()),
-                EventOptions::default(),
-            )
-            .await,
-    );
-    assert_stub(client.flush());
-    assert_stub(FlushTask.wait().await);
-    assert_stub(client.add(1, PluginType::Before));
-    assert_stub(client.remove(1));
-    assert_stub(client.shutdown().await);
 }

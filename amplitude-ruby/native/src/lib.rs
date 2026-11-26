@@ -1,5 +1,7 @@
-use amplitude_rust::{Amplitude, BaseEvent, Config, EventOptions, Identify, JsonObject};
-use serde::{de::DeserializeOwned, Deserialize};
+use amplitude_rust::{
+    Amplitude, AmplitudeError, Config, Event, EventOptions, Identify, JsonObject,
+};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     ffi::{c_char, CStr, CString},
     panic::{catch_unwind, AssertUnwindSafe, UnwindSafe},
@@ -25,8 +27,15 @@ struct IdentifyRequest {
     event_properties: Option<JsonObject>,
 }
 
-// All exported functions take caller-owned inputs. Returned client and error
-// pointers must be passed to their corresponding free function exactly once.
+#[derive(Serialize)]
+struct Completion {
+    event: Event,
+    status_code: u16,
+    message: Option<String>,
+}
+
+// Inputs are caller-owned. Returned client pointers and any non-null error or
+// completion strings must be passed to their corresponding free function once.
 #[no_mangle]
 unsafe extern "C" fn amplitude_client_new(
     config_json: *const c_char,
@@ -60,40 +69,51 @@ unsafe extern "C" fn amplitude_client_new(
 }
 
 #[no_mangle]
-unsafe extern "C" fn amplitude_client_track(
+unsafe extern "C" fn amplitude_client_track_with_completion(
     client: *const Client,
     event_json: *const c_char,
+    completion_out: *mut *mut c_char,
 ) -> *mut c_char {
     unsafe {
-        call_with_client(client, |client| {
-            let mut event: BaseEvent = read_json(event_json)?;
+        call_with_client(client, completion_out, |client| {
+            let mut event: Event = read_json(event_json)?;
+            let original = (!completion_out.is_null()).then(|| event.clone());
             event.library.get_or_insert_with(|| {
                 concat!("amplitude-ruby-core/", env!("CARGO_PKG_VERSION")).into()
             });
-            client
-                .runtime
-                .block_on(client.amplitude.track(event))
-                .map_err(|error| error.to_string())
+            let result = client.runtime.block_on(client.amplitude.track(event));
+            complete(result, original, completion_out)
         })
     }
 }
 
 #[no_mangle]
-unsafe extern "C" fn amplitude_client_identify(
+unsafe extern "C" fn amplitude_client_identify_with_completion(
     client: *const Client,
     request_json: *const c_char,
+    completion_out: *mut *mut c_char,
 ) -> *mut c_char {
     unsafe {
-        call_with_client(client, |client| {
+        call_with_client(client, completion_out, |client| {
             let request: IdentifyRequest = read_json(request_json)?;
-            client
-                .runtime
-                .block_on(client.amplitude.identify(
-                    request.operations,
-                    request.options,
-                    request.event_properties,
-                ))
-                .map_err(|error| error.to_string())
+            let original = (!completion_out.is_null()).then(|| {
+                Event::from_identify(
+                    request.operations.clone(),
+                    request.options.clone(),
+                    request.event_properties.clone(),
+                )
+                .unwrap_or_else(|_| Event {
+                    options: request.options.clone(),
+                    event_properties: request.event_properties.clone(),
+                    ..Event::new("$identify")
+                })
+            });
+            let result = client.runtime.block_on(client.amplitude.identify(
+                request.operations,
+                request.options,
+                request.event_properties,
+            ));
+            complete(result, original, completion_out)
         })
     }
 }
@@ -106,16 +126,41 @@ unsafe extern "C" fn amplitude_client_free(client: *mut Client) {
 }
 
 #[no_mangle]
-unsafe extern "C" fn amplitude_error_free(error: *mut c_char) {
-    if !error.is_null() {
-        drop(unsafe { CString::from_raw(error) });
+unsafe extern "C" fn amplitude_string_free(value: *mut c_char) {
+    if !value.is_null() {
+        drop(unsafe { CString::from_raw(value) });
     }
+}
+
+unsafe fn complete(
+    result: Result<u16, AmplitudeError>,
+    event: Option<Event>,
+    completion_out: *mut *mut c_char,
+) -> Result<(), String> {
+    if let Some(event) = event {
+        let completion = Completion {
+            event,
+            status_code: result
+                .as_ref()
+                .copied()
+                .unwrap_or_else(AmplitudeError::status_code),
+            message: result.as_ref().err().map(ToString::to_string),
+        };
+        let json = serde_json::to_vec(&completion).map_err(|error| error.to_string())?;
+        let value = CString::new(json).map_err(|error| error.to_string())?;
+        unsafe { *completion_out = value.into_raw() };
+    }
+    result.map(|_| ()).map_err(|error| error.to_string())
 }
 
 unsafe fn call_with_client(
     client: *const Client,
+    completion_out: *mut *mut c_char,
     call: impl FnOnce(&Client) -> Result<(), String>,
 ) -> *mut c_char {
+    if !completion_out.is_null() {
+        unsafe { *completion_out = ptr::null_mut() };
+    }
     // The call borrows the client and owns the inputs for the duration of the request.
     ffi_result(AssertUnwindSafe(|| {
         let client = unsafe { client.as_ref() }.ok_or("Amplitude client is missing")?;

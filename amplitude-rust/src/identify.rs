@@ -1,4 +1,4 @@
-use crate::{AmplitudeError, JsonObject, JsonValue};
+use crate::{AmplitudeError, Event, EventOptions, JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
 use std::collections::{BTreeMap, HashSet};
@@ -20,7 +20,23 @@ pub enum IdentifyOperation {
     ClearAll,
 }
 
-pub(crate) fn user_properties(operations: Identify) -> Result<JsonObject, AmplitudeError> {
+impl Event {
+    /// Builds the event submitted by an identify operation.
+    pub fn from_identify(
+        operations: Identify,
+        options: EventOptions,
+        event_properties: Option<JsonObject>,
+    ) -> Result<Self, AmplitudeError> {
+        Ok(Self {
+            options,
+            event_properties,
+            user_properties: Some(user_properties(operations)?),
+            ..Self::new("$identify")
+        })
+    }
+}
+
+fn user_properties(operations: Identify) -> Result<JsonObject, AmplitudeError> {
     if operations.is_empty() {
         return Err(AmplitudeError::InvalidInput(
             "At least one identify operation is required",
