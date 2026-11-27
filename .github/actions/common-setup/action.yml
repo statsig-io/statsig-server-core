@@ -4,7 +4,7 @@ description: 'Common setup for the build'
 runs:
   using: 'composite'
   steps:
-    - uses: pnpm/action-setup@v4
+    - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
       name: Install PNPM
       with:
         version: 7.32.4
