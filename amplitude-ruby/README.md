@@ -1,16 +1,14 @@
 # Amplitude Ruby
 
-Track events and update user properties from Ruby through the `ffi` gem and the native
-`amplitude-rust` client. The [server client contract](../amplitude-rust/spec/amplitude-server-client.md)
+Track events and update user properties using Ruby's standard library. The
+[server client contract](../amplitude-rust/spec/amplitude-server-client.md)
 describes `track` and `identify` and links to their TypeSpec data models.
 
-Build the shared library from the repository root and add `amplitude-ruby/lib` to
-Ruby's load path.
+From the repository root, add `amplitude-ruby/lib` to Ruby's load path.
 
 ```sh
-gem install ffi
-cargo build -p amplitude_ruby_ffi --locked
 ruby -I amplitude-ruby/lib your_script.rb
+irb -I amplitude-ruby/lib -r amplitude
 ```
 
 ```ruby
@@ -37,7 +35,7 @@ Supply a `user_id` or `device_id`. Pass the event name and keyword arguments to
 `track`, or pass an event hash with `event_type` and optional `options`.
 For `identify`, pass event options as a hash or as keywords.
 Use one identify operation per property and send `clear_all` on its own.
-Rust fills in a missing timestamp and insert ID. Set an explicit `insert_id`
+The client fills in a missing timestamp and insert ID. Set an explicit `insert_id`
 and reuse it if you retry an operation.
 
 `Amplitude.new` accepts configuration as a hash or as keywords. For example,
@@ -47,10 +45,8 @@ or `timeout_ms:` to override the default 10-second timeout. Use
 calls, and `flush_max_retries:` to retry transient failures.
 Set `log_level:` to a value from 0 (off) through 4 (debug), and use
 `instance_name:` to label the logs.
-Set `AMPLITUDE_LIB_PATH` to the absolute library path when using a release build
-or a custom Cargo target directory.
 
-Run the local HTTP integration tests after building the library.
+Run the local HTTP integration tests from the repository root.
 
 ```sh
 ruby -I amplitude-ruby/lib amplitude-ruby/test/client_test.rb

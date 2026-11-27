@@ -6,7 +6,6 @@ strip = true
 
 [workspace]
 members = [
-    "amplitude-ruby/native",
     "amplitude-rust",
     "statsig-rust",
     "statsig-ffi",

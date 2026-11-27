@@ -81,16 +81,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "amplitude_ruby_ffi"
-version = "0.24.4"
-dependencies = [
- "amplitude-rust",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

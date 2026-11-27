@@ -34,11 +34,11 @@ class ClientTest < Minitest::Test
   end
 
   def test_tracks_using_an_event_hash
-    _, payload = with_ingestion_server(200) do |client|
+    _, payload = with_ingestion_server(200, ingestion_metadata: { source_name: 'default-source' }) do |client|
       assert_nil client.track(
         {
           'event_type' => 'Purchase Completed',
-          'options' => { device_id: 'device-123', insert_id: 'event-123' },
+          'options' => { device_id: 'device-123', insert_id: 'event-123', product_id: 'shirt' },
           'groups' => { team: %w[north south] },
           'library' => 'custom-sdk/1.0'
         },
@@ -49,6 +49,8 @@ class ClientTest < Minitest::Test
     event = payload.fetch('events').fetch(0)
     assert_equal 'device-123', event.fetch('device_id')
     assert_equal 'override-123', event.fetch('insert_id')
+    assert_equal 'shirt', event.fetch('productId')
+    assert_equal({ 'source_name' => 'default-source' }, event.fetch('ingestion_metadata'))
     assert_equal({ 'team' => %w[north south] }, event.fetch('groups'))
     assert_equal 'custom-sdk/1.0', event.fetch('library')
   end
@@ -85,7 +87,7 @@ class ClientTest < Minitest::Test
     assert_match(/\A[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\z/, event.fetch('insert_id'))
   end
 
-  def test_identifies_through_the_native_client
+  def test_identifies_and_reports_delivery
     request, payload = with_ingestion_server(200) do |client|
       operations = Amplitude::Identify.new
         .set('plan', 'pro')
@@ -121,6 +123,7 @@ class ClientTest < Minitest::Test
     event = payload.fetch('events').fetch(0)
     assert_equal 1, payload.fetch('events').length
     assert_equal '$identify', event.fetch('event_type')
+    assert_match(/\Aamplitude-ruby-core\//, event.fetch('library'))
     assert_equal 'user-123', event.fetch('user_id')
     assert_equal({ 'source' => 'account' }, event.fetch('event_properties'))
     assert_equal(
@@ -189,23 +192,49 @@ class ClientTest < Minitest::Test
     assert_equal %w[First Second], payload.fetch('events').map { |event| event.fetch('event_type') }.sort
   end
 
+  def test_flush_interval_sends_a_partial_batch
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    _, payload = with_ingestion_server(200, flush_interval_millis: 20, flush_queue_size: 2) do |client|
+      assert_nil client.track('App Opened', device_id: 'device-123')
+    end
+    assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :>=, 0.02
+    assert_equal 1, payload.fetch('events').length
+  end
+
+  def test_retries_with_the_same_payload_and_reports_the_final_status
+    completions = []
+    requests = with_ingestion_responses([503, 200], flush_max_retries: 1) do |client|
+      assert_nil(client.track('App Opened', device_id: 'device-123') { |*args| completions << args })
+    end
+    assert_equal requests[0], requests[1]
+    assert_equal [
+      [{ 'event_type' => 'App Opened', 'options' => { 'device_id' => 'device-123' } }, 200, nil]
+    ], completions
+  end
+
   private
 
   def with_ingestion_server(status, **configuration)
+    with_ingestion_responses([status], **configuration) { |client| yield client }.first
+  end
+
+  def with_ingestion_responses(statuses, **configuration)
     server = TCPServer.new('127.0.0.1', 0)
     worker = Thread.new do
-      socket = server.accept
-      request = socket.gets
-      headers = {}
-      while (line = socket.gets) && line != "\r\n"
-        name, value = line.split(':', 2)
-        headers[name.downcase] = value.strip
+      statuses.map do |status|
+        socket = server.accept
+        request = socket.gets
+        headers = {}
+        while (line = socket.gets) && line != "\r\n"
+          name, value = line.split(':', 2)
+          headers[name.downcase] = value.strip
+        end
+        payload = JSON.parse(socket.read(Integer(headers.fetch('content-length'))))
+        socket.write("HTTP/1.1 #{status} Test\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+        [request, payload]
+      ensure
+        socket&.close
       end
-      payload = JSON.parse(socket.read(Integer(headers.fetch('content-length'))))
-      socket.write("HTTP/1.1 #{status} Test\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
-      [request, payload]
-    ensure
-      socket&.close
     end
     client = Amplitude.new(
       'test-api-key',
