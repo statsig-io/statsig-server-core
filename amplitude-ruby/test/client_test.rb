@@ -6,6 +6,23 @@ require 'timeout'
 require 'amplitude'
 
 class ClientTest < Minitest::Test
+  class TestPlugin < Amplitude::BasePlugin
+    attr_reader :client
+
+    def initialize(plugin_type, &execute)
+      super(plugin_type)
+      @execute = execute
+    end
+
+    def setup(client)
+      @client = client
+    end
+
+    def execute(event)
+      @execute.call(event)
+    end
+  end
+
   def test_tracks_using_event_name_and_keywords
     request, payload = with_ingestion_server(200) do |client|
       assert_nil client.track(
@@ -171,8 +188,59 @@ class ClientTest < Minitest::Test
     assert_raises(Amplitude::Error) { client.identify(operations.clear_all, user_id: 'user-123') }
   end
 
-  def test_client_exposes_track_and_identify
-    assert_equal %i[identify track], Amplitude.public_instance_methods(false).sort
+  def test_client_runs_plugins_in_stage_order_and_can_remove_them
+    _, payload = with_ingestion_server(200) do |client|
+      before = TestPlugin.new(:before) do |event|
+        event['options']['user_id'] = 'user-123'
+        event['event_properties'] = { 'stages' => ['before'] }
+        event
+      end
+      enrichment = TestPlugin.new(:enrichment) do |event|
+        event['event_properties']['stages'] << 'enrichment'
+        event
+      end
+      removed = TestPlugin.new(:before) { flunk 'Removed plugin was executed' }
+      client.add(enrichment).add(before).add(removed).remove(removed)
+
+      assert_same client, before.client
+      assert_equal 3_000, before.client.configuration.timeout_ms
+      assert_nil(client.track('App Opened') do |event, code, message|
+        assert_equal({}, event.fetch('options'))
+        assert_equal 200, code
+        assert_nil message
+      end)
+    end
+    event = payload.fetch('events').first
+    assert_equal 'user-123', event.fetch('user_id')
+    assert_equal %w[before enrichment], event.dig('event_properties', 'stages')
+  end
+
+  def test_timeline_filters_events_and_returns_first_destination_result
+    timeline = Amplitude::Timeline.new
+    event = { 'event_type' => 'App Opened', 'options' => {} }
+    result = timeline.apply(event)
+    assert_equal 100, result.code
+    assert_equal 'Event not tracked, no destination plugins on the instance', result.message
+
+    calls = []
+    first = TestPlugin.new(:destination) do |current|
+      calls << :first
+      current['event_type'] = 'Only first sees this'
+      Amplitude::Result.new(event: current, code: 200, message: '')
+    end
+    second = TestPlugin.new(:destination) do |current|
+      calls << :second
+      assert_equal 'App Opened', current.fetch('event_type')
+      Amplitude::Result.new(event: current, code: 400, message: 'Rejected')
+    end
+    timeline.add(first)
+    timeline.add(second)
+    assert_equal 200, timeline.apply(event).code
+    assert_equal %i[first second], calls
+
+    timeline.add(TestPlugin.new(:enrichment) { nil })
+    assert_equal 0, timeline.apply(event).code
+    assert_equal %i[first second], calls
   end
 
   def test_opt_out_completes_without_http_status
@@ -182,22 +250,43 @@ class ClientTest < Minitest::Test
     assert_equal [{ 'event_type' => 'App Opened', 'options' => {} }, 0, nil], completion
   end
 
-  def test_queue_settings_batch_concurrent_calls
+  def test_queue_settings_batch_sequential_calls
     _, payload = with_ingestion_server(200, flush_interval_millis: 3_000, flush_queue_size: 2) do |client|
-      calls = %w[First Second].map do |name|
-        Thread.new { client.track(name, device_id: 'device-123') }
+      Timeout.timeout(1) do
+        assert_nil client.track('First', device_id: 'device-123')
+        assert_nil client.identify(Amplitude::Identify.new.set('plan', 'pro'), device_id: 'device-123')
       end
-      calls.each { |call| assert_nil call.value }
     end
-    assert_equal %w[First Second], payload.fetch('events').map { |event| event.fetch('event_type') }.sort
+    assert_equal ['First', '$identify'], payload.fetch('events').map { |event| event.fetch('event_type') }
   end
 
-  def test_flush_interval_sends_a_partial_batch
-    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    _, payload = with_ingestion_server(200, flush_interval_millis: 20, flush_queue_size: 2) do |client|
-      assert_nil client.track('App Opened', device_id: 'device-123')
+  def test_track_returns_before_a_five_second_flush_interval
+    with_ingestion_server(200, flush_interval_millis: 5_000) do |client|
+      completed = Queue.new
+      caller_thread = Thread.current
+      Timeout.timeout(1) do
+        assert_nil(client.track('App Opened', device_id: 'device-123') do |event, code, message|
+          client.flush
+          completed << [event.fetch('event_type'), code, message, Thread.current]
+        end)
+      end
+
+      assert_empty completed
+      assert_equal 200, client.flush.first.first.code
+      name, code, message, callback_thread = Timeout.timeout(5) { completed.pop }
+      assert_equal ['App Opened', 200, nil], [name, code, message]
+      refute_same caller_thread, callback_thread
     end
-    assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :>=, 0.02
+  end
+
+  def test_flush_interval_sends_a_partial_batch_and_reports_errors_asynchronously
+    _, payload = with_ingestion_server(400, flush_interval_millis: 20, flush_queue_size: 2) do |client|
+      completed = Queue.new
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      assert_nil(client.track('App Opened', device_id: 'device-123') { |_, code, message| completed << [code, message] })
+      assert_equal [400, 'Amplitude returned HTTP 400'], Timeout.timeout(5) { completed.pop }
+      assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :>=, 0.02
+    end
     assert_equal 1, payload.fetch('events').length
   end
 
@@ -210,6 +299,25 @@ class ClientTest < Minitest::Test
     assert_equal [
       [{ 'event_type' => 'App Opened', 'options' => { 'device_id' => 'device-123' } }, 200, nil]
     ], completions
+  end
+
+  def test_flush_and_shutdown_drain_pending_events_before_the_interval
+    requests = with_ingestion_responses([200, 200], flush_interval_millis: 60_000) do |client|
+      destination = Amplitude::AmplitudeDestinationPlugin.new
+      client.add(destination)
+      event = { 'event_type' => 'App Opened', 'options' => { 'device_id' => 'device-123' } }
+
+      pending = destination.execute(event)
+      results = Timeout.timeout(5) { client.flush }
+      assert_equal [[], [pending.value]], results
+      assert_equal 200, pending.value.code
+
+      pending = destination.execute(event)
+      Timeout.timeout(5) { client.shutdown }
+      assert_equal 200, pending.value.code
+      assert_raises(Amplitude::Error) { client.track('App Opened', device_id: 'device-123') }
+    end
+    assert_equal [1, 1], requests.map { |_, payload| payload.fetch('events').length }
   end
 
   private

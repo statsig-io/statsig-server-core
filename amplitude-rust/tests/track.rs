@@ -156,16 +156,17 @@ async fn flushes_track_and_identify_together_and_reuses_payload_on_retry() {
         options: options.clone(),
         ..Event::new("Purchase Completed")
     };
-    let (track, identify) = tokio::time::timeout(std::time::Duration::from_secs(5), async {
-        tokio::join!(
-            client.track(event),
-            client.identify(vec![IdentifyOperation::ClearAll], options, None),
-        )
+    let delivery = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        assert_eq!(client.track(event).await.unwrap(), 0);
+        client
+            .identify_with_result(vec![IdentifyOperation::ClearAll], options, None)
+            .await
     })
     .await
+    .unwrap()
     .unwrap();
-    assert_eq!(track.unwrap(), 200);
-    assert_eq!(identify.unwrap(), 200);
+    assert_eq!(delivery.code, 200);
+    assert_eq!(delivery.event.event_type, "$identify");
     let requests = server.received_requests().await.unwrap();
     assert_eq!(requests.len(), 2);
     assert_eq!(requests[0].body, requests[1].body);
@@ -199,10 +200,69 @@ async fn flushes_a_partial_queue_at_the_interval() {
     let mut event = Event::new("App Opened");
     event.options.device_id = Some("device-123".into());
     let start = std::time::Instant::now();
-    let status = tokio::time::timeout(std::time::Duration::from_secs(5), client.track(event))
+    let delivery = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        client.track_with_result(event),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(delivery.code, 200);
+    assert!(start.elapsed() >= std::time::Duration::from_millis(20));
+}
+
+#[tokio::test]
+async fn returns_before_a_five_second_interval_and_drains_on_flush_and_shutdown() {
+    use std::time::Duration;
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(2)
+        .mount(&server)
+        .await;
+    let client = Amplitude::new(
+        "test-api-key",
+        Some(Config {
+            server_url: Some(server.uri()),
+            flush_interval_millis: Some(5_000.0),
+            ..Config::default()
+        }),
+    )
+    .unwrap();
+    let options = EventOptions {
+        device_id: Some("device-123".into()),
+        ..EventOptions::default()
+    };
+    let event = Event {
+        options: options.clone(),
+        ..Event::new("App Opened")
+    };
+    let queued = tokio::time::timeout(Duration::from_secs(1), client.track(event.clone()))
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(status, 200);
-    assert!(start.elapsed() >= std::time::Duration::from_millis(20));
+    assert_eq!(queued, 0);
+    assert!(server.received_requests().await.unwrap().is_empty());
+
+    let results = tokio::time::timeout(Duration::from_secs(2), client.flush())
+        .await
+        .unwrap();
+    assert_eq!(results[0][0].as_ref().unwrap(), &200);
+    let queued = tokio::time::timeout(
+        Duration::from_secs(1),
+        client.identify(vec![IdentifyOperation::ClearAll], options, None),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(queued, 0);
+    let results = tokio::time::timeout(Duration::from_secs(2), client.shutdown())
+        .await
+        .unwrap();
+    assert_eq!(results[0][0].as_ref().unwrap(), &200);
+    assert!(matches!(
+        client.track(event).await,
+        Err(AmplitudeError::Closed)
+    ));
 }

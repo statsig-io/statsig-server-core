@@ -123,6 +123,12 @@ model Event {
   library?: string;
 }
 
+model Result {
+  event: Event;
+  code: float64;
+  message: string;
+}
+
 model PropertyValue {
   key: string;
   value: JsonValue;

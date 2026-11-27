@@ -1,8 +1,8 @@
-# Amplitude server client contract
+# Amplitude Client class
 
-This document describes the implementation of an Amplitude analytics client. The general structure of this is that the Client is a "class" that is instantiated with an api_key 
+This document describes the implementation of an Amplitude analytics client. The general structure of this is that the Client is a "class" that is instantiated with an api_key.
 
-Input types are defined in the [TypeSpec models](amplitude-server-client.tsp).
+Types are defined in the [TypeSpec models](amplitude-server-client.tsp).
 
 ## constructor
 
@@ -11,7 +11,7 @@ Input types are defined in the [TypeSpec models](amplitude-server-client.tsp).
 | `api_key` | `string` | Yes | The api key of amplitude project. Must be set properly before tracking events |
 | `configuration` | `Config` | No | Configuration fields for the client.  |
 
-## Client operations
+## methods
 
 ### `track`
 
